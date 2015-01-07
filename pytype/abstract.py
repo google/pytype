@@ -1666,7 +1666,7 @@ class Nothing(AtomicAbstractValue):
     return pytd.NothingType()
 
   def match_against_type(self, other_type, subst):
-    raise NotImplementedError("Matching nothing against %r", other_type)
+    return None
 
 
 def to_type(v):

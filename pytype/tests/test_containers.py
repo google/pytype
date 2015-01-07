@@ -357,6 +357,17 @@ class ContainerTest(test_inference.InferenceTest):
         ty: type
       """)
 
+  def testEmptyOrString(self):
+    with self.Infer("""
+      d = dict()
+      d["a"] = "queen"
+      entry = d["a"]
+      open('%s' % entry, 'w')
+    """, deep=False, solve_unknowns=False, extract_locals=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        d: dict<str, str>
+        entry: str
+      """)
 
 if __name__ == "__main__":
   test_inference.main()
