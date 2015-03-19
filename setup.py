@@ -11,4 +11,5 @@ setup(
     url='http://github.com/google/pytype',
     packages=['pytype', 'pytype/pyc', 'pytype/pytd', 'pytype/pytd/parse'],
     scripts=['scripts/pytype'],
+    package_data={'pytype': ['pytd/builtins/*']},
 )
