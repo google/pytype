@@ -1,0 +1,13 @@
+def collect(...) -> int raises ValueError
+def disable() -> NoneType
+def enable() -> NoneType
+def get_count() -> tuple
+def get_debug() -> int
+def get_objects() -> list
+def get_referents(...) -> list
+def get_referrers(...) -> list
+def get_threshold() -> tuple
+def is_tracked(...) -> bool
+def isenabled() -> bool
+def set_debug(a: int) -> NoneType
+def set_threshold(a: int, ...) -> NoneType

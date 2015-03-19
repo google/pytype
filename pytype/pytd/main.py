@@ -1,0 +1,83 @@
+"""Tool for processing pytd files.
+
+pytd is a type declaration language for Python. Each .py file can have an
+accompanying .pytd file that specifies classes, argument types, return types
+and exceptions.
+This binary processes pytd files, typically to optimize them.
+
+Usage:
+  pytd_tool [flags] <inputfile> <outputfile>
+"""
+
+import optparse
+import sys
+
+
+from pytype.pytd import optimize
+from pytype.pytd import pytd
+from pytype.pytd import utils
+from pytype.pytd.parse import parser
+
+
+def parse_options(args):
+  """Use optparse to parse command line options."""
+  o = optparse.OptionParser("Usage: %prog [options] infile.pytd outfile.pytd")
+  o.add_option(
+      "-O", "--optimize", action="store_true",
+      dest="optimize", default=True,
+      help="Optimize pytd file.")
+  o.add_option(
+      "--lossy", action="store_true",
+      dest="lossy", default=False,
+      help="Allow lossy optimizations, such as merging classes.")
+  o.add_option(
+      "--max-union", type="int", action="store",
+      dest="max_union", default=4,
+      help="Maximum number of objects in an 'or' clause.\nUse with --lossy.")
+  o.add_option(
+      "--use-abcs", action="store_true",
+      dest="use_abcs", default=False,
+      help="Inject abstract bases classes for type merging.\nUse with --lossy.")
+  o.add_option(
+      "--remove-mutable", action="store_true",
+      dest="remove_mutable", default=False,
+      help="Remove mutable parameters.")
+  o.add_option(
+      "-F", "--output-format", type="string", action="store",
+      dest="output_format", default="pytd",
+      help="Specify output format. Formats: " + ", ".join(utils.OUTPUT_FORMATS))
+  options, filenames = o.parse_args(args)
+  return options, filenames
+
+
+def main():
+  options, filenames = parse_options(sys.argv)
+  unused_executable = filenames.pop(0)
+  if len(filenames) != 2:
+    print >> sys.stderr, "Need exactly two filenames"
+    sys.exit(1)
+  filename_in, filename_out = filenames
+
+  if options.output_format not in utils.OUTPUT_FORMATS:
+    print >> sys.stderr, "Invalid output format:", options.output_format
+    print >> sys.stderr, "Supported formats:", ", ".join(utils.OUTPUT_FORMATS)
+    sys.exit(1)
+
+  with open(filename_in) as fi:
+    sourcecode = fi.read()
+    p = parser.TypeDeclParser()
+    parsed = p.Parse(sourcecode, filename=filename_in)
+
+  if options.optimize:
+    parsed = optimize.Optimize(parsed,
+                               lossy=options.lossy,
+                               use_abcs=options.use_abcs,
+                               max_union=options.max_union,
+                               remove_mutable=options.remove_mutable)
+
+  with open(filename_out, "w") as out:
+    out.write(pytd.Print(parsed, print_format=options.output_format))
+
+
+if __name__ == "__main__":
+  main()

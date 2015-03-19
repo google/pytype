@@ -1,0 +1,14 @@
+def poll() -> `poll-type`
+def select(...) -> tuple raises OverflowError, TypeError
+
+class epoll:
+    def close() -> NoneType raises IOError
+    def fileno() -> int
+    def fromfd(a: int) -> epoll
+    def modify(fd, eventmask: int) -> NoneType
+    def poll(...) -> list raises IOError, MemoryError, OverflowError, ValueError
+    def register(fd, ...) -> NoneType
+    def unregister(fd) -> NoneType
+
+class `poll-type`:
+    pass

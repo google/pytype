@@ -1,0 +1,4 @@
+def dump(...) -> NoneType raises TypeError
+def dumps(...) -> unicode  # TODO(pludemann): "-> str"?
+def load(...) -> ? raises TypeError
+def loads(...) -> ?

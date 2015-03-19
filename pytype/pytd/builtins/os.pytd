@@ -1,0 +1,113 @@
+def WCOREDUMP(...) -> bool
+def WEXITSTATUS(...) -> int
+def WIFCONTINUED(...) -> bool
+def WIFEXITED(...) -> bool
+def WIFSIGNALED(...) -> bool
+def WIFSTOPPED(...) -> bool
+def WSTOPSIG(...) -> int
+def WTERMSIG(...) -> int
+def _exit(...) -> NoneType  # TODO(pludemann): raises?
+def abort() -> NoneType  # TODO(pludemann): raises?
+def access(...) -> bool
+def chdir(...) -> NoneType
+def chmod(...) -> NoneType
+def chown(...) -> NoneType
+def chroot(...) -> NoneType
+def close(...) -> NoneType
+def closerange(...) -> NoneType
+def confstr(...) -> str or NoneType
+def ctermid() -> str
+def dup(...) -> int
+def dup2(...) -> NoneType
+def execv(...) -> ? raises MemoryError, TypeError, ValueError
+def execve(...) -> ?  raises MemoryError, TypeError
+def fchdir(...) -> NoneType
+def fchmod(...) -> NoneType
+def fchown(...) -> NoneType
+def fdatasync(...) -> NoneType
+def fdopen(...) -> file raises MemoryError
+def fork() -> int raises RuntimeError
+def forkpty() -> tuple raises RuntimeError
+def fpathconf(...) -> int
+def fstat(...) -> tuple
+def fstatvfs(...) -> tuple
+def fsync(...) -> NoneType
+def ftruncate(...) -> NoneType
+def getcwd() -> str
+def getcwdu() -> unicode
+def getegid() -> long or int
+def geteuid() -> long or int
+def getgid() -> long or int
+def getgroups() -> list
+def getloadavg() -> tuple raises OSError
+def getlogin() -> str raises OSError
+def getpgid(...) -> int
+def getpgrp() -> int
+def getpid() -> int
+def getppid() -> int
+def getresgid() -> tuple
+def getresuid() -> tuple
+def getsid(...) -> int
+def getuid() -> long or int
+def initgroups(...) -> NoneType raises OSError
+def isatty(...) -> bool
+def kill(...) -> NoneType
+def killpg(...) -> NoneType
+def lchown(...) -> NoneType
+def link(...) -> NoneType
+def listdir(...) -> list<str or unicode>
+def lseek(...) -> int
+def lstat(...) -> tuple
+def major(...) -> int
+def makedev(...) -> int
+def minor(...) -> int
+def mkdir(...) -> NoneType
+def mkfifo(...) -> NoneType
+def mknod(...) -> NoneType
+def nice(...) -> int
+def open(...) -> int
+def openpty() -> tuple
+def pathconf(...) -> int
+def pipe() -> tuple
+def popen(...) -> file
+def putenv(...) -> NoneType raises MemoryError
+def read(...) -> str
+def readlink(...) -> str
+def remove(...) -> NoneType
+def rename(...) -> NoneType
+def rmdir(...) -> NoneType
+def setegid(...) -> NoneType
+def seteuid(...) -> NoneType
+def setgid(...) -> NoneType
+def setgroups(...) -> NoneType raises TypeError, ValueError
+def setpgid(...) -> NoneType
+def setpgrp() -> NoneType
+def setregid(...) -> NoneType
+def setresgid(...) -> NoneType
+def setresuid(...) -> NoneType
+def setreuid(...) -> NoneType
+def setsid() -> NoneType
+def setuid(...) -> NoneType
+def stat(...) -> tuple
+def stat_float_times(...) -> bool or NoneType
+def statvfs(...) -> tuple
+def strerror(...) -> str raises ValueError
+def symlink(...) -> NoneType
+def sysconf(...) -> int
+def system(...) -> int
+def tcgetpgrp(...) -> int
+def tcsetpgrp(...) -> NoneType
+def times() -> tuple
+def tmpfile() -> file raises DeprecationWarning
+def ttyname(...) -> str
+def umask(...) -> int
+def uname() -> tuple
+def unlink(...) -> NoneType
+def unsetenv(...) -> NoneType
+def urandom(...) -> str raises ValueError
+def utime(...) -> NoneType raises TypeError
+def wait() -> tuple
+def wait3(...) -> tuple
+def wait4(...) -> tuple
+def waitpid(...) -> tuple
+def write(...) -> int

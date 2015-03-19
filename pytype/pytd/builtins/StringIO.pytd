@@ -1,0 +1,24 @@
+EINVAL: int
+__all__: list<str>
+__builtins__: dict<str, object>
+__doc__: str
+__file__: str
+__name__: str
+__package__: NoneType
+
+def _complain_ifclosed(closed) -> NoneType
+def test() -> NoneType
+
+class StringIO:
+    def close(self) -> NoneType
+    def flush(self) -> NoneType
+    def getvalue(self) -> str
+    def isatty(self) -> bool
+    def read(self, ...) -> str
+    def readline(self, ...) -> str
+    def readlines(self, ...) -> list
+    def seek(self, pos, mode) -> NoneType
+    def tell(self) -> int
+    def truncate(self, ...) -> NoneType
+    def write(self, s) -> NoneType
+    def writelines(self, iterable) -> NoneType

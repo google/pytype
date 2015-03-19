@@ -1,0 +1,52 @@
+ITIMER_PROF: int or long
+ITIMER_REAL: int or long
+ITIMER_VIRTUAL: int or long
+ItimerError: object
+NSIG: int or long
+SIGABRT: int or long
+SIGALRM: int or long
+SIGBUS: int or long
+SIGCHLD: int or long
+SIGCLD: int or long
+SIGCONT: int or long
+SIGFPE: int or long
+SIGHUP: int or long
+SIGILL: int or long
+SIGINT: int or long
+SIGIO: int or long
+SIGIOT: int or long
+SIGKILL: int or long
+SIGPIPE: int or long
+SIGPOLL: int or long
+SIGPROF: int or long
+SIGPWR: int or long
+SIGQUIT: int or long
+SIGRTMAX: int or long
+SIGRTMIN: int or long
+SIGSEGV: int or long
+SIGSTOP: int or long
+SIGSYS: int or long
+SIGTERM: int or long
+SIGTRAP: int or long
+SIGTSTP: int or long
+SIGTTIN: int or long
+SIGTTOU: int or long
+SIGURG: int or long
+SIGUSR1: int or long
+SIGUSR2: int or long
+SIGVTALRM: int or long
+SIGWINCH: int or long
+SIGXCPU: int or long
+SIGXFSZ: int or long
+SIG_DFL: int or long
+SIG_IGN: int or long
+
+def alarm(a: int) -> int
+# def default_int_handler(...) raises KeyboardInterrupt  # TODO(pludemann): is this defined?
+def getitimer(a: int) -> tuple
+def getsignal(a: int) -> NoneType raises ValueError
+def pause() -> NoneType
+def set_wakeup_fd(a: int) -> long raises ValueError
+def setitimer(a: int, b: float, ...) -> tuple
+def siginterrupt(a: int, b: int) -> NoneType raises RuntimeError, ValueError
+def signal(a: int, b) -> NoneType raises RuntimeError, TypeError, ValueError

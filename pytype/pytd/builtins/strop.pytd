@@ -1,0 +1,21 @@
+def rfind(...) -> int raises DeprecationWarning
+def join(...) -> object or str raises TypeError, OverflowError, DeprecationWarning
+def capitalize(...) -> str raises DeprecationWarning
+def swapcase(...) -> str raises DeprecationWarning
+def rstrip(...) -> str raises DeprecationWarning
+def upper(...) -> str raises DeprecationWarning
+def maketrans(...) -> str raises ValueError
+def find(...) -> int raises DeprecationWarning
+def lower(...) -> str raises DeprecationWarning
+def replace(...) -> str raises MemoryError, ValueError, DeprecationWarning
+def translate(...) -> str raises ValueError, DeprecationWarning
+def count(...) -> int raises DeprecationWarning
+def strip(...) -> str raises DeprecationWarning
+def split(...) -> list<str> raises ValueError, DeprecationWarning
+def atof(...) -> float raises ValueError, DeprecationWarning
+def atoi(...) -> int raises ValueError, DeprecationWarning
+def expandtabs(...) -> str raises OverflowError, ValueError, DeprecationWarning
+def splitfields(...) -> list<str> raises ValueError, DeprecationWarning
+def atol(...) -> long raises ValueError, DeprecationWarning
+def joinfields(...) -> object or str raises TypeError, OverflowError, DeprecationWarning
+def lstrip(...) -> str raises DeprecationWarning

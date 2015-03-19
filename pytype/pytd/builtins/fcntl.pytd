@@ -1,0 +1,4 @@
+def fcntl(...) -> str or int raises IOError, ValueError
+def flock(...) -> NoneType raises IOError
+def ioctl(...) -> str or int raises IOError, ValueError
+def lockf(...) -> NoneType raises IOError, ValueError

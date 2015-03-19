@@ -1,0 +1,29 @@
+# TODO(pludemann): parameterize by type?
+class array:
+    def __copy__() -> ?
+    def __deepcopy__(...) -> ?
+    def __reduce__() -> tuple raises AttributeError
+    def __sizeof__() -> long
+    def append(...) -> NoneType
+    def buffer_info() -> tuple
+    def byteswap() -> NoneType raises RuntimeError
+    def count(...) -> int
+    def extend(...) -> NoneType
+    def fromfile(...) -> NoneType raises EOFError, IOError, MemoryError, TypeError
+    def fromlist(...) -> NoneType raises MemoryError, TypeError
+    def fromstring(...) -> NoneType raises MemoryError, ValueError
+    def fromunicode(...) -> NoneType raises MemoryError, ValueError
+    def index(...) -> int raises ValueError
+    def insert(...) -> NoneType
+    def pop(...) -> ? raises IndexError
+    def read(...) -> NoneType raises DeprecationWarning
+    def remove(...) -> NoneType raises ValueError
+    def reverse() -> NoneType
+    def tofile(...) -> NoneType raises IOError, TypeError
+    def tolist() -> list
+    def tostring() -> str raises MemoryError
+    def tounicode() -> unicode raises ValueError
+    def write(...) -> NoneType raises DeprecationWarning
+
+class arrayiterator:
+    pass

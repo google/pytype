@@ -1,0 +1,30 @@
+__all__: list<str>
+__builtins__: dict<str, object>
+__doc__: str
+__file__: str
+__name__: str
+__package__: NoneType
+default_action: str
+defaultaction: str
+filters: list<tuple>
+linecache: module
+once_registry: dict
+onceregistry: dict
+sys: module
+types: module
+
+def _getaction(action) -> str
+def _processoptions(args) -> NoneType
+def _setoption(arg) -> NoneType
+def resetwarnings() -> NoneType
+def warn(x, ...) -> NoneType
+def warnpy3k(message, category, stacklevel) -> NoneType
+
+class WarningMessage:
+    pass
+
+class _OptionError:
+    def __unicode__(self, ...) -> unicode
+
+class catch_warnings:
+    pass
