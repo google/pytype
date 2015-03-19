@@ -31,6 +31,7 @@ class Logger:
 ```
 git clone https://github.com/google/pytype.git
 python setup.py install
+pytype your_python_code.py
 ```
 ## How to contribute to the project
 

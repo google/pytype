@@ -1,3 +1,4 @@
+#!/usr/bin/python2.7
 """Tool for inferring types from Python programs.
 
 'pytype' is a tool for generating pytd from Python programs.
