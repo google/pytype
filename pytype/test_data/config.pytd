@@ -1,0 +1,5 @@
+# TODO(pludemann): un-comment stuff that pytype doesn't generate yet
+#
+class ConfigParser:
+    def __init__(self, filename) -> NoneType
+    def read(self) -> str
