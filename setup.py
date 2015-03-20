@@ -10,6 +10,6 @@ setup(
     maintainer_email='pytypedecl-dev@googlegroups.com',
     url='http://github.com/google/pytype',
     packages=['pytype', 'pytype/pyc', 'pytype/pytd', 'pytype/pytd/parse'],
-    scripts=['scripts/pytype'],
+    scripts=['scripts/pytype', 'scripts/pytd'],
     package_data={'pytype': ['pytd/builtins/*']},
 )
