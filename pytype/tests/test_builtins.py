@@ -44,6 +44,7 @@ class BuiltinTests(test_inference.InferenceTest):
         return eval(x)
       t_testEval(4)
     """, deep=False, solve_unknowns=True, extract_locals=True) as ty:
+      # TODO(kramm): https://review/#review/87297298/pytype/tests/test_builtins.py&v=s11&l=37F
       self.assertTypesMatchPytd(ty, """
         # TODO(pludemann): should this return `?` instead of `object`?
         def t_testEval(x: int) -> object

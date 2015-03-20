@@ -1,5 +1,9 @@
 """Test functions etc, for Byterun."""
 
+# MOE:begin_strip
+# To allow the idiom: if PY3:\ndef ...
+# pylint: disable=g-wrong-blank-lines
+# MOE:end_strip
 
 import unittest
 

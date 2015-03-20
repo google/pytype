@@ -31,6 +31,13 @@ from pytype.pytd.parse import visitors
 
 
 def GetDataFile(filename=""):
+# MOE:begin_strip
+  from resources import resources  # pylint: disable=g-import-not-at-top
+  try:
+    return resources.GetResource(
+        os.path.join("pytype/pytd", filename))
+  except ImportError:
+# MOE:end_strip
     full_filename = os.path.abspath(
         os.path.join(os.path.dirname(pytd.__file__), filename))
     with open(full_filename, "rb") as fi:
