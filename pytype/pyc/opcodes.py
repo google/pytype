@@ -30,6 +30,9 @@ class Opcode(object):
   def __str__(self):
     return "%4d: %s" % (self.index, self.__class__.__name__)
 
+  def __repr__(self):
+    return self.__class__.__name__
+
   @property
   def name(self):
     return self.__class__.__name__
@@ -55,6 +58,10 @@ class Opcode(object):
     return bool(cls.FLAGS & HAS_JUNKNOWN)
 
   @classmethod
+  def has_jump(cls):
+    return bool(cls.FLAGS & (HAS_JREL | HAS_JABS | HAS_JUNKNOWN))
+
+  @classmethod
   def has_local(cls):
     return bool(cls.FLAGS & HAS_LOCAL)
 
@@ -75,7 +82,7 @@ class Opcode(object):
     return bool(cls.FLAGS & NO_NEXT)
 
   @classmethod
-  def late_jump(cls):
+  def store_jump(cls):
     return bool(cls.FLAGS & STORE_JUMP)
 
 

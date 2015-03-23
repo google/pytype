@@ -149,6 +149,8 @@ def order_nodes(nodes):
   Returns:
     A list of nodes in the proper order.
   """
+  if not nodes:
+    return []
   root = nodes[0]
   predecessor_map = compute_predecessors(nodes)
   dead = {node for node, predecessors in predecessor_map.items()

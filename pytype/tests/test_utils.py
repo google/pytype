@@ -85,6 +85,10 @@ class TypegraphUtilsTest(unittest.TestCase):
     self.assertItemsEqual(r[n6], {n1, n20, n3, n4, n5, n6})
     self.assertItemsEqual(r[n7], {n1, n7})
 
+  def testOrderNodes0(self):
+    order = utils.order_nodes([])
+    self.assertItemsEqual(order, [])
+
   def testOrderNodes1(self):
     # n1 --> n2
     n1 = self.prog.NewCFGNode("n1")
