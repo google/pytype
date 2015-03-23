@@ -2,41 +2,44 @@
 
 
 import unittest
-
 from pytype.pytd import pytd
 from pytype.pytd import utils
 from pytype.tests import test_inference
 
 
-@unittest.skip("Temporarily disabled. Needs --deep")
-# Also uses old form of self.Infer; needs to be change to 'with self.Infer'
 class StringIOTests(test_inference.InferenceTest):
 
-  def setUp(self):
-    with open(utils.GetDataFile("examples/StringIO.py"), "r") as infile:
-      self.ty = self.Infer(infile.read())
+  @unittest.skip("Temporarily disabled. Takes > 162 sec (infinite loop?)")
+  def testDeep(self):
+    sourcecode = utils.GetDataFile("examples/StringIO.py")
+    # TODO(pludemann): This is similar to test_pytree.py ... combine them?
+    # TODO(pludemann): use new 'with' framework
+    # TODO(pludemann): extract_locals - see class test_inference.Infer
+    ty = self._InferAndVerify(sourcecode, deep=True, expensive=False)
+    # TODO(pludemann): change tests below to use function_names, class_names
+    #                  as needed (they're currently unused)
+    function_names = {f.name for f in ty.functions}
+    class_names = {cls.name for cls in ty.classes}
+
     try:
       self.stringio_cls = self.ty.Lookup("StringIO")
     except KeyError:
       self.stringio_cls = None
-      # Continue to the test it will fail if it needs the cls
+      # Continue to the test -- it will fail if it needs the cls
+
     self.stringio_type = pytd.ClassType("StringIO")
     self.stringio_type.cls = self.stringio_cls
 
-  def testComplainIfclosed(self):
     self.assertHasOnlySignatures(self.ty.Lookup("_complain_ifclosed"),
-                                 ((self.bool), self.none_type))
+                                 ((self.bool,), self.none_type))
 
-  def testClassesExist(self):
     self.assertIn("StringIO", self.ty.classes)
 
-  def testStringIOIter(self):
     self.assertHasOnlySignatures(self.stringio_cls.Lookup("__iter__"),
-                                 ((self.stringio_type), self.stringio_type))
+                                 ((self.stringio_type,), self.stringio_type))
 
-  def testStringIOGetValue(self):
     self.assertHasOnlySignatures(self.stringio_cls.Lookup("get_value"),
-                                 ((self.stringio_type), self.str))
+                                 ((self.stringio_type,), self.str))
 
 
 if __name__ == "__main__":
