@@ -1316,6 +1316,20 @@ class Python3Test(unittest.TestCase):
     self.assertEquals(ops[2].arg, 0)
     self.assertEquals(ops[3].name, 'RETURN_VALUE')
 
+  def test_raise_zero(self):
+    code = ''.join(chr(c) for c in ([
+        0x82, 0, 0,  # 0 RAISE_VARARGS, arg=0,
+        0x64, 0, 0,  # 3 LOAD_CONST, arg=0,
+        0x53,  # 6 RETURN_VALUE
+    ]))
+    ops = opcodes.dis(code, self.PYTHON_VERSION)
+    self.assertEquals(len(ops), 3)
+    self.assertEquals(ops[0].name, 'RAISE_VARARGS')
+    self.assertEquals(ops[0].arg, 0)
+    self.assertEquals(ops[1].name, 'LOAD_CONST')
+    self.assertEquals(ops[1].arg, 0)
+    self.assertEquals(ops[2].name, 'RETURN_VALUE')
+
   def test_raise_one(self):
     code = ''.join(chr(c) for c in ([
         0x64, 0, 0,  # 0 LOAD_CONST, arg=0,
@@ -1332,6 +1346,49 @@ class Python3Test(unittest.TestCase):
     self.assertEquals(ops[2].name, 'LOAD_CONST')
     self.assertEquals(ops[2].arg, 0)
     self.assertEquals(ops[3].name, 'RETURN_VALUE')
+
+  def test_raise_two(self):
+    code = ''.join(chr(c) for c in ([
+        0x74, 0, 0,  # 0 LOAD_GLOBAL, arg=0,
+        0x74, 1, 0,  # 3 LOAD_GLOBAL, arg=1,
+        0x82, 2, 0,  # 6 RAISE_VARARGS, arg=2,
+        0x64, 0, 0,  # 9 LOAD_CONST, arg=0,
+        0x53,  # 12 RETURN_VALUE
+    ]))
+    ops = opcodes.dis(code, self.PYTHON_VERSION)
+    self.assertEquals(len(ops), 5)
+    self.assertEquals(ops[0].name, 'LOAD_GLOBAL')
+    self.assertEquals(ops[0].arg, 0)
+    self.assertEquals(ops[1].name, 'LOAD_GLOBAL')
+    self.assertEquals(ops[1].arg, 1)
+    self.assertEquals(ops[2].name, 'RAISE_VARARGS')
+    self.assertEquals(ops[2].arg, 2)
+    self.assertEquals(ops[3].name, 'LOAD_CONST')
+    self.assertEquals(ops[3].arg, 0)
+    self.assertEquals(ops[4].name, 'RETURN_VALUE')
+
+  def test_raise_three(self):
+    code = ''.join(chr(c) for c in ([
+        0x74, 0, 0,  # 0 LOAD_GLOBAL, arg=0,
+        0x74, 1, 0,  # 3 LOAD_GLOBAL, arg=1,
+        0x64, 1, 0,  # 6 LOAD_CONST, arg=1,
+        0x82, 3, 0,  # 9 RAISE_VARARGS, arg=3,
+        0x64, 0, 0,  # 12 LOAD_CONST, arg=0,
+        0x53,  # 15 RETURN_VALUE
+    ]))
+    ops = opcodes.dis(code, self.PYTHON_VERSION)
+    self.assertEquals(len(ops), 6)
+    self.assertEquals(ops[0].name, 'LOAD_GLOBAL')
+    self.assertEquals(ops[0].arg, 0)
+    self.assertEquals(ops[1].name, 'LOAD_GLOBAL')
+    self.assertEquals(ops[1].arg, 1)
+    self.assertEquals(ops[2].name, 'LOAD_CONST')
+    self.assertEquals(ops[2].arg, 1)
+    self.assertEquals(ops[3].name, 'RAISE_VARARGS')
+    self.assertEquals(ops[3].arg, 3)
+    self.assertEquals(ops[4].name, 'LOAD_CONST')
+    self.assertEquals(ops[4].arg, 0)
+    self.assertEquals(ops[5].name, 'RETURN_VALUE')
 
   def test_unary(self):
     code = ''.join(chr(c) for c in ([
