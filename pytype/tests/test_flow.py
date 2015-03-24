@@ -1,5 +1,7 @@
 """Tests for control flow (with statements, loops, exceptions, etc.)."""
 
+import unittest
+
 from pytype.tests import test_inference
 
 
@@ -200,6 +202,17 @@ class FlowTest(test_inference.InferenceTest):
       f()
     """, deep=False, solve_unknowns=False, extract_locals=True) as ty:
       self.assertHasSignature(ty.Lookup("f"), (), self.str)
+
+  @unittest.skip("Broken, type of f not recorded")
+  def testReturnInWith(self):
+    with self.Infer("""
+      def f():
+        with __any_object__:
+          return "foo"
+      f()
+    """, deep=False, solve_unknowns=False, extract_locals=True) as ty:
+      self.assertHasSignature(ty.Lookup("f"), (), self.str)
+
 
 if __name__ == "__main__":
   test_inference.main()
