@@ -1,13 +1,14 @@
 """Tests for import."""
+
 from pytype.tests import test_inference
 
 
 class ImportTest(test_inference.InferenceTest):
-  """Tests for import. Right now, only does smoke tests."""
+  """Tests for import."""
 
   def testBasicImport(self):
     self.assert_ok("""\
-      import some_module
+      import sys
       """)
 
   def testPathImport(self):
@@ -17,7 +18,7 @@ class ImportTest(test_inference.InferenceTest):
 
   def testFromImport(self):
     self.assert_ok("""\
-      from module import foo
+      from sys import exit
       from path.to.module import bar, baz
       """)
 
@@ -59,6 +60,24 @@ class ImportTest(test_inference.InferenceTest):
       f()
     """, deep=False, solve_unknowns=False, extract_locals=False) as ty:
       self.assertOnlyHasReturnType(ty.Lookup("f"), self.module)
+
+  def testSys(self):
+    with self.Infer("""
+      import sys
+      def f():
+        return sys.path
+      f()
+    """, deep=False, solve_unknowns=False, extract_locals=False) as ty:
+      self.assertOnlyHasReturnType(ty.Lookup("f"), self.str_list)
+
+  def testFromSysImport(self):
+    with self.Infer("""
+      from sys import path
+      def f():
+        return path
+      f()
+    """, deep=False, solve_unknowns=False, extract_locals=False) as ty:
+      self.assertOnlyHasReturnType(ty.Lookup("f"), self.str_list)
 
 if __name__ == "__main__":
   test_inference.main()

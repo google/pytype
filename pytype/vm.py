@@ -27,6 +27,7 @@ import types
 
 from pytype import abstract
 from pytype import exceptions
+from pytype import import_paths
 from pytype import pycfg
 from pytype import state
 from pytype import utils
@@ -1063,11 +1064,9 @@ class VirtualMachine(object):
         log.debug("Failed to find pytd", exc_info=True)
         raise
     elif isinstance(pyval, pytd.TypeDeclUnit):
-      member_map = {}
-      for val in pyval.constants + pyval.classes + pyval.functions:
-        member_map[val.name] = val
-      return abstract.LazyAbstractValue(pyval.name, member_map,
-                                        self.convert_constant, vm=self)
+      members = {val.name: val
+                 for val in pyval.constants + pyval.classes + pyval.functions}
+      return abstract.Module(self, pyval.name, members)
     elif isinstance(pyval, pytd.Class):
       return abstract.PyTDClass(pyval, self)
     elif isinstance(pyval, pytd.FunctionWithSignatures):
@@ -1089,6 +1088,8 @@ class VirtualMachine(object):
     elif isinstance(pyval, pytd.TypeParameter):
       return abstract.TypeParameter(pyval.name, pyval, self)
     elif isinstance(pyval, pytd.GenericType):
+      # TODO(kramm): Remove ParameterizedClass. This should just create a
+      # SimpleAbstractValue with type parameters.
       assert isinstance(pyval.base_type, pytd.ClassType)
       type_parameters = {
           param.name: self.convert_constant_to_value(param.name, value)
@@ -1678,9 +1679,15 @@ class VirtualMachine(object):
       assert isinstance(d, (abstract.LazyAbstractValue, types.NoneType))
       return d
 
-  def import_name(self, name, fromlist, level):
+  def import_name(self, name, level):
     """Import the module and return the module object."""
-    return abstract.Module(self, name).to_variable(name)
+    try:
+      ast = import_paths.module_name_to_pytd(name, level,
+                                             self.python_version)
+    except IOError:
+      log.error("Couldn't find module %s", name)
+      return abstract.Unknown(self).to_variable(name)
+    return self.convert_constant(name, ast)
 
   def print_item(self, item, to=None):
     # We don't need do anything here, since Python's print function accepts
@@ -2132,8 +2139,9 @@ class VirtualMachine(object):
     return "yield"
 
   def byte_IMPORT_NAME(self, name):
-    level, fromlist = self.popn(2)
-    self.push(self.import_name(name, fromlist, level))
+    level, unused_fromlist = self.popn(2)
+    self.push(self.import_name(name, level))
+    # TODO(kramm): Do something meaningful with "fromlist"?
 
   def byte_IMPORT_FROM(self, name):
     mod = self.top()
@@ -2192,6 +2200,9 @@ class VirtualMachine(object):
   def byte_IMPORT_STAR(self):
     # TODO(kramm): this doesn't use __all__ properly.
     mod = _get_atomic_value(self.pop())
+    if isinstance(mod, abstract.Unknown):
+      log.error("Doing 'from module import *' from unresolved module")
+      return
     log.info("%r", mod)
     # TODO(kramm): Add Module type to abstract.py
     for name, var in mod.items():

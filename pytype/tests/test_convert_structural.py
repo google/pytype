@@ -15,8 +15,7 @@ class MatchTest(unittest.TestCase):
 
   @classmethod
   def setUpClass(cls):
-    # stdlib=False for speed
-    cls.builtins_pytd = builtins.GetBuiltinsPyTD(stdlib=False)
+    cls.builtins_pytd = builtins.GetBuiltinsPyTD()
 
   def parse(self, src):
     return parser.parse_string(textwrap.dedent(src))

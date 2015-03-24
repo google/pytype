@@ -361,7 +361,7 @@ class VerifyLookup(object):
   """Utility class for testing visitors.LookupClasses."""
 
   def VisitNamedType(self, node):
-    raise ValueError("Unreplaced NamedType: {!s} {!r}".format(node, node))
+    raise ValueError("Unreplaced NamedType: %r" % node.name)
 
   def VisitClassType(self, node):
     # TODO(pludemann): Can we give more context for this error? It's not very
@@ -369,7 +369,7 @@ class VerifyLookup(object):
     #                  "def foo(x: list<T>))" ... it would be nice to know what
     #                  it's inside.
     if node.cls is None:
-      raise ValueError("Unresolved ClassType: {!s} {!r}".format(node, node))
+      raise ValueError("Unresolved class: %r" % node.name)
 
 
 class ReplaceTypes(object):

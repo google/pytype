@@ -174,6 +174,7 @@ class InferenceTest(unittest.TestCase):
     self.empty_frozenset = pytd.HomogeneousContainerType(self.frozenset,
                                                          (self.nothing,))
     self.int_list = pytd.HomogeneousContainerType(self.list, (self.int,))
+    self.str_list = pytd.HomogeneousContainerType(self.list, (self.str,))
     self.intorfloat_list = pytd.HomogeneousContainerType(self.list,
                                                          (self.intorfloat,))
     self.intorstr_list = pytd.HomogeneousContainerType(self.list,

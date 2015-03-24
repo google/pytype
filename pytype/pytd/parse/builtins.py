@@ -36,30 +36,25 @@ def _FindBuiltinFile(name):
 
 
 # Keyed by the parameter(s) passed to GetBuiltinsPyTD:
-_cached_builtins_pytd = {}  # ... => pytype.pytd.pytd.TypeDeclUnit
+_cached_builtins_pytd = None  # ... => pytype.pytd.pytd.TypeDeclUnit
 
 
 _BUILTIN_NAME = "__builtin__"
 
 
-def GetBuiltinsPyTD(stdlib=True):
+def GetBuiltinsPyTD():
   """Get the "default" AST used to lookup built in types.
 
   Get an AST for all Python builtins as well as the most commonly used standard
   libraries.
 
-  Args:
-    stdlib: Whether to load the standard library, too. If this is False,
-      TypeDeclUnit.modules will be empty. If it's True, it'll contain modules
-      like itertools and signal.
-
   Returns:
     A pytd.TypeDeclUnit instance. It'll directly contain the builtin classes
     and functions, and submodules for each of the standard library modules.
   """
-  cache_key = stdlib
-  if cache_key in _cached_builtins_pytd:
-    return _cached_builtins_pytd[cache_key]
+  global _cached_builtins_pytd
+  if _cached_builtins_pytd:
+    return _cached_builtins_pytd
   # TODO(pludemann): This can be fairly slow; suggest pickling the result and
   #                  reusing if possible (see lib2to3.pgen2.grammar)
 
@@ -68,27 +63,22 @@ def GetBuiltinsPyTD(stdlib=True):
   p = parser.TypeDeclParser()
   builtins_pytd = p.Parse(
       _FindBuiltinFile(_BUILTIN_NAME + ".pytd"), name=_BUILTIN_NAME)
-  if stdlib:
-    builtins_pytd = builtins_pytd.Replace(
-        modules=tuple(p.Parse(_FindBuiltinFile(mod + ".pytd"),
-                              filename=mod + ".pytd", name=mod)
-                      for mod in _MODULES))
-  _cached_builtins_pytd[cache_key] = builtins_pytd
+  _cached_builtins_pytd = builtins_pytd
   return builtins_pytd
 
 
 # Keyed by the parameter(s) passed to GetBuiltinsPyTD:
-_cached_builtins_code = {}  # ... => list<pytype.pyc.loadmarshal.CodeType>
+_cached_builtins_code = None  # ... => list<pytype.pyc.loadmarshal.CodeType>
 
 PYTHON_VERSION = (2, 7)  # TODO(pludemann): parameter or FLAG
 
 
-def GetBuiltinsCode(stdlib=True):
+def GetBuiltinsCode():
   """Similar to GetBuiltinsPyTD, but for code in the .py file."""
 
-  cache_key = stdlib
-  if cache_key in _cached_builtins_code:
-    return _cached_builtins_code[cache_key]
+  global _cached_builtins_code
+  if _cached_builtins_code:
+    return _cached_builtins_code
   # TODO(pludemann): This can be fairly slow; suggest pickling the result and
   #                  reusing if possible (see lib2to3.pgen2.grammar)
 
@@ -99,5 +89,5 @@ def GetBuiltinsCode(stdlib=True):
   # TODO(pludemann): add support for .py files in _MODULES:
   #   ... see similar code in GetBuiltinsPyTD, but we need to check
   #       for the existence of each .py file
-  _cached_builtins_code[cache_key] = builtins_code
+  _cached_builtins_code = builtins_code
   return builtins_code

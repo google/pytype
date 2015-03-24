@@ -24,10 +24,7 @@ import itertools
 from pytype.pytd.parse import node
 
 
-# TODO(ampere): Add __new__ to Type subclasses that contain sequences to
-#               convert arguments to tuples?
-
-
+# TODO(kramm): Remove "modules"
 class TypeDeclUnit(node.Node('name', 'constants', 'classes', 'functions',
                              'modules')):
   """Module node. Holds module contents (classes / functions) and submodules.

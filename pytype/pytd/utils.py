@@ -20,6 +20,9 @@ This provides a utility function to access data files in a way that works either
 locally or within a larger repository.
 """
 
+# len(x) == 0 is clearer in some places:
+# pylint: disable=g-explicit-length-test
+
 import collections
 import os
 
@@ -50,6 +53,16 @@ def UnpackUnion(t):
     return t.type_list
   else:
     return [t]
+
+
+def MakeClassOrContainerType(base_type, type_arguments):
+  """If we have type params, build a generic type, a normal type otherwise."""
+  if len(type_arguments) == 0:
+    return base_type
+  elif len(type_arguments) == 1:
+    return pytd.HomogeneousContainerType(base_type, tuple(type_arguments))
+  else:
+    return pytd.GenericType(base_type, tuple(type_arguments))
 
 
 def Concat(pytd1, pytd2):

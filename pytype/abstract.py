@@ -20,6 +20,7 @@ from pytype.pytd import cfg as typegraph
 from pytype.pytd import pytd
 from pytype.pytd import utils as pytd_utils
 from pytype.pytd.parse import builtins
+from pytype.pytd.parse import parser
 from pytype.pytd.parse import visitors
 
 log = logging.getLogger(__name__)
@@ -42,11 +43,18 @@ def get_builtins_pytds():
   return _builtin_pytds
 
 
+def parse_pytd(src, filename, version):
+  ast = parser.parse_string(src, filename=filename, version=version)
+  ast = visitors.LookupClasses(ast, get_builtins_pytds())
+  return ast
+
+
+# TODO(kramm): Rename to 'get_builtin_item'.
+# TODO(kramm): Move to utils.py
 def get_pytd(*pytd_path):
   """Get the PyTD type tree for a built-in object.
 
-  For example, get_pytd("str", "__add__") returns the type of str.__add__ and
-  get_pytd("sys", "byteorder") returns the type of sys.byteorder.
+  For example, get_pytd("str", "__add__") returns the type of str.__add__.
 
   Args:
     *pytd_path: A sequence of strings each one representing an element in the
@@ -60,10 +68,6 @@ def get_pytd(*pytd_path):
   result = builtin_pytds.Lookup(pytd_path[0])
   for component in pytd_path[1:]:
     result = result.Lookup(component)
-  if isinstance(result, pytd.TypeDeclUnit):
-    result = visitors.LookupClasses(result)
-  else:
-    result = result.Visit(visitors.NamedTypeToClassType())
   return result
 
 
@@ -507,22 +511,7 @@ class SimpleAbstractValue(AtomicAbstractValue):
       classvalues = (v.data for v in self.members["__class__"].values)
       types = []
       for cls in classvalues:
-        if (isinstance(cls, PyTDClass) and
-            hasattr(cls.cls, "template") and cls.cls.template):
-          type_arguments = ()
-          for type_param in cls.cls.template:
-            values = (v.data
-                      for v in self.get_type_parameter(type_param.name).values)
-            type_arguments += (
-                pytd_utils.JoinTypes([e.to_type() for e in values]),)
-          if len(type_arguments) == 1:
-            types.append(pytd.HomogeneousContainerType(
-                pytd.ClassType(cls.name), type_arguments))
-          else:
-            types.append(pytd.GenericType(
-                pytd.ClassType(cls.name), type_arguments))
-        else:
-          types.append(pytd.ClassType(cls.name))
+        types.append(cls.get_instance_type(self))
       ret = pytd_utils.JoinTypes(types)
       visitors.FillInClasses(ret, self.vm.builtins_pytd)
       return ret
@@ -1101,6 +1090,18 @@ class ParameterizedClass(AtomicAbstractValue, Class):
     return "ParameterizedClass(cls=%r params=%s)" % (self.cls,
                                                      self.type_parameters)
 
+  def to_type(self):
+    return pytd.NamedType("type")
+
+  def get_instance_type(self, _):
+    type_arguments = []
+    for type_param in self.cls.cls.template:
+      values = (self.type_parameters[type_param.name],)
+      type_arguments.append(pytd_utils.JoinTypes([e.get_instance_type(None)
+                                                  for e in values]))
+    return pytd_utils.MakeClassOrContainerType(
+        pytd.NamedType(self.cls.cls.name), type_arguments)
+
 
 class PyTDClass(LazyAbstractValue, Class):
   """An abstract wrapper for PyTD class objects.
@@ -1188,6 +1189,16 @@ class PyTDClass(LazyAbstractValue, Class):
 
   def to_type(self):
     return pytd.NamedType("type")
+
+  def get_instance_type(self, instance):
+    """Convert instances of this class to their PYTD type."""
+    type_arguments = []
+    for type_param in self.cls.template:
+      values = (v.data
+                for v in instance.get_type_parameter(type_param.name).values)
+      type_arguments.append(pytd_utils.JoinTypes([e.to_type() for e in values]))
+    return pytd_utils.MakeClassOrContainerType(
+        pytd.NamedType(self.cls.name), type_arguments)
 
   def __repr__(self):
     return self.cls.name
@@ -1324,6 +1335,9 @@ class InterpreterClass(SimpleAbstractValue, Class):
 
   def to_type(self):
     return pytd.NamedType("type")
+
+  def get_instance_type(self, _):
+    return pytd.NamedType(self.official_name)
 
   def __repr__(self):
     return "InterpreterClass(%s)" % self.name
@@ -1649,16 +1663,11 @@ def make_params(args):
                for i, p in enumerate(args))
 
 
-class Module(AtomicAbstractValue):
+class Module(LazyAbstractValue):
   """Represents an (imported) module."""
 
-  def __init__(self, vm, name):
-    super(Module, self).__init__(vm)
-    self.name = name
-
-  def get_attribute(self, name, valself=None, valcls=None):
-    # TODO(kramm): implement
-    return Unknown(self.vm).to_variable(self.name + "." + name)
+  def __init__(self, vm, name, member_map):
+    super(Module, self).__init__(name, member_map, vm.convert_constant, vm=vm)
 
   def set_attribute(self, name, value):
     # Assigning attributes on modules is pretty common. E.g.
@@ -1666,8 +1675,8 @@ class Module(AtomicAbstractValue):
     log.warning("Ignoring overwrite of %s.%s", self.name, name)
 
   def items(self):
-    # TODO(kramm): implement
-    return []
+    # TODO(kramm): Test.
+    return self._member_map.keys()
 
   def to_type(self):
     return pytd.NamedType("module")
