@@ -98,7 +98,9 @@ def min<T>(iterable: set<T>, ...) -> T
 def min<T>(iterable: iterator<T>, ...) -> T
 def next<T>(iterator: iterator<T>, ...) -> T
 def oct(number: int) -> str
-def open(name: str, ...) -> file  # TODO(pludemann): Python3: encapsulate details of file (str, bytes) based on mode
+# TODO(pludemann): Python3 allows open(int or str or bytes or memoryview, ...)
+# TODO(pludemann): Python3: encapsulate details of file (str, bytes) based on mode
+def open(name: str or buffer or unicode, ...) -> file
 def ord(c: str) -> int
 def pow(x: int, y: int or long, ...) -> float or int or long
 def pow(x: long, y: int or long, ...) -> float or long
