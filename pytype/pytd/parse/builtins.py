@@ -55,15 +55,8 @@ def GetBuiltinsPyTD():
   global _cached_builtins_pytd
   if _cached_builtins_pytd:
     return _cached_builtins_pytd
-  # TODO(pludemann): This can be fairly slow; suggest pickling the result and
-  #                  reusing if possible (see lib2to3.pgen2.grammar)
-
-  # We use the same parser instance to parse all builtin files. This changes
-  # the run time from 1.0423s to 0.5938s (for 21 builtins).
-  p = parser.TypeDeclParser()
-  builtins_pytd = p.Parse(
+  _cached_builtins_pytd = builtins_pytd = parser.TypeDeclParser().Parse(
       _FindBuiltinFile(_BUILTIN_NAME + ".pytd"), name=_BUILTIN_NAME)
-  _cached_builtins_pytd = builtins_pytd
   return builtins_pytd
 
 

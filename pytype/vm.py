@@ -666,7 +666,7 @@ class VirtualMachine(object):
       raise ValueError(repr(t))
 
   # Events that cause us to abandon (or pause) an entire execution flow.
-  EXIT_STATES = ("fatal_exception", "yield")
+  EXIT_STATES = ("fatal_exception", "yield", "return")
 
   def run_instruction(self):
     """Run one instruction in the current frame.
