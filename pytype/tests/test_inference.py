@@ -161,6 +161,8 @@ class InferenceTest(unittest.TestCase):
       self.boolorintorfloatorlongorcomplex = pytd.UnionType(
           (self.bool, self.int, self.float, self.long, self.complex))
     self.int_tuple = pytd.HomogeneousContainerType(self.tuple, (self.int,))
+    self.nothing_tuple = pytd.HomogeneousContainerType(self.tuple,
+                                                       (self.nothing,))
     self.intorfloat_tuple = pytd.HomogeneousContainerType(self.tuple,
                                                           (self.intorfloat,))
     self.int_set = pytd.HomogeneousContainerType(self.set, (self.int,))

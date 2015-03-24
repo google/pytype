@@ -472,6 +472,22 @@ class MethodsTest(test_inference.InferenceTest):
     """, deep=False, solve_unknowns=False, extract_locals=False) as ty:
       self.assertHasReturnType(ty.Lookup("f"), self.int_tuple)
 
+  def testStarArgsType2(self):
+    with self.Infer("""
+      def f(nr, *args):
+        return args
+      f("foo", 4)
+    """, deep=False, solve_unknowns=False, extract_locals=False) as ty:
+      self.assertHasReturnType(ty.Lookup("f"), self.int_tuple)
+
+  def testEmptyStarArgsType(self):
+    with self.Infer("""
+      def f(nr, *args):
+        return args
+      f(3)
+    """, deep=False, solve_unknowns=False, extract_locals=False) as ty:
+      self.assertHasReturnType(ty.Lookup("f"), self.nothing_tuple)
+
   def testStarStarKwargsType(self):
     with self.Infer("""
       def f(*args, **kwargs):
@@ -479,6 +495,22 @@ class MethodsTest(test_inference.InferenceTest):
       f(foo=3, bar=4)
     """, deep=False, solve_unknowns=False, extract_locals=False) as ty:
       self.assertHasReturnType(ty.Lookup("f"), self.str_int_dict)
+
+  def testStarStarKwargsType2(self):
+    with self.Infer("""
+      def f(x, y, **kwargs):
+        return kwargs
+      f("foo", "bar", z=3)
+    """, deep=False, solve_unknowns=False, extract_locals=False) as ty:
+      self.assertHasReturnType(ty.Lookup("f"), self.str_int_dict)
+
+  def testEmptyStarStarKwargsType(self):
+    with self.Infer("""
+      def f(nr, **kwargs):
+        return kwargs
+      f(3)
+    """, deep=False, solve_unknowns=False, extract_locals=False) as ty:
+      self.assertHasReturnType(ty.Lookup("f"), self.nothing_nothing_dict)
 
   def testNoneOrFunction(self):
     with self.Infer("""

@@ -167,7 +167,7 @@ class StructuralTest(test_inference.InferenceTest):
     with self.Infer("""
       def f():
         x = 3
-        def inner():
+        def inner(self):
           return x
         return inner
       class MyClass(object):

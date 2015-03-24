@@ -1505,15 +1505,22 @@ class InterpreterFunction(Function):
     arg_pos = self.code.co_argcount
     if self.code.co_flags & loadmarshal.CodeType.CO_VARARGS:
       vararg_name = self.code.co_varnames[arg_pos]
+      # Build a *args tuple out of the extraneous parameters
+      callargs[vararg_name] = self.vm.build_tuple(args[self.code.co_argcount:])
       arg_pos += 1
-      callargs[vararg_name] = self.vm.build_tuple(args)
+    elif len(args) > self.code.co_argcount:
+      raise exceptions.ByteCodeTypeError(
+          "Function takes %d positional arguments (%d given)" % (
+          arg_pos, len(args)))
     if self.code.co_flags & loadmarshal.CodeType.CO_VARKEYWORDS:
       kwvararg_name = self.code.co_varnames[arg_pos]
-      arg_pos += 1
       k = Dict("kwargs", self.vm)
+      # Build a **kwargs dictionary out of the extraneous parameters
       for name, value_var in kwargs.items():
-        k.set_str_item(name, value_var)
+        if name not in param_names:
+          k.set_str_item(name, value_var)
       callargs[kwvararg_name] = k.to_variable(kwvararg_name)
+      arg_pos += 1
     return callargs
 
   def call(self, unused_func, args, kws):
