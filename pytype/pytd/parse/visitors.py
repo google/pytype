@@ -804,10 +804,7 @@ class CanonicalOrderingVisitor(object):
       return node
 
   def VisitSignature(self, node):
-    # params that are an instance of pytd.MutableParameters are
-    # already in the same order as the params, so no need to
-    # do anything.
-    return node
+    return node.Replace(exceptions=tuple(sorted(node.exceptions)))
 
   def VisitUnionType(self, node):
     return pytd.UnionType(tuple(sorted(node.type_list)))

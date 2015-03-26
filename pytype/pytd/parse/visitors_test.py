@@ -221,11 +221,13 @@ class TestVisitors(parser_test.ParserTest):
 
   def testCanonicalOrderingVisitor(self):
     src1 = textwrap.dedent("""
+    def f() -> ? raises MemoryError, IOError
     def f(x: list<a>) -> ?
     def f(x: list<b or c>) -> ?
     def f(x: list<tuple<d>>) -> ?
     """)
     src2 = textwrap.dedent("""
+    def f() -> ? raises IOError, MemoryError
     def f(x: list<tuple<d>>) -> ?
     def f(x: list<a>) -> ?
     def f(x: list<b or c>) -> ?
