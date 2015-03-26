@@ -75,7 +75,7 @@ def parse_pyc_string(data):
   return parse_pyc_stream(StringIO.StringIO(data))
 
 
-def compile_and_load(src, python_version, filename=None):
+def compile_src(src, python_version, filename=None):
   """Compile a string to pyc, and then load and parse the pyc.
 
   Args:
@@ -91,3 +91,17 @@ def compile_and_load(src, python_version, filename=None):
   assert code.python_version == python_version
   code.co_filename = filename
   return code
+
+
+def compile_file(filename, python_version):
+  """Compile a file to pyc, return the parsed pyc.
+
+  Args:
+    filename: Python (.py) file to compile.
+    python_version: The Python version to use for compiling this file.
+
+  Returns:
+    An instance of loadmarshal.CodeType.
+  """
+  with open(filename, "rb") as fi:
+    return compile_src(fi.read(), python_version, filename)

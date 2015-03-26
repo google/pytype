@@ -83,12 +83,12 @@ class AncestorTraversalVirtualMachineTest(unittest.TestCase):
   ])
 
   def testEachInstructionOnceLoops(self):
-    codeNestedLoops = pyc.compile_and_load(src=self.srcNestedLoops,
-                                           python_version=self.python_version,
-                                           filename="<>")
+    codeNestedLoops = pyc.compile_src(src=self.srcNestedLoops,
+                                      python_version=self.python_version,
+                                      filename="<>")
     self.assertEqual(codeNestedLoops.co_code,
                      self.codeNestedLoopsBytecode)
-    self.vm.run_code(codeNestedLoops, run_builtins=False)
+    self.vm.run_program(codeNestedLoops, run_builtins=False)
     # The numbers below are the instruction offsets in the above bytecode.
     self.assertItemsEqual(self.vm.instructions_executed,
                           [0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 28, 31, 34, 37,
@@ -116,16 +116,15 @@ class AncestorTraversalVirtualMachineTest(unittest.TestCase):
   ])
 
   def testEachInstructionOnceDeadCode(self):
-    codeDeadCode = pyc.compile_and_load(src=self.srcDeadCode,
-                                        python_version=self.python_version,
-                                        filename="<>")
+    codeDeadCode = pyc.compile_src(src=self.srcDeadCode,
+                                   python_version=self.python_version,
+                                   filename="<>")
     self.assertEqual(codeDeadCode.co_code,
                      self.codeDeadCodeBytecode)
     try:
-      self.vm.run_code(codeDeadCode, run_builtins=False)
-    except RuntimeError:
-      pass  # Ignore the exception that gets out.
-    #              (it changed in CL 87770045)
+      self.vm.run_program(codeDeadCode, run_builtins=False)
+    except vm.VirtualMachineError:
+      pass  # The code we test throws an exception. Ignore it.
     self.assertItemsEqual(self.vm.instructions_executed,
                           [0, 3, 6, 9, 12, 15, 18])
 

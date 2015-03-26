@@ -345,9 +345,9 @@ def infer_types(src, python_version, filename=None,
     A TypeDeclUnit
   """
   tracer = CallTracer(python_version, reverse_operators)
-  program = pyc.compile_and_load(src,
-                                 python_version=python_version,
-                                 filename=filename)
+  program = pyc.compile_src(src,
+                            python_version=python_version,
+                            filename=filename)
   loc, builtin_names = tracer.run_program(program)
   log.info("===Done run_program===")
   # TODO(pludemann): make test_inference.InferDedent and this code the same:

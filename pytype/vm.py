@@ -32,6 +32,7 @@ from pytype import pycfg
 from pytype import state
 from pytype import utils
 from pytype.pyc import loadmarshal
+from pytype.pyc import pyc
 from pytype.pytd import cfg as typegraph
 from pytype.pytd import pytd
 from pytype.pytd import slots
@@ -196,7 +197,6 @@ class VirtualMachine(object):
                                                types.FunctionType)
 
     self.builtins_pytd = abstract.get_builtins_pytds()
-    self.builtins_codes = builtins.GetBuiltinsCode()
 
     self.vmbuiltins = {}
     self._set_vmbuiltin("constant", self.builtins_pytd.constants)
@@ -1211,9 +1211,11 @@ class VirtualMachine(object):
       if f_locals is None:
         f_locals = f_globals
     elif self.frames:
+      assert f_locals is None
       f_globals = self.frame.f_globals
       f_locals = self.convert_locals_or_globals({})
     else:
+      assert f_locals is None
       # TODO(ampere): __name__, __doc__, __package__ below are not correct
       f_globals = f_locals = self.convert_locals_or_globals({
           "__builtins__": self.vmbuiltins,
@@ -1332,61 +1334,46 @@ class VirtualMachine(object):
         items.append("{%s}" % block.get_name())
     return " ".join(items)
 
-  def run_code(self, code, f_globals=None, f_locals=None, run_builtins=True):
-    """Run a piece of bytecode using the VM."""
-    f_locals = self.convert_locals_or_globals(f_locals)
-    f_globals = self.convert_locals_or_globals(f_globals)
-
-    # We firsts run self.builtins_codes, which have been loaded from __builtin__.py
-    # etc. They are only run for effect, and typically will be a sequence of
-    #   LOAD_CONST <code object ...>
-    #   MAKE_FUNCTION 0
-    #   STORE_NAME '<function name>'
-    # (this is Python-2; Python-3 is slightly different)
-    # At the end is `RETURN_VALUE None`, so each set of op-codes could also
-    # be called by some variant of CALL_FUNCTION.
-    # An alternative would be to analyze the code:
-    #        {cc.co_name: cc for cc in code.co_consts
-    #         if isinstance(cc, types.CodeType)}
-
-    if run_builtins:
-      for one_code in self.builtins_codes:
-        val, frame, exc, f_globals, f_locals = self.run_one_code(
-            one_code, f_globals, f_locals)
-      # at the outer layer, locals are the same as globals
-      builtin_names = frozenset(f_globals.members)
-    else:
-      builtin_names = frozenset()
-    # Remove the builtins so that "deep" analysis doesn't try to proces them:
-    self._functions.clear()
-    val, frame, exc, f_globals, f_locals = self.run_one_code(
-        code, f_globals, f_locals)
-    return val, frame, exc, builtin_names
-
-  def run_one_code(self, code, f_globals, f_locals):
+  def run_bytecode(self, code, f_globals=None, f_locals=None):
     frame = self.make_frame(code, f_globals=f_globals, f_locals=f_locals)
-    try:
-      val = self.run_frame(frame)
-      exc = None
-    except exceptions.ByteCodeException:
-      val = None
-      exc = sys.exc_info()[1].create_instance()
-      # Check some invariants
-    if self.frames:      # pragma: no cover
+    self.run_frame(frame)
+    if self.frames:  # pragma: no cover
       raise VirtualMachineError("Frames left over!")
     if self.frame is not None and self.frame.data_stack:  # pragma: no cover
-      raise VirtualMachineError("Data left on stack! %r" %
-                                self.frame.data_stack)
-    return val, frame, exc, frame.f_globals, frame.f_locals
+      raise VirtualMachineError("Data left on stack!")
+    return frame.f_globals, frame.f_locals
 
-  def run_program(self, code):
+  def preload_builtins(self):
+    builtins_code = pyc.compile_src(
+        builtins.GetBuiltinsCode(self.python_version), self.python_version)
+    f_globals, f_locals = self.run_bytecode(builtins_code)
+    # at the outer layer, locals are the same as globals
+    builtin_names = frozenset(f_globals.members)
+    # Don't keep the types recorded so far:
+    self._functions.clear()
+    return f_globals, f_locals, builtin_names
+
+  def run_program(self, code, run_builtins=True):
     """Run the code and return the CFG nodes.
 
     This function loads in the builtins and puts them ahead of `code`,
     so all the builtins are available when processing `code`.
+
+    Args:
+      code: An instance of loadmarshal.CodeType.
+      run_builtins: Whether to preload the native Python builtins.
+    Returns:
+      A tuple (CFGNode, set) containing the last CFGNode of the program as
+        well as all the top-level names defined by it.
     """
 
-    _, _, _, builtin_names = self.run_code(code)
+    if run_builtins:
+      f_globals, f_locals, builtin_names = self.preload_builtins()
+    else:
+      f_globals, f_locals, builtin_names = None, None, frozenset()
+
+    self.run_bytecode(code, f_globals, f_locals)
+
     if not self.source_nodes:
       raise VirtualMachineError("Import-level code didn't return")
     main = self.program.NewCFGNode("main")

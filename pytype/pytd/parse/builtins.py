@@ -19,7 +19,6 @@
 
 import os.path
 
-from pytype.pyc import pyc
 from pytype.pytd import utils
 from pytype.pytd.parse import parser
 
@@ -60,27 +59,8 @@ def GetBuiltinsPyTD():
   return builtins_pytd
 
 
-# Keyed by the parameter(s) passed to GetBuiltinsPyTD:
-_cached_builtins_code = None  # ... => list<pytype.pyc.loadmarshal.CodeType>
-
-PYTHON_VERSION = (2, 7)  # TODO(pludemann): parameter or FLAG
-
-
-def GetBuiltinsCode():
+# TODO(kramm): Use python_version, once we have builtins for both Python 2 and
+# Python 3.
+def GetBuiltinsCode(unused_python_version):
   """Similar to GetBuiltinsPyTD, but for code in the .py file."""
-
-  global _cached_builtins_code
-  if _cached_builtins_code:
-    return _cached_builtins_code
-  # TODO(pludemann): This can be fairly slow; suggest pickling the result and
-  #                  reusing if possible (see lib2to3.pgen2.grammar)
-
-  filename = _BUILTIN_NAME + ".py"
-  builtins_code = [pyc.compile_and_load(_FindBuiltinFile(filename),
-                                        python_version=PYTHON_VERSION,
-                                        filename=filename)]
-  # TODO(pludemann): add support for .py files in _MODULES:
-  #   ... see similar code in GetBuiltinsPyTD, but we need to check
-  #       for the existence of each .py file
-  _cached_builtins_code = builtins_code
-  return builtins_code
+  return _FindBuiltinFile(_BUILTIN_NAME + ".py")
