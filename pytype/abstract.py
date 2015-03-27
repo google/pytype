@@ -1077,6 +1077,38 @@ class Class(object):
     assert cls is not Class, "Cannot instantiate Class"
     return object.__new__(cls, *args, **kwds)
 
+  def get_attribute(self, name, valself=None, valcls=None):
+    """Retrieve an attribute by looking at the MRO of this class."""
+    log.info("Class: Get attr %s from %s %r",
+             name, type(self).__name__, self.name)
+    ret = self.vm.program.NewVariable(name)
+    add_origins = []
+    if valself and valcls:
+      assert isinstance(valself, typegraph.Value)
+      assert isinstance(valcls, typegraph.Value)
+      variableself = valself.AssignToNewVariable(valself.variable.name,
+                                                 self.vm.current_location)
+      variablecls = valcls.AssignToNewVariable(valcls.variable.name,
+                                               self.vm.current_location)
+      add_origins.append(valself)
+      add_origins.append(valcls)
+    else:
+      variableself = variablecls = None
+
+    # Trace down the MRO if there is one.
+    # TODO(ampere): Handle case where class has variables INSIDE it?
+    for base in self.mro:
+      var = base.get_attribute_flat(name)
+      if var is None:
+        continue
+      for varval in var.values:
+        value = varval.data
+        if variableself and variablecls:
+          value = value.property_get(variableself, variablecls)
+        ret.AddValue(value, [varval] + add_origins, self.vm.current_location)
+      break  # we found a class which has this attribute
+    return ret
+
 
 class ParameterizedClass(AtomicAbstractValue, Class):
   """A class that contains additional parameters. E.g. a container."""
@@ -1117,9 +1149,15 @@ class PyTDClass(LazyAbstractValue, Class):
              cls.name)
     super(PyTDClass, self).__init__(cls.name, mm, self._retrieve_member, vm)
     self.cls = cls
-    # TODO(ampere): This needs to be a real MRO generated from the PyTD.
-    self.mro = [self]
+    self.mro = utils.compute_mro(self)
     self.formal_type_parameters = {}
+
+  def get_attribute(self, name, valself=None, valcls=None):
+    return Class.get_attribute(self, name, valself, valcls)
+
+  def bases(self):
+    return [self.vm.convert_constant_to_value(parent.name, parent)
+            for parent in self.cls.parents]
 
   def _retrieve_member(self, name, pyval):
     """Convert a member as a variable. For lazy lookup."""
@@ -1128,37 +1166,8 @@ class PyTDClass(LazyAbstractValue, Class):
     return c.to_variable(name)
 
   def get_attribute_flat(self, name):
+    # delegate to LazyAbstractValue
     return super(PyTDClass, self).get_attribute(name)
-
-  def get_attribute(self, name, valself=None, valcls=None):
-    # TODO(ampere): Factor out common code between here and InterpreterClass
-    ret = self.vm.program.NewVariable(self.name + "." + name)
-    # TODO(ampere): I am generating an entire variable here that will only be
-    # used in a few cases and mostly will just be a waste. Is there a way to
-    # avoid this?
-    add_origins = []
-    if valself and valcls:
-      assert isinstance(valself, typegraph.Value)
-      assert isinstance(valcls, typegraph.Value)
-      variableself = valself.AssignToNewVariable(valself.variable.name,
-                                                 self.vm.current_location)
-      variablecls = valcls.AssignToNewVariable(valcls.variable.name,
-                                               self.vm.current_location)
-      add_origins.append(valself)
-      add_origins.append(valcls)
-    else:
-      variableself = variablecls = None
-
-    var = self.get_attribute_flat(name)
-    if not var:
-      return None
-
-    for varvalue in var.values:
-      value = varvalue.data
-      if variableself and variablecls:
-        value = value.property_get(variableself, variablecls)
-      ret.AddValue(value, add_origins, self.vm.current_location)
-    return ret
 
   def call(self, func, args, kws):
     value = SimpleAbstractValue("instance of " + self.name, self.vm)
@@ -1219,7 +1228,6 @@ class PyTDClass(LazyAbstractValue, Class):
           return None
       return subst
     elif other_type.name == "object":
-      # TODO(kramm): Do proper MRO lookup
       return subst
     return None
 
@@ -1240,60 +1248,20 @@ class InterpreterClass(SimpleAbstractValue, Class):
     assert isinstance(bases, list)
     assert isinstance(members, dict)
     super(InterpreterClass, self).__init__(name, vm)
-    self.bases = bases
-    self.mro = self._compute_mro(self)
+    self._bases = bases
+    self.mro = utils.compute_mro(self)
     self.members = members
     self.formal_type_parameters = {}  # builtin types don't have type params
     log.info("Created class: %r", self)
 
-  @staticmethod
-  def _compute_mro(c):
-    """Compute the class precedence list (mro) according to C3.
-
-    This code is copied from the following URL with print statements removed.
-    https://www.python.org/download/releases/2.3/mro/
-
-    Args:
-      c: The InterpreterClass object to computer the MRO for.
-    Returns:
-      A list of InterpreterClass object in Method Resolution Order.
-    """
-    return tuple(utils.mro_merge([[c]] +
-                                 [list(base.mro) for base in c.bases] +
-                                 [list(c.bases)]))
+  def bases(self):
+    return self._bases
 
   def get_attribute_flat(self, name):
-    log.debug("Getting attr %s from individual class %s", name, self.name)
     return super(InterpreterClass, self).get_attribute(name)
 
   def get_attribute(self, name, valself=None, valcls=None):
-    ret = self.vm.program.NewVariable(name)
-    add_origins = []
-    if valself and valcls:
-      assert isinstance(valself, typegraph.Value)
-      assert isinstance(valcls, typegraph.Value)
-      variableself = valself.AssignToNewVariable(valself.variable.name,
-                                                 self.vm.current_location)
-      variablecls = valcls.AssignToNewVariable(valcls.variable.name,
-                                               self.vm.current_location)
-      add_origins.append(valself)
-      add_origins.append(valcls)
-    else:
-      variableself = variablecls = None
-
-    # Trace down the MRO if there is one.
-    # TODO(ampere): Handle case where class has variables INSIDE it?
-    for base in self.mro:
-      var = base.get_attribute_flat(name)
-      if var is None:
-        continue
-      for varval in var.values:
-        value = varval.data
-        if variableself and variablecls:
-          value = value.property_get(variableself, variablecls)
-        ret.AddValue(value, [varval] + add_origins, self.vm.current_location)
-      break  # we found a class which has this attribute
-    return ret
+    return Class.get_attribute(self, name, valself, valcls)
 
   def set_attribute(self, name, value):
     # Note that even if we have a superclass that already has an attribute

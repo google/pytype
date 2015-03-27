@@ -309,3 +309,20 @@ def mro_merge(seqs):
       if seq[0] == cand:
         del seq[0]
 
+
+def compute_mro(c):
+  """Compute the class precedence list (mro) according to C3.
+
+  This code is copied from the following URL with print statements removed.
+  https://www.python.org/download/releases/2.3/mro/
+
+  Args:
+    c: The Class to compute the MRO for. This needs to be an instance
+      with the members "mro" and "bases".
+  Returns:
+    A list of Class objects in Method Resolution Order.
+  """
+  return tuple(mro_merge([[c]] +
+                         [list(base.mro) for base in c.bases()] +
+                         [list(c.bases())]))
+

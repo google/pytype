@@ -83,6 +83,53 @@ class InheritanceTest(test_inference.InferenceTest):
       self.assertOnlyHasReturnType(ty.Lookup("f"),
                                    pytd.ClassType("MyDict", mydict))
 
+  def testInheritMethodsFromObject(self):
+    # Test that even in the presence of multi-level inheritance,
+    # we can still see attributes from "object".
+    with self.Infer("""
+      class A(object):
+        pass
+      class B(A):
+        pass
+      def f():
+        return A().__sizeof__()
+      def g():
+        return B().__sizeof__()
+      def h():
+        return "bla".__sizeof__()
+      f(); g(); h()
+    """, deep=False, solve_unknowns=False, extract_locals=False) as ty:
+      self.assertOnlyHasReturnType(ty.Lookup("f"), self.int)
+      self.assertOnlyHasReturnType(ty.Lookup("g"), self.int)
+      self.assertOnlyHasReturnType(ty.Lookup("h"), self.int)
+
+  def testMRO(self):
+    with self.Infer("""
+      class A(object):
+        def a(self):
+          return 1
+      class B(A):
+        def b(self):
+          return 1.0
+      class C(A):
+        def b(self):
+          # ignored in D, B.b has precedence
+          return "foo"
+      class D(B, C):
+        pass
+      def f():
+        return A().a()
+      def g():
+        return B().b()
+      def h():
+        return C().b()
+      def i():
+        return D().b()
+    """, deep=True, solve_unknowns=False, extract_locals=False) as ty:
+      self.assertOnlyHasReturnType(ty.Lookup("f"), self.int)
+      self.assertOnlyHasReturnType(ty.Lookup("g"), self.float)
+      self.assertOnlyHasReturnType(ty.Lookup("h"), self.str)
+      self.assertOnlyHasReturnType(ty.Lookup("i"), self.float)
 
 if __name__ == "__main__":
-  test_inference.main()
+  test_inference.main(True)

@@ -6,7 +6,7 @@ from pytype.tests import test_inference
 
 class WorkflowTest(test_inference.InferenceTest):
 
-  @unittest.skip("Needs fix for with/return and must output attributes")
+  @unittest.skip("Must output attributes")
   def testWorkflow1(self):
     with self.Infer("""
       class ConfigParser:

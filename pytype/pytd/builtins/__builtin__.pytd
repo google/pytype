@@ -137,14 +137,13 @@ NotImplemented: NotImplementedType
 None: NoneType
 
 class object(nothing):
+    __mro__: list<?>
     def __init__(self, ...) -> NoneType
-    # TODO(pludemann): __any_object__().__repr__() (and object.__repr__()?
-    #                  doesn't properly follow MRO it seems, so the definition
-    #                  of repr is duplicated for all the classes
+    def __sizeof__(self) -> int
     def __repr__(self) -> str
     def __cmp__(self, y) -> bool
     # TODO(pludemann): add these methods/attributes:
-    # ['__class__', '__delattr__', '__doc__', '__format__', '__getattribute__', '__hash__', '__new__', '__reduce__', '__reduce_ex__', '__setattr__', '__sizeof__', '__str__', '__subclasshook__']
+    # ['__class__', '__delattr__', '__doc__', '__format__', '__getattribute__', '__hash__', '__new__', '__reduce__', '__reduce_ex__', '__setattr__', '__str__', '__subclasshook__']
 
 
 class NotImplementedType:
