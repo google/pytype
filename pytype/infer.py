@@ -14,6 +14,7 @@ from pytype.pyc import pyc
 from pytype.pytd import explain as typegraph_explain
 from pytype.pytd import optimize
 from pytype.pytd import pytd
+from pytype.pytd import utils as pytd_utils
 from pytype.pytd.parse import visitors
 
 log = logging.getLogger(__name__)
@@ -23,6 +24,9 @@ CallRecord = collections.namedtuple("CallRecord",
                                     ["function", "positional_arguments",
                                      "keyword_arguments", "return_value",
                                      "location"])
+
+
+IGNORED_NAMES = ["__module__"]
 
 
 class CallTracer(vm.VirtualMachine):
@@ -36,6 +40,7 @@ class CallTracer(vm.VirtualMachine):
     self._call_trace = set()
     self._functions = set()
     self._classes = set()
+    self._attributes = set()
     self._unknowns = []
 
   def create_argument(self, method_name, i):
@@ -114,7 +119,11 @@ class CallTracer(vm.VirtualMachine):
     self._functions.add((name, f))
 
   def trace_classdef(self, name, clsvar):
+    # store name to enable sorting
     self._classes.add((name, clsvar))
+
+  def trace_setattribute(self, obj, name, attr):
+    self._attributes.add((obj, name, attr))
 
   def trace_unknown(self, unknown):
     self._unknowns.extend(unknown.data)
@@ -196,12 +205,33 @@ class CallTracer(vm.VirtualMachine):
                             prefix + f.name, []))
                   function.signatures.append(sig)
 
+    attrs = collections.defaultdict(  # class name -> attr name -> type
+        lambda: collections.defaultdict(pytd.NothingType))
+    for objvar, name, attr in self._attributes:
+      for obj in objvar.values:
+        if name in IGNORED_NAMES:
+          continue  # remove __module__ etc.
+        t = pytd_utils.JoinTypes(a.to_type() for a in attr.data
+                                 if not isinstance(a, abstract.Function)
+                                )
+        clsvar = obj.data.get_type()
+        if clsvar:
+          for cls in clsvar.values:
+            prev = attrs[cls.data.get_name()][name]
+            attrs[cls.data.get_name()][name] = pytd_utils.JoinTypes([prev, t])
+    constants = {
+        cls_name: tuple(pytd.Constant(attr_name, t)
+                        for attr_name, t in attr_name_to_type.items())
+        for cls_name, attr_name_to_type in attrs.items()
+    }
+
     classes = tuple(
         pytd.Class(cls_name,
                    (pytd.NamedType("object"),) if cls_name != "object" else (),
                    tuple(pytd.FunctionWithSignatures(method.name,
                                                      tuple(method.signatures,))
-                         for method in methods.values()), (), ())
+                         for method in methods.values()),
+                   constants.get(cls_name, ()), ())
         for cls_name, methods in classes_dict.items())
 
     unknowns = tuple(u.to_pytd_class() for u in self._unknowns)

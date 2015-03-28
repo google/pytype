@@ -1,12 +1,10 @@
 """Test cases that match the workflow doc."""
 
-import unittest
 from pytype.tests import test_inference
 
 
 class WorkflowTest(test_inference.InferenceTest):
 
-  @unittest.skip("Must output attributes")
   def testWorkflow1(self):
     with self.Infer("""
       class ConfigParser:

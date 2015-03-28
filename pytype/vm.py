@@ -1426,6 +1426,9 @@ class VirtualMachine(object):
   def trace_functiondef(self, *args):
     return NotImplemented
 
+  def trace_setattribute(self, *args):
+    return NotImplemented
+
   def call_function(self, funcu, posargs, namedargs=None):
     """Call a function.
 
@@ -1569,7 +1572,7 @@ class VirtualMachine(object):
     assert isinstance(obj, typegraph.Variable)
     assert isinstance(attr, str)
     assert isinstance(value, typegraph.Variable)
-
+    self.trace_setattribute(obj, attr, value)
     for val in obj.values:
       # TODO(kramm): Check for __set__ on val.data
       val.data.set_attribute(attr, value)
