@@ -5,13 +5,9 @@ import textwrap
 import unittest
 
 
-from pytype import pycfg
 from pytype import vm
 from pytype.pyc import pyc
 from pytype.tests import test_inference
-
-# It does not accept any styling for several different members for some reason.
-# pylint: disable=invalid-name
 
 
 class TraceVM(vm.VirtualMachine):
@@ -28,9 +24,13 @@ class TraceVM(vm.VirtualMachine):
     self._classes = set()
     self._unknowns = []
 
-  def run_instruction(self):
-    self.instructions_executed.add(self.frame.f_lasti)
-    return super(TraceVM, self).run_instruction()
+  def run_instruction(self, op, state):
+    self.instructions_executed.add(op.index)
+    return super(TraceVM, self).run_instruction(op, state)
+
+
+def ListToString(lst):
+  return "".join(chr(c) for c in lst)
 
 
 class AncestorTraversalVirtualMachineTest(unittest.TestCase):
@@ -39,7 +39,7 @@ class AncestorTraversalVirtualMachineTest(unittest.TestCase):
     self.python_version = (2, 7)  # used to generate the bytecode below
     self.vm = TraceVM(self.python_version)
 
-  srcNestedLoops = textwrap.dedent("""
+  src_nested_loop = textwrap.dedent("""
     y = [1,2,3]
     z = 0
     for x in y:
@@ -47,86 +47,83 @@ class AncestorTraversalVirtualMachineTest(unittest.TestCase):
         if x:
           z += x*a
     """)
-  codeNestedLoopsBytecode = pycfg._list_to_string([
-      dis.opmap["LOAD_CONST"], 0, 0,  # 0, arg=0
-      dis.opmap["LOAD_CONST"], 1, 0,  # 3, arg=1
-      dis.opmap["LOAD_CONST"], 2, 0,  # 6, arg=2
-      dis.opmap["BUILD_LIST"], 3, 0,  # 9, arg=3
-      dis.opmap["STORE_NAME"], 0, 0,  # 12, arg=0
-      dis.opmap["LOAD_CONST"], 3, 0,  # 15, arg=3
-      dis.opmap["STORE_NAME"], 1, 0,  # 18, arg=1
-      dis.opmap["SETUP_LOOP"], 54, 0,  # 21, dest=78
-      dis.opmap["LOAD_NAME"], 0, 0,  # 24, arg=0
-      dis.opmap["GET_ITER"],  # 27
-      dis.opmap["FOR_ITER"], 46, 0,  # 28, dest=77
-      dis.opmap["STORE_NAME"], 2, 0,  # 31, arg=2
-      dis.opmap["SETUP_LOOP"], 37, 0,  # 34, dest=74
-      dis.opmap["LOAD_NAME"], 0, 0,  # 37, arg=0
-      dis.opmap["GET_ITER"],  # 40
-      dis.opmap["FOR_ITER"], 29, 0,  # 41, dest=73
-      dis.opmap["STORE_NAME"], 3, 0,  # 44, arg=3
-      dis.opmap["LOAD_NAME"], 2, 0,  # 47, arg=2
-      dis.opmap["POP_JUMP_IF_FALSE"], 41, 0,  # 50, dest=41
-      dis.opmap["LOAD_NAME"], 1, 0,  # 53, arg=1
-      dis.opmap["LOAD_NAME"], 2, 0,  # 56, arg=2
-      dis.opmap["LOAD_NAME"], 3, 0,  # 59, arg=3
-      dis.opmap["BINARY_MULTIPLY"],  # 62
-      dis.opmap["INPLACE_ADD"],  # 63
-      dis.opmap["STORE_NAME"], 1, 0,  # 64, arg=1
-      dis.opmap["JUMP_ABSOLUTE"], 41, 0,  # 67, dest=41
-      dis.opmap["JUMP_ABSOLUTE"], 41, 0,  # 70 (unreachable), dest=41
-      dis.opmap["POP_BLOCK"],  # 73
-      dis.opmap["JUMP_ABSOLUTE"], 28, 0,  # 74, dest=28
-      dis.opmap["POP_BLOCK"],  # 77
-      dis.opmap["LOAD_CONST"], 4, 0,  # 78, arg=4
-      dis.opmap["RETURN_VALUE"],  # 81
+  code_nested_loop = ListToString([
+      dis.opmap["LOAD_CONST"], 0, 0,          # [0], 0, arg=0
+      dis.opmap["LOAD_CONST"], 1, 0,          # [1], 3, arg=1
+      dis.opmap["LOAD_CONST"], 2, 0,          # [2], 6, arg=2
+      dis.opmap["BUILD_LIST"], 3, 0,          # [3], 9, arg=3
+      dis.opmap["STORE_NAME"], 0, 0,          # [4], 12, arg=0
+      dis.opmap["LOAD_CONST"], 3, 0,          # [5], 15, arg=3
+      dis.opmap["STORE_NAME"], 1, 0,          # [6], 18, arg=1
+      dis.opmap["SETUP_LOOP"], 54, 0,         # [7], 21, dest=78
+      dis.opmap["LOAD_NAME"], 0, 0,           # [8], 24, arg=0
+      dis.opmap["GET_ITER"],                  # [9], 27
+      dis.opmap["FOR_ITER"], 46, 0,           # [10], 28, dest=77
+      dis.opmap["STORE_NAME"], 2, 0,          # [11], 31, arg=2
+      dis.opmap["SETUP_LOOP"], 37, 0,         # [12], 34, dest=74
+      dis.opmap["LOAD_NAME"], 0, 0,           # [13], 37, arg=0
+      dis.opmap["GET_ITER"],                  # [14], 40
+      dis.opmap["FOR_ITER"], 29, 0,           # [15], 41, dest=73
+      dis.opmap["STORE_NAME"], 3, 0,          # [16], 44, arg=3
+      dis.opmap["LOAD_NAME"], 2, 0,           # [17], 47, arg=2
+      dis.opmap["POP_JUMP_IF_FALSE"], 41, 0,  # [18], 50, dest=41
+      dis.opmap["LOAD_NAME"], 1, 0,           # [19], 53, arg=1
+      dis.opmap["LOAD_NAME"], 2, 0,           # [20], 56, arg=2
+      dis.opmap["LOAD_NAME"], 3, 0,           # [21], 59, arg=3
+      dis.opmap["BINARY_MULTIPLY"],           # [22], 62
+      dis.opmap["INPLACE_ADD"],               # [23], 63
+      dis.opmap["STORE_NAME"], 1, 0,          # [24], 64, arg=1
+      dis.opmap["JUMP_ABSOLUTE"], 41, 0,      # [25], 67, dest=41
+      dis.opmap["JUMP_ABSOLUTE"], 41, 0,      # [26], 70 (unreachable), dest=41
+      dis.opmap["POP_BLOCK"],                 # [27], 73
+      dis.opmap["JUMP_ABSOLUTE"], 28, 0,      # [28], 74, dest=28
+      dis.opmap["POP_BLOCK"],                 # [29], 77
+      dis.opmap["LOAD_CONST"], 4, 0,          # [30], 78, arg=4
+      dis.opmap["RETURN_VALUE"],              # [31], 81
   ])
 
   def testEachInstructionOnceLoops(self):
-    codeNestedLoops = pyc.compile_src(src=self.srcNestedLoops,
-                                      python_version=self.python_version,
-                                      filename="<>")
-    self.assertEqual(codeNestedLoops.co_code,
-                     self.codeNestedLoopsBytecode)
-    self.vm.run_program(codeNestedLoops, run_builtins=False)
-    # The numbers below are the instruction offsets in the above bytecode.
+    code_nested_loop = pyc.compile_src(src=self.src_nested_loop,
+                                       python_version=self.python_version,
+                                       filename="<>")
+    self.assertEqual(code_nested_loop.co_code,
+                     self.code_nested_loop)
+    self.vm.run_program(self.src_nested_loop, run_builtins=False)
+    # We expect all instructions, except 26, in the above to execute.
     self.assertItemsEqual(self.vm.instructions_executed,
-                          [0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 28, 31, 34, 37,
-                           40, 41, 44, 47, 50, 53, 56, 59, 62, 63, 64, 67, 73,
-                           74, 77, 78, 81])
+                          set(range(32)) - {26})
 
-  srcDeadCode = textwrap.dedent("""
+  src_deadcode = textwrap.dedent("""
     if False:
       x = 2
     raise RuntimeError
     x = 42
     """)
-  codeDeadCodeBytecode = pycfg._list_to_string([
-      dis.opmap["LOAD_NAME"], 0, 0,  # 0, arg=0
-      dis.opmap["POP_JUMP_IF_FALSE"], 15, 0,  # 3, dest=15
-      dis.opmap["LOAD_CONST"], 0, 0,  # 6, arg=0
-      dis.opmap["STORE_NAME"], 1, 0,  # 9, arg=1
-      dis.opmap["JUMP_FORWARD"], 0, 0,  # 12, dest=15
-      dis.opmap["LOAD_NAME"], 2, 0,  # 15, arg=2
-      dis.opmap["RAISE_VARARGS"], 1, 0,  # 18, arg=1
-      dis.opmap["LOAD_CONST"], 1, 0,  # 21 (unreachable), arg=1
-      dis.opmap["STORE_NAME"], 1, 0,  # 24 (unreachable), arg=1
-      dis.opmap["LOAD_CONST"], 2, 0,  # 27 (unreachable), arg=2
-      dis.opmap["RETURN_VALUE"],  # 30 (unreachable)
+  code_deadcode = ListToString([
+      dis.opmap["LOAD_NAME"], 0, 0,           # [0] 0, arg=0
+      dis.opmap["POP_JUMP_IF_FALSE"], 15, 0,  # [1] 3, dest=15
+      dis.opmap["LOAD_CONST"], 0, 0,          # [2] 6, arg=0
+      dis.opmap["STORE_NAME"], 1, 0,          # [3] 9, arg=1
+      dis.opmap["JUMP_FORWARD"], 0, 0,        # [4] 12, dest=15
+      dis.opmap["LOAD_NAME"], 2, 0,           # [5] 15, arg=2
+      dis.opmap["RAISE_VARARGS"], 1, 0,       # [6] 18, arg=1
+      dis.opmap["LOAD_CONST"], 1, 0,          # [7] 21 (unreachable), arg=1
+      dis.opmap["STORE_NAME"], 1, 0,          # [8] 24 (unreachable), arg=1
+      dis.opmap["LOAD_CONST"], 2, 0,          # [9] 27 (unreachable), arg=2
+      dis.opmap["RETURN_VALUE"],              # [10] 30 (unreachable)
   ])
 
   def testEachInstructionOnceDeadCode(self):
-    codeDeadCode = pyc.compile_src(src=self.srcDeadCode,
-                                   python_version=self.python_version,
-                                   filename="<>")
-    self.assertEqual(codeDeadCode.co_code,
-                     self.codeDeadCodeBytecode)
+    code_deadcode = pyc.compile_src(src=self.src_deadcode,
+                                    python_version=self.python_version,
+                                    filename="<>")
+    self.assertEqual(code_deadcode.co_code,
+                     self.code_deadcode)
     try:
-      self.vm.run_program(codeDeadCode, run_builtins=False)
+      self.vm.run_program(self.src_deadcode, run_builtins=False)
     except vm.VirtualMachineError:
       pass  # The code we test throws an exception. Ignore it.
-    self.assertItemsEqual(self.vm.instructions_executed,
-                          [0, 3, 6, 9, 12, 15, 18])
+    self.assertItemsEqual(self.vm.instructions_executed, range(7))
 
 
 if __name__ == "__main__":

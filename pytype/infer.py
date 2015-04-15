@@ -8,9 +8,9 @@ import subprocess
 
 from pytype import abstract
 from pytype import convert_structural
+from pytype import state
 from pytype import utils
 from pytype import vm
-from pytype.pyc import pyc
 from pytype.pytd import explain as typegraph_explain
 from pytype.pytd import optimize
 from pytype.pytd import pytd
@@ -27,6 +27,15 @@ CallRecord = collections.namedtuple("CallRecord",
 
 
 IGNORED_NAMES = ["__module__"]
+
+
+class AnalysisFrame(object):
+  """Frame representing the "analysis function" that calls everything."""
+
+  def __init__(self, cfg_node):
+    self.state = state.FrameState.init(cfg_node)
+    self.f_code = None  # for recursion detection
+    self.f_builtins = None
 
 
 class CallTracer(vm.VirtualMachine):
@@ -54,7 +63,7 @@ class CallTracer(vm.VirtualMachine):
         args = [self.create_argument(name, i)
                 for i in range(method.argcount())]
         self.call_function(methodvar, args)
-        self.connect_source_nodes(main_node)
+        self.frame.state = self.frame.state.connect_to_cfg_node(main_node)
 
   def bind_method(self, name, methodvar, instance, clsvar, loc):
     bound = self.program.NewVariable(name)
@@ -63,8 +72,9 @@ class CallTracer(vm.VirtualMachine):
     return bound
 
   def analyze_class(self, clsvar, main_node):
+    assert self.current_location == main_node
     instance = self.instantiate(clsvar)
-    self.connect_source_nodes(main_node)
+    self.frame.state = self.frame.state.connect_to_cfg_node(main_node)
     for cls_val in clsvar.values:
       cls = cls_val.data
       init = cls.get_attribute("__init__", instance.values[0], cls_val)
@@ -77,12 +87,10 @@ class CallTracer(vm.VirtualMachine):
         self.analyze_method(name, b, main_node)
 
   def analyze_classes(self, main_node):
-    self.default_location = self.current_location = main_node
     for unused_name, clsvar in sorted(self._classes):
       self.analyze_class(clsvar, main_node)
 
   def analyze_functions(self, main_node):
-    self.default_location = self.current_location = main_node
     for name, f in sorted(self._functions):
       if all(function.cls for function in f.data):
         # We analyze class methods in analyze_class above.
@@ -94,10 +102,20 @@ class CallTracer(vm.VirtualMachine):
         log.info("Analyzing function %s", name)
         self.analyze_method(name, f, main_node)
 
-  def trace_call(self, funcu, posargs, namedargs, result_variable):
+  def analyze(self, main_node):
+    assert not self.frame
+    frame = AnalysisFrame(main_node)
+    self.push_frame(frame)
+    assert self.current_location is main_node
+    self.analyze_classes(main_node)
+    self.analyze_functions(main_node)
+    self.pop_frame(frame)
+
+  def trace_call(self, node, funcu, posargs, namedargs, result_variable):
     """Add an entry into the call trace.
 
     Args:
+      node: CFG node of the return of this function.
       funcu: A Variable of the possible functions that where called.
       posargs: The positional arguments.
       namedargs: The keyword arguments.
@@ -107,13 +125,13 @@ class CallTracer(vm.VirtualMachine):
       log.info("Not recording call to closure %s", funcu.name)
       return
     else:
-      log.debug("Logging call to %r with %d args, return %r",
-                funcu, len(posargs), result_variable)
+      log.debug("Logging call at %s to %r with %d args, return %r",
+                node.name, funcu, len(posargs), result_variable)
     assert None not in posargs
     self._call_trace.add(CallRecord(funcu, tuple(posargs),
                                     tuple((namedargs or {}).items()),
                                     result_variable,
-                                    self.current_location))
+                                    node))
 
   def trace_functiondef(self, name, f):
     self._functions.add((name, f))
@@ -267,9 +285,20 @@ def pretty_assignment(v, short=False):
 
 
 def program_to_pseudocode(program):
-  """Generate a pseudocode (CFG nodes + assignments) version of a program."""
+  """Generate a pseudocode (CFG nodes + assignments) version of a program.
+
+  For debugging only.
+
+  Args:
+    program: An instance of cfg.Program
+
+  Returns:
+    A string, the "pseudocode" of this program.
+  """
   s = StringIO.StringIO()
+  seen = set()
   for node in utils.order_nodes(program.cfg_nodes):
+    seen.add(node)
     s.write("<%d>%s\n" % (node.id, node.name))
     for value in node.values:
       s.write("  %s\n" % pretty_assignment(value))
@@ -289,6 +318,14 @@ def program_to_pseudocode(program):
         s.write("    (also set to this value in other nodes)\n")
     for out in node.outgoing:
       s.write("  jump to <%d>%s\n" % (out.id, out.name))
+
+  # "stray" nodes are nodes that are unreachable in the CFG.
+  stray_nodes = set(program.cfg_nodes) - seen
+  if stray_nodes:
+    s.write("Stray nodes:\n")
+    for node in stray_nodes:
+      s.write("<%d>%s\n" % (node.id, node.name))
+
   return s.getvalue()
 
 
@@ -375,15 +412,11 @@ def infer_types(src, python_version, filename=None,
     A TypeDeclUnit
   """
   tracer = CallTracer(python_version, reverse_operators)
-  program = pyc.compile_src(src,
-                            python_version=python_version,
-                            filename=filename)
-  loc, builtin_names = tracer.run_program(program)
+  loc, builtin_names = tracer.run_program(src, filename)
   log.info("===Done run_program===")
   # TODO(pludemann): make test_inference.InferDedent and this code the same:
   if deep:
-    tracer.analyze_classes(loc)
-    tracer.analyze_functions(loc)
+    tracer.analyze(loc)
   ast = tracer.compute_types(expensive=expensive, explain=explain)
   if solve_unknowns:
     log.info("=========== PyTD to solve =============\n%s", pytd.Print(ast))

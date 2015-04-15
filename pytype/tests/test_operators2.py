@@ -109,11 +109,9 @@ class CallErrorTests(test_inference.InferenceTest):
 
   @unittest.skip("Need to handle undefined function call")
   def testUndefinedCall(self):
-    # Raises pyvm2.VirtualMachineError("Import-level code didn't return")
-    # because TypegraphVirtualMachine.run_program run_code results in
-    # source_nodes == [] because LOAD_NAME '_testBar' raises
-    # ByteCodeException: <type 'exceptions.NameError'> "name '_testBar' is not
-    #                                                   defined"
+    # Raises VirtualMachineError("Frame has no return") because
+    # LOAD_NAME '_testBar' raises ByteCodeException:
+    # <type # 'exceptions.NameError'> "name '_testBar' is not defined"
     with self.Infer("""
       def t_testUndefinedCallDoesntExist():
         return 1

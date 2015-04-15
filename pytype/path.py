@@ -57,7 +57,7 @@ class Path(object):
     assert all(isinstance(component, Component) for component in path)
     self.path = path
 
-  def __str__(self):
+  def __repr__(self):
     return ".".join(str(component) for component in self.path)
 
   def __len__(self):

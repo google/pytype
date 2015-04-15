@@ -132,4 +132,4 @@ class InheritanceTest(test_inference.InferenceTest):
       self.assertOnlyHasReturnType(ty.Lookup("i"), self.float)
 
 if __name__ == "__main__":
-  test_inference.main(True)
+  test_inference.main()

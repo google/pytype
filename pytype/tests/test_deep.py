@@ -1,5 +1,7 @@
 """Tests for --deep."""
 
+import unittest
+
 from pytype.tests import test_inference
 
 
@@ -13,6 +15,7 @@ class StructuralTest(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=False, extract_locals=False) as ty:
       self.assertHasReturnType(ty.Lookup("f"), self.int)
 
+  @unittest.skip("Flawed test: i could be a slice")
   def testListUnknownIndex(self):
     with self.Infer("""
       def f(x, i):
@@ -22,6 +25,7 @@ class StructuralTest(test_inference.InferenceTest):
       self.assertHasReturnType(ty.Lookup("f"), self.int)
       # TODO(pludemann): verify the types of x, i
 
+  @unittest.skip("Flawed test: i could be a slice")
   def testListUnknownIndexBothTypes(self):
     with self.Infer("""
       def f(i):
@@ -87,6 +91,7 @@ class StructuralTest(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=False, extract_locals=False) as ty:
       self.assertIsIdentity(ty.Lookup("f"))
 
+  @unittest.skip("Flawed test: x could be a slice")
   def testFunctionPointer(self):
     with self.Infer("""
       def return_first(x, y):

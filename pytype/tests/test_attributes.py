@@ -71,12 +71,14 @@ class TestAttributes(test_inference.InferenceTest):
     with self.Infer("""
       class A(object):
         def __init__(self):
-          self.b = B()
+          if id(self):
+            self.b = B()
         def set_on_b(self):
           self.b.x = 3
       class B(object):
         def __init__(self):
-          self.a = A()
+          if id(self):
+            self.a = A()
         def set_on_a(self):
           self.a.x = 3j
     """, deep=True, solve_unknowns=False, extract_locals=True) as ty:

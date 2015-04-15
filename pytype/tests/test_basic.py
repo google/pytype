@@ -208,6 +208,11 @@ class TestIt(test_inference.InferenceTest):
       assert x == {0, 1, 4, 9, 16}
       """)
 
+  def test_list_slice(self):
+    self.assert_ok("""\
+      [1, 2, 3][1:2]
+      """)
+
   def test_strange_sequence_ops(self):
     # from stdlib: test/test_augassign.py
     self.assert_ok("""\
@@ -269,9 +274,9 @@ class TestIt(test_inference.InferenceTest):
       f()
       """, raises=NameError)
 
-  @unittest.skip("broken - parse error")
   def test_import(self):
     self.assert_ok("""\
+      from __future__ import print_function
       import math
       print(math.pi, math.e)
       from math import sqrt
@@ -429,7 +434,6 @@ class TestIt(test_inference.InferenceTest):
       assert g['a'] == 11
       """)
 
-  @unittest.skip("Broken - TypeError")
   def test_exec_statement_python3(self):
     self.assert_ok("""\
       g = {}

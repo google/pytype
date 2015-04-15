@@ -96,6 +96,7 @@ class Infer(object):
           max_union=7, remove_mutable=False)
       self.types = self.canonical_types = utils.CanonicalOrdering(self.types)
     except:
+      self.types = None
       if not self.__exit__(*sys.exc_info()):
         raise
 
@@ -349,9 +350,9 @@ class InferenceTest(unittest.TestCase):
   def make_code(self, byte_array, name="testcode"):
     """Utility method for creating CodeType objects."""
     return loadmarshal.CodeType(
-        argcount=0, kwonlyargcount=0, nlocals=0, stacksize=2, flags=0,
-        consts=[None, 1, 2], names=[], varnames=[], filename="", name=name,
-        firstlineno=1, lnotab=[], freevars=[], cellvars=[],
+        argcount=0, kwonlyargcount=0, nlocals=2, stacksize=2, flags=0,
+        consts=[None, 1, 2], names=[], varnames=["x", "y"], filename="",
+        name=name, firstlineno=1, lnotab=[], freevars=[], cellvars=[],
         code="".join(chr(c) for c in byte_array),
         python_version=self.PYTHON_VERSION)
 

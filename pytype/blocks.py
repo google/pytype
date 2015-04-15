@@ -1,7 +1,4 @@
-"""Functions for computing the execution order of bytecode.
-
-This file aims to replace pycfg.py.
-"""
+"""Functions for computing the execution order of bytecode."""
 
 from pytype import utils
 from pytype.pyc import opcodes
@@ -12,13 +9,13 @@ class OrderedCode(object):
   """Code object which knows about instruction ordering.
 
   Attributes:
-    co_*: Same as loadmarshal.Code.
+    co_*: Same as loadmarshal.CodeType.
     order: A list of bytecode blocks. They're ordered ancestors-first, see
       utils.py:order_nodes.
     python_version: The Python version this bytecode is from.
   """
 
-  def __init__(self, code, order, python_version):
+  def __init__(self, code, bytecode, order, python_version):
     # Copy all "co_*" attributes from code.
     # This is preferable to both inheritance (because we don't want to be
     # compatible with the base class, which is too low level) as well as
@@ -29,6 +26,9 @@ class OrderedCode(object):
                           if name.startswith("co_")})
     self.order = order
     self.python_version = python_version
+    # Store the "nice" version of the bytecode under co_code. We never claimed
+    # to be compatible with CodeType.
+    self.co_code = bytecode
 
 
 class Block(object):
@@ -110,7 +110,14 @@ def add_pop_block_targets(bytecode):
     if isinstance(op, opcodes.POP_BLOCK):
       assert block_stack, "POP_BLOCK without block."
       op.block_target = block_stack[-1].target
-      block_stack = block_stack[0:-1]  # pop one block
+      block_stack = block_stack[0:-1]
+    elif isinstance(op, opcodes.RAISE_VARARGS):
+      # Make "raise" statements jump to the innermost exception handler.
+      # (If there's no exception handler, do nothing.)
+      for b in reversed(block_stack):
+        if isinstance(b, opcodes.SETUP_EXCEPT):
+          op.block_target = b.target
+          break
     elif op.pushes_block():
       assert op.target, "%s without target" % op.name
       # We push the entire opcode onto the block stack, for better debugging.
@@ -176,22 +183,22 @@ def compute_order(bytecode):
   return utils.order_nodes(blocks)
 
 
-def order_code(co):
+def order_code(code):
   """Split a CodeType object into ordered blocks.
 
   This takes a CodeType object (i.e., a piece of compiled Python code) and
   splits it into ordered basic blocks.
 
   Args:
-    co: A loadmarshal.CodeType object.
+    code: A loadmarshal.CodeType object.
 
   Returns:
     A CodeBlocks instance.
   """
-  bytecodes = opcodes.dis(data=co.co_code, python_version=co.python_version,
-                          lines=co.co_lnotab, line_offset=co.co_firstlineno)
+  bytecodes = opcodes.dis_code(code)
   add_pop_block_targets(bytecodes)  # TODO(kramm): move into pyc/opcodes.py?
-  return OrderedCode(co, compute_order(bytecodes), co.python_version)
+  return OrderedCode(code, bytecodes, compute_order(bytecodes),
+                     code.python_version)
 
 
 class OrderCodeVisitor(object):

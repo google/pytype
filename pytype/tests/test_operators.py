@@ -228,8 +228,9 @@ class OverloadTest(test_inference.InferenceTest):
         pass
       def f():
         return Foo() {op} Bar()
+      f()
     """.format(function_name=function_name, op=op),
-                    deep=True, solve_unknowns=False,
+                    deep=False, solve_unknowns=False,
                     extract_locals=False) as ty:
       self.assertOnlyHasReturnType(ty.Lookup("f"), self.complex)
 
@@ -240,8 +241,9 @@ class OverloadTest(test_inference.InferenceTest):
           return 3j
       def f():
         return {op} Foo()
+      f()
     """.format(function_name=function_name, op=op),
-                    deep=True, solve_unknowns=False,
+                    deep=False, solve_unknowns=False,
                     extract_locals=False) as ty:
       self.assertOnlyHasReturnType(ty.Lookup("f"), ret or self.complex)
 
@@ -370,8 +372,9 @@ class InplaceTest(test_inference.InferenceTest):
         x = Foo()
         x {op} None
         return x
+      f()
     """.format(op=op, function_name=function_name),
-                    deep=True, solve_unknowns=False,
+                    deep=False, solve_unknowns=False,
                     extract_locals=False) as ty:
       self.assertHasReturnType(ty.Lookup("f"), self.complex)
 

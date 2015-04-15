@@ -15,7 +15,6 @@ program execution.
 # pylint: disable=unused-argument
 
 import collections
-import dis
 import linecache
 import logging
 import operator
@@ -26,10 +25,10 @@ import types
 
 
 from pytype import abstract
+from pytype import blocks
 from pytype import exceptions
 from pytype import import_paths
-from pytype import pycfg
-from pytype import state
+from pytype import state as frame_state
 from pytype import utils
 from pytype.pyc import loadmarshal
 from pytype.pyc import pyc
@@ -43,9 +42,11 @@ log = logging.getLogger(__name__)
 
 
 # Create a repr that won't overflow.
+_TRUNCATE = 120
+_TRUNCATE_STR = 72
 repr_obj = reprlib.Repr()
-repr_obj.maxother = 120
-repr_obj.maxstring = 72
+repr_obj.maxother = _TRUNCATE
+repr_obj.maxstring = _TRUNCATE_STR
 repper = repr_obj.repr
 
 
@@ -53,6 +54,10 @@ Block = collections.namedtuple("Block", ["type", "handler", "level"])
 
 
 class ConversionError(ValueError):
+  pass
+
+
+class RecursionException(Exception):
   pass
 
 
@@ -121,7 +126,6 @@ class VirtualMachine(object):
     # The current frame.
     self.frame = None
     self.return_value = None
-    self.last_exception = None
     self.vmbuiltins = dict(__builtins__)
     self.vmbuiltins["isinstance"] = self.isinstance
     self._cache_linestarts = {}  # maps frame.f_code => list of (offset, lineno)
@@ -169,13 +173,10 @@ class VirtualMachine(object):
 
     self.root_cfg_node = self.program.NewCFGNode("root")
     self.program.entrypoint = self.root_cfg_node
-    self.current_location = self.root_cfg_node
 
     # Used if we don't have a frame (e.g. when setting up an artificial function
     # call):
     self.default_location = self.root_cfg_node
-
-    self.source_nodes = [self.root_cfg_node]
 
     self._convert_cache = {}
 
@@ -212,190 +213,102 @@ class VirtualMachine(object):
     self.compare_operators[slots.CMP_EXC_MATCH] = self.cmp_exc_match
     self.unary_operators["NOT"] = self.not_op
 
-    self.cfg = pycfg.CFG()
-
-  # Since we process things out of order, all jump instructions assume we do
-  # NOT jump, and the "jumping" is done by later processing the jumped-to
-  # instruction as a new block.
-
-  def frame_traversal_setup(self, frame):
-    """Initialize a frame to allow ancestors first traversal.
+  def run_instruction(self, op, state):
+    """Run a single bytecode instruction.
 
     Args:
-      frame: The execution frame to update.
+      op: An opcode, instance of pyc.opcodes.Opcode
+      state: An instance of state.FrameState, the state just before running
+        this instruction.
     Returns:
-      True if we can execute this frame.
+      A tuple (why, state). "why" is the reason (if any) that this opcode aborts
+      this function (e.g. through a 'raise'), or None otherwise. "state" is the
+      FrameState right after this instruction that should roll over to the
+      subsequent instruction.
     """
-    frame.block_table = self.cfg.get_block_table(frame.f_code)
-    frame.order = frame.block_table.get_ancestors_first_traversal()
-    # A mapping from basic blocks to stack states
-    frame.block_start_stack = {}
-    frame.current_block = frame.order[0]
-    log.debug("Frames %r", self.frames)
-    if frame.order[0] in (f.current_block for f in self.frames[:-1]):
-      log.debug("Truncating recursion")
-      return False
-    return True
-
-  def propagate_state_before_opcode(self, frame):
-    """Forward the state we have before an opcode to other parts of the CFG."""
-    if frame.f_lasti == frame.current_block.end and frame.current_block.jumps:
-      # The last instruction, which is typically a jump instruction.
-      frame_state = frame.save_state()
-      log.debug("Propagating block stack: %r", frame_state.block_stack)
-      for next_block in frame.current_block.jumps:
-        log.debug("Propagating state before opcode %d to opcode %d",
-                  frame.f_lasti, next_block.begin)
-        frame.block_start_stack[next_block] = frame_state
-
-  def propagate_state_after_opcode(self, frame, why):
-    """Propagate the state we have after an opcode to other parts of the CFG."""
-    head = frame.order[0]
-    if head.begin <= frame.f_lasti <= head.end:
-      # Still running the current block.
-      return
-    if why:
-      # We're returning from (or aborting) the current path, so no other opcodes
-      # need to receive our state.
-      return
-    # For function calls, the block after the CALL_FUNCTION opcode
-    # will not be directly connected to the current block, but we still have
-    # to propagate our state to it.
-    fallthrough = frame.block_table.get_basic_block(frame.f_lasti)
-    if fallthrough is not head.following_block:
-      log.debug("Not falling through: next block would be %s, "
-                "but we jumped to %d",
-                head.following_block and head.following_block.begin,
-                frame.f_lasti)
-      return
-    assert fallthrough in head.outgoing, "Bad fallthrough"
-    frame_state = frame.save_state()
-    log.debug("Propagating block stack: %r", frame_state.block_stack)
-    log.debug("Propagating state after opcode %d to %d",
-              head.end, fallthrough.begin)
-    frame.block_start_stack[fallthrough] = frame_state
-
-  def frame_traversal_next(self, frame, why=None):
-    """Move the frame instruction pointer to the next instruction.
-
-    This implements the next instruction operation on the ancestors first
-    traversal order.
-
-    Args:
-      frame: The execution frame to update.
-      why: Whether the last instruction ended this frame (and why).
-
-    Returns:
-      False if the traversal is done (every instruction in the frames code
-      has been executed. True otherwise.
-    """
-    head = frame.order[0]
-
-    if not why and head.begin <= frame.f_lasti <= head.end:
-      return True  # still executing the same basic block
-
-    # Find a block we have state information for.
-    while True:
-      frame.order.pop(0)
-      if not frame.order:
-        return False
-      head = frame.order[0]
-      if head in (f.current_block for f in self.frames[:-1]):
-        log.info("Truncating recursion.")
-        continue
-      elif head in frame.block_start_stack:
-        break
+    self.frame.current_op = op
+    self.frame.state = state
+    if log.isEnabledFor(logging.INFO):
+      self.log_opcode(op, state)
+    try:
+      if op.name.startswith("UNARY_"):
+        why = self.unary_operator(op.name[6:])
+      elif op.name.startswith("BINARY_"):
+        why = self.binary_operator(op.name[7:])
+      elif op.name.startswith("INPLACE_"):
+        why = self.inplace_operator(op.name[8:])
+      elif "SLICE_" in op.name:
+        why = self.slice_operator(op.name)
       else:
-        log.debug("Discarding block %d (unreachable)", head.begin)
+        # dispatch
+        bytecode_fn = getattr(self, "byte_%s" % op.name, None)
+        if op.has_arg():
+          why = bytecode_fn(op)
+        else:
+          why = bytecode_fn()
+    except StopIteration:
+      # TODO(kramm): Use abstract types for this.
+      self.frame.state = self.frame.state.set_exception(
+          sys.exc_info()[0], sys.exc_info()[1], None)
+      why = "exception"
+    except RecursionException as e:
+      # This is not an error - it just means that the block we're analyzing
+      # goes into a recursion, and we're already two levels deep.
+      why = "recursion"
+    except exceptions.ByteCodeException:
+      e = sys.exc_info()[1]
+      self.frame.state = self.frame.state.set_exception(
+          e.exception_type, e.create_instance(), None)
+      # TODO(pludemann): capture exceptions that are indicative of
+      #                  a bug (AttributeError?)
+      log.info("Exception in program: %s: %r",
+               e.exception_type.__name__, e.message)
+      why = "exception"
+    state = self.frame.state
+    del self.frame.state
+    if why == "reraise":
+      why = "exception"
+    return why, state
 
-    if log.isEnabledFor(logging.DEBUG):
-      log.debug("Switching to block at %d", head.begin)
-      src = frame.block_table.get_any_jump_source(head)
-      if src:
-        log.debug("E.g. reachable from %d-%d", src.begin, src.end)
-      else:
-        log.debug("(Not directly reachable)")
+  def join_cfg_nodes(self, nodes):
+    assert nodes
+    if len(nodes) == 1:
+      return nodes[0]
+    else:
+      ret = self.program.NewCFGNode("ret")
+      for node in nodes:
+        node.ConnectTo(ret)
+      return ret
 
-    assert head in frame.block_start_stack
-    frame.restore_state(frame.block_start_stack[head])
-
-    if head.pop_on_enter:
-      # For FOR_ITER, which pops the iterator at the end of the loop.
-      log.debug("popping %d value(s) on block enter", head.pop_on_enter)
-      self.popn(head.pop_on_enter)
-    elif head.needs_exc_push:
-      self.push_abstract_exception()
-
-    frame.f_lasti = head.begin
-    frame.current_block = head
-    return True
-
-  def connect_source_nodes(self, to):
-    for node in self.source_nodes:
-      node.ConnectTo(to)
-    self.source_nodes = []
-
-  def run_frame(self, frame):
-    """Run a frame until it returns (somehow).
-
-    Exceptions are raised, the return value is returned.
-
-    Arguments:
-      frame: The frame to run.
-
-    Returns:
-      The return value of the function that belongs to this frame.
-
-    Raises:
-      AssertionError: For internal errors.
-    """
-    if not self.source_nodes:
-      self.source_nodes.append(self.current_location)
+  def run_frame(self, frame, node):
+    """Run a frame (typically belonging to a method)."""
     self.push_frame(frame)
-    frame_ok_to_run = self.frame_traversal_setup(frame)
-    while frame_ok_to_run:
-      assert frame == self.frame
-      block = self.update_location()
-
-      log.info("Backtrace: " + self.backtrace())
-
-      # If we are coming from somewhere interesting (a function call) then add
-      # this edge
-      self.connect_source_nodes(self.current_location)
-
-      self.propagate_state_before_opcode(frame)
-      why = self.run_instruction()
-      self.propagate_state_after_opcode(frame, why)
-
-      if (not frame.cfgnode[block].outgoing and
-          frame.f_lasti > block.end):
-        # Some nodes contain calls that don't cause execution of any new
-        # bytecodes/blocks (e.g. calls to pytd functions) - we need to explictly
-        # connect these to the following cfg node.
-        self.process_block_connections(block, allow_returns=True)
-
-      if why is None:
-        # The instruction succeeded. We're moving one instruction forward.
-        pass
-      elif why in ["return", "yield"]:
-        # Store the source of this return for use later
-        frame.return_nodes.append(self.current_location)
-      elif why in ["exception", "fatal_exception"]:
-        # This exception terminates the current execution flow. We'll abandon
-        # it and process the next basic block on our "to-do list" (frame.order).
-        # TODO(kramm): Connect the current CFG position to all the nearest
-        # exception handlers.
-        log.info("Aborting current block: %r", why)
-      else:
-        raise AssertionError("Unknown 'why': %r", why)
-
-      if not self.frame_traversal_next(frame, why):
-        break
-    self.pop_frame()
-    self.source_nodes.extend(frame.return_nodes)
-
-    self.update_location()
-    return frame.return_variable
+    frame.states[frame.f_code.co_code[0]] = frame_state.FrameState.init(node)
+    return_nodes = []
+    for block in frame.f_code.order:
+      state = frame.states.get(block[0])
+      if not state:
+        log.error("Skipping block %d,"
+                  " we don't have any non errorneous code that goes here.",
+                  block.id)
+        continue
+      op = None
+      for op in block:
+        why, state = self.run_instruction(op, state)
+        if why:
+          # we can't process this block any further
+          break
+      if why in ["return", "yield"]:
+        return_nodes.append(state.node)
+      if not why and op.carry_on_to_next():
+        frame.states[op.next] = state.merge_into(frame.states.get(op.next))
+    self.pop_frame(frame)
+    if not return_nodes:
+      # Happens if all the function does is to throw an exception.
+      # (E.g. "def f(): raise NoImplemented")
+      # TODO(kramm): Return the exceptions, too.
+      return node, frame.return_variable
+    return self.join_cfg_nodes(return_nodes), frame.return_variable
 
   def magic_unary_operator(self, name):
     def magic_unary_operator_wrapper(x):
@@ -431,12 +344,19 @@ class VirtualMachine(object):
       if name.startswith("__i")
   })
 
+  @property
+  def current_location(self):
+    if self.frame:
+      return self.frame.state.node
+    else:
+      return self.root_cfg_node
+
   def top(self):
     """Return the value at the top of the stack, with no changes."""
-    return self.frame.data_stack[-1]
+    return self.frame.state.data_stack[-1]
 
-  def pop(self, i=0):
-    """Pop a value from the stack.
+  def pop_nth(self, i=0):
+    """Pop top value from the stack.
 
     Default to the top of the stack, but `i` can be a count from the top
     instead.
@@ -448,11 +368,16 @@ class VirtualMachine(object):
     Returns:
       A stack entry (typegraph.Variable).
     """
-    return self.frame.data_stack.pop(-1 - i)
+    raise NotImplementedError()
+
+  def pop(self):
+    """Pop top value from the value stack."""
+    self.frame.state, value = self.frame.state.pop()
+    return value
 
   def push(self, *vals):
     """Push values onto the value stack."""
-    self.frame.push(*vals)
+    self.frame.state = self.frame.state.push(*vals)
 
   def popn(self, n):
     """Pop a number of values from the value stack.
@@ -465,31 +390,29 @@ class VirtualMachine(object):
     Returns:
       A list of n values.
     """
-    if n:
-      ret = self.frame.data_stack[-n:]
-      self.frame.data_stack[-n:] = []
-      return ret
-    else:
-      return []
+    self.frame.state, values = self.frame.state.popn(n)
+    return values
 
   def peek(self, n):
     """Get a value `n` entries down in the stack, without changing the stack."""
-    return self.frame.data_stack[-n]
+    return self.frame.state.data_stack[-n]
 
   def push_block(self, t, handler=None, level=None):
     if level is None:
-      level = len(self.frame.data_stack)
-    self.frame.block_stack.append(Block(t, handler, level))
+      level = len(self.frame.state.data_stack)
+    self.frame.state = self.frame.state.push_block(Block(t, handler, level))
 
   def pop_block(self):
-    return self.frame.block_stack.pop()
+    self.frame.state, block = self.frame.state.pop_block()
+    return block
 
   def push_frame(self, frame):
     self.frames.append(frame)
     self.frame = frame
 
-  def pop_frame(self):
-    self.frames.pop()
+  def pop_frame(self, frame):
+    popped_frame = self.frames.pop()
+    assert popped_frame == frame
     if self.frames:
       self.frame = self.frames[-1]
     else:
@@ -506,202 +429,48 @@ class VirtualMachine(object):
       if line:
         print "  " + line.strip()
 
-  def unwind_block(self, block):
+  def unwind_block(self, block, state):
+    """Adjusts the data stack to account for removing the passed block."""
     if block.type == "except-handler":
       offset = 3
     else:
       offset = 0
 
-    while len(self.frame.data_stack) > block.level + offset:
-      self.pop()
+    while len(state.data_stack) > block.level + offset:
+      state = state.pop_and_discard()
 
     if block.type == "except-handler":
-      tb, value, exctype = self.popn(3)
-      self.last_exception = exctype, value, tb
+      state, (tb, value, exctype) = state.popn(3)
+      state = state.set_exception(exctype, value, tb)
+    return state
 
-  def opcodes_are_adjacent(self, pos1, pos2):
-    bytecode = ord(self.frame.f_code.co_code[pos1])
-    if bytecode < dis.HAVE_ARGUMENT:
-      return pos1 + 1 == pos2
-    else:
-      return pos1 + 3 == pos2
-
-  def parse_byte_and_args(self):
-    """Parse a bytecode."""
-    f = self.frame
-    opoffset = f.f_lasti
-    try:
-      bytecode = ord(f.f_code.co_code[opoffset])
-    except IndexError:
-      raise VirtualMachineError(
-          "Bad bytecode offset %d in %s (len=%d)" %
-          (opoffset, str(f.f_code), len(f.f_code.co_code))
-      )
-    f.f_lasti += 1
-    bytename = dis.opname[bytecode]
-    arg = None
-    arguments = []
-    if bytecode >= dis.HAVE_ARGUMENT:
-      arg = f.f_code.co_code[f.f_lasti:f.f_lasti + 2]
-      f.f_lasti += 2
-      intarg = ord(arg[0]) + (ord(arg[1]) << 8)
-      if bytecode in dis.hasconst:
-        arg = f.f_code.co_consts[intarg]
-      elif bytecode in dis.hasname:
-        arg = f.f_code.co_names[intarg]
-      elif bytecode in dis.hasjrel:
-        arg = f.f_lasti + intarg
-      elif bytecode in dis.hasjabs:
-        arg = intarg
-      elif bytecode in dis.haslocal:
-        arg = f.f_code.co_varnames[intarg]
-      else:
-        arg = intarg
-      arguments = [arg]
-
-    return bytename, arguments, opoffset
-
-  def log(self, bytename, arguments, opoffset):
+  def log_opcode(self, op, state):
     """Write a multi-line log message, including backtrace and stack."""
     if not log.isEnabledFor(logging.INFO):
       return
     # pylint: disable=logging-not-lazy
-    op = "%d: %s" % (opoffset, bytename)
-    if arguments:
-      op += " " + utils.maybe_truncate(repr(arguments[0]), length=150)
     indent = " > " * (len(self.frames) - 1)
-    stack_rep = repper(self.frame.data_stack)
-    block_stack_rep = repper(self.frame.block_stack)
-    log.info("%s | line: %d", indent, self.frame.line_number())
-    log.info("%s | data: %s", indent, stack_rep)
-    log.info("%s | blks: %s", indent, block_stack_rep)
-    # For more information on frames, see source for module 'dis' or
-    # http://security.coverity.com/blog/2014/Nov/understanding-python-bytecode.html
+    stack_rep = repper(self.frame.state.data_stack)
+    block_stack_rep = repper(self.frame.state.block_stack)
     # TODO(pludemann): nicer module/file name:
-    filename = ".".join(re.sub(
-        r"\.py$", "", self.frame.f_code.co_filename or "").split("/")[-2:])
-    log.info("%s | filename: %s", indent, filename)
+    if self.frame.f_code.co_filename:
+      module_name = ".".join(re.sub(
+          r"\.py$", "", self.frame.f_code.co_filename).split("/")[-2:])
+      log.info("%s | index: %d, module: %s line: %d",
+               indent, op.index, module_name, op.line)
+    else:
+      log.info("%s | index: %d, line: %d",
+               indent, op.index, op.line)
+    log.info("%s | data_stack: %s", indent, stack_rep)
+    log.info("%s | block_stack: %s", indent, block_stack_rep)
+    log.info("%s | node: <%d>%s", indent, state.node.id, state.node.name)
+    arg = op.pretty_arg if op.has_arg() else ""
+    op = "%d: %s %s" % (op.index, op.name,
+                        utils.maybe_truncate(arg, _TRUNCATE))
     log.info("%s %s", indent, op)
 
   def repper(self, s):
     return repr_obj.repr(s)
-
-  def dispatch(self, bytename, arguments):
-    """Figure out which bytecode function to call."""
-    # TODO(kramm): Rename 'why' to 'abort'.
-    why = None
-    try:
-      if bytename.startswith("UNARY_"):
-        self.unary_operator(bytename[6:])
-      elif bytename.startswith("BINARY_"):
-        self.binary_operator(bytename[7:])
-      elif bytename.startswith("INPLACE_"):
-        self.inplace_operator(bytename[8:])
-      elif "SLICE+" in bytename:
-        self.slice_operator(bytename)
-      else:
-        # dispatch
-        bytecode_fn = getattr(self, "byte_%s" % bytename, None)
-        if not bytecode_fn:      # pragma: no cover
-          raise VirtualMachineError(
-              "unknown bytecode type: %s" % bytename
-          )
-        why = bytecode_fn(*arguments)
-    except StopIteration:
-      # We don't wrap StopIteration exceptions, because of their special role
-      # with reference to loops.
-      self.last_exception = sys.exc_info()[:2] + (None,)
-      why = "exception"
-    except exceptions.ByteCodeException:
-      e = sys.exc_info()[1]
-      self.last_exception = (e.exception_type, e.create_instance(), None)
-      # TODO(pludemann): capture exceptions that are indicative of
-      #                  a bug (AttributeError?)
-      log.info("ByteCodeException: %s %r", e.exception_type, e.message)
-      why = "exception"
-
-    return why
-
-  def pop_and_unwind_block(self):
-    self.unwind_block(self.pop_block())
-
-  def manage_block_stack(self, why):
-    assert why != "yield"
-    block = self.frame.block_stack[-1]
-    t = block.type, why
-    if t == ("loop", "continue"):
-      return self.jump(self.return_value, why)
-    self.pop_and_unwind_block()
-    if t == ("loop", "break"):
-      return self.jump(block.handler, why)
-    elif t in {("finally", "return"),
-               ("finally", "continue"),
-               ("with", "return"),
-               ("with", "continue")}:
-      self.push(self.return_value)
-      self.push(why)
-      return self.jump(block.handler, why)
-    elif t in {("with", "break"),
-               ("finally", "break")}:
-      self.push(why)
-      return self.jump(block.handler, why)
-    elif self.python_version[0] == 3 and t in {("setup-except", "exception"),
-                                               ("finally", "exception")}:
-      self.push_block("except-handler")
-      self.push_last_exception()
-      self.push_last_exception()  # for PyErr_Normalize_Exception
-      return self.jump(block.handler, why)
-    elif t in {("setup-except", "exception"),
-               ("finally", "exception"),
-               ("with", "exception")}:
-      self.push_last_exception()
-      return self.jump(block.handler, why)
-    elif t in {("loop", "return"),
-               ("loop", "exception"),
-               ("setup-except", "continue"),
-               ("setup-except", "break"),
-               ("setup-except", "return")}:
-      return why
-    else:
-      raise ValueError(repr(t))
-
-  # Events that cause us to abandon (or pause) an entire execution flow.
-  EXIT_STATES = ("fatal_exception", "yield", "return")
-
-  def run_instruction(self):
-    """Run one instruction in the current frame.
-
-    Returns:
-      None if the frame should continue executing otherwise return the
-      reason it should stop.
-    """
-    frame = self.frame
-    bytename, arguments, opoffset = self.parse_byte_and_args()
-    if log.isEnabledFor(logging.INFO):
-      self.log(bytename, arguments, opoffset)
-
-    # When unwinding the block stack, we need to keep track of why we
-    # are doing it.
-    why = self.dispatch(bytename, arguments)
-    if why == "exception":
-      # TODO(kramm): ceval calls PyTraceBack_Here, not sure what that does.
-      pass
-
-    if why == "reraise":
-      why = "exception"
-    while why not in self.EXIT_STATES + (None,) and frame.block_stack:
-      # Deal with any block management we need to do.
-      why = self.manage_block_stack(why)
-
-    return why
-
-  # Abstraction hooks
-
-  def store_subscr(self, obj, key, val):
-    self.call_function(self.load_attr(obj, "__setitem__"),
-                       [key, val], {})
-
-  # Stack manipulation
 
   # Operators
 
@@ -718,10 +487,10 @@ class VirtualMachine(object):
     self.push(self.inplace_operators[op](x, y))
 
   def slice_operator(self, op):  # pylint: disable=invalid-name
-    """Apply a slice operator (SLICE+0...SLICE+3)."""
+    """Apply a slice operator (SLICE_0...SLICE_3)."""
     start = 0
     end = None      # we will take this to mean end
-    op, count = op[:-2], int(op[-1])  # "SLICE+1" -> op="SLICE", count=1
+    op, count = op[:-2], int(op[-1])  # "SLICE_1" -> op="SLICE", count=1
     if count == 1:
       start = self.pop()
     elif count == 2:
@@ -748,7 +517,7 @@ class VirtualMachine(object):
   def do_raise(self, exc, cause):
     """Raise an exception. Used by byte_RAISE_VARARGS."""
     if exc is None:     # reraise
-      exc_type, val, _ = self.last_exception
+      exc_type, val, _ = self.frame.state.last_exception
       if exc_type is None:
         return "exception"    # error
       else:
@@ -776,7 +545,7 @@ class VirtualMachine(object):
 
       val.__cause__ = cause
 
-    self.last_exception = exc_type, val, val.__traceback__
+    self.frame.state.set_exception(exc_type, val, val.__traceback__)
     return "exception"
 
   # Importing
@@ -787,7 +556,6 @@ class VirtualMachine(object):
 
   def _set_vmbuiltin(self, descr, values):
     for b in values:
-      log.info("Initializing builtin %s: %s", descr, b.name)
       self.vmbuiltins[b.name] = b
 
   def instantiate_builtin(self, cls):
@@ -836,9 +604,6 @@ class VirtualMachine(object):
     Raises:
       ValueError: If values, origins and loc are inconsistent wrt each other.
     """
-    if loc is self.root_cfg_node:
-      log.debug("Creating root variable: %s '%s...' %r", name,
-                repr(values)[:100], origins)
     if values:
       assert all(isinstance(v, abstract.AtomicAbstractValue) for v in values)
     if values is not None:
@@ -1049,9 +814,8 @@ class VirtualMachine(object):
       clsvar = self.primitive_classes[pyval.__class__]
       value = abstract.AbstractOrConcreteValue(name, pyval, self)
       value.set_attribute("__class__", clsvar)
-      log.info("Setting %s.__class__ to %s", value.name, clsvar.name)
       return value
-    elif isinstance(pyval, loadmarshal.CodeType):
+    elif isinstance(pyval, (loadmarshal.CodeType, blocks.OrderedCode)):
       return abstract.AbstractOrConcreteValue(name, pyval, self)
     elif pyval.__class__ in [types.FunctionType, types.ModuleType, type]:
       try:
@@ -1135,7 +899,11 @@ class VirtualMachine(object):
 
   def make_none(self):
     # TODO(kramm): This should make a new Variable, but not a new instance.
-    return self.instantiate_builtin(types.NoneType)
+    none = abstract.AbstractOrConcreteValue("None", None, self)
+    none.set_attribute("__class__", self.primitive_classes[type(None)])
+    none = none.to_variable("None")
+    assert self.is_none(none)
+    return none
 
   def make_class(self, name_var, bases, members):
     """Create a class with the name, bases and methods given.
@@ -1149,7 +917,7 @@ class VirtualMachine(object):
       An instance of Class.
     """
     name = _get_atomic_python_constant(name_var)
-    log.info("Declaring class %s")
+    log.info("Declaring class %s", name)
     val = abstract.InterpreterClass(
         name,
         [_get_atomic_value(b)
@@ -1203,9 +971,14 @@ class VirtualMachine(object):
   def make_frame(self, code, callargs=None,
                  f_globals=None, f_locals=None, closure=None):
     """Create a new frame object, using the given args, globals and locals."""
-    log.info("make_frame: code=%r, callargs=%s, f_globals=%r, f_locals=%r",
-             code, self.repper(callargs), (type(f_globals), id(f_globals)),
-             (type(f_locals), id(f_locals)))
+    if any(code is f.f_code for f in self.frames):
+      log.info("Detected recursion in %s", code.co_name or code.co_filename)
+      raise RecursionException()
+
+    log.info("make_frame: callargs=%s, f_globals=[%s@%x], f_locals=[%s@%x]",
+             self.repper(callargs),
+             type(f_globals).__name__, id(f_globals),
+             type(f_locals).__name__, id(f_locals))
     if f_globals is not None:
       f_globals = f_globals
       if f_locals is None:
@@ -1213,7 +986,7 @@ class VirtualMachine(object):
     elif self.frames:
       assert f_locals is None
       f_globals = self.frame.f_globals
-      f_locals = self.convert_locals_or_globals({})
+      f_locals = self.convert_locals_or_globals({}, "locals")
     else:
       assert f_locals is None
       # TODO(ampere): __name__, __doc__, __package__ below are not correct
@@ -1226,10 +999,10 @@ class VirtualMachine(object):
 
     # Implement NEWLOCALS flag. See Objects/frameobject.c in CPython.
     if code.co_flags & loadmarshal.CodeType.CO_NEWLOCALS:
-      f_locals = self.convert_locals_or_globals({})
+      f_locals = self.convert_locals_or_globals({}, "locals")
 
-    return state.Frame(self, code, f_globals, f_locals,
-                       self.frame, callargs or {}, closure)
+    return frame_state.Frame(self, code, f_globals, f_locals,
+                             self.frame, callargs or {}, closure)
 
   def is_none(self, value):
     """Checks whether a value is considered to be "None".
@@ -1247,72 +1020,19 @@ class VirtualMachine(object):
     except ConversionError:
       return False
 
-  def is_return(self, b1, b2):
-    return (pycfg.opcode_is_call(self.frame.f_code.co_code[b1.end]) and
-            self.opcodes_are_adjacent(b1.end, b2.begin))
-
-  def process_block_connections(self, block, allow_returns=False):
-    # Create a new node to match this one and connect it to all existing
-    # neighbors if it is not already.
-    cfgnode = self.frame.cfgnode
-    if block not in cfgnode:
-      cfgnode[block] = self.program.NewCFGNode(block.get_name())
-    for other in block.outgoing:
-      if other == pycfg.UNKNOWN_TARGET:
-        continue
-      if other not in cfgnode:
-        cfgnode[other] = self.program.NewCFGNode(other.get_name())
-      if allow_returns or not self.is_return(block, other):
-        cfgnode[block].ConnectTo(cfgnode[other])
-
-  def push_abstract_exception(self):
+  def push_abstract_exception(self, state):
     tb = self.new_variable("tb")
     value = self.new_variable("value")
     exctype = self.new_variable("exctype")
-    self.push(tb, value, exctype)
+    return state.push(tb, value, exctype)
 
   def jump(self, jump, why=None):
-    """Move the bytecode pointer to `jump`, so it will execute next.
-
-    Jump may be the very next instruction and hence already the value of
-    f_lasti. This is used to notify a subclass when a jump was not taken and
-    instead we continue to the next instruction.
-
-    Args:
-      jump: An integer, location of the instruction to jump to.
-      why: Why are we jumping? Might be something like 'exception' or 'break'.
-        Can be None, e.g. for simple unconditional jump instructions.
-
-    Returns:
-      The new value for 'why'. Returned to dispatch(). This is typically None,
-      which means the jump succeeded and we don't need to bubble an exception
-      up the chain.
-    """
-    if why == "exception":
-      # Don't actually execute jumps to exception handlers. Instead, terminate
-      # processing of the current block.
-      return "fatal_exception"
-    self.frame.f_lasti = jump
-    return None
-
-  def update_location(self):
-    """Update self.current_location based on the current instruction.
-
-    Create CFGNodes as needed.
-
-    Returns:
-      The new current location.
-    """
-    frame = self.frame
-    if frame:
-      block = self.cfg.get_basic_block(frame.f_code, frame.f_lasti)
-      self.process_block_connections(block)
-      self.current_block = block
-      self.current_location = frame.cfgnode[block]
-    else:
-      block = None
-      self.current_location = self.default_location
-    return block
+    raise NotImplementedError("Use store_jump instead")
+    # TODO(kramm):
+    # if why == "exception":
+    #   # Don't actually execute jumps to exception handlers. Instead, terminate
+    #   # processing of the current block.
+    #   return "fatal_exception"
 
   def resume_frame(self, frame):
     # TODO(kramm): The concrete interpreter did this:
@@ -1334,51 +1054,56 @@ class VirtualMachine(object):
         items.append("{%s}" % block.get_name())
     return " ".join(items)
 
-  def run_bytecode(self, code, f_globals=None, f_locals=None):
+  def compile_src(self, src, filename=None):
+    code = pyc.compile_src(
+        src, python_version=self.python_version, filename=filename)
+    return blocks.process_code(code)
+
+  def run_bytecode(self, code, node, f_globals=None, f_locals=None):
     frame = self.make_frame(code, f_globals=f_globals, f_locals=f_locals)
-    self.run_frame(frame)
+    node, _ = self.run_frame(frame, node)
     if self.frames:  # pragma: no cover
       raise VirtualMachineError("Frames left over!")
     if self.frame is not None and self.frame.data_stack:  # pragma: no cover
       raise VirtualMachineError("Data left on stack!")
-    return frame.f_globals, frame.f_locals
+    return frame.f_globals, frame.f_locals, node
 
-  def preload_builtins(self):
-    builtins_code = pyc.compile_src(
-        builtins.GetBuiltinsCode(self.python_version), self.python_version)
-    f_globals, f_locals = self.run_bytecode(builtins_code)
+  def preload_builtins(self, node):
+    builtins_code = self.compile_src(
+        builtins.GetBuiltinsCode(self.python_version))
+    f_globals, f_locals, node = self.run_bytecode(builtins_code, node)
     # at the outer layer, locals are the same as globals
     builtin_names = frozenset(f_globals.members)
     # Don't keep the types recorded so far:
     self._functions.clear()
-    return f_globals, f_locals, builtin_names
+    return f_globals, f_locals, builtin_names, node
 
-  def run_program(self, code, run_builtins=True):
+  def run_program(self, src, filename=None, run_builtins=True):
     """Run the code and return the CFG nodes.
 
     This function loads in the builtins and puts them ahead of `code`,
     so all the builtins are available when processing `code`.
 
     Args:
-      code: An instance of loadmarshal.CodeType.
+      src: The program source code.
+      filename: The filename the source is from.
       run_builtins: Whether to preload the native Python builtins.
     Returns:
       A tuple (CFGNode, set) containing the last CFGNode of the program as
         well as all the top-level names defined by it.
     """
-
+    node = self.root_cfg_node.ConnectNew("init")
     if run_builtins:
-      f_globals, f_locals, builtin_names = self.preload_builtins()
+      f_globals, f_locals, builtin_names, node = self.preload_builtins(node)
     else:
-      f_globals, f_locals, builtin_names = None, None, frozenset()
+      f_globals, f_locals, builtin_names, node = None, None, frozenset(), node
 
-    self.run_bytecode(code, f_globals, f_locals)
+    code = self.compile_src(src,
+                            filename=filename)
 
-    if not self.source_nodes:
-      raise VirtualMachineError("Import-level code didn't return")
-    main = self.program.NewCFGNode("main")
-    self.connect_source_nodes(main)
-    return main, builtin_names
+    _, _, node = self.run_bytecode(code, node, f_globals, f_locals)
+    log.info("Final node: %s", node.name)
+    return node, builtin_names
 
   def magic_binary_operator(self, name):
     """Map a binary operator to "magic methods" (__add__ etc.)."""
@@ -1404,8 +1129,7 @@ class VirtualMachine(object):
             attr = self.load_attr(y, rname)
           except exceptions.ByteCodeAttributeError:
             log.info("Failed to find reverse operator %s on %r",
-                     self.reverse_operator_name(name),
-                     y, exc_info=True)
+                     self.reverse_operator_name(name), y)
           else:
             results.append(
                 self.call_function(attr, [x]))
@@ -1440,18 +1164,26 @@ class VirtualMachine(object):
       The return value of the called function.
     """
     result = self.program.NewVariable("<return:%s>" % funcu.name)
+    nodes = []
     for funcv in funcu.values:
       func = funcv.data
       assert isinstance(func, abstract.AtomicAbstractValue), type(func)
       try:
-        one_result = func.call(funcv, posargs, namedargs or {})
+        new_node, one_result = func.call(
+            self.frame.state.node,
+            funcv, posargs, namedargs or {})
+        self.frame.state = self.frame.state.change_cfg_node(new_node)
       except abstract.FailedFunctionCall as e:
         log.error("FailedFunctionCall for %s", e.obj)
         for msg in e.explanation_lines:
           log.error("... %s", msg)
       else:
         result.AddValues(one_result, self.current_location)
-    self.trace_call(funcu, posargs, namedargs, result)
+        nodes.append(new_node)
+    if nodes:
+      final_node = self.join_cfg_nodes(nodes)
+      self.frame.state = self.frame.state.change_cfg_node(final_node)
+      self.trace_call(final_node, funcu, posargs, namedargs, result)
     return result
 
   def call_function_from_stack(self, arg, args, kwargs=None):
@@ -1463,7 +1195,7 @@ class VirtualMachine(object):
       namedargs.setitem(key, val)
     if kwargs:
       namedargs.update(kwargs)
-    posargs = self.popn(num_pos)
+    posargs = list(self.popn(num_pos))
     posargs.extend(args)
     func = self.pop()
     self.push(self.call_function(func, posargs, namedargs))
@@ -1631,11 +1363,10 @@ class VirtualMachine(object):
     # code.
     raise NotImplementedError
 
-  def push_last_exception(self):
-    log.info("Pushing exception %r", self.last_exception)
-    exctype, value, tb = self.last_exception
-    self.push(tb, value, exctype)
-    self.push(tb, value, exctype)
+  def push_last_exception(self, state):
+    log.info("Pushing exception %r", state.exception)
+    exctype, value, tb = state.exception
+    return state.push(tb, value, exctype)
 
   def del_subscr(self, obj, subscr):
     log.warning("Subscript removal does not actually do "
@@ -1661,10 +1392,10 @@ class VirtualMachine(object):
     """Retrieve a kwargs dictionary from the stack. Used by call_function."""
     return self.pop()
 
-  def convert_locals_or_globals(self, d):
+  def convert_locals_or_globals(self, d, name="globals"):
     if isinstance(d, dict):
       return abstract.LazyAbstractValue(
-          "locals/globals", d, self.maybe_convert_constant, self)
+          name, d, self.maybe_convert_constant, self)
     else:
       assert isinstance(d, (abstract.LazyAbstractValue, types.NoneType))
       return d
@@ -1688,7 +1419,8 @@ class VirtualMachine(object):
   def print_newline(self, to=None):
     pass
 
-  def byte_LOAD_CONST(self, const):
+  def byte_LOAD_CONST(self, op):
+    const = self.frame.f_code.co_consts[op.arg]
     self.push(self.load_constant(const))
 
   def byte_POP_TOP(self):
@@ -1697,8 +1429,8 @@ class VirtualMachine(object):
   def byte_DUP_TOP(self):
     self.push(self.top())
 
-  def byte_DUP_TOPX(self, count):
-    items = self.popn(count)
+  def byte_DUP_TOPX(self, op):
+    items = self.popn(op.arg)
     self.push(*items)
     self.push(*items)
 
@@ -1719,8 +1451,9 @@ class VirtualMachine(object):
     a, b, c, d = self.popn(4)
     self.push(d, a, b, c)
 
-  def byte_LOAD_NAME(self, name):
+  def byte_LOAD_NAME(self, op):
     """Load a name. Can be a local, global, or builtin."""
+    name = self.frame.f_code.co_names[op.arg]
     try:
       val = self.load_local(name)
     except KeyError:
@@ -1733,14 +1466,17 @@ class VirtualMachine(object):
           raise exceptions.ByteCodeNameError("name '%s' is not defined" % name)
     self.push(val)
 
-  def byte_STORE_NAME(self, name):
+  def byte_STORE_NAME(self, op):
+    name = self.frame.f_code.co_names[op.arg]
     self.store_local(name, self.pop())
 
-  def byte_DELETE_NAME(self, name):
+  def byte_DELETE_NAME(self, op):
+    name = self.frame.f_code.co_names[op.arg]
     self.del_local(name)
 
-  def byte_LOAD_FAST(self, name):
+  def byte_LOAD_FAST(self, op):
     """Load a local. Unlike LOAD_NAME, it doesn't fall back to globals."""
+    name = self.frame.f_code.co_varnames[op.arg]
     try:
       val = self.load_local(name)
     except KeyError:
@@ -1749,13 +1485,17 @@ class VirtualMachine(object):
       )
     self.push(val)
 
-  def byte_STORE_FAST(self, name):
-    self.byte_STORE_NAME(name)
+  def byte_STORE_FAST(self, op):
+    name = self.frame.f_code.co_varnames[op.arg]
+    self.store_local(name, self.pop())
 
-  def byte_DELETE_FAST(self, name):
-    self.byte_DELETE_NAME(name)
+  def byte_DELETE_FAST(self, op):
+    name = self.frame.f_code.co_varnames[op.arg]
+    self.del_local(name)
 
-  def byte_LOAD_GLOBAL(self, name):
+  def byte_LOAD_GLOBAL(self, op):
+    """Load a global variable, or fall back to trying to load a builtin."""
+    name = self.frame.f_code.co_names[op.arg]
     try:
       val = self.load_global(name)
     except KeyError:
@@ -1766,52 +1506,60 @@ class VirtualMachine(object):
             "global name '%s' is not defined" % name)
     self.push(val)
 
-  def byte_STORE_GLOBAL(self, name):
+  def byte_STORE_GLOBAL(self, op):
+    name = self.frame.f_code.co_names[op.arg]
     self.store_global(name, self.pop())
 
-  def byte_LOAD_CLOSURE(self, i):
+  def byte_LOAD_CLOSURE(self, op):
     """Used to generate the 'closure' tuple for MAKE_CLOSURE.
 
     Each entry in that tuple is typically retrieved using LOAD_CLOSURE.
 
     Args:
-      i: The index of a "cell variable": This corresponds to an entry in
-        co_cellvars or co_freevars and is a variable that's bound into
-        a closure.
+      op: The opcode. op.arg is the index of a "cell variable": This corresponds
+      to an entry in co_cellvars or co_freevars and is a variable that's bound
+      into a closure.
     """
-    self.push(self.frame.cells[i])
+    self.push(self.frame.cells[op.arg])
 
-  def byte_LOAD_DEREF(self, i):
+  def byte_LOAD_DEREF(self, op):
     """Retrieves a value out of a cell."""
     # Since we're working on typegraph.Variable, we don't need to dereference.
-    self.push(self.frame.cells[i])
+    self.push(self.frame.cells[op.arg])
 
-  def byte_STORE_DEREF(self, i):
+  def byte_STORE_DEREF(self, op):
     """Stores a value in a closure cell."""
     value = self.pop()
     assert isinstance(value, typegraph.Variable)
-    self.frame.cells[i].AddValues(value, self.current_location)
+    self.frame.cells[op.arg].AddValues(value, self.current_location)
 
   def byte_LOAD_LOCALS(self):
     self.push(self.get_locals_dict_bytecode())
 
-  def byte_COMPARE_OP(self, opnum):
+  def byte_COMPARE_OP(self, op):
     x, y = self.popn(2)
-    self.push(self.compare_operators[opnum](x, y))
+    self.push(self.compare_operators[op.arg](x, y))
 
-  def byte_LOAD_ATTR(self, attr):
+  def byte_LOAD_ATTR(self, op):
+    name = self.frame.f_code.co_names[op.arg]
     obj = self.pop()
-    log.info("LOAD_ATTR: %r %s", type(obj), attr)
-    val = self.load_attr(obj, attr)
+    log.info("LOAD_ATTR: %r %s", type(obj), name)
+    val = self.load_attr(obj, name)
     self.push(val)
 
-  def byte_STORE_ATTR(self, name):
+  def byte_STORE_ATTR(self, op):
+    name = self.frame.f_code.co_names[op.arg]
     val, obj = self.popn(2)
     self.store_attr(obj, name, val)
 
-  def byte_DELETE_ATTR(self, name):
+  def byte_DELETE_ATTR(self, op):
+    name = self.frame.f_code.co_names[op.arg]
     obj = self.pop()
     self.del_attr(obj, name)
+
+  def store_subscr(self, obj, key, val):
+    self.call_function(self.load_attr(obj, "__setitem__"),
+                       [key, val], {})
 
   def byte_STORE_SUBSCR(self):
     val, obj, subscr = self.popn(3)
@@ -1821,21 +1569,22 @@ class VirtualMachine(object):
     obj, subscr = self.popn(2)
     self.del_subscr(obj, subscr)
 
-  def byte_BUILD_TUPLE(self, count):
+  def byte_BUILD_TUPLE(self, op):
+    count = op.arg
     elts = self.popn(count)
     self.push(self.build_tuple(elts))
 
-  def byte_BUILD_LIST(self, count):
-    elts = self.popn(count)
+  def byte_BUILD_LIST(self, op):
+    elts = self.popn(op.arg)
     self.push(self.build_list(elts))
 
-  def byte_BUILD_SET(self, count):
+  def byte_BUILD_SET(self, op):
     # TODO(kramm): Not documented in Py2 docs.
-    elts = self.popn(count)
+    elts = self.popn(op.arg)
     self.push(self.build_set(elts))
 
-  def byte_BUILD_MAP(self, size):
-    # size is ignored.
+  def byte_BUILD_MAP(self, op):
+    # op.arg (size) is ignored.
     self.push(self.build_map())
 
   def byte_STORE_MAP(self):
@@ -1844,41 +1593,43 @@ class VirtualMachine(object):
     self.store_subscr(the_map, key, val)
     self.push(the_map)
 
-  def byte_UNPACK_SEQUENCE(self, count):
+  def byte_UNPACK_SEQUENCE(self, op):
     seq = self.pop()
     itr = self.call_function(self.load_attr(seq, "__iter__"), [], {})
     values = []
-    for _ in range(count):
+    for _ in range(op.arg):
       # TODO(ampere): Fix for python 3
       values.append(self.call_function(self.load_attr(itr, "next"),
                                        [], {}))
     for value in reversed(values):
       self.push(value)
 
-  def byte_BUILD_SLICE(self, count):
-    if count == 2:
+  def byte_BUILD_SLICE(self, op):
+    if op.arg == 2:
       x, y = self.popn(2)
       self.push(self.build_slice(x, y))
-    elif count == 3:
+    elif op.arg == 3:
       x, y, z = self.popn(3)
       self.push(self.build_slice(x, y, z))
     else:       # pragma: no cover
-      raise VirtualMachineError("Strange BUILD_SLICE count: %r" % count)
+      raise VirtualMachineError("Strange BUILD_SLICE count: %r" % op.arg)
 
-  def byte_LIST_APPEND(self, count):
+  def byte_LIST_APPEND(self, op):
     # Used by the compiler e.g. for [x for x in ...]
     val = self.pop()
-    the_list = self.peek(count)
+    the_list = self.peek(op.arg)
     self.call_function(self.load_attr(the_list, "append"), [val], {})
 
-  def byte_SET_ADD(self, count):
+  def byte_SET_ADD(self, op):
     # Used by the compiler e.g. for {x for x in ...}
+    count = op.arg
     val = self.pop()
     the_set = self.peek(count)
     self.call_function(self.load_attr(the_set, "add"), [val], {})
 
-  def byte_MAP_ADD(self, count):
+  def byte_MAP_ADD(self, op):
     # Used by the compiler e.g. for {x, y for x, y in ...}
+    count = op.arg
     val, key = self.popn(2)
     the_map = self.peek(count)
     self.call_function(self.load_attr(the_map, "__setitem__"),
@@ -1904,80 +1655,96 @@ class VirtualMachine(object):
     to = self.pop()
     self.print_newline(to)
 
-  def byte_JUMP_IF_TRUE_OR_POP(self, jump):
+  def byte_JUMP_IF_TRUE_OR_POP(self, op):
+    self.store_jump(op.target, self.frame.state)
     self.pop()
 
-  def byte_JUMP_IF_FALSE_OR_POP(self, jump):
+  def byte_JUMP_IF_FALSE_OR_POP(self, op):
+    self.store_jump(op.target, self.frame.state)
     self.pop()
 
-  def byte_JUMP_IF_TRUE(self, jump):  # Not in py2.7
-    pass
+  def byte_JUMP_IF_TRUE(self, op):  # Not in py2.7
+    self.store_jump(op.target, self.frame.state)
 
-  def byte_JUMP_IF_FALSE(self, jump):  # Not in py2.7
-    pass
+  def byte_JUMP_IF_FALSE(self, op):  # Not in py2.7
+    self.store_jump(op.target, self.frame.state)
 
-  def byte_POP_JUMP_IF_TRUE(self, jump):
+  def byte_POP_JUMP_IF_TRUE(self, op):
     self.pop()
+    self.store_jump(op.target, self.frame.state)
 
-  def byte_POP_JUMP_IF_FALSE(self, jump):
+  def byte_POP_JUMP_IF_FALSE(self, op):
     self.pop()
+    self.store_jump(op.target, self.frame.state)
 
-  def byte_JUMP_FORWARD(self, jump):
-    return self.jump(jump)
+  def byte_JUMP_FORWARD(self, op):
+    self.store_jump(op.target, self.frame.state)
 
-  def byte_JUMP_ABSOLUTE(self, jump):
-    return self.jump(jump)
+  def byte_JUMP_ABSOLUTE(self, op):
+    self.store_jump(op.target, self.frame.state)
 
-  def byte_SETUP_LOOP(self, dest):
-    self.push_block("loop", dest)
+  def byte_SETUP_LOOP(self, op):
+    self.push_block("loop", op.target)
 
   def byte_GET_ITER(self):
     self.push(self.load_attr(self.pop(), "__iter__"))
     self.call_function_from_stack(0, [])
 
-  def byte_FOR_ITER(self, jump):
+  def store_jump(self, target, state):
+    self.frame.states[target] = state.merge_into(self.frame.states.get(target))
+
+  def byte_FOR_ITER(self, op):
+    self.store_jump(op.target, self.frame.state.pop_and_discard())
     self.push(self.load_attr(self.top(), "next"))
     try:
       self.call_function_from_stack(0, [])
       # The loop is still running, so just continue with the next instruction.
       return None
     except StopIteration:
-      self.pop()
-      return self.jump(jump)
+      pass
 
   def byte_BREAK_LOOP(self):
     return "break"
 
-  def byte_CONTINUE_LOOP(self, dest):
+  def byte_CONTINUE_LOOP(self, op):
     # This is a trick with the return value.
     # While unrolling blocks, continue and return both have to preserve
     # state as the finally blocks are executed.  For continue, it's
     # where to jump to, for return, it's the value to return.  It gets
     # pushed on the stack for both, so continue puts the jump destination
     # into return_value.
-    self.return_value = dest
+    # TODO(kramm): This probably doesn't work.
+    self.return_value = op.target
     return "continue"
 
-  def byte_SETUP_EXCEPT(self, dest):
-    self.push_block("setup-except", dest)
+  def byte_SETUP_EXCEPT(self, op):
+    # Assume that it's possible to throw the exception at the first
+    # instruction of the code:
+    self.store_jump(op.target,
+                    self.push_abstract_exception(self.frame.state))
+    self.push_block("setup-except", op.target)
 
-  def byte_SETUP_FINALLY(self, dest):
-    self.push_block("finally", dest)
+  def byte_SETUP_FINALLY(self, op):
+    # Emulate finally by connecting the try to the finally block (with
+    # empty reason/why/continuation):
+    self.store_jump(op.target, self.frame.state.push(None))
+    self.push_block("finally", op.target)
 
   def byte_POP_BLOCK(self):
     self.pop_block()
 
-  def byte_RAISE_VARARGS_PY2(self, argc):
+  def byte_RAISE_VARARGS_PY2(self, op):
     """Raise an exception (Python 2 version)."""
     # NOTE: the dis docs are completely wrong about the order of the
     # operands on the stack!
+    argc = op.arg
     exctype = val = tb = None
     if argc == 0:
-      if self.last_exception is None:
+      if self.frame.state.exception is None:
         raise exceptions.ByteCodeTypeError(
             "exceptions must be old-style classes "
             "or derived from BaseException, not NoneType")
-      exctype, val, tb = self.last_exception
+      exctype, val, tb = self.frame.state.exception
     elif argc == 1:
       exctype = self.pop()
     elif argc == 2:
@@ -1991,14 +1758,15 @@ class VirtualMachine(object):
     if isinstance(exctype, BaseException):
       val = exctype
       exctype = type(val)
-    self.last_exception = (exctype, val, tb)
+    self.frame.state = self.frame.state.set_exception(exctype, val, tb)
     if tb:
       return "reraise"
     else:
       return "exception"
 
-  def byte_RAISE_VARARGS_PY3(self, argc):
+  def byte_RAISE_VARARGS_PY3(self, op):
     """Raise an exception (Python 3 version)."""
+    argc = op.arg
     cause = exc = None
     if argc == 2:
       cause = self.pop()
@@ -2007,27 +1775,27 @@ class VirtualMachine(object):
       exc = self.pop()
     return self.do_raise(exc, cause)
 
-  def byte_RAISE_VARARGS(self, argc):
+  def byte_RAISE_VARARGS(self, op):
     if self.python_version[0] == 2:
-      return self.byte_RAISE_VARARGS_PY2(argc)
+      return self.byte_RAISE_VARARGS_PY2(op)
     else:
-      return self.byte_RAISE_VARARGS_PY3(argc)
+      return self.byte_RAISE_VARARGS_PY3(op)
 
   def byte_POP_EXCEPT(self):
     block = self.pop_block()
     if block.type != "except-handler":
       raise VirtualMachineError("popped block is not an except handler")
-    self.unwind_block(block)
+    self.frame.state = self.unwind_block(block, self.frame.state)
 
-  def byte_SETUP_WITH(self, dest):
+  def byte_SETUP_WITH(self, op):
     ctxmgr = self.pop()
     self.push(self.load_attr(ctxmgr, "__exit__"))
     ctxmgr_obj = self.call_function(self.load_attr(ctxmgr, "__enter__"), [])
     if self.python_version[0] == 2:
-      self.push_block("with", dest)
+      self.push_block("with", op.target)
     else:
       assert self.python_version[0] == 3
-      self.push_block("finally", dest)
+      self.push_block("finally", op.target)
     self.push(ctxmgr_obj)
 
   def byte_WITH_CLEANUP(self):
@@ -2038,9 +1806,9 @@ class VirtualMachine(object):
     u = self.top()
     if isinstance(u, str):
       if u in ("return", "continue"):
-        exit_func = self.pop(2)
+        exit_func = self.pop_nth(2)
       else:
-        exit_func = self.pop(1)
+        exit_func = self.pop_nth(1)
       v = self.make_none()
       w = self.make_none()
       u = self.make_none()
@@ -2081,8 +1849,9 @@ class VirtualMachine(object):
         assert self.python_version[0] == 3
         self.push("silenced")
 
-  def byte_MAKE_FUNCTION(self, argc):
+  def byte_MAKE_FUNCTION(self, op):
     """Create a function and push it onto the stack."""
+    argc = op.arg
     if self.python_version[0] == 2:
       name = None
     else:
@@ -2094,8 +1863,9 @@ class VirtualMachine(object):
     fn = self.make_function(name, code, globs, defaults)
     self.push(fn)
 
-  def byte_MAKE_CLOSURE(self, argc):
+  def byte_MAKE_CLOSURE(self, op):
     """Make a function that binds local variables."""
+    argc = op.arg
     if self.python_version[0] == 2:
       # The py3 docs don't mention this change.
       name = None
@@ -2108,32 +1878,34 @@ class VirtualMachine(object):
     fn = self.make_function(name, code, globs, defaults, closure)
     self.push(fn)
 
-  def byte_CALL_FUNCTION(self, arg):
-    return self.call_function_from_stack(arg, [])
+  def byte_CALL_FUNCTION(self, op):
+    return self.call_function_from_stack(op.arg, [])
 
-  def byte_CALL_FUNCTION_VAR(self, arg):
+  def byte_CALL_FUNCTION_VAR(self, op):
     args = self.pop_varargs()
-    return self.call_function_from_stack(arg, args)
+    return self.call_function_from_stack(op.arg, args)
 
-  def byte_CALL_FUNCTION_KW(self, arg):
+  def byte_CALL_FUNCTION_KW(self, op):
     kwargs = self.pop_kwargs()
-    return self.call_function_from_stack(arg, [], kwargs)
+    return self.call_function_from_stack(op.arg, [], kwargs)
 
-  def byte_CALL_FUNCTION_VAR_KW(self, arg):
+  def byte_CALL_FUNCTION_VAR_KW(self, op):
     kwargs = self.pop_kwargs()
     args = self.pop_varargs()
-    return self.call_function_from_stack(arg, args, kwargs)
+    return self.call_function_from_stack(op.arg, args, kwargs)
 
   def byte_YIELD_VALUE(self):
     self.return_value = self.pop()
     return "yield"
 
-  def byte_IMPORT_NAME(self, name):
+  def byte_IMPORT_NAME(self, op):
+    name = self.frame.f_code.co_names[op.arg]
     level, unused_fromlist = self.popn(2)
     self.push(self.import_name(name, level))
     # TODO(kramm): Do something meaningful with "fromlist"?
 
-  def byte_IMPORT_FROM(self, name):
+  def byte_IMPORT_FROM(self, op):
+    name = self.frame.f_code.co_names[op.arg]
     mod = self.top()
     self.push(self.get_module_attribute(mod, name))
 
@@ -2152,36 +1924,15 @@ class VirtualMachine(object):
   def byte_STORE_LOCALS(self):
     self.set_locals_dict_bytecode(self.pop())
 
-  # Removed in py2.7
-  def byte_SET_LINENO(self, lineno):
-    self.frame.f_lineno = lineno
-
   def byte_END_FINALLY(self):
-    # TODO(kramm): The below is that the concrete interpreter did. Do we need
-    # any of that code in the abstract interpretation?
-    # v = self.pop()
-    # if isinstance(v, str):
-    #   why = v
-    #   if why in ("return", "continue"):
-    #     self.return_value = self.pop()
-    #   if why == "silenced":     # PY3
-    #     block = self.pop_block()
-    #     assert block.type == "except-handler"
-    #     self.unwind_block(block)
-    #     why = None
-    # elif v is None:
-    #   why = None
-    # elif issubclass(v, BaseException):
-    #   exctype = v
-    #   val = self.pop()
-    #   tb = self.pop()
-    #   self.last_exception = (exctype, val, tb)
-    #   why = "reraise"
-    # else:     # pragma: no cover
-    #   raise VirtualMachineError("Confused END_FINALLY")
-    # return why
     # TODO(kramm): Return a fitting why
-    self.pop()
+    exc = self.pop()
+    if self.is_none(exc):
+      return
+    else:
+      log.info("Popping exception %r", exc)
+      self.pop()
+      self.pop()
 
   def byte_RETURN_VALUE(self):
     self.frame.return_variable.AddValues(self.pop(), self.current_location)

@@ -33,19 +33,15 @@ class TestExceptions(test_inference.InferenceTest):
         print("caught it!")
       """)
 
-  @unittest.skip("needs exception handling in assert_ok")
   def test_raise_exception(self):
     self.assert_ok("raise Exception('oops')", raises=Exception)
 
-  @unittest.skip("needs exception handling in assert_ok")
   def test_raise_exception_class(self):
     self.assert_ok("raise ValueError", raises=ValueError)
 
-  @unittest.skip("needs exception handling in assert_ok")
   def test_raise_exception_2args(self):
     self.assert_ok("raise ValueError, 'bad'", raises=ValueError)
 
-  @unittest.skip("needs exception handling in assert_ok")
   def test_raise_exception_3args(self):
     self.assert_ok("""\
       from sys import exc_info
@@ -85,7 +81,6 @@ class TestExceptions(test_inference.InferenceTest):
       print("done")
       """)
 
-  @unittest.skip("needs exception handling in assert_ok")
   def test_global_name_error(self):
     self.assert_ok("fooey", raises=NameError)
     self.assert_ok("""\

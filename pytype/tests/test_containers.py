@@ -282,6 +282,24 @@ class ContainerTest(test_inference.InferenceTest):
                                    ((),
                                     self.int))
 
+  def testClassAttr(self):
+    with self.Infer("""
+      class Node(object):
+        children = ()
+
+      def f():
+        n1 = Node()
+        n1.children = [n1]
+        for ch in n1.children:
+          ch.foobar = 3
+        return n1.foobar
+
+      f()
+    """, deep=False, solve_unknowns=False, extract_locals=False) as ty:
+      self.assertHasOnlySignatures(ty.Lookup("f"),
+                                   ((),
+                                    self.int))
+
   def testHeterogeneous(self):
     with self.Infer("""
       def f():
@@ -329,4 +347,4 @@ class ContainerTest(test_inference.InferenceTest):
                                     self.int_int_dict))
 
 if __name__ == "__main__":
-  test_inference.main(debugging=False)
+  test_inference.main()

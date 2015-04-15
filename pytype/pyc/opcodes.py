@@ -84,6 +84,10 @@ class Opcode(object):
     return bool(cls.FLAGS & NO_NEXT)
 
   @classmethod
+  def carry_on_to_next(cls):
+    return not cls.FLAGS & NO_NEXT
+
+  @classmethod
   def store_jump(cls):
     return bool(cls.FLAGS & STORE_JUMP)
 
@@ -99,18 +103,27 @@ class Opcode(object):
   def pops_block(cls):
     return bool(cls.FLAGS & POPS_BLOCK)
 
+  @classmethod
+  def has_arg(cls):
+    return False
+
 
 class OpcodeWithArg(Opcode):
   """An opcode with one argument."""
 
-  __slots__ = ("arg",)
+  __slots__ = ("arg", "pretty_arg")
 
-  def __init__(self, index, line, arg):
+  def __init__(self, index, line, arg, pretty_arg=None):
     super(OpcodeWithArg, self).__init__(index, line)
     self.arg = arg
+    self.pretty_arg = pretty_arg
 
   def __str__(self):
     return "%4d: %s %s" % (self.index, self.__class__.__name__, self.arg)
+
+  @classmethod
+  def has_arg(cls):
+    return True
 
 
 class STOP_CODE(Opcode):
@@ -911,51 +924,95 @@ python3_mapping = {
 }
 
 
-def _dis(data, mapping, varnames=None, names=None, constants=None, cells=None,
-         lines=None, line_offset=None):
+class _LineNumberTableParser(object):
+  """State machine for decoding a Python line number array."""
+
+  def __init__(self, lnotab, firstlineno):
+    assert not len(lnotab) & 1  # lnotab always has an even number of elements
+    self.lnotab = lnotab
+    self.lineno = firstlineno
+    self.addr = 0
+    self.pos = 0
+
+  def get(self, i):
+    """Get the line number for the instruction at the given position.
+
+    This does NOT allow random access. Call with incremental numbers.
+
+    Args:
+      i: A position in the bytecode. i needs to stay constant or increase
+        between calls.
+
+    Returns:
+      The line number corresponding to the position at i.
+    """
+    while i > self.addr and self.pos < len(self.lnotab):
+      self.addr += ord(self.lnotab[self.pos])
+      self.lineno += ord(self.lnotab[self.pos + 1])
+      self.pos += 2
+    return self.lineno
+
+
+def _prettyprint_arg(cls, oparg, co_consts, co_names,
+                     co_varnames, cellvars_freevars):
+  if cls.has_jrel():
+    return oparg
+  elif co_consts and cls.has_const():
+    return repr(co_consts[oparg])
+  elif co_names and cls.has_name():
+    return co_names[oparg]
+  elif co_varnames and cls.has_local():
+    return co_varnames[oparg]
+  elif cellvars_freevars and cls.has_free():
+    return cellvars_freevars[oparg]
+  else:
+    return oparg
+
+
+def _dis(data, mapping,
+         co_varnames=None, co_names=None, co_consts=None, co_cellvars=None,
+         co_freevars=None, co_lnotab=None, co_firstlineno=None):
   """Disassemble a string into a list of Opcode instances."""
   code = []
   size = len(data)
   pos = 0
+  lp = _LineNumberTableParser(co_lnotab, co_firstlineno) if co_lnotab else None
   offset_to_index = {}
   extended_arg = 0
+  if co_cellvars is not None and co_freevars is not None:
+    cellvars_freevars = co_cellvars + co_freevars
+  else:
+    cellvars_freevars = None
   while pos < size:
     opcode = ord(data[pos])
     index = len(code)
     offset_to_index[pos] = index
+    line = lp.get(pos) if lp else 0
     pos += 1
     cls = mapping[opcode]
-    if lines:
-      line = lines.get(pos, 0) + line_offset
-    else:
-      line = 0
-    if cls.FLAGS & HAS_ARGUMENT:
-      oparg = ord(data[pos]) | ord(data[pos+1])<<8 | extended_arg
+    if cls is EXTENDED_ARG:
+      # EXTENDED_ARG modifies the opcode after it, setting bits 16..31 of
+      # its argument.
+      assert not extended_arg, "two EXTENDED_ARGs in a row"
+      extended_arg = ord(data[pos]) << 16 | ord(data[pos+1]) << 24
+    elif cls.FLAGS & HAS_ARGUMENT:
+      oparg = ord(data[pos]) | ord(data[pos+1]) << 8 | extended_arg
+      extended_arg = 0
       pos += 2
-      if cls is EXTENDED_ARG:
-        extended_arg = oparg << 16
-        continue
-      else:
-        extended_arg = 0
       if cls.has_jrel():
         oparg += pos
-      elif constants and cls.has_const():
-        oparg = constants[oparg]
-      elif names and cls.has_name():
-        oparg = names[oparg]
-      elif varnames and cls.has_local():
-        oparg = varnames[oparg]
-      elif cells and cls.has_free():
-        oparg = cells[oparg]
-      op = cls(index, line, oparg)
+      pretty = _prettyprint_arg(cls, oparg, co_consts, co_names, co_varnames,
+                                cellvars_freevars)
+      code.append(cls(index, line, oparg, pretty))
     else:
-      op = cls(index, line)
-    code.append(op)
+      assert not extended_arg, "EXTENDED_ARG in front of opcode without arg"
+      code.append(cls(index, line))
+
   # Map the target of jump instructions to the opcode they jump to, and fill
   # in "next" and "prev" pointers
   for i, op in enumerate(code):
     if op.FLAGS & (HAS_JREL | HAS_JABS):
-      op.arg = offset_to_index[op.arg]
+      op.arg = op.pretty_arg = offset_to_index[op.arg]
       op.target = code[op.arg]
     op.prev = code[i - 1] if i > 0 else None
     op.next = code[i + 1] if i < len(code) - 1 else None
@@ -966,3 +1023,16 @@ def dis(data, python_version, *args, **kwargs):
   assert python_version[0] in (2, 3)
   mapping = python2_mapping if python_version[0] == 2 else python3_mapping
   return _dis(data, mapping, *args, **kwargs)
+
+
+def dis_code(code):
+  return dis(data=code.co_code,
+             python_version=code.python_version,
+             co_varnames=code.co_varnames,
+             co_names=code.co_names,
+             co_consts=code.co_consts,
+             co_cellvars=code.co_cellvars,
+             co_freevars=code.co_freevars,
+             co_lnotab=code.co_lnotab,
+             co_firstlineno=code.co_firstlineno)
+

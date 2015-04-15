@@ -297,4 +297,4 @@ class BuiltinTests(test_inference.InferenceTest):
 
 
 if __name__ == "__main__":
-  test_inference.main(debugging=False)
+  test_inference.main()

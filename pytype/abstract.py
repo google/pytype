@@ -150,7 +150,7 @@ class AtomicAbstractValue(object):
 
   def __init__(self, vm):
     """Basic initializer for all AtomicAbstractValues."""
-    assert hasattr(vm, "current_location")
+    assert hasattr(vm, "program")
     self.vm = vm
     self.mro = []
     AtomicAbstractValue._value_id += 1
@@ -236,17 +236,19 @@ class AtomicAbstractValue(object):
     """
     raise NotImplementedError()
 
-  def call(self, f, args, kws):
+  def call(self, node, f, args, kws):
     """Call this abstract value with the given arguments.
 
     The args and kws arguments may be modified by this function.
 
     Args:
+      node: The CFGNode calling this function
       f: The typegraph.Value containing this function.
       args: Positional arguments for the call (Variables).
       kws: Keyword arguments for the call (Variables).
     Returns:
-      A typegraph.Variable
+      A tuple (cfg.Node, typegraph.Variable). The CFGNode corresponds
+      to the function's "return" statement(s).
     Raises:
       FailedFunctionCall
 
@@ -463,20 +465,21 @@ class SimpleAbstractValue(AtomicAbstractValue):
 
     variable = self.members.get(name)
     if variable:
-      log.debug("Adding choice to %s %s: %d values", name, var.name,
-                len(var.values))
+      old_len = len(variable.values)
       variable.AddValues(var, self.vm.current_location)
+      log.debug("Adding choice(s) to %s: %d new values", name,
+                len(variable.values) - old_len)
     else:
       # TODO(kramm): Under what circumstances can we just reuse var?
       #              (variable = self.members[name] = var)?
+      if name != "__class__":
+        log.debug("Setting %s to the %d values in %r",
+                  name, len(var.values), var)
       long_name = self.name + "." + name
-      long_name_truncated = utils.maybe_truncate(self.name) + "." + name
-      log.debug("Setting %s to %r: %d values", long_name_truncated,
-                var, len(var.values))
       variable = var.AssignToNewVariable(long_name, self.vm.current_location)
       self.members[name] = variable
 
-  def call(self, unused_func, args, kws):
+  def call(self, node, unused_func, args, kws):
     # End up here for:
     #   f = 1
     #   f()  # Can't call an int
@@ -703,24 +706,11 @@ class LazyAbstractValue(SimpleAbstractValue):
     assert callable(resolver)
     self._member_map = member_map
     self._resolver = resolver
-    info_chop = 5  # TODO(pludemann): larger limit?
-    if len(member_map.keys()) > info_chop:
-      log.info(
-          "initializing LazyAbstractValue: [%s, ...]",
-          ", ".join(member_map.keys()[0: info_chop]))
-    else:
-      log.info("initializing LazyAbstractValue: [%s]",
-               ", ".join(sorted(member_map.keys())))
 
   def _load_attribute(self, name):
     """Load the named attribute into self.members."""
     if name not in self.members and name in self._member_map:
       variable = self._resolver(name, self._member_map[name])
-      if name == "__builtins__":
-        # Avoid a very long output line:
-        log.info("Loading lazy member: %s -> ...", name)
-      else:
-        log.info("Loading lazy member: %s -> %r", name, variable)
       assert isinstance(variable, typegraph.Variable)
       self.members[name] = variable
 
@@ -812,7 +802,7 @@ class PyTDSignature(AtomicAbstractValue):
   def set_attribute(self, name, value):
     raise AttributeError()
 
-  def call(self, func, args, kws):
+  def call(self, node, func, args, kws):
     if self.pytd_sig.has_optional:
       # Truncate extraneous params. E.g. when calling f(a, b, ...) as f(1, 2, 3)
       args = args[0:len(self.pytd_sig.params)]
@@ -849,7 +839,7 @@ class PyTDSignature(AtomicAbstractValue):
           v = self.vm.create_pytd_instance_value(t, subst)
           for source_set in source_sets:
             retvar.AddValue(v, source_set + [func], self.vm.current_location)
-    return retvar
+    return node, retvar
 
   def _call_with_values(self, arg_values, kw_values):
     """Try to execute this signature with the given arguments.
@@ -995,7 +985,7 @@ class PyTDFunction(AtomicAbstractValue):
                         [s.property_get(callself, callcls)
                          for s in self.signatures], self.vm)
 
-  def call(self, func, args, kws):
+  def call(self, node, func, args, kws):
     log.debug("Calling function %r: %d signature(s)",
               self.name, len(self.signatures))
     # If we're calling an overloaded pytd function with an unknown as a
@@ -1011,7 +1001,8 @@ class PyTDFunction(AtomicAbstractValue):
       log.debug("Creating unknown return")
       # TODO(kramm): Add proper sources.
       # TODO(kramm): What about mutable parameters?
-      return self.vm.create_new_unknown("<unknown return of " + self.name + ">")
+      return node, self.vm.create_new_unknown(
+          "<unknown return of " + self.name + ">")
 
     # We only take the first signature that matches, and ignore all after it.
     # This is because in the pytds for the standard library, the last
@@ -1024,11 +1015,11 @@ class PyTDFunction(AtomicAbstractValue):
     msg_lines = []
     for sig in self.signatures:
       try:
-        result = sig.call(func, args, kws)
+        new_node, result = sig.call(node, func, args, kws)
       except FailedFunctionCall as e:
         msg_lines.extend(e.explanation_lines)
       else:
-        return result
+        return new_node, result
     self._raise_failed_function_call(
         ["Failed call function %r: signature: %r" %
          (self.name, self.signatures)] +
@@ -1061,9 +1052,9 @@ class BoundPyTDSignature(PyTDSignature):
     self._callself = callself
     self.name = "bound " + function.name
 
-  def call(self, func, args, kws):
+  def call(self, node, func, args, kws):
     return super(BoundPyTDSignature, self).call(
-        func, [self._callself] + args, kws)
+        node, func, [self._callself] + args, kws)
 
   def get_bound_arguments(self):
     return [self._callself]
@@ -1079,8 +1070,6 @@ class Class(object):
 
   def get_attribute(self, name, valself=None, valcls=None):
     """Retrieve an attribute by looking at the MRO of this class."""
-    log.info("Class: Get attr %s from %s %r",
-             name, type(self).__name__, self.name)
     ret = self.vm.program.NewVariable(name)
     add_origins = []
     if valself and valcls:
@@ -1145,8 +1134,6 @@ class PyTDClass(LazyAbstractValue, Class):
     mm = {}
     for val in cls.constants + cls.methods:
       mm[val.name] = val
-    log.info("initializing PyTDClass: %s",
-             cls.name)
     super(PyTDClass, self).__init__(cls.name, mm, self._retrieve_member, vm)
     self.cls = cls
     self.mro = utils.compute_mro(self)
@@ -1169,7 +1156,7 @@ class PyTDClass(LazyAbstractValue, Class):
     # delegate to LazyAbstractValue
     return super(PyTDClass, self).get_attribute(name)
 
-  def call(self, func, args, kws):
+  def call(self, node, func, args, kws):
     value = SimpleAbstractValue("instance of " + self.name, self.vm)
     value.set_attribute(
         "__class__",
@@ -1194,7 +1181,7 @@ class PyTDClass(LazyAbstractValue, Class):
       ret = self.vm.call_function(init, args, kws)
       log.debug("%s.__init__(...) returned %r", self.name, ret)
 
-    return results
+    return node, results
 
   def to_type(self):
     return pytd.NamedType("type")
@@ -1270,7 +1257,7 @@ class InterpreterClass(SimpleAbstractValue, Class):
     # come into play.
     return super(InterpreterClass, self).set_attribute(name, value)
 
-  def call(self, func, args, kws):
+  def call(self, node, func, args, kws):
     value = SimpleAbstractValue("instance of " + self.name, self.vm)
     value.set_attribute("__class__", func.variable)
     variable = self.vm.program.NewVariable(self.name + " instance")
@@ -1280,9 +1267,10 @@ class InterpreterClass(SimpleAbstractValue, Class):
     # TODO(pludemann): Verify that this follows MRO:
     if init:
       log.debug("calling %s.__init__(...)", self.name)
+      # TODO(kramm): This needs to pass through the CFG node.
       ret = self.vm.call_function(init, args, kws)
       log.debug("%s.__init__(...) returned %r", self.name, ret)
-    return variable
+    return node, variable
 
   def get_static_path(self):
     if self.get_name():
@@ -1382,9 +1370,9 @@ class NativeFunction(Function):
   def argcount(self):
     return self.func.func_code.co_argcount
 
-  def call(self, unused_func, args, kws):
+  def call(self, node, unused_func, args, kws):
     # Originate a new variable for each argument and call.
-    return self.func(
+    return node, self.func(
         *[u.AssignToNewVariable(u.name, self.vm.current_location)
           for u in args],
         **{k: u.AssignToNewVariable(u.name, self.vm.current_location)
@@ -1491,14 +1479,15 @@ class InterpreterFunction(Function):
       arg_pos += 1
     return callargs
 
-  def call(self, unused_func, args, kws):
+  def call(self, node, unused_func, args, kws):
     callargs = self._map_args(args, kws)
+    # Might throw vm.RecursionException:
     frame = self.vm.make_frame(self.code, callargs,
                                self.f_globals, self.f_locals, self.closure)
     if self.code.co_flags & loadmarshal.CodeType.CO_GENERATOR:
-      return Generator(frame, self.vm).to_variable(self.name)
+      return node, Generator(frame, self.vm).to_variable(self.name)
     else:
-      return self.vm.run_frame(frame)
+      return self.vm.run_frame(frame, node)
 
   def get_parameter_names(self):
     return list(self.code.co_varnames[:self.code.co_argcount])
@@ -1525,8 +1514,8 @@ class BoundFunction(AtomicAbstractValue):
   def argcount(self):
     return self.underlying.argcount() - 1  # account for self
 
-  def call(self, func, args, kws):
-    return self.underlying.call(func, [self._callself] + args, kws)
+  def call(self, node, func, args, kws):
+    return self.underlying.call(node, func, [self._callself] + args, kws)
 
   def get_bound_arguments(self):
     return [self._callself]
@@ -1547,14 +1536,16 @@ class Generator(AtomicAbstractValue):
   (I.e., the return type of coroutines).
   """
 
+  TYPE_PARAM = "T"  # See class generator in pytd/builtins/__builtin__.pytd
+
   def __init__(self, generator_frame, vm):
     super(Generator, self).__init__(vm)
     self.generator_frame = generator_frame
     self.retvar = None
 
-  def _next(self, value=None):
-    # "send" value to generator:
-    self.generator_frame.push(value or self.vm.make_none())
+  def _next(self, unused_value=None):
+    # TODO(kramm): "send" value to generator:
+    # self.generator_frame.push(value or self.vm.make_none())
     # Run the generator, by pushing its frame and running it:
     return self.vm.resume_frame(self.generator_frame)
 
@@ -1578,14 +1569,15 @@ class Generator(AtomicAbstractValue):
         self.retvar = Nothing(self.vm).to_variable("next()")
     return self.retvar
 
-  def call(self, unused_func, args, kws):
+  def call(self, node, unused_func, args, kws):
     """Call this generator or (more common) its "next" attribute."""
-    return self.get_yielded_type()
+    return node, self.get_yielded_type()
 
   def match_against_type(self, other_type, subst):
-    if other_type == "generator":
+    if (isinstance(other_type, ParameterizedClass) and
+        other_type.cls.name == "generator"):
       return match_var_against_type(self.get_yielded_type(),
-                                    other_type.formal_type_parameters["T"],
+                                    other_type.type_parameters[self.TYPE_PARAM],
                                     subst, self.vm.current_location)
     else:
       log.warn("Matching generator against wrong type (%r)", other_type)
@@ -1611,7 +1603,7 @@ class Nothing(AtomicAbstractValue):
   def set_attribute(self, name, value):
     raise AttributeError("Object %r has no attribute %s" % (self, name))
 
-  def call(self, unused_func, args, kws):
+  def call(self, node, unused_func, args, kws):
     raise ValueError("Object %r is not callable", self)
 
   def to_type(self):
@@ -1713,10 +1705,10 @@ class Unknown(AtomicAbstractValue):
       self.members[name] = v.AssignToNewVariable(self.name + "." + name,
                                                  self.vm.current_location)
 
-  def call(self, unused_func, args, kws):
+  def call(self, node, unused_func, args, kws):
     ret = self.vm.create_new_unknown(self.name + "()", source=self.owner)
     self._calls.append((args, kws, ret))
-    return ret
+    return node, ret
 
   def to_variable(self, name=None):
     v = self.vm.program.NewVariable(self.name or name)

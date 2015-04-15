@@ -1,13 +1,118 @@
 """Objects modelling VM state. (Frames etc.)."""
 
-import collections
 import logging
 
 
 log = logging.getLogger(__name__)
 
 
-FrameState = collections.namedtuple("FrameState", ["block_stack", "data_stack"])
+class FrameState(object):
+  """Immutable state object, for attaching to opcodes."""
+
+  __slots__ = ["block_stack", "data_stack", "node", "exception"]
+
+  def __init__(self, data_stack, block_stack, node, exception):
+    self.data_stack = data_stack
+    self.block_stack = block_stack
+    self.node = node
+    self.exception = exception
+
+  @classmethod
+  def init(cls, node):
+    return FrameState((), (), node, None)
+
+  def __setattribute__(self):
+    raise AttributeError("States are immutable.")
+
+  def push(self, *values):
+    """Push value(s) onto the value stack."""
+    return FrameState(self.data_stack + tuple(values),
+                      self.block_stack,
+                      self.node,
+                      self.exception)
+
+  def pop(self):
+    """Pop a value from the value stack."""
+    value = self.data_stack[-1]
+    return FrameState(self.data_stack[:-1],
+                      self.block_stack,
+                      self.node,
+                      self.exception), value
+
+  def pop_and_discard(self):
+    """Pop a value from the value stack and discard it."""
+    return FrameState(self.data_stack[:-1],
+                      self.block_stack,
+                      self.node,
+                      self.exception)
+
+  def popn(self, n):
+    """Return n values, ordered oldest-to-newest."""
+    if not n:
+      # Not an error: E.g. function calls with no parameters pop zero items
+      return self, ()
+    if len(self.data_stack) < n:
+      raise IndexError("Trying to pop %d values from stack of size %d" %
+                       (n, len(self.data_stack)))
+    values = self.data_stack[-n:]
+    return FrameState(self.data_stack[:-n],
+                      self.block_stack,
+                      self.node,
+                      self.exception), values
+
+  def push_block(self, block):
+    """Push a block on to the block stack."""
+    return FrameState(self.data_stack,
+                      self.block_stack + (block,),
+                      self.node,
+                      self.exception)
+
+  def pop_block(self):
+    """Pop a block from the block stack."""
+    block = self.block_stack[-1]
+    return FrameState(self.data_stack,
+                      self.block_stack[:-1],
+                      self.node,
+                      self.exception), block
+
+  def change_cfg_node(self, node):
+    if self.node is node:
+      return self
+    return FrameState(self.data_stack,
+                      self.block_stack,
+                      node,
+                      self.exception)
+
+  def connect_to_cfg_node(self, node):
+    self.node.ConnectTo(node)
+    return self.change_cfg_node(node)
+
+  def advance_cfg_node(self):
+    return FrameState(self.data_stack,
+                      self.block_stack,
+                      self.node.ConnectNew(self.node.name),
+                      self.exception)
+
+  def merge_into(self, other):
+    """Merge with another state."""
+    if other is None:
+      return self
+    assert len(self.data_stack) == len(other.data_stack)
+    assert len(self.block_stack) == len(other.block_stack)
+    if self.node is not other.node:
+      self.node.ConnectTo(other.node)
+      return FrameState(self.data_stack,
+                        self.block_stack,
+                        other.node,
+                        self.exception)
+    # TODO(kramm): Also merge data stack
+    return self
+
+  def set_exception(self, exc_type, value, tb):
+    return FrameState(self.data_stack,
+                      self.block_stack,
+                      self.node.ConnectNew(self.node.name),
+                      (exc_type, value, tb))
 
 
 class Frame(object):
@@ -26,13 +131,13 @@ class Frame(object):
     f_builtins: Similar for builtins.
     f_back: The frame above self on the stack.
     f_lineno: The first line number of the code object.
-    f_lasti: The instruction pointer. Despite its name (which matches actual
-    python frames) this points to the next instruction that will be executed.
+    vm: The VirtualMachine instance we belong to.
+    states: A mapping from opcodes to FrameState objects.
+    cells: local variables bound in a closure, or used in a closure.
     block_stack: A stack of blocks used to manage exceptions, loops, and
     "with"s.
     data_stack: The value stack that is used for instruction operands.
     generator: None or a Generator object if this frame is a generator frame.
-    cfgnode: A mapping from pycfg BasicBlocks to typegraph CFGNodes.
     return_nodes: A list of nodes that return from the function. This is used to
       connect the next node in the CFG properly.
     return_values: A set of (return value, location) pairs that will be merged
@@ -57,27 +162,21 @@ class Frame(object):
     """
     self.vm = vm
     self.f_code = f_code
+    self.states = {}
     self.f_globals = f_globals
     self.f_locals = f_locals
     self.f_back = f_back
-    if f_back:
+    if f_back and f_back.f_builtins:
       self.f_builtins = f_back.f_builtins
     else:
       builtins_pu, = f_globals.get_attribute("__builtins__").values
       self.f_builtins = builtins_pu.data
     self.f_lineno = f_code.co_firstlineno
-    self.f_lasti = 0
-    self.current_block = None
     self.cells = {}
     self.generator = None
-    self.cfgnode = {}
-    self.return_nodes = []
+
     self.return_variable = self.vm.program.NewVariable(
         "return(frame:" + f_code.co_name + ")")
-    # The stack holding exception and generator handling information
-    self.block_stack = []
-    # The stack holding input and output of bytecode instructions
-    self.data_stack = []
 
     # A closure g communicates with its outer function f through two
     # fields in CodeType (both of which are tuples of strings):
@@ -89,8 +188,6 @@ class Frame(object):
     # always the parameters), but won't otherwise.
     # Cells 0 .. num(cellvars)-1 : cellvar; num(cellvars) .. end : freevar
     assert len(f_code.co_freevars) == len(closure or [])
-    log.info("co_cellvars: %r", f_code.co_cellvars)
-    log.info("co_freevars: %r", f_code.co_freevars)
     self.cells = [self.vm.program.NewVariable(name)
                   for name in f_code.co_cellvars]
     self.cells.extend(closure or [])
@@ -103,46 +200,7 @@ class Frame(object):
         else:
           self.f_locals.set_attribute(name, value)
 
-  def store_callargs(self, d):
-    self.f_locals.update(d)
-
-  def save_state(self):
-    return FrameState(self.block_stack[:], self.data_stack[:])
-
-  def restore_state(self, state):
-    self.block_stack = state.block_stack[:]
-    self.data_stack = state.data_stack[:]
-
-  def push(self, *vals):
-    """Push values onto the value stack."""
-    self.data_stack.extend(vals)
-
   def __repr__(self):     # pragma: no cover
     return "<Frame at 0x%08x: %r @ %d>" % (
         id(self), self.f_code.co_filename, self.f_lineno
     )
-
-  def line_number(self):
-    """Get the current line number the frame is executing."""
-    # TODO(kramm): Accodrding to pludemann@, line_number() sometimes has an
-    #              off-by-one error.
-    # We don't keep f_lineno up to date, so calculate it based on the
-    # instruction address and the line number table.
-    lnotab = self.f_code.co_lnotab
-    byte_increments = map(ord, lnotab[0::2])
-    line_increments = map(ord, lnotab[1::2])
-
-    byte_num = 0
-    line_num = self.f_code.co_firstlineno
-
-    # TODO(pludemann): there might be a bug in this code -- it seems to have an
-    #                  off-by-one error sometimes.  Also, see
-    #                  pycfg.BlockTable.get_line() for a faster way (also
-    #                  sometimes with an off-by-one error).
-    for byte_incr, line_incr in zip(byte_increments, line_increments):
-      byte_num += byte_incr
-      if byte_num > self.f_lasti:
-        break
-      line_num += line_incr
-
-    return line_num
