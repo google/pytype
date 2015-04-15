@@ -14,12 +14,14 @@ HAS_NARGS = 128  # stores number of args + kwargs
 HAS_ARGUMENT = 256  # all opcodes >= 90
 NO_NEXT = 512  # doesn't execute the following opcode
 STORE_JUMP = 1024  # only stores a jump, doesn't actually execute it
+PUSHES_BLOCK = 2048  # starts a block (while, try, finally, with, etc.)
+POPS_BLOCK = 4096  # ends a block
 
 
 class Opcode(object):
   """An opcode without arguments."""
 
-  __slots__ = ("line", "index", "prev", "next", "target")
+  __slots__ = ("line", "index", "prev", "next", "target", "block_target")
   FLAGS = 0
 
   def __init__(self, index, line):
@@ -84,6 +86,18 @@ class Opcode(object):
   @classmethod
   def store_jump(cls):
     return bool(cls.FLAGS & STORE_JUMP)
+
+  @classmethod
+  def does_jump(cls):
+    return cls.has_jump() and not cls.store_jump()
+
+  @classmethod
+  def pushes_block(cls):
+    return bool(cls.FLAGS & PUSHES_BLOCK)
+
+  @classmethod
+  def pops_block(cls):
+    return bool(cls.FLAGS & POPS_BLOCK)
 
 
 class OpcodeWithArg(Opcode):
@@ -363,7 +377,8 @@ class BREAK_LOOP(Opcode):
 
 
 class WITH_CLEANUP(Opcode):
-  FLAGS = HAS_JUNKNOWN
+  # This opcode changes the block stack, but it should never change its depth.
+  FLAGS = HAS_JUNKNOWN  # might call __exit__
   __slots__ = ()
 
 
@@ -391,6 +406,7 @@ class YIELD_VALUE(Opcode):
 
 
 class POP_BLOCK(Opcode):
+  FLAGS = POPS_BLOCK
   __slots__ = ()
 
 
@@ -553,17 +569,17 @@ class CONTINUE_LOOP(OpcodeWithArg):  # Acts as jump
 
 
 class SETUP_LOOP(OpcodeWithArg):
-  FLAGS = HAS_JREL|HAS_ARGUMENT|STORE_JUMP
+  FLAGS = HAS_JREL|HAS_ARGUMENT|STORE_JUMP|PUSHES_BLOCK
   __slots__ = ()
 
 
 class SETUP_EXCEPT(OpcodeWithArg):
-  FLAGS = HAS_JREL|HAS_ARGUMENT|STORE_JUMP
+  FLAGS = HAS_JREL|HAS_ARGUMENT|STORE_JUMP|PUSHES_BLOCK
   __slots__ = ()
 
 
 class SETUP_FINALLY(OpcodeWithArg):
-  FLAGS = HAS_JREL|HAS_ARGUMENT|STORE_JUMP
+  FLAGS = HAS_JREL|HAS_ARGUMENT|STORE_JUMP|PUSHES_BLOCK
   __slots__ = ()
 
 
@@ -643,7 +659,7 @@ class CALL_FUNCTION_VAR_KW(OpcodeWithArg):  # Arg: #args + (#kwargs << 8)
 
 
 class SETUP_WITH(OpcodeWithArg):
-  FLAGS = HAS_JREL|HAS_ARGUMENT|STORE_JUMP
+  FLAGS = HAS_JREL|HAS_ARGUMENT|STORE_JUMP|PUSHES_BLOCK
   __slots__ = ()
 
 

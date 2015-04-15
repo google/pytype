@@ -71,7 +71,58 @@ class Block(object):
     return self.code.__iter__()
 
 
-def split_bytecode(bytecode):
+def add_pop_block_targets(bytecode):
+  """Modifies bytecode so that each POP_BLOCK has a block_target.
+
+  This is to achieve better initial ordering of try/except and try/finally code.
+  try:
+    i = 1
+    a[i]
+  except IndexError:
+    return i
+  By connecting a CFG edge from the end of the block (after the "a[i]") to the
+  except handler, our basic block ordering algorithm knows that the except block
+  needs to be scheduled last, whereas if there only was an edge before the
+  "i = 1", it would be able to schedule it too early and thus encounter an
+  undefined variable. This is only for ordering. The actual analysis of the
+  code happens later, in vm.py.
+
+  Args:
+    bytecode: An array of bytecodes.
+  """
+  if not bytecode:
+    return
+
+  for op in bytecode:
+    op.block_target = None
+
+  todo = [(bytecode[0], ())]  # unordered queue of (position, block_stack)
+  seen = set()
+  while todo:
+    op, block_stack = todo.pop()
+    if op in seen:
+      continue
+    seen.add(op)
+
+    # Compute the block stack
+    if isinstance(op, opcodes.POP_BLOCK):
+      assert block_stack, "POP_BLOCK without block."
+      op.block_target = block_stack[-1].target
+      block_stack = block_stack[0:-1]  # pop one block
+    elif op.pushes_block():
+      assert op.target, "%s without target" % op.name
+      # We push the entire opcode onto the block stack, for better debugging.
+      block_stack += (op,)
+
+    # Propagate the state to all opcodes reachable from here.
+    if not op.no_next():
+      assert op.next, "Bad instruction at end of bytecode."
+      todo.append((op.next, block_stack))
+    if op.does_jump() and op.target:
+      todo.append((op.target, block_stack))
+
+
+def _split_bytecode(bytecode):
   """Given a sequence of bytecodes, return basic blocks.
 
   This will split the code at "basic block boundaries". These occur at
@@ -90,8 +141,8 @@ def split_bytecode(bytecode):
   code = []
   for op in bytecode:
     code.append(op)
-    does_jump = op.has_jump() and not op.store_jump()
-    if op.no_next() or does_jump or op.next is None or op.next in targets:
+    if (op.no_next() or op.does_jump() or op.pops_block() or
+        op.next is None or op.next in targets):
       blocks.append(Block(code))
       code = []
   return blocks
@@ -109,7 +160,7 @@ def compute_order(bytecode):
   Returns:
     A list of Block instances.
   """
-  blocks = split_bytecode(bytecode)
+  blocks = _split_bytecode(bytecode)
   first_op_to_block = {block.code[0]: block for block in blocks}
   for i, block in enumerate(blocks):
     next_block = blocks[i + 1] if i < len(blocks) - 1 else None
@@ -118,6 +169,8 @@ def compute_order(bytecode):
       block.connect_outgoing(next_block)
     if last_op.target:
       block.connect_outgoing(first_op_to_block[last_op.target])
+    if last_op.block_target:
+      block.connect_outgoing(first_op_to_block[last_op.block_target])
   return utils.order_nodes(blocks)
 
 
@@ -135,4 +188,5 @@ def order_code(co):
   """
   bytecodes = opcodes.dis(data=co.co_code, python_version=co.python_version,
                           lines=co.co_lnotab, line_offset=co.co_firstlineno)
+  add_pop_block_targets(bytecodes)  # TODO(kramm): move into pyc/opcodes.py?
   return OrderedCode(co, compute_order(bytecodes), co.python_version)
