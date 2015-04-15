@@ -1,9 +1,12 @@
 """Test for running typegraphvm.py against pytree.py."""
 
+import unittest
+
 from pytype.pytd import utils
 from pytype.tests import test_inference
 
 
+@unittest.skip("TODO(kramm): Flaky.")
 class PyTreeTests(test_inference.InferenceTest):
 
   def testDeep(self):
