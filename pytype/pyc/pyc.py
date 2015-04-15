@@ -76,6 +76,17 @@ def parse_pyc_string(data):
   return parse_pyc_stream(StringIO.StringIO(data))
 
 
+class AdjustFilename(object):
+  """Visitor for changing co_filename in a code object."""
+
+  def __init__(self, filename):
+    self.filename = filename
+
+  def visit_code(self, code):
+    code.co_filename = self.filename
+    return code
+
+
 def compile_src(src, python_version, filename=None):
   """Compile a string to pyc, and then load and parse the pyc.
 
@@ -90,7 +101,7 @@ def compile_src(src, python_version, filename=None):
   pyc_data = compile_src_string_to_pyc_string(src, python_version)
   code = parse_pyc_string(pyc_data)
   assert code.python_version == python_version
-  code.co_filename = filename
+  visit(code, AdjustFilename(filename))
   return code
 
 

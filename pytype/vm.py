@@ -456,8 +456,9 @@ class VirtualMachine(object):
     if self.frame.f_code.co_filename:
       module_name = ".".join(re.sub(
           r"\.py$", "", self.frame.f_code.co_filename).split("/")[-2:])
-      log.info("%s | index: %d, module: %s line: %d",
-               indent, op.index, module_name, op.line)
+      name = self.frame.f_code.co_name
+      log.info("%s | index: %d, %r, module: %s line: %d",
+               indent, op.index, name, module_name, op.line)
     else:
       log.info("%s | index: %d, line: %d",
                indent, op.index, op.line)
