@@ -1,6 +1,7 @@
 # TODO(pludemann): The list of missing attributes and methods is probably
 #                  incorrect and needs to be updated with automation.
-
+# TODO(pludemann): Needs to be carefully audited - there are some known errors
+#                  (which are marked with TODO) but not exhaustively
 def convert(gr, raw_node) -> object
 def generate_matches(patterns, nodes) -> generator
 def type_repr(type_num) -> object
@@ -12,7 +13,7 @@ def type_repr(type_num) -> object
 #   for m in sorted(inspect.getmembers(cls)):  # optionally add param inspect.ismethod
 #      print cls.__name__, m
 
-class Base(object):
+class Base:
     # children = tuple     # TODO(pludemann): missing
     # parent = object      # TODO(pludemann): missing
     # type = object        # TODO(pludemannn): missing
@@ -31,33 +32,33 @@ class Base(object):
     def __eq__(self, other) -> NotImplementedType or bool
     def __ne__(self, other) -> NotImplementedType or bool
     def __str__(self) -> str
-    def changed(self) -> NoneType  # TODO(pludemanN): shouldn't return: list<object> or NoneType
-    def changed(self: Leaf or Node) -> NoneType
+    # def changed(self) -> NoneType  # TODO(pludemann): missing
+    # def changed(self: Leaf or Node) -> NoneType  # TODO(pludemann): missing
     def depth(self) -> int
     def descend_to(self, indexes) -> Base
-    # def get_lineno(self) -> int  # TODO(pludemann): missing
+    def get_lineno(self) -> NoneType  # TODO(pludemann): def get_lineno(self) -> int
     # def get_prefix(self) -> ...  # TODO(pludemann): add?
-    def get_suffix(self) -> str
-    def label_nodes(self, indexes: nothing) -> list<object> or NoneType
+    # def get_suffix(self) -> str  # TODO(pludemann): missing
+    def label_nodes(self, indexes) -> NoneType
     def leaves(self) -> generator
-    def remove(self) -> object
-    def replace(self, new: list<object> or listiterator<object>) -> NoneType  # TODO(pludemann): shouldn't return: list<object> or NoneType
+    def remove(self) -> NoneType  # TODO(pludemann): def remove(self) -> int
+    # def replace(self, new: list<object> or listiterator<object>) -> NoneType  # TODO(pludemann): missing
     def set_prefix(self, prefix) -> NoneType  # TODO(pludemann): shouldn't return list<object> or NoneType
 
-class BasePattern(object):
+class BasePattern:
     # content = None
     # name = None
     # type = None
     # type_repr: property
     #  __new__
-    def __repr__(self) -> str
+    # def __repr__(self) -> str  # TODO(pludemann): missing
     # def type_repr ... property
     def generate_matches(self, nodes) -> generator
     def match(self: BasePattern or LeafPattern, node, results: dict<NoneType, object>) -> bool
     def match_seq(self, nodes, results: dict<NoneType, object>) -> bool
     def optimize(self) -> BasePattern
 
-class Leaf(Base):
+class Leaf:  # TODO(pludemann): should be class Leafe(Base):
     # Leaf ('_prefix', '')
     # Leaf ('children', ())
     # Leaf ('column', 0)
@@ -83,13 +84,13 @@ class Leaf(Base):
     # ('remove', <unbound method Leaf.remove>)  inherited
     # ('replace', <unbound method Leaf.replace>)  inherited
     # ('set_prefix', <unbound method Leaf.set_prefix>)  inherited
-    def __init__(self, type: float or int or long, value) -> NoneType
-    def __init__(self, type: float or int or long, value, context, prefix: buffer or str or unicode, fixers_applied: dict<object, object> or list<object>) -> NoneType
-    def __repr__(self) -> str
+    def __init__(self, type: float or int or long, value, context, prefix, fixers_applied: dict<slice, object>) -> NoneType
+    def __init__(self, type: float or int or long, value, context) -> NoneType
+    # def __repr__(self) -> str  # TODO(pludemann): missing
     # def __unicode__(self) -> ...  # TODO(pludemann)
     def _eq(self, other) -> bool
-    def _prefix_getter(self) -> buffer or str or unicode
-    def _prefix_setter(self, prefix: buffer or str or unicode) -> NoneType
+    def _prefix_getter(self) -> object  # TODO(pludemann): def _prefix_getter(self) -> buffer or str or unicode
+    def _prefix_setter(self, prefix) -> NoneType
     def leaves(self) -> generator
     def post_order(self) -> generator
     def pre_order(self) -> generator
@@ -100,8 +101,7 @@ class Leaf(Base):
     # def insert_child(self, i, child):  TODO(pludemann): missing
     # def set_child(self, i, child):  TODO(pludemann): missing
 
-
-class LeafPattern(BasePattern):
+class LeafPattern:  # TODO(pludemann): class LeafPattern(BasePattern):
     # ('__init__', <unbound method LeafPattern.__init__>)
     # ('__repr__', <unbound method LeafPattern.__repr__>)
     # ('_submatch', <unbound method LeafPattern._submatch>)
@@ -110,11 +110,10 @@ class LeafPattern(BasePattern):
     # ('match_seq', <unbound method LeafPattern.match_seq>)
     # ('optimize', <unbound method LeafPattern.optimize>)
     def __init__(self, type: float or int or long, content, name: NoneType) -> NoneType
-    def __init__(self, type: float or int or long, content, name) -> NoneType
     def _submatch(self, node, results) -> NotImplementedType or bool
     def match(self, node, results: dict<NoneType, object>) -> bool
 
-class NegatedPattern(BasePattern):
+class NegatedPattern:  # TODO(pludemann): class NegatedPattern(BasePattern):
     # NegatedPattern ('content', None)
     # NegatedPattern ('name', None)
     # NegatedPattern ('type', None)
@@ -130,7 +129,7 @@ class NegatedPattern(BasePattern):
     def match(self, node) -> bool
     def match_seq(self, nodes) -> bool
 
-class Node(Base):
+class Node:  # TODO(pludemann): class Node(Base):
     # ('children', ())
     # ('next_sibling', property)
     # ('parent', None)
@@ -166,14 +165,17 @@ class Node(Base):
     # ('replace', <unbound method Node.replace>)
     # ('set_child', <unbound method Node.set_child>)
     # ('set_prefix', <unbound method Node.set_prefix>)
-    def __init__(self, type: float or int or long, children) -> NoneType
-    def __init__(self, type: float or int or long, children, context, prefix, fixers_applied: dict<object, object> or list<object>) -> NoneType
-    def __repr__(self) -> str
+    # def __repr__(self) -> str  # TODO(pludemann): missing
+    def __init__(self, type: float or int or long, children, context, prefix, fixers_applied: dict<slice, dict<?, ?>>) -> NoneType
+    def __init__(self, type: NoneType or float or int or long, children: list<Node>, fixers_applied: NoneType or dict<slice, object>) -> NoneType
+    def __init__(self, type: float or int or long, children, context) -> NoneType
     def _eq(self, other) -> bool
     def _prefix_getter(self) -> object
     def _prefix_setter(self, prefix) -> NoneType
-    def append_child(self, child) -> NoneType
-    def insert_child(self, i: bool or int, child) -> NoneType
+    def append_child(self, child: Node) -> NoneType
+    def changed(self: Base or Leaf or Node) -> NoneType
+    def clone(self) -> Node
+    def insert_child(self, i, child) -> NoneType  # TODO(pludemann): def insert_child(self, i: bool or int, child) -> NoneType
     def post_order(self) -> generator
     def pre_order(self) -> generator
     def set_child(self, i: bool or int, child) -> NoneType
@@ -191,9 +193,9 @@ class NodePattern:
     # ('match', <unbound method NodePattern.match>)
     # ('match_seq', <unbound method NodePattern.match_seq>)
     # ('optimize', <unbound method NodePattern.optimize>)
-    def __init__(self) -> NoneType
+    def __init__(self, name) -> NoneType
     def __init__(self, type: float or int or long, content, name) -> NoneType
-    def _submatch(self, node, results) -> bool
+    def _submatch(self, node, results: dict<object, object>) -> bool
 
 class WildcardPattern:
     # WildcardPattern ('content', None)
@@ -209,12 +211,13 @@ class WildcardPattern:
     # ('match', <unbound method WildcardPattern.match>)
     # ('match_seq', <unbound method WildcardPattern.match_seq>)
     # ('optimize', <unbound method WildcardPattern.optimize>)
-    def __init__(self, content: tuple<dict<?, ?> or list<?> or tuple<?>>, min: float or int or long, max: float or int or long, name) -> NoneType
-    def _bare_name_matches(self, nodes: dict<object, object> or list<object>) -> tuple<dict<object, object> or int>
+    def __init__(self, content: nothing, min: float or int or long, max: float or int or long, name) -> NoneType
+    def __init__(self, content: tuple<object> or tupleiterator<object>, min: float or int or long, max: float or int or long, name) -> NoneType
+    def _bare_name_matches(self, nodes: nothing) -> tuple<int or dict<object, object>>
     def _iterative_matches(self, nodes) -> generator
     def _recursive_matches(self, nodes, count) -> generator
     def generate_matches(self, nodes) -> generator
-    def match(self, node, results: dict<, object>) -> bool
-    def match_seq(self, nodes: list<object>, results: dict<, object>) -> bool
+    def match(self, node, results: dict<nothing, object>) -> bool
     def match_seq(self, nodes, results) -> bool
+    def match_seq(self, nodes: list<object>, results: dict<nothing, object>) -> bool
     def optimize(self) -> object

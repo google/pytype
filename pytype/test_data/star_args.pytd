@@ -1,3 +1,0 @@
-# TODO(pludemann): verify this when star_args.py is working
-def bar() -> NoneType or int
-def foo() -> NoneType or int
