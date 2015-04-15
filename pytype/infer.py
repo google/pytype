@@ -58,6 +58,7 @@ class CallTracer(vm.VirtualMachine):
 
   def analyze_method(self, name, methodvar, main_node):
     assert self.current_location == main_node
+    log.info("Analyzing %s", name)
     for method in methodvar.data:
       if isinstance(method, (abstract.Function, abstract.BoundFunction)):
         args = [self.create_argument(name, i)

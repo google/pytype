@@ -302,6 +302,26 @@ class TestGenerators(test_inference.InferenceTest):
       print(Thing().boom())
       """)
 
+  def test_pass_through_args(self):
+    with self.Infer("""
+      def f(a, b):
+        return a * b
+      def g(*args, **kwargs):
+        return f(*args, **kwargs)
+      g(1, 2)
+    """, deep=False, solve_unknowns=False, extract_locals=False) as ty:
+      self.assertHasReturnType(ty.Lookup("g"), self.int)
+
+  def test_pass_through_kwargs(self):
+    with self.Infer("""
+      def f(a, b):
+        return a * b
+      def g(*args, **kwargs):
+        return f(*args, **kwargs)
+      g(a=1, b=2)
+    """, deep=False, solve_unknowns=False, extract_locals=False) as ty:
+      self.assertHasReturnType(ty.Lookup("g"), self.int)
+
 
 if __name__ == "__main__":
   test_inference.main()
