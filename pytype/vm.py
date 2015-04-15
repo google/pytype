@@ -17,7 +17,6 @@ program execution.
 import collections
 import linecache
 import logging
-import operator
 import re
 import repr as reprlib
 import sys
@@ -130,45 +129,6 @@ class VirtualMachine(object):
     self.vmbuiltins["isinstance"] = self.isinstance
     self._cache_linestarts = {}  # maps frame.f_code => list of (offset, lineno)
 
-    # Unary operators: positive, negative, invert, convert, and "not"
-    self.unary_operators = dict(
-        NOT=operator.not_,
-    )
-    for op, magic in slots.UnaryOperatorMapping().items():
-      self.unary_operators[op] = self.magic_unary_operator(magic)
-
-    # Binary operators. __add__, __radd__ etc.
-    self.binary_operators = {
-        op: self.magic_binary_operator(magic)
-        for op, magic in slots.BinaryOperatorMapping().items()}
-
-    # __eq__, __lt__ etc. Also see FALLBACKS below.
-    # The indexes of these correspond to COMPARE_OPS in pytd/slots.py.
-    # (enum cmp_op in Include/opcode.h)
-    self.compare_operators = [
-        # overwritten below:
-        operator.lt,
-        operator.le,
-        operator.eq,
-        operator.ne,
-        operator.gt,
-        operator.ge,
-        # overwritten in typegraphvm:
-        lambda x, y: x in y,
-        lambda x, y: x not in y,
-        lambda x, y: x is y,
-        lambda x, y: x is not y,
-        lambda x, y: issubclass(x, Exception) and issubclass(x, y),
-    ]
-
-    for cmp_op, magic in slots.CompareFunctionMapping().items():
-      self.compare_operators[cmp_op] = self.magic_binary_operator(magic)
-
-    # __iadd__, __ipow__ etc.
-    self.inplace_operators = {
-        op: self.magic_binary_operator(magic)
-        for op, magic in slots.InplaceOperatorMapping().items()
-    }
     self.program = typegraph.Program()
 
     self.root_cfg_node = self.program.NewCFGNode("root")
@@ -206,13 +166,6 @@ class VirtualMachine(object):
     # Do not do the following because all modules must be explicitly imported.
     # self._set_vmbuiltin("module", self.builtins_pytd.modules)
 
-    self.compare_operators[slots.CMP_IS] = self.cmp_is
-    self.compare_operators[slots.CMP_IS_NOT] = self.cmp_is_not
-    self.compare_operators[slots.CMP_NOT_IN] = self.cmp_not_in
-    self.compare_operators[slots.CMP_IN] = self.cmp_in
-    self.compare_operators[slots.CMP_EXC_MATCH] = self.cmp_exc_match
-    self.unary_operators["NOT"] = self.not_op
-
   def run_instruction(self, op, state):
     """Run a single bytecode instruction.
 
@@ -231,21 +184,14 @@ class VirtualMachine(object):
     if log.isEnabledFor(logging.INFO):
       self.log_opcode(op, state)
     try:
-      if op.name.startswith("UNARY_"):
-        why = self.unary_operator(op.name[6:])
-      elif op.name.startswith("BINARY_"):
-        why = self.binary_operator(op.name[7:])
-      elif op.name.startswith("INPLACE_"):
-        why = self.inplace_operator(op.name[8:])
-      elif "SLICE_" in op.name:
-        why = self.slice_operator(op.name)
+      # dispatch
+      bytecode_fn = getattr(self, "byte_%s" % op.name, None)
+      if bytecode_fn is None:
+        raise VirtualMachineError("Unknown opcode: %s" % op.name)
+      if op.has_arg():
+        why = bytecode_fn(op)
       else:
-        # dispatch
-        bytecode_fn = getattr(self, "byte_%s" % op.name, None)
-        if op.has_arg():
-          why = bytecode_fn(op)
-        else:
-          why = bytecode_fn()
+        why = bytecode_fn()
     except StopIteration:
       # TODO(kramm): Use abstract types for this.
       self.frame.state = self.frame.state.set_exception(
@@ -310,11 +256,6 @@ class VirtualMachine(object):
       return node, frame.return_variable
     return self.join_cfg_nodes(return_nodes), frame.return_variable
 
-  def magic_unary_operator(self, name):
-    def magic_unary_operator_wrapper(x):
-      return self.call_function(self.load_attr(x, name), [], {})
-    return magic_unary_operator_wrapper
-
   reversable_operators = set([
       "__add__", "__sub__", "__mul__",
       "__div__", "__truediv__", "__floordiv__",
@@ -327,22 +268,6 @@ class VirtualMachine(object):
     if name in VirtualMachine.reversable_operators:
       return "__r" + name[2:]
     return None
-
-  FALLBACKS = {
-      "__lt__": operator.lt,
-      "__le__": operator.le,
-      "__gt__": operator.gt,
-      "__ge__": operator.ge,
-      "__eq__": operator.eq,
-      "__ne__": operator.ne,
-  }
-  # Native types don't have attributes for inplace operators (for example,
-  # "x".__iadd__ doesn't work). So add fallbacks for all of them.
-  FALLBACKS.update({
-      name: getattr(operator, name)
-      for name in dir(operator)
-      if name.startswith("__i")
-  })
 
   @property
   def current_location(self):
@@ -475,23 +400,10 @@ class VirtualMachine(object):
 
   # Operators
 
-  def unary_operator(self, op):
-    x = self.pop()
-    self.push(self.unary_operators[op](x))
-
-  def binary_operator(self, op):
-    x, y = self.popn(2)
-    self.push(self.binary_operators[op](x, y))
-
-  def inplace_operator(self, op):
-    x, y = self.popn(2)
-    self.push(self.inplace_operators[op](x, y))
-
-  def slice_operator(self, op):  # pylint: disable=invalid-name
-    """Apply a slice operator (SLICE_0...SLICE_3)."""
+  def pop_slice_and_obj(self, count):
+    """Pop a slice from the data stack. Used by slice opcodes (SLICE_0 etc.)."""
     start = 0
     end = None      # we will take this to mean end
-    op, count = op[:-2], int(op[-1])  # "SLICE_1" -> op="SLICE", count=1
     if count == 1:
       start = self.pop()
     elif count == 2:
@@ -499,21 +411,28 @@ class VirtualMachine(object):
     elif count == 3:
       end = self.pop()
       start = self.pop()
-    l = self.pop()
+    obj = self.pop()
     if end is None:
-      end = self.call_function(self.load_attr(l, "__len__"), [], {})
-    if op.startswith("STORE_"):
-      self.call_function(self.load_attr(l, "__setitem__"),
-                         [self.build_slice(start, end, 1), self.pop()],
-                         {})
-    elif op.startswith("DELETE_"):
-      self.call_function(self.load_attr(l, "__delitem__"),
-                         [self.build_slice(start, end, 1)],
-                         {})
-    else:
-      self.push(self.call_function(self.load_attr(l, "__getitem__"),
-                                   [self.build_slice(start, end, 1)],
-                                   {}))
+      # TODO(kramm): Does Python do this, too?
+      end = self.call_function(self.load_attr(obj, "__len__"), [], {})
+    return self.build_slice(start, end, 1), obj
+
+  def store_slice(self, count):
+    slice_obj, obj = self.pop_slice_and_obj(count)
+    new_value = self.pop()
+    self.call_function(self.load_attr(obj, "__setitem__"),
+                       [slice_obj, new_value], {})
+
+  def delete_slice(self, count):
+    slice_obj, obj = self.pop_slice_and_obj(count)
+    self.call_function(self.load_attr(obj, "__delitem__"),
+                       [slice_obj], {})
+
+  def get_slice(self, count):
+    slice_obj, obj = self.pop_slice_and_obj(count)
+    ret = self.call_function(self.load_attr(obj, "__getitem__"),
+                             [slice_obj], {})
+    self.push(ret)
 
   def do_raise(self, exc, cause):
     """Raise an exception. Used by byte_RAISE_VARARGS."""
@@ -570,24 +489,6 @@ class VirtualMachine(object):
     value = abstract.SimpleAbstractValue("instance of " + cls.name, self)
     value.set_attribute("__class__", cls)
     return value.to_variable(name="instance of " + cls.name)
-
-  def not_op(self, x):
-    return self.instantiate_builtin(bool)
-
-  def cmp_is(self, x, y):
-    return self.instantiate_builtin(bool)
-
-  def cmp_is_not(self, x, y):
-    return self.instantiate_builtin(bool)
-
-  def cmp_in(self, x, y):
-    return self.instantiate_builtin(bool)
-
-  def cmp_not_in(self, x, y):
-    return self.instantiate_builtin(bool)
-
-  def cmp_exc_match(self, x, y):
-    return self.instantiate_builtin(bool)
 
   def new_variable(self, name, values=None, origins=None, loc=None):
     """Make a new variable using self.program.
@@ -1106,37 +1007,35 @@ class VirtualMachine(object):
     log.info("Final node: %s", node.name)
     return node, builtin_names
 
-  def magic_binary_operator(self, name):
+  def call_binary_operator(self, name, x, y):
     """Map a binary operator to "magic methods" (__add__ etc.)."""
-    # TODO(ampere): Lift this support to VirtualMachine. Sadly that
-    # will be tricky since it needs to run two things and then merge the result
-    # which is very hard to do in the concrete case.
-
     # TODO(pludemann): See TODO.txt for more on reverse operator subtleties.
-
-    def magic_operator_wrapper_tg(x, y):
-      """A wrapper function that tries both forward and reversed operators."""
-      results = []
+    results = []
+    try:
+      attr = self.load_attr(x, name)
+    except exceptions.ByteCodeAttributeError:  # from load_attr
+      log.info("Failed to find %s on %r", name, x, exc_info=True)
+    else:
+      results.append(self.call_function(attr, [y]))
+    rname = self.reverse_operator_name(name)
+    if self.reverse_operators and rname:
       try:
-        attr = self.load_attr(x, name)
-      except exceptions.ByteCodeAttributeError:  # from load_attr
-        log.info("Failed to find %s on %r", name, x, exc_info=True)
+        attr = self.load_attr(y, rname)
+      except exceptions.ByteCodeAttributeError:
+        log.debug("No reverse operator %s on %r",
+                  self.reverse_operator_name(name), y)
       else:
-        results.append(self.call_function(attr, [y]))
-      if self.reverse_operators:
-        rname = self.reverse_operator_name(name)
-        if rname:
-          try:
-            attr = self.load_attr(y, rname)
-          except exceptions.ByteCodeAttributeError:
-            log.info("Failed to find reverse operator %s on %r",
-                     self.reverse_operator_name(name), y)
-          else:
-            results.append(
-                self.call_function(attr, [x]))
-      log.debug("Results: %r", results)
-      return self.join_variables(name, results)
-    return magic_operator_wrapper_tg
+        results.append(self.call_function(attr, [x]))
+    log.debug("Results: %r", results)
+    return self.join_variables(name, results)
+
+  def binary_operator(self, name):
+    x, y = self.popn(2)
+    self.push(self.call_binary_operator(name, x, y))
+
+  def inplace_operator(self, name):
+    x, y = self.popn(2)
+    self.push(self.call_binary_operator(name, x, y))
 
   def trace_call(self, *args):
     return NotImplemented
@@ -1420,6 +1319,109 @@ class VirtualMachine(object):
   def print_newline(self, to=None):
     pass
 
+  def unary_operator(self, name):
+    x = self.pop()
+    method = self.load_attr(x, name)  # E.g. __not__
+    result = self.call_function(method, [], {})
+    self.push(result)
+
+  def byte_UNARY_NOT(self):
+    self.pop()  # discard
+    self.push(self.instantiate_builtin(bool))
+
+  def byte_UNARY_CONVERT(self):
+    self.unary_operator("__repr__")
+
+  def byte_UNARY_NEGATIVE(self):
+    self.unary_operator("__neg__")
+
+  def byte_UNARY_POSITIVE(self):
+    self.unary_operator("__pos__")
+
+  def byte_UNARY_INVERT(self):
+    self.unary_operator("__invert__")
+
+  def byte_BINARY_ADD(self):
+    self.binary_operator("__add__")
+
+  def byte_BINARY_SUBTRACT(self):
+    self.binary_operator("__sub__")
+
+  def byte_BINARY_DIVIDE(self):
+    self.binary_operator("__div__")
+
+  def byte_BINARY_MULTIPLY(self):
+    self.binary_operator("__mul__")
+
+  def byte_BINARY_MODULO(self):
+    self.binary_operator("__mod__")
+
+  def byte_BINARY_LSHIFT(self):
+    self.binary_operator("__lshift__")
+
+  def byte_BINARY_RSHIFT(self):
+    self.binary_operator("__rshift__")
+
+  def byte_BINARY_AND(self):
+    self.binary_operator("__and__")
+
+  def byte_BINARY_XOR(self):
+    self.binary_operator("__xor__")
+
+  def byte_BINARY_OR(self):
+    self.binary_operator("__or__")
+
+  def byte_BINARY_FLOOR_DIVIDE(self):
+    self.binary_operator("__floordiv__")
+
+  def byte_BINARY_TRUE_DIVIDE(self):
+    self.binary_operator("__truediv__")
+
+  def byte_BINARY_POWER(self):
+    self.binary_operator("__pow__")
+
+  def byte_BINARY_SUBSCR(self):
+    self.binary_operator("__getitem__")
+
+  def byte_INPLACE_ADD(self):
+    self.binary_operator("__iadd__")
+
+  def byte_INPLACE_SUBTRACT(self):
+    self.inplace_operator("__isub__")
+
+  def byte_INPLACE_MULTIPLY(self):
+    self.inplace_operator("__imul__")
+
+  def byte_INPLACE_DIVIDE(self):
+    self.inplace_operator("__idiv__")
+
+  def byte_INPLACE_MODULO(self):
+    self.inplace_operator("__imod__")
+
+  def byte_INPLACE_POWER(self):
+    self.inplace_operator("__ipow__")
+
+  def byte_INPLACE_LSHIFT(self):
+    self.inplace_operator("__ilshift__")
+
+  def byte_INPLACE_RSHIFT(self):
+    self.inplace_operator("__irshift__")
+
+  def byte_INPLACE_AND(self):
+    self.inplace_operator("__iand__")
+
+  def byte_INPLACE_XOR(self):
+    self.inplace_operator("__ixor__")
+
+  def byte_INPLACE_OR(self):
+    self.inplace_operator("__ior__")
+
+  def byte_INPLACE_FLOOR_DIVIDE(self):
+    self.inplace_operator("__ifloordiv__")
+
+  def byte_INPLACE_TRUE_DIVIDE(self):
+    self.inplace_operator("__itruediv__")
+
   def byte_LOAD_CONST(self, op):
     const = self.frame.f_code.co_consts[op.arg]
     self.push(self.load_constant(const))
@@ -1539,7 +1541,32 @@ class VirtualMachine(object):
 
   def byte_COMPARE_OP(self, op):
     x, y = self.popn(2)
-    self.push(self.compare_operators[op.arg](x, y))
+    # Explicit, redundant, switch statement, to make it easier to address the
+    # behavior of individual compare operations:
+    if op.arg == slots.CMP_LT:
+      self.push(self.call_binary_operator("__lt__", x, y))
+    elif op.arg == slots.CMP_LE:
+      self.push(self.call_binary_operator("__le__", x, y))
+    elif op.arg == slots.CMP_EQ:
+      self.push(self.call_binary_operator("__eq__", x, y))
+    elif op.arg == slots.CMP_NE:
+      self.push(self.call_binary_operator("__ne__", x, y))
+    elif op.arg == slots.CMP_GT:
+      self.push(self.call_binary_operator("__gt__", x, y))
+    elif op.arg == slots.CMP_GE:
+      self.push(self.call_binary_operator("__ge__", x, y))
+    elif op.arg == slots.CMP_IS:
+      self.push(self.instantiate_builtin(bool))
+    elif op.arg == slots.CMP_IS_NOT:
+      self.push(self.instantiate_builtin(bool))
+    elif op.arg == slots.CMP_NOT_IN:
+      self.push(self.instantiate_builtin(bool))
+    elif op.arg == slots.CMP_IN:
+      self.push(self.instantiate_builtin(bool))
+    elif op.arg == slots.CMP_EXC_MATCH:
+      self.push(self.instantiate_builtin(bool))
+    else:
+      raise VirtualMachineError("Invalid argument to COMPARE_OP: %d", op.arg)
 
   def byte_LOAD_ATTR(self, op):
     name = self.frame.f_code.co_names[op.arg]
@@ -1950,3 +1977,40 @@ class VirtualMachine(object):
     for name, var in mod.items():
       if name[0] != "_":
         self.store_local(name, var)
+
+  def byte_SLICE_0(self):
+    return self.get_slice(0)
+
+  def byte_SLICE_1(self):
+    return self.get_slice(1)
+
+  def byte_SLICE_2(self):
+    return self.get_slice(2)
+
+  def byte_SLICE_3(self):
+    return self.get_slice(3)
+
+  def byte_STORE_SLICE_0(self):
+    return self.store_slice(0)
+
+  def byte_STORE_SLICE_1(self):
+    return self.store_slice(1)
+
+  def byte_STORE_SLICE_2(self):
+    return self.store_slice(2)
+
+  def byte_STORE_SLICE_3(self):
+    return self.store_slice(3)
+
+  def byte_DELETE_SLICE_0(self):
+    return self.delete_slice(0)
+
+  def byte_DELETE_SLICE_1(self):
+    return self.delete_slice(1)
+
+  def byte_DELETE_SLICE_2(self):
+    return self.delete_slice(2)
+
+  def byte_DELETE_SLICE_3(self):
+    return self.delete_slice(3)
+

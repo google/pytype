@@ -266,28 +266,3 @@ def ReverseSlotMapping():
                       if slot.index == 0}
   return {slot.python_name: c_name_to_normal[slot.c_name]
           for slot in SLOTS if slot.index == 1}
-
-
-# Used by abstractvm.py:
-def BinaryOperatorMapping():
-  return _SlotMagicMapping("BINARY_")
-
-
-def InplaceOperatorMapping():
-  return _SlotMagicMapping("INPLACE_")
-
-
-def UnaryOperatorMapping():
-  return _SlotMagicMapping("UNARY_")
-
-
-def CompareFunctionMapping():
-  return {index: magic
-          for op, index, magic in COMPARE_OPS
-          if magic}
-
-
-def _SlotMagicMapping(prefix):
-  return {slot.opcode[len(prefix):]: slot.python_name
-          for slot in SLOTS
-          if slot.opcode and slot.opcode.startswith(prefix)}
