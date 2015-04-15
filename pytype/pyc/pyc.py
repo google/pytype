@@ -1,5 +1,6 @@
 """Functions for generating, reading and parsing pyc."""
 
+import copy
 import os
 import StringIO
 import subprocess
@@ -105,3 +106,22 @@ def compile_file(filename, python_version):
   """
   with open(filename, "rb") as fi:
     return compile_src(fi.read(), python_version, filename)
+
+
+def visit(c, visitor):
+  """Recursively process constants in a pyc using a visitor."""
+  if hasattr(c, "co_consts"):
+    # This is a CodeType object (because it has co_consts). Visit co_consts,
+    # and then the CodeType object itself.
+    new_consts = []
+    changed = False
+    for const in c.co_consts:
+      new_const = visit(const, visitor)
+      changed |= new_const is not const
+      new_consts.append(new_const)
+    if changed:
+      c = copy.copy(c)
+      c.co_consts = new_consts
+    return visitor.visit_code(c)
+  else:
+    return c

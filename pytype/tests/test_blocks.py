@@ -2,26 +2,12 @@
 
 
 from pytype import blocks
-from pytype.pyc import loadmarshal
 from pytype.pyc import opcodes
+from pytype.tests import test_inference
 import unittest
 
 
-class BlocksTest(unittest.TestCase):
-  """Common base class for the test classes below."""
-
-  PYTHON_VERSION = (2, 7)
-
-  def make_code(self, byte_array, name="testcode"):
-    return loadmarshal.CodeType(
-        argcount=0, kwonlyargcount=0, nlocals=0, stacksize=2, flags=0,
-        consts=[None, 1, 2], names=[], varnames=[], filename="", name=name,
-        firstlineno=1, lnotab=[], freevars=[], cellvars=[],
-        code="".join(chr(c) for c in byte_array),
-        python_version=self.PYTHON_VERSION)
-
-
-class OrderingTest(BlocksTest):
+class OrderingTest(test_inference.InferenceTest):
   """Tests for order_code in blocks.py."""
 
   def test_trivial(self):
@@ -29,7 +15,7 @@ class OrderingTest(BlocksTest):
     # | return None
     co = self.make_code([
         0x64, 1, 0,  # 0 LOAD_CONST, arg=0 (None)
-        0x53,  # 3 RETURN_VALUE, dead.
+        0x53,  # 3 RETURN_VALUE
     ], name="trivial")
     ordered_code = blocks.order_code(co)
     b0, = ordered_code.order
@@ -273,7 +259,7 @@ class OrderingTest(BlocksTest):
     self.assertEquals(2, len(b4.code))
 
 
-class BlockStackTest(BlocksTest):
+class BlockStackTest(test_inference.InferenceTest):
   """Test the add_pop_block_targets function."""
 
   def test_finally(self):

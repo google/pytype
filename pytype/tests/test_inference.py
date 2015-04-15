@@ -7,6 +7,7 @@ import textwrap
 
 from pytype import convert_structural
 from pytype import infer
+from pytype.pyc import loadmarshal
 from pytype.pytd import optimize
 from pytype.pytd import pytd
 from pytype.pytd import utils
@@ -344,6 +345,15 @@ class InferenceTest(unittest.TestCase):
     # In the diff output, mark expected with "-" and actual with "+".
     # (In other words, display a change from "working" to "broken")
     self.assertMultiLineEqual(pytd_tree_src, ty_src)
+
+  def make_code(self, byte_array, name="testcode"):
+    """Utility method for creating CodeType objects."""
+    return loadmarshal.CodeType(
+        argcount=0, kwonlyargcount=0, nlocals=0, stacksize=2, flags=0,
+        consts=[None, 1, 2], names=[], varnames=[], filename="", name=name,
+        firstlineno=1, lnotab=[], freevars=[], cellvars=[],
+        code="".join(chr(c) for c in byte_array),
+        python_version=self.PYTHON_VERSION)
 
 
 def _PrintErrorDebug(descr, value):

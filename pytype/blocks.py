@@ -5,6 +5,7 @@ This file aims to replace pycfg.py.
 
 from pytype import utils
 from pytype.pyc import opcodes
+from pytype.pyc import pyc
 
 
 class OrderedCode(object):
@@ -23,6 +24,7 @@ class OrderedCode(object):
     # compatible with the base class, which is too low level) as well as
     # object composition (because that would make the API too clunky for
     # callers).
+    assert hasattr(code, "co_code")
     self.__dict__.update({name: value for name, value in code.__dict__.items()
                           if name.startswith("co_")})
     self.order = order
@@ -190,3 +192,14 @@ def order_code(co):
                           lines=co.co_lnotab, line_offset=co.co_firstlineno)
   add_pop_block_targets(bytecodes)  # TODO(kramm): move into pyc/opcodes.py?
   return OrderedCode(co, compute_order(bytecodes), co.python_version)
+
+
+class OrderCodeVisitor(object):
+  """Visitor for recursively changing all CodeType to OrderedCode."""
+
+  def visit_code(self, code):
+    return order_code(code)
+
+
+def process_code(code):
+  return pyc.visit(code, OrderCodeVisitor())
