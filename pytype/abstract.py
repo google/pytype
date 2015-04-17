@@ -865,7 +865,7 @@ class PyTDSignature(AtomicAbstractValue):
                                               self.pytd_sig.params)):
       log.info("param %d) %s: %s <=> %s %r", nr, formal.name, formal.type,
                actual.data, actual.variable)
-    for name, value in subst.items():
+    for name, value in sorted(subst.items()):
       log.debug("Using %s=%r", name, value)
     self._execute_mutable(arg_values, kw_values, subst)
     # Use a plain list (NOT: itertools.chain etc.) to facilitate memoization.

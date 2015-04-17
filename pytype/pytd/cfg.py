@@ -228,7 +228,7 @@ class Variable(object):
     self.program = program
     self.name = name
     self.id = variable_id
-    self._data_id_to_value = {}
+    self._data_id_to_value = collections.OrderedDict()
     self._cfgnode_to_values = collections.defaultdict(set)
 
   def __repr__(self):

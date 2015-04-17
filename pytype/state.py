@@ -193,7 +193,7 @@ class Frame(object):
     self.cells.extend(closure or [])
 
     if callargs:
-      for name, value in callargs.items():
+      for name, value in sorted(callargs.items()):
         if name in f_code.co_cellvars:
           i = f_code.co_cellvars.index(name)
           self.cells[i].AddValues(value, self.vm.current_location)
