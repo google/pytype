@@ -545,6 +545,13 @@ class SimpleAbstractValue(AtomicAbstractValue):
     return subst
 
 
+class Instance(SimpleAbstractValue):
+
+  def __init__(self, clsvar, vm):
+    super(Instance, self).__init__(clsvar.name, vm)
+    self.members["__class__"] = clsvar
+
+
 class ValueWithSlots(SimpleAbstractValue):
   """Convenience class for overriding slots with custom methods.
 
@@ -676,11 +683,11 @@ class Dict(ValueWithSlots):
           self.set_str_item(key, value)
 
 
-class AbstractOrConcreteValue(SimpleAbstractValue, PythonConstant):
+class AbstractOrConcreteValue(Instance, PythonConstant):
   """Abstract value with a concrete fallback."""
 
-  def __init__(self, name, pyval, vm):
-    SimpleAbstractValue.__init__(self, name, vm)
+  def __init__(self, pyval, clsvar, vm):
+    Instance.__init__(self, clsvar, vm)
     PythonConstant.__init__(self, pyval)
 
 

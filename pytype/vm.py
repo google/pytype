@@ -145,7 +145,8 @@ class VirtualMachine(object):
     # Now fill primitive_classes with the real values using convert_constant
     self.primitive_classes = {v: self.convert_constant(repr(v), v)
                               for v in [int, long, float, str, unicode,
-                                        types.NoneType, complex, bool, slice]}
+                                        types.NoneType, complex, bool, slice,
+                                        types.CodeType]}
     self.container_classes = {v: self.convert_constant(repr(v), v)
                               for v in [tuple, list, set, dict]}
     self.str_type = self.primitive_classes[str]
@@ -165,6 +166,9 @@ class VirtualMachine(object):
     self._set_vmbuiltin("function", self.builtins_pytd.functions)
     # Do not do the following because all modules must be explicitly imported.
     # self._set_vmbuiltin("module", self.builtins_pytd.modules)
+
+    self.none = abstract.AbstractOrConcreteValue(
+        None, self.primitive_classes[types.NoneType], self)
 
   def run_instruction(self, op, state):
     """Run a single bytecode instruction.
@@ -413,7 +417,10 @@ class VirtualMachine(object):
       start = self.pop()
     obj = self.pop()
     if end is None:
-      # TODO(kramm): Does Python do this, too?
+      # Note that Python only calls __len__ if we have a negative index, not if
+      # we omit the index. Since we can't tell whether an index is negative
+      # (it might be an abstract integer, or a union type), we just always
+      # call __len__.
       end = self.call_function(self.load_attr(obj, "__len__"), [], {})
     return self.build_slice(start, end, 1), obj
 
@@ -479,16 +486,12 @@ class VirtualMachine(object):
       self.vmbuiltins[b.name] = b
 
   def instantiate_builtin(self, cls):
-    clsvar = self.primitive_classes[cls]
-    value = abstract.SimpleAbstractValue("instance of " + clsvar.name, self)
-    value.set_attribute("__class__", clsvar)
-    return value.to_variable(name=clsvar.name)
+    return abstract.Instance(self.primitive_classes[cls], self).to_variable(
+        name=cls.__name__)
 
   def instantiate(self, cls):
     # TODO(kramm): Make everything use this
-    value = abstract.SimpleAbstractValue("instance of " + cls.name, self)
-    value.set_attribute("__class__", cls)
-    return value.to_variable(name="instance of " + cls.name)
+    return abstract.Instance(cls, self).to_variable(name=cls.name)
 
   def new_variable(self, name, values=None, origins=None, loc=None):
     """Make a new variable using self.program.
@@ -714,11 +717,11 @@ class VirtualMachine(object):
       return abstract.SimpleAbstractValue(name, self)
     elif pyval.__class__ in self.primitive_classes:
       clsvar = self.primitive_classes[pyval.__class__]
-      value = abstract.AbstractOrConcreteValue(name, pyval, self)
-      value.set_attribute("__class__", clsvar)
+      value = abstract.AbstractOrConcreteValue(pyval, clsvar, self)
       return value
     elif isinstance(pyval, (loadmarshal.CodeType, blocks.OrderedCode)):
-      return abstract.AbstractOrConcreteValue(name, pyval, self)
+      return abstract.AbstractOrConcreteValue(
+          pyval, self.primitive_classes[types.CodeType], self)
     elif pyval.__class__ in [types.FunctionType, types.ModuleType, type]:
       try:
         # TODO(ampere): This will incorrectly handle any object that is named
@@ -800,10 +803,7 @@ class VirtualMachine(object):
       return self.convert_constant(name, pyval)
 
   def make_none(self):
-    # TODO(kramm): This should make a new Variable, but not a new instance.
-    none = abstract.AbstractOrConcreteValue("None", None, self)
-    none.set_attribute("__class__", self.primitive_classes[type(None)])
-    none = none.to_variable("None")
+    none = self.none.to_variable("None")
     assert self.is_none(none)
     return none
 
@@ -927,14 +927,6 @@ class VirtualMachine(object):
     value = self.new_variable("value")
     exctype = self.new_variable("exctype")
     return state.push(tb, value, exctype)
-
-  def jump(self, jump, why=None):
-    raise NotImplementedError("Use store_jump instead")
-    # TODO(kramm):
-    # if why == "exception":
-    #   # Don't actually execute jumps to exception handlers. Instead, terminate
-    #   # processing of the current block.
-    #   return "fatal_exception"
 
   def resume_frame(self, frame):
     # TODO(kramm): The concrete interpreter did this:
@@ -1206,7 +1198,7 @@ class VirtualMachine(object):
     assert isinstance(value, typegraph.Variable)
     self.trace_setattribute(obj, attr, value)
     for val in obj.values:
-      # TODO(kramm): Check for __set__ on val.data
+      # TODO(kramm): Check whether val.data is a descriptor (i.e. has "__set__")
       val.data.set_attribute(attr, value)
 
   def del_attr(self, obj, attr):
@@ -1215,8 +1207,8 @@ class VirtualMachine(object):
                 "anything in the abstract interpreter")
 
   def build_string(self, s):
-    str_value = abstract.AbstractOrConcreteValue(repr(s), s, self)
-    str_value.set_attribute("__class__", self.str_type)
+    str_value = abstract.AbstractOrConcreteValue(
+        s, self.str_type, self)
     return str_value.to_variable(name=repr(s))
 
   def build_content(self, elements):
@@ -1233,8 +1225,8 @@ class VirtualMachine(object):
   def build_tuple(self, content):
     """Create a VM tuple from the given sequence."""
     content = tuple(content)  # content might be a generator
-    value = abstract.AbstractOrConcreteValue("tuple", content, self)
-    value.set_attribute("__class__", self.tuple_type)
+    value = abstract.AbstractOrConcreteValue(
+        content, self.tuple_type, self)
     value.overwrite_type_parameter("T", self.build_content(content))
     return value.to_variable(name="tuple(...)")
 
@@ -1607,7 +1599,6 @@ class VirtualMachine(object):
     self.push(self.build_list(elts))
 
   def byte_BUILD_SET(self, op):
-    # TODO(kramm): Not documented in Py2 docs.
     elts = self.popn(op.arg)
     self.push(self.build_set(elts))
 

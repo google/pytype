@@ -995,6 +995,10 @@ class rangeiterator:
 class PyCapsule:
     pass
 
+# types.CodeType, a.k.a., <type 'code'>
+class code:
+    pass
+
 class ArithmeticError:
     def __init__(self, ...) -> NoneType
     def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple<???>
