@@ -101,14 +101,14 @@ class AtomicAbstractValue(object):
 
   _value_id = 0  # for pretty-printing
 
-  def __init__(self, vm):
+  def __init__(self, name, vm):
     """Basic initializer for all AtomicAbstractValues."""
     assert hasattr(vm, "program")
     self.vm = vm
     self.mro = []
     AtomicAbstractValue._value_id += 1
     self.id = AtomicAbstractValue._value_id
-    self.name = "v%d" % self.id
+    self.name = name
     self.parent = None
     self.official_name = None
 
@@ -310,8 +310,7 @@ class TypeParameter(AtomicAbstractValue):
   """
 
   def __init__(self, name, pytd_instance, vm):
-    super(TypeParameter, self).__init__(vm)
-    self.name = name
+    super(TypeParameter, self).__init__(name, vm)
     self.pytd_instance = pytd_instance
 
   def __repr__(self):
@@ -337,8 +336,7 @@ class SimpleAbstractValue(AtomicAbstractValue):
       name: Name of this value. For debugging and error reporting.
       vm: The TypegraphVirtualMachine to use.
     """
-    super(SimpleAbstractValue, self).__init__(vm)
-    self.name = name
+    super(SimpleAbstractValue, self).__init__(name, vm)
     self.members = {}
     self.type_parameters = {}
 
@@ -706,7 +704,7 @@ class Union(AtomicAbstractValue):
   """
 
   def __init__(self, options, vm):
-    super(Union, self).__init__(vm)
+    super(Union, self).__init__("union", vm)
     self.options = options
 
 
@@ -740,9 +738,8 @@ class PyTDSignature(AtomicAbstractValue):
   """
 
   def __init__(self, function, pytd_sig, vm):
-    super(PyTDSignature, self).__init__(vm)
+    super(PyTDSignature, self).__init__(function.name, vm)
     self.function = function
-    self.name = function.name
     self.pytd_sig = pytd_sig
     self.param_types = [
         self.vm.convert_constant_to_value(pytd.Print(p), p.type)
@@ -936,8 +933,7 @@ class PyTDFunction(AtomicAbstractValue):
   """
 
   def __init__(self, name, signatures, vm):
-    super(PyTDFunction, self).__init__(vm)
-    self.name = name
+    super(PyTDFunction, self).__init__(name, vm)
     self.signatures = signatures
 
   def property_get(self, callself, callcls):
@@ -1063,7 +1059,7 @@ class ParameterizedClass(AtomicAbstractValue, Class):
   """A class that contains additional parameters. E.g. a container."""
 
   def __init__(self, cls, type_parameters, vm):
-    super(ParameterizedClass, self).__init__(vm)
+    super(ParameterizedClass, self).__init__(cls.name, vm)
     self.cls = cls
     self.type_parameters = type_parameters
 
@@ -1268,8 +1264,7 @@ class Function(AtomicAbstractValue):
   """
 
   def __init__(self, name, vm):
-    super(Function, self).__init__(vm)
-    self.name = name
+    super(Function, self).__init__(name, vm)
     self.func_name = self.vm.build_string(name)
     self.cls = None
 
@@ -1458,7 +1453,7 @@ class BoundFunction(AtomicAbstractValue):
   """
 
   def __init__(self, callself, underlying):
-    super(BoundFunction, self).__init__(underlying.vm)
+    super(BoundFunction, self).__init__(underlying.name, underlying.vm)
     self._callself = callself
     self.underlying = underlying
 
@@ -1499,7 +1494,7 @@ class Generator(AtomicAbstractValue):
   TYPE_PARAM = "T"  # See class generator in pytd/builtins/__builtin__.pytd
 
   def __init__(self, generator_frame, vm):
-    super(Generator, self).__init__(vm)
+    super(Generator, self).__init__("generator", vm)
     self.generator_frame = generator_frame
     self.retvar = None
 
@@ -1553,6 +1548,9 @@ class Nothing(AtomicAbstractValue):
   These are fake values that never exist at runtime, but they appear if you, for
   example, extract a value from an empty list.
   """
+
+  def __init__(self, vm):
+    super(Nothing, self).__init__("nothing", vm)
 
   def get_attribute(self, name, valself=None, valcls=None):
     return None
@@ -1632,12 +1630,12 @@ class Unknown(AtomicAbstractValue):
   IGNORED_ATTRIBUTES = ["__get__", "__set__"]
 
   def __init__(self, vm):
-    super(Unknown, self).__init__(vm)
+    name = "~unknown%d" % Unknown._current_id
+    super(Unknown, self).__init__(name, vm)
     self.members = {}
     self.owner = None
     Unknown._current_id += 1
-    self.class_name = "~unknown%d" % Unknown._current_id
-    self.name = self.class_name
+    self.class_name = self.name
     self._calls = []
     # Remember the pytd class we created in to_pytd_class, to keep them unique:
     self._pytd_class = None
