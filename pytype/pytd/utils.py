@@ -30,6 +30,8 @@ import os
 from pytype.pytd import abc_hierarchy
 from pytype.pytd import pep484
 from pytype.pytd import pytd
+from pytype.pytd.parse import builtins
+from pytype.pytd.parse import parser
 from pytype.pytd.parse import visitors
 
 
@@ -225,3 +227,24 @@ def Print(ast, print_format=None):
   elif print_format == "pep484stub":
     res = ast.Visit(pep484.Print484StubVisitor())
   return res
+
+
+def ParsePyTD(src, filename, python_version):
+  """Parse pytd sourcecode and do name lookup for builtins.
+
+  This loads a pytd and also makes sure that all names are resolved (i.e.,
+  that all primitive types in the AST are ClassType, and not NameType).
+
+  Args:
+    src: PyTD source code.
+    filename: The filename the source code is from.
+    python_version: The Python version to parse the pytd for.
+
+  Returns:
+    A pytd.TypeDeclUnit.
+  """
+  ast = parser.parse_string(src, filename=filename,
+                            python_version=python_version)
+  ast = visitors.LookupClasses(ast, builtins.GetBuiltinsPyTD())
+  return ast
+

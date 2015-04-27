@@ -19,8 +19,8 @@
 
 import os.path
 
-from pytype.pytd import utils
 from pytype.pytd.parse import parser
+from pytype.pytd.parse import visitors
 
 
 # We list modules explicitly, because we might have to extract them out of
@@ -31,6 +31,8 @@ _MODULES = ["array", "codecs", "errno", "fcntl", "gc", "itertools", "marshal",
 
 
 def _FindBuiltinFile(name):
+  # TODO(kramm): fix circular import
+  from pytype.pytd import utils  # pylint: disable=g-import-not-at-top
   return utils.GetDataFile(os.path.join("builtins", name))
 
 
@@ -52,11 +54,11 @@ def GetBuiltinsPyTD():
     and functions, and submodules for each of the standard library modules.
   """
   global _cached_builtins_pytd
-  if _cached_builtins_pytd:
-    return _cached_builtins_pytd
-  _cached_builtins_pytd = builtins_pytd = parser.TypeDeclParser().Parse(
-      _FindBuiltinFile(_BUILTIN_NAME + ".pytd"), name=_BUILTIN_NAME)
-  return builtins_pytd
+  if not _cached_builtins_pytd:
+    builtins_pytd = parser.TypeDeclParser().Parse(
+        _FindBuiltinFile(_BUILTIN_NAME + ".pytd"), name=_BUILTIN_NAME)
+    _cached_builtins_pytd = visitors.LookupClasses(builtins_pytd)
+  return _cached_builtins_pytd
 
 
 # TODO(kramm): Use python_version, once we have builtins for both Python 2 and

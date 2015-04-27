@@ -26,11 +26,11 @@ class UtilsTest(unittest.TestCase):
     update = self.builtins.Lookup("dict").Lookup("update")
     t = update.signatures[0].params[0].type
     self.assertIsInstance(t, pytd.GenericType)
-    self.assertEquals(t.base_type, pytd.NamedType("dict"))
+    self.assertEquals(t.base_type, pytd.ClassType("dict"))
 
   def testHasObjectSuperClass(self):
     cls = self.builtins.Lookup("int")
-    self.assertEquals(cls.parents, (pytd.NamedType("object"),))
+    self.assertEquals(cls.parents, (pytd.ClassType("object"),))
     cls = self.builtins.Lookup("object")
     self.assertEquals(cls.parents, ())
 

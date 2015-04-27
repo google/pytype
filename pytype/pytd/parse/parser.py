@@ -851,9 +851,10 @@ def make_syntax_error(parser_or_tokenizer, msg, p):
                      p.lineno, p.lexpos - last_line_offset + 1, line))
 
 
-def parse_string(string, name=None, filename=None, version=DEFAULT_VERSION):
+def parse_string(string, name=None, filename=None,
+                 python_version=DEFAULT_VERSION):
   try:
-    return TypeDeclParser(version).Parse(string, name, filename)
+    return TypeDeclParser(python_version).Parse(string, name, filename)
   except SyntaxError as unused_exception:
     # without all the tedious traceback stuff from PLY:
     # TODO(pludemann): What happens if we don't catch SyntaxError?
@@ -861,6 +862,6 @@ def parse_string(string, name=None, filename=None, version=DEFAULT_VERSION):
     sys.exit(1)
 
 
-def parse_file(filename, name=None, version=DEFAULT_VERSION):
+def parse_file(filename, name=None, python_version=DEFAULT_VERSION):
   with open(filename) as f:
-    return parse_string(f.read(), name, filename, version)
+    return parse_string(f.read(), name, filename, python_version)

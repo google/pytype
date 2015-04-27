@@ -432,8 +432,6 @@ class FindCommonSuperClasses(object):
   """
 
   def __init__(self, superclasses=None, use_abcs=True):
-    # TODO(pludemann): builtins from the VM? (avoid duplicate GetBuiltinsPyTD()
-    #                  or abstract.get_builtins_pytds()
     self._superclasses = builtins.GetBuiltinsPyTD().Visit(
         visitors.ExtractSuperClassesByName())
     self._superclasses.update(superclasses or {})
@@ -1018,8 +1016,6 @@ def Optimize(node,
     node = node.Visit(CombineContainers())
     node = node.Visit(MergeTypeParameters())
     node = node.Visit(visitors.AdjustSelf(force=True))
-  # TODO(pludemann): builtins from the VM? (avoid duplicate GetBuiltinsPyTD)
-  #                  or abstract.get_builtins_pytds()
   node = visitors.LookupClasses(node, builtins.GetBuiltinsPyTD())
   node = node.Visit(RemoveInheritedMethods())
   return node

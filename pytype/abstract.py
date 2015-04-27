@@ -19,56 +19,9 @@ from pytype.pyc import loadmarshal
 from pytype.pytd import cfg as typegraph
 from pytype.pytd import pytd
 from pytype.pytd import utils as pytd_utils
-from pytype.pytd.parse import builtins
-from pytype.pytd.parse import parser
 from pytype.pytd.parse import visitors
 
 log = logging.getLogger(__name__)
-
-# PYTD UTILITIES
-
-
-# TODO(pludemann): builtins.GetBuiltinsPyTD caches its value
-#                  but doesn't run LookupClasses
-#  We need to cache the LookupClasses because things take a very
-#  long time if we don't cache it. (Not sure of why).
-_builtin_pytds = None
-
-
-def get_builtins_pytds():
-  global _builtin_pytds
-  if not _builtin_pytds:
-    _builtin_pytds = builtins.GetBuiltinsPyTD()
-    _builtin_pytds = visitors.LookupClasses(_builtin_pytds)
-  return _builtin_pytds
-
-
-def parse_pytd(src, filename, version):
-  ast = parser.parse_string(src, filename=filename, version=version)
-  ast = visitors.LookupClasses(ast, get_builtins_pytds())
-  return ast
-
-
-# TODO(kramm): Rename to 'get_builtin_item'.
-# TODO(kramm): Move to utils.py
-def get_pytd(*pytd_path):
-  """Get the PyTD type tree for a built-in object.
-
-  For example, get_pytd("str", "__add__") returns the type of str.__add__.
-
-  Args:
-    *pytd_path: A sequence of strings each one representing an element in the
-       name you would use to refer to the other in python. This means that, for
-       instance, __builtin__.set is called simply set.
-  Returns:
-    The PyTD object at that path.
-  """
-  # TODO(ampere): Should this change to use real module paths for builtins?
-  builtin_pytds = get_builtins_pytds()
-  result = builtin_pytds.Lookup(pytd_path[0])
-  for component in pytd_path[1:]:
-    result = result.Lookup(component)
-  return result
 
 
 def variable_set_official_name(variable, name):

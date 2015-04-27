@@ -325,4 +325,3 @@ def compute_mro(c):
   return tuple(mro_merge([[c]] +
                          [list(base.mro) for base in c.bases()] +
                          [list(c.bases())]))
-

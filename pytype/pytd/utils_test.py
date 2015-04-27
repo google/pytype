@@ -200,6 +200,13 @@ class TestUtils(parser_test.ParserTest):
     utils.Print(ast, print_format="pytd")
     utils.Print(ast, print_format="pep484stub")
 
+  def testParsePyTD(self):
+    """Test ParsePyTD()."""
+    ast = utils.ParsePyTD("a: int", "<inline>", python_version=(2, 7, 6))
+    a = ast.Lookup("a").type
+    self.assertItemsEqual(a, pytd.ClassType("int"))
+    self.assertIsNotNone(a.cls)  # verify that the lookup succeeded
+
 
 if __name__ == "__main__":
   unittest.main()

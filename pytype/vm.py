@@ -138,6 +138,8 @@ class VirtualMachine(object):
     # call):
     self.default_location = self.root_cfg_node
 
+    self.builtins_pytd = builtins.GetBuiltinsPyTD()
+
     self._convert_cache = {}
 
     # Initialize primitive_classes to empty to allow convert_constant to run
@@ -157,8 +159,6 @@ class VirtualMachine(object):
     self.dict_type = self.container_classes[dict]
     self.function_type = self.convert_constant("function type",
                                                types.FunctionType)
-
-    self.builtins_pytd = abstract.get_builtins_pytds()
 
     self.vmbuiltins = {}
     self._set_vmbuiltin("constant", self.builtins_pytd.constants)
@@ -712,6 +712,8 @@ class VirtualMachine(object):
       pyval: The python or PyTD value to convert.
     Returns:
       A Value that represents the constant, or None if we couldn't convert.
+    Raises:
+      NotImplementedError: If we don't know how to convert a value.
     """
     if pyval is type:
       return abstract.SimpleAbstractValue(name, self)
@@ -727,7 +729,7 @@ class VirtualMachine(object):
         # TODO(ampere): This will incorrectly handle any object that is named
         # the same as a builtin but is distinct. It will need to be extended to
         # support imports and the like.
-        pyclass = abstract.get_pytd(pyval.__name__)
+        pyclass = self.builtins_pytd.Lookup(pyval.__name__)
         return self.convert_constant_to_value(name, pyclass)
       except (KeyError, AttributeError):
         log.debug("Failed to find pytd", exc_info=True)
@@ -768,8 +770,13 @@ class VirtualMachine(object):
       cls = self.convert_constant_to_value(pytd.Print(pyval.base_type),
                                            pyval.base_type.cls)
       return abstract.ParameterizedClass(cls, type_parameters, self)
+    elif isinstance(pyval, tuple):
+      return self.tuple_to_value(
+          [self.convert_constant("tuple[%d]" % i, item)
+           for i, item in enumerate(pyval)])
     else:
-      return None
+      raise NotImplementedError("Can't convert constant %s %r" %
+                                (type(pyval), pyval))
 
   def maybe_convert_constant(self, name, pyval):
     """Create a variable that represents a python constant if needed.
@@ -1222,13 +1229,17 @@ class VirtualMachine(object):
     value.set_attribute("__class__", self.slice_type)
     return value.to_variable(name="slice")
 
-  def build_tuple(self, content):
+  def tuple_to_value(self, content):
     """Create a VM tuple from the given sequence."""
     content = tuple(content)  # content might be a generator
     value = abstract.AbstractOrConcreteValue(
         content, self.tuple_type, self)
     value.overwrite_type_parameter("T", self.build_content(content))
-    return value.to_variable(name="tuple(...)")
+    return value
+
+  def build_tuple(self, content):
+    """Create a VM tuple from the given sequence."""
+    return self.tuple_to_value(content).to_variable(name="tuple")
 
   def build_list(self, content):
     """Create a VM list from the given sequence."""

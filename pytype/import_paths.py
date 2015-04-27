@@ -3,7 +3,6 @@
 import os
 
 
-from pytype import abstract
 from pytype.pytd import utils
 
 
@@ -25,5 +24,5 @@ def module_name_to_pytd(module_name, level, python_version):  # pylint: disable=
   """
   filename = os.path.join("builtins", module_name + ".pytd")
   src = utils.GetDataFile(filename)
-  return abstract.parse_pytd(src, filename=filename, version=python_version)
+  return utils.ParsePyTD(src, filename=filename, python_version=python_version)
 
