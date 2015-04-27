@@ -25,6 +25,8 @@ log = logging.getLogger(__name__)
 def parse_options(args):
   """Use optparse to parse command line options."""
   o = optparse.OptionParser()
+  o.set_defaults(optimize=True)
+  o.set_defaults(api=True)
   o.add_option(
       "-o", "--output", type="string", action="store",
       dest="output", default=None,
@@ -40,13 +42,21 @@ def parse_options(args):
             "-1=quiet, 0=fatal, 1=error (default), 2=warn, 3=info, 4=debug"))
   o.add_option(
       "-O", "--optimize", action="store_true",
-      dest="optimize", default=False,
-      help=("Optimize generated pytd"))
+      dest="optimize",
+      help=("Optimize generated pytd (default)."))
+  o.add_option(
+      "-R", "--raw", action="store_false",
+      dest="optimize",
+      help=("Do not optimize generated pytd"))
   o.add_option(
       "-A", "--api", action="store_true",
-      dest="api", default=False,
+      dest="api",
       help=("Analyze all functions and classes, "
-            "also those not called from anywhere."))
+            "also those not called from anywhere (default)."))
+  o.add_option(
+      "-m", "--main", action="store_false",
+      dest="api",
+      help=("Only analyze the main method and everything called from it"))
   o.add_option(
       "-S", "--structural", action="store_true",
       dest="structural", default=False,
