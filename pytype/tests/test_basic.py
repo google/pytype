@@ -71,25 +71,30 @@ class TestIt(test_inference.InferenceTest):
       assert isinstance(x, float)
       """)
 
-  @unittest.skip("error: slice has no attribute 'values'")
   def test_slice(self):
-    self.assert_ok("""\
-      print("hello, world"[3:8])
-      """)
-    self.assert_ok("""\
-      print("hello, world"[:8])
-      """)
-    self.assert_ok("""\
-      print("hello, world"[3:])
-      """)
-    self.assert_ok("""\
-      print("hello, world"[:])
-      """)
-    self.assert_ok("""\
-      print("hello, world"[::-1])
-      """)
-    self.assert_ok("""\
-      print("hello, world"[3:8:2])
+    with self.Infer("""
+      s = "hello, world"
+      def f1():
+        return s[3:8]
+      def f2():
+        return s[:8]
+      def f3():
+        return s[3:]
+      def f4():
+        return s[:]
+      def f5():
+        return s[::-1]
+      def f6():
+        return s[3:8:2]
+      """, deep=True, solve_unknowns=False, extract_locals=False) as ty:
+      self.assertTypesMatchPytd(ty, """
+      s: str
+      def f1() -> str
+      def f2() -> str
+      def f3() -> str
+      def f4() -> str
+      def f5() -> str
+      def f6() -> str
       """)
 
   def test_slice_assignment(self):
@@ -426,7 +431,6 @@ class TestIt(test_inference.InferenceTest):
       assert c == 3
       """)
 
-  @unittest.skip("Broken - TypeError")
   def test_exec_statement_python2(self):
     self.assert_ok("""\
       g = {}

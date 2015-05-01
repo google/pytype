@@ -166,7 +166,7 @@ class str(basestring):
     def __contains__(self, y: str or unicode or bytearray) -> bool
     def __eq__(self, y: str or bytearray) -> bool
     def __ge__(self, y: str or bytearray) -> bool
-    def __getitem__(self, index: int) -> str
+    def __getitem__(self, index: int or slice) -> str
     def __getslice__(self, i: int, j: int) -> str
     def __gt__(self, y: str or bytearray) -> bool
     def __le__(self, y: str or bytearray) -> bool
@@ -228,7 +228,7 @@ class unicode(basestring):
     def __contains__(self, y: str or unicode or bytearray) -> bool
     def __eq__(self, y: str or unicode or bytearray) -> bool
     def __ge__(self, y: str or unicode or bytearray) -> bool
-    def __getitem__(self, index: int) -> unicode
+    def __getitem__(self, index: int or slice) -> unicode
     def __getslice__(self, i: int, j: int) -> unicode
     def __gt__(self, y: str or unicode or bytearray) -> bool
     def __le__(self, y: str or unicode or bytearray) -> bool

@@ -939,9 +939,9 @@ class PyTDFunction(AtomicAbstractValue):
     self.signatures = signatures
 
   def property_get(self, callself, callcls):
-    return PyTDFunction("bound " + self.name,
-                        [s.property_get(callself, callcls)
-                         for s in self.signatures], self.vm)
+    return BoundPyTDFunction("bound " + self.name,
+                             [s.property_get(callself, callcls)
+                              for s in self.signatures], self.vm)
 
   def call(self, node, func, args, kws):
     log.debug("Calling function %r: %d signature(s)",
@@ -1003,6 +1003,11 @@ class PyTDFunction(AtomicAbstractValue):
   def match_against_type(self, other_type, subst):
     if other_type.name in ["function", "object"]:
       return subst
+
+
+class BoundPyTDFunction(PyTDFunction):
+  """PyTD function bound to a class. Returned by property_get."""
+  pass  # Identical to parent class, subclass only for marking "bound" functions
 
 
 class BoundPyTDSignature(PyTDSignature):

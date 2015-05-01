@@ -123,6 +123,9 @@ class CallTracer(vm.VirtualMachine):
     """
     log.debug("Logging call to %r with %d args, return %r",
               func, len(posargs), result)
+    if isinstance(func.data, abstract.BoundPyTDFunction):
+      log.info("Not recording call to bound method.")
+      return
     self._calls.add(CallRecord(func, tuple(posargs),
                                tuple((namedargs or {}).items()), result))
 
@@ -158,6 +161,9 @@ class CallTracer(vm.VirtualMachine):
     functions = []
     for funcval, args, kws, rets in self._calls:
       func = funcval.data.signatures[0]
+      if isinstance(func, abstract.BoundPyTDFunction):
+        # Don't do class methods, only top-level functions
+        continue
       signatures = []
       for args_selected in utils.variable_product(
           func.get_bound_arguments() + list(args)):

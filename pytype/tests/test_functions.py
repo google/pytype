@@ -208,7 +208,7 @@ class TestClosures(test_inference.InferenceTest):
       assert a(7) == 88
       """)
 
-  @unittest.skip("broken: timeout in solver")
+  @unittest.skip("disabled: too slow")
   def test_deep_closures(self):
     self.assert_ok("""\
       def f1(a):
