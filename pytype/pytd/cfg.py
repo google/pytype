@@ -382,7 +382,7 @@ class State(object):
     """Are there values in this state that can't be valid at the same time?
 
     Returns:
-      True if we would we need a variable to be assigned to two distinct
+      True if we would need a variable to be assigned to two distinct
       values at the same time in order to solve this state. False if there are
       no conflicting goals.
 
@@ -391,10 +391,12 @@ class State(object):
     """
     variables = {}
     for goal in self.goals:
-      if goal.variable in variables:
-        if variables[goal.variable] == goal:
+      existing = variables.get(goal.variable)
+      if existing:
+        if existing is goal:
           raise AssertionError("Internal error. Duplicate goal.")
-        # TODO(kramm): What if existing->value == goal->value ?
+        if existing.data is goal.data:
+          raise AssertionError("Internal error. Duplicate data across values")
         return True
       variables[goal.variable] = goal
     return False
