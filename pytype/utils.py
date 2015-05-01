@@ -325,3 +325,11 @@ def compute_mro(c):
   return tuple(mro_merge([[c]] +
                          [list(base.mro) for base in c.bases()] +
                          [list(c.bases())]))
+
+
+def concat_lists(lists):
+  return list(itertools.chain.from_iterable(lists))
+
+
+def concat_tuples(tuples):
+  return tuple(itertools.chain.from_iterable(tuples))

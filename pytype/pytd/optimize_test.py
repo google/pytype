@@ -336,6 +336,19 @@ class TestOptimize(parser_test.ParserTest):
         src, optimize.CollapseLongUnions(max_length=4))
     self.AssertSourceEquals(new_src, expected)
 
+  def testCollapseLongConstantUnions(self):
+    src = textwrap.dedent("""
+      x: A or B or C or D
+      y: A or B or C or D or E
+    """)
+    expected = textwrap.dedent("""
+      x: A or B or C or D
+      y: ?
+    """)
+    new_src = self.ApplyVisitorToString(
+        src, optimize.CollapseLongConstantUnions(max_length=4))
+    self.AssertSourceEquals(new_src, expected)
+
   def testCombineContainers(self):
     src = textwrap.dedent("""
         def f(x: list<int> or list<float>) -> ?

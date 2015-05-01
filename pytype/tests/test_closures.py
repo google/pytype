@@ -106,9 +106,7 @@ class ClosuresTest(test_inference.InferenceTest):
       t3()
     """, deep=False, solve_unknowns=False, extract_locals=True) as ty:
       self.assertTypesMatchPytd(ty, """
-        def f(x: int) -> function
-        def f(x: int, y:int) -> function
-        def f(x: int, y:int, z:int) -> function
+        def f(x: int, ...) -> function
         def t1() -> int
         def t2() -> int
         def t3() -> int

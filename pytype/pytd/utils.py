@@ -67,15 +67,15 @@ def MakeClassOrContainerType(base_type, type_arguments):
     return pytd.GenericType(base_type, tuple(type_arguments))
 
 
-def Concat(pytd1, pytd2):
-  """Concatenate two pytd ASTs."""
-  assert isinstance(pytd1, pytd.TypeDeclUnit)
-  assert isinstance(pytd2, pytd.TypeDeclUnit)
-  return pytd.TypeDeclUnit(name=pytd1.name + " + " + pytd2.name,
-                           constants=pytd1.constants + pytd2.constants,
-                           classes=pytd1.classes + pytd2.classes,
-                           functions=pytd1.functions + pytd2.functions,
-                           modules=pytd1.modules + pytd2.modules)
+def Concat(*args):
+  """Concatenate two or more pytd ASTs."""
+  assert all(isinstance(arg, pytd.TypeDeclUnit) for arg in args)
+  return pytd.TypeDeclUnit(
+      name=" + ".join(arg.name for arg in args),
+      constants=sum((arg.constants for arg in args), ()),
+      classes=sum((arg.classes for arg in args), ()),
+      functions=sum((arg.functions for arg in args), ()),
+      modules=sum((arg.modules for arg in args), ()))
 
 
 def JoinTypes(types):
@@ -248,3 +248,20 @@ def ParsePyTD(src, filename, python_version):
   ast = visitors.LookupClasses(ast, builtins.GetBuiltinsPyTD())
   return ast
 
+
+class TypeBuilder(object):
+  """Utility class for building union types."""
+
+  def __init__(self):
+    self.union = pytd.NothingType()
+
+  def add_type(self, other):
+    """Add a new pytd type to the types represented by this TypeBuilder."""
+    self.union = JoinTypes([self.union, other])
+
+  def build(self):
+    """Get a union of all the types added so far."""
+    return self.union
+
+  def __nonzero__(self):
+    return not isinstance(self.union, pytd.NothingType)

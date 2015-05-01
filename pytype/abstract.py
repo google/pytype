@@ -13,6 +13,7 @@ import logging
 
 
 from pytype import exceptions
+from pytype import output
 from pytype import path
 from pytype import utils
 from pytype.pyc import loadmarshal
@@ -37,6 +38,8 @@ def variable_set_official_name(variable, name):
     v.data.official_name = name
 
 
+# TODO(kramm): This needs to match values, not variables. A variable can
+# consist of different types.
 def match_var_against_type(var, other_type, subst, loc):
   """One-way unify value into pytd type given a substitution.
 
@@ -305,13 +308,10 @@ class TypeParameter(AtomicAbstractValue):
 
   Attributes:
     name: Type parameter name
-    pytd_instance: The PYTD instance used to mark of this type parameter, for
-      matching.
   """
 
-  def __init__(self, name, pytd_instance, vm):
+  def __init__(self, name, vm):
     super(TypeParameter, self).__init__(name, vm)
-    self.pytd_instance = pytd_instance
 
   def __repr__(self):
     return "TypeParameter(%r)" % self.name
@@ -411,8 +411,8 @@ class SimpleAbstractValue(AtomicAbstractValue):
     assert isinstance(var, typegraph.Variable)
 
     if name == "__class__":
-      assert all(hasattr(v.data, "name") for v in var.values), [
-          v.data for v in var.values]
+      for cls in var.data:
+        cls.register_instance(self)
 
     variable = self.members.get(name)
     if variable:
@@ -501,6 +501,8 @@ class Instance(SimpleAbstractValue):
   def __init__(self, clsvar, vm):
     super(Instance, self).__init__(clsvar.name, vm)
     self.members["__class__"] = clsvar
+    for cls in clsvar.data:
+      cls.register_instance(self)
 
 
 class ValueWithSlots(SimpleAbstractValue):
@@ -950,6 +952,7 @@ class PyTDFunction(AtomicAbstractValue):
     # an unknown.
     # TODO(kramm): We should only do this if the return values of the possible
     #              signatures (taking into account unknowns) actually differ.
+    # TODO(kramm): We should do this on a per-value basis, not per variable.
     if (len(self.signatures) > 1 and
         any(isinstance(value, Unknown)
             for arg in (args + kws.values())
@@ -957,8 +960,10 @@ class PyTDFunction(AtomicAbstractValue):
       log.debug("Creating unknown return")
       # TODO(kramm): Add proper sources.
       # TODO(kramm): What about mutable parameters?
-      return node, self.vm.create_new_unknown(
+      result = self.vm.create_new_unknown(
           "<unknown return of " + self.name + ">")
+      self.vm.trace_call(func, args, kws, result)
+      return node, result
 
     # We only take the first signature that matches, and ignore all after it.
     # This is because in the pytds for the standard library, the last
@@ -975,6 +980,7 @@ class PyTDFunction(AtomicAbstractValue):
       except FailedFunctionCall as e:
         msg_lines.extend(e.explanation_lines)
       else:
+        self.vm.trace_call(func, args, kws, result)
         return new_node, result
     self._raise_failed_function_call(
         ["Failed call function %r: signature: %r" %
@@ -1054,6 +1060,10 @@ class Class(object):
       break  # we found a class which has this attribute
     return ret
 
+  def to_pytd_def(self, name, unused_node):
+    # Default method. Generate an empty pytd. Subclasses override this.
+    return pytd.Class(name, (), (), (), ())
+
 
 class ParameterizedClass(AtomicAbstractValue, Class):
   """A class that contains additional parameters. E.g. a container."""
@@ -1062,6 +1072,9 @@ class ParameterizedClass(AtomicAbstractValue, Class):
     super(ParameterizedClass, self).__init__(cls.name, vm)
     self.cls = cls
     self.type_parameters = type_parameters
+
+  def register_instance(self, unused_instance):
+    pass  # Ignore, we already have a formal definition of this class.
 
   def __repr__(self):
     return "ParameterizedClass(cls=%r params=%s)" % (self.cls,
@@ -1094,6 +1107,9 @@ class PyTDClass(LazyAbstractValue, Class):
     self.cls = cls
     self.mro = utils.compute_mro(self)
     self.formal_type_parameters = {}
+
+  def register_instance(self, unused_instance):
+    pass  # Ignore, we already have a formal definition of this class.
 
   def get_attribute(self, name, valself=None, valcls=None):
     return Class.get_attribute(self, name, valself, valcls)
@@ -1178,6 +1194,11 @@ class PyTDClass(LazyAbstractValue, Class):
     if other_type.name == "type":
       return subst
 
+  def to_pytd_def(self, name, unused_node):
+    # This happens if a module does e.g. "from x import y as z", i.e., copies
+    # something from another module to the local namespace.
+    return self.cls.Replace(name=name)
+
 
 class InterpreterClass(SimpleAbstractValue, Class):
   """An abstract wrapper for user-defined class objects.
@@ -1195,10 +1216,14 @@ class InterpreterClass(SimpleAbstractValue, Class):
     self.mro = utils.compute_mro(self)
     self.members = members
     self.formal_type_parameters = {}  # builtin types don't have type params
+    self.instances = set()  # filled through register_instance
     log.info("Created class: %r", self)
 
+  def register_instance(self, instance):
+    self.instances.add(instance)
+
   def bases(self):
-    return self._bases
+    return utils.concat_lists(b.data for b in self._bases)
 
   def get_attribute_flat(self, name):
     return super(InterpreterClass, self).get_attribute(name)
@@ -1247,6 +1272,37 @@ class InterpreterClass(SimpleAbstractValue, Class):
 
   def to_type(self):
     return pytd.NamedType("type")
+
+  def to_pytd_def(self, class_name, node):
+    methods = []
+    constants = collections.defaultdict(pytd_utils.TypeBuilder)
+
+    # class-level attributes
+    for name, member in self.members.items():
+      if name not in output.CLASS_LEVEL_IGNORE:
+        for value in member.FilteredData(node):
+          if isinstance(value, Function):
+            methods.append(value.to_pytd_def(name, node))
+          else:
+            constants[name].add_type(value.to_type())
+
+    # instance-level attributes
+    for instance in self.instances:
+      for name, member in instance.members.items():
+        if name not in output.CLASS_LEVEL_IGNORE:
+          for value in member.FilteredData(node):
+            constants[name].add_type(value.to_type())
+
+    bases = [pytd_utils.JoinTypes(pytd.NamedType(b.name) for b in basevar.data)
+             for basevar in self._bases]
+    constants = [pytd.Constant(name, builder.build())
+                 for name, builder in constants.items()
+                 if builder]
+    return pytd.Class(name=class_name,
+                      parents=tuple(bases),
+                      methods=tuple(methods),
+                      constants=tuple(constants),
+                      template=())
 
   def get_instance_type(self, _):
     return pytd.NamedType(self.official_name)
@@ -1301,6 +1357,9 @@ class Function(AtomicAbstractValue):
 
   def to_type(self):
     return pytd.NamedType("function")
+
+  def to_pytd_def(self, name, unused_node):
+    raise NotImplementedError()
 
   def match_against_type(self, other_type, subst):
     if other_type.name in ["function", "object"]:
@@ -1360,6 +1419,7 @@ class InterpreterFunction(Function):
     self.defaults = tuple(defaults)
     self.closure = closure
     self.cls = None
+    self._call_records = []
 
   # TODO(kramm): support retrieving the following attributes:
   # 'func_{code, name, defaults, globals, locals, dict, closure},
@@ -1440,9 +1500,43 @@ class InterpreterFunction(Function):
     frame = self.vm.make_frame(self.code, callargs,
                                self.f_globals, self.f_locals, self.closure)
     if self.code.co_flags & loadmarshal.CodeType.CO_GENERATOR:
-      return node, Generator(frame, self.vm).to_variable(self.name)
+      generator = Generator(frame, self.vm).to_variable(self.name)
+      node_after_call, ret = node, generator
     else:
-      return self.vm.run_frame(frame, node)
+      node_after_call, ret = self.vm.run_frame(frame, node)
+    self._call_records.append((callargs, ret, node, node_after_call))
+    return node_after_call, ret
+
+  def to_pytd_def(self, function_name, unused_node):
+    num_defaults = len(self.defaults)
+    signatures = []
+    for callargs, ret, _, node_after_call in self._call_records:
+      for combination in utils.variable_product_dict(callargs):
+        for return_value in ret.values:
+          if node_after_call.HasCombination(
+              combination.values() + [return_value]):
+            params = [pytd.Parameter(name, combination[name].data.to_type())
+                      for name in self.get_parameter_names()]
+            if num_defaults:
+              params = params[:-num_defaults]
+            signatures.append(pytd.Signature(
+                params=tuple(params), return_type=return_value.data.to_type(),
+                exceptions=(),  # TODO(kramm): record exceptions
+                template=(), has_optional=num_defaults > 0))
+    if signatures:
+      return pytd.FunctionWithSignatures(function_name, tuple(signatures))
+    else:
+      # Fallback: Generate a pytd signature only from the definition of the
+      # method, not the way it's being used.
+      return pytd.FunctionWithSignatures(
+          function_name, (self.simple_pytd_signature(),))
+
+  def simple_pytd_signature(self):
+    return pytd.Signature(
+        params=tuple(pytd.Parameter(name, pytd.NamedType("object"))
+                     for name in self.get_parameter_names()),
+        return_type=pytd.AnythingType(),
+        exceptions=(), template=(), has_optional=bool(self.defaults))
 
   def get_parameter_names(self):
     return list(self.code.co_varnames[:self.code.co_argcount])
@@ -1672,10 +1766,10 @@ class Unknown(AtomicAbstractValue):
     v = self.vm.program.NewVariable(self.name or name)
     val = v.AddValue(self, source_set=[], where=self.vm.current_location)
     self.owner = val
-    self.vm.trace_unknown(v)
+    self.vm.trace_unknown(self.class_name, v)
     return v
 
-  def to_pytd_class(self):
+  def to_pytd_def(self, class_name, unused_node):
     """Convert this Unknown to a pytd.Class."""
     if not self._pytd_class:
       self_param = (pytd.Parameter("self", pytd.NamedType("object")),)
@@ -1690,7 +1784,7 @@ class Unknown(AtomicAbstractValue):
       else:
         methods = ()
       self._pytd_class = pytd.Class(
-          name=self.class_name,
+          name=class_name,
           parents=(),
           methods=methods,
           constants=tuple(pytd.Constant(name, to_type(c))
@@ -1703,7 +1797,7 @@ class Unknown(AtomicAbstractValue):
     return self.to_variable("class of " + self.name)
 
   def to_type(self):
-    cls = self.to_pytd_class()
+    cls = self.to_pytd_def(self.class_name, None)
     t = pytd.ClassType(cls.name)  # pylint: disable=no-member
     t.cls = cls
     return t

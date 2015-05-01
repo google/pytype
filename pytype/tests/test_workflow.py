@@ -7,7 +7,7 @@ class WorkflowTest(test_inference.InferenceTest):
 
   def testWorkflow1(self):
     with self.Infer("""
-      class ConfigParser:
+      class ConfigParser(object):
         def __init__(self, filename):
           self.filename = filename
         def read(self):
@@ -18,6 +18,8 @@ class WorkflowTest(test_inference.InferenceTest):
       cp.read()
       """, deep=False, solve_unknowns=True, extract_locals=False) as ty:
       self.assertTypesMatchPytd(ty, """
+        cp: ConfigParser
+
         class ConfigParser:
           # TODO(pludemann): remove '-> NoneType'
           def __init__(self, filename: str or buffer or unicode) -> NoneType
@@ -25,6 +27,5 @@ class WorkflowTest(test_inference.InferenceTest):
           filename: str or buffer or unicode
       """)
 
-
 if __name__ == '__main__':
-  test_inference.main(debugging=False)
+  test_inference.main(True)

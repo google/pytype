@@ -518,7 +518,10 @@ class CollapseLongUnions(object):
 
   def __init__(self, max_length=7, generic_type=None):
     assert isinstance(max_length, (int, long))
-    self.generic_type = generic_type or pytd.NamedType("object")
+    if generic_type is None:
+      self.generic_type = pytd.NamedType("object")
+    else:
+      self.generic_type = generic_type
     self.max_length = max_length
 
   def VisitUnionType(self, union):
@@ -580,6 +583,30 @@ class CollapseLongReturnUnions(object):
 
   def VisitSignature(self, sig):
     return sig.Replace(return_type=sig.return_type.Visit(
+        CollapseLongUnions(self.max_length, pytd.AnythingType())))
+
+
+class CollapseLongConstantUnions(object):
+  """Shortens long unions in constants to ?.
+
+  This is a lossy optimization that changes overlong constants to "?".
+  So
+    class str:
+      x: str or unicode or int or float or list
+  would be shortened to
+    class str:
+      x: ?
+
+  Attributes:
+    max_length: The maximum number of types to allow in a constant. See
+      CollapseLongUnions.
+  """
+
+  def __init__(self, max_length=7):
+    self.max_length = max_length
+
+  def VisitConstant(self, c):
+    return c.Replace(type=c.type.Visit(
         CollapseLongUnions(self.max_length, pytd.AnythingType())))
 
 
@@ -1011,6 +1038,7 @@ def Optimize(node,
   if max_union:
     node = node.Visit(CollapseLongParameterUnions(max_union))
     node = node.Visit(CollapseLongReturnUnions(max_union))
+    node = node.Visit(CollapseLongConstantUnions(max_union))
   if remove_mutable:
     node = node.Visit(AbsorbMutableParameters())
     node = node.Visit(CombineContainers())

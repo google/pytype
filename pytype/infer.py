@@ -8,25 +8,20 @@ import subprocess
 
 from pytype import abstract
 from pytype import convert_structural
+from pytype import output
 from pytype import state
 from pytype import utils
 from pytype import vm
-from pytype.pytd import explain as typegraph_explain
 from pytype.pytd import optimize
 from pytype.pytd import pytd
 from pytype.pytd import utils as pytd_utils
-from pytype.pytd.parse import visitors
 
 log = logging.getLogger(__name__)
 
 
 CallRecord = collections.namedtuple("CallRecord",
                                     ["function", "positional_arguments",
-                                     "keyword_arguments", "return_value",
-                                     "location"])
-
-
-IGNORED_NAMES = ["__module__"]
+                                     "keyword_arguments", "return_value"])
 
 
 class AnalysisFrame(object):
@@ -46,25 +41,26 @@ class CallTracer(vm.VirtualMachine):
 
   def __init__(self, *args, **kwargs):
     super(CallTracer, self).__init__(*args, **kwargs)
-    self._call_trace = set()
-    self._functions = set()
-    self._classes = set()
-    self._attributes = set()
-    self._unknowns = []
+    self._unknowns = {}
+    self._calls = set()
 
   def create_argument(self, method_name, i):
     name = "arg %d of %s" % (i, method_name)
     return abstract.Unknown(self).to_variable(name)
 
-  def analyze_method(self, name, methodvar, main_node):
+  def analyze_method(self, val, main_node):
+    method = val.data
+    if isinstance(method, (abstract.Function, abstract.BoundFunction)):
+      args = [self.create_argument(val.data.name, i)
+              for i in range(method.argcount())]
+      self.call_function(val.variable, args)
+      self.frame.state = self.frame.state.connect_to_cfg_node(main_node)
+
+  def analyze_method_var(self, name, var, main_node):
     assert self.current_location == main_node
     log.info("Analyzing %s", name)
-    for method in methodvar.data:
-      if isinstance(method, (abstract.Function, abstract.BoundFunction)):
-        args = [self.create_argument(name, i)
-                for i in range(method.argcount())]
-        self.call_function(methodvar, args)
-        self.frame.state = self.frame.state.connect_to_cfg_node(main_node)
+    for val in var.values:
+      self.analyze_method(val, main_node)
 
   def bind_method(self, name, methodvar, instance, clsvar, loc):
     bound = self.program.NewVariable(name)
@@ -72,200 +68,119 @@ class CallTracer(vm.VirtualMachine):
       bound.AddValue(m.property_get(instance, clsvar), [], loc)
     return bound
 
-  def analyze_class(self, clsvar, main_node):
+  def analyze_class(self, val, main_node):
     assert self.current_location == main_node
-    instance = self.instantiate(clsvar)
+    instance = self.instantiate(val.variable)
     self.frame.state = self.frame.state.connect_to_cfg_node(main_node)
-    for cls_val in clsvar.values:
-      cls = cls_val.data
-      init = cls.get_attribute("__init__", instance.values[0], cls_val)
-      if init:
-        bound_init = self.bind_method("__init__", init, instance, clsvar,
-                                      main_node)
-        self.analyze_method("__init__", bound_init, main_node)
-      for name, methodvar in sorted(cls.members.items()):
-        b = self.bind_method(name, methodvar, instance, clsvar, main_node)
-        self.analyze_method(name, b, main_node)
+    cls = val.data
+    init = cls.get_attribute("__init__", instance.values[0], val)
+    if init:
+      bound_init = self.bind_method("__init__", init, instance, val.variable,
+                                    main_node)
+      self.analyze_method_var("__init__", bound_init, main_node)
+    for name, methodvar in sorted(cls.members.items()):
+      b = self.bind_method(name, methodvar, instance, val.variable, main_node)
+      self.analyze_method_var(name, b, main_node)
 
-  def analyze_classes(self, main_node):
-    for unused_name, clsvar in sorted(self._classes):
-      self.analyze_class(clsvar, main_node)
+  def analyze_function(self, val, main_node):
+    if val.data.cls:
+      # We analyze class methods in analyze_class above.
+      log.info("Analyze functions: Skipping class method %s", val.name)
+    elif val.data.is_closure():
+      # We analyze closures as part of the function they're defined in.
+      log.info("Analyze functions: Skipping closure %s", val.name)
+    else:
+      self.analyze_method(val, main_node)
 
-  def analyze_functions(self, main_node):
-    for name, f in sorted(self._functions):
-      if all(function.cls for function in f.data):
-        # We analyze class methods in analyze_class above.
-        log.info("Analyze functions: Skipping class method %s", name)
-      elif all(function.is_closure() for function in f.data):
-        # We analyze closures as part of the function they're defined in.
-        log.info("Analyze functions: Skipping closure %s", name)
-      else:
-        log.info("Analyzing function %s", name)
-        self.analyze_method(name, f, main_node)
+  def analyze_toplevel(self, main_node, defs, ignore):
+    for name, var in sorted(defs.items()):  # sort, for determinicity
+      if name not in ignore:
+        for value in var.values:
+          if isinstance(value.data, abstract.Class):
+            self.analyze_class(value, main_node)
+          elif isinstance(value.data, abstract.Function):
+            self.analyze_function(value, main_node)
 
-  def analyze(self, main_node):
+  def analyze(self, main_node, defs, ignore):
     assert not self.frame
     frame = AnalysisFrame(main_node)
     self.push_frame(frame)
     assert self.current_location is main_node
-    self.analyze_classes(main_node)
-    self.analyze_functions(main_node)
+    self.analyze_toplevel(main_node, defs, ignore)
     self.pop_frame(frame)
 
-  def trace_call(self, node, funcu, posargs, namedargs, result_variable):
+  def trace_unknown(self, name, unknown):
+    self._unknowns[name] = unknown
+
+  def trace_call(self, func, posargs, namedargs, result):
     """Add an entry into the call trace.
 
     Args:
-      node: CFG node of the return of this function.
-      funcu: A Variable of the possible functions that where called.
+      func: A typegraph Value of functions that was called.
       posargs: The positional arguments.
       namedargs: The keyword arguments.
-      result_variable: A Variable of the possible result values.
+      result: A Variable of the possible result values.
     """
-    if all(function.is_closure() for function in funcu.data):
-      log.info("Not recording call to closure %s", funcu.name)
-      return
-    else:
-      log.debug("Logging call at %s to %r with %d args, return %r",
-                node.name, funcu, len(posargs), result_variable)
-    assert None not in posargs
-    self._call_trace.add(CallRecord(funcu, tuple(posargs),
-                                    tuple((namedargs or {}).items()),
-                                    result_variable,
-                                    node))
+    log.debug("Logging call to %r with %d args, return %r",
+              func, len(posargs), result)
+    self._calls.add(CallRecord(func, tuple(posargs),
+                               tuple((namedargs or {}).items()), result))
 
-  def trace_functiondef(self, name, f):
-    self._functions.add((name, f))
+  def pytd_for_unknowns(self, defs, cfg_end, ignore):
+    classes = []
+    for name, var in self._unknowns.items():
+      for value in var.FilteredData(cfg_end):
+        classes.append(value.to_pytd_def(name, cfg_end))
+    ty = pytd.TypeDeclUnit("unknowns", (), tuple(classes), (), ())
+    return ty.Visit(optimize.PullInMethodClasses())
 
-  def trace_classdef(self, name, clsvar):
-    # store name to enable sorting
-    self._classes.add((name, clsvar))
-
-  def trace_setattribute(self, obj, name, attr):
-    self._attributes.add((obj, name, attr))
-
-  def trace_unknown(self, unknown):
-    self._unknowns.extend(unknown.data)
-
-  # pylint: disable=unused-argument
-  def compute_types(self, expensive=False, explain=False):
-    """Compute the types of all functions and classes self has evaluated.
-
-    Things that could not be assigned a type are omitted.
-
-    The approach is to enumerate over all the functions calls that were made and
-    filter their possible types based on the data flow that is possible in the
-    typegraph. Once all the actually possible types for a given function are
-    generated they are passed to the to PyTD optimizer to simplify them.
-
-    Args:
-      expensive: Do full path-sensitive analysis.
-      explain: For every omitted type, explain why it was impossible.
-    Returns:
-      A TypeDeclUnit that has all the classes and functions.
-    """
-    global_functions = {}  # map names to pytd.FunctionWithSignatures
-
-    # maps names to a dict mapping names to pytd.FunctionWithSignatures
-    classes_dict = {clsvar.name: {} for _, clsvar in self._classes}
-
-    for funcvariable, args, kws, rets, loc in self._call_trace:
-      log.debug("_call_trace: %s(%s, %s)->%s", funcvariable, args, kws, rets)
-      for funcval in funcvariable.values:
-        func = funcval.data
-        if isinstance(func, abstract.PyTDFunction):
-          func = func.signatures[0]
-          prefix = "~"
+  def pytd_for_types(self, defs, cfg_end, ignore):
+    constants = []
+    functions = []
+    classes = []
+    for name, var in defs.items():
+      const_types = []
+      if name in output.TOP_LEVEL_IGNORE or name in ignore:
+        continue
+      for value in var.FilteredData(cfg_end):
+        if isinstance(value, abstract.Class):
+          classes.append(value.to_pytd_def(name, cfg_end))
+        elif isinstance(value, abstract.Function):
+          functions.append(value.to_pytd_def(name, cfg_end))
         else:
-          prefix = ""
-        if not hasattr(func, "get_parameter_names"):
-          log.debug("Ignoring %s", func.__class__)
-          continue
+          const_types.append(value.to_type())
+      if const_types:
+        constants.append(pytd.Constant(name, pytd_utils.JoinTypes(const_types)))
+    return pytd.TypeDeclUnit(
+        "inferred", tuple(constants), tuple(classes), tuple(functions), ())
 
-        for args_selected in utils.variable_product(
-            func.get_bound_arguments() + list(args)):
-          # Process in deterministic order:
-          for kws_selected in sorted(utils.variable_product_dict(dict(kws))):
-            for ret_selected in rets.values:
-              # This runs for every proposed type for the given function call
-              vals = ([funcval, ret_selected] + list(args_selected) +
-                      list(kws_selected.values()))
-              if expensive:
-                is_possible = loc.HasCombination(vals)
-                if explain and not is_possible:
-                  typegraph_explain.Explain(vals, loc)
-              else:
-                is_possible = True
-              if is_possible or log.isEnabledFor(logging.INFO):
-                names = func.get_parameter_names()
-                arg_types = (a.data.to_type() for a in args_selected)
-                sig = pytd.Signature(
-                    tuple(pytd.Parameter(n, t)
-                          for n, t in zip(names, arg_types)) +
-                    tuple(pytd.Parameter(name, a.data.to_type())
-                          for name, a in kws_selected.items()),
-                    ret_selected.data.to_type(),
-                    has_optional=False,
-                    exceptions=(), template=())
-                log.debug("is_possible: %s %r: %r at %s",
-                          "+" if is_possible else "-", func.get_static_path(),
-                          pytd.Print(sig), loc.name)
-                path = func.get_static_path()
-                if is_possible and path:
-                  cls = path.get_innermost_class()
-                  f = path.get_function()
-                  if cls:
-                    methods = classes_dict.setdefault(prefix + cls.name, {})
-                    function = methods.setdefault(
-                        f.name, pytd.FunctionWithSignatures(f.name, []))
-                  else:
-                    function = global_functions.setdefault(
-                        prefix + f.name, pytd.FunctionWithSignatures(
-                            prefix + f.name, []))
-                  function.signatures.append(sig)
+  def pytd_for_call_traces(self):
+    functions = []
+    for funcval, args, kws, rets in self._calls:
+      func = funcval.data.signatures[0]
+      signatures = []
+      for args_selected in utils.variable_product(
+          func.get_bound_arguments() + list(args)):
+        for kws_selected in sorted(utils.variable_product_dict(dict(kws))):
+          ret = pytd_utils.JoinTypes(r.to_type() for r in rets.data)
+          names = func.get_parameter_names()
+          arg_types = (a.data.to_type() for a in args_selected)
+          signatures.append(pytd.Signature(
+              tuple(pytd.Parameter(n, t)
+                    for n, t in zip(names, arg_types)) +
+              tuple(pytd.Parameter(name, a.data.to_type())
+                    for name, a in kws_selected.items()),
+              ret, has_optional=False, exceptions=(), template=()))
+      functions.append(pytd.FunctionWithSignatures("~" + func.name,
+                                                   tuple(signatures)))
+    return pytd.TypeDeclUnit(
+        "call_traces", (), (), tuple(functions), ())
 
-    attrs = collections.defaultdict(  # class name -> attr name -> type
-        lambda: collections.defaultdict(pytd.NothingType))
-    for objvar, name, attr in self._attributes:
-      for obj in objvar.values:
-        if name in IGNORED_NAMES:
-          continue  # remove __module__ etc.
-        t = pytd_utils.JoinTypes(a.to_type() for a in attr.data
-                                 if not isinstance(a, abstract.Function)
-                                )
-        clsvar = obj.data.get_type()
-        if clsvar:
-          for cls in clsvar.values:
-            prev = attrs[cls.data.get_name()][name]
-            attrs[cls.data.get_name()][name] = pytd_utils.JoinTypes([prev, t])
-    constants = {
-        cls_name: tuple(pytd.Constant(attr_name, t)
-                        for attr_name, t in attr_name_to_type.items())
-        for cls_name, attr_name_to_type in attrs.items()
-    }
-
-    classes = tuple(
-        pytd.Class(cls_name,
-                   (pytd.NamedType("object"),) if cls_name != "object" else (),
-                   tuple(pytd.FunctionWithSignatures(method.name,
-                                                     tuple(method.signatures,))
-                         for method in methods.values()),
-                   constants.get(cls_name, ()), ())
-        for cls_name, methods in classes_dict.items())
-
-    unknowns = tuple(u.to_pytd_class() for u in self._unknowns)
-    tmp = pytd.TypeDeclUnit(name="unknowns", classes=unknowns, constants=(),
-                            functions=(), modules=())
-    classes += tmp.Visit(optimize.PullInMethodClasses()).classes
-
-    functions = tuple(pytd.FunctionWithSignatures(f.name, tuple(f.signatures))
-                      for f in global_functions.values())
-
-    mod = pytd.TypeDeclUnit("inferred", (), classes, functions, ())
-    mod.Visit(visitors.VerifyVisitor())
-    mod = mod.Visit(optimize.RemoveDuplicates())
-    mod = mod.Visit(visitors.CanonicalOrderingVisitor(sort_signatures=True))
-    return mod
+  def compute_types(self, defs, cfg_end, ignore):
+    return pytd_utils.Concat(
+        self.pytd_for_types(defs, cfg_end, ignore),
+        self.pytd_for_unknowns(defs, cfg_end, ignore),
+        self.pytd_for_call_traces())
 
 
 def pretty_assignment(v, short=False):
@@ -389,9 +304,8 @@ def program_to_dot(program, ignored):
 
 
 def infer_types(src, python_version, filename=None,
-                svg_output=None, deep=False, expensive=True,
-                remove_builtin_names=True,
-                pseudocode_output=False, explain=False, solve_unknowns=False,
+                svg_output=None, deep=False,
+                pseudocode_output=False, solve_unknowns=False,
                 reverse_operators=False):
   """Given Python source return its types.
 
@@ -402,10 +316,7 @@ def infer_types(src, python_version, filename=None,
     svg_output: A filename into which to save an SVG version of the type graph.
     deep: If True, analyze all functions, even the ones not called by the main
       execution flow.
-    expensive: If True, do a full path-sensitive analysis.
-    remove_builtin_names: if True, remove builtin names from the result.
     pseudocode_output: Filename to write pseudo code to.
-    explain: For every omitted type, explain why it was impossible.
     solve_unknowns: If yes, try to replace structural types ("~unknowns") with
       nominal types.
     reverse_operators: If True, emulate operations like __radd__.
@@ -413,12 +324,12 @@ def infer_types(src, python_version, filename=None,
     A TypeDeclUnit
   """
   tracer = CallTracer(python_version, reverse_operators)
-  loc, builtin_names = tracer.run_program(src, filename)
+  loc, defs, builtin_names = tracer.run_program(src, filename)
   log.info("===Done run_program===")
   # TODO(pludemann): make test_inference.InferDedent and this code the same:
   if deep:
-    tracer.analyze(loc)
-  ast = tracer.compute_types(expensive=expensive, explain=explain)
+    tracer.analyze(loc, defs, builtin_names)
+  ast = tracer.compute_types(defs, loc, builtin_names)
   if solve_unknowns:
     log.info("=========== PyTD to solve =============\n%s", pytd.Print(ast))
     ast = convert_structural.convert_pytd(ast, tracer.builtins_pytd)
@@ -432,7 +343,5 @@ def infer_types(src, python_version, filename=None,
     src = program_to_pseudocode(tracer.program)
     with open(pseudocode_output, "w") as fi:
       fi.write(src)
-  if remove_builtin_names:
-    ast = ast.Visit(visitors.RemoveFunctionsAndClasses(builtin_names))
 
   return ast

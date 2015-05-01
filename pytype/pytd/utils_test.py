@@ -75,6 +75,19 @@ class TestUtils(parser_test.ParserTest):
     combined = utils.Concat(ast1, ast2)
     self.AssertSourceEquals(combined, expected)
 
+  def testConcat3(self):
+    """Test for concatenating three pytd ASTs."""
+    ast1 = self.Parse("""c1: int""")
+    ast2 = self.Parse("""c2: float""")
+    ast3 = self.Parse("""c3: bool""")
+    combined = utils.Concat(ast1, ast2, ast3)
+    expected = textwrap.dedent("""
+      c1: int
+      c2: float
+      c3: bool
+    """)
+    self.AssertSourceEquals(combined, expected)
+
   def testJoinTypes(self):
     """Test that JoinTypes() does recursive flattening."""
     n1, n2, n3, n4, n5, n6 = [pytd.NamedType("n%d" % i) for i in xrange(6)]

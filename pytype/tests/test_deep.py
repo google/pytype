@@ -158,12 +158,12 @@ class StructuralTest(test_inference.InferenceTest):
   def testConstructorReturn(self):
     with self.Infer("""
       class Foo(object):
-        def __init__(self, x=None):
+        def __init__(self, y, x=None):
           if x:
             x = list(x)
 
       def f(self):
-        return Foo()
+        return Foo(3)
     """, deep=True, solve_unknowns=False, extract_locals=False) as ty:
       constructor = ty.Lookup("Foo").Lookup("__init__")
       self.assertOnlyHasReturnType(constructor, self.none_type)

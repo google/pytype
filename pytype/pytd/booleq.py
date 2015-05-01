@@ -323,7 +323,7 @@ class Solver(object):
         count_true += 1
       else:
         lines.append("if %s then %s" % (e, implication))
-    return "%s\n(%d FALSE, %d TRUE)\n" % (
+    return "%s\n(not shown: %d always FALSE, %d always TRUE)\n" % (
       "\n".join(lines), count_false, count_true)
 
   def register_variable(self, variable):

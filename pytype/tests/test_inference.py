@@ -56,6 +56,9 @@ class Infer(object):
   and explicitly make the calls.
   """
 
+  # Turn this to "True" to show all intermediate steps
+  extra_verbose = False
+
   # TODO(pludemann): This is possibly a slightly less magical paradigm:
   #   with self.Inferencer(deep=False, solve_unknowns=False) as ty:
   #     ty = i.Infer("""....""")
@@ -108,11 +111,11 @@ class Infer(object):
       return
     log.error("*** unittest ERROR *** %s: %s", error_type.__name__, value)
     _PrintErrorDebug("source", self.srccode)
-    if self.inferred:
+    if self.extra_verbose and self.inferred:
       _PrintErrorDebug("inferred PyTD", pytd.Print(self.inferred))
-    if self.optimized_types:
+    if self.extra_verbose and self.optimized_types:
       _PrintErrorDebug("optimized PyTD", pytd.Print(self.optimized_types))
-    if self.extract_locals:
+    if self.extra_verbose and self.extract_locals:
       _PrintErrorDebug("extract_locals (removed unknown) PyTD",
                        pytd.Print(self.extract_locals))
     if self.canonical_types:

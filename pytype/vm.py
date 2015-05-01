@@ -649,7 +649,7 @@ class VirtualMachine(object):
     val = v.AddValue(unknown, source_set=[source] if source else [],
                      where=self.current_location)
     unknown.owner = val
-    self.trace_unknown(v)
+    self.trace_unknown(unknown.class_name, v)
     return v
 
   def convert_constant(self, name, pyval):
@@ -757,7 +757,7 @@ class VirtualMachine(object):
       return abstract.Union([self.convert_constant_to_value(pytd.Print(t), t)
                              for t in pyval.type_list], self)
     elif isinstance(pyval, pytd.TypeParameter):
-      return abstract.TypeParameter(pyval.name, pyval, self)
+      return abstract.TypeParameter(pyval.name, self)
     elif isinstance(pyval, pytd.GenericType):
       # TODO(kramm): Remove ParameterizedClass. This should just create a
       # SimpleAbstractValue with type parameters.
@@ -829,13 +829,11 @@ class VirtualMachine(object):
     log.info("Declaring class %s", name)
     val = abstract.InterpreterClass(
         name,
-        [_get_atomic_value(b)
-         for b in _get_atomic_python_constant(bases)],
+        list(_get_atomic_python_constant(bases)),
         _get_atomic_value(members).members,
         self)
     var = self.program.NewVariable(name)
     var.AddValue(val, bases.values + members.values, self.current_location)
-    self.trace_classdef(name, var)
     return var
 
   def make_instance(self, cls, args, kws):
@@ -873,8 +871,6 @@ class VirtualMachine(object):
     # in closure.
     var = self.program.NewVariable(name)
     var.AddValue(val, code.values, self.current_location)
-    if closure is None:
-      self.trace_functiondef(name, var)
     return var
 
   def make_frame(self, code, callargs=None,
@@ -975,8 +971,6 @@ class VirtualMachine(object):
     f_globals, f_locals, node = self.run_bytecode(builtins_code, node)
     # at the outer layer, locals are the same as globals
     builtin_names = frozenset(f_globals.members)
-    # Don't keep the types recorded so far:
-    self._functions.clear()
     return f_globals, f_locals, builtin_names, node
 
   def run_program(self, src, filename=None, run_builtins=True):
@@ -1002,9 +996,9 @@ class VirtualMachine(object):
     code = self.compile_src(src,
                             filename=filename)
 
-    _, _, node = self.run_bytecode(code, node, f_globals, f_locals)
+    f_globals, _, node = self.run_bytecode(code, node, f_globals, f_locals)
     log.info("Final node: %s", node.name)
-    return node, builtin_names
+    return node, f_globals.members, builtin_names
 
   def call_binary_operator(self, name, x, y):
     """Map a binary operator to "magic methods" (__add__ etc.)."""
@@ -1036,20 +1030,12 @@ class VirtualMachine(object):
     x, y = self.popn(2)
     self.push(self.call_binary_operator(name, x, y))
 
-  def trace_call(self, *args):
-    return NotImplemented
-
   def trace_unknown(self, *args):
     """Fired whenever we create a variable containing 'Unknown'."""
     return NotImplemented
 
-  def trace_classdef(self, *args):
-    return NotImplemented
-
-  def trace_functiondef(self, *args):
-    return NotImplemented
-
-  def trace_setattribute(self, *args):
+  def trace_call(self, *args):
+    """Fired whenever we call a builtin using unknown parameters."""
     return NotImplemented
 
   def call_function(self, funcu, posargs, namedargs=None):
@@ -1082,7 +1068,6 @@ class VirtualMachine(object):
     if nodes:
       final_node = self.join_cfg_nodes(nodes)
       self.frame.state = self.frame.state.change_cfg_node(final_node)
-      self.trace_call(final_node, funcu, posargs, namedargs, result)
     return result
 
   def call_function_from_stack(self, arg, args, kwargs=None):
@@ -1203,7 +1188,6 @@ class VirtualMachine(object):
     assert isinstance(obj, typegraph.Variable)
     assert isinstance(attr, str)
     assert isinstance(value, typegraph.Variable)
-    self.trace_setattribute(obj, attr, value)
     for val in obj.values:
       # TODO(kramm): Check whether val.data is a descriptor (i.e. has "__set__")
       val.data.set_attribute(attr, value)

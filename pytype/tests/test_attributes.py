@@ -39,7 +39,7 @@ class TestAttributes(test_inference.InferenceTest):
 
   def testPrivate(self):
     with self.Infer("""
-      class C:
+      class C(object):
         def __init__(self):
           self._x = 3
         def foo(self):
@@ -54,7 +54,7 @@ class TestAttributes(test_inference.InferenceTest):
 
   def testPublic(self):
     with self.Infer("""
-      class C:
+      class C(object):
         def __init__(self):
           self.x = 3
         def foo(self):

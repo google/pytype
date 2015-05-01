@@ -72,7 +72,9 @@ class MethodsTest(test_inference.InferenceTest):
         return x + "Test"
       f(3.2)
     """, deep=False, solve_unknowns=False, extract_locals=False) as ty:
-      self.assertItemsEqual(ty.functions, [])
+      self.assertTypesMatchPytd(ty, """
+        def f(x) -> ?
+      """)
 
   def testConjugate(self):
     with self.Infer("""

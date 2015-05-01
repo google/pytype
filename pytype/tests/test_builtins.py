@@ -47,7 +47,7 @@ class BuiltinTests(test_inference.InferenceTest):
       # TODO(kramm): https://review/#review/87297298/pytype/tests/test_builtins.py&v=s11&l=37F
       self.assertTypesMatchPytd(ty, """
         # TODO(pludemann): should this return `?` instead of `object`?
-        def t_testEval(x: int) -> object
+        def t_testEval(x: int) -> ?
       """)
 
   def testIsinstance1(self):
@@ -113,7 +113,7 @@ class BuiltinTests(test_inference.InferenceTest):
         return max(x, y)
     """, deep=True, solve_unknowns=True, extract_locals=True) as ty:
       self.assertTypesMatchPytd(ty, """
-        def t_testMax2(x: object, y: object) -> object
+        def t_testMax2(x: object, y: object) -> ?
         """)
 
   def testDict(self):
@@ -171,7 +171,7 @@ class BuiltinTests(test_inference.InferenceTest):
       return list(x)
     """, deep=True, solve_unknowns=True, extract_locals=True) as ty:
       self.assertTypesMatchPytd(ty, """
-        def t_testListInit0(x: object) -> list<object>
+        def t_testListInit0(x: object) -> list<?>
       """)
 
   def testListInit1(self):
@@ -180,7 +180,7 @@ class BuiltinTests(test_inference.InferenceTest):
       return x + [y]
     """, deep=True, solve_unknowns=True, extract_locals=False) as ty:
       self.assertTypesMatchPytd(ty, """
-        def t_testListInit1(x: list<object>, y) -> list<object>
+        def t_testListInit1(x: list<object>, y) -> list<?>
       """)
 
   def testListInit2(self):
@@ -192,7 +192,9 @@ class BuiltinTests(test_inference.InferenceTest):
     print z + 1
     """, deep=False, solve_unknowns=True, extract_locals=False) as ty:
       self.assertTypesMatchPytd(ty, """
-        def t_testListInit2(x: object, i: int or bool) -> object
+        z: bool or complex or float or int or long
+
+        def t_testListInit2(x: object, i: bool or complex or float or int or long) -> ?
       """)
 
   def testListInit3(self):
@@ -218,9 +220,9 @@ class BuiltinTests(test_inference.InferenceTest):
       #              type params are covariant. If they'd be invariant, the
       #              below would be wrong.
       self.assertTypesMatchPytd(ty, """
-        def t_testListInit4(x) -> object
+        def t_testListInit4(x) -> ?
         # _i_ captures the more precise definition of the list
-        def _i_(x: list<object>) -> list<object>
+        def _i_(x: list<object>) -> list<?>
       """)
 
   def testAbsInt(self):
@@ -294,6 +296,16 @@ class BuiltinTests(test_inference.InferenceTest):
       def g(args):
         f(*tuple(args))
     """, deep=True, solve_unknowns=False, extract_locals=False)
+
+  def testOpen(self):
+    with self.Infer("""
+      def f(x):
+        with open(x, "r") as fi:
+          return fi.read()
+      """, deep=True, solve_unknowns=True, extract_locals=False) as ty:
+      self.assertTypesMatchPytd(ty, """
+        def f(x: str or buffer or unicode) -> str
+      """)
 
 
 if __name__ == "__main__":
