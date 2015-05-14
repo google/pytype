@@ -205,4 +205,3 @@ class PreprocessReverseOperatorsVisitor(object):
           method.Replace(signatures=(
               tuple(new_signatures + extra_signatures))))
     return cls.Replace(methods=tuple(new_methods))
-

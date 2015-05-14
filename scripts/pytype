@@ -80,12 +80,26 @@ def parse_options(args):
       dest="reverse_operators", default=False,
       help=("Enable support for Python reverse "
             "operator overloading (__radd__ etc.)"))
+  o.add_option(
+      "--irascible", type="int", action="store",
+      dest="irascible", default=0,
+      help="Non-zero return code: 0=critical, 1=error, 2=warn, ...")
 
   options, filenames = o.parse_args(args)
   return options, filenames
 
 
+class TrackLevel(logging.Handler):
+  def __init__(self):
+    super(TrackLevel, self).__init__()
+    self.max_level = logging.NOTSET
+
+  def emit(self, record):
+    self.max_level = max(self.max_level, record.levelno)
+
+
 def main():
+  log_level_tracker = TrackLevel()
   options, filenames = parse_options(sys.argv)
   unused_executable = filenames.pop(0)
   if len(filenames) < 1:
@@ -102,13 +116,19 @@ def main():
                 logging.INFO, logging.DEBUG]
   if options.verbosity >= 0:
     if options.verbosity >= len(log_levels):
-      print >> sys.stderr, "Invalid verbosity %s" % options.verbosity
+      print >> sys.stderr, "Invalid verbosity: %d" % options.verbosity
       sys.exit(1)
     logging.basicConfig(level=log_levels[options.verbosity])
   else:
     # "verbosity=-1" can be used to disable all logging, so configure logging
     # accordingly.
     logging.basicConfig(level=logging.CRITICAL + 1)
+
+  if options.irascible < 0 or options.irascible > len(log_levels):
+    print >> sys.stderr, "Invalid irascible: %d" % options.irascible
+    sys.exit(1)
+
+  logging.getLogger().addHandler(log_level_tracker)
 
   with open(filename, "r") as fi:
     src = fi.read()
@@ -152,6 +172,9 @@ def main():
       print >> sys.stderr, "Writing output to %s" % output_filename
     with open(output_filename, "w") as fi:
       fi.write(result)
+
+  if log_level_tracker.max_level >= log_levels[options.irascible]:
+    sys.exit(1)
 
 
 if __name__ == "__main__":

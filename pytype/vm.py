@@ -1999,4 +1999,3 @@ class VirtualMachine(object):
 
   def byte_DELETE_SLICE_3(self):
     return self.delete_slice(3)
-
