@@ -39,6 +39,39 @@ class TestASTGeneration(parser_test.ParserTest):
         """)
     self.TestRoundTrip(src)
 
+  def testBackticks(self):
+    """Test parsing of names in backticks."""
+    src = textwrap.dedent("""
+      def `foo-bar`(x: `~unknown3`) -> `funny-type`<int>
+      """)
+    self.TestRoundTrip(src)
+
+  def testOneDottedFunction(self):
+    """Test parsing of a single function with dotted names."""
+    # We won't normally use __builtins__ ... this is just for testing.
+    src = textwrap.dedent("""
+        def foo(a: __builtins__.int) -> __builtins__.int raises foo.Foo
+        def qqsv(x_or_y: compiler.symbols.types.BooleanType) -> NoneType
+        """)
+    self.TestRoundTrip(src)
+
+  def testTemplated(self):
+    src = textwrap.dedent("""
+        def foo(x: int) -> T1<float>
+        def foo(x: int) -> T2<int, complex>
+        def foo(x: int) -> T3<int, T4<str>>
+        def bar(y: int) -> T1<float,>
+        def qqsv<T>(x: T) -> list<T>
+        def qux<S,T>(x: T) -> list<S,>
+
+        class T1<X>:
+            def foo(a: X) -> T2<X, int> raises float
+
+        class T2<X, Y>:
+            def foo(a: X) -> complex raises Except<X, Y>
+    """)
+    self.TestRoundTrip(src)
+
   def testOnlyOptional(self):
     """Test parsing of optional parameters."""
     src = textwrap.dedent("""
@@ -357,7 +390,7 @@ class TestASTGeneration(parser_test.ParserTest):
     """Test parsing of a function with unions, none-able etc."""
 
     canonical = textwrap.dedent("""
-        def foo(a: int, b: int or float or None, c: Foo and `s.Bar` and Zot) -> int raises Bad
+        def foo(a: int, b: int or float or None, c: Foo and `s`.`Bar` and Zot) -> int raises Bad
     """)
     data1 = textwrap.dedent("""
         def foo(a: int, b: int or float or None, c: Foo and s.Bar and Zot) -> int raises Bad

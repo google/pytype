@@ -1,6 +1,7 @@
 """Tests for pytd.py."""
 
 import itertools
+import textwrap
 import unittest
 from pytype.pytd import pytd
 
@@ -46,6 +47,37 @@ class TestPytd(unittest.TestCase):
       self.assertGreaterEqual(n2, n1)
     for p in itertools.permutations(nodes):
       self.assertEquals(list(sorted(p)), nodes)
+
+    def testASTeq(self):
+      src1 = textwrap.dedent("""
+          def foo(a: int or str) -> C
+          class C<T>:
+              def bar(x: T) -> NoneType
+          CONSTANT: C<float>
+          """)
+      src2 = textwrap.dedent("""
+          CONSTANT: C<float>
+          class C<T>:
+              def bar(x: T) -> NoneType
+          def foo(a: str or int) -> C
+          """)
+      tree1 = self.parse(src1)
+      tree2 = self.parse(src2)
+      self.assertTrue(tree1.constants)
+      self.assertTrue(tree1.classes)
+      self.assertTrue(tree1.functions)
+      # self.assertTrue(tree1.modules)  # TODO(pludemann): add modules to src
+      self.assertTrue(tree2.constants)
+      self.assertTrue(tree2.classes)
+      self.assertTrue(tree2.functions)
+      # self.assertTrue(tree2.modules)  # TODO(pludemann): add modules to src
+      self.assertIsInstance(tree1, pytd.TypeDeclUnit)
+      self.assertIsInstance(tree2, pytd.TypeDeclUnit)
+      self.assertTrue(tree1 != tree2)  # TypeDeclUnit uses identity for equality
+      self.assertFalse(tree1 == tree2)
+      self.assertNotEquals(tree1, tree2)
+      self.notEquals(hash(tree1), hash(tree2))
+      self.assertTrue(tree1.ASTeq(tree2))
 
 if __name__ == "__main__":
   unittest.main()

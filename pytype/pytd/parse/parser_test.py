@@ -36,23 +36,31 @@ class ParserTest(unittest.TestCase):
     tree.Visit(visitors.VerifyVisitor())
     return tree
 
-  def ToSource(self, src_or_tree):
+  def ToAST(self, src_or_tree):
     # TODO(pludemann): The callers are not consistent in how they use this
     #                  and in most (all?) cases they know whether they're
     #                  passing in a source string or parse tree. It would
     #                  be better if all the calles were consistent.
     if isinstance(src_or_tree, basestring):
       # Put into a canonical form (removes comments, standard indents):
-      return pytd.Print(self.Parse(src_or_tree + "\n"))
+      return self.Parse(src_or_tree + "\n")
     else:  # isinstance(src_or_tree, tuple):
       src_or_tree.Visit(visitors.VerifyVisitor())
-      return pytd.Print(src_or_tree)
+      return src_or_tree
 
   def AssertSourceEquals(self, src_or_tree_1, src_or_tree_2):
     # Strip leading "\n"s for convenience
-    src1 = self.ToSource(src_or_tree_1).strip() + "\n"
-    src2 = self.ToSource(src_or_tree_2).strip() + "\n"
-    if src1 != src2:
+    ast1 = self.ToAST(src_or_tree_1)
+    ast2 = self.ToAST(src_or_tree_2)
+    src1 = pytd.Print(ast1).strip() + "\n"
+    src2 = pytd.Print(ast2).strip() + "\n"
+    # Verify printed versions are the same and ASTs are the same.
+    # TODO(pludemann): Find out why some tests leave confuse NamedType and
+    #                  ClassType and fix the tests so that this conversion isn't
+    #                  needed.
+    ast1 = ast1.Visit(visitors.ClassTypeToNamedType())
+    ast2 = ast2.Visit(visitors.ClassTypeToNamedType())
+    if src1 != src2 or not ast1.ASTeq(ast2):
       # Due to differing opinions on the form of debug output, allow an
       # environment variable to control what output you want. Set
       # PY_UNITTEST_DIFF to get diff output.
@@ -62,12 +70,15 @@ class ParserTest(unittest.TestCase):
       else:
         sys.stdout.flush()
         sys.stderr.flush()
-        print >>sys.stderr, "Source files differ:"
+        print >>sys.stderr, "Source files or ASTs differ:"
         print >>sys.stderr, "-" * 36, " Actual ", "-" * 36
         print >>sys.stderr, textwrap.dedent(src1).strip()
         print >>sys.stderr, "-" * 36, "Expected", "-" * 36
         print >>sys.stderr, textwrap.dedent(src2).strip()
         print >>sys.stderr, "-" * 80
+      if ast1 == ast2:
+        print >>sys.stderr, "Actual AST:", ast1
+        print >>sys.stderr, "Expect AST:", ast2
       self.fail("source files differ")
 
   def ApplyVisitorToString(self, data, visitor):

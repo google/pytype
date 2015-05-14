@@ -115,48 +115,6 @@ class TestVisitors(parser_test.ParserTest):
     self.assertItemsEqual(["C", "D", "A"],
                           [t.name for t in data[ast.Lookup("E")]])
 
-  def testInstantiateTemplates(self):
-    src = textwrap.dedent("""
-        def foo(x: int) -> A<int>
-
-        class A<T>:
-            def foo(a: T) -> T raises T
-    """)
-    expected = textwrap.dedent("""
-        def foo(x: int) -> `A<int>`
-
-        class `A<int>`:
-            def foo(a: int) -> int raises int
-    """)
-    tree = self.Parse(src)
-    new_tree = visitors.InstantiateTemplates(tree)
-    self.AssertSourceEquals(new_tree, expected)
-
-  def testInstantiateTemplatesWithParameters(self):
-    src = textwrap.dedent("""
-        def foo(x: int) -> T1<float, >
-        def foo(x: int) -> T2<int, complex>
-
-        class T1<A>:
-            def foo(a: A) -> A raises A
-
-        class T2<A, B>:
-            def foo(a: A) -> B raises B
-    """)
-    expected = textwrap.dedent("""
-        def foo(x: int) -> `T1<float, >`
-        def foo(x: int) -> `T2<int, complex>`
-
-        class `T1<float, >`:
-            def foo(a: float) -> float raises float
-
-        class `T2<int, complex>`:
-            def foo(a: int) -> complex raises complex
-    """)
-    tree = self.Parse(src)
-    new_tree = visitors.InstantiateTemplates(tree)
-    self.AssertSourceEquals(new_tree, expected)
-
   def testStripSelf(self):
     src = textwrap.dedent("""
         def add(x: int, y: int) -> int

@@ -101,7 +101,7 @@ def Node(*child_names):
       elif self.__class__ is other.__class__:
         return tuple.__eq__(self, other)
       else:
-        return False
+        return False  # or NotImplemented
 
     def __ne__(self, other):
       """Compare two nodes for inequality. See __eq__."""

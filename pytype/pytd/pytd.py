@@ -25,8 +25,8 @@ from pytype.pytd.parse import node
 
 
 # TODO(kramm): Remove "modules"
-class TypeDeclUnit(node.Node('name', 'constants', 'classes', 'functions',
-                             'modules')):
+class TypeDeclUnit(node.Node('name',
+                             'constants', 'classes', 'functions', 'modules')):
   """Module node. Holds module contents (classes / functions) and submodules.
 
   Attributes:
@@ -61,6 +61,8 @@ class TypeDeclUnit(node.Node('name', 'constants', 'classes', 'functions',
         self._name2item[x.name] = x
       return self._name2item[name]
 
+  # The hash/eq/ne values are used for caching and speed things up quite a bit.
+
   def __hash__(self):
     return id(self)
 
@@ -69,6 +71,13 @@ class TypeDeclUnit(node.Node('name', 'constants', 'classes', 'functions',
 
   def __ne__(self, other):
     return id(self) != id(other)
+
+  def ASTeq(self, other):
+    # Used in tests.
+    return (self.constants == other.constants and
+            self.classes == other.classes and
+            self.functions == other.functions and
+            self.modules == other.modules)
 
 
 class Constant(node.Node('name', 'type')):

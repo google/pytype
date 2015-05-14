@@ -24,11 +24,13 @@
 # pylint: disable=line-too-long
 
 import collections
+import hashlib
 import sys
 import traceback
 from ply import lex
 from ply import yacc
 from pytype.pytd import pytd
+from pytype.pytd.parse import parser_constants
 from pytype.pytd.parse import visitors
 
 
@@ -48,8 +50,8 @@ class PyLexer(object):
     self.lexer.token = self.get_token
     self.lexer.escaping = False
 
-  def set_parse_info(self, data, filename):
-    self.data = data
+  def set_parse_info(self, src, filename):
+    self.src = src
     self.filename = filename
     self.indent_stack = [0]
     self.open_brackets = 0
@@ -69,21 +71,7 @@ class PyLexer(object):
   t_NE = r'!='
   t_QUESTIONMARK = r'\?'
 
-  reserved = [
-      # Python keywords:
-      'and',
-      'class',
-      'def',
-      'else',
-      'if',
-      'or',
-      'pass',
-      # Keywords that are valid identifiers in Python:
-      'nothing',
-      'PYTHONCODE',  # upper-case: stands out + unlikely name
-      'raises',
-      # 'strict',  # TODO(pludemann): add
-  ]
+  reserved = parser_constants.RESERVED
 
   # Define keyword tokens, so parser knows about them.
   # We generate them in t_NAME.
@@ -204,8 +192,11 @@ class PyLexer(object):
       return None
 
   def t_NAME(self, t):
-    (r"""([a-zA-Z_][a-zA-Z0-9_\.]*)|"""
-     r"""(`[^`]*`)""")
+    # For handling identifiers that are reserved words in PyTD or that start
+    # with '~' or contain a dash, we also allow an escape with backticks.  If
+    # you change this, also change parser_constants._BACKTICK_NAME.
+    (r"""([a-zA-Z_][a-zA-Z0-9_-]*)|"""
+     r"""(`[a-zA-Z_~][-a-zA-Z0-9_]*`)""")
     if t.value[0] == r'`':
       # Permit token names to be enclosed by backticks (``), to allow for names
       # that are keywords in pytd syntax.
@@ -354,12 +345,15 @@ class TypeDeclParser(object):
         # errorlog=yacc.NullLogger(),  # If you really want to suppress messages
         **kwargs)
 
-  def Parse(self, data, name=None, filename='<string>', **kwargs):
-    self.data = data  # Keep a copy of what's being parsed
+  def Parse(self, src, name=None, filename='<string>', **kwargs):
+    self.src = src  # Keep a copy of what's being parsed
     self.filename = filename if filename else '<string>'
-    self.lexer.set_parse_info(self.data, self.filename)
-    ast = self.parser.parse(data, **kwargs)
-    name = name or object.__repr__(data)
+    self.lexer.set_parse_info(self.src, self.filename)
+    ast = self.parser.parse(src, **kwargs)
+    # If there's no name, compute an MD5 to make something unique but comparable
+    # from the src. (The original code had object.__repr__(src) which meant that
+    # in effect object identity was forced.)
+    name = name or hashlib.md5(src).hexdigest()
     return ast.Visit(InsertTypeParameters()).Replace(name=name)
 
   precedence = (
@@ -462,8 +456,8 @@ class TypeDeclParser(object):
 
   # TODO(raoulDoc): doesn't support nested classes
   def p_classdef(self, p):
-    """classdef : CLASS NAME template parents COLON INDENT class_funcs DEDENT"""
-    #             1     2    3        4       5     6      7           8
+    """classdef : CLASS qname template parents COLON INDENT class_funcs DEDENT"""
+    #             1     2     3        4       5     6      7           8
     methoddefs = [x for x in p[7] if isinstance(x, NameAndSig)]
     constants = [x for x in p[7] if isinstance(x, pytd.Constant)]
     if (set(f.name for f in methoddefs) | set(c.name for c in constants) !=
@@ -580,7 +574,7 @@ class TypeDeclParser(object):
 
   def p_funcdef_code(self, p):
     """funcdef : DEF NAME PYTHONCODE"""
-    # TODO(pludemann): DEF NAME PYTHONCODE function_name
+    # TODO(pludemann): DEF qname PYTHONCODE function_name
     p[0] = NameAndSig(
         name=p[2],
         # signature is for completeness - it's ignored
@@ -734,7 +728,7 @@ class TypeDeclParser(object):
   #                  if it's a more verbose grammar.
 
   def p_type_homogeneous(self, p):
-    """type : NAME LBRACKET parameters RBRACKET"""
+    """type : qname LBRACKET parameters RBRACKET"""
     if len(p[3]) == 1:
       element_type, = p[3]
       p[0] = pytd.HomogeneousContainerType(base_type=pytd.NamedType(p[1]),
@@ -743,7 +737,7 @@ class TypeDeclParser(object):
       p[0] = pytd.GenericType(base_type=pytd.NamedType(p[1]), parameters=p[3])
 
   def p_type_generic_1(self, p):
-    """type : NAME LBRACKET parameters COMMA RBRACKET"""
+    """type : qname LBRACKET parameters COMMA RBRACKET"""
     p[0] = pytd.GenericType(base_type=pytd.NamedType(p[1]), parameters=p[3])
 
   def p_type_paren(self, p):
@@ -751,7 +745,7 @@ class TypeDeclParser(object):
     p[0] = p[2]
 
   def p_type_name(self, p):
-    """type : NAME"""
+    """type : qname"""
     p[0] = pytd.NamedType(p[1])
 
   def p_type_unknown(self, p):
@@ -765,6 +759,14 @@ class TypeDeclParser(object):
   def p_type_constant(self, p):
     """type : scalar"""
     p[0] = p[1]
+
+  def p_qname_1(self, p):
+    """qname : NAME"""
+    p[0] = p[1]
+
+  def p_qname_multi(self, p):
+    """qname : qname DOT NAME"""
+    p[0] = p[1] + '.' + p[3]
 
   def p_scalar_string(self, p):
     """scalar : STRING"""
@@ -843,8 +845,8 @@ def make_syntax_error(parser_or_tokenizer, msg, p):
 
   # Convert the lexer's offset to an offset within the line with the error
   # TODO(pludemann): use regexp to split on r'[\r\n]' (for Windows, old MacOS):
-  last_line_offset = parser_or_tokenizer.data.rfind('\n', 0, p.lexpos) + 1
-  line, _, _ = parser_or_tokenizer.data[last_line_offset:].partition('\n')
+  last_line_offset = parser_or_tokenizer.src.rfind('\n', 0, p.lexpos) + 1
+  line, _, _ = parser_or_tokenizer.src[last_line_offset:].partition('\n')
 
   raise SyntaxError(msg,
                     (parser_or_tokenizer.filename,
