@@ -324,7 +324,7 @@ class Solver(object):
       else:
         lines.append("if %s then %s" % (e, implication))
     return "%s\n(not shown: %d always FALSE, %d always TRUE)\n" % (
-      "\n".join(lines), count_false, count_true)
+        "\n".join(lines), count_false, count_true)
 
   def register_variable(self, variable):
     """Register a variable. Call before calling solve()."""

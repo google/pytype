@@ -38,7 +38,7 @@ class PrintVisitor(object):
     """Name, possibly escaped with backticks.
 
     If a name is a reserved PyTD token or contains special characters, it is
-    enclosed in backticks.  See parser.Pylexer.t_NAME for legal names that that
+    enclosed in backticks.  See parser.Pylexer.t_NAME for legal names that
     require backticks.
     """
     if parser_constants.BACKTICK_NAME.search(name) or name in self._RESERVED:
@@ -71,6 +71,9 @@ class PrintVisitor(object):
     """Entering a class - record class name for children's use."""
     n = self._SafeName(node.name)
     if node.template:
+      # TODO(pludemann): pylint produced this error message:
+      #     E1101: 78:PrintVisitor.EnterClass: Instance of 'str' has no 'Visit' member [no-member]
+      #                  ... This would be a good test for pytype ;)
       n += "<{}>".format(
           ", ".join(t.Visit(PrintVisitor()) for t in node.template))
     self.class_names.append(n)

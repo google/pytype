@@ -6,7 +6,10 @@ import os
 from pytype.pytd import utils
 
 
-def module_name_to_pytd(module_name, level, python_version):  # pylint: disable=unused-argument
+def module_name_to_pytd(module_name,
+                        level,  # TODO(pludemann): use this
+                        python_version,
+                        pythonpath):  # pylint: disable=unused-argument
   """Convert a name like 'sys' to the corresponding pytd source code.
 
   Args:
@@ -22,7 +25,8 @@ def module_name_to_pytd(module_name, level, python_version):  # pylint: disable=
   Raises:
     IOError: If we couldn't find this module.
   """
+  # TODO(pludemann): use pythonpath
+
   filename = os.path.join("builtins", module_name + ".pytd")
   src = utils.GetDataFile(filename)
   return utils.ParsePyTD(src, filename=filename, python_version=python_version)
-

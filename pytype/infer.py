@@ -309,7 +309,7 @@ def program_to_dot(program, ignored):
   return sb.getvalue()
 
 
-def infer_types(src, python_version, filename=None,
+def infer_types(src, python_version, filename=None, pythonpath=None,
                 svg_output=None, deep=False,
                 pseudocode_output=False, solve_unknowns=False,
                 reverse_operators=False):
@@ -319,6 +319,7 @@ def infer_types(src, python_version, filename=None,
     src: A string containing Python source code.
     python_version: The python version to emulate (major, minor).
     filename: Filename of the program we're parsing.
+    pythonpath: List of directories to search for .pytd-gen files.
     svg_output: A filename into which to save an SVG version of the type graph.
     deep: If True, analyze all functions, even the ones not called by the main
       execution flow.
@@ -329,7 +330,8 @@ def infer_types(src, python_version, filename=None,
   Returns:
     A TypeDeclUnit
   """
-  tracer = CallTracer(python_version, reverse_operators)
+  tracer = CallTracer(python_version, reverse_operators,
+                      pythonpath=pythonpath)
   loc, defs, builtin_names = tracer.run_program(src, filename)
   log.info("===Done run_program===")
   # TODO(pludemann): make test_inference.InferDedent and this code the same:

@@ -116,9 +116,11 @@ class VirtualMachine(object):
   #    Modules: Will need some sort of namespace management during execution and
   #       storing how a value is accessed and from where.
 
-  def __init__(self, python_version, reverse_operators=False):
+  def __init__(self, python_version, reverse_operators=False,
+               pythonpath=None):
     """Construct a TypegraphVirtualMachine."""
     self.python_version = python_version
+    self.pythonpath = pythonpath
     self.reverse_operators = reverse_operators
     # The call stack of frames.
     self.frames = []
@@ -993,8 +995,7 @@ class VirtualMachine(object):
     else:
       f_globals, f_locals, builtin_names, node = None, None, frozenset(), node
 
-    code = self.compile_src(src,
-                            filename=filename)
+    code = self.compile_src(src, filename=filename)
 
     f_globals, _, node = self.run_bytecode(code, node, f_globals, f_locals)
     log.info("Final node: %s", node.name)
@@ -1291,7 +1292,8 @@ class VirtualMachine(object):
     """Import the module and return the module object."""
     try:
       ast = import_paths.module_name_to_pytd(name, level,
-                                             self.python_version)
+                                             self.python_version,
+                                             self.pythonpath)
     except IOError:
       log.error("Couldn't find module %s", name)
       return abstract.Unknown(self).to_variable(name)

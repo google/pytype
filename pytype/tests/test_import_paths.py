@@ -13,7 +13,9 @@ class ImportPathsTest(unittest.TestCase):
   PYTHON_VERSION = (2, 7)
 
   def testBuiltinSys(self):
-    pytd = import_paths.module_name_to_pytd("sys", 0, self.PYTHON_VERSION)
+    # TODO(pludemann): test with non-empty pythonpath
+    pytd = import_paths.module_name_to_pytd("sys", 0, self.PYTHON_VERSION,
+                                            pythonpath=[])
     self.assertTrue(pytd)
     self.assertTrue(pytd.Lookup("exit"))
 

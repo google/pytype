@@ -4,6 +4,8 @@ import itertools
 import textwrap
 import unittest
 from pytype.pytd import pytd
+from pytype.pytd.parse import parser
+from pytype.pytd.parse import visitors
 
 
 class TestPytd(unittest.TestCase):
@@ -48,36 +50,50 @@ class TestPytd(unittest.TestCase):
     for p in itertools.permutations(nodes):
       self.assertEquals(list(sorted(p)), nodes)
 
-    def testASTeq(self):
-      src1 = textwrap.dedent("""
-          def foo(a: int or str) -> C
-          class C<T>:
-              def bar(x: T) -> NoneType
-          CONSTANT: C<float>
-          """)
-      src2 = textwrap.dedent("""
-          CONSTANT: C<float>
-          class C<T>:
-              def bar(x: T) -> NoneType
-          def foo(a: str or int) -> C
-          """)
-      tree1 = self.parse(src1)
-      tree2 = self.parse(src2)
-      self.assertTrue(tree1.constants)
-      self.assertTrue(tree1.classes)
-      self.assertTrue(tree1.functions)
-      # self.assertTrue(tree1.modules)  # TODO(pludemann): add modules to src
-      self.assertTrue(tree2.constants)
-      self.assertTrue(tree2.classes)
-      self.assertTrue(tree2.functions)
-      # self.assertTrue(tree2.modules)  # TODO(pludemann): add modules to src
-      self.assertIsInstance(tree1, pytd.TypeDeclUnit)
-      self.assertIsInstance(tree2, pytd.TypeDeclUnit)
-      self.assertTrue(tree1 != tree2)  # TypeDeclUnit uses identity for equality
-      self.assertFalse(tree1 == tree2)
-      self.assertNotEquals(tree1, tree2)
-      self.notEquals(hash(tree1), hash(tree2))
-      self.assertTrue(tree1.ASTeq(tree2))
+  def testASTeq(self):
+    # This creates two ASts that are equivalent but whose sources are slightly
+    # different. The union types are different (int,str) vs (str,int) but the
+    # ordering is ignored when testing for equality (which ASTeq uses).
+    src1 = textwrap.dedent("""
+        def foo(a: int or str) -> C
+        class C<T>:
+            def bar(x: T) -> NoneType
+        CONSTANT: C<float>
+        """)
+    src2 = textwrap.dedent("""
+        CONSTANT: C<float>
+        class C<T>:
+            def bar(x: T) -> NoneType
+        def foo(a: str or int) -> C
+        """)
+    tree1 = parser.TypeDeclParser().Parse(src1)
+    tree2 = parser.TypeDeclParser().Parse(src2)
+    tree1.Visit(visitors.VerifyVisitor())
+    tree2.Visit(visitors.VerifyVisitor())
+    self.assertTrue(tree1.constants)
+    self.assertTrue(tree1.classes)
+    self.assertTrue(tree1.functions)
+    self.assertTrue(tree2.constants)
+    self.assertTrue(tree2.classes)
+    self.assertTrue(tree2.functions)
+    self.assertIsInstance(tree1, pytd.TypeDeclUnit)
+    self.assertIsInstance(tree2, pytd.TypeDeclUnit)
+    # For the ==, != tests, TypeDeclUnit uses identity
+    self.assertTrue(tree1 == tree1)
+    self.assertTrue(tree2 == tree2)
+    self.assertFalse(tree1 == tree2)
+    self.assertFalse(tree2 == tree1)
+    self.assertFalse(tree1 != tree1)
+    self.assertFalse(tree2 != tree2)
+    self.assertTrue(tree1 != tree2)
+    self.assertTrue(tree2 != tree1)
+    self.assertEquals(tree1, tree1)
+    self.assertEquals(tree2, tree2)
+    self.assertNotEquals(tree1, tree2)
+    self.assertTrue(tree1.ASTeq(tree2))
+    self.assertTrue(tree1.ASTeq(tree1))
+    self.assertTrue(tree2.ASTeq(tree1))
+    self.assertTrue(tree2.ASTeq(tree2))
 
 if __name__ == "__main__":
   unittest.main()

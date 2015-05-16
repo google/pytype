@@ -28,10 +28,10 @@ class TestCheckerGenerics(unittest.TestCase):
     # should work with no exceptions
     self.assertEquals(3, generics.Length([1, 2, 3]))
 
-    with self.assertRaises(checker.CheckTypeAnnotationError) as context:
+    with self.assertRaises(checker.CheckTypeAnnotationError):
       generics.Length(["42", 1])
 
-    with self.assertRaises(checker.CheckTypeAnnotationError) as context:
+    with self.assertRaises(checker.CheckTypeAnnotationError):
       generics.Length(["abc", 1, 3])
 
   def testUserContainerClass(self):
@@ -39,7 +39,7 @@ class TestCheckerGenerics(unittest.TestCase):
 
     self.assertEquals(1, generics.UnwrapBox(generics.Box(1)))
 
-    with self.assertRaises(checker.CheckTypeAnnotationError) as context:
+    with self.assertRaises(checker.CheckTypeAnnotationError):
       generics.UnwrapBox(generics.Box("hello"))
 
   def testDict(self):
@@ -48,7 +48,7 @@ class TestCheckerGenerics(unittest.TestCase):
 
     self.assertEquals(1, generics.FindInCache(cache, "Albert"))
 
-    with self.assertRaises(checker.CheckTypeAnnotationError) as context:
+    with self.assertRaises(checker.CheckTypeAnnotationError):
       generics.FindInCache(cache, 9999)
 
   def testGenSimple(self):
@@ -58,7 +58,7 @@ class TestCheckerGenerics(unittest.TestCase):
         e for e in [1, 2]))
 
     gen = generics._BadGen()
-    with self.assertRaises(checker.CheckTypeAnnotationError) as context:
+    with self.assertRaises(checker.CheckTypeAnnotationError):
       generics.ConvertGenToList(gen)
 
   def testSameGenAsTwoArgs(self):
@@ -68,7 +68,7 @@ class TestCheckerGenerics(unittest.TestCase):
     self.assertEquals([], generics.ConsumeDoubleGenerator(gen, gen))
 
     gen_broken = (e for e in [1, 2, 3, 4, 5, "6"])
-    with self.assertRaises(checker.CheckTypeAnnotationError) as context:
+    with self.assertRaises(checker.CheckTypeAnnotationError):
       generics.ConsumeDoubleGenerator(gen_broken, gen_broken)
 
 

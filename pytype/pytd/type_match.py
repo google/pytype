@@ -87,7 +87,7 @@ class TypeMatch(utils.TypeMatcher):
   def __init__(self, direct_subclasses=None):
     self.direct_subclasses = direct_subclasses or {}
 
-  def default_match(self, t1, t2, *args, **kwargs):
+  def default_match(self, t1, t2, *unused_args, **unused_kwargs):
     # Don't allow utils.TypeMatcher to do default matching.
     raise AssertionError("Can't compare %s and %s",
                          type(t1).__name__,

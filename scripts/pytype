@@ -84,12 +84,18 @@ def parse_options(args):
       "--irascible", type="int", action="store",
       dest="irascible", default=0,
       help="Non-zero return code: 0=critical, 1=error, 2=warn, ...")
+  o.add_option(
+      "--pytd-gendirs", type="string", action="store",
+      dest="pythonpath", default="",
+      help="Colon-separated directories for reading pytd-gen outputs "
+      "of dependencies")
 
   options, filenames = o.parse_args(args)
   return options, filenames
 
 
 class TrackLevel(logging.Handler):
+
   def __init__(self):
     super(TrackLevel, self).__init__()
     self.max_level = logging.NOTSET
@@ -98,9 +104,9 @@ class TrackLevel(logging.Handler):
     self.max_level = max(self.max_level, record.levelno)
 
 
-def main():
+def main(argv):
   log_level_tracker = TrackLevel()
-  options, filenames = parse_options(sys.argv)
+  options, filenames = parse_options(argv)
   unused_executable = filenames.pop(0)
   if len(filenames) < 1:
     print >> sys.stderr, "Need at least one filename."
@@ -142,6 +148,7 @@ def main():
       src,
       python_version=python_version,
       filename=filename,
+      pythonpath=options.pythonpath.split(":"),
       deep=options.api or options.structural,
       solve_unknowns=options.solve_unknowns or options.api,
       svg_output=options.svg_output,
@@ -178,4 +185,4 @@ def main():
 
 
 if __name__ == "__main__":
-  main()
+  main(sys.argv)

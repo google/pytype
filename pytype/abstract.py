@@ -1449,6 +1449,9 @@ class InterpreterFunction(Function):
 
     Returns:
       A dictionary, mapping strings (parameter names) to typegraph.Variable.
+
+    Raises:
+      ByteCodeTypeError
     """
     # Originate a new variable for each argument and call.
     args = [u.AssignToNewVariable(u.name, self.vm.current_location)
@@ -1487,7 +1490,7 @@ class InterpreterFunction(Function):
     elif len(args) > self.code.co_argcount:
       raise exceptions.ByteCodeTypeError(
           "Function takes %d positional arguments (%d given)" % (
-          arg_pos, len(args)))
+              arg_pos, len(args)))
     if self.code.co_flags & loadmarshal.CodeType.CO_VARKEYWORDS:
       kwvararg_name = self.code.co_varnames[arg_pos]
       k = Dict("kwargs", self.vm)
