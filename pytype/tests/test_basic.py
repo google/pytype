@@ -389,7 +389,6 @@ class TestIt(test_inference.InferenceTest):
       print(t.xyzzy)
       """, raises=AttributeError)
 
-  @unittest.skip("throws AssertionError")
   def test_staticmethods(self):
     self.assert_ok("""\
       class Thing(object):
