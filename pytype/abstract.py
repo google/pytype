@@ -147,10 +147,11 @@ class AtomicAbstractValue(object):
     """
     return self
 
-  def get_attribute(self, name, valself=None, valcls=None):  # pylint: disable=unused-argument
+  def get_attribute(self, node, name, valself=None, valcls=None):  # pylint: disable=unused-argument
     """Get the named attribute from this object.
 
     Args:
+      node: The current CFG node.
       name: The name of the attribute to retrieve.
       valself: A typegraph.Value, This is the self reference to use when getting
         the attribute.
@@ -160,24 +161,26 @@ class AtomicAbstractValue(object):
         objects need it (PyTDClass and InterpreterClass)
 
     Returns:
-      A typegraph.Variable, or None if this attribute doesn't exist.
+      A tuple (CFGNode, typegraph.Variable). If this attribute doesn't exist,
+      the Variable will be None.
     """
-    return None
+    return node, None
 
-  def has_attribute(self, name, valself=None, valcls=None):
+  def has_attribute(self, node, name, valself=None, valcls=None):
     # TODO(pludemann): make varself, varcls required args (no default)
     """Trie of self has the named attribute.
 
     Args:
+      node: The current CFG node.
       name: The name of the attribute to retrieve.
       valself: A typegraph.Value. See get_attribute.
       valcls: A typegraph.Value. See get_attribute.
 
     Returns:
-      A boolean.
+      A tuple (CFGNode, bool). The bool will be True if the attribute exists.
     """
-    attr = self.get_attribute(name, valself, valcls)
-    return bool(attr and len(attr.values))
+    node, attr = self.get_attribute(node, name, valself, valcls)
+    return node, bool(attr and len(attr.values))
 
   def set_attribute(self, name, value):
     """Set an attribute on this object.
@@ -385,27 +388,30 @@ class SimpleAbstractValue(AtomicAbstractValue):
     self.type_parameters[name] = self.vm.new_variable(
         name, value.data, [], self.vm.current_location)
 
-  def get_attribute(self, name, valself=None, valcls=None):
+  def get_attribute(self, node, name, valself=None, valcls=None):
     candidates = []
+    nodes = []
     if "__class__" in self.members:
       # TODO(kramm): superclasses
       for clsval in self.members["__class__"].values:
         cls = clsval.data
-        attr = cls.get_attribute(name, valself, clsval)
+        new_node, attr = cls.get_attribute(node, name, valself, clsval)
+        nodes.append(new_node)
         if attr is not None:
           candidates.append(attr)
+      node = self.vm.join_cfg_nodes(nodes)
     if name in self.members:
       candidates.append(self.members[name])
 
     if not candidates:
-      return None
+      return node, None
     elif len(candidates) == 1:
-      return candidates[0]
+      return node, candidates[0]
     else:
       ret = self.vm.program.NewVariable(name)
       for candidate in candidates:
         ret.AddValues(candidate, self.vm.current_location)
-      return ret
+      return node, ret
 
   def set_attribute(self, name, var):
     assert isinstance(var, typegraph.Variable)
@@ -524,37 +530,42 @@ class ValueWithSlots(SimpleAbstractValue):
     assert name not in self._slots, "slot %s already occupied" % name
     self._slots[name] = NativeFunction(
         name, method, self.vm).to_variable(name)
-    self._super[name] = super(ValueWithSlots, self).get_attribute(name)
+    _, attr = super(ValueWithSlots, self).get_attribute(None, name)
+    self._super[name] = attr
 
-  def call_pytd(self, name, *args):
+  def call_pytd(self, node, name, *args):
     """Call the (original) pytd version of a method we overwrote."""
     if name in self._self:
-      return self.vm.call_function(self._super[name],
-                                   (self._self[name],) + args)
+      node, ret = self.vm.call_function(
+          node, self._super[name], (self._self[name],) + args)
     else:
+      ret = None
       log.error(
           "Can't call bound method %s: We don't know how it was bound.", name)
-      return None
+    return node, ret
 
-  def get_attribute(self, name, valself=None, valcls=None):
+  def get_attribute(self, node, name, valself=None, valcls=None):
     """Get an attribute.
 
     Will delegate to SimpleAbstractValue if we don't have a slot for it.
 
     Arguments:
+      node: The current CFG node.
       name: name of the attribute. If this is something like "__getitem__",
         the slot mechanism might kick in.
       valself: A typegraph.Value. See AtomicAbstractValue.get_attribute.
       valcls: A typegraph.Value. See AtomicAbstractValue.get_attribute.
 
     Returns:
-      The attribute, as a typegraph.Variable.
+      A tuple (CFGNode, Variable). The Variable will be None if the attribute
+      doesn't exist.
     """
     if name in self._slots:
       self._self[name] = valself.variable
-      return self._slots[name]
+      return node, self._slots[name]
     else:
-      return super(ValueWithSlots, self).get_attribute(name, valself, valcls)
+      return super(ValueWithSlots, self).get_attribute(
+          node, name, valself, valcls)
 
 
 class Dict(ValueWithSlots):
@@ -576,7 +587,7 @@ class Dict(ValueWithSlots):
     self.set_slot("__getitem__", self.getitem_slot)
     self.set_slot("__setitem__", self.setitem_slot)
 
-  def getitem_slot(self, name_var):
+  def getitem_slot(self, node, name_var):
     """Implements the __getitem__ slot."""
     results = []
     for val in name_var.values:
@@ -592,8 +603,8 @@ class Dict(ValueWithSlots):
         except KeyError:
           raise exceptions.ByteCodeKeyError("KeyError: %r" % name)
     # For call tracing only, we don't actually use the return value:
-    _ = self.call_pytd("__getitem__", name_var)
-    return self.vm.join_variables("getitem[var%s]" % name_var.id, results)
+    node, _ = self.call_pytd(node, "__getitem__", name_var)
+    return node, self.vm.join_variables("getitem[var%s]" % name_var.id, results)
 
   def set_str_item(self, name, value_var):
     self.merge_type_parameter(self.KEY_TYPE_PARAM, self.vm.build_string(name))
@@ -616,10 +627,10 @@ class Dict(ValueWithSlots):
       else:
         self._entries[name] = value_var
 
-  def setitem_slot(self, name_var, value_var):
+  def setitem_slot(self, node, name_var, value_var):
     """Implements the __setitem__ slot."""
     self.setitem(name_var, value_var)
-    return self.call_pytd("__setitem__", name_var, value_var)
+    return self.call_pytd(node, "__setitem__", name_var, value_var)
 
   def values(self):
     return self._entries.values()
@@ -674,13 +685,15 @@ class LazyAbstractValue(SimpleAbstractValue):
       assert isinstance(variable, typegraph.Variable)
       self.members[name] = variable
 
-  def get_attribute(self, name, valself=None, valcls=None):
+  def get_attribute(self, node, name, valself=None, valcls=None):
     self._load_attribute(name)
-    return super(LazyAbstractValue, self).get_attribute(name, valself, valcls)
+    return super(LazyAbstractValue, self).get_attribute(
+        node, name, valself, valcls)
 
-  def has_attribute(self, name, valself=None, valcls=None):
+  def has_attribute(self, node, name, valself=None, valcls=None):
     self._load_attribute(name)
-    return super(LazyAbstractValue, self).has_attribute(name, valself, valcls)
+    return super(LazyAbstractValue, self).has_attribute(
+        node, name, valself, valcls)
 
   def set_attribute(self, name, value):
     self._load_attribute(name)
@@ -752,11 +765,11 @@ class PyTDSignature(AtomicAbstractValue):
     return BoundPyTDSignature(self.function, callself,
                               self.pytd_sig, self.vm)
 
-  def get_attribute(self, name, valself=None, valcls=None):
-    return None
+  def get_attribute(self, node, name, valself=None, valcls=None):
+    return node, None
 
-  def has_attribute(self, name, valself=None, valcls=None):
-    return False
+  def has_attribute(self, node, name, valself=None, valcls=None):
+    return node, False
 
   def set_attribute(self, name, value):
     raise AttributeError()
@@ -1035,7 +1048,7 @@ class Class(object):
     assert cls is not Class, "Cannot instantiate Class"
     return object.__new__(cls, *args, **kwds)
 
-  def get_attribute(self, name, valself=None, valcls=None):
+  def get_attribute(self, node, name, valself=None, valcls=None):
     """Retrieve an attribute by looking at the MRO of this class."""
     ret = self.vm.program.NewVariable(name)
     add_origins = []
@@ -1054,7 +1067,7 @@ class Class(object):
     # Trace down the MRO if there is one.
     # TODO(ampere): Handle case where class has variables INSIDE it?
     for base in self.mro:
-      var = base.get_attribute_flat(name)
+      node, var = base.get_attribute_flat(node, name)
       if var is None:
         continue
       for varval in var.values:
@@ -1063,7 +1076,7 @@ class Class(object):
           value = value.property_get(variableself, variablecls)
         ret.AddValue(value, [varval] + add_origins, self.vm.current_location)
       break  # we found a class which has this attribute
-    return ret
+    return node, ret
 
   def to_pytd_def(self, name, unused_node):
     # Default method. Generate an empty pytd. Subclasses override this.
@@ -1116,8 +1129,8 @@ class PyTDClass(LazyAbstractValue, Class):
   def register_instance(self, unused_instance):
     pass  # Ignore, we already have a formal definition of this class.
 
-  def get_attribute(self, name, valself=None, valcls=None):
-    return Class.get_attribute(self, name, valself, valcls)
+  def get_attribute(self, node, name, valself=None, valcls=None):
+    return Class.get_attribute(self, node, name, valself, valcls)
 
   def bases(self):
     return [self.vm.convert_constant_to_value(parent.name, parent)
@@ -1129,9 +1142,9 @@ class PyTDClass(LazyAbstractValue, Class):
     c.parent = self
     return c.to_variable(name)
 
-  def get_attribute_flat(self, name):
+  def get_attribute_flat(self, node, name):
     # delegate to LazyAbstractValue
-    return super(PyTDClass, self).get_attribute(name)
+    return super(PyTDClass, self).get_attribute(node, name)
 
   def call(self, node, func, args, kws):
     value = SimpleAbstractValue("instance of " + self.name, self.vm)
@@ -1149,13 +1162,13 @@ class PyTDClass(LazyAbstractValue, Class):
     results = self.vm.program.NewVariable(self.name)
     retval = results.AddValue(value, origins, self.vm.current_location)
 
-    init = value.get_attribute("__init__",
-                               retval,
-                               value.get_attribute("__class__").values[0])
+    node, cls = value.get_attribute(node, "__class__")
+    node, init = value.get_attribute(node, "__init__", retval,
+                                     cls.values[0])
     # TODO(pludemann): Verify that this follows MRO:
     if init:
       log.debug("calling %s.__init__(...)", self.name)
-      ret = self.vm.call_function(init, args, kws)
+      node, ret = self.vm.call_function(node, init, args, kws)
       log.debug("%s.__init__(...) returned %r", self.name, ret)
 
     return node, results
@@ -1230,11 +1243,11 @@ class InterpreterClass(SimpleAbstractValue, Class):
   def bases(self):
     return utils.concat_lists(b.data for b in self._bases)
 
-  def get_attribute_flat(self, name):
-    return super(InterpreterClass, self).get_attribute(name)
+  def get_attribute_flat(self, node, name):
+    return super(InterpreterClass, self).get_attribute(node, name)
 
-  def get_attribute(self, name, valself=None, valcls=None):
-    return Class.get_attribute(self, name, valself, valcls)
+  def get_attribute(self, node, name, valself=None, valcls=None):
+    return Class.get_attribute(self, node, name, valself, valcls)
 
   def set_attribute(self, name, value):
     # Note that even if we have a superclass that already has an attribute
@@ -1249,12 +1262,11 @@ class InterpreterClass(SimpleAbstractValue, Class):
     variable = self.vm.program.NewVariable(self.name + " instance")
     val = variable.AddValue(value, [func], self.vm.current_location)
 
-    init = value.get_attribute("__init__", val)
+    node, init = value.get_attribute(node, "__init__", val)
     # TODO(pludemann): Verify that this follows MRO:
     if init:
       log.debug("calling %s.__init__(...)", self.name)
-      # TODO(kramm): This needs to pass through the CFG node.
-      ret = self.vm.call_function(init, args, kws)
+      node, ret = self.vm.call_function(node, init, args, kws)
       log.debug("%s.__init__(...) returned %r", self.name, ret)
     return node, variable
 
@@ -1329,11 +1341,11 @@ class Function(AtomicAbstractValue):
     self.func_name = self.vm.build_string(name)
     self.cls = None
 
-  def get_attribute(self, name, valself=None, valcls=None):
+  def get_attribute(self, node, name, valself=None, valcls=None):
     if name == "func_name":
-      return self.func_name
+      return node, self.func_name
     else:
-      return None
+      return node, None
 
   def set_attribute(self, name, value):
     if name == "func_name":
@@ -1391,7 +1403,8 @@ class NativeFunction(Function):
 
   def call(self, node, unused_func, args, kws):
     # Originate a new variable for each argument and call.
-    return node, self.func(
+    return self.func(
+        node,
         *[u.AssignToNewVariable(u.name, self.vm.current_location)
           for u in args],
         **{k: u.AssignToNewVariable(u.name, self.vm.current_location)
@@ -1559,11 +1572,11 @@ class BoundFunction(AtomicAbstractValue):
     self._callself = callself
     self.underlying = underlying
 
-  def get_attribute(self, name, valself=None, valcls=None):
-    return None
+  def get_attribute(self, node, name, valself=None, valcls=None):
+    return node, None
 
-  def has_attribute(self, name, valself=None, valcls=None):
-    return False
+  def has_attribute(self, node, name, valself=None, valcls=None):
+    return node, False
 
   def set_attribute(self, name, value):
     raise AttributeError()
@@ -1606,15 +1619,17 @@ class Generator(AtomicAbstractValue):
     # Run the generator, by pushing its frame and running it:
     return self.vm.resume_frame(self.generator_frame)
 
-  def get_attribute(self, name, valself=None, valcls=None):
+  def get_attribute(self, node, name, valself=None, valcls=None):
     if name == "__iter__":
       f = NativeFunction(name, self.__iter__, self.vm)
-      return f.to_variable(name)
+      return node, f.to_variable(name)
     elif name in ["next", "__next__"]:
-      return self.to_variable(name)
+      return node, self.to_variable(name)
+    else:
+      return node, None
 
-  def __iter__(self):
-    return self.to_variable("__iter__")
+  def __iter__(self, node):  # pylint: disable=non-iterator-returned
+    return node, self.to_variable("__iter__")
 
   def get_yielded_type(self):
     if not self.retvar:
@@ -1654,11 +1669,11 @@ class Nothing(AtomicAbstractValue):
   def __init__(self, vm):
     super(Nothing, self).__init__("nothing", vm)
 
-  def get_attribute(self, name, valself=None, valcls=None):
-    return None
+  def get_attribute(self, node, name, valself=None, valcls=None):
+    return node, None
 
-  def has_attribute(self, name, valself=None, valcls=None):
-    return False
+  def has_attribute(self, node, name, valself=None, valcls=None):
+    return node, False
 
   def set_attribute(self, name, value):
     raise AttributeError("Object %r has no attribute %s" % (self, name))
@@ -1743,19 +1758,21 @@ class Unknown(AtomicAbstractValue):
     self._pytd_class = None
     log.info("Creating %s", self.class_name)
 
-  def get_attribute(self, name, valself=None, valcls=None):
+  def get_attribute(self, node, name, valself=None, valcls=None):
+    if name in self.IGNORED_ATTRIBUTES:
+      return node, None
     if name in self.members:
-      return self.members[name]
+      return node, self.members[name]
     new = self.vm.create_new_unknown(self.name + "." + name, source=self.owner)
     self.set_attribute(name, new)
-    return new
+    return node, new
 
-  def get_attribute_flat(self, name):
+  def get_attribute_flat(self, node, name):
     # Unknown objects don't have an MRO, so this is the same as get_attribute.
-    return self.get_attribute(name)
+    return self.get_attribute(node, name)
 
-  def has_attribute(self, name, valself=None, valcls=None):
-    return name not in self.IGNORED_ATTRIBUTES
+  def has_attribute(self, node, name, valself=None, valcls=None):
+    return node, name not in self.IGNORED_ATTRIBUTES
 
   def set_attribute(self, name, v):
     if name in self.members:

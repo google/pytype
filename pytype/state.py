@@ -3,6 +3,8 @@
 import logging
 
 
+from pytype.pytd import cfg
+
 log = logging.getLogger(__name__)
 
 
@@ -76,6 +78,7 @@ class FrameState(object):
                       self.exception), block
 
   def change_cfg_node(self, node):
+    assert isinstance(node, cfg.CFGNode)
     if self.node is node:
       return self
     return FrameState(self.data_stack,
@@ -169,7 +172,8 @@ class Frame(object):
     if f_back and f_back.f_builtins:
       self.f_builtins = f_back.f_builtins
     else:
-      builtins_pu, = f_globals.get_attribute("__builtins__").values
+      _, bltin = f_globals.get_attribute(None, "__builtins__")
+      builtins_pu, = bltin.values
       self.f_builtins = builtins_pu.data
     self.f_lineno = f_code.co_firstlineno
     self.cells = {}

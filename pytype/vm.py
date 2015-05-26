@@ -423,24 +423,25 @@ class VirtualMachine(object):
       # we omit the index. Since we can't tell whether an index is negative
       # (it might be an abstract integer, or a union type), we just always
       # call __len__.
-      end = self.call_function(self.load_attr(obj, "__len__"), [], {})
+      end = self.call_function_and_adjust_state(
+          self.load_attr(obj, "__len__"), [], {})
     return self.build_slice(start, end, 1), obj
 
   def store_slice(self, count):
     slice_obj, obj = self.pop_slice_and_obj(count)
     new_value = self.pop()
-    self.call_function(self.load_attr(obj, "__setitem__"),
-                       [slice_obj, new_value], {})
+    self.call_function_and_adjust_state(
+        self.load_attr(obj, "__setitem__"), [slice_obj, new_value], {})
 
   def delete_slice(self, count):
     slice_obj, obj = self.pop_slice_and_obj(count)
-    self.call_function(self.load_attr(obj, "__delitem__"),
-                       [slice_obj], {})
+    self.call_function_and_adjust_state(
+        self.load_attr(obj, "__delitem__"), [slice_obj], {})
 
   def get_slice(self, count):
     slice_obj, obj = self.pop_slice_and_obj(count)
-    ret = self.call_function(self.load_attr(obj, "__getitem__"),
-                             [slice_obj], {})
+    ret = self.call_function_and_adjust_state(
+        self.load_attr(obj, "__getitem__"), [slice_obj], {})
     self.push(ret)
 
   def do_raise(self, exc, cause):
@@ -1010,7 +1011,7 @@ class VirtualMachine(object):
     except exceptions.ByteCodeAttributeError:  # from load_attr
       log.info("Failed to find %s on %r", name, x, exc_info=True)
     else:
-      results.append(self.call_function(attr, [y]))
+      results.append(self.call_function_and_adjust_state(attr, [y]))
     rname = self.reverse_operator_name(name)
     if self.reverse_operators and rname:
       try:
@@ -1019,7 +1020,7 @@ class VirtualMachine(object):
         log.debug("No reverse operator %s on %r",
                   self.reverse_operator_name(name), y)
       else:
-        results.append(self.call_function(attr, [x]))
+        results.append(self.call_function_and_adjust_state(attr, [x]))
     log.debug("Results: %r", results)
     return self.join_variables(name, results)
 
@@ -1039,15 +1040,22 @@ class VirtualMachine(object):
     """Fired whenever we call a builtin using unknown parameters."""
     return NotImplemented
 
-  def call_function(self, funcu, posargs, namedargs=None):
+  def call_function_and_adjust_state(self, funcu, posargs, namedargs=None):
+    node, ret = self.call_function(
+        self.frame.state.node, funcu, posargs, namedargs)
+    self.frame.state = self.frame.state.change_cfg_node(node)
+    return ret
+
+  def call_function(self, node, funcu, posargs, namedargs=None):
     """Call a function.
 
     Args:
+      node: The current CFG node.
       funcu: A variable of the possible functions to call.
       posargs: The positional arguments to pass (as variables).
       namedargs: The keyword arguments to pass.
     Returns:
-      The return value of the called function.
+      A tuple (CFGNode, Variable). The Variable is the return value.
     """
     result = self.program.NewVariable("<return:%s>" % funcu.name)
     nodes = []
@@ -1056,8 +1064,7 @@ class VirtualMachine(object):
       assert isinstance(func, abstract.AtomicAbstractValue), type(func)
       try:
         new_node, one_result = func.call(
-            self.frame.state.node,
-            funcv, posargs, namedargs or {})
+            node, funcv, posargs, namedargs or {})
         self.frame.state = self.frame.state.change_cfg_node(new_node)
       except abstract.FailedFunctionCall as e:
         log.error("FailedFunctionCall for %s", e.obj)
@@ -1067,9 +1074,9 @@ class VirtualMachine(object):
         result.AddValues(one_result, self.current_location)
         nodes.append(new_node)
     if nodes:
-      final_node = self.join_cfg_nodes(nodes)
-      self.frame.state = self.frame.state.change_cfg_node(final_node)
-    return result
+      return self.join_cfg_nodes(nodes), result
+    else:
+      return node, result
 
   def call_function_from_stack(self, arg, args, kwargs=None):
     """Pop arguments for a function and call it."""
@@ -1083,7 +1090,7 @@ class VirtualMachine(object):
     posargs = list(self.popn(num_pos))
     posargs.extend(args)
     func = self.pop()
-    self.push(self.call_function(func, posargs, namedargs))
+    self.push(self.call_function_and_adjust_state(func, posargs, namedargs))
 
   def load_constant(self, value):
     """Converts a Python value to an abstract value."""
@@ -1108,11 +1115,16 @@ class VirtualMachine(object):
     """Get a real python dict of the globals."""
     return self.frame.f_globals
 
-  @staticmethod
-  def load_from(store, name):
-    if not store.has_attribute(name):
+  def load_from(self, store, name):
+    node = self.frame.state.node
+    node, exists = store.has_attribute(node, name)
+    assert isinstance(node, typegraph.CFGNode)
+    if not exists:
       raise KeyError(name)
-    return store.get_attribute(name)
+    node, attr = store.get_attribute(node, name)
+    assert isinstance(node, typegraph.CFGNode)
+    self.frame.state = self.frame.state.change_cfg_node(node)
+    return attr
 
   def load_local(self, name):
     """Called when a local is loaded onto the stack.
@@ -1156,14 +1168,17 @@ class VirtualMachine(object):
   def load_attr(self, obj, attr):
     """Load an attribute from an object."""
     assert isinstance(obj, typegraph.Variable)
+    node = self.frame.state.node
     # Resolve the value independently for each value of obj
     result = self.program.NewVariable(str(attr))
     log.debug("getting attr %s from %r", attr, obj)
+    nodes = []
     for val in obj.values:
-      if not val.data.has_attribute(attr, val):
+      node2, exists = val.data.has_attribute(node, attr, val)
+      if not exists:
         log.debug("No %s on %s", attr, val.data.__class__)
         continue
-      attr_var = val.data.get_attribute(attr, val)
+      node2, attr_var = val.data.get_attribute(node2, attr, val)
       log.debug("got choice for attr %s from %r of %r (0x%x): %r", attr, obj,
                 val.data, id(val.data), attr_var)
       if not attr_var:
@@ -1171,17 +1186,20 @@ class VirtualMachine(object):
       # Loop over the values to check for properties
       for v in attr_var.values:
         value = v.data
-        if not value.has_attribute("__get__"):
-          result.AddValue(value, [v], self.current_location)
-        else:
-          getter = value.get_attribute("__get__", v)
-          params = [getter,
-                    value.get_attribute("__class__", val)]
-          get_result = self.call_function(getter, params)
+        node3, has_getter = value.has_attribute(node2, "__get__")
+        if has_getter:
+          node3, getter = value.get_attribute(node2, "__get__", v)
+          node3, cls = value.get_attribute(node3, "__class__", val)
+          node3, get_result = self.call_function(node3, getter, [getter, cls])
           for getter in get_result.values:
             result.AddValue(getter.data, [getter], self.current_location)
+        else:
+          result.AddValue(value, [v], self.current_location)
+        nodes.append(node3)
     if not result.values:
       raise exceptions.ByteCodeAttributeError("No such attribute %s" % attr)
+    self.frame.state = self.frame.state.change_cfg_node(
+        self.join_cfg_nodes(nodes))
     return result
 
   def store_attr(self, obj, attr, value):
@@ -1311,7 +1329,7 @@ class VirtualMachine(object):
   def unary_operator(self, name):
     x = self.pop()
     method = self.load_attr(x, name)  # E.g. __not__
-    result = self.call_function(method, [], {})
+    result = self.call_function_and_adjust_state(method, [], {})
     self.push(result)
 
   def byte_UNARY_NOT(self):
@@ -1575,8 +1593,8 @@ class VirtualMachine(object):
     self.del_attr(obj, name)
 
   def store_subscr(self, obj, key, val):
-    self.call_function(self.load_attr(obj, "__setitem__"),
-                       [key, val], {})
+    self.call_function_and_adjust_state(self.load_attr(obj, "__setitem__"),
+                                        [key, val], {})
 
   def byte_STORE_SUBSCR(self):
     val, obj, subscr = self.popn(3)
@@ -1611,12 +1629,13 @@ class VirtualMachine(object):
 
   def byte_UNPACK_SEQUENCE(self, op):
     seq = self.pop()
-    itr = self.call_function(self.load_attr(seq, "__iter__"), [], {})
+    itr = self.call_function_and_adjust_state(
+        self.load_attr(seq, "__iter__"), [], {})
     values = []
     for _ in range(op.arg):
       # TODO(ampere): Fix for python 3
-      values.append(self.call_function(self.load_attr(itr, "next"),
-                                       [], {}))
+      values.append(self.call_function_and_adjust_state(
+          self.load_attr(itr, "next"), [], {}))
     for value in reversed(values):
       self.push(value)
 
@@ -1634,22 +1653,24 @@ class VirtualMachine(object):
     # Used by the compiler e.g. for [x for x in ...]
     val = self.pop()
     the_list = self.peek(op.arg)
-    self.call_function(self.load_attr(the_list, "append"), [val], {})
+    self.call_function_and_adjust_state(
+        self.load_attr(the_list, "append"), [val], {})
 
   def byte_SET_ADD(self, op):
     # Used by the compiler e.g. for {x for x in ...}
     count = op.arg
     val = self.pop()
     the_set = self.peek(count)
-    self.call_function(self.load_attr(the_set, "add"), [val], {})
+    self.call_function_and_adjust_state(
+        self.load_attr(the_set, "add"), [val], {})
 
   def byte_MAP_ADD(self, op):
     # Used by the compiler e.g. for {x, y for x, y in ...}
     count = op.arg
     val, key = self.popn(2)
     the_map = self.peek(count)
-    self.call_function(self.load_attr(the_map, "__setitem__"),
-                       [key, val], {})
+    self.call_function_and_adjust_state(
+        self.load_attr(the_map, "__setitem__"), [key, val], {})
 
   def byte_PRINT_EXPR(self):
     # Only used in the interactive interpreter, not in modules.
@@ -1804,9 +1825,11 @@ class VirtualMachine(object):
     self.frame.state = self.unwind_block(block, self.frame.state)
 
   def byte_SETUP_WITH(self, op):
+    """Starts a 'with' statement. Will push a block."""
     ctxmgr = self.pop()
     self.push(self.load_attr(ctxmgr, "__exit__"))
-    ctxmgr_obj = self.call_function(self.load_attr(ctxmgr, "__enter__"), [])
+    ctxmgr_obj = self.call_function_and_adjust_state(
+        self.load_attr(ctxmgr, "__enter__"), [])
     if self.python_version[0] == 2:
       self.push_block("with", op.target)
     else:
@@ -1853,7 +1876,8 @@ class VirtualMachine(object):
       self.push(self.make_none())
       v = self.make_none()
       w = self.make_none()
-    suppress_exception = self.call_function(exit_func, [u, v, w])
+    suppress_exception = self.call_function_and_adjust_state(
+        exit_func, [u, v, w])
     log.info("u is None: %r", self.is_none(u))
     err = (not self.is_none(u)) and bool(suppress_exception)
     if err:

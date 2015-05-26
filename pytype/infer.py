@@ -53,7 +53,7 @@ class CallTracer(vm.VirtualMachine):
     if isinstance(method, (abstract.Function, abstract.BoundFunction)):
       args = [self.create_argument(val.data.name, i)
               for i in range(method.argcount())]
-      self.call_function(val.variable, args)
+      self.call_function_and_adjust_state(val.variable, args)
       self.frame.state = self.frame.state.connect_to_cfg_node(main_node)
 
   def analyze_method_var(self, name, var, main_node):
@@ -73,7 +73,9 @@ class CallTracer(vm.VirtualMachine):
     instance = self.instantiate(val.variable)
     self.frame.state = self.frame.state.connect_to_cfg_node(main_node)
     cls = val.data
-    init = cls.get_attribute("__init__", instance.values[0], val)
+    node, init = cls.get_attribute(main_node, "__init__",
+                                   instance.values[0], val)
+    assert node is main_node
     if init:
       bound_init = self.bind_method("__init__", init, instance, val.variable,
                                     main_node)
