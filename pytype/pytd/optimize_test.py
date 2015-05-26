@@ -376,21 +376,33 @@ class TestOptimize(parser_test.ParserTest):
             mymethod1: Method1
             mymethod2: Method2
             member: Method3
+            mymethod4: Method4
         class Method1:
             def __call__(self: A, x: int) -> ?
         class Method2:
             def __call__(self: ?, x: int) -> ?
         class Method3:
             def __call__(x: bool, y: int) -> ?
+        class Method4:
+            def __call__(self: ?) -> ?
+        class B(Method4):
+            pass
     """)
     expected = textwrap.dedent("""
         class A:
             member: Method3
             def mymethod1(self, x: int) -> ?
             def mymethod2(self, x: int) -> ?
+            def mymethod4(self) -> ?
 
         class Method3:
             def __call__(x: bool, y: int) -> ?
+
+        class Method4:
+            def __call__(self) -> ?
+
+        class B(Method4):
+            pass
     """)
     new_src = self.ApplyVisitorToString(src,
                                         optimize.PullInMethodClasses())

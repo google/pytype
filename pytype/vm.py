@@ -1314,7 +1314,7 @@ class VirtualMachine(object):
                                              self.pythonpath)
     except IOError:
       log.error("Couldn't find module %s", name)
-      return abstract.Unknown(self).to_variable(name)
+      return self.create_new_unknown(name)
     return self.convert_constant(name, ast)
 
   def print_item(self, item, to=None):
