@@ -162,11 +162,9 @@ class TypeSolver(object):
           pass  # unrelated classes
         else:  # COV_NF_LINE
           raise AssertionError("%r %r" % (cls1.name, cls2.name))  # COV_NF_LINE
-    log.info("=========== to solve =============\n%s", solver)
-    log.info("=========== to solve (end) =============")
 
     unprocessed = set(self.pytd.functions)
-    for f1 in self.pytd.functions:
+    for f1 in frozenset(self.pytd.functions):
       unprocessed.remove(f1)
       for f2 in unprocessed:
         if (is_partial(f1) and
@@ -176,6 +174,8 @@ class TypeSolver(object):
               type_match.unpack_name_of_partial(f2.name) == f1.name):
           self.match_call_record(factory, solver, f2, f1)
 
+    log.info("=========== to solve =============\n%s", solver)
+    log.info("=========== to solve (end) =============")
     return solver.solve()
 
 
