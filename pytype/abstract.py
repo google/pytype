@@ -243,6 +243,17 @@ class AtomicAbstractValue(object):
     """
     return False
 
+  def register_instance(self, instance):  # pylint: disable=unused-arg
+    """Treating self as a class definition, register an instance of it.
+
+    This is used for keeping merging call records on instances when generating
+    the formal definition of a class.
+
+    Args:
+      instance: An instance of this class (as an AtomicAbstractValue)
+    """
+    pass  # Only InterpreterClass needs this, others can ignore it.
+
   def get_type(self):
     """Return the type of this object. Equivalent of type(x) in Python."""
     raise NotImplementedError(self.__class__.__name__)
@@ -1091,9 +1102,6 @@ class ParameterizedClass(AtomicAbstractValue, Class):
     self.cls = cls
     self.type_parameters = type_parameters
 
-  def register_instance(self, unused_instance):
-    pass  # Ignore, we already have a formal definition of this class.
-
   def __repr__(self):
     return "ParameterizedClass(cls=%r params=%s)" % (self.cls,
                                                      self.type_parameters)
@@ -1125,9 +1133,6 @@ class PyTDClass(LazyAbstractValue, Class):
     self.cls = cls
     self.mro = utils.compute_mro(self)
     self.formal_type_parameters = {}
-
-  def register_instance(self, unused_instance):
-    pass  # Ignore, we already have a formal definition of this class.
 
   def get_attribute(self, node, name, valself=None, valcls=None):
     return Class.get_attribute(self, node, name, valself, valcls)
@@ -1258,7 +1263,8 @@ class InterpreterClass(SimpleAbstractValue, Class):
 
   def call(self, node, func, args, kws):
     value = SimpleAbstractValue("instance of " + self.name, self.vm)
-    value.set_attribute("__class__", func.variable)
+    value.set_attribute("__class__",
+                        func.AssignToNewVariable("__class__", node))
     variable = self.vm.program.NewVariable(self.name + " instance")
     val = variable.AddValue(value, [func], self.vm.current_location)
 

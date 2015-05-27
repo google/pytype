@@ -662,5 +662,17 @@ class MethodsTest(test_inference.InferenceTest):
     """, deep=False, solve_unknowns=False, extract_locals=False) as ty:
       self.assertHasSignature(ty.Lookup("g"), (), self.float)
 
+  def testRegister(self):
+    with self.Infer("""
+      class Foo(object):
+        pass
+      def f():
+        lookup = {}
+        lookup[''] = Foo
+        lookup.get('')()
+    """, deep=True, solve_unknowns=False, extract_locals=False) as ty:
+      self.assertHasSignature(ty.Lookup("f"), (), self.float)
+
+
 if __name__ == "__main__":
   test_inference.main()
