@@ -313,7 +313,8 @@ class PythonConstant(object):
   "r" etc.).
   """
 
-  def __init__(self, pyval):
+  def init_mixin(self, pyval):
+    """Mix-in equivalent of __init__."""
     self.pyval = pyval
 
 
@@ -662,8 +663,8 @@ class AbstractOrConcreteValue(Instance, PythonConstant):
   """Abstract value with a concrete fallback."""
 
   def __init__(self, pyval, clsvar, vm):
-    Instance.__init__(self, clsvar, vm)
-    PythonConstant.__init__(self, pyval)
+    super(AbstractOrConcreteValue, self).__init__(clsvar, vm)
+    PythonConstant.init_mixin(self, pyval)
 
 
 class LazyAbstractValue(SimpleAbstractValue):
@@ -719,7 +720,7 @@ class LazyAbstractOrConcreteValue(LazyAbstractValue, PythonConstant):
 
   def __init__(self, name, pyval, member_map, resolver, vm):
     LazyAbstractValue.__init__(self, name, member_map, resolver, vm)
-    PythonConstant.__init__(self, pyval)
+    PythonConstant.init_mixin(self, pyval)
 
 
 class Union(AtomicAbstractValue):
@@ -1052,12 +1053,16 @@ class BoundPyTDSignature(PyTDSignature):
 
 
 class Class(object):
-  """Mixin to mark all class-like values."""
+  """Mix-in to mark all class-like values."""
 
   def __new__(cls, *args, **kwds):
     """Prevent direct instantiation."""
     assert cls is not Class, "Cannot instantiate Class"
     return object.__new__(cls, *args, **kwds)
+
+  def init_mixin(self):
+    """Mix-in equivalent of __init__."""
+    pass
 
   def get_attribute(self, node, name, valself=None, valcls=None):
     """Retrieve an attribute by looking at the MRO of this class."""
@@ -1099,6 +1104,7 @@ class ParameterizedClass(AtomicAbstractValue, Class):
 
   def __init__(self, cls, type_parameters, vm):
     super(ParameterizedClass, self).__init__(cls.name, vm)
+    Class.init_mixin(self)
     self.cls = cls
     self.type_parameters = type_parameters
 
@@ -1130,6 +1136,7 @@ class PyTDClass(LazyAbstractValue, Class):
     for val in cls.constants + cls.methods:
       mm[val.name] = val
     super(PyTDClass, self).__init__(cls.name, mm, self._retrieve_member, vm)
+    Class.init_mixin(self)
     self.cls = cls
     self.mro = utils.compute_mro(self)
     self.formal_type_parameters = {}
@@ -1235,6 +1242,7 @@ class InterpreterClass(SimpleAbstractValue, Class):
     assert isinstance(bases, list)
     assert isinstance(members, dict)
     super(InterpreterClass, self).__init__(name, vm)
+    Class.init_mixin(self)
     self._bases = bases
     self.mro = utils.compute_mro(self)
     self.members = members
