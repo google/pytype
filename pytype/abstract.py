@@ -1784,9 +1784,10 @@ class Unknown(AtomicAbstractValue):
 
   def to_type(self):
     cls = self.to_pytd_def(self.class_name)
-    t = pytd.ClassType(cls.name)  # pylint: disable=no-member
-    t.cls = cls
-    return t
+    return pytd.ClassType(cls.name, cls)  # pylint: disable=no-member
+
+  def get_instance_type(self, _):
+    return pytd.AnythingType()
 
   def match_against_type(self, other_type, subst):
     # TODO(kramm): Do we want to match the instance or the class?
