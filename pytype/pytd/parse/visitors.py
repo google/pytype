@@ -233,18 +233,16 @@ class _FillInClasses(object):
   necessary because we introduce loops.
   """
 
-  def __init__(self, local_lookup, global_lookup):
+  def __init__(self, lookup_list):
     """Create this visitor.
 
     You're expected to then pass this instance to node.Visit().
 
     Args:
-      local_lookup: Usually, the local module. Tried first when looking up
-        names.
-      global_lookup: Global symbols. Tried if a name doesn't exist locally.
+      lookup_list: An iterable of symbol tables (i.e., objects that have a
+        "Lookup" function)
     """
-    self._local_lookup = local_lookup
-    self._global_lookup = global_lookup
+    self._lookup_list = lookup_list
 
   def VisitClassType(self, node):
     """Fills in a class type.
@@ -259,18 +257,38 @@ class _FillInClasses(object):
       KeyError: If we can't find a given class.
     """
     if node.cls is None:
-      try:
-        node.cls = self._local_lookup.Lookup(node.name)
-      except KeyError:
-        try:  # TODO(pludemann): Remove this try/pass
-          node.cls = (self._global_lookup.Lookup and
-                      self._global_lookup.Lookup(node.name))
+      for lookup in self._lookup_list:
+        try:
+          node.cls = lookup.Lookup(node.name)
+          break
         except KeyError:
-          if self._global_lookup.Lookup:
-            pass  # TODO(pludemann): Shouldn't be needed
-          else:
-            raise
-    return node
+          continue
+      return node
+
+
+class DefaceUnresolved(object):
+  """Replace all types not in a symbol table with AnythingType."""
+
+  def __init__(self, lookup_list):
+    """Create this visitor.
+
+    Args:
+      lookup_list: An iterable of symbol tables (i.e., objects that have a
+        "Lookup" function)
+    """
+    self._lookup_list = lookup_list
+
+  def VisitNamedType(self, node):
+    for lookup in self._lookup_list:
+      try:
+        lookup.Lookup(node.name)
+        return node
+      except KeyError:
+        pass
+    return pytd.AnythingType()
+
+  def VisitClassType(self, node):
+    return self.VisitNamedType(node)
 
 
 class ClearClassTypePointers(object):
@@ -339,9 +357,9 @@ def FillInClasses(target, global_module=None):
   # TODO(kramm): Node.Visit() should support blacklisting of attributes so
   # we don't recurse into submodules multiple times.
   if isinstance(target, pytd.TypeDeclUnit):
-    target.Visit(_FillInClasses(target, global_module))
+    target.Visit(_FillInClasses([target, global_module]))
   else:
-    target.Visit(_FillInClasses(global_module, global_module))
+    target.Visit(_FillInClasses([global_module]))
 
 
 def LookupClasses(module, global_module=None, overwrite=False):

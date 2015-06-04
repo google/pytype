@@ -59,6 +59,23 @@ class TestVisitors(parser_test.ParserTest):
     visitors.FillInClasses(ty_b, tree)
     self.assertIsNone(ty_b.cls)
 
+  def testDefaceUnresolved(self):
+    builtins = self.Parse(textwrap.dedent("""
+      class int:
+        pass
+    """))
+    src = textwrap.dedent("""
+        class A(X):
+            def a(self, a: A, b: X, c: int) -> X raises X
+    """)
+    expected = textwrap.dedent("""
+        class A(?):
+            def a(self, a: A, b: ?, c: int) -> ? raises ?
+    """)
+    tree = self.Parse(src)
+    new_tree = tree.Visit(visitors.DefaceUnresolved([tree, builtins]))
+    self.AssertSourceEquals(new_tree, expected)
+
   def testReplaceTypes(self):
     src = textwrap.dedent("""
         class A:
