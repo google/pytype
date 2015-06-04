@@ -1152,7 +1152,6 @@ class VirtualMachine(object):
     """Called when a local is written."""
     assert isinstance(value, typegraph.Variable), (name, repr(value))
     self.frame.f_locals.set_attribute(name, value)
-    abstract.variable_set_official_name(value, name)
 
   def store_global(self, name, value):
     """Same as store_local except for globals."""

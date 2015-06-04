@@ -15,6 +15,7 @@ from pytype import vm
 from pytype.pytd import optimize
 from pytype.pytd import pytd
 from pytype.pytd import utils as pytd_utils
+from pytype.pytd.parse import visitors
 
 log = logging.getLogger(__name__)
 
@@ -34,7 +35,12 @@ class AnalysisFrame(object):
 
 
 class CallTracer(vm.VirtualMachine):
-  """Virtual machine that records all function calls."""
+  """Virtual machine that records all function calls.
+
+  Attributes:
+    exitpoint: A CFG node representing the program exit. Needs to be set before
+      analyze_types.
+  """
 
   # TODO(pludemann): def isinstance(self, obj, classes) - see
   #                  TypegraphVirtualMachine.isinstance
@@ -43,6 +49,7 @@ class CallTracer(vm.VirtualMachine):
     super(CallTracer, self).__init__(*args, **kwargs)
     self._unknowns = {}
     self._calls = set()
+    self.exitpoint = None
 
   def create_argument(self, method_name, i):
     name = "arg %d of %s" % (i, method_name)
@@ -110,6 +117,7 @@ class CallTracer(vm.VirtualMachine):
     assert self.current_location is main_node
     self.analyze_toplevel(main_node, defs, ignore)
     self.pop_frame(frame)
+    return main_node
 
   def trace_unknown(self, name, unknown):
     self._unknowns[name] = unknown
@@ -131,14 +139,16 @@ class CallTracer(vm.VirtualMachine):
     self._calls.add(CallRecord(func, tuple(posargs),
                                tuple((namedargs or {}).items()), result))
 
-  def pytd_for_unknowns(self, defs, cfg_end, ignore):
+  def pytd_for_unknowns(self, defs, ignore):
     classes = []
     for name, var in self._unknowns.items():
-      for value in var.FilteredData(cfg_end):
-        classes.append(value.to_pytd_def(name, cfg_end))
+      for value in var.FilteredData(self.exitpoint):
+        classes.append(value.to_pytd_def(name))
     return pytd.TypeDeclUnit("unknowns", (), tuple(classes), (), ())
 
-  def pytd_for_types(self, defs, cfg_end, ignore):
+  def pytd_for_types(self, defs, ignore):
+    for name, var in defs.items():
+      abstract.variable_set_official_name(var, name)
     constants = []
     functions = []
     classes = []
@@ -146,11 +156,11 @@ class CallTracer(vm.VirtualMachine):
       const_types = []
       if name in output.TOP_LEVEL_IGNORE or name in ignore:
         continue
-      for value in var.FilteredData(cfg_end):
+      for value in var.FilteredData(self.exitpoint):
         if isinstance(value, abstract.Class):
-          classes.append(value.to_pytd_def(name, cfg_end))
+          classes.append(value.to_pytd_def(name))
         elif isinstance(value, abstract.Function):
-          functions.append(value.to_pytd_def(name, cfg_end))
+          functions.append(value.to_pytd_def(name))
         else:
           const_types.append(value.to_type())
       if const_types:
@@ -183,12 +193,14 @@ class CallTracer(vm.VirtualMachine):
     return pytd.TypeDeclUnit(
         "call_traces", (), (), tuple(functions), ())
 
-  def compute_types(self, defs, cfg_end, ignore):
+  def compute_types(self, defs, ignore):
     ty = pytd_utils.Concat(
-        self.pytd_for_types(defs, cfg_end, ignore),
-        self.pytd_for_unknowns(defs, cfg_end, ignore),
+        self.pytd_for_types(defs, ignore),
+        self.pytd_for_unknowns(defs, ignore),
         self.pytd_for_call_traces())
-    return ty.Visit(optimize.PullInMethodClasses())
+    ty = ty.Visit(optimize.PullInMethodClasses())
+    ty = ty.Visit(visitors.DefaceUnresolved([ty, self.builtins_pytd]))
+    return ty
 
 
 def pretty_assignment(v, short=False):
@@ -338,8 +350,10 @@ def infer_types(src, python_version, filename=None, pythonpath=None,
   log.info("===Done run_program===")
   # TODO(pludemann): make test_inference.InferDedent and this code the same:
   if deep:
-    tracer.analyze(loc, defs, builtin_names)
-  ast = tracer.compute_types(defs, loc, builtin_names)
+    tracer.exitpoint = tracer.analyze(loc, defs, builtin_names)
+  else:
+    tracer.exitpoint = loc
+  ast = tracer.compute_types(defs, builtin_names)
   if solve_unknowns:
     log.info("=========== PyTD to solve =============\n%s", pytd.Print(ast))
     ast = convert_structural.convert_pytd(ast, tracer.builtins_pytd)

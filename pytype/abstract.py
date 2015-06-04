@@ -14,7 +14,6 @@ import logging
 
 from pytype import exceptions
 from pytype import output
-from pytype import path
 from pytype import utils
 from pytype.pyc import loadmarshal
 from pytype.pytd import cfg as typegraph
@@ -28,7 +27,7 @@ log = logging.getLogger(__name__)
 def variable_set_official_name(variable, name):
   """Set official_name on each value in the variable.
 
-  Called when a variable is stored in locals().
+  Called for each entry in the top-level locals().
 
   Args:
     variable: A typegraph.Variable to name.
@@ -114,20 +113,6 @@ class AtomicAbstractValue(object):
     self.name = name
     self.parent = None
     self.official_name = None
-
-  def get_name(self):
-    """Return the name of this value.
-
-    The proper name of the value is taken to be the name given to the object by
-    Python (such as by the func_name attribute or the __name__ attribute) if the
-    value was also stored into locals with that name at some point.  This
-    differs from self.name because the latter is *always* set, whereas
-    official_name only gets set if the value was stored into locals.
-
-    Returns:
-      The proper name of this value or None.
-    """
-    return self.official_name
 
   def property_get(self, callself, callcls):  # pylint: disable=unused-argument
     """Bind this value to the given self and class.
@@ -273,27 +258,15 @@ class AtomicAbstractValue(object):
       ValueError: If origins is an empty sequence. This is to prevent you from
         creating variables that have no origin and hence can never be used.
     """
-    v = self.vm.program.NewVariable(name or self.get_name())
+    v = self.vm.program.NewVariable(name or self.name)
     v.AddValue(self, source_set=[], where=self.vm.current_location)
     return v
-
-  def get_static_path(self):
-    """Return the static value path of this object.
-
-    Returns:
-      An instance of path.Path, or None if this object does not have a
-      proper name. See get_name for a discussion of proper names.
-    """
-    raise NotImplementedError
 
   def match_instance_against_type(self, instance, other_type, subst):
     raise NotImplementedError("%s is not a class" % type(self))
 
   def match_against_type(self, other_type, subst):
     raise NotImplementedError("Matching not implemented for %s", type(self))
-
-  def full_name(self):
-    return str(self.get_static_path())
 
   def _raise_failed_function_call(self, explanation_lines):
     """Convenience function to log & raise, used by subclasses."""
@@ -493,14 +466,6 @@ class SimpleAbstractValue(AtomicAbstractValue):
       # This happens e.g. for locals / globals, which are returned from the code
       # in class declarations.
       return pytd.AnythingType()
-
-  def get_static_path(self):
-    if "__class__" in self.members:
-      classes = self.members["__class__"].values
-      if len(classes) == 1:
-        return classes[0].data.get_static_path()
-      else:
-        raise ValueError("Value has no path")
 
   def match_against_type(self, other_type, subst):
     my_type = self.get_type()
@@ -796,7 +761,7 @@ class PyTDSignature(AtomicAbstractValue):
       # parameters that are specified by multiple def's).
       msg_lines = [
           "Function %s was called with %d args instead of expected %d" %
-          (self.function.full_name(), len(args),
+          (self.function.name, len(args),
            len(self.pytd_sig.params)),
           "  Expected: %r" % [p.name for p in self.pytd_sig.params],
           "  Actually passed: %r" % (args,)]
@@ -886,7 +851,7 @@ class PyTDSignature(AtomicAbstractValue):
         # builtin type with incorrect arguments. However, for multiple
         # signatures, it's not an error (unless nothing matches).
         msg_lines = ["Function %s was called with the wrong arguments" %
-                     self.function.full_name(),
+                     self.function.name,
                      "  Expected: %r" % ["%s: %s" % (p.name, p.type)
                                          for p in self.pytd_sig.params],
                      "  Actually passed: %r" % [a.data.name
@@ -945,9 +910,6 @@ class PyTDSignature(AtomicAbstractValue):
 
   def to_type(self):
     return pytd.NamedType("function")
-
-  def get_static_path(self):
-    return self.function.get_static_path()
 
   def __repr__(self):
     return pytd.Print(self.pytd_sig)
@@ -1014,13 +976,6 @@ class PyTDFunction(AtomicAbstractValue):
 
   def to_type(self):
     return pytd.NamedType("function")
-
-  def get_static_path(self):
-    if self.parent:
-      return path.Path(path.Class(self.parent.name),
-                       path.Function(self.name))
-    else:
-      return path.Path(path.Function(self.name))
 
   def __repr__(self):
     return self.name + "(...)"
@@ -1094,13 +1049,19 @@ class Class(object):
       break  # we found a class which has this attribute
     return node, ret
 
-  def to_pytd_def(self, name, unused_node):
+  def to_pytd_def(self, name):
     # Default method. Generate an empty pytd. Subclasses override this.
     return pytd.Class(name, (), (), (), ())
 
 
 class ParameterizedClass(AtomicAbstractValue, Class):
-  """A class that contains additional parameters. E.g. a container."""
+  """A class that contains additional parameters. E.g. a container.
+
+  Attributes:
+    cls: A PyTDClass representing the base type.
+    type_parameters: An iterable of AtomicAbstractValue, one for each type
+        parameter.
+  """
 
   def __init__(self, cls, type_parameters, vm):
     super(ParameterizedClass, self).__init__(cls.name, vm)
@@ -1129,6 +1090,10 @@ class PyTDClass(LazyAbstractValue, Class):
   """An abstract wrapper for PyTD class objects.
 
   These are the abstract values for class objects that are described in PyTD.
+
+  Attributes:
+    cls: A pytd.Class
+    mro: Method resolution order. An iterable of AtomicAbstractValue.
   """
 
   def __init__(self, cls, vm):
@@ -1139,7 +1104,6 @@ class PyTDClass(LazyAbstractValue, Class):
     Class.init_mixin(self)
     self.cls = cls
     self.mro = utils.compute_mro(self)
-    self.formal_type_parameters = {}
 
   def get_attribute(self, node, name, valself=None, valcls=None):
     return Class.get_attribute(self, node, name, valself, valcls)
@@ -1224,7 +1188,7 @@ class PyTDClass(LazyAbstractValue, Class):
     if other_type.name == "type":
       return subst
 
-  def to_pytd_def(self, name, unused_node):
+  def to_pytd_def(self, name):
     # This happens if a module does e.g. "from x import y as z", i.e., copies
     # something from another module to the local namespace.
     return self.cls.Replace(name=name)
@@ -1246,7 +1210,6 @@ class InterpreterClass(SimpleAbstractValue, Class):
     self._bases = bases
     self.mro = utils.compute_mro(self)
     self.members = members
-    self.formal_type_parameters = {}  # builtin types don't have type params
     self.instances = set()  # filled through register_instance
     log.info("Created class: %r", self)
 
@@ -1284,12 +1247,6 @@ class InterpreterClass(SimpleAbstractValue, Class):
       log.debug("%s.__init__(...) returned %r", self.name, ret)
     return node, variable
 
-  def get_static_path(self):
-    if self.get_name():
-      return path.Path(path.Class(self.get_name()))
-    else:
-      return None
-
   def match_instance_against_type(self, instance, other_type, subst):
     if isinstance(other_type, Class):
       for base in self.mro:
@@ -1304,16 +1261,16 @@ class InterpreterClass(SimpleAbstractValue, Class):
   def to_type(self):
     return pytd.NamedType("type")
 
-  def to_pytd_def(self, class_name, node):
+  def to_pytd_def(self, class_name):
     methods = []
     constants = collections.defaultdict(pytd_utils.TypeBuilder)
 
     # class-level attributes
     for name, member in self.members.items():
       if name not in output.CLASS_LEVEL_IGNORE:
-        for value in member.FilteredData(node):
+        for value in member.FilteredData(self.vm.exitpoint):
           if isinstance(value, Function):
-            methods.append(value.to_pytd_def(name, node))
+            methods.append(value.to_pytd_def(name))
           else:
             constants[name].add_type(value.to_type())
 
@@ -1321,10 +1278,11 @@ class InterpreterClass(SimpleAbstractValue, Class):
     for instance in self.instances:
       for name, member in instance.members.items():
         if name not in output.CLASS_LEVEL_IGNORE:
-          for value in member.FilteredData(node):
+          for value in member.FilteredData(self.vm.exitpoint):
             constants[name].add_type(value.to_type())
 
-    bases = [pytd_utils.JoinTypes(pytd.NamedType(b.name) for b in basevar.data)
+    bases = [pytd_utils.JoinTypes(b.get_instance_type(None)
+                                  for b in basevar.data)
              for basevar in self._bases]
     constants = [pytd.Constant(name, builder.build())
                  for name, builder in constants.items()
@@ -1374,22 +1332,13 @@ class Function(AtomicAbstractValue):
     else:
       raise NotImplementedError()
 
-  def get_static_path(self):
-    if not self.get_name():
-      return None
-    if self.cls:
-      return self.cls.get_static_path().add(
-          path.Function(self.get_name()))
-    else:
-      return path.Path(path.Function(self.get_name()))
-
   def get_type(self):
     return self.vm.function_type
 
   def to_type(self):
     return pytd.NamedType("function")
 
-  def to_pytd_def(self, name, unused_node):
+  def to_pytd_def(self, name):
     raise NotImplementedError()
 
   def match_against_type(self, other_type, subst):
@@ -1542,7 +1491,7 @@ class InterpreterFunction(Function):
     self._call_records.append((callargs, ret, node, node_after_call))
     return node_after_call, ret
 
-  def to_pytd_def(self, function_name, unused_node):
+  def to_pytd_def(self, function_name):
     num_defaults = len(self.defaults)
     signatures = []
     for callargs, ret, _, node_after_call in self._call_records:
@@ -1606,9 +1555,6 @@ class BoundFunction(AtomicAbstractValue):
 
   def get_parameter_names(self):
     return self.underlying.get_parameter_names()
-
-  def get_static_path(self):
-    return self.underlying.get_static_path()
 
   def to_type(self):
     return pytd.NamedType("function")
@@ -1808,7 +1754,7 @@ class Unknown(AtomicAbstractValue):
     self.vm.trace_unknown(self.class_name, v)
     return v
 
-  def to_pytd_def(self, class_name, unused_node):
+  def to_pytd_def(self, class_name):
     """Convert this Unknown to a pytd.Class."""
     if not self._pytd_class:
       self_param = (pytd.Parameter("self", pytd.NamedType("object")),)
@@ -1836,7 +1782,7 @@ class Unknown(AtomicAbstractValue):
     return self.to_variable("class of " + self.name)
 
   def to_type(self):
-    cls = self.to_pytd_def(self.class_name, None)
+    cls = self.to_pytd_def(self.class_name)
     t = pytd.ClassType(cls.name)  # pylint: disable=no-member
     t.cls = cls
     return t
