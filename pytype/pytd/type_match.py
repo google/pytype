@@ -103,6 +103,8 @@ class TypeMatch(utils.TypeMatcher):
     """
     if isinstance(t, pytd.ClassType):
       return sum((self.get_superclasses(c) for c in t.cls.parents), [t])
+    elif isinstance(t, pytd.AnythingType):
+      return []
     else:
       raise NotImplementedError("Can't extract superclasses from %s", type(t))
 

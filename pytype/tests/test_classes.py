@@ -50,5 +50,19 @@ class ClassesTest(test_inference.InferenceTest):
         pass
       """)
 
+  def testInheritFromUnknownAndCall(self):
+    with self.Infer("""
+      x = __any_object__
+      class A(x):
+        def __init__(self):
+          x.__init__(self)
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+      x: ?
+      class A(?):
+        def __init__(self) -> NoneType
+      """)
+
+
 if __name__ == "__main__":
   test_inference.main()
