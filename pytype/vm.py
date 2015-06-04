@@ -1,7 +1,7 @@
 """A abstract virtual machine for python bytecode that generates typegraphs.
 
-A VM for python byte code that uses kramm@ typegraph to generate a trace of the
-program execution.
+A VM for python byte code that uses pytype/pytd/cfg ("typegraph") to generate a
+trace of the program execution.
 """
 
 # Disable because there are enough false positives to make it useless
@@ -127,9 +127,6 @@ class VirtualMachine(object):
     # The current frame.
     self.frame = None
     self.return_value = None
-    self.vmbuiltins = dict(__builtins__)
-    self.vmbuiltins["isinstance"] = self.isinstance
-    self._cache_linestarts = {}  # maps frame.f_code => list of (offset, lineno)
 
     self.program = typegraph.Program()
 
@@ -162,12 +159,9 @@ class VirtualMachine(object):
     self.function_type = self.convert_constant("function type",
                                                types.FunctionType)
 
-    self.vmbuiltins = {}
-    self._set_vmbuiltin("constant", self.builtins_pytd.constants)
-    self._set_vmbuiltin("class", self.builtins_pytd.classes)
-    self._set_vmbuiltin("function", self.builtins_pytd.functions)
-    # Do not do the following because all modules must be explicitly imported.
-    # self._set_vmbuiltin("module", self.builtins_pytd.modules)
+    self.vmbuiltins = {b.name: b for b in (self.builtins_pytd.constants +
+                                           self.builtins_pytd.classes +
+                                           self.builtins_pytd.functions)}
 
     self.none = abstract.AbstractOrConcreteValue(
         None, self.primitive_classes[types.NoneType], self)
@@ -484,10 +478,6 @@ class VirtualMachine(object):
     """Return the modules members as a dict."""
     return self.load_attr(mod, name)
 
-  def _set_vmbuiltin(self, descr, values):
-    for b in values:
-      self.vmbuiltins[b.name] = b
-
   def instantiate_builtin(self, cls):
     return abstract.Instance(self.primitive_classes[cls], self).to_variable(
         name=cls.__name__)
@@ -495,34 +485,6 @@ class VirtualMachine(object):
   def instantiate(self, cls):
     # TODO(kramm): Make everything use this
     return abstract.Instance(cls, self).to_variable(name=cls.name)
-
-  def new_variable(self, name, values=None, origins=None, loc=None):
-    """Make a new variable using self.program.
-
-    This should be used instead of self.program.NewVariable to allow error
-    checking and debugging.
-
-    Args:
-      name: The name to give the variable.
-      values: The values to put in the variable.
-      origins: The origins that each value should have.
-      loc: The location for the initial values.
-    Returns:
-      A new Variable object.
-    Raises:
-      ValueError: If values, origins and loc are inconsistent wrt each other.
-    """
-    if values:
-      assert all(isinstance(v, abstract.AtomicAbstractValue) for v in values)
-    if values is not None:
-      if origins is None or loc is None:
-        raise ValueError("If values is not None, origins and loc must also not "
-                         "be None")
-      return self.program.NewVariable(name, values, origins, loc)
-    else:
-      if origins is not None or loc is not None:
-        raise ValueError("If values is None, origins and loc must also be None")
-      return self.program.NewVariable(name)
 
   def join_variables(self, name, variables):
     """Create a combined Variable for a list of variables.
@@ -929,9 +891,9 @@ class VirtualMachine(object):
       return False
 
   def push_abstract_exception(self, state):
-    tb = self.new_variable("tb")
-    value = self.new_variable("value")
-    exctype = self.new_variable("exctype")
+    tb = self.program.NewVariable("tb", [], [], self.current_location)
+    value = self.program.NewVariable("value", [], [], self.current_location)
+    exctype = self.program.NewVariable("exctype", [], [], self.current_location)
     return state.push(tb, value, exctype)
 
   def resume_frame(self, frame):
@@ -1262,11 +1224,6 @@ class VirtualMachine(object):
   def build_map(self):
     """Create an empty VM dict."""
     return abstract.Dict("dict()", self).to_variable("dict()")
-
-  def isinstance(self, obj, classes):
-    # TODO(ampere): Implement this to add support for isinstance in analyzed
-    # code.
-    raise NotImplementedError
 
   def push_last_exception(self, state):
     log.info("Pushing exception %r", state.exception)

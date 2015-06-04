@@ -341,7 +341,8 @@ class SimpleAbstractValue(AtomicAbstractValue):
     """
     param = self.type_parameters.get(name)
     if not param:
-      param = self.vm.new_variable(name, [], [], self.vm.current_location)
+      param = self.vm.program.NewVariable(name, [], [],
+                                          self.vm.current_location)
       self.type_parameters[name] = param
     return param
 
@@ -370,7 +371,7 @@ class SimpleAbstractValue(AtomicAbstractValue):
       name: The name of the type parameter.
       value: The new type parameter as a Variable.
     """
-    self.type_parameters[name] = self.vm.new_variable(
+    self.type_parameters[name] = self.vm.program.NewVariable(
         name, value.data, [], self.vm.current_location)
 
   def get_attribute(self, node, name, valself=None, valcls=None):
