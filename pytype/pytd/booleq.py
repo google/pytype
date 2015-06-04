@@ -15,6 +15,7 @@
 
 """Data structures and algorithms for boolean equations."""
 
+import collections
 import itertools
 
 from pytype.pytd import utils
@@ -129,7 +130,7 @@ class Eq(BooleanTerm):
     if left == right:
       return TRUE
     eq = super(Eq, cls).__new__(cls)
-    eq.left, eq.right = reversed(sorted((left, right)))
+    eq.left, eq.right = sorted((left, right), reverse=True)
     return eq
 
   def __repr__(self):
@@ -170,14 +171,14 @@ class Eq(BooleanTerm):
       return self
     intersection = (frozenset(assignments.get(self.left, set())) &
                     frozenset(assignments.get(self.right, set())))
-    return Or(And([Eq(self.left, i),
-                   Eq(i, self.right)])
+    return Or(And((Eq(self.left, i),
+                   Eq(i, self.right)))
               for i in intersection)
 
   def extract_pivots(self):
     """Extract the pivots. See BooleanTerm.extract_pivots()."""
-    return {self.left: frozenset([self.right]),
-            self.right: frozenset([self.left])}
+    return {self.left: frozenset((self.right,)),
+            self.right: frozenset((self.left,))}
 
 
 class And(BooleanTerm):
@@ -307,7 +308,7 @@ class Solver(object):
   def __init__(self):
     self.variables = []
     self.values = []
-    self.implications = {}
+    self.implications = collections.defaultdict(dict)
     self.ground_truth = TRUE
 
   def __str__(self):
@@ -315,14 +316,15 @@ class Solver(object):
     count_false, count_true = 0, 0
     if self.ground_truth is not TRUE:
       lines.append("always: %s" % (self.ground_truth,))
-    for e, implication in self.implications.items():
-      # only print the "interesting" lines
-      if implication is FALSE:
-        count_false += 1
-      elif implication is TRUE:
-        count_true += 1
-      else:
-        lines.append("if %s then %s" % (e, implication))
+    for var, value_to_implication in self.implications.items():
+      for value, implication in value_to_implication.items():
+        # only print the "interesting" lines
+        if implication is FALSE:
+          count_false += 1
+        elif implication is TRUE:
+          count_true += 1
+        else:
+          lines.append("if %s then %s" % (Eq(var, value), implication))
     return "%s\n(not shown: %d always FALSE, %d always TRUE)\n" % (
         "\n".join(lines), count_false, count_true)
 
@@ -336,7 +338,7 @@ class Solver(object):
 
   def always_true(self, formula):
     """Register a ground truth. Call before calling solve()."""
-    assert formula != FALSE
+    assert formula is not FALSE
     self.ground_truth = And([self.ground_truth, formula])
 
   def implies(self, e, implication):
@@ -346,8 +348,10 @@ class Solver(object):
       raise AssertionError("Illegal equation")
     # COV_NF_END
     assert isinstance(e, Eq)
-    assert e not in self.implications
-    self.implications[e] = implication
+    assert e.right not in self.implications[e.left]
+    # Since Eq sorts its arguments in reverse and variables start with "~"
+    # (ASCII value 126), e.left should always be the variable.
+    self.implications[e.left][e.right] = implication
 
   def _complete(self):
     """Insert missing implications.
@@ -357,12 +361,11 @@ class Solver(object):
     """
     for var in self.variables:
       for value in self.values:
-        e = Eq(var, value)
-        if e not in self.implications:
+        if value not in self.implications[var]:
           # Missing implications are typically needed for variable/value
           # combinations not considered by the user, e.g. for auxiliary
           # variables introduced when setting up the "main" equations.
-          self.implications[e] = TRUE
+          self.implications[var][value] = TRUE
 
   def solve(self):
     """Solve the system of equations.
@@ -374,7 +377,7 @@ class Solver(object):
 
     assignments = {var: set(value
                             for value in self.values
-                            if self.implications[Eq(var, value)] != FALSE)
+                            if self.implications[var][value] is not FALSE)
                    for var in self.variables
                   }
 
@@ -389,8 +392,7 @@ class Solver(object):
       for var in self.variables:
         terms = []
         for value in assignments[var].copy():
-          e = Eq(var, value)
-          implication = self.implications[e].simplify(assignments)
+          implication = self.implications[var][value].simplify(assignments)
           if implication is FALSE:
             # As an example of what kind of code triggers this,
             # see TestBoolEq.testFilter
