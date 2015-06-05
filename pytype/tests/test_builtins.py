@@ -319,6 +319,18 @@ class BuiltinTests(test_inference.InferenceTest):
         def f() -> NoneType
       """)
 
+  def testSysArgv(self):
+    with self.Infer("""
+      import sys
+      def args():
+        return ' '.join(sys.argv)
+      args()
+    """, deep=False, solve_unknowns=False, extract_locals=False) as ty:
+      self.assertTypesMatchPytd(ty, """
+        sys: module
+        def args() -> str
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()

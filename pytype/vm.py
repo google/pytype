@@ -638,6 +638,8 @@ class VirtualMachine(object):
       options = [self.convert_constant_to_value(pytd.Print(t), t)
                  for t in pyval.type_list]
       return self.program.NewVariable(name, options, [], self.current_location)
+    elif isinstance(pyval, pytd.Constant):
+      return self.create_pytd_instance(pyval.type, [])
     result = self.convert_constant_to_value(name, pyval)
     if result is not None:
       return result.to_variable(name)
@@ -713,12 +715,6 @@ class VirtualMachine(object):
       return self.create_pytd_instance_value(pyval, {})
     elif isinstance(pyval, pytd.FunctionWithCode):
       raise AssertionError("Unexpected FunctionWithCode: {}".format(pyval))
-    elif isinstance(pyval, pytd.Constant):
-      value = abstract.SimpleAbstractValue(name, self)
-      value.set_attribute("__class__",
-                          self.convert_constant(name + ".__class__",
-                                                pyval.type))
-      return value
     elif isinstance(pyval, pytd.ClassType):
       assert pyval.cls
       return self.convert_constant_to_value(pyval.name, pyval.cls)
