@@ -321,12 +321,6 @@ class TypeMatch(utils.TypeMatcher):
 
   def match_Signature_against_FunctionWithSignatures(self, sig, f, subst,
                                                      skip_self=False):  # pylint: disable=invalid-name
-    # TODO(kramm): We should abort after the first matching signature, to get
-    # more precise types in the presence of overloading.
-    # TODO(pludemann) ... except it's possible that further computation will
-    #                     invalidate the first matching signature, so we need
-    #                     a way to preserve the alternatives and backtrack
-    #                     through them if necessary
     return booleq.And(
         booleq.Or(
             self.match_Signature_against_Signature(sig, s, subst, skip_self)
@@ -343,15 +337,15 @@ class TypeMatch(utils.TypeMatcher):
   def match_Class_against_Class(self, cls1, cls2, subst):  # pylint: disable=invalid-name
     """Match a pytd.Class against another pytd.Class."""
     implications = []
+    cls2_methods = {f.name: f for f in cls2.methods}
     for f1 in cls1.methods:
-      try:
-        f2 = cls2.Lookup(f1.name)
-      except KeyError:
+      if f1.name not in cls2_methods:
         # The class we're matching against doesn't even have this method. This
         # is the easiest and most common case.
         # TODO(kramm): Search base classes
         implication = booleq.FALSE
       else:
+        f2 = cls2_methods[f1.name]
         implication = (
             self.match_FunctionWithSignatures_against_FunctionWithSignatures(
                 f1, f2, subst, skip_self=True))

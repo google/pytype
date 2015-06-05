@@ -240,6 +240,10 @@ def convert_string_type(string_type, unknown, mapping, global_lookup, depth=0):
 def convert_string_type_list(types_as_string, unknown, mapping,
                              global_lookup, depth=0):
   """Like convert_string_type, but operate on a list."""
+  if not types_as_string:
+    # If we didn't find a solution for a type (the list of matches is empty)
+    # then report it as "?", not as "nothing", because the latter is confusing.
+    return pytd.AnythingType()
   return pytd_utils.JoinTypes(convert_string_type(type_as_string, unknown,
                                                   mapping, global_lookup, depth)
                               for type_as_string in types_as_string)

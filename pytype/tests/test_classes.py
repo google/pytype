@@ -63,6 +63,24 @@ class ClassesTest(test_inference.InferenceTest):
         def __init__(self) -> NoneType
       """)
 
+  def testClassMethod(self):
+    with self.Infer("""
+      module = __any_object__
+      class Foo(object):
+        @classmethod
+        def bar(cls):
+          module.bar("", '%Y-%m-%d')
+      def f():
+        return Foo.bar()
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+      module: ?
+      def f() -> NoneType
+      class Foo:
+        # TODO(kramm): pytd needs better syntax for classmethods
+        bar: classmethod
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()
