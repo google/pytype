@@ -634,6 +634,10 @@ class VirtualMachine(object):
     Raises:
       ValueError: if pytype is not of a known type.
     """
+    if isinstance(pyval, pytd.UnionType):
+      options = [self.convert_constant_to_value(pytd.Print(t), t)
+                 for t in pyval.type_list]
+      return self.program.NewVariable(name, options, [], self.current_location)
     result = self.convert_constant_to_value(name, pyval)
     if result is not None:
       return result.to_variable(name)

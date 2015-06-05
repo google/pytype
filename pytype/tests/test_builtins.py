@@ -307,6 +307,18 @@ class BuiltinTests(test_inference.InferenceTest):
         def f(x: str or buffer or unicode) -> str
       """)
 
+  def testSignal(self):
+    with self.Infer("""
+      import signal
+      def f():
+        signal.signal(signal.SIGALRM, 0)
+    """, deep=True, solve_unknowns=True, extract_locals=False) as ty:
+      self.assertTypesMatchPytd(ty, """
+        signal: module
+
+        def f() -> NoneType
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()

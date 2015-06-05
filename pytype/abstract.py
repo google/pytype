@@ -263,9 +263,26 @@ class AtomicAbstractValue(object):
     return v
 
   def match_instance_against_type(self, instance, other_type, subst):
+    """Checks whether an instance of us is compatible with a (formal) type.
+
+    Args:
+      instance: The instance of this class. An abstract.Instance.
+      other_type: A formal type. E.g. abstract.Class or abstract.Union.
+      subst: The current type parameter assignment.
+    Returns:
+      A new type parameter assignment if the matching succeeded, None otherwise.
+    """
     raise NotImplementedError("%s is not a class" % type(self))
 
   def match_against_type(self, other_type, subst):
+    """Checks whether we're compatible with a (formal) type.
+
+    Args:
+      other_type: A formal type. E.g. abstract.Class or abstract.Union.
+      subst: The current type parameter assignment.
+    Returns:
+      A new type parameter assignment if the matching succeeded, None otherwise.
+    """
     raise NotImplementedError("Matching not implemented for %s", type(self))
 
   def _raise_failed_function_call(self, explanation_lines):
