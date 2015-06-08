@@ -792,7 +792,7 @@ class TypeDeclParser(object):
       signatures: A list of tuples (name, signature).
 
     Returns:
-      A list of instances of pytd.FunctionWithSignatures.
+      A list of instances of pytd.Function.
     """
 
     name_to_signatures = collections.OrderedDict()
@@ -808,9 +808,9 @@ class TypeDeclParser(object):
     ret = []
     for name, signatures in name_to_signatures.items():
       if name_external[name][True]:
-        ret.append(pytd.FunctionWithCode(name, None))
+        ret.append(pytd.ExternalFunction(name, ()))
       else:
-        ret.append(pytd.FunctionWithSignatures(name, tuple(signatures)))
+        ret.append(pytd.Function(name, tuple(signatures)))
     return ret
 
   def VerifyPythonCode(self, name_external):

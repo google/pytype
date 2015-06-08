@@ -151,7 +151,7 @@ class TypeMatcher(object):
 
     class MyMatcher(TypeMatcher):
 
-      def match_FunctionWithSignatures_FunctionWithSignatures(self, f1, f2):
+      def match_Function_Function(self, f1, f2):
         return f1.name == f2.name
   """
 

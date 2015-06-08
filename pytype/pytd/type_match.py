@@ -319,19 +319,16 @@ class TypeMatch(utils.TypeMatcher):
     else:
       return booleq.FALSE
 
-  def match_Signature_against_FunctionWithSignatures(self, sig, f, subst,
-                                                     skip_self=False):  # pylint: disable=invalid-name
+  def match_Signature_against_Function(self, sig, f, subst, skip_self=False):  # pylint: disable=invalid-name
     return booleq.And(
         booleq.Or(
             self.match_Signature_against_Signature(sig, s, subst, skip_self)
             for s in f.signatures)
         for inner_sig in sig.Visit(optimize.ExpandSignatures()))
 
-  def match_FunctionWithSignatures_against_FunctionWithSignatures(  # pylint: disable=invalid-name
-      self, f1, f2, subst, skip_self=False):
+  def match_Function_against_Function(self, f1, f2, subst, skip_self=False):  # pylint: disable=invalid-name
     return booleq.And(
-        self.match_Signature_against_FunctionWithSignatures(
-            s1, f2, subst, skip_self)
+        self.match_Signature_against_Function(s1, f2, subst, skip_self)
         for s1 in f1.signatures)
 
   def match_Class_against_Class(self, cls1, cls2, subst):  # pylint: disable=invalid-name
@@ -347,8 +344,7 @@ class TypeMatch(utils.TypeMatcher):
       else:
         f2 = cls2_methods[f1.name]
         implication = (
-            self.match_FunctionWithSignatures_against_FunctionWithSignatures(
-                f1, f2, subst, skip_self=True))
+            self.match_Function_against_Function(f1, f2, subst, skip_self=True))
       implications.append(implication)
       if implication is booleq.FALSE:
         break

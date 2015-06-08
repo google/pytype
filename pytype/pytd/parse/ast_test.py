@@ -417,7 +417,7 @@ class TestASTGeneration(parser_test.ParserTest):
     data2 = r"def foo(a: Foo or (Bar and Zot)) -> object"
     result1 = self.Parse(data1)
     result2 = self.Parse(data2)
-    f = pytd.FunctionWithSignatures(
+    f = pytd.Function(
         name="foo",
         signatures=(pytd.Signature(
             params=(
@@ -447,7 +447,7 @@ class TestASTGeneration(parser_test.ParserTest):
 
     result = self.Parse(data)
     f1 = result.Lookup("interface")
-    f2 = pytd.FunctionWithSignatures(
+    f2 = pytd.Function(
         name="interface",
         signatures=(pytd.Signature(
             params=(

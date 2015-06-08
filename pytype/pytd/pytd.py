@@ -125,7 +125,7 @@ class Class(node.Node('name', 'parents', 'methods', 'constants', 'template')):
       return self._name2item[name]
 
 
-class FunctionWithSignatures(node.Node('name', 'signatures')):
+class Function(node.Node('name', 'signatures')):
   """A function or a method, defined by one or more PyTD signatures.
 
   Attributes:
@@ -135,12 +135,12 @@ class FunctionWithSignatures(node.Node('name', 'signatures')):
   __slots__ = ()
 
 
-class FunctionWithCode(node.Node('name', 'code')):
+class ExternalFunction(Function):
   """A function or a method, defined by PYTHONCODE (see parse/parser.py).
 
   Attributes:
     name: The name of this function.
-    code: The code (# TODO(pludemann): define this when PYTHONCODE implemented)
+    signatures: Empty tuple of signatures.
   """
   __slots__ = ()
 
@@ -394,9 +394,6 @@ class HomogeneousContainerType(GenericType):
 TYPE = (NamedType, NativeType, ClassType, AnythingType, UnionType,
         NothingType, GenericType, TypeParameter, Scalar,
         IntersectionType, Scalar)
-
-
-FUNCTION = (FunctionWithSignatures, FunctionWithCode)
 
 
 def Print(n, print_format=None):

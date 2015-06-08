@@ -593,7 +593,7 @@ class VirtualMachine(object):
       return value
     elif isinstance(pytype, pytd.Signature):
       return abstract.PyTDSignature("?", pytype, self)
-    elif isinstance(pytype, pytd.FunctionWithSignatures):
+    elif isinstance(pytype, pytd.Function):
       f = abstract.PyTDFunction(pytype.name, [], self)
       f.signatures = [abstract.PyTDSignature(f, sig, self)
                       for sig in pytype.signatures]
@@ -604,7 +604,7 @@ class VirtualMachine(object):
       # TODO(kramm): Can we do this without creating a Variable?
       return self.create_new_unknown("?").data[0]
     else:
-      # includes pytd.FunctionWithCode, which should never occur
+      # includes pytd.ExternalFunction, which should never occur
       raise ValueError("Cannot create instance of {}".format(pytype))
 
   def create_new_unknown(self, name, source=None):
@@ -623,7 +623,7 @@ class VirtualMachine(object):
     This converts a constant to a typegraph.Variable. Unlike
     convert_constant_to_value, it can handle things that need to be represented
     as a Variable with multiple possible values (i.e., a union type), like
-    pytd.FunctionWithSignatures.
+    pytd.Function.
 
     Args:
       name: The name to give the new variable.
@@ -711,10 +711,10 @@ class VirtualMachine(object):
       return abstract.Module(self, pyval.name, members)
     elif isinstance(pyval, pytd.Class):
       return abstract.PyTDClass(pyval, self)
-    elif isinstance(pyval, pytd.FunctionWithSignatures):
+    elif isinstance(pyval, pytd.Function):
       return self.create_pytd_instance_value(pyval, {})
-    elif isinstance(pyval, pytd.FunctionWithCode):
-      raise AssertionError("Unexpected FunctionWithCode: {}".format(pyval))
+    elif isinstance(pyval, pytd.ExternalFunction):
+      raise AssertionError("Unexpected ExternalFunction: {}".format(pyval))
     elif isinstance(pyval, pytd.ClassType):
       assert pyval.cls
       return self.convert_constant_to_value(pyval.name, pyval.cls)

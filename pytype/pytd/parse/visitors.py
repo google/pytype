@@ -103,12 +103,12 @@ class PrintVisitor(object):
       methods = [self.INDENT + "pass"]
     return "\n".join([header] + constants + methods) + "\n"
 
-  def VisitFunctionWithSignatures(self, node):
+  def VisitFunction(self, node):
     """Visit function, producing multi-line string (one for each signature)."""
     function_name = self._SafeName(node.name)
     return "\n".join("def " + function_name + sig for sig in node.signatures)
 
-  def VisitFunctionWithCode(self, node):
+  def VisitExternalFunction(self, node):
     """Visit function defined with PYTHONCODE."""
     return "def " + self._SafeName(node.name) + " PYTHONCODE"
 
@@ -622,7 +622,7 @@ class VerifyVisitor(object):
     assert isinstance(node.constants, (list, tuple)), node
     assert all(isinstance(c, pytd.Constant) for c in node.constants)
     assert isinstance(node.functions, (list, tuple)), node
-    assert all(isinstance(f, pytd.FUNCTION) for f in node.functions)
+    assert all(isinstance(f, pytd.Function) for f in node.functions)
     assert isinstance(node.classes, (list, tuple)), node
     assert all(isinstance(cls, pytd.Class) for cls in node.classes)
     assert isinstance(node.modules, (list, tuple)), node
@@ -636,22 +636,21 @@ class VerifyVisitor(object):
     assert isinstance(node.parents, tuple), node
     assert all(isinstance(p, pytd.TYPE) for p in node.parents)
     assert isinstance(node.methods, tuple), node
-    assert all(isinstance(f, pytd.FUNCTION) for f in node.methods)
+    assert all(isinstance(f, pytd.Function) for f in node.methods)
     assert isinstance(node.constants, tuple), node
     assert all(isinstance(c, pytd.Constant) for c in node.constants)
     assert isinstance(node.template, tuple), node
     assert all(isinstance(t, pytd.TemplateItem) for t in node.template)
 
-  def EnterFunctionWithSignatures(self, node):
+  def EnterFunction(self, node):
     assert isinstance(node.name, str), node
     assert node.signatures, node
     assert isinstance(node.signatures, tuple), node
     assert all(isinstance(sig, pytd.Signature) for sig in node.signatures)
 
-  def EnterFunctionWithCode(self, node):
+  def EnterExternalFunction(self, node):
     assert isinstance(node.name, str), node
-    # TODO(pludemann): implement FunctionWithCode.code
-    assert node.code is None, node
+    assert node.signatures == (), node
 
   def EnterSignature(self, node):
     assert isinstance(node.params, tuple), node
@@ -742,7 +741,7 @@ class CanonicalOrderingVisitor(object):
                       constants=tuple(sorted(node.constants)),
                       template=node.template)
 
-  def VisitFunctionWithSignatures(self, node):
+  def VisitFunction(self, node):
     # Typically, signatures should *not* be sorted because their order
     # determines lookup order. But some pytd (e.g., inference output) doesn't
     # have that property, in which case self.sort_signatures will be True.

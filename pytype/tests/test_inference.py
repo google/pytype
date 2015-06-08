@@ -235,7 +235,7 @@ class InferenceTest(unittest.TestCase):
     return False
 
   def assertHasOnlySignatures(self, func, *sigs):
-    self.assertIsInstance(func, pytd.FunctionWithSignatures)
+    self.assertIsInstance(func, pytd.Function)
     for parameter_types, return_type in sigs:
       target = pytd.Signature(tuple(parameter_types), return_type, (), (),
                               False)

@@ -188,8 +188,7 @@ class CallTracer(vm.VirtualMachine):
               tuple(pytd.Parameter(name, a.data.to_type())
                     for name, a in kws_selected.items()),
               ret, has_optional=False, exceptions=(), template=()))
-      functions.append(pytd.FunctionWithSignatures("~" + func.name,
-                                                   tuple(signatures)))
+      functions.append(pytd.Function("~" + func.name, tuple(signatures)))
     return pytd.TypeDeclUnit(
         "call_traces", (), (), tuple(functions), ())
 

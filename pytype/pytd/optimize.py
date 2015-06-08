@@ -48,7 +48,7 @@ class RemoveDuplicates(object):
   existing one.
   """
 
-  def VisitFunctionWithSignatures(self, node):
+  def VisitFunction(self, node):
     # We remove duplicates, but keep existing entries in the same order.
     ordered_set = collections.OrderedDict(zip(node.signatures, node.signatures))
     return node.Replace(signatures=tuple(ordered_set))
@@ -130,14 +130,14 @@ class CombineReturnsAndExceptions(object):
 
     return groups
 
-  def VisitFunctionWithSignatures(self, f):
+  def VisitFunction(self, f):
     """Merge signatures of a function.
 
     This groups signatures by arguments and then for each group creates a
     single signature that joins the return values / exceptions using "or".
 
     Arguments:
-      f: A pytd.FunctionWithSignatures instance
+      f: A pytd.Function instance
 
     Returns:
       Function with simplified / combined signatures.
@@ -224,7 +224,7 @@ class ExpandSignatures(object):
   inferencer.
   """
 
-  def VisitFunctionWithSignatures(self, f):
+  def VisitFunction(self, f):
     """Rebuild the function with the new signatures.
 
     This is called after its children (i.e. when VisitSignature has already
@@ -232,7 +232,7 @@ class ExpandSignatures(object):
     new signatures.
 
     Arguments:
-      f: A pytd.FunctionWithSignatures instance.
+      f: A pytd.Function instance.
 
     Returns:
       Function with the new signatures.
@@ -325,7 +325,7 @@ class Factorize(object):
         groups[stripped_signature] = [param_i.type]
     return groups.items()
 
-  def VisitFunctionWithSignatures(self, f):
+  def VisitFunction(self, f):
     """Shrink a function, by factorizing cartesian products of arguments.
 
     Greedily groups signatures, looking at the arguments from left to right.
@@ -333,12 +333,12 @@ class Factorize(object):
     typical cases.
 
     Arguments:
-      f: An instance of pytd.FunctionWithSignatures. If this function has more
+      f: An instance of pytd.Function. If this function has more
           than one signature, we will try to combine some of these signatures by
           introducing union types.
 
     Returns:
-      A new, potentially optimized, instance of pytd.FunctionWithSignatures.
+      A new, potentially optimized, instance of pytd.Function.
 
     """
     max_argument_count = max(len(s.params) for s in f.signatures)
@@ -399,7 +399,7 @@ class ApplyOptionalArguments(object):
         return True
     return False
 
-  def VisitFunctionWithSignatures(self, f):
+  def VisitFunction(self, f):
     """Remove all signatures that have a shorter version.
 
     We use signatures with optional argument (has_opt=True) as template
@@ -407,10 +407,10 @@ class ApplyOptionalArguments(object):
     that match.
 
     Arguments:
-      f: An instance of pytd.FunctionWithSignatures
+      f: An instance of pytd.Function
 
     Returns:
-      A potentially simplified instance of pytd.FunctionWithSignatures.
+      A potentially simplified instance of pytd.Function.
     """
 
     # Set of signatures that can replace longer ones. Only used for matching,
@@ -680,10 +680,10 @@ class RemoveInheritedMethods(object):
   def LeaveClass(self, _):
     self.class_stack.pop()
 
-  def EnterFunctionWithSignatures(self, function):
+  def EnterFunction(self, function):
     self.function = function
 
-  def LeaveFunctionWithSignatures(self, _):
+  def LeaveFunction(self, _):
     self.function = None
 
   def _StrippedSignatures(self, t):
@@ -740,7 +740,7 @@ class RemoveInheritedMethods(object):
       return None  # remove (see VisitFunction)
     return sig
 
-  def VisitFunctionWithSignatures(self, f):
+  def VisitFunction(self, f):
     """Visit a Function and return None if we can remove it."""
     signatures = tuple(sig for sig in f.signatures if sig)
     if signatures:
@@ -856,7 +856,7 @@ class PullInMethodClasses(object):
         signatures = c.methods[0].signatures
         self._processed_count[c.name] += 1
         new_methods.append(
-            pytd.FunctionWithSignatures(const.name, signatures))
+            pytd.Function(const.name, signatures))
       else:
         new_constants.append(const)  # keep
     cls = cls.Replace(constants=tuple(new_constants),

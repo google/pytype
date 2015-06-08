@@ -27,11 +27,11 @@ class ExtractOperators(object):
     self._slots = slots.ReverseSlotMapping()
     self.matcher = matcher
 
-  def EnterFunctionWithSignatures(self, f):
+  def EnterFunction(self, f):
     self.function_name = f.name
     self.unreversed_name = self._slots.get(self.function_name)
 
-  def LeaveFunctionWithSignatures(self, _):
+  def LeaveFunction(self, _):
     del self.function_name
     del self.unreversed_name
 
@@ -188,7 +188,7 @@ class PreprocessReverseOperatorsVisitor(object):
       try:
         method = cls.Lookup(method_name)
       except KeyError:
-        method = pytd.FunctionWithSignatures(method_name, ())
+        method = pytd.Function(method_name, ())
       # wrap the extra signatures into a method, for easier matching
       extra_signatures = methods_to_add.get(method_name, [])
       new_signatures = []

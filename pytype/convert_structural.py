@@ -87,7 +87,7 @@ class TypeSolver(object):
     assert is_partial(call_record)
     assert is_complete(complete)
     formula = (
-        matcher.match_FunctionWithSignatures_against_FunctionWithSignatures(
+        matcher.match_Function_against_Function(
             call_record, complete, {}))
     if formula is booleq.FALSE:
       raise FlawedQuery("%s can never be %s" % (call_record.name,

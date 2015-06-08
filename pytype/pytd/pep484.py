@@ -66,7 +66,7 @@ class Print484StubVisitor(object):
       methods = [self.INDENT + "pass"]
     return "\n".join([header] + constants + methods) + "\n"
 
-  def VisitFunctionWithSignatures(self, node):
+  def VisitFunction(self, node):
     """Visit function, producing multi-line string (one for each signature)."""
     overload = "@overload\n" if len(node.signatures) > 1 else ""
     function_name = self._SafeName(node.name)

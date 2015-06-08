@@ -131,8 +131,7 @@ class TestUtils(parser_test.ParserTest):
         assert mykeyword == "foobar"
         return t1 == t2
 
-      def match_FunctionWithSignatures_against_FunctionWithSignatures(
-          self, f1, f2, mykeyword):
+      def match_Function_against_Function(self, f1, f2, mykeyword):
         assert mykeyword == "foobar"
         return all(self.match(sig1, sig2, mykeyword)
                    for sig1, sig2 in zip(f1.signatures, f2.signatures))
@@ -140,12 +139,12 @@ class TestUtils(parser_test.ParserTest):
     s1 = pytd.Signature((), pytd.NothingType(), (), (), False)
     s2 = pytd.Signature((), pytd.AnythingType(), (), (), False)
     self.assertTrue(MyTypeMatcher().match(
-        pytd.FunctionWithSignatures("f1", (s1, s2)),
-        pytd.FunctionWithSignatures("f2", (s1, s2)),
+        pytd.Function("f1", (s1, s2)),
+        pytd.Function("f2", (s1, s2)),
         mykeyword="foobar"))
     self.assertFalse(MyTypeMatcher().match(
-        pytd.FunctionWithSignatures("f1", (s1, s2)),
-        pytd.FunctionWithSignatures("f2", (s2, s2)),
+        pytd.Function("f1", (s1, s2)),
+        pytd.Function("f2", (s2, s2)),
         mykeyword="foobar"))
 
   def testRemoveMutableList(self):

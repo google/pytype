@@ -1526,12 +1526,11 @@ class InterpreterFunction(Function):
                 exceptions=(),  # TODO(kramm): record exceptions
                 template=(), has_optional=num_defaults > 0))
     if signatures:
-      return pytd.FunctionWithSignatures(function_name, tuple(signatures))
+      return pytd.Function(function_name, tuple(signatures))
     else:
       # Fallback: Generate a pytd signature only from the definition of the
       # method, not the way it's being used.
-      return pytd.FunctionWithSignatures(
-          function_name, (self.simple_pytd_signature(),))
+      return pytd.Function(function_name, (self.simple_pytd_signature(),))
 
   def simple_pytd_signature(self):
     return pytd.Signature(
@@ -1783,7 +1782,7 @@ class Unknown(AtomicAbstractValue):
                                    has_optional=False)
                     for args, _, ret in self._calls)
       if calls:
-        methods = (pytd.FunctionWithSignatures("__call__", calls),)
+        methods = (pytd.Function("__call__", calls),)
       else:
         methods = ()
       self._pytd_class = pytd.Class(
