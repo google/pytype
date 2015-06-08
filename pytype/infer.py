@@ -94,10 +94,10 @@ class CallTracer(vm.VirtualMachine):
   def analyze_function(self, val, main_node):
     if val.data.cls:
       # We analyze class methods in analyze_class above.
-      log.info("Analyze functions: Skipping class method %s", val.name)
+      log.info("Analyze functions: Skipping class method %s", val.data.name)
     elif val.data.is_closure():
       # We analyze closures as part of the function they're defined in.
-      log.info("Analyze functions: Skipping closure %s", val.name)
+      log.info("Analyze functions: Skipping closure %s", val.data.name)
     else:
       self.analyze_method(val, main_node)
 

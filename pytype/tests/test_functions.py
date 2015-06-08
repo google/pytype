@@ -322,6 +322,20 @@ class TestGenerators(test_inference.InferenceTest):
     """, deep=False, solve_unknowns=False, extract_locals=False) as ty:
       self.assertHasReturnType(ty.Lookup("g"), self.int)
 
+  def test_closure(self):
+    with self.Infer("""
+      import ctypes
+      f = 0
+      def e():
+        global f
+        s = 0
+        f = (lambda: ctypes.foo(s))
+        return f()
+      e()
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertHasReturnType(ty.Lookup("e"), self.anything)
+      self.assertHasReturnType(ty.Lookup("f"), self.anything)
+
 
 if __name__ == "__main__":
   test_inference.main()
