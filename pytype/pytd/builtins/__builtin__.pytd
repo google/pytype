@@ -115,7 +115,7 @@ def reduce(function, sequence: str, ...) -> str
 def reduce(function, sequence: set, ...) -> ?
 def repr PYTHONCODE
 def round(number: int or float, ...) -> float
-def setattr(object: function, name: str or unicode or bytearray, value) -> NoneType
+def setattr(object, name: str or unicode or bytearray, value) -> NoneType
 def sorted(iterable: str or bytearray, ...) -> list<str> or list
 def sorted(iterable: unicode, ...) -> list<unicode> or list
 def sorted(iterable: list or tuple or set, ...) -> list<object> or list

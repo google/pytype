@@ -331,6 +331,18 @@ class BuiltinTests(test_inference.InferenceTest):
         def args() -> str
       """)
 
+  def testSetattr(self):
+    with self.Infer("""
+      class Foo(object):
+        def __init__(self, x):
+          for attr in x.__dict__:
+            setattr(self, attr, getattr(x, attr))
+    """, deep=True, solve_unknowns=False, extract_locals=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        class Foo(object):
+          def __init__(self, x: ?) -> NoneType
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()
