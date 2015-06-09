@@ -306,8 +306,8 @@ class Solver(object):
   """
 
   def __init__(self):
-    self.variables = []
-    self.values = []
+    self.variables = set()
+    self.values = set()
     self.implications = collections.defaultdict(dict)
     self.ground_truth = TRUE
 
@@ -330,11 +330,11 @@ class Solver(object):
 
   def register_variable(self, variable):
     """Register a variable. Call before calling solve()."""
-    self.variables.append(variable)
+    self.variables.add(variable)
 
   def register_value(self, value):
     """Register a value. Call before calling solve()."""
-    self.values.append(value)
+    self.values.add(value)
 
   def always_true(self, formula):
     """Register a ground truth. Call before calling solve()."""

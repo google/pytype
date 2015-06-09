@@ -120,8 +120,8 @@ class TypeSolver(object):
       AssertionError: If we detect an internal error.
     """
     unprocessed = set(self.pytd.classes)
-    solver = booleq.Solver()
     factory = type_match.TypeMatch(self.get_all_subclasses())
+    solver = factory.solver
 
     # TODO(kramm): We should do prefiltering of the left and right side, and
     # then only loop over the combinations we actually want to compare.

@@ -34,5 +34,14 @@ class SolverTests(test_inference.InferenceTest):
         def f() -> ?
       """)
 
+  def testTypeParameters(self):
+    with self.Infer("""
+      def f(A):
+        return [a - 42.0 for a in A.values()]
+    """, deep=True, solve_unknowns=True, extract_locals=True) as ty:
+      self.assertTypesMatchPytd(ty, (
+          "def f(A: dict<object, complex or dict_keys<?> or float>) -> "
+          "list<complex or float or float or set<?>>"))
+
 if __name__ == "__main__":
   test_inference.main()

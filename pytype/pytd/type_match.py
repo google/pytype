@@ -86,6 +86,7 @@ class TypeMatch(utils.TypeMatcher):
 
   def __init__(self, direct_subclasses=None):
     self.direct_subclasses = direct_subclasses or {}
+    self.solver = booleq.Solver()
 
   def default_match(self, t1, t2, *unused_args, **unused_kwargs):
     # Don't allow utils.TypeMatcher to do default matching.
@@ -180,18 +181,14 @@ class TypeMatch(utils.TypeMatcher):
     base_match = booleq.Eq(t1.name, t2.base_type.name)
     type_params = [self.type_parameter(t1, t2.base_type.cls, item)
                    for item in t2.base_type.cls.template]
+    for type_param in type_params:
+      self.solver.register_variable(type_param.name)
     params = [self.match_type_against_type(p1, p2, subst)
               for p1, p2 in zip(type_params, t2.parameters)]
     return booleq.And([base_match] + params)
 
   def match_Generic_against_Unknown(self, t1, t2, subst):  # pylint: disable=invalid-name
-    assert isinstance(t1.base_type, pytd.ClassType)
-    base_match = booleq.Eq(t1.base_type.name, t2.name)
-    type_params = [self.type_parameter(t2, t1.base_type.cls, item)
-                   for item in t1.base_type.cls.template]
-    params = [self.match_type_against_type(p1, p2, subst)
-              for p1, p2 in zip(t1.parameters, type_params)]
-    return booleq.And([base_match] + params)
+    return self.match_Unknown_against_Generic(t2, t1, subst)
 
   def maybe_lookup_type_param(self, t, subst):
     if not isinstance(t, pytd.TypeParameter):

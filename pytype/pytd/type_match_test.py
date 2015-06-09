@@ -123,6 +123,31 @@ class TestTypeMatch(unittest.TestCase):
     self.assertEquals(m.match(left, right, {}), booleq.TRUE)
     self.assertNotEquals(m.match(right, left, {}), booleq.TRUE)
 
+  def _TestTypeParameters(self, reverse=False):
+    ast = parser.parse_string(textwrap.dedent("""
+      class `~unknown0`(nothing):
+        def next(self) -> ?
+      class A<T>(nothing):
+        def next(self) -> ?
+      class B(nothing):
+        pass
+      def left(x: `~unknown0`) -> ?
+      def right(x: A<B>) -> ?
+    """))
+    ast = visitors.LookupClasses(ast)
+    m = type_match.TypeMatch()
+    left, right = ast.Lookup("left"), ast.Lookup("right")
+    match = m.match(right, left, {}) if reverse else m.match(left, right, {})
+    self.assertEquals(match, booleq.And((booleq.Eq("~unknown0", "A"),
+                                         booleq.Eq("~unknown0.A.T", "B"))))
+    self.assertIn("~unknown0.A.T", m.solver.variables)
+
+  def testUnknownAgainstGeneric(self):
+    self._TestTypeParameters()
+
+  def testGenericAgainstUnknown(self):
+    self._TestTypeParameters(reverse=True)
+
 
 if __name__ == "__main__":
   unittest.main()

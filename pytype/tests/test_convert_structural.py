@@ -193,6 +193,27 @@ class MatchTest(unittest.TestCase):
     self.assertItemsEqual(["A"], mapping["~unknown1"])
     self.assertItemsEqual(["B"], mapping["~unknown2"])
 
+  def test_unknown_against_generic(self):
+    mapping = self.parse_and_solve("""
+      def f(A: `~unknown0`) -> list<`~unknown8`>
+      class `~unknown0`(nothing):
+        def values(self) -> `~unknown2`
+      class `~unknown2`(nothing):
+        def __iter__(self) -> `~unknown4`
+      class `~unknown4`(nothing):
+        def next(self) -> `~unknown6`
+      class `~unknown6`(nothing):
+        def __sub__(self, _1: float) -> `~unknown8`
+      class `~unknown8`(nothing):
+        pass
+    """)
+    self.assertItemsEqual(["dict"], mapping["~unknown0"])
+    self.assertContainsSubset(["complex", "float"], mapping["~unknown0.dict.V"])
+    self.assertItemsEqual(["list"], mapping["~unknown2"])
+    self.assertItemsEqual(["listiterator"], mapping["~unknown4"])
+    self.assertContainsSubset(["complex", "float"], mapping["~unknown6"])
+    self.assertContainsSubset(["complex", "float"], mapping["~unknown8"])
+
   def test_subclass_of_elements(self):
     mapping = self.parse_and_solve("""
       class A(nothing):
