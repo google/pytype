@@ -85,7 +85,7 @@ def parse_options(args):
       dest="irascible", default=0,
       help="Non-zero return code: 0=critical, 1=error, 2=warn, ...")
   o.add_option(
-      "--pytd-gendirs", type="string", action="store",
+      "--pythonpath", type="string", action="store",
       dest="pythonpath", default="",
       help="Colon-separated directories for reading pytd-gen outputs "
       "of dependencies")
