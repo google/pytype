@@ -25,19 +25,22 @@ def compile_src_string_to_pyc_string(src, python_version):
     The compiled pyc file as a binary string.
   """
   fi = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+  basename, py = os.path.splitext(fi.name)
+  assert py == ".py", fi.name
+  pyc_name = basename + ".pyc"
   try:
     fi.write(src)
     fi.close()
     # In order to be able to compile pyc files for both Python 2 and Python 3,
     # we spawn an external process.
-    basename, py = os.path.splitext(fi.name)
-    assert py == ".py", fi.name
     exe = "python" + ".".join(map(str, python_version))
     subprocess.check_call([exe, "-mpy_compile", fi.name])
-    with open(basename + ".pyc", "rb") as output:
+    with open(pyc_name, "rb") as output:
       return output.read()
   finally:
     os.unlink(fi.name)
+    if os.path.isfile(pyc_name):
+      os.unlink(pyc_name)
 
 
 def parse_pyc_stream(fi):
