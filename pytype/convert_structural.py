@@ -240,7 +240,7 @@ def convert_string_type(string_type, unknown, mapping, global_lookup, depth=0):
 def convert_string_type_list(types_as_string, unknown, mapping,
                              global_lookup, depth=0):
   """Like convert_string_type, but operate on a list."""
-  if not types_as_string:
+  if not types_as_string or booleq.Solver.ANY_VALUE in types_as_string:
     # If we didn't find a solution for a type (the list of matches is empty)
     # then report it as "?", not as "nothing", because the latter is confusing.
     return pytd.AnythingType()

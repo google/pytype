@@ -174,6 +174,38 @@ class TestBoolEq(unittest.TestCase):
       solver.register_value(str(value))
     return solver
 
+  def testGetFalseFirstApproximation(self):
+    solver = self._MakeSolver(["x"], ["1"])
+    solver.implies(Eq("x", "1"), booleq.FALSE)
+    self.assertDictEqual(solver._get_first_approximation(), {"x": set()})
+
+  def testGetUnrelatedFirstApproximation(self):
+    solver = self._MakeSolver()
+    solver.implies(Eq("x", "1"), booleq.TRUE)
+    solver.implies(Eq("y", "2"), booleq.TRUE)
+    self.assertDictEqual(solver._get_first_approximation(),
+                         {"x": set(["1"]), "y": set(["2"])})
+
+  def testGetEqualFirstApproximation(self):
+    solver = self._MakeSolver()
+    solver.implies(Eq("x", "1"), Eq("x", "y"))
+    assignments = solver._get_first_approximation()
+    self.assertDictEqual(assignments,
+                         {"x": set(["1"]), "y": set(["1"])})
+    self.assertTrue(assignments["x"] is assignments["y"])
+
+  def testGetMultipleEqualFirstApproximation(self):
+    solver = self._MakeSolver(["x", "y", "z"], ["1", "2"])
+    solver.implies(Eq("y", "1"), Eq("x", "y"))
+    solver.implies(Eq("z", "2"), Eq("y", "z"))
+    assignments = solver._get_first_approximation()
+    self.assertDictEqual(assignments,
+                         {"x": set(["1", "2"]),
+                          "y": set(["1", "2"]),
+                          "z": set(["1", "2"])})
+    self.assertTrue(assignments["x"] is assignments["y"])
+    self.assertTrue(assignments["y"] is assignments["z"])
+
   def testImplication(self):
     solver = self._MakeSolver()
     solver.implies(Eq("x", "1"), Eq("y", "1"))

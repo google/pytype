@@ -20,6 +20,8 @@ import itertools
 
 from pytype.pytd import utils
 
+chain = itertools.chain.from_iterable
+
 
 class BooleanTerm(object):
   """Base class for boolean terms."""
@@ -58,6 +60,15 @@ class BooleanTerm(object):
     """
     raise NotImplementedError()
 
+  def extract_equalities(self):
+    """Find all equalities that appear in this term.
+
+    Returns:
+      A sequence of tuples of a string (variable name) and a string (value or
+      variable name).
+    """
+    raise NotImplementedError()
+
 
 class TrueValue(BooleanTerm):
   """Class for representing "TRUE"."""
@@ -74,6 +85,9 @@ class TrueValue(BooleanTerm):
   def extract_pivots(self):
     return {}
 
+  def extract_equalities(self):
+    return ()
+
 
 class FalseValue(BooleanTerm):
   """Class for representing "FALSE"."""
@@ -89,6 +103,9 @@ class FalseValue(BooleanTerm):
 
   def extract_pivots(self):
     return {}
+
+  def extract_equalities(self):
+    return ()
 
 
 TRUE = TrueValue()
@@ -180,13 +197,15 @@ class Eq(BooleanTerm):
     return {self.left: frozenset((self.right,)),
             self.right: frozenset((self.left,))}
 
+  def extract_equalities(self):
+    return ((self.left, self.right),)
+
 
 class And(BooleanTerm):
   """A conjunction of equalities and disjunctions."""
 
   def __new__(cls, exprs):
-    flattened = itertools.chain.from_iterable(
-        e.exprs if isinstance(e, And) else [e] for e in exprs)
+    flattened = chain(e.exprs if isinstance(e, And) else [e] for e in exprs)
     expr_set = frozenset(flattened)
     expr_set -= frozenset([TRUE])  # "x & y & TRUE" is equivalent to "x & y"
     if FALSE in expr_set:
@@ -228,13 +247,15 @@ class And(BooleanTerm):
           pivots[name] = values
     return pivots
 
+  def extract_equalities(self):
+    return tuple(chain(expr.extract_equalities() for expr in self.exprs))
+
 
 class Or(BooleanTerm):
   """A disjunction of equalities and conjunctions."""
 
   def __new__(cls, exprs):
-    flattened = itertools.chain.from_iterable(
-        e.exprs if isinstance(e, Or) else [e] for e in exprs)
+    flattened = chain(e.exprs if isinstance(e, Or) else [e] for e in exprs)
     expr_set = frozenset(flattened)
     expr_set -= frozenset([FALSE])  # "x | y | FALSE" is equivalent to "x | y"
     if TRUE in expr_set:
@@ -280,6 +301,9 @@ class Or(BooleanTerm):
       pivots[pivot] = values
     return pivots
 
+  def extract_equalities(self):
+    return tuple(chain(expr.extract_equalities() for expr in self.exprs))
+
 
 class Solver(object):
   """Solver for boolean equations.
@@ -296,14 +320,17 @@ class Solver(object):
   variable.
 
   Attributes:
+    ANY_VALUE: a special value assigned to variables with no constraints.
     variables: A list of all variables.
-    values: A list of all values. It's assumed that any variable can contain
-      any of these values.
-    implications: A dictionary mapping Eq instances to BooleanTerm
-      instances. This is used to specify rules like "if x is 1, then ..."
+    values: A list of all values.
+    implications: A nested dictionary mapping variable names to values to
+      BooleanTerm instances. This is used to specify rules like "if x is 1,
+      then ..."
     ground_truths: An equation that needs to always be TRUE. If this is FALSE,
       or can be reduced to FALSE, the system is unsolvable.
   """
+
+  ANY_VALUE = "?"
 
   def __init__(self):
     self.variables = set()
@@ -316,15 +343,14 @@ class Solver(object):
     count_false, count_true = 0, 0
     if self.ground_truth is not TRUE:
       lines.append("always: %s" % (self.ground_truth,))
-    for var, value_to_implication in self.implications.items():
-      for value, implication in value_to_implication.items():
-        # only print the "interesting" lines
-        if implication is FALSE:
-          count_false += 1
-        elif implication is TRUE:
-          count_true += 1
-        else:
-          lines.append("if %s then %s" % (Eq(var, value), implication))
+    for var, value, implication in self._iter_implications():
+      # only print the "interesting" lines
+      if implication is FALSE:
+        count_false += 1
+      elif implication is TRUE:
+        count_true += 1
+      else:
+        lines.append("if %s then %s" % (Eq(var, value), implication))
     return "%s\n(not shown: %d always FALSE, %d always TRUE)\n" % (
         "\n".join(lines), count_false, count_true)
 
@@ -353,19 +379,74 @@ class Solver(object):
     # (ASCII value 126), e.left should always be the variable.
     self.implications[e.left][e.right] = implication
 
+  def _iter_implications(self):
+    for var, value_to_implication in self.implications.items():
+      for value, implication in value_to_implication.items():
+        yield (var, value, implication)
+
+  def _get_nonfalse_values(self, var):
+    return set(value for value, implication in self.implications[var].items()
+               if implication is not FALSE)
+
+  def _get_first_approximation(self):
+    """Get all (variable, value) combinations to consider.
+
+    This gets the (variable, value) combinations that the solver needs to
+    consider based on the equalities that appear in the implications. E.g.,
+    with the following implication:
+      t1 = v1 => t1 = t2 | t3 = v2
+    the combinations to consider are
+      (t1, v1) because t1 = v1 appears,
+      (t2, v1) because t1 = t2 and t1 = v1 appear, and
+      (t3, v2) because t3 = v2 appears.
+
+    Returns:
+      A dictionary D mapping strings (variables) to sets of strings
+      (values). For two variables t1 and t2, if t1 = t2 is a possible
+      assignment (by first approximation), then D[t1] and D[t2] point
+      to the same memory location.
+    """
+    equalities = set(chain(
+        implication.extract_equalities()
+        for (_, _, implication) in self._iter_implications())).union(
+            self.ground_truth.extract_equalities())
+    var_assignments = {}
+    value_assignments = {}
+    for var in self.variables:
+      var_assignments[var] = {var}
+      value_assignments[var] = self._get_nonfalse_values(var)
+
+    for var, value in equalities:
+      if value in self.variables:
+        other_var = value
+        value_assignments[var] |= value_assignments[other_var]
+        for var_assignment in var_assignments[other_var]:
+          var_assignments[var].add(var_assignment)
+          # Make the two variables point to the same sets of assignments so
+          # that further possible assignments for either are added to both.
+          var_assignments[var_assignment] = var_assignments[var]
+          value_assignments[var_assignment] = value_assignments[var]
+      else:
+        value_assignments[var].add(value)
+
+    return value_assignments
+
   def _complete(self):
     """Insert missing implications.
 
     Insert all implications needed to have one implication for every
-    (variable, value) combination.
+    (variable, value) combination returned by _get_first_approximation().
     """
-    for var in self.variables:
-      for value in self.values:
+    for var, values in self._get_first_approximation().items():
+      for value in values:
         if value not in self.implications[var]:
           # Missing implications are typically needed for variable/value
           # combinations not considered by the user, e.g. for auxiliary
           # variables introduced when setting up the "main" equations.
           self.implications[var][value] = TRUE
+      if not self.implications[var]:
+        # If a variable does not have any constraints, it can be anything.
+        self.implications[var][Solver.ANY_VALUE] = TRUE
 
   def solve(self):
     """Solve the system of equations.
@@ -373,13 +454,11 @@ class Solver(object):
     Returns:
       An assignment, mapping strings (variables) to sets of strings (values).
     """
+    assert Solver.ANY_VALUE not in self.values
     self._complete()
 
-    assignments = {var: set(value
-                            for value in self.values
-                            if self.implications[var][value] is not FALSE)
-                   for var in self.variables
-                  }
+    assignments = {var: self._get_nonfalse_values(var)
+                   for var in self.variables}
 
     ground_pivots = self.ground_truth.simplify(assignments).extract_pivots()
     for pivot, possible_values in ground_pivots.items():
