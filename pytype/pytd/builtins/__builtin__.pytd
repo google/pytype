@@ -74,7 +74,7 @@ def iter<T>(collection: tuple<T>) -> tupleiterator<T>
 def iter<T>(collection: set<T>) -> setiterator<T>
 def len(obj) -> int  # TODO(pludemann): leave this out and call obj.__len__() ?
 def locals() -> dict<str, object>
-def map(function, sequence, sequence, ...) -> list
+def map(function, sequence, ...) -> list
 # TODO(pludemann): max(*args: iterable<T>, ...) ?
 def max<T>(arg1: T, arg2: T) -> T
 def max<T>(arg1: T, arg2: T, arg3: T) -> T

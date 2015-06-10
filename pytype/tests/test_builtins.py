@@ -343,6 +343,13 @@ class BuiltinTests(test_inference.InferenceTest):
           def __init__(self, x: ?) -> NoneType
       """)
 
+  def testMap(self):
+    with self.Infer("""
+      def f(input_string, sub):
+        return ''.join(map(lambda ch: ch, input_string))
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertOnlyHasReturnType(ty.Lookup("f"), self.str)
+
 
 if __name__ == "__main__":
   test_inference.main()
