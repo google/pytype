@@ -483,6 +483,7 @@ class SimpleAbstractValue(AtomicAbstractValue):
       # that we don't know anything about what this is.
       # This happens e.g. for locals / globals, which are returned from the code
       # in class declarations.
+      log.info("Using ? for %s", self.name)
       return pytd.AnythingType()
 
   def match_against_type(self, other_type, subst):
@@ -1803,6 +1804,7 @@ class Unknown(AtomicAbstractValue):
     return pytd.ClassType(cls.name, cls)  # pylint: disable=no-member
 
   def get_instance_type(self, _):
+    log.info("Using ? for instance of %s", self.name)
     return pytd.AnythingType()
 
   def match_against_type(self, other_type, subst):

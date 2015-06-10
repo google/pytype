@@ -155,7 +155,6 @@ def main(argv):
       pseudocode_output=options.pseudocode_output,
       reverse_operators=options.reverse_operators)
 
-  log.info("=========== PyTD =============\n%s", pytd.Print(mod))
   if options.optimize:
     mod = optimize.Optimize(mod,
                             # TODO(kramm): Add FLAGs for these
@@ -164,6 +163,8 @@ def main(argv):
                             max_union=7,
                             remove_mutable=False)
     log.info("=========== PyTD optimized =============\n%s", pytd.Print(mod))
+  else:
+    log.info("=========== PyTD =============\n%s", pytd.Print(mod))
   log.info("========================================")
 
   result = pytd.Print(utils.CanonicalOrdering(mod))

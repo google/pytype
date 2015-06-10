@@ -174,8 +174,8 @@ class TypeSolver(object):
               type_match.unpack_name_of_partial(f2.name) == f1.name):
           self.match_call_record(factory, solver, f2, f1)
 
-    log.info("=========== to solve =============\n%s", solver)
-    log.info("=========== to solve (end) =============")
+    log.info("=========== Equations to solve =============\n%s", solver)
+    log.info("=========== Equations to solve (end) =======")
     return solver.solve()
 
 
