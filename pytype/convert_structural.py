@@ -276,16 +276,16 @@ def convert_pytd(ast, builtins_pytd):
 
 def log_info_mapping(mapping):
   """Print a raw type mapping. For debugging."""
-  if log.isEnabledFor(logging.INFO):
+  if log.isEnabledFor(logging.DEBUG):
     cutoff = 12
-    log.info("=========== (possible types) ===========")
+    log.debug("=========== (possible types) ===========")
     for unknown, possible_types in sorted(mapping.items()):
       assert isinstance(possible_types, (set, frozenset))
       if len(possible_types) > cutoff:
-        log.info("%s can be   %s, ... (total: %d)", unknown,
-                 ", ".join(sorted(possible_types)[0:cutoff]),
-                 len(possible_types))
+        log.debug("%s can be   %s, ... (total: %d)", unknown,
+                  ", ".join(sorted(possible_types)[0:cutoff]),
+                  len(possible_types))
       else:
-        log.info("%s can be %s", unknown,
-                 ", ".join(sorted(possible_types)))
-    log.info("=========== (end of possible types) ===========")
+        log.debug("%s can be %s", unknown,
+                  ", ".join(sorted(possible_types)))
+    log.debug("=========== (end of possible types) ===========")
