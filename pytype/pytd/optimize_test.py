@@ -366,8 +366,17 @@ class TestOptimize(parser_test.ParserTest):
         def j(x: dict<int or float, float or int>) -> ?
         def k(x: dict<int or bool, bool or int> or list<int or bool>) -> ?
     """)
-    new_src = self.ApplyVisitorToString(src,
-                                        optimize.CombineContainers())
+    new_src = self.ApplyVisitorToString(src, optimize.CombineContainers())
+    self.AssertSourceEquals(new_src, expected)
+
+  def testCombineContainersMultiLevel(self):
+    src = textwrap.dedent("""
+      v: list<tuple<long or int>> or list<tuple<float or bool>>
+    """)
+    expected = textwrap.dedent("""
+      v: list<tuple<long or int or float or bool>>
+    """)
+    new_src = self.ApplyVisitorToString(src, optimize.CombineContainers())
     self.AssertSourceEquals(new_src, expected)
 
   def testPullInMethodClasses(self):

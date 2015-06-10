@@ -199,7 +199,9 @@ class CombineContainers(object):
       if isinstance(t, pytd.GenericType):
         if t.base_type in done:
           continue  # already added
-        add = t.Replace(parameters=collect[t.base_type])
+        parameters = collect[t.base_type]
+        add = t.Replace(parameters=tuple(p.Visit(CombineContainers())
+                                         for p in parameters))
         done.add(t.base_type)
       else:
         add = t
