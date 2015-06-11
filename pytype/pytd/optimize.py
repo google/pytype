@@ -804,8 +804,8 @@ class PullInMethodClasses(object):
       # We only do this for simple types.
       return False
     cls = self._MaybeLookup(t)
-    if not cls:
-      # We don't know this class, so assume it's not a method.
+    if not isinstance(cls, pytd.Class):
+      # This is not a class or it doesn't exist, so assume it's not a method.
       return False
     if [f.name for f in cls.methods] != ["__call__"]:
       return False

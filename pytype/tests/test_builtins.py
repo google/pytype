@@ -350,6 +350,19 @@ class BuiltinTests(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=True) as ty:
       self.assertOnlyHasReturnType(ty.Lookup("f"), self.str)
 
+  def testArray(self):
+    with self.Infer("""
+      import array
+      class Foo(object):
+        def __init__(self):
+          self.bar = array.array('i')
+    """, deep=True, solve_unknowns=False) as ty:
+      self.assertTypesMatchPytd(ty, """
+        array: module
+        class Foo(object):
+          bar: array
+          def __init__(self) -> NoneType
+      """)
 
 if __name__ == "__main__":
   test_inference.main()
