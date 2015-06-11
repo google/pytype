@@ -1788,7 +1788,7 @@ class Unknown(AtomicAbstractValue):
         methods = ()
       self._pytd_class = pytd.Class(
           name=class_name,
-          parents=(),
+          parents=(pytd.NamedType("object"),),
           methods=methods,
           constants=tuple(pytd.Constant(name, to_type(c))
                           for name, c in self.members.items()),

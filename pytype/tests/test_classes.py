@@ -63,6 +63,17 @@ class ClassesTest(test_inference.InferenceTest):
         def __init__(self) -> NoneType
       """)
 
+  def testInheritFromUnknownAndSetAttr(self):
+    with self.Infer("""
+      class Foo(__any_object__):
+        def __init__(self):
+          setattr(self, "test", True)
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+      class Foo(?):
+        def __init__(self) -> NoneType
+      """)
+
   def testClassMethod(self):
     with self.Infer("""
       module = __any_object__
