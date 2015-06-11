@@ -52,5 +52,27 @@ class SolverTests(test_inference.InferenceTest):
         def f(x: dict<?, ?>) -> list<?>
       """)
 
+  def testNameConflict(self):
+    with self.Infer("""
+      import StringIO
+
+      class Foobar(object):
+        def foobar(self, out):
+          out.write('')
+
+      class Barbaz(object):
+        def barbaz(self):
+          __any_object__.foobar(StringIO.StringIO())
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        StringIO: module
+
+        class Foobar(object):
+          def foobar(self, out: file) -> NoneType
+
+        class Barbaz(object):
+          def barbaz(self) -> NoneType
+      """)
+
 if __name__ == "__main__":
   test_inference.main()

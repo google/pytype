@@ -27,7 +27,6 @@ def apply(object: function or type, ...) -> NoneType
 def bin(number: int or float) -> str
 def callable(obj) -> bool
 def chr(i: int or long) -> str
-def classmethod PYTHONCODE
 def cmp PYTHONCODE
 def coerce(x: int, y: int) -> tuple<int>  # tuple<int, int>
 def coerce(x: int or float, y: float) -> tuple<float>  # tuple<float, float>
@@ -109,7 +108,6 @@ def pow(x: int or float or complex, y: complex, ...) -> complex
 def pow(x: int or float, y: float, ...) -> float
 def pow(x: float, y: int, ...) -> float
 def pow(x: complex, y: int or float, ...) -> complex
-def property PYTHONCODE
 def range(stop: int, ...) -> list<int> or list
 def reduce(function, sequence: str, ...) -> str
 def reduce(function, sequence: set, ...) -> ?
@@ -120,7 +118,6 @@ def sorted(iterable: str or bytearray, ...) -> list<str> or list
 def sorted(iterable: unicode, ...) -> list<unicode> or list
 def sorted(iterable: list or tuple or set, ...) -> list<object> or list
 def sorted(iterable: iterator, ...) -> list<str> or list<unicode> or list
-def staticmethod PYTHONCODE
 def sum(sequence, ...) -> int
 def unichr(i: int) -> unicode
 def vars(...) -> dict<str, object>
@@ -156,6 +153,20 @@ class NoneType:
 # TODO(kramm): Only define this for Python 2
 class basestring:
     pass
+
+class property:  # Also defined in __builtin__.py
+    def __init__(self, fget, ...) -> NoneType
+    def __get__(self, ...) -> ?
+    def __set__(self, ...) -> ?
+    def __delete__(self, ...) -> ?
+
+class staticmethod:  # Also defined in __builtin__.py
+    def __init__(self, func) -> NoneType
+    def __get__(self, ...) -> ?
+
+class classmethod:  # Also defined in __builtin__.py
+    def __init__(self, func) -> NoneType
+    def __get__(self, ...) -> ?
 
 class str(basestring):
     # TODO(pludemann): See comment in TODO.txt for str.__init__

@@ -144,11 +144,11 @@ class VirtualMachine(object):
     # Initialize primitive_classes to empty to allow convert_constant to run
     self.primitive_classes = {}
     # Now fill primitive_classes with the real values using convert_constant
-    self.primitive_classes = {v: self.convert_constant(repr(v), v)
+    self.primitive_classes = {v: self.convert_constant(v.__name__, v)
                               for v in [int, long, float, str, unicode,
                                         types.NoneType, complex, bool, slice,
                                         types.CodeType]}
-    self.container_classes = {v: self.convert_constant(repr(v), v)
+    self.container_classes = {v: self.convert_constant(v.__name__, v)
                               for v in [tuple, list, set, dict]}
     self.str_type = self.primitive_classes[str]
     self.slice_type = self.primitive_classes[slice]
@@ -708,9 +708,9 @@ class VirtualMachine(object):
     elif isinstance(pyval, pytd.TypeDeclUnit):
       members = {val.name: val
                  for val in pyval.constants + pyval.classes + pyval.functions}
-      return abstract.Module(self, pyval.name, members)
+      return abstract.Module(self, name, members)
     elif isinstance(pyval, pytd.Class):
-      return abstract.PyTDClass(pyval, self)
+      return abstract.PyTDClass(name, pyval, self)
     elif isinstance(pyval, pytd.Function):
       return self.create_pytd_instance_value(pyval, {})
     elif isinstance(pyval, pytd.ExternalFunction):

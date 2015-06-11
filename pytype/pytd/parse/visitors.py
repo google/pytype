@@ -16,11 +16,11 @@
 
 """Visitor(s) for walking ASTs."""
 
-# pylint: disable=g-importing-member
+import logging
 
 
 from pytype.pytd import pytd
-from pytype.pytd.parse import parser_constants
+from pytype.pytd.parse import parser_constants  # pylint: disable=g-importing-member
 
 
 class PrintVisitor(object):
@@ -262,8 +262,10 @@ class _FillInClasses(object):
     if node.cls is None:
       for lookup in self._lookup_list:
         try:
-          node.cls = lookup.Lookup(node.name)
-          break
+          cls = lookup.Lookup(node.name)
+          if isinstance(cls, pytd.Class):
+            node.cls = cls
+            break
         except KeyError:
           continue
       return node
@@ -277,17 +279,19 @@ class DefaceUnresolved(object):
 
     Args:
       lookup_list: An iterable of symbol tables (i.e., objects that have a
-        "Lookup" function)
+        "lookup" function)
     """
     self._lookup_list = lookup_list
 
   def VisitNamedType(self, node):
     for lookup in self._lookup_list:
       try:
-        lookup.Lookup(node.name)
-        return node
+        cls = lookup.Lookup(node.name)
+        if isinstance(cls, pytd.Class):
+          return node
       except KeyError:
         pass
+    logging.warning("Setting %s to ?", node.name)
     return pytd.AnythingType()
 
   def VisitClassType(self, node):

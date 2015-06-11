@@ -1115,11 +1115,11 @@ class PyTDClass(LazyAbstractValue, Class):
     mro: Method resolution order. An iterable of AtomicAbstractValue.
   """
 
-  def __init__(self, cls, vm):
+  def __init__(self, name, cls, vm):
     mm = {}
     for val in cls.constants + cls.methods:
       mm[val.name] = val
-    super(PyTDClass, self).__init__(cls.name, mm, self._retrieve_member, vm)
+    super(PyTDClass, self).__init__(name, mm, self._retrieve_member, vm)
     Class.init_mixin(self)
     self.cls = cls
     self.mro = utils.compute_mro(self)
@@ -1182,10 +1182,10 @@ class PyTDClass(LazyAbstractValue, Class):
       else:
         type_arguments.append(pytd.AnythingType())
     return pytd_utils.MakeClassOrContainerType(
-        pytd.NamedType(self.cls.name), type_arguments)
+        pytd.NamedType(self.name), type_arguments)
 
   def __repr__(self):
-    return self.cls.name
+    return self.name
 
   def match_instance_against_type(self, instance, other_type, subst):
     """Match an instance of this class against an other type."""
@@ -1690,7 +1690,10 @@ class Module(LazyAbstractValue):
   """Represents an (imported) module."""
 
   def __init__(self, vm, name, member_map):
-    super(Module, self).__init__(name, member_map, vm.convert_constant, vm=vm)
+    super(Module, self).__init__(name, member_map, self.convert_member, vm=vm)
+
+  def convert_member(self, name, ty):
+    return self.vm.convert_constant(self.name + "." + name, ty)
 
   def set_attribute(self, name, value):
     # Assigning attributes on modules is pretty common. E.g.

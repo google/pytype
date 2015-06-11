@@ -350,6 +350,16 @@ class BuiltinTests(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=True) as ty:
       self.assertOnlyHasReturnType(ty.Lookup("f"), self.str)
 
+  def testArraySmoke(self):
+    with self.Infer("""
+      import array
+      class Foo(object):
+        def __init__(self):
+          array.array('i')
+    """, deep=True, solve_unknowns=False) as ty:
+      ty.Lookup("Foo")  # smoke test
+
+  @unittest.skip("needs module support")
   def testArray(self):
     with self.Infer("""
       import array
@@ -360,7 +370,7 @@ class BuiltinTests(test_inference.InferenceTest):
       self.assertTypesMatchPytd(ty, """
         array: module
         class Foo(object):
-          bar: array
+          bar: array.array
           def __init__(self) -> NoneType
       """)
 
