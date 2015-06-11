@@ -364,5 +364,16 @@ class BuiltinTests(test_inference.InferenceTest):
           def __init__(self) -> NoneType
       """)
 
+  def testInheritFromBuiltin(self):
+    with self.Infer("""
+      class Foo(list):
+        pass
+    """, deep=True, solve_unknowns=False) as ty:
+      self.assertTypesMatchPytd(ty, """
+        class Foo(list<?>):
+          pass
+      """)
+
+
 if __name__ == "__main__":
   test_inference.main()

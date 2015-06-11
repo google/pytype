@@ -1175,9 +1175,12 @@ class PyTDClass(LazyAbstractValue, Class):
     """Convert instances of this class to their PYTD type."""
     type_arguments = []
     for type_param in self.cls.template:
-      values = (v.data
-                for v in instance.get_type_parameter(type_param.name).values)
-      type_arguments.append(pytd_utils.JoinTypes([e.to_type() for e in values]))
+      if instance is not None:
+        type_arguments.append(pytd_utils.JoinTypes(
+            v.data.to_type()
+            for v in instance.get_type_parameter(type_param.name).values))
+      else:
+        type_arguments.append(pytd.AnythingType())
     return pytd_utils.MakeClassOrContainerType(
         pytd.NamedType(self.cls.name), type_arguments)
 
