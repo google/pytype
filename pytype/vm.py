@@ -779,26 +779,33 @@ class VirtualMachine(object):
     assert self.is_none(none)
     return none
 
-  def make_class(self, name_var, bases, members):
+  def make_class(self, name_var, bases, class_dict_var):
     """Create a class with the name, bases and methods given.
 
     Args:
       name_var: Class name.
       bases: Base classes.
-      members: Members of the class.
+      class_dict_var: Members of the class, as a Variable containing an
+          abstract.Dict value.
 
     Returns:
       An instance of Class.
     """
     name = _get_atomic_python_constant(name_var)
     log.info("Declaring class %s", name)
+    try:
+      class_dict = _get_atomic_value(class_dict_var)
+    except ConversionError:
+      log.error("Error initializing class %r", name)
+      return self.create_new_unknown(name)
     val = abstract.InterpreterClass(
         name,
         list(_get_atomic_python_constant(bases)),
-        _get_atomic_value(members).members,
+        class_dict.members,
         self)
     var = self.program.NewVariable(name)
-    var.AddValue(val, bases.values + members.values, self.current_location)
+    var.AddValue(val, bases.values + class_dict_var.values,
+                 self.current_location)
     return var
 
   def make_instance(self, cls, args, kws):

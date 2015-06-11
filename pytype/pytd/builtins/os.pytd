@@ -1,3 +1,5 @@
+path: ?  # TODO(kramm): add submodule
+
 def WCOREDUMP(...) -> bool
 def WEXITSTATUS(...) -> int
 def WIFCONTINUED(...) -> bool

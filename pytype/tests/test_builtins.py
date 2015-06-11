@@ -374,6 +374,14 @@ class BuiltinTests(test_inference.InferenceTest):
           pass
       """)
 
+  def testOsPath(self):
+    with self.Infer("""
+      import os
+      class Foo(object):
+        bar = os.path.join('hello', 'world')
+    """, deep=True, solve_unknowns=True) as ty:
+      ty.Lookup("Foo")  # smoke test
+
 
 if __name__ == "__main__":
   test_inference.main()
