@@ -23,6 +23,8 @@ from pytype.pytd import booleq
 And = booleq.And
 Or = booleq.Or
 Eq = booleq.Eq
+TRUE = booleq.TRUE
+FALSE = booleq.FALSE
 
 
 # TODO(kramm): pludemann@ wants me to remind him to create more tests for
@@ -33,79 +35,54 @@ class TestBoolEq(unittest.TestCase):
   """Test algorithms and datastructures of booleq.py."""
 
   def testTrueAndFalse(self):
-    self.assertNotEqual(booleq.TRUE, booleq.FALSE)
-    self.assertNotEqual(booleq.FALSE, booleq.TRUE)
-    self.assertEqual(booleq.TRUE, booleq.TRUE)
-    self.assertEqual(booleq.FALSE, booleq.FALSE)
+    self.assertNotEqual(TRUE, FALSE)
+    self.assertNotEqual(FALSE, TRUE)
+    self.assertEqual(TRUE, TRUE)
+    self.assertEqual(FALSE, FALSE)
 
   def testEquality(self):
-    self.assertEqual(booleq.Eq("a", "b"),
-                     booleq.Eq("b", "a"))
-    self.assertEqual(booleq.Eq("a", "b"),
-                     booleq.Eq("a", "b"))
-    self.assertNotEqual(booleq.Eq("a", "a"),
-                        booleq.Eq("a", "b"))
-    self.assertNotEqual(booleq.Eq("b", "a"),
-                        booleq.Eq("b", "b"))
+    self.assertEqual(Eq("a", "b"), Eq("b", "a"))
+    self.assertEqual(Eq("a", "b"), Eq("a", "b"))
+    self.assertNotEqual(Eq("a", "a"), Eq("a", "b"))
+    self.assertNotEqual(Eq("b", "a"), Eq("b", "b"))
 
   def testAnd(self):
-    self.assertEqual(booleq.TRUE,
-                     booleq.And([]))
-    self.assertEqual(booleq.TRUE,
-                     booleq.And([booleq.TRUE]))
-    self.assertEqual(booleq.TRUE,
-                     booleq.And([booleq.TRUE, booleq.TRUE]))
-    self.assertEqual(booleq.FALSE,
-                     booleq.And([booleq.TRUE, booleq.FALSE]))
-    self.assertEqual(booleq.Eq("a", "b"),
-                     booleq.And([booleq.Eq("a", "b"),
-                                 booleq.TRUE]))
-    self.assertEqual(booleq.FALSE,
-                     booleq.And([booleq.Eq("a", "b"),
-                                 booleq.FALSE]))
+    self.assertEqual(TRUE, And([]))
+    self.assertEqual(TRUE, And([TRUE]))
+    self.assertEqual(TRUE, And([TRUE, TRUE]))
+    self.assertEqual(FALSE, And([TRUE, FALSE]))
+    self.assertEqual(Eq("a", "b"), And([Eq("a", "b"), TRUE]))
+    self.assertEqual(FALSE, And([Eq("a", "b"), FALSE]))
 
   def testOr(self):
-    self.assertEqual(booleq.FALSE,
-                     booleq.Or([]))
-    self.assertEqual(booleq.TRUE,
-                     booleq.Or([booleq.TRUE]))
-    self.assertEqual(booleq.TRUE,
-                     booleq.Or([booleq.TRUE, booleq.TRUE]))
-    self.assertEqual(booleq.TRUE,
-                     booleq.Or([booleq.TRUE, booleq.FALSE]))
-    self.assertEqual(booleq.Eq("a", "b"),
-                     booleq.Or([booleq.Eq("a", "b"),
-                                booleq.FALSE]))
-    self.assertEqual(booleq.TRUE,
-                     booleq.Or([booleq.Eq("a", "b"),
-                                booleq.TRUE]))
+    self.assertEqual(FALSE, Or([]))
+    self.assertEqual(TRUE, Or([TRUE]))
+    self.assertEqual(TRUE, Or([TRUE, TRUE]))
+    self.assertEqual(TRUE, Or([TRUE, FALSE]))
+    self.assertEqual(Eq("a", "b"), Or([Eq("a", "b"), FALSE]))
+    self.assertEqual(TRUE, Or([Eq("a", "b"), TRUE]))
 
   def testNestedEquals(self):
-    eq1 = booleq.Eq("a", "u")
-    eq2 = booleq.Eq("b", "v")
-    eq3 = booleq.Eq("c", "w")
-    eq4 = booleq.Eq("d", "x")
+    eq1 = Eq("a", "u")
+    eq2 = Eq("b", "v")
+    eq3 = Eq("c", "w")
+    eq4 = Eq("d", "x")
     nested = Or([And([eq1, eq2]), And([eq3, eq4])])
     self.assertEqual(nested, nested)
 
   def testOrder(self):
-    eq1 = booleq.Eq("a", "b")
-    eq2 = booleq.Eq("b", "c")
-    self.assertEqual(booleq.Or([eq1, eq2]),
-                     booleq.Or([eq2, eq1]))
-    self.assertEqual(booleq.And([eq1, eq2]),
-                     booleq.And([eq2, eq1]))
+    eq1 = Eq("a", "b")
+    eq2 = Eq("b", "c")
+    self.assertEqual(Or([eq1, eq2]), Or([eq2, eq1]))
+    self.assertEqual(And([eq1, eq2]), And([eq2, eq1]))
 
   def testHash(self):
-    eq1 = booleq.Eq("a", "b")
-    eq2 = booleq.Eq("b", "c")
-    eq3 = booleq.Eq("c", "d")
-    self.assertEqual(hash(booleq.Eq("x", "y")),
-                     hash(booleq.Eq("y", "x")))
-    self.assertEqual(hash(booleq.Or([eq1, eq2, eq3])),
-                     hash(booleq.Or([eq2, eq3, eq1])))
-    self.assertEqual(hash(booleq.And([eq1, eq2, eq3])),
-                     hash(booleq.And([eq2, eq3, eq1])))
+    eq1 = Eq("a", "b")
+    eq2 = Eq("b", "c")
+    eq3 = Eq("c", "d")
+    self.assertEqual(hash(Eq("x", "y")), hash(Eq("y", "x")))
+    self.assertEqual(hash(Or([eq1, eq2, eq3])), hash(Or([eq2, eq3, eq1])))
+    self.assertEqual(hash(And([eq1, eq2, eq3])), hash(And([eq2, eq3, eq1])))
 
   def testPivots(self):
     # x == 0 || x == 1
@@ -127,42 +104,42 @@ class TestBoolEq(unittest.TestCase):
   def testSimplify(self):
     # x == 0 || x == 1  with x in {0}
     equation = Or([Eq("x", "0"), Eq("x", "1")])
-    values = {"x": ["0"]}
+    values = {"x": {"0"}}
     self.assertEquals(Eq("x", "0"), equation.simplify(values))
 
     # x == 0 || x == 1  with x in {0}
     equation = Or([Eq("x", "0"), Eq("x", "1")])
-    values = {"x": ["0", "1"]}
+    values = {"x": {"0", "1"}}
     self.assertEquals(equation, equation.simplify(values))
 
     # x == 0 with x in {1}
     equation = Eq("x", "0")
-    values = {"x": ["1"]}
-    self.assertEquals(booleq.FALSE, equation.simplify(values))
+    values = {"x": {"1"}}
+    self.assertEquals(FALSE, equation.simplify(values))
 
     # x == 0 with x in {0}
     equation = Eq("x", "0")
-    values = {"x": ["0"]}
+    values = {"x": {"0"}}
     self.assertEquals(equation, equation.simplify(values))
 
     # x == 0 && y == 0 with x in {1}, y in {1}
     equation = Or([Eq("x", "0"), Eq("y", "1")])
-    values = {"x": ["1"], "y": ["1"]}
+    values = {"x": {"1"}, "y": {"1"}}
     self.assertEquals(Eq("y", "1"), equation.simplify(values))
 
     # x == 0 && y == 0 with x in {0}, y in {1}
     equation = Or([Eq("x", "0"), Eq("y", "1")])
-    values = {"x": ["0"], "y": ["1"]}
+    values = {"x": {"0"}, "y": {"1"}}
     self.assertEquals(equation, equation.simplify(values))
 
     # x == 0 && x == 0 with x in {0}
     equation = And([Eq("x", "0"), Eq("x", "0")])
-    values = {"x": ["0"]}
+    values = {"x": {"0"}}
     self.assertEquals(Eq("x", "0"), equation.simplify(values))
 
     # x == y with x in {0, 1} and y in {1, 2}
     equation = Eq("x", "y")
-    values = {"x": ["0", "1"], "y": ["1", "2"]}
+    values = {"x": {"0", "1"}, "y": {"1", "2"}}
     self.assertEquals(And([Eq("x", "1"), Eq("y", "1")]),
                       equation.simplify(values))
 
@@ -176,22 +153,22 @@ class TestBoolEq(unittest.TestCase):
 
   def testGetFalseFirstApproximation(self):
     solver = self._MakeSolver(["x"], ["1"])
-    solver.implies(Eq("x", "1"), booleq.FALSE)
+    solver.implies(Eq("x", "1"), FALSE)
     self.assertDictEqual(solver._get_first_approximation(), {"x": set()})
 
   def testGetUnrelatedFirstApproximation(self):
     solver = self._MakeSolver()
-    solver.implies(Eq("x", "1"), booleq.TRUE)
-    solver.implies(Eq("y", "2"), booleq.TRUE)
+    solver.implies(Eq("x", "1"), TRUE)
+    solver.implies(Eq("y", "2"), TRUE)
     self.assertDictEqual(solver._get_first_approximation(),
-                         {"x": set(["1"]), "y": set(["2"])})
+                         {"x": {"1"}, "y": {"2"}})
 
   def testGetEqualFirstApproximation(self):
     solver = self._MakeSolver()
     solver.implies(Eq("x", "1"), Eq("x", "y"))
     assignments = solver._get_first_approximation()
     self.assertDictEqual(assignments,
-                         {"x": set(["1"]), "y": set(["1"])})
+                         {"x": {"1"}, "y": {"1"}})
     self.assertTrue(assignments["x"] is assignments["y"])
 
   def testGetMultipleEqualFirstApproximation(self):
@@ -200,39 +177,39 @@ class TestBoolEq(unittest.TestCase):
     solver.implies(Eq("z", "2"), Eq("y", "z"))
     assignments = solver._get_first_approximation()
     self.assertDictEqual(assignments,
-                         {"x": set(["1", "2"]),
-                          "y": set(["1", "2"]),
-                          "z": set(["1", "2"])})
+                         {"x": {"1", "2"},
+                          "y": {"1", "2"},
+                          "z": {"1", "2"}})
     self.assertTrue(assignments["x"] is assignments["y"])
     self.assertTrue(assignments["y"] is assignments["z"])
 
   def testImplication(self):
     solver = self._MakeSolver()
     solver.implies(Eq("x", "1"), Eq("y", "1"))
-    solver.implies(Eq("x", "2"), booleq.FALSE)  # not Eq("x", "2")
+    solver.implies(Eq("x", "2"), FALSE)  # not Eq("x", "2")
     self.assertDictEqual(solver.solve(),
-                         {"x": set(["1"]),
-                          "y": set(["1"])})
+                         {"x": {"1"},
+                          "y": {"1"}})
 
   def testGroundTruth(self):
     solver = self._MakeSolver()
     solver.implies(Eq("x", "1"), Eq("y", "1"))
     solver.always_true(Eq("x", "1"))
     self.assertDictEqual(solver.solve(),
-                         {"x": set(["1"]),
-                          "y": set(["1"])})
+                         {"x": {"1"},
+                          "y": {"1"}})
 
   def testFilter(self):
     solver = self._MakeSolver(["x", "y"], ["1", "2", "3"])
-    solver.implies(Eq("x", "1"), booleq.TRUE)
-    solver.implies(Eq("x", "2"), booleq.FALSE)
-    solver.implies(Eq("x", "3"), booleq.FALSE)
+    solver.implies(Eq("x", "1"), TRUE)
+    solver.implies(Eq("x", "2"), FALSE)
+    solver.implies(Eq("x", "3"), FALSE)
     solver.implies(Eq("y", "1"), Or([Eq("x", "1"), Eq("x", "2"), Eq("x", "3")]))
     solver.implies(Eq("y", "2"), Or([Eq("x", "2"), Eq("x", "3")]))
     solver.implies(Eq("y", "3"), Or([Eq("x", "2")]))
     self.assertDictEqual(solver.solve(),
-                         {"x": set(["1"]),
-                          "y": set(["1"])})
+                         {"x": {"1"},
+                          "y": {"1"}})
 
   def testSolveAnd(self):
     solver = self._MakeSolver(["x", "y", "z"], ["1", "2", "3"])
@@ -241,9 +218,22 @@ class TestBoolEq(unittest.TestCase):
     solver.implies(Eq("x", "1"), And([Eq("y", "1"), Eq("z", "1")]))
     solver.implies(Eq("z", "1"), And([Eq("x", "1"), Eq("y", "1")]))
     self.assertDictEqual(solver.solve(),
-                         {"x": set(["1"]),
-                          "y": set(["1"]),
-                          "z": set(["1"])})
+                         {"x": {"1"},
+                          "y": {"1"},
+                          "z": {"1"}})
+
+  def testSolveTwice(self):
+    solver = self._MakeSolver()
+    solver.implies(Eq("x", "1"), Or([Eq("y", "1"), Eq("y", "2")]))
+    solver.implies(Eq("y", "1"), FALSE)
+    self.assertDictEqual(solver.solve(), solver.solve())
+
+  def testChangeAfterSolve(self):
+    solver = self._MakeSolver()
+    solver.solve()
+    self.assertRaises(AssertionError, solver.register_variable, "z")
+    self.assertRaises(AssertionError, solver.register_value, "42")
+    self.assertRaises(AssertionError, solver.implies, Eq("x", "1"), TRUE)
 
 if __name__ == "__main__":
   unittest.main()

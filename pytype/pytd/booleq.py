@@ -18,15 +18,13 @@
 import collections
 import itertools
 
-from pytype.pytd import utils
-
 chain = itertools.chain.from_iterable
 
 
 class BooleanTerm(object):
   """Base class for boolean terms."""
 
-  __new__ = utils.prevent_direct_instantiation
+  __slots__ = ()
 
   def simplify(self, assignments):
     """Simplify this term, given a list of possible values for each variable.
@@ -112,43 +110,63 @@ TRUE = TrueValue()
 FALSE = FalseValue()
 
 
-class Eq(BooleanTerm):
+def simplify_exprs(exprs, result_type, stop_term, skip_term):
+  """Simplify a set of subexpressions for a conjunction or disjunction.
+
+  Args:
+    exprs: An iterable. The subexpressions.
+    result_type: _And or _Or. The type of result (unless it simplifies
+      down to something simpler).
+    stop_term: FALSE for _And, TRUE for _Or. If this term is encountered,
+      it will be immediately returned.
+    skip_term: TRUE for _And, FALSE for _Or. If this term is encountered,
+      it will be ignored.
+
+  Returns:
+    A BooleanTerm.
+  """
+  expr_set = set()
+  for e in exprs:
+    if e is stop_term:
+      return stop_term
+    elif e is skip_term:
+      continue
+    elif isinstance(e, result_type):
+      expr_set = expr_set.union(e.exprs)
+    else:
+      expr_set.add(e)
+  if len(expr_set) > 1:
+    return result_type(expr_set)
+  elif expr_set:
+    return expr_set.pop()
+  else:
+    return skip_term
+
+
+class _Eq(BooleanTerm):
   """An equality constraint.
 
   This declares an equality between a variable and a value, or a variable
-  and a variable. It's symmetric - constraints with swapped left and right
-  compare and hash as if they are equal.
+  and a variable. External code should use Eq rather than creating an _Eq
+  instance directly.
 
   Attributes:
-    left: A string; left side of the equality. This is the string with the
-      higher ascii value, so e.g. strings starting with "~" (ascii 0x7e) will be
-      on the left.
+    left: A string; left side of the equality. This is expected to be the
+      string with the higher ascii value, so e.g. strings starting with "~"
+      (ascii 0x7e) should be on the left.
     right: A string; right side of the equality. This is the lower ascii value.
   """
-  __slots__ = ()
+  __slots__ = ("left", "right")
 
-  def __new__(cls, left, right):
-    """Create an equality or its simplified equivalent.
-
-    This will ensure that left > right. (For left == right, it'll just return
-    TRUE).
+  def __init__(self, left, right):
+    """Initialize an equality.
 
     Args:
-      left: A string. Left side of the equality. This will get sorted, so it
-        might end up on the right.
-      right: A string. Right side of the equality. This will get sorted, so it
-        might end up on the left.
-
-    Returns:
-      A BooleanTerm.
+      left: A string. Left side of the equality.
+      right: A string. Right side of the equality.
     """
-    assert isinstance(left, str)
-    assert isinstance(right, str)
-    if left == right:
-      return TRUE
-    eq = super(Eq, cls).__new__(cls)
-    eq.left, eq.right = sorted((left, right), reverse=True)
-    return eq
+    self.left = left
+    self.right = right
 
   def __repr__(self):
     return "%s(%r, %r)" % (type(self).__name__, self.left, self.right)
@@ -182,15 +200,18 @@ class Eq(BooleanTerm):
     Returns:
       A new BooleanTerm.
     """
-    if (self.right in assignments.get(self.left, ()) or
-        self.left in assignments.get(self.right, ())):
-      # equality is still possible.
-      return self
-    intersection = (frozenset(assignments.get(self.left, set())) &
-                    frozenset(assignments.get(self.right, set())))
-    return Or(And((Eq(self.left, i),
-                   Eq(i, self.right)))
-              for i in intersection)
+    if self.right in assignments:
+      intersection = assignments[self.left] & assignments[self.right]
+      if len(intersection) > 1:
+        return _Or(set(_And({_Eq(self.left, i), _Eq(self.right, i)})
+                       for i in intersection))
+      elif intersection:
+        value, = intersection
+        return _And({_Eq(self.left, value), _Eq(self.right, value)})
+      else:
+        return FALSE
+    else:
+      return self if self.right in assignments[self.left] else FALSE
 
   def extract_pivots(self):
     """Extract the pivots. See BooleanTerm.extract_pivots()."""
@@ -201,24 +222,21 @@ class Eq(BooleanTerm):
     return ((self.left, self.right),)
 
 
-class And(BooleanTerm):
-  """A conjunction of equalities and disjunctions."""
+class _And(BooleanTerm):
+  """A conjunction of equalities and disjunctions.
 
-  def __new__(cls, exprs):
-    flattened = chain(e.exprs if isinstance(e, And) else [e] for e in exprs)
-    expr_set = frozenset(flattened)
-    expr_set -= frozenset([TRUE])  # "x & y & TRUE" is equivalent to "x & y"
-    if FALSE in expr_set:
-      return FALSE
-    if len(expr_set) > 1:
-      c = super(And, cls).__new__(cls)
-      c.exprs = expr_set
-      return c
-    elif expr_set:
-      expr, = expr_set
-      return expr
-    else:
-      return TRUE  # Empty conjunction is equivalent to True
+  External code should use And rather than creating an _And instance directly.
+  """
+
+  __slots__ = ("exprs",)
+
+  def __init__(self, exprs):
+    """Initialize a conjunction.
+
+    Args:
+      exprs: A set. The subterms.
+    """
+    self.exprs = exprs
 
   def __eq__(self, other):
     return type(self) == type(other) and self.exprs == other.exprs
@@ -233,7 +251,8 @@ class And(BooleanTerm):
     return "(" + " & ".join(str(t) for t in self.exprs) + ")"
 
   def simplify(self, assignments):
-    return And(t.simplify(assignments) for t in self.exprs)
+    return simplify_exprs((e.simplify(assignments) for e in self.exprs), _And,
+                          FALSE, TRUE)
 
   def extract_pivots(self):
     """Extract the pivots. See BooleanTerm.extract_pivots()."""
@@ -251,24 +270,21 @@ class And(BooleanTerm):
     return tuple(chain(expr.extract_equalities() for expr in self.exprs))
 
 
-class Or(BooleanTerm):
-  """A disjunction of equalities and conjunctions."""
+class _Or(BooleanTerm):
+  """A disjunction of equalities and conjunctions.
 
-  def __new__(cls, exprs):
-    flattened = chain(e.exprs if isinstance(e, Or) else [e] for e in exprs)
-    expr_set = frozenset(flattened)
-    expr_set -= frozenset([FALSE])  # "x | y | FALSE" is equivalent to "x | y"
-    if TRUE in expr_set:
-      return TRUE
-    if len(expr_set) > 1:
-      d = super(Or, cls).__new__(cls)
-      d.exprs = expr_set
-      return d
-    elif expr_set:
-      expr, = expr_set
-      return expr
-    else:
-      return FALSE  # Empty disjunction is equivalent to False
+  External code should use Or rather than creating an _Or instance directly.
+  """
+
+  __slots__ = ("exprs",)
+
+  def __init__(self, exprs):
+    """Initialize a disjunction.
+
+    Args:
+      exprs: A set. The subterms.
+    """
+    self.exprs = exprs
 
   def __eq__(self, other):  # for unit tests
     return type(self) == type(other) and self.exprs == other.exprs
@@ -283,7 +299,8 @@ class Or(BooleanTerm):
     return "(" + " | ".join(str(t) for t in self.exprs) + ")"
 
   def simplify(self, assignments):
-    return Or(t.simplify(assignments) for t in self.exprs)
+    return simplify_exprs((e.simplify(assignments) for e in self.exprs), _Or,
+                          TRUE, FALSE)
 
   def extract_pivots(self):
     """Extract the pivots. See BooleanTerm.extract_pivots()."""
@@ -303,6 +320,61 @@ class Or(BooleanTerm):
 
   def extract_equalities(self):
     return tuple(chain(expr.extract_equalities() for expr in self.exprs))
+
+
+def Eq(left, right):  # pylint: disable=invalid-name
+  """Create an equality or its simplified equivalent.
+
+  This will ensure that left > right. (For left == right, it'll just return
+  TRUE).
+
+  Args:
+    left: A string. Left side of the equality. This will get sorted, so it
+      might end up on the right.
+    right: A string. Right side of the equality. This will get sorted, so it
+      might end up on the left.
+
+  Returns:
+    A BooleanTerm.
+  """
+  assert isinstance(left, str)
+  assert isinstance(right, str)
+  if left == right:
+    return TRUE
+  elif left > right:
+    return _Eq(left, right)
+  else:
+    return _Eq(right, left)
+
+
+def And(exprs):  # pylint: disable=invalid-name
+  """Create a conjunction or its simplified equivalent.
+
+  This will ensure that, when an _And is returned, none of its immediate
+  subterms is TRUE, FALSE, or another conjunction.
+
+  Args:
+    exprs: An iterable. The subterms.
+
+  Returns:
+    A BooleanTerm.
+  """
+  return simplify_exprs(exprs, _And, FALSE, TRUE)
+
+
+def Or(exprs):  # pylint: disable=invalid-name
+  """Create a disjunction or its simplified equivalent.
+
+  This will ensure that, when an _Or is returned, none of its immediate
+  subterms is TRUE, FALSE, or another disjunction.
+
+  Args:
+    exprs: An iterable. The subterms.
+
+  Returns:
+    A BooleanTerm.
+  """
+  return simplify_exprs(exprs, _Or, TRUE, FALSE)
 
 
 class Solver(object):
@@ -337,6 +409,7 @@ class Solver(object):
     self.values = set()
     self.implications = collections.defaultdict(dict)
     self.ground_truth = TRUE
+    self.assignments = None
 
   def __str__(self):
     lines = []
@@ -350,7 +423,7 @@ class Solver(object):
       elif implication is TRUE:
         count_true += 1
       else:
-        lines.append("if %s then %s" % (Eq(var, value), implication))
+        lines.append("if %s then %s" % (_Eq(var, value), implication))
     return "%s\n(not shown: %d always FALSE, %d always TRUE)\n" % (
         "\n".join(lines), count_false, count_true)
 
@@ -373,9 +446,9 @@ class Solver(object):
     if e is FALSE or e is TRUE:
       raise AssertionError("Illegal equation")
     # COV_NF_END
-    assert isinstance(e, Eq)
+    assert isinstance(e, _Eq)
     assert e.right not in self.implications[e.left]
-    # Since Eq sorts its arguments in reverse and variables start with "~"
+    # Since _Eq sorts its arguments in reverse and variables start with "~"
     # (ASCII value 126), e.left should always be the variable.
     self.implications[e.left][e.right] = implication
 
@@ -448,12 +521,18 @@ class Solver(object):
         # If a variable does not have any constraints, it can be anything.
         self.implications[var][Solver.ANY_VALUE] = TRUE
 
+  def _freeze(self, *unused_args):
+    raise AssertionError("Cannot make changes after solving")
+
   def solve(self):
     """Solve the system of equations.
 
     Returns:
       An assignment, mapping strings (variables) to sets of strings (values).
     """
+    if self.assignments:
+      return self.assignments
+
     assert Solver.ANY_VALUE not in self.values
     self._complete()
 
@@ -469,9 +548,14 @@ class Solver(object):
     while something_changed:
       something_changed = False
       for var in self.variables:
+        pivot_possible = True
         terms = []
         for value in assignments[var].copy():
-          implication = self.implications[var][value].simplify(assignments)
+          implication = self.implications[var][value]
+          if implication is TRUE:
+            pivot_possible = False
+            continue
+          implication = implication.simplify(assignments)
           if implication is FALSE:
             # As an example of what kind of code triggers this,
             # see TestBoolEq.testFilter
@@ -479,6 +563,9 @@ class Solver(object):
             something_changed = True
           else:
             terms.append(implication)
+          self.implications[var][value] = implication
+        if not pivot_possible:
+          continue
         d = Or(terms)
         for pivot, possible_values in d.extract_pivots().items():
           if pivot not in assignments:
@@ -488,4 +575,9 @@ class Solver(object):
           length_after = len(assignments[pivot])
           something_changed |= (length_before != length_after)
 
+    self.register_variable = self._freeze
+    self.register_value = self._freeze
+    self.implies = self._freeze
+
+    self.assignments = assignments
     return assignments
