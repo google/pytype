@@ -515,21 +515,26 @@ class VirtualMachine(object):
       return val.pyval
     raise ConversionError("%s is not a string" % val)
 
-  def create_pytd_instance(self, pytype, sources, subst=None):
+  def create_pytd_instance(self, name, pytype, source_sets=None, subst=None):
     """Create an instance of a PyTD type as a typegraph.Variable.
 
     Because this (unlike create_pytd_instance_value) creates variables, it can
     also handle union types.
 
     Args:
+      name: What to call the resulting variable.
       pytype: A PyTD type to construct an instance of.
-      sources: Which sources to attach to the variable values.
+      source_sets: An iterator over instances of SourceSet (or just tuples).
+        Each SourceSet describes a combination of values that were used to
+        build the new value (e.g., for a function call, parameter types).
       subst: The current type parameters.
     Returns:
       A typegraph.Variable.
     Raises:
       ValueError: If we can't resolve a type parameter.
     """
+    if not source_sets:
+      source_sets = [[]]
     if isinstance(pytype, pytd.AnythingType):
       return self.create_new_unknown("?")
     name = pytype.name if hasattr(pytype, "name") else pytype.__class__.__name__
@@ -540,14 +545,16 @@ class VirtualMachine(object):
           raise ValueError("Can't resolve type parameter %s using %r" % (
               t.name, subst))
         for v in subst[t.name].values:
-          var.AddValue(v.data, list(sources) + [v], self.current_location)
+          for source_set in source_sets:
+            var.AddValue(v.data, source_set + [v], self.current_location)
       else:
-        value = self.create_pytd_instance_value(t, subst)
-        var.AddValue(value, list(sources), self.current_location)
+        value = self._create_pytd_instance_value(name, t, subst)
+        for source_set in source_sets:
+          var.AddValue(value, source_set, self.current_location)
         log.info("New pytd instance for %s: %r", name, value)
     return var
 
-  def create_pytd_instance_value(self, pytype, subst=None):
+  def _create_pytd_instance_value(self, name, pytype, subst=None):
     """Create an instance of PyTD type.
 
     This can handle any PyTD type and is used for generating both methods of
@@ -555,6 +562,7 @@ class VirtualMachine(object):
     ClassType).
 
     Args:
+      name: What to call the value.
       pytype: A PyTD type to construct an instance of.
       subst: The current type parameters.
     Returns:
@@ -567,20 +575,12 @@ class VirtualMachine(object):
         raise ValueError("Class {} must be resolved before typegraphvm can "
                          "instantiate them: {}".format(pytype.name,
                                                        repr(pytype)))
-      value = abstract.SimpleAbstractValue(pytype.cls.name, self)
-      value.set_attribute("__class__",
-                          self.convert_constant(pytype.cls.name, pytype.cls))
+      value = abstract.Instance(
+          self.convert_constant(pytype.cls.name, pytype.cls), self)
       return value
-    elif isinstance(pytype, pytd.TypeParameter):
-      raise ValueError("Trying to create an instance of type parameter %s. "
-                       "Bug in argument parsing?" % pytype.name)
     elif isinstance(pytype, pytd.GenericType):
       assert isinstance(pytype.base_type, pytd.ClassType)
-      value = abstract.SimpleAbstractValue(pytd.Print(pytype), self)
-      value.set_attribute("__class__",
-                          self.convert_constant(
-                              pytype.base_type.cls.name + ".__class__",
-                              pytype.base_type.cls))
+      value = self._create_pytd_instance_value(name, pytype.base_type, subst)
       if isinstance(pytype, pytd.GenericType):
         type_params = pytype.parameters
       else:
@@ -588,24 +588,11 @@ class VirtualMachine(object):
       for formal, actual in zip(pytype.base_type.cls.template, type_params):
         log.info("Setting type parameter: %r %r", formal, actual)
         # TODO(kramm): Should these be classes, not instances?
-        p = self.create_pytd_instance(actual, sources=[], subst=subst)
+        p = self.create_pytd_instance(repr(formal), actual, subst=subst)
         value.overwrite_type_parameter(formal.name, p)
       return value
-    elif isinstance(pytype, pytd.Signature):
-      return abstract.PyTDSignature("?", pytype, self)
-    elif isinstance(pytype, pytd.Function):
-      f = abstract.PyTDFunction(pytype.name, [], self)
-      f.signatures = [abstract.PyTDSignature(f, sig, self)
-                      for sig in pytype.signatures]
-      return f
-    elif isinstance(pytype, pytd.NothingType):
-      return abstract.Nothing(self)
-    elif isinstance(pytype, pytd.AnythingType):
-      # TODO(kramm): Can we do this without creating a Variable?
-      return self.create_new_unknown("?").data[0]
     else:
-      # includes pytd.ExternalFunction, which should never occur
-      raise ValueError("Cannot create instance of {}".format(pytype))
+      return self.convert_constant_to_value(name, pytype)
 
   def create_new_unknown(self, name, source=None):
     """Create a new variable containing unknown, originating from this one."""
@@ -639,7 +626,7 @@ class VirtualMachine(object):
                  for t in pyval.type_list]
       return self.program.NewVariable(name, options, [], self.current_location)
     elif isinstance(pyval, pytd.Constant):
-      return self.create_pytd_instance(pyval.type, [])
+      return self.create_pytd_instance(name, pyval.type)
     result = self.convert_constant_to_value(name, pyval)
     if result is not None:
       return result.to_variable(name)
@@ -712,7 +699,12 @@ class VirtualMachine(object):
     elif isinstance(pyval, pytd.Class):
       return abstract.PyTDClass(name, pyval, self)
     elif isinstance(pyval, pytd.Function):
-      return self.create_pytd_instance_value(pyval, {})
+      f = abstract.PyTDFunction(pyval.name, [], self)
+      f.signatures = [abstract.PyTDSignature(f, sig, self)
+                      for sig in pyval.signatures]
+      return f
+    elif isinstance(pyval, pytd.Signature):
+      return abstract.PyTDSignature(name, pyval, self)
     elif isinstance(pyval, pytd.ExternalFunction):
       raise AssertionError("Unexpected ExternalFunction: {}".format(pyval))
     elif isinstance(pyval, pytd.ClassType):
@@ -720,6 +712,9 @@ class VirtualMachine(object):
       return self.convert_constant_to_value(pyval.name, pyval.cls)
     elif isinstance(pyval, pytd.NothingType):
       return abstract.Nothing(self)
+    elif isinstance(pyval, pytd.AnythingType):
+      # TODO(kramm): Can we do this without creating a Variable?
+      return self.create_new_unknown("?").data[0]
     elif isinstance(pyval, pytd.UnionType):
       return abstract.Union([self.convert_constant_to_value(pytd.Print(t), t)
                              for t in pyval.type_list], self)

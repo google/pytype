@@ -799,19 +799,15 @@ class PyTDSignature(AtomicAbstractValue):
         except FailedFunctionCall as e:
           msg_lines.extend(e.explanation_lines)
         else:
-          results[(r.return_type, r.subst)].append(r.sources)
+          results[(r.return_type, r.subst)].append(r.sources + [func])
     if not results:
       self._raise_failed_function_call(msg_lines)
     retvar = self.vm.program.NewVariable("<return:" + self.name + "()>")
     for (return_type, subst), source_sets in results.items():
-      for t in pytd_utils.UnpackUnion(return_type):
-        if isinstance(t, pytd.TypeParameter) and t.name in subst:
-          # For functions that directly return a type parameter.
-          retvar.AddValues(subst[t.name], self.vm.current_location)
-        else:
-          v = self.vm.create_pytd_instance_value(t, subst)
-          for source_set in source_sets:
-            retvar.AddValue(v, source_set + [func], self.vm.current_location)
+      assert subst is not None
+      r = self.vm.create_pytd_instance("ret", return_type,
+                                       source_sets, subst)
+      retvar.AddValues(r, self.vm.current_location)
     return node, retvar
 
   def _call_with_values(self, arg_values, kw_values):
@@ -920,7 +916,7 @@ class PyTDSignature(AtomicAbstractValue):
                      tparam.name,
                      pytd.Print(type_actual))
             type_actual_val = self.vm.create_pytd_instance(
-                type_actual, subst=subst, sources=[])
+                tparam.name, type_actual, subst=subst)
             arg.overwrite_type_parameter(tparam.name, type_actual_val)
         else:
           log.error("Old: %s", pytd.Print(formal.type))
