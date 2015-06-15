@@ -83,6 +83,11 @@ def match_var_against_type(var, other_type, subst, loc):
     # anything.
     # TODO(kramm): Do we want to record what we matched them against?
     assert not isinstance(other_type, ParameterizedClass)
+  elif isinstance(other_type, Nothing):
+    for val in var.values:
+      subst = val.data.match_against_type(other_type, subst)
+      if subst is None:
+        break
   else:
     log.error("Invalid type: %s", type(other_type))
     subst = None
@@ -1666,7 +1671,10 @@ class Nothing(AtomicAbstractValue):
     return pytd.NothingType()
 
   def match_against_type(self, other_type, subst):
-    return None
+    if other_type.name == "nothing":
+      return subst
+    else:
+      return None
 
 
 def to_type(v):

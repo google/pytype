@@ -418,6 +418,8 @@ class dict_items<K,V>:
 class dict<K, V>:
     def __init__(self) -> NoneType:
         self := dict<nothing, nothing>
+    def __init__(self, list: list<nothing>) -> NoneType:
+        self := dict<nothing, nothing>
     def __init__<X>(self, list: list<tuple<X>>) -> NoneType:
         self := dict<X, X>
     def __init__(self, x) -> NoneType

@@ -718,6 +718,8 @@ class VirtualMachine(object):
     elif isinstance(pyval, pytd.ClassType):
       assert pyval.cls
       return self.convert_constant_to_value(pyval.name, pyval.cls)
+    elif isinstance(pyval, pytd.NothingType):
+      return abstract.Nothing(self)
     elif isinstance(pyval, pytd.UnionType):
       return abstract.Union([self.convert_constant_to_value(pytd.Print(t), t)
                              for t in pyval.type_list], self)
@@ -736,6 +738,7 @@ class VirtualMachine(object):
                                            pyval.base_type.cls)
       return abstract.ParameterizedClass(cls, type_parameters, self)
     elif isinstance(pyval, tuple):
+      assert pyval.__class__ is tuple
       return self.tuple_to_value(
           [self.convert_constant("tuple[%d]" % i, item)
            for i, item in enumerate(pyval)])

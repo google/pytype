@@ -369,5 +369,24 @@ class ContainerTest(test_inference.InferenceTest):
         entry: str
       """)
 
+  def testDictInit(self):
+    with self.Infer("""
+      def f():
+        return dict([])
+    """, deep=True, solve_unknowns=False, extract_locals=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        def f() -> dict<nothing, nothing>
+      """)
+
+  def testDictTupleInit(self):
+    with self.Infer("""
+      def f():
+        return dict([("foo", "foo")])
+    """, deep=True, solve_unknowns=False, extract_locals=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        def f() -> dict<str, str>
+      """)
+
+
 if __name__ == "__main__":
   test_inference.main()
