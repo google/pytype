@@ -1143,10 +1143,8 @@ class PyTDClass(LazyAbstractValue, Class):
     return super(PyTDClass, self).get_attribute(node, name)
 
   def call(self, node, func, args, kws):
-    value = SimpleAbstractValue("instance of " + self.name, self.vm)
-    value.set_attribute(
-        "__class__",
-        self.vm.convert_constant(self.name + ".__class__", self.cls))
+    value = Instance(self.vm.convert_constant(
+        self.name + ".__class__", self.cls), self.vm)
 
     fill_in_type_params = True
     if fill_in_type_params:
@@ -1256,9 +1254,7 @@ class InterpreterClass(SimpleAbstractValue, Class):
     return super(InterpreterClass, self).set_attribute(name, value)
 
   def call(self, node, func, args, kws):
-    value = SimpleAbstractValue("instance of " + self.name, self.vm)
-    value.set_attribute("__class__",
-                        func.AssignToNewVariable("__class__", node))
+    value = Instance(func.AssignToNewVariable("__class__", node), self.vm)
     variable = self.vm.program.NewVariable(self.name + " instance")
     val = variable.AddValue(value, [func], self.vm.current_location)
 

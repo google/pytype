@@ -1194,8 +1194,7 @@ class VirtualMachine(object):
     return var
 
   def build_slice(self, start, stop, step=None):
-    value = abstract.SimpleAbstractValue("slice", self)
-    value.set_attribute("__class__", self.slice_type)
+    value = abstract.Instance(self.slice_type, self)
     return value.to_variable(name="slice")
 
   def tuple_to_value(self, content):
@@ -1213,16 +1212,14 @@ class VirtualMachine(object):
   def build_list(self, content):
     """Create a VM list from the given sequence."""
     content = list(content)  # content might be a generator
-    value = abstract.SimpleAbstractValue("list", self)
-    value.set_attribute("__class__", self.list_type)
+    value = abstract.Instance(self.list_type, self)
     value.overwrite_type_parameter("T", self.build_content(content))
     return value.to_variable(name="list(...)")
 
   def build_set(self, content):
     """Create a VM set from the given sequence."""
     content = list(content)  # content might be a generator
-    value = abstract.SimpleAbstractValue("set", self)
-    value.set_attribute("__class__", self.set_type)
+    value = abstract.Instance(self.set_type, self)
     value.overwrite_type_parameter("T", self.build_content(content))
     return value.to_variable(name="set(...)")
 
