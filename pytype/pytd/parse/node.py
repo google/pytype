@@ -210,7 +210,7 @@ def _VisitNode(node, visitor, *args, **kwargs):
           ["Enter<Name>" is called pre-order; "Visit<Name> and "Leave<Name>" are
           called post-order.]  A counterpart to "Enter<Name>" is "Leave<Name>",
           which is intended for any clean-up that "Enter<Name>" needs (other
-          than that, it's redunddant, and could be combined with "Visit<Name>").
+          than that, it's redundant, and could be combined with "Visit<Name>").
     *args: Passed to visitor callbacks.
     **kwargs: Passed to visitor callbacks.
   Returns:
@@ -221,23 +221,9 @@ def _VisitNode(node, visitor, *args, **kwargs):
       (implements_all_node_types), but we find a missing method.
   """
 
-  node_class_name = node.__class__.__name__
-  if hasattr(node, "Visit") and node.Visit.im_func != _VisitNode:
-    # Node with an overloaded Visit() function. It'll do its own processing.
-    return node.Visit(visitor, *args, **kwargs)
-  elif isinstance(node, tuple):
-    enter_function = getattr(visitor, "Enter" + node_class_name, None)
-    if enter_function:
-      # The visitor wants to be informed that we're descending into this part
-      # of the tree.
-      status = enter_function(node, *args, **kwargs)
-      # Don't descend if Enter<Node> explicitly returns False, but not None,
-      # since None is the default return of Python functions.
-      if status is False:
-        return node
-      # Any other value returned from Enter is ignored, so check:
-      assert status is None, repr(node_class_name, status)
-
+  if node.__class__ is tuple or isinstance(node, list):
+    # Exact comparison for tuple, because classes deriving from tuple
+    # (like namedtuple) have different constructor arguments.
     changed = False
     new_children = []
     for child in node:
@@ -246,54 +232,12 @@ def _VisitNode(node, visitor, *args, **kwargs):
         changed = True
       new_children.append(new_child)
     if changed:
-      # Exact comparison, because classes deriving from tuple (like namedtuple)
-      # have different constructor arguments.
-      if node.__class__ is tuple:
-        new_node = node.__class__(new_children)
-      else:
-        # Assume this is a namedtuple. Reinitialize with our current old
-        # class (because we changed some of the children). The constructor of
-        # namedtuple() differs from tuple(), so we have to pass the current
-        # tuple using "*".
-        new_node = node.__class__(*new_children)
+      # Since some of our children changed, instantiate a new node.
+      return node.__class__(new_children)
     else:
       # Optimization: if we didn't change any of the children, keep the entire
       # object the same.
-      # TODO(pludemann): Does this actually have any benefit? The test is
-      #                  moderately expensive and a new node just copies a few
-      #                  pointers (and turns over a bit of memory). Nobody
-      #                  should depend on the tree remaining identical (object
-      #                  identity) if the visitor makes no changes to any node.
-      new_node = node
-
-    visitor.old_node = node
-    # Now call the user supplied callback(s), if they exists. Notice we only do
-    # this for tuples.
-    visit_function = getattr(visitor, "Visit" + node_class_name, False)
-    if (getattr(visitor, "implements_all_node_types", False)
-        and node_class_name != "tuple"):
-      if not enter_function and not visit_function:
-        raise AssertionError("Unimplemented visitor: " + node_class_name)
-    if visit_function:
-      new_node = visit_function(new_node, *args, **kwargs)
-    leave_function = getattr(visitor, "Leave" + node_class_name, False)
-    if leave_function:
-      # Clean-up from Enter/Visit
-      leave_function(node, *args, **kwargs)
-
-    del visitor.old_node
-    return new_node
-  elif isinstance(node, list):
-    changed = False
-    new_list_entries = []
-    for child in node:
-      new_child = _VisitNode(child, visitor, *args, **kwargs)
-      if new_child is not child:
-        changed = True
-      new_list_entries.append(new_child)
-    if changed:
-      # Since some of our children changed, instantiate a new list.
-      return node.__class__(new_list_entries)
+      return node
   elif isinstance(node, dict):
     changed = False
     new_dict = dict()
@@ -306,4 +250,54 @@ def _VisitNode(node, visitor, *args, **kwargs):
       # Return a new dictionary, but with the current class, in case the user
       # subclasses dict.
       return node.__class__(new_dict)
-  return node
+    else:
+      return node
+  elif not isinstance(node, tuple):
+    return node
+
+  # At this point, assume node is a Node, which is a namedtuple.
+  node_class_name = node.__class__.__name__
+  if node.Visit.im_func != _VisitNode:
+    # Node with an overloaded Visit() function. It'll do its own processing.
+    return node.Visit(visitor, *args, **kwargs)
+  enter_function = getattr(visitor, "Enter" + node_class_name, None)
+  if enter_function:
+    # The visitor wants to be informed that we're descending into this part
+    # of the tree.
+    status = enter_function(node, *args, **kwargs)
+    # Don't descend if Enter<Node> explicitly returns False, but not None,
+    # since None is the default return of Python functions.
+    if status is False:
+      return node
+    # Any other value returned from Enter is ignored, so check:
+    assert status is None, repr(node_class_name, status)
+
+  changed = False
+  new_children = []
+  for child in node:
+    new_child = _VisitNode(child, visitor, *args, **kwargs)
+    if new_child is not child:
+      changed = True
+    new_children.append(new_child)
+  if changed:
+    # The constructor of namedtuple() differs from tuple(), so we have to
+    # pass the current tuple using "*".
+    new_node = node.__class__(*new_children)
+  else:
+    new_node = node
+
+  visitor.old_node = node
+  # Now call the user supplied callback(s), if they exist.
+  visit_function = getattr(visitor, "Visit" + node_class_name, False)
+  if getattr(visitor, "implements_all_node_types", False):
+    if not enter_function and not visit_function:
+      raise AssertionError("Unimplemented visitor: " + node_class_name)
+  if visit_function:
+    new_node = visit_function(new_node, *args, **kwargs)
+  leave_function = getattr(visitor, "Leave" + node_class_name, False)
+  if leave_function:
+    # Clean-up from Enter/Visit
+    leave_function(node, *args, **kwargs)
+
+  del visitor.old_node
+  return new_node
