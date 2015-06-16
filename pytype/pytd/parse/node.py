@@ -58,7 +58,6 @@ functionalities to be made part of collections.namedtuple.
 """
 
 import collections
-import itertools
 
 
 def Node(*child_names):
@@ -239,9 +238,14 @@ def _VisitNode(node, visitor, *args, **kwargs):
       # Any other value returned from Enter is ignored, so check:
       assert status is None, repr(node_class_name, status)
 
-    new_children = [_VisitNode(child, visitor, *args, **kwargs)
-                    for child in node]
-    if any(c1 is not c2 for c1, c2 in itertools.izip(new_children, node)):
+    changed = False
+    new_children = []
+    for child in node:
+      new_child = _VisitNode(child, visitor, *args, **kwargs)
+      if new_child is not child:
+        changed = True
+      new_children.append(new_child)
+    if changed:
       # Exact comparison, because classes deriving from tuple (like namedtuple)
       # have different constructor arguments.
       if node.__class__ is tuple:
@@ -280,15 +284,25 @@ def _VisitNode(node, visitor, *args, **kwargs):
     del visitor.old_node
     return new_node
   elif isinstance(node, list):
-    new_list_entries = [_VisitNode(child, visitor, *args, **kwargs)
-                        for child in node]
-    if any(c1 is not c2 for c1, c2 in zip(new_list_entries, node)):
+    changed = False
+    new_list_entries = []
+    for child in node:
+      new_child = _VisitNode(child, visitor, *args, **kwargs)
+      if new_child is not child:
+        changed = True
+      new_list_entries.append(new_child)
+    if changed:
       # Since some of our children changed, instantiate a new list.
       return node.__class__(new_list_entries)
   elif isinstance(node, dict):
-    new_dict = {k: _VisitNode(child, visitor, *args, **kwargs)
-                for k, child in node.items()}
-    if any(id(new_dict[k]) != id(node[k]) for k in node):
+    changed = False
+    new_dict = dict()
+    for k, child in node.items():
+      new_child = _VisitNode(child, visitor, *args, **kwargs)
+      if id(new_child) != id(child):
+        changed = True
+      new_dict[k] = new_child
+    if changed:
       # Return a new dictionary, but with the current class, in case the user
       # subclasses dict.
       return node.__class__(new_dict)
