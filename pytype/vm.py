@@ -1087,7 +1087,7 @@ class VirtualMachine(object):
     result = self.program.NewVariable(str(attr))
     log.debug("getting attr %s from %r", attr, obj)
     nodes = []
-    for val in obj.values:
+    for val in obj.Values(node):
       node2, exists = val.data.has_attribute(node, attr, val)
       if not exists:
         log.debug("No %s on %s", attr, val.data.__class__)
@@ -1098,7 +1098,7 @@ class VirtualMachine(object):
       if not attr_var:
         continue
       # Loop over the values to check for properties
-      for v in attr_var.values:
+      for v in attr_var.Values(node2):
         value = v.data
         node3, has_getter = value.has_attribute(node2, "__get__")
         if has_getter:
