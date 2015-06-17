@@ -28,4 +28,4 @@ class WorkflowTest(test_inference.InferenceTest):
       """)
 
 if __name__ == '__main__':
-  test_inference.main(True)
+  test_inference.main()

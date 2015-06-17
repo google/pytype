@@ -3,6 +3,7 @@
 
 from pytype import blocks
 from pytype import vm
+from pytype.pytd import cfg
 from pytype.tests import test_inference
 
 
@@ -10,6 +11,7 @@ class BytecodeTest(test_inference.InferenceTest):
   """Tests for process_code in blocks.py and VM integration."""
 
   def test_simple(self):
+    program = cfg.Program()
     # Disassembled from:
     # | return None
     code = self.make_code([
@@ -18,9 +20,10 @@ class BytecodeTest(test_inference.InferenceTest):
     ], name="simple")
     code = blocks.process_code(code)
     v = vm.VirtualMachine(self.PYTHON_VERSION)
-    v.run_bytecode(code, v.program.NewCFGNode("init"))
+    v.run_bytecode(program.NewCFGNode(), code)
 
   def test_diamond(self):
+    program = cfg.Program()
     # Disassembled from:
     # | if []:
     # |   y = 1
@@ -50,7 +53,7 @@ class BytecodeTest(test_inference.InferenceTest):
     ])
     code = blocks.process_code(code)
     v = vm.VirtualMachine(self.PYTHON_VERSION)
-    v.run_bytecode(code, v.program.NewCFGNode("init"))
+    v.run_bytecode(program.NewCFGNode(), code)
 
 if __name__ == "__main__":
   test_inference.main()

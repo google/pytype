@@ -11,27 +11,43 @@ log = logging.getLogger(__name__)
 class FrameState(object):
   """Immutable state object, for attaching to opcodes."""
 
-  __slots__ = ["block_stack", "data_stack", "node", "exception"]
+  __slots__ = ["block_stack", "data_stack", "node", "exception", "why"]
 
-  def __init__(self, data_stack, block_stack, node, exception):
+  def __init__(self, data_stack, block_stack, node, exception, why):
     self.data_stack = data_stack
     self.block_stack = block_stack
     self.node = node
     self.exception = exception
+    self.why = why
 
   @classmethod
   def init(cls, node):
-    return FrameState((), (), node, None)
+    return FrameState((), (), node, None, None)
 
   def __setattribute__(self):
     raise AttributeError("States are immutable.")
+
+  def set_why(self, why):
+    return FrameState(self.data_stack,
+                      self.block_stack,
+                      self.node,
+                      self.exception,
+                      why)
 
   def push(self, *values):
     """Push value(s) onto the value stack."""
     return FrameState(self.data_stack + tuple(values),
                       self.block_stack,
                       self.node,
-                      self.exception)
+                      self.exception,
+                      self.why)
+
+  def peek(self, n):
+    """Get a value `n` entries down in the stack, without changing the stack."""
+    return self.data_stack[-n]
+
+  def top(self):
+    return self.data_stack[-1]
 
   def pop(self):
     """Pop a value from the value stack."""
@@ -39,14 +55,16 @@ class FrameState(object):
     return FrameState(self.data_stack[:-1],
                       self.block_stack,
                       self.node,
-                      self.exception), value
+                      self.exception,
+                      self.why), value
 
   def pop_and_discard(self):
     """Pop a value from the value stack and discard it."""
     return FrameState(self.data_stack[:-1],
                       self.block_stack,
                       self.node,
-                      self.exception)
+                      self.exception,
+                      self.why)
 
   def popn(self, n):
     """Return n values, ordered oldest-to-newest."""
@@ -60,14 +78,16 @@ class FrameState(object):
     return FrameState(self.data_stack[:-n],
                       self.block_stack,
                       self.node,
-                      self.exception), values
+                      self.exception,
+                      self.why), values
 
   def push_block(self, block):
     """Push a block on to the block stack."""
     return FrameState(self.data_stack,
                       self.block_stack + (block,),
                       self.node,
-                      self.exception)
+                      self.exception,
+                      self.why)
 
   def pop_block(self):
     """Pop a block from the block stack."""
@@ -75,7 +95,8 @@ class FrameState(object):
     return FrameState(self.data_stack,
                       self.block_stack[:-1],
                       self.node,
-                      self.exception), block
+                      self.exception,
+                      self.why), block
 
   def change_cfg_node(self, node):
     assert isinstance(node, cfg.CFGNode)
@@ -84,7 +105,8 @@ class FrameState(object):
     return FrameState(self.data_stack,
                       self.block_stack,
                       node,
-                      self.exception)
+                      self.exception,
+                      self.why)
 
   def connect_to_cfg_node(self, node):
     self.node.ConnectTo(node)
@@ -94,7 +116,8 @@ class FrameState(object):
     return FrameState(self.data_stack,
                       self.block_stack,
                       self.node.ConnectNew(self.node.name),
-                      self.exception)
+                      self.exception,
+                      self.why)
 
   def merge_into(self, other):
     """Merge with another state."""
@@ -107,7 +130,8 @@ class FrameState(object):
       return FrameState(self.data_stack,
                         self.block_stack,
                         other.node,
-                        self.exception)
+                        self.exception,
+                        self.why)
     # TODO(kramm): Also merge data stack
     return self
 
@@ -115,7 +139,8 @@ class FrameState(object):
     return FrameState(self.data_stack,
                       self.block_stack,
                       self.node.ConnectNew(self.node.name),
-                      (exc_type, value, tb))
+                      (exc_type, value, tb),
+                      self.why)
 
 
 class Frame(object):
@@ -147,11 +172,12 @@ class Frame(object):
       to produce the actual return from this frame.
   """
 
-  def __init__(self, vm, f_code, f_globals, f_locals, f_back, callargs,
+  def __init__(self, node, vm, f_code, f_globals, f_locals, f_back, callargs,
                closure=None):
     """Initialize a special frame as needed by TypegraphVirtualMachine.
 
     Args:
+      node: The current CFG graph node.
       vm: The owning virtual machine.
       f_code: The code object to execute in this frame.
       f_globals: The global context to execute in as a SimpleAbstractValue as
@@ -200,9 +226,9 @@ class Frame(object):
       for name, value in sorted(callargs.items()):
         if name in f_code.co_cellvars:
           i = f_code.co_cellvars.index(name)
-          self.cells[i].AddValues(value, self.vm.current_location)
+          self.cells[i].AddValues(value, node)
         else:
-          self.f_locals.set_attribute(name, value)
+          self.f_locals.set_attribute(node, name, value)
 
   def __repr__(self):     # pragma: no cover
     return "<Frame at 0x%08x: %r @ %d>" % (

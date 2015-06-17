@@ -4,10 +4,6 @@ A VM for python byte code that uses pytype/pytd/cfg ("typegraph") to generate a
 trace of the program execution.
 """
 
-# Disable because there are enough false positives to make it useless
-# pylint: disable=unbalanced-tuple-unpacking
-# pylint: disable=unpacking-non-sequence
-
 # We have names like "byte_NOP":
 # pylint: disable=invalid-name
 
@@ -103,7 +99,6 @@ class VirtualMachine(object):
   Attributes:
     program: The typegraph.Program used to build the typegraph.
     root_cfg_node: The root CFG node that contains the definitions of builtins.
-    current_location: The currently executing CFG node.
     primitive_classes: A mapping from primitive python types to their abstract
       types.
   """
@@ -179,8 +174,6 @@ class VirtualMachine(object):
       FrameState right after this instruction that should roll over to the
       subsequent instruction.
     """
-    self.frame.current_op = op
-    self.frame.state = state
     if log.isEnabledFor(logging.INFO):
       self.log_opcode(op, state)
     try:
@@ -189,32 +182,30 @@ class VirtualMachine(object):
       if bytecode_fn is None:
         raise VirtualMachineError("Unknown opcode: %s" % op.name)
       if op.has_arg():
-        why = bytecode_fn(op)
+        state = bytecode_fn(state, op)
       else:
-        why = bytecode_fn()
+        state = bytecode_fn(state)
     except StopIteration:
       # TODO(kramm): Use abstract types for this.
-      self.frame.state = self.frame.state.set_exception(
+      state = state.set_exception(
           sys.exc_info()[0], sys.exc_info()[1], None)
-      why = "exception"
+      state = state.set_why("exception")
     except RecursionException as e:
       # This is not an error - it just means that the block we're analyzing
       # goes into a recursion, and we're already two levels deep.
-      why = "recursion"
+      state = state.set_why("recursion")
     except exceptions.ByteCodeException:
       e = sys.exc_info()[1]
-      self.frame.state = self.frame.state.set_exception(
+      state = state.set_exception(
           e.exception_type, e.create_instance(), None)
       # TODO(pludemann): capture exceptions that are indicative of
       #                  a bug (AttributeError?)
       log.info("Exception in program: %s: %r",
                e.exception_type.__name__, e.message)
-      why = "exception"
-    state = self.frame.state
-    del self.frame.state
-    if why == "reraise":
-      why = "exception"
-    return why, state
+      state = state.set_why("exception")
+    if state.why == "reraise":
+      state = state.set_why("exception")
+    return state
 
   def join_cfg_nodes(self, nodes):
     assert nodes
@@ -240,13 +231,13 @@ class VirtualMachine(object):
         continue
       op = None
       for op in block:
-        why, state = self.run_instruction(op, state)
-        if why:
+        state = self.run_instruction(op, state)
+        if state.why:
           # we can't process this block any further
           break
-      if why in ["return", "yield"]:
+      if state.why in ["return", "yield"]:
         return_nodes.append(state.node)
-      if not why and op.carry_on_to_next():
+      if not state.why and op.carry_on_to_next():
         frame.states[op.next] = state.merge_into(frame.states.get(op.next))
     self.pop_frame(frame)
     if not return_nodes:
@@ -269,67 +260,10 @@ class VirtualMachine(object):
       return "__r" + name[2:]
     return None
 
-  @property
-  def current_location(self):
-    if self.frame:
-      return self.frame.state.node
-    else:
-      return self.root_cfg_node
-
-  def top(self):
-    """Return the value at the top of the stack, with no changes."""
-    return self.frame.state.data_stack[-1]
-
-  def pop_nth(self, i=0):
-    """Pop top value from the stack.
-
-    Default to the top of the stack, but `i` can be a count from the top
-    instead.
-
-    Arguments:
-      i: If this is given, a value is extracted and removed from the middle
-      of the stack.
-
-    Returns:
-      A stack entry (typegraph.Variable).
-    """
-    raise NotImplementedError()
-
-  def pop(self):
-    """Pop top value from the value stack."""
-    self.frame.state, value = self.frame.state.pop()
-    return value
-
-  def push(self, *vals):
-    """Push values onto the value stack."""
-    self.frame.state = self.frame.state.push(*vals)
-
-  def popn(self, n):
-    """Pop a number of values from the value stack.
-
-    A list of `n` values is returned, the deepest value first.
-
-    Arguments:
-      n: The number of items to pop
-
-    Returns:
-      A list of n values.
-    """
-    self.frame.state, values = self.frame.state.popn(n)
-    return values
-
-  def peek(self, n):
-    """Get a value `n` entries down in the stack, without changing the stack."""
-    return self.frame.state.data_stack[-n]
-
-  def push_block(self, t, handler=None, level=None):
+  def push_block(self, state, t, handler=None, level=None):
     if level is None:
-      level = len(self.frame.state.data_stack)
-    self.frame.state = self.frame.state.push_block(Block(t, handler, level))
-
-  def pop_block(self):
-    self.frame.state, block = self.frame.state.pop_block()
-    return block
+      level = len(state.data_stack)
+    return state.push_block(Block(t, handler, level))
 
   def push_frame(self, frame):
     self.frames.append(frame)
@@ -373,10 +307,9 @@ class VirtualMachine(object):
     """Write a multi-line log message, including backtrace and stack."""
     if not log.isEnabledFor(logging.INFO):
       return
-    # pylint: disable=logging-not-lazy
     indent = " > " * (len(self.frames) - 1)
-    stack_rep = repper(self.frame.state.data_stack)
-    block_stack_rep = repper(self.frame.state.block_stack)
+    stack_rep = repper(state.data_stack)
+    block_stack_rep = repper(state.block_stack)
     # TODO(pludemann): nicer module/file name:
     if self.frame.f_code.co_filename:
       module_name = ".".join(re.sub(
@@ -400,52 +333,55 @@ class VirtualMachine(object):
 
   # Operators
 
-  def pop_slice_and_obj(self, count):
+  def pop_slice_and_obj(self, state, count):
     """Pop a slice from the data stack. Used by slice opcodes (SLICE_0 etc.)."""
     start = 0
     end = None      # we will take this to mean end
     if count == 1:
-      start = self.pop()
+      state, start = state.pop()
     elif count == 2:
-      end = self.pop()
+      state, end = state.pop()
     elif count == 3:
-      end = self.pop()
-      start = self.pop()
-    obj = self.pop()
+      state, end = state.pop()
+      state, start = state.pop()
+    state, obj = state.pop()
     if end is None:
       # Note that Python only calls __len__ if we have a negative index, not if
       # we omit the index. Since we can't tell whether an index is negative
       # (it might be an abstract integer, or a union type), we just always
       # call __len__.
-      end = self.call_function_and_adjust_state(
-          self.load_attr(obj, "__len__"), [], {})
-    return self.build_slice(start, end, 1), obj
+      state, f = self.load_attr(state, obj, "__len__")
+      state, end = self.call_function_with_state(state, f, [], {})
+    return state, self.build_slice(state.node, start, end, 1), obj
 
-  def store_slice(self, count):
-    slice_obj, obj = self.pop_slice_and_obj(count)
-    new_value = self.pop()
-    self.call_function_and_adjust_state(
-        self.load_attr(obj, "__setitem__"), [slice_obj, new_value], {})
+  def store_slice(self, state, count):
+    state, slice_obj, obj = self.pop_slice_and_obj(state, count)
+    state, new_value = state.pop()
+    state, f = self.load_attr(state, obj, "__setitem__")
+    state, _ = self.call_function_with_state(state, f, [slice_obj, new_value],
+                                             {})
+    return state
 
-  def delete_slice(self, count):
-    slice_obj, obj = self.pop_slice_and_obj(count)
-    self.call_function_and_adjust_state(
-        self.load_attr(obj, "__delitem__"), [slice_obj], {})
+  def delete_slice(self, state, count):
+    state, slice_obj, obj = self.pop_slice_and_obj(state, count)
+    state, f = self.load_attr(state, obj, "__delitem__")
+    state, _ = self.call_function_with_state(state, f, [slice_obj], {})
+    return state
 
-  def get_slice(self, count):
-    slice_obj, obj = self.pop_slice_and_obj(count)
-    ret = self.call_function_and_adjust_state(
-        self.load_attr(obj, "__getitem__"), [slice_obj], {})
-    self.push(ret)
+  def get_slice(self, state, count):
+    state, slice_obj, obj = self.pop_slice_and_obj(state, count)
+    state, f = self.load_attr(state, obj, "__getitem__")
+    state, ret = self.call_function_with_state(state, f, [slice_obj], {})
+    return state.push(ret)
 
-  def do_raise(self, exc, cause):
+  def do_raise(self, state, exc, cause):
     """Raise an exception. Used by byte_RAISE_VARARGS."""
     if exc is None:     # reraise
-      exc_type, val, _ = self.frame.state.last_exception
+      exc_type, val, _ = state.last_exception
       if exc_type is None:
-        return "exception"    # error
+        return state.set_why("exception")
       else:
-        return "reraise"
+        return state.set_why("reraise")
 
     elif type(exc) == type:
       # As in `raise ValueError`
@@ -456,7 +392,7 @@ class VirtualMachine(object):
       exc_type = type(exc)
       val = exc
     else:
-      return "exception"    # error
+      return state
 
     # If you reach this point, you're guaranteed that
     # val is a valid exception instance and exc_type is its class.
@@ -465,28 +401,28 @@ class VirtualMachine(object):
       if type(cause) == type:
         cause = cause()
       elif not isinstance(cause, BaseException):
-        return "exception"  # error
+        return state
 
       val.__cause__ = cause
 
-    self.frame.state.set_exception(exc_type, val, val.__traceback__)
-    return "exception"
+    state.set_exception(exc_type, val, val.__traceback__)
+    return state
 
   # Importing
 
-  def get_module_attribute(self, mod, name):
+  def get_module_attribute(self, state, mod, name):
     """Return the modules members as a dict."""
-    return self.load_attr(mod, name)
+    return self.load_attr(state, mod, name)
 
-  def instantiate_builtin(self, cls):
+  def instantiate_builtin(self, node, cls):
     return abstract.Instance(self.primitive_classes[cls], self).to_variable(
-        name=cls.__name__)
+        node, name=cls.__name__)
 
-  def instantiate(self, cls):
+  def instantiate(self, node, cls):
     # TODO(kramm): Make everything use this
-    return abstract.Instance(cls, self).to_variable(name=cls.name)
+    return abstract.Instance(cls, self).to_variable(node, name=cls.name)
 
-  def join_variables(self, name, variables):
+  def join_variables(self, node, name, variables):
     """Create a combined Variable for a list of variables.
 
     This is destructive: It will reuse and overwrite the input variables. The
@@ -494,6 +430,7 @@ class VirtualMachine(object):
     that return a list of "temporary" variables. (E.g. function calls)
 
     Args:
+      node: The current CFG node.
       name: Name of the new variable.
       variables: List of variables.
     Returns:
@@ -507,7 +444,7 @@ class VirtualMachine(object):
     else:
       v = self.program.NewVariable(name)
       for r in variables:
-        v.AddValues(r, self.current_location)
+        v.AddValues(r, node)
       return v
 
   def convert_value_to_string(self, val):
@@ -515,7 +452,7 @@ class VirtualMachine(object):
       return val.pyval
     raise ConversionError("%s is not a string" % val)
 
-  def create_pytd_instance(self, name, pytype, source_sets=None, subst=None):
+  def create_pytd_instance(self, name, pytype, subst, node, source_sets=None):
     """Create an instance of a PyTD type as a typegraph.Variable.
 
     Because this (unlike create_pytd_instance_value) creates variables, it can
@@ -524,10 +461,11 @@ class VirtualMachine(object):
     Args:
       name: What to call the resulting variable.
       pytype: A PyTD type to construct an instance of.
+      subst: The current type parameters.
+      node: The current CFG node.
       source_sets: An iterator over instances of SourceSet (or just tuples).
         Each SourceSet describes a combination of values that were used to
         build the new value (e.g., for a function call, parameter types).
-      subst: The current type parameters.
     Returns:
       A typegraph.Variable.
     Raises:
@@ -536,7 +474,7 @@ class VirtualMachine(object):
     if not source_sets:
       source_sets = [[]]
     if isinstance(pytype, pytd.AnythingType):
-      return self.create_new_unknown("?")
+      return self.create_new_unknown(node, "?")
     name = pytype.name if hasattr(pytype, "name") else pytype.__class__.__name__
     var = self.program.NewVariable(name)
     for t in pytd_utils.UnpackUnion(pytype):
@@ -546,15 +484,15 @@ class VirtualMachine(object):
               t.name, subst))
         for v in subst[t.name].values:
           for source_set in source_sets:
-            var.AddValue(v.data, source_set + [v], self.current_location)
+            var.AddValue(v.data, source_set + [v], node)
       else:
-        value = self._create_pytd_instance_value(name, t, subst)
+        value = self._create_pytd_instance_value(name, t, subst, node)
         for source_set in source_sets:
-          var.AddValue(value, source_set, self.current_location)
+          var.AddValue(value, source_set, node)
         log.info("New pytd instance for %s: %r", name, value)
     return var
 
-  def _create_pytd_instance_value(self, name, pytype, subst=None):
+  def _create_pytd_instance_value(self, name, pytype, subst, node):
     """Create an instance of PyTD type.
 
     This can handle any PyTD type and is used for generating both methods of
@@ -565,6 +503,7 @@ class VirtualMachine(object):
       name: What to call the value.
       pytype: A PyTD type to construct an instance of.
       subst: The current type parameters.
+      node: The current CFG node.
     Returns:
       An instance of AtomicAbstractType.
     Raises:
@@ -580,7 +519,8 @@ class VirtualMachine(object):
       return value
     elif isinstance(pytype, pytd.GenericType):
       assert isinstance(pytype.base_type, pytd.ClassType)
-      value = self._create_pytd_instance_value(name, pytype.base_type, subst)
+      value = self._create_pytd_instance_value(name, pytype.base_type,
+                                               subst, node)
       if isinstance(pytype, pytd.GenericType):
         type_params = pytype.parameters
       else:
@@ -588,18 +528,17 @@ class VirtualMachine(object):
       for formal, actual in zip(pytype.base_type.cls.template, type_params):
         log.info("Setting type parameter: %r %r", formal, actual)
         # TODO(kramm): Should these be classes, not instances?
-        p = self.create_pytd_instance(repr(formal), actual, subst=subst)
-        value.overwrite_type_parameter(formal.name, p)
+        p = self.create_pytd_instance(repr(formal), actual, subst, node)
+        value.overwrite_type_parameter(node, formal.name, p)
       return value
     else:
       return self.convert_constant_to_value(name, pytype)
 
-  def create_new_unknown(self, name, source=None):
+  def create_new_unknown(self, node, name, source=None):
     """Create a new variable containing unknown, originating from this one."""
     unknown = abstract.Unknown(self)
     v = self.program.NewVariable(name)
-    val = v.AddValue(unknown, source_set=[source] if source else [],
-                     where=self.current_location)
+    val = v.AddValue(unknown, source_set=[source] if source else [], where=node)
     unknown.owner = val
     self.trace_unknown(unknown.class_name, v)
     return v
@@ -624,12 +563,12 @@ class VirtualMachine(object):
     if isinstance(pyval, pytd.UnionType):
       options = [self.convert_constant_to_value(pytd.Print(t), t)
                  for t in pyval.type_list]
-      return self.program.NewVariable(name, options, [], self.current_location)
+      return self.program.NewVariable(name, options, [], self.root_cfg_node)
     elif isinstance(pyval, pytd.Constant):
-      return self.create_pytd_instance(name, pyval.type)
+      return self.create_pytd_instance(name, pyval.type, {}, self.root_cfg_node)
     result = self.convert_constant_to_value(name, pyval)
     if result is not None:
-      return result.to_variable(name)
+      return result.to_variable(self.root_cfg_node, name)
     # There might still be bugs on the abstract intepreter when it returns,
     # e.g. a list of values instead of a list of types:
     assert pyval.__class__ != typegraph.Variable, pyval
@@ -639,8 +578,9 @@ class VirtualMachine(object):
       # This case needs to go at the end because many things are actually also
       # tuples.
       return self.build_tuple(
-          self.maybe_convert_constant("tuple[%d]" % i, v)
-          for i, v in enumerate(pyval))
+          self.root_cfg_node,
+          (self.maybe_convert_constant("tuple[%d]" % i, v)
+           for i, v in enumerate(pyval)))
     raise ValueError(
         "Cannot convert {} to an abstract value".format(pyval.__class__))
 
@@ -714,7 +654,7 @@ class VirtualMachine(object):
       return abstract.Nothing(self)
     elif isinstance(pyval, pytd.AnythingType):
       # TODO(kramm): Can we do this without creating a Variable?
-      return self.create_new_unknown("?").data[0]
+      return self.create_new_unknown(self.root_cfg_node, "?").data[0]
     elif isinstance(pyval, pytd.UnionType):
       return abstract.Union([self.convert_constant_to_value(pytd.Print(t), t)
                              for t in pyval.type_list], self)
@@ -734,9 +674,9 @@ class VirtualMachine(object):
       return abstract.ParameterizedClass(cls, type_parameters, self)
     elif isinstance(pyval, tuple):
       assert pyval.__class__ is tuple
-      return self.tuple_to_value(
-          [self.convert_constant("tuple[%d]" % i, item)
-           for i, item in enumerate(pyval)])
+      return self.tuple_to_value(self.root_cfg_node,
+                                 [self.convert_constant("tuple[%d]" % i, item)
+                                  for i, item in enumerate(pyval)])
     else:
       raise NotImplementedError("Can't convert constant %s %r" %
                                 (type(pyval), pyval))
@@ -759,7 +699,7 @@ class VirtualMachine(object):
     if isinstance(pyval, typegraph.Variable):
       return pyval
     elif isinstance(pyval, abstract.AtomicAbstractValue):
-      return pyval.to_variable(name)
+      return pyval.to_variable(self.root_cfg_node, name)
     elif isinstance(pyval, dict):
       value = abstract.LazyAbstractOrConcreteValue(
           name,
@@ -767,20 +707,21 @@ class VirtualMachine(object):
           member_map=pyval,
           resolver=self.maybe_convert_constant,
           vm=self)
-      value.set_attribute("__class__", self.dict_type)
-      return value.to_variable(name)
+      value.set_attribute(self.root_cfg_node, "__class__", self.dict_type)
+      return value.to_variable(self.root_cfg_node, name)
     else:
       return self.convert_constant(name, pyval)
 
-  def make_none(self):
-    none = self.none.to_variable("None")
+  def make_none(self, node):
+    none = self.none.to_variable(node, "None")
     assert self.is_none(none)
     return none
 
-  def make_class(self, name_var, bases, class_dict_var):
+  def make_class(self, node, name_var, bases, class_dict_var):
     """Create a class with the name, bases and methods given.
 
     Args:
+      node: The current CFG node.
       name_var: Class name.
       bases: Base classes.
       class_dict_var: Members of the class, as a Variable containing an
@@ -795,15 +736,14 @@ class VirtualMachine(object):
       class_dict = _get_atomic_value(class_dict_var)
     except ConversionError:
       log.error("Error initializing class %r", name)
-      return self.create_new_unknown(name)
+      return self.create_new_unknown(node, name)
     val = abstract.InterpreterClass(
         name,
         list(_get_atomic_python_constant(bases)),
         class_dict.members,
         self)
     var = self.program.NewVariable(name)
-    var.AddValue(val, bases.values + class_dict_var.values,
-                 self.current_location)
+    var.AddValue(val, bases.values + class_dict_var.values, node)
     return var
 
   def make_instance(self, cls, args, kws):
@@ -840,10 +780,10 @@ class VirtualMachine(object):
     # TODO(ampere): What else needs to be an origin in this case? Probably stuff
     # in closure.
     var = self.program.NewVariable(name)
-    var.AddValue(val, code.values, self.current_location)
+    var.AddValue(val, code.values, self.root_cfg_node)
     return var
 
-  def make_frame(self, code, callargs=None,
+  def make_frame(self, node, code, callargs=None,
                  f_globals=None, f_locals=None, closure=None):
     """Create a new frame object, using the given args, globals and locals."""
     if any(code is f.f_code for f in self.frames):
@@ -876,7 +816,7 @@ class VirtualMachine(object):
     if code.co_flags & loadmarshal.CodeType.CO_NEWLOCALS:
       f_locals = self.convert_locals_or_globals({}, "locals")
 
-    return frame_state.Frame(self, code, f_globals, f_locals,
+    return frame_state.Frame(node, self, code, f_globals, f_locals,
                              self.frame, callargs or {}, closure)
 
   def is_none(self, value):
@@ -896,9 +836,9 @@ class VirtualMachine(object):
       return False
 
   def push_abstract_exception(self, state):
-    tb = self.program.NewVariable("tb", [], [], self.current_location)
-    value = self.program.NewVariable("value", [], [], self.current_location)
-    exctype = self.program.NewVariable("exctype", [], [], self.current_location)
+    tb = self.program.NewVariable("tb", [], [], state.node)
+    value = self.program.NewVariable("value", [], [], state.node)
+    exctype = self.program.NewVariable("exctype", [], [], state.node)
     return state.push(tb, value, exctype)
 
   def resume_frame(self, frame):
@@ -926,22 +866,22 @@ class VirtualMachine(object):
         src, python_version=self.python_version, filename=filename)
     return blocks.process_code(code)
 
-  def run_bytecode(self, code, node, f_globals=None, f_locals=None):
-    frame = self.make_frame(code, f_globals=f_globals, f_locals=f_locals)
+  def run_bytecode(self, node, code, f_globals=None, f_locals=None):
+    frame = self.make_frame(node, code, f_globals=f_globals, f_locals=f_locals)
     node, _ = self.run_frame(frame, node)
     if self.frames:  # pragma: no cover
       raise VirtualMachineError("Frames left over!")
     if self.frame is not None and self.frame.data_stack:  # pragma: no cover
       raise VirtualMachineError("Data left on stack!")
-    return frame.f_globals, frame.f_locals, node
+    return node, frame.f_globals, frame.f_locals
 
   def preload_builtins(self, node):
     builtins_code = self.compile_src(
         builtins.GetBuiltinsCode(self.python_version))
-    f_globals, f_locals, node = self.run_bytecode(builtins_code, node)
+    node, f_globals, f_locals = self.run_bytecode(node, builtins_code)
     # at the outer layer, locals are the same as globals
     builtin_names = frozenset(f_globals.members)
-    return f_globals, f_locals, builtin_names, node
+    return node, f_globals, f_locals, builtin_names
 
   def run_program(self, src, filename=None, run_builtins=True):
     """Run the code and return the CFG nodes.
@@ -959,45 +899,49 @@ class VirtualMachine(object):
     """
     node = self.root_cfg_node.ConnectNew("init")
     if run_builtins:
-      f_globals, f_locals, builtin_names, node = self.preload_builtins(node)
+      node, f_globals, f_locals, builtin_names = self.preload_builtins(node)
     else:
-      f_globals, f_locals, builtin_names, node = None, None, frozenset(), node
+      node, f_globals, f_locals, builtin_names = node, None, None, frozenset()
 
     code = self.compile_src(src, filename=filename)
 
-    f_globals, _, node = self.run_bytecode(code, node, f_globals, f_locals)
+    node, f_globals, _ = self.run_bytecode(node, code, f_globals, f_locals)
     log.info("Final node: %s", node.name)
     return node, f_globals.members, builtin_names
 
-  def call_binary_operator(self, name, x, y):
+  def call_binary_operator(self, state, name, x, y):
     """Map a binary operator to "magic methods" (__add__ etc.)."""
     # TODO(pludemann): See TODO.txt for more on reverse operator subtleties.
     results = []
     try:
-      attr = self.load_attr(x, name)
+      state, attr = self.load_attr(state, x, name)
     except exceptions.ByteCodeAttributeError:  # from load_attr
       log.info("Failed to find %s on %r", name, x, exc_info=True)
     else:
-      results.append(self.call_function_and_adjust_state(attr, [y]))
+      state, ret = self.call_function_with_state(state, attr, [y])
+      results.append(ret)
     rname = self.reverse_operator_name(name)
     if self.reverse_operators and rname:
       try:
-        attr = self.load_attr(y, rname)
+        state, attr = self.load_attr(state, y, rname)
       except exceptions.ByteCodeAttributeError:
         log.debug("No reverse operator %s on %r",
                   self.reverse_operator_name(name), y)
       else:
-        results.append(self.call_function_and_adjust_state(attr, [x]))
+        state, ret = self.call_function_with_state(state, attr, [x])
+        results.append(ret)
     log.debug("Results: %r", results)
-    return self.join_variables(name, results)
+    return state, self.join_variables(state.node, name, results)
 
-  def binary_operator(self, name):
-    x, y = self.popn(2)
-    self.push(self.call_binary_operator(name, x, y))
+  def binary_operator(self, state, name):
+    state, (x, y) = state.popn(2)
+    state, ret = self.call_binary_operator(state, name, x, y)
+    return state.push(ret)
 
-  def inplace_operator(self, name):
-    x, y = self.popn(2)
-    self.push(self.call_binary_operator(name, x, y))
+  def inplace_operator(self, state, name):
+    state, (x, y) = state.popn(2)
+    state, ret = self.call_binary_operator(state, name, x, y)
+    return state.push(ret)
 
   def trace_unknown(self, *args):
     """Fired whenever we create a variable containing 'Unknown'."""
@@ -1007,11 +951,10 @@ class VirtualMachine(object):
     """Fired whenever we call a builtin using unknown parameters."""
     return NotImplemented
 
-  def call_function_and_adjust_state(self, funcu, posargs, namedargs=None):
+  def call_function_with_state(self, state, funcu, posargs, namedargs=None):
     node, ret = self.call_function(
-        self.frame.state.node, funcu, posargs, namedargs)
-    self.frame.state = self.frame.state.change_cfg_node(node)
-    return ret
+        state.node, funcu, posargs, namedargs)
+    return state.change_cfg_node(node), ret
 
   def call_function(self, node, funcu, posargs, namedargs=None):
     """Call a function.
@@ -1032,32 +975,34 @@ class VirtualMachine(object):
       try:
         new_node, one_result = func.call(
             node, funcv, posargs, namedargs or {})
-        self.frame.state = self.frame.state.change_cfg_node(new_node)
       except abstract.FailedFunctionCall as e:
         log.error("FailedFunctionCall for %s", e.obj)
         for msg in e.explanation_lines:
           log.error("... %s", msg)
       else:
-        result.AddValues(one_result, self.current_location)
+        result.AddValues(one_result, new_node)
         nodes.append(new_node)
     if nodes:
       return self.join_cfg_nodes(nodes), result
     else:
       return node, result
 
-  def call_function_from_stack(self, arg, args, kwargs=None):
+  def call_function_from_stack(self, state, arg, args, kwargs=None):
     """Pop arguments for a function and call it."""
     num_kw, num_pos = divmod(arg, 256)
     namedargs = abstract.Dict("kwargs", self)
     for _ in range(num_kw):
-      key, val = self.popn(2)
-      namedargs.setitem(key, val)
+      state, (key, val) = state.popn(2)
+      namedargs.setitem(state.node, key, val)
     if kwargs:
-      namedargs.update(kwargs)
-    posargs = list(self.popn(num_pos))
+      namedargs.update(state.node, kwargs)
+    state, posargs = state.popn(num_pos)
+    posargs = list(posargs)
     posargs.extend(args)
-    func = self.pop()
-    self.push(self.call_function_and_adjust_state(func, posargs, namedargs))
+    state, func = state.pop()
+    state, ret = self.call_function_with_state(state, func, posargs, namedargs)
+    state = state.push(ret)
+    return state
 
   def load_constant(self, value):
     """Converts a Python value to an abstract value."""
@@ -1082,48 +1027,51 @@ class VirtualMachine(object):
     """Get a real python dict of the globals."""
     return self.frame.f_globals
 
-  def load_from(self, store, name):
-    node = self.frame.state.node
+  def load_from(self, state, store, name):
+    node = state.node
     node, exists = store.has_attribute(node, name)
     assert isinstance(node, typegraph.CFGNode)
     if not exists:
       raise KeyError(name)
     node, attr = store.get_attribute(node, name)
     assert isinstance(node, typegraph.CFGNode)
-    self.frame.state = self.frame.state.change_cfg_node(node)
-    return attr
+    state = state.change_cfg_node(node)
+    return state, attr
 
-  def load_local(self, name):
+  def load_local(self, state, name):
     """Called when a local is loaded onto the stack.
 
     Uses the name to retrieve the value from the current locals().
 
     Args:
+      state: The current VM state.
       name: Name of the local
 
     Returns:
       The value (typegraph.Variable)
     """
-    return self.load_from(self.frame.f_locals, name)
+    return self.load_from(state, self.frame.f_locals, name)
 
-  def load_global(self, name):
-    return self.load_from(self.frame.f_globals, name)
+  def load_global(self, state, name):
+    return self.load_from(state, self.frame.f_globals, name)
 
-  def load_builtin(self, name):
+  def load_builtin(self, state, name):
     if name == "__any_object__":
       # for type_inferencer/tests/test_pgms/*.py
-      return abstract.Unknown(self).to_variable(name)
-    return self.load_from(self.frame.f_builtins, name)
+      return state, abstract.Unknown(self).to_variable(state.node, name)
+    return self.load_from(state, self.frame.f_builtins, name)
 
-  def store_local(self, name, value):
+  def store_local(self, state, name, value):
     """Called when a local is written."""
     assert isinstance(value, typegraph.Variable), (name, repr(value))
-    self.frame.f_locals.set_attribute(name, value)
+    node = self.frame.f_locals.set_attribute(state.node, name, value)
+    return state.change_cfg_node(node)
 
-  def store_global(self, name, value):
+  def store_global(self, state, name, value):
     """Same as store_local except for globals."""
     assert isinstance(value, typegraph.Variable)
-    self.frame.f_globals.set_attribute(name, value)
+    node = self.frame.f_globals.set_attribute(state.node, name, value)
+    return state.change_cfg_node(node)
 
   def del_local(self, name):
     """Called when a local is deleted."""
@@ -1131,10 +1079,10 @@ class VirtualMachine(object):
     log.warning("Local variable removal does not actually do "
                 "anything in the abstract interpreter")
 
-  def load_attr(self, obj, attr):
+  def load_attr(self, state, obj, attr):
     """Load an attribute from an object."""
-    assert isinstance(obj, typegraph.Variable)
-    node = self.frame.state.node
+    assert isinstance(obj, typegraph.Variable), obj
+    node = state.node
     # Resolve the value independently for each value of obj
     result = self.program.NewVariable(str(attr))
     log.debug("getting attr %s from %r", attr, obj)
@@ -1158,87 +1106,94 @@ class VirtualMachine(object):
           node3, cls = value.get_attribute(node3, "__class__", val)
           node3, get_result = self.call_function(node3, getter, [getter, cls])
           for getter in get_result.values:
-            result.AddValue(getter.data, [getter], self.current_location)
+            result.AddValue(getter.data, [getter], node3)
         else:
-          result.AddValue(value, [v], self.current_location)
+          result.AddValue(value, [v], node3)
         nodes.append(node3)
     if not result.values:
       raise exceptions.ByteCodeAttributeError("No such attribute %s" % attr)
-    self.frame.state = self.frame.state.change_cfg_node(
+    state = state.change_cfg_node(
         self.join_cfg_nodes(nodes))
-    return result
+    return state, result
 
-  def store_attr(self, obj, attr, value):
+  def store_attr(self, state, obj, attr, value):
     """Same as load_attr except for setting attributes."""
     assert isinstance(obj, typegraph.Variable)
     assert isinstance(attr, str)
     assert isinstance(value, typegraph.Variable)
+    nodes = []
     for val in obj.values:
       # TODO(kramm): Check whether val.data is a descriptor (i.e. has "__set__")
-      val.data.set_attribute(attr, value)
+      nodes.append(val.data.set_attribute(state.node, attr, value))
+    return state.change_cfg_node(
+        self.join_cfg_nodes(nodes))
 
-  def del_attr(self, obj, attr):
+  def del_attr(self, state, obj, attr):
     """Same as load_attr except for deleting attributes."""
+    # TODO(kramm): Store abstract.Nothing
     log.warning("Attribute removal does not actually do "
                 "anything in the abstract interpreter")
+    return state
 
-  def build_string(self, s):
+  def build_string(self, node, s):
     str_value = abstract.AbstractOrConcreteValue(
         s, self.str_type, self)
-    return str_value.to_variable(name=repr(s))
+    return str_value.to_variable(node, name=repr(s))
 
-  def build_content(self, elements):
+  def build_content(self, node, elements):
     var = self.program.NewVariable("<elements>")
     for v in elements:
-      var.AddValues(v, self.current_location)
+      var.AddValues(v, node)
     return var
 
-  def build_slice(self, start, stop, step=None):
+  def build_slice(self, node, start, stop, step=None):
     value = abstract.Instance(self.slice_type, self)
-    return value.to_variable(name="slice")
+    return value.to_variable(node, name="slice")
 
-  def tuple_to_value(self, content):
+  def tuple_to_value(self, node, content):
     """Create a VM tuple from the given sequence."""
     content = tuple(content)  # content might be a generator
     value = abstract.AbstractOrConcreteValue(
         content, self.tuple_type, self)
-    value.overwrite_type_parameter("T", self.build_content(content))
+    value.overwrite_type_parameter(node, "T", self.build_content(node, content))
     return value
 
-  def build_tuple(self, content):
+  def build_tuple(self, node, content):
     """Create a VM tuple from the given sequence."""
-    return self.tuple_to_value(content).to_variable(name="tuple")
+    return self.tuple_to_value(node, content).to_variable(node, name="tuple")
 
-  def build_list(self, content):
+  def build_list(self, node, content):
     """Create a VM list from the given sequence."""
     content = list(content)  # content might be a generator
     value = abstract.Instance(self.list_type, self)
-    value.overwrite_type_parameter("T", self.build_content(content))
-    return value.to_variable(name="list(...)")
+    value.overwrite_type_parameter(node, "T", self.build_content(node, content))
+    return value.to_variable(node, name="list(...)")
 
-  def build_set(self, content):
+  def build_set(self, node, content):
     """Create a VM set from the given sequence."""
     content = list(content)  # content might be a generator
     value = abstract.Instance(self.set_type, self)
-    value.overwrite_type_parameter("T", self.build_content(content))
-    return value.to_variable(name="set(...)")
+    value.overwrite_type_parameter(node, "T", self.build_content(node, content))
+    return value.to_variable(node, name="set(...)")
 
-  def build_map(self):
+  def build_map(self, node):
     """Create an empty VM dict."""
-    return abstract.Dict("dict()", self).to_variable("dict()")
+    return abstract.Dict("dict()", self).to_variable(node, "dict()")
 
   def push_last_exception(self, state):
     log.info("Pushing exception %r", state.exception)
     exctype, value, tb = state.exception
     return state.push(tb, value, exctype)
 
-  def del_subscr(self, obj, subscr):
+  def del_subscr(self, state, obj, subscr):
     log.warning("Subscript removal does not actually do "
                 "anything in the abstract interpreter")
+    # TODO(kramm): store abstract.Nothing
+    return state
 
-  def pop_varargs(self):
+  def pop_varargs(self, state):
     """Retrieve a varargs tuple from the stack. Used by call_function."""
-    args_var = self.pop()
+    state, args_var = state.pop()
     try:
       args = _get_atomic_python_constant(args_var)
       if not isinstance(args, tuple):
@@ -1250,11 +1205,11 @@ class VirtualMachine(object):
       # all parameters that are not otherwise set.
       log.error("Unable to resolve positional arguments: *%s", args_var.name)
       args = []
-    return args
+    return state, args
 
-  def pop_kwargs(self):
+  def pop_kwargs(self, state):
     """Retrieve a kwargs dictionary from the stack. Used by call_function."""
-    return self.pop()
+    return state.pop()
 
   def convert_locals_or_globals(self, d, name="globals"):
     if isinstance(d, dict):
@@ -1264,7 +1219,7 @@ class VirtualMachine(object):
       assert isinstance(d, (abstract.LazyAbstractValue, types.NoneType))
       return d
 
-  def import_name(self, name, level):
+  def import_name(self, state, name, level):
     """Import the module and return the module object."""
     try:
       ast = import_paths.module_name_to_pytd(name, level,
@@ -1272,8 +1227,8 @@ class VirtualMachine(object):
                                              self.pythonpath)
     except IOError:
       log.error("Couldn't find module %s", name)
-      return self.create_new_unknown(name)
-    return self.convert_constant(name, ast)
+      return state, self.create_new_unknown(state.node, name)
+    return state, self.convert_constant(name, ast)
 
   def print_item(self, item, to=None):
     # We don't need do anything here, since Python's print function accepts
@@ -1284,424 +1239,463 @@ class VirtualMachine(object):
   def print_newline(self, to=None):
     pass
 
-  def unary_operator(self, name):
-    x = self.pop()
-    method = self.load_attr(x, name)  # E.g. __not__
-    result = self.call_function_and_adjust_state(method, [], {})
-    self.push(result)
+  def unary_operator(self, state, name):
+    state, x = state.pop()
+    state, method = self.load_attr(state, x, name)  # E.g. __not__
+    state, result = self.call_function_with_state(state, method, [], {})
+    state = state.push(result)
+    return state
 
-  def byte_UNARY_NOT(self):
-    self.pop()  # discard
-    self.push(self.instantiate_builtin(bool))
+  def byte_UNARY_NOT(self, state):
+    state = state.pop_and_discard()
+    state = state.push(self.instantiate_builtin(state.node, bool))
+    return state
 
-  def byte_UNARY_CONVERT(self):
-    self.unary_operator("__repr__")
+  def byte_UNARY_CONVERT(self, state):
+    return self.unary_operator(state, "__repr__")
 
-  def byte_UNARY_NEGATIVE(self):
-    self.unary_operator("__neg__")
+  def byte_UNARY_NEGATIVE(self, state):
+    return self.unary_operator(state, "__neg__")
 
-  def byte_UNARY_POSITIVE(self):
-    self.unary_operator("__pos__")
+  def byte_UNARY_POSITIVE(self, state):
+    return self.unary_operator(state, "__pos__")
 
-  def byte_UNARY_INVERT(self):
-    self.unary_operator("__invert__")
+  def byte_UNARY_INVERT(self, state):
+    return self.unary_operator(state, "__invert__")
 
-  def byte_BINARY_ADD(self):
-    self.binary_operator("__add__")
+  def byte_BINARY_ADD(self, state):
+    return self.binary_operator(state, "__add__")
 
-  def byte_BINARY_SUBTRACT(self):
-    self.binary_operator("__sub__")
+  def byte_BINARY_SUBTRACT(self, state):
+    return self.binary_operator(state, "__sub__")
 
-  def byte_BINARY_DIVIDE(self):
-    self.binary_operator("__div__")
+  def byte_BINARY_DIVIDE(self, state):
+    return self.binary_operator(state, "__div__")
 
-  def byte_BINARY_MULTIPLY(self):
-    self.binary_operator("__mul__")
+  def byte_BINARY_MULTIPLY(self, state):
+    return self.binary_operator(state, "__mul__")
 
-  def byte_BINARY_MODULO(self):
-    self.binary_operator("__mod__")
+  def byte_BINARY_MODULO(self, state):
+    return self.binary_operator(state, "__mod__")
 
-  def byte_BINARY_LSHIFT(self):
-    self.binary_operator("__lshift__")
+  def byte_BINARY_LSHIFT(self, state):
+    return self.binary_operator(state, "__lshift__")
 
-  def byte_BINARY_RSHIFT(self):
-    self.binary_operator("__rshift__")
+  def byte_BINARY_RSHIFT(self, state):
+    return self.binary_operator(state, "__rshift__")
 
-  def byte_BINARY_AND(self):
-    self.binary_operator("__and__")
+  def byte_BINARY_AND(self, state):
+    return self.binary_operator(state, "__and__")
 
-  def byte_BINARY_XOR(self):
-    self.binary_operator("__xor__")
+  def byte_BINARY_XOR(self, state):
+    return self.binary_operator(state, "__xor__")
 
-  def byte_BINARY_OR(self):
-    self.binary_operator("__or__")
+  def byte_BINARY_OR(self, state):
+    return self.binary_operator(state, "__or__")
 
-  def byte_BINARY_FLOOR_DIVIDE(self):
-    self.binary_operator("__floordiv__")
+  def byte_BINARY_FLOOR_DIVIDE(self, state):
+    return self.binary_operator(state, "__floordiv__")
 
-  def byte_BINARY_TRUE_DIVIDE(self):
-    self.binary_operator("__truediv__")
+  def byte_BINARY_TRUE_DIVIDE(self, state):
+    return self.binary_operator(state, "__truediv__")
 
-  def byte_BINARY_POWER(self):
-    self.binary_operator("__pow__")
+  def byte_BINARY_POWER(self, state):
+    return self.binary_operator(state, "__pow__")
 
-  def byte_BINARY_SUBSCR(self):
-    self.binary_operator("__getitem__")
+  def byte_BINARY_SUBSCR(self, state):
+    return self.binary_operator(state, "__getitem__")
 
-  def byte_INPLACE_ADD(self):
-    self.binary_operator("__iadd__")
+  def byte_INPLACE_ADD(self, state):
+    return self.binary_operator(state, "__iadd__")
 
-  def byte_INPLACE_SUBTRACT(self):
-    self.inplace_operator("__isub__")
+  def byte_INPLACE_SUBTRACT(self, state):
+    return self.inplace_operator(state, "__isub__")
 
-  def byte_INPLACE_MULTIPLY(self):
-    self.inplace_operator("__imul__")
+  def byte_INPLACE_MULTIPLY(self, state):
+    return self.inplace_operator(state, "__imul__")
 
-  def byte_INPLACE_DIVIDE(self):
-    self.inplace_operator("__idiv__")
+  def byte_INPLACE_DIVIDE(self, state):
+    return self.inplace_operator(state, "__idiv__")
 
-  def byte_INPLACE_MODULO(self):
-    self.inplace_operator("__imod__")
+  def byte_INPLACE_MODULO(self, state):
+    return self.inplace_operator(state, "__imod__")
 
-  def byte_INPLACE_POWER(self):
-    self.inplace_operator("__ipow__")
+  def byte_INPLACE_POWER(self, state):
+    return self.inplace_operator(state, "__ipow__")
 
-  def byte_INPLACE_LSHIFT(self):
-    self.inplace_operator("__ilshift__")
+  def byte_INPLACE_LSHIFT(self, state):
+    return self.inplace_operator(state, "__ilshift__")
 
-  def byte_INPLACE_RSHIFT(self):
-    self.inplace_operator("__irshift__")
+  def byte_INPLACE_RSHIFT(self, state):
+    return self.inplace_operator(state, "__irshift__")
 
-  def byte_INPLACE_AND(self):
-    self.inplace_operator("__iand__")
+  def byte_INPLACE_AND(self, state):
+    return self.inplace_operator(state, "__iand__")
 
-  def byte_INPLACE_XOR(self):
-    self.inplace_operator("__ixor__")
+  def byte_INPLACE_XOR(self, state):
+    return self.inplace_operator(state, "__ixor__")
 
-  def byte_INPLACE_OR(self):
-    self.inplace_operator("__ior__")
+  def byte_INPLACE_OR(self, state):
+    return self.inplace_operator(state, "__ior__")
 
-  def byte_INPLACE_FLOOR_DIVIDE(self):
-    self.inplace_operator("__ifloordiv__")
+  def byte_INPLACE_FLOOR_DIVIDE(self, state):
+    return self.inplace_operator(state, "__ifloordiv__")
 
-  def byte_INPLACE_TRUE_DIVIDE(self):
-    self.inplace_operator("__itruediv__")
+  def byte_INPLACE_TRUE_DIVIDE(self, state):
+    return self.inplace_operator(state, "__itruediv__")
 
-  def byte_LOAD_CONST(self, op):
+  def byte_LOAD_CONST(self, state, op):
     const = self.frame.f_code.co_consts[op.arg]
-    self.push(self.load_constant(const))
+    return state.push(self.load_constant(const))
 
-  def byte_POP_TOP(self):
-    self.pop()
+  def byte_POP_TOP(self, state):
+    return state.pop_and_discard()
 
-  def byte_DUP_TOP(self):
-    self.push(self.top())
+  def byte_DUP_TOP(self, state):
+    return state.push(state.top())
 
-  def byte_DUP_TOPX(self, op):
-    items = self.popn(op.arg)
-    self.push(*items)
-    self.push(*items)
+  def byte_DUP_TOPX(self, state, op):
+    state, items = state.popn(op.arg)
+    state = state.push(*items)
+    state = state.push(*items)
+    return state
 
-  def byte_DUP_TOP_TWO(self):
+  def byte_DUP_TOP_TWO(self, state):
     # Py3 only
-    a, b = self.popn(2)
-    self.push(a, b, a, b)
+    state, (a, b) = state.popn(2)
+    return state.push(a, b, a, b)
 
-  def byte_ROT_TWO(self):
-    a, b = self.popn(2)
-    self.push(b, a)
+  def byte_ROT_TWO(self, state):
+    state, (a, b) = state.popn(2)
+    return state.push(b, a)
 
-  def byte_ROT_THREE(self):
-    a, b, c = self.popn(3)
-    self.push(c, a, b)
+  def byte_ROT_THREE(self, state):
+    state, (a, b, c) = state.popn(3)
+    return state.push(c, a, b)
 
-  def byte_ROT_FOUR(self):
-    a, b, c, d = self.popn(4)
-    self.push(d, a, b, c)
+  def byte_ROT_FOUR(self, state):
+    state, (a, b, c, d) = state.popn(4)
+    return state.push(d, a, b, c)
 
-  def byte_LOAD_NAME(self, op):
+  def byte_LOAD_NAME(self, state, op):
     """Load a name. Can be a local, global, or builtin."""
     name = self.frame.f_code.co_names[op.arg]
     try:
-      val = self.load_local(name)
+      state, val = self.load_local(state, name)
     except KeyError:
       try:
-        val = self.load_global(name)
+        state, val = self.load_global(state, name)
       except KeyError:
         try:
-          val = self.load_builtin(name)
+          state, val = self.load_builtin(state, name)
         except KeyError:
           raise exceptions.ByteCodeNameError("name '%s' is not defined" % name)
-    self.push(val)
+    return state.push(val)
 
-  def byte_STORE_NAME(self, op):
+  def byte_STORE_NAME(self, state, op):
     name = self.frame.f_code.co_names[op.arg]
-    self.store_local(name, self.pop())
+    state, value = state.pop()
+    state = self.store_local(state, name, value)
+    return state
 
-  def byte_DELETE_NAME(self, op):
+  def byte_DELETE_NAME(self, state, op):
     name = self.frame.f_code.co_names[op.arg]
     self.del_local(name)
+    return state
 
-  def byte_LOAD_FAST(self, op):
+  def byte_LOAD_FAST(self, state, op):
     """Load a local. Unlike LOAD_NAME, it doesn't fall back to globals."""
     name = self.frame.f_code.co_varnames[op.arg]
     try:
-      val = self.load_local(name)
+      state, val = self.load_local(state, name)
     except KeyError:
       raise exceptions.ByteCodeUnboundLocalError(
           "local variable '%s' referenced before assignment" % name
       )
-    self.push(val)
+    return state.push(val)
 
-  def byte_STORE_FAST(self, op):
+  def byte_STORE_FAST(self, state, op):
     name = self.frame.f_code.co_varnames[op.arg]
-    self.store_local(name, self.pop())
+    state, value = state.pop()
+    state = self.store_local(state, name, value)
+    return state
 
-  def byte_DELETE_FAST(self, op):
+  def byte_DELETE_FAST(self, state, op):
     name = self.frame.f_code.co_varnames[op.arg]
     self.del_local(name)
+    return state
 
-  def byte_LOAD_GLOBAL(self, op):
+  def byte_LOAD_GLOBAL(self, state, op):
     """Load a global variable, or fall back to trying to load a builtin."""
     name = self.frame.f_code.co_names[op.arg]
     try:
-      val = self.load_global(name)
+      state, val = self.load_global(state, name)
     except KeyError:
       try:
-        val = self.load_builtin(name)
+        state, val = self.load_builtin(state, name)
       except KeyError:
         raise exceptions.ByteCodeNameError(
             "global name '%s' is not defined" % name)
-    self.push(val)
+    return state.push(val)
 
-  def byte_STORE_GLOBAL(self, op):
+  def byte_STORE_GLOBAL(self, state, op):
     name = self.frame.f_code.co_names[op.arg]
-    self.store_global(name, self.pop())
+    state, value = state.pop()
+    state = self.store_global(state, name, value)
+    return state
 
-  def byte_LOAD_CLOSURE(self, op):
+  def byte_LOAD_CLOSURE(self, state, op):
     """Used to generate the 'closure' tuple for MAKE_CLOSURE.
 
     Each entry in that tuple is typically retrieved using LOAD_CLOSURE.
 
     Args:
+      state: The current VM state.
       op: The opcode. op.arg is the index of a "cell variable": This corresponds
-      to an entry in co_cellvars or co_freevars and is a variable that's bound
-      into a closure.
+        to an entry in co_cellvars or co_freevars and is a variable that's bound
+        into a closure.
+    Returns:
+      A new state.
     """
-    self.push(self.frame.cells[op.arg])
+    return state.push(self.frame.cells[op.arg])
 
-  def byte_LOAD_DEREF(self, op):
+  def byte_LOAD_DEREF(self, state, op):
     """Retrieves a value out of a cell."""
     # Since we're working on typegraph.Variable, we don't need to dereference.
-    self.push(self.frame.cells[op.arg])
+    return state.push(self.frame.cells[op.arg])
 
-  def byte_STORE_DEREF(self, op):
+  def byte_STORE_DEREF(self, state, op):
     """Stores a value in a closure cell."""
-    value = self.pop()
+    state, value = state.pop()
     assert isinstance(value, typegraph.Variable)
-    self.frame.cells[op.arg].AddValues(value, self.current_location)
+    self.frame.cells[op.arg].AddValues(value, state.node)
+    return state
 
-  def byte_LOAD_LOCALS(self):
-    self.push(self.get_locals_dict_bytecode())
+  def byte_LOAD_LOCALS(self, state):
+    return state.push(self.get_locals_dict_bytecode())
 
-  def byte_COMPARE_OP(self, op):
-    x, y = self.popn(2)
+  def byte_COMPARE_OP(self, state, op):
+    """Pops and compares the top two stack values and pushes a boolean."""
+    state, (x, y) = state.popn(2)
     # Explicit, redundant, switch statement, to make it easier to address the
     # behavior of individual compare operations:
     if op.arg == slots.CMP_LT:
-      self.push(self.call_binary_operator("__lt__", x, y))
+      state, ret = self.call_binary_operator(state, "__lt__", x, y)
     elif op.arg == slots.CMP_LE:
-      self.push(self.call_binary_operator("__le__", x, y))
+      state, ret = self.call_binary_operator(state, "__le__", x, y)
     elif op.arg == slots.CMP_EQ:
-      self.push(self.call_binary_operator("__eq__", x, y))
+      state, ret = self.call_binary_operator(state, "__eq__", x, y)
     elif op.arg == slots.CMP_NE:
-      self.push(self.call_binary_operator("__ne__", x, y))
+      state, ret = self.call_binary_operator(state, "__ne__", x, y)
     elif op.arg == slots.CMP_GT:
-      self.push(self.call_binary_operator("__gt__", x, y))
+      state, ret = self.call_binary_operator(state, "__gt__", x, y)
     elif op.arg == slots.CMP_GE:
-      self.push(self.call_binary_operator("__ge__", x, y))
+      state, ret = self.call_binary_operator(state, "__ge__", x, y)
     elif op.arg == slots.CMP_IS:
-      self.push(self.instantiate_builtin(bool))
+      ret = self.instantiate_builtin(state.node, bool)
     elif op.arg == slots.CMP_IS_NOT:
-      self.push(self.instantiate_builtin(bool))
+      ret = self.instantiate_builtin(state.node, bool)
     elif op.arg == slots.CMP_NOT_IN:
-      self.push(self.instantiate_builtin(bool))
+      ret = self.instantiate_builtin(state.node, bool)
     elif op.arg == slots.CMP_IN:
-      self.push(self.instantiate_builtin(bool))
+      ret = self.instantiate_builtin(state.node, bool)
     elif op.arg == slots.CMP_EXC_MATCH:
-      self.push(self.instantiate_builtin(bool))
+      ret = self.instantiate_builtin(state.node, bool)
     else:
       raise VirtualMachineError("Invalid argument to COMPARE_OP: %d", op.arg)
+    return state.push(ret)
 
-  def byte_LOAD_ATTR(self, op):
+  def byte_LOAD_ATTR(self, state, op):
     name = self.frame.f_code.co_names[op.arg]
-    obj = self.pop()
+    state, obj = state.pop()
     log.info("LOAD_ATTR: %r %s", type(obj), name)
-    val = self.load_attr(obj, name)
-    self.push(val)
+    state, val = self.load_attr(state, obj, name)
+    state = state.push(val)
+    return state
 
-  def byte_STORE_ATTR(self, op):
+  def byte_STORE_ATTR(self, state, op):
     name = self.frame.f_code.co_names[op.arg]
-    val, obj = self.popn(2)
-    self.store_attr(obj, name, val)
+    state, (val, obj) = state.popn(2)
+    state = self.store_attr(state, obj, name, val)
+    return state
 
-  def byte_DELETE_ATTR(self, op):
+  def byte_DELETE_ATTR(self, state, op):
     name = self.frame.f_code.co_names[op.arg]
-    obj = self.pop()
-    self.del_attr(obj, name)
+    state, obj = state.pop()
+    return self.del_attr(state, obj, name)
 
-  def store_subscr(self, obj, key, val):
-    self.call_function_and_adjust_state(self.load_attr(obj, "__setitem__"),
-                                        [key, val], {})
+  def store_subscr(self, state, obj, key, val):
+    state, f = self.load_attr(state, obj, "__setitem__")
+    state, _ = self.call_function_with_state(state, f, [key, val], {})
+    return state
 
-  def byte_STORE_SUBSCR(self):
-    val, obj, subscr = self.popn(3)
-    self.store_subscr(obj, subscr, val)
+  def byte_STORE_SUBSCR(self, state):
+    state, (val, obj, subscr) = state.popn(3)
+    return self.store_subscr(state, obj, subscr, val)
 
-  def byte_DELETE_SUBSCR(self):
-    obj, subscr = self.popn(2)
-    self.del_subscr(obj, subscr)
+  def byte_DELETE_SUBSCR(self, state):
+    state, (obj, subscr) = state.popn(2)
+    return self.del_subscr(state, obj, subscr)
 
-  def byte_BUILD_TUPLE(self, op):
+  def byte_BUILD_TUPLE(self, state, op):
     count = op.arg
-    elts = self.popn(count)
-    self.push(self.build_tuple(elts))
+    state, elts = state.popn(count)
+    return state.push(self.build_tuple(state.node, elts))
 
-  def byte_BUILD_LIST(self, op):
-    elts = self.popn(op.arg)
-    self.push(self.build_list(elts))
+  def byte_BUILD_LIST(self, state, op):
+    count = op.arg
+    state, elts = state.popn(count)
+    return state.push(self.build_list(state.node, elts))
 
-  def byte_BUILD_SET(self, op):
-    elts = self.popn(op.arg)
-    self.push(self.build_set(elts))
+  def byte_BUILD_SET(self, state, op):
+    count = op.arg
+    state, elts = state.popn(count)
+    return state.push(self.build_set(state.node, elts))
 
-  def byte_BUILD_MAP(self, op):
+  def byte_BUILD_MAP(self, state, op):
     # op.arg (size) is ignored.
-    self.push(self.build_map())
+    return state.push(self.build_map(state.node))
 
-  def byte_STORE_MAP(self):
-    # pylint: disable=unbalanced-tuple-unpacking
-    the_map, val, key = self.popn(3)
-    self.store_subscr(the_map, key, val)
-    self.push(the_map)
+  def byte_STORE_MAP(self, state):
+    state, (the_map, val, key) = state.popn(3)
+    state = self.store_subscr(state, the_map, key, val)
+    return state.push(the_map)
 
-  def byte_UNPACK_SEQUENCE(self, op):
-    seq = self.pop()
-    itr = self.call_function_and_adjust_state(
-        self.load_attr(seq, "__iter__"), [], {})
+  def byte_UNPACK_SEQUENCE(self, state, op):
+    """Pops a tuple (or other iterable) and pushes it onto the VM's stack."""
+    state, seq = state.pop()
+    state, f = self.load_attr(state, seq, "__iter__")
+    state, itr = self.call_function_with_state(state, f, [], {})
     values = []
     for _ in range(op.arg):
       # TODO(ampere): Fix for python 3
-      values.append(self.call_function_and_adjust_state(
-          self.load_attr(itr, "next"), [], {}))
+      state, f = self.load_attr(state, itr, "next")
+      state, result = self.call_function_with_state(state, f, [], {})
+      values.append(result)
     for value in reversed(values):
-      self.push(value)
+      state = state.push(value)
+    return state
 
-  def byte_BUILD_SLICE(self, op):
+  def byte_BUILD_SLICE(self, state, op):
     if op.arg == 2:
-      x, y = self.popn(2)
-      self.push(self.build_slice(x, y))
+      state, (x, y) = state.popn(2)
+      return state.push(self.build_slice(state.node, x, y))
     elif op.arg == 3:
-      x, y, z = self.popn(3)
-      self.push(self.build_slice(x, y, z))
+      state, (x, y, z) = state.popn(3)
+      return state.push(self.build_slice(state.node, x, y, z))
     else:       # pragma: no cover
       raise VirtualMachineError("Strange BUILD_SLICE count: %r" % op.arg)
 
-  def byte_LIST_APPEND(self, op):
+  def byte_LIST_APPEND(self, state, op):
     # Used by the compiler e.g. for [x for x in ...]
-    val = self.pop()
-    the_list = self.peek(op.arg)
-    self.call_function_and_adjust_state(
-        self.load_attr(the_list, "append"), [val], {})
+    count = op.arg
+    state, val = state.pop()
+    the_list = state.peek(count)
+    state, f = self.load_attr(state, the_list, "append")
+    state, _ = self.call_function_with_state(state, f, [val], {})
+    return state
 
-  def byte_SET_ADD(self, op):
+  def byte_SET_ADD(self, state, op):
     # Used by the compiler e.g. for {x for x in ...}
     count = op.arg
-    val = self.pop()
-    the_set = self.peek(count)
-    self.call_function_and_adjust_state(
-        self.load_attr(the_set, "add"), [val], {})
+    state, val = state.pop()
+    the_set = state.peek(count)
+    state, f = self.load_attr(state, the_set, "add")
+    state, _ = self.call_function_with_state(state, f, [val], {})
+    return state
 
-  def byte_MAP_ADD(self, op):
+  def byte_MAP_ADD(self, state, op):
     # Used by the compiler e.g. for {x, y for x, y in ...}
     count = op.arg
-    val, key = self.popn(2)
-    the_map = self.peek(count)
-    self.call_function_and_adjust_state(
-        self.load_attr(the_map, "__setitem__"), [key, val], {})
+    state, (val, key) = state.popn(2)
+    the_map = state.peek(count)
+    state, f = self.load_attr(state, the_map, "__setitem__")
+    state, _ = self.call_function_with_state(state, f, [key, val], {})
+    return state
 
-  def byte_PRINT_EXPR(self):
+  def byte_PRINT_EXPR(self, state):
     # Only used in the interactive interpreter, not in modules.
-    self.pop()
+    return state.pop_and_discard()
 
-  def byte_PRINT_ITEM(self):
-    item = self.pop()
+  def byte_PRINT_ITEM(self, state):
+    state, item = state.pop()
     self.print_item(item)
+    return state
 
-  def byte_PRINT_ITEM_TO(self):
-    to = self.pop()
-    item = self.pop()
+  def byte_PRINT_ITEM_TO(self, state):
+    state, to = state.pop()
+    state, item = state.pop()
     self.print_item(item, to)
+    return state
 
-  def byte_PRINT_NEWLINE(self):
+  def byte_PRINT_NEWLINE(self, state):
     self.print_newline()
+    return state
 
-  def byte_PRINT_NEWLINE_TO(self):
-    to = self.pop()
+  def byte_PRINT_NEWLINE_TO(self, state):
+    state, to = state.pop()
     self.print_newline(to)
+    return state
 
-  def byte_JUMP_IF_TRUE_OR_POP(self, op):
-    self.store_jump(op.target, self.frame.state)
-    self.pop()
+  def byte_JUMP_IF_TRUE_OR_POP(self, state, op):
+    self.store_jump(op.target, state)
+    return state.pop_and_discard()
 
-  def byte_JUMP_IF_FALSE_OR_POP(self, op):
-    self.store_jump(op.target, self.frame.state)
-    self.pop()
+  def byte_JUMP_IF_FALSE_OR_POP(self, state, op):
+    self.store_jump(op.target, state)
+    return state.pop_and_discard()
 
-  def byte_JUMP_IF_TRUE(self, op):  # Not in py2.7
-    self.store_jump(op.target, self.frame.state)
+  def byte_JUMP_IF_TRUE(self, state, op):  # Not in py2.7
+    self.store_jump(op.target, state)
+    return state
 
-  def byte_JUMP_IF_FALSE(self, op):  # Not in py2.7
-    self.store_jump(op.target, self.frame.state)
+  def byte_JUMP_IF_FALSE(self, state, op):  # Not in py2.7
+    self.store_jump(op.target, state)
+    return state
 
-  def byte_POP_JUMP_IF_TRUE(self, op):
-    self.pop()
-    self.store_jump(op.target, self.frame.state)
+  def byte_POP_JUMP_IF_TRUE(self, state, op):
+    state, unused_val = state.pop()
+    self.store_jump(op.target, state)
+    return state
 
-  def byte_POP_JUMP_IF_FALSE(self, op):
-    self.pop()
-    self.store_jump(op.target, self.frame.state)
+  def byte_POP_JUMP_IF_FALSE(self, state, op):
+    state, unused_val = state.pop()
+    self.store_jump(op.target, state)
+    return state
 
-  def byte_JUMP_FORWARD(self, op):
-    self.store_jump(op.target, self.frame.state)
+  def byte_JUMP_FORWARD(self, state, op):
+    self.store_jump(op.target, state)
+    return state
 
-  def byte_JUMP_ABSOLUTE(self, op):
-    self.store_jump(op.target, self.frame.state)
+  def byte_JUMP_ABSOLUTE(self, state, op):
+    self.store_jump(op.target, state)
+    return state
 
-  def byte_SETUP_LOOP(self, op):
-    self.push_block("loop", op.target)
+  def byte_SETUP_LOOP(self, state, op):
+    return self.push_block(state, "loop", op.target)
 
-  def byte_GET_ITER(self):
-    self.push(self.load_attr(self.pop(), "__iter__"))
-    self.call_function_from_stack(0, [])
+  def byte_GET_ITER(self, state):
+    state, seq = state.pop()
+    state, it = self.load_attr(state, seq, "__iter__")
+    state = state.push(it)
+    return self.call_function_from_stack(state, 0, [])
 
   def store_jump(self, target, state):
     self.frame.states[target] = state.merge_into(self.frame.states.get(target))
 
-  def byte_FOR_ITER(self, op):
-    self.store_jump(op.target, self.frame.state.pop_and_discard())
-    self.push(self.load_attr(self.top(), "next"))
+  def byte_FOR_ITER(self, state, op):
+    self.store_jump(op.target, state.pop_and_discard())
+    state, f = self.load_attr(state, state.top(), "next")
+    state = state.push(f)
     try:
-      self.call_function_from_stack(0, [])
-      # The loop is still running, so just continue with the next instruction.
-      return None
+      return self.call_function_from_stack(state, 0, [])
     except StopIteration:
-      pass
+      return state
 
-  def byte_BREAK_LOOP(self):
-    return "break"
+  def byte_BREAK_LOOP(self, state):
+    return state.set_why("break")
 
-  def byte_CONTINUE_LOOP(self, op):
+  def byte_CONTINUE_LOOP(self, state, op):
     # This is a trick with the return value.
     # While unrolling blocks, continue and return both have to preserve
     # state as the finally blocks are executed.  For continue, it's
@@ -1710,158 +1704,160 @@ class VirtualMachine(object):
     # into return_value.
     # TODO(kramm): This probably doesn't work.
     self.return_value = op.target
-    return "continue"
+    return state.set_why("continue")
 
-  def byte_SETUP_EXCEPT(self, op):
+  def byte_SETUP_EXCEPT(self, state, op):
     # Assume that it's possible to throw the exception at the first
     # instruction of the code:
-    self.store_jump(op.target,
-                    self.push_abstract_exception(self.frame.state))
-    self.push_block("setup-except", op.target)
+    self.store_jump(op.target, self.push_abstract_exception(state))
+    return self.push_block(state, "setup-except", op.target)
 
-  def byte_SETUP_FINALLY(self, op):
+  def byte_SETUP_FINALLY(self, state, op):
     # Emulate finally by connecting the try to the finally block (with
     # empty reason/why/continuation):
-    self.store_jump(op.target, self.frame.state.push(None))
-    self.push_block("finally", op.target)
+    self.store_jump(op.target, state.push(None))
+    return self.push_block(state, "finally", op.target)
 
-  def byte_POP_BLOCK(self):
-    self.pop_block()
+  def byte_POP_BLOCK(self, state):
+    state, _ = state.pop_block()
+    return state
 
-  def byte_RAISE_VARARGS_PY2(self, op):
+  def byte_RAISE_VARARGS_PY2(self, state, op):
     """Raise an exception (Python 2 version)."""
     # NOTE: the dis docs are completely wrong about the order of the
     # operands on the stack!
     argc = op.arg
     exctype = val = tb = None
     if argc == 0:
-      if self.frame.state.exception is None:
+      if state.exception is None:
         raise exceptions.ByteCodeTypeError(
             "exceptions must be old-style classes "
             "or derived from BaseException, not NoneType")
-      exctype, val, tb = self.frame.state.exception
+      exctype, val, tb = state.exception
     elif argc == 1:
-      exctype = self.pop()
+      state, exctype = state.pop()
     elif argc == 2:
-      val = self.pop()
-      exctype = self.pop()
+      state, val = state.pop()
+      state, exctype = state.pop()
     elif argc == 3:
-      tb = self.pop()
-      val = self.pop()
-      exctype = self.pop()
+      state, tb = state.pop()
+      state, val = state.pop()
+      state, exctype = state.pop()
     # There are a number of forms of "raise", normalize them somewhat.
     if isinstance(exctype, BaseException):
       val = exctype
       exctype = type(val)
-    self.frame.state = self.frame.state.set_exception(exctype, val, tb)
+    state = state.set_exception(exctype, val, tb)
     if tb:
-      return "reraise"
+      return state.set_why("reraise")
     else:
-      return "exception"
+      return state.set_why("exception")
 
-  def byte_RAISE_VARARGS_PY3(self, op):
+  def byte_RAISE_VARARGS_PY3(self, state, op):
     """Raise an exception (Python 3 version)."""
     argc = op.arg
     cause = exc = None
     if argc == 2:
-      cause = self.pop()
-      exc = self.pop()
+      state, cause = state.pop()
+      state, exc = state.pop()
     elif argc == 1:
-      exc = self.pop()
-    return self.do_raise(exc, cause)
+      state, exc = state.pop()
+    return self.do_raise(state, exc, cause)
 
-  def byte_RAISE_VARARGS(self, op):
+  def byte_RAISE_VARARGS(self, state, op):
     if self.python_version[0] == 2:
-      return self.byte_RAISE_VARARGS_PY2(op)
+      return self.byte_RAISE_VARARGS_PY2(state, op)
     else:
-      return self.byte_RAISE_VARARGS_PY3(op)
+      return self.byte_RAISE_VARARGS_PY3(state, op)
 
-  def byte_POP_EXCEPT(self):
-    block = self.pop_block()
+  def byte_POP_EXCEPT(self, state):
+    state, block = state.pop_block()
     if block.type != "except-handler":
       raise VirtualMachineError("popped block is not an except handler")
-    self.frame.state = self.unwind_block(block, self.frame.state)
+    return self.unwind_block(block, state)
 
-  def byte_SETUP_WITH(self, op):
+  def byte_SETUP_WITH(self, state, op):
     """Starts a 'with' statement. Will push a block."""
-    ctxmgr = self.pop()
-    self.push(self.load_attr(ctxmgr, "__exit__"))
-    ctxmgr_obj = self.call_function_and_adjust_state(
-        self.load_attr(ctxmgr, "__enter__"), [])
+    state, ctxmgr = state.pop()
+    state, exit_method = self.load_attr(state, ctxmgr, "__exit__")
+    state = state.push(exit_method)
+    state, enter = self.load_attr(state, ctxmgr, "__enter__")
+    state, ctxmgr_obj = self.call_function_with_state(state, enter, [])
     if self.python_version[0] == 2:
-      self.push_block("with", op.target)
+      state = self.push_block(state, "with", op.target)
     else:
       assert self.python_version[0] == 3
-      self.push_block("finally", op.target)
-    self.push(ctxmgr_obj)
+      state = self.push_block(state, "finally", op.target)
+    return state.push(ctxmgr_obj)
 
-  def byte_WITH_CLEANUP(self):
+  def byte_WITH_CLEANUP(self, state):
     """Called at the end of a with block. Calls the exit handlers etc."""
     # The code here does some weird stack manipulation: the exit function
     # is buried in the stack, and where depends on what's on top of it.
     # Pull out the exit function, and leave the rest in place.
-    u = self.top()
+    u = state.top()
     if isinstance(u, str):
       if u in ("return", "continue"):
-        exit_func = self.pop_nth(2)
+        state, exit_func = state.pop_nth(2)
       else:
-        exit_func = self.pop_nth(1)
-      v = self.make_none()
-      w = self.make_none()
-      u = self.make_none()
+        state, exit_func = state.pop_nth(1)
+      v = self.make_none(state.node)
+      w = self.make_none(state.node)
+      u = self.make_none(state.node)
     elif isinstance(u, type) and issubclass(u, BaseException):
       if self.python_version[0] == 2:
-        w, v, u = self.popn(3)
-        exit_func = self.pop()
-        self.push(w, v, u)
+        state, (w, v, u) = state.popn(3)
+        state, exit_func = state.pop()
+        state = state.push(w, v, u)
       else:
         assert self.python_version[0] == 3
-        w, v, u = self.popn(3)
-        tp, exc, tb = self.popn(3)
-        exit_func = self.pop()
-        self.push(tp, exc, tb)
-        self.push(self.make_none())
-        self.push(w, v, u)
-        block = self.pop_block()
+        state, (w, v, u) = state.popn(3)
+        state, (tp, exc, tb) = state.popn(3)
+        state, (exit_func) = state.pop()
+        state = state.push(tp, exc, tb)
+        state = state.push(self.make_none(state.node))
+        state = state.push(w, v, u)
+        state, block = state.pop_block()
         assert block.type == "except-handler"
-        self.push_block(block.type, block.handler, block.level - 1)
+        state = state.push_block(block.type, block.handler, block.level - 1)
     else:
       # This is the case when None just got pushed to the top of the stack,
       # to signal that we're at the end of the with block and no exception
       # occured.
-      self.pop()  # pop None
-      exit_func = self.pop()
-      self.push(self.make_none())
-      v = self.make_none()
-      w = self.make_none()
-    suppress_exception = self.call_function_and_adjust_state(
-        exit_func, [u, v, w])
+      state = state.pop_and_discard()  # pop None
+      state, exit_func = state.pop()
+      state = state.push(self.make_none(state.node))
+      v = self.make_none(state.node)
+      w = self.make_none(state.node)
+    state, suppress_exception = self.call_function_with_state(
+        state, exit_func, [u, v, w])
     log.info("u is None: %r", self.is_none(u))
     err = (not self.is_none(u)) and bool(suppress_exception)
     if err:
       # An error occurred, and was suppressed
       if self.python_version[0] == 2:
-        self.popn(3)
-        self.push(self.make_none())
+        state, _ = state.popn(3)
+        state.push(self.make_none(state.node))
       else:
         assert self.python_version[0] == 3
-        self.push("silenced")
+        state = state.push("silenced")
+    return state
 
-  def byte_MAKE_FUNCTION(self, op):
+  def byte_MAKE_FUNCTION(self, state, op):
     """Create a function and push it onto the stack."""
     argc = op.arg
     if self.python_version[0] == 2:
       name = None
     else:
       assert self.python_version[0] == 3
-      name = self.pop()
-    code = self.pop()
-    defaults = self.popn(argc)
+      state, name = state.pop()
+    state, code = state.pop()
+    state, defaults = state.popn(argc)
     globs = self.get_globals_dict()
     fn = self.make_function(name, code, globs, defaults)
-    self.push(fn)
+    return state.push(fn)
 
-  def byte_MAKE_CLOSURE(self, op):
+  def byte_MAKE_CLOSURE(self, state, op):
     """Make a function that binds local variables."""
     argc = op.arg
     if self.python_version[0] == 2:
@@ -1869,117 +1865,127 @@ class VirtualMachine(object):
       name = None
     else:
       assert self.python_version[0] == 3
-      name = _get_atomic_python_constant(self.pop())
-    closure, code = self.popn(2)
-    defaults = self.popn(argc)
+      state, name_var = state.pop()
+      name = _get_atomic_python_constant(name_var)
+    state, (closure, code) = state.popn(2)
+    state, defaults = state.popn(argc)
     globs = self.get_globals_dict()
     fn = self.make_function(name, code, globs, defaults, closure)
-    self.push(fn)
+    return state.push(fn)
 
-  def byte_CALL_FUNCTION(self, op):
-    return self.call_function_from_stack(op.arg, [])
+  def byte_CALL_FUNCTION(self, state, op):
+    return self.call_function_from_stack(state, op.arg, [])
 
-  def byte_CALL_FUNCTION_VAR(self, op):
-    args = self.pop_varargs()
-    return self.call_function_from_stack(op.arg, args)
+  def byte_CALL_FUNCTION_VAR(self, state, op):
+    state, args = self.pop_varargs(state)
+    return self.call_function_from_stack(state, op.arg, args)
 
-  def byte_CALL_FUNCTION_KW(self, op):
-    kwargs = self.pop_kwargs()
-    return self.call_function_from_stack(op.arg, [], kwargs)
+  def byte_CALL_FUNCTION_KW(self, state, op):
+    state, kwargs = self.pop_kwargs(state)
+    return self.call_function_from_stack(state, op.arg, [], kwargs)
 
-  def byte_CALL_FUNCTION_VAR_KW(self, op):
-    kwargs = self.pop_kwargs()
-    args = self.pop_varargs()
-    return self.call_function_from_stack(op.arg, args, kwargs)
+  def byte_CALL_FUNCTION_VAR_KW(self, state, op):
+    state, kwargs = self.pop_kwargs(state)
+    state, args = self.pop_varargs(state)
+    return self.call_function_from_stack(state, op.arg, args, kwargs)
 
-  def byte_YIELD_VALUE(self):
-    self.return_value = self.pop()
-    return "yield"
+  def byte_YIELD_VALUE(self, state):
+    state, self.return_value = state.pop()
+    return state.set_why("yield")
 
-  def byte_IMPORT_NAME(self, op):
+  def byte_IMPORT_NAME(self, state, op):
     name = self.frame.f_code.co_names[op.arg]
-    level, unused_fromlist = self.popn(2)
-    self.push(self.import_name(name, level))
+    state, (level, unused_fromlist) = state.popn(2)
     # TODO(kramm): Do something meaningful with "fromlist"?
+    state, module = self.import_name(state, name, level)
+    return state.push(module)
 
-  def byte_IMPORT_FROM(self, op):
+  def byte_IMPORT_FROM(self, state, op):
     name = self.frame.f_code.co_names[op.arg]
-    mod = self.top()
-    self.push(self.get_module_attribute(mod, name))
+    mod = state.top()
+    state, attr = self.get_module_attribute(state, mod, name)
+    return state.push(attr)
 
-  def byte_EXEC_STMT(self):
-    unused_stmt, unused_globs, unused_locs = self.popn(3)
+  def byte_EXEC_STMT(self, state):
+    state, (unused_stmt, unused_globs, unused_locs) = state.popn(3)
     log.warning("Encountered 'exec' statement. 'exec' is unsupported.")
+    return state
 
-  def byte_BUILD_CLASS(self):
-    name, bases, methods = self.popn(3)
-    self.push(self.make_class(name, bases, methods))
+  def byte_BUILD_CLASS(self, state):
+    state, (name, bases, methods) = state.popn(3)
+    return state.push(self.make_class(state.node, name, bases, methods))
 
-  def byte_LOAD_BUILD_CLASS(self):
+  def byte_LOAD_BUILD_CLASS(self, state):
     # New in py3
-    self.push(__build_class__)  # pylint: disable=undefined-variable
+    return state.push(__builtins__.__build_class__)
 
-  def byte_STORE_LOCALS(self):
-    self.set_locals_dict_bytecode(self.pop())
+  def byte_STORE_LOCALS(self, state):
+    state, locals_dict = state.pop()
+    self.set_locals_dict_bytecode(locals_dict)
+    return state
 
-  def byte_END_FINALLY(self):
-    # TODO(kramm): Return a fitting why
-    exc = self.pop()
+  def byte_END_FINALLY(self, state):
+    state, exc = state.pop()
     if self.is_none(exc):
-      return
+      return state
     else:
       log.info("Popping exception %r", exc)
-      self.pop()
-      self.pop()
+      state = state.pop_and_discard()
+      state = state.pop_and_discard()
+    return state
 
-  def byte_RETURN_VALUE(self):
-    self.frame.return_variable.AddValues(self.pop(), self.current_location)
-    return "return"
+  def byte_RETURN_VALUE(self, state):
+    state, var = state.pop()
+    self.frame.return_variable.AddValues(var, state.node)
+    return state.set_why("return")
 
-  def byte_IMPORT_STAR(self):
+  def byte_IMPORT_STAR(self, state):
+    """Pops a module and stores all its contents in locals()."""
     # TODO(kramm): this doesn't use __all__ properly.
-    mod = _get_atomic_value(self.pop())
+    state, mod_var = state.pop()
+    mod = _get_atomic_value(mod_var)
     if isinstance(mod, abstract.Unknown):
       log.error("Doing 'from module import *' from unresolved module")
-      return
+      return state
     log.info("%r", mod)
     # TODO(kramm): Add Module type to abstract.py
     for name, var in mod.items():
       if name[0] != "_":
-        self.store_local(name, var)
+        state = self.store_local(state, name, var)
+    return state
 
-  def byte_SLICE_0(self):
-    return self.get_slice(0)
+  def byte_SLICE_0(self, state):
+    return self.get_slice(state, 0)
 
-  def byte_SLICE_1(self):
-    return self.get_slice(1)
+  def byte_SLICE_1(self, state):
+    return self.get_slice(state, 1)
 
-  def byte_SLICE_2(self):
-    return self.get_slice(2)
+  def byte_SLICE_2(self, state):
+    return self.get_slice(state, 2)
 
-  def byte_SLICE_3(self):
-    return self.get_slice(3)
+  def byte_SLICE_3(self, state):
+    return self.get_slice(state, 3)
 
-  def byte_STORE_SLICE_0(self):
-    return self.store_slice(0)
+  def byte_STORE_SLICE_0(self, state):
+    return self.store_slice(state, 0)
 
-  def byte_STORE_SLICE_1(self):
-    return self.store_slice(1)
+  def byte_STORE_SLICE_1(self, state):
+    return self.store_slice(state, 1)
 
-  def byte_STORE_SLICE_2(self):
-    return self.store_slice(2)
+  def byte_STORE_SLICE_2(self, state):
+    return self.store_slice(state, 2)
 
-  def byte_STORE_SLICE_3(self):
-    return self.store_slice(3)
+  def byte_STORE_SLICE_3(self, state):
+    return self.store_slice(state, 3)
 
-  def byte_DELETE_SLICE_0(self):
-    return self.delete_slice(0)
+  def byte_DELETE_SLICE_0(self, state):
+    return self.delete_slice(state, 0)
 
-  def byte_DELETE_SLICE_1(self):
-    return self.delete_slice(1)
+  def byte_DELETE_SLICE_1(self, state):
+    return self.delete_slice(state, 1)
 
-  def byte_DELETE_SLICE_2(self):
-    return self.delete_slice(2)
+  def byte_DELETE_SLICE_2(self, state):
+    return self.delete_slice(state, 2)
 
-  def byte_DELETE_SLICE_3(self):
-    return self.delete_slice(3)
+  def byte_DELETE_SLICE_3(self, state):
+    return self.delete_slice(state, 3)

@@ -9,7 +9,7 @@ import subprocess
 from pytype import abstract
 from pytype import convert_structural
 from pytype import output
-from pytype import state
+from pytype import state as frame_state
 from pytype import utils
 from pytype import vm
 from pytype.pytd import optimize
@@ -28,8 +28,7 @@ CallRecord = collections.namedtuple("CallRecord",
 class AnalysisFrame(object):
   """Frame representing the "analysis function" that calls everything."""
 
-  def __init__(self, cfg_node):
-    self.state = state.FrameState.init(cfg_node)
+  def __init__(self):
     self.f_code = None  # for recursion detection
     self.f_builtins = None
 
@@ -51,47 +50,52 @@ class CallTracer(vm.VirtualMachine):
     self._calls = set()
     self.exitpoint = None
 
-  def create_argument(self, method_name, i):
+  def create_argument(self, node, method_name, i):
     name = "arg %d of %s" % (i, method_name)
-    return abstract.Unknown(self).to_variable(name)
+    return abstract.Unknown(self).to_variable(node, name)
 
-  def analyze_method(self, val, main_node):
+  def analyze_method(self, val, node):
     method = val.data
     if isinstance(method, (abstract.Function, abstract.BoundFunction)):
-      args = [self.create_argument(val.data.name, i)
+      args = [self.create_argument(node, val.data.name, i)
               for i in range(method.argcount())]
-      self.call_function_and_adjust_state(val.variable, args)
-      self.frame.state = self.frame.state.connect_to_cfg_node(main_node)
+      frame = AnalysisFrame()
+      self.push_frame(frame)
+      state = frame_state.FrameState.init(node)
+      state, _ = self.call_function_with_state(state, val.variable, args)
+      state = state.connect_to_cfg_node(node)
+      self.pop_frame(frame)
+      node = state.node
+    return node
 
-  def analyze_method_var(self, name, var, main_node):
-    assert self.current_location == main_node
+  def analyze_method_var(self, name, var, node):
     log.info("Analyzing %s", name)
     for val in var.values:
-      self.analyze_method(val, main_node)
+      node2 = self.analyze_method(val, node)
+      node2.ConnectTo(node)
+    return node
 
-  def bind_method(self, name, methodvar, instance, clsvar, loc):
+  def bind_method(self, name, methodvar, instance, clsvar, node):
     bound = self.program.NewVariable(name)
     for m in methodvar.data:
-      bound.AddValue(m.property_get(instance, clsvar), [], loc)
+      bound.AddValue(m.property_get(instance, clsvar), [], node)
     return bound
 
-  def analyze_class(self, val, main_node):
-    assert self.current_location == main_node
-    instance = self.instantiate(val.variable)
-    self.frame.state = self.frame.state.connect_to_cfg_node(main_node)
+  def analyze_class(self, val, node):
+    instance = self.instantiate(node, val.variable)
     cls = val.data
-    node, init = cls.get_attribute(main_node, "__init__",
-                                   instance.values[0], val)
-    assert node is main_node
+    node, init = cls.get_attribute(node, "__init__", instance.values[0], val)
     if init:
       bound_init = self.bind_method("__init__", init, instance, val.variable,
-                                    main_node)
-      self.analyze_method_var("__init__", bound_init, main_node)
+                                    node)
+      node = self.analyze_method_var("__init__", bound_init, node)
     for name, methodvar in sorted(cls.members.items()):
-      b = self.bind_method(name, methodvar, instance, val.variable, main_node)
-      self.analyze_method_var(name, b, main_node)
+      b = self.bind_method(name, methodvar, instance, val.variable, node)
+      node2 = self.analyze_method_var(name, b, node)
+      node2.ConnectTo(node)
+    return node
 
-  def analyze_function(self, val, main_node):
+  def analyze_function(self, val, node):
     if val.data.cls:
       # We analyze class methods in analyze_class above.
       log.info("Analyze functions: Skipping class method %s", val.data.name)
@@ -99,25 +103,25 @@ class CallTracer(vm.VirtualMachine):
       # We analyze closures as part of the function they're defined in.
       log.info("Analyze functions: Skipping closure %s", val.data.name)
     else:
-      self.analyze_method(val, main_node)
+      node2 = self.analyze_method(val, node)
+      node2.ConnectTo(node)
+    return node
 
-  def analyze_toplevel(self, main_node, defs, ignore):
+  def analyze_toplevel(self, node, defs, ignore):
     for name, var in sorted(defs.items()):  # sort, for determinicity
       if name not in ignore:
         for value in var.values:
           if isinstance(value.data, abstract.Class):
-            self.analyze_class(value, main_node)
+            node2 = self.analyze_class(value, node)
+            node2.ConnectTo(node)
           elif isinstance(value.data, abstract.Function):
-            self.analyze_function(value, main_node)
+            node2 = self.analyze_function(value, node)
+            node2.ConnectTo(node)
 
-  def analyze(self, main_node, defs, ignore):
+  def analyze(self, node, defs, ignore):
     assert not self.frame
-    frame = AnalysisFrame(main_node)
-    self.push_frame(frame)
-    assert self.current_location is main_node
-    self.analyze_toplevel(main_node, defs, ignore)
-    self.pop_frame(frame)
-    return main_node
+    self.analyze_toplevel(node, defs, ignore)
+    return node
 
   def trace_unknown(self, name, unknown):
     self._unknowns[name] = unknown
