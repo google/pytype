@@ -112,6 +112,10 @@ class FrameState(object):
     self.node.ConnectTo(node)
     return self.change_cfg_node(node)
 
+  def forward_cfg_node(self):
+    new_node = self.node.ConnectNew()
+    return self.change_cfg_node(new_node)
+
   def advance_cfg_node(self):
     return FrameState(self.data_stack,
                       self.block_stack,

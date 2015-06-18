@@ -1418,6 +1418,7 @@ class VirtualMachine(object):
     name = self.frame.f_code.co_varnames[op.arg]
     state, value = state.pop()
     state = self.store_local(state, name, value)
+    state = state.forward_cfg_node()
     return state
 
   def byte_DELETE_FAST(self, state, op):
@@ -1517,6 +1518,7 @@ class VirtualMachine(object):
     name = self.frame.f_code.co_names[op.arg]
     state, (val, obj) = state.popn(2)
     state = self.store_attr(state, obj, name, val)
+    state = state.forward_cfg_node()
     return state
 
   def byte_DELETE_ATTR(self, state, op):
@@ -1531,7 +1533,9 @@ class VirtualMachine(object):
 
   def byte_STORE_SUBSCR(self, state):
     state, (val, obj, subscr) = state.popn(3)
-    return self.store_subscr(state, obj, subscr, val)
+    state = self.store_subscr(state, obj, subscr, val)
+    state = state.forward_cfg_node()
+    return state
 
   def byte_DELETE_SUBSCR(self, state):
     state, (obj, subscr) = state.popn(2)
@@ -1638,37 +1642,37 @@ class VirtualMachine(object):
     return state
 
   def byte_JUMP_IF_TRUE_OR_POP(self, state, op):
-    self.store_jump(op.target, state)
+    self.store_jump(op.target, state.forward_cfg_node())
     return state.pop_and_discard()
 
   def byte_JUMP_IF_FALSE_OR_POP(self, state, op):
-    self.store_jump(op.target, state)
+    self.store_jump(op.target, state.forward_cfg_node())
     return state.pop_and_discard()
 
   def byte_JUMP_IF_TRUE(self, state, op):  # Not in py2.7
-    self.store_jump(op.target, state)
+    self.store_jump(op.target, state.forward_cfg_node())
     return state
 
   def byte_JUMP_IF_FALSE(self, state, op):  # Not in py2.7
-    self.store_jump(op.target, state)
+    self.store_jump(op.target, state.forward_cfg_node())
     return state
 
   def byte_POP_JUMP_IF_TRUE(self, state, op):
     state, unused_val = state.pop()
-    self.store_jump(op.target, state)
+    self.store_jump(op.target, state.forward_cfg_node())
     return state
 
   def byte_POP_JUMP_IF_FALSE(self, state, op):
     state, unused_val = state.pop()
-    self.store_jump(op.target, state)
+    self.store_jump(op.target, state.forward_cfg_node())
     return state
 
   def byte_JUMP_FORWARD(self, state, op):
-    self.store_jump(op.target, state)
+    self.store_jump(op.target, state.forward_cfg_node())
     return state
 
   def byte_JUMP_ABSOLUTE(self, state, op):
-    self.store_jump(op.target, state)
+    self.store_jump(op.target, state.forward_cfg_node())
     return state
 
   def byte_SETUP_LOOP(self, state, op):
