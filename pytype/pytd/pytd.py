@@ -24,17 +24,14 @@ import itertools
 from pytype.pytd.parse import node
 
 
-# TODO(kramm): Remove "modules"
-class TypeDeclUnit(node.Node('name',
-                             'constants', 'classes', 'functions', 'modules')):
-  """Module node. Holds module contents (classes / functions) and submodules.
+class TypeDeclUnit(node.Node('name', 'constants', 'classes', 'functions')):
+  """Module node. Holds module contents (constants / classes / functions).
 
   Attributes:
     name: Name of this module, or None for the top-level module.
     constants: Iterable of module-level constants.
     functions: Iterable of functions defined in this type decl unit.
     classes: Iterable of classes defined in this type decl unit.
-    modules: Iterable of submodules of the current module.
   """
   __slots__ = ()
 
@@ -57,7 +54,7 @@ class TypeDeclUnit(node.Node('name',
       return self._name2item[name]
     except AttributeError:
       self._name2item = {}
-      for x in self.constants + self.functions + self.classes + self.modules:
+      for x in self.constants + self.functions + self.classes:
         self._name2item[x.name] = x
       return self._name2item[name]
 
@@ -76,8 +73,7 @@ class TypeDeclUnit(node.Node('name',
     # Used in tests.
     return (self.constants == other.constants and
             self.classes == other.classes and
-            self.functions == other.functions and
-            self.modules == other.modules)
+            self.functions == other.functions)
 
 
 class Constant(node.Node('name', 'type')):

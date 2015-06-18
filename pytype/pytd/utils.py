@@ -74,8 +74,7 @@ def Concat(*args):
       name=" + ".join(arg.name for arg in args),
       constants=sum((arg.constants for arg in args), ()),
       classes=sum((arg.classes for arg in args), ()),
-      functions=sum((arg.functions for arg in args), ()),
-      modules=sum((arg.modules for arg in args), ()))
+      functions=sum((arg.functions for arg in args), ()))
 
 
 def JoinTypes(types):

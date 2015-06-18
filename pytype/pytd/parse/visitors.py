@@ -62,8 +62,7 @@ class PrintVisitor(object):
 
   def VisitTypeDeclUnit(self, node):
     """Convert the AST for an entire module back to a string."""
-    sections = [node.constants, node.functions,
-                node.classes, node.modules]
+    sections = [node.constants, node.functions, node.classes]
     sections_as_string = ("\n".join(section_suite)
                           for section_suite in sections
                           if section_suite)
@@ -356,10 +355,6 @@ def FillInClasses(target, global_module=None):
   if global_module is None:
     global_module = target
 
-  if hasattr(target, "modules"):
-    for submodule in target.modules:
-      FillInClasses(submodule, global_module)
-
   # Fill in classes for this module, bottom up.
   # TODO(kramm): Node.Visit() should support blacklisting of attributes so
   # we don't recurse into submodules multiple times.
@@ -445,11 +440,6 @@ class ExtractSuperClassesByName(object):
   def VisitTypeDeclUnit(self, module):
     result = {base_class: superclasses
               for base_class, superclasses in module.classes}
-    for submodule in module.modules:
-      # pylint: disable=no-member
-      result.update(
-          {self.old_node.name + "." + name: superclasses
-           for name, superclasses in submodule.items()})
     return result
 
   def VisitClass(self, cls):
@@ -468,9 +458,6 @@ class ExtractSuperClasses(object):
     # its id.
     result = {base_class: superclasses
               for base_class, superclasses in module.classes}
-    for submodule in module.modules:
-      result.update({cls: superclasses
-                     for cls, superclasses in submodule.items()})
     return result
 
   def VisitNamedType(self, _):
@@ -632,8 +619,6 @@ class VerifyVisitor(object):
     assert all(isinstance(f, pytd.Function) for f in node.functions)
     assert isinstance(node.classes, (list, tuple)), node
     assert all(isinstance(cls, pytd.Class) for cls in node.classes)
-    assert isinstance(node.modules, (list, tuple)), node
-    assert all(isinstance(m, pytd.TypeDeclUnit) for m in node.modules)
 
   def EnterConstant(self, node):
     assert isinstance(node.name, str), node
@@ -738,8 +723,7 @@ class CanonicalOrderingVisitor(object):
     return pytd.TypeDeclUnit(name=node.name,
                              constants=tuple(sorted(node.constants)),
                              functions=tuple(sorted(node.functions)),
-                             classes=tuple(sorted(node.classes)),
-                             modules=tuple(sorted(node.modules)))
+                             classes=tuple(sorted(node.classes)))
 
   def VisitClass(self, node):
     return pytd.Class(name=node.name,

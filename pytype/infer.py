@@ -148,7 +148,7 @@ class CallTracer(vm.VirtualMachine):
     for name, var in self._unknowns.items():
       for value in var.FilteredData(self.exitpoint):
         classes.append(value.to_pytd_def(name))
-    return pytd.TypeDeclUnit("unknowns", (), tuple(classes), (), ())
+    return pytd.TypeDeclUnit("unknowns", (), tuple(classes), ())
 
   def pytd_for_types(self, defs, ignore):
     for name, var in defs.items():
@@ -183,7 +183,7 @@ class CallTracer(vm.VirtualMachine):
         constants.append(
             pytd.Constant(name, pytd_utils.JoinTypes(new_constants)))
     return pytd.TypeDeclUnit(
-        "inferred", tuple(constants), tuple(classes), tuple(functions), ())
+        "inferred", tuple(constants), tuple(classes), tuple(functions))
 
   def pytd_for_call_traces(self):
     functions = []
@@ -207,7 +207,7 @@ class CallTracer(vm.VirtualMachine):
               ret, has_optional=False, exceptions=(), template=()))
       functions.append(pytd.Function("~" + func.name, tuple(signatures)))
     return pytd.TypeDeclUnit(
-        "call_traces", (), (), tuple(functions), ())
+        "call_traces", (), (), tuple(functions))
 
   def compute_types(self, defs, ignore):
     ty = pytd_utils.Concat(

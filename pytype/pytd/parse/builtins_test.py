@@ -14,7 +14,6 @@ class UtilsTest(unittest.TestCase):
 
   def testGetBuiltinsPyTD(self):
     self.assertIsNotNone(self.builtins)
-    self.assertTrue(hasattr(self.builtins, "modules"))
     # Will throw an error for unresolved identifiers:
     visitors.LookupClasses(self.builtins)
 

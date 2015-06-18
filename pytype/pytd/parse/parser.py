@@ -383,8 +383,7 @@ class TypeDeclParser(object):
     p[0] = pytd.TypeDeclUnit(name=None,  # replaced later, in Parse
                              constants=tuple(constants),
                              functions=tuple(self.MergeSignatures(funcdefs)),
-                             classes=tuple(classes),
-                             modules=())
+                             classes=tuple(classes))
 
   def p_alldefs_constant(self, p):
     """alldefs : alldefs constantdef"""

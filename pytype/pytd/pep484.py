@@ -37,8 +37,7 @@ class Print484StubVisitor(object):
 
   def VisitTypeDeclUnit(self, node):
     """Convert the AST for an entire module to a PEP484 stub."""
-    sections = [node.constants, node.functions,
-                node.classes, node.modules]
+    sections = [node.constants, node.functions, node.classes]
     sections_as_string = ("\n".join(section_suite)
                           for section_suite in sections
                           if section_suite)

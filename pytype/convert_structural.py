@@ -202,8 +202,7 @@ def extract_local(ast):
       functions=tuple(f for f in ast.functions
                       if is_complete(f)),
       constants=tuple(c for c in ast.constants
-                      if is_complete(c)),
-      modules=())
+                      if is_complete(c)))
 
 
 def convert_string_type(string_type, unknown, mapping, global_lookup, depth=0):
