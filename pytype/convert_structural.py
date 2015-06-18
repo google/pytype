@@ -130,8 +130,6 @@ class TypeSolver(object):
       unprocessed.remove(cls1)  # Only use class once, either left or right.
       if is_unknown(cls1):
         solver.register_variable(cls1.name)
-      elif is_complete(cls1):
-        solver.register_value(cls1.name)
       for cls2 in unprocessed:
         if is_unknown(cls1) and is_unknown(cls2):
           pass  # Don't do identity between unknowns - pytype takes care of that

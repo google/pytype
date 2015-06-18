@@ -143,16 +143,14 @@ class TestBoolEq(unittest.TestCase):
     self.assertEquals(And([Eq("x", "1"), Eq("y", "1")]),
                       equation.simplify(values))
 
-  def _MakeSolver(self, variables=("x", "y"), values=("1", "2")):
+  def _MakeSolver(self, variables=("x", "y")):
     solver = booleq.Solver()
     for variable in variables:
       solver.register_variable(variable)
-    for value in values:
-      solver.register_value(str(value))
     return solver
 
   def testGetFalseFirstApproximation(self):
-    solver = self._MakeSolver(["x"], ["1"])
+    solver = self._MakeSolver(["x"])
     solver.implies(Eq("x", "1"), FALSE)
     self.assertDictEqual(solver._get_first_approximation(), {"x": set()})
 
@@ -172,7 +170,7 @@ class TestBoolEq(unittest.TestCase):
     self.assertTrue(assignments["x"] is assignments["y"])
 
   def testGetMultipleEqualFirstApproximation(self):
-    solver = self._MakeSolver(["x", "y", "z"], ["1", "2"])
+    solver = self._MakeSolver(["x", "y", "z"])
     solver.implies(Eq("y", "1"), Eq("x", "y"))
     solver.implies(Eq("z", "2"), Eq("y", "z"))
     assignments = solver._get_first_approximation()
@@ -200,7 +198,7 @@ class TestBoolEq(unittest.TestCase):
                           "y": {"1"}})
 
   def testFilter(self):
-    solver = self._MakeSolver(["x", "y"], ["1", "2", "3"])
+    solver = self._MakeSolver(["x", "y"])
     solver.implies(Eq("x", "1"), TRUE)
     solver.implies(Eq("x", "2"), FALSE)
     solver.implies(Eq("x", "3"), FALSE)
@@ -212,7 +210,7 @@ class TestBoolEq(unittest.TestCase):
                           "y": {"1"}})
 
   def testSolveAnd(self):
-    solver = self._MakeSolver(["x", "y", "z"], ["1", "2", "3"])
+    solver = self._MakeSolver(["x", "y", "z"])
     solver.always_true(Eq("x", "1"))
     solver.implies(Eq("y", "1"), And([Eq("x", "1"), Eq("z", "1")]))
     solver.implies(Eq("x", "1"), And([Eq("y", "1"), Eq("z", "1")]))
@@ -232,7 +230,6 @@ class TestBoolEq(unittest.TestCase):
     solver = self._MakeSolver()
     solver.solve()
     self.assertRaises(AssertionError, solver.register_variable, "z")
-    self.assertRaises(AssertionError, solver.register_value, "42")
     self.assertRaises(AssertionError, solver.implies, Eq("x", "1"), TRUE)
 
 if __name__ == "__main__":
