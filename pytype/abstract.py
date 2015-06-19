@@ -472,8 +472,7 @@ class SimpleAbstractValue(AtomicAbstractValue):
     else:
       return "<v%d %s>" % (self.id, self.name)
 
-  def to_variable(self, node, name=None):
-    assert name
+  def to_variable(self, node, name):
     return super(SimpleAbstractValue, self).to_variable(node, name)
 
   def get_type(self):

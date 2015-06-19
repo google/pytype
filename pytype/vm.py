@@ -84,8 +84,7 @@ def _get_atomic_python_constant(variable):
   atomic = _get_atomic_value(variable)
   if isinstance(atomic, abstract.PythonConstant):
     return atomic.pyval
-  raise ConversionError(
-      "Only some types are supported: %r" % type(atomic))
+  raise ConversionError("Only some types are supported: %r" % type(atomic))
 
 
 class VirtualMachineError(Exception):
@@ -143,23 +142,31 @@ class VirtualMachine(object):
                               for v in [int, long, float, str, unicode,
                                         types.NoneType, complex, bool, slice,
                                         types.CodeType]}
-    self.container_classes = {v: self.convert_constant(v.__name__, v)
-                              for v in [tuple, list, set, dict]}
+
+    self.none = abstract.AbstractOrConcreteValue(
+        None, self.primitive_classes[types.NoneType], self)
+    self.true = abstract.AbstractOrConcreteValue(
+        True, self.primitive_classes[bool], self)
+    self.false = abstract.AbstractOrConcreteValue(
+        False, self.primitive_classes[bool], self)
+
+    self.primitive_class_instances = {
+        name: abstract.Instance(clsvar, self)
+        for name, clsvar in self.primitive_classes.items()
+    }
+    self.primitive_class_instances[types.NoneType] = self.none
+
     self.str_type = self.primitive_classes[str]
-    self.slice_type = self.primitive_classes[slice]
-    self.tuple_type = self.container_classes[tuple]
-    self.list_type = self.container_classes[list]
-    self.set_type = self.container_classes[set]
-    self.dict_type = self.container_classes[dict]
+    self.tuple_type = self.convert_constant("tuple", tuple)
+    self.list_type = self.convert_constant("list", list)
+    self.set_type = self.convert_constant("set", set)
+    self.dict_type = self.convert_constant("dict", dict)
     self.function_type = self.convert_constant("function type",
                                                types.FunctionType)
 
     self.vmbuiltins = {b.name: b for b in (self.builtins_pytd.constants +
                                            self.builtins_pytd.classes +
                                            self.builtins_pytd.functions)}
-
-    self.none = abstract.AbstractOrConcreteValue(
-        None, self.primitive_classes[types.NoneType], self)
 
   def run_instruction(self, op, state):
     """Run a single bytecode instruction.
@@ -414,14 +421,6 @@ class VirtualMachine(object):
     """Return the modules members as a dict."""
     return self.load_attr(state, mod, name)
 
-  def instantiate_builtin(self, node, cls):
-    return abstract.Instance(self.primitive_classes[cls], self).to_variable(
-        node, name=cls.__name__)
-
-  def instantiate(self, node, cls):
-    # TODO(kramm): Make everything use this
-    return abstract.Instance(cls, self).to_variable(node, name=cls.name)
-
   def join_variables(self, node, name, variables):
     """Create a combined Variable for a list of variables.
 
@@ -615,10 +614,10 @@ class VirtualMachine(object):
     """
     if pyval is type:
       return abstract.SimpleAbstractValue(name, self)
+    elif isinstance(pyval, str):
+      return abstract.AbstractOrConcreteValue(pyval, self.str_type, self)
     elif pyval.__class__ in self.primitive_classes:
-      clsvar = self.primitive_classes[pyval.__class__]
-      value = abstract.AbstractOrConcreteValue(pyval, clsvar, self)
-      return value
+      return self.primitive_class_instances[pyval.__class__]
     elif isinstance(pyval, (loadmarshal.CodeType, blocks.OrderedCode)):
       return abstract.AbstractOrConcreteValue(
           pyval, self.primitive_classes[types.CodeType], self)
@@ -1135,6 +1134,17 @@ class VirtualMachine(object):
                 "anything in the abstract interpreter")
     return state
 
+  def build_bool(self, node, value=None):
+    if value is None:
+      name, val = "bool", self.primitive_class_instances[bool]
+    elif value is True:
+      name, val = "True", self.true_value
+    elif value is False:
+      name, val = "False", self.false_value
+    else:
+      raise ValueError("Invalid bool value: %r", value)
+    return val.to_variable(node, name)
+
   def build_string(self, node, s):
     str_value = abstract.AbstractOrConcreteValue(
         s, self.str_type, self)
@@ -1147,8 +1157,7 @@ class VirtualMachine(object):
     return var
 
   def build_slice(self, node, start, stop, step=None):
-    value = abstract.Instance(self.slice_type, self)
-    return value.to_variable(node, name="slice")
+    return self.primitive_class_instances[slice].to_variable(node, "slice")
 
   def tuple_to_value(self, node, content):
     """Create a VM tuple from the given sequence."""
@@ -1248,7 +1257,7 @@ class VirtualMachine(object):
 
   def byte_UNARY_NOT(self, state):
     state = state.pop_and_discard()
-    state = state.push(self.instantiate_builtin(state.node, bool))
+    state = state.push(self.build_bool(state.node))
     return state
 
   def byte_UNARY_CONVERT(self, state):
@@ -1493,15 +1502,15 @@ class VirtualMachine(object):
     elif op.arg == slots.CMP_GE:
       state, ret = self.call_binary_operator(state, "__ge__", x, y)
     elif op.arg == slots.CMP_IS:
-      ret = self.instantiate_builtin(state.node, bool)
+      ret = self.build_bool(state.node)
     elif op.arg == slots.CMP_IS_NOT:
-      ret = self.instantiate_builtin(state.node, bool)
+      ret = self.build_bool(state.node)
     elif op.arg == slots.CMP_NOT_IN:
-      ret = self.instantiate_builtin(state.node, bool)
+      ret = self.build_bool(state.node)
     elif op.arg == slots.CMP_IN:
-      ret = self.instantiate_builtin(state.node, bool)
+      ret = self.build_bool(state.node)
     elif op.arg == slots.CMP_EXC_MATCH:
-      ret = self.instantiate_builtin(state.node, bool)
+      ret = self.build_bool(state.node)
     else:
       raise VirtualMachineError("Invalid argument to COMPARE_OP: %d", op.arg)
     return state.push(ret)

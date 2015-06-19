@@ -81,8 +81,14 @@ class CallTracer(vm.VirtualMachine):
       bound.AddValue(m.property_get(instance, clsvar), [], node)
     return bound
 
+  def instantiate(self, cls, node):
+    """Build an (dummy) instance from a class, for analyzing it."""
+    return abstract.Instance(
+        cls.AssignToNewVariable(cls.data.name, node), self
+    ).to_variable(node, name=cls.data.name)
+
   def analyze_class(self, val, node):
-    instance = self.instantiate(node, val.variable)
+    instance = self.instantiate(val, node)
     cls = val.data
     node, init = cls.get_attribute(node, "__init__", instance.values[0], val)
     if init:
