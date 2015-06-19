@@ -931,7 +931,7 @@ class _LineNumberTableParser(object):
     assert not len(lnotab) & 1  # lnotab always has an even number of elements
     self.lnotab = lnotab
     self.lineno = firstlineno
-    self.addr = 0
+    self.next_addr = ord(self.lnotab[0]) if self.lnotab else 0
     self.pos = 0
 
   def get(self, i):
@@ -940,16 +940,17 @@ class _LineNumberTableParser(object):
     This does NOT allow random access. Call with incremental numbers.
 
     Args:
-      i: A position in the bytecode. i needs to stay constant or increase
+      i: The byte position in the bytecode. i needs to stay constant or increase
         between calls.
 
     Returns:
       The line number corresponding to the position at i.
     """
-    while i > self.addr and self.pos < len(self.lnotab):
-      self.addr += ord(self.lnotab[self.pos])
+    while i >= self.next_addr and self.pos < len(self.lnotab):
       self.lineno += ord(self.lnotab[self.pos + 1])
       self.pos += 2
+      if self.pos < len(self.lnotab):
+        self.next_addr += ord(self.lnotab[self.pos])
     return self.lineno
 
 
