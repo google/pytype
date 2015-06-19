@@ -68,6 +68,10 @@ def parse_options(args):
       help=("Run the solver to turn 'unknown' classes "
             "into builtins (only used for testing)"))
   o.add_option(
+      "--no-native-builtins", action="store_false",
+      dest="run_builtins", default=True,
+      help=("Run the program without the native Python builtins preloaded."))
+  o.add_option(
       "--svg-output", type="string", action="store",
       dest="svg_output", default=None,
       help="Output control flow graph as SVG.")
@@ -148,6 +152,7 @@ def main(argv):
       src,
       python_version=python_version,
       filename=filename,
+      run_builtins=options.run_builtins,
       pythonpath=options.pythonpath.split(":"),
       deep=options.api or options.structural,
       solve_unknowns=options.solve_unknowns or options.api,

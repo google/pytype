@@ -299,10 +299,13 @@ def program_to_dot(program, ignored):
   def escape(s):
     return repr(s)[1:-1].replace('"', '\\"')
 
+  variables = set(
+      value.variable for node in program.cfg_nodes for value in node.values)
+
   print("cfg nodes=%d, vals=%d, variables=%d" % (
       len(program.cfg_nodes),
-      sum(len(v.values) for v in program.variables),
-      len(program.variables)))
+      sum(len(v.values) for v in variables),
+      len(variables)))
 
   sb = StringIO.StringIO()
   sb.write("digraph {\n")
@@ -313,7 +316,7 @@ def program_to_dot(program, ignored):
              % (objname(node), node.name))
     for other in node.outgoing:
       sb.write("%s -> %s [penwidth=2.0];\n" % (objname(node), objname(other)))
-  for variable in program.variables:
+  for variable in variables:
     if variable.name in ignored:
       continue
     sb.write('%s[label="%s",shape=polygon,sides=4,distortion=.1];\n'
@@ -339,8 +342,8 @@ def program_to_dot(program, ignored):
   return sb.getvalue()
 
 
-def infer_types(src, python_version, filename=None, pythonpath=None,
-                svg_output=None, deep=False,
+def infer_types(src, python_version, filename=None, run_builtins=True,
+                pythonpath=None, svg_output=None, deep=False,
                 pseudocode_output=False, solve_unknowns=False,
                 reverse_operators=False):
   """Given Python source return its types.
@@ -349,6 +352,8 @@ def infer_types(src, python_version, filename=None, pythonpath=None,
     src: A string containing Python source code.
     python_version: The python version to emulate (major, minor).
     filename: Filename of the program we're parsing.
+    run_builtins: Whether to preload the native Python builtins when running
+      the program.
     pythonpath: List of directories to search for .pytd-gen files.
     svg_output: A filename into which to save an SVG version of the type graph.
     deep: If True, analyze all functions, even the ones not called by the main
@@ -362,7 +367,7 @@ def infer_types(src, python_version, filename=None, pythonpath=None,
   """
   tracer = CallTracer(python_version, reverse_operators,
                       pythonpath=pythonpath)
-  loc, defs, builtin_names = tracer.run_program(src, filename)
+  loc, defs, builtin_names = tracer.run_program(src, filename, run_builtins)
   log.info("===Done run_program===")
   # TODO(pludemann): make test_inference.InferDedent and this code the same:
   if deep:
