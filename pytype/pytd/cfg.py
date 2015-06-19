@@ -25,13 +25,17 @@ class Program(object):
     """Initialize a new (initially empty) program."""
     self.entrypoint = None
     self.cfg_nodes = []
-    self.variables = []
+    self.next_variable_id = 0
 
   def NewCFGNode(self, name=None):
     """Start a new CFG node."""
     cfg_node = CFGNode(self, name, len(self.cfg_nodes))
     self.cfg_nodes.append(cfg_node)
     return cfg_node
+
+  @property
+  def variables(self):
+    return {value.variable for node in self.cfg_nodes for value in node.values}
 
   def NewVariable(self, name, values=None, source_set=None, where=None):
     """Create a new Variable.
@@ -52,8 +56,8 @@ class Program(object):
     Returns:
       A Variable instance.
     """
-    variable = Variable(self, name, len(self.variables))
-    self.variables.append(variable)
+    variable = Variable(self, name, self.next_variable_id)
+    self.next_variable_id += 1
     if values is not None:
       assert source_set is not None and where is not None
       for data in values:

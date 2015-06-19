@@ -305,13 +305,10 @@ def program_to_dot(program, ignored):
   def escape(s):
     return repr(s)[1:-1].replace('"', '\\"')
 
-  variables = set(
-      value.variable for node in program.cfg_nodes for value in node.values)
-
   print("cfg nodes=%d, vals=%d, variables=%d" % (
       len(program.cfg_nodes),
-      sum(len(v.values) for v in variables),
-      len(variables)))
+      sum(len(v.values) for v in program.variables),
+      len(program.variables)))
 
   sb = StringIO.StringIO()
   sb.write("digraph {\n")
@@ -322,7 +319,7 @@ def program_to_dot(program, ignored):
              % (objname(node), node.name))
     for other in node.outgoing:
       sb.write("%s -> %s [penwidth=2.0];\n" % (objname(node), objname(other)))
-  for variable in variables:
+  for variable in program.variables:
     if variable.name in ignored:
       continue
     sb.write('%s[label="%s",shape=polygon,sides=4,distortion=.1];\n'
