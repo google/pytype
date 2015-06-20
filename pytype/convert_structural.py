@@ -28,8 +28,9 @@ class FlawedQuery(Exception):
 class TypeSolver(object):
   """Class for solving ~unknowns in type inference results."""
 
-  def __init__(self, ast):
-    self.pytd = ast
+  def __init__(self, ast, builtins):
+    self.ast = ast
+    self.builtins = builtins
 
   def match_unknown_against_complete(self, matcher,
                                      solver, unknown, complete):
@@ -101,7 +102,8 @@ class TypeSolver(object):
       A dictionary, mapping instances of pytd.TYPE (types) to lists of
       pytd.Class (the derived classes).
     """
-    hierarchy = self.pytd.Visit(visitors.ExtractSuperClasses())
+    hierarchy = self.ast.Visit(visitors.ExtractSuperClasses())
+    hierarchy.update(self.builtins.Visit(visitors.ExtractSuperClasses()))
     hierarchy = {cls: [superclass for superclass in superclasses
                        if (hasattr(superclass, "name") and
                            is_complete(superclass))]
@@ -119,58 +121,40 @@ class TypeSolver(object):
     Raises:
       AssertionError: If we detect an internal error.
     """
-    unprocessed = set(self.pytd.classes)
     factory = type_match.TypeMatch(self.get_all_subclasses())
     solver = factory.solver
 
-    # TODO(kramm): We should do prefiltering of the left and right side, and
-    # then only loop over the combinations we actually want to compare.
-    for cls1 in self.pytd.classes:
-      assert not (is_unknown(cls1) and is_complete(cls1)), cls1
-      unprocessed.remove(cls1)  # Only use class once, either left or right.
-      if is_unknown(cls1):
-        solver.register_variable(cls1.name)
-      for cls2 in unprocessed:
-        if is_unknown(cls1) and is_unknown(cls2):
-          pass  # Don't do identity between unknowns - pytype takes care of that
-        elif is_complete(cls1) and is_complete(cls2):
-          assert cls1.name != cls2.name, cls1.name
-        elif not (is_complete(cls1) or is_complete(cls2)):
-          assert cls1.name != cls2.name, cls1.name
-        elif is_unknown(cls1) and is_complete(cls2):
-          self.match_unknown_against_complete(factory, solver, cls1, cls2)
-        elif is_complete(cls1) and is_unknown(cls2):
-          self.match_unknown_against_complete(factory, solver, cls2, cls1)
-        elif not is_complete(cls1) and is_complete(cls2):
-          if type_match.unpack_name_of_partial(cls1.name) == cls2.name:
-            self.match_partial_against_complete(factory, solver, cls1, cls2)
-        elif is_complete(cls1) and not is_complete(cls2):
-          if type_match.unpack_name_of_partial(cls2.name) == cls1.name:
-            self.match_partial_against_complete(factory, solver, cls2, cls1)
-        elif (is_unknown(cls1) and
-              not is_complete(cls2) or
-              is_unknown(cls2) and
-              not is_complete(cls1)):
-          pass  # We don't match unknowns against partial classes
-        elif (is_partial(cls1) and not is_partial(cls2) and
-              type_match.unpack_name_of_partial(cls1.name) != cls2.name):
-          pass  # unrelated classes
-        elif (not is_partial(cls1) and is_partial(cls2) and
-              cls1.name != type_match.unpack_name_of_partial(cls2.name)):
-          pass  # unrelated classes
-        else:  # COV_NF_LINE
-          raise AssertionError("%r %r" % (cls1.name, cls2.name))  # COV_NF_LINE
+    unknown_classes = set()
+    partial_classes = set()
+    complete_classes = set()
+    for cls in self.ast.classes:
+      if is_unknown(cls):
+        solver.register_variable(cls.name)
+        unknown_classes.add(cls)
+      elif is_partial(cls):
+        partial_classes.add(cls)
+      else:
+        complete_classes.add(cls)
 
-    unprocessed = set(self.pytd.functions)
-    for f1 in frozenset(self.pytd.functions):
-      unprocessed.remove(f1)
-      for f2 in unprocessed:
-        if (is_partial(f1) and
-            type_match.unpack_name_of_partial(f1.name) == f2.name):
-          self.match_call_record(factory, solver, f1, f2)
-        elif (is_partial(f2) and
-              type_match.unpack_name_of_partial(f2.name) == f1.name):
-          self.match_call_record(factory, solver, f2, f1)
+    for complete in complete_classes.union(self.builtins.classes):
+      for unknown in unknown_classes:
+        self.match_unknown_against_complete(factory, solver, unknown, complete)
+      for partial in partial_classes:
+        if type_match.unpack_name_of_partial(partial.name) == complete.name:
+          self.match_partial_against_complete(
+              factory, solver, partial, complete)
+
+    partial_functions = set()
+    complete_functions = set()
+    for f in self.ast.functions:
+      if is_partial(f):
+        partial_functions.add(f)
+      else:
+        complete_functions.add(f)
+    for partial in partial_functions:
+      for complete in complete_functions.union(self.builtins.functions):
+        if type_match.unpack_name_of_partial(partial.name) == complete.name:
+          self.match_call_record(factory, solver, partial, complete)
 
     log.info("=========== Equations to solve =============\n%s", solver)
     log.info("=========== Equations to solve (end) =======")
@@ -185,24 +169,22 @@ def solve(ast, builtins_pytd):
     builtins_pytd: A pytd for builtins.
 
   Returns:
-    A dictionary (str->str), mapping unknown class names to known class names.
+    A tuple of (1) a dictionary (str->str) mapping unknown class names to known
+    class names and (2) a pytd.TypeDeclUnit of the complete classes in ast.
   """
   builtins_pytd = pytd_utils.RemoveMutableParameters(builtins_pytd)
-  combined = pytd_utils.Concat(builtins_pytd, ast)
-  combined = visitors.LookupClasses(combined, overwrite=True)
-  return TypeSolver(combined).solve()
+  builtins_pytd = visitors.LookupClasses(builtins_pytd, overwrite=True)
+  ast = visitors.LookupClasses(ast, builtins_pytd, overwrite=True)
+  return TypeSolver(ast, builtins_pytd).solve(), extract_local(ast)
 
 
 def extract_local(ast):
   """Extract all classes that are not unknowns of call records of builtins."""
   return pytd.TypeDeclUnit(
       name=ast.name,
-      classes=tuple(cls for cls in ast.classes
-                    if is_complete(cls)),
-      functions=tuple(f for f in ast.functions
-                      if is_complete(f)),
-      constants=tuple(c for c in ast.constants
-                      if is_complete(c)))
+      classes=tuple(cls for cls in ast.classes if is_complete(cls)),
+      functions=tuple(f for f in ast.functions if is_complete(f)),
+      constants=tuple(c for c in ast.constants if is_complete(c)))
 
 
 def convert_string_type(string_type, unknown, mapping, global_lookup, depth=0):
@@ -258,11 +240,9 @@ def insert_solution(result, mapping, global_lookup):
 
 def convert_pytd(ast, builtins_pytd):
   """Convert pytd with unknowns (structural types) to one with nominal types."""
-  # builtins_pytd = pytd_utils.RemoveMutableParameters(builtins_pytd)
   builtins_pytd = builtins_pytd.Visit(visitors.ClassTypeToNamedType())
-  mapping = solve(ast, builtins_pytd)
+  mapping, result = solve(ast, builtins_pytd)
   log_info_mapping(mapping)
-  result = extract_local(ast)
   if log.isEnabledFor(logging.INFO):
     log.info("=========== solve result =============\n%s", pytd.Print(result))
     log.info("=========== solve result (end) =============")

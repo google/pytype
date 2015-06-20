@@ -21,8 +21,9 @@ class MatchTest(unittest.TestCase):
     return parser.parse_string(textwrap.dedent(src))
 
   def parse_and_solve(self, src):
-    return convert_structural.solve(self.parse(src),
-                                    builtins_pytd=self.builtins_pytd)
+    types, _ = convert_structural.solve(self.parse(src),
+                                        builtins_pytd=self.builtins_pytd)
+    return types
 
   def test_simple(self):
     mapping = self.parse_and_solve("""
