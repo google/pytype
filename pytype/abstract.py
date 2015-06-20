@@ -405,7 +405,7 @@ class SimpleAbstractValue(AtomicAbstractValue):
   def init_type_parameters(self, *names):
     """Initialize the named type parameters to nothing (empty)."""
     for name in names:
-      self.type_parameters[name] = Nothing(self.vm).to_variable(
+      self.type_parameters[name] = self.vm.nothing.to_variable(
           self.vm.root_cfg_node, "empty")
 
   def get_attribute(self, node, name, valself=None, valcls=None):
@@ -537,12 +537,19 @@ class ValueWithSlots(SimpleAbstractValue):
     self._slots = {}
     self._self = {}  # TODO(kramm): Find a better place to store these.
     self._super = {}
+    self._function_cache = {}
+
+  def make_native_function(self, name, method):
+    key = (name, method)
+    if key not in self._function_cache:
+      self._function_cache[key] = NativeFunction(name, method, self.vm)
+    return self._function_cache[key]
 
   def set_slot(self, name, method):
     """Add a new slot to this value."""
     assert name not in self._slots, "slot %s already occupied" % name
-    self._slots[name] = NativeFunction(
-        name, method, self.vm).to_variable(self.vm.root_cfg_node, name)
+    f = self.make_native_function(name, method)
+    self._slots[name] = f.to_variable(self.vm.root_cfg_node, name)
     _, attr = super(ValueWithSlots, self).get_attribute(
         self.vm.root_cfg_node, name)
     self._super[name] = attr
@@ -779,11 +786,15 @@ class PyTDSignature(AtomicAbstractValue):
     self.param_types = [
         self.vm.convert_constant_to_value(pytd.Print(p), p.type)
         for p in self.pytd_sig.params]
+    self._bound_sig_cache = {}
 
-  def property_get(self, callself, callcls):
+  def property_get(self, callself, unused_callcls=None):
     assert callself
-    return BoundPyTDSignature(self.function, callself,
-                              self.pytd_sig, self.vm)
+    key = tuple(sorted(callself.values))
+    if key not in self._bound_sig_cache:
+      self._bound_sig_cache[key] = BoundPyTDSignature(
+          self.function, callself, self.pytd_sig, self.vm)
+    return self._bound_sig_cache[key]
 
   def get_attribute(self, node, name, valself=None, valcls=None):
     return node, None
@@ -964,11 +975,15 @@ class PyTDFunction(AtomicAbstractValue):
   def __init__(self, name, signatures, vm):
     super(PyTDFunction, self).__init__(name, vm)
     self.signatures = signatures
+    self._signature_cache = {}
 
-  def property_get(self, callself, callcls):
-    return BoundPyTDFunction("bound " + self.name,
-                             [s.property_get(callself, callcls)
-                              for s in self.signatures], self.vm)
+  def property_get(self, callself, unused_callcls=None):
+    key = (self.__class__, tuple(sorted(callself.values)))
+    if key not in self._signature_cache:
+      self._signature_cache[key] = BoundPyTDFunction(
+          "bound " + self.name, [s.property_get(callself)
+                                 for s in self.signatures], self.vm)
+    return self._signature_cache[key]
 
   def call(self, node, func, args, kws):
     log.debug("Calling function %r: %d signature(s)",
@@ -1249,6 +1264,7 @@ class InterpreterClass(SimpleAbstractValue, Class):
     self.mro = utils.compute_mro(self)
     self.members = members
     self.instances = set()  # filled through register_instance
+    self._instance_cache = {}
     log.info("Created class: %r", self)
 
   def register_instance(self, instance):
@@ -1270,13 +1286,20 @@ class InterpreterClass(SimpleAbstractValue, Class):
     # come into play.
     return super(InterpreterClass, self).set_attribute(node, name, value)
 
-  def call(self, node, func, args, kws):
-    value = Instance(func.AssignToNewVariable("__class__", node), self.vm)
-    variable = self.vm.program.NewVariable(self.name + " instance")
-    val = variable.AddValue(value, [func], node)
+  def _new_instance(self, node, value):
+    # We allow only one "instance" per code location, regardless of call stack.
+    key = self.vm.frame.current_opcode
+    if key not in self._instance_cache:
+      cls = self.vm.program.NewVariable("__class__")
+      cls.AddValue(self, [value], node)
+      self._instance_cache[key] = Instance(cls, self.vm)
+    return self._instance_cache[key]
 
+  def call(self, node, value, args, kws):
+    value = self._new_instance(node, value)
+    variable = self.vm.program.NewVariable(self.name + " instance")
+    val = variable.AddValue(value, [], node)
     node, init = value.get_attribute(node, "__init__", val)
-    # TODO(pludemann): Verify that this follows MRO:
     if init:
       log.debug("calling %s.__init__(...)", self.name)
       node, ret = self.vm.call_function(node, init, args, kws)
@@ -1348,6 +1371,7 @@ class Function(AtomicAbstractValue):
     super(Function, self).__init__(name, vm)
     self.func_name = self.vm.build_string(self.vm.root_cfg_node, name)
     self.cls = None
+    self._bound_functions_cache = {}
 
   def get_attribute(self, node, name, valself=None, valcls=None):
     if name == "func_name":
@@ -1364,10 +1388,12 @@ class Function(AtomicAbstractValue):
 
   def property_get(self, callself, callcls):
     self.cls = callcls.values[0].data
-    if callself:
-      return BoundFunction(callself, self)
-    else:
+    if not callself:
       raise NotImplementedError()
+    key = tuple(sorted(callself.data))
+    if key not in self._bound_functions_cache:
+      self._bound_functions_cache[key] = BoundFunction(callself, self)
+    return self._bound_functions_cache[key]
 
   def get_type(self):
     return self.vm.function_type
@@ -1636,8 +1662,8 @@ class Generator(AtomicAbstractValue):
       except StopIteration:
         # Happens for iterators that return zero entries.
         log.info("Iterator raised StopIteration before first entry")
-        self.retvar = Nothing(self.vm).to_variable(self.vm.root_cfg_node,
-                                                   "next()")
+        self.retvar = self.vm.nothing.to_variable(self.vm.root_cfg_node,
+                                                  "next()")
     return self.retvar
 
   def call(self, node, unused_func, args, kws):

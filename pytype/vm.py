@@ -111,11 +111,12 @@ class VirtualMachine(object):
   #       storing how a value is accessed and from where.
 
   def __init__(self, python_version, reverse_operators=False,
-               pythonpath=None):
+               cache_unknowns=False, pythonpath=None):
     """Construct a TypegraphVirtualMachine."""
     self.python_version = python_version
     self.pythonpath = pythonpath
     self.reverse_operators = reverse_operators
+    self.cache_unknowns = cache_unknowns
     # The call stack of frames.
     self.frames = []
     # The current frame.
@@ -126,10 +127,6 @@ class VirtualMachine(object):
 
     self.root_cfg_node = self.program.NewCFGNode("root")
     self.program.entrypoint = self.root_cfg_node
-
-    # Used if we don't have a frame (e.g. when setting up an artificial function
-    # call):
-    self.default_location = self.root_cfg_node
 
     self.builtins_pytd = builtins.GetBuiltinsPyTD()
 
@@ -149,6 +146,7 @@ class VirtualMachine(object):
         True, self.primitive_classes[bool], self)
     self.false = abstract.AbstractOrConcreteValue(
         False, self.primitive_classes[bool], self)
+    self.nothing = abstract.Nothing(self)
 
     self.primitive_class_instances = {
         name: abstract.Instance(clsvar, self)
@@ -183,6 +181,7 @@ class VirtualMachine(object):
     """
     if log.isEnabledFor(logging.INFO):
       self.log_opcode(op, state)
+    self.frame.current_opcode = op
     try:
       # dispatch
       bytecode_fn = getattr(self, "byte_%s" % op.name, None)
@@ -212,6 +211,7 @@ class VirtualMachine(object):
       state = state.set_why("exception")
     if state.why == "reraise":
       state = state.set_why("exception")
+    del self.frame.current_opcode
     return state
 
   def join_cfg_nodes(self, nodes):
@@ -219,7 +219,7 @@ class VirtualMachine(object):
     if len(nodes) == 1:
       return nodes[0]
     else:
-      ret = self.program.NewCFGNode("ret")
+      ret = self.program.NewCFGNode()
       for node in nodes:
         node.ConnectTo(ret)
       return ret
@@ -509,13 +509,11 @@ class VirtualMachine(object):
       ValueError: if pytype is not of a known type.
     """
     if isinstance(pytype, pytd.ClassType):
-      if not pytype.cls:
-        raise ValueError("Class {} must be resolved before typegraphvm can "
-                         "instantiate them: {}".format(pytype.name,
-                                                       repr(pytype)))
-      value = abstract.Instance(
-          self.convert_constant(pytype.cls.name, pytype.cls), self)
-      return value
+      key = (abstract.Instance, pytype.cls)
+      if key not in self._convert_cache:
+        self._convert_cache[key] = abstract.Instance(
+            self.convert_constant(pytype.cls.name, pytype.cls), self)
+      return self._convert_cache[key]
     elif isinstance(pytype, pytd.GenericType):
       assert isinstance(pytype.base_type, pytd.ClassType)
       value = self._create_pytd_instance_value(name, pytype.base_type,
@@ -533,9 +531,19 @@ class VirtualMachine(object):
     else:
       return self.convert_constant_to_value(name, pytype)
 
+  def create_new_unknown_value(self):
+    if not self.cache_unknowns:
+      return abstract.Unknown(self)
+    # We allow only one Unknown at each point in the program, regardless of
+    # what the call stack is.
+    key = ("unknown", self.frame.current_opcode)
+    if key not in self._convert_cache:
+      self._convert_cache[key] = abstract.Unknown(self)
+    return self._convert_cache[key]
+
   def create_new_unknown(self, node, name, source=None):
     """Create a new variable containing unknown, originating from this one."""
-    unknown = abstract.Unknown(self)
+    unknown = self.create_new_unknown_value()
     v = self.program.NewVariable(name)
     val = v.AddValue(unknown, source_set=[source] if source else [], where=node)
     unknown.owner = val
@@ -592,7 +600,7 @@ class VirtualMachine(object):
     # Memoization is an optimization, but an important one- mapping constants
     # like "None" to the same AbstractValue greatly simplifies the typegraph
     # structures we're building.
-    key = (pyval, type(pyval))
+    key = ("constant", pyval, type(pyval))
     if key not in self._convert_cache:
       self._convert_cache[key] = self.construct_constant_from_value(name, pyval)
     return self._convert_cache[key]
@@ -650,7 +658,7 @@ class VirtualMachine(object):
       assert pyval.cls
       return self.convert_constant_to_value(pyval.name, pyval.cls)
     elif isinstance(pyval, pytd.NothingType):
-      return abstract.Nothing(self)
+      return self.nothing
     elif isinstance(pyval, pytd.AnythingType):
       # TODO(kramm): Can we do this without creating a Variable?
       return self.create_new_unknown(self.root_cfg_node, "?").data[0]
@@ -801,6 +809,7 @@ class VirtualMachine(object):
       assert f_locals is None
       f_globals = self.frame.f_globals
       f_locals = self.convert_locals_or_globals({}, "locals")
+      assert not code.co_flags & loadmarshal.CodeType.CO_NEWLOCALS
     else:
       assert f_locals is None
       # TODO(ampere): __name__, __doc__, __package__ below are not correct
@@ -896,7 +905,7 @@ class VirtualMachine(object):
       A tuple (CFGNode, set) containing the last CFGNode of the program as
         well as all the top-level names defined by it.
     """
-    node = self.root_cfg_node.ConnectNew("init")
+    node = self.root_cfg_node.ConnectNew("builtins")
     if run_builtins:
       node, f_globals, f_locals, builtin_names = self.preload_builtins(node)
     else:
@@ -904,6 +913,7 @@ class VirtualMachine(object):
 
     code = self.compile_src(src, filename=filename)
 
+    node = self.root_cfg_node.ConnectNew("init")
     node, f_globals, _ = self.run_bytecode(node, code, f_globals, f_locals)
     log.info("Final node: %s", node.name)
     return node, f_globals.members, builtin_names
@@ -989,6 +999,7 @@ class VirtualMachine(object):
   def call_function_from_stack(self, state, arg, args, kwargs=None):
     """Pop arguments for a function and call it."""
     num_kw, num_pos = divmod(arg, 256)
+    # TODO(kramm): Can we omit creating this dict if kwargs=None and num_kw=0?
     namedargs = abstract.Dict("kwargs", self)
     for _ in range(num_kw):
       state, (key, val) = state.popn(2)
@@ -1146,9 +1157,7 @@ class VirtualMachine(object):
     return val.to_variable(node, name)
 
   def build_string(self, node, s):
-    str_value = abstract.AbstractOrConcreteValue(
-        s, self.str_type, self)
-    return str_value.to_variable(node, name=repr(s))
+    return self.convert_constant(repr(s), s)
 
   def build_content(self, node, elements):
     var = self.program.NewVariable("<elements>")
@@ -1221,12 +1230,8 @@ class VirtualMachine(object):
     return state.pop()
 
   def convert_locals_or_globals(self, d, name="globals"):
-    if isinstance(d, dict):
-      return abstract.LazyAbstractValue(
-          name, d, self.maybe_convert_constant, self)
-    else:
-      assert isinstance(d, (abstract.LazyAbstractValue, types.NoneType))
-      return d
+    return abstract.LazyAbstractValue(
+        name, d, self.maybe_convert_constant, self)
 
   def import_name(self, state, name, level):
     """Import the module and return the module object."""

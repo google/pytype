@@ -2,7 +2,6 @@
 """Tool for inferring types from Python programs.
 
 'pytype' is a tool for generating pytd from Python programs.
-See go/python-type-inference for details.
 
 Usage:
   pytype [flags] file.py

@@ -113,7 +113,7 @@ class FrameState(object):
     return self.change_cfg_node(node)
 
   def forward_cfg_node(self):
-    new_node = self.node.ConnectNew()
+    new_node = self.node.ConnectNew(self.node.name)
     return self.change_cfg_node(new_node)
 
   def advance_cfg_node(self):
