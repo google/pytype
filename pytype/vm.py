@@ -532,7 +532,7 @@ class VirtualMachine(object):
       return self.convert_constant_to_value(name, pytype)
 
   def create_new_unknown_value(self, action):
-    if not self.cache_unknowns or not action:
+    if not self.cache_unknowns or not action or not self.frame:
       return abstract.Unknown(self)
     # We allow only one Unknown at each point in the program, regardless of
     # what the call stack is.

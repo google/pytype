@@ -74,5 +74,19 @@ class SolverTests(test_inference.InferenceTest):
           def barbaz(self) -> NoneType
       """)
 
+  def testTopLevelClass(self):
+    with self.Infer("""
+      import Foo
+
+      class Bar(Foo):
+        pass
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        Foo: ?
+
+        class Bar(?):
+          pass
+      """)
+
 if __name__ == "__main__":
   test_inference.main()

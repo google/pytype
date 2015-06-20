@@ -84,7 +84,7 @@ class Infer(object):
     try:
       self.types = test._InferAndVerify(
           self.srccode, deep=deep, solve_unknowns=solve_unknowns,
-          reverse_operators=True)
+          reverse_operators=True, cache_unknowns=True)
       self.inferred = self.types
       if extract_locals:
         # Rename "~unknown" to "?"
