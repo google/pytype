@@ -205,7 +205,8 @@ class InferenceTest(unittest.TestCase):
       log.warning("Ignoring 'raises' parameter to assert_ok")
     unit = infer.infer_types(
         textwrap.dedent(code), self.PYTHON_VERSION,
-        deep=False, solve_unknowns=False, reverse_operators=True)
+        deep=False, solve_unknowns=False, reverse_operators=True,
+        cache_unknowns=True)
     unit.Visit(visitors.VerifyVisitor())
 
   @classmethod

@@ -111,7 +111,7 @@ class VirtualMachine(object):
   #       storing how a value is accessed and from where.
 
   def __init__(self, python_version, reverse_operators=False,
-               cache_unknowns=False, pythonpath=None):
+               cache_unknowns=True, pythonpath=None):
     """Construct a TypegraphVirtualMachine."""
     self.python_version = python_version
     self.pythonpath = pythonpath
@@ -531,19 +531,19 @@ class VirtualMachine(object):
     else:
       return self.convert_constant_to_value(name, pytype)
 
-  def create_new_unknown_value(self):
-    if not self.cache_unknowns:
+  def create_new_unknown_value(self, action):
+    if not self.cache_unknowns or not action:
       return abstract.Unknown(self)
     # We allow only one Unknown at each point in the program, regardless of
     # what the call stack is.
-    key = ("unknown", self.frame.current_opcode)
+    key = ("unknown", self.frame.current_opcode, action)
     if key not in self._convert_cache:
       self._convert_cache[key] = abstract.Unknown(self)
     return self._convert_cache[key]
 
-  def create_new_unknown(self, node, name, source=None):
+  def create_new_unknown(self, node, name, source=None, action=None):
     """Create a new variable containing unknown, originating from this one."""
-    unknown = self.create_new_unknown_value()
+    unknown = self.create_new_unknown_value(action)
     v = self.program.NewVariable(name)
     val = v.AddValue(unknown, source_set=[source] if source else [], where=node)
     unknown.owner = val

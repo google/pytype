@@ -84,9 +84,9 @@ def parse_options(args):
       help=("Enable support for Python reverse "
             "operator overloading (__radd__ etc.)"))
   o.add_option(
-      "-U", "--cache-unknowns", action="store_true",
-      dest="cache_unknowns", default=False,
-      help="Do faster processing of unknown types.")
+      "-N", "--no-cache-unknowns", action="store_false",
+      dest="cache_unknowns", default=True,
+      help="Do slower and more precise processing of unknown types.")
   o.add_option(
       "--irascible", type="int", action="store",
       dest="irascible", default=0,

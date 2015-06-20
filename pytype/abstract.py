@@ -1003,7 +1003,7 @@ class PyTDFunction(AtomicAbstractValue):
       # TODO(kramm): Add proper sources.
       # TODO(kramm): What about mutable parameters?
       result = self.vm.create_new_unknown(
-          node, "<unknown return of " + self.name + ">")
+          node, "<unknown return of " + self.name + ">", action="pytd_call")
       self.vm.trace_call(func, args, kws, result)
       return node, result
 
@@ -1182,7 +1182,8 @@ class PyTDClass(LazyAbstractValue, Class):
     fill_in_type_params = True
     if fill_in_type_params:
       for type_param in self.cls.template:
-        unknown = self.vm.create_new_unknown(node, type_param.name)
+        unknown = self.vm.create_new_unknown(node, type_param.name,
+                                             action="type_param")
         value.overwrite_type_parameter(node, type_param.name, unknown)
 
     origins = [func] + sum((u.values for u in args + kws.values()), [])
@@ -1796,7 +1797,8 @@ class Unknown(AtomicAbstractValue):
     if name in self.members:
       return node, self.members[name]
     new = self.vm.create_new_unknown(node,
-                                     self.name + "." + name, source=self.owner)
+                                     self.name + "." + name, source=self.owner,
+                                     action="getattr")
     # We store this at the root node, even though we only just created this.
     # From the analyzing point of view, we don't know when the "real" version
     # of this attribute (the one that's not an unknown) gets created, hence
@@ -1822,7 +1824,8 @@ class Unknown(AtomicAbstractValue):
     return node
 
   def call(self, node, unused_func, args, kws):
-    ret = self.vm.create_new_unknown(node, self.name + "()", source=self.owner)
+    ret = self.vm.create_new_unknown(node, self.name + "()", source=self.owner,
+                                     action="call")
     self._calls.append((args, kws, ret))
     return node, ret
 
