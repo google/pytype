@@ -84,6 +84,10 @@ def parse_options(args):
       help=("Enable support for Python reverse "
             "operator overloading (__radd__ etc.)"))
   o.add_option(
+      "-U", "--cache-unknowns", action="store_true",
+      dest="cache_unknowns", default=False,
+      help="Do faster processing of unknown types.")
+  o.add_option(
       "--irascible", type="int", action="store",
       dest="irascible", default=0,
       help="Non-zero return code: 0=critical, 1=error, 2=warn, ...")
@@ -157,7 +161,8 @@ def main(argv):
       solve_unknowns=options.solve_unknowns or options.api,
       svg_output=options.svg_output,
       pseudocode_output=options.pseudocode_output,
-      reverse_operators=options.reverse_operators)
+      reverse_operators=options.reverse_operators,
+      cache_unknowns=options.cache_unknowns)
 
   if options.optimize:
     mod = optimize.Optimize(mod,

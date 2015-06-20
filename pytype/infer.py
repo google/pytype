@@ -348,7 +348,7 @@ def program_to_dot(program, ignored):
 def infer_types(src, python_version, filename=None, run_builtins=True,
                 pythonpath=None, svg_output=None, deep=False,
                 pseudocode_output=False, solve_unknowns=False,
-                reverse_operators=False):
+                reverse_operators=False, cache_unknowns=False):
   """Given Python source return its types.
 
   Args:
@@ -365,10 +365,13 @@ def infer_types(src, python_version, filename=None, run_builtins=True,
     solve_unknowns: If yes, try to replace structural types ("~unknowns") with
       nominal types.
     reverse_operators: If True, emulate operations like __radd__.
+    cache_unknowns: If True, do a faster approximation of unknown types.
   Returns:
     A TypeDeclUnit
   """
-  tracer = CallTracer(python_version, reverse_operators,
+  tracer = CallTracer(python_version=python_version,
+                      reverse_operators=reverse_operators,
+                      cache_unknowns=cache_unknowns,
                       pythonpath=pythonpath)
   loc, defs, builtin_names = tracer.run_program(src, filename, run_builtins)
   log.info("===Done run_program===")
