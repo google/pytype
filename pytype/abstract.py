@@ -820,8 +820,9 @@ class PyTDSignature(AtomicAbstractValue):
           "  Expected: %r" % [p.name for p in self.pytd_sig.params],
           "  Actually passed: %r" % (args,)]
       self._raise_failed_function_call(msg_lines)
-    results = collections.defaultdict(list)
     msg_lines = []
+    retvar = self.vm.program.NewVariable("%s ret" % self.name)
+    ret_map = {}
     for args_selected in utils.variable_product(args):
       for kws_selected in utils.variable_product_dict(kws):
         try:
@@ -829,15 +830,20 @@ class PyTDSignature(AtomicAbstractValue):
         except FailedFunctionCall as e:
           msg_lines.extend(e.explanation_lines)
         else:
-          results[(r.return_type, r.subst)].append(r.sources + [func])
-    if not results:
+          assert r.subst is not None
+          t = (r.return_type, r.subst)
+          if t not in ret_map:
+            ret_map[t] = self.vm.create_pytd_instance(
+                "ret", r.return_type, r.subst, node,
+                source_sets=[r.sources + [func]])
+          else:
+            # add the new sources
+            for data in ret_map[t].data:
+              ret_map[t].AddValue(data, r.sources + [func], node)
+          self.vm.trace_call(func, args_selected, kws_selected, ret_map[t])
+          retvar.AddValues(ret_map[t], node)
+    if not retvar.values:
       self._raise_failed_function_call(msg_lines)
-    retvar = self.vm.program.NewVariable("<return:" + self.name + "()>")
-    for (return_type, subst), source_sets in results.items():
-      assert subst is not None
-      r = self.vm.create_pytd_instance("ret", return_type, subst, node,
-                                       source_sets=source_sets)
-      retvar.AddValues(r, node)
     return node, retvar
 
   def _call_with_values(self, node, arg_values, kw_values):
@@ -1004,7 +1010,9 @@ class PyTDFunction(AtomicAbstractValue):
       # TODO(kramm): What about mutable parameters?
       result = self.vm.create_new_unknown(
           node, "<unknown return of " + self.name + ">", action="pytd_call")
-      self.vm.trace_call(func, args, kws, result)
+      for a in utils.variable_product(args):
+        for k in utils.variable_product_dict(kws):
+          self.vm.trace_call(func, a, k, result)
       return node, result
 
     # We only take the first signature that matches, and ignore all after it.
@@ -1022,7 +1030,6 @@ class PyTDFunction(AtomicAbstractValue):
       except FailedFunctionCall as e:
         msg_lines.extend(e.explanation_lines)
       else:
-        self.vm.trace_call(func, args, kws, result)
         return new_node, result
     self._raise_failed_function_call(
         ["Failed call function %r: signature: %r" %

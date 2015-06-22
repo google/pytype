@@ -137,8 +137,8 @@ class CallTracer(vm.VirtualMachine):
 
     Args:
       func: A typegraph Value of functions that was called.
-      posargs: The positional arguments.
-      namedargs: The keyword arguments.
+      posargs: The positional arguments, an iterable over cfg.Value.
+      namedargs: The keyword arguments, a dict mapping str to cfg.Value.
       result: A Variable of the possible result values.
     """
     log.debug("Logging call to %r with %d args, return %r",
@@ -192,26 +192,25 @@ class CallTracer(vm.VirtualMachine):
         "inferred", tuple(constants), tuple(classes), tuple(functions))
 
   def pytd_functions_for_call_traces(self):
-    functions = []
-    for funcval, args, kws, rets in self._calls:
-      func = funcval.data.signatures[0]
+    funcs = collections.defaultdict(list)
+    for funcvar, args, kws, retvar in self._calls:
+      func = funcvar.data.signatures[0]
       if isinstance(func, abstract.BoundPyTDFunction):
         # Don't do class methods, only top-level functions
         continue
-      signatures = []
-      for args_selected in utils.variable_product(
-          func.get_bound_arguments() + list(args)):
-        for kws_selected in sorted(utils.variable_product_dict(dict(kws))):
-          ret = pytd_utils.JoinTypes(r.to_type() for r in rets.data)
-          names = func.get_parameter_names()
-          arg_types = (a.data.to_type() for a in args_selected)
-          signatures.append(pytd.Signature(
-              tuple(pytd.Parameter(n, t)
-                    for n, t in zip(names, arg_types)) +
-              tuple(pytd.Parameter(name, a.data.to_type())
-                    for name, a in kws_selected.items()),
-              ret, has_optional=False, exceptions=(), template=()))
-      functions.append(pytd.Function("~" + func.name, tuple(signatures)))
+      arg_names = func.get_parameter_names()
+      arg_types = (a.data.to_type()
+                   for a in func.get_bound_arguments() + list(args))
+      ret = pytd_utils.JoinTypes(t.to_type() for t in retvar.data)
+      funcs[funcvar.data.name].append(pytd.Signature(
+          tuple(pytd.Parameter(n, t)
+                for n, t in zip(arg_names, arg_types)) +
+          tuple(pytd.Parameter(name, a.data.to_type())
+                for name, a in kws),
+          ret, has_optional=False, exceptions=(), template=()))
+    functions = []
+    for name, signatures in funcs.items():
+      functions.append(pytd.Function("~" + name, tuple(signatures)))
     return functions
 
   def compute_types(self, defs, ignore):

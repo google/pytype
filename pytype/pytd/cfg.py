@@ -328,6 +328,9 @@ class Variable(object):
   def AddValues(self, variable, where):
     """Adds all the values from another variable to this one."""
     for value in variable.values:
+      # TODO(kramm): If where == value.where, this should just copy the
+      # source_sets from value, instead of adding another level of indirection
+      # by creating a new_source set with value in it.
       copy = self.AddValue(value.data)
       copy.AddOrigin(where, {value})
 

@@ -88,5 +88,17 @@ class SolverTests(test_inference.InferenceTest):
           pass
       """)
 
+  def testDictWithNothing(self):
+    with self.Infer("""
+      def f():
+        d = {}
+        d[1] = "foo"
+        for name in d:
+          len(name)
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        def f() -> NoneType
+      """)
+
 if __name__ == "__main__":
   test_inference.main()

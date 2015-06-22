@@ -531,7 +531,7 @@ class VirtualMachine(object):
     else:
       return self.convert_constant_to_value(name, pytype)
 
-  def create_new_unknown_value(self, action):
+  def _create_new_unknown_value(self, action):
     if not self.cache_unknowns or not action or not self.frame:
       return abstract.Unknown(self)
     # We allow only one Unknown at each point in the program, regardless of
@@ -543,7 +543,7 @@ class VirtualMachine(object):
 
   def create_new_unknown(self, node, name, source=None, action=None):
     """Create a new variable containing unknown, originating from this one."""
-    unknown = self.create_new_unknown_value(action)
+    unknown = self._create_new_unknown_value(action)
     v = self.program.NewVariable(name)
     val = v.AddValue(unknown, source_set=[source] if source else [], where=node)
     unknown.owner = val
