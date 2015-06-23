@@ -49,7 +49,7 @@ class TestTypeMatch(unittest.TestCase):
 
   def testNamedAgainstGeneric(self):
     m = type_match.TypeMatch({})
-    eq = m.match_type_against_type(pytd.GenericType(pytd.NamedType("A"), []),
+    eq = m.match_type_against_type(pytd.GenericType(pytd.NamedType("A"), ()),
                                    pytd.NamedType("A"), {})
     self.assertEquals(eq, booleq.TRUE)
 

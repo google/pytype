@@ -87,6 +87,7 @@ class TypeMatch(utils.TypeMatcher):
   def __init__(self, direct_subclasses=None):
     self.direct_subclasses = direct_subclasses or {}
     self.solver = booleq.Solver()
+    self._implications = {}
 
   def default_match(self, t1, t2, *unused_args, **unused_kwargs):
     # Don't allow utils.TypeMatcher to do default matching.
@@ -166,7 +167,7 @@ class TypeMatch(utils.TypeMatcher):
       base_type_cmp = booleq.FALSE
     else:
       base_type_cmp = booleq.Eq(t1.base_type.name, t2.base_type.name)
-    if base_type_cmp == booleq.FALSE:
+    if base_type_cmp is booleq.FALSE:
       return booleq.FALSE
     assert len(t1.parameters) == len(t2.parameters), t1.base_type.name
     # Type parameters are covariant:
@@ -219,6 +220,14 @@ class TypeMatch(utils.TypeMatcher):
     return [self.unclass(t) for t in class_and_subclasses]
 
   def match_type_against_type(self, t1, t2, subst):
+    types = (t1, t2, frozenset(subst.items()))
+    if types in self._implications:
+      return self._implications[types]
+    implication = self._implications[types] = self._match_type_against_type(
+        t1, t2, subst)
+    return implication
+
+  def _match_type_against_type(self, t1, t2, subst):
     """Match a pytd.TYPE against another pytd.TYPE."""
     t1 = self.maybe_lookup_type_param(t1, subst)
     t2 = self.maybe_lookup_type_param(t2, subst)
