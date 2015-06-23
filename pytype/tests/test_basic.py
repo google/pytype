@@ -173,7 +173,6 @@ class TestIt(test_inference.InferenceTest):
       print(l)
       """)
 
-  @unittest.skip("Broken: 'Matching generator against wrong type'")
   def test_generator_expression(self):
     self.assert_ok("""\
       x = "-".join(str(z) for z in range(5))

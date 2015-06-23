@@ -17,11 +17,11 @@ class OperatorsWithAnyTests(test_inference.InferenceTest):
     with self.Infer("""
       def t_testAdd1(x):
         return x + 2.0
-    """, deep=True, solve_unknowns=False, extract_locals=True) as ty:
+    """, deep=True, solve_unknowns=True, extract_locals=True) as ty:
       # TODO(pludemann): Currently this matches:
       #         def t_testAdd1(x: float) -> float
       self.assertTypesMatchPytd(ty, """
-        def _testAdd1(x: int or float or complex or long or bool) -> float or complex
+        def t_testAdd1(x: int or float or complex or long or bool) -> float or complex
       """)
 
   @unittest.skip("Needs __radd__ on all builtins")
@@ -30,9 +30,9 @@ class OperatorsWithAnyTests(test_inference.InferenceTest):
     with self.Infer("""
       def t_testAdd2(x):
         return 2.0 + x
-    """, deep=True, solve_unknowns=False, extract_locals=True) as ty:
+    """, deep=True, solve_unknowns=True, extract_locals=True) as ty:
       self.assertTypesMatchPytd(ty, """
-        def _testAdd2(x: int or float or complex or long or bool) -> float or complex
+        def t_testAdd2(x: int or float or complex or long or bool) -> float or complex
       """)
 
   def testAdd3(self):

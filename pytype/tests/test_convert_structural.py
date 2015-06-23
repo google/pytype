@@ -284,14 +284,13 @@ class MatchTest(unittest.TestCase):
     mapping = self.parse_and_solve("""
       class `~unknown1`:
         def __add__(self, _1: int) -> int
-      class `~A`(`~unknown1`):
+      class A(`~unknown1`):
         def foobar(self) -> NoneType
       class `~unknown2`:
         def __add__(self, _1: int) -> int
-        def __sub__(self, _1: int) -> int
         def foobar(self) -> NoneType
     """)
-    self.assertItemsEqual(["int"], mapping["~unknown1"])
+    self.assertItemsEqual(["int", "bool"], mapping["~unknown1"])
     self.assertItemsEqual(["A"], mapping["~unknown2"])
 
   def test_nothing(self):
@@ -441,14 +440,13 @@ class MatchTest(unittest.TestCase):
           def next(self) -> tuple<?>
     """)
 
-  @unittest.skip("not implemented")
   def test_call_builtin(self):
     mapping = self.parse_and_solve("""
       class `~unknown1`:
         pass
       class `~unknown2`:
         pass
-      def round(number: `~unknown1`) -> `~unknown2`
+      def `~round`(number: `~unknown1`) -> `~unknown2`
     """)
     self.assertIn("float", mapping["~unknown1"])
     self.assertNotIn("str", mapping["~unknown1"])
@@ -610,4 +608,4 @@ class MatchTest(unittest.TestCase):
     self.assertMultiLineEqual(pytd.Print(ast), expected)
 
 if __name__ == "__main__":
-  test_inference.main(debugging=False)
+  test_inference.main()

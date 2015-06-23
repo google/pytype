@@ -489,7 +489,7 @@ class listreverseiterator<T>:
 class list<T>:
     def __init__(self) -> NoneType:
         self := list<nothing>
-    def __init__<N>(self, iterable: `dictionary-keyiterator`<N> or `dictionary-valueiterator`<N> or listiterator<N> or listreverseiterator<N> or tupleiterator<N> or setiterator<N> or iterator<N> or `callable-iterator`<N>) -> NoneType:
+    def __init__<N>(self, iterable: list<N> or `dictionary-keyiterator`<N> or `dictionary-valueiterator`<N> or listiterator<N> or listreverseiterator<N> or tupleiterator<N> or setiterator<N> or iterator<N> or `callable-iterator`<N>) -> NoneType:
         self := list<N>
     def __init__<V>(self, iterable: `dictionary-itemiterator`<T,V>) -> NoneType:
         self := list<T>

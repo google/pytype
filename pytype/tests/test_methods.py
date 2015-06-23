@@ -408,7 +408,6 @@ class MethodsTest(test_inference.InferenceTest):
     """, deep=False, solve_unknowns=False, extract_locals=False) as ty:
       self.assertHasSignature(ty.Lookup("f"), (self.int, self.int), self.int)
 
-  @unittest.skip("Needs order matching")
   def testTwoDistinctKeywordParams(self):
     f = """
       def f(x, y):

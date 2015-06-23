@@ -21,9 +21,8 @@ class InTest(test_inference.InferenceTest):
       """, deep=False, solve_unknowns=False, extract_locals=False) as ty:
       self.assertOnlyHasReturnType(ty.Lookup("f"), self.bool)
 
-  @unittest.skip("Not testable. You can overload 'in' to return non-booleans.")
   def test_deep(self):
-    with self.InferDeep("""
+    with self.Infer("""
       def f(x, y):
         return x in y
     """, deep=True, solve_unknowns=True, extract_locals=False) as ty:
