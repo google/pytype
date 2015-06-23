@@ -8,6 +8,9 @@ and to model path-specific visibility of nested data structures.
 import collections
 
 
+_solved_find_queries = {}
+
+
 class Program(object):
   """Program instances describe program entities.
 
@@ -465,6 +468,16 @@ class State(object):
     return not self == other
 
 
+def _RecallOrFindNodeBackwards(start, finish, seen):
+  """Memoized version of _FindNodeBackwards."""
+  query = (start, finish, frozenset(seen))
+  if query in _solved_find_queries:
+    return _solved_find_queries[query]
+  found = _solved_find_queries[query] = _FindNodeBackwards(
+      start, finish, seen)
+  return found
+
+
 def _FindNodeBackwards(start, finish, seen):
   """Determine whether we can reach a CFG node, going backwards.
 
@@ -611,23 +624,23 @@ class Solver(object):
         # rerunning NodesWithAssignments.
         seen = blocked.copy()
         seen.add(origin.where)
-        if _FindNodeBackwards(state.pos, origin.where, seen):
+        if _RecallOrFindNodeBackwards(state.pos, origin.where, seen):
           # This loop over multiple different combinations of origins is why
           # we need memoization of states.
           for source_set in origin.source_sets:
-            new_state = State(origin.where, state.goals)
-            new_state.Replace(goal, source_set)
-            # Also remove all goals that are trivially fulfilled at the
-            # new CFG node.
-            new_state.RemoveFinishedGoals()
             if not source_set and self.end_node:
               # If we reached a value without further dependencies, check
               # whether the corresponding cfg node is reachable from the entry
               # point of the program.
               seen = {self.end_node}
-              if not _FindNodeBackwards(new_state.pos, self.end_node, seen):
+              if not _RecallOrFindNodeBackwards(
+                  origin.where, self.end_node, seen):
                 continue
+            new_state = State(origin.where, state.goals)
+            new_state.Replace(goal, source_set)
+            # Also remove all goals that are trivially fulfilled at the
+            # new CFG node.
+            new_state.RemoveFinishedGoals()
             if self._RecallOrFindSolution(new_state):
               return True
     return False
-
