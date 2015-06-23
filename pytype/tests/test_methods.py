@@ -640,16 +640,14 @@ class MethodsTest(test_inference.InferenceTest):
       f = ty.Lookup("f")
       self.assertOnlyHasReturnType(f, self.int)
 
-  @unittest.skip("Needs enhanced naming of unknowns")
   def testUnknownDecorator(self):
     with self.Infer("""
       @__any_object__
       def f():
         return 3j
       f()
-    """, deep=False, solve_unknowns=False, extract_locals=False) as ty:
-      f = ty.Lookup("f")
-      self.assertOnlyHasReturnType(f, self.int)
+    """, deep=False, solve_unknowns=False, extract_locals=True) as ty:
+      self.assertEquals(ty.Lookup("f").type, pytd.AnythingType())
 
   def testFuncName(self):
     with self.Infer("""

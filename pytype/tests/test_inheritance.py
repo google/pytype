@@ -8,7 +8,7 @@ from pytype.tests import test_inference
 class InheritanceTest(test_inference.InferenceTest):
   """Tests for class inheritance."""
 
-  @unittest.skip("needs analyzing methods on subclasses")
+  @unittest.skip("needs (re-)analyzing methods on subclasses")
   def testSubclassAttributes(self):
     with self.Infer("""
       class Base(object):
@@ -20,7 +20,8 @@ class InheritanceTest(test_inference.InferenceTest):
       self.assertTypesMatchPytd(ty, """
         class Base:
           pass
-        class Leaf:
+        class Leaf(Base):
+          lineno: int
           def get_lineno(self) -> int
       """)
 

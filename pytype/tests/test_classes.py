@@ -1,5 +1,4 @@
 """Tests for classes."""
-import unittest
 
 from pytype.tests import test_inference
 
@@ -7,7 +6,6 @@ from pytype.tests import test_inference
 class ClassesTest(test_inference.InferenceTest):
   """Tests for classes."""
 
-  @unittest.skip("fails with NoneType exception")
   def testClassDecorator(self):
     with self.Infer("""
       @__any_object__
@@ -16,11 +14,10 @@ class ClassesTest(test_inference.InferenceTest):
           pass
       def f():
         return MyClass()
-    """, deep=True, solve_unknowns=False, extract_locals=False) as ty:
+    """, deep=True, solve_unknowns=True, extract_locals=False) as ty:
       self.assertTypesMatchPytd(ty, """
-        class MyClass(object):
-          def method(self, response) -> NoneType
-        def f() -> MyClass
+        MyClass: function  # "function" because it gets called in f()
+        def f() -> ?
       """)
 
   def testClassName(self):
