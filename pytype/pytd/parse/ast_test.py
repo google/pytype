@@ -358,6 +358,18 @@ class TestASTGeneration(parser_test.ParserTest):
     """)
     self.TestRoundTrip(src)
 
+  def testExternalTypes(self):
+    """Test parsing of names with dots."""
+    src = textwrap.dedent("""
+      a: Foo
+      b: x.Bar
+      c: x.y.Baz
+      """)
+    result = self.Parse(src)
+    self.assertEquals(pytd.NamedType("Foo"), result.Lookup("a").type)
+    self.assertEquals(pytd.ExternalType("Bar", "x"), result.Lookup("b").type)
+    self.assertEquals(pytd.ExternalType("Baz", "x.y"), result.Lookup("c").type)
+
   def testMultiFunction(self):
     """Test parsing of multiple function defs including overloaded version."""
 

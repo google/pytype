@@ -455,7 +455,7 @@ class TypeDeclParser(object):
 
   # TODO(raoulDoc): doesn't support nested classes
   def p_classdef(self, p):
-    """classdef : CLASS qname template parents COLON INDENT class_funcs DEDENT"""
+    """classdef : CLASS NAME template parents COLON INDENT class_funcs DEDENT"""
     #             1     2     3        4       5     6      7           8
     methoddefs = [x for x in p[7] if isinstance(x, NameAndSig)]
     constants = [x for x in p[7] if isinstance(x, pytd.Constant)]
@@ -573,7 +573,7 @@ class TypeDeclParser(object):
 
   def p_funcdef_code(self, p):
     """funcdef : DEF NAME PYTHONCODE"""
-    # TODO(pludemann): DEF qname PYTHONCODE function_name
+    # NAME (not: module_name) because PYTHONCODE is always local.
     p[0] = NameAndSig(
         name=p[2],
         # signature is for completeness - it's ignored
@@ -727,25 +727,33 @@ class TypeDeclParser(object):
   #                  if it's a more verbose grammar.
 
   def p_type_homogeneous(self, p):
-    """type : qname LBRACKET parameters RBRACKET"""
+    """type : named_or_external_type LBRACKET parameters RBRACKET"""
     if len(p[3]) == 1:
       element_type, = p[3]
-      p[0] = pytd.HomogeneousContainerType(base_type=pytd.NamedType(p[1]),
+      p[0] = pytd.HomogeneousContainerType(base_type=p[1],
                                            parameters=(element_type,))
     else:
-      p[0] = pytd.GenericType(base_type=pytd.NamedType(p[1]), parameters=p[3])
+      p[0] = pytd.GenericType(base_type=p[1], parameters=p[3])
 
   def p_type_generic_1(self, p):
-    """type : qname LBRACKET parameters COMMA RBRACKET"""
-    p[0] = pytd.GenericType(base_type=pytd.NamedType(p[1]), parameters=p[3])
+    """type : named_or_external_type LBRACKET parameters COMMA RBRACKET"""
+    p[0] = pytd.GenericType(base_type=p[1], parameters=p[3])
 
   def p_type_paren(self, p):
     """type : LPAREN type RPAREN"""
     p[0] = p[2]
 
   def p_type_name(self, p):
-    """type : qname"""
+    """type : named_or_external_type"""
+    p[0] = p[1]
+
+  def p_named_or_external_type(self, p):
+    """named_or_external_type : NAME"""
     p[0] = pytd.NamedType(p[1])
+
+  def p_named_or_external_type_multi(self, p):
+    """named_or_external_type : module_name DOT NAME"""
+    p[0] = pytd.ExternalType(p[3], p[1])
 
   def p_type_unknown(self, p):
     """type : QUESTIONMARK"""
@@ -759,12 +767,12 @@ class TypeDeclParser(object):
     """type : scalar"""
     p[0] = p[1]
 
-  def p_qname_1(self, p):
-    """qname : NAME"""
+  def p_module_name_1(self, p):
+    """module_name : NAME"""
     p[0] = p[1]
 
-  def p_qname_multi(self, p):
-    """qname : qname DOT NAME"""
+  def p_module_name_multi(self, p):
+    """module_name : module_name DOT NAME"""
     p[0] = p[1] + '.' + p[3]
 
   def p_scalar_string(self, p):

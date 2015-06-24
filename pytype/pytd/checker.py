@@ -202,6 +202,8 @@ def ConvertToType(module, type_node):
                                           type_node.base_type),
                             type_node.parameters)
 
+  elif isinstance(type_node, pytd.ExternalType):
+    return _EvalWithModuleContext(str(type_node), module)
   else:
     raise TypeError("Unknown type of type_node: {!r}".format(type_node))
 
