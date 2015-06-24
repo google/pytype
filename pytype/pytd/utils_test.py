@@ -219,6 +219,14 @@ class TestUtils(parser_test.ParserTest):
     self.assertItemsEqual(a, pytd.ClassType("int"))
     self.assertIsNotNone(a.cls)  # verify that the lookup succeeded
 
+  def testNamedOrExternalType(self):
+    """Test NamedOrExternalType()."""
+    self.assertEquals(utils.NamedOrExternalType("name"), pytd.NamedType("name"))
+    self.assertEquals(utils.NamedOrExternalType("name", None),
+                      pytd.NamedType("name"))
+    self.assertEquals(utils.NamedOrExternalType("name", "package"),
+                      pytd.ExternalType("name", "package"))
+
 
 if __name__ == "__main__":
   unittest.main()

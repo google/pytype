@@ -232,16 +232,26 @@ class TemplateItem(node.Node('type_param')):
 #     A placeholder for a type.
 # 8.) Scalar
 #     A singleton type. Not currently used, but supported by the parser.
+# 9.) ExternalType:
+#     A type in another module. We may only know the name.
 # For 1-3, the file visitors.py contains tools for converting between the
 # corresponding AST representations.
 
 
 class NamedType(node.Node('name')):
-  """A type specified by name."""
+  """A type specified by name and, optionally, the module it is in."""
   __slots__ = ()
 
   def __str__(self):
     return self.name
+
+
+class ExternalType(node.Node('name', 'module')):
+  """A type specified by name and the module it is in."""
+  __slots__ = ()
+
+  def __str__(self):
+    return self.module + '.' + self.name
 
 
 class NativeType(node.Node('python_type')):
@@ -389,7 +399,7 @@ class HomogeneousContainerType(GenericType):
 # So we can do "isinstance(node, pytd.TYPE)":
 TYPE = (NamedType, NativeType, ClassType, AnythingType, UnionType,
         NothingType, GenericType, TypeParameter, Scalar,
-        IntersectionType, Scalar)
+        IntersectionType, Scalar, ExternalType)
 
 
 def Print(n, print_format=None):

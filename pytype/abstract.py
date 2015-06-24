@@ -117,7 +117,7 @@ class AtomicAbstractValue(object):
     AtomicAbstractValue._value_id += 1
     self.id = AtomicAbstractValue._value_id
     self.name = name
-    self.parent = None
+    self.module = None
     self.official_name = None
 
   def property_get(self, callself, callcls):  # pylint: disable=unused-argument
@@ -1143,7 +1143,8 @@ class ParameterizedClass(AtomicAbstractValue, Class):
       type_arguments.append(pytd_utils.JoinTypes([e.get_instance_type(None)
                                                   for e in values]))
     return pytd_utils.MakeClassOrContainerType(
-        pytd.NamedType(self.cls.cls.name), type_arguments)
+        pytd_utils.NamedOrExternalType(self.cls.cls.name, self.cls.module),
+        type_arguments)
 
 
 class PyTDClass(LazyAbstractValue, Class):
@@ -1222,7 +1223,8 @@ class PyTDClass(LazyAbstractValue, Class):
       else:
         type_arguments.append(pytd.AnythingType())
     return pytd_utils.MakeClassOrContainerType(
-        pytd.NamedType(self.name), type_arguments)
+        pytd_utils.NamedOrExternalType(self.name, self.module),
+        type_arguments)
 
   def __repr__(self):
     return self.name
@@ -1361,7 +1363,7 @@ class InterpreterClass(SimpleAbstractValue, Class):
                       template=())
 
   def get_instance_type(self, _):
-    return pytd.NamedType(self.official_name)
+    return pytd_utils.NamedOrExternalType(self.official_name, self.module)
 
   def __repr__(self):
     return "InterpreterClass(%s)" % self.name
@@ -1748,7 +1750,10 @@ class Module(LazyAbstractValue):
     super(Module, self).__init__(name, member_map, self.convert_member, vm=vm)
 
   def convert_member(self, name, ty):
-    return self.vm.convert_constant(self.name + "." + name, ty)
+    var = self.vm.convert_constant(name, ty)
+    for value in var.data:
+      value.module = self.name
+    return var
 
   def set_attribute(self, node, name, value):
     # Assigning attributes on modules is pretty common. E.g.

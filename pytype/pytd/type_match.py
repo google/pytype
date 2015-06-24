@@ -235,6 +235,10 @@ class TypeMatch(utils.TypeMatcher):
     if isinstance(t1, pytd.AnythingType) or isinstance(t2, pytd.AnythingType):
       # We can match anything against AnythingType
       return booleq.TRUE
+    elif isinstance(t1, pytd.ExternalType) or isinstance(t2, pytd.ExternalType):
+      # We only know the names of external types, so we can't match them.
+      # TODO(kramm): Deal with situations where t1 inherits from t2.
+      return booleq.FALSE
     elif isinstance(t1, pytd.NothingType) and isinstance(t2, pytd.NothingType):
       # nothing matches against nothing.
       return booleq.TRUE

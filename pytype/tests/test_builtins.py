@@ -359,7 +359,6 @@ class BuiltinTests(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=False) as ty:
       ty.Lookup("Foo")  # smoke test
 
-  @unittest.skip("needs module support")
   def testArray(self):
     with self.Infer("""
       import array

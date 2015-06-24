@@ -167,6 +167,10 @@ class PrintVisitor(object):
     """Convert a type to a string."""
     return self._SafeName(node.name)
 
+  def VisitExternalType(self, node):
+    """Convert an external type to a string."""
+    return self._SafeName(node.module) + "." + self._SafeName(node.name)
+
   def VisitNativeType(self, node):
     """Convert a native type to a string."""
     return self._SafeName(node.python_type.__name__)
@@ -479,7 +483,7 @@ class ReplaceTypeParameters(object):
 
 
 def ClassAsType(cls):
-  """Converts a pytd.Class to an instance of pytd.Type."""
+  """Converts a pytd.Class to an instance of pytd.TYPE."""
   params = tuple(item.type_param for item in cls.template)
   if not params:
     return pytd.NamedType(cls.name)
@@ -669,6 +673,10 @@ class VerifyVisitor(object):
 
   def EnterNamedType(self, node):
     assert isinstance(node.name, str), node
+
+  def EnterExternalType(self, node):
+    assert isinstance(node.name, str), node
+    assert isinstance(node.module, str), node
 
   def EnterNativeType(self, node):
     assert isinstance(node.python_type, type), node

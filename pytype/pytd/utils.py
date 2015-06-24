@@ -264,3 +264,11 @@ class TypeBuilder(object):
 
   def __nonzero__(self):
     return not isinstance(self.union, pytd.NothingType)
+
+
+def NamedOrExternalType(name, module=None):
+  """Create NamedType / ExternalType, depending on whether we have a module."""
+  if module is None:
+    return pytd.NamedType(name)
+  else:
+    return pytd.ExternalType(name, module)
