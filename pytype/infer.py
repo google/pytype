@@ -149,7 +149,7 @@ class CallTracer(vm.VirtualMachine):
     self._calls.add(CallRecord(func, tuple(posargs),
                                tuple((namedargs or {}).items()), result))
 
-  def pytd_classes_for_unknowns(self, defs, ignore):
+  def pytd_classes_for_unknowns(self):
     classes = []
     for name, var in self._unknowns.items():
       for value in var.FilteredData(self.exitpoint):
@@ -217,7 +217,7 @@ class CallTracer(vm.VirtualMachine):
     ty = pytd_utils.Concat(
         self.pytd_for_types(defs, ignore),
         pytd.TypeDeclUnit("unknowns", (),
-                          tuple(self.pytd_classes_for_unknowns(defs, ignore)),
+                          tuple(self.pytd_classes_for_unknowns()),
                           tuple(self.pytd_functions_for_call_traces())))
     ty = ty.Visit(optimize.PullInMethodClasses())
     ty = ty.Visit(visitors.DefaceUnresolved([ty, self.builtins_pytd]))

@@ -1187,12 +1187,10 @@ class PyTDClass(LazyAbstractValue, Class):
     value = Instance(self.vm.convert_constant(
         self.name + ".__class__", self.cls), self.vm)
 
-    fill_in_type_params = True
-    if fill_in_type_params:
-      for type_param in self.cls.template:
-        unknown = self.vm.create_new_unknown(node, type_param.name,
-                                             action="type_param")
-        value.overwrite_type_parameter(node, type_param.name, unknown)
+    for type_param in self.cls.template:
+      unknown = self.vm.create_new_unknown(node, type_param.name,
+                                           action="type_param")
+      value.overwrite_type_parameter(node, type_param.name, unknown)
 
     origins = [func] + sum((u.values for u in args + kws.values()), [])
     results = self.vm.program.NewVariable(self.name)

@@ -392,7 +392,7 @@ class Solver(object):
   variable.
 
   Attributes:
-    ANY_VALUE: a special value assigned to variables with no constraints.
+    ANY_VALUE: A special value assigned to variables with no constraints.
     variables: A list of all variables.
     values: A list of all values.
     implications: A nested dictionary mapping variable names to values to

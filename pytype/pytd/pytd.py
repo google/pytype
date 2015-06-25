@@ -399,7 +399,7 @@ class HomogeneousContainerType(GenericType):
 # So we can do "isinstance(node, pytd.TYPE)":
 TYPE = (NamedType, NativeType, ClassType, AnythingType, UnionType,
         NothingType, GenericType, TypeParameter, Scalar,
-        IntersectionType, Scalar, ExternalType)
+        IntersectionType, ExternalType)
 
 
 def Print(n, print_format=None):
