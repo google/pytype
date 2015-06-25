@@ -41,6 +41,9 @@ Usage:
 """
 
 
+from pytype.pytd.parse import visitors
+
+
 class Decorator(object):
   """A class decorator to collect node replacements."""
 
@@ -67,14 +70,18 @@ class Decorator(object):
     mapping = self._mapping
 
     # Build a visitor that performs the old_class -> new_class mapping:
-    class Visitor(object):
+    class Visitor(visitors.Visitor):
+      visits_all_node_types = True
       name_to_class = mapping
       for name, new_cls in mapping.iteritems():
 
         def Visit(self, node):
           # Python doesn't allow us to build this as a closure, so we have to
           # use the clunky way of retrieving the replacement class.
-          cls = self.name_to_class[node.__class__.__name__]
-          return cls(*node)
+          cls = self.name_to_class.get(node.__class__.__name__)
+          if cls is not None:
+            return cls(*node)
+          else:
+            return node
         locals()["Visit" + name] = Visit
     return node.Visit(Visitor())

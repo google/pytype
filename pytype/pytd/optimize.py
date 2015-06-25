@@ -36,7 +36,7 @@ from pytype.pytd.parse import visitors
 log = logging.getLogger(__name__)
 
 
-class RemoveDuplicates(object):
+class RemoveDuplicates(visitors.Visitor):
   """Remove duplicate function signatures.
 
   For example, this transforms
@@ -54,7 +54,7 @@ class RemoveDuplicates(object):
     return node.Replace(signatures=tuple(ordered_set))
 
 
-class SimplifyUnions(object):
+class SimplifyUnions(visitors.Visitor):
   """Remove duplicate or redundant entries in union types.
 
   For example, this transforms
@@ -97,7 +97,7 @@ class _ReturnsAndExceptions(object):
                            if exception not in self.exceptions)
 
 
-class CombineReturnsAndExceptions(object):
+class CombineReturnsAndExceptions(visitors.Visitor):
   """Group function signatures that only differ in exceptions or return values.
 
   For example, this transforms
@@ -155,7 +155,7 @@ class CombineReturnsAndExceptions(object):
     return f.Replace(signatures=tuple(new_signatures))
 
 
-class CombineContainers(object):
+class CombineContainers(visitors.Visitor):
   """Change unions of containers to containers of unions.
 
   For example, this transforms
@@ -209,7 +209,7 @@ class CombineContainers(object):
     return result
 
 
-class ExpandSignatures(object):
+class ExpandSignatures(visitors.Visitor):
   """Expand to Cartesian product of parameter types.
 
   For example, this transforms
@@ -277,7 +277,7 @@ class ExpandSignatures(object):
     return new_signatures  # Hand list over to VisitFunction
 
 
-class Factorize(object):
+class Factorize(visitors.Visitor):
   """Opposite of ExpandSignatures. Factorizes cartesian products of functions.
 
   For example, this transforms
@@ -364,7 +364,7 @@ class Factorize(object):
     return f.Replace(signatures=tuple(signatures))
 
 
-class ApplyOptionalArguments(object):
+class ApplyOptionalArguments(visitors.Visitor):
   """Removes functions that are instances of a more specific case.
 
   For example, this reduces
@@ -424,7 +424,7 @@ class ApplyOptionalArguments(object):
     return f.Replace(signatures=tuple(new_signatures))
 
 
-class FindCommonSuperClasses(object):
+class FindCommonSuperClasses(visitors.Visitor):
   """Find common super classes. Optionally also uses abstract base classes.
 
   E.g., this changes
@@ -503,7 +503,7 @@ class FindCommonSuperClasses(object):
     return utils.JoinTypes(new_type_list)
 
 
-class CollapseLongUnions(object):
+class CollapseLongUnions(visitors.Visitor):
   """Shortens long unions to object (or "?").
 
   Poor man's version of FindCommonSuperClasses. Shorten types like
@@ -535,7 +535,7 @@ class CollapseLongUnions(object):
       return union
 
 
-class CollapseLongParameterUnions(object):
+class CollapseLongParameterUnions(visitors.Visitor):
   """Shortens long unions in parameters to object.
 
   This is a lossy optimization that changes overlong disjunctions in arguments
@@ -561,7 +561,7 @@ class CollapseLongParameterUnions(object):
     return param.Visit(CollapseLongUnions(self.max_length))
 
 
-class CollapseLongReturnUnions(object):
+class CollapseLongReturnUnions(visitors.Visitor):
   """Shortens long unions in return types to ?.
 
   This is a lossy optimization that changes overlong disjunctions in returns
@@ -588,7 +588,7 @@ class CollapseLongReturnUnions(object):
         CollapseLongUnions(self.max_length, pytd.AnythingType())))
 
 
-class CollapseLongConstantUnions(object):
+class CollapseLongConstantUnions(visitors.Visitor):
   """Shortens long unions in constants to ?.
 
   This is a lossy optimization that changes overlong constants to "?".
@@ -612,7 +612,7 @@ class CollapseLongConstantUnions(object):
         CollapseLongUnions(self.max_length, pytd.AnythingType())))
 
 
-class AddInheritedMethods(object):
+class AddInheritedMethods(visitors.Visitor):
   """Copy methods and constants from base classes into their derived classes.
 
   E.g. this changes
@@ -655,7 +655,7 @@ class AddInheritedMethods(object):
     return cls.Visit(visitors.AdjustSelf(force=True))
 
 
-class RemoveInheritedMethods(object):
+class RemoveInheritedMethods(visitors.Visitor):
   """Removes methods from classes if they also exist in their superclass.
 
   E.g. this changes
@@ -754,7 +754,7 @@ class RemoveInheritedMethods(object):
     return cls.Replace(methods=tuple(m for m in cls.methods if m))
 
 
-class PullInMethodClasses(object):
+class PullInMethodClasses(visitors.Visitor):
   """Simplifies classes with only a __call__ function to just a method.
 
   This transforms
@@ -866,7 +866,7 @@ class PullInMethodClasses(object):
     return cls.Visit(visitors.AdjustSelf(force=True))
 
 
-class AbsorbMutableParameters(object):
+class AbsorbMutableParameters(visitors.Visitor):
   """Converts mutable parameters to unions. This is lossy.
 
   For example, this will change
@@ -885,7 +885,7 @@ class AbsorbMutableParameters(object):
     return pytd.Parameter(p.name, utils.JoinTypes([p.type, p.new_type]))
 
 
-class TypeParameterScope(object):
+class TypeParameterScope(visitors.Visitor):
   """Common superclass for optimizations that track type parameters."""
 
   def __init__(self):

@@ -15,6 +15,7 @@
 
 import itertools
 from pytype.pytd.parse import node
+from pytype.pytd.parse import visitors
 import unittest
 
 
@@ -72,7 +73,7 @@ class NodeWithVisit(node.Node("x", "y")):
     return NodeWithVisit(x, self.y)
 
 
-class DataVisitor(object):
+class DataVisitor(visitors.Visitor):
   """A visitor that transforms Data nodes."""
 
   def VisitData(self, data):
@@ -80,7 +81,7 @@ class DataVisitor(object):
     return data.Replace(d3=-1)
 
 
-class MultiNodeVisitor(object):
+class MultiNodeVisitor(visitors.Visitor):
   """A visitor that visits Data, V and Y nodes and uses the *args feature."""
 
   def VisitData(self, _, r):

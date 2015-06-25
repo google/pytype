@@ -674,6 +674,22 @@ class TestDecorate(unittest.TestCase):
     # test that we now have the "test1" method on pytd.NamedType
     tree.value.Test1()
 
+  def testDecoratorWithUndecoratedNodeType(self):
+    decorator = decorate.Decorator()
+
+    # Change pytd.NamedType to also have a method called "Test"
+    @decorator  # pylint: disable=unused-variable
+    class NamedType(pytd.NamedType):
+
+      def Test(self):
+        pass
+
+    tree = pytd.Scalar(pytd.NamedType("test"))
+    # test that we don't crash on encountering pytd.Scalar
+    tree = decorator.Visit(tree)
+    # test that we now have the "test" method on pytd.NamedType
+    tree.value.Test()
+
 
 if __name__ == "__main__":
   unittest.main()

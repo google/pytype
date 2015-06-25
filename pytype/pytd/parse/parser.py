@@ -269,7 +269,7 @@ class Number(collections.namedtuple('Number', ['string'])):
     return (prefix + (0, 0, 0))[0:3]
 
 
-class Mutator(object):
+class Mutator(visitors.Visitor):
   """Visitor for changing parameters to BeforeAfterType instances.
 
   We model
@@ -294,7 +294,7 @@ class Mutator(object):
       return p
 
 
-class InsertTypeParameters(object):
+class InsertTypeParameters(visitors.Visitor):
   """Visitor for inserting TypeParameter instances."""
 
   def VisitClass(self, node):

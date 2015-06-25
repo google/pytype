@@ -23,9 +23,72 @@ from pytype.pytd import pytd
 from pytype.pytd.parse import parser_constants  # pylint: disable=g-importing-member
 
 
-class PrintVisitor(object):
+class Visitor(object):
+  """Base class for visitors.
+
+  Attributes:
+    enters_all_node_types: Whether the visitor can enter every node type.
+    visits_all_node_types: Whether the visitor can visit every node type.
+    enter_functions: A dictionary mapping node class names to the
+      corresponding Enter functions.
+    visit_functions: A dictionary mapping node class names to the
+      corresponding Visit functions.
+    leave_functions: A dictionary mapping node class names to the
+      corresponding Leave functions.
+  """
+  enters_all_node_types = False
+  visits_all_node_types = False
+
+  _visitor_functions_cache = {}
+
+  def __new__(cls, *unused_args, **unused_kwargs):
+    visitor = super(Visitor, cls).__new__(cls)
+
+    if cls not in Visitor._visitor_functions_cache:
+      enter_fns = {}
+      enter_prefix = "Enter"
+      enter_len = len(enter_prefix)
+
+      visit_fns = {}
+      visit_prefix = "Visit"
+      visit_len = len(visit_prefix)
+
+      leave_fns = {}
+      leave_prefix = "Leave"
+      leave_len = len(leave_prefix)
+
+      for attr in dir(cls):
+        if attr.startswith(enter_prefix):
+          enter_fns[attr[enter_len:]] = getattr(cls, attr)
+        elif attr.startswith(visit_prefix):
+          visit_fns[attr[visit_len:]] = getattr(cls, attr)
+        elif attr.startswith(leave_prefix):
+          leave_fns[attr[leave_len:]] = getattr(cls, attr)
+      Visitor._visitor_functions_cache[cls] = (enter_fns, visit_fns, leave_fns)
+    else:
+      enter_fns, visit_fns, leave_fns = Visitor._visitor_functions_cache[cls]
+
+    visitor.enter_functions = enter_fns
+    visitor.visit_functions = visit_fns
+    visitor.leave_functions = leave_fns
+    return visitor
+
+  def Enter(self, node, *args, **kwargs):
+    return self.enter_functions[node.__class__.__name__](
+        self, node, *args, **kwargs)
+
+  def Visit(self, node, *args, **kwargs):
+    return self.visit_functions[node.__class__.__name__](
+        self, node, *args, **kwargs)
+
+  def Leave(self, node, *args, **kwargs):
+    return self.leave_functions[node.__class__.__name__](
+        self, node, *args, **kwargs)
+
+
+class PrintVisitor(Visitor):
   """Visitor for converting ASTs back to pytd source code."""
-  implements_all_node_types = True
+  visits_all_node_types = True
 
   INDENT = " " * 4
   _RESERVED = frozenset(parser_constants.RESERVED +
@@ -211,7 +274,7 @@ class PrintVisitor(object):
     return " and ".join(node.type_list)
 
 
-class StripSelf(object):
+class StripSelf(Visitor):
   """Transforms the tree into one where methods don't have the "self" parameter.
 
   This is useful for certain kinds of postprocessing and testing.
@@ -232,7 +295,7 @@ class StripSelf(object):
     return node.Replace(params=node.params[1:])
 
 
-class _FillInClasses(object):
+class _FillInClasses(Visitor):
   """Fill in ClassType pointers using a symbol table.
 
   This is an in-place visitor! It modifies the original tree. This is
@@ -274,7 +337,7 @@ class _FillInClasses(object):
       return node
 
 
-class DefaceUnresolved(object):
+class DefaceUnresolved(Visitor):
   """Replace all types not in a symbol table with AnythingType."""
 
   def __init__(self, lookup_list):
@@ -301,14 +364,14 @@ class DefaceUnresolved(object):
     return self.VisitNamedType(node)
 
 
-class ClearClassTypePointers(object):
+class ClearClassTypePointers(Visitor):
   """For ClassType nodes: Set their cls pointer to None."""
 
   def EnterClassType(self, node):
     node.cls = None
 
 
-class NamedTypeToClassType(object):
+class NamedTypeToClassType(Visitor):
   """Change all NamedType objects to ClassType objects.
   """
 
@@ -324,7 +387,7 @@ class NamedTypeToClassType(object):
     return pytd.ClassType(node.name)
 
 
-class ClassTypeToNamedType(object):
+class ClassTypeToNamedType(Visitor):
   """Change all ClassType objects to NameType objects.
   """
 
@@ -394,7 +457,7 @@ def LookupClasses(module, global_module=None, overwrite=False):
   return module
 
 
-class VerifyLookup(object):
+class VerifyLookup(Visitor):
   """Utility class for testing visitors.LookupClasses."""
 
   def VisitNamedType(self, node):
@@ -409,7 +472,7 @@ class VerifyLookup(object):
       raise ValueError("Unresolved class: %r" % node.name)
 
 
-class ReplaceTypes(object):
+class ReplaceTypes(Visitor):
   """Visitor for replacing types in a tree.
 
   This replaces both NamedType and ClassType nodes that have a name in the
@@ -431,7 +494,7 @@ class ReplaceTypes(object):
   # class names with no contents.
 
 
-class ExtractSuperClassesByName(object):
+class ExtractSuperClassesByName(Visitor):
   """Visitor for extracting all superclasses (i.e., the class hierarchy).
 
   This returns a mapping by name, e.g. {
@@ -450,7 +513,7 @@ class ExtractSuperClassesByName(object):
     return (cls.name, [parent.name for parent in cls.parents])
 
 
-class ExtractSuperClasses(object):
+class ExtractSuperClasses(Visitor):
   """Visitor for extracting all superclasses (i.e., the class hierarchy).
 
   When called on a TypeDeclUnit, this yields a dictionary mapping pytd.Class
@@ -472,7 +535,7 @@ class ExtractSuperClasses(object):
     return (cls, cls.parents)
 
 
-class ReplaceTypeParameters(object):
+class ReplaceTypeParameters(Visitor):
   """Visitor for replacing type parameters with actual types."""
 
   def __init__(self, mapping):
@@ -494,7 +557,7 @@ def ClassAsType(cls):
     return pytd.GenericType(pytd.NamedType(cls.name), params)
 
 
-class AdjustSelf(object):
+class AdjustSelf(Visitor):
   """Visitor for setting the correct type on self.
 
   So
@@ -551,7 +614,7 @@ class AdjustSelf(object):
       return p
 
 
-class RemoveUnknownClasses(object):
+class RemoveUnknownClasses(Visitor):
   """Visitor for converting ClassTypes called ~unknown* to just AnythingType.
 
   For example, this will change
@@ -587,7 +650,7 @@ class RemoveUnknownClasses(object):
 #              we have support for this on the pytd level? (That would mean
 #              changing Class.name to a TYPE). Also, should we just use ~X
 #              instead of ~unknownX?
-class RaiseIfContainsUnknown(object):
+class RaiseIfContainsUnknown(Visitor):
   """Find any 'unknown' Class or ClassType (not: pytd.AnythingType!) in a class.
 
   It throws HasUnknown on the first occurence.
@@ -611,10 +674,10 @@ class RaiseIfContainsUnknown(object):
       raise RaiseIfContainsUnknown.HasUnknown()
 
 
-class VerifyVisitor(object):
+class VerifyVisitor(Visitor):
   """Visitor for verifying pytd ASTs. For tests."""
 
-  implements_all_node_types = True
+  enters_all_node_types = True
 
   def EnterTypeDeclUnit(self, node):
     assert isinstance(node.constants, (list, tuple)), node
@@ -716,7 +779,7 @@ class VerifyVisitor(object):
     pass
 
 
-class CanonicalOrderingVisitor(object):
+class CanonicalOrderingVisitor(Visitor):
   """Visitor for converting ASTs back to canonical (sorted) ordering.
   """
 
@@ -759,7 +822,7 @@ class CanonicalOrderingVisitor(object):
     return pytd.IntersectionType(tuple(sorted(node.type_list)))
 
 
-class PythonTypeNameVisitor(object):
+class PythonTypeNameVisitor(Visitor):
   """A name that Python's type(...).__name__ would return (for testing)."""
 
   def VisitNamedType(self, t):
@@ -778,7 +841,7 @@ class PythonTypeNameVisitor(object):
     return t.base_type
 
 
-class RemoveFunctionsAndClasses(object):
+class RemoveFunctionsAndClasses(Visitor):
   """Visitor for removing unwanted functions or classes."""
 
   def __init__(self, names):

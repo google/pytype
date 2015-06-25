@@ -2,8 +2,10 @@
 
 import re
 
+from pytype.pytd.parse import visitors
 
-class Print484StubVisitor(object):
+
+class Print484StubVisitor(visitors.Visitor):
   """Visitor for converting ASTs to the PEP 484 format.
 
   This generates a PEP484 "stub" format that contains function signatures, but
@@ -11,7 +13,7 @@ class Print484StubVisitor(object):
     class MyList(GenericType[T]):
       def append(self, x: T) -> NoneType: pass
   """
-  implements_all_node_types = True
+  visits_all_node_types = True
   INDENT = " " * 4
 
   def _SafeName(self, name):

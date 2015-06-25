@@ -9,9 +9,10 @@ from pytype.pytd import pytd
 from pytype.pytd import slots
 from pytype.pytd import type_match
 from pytype.pytd import utils
+from pytype.pytd.parse import visitors
 
 
-class ExtractOperators(object):
+class ExtractOperators(visitors.Visitor):
   """Visitor for retrieving all reversible operators."""
 
   def __init__(self, matcher):
@@ -124,7 +125,7 @@ class ExtractOperators(object):
     return False  # don't bother descending into this signature
 
 
-class PreprocessReverseOperatorsVisitor(object):
+class PreprocessReverseOperatorsVisitor(visitors.Visitor):
   """Visitor for turning __radd__ into __add__, etc.
 
   This will change
