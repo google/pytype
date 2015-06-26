@@ -297,6 +297,14 @@ class AtomicAbstractValue(object):
     """
     raise NotImplementedError("Matching not implemented for %s", type(self))
 
+  def has_varargs(self):
+    """Return True if this is a function and has a *args parameter."""
+    return False
+
+  def has_kwargs(self):
+    """Return True if this is a function and has a **kwargs parameter."""
+    return False
+
   def _raise_failed_function_call(self, explanation_lines):
     """Convenience function to log & raise, used by subclasses."""
     raise FailedFunctionCall(self, explanation_lines)
@@ -664,13 +672,19 @@ class Dict(ValueWithSlots):
   def items(self):
     return self._entries.items()
 
-  def update(self, node, other_dict):
-    assert isinstance(other_dict, typegraph.Variable)
-    for v in other_dict.data:
-      if isinstance(v, Dict):
-        for key, value in v.items():
-          # TODO(kramm): sources
+  def update(self, node, other_dict, omit=()):
+    if isinstance(other_dict, (Dict, dict)):
+      for key, value in other_dict.items():
+        # TODO(kramm): sources
+        if key not in omit:
           self.set_str_item(node, key, value)
+      if isinstance(other_dict, Dict):
+        k = other_dict.get_type_parameter(node, self.KEY_TYPE_PARAM)
+        v = other_dict.get_type_parameter(node, self.VALUE_TYPE_PARAM)
+        self.merge_type_parameter(node, self.KEY_TYPE_PARAM, k)
+        self.merge_type_parameter(node, self.VALUE_TYPE_PARAM, v)
+    else:
+      assert isinstance(other_dict, AtomicAbstractValue)
 
 
 class AbstractOrConcreteValue(Instance, PythonConstant):
@@ -908,7 +922,7 @@ class PyTDSignature(AtomicAbstractValue):
         # signatures, it's not an error (unless nothing matches).
         msg_lines = ["Function %s was called with the wrong arguments" %
                      self.function.name,
-                     "  Expected: %r" % ["%s: %s" % (p.name, p.type)
+                     "  Expected: %r" % ["%s: %s" % (p.name, pytd.Print(p.type))
                                          for p in self.pytd_sig.params],
                      "  Actually passed: %r" % [a.data.name
                                                 for a in arg_values]]
@@ -1314,6 +1328,10 @@ class InterpreterClass(SimpleAbstractValue, Class):
       log.debug("%s.__init__(...) returned %r", self.name, ret)
     return node, variable
 
+  def match_against_type(self, other_type, subst, node):
+    if other_type.name == "type":
+      return subst
+
   def match_instance_against_type(self, instance, other_type, subst, node):
     if isinstance(other_type, Class):
       for base in self.mro:
@@ -1504,8 +1522,8 @@ class InterpreterFunction(Function):
     # Originate a new variable for each argument and call.
     args = [u.AssignToNewVariable(u.name, node)
             for u in args]
-    kwargs = {k: u.AssignToNewVariable(u.name, node)
-              for k, u in kwargs.items()}
+    kws = {k: u.AssignToNewVariable(u.name, node)
+           for k, u in kwargs.items()}
     if (self.vm.python_version[0] == 2 and
         self.code.co_name in ["<setcomp>", "<dictcomp>", "<genexpr>"]):
       # This code is from github.com/nedbat/byterun. Apparently, Py2 doesn't
@@ -1520,11 +1538,11 @@ class InterpreterFunction(Function):
     callargs = dict(zip(param_names[-num_defaults:], self.defaults))
     positional = dict(zip(param_names, args))
     for key in positional.keys():
-      if key in kwargs:
+      if key in kws:
         raise exceptions.ByteCodeTypeError(
             "function got multiple values for keyword argument %r" % key)
     callargs.update(positional)
-    callargs.update(kwargs)
+    callargs.update(kws)
     for key in param_names:
       if key not in callargs:
         raise exceptions.ByteCodeTypeError(
@@ -1540,13 +1558,11 @@ class InterpreterFunction(Function):
       raise exceptions.ByteCodeTypeError(
           "Function takes %d positional arguments (%d given)" % (
               arg_pos, len(args)))
-    if self.code.co_flags & loadmarshal.CodeType.CO_VARKEYWORDS:
+    if self.has_kwargs():
       kwvararg_name = self.code.co_varnames[arg_pos]
-      k = Dict("kwargs", self.vm)
       # Build a **kwargs dictionary out of the extraneous parameters
-      for name, value_var in kwargs.items():
-        if name not in param_names:
-          k.set_str_item(node, name, value_var)
+      k = Dict("kwargs", self.vm)
+      k.update(node, kwargs, omit=param_names)
       callargs[kwvararg_name] = k.to_variable(node, kwvararg_name)
       arg_pos += 1
     return callargs
@@ -1576,10 +1592,13 @@ class InterpreterFunction(Function):
                       for name in self.get_parameter_names()]
             if num_defaults:
               params = params[:-num_defaults]
+            has_optional = (num_defaults > 0 or
+                            self.has_varargs() or
+                            self.has_kwargs())
             signatures.append(pytd.Signature(
                 params=tuple(params), return_type=return_value.data.to_type(),
                 exceptions=(),  # TODO(kramm): record exceptions
-                template=(), has_optional=num_defaults > 0))
+                template=(), has_optional=has_optional))
     if signatures:
       return pytd.Function(function_name, tuple(signatures))
     else:
@@ -1596,6 +1615,12 @@ class InterpreterFunction(Function):
 
   def get_parameter_names(self):
     return list(self.code.co_varnames[:self.code.co_argcount])
+
+  def has_varargs(self):
+    return bool(self.code.co_flags & loadmarshal.CodeType.CO_VARARGS)
+
+  def has_kwargs(self):
+    return bool(self.code.co_flags & loadmarshal.CodeType.CO_VARKEYWORDS)
 
 
 class BoundFunction(AtomicAbstractValue):
@@ -1627,6 +1652,9 @@ class BoundFunction(AtomicAbstractValue):
 
   def get_parameter_names(self):
     return self.underlying.get_parameter_names()
+
+  def has_kwargs(self):
+    return self.underlying.has_kwargs()
 
   def to_type(self):
     return pytd.NamedType("function")
@@ -1806,6 +1834,7 @@ class Unknown(AtomicAbstractValue):
       return node, None
     if name in self.members:
       return node, self.members[name]
+    assert not self._pytd_class
     new = self.vm.create_new_unknown(node,
                                      self.name + "." + name, source=self.owner,
                                      action="getattr")
@@ -1826,6 +1855,7 @@ class Unknown(AtomicAbstractValue):
     return node, name not in self.IGNORED_ATTRIBUTES
 
   def set_attribute(self, node, name, v):
+    assert not self._pytd_class
     if name in self.members:
       variable = self.members[name]
       variable.AddValues(v, node)

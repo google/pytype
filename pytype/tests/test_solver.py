@@ -113,8 +113,8 @@ class SolverTests(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
       class Foo(object):
+        # def __init__(self, ...) is already declared in object
         types: tuple<?>
-        def __init__(self, ...) -> NoneType
         def bar(self, val) -> bool
       """)
 

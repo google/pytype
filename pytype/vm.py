@@ -753,20 +753,6 @@ class VirtualMachine(object):
     var.AddValue(val, bases.values + class_dict_var.values, node)
     return var
 
-  def make_instance(self, cls, args, kws):
-    """Create an instance of the given class with the given constructor args.
-
-    Args:
-      cls: Class to instantiate
-      args: Extra positional arguments to pass to __new__ and __init__
-      kws: Extra keyword arguments to pass to __new__ and __init__
-
-    Raises:
-      TypeError: if this is called.
-    """
-    raise TypeError("TypegraphVirtualMachine should never allow this to be "
-                    "called")
-
   def make_function(self, name, code, globs, defaults, closure=None):
     """Create a function or closure given the arguments."""
     if closure:
@@ -1005,7 +991,8 @@ class VirtualMachine(object):
       state, (key, val) = state.popn(2)
       namedargs.setitem(state.node, key, val)
     if kwargs:
-      namedargs.update(state.node, kwargs)
+      for v in kwargs.data:
+        namedargs.update(state.node, v)
     state, posargs = state.popn(num_pos)
     posargs = list(posargs)
     posargs.extend(args)

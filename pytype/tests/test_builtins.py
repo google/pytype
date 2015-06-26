@@ -391,6 +391,23 @@ class BuiltinTests(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=True) as ty:
       ty.Lookup("Foo")  # smoke test
 
+  def testIsInstance(self):
+    with self.Infer("""
+      class Bar(object):
+        def foo(self):
+          return isinstance(self, Baz)
+
+      class Baz(Bar):
+        pass
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+      class Bar:
+        def foo(self) -> bool
+
+      class Baz(Bar):
+        pass
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()

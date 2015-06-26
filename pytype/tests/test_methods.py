@@ -513,6 +513,32 @@ class MethodsTest(test_inference.InferenceTest):
     """, deep=False, solve_unknowns=False, extract_locals=False) as ty:
       self.assertHasReturnType(ty.Lookup("f"), self.nothing_nothing_dict)
 
+  def testStarStarDeep(self):
+    with self.Infer("""
+      class Foo(object):
+        def __init__(self, **kwargs):
+          self.kwargs = kwargs
+    """, deep=True, solve_unknowns=False, extract_locals=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+      class Foo(object):
+        kwargs: dict<str, ?>
+      """)
+
+  def testStarStarDeep2(self):
+    with self.Infer("""
+      def f(**kwargs):
+        return kwargs
+      def g(x, **kwargs):
+        return kwargs
+      def h(x, y, **kwargs):
+        return kwargs
+    """, deep=True, solve_unknowns=False, extract_locals=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+      def f(...) -> dict<str, ?>
+      def g(x: ?, ...) -> dict<str, ?>
+      def h(x: ?, y: ?, ...) -> dict<str, ?>
+      """)
+
   def testNoneOrFunction(self):
     with self.Infer("""
       def g():
