@@ -4,6 +4,7 @@ import logging
 
 from pytype.pytd import abc_hierarchy
 from pytype.pytd import booleq
+from pytype.pytd import optimize
 from pytype.pytd import pytd
 from pytype.pytd import type_match
 from pytype.pytd import utils as pytd_utils
@@ -85,14 +86,22 @@ class TypeSolver(object):
     solver.always_true(formula)
 
   def match_call_record(self, matcher, solver, call_record, complete):
+    """Match the record of a method call against the formal signature."""
     assert is_partial(call_record)
     assert is_complete(complete)
     formula = (
-        matcher.match_Function_against_Function(
-            call_record, complete, {}))
+        matcher.match_Function_against_Function(call_record, complete, {}))
     if formula is booleq.FALSE:
-      raise FlawedQuery("%s can never be %s" % (call_record.name,
-                                                complete.name))
+      cartesian = call_record.Visit(optimize.ExpandSignatures())
+      for signature in cartesian.signatures:
+        formula = matcher.match_Signature_against_Function(
+            signature, complete, {})
+        if formula is booleq.FALSE:
+          faulty_signature = pytd.Print(signature)
+          break
+      else:
+        faulty_signature = ""
+      raise FlawedQuery("Bad call %s%s" % (call_record.name, faulty_signature))
     solver.always_true(formula)
 
   def get_all_subclasses(self):
