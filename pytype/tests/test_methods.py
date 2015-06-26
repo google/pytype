@@ -481,6 +481,21 @@ class MethodsTest(test_inference.InferenceTest):
     """, deep=False, solve_unknowns=False, extract_locals=False) as ty:
       self.assertHasReturnType(ty.Lookup("f"), self.int_tuple)
 
+  def testStarArgsDeep(self):
+    with self.Infer("""
+      def f(*args):
+        return args
+      def g(x, *args):
+        return args
+      def h(x, y, *args):
+        return args
+    """, deep=True, solve_unknowns=False, extract_locals=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+      def f(...) -> tuple<?>
+      def g(x: ?, ...) -> tuple<?>
+      def h(x: ?, y: ?, ...) -> tuple<?>
+      """)
+
   def testEmptyStarArgsType(self):
     with self.Infer("""
       def f(nr, *args):

@@ -189,7 +189,7 @@ class AtomicAbstractValue(object):
     """
     raise NotImplementedError()
 
-  def call(self, node, f, args, kws):
+  def call(self, node, f, args, kws, starargs=None):
     """Call this abstract value with the given arguments.
 
     The args and kws arguments may be modified by this function.
@@ -199,6 +199,7 @@ class AtomicAbstractValue(object):
       f: The typegraph.Value containing this function.
       args: Positional arguments for the call (Variables).
       kws: Keyword arguments for the call (Variables).
+      starargs: *args tuple, if passed (None otherwise).
     Returns:
       A tuple (cfg.Node, typegraph.Variable). The CFGNode corresponds
       to the function's "return" statement(s).
@@ -465,7 +466,7 @@ class SimpleAbstractValue(AtomicAbstractValue):
       self.members[name] = variable
     return node
 
-  def call(self, node, unused_func, args, kws):
+  def call(self, node, unused_func, args, kws, starargs=None):
     # End up here for:
     #   f = 1
     #   f()  # Can't call an int
@@ -819,7 +820,7 @@ class PyTDSignature(AtomicAbstractValue):
   def set_attribute(self, node, name, value):
     raise AttributeError()
 
-  def call(self, node, func, args, kws):
+  def call(self, node, func, args, kws, starargs=None):
     if self.pytd_sig.has_optional:
       # Truncate extraneous params. E.g. when calling f(a, b, ...) as f(1, 2, 3)
       args = args[0:len(self.pytd_sig.params)]
@@ -1005,7 +1006,7 @@ class PyTDFunction(AtomicAbstractValue):
                                  for s in self.signatures], self.vm)
     return self._signature_cache[key]
 
-  def call(self, node, func, args, kws):
+  def call(self, node, func, args, kws, starargs=None):
     log.debug("Calling function %r: %d signature(s)",
               self.name, len(self.signatures))
     # If we're calling an overloaded pytd function with an unknown as a
@@ -1075,7 +1076,7 @@ class BoundPyTDSignature(PyTDSignature):
     self._callself = callself
     self.name = "bound " + function.name
 
-  def call(self, node, func, args, kws):
+  def call(self, node, func, args, kws, starargs=None):
     return super(BoundPyTDSignature, self).call(
         node, func, [self._callself] + args, kws)
 
@@ -1197,7 +1198,7 @@ class PyTDClass(LazyAbstractValue, Class):
     # delegate to LazyAbstractValue
     return super(PyTDClass, self).get_attribute(node, name)
 
-  def call(self, node, func, args, kws):
+  def call(self, node, func, args, kws, starargs=None):
     value = Instance(self.vm.convert_constant(
         self.name + ".__class__", self.cls), self.vm)
 
@@ -1317,14 +1318,14 @@ class InterpreterClass(SimpleAbstractValue, Class):
       self._instance_cache[key] = Instance(cls, self.vm)
     return self._instance_cache[key]
 
-  def call(self, node, value, args, kws):
+  def call(self, node, value, args, kws, starargs=None):
     value = self._new_instance(node, value)
     variable = self.vm.program.NewVariable(self.name + " instance")
     val = variable.AddValue(value, [], node)
     node, init = value.get_attribute(node, "__init__", val)
     if init:
       log.debug("calling %s.__init__(...)", self.name)
-      node, ret = self.vm.call_function(node, init, args, kws)
+      node, ret = self.vm.call_function(node, init, args, kws, starargs)
       log.debug("%s.__init__(...) returned %r", self.name, ret)
     return node, variable
 
@@ -1453,7 +1454,7 @@ class NativeFunction(Function):
   def argcount(self):
     return self.func.func_code.co_argcount
 
-  def call(self, node, unused_func, args, kws):
+  def call(self, node, unused_func, args, kws, starargs=None):
     # Originate a new variable for each argument and call.
     return self.func(
         node,
@@ -1501,7 +1502,7 @@ class InterpreterFunction(Function):
   def argcount(self):
     return self.code.co_argcount
 
-  def _map_args(self, node, args, kwargs):
+  def _map_args(self, node, args, kwargs, starargs):
     """Map call args to function args.
 
     This emulates how Python would map arguments of function calls. It takes
@@ -1512,6 +1513,7 @@ class InterpreterFunction(Function):
       args: The positional arguments. A tuple of typegraph.Variable.
       kwargs: The keyword arguments. A dictionary, mapping strings to
       typegraph.Variable.
+      starargs: The *args parameter, or None.
 
     Returns:
       A dictionary, mapping strings (parameter names) to typegraph.Variable.
@@ -1548,11 +1550,15 @@ class InterpreterFunction(Function):
         raise exceptions.ByteCodeTypeError(
             "No value for parameter %r" % key)
     arg_pos = self.code.co_argcount
-    if self.code.co_flags & loadmarshal.CodeType.CO_VARARGS:
+    if self.has_varargs():
       vararg_name = self.code.co_varnames[arg_pos]
-      # Build a *args tuple out of the extraneous parameters
-      callargs[vararg_name] = self.vm.build_tuple(
-          node, args[self.code.co_argcount:])
+      extraneous = args[self.code.co_argcount:]
+      if starargs:
+        if extraneous:
+          log.warning("Not adding extra params to *%s", vararg_name)
+        callargs[vararg_name] = starargs.to_variable(node, "*args")
+      else:
+        callargs[vararg_name] = self.vm.build_tuple(node, extraneous)
       arg_pos += 1
     elif len(args) > self.code.co_argcount:
       raise exceptions.ByteCodeTypeError(
@@ -1567,8 +1573,8 @@ class InterpreterFunction(Function):
       arg_pos += 1
     return callargs
 
-  def call(self, node, unused_func, args, kws):
-    callargs = self._map_args(node, args, kws)
+  def call(self, node, unused_func, args, kws, starargs=None):
+    callargs = self._map_args(node, args, kws, starargs)
     # Might throw vm.RecursionException:
     frame = self.vm.make_frame(node, self.code, callargs,
                                self.f_globals, self.f_locals, self.closure)
@@ -1644,14 +1650,18 @@ class BoundFunction(AtomicAbstractValue):
   def argcount(self):
     return self.underlying.argcount() - 1  # account for self
 
-  def call(self, node, func, args, kws):
-    return self.underlying.call(node, func, [self._callself] + args, kws)
+  def call(self, node, func, args, kws, starargs=None):
+    return self.underlying.call(node, func, [self._callself] + args,
+                                kws, starargs)
 
   def get_bound_arguments(self):
     return [self._callself]
 
   def get_parameter_names(self):
     return self.underlying.get_parameter_names()
+
+  def has_varargs(self):
+    return self.underlying.has_varargs()
 
   def has_kwargs(self):
     return self.underlying.has_kwargs()
@@ -1702,7 +1712,7 @@ class Generator(AtomicAbstractValue):
                                                   "next()")
     return self.retvar
 
-  def call(self, node, unused_func, args, kws):
+  def call(self, node, unused_func, args, kws, starargs=None):
     """Call this generator or (more common) its "next" attribute."""
     return node, self.get_yielded_type()
 
@@ -1739,7 +1749,7 @@ class Nothing(AtomicAbstractValue):
   def set_attribute(self, node, name, value):
     raise AttributeError("Object %r has no attribute %s" % (self, name))
 
-  def call(self, node, unused_func, args, kws):
+  def call(self, node, unused_func, args, kws, starargs=None):
     self._raise_failed_function_call(["Can't call empty object ('nothing')"])
 
   def to_type(self):
@@ -1863,7 +1873,7 @@ class Unknown(AtomicAbstractValue):
       self.members[name] = v.AssignToNewVariable(self.name + "." + name, node)
     return node
 
-  def call(self, node, unused_func, args, kws):
+  def call(self, node, unused_func, args, kws, starargs=None):
     ret = self.vm.create_new_unknown(node, self.name + "()", source=self.owner,
                                      action="call")
     self._calls.append((args, kws, ret))

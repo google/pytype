@@ -54,6 +54,12 @@ class CallTracer(vm.VirtualMachine):
     name = "arg %d of %s" % (i, method_name)
     return abstract.Unknown(self).to_variable(node, name)
 
+  def create_varargs(self, node):
+    value = abstract.Instance(self.tuple_type, self)
+    value.overwrite_type_parameter(
+        node, "T", self.create_new_unknown(node, "varargs_value"))
+    return value
+
   def create_kwargs(self, node):
     key_type = self.primitive_class_instances[str].to_variable(node, "str")
     value_type = self.create_new_unknown(node, "kwargs_value")
@@ -69,12 +75,13 @@ class CallTracer(vm.VirtualMachine):
     if isinstance(method, (abstract.Function, abstract.BoundFunction)):
       args = [self.create_argument(node, val.data.name, i)
               for i in range(method.argcount())]
+      varargs = self.create_varargs(node) if method.has_varargs() else None
       kwargs = self.create_kwargs(node) if method.has_kwargs() else None
       frame = AnalysisFrame()
       self.push_frame(frame)
       state = frame_state.FrameState.init(node)
       state, _ = self.call_function_with_state(state, val.variable, args,
-                                               kwargs)
+                                               kwargs, varargs)
       state = state.connect_to_cfg_node(node)
       self.pop_frame(frame)
       node = state.node

@@ -946,19 +946,21 @@ class VirtualMachine(object):
     """Fired whenever we call a builtin using unknown parameters."""
     return NotImplemented
 
-  def call_function_with_state(self, state, funcu, posargs, namedargs=None):
+  def call_function_with_state(self, state, funcu, posargs, namedargs=None,
+                               starargs=None):
     node, ret = self.call_function(
-        state.node, funcu, posargs, namedargs)
+        state.node, funcu, posargs, namedargs, starargs)
     return state.change_cfg_node(node), ret
 
-  def call_function(self, node, funcu, posargs, namedargs=None):
+  def call_function(self, node, funcu, posargs, namedargs=None, starargs=None):
     """Call a function.
 
     Args:
       node: The current CFG node.
       funcu: A variable of the possible functions to call.
-      posargs: The positional arguments to pass (as variables).
-      namedargs: The keyword arguments to pass.
+      posargs: The known positional arguments to pass (as variables).
+      namedargs: The known keyword arguments to pass. dict of str -> Variable.
+      starargs: The contents of the *args parameter, if passed. (None otherwise)
     Returns:
       A tuple (CFGNode, Variable). The Variable is the return value.
     """
@@ -969,7 +971,7 @@ class VirtualMachine(object):
       assert isinstance(func, abstract.AtomicAbstractValue), type(func)
       try:
         new_node, one_result = func.call(
-            node, funcv, posargs, namedargs or {})
+            node, funcv, posargs, namedargs or {}, starargs)
       except abstract.FailedFunctionCall as e:
         log.error("FailedFunctionCall for %s", e.obj)
         for msg in e.explanation_lines:

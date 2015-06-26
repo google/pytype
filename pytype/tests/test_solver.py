@@ -1,7 +1,5 @@
 """Test cases that need solve_unknowns."""
 
-import unittest
-
 from pytype.tests import test_inference
 
 
@@ -102,7 +100,6 @@ class SolverTests(test_inference.InferenceTest):
         def f() -> NoneType
       """)
 
-  @unittest.skip("Broken. We need to generate tuple<?> in infer.py.")
   def testOptionalParams(self):
     with self.Infer("""
       class Foo(object):
@@ -114,7 +111,7 @@ class SolverTests(test_inference.InferenceTest):
       self.assertTypesMatchPytd(ty, """
       class Foo(object):
         # def __init__(self, ...) is already declared in object
-        types: tuple<?>
+        types: tuple<type>
         def bar(self, val) -> bool
       """)
 
