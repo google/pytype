@@ -408,6 +408,21 @@ class BuiltinTests(test_inference.InferenceTest):
         pass
       """)
 
+  def testTime(self):
+    with self.Infer("""
+      import time
+      def f(x):
+        if x:
+          return time.mktime(())
+        else:
+          return 3j
+    """, deep=True, solve_unknowns=False, extract_locals=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        time: module
+
+        def f(x: ?) -> complex
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()

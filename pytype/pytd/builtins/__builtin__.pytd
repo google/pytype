@@ -61,7 +61,7 @@ def hash(obj) -> int
 def hex(number: int) -> str
 def id(obj) -> int
 def intern(string: str or bytearray) -> str
-def isinstance(object, class_or_type_or_tuple: tuple<type> or type) -> bool
+def isinstance(object, class_or_type_or_tuple: tuple<nothing or type> or type) -> bool
 def issubclass(C, B: tuple) -> bool
 def issubclass(C: type, B: type) -> bool
 def iter(collection: str) -> iterator<str>

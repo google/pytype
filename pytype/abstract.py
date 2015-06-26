@@ -51,8 +51,14 @@ def match_var_against_type(var, other_type, subst, node):
     A new (or unmodified original) substitution dict if the matching succeded,
     None otherwise.
   """
-  # TODO(ampere): Add support for functions and other things.
-  if isinstance(other_type, Class):
+  if not var.values and isinstance(other_type, Class):
+    # If this type is empty, the only thing we can match it against is
+    # object (for pytd convenience).
+    if other_type.name == "object":
+      return subst
+    else:
+      return None
+  elif isinstance(other_type, Class):
     # Accumulate substitutions in "subst", or break in case of error:
     for val in var.values:
       subst = val.data.match_against_type(other_type, subst, node)

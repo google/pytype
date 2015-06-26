@@ -387,6 +387,17 @@ class ContainerTest(test_inference.InferenceTest):
         def f() -> dict<str, str>
       """)
 
+  def testEmptyTupleAsArg(self):
+    with self.Infer("""
+      def f(x):
+        if x:
+          return isinstance(1, ())
+        else:
+          return 3j
+    """, deep=True, solve_unknowns=False, extract_locals=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        def f(x: ?) -> bool or complex
+      """)
 
 if __name__ == "__main__":
   test_inference.main()

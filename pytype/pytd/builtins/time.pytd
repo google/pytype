@@ -1,0 +1,1 @@
+def mktime(t: tuple<int>) -> float
