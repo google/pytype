@@ -1,1 +1,4 @@
+def ctime() -> str
+def ctime(secs: int or float or long or NoneType) -> str
 def mktime(t: tuple<int>) -> float
+def time() -> float
