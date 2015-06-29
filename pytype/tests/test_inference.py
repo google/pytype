@@ -197,6 +197,7 @@ class InferenceTest(unittest.TestCase):
                                                  (self.nothing, self.nothing))
 
   # For historical reasons (byterun), this method name is snakecase:
+  # TODO(kramm): Rename this function.
   # pylint: disable=invalid-name
   def assert_ok(self, code, raises=None):
     """Run an inference smoke test for the given code."""
@@ -208,6 +209,15 @@ class InferenceTest(unittest.TestCase):
         deep=False, solve_unknowns=False, reverse_operators=True,
         cache_unknowns=True)
     unit.Visit(visitors.VerifyVisitor())
+    return unit
+
+  def InferFromFile(self, filename, pythonpath=()):
+    with open(filename, "rb") as fi:
+      unit = infer.infer_types(fi.read(), self.PYTHON_VERSION,
+                               filename=filename, cache_unknowns=True,
+                               pythonpath=pythonpath)
+      unit.Visit(visitors.VerifyVisitor())
+      return unit
 
   @classmethod
   def SignatureHasReturnType(cls, sig, return_type):

@@ -1,7 +1,11 @@
 """Generic functions."""
 
 import itertools
+import os
 import re
+import shutil
+import tempfile
+import textwrap
 import traceback
 
 
@@ -343,3 +347,29 @@ def concat_lists(lists):
 
 def concat_tuples(tuples):
   return tuple(itertools.chain.from_iterable(tuples))
+
+
+class Tempdir(object):
+  """Context handler for creating temporary directories."""
+
+  def __enter__(self):
+    self.path = tempfile.mkdtemp()
+    return self
+
+  def create_file(self, filename, indented_data=None):
+    """Create a file in the temporary directory. Also dedents the contents."""
+    assert os.path.sep not in filename, filename
+    path = os.path.join(self.path, filename)
+    with open(path, "wb") as fi:
+      if indented_data:
+        fi.write(textwrap.dedent(indented_data))
+    return path
+
+  def __exit__(self, error_type, value, tb):
+    shutil.rmtree(path=self.path)
+    return False  # reraise any exceptions
+
+  def __getitem__(self, filename):
+    """Get the full path for an entry in this directory."""
+    return os.path.join(self.path, filename)
+

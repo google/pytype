@@ -1,6 +1,8 @@
 """Tests for utils.py."""
 
 import logging
+import os
+
 
 from pytype import utils
 from pytype.pytd import cfg as typegraph
@@ -186,6 +188,29 @@ class TypegraphUtilsTest(unittest.TestCase):
   def testLogTraceback(self):
     # Just a smoketest for utils.log_traceback
     utils.log_traceback(logging.error, "**tb %s")
+
+  def testTempdir(self):
+    with utils.Tempdir() as d:
+      filename1 = d.create_file("foo.txt")
+      filename2 = d.create_file("bar.txt", "\tdata2")
+      filename3 = d.create_file("baz.txt", "data3")
+      self.assertEquals(filename1, d["foo.txt"])
+      self.assertEquals(filename2, d["bar.txt"])
+      self.assertEquals(filename3, d["baz.txt"])
+      self.assertTrue(os.path.isdir(d.path))
+      self.assertTrue(os.path.isfile(filename1))
+      self.assertTrue(os.path.isfile(filename2))
+      self.assertTrue(os.path.isfile(filename3))
+      for filename, contents in [(filename1, ""),
+                                 (filename2, "data2"),  # dedented
+                                 (filename3, "data3")
+                                ]:
+        with open(filename, "rb") as fi:
+          self.assertEquals(fi.read(), contents)
+    self.assertFalse(os.path.isdir(d.path))
+    self.assertFalse(os.path.isfile(filename1))
+    self.assertFalse(os.path.isfile(filename2))
+    self.assertFalse(os.path.isfile(filename3))
 
 
 if __name__ == "__main__":
