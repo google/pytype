@@ -358,8 +358,10 @@ class Tempdir(object):
 
   def create_file(self, filename, indented_data=None):
     """Create a file in the temporary directory. Also dedents the contents."""
-    assert os.path.sep not in filename, filename
-    path = os.path.join(self.path, filename)
+    filedir, filename = os.path.split(filename)
+    if filedir:
+      os.makedirs(os.path.join(self.path, filedir))
+    path = os.path.join(self.path, filedir, filename)
     with open(path, "wb") as fi:
       if indented_data:
         fi.write(textwrap.dedent(indented_data))
@@ -372,4 +374,3 @@ class Tempdir(object):
   def __getitem__(self, filename):
     """Get the full path for an entry in this directory."""
     return os.path.join(self.path, filename)
-

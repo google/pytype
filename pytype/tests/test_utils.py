@@ -194,16 +194,23 @@ class TypegraphUtilsTest(unittest.TestCase):
       filename1 = d.create_file("foo.txt")
       filename2 = d.create_file("bar.txt", "\tdata2")
       filename3 = d.create_file("baz.txt", "data3")
+      filename4 = d.create_file("d1/d2/qqsv.txt", "  data4.1\n  data4.2")
       self.assertEquals(filename1, d["foo.txt"])
       self.assertEquals(filename2, d["bar.txt"])
       self.assertEquals(filename3, d["baz.txt"])
+      self.assertEquals(filename4, d["d1/d2/qqsv.txt"])
       self.assertTrue(os.path.isdir(d.path))
       self.assertTrue(os.path.isfile(filename1))
       self.assertTrue(os.path.isfile(filename2))
       self.assertTrue(os.path.isfile(filename3))
+      self.assertTrue(os.path.isfile(filename4))
+      self.assertTrue(os.path.isdir(os.path.join(d.path, "d1")))
+      self.assertTrue(os.path.isdir(os.path.join(d.path, "d1", "d2")))
+      self.assertEqual(filename4, os.path.join(d.path, "d1", "d2", "qqsv.txt"))
       for filename, contents in [(filename1, ""),
                                  (filename2, "data2"),  # dedented
-                                 (filename3, "data3")
+                                 (filename3, "data3"),
+                                 (filename4, "data4.1\ndata4.2"),  # dedented
                                 ]:
         with open(filename, "rb") as fi:
           self.assertEquals(fi.read(), contents)
@@ -211,6 +218,8 @@ class TypegraphUtilsTest(unittest.TestCase):
     self.assertFalse(os.path.isfile(filename1))
     self.assertFalse(os.path.isfile(filename2))
     self.assertFalse(os.path.isfile(filename3))
+    self.assertFalse(os.path.isdir(os.path.join(d.path, "d1")))
+    self.assertFalse(os.path.isdir(os.path.join(d.path, "d1", "d2")))
 
 
 if __name__ == "__main__":
