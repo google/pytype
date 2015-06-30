@@ -3,7 +3,7 @@
 
 import unittest
 from pytype.pytd import pytd
-from pytype.pytd import utils
+from pytype.pytd import utils as pytd_utils
 from pytype.tests import test_inference
 
 
@@ -11,7 +11,7 @@ class StringIOTests(test_inference.InferenceTest):
 
   @unittest.skip("Temporarily disabled. Takes > 162 sec (infinite loop?)")
   def testDeep(self):
-    sourcecode = utils.GetDataFile("examples/StringIO.py")
+    sourcecode = pytd_utils.GetDataFile("examples/StringIO.py")
     # TODO(pludemann): This is similar to test_pytree.py ... combine them?
     # TODO(pludemann): use new 'with' framework
     # TODO(pludemann): extract_locals - see class test_inference.Infer

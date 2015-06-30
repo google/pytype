@@ -2,14 +2,14 @@
 
 import unittest
 
-from pytype.pytd import utils
+from pytype.pytd import utils as pytd_utils
 from pytype.tests import test_inference
 
 
 class PyTreeTests(test_inference.InferenceTest):
 
   def testDeep(self):
-    sourcecode = utils.GetDataFile("examples/pytree.py")
+    sourcecode = pytd_utils.GetDataFile("examples/pytree.py")
     # TODO(pludemann): use new 'with' framework
     # TODO(pludemann): extract_locals - see class test_inference.Infer
     ty = self._InferAndVerify(sourcecode, deep=True)

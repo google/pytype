@@ -10,7 +10,7 @@ from pytype import infer
 from pytype.pyc import loadmarshal
 from pytype.pytd import optimize
 from pytype.pytd import pytd
-from pytype.pytd import utils
+from pytype.pytd import utils as pytd_utils
 from pytype.pytd.parse import parser
 from pytype.pytd.parse import visitors
 
@@ -97,7 +97,8 @@ class Infer(object):
       self.types = self.optimized_types = optimize.Optimize(
           self.types, lossy=False, use_abcs=False,
           max_union=7, remove_mutable=False)
-      self.types = self.canonical_types = utils.CanonicalOrdering(self.types)
+      self.types = self.canonical_types = pytd_utils.CanonicalOrdering(
+          self.types)
     except:
       self.types = None
       if not self.__exit__(*sys.exc_info()):
@@ -150,7 +151,7 @@ class InferenceTest(unittest.TestCase):
     self.nothing = pytd.NothingType()
     self.module = pytd.ClassType("module")
 
-    # The various union types use utils.CanonicalOrdering()'s ordering:
+    # The various union types use pytd_utils.CanonicalOrdering()'s ordering:
     self.intorstr = pytd.UnionType((self.int, self.str))
     self.intorfloat = pytd.UnionType((self.float, self.int))
     self.intorfloatorstr = pytd.UnionType((self.float, self.int, self.str))
@@ -221,7 +222,7 @@ class InferenceTest(unittest.TestCase):
 
   @classmethod
   def SignatureHasReturnType(cls, sig, return_type):
-    for desired_type in utils.UnpackUnion(return_type):
+    for desired_type in pytd_utils.UnpackUnion(return_type):
       if desired_type == return_type:
         return True
       elif isinstance(sig.return_type, pytd.UnionType):
@@ -277,16 +278,16 @@ class InferenceTest(unittest.TestCase):
 
   def assertOnlyHasReturnType(self, func, t):
     """Test that a given return type is the only one."""
-    ret = utils.JoinTypes(sig.return_type
-                          for sig in func.signatures)
+    ret = pytd_utils.JoinTypes(sig.return_type
+                               for sig in func.signatures)
     self.assertEquals(t, ret,
                       "Return type %r != %r" % (pytd.Print(t),
                                                 pytd.Print(ret)))
 
   def assertHasReturnType(self, func, t):
     """Test that a given return type is present. Ignore extras."""
-    ret = utils.JoinTypes(sig.return_type
-                          for sig in func.signatures)
+    ret = pytd_utils.JoinTypes(sig.return_type
+                               for sig in func.signatures)
     if isinstance(ret, pytd.UnionType):
       self.assertIn(t, ret.type_list,
                     "Return type %r not found in %r" % (pytd.Print(t),

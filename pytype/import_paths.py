@@ -3,7 +3,7 @@
 import os
 
 
-from pytype.pytd import utils
+from pytype.pytd import utils as pytd_utils
 
 
 def module_name_to_pytd(module_name,
@@ -28,5 +28,6 @@ def module_name_to_pytd(module_name,
   # TODO(pludemann): use pythonpath
 
   filename = os.path.join("builtins", module_name + ".pytd")
-  src = utils.GetDataFile(filename)
-  return utils.ParsePyTD(src, filename=filename, python_version=python_version)
+  src = pytd_utils.GetDataFile(filename)
+  return pytd_utils.ParsePyTD(src, filename=filename,
+                              python_version=python_version)
