@@ -440,12 +440,10 @@ class SimpleAbstractValue(AtomicAbstractValue):
 
     if not candidates:
       return node, None
-    elif len(candidates) == 1:
-      return node, candidates[0]
     else:
       ret = self.vm.program.NewVariable(name)
       for candidate in candidates:
-        ret.AddValues(candidate, node)
+        ret.FilterAndAddValues(candidate, node)
       return node, ret
 
   def set_attribute(self, node, name, var):

@@ -423,6 +423,16 @@ class BuiltinTests(test_inference.InferenceTest):
         def f(x: ?) -> complex
       """)
 
+  def testDivMod(self):
+    with self.Infer("""
+      def seed(self, a=None):
+        a = long(0)
+        divmod(a, 30268)
+    """, deep=True, solve_unknowns=True, extract_locals=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        def seed(self, ...) -> NoneType
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()

@@ -337,6 +337,12 @@ class Variable(object):
       copy = self.AddValue(value.data)
       copy.AddOrigin(where, {value})
 
+  def FilterAndAddValues(self, variable, where):
+    """Adds all the visible values from another variable to this one."""
+    for value in variable.Values(where):
+      copy = self.AddValue(value.data)
+      copy.AddOrigin(where, {value})
+
   def AssignToNewVariable(self, name, where):
     """Assign this variable to a new variable.
 

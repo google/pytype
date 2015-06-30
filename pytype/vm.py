@@ -111,10 +111,11 @@ class VirtualMachine(object):
   #       storing how a value is accessed and from where.
 
   def __init__(self, python_version, reverse_operators=False,
-               cache_unknowns=True, pythonpath=None):
+               cache_unknowns=True, pythonpath=None, pybuiltins_filename=None):
     """Construct a TypegraphVirtualMachine."""
     self.python_version = python_version
     self.pythonpath = pythonpath
+    self.pybuiltins_filename = pybuiltins_filename
     self.reverse_operators = reverse_operators
     self.cache_unknowns = cache_unknowns
     # The call stack of frames.
@@ -870,8 +871,13 @@ class VirtualMachine(object):
     return node, frame.f_globals, frame.f_locals
 
   def preload_builtins(self, node):
-    builtins_code = self.compile_src(
-        builtins.GetBuiltinsCode(self.python_version))
+    """Parse __builtin__.py and return the definitions as a globals dict."""
+    if self.pybuiltins_filename:
+      with open(self.pybuiltins_filename, "rb") as fi:
+        src = fi.read()
+    else:
+      src = builtins.GetBuiltinsCode(self.python_version)
+    builtins_code = self.compile_src(src)
     node, f_globals, f_locals = self.run_bytecode(node, builtins_code)
     # at the outer layer, locals are the same as globals
     builtin_names = frozenset(f_globals.members)
@@ -899,9 +905,9 @@ class VirtualMachine(object):
 
     code = self.compile_src(src, filename=filename)
 
-    node = self.root_cfg_node.ConnectNew("init")
+    node = node.ConnectNew("init")
     node, f_globals, _ = self.run_bytecode(node, code, f_globals, f_locals)
-    log.info("Final node: %s", node.name)
+    log.info("Final node: <%d>%s", node.id, node.name)
     return node, f_globals.members, builtin_names
 
   def call_binary_operator(self, state, name, x, y):
@@ -1420,8 +1426,8 @@ class VirtualMachine(object):
   def byte_STORE_FAST(self, state, op):
     name = self.frame.f_code.co_varnames[op.arg]
     state, value = state.pop()
-    state = self.store_local(state, name, value)
     state = state.forward_cfg_node()
+    state = self.store_local(state, name, value)
     return state
 
   def byte_DELETE_FAST(self, state, op):
@@ -1520,8 +1526,8 @@ class VirtualMachine(object):
   def byte_STORE_ATTR(self, state, op):
     name = self.frame.f_code.co_names[op.arg]
     state, (val, obj) = state.popn(2)
-    state = self.store_attr(state, obj, name, val)
     state = state.forward_cfg_node()
+    state = self.store_attr(state, obj, name, val)
     return state
 
   def byte_DELETE_ATTR(self, state, op):
@@ -1536,8 +1542,8 @@ class VirtualMachine(object):
 
   def byte_STORE_SUBSCR(self, state):
     state, (val, obj, subscr) = state.popn(3)
-    state = self.store_subscr(state, obj, subscr, val)
     state = state.forward_cfg_node()
+    state = self.store_subscr(state, obj, subscr, val)
     return state
 
   def byte_DELETE_SUBSCR(self, state):

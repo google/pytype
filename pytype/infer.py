@@ -364,8 +364,8 @@ def program_to_dot(program, ignored):
 
 
 def infer_types(src, python_version, filename=None, run_builtins=True,
-                pythonpath=None, svg_output=None, deep=False,
-                pseudocode_output=False, solve_unknowns=False,
+                pybuiltins_filename=None, pythonpath=None, svg_output=None,
+                deep=False, pseudocode_output=False, solve_unknowns=False,
                 reverse_operators=False, cache_unknowns=False):
   """Given Python source return its types.
 
@@ -375,6 +375,7 @@ def infer_types(src, python_version, filename=None, run_builtins=True,
     filename: Filename of the program we're parsing.
     run_builtins: Whether to preload the native Python builtins when running
       the program.
+    pybuiltins_filename: Path to Python builtins, or None for default.
     pythonpath: List of directories to search for .pytd-gen files.
     svg_output: A filename into which to save an SVG version of the type graph.
     deep: If True, analyze all functions, even the ones not called by the main
@@ -390,7 +391,8 @@ def infer_types(src, python_version, filename=None, run_builtins=True,
   tracer = CallTracer(python_version=python_version,
                       reverse_operators=reverse_operators,
                       cache_unknowns=cache_unknowns,
-                      pythonpath=pythonpath)
+                      pythonpath=pythonpath,
+                      pybuiltins_filename=pybuiltins_filename)
   loc, defs, builtin_names = tracer.run_program(src, filename, run_builtins)
   log.info("===Done run_program===")
   # TODO(pludemann): make test_inference.InferDedent and this code the same:
