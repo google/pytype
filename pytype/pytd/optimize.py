@@ -434,6 +434,7 @@ class FindCommonSuperClasses(visitors.Visitor):
   """
 
   def __init__(self, superclasses=None, use_abcs=True):
+    super(FindCommonSuperClasses, self).__init__()
     self._superclasses = builtins.GetBuiltinsPyTD().Visit(
         visitors.ExtractSuperClassesByName())
     self._superclasses.update(superclasses or {})
@@ -520,6 +521,7 @@ class CollapseLongUnions(visitors.Visitor):
 
   def __init__(self, max_length=7, generic_type=None):
     assert isinstance(max_length, (int, long))
+    super(CollapseLongUnions, self).__init__()
     if generic_type is None:
       self.generic_type = pytd.NamedType("object")
     else:
@@ -555,6 +557,7 @@ class CollapseLongParameterUnions(visitors.Visitor):
   """
 
   def __init__(self, max_length=7):
+    super(CollapseLongParameterUnions, self).__init__()
     self.max_length = max_length
 
   def VisitParameter(self, param):
@@ -581,6 +584,7 @@ class CollapseLongReturnUnions(visitors.Visitor):
   """
 
   def __init__(self, max_length=7):
+    super(CollapseLongReturnUnions, self).__init__()
     self.max_length = max_length
 
   def VisitSignature(self, sig):
@@ -605,6 +609,7 @@ class CollapseLongConstantUnions(visitors.Visitor):
   """
 
   def __init__(self, max_length=7):
+    super(CollapseLongConstantUnions, self).__init__()
     self.max_length = max_length
 
   def VisitConstant(self, c):
@@ -672,6 +677,7 @@ class RemoveInheritedMethods(visitors.Visitor):
   """
 
   def __init__(self):
+    super(RemoveInheritedMethods, self).__init__()
     self.class_to_stripped_signatures = {}
     self.function = None
     self.class_stack = []
@@ -769,6 +775,7 @@ class PullInMethodClasses(visitors.Visitor):
   """
 
   def __init__(self):
+    super(PullInMethodClasses, self).__init__()
     self._module = None
     self._total_count = collections.defaultdict(int)
     self._processed_count = collections.defaultdict(int)
@@ -889,6 +896,7 @@ class TypeParameterScope(visitors.Visitor):
   """Common superclass for optimizations that track type parameters."""
 
   def __init__(self):
+    super(TypeParameterScope, self).__init__()
     self.type_params_stack = [{}]
 
   def EnterClass(self, cls):

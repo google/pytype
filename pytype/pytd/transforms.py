@@ -22,6 +22,7 @@ class ExtractOperators(visitors.Visitor):
       matcher: A class with a "Match" method, used for matching function
         argument types.
     """
+    super(ExtractOperators, self).__init__()
     # class name -> op name -> list of signatures
     self.operators = collections.defaultdict(
         lambda: collections.defaultdict(list))
@@ -142,6 +143,7 @@ class PreprocessReverseOperatorsVisitor(visitors.Visitor):
   """
 
   def __init__(self):
+    super(PreprocessReverseOperatorsVisitor, self).__init__()
     self._reversible_operator_names = slots.ReversibleOperatorNames()
     self._reverse_operator_names = slots.ReverseOperatorNames()
 

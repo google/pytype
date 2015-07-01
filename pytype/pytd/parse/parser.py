@@ -282,6 +282,7 @@ class Mutator(visitors.Visitor):
   """
 
   def __init__(self, name, new_type):
+    super(Mutator, self).__init__()
     self.name = name
     self.new_type = new_type
     self.successful = False

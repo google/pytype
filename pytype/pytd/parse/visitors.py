@@ -41,10 +41,12 @@ class Visitor(object):
 
   _visitor_functions_cache = {}
 
-  def __new__(cls, *unused_args, **unused_kwargs):
-    visitor = super(Visitor, cls).__new__(cls)
+  def __init__(self):
+    cls = self.__class__
 
-    if cls not in Visitor._visitor_functions_cache:
+    if cls in Visitor._visitor_functions_cache:
+      enter_fns, visit_fns, leave_fns = Visitor._visitor_functions_cache[cls]
+    else:
       enter_fns = {}
       enter_prefix = "Enter"
       enter_len = len(enter_prefix)
@@ -65,13 +67,10 @@ class Visitor(object):
         elif attr.startswith(leave_prefix):
           leave_fns[attr[leave_len:]] = getattr(cls, attr)
       Visitor._visitor_functions_cache[cls] = (enter_fns, visit_fns, leave_fns)
-    else:
-      enter_fns, visit_fns, leave_fns = Visitor._visitor_functions_cache[cls]
 
-    visitor.enter_functions = enter_fns
-    visitor.visit_functions = visit_fns
-    visitor.leave_functions = leave_fns
-    return visitor
+    self.enter_functions = enter_fns
+    self.visit_functions = visit_fns
+    self.leave_functions = leave_fns
 
   def Enter(self, node, *args, **kwargs):
     return self.enter_functions[node.__class__.__name__](
@@ -82,8 +81,7 @@ class Visitor(object):
         self, node, *args, **kwargs)
 
   def Leave(self, node, *args, **kwargs):
-    return self.leave_functions[node.__class__.__name__](
-        self, node, *args, **kwargs)
+    self.leave_functions[node.__class__.__name__](self, node, *args, **kwargs)
 
 
 class PrintVisitor(Visitor):
@@ -95,6 +93,7 @@ class PrintVisitor(Visitor):
                         parser_constants.RESERVED_PYTHON)
 
   def __init__(self):
+    super(PrintVisitor, self).__init__()
     self.class_names = []  # allow nested classes
 
   def _EscapedName(self, name):
@@ -311,6 +310,7 @@ class _FillInClasses(Visitor):
       lookup_list: An iterable of symbol tables (i.e., objects that have a
         "Lookup" function)
     """
+    super(_FillInClasses, self).__init__()
     self._lookup_list = lookup_list
 
   def VisitClassType(self, node):
@@ -347,6 +347,7 @@ class DefaceUnresolved(Visitor):
       lookup_list: An iterable of symbol tables (i.e., objects that have a
         "lookup" function)
     """
+    super(DefaceUnresolved, self).__init__()
     self._lookup_list = lookup_list
 
   def VisitNamedType(self, node):
@@ -480,6 +481,7 @@ class ReplaceTypes(Visitor):
   """
 
   def __init__(self, mapping):
+    super(ReplaceTypes, self).__init__()
     self.mapping = mapping
 
   def VisitNamedType(self, node):
@@ -539,6 +541,7 @@ class ReplaceTypeParameters(Visitor):
   """Visitor for replacing type parameters with actual types."""
 
   def __init__(self, mapping):
+    super(ReplaceTypeParameters, self).__init__()
     self.mapping = mapping
 
   def VisitTypeParameter(self, p):
@@ -572,6 +575,7 @@ class AdjustSelf(Visitor):
   """
 
   def __init__(self, replace_unknown=False, force=False):
+    super(AdjustSelf, self).__init__()
     self.class_types = []  # allow nested classes
     self.force = force
     self.replaced_self_types = (pytd.NamedType("object"),
@@ -784,6 +788,7 @@ class CanonicalOrderingVisitor(Visitor):
   """
 
   def __init__(self, sort_signatures=False):
+    super(CanonicalOrderingVisitor, self).__init__()
     self.sort_signatures = sort_signatures
 
   # TODO(pludemann): might want to add __new__ defns to the various types here
@@ -845,6 +850,7 @@ class RemoveFunctionsAndClasses(Visitor):
   """Visitor for removing unwanted functions or classes."""
 
   def __init__(self, names):
+    super(RemoveFunctionsAndClasses, self).__init__()
     self.names = names
 
   def VisitTypeDeclUnit(self, node):
