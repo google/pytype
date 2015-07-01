@@ -428,9 +428,32 @@ class BuiltinTests(test_inference.InferenceTest):
       def seed(self, a=None):
         a = long(0)
         divmod(a, 30268)
-    """, deep=True, solve_unknowns=True, extract_locals=True) as ty:
+    """, deep=True, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
         def seed(self, ...) -> NoneType
+      """)
+
+  def testDivMod2(self):
+    with self.Infer("""
+      def seed(self, a=None):
+        if a is None:
+          a = int(16)
+        return divmod(a, 30268)
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        def seed(self, ...) -> tuple<int or long or float or complex>
+      """)
+
+  @unittest.skip("TODO(kramm): Needs value enumeration in PyTDFunction")
+  def testDivMod3(self):
+    with self.Infer("""
+      def seed(self, a=None):
+        if a is None:
+          a = long(16)
+        return divmod(a, 30268)
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        def seed(self, ...) -> tuple<int or long or float or complex>
       """)
 
 

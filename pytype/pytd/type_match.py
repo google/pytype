@@ -190,6 +190,7 @@ class TypeMatch(utils.TypeMatcher):
     return booleq.And([base_match] + params)
 
   def match_Generic_against_Unknown(self, t1, t2, subst):  # pylint: disable=invalid-name
+    # Note: This flips p1 and p2 above.
     return self.match_Unknown_against_Generic(t2, t1, subst)
 
   def maybe_lookup_type_param(self, t, subst):
@@ -251,7 +252,8 @@ class TypeMatch(utils.TypeMatcher):
     elif isinstance(t2, pytd.UnionType):
       return booleq.Or(self.match_type_against_type(t1, u, subst)
                        for u in t2.type_list)
-    elif isinstance(t1, pytd.ClassType) and isinstance(t2, StrictType):
+    elif (isinstance(t1, pytd.ClassType) and isinstance(t2, StrictType) or
+          isinstance(t1, StrictType) and isinstance(t2, pytd.ClassType)):
       # For strict types, avoid subclasses of the left side.
       return booleq.Eq(t1.name, t2.name)
     elif isinstance(t1, pytd.ClassType):
@@ -262,9 +264,6 @@ class TypeMatch(utils.TypeMatcher):
     elif isinstance(t2, pytd.ClassType):
       # ClassTypes on the right are exactly like Unions: We can match against
       # this type or any of its subclasses.
-      # TODO(pludemann):
-      #    if not allow_subclass:
-      #      return self.match_type_against_type(t1, self.unclass(t2), subst)
       return booleq.Or(self.match_type_against_type(t1, t, subst)
                        for t in self.expand_subclasses(t2))
     assert not isinstance(t1, pytd.ClassType)

@@ -41,10 +41,9 @@ def coerce(x: type, y: type) -> tuple<type>  # tuple<type, type>
 def coerce(x: iterator, y: iterator) -> tuple<iterator>  # tuple<iterator, iterator>  # TODO(pludemann): iterator<T> ?
 def dir(...) -> list<str>
 def divmod(x: int, y: int) -> tuple<int>  # tuple<int, int>
-def divmod(x: int or float, y: float) -> tuple<float>  # tuple<float, float>
-def divmod(x: int or float or complex, y: complex) -> tuple<complex>  # tuple<complex, complex>
-def divmod(x: float, y: int) -> tuple<float>  # tuple<float, float>
-def divmod(x: complex, y: int or float) -> tuple<complex>  # tuple<complex, complex>
+def divmod(x: int or long, y: int or long) -> tuple<long>  # tuple<long, long>
+def divmod(x: int or long or float, y: int or long or float) -> tuple<float>  # tuple<float, float>
+def divmod(x: int or long or float or complex, y: int or long or float or complex) -> tuple<complex>  # tuple<complex, complex>
 def eval(src, ...) -> ?  # Can't say *anything* about the result -- different from "-> object"
 def execfile(filename: str, ...) -> NoneType
 def filter(function_or_None, sequence: str) -> str
