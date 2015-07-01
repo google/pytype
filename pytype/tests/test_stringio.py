@@ -9,7 +9,7 @@ from pytype.tests import test_inference
 
 class StringIOTests(test_inference.InferenceTest):
 
-  @unittest.skip("Temporarily disabled. Takes > 162 sec (infinite loop?)")
+  @unittest.skip("Temporarily disabled. Takes ~480 sec")
   def testDeep(self):
     sourcecode = pytd_utils.GetDataFile("examples/StringIO.py")
     # TODO(pludemann): This is similar to test_pytree.py ... combine them?
