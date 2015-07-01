@@ -258,10 +258,13 @@ class Variable(object):
     Returns:
       A filtered list of values for this variable.
     """
+    num_values = len(self.values)
     result = set()
     seen = set()
     stack = [viewpoint]
     while stack:
+      if len(result) == num_values:
+        break
       node = stack.pop()
       seen.add(node)
       # _cfgnode_to_values is a defaultdict, so don't use "get"
