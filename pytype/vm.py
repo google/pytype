@@ -36,6 +36,9 @@ from pytype.pytd.parse import builtins
 log = logging.getLogger(__name__)
 
 
+MAX_IMPORT_DEPTH = 12
+
+
 # Create a repr that won't overflow.
 _TRUNCATE = 120
 _TRUNCATE_STR = 72
@@ -156,6 +159,7 @@ class VirtualMachine(object):
     self.primitive_class_instances[types.NoneType] = self.none
 
     self.str_type = self.primitive_classes[str]
+    self.int_type = self.primitive_classes[int]
     self.tuple_type = self.convert_constant("tuple", tuple)
     self.list_type = self.convert_constant("list", list)
     self.set_type = self.convert_constant("set", set)
@@ -625,6 +629,10 @@ class VirtualMachine(object):
       return abstract.SimpleAbstractValue(name, self)
     elif isinstance(pyval, str):
       return abstract.AbstractOrConcreteValue(pyval, self.str_type, self)
+    elif isinstance(pyval, int) and -1 <= pyval <= MAX_IMPORT_DEPTH:
+      # For small integers, preserve the actual value (for things like the
+      # level in IMPORT_NAME).
+      return abstract.AbstractOrConcreteValue(pyval, self.int_type, self)
     elif pyval.__class__ in self.primitive_classes:
       return self.primitive_class_instances[pyval.__class__]
     elif isinstance(pyval, (loadmarshal.CodeType, blocks.OrderedCode)):
@@ -1235,7 +1243,7 @@ class VirtualMachine(object):
                                              self.python_version,
                                              self.pythonpath)
     except IOError:
-      log.error("Couldn't find module %s", name)
+      log.error("Couldn't find module %r", name)
       return state, self.create_new_unknown(state.node, name)
     return state, self.convert_constant(name, ast)
 
@@ -1908,9 +1916,10 @@ class VirtualMachine(object):
 
   def byte_IMPORT_NAME(self, state, op):
     name = self.frame.f_code.co_names[op.arg]
+    # The identifiers in the (unused) fromlist are repeated in IMPORT_FROM.
     state, (level, unused_fromlist) = state.popn(2)
-    # TODO(kramm): Do something meaningful with "fromlist"?
-    state, module = self.import_name(state, name, level)
+    state, module = self.import_name(state, name,
+                                     _get_atomic_python_constant(level))
     return state.push(module)
 
   def byte_IMPORT_FROM(self, state, op):

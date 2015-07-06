@@ -23,9 +23,19 @@ class ImportTest(test_inference.InferenceTest):
       from path.to.module import bar, baz
       """)
 
-  def testRelativeImport(self):
+  def testRelativeImport1(self):
     self.assert_ok("""\
-      from .. import module
+      from . import bar
+      """)
+
+  def testRelativeImport2(self):
+    self.assert_ok("""\
+      from .. import bar
+      """)
+
+  def testRelativeImport3(self):
+    self.assert_ok("""\
+      from ... import bar
       """)
 
   def testImportAll(self):

@@ -15,7 +15,8 @@ def module_name_to_pytd(module_name,
   Args:
     module_name: Name of a module. The "abc" in "import abc".
     level: For normal imports, -1. If the Python syntax was "from . import abc",
-      this will be 1. For "from .. import abc", it'll be 2, and so on.
+      this will be 1. For "from .. import abc", it'll be 2, and so on. If this
+      is not -1, module_name will be "".
     python_version: The Python version to import the module for. Used for
       builtin modules.
 
