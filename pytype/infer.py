@@ -305,18 +305,17 @@ def program_to_pseudocode(program):
   return s.getvalue()
 
 
-def program_to_dot(program, ignored):
+def program_to_dot(program, ignored, only_cfg=False):
   """Convert a typegraph.Program into a dot file.
 
   Args:
     program: The program to convert.
     ignored: A set of names that should be ignored. This affects most kinds of
     nodes.
+    only_cfg: If set, only output the control flow graph.
   Returns:
     A str of the dot code.
   """
-  # This function uses the opposite quote style to allow " in strings.
-  # pylint: disable=g-inconsistent-quotes
   def objname(n):
     return n.__class__.__name__ + str(id(n))
 
@@ -333,24 +332,36 @@ def program_to_dot(program, ignored):
   for node in program.cfg_nodes:
     if node in ignored:
       continue
-    sb.write('%s[shape=polygon,sides=4,label="%s"];\n'
+    sb.write("%s[shape=polygon,sides=4,label=\"%s\"];\n"
              % (objname(node), node.name))
     for other in node.outgoing:
       sb.write("%s -> %s [penwidth=2.0];\n" % (objname(node), objname(other)))
+
+  if only_cfg:
+    sb.write("}\n")
+    return sb.getvalue()
+
   for variable in program.variables:
     if variable.name in ignored:
+      continue
+    if all(origin.where == program.entrypoint
+           for value in variable.values
+           for origin in value.origins):
+      # Ignore "boring" values (a.k.a. constants)
       continue
     sb.write('%s[label="%s",shape=polygon,sides=4,distortion=.1];\n'
              % (objname(variable), escape(variable.name)))
     for val in variable.values:
       sb.write("%s -> %s [arrowhead=none];\n" %
                (objname(variable), objname(val)))
-      sb.write('%s[label="%s@0x%x",fillcolor=%s];\n' %
+      sb.write("%s[label=\"%s@0x%x\",fillcolor=%s];\n" %
                (objname(val), repr(val.data)[:10], id(val.data),
                 "white" if val.origins else "red"))
       for loc, srcsets in val.origins:
+        if loc == program.entrypoint:
+          continue
         for srcs in srcsets:
-          sb.write('%s[label=""];\n' % (objname(srcs)))
+          sb.write("%s[label=\"\"];\n" % (objname(srcs)))
           sb.write("%s -> %s [color=pink,arrowhead=none,weight=40];\n"
                    % (objname(val), objname(srcs)))
           if loc not in ignored:
@@ -364,8 +375,9 @@ def program_to_dot(program, ignored):
 
 
 def infer_types(src, python_version, filename=None, run_builtins=True,
-                pybuiltins_filename=None, pythonpath=None, svg_output=None,
-                deep=False, pseudocode_output=False, solve_unknowns=False,
+                pybuiltins_filename=None, pythonpath=None,
+                output_cfg=None, output_typegraph=None,
+                output_pseudocode=None, deep=False, solve_unknowns=False,
                 reverse_operators=False, cache_unknowns=False):
   """Given Python source return its types.
 
@@ -377,16 +389,19 @@ def infer_types(src, python_version, filename=None, run_builtins=True,
       the program.
     pybuiltins_filename: Path to Python builtins, or None for default.
     pythonpath: List of directories to search for .pytd-gen files.
-    svg_output: A filename into which to save an SVG version of the type graph.
+    output_cfg: A filename into which to save an SVG of the control flow graph.
+    output_typegraph: A filename into which to save an SVG of the typegraph.
+    output_pseudocode: A filename to write pseudo code to.
     deep: If True, analyze all functions, even the ones not called by the main
       execution flow.
-    pseudocode_output: Filename to write pseudo code to.
     solve_unknowns: If yes, try to replace structural types ("~unknowns") with
       nominal types.
     reverse_operators: If True, emulate operations like __radd__.
     cache_unknowns: If True, do a faster approximation of unknown types.
   Returns:
     A TypeDeclUnit
+  Raises:
+    AssertionError: In case of a bad parameter combination.
   """
   tracer = CallTracer(python_version=python_version,
                       reverse_operators=reverse_operators,
@@ -404,15 +419,18 @@ def infer_types(src, python_version, filename=None, run_builtins=True,
   if solve_unknowns:
     log.info("=========== PyTD to solve =============\n%s", pytd.Print(ast))
     ast = convert_structural.convert_pytd(ast, tracer.builtins_pytd)
-  if svg_output:
-    dot = program_to_dot(tracer.program, set([]))
-    proc = subprocess.Popen(["/usr/bin/dot", "-T", "svg", "-o", svg_output],
+  if output_cfg or output_typegraph:
+    if output_cfg and output_typegraph:
+      raise AssertionError("Can output CFG or typegraph, but not both")
+    dot = program_to_dot(tracer.program, set([]), bool(output_cfg))
+    proc = subprocess.Popen(["/usr/bin/dot", "-T", "svg", "-o",
+                             output_cfg or output_typegraph],
                             stdin=subprocess.PIPE)
     proc.stdin.write(dot)
     proc.stdin.close()
-  if pseudocode_output:
+  if output_pseudocode:
     src = program_to_pseudocode(tracer.program)
-    with open(pseudocode_output, "w") as fi:
+    with open(output_pseudocode, "w") as fi:
       fi.write(src)
 
   return ast

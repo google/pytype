@@ -75,12 +75,16 @@ def parse_options(args):
       dest="pybuiltins_filename", default=None,
       help=("Use user-supplied custom definition of __builtin__.py."))
   o.add_option(
-      "--svg-output", type="string", action="store",
-      dest="svg_output", default=None,
+      "--output-cfg", type="string", action="store",
+      dest="output_cfg", default=None,
       help="Output control flow graph as SVG.")
   o.add_option(
-      "--pseudocode-output", type="string", action="store",
-      dest="pseudocode_output", default=None,
+      "--output-typegraph", type="string", action="store",
+      dest="output_typegraph", default=None,
+      help="Output typegraph as SVG.")
+  o.add_option(
+      "--output-pseudocode", type="string", action="store",
+      dest="output_pseudocode", default=None,
       help="Output pseudo code.")
   o.add_option(
       "-r", "--reverse-operators", action="store_true",
@@ -164,8 +168,9 @@ def main(argv):
       pythonpath=options.pythonpath.split(":"),
       deep=options.api or options.structural,
       solve_unknowns=options.solve_unknowns or options.api,
-      svg_output=options.svg_output,
-      pseudocode_output=options.pseudocode_output,
+      output_cfg=options.output_cfg,
+      output_typegraph=options.output_typegraph,
+      output_pseudocode=options.output_pseudocode,
       reverse_operators=options.reverse_operators,
       cache_unknowns=options.cache_unknowns)
 
