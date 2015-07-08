@@ -59,6 +59,18 @@ class OperatorsWithAnyTests(test_inference.InferenceTest):
         def t_testAdd4(x: str) -> str
       """)
 
+  @unittest.skip("Needs handling of immutable types for += on an unknown")
+  def testAdd5(self):
+    with self.Infer("""
+      def t_testAdd5(x):
+        x += "42"
+        return x
+    """, deep=True, solve_unknowns=True, extract_locals=True) as ty:
+      # Currently missing str and unicode
+      self.assertTypesMatchPytd(ty, """
+        def t_testAdd5(x: str or unicode or bytearray or list<?>) -> str or unicode or bytearray or list<?>
+      """)
+
   def testPow1(self):
     # TODO(pludemann): add tests for 3-arg pow, etc.
     with self.Infer("""
