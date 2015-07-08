@@ -165,6 +165,26 @@ class BuiltinTests(test_inference.InferenceTest):
         #   def __init__(self, object: int) -> NoneType
       """)
 
+  def testDictGet(self):
+    with self.Infer("""
+      def f():
+        mydict = {"42": 42}
+        return mydict.get("42")
+    """, deep=True, solve_unknowns=True, extract_locals=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        def f() -> int or NoneType
+      """)
+
+  def testDictGetOrDefault(self):
+    with self.Infer("""
+      def f():
+        mydict = {"42": 42}
+        return mydict.get("42", False)
+    """, deep=True, solve_unknowns=True, extract_locals=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        def f() -> int or bool
+      """)
+
   def testListInit0(self):
     with self.Infer("""
     def t_testListInit0(x):

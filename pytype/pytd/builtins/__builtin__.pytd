@@ -444,7 +444,8 @@ class dict<K, V>:
     # def fromkeys(self, S: list or tuple or set, ...) -> dict<object, NoneType> or dict
     # def fromkeys(self, S: iterator, ...) -> dict<str, NoneType> or dict<unicode, NoneType> or dict
     # def fromkeys(self, S: dict, ...) -> dict<object, NoneType>
-    def get(self, k: K, ...) -> V or NoneType
+    def get(self, k: K) -> V or NoneType
+    def get<V2>(self, k: K, d: V2) -> V or V2
     def has_key(self, k: K) -> bool
     def items(self) -> list<tuple<K or V>>  # list<tuple<K, V>>
     def iteritems(self) -> `dictionary-itemiterator`<K,V>
