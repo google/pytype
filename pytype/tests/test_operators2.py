@@ -61,6 +61,7 @@ class OperatorsWithAnyTests(test_inference.InferenceTest):
 
   @unittest.skip("Needs handling of immutable types for += on an unknown")
   def testAdd5(self):
+    # TODO(rechen): Fix test_stringio when this is working.
     with self.Infer("""
       def t_testAdd5(x):
         x += "42"
