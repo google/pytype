@@ -8,6 +8,9 @@ and to model path-specific visibility of nested data structures.
 import collections
 
 
+from pytype.pytd import utils
+
+
 _solved_find_queries = {}
 
 
@@ -29,6 +32,7 @@ class Program(object):
     self.entrypoint = None
     self.cfg_nodes = []
     self.next_variable_id = 0
+    self.solver = None
 
   def NewCFGNode(self, name=None):
     """Start a new CFG node."""
@@ -67,6 +71,10 @@ class Program(object):
         value = variable.AddValue(data)
         value.AddOrigin(where, source_set)
     return variable
+
+  def Freeze(self):
+    self.solver = Solver(self)
+    self.NewCFGNode = utils.disabled_function  # pylint: disable=invalid-name
 
 
 class CFGNode(object):
@@ -119,7 +127,7 @@ class CFGNode(object):
     Returns:
       True if the combination is possible, False otherwise.
     """
-    return Solver(self.program, values, self, self.program.entrypoint).Solve()
+    return self.program.solver.Solve(values, self)
 
   def RegisterValue(self, value):
     self.values.add(value)
@@ -194,8 +202,7 @@ class Value(object):
       the values it depends on were assigned (and not overwritten) before that,
       etc.
     """
-    solver = Solver(self.program, {self}, viewpoint, self.program.entrypoint)
-    return solver.Solve()
+    return self.program.solver.Solve({self}, viewpoint)
 
   def _FindOrAddOrigin(self, cfg_node):
     try:
@@ -554,28 +561,24 @@ class Solver(object):
   they reoccur in the solving process.
   """
 
-  def __init__(self, program, start_attrs, start_node, end_node):
+  def __init__(self, program):
     """Initialize a solver instance. Every instance has their own cache.
-
-    Initialize a solver that tries to prove one or more values starting (and
-    going backwards from) a given node, all the way to (optionally) an end
-    node.
 
     Arguments:
       program: The program we're in.
-      start_attrs: The assignments we're trying to have, at the start_node.
-      start_node: The CFG node where we want the assignments to be active.
-      end_node: The entry point of the program. (The solver goes through the
-        CFG backwards, hence the entry point is at the "end")
     """
     self.program = program
-    self.start_attrs = start_attrs
-    self.start_node = start_node
-    self.end_node = end_node
     self._solved_states = {}
 
-  def Solve(self):
-    """Try to solve the problem Solver was initialized with.
+  def Solve(self, start_attrs, start_node):
+    """Try to solve the given problem.
+
+    Try to prove one or more values starting (and going backwards from) a
+    given node, all the way to the program entrypoint.
+
+    Arguments:
+      start_attrs: The assignments we're trying to have, at the start node.
+      start_node: The CFG node where we want the assignments to be active.
 
     Returns:
       True if there is a path through the program that would give "start_attr"
@@ -583,9 +586,9 @@ class Solver(object):
       might only look for a partial path (i.e., a path that doesn't go back all
       the way to the entry point of the program).
     """
-    if not self.CanHaveSolution():
+    if not self.CanHaveSolution(start_attrs, start_node):
       return False
-    state = State(self.start_node, self.start_attrs)
+    state = State(start_node, start_attrs)
     return self._RecallOrFindSolution(state)
 
   def _RecallOrFindSolution(self, state):
@@ -602,11 +605,11 @@ class Solver(object):
     result = self._solved_states[state] = self._FindSolution(state)
     return result
 
-  def CanHaveSolution(self):
+  def CanHaveSolution(self, start_attrs, start_node):
     """Do a quick (one DFS run) sanity check of whether a solution can exist."""
     reachable = set()
-    _FindNodeBackwards(self.start_node, None, reachable)  # populate reachable
-    for value in self.start_attrs:
+    _FindNodeBackwards(start_node, None, reachable)  # populate reachable
+    for value in start_attrs:
       if not _AllValuesAreReachable(value, reachable):
         return False
     return True
@@ -637,13 +640,13 @@ class Solver(object):
           # This loop over multiple different combinations of origins is why
           # we need memoization of states.
           for source_set in origin.source_sets:
-            if not source_set and self.end_node:
+            if not source_set and self.program.entrypoint:
               # If we reached a value without further dependencies, check
               # whether the corresponding cfg node is reachable from the entry
               # point of the program.
-              seen = {self.end_node}
+              seen = {self.program.entrypoint}
               if not _RecallOrFindNodeBackwards(
-                  origin.where, self.end_node, seen):
+                  origin.where, self.program.entrypoint, seen):
                 continue
             new_state = State(origin.where, state.goals)
             new_state.Replace(goal, source_set)

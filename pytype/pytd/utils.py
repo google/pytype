@@ -142,6 +142,24 @@ def prevent_direct_instantiation(cls, *args, **kwargs):
   return object.__new__(cls, *args, **kwargs)
 
 
+def disabled_function(*unused_args, **unused_kwargs):
+  """Disable a function.
+
+  Disable a previously defined function foo as follows:
+
+    foo = disabled_function
+
+  Any later calls to foo will raise an AssertionError.  This is used, e.g.,
+  in cfg.Program to prevent the addition of more nodes after we have begun
+  solving the graph.
+
+  Raises:
+    AssertionError: If something tried to call the disabled function.
+  """
+
+  raise AssertionError("Cannot call disabled function.")
+
+
 class TypeMatcher(object):
   """Base class for modules that match types against each other.
 

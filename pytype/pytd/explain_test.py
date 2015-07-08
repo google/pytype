@@ -37,6 +37,7 @@ class ExplainTest(unittest.TestCase):
     self.zab = self.z.AddValue("a&b")
     self.zab.AddOrigin(source_set=[self.xa, self.yb], where=self.n4)
     self.zab.AddOrigin(source_set=[self.xb, self.ya], where=self.n4)
+    self.p.Freeze()
 
   def testValid(self):
     self.assertTrue(explain.Explain([self.xa, self.ya], self.n4))
@@ -69,6 +70,7 @@ class ExplainTest(unittest.TestCase):
     y0 = y.AddValue(0, [x0], n1)
     y1 = y.AddValue(1, [x1], n1)
     y2 = y.AddValue(2, [x2], n1)
+    p.Freeze()
     self.assertTrue(explain.Explain([x0], n0))
     self.assertTrue(explain.Explain([x1], n0))
     self.assertTrue(explain.Explain([x2], n0))

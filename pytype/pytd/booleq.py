@@ -18,6 +18,9 @@
 import collections
 import itertools
 
+
+from pytype.pytd import utils
+
 chain = itertools.chain.from_iterable
 
 
@@ -516,9 +519,6 @@ class Solver(object):
         # If a variable does not have any constraints, it can be anything.
         self.implications[var][Solver.ANY_VALUE] = TRUE
 
-  def _freeze(self, *unused_args):
-    raise AssertionError("Cannot make changes after solving")
-
   def solve(self):
     """Solve the system of equations.
 
@@ -569,8 +569,8 @@ class Solver(object):
           length_after = len(assignments[pivot])
           something_changed |= (length_before != length_after)
 
-    self.register_variable = self._freeze
-    self.implies = self._freeze
+    self.register_variable = utils.disabled_function
+    self.implies = utils.disabled_function
 
     self.assignments = assignments
     return assignments
