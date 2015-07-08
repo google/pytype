@@ -1795,6 +1795,18 @@ class Module(LazyAbstractValue):
       value.module = self.name
     return var
 
+  def get_attribute(self, node, name, valself=None, valcls=None):
+    # Local variables in __init__.py take precedence over submodules.
+    node, val = super(Module, self).get_attribute(node, name, valself, valcls)
+    if val is None:
+      full_name = self.name + "." + name
+      mod = self.vm.import_module(full_name, -1)
+      if mod is None:
+        log.error("Couldn't find attribute / module %r", full_name)
+      else:
+        val = mod.to_variable(node, name)
+    return node, val
+
   def set_attribute(self, node, name, value):
     # Assigning attributes on modules is pretty common. E.g.
     # sys.path, sys.excepthook.

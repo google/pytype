@@ -378,7 +378,7 @@ def program_to_dot(program, ignored, only_cfg=False):
 def infer_types(src, python_version, filename=None, run_builtins=True,
                 pybuiltins_filename=None, pythonpath=None,
                 output_cfg=None, output_typegraph=None,
-                output_pseudocode=None, deep=False, solve_unknowns=False,
+                output_pseudocode=None, deep=True, solve_unknowns=True,
                 reverse_operators=False, cache_unknowns=False):
   """Given Python source return its types.
 

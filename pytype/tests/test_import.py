@@ -114,5 +114,46 @@ class ImportTest(test_inference.InferenceTest):
       ty = self.InferFromFile(filename=d["main.py"], pythonpath=[d.path])
       self.assertTrue(ty.Lookup("f"))
 
+  def testImportDirectory(self):
+    with utils.Tempdir() as d:
+      d.create_file("sub/other_file.pytd", "def f() -> int")
+      d.create_file("sub/bar/baz.pytd", "def g() -> float")
+      d.create_file("main.py", """
+        from sub import other_file
+        import sub.bar.baz
+        from sub.bar.baz import g
+        def h():
+          return other_file.f()
+        def i():
+          return g()
+        def j():
+          return sub.bar.baz.g()
+      """)
+      ty = self.InferFromFile(filename=d["main.py"], pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        other_file: module
+        g: function
+        sub: module  # from 'import sub.bar.baz'
+        def h() -> int
+        def i() -> float
+        def j() -> float
+      """)
+
+  def testImportInit(self):
+    with utils.Tempdir() as d:
+      d.create_file("sub/__init__.pytd", """
+        def f() -> int
+      """)
+      d.create_file("main.py", """
+        from sub import f
+        def g():
+          return f()
+      """)
+      ty = self.InferFromFile(filename=d["main.py"], pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        f: function
+        def g() -> int
+      """)
+
 if __name__ == "__main__":
   test_inference.main()

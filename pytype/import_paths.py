@@ -1,9 +1,12 @@
 """Code for dealing with import paths."""
 
+import logging
 import os
 
 
 from pytype.pytd import utils as pytd_utils
+
+log = logging.getLogger(__name__)
 
 
 def module_name_to_pytd(module_name,
@@ -26,9 +29,33 @@ def module_name_to_pytd(module_name,
   Raises:
     IOError: If we couldn't find this module.
   """
-  # TODO(pludemann): use pythonpath
 
+  # Builtin modules (but not standard library modules!) take precedence
+  # over modules in PYTHONPATH.
   filename = os.path.join("builtins", module_name + ".pytd")
-  src = pytd_utils.GetDataFile(filename)
-  return pytd_utils.ParsePyTD(src, filename=filename,
-                              python_version=python_version)
+  try:
+    src = pytd_utils.GetDataFile(filename)
+  except IOError:
+    pass
+  else:
+    return pytd_utils.ParsePyTD(src, filename=filename,
+                                python_version=python_version)
+
+  for searchdir in pythonpath:
+    path = os.path.join(searchdir, module_name.replace(".", "/"))
+    if os.path.isdir(path):
+      init_pytd = os.path.join(path, "__init__.pytd")
+      if os.path.isfile(init_pytd):
+        return pytd_utils.ParsePyTD(filename=init_pytd,
+                                    python_version=python_version)
+      else:
+        # We allow directories to not have an __init__ file.
+        # The module's empty, but you can still load submodules.
+        log.warn("No __init__.pytd in %s", path)
+        return pytd_utils.EmptyModule()
+    elif os.path.isfile(path + ".pytd"):
+      return pytd_utils.ParsePyTD(filename=path + ".pytd",
+                                  python_version=python_version)
+
+  raise IOError("Couldn't import %r" % module_name)
+

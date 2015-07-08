@@ -117,7 +117,7 @@ class VirtualMachine(object):
                cache_unknowns=True, pythonpath=None, pybuiltins_filename=None):
     """Construct a TypegraphVirtualMachine."""
     self.python_version = python_version
-    self.pythonpath = pythonpath
+    self.pythonpath = pythonpath or []
     self.pybuiltins_filename = pybuiltins_filename
     self.reverse_operators = reverse_operators
     self.cache_unknowns = cache_unknowns
@@ -422,10 +422,6 @@ class VirtualMachine(object):
 
   # Importing
 
-  def get_module_attribute(self, state, mod, name):
-    """Return the modules members as a dict."""
-    return self.load_attr(state, mod, name)
-
   def join_variables(self, node, name, variables):
     """Create a combined Variable for a list of variables.
 
@@ -648,10 +644,6 @@ class VirtualMachine(object):
       except (KeyError, AttributeError):
         log.debug("Failed to find pytd", exc_info=True)
         raise
-    elif isinstance(pyval, pytd.TypeDeclUnit):
-      members = {val.name: val
-                 for val in pyval.constants + pyval.classes + pyval.functions}
-      return abstract.Module(self, name, members)
     elif isinstance(pyval, pytd.Class):
       return abstract.PyTDClass(name, pyval, self)
     elif isinstance(pyval, pytd.Function):
@@ -1236,16 +1228,18 @@ class VirtualMachine(object):
     return abstract.LazyAbstractValue(
         name, d, self.maybe_convert_constant, self)
 
-  def import_name(self, state, name, level):
+  # TODO(kramm): memoize
+  def import_module(self, name, level):
     """Import the module and return the module object."""
     try:
       ast = import_paths.module_name_to_pytd(name, level,
                                              self.python_version,
                                              self.pythonpath)
     except IOError:
-      log.error("Couldn't find module %r", name)
-      return state, self.create_new_unknown(state.node, name)
-    return state, self.convert_constant(name, ast)
+      return None
+    members = {val.name: val
+               for val in ast.constants + ast.classes + ast.functions}
+    return abstract.Module(self, name, members)
 
   def print_item(self, item, to=None):
     # We don't need do anything here, since Python's print function accepts
@@ -1915,17 +1909,28 @@ class VirtualMachine(object):
     return state.set_why("yield")
 
   def byte_IMPORT_NAME(self, state, op):
-    name = self.frame.f_code.co_names[op.arg]
+    """Import a single module."""
+    full_name = self.frame.f_code.co_names[op.arg]
     # The identifiers in the (unused) fromlist are repeated in IMPORT_FROM.
-    state, (level, unused_fromlist) = state.popn(2)
-    state, module = self.import_name(state, name,
-                                     _get_atomic_python_constant(level))
-    return state.push(module)
+    state, (level, fromlist) = state.popn(2)
+    # The IMPORT_NAME for an "import a.b.c" will push the module "a".
+    # However, for "from a.b.c import Foo" it'll push the module "a.b.c". Those
+    # two cases are distinguished by whether fromlist is None or not.
+    if self.is_none(fromlist):
+      name = full_name.split(".", 1)[0]  # "a.b.c" -> "a"
+    else:
+      name = full_name
+    module = self.import_module(name, _get_atomic_python_constant(level))
+    if module is None:
+      log.error("Couldn't find module %r", name)
+      module = self._create_new_unknown_value("import")
+    return state.push(module.to_variable(state.node, name))
 
   def byte_IMPORT_FROM(self, state, op):
+    """IMPORT_FROM is mostly like LOAD_ATTR but doesn't pop the container."""
     name = self.frame.f_code.co_names[op.arg]
     mod = state.top()
-    state, attr = self.get_module_attribute(state, mod, name)
+    state, attr = self.load_attr(state, mod, name)
     return state.push(attr)
 
   def byte_EXEC_STMT(self, state):

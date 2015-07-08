@@ -246,7 +246,11 @@ def Print(ast, print_format=None):
   return res
 
 
-def ParsePyTD(src, filename, python_version):
+def EmptyModule():
+  return pytd.TypeDeclUnit("<empty>", constants=(), classes=(), functions=())
+
+
+def ParsePyTD(src=None, filename=None, python_version=None):
   """Parse pytd sourcecode and do name lookup for builtins.
 
   This loads a pytd and also makes sure that all names are resolved (i.e.,
@@ -260,6 +264,10 @@ def ParsePyTD(src, filename, python_version):
   Returns:
     A pytd.TypeDeclUnit.
   """
+  assert python_version
+  if src is None:
+    with open(filename, "rb") as fi:
+      src = fi.read()
   ast = parser.parse_string(src, filename=filename,
                             python_version=python_version)
   ast = visitors.LookupClasses(ast, builtins.GetBuiltinsPyTD())
