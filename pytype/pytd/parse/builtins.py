@@ -23,13 +23,6 @@ from pytype.pytd.parse import parser
 from pytype.pytd.parse import visitors
 
 
-# We list modules explicitly, because we might have to extract them out of
-# a PAR file, which doesn't have good support for listing directories.
-_MODULES = ["array", "codecs", "errno", "fcntl", "gc", "itertools", "marshal",
-            "os", "posix", "pwd", "select", "signal", "_sre", "StringIO",
-            "strop", "_struct", "sys", "_warnings", "warnings", "_weakref"]
-
-
 def _FindBuiltinFile(name):
   # TODO(kramm): fix circular import
   from pytype.pytd import utils  # pylint: disable=g-import-not-at-top

@@ -1231,15 +1231,15 @@ class VirtualMachine(object):
   # TODO(kramm): memoize
   def import_module(self, name, level):
     """Import the module and return the module object."""
-    try:
-      ast = import_paths.module_name_to_pytd(name, level,
-                                             self.python_version,
-                                             self.pythonpath)
-    except IOError:
+    ast = import_paths.module_name_to_pytd(name, level,
+                                           self.python_version,
+                                           self.pythonpath)
+    if ast:
+      members = {val.name: val
+                 for val in ast.constants + ast.classes + ast.functions}
+      return abstract.Module(self, name, members)
+    else:
       return None
-    members = {val.name: val
-               for val in ast.constants + ast.classes + ast.functions}
-    return abstract.Module(self, name, members)
 
   def print_item(self, item, to=None):
     # We don't need do anything here, since Python's print function accepts

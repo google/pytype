@@ -90,6 +90,15 @@ class ImportTest(test_inference.InferenceTest):
     """, deep=False, solve_unknowns=False, extract_locals=False) as ty:
       self.assertOnlyHasReturnType(ty.Lookup("f"), self.str_list)
 
+  def testStdlib(self):
+    with self.Infer("""
+      import StringIO
+      def f():
+        return StringIO.StringIO().isatty()
+      f()
+    """, deep=False, solve_unknowns=False, extract_locals=False) as ty:
+      self.assertOnlyHasReturnType(ty.Lookup("f"), self.bool)
+
   def testImportPy(self):
     with utils.Tempdir() as d:
       d.create_file("other_file.py", """

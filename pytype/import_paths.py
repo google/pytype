@@ -9,11 +9,21 @@ from pytype.pytd import utils as pytd_utils
 log = logging.getLogger(__name__)
 
 
+def _load_integrated_pytd(filename, python_version):
+  """Load and parse a *.pytd from pytype/pytd/."""
+  try:
+    src = pytd_utils.GetDataFile(filename)
+  except IOError:
+    return None
+  return pytd_utils.ParsePyTD(src, filename=filename,
+                              python_version=python_version)
+
+
 def module_name_to_pytd(module_name,
                         level,  # TODO(pludemann): use this
                         python_version,
                         pythonpath):  # pylint: disable=unused-argument
-  """Convert a name like 'sys' to the corresponding pytd source code.
+  """Convert a name like 'sys' to the corresponding pytd.
 
   Args:
     module_name: Name of a module. The "abc" in "import abc".
@@ -32,14 +42,10 @@ def module_name_to_pytd(module_name,
 
   # Builtin modules (but not standard library modules!) take precedence
   # over modules in PYTHONPATH.
-  filename = os.path.join("builtins", module_name + ".pytd")
-  try:
-    src = pytd_utils.GetDataFile(filename)
-  except IOError:
-    pass
-  else:
-    return pytd_utils.ParsePyTD(src, filename=filename,
-                                python_version=python_version)
+  mod = _load_integrated_pytd(os.path.join("builtins", module_name + ".pytd"),
+                              python_version)
+  if mod:
+    return mod
 
   for searchdir in pythonpath:
     path = os.path.join(searchdir, module_name.replace(".", "/"))
@@ -57,5 +63,7 @@ def module_name_to_pytd(module_name,
       return pytd_utils.ParsePyTD(filename=path + ".pytd",
                                   python_version=python_version)
 
-  raise IOError("Couldn't import %r" % module_name)
+  # The standard library is (typically) at the end of PYTHONPATH.
+  return _load_integrated_pytd(os.path.join("stdlib", module_name + ".pytd"),
+                               python_version)
 
