@@ -117,11 +117,6 @@ def parse_options(args):
             "'pytype path.to.foo.py -o $GENDIR/path/to/foo" +
             PYTD_IMPORT_EXTENSION +
             "', then pytype should be invoked with $GENDIR in --pythonpath."))
-  # TODO(pludemann): remove --trans_deps
-  o.add_option(
-      "--trans_deps", type="string", action="store",
-      dest="trans_deps", default="",
-      help="For debugging: accepts a colon-separated list of file names")
 
   options, filenames = o.parse_args(args)
   return options, filenames
@@ -178,12 +173,8 @@ def main(argv):
                 for f in options.pythonpath.split(os.pathsep) if f]
 
   # TODO(pludemann): remove the following
-# MOE:begin_strip
-  log.info("pytype main GOOGLEBASE: %s", os.environ["GOOGLEBASE"])
-# MOE:end_strip
   log.info("pytype main-cwd: %s", os.getcwd())
   log.info("pytype abs(pythonpath): %s", pythonpath)
-  log.info("pytype trans_deps: %s", options.trans_deps.split(os.pathsep))
 
   with open(filename, "r") as fi:
     src = fi.read()
