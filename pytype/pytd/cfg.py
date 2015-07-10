@@ -86,7 +86,7 @@ class CFGNode(object):
 
   Attributes:
     program: The Program instance we belong to
-    id: Numberical node id.
+    id: Numerical node id.
     name: Name of this CFGNode, or None. For debugging.
     incoming: Other CFGNodes that are connected to this node.
     outgoing: CFGNodes we connect to.
@@ -484,16 +484,6 @@ class State(object):
     return not self == other
 
 
-def _RecallOrFindNodeBackwards(start, finish, seen):
-  """Memoized version of _FindNodeBackwards."""
-  query = (start, finish, frozenset(seen))
-  if query in _solved_find_queries:
-    return _solved_find_queries[query]
-  found = _solved_find_queries[query] = _FindNodeBackwards(
-      start, finish, seen)
-  return found
-
-
 def _FindNodeBackwards(start, finish, seen):
   """Determine whether we can reach a CFG node, going backwards.
 
@@ -504,54 +494,27 @@ def _FindNodeBackwards(start, finish, seen):
   Arguments:
     start: Start node.
     finish: Node we're looking for.
-    seen: A set of node we've already seen. This set is modified.
+    seen: A set of nodes we've already seen. This set is modified.
 
   Returns:
-    True if we can find this node, False otherwise. If this function returns
-    False, the seen set will contain all nodes reachable from the start node.
+    True if we can find this node, False otherwise.
   """
+  query = (start, finish, frozenset(seen))
+  if query in _solved_find_queries:
+    return _solved_find_queries[query]
+  found = False
   stack = [start]
   while stack:
     node = stack.pop()
+    if node is finish:
+      found = True
+      break
     if node in seen:
-      # The "finish" node is always in seen, as we insert all "variable"
-      # (which includes its parent value) into it.
-      if node is finish:
-        return True
       continue
     seen.add(node)
     stack.extend(node.incoming)
-  return False
-
-
-def _AllValuesAreReachable(value, reachable_nodes, seen_values=None):
-  """Check whether we can reach a value using a subset of the CFG.
-
-  Check whether the reachable nodes contain all the values and, recursively,
-  their origins. This is used for quickly checking whether a solution can exist.
-
-  Arguments:
-    value: Value to start with.
-    reachable_nodes: A set of nodes we can reach.
-    seen_values: Optional: Values we have already seen. Will be modified.
-
-  Returns:
-    True if we can reach this value and all its dependencies, False otherwise.
-  """
-  if seen_values is None:
-    seen_values = set()
-  if value in seen_values:
-    return True
-  seen_values.add(value)
-
-  for origin in value.origins:
-    if origin.where not in reachable_nodes:
-      continue
-    for source_set in origin.source_sets:
-      if all(_AllValuesAreReachable(source, reachable_nodes, seen_values)
-             for source in source_set):
-        return True
-  return False
+  _solved_find_queries[query] = found
+  return found
 
 
 class Solver(object):
@@ -586,8 +549,6 @@ class Solver(object):
       might only look for a partial path (i.e., a path that doesn't go back all
       the way to the entry point of the program).
     """
-    if not self.CanHaveSolution(start_attrs, start_node):
-      return False
     state = State(start_node, start_attrs)
     return self._RecallOrFindSolution(state)
 
@@ -604,15 +565,6 @@ class Solver(object):
 
     result = self._solved_states[state] = self._FindSolution(state)
     return result
-
-  def CanHaveSolution(self, start_attrs, start_node):
-    """Do a quick (one DFS run) sanity check of whether a solution can exist."""
-    reachable = set()
-    _FindNodeBackwards(start_node, None, reachable)  # populate reachable
-    for value in start_attrs:
-      if not _AllValuesAreReachable(value, reachable):
-        return False
-    return True
 
   def _FindSolution(self, state):
     """Find a sequence of assignments that would solve the given state."""
@@ -635,8 +587,7 @@ class Solver(object):
         # so far. This is expensive, but typically not as expensive as
         # rerunning NodesWithAssignments.
         seen = blocked.copy()
-        seen.add(origin.where)
-        if _RecallOrFindNodeBackwards(state.pos, origin.where, seen):
+        if _FindNodeBackwards(state.pos, origin.where, seen):
           # This loop over multiple different combinations of origins is why
           # we need memoization of states.
           for source_set in origin.source_sets:
@@ -644,9 +595,8 @@ class Solver(object):
               # If we reached a value without further dependencies, check
               # whether the corresponding cfg node is reachable from the entry
               # point of the program.
-              seen = {self.program.entrypoint}
-              if not _RecallOrFindNodeBackwards(
-                  origin.where, self.program.entrypoint, seen):
+              if not _FindNodeBackwards(
+                  origin.where, self.program.entrypoint, set()):
                 continue
             new_state = State(origin.where, state.goals)
             new_state.Replace(goal, source_set)

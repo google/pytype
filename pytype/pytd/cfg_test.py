@@ -300,9 +300,11 @@ class CFGTest(unittest.TestCase):
     self.assertEquals(x.Filter(n1), [])
     self.assertEquals(x.Filter(n2), [])
     a.AddOrigin(n2, [])
+    self._Freeze(p)
     self.assertEquals(x.Filter(n1), [])
     self.assertEquals(x.Filter(n2), [a])
     a.AddOrigin(n1, [a])
+    self._Freeze(p)
     self.assertEquals(x.Filter(n1), [a])
     self.assertEquals(x.Filter(n2), [a])
 
