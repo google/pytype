@@ -1,6 +1,5 @@
 """Tests for utils.py."""
 
-import logging
 import os
 
 
@@ -184,10 +183,6 @@ class TypegraphUtilsTest(unittest.TestCase):
     cls_e = pytd.Class("E", (cls_d, cls_b), (), (), ())
     self.assertItemsEqual(utils.flattened_superclasses(cls_e),
                           [cls_a, cls_b, cls_c, cls_d, cls_e])
-
-  def testLogTraceback(self):
-    # Just a smoketest for utils.log_traceback
-    utils.log_traceback(logging.error, "**tb %s")
 
   def testTempdir(self):
     with utils.Tempdir() as d:

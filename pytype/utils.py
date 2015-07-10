@@ -6,7 +6,6 @@ import re
 import shutil
 import tempfile
 import textwrap
-import traceback
 
 
 from pytype.pytd import pytd
@@ -249,39 +248,6 @@ class HashableDict(dict):
 
   def __hash__(self):
     return self._hash
-
-
-def log_traceback(logger_call, msg):
-  """Put a "compact" reversed traceback into the log, for debugging.
-
-  It combines the regular traceback's 2 lines per item to a single line and
-  shortens the file path to the "interesting" part.
-
-  Sample ouput:
-    ERROR:pytype.typegraphvm:***tb: File "py/pytype/typegraphvm.py", line 490, in convert_constant                  utils.log_traceback(log.error, '***tb: %s')
-    ERROR:pytype.typegraphvm:***tb: File "py/pytype/typegraphvm.py", line 611, in maybe_convert_constant            return self.convert_constant(name, pyval)
-    ERROR:pytype.typegraphvm:***tb: File "pytype/typegraph/atomic_abstract_value.py", line 755, in _load_attribute  variable = self._resolver(name, self._member_map[name])
-    ERROR:pytype.typegraphvm:***tb: File "pytype/typegraph/atomic_abstract_value.py", line 769, in has_attribute    self._load_attribute(name)
-    ERROR:pytype.typegraphvm:***tb: File "py/pytype/typegraphvm.py", line 895, in load_from                         if not store.has_attribute(name):
-    ERROR:pytype.typegraphvm:***tb: File "py/pytype/typegraphvm.py", line 909, in load_builtin                      return self.load_from(self.frame.f_builtins, name)
-    ERROR:pytype.typegraphvm:***tb: File "py/pytype/pyvm2.py", line 777, in byte_LOAD_GLOBAL                        val = self.load_builtin(name)
-    ERROR:pytype.typegraphvm:***tb: File "py/pytype/pyvm2.py", line 404, in dispatch                                why = bytecode_fn(*arguments)
-    ERROR:pytype.typegraphvm:***tb: File "py/pytype/pyvm2.py", line 483, in run_instruction                         why = self.dispatch(byteName, arguments)
-    ERROR:pytype.typegraphvm:***tb: File "py/pytype/typegraphvm.py", line 750, in run_frame                         why = self.run_instruction()
-
-  Args:
-    logger_call: something that accepts the same args as logging.info
-    msg: a log format string with exactly one %s in it
-  """
-  # TODO(pludemann): remove this function when it's no longer needed.
-  fixed_lines = reversed([_shorten_traceback_line_filename(tb) for tb in
-                          traceback.extract_stack()])
-  for l in traceback.format_list(fixed_lines)[1:]:
-    # traceback.format_list is always two lines; split, shorten and combine
-    l1, l2 = l.strip().split('\n')
-    # ljust(80) happens to work reasonably well, if your screen is about
-    # 170 chars wide:
-    logger_call(msg, l1.ljust(80) + l2.lstrip())
 
 
 def _shorten_traceback_line_filename(tb_line):
