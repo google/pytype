@@ -36,7 +36,12 @@ def parse_options(args):
   o.add_option(
       "-o", "--output", type="string", action="store",
       dest="output", default=None,
-      help="Output file (default: <filename>.pytd). Use '-' for stdout.")
+      help=("Output file (default: <filename>.pytd). Implies -f. "
+            "Use '-' for stdout."))
+  o.add_option(
+      "-f", "--force", action="store_true",
+      dest="force", default=False,
+      help="Overwrite (change) existing .pytd files even without -o.")
   o.add_option(
       "-V", "--python_version", type="string", action="store",
       dest="python_version", default="2.7",
@@ -221,7 +226,18 @@ def main(argv):
       output_filename = options.output
     else:
       output_filename = os.path.splitext(filename)[0] + ".pytd"
-      print >> sys.stderr, "Writing output to %s" % output_filename
+      if os.path.isfile(output_filename) and not options.force:
+        with open(output_filename, "rb") as fi:
+          existing_data = fi.read()
+        if existing_data != result:
+          print >> sys.stderr, (
+              "%s already exists. Use -f to overwrite" % output_filename)
+          sys.exit(1)
+        else:
+          print >> sys.stderr, "%s is unchanged" % output_filename
+      else:
+        print >> sys.stderr, "Writing output to %s" % output_filename
+
     with open(output_filename, "w") as fi:
       fi.write(result)
 
