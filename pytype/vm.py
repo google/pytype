@@ -519,10 +519,7 @@ class VirtualMachine(object):
       assert isinstance(pytype.base_type, pytd.ClassType)
       value = self._create_pytd_instance_value(name, pytype.base_type,
                                                subst, node)
-      if isinstance(pytype, pytd.GenericType):
-        type_params = pytype.parameters
-      else:
-        type_params = (pytype.element_type,)
+      type_params = pytype.parameters
       for formal, actual in zip(pytype.base_type.cls.template, type_params):
         log.info("Setting type parameter: %r %r", formal, actual)
         # TODO(kramm): Should these be classes, not instances?
@@ -651,18 +648,13 @@ class VirtualMachine(object):
       f.signatures = [abstract.PyTDSignature(f, sig, self)
                       for sig in pyval.signatures]
       return f
-    elif isinstance(pyval, pytd.Signature):
-      return abstract.PyTDSignature(name, pyval, self)
-    elif isinstance(pyval, pytd.ExternalFunction):
-      raise AssertionError("Unexpected ExternalFunction: {}".format(pyval))
     elif isinstance(pyval, pytd.ClassType):
       assert pyval.cls
       return self.convert_constant_to_value(pyval.name, pyval.cls)
     elif isinstance(pyval, pytd.NothingType):
       return self.nothing
     elif isinstance(pyval, pytd.AnythingType):
-      # TODO(kramm): Can we do this without creating a Variable?
-      return self.create_new_unknown(self.root_cfg_node, "?").data[0]
+      return self._create_new_unknown_value("AnythingType")
     elif isinstance(pyval, pytd.UnionType):
       return abstract.Union([self.convert_constant_to_value(pytd.Print(t), t)
                              for t in pyval.type_list], self)
@@ -692,21 +684,20 @@ class VirtualMachine(object):
   def maybe_convert_constant(self, name, pyval):
     """Create a variable that represents a python constant if needed.
 
-    Call self.convert_constant if pyval is not a typegraph.Variable, otherwise
-    just return the Variable. This also handles dict values by constructing a
-    new abstract value representing it. Dict values are not cached.
+    Call self.convert_constant if pyval is not an AtomicAbstractValue, otherwise
+    store said value in a variable. This also handles dict values by
+    constructing a new abstract value representing it. Dict values are not
+    cached.
 
     Args:
       name: The name to give to the variable.
-      pyval: The python value, PyTD value, or Variable to convert or pass
+      pyval: The python value or PyTD value to convert or pass
         through.
     Returns:
-      A Variable that may be the one passed in or one in the convert_constant
-      cache.
+      A Variable.
     """
-    if isinstance(pyval, typegraph.Variable):
-      return pyval
-    elif isinstance(pyval, abstract.AtomicAbstractValue):
+    assert not isinstance(pyval, typegraph.Variable)
+    if isinstance(pyval, abstract.AtomicAbstractValue):
       return pyval.to_variable(self.root_cfg_node, name)
     elif isinstance(pyval, dict):
       value = abstract.LazyAbstractOrConcreteValue(
@@ -790,14 +781,9 @@ class VirtualMachine(object):
              type(f_locals).__name__, id(f_locals))
     if f_globals is not None:
       f_globals = f_globals
-      if f_locals is None:
-        f_locals = f_globals
-    elif self.frames:
-      assert f_locals is None
-      f_globals = self.frame.f_globals
-      f_locals = self.convert_locals_or_globals({}, "locals")
-      assert not code.co_flags & loadmarshal.CodeType.CO_NEWLOCALS
+      assert f_locals
     else:
+      assert not self.frames
       assert f_locals is None
       # TODO(ampere): __name__, __doc__, __package__ below are not correct
       f_globals = f_locals = self.convert_locals_or_globals({
@@ -1012,21 +998,6 @@ class VirtualMachine(object):
   def load_constant(self, value):
     """Converts a Python value to an abstract value."""
     return self.convert_constant(type(value).__name__, value)
-
-  def get_locals_dict(self):
-    """Get a real python dict of the locals."""
-    return self.frame.f_locals
-
-  def get_locals_dict_bytecode(self):
-    """Get a possibly abstract bytecode level representation of the locals."""
-    # TODO(ampere): Origins
-    log.debug("Returning locals: %r -> %r", self.frame.f_locals,
-              self.frame.f_locals)
-    return self.maybe_convert_constant("locals", self.frame.f_locals)
-
-  def set_locals_dict_bytecode(self, lcls):
-    """Set the locals from a possibly abstract bytecode level dict."""
-    self.frame.f_locals = _get_atomic_value(lcls)
 
   def get_globals_dict(self):
     """Get a real python dict of the globals."""
@@ -1489,7 +1460,9 @@ class VirtualMachine(object):
     return state
 
   def byte_LOAD_LOCALS(self, state):
-    return state.push(self.get_locals_dict_bytecode())
+    log.debug("Returning locals: %r", self.frame.f_locals)
+    locals_dict = self.maybe_convert_constant("locals", self.frame.f_locals)
+    return state.push(locals_dict)
 
   def byte_COMPARE_OP(self, state, op):
     """Pops and compares the top two stack values and pushes a boolean."""
@@ -1953,7 +1926,7 @@ class VirtualMachine(object):
 
   def byte_STORE_LOCALS(self, state):
     state, locals_dict = state.pop()
-    self.set_locals_dict_bytecode(locals_dict)
+    self.frame.f_locals = _get_atomic_value(locals_dict)
     return state
 
   def byte_END_FINALLY(self, state):

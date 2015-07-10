@@ -186,9 +186,6 @@ def order_nodes(nodes):
       predecessors.discard(node)
     # Potentially schedule nodes we couldn't reach before:
     for n in node.outgoing:
-      if not hasattr(n, "incoming"):
-        # UNKNOWN_TARGET etc.
-        continue
       if n not in queue:
         queue[n] = predecessor_map[n] - seen
 
@@ -248,11 +245,6 @@ class HashableDict(dict):
 
   def __hash__(self):
     return self._hash
-
-
-def _shorten_traceback_line_filename(tb_line):
-  # extract last part of path
-  return ("/".join(tb_line[0].split("/")[-3:]),) + tb_line[1:]
 
 
 def mro_merge(seqs):
