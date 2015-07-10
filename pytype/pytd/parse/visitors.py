@@ -358,8 +358,14 @@ class DefaceUnresolved(Visitor):
           return node
       except KeyError:
         pass
-    logging.warning("Setting %s to ?", node.name)
-    return pytd.AnythingType()
+    if "." in node.name:
+      logging.warning("Marking %s as external", node.name)
+      module_name, base_name = node.name.rsplit(".", 1)
+      return pytd.ExternalType(base_name, module_name)
+    else:
+      # TODO(kramm): This should throw an exception
+      logging.error("Setting %s to ?", node.name)
+      return pytd.AnythingType()
 
   def VisitClassType(self, node):
     return self.VisitNamedType(node)
@@ -858,3 +864,44 @@ class RemoveFunctionsAndClasses(Visitor):
                                         if f.name not in self.names),
                         classes=tuple(c for c in node.classes
                                       if c.name not in self.names))
+
+
+class AddNamePrefix(Visitor):
+  """Visitor for making names fully qualified.
+
+  This will change
+    class Foo:
+      pass
+    def bar(x: Foo) -> Foo
+  to (e.g. using prefix "baz"):
+    class baz.Foo:
+      pass
+    def bar(x: baz.Foo) -> baz.Foo
+  .
+  """
+
+  def __init__(self, prefix):
+    """Initialize the visitor.
+
+    Args:
+      prefix: The string to prepend to all names. It typically has a trailing
+        dot. E.g. "mymodule.".
+    """
+    super(AddNamePrefix, self).__init__()
+    self.prefix = prefix
+
+  def EnterTypeDeclUnit(self, node):
+    self.classes = {cls.name for cls in node.classes}
+
+  def VisitClassType(self, _):
+    raise ValueError("AddNamePrefix visitor called after resolving")
+
+  def VisitNamedType(self, node):
+    if node.name in self.classes:
+      return node.Replace(name=self.prefix + node.name)
+    else:
+      return node
+
+  def VisitClass(self, node):
+    return node.Replace(name=self.prefix + node.name)
+

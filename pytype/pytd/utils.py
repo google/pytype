@@ -250,7 +250,7 @@ def EmptyModule():
   return pytd.TypeDeclUnit("<empty>", constants=(), classes=(), functions=())
 
 
-def ParsePyTD(src=None, filename=None, python_version=None):
+def ParsePyTD(src=None, filename=None, python_version=None, module=None):
   """Parse pytd sourcecode and do name lookup for builtins.
 
   This loads a pytd and also makes sure that all names are resolved (i.e.,
@@ -260,6 +260,7 @@ def ParsePyTD(src=None, filename=None, python_version=None):
     src: PyTD source code.
     filename: The filename the source code is from.
     python_version: The Python version to parse the pytd for.
+    module: The name of the module we're parsing.
 
   Returns:
     A pytd.TypeDeclUnit.
@@ -268,8 +269,10 @@ def ParsePyTD(src=None, filename=None, python_version=None):
   if src is None:
     with open(filename, "rb") as fi:
       src = fi.read()
-  ast = parser.parse_string(src, filename=filename,
+  ast = parser.parse_string(src, filename=filename, name=module,
                             python_version=python_version)
+  if module is not None:  # Allow "" as module name
+    ast = ast.Visit(visitors.AddNamePrefix(ast.name + "."))
   ast = visitors.LookupClasses(ast, builtins.GetBuiltinsPyTD())
   return ast
 

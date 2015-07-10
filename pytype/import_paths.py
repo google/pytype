@@ -53,6 +53,7 @@ def module_name_to_pytd(module_name,
       init_pytd = os.path.join(path, "__init__.pytd")
       if os.path.isfile(init_pytd):
         return pytd_utils.ParsePyTD(filename=init_pytd,
+                                    module=module_name,
                                     python_version=python_version)
       else:
         # We allow directories to not have an __init__ file.
@@ -61,6 +62,7 @@ def module_name_to_pytd(module_name,
         return pytd_utils.EmptyModule()
     elif os.path.isfile(path + ".pytd"):
       return pytd_utils.ParsePyTD(filename=path + ".pytd",
+                                  module=module_name,
                                   python_version=python_version)
 
   # The standard library is (typically) at the end of PYTHONPATH.

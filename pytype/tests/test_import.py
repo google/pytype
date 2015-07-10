@@ -164,5 +164,23 @@ class ImportTest(test_inference.InferenceTest):
         def g() -> int
       """)
 
+  def testImportName(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pytd", """
+        class A:
+          pass
+        def f() -> A
+      """)
+      d.create_file("main.py", """
+        from foo import f
+        def g():
+          return f()
+      """)
+      ty = self.InferFromFile(filename=d["main.py"], pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        f: function
+        def g() -> foo.A
+      """)
+
 if __name__ == "__main__":
   test_inference.main()
