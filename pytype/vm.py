@@ -1084,7 +1084,7 @@ class VirtualMachine(object):
     log.warning("Local variable removal does not actually do "
                 "anything in the abstract interpreter")
 
-  def load_attr(self, state, obj, attr):
+  def load_attr(self, state, obj, attr, allow_descriptors=True):
     """Load an attribute from an object."""
     assert isinstance(obj, typegraph.Variable), obj
     node = state.node
@@ -1103,18 +1103,23 @@ class VirtualMachine(object):
       if not attr_var:
         continue
       # Loop over the values to check for properties
-      for v in attr_var.Values(node2):
-        value = v.data
-        node3, has_getter = value.has_attribute(node2, "__get__")
-        if has_getter:
-          node3, getter = value.get_attribute(node2, "__get__", v)
-          node3, cls = value.get_attribute(node3, "__class__", val)
-          node3, get_result = self.call_function(node3, getter, [getter, cls])
-          for getter in get_result.values:
-            result.AddValue(getter.data, [getter], node3)
-        else:
-          result.AddValue(value, [v], node3)
-        nodes.append(node3)
+      if allow_descriptors:
+        # TODO(kramm): Descriptor logic should go into abstract.Class.
+        for v in attr_var.Values(node2):
+          value = v.data
+          node3, has_getter = value.has_attribute(node2, "__get__")
+          if has_getter:
+            node3, getter = value.get_attribute(node2, "__get__", v)
+            node3, cls = value.get_attribute(node3, "__class__", val)
+            node3, get_result = self.call_function(node3, getter, [getter, cls])
+            for getter in get_result.values:
+              result.AddValue(getter.data, [getter], node3)
+          else:
+            result.AddValue(value, [v], node3)
+          nodes.append(node3)
+      else:
+        result.AddValues(attr_var, node2)
+        nodes.append(node2)
     if not result.values:
       raise exceptions.ByteCodeAttributeError("No such attribute %s" % attr)
     state = state.change_cfg_node(
@@ -1930,7 +1935,7 @@ class VirtualMachine(object):
     """IMPORT_FROM is mostly like LOAD_ATTR but doesn't pop the container."""
     name = self.frame.f_code.co_names[op.arg]
     mod = state.top()
-    state, attr = self.load_attr(state, mod, name)
+    state, attr = self.load_attr(state, mod, name, allow_descriptors=False)
     return state.push(attr)
 
   def byte_EXEC_STMT(self, state):
