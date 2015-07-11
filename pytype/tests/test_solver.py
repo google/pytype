@@ -115,5 +115,18 @@ class SolverTests(test_inference.InferenceTest):
         def bar(self, val) -> bool
       """)
 
+  def testNestedClass(self):
+    with self.Infer("""
+      class Foo(object):
+        def f(self):
+          class Foo(object):
+            pass
+          return Foo()
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+      class Foo(object):
+        def f(self) -> ?
+      """)
+
 if __name__ == "__main__":
   test_inference.main()

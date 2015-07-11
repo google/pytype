@@ -1384,7 +1384,10 @@ class InterpreterClass(SimpleAbstractValue, Class):
                       template=())
 
   def get_instance_type(self, _):
-    return pytd_utils.NamedOrExternalType(self.official_name, self.module)
+    if self.official_name:
+      return pytd_utils.NamedOrExternalType(self.official_name, self.module)
+    else:
+      return pytd.AnythingType()
 
   def __repr__(self):
     return "InterpreterClass(%s)" % self.name
