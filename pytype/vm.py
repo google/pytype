@@ -1055,10 +1055,9 @@ class VirtualMachine(object):
     log.warning("Local variable removal does not actually do "
                 "anything in the abstract interpreter")
 
-  def load_attr(self, state, obj, attr, allow_descriptors=True):
+  def get_attr(self, node, obj, attr, allow_descriptors=True):
     """Load an attribute from an object."""
     assert isinstance(obj, typegraph.Variable), obj
-    node = state.node
     # Resolve the value independently for each value of obj
     result = self.program.NewVariable(str(attr))
     log.debug("getting attr %s from %r", attr, obj)
@@ -1093,9 +1092,11 @@ class VirtualMachine(object):
         nodes.append(node2)
     if not result.values:
       raise exceptions.ByteCodeAttributeError("No such attribute %s" % attr)
-    state = state.change_cfg_node(
-        self.join_cfg_nodes(nodes))
-    return state, result
+    return self.join_cfg_nodes(nodes), result
+
+  def load_attr(self, state, obj, attr, allow_descriptors=True):
+    node, result = self.get_attr(state.node, obj, attr, allow_descriptors)
+    return state.change_cfg_node(node), result
 
   def store_attr(self, state, obj, attr, value):
     """Same as load_attr except for setting attributes."""
@@ -1763,7 +1764,7 @@ class VirtualMachine(object):
     else:
       return self.byte_RAISE_VARARGS_PY3(state, op)
 
-  def byte_POP_EXCEPT(self, state):
+  def byte_POP_EXCEPT(self, state):  # Python 3 only
     state, block = state.pop_block()
     if block.type != "except-handler":
       raise VirtualMachineError("popped block is not an except handler")

@@ -711,6 +711,19 @@ class MethodsTest(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=False, extract_locals=False) as ty:
       self.assertHasSignature(ty.Lookup("f"), (), self.float)
 
+  def testCopyMethod(self):
+    with self.Infer("""
+      class Foo(object):
+        def mymethod(self, x, y):
+          return 3
+      myfunction = Foo.mymethod
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        class Foo:
+          def mymethod(self, x, y) -> int
+        def myfunction(self: Foo, x, y) -> int
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()

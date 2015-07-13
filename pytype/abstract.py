@@ -255,8 +255,8 @@ class AtomicAbstractValue(object):
     """
     pass  # Only InterpreterClass needs this, others can ignore it.
 
-  def get_type(self):
-    """Return the type of this object. Equivalent of type(x) in Python."""
+  def get_class(self):
+    """Return the class of this object. Equivalent of x.__class__ in Python."""
     raise NotImplementedError(self.__class__.__name__)
 
   def to_type(self):
@@ -348,12 +348,10 @@ class TypeParameter(AtomicAbstractValue):
 class SimpleAbstractValue(AtomicAbstractValue):
   """A basic abstract value that represents instances.
 
-  This class implements instances in the python sense. Instances of the same
-  type may vary however the type of an object represented by this type will be
-  in it's __class__ attribute (get_attribute("__class__")). This class
-  implements attribute resolution in the class.
+  This class implements instances in the Python sense. Instances of the same
+  class may vary.
 
-  Note that the __class__ attribute will point to another abstract value that
+  Note that the cls attribute will point to another abstract value that
   represents the class object itself, not to some special type representation.
   """
 
@@ -367,6 +365,7 @@ class SimpleAbstractValue(AtomicAbstractValue):
     super(SimpleAbstractValue, self).__init__(name, vm)
     self.members = {}
     self.type_parameters = {}
+    self.cls = None
 
   def get_type_parameter(self, node, name):
     """Get the typegraph.Variable representing the type parameter of self.
@@ -426,9 +425,9 @@ class SimpleAbstractValue(AtomicAbstractValue):
   def get_attribute(self, node, name, valself=None, valcls=None):
     candidates = []
     nodes = []
-    if "__class__" in self.members:
+    if self.cls:
       # TODO(kramm): superclasses
-      for clsval in self.members["__class__"].values:
+      for clsval in self.cls.values:
         cls = clsval.data
         new_node, attr = cls.get_attribute(node, name, valself, clsval)
         nodes.append(new_node)
@@ -450,8 +449,7 @@ class SimpleAbstractValue(AtomicAbstractValue):
     assert isinstance(var, typegraph.Variable)
 
     if name == "__class__":
-      for cls in var.data:
-        cls.register_instance(self)
+      return self.set_class(node, var)
 
     variable = self.members.get(name)
     if variable:
@@ -462,9 +460,8 @@ class SimpleAbstractValue(AtomicAbstractValue):
     else:
       # TODO(kramm): Under what circumstances can we just reuse var?
       #              (variable = self.members[name] = var)?
-      if name != "__class__":
-        log.debug("Setting %s to the %d values in %r",
-                  name, len(var.values), var)
+      log.debug("Setting %s to the %d values in %r",
+                name, len(var.values), var)
       long_name = self.name + "." + name
       variable = var.AssignToNewVariable(long_name, node)
       self.members[name] = variable
@@ -479,8 +476,8 @@ class SimpleAbstractValue(AtomicAbstractValue):
         ["__call__ on SimpleAbstractValue not implemented"])
 
   def __repr__(self):
-    if "__class__" in self.members:
-      cls = self.members["__class__"].data[0]
+    if self.cls:
+      cls = self.cls.data[0]
       return "<v%d %s [%r]>" % (self.id, self.name, cls)
     else:
       return "<v%d %s>" % (self.id, self.name)
@@ -488,20 +485,30 @@ class SimpleAbstractValue(AtomicAbstractValue):
   def to_variable(self, node, name):
     return super(SimpleAbstractValue, self).to_variable(node, name)
 
-  def get_type(self):
+  def get_class(self):
     # See Py_TYPE() in Include/object.h
-    return self.members.get("__class__")
+    return self.cls
+
+  def set_class(self, node, var):
+    """Set the __class__ of an instance, for code that does "x.__class__ = y."""
+    if self.cls:
+      self.cls.AddValues(var, node)
+    else:
+      self.cls = var
+    for cls in var.data:
+      cls.register_instance(self)
+    return node
 
   def to_type(self):
     """Get a PyTD type representing this object.
 
-    This uses the values __class__ attribute to determine the type that it has.
+    This uses both the instance (for type parameters) as well as the class.
 
     Returns:
       A PyTD Type
     """
-    if "__class__" in self.members:
-      classvalues = (v.data for v in self.members["__class__"].values)
+    if self.cls:
+      classvalues = (v.data for v in self.cls.values)
       types = []
       for cls in classvalues:
         types.append(cls.get_instance_type(self))
@@ -517,7 +524,7 @@ class SimpleAbstractValue(AtomicAbstractValue):
       return pytd.AnythingType()
 
   def match_against_type(self, other_type, subst, node):
-    my_type = self.get_type()
+    my_type = self.get_class()
     if not my_type:
       log.warning("Can't match %s against %s", self.__class__, other_type.name)
       return None
@@ -532,7 +539,7 @@ class Instance(SimpleAbstractValue):
 
   def __init__(self, clsvar, vm):
     super(Instance, self).__init__(clsvar.name, vm)
-    self.members["__class__"] = clsvar
+    self.cls = clsvar
     for cls in clsvar.data:
       cls.register_instance(self)
 
@@ -543,6 +550,7 @@ class ValueWithSlots(SimpleAbstractValue):
   This makes it easier to emulate built-in classes like dict which need special
   handling of some magic methods (__setitem__ etc.)
   """
+  # TODO(kramm): This functionality should go into the class, not the instance.
 
   def __init__(self, name, vm):
     super(ValueWithSlots, self).__init__(name, vm)
@@ -595,7 +603,8 @@ class ValueWithSlots(SimpleAbstractValue):
       doesn't exist.
     """
     if name in self._slots:
-      self._self[name] = valself.variable
+      self._self[name] = valself.AssignToNewVariable(valself.variable.name,
+                                                     node)
       return node, self._slots[name]
     else:
       return super(ValueWithSlots, self).get_attribute(
@@ -617,7 +626,7 @@ class Dict(ValueWithSlots):
     super(Dict, self).__init__(name, vm)
     self.name = name
     self._entries = {}
-    self.set_attribute(vm.root_cfg_node, "__class__", vm.dict_type)
+    self.cls = vm.dict_type
     self.set_slot("__getitem__", self.getitem_slot)
     self.set_slot("__setitem__", self.setitem_slot)
     self.init_type_parameters(self.KEY_TYPE_PARAM, self.VALUE_TYPE_PARAM)
@@ -1142,14 +1151,14 @@ class ParameterizedClass(AtomicAbstractValue, Class):
         parameter.
   """
 
-  def __init__(self, cls, type_parameters, vm):
-    super(ParameterizedClass, self).__init__(cls.name, vm)
+  def __init__(self, base_cls, type_parameters, vm):
+    super(ParameterizedClass, self).__init__(base_cls.name, vm)
     Class.init_mixin(self)
-    self.cls = cls
+    self.base_cls = base_cls
     self.type_parameters = type_parameters
 
   def __repr__(self):
-    return "ParameterizedClass(cls=%r params=%s)" % (self.cls,
+    return "ParameterizedClass(cls=%r params=%s)" % (self.base_cls,
                                                      self.type_parameters)
 
   def to_type(self):
@@ -1157,12 +1166,13 @@ class ParameterizedClass(AtomicAbstractValue, Class):
 
   def get_instance_type(self, _):
     type_arguments = []
-    for type_param in self.cls.cls.template:
+    for type_param in self.base_cls.pytd_cls.template:
       values = (self.type_parameters[type_param.name],)
       type_arguments.append(pytd_utils.JoinTypes([e.get_instance_type(None)
                                                   for e in values]))
     return pytd_utils.MakeClassOrContainerType(
-        pytd_utils.NamedOrExternalType(self.cls.cls.name, self.cls.module),
+        pytd_utils.NamedOrExternalType(self.base_cls.pytd_cls.name,
+                                       self.base_cls.module),
         type_arguments)
 
 
@@ -1176,13 +1186,13 @@ class PyTDClass(LazyAbstractValue, Class):
     mro: Method resolution order. An iterable of AtomicAbstractValue.
   """
 
-  def __init__(self, name, cls, vm):
+  def __init__(self, name, pytd_cls, vm):
     mm = {}
-    for val in cls.constants + cls.methods:
+    for val in pytd_cls.constants + pytd_cls.methods:
       mm[val.name] = val
     super(PyTDClass, self).__init__(name, mm, self._retrieve_member, vm)
     Class.init_mixin(self)
-    self.cls = cls
+    self.pytd_cls = pytd_cls
     self.mro = utils.compute_mro(self)
 
   def get_attribute(self, node, name, valself=None, valcls=None):
@@ -1190,7 +1200,7 @@ class PyTDClass(LazyAbstractValue, Class):
 
   def bases(self):
     return [self.vm.convert_constant_to_value(parent.name, parent)
-            for parent in self.cls.parents]
+            for parent in self.pytd_cls.parents]
 
   def _retrieve_member(self, name, pyval):
     """Convert a member as a variable. For lazy lookup."""
@@ -1204,9 +1214,9 @@ class PyTDClass(LazyAbstractValue, Class):
 
   def call(self, node, func, args, kws, starargs=None):
     value = Instance(self.vm.convert_constant(
-        self.name + ".__class__", self.cls), self.vm)
+        self.name + ".__class__", self.pytd_cls), self.vm)
 
-    for type_param in self.cls.template:
+    for type_param in self.pytd_cls.template:
       unknown = self.vm.create_new_unknown(node, type_param.name,
                                            action="type_param")
       value.overwrite_type_parameter(node, type_param.name, unknown)
@@ -1215,9 +1225,8 @@ class PyTDClass(LazyAbstractValue, Class):
     results = self.vm.program.NewVariable(self.name)
     retval = results.AddValue(value, origins, node)
 
-    node, cls = value.get_attribute(node, "__class__")
     node, init = value.get_attribute(node, "__init__", retval,
-                                     cls.values[0])
+                                     value.cls.values[0])
     # TODO(pludemann): Verify that this follows MRO:
     if init:
       log.debug("calling %s.__init__(...)", self.name)
@@ -1232,7 +1241,7 @@ class PyTDClass(LazyAbstractValue, Class):
   def get_instance_type(self, instance):
     """Convert instances of this class to their PYTD type."""
     type_arguments = []
-    for type_param in self.cls.template:
+    for type_param in self.pytd_cls.template:
       if instance is not None and type_param.name in instance.type_parameters:
         param = instance.type_parameters[type_param.name]
         type_arguments.append(pytd_utils.JoinTypes(
@@ -1250,7 +1259,8 @@ class PyTDClass(LazyAbstractValue, Class):
     """Match an instance of this class against an other type."""
     if other_type is self:
       return subst
-    elif isinstance(other_type, ParameterizedClass) and other_type.cls is self:
+    elif (isinstance(other_type, ParameterizedClass) and
+          other_type.base_cls is self):
       extra_params = (set(instance.type_parameters.keys()) -
                       set(other_type.type_parameters.keys()))
       assert not extra_params
@@ -1271,7 +1281,7 @@ class PyTDClass(LazyAbstractValue, Class):
   def to_pytd_def(self, name):
     # This happens if a module does e.g. "from x import y as z", i.e., copies
     # something from another module to the local namespace.
-    return self.cls.Replace(name=name)
+    return self.pytd_cls.Replace(name=name)
 
 
 class InterpreterClass(SimpleAbstractValue, Class):
@@ -1404,7 +1414,8 @@ class Function(AtomicAbstractValue):
   def __init__(self, name, vm):
     super(Function, self).__init__(name, vm)
     self.func_name = self.vm.build_string(self.vm.root_cfg_node, name)
-    self.cls = None
+    self.cls = self.vm.function_type
+    self.parent_class = None
     self._bound_functions_cache = {}
 
   def get_attribute(self, node, name, valself=None, valcls=None):
@@ -1421,7 +1432,7 @@ class Function(AtomicAbstractValue):
       raise AttributeError("Can't set attributes on function")
 
   def property_get(self, callself, callcls):
-    self.cls = callcls.values[0].data
+    self.parent_class = callcls.values[0].data
     if not callself:
       raise NotImplementedError()
     key = tuple(sorted(callself.data))
@@ -1429,7 +1440,7 @@ class Function(AtomicAbstractValue):
       self._bound_functions_cache[key] = BoundFunction(callself, self)
     return self._bound_functions_cache[key]
 
-  def get_type(self):
+  def get_class(self):
     return self.vm.function_type
 
   def to_type(self):
@@ -1456,7 +1467,7 @@ class NativeFunction(Function):
     super(NativeFunction, self).__init__(name, vm)
     self.name = name
     self.func = func
-    self.cls = None
+    self.cls = self.vm.function_type
 
   def argcount(self):
     return self.func.func_code.co_argcount
@@ -1496,7 +1507,7 @@ class InterpreterFunction(Function):
     self.f_locals = f_locals
     self.defaults = tuple(defaults)
     self.closure = closure
-    self.cls = None
+    self.cls = self.vm.function_type
     self._call_records = []
 
   # TODO(kramm): support retrieving the following attributes:
@@ -1725,7 +1736,7 @@ class Generator(AtomicAbstractValue):
 
   def match_against_type(self, other_type, subst, node):
     if (isinstance(other_type, ParameterizedClass) and
-        other_type.cls.name == "generator"):
+        other_type.base_cls.name == "generator"):
       return match_var_against_type(self.get_yielded_type(),
                                     other_type.type_parameters[self.TYPE_PARAM],
                                     subst, node)
@@ -1928,7 +1939,7 @@ class Unknown(AtomicAbstractValue):
           template=())
     return self._pytd_class
 
-  def get_type(self):
+  def get_class(self):
     # We treat instances of an Unknown as the same as the class.
     return self.to_variable(self.vm.root_cfg_node, "class of " + self.name)
 

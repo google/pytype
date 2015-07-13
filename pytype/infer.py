@@ -121,7 +121,7 @@ class CallTracer(vm.VirtualMachine):
     return node
 
   def analyze_function(self, val, node):
-    if val.data.cls:
+    if val.data.parent_class:
       # We analyze class methods in analyze_class above.
       log.info("Analyze functions: Skipping class method %s", val.data.name)
     elif val.data.is_closure():
@@ -142,6 +142,8 @@ class CallTracer(vm.VirtualMachine):
           elif isinstance(value.data, abstract.Function):
             node2 = self.analyze_function(value, node)
             node2.ConnectTo(node)
+          else:
+            log.warning("Ignoring toplevel identifier %s", name)
 
   def analyze(self, node, defs, ignore):
     assert not self.frame
