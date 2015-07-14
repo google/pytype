@@ -13,7 +13,6 @@ class LogicTest(test_inference.InferenceTest):
   to decide whether we need to throw an exception in another.
   """
 
-  @unittest.skip("Uses interaction between __hasitem__(k) and __getitem__(k)""")
   def testGetItemInLoop(self):
     # Extracted from unicode_urlparse.py:
     with self.Infer("""
@@ -26,7 +25,7 @@ class LogicTest(test_inference.InferenceTest):
             assert isinstance(args[k], str)
     """, deep=True, solve_unknowns=False, extract_locals=True) as ty:
       self.assertTypesMatchPytd(ty, """
-        def f() -> NoneType
+        def f(args_list: ?) -> NoneType
       """)
 
 

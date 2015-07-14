@@ -399,5 +399,27 @@ class ContainerTest(test_inference.InferenceTest):
         def f(x: ?) -> bool or complex
       """)
 
+  def testAccessEmptyDictInIf(self):
+    with self.Infer("""
+      class Foo(object):
+        pass
+
+      def f(key):
+        d = {}
+        if key is None:
+          e = Foo()
+        else:
+          e = d[key]
+        e.next = None
+        return e
+    """, deep=True, solve_unknowns=False, extract_locals=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        class Foo:
+          next: NoneType
+
+        def f(key: ?) -> Foo
+      """)
+
+
 if __name__ == "__main__":
   test_inference.main()
