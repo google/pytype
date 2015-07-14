@@ -91,8 +91,11 @@ class CFGNode(object):
     incoming: Other CFGNodes that are connected to this node.
     outgoing: CFGNodes we connect to.
     values: Values that are being assigned to Variables at this CFGNode.
+    reachable_subset: A subset of the nodes reachable (going backwards) from
+      this one.
   """
-  __slots__ = ("program", "id", "name", "incoming", "outgoing", "values")
+  __slots__ = ("program", "id", "name", "incoming", "outgoing", "values",
+               "reachable_subset")
 
   def __init__(self, program, name, cfgnode_id):
     """Initialize a new CFG node. Called from Program.NewCFGNode."""
@@ -102,6 +105,7 @@ class CFGNode(object):
     self.incoming = set()
     self.outgoing = set()
     self.values = set()  # filled through RegisterValue()
+    self.reachable_subset = {self}
 
   def ConnectNew(self, name=None):
     """Add a new node connected to this node."""
@@ -113,6 +117,7 @@ class CFGNode(object):
     """Connect this node to an existing node."""
     self.outgoing.add(cfg_node)
     cfg_node.incoming.add(self)
+    cfg_node.reachable_subset |= self.reachable_subset
 
   def HasCombination(self, values):
     """Query whether a combination is possible.
@@ -265,7 +270,11 @@ class Variable(object):
     Returns:
       A filtered list of values for this variable.
     """
-    num_values = len(self.values)
+    all_values = self.values
+    num_values = len(all_values)
+    if (len(self._cfgnode_to_values) == 1 or num_values == 1) and any(
+        node in viewpoint.reachable_subset for node in self._cfgnode_to_values):
+      return all_values
     result = set()
     seen = set()
     stack = [viewpoint]
