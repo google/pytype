@@ -312,9 +312,26 @@ class AtomicAbstractValue(object):
     """Return True if this is a function and has a **kwargs parameter."""
     return False
 
-  def _raise_failed_function_call(self, explanation_lines):
-    """Convenience function to log & raise, used by subclasses."""
-    raise FailedFunctionCall(self, explanation_lines)
+  def parameters(self):
+    """Get parameter subtypes.
+
+    This will retrieve all 'children' of this value that contribute to the
+    type of it. So it will retrieve type parameters, but not attributes.
+
+    Returns:
+      A list with elements of type typegraph.Variable.
+    """
+    return []
+
+
+class FormalType(object):
+  """A mix-in for marking types that can not actually be instantiated.
+
+  This class marks all types that will only exist to declare formal parameter
+  types, but can't actually be passed around as values during abstract
+  interpretation.
+  """
+  pass
 
 
 class PythonConstant(object):
@@ -331,7 +348,7 @@ class PythonConstant(object):
     self.pyval = pyval
 
 
-class TypeParameter(AtomicAbstractValue):
+class TypeParameter(AtomicAbstractValue, FormalType):
   """Parameter of a type.
 
   Attributes:
@@ -472,8 +489,8 @@ class SimpleAbstractValue(AtomicAbstractValue):
     #   f = 1
     #   f()  # Can't call an int
     # TODO(kramm): What if we have a __call__ attribute?
-    self._raise_failed_function_call(
-        ["__call__ on SimpleAbstractValue not implemented"])
+    raise FailedFunctionCall(
+        self, ["__call__ on SimpleAbstractValue not implemented"])
 
   def __repr__(self):
     if self.cls:
@@ -533,6 +550,9 @@ class SimpleAbstractValue(AtomicAbstractValue):
       if subst is None:
         return None
     return subst
+
+  def parameters(self):
+    return self.type_parameters.values()
 
 
 class Instance(SimpleAbstractValue):
@@ -766,7 +786,7 @@ class LazyAbstractOrConcreteValue(LazyAbstractValue, PythonConstant):
     PythonConstant.init_mixin(self, pyval)
 
 
-class Union(AtomicAbstractValue):
+class Union(AtomicAbstractValue, FormalType):
   """A list of types. Used for parameter matching.
 
   Attributes:
@@ -800,7 +820,7 @@ class FailedFunctionCall(Exception):
     return "FailedFunctionCall(%s, %s)" % (self.obj, self.explanation_lines)
 
 
-class PyTDSignature(AtomicAbstractValue):
+class PyTDSignature(object):
   """A PyTD function type (signature).
 
   This represents instances of functions with specific arguments and return
@@ -808,7 +828,8 @@ class PyTDSignature(AtomicAbstractValue):
   """
 
   def __init__(self, function, pytd_sig, vm):
-    super(PyTDSignature, self).__init__(function.name, vm)
+    self.vm = vm
+    self.name = function.name
     self.function = function
     self.pytd_sig = pytd_sig
     self.param_types = [
@@ -824,16 +845,8 @@ class PyTDSignature(AtomicAbstractValue):
           self.function, callself, self.pytd_sig, self.vm)
     return self._bound_sig_cache[key]
 
-  def get_attribute(self, node, name, valself=None, valcls=None):
-    return node, None
-
-  def has_attribute(self, node, name, valself=None, valcls=None):
-    return node, False
-
-  def set_attribute(self, node, name, value):
-    raise AttributeError()
-
-  def call(self, node, func, args, kws, starargs=None):
+  def call(self, node, func, args, kws, starargs=None):  # pylint: disable=unused-argument
+    """Call this signature. Used by PyTDFunction."""
     if self.pytd_sig.has_optional:
       # Truncate extraneous params. E.g. when calling f(a, b, ...) as f(1, 2, 3)
       args = args[0:len(self.pytd_sig.params)]
@@ -847,7 +860,7 @@ class PyTDSignature(AtomicAbstractValue):
            len(self.pytd_sig.params)),
           "  Expected: %r" % [p.name for p in self.pytd_sig.params],
           "  Actually passed: %r" % (args,)]
-      self._raise_failed_function_call(msg_lines)
+      raise FailedFunctionCall(self, msg_lines)
     msg_lines = []
     retvar = self.vm.program.NewVariable("%s ret" % self.name)
     ret_map = {}
@@ -871,7 +884,7 @@ class PyTDSignature(AtomicAbstractValue):
           self.vm.trace_call(func, args_selected, kws_selected, ret_map[t])
           retvar.AddValues(ret_map[t], node)
     if not retvar.values:
-      self._raise_failed_function_call(msg_lines)
+      raise FailedFunctionCall(self, msg_lines)
     return node, retvar
 
   def _call_with_values(self, node, arg_values, kw_values):
@@ -919,7 +932,7 @@ class PyTDSignature(AtomicAbstractValue):
     Returns:
       utils.HashableDict if we found a working substition, None otherwise.
     Raises:
-      FailedFunctionCall
+      FailedFunctionCall: For incorrect parameter types.
     """
     if not arg_values:
       return utils.HashableDict()
@@ -940,7 +953,7 @@ class PyTDSignature(AtomicAbstractValue):
                                          for p in self.pytd_sig.params],
                      "  Actually passed: %r" % [a.data.name
                                                 for a in arg_values]]
-        self._raise_failed_function_call(msg_lines)
+        raise FailedFunctionCall(self, msg_lines)
     return utils.HashableDict(subst)
 
   def _execute_mutable(self, node, arg_values, kw_values, subst):
@@ -990,11 +1003,11 @@ class PyTDSignature(AtomicAbstractValue):
           raise ValueError("Mutable parameters setting a type to a "
                            "different base type is not allowed.")
 
+  def get_bound_arguments(self):
+    return []
+
   def get_parameter_names(self):
     return [p.name for p in self.pytd_sig.params]
-
-  def to_type(self):
-    return pytd.NamedType("function")
 
   def __repr__(self):
     return pytd.Print(self.pytd_sig)
@@ -1059,10 +1072,9 @@ class PyTDFunction(AtomicAbstractValue):
         msg_lines.extend(e.explanation_lines)
       else:
         return new_node, result
-    self._raise_failed_function_call(
-        ["Failed call function %r: signature: %r" %
-         (self.name, self.signatures)] +
-        msg_lines)
+    raise FailedFunctionCall(
+        self, ["Failed call function %r: signature: %r" %
+               (self.name, self.signatures)] + msg_lines)
 
   def to_type(self):
     return pytd.NamedType("function")
@@ -1142,7 +1154,7 @@ class Class(object):
     return pytd.Class(name, (), (), (), ())
 
 
-class ParameterizedClass(AtomicAbstractValue, Class):
+class ParameterizedClass(AtomicAbstractValue, Class, FormalType):
   """A class that contains additional parameters. E.g. a container.
 
   Attributes:
@@ -1650,6 +1662,7 @@ class InterpreterFunction(Function):
 class BoundFunction(AtomicAbstractValue):
   """An function type which has had an argument bound into it.
   """
+  # TODO(kramm): Get rid of BoundPyTDSignature and BoundPyTDFunction above.
 
   def __init__(self, callself, underlying):
     super(BoundFunction, self).__init__(underlying.name, underlying.vm)
@@ -1748,7 +1761,7 @@ class Generator(AtomicAbstractValue):
     return pytd.ClassType("generator")
 
 
-class Nothing(AtomicAbstractValue):
+class Nothing(AtomicAbstractValue, FormalType):
   """The VM representation of Nothing values.
 
   These are fake values that never exist at runtime, but they appear if you, for
@@ -1768,7 +1781,7 @@ class Nothing(AtomicAbstractValue):
     raise AttributeError("Object %r has no attribute %s" % (self, name))
 
   def call(self, node, unused_func, args, kws, starargs=None):
-    self._raise_failed_function_call(["Can't call empty object ('nothing')"])
+    raise FailedFunctionCall(self, ["Can't call empty object ('nothing')"])
 
   def to_type(self):
     return pytd.NothingType()
@@ -1778,23 +1791,6 @@ class Nothing(AtomicAbstractValue):
       return subst
     else:
       return None
-
-
-def to_type(v):
-  if isinstance(v, typegraph.Variable):
-    return pytd_utils.JoinTypes(to_type(t) for t in v.data)
-  elif isinstance(v, Unknown):
-    # Do this directly, and use NamedType, in case there's a circular dependency
-    # among the Unknown instances.
-    return pytd.NamedType(v.class_name)
-  else:
-    return v.to_type()
-
-
-def make_params(args):
-  """Convert a list of types/variables to pytd parameters."""
-  return tuple(pytd.Parameter("_%d" % (i + 1), to_type(p))
-               for i, p in enumerate(args))
 
 
 class Module(LazyAbstractValue):
@@ -1869,6 +1865,23 @@ class Unknown(AtomicAbstractValue):
     self._pytd_class = None
     log.info("Creating %s", self.class_name)
 
+  @staticmethod
+  def _to_pytd(v):
+    if isinstance(v, typegraph.Variable):
+      return pytd_utils.JoinTypes(Unknown._to_pytd(t) for t in v.data)
+    elif isinstance(v, Unknown):
+      # Do this directly, and use NamedType, in case there's a circular
+      # dependency among the Unknown instances.
+      return pytd.NamedType(v.class_name)
+    else:
+      return v.to_type()
+
+  @staticmethod
+  def _make_params(args):
+    """Convert a list of types/variables to pytd parameters."""
+    return tuple(pytd.Parameter("_%d" % (i + 1), Unknown._to_pytd(p))
+                 for i, p in enumerate(args))
+
   def get_attribute(self, node, name, valself=None, valcls=None):
     if name in self.IGNORED_ATTRIBUTES:
       return node, None
@@ -1920,8 +1933,8 @@ class Unknown(AtomicAbstractValue):
     """Convert this Unknown to a pytd.Class."""
     if not self._pytd_class:
       self_param = (pytd.Parameter("self", pytd.NamedType("object")),)
-      calls = tuple(pytd.Signature(params=self_param + make_params(args),
-                                   return_type=to_type(ret),
+      calls = tuple(pytd.Signature(params=self_param + self._make_params(args),
+                                   return_type=Unknown._to_pytd(ret),
                                    exceptions=(),
                                    template=(),
                                    has_optional=False)
@@ -1934,7 +1947,7 @@ class Unknown(AtomicAbstractValue):
           name=class_name,
           parents=(pytd.NamedType("object"),),
           methods=methods,
-          constants=tuple(pytd.Constant(name, to_type(c))
+          constants=tuple(pytd.Constant(name, Unknown._to_pytd(c))
                           for name, c in self.members.items()),
           template=())
     return self._pytd_class

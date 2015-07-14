@@ -485,6 +485,8 @@ class VirtualMachine(object):
         for v in subst[t.name].values:
           for source_set in source_sets:
             var.AddValue(v.data, source_set + [v], node)
+      elif isinstance(t, pytd.NothingType):
+        pass
       else:
         value = self._create_pytd_instance_value(name, t, subst, node)
         for source_set in source_sets:
@@ -569,6 +571,8 @@ class VirtualMachine(object):
       options = [self.convert_constant_to_value(pytd.Print(t), t)
                  for t in pyval.type_list]
       return self.program.NewVariable(name, options, [], self.root_cfg_node)
+    elif isinstance(pyval, pytd.NothingType):
+      return self.program.NewVariable(name, [], [], self.root_cfg_node)
     elif isinstance(pyval, pytd.Constant):
       return self.create_pytd_instance(name, pyval.type, {}, self.root_cfg_node)
     result = self.convert_constant_to_value(name, pyval)
