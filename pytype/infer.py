@@ -72,7 +72,8 @@ class CallTracer(vm.VirtualMachine):
 
   def analyze_method(self, val, node):
     method = val.data
-    if isinstance(method, (abstract.Function, abstract.BoundFunction)):
+    if isinstance(method, (abstract.InterpreterFunction,
+                           abstract.BoundInterpreterFunction)):
       args = [self.create_argument(node, val.data.name, i)
               for i in range(method.argcount())]
       varargs = self.create_varargs(node) if method.has_varargs() else None
@@ -136,10 +137,11 @@ class CallTracer(vm.VirtualMachine):
     for name, var in sorted(defs.items()):  # sort, for determinicity
       if name not in ignore:
         for value in var.values:
-          if isinstance(value.data, abstract.Class):
+          if isinstance(value.data, abstract.InterpreterClass):
             node2 = self.analyze_class(value, node)
             node2.ConnectTo(node)
-          elif isinstance(value.data, abstract.Function):
+          elif isinstance(value.data, (abstract.InterpreterFunction,
+                                       abstract.BoundInterpreterFunction)):
             node2 = self.analyze_function(value, node)
             node2.ConnectTo(node)
           else:
@@ -164,7 +166,7 @@ class CallTracer(vm.VirtualMachine):
     """
     log.debug("Logging call to %r with %d args, return %r",
               func, len(posargs), result)
-    if isinstance(func.data, abstract.BoundPyTDFunction):
+    if isinstance(func.data, abstract.BoundFunction):
       log.info("Not recording call to bound method.")
       return
     self._calls.add(CallRecord(func, tuple(posargs),
@@ -192,7 +194,8 @@ class CallTracer(vm.VirtualMachine):
       for value in var.FilteredData(self.exitpoint):
         if isinstance(value, abstract.Class):
           new_classes.append(value.to_pytd_def(name))
-        elif isinstance(value, abstract.Function):
+        elif isinstance(value, (abstract.InterpreterFunction,
+                                abstract.BoundInterpreterFunction)):
           new_functions.append(value.to_pytd_def(name))
         else:
           new_constants.append(value.to_type())
@@ -216,7 +219,7 @@ class CallTracer(vm.VirtualMachine):
     funcs = collections.defaultdict(list)
     for funcvar, args, kws, retvar in self._calls:
       func = funcvar.data.signatures[0]
-      if isinstance(func, abstract.BoundPyTDFunction):
+      if isinstance(func, abstract.BoundFunction):
         # Don't do class methods, only top-level functions
         continue
       arg_names = func.get_parameter_names()

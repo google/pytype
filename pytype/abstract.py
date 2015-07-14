@@ -823,6 +823,54 @@ class FailedFunctionCall(Exception):
     return "FailedFunctionCall(%s, %s)" % (self.obj, self.explanation_lines)
 
 
+class Function(AtomicAbstractValue):
+  """Base class for function objects (NativeFunction, InterpreterFunction).
+
+  Attributes:
+    name: Function name. Might just be something like "<lambda>".
+    vm: TypegraphVirtualMachine instance.
+  """
+
+  def __init__(self, name, vm):
+    super(Function, self).__init__(name, vm)
+    self.func_name = self.vm.build_string(self.vm.root_cfg_node, name)
+    self.cls = self.vm.function_type
+    self.parent_class = None
+    self._bound_functions_cache = {}
+
+  def get_attribute(self, node, name, valself=None, valcls=None):
+    if name == "func_name":
+      return node, self.func_name
+    else:
+      return node, None
+
+  def set_attribute(self, node, name, value):
+    if name == "func_name":
+      self.func_name = value
+      return node
+    else:
+      raise AttributeError("Can't set attributes on function")
+
+  def property_get(self, callself, callcls):
+    self.parent_class = callcls.values[0].data
+    if not callself:
+      raise NotImplementedError()
+    key = tuple(sorted(callself.data))
+    if key not in self._bound_functions_cache:
+      self._bound_functions_cache[key] = (self.bound_class)(callself, self)
+    return self._bound_functions_cache[key]
+
+  def get_class(self):
+    return self.vm.function_type
+
+  def to_type(self):
+    return pytd.NamedType("function")
+
+  def match_against_type(self, other_type, subst, node):
+    if other_type.name in ["function", "object"]:
+      return subst
+
+
 class PyTDSignature(object):
   """A PyTD function type (signature).
 
@@ -839,14 +887,6 @@ class PyTDSignature(object):
         self.vm.convert_constant_to_value(pytd.Print(p), p.type)
         for p in self.pytd_sig.params]
     self._bound_sig_cache = {}
-
-  def property_get(self, callself, unused_callcls=None):
-    assert callself
-    key = tuple(sorted(callself.values))
-    if key not in self._bound_sig_cache:
-      self._bound_sig_cache[key] = BoundPyTDSignature(
-          self.function, callself, self.pytd_sig, self.vm)
-    return self._bound_sig_cache[key]
 
   def call(self, node, func, args, kws, starargs=None):  # pylint: disable=unused-argument
     """Call this signature. Used by PyTDFunction."""
@@ -1016,7 +1056,7 @@ class PyTDSignature(object):
     return pytd.Print(self.pytd_sig)
 
 
-class PyTDFunction(AtomicAbstractValue):
+class PyTDFunction(Function):
   """A PyTD function (name + list of signatures).
 
   This represents (potentially overloaded) functions.
@@ -1024,16 +1064,9 @@ class PyTDFunction(AtomicAbstractValue):
 
   def __init__(self, name, signatures, vm):
     super(PyTDFunction, self).__init__(name, vm)
+    self.bound_class = BoundPyTDFunction
     self.signatures = signatures
     self._signature_cache = {}
-
-  def property_get(self, callself, unused_callcls=None):
-    key = (self.__class__, tuple(sorted(callself.values)))
-    if key not in self._signature_cache:
-      self._signature_cache[key] = BoundPyTDFunction(
-          "bound " + self.name, [s.property_get(callself)
-                                 for s in self.signatures], self.vm)
-    return self._signature_cache[key]
 
   def call(self, node, func, args, kws, starargs=None):
     log.debug("Calling function %r: %d signature(s)",
@@ -1079,37 +1112,8 @@ class PyTDFunction(AtomicAbstractValue):
         self, ["Failed call function %r: signature: %r" %
                (self.name, self.signatures)] + msg_lines)
 
-  def to_type(self):
-    return pytd.NamedType("function")
-
   def __repr__(self):
     return self.name + "(...)"
-
-  def match_against_type(self, other_type, subst, node):
-    if other_type.name in ["function", "object"]:
-      return subst
-
-
-class BoundPyTDFunction(PyTDFunction):
-  """PyTD function bound to a class. Returned by property_get."""
-  pass  # Identical to parent class, subclass only for marking "bound" functions
-
-
-class BoundPyTDSignature(PyTDSignature):
-  """A PyTD function type which has had an argument bound into it.
-  """
-
-  def __init__(self, function, callself, pytd_sig, vm):
-    super(BoundPyTDSignature, self).__init__(function, pytd_sig, vm)
-    self._callself = callself
-    self.name = "bound " + function.name
-
-  def call(self, node, func, args, kws, starargs=None):
-    return super(BoundPyTDSignature, self).call(
-        node, func, [self._callself] + args, kws)
-
-  def get_bound_arguments(self):
-    return [self._callself]
 
 
 class Class(object):
@@ -1418,57 +1422,6 @@ class InterpreterClass(SimpleAbstractValue, Class):
     return "InterpreterClass(%s)" % self.name
 
 
-class Function(AtomicAbstractValue):
-  """Base class for function objects (NativeFunction, InterpreterFunction).
-
-  Attributes:
-    name: Function name. Might just be something like "<lambda>".
-    vm: TypegraphVirtualMachine instance.
-  """
-
-  def __init__(self, name, vm):
-    super(Function, self).__init__(name, vm)
-    self.func_name = self.vm.build_string(self.vm.root_cfg_node, name)
-    self.cls = self.vm.function_type
-    self.parent_class = None
-    self._bound_functions_cache = {}
-
-  def get_attribute(self, node, name, valself=None, valcls=None):
-    if name == "func_name":
-      return node, self.func_name
-    else:
-      return node, None
-
-  def set_attribute(self, node, name, value):
-    if name == "func_name":
-      self.func_name = value
-      return node
-    else:
-      raise AttributeError("Can't set attributes on function")
-
-  def property_get(self, callself, callcls):
-    self.parent_class = callcls.values[0].data
-    if not callself:
-      raise NotImplementedError()
-    key = tuple(sorted(callself.data))
-    if key not in self._bound_functions_cache:
-      self._bound_functions_cache[key] = BoundFunction(callself, self)
-    return self._bound_functions_cache[key]
-
-  def get_class(self):
-    return self.vm.function_type
-
-  def to_type(self):
-    return pytd.NamedType("function")
-
-  def to_pytd_def(self, name):
-    raise NotImplementedError()
-
-  def match_against_type(self, other_type, subst, node):
-    if other_type.name in ["function", "object"]:
-      return subst
-
-
 class NativeFunction(Function):
   """An abstract value representing a native function.
 
@@ -1515,6 +1468,7 @@ class InterpreterFunction(Function):
   def __init__(self, name, code, f_locals, f_globals, defaults, closure, vm):
     super(InterpreterFunction, self).__init__(name, vm)
     log.debug("Creating InterpreterFunction %r for %r", name, code.co_name)
+    self.bound_class = BoundInterpreterFunction
     self.doc = code.co_consts[0] if code.co_consts else None
     self.name = name
     self.code = code
@@ -1620,6 +1574,7 @@ class InterpreterFunction(Function):
     return node_after_call, ret
 
   def to_pytd_def(self, function_name):
+    """Generate a pytd.Function definition."""
     num_defaults = len(self.defaults)
     signatures = []
     for callargs, ret, _, node_after_call in self._call_records:
@@ -1663,9 +1618,7 @@ class InterpreterFunction(Function):
 
 
 class BoundFunction(AtomicAbstractValue):
-  """An function type which has had an argument bound into it.
-  """
-  # TODO(kramm): Get rid of BoundPyTDSignature and BoundPyTDFunction above.
+  """An function type which has had an argument bound into it."""
 
   def __init__(self, callself, underlying):
     super(BoundFunction, self).__init__(underlying.name, underlying.vm)
@@ -1702,6 +1655,14 @@ class BoundFunction(AtomicAbstractValue):
 
   def to_type(self):
     return pytd.NamedType("function")
+
+
+class BoundInterpreterFunction(BoundFunction):
+  pass
+
+
+class BoundPyTDFunction(BoundFunction):
+  pass
 
 
 class Generator(AtomicAbstractValue):
