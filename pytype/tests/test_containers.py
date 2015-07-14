@@ -396,7 +396,7 @@ class ContainerTest(test_inference.InferenceTest):
           return 3j
     """, deep=True, solve_unknowns=False, extract_locals=True) as ty:
       self.assertTypesMatchPytd(ty, """
-        def f(x: ?) -> bool or complex
+        def f(x) -> bool or complex
       """)
 
   def testAccessEmptyDictInIf(self):
@@ -417,7 +417,7 @@ class ContainerTest(test_inference.InferenceTest):
         class Foo:
           next: NoneType
 
-        def f(key: ?) -> Foo
+        def f(key) -> Foo
       """)
 
 

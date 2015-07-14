@@ -145,7 +145,9 @@ class FlowTest(test_inference.InferenceTest):
       # f(None)  # TODO(pludemann): reinstate this
       f(__any_object__)
     """, deep=False, solve_unknowns=False, extract_locals=True) as ty:
-      self.assertHasSignature(ty.Lookup("f"), (self.anything,), self.int)
+      self.assertTypesMatchPytd(ty, """
+        def f(x) -> int
+      """)
 
   def testContinueInWith(self):
     with self.Infer("""

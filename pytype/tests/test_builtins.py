@@ -360,7 +360,7 @@ class BuiltinTests(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=False, extract_locals=True) as ty:
       self.assertTypesMatchPytd(ty, """
         class Foo(object):
-          def __init__(self, x: ?) -> NoneType
+          def __init__(self, x) -> NoneType
       """)
 
   def testMap(self):
@@ -440,7 +440,7 @@ class BuiltinTests(test_inference.InferenceTest):
       self.assertTypesMatchPytd(ty, """
         time: module
 
-        def f(x: ?) -> complex
+        def f(x) -> complex
       """)
 
   def testDivMod(self):

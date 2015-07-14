@@ -163,7 +163,7 @@ class TestVisitors(parser_test.ParserTest):
     """)
     expected = textwrap.dedent("""
         class A:
-            def foobar(x: ?, y: ?) -> ? or int
+            def foobar(x, y) -> ? or int
     """)
     tree = self.Parse(src)
     tree = tree.Visit(visitors.RemoveUnknownClasses())

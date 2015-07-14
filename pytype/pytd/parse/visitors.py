@@ -628,22 +628,41 @@ class RemoveUnknownClasses(Visitor):
   """Visitor for converting ClassTypes called ~unknown* to just AnythingType.
 
   For example, this will change
-    def f() -> ~unknown1
+    def f(x: ~unknown1) -> ~unknown2
     class ~unknown1:
       ...
+    class ~unknown2:
+      ...
   to
-    def f() -> ?
+    def f(x) -> ?
   """
+
+  def __init__(self):
+    super(RemoveUnknownClasses, self).__init__()
+    self.parameter = None
+
+  def EnterParameter(self, p):
+    self.parameter = p
+
+  def LeaveParameter(self, p):
+    assert self.parameter is p
+    self.parameter = None
 
   def VisitClassType(self, t):
     if t.name.startswith("~unknown"):
-      return pytd.AnythingType()
+      if self.parameter:
+        return pytd.NamedType("object")
+      else:
+        return pytd.AnythingType()
     else:
       return t
 
   def VisitNamedType(self, t):
     if t.name.startswith("~unknown"):
-      return pytd.AnythingType()
+      if self.parameter:
+        return pytd.NamedType("object")
+      else:
+        return pytd.AnythingType()
     else:
       return t
 

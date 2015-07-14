@@ -90,7 +90,7 @@ class OperatorsWithAnyTests(test_inference.InferenceTest):
         return isinstance(x, int)
     """, deep=True, solve_unknowns=False, extract_locals=True) as ty:
       self.assertTypesMatchPytd(ty, """
-        def t_testIsinstance1(x: ?) -> bool
+        def t_testIsinstance1(x) -> bool
       """)
 
 
