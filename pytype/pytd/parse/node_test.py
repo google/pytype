@@ -153,16 +153,15 @@ class TestNode(unittest.TestCase):
 
   def testVisitor1(self):
     """Test node.Node.Visit() for a visitor that modifies leaf nodes."""
-    data = Data(42, 43, 44)
-    x = X(1, [1, 2])
-    y = Y([V(1)], {"bla": data})
+    x = X(1, (1, 2))
+    y = Y((V(1),), Data(42, 43, 44))
     xy = XY(x, y)
-    xy_expected = "XY(X(1, [1, 2]), Y([V(1)], {'bla': Data(42, 43, 44)}))"
+    xy_expected = "XY(X(1, (1, 2)), Y((V(1),), Data(42, 43, 44)))"
     self.assertEquals(repr(xy), xy_expected)
     v = DataVisitor()
     new_xy = xy.Visit(v)
     self.assertEquals(repr(new_xy),
-                      "XY(X(1, [1, 2]), Y([V(1)], {'bla': Data(42, 43, -1)}))")
+                      "XY(X(1, (1, 2)), Y((V(1),), Data(42, 43, -1)))")
     self.assertEquals(repr(xy), xy_expected)  # check that xy is unchanged
 
   def testVisitor2(self):
@@ -194,30 +193,6 @@ class TestNode(unittest.TestCase):
     new_v = v.Visit(visit)
     new_v_expected = "V((Data(1, 2, -1), Data(4, 5, -1)))"
     self.assertEquals(repr(new_v), new_v_expected)
-
-  def testList(self):
-    """Test node.Node.Visit() for nodes that contain lists."""
-    v = V([Data(1, 2, 3), Data(4, 5, 6)])
-    v_expected = "V([Data(1, 2, 3), Data(4, 5, 6)])"
-    self.assertEquals(repr(v), v_expected)
-    visit = DataVisitor()
-    new_v = v.Visit(visit)
-    new_v_expected = "V([Data(1, 2, -1), Data(4, 5, -1)])"
-    self.assertEquals(repr(new_v), new_v_expected)
-
-  def testEmptyDictionary(self):
-    """Test node.Node.Visit() for nodes that contain empty dictionaries."""
-    visit = DataVisitor()
-    v = V({})
-    new_v = v.Visit(visit)
-    self.assertEquals(new_v, v)
-
-  def testDictionary(self):
-    """Test node.Node.Visit() for nodes that contain dictionaries."""
-    v = V({1: Data(1, 2, 3), 2: Data(4, 5, 6)})
-    new_v = v.Visit(DataVisitor())
-    self.assertEquals(new_v.x[1], Data(1, 2, -1))
-    self.assertEquals(new_v.x[2], Data(4, 5, -1))
 
   def testCustomVisit(self):
     """Test nodes that have their own Visit() function."""

@@ -186,14 +186,13 @@ def _VisitNode(node, visitor, *args, **kwargs):
   """Transform a node and all its children using a visitor.
 
   This will iterate over all children of this node, and also process certain
-  things that are not nodes. The latter are either other supported types of
-  containers (right now, lists and dictionaries), which will be scanned for
-  nodes regardless, or primitive types, which will be return as-is.
+  things that are not nodes. The latter are either tuples, which will be
+  scanned for nodes regardless, or primitive types, which will be return as-is.
 
   Args:
-    node: The node to transform. Either an actual "instance" of Node, or an
-          other type of container (lists, dicts) found while scanning a node
-          tree, or any other type (which will be returned unmodified).
+    node: The node to transform. Either an actual "instance" of Node, or a
+          tuple found while scanning a node tree, or any other type (which will
+          be returned unmodified).
     visitor: The visitor to apply. If this visitor has a "Visit<Name>" method,
           with <Name> the name of the Node class, a callback will be triggered,
           and the transformed version of this node will be whatever the callback
@@ -218,7 +217,7 @@ def _VisitNode(node, visitor, *args, **kwargs):
      node, even if the contents are the same).
   """
   node_class = node.__class__
-  if node_class is tuple or isinstance(node, list):
+  if node_class is tuple:
     # Exact comparison for tuple, because classes deriving from tuple
     # (like namedtuple) have different constructor arguments.
     changed = False
@@ -234,20 +233,6 @@ def _VisitNode(node, visitor, *args, **kwargs):
     else:
       # Optimization: if we didn't change any of the children, keep the entire
       # object the same.
-      return node
-  elif isinstance(node, dict):
-    changed = False
-    new_dict = dict()
-    for k, child in node.items():
-      new_child = _VisitNode(child, visitor, *args, **kwargs)
-      if id(new_child) != id(child):
-        changed = True
-      new_dict[k] = new_child
-    if changed:
-      # Return a new dictionary, but with the current class, in case the user
-      # subclasses dict.
-      return node_class(new_dict)
-    else:
       return node
   elif not isinstance(node, tuple):
     return node
