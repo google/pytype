@@ -239,7 +239,7 @@ class Value(object):
 
 class Variable(object):
   """A Variable, together with all the values it can possibly have."""
-  __slots__ = ("program", "name", "id", "_data_id_to_value",
+  __slots__ = ("program", "name", "id", "values", "_data_id_to_value",
                "_cfgnode_to_values")
 
   def __init__(self, program, name, variable_id):
@@ -247,7 +247,8 @@ class Variable(object):
     self.program = program
     self.name = name
     self.id = variable_id
-    self._data_id_to_value = collections.OrderedDict()
+    self.values = []
+    self._data_id_to_value = {}
     self._cfgnode_to_values = collections.defaultdict(set)
 
   def __repr__(self):
@@ -270,11 +271,10 @@ class Variable(object):
     Returns:
       A filtered list of values for this variable.
     """
-    all_values = self.values
-    num_values = len(all_values)
+    num_values = len(self.values)
     if (len(self._cfgnode_to_values) == 1 or num_values == 1) and any(
         node in viewpoint.reachable_subset for node in self._cfgnode_to_values):
-      return all_values
+      return self.values
     result = set()
     seen = set()
     stack = [viewpoint]
@@ -322,6 +322,7 @@ class Variable(object):
       value = self._data_id_to_value[id(data)]
     except KeyError:
       value = Value(self.program, self, data)
+      self.values.append(value)
       self._data_id_to_value[id(data)] = value
     return value
 
@@ -384,10 +385,6 @@ class Variable(object):
 
   def RegisterValueAtNode(self, value, node):
     self._cfgnode_to_values[node].add(value)
-
-  @property
-  def values(self):
-    return self._data_id_to_value.values()
 
   @property
   def data(self):
