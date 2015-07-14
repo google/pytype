@@ -51,6 +51,8 @@ def match_var_against_type(var, other_type, subst, node):
     A new (or unmodified original) substitution dict if the matching succeded,
     None otherwise.
   """
+  assert not any(isinstance(t, FormalType) for t in var.data)
+
   if not var.values and isinstance(other_type, Class):
     # If this type is empty, the only thing we can match it against is
     # object (for pytd convenience).
@@ -435,9 +437,10 @@ class SimpleAbstractValue(AtomicAbstractValue):
 
   def init_type_parameters(self, *names):
     """Initialize the named type parameters to nothing (empty)."""
-    for name in names:
-      self.type_parameters[name] = self.vm.nothing.to_variable(
-          self.vm.root_cfg_node, "empty")
+    self.type_parameters = {
+        name: self.vm.program.NewVariable("empty")
+        for name in names
+    }
 
   def get_attribute(self, node, name, valself=None, valcls=None):
     candidates = []
@@ -1739,8 +1742,7 @@ class Generator(AtomicAbstractValue):
       except StopIteration:
         # Happens for iterators that return zero entries.
         log.info("Iterator raised StopIteration before first entry")
-        self.retvar = self.vm.nothing.to_variable(self.vm.root_cfg_node,
-                                                  "next()")
+        self.retvar = self.vm.program.NewVariable("StopIteration")
     return self.retvar
 
   def call(self, node, unused_func, args, kws, starargs=None):
