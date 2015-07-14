@@ -74,10 +74,9 @@ def parse_options(args):
       help=("Analyze all functions and classes, also those not called from "
             "anywhere. Output the result in structural form."))
   o.add_option(
-      "--solve-unknowns", action="store_true",
-      dest="solve_unknowns", default=False,
-      help=("Run the solver to turn 'unknown' classes "
-            "into builtins (only used for testing)"))
+      "-K", "--keep-unknowns", action="store_false",
+      dest="solve_unknowns", default=True,
+      help=("Keep 'unknown' classes generated during the first analysis pass."))
   o.add_option(
       "--no-native-builtins", action="store_false",
       dest="run_builtins", default=True,

@@ -1,7 +1,5 @@
 """Tests for logical constructs."""
 
-import unittest
-
 from pytype.tests import test_inference
 
 
