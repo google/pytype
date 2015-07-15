@@ -154,6 +154,16 @@ def parse_options(args):
             "Also used to create output file name if --output not specified. "
             "The value should start with '.'. "
             "Default is '%s'.") % DEFAULT_PYTD_IMPORT_EXT)
+  o.add_option(
+      "--import_drop_prefixes", type="string", action="store",
+      dest="import_drop_prefixes",
+      default="",
+      help=("List of prefixes to be dropped when resolving module names "
+            "in import statements. The items are separated by '%s'. "
+            "The individual items may contain '.'. "
+            "The intended usecase is for when you're running tests in "
+            "a directory structure that starts below the root module in "
+            "your module names.") % os.pathsep)
 
   options, filenames = o.parse_args(args)
   return options, filenames
@@ -205,9 +215,8 @@ def main(argv):
   pythonpath = [os.path.abspath(f)
                 for f in options.pythonpath.split(os.pathsep) if f]
 
-  # TODO(pludemann): remove the following
-  log.info("pytype main-cwd: %s", os.getcwd())
-  log.info("pytype abs(pythonpath): %s", pythonpath)
+  import_drop_prefixes = [
+      p for p in options.import_drop_prefixes.split(os.pathsep) if p]
 
   with open(filename, "r") as fi:
     src = fi.read()
@@ -236,6 +245,7 @@ def main(argv):
       pybuiltins_filename=options.pybuiltins_filename,
       pythonpath=pythonpath,
       pytd_import_ext=options.pytd_import_ext,
+      import_drop_prefixes=import_drop_prefixes,
       deep=options.api or options.structural,
       solve_unknowns=options.solve_unknowns or options.api,
       output_cfg=options.output_cfg,

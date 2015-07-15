@@ -332,3 +332,13 @@ class Tempdir(object):
   def __getitem__(self, filename):
     """Get the full path for an entry in this directory."""
     return os.path.join(self.path, filename)
+
+
+def list_startswith(l, prefix):
+  """Like str.startswith, but for lists."""
+  return l[:len(prefix)] == prefix
+
+
+def list_strip_prefix(l, prefix):
+  """Remove prefix, if it's there."""
+  return l[len(prefix):] if list_startswith(l, prefix) else l

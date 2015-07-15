@@ -216,6 +216,26 @@ class TypegraphUtilsTest(unittest.TestCase):
     self.assertFalse(os.path.isdir(os.path.join(d.path, "d1")))
     self.assertFalse(os.path.isdir(os.path.join(d.path, "d1", "d2")))
 
+  def testListLstrip(self):
+    self.assertEqual([1, 2, 3], utils.list_strip_prefix([1, 2, 3], []))
+    self.assertEqual([2, 3], utils.list_strip_prefix([1, 2, 3], [1]))
+    self.assertEqual([3], utils.list_strip_prefix([1, 2, 3], [1, 2]))
+    self.assertEqual([], utils.list_strip_prefix([1, 2, 3], [1, 2, 3]))
+    self.assertEqual([1, 2, 3],
+                     utils.list_strip_prefix([1, 2, 3], [0, 1, 2, 3]))
+    self.assertEqual([], utils.list_strip_prefix([], [1, 2, 3]))
+    self.assertEqual(list("wellington"), utils.list_strip_prefix(
+        list("newwellington"), list("new")))
+
+  def testListStartsWith(self):
+    self.assertTrue(utils.list_startswith([1, 2, 3], []))
+    self.assertTrue(utils.list_startswith([1, 2, 3], [1]))
+    self.assertTrue(utils.list_startswith([1, 2, 3], [1, 2]))
+    self.assertTrue(utils.list_startswith([1, 2, 3], [1, 2, 3]))
+    self.assertFalse(utils.list_startswith([1, 2, 3], [2]))
+    self.assertTrue(utils.list_startswith([], []))
+    self.assertFalse(utils.list_startswith([], [1]))
+
 
 if __name__ == "__main__":
   test_inference.main()

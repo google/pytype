@@ -117,11 +117,13 @@ class VirtualMachine(object):
                cache_unknowns=True,
                pythonpath=(),
                pytd_import_ext=None,
+               import_drop_prefixes=(),
                pybuiltins_filename=None):
     """Construct a TypegraphVirtualMachine."""
     self.python_version = python_version
     self.pythonpath = pythonpath
     self.pytd_import_ext = pytd_import_ext
+    self.import_drop_prefixes = import_drop_prefixes
     self.pybuiltins_filename = pybuiltins_filename
     self.reverse_operators = reverse_operators
     self.cache_unknowns = cache_unknowns
@@ -242,7 +244,7 @@ class VirtualMachine(object):
       state = frame.states.get(block[0])
       if not state:
         log.error("Skipping block %d,"
-                  " we don't have any non erroneous code that goes here.",
+                  " we don't have any non-erroneous code that goes here.",
                   block.id)
         continue
       op = None
@@ -681,7 +683,6 @@ class VirtualMachine(object):
                                            pyval.base_type.cls)
       return abstract.ParameterizedClass(cls, type_parameters, self)
     elif isinstance(pyval, tuple):
-      assert pyval.__class__ is tuple
       return self.tuple_to_value(self.root_cfg_node,
                                  [self.convert_constant("tuple[%d]" % i, item)
                                   for i, item in enumerate(pyval)])
@@ -1219,7 +1220,8 @@ class VirtualMachine(object):
     ast = import_paths.module_name_to_pytd(name, level,
                                            self.python_version,
                                            self.pythonpath,
-                                           self.pytd_import_ext)
+                                           self.pytd_import_ext,
+                                           self.import_drop_prefixes)
     if ast:
       members = {val.name: val
                  for val in ast.constants + ast.classes + ast.functions}
