@@ -9,10 +9,10 @@ class PyTreeTests(test_inference.InferenceTest):
 
   def testDeep(self):
     # TODO(pludemann): move example code out of pytd
-  # MOE:begin_strip
+# MOE:begin_strip
     # TODO(pludemann): fix the path
     # with open("third_party/py/pytype/pytd/examples/pytree.py", "rb") as fi:
-  # MOE:end_strip
+# MOE:end_strip
     with open(os.path.join(os.path.dirname(pytd.__file__),
                            "examples", "pytree.py"), "rb") as fi:
       sourcecode = fi.read()
