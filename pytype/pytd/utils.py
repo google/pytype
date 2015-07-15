@@ -32,9 +32,6 @@ from pytype.pytd import pytd
 from pytype.pytd.parse import builtins
 from pytype.pytd.parse import parser
 from pytype.pytd.parse import visitors
-# MOE:begin_strip
-from resources import resources
-# MOE:end_strip
 
 
 def GetPredefinedFile(pytd_subdir, module, extension=".pytd"):
@@ -49,12 +46,6 @@ def GetPredefinedFile(pytd_subdir, module, extension=".pytd"):
   Raises:
     IOError: if file not found
   """
-# MOE:begin_strip
-  return resources.GetResource(
-      os.path.join("pytype/pytd",
-                   pytd_subdir, module + extension))
-  # pylint: disable=unreachable
-# MOE:end_strip
   # COV_NF_START
   full_filename = os.path.abspath(
       os.path.join(os.path.dirname(pytd.__file__),
