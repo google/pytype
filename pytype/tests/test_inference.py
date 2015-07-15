@@ -323,8 +323,7 @@ class InferenceTest(unittest.TestCase):
     # See class Infer for more on the arguments
     return Infer(self, srccode=srccode, deep=deep,
                  solve_unknowns=solve_unknowns, extract_locals=extract_locals,
-                 pythonpath=pythonpath,
-                 pytd_import_ext=pytd_import_ext)
+                 pythonpath=pythonpath, pytd_import_ext=pytd_import_ext)
 
   def _InferAndVerify(self, src, **kwargs):
     """Infer types for the source code treating it as a module.
