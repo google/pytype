@@ -9,48 +9,79 @@ from pytype.pytd import utils as pytd_utils
 log = logging.getLogger(__name__)
 
 
-def _load_integrated_pytd(filename, python_version):
-  """Load and parse a *.pytd from pytype/pytd/."""
+def _load_predefined_pytd(pytd_subdir, module, python_version):
+  """Load and parse a *.pytd from pytype/pytd/.
+
+  Args:
+    pytd_subdir: the directory where the module should be found
+    module: the module name (without any file extension)
+    python_version: sys.version_info[:2]
+
+  Returns:
+    The AST of the module; None if the module doesn't exist in pytd_subdir.
+  """
   try:
-    src = pytd_utils.GetDataFile(filename)
+    src = pytd_utils.GetPredefinedFile(pytd_subdir, module)
   except IOError:
     return None
-  return pytd_utils.ParsePyTD(src, filename=filename,
-                              python_version=python_version)
+  return pytd_utils.ParsePyTD(
+      src,
+      filename=os.path.join(pytd_subdir, module + ".pytd"),
+      python_version=python_version)
 
 
 def module_name_to_pytd(module_name,
                         level,  # TODO(pludemann): use this
                         python_version,
-                        pythonpath):  # pylint: disable=unused-argument
+                        pythonpath=(),
+                        pytd_import_ext=None):
   """Convert a name like 'sys' to the corresponding pytd.
 
   Args:
     module_name: Name of a module. The "abc" in "import abc".
-    level: For normal imports, -1. If the Python syntax was "from . import abc",
-      this will be 1. For "from .. import abc", it'll be 2, and so on. If this
-      is not -1, module_name will be "".
+    level: Relative level (see below).
     python_version: The Python version to import the module for. Used for
       builtin modules.
+    pythonpath: list of directory names to be tried.
+    pytd_import_ext: file extension for import PyTD (ignored for builtins)
 
   Returns:
     The parsed pytd. Instance of pytd.TypeDeclUnit.
 
   Raises:
     IOError: If we couldn't find this module.
+
+  The module_name and level are used to figure out the path to the PyTD file
+  (together wth pythonpath, pytd_import_ext).
+  Level is described in
+      https://docs.python.org/2/library/functions.html#__import__
+      https://docs.python.org/3/library/functions.html#__import__
+   and takes these values (-1 is not supported for Python 3.3 and later):
+     -1: for normal imports (try both absolute and relative imports)
+      0: for absolute imports
+      1: "from . import abc"
+      2: "from .. import abc"
+      etc.
+   If level is not -1, module_name will be "".
   """
+  # TODO(pludemann): handle absolute, relative imports
+  if level not in (-1, 0):
+    raise NotImplementedError("Relative paths aren't handled yet: %s" % level)
+  # TODO(pludemannn): Add unit tests for Python version 3.1 and 3.3,
+  #                   when semantics changed. (e.g., -1 is not supported).
 
   # Builtin modules (but not standard library modules!) take precedence
   # over modules in PYTHONPATH.
-  mod = _load_integrated_pytd(os.path.join("builtins", module_name + ".pytd"),
-                              python_version)
+  mod = _load_predefined_pytd("builtins", module_name, python_version)
   if mod:
     return mod
 
   for searchdir in pythonpath:
     path = os.path.join(searchdir, module_name.replace(".", "/"))
     if os.path.isdir(path):
-      init_pytd = os.path.join(path, "__init__.pytd")
+      # TODO(pludemann): need test case (esp. for empty __init__.py)
+      init_filename = "__init__" + pytd_import_ext
+      init_pytd = os.path.join(path, init_filename)
       if os.path.isfile(init_pytd):
         return pytd_utils.ParsePyTD(filename=init_pytd,
                                     module=module_name,
@@ -58,14 +89,12 @@ def module_name_to_pytd(module_name,
       else:
         # We allow directories to not have an __init__ file.
         # The module's empty, but you can still load submodules.
-        log.warn("No __init__.pytd in %s", path)
+        log.warn("No %s in %s", init_filename, path)
         return pytd_utils.EmptyModule()
-    elif os.path.isfile(path + ".pytd"):
-      return pytd_utils.ParsePyTD(filename=path + ".pytd",
+    elif os.path.isfile(path + pytd_import_ext):
+      return pytd_utils.ParsePyTD(filename=path + pytd_import_ext,
                                   module=module_name,
                                   python_version=python_version)
 
   # The standard library is (typically) at the end of PYTHONPATH.
-  return _load_integrated_pytd(os.path.join("stdlib", module_name + ".pytd"),
-                               python_version)
-
+  return _load_predefined_pytd("stdlib", module_name, python_version)

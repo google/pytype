@@ -1,15 +1,17 @@
-"""Test for running typegraphvm.py against pytree.py."""
+"""Test for running typegraphvm.py against StringIO.py."""
 
-
+import os.path
 from pytype.pytd import pytd
-from pytype.pytd import utils as pytd_utils
 from pytype.tests import test_inference
 
 
 class StringIOTests(test_inference.InferenceTest):
 
   def testDeep(self):
-    sourcecode = pytd_utils.GetDataFile("examples/StringIO.py")
+    # TODO(pludemann): move example code out of pytd
+    with open(os.path.join(os.path.dirname(pytd.__file__),
+                           "examples", "StringIO.py"), "rb") as fi:
+      sourcecode = fi.read()
     # TODO(pludemann): This is similar to test_pytree.py ... combine them?
     # TODO(pludemann): extract_locals - see class test_inference.Infer
     with self.Infer(sourcecode, deep=True, solve_unknowns=True) as ty:

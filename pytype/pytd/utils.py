@@ -26,27 +26,42 @@ locally or within a larger repository.
 import collections
 import os
 
-
 from pytype.pytd import abc_hierarchy
 from pytype.pytd import pep484
 from pytype.pytd import pytd
 from pytype.pytd.parse import builtins
 from pytype.pytd.parse import parser
 from pytype.pytd.parse import visitors
-
-
-def GetDataFile(filename):
 # MOE:begin_strip
-  from resources import resources  # pylint: disable=g-import-not-at-top
-  try:
-    return resources.GetResource(
-        os.path.join("pytype/pytd", filename))
-  except NotImplementedError:
+from resources import resources
 # MOE:end_strip
-    full_filename = os.path.abspath(
-        os.path.join(os.path.dirname(pytd.__file__), filename))
-    with open(full_filename, "rb") as fi:
-      return fi.read()
+
+
+def GetPredefinedFile(pytd_subdir, module, extension=".pytd"):
+  """Get the contents of a predefined PyTD, typically with a file name *.pytd.
+
+  Arguments:
+    pytd_subdir: the directory, typically "builtins" or "stdlib"
+    module: module name (e.g., "sys" or "__builtins__")
+    extension: either ".pytd" or ".py"
+  Returns:
+    The contents of the file
+  Raises:
+    IOError: if file not found
+  """
+# MOE:begin_strip
+  return resources.GetResource(
+      os.path.join("pytype/pytd",
+                   pytd_subdir, module + extension))
+  # pylint: disable=unreachable
+# MOE:end_strip
+  # COV_NF_START
+  full_filename = os.path.abspath(
+      os.path.join(os.path.dirname(pytd.__file__),
+                   pytd_subdir, module + extension))
+  with open(full_filename, "rb") as fi:
+    return fi.read()
+  # COV_NF_END
 
 
 def UnpackUnion(t):

@@ -114,10 +114,14 @@ class VirtualMachine(object):
   #       storing how a value is accessed and from where.
 
   def __init__(self, python_version, reverse_operators=False,
-               cache_unknowns=True, pythonpath=None, pybuiltins_filename=None):
+               cache_unknowns=True,
+               pythonpath=(),
+               pytd_import_ext=None,
+               pybuiltins_filename=None):
     """Construct a TypegraphVirtualMachine."""
     self.python_version = python_version
-    self.pythonpath = pythonpath or []
+    self.pythonpath = pythonpath
+    self.pytd_import_ext = pytd_import_ext
     self.pybuiltins_filename = pybuiltins_filename
     self.reverse_operators = reverse_operators
     self.cache_unknowns = cache_unknowns
@@ -238,7 +242,7 @@ class VirtualMachine(object):
       state = frame.states.get(block[0])
       if not state:
         log.error("Skipping block %d,"
-                  " we don't have any non errorneous code that goes here.",
+                  " we don't have any non erroneous code that goes here.",
                   block.id)
         continue
       op = None
@@ -1214,7 +1218,8 @@ class VirtualMachine(object):
     """Import the module and return the module object."""
     ast = import_paths.module_name_to_pytd(name, level,
                                            self.python_version,
-                                           self.pythonpath)
+                                           self.pythonpath,
+                                           self.pytd_import_ext)
     if ast:
       members = {val.name: val
                  for val in ast.constants + ast.classes + ast.functions}
@@ -1912,8 +1917,8 @@ class VirtualMachine(object):
   def byte_IMPORT_FROM(self, state, op):
     """IMPORT_FROM is mostly like LOAD_ATTR but doesn't pop the container."""
     name = self.frame.f_code.co_names[op.arg]
-    mod = state.top()
-    state, attr = self.load_attr(state, mod, name, allow_descriptors=False)
+    module = state.top()
+    state, attr = self.load_attr(state, module, name, allow_descriptors=False)
     return state.push(attr)
 
   def byte_EXEC_STMT(self, state):

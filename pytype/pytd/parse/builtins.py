@@ -17,16 +17,15 @@
 
 """Utilities for parsing pytd files for builtins."""
 
-import os.path
 
 from pytype.pytd.parse import parser
 from pytype.pytd.parse import visitors
 
 
-def _FindBuiltinFile(name):
+def _FindBuiltinFile(name, extension=".pytd"):
   # TODO(kramm): fix circular import
   from pytype.pytd import utils  # pylint: disable=g-import-not-at-top
-  return utils.GetDataFile(os.path.join("builtins", name))
+  return utils.GetPredefinedFile("builtins", name, extension)
 
 
 # Keyed by the parameter(s) passed to GetBuiltinsPyTD:
@@ -49,7 +48,8 @@ def GetBuiltinsPyTD():
   global _cached_builtins_pytd
   if not _cached_builtins_pytd:
     builtins_pytd = parser.TypeDeclParser().Parse(
-        _FindBuiltinFile(_BUILTIN_NAME + ".pytd"), name=_BUILTIN_NAME)
+        _FindBuiltinFile(_BUILTIN_NAME),
+        name=_BUILTIN_NAME)
     _cached_builtins_pytd = visitors.LookupClasses(builtins_pytd)
   return _cached_builtins_pytd
 
@@ -58,4 +58,4 @@ def GetBuiltinsPyTD():
 # Python 3.
 def GetBuiltinsCode(unused_python_version):
   """Similar to GetBuiltinsPyTD, but for code in the .py file."""
-  return _FindBuiltinFile(_BUILTIN_NAME + ".py")
+  return _FindBuiltinFile(_BUILTIN_NAME, extension=".py")

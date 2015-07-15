@@ -24,9 +24,16 @@ from pytype.pytd.parse import parser_test
 class TestUtils(parser_test.ParserTest):
   """Test the visitors in optimize.py."""
 
-  def testGetDataFileReturnsString(self):
+  def testGetPredefinedFileReturnsString(self):
     # smoke test, only checks that it doesn't throw and the result is a string
-    self.assertIsInstance(utils.GetDataFile("builtins/errno.pytd"), str)
+    self.assertIsInstance(
+        utils.GetPredefinedFile("builtins", "errno"),
+        str)
+
+  def testGetPredefinedFileThrows(self):
+    # smoke test, only checks that it does throw
+    with self.assertRaisesRegexp(IOError, "File not found|Resource not found"):
+      utils.GetPredefinedFile("builtins", "-this-file-does-not-exist")
 
   def testUnpackUnion(self):
     """Test for UnpackUnion."""

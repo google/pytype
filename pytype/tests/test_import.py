@@ -1,5 +1,6 @@
 """Tests for import."""
 
+
 from pytype import utils
 from pytype.tests import test_inference
 
@@ -21,21 +22,6 @@ class ImportTest(test_inference.InferenceTest):
     self.assert_ok("""\
       from sys import exit
       from path.to.module import bar, baz
-      """)
-
-  def testRelativeImport1(self):
-    self.assert_ok("""\
-      from . import bar
-      """)
-
-  def testRelativeImport2(self):
-    self.assert_ok("""\
-      from .. import bar
-      """)
-
-  def testRelativeImport3(self):
-    self.assert_ok("""\
-      from ... import bar
       """)
 
   def testImportAll(self):
@@ -99,15 +85,24 @@ class ImportTest(test_inference.InferenceTest):
     """, deep=False, solve_unknowns=False, extract_locals=False) as ty:
       self.assertOnlyHasReturnType(ty.Lookup("f"), self.bool)
 
+  # TODO(pludemann): Implement import of .py
+  # This test has never worked, except in the sense that it didn't fail.
+  # We need to define how import works if there's a .py file; also how it
+  # works if there are both a .py file and a .pytd file.
   def testImportPy(self):
     with utils.Tempdir() as d:
       d.create_file("other_file.py", """
         def f():
+          pass
       """)
       d.create_file("main.py", """
         from other_file import f
       """)
-      ty = self.InferFromFile(filename=d["main.py"], pythonpath=[d.path])
+      ty = self.InferFromFile(
+          filename=d["main.py"],
+          # Note that .pytd is the extension for pythonpath and not .py, so
+          # "import" will fail to find other_file.py
+          pythonpath=[d.path], pytd_import_ext=".pytd")
       # TODO(kramm): Do more testing here once pludemann@ has implemented logic
       #              for actually using pythonpath. Also below.
       self.assertTrue(ty.Lookup("f"))
@@ -120,7 +115,9 @@ class ImportTest(test_inference.InferenceTest):
       d.create_file("main.py", """
         from other_file import f
       """)
-      ty = self.InferFromFile(filename=d["main.py"], pythonpath=[d.path])
+      ty = self.InferFromFile(
+          filename=d["main.py"],
+          pythonpath=[d.path], pytd_import_ext=".pytd")
       self.assertTrue(ty.Lookup("f"))
 
   def testImportDirectory(self):
@@ -138,7 +135,9 @@ class ImportTest(test_inference.InferenceTest):
         def j():
           return sub.bar.baz.g()
       """)
-      ty = self.InferFromFile(filename=d["main.py"], pythonpath=[d.path])
+      ty = self.InferFromFile(
+          filename=d["main.py"],
+          pythonpath=[d.path], pytd_import_ext=".pytd")
       self.assertTypesMatchPytd(ty, """
         other_file: module
         g: function
@@ -158,7 +157,8 @@ class ImportTest(test_inference.InferenceTest):
         def g():
           return f()
       """)
-      ty = self.InferFromFile(filename=d["main.py"], pythonpath=[d.path])
+      ty = self.InferFromFile(filename=d["main.py"],
+                              pythonpath=[d.path], pytd_import_ext=".pytd")
       self.assertTypesMatchPytd(ty, """
         f: function
         def g() -> int
@@ -176,7 +176,8 @@ class ImportTest(test_inference.InferenceTest):
         def g():
           return f()
       """)
-      ty = self.InferFromFile(filename=d["main.py"], pythonpath=[d.path])
+      ty = self.InferFromFile(filename=d["main.py"],
+                              pythonpath=[d.path], pytd_import_ext=".pytd")
       self.assertTypesMatchPytd(ty, """
         f: function
         def g() -> foo.A

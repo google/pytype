@@ -381,7 +381,9 @@ def program_to_dot(program, ignored, only_cfg=False):
 
 
 def infer_types(src, python_version, filename=None, run_builtins=True,
-                pybuiltins_filename=None, pythonpath=None,
+                pybuiltins_filename=None,
+                pythonpath=(),
+                pytd_import_ext=None,
                 output_cfg=None, output_typegraph=None,
                 output_pseudocode=None, deep=True, solve_unknowns=True,
                 reverse_operators=False, cache_unknowns=False):
@@ -395,6 +397,7 @@ def infer_types(src, python_version, filename=None, run_builtins=True,
       the program.
     pybuiltins_filename: Path to Python builtins, or None for default.
     pythonpath: List of directories to search for .pytd-gen files.
+    pytd_import_ext: Extension to use when looking up import PyTD in pythonpath.
     output_cfg: A filename into which to save an SVG of the control flow graph.
     output_typegraph: A filename into which to save an SVG of the typegraph.
     output_pseudocode: A filename to write pseudo code to.
@@ -413,6 +416,7 @@ def infer_types(src, python_version, filename=None, run_builtins=True,
                       reverse_operators=reverse_operators,
                       cache_unknowns=cache_unknowns,
                       pythonpath=pythonpath,
+                      pytd_import_ext=pytd_import_ext,
                       pybuiltins_filename=pybuiltins_filename)
   loc, defs, builtin_names = tracer.run_program(src, filename, run_builtins)
   log.info("===Done run_program===")
