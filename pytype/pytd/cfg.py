@@ -132,7 +132,10 @@ class CFGNode(object):
     Returns:
       True if the combination is possible, False otherwise.
     """
-    return self.program.solver.Solve(values, self)
+    # Optimization: check the entire combination only if all of the values are
+    # possible separately.
+    return (all(self.program.solver.Solve({value}, self) for value in values)
+            and self.program.solver.Solve(values, self))
 
   def RegisterValue(self, value):
     self.values.add(value)
