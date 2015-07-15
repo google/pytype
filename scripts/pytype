@@ -44,7 +44,7 @@ log = logging.getLogger(__name__)
 DEFAULT_PYTD_IMPORT_EXT = ".pytd"
 
 
-def parse_options(args):
+def _parse_options(args):
   """Use optparse to parse command line options."""
   o = optparse.OptionParser(
       description="Infer/check types in a Python module")
@@ -165,8 +165,8 @@ def parse_options(args):
             "a directory structure that starts below the root module in "
             "your module names.") % os.pathsep)
 
-  options, filenames = o.parse_args(args)
-  return options, filenames
+  options, input_filenames = o.parse_args(args)
+  return options, input_filenames
 
 
 class TrackLevel(logging.Handler):
@@ -179,19 +179,52 @@ class TrackLevel(logging.Handler):
     self.max_level = max(self.max_level, record.levelno)
 
 
+def _write_result(options, input_filename, result):
+  """Write result to options.output or filename derived from input_filename."""
+  if options.output:
+    output_filename = options.output
+    should_write = True
+  else:
+    output_filename = os.path.splitext(
+        input_filename)[0] + options.pytd_import_ext
+    if options.force or not os.path.exists(output_filename):
+      should_write = True
+    else:
+      should_write = False
+      if _file_contents_equals(output_filename, result):
+        log.warn("%s is unchanged (--force isn't specified)",
+                 output_filename)
+      else:
+        log.critical("%s already exists. Use --force to overwrite",
+                     output_filename)
+  if should_write:
+    log.info("Writing output to %s", output_filename)
+    with open(output_filename, "w") as fi:
+      fi.write(result)
+
+
+def _file_contents_equals(output_filename, contents):
+  """Return True if file exists and has contents."""
+  if os.path.isfile(output_filename):
+    with open(output_filename, "rb") as fi:
+      return fi.read() == contents
+  else:
+    return False
+
+
 def main(argv):
   log_level_tracker = TrackLevel()
-  options, filenames = parse_options(argv)
-  unused_executable = filenames.pop(0)
-  if len(filenames) < 1:
+  options, input_filenames = _parse_options(argv)
+  unused_executable = input_filenames.pop(0)
+  if len(input_filenames) < 1:
     print >> sys.stderr, "Need at least one filename."
     sys.exit(1)
-  elif len(filenames) >= 2:
+  elif len(input_filenames) >= 2:
     print >> sys.stderr, "Analyzing multiple files not yet supported:"
-    print >> sys.stderr, " ".join(filenames)
+    print >> sys.stderr, " ".join(input_filenames)
     sys.exit(1)
 
-  filename, = filenames
+  input_filename, = input_filenames
 
   log_levels = [logging.CRITICAL, logging.ERROR, logging.WARNING,
                 logging.INFO, logging.DEBUG]
@@ -218,7 +251,7 @@ def main(argv):
   import_drop_prefixes = [
       p for p in options.import_drop_prefixes.split(os.pathsep) if p]
 
-  with open(filename, "r") as fi:
+  with open(input_filename, "r") as fi:
     src = fi.read()
 
   python_version = tuple(map(int, options.python_version.split(".")))
@@ -240,7 +273,7 @@ def main(argv):
   mod = infer.infer_types(
       src,
       python_version=python_version,
-      filename=filename,
+      filename=input_filename,
       run_builtins=options.run_builtins,
       pybuiltins_filename=options.pybuiltins_filename,
       pythonpath=pythonpath,
@@ -269,28 +302,11 @@ def main(argv):
   result = pytd.Print(pytd_utils.CanonicalOrdering(mod))
   if not result.endswith("\n"):  # TODO(pludemann): fix this hack
     result += "\n"
+
   if options.output == "-":
     sys.stdout.write(result)
   else:
-    if options.output:
-      output_filename = options.output
-    else:
-      output_filename = (os.path.splitext(filename)[0] +
-                         options.pytd_import_ext)
-      if os.path.isfile(output_filename) and not options.force:
-        with open(output_filename, "rb") as fi:
-          existing_data = fi.read()
-        if existing_data != result:
-          print >> sys.stderr, (
-              "%s already exists. Use -f to overwrite" % output_filename)
-          sys.exit(1)
-        else:
-          print >> sys.stderr, "%s is unchanged" % output_filename
-      else:
-        print >> sys.stderr, "Writing output to %s" % output_filename
-
-    with open(output_filename, "w") as fi:
-      fi.write(result)
+    _write_result(options, input_filename, result)
 
   if log_level_tracker.max_level >= log_levels[options.irascible]:
     log.critical("Maximum log message %s >= %s",
