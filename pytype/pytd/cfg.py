@@ -404,6 +404,10 @@ class Variable(object):
   def data(self):
     return [value.data for value in self.values]
 
+  @property
+  def nodes(self):
+    return set(self._cfgnode_to_values)
+
 
 class State(object):
   """A state needs to "solve" a list of goals to succeed.
@@ -458,10 +462,7 @@ class State(object):
       A set of instances of CFGNode. At every CFGNode in this set, at least
       one variable in the list of goals is assigned to something.
     """
-    return set(origin.where
-               for goal in self.goals
-               for other_value in goal.variable.values
-               for origin in other_value.origins)
+    return set.union(*(goal.variable.nodes for goal in self.goals))
 
   def Replace(self, goal, replace_with):
     """Replace a goal with new goals (the origins of the expanded goal)."""
