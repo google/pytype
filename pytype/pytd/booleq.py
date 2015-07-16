@@ -206,8 +206,8 @@ class _Eq(BooleanTerm):
     if self.right in assignments:
       intersection = assignments[self.left] & assignments[self.right]
       if len(intersection) > 1:
-        return _Or(set(_And({_Eq(self.left, i), _Eq(self.right, i)})
-                       for i in intersection))
+        return _Or({_And({_Eq(self.left, i), _Eq(self.right, i)})
+                    for i in intersection})
       elif intersection:
         value, = intersection
         return _And({_Eq(self.left, value), _Eq(self.right, value)})
@@ -307,11 +307,16 @@ class _Or(BooleanTerm):
 
   def extract_pivots(self):
     """Extract the pivots. See BooleanTerm.extract_pivots()."""
-    pivots_list = [expr.extract_pivots() for expr in self.exprs]
+    exprs_iter = iter(self.exprs)
+    pivots_list = [exprs_iter.next().extract_pivots()]
     # Extract the names that appear in all subexpressions:
-    intersection = frozenset(pivots_list[0].keys())
-    for p in pivots_list[1:]:
-      intersection &= frozenset(p.keys())
+    intersection = frozenset(pivots_list[0])
+    for expr in exprs_iter:
+      p = expr.extract_pivots()
+      intersection = intersection.intersection(p)
+      if not intersection:
+        break
+      pivots_list.append(p)
     # Now, for each of the above, collect the list of possible values.
     pivots = {}
     for pivot in intersection:
