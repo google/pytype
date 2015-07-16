@@ -328,7 +328,7 @@ class CFGTest(unittest.TestCase):
     self.assertFalse(n1.HasCombination([ax, ay]))
     self.assertFalse(n2.HasCombination([ax, ay, az]))
 
-  def testAddValues(self):
+  def testPasteVariable(self):
     p = cfg.Program()
     n1 = p.NewCFGNode("n1")
     n2 = n1.ConnectNew()
@@ -336,7 +336,7 @@ class CFGTest(unittest.TestCase):
     ax = x.AddValue("a", source_set=[], where=n1)
     bx = x.AddValue("b", source_set=[], where=n1)
     y = p.NewVariable("y")
-    y.AddValues(x, n2)
+    y.PasteVariable(x, n2)
     ay, by = y.values
     self.assertEquals([v.data for v in x.values], ["a", "b"])
     self.assertEquals([v.data for v in y.values], ["a", "b"])

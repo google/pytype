@@ -450,7 +450,7 @@ class VirtualMachine(object):
     else:
       v = self.program.NewVariable(name)
       for r in variables:
-        v.AddValues(r, node)
+        v.PasteVariable(r, node)
       return v
 
   def convert_value_to_string(self, val):
@@ -978,7 +978,7 @@ class VirtualMachine(object):
         for msg in e.explanation_lines:
           log.error("... %s", msg)
       else:
-        result.AddValues(one_result, new_node)
+        result.PasteVariable(one_result, new_node)
         nodes.append(new_node)
     if nodes:
       return self.join_cfg_nodes(nodes), result
@@ -1097,7 +1097,7 @@ class VirtualMachine(object):
             result.AddValue(value, [v], node3)
           nodes.append(node3)
       else:
-        result.AddValues(attr_var, node2)
+        result.PasteVariable(attr_var, node2)
         nodes.append(node2)
     if not result.values:
       raise exceptions.ByteCodeAttributeError("No such attribute %s" % attr)
@@ -1143,7 +1143,7 @@ class VirtualMachine(object):
   def build_content(self, node, elements):
     var = self.program.NewVariable("<elements>")
     for v in elements:
-      var.AddValues(v, node)
+      var.PasteVariable(v, node)
     return var
 
   def build_slice(self, node, start, stop, step=None):
@@ -1468,7 +1468,7 @@ class VirtualMachine(object):
     """Stores a value in a closure cell."""
     state, value = state.pop()
     assert isinstance(value, typegraph.Variable)
-    self.frame.cells[op.arg].AddValues(value, state.node)
+    self.frame.cells[op.arg].PasteVariable(value, state.node)
     return state
 
   def byte_LOAD_LOCALS(self, state):
@@ -1953,7 +1953,7 @@ class VirtualMachine(object):
 
   def byte_RETURN_VALUE(self, state):
     state, var = state.pop()
-    self.frame.return_variable.AddValues(var, state.node)
+    self.frame.return_variable.PasteVariable(var, state.node)
     return state.set_why("return")
 
   def byte_IMPORT_STAR(self, state):

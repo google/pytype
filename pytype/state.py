@@ -116,13 +116,6 @@ class FrameState(object):
     new_node = self.node.ConnectNew(self.node.name)
     return self.change_cfg_node(new_node)
 
-  def advance_cfg_node(self):
-    return FrameState(self.data_stack,
-                      self.block_stack,
-                      self.node.ConnectNew(self.node.name),
-                      self.exception,
-                      self.why)
-
   def merge_into(self, other):
     """Merge with another state."""
     if other is None:
@@ -230,7 +223,7 @@ class Frame(object):
       for name, value in sorted(callargs.items()):
         if name in f_code.co_cellvars:
           i = f_code.co_cellvars.index(name)
-          self.cells[i].AddValues(value, node)
+          self.cells[i].PasteVariable(value, node)
         else:
           self.f_locals.set_attribute(node, name, value)
 

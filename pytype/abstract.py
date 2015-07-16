@@ -81,7 +81,7 @@ def match_var_against_type(var, other_type, subst, node):
       subst = subst.copy()
       new_var = subst[other_type.name].AssignToNewVariable(other_type.name,
                                                            node)
-      new_var.AddValues(var, node)
+      new_var.PasteVariable(var, node)
       subst[other_type.name] = new_var
     else:
       subst = subst.copy()
@@ -462,7 +462,7 @@ class SimpleAbstractValue(AtomicAbstractValue):
     else:
       ret = self.vm.program.NewVariable(name)
       for candidate in candidates:
-        ret.FilterAndAddValues(candidate, node)
+        ret.FilterAndPasteVariable(candidate, node)
       return node, ret
 
   def set_attribute(self, node, name, var):
@@ -474,7 +474,7 @@ class SimpleAbstractValue(AtomicAbstractValue):
     variable = self.members.get(name)
     if variable:
       old_len = len(variable.values)
-      variable.AddValues(var, node)
+      variable.PasteVariable(var, node)
       log.debug("Adding choice(s) to %s: %d new values", name,
                 len(variable.values) - old_len)
     else:
@@ -512,7 +512,7 @@ class SimpleAbstractValue(AtomicAbstractValue):
   def set_class(self, node, var):
     """Set the __class__ of an instance, for code that does "x.__class__ = y."""
     if self.cls:
-      self.cls.AddValues(var, node)
+      self.cls.PasteVariable(var, node)
     else:
       self.cls = var
     for cls in var.data:
@@ -680,7 +680,7 @@ class Dict(ValueWithSlots):
     self.merge_type_parameter(
         node, self.VALUE_TYPE_PARAM, value_var)
     if name in self._entries:
-      self._entries[name].AddValues(value_var, node)
+      self._entries[name].PasteVariable(value_var, node)
     else:
       self._entries[name] = value_var
     return node
@@ -694,7 +694,7 @@ class Dict(ValueWithSlots):
       except ValueError:  # ConversionError
         continue
       if name in self._entries:
-        self._entries[name].AddValues(value_var, node)
+        self._entries[name].PasteVariable(value_var, node)
       else:
         self._entries[name] = value_var
 
@@ -925,7 +925,7 @@ class PyTDSignature(object):
             for data in ret_map[t].data:
               ret_map[t].AddValue(data, r.sources + [func], node)
           self.vm.trace_call(func, args_selected, kws_selected, ret_map[t])
-          retvar.AddValues(ret_map[t], node)
+          retvar.PasteVariable(ret_map[t], node)
     if not retvar.values:
       raise FailedFunctionCall(self, msg_lines)
     return node, retvar
@@ -1874,7 +1874,7 @@ class Unknown(AtomicAbstractValue):
     assert not self._pytd_class
     if name in self.members:
       variable = self.members[name]
-      variable.AddValues(v, node)
+      variable.PasteVariable(v, node)
     else:
       self.members[name] = v.AssignToNewVariable(self.name + "." + name, node)
     return node
