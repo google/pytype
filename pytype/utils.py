@@ -6,6 +6,7 @@ import re
 import shutil
 import tempfile
 import textwrap
+import types
 
 
 from pytype.pytd import pytd
@@ -342,3 +343,75 @@ def list_startswith(l, prefix):
 def list_strip_prefix(l, prefix):
   """Remove prefix, if it's there."""
   return l[len(prefix):] if list_startswith(l, prefix) else l
+
+
+def _arg_names(f):
+  """Return the argument names of a function."""
+  return f.func_code.co_varnames[:f.func_code.co_argcount]
+
+
+class memoize(object):  # pylint: disable=invalid-name
+  """A memoizing decorator that supports expressions as keys.
+
+  Use it like this:
+    @memoize
+    def f(x):
+      ...
+  or
+    @memoize("(id(x), y)")
+    def f(x, y, z):
+      ...
+  .
+  Careful with methods. If you have code like
+    @memoize("x")
+    def f(self, x):
+      ...
+  then memoized values will be shared across instances.
+
+  This decorator contains some speed optimizations that make it not thread-safe.
+  """
+
+  def __new__(cls, key_or_function):
+    if isinstance(key_or_function, types.FunctionType):
+      f = key_or_function
+      key = "(" + ", ".join(_arg_names(f)) + ")"
+      return memoize(key)(f)
+    else:
+      key = key_or_function
+      return object.__new__(cls, key)
+
+  def __init__(self, key):
+    self.key = key
+
+  def __call__(self, f):
+    key_program = compile(self.key, filename=__name__, mode="eval")
+    argnames = _arg_names(f)
+    memoized = {}
+    no_result = object()
+    if f.func_defaults:
+      defaults = dict(zip(argnames[-len(f.func_defaults):], f.func_defaults))
+    else:
+      defaults = {}
+    pos_and_arg_tuples = zip(range(f.func_code.co_argcount), argnames)
+    shared_dict = {}
+    def call(*posargs, **kwargs):
+      """Call a memoized function."""
+      if kwargs or defaults:
+        # Slower version; for default arguments, we need two dictionaries.
+        args = defaults.copy()
+        args.update(dict(zip(argnames, posargs)))
+        args.update(kwargs)
+        key = eval(key_program, args)  # pylint: disable=eval-used
+      else:
+        # Faster version, if we have no default args.
+        for pos, arg in pos_and_arg_tuples:
+          # We know we write *all* the values, so we can re-use the dictionary.
+          shared_dict[arg] = posargs[pos]
+        key = eval(key_program, shared_dict)  # pylint: disable=eval-used
+      result = memoized.get(key, no_result)
+      if result is no_result:
+        # Call the actual function.
+        result = f(*posargs, **kwargs)
+        memoized[key] = result
+      return result
+    return call

@@ -10,6 +10,8 @@ from pytype.tests import test_inference
 
 import unittest
 
+# pylint: disable=invalid-name
+
 
 class TypegraphUtilsTest(unittest.TestCase):
 
@@ -235,6 +237,82 @@ class TypegraphUtilsTest(unittest.TestCase):
     self.assertFalse(utils.list_startswith([1, 2, 3], [2]))
     self.assertTrue(utils.list_startswith([], []))
     self.assertFalse(utils.list_startswith([], [1]))
+
+  @utils.memoize
+  def _f1(self, x, y):
+    return x + y
+
+  def testMemoize1(self):
+    l1 = self._f1((1,), (2,))
+    l2 = self._f1(x=(1,), y=(2,))
+    l3 = self._f1((1,), y=(2,))
+    self.assertIs(l1, l2)
+    self.assertIs(l2, l3)
+    l1 = self._f1((1,), (2,))
+    l2 = self._f1((1,), (3,))
+    self.assertIsNot(l1, l2)
+
+  @utils.memoize("x")
+  def _f2(self, x, y):
+    return x + y
+
+  def testMemoize2(self):
+    l1 = self._f2((1,), (2,))
+    l2 = self._f2((1,), (3,))
+    self.assertIs(l1, l2)
+    l1 = self._f2(x=(1,), y=(2,))
+    l2 = self._f2(x=(1,), y=(3,))
+    self.assertIs(l1, l2)
+    l1 = self._f2((1,), (2,))
+    l2 = self._f2((2,), (2,))
+    self.assertIsNot(l1, l2)
+
+  @utils.memoize("(x, id(y))")
+  def _f3(self, x, y):
+    return x + y
+
+  def testMemoize3(self):
+    l1 = self._f3((1,), (2,))
+    l2 = self._f3((1,), (2,))
+    self.assertIsNot(l1, l2)  # two different ids
+    y = (2,)
+    l1 = self._f3((1,), y)
+    l2 = self._f3((1,), y)
+    l3 = self._f3(x=(1,), y=y)
+    self.assertIs(l1, l2)
+    self.assertIs(l2, l3)
+
+  @utils.memoize("(x, y)")
+  def _f4(self, x=1, y=2):
+    return x + y
+
+  def testMemoize4(self):
+    z1 = self._f4(1, 2)
+    z2 = self._f4(1, 3)
+    self.assertNotEquals(z1, z2)
+    z1 = self._f4(1, 2)
+    z2 = self._f4(1, 2)
+    self.assertIs(z1, z2)
+    z1 = self._f4()
+    z2 = self._f4()
+    self.assertIs(z1, z2)
+    z1 = self._f4()
+    z2 = self._f4(1, 2)
+    self.assertIs(z1, z2)
+
+  def testMemoize5(self):
+    class Foo(object):
+
+      @utils.memoize("(self, x, y)")
+      def _f5(self, x, y):
+        return x + y
+    foo1 = Foo()
+    foo2 = Foo()
+    z1 = foo1._f5((1,), (2,))
+    z2 = foo2._f5((1,), (2,))
+    z3 = foo2._f5((1,), (2,))
+    self.assertFalse(z1 is z2)
+    self.assertTrue(z2 is z3)
 
 
 if __name__ == "__main__":
