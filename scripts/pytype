@@ -133,7 +133,7 @@ def _parse_options(args):
       help="Do slower and more precise processing of unknown types.")
   o.add_option(
       "--irascible", type="int", action="store",
-      dest="irascible", default=0,
+      dest="irascible", default=-1,
       help="Non-zero return code: 0=critical, 1=error, 2=warn, ...")
   o.add_option(
       "--pythonpath", type="string", action="store",
@@ -238,7 +238,7 @@ def main(argv):
     # accordingly.
     logging.basicConfig(level=logging.CRITICAL + 1)
 
-  if options.irascible < 0 or options.irascible > len(log_levels):
+  if options.irascible < -1 or options.irascible > len(log_levels):
     print >> sys.stderr, "Invalid irascible: %d" % options.irascible
     sys.exit(1)
 
