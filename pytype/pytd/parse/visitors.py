@@ -479,6 +479,42 @@ class VerifyLookup(Visitor):
       raise ValueError("Unresolved class: %r" % node.name)
 
 
+class LookupExternalClasses(Visitor):
+  """Fill in ExternalType pointers using a symbol table.
+
+  This is an in-place visitor! It modifies the original tree. This is
+  necessary because we introduce loops.
+  """
+
+  def __init__(self, module_map):
+    """Create this visitor.
+
+    Args:
+      module_map: A dictionary mapping module names to symbol tables.
+    """
+    super(LookupExternalClasses, self).__init__()
+    self._module_map = module_map
+
+  def VisitExternalType(self, t):
+    """Try to fill in the cls pointer of an ExternalType.
+
+    Args:
+      t: An instance of pytd.ExternalType
+    Returns:
+      The same node t.
+    Raises:
+      KeyError: If we can't find a module, or an identifier in a module, or
+        if an identifier in a module isn't a class.
+    """
+    if t.cls is None:
+      item = self._module_map[t.module].Lookup(t.name)
+      if isinstance(item, pytd.Class):
+        t.cls = item
+      else:
+        raise KeyError("%s in module %s isn't a class" % (t.name, t.module))
+    return t
+
+
 class ReplaceTypes(Visitor):
   """Visitor for replacing types in a tree.
 
@@ -923,4 +959,15 @@ class AddNamePrefix(Visitor):
 
   def VisitClass(self, node):
     return node.Replace(name=self.prefix + node.name)
+
+
+class CollectDependencies(Visitor):
+  """Visitor for retrieving module names from external types."""
+
+  def __init__(self):
+    super(CollectDependencies, self).__init__()
+    self.modules = set()
+
+  def EnterExternalType(self, t):
+    self.modules.add(t.module)
 

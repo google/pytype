@@ -315,6 +315,12 @@ class Tempdir(object):
     self.path = tempfile.mkdtemp()
     return self
 
+  def create_directory(self, filename):
+    """Create a subdirectory in the temporary directory."""
+    path = os.path.join(self.path, filename)
+    os.makedirs(path)
+    return path
+
   def create_file(self, filename, indented_data=None):
     """Create a file in the temporary directory. Also dedents the contents."""
     filedir, filename = os.path.split(filename)
@@ -394,6 +400,8 @@ class memoize(object):  # pylint: disable=invalid-name
       defaults = {}
     pos_and_arg_tuples = zip(range(f.func_code.co_argcount), argnames)
     shared_dict = {}
+    # TODO(kramm): Use functools.wraps or functools.update_wrapper to preserve
+    # the metadata of the original function.
     def call(*posargs, **kwargs):
       """Call a memoized function."""
       if kwargs or defaults:

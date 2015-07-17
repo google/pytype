@@ -192,6 +192,7 @@ class TypegraphUtilsTest(unittest.TestCase):
       filename2 = d.create_file("bar.txt", "\tdata2")
       filename3 = d.create_file("baz.txt", "data3")
       filename4 = d.create_file("d1/d2/qqsv.txt", "  data4.1\n  data4.2")
+      filename5 = d.create_directory("directory")
       self.assertEquals(filename1, d["foo.txt"])
       self.assertEquals(filename2, d["bar.txt"])
       self.assertEquals(filename3, d["baz.txt"])
@@ -203,6 +204,7 @@ class TypegraphUtilsTest(unittest.TestCase):
       self.assertTrue(os.path.isfile(filename4))
       self.assertTrue(os.path.isdir(os.path.join(d.path, "d1")))
       self.assertTrue(os.path.isdir(os.path.join(d.path, "d1", "d2")))
+      self.assertTrue(os.path.isdir(filename5))
       self.assertEqual(filename4, os.path.join(d.path, "d1", "d2", "qqsv.txt"))
       for filename, contents in [(filename1, ""),
                                  (filename2, "data2"),  # dedented
@@ -217,6 +219,7 @@ class TypegraphUtilsTest(unittest.TestCase):
     self.assertFalse(os.path.isfile(filename3))
     self.assertFalse(os.path.isdir(os.path.join(d.path, "d1")))
     self.assertFalse(os.path.isdir(os.path.join(d.path, "d1", "d2")))
+    self.assertFalse(os.path.isdir(filename5))
 
   def testListLstrip(self):
     self.assertEqual([1, 2, 3], utils.list_strip_prefix([1, 2, 3], []))

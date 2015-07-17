@@ -250,6 +250,14 @@ class ExternalType(node.Node('name', 'module')):
   """A type specified by name and the module it is in."""
   __slots__ = ()
 
+  # This type is mutable. (Like ClassType is). The "cls" pointer can be modified
+  # in-place. See the comments in ClassType for more information.
+
+  def __new__(cls, name, module, clsref=None):
+    self = super(ExternalType, cls).__new__(cls, name, module)
+    self.cls = clsref  # potentially filled in later
+    return self
+
   def __str__(self):
     return self.module + '.' + self.name
 

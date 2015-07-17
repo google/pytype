@@ -213,6 +213,36 @@ class TestVisitors(parser_test.ParserTest):
     tree2 = tree2.Visit(visitors.CanonicalOrderingVisitor(sort_signatures=True))
     self.AssertSourceEquals(tree1, tree2)
 
+  def testLookupExternalClasses(self):
+    src1 = textwrap.dedent("""
+      def f1() -> bar.Bar
+      class Foo:
+        pass
+    """)
+    src2 = textwrap.dedent("""
+      def f2() -> foo.Foo
+      class Bar:
+        pass
+    """)
+    ast1 = self.Parse(src1)
+    ast2 = self.Parse(src2)
+    ast1.Visit(visitors.LookupExternalClasses({"foo": ast1, "bar": ast2}))
+    ast2.Visit(visitors.LookupExternalClasses({"foo": ast1, "bar": ast2}))
+    f1, = ast1.Lookup("f1").signatures
+    f2, = ast2.Lookup("f2").signatures
+    self.assertIs(ast2.Lookup("Bar"), f1.return_type.cls)
+    self.assertIs(ast1.Lookup("Foo"), f2.return_type.cls)
+
+  def testCollectDependencies(self):
+    src = textwrap.dedent("""
+      l: list<int or baz.BigInt>
+      def f1() -> bar.Bar
+      def f2() -> foo.bar.Baz
+    """)
+    deps = visitors.CollectDependencies()
+    self.Parse(src).Visit(deps)
+    self.assertSetEqual({"baz", "bar", "foo.bar"}, deps.modules)
+
 
 if __name__ == "__main__":
   unittest.main()
