@@ -8,9 +8,8 @@ from pytype.tests import test_inference
 class PyTreeTests(test_inference.InferenceTest):
 
   def testDeep(self):
-    # TODO(pludemann): move example code out of pytd
     with open(os.path.join(os.path.dirname(pytd.__file__),
-                           "examples", "pytree.py"), "rb") as fi:
+                           "..", "test_data", "pytree.py"), "rb") as fi:
       sourcecode = fi.read()
     # TODO(pludemann): extract_locals - see class test_inference.Infer
     # TODO(pludemann): ? solve_unknowns=True ?
