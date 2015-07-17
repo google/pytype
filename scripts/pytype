@@ -245,9 +245,14 @@ def main(argv):
 
   logging.getLogger().addHandler(log_level_tracker)
 
-  # TODO(pludemann): remove abspath (it's useful for debugging)
-  pythonpath = [os.path.abspath(f)
-                for f in options.pythonpath.split(os.pathsep) if f]
+  # Do *not* apply os.path.abspath here because we could be in a symlink tree
+  # and bad things happen if you go to relative directories.
+  # MOE:begin_strip
+  # Note that you should not do os.path.abspath(f) below; it will probably fail
+  # on Forge because of the symlink tree pointing into the cache:
+  # MOE:end_strip
+
+  pythonpath = [f for f in options.pythonpath.split(os.pathsep) if f]
 
   import_drop_prefixes = [
       p for p in options.import_drop_prefixes.split(os.pathsep) if p]
@@ -267,9 +272,16 @@ def main(argv):
     raise ValueError("invalid --pytd_import_ext '%s'" %
                      (options.pytd_import_ext,))
 
-  for d in pythonpath:
-    if not os.path.isdir(d):
-      raise ValueError("--pythonpath item is not a directory: '%s" % (d,))
+  # MOE:begin_strip
+  # Why does the following test sometimes fail on Forge?
+  # MOE:end_strip
+  # This test is not 100% reliable, so turn off for now.
+  if False:
+    for d in pythonpath:
+      if not os.path.isdir(d):
+        raise ValueError(
+            "--pythonpath item is not a directory: '%s stat(%s) lstat(%s)" %
+            (d, os.stat(d), os.lstat(d)))
 
   mod = infer.infer_types(
       src,
