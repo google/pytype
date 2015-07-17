@@ -26,6 +26,9 @@ CAPTURE_STDOUT = ("-s" not in sys.argv)
 class Infer(object):
   """Calls infer, produces useful output on failure.
 
+  Typically called indirectly from InferenceTest.Infer, which has
+  the same args.
+
   This implements the 'with' protocol. Typical use is (where 'self'
   is the test instance, e.g. test_inference.InferenceTest (below)):
 
@@ -56,9 +59,6 @@ class Infer(object):
   and explicitly make the calls.
   """
 
-  # Turn this to "True" to show all intermediate steps
-  extra_verbose = False
-
   # TODO(pludemann): This is possibly a slightly less magical paradigm:
   #   with self.Inferencer(deep=False, solve_unknowns=False) as ty:
   #     ty = i.Infer("""....""")
@@ -66,7 +66,21 @@ class Infer(object):
 
   def __init__(self, test, srccode, deep=False,
                solve_unknowns=False, extract_locals=False,
+               extra_verbose=False,
                pythonpath=(), pytd_import_ext=".pytd"):
+    """Constructor for Infer.
+
+    Args:
+      test: the Testcase (see inferenceTest.Infer)
+      srccode: the Python source code to do type inferencing on
+      deep: see class comments (assume --api - analyize all methods, even those
+            that don't have a caller)
+      solve_unknowns: try to solve for all ~unknown types
+      extract_locals: strip ~unknown types from the output pytd
+      extra_verbose: extra intermeidate output (for debugging)
+      pythonpath: list of directories for imports
+      pytd_import_ext: the file extention for imports
+    """
     # TODO(pludemann): There are eight possible combinations of these three
     # boolean flags. Do all of these combinations make sense? Or would it be
     # possible to simplify this into something like a "mode" parameter:
@@ -78,7 +92,8 @@ class Infer(object):
     self.srccode = textwrap.dedent(srccode)
     self.inferred = None
     self.optimized_types = None
-    self.extract_locals = None
+    self.extract_locals = None  # gets set if extract_locals is set (below)
+    self.extra_verbose = extra_verbose
     self.canonical_types = None
     # We need to catch any exceptions here and preserve them for __exit__.
     # Exceptions raised in the body of 'with' will be presented to __exit__.
@@ -101,7 +116,7 @@ class Infer(object):
           max_union=7, remove_mutable=False)
       self.types = self.canonical_types = pytd_utils.CanonicalOrdering(
           self.types)
-    except:
+    except Exception:  # pylint: disable=broad-except
       self.types = None
       if not self.__exit__(*sys.exc_info()):
         raise
@@ -152,6 +167,7 @@ class InferenceTest(unittest.TestCase):
     self.anything = pytd.AnythingType()
     self.nothing = pytd.NothingType()
     self.module = pytd.ClassType("module")
+    self.file = pytd.ClassType("file")
 
     # The various union types use pytd_utils.CanonicalOrdering()'s ordering:
     self.intorstr = pytd.UnionType((self.int, self.str))
@@ -214,7 +230,7 @@ class InferenceTest(unittest.TestCase):
         pythonpath=pythonpath, pytd_import_ext=pytd_import_ext,
         cache_unknowns=True)
     unit.Visit(visitors.VerifyVisitor())
-    return unit
+    return pytd_utils.CanonicalOrdering(unit)
 
   def InferFromFile(self, filename, pythonpath, pytd_import_ext):
     with open(filename, "rb") as fi:
@@ -223,7 +239,7 @@ class InferenceTest(unittest.TestCase):
                                pythonpath=pythonpath,
                                pytd_import_ext=pytd_import_ext)
       unit.Visit(visitors.VerifyVisitor())
-      return unit
+      return pytd_utils.CanonicalOrdering(unit)
 
   @classmethod
   def SignatureHasReturnType(cls, sig, return_type):
@@ -317,13 +333,15 @@ class InferenceTest(unittest.TestCase):
                         "Not identity: %r" % pytd.Print(func))
 
   def Infer(self, srccode, deep=False, solve_unknowns=False,
-            extract_locals=False,
+            extract_locals=False, extra_verbose=False,
             pythonpath=(), pytd_import_ext=".pytd"):
     # Wraps Infer object to make it seem less magical
     # See class Infer for more on the arguments
     return Infer(self, srccode=srccode, deep=deep,
                  solve_unknowns=solve_unknowns, extract_locals=extract_locals,
-                 pythonpath=pythonpath, pytd_import_ext=pytd_import_ext)
+                 extra_verbose=extra_verbose,
+                 pythonpath=pythonpath,
+                 pytd_import_ext=pytd_import_ext)
 
   def _InferAndVerify(self, src, **kwargs):
     """Infer types for the source code treating it as a module.
@@ -339,7 +357,7 @@ class InferenceTest(unittest.TestCase):
     """
     unit = infer.infer_types(src, self.PYTHON_VERSION, **kwargs)
     unit.Visit(visitors.VerifyVisitor())
-    return unit
+    return pytd_utils.CanonicalOrdering(unit)
 
   def assertTypesMatchPytd(self, ty, pytd_src, version=None):
     """Parses pytd_src and compares with ty."""

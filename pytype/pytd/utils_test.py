@@ -14,6 +14,7 @@
 # limitations under the License.
 
 
+import os
 import textwrap
 import unittest
 from pytype.pytd import pytd
@@ -233,6 +234,14 @@ class TestUtils(parser_test.ParserTest):
                       pytd.NamedType("name"))
     self.assertEquals(utils.NamedOrExternalType("name", "package"),
                       pytd.ExternalType("name", "package"))
+
+  def testPytdBuiltin(self):
+    """Verify 'import sys'."""
+    import_contents = utils.GetPredefinedFile("builtins", "sys")
+    with open(os.path.join(os.path.dirname(pytd.__file__),
+                           "builtins", "sys.pytd"), "rb") as fi:
+      file_contents = fi.read()
+    self.assertMultiLineEqual(import_contents, file_contents)
 
 
 if __name__ == "__main__":
