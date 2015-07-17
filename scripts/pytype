@@ -133,7 +133,7 @@ def _parse_options(args):
       help="Do slower and more precise processing of unknown types.")
   o.add_option(
       "--irascible", type="int", action="store",
-      dest="irascible", default=-1,
+      dest="irascible", default=None,
       help="Non-zero return code: 0=critical, 1=error, 2=warn, ...")
   o.add_option(
       "--pythonpath", type="string", action="store",
@@ -238,7 +238,8 @@ def main(argv):
     # accordingly.
     logging.basicConfig(level=logging.CRITICAL + 1)
 
-  if options.irascible < -1 or options.irascible > len(log_levels):
+  if (options.irascible is not None and
+      options.irascible < -1 or options.irascible > len(log_levels)):
     print >> sys.stderr, "Invalid irascible: %d" % options.irascible
     sys.exit(1)
 
@@ -308,7 +309,8 @@ def main(argv):
   else:
     _write_result(options, input_filename, result)
 
-  if log_level_tracker.max_level >= log_levels[options.irascible]:
+  if (options.irascible is not None and
+      log_level_tracker.max_level >= log_levels[options.irascible]):
     log.critical("Maximum log message %s >= %s",
                  logging.getLevelName(log_level_tracker.max_level),
                  logging.getLevelName(log_levels[options.irascible]))
