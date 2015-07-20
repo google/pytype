@@ -1574,26 +1574,34 @@ class InterpreterFunction(Function):
     self._call_records.append((callargs, ret, node, node_after_call))
     return node_after_call, ret
 
+  def _get_call_combinations(self):
+    signature_data = set()
+    for callargs, ret, _, node_after_call in self._call_records:
+      for combination in utils.variable_product_dict(callargs):
+        for return_value in ret.values:
+          values = combination.values() + [return_value]
+          data = tuple(v.data for v in values)
+          if data in signature_data:
+            # This combination yields a signature we already know is possible
+            continue
+          if node_after_call.HasCombination(values):
+            signature_data.add(data)
+            yield combination, return_value
+
   def to_pytd_def(self, function_name):
     """Generate a pytd.Function definition."""
     num_defaults = len(self.defaults)
     signatures = []
-    for callargs, ret, _, node_after_call in self._call_records:
-      for combination in utils.variable_product_dict(callargs):
-        for return_value in ret.values:
-          if node_after_call.HasCombination(
-              combination.values() + [return_value]):
-            params = [pytd.Parameter(name, combination[name].data.to_type())
-                      for name in self.get_parameter_names()]
-            if num_defaults:
-              params = params[:-num_defaults]
-            has_optional = (num_defaults > 0 or
-                            self.has_varargs() or
-                            self.has_kwargs())
-            signatures.append(pytd.Signature(
-                params=tuple(params), return_type=return_value.data.to_type(),
-                exceptions=(),  # TODO(kramm): record exceptions
-                template=(), has_optional=has_optional))
+    has_optional = num_defaults > 0 or self.has_varargs() or self.has_kwargs()
+    for combination, return_value in self._get_call_combinations():
+      params = tuple(pytd.Parameter(name, combination[name].data.to_type())
+                     for name in self.get_parameter_names())
+      if num_defaults:
+        params = params[:-num_defaults]
+      signatures.append(pytd.Signature(
+          params=params, return_type=return_value.data.to_type(),
+          exceptions=(),  # TODO(kramm): record exceptions
+          template=(), has_optional=has_optional))
     if signatures:
       return pytd.Function(function_name, tuple(signatures))
     else:
