@@ -243,6 +243,11 @@ class TestUtils(parser_test.ParserTest):
       file_contents = fi.read()
     self.assertMultiLineEqual(import_contents, file_contents)
 
+  def testParsePredefinedPyTD(self):
+    """Test ParsePredefinedPyTD()."""
+    ast = utils.ParsePredefinedPyTD("builtins", "sys", python_version=(2, 7, 6))
+    self.assertIsNotNone(ast.Lookup("stderr"))
+
 
 if __name__ == "__main__":
   unittest.main()

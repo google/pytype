@@ -1,6 +1,7 @@
 """Generic functions."""
 
 import itertools
+import errno
 import os
 import re
 import shutil
@@ -308,6 +309,15 @@ def concat_tuples(tuples):
   return tuple(itertools.chain.from_iterable(tuples))
 
 
+def _makedirs(path):
+  """Create a nested directory, but don't fail if any of it already exists."""
+  try:
+    os.makedirs(path)
+  except OSError as e:
+    if e.errno != errno.EEXIST:
+      raise
+
+
 class Tempdir(object):
   """Context handler for creating temporary directories."""
 
@@ -318,14 +328,14 @@ class Tempdir(object):
   def create_directory(self, filename):
     """Create a subdirectory in the temporary directory."""
     path = os.path.join(self.path, filename)
-    os.makedirs(path)
+    _makedirs(path)
     return path
 
   def create_file(self, filename, indented_data=None):
     """Create a file in the temporary directory. Also dedents the contents."""
     filedir, filename = os.path.split(filename)
     if filedir:
-      os.makedirs(os.path.join(self.path, filedir))
+      self.create_directory(filedir)
     path = os.path.join(self.path, filedir, filename)
     with open(path, "wb") as fi:
       if indented_data:

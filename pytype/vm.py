@@ -105,28 +105,24 @@ class VirtualMachine(object):
       types.
   """
 
-  # TODO(ampere): Expand supported features in this VM.
-  #    Base-classes: This will almost certainly require changes to
-  #       VirtualMachine.make_class.
-  #    Generator: May already work. But will probably need careful support for
-  #       stored frames in the presence of the out of order execution.
-  #    Modules: Will need some sort of namespace management during execution and
-  #       storing how a value is accessed and from where.
-
-  def __init__(self, python_version, reverse_operators=False,
+  def __init__(self, python_version,
+               module_name=None,
+               reverse_operators=False,
                cache_unknowns=True,
                pythonpath=(),
-               pytd_import_ext=None,
+               pytd_import_ext=".pytd",
                import_drop_prefixes=(),
                pybuiltins_filename=None):
     """Construct a TypegraphVirtualMachine."""
     self.python_version = python_version
-    self.pythonpath = pythonpath
-    self.pytd_import_ext = pytd_import_ext
-    self.import_drop_prefixes = import_drop_prefixes
     self.pybuiltins_filename = pybuiltins_filename
     self.reverse_operators = reverse_operators
     self.cache_unknowns = cache_unknowns
+    self.loader = load_pytd.Loader(base_module=module_name,
+                                   python_version=python_version,
+                                   pythonpath=pythonpath,
+                                   pytd_import_ext=pytd_import_ext,
+                                   import_drop_prefixes=import_drop_prefixes)
     # The call stack of frames.
     self.frames = []
     # The current frame.
@@ -661,6 +657,9 @@ class VirtualMachine(object):
     elif isinstance(pyval, pytd.ClassType):
       assert pyval.cls
       return self.convert_constant_to_value(pyval.name, pyval.cls)
+    elif isinstance(pyval, pytd.ExternalType):
+      assert pyval.cls
+      return self.convert_constant_to_value(str(pyval), pyval.cls)
     elif isinstance(pyval, pytd.NothingType):
       return self.nothing
     elif isinstance(pyval, pytd.AnythingType):
@@ -682,7 +681,7 @@ class VirtualMachine(object):
       cls = self.convert_constant_to_value(pytd.Print(pyval.base_type),
                                            pyval.base_type.cls)
       return abstract.ParameterizedClass(cls, type_parameters, self)
-    elif isinstance(pyval, tuple):
+    elif pyval.__class__ is tuple:  # only match raw tuple, not namedtuple/Node
       return self.tuple_to_value(self.root_cfg_node,
                                  [self.convert_constant("tuple[%d]" % i, item)
                                   for i, item in enumerate(pyval)])
@@ -1217,15 +1216,16 @@ class VirtualMachine(object):
   # TODO(kramm): memoize
   def import_module(self, name, level):
     """Import the module and return the module object."""
-    ast = load_pytd.module_name_to_pytd(name, level,
-                                        self.python_version,
-                                        self.pythonpath,
-                                        self.pytd_import_ext,
-                                        self.import_drop_prefixes)
+    if name:
+      assert level <= 0
+      ast = self.loader.import_name(name)
+    else:
+      assert level > 0
+      ast = self.loader.import_relative(level)
     if ast:
       members = {val.name: val
                  for val in ast.constants + ast.classes + ast.functions}
-      return abstract.Module(self, name, members)
+      return abstract.Module(self, ast.name, members)
     else:
       return None
 

@@ -1299,8 +1299,9 @@ class PyTDClass(LazyAbstractValue, Class):
 
   def to_pytd_def(self, name):
     # This happens if a module does e.g. "from x import y as z", i.e., copies
-    # something from another module to the local namespace.
-    return self.pytd_cls.Replace(name=name)
+    # something from another module to the local namespace. We *could*
+    # reproduce the entire class, but we choose a more dense representation.
+    return pytd.NamedType("type")
 
 
 class InterpreterClass(SimpleAbstractValue, Class):

@@ -252,8 +252,8 @@ def Print(ast, print_format=None):
   return res
 
 
-def EmptyModule():
-  return pytd.TypeDeclUnit("<empty>", constants=(), classes=(), functions=())
+def EmptyModule(name="<empty>"):
+  return pytd.TypeDeclUnit(name, constants=(), classes=(), functions=())
 
 
 def ParsePyTD(src=None, filename=None, python_version=None, module=None):
@@ -281,6 +281,25 @@ def ParsePyTD(src=None, filename=None, python_version=None, module=None):
     ast = ast.Visit(visitors.AddNamePrefix(ast.name + "."))
   ast = visitors.LookupClasses(ast, builtins.GetBuiltinsPyTD())
   return ast
+
+
+def ParsePredefinedPyTD(pytd_subdir, module, python_version):
+  """Load and parse a *.pytd from "pytd/{pytd_subdir}/{module}.pytd".
+
+  Args:
+    pytd_subdir: the directory where the module should be found
+    module: the module name (without any file extension)
+    python_version: sys.version_info[:2]
+
+  Returns:
+    The AST of the module; None if the module doesn't exist in pytd_subdir.
+  """
+  try:
+    src = GetPredefinedFile(pytd_subdir, module)
+  except IOError:
+    return None
+  return ParsePyTD(src, filename=os.path.join(pytd_subdir, module + ".pytd"),
+                   python_version=python_version).Replace(name=module)
 
 
 class TypeBuilder(object):

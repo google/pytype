@@ -233,6 +233,28 @@ class TestVisitors(parser_test.ParserTest):
     self.assertIs(ast2.Lookup("Bar"), f1.return_type.cls)
     self.assertIs(ast1.Lookup("Foo"), f2.return_type.cls)
 
+  def testLookupExternalClassesByFullName(self):
+    src1 = textwrap.dedent("""
+      def f1() -> bar.Bar
+      class Foo:
+        pass
+    """)
+    src2 = textwrap.dedent("""
+      def f2() -> foo.Foo
+      class Bar:
+        pass
+    """)
+    ast1 = self.Parse(src1).Visit(visitors.AddNamePrefix("foo."))
+    ast2 = self.Parse(src2).Visit(visitors.AddNamePrefix("bar."))
+    ast1.Visit(visitors.LookupExternalClasses({"foo": ast1, "bar": ast2},
+                                              full_names=True))
+    ast2.Visit(visitors.LookupExternalClasses({"foo": ast1, "bar": ast2},
+                                              full_names=True))
+    f1, = ast1.Lookup("f1").signatures
+    f2, = ast2.Lookup("f2").signatures
+    self.assertIs(ast2.Lookup("bar.Bar"), f1.return_type.cls)
+    self.assertIs(ast1.Lookup("foo.Foo"), f2.return_type.cls)
+
   def testCollectDependencies(self):
     src = textwrap.dedent("""
       l: list<int or baz.BigInt>

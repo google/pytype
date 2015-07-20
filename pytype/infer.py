@@ -2,6 +2,7 @@
 
 import collections
 import logging
+import os
 import StringIO
 import subprocess
 
@@ -144,8 +145,6 @@ class CallTracer(vm.VirtualMachine):
                                        abstract.BoundInterpreterFunction)):
             node2 = self.analyze_function(value, node)
             node2.ConnectTo(node)
-          else:
-            log.warning("Ignoring toplevel identifier %s", name)
 
   def analyze(self, node, defs, ignore):
     assert not self.frame
@@ -192,11 +191,18 @@ class CallTracer(vm.VirtualMachine):
       if name in output.TOP_LEVEL_IGNORE or name in ignore:
         continue
       for value in var.FilteredData(self.exitpoint):
-        if isinstance(value, abstract.Class):
-          new_classes.append(value.to_pytd_def(name))
-        elif isinstance(value, (abstract.InterpreterFunction,
-                                abstract.BoundInterpreterFunction)):
-          new_functions.append(value.to_pytd_def(name))
+        if isinstance(value, (abstract.Class,
+                              abstract.InterpreterFunction,
+                              abstract.BoundInterpreterFunction)):
+          ast = value.to_pytd_def(name)
+          if isinstance(ast, pytd.Class):
+            new_classes.append(ast)
+          elif isinstance(ast, pytd.Function):
+            new_functions.append(ast)
+          elif isinstance(ast, pytd.TYPE):
+            new_constants.append(ast)
+          else:
+            raise ValueError("Invalid return of to_pytd_def: %s", type(ast))
         else:
           new_constants.append(value.to_type())
       if len(new_classes) >= 2:
@@ -380,10 +386,32 @@ def program_to_dot(program, ignored, only_cfg=False):
   return sb.getvalue()
 
 
+def _get_module_name(filename, pythonpath):
+  """Try to reverse-engineer the module name from the filename.
+
+  This will not always be possible. It depends on the filename starting with
+  an entry in the pythonpath. It's used for relative imports.
+
+  Args:
+    filename: The filename of a Python file. E.g. "src/foo/bar/my_module.py".
+    pythonpath: A tuple of paths.
+
+  Returns:
+    A module name, e.g. "foo.bar.my_module", or None if we can't determine the
+    module name.
+  """
+  if filename:
+    filename, _ = os.path.splitext(filename)
+    for path in pythonpath:
+      if filename.startswith(path):
+        subdir = filename[len(path):].lstrip(os.path.sep)
+        return subdir.replace(os.path.sep, ".")
+
+
 def infer_types(src, python_version, filename=None, run_builtins=True,
                 pybuiltins_filename=None,
                 pythonpath=(),
-                pytd_import_ext=None,
+                pytd_import_ext=".pytd",
                 import_drop_prefixes=(),
                 output_cfg=None, output_typegraph=None,
                 output_pseudocode=None, deep=True, solve_unknowns=True,
@@ -415,6 +443,7 @@ def infer_types(src, python_version, filename=None, run_builtins=True,
     AssertionError: In case of a bad parameter combination.
   """
   tracer = CallTracer(python_version=python_version,
+                      module_name=_get_module_name(filename, pythonpath),
                       reverse_operators=reverse_operators,
                       cache_unknowns=cache_unknowns,
                       pythonpath=pythonpath,

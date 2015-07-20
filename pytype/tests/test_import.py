@@ -39,8 +39,7 @@ class ImportTest(test_inference.InferenceTest):
       import path.to.my_module
       def foo():
         return path.to.my_module.qqsv()
-      """, deep=True, solve_unknowns=True,
-           pythonpath=[d.path], pytd_import_ext=".pytd") as ty:
+      """, deep=True, solve_unknowns=True, pythonpath=[d.path]) as ty:
         self.assertTypesMatchPytd(ty, """
           path: module
           def foo() -> str
@@ -54,8 +53,7 @@ class ImportTest(test_inference.InferenceTest):
       import nonexistant_path.to.my_module
       def foo():
         return path.to.my_module.qqsv()
-      """, deep=True, solve_unknowns=True,
-           pythonpath=[d.path], pytd_import_ext=".pytd") as ty:
+      """, deep=True, solve_unknowns=True, pythonpath=[d.path]) as ty:
         self.assertTypesMatchPytd(ty, """
           nonexistant_path: ?
           def foo() -> ?
@@ -171,7 +169,7 @@ class ImportTest(test_inference.InferenceTest):
           filename=d["main.py"],
           # Note that .pytd is the extension for pythonpath and not .py, so
           # "import" will fail to find other_file.py
-          pythonpath=[d.path], pytd_import_ext=".pytd")
+          pythonpath=[d.path])
       # TODO(kramm): Do more testing here once pludemann@ has implemented logic
       #              for actually using pythonpath. Also below.
       self.assertTypesMatchPytd(ty, """
@@ -188,7 +186,7 @@ class ImportTest(test_inference.InferenceTest):
       """)
       ty = self.InferFromFile(
           filename=d["main.py"],
-          pythonpath=[d.path], pytd_import_ext=".pytd")
+          pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         f: function
       """)
@@ -205,7 +203,7 @@ class ImportTest(test_inference.InferenceTest):
       """)
       ty = self.InferFromFile(
           filename=d["main.py"],
-          pythonpath=[d.path], pytd_import_ext=".pytd")
+          pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         f: function
         def g() -> int
@@ -228,7 +226,7 @@ class ImportTest(test_inference.InferenceTest):
       """)
       ty = self.InferFromFile(
           filename=d["main.py"],
-          pythonpath=[d.path], pytd_import_ext=".pytd")
+          pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         other_file: module
         g: function
@@ -249,7 +247,7 @@ class ImportTest(test_inference.InferenceTest):
           return f()
       """)
       ty = self.InferFromFile(filename=d["main.py"],
-                              pythonpath=[d.path], pytd_import_ext=".pytd")
+                              pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         f: function
         def g() -> int
@@ -268,10 +266,59 @@ class ImportTest(test_inference.InferenceTest):
           return f()
       """)
       ty = self.InferFromFile(filename=d["main.py"],
-                              pythonpath=[d.path], pytd_import_ext=".pytd")
+                              pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         f: function
         def g() -> foo.A
+    """)
+
+  def testDeepDependency(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pytd", "x: bar.Bar")
+      d.create_file("bar.pytd", """
+          class Bar:
+            def bar() -> int
+      """)
+      d.create_file("main.py", """
+        from foo import x
+        def f():
+          return x.bar()
+      """)
+      ty = self.InferFromFile(filename=d["main.py"],
+                              pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        x: type
+        def f() -> int
+    """)
+
+  def testRelativeImport(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo/baz.pytd", """x: int""")
+      d.create_file("foo/bar.py", """
+        from . import baz
+        def f():
+          return baz.x
+      """)
+      ty = self.InferFromFile(filename=d["foo/bar.py"],
+                              pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        baz: module
+        def f() -> int
+    """)
+
+  def testDotDot(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo/baz.pytd", """x: int""")
+      d.create_file("foo/deep/bar.py", """
+        from .. import baz
+        def f():
+          return baz.x
+      """)
+      ty = self.InferFromFile(filename=d["foo/deep/bar.py"],
+                              pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        baz: module
+        def f() -> int
     """)
 
   @unittest.skip("Broken: gives my_foo(x:object)->str")
@@ -285,7 +332,7 @@ class ImportTest(test_inference.InferenceTest):
           return path.to.some.module.foo(x)
       """, extra_verbose=True, deep=True,
                       solve_unknowns=True,
-                      pythonpath=[d.path], pytd_import_ext=".pytd") as ty:
+                      pythonpath=[d.path]) as ty:
         self.assertTypesMatchPytd(ty, """
           path: module
           def my_foo(x:int) -> str
@@ -302,7 +349,7 @@ class ImportTest(test_inference.InferenceTest):
           return module.foo(x)
       """, extra_verbose=True, deep=True,
                       solve_unknowns=True,
-                      pythonpath=[d.path], pytd_import_ext=".pytd") as ty:
+                      pythonpath=[d.path]) as ty:
         self.assertTypesMatchPytd(ty, """
           module: module
           def my_foo(x:int) -> str

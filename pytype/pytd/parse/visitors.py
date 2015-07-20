@@ -486,14 +486,17 @@ class LookupExternalClasses(Visitor):
   necessary because we introduce loops.
   """
 
-  def __init__(self, module_map):
+  def __init__(self, module_map, full_names=False):
     """Create this visitor.
 
     Args:
       module_map: A dictionary mapping module names to symbol tables.
+      full_names: If True, then the modules in the module_map use fully
+        qualified names ("collections.OrderedDict" instead of "OrderedDict")
     """
     super(LookupExternalClasses, self).__init__()
     self._module_map = module_map
+    self.full_names = full_names
 
   def VisitExternalType(self, t):
     """Try to fill in the cls pointer of an ExternalType.
@@ -507,7 +510,14 @@ class LookupExternalClasses(Visitor):
         if an identifier in a module isn't a class.
     """
     if t.cls is None:
-      item = self._module_map[t.module].Lookup(t.name)
+      module = self._module_map[t.module]
+      try:
+        if self.full_names:
+          item = module.Lookup(t.module + "." + t.name)
+        else:
+          item = module.Lookup(t.name)
+      except KeyError:
+        raise KeyError("No %s in module %s" % (t.name, t.module))
       if isinstance(item, pytd.Class):
         t.cls = item
       else:

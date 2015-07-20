@@ -232,7 +232,7 @@ class InferenceTest(unittest.TestCase):
     unit.Visit(visitors.VerifyVisitor())
     return pytd_utils.CanonicalOrdering(unit)
 
-  def InferFromFile(self, filename, pythonpath, pytd_import_ext):
+  def InferFromFile(self, filename, pythonpath, pytd_import_ext=".pytd"):
     with open(filename, "rb") as fi:
       unit = infer.infer_types(fi.read(), self.PYTHON_VERSION,
                                filename=filename, cache_unknowns=True,

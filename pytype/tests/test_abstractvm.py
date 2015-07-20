@@ -12,10 +12,8 @@ from pytype.tests import test_inference
 
 class TraceVM(vm.VirtualMachine):
 
-  def __init__(self, python_version, pythonpath=(), pytd_import_ext=None):
-    super(TraceVM, self).__init__(python_version,
-                                  pythonpath=pythonpath,
-                                  pytd_import_ext=pytd_import_ext)
+  def __init__(self, python_version):
+    super(TraceVM, self).__init__(python_version)
     # There are multiple possible orderings of the basic blocks of the code, so
     # we collect the instructions in an order-independent way:
     self.instructions_executed = set()
