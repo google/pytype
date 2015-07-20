@@ -243,7 +243,10 @@ def insert_solution(result, mapping, global_lookup):
       unknown: convert_string_type_list(types_as_strings, unknown,
                                         mapping, global_lookup)
       for unknown, types_as_strings in mapping.items()}
-  # TODO(kramm): The below takes over 11s for pytree.py
+  result = result.Visit(optimize.RenameUnknowns(subst))
+  # We remove duplicates here (even though Optimize does so again) because
+  # it's much faster before the string types are replaced.
+  result = result.Visit(optimize.RemoveDuplicates())
   return result.Visit(visitors.ReplaceTypes(subst))
 
 

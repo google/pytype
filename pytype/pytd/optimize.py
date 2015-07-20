@@ -36,6 +36,23 @@ from pytype.pytd.parse import visitors
 log = logging.getLogger(__name__)
 
 
+class RenameUnknowns(visitors.Visitor):
+  """Give unknowns that map to the same set of concrete types the same name."""
+
+  def __init__(self, mapping):
+    super(RenameUnknowns, self).__init__()
+    self.name_to_cls = {name: hash(cls) for name, cls in mapping.items()}
+    self.cls_to_canonical_name = {
+        cls: name for name, cls in self.name_to_cls.items()}
+
+  def VisitClassType(self, node):
+    if node.name.startswith("~unknown"):
+      return pytd.ClassType(
+          self.cls_to_canonical_name[self.name_to_cls[node.name]], None)
+    else:
+      return node
+
+
 class RemoveDuplicates(visitors.Visitor):
   """Remove duplicate function signatures.
 
@@ -185,14 +202,18 @@ class CombineContainers(visitors.Visitor):
     if not isinstance(union, pytd.UnionType):
       union = pytd.UnionType((union,))
     collect = {}
+    has_redundant_base_types = False
     for t in union.type_list:
       if isinstance(t, pytd.GenericType):
         if t.base_type in collect:
+          has_redundant_base_types = True
           collect[t.base_type] = tuple(
               utils.JoinTypes([p1, p2])
               for p1, p2 in zip(collect[t.base_type], t.parameters))
         else:
           collect[t.base_type] = t.parameters
+    if not has_redundant_base_types:
+      return union
     result = pytd.NothingType()
     done = set()
     for t in union.type_list:
