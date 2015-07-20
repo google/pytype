@@ -22,7 +22,7 @@ import types
 from pytype import abstract
 from pytype import blocks
 from pytype import exceptions
-from pytype import import_paths
+from pytype import load_pytd
 from pytype import state as frame_state
 from pytype import utils
 from pytype.pyc import loadmarshal
@@ -1217,11 +1217,11 @@ class VirtualMachine(object):
   # TODO(kramm): memoize
   def import_module(self, name, level):
     """Import the module and return the module object."""
-    ast = import_paths.module_name_to_pytd(name, level,
-                                           self.python_version,
-                                           self.pythonpath,
-                                           self.pytd_import_ext,
-                                           self.import_drop_prefixes)
+    ast = load_pytd.module_name_to_pytd(name, level,
+                                        self.python_version,
+                                        self.pythonpath,
+                                        self.pytd_import_ext,
+                                        self.import_drop_prefixes)
     if ast:
       members = {val.name: val
                  for val in ast.constants + ast.classes + ast.functions}
