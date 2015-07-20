@@ -321,7 +321,6 @@ class ImportTest(test_inference.InferenceTest):
         def f() -> int
     """)
 
-  @unittest.skip("Broken: gives my_foo(x:object)->str")
   def testFileImport1(self):
     with utils.Tempdir() as d:
       d.create_file("path/to/some/module.pytd",
