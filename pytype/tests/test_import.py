@@ -330,15 +330,12 @@ class ImportTest(test_inference.InferenceTest):
         import path.to.some.module
         def my_foo(x):
           return path.to.some.module.foo(x)
-      """, extra_verbose=True, deep=True,
-                      solve_unknowns=True,
-                      pythonpath=[d.path]) as ty:
+      """, deep=True, solve_unknowns=True, pythonpath=[d.path]) as ty:
         self.assertTypesMatchPytd(ty, """
           path: module
-          def my_foo(x:int) -> str
+          def my_foo(x:bool or int) -> str
         """)
 
-  @unittest.skip("Broken: gives my_foo(x:object)->str")
   def testFileImport2(self):
     with utils.Tempdir() as d:
       d.create_file("path/to/some/module.pytd",
@@ -347,13 +344,22 @@ class ImportTest(test_inference.InferenceTest):
         from path.to.some import module
         def my_foo(x):
           return module.foo(x)
-      """, extra_verbose=True, deep=True,
-                      solve_unknowns=True,
-                      pythonpath=[d.path]) as ty:
+      """, deep=True, solve_unknowns=True, pythonpath=[d.path]) as ty:
         self.assertTypesMatchPytd(ty, """
           module: module
-          def my_foo(x:int) -> str
+          def my_foo(x:bool or int) -> str
         """)
+
+  def testSolveForImported(self):
+    with self.Infer("""\
+      import StringIO
+      def my_foo(x):
+        return x.read()
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        StringIO: module
+        def my_foo(x:file or StringIO.StringIO) -> str
+      """)
 
 
 if __name__ == "__main__":

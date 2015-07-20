@@ -73,7 +73,7 @@ class ImportPathsTest(unittest.TestCase):
   def testStdlib(self):
     loader = load_pytd.Loader("base", python_version=self.PYTHON_VERSION)
     ast = loader.import_name("StringIO")
-    self.assertTrue(ast.Lookup("StringIO"))
+    self.assertTrue(ast.Lookup("StringIO.StringIO"))
 
   def testDeepDependency(self):
     with utils.Tempdir() as d:

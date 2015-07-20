@@ -134,8 +134,6 @@ class VirtualMachine(object):
     self.root_cfg_node = self.program.NewCFGNode("root")
     self.program.entrypoint = self.root_cfg_node
 
-    self.builtins_pytd = builtins.GetBuiltinsPyTD()
-
     self._convert_cache = {}
 
     # Initialize primitive_classes to empty to allow convert_constant to run
@@ -169,9 +167,9 @@ class VirtualMachine(object):
     self.function_type = self.convert_constant("function type",
                                                types.FunctionType)
 
-    self.vmbuiltins = {b.name: b for b in (self.builtins_pytd.constants +
-                                           self.builtins_pytd.classes +
-                                           self.builtins_pytd.functions)}
+    self.vmbuiltins = {b.name: b for b in (self.loader.builtins.constants +
+                                           self.loader.builtins.classes +
+                                           self.loader.builtins.functions)}
 
   def run_instruction(self, op, state):
     """Run a single bytecode instruction.
@@ -642,7 +640,7 @@ class VirtualMachine(object):
         # TODO(ampere): This will incorrectly handle any object that is named
         # the same as a builtin but is distinct. It will need to be extended to
         # support imports and the like.
-        pyclass = self.builtins_pytd.Lookup(pyval.__name__)
+        pyclass = self.loader.builtins.Lookup(pyval.__name__)
         return self.convert_constant_to_value(name, pyclass)
       except (KeyError, AttributeError):
         log.debug("Failed to find pytd", exc_info=True)
@@ -1223,7 +1221,7 @@ class VirtualMachine(object):
       assert level > 0
       ast = self.loader.import_relative(level)
     if ast:
-      members = {val.name: val
+      members = {val.name.rsplit(".")[-1]: val
                  for val in ast.constants + ast.classes + ast.functions}
       return abstract.Module(self, ast.name, members)
     else:

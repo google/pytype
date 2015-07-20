@@ -1,7 +1,7 @@
 """Generic functions."""
 
-import itertools
 import errno
+import itertools
 import os
 import re
 import shutil

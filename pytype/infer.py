@@ -251,7 +251,7 @@ class CallTracer(vm.VirtualMachine):
                           tuple(self.pytd_classes_for_unknowns()),
                           tuple(self.pytd_functions_for_call_traces())))
     ty = ty.Visit(optimize.PullInMethodClasses())
-    ty = ty.Visit(visitors.DefaceUnresolved([ty, self.builtins_pytd]))
+    ty = ty.Visit(visitors.DefaceUnresolved([ty, self.loader.concat_all()]))
     return ty
 
 
@@ -460,7 +460,7 @@ def infer_types(src, python_version, filename=None, run_builtins=True,
   ast = tracer.compute_types(defs, builtin_names)
   if solve_unknowns:
     log.info("=========== PyTD to solve =============\n%s", pytd.Print(ast))
-    ast = convert_structural.convert_pytd(ast, tracer.builtins_pytd)
+    ast = convert_structural.convert_pytd(ast, tracer.loader.concat_all())
   if output_cfg or output_typegraph:
     if output_cfg and output_typegraph:
       raise AssertionError("Can output CFG or typegraph, but not both")

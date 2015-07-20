@@ -73,11 +73,12 @@ def MakeClassOrContainerType(base_type, type_arguments):
     return pytd.GenericType(base_type, tuple(type_arguments))
 
 
-def Concat(*args):
+def Concat(*args, **kwargs):
   """Concatenate two or more pytd ASTs."""
   assert all(isinstance(arg, pytd.TypeDeclUnit) for arg in args)
+  name = kwargs.get("name")
   return pytd.TypeDeclUnit(
-      name=" + ".join(arg.name for arg in args),
+      name=name or " + ".join(arg.name for arg in args),
       constants=sum((arg.constants for arg in args), ()),
       classes=sum((arg.classes for arg in args), ()),
       functions=sum((arg.functions for arg in args), ()))
@@ -299,6 +300,7 @@ def ParsePredefinedPyTD(pytd_subdir, module, python_version):
   except IOError:
     return None
   return ParsePyTD(src, filename=os.path.join(pytd_subdir, module + ".pytd"),
+                   module=module,
                    python_version=python_version).Replace(name=module)
 
 

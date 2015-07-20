@@ -68,7 +68,7 @@ class SolverTests(test_inference.InferenceTest):
         StringIO: module
 
         class Foobar(object):
-          def foobar(self, out: file) -> NoneType
+          def foobar(self, out: file or StringIO.StringIO) -> NoneType
 
         class Barbaz(object):
           def barbaz(self) -> NoneType

@@ -3,8 +3,10 @@
 import logging
 import os
 
+
 from pytype import utils
 from pytype.pytd import utils as pytd_utils
+from pytype.pytd.parse import builtins
 from pytype.pytd.parse import visitors
 
 
@@ -43,6 +45,8 @@ class Loader(object):
   import_drop_prefixes: list of prefixes to drop when resolving
     module name to file name.
   _modules: A map, filename to Module, for caching modules already loaded.
+  _concatenated: A concatenated pytd of all the modules. Refreshed when
+    necessary.
   """
 
   def __init__(self, base_module, python_version, pythonpath=(),
@@ -53,7 +57,9 @@ class Loader(object):
     self.pythonpath = pythonpath
     self.pytd_import_ext = pytd_import_ext
     self.import_drop_prefixes = import_drop_prefixes
-    self._modules = {}  # filename to Module
+    self.builtins = builtins.GetBuiltinsPyTD()
+    self._modules = {"__builtin__": Module("__builtin__", None, self.builtins)}
+    self._concatenated = None
 
   def _resolve_all(self):
     module_map = {name: module.ast
@@ -70,6 +76,7 @@ class Loader(object):
 
   def _load_file(self, module_name, filename, ast=None):
     """Load (or retrieve from cache) a module and resolve its dependencies."""
+    self._concatenated = None  # invalidate
     existing = self._modules.get(module_name)
     if existing:
       if existing.filename != filename:
@@ -166,3 +173,11 @@ class Loader(object):
     if mod:
       return self._load_file(filename="stdlib:"+module_name,
                              module_name=module_name, ast=mod)
+
+  def concat_all(self):
+    if not self._concatenated:
+      self._concatenated = pytd_utils.Concat(
+          *(module.ast for module in self._modules.values()),
+          name="<all>")
+    return self._concatenated
+
