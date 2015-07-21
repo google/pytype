@@ -1,4 +1,34 @@
+# This module tries to combine `os` and `posix`.  Unfortunately, some items are
+# only in `os`.  See the code in /usr/lib/python2.7/os.py for how __all__ is
+# set, for items that are only in `os`.
+
+environ: dict<str, str>
+# TODO(pludemann): add open() flag constants
+F_OK: int
+R_OK: int
+W_OK: int
+X_OK: int
+TMP_MAX: int
+EX_OK:  int  # TODO(pludemann): add other os.EX_* values
+# TODO(pludemann): add os.P_NOWAIT etc
+
+# TODO(pludemann): Split out the following to `os` only:
+altsep: str
+curdir: str
+defpath: str
+devnull: str
+extsep: str
+linesep: str
+name: str
+pardir: str
 path: ?  # TODO(kramm): add submodule
+# TODO(pludemann): create os/path.pytd
+pathsep: str
+sep: str
+SEEK_SET: int
+SEEK_DUR: int
+SEEK_END: int
+# TODO(pludemann): end of only in `os`
 
 def WCOREDUMP(...) -> bool
 def WEXITSTATUS(...) -> int
