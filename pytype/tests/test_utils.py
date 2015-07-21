@@ -13,6 +13,23 @@ import unittest
 # pylint: disable=invalid-name
 
 
+class DummyValue(object):
+  """A class with a 'parameters' function, for testing cartesian products."""
+
+  def __init__(self, index):
+    self.index = index
+    self._parameters = []
+
+  def set_parameters(self, parameters):
+    self._parameters = parameters
+
+  def parameters(self):
+    return self._parameters
+
+  def __repr__(self):
+    return "x%d" % self.index
+
+
 class TypegraphUtilsTest(unittest.TestCase):
 
   def setUp(self):
@@ -30,6 +47,22 @@ class TypegraphUtilsTest(unittest.TestCase):
         [1, 4],
         [2, 3],
         [2, 4],
+    ])
+
+  def testDeepVariableProduct(self):
+    x1, x2, x3, x4, x5, x6 = [DummyValue(i + 1) for i in range(6)]
+    v1 = self.prog.NewVariable("v1", [x1, x2], [], self.current_location)
+    v2 = self.prog.NewVariable("v2", [x3], [], self.current_location)
+    v3 = self.prog.NewVariable("v3", [x4, x5], [], self.current_location)
+    v4 = self.prog.NewVariable("v4", [x6], [], self.current_location)
+    x1.set_parameters([v2, v3])
+    product = utils.deep_variable_product([v1, v4])
+    rows = [{a.data for a in row}
+            for row in product]
+    self.assertItemsEqual(rows, [
+        {x1, x3, x4, x6},
+        {x1, x3, x5, x6},
+        {x2, x6},
     ])
 
   def testVariableProductDict(self):

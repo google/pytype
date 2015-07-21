@@ -46,6 +46,39 @@ def _variable_product_items(variableitems):
     yield []
 
 
+def deep_variable_product(variables):
+  """Take the deep Cartesian product of a list of Variables.
+
+  For example:
+    x1.children = {v2, v3}
+    v1 = {x1, x2}
+    v2 = {x3}
+    v3 = {x4, x5}
+    v4 = {x6}
+  then
+    deep_variable_product([v1, v4]) will return:
+      [[x1, x3, x4, x6],
+       [x1, x3, x5, x6],
+       [x2, x6]]
+  .
+  Args:
+    variables: A sequence of Variables.
+
+  Returns:
+    A list of lists of Values, where each sublist has one Value from each
+    of the corresponding Variables and the Variables of their Values' children.
+  """
+  result = []
+  for row in itertools.product(*(v.values for v in variables)):
+    extra_params = sum([entry.data.parameters() or [] for entry in row], [])
+    if extra_params:
+      for new_row in deep_variable_product(extra_params):
+        result.append(row + new_row)
+    else:
+      result.append(row)
+  return result
+
+
 def variable_product_dict(variabledict):
   """Take the Cartesian product of variables in the values of a dict.
 
