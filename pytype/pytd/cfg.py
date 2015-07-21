@@ -470,29 +470,48 @@ class State(object):
     self.goals.remove(goal)
     self.goals.update(replace_with)
 
+  def _AddSources(self, goal, seen_goals, new_goals):
+    """If the goal is trivially fulfilled, add its sources as new goals.
+
+    Args:
+      goal: The goal.
+      seen_goals: The set of previously seen goals, which will be augmented
+        with goal. The caller is responsible for checking whether goal is
+        already present.
+      new_goals: The set of new goals, to which goal's sources are added iff
+        this method returns True.
+
+    Returns:
+      True if the goal is trivially fulfilled and False otherwise.
+    """
+    seen_goals.add(goal)
+    origin = goal.FindOrigin(self.pos)
+    # For source sets > 2, we don't know which sources to use, so we have
+    # to let the solver iterate over them later.
+    if origin and len(origin.source_sets) <= 1:
+      source_set, = origin.source_sets  # we always have at least one.
+      new_goals.update(source_set)
+      return True
+    return False
+
   def RemoveFinishedGoals(self):
     """Remove all goals that are trivially fulfilled at the current CFG node."""
     seen_goals = set()
+    new_goals = set()
+    for goal in self.goals.copy():
+      if self._AddSources(goal, seen_goals, new_goals):
+        self.goals.remove(goal)
     # We might remove multiple layers of nested goals, so loop until we don't
-    # find anything to replace anymore.
-    changed = True
-    while changed:
-      changed = False
-      for goal in self.goals:
-        if goal in seen_goals:
-          # Only process a given goal once, to prevent infinite loops for cyclic
-          # data structures.
-          continue
-        seen_goals.add(goal)
-        origin = goal.FindOrigin(self.pos)
-        # For source sets > 2, we don't know which sources to use, so we have
-        # to let the solver iterate over them later.
-        if origin and len(origin.source_sets) <= 1:
-          source_set, = origin.source_sets  # we always have at least one.
-          self.goals.remove(goal)
-          self.goals.update(source_set)
-          changed = True
-          break
+    # find anything to replace anymore. Storing new goals in a separate set is
+    # faster than adding and removing them from self.goals.
+    while new_goals:
+      goal = new_goals.pop()
+      if goal in seen_goals:
+        # Only process a given goal once, to prevent infinite loops for cyclic
+        # data structures.
+        continue
+      if not self._AddSources(goal, seen_goals, new_goals):
+        self.goals.add(goal)
 
   def __hash__(self):
     """Compute hash for this State. We use States as keys when memoizing."""
