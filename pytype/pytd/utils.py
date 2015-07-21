@@ -328,3 +328,13 @@ def NamedOrExternalType(name, module=None):
     return pytd.NamedType(name)
   else:
     return pytd.ExternalType(name, module)
+
+
+class OrderedSet(collections.OrderedDict):
+  """A simple ordered set."""
+
+  def __init__(self, iterable=None):
+    super(OrderedSet, self).__init__((item, None) for item in (iterable or []))
+
+  def add(self, item):
+    self[item] = None

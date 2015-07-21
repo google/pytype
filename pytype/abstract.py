@@ -1905,12 +1905,13 @@ class Unknown(AtomicAbstractValue):
     """Convert this Unknown to a pytd.Class."""
     if not self._pytd_class:
       self_param = (pytd.Parameter("self", pytd.NamedType("object")),)
-      calls = tuple(pytd.Signature(params=self_param + self._make_params(args),
-                                   return_type=Unknown._to_pytd(ret),
-                                   exceptions=(),
-                                   template=(),
-                                   has_optional=False)
-                    for args, _, ret in self._calls)
+      calls = tuple(pytd_utils.OrderedSet(
+          pytd.Signature(params=self_param + self._make_params(args),
+                         return_type=Unknown._to_pytd(ret),
+                         exceptions=(),
+                         template=(),
+                         has_optional=False)
+          for args, _, ret in self._calls))
       if calls:
         methods = (pytd.Function("__call__", calls),)
       else:

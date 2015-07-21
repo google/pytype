@@ -248,6 +248,12 @@ class TestUtils(parser_test.ParserTest):
     ast = utils.ParsePredefinedPyTD("builtins", "sys", python_version=(2, 7, 6))
     self.assertIsNotNone(ast.Lookup("stderr"))
 
+  def testOrderedSet(self):
+    ordered_set = utils.OrderedSet(n/2 for n in range(10))
+    ordered_set.add(-42)
+    ordered_set.add(3)
+    self.assertEquals(tuple(ordered_set), (0, 1, 2, 3, 4, -42))
+
 
 if __name__ == "__main__":
   unittest.main()

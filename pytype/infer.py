@@ -222,7 +222,7 @@ class CallTracer(vm.VirtualMachine):
         "inferred", tuple(constants), tuple(classes), tuple(functions))
 
   def pytd_functions_for_call_traces(self):
-    funcs = collections.defaultdict(list)
+    funcs = collections.defaultdict(pytd_utils.OrderedSet)
     for funcvar, args, kws, retvar in self._calls:
       func = funcvar.data.signatures[0]
       if isinstance(func, abstract.BoundFunction):
@@ -232,7 +232,7 @@ class CallTracer(vm.VirtualMachine):
       arg_types = (a.data.to_type()
                    for a in func.get_bound_arguments() + list(args))
       ret = pytd_utils.JoinTypes(t.to_type() for t in retvar.data)
-      funcs[funcvar.data.name].append(pytd.Signature(
+      funcs[funcvar.data.name].add(pytd.Signature(
           tuple(pytd.Parameter(n, t)
                 for n, t in zip(arg_names, arg_types)) +
           tuple(pytd.Parameter(name, a.data.to_type())

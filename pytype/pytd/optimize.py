@@ -67,8 +67,7 @@ class RemoveDuplicates(visitors.Visitor):
 
   def VisitFunction(self, node):
     # We remove duplicates, but keep existing entries in the same order.
-    ordered_set = collections.OrderedDict(zip(node.signatures, node.signatures))
-    return node.Replace(signatures=tuple(ordered_set))
+    return node.Replace(signatures=tuple(utils.OrderedSet(node.signatures)))
 
 
 class SimplifyUnions(visitors.Visitor):
