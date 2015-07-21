@@ -72,7 +72,7 @@ class CFGTest(unittest.TestCase):
     u.name = "bar"
     self.assertEquals(u.name, "bar")
 
-  def _Freeze(self, program, entrypoint=None):
+  def _Freeze(self, program, entrypoint):
     program.entrypoint = entrypoint
     program.Freeze()
 
@@ -85,7 +85,7 @@ class CFGTest(unittest.TestCase):
     d.AddValue("v2", source_set=[], where=node2)
     self.assertEquals(len(d.values), 2)
 
-  def testFilter(self):
+  def testFilter1(self):
     #                    x.ab = A()
     #               ,---+------------.
     #               |   n3           |
@@ -109,7 +109,7 @@ class CFGTest(unittest.TestCase):
     a = ab.AddValue("A", source_set=[], where=n3)
     b = ab.AddValue("B", source_set=[], where=n4)
 
-    self._Freeze(p)
+    self._Freeze(p, entrypoint=n1)
     self.assertFalse(a.IsVisible(n1) or b.IsVisible(n1))
     self.assertFalse(a.IsVisible(n2) or b.IsVisible(n2))
     self.assertTrue(a.IsVisible(n3))
@@ -140,7 +140,7 @@ class CFGTest(unittest.TestCase):
     ya = y.AddValue("a", source_set=[], where=n2)
     xb = x.AddValue("b", source_set=[], where=n3)
     yb = y.AddValue("b", source_set=[], where=n3)
-    self._Freeze(p)
+    self._Freeze(p, entrypoint=n1)
     self.assertTrue(n4.HasCombination([xa, ya]))
     self.assertTrue(n4.HasCombination([xb, yb]))
     self.assertFalse(n4.HasCombination([xa, yb]))
@@ -152,7 +152,7 @@ class CFGTest(unittest.TestCase):
     x = p.NewVariable("x")
     a = x.AddValue("a", source_set=[], where=n1)
     b = x.AddValue("b", source_set=[], where=n1)
-    self._Freeze(p)
+    self._Freeze(p, entrypoint=n1)
     # At n1, x can either be a or b, but not both.
     self.assertTrue(n1.HasCombination([a]))
     self.assertTrue(n1.HasCombination([b]))
@@ -176,7 +176,7 @@ class CFGTest(unittest.TestCase):
     yb = y.AddValue("yb", source_set=[b], where=n2)
     za = z.AddValue("za", source_set=[a], where=n2)
     zb = z.AddValue("zb", source_set=[b], where=n2)
-    self._Freeze(p)
+    self._Freeze(p, entrypoint=n1)
     self.assertTrue(n2.HasCombination([ya, za]))
     self.assertTrue(n2.HasCombination([yb, zb]))
     self.assertFalse(n2.HasCombination([ya, zb]))
@@ -192,7 +192,7 @@ class CFGTest(unittest.TestCase):
     xb = x.AddValue("xb", source_set=[], where=n1)
     ya = y.AddValue("ya", source_set=[xa], where=n1)
     yb = y.AddValue("yb", source_set=[xb], where=n1)
-    self._Freeze(p)
+    self._Freeze(p, entrypoint=n1)
     self.assertTrue(n1.HasCombination([xa]))
     self.assertTrue(n1.HasCombination([xb]))
     self.assertTrue(n1.HasCombination([xa, ya]))
@@ -246,20 +246,14 @@ class CFGTest(unittest.TestCase):
     self.assertSameElements([a11, a21], n1.values)
     self.assertSameElements([a12, a22], n2.values)
 
-  def testEntryPoint(self):
+  def testDisconnected(self):
     p = cfg.Program()
     n1 = p.NewCFGNode("n1")
     n2 = p.NewCFGNode("n2")
-    x = p.NewVariable("x")
-    a = x.AddValue("a", source_set=[], where=n2)
-    self._Freeze(p)
-    self.assertTrue(n2.HasCombination([a]))
-    self._Freeze(p, entrypoint=n2)
-    self.assertTrue(n2.HasCombination([a]))
-    self._Freeze(p, entrypoint=n1)
-    self.assertFalse(n2.HasCombination([a]))
+    self.assertRaises(AssertionError, self._Freeze, p, entrypoint=n1)
+    self.assertRaises(AssertionError, self._Freeze, p, entrypoint=n2)
 
-  def testEntryPoint2(self):
+  def testEntryPoint(self):
     p = cfg.Program()
     n1 = p.NewCFGNode("n1")
     n2 = n1.ConnectNew("n2")
@@ -269,26 +263,16 @@ class CFGTest(unittest.TestCase):
     self._Freeze(p, entrypoint=n1)
     self.assertTrue(n2.HasCombination([a]))
 
-  def testFilterWithEntryPoint(self):
+  def testFilter2(self):
     p = cfg.Program()
     n1 = p.NewCFGNode("n1")
     n2 = p.NewCFGNode("n2")
+    n1.ConnectTo(n2)
     x = p.NewVariable("x")
     a = x.AddValue("a", source_set=[], where=n2)
-    self._Freeze(p)
+    self._Freeze(p, entrypoint=n1)
     self.assertEquals(x.Filter(n1), [])
     self.assertEquals(x.Filter(n2), [a])
-    self._Freeze(p, entrypoint=n1)
-    self.assertEquals(x.Filter(n1), [])
-    self.assertEquals(x.Filter(n2), [])
-    # This is atypical: We wouldn't normally change the entrypoint of a program
-    # after we've set it. But these are tests.
-    self._Freeze(p, entrypoint=None)
-    self.assertEquals(x.FilteredData(n1), [])
-    self.assertEquals(x.FilteredData(n2), ["a"])
-    self._Freeze(p, entrypoint=n1)
-    self.assertEquals(x.FilteredData(n1), [])
-    self.assertEquals(x.FilteredData(n2), [])
 
   def testEmptyValue(self):
     p = cfg.Program()
@@ -296,15 +280,15 @@ class CFGTest(unittest.TestCase):
     n2 = n1.ConnectNew()
     x = p.NewVariable("x")
     a = x.AddValue("a")
-    self._Freeze(p)
+    self._Freeze(p, entrypoint=n1)
     self.assertEquals(x.Filter(n1), [])
     self.assertEquals(x.Filter(n2), [])
     a.AddOrigin(n2, [])
-    self._Freeze(p)
+    self._Freeze(p, entrypoint=n1)
     self.assertEquals(x.Filter(n1), [])
     self.assertEquals(x.Filter(n2), [a])
     a.AddOrigin(n1, [a])
-    self._Freeze(p)
+    self._Freeze(p, entrypoint=n1)
     self.assertEquals(x.Filter(n1), [a])
     self.assertEquals(x.Filter(n2), [a])
 
@@ -321,7 +305,7 @@ class CFGTest(unittest.TestCase):
     az, = z.values
     self.assertEquals([v.data for v in y.values], ["a"])
     self.assertEquals([v.data for v in z.values], ["a"])
-    self._Freeze(p)
+    self._Freeze(p, entrypoint=n1)
     self.assertTrue(n1.HasCombination([ax]))
     self.assertTrue(n2.HasCombination([ax, ay]))
     self.assertTrue(n3.HasCombination([ax, ay, az]))
@@ -340,7 +324,7 @@ class CFGTest(unittest.TestCase):
     ay, by = y.values
     self.assertEquals([v.data for v in x.values], ["a", "b"])
     self.assertEquals([v.data for v in y.values], ["a", "b"])
-    self._Freeze(p)
+    self._Freeze(p, entrypoint=n1)
     self.assertTrue(n1.HasCombination([ax]))
     self.assertTrue(n1.HasCombination([bx]))
     self.assertFalse(n1.HasCombination([ay]))
@@ -383,7 +367,8 @@ class CFGTest(unittest.TestCase):
 
   def testProgramFreeze(self):
     p = cfg.Program()
-    p.Freeze()
+    n = p.NewCFGNode("n")
+    self._Freeze(p, entrypoint=n)
     self.assertRaises(AssertionError, p.NewCFGNode)
     self.assertRaises(AssertionError, p.NewCFGNode, "named")
     self.assertRaises(AssertionError, p.NewCFGNode, name="named")

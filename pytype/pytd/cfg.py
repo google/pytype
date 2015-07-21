@@ -12,6 +12,7 @@ from pytype.pytd import utils
 
 
 _solved_find_queries = {}
+_supernode_reachable = {}
 
 
 class Program(object):
@@ -73,8 +74,51 @@ class Program(object):
     return variable
 
   def Freeze(self):
+    """'Freeze' the program in preparation for solving.
+
+    At this point, the graph must have an entrypoint and every node must be
+    reachable (going forwards) from it, in order for _CompressGraph to work.
+    We disable NewCFGNode to prevent the addition of more nodes, but existing
+    nodes also should not be changed.
+    """
+    assert self.entrypoint
+    self._CompressGraph()
     self.solver = Solver(self)
     self.NewCFGNode = utils.disabled_function  # pylint: disable=invalid-name
+
+  def _CompressGraph(self):
+    """Compress the graph for faster traversal.
+
+    This partitions the graph into lists of nodes called "supernodes," turning,
+    for instance,
+      n0 -> n1 -> n2 -> n3 -> n4
+            |                  |
+            -> n5 -> n6 -> n7 <-
+    into
+      [n0] -> [n1] -> [n2, n3, n4]-
+               |                  |
+               -> [n5, n6, n7] <---
+    (It is also possible for n7 to be in the [n2, n3, n4] supernode.)  Every
+    node stores a pointer to and its position in its supernode.
+    """
+    seen = set()
+    stack = [self.entrypoint]
+    while stack:
+      node = stack.pop()
+      if node in seen:
+        continue
+      seen.add(node)
+      if len(node.incoming) == 1:
+        node_in, = node.incoming
+        if node_in.supernode and len(node_in.outgoing) == 1:
+          node.supernode = node_in.supernode
+          node.supernode.append(node)
+          node.position = node_in.position + 1
+      if not node.supernode:
+        node.supernode = [node]
+        node.position = 0
+      stack.extend(node.outgoing)
+    assert len(seen) == len(self.cfg_nodes)
 
 
 class CFGNode(object):
@@ -93,9 +137,12 @@ class CFGNode(object):
     values: Values that are being assigned to Variables at this CFGNode.
     reachable_subset: A subset of the nodes reachable (going backwards) from
       this one.
+    supernode: A list of nodes comprising a "supernode" to which this one
+      belongs. See Program._CompressGraph.
+    position: This node's position in the supernode.
   """
   __slots__ = ("program", "id", "name", "incoming", "outgoing", "values",
-               "reachable_subset")
+               "reachable_subset", "supernode", "position")
 
   def __init__(self, program, name, cfgnode_id):
     """Initialize a new CFG node. Called from Program.NewCFGNode."""
@@ -106,6 +153,8 @@ class CFGNode(object):
     self.outgoing = set()
     self.values = set()  # filled through RegisterValue()
     self.reachable_subset = {self}
+    self.supernode = None
+    self.position = None
 
   def ConnectNew(self, name=None):
     """Add a new node connected to this node."""
@@ -524,37 +573,75 @@ class State(object):
     return not self == other
 
 
-def _FindNodeBackwards(start, finish, seen):
+def _FindNodeBackwards(start, finish, blocked):
   """Determine whether we can reach a CFG node, going backwards.
 
   Traverse the CFG from a starting point to find a given node, but avoid any
-  nodes marked as "seen" (either because we have actually already seen them, or
-  because they were disabled beforehand).
+  nodes marked as "blocked".
 
   Arguments:
     start: Start node.
     finish: Node we're looking for.
-    seen: A set of nodes we've already seen. This set is modified.
+    blocked: A set of blocked nodes. We do not consider start or finish to be
+      blocked even if they apppear in this set.
 
   Returns:
     True if we can find this node, False otherwise.
   """
-  query = (start, finish, frozenset(seen))
+  query = (start, finish, blocked)
   if query in _solved_find_queries:
     return _solved_find_queries[query]
-  found = False
-  stack = [start]
-  while stack:
-    node = stack.pop()
-    if node is finish:
+  if start.supernode is finish.supernode and start.position >= finish.position:
+    # There is exactly one path from start to finish. Check whether any node in
+    # it is blocked.
+    if blocked.intersection(start.supernode[finish.position+1:start.position]):
+      found = False
+    else:
       found = True
-      break
+  elif blocked.intersection(
+      start.supernode[:start.position] + finish.supernode[finish.position+1:]):
+    # A node that must be passed through to get from start to finish is blocked.
+    found = False
+  else:
+    found = _FindSupernodeBackwards(start.supernode[0], finish.supernode[0],
+                                    frozenset(node.supernode[0]
+                                              for node in blocked))
+  _solved_find_queries[query] = found
+  return found
+
+
+def _FindSupernodeBackwards(start, finish, blocked_supernodes):
+  """Determine whether we can reach a supernode, going backwards.
+
+  Arguments:
+    start: The first node in the supernode we're starting from.
+    finish: The first node in the supernode we're looking for.
+    blocked_supernodes: A set of the first node in every blocked supernode.
+
+  Returns:
+    True if we can find finish from any of start's *incoming nodes*, False
+    otherwise. This means that if start and finish are in the same supernode,
+    we must find a path from the supernode back to itself.
+  """
+  query = (start, blocked_supernodes)
+  if query in _supernode_reachable:
+    return finish in _supernode_reachable[query]
+  stack = list(start.incoming)
+  seen = set()
+  while stack:
+    node = stack.pop().supernode[0]
+    if node is finish:
+      return True
     if node in seen:
       continue
     seen.add(node)
+    if node in blocked_supernodes:
+      continue
     stack.extend(node.incoming)
-  _solved_find_queries[query] = found
-  return found
+  # If we haven't found finish, then the seen set contains all of the nodes
+  # reachable from start.
+  _supernode_reachable[query] = seen
+  return False
 
 
 class Solver(object):
@@ -617,27 +704,17 @@ class Solver(object):
     # variables is overwritten by an assignment at our current pos, we assume
     # that assignment can still see the previous values.
     blocked.discard(state.pos)
+    blocked = frozenset(blocked)
     # Find the goal cfg node that was assigned last.  Due to the fact that we
     # treat CFGs as DAGs, there's typically one unique cfg node with this
     # property.
     for goal in state.goals:
       # "goal" is the assignment we're trying to find.
       for origin in goal.origins:
-        # Copy the set, to re-use it for remembering which nodes we visited
-        # so far. This is expensive, but typically not as expensive as
-        # rerunning NodesWithAssignments.
-        seen = blocked.copy()
-        if _FindNodeBackwards(state.pos, origin.where, seen):
+        if _FindNodeBackwards(state.pos, origin.where, blocked):
           # This loop over multiple different combinations of origins is why
           # we need memoization of states.
           for source_set in origin.source_sets:
-            if not source_set and self.program.entrypoint:
-              # If we reached a value without further dependencies, check
-              # whether the corresponding cfg node is reachable from the entry
-              # point of the program.
-              if not _FindNodeBackwards(
-                  origin.where, self.program.entrypoint, set()):
-                continue
             new_state = State(origin.where, state.goals)
             new_state.Replace(goal, source_set)
             # Also remove all goals that are trivially fulfilled at the

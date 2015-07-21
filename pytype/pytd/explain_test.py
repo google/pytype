@@ -9,20 +9,18 @@ class ExplainTest(unittest.TestCase):
   """Test explanations."""
 
   def setUp(self):
-    # n1------->n2       n5
+    # n1------->n2
     #  |        |
     #  v        v
-    # n3------->n4------>n6
+    # n3------->n4
     # [n2] x = a; y = a
     # [n3] x = b; y = b
     # [n4] z = x & y
-    # [n6] w = x & y & z
     self.p = typegraph.Program()
     self.n1 = self.p.NewCFGNode("n1")
     self.n2 = self.n1.ConnectNew("n2")
     self.n3 = self.n1.ConnectNew("n3")
     self.n4 = self.n2.ConnectNew("n4")
-    self.n5 = self.p.NewCFGNode("n5")
     self.n3.ConnectTo(self.n4)
     self.x = self.p.NewVariable("x")
     self.y = self.p.NewVariable("y")
@@ -37,6 +35,7 @@ class ExplainTest(unittest.TestCase):
     self.zab = self.z.AddValue("a&b")
     self.zab.AddOrigin(source_set=[self.xa, self.yb], where=self.n4)
     self.zab.AddOrigin(source_set=[self.xb, self.ya], where=self.n4)
+    self.p.entrypoint = self.n1
     self.p.Freeze()
 
   def testValid(self):
@@ -45,12 +44,6 @@ class ExplainTest(unittest.TestCase):
   def testBadApple(self):
     # x = 'a' spoils y = 'b'
     self.assertFalse(explain.Explain([self.xa, self.yb], self.n4))
-
-  def testUnreachable(self):
-    self.assertFalse(explain.Explain([self.xa], self.n5))
-
-  def testSimplify(self):
-    self.assertFalse(explain.Explain([self.xa, self.ya], self.n5))
 
   def testConflicting(self):
     self.assertFalse(explain.Explain([self.xa, self.xb], self.n4))
@@ -70,6 +63,7 @@ class ExplainTest(unittest.TestCase):
     y0 = y.AddValue(0, [x0], n1)
     y1 = y.AddValue(1, [x1], n1)
     y2 = y.AddValue(2, [x2], n1)
+    p.entrypoint = n0
     p.Freeze()
     self.assertTrue(explain.Explain([x0], n0))
     self.assertTrue(explain.Explain([x1], n0))
