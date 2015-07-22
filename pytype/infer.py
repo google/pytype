@@ -153,18 +153,31 @@ class CallTracer(vm.VirtualMachine):
     functions = []
     classes = []
     for name, var in defs.items():
-      const_types = []
+      new_classes = []
+      new_functions = []
+      new_constants = []
       if name in output.TOP_LEVEL_IGNORE or name in ignore:
         continue
       for value in var.FilteredData(self.exitpoint):
         if isinstance(value, abstract.Class):
-          classes.append(value.to_pytd_def(name))
+          new_classes.append(value.to_pytd_def(name))
         elif isinstance(value, abstract.Function):
-          functions.append(value.to_pytd_def(name))
+          new_functions.append(value.to_pytd_def(name))
         else:
-          const_types.append(value.to_type())
-      if const_types:
-        constants.append(pytd.Constant(name, pytd_utils.JoinTypes(const_types)))
+          new_constants.append(value.to_type())
+      if len(new_classes) >= 2:
+        log.warning("Ambiguious top level class %r", name)
+        new_constants.append(pytd.NamedType("type"))
+      else:
+        classes.extend(new_classes)
+      if len(new_functions) >= 2:
+        log.warning("Ambiguious top level function %r", name)
+        new_constants.append(pytd.NamedType("function"))
+      else:
+        functions.extend(new_functions)
+      if new_constants:
+        constants.append(
+            pytd.Constant(name, pytd_utils.JoinTypes(new_constants)))
     return pytd.TypeDeclUnit(
         "inferred", tuple(constants), tuple(classes), tuple(functions), ())
 

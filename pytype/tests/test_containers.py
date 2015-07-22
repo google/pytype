@@ -346,5 +346,17 @@ class ContainerTest(test_inference.InferenceTest):
                                    ((),
                                     self.int_int_dict))
 
+  def testLeakingType(self):
+    with self.Infer("""
+      import sys
+      a = [str(ty) for ty in (int, bool)[:len(sys.argv)]]
+    """, deep=True, solve_unknowns=False, extract_locals=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        sys: module
+        a: list<str>
+        ty: type
+      """)
+
+
 if __name__ == "__main__":
   test_inference.main()

@@ -334,7 +334,7 @@ class TestGenerators(test_inference.InferenceTest):
       e()
     """, deep=True, solve_unknowns=True) as ty:
       self.assertHasReturnType(ty.Lookup("e"), self.anything)
-      self.assertHasReturnType(ty.Lookup("f"), self.anything)
+      self.assertTrue(ty.Lookup("f"))
 
 
 if __name__ == "__main__":
