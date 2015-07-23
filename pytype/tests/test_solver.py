@@ -1,5 +1,8 @@
 """Test cases that need solve_unknowns."""
 
+import unittest
+
+
 from pytype.tests import test_inference
 
 
@@ -127,6 +130,17 @@ class SolverTests(test_inference.InferenceTest):
       class Foo(object):
         def f(self) -> ?
       """)
+
+  @unittest.skip("Broken: solver can't match isinstance() with tuple<nothing>")
+  def testEmptyTupleAsArg(self):
+    with self.Infer("""
+      def f():
+        return isinstance(1, ())
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        def f(x) -> bool
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()

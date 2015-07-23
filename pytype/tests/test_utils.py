@@ -65,6 +65,16 @@ class TypegraphUtilsTest(unittest.TestCase):
         {x2, x6},
     ])
 
+  def testDeepVariableProductWithEmptyVariables(self):
+    x1 = DummyValue(1)
+    v1 = self.prog.NewVariable("v1", [x1], [], self.current_location)
+    v2 = self.prog.NewVariable("v2", [], [], self.current_location)
+    x1.set_parameters([v2])
+    product = utils.deep_variable_product([v1])
+    rows = [{a.data for a in row}
+            for row in product]
+    self.assertItemsEqual(rows, [{x1}])
+
   def testVariableProductDict(self):
     u1 = self.prog.NewVariable("u1", [1, 2], [], self.current_location)
     u2 = self.prog.NewVariable("u2", [3, 4], [], self.current_location)

@@ -399,6 +399,15 @@ class ContainerTest(test_inference.InferenceTest):
         def f(x) -> bool or complex
       """)
 
+  def testEmptyTypeParamAsArg(self):
+    with self.Infer("""
+      def f():
+        return u"".join(map(unicode, ()))
+    """, deep=True, solve_unknowns=False, extract_locals=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        def f() -> unicode
+      """)
+
   def testAccessEmptyDictInIf(self):
     with self.Infer("""
       class Foo(object):

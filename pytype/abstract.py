@@ -9,6 +9,7 @@ combined using typegraph and that is what we compute over.
 # pylint: disable=abstract-method
 
 import collections
+import itertools
 import logging
 
 
@@ -22,6 +23,7 @@ from pytype.pytd import utils as pytd_utils
 from pytype.pytd.parse import visitors
 
 log = logging.getLogger(__name__)
+chain = itertools.chain  # pylint: disable=invalid-name
 
 
 def variable_set_official_name(variable, name):
@@ -39,7 +41,7 @@ def variable_set_official_name(variable, name):
 
 # TODO(kramm): This needs to match values, not variables. A variable can
 # consist of different types.
-def match_var_against_type(var, other_type, subst, node):
+def match_var_against_type(var, other_type, subst, node, view):
   """One-way unify value into pytd type given a substitution.
 
   Args:
@@ -47,11 +49,14 @@ def match_var_against_type(var, other_type, subst, node):
     other_type: An AtomicAbstractValue instance.
     subst: The current substitution. This dictionary is not modified.
     node: Current location (typegraph CFG node)
+    view: A mapping of Variable to Value.
   Returns:
     A new (or unmodified original) substitution dict if the matching succeded,
     None otherwise.
   """
   assert not any(isinstance(t, FormalType) for t in var.data)
+
+  # TODO(kramm): Use view
 
   if not var.values and isinstance(other_type, Class):
     # If this type is empty, the only thing we can match it against is
@@ -63,12 +68,12 @@ def match_var_against_type(var, other_type, subst, node):
   elif isinstance(other_type, Class):
     # Accumulate substitutions in "subst", or break in case of error:
     for val in var.values:
-      subst = val.data.match_against_type(other_type, subst, node)
+      subst = val.data.match_against_type(other_type, subst, node, view)
       if subst is None:
         break
   elif isinstance(other_type, Union):
     for t in other_type.options:
-      new_subst = match_var_against_type(var, t, subst, node)
+      new_subst = match_var_against_type(var, t, subst, node, view)
       if new_subst is not None:
         # TODO(kramm): What if more than one type matches?
         subst = new_subst
@@ -94,7 +99,7 @@ def match_var_against_type(var, other_type, subst, node):
     assert not isinstance(other_type, ParameterizedClass)
   elif isinstance(other_type, Nothing):
     for val in var.values:
-      subst = val.data.match_against_type(other_type, subst, node)
+      subst = val.data.match_against_type(other_type, subst, node, view)
       if subst is None:
         break
   else:
@@ -281,7 +286,8 @@ class AtomicAbstractValue(object):
     v.AddValue(self, source_set=[], where=node)
     return v
 
-  def match_instance_against_type(self, instance, other_type, subst, node):
+  def match_instance_against_type(self, instance, other_type,
+                                  subst, node, view):
     """Checks whether an instance of us is compatible with a (formal) type.
 
     Args:
@@ -289,18 +295,20 @@ class AtomicAbstractValue(object):
       other_type: A formal type. E.g. abstract.Class or abstract.Union.
       subst: The current type parameter assignment.
       node: The current CFG node.
+      view: The current mapping of Variable to Value.
     Returns:
       A new type parameter assignment if the matching succeeded, None otherwise.
     """
     raise NotImplementedError("%s is not a class" % type(self))
 
-  def match_against_type(self, other_type, subst, node):
+  def match_against_type(self, other_type, subst, node, view):
     """Checks whether we're compatible with a (formal) type.
 
     Args:
       other_type: A formal type. E.g. abstract.Class or abstract.Union.
       subst: The current type parameter assignment.
       node: The current CFG node.
+      view: The current mapping of Variable to Value.
     Returns:
       A new type parameter assignment if the matching succeeded, None otherwise.
     """
@@ -543,13 +551,14 @@ class SimpleAbstractValue(AtomicAbstractValue):
       log.info("Using ? for %s", self.name)
       return pytd.AnythingType()
 
-  def match_against_type(self, other_type, subst, node):
+  def match_against_type(self, other_type, subst, node, view):
     my_type = self.get_class()
     if not my_type:
       log.warning("Can't match %s against %s", self.__class__, other_type.name)
       return None
     for my_cls in my_type.data:
-      subst = my_cls.match_instance_against_type(self, other_type, subst, node)
+      subst = my_cls.match_instance_against_type(self, other_type,
+                                                 subst, node, view)
       if subst is None:
         return None
     return subst
@@ -802,7 +811,7 @@ class Union(AtomicAbstractValue, FormalType):
 
 
 # return value from PyTDSignature._call_with_values:
-FunctionCallResult = collections.namedtuple("_", "return_type, subst, sources")
+FunctionCallResult = collections.namedtuple("_", "return_type, subst")
 
 
 class FailedFunctionCall(Exception):
@@ -866,7 +875,7 @@ class Function(AtomicAbstractValue):
   def to_type(self):
     return pytd.NamedType("function")
 
-  def match_against_type(self, other_type, subst, node):
+  def match_against_type(self, other_type, subst, node, view):
     if other_type.name in ["function", "object"]:
       return subst
 
@@ -878,18 +887,20 @@ class PyTDSignature(object):
   type.
   """
 
-  def __init__(self, function, pytd_sig, vm):
+  def __init__(self, pytd_sig, vm):
     self.vm = vm
-    self.name = function.name
-    self.function = function
     self.pytd_sig = pytd_sig
     self.param_types = [
         self.vm.convert_constant_to_value(pytd.Print(p), p.type)
         for p in self.pytd_sig.params]
     self._bound_sig_cache = {}
 
-  def call(self, node, func, args, kws, starargs=None):  # pylint: disable=unused-argument
+  # pylint: disable=unused-argument
+  def call_with_view(self, node, func, view, args, kws, ret_map, starargs=None):
     """Call this signature. Used by PyTDFunction."""
+    args_selected = [view[arg] for arg in args]
+    kws_selected = {name: view[arg] for name, arg in kws.items()}
+
     if self.pytd_sig.has_optional:
       # Truncate extraneous params. E.g. when calling f(a, b, ...) as f(1, 2, 3)
       args = args[0:len(self.pytd_sig.params)]
@@ -902,35 +913,24 @@ class PyTDSignature(object):
           (self.function.name, len(args),
            len(self.pytd_sig.params)),
           "  Expected: %r" % [p.name for p in self.pytd_sig.params],
-          "  Actually passed: %r" % (args,)]
+          "  Actually passed: %r" % (args_selected,)]
       raise FailedFunctionCall(self, msg_lines)
-    msg_lines = []
-    retvar = self.vm.program.NewVariable("%s ret" % self.name)
-    ret_map = {}
-    for args_selected in utils.variable_product(args):
-      for kws_selected in utils.variable_product_dict(kws):
-        try:
-          r = self._call_with_values(node, args_selected, kws_selected)
-        except FailedFunctionCall as e:
-          msg_lines.extend(e.explanation_lines)
-        else:
-          assert r.subst is not None
-          t = (r.return_type, r.subst)
-          if t not in ret_map:
-            ret_map[t] = self.vm.create_pytd_instance(
-                "ret", r.return_type, r.subst, node,
-                source_sets=[r.sources + [func]])
-          else:
-            # add the new sources
-            for data in ret_map[t].data:
-              ret_map[t].AddValue(data, r.sources + [func], node)
-          self.vm.trace_call(func, args_selected, kws_selected, ret_map[t])
-          retvar.PasteVariable(ret_map[t], node)
-    if not retvar.values:
-      raise FailedFunctionCall(self, msg_lines)
-    return node, retvar
+    r = self._call_with_values(node, args_selected, kws_selected, view)
+    assert r.subst is not None
+    t = (r.return_type, r.subst)
+    sources = [func] + args_selected + kws_selected.values()
+    if t not in ret_map:
+      ret_map[t] = self.vm.create_pytd_instance(
+          "ret", r.return_type, r.subst, node,
+          source_sets=[sources])
+    else:
+      # add the new sources
+      for data in ret_map[t].data:
+        ret_map[t].AddValue(data, sources, node)
+    self.vm.trace_call(func, args_selected, kws_selected, ret_map[t])
+    return node, ret_map[t]
 
-  def _call_with_values(self, node, arg_values, kw_values):
+  def _call_with_values(self, node, arg_values, kw_values, view):
     """Try to execute this signature with the given arguments.
 
     This uses specific typegraph.Value instances (not: Variables) to try to
@@ -941,13 +941,14 @@ class PyTDSignature(object):
       node: The current CFG node.
       arg_values: A list of pytd.Value instances.
       kw_values: A map of strings to pytd.Values instances.
+      view: A mapping of Variable to Value.
     Returns:
       A FunctionCallResult instance
     Raises:
       FailedFunctionCall
     """
     return_type = self.pytd_sig.return_type
-    subst = self._compute_subst(node, arg_values, kw_values)
+    subst = self._compute_subst(node, arg_values, kw_values, view)
     # FailedFunctionCall is thrown by _compute_subst if no signature could be
     # matched (subst might be []).
     log.debug("Matched arguments against sig%s", pytd.Print(self.pytd_sig))
@@ -958,11 +959,9 @@ class PyTDSignature(object):
     for name, value in sorted(subst.items()):
       log.debug("Using %s=%r", name, value)
     self._execute_mutable(node, arg_values, kw_values, subst)
-    # Use a plain list (NOT: itertools.chain etc.) to facilitate memoization.
-    sources = list(arg_values) + kw_values.values()
-    return FunctionCallResult(return_type, subst, sources)
+    return FunctionCallResult(return_type, subst)
 
-  def _compute_subst(self, node, arg_values, kw_values):
+  def _compute_subst(self, node, arg_values, kw_values, view):
     """Compute information about type parameters using one-way unification.
 
     Given the arguments of a function call, try to find a substitution that
@@ -972,6 +971,7 @@ class PyTDSignature(object):
       node: The current CFG node.
       arg_values: A list of pytd.Value instances.
       kw_values: A map of strings to pytd.Values instances.
+      view: A mapping of Variable to Value.
     Returns:
       utils.HashableDict if we found a working substition, None otherwise.
     Raises:
@@ -984,7 +984,7 @@ class PyTDSignature(object):
     subst = {}
     for actual, formal in zip(arg_values, self.param_types):
       actual_var = actual.AssignToNewVariable(formal.name, node)
-      subst = match_var_against_type(actual_var, formal, subst, node)
+      subst = match_var_against_type(actual_var, formal, subst, node, view)
       if subst is None:
         # This parameter combination didn't work.
         # This is typically a real error: The user program is calling a
@@ -1064,33 +1064,61 @@ class PyTDFunction(Function):
 
   def __init__(self, name, signatures, vm):
     super(PyTDFunction, self).__init__(name, vm)
+    assert signatures
     self.bound_class = BoundPyTDFunction
     self.signatures = signatures
     self._signature_cache = {}
+    self._return_types = {sig.pytd_sig.return_type for sig in signatures}
+    self._has_mutable = all(isinstance(param, pytd.MutableParameter)
+                            for sig in signatures
+                            for param in sig.pytd_sig.params)
+    for sig in signatures:
+      sig.function = self
+      sig.name = self.name
 
   def call(self, node, func, args, kws, starargs=None):
+    ret_map = {}
+    retvar = self.vm.program.NewVariable("%s ret" % self.name)
+    error = None
+    variables = tuple(args) + tuple(kws.values())
+    all_calls_failed = True
+    for combination in utils.deep_variable_product(variables):
+      view = {value.variable: value for value in combination}
+      try:
+        node, result = self._call_with_view(node, func, view, args, kws,
+                                            ret_map, starargs)
+      except FailedFunctionCall as e:
+        error = error or e
+      else:
+        retvar.PasteVariable(result, node)
+        all_calls_failed = False
+    if all_calls_failed and error:
+      raise error  # pylint: disable=raising-bad-type
+    return node, retvar
+
+  def _call_with_view(self, node, func, view, args, kws,
+                      ret_map, starargs=None):
+    """Call function using a specific Variable->Value view."""
     log.debug("Calling function %r: %d signature(s)",
               self.name, len(self.signatures))
     # If we're calling an overloaded pytd function with an unknown as a
     # parameter, we can't tell whether it matched or not. Hence, we don't know
     # which signature got called. Check if this is the case and if yes, return
     # an unknown.
-    # TODO(kramm): We should only do this if the return values of the possible
-    #              signatures (taking into account unknowns) actually differ.
-    # TODO(kramm): We should do this on a per-value basis, not per variable.
-    if (len(self.signatures) > 1 and
-        any(isinstance(value, Unknown)
-            for arg in (args + kws.values())
-            for value in arg.data)):
-      log.debug("Creating unknown return")
-      # TODO(kramm): Add proper sources.
-      # TODO(kramm): What about mutable parameters?
-      result = self.vm.create_new_unknown(
-          node, "<unknown return of " + self.name + ">", action="pytd_call")
-      for a in utils.variable_product(args):
-        for k in utils.variable_product_dict(kws):
-          self.vm.trace_call(func, a, k, result)
-      return node, result
+    # TODO(kramm): should be "len(self._return_types) > 1 or self._has_mutable"
+    if len(self.signatures) > 1:
+      if any(isinstance(view[arg].data, Unknown)
+             for arg in chain(args, kws.values())):
+        log.debug("Creating unknown return")
+        # TODO(kramm): Add proper sources.
+        # TODO(kramm): What about mutable parameters?
+        result = self.vm.create_new_unknown(
+            node, "<unknown return of " + self.name + ">", action="pytd_call")
+        self.vm.trace_call(func,
+                           [view[arg] for arg in args],
+                           {name: view[arg] for name, arg in kws.items()},
+                           result)
+        return node, result
 
     # We only take the first signature that matches, and ignore all after it.
     # This is because in the pytds for the standard library, the last
@@ -1100,17 +1128,16 @@ class PyTDFunction(Function):
     # def __init__(self, x: generator)
     # def __init__(self, x: object)
     # with the last signature only being used if none of the others match.
-    msg_lines = []
+    error = None
     for sig in self.signatures:
       try:
-        new_node, result = sig.call(node, func, args, kws)
+        new_node, result = sig.call_with_view(node, func, view, args, kws,
+                                              ret_map, starargs)
       except FailedFunctionCall as e:
-        msg_lines.extend(e.explanation_lines)
+        error = error or e
       else:
         return new_node, result
-    raise FailedFunctionCall(
-        self, ["Failed call function %r: signature: %r" %
-               (self.name, self.signatures)] + msg_lines)
+    raise error  # pylint: disable=raising-bad-type
 
   def __repr__(self):
     return self.name + "(...)"
@@ -1274,7 +1301,8 @@ class PyTDClass(LazyAbstractValue, Class):
   def __repr__(self):
     return self.name
 
-  def match_instance_against_type(self, instance, other_type, subst, node):
+  def match_instance_against_type(self, instance, other_type,
+                                  subst, node, view):
     """Match an instance of this class against an other type."""
     if other_type is self:
       return subst
@@ -1285,7 +1313,8 @@ class PyTDClass(LazyAbstractValue, Class):
       assert not extra_params
       for name, class_param in other_type.type_parameters.items():
         instance_param = instance.get_type_parameter(node, name)
-        subst = match_var_against_type(instance_param, class_param, subst, node)
+        subst = match_var_against_type(instance_param, class_param, subst,
+                                       node, view)
         if subst is None:
           return None
       return subst
@@ -1293,8 +1322,8 @@ class PyTDClass(LazyAbstractValue, Class):
       return subst
     return None
 
-  def match_against_type(self, other_type, subst, node):
-    if other_type.name == "type":
+  def match_against_type(self, other_type, subst, node, view):
+    if other_type.name in ["type", "object"]:
       return subst
 
   def to_pytd_def(self, name):
@@ -1363,11 +1392,12 @@ class InterpreterClass(SimpleAbstractValue, Class):
       log.debug("%s.__init__(...) returned %r", self.name, ret)
     return node, variable
 
-  def match_against_type(self, other_type, subst, node):
-    if other_type.name == "type":
+  def match_against_type(self, other_type, subst, node, view):
+    if other_type.name in ["type", "object"]:
       return subst
 
-  def match_instance_against_type(self, instance, other_type, subst, node):
+  def match_instance_against_type(self, instance, other_type,
+                                  subst, node, view):
     if isinstance(other_type, Class):
       for base in self.mro:
         assert isinstance(base, Class)
@@ -1719,12 +1749,12 @@ class Generator(AtomicAbstractValue):
     """Call this generator or (more common) its "next" attribute."""
     return node, self.get_yielded_type()
 
-  def match_against_type(self, other_type, subst, node):
+  def match_against_type(self, other_type, subst, node, view):
     if (isinstance(other_type, ParameterizedClass) and
         other_type.base_cls.name == "generator"):
       return match_var_against_type(self.get_yielded_type(),
                                     other_type.type_parameters[self.TYPE_PARAM],
-                                    subst, node)
+                                    subst, node, view)
     else:
       log.warn("Matching generator against wrong type (%r)", other_type)
       return None
@@ -1758,7 +1788,7 @@ class Nothing(AtomicAbstractValue, FormalType):
   def to_type(self):
     return pytd.NothingType()
 
-  def match_against_type(self, other_type, subst, node):
+  def match_against_type(self, other_type, subst, node, view):
     if other_type.name == "nothing":
       return subst
     else:
@@ -1802,7 +1832,7 @@ class Module(LazyAbstractValue):
   def to_type(self):
     return pytd.NamedType("module")
 
-  def match_against_type(self, other_type, subst, node):
+  def match_against_type(self, other_type, subst, node, view):
     if other_type.name in ["module", "object"]:
       return subst
 
@@ -1937,7 +1967,7 @@ class Unknown(AtomicAbstractValue):
     log.info("Using ? for instance of %s", self.name)
     return pytd.AnythingType()
 
-  def match_against_type(self, other_type, subst, node):
+  def match_against_type(self, other_type, subst, node, view):
     # TODO(kramm): Do we want to match the instance or the class?
     if isinstance(other_type, ParameterizedClass):
       return None
