@@ -246,7 +246,7 @@ class TestUtils(parser_test.ParserTest):
   def testParsePredefinedPyTD(self):
     """Test ParsePredefinedPyTD()."""
     ast = utils.ParsePredefinedPyTD("builtins", "sys", python_version=(2, 7, 6))
-    self.assertIsNotNone(ast.Lookup("stderr"))
+    self.assertIsNotNone(ast.Lookup("sys.stderr"))
 
   def testOrderedSet(self):
     ordered_set = utils.OrderedSet(n/2 for n in range(10))

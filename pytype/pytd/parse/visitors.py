@@ -953,10 +953,18 @@ class AddNamePrefix(Visitor):
         dot. E.g. "mymodule.".
     """
     super(AddNamePrefix, self).__init__()
+    self.cls = None
     self.prefix = prefix
 
   def EnterTypeDeclUnit(self, node):
     self.classes = {cls.name for cls in node.classes}
+
+  def EnterClass(self, cls):
+    self.cls = cls
+
+  def LeaveClass(self, cls):
+    assert self.cls is cls
+    self.cls = None
 
   def VisitClassType(self, _):
     raise ValueError("AddNamePrefix visitor called after resolving")
@@ -969,6 +977,22 @@ class AddNamePrefix(Visitor):
 
   def VisitClass(self, node):
     return node.Replace(name=self.prefix + node.name)
+
+  def VisitFunction(self, node):
+    if self.cls:
+      # method
+      return node
+    else:
+      # global function
+      return node.Replace(name=self.prefix + node.name)
+
+  def VisitConstant(self, node):
+    if self.cls:
+      # class attribute
+      return node
+    else:
+      # global constant
+      return node.Replace(name=self.prefix + node.name)
 
 
 class CollectDependencies(Visitor):

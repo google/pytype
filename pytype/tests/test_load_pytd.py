@@ -15,7 +15,7 @@ class ImportPathsTest(unittest.TestCase):
   def testBuiltinSys(self):
     loader = load_pytd.Loader("base", python_version=self.PYTHON_VERSION)
     ast = loader.import_name("sys")
-    self.assertTrue(ast.Lookup("exit"))
+    self.assertTrue(ast.Lookup("sys.exit"))
 
   def testBasic(self):
     with utils.Tempdir() as d:
@@ -23,7 +23,7 @@ class ImportPathsTest(unittest.TestCase):
       loader = load_pytd.Loader("base", python_version=self.PYTHON_VERSION,
                                 pythonpath=[d.path])
       ast = loader.import_name("path.to.some.module")
-      self.assertTrue(ast.Lookup("foo"))
+      self.assertTrue(ast.Lookup("path.to.some.module.foo"))
 
   def testCustomExtension(self):
     with utils.Tempdir() as d:
@@ -33,7 +33,7 @@ class ImportPathsTest(unittest.TestCase):
                                 pytd_import_ext=".dat"
                                )
       ast = loader.import_name("path.to.some.module")
-      self.assertTrue(ast.Lookup("foo"))
+      self.assertTrue(ast.Lookup("path.to.some.module.foo"))
 
   def testStripPrefix(self):
     with utils.Tempdir() as d:
@@ -53,15 +53,17 @@ class ImportPathsTest(unittest.TestCase):
         d2.create_file("dir2/module2.pytd", "def foo2() -> str")
         loader = load_pytd.Loader("base", python_version=self.PYTHON_VERSION,
                                   pythonpath=[d1.path, d2.path])
-        self.assertTrue(loader.import_name("dir1.module1").Lookup("foo1"))
-        self.assertTrue(loader.import_name("dir2.module2").Lookup("foo2"))
+        module1 = loader.import_name("dir1.module1")
+        module2 = loader.import_name("dir2.module2")
+        self.assertTrue(module1.Lookup("dir1.module1.foo1"))
+        self.assertTrue(module2.Lookup("dir2.module2.foo2"))
 
   def testInit(self):
     with utils.Tempdir() as d1:
       d1.create_file("baz/__init__.pytd", "x: int")
       loader = load_pytd.Loader("base", python_version=self.PYTHON_VERSION,
                                 pythonpath=[d1.path])
-      self.assertTrue(loader.import_name("baz").Lookup("x"))
+      self.assertTrue(loader.import_name("baz").Lookup("baz.x"))
 
   def testNoInit(self):
     with utils.Tempdir() as d:
@@ -82,7 +84,7 @@ class ImportPathsTest(unittest.TestCase):
       loader = load_pytd.Loader("base", python_version=self.PYTHON_VERSION,
                                 pythonpath=[d.path])
       module1 = loader.import_name("module1")
-      f, = module1.Lookup("get_bar").signatures
+      f, = module1.Lookup("module1.get_bar").signatures
       self.assertEquals("module2.Bar", f.return_type.cls.name)
 
   def testCircularDependency(self):
@@ -101,8 +103,8 @@ class ImportPathsTest(unittest.TestCase):
                                 pythonpath=[d.path])
       foo = loader.import_name("foo")
       bar = loader.import_name("bar")
-      f1, = foo.Lookup("get_bar").signatures
-      f2, = bar.Lookup("get_foo").signatures
+      f1, = foo.Lookup("foo.get_bar").signatures
+      f2, = bar.Lookup("bar.get_foo").signatures
       self.assertEquals("bar.Bar", f1.return_type.cls.name)
       self.assertEquals("foo.Foo", f2.return_type.cls.name)
 
@@ -119,11 +121,10 @@ class ImportPathsTest(unittest.TestCase):
       some = loader.import_relative(1)
       to = loader.import_relative(2)
       path = loader.import_relative(3)
-      base = loader.import_relative(4)
-      self.assertTrue(some.Lookup("some"))
-      self.assertTrue(to.Lookup("to"))
-      self.assertTrue(path.Lookup("path"))
-      self.assertTrue(base.Lookup("base"))
+      # Python doesn't allow "...." here, so don't test import_relative(4).
+      self.assertTrue(some.Lookup("path.to.some.some"))
+      self.assertTrue(to.Lookup("path.to.to"))
+      self.assertTrue(path.Lookup("path.path"))
 
 if __name__ == "__main__":
   unittest.main()

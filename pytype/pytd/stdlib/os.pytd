@@ -3,11 +3,31 @@
 # set, for items that are only in `os`.
 
 environ: dict<str, str>
-# TODO(pludemann): add open() flag constants
+
 F_OK: int
 R_OK: int
 W_OK: int
 X_OK: int
+O_APPEND: int
+O_ASYNC: int
+O_CREAT: int
+O_DIRECT: int
+O_DIRECTORY: int
+O_DSYNC: int
+O_EXCL: int
+O_LARGEFILE: int
+O_NDELAY: int
+O_NOATIME: int
+O_NOCTTY: int
+O_NOFOLLOW: int
+O_NONBLOCK: int
+O_RDONLY: int
+O_RDWR: int
+O_RSYNC: int
+O_SYNC: int
+O_TRUNC: int
+O_WRONLY: int
+
 TMP_MAX: int
 EX_OK:  int  # TODO(pludemann): add other os.EX_* values
 # TODO(pludemann): add os.P_NOWAIT etc

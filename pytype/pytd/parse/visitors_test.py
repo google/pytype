@@ -250,8 +250,8 @@ class TestVisitors(parser_test.ParserTest):
                                               full_names=True))
     ast2.Visit(visitors.LookupExternalClasses({"foo": ast1, "bar": ast2},
                                               full_names=True))
-    f1, = ast1.Lookup("f1").signatures
-    f2, = ast2.Lookup("f2").signatures
+    f1, = ast1.Lookup("foo.f1").signatures
+    f2, = ast2.Lookup("bar.f2").signatures
     self.assertIs(ast2.Lookup("bar.Bar"), f1.return_type.cls)
     self.assertIs(ast1.Lookup("foo.Foo"), f2.return_type.cls)
 

@@ -475,6 +475,21 @@ class BuiltinTests(test_inference.InferenceTest):
         def seed(self, ...) -> tuple<int or long or float or complex>
       """)
 
+  def testOsOpen(self):
+    with self.Infer("""
+      import os
+      def f():
+        return open("/dev/null")
+      def g():
+        return os.open("/dev/null", os.O_RDONLY, 0777)
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        os: module
+
+        def f() -> file
+        def g() -> int
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()
