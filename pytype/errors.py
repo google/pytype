@@ -82,6 +82,9 @@ class ErrorLog(ErrorLogBase):
     on = " on %s" % obj.data[0].name if obj.values else ""
     self.error(opcode, "No attribute %r%s" % (attr_name, on))
 
+  def name_error(self, opcode, name):
+    self.error(opcode, "Name %r is not defined" % name)
+
   def import_error(self, opcode, module_name):
     self.error(opcode, "Can't find module %r" % module_name)
 
@@ -139,4 +142,11 @@ class ErrorLog(ErrorLogBase):
     self.error(opcode, "return type is %s, should be %s",
                pytd.Print(actual.to_type()),
                pytd.Print(expected))
+
+  def unsupported_operands(self, opcode, operation, var1, var2):
+    left = pytd_utils.JoinTypes(t.to_type() for t in var1.data)
+    right = pytd_utils.JoinTypes(t.to_type() for t in var2.data)
+    # TODO(kramm): Display things like '__add__' as '+'
+    self.error(opcode, "unsupported operand type(s) for %s: %r and %r" % (
+        operation, pytd.Print(left), pytd.Print(right)))
 

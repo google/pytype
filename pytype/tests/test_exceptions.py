@@ -8,8 +8,9 @@ from pytype.tests import test_inference
 class TestExceptions(test_inference.InferenceTest):
 
   def test_catching_exceptions(self):
+    # TODO(kramm): Don't warn about NameErrors that are being caught.
     # Catch the exception precisely
-    self.assertNoErrors("""\
+    self.assertNoCrash("""\
       try:
         x[1]
         print("Shouldn't be here...")
@@ -17,7 +18,7 @@ class TestExceptions(test_inference.InferenceTest):
         print("caught it!")
       """)
     # Catch the exception by a parent class
-    self.assertNoErrors("""\
+    self.assertNoCrash("""\
       try:
         x[1]
         print("Shouldn't be here...")
@@ -25,7 +26,7 @@ class TestExceptions(test_inference.InferenceTest):
         print("caught it!")
       """)
     # Catch all exceptions
-    self.assertNoErrors("""\
+    self.assertNoCrash("""\
       try:
         x[1]
         print("Shouldn't be here...")
@@ -82,8 +83,9 @@ class TestExceptions(test_inference.InferenceTest):
       """)
 
   def test_global_name_error(self):
-    self.assertNoErrors("fooey", raises=NameError)
-    self.assertNoErrors("""\
+    self.assertNoCrash("fooey", raises=NameError)
+    # TODO(kramm): Don't warn about NameErrors that are being caught.
+    self.assertNoCrash("""\
       try:
         fooey
         print("Yes fooey?")

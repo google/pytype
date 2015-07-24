@@ -28,6 +28,24 @@ class ErrorTest(test_inference.InferenceTest):
     """)
     self.assertErrorLogContains(errors, r"line 2.*module.*rumplestiltskin")
 
+  def testNameError(self):
+    _, errors = self.InferAndCheck("""
+      foobar
+    """)
+    # "Line 2, in <module>: Name 'foobar' is not defined"
+    self.assertErrorLogContains(errors, r"line 2.*name.*foobar.*not.defined")
+
+  def testUnsupportedOperands(self):
+    _, errors = self.InferAndCheck("""
+      def f():
+        x = "foo"
+        y = "bar"
+        return x ^ y
+    """)
+    # "Line 2, in f: Unsupported operands for __xor__: 'str' and 'str'
+    self.assertErrorLogContains(errors,
+                                r"line 5.*Unsupported.*__xor__.*str.*str")
+
   def testWrongArgCount(self):
     _, errors = self.InferAndCheck("""
       hex(1, 2, 3, 4)

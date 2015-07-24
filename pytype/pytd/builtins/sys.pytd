@@ -58,7 +58,7 @@ def _getframe(...) -> ? raises ValueError  # TODO(pludemann): fix return type
 def call_tracing(a, b) -> ?  # TODO(pludemann): fix return type
 def displayhook(...) -> NoneType raises RuntimeError
 def exc_clear() -> NoneType raises DeprecationWarning
-def exc_info() -> tuple
+def exc_info() -> tuple<?>
 def excepthook(...) -> NoneType
 def exit(...) -> NoneType raises SystemExit
 def getcheckinterval() -> int

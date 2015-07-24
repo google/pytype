@@ -876,9 +876,9 @@ class VirtualMachine(object):
       return False
 
   def push_abstract_exception(self, state):
-    tb = self.program.NewVariable("tb", [], [], state.node)
-    value = self.program.NewVariable("value", [], [], state.node)
-    exctype = self.program.NewVariable("exctype", [], [], state.node)
+    tb = self.build_list(state.node, [])
+    value = self.create_new_unknown(state.node, "value")
+    exctype = self.create_new_unknown(state.node, "exctype")
     return state.push(tb, value, exctype)
 
   def resume_frame(self, node, frame):
@@ -978,6 +978,8 @@ class VirtualMachine(object):
                                                    fallback_to_unsolvable=False)
         results.append(ret)
     log.debug("Results: %r", results)
+    if not results:
+      self.errorlog.unsupported_operands(self.frame.current_opcode, name, x, y)
     return state, self.join_variables(state.node, name, results)
 
   def binary_operator(self, state, name):
@@ -1486,7 +1488,8 @@ class VirtualMachine(object):
         try:
           state, val = self.load_builtin(state, name)
         except KeyError:
-          raise exceptions.ByteCodeNameError("name '%s' is not defined" % name)
+          self.errorlog.name_error(self.frame.current_opcode, name)
+          return state.push(self.create_new_unsolvable(state.node, name))
     return state.push(val)
 
   def byte_STORE_NAME(self, state, op):
