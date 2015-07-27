@@ -373,5 +373,18 @@ class ImportTest(test_inference.InferenceTest):
         def f() -> __builtin__.int
       """)
 
+  def testImportedMethodAsClassAttribute(self):
+    with self.Infer("""
+      import os
+      class Foo(object):
+        killpg = os.killpg
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        os: module
+        class Foo:
+          killpg: function
+      """)
+
+
 if __name__ == "__main__":
   test_inference.main()

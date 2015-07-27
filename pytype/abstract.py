@@ -1231,6 +1231,9 @@ class PyTDFunction(Function):
         return new_node, result, mutations
     raise error  # pylint: disable=raising-bad-type
 
+  def to_pytd_def(self, _):
+    return pytd.NamedType("function")
+
   def __repr__(self):
     return self.name + "(...)"
 
@@ -1515,7 +1518,13 @@ class InterpreterClass(SimpleAbstractValue, Class):
       if name not in output.CLASS_LEVEL_IGNORE:
         for value in member.FilteredData(self.vm.exitpoint):
           if isinstance(value, Function):
-            methods.append(value.to_pytd_def(name))
+            v = value.to_pytd_def(name)
+            if isinstance(v, pytd.Function):
+              methods.append(v)
+            elif isinstance(v, pytd.TYPE):
+              constants[name].add_type(v)
+            else:
+              raise AssertionError(str(type(v)))
           else:
             constants[name].add_type(value.to_type())
 
