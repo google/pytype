@@ -131,14 +131,13 @@ class SolverTests(test_inference.InferenceTest):
         def f(self) -> ?
       """)
 
-  @unittest.skip("Broken: solver can't match isinstance() with tuple<nothing>")
   def testEmptyTupleAsArg(self):
     with self.Infer("""
       def f():
         return isinstance(1, ())
     """, deep=True, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
-        def f(x) -> bool
+        def f() -> bool
       """)
 
   @unittest.skip("Broken in favor of _get_maybe_abstract_instance optimization")

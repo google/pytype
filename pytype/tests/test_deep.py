@@ -195,6 +195,14 @@ class StructuralTest(test_inference.InferenceTest):
       # Only do a smoke test. We don't have support for static methods in pytd.
       unused_cls = ty.Lookup("MyClass")
 
+  def testUniqueReturn(self):
+    with self.Infer("""
+      def f(x, y):
+        return issubclass(x, y)
+    """, deep=True, solve_unknowns=False, extract_locals=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        def f(x, y) -> bool
+      """)
 
 if __name__ == "__main__":
   test_inference.main()

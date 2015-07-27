@@ -1178,15 +1178,26 @@ class PyTDFunction(Function):
           "Can't call function with <nothing> parameter")
     # If we're calling an overloaded pytd function with an unknown as a
     # parameter, we can't tell whether it matched or not. Hence, we don't know
-    # which signature got called. Check if this is the case and if yes, return
-    # an unknown.
+    # which signature got called. Check if this is the case.
     if len(self.signatures) > 1:
       if any(isinstance(view[arg].data, Unknown)
              for arg in chain(args, kws.values())):
-        log.debug("Creating unknown return")
-        # TODO(kramm): Add proper sources.
-        result = self.vm.create_new_unknown(
-            node, "<unknown return of " + self.name + ">", action="pytd_call")
+        unique_type = None
+        if len(self._return_types) == 1:
+          ret_type, = self._return_types
+          # TODO(kramm): This needs to do a deep scan
+          if not isinstance(ret_type, pytd.TypeParameter):
+            unique_type = ret_type
+        # Even though we don't know which signature got picked, if the return
+        # type is unique, we can use it.
+        if unique_type:
+          log.debug("Returning %s", pytd.Print(unique_type))
+          result = self.vm.create_pytd_instance(
+              "ret", ret_type, {}, node)
+        else:
+          log.debug("Creating unknown return")
+          result = self.vm.create_new_unknown(
+              node, "<unknown return of " + self.name + ">", action="pytd_call")
         if self._has_mutable:
           # TODO(kramm): We only need to whack the type params that appear in
           # a MutableParameter.

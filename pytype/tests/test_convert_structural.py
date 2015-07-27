@@ -607,5 +607,19 @@ class MatchTest(unittest.TestCase):
     ast = convert_structural.convert_pytd(ast, self.builtins_pytd)
     self.assertMultiLineEqual(pytd.Print(ast), expected)
 
+  def test_isinstance(self):
+    sourcecode = textwrap.dedent("""
+      x: `~unknown1`
+      def `~isinstance`(object: int, class_or_type_or_tuple: tuple<nothing>) -> `~unknown1`
+      class `~unknown1`:
+        pass
+    """)
+    expected = textwrap.dedent("""
+      x: bool
+    """).strip()
+    ast = parser.parse_string(sourcecode)
+    ast = convert_structural.convert_pytd(ast, self.builtins_pytd)
+    self.assertMultiLineEqual(pytd.Print(ast), expected)
+
 if __name__ == "__main__":
   test_inference.main()
