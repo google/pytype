@@ -141,6 +141,25 @@ class SolverTests(test_inference.InferenceTest):
         def f(x) -> bool
       """)
 
+  @unittest.skip("Broken in favor of _get_maybe_abstract_instance optimization")
+  def testIdentityFunction(self):
+    with self.Infer("""
+      def f(x):
+        return x
+
+      l = ["x"]
+      d = {}
+      d[l[0]] = 3
+      f(**d)
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        def f(x: int) -> int
+        def f(x) -> ?
+
+        d: dict<str, int>
+        l: list<str>
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()

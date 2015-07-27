@@ -452,6 +452,26 @@ class VirtualMachine(object):
       return val.pyval
     raise ConversionError("%s is not a string" % val)
 
+  def _get_maybe_abstract_instance(self, data):
+    """Get an instance of the same type as the given data, abstract if possible.
+
+    Get an abstract instance of any primitive data stored as an
+    AbstractOrConcreteValue. Return any other data as-is. This is used by
+    create_pytd_instance, which doesn't need the concrete values that are kept
+    around for InterpreterFunction.
+
+    Arguments:
+      data: The data.
+
+    Returns:
+      An instance of the same type as the data, abstract if possible.
+    """
+    if isinstance(data, abstract.AbstractOrConcreteValue):
+      data_type = type(data.pyval)
+      if data_type in self.primitive_class_instances:
+        return self.primitive_class_instances[data_type]
+    return data
+
   def create_pytd_instance(self, name, pytype, subst, node, source_sets=None):
     """Create an instance of a PyTD type as a typegraph.Variable.
 
@@ -484,7 +504,8 @@ class VirtualMachine(object):
               t.name, subst))
         for v in subst[t.name].values:
           for source_set in source_sets:
-            var.AddValue(v.data, source_set + [v], node)
+            var.AddValue(self._get_maybe_abstract_instance(v.data),
+                         source_set + [v], node)
       elif isinstance(t, pytd.NothingType):
         pass
       else:
