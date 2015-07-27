@@ -159,6 +159,25 @@ class SolverTests(test_inference.InferenceTest):
         l: list<str>
       """)
 
+  @unittest.skip("Needs matching of builtin calls to constructors")
+  def testCallConstructor(self):
+    with self.Infer("""
+      def f(x):
+        return int(x, 16)
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        def f(x: int or float) -> int
+      """)
+
+  @unittest.skip("Needs matching of builtin calls to builtin methods")
+  def testCallMethod(self):
+    with self.Infer("""
+      def f(x):
+        return "abc".find(x)
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        def f(x: str or unicode or bytearray) -> int
+      """)
 
 if __name__ == "__main__":
   test_inference.main()

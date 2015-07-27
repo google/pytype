@@ -360,6 +360,18 @@ class ImportTest(test_inference.InferenceTest):
         def my_foo(x:file or StringIO.StringIO) -> str
       """)
 
+  def testImportBuiltins(self):
+    with self.Infer("""\
+      import __builtin__ as builtins
+
+      def f():
+        return builtins.int()
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        builtins: module
+
+        def f() -> __builtin__.int
+      """)
 
 if __name__ == "__main__":
   test_inference.main()

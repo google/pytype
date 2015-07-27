@@ -49,6 +49,8 @@ class Loader(object):
     necessary.
   """
 
+  PREFIX = "pytd:"  # for pytd files that ship with pytype
+
   def __init__(self, base_module, python_version, pythonpath=(),
                pytd_import_ext=".pytd", import_drop_prefixes=()):
     assert pytd_import_ext.startswith(".")
@@ -58,7 +60,10 @@ class Loader(object):
     self.pytd_import_ext = pytd_import_ext
     self.import_drop_prefixes = import_drop_prefixes
     self.builtins = builtins.GetBuiltinsPyTD()
-    self._modules = {"__builtin__": Module("__builtin__", None, self.builtins)}
+    self._modules = {
+        "__builtin__":
+        Module("__builtin__", self.PREFIX + "__builtin__", self.builtins)
+    }
     self._concatenated = None
 
   def _resolve_all(self):
@@ -143,7 +148,7 @@ class Loader(object):
     mod = pytd_utils.ParsePredefinedPyTD("builtins", module_name,
                                          self.python_version)
     if mod:
-      return self._load_file(filename="builtin:"+module_name,
+      return self._load_file(filename=self.PREFIX + module_name,
                              module_name=module_name, ast=mod)
 
     module_name_split = module_name.split(".")
