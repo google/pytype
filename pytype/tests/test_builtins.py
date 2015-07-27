@@ -439,7 +439,7 @@ class BuiltinTests(test_inference.InferenceTest):
       self.assertTypesMatchPytd(ty, """
         time: module
 
-        def f(x) -> complex
+        def f(x) -> ?
       """)
 
   def testDivMod(self):
@@ -463,7 +463,6 @@ class BuiltinTests(test_inference.InferenceTest):
         def seed(self, ...) -> tuple<int or long or float or complex>
       """)
 
-  @unittest.skip("TODO(kramm): Needs value enumeration in PyTDFunction")
   def testDivMod3(self):
     with self.Infer("""
       def seed(self, a=None):
@@ -488,6 +487,26 @@ class BuiltinTests(test_inference.InferenceTest):
 
         def f() -> file
         def g() -> int
+      """)
+
+  def testJoin(self):
+    with self.Infer("""
+      def f(elements):
+        return ",".join(t for t in elements)
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        def f(elements) -> str
+      """)
+
+  def testVersionInfo(self):
+    with self.Infer("""
+      import sys
+      def f():
+        return 'py%d' % sys.version_info[0]
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        sys: module
+        def f() -> str
       """)
 
 

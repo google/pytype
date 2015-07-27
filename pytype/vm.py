@@ -150,7 +150,9 @@ class VirtualMachine(object):
         True, self.primitive_classes[bool], self)
     self.false = abstract.AbstractOrConcreteValue(
         False, self.primitive_classes[bool], self)
+
     self.nothing = abstract.Nothing(self)
+    self.unsolvable = abstract.Unsolvable(self)
 
     self.primitive_class_instances = {
         name: abstract.Instance(clsvar, self)
@@ -535,20 +537,19 @@ class VirtualMachine(object):
     if isinstance(pytype, pytd.ClassType):
       key = (abstract.Instance, pytype.cls)
       if key not in self._convert_cache:
-        self._convert_cache[key] = abstract.Instance(
+        instance = abstract.Instance(
             self.convert_constant(pytype.cls.name, pytype.cls), self)
+        self._convert_cache[key] = instance
       return self._convert_cache[key]
     elif isinstance(pytype, pytd.GenericType):
       assert isinstance(pytype.base_type, pytd.ClassType)
-      value = self._create_pytd_instance_value(name, pytype.base_type,
-                                               subst, node)
-      type_params = pytype.parameters
-      for formal, actual in zip(pytype.base_type.cls.template, type_params):
-        log.info("Setting type parameter: %r %r", formal, actual)
-        # TODO(kramm): Should these be classes, not instances?
+      cls = pytype.base_type.cls
+      instance = abstract.Instance(
+          self.convert_constant(cls.name, cls), self)
+      for formal, actual in zip(cls.template, pytype.parameters):
         p = self.create_pytd_instance(repr(formal), actual, subst, node)
-        value.overwrite_type_parameter(node, formal.name, p)
-      return value
+        instance.initialize_type_parameter(node, formal.name, p)
+      return instance
     else:
       return self.convert_constant_to_value(name, pytype)
 
@@ -570,6 +571,10 @@ class VirtualMachine(object):
     unknown.owner = val
     self.trace_unknown(unknown.class_name, v)
     return v
+
+  def create_new_unsolvable(self, node, name):
+    """Create a new variable containing an unsolvable."""
+    return self.unsolvable.to_variable(node, name)
 
   def convert_constant(self, name, pyval):
     """Convert a constant to a Variable.
@@ -926,12 +931,14 @@ class VirtualMachine(object):
     """Map a binary operator to "magic methods" (__add__ etc.)."""
     # TODO(pludemann): See TODO.txt for more on reverse operator subtleties.
     results = []
+    log.debug("Calling binary operator %s", name)
     try:
       state, attr = self.load_attr(state, x, name)
     except exceptions.ByteCodeAttributeError:  # from load_attr
       log.info("Failed to find %s on %r", name, x, exc_info=True)
     else:
-      state, ret = self.call_function_with_state(state, attr, [y])
+      state, ret = self.call_function_with_state(state, attr, [y],
+                                                 fallback_to_unsolvable=False)
       results.append(ret)
     rname = self.reverse_operator_name(name)
     if self.reverse_operators and rname:
@@ -941,7 +948,8 @@ class VirtualMachine(object):
         log.debug("No reverse operator %s on %r",
                   self.reverse_operator_name(name), y)
       else:
-        state, ret = self.call_function_with_state(state, attr, [x])
+        state, ret = self.call_function_with_state(state, attr, [x],
+                                                   fallback_to_unsolvable=False)
         results.append(ret)
     log.debug("Results: %r", results)
     return state, self.join_variables(state.node, name, results)
@@ -965,12 +973,13 @@ class VirtualMachine(object):
     return NotImplemented
 
   def call_function_with_state(self, state, funcu, posargs, namedargs=None,
-                               starargs=None):
+                               starargs=None, fallback_to_unsolvable=True):
     node, ret = self.call_function(
-        state.node, funcu, posargs, namedargs, starargs)
+        state.node, funcu, posargs, namedargs, starargs, fallback_to_unsolvable)
     return state.change_cfg_node(node), ret
 
-  def call_function(self, node, funcu, posargs, namedargs=None, starargs=None):
+  def call_function(self, node, funcu, posargs, namedargs=None,
+                    starargs=None, fallback_to_unsolvable=True):
     """Call a function.
 
     Args:
@@ -979,11 +988,14 @@ class VirtualMachine(object):
       posargs: The known positional arguments to pass (as variables).
       namedargs: The known keyword arguments to pass. dict of str -> Variable.
       starargs: The contents of the *args parameter, if passed. (None otherwise)
+      fallback_to_unsolvable: If the function call fails, create an unknown.
     Returns:
       A tuple (CFGNode, Variable). The Variable is the return value.
     """
+    assert funcu.values
     result = self.program.NewVariable("<return:%s>" % funcu.name)
     nodes = []
+    error = None
     for funcv in funcu.values:
       func = funcv.data
       assert isinstance(func, abstract.AtomicAbstractValue), type(func)
@@ -991,16 +1003,23 @@ class VirtualMachine(object):
         new_node, one_result = func.call(
             node, funcv, posargs, namedargs or {}, starargs)
       except abstract.FailedFunctionCall as e:
-        log.error("FailedFunctionCall for %s", e.obj)
-        for msg in e.explanation_lines:
-          log.error("... %s", msg)
+        error = error or e
       else:
         result.PasteVariable(one_result, new_node)
         nodes.append(new_node)
     if nodes:
       return self.join_cfg_nodes(nodes), result
     else:
-      return node, result
+      if fallback_to_unsolvable:
+        assert error
+        log.error("FailedFunctionCall for %s", error.obj)
+        for msg in error.explanation_lines:
+          log.error("... %s", msg)
+        return node, self.create_new_unsolvable(node, "failed call")
+      else:
+        # We were called by something that returns errors, so don't report
+        # the failed call.
+        return node, result
 
   def call_function_from_stack(self, state, arg, args, kwargs=None):
     """Pop arguments for a function and call it."""
@@ -1106,8 +1125,8 @@ class VirtualMachine(object):
           node3, has_getter = value.has_attribute(node2, "__get__")
           if has_getter:
             node3, getter = value.get_attribute(node2, "__get__", v)
-            node3, cls = value.get_attribute(node3, "__class__", val)
-            node3, get_result = self.call_function(node3, getter, [getter, cls])
+            node3, get_result = self.call_function(
+                node3, getter, [getter, value.get_class()])
             for getter in get_result.values:
               result.AddValue(getter.data, [getter], node3)
           else:
@@ -1171,7 +1190,8 @@ class VirtualMachine(object):
     content = tuple(content)  # content might be a generator
     value = abstract.AbstractOrConcreteValue(
         content, self.tuple_type, self)
-    value.overwrite_type_parameter(node, "T", self.build_content(node, content))
+    value.initialize_type_parameter(node, "T",
+                                    self.build_content(node, content))
     return value
 
   def build_tuple(self, node, content):
@@ -1182,14 +1202,16 @@ class VirtualMachine(object):
     """Create a VM list from the given sequence."""
     content = list(content)  # content might be a generator
     value = abstract.Instance(self.list_type, self)
-    value.overwrite_type_parameter(node, "T", self.build_content(node, content))
+    value.initialize_type_parameter(node, "T",
+                                    self.build_content(node, content))
     return value.to_variable(node, name="list(...)")
 
   def build_set(self, node, content):
     """Create a VM set from the given sequence."""
     content = list(content)  # content might be a generator
     value = abstract.Instance(self.set_type, self)
-    value.overwrite_type_parameter(node, "T", self.build_content(node, content))
+    value.initialize_type_parameter(node, "T",
+                                    self.build_content(node, content))
     return value.to_variable(node, name="set(...)")
 
   def build_map(self, node):
@@ -1320,7 +1342,12 @@ class VirtualMachine(object):
     return self.binary_operator(state, "__pow__")
 
   def byte_BINARY_SUBSCR(self, state):
-    return self.binary_operator(state, "__getitem__")
+    state = self.binary_operator(state, "__getitem__")
+    if state.top().values:
+      return state
+    else:
+      raise exceptions.ByteCodeIndexError(
+          "Couldn't retrieve item out of container")
 
   def byte_INPLACE_ADD(self, state):
     return self.binary_operator(state, "__iadd__")
@@ -1526,11 +1553,17 @@ class VirtualMachine(object):
     return state.push(ret)
 
   def byte_LOAD_ATTR(self, state, op):
+    """Pop an object, and retrieve a named attribute from it."""
     name = self.frame.f_code.co_names[op.arg]
     state, obj = state.pop()
     log.info("LOAD_ATTR: %r %s", type(obj), name)
-    state, val = self.load_attr(state, obj, name)
-    state = state.push(val)
+    try:
+      state, val = self.load_attr(state, obj, name)
+    except exceptions.ByteCodeAttributeError:
+      log.error("No such attribute %s", name)
+      state = state.push(self.create_new_unsolvable(state.node, "bad attr"))
+    else:
+      state = state.push(val)
     return state
 
   def byte_STORE_ATTR(self, state, op):

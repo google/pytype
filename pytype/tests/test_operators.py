@@ -163,7 +163,7 @@ class ConcreteTest(test_inference.InferenceTest):
     # split out from test_sub for better sharding
     self.check_expr("x - y", ["x=1j", "y=2j"], self.complex)
     self.check_expr("x - y", ["x={1}", "y={1, 2}"], self.int_set)
-    self.check_expr("x - y", ["x={1}", "y={1.2}"], self.intorfloat_set)
+    self.check_expr("x - y", ["x={1}", "y={1.2}"], self.int_set)
     self.check_expr("x - y", ["x={1, 2}", "y=set([1])"], self.int_set)
 
   def test_sub_frozenset(self):

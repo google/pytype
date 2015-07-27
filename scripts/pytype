@@ -354,12 +354,15 @@ def process_one_file(input_filename, output_filename,
                             use_abcs=False,
                             max_union=7,
                             remove_mutable=False)
-    log.info("=========== PyTD optimized =============\n%s", pytd.Print(mod))
+    mod = pytd_utils.CanonicalOrdering(mod)
+    log.info("=========== PyTD optimized =============")
   else:
-    log.info("=========== PyTD =============\n%s", pytd.Print(mod))
+    mod = pytd_utils.CanonicalOrdering(mod)
+    log.info("=========== PyTD =============")
+  log.info("\n%s", pytd.Print(mod))
   log.info("========================================")
 
-  result = pytd.Print(pytd_utils.CanonicalOrdering(mod))
+  result = pytd.Print(mod)
   if not result.endswith("\n"):  # TODO(pludemann): fix this hack
     result += "\n"
 

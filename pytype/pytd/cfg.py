@@ -288,6 +288,9 @@ class Value(object):
     value.AddOrigin(where, {self})
     return variable
 
+  def __repr__(self):
+    return "<value %x of variable %d>" % (id(self), self.variable.id)
+
 
 class Variable(object):
   """A collection of possible values for a variable, along with their origins.

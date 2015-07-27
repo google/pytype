@@ -29,7 +29,7 @@ stdin: file
 stdout: file
 subversion: tuple
 version: str
-version_info: tuple
+version_info: tuple<int>
 warnoptions: object
 
 def _clear_type_cache() -> NoneType

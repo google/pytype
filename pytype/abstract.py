@@ -39,13 +39,39 @@ def variable_set_official_name(variable, name):
     v.data.official_name = name
 
 
+def match_var_against_type(var, other_type, subst, node, view):
+  if var.values:
+    return match_value_against_type(view[var], other_type, subst, node, view)
+  else:  # Empty set of values. The "nothing" type.
+    if isinstance(other_type, Union):
+      right_side_options = other_type.options
+    else:
+      right_side_options = [other_type]
+    for right in right_side_options:
+      if isinstance(right, Class):
+        # If this type is empty, the only thing we can match it against is
+        # object (for pytd convenience).
+        if right.name == "object":
+          return subst
+      elif isinstance(right, Nothing):
+        # Matching nothing against nothing is fine.
+        return subst
+      elif isinstance(right, TypeParameter):
+        # If we have a union like "K or V" and we match both against
+        # nothing, that will fill in both K and V.
+        if right.name not in subst:
+          subst[right.name] = var.program.NewVariable("empty")
+        return subst
+    return None
+
+
 # TODO(kramm): This needs to match values, not variables. A variable can
 # consist of different types.
-def match_var_against_type(var, other_type, subst, node, view):
+def match_value_against_type(value, other_type, subst, node, view):
   """One-way unify value into pytd type given a substitution.
 
   Args:
-    var: A typegraph.Variable
+    value: A typegraph.Value
     other_type: An AtomicAbstractValue instance.
     subst: The current substitution. This dictionary is not modified.
     node: Current location (typegraph CFG node)
@@ -54,58 +80,44 @@ def match_var_against_type(var, other_type, subst, node, view):
     A new (or unmodified original) substitution dict if the matching succeded,
     None otherwise.
   """
-  assert not any(isinstance(t, FormalType) for t in var.data)
+  left = value.data
+  assert not isinstance(left, FormalType)
 
   # TODO(kramm): Use view
 
-  if not var.values and isinstance(other_type, Class):
-    # If this type is empty, the only thing we can match it against is
-    # object (for pytd convenience).
-    if other_type.name == "object":
-      return subst
-    else:
-      return None
-  elif isinstance(other_type, Class):
+  if isinstance(other_type, Class):
     # Accumulate substitutions in "subst", or break in case of error:
-    for val in var.values:
-      subst = val.data.match_against_type(other_type, subst, node, view)
-      if subst is None:
-        break
+    return left.match_against_type(other_type, subst, node, view)
   elif isinstance(other_type, Union):
     for t in other_type.options:
-      new_subst = match_var_against_type(var, t, subst, node, view)
+      new_subst = match_value_against_type(value, t, subst, node, view)
       if new_subst is not None:
         # TODO(kramm): What if more than one type matches?
-        subst = new_subst
-        break
-    else:
-      subst = None
+        return new_subst
+    return None
   elif isinstance(other_type, TypeParameter):
     if other_type.name in subst:
       # Merge the two variables.
       subst = subst.copy()
       new_var = subst[other_type.name].AssignToNewVariable(other_type.name,
                                                            node)
-      new_var.PasteVariable(var, node)
+      new_var.AddValue(left, [], node)
       subst[other_type.name] = new_var
     else:
       subst = subst.copy()
-      subst[other_type.name] = var
-  elif (isinstance(other_type, Unknown) or
-        any(isinstance(val.data, Unknown) for val in var.values)):
+      subst[other_type.name] = value.AssignToNewVariable(other_type.name, node)
+    return subst
+  elif isinstance(other_type, Unknown) or isinstance(left, Unknown):
     # We can match anything against unknown types, and unknown types against
     # anything.
     # TODO(kramm): Do we want to record what we matched them against?
     assert not isinstance(other_type, ParameterizedClass)
+    return subst
   elif isinstance(other_type, Nothing):
-    for val in var.values:
-      subst = val.data.match_against_type(other_type, subst, node, view)
-      if subst is None:
-        break
+    return left.match_against_type(other_type, subst, node, view)
   else:
     log.error("Invalid type: %s", type(other_type))
-    subst = None
-  return subst
+    return None
 
 
 class AtomicAbstractValue(object):
@@ -408,6 +420,7 @@ class SimpleAbstractValue(AtomicAbstractValue):
     """
     param = self.type_parameters.get(name)
     if not param:
+      log.info("Creating new empty type param %s", name)
       param = self.vm.program.NewVariable(name, [], [], node)
       self.type_parameters[name] = param
     return param
@@ -426,9 +439,11 @@ class SimpleAbstractValue(AtomicAbstractValue):
       value: The value that is being used for this type parameter as a Variable.
     """
     param = self.get_type_parameter(node, name)
+    log.info("Modifying type param %s", name)
     self.type_parameters[name] = self.vm.join_variables(
         node, name, [param, value])
 
+  # TODO(kramm): remove
   def overwrite_type_parameter(self, node, name, value):
     """Overwrite the value of a type parameter.
 
@@ -440,6 +455,13 @@ class SimpleAbstractValue(AtomicAbstractValue):
       name: The name of the type parameter.
       value: The new type parameter as a Variable.
     """
+    log.info("Overwriting type param %s", name)
+    self.type_parameters[name] = self.vm.program.NewVariable(
+        name, value.data, [], node)
+
+  def initialize_type_parameter(self, node, name, value):
+    assert isinstance(name, str)
+    log.info("Initializing type param %s: %r", name, value.data)
     self.type_parameters[name] = self.vm.program.NewVariable(
         name, value.data, [], node)
 
@@ -453,8 +475,18 @@ class SimpleAbstractValue(AtomicAbstractValue):
   def get_attribute(self, node, name, valself=None, valcls=None):
     candidates = []
     nodes = []
-    if self.cls:
-      # TODO(kramm): superclasses
+
+    # Retrieve instance attribute
+    if name in self.members:
+      # Allow an instance attribute to shadow a class attribute, but only
+      # if there's a path through the CFG that actually assigns it.
+      # TODO(kramm): It would be more precise to check whether there's NOT any
+      # path that DOESN'T have it.
+      if self.members[name].Values(node):
+        candidates.append(self.members[name])
+
+    # Retrieve class attribute
+    if not candidates and self.cls:
       for clsval in self.cls.values:
         cls = clsval.data
         new_node, attr = cls.get_attribute(node, name, valself, clsval)
@@ -462,8 +494,6 @@ class SimpleAbstractValue(AtomicAbstractValue):
         if attr is not None:
           candidates.append(attr)
       node = self.vm.join_cfg_nodes(nodes)
-    if name in self.members:
-      candidates.append(self.members[name])
 
     if not candidates:
       return node, None
@@ -471,6 +501,8 @@ class SimpleAbstractValue(AtomicAbstractValue):
       ret = self.vm.program.NewVariable(name)
       for candidate in candidates:
         ret.FilterAndPasteVariable(candidate, node)
+      if not ret.values:
+        return node, None
       return node, ret
 
   def set_attribute(self, node, name, var):
@@ -564,7 +596,13 @@ class SimpleAbstractValue(AtomicAbstractValue):
     return subst
 
   def parameters(self):
-    return self.type_parameters.values()
+    clsvar = self.get_class()
+    if clsvar:
+      return ([clsvar] +
+              sum((cls.parameters() for cls in clsvar.data), []) +
+              self.type_parameters.values())
+    else:
+      return self.type_parameters.values()
 
 
 class Instance(SimpleAbstractValue):
@@ -811,7 +849,8 @@ class Union(AtomicAbstractValue, FormalType):
 
 
 # return value from PyTDSignature._call_with_values:
-FunctionCallResult = collections.namedtuple("_", "return_type, subst")
+FunctionCallResult = collections.namedtuple(
+    "_", ["return_type", "subst", "mutations"])
 
 
 class FailedFunctionCall(Exception):
@@ -880,6 +919,10 @@ class Function(AtomicAbstractValue):
       return subst
 
 
+class Mutation(collections.namedtuple("_", ["instance", "name", "value"])):
+  pass
+
+
 class PyTDSignature(object):
   """A PyTD function type (signature).
 
@@ -928,7 +971,7 @@ class PyTDSignature(object):
       for data in ret_map[t].data:
         ret_map[t].AddValue(data, sources, node)
     self.vm.trace_call(func, args_selected, kws_selected, ret_map[t])
-    return node, ret_map[t]
+    return node, ret_map[t], r.mutations
 
   def _call_with_values(self, node, arg_values, kw_values, view):
     """Try to execute this signature with the given arguments.
@@ -954,12 +997,13 @@ class PyTDSignature(object):
     log.debug("Matched arguments against sig%s", pytd.Print(self.pytd_sig))
     for nr, (actual, formal) in enumerate(zip(arg_values,
                                               self.pytd_sig.params)):
-      log.info("param %d) %s: %s <=> %s %r", nr, formal.name, formal.type,
-               actual.data, actual.variable)
-    for name, value in sorted(subst.items()):
-      log.debug("Using %s=%r", name, value)
+      log.info("param %d) %s: %s <=> %s", nr, formal.name, formal.type,
+               actual.data)
+    for name, var in sorted(subst.items()):
+      log.debug("Using %s=%r %r", name, var, var.data)
     self._execute_mutable(node, arg_values, kw_values, subst)
-    return FunctionCallResult(return_type, subst)
+    mutations = self._execute_mutable(node, arg_values, kw_values, subst)
+    return FunctionCallResult(return_type, subst, mutations)
 
   def _compute_subst(self, node, arg_values, kw_values, view):
     """Compute information about type parameters using one-way unification.
@@ -983,8 +1027,7 @@ class PyTDSignature(object):
       log.warning("Ignoring keyword parameters %r", kw_values)
     subst = {}
     for actual, formal in zip(arg_values, self.param_types):
-      actual_var = actual.AssignToNewVariable(formal.name, node)
-      subst = match_var_against_type(actual_var, formal, subst, node, view)
+      subst = match_value_against_type(actual, formal, subst, node, view)
       if subst is None:
         # This parameter combination didn't work.
         # This is typically a real error: The user program is calling a
@@ -1022,6 +1065,7 @@ class PyTDSignature(object):
     # Handle mutable parameters using the information type parameters
     if kw_values:
       log.warning("Ignoring keyword parameters %r", kw_values)
+    mutations = []
     for actual, formal in zip(arg_values, self.pytd_sig.params):
       if isinstance(formal, pytd.MutableParameter):
         if (isinstance(formal.type, pytd.GenericType) and
@@ -1038,13 +1082,14 @@ class PyTDSignature(object):
                      pytd.Print(type_actual))
             type_actual_val = self.vm.create_pytd_instance(
                 tparam.name, type_actual, subst, node)
-            arg.overwrite_type_parameter(node, tparam.name, type_actual_val)
+            mutations.append(Mutation(arg, tparam.name, type_actual_val))
         else:
           log.error("Old: %s", pytd.Print(formal.type))
           log.error("New: %s", pytd.Print(formal.new_type))
           log.error("Actual: %r", actual)
           raise ValueError("Mutable parameters setting a type to a "
                            "different base type is not allowed.")
+    return mutations
 
   def get_bound_arguments(self):
     return []
@@ -1069,7 +1114,7 @@ class PyTDFunction(Function):
     self.signatures = signatures
     self._signature_cache = {}
     self._return_types = {sig.pytd_sig.return_type for sig in signatures}
-    self._has_mutable = all(isinstance(param, pytd.MutableParameter)
+    self._has_mutable = any(isinstance(param, pytd.MutableParameter)
                             for sig in signatures
                             for param in sig.pytd_sig.params)
     for sig in signatures:
@@ -1082,43 +1127,78 @@ class PyTDFunction(Function):
     error = None
     variables = tuple(args) + tuple(kws.values())
     all_calls_failed = True
+    all_mutations = []
     for combination in utils.deep_variable_product(variables):
       view = {value.variable: value for value in combination}
       try:
-        node, result = self._call_with_view(node, func, view, args, kws,
-                                            ret_map, starargs)
+        node, result, mutations = self._call_with_view(node, func, view, args,
+                                                       kws, ret_map, starargs)
       except FailedFunctionCall as e:
         error = error or e
       else:
         retvar.PasteVariable(result, node)
+        all_mutations += mutations
         all_calls_failed = False
     if all_calls_failed and error:
       raise error  # pylint: disable=raising-bad-type
+
+    log.info("Applying %d mutations", len(all_mutations))
+    for obj, name, value in all_mutations:
+      obj.merge_type_parameter(node, name, value)
+
     return node, retvar
+
+  def _get_type_params_mutation(self, node, values):
+    """Mutation for making all type parameters in a list of instances "unknown".
+
+    This is used if we call a function that has mutable parameters and
+    multiple signatures with unknown parameters.
+
+    Args:
+      node: The current CFG node.
+      values: A list of instances of AtomicAbstractValue.
+
+    Returns:
+      A list of Mutation instances.
+    """
+    return [Mutation(v, name,
+                     self.vm.create_new_unknown(node, name,
+                                                action="type_param_" + name))
+            for v in values if isinstance(v, SimpleAbstractValue)
+            for name in v.type_parameters]
 
   def _call_with_view(self, node, func, view, args, kws,
                       ret_map, starargs=None):
     """Call function using a specific Variable->Value view."""
     log.debug("Calling function %r: %d signature(s)",
               self.name, len(self.signatures))
+
+    if not all(a.values for a in args):
+      raise exceptions.ByteCodeTypeError(
+          "Can't call function with <nothing> parameter")
     # If we're calling an overloaded pytd function with an unknown as a
     # parameter, we can't tell whether it matched or not. Hence, we don't know
     # which signature got called. Check if this is the case and if yes, return
     # an unknown.
-    # TODO(kramm): should be "len(self._return_types) > 1 or self._has_mutable"
     if len(self.signatures) > 1:
       if any(isinstance(view[arg].data, Unknown)
              for arg in chain(args, kws.values())):
         log.debug("Creating unknown return")
         # TODO(kramm): Add proper sources.
-        # TODO(kramm): What about mutable parameters?
         result = self.vm.create_new_unknown(
             node, "<unknown return of " + self.name + ">", action="pytd_call")
+        if self._has_mutable:
+          # TODO(kramm): We only need to whack the type params that appear in
+          # a MutableParameter.
+          mutations = self._get_type_params_mutation(
+              node, (view[p].data for p in chain(args, kws.values())))
+        else:
+          mutations = []
         self.vm.trace_call(func,
                            [view[arg] for arg in args],
                            {name: view[arg] for name, arg in kws.items()},
                            result)
-        return node, result
+        return node, result, mutations
 
     # We only take the first signature that matches, and ignore all after it.
     # This is because in the pytds for the standard library, the last
@@ -1131,12 +1211,13 @@ class PyTDFunction(Function):
     error = None
     for sig in self.signatures:
       try:
-        new_node, result = sig.call_with_view(node, func, view, args, kws,
-                                              ret_map, starargs)
+        new_node, result, mutations = sig.call_with_view(node, func, view,
+                                                         args, kws,
+                                                         ret_map, starargs)
       except FailedFunctionCall as e:
         error = error or e
       else:
-        return new_node, result
+        return new_node, result, mutations
     raise error  # pylint: disable=raising-bad-type
 
   def __repr__(self):
@@ -1263,13 +1344,11 @@ class PyTDClass(LazyAbstractValue, Class):
         self.name + ".__class__", self.pytd_cls), self.vm)
 
     for type_param in self.pytd_cls.template:
-      unknown = self.vm.create_new_unknown(node, type_param.name,
-                                           action="type_param")
-      value.overwrite_type_parameter(node, type_param.name, unknown)
+      value.type_parameters[type_param.name] = self.vm.program.NewVariable(
+          type_param.name)
 
-    origins = [func] + sum((u.values for u in args + kws.values()), [])
     results = self.vm.program.NewVariable(self.name)
-    retval = results.AddValue(value, origins, node)
+    retval = results.AddValue(value, [func], node)
 
     node, init = value.get_attribute(node, "__init__", retval,
                                      value.cls.values[0])
@@ -1400,9 +1479,14 @@ class InterpreterClass(SimpleAbstractValue, Class):
                                   subst, node, view):
     if isinstance(other_type, Class):
       for base in self.mro:
-        assert isinstance(base, Class)
-        if base is self:
+        if isinstance(base, Class):
+          if base is other_type:
+            return subst
+        elif isinstance(base, Unknown):
+          # For all we know, said unknown is other_type.
           return subst
+        else:
+          raise AssertionError("Bad base class %r", base)
       return None
     else:
       raise NotImplementedError(
@@ -1750,8 +1834,10 @@ class Generator(AtomicAbstractValue):
     return node, self.get_yielded_type()
 
   def match_against_type(self, other_type, subst, node, view):
-    if (isinstance(other_type, ParameterizedClass) and
-        other_type.base_cls.name == "generator"):
+    if other_type.name == "object":
+      return subst
+    elif (isinstance(other_type, ParameterizedClass) and
+          other_type.base_cls.name == "generator"):
       return match_var_against_type(self.get_yielded_type(),
                                     other_type.type_parameters[self.TYPE_PARAM],
                                     subst, node, view)
@@ -1837,6 +1923,59 @@ class Module(LazyAbstractValue):
       return subst
 
 
+class Unsolvable(AtomicAbstractValue):
+  """Representation of value we know nothing about.
+
+  Unlike "Unknowns", we don't treat these as solveable. We just put them
+  where values are needed, but make no effort to later try to map them
+  to named types. This helps conserve memory where creating and solving
+  hundreds of unknowns would yield us little to no information.
+  """
+  IGNORED_ATTRIBUTES = ["__get__", "__set__"]
+
+  def __init__(self, vm):
+    super(Unsolvable, self).__init__("unsolveable", vm)
+
+  def get_attribute(self, node, name, valself=None, valcls=None):
+    if name in self.IGNORED_ATTRIBUTES:
+      return node, None
+    return node, self.to_variable(node, self.name)
+
+  def get_attribute_flat(self, node, name):
+    return self.get_attribute(node, name)
+
+  def has_attribute(self, node, name, valself=None, valcls=None):
+    return node, name not in self.IGNORED_ATTRIBUTES
+
+  def set_attribute(self, node, name, _):
+    return node
+
+  def call(self, node, unused_func, args, kws, starargs=None):
+    return node, self.to_variable(node, self.name)
+
+  def to_variable(self, node, name=None):
+    return self.vm.program.NewVariable(name, [self], source_set=[], where=node)
+
+  def get_class(self):
+    return self.to_variable(self.vm.root_cfg_node, self.name)
+
+  def to_pytd_def(self, name):
+    """Convert this Unknown to a pytd.Class."""
+    return pytd.Constant(name, self.to_type())
+
+  def to_type(self):
+    return pytd.AnythingType()
+
+  def get_instance_type(self, _):
+    return pytd.AnythingType()
+
+  def match_against_type(self, other_type, subst, node, view):
+    if isinstance(other_type, ParameterizedClass):
+      return None
+    else:
+      return subst
+
+
 class Unknown(AtomicAbstractValue):
   """Representation of unknown values.
 
@@ -1890,8 +2029,8 @@ class Unknown(AtomicAbstractValue):
     if name in self.members:
       return node, self.members[name]
     assert not self._pytd_class
-    new = self.vm.create_new_unknown(node,
-                                     self.name + "." + name, source=self.owner,
+    new = self.vm.create_new_unknown(self.vm.root_cfg_node,
+                                     self.name + "." + name,
                                      action="getattr")
     # We store this at the root node, even though we only just created this.
     # From the analyzing point of view, we don't know when the "real" version

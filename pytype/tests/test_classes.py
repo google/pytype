@@ -89,6 +89,32 @@ class ClassesTest(test_inference.InferenceTest):
         bar: classmethod
       """)
 
+  def testInheritFromUnknownAttributes(self):
+    with self.Infer("""
+      class Foo(__any_object__):
+        def f(self):
+          self.x = [1]
+          self.y = list(self.x)
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+      class Foo(?):
+        x: list<int>
+        y: list<int>
+        def f(self) -> NoneType
+      """)
+
+  def testInnerClass(self):
+    with self.Infer("""
+      def f():
+        class Foo:
+          x = 3
+        l = Foo()
+        return l.x
+    """, deep=True, solve_unknowns=False, extract_locals=False) as ty:
+      self.assertTypesMatchPytd(ty, """
+        def f() -> int
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()

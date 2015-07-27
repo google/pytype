@@ -32,6 +32,7 @@ class AnalysisFrame(object):
   def __init__(self):
     self.f_code = None  # for recursion detection
     self.f_builtins = None
+    self.current_opcode = None  # for memoizations of unknowns
 
 
 class CallTracer(vm.VirtualMachine):

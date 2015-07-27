@@ -146,6 +146,22 @@ class ContainerTest(test_inference.InferenceTest):
                self.list,
                (pytd.UnionType((self.int, self.float, self.str)),))))
 
+  def testUnionIntoTypeParam(self):
+    with self.Infer("""
+      y = __any_object__
+      if y:
+        x = 3
+      else:
+        x = 3.1
+      l = []
+      l.append(x)
+    """, deep=False, solve_unknowns=False, extract_locals=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        x: int or float
+        y: ?
+        l: list<int or float>
+      """)
+
   def testListConcatUnlike(self):
     with self.Infer("""
       def f():
@@ -429,6 +445,31 @@ class ContainerTest(test_inference.InferenceTest):
         def f(key) -> Foo
       """)
 
+  def testCascade(self):
+    with self.Infer("""
+      if __any_object__:
+        x = 3
+      else:
+        x = 3.14
+      y = divmod(x, x)
+    """, deep=True, solve_unknowns=False, extract_locals=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        x: float or int
+        y: tuple<float or int>
+      """)
+
+  def testMaybeAny(self):
+    with self.Infer("""
+      x = __any_object__
+      x.as_integer_ratio()
+      if x:
+        x = 1
+      y = divmod(x, 3.14)
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        x: float or int
+        y: tuple<complex or float>
+      """)
 
 if __name__ == "__main__":
   test_inference.main()

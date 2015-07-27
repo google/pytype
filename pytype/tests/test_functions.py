@@ -331,6 +331,15 @@ class TestGenerators(test_inference.InferenceTest):
       self.assertHasReturnType(ty.Lookup("e"), self.anything)
       self.assertTrue(ty.Lookup("f"))
 
+  def testListComprehension(self):
+    with self.Infer("""
+      def f(elements):
+        return "%s" % ",".join(t for t in elements)
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        def f(elements) -> str
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()
