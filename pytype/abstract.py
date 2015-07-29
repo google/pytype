@@ -1081,7 +1081,8 @@ class PyTDSignature(object):
                      tparam.name,
                      pytd.Print(type_actual))
             type_actual_val = self.vm.create_pytd_instance(
-                tparam.name, type_actual, subst, node)
+                tparam.name, type_actual, subst, node,
+                discard_concrete_values=True)
             mutations.append(Mutation(arg, tparam.name, type_actual_val))
         else:
           log.error("Old: %s", pytd.Print(formal.type))

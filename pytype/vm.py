@@ -154,10 +154,12 @@ class VirtualMachine(object):
     self.nothing = abstract.Nothing(self)
     self.unsolvable = abstract.Unsolvable(self)
 
-    self.primitive_class_instances = {
-        name: abstract.Instance(clsvar, self)
-        for name, clsvar in self.primitive_classes.items()
-    }
+    self.primitive_class_instances = {}
+    for name, clsvar in self.primitive_classes.items():
+      instance = abstract.Instance(clsvar, self)
+      self.primitive_class_instances[name] = instance
+      clsval, = clsvar.values
+      self._convert_cache[(abstract.Instance, clsval.data.pytd_cls)] = instance
     self.primitive_class_instances[types.NoneType] = self.none
 
     self.str_type = self.primitive_classes[str]
@@ -457,9 +459,9 @@ class VirtualMachine(object):
   def _get_maybe_abstract_instance(self, data):
     """Get an instance of the same type as the given data, abstract if possible.
 
-    Get an abstract instance of any primitive data stored as an
+    Get an abstract instance of primitive data stored as an
     AbstractOrConcreteValue. Return any other data as-is. This is used by
-    create_pytd_instance, which doesn't need the concrete values that are kept
+    create_pytd_instance to discard concrete values that have been kept
     around for InterpreterFunction.
 
     Arguments:
@@ -474,7 +476,8 @@ class VirtualMachine(object):
         return self.primitive_class_instances[data_type]
     return data
 
-  def create_pytd_instance(self, name, pytype, subst, node, source_sets=None):
+  def create_pytd_instance(self, name, pytype, subst, node, source_sets=None,
+                           discard_concrete_values=False):
     """Create an instance of a PyTD type as a typegraph.Variable.
 
     Because this (unlike create_pytd_instance_value) creates variables, it can
@@ -488,6 +491,8 @@ class VirtualMachine(object):
       source_sets: An iterator over instances of SourceSet (or just tuples).
         Each SourceSet describes a combination of values that were used to
         build the new value (e.g., for a function call, parameter types).
+      discard_concrete_values: Whether concrete values should be discarded from
+        type parameters.
     Returns:
       A typegraph.Variable.
     Raises:
@@ -506,7 +511,8 @@ class VirtualMachine(object):
               t.name, subst))
         for v in subst[t.name].values:
           for source_set in source_sets:
-            var.AddValue(self._get_maybe_abstract_instance(v.data),
+            var.AddValue(self._get_maybe_abstract_instance(v.data)
+                         if discard_concrete_values else v.data,
                          source_set + [v], node)
       elif isinstance(t, pytd.NothingType):
         pass
@@ -535,6 +541,7 @@ class VirtualMachine(object):
       ValueError: if pytype is not of a known type.
     """
     if isinstance(pytype, pytd.ClassType):
+      # This key is also used in __init__
       key = (abstract.Instance, pytype.cls)
       if key not in self._convert_cache:
         instance = abstract.Instance(

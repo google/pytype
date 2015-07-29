@@ -140,7 +140,6 @@ class SolverTests(test_inference.InferenceTest):
         def f() -> bool
       """)
 
-  @unittest.skip("Broken in favor of _get_maybe_abstract_instance optimization")
   def testIdentityFunction(self):
     with self.Infer("""
       def f(x):
