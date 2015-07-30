@@ -520,7 +520,6 @@ class VirtualMachine(object):
         value = self._create_pytd_instance_value(name, t, subst, node)
         for source_set in source_sets:
           var.AddValue(value, source_set, node)
-        log.info("New pytd instance for %s: %r", name, value)
     return var
 
   def _create_pytd_instance_value(self, name, pytype, subst, node):
@@ -546,6 +545,7 @@ class VirtualMachine(object):
       if key not in self._convert_cache:
         instance = abstract.Instance(
             self.convert_constant(pytype.cls.name, pytype.cls), self)
+        log.info("New pytd instance for %s: %r", pytype.cls.name, instance)
         self._convert_cache[key] = instance
       return self._convert_cache[key]
     elif isinstance(pytype, pytd.GenericType):

@@ -341,9 +341,9 @@ class AtomicAbstractValue(object):
     type of it. So it will retrieve type parameters, but not attributes.
 
     Returns:
-      A list with elements of type typegraph.Variable.
+      A dictionary, str -> typegraph.Variable.
     """
-    return []
+    return {}
 
 
 class FormalType(object):
@@ -598,11 +598,13 @@ class SimpleAbstractValue(AtomicAbstractValue):
   def parameters(self):
     clsvar = self.get_class()
     if clsvar:
-      return ([clsvar] +
-              sum((cls.parameters() for cls in clsvar.data), []) +
-              self.type_parameters.values())
+      d = {"__class__": clsvar}
+      for cls in clsvar.data:
+        d.update(cls.parameters())
+      d.update(self.type_parameters)
+      return d
     else:
-      return self.type_parameters.values()
+      return self.type_parameters
 
 
 class Instance(SimpleAbstractValue):
@@ -1122,7 +1124,18 @@ class PyTDFunction(Function):
       sig.function = self
       sig.name = self.name
 
+  def _log_args(self, args, level=0):
+    if log.isEnabledFor(logging.DEBUG):
+      if isinstance(args, list):
+        args = {"Arg %d" % i: a for i, a in enumerate(args)}
+      for name, a in sorted(args.items()):
+        log.debug("%s%s:", "  " * level, name)
+        for val in a.data:
+          log.debug("%s%r", "  " * (level + 1), val)
+          self._log_args(val.parameters(), level + 2)
+
   def call(self, node, func, args, kws, starargs=None):
+    self._log_args(args)
     ret_map = {}
     retvar = self.vm.program.NewVariable("%s ret" % self.name)
     error = None

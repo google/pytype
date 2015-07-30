@@ -24,7 +24,7 @@ class DummyValue(object):
     self._parameters = parameters
 
   def parameters(self):
-    return self._parameters
+    return {i: param for i, param in enumerate(self._parameters)}
 
   def __repr__(self):
     return "x%d" % self.index
