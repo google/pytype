@@ -110,3 +110,11 @@ class ErrorLog(ErrorLogBase):
     else:
       raise AssertionError(error)
 
+  def index_error(self, opcode, container, unused_index):
+    if container.data:
+      out_of = " out of %s" % container.data[0].name
+    else:
+      out_of = ""
+    self.error(opcode, "Can't retrieve item%s. Empty?",
+               out_of)
+

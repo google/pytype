@@ -43,5 +43,13 @@ class ErrorTest(test_inference.InferenceTest):
         errors, (r"line 2.*hex was called with the wrong arguments.*"
                  r"expected:.*int.*passed:.*complex"))
 
+  def testIndexError(self):
+    _, errors = self.InferAndCheck("""
+      def f():
+        return [][0]
+    """)
+    # "Line 3, in f: Can't retrieve item out of list. Empty?"
+    self.assertErrorLogContains(errors, r"line 3.*item out of list")
+
 if __name__ == "__main__":
   test_inference.main()

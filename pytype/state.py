@@ -49,6 +49,12 @@ class FrameState(object):
   def top(self):
     return self.data_stack[-1]
 
+  def topn(self, n):
+    if n > 0:
+      return self.data_stack[-n:]
+    else:
+      return []
+
   def pop(self):
     """Pop a value from the value stack."""
     value = self.data_stack[-1]

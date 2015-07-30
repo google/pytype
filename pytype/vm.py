@@ -1035,7 +1035,7 @@ class VirtualMachine(object):
         log.warning("failed function call for %s", error.sig.name)
         return node, self.create_new_unsolvable(node, "failed call")
       else:
-        # We were called by something that returns errors, so don't report
+        # We were called by something that ignores errors, so don't report
         # the failed call.
         return node, result
 
@@ -1347,12 +1347,13 @@ class VirtualMachine(object):
     return self.binary_operator(state, "__pow__")
 
   def byte_BINARY_SUBSCR(self, state):
+    (container, index) = state.topn(2)
     state = self.binary_operator(state, "__getitem__")
     if state.top().values:
       return state
     else:
-      raise exceptions.ByteCodeIndexError(
-          "Couldn't retrieve item out of container")
+      self.errorlog.index_error(self.frame.current_opcode, container, index)
+      return state
 
   def byte_INPLACE_ADD(self, state):
     # TODO(kramm): This should fall back to __add__ (also below)
