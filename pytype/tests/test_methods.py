@@ -536,6 +536,7 @@ class MethodsTest(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=False, extract_locals=True) as ty:
       self.assertTypesMatchPytd(ty, """
       class Foo(object):
+        def __init__(self, ...) -> NoneType
         kwargs: dict<str, ?>
       """)
 

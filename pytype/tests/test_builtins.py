@@ -389,7 +389,6 @@ class BuiltinTests(test_inference.InferenceTest):
         array: module
         class Foo(object):
           bar: array.array
-          def __init__(self) -> NoneType
       """)
 
   def testInheritFromBuiltin(self):

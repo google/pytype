@@ -48,7 +48,6 @@ class TestAttributes(test_inference.InferenceTest):
       self.assertTypesMatchPytd(ty, """
         class C:
           _x: int
-          def __init__(self) -> NoneType
           def foo(self) -> int
       """)
 
@@ -63,7 +62,6 @@ class TestAttributes(test_inference.InferenceTest):
       self.assertTypesMatchPytd(ty, """
         class C:
           x: int
-          def __init__(self) -> NoneType
           def foo(self) -> int
       """)
 
@@ -86,12 +84,10 @@ class TestAttributes(test_inference.InferenceTest):
         class A:
           b: B
           x: complex
-          def __init__(self) -> NoneType
           def set_on_b(self) -> NoneType
         class B:
           a: A
           x: int
-          def __init__(self) -> NoneType
           def set_on_a(self) -> NoneType
       """)
 

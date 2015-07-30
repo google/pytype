@@ -21,7 +21,6 @@ class SolverTests(test_inference.InferenceTest):
       self.assertTypesMatchPytd(ty, """
       class Node:
         children: list<nothing> or tuple<nothing>
-        def __init__(self) -> NoneType
       """)
 
   def testCall(self):
@@ -114,7 +113,7 @@ class SolverTests(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
       class Foo(object):
-        # def __init__(self, ...) is already declared in object
+        def __init__(self, ...) -> NoneType
         types: tuple<type>
         def bar(self, val) -> bool
       """)
