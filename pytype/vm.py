@@ -110,7 +110,7 @@ class VirtualMachine(object):
                reverse_operators=False,
                cache_unknowns=True,
                pythonpath=(),
-               pytd_import_ext=".pytd",
+               find_pytd_import_ext=".pytd",
                import_drop_prefixes=(),
                pybuiltins_filename=None):
     """Construct a TypegraphVirtualMachine."""
@@ -121,7 +121,7 @@ class VirtualMachine(object):
     self.loader = load_pytd.Loader(base_module=module_name,
                                    python_version=python_version,
                                    pythonpath=pythonpath,
-                                   pytd_import_ext=pytd_import_ext,
+                                   find_pytd_import_ext=find_pytd_import_ext,
                                    import_drop_prefixes=import_drop_prefixes)
     # The call stack of frames.
     self.frames = []

@@ -412,7 +412,7 @@ def _get_module_name(filename, pythonpath):
 def infer_types(src, python_version, filename=None, run_builtins=True,
                 pybuiltins_filename=None,
                 pythonpath=(),
-                pytd_import_ext=".pytd",
+                find_pytd_import_ext=".pytd",
                 import_drop_prefixes=(),
                 output_cfg=None, output_typegraph=None,
                 output_pseudocode=None, deep=True, solve_unknowns=True,
@@ -427,7 +427,8 @@ def infer_types(src, python_version, filename=None, run_builtins=True,
       the program.
     pybuiltins_filename: Path to Python builtins, or None for default.
     pythonpath: List of directories to search for .pytd-gen files.
-    pytd_import_ext: Extension to use when looking up import PyTD in pythonpath.
+    find_pytd_import_ext: Extension pattern to use when looking up import PyTD
+                          in pythonpath.
     import_drop_prefixes: List of prefixes to drop when resolving module names.
     output_cfg: A filename into which to save an SVG of the control flow graph.
     output_typegraph: A filename into which to save an SVG of the typegraph.
@@ -448,7 +449,7 @@ def infer_types(src, python_version, filename=None, run_builtins=True,
                       reverse_operators=reverse_operators,
                       cache_unknowns=cache_unknowns,
                       pythonpath=pythonpath,
-                      pytd_import_ext=pytd_import_ext,
+                      find_pytd_import_ext=find_pytd_import_ext,
                       import_drop_prefixes=import_drop_prefixes,
                       pybuiltins_filename=pybuiltins_filename)
   loc, defs, builtin_names = tracer.run_program(src, filename, run_builtins)

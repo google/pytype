@@ -30,7 +30,7 @@ class ImportPathsTest(unittest.TestCase):
       d.create_file("path/to/some/module.dat", "def foo() -> str")
       loader = load_pytd.Loader("base", python_version=self.PYTHON_VERSION,
                                 pythonpath=[d.path],
-                                pytd_import_ext=".dat"
+                                find_pytd_import_ext=".dat"
                                )
       ast = loader.import_name("path.to.some.module")
       self.assertTrue(ast.Lookup("path.to.some.module.foo"))

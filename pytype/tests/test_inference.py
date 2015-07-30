@@ -67,7 +67,7 @@ class Infer(object):
   def __init__(self, test, srccode, deep=False,
                solve_unknowns=False, extract_locals=False,
                extra_verbose=False,
-               pythonpath=(), pytd_import_ext=".pytd"):
+               pythonpath=(), find_pytd_import_ext=".pytd"):
     """Constructor for Infer.
 
     Args:
@@ -79,7 +79,7 @@ class Infer(object):
       extract_locals: strip ~unknown types from the output pytd
       extra_verbose: extra intermeidate output (for debugging)
       pythonpath: list of directories for imports
-      pytd_import_ext: the file extention for imports
+      find_pytd_import_ext: the file extension pattern for imports
     """
     # TODO(pludemann): There are eight possible combinations of these three
     # boolean flags. Do all of these combinations make sense? Or would it be
@@ -101,7 +101,7 @@ class Infer(object):
       self.types = test._InferAndVerify(
           self.srccode, deep=deep, solve_unknowns=solve_unknowns,
           reverse_operators=True, cache_unknowns=True,
-          pythonpath=pythonpath, pytd_import_ext=pytd_import_ext)
+          pythonpath=pythonpath, find_pytd_import_ext=find_pytd_import_ext)
       self.inferred = self.types
       if extract_locals:
         # Rename "~unknown" to "?"
@@ -219,7 +219,7 @@ class InferenceTest(unittest.TestCase):
   # TODO(kramm): Rename this function.
   # pylint: disable=invalid-name
   def assert_ok(self, code, raises=None,
-                pythonpath=(), pytd_import_ext=".pytd"):
+                pythonpath=(), find_pytd_import_ext=".pytd"):
     """Run an inference smoke test for the given code."""
     if raises is not None:
       # TODO(kramm): support this
@@ -227,17 +227,17 @@ class InferenceTest(unittest.TestCase):
     unit = infer.infer_types(
         textwrap.dedent(code), self.PYTHON_VERSION,
         deep=False, solve_unknowns=False, reverse_operators=True,
-        pythonpath=pythonpath, pytd_import_ext=pytd_import_ext,
+        pythonpath=pythonpath, find_pytd_import_ext=find_pytd_import_ext,
         cache_unknowns=True)
     unit.Visit(visitors.VerifyVisitor())
     return pytd_utils.CanonicalOrdering(unit)
 
-  def InferFromFile(self, filename, pythonpath, pytd_import_ext=".pytd"):
+  def InferFromFile(self, filename, pythonpath, find_pytd_import_ext=".pytd"):
     with open(filename, "rb") as fi:
       unit = infer.infer_types(fi.read(), self.PYTHON_VERSION,
                                filename=filename, cache_unknowns=True,
                                pythonpath=pythonpath,
-                               pytd_import_ext=pytd_import_ext)
+                               find_pytd_import_ext=find_pytd_import_ext)
       unit.Visit(visitors.VerifyVisitor())
       return pytd_utils.CanonicalOrdering(unit)
 
@@ -334,14 +334,14 @@ class InferenceTest(unittest.TestCase):
 
   def Infer(self, srccode, deep=False, solve_unknowns=False,
             extract_locals=False, extra_verbose=False,
-            pythonpath=(), pytd_import_ext=".pytd"):
+            pythonpath=(), find_pytd_import_ext=".pytd"):
     # Wraps Infer object to make it seem less magical
     # See class Infer for more on the arguments
     return Infer(self, srccode=srccode, deep=deep,
                  solve_unknowns=solve_unknowns, extract_locals=extract_locals,
                  extra_verbose=extra_verbose,
                  pythonpath=pythonpath,
-                 pytd_import_ext=pytd_import_ext)
+                 find_pytd_import_ext=find_pytd_import_ext)
 
   def _InferAndVerify(self, src, **kwargs):
     """Infer types for the source code treating it as a module.
