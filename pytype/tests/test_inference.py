@@ -66,7 +66,7 @@ class Infer(object):
 
   def __init__(self, test, srccode, deep=False,
                solve_unknowns=False, extract_locals=False,
-               extra_verbose=False,
+               reverse_operators=True, extra_verbose=False,
                pythonpath=(), find_pytd_import_ext=".pytd"):
     """Constructor for Infer.
 
@@ -77,6 +77,7 @@ class Infer(object):
             that don't have a caller)
       solve_unknowns: try to solve for all ~unknown types
       extract_locals: strip ~unknown types from the output pytd
+      reverse_operators: Whether to try e.g. both __add__ and __radd__
       extra_verbose: extra intermeidate output (for debugging)
       pythonpath: list of directories for imports
       find_pytd_import_ext: the file extension pattern for imports
@@ -100,7 +101,7 @@ class Infer(object):
     try:
       self.types = test._InferAndVerify(
           self.srccode, deep=deep, solve_unknowns=solve_unknowns,
-          reverse_operators=True, cache_unknowns=True,
+          reverse_operators=reverse_operators, cache_unknowns=True,
           pythonpath=pythonpath, find_pytd_import_ext=find_pytd_import_ext)
       self.inferred = self.types
       if extract_locals:
@@ -333,12 +334,13 @@ class InferenceTest(unittest.TestCase):
                         "Not identity: %r" % pytd.Print(func))
 
   def Infer(self, srccode, deep=False, solve_unknowns=False,
-            extract_locals=False, extra_verbose=False,
+            reverse_operators=True, extract_locals=False, extra_verbose=False,
             pythonpath=(), find_pytd_import_ext=".pytd"):
     # Wraps Infer object to make it seem less magical
     # See class Infer for more on the arguments
     return Infer(self, srccode=srccode, deep=deep,
                  solve_unknowns=solve_unknowns, extract_locals=extract_locals,
+                 reverse_operators=reverse_operators,
                  extra_verbose=extra_verbose,
                  pythonpath=pythonpath,
                  find_pytd_import_ext=find_pytd_import_ext)

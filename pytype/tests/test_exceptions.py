@@ -182,5 +182,21 @@ class TestExceptions(test_inference.InferenceTest):
             pass
       """)
 
+  def test_inherit_from_exception(self):
+    with self.Infer("""
+      class Foo(Exception):
+        pass
+
+      def bar(x):
+        return Foo(x)
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        class Foo(Exception):
+          pass
+
+        def bar(x) -> Foo
+      """)
+
+
 if __name__ == "__main__":
   test_inference.main()

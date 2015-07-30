@@ -41,10 +41,11 @@ class SolverTests(test_inference.InferenceTest):
     with self.Infer("""
       def f(A):
         return [a - 42.0 for a in A.values()]
-    """, deep=True, solve_unknowns=True, extract_locals=True) as ty:
-      self.assertTypesMatchPytd(ty, (
-          "def f(A: dict<?, complex or dict_keys<?> or float>) -> "
-          "list<complex or float or set<?>>"))
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+          # TODO(kramm): This is missing int, bool, long, complex
+          def f(A: dict<?, float>) -> list<float>
+      """)
 
   def testAnythingTypeParameters(self):
     with self.Infer("""
@@ -158,17 +159,16 @@ class SolverTests(test_inference.InferenceTest):
         l: list<str>
       """)
 
-  @unittest.skip("Needs matching of builtin calls to constructors")
   def testCallConstructor(self):
     with self.Infer("""
       def f(x):
         return int(x, 16)
     """, deep=True, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
-        def f(x: int or float) -> int
+        # TODO(kramm): Why is bool here?
+        def f(x: bool or int or float) -> int
       """)
 
-  @unittest.skip("Needs matching of builtin calls to builtin methods")
   def testCallMethod(self):
     with self.Infer("""
       def f(x):
@@ -176,6 +176,17 @@ class SolverTests(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
         def f(x: str or unicode or bytearray) -> int
+      """)
+
+  @unittest.skip("Needs support for ExternalType in solver.")
+  def testExternalType(self):
+    with self.Infer("""
+      import itertools
+      def every(f, array):
+        return all(itertools.imap(f, array))
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        def every(f, array) -> bool
       """)
 
 if __name__ == "__main__":

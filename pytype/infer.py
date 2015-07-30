@@ -50,6 +50,7 @@ class CallTracer(vm.VirtualMachine):
     super(CallTracer, self).__init__(*args, **kwargs)
     self._unknowns = {}
     self._calls = set()
+    self._method_calls = set()
     self.exitpoint = None
 
   def create_argument(self, node, method_name, i):
@@ -166,11 +167,15 @@ class CallTracer(vm.VirtualMachine):
     """
     log.debug("Logging call to %r with %d args, return %r",
               func, len(posargs), result)
+    args = tuple(posargs)
+    kwargs = tuple((namedargs or {}).items())
     if isinstance(func.data, abstract.BoundFunction):
-      log.info("Not recording call to bound method.")
-      return
-    self._calls.add(CallRecord(func, tuple(posargs),
-                               tuple((namedargs or {}).items()), result))
+      # We only need to record calls to pytd classes, since these are the
+      # only calls the solver is going to care about later.
+      if isinstance(func.data, abstract.BoundPyTDFunction):
+        self._method_calls.add(CallRecord(func, args, kwargs, result))
+    else:
+      self._calls.add(CallRecord(func, args, kwargs, result))
 
   def pytd_classes_for_unknowns(self):
     classes = []
@@ -222,13 +227,14 @@ class CallTracer(vm.VirtualMachine):
     return pytd.TypeDeclUnit(
         "inferred", tuple(constants), tuple(classes), tuple(functions))
 
-  def pytd_functions_for_call_traces(self):
+  @staticmethod
+  def _call_traces_to_function(call_traces, prefix=""):
     funcs = collections.defaultdict(pytd_utils.OrderedSet)
-    for funcvar, args, kws, retvar in self._calls:
-      func = funcvar.data.signatures[0]
-      if isinstance(func, abstract.BoundFunction):
-        # Don't do class methods, only top-level functions
-        continue
+    for funcvar, args, kws, retvar in call_traces:
+      if isinstance(funcvar.data, abstract.BoundFunction):
+        func = funcvar.data.underlying.signatures[0]
+      else:
+        func = funcvar.data.signatures[0]
       arg_names = func.get_parameter_names()
       arg_types = (a.data.to_type()
                    for a in func.get_bound_arguments() + list(args))
@@ -241,16 +247,44 @@ class CallTracer(vm.VirtualMachine):
           ret, has_optional=False, exceptions=(), template=()))
     functions = []
     for name, signatures in funcs.items():
-      functions.append(pytd.Function("~" + name, tuple(signatures)))
+      functions.append(pytd.Function(prefix + name, tuple(signatures)))
     return functions
+
+  def pytd_functions_for_call_traces(self):
+    return self._call_traces_to_function(self._calls, "~")
+
+  def pytd_classes_for_call_traces(self):
+    class_to_records = collections.defaultdict(list)
+    for call_record in self._method_calls:
+      args = call_record.positional_arguments
+      if not any(isinstance(a.data, abstract.Unknown) for a in args):
+        # We don't need to record call signatures that don't involve
+        # unknowns - there's nothing to solve for.
+        continue
+      clsvar = args[0].data.get_class()
+      for cls in clsvar.data:
+        if isinstance(cls, abstract.PyTDClass):
+          class_to_records[cls].append(call_record)
+    classes = []
+    for cls, call_records in class_to_records.items():
+      classes.append(pytd.Class(
+          name="~" + cls.name,
+          parents=(),  # not used in solver
+          methods=self._call_traces_to_function(call_records),
+          constants=(),
+          template=(),
+      ))
+    return classes
 
   def compute_types(self, defs, ignore):
     self.program.Freeze()
     ty = pytd_utils.Concat(
         self.pytd_for_types(defs, ignore),
-        pytd.TypeDeclUnit("unknowns", (),
-                          tuple(self.pytd_classes_for_unknowns()),
-                          tuple(self.pytd_functions_for_call_traces())))
+        pytd.TypeDeclUnit(
+            "unknowns", (),
+            tuple(self.pytd_classes_for_unknowns()) +
+            tuple(self.pytd_classes_for_call_traces()),
+            tuple(self.pytd_functions_for_call_traces())))
     ty = ty.Visit(optimize.PullInMethodClasses())
     ty = ty.Visit(visitors.DefaceUnresolved([ty, self.loader.concat_all()]))
     return ty
