@@ -23,8 +23,8 @@ class DummyValue(object):
   def set_parameters(self, parameters):
     self._parameters = parameters
 
-  def parameters(self):
-    return {i: param for i, param in enumerate(self._parameters)}
+  def unique_parameter_values(self):
+    return [param.values for param in self._parameters]
 
   def __repr__(self):
     return "x%d" % self.index

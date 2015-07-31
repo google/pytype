@@ -105,7 +105,16 @@ def match_value_against_type(value, other_type, subst, node, view):
       subst[other_type.name] = new_var
     else:
       subst = subst.copy()
-      subst[other_type.name] = value.AssignToNewVariable(other_type.name, node)
+      subst[other_type.name] = new_var = value.AssignToNewVariable(
+          other_type.name, node)
+    type_key = left.get_type_key()
+    # Every value with this type key produces the same result when matched
+    # against other_type, so they can all be added to this substitution rather
+    # than matched separately.
+    for other_value in value.variable.values:
+      if (other_value is not value and
+          other_value.data.get_type_key() == type_key):
+        new_var.AddValue(other_value.data, {other_value}, node)
     return subst
   elif isinstance(other_type, Unknown) or isinstance(left, Unknown):
     # We can match anything against unknown types, and unknown types against
@@ -282,6 +291,10 @@ class AtomicAbstractValue(object):
     """Get a PyTD type representing this object."""
     raise NotImplementedError(self.__class__.__name__)
 
+  def get_type_key(self):
+    """Build a key from the information used to perform type matching."""
+    return self
+
   def to_variable(self, node, name=None):
     """Build a variable out of this abstract value.
 
@@ -334,16 +347,8 @@ class AtomicAbstractValue(object):
     """Return True if this is a function and has a **kwargs parameter."""
     return False
 
-  def parameters(self):
-    """Get parameter subtypes.
-
-    This will retrieve all 'children' of this value that contribute to the
-    type of it. So it will retrieve type parameters, but not attributes.
-
-    Returns:
-      A dictionary, str -> typegraph.Variable.
-    """
-    return {}
+  def unique_parameter_values(self):
+    return []
 
 
 class FormalType(object):
@@ -595,16 +600,33 @@ class SimpleAbstractValue(AtomicAbstractValue):
         return None
     return subst
 
-  def parameters(self):
+  def get_type_key(self):
+    if not self.type_parameters and self.cls:
+      clsval, = self.cls.values
+      return clsval.data
+    else:
+      return self
+
+  def unique_parameter_values(self):
+    """Get unique parameter subtypes as Values.
+
+    This will retrieve 'children' of this value that contribute to the
+    type of it. So it will retrieve type parameters, but not attributes. To
+    keep the number of possible combinations reasonable, when we encounter
+    multiple instances of the same type, we include only one.
+
+    Returns:
+      A list of list of Values.
+    """
+    parameters = self.type_parameters.values()
     clsvar = self.get_class()
     if clsvar:
-      d = {"__class__": clsvar}
-      for cls in clsvar.data:
-        d.update(cls.parameters())
-      d.update(self.type_parameters)
-      return d
-    else:
-      return self.type_parameters
+      parameters.append(clsvar)
+    # TODO(rechen): Remember which values were merged under which type keys so
+    # we don't have to recompute this information in match_value_against_type.
+    return [{value.data.get_type_key(): value
+             for value in parameter.values}.values()
+            for parameter in parameters]
 
 
 class Instance(SimpleAbstractValue):
@@ -1122,18 +1144,20 @@ class PyTDFunction(Function):
       sig.function = self
       sig.name = self.name
 
-  def _log_args(self, args, level=0):
+  def _log_args(self, arg_values_list, level=0):
     if log.isEnabledFor(logging.DEBUG):
-      if not isinstance(args, dict):
-        args = {"Arg %d" % i: a for i, a in enumerate(args)}
-      for name, a in sorted(args.items()):
-        log.debug("%s%s:", "  " * level, name)
-        for val in a.data:
-          log.debug("%s%r", "  " * (level + 1), val)
-          self._log_args(val.parameters(), level + 2)
+      for i, arg_values in enumerate(arg_values_list):
+        if level:
+          if arg_values:
+            log.debug("%s%s:", "  " * level, arg_values[0].variable.name)
+        else:
+          log.debug("Arg %d", i)
+        for value in arg_values:
+          log.debug("%s%s", "  " * (level + 1), value.data)
+          self._log_args(value.data.unique_parameter_values(), level + 2)
 
   def call(self, node, func, args, kws, starargs=None):
-    self._log_args(args)
+    self._log_args(arg.values for arg in args)
     ret_map = {}
     retvar = self.vm.program.NewVariable("%s ret" % self.name)
     error = None

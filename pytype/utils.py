@@ -68,10 +68,16 @@ def deep_variable_product(variables):
     A list of lists of Values, where each sublist has one Value from each
     of the corresponding Variables and the Variables of their Values' children.
   """
+  return _deep_values_list_product(v.values for v in variables)
+
+
+def _deep_values_list_product(values_list):
+  """Take the deep Cartesian product of a list of list of Values."""
   result = []
-  for row in itertools.product(*(v.values for v in variables if v.values)):
-    extra_params = sum([entry.data.parameters().values() for entry in row], [])
-    extra_values = extra_params and deep_variable_product(extra_params)
+  for row in itertools.product(*(values for values in values_list if values)):
+    extra_params = sum([entry.data.unique_parameter_values()
+                        for entry in row], [])
+    extra_values = extra_params and _deep_values_list_product(extra_params)
     if extra_values:
       for new_row in extra_values:
         result.append(row + new_row)
