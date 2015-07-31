@@ -46,17 +46,17 @@ class TestVisitors(parser_test.ParserTest):
     self.AssertSourceEquals(new_tree, src)
     new_tree.Visit(visitors.VerifyLookup())
 
-  def testMaybeFillInClasses(self):
+  def testMaybeInPlaceFillInClasses(self):
     src = textwrap.dedent("""
         class A:
             def a(self, a: A, b: B) -> A or B raises A, B
     """)
     tree = self.Parse(src)
     ty_a = pytd.ClassType("A")
-    visitors.FillInClasses(ty_a, tree)
+    visitors.InPlaceFillInClasses(ty_a, tree)
     self.assertIsNotNone(ty_a.cls)
     ty_b = pytd.ClassType("B")
-    visitors.FillInClasses(ty_b, tree)
+    visitors.InPlaceFillInClasses(ty_b, tree)
     self.assertIsNone(ty_b.cls)
 
   def testDefaceUnresolved(self):
@@ -213,7 +213,7 @@ class TestVisitors(parser_test.ParserTest):
     tree2 = tree2.Visit(visitors.CanonicalOrderingVisitor(sort_signatures=True))
     self.AssertSourceEquals(tree1, tree2)
 
-  def testLookupExternalClasses(self):
+  def testInPlaceLookupExternalClasses(self):
     src1 = textwrap.dedent("""
       def f1() -> bar.Bar
       class Foo:
@@ -226,14 +226,14 @@ class TestVisitors(parser_test.ParserTest):
     """)
     ast1 = self.Parse(src1)
     ast2 = self.Parse(src2)
-    ast1.Visit(visitors.LookupExternalClasses({"foo": ast1, "bar": ast2}))
-    ast2.Visit(visitors.LookupExternalClasses({"foo": ast1, "bar": ast2}))
+    ast1.Visit(visitors.InPlaceLookupExternalClasses(dict(foo=ast1, bar=ast2)))
+    ast2.Visit(visitors.InPlaceLookupExternalClasses(dict(foo=ast1, bar= ast2)))
     f1, = ast1.Lookup("f1").signatures
     f2, = ast2.Lookup("f2").signatures
     self.assertIs(ast2.Lookup("Bar"), f1.return_type.cls)
     self.assertIs(ast1.Lookup("Foo"), f2.return_type.cls)
 
-  def testLookupExternalClassesByFullName(self):
+  def testInPlaceLookupExternalClassesByFullName(self):
     src1 = textwrap.dedent("""
       def f1() -> bar.Bar
       class Foo:
@@ -246,10 +246,10 @@ class TestVisitors(parser_test.ParserTest):
     """)
     ast1 = self.Parse(src1).Visit(visitors.AddNamePrefix("foo."))
     ast2 = self.Parse(src2).Visit(visitors.AddNamePrefix("bar."))
-    ast1.Visit(visitors.LookupExternalClasses({"foo": ast1, "bar": ast2},
-                                              full_names=True))
-    ast2.Visit(visitors.LookupExternalClasses({"foo": ast1, "bar": ast2},
-                                              full_names=True))
+    ast1.Visit(visitors.InPlaceLookupExternalClasses(dict(foo=ast1, bar=ast2),
+                                                     full_names=True))
+    ast2.Visit(visitors.InPlaceLookupExternalClasses(dict(foo=ast1, bar=ast2),
+                                                     full_names=True))
     f1, = ast1.Lookup("foo.f1").signatures
     f2, = ast2.Lookup("bar.f2").signatures
     self.assertIs(ast2.Lookup("bar.Bar"), f1.return_type.cls)

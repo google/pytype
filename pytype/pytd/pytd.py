@@ -255,8 +255,8 @@ class ClassType(node.Node('name')):
   """A type specified through an existing class node."""
 
   # This type is different from normal nodes:
-  # (a) It's mutable, and there are functions (parse/visitors.py:FillInClasses)
-  #     that modify a tree in place.
+  # (a) It's mutable, and there are functions
+  #     (parse/visitors.py:InPlaceFillInClasses) that modify a tree in place.
   # (b) Because it's mutable, it's not actually using the tuple/Node interface
   #     to store things (in particular, the pointer to the existing class).
   # (c) Visitors will not process the "children" of this node. Since we point
@@ -267,7 +267,8 @@ class ClassType(node.Node('name')):
 
   def __new__(cls, name, clsref=None):
     self = super(ClassType, cls).__new__(cls, name)
-    self.cls = clsref  # potentially filled in later (by visitors.FillInClasses)
+    # self.cls potentially filled in later (by visitors.InPlaceFillInClasses)
+    self.cls = clsref
     return self
 
   # __eq__ is inherited (using tuple equality + requiring the two classes

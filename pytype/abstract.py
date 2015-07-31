@@ -578,7 +578,7 @@ class SimpleAbstractValue(AtomicAbstractValue):
       for cls in classvalues:
         types.append(cls.get_instance_type(self))
       ret = pytd_utils.JoinTypes(types)
-      visitors.FillInClasses(ret, self.vm.loader.builtins)
+      visitors.InPlaceFillInClasses(ret, self.vm.loader.builtins)
       return ret
     else:
       # We don't know this type's __class__, so return AnythingType to indicate

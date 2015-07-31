@@ -294,7 +294,7 @@ class StripSelf(Visitor):
     return node.Replace(params=node.params[1:])
 
 
-class _FillInClasses(Visitor):
+class _InPlaceFillInClasses(Visitor):
   """Fill in ClassType pointers using a symbol table.
 
   This is an in-place visitor! It modifies the original tree. This is
@@ -310,7 +310,7 @@ class _FillInClasses(Visitor):
       lookup_list: An iterable of symbol tables (i.e., objects that have a
         "Lookup" function)
     """
-    super(_FillInClasses, self).__init__()
+    super(_InPlaceFillInClasses, self).__init__()
     self._lookup_list = lookup_list
 
   def VisitClassType(self, node):
@@ -337,14 +337,14 @@ class _FillInClasses(Visitor):
       return node
 
 
-class FillInExternalTypes(Visitor):
+class InPlaceFillInExternalTypes(Visitor):
   """Fill in ExternalType cls pointers using a symbol table.
 
   This is an in-place visitor! It modifies the original tree.
   """
 
   def __init__(self, lookup):
-    super(FillInExternalTypes, self).__init__()
+    super(InPlaceFillInExternalTypes, self).__init__()
     self._lookup = lookup
 
   def VisitExternalType(self, node):
@@ -432,7 +432,7 @@ class ClassTypeToNamedType(Visitor):
     return pytd.NamedType(node.name)
 
 
-def FillInClasses(target, global_module=None):
+def InPlaceFillInClasses(target, global_module=None):
   """Fill in class pointers in ClassType nodes for a PyTD object.
 
   This will adjust the "cls" pointer for existing ClassType nodes so that they
@@ -455,9 +455,9 @@ def FillInClasses(target, global_module=None):
   # TODO(kramm): Node.Visit() should support blacklisting of attributes so
   # we don't recurse into submodules multiple times.
   if isinstance(target, pytd.TypeDeclUnit):
-    target.Visit(_FillInClasses([target, global_module]))
+    target.Visit(_InPlaceFillInClasses([target, global_module]))
   else:
-    target.Visit(_FillInClasses([global_module]))
+    target.Visit(_InPlaceFillInClasses([global_module]))
 
 
 def LookupClasses(module, global_module=None, overwrite=False):
@@ -479,9 +479,9 @@ def LookupClasses(module, global_module=None, overwrite=False):
   """
   module = module.Visit(NamedTypeToClassType())
   if overwrite:
-    # Set cls pointers to None so that FillInClasses is allowed to set them.
+    # Set cls pointers to None so that InPlaceFillInClasses can set them.
     module = module.Visit(ClearClassTypePointers())
-  FillInClasses(module, global_module)
+  InPlaceFillInClasses(module, global_module)
   module.Visit(VerifyLookup())
   return module
 
@@ -501,7 +501,7 @@ class VerifyLookup(Visitor):
       raise ValueError("Unresolved class: %r" % node.name)
 
 
-class LookupExternalClasses(Visitor):
+class InPlaceLookupExternalClasses(Visitor):
   """Fill in ExternalType pointers using a symbol table.
 
   This is an in-place visitor! It modifies the original tree. This is
@@ -516,7 +516,7 @@ class LookupExternalClasses(Visitor):
       full_names: If True, then the modules in the module_map use fully
         qualified names ("collections.OrderedDict" instead of "OrderedDict")
     """
-    super(LookupExternalClasses, self).__init__()
+    super(InPlaceLookupExternalClasses, self).__init__()
     self._module_map = module_map
     self.full_names = full_names
 
@@ -1026,4 +1026,3 @@ class CollectDependencies(Visitor):
 
   def EnterExternalType(self, t):
     self.modules.add(t.module)
-

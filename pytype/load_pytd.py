@@ -74,7 +74,8 @@ class Loader(object):
                   for name, module in self._modules.items()}
     for module in self._modules.values():
       if module.dirty:
-        module.ast.Visit(visitors.LookupExternalClasses(module_map, True))
+        module.ast.Visit(visitors.InPlaceLookupExternalClasses(module_map,
+                                                               True))
         module.dirty = False
 
   def _create_empty(self, module_name, filename):
