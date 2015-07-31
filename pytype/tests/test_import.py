@@ -385,6 +385,36 @@ class ImportTest(test_inference.InferenceTest):
           killpg: function
       """)
 
+  def testMatchAgainstImported(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pytd", """
+        class Foo:
+          pass
+        class Bar:
+          def f1(self, x: Foo) -> Baz
+        class Baz:
+          pass
+      """)
+      with self.Infer("""\
+        import foo
+        def f(x, y):
+          return x.f1(y)
+        def g(x):
+          return x.f1(foo.Foo())
+        class FooSub(foo.Foo):
+          pass
+        def h(x):
+          return x.f1(FooSub())
+      """, deep=True, solve_unknowns=True, pythonpath=[d.path]) as ty:
+        self.assertTypesMatchPytd(ty, """
+          foo: module
+          def f(x:foo.Bar, y:foo.Foo) -> foo.Baz
+          def g(x:foo.Bar) -> foo.Baz
+          def h(x:foo.Bar) -> foo.Baz
+
+          class FooSub(foo.Foo):
+            pass
+        """)
 
 if __name__ == "__main__":
   test_inference.main()

@@ -1,7 +1,5 @@
 """Test cases that need solve_unknowns."""
 
-import unittest
-
 
 from pytype.tests import test_inference
 
@@ -71,7 +69,8 @@ class SolverTests(test_inference.InferenceTest):
         StringIO: module
 
         class Foobar(object):
-          def foobar(self, out: file or StringIO.StringIO) -> NoneType
+          # TODO(kramm): Should 'out' be 'file or StringIO.StringIO'?
+          def foobar(self, out: StringIO.StringIO) -> NoneType
 
         class Barbaz(object):
           def barbaz(self) -> NoneType
@@ -177,7 +176,6 @@ class SolverTests(test_inference.InferenceTest):
         def f(x: str or unicode or bytearray) -> int
       """)
 
-  @unittest.skip("Needs support for ExternalType in solver.")
   def testExternalType(self):
     with self.Infer("""
       import itertools
@@ -185,6 +183,8 @@ class SolverTests(test_inference.InferenceTest):
         return all(itertools.imap(f, array))
     """, deep=True, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
+        itertools: module
+
         def every(f, array) -> bool
       """)
 

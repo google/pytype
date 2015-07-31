@@ -169,7 +169,6 @@ class TestTypeMatch(unittest.TestCase):
                       booleq.And((booleq.Eq("~unknown0", "list"),
                                   booleq.Eq("~unknown0.list.T", "A"))))
 
-  @unittest.skip("TODO(kramm): Implement")
   def testExternal(self):
     ast = parser.parse_string(textwrap.dedent("""
       class Base(nothing):
@@ -179,6 +178,7 @@ class TestTypeMatch(unittest.TestCase):
       base: Foo
       foo: Foo
     """))
+    ast = visitors.LookupClasses(ast)
     m = type_match.TypeMatch({ast.Lookup("foo").type: [ast.Lookup("Base")]})
     mod1_foo = pytd.ExternalType("Foo", module="mod1", cls=ast.Lookup("Foo"))
     eq = m.match_type_against_type(mod1_foo, ast.Lookup("base").type, {})

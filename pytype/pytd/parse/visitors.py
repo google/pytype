@@ -337,6 +337,28 @@ class _FillInClasses(Visitor):
       return node
 
 
+class FillInExternalTypes(Visitor):
+  """Fill in ExternalType cls pointers using a symbol table.
+
+  This is an in-place visitor! It modifies the original tree.
+  """
+
+  def __init__(self, lookup):
+    super(FillInExternalTypes, self).__init__()
+    self._lookup = lookup
+
+  def VisitExternalType(self, node):
+    if node.module == "__builtin__":
+      full_name = node.name
+    else:
+      full_name = node.module + "." + node.name
+    cls = self._lookup.Lookup(full_name)
+    if not isinstance(cls, pytd.Class):
+      raise KeyError("Invalid class name %s" % full_name)
+    node.cls = cls
+    return node
+
+
 class DefaceUnresolved(Visitor):
   """Replace all types not in a symbol table with AnythingType."""
 
