@@ -1003,8 +1003,7 @@ class PyTDSignature(object):
                actual.data)
     for name, var in sorted(subst.items()):
       log.debug("Using %s=%r %r", name, var, var.data)
-    self._execute_mutable(node, arg_values, kw_values, subst)
-    mutations = self._execute_mutable(node, arg_values, kw_values, subst)
+    mutations = self._get_mutation(node, arg_values, kw_values, subst)
     return FunctionCallResult(return_type, subst, mutations)
 
   def _compute_subst(self, node, arg_values, kw_values, view):
@@ -1044,15 +1043,14 @@ class PyTDSignature(object):
         raise FailedFunctionCall(self, msg_lines)
     return utils.HashableDict(subst)
 
-  def _execute_mutable(self, node, arg_values, kw_values, subst):
-    """Change the type parameters of mutable arguments.
+  def _get_mutation(self, node, arg_values, kw_values, subst):
+    """Mutation for changing the type parameters of mutable arguments.
 
     This will adjust the type parameters as needed for pytd functions like:
       def append_float(x: list<int>):
         x := list<int or float>
     This is called after all the signature matching has succeeded, and we
-    know we're actually calling this function. We'll therefore modify the input
-    parameters according to the rules specified in pytd.MutableParameter.
+    know we're actually calling this function.
 
     Args:
       node: The current CFG node.
@@ -1060,7 +1058,7 @@ class PyTDSignature(object):
       kw_values: A map of strings to pytd.Values instances.
       subst: Current type parameters.
     Returns:
-      None
+      A list of Mutation instances.
     Raises:
       ValueError: If the pytd contains invalid MutableParameter information.
     """
@@ -1126,7 +1124,7 @@ class PyTDFunction(Function):
 
   def _log_args(self, args, level=0):
     if log.isEnabledFor(logging.DEBUG):
-      if isinstance(args, list):
+      if not isinstance(args, dict):
         args = {"Arg %d" % i: a for i, a in enumerate(args)}
       for name, a in sorted(args.items()):
         log.debug("%s%s:", "  " * level, name)
@@ -1162,7 +1160,7 @@ class PyTDFunction(Function):
 
     return node, retvar
 
-  def _get_type_params_mutation(self, node, values):
+  def _get_mutation_to_unknown(self, node, values):
     """Mutation for making all type parameters in a list of instances "unknown".
 
     This is used if we call a function that has mutable parameters and
@@ -1215,7 +1213,7 @@ class PyTDFunction(Function):
         if self._has_mutable:
           # TODO(kramm): We only need to whack the type params that appear in
           # a MutableParameter.
-          mutations = self._get_type_params_mutation(
+          mutations = self._get_mutation_to_unknown(
               node, (view[p].data for p in chain(args, kws.values())))
         else:
           mutations = []
@@ -1322,9 +1320,8 @@ class ParameterizedClass(AtomicAbstractValue, Class, FormalType):
   def get_instance_type(self, _):
     type_arguments = []
     for type_param in self.base_cls.pytd_cls.template:
-      values = (self.type_parameters[type_param.name],)
-      type_arguments.append(pytd_utils.JoinTypes([e.get_instance_type(None)
-                                                  for e in values]))
+      type_arguments.append(
+          self.type_parameters[type_param.name].get_instance_type(None))
     return pytd_utils.MakeClassOrContainerType(
         pytd_utils.NamedOrExternalType(self.base_cls.pytd_cls.name,
                                        self.base_cls.module),
@@ -1415,8 +1412,8 @@ class PyTDClass(LazyAbstractValue, Class):
       return subst
     elif (isinstance(other_type, ParameterizedClass) and
           other_type.base_cls is self):
-      extra_params = (set(instance.type_parameters.keys()) -
-                      set(other_type.type_parameters.keys()))
+      extra_params = (set(instance.type_parameters) -
+                      set(other_type.type_parameters))
       assert not extra_params
       for name, class_param in other_type.type_parameters.items():
         instance_param = instance.get_type_parameter(node, name)

@@ -70,8 +70,7 @@ def deep_variable_product(variables):
   """
   result = []
   for row in itertools.product(*(v.values for v in variables if v.values)):
-    extra_params = sum([entry.data.parameters().values() or []
-                        for entry in row], [])
+    extra_params = sum([entry.data.parameters().values() for entry in row], [])
     extra_values = extra_params and deep_variable_product(extra_params)
     if extra_values:
       for new_row in extra_values:
