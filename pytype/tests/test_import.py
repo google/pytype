@@ -277,7 +277,7 @@ class ImportTest(test_inference.InferenceTest):
       d.create_file("foo.pytd", "x: bar.Bar")
       d.create_file("bar.pytd", """
           class Bar:
-            def bar() -> int
+            def bar(self) -> int
       """)
       d.create_file("main.py", """
         from foo import x
@@ -287,7 +287,7 @@ class ImportTest(test_inference.InferenceTest):
       ty = self.InferFromFile(filename=d["main.py"],
                               pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        x: type
+        x: bar.Bar
         def f() -> int
     """)
 

@@ -246,22 +246,6 @@ class NamedType(node.Node('name')):
     return self.name
 
 
-class ExternalType(node.Node('name', 'module')):
-  """A type specified by name and the module it is in."""
-  __slots__ = ()
-
-  # This type is mutable. (Like ClassType is). The "cls" pointer can be modified
-  # in-place. See the comments in ClassType for more information.
-
-  def __new__(cls, name, module, clsref=None):
-    self = super(ExternalType, cls).__new__(cls, name, module)
-    self.cls = clsref  # potentially filled in later
-    return self
-
-  def __str__(self):
-    return self.module + '.' + self.name
-
-
 class NativeType(node.Node('python_type')):
   """A type specified by a native Python type. Used during runtime checking."""
   __slots__ = ()
@@ -296,6 +280,21 @@ class ClassType(node.Node('name')):
     return '{type}{cls}({name})'.format(
         type=type(self).__name__, name=self.name,
         cls='<unresolved>' if self.cls is None else '')
+
+
+class ExternalType(ClassType):
+  """A type specified by name and the module it is in."""
+
+  # This type is mutable. (Like ClassType is). The "cls" pointer can be modified
+  # in-place. See the comments in ClassType for more information.
+
+  def __new__(pycls, name, module, cls=None):  # pylint: disable=bad-classmethod-argument
+    self = super(ExternalType, pycls).__new__(pycls, name, cls)
+    self.module = module
+    return self
+
+  def __str__(self):
+    return self.module + '.' + self.name
 
 
 class AnythingType(node.Node()):

@@ -544,7 +544,7 @@ class VirtualMachine(object):
       key = (abstract.Instance, pytype.cls)
       if key not in self._convert_cache:
         instance = abstract.Instance(
-            self.convert_constant(pytype.cls.name, pytype.cls), self)
+            self.convert_constant(str(pytype), pytype), self)
         log.info("New pytd instance for %s: %r", pytype.cls.name, instance)
         self._convert_cache[key] = instance
       return self._convert_cache[key]
@@ -684,12 +684,12 @@ class VirtualMachine(object):
       f = abstract.PyTDFunction(pyval.name, [abstract.PyTDSignature(sig, self)
                                              for sig in pyval.signatures], self)
       return f
-    elif isinstance(pyval, pytd.ClassType):
-      assert pyval.cls
-      return self.convert_constant_to_value(pyval.name, pyval.cls)
-    elif isinstance(pyval, pytd.ExternalType):
+    elif isinstance(pyval, pytd.ExternalType):  # needs to be before ClassType
       assert pyval.cls
       return self.convert_constant_to_value(str(pyval), pyval.cls)
+    elif isinstance(pyval, pytd.ClassType):  # needs to be after ExternalType
+      assert pyval.cls
+      return self.convert_constant_to_value(pyval.name, pyval.cls)
     elif isinstance(pyval, pytd.NothingType):
       return self.nothing
     elif isinstance(pyval, pytd.AnythingType):
