@@ -115,6 +115,34 @@ class ClassesTest(test_inference.InferenceTest):
         def f() -> int
       """)
 
+  def testSuper(self):
+    with self.Infer("""
+      class Base(object):
+        def __init__(self, x, y):
+          pass
+      class Foo(Base):
+        def __init__(self, x):
+          super(Foo, self).__init__(x, y='foo')
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+      class Base(object):
+        def __init__(self, x, y) -> NoneType
+      class Foo(Base):
+        def __init__(self, x) -> NoneType
+      """)
+
+  def testFullSuper(self):
+    # TODO(kramm): This passes, but because raises isn't implemented, not
+    # because super actually yields the base object.
+    self.assert_ok("""
+      class Base(object):
+        def __init__(self, x, y, z):
+          pass
+      class Foo(Base):
+        def __init__(self, x):
+          super(Foo, self).__init__()
+    """, raises=ValueError)
+
 
 if __name__ == "__main__":
   test_inference.main()

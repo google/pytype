@@ -994,7 +994,9 @@ class `callable-iterator`<T>:  # TODO(pludemann): is this correct?
     def next(self) -> T
 
 class super:
-    def __init__(self, type: type) -> NoneType
+    # This constructor constructs the super object itself but also handles the
+    # case of doing super(...).__init__(...).
+    def __init__(self, ...) -> NoneType
     def __get__(self, obj, ...) -> super
 
 class xrange:
