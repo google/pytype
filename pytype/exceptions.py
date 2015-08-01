@@ -5,7 +5,9 @@ class ByteCodeException(Exception):
   """A wrapper for VM exceptions, to distinguish them from real exceptions."""
 
   def __init__(self, exception_type, message):
-    super(ByteCodeException, self).__init__(message)
+    # Exception is an old-style class, so can't use super.
+    # super(ByteCodeException, self).__init__(message)
+    Exception.__init__(self, message)
     self.exception_type = exception_type
 
   def create_instance(self):
