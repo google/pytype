@@ -201,6 +201,7 @@ class Loader(object):
     if files:
       if len(files) > 1:
         # TODO(pludemann): Check whether the contents differ?
+        # MOE:strip_line TODO(pludemann): Prioritize "#" items (see pytype.bzl).
         log.warn("Multiple files for %s: %s", pytd_path, files)
       return self._load_file(filename=files[0], module_name=module_name)
     else:
