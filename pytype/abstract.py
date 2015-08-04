@@ -292,8 +292,17 @@ class AtomicAbstractValue(object):
     raise NotImplementedError(self.__class__.__name__)
 
   def get_type_key(self):
-    """Build a key from the information used to perform type matching."""
-    return self
+    """Build a key from the information used to perform type matching.
+
+    Get a hashable object containing this value's type information. Type keys
+    are only compared amongst themselves, so we don't care what the internals
+    look like, only that values with different types *always* have different
+    type keys and values with the same type preferably have the same type key.
+
+    Returns:
+      A hashable object built from this value's type information.
+    """
+    return type(self)
 
   def to_variable(self, node, name=None):
     """Build a variable out of this abstract value.
@@ -601,11 +610,17 @@ class SimpleAbstractValue(AtomicAbstractValue):
     return subst
 
   def get_type_key(self):
-    if not self.type_parameters and self.cls:
+    key = set()
+    if self.cls:
       clsval, = self.cls.values
-      return clsval.data
+      key.add(clsval.data)
+    for name, var in self.type_parameters.items():
+      key.add((name, frozenset(value.data.get_type_key()
+                               for value in var.values)))
+    if key:
+      return frozenset(key)
     else:
-      return self
+      return super(SimpleAbstractValue, self).get_type_key()
 
   def unique_parameter_values(self):
     """Get unique parameter subtypes as Values.
