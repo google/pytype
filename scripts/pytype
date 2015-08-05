@@ -318,11 +318,10 @@ def process_one_file(input_filename, output_filename,
                             use_abcs=False,
                             max_union=7,
                             remove_mutable=False)
-    mod = pytd_utils.CanonicalOrdering(mod)
     log.info("=========== PyTD optimized =============")
   else:
-    mod = pytd_utils.CanonicalOrdering(mod)
     log.info("=========== PyTD =============")
+  mod = pytd_utils.CanonicalOrdering(mod, sort_signatures=True)
   log.info("\n%s", pytd.Print(mod))
   log.info("========================================")
 

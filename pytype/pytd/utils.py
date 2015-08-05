@@ -193,11 +193,12 @@ class TypeMatcher(object):
       return self.default_match(t1, t2, *args, **kwargs)
 
 
-def CanonicalOrdering(n):
+def CanonicalOrdering(n, sort_signatures=False):
   """Convert a PYTD node to a canonical (sorted) ordering."""
   # TODO(pludemann): use the original .py to decide the ordering rather
   #                  than an arbitrary sort order
-  return n.Visit(visitors.CanonicalOrderingVisitor())
+  return n.Visit(
+      visitors.CanonicalOrderingVisitor(sort_signatures=sort_signatures))
 
 
 # TODO(kramm): Move to transforms.py.
