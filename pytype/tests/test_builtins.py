@@ -362,12 +362,27 @@ class BuiltinTests(test_inference.InferenceTest):
           def __init__(self, x) -> NoneType
       """)
 
-  def testMap(self):
+  def testMap1(self):
     with self.Infer("""
       def f(input_string, sub):
         return ''.join(map(lambda ch: ch, input_string))
     """, deep=True, solve_unknowns=True) as ty:
       self.assertOnlyHasReturnType(ty.Lookup("f"), self.strorunicode)
+
+  def testMap2(self):
+    with self.Infer("""
+      class Foo(object):
+        pass
+
+      def f():
+        return map(lambda x: x, [Foo()])
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        class Foo(object):
+          pass
+
+        def f() -> list<?>
+      """)
 
   def testArraySmoke(self):
     with self.Infer("""

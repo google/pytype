@@ -1577,6 +1577,8 @@ class InterpreterClass(SimpleAbstractValue, Class):
         else:
           raise AssertionError("Bad base class %r", base)
       return None
+    elif isinstance(other_type, Nothing):
+      return None
     else:
       raise NotImplementedError(
           "Can't match instance %r against %r", self, other_type)
