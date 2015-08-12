@@ -216,5 +216,18 @@ class StructuralTest(test_inference.InferenceTest):
         def trim(docstring: bytearray or str or unicode) -> list<bytearray or str or unicode>
       """)
 
+  def testAmbiguousTopLevelIdentifier(self):
+    with self.Infer("""
+      # from textwrap.py
+      try:
+          _unicode = unicode
+      except NameError:
+          class _unicode(object):
+              pass
+    """, deep=True, solve_unknowns=False, extract_locals=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        _unicode: type
+      """)
+
 if __name__ == "__main__":
   test_inference.main()

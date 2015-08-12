@@ -254,6 +254,39 @@ class TestUtils(parser_test.ParserTest):
     ordered_set.add(3)
     self.assertEquals(tuple(ordered_set), (0, 1, 2, 3, 4, -42))
 
+  def testWrapTypeDeclUnit(self):
+    """Test WrapTypeDeclUnit."""
+    ast1 = self.Parse("""
+      c: int
+      def f(x: int) -> int
+      def f(x: float) -> float
+      class A:
+        pass
+    """)
+    ast2 = self.Parse("""
+      c: float
+      d: int
+      def f(x: complex) -> complex
+      class B:
+        pass
+    """)
+    w = utils.WrapTypeDeclUnit(
+        "combined",
+        ast1.classes + ast1.functions + ast1.constants +
+        ast2.classes + ast2.functions + ast2.constants)
+    expected = textwrap.dedent("""
+      c: int or float
+      d: int
+      def f(x: int) -> int
+      def f(x: float) -> float
+      def f(x: complex) -> complex
+      class A:
+        pass
+      class B:
+        pass
+    """)
+    self.AssertSourceEquals(w, expected)
+
 
 if __name__ == "__main__":
   unittest.main()

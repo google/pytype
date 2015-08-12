@@ -258,6 +258,61 @@ def EmptyModule(name="<empty>"):
   return pytd.TypeDeclUnit(name, constants=(), classes=(), functions=())
 
 
+def WrapTypeDeclUnit(name, items):
+  """Given a list (classes, functions, etc.), wrap a pytd around them.
+
+  Args:
+    name: The name attribute of the resulting TypeDeclUnit.
+    items: A list of items. Can contain pytd.Class, pytd.Function and
+      pytd.Constant.
+  Returns:
+    A pytd.TypeDeclUnit.
+  Raises:
+    ValueError: In case of an invalid item in the list.
+    NameError: For name conflicts.
+  """
+
+  functions = collections.OrderedDict()
+  classes = collections.OrderedDict()
+  constants = collections.defaultdict(TypeBuilder)
+  for item in items:
+    if isinstance(item, pytd.Function):
+      if item.name in functions:
+        functions[item.name] = pytd.Function(
+            item.name,
+            functions[item.name].signatures + item.signatures)
+      else:
+        functions[item.name] = item
+    elif isinstance(item, pytd.Class):
+      if item.name in classes:
+        raise NameError("Duplicate top level class: %r", item.name)
+      classes[item.name] = item
+    elif isinstance(item, pytd.Constant):
+      constants[item.name].add_type(item.type)
+    else:
+      raise ValueError("Invalid top level pytd item: %r" % type(item))
+
+  intersection = set(functions) & set(classes)
+  if intersection:
+    raise NameError("Top level identifier %s is both function and class" % (
+        intersection.pop()))
+  intersection = set(classes) & set(constants)
+  if intersection:
+    raise NameError("Top level identifier %s is both class and constant" % (
+        intersection.pop()))
+  intersection = set(functions) & set(constants)
+  if intersection:
+    raise NameError("Top level identifier %s is both function and constant" % (
+        intersection.pop()))
+
+  return pytd.TypeDeclUnit(
+      name,
+      tuple(pytd.Constant(name, t.build())
+            for name, t in sorted(constants.items())),
+      tuple(classes.values()),
+      tuple(functions.values()))
+
+
 def ParsePyTD(src=None, filename=None, python_version=None, module=None):
   """Parse pytd sourcecode and do name lookup for builtins.
 

@@ -2144,7 +2144,7 @@ class Unknown(AtomicAbstractValue):
     self.vm.trace_unknown(self.class_name, v)
     return v
 
-  def to_pytd_def(self, class_name):
+  def to_structural_def(self, class_name):
     """Convert this Unknown to a pytd.Class."""
     if not self._pytd_class:
       self_param = (pytd.Parameter("self", pytd.NamedType("object")),)
@@ -2173,7 +2173,7 @@ class Unknown(AtomicAbstractValue):
     return self.to_variable(self.vm.root_cfg_node, "class of " + self.name)
 
   def to_type(self):
-    cls = self.to_pytd_def(self.class_name)
+    cls = self.to_structural_def(self.class_name)
     return pytd.ClassType(cls.name, cls)  # pylint: disable=no-member
 
   def get_instance_type(self, _):

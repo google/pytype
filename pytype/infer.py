@@ -181,51 +181,36 @@ class CallTracer(vm.VirtualMachine):
     classes = []
     for name, var in self._unknowns.items():
       for value in var.FilteredData(self.exitpoint):
-        classes.append(value.to_pytd_def(name))
+        classes.append(value.to_structural_def(name))
     return classes
 
   def pytd_for_types(self, defs, ignore):
     for name, var in defs.items():
       abstract.variable_set_official_name(var, name)
-    constants = []
-    functions = []
-    classes = []
+    data = []
     for name, var in defs.items():
-      new_classes = []
-      new_functions = []
-      new_constants = []
       if name in output.TOP_LEVEL_IGNORE or name in ignore:
         continue
-      for value in var.FilteredData(self.exitpoint):
-        if isinstance(value, (abstract.Class,
-                              abstract.InterpreterFunction,
-                              abstract.BoundInterpreterFunction)):
-          ast = value.to_pytd_def(name)
-          if isinstance(ast, pytd.Class):
-            new_classes.append(ast)
-          elif isinstance(ast, pytd.Function):
-            new_functions.append(ast)
-          elif isinstance(ast, pytd.TYPE):
-            new_constants.append(ast)
+      options = var.FilteredData(self.exitpoint)
+      if (len(options) > 1 and not
+          all(isinstance(o, (abstract.InterpreterFunction,
+                             abstract.BoundInterpreterFunction))
+              for o in options)):
+        # It's ambiguous whether this is a type, a function or something
+        # else, so encode it as a constant.
+        combined_types = pytd_utils.JoinTypes(t.to_type() for t in options)
+        data.append(pytd.Constant(name, combined_types))
+      else:
+        for option in options:
+          if hasattr(option, "to_pytd_def"):
+            d = option.to_pytd_def(name)  # Deep definition
           else:
-            raise ValueError("Invalid return of to_pytd_def: %s", type(ast))
-        else:
-          new_constants.append(value.to_type())
-      if len(new_classes) >= 2:
-        log.warning("Ambiguious top level class %r", name)
-        new_constants.append(pytd.NamedType("type"))
-      else:
-        classes.extend(new_classes)
-      if len(new_functions) >= 2:
-        log.warning("Ambiguious top level function %r", name)
-        new_constants.append(pytd.NamedType("function"))
-      else:
-        functions.extend(new_functions)
-      if new_constants:
-        constants.append(
-            pytd.Constant(name, pytd_utils.JoinTypes(new_constants)))
-    return pytd.TypeDeclUnit(
-        "inferred", tuple(constants), tuple(classes), tuple(functions))
+            d = option.to_type()  # Type only
+          if isinstance(d, pytd.TYPE):
+            data.append(pytd.Constant(name, d))
+          else:
+            data.append(d)
+    return pytd_utils.WrapTypeDeclUnit("inferred", data)
 
   @staticmethod
   def _call_traces_to_function(call_traces, prefix=""):
