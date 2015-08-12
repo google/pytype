@@ -545,8 +545,12 @@ class VirtualMachine(object):
       # This key is also used in __init__
       key = (abstract.Instance, pytype.cls)
       if key not in self._convert_cache:
-        instance = abstract.Instance(
-            self.convert_constant(str(pytype), pytype), self)
+        if pytype.name == "type":
+          # special case: An instantiation of "type" can be anything.
+          instance = self.unsolvable
+        else:
+          instance = abstract.Instance(
+              self.convert_constant(str(pytype), pytype), self)
         log.info("New pytd instance for %s: %r", pytype.cls.name, instance)
         self._convert_cache[key] = instance
       return self._convert_cache[key]

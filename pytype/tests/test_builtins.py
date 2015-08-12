@@ -523,6 +523,19 @@ class BuiltinTests(test_inference.InferenceTest):
         def f() -> str
       """)
 
+  def testInheritFromNamedTuple(self):
+    with self.Infer("""
+      import collections
+
+      class Foo(
+          collections.namedtuple('_Foo', 'x y z')):
+        pass
+    """, deep=True, solve_unknowns=False) as ty:
+      self.assertTypesMatchPytd(ty, """
+        class Foo(?):
+          pass
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()
