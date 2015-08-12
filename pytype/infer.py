@@ -435,7 +435,8 @@ def infer_types(src, python_version, filename=None, run_builtins=True,
                 import_drop_prefixes=(),
                 output_cfg=None, output_typegraph=None,
                 output_pseudocode=None, deep=True, solve_unknowns=True,
-                reverse_operators=False, cache_unknowns=False):
+                reverse_operators=False, cache_unknowns=False,
+                skip_repeat_calls=True):
   """Given Python source return its types.
 
   Args:
@@ -458,6 +459,8 @@ def infer_types(src, python_version, filename=None, run_builtins=True,
       nominal types.
     reverse_operators: If True, emulate operations like __radd__.
     cache_unknowns: If True, do a faster approximation of unknown types.
+    skip_repeat_calls: If True, don't rerun functions that have been called
+      before with the same arguments and environment.
   Returns:
     A TypeDeclUnit
   Raises:
@@ -470,7 +473,8 @@ def infer_types(src, python_version, filename=None, run_builtins=True,
                       pythonpath=pythonpath,
                       find_pytd_import_ext=find_pytd_import_ext,
                       import_drop_prefixes=import_drop_prefixes,
-                      pybuiltins_filename=pybuiltins_filename)
+                      pybuiltins_filename=pybuiltins_filename,
+                      skip_repeat_calls=skip_repeat_calls)
   loc, defs, builtin_names = tracer.run_program(src, filename, run_builtins)
   log.info("===Done run_program===")
   # TODO(pludemann): make test_inference.InferDedent and this code the same:

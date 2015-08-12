@@ -369,6 +369,21 @@ class TypegraphUtilsTest(unittest.TestCase):
     self.assertFalse(z1 is z2)
     self.assertTrue(z2 is z3)
 
+  def testMonitorDict(self):
+    d = utils.MonitorDict()
+    changestamp = d.changestamp
+    var = self.prog.NewVariable("var")
+    d["key"] = var
+    self.assertGreater(d.changestamp, changestamp)
+    changestamp = d.changestamp
+    var.AddValue("data")
+    self.assertGreater(d.changestamp, changestamp)
+    changestamp = d.changestamp
+    var.AddValue("data")  # No change because this is duplicate data
+    self.assertEquals(d.changestamp, changestamp)
+    del d["key"]
+    self.assertGreater(d.changestamp, changestamp)
+
 
 if __name__ == "__main__":
   test_inference.main()

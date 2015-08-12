@@ -9,6 +9,7 @@ combined using typegraph and that is what we compute over.
 # pylint: disable=abstract-method
 
 import collections
+import hashlib
 import itertools
 import logging
 
@@ -153,6 +154,31 @@ class AtomicAbstractValue(object):
     self.name = name
     self.module = None
     self.official_name = None
+
+  def get_fullhash(self):
+    """Hash this value and all of its children."""
+    m = hashlib.md5()
+    seen_ids = set()
+    stack = [self]
+    while stack:
+      data = stack.pop()
+      data_id = id(data)
+      if data_id in seen_ids:
+        continue
+      seen_ids.add(data_id)
+      m.update(str(data_id))
+      for mapping in data.get_children_maps():
+        m.update(str(mapping.changestamp))
+        stack.extend(mapping.data)
+    return m.digest()
+
+  def get_children_maps(self):
+    """Get this value's dictionaries of children.
+
+    Returns:
+      A sequence of dictionaries from names to child values.
+    """
+    return ()
 
   def property_get(self, callself, callcls):  # pylint: disable=unused-argument
     """Bind this value to the given self and class.
@@ -416,9 +442,12 @@ class SimpleAbstractValue(AtomicAbstractValue):
       vm: The TypegraphVirtualMachine to use.
     """
     super(SimpleAbstractValue, self).__init__(name, vm)
-    self.members = {}
-    self.type_parameters = {}
+    self.members = utils.MonitorDict()
+    self.type_parameters = utils.MonitorDict()
     self.cls = None
+
+  def get_children_maps(self):
+    return (self.type_parameters, self.members)
 
   def get_type_parameter(self, node, name):
     """Get the typegraph.Variable representing the type parameter of self.
@@ -452,10 +481,8 @@ class SimpleAbstractValue(AtomicAbstractValue):
       name: The name of the type parameter.
       value: The value that is being used for this type parameter as a Variable.
     """
-    param = self.get_type_parameter(node, name)
     log.info("Modifying type param %s", name)
-    self.type_parameters[name] = self.vm.join_variables(
-        node, name, [param, value])
+    self.type_parameters[name].PasteVariable(value, node)
 
   # TODO(kramm): remove
   def overwrite_type_parameter(self, node, name, value):
@@ -481,10 +508,8 @@ class SimpleAbstractValue(AtomicAbstractValue):
 
   def init_type_parameters(self, *names):
     """Initialize the named type parameters to nothing (empty)."""
-    self.type_parameters = {
-        name: self.vm.program.NewVariable("empty")
-        for name in names
-    }
+    self.type_parameters = utils.MonitorDict(
+        (name, self.vm.program.NewVariable("empty")) for name in names)
 
   def get_attribute(self, node, name, valself=None, valcls=None):
     candidates = []
@@ -1491,7 +1516,7 @@ class InterpreterClass(SimpleAbstractValue, Class):
     Class.init_mixin(self)
     self._bases = bases
     self.mro = utils.compute_mro(self)
-    self.members = members
+    self.members = utils.MonitorDict(members)
     self.instances = set()  # filled through register_instance
     self._instance_cache = {}
     log.info("Created class: %r", self)
@@ -1650,6 +1675,40 @@ class InterpreterFunction(Function):
     vm: TypegraphVirtualMachine instance.
   """
 
+  _function_cache = {}
+
+  @staticmethod
+  def make_function(name, code, f_locals, f_globals, defaults, closure, vm):
+    """Get an InterpreterFunction.
+
+    Things like anonymous functions and generator expressions are created
+    every time the corresponding code executes. Caching them makes it easier
+    to detect when the environment hasn't changed and a function call can be
+    optimized away.
+
+    Arguments:
+      name: Function name.
+      code: A code object.
+      f_locals: The locals used for name resolution.
+      f_globals: The globals used for name resolution.
+      defaults: Default arguments.
+      closure: The free variables this closure binds to.
+      vm: VirtualMachine instance.
+
+    Returns:
+      An InterpreterFunction.
+    """
+    key = (name, code,
+           InterpreterFunction._hash_all(
+               (f_globals.members, set(code.co_names)),
+               (f_locals.members, set(code.co_varnames)),
+               (dict(enumerate(defaults)), None),
+               (dict(enumerate(closure or ())), None)))
+    if key not in InterpreterFunction._function_cache:
+      InterpreterFunction._function_cache[key] = InterpreterFunction(
+          name, code, f_locals, f_globals, defaults, closure, vm)
+    return InterpreterFunction._function_cache[key]
+
   def __init__(self, name, code, f_locals, f_globals, defaults, closure, vm):
     super(InterpreterFunction, self).__init__(name, vm)
     log.debug("Creating InterpreterFunction %r for %r", name, code.co_name)
@@ -1662,7 +1721,7 @@ class InterpreterFunction(Function):
     self.defaults = tuple(defaults)
     self.closure = closure
     self.cls = self.vm.function_type
-    self._call_records = []
+    self._call_records = {}
 
   # TODO(kramm): support retrieving the following attributes:
   # 'func_{code, name, defaults, globals, locals, dict, closure},
@@ -1745,22 +1804,68 @@ class InterpreterFunction(Function):
       arg_pos += 1
     return callargs
 
+  @staticmethod
+  def _hash(vardict, names):
+    """Hash a dictionary.
+
+    This contains the keys and the full hashes of the data in the values.
+
+    Arguments:
+      vardict: A dictionary mapping str to Variable.
+      names: If this is non-None, the snapshot will include only those
+        dictionary entries whose keys appear in names.
+
+    Returns:
+      A hash of the dictionary.
+    """
+    if names is not None:
+      vardict = {name: vardict[name] for name in names.intersection(vardict)}
+    m = hashlib.md5()
+    for name, var in sorted(vardict.items()):
+      m.update(str(name))
+      for value in var.values:
+        m.update(value.data.get_fullhash())
+    return m.digest()
+
+  @staticmethod
+  def _hash_all(*hash_args):
+    """Convenience method for hashing a sequence of dicts."""
+    return hashlib.md5("".join(InterpreterFunction._hash(*args)
+                               for args in hash_args)).digest()
+
   def call(self, node, unused_func, args, kws, starargs=None):
     callargs = self._map_args(node, args, kws, starargs)
     # Might throw vm.RecursionException:
     frame = self.vm.make_frame(node, self.code, callargs,
                                self.f_globals, self.f_locals, self.closure)
+    if self.vm.skip_repeat_calls:
+      callkey = self._hash_all(
+          (callargs, None),
+          (frame.f_globals.members, set(self.code.co_names)),
+          (frame.f_locals.members, set(self.code.co_varnames)))
+    else:
+      # Make the callkey the number of times this function has been called so
+      # that no call has the same key as a previous one.
+      callkey = len(self._call_records)
+    if callkey in self._call_records:
+      _, old_ret, _ = self._call_records[callkey]
+      # Optimization: This function has already been called, with the same
+      # environment and arguments, so recycle the old return value and don't
+      # record this call. We pretend that this return value originated at the
+      # current node to make sure we don't miss any possible types.
+      ret = self.vm.program.NewVariable(old_ret.name, old_ret.data, [], node)
+      return node, ret
     if self.code.co_flags & loadmarshal.CodeType.CO_GENERATOR:
       generator = Generator(frame, self.vm).to_variable(node, self.name)
       node_after_call, ret = node, generator
     else:
       node_after_call, ret = self.vm.run_frame(frame, node)
-    self._call_records.append((callargs, ret, node, node_after_call))
+    self._call_records[callkey] = (callargs, ret, node_after_call)
     return node_after_call, ret
 
   def _get_call_combinations(self):
     signature_data = set()
-    for callargs, ret, _, node_after_call in self._call_records:
+    for callargs, ret, node_after_call in self._call_records.values():
       for combination in utils.variable_product_dict(callargs):
         for return_value in ret.values:
           values = combination.values() + [return_value]
@@ -2071,7 +2176,7 @@ class Unknown(AtomicAbstractValue):
   def __init__(self, vm):
     name = "~unknown%d" % Unknown._current_id
     super(Unknown, self).__init__(name, vm)
-    self.members = {}
+    self.members = utils.MonitorDict()
     self.owner = None
     Unknown._current_id += 1
     self.class_name = self.name
@@ -2079,6 +2184,9 @@ class Unknown(AtomicAbstractValue):
     # Remember the pytd class we created in to_pytd_class, to keep them unique:
     self._pytd_class = None
     log.info("Creating %s", self.class_name)
+
+  def get_children_maps(self):
+    return (self.members,)
 
   @staticmethod
   def _to_pytd(v):
@@ -2125,8 +2233,7 @@ class Unknown(AtomicAbstractValue):
   def set_attribute(self, node, name, v):
     assert not self._pytd_class
     if name in self.members:
-      variable = self.members[name]
-      variable.PasteVariable(v, node)
+      self.members[name].PasteVariable(v, node)
     else:
       self.members[name] = v.AssignToNewVariable(self.name + "." + name, node)
     return node

@@ -373,5 +373,25 @@ class CFGTest(unittest.TestCase):
     self.assertRaises(AssertionError, p.NewCFGNode, "named")
     self.assertRaises(AssertionError, p.NewCFGNode, name="named")
 
+  def testVariableCallback(self):
+    counters = [0, 0]
+    def callback1():
+      counters[0] += 1
+    def callback2():
+      counters[1] += 1
+    p = cfg.Program()
+    x = p.NewVariable("x")
+    x.RegisterChangeListener(callback1)
+    x.AddValue("a")
+    self.assertListEqual(counters, [1, 0])
+    x.RegisterChangeListener(callback2)
+    x.AddValue("b")
+    self.assertListEqual(counters, [2, 1])
+    x.AddValue("a")  # Duplicate value; callbacks should not be triggered
+    self.assertListEqual(counters, [2, 1])
+    x.UnregisterChangeListener(callback1)
+    x.AddValue("c")
+    self.assertListEqual(counters, [2, 2])
+
 if __name__ == "__main__":
   unittest.main()

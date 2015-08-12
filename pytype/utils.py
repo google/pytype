@@ -473,3 +473,38 @@ class memoize(object):  # pylint: disable=invalid-name
         memoized[key] = result
       return result
     return call
+
+
+class MonitorDict(dict):
+  """A dictionary that monitors changes to its cfg.Variable values.
+
+  This dictionary takes arbitrary objects as keys and cfg.Variable objects as
+  values. It increments a changestamp whenever a new value is added or more data
+  is merged into a value. The changestamp is unaffected by the addition of
+  another origin for existing data.
+  """
+
+  def __init__(self, *args, **kwargs):
+    super(MonitorDict, self).__init__(*args, **kwargs)
+    self.changestamp = 0
+    for var in self.values():
+      var.RegisterChangeListener(self._changed)
+
+  def __delitem__(self, name):
+    self[name].UnregisterChangeListener(self._changed)
+    super(MonitorDict, self).__delitem__(name)
+    self._changed()
+
+  def __setitem__(self, name, var):
+    if name in self:
+      self[name].UnregisterChangeListener(self._changed)
+    super(MonitorDict, self).__setitem__(name, var)
+    var.RegisterChangeListener(self._changed)
+    self._changed()
+
+  def _changed(self):
+    self.changestamp += 1
+
+  @property
+  def data(self):
+    return itertools.chain.from_iterable(v.data for v in self.values())

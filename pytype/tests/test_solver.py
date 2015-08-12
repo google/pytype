@@ -188,5 +188,78 @@ class SolverTests(test_inference.InferenceTest):
         def every(f, array) -> bool
       """)
 
+  def testNestedList(self):
+    with self.Infer("""
+      foo = [[]]
+      bar = []
+
+      def f():
+        for obj in foo[0]:
+          bar.append(obj)
+
+      def g():
+        f()
+        foo[0].append(42)
+        f()
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        foo: list<list<int>>
+        bar: list<int>
+
+        def f() -> NoneType
+        def g() -> NoneType
+      """)
+
+  def testTwiceNestedList(self):
+    with self.Infer("""
+      foo = [[[]]]
+      bar = []
+
+      def f():
+        for obj in foo[0][0]:
+          bar.append(obj)
+
+      def g():
+        f()
+        foo[0][0].append(42)
+        f()
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        foo: list<list<list<int>>>
+        bar: list<int>
+
+        def f() -> NoneType
+        def g() -> NoneType
+      """)
+
+  def testNestedListInClass(self):
+    with self.Infer("""
+      class Container(object):
+        def __init__(self):
+          self.foo = [[]]
+          self.bar = []
+
+      container = Container()
+
+      def f():
+        for obj in container.foo[0]:
+          container.bar.append(obj)
+
+      def g():
+        f()
+        container.foo[0].append(42)
+        f()
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        class Container:
+          foo: list<list<int>>
+          bar: list<int>
+
+        container: Container
+
+        def f() -> NoneType
+        def g() -> NoneType
+      """)
+
 if __name__ == "__main__":
   test_inference.main()

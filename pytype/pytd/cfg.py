@@ -296,17 +296,18 @@ class Variable(object):
   """A collection of possible values for a variable, along with their origins.
 
   A variable stores the values it can have as well as the CFG nodes at which
-  the values occur. The values are stored in a list for determinicity; new
+  the values occur. Callback functions can be registered with it, to be executed
+  when a value is added. The values are stored in a list for determinicity; new
   values should be added via AddValue or (FilterAnd)PasteVariable rather than
   appended to values directly to ensure that values and _data_id_to_value are
   updated together. We do this rather than making _data_id_to_value a
   collections.OrderedDict because a CFG can easily have tens of thousands of
-  variables, and it takes about 40x as long to create an OrderedDict instance
-  as to create a list and a dict, while adding a value to the OrderedDict takes
+  variables, and it takes about 40x as long to create an OrderedDict instance as
+  to create a list and a dict, while adding a value to the OrderedDict takes
   2-3x as long as adding it to both the list and the dict.
   """
   __slots__ = ("program", "name", "id", "values", "_data_id_to_value",
-               "_cfgnode_to_values")
+               "_cfgnode_to_values", "_callbacks")
 
   def __init__(self, program, name, variable_id):
     """Initialize a new Variable. Called through Program.NewVariable."""
@@ -316,6 +317,7 @@ class Variable(object):
     self.values = []
     self._data_id_to_value = {}
     self._cfgnode_to_values = collections.defaultdict(set)
+    self._callbacks = []
 
   def __repr__(self):
     return "<Variable %d \"%s\": %d choices>" % (
@@ -390,6 +392,8 @@ class Variable(object):
       value = Value(self.program, self, data)
       self.values.append(value)
       self._data_id_to_value[id(data)] = value
+      for callback in self._callbacks:
+        callback()
     return value
 
   def AddValue(self, data, source_set=None, where=None):
@@ -451,6 +455,12 @@ class Variable(object):
 
   def RegisterValueAtNode(self, value, node):
     self._cfgnode_to_values[node].add(value)
+
+  def RegisterChangeListener(self, callback):
+    self._callbacks.append(callback)
+
+  def UnregisterChangeListener(self, callback):
+    self._callbacks.remove(callback)
 
   @property
   def data(self):

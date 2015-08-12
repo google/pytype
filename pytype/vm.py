@@ -112,7 +112,8 @@ class VirtualMachine(object):
                pythonpath=(),
                find_pytd_import_ext=".pytd",
                import_drop_prefixes=(),
-               pybuiltins_filename=None):
+               pybuiltins_filename=None,
+               skip_repeat_calls=True):
     """Construct a TypegraphVirtualMachine."""
     self.python_version = python_version
     self.pybuiltins_filename = pybuiltins_filename
@@ -123,6 +124,7 @@ class VirtualMachine(object):
                                    pythonpath=pythonpath,
                                    find_pytd_import_ext=find_pytd_import_ext,
                                    import_drop_prefixes=import_drop_prefixes)
+    self.skip_repeat_calls = skip_repeat_calls
     # The call stack of frames.
     self.frames = []
     # The current frame.
@@ -793,13 +795,10 @@ class VirtualMachine(object):
         name = "<function:%s>" % _get_atomic_python_constant(code).co_name
       else:
         name = "<lambda>"
-    val = abstract.InterpreterFunction(name,
-                                       code=_get_atomic_python_constant(code),
-                                       f_locals=self.frame.f_locals,
-                                       f_globals=globs,
-                                       defaults=defaults,
-                                       closure=closure,
-                                       vm=self)
+    val = abstract.InterpreterFunction.make_function(
+        name, code=_get_atomic_python_constant(code),
+        f_locals=self.frame.f_locals, f_globals=globs,
+        defaults=defaults, closure=closure, vm=self)
     # TODO(ampere): What else needs to be an origin in this case? Probably stuff
     # in closure.
     var = self.program.NewVariable(name)

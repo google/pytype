@@ -370,11 +370,12 @@ class InferenceTest(unittest.TestCase):
     #                  inferencer adding additional but harmless calls.
     pytd_tree = parser.TypeDeclParser(version=version).Parse(
         textwrap.dedent(pytd_src))
-    pytd_tree = pytd_tree.Visit(visitors.CanonicalOrderingVisitor())
+    pytd_tree = pytd_tree.Visit(
+        visitors.CanonicalOrderingVisitor(sort_signatures=True))
     pytd_tree.Visit(visitors.VerifyVisitor())
     ty = ty.Visit(visitors.ClassTypeToNamedType())
     ty = ty.Visit(visitors.AdjustSelf(force=True))
-    ty = ty.Visit(visitors.CanonicalOrderingVisitor())
+    ty = ty.Visit(visitors.CanonicalOrderingVisitor(sort_signatures=True))
     ty.Visit(visitors.VerifyVisitor())
 
     ty_src = pytd.Print(ty) + "\n"

@@ -140,6 +140,10 @@ def _parse_options(args):
       dest="cache_unknowns", default=True,
       help="Do slower and more precise processing of unknown types.")
   o.add_option(
+      "--no-skip-calls", action="store_false",
+      dest="skip_repeat_calls", default=True,
+      help=("Don't reuse the results of previous function calls."))
+  o.add_option(
       "--irascible", type="int", action="store",
       dest="irascible", default=None,
       help="Non-zero return code: 0=critical, 1=error, 2=warn, ...")
@@ -317,7 +321,8 @@ def process_one_file(input_filename, output_filename,
         output_typegraph=options.output_typegraph,
         output_pseudocode=options.output_pseudocode,
         reverse_operators=options.reverse_operators,
-        cache_unknowns=options.cache_unknowns)
+        cache_unknowns=options.cache_unknowns,
+        skip_repeat_calls=options.skip_repeat_calls)
   except Exception as e:
     log_exc = log.warn if options.warn_on_exception else log.critical
     exc_msg = str(e) or e.__doc__ or repr(e)
