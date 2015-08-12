@@ -547,7 +547,7 @@ class VirtualMachine(object):
       if key not in self._convert_cache:
         if pytype.name == "type":
           # special case: An instantiation of "type" can be anything.
-          instance = self.unsolvable
+          instance = self._create_new_unknown_value("type")
         else:
           instance = abstract.Instance(
               self.convert_constant(str(pytype), pytype), self)

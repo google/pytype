@@ -530,12 +530,32 @@ class BuiltinTests(test_inference.InferenceTest):
       class Foo(
           collections.namedtuple('_Foo', 'x y z')):
         pass
-    """, deep=True, solve_unknowns=False) as ty:
+    """, deep=True, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
+        collections: module
+
         class Foo(?):
           pass
       """)
 
+  def testStoreAndLoadFromNamedTuple(self):
+    with self.Infer("""
+      import collections
+      t = collections.namedtuple('', ['x', 'y', 'z'])
+      t.x = 3
+      t.y = "foo"
+      t.z = 1j
+      x = t.x
+      y = t.y
+      z = t.z
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+      collections: module
+      t: ?  # TODO(kramm): Should this be a class, with attribute x, y and z?
+      x: int
+      y: str
+      z: complex
+      """)
 
 if __name__ == "__main__":
   test_inference.main()
