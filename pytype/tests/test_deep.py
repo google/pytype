@@ -204,5 +204,17 @@ class StructuralTest(test_inference.InferenceTest):
         def f(x, y) -> bool
       """)
 
+  def testSlices(self):
+    with self.Infer("""
+      def trim(docstring):
+        lines = docstring.splitlines()
+        for line in lines[1:]:
+          len(line)
+        return lines
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        def trim(docstring: bytearray or str or unicode) -> list<bytearray or str or unicode>
+      """)
+
 if __name__ == "__main__":
   test_inference.main()
