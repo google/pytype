@@ -416,5 +416,29 @@ class ImportTest(test_inference.InferenceTest):
             pass
         """)
 
+  def testImportedConstants(self):
+    with utils.Tempdir() as d:
+      d.create_file("module.pytd", """
+        x: int
+        class Foo:
+          x: float
+      """)
+      with self.Infer("""\
+        import module
+        def f():
+          return module.x
+        def g():
+          return module.Foo().x
+        def h():
+          return module.Foo.x
+      """, deep=True, solve_unknowns=False, pythonpath=[d.path]) as ty:
+        self.assertTypesMatchPytd(ty, """
+          module: module
+          def f() -> int
+          def g() -> float
+          def h() -> float
+        """)
+
+
 if __name__ == "__main__":
   test_inference.main()

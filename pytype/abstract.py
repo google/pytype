@@ -1420,6 +1420,9 @@ class PyTDClass(LazyAbstractValue, Class):
 
   def _retrieve_member(self, name, pyval):
     """Convert a member as a variable. For lazy lookup."""
+    if isinstance(pyval, pytd.Constant):
+      return self.vm.create_pytd_instance(name, pyval.type, {},
+                                          self.vm.root_cfg_node)
     c = self.vm.convert_constant_to_value(repr(pyval), pyval)
     c.parent = self
     return c.to_variable(self.vm.root_cfg_node, name)
