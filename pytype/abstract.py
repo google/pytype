@@ -1849,6 +1849,10 @@ class BoundFunction(AtomicAbstractValue):
   def to_type(self):
     return pytd.NamedType("function")
 
+  def match_against_type(self, other_type, subst, node, view):
+    if other_type.name in ["function", "object"]:
+      return subst
+
 
 class BoundInterpreterFunction(BoundFunction):
   pass

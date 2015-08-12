@@ -367,7 +367,7 @@ class BuiltinTests(test_inference.InferenceTest):
       def f(input_string, sub):
         return ''.join(map(lambda ch: ch, input_string))
     """, deep=True, solve_unknowns=True) as ty:
-      self.assertOnlyHasReturnType(ty.Lookup("f"), self.str)
+      self.assertOnlyHasReturnType(ty.Lookup("f"), self.strorunicode)
 
   def testArraySmoke(self):
     with self.Infer("""

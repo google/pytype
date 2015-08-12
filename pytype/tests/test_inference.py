@@ -172,6 +172,7 @@ class InferenceTest(unittest.TestCase):
 
     # The various union types use pytd_utils.CanonicalOrdering()'s ordering:
     self.intorstr = pytd.UnionType((self.int, self.str))
+    self.strorunicode = pytd.UnionType((self.str, self.unicode))
     self.intorfloat = pytd.UnionType((self.float, self.int))
     self.intorfloatorstr = pytd.UnionType((self.float, self.int, self.str))
     self.complexorstr = pytd.UnionType((self.complex, self.str))

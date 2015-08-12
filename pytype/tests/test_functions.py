@@ -340,6 +340,33 @@ class TestGenerators(test_inference.InferenceTest):
         def f(elements) -> str
       """)
 
+  def test_matching_functions(self):
+    with self.Infer("""
+      def f():
+        return 3
+
+      class Foo(object):
+        def match_method(self):
+          return map(self.method, [])
+        def match_function(self):
+          return map(f, [])
+        def match_pytd_function(self):
+          return map(map, [])
+        def match_bound_pytd_function(self):
+          return map({}.keys, [])
+        def method(self):
+          pass
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        def f() -> int
+        class Foo:
+          def match_method(self) -> list<nothing>
+          def match_function(self) -> list<nothing>
+          def match_pytd_function(self) -> list<nothing>
+          def match_bound_pytd_function(self) -> list<nothing>
+          def method(self) -> NoneType
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()
