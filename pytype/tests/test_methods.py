@@ -725,6 +725,36 @@ class MethodsTest(test_inference.InferenceTest):
         def myfunction(self: Foo, x, y) -> int
       """)
 
+  def testFunctionAttr(self):
+    with self.Infer("""
+      import os
+      def f():
+        pass
+      class Foo(object):
+        def method(self):
+          pass
+      foo = Foo()
+      f.x = 3
+      Foo.method.x = "bar"
+      foo.method.x = 3j  # overwrites previous line
+      os.chmod.x = 3.14
+      a = f.x
+      b = Foo.method.x
+      c = foo.method.x
+      d = os.chmod.x
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+      os: module
+      def f() -> NoneType
+      class Foo:
+        def method(self) -> NoneType
+      foo: Foo
+      a: int
+      b: complex
+      c: complex
+      d: float
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()

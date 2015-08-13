@@ -935,7 +935,7 @@ class FailedFunctionCall(Exception):
     return "FailedFunctionCall(%s, %s)" % (self.obj, self.explanation_lines)
 
 
-class Function(AtomicAbstractValue):
+class Function(Instance):
   """Base class for function objects (NativeFunction, InterpreterFunction).
 
   Attributes:
@@ -944,24 +944,19 @@ class Function(AtomicAbstractValue):
   """
 
   def __init__(self, name, vm):
-    super(Function, self).__init__(name, vm)
-    self.func_name = self.vm.build_string(self.vm.root_cfg_node, name)
-    self.cls = self.vm.function_type
+    super(Function, self).__init__(vm.function_type, vm)
+    self.name = name
     self.parent_class = None
     self._bound_functions_cache = {}
+    self.members["func_name"] = self.vm.build_string(
+        self.vm.root_cfg_node, name)
 
   def get_attribute(self, node, name, valself=None, valcls=None):
-    if name == "func_name":
-      return node, self.func_name
-    else:
+    if name == "__get__":
+      # The pytd for "function" has a __get__ attribute, but if we already
+      # have a function we don't want to be treated as a descriptor.
       return node, None
-
-  def set_attribute(self, node, name, value):
-    if name == "func_name":
-      self.func_name = value
-      return node
-    else:
-      raise AttributeError("Can't set attributes on function")
+    return super(Function, self).get_attribute(node, name, valself, valcls)
 
   def property_get(self, callself, callcls):
     self.parent_class = callcls.values[0].data
@@ -1929,13 +1924,13 @@ class BoundFunction(AtomicAbstractValue):
     self.underlying = underlying
 
   def get_attribute(self, node, name, valself=None, valcls=None):
-    return node, None
+    return self.underlying.get_attribute(node, name, valself, valcls)
 
   def has_attribute(self, node, name, valself=None, valcls=None):
-    return node, False
+    return self.underlying.has_attribute(node, name, valself, valcls)
 
   def set_attribute(self, node, name, value):
-    raise AttributeError()
+    return self.underlying.set_attribute(node, name, value)
 
   def argcount(self):
     return self.underlying.argcount() - 1  # account for self

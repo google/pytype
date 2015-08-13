@@ -241,7 +241,6 @@ class TestIt(test_inference.InferenceTest):
       print(-x, ~x, not x)
       """)
 
-  @unittest.skip("Broken - AttributeError")
   def test_attributes(self):
     self.assert_ok("""\
       l = lambda: 1   # Just to have an object...
@@ -251,7 +250,6 @@ class TestIt(test_inference.InferenceTest):
       print(hasattr(l, "foo"))
       """)
 
-  @unittest.skip("Broken - AttributeError")
   def test_attribute_inplace_ops(self):
     self.assert_ok("""\
       l = lambda: 1   # Just to have an object...

@@ -170,8 +170,8 @@ class VirtualMachine(object):
     self.list_type = self.convert_constant("list", list)
     self.set_type = self.convert_constant("set", set)
     self.dict_type = self.convert_constant("dict", dict)
-    self.function_type = self.convert_constant("function type",
-                                               types.FunctionType)
+    self.function_type = self.convert_constant(
+        "function_type", types.FunctionType)
 
     self.vmbuiltins = {b.name: b for b in (self.loader.builtins.constants +
                                            self.loader.builtins.classes +
