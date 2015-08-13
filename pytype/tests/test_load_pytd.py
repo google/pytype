@@ -1,5 +1,7 @@
 """Tests for load_pytd.py."""
 
+import os
+import sys
 
 from pytype import load_pytd
 from pytype import utils
@@ -125,6 +127,26 @@ class ImportPathsTest(unittest.TestCase):
       self.assertTrue(some.Lookup("path.to.some.some"))
       self.assertTrue(to.Lookup("path.to.to"))
       self.assertTrue(path.Lookup("path.path"))
+
+  def testSmokePyTD(self):
+    """Smoke test to ensure all *.pytd files load properly."""
+    loader = load_pytd.Loader("base", python_version=self.PYTHON_VERSION)
+    pytd_dir = os.path.join(os.path.dirname(load_pytd.__file__), "pytd")
+    for builtins_subdir in ("builtins", "stdlib"):
+      for _, _, files in os.walk(
+          os.path.join(pytd_dir, builtins_subdir)):
+        # We don't need to know the directory we're in because these are builtin
+        # .pytd files and load_pytd.import_name takes care of looking in
+        # multiple directories.
+        for name in files:
+          module_name, ext = os.path.splitext(name)
+          if ext == ".pytd":
+            # We could do something fancier with try/except, but for
+            # now, just print out each module as we load it.
+            print >>sys.stderr, "***Loading", module_name
+            self.assertTrue(loader.import_name(module_name),
+                            msg="Failed loading " + module_name)
+
 
 if __name__ == "__main__":
   unittest.main()

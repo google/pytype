@@ -57,7 +57,7 @@ _addHandlerRef: function
 _checkLevel: function
 _defaultFormatter: Formatter
 _handlerList: list
-_handlers: instance
+# _handlers: instance  # TODO(pludemann): add instance class to __builtins__.pytd?
 _levelNames: dict
 # _lock: threading._RLock  # TODO(pludemann)
 class _loggerClass:

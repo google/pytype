@@ -6,7 +6,6 @@ import os
 
 
 from pytype import utils
-from pytype.pytd import pytd  # for debugging
 from pytype.pytd import utils as pytd_utils
 from pytype.pytd.parse import builtins
 from pytype.pytd.parse import visitors
@@ -168,7 +167,7 @@ class Loader(object):
         init_ast = self._load_pytd_from_glob(os.path.join(path, "__init__"),
                                              module_name)
         if init_ast is not None:
-          log.debug("Found module %s/__init__ in path %", module_name, path)
+          log.debug("Found module %s/__init__ in path %s", module_name, path)
           return init_ast
         else:
           # We allow directories to not have an __init__ file.
@@ -179,7 +178,7 @@ class Loader(object):
       else:
         file_ast = self._load_pytd_from_glob(path, module_name)
         if file_ast is not None:
-          log.debug("Found module %s in path %", module_name, path)
+          log.debug("Found module %s in path %s", module_name, path)
           return file_ast
 
     # The standard library is (typically) at the end of PYTHONPATH.
@@ -191,7 +190,6 @@ class Loader(object):
                              module_name=module_name, ast=mod)
     else:
       log.error("Couldn't import module %s", module_name)
-
 
   def _load_pytd_from_glob(self, path, module_name):
     """Load a pytd from the path, using '*'-expansion.
