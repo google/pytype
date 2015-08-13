@@ -87,6 +87,10 @@ def _parse_options(args):
       dest="api",
       help=("Only analyze the main method and everything called from it"))
   o.add_option(
+      "-c", "--check", action="store_true",
+      dest="check",
+      help=("Verify against existing \"output\" pytd files."))
+  o.add_option(
       "-S", "--structural", action="store_true",
       dest="structural", default=False,
       help=("Analyze all functions and classes, also those not called from "
@@ -256,8 +260,30 @@ def _initialize_filenames_and_output(options, input_filenames):
   return src_out
 
 
-def process_one_file(input_filename, output_filename,
-                     options, pythonpath, import_drop_prefixes):
+def check_pytd(input_filename, output_filename,
+               options, pythonpath, import_drop_prefixes, python_version):
+  with open(input_filename, "r") as fi:
+    py_src = fi.read()
+  with open(output_filename, "r") as fi:
+    pytd_src = fi.read()
+  return infer.check_types(
+      py_src,
+      pytd_src,
+      py_filename=input_filename,
+      pytd_filename=output_filename,
+      python_version=python_version,
+      run_builtins=options.run_builtins,
+      pybuiltins_filename=options.pybuiltins_filename,
+      pythonpath=pythonpath,
+      find_pytd_import_ext=options.find_pytd_import_ext,
+      import_drop_prefixes=import_drop_prefixes,
+      reverse_operators=options.reverse_operators,
+      cache_unknowns=options.cache_unknowns,
+      skip_repeat_calls=options.skip_repeat_calls)
+
+
+def generate_pytd(input_filename, output_filename,
+                  options, pythonpath, import_drop_prefixes, python_version):
   """Run the inferencer on one file, producing output.
 
   Args:
@@ -268,6 +294,7 @@ def process_one_file(input_filename, output_filename,
     options: the command-line flags (processed)
     pythonpath: from --pythonpath
     import_drop_prefixes: from --import_drop_prefixes
+    python_version: A tuple of length 2. (major, minor)
 
   Raises:
     ValueError: for some invalid options
@@ -275,24 +302,8 @@ def process_one_file(input_filename, output_filename,
   with open(input_filename, "r") as fi:
     src = fi.read()
 
-  python_version = tuple(map(int, options.python_version.split(".")))
-  if len(python_version) != 2:
-    log.error("--python_version must be <major>.<minor>")
-    sys.exit(1)
-
   # TODO(pludemann): sanity check options.find_pytd_import_ext.startswith(".")
   #                  for something like .pytd or <*>.pytd
-
-  # MOE:begin_strip
-  # Why does the following test sometimes fail on Forge?
-  # MOE:end_strip
-  # This test is not 100% reliable, so turn off for now.
-  if False:
-    for d in pythonpath:
-      if not os.path.isdir(d):
-        raise ValueError(
-            "--pythonpath item is not a directory: '%s stat(%s) lstat(%s)" %
-            (d, os.stat(d), os.lstat(d)))
 
   try:
     mod = infer.infer_types(
@@ -344,6 +355,16 @@ def process_one_file(input_filename, output_filename,
       fi.write(result)
 
 
+def process_one_file(input_filename, output_filename,
+                     options, pythonpath, import_drop_prefixes, python_version):
+  if options.check:
+    return check_pytd(input_filename, output_filename, options,
+                      pythonpath, import_drop_prefixes, python_version)
+  else:
+    return generate_pytd(input_filename, output_filename, options,
+                         pythonpath, import_drop_prefixes, python_version)
+
+
 def main(argv):
   log_level_tracker = TrackLevel()
   options, input_filenames = _parse_options(argv)
@@ -367,11 +388,16 @@ def main(argv):
   import_drop_prefixes = [
       p for p in options.import_drop_prefixes.split(os.pathsep) if p]
 
+  python_version = tuple(map(int, options.python_version.split(".")))
+  if len(python_version) != 2:
+    log.error("--python_version must be <major>.<minor>")
+    sys.exit(1)
+
   log.info("Process all: %s", src_out)
   for input_filename, output_filename in src_out:
     log.info("Process [1] %s => %s", input_filename, output_filename)
-    process_one_file(input_filename, output_filename,
-                     options, pythonpath, import_drop_prefixes)
+    process_one_file(input_filename, output_filename, options,
+                     pythonpath, import_drop_prefixes, python_version)
 
   if len(src_out) > 1:
     # Do it once more, using any outputs that were produced the first time
@@ -383,8 +409,8 @@ def main(argv):
     log_level_tracker.clear()
     for input_filename, output_filename in src_out:
       log.info("Process [2] %s => %s", input_filename, output_filename)
-      process_one_file(input_filename, output_filename,
-                       options, pythonpath, import_drop_prefixes)
+      process_one_file(input_filename, output_filename, options,
+                       pythonpath, import_drop_prefixes, python_version)
 
   if (options.irascible is not None and
       log_level_tracker.max_level >= LOG_LEVELS[options.irascible]):

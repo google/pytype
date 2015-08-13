@@ -274,6 +274,13 @@ class CallTracer(vm.VirtualMachine):
     ty = ty.Visit(visitors.DefaceUnresolved([ty, self.loader.concat_all()]))
     return ty
 
+  def check_types(self, unused_loc, defs, ast, py_filename, pytd_filename):
+    # TODO(kramm): Do much more checking here.
+    for item in ast.functions + ast.classes + ast.constants:
+      if item.name not in defs:
+        log.error("%s %s declared in pytd %s, but not defined in %s",
+                  type(item).__name__, item.name, pytd_filename, py_filename)
+
 
 def pretty_assignment(v, short=False):
   """Prettyprint a variable assignment.
@@ -426,6 +433,29 @@ def _get_module_name(filename, pythonpath):
       if filename.startswith(path):
         subdir = filename[len(path):].lstrip(os.path.sep)
         return subdir.replace(os.path.sep, ".")
+
+
+def check_types(py_src, pytd_src, py_filename, pytd_filename,
+                python_version, run_builtins=True,
+                pybuiltins_filename=None, pythonpath=(),
+                find_pytd_import_ext=".pytd",
+                import_drop_prefixes=(), reverse_operators=False,
+                cache_unknowns=False, skip_repeat_calls=True):
+  """Verify a PyTD against the Python code."""
+  tracer = CallTracer(python_version=python_version,
+                      module_name=_get_module_name(py_src, pythonpath),
+                      reverse_operators=reverse_operators,
+                      cache_unknowns=cache_unknowns,
+                      pythonpath=pythonpath,
+                      find_pytd_import_ext=find_pytd_import_ext,
+                      import_drop_prefixes=import_drop_prefixes,
+                      pybuiltins_filename=pybuiltins_filename,
+                      skip_repeat_calls=skip_repeat_calls)
+  loc, defs, _ = tracer.run_program(py_src, py_filename, run_builtins)
+  ast = pytd_utils.ParsePyTD(pytd_src, pytd_filename, python_version)
+  tracer.check_types(loc, defs, ast,
+                     os.path.basename(py_filename),
+                     os.path.basename(pytd_filename))
 
 
 def infer_types(src, python_version, filename=None, run_builtins=True,
