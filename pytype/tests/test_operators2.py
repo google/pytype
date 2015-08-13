@@ -42,7 +42,7 @@ class OperatorsWithAnyTests(test_inference.InferenceTest):
         return x + "abc"
     """, deep=True, solve_unknowns=True, extract_locals=True) as ty:
       self.assertTypesMatchPytd(ty, """
-        def t_testAdd3(x: buffer or bytearray or str or unicode) -> bytearray or str or unicode
+        def t_testAdd3(x: buffer or bytearray or str or unicode) -> bytearray or str or bytes or unicode
       """)
 
   @unittest.skip("Broken: Needs full __radd__ in all builtins")

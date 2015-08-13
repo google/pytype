@@ -9,15 +9,25 @@ __package__: NoneType
 def _complain_ifclosed(closed) -> NoneType
 def test() -> NoneType
 
-class StringIO:
+class StringIO(nothing):
+    __doc__: str
+    buf: ?
+    buflist: list<?>
+    closed: bool
+    len: ?
+    pos: ?
+    softspace: int
+    def __init__(self, ...) -> NoneType
+    def __iter__(self) -> StringIO
     def close(self) -> NoneType
     def flush(self) -> NoneType
     def getvalue(self) -> str
     def isatty(self) -> bool
+    def next(self) -> ?
     def read(self, ...) -> str
     def readline(self, ...) -> str
-    def readlines(self, ...) -> list
-    def seek(self, pos, mode) -> NoneType
+    def readlines(self, ...) -> list<str>
+    def seek(self, pos: int or list<?>, ...) -> NoneType
     def tell(self) -> int
     def truncate(self, ...) -> NoneType
     def write(self, s) -> NoneType

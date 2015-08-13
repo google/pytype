@@ -1,0 +1,81 @@
+# TODO(pludemann): review this -- crashed: pytype --api Lib/tempfile.py
+
+TMP_MAX: int
+def TemporaryFile(mode: str, ...) -> ?
+_Random: ?
+_StringIO: type
+__all__: list<str>
+_allocate_lock: function
+_bin_openflags: int
+_errno: module
+_fcntl: module
+_io: module
+_name_sequence: NoneType
+_once_lock: ?
+_os: module
+_set_cloexec: function
+_text_openflags: int
+_thread: ?
+tempdir: NoneType
+template: str
+
+def NamedTemporaryFile(mode, bufsize, suffix, prefix, dir, delete, ...) -> ?
+def _candidate_tempdir_list() -> ?
+def _exists(fn) -> ?
+def _get_candidate_names() -> ?
+def _get_default_tempdir() -> ?
+def _mkstemp_inner(dir, pre, suf, flags) -> ?
+def _stat(fn) -> ?
+def gettempdir() -> ?
+def gettempprefix() -> ?
+def mkdtemp(suffix, prefix, dir, ...) -> ?
+def mkstemp(suffix, prefix, dir, text, ...) -> ?
+def mktemp(suffix, prefix, dir, ...) -> ?
+
+class SpooledTemporaryFile(nothing):
+    __doc__: str
+    _rolled: bool
+    closed: property
+    mode: property
+    name: property
+    softspace: property
+    def __enter__(self) -> ?
+    def __exit__(self, exc, value, tb) -> ?
+    def __init__(self, max_size, mode, bufsize, suffix, prefix, dir, ...) -> ?
+    def __iter__(self) -> ?
+    def _check(self, file) -> ?
+    def close(self) -> ?
+    def fileno(self) -> ?
+    def flush(self) -> ?
+    def isatty(self) -> ?
+    def next(self) -> ?
+    def read(self) -> ?
+    def readline(self) -> ?
+    def readlines(self) -> ?
+    def rollover(self) -> ?
+    def seek(self) -> ?
+    def tell(self) -> ?
+    def truncate(self) -> ?
+    def write(self, s) -> ?
+    def writelines(self, iterable) -> ?
+    def xreadlines(self) -> ?
+
+class _RandomNameSequence(nothing):
+    __doc__: str
+    characters: str
+    rng: property
+    def __init__(self) -> ?
+    def __iter__(self) -> ?
+    def next(self) -> ?
+
+class _TemporaryFileWrapper(nothing):
+    __doc__: str
+    unlink: function
+    def __del__(self) -> ?
+    def __enter__(self) -> ?
+    def __exit__(self, exc, value, tb) -> ?
+    def __exit__(self, exc, value, tb) -> ?
+    def __getattr__(self, name) -> ?
+    def __init__(self, file, name, delete, ...) -> ?
+    def close(self) -> ?
+

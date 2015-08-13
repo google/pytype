@@ -1,3 +1,22 @@
+class _flags:  # TODO(pludemann): allow calling this `flags`
+  debug: int
+  py3k_warning: int
+  division_warning: int
+  division_new: int
+  inspect: int
+  interactive: int
+  optimize: int
+  dont_write_bytecode: int
+  no_user_site: int
+  no_site: int
+  ignore_environment: int
+  tabcheck: int
+  verbose: int
+  unicode: int
+  bytes_warning: int
+  hash_randomization: int
+
+
 __displayhook__: object
 __excepthook__: object
 __stderr__: file
@@ -12,7 +31,7 @@ copyright: str
 dont_write_bytecode: bool
 exec_prefix: str
 executable: str
-flags: tuple
+flags: _flags  # shadows class flags in sys.py
 float_info: object
 float_repr_style: str
 hexversion: int
@@ -20,6 +39,7 @@ long_info: object
 maxint: int
 maxsize: int
 maxunicode: int
+modules: dict<str, module>
 path: list<str>
 platform: str
 prefix: str

@@ -53,7 +53,7 @@ def filter(function_or_None, sequence: list or set or iterator) -> list
 def filter<A>(function_or_None, sequence: tuple<A>) -> tuple<A>
 def format(value, ...) -> str
 def format(value: unicode, ...) -> unicode
-def getattr(value: object, attr: str or unicode) -> ?
+def getattr(value: object, attr: str or unicode, ...) -> ?
 def globals() -> dict<str, object>
 def hasattr(object, name: str or unicode or bytearray) -> bool
 def hash(obj) -> int
@@ -102,7 +102,7 @@ def oct(number: int) -> str
 # TODO(pludemann): Python3 allows open(int or str or bytes or memoryview, ...)
 # TODO(pludemann): Python3: encapsulate details of file (str, bytes) based on mode
 def open(name: str or buffer or unicode, ...) -> file
-def ord(c: str) -> int
+def ord(c: str or unicode) -> int
 def pow(x: int, y: int or long, ...) -> float or int or long
 def pow(x: long, y: int or long, ...) -> float or long
 def pow(x: int or float or complex, y: complex, ...) -> complex
@@ -233,6 +233,11 @@ class str(basestring):
     def translate(self, table: unicode, ...) -> unicode
     def upper(self) -> str
     def zfill(self, width: int) -> str
+
+class bytes(str):
+    # TODO(pludemann): This is technically incorrect because in Python2,
+    #                  bytes is str.  However, it'll do what we want for now.
+    pass  # TODO(pludemann): add aliasing to PyTD and use that.
 
 class unicode(basestring):
     def __init__(self, string, ...) -> NoneType

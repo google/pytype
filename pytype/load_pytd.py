@@ -6,6 +6,7 @@ import os
 
 
 from pytype import utils
+from pytype.pytd import pytd  # for debugging
 from pytype.pytd import utils as pytd_utils
 from pytype.pytd.parse import builtins
 from pytype.pytd.parse import visitors
@@ -145,12 +146,13 @@ class Loader(object):
       find the module.
     """
     assert "/" not in module_name
-    log.info("Trying to import %s", module_name)
+    log.debug("Trying to import %s", module_name)
     # Builtin modules (but not standard library modules!) take precedence
     # over modules in PYTHONPATH.
     mod = pytd_utils.ParsePredefinedPyTD("builtins", module_name,
                                          self.python_version)
     if mod:
+      log.debug("Found builtins %s", module_name)
       return self._load_file(filename=self.PREFIX + module_name,
                              module_name=module_name, ast=mod)
 
@@ -163,9 +165,10 @@ class Loader(object):
       path = os.path.join(searchdir, *module_name_split)
       if os.path.isdir(path):
         # TODO(pludemann): need test case (esp. for empty __init__.py)
-        init_ast = self._load_pytd_from_glob(
-            os.path.join(path, "__init__"), module_name, log.info)
+        init_ast = self._load_pytd_from_glob(os.path.join(path, "__init__"),
+                                             module_name)
         if init_ast is not None:
+          log.debug("Found module %s/__init__ in path %", module_name, path)
           return init_ast
         else:
           # We allow directories to not have an __init__ file.
@@ -174,24 +177,28 @@ class Loader(object):
               filename=os.path.join(path, "__init__.pytd"),
               module_name=module_name)
       else:
-        file_ast = self._load_pytd_from_glob(path, module_name, log.warn)
+        file_ast = self._load_pytd_from_glob(path, module_name)
         if file_ast is not None:
+          log.debug("Found module %s in path %", module_name, path)
           return file_ast
 
     # The standard library is (typically) at the end of PYTHONPATH.
     mod = pytd_utils.ParsePredefinedPyTD("stdlib", module_name,
                                          self.python_version)
     if mod:
+      log.debug("Found stdlib %s", module_name)
       return self._load_file(filename="stdlib:"+module_name,
                              module_name=module_name, ast=mod)
+    else:
+      log.error("Couldn't import module %s", module_name)
 
-  def _load_pytd_from_glob(self, path, module_name, log_call=None):
+
+  def _load_pytd_from_glob(self, path, module_name):
     """Load a pytd from the path, using '*'-expansion.
 
     Args:
       path: Path to the file (without '.pytd' or similar extension).
       module_name: Name of the module (may contain dots).
-      log_call: (Optional) one of log.{debug, info, log.warn, log.error}
     Returns:
       The parsed pytd, instance of pytd.TypeDeclUnit, or None if we didn't
       find the module.
@@ -205,8 +212,6 @@ class Loader(object):
         log.warn("Multiple files for %s: %s", pytd_path, files)
       return self._load_file(filename=files[0], module_name=module_name)
     else:
-      if log_call:
-        log_call("Couldn't find import '%s'", pytd_path)
       return None
 
   def concat_all(self):

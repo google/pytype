@@ -1,4 +1,11 @@
-def ctime() -> str
-def ctime(secs: int or float or long or NoneType) -> str
-def mktime(t: tuple<int>) -> float
-def time() -> float
+def asctime(...) -> str raises ValueError
+def clock() -> float
+def ctime(...) -> str raises ValueError
+def gmtime(...) -> tuple
+def localtime(...) -> tuple
+def mktime(...) -> float raises OverflowError
+def sleep(a: float) -> NoneType
+def strftime(a: str, ...) -> str raises ValueError, MemoryError
+def strptime(...) -> object
+def time() -> float raises IOError
+def tzset() -> NoneType

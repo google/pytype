@@ -357,7 +357,7 @@ class ImportTest(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
         StringIO: module
-        def my_foo(x:file or StringIO.StringIO) -> str
+        def my_foo(x:file or StringIO.StringIO) -> str or bytes
       """)
 
   def testImportBuiltins(self):

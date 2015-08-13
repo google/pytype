@@ -173,7 +173,7 @@ class SolverTests(test_inference.InferenceTest):
         return "abc".find(x)
     """, deep=True, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
-        def f(x: str or unicode or bytearray) -> int
+        def f(x: str or unicode or bytearray or bytes) -> int
       """)
 
   def testExternalType(self):

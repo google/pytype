@@ -1,0 +1,6 @@
+# TODO(pludemann): review this -- there is no Lib/builtins.py but
+#     it's explicitly imported in some places for Python 3 compatibility.
+
+# It should probably be moved to builtins.py, with:
+#   from __builtins__ import *
+# or set up as a symlink

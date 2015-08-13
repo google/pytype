@@ -22,9 +22,9 @@ class WorkflowTest(test_inference.InferenceTest):
 
         class ConfigParser:
           # TODO(pludemann): remove '-> NoneType'
-          def __init__(self, filename: str or buffer or unicode) -> NoneType
+          def __init__(self, filename: str or bytes or buffer or unicode) -> NoneType
           def read(self) -> str
-          filename: str or buffer or unicode
+          filename: str or bytes or buffer or unicode
       """)
 
 if __name__ == '__main__':
