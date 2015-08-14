@@ -1360,6 +1360,7 @@ class VirtualMachine(object):
           "Couldn't retrieve item out of container")
 
   def byte_INPLACE_ADD(self, state):
+    # TODO(kramm): This should fall back to __add__ (also below)
     return self.binary_operator(state, "__iadd__")
 
   def byte_INPLACE_SUBTRACT(self, state):

@@ -176,7 +176,9 @@ class str(basestring):
     def __init__(self, object) -> NoneType
     def __init__(self) -> NoneType
     def __add__(self, y: str or bytearray) -> str
+    def __iadd__(self, y: str or bytearray) -> str
     def __add__(self, y: unicode) -> unicode
+    def __iadd__(self, y: unicode) -> unicode
     def __contains__(self, y: str or unicode or bytearray) -> bool
     def __eq__(self, y: str or bytearray) -> bool
     def __ge__(self, y: str or bytearray) -> bool
@@ -736,6 +738,7 @@ class int:
     # TODO(pludemann): change other "y: int" to "y: int or bool" (also
     #                  in other classes, such as float)
     def __add__(self, y: int or bool) -> int
+    def __iadd__(self, y: int or bool) -> int
     def __and__(self, y: int) -> int
     def __coerce__(self, y: int) -> tuple<int>  # tuple<int, int>
     def __div__(self, y: int) -> int

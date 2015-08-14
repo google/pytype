@@ -73,6 +73,15 @@ class CallTracer(vm.VirtualMachine):
         node, abstract.Dict.VALUE_TYPE_PARAM, value_type)
     return kwargs
 
+  def call_function_in_frame(self, node, var, args, kwargs, varargs):
+    frame = AnalysisFrame()
+    self.push_frame(frame)
+    state = frame_state.FrameState.init(node)
+    state, ret = self.call_function_with_state(state, var, args,
+                                               kwargs, varargs)
+    self.pop_frame(frame)
+    return state.node, ret
+
   def analyze_method(self, val, node):
     method = val.data
     if isinstance(method, (abstract.InterpreterFunction,
@@ -81,14 +90,11 @@ class CallTracer(vm.VirtualMachine):
               for i in range(method.argcount())]
       varargs = self.create_varargs(node) if method.has_varargs() else None
       kwargs = self.create_kwargs(node) if method.has_kwargs() else None
-      frame = AnalysisFrame()
-      self.push_frame(frame)
-      state = frame_state.FrameState.init(node)
-      state, _ = self.call_function_with_state(state, val.variable, args,
-                                               kwargs, varargs)
-      state = state.connect_to_cfg_node(node)
-      self.pop_frame(frame)
-      node = state.node
+      fvar = val.AssignToNewVariable("f", node)
+      new_node, _ = self.call_function_in_frame(node, fvar,
+                                                args, kwargs, varargs)
+      new_node.ConnectTo(node)
+      node = new_node
     return node
 
   def analyze_method_var(self, name, var, node):
@@ -114,12 +120,12 @@ class CallTracer(vm.VirtualMachine):
     instance = self.instantiate(val, node)
     cls = val.data
     node, init = cls.get_attribute(node, "__init__", instance.values[0], val)
+    clsvar = val.AssignToNewVariable("cls", node)
     if init:
-      bound_init = self.bind_method("__init__", init, instance, val.variable,
-                                    node)
+      bound_init = self.bind_method("__init__", init, instance, clsvar, node)
       node = self.analyze_method_var("__init__", bound_init, node)
     for name, methodvar in sorted(cls.members.items()):
-      b = self.bind_method(name, methodvar, instance, val.variable, node)
+      b = self.bind_method(name, methodvar, instance, clsvar, node)
       node2 = self.analyze_method_var(name, b, node)
       node2.ConnectTo(node)
     return node
@@ -274,12 +280,43 @@ class CallTracer(vm.VirtualMachine):
     ty = ty.Visit(visitors.DefaceUnresolved([ty, self.loader.concat_all()]))
     return ty
 
-  def check_types(self, unused_loc, defs, ast, py_filename, pytd_filename):
+  def check_types(self, node, defs, ast, py_filename, pytd_filename):
+    """Verify that the types declared in PyTD work with the Python code.
+
+    E.g. if there's a PyTD signature
+      def abs(x: int) -> int
+    then we'll call the abs() function with an integer and verify that we get
+    an integer back.
+    Any error we encounter will be logged.
+
+    Args:
+      node: The CFG node at the end of the program.
+      defs: All top-level identifiers declared by the program.
+      ast: The PyTD AST.
+      py_filename: Filename of the Python file.
+      pytd_filename: Filename of the PyTD file.
+    """
     # TODO(kramm): Do much more checking here.
     for item in ast.functions + ast.classes + ast.constants:
       if item.name not in defs:
         log.error("%s %s declared in pytd %s, but not defined in %s",
                   type(item).__name__, item.name, pytd_filename, py_filename)
+    for f in ast.functions:
+      for sig in f.signatures:
+        args = tuple(self.create_pytd_instance(name, t, {}, node)
+                     for name, t in sig.params)
+        nominal_return = self.convert_constant_to_value("ret", sig.return_type)
+        for val in defs[f.name].values:
+          fvar = val.AssignToNewVariable("f", node)
+          _, retvar = self.call_function_in_frame(node, fvar, args, None, None)
+          for combination in utils.deep_variable_product([retvar]):
+            view = {value.variable: value for value in combination}
+            match = abstract.match_var_against_type(retvar, nominal_return,
+                                                    {}, node, view)
+            if match is None:
+              log.error("return type is %s, should be %s",
+                        pytd.Print(view[retvar].data.to_type()),
+                        pytd.Print(sig.return_type))
 
 
 def pretty_assignment(v, short=False):
