@@ -1110,7 +1110,7 @@ class VirtualMachine(object):
     log.warning("Local variable removal does not actually do "
                 "anything in the abstract interpreter")
 
-  def get_attr(self, node, obj, attr, allow_descriptors=True):
+  def get_attr(self, node, obj, attr):
     """Load an attribute from an object."""
     assert isinstance(obj, typegraph.Variable), obj
     # Resolve the value independently for each value of obj
@@ -1127,30 +1127,14 @@ class VirtualMachine(object):
                 val.data, id(val.data), attr_var)
       if not attr_var:
         continue
-      # Loop over the values to check for properties
-      if allow_descriptors:
-        # TODO(kramm): Descriptor logic should go into abstract.Class.
-        for v in attr_var.Values(node2):
-          value = v.data
-          node3, has_getter = value.has_attribute(node2, "__get__")
-          if has_getter:
-            node3, getter = value.get_attribute(node2, "__get__", v)
-            node3, get_result = self.call_function(
-                node3, getter, [getter, value.get_class()])
-            for getter in get_result.values:
-              result.AddValue(getter.data, [getter], node3)
-          else:
-            result.AddValue(value, [v], node3)
-          nodes.append(node3)
-      else:
-        result.PasteVariable(attr_var, node2)
-        nodes.append(node2)
+      result.PasteVariable(attr_var, node2)
+      nodes.append(node2)
     if not result.values:
       raise exceptions.ByteCodeAttributeError("No such attribute %s" % attr)
     return self.join_cfg_nodes(nodes), result
 
-  def load_attr(self, state, obj, attr, allow_descriptors=True):
-    node, result = self.get_attr(state.node, obj, attr, allow_descriptors)
+  def load_attr(self, state, obj, attr):
+    node, result = self.get_attr(state.node, obj, attr)
     return state.change_cfg_node(node), result
 
   def store_attr(self, state, obj, attr, value):
@@ -1982,7 +1966,7 @@ class VirtualMachine(object):
     """IMPORT_FROM is mostly like LOAD_ATTR but doesn't pop the container."""
     name = self.frame.f_code.co_names[op.arg]
     module = state.top()
-    state, attr = self.load_attr(state, module, name, allow_descriptors=False)
+    state, attr = self.load_attr(state, module, name)
     return state.push(attr)
 
   def byte_EXEC_STMT(self, state):

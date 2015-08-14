@@ -1529,7 +1529,25 @@ class InterpreterClass(SimpleAbstractValue, Class):
     return super(InterpreterClass, self).get_attribute(node, name)
 
   def get_attribute(self, node, name, valself=None, valcls=None):
-    return Class.get_attribute(self, node, name, valself, valcls)
+    node, attr_var = Class.get_attribute(self, node, name, valself, valcls)
+    result = self.vm.program.NewVariable(name)
+    nodes = []
+    # Deal with descriptors as a potential additional level of indirection.
+    for v in attr_var.Values(node):
+      value = v.data
+      node2, getter = value.get_attribute(node, "__get__", v)
+      if getter is not None:
+        node2, get_result = self.vm.call_function(
+            node2, getter, [getter, value.get_class()])
+        for getter in get_result.values:
+          result.AddValue(getter.data, [getter], node2)
+      else:
+        result.AddValue(value, [v], node2)
+      nodes.append(node2)
+    if nodes:
+      return self.vm.join_cfg_nodes(nodes), result
+    else:
+      return node, None
 
   def set_attribute(self, node, name, value):
     # Note that even if we have a superclass that already has an attribute
