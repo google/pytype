@@ -1060,12 +1060,10 @@ class VirtualMachine(object):
 
   def load_from(self, state, store, name):
     node = state.node
-    node, exists = store.has_attribute(node, name)
-    assert isinstance(node, typegraph.CFGNode)
-    if not exists:
-      raise KeyError(name)
     node, attr = store.get_attribute(node, name)
     assert isinstance(node, typegraph.CFGNode)
+    if not attr:
+      raise KeyError(name)
     state = state.change_cfg_node(node)
     return state, attr
 
@@ -1118,11 +1116,10 @@ class VirtualMachine(object):
     log.debug("getting attr %s from %r", attr, obj)
     nodes = []
     for val in obj.Values(node):
-      node2, exists = val.data.has_attribute(node, attr, val)
-      if not exists:
+      node2, attr_var = val.data.get_attribute(node, attr, val)
+      if not attr_var:
         log.debug("No %s on %s", attr, val.data.__class__)
         continue
-      node2, attr_var = val.data.get_attribute(node2, attr, val)
       log.debug("got choice for attr %s from %r of %r (0x%x): %r", attr, obj,
                 val.data, id(val.data), attr_var)
       if not attr_var:

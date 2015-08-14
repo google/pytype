@@ -217,22 +217,6 @@ class AtomicAbstractValue(object):
     """
     return node, None
 
-  def has_attribute(self, node, name, valself=None, valcls=None):
-    # TODO(pludemann): make varself, varcls required args (no default)
-    """Trie of self has the named attribute.
-
-    Args:
-      node: The current CFG node.
-      name: The name of the attribute to retrieve.
-      valself: A typegraph.Value. See get_attribute.
-      valcls: A typegraph.Value. See get_attribute.
-
-    Returns:
-      A tuple (CFGNode, bool). The bool will be True if the attribute exists.
-    """
-    node, attr = self.get_attribute(node, name, valself, valcls)
-    return node, bool(attr and len(attr.values))
-
   def set_attribute(self, node, name, value):
     """Set an attribute on this object.
 
@@ -876,11 +860,6 @@ class LazyAbstractValue(SimpleAbstractValue):
   def get_attribute(self, node, name, valself=None, valcls=None):
     self._load_attribute(name)
     return super(LazyAbstractValue, self).get_attribute(
-        node, name, valself, valcls)
-
-  def has_attribute(self, node, name, valself=None, valcls=None):
-    self._load_attribute(name)
-    return super(LazyAbstractValue, self).has_attribute(
         node, name, valself, valcls)
 
   def set_attribute(self, node, name, value):
@@ -1944,9 +1923,6 @@ class BoundFunction(AtomicAbstractValue):
   def get_attribute(self, node, name, valself=None, valcls=None):
     return self.underlying.get_attribute(node, name, valself, valcls)
 
-  def has_attribute(self, node, name, valself=None, valcls=None):
-    return self.underlying.has_attribute(node, name, valself, valcls)
-
   def set_attribute(self, node, name, value):
     return self.underlying.set_attribute(node, name, value)
 
@@ -2059,9 +2035,6 @@ class Nothing(AtomicAbstractValue, FormalType):
   def get_attribute(self, node, name, valself=None, valcls=None):
     return node, None
 
-  def has_attribute(self, node, name, valself=None, valcls=None):
-    return node, False
-
   def set_attribute(self, node, name, value):
     raise AttributeError("Object %r has no attribute %s" % (self, name))
 
@@ -2140,9 +2113,6 @@ class Unsolvable(AtomicAbstractValue):
 
   def get_attribute_flat(self, node, name):
     return self.get_attribute(node, name)
-
-  def has_attribute(self, node, name, valself=None, valcls=None):
-    return node, name not in self.IGNORED_ATTRIBUTES
 
   def set_attribute(self, node, name, _):
     return node
@@ -2244,9 +2214,6 @@ class Unknown(AtomicAbstractValue):
   def get_attribute_flat(self, node, name):
     # Unknown objects don't have an MRO, so this is the same as get_attribute.
     return self.get_attribute(node, name)
-
-  def has_attribute(self, node, name, valself=None, valcls=None):
-    return node, name not in self.IGNORED_ATTRIBUTES
 
   def set_attribute(self, node, name, v):
     assert not self._pytd_class
