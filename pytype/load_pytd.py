@@ -38,30 +38,35 @@ class Loader(object):
 
   Typically, you'll have one instance of this class, per module.
 
-  base_module: The full name of the module we're based in (i.e., the module
-    that's importing other modules using this loader).
-  python_version: The Python version to import the module for. Used for
-    builtin modules.
-  pythonpath: list of directory names to be tried.
-  find_pytd_import_ext: file extension pattern for finding an import PyTD.
-     A string. (Builtins always use ".pytd" and ignore this option.)
-  import_drop_prefixes: list of prefixes to drop when resolving
-    module name to file name.
-  _modules: A map, filename to Module, for caching modules already loaded.
-  _concatenated: A concatenated pytd of all the modules. Refreshed when
-    necessary.
+  Attributes:
+    base_module: The full name of the module we're based in (i.e., the module
+      that's importing other modules using this loader).
+    python_version: The Python version to import the module for. Used for
+      builtin modules.
+    pythonpath: list of directory names to be tried.
+    find_pytd_import_ext: file extension pattern for finding an import PyTD.
+      A string. (Builtins always use ".pytd" and ignore this option.)
+    import_drop_prefixes: list of prefixes to drop when resolving
+      module name to file name.
+   import_error_is_fatal: whether a load_pytd (for importing a dependency)
+     should generate a fatal error or just a regular error.
+     See main option --import_error_is_fatal
+    _modules: A map, filename to Module, for caching modules already loaded.
+    _concatenated: A concatenated pytd of all the modules. Refreshed when
+      necessary.
   """
 
   PREFIX = "pytd:"  # for pytd files that ship with pytype
 
   def __init__(self, base_module, python_version, pythonpath=(),
                find_pytd_import_ext=".pytd",
-               import_drop_prefixes=()):
+               import_drop_prefixes=(), import_error_is_fatal=False):
     self.base_module = base_module
     self.python_version = python_version
     self.pythonpath = pythonpath
     self.find_pytd_import_ext = find_pytd_import_ext
     self.import_drop_prefixes = import_drop_prefixes
+    self.import_error_is_fatal = import_error_is_fatal
     self.builtins = builtins.GetBuiltinsPyTD()
     self._modules = {
         "__builtin__":
@@ -188,6 +193,9 @@ class Loader(object):
       log.debug("Found stdlib %s", module_name)
       return self._load_file(filename="stdlib:"+module_name,
                              module_name=module_name, ast=mod)
+    elif self.import_error_is_fatal:
+      log.critical("Couldn't import module %s", module_name)
+      # TODO(pludemann): sys.exit(-1) ?
     else:
       log.error("Couldn't import module %s", module_name)
     return None

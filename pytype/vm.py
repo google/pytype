@@ -113,7 +113,8 @@ class VirtualMachine(object):
                find_pytd_import_ext=".pytd",
                import_drop_prefixes=(),
                pybuiltins_filename=None,
-               skip_repeat_calls=True):
+               skip_repeat_calls=True,
+               import_error_is_fatal=False):
     """Construct a TypegraphVirtualMachine."""
     self.python_version = python_version
     self.pybuiltins_filename = pybuiltins_filename
@@ -123,7 +124,8 @@ class VirtualMachine(object):
                                    python_version=python_version,
                                    pythonpath=pythonpath,
                                    find_pytd_import_ext=find_pytd_import_ext,
-                                   import_drop_prefixes=import_drop_prefixes)
+                                   import_drop_prefixes=import_drop_prefixes,
+                                   import_error_is_fatal=import_error_is_fatal)
     self.skip_repeat_calls = skip_repeat_calls
     # The call stack of frames.
     self.frames = []

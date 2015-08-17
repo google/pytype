@@ -477,7 +477,8 @@ def check_types(py_src, pytd_src, py_filename, pytd_filename,
                 pybuiltins_filename=None, pythonpath=(),
                 find_pytd_import_ext=".pytd",
                 import_drop_prefixes=(), reverse_operators=False,
-                cache_unknowns=False, skip_repeat_calls=True):
+                cache_unknowns=False, skip_repeat_calls=True,
+                import_error_is_fatal=False):
   """Verify a PyTD against the Python code."""
   tracer = CallTracer(python_version=python_version,
                       module_name=_get_module_name(py_src, pythonpath),
@@ -487,7 +488,8 @@ def check_types(py_src, pytd_src, py_filename, pytd_filename,
                       find_pytd_import_ext=find_pytd_import_ext,
                       import_drop_prefixes=import_drop_prefixes,
                       pybuiltins_filename=pybuiltins_filename,
-                      skip_repeat_calls=skip_repeat_calls)
+                      skip_repeat_calls=skip_repeat_calls,
+                      import_error_is_fatal=import_error_is_fatal)
   loc, defs, _ = tracer.run_program(py_src, py_filename, run_builtins)
   ast = pytd_utils.ParsePyTD(pytd_src, pytd_filename, python_version)
   tracer.check_types(loc, defs, ast,
@@ -503,7 +505,8 @@ def infer_types(src, python_version, filename=None, run_builtins=True,
                 output_cfg=None, output_typegraph=None,
                 output_pseudocode=None, deep=True, solve_unknowns=True,
                 reverse_operators=False, cache_unknowns=False,
-                skip_repeat_calls=True):
+                skip_repeat_calls=True,
+                import_error_is_fatal=False):
   """Given Python source return its types.
 
   Args:
@@ -528,6 +531,9 @@ def infer_types(src, python_version, filename=None, run_builtins=True,
     cache_unknowns: If True, do a faster approximation of unknown types.
     skip_repeat_calls: If True, don't rerun functions that have been called
       before with the same arguments and environment.
+    import_error_is_fatal: whether a load_pytd (for importing a dependency)
+      should generate a fatal error or just a regular error.
+      See main option --import_error_is_fatal
   Returns:
     A TypeDeclUnit
   Raises:
@@ -541,7 +547,8 @@ def infer_types(src, python_version, filename=None, run_builtins=True,
                       find_pytd_import_ext=find_pytd_import_ext,
                       import_drop_prefixes=import_drop_prefixes,
                       pybuiltins_filename=pybuiltins_filename,
-                      skip_repeat_calls=skip_repeat_calls)
+                      skip_repeat_calls=skip_repeat_calls,
+                      import_error_is_fatal=import_error_is_fatal)
   loc, defs, builtin_names = tracer.run_program(src, filename, run_builtins)
   log.info("===Done run_program===")
   # TODO(pludemann): make test_inference.InferDedent and this code the same:

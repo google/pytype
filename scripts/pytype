@@ -170,12 +170,18 @@ def _parse_options(args):
             "The intended usecase is for when you're running tests in "
             "a directory structure that starts below the root module in "
             "your module names.") % os.pathsep)
-  # MOE:strip_line TODO(pludemann): remove when Bazel integration done:
+  # MOE:strip_line TODO(pludemann): remove when Bazel integration is done:
   o.add_option(
       "--warn_on_exception", action="store_true",
       dest="warn_on_exception", default=False,
       help=("Temporary flag that turns exceptions into warnings. "
             "Default is for exceptions to be critical errors."))
+  # MOE:strip_line TODO(pludemann): remove when Bazel intergration is done:
+  o.add_option(
+      "--import_error_is_fatal", action="store_true",
+      dest="import_error_is_fatal", default=False,
+      help=("Temporary flag that turns load errors (typically a missing "
+            ".pytd file) into critical errors."))
 
   options, input_filenames = o.parse_args(args)
   return options, input_filenames
@@ -279,7 +285,8 @@ def check_pytd(input_filename, output_filename,
       import_drop_prefixes=import_drop_prefixes,
       reverse_operators=options.reverse_operators,
       cache_unknowns=options.cache_unknowns,
-      skip_repeat_calls=options.skip_repeat_calls)
+      skip_repeat_calls=options.skip_repeat_calls,
+      import_error_is_fatal=options.import_error_is_fatal)
 
 
 def generate_pytd(input_filename, output_filename,
@@ -322,8 +329,9 @@ def generate_pytd(input_filename, output_filename,
         output_pseudocode=options.output_pseudocode,
         reverse_operators=options.reverse_operators,
         cache_unknowns=options.cache_unknowns,
-        skip_repeat_calls=options.skip_repeat_calls)
-  except Exception as e:
+        skip_repeat_calls=options.skip_repeat_calls,
+        import_error_is_fatal=options.import_error_is_fatal)
+  except Exception as e:  # pylint: disable=broad-except
     log_exc = log.warn if options.warn_on_exception else log.critical
     exc_msg = str(e) or e.__doc__ or repr(e)
     log_exc("***Caught exception: %s", exc_msg, exc_info=True)
