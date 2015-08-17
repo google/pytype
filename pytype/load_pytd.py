@@ -190,6 +190,7 @@ class Loader(object):
                              module_name=module_name, ast=mod)
     else:
       log.error("Couldn't import module %s", module_name)
+    return None
 
   def _load_pytd_from_glob(self, path, module_name):
     """Load a pytd from the path, using '*'-expansion.

@@ -1,0 +1,20 @@
+# TODO(pludemann): needs more contents here
+
+class PyCArrayType:
+  pass
+
+class PyCFuncPtrType:
+  pass
+
+class PyCPointerType:
+  pass
+
+class PyCSimpleType:
+  pass
+
+class PyCStructType:
+  pass
+
+class UnionType:
+  pass
+

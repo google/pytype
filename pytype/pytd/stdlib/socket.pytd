@@ -288,7 +288,7 @@ def meth(...) -> ?
 def ntohl(...) -> ?
 def ntohs(...) -> ?
 os: module
-# p: functools.partial
+p: ?  # TODO(pludemann): gets error: functions.partial isn't a class
 partial: type
 def setdefaulttimeout(...) -> ?
 socket: type
