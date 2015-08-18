@@ -20,8 +20,13 @@ class ErrorTest(test_inference.InferenceTest):
 
       def f() -> str
     """)
-    self.assertErrorLogContains(errors, "line 5.*attribute.*parrot.*int")
+    self.assertErrorLogContains(errors, r"line 5.*attribute.*parrot.*int")
 
+  def testImportError(self):
+    _, errors = self.InferAndCheck("""
+      import rumplestiltskin
+    """)
+    self.assertErrorLogContains(errors, r"line 2.*module.*rumplestiltskin")
 
 if __name__ == "__main__":
   test_inference.main()

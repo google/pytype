@@ -21,7 +21,6 @@ import types
 
 from pytype import abstract
 from pytype import blocks
-from pytype import errors
 from pytype import exceptions
 from pytype import load_pytd
 from pytype import state as frame_state
@@ -247,9 +246,9 @@ class VirtualMachine(object):
     for block in frame.f_code.order:
       state = frame.states.get(block[0])
       if not state:
-        log.error("Skipping block %d,"
-                  " we don't have any non-erroneous code that goes here.",
-                  block.id)
+        log.warning("Skipping block %d,"
+                    " we don't have any non-erroneous code that goes here.",
+                    block.id)
         continue
       op = None
       for op in block:
@@ -1136,8 +1135,7 @@ class VirtualMachine(object):
       result.PasteVariable(attr_var, node2)
       nodes.append(node2)
     if not result.values:
-      errors.attribute_error(self.errorlog, self.frame.current_opcode,
-                             obj, attr)
+      self.errorlog.attribute_error(self.frame.current_opcode, obj, attr)
       raise exceptions.ByteCodeAttributeError("No such attribute %s" % attr)
     return self.join_cfg_nodes(nodes), result
 
@@ -1966,7 +1964,8 @@ class VirtualMachine(object):
       name = full_name
     module = self.import_module(name, _get_atomic_python_constant(level))
     if module is None:
-      log.error("Couldn't find module %r", name)
+      log.warning("Couldn't find module %r", name)
+      self.errorlog.import_error(self.frame.current_opcode, name)
       module = self._create_new_unknown_value("import")
     return state.push(module.to_variable(state.node, name))
 

@@ -39,7 +39,7 @@ class Error(object):
     return self.position() + ":\n  " + self.message
 
 
-class ErrorLog(object):
+class ErrorLogBase(object):
   """A stream of errors."""
 
   def __init__(self):
@@ -67,7 +67,13 @@ class ErrorLog(object):
     self.print_to_file(sys.stderr)
 
 
-def attribute_error(errorlog, opcode, obj, attr_name):
-  on = " on %s" % obj.data[0].name if obj.values else ""
-  errorlog.error(opcode, "No attribute %r%s" % (attr_name, on))
+class ErrorLog(ErrorLogBase):
+  """ErrorLog with convenience functions."""
+
+  def attribute_error(self, opcode, obj, attr_name):
+    on = " on %s" % obj.data[0].name if obj.values else ""
+    self.error(opcode, "No attribute %r%s" % (attr_name, on))
+
+  def import_error(self, opcode, module_name):
+    self.error(opcode, "Can't find module %r" % module_name)
 

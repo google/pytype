@@ -2070,7 +2070,7 @@ class Module(LazyAbstractValue):
       full_name = self.name + "." + name
       mod = self.vm.import_module(full_name, -1)
       if mod is None:
-        log.error("Couldn't find attribute / module %r", full_name)
+        log.warning("Couldn't find attribute / module %r", full_name)
       else:
         val = mod.to_variable(node, name)
     return node, val
