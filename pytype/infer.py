@@ -473,7 +473,7 @@ def _get_module_name(filename, pythonpath):
 
 
 def check_types(py_src, pytd_src, py_filename, pytd_filename,
-                python_version, run_builtins=True,
+                python_version, errorlog, run_builtins=True,
                 pybuiltins_filename=None, pythonpath=(),
                 find_pytd_import_ext=".pytd",
                 import_drop_prefixes=(), reverse_operators=False,
@@ -481,6 +481,7 @@ def check_types(py_src, pytd_src, py_filename, pytd_filename,
                 import_error_is_fatal=False):
   """Verify a PyTD against the Python code."""
   tracer = CallTracer(python_version=python_version,
+                      errorlog=errorlog,
                       module_name=_get_module_name(py_src, pythonpath),
                       reverse_operators=reverse_operators,
                       cache_unknowns=cache_unknowns,
@@ -497,7 +498,7 @@ def check_types(py_src, pytd_src, py_filename, pytd_filename,
                      os.path.basename(pytd_filename))
 
 
-def infer_types(src, python_version, filename=None, run_builtins=True,
+def infer_types(src, python_version, errorlog, filename=None, run_builtins=True,
                 pybuiltins_filename=None,
                 pythonpath=(),
                 find_pytd_import_ext=".pytd",
@@ -512,6 +513,7 @@ def infer_types(src, python_version, filename=None, run_builtins=True,
   Args:
     src: A string containing Python source code.
     python_version: The python version to emulate (major, minor).
+    errorlog: Where error messages go. Instance of ErrorLog.
     filename: Filename of the program we're parsing.
     run_builtins: Whether to preload the native Python builtins when running
       the program.
@@ -540,6 +542,7 @@ def infer_types(src, python_version, filename=None, run_builtins=True,
     AssertionError: In case of a bad parameter combination.
   """
   tracer = CallTracer(python_version=python_version,
+                      errorlog=errorlog,
                       module_name=_get_module_name(filename, pythonpath),
                       reverse_operators=reverse_operators,
                       cache_unknowns=cache_unknowns,

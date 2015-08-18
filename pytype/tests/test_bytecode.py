@@ -2,6 +2,7 @@
 
 
 from pytype import blocks
+from pytype import errors
 from pytype import vm
 from pytype.pytd import cfg
 from pytype.tests import test_inference
@@ -19,7 +20,7 @@ class BytecodeTest(test_inference.InferenceTest):
         0x53,  # 3 RETURN_VALUE
     ], name="simple")
     code = blocks.process_code(code)
-    v = vm.VirtualMachine(self.PYTHON_VERSION)
+    v = vm.VirtualMachine(self.PYTHON_VERSION, errors.ErrorLog())
     v.run_bytecode(program.NewCFGNode(), code)
 
   def test_diamond(self):
@@ -52,7 +53,7 @@ class BytecodeTest(test_inference.InferenceTest):
         0x53,         # 48 RETURN_VALUE
     ])
     code = blocks.process_code(code)
-    v = vm.VirtualMachine(self.PYTHON_VERSION)
+    v = vm.VirtualMachine(self.PYTHON_VERSION, errors.ErrorLog())
     v.run_bytecode(program.NewCFGNode(), code)
 
 if __name__ == "__main__":

@@ -1,11 +1,13 @@
 """Common methods for tests of infer.py."""
 
 import logging
+import re
 import sys
 import textwrap
 
 
 from pytype import convert_structural
+from pytype import errors
 from pytype import infer
 from pytype.pyc import loadmarshal
 from pytype.pytd import optimize
@@ -229,17 +231,27 @@ class InferenceTest(unittest.TestCase):
     if raises is not None:
       # TODO(kramm): support this
       log.warning("Ignoring 'raises' parameter to assert_ok")
+    errorlog = errors.ErrorLog()
     unit = infer.infer_types(
-        textwrap.dedent(code), self.PYTHON_VERSION,
+        textwrap.dedent(code), self.PYTHON_VERSION, errorlog,
         deep=False, solve_unknowns=False, reverse_operators=True,
         pythonpath=pythonpath, find_pytd_import_ext=find_pytd_import_ext,
         cache_unknowns=True)
     unit.Visit(visitors.VerifyVisitor())
     return pytd_utils.CanonicalOrdering(unit)
 
+  def InferAndCheck(self, code):
+    errorlog = errors.ErrorLog()
+    unit = infer.infer_types(
+        textwrap.dedent(code), self.PYTHON_VERSION, errorlog, deep=True,
+        solve_unknowns=True, reverse_operators=True, cache_unknowns=True)
+    unit.Visit(visitors.VerifyVisitor())
+    return pytd_utils.CanonicalOrdering(unit), errorlog
+
   def InferFromFile(self, filename, pythonpath, find_pytd_import_ext=".pytd"):
+    errorlog = errors.ErrorLog()
     with open(filename, "rb") as fi:
-      unit = infer.infer_types(fi.read(), self.PYTHON_VERSION,
+      unit = infer.infer_types(fi.read(), self.PYTHON_VERSION, errorlog,
                                filename=filename, cache_unknowns=True,
                                pythonpath=pythonpath,
                                find_pytd_import_ext=find_pytd_import_ext)
@@ -337,6 +349,14 @@ class InferenceTest(unittest.TestCase):
       self.assertEquals(param1.type, sig.return_type,
                         "Not identity: %r" % pytd.Print(func))
 
+  def assertErrorLogContains(self, errorlog, regexp):
+    for error in errorlog.errors:
+      if re.compile(regexp, re.I | re.S).search(str(error)):
+        return
+    print >>sys.stderr, "Couldn't find regexp %r in errors:" % regexp
+    errorlog.print_to_stderr()
+    raise AssertionError("Couldn't find regexp %r in errors" % regexp)
+
   def Infer(self, srccode, deep=False, solve_unknowns=False,
             reverse_operators=True, extract_locals=False, extra_verbose=False,
             pythonpath=(), find_pytd_import_ext=".pytd"):
@@ -361,7 +381,8 @@ class InferenceTest(unittest.TestCase):
     Returns:
       A pytd.TypeDeclUnit
     """
-    unit = infer.infer_types(src, self.PYTHON_VERSION, **kwargs)
+    errorlog = errors.ErrorLog()
+    unit = infer.infer_types(src, self.PYTHON_VERSION, errorlog, **kwargs)
     unit.Visit(visitors.VerifyVisitor())
     return pytd_utils.CanonicalOrdering(unit)
 

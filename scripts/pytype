@@ -13,6 +13,7 @@ import os
 import sys
 import traceback
 
+from pytype import errors
 from pytype import infer
 from pytype.pytd import optimize
 from pytype.pytd import pytd
@@ -266,8 +267,8 @@ def _initialize_filenames_and_output(options, input_filenames):
   return src_out
 
 
-def check_pytd(input_filename, output_filename,
-               options, pythonpath, import_drop_prefixes, python_version):
+def check_pytd(input_filename, output_filename, options, pythonpath,
+               import_drop_prefixes, python_version, errorlog):
   with open(input_filename, "r") as fi:
     py_src = fi.read()
   with open(output_filename, "r") as fi:
@@ -278,6 +279,7 @@ def check_pytd(input_filename, output_filename,
       py_filename=input_filename,
       pytd_filename=output_filename,
       python_version=python_version,
+      errorlog=errorlog,
       run_builtins=options.run_builtins,
       pybuiltins_filename=options.pybuiltins_filename,
       pythonpath=pythonpath,
@@ -289,8 +291,8 @@ def check_pytd(input_filename, output_filename,
       import_error_is_fatal=options.import_error_is_fatal)
 
 
-def generate_pytd(input_filename, output_filename,
-                  options, pythonpath, import_drop_prefixes, python_version):
+def generate_pytd(input_filename, output_filename, options, pythonpath,
+                  import_drop_prefixes, python_version, errorlog):
   """Run the inferencer on one file, producing output.
 
   Args:
@@ -302,6 +304,10 @@ def generate_pytd(input_filename, output_filename,
     pythonpath: from --pythonpath
     import_drop_prefixes: from --import_drop_prefixes
     python_version: A tuple of length 2. (major, minor)
+    errorlog: Where to put error messages. Instance or ErrorLog.
+
+  Returns:
+    The pytd AST.
 
   Raises:
     ValueError: for some invalid options
@@ -316,6 +322,7 @@ def generate_pytd(input_filename, output_filename,
     mod = infer.infer_types(
         src,
         python_version=python_version,
+        errorlog=errorlog,
         filename=input_filename,
         run_builtins=options.run_builtins,
         pybuiltins_filename=options.pybuiltins_filename,
@@ -361,16 +368,20 @@ def generate_pytd(input_filename, output_filename,
   else:
     with open(output_filename, "w") as fi:
       fi.write(result)
+  return mod
 
 
 def process_one_file(input_filename, output_filename,
                      options, pythonpath, import_drop_prefixes, python_version):
+  errorlog = errors.ErrorLog()
   if options.check:
-    return check_pytd(input_filename, output_filename, options,
-                      pythonpath, import_drop_prefixes, python_version)
+    result = check_pytd(input_filename, output_filename, options, pythonpath,
+                        import_drop_prefixes, python_version, errorlog)
   else:
-    return generate_pytd(input_filename, output_filename, options,
-                         pythonpath, import_drop_prefixes, python_version)
+    result = generate_pytd(input_filename, output_filename, options, pythonpath,
+                           import_drop_prefixes, python_version, errorlog)
+  errorlog.print_to_stderr()
+  return result
 
 
 def main(argv):

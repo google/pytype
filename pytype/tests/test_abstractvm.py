@@ -5,6 +5,7 @@ import textwrap
 import unittest
 
 
+from pytype import errors
 from pytype import vm
 from pytype.pyc import pyc
 from pytype.tests import test_inference
@@ -13,7 +14,7 @@ from pytype.tests import test_inference
 class TraceVM(vm.VirtualMachine):
 
   def __init__(self, python_version):
-    super(TraceVM, self).__init__(python_version)
+    super(TraceVM, self).__init__(python_version, errors.ErrorLog())
     # There are multiple possible orderings of the basic blocks of the code, so
     # we collect the instructions in an order-independent way:
     self.instructions_executed = set()

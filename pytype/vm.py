@@ -21,6 +21,7 @@ import types
 
 from pytype import abstract
 from pytype import blocks
+from pytype import errors
 from pytype import exceptions
 from pytype import load_pytd
 from pytype import state as frame_state
@@ -105,7 +106,7 @@ class VirtualMachine(object):
       types.
   """
 
-  def __init__(self, python_version,
+  def __init__(self, python_version, errorlog,
                module_name=None,
                reverse_operators=False,
                cache_unknowns=True,
@@ -117,6 +118,7 @@ class VirtualMachine(object):
                import_error_is_fatal=False):
     """Construct a TypegraphVirtualMachine."""
     self.python_version = python_version
+    self.errorlog = errorlog
     self.pybuiltins_filename = pybuiltins_filename
     self.reverse_operators = reverse_operators
     self.cache_unknowns = cache_unknowns
@@ -318,10 +320,12 @@ class VirtualMachine(object):
     while len(state.data_stack) > block.level + offset:
       state = state.pop_and_discard()
 
-    if block.type == "except-handler":
-      state, (tb, value, exctype) = state.popn(3)
-      state = state.set_exception(exctype, value, tb)
-    return state
+  def module_name(self):
+    if self.frame.f_code.co_filename:
+      return ".".join(re.sub(
+          r"\.py$", "", self.frame.f_code.co_filename).split("/")[-2:])
+    else:
+      return ""
 
   def log_opcode(self, op, state):
     """Write a multi-line log message, including backtrace and stack."""
@@ -330,10 +334,8 @@ class VirtualMachine(object):
     indent = " > " * (len(self.frames) - 1)
     stack_rep = repper(state.data_stack)
     block_stack_rep = repper(state.block_stack)
-    # TODO(pludemann): nicer module/file name:
-    if self.frame.f_code.co_filename:
-      module_name = ".".join(re.sub(
-          r"\.py$", "", self.frame.f_code.co_filename).split("/")[-2:])
+    module_name = self.module_name()
+    if module_name:
       name = self.frame.f_code.co_name
       log.info("%s | index: %d, %r, module: %s line: %d",
                indent, op.index, name, module_name, op.line)
@@ -1134,6 +1136,8 @@ class VirtualMachine(object):
       result.PasteVariable(attr_var, node2)
       nodes.append(node2)
     if not result.values:
+      errors.attribute_error(self.errorlog, self.frame.current_opcode,
+                             obj, attr)
       raise exceptions.ByteCodeAttributeError("No such attribute %s" % attr)
     return self.join_cfg_nodes(nodes), result
 
@@ -1142,7 +1146,7 @@ class VirtualMachine(object):
     return state.change_cfg_node(node), result
 
   def store_attr(self, state, obj, attr, value):
-    """Same as load_attr except for setting attributes."""
+    """Set an attribute on an object."""
     assert isinstance(obj, typegraph.Variable)
     assert isinstance(attr, str)
     assert isinstance(value, typegraph.Variable)
@@ -1154,7 +1158,7 @@ class VirtualMachine(object):
         self.join_cfg_nodes(nodes))
 
   def del_attr(self, state, obj, attr):
-    """Same as load_attr except for deleting attributes."""
+    """Delete an attribute."""
     # TODO(kramm): Store abstract.Nothing
     log.warning("Attribute removal does not actually do "
                 "anything in the abstract interpreter")
@@ -1559,7 +1563,7 @@ class VirtualMachine(object):
     try:
       state, val = self.load_attr(state, obj, name)
     except exceptions.ByteCodeAttributeError:
-      log.error("No such attribute %s", name)
+      log.warning("No such attribute %s", name)
       state = state.push(self.create_new_unsolvable(state.node, "bad attr"))
     else:
       state = state.push(val)

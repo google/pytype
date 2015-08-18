@@ -29,6 +29,8 @@ class OrderedCode(object):
     # Store the "nice" version of the bytecode under co_code. We never claimed
     # to be compatible with CodeType.
     self.co_code = bytecode
+    for insn in bytecode:
+      insn.code = self
 
 
 class Block(object):

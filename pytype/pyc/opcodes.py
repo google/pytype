@@ -21,13 +21,15 @@ POPS_BLOCK = 4096  # ends a block
 class Opcode(object):
   """An opcode without arguments."""
 
-  __slots__ = ("line", "index", "prev", "next", "target", "block_target")
+  __slots__ = ("line", "index", "prev", "next",
+               "target", "block_target", "code")
   FLAGS = 0
 
   def __init__(self, index, line):
     self.index = index
     self.line = line
     self.target = None
+    self.code = None  # If we have a CodeType or OrderedCode parent
 
   def __str__(self):
     return "%4d: %s" % (self.index, self.__class__.__name__)
@@ -988,7 +990,7 @@ def _dis(data, mapping,
     opcode = ord(data[pos])
     index = len(code)
     offset_to_index[pos] = index
-    line = lp.get(pos) if lp else 0
+    line = lp.get(pos) if lp else 1  # single line programs don't have co_lnotab
     pos += 1
     cls = mapping[opcode]
     if cls is EXTENDED_ARG:
