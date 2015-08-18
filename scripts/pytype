@@ -318,6 +318,7 @@ def generate_pytd(input_filename, output_filename, options, pythonpath,
   # TODO(pludemann): sanity check options.find_pytd_import_ext.startswith(".")
   #                  for something like .pytd or <*>.pytd
 
+  mod = None
   try:
     mod = infer.infer_types(
         src,
