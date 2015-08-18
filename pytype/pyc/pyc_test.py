@@ -37,5 +37,28 @@ class TestPyc(unittest.TestCase):
                        ("LOAD_CONST", 3),
                        ("RETURN_VALUE", 3)], op_and_line)
 
+  def test_singlelineno(self):
+    code = self._compile("a = 1\n"      # line 1
+                        )
+    self.assertIn("a", code.co_names)
+    op_and_line = [(op.name, op.line) for op in opcodes.dis_code(code)]
+    self.assertEquals([("LOAD_CONST", 1),
+                       ("STORE_NAME", 1),
+                       ("LOAD_CONST", 1),
+                       ("RETURN_VALUE", 1)], op_and_line)
+
+  def test_singlelinenowithspace(self):
+    code = self._compile("\n"
+                         "\n"
+                         "a = 1\n"      # line 3
+                        )
+    self.assertIn("a", code.co_names)
+    op_and_line = [(op.name, op.line) for op in opcodes.dis_code(code)]
+    self.assertEquals([("LOAD_CONST", 3),
+                       ("STORE_NAME", 3),
+                       ("LOAD_CONST", 3),
+                       ("RETURN_VALUE", 3)], op_and_line)
+
+
 if __name__ == "__main__":
   unittest.main()

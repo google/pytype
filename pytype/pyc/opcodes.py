@@ -990,7 +990,11 @@ def _dis(data, mapping,
     opcode = ord(data[pos])
     index = len(code)
     offset_to_index[pos] = index
-    line = lp.get(pos) if lp else 1  # single line programs don't have co_lnotab
+    if lp:
+      line = lp.get(pos)
+    else:
+      # single line programs don't have co_lnotab
+      line = co_firstlineno
     pos += 1
     cls = mapping[opcode]
     if cls is EXTENDED_ARG:
