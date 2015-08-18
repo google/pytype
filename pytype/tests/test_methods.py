@@ -257,7 +257,7 @@ class MethodsTest(test_inference.InferenceTest):
   def testRecursion(self):
     with self.Infer("""
       def f():
-        if f:
+        if __random__:
           return f()
         else:
           return 3
@@ -268,7 +268,7 @@ class MethodsTest(test_inference.InferenceTest):
   def testInNotIn(self):
     with self.Infer("""
       def f(x):
-        if x:
+        if __random__:
           return x in [x]
         else:
           return x not in [x]
@@ -356,7 +356,7 @@ class MethodsTest(test_inference.InferenceTest):
   def testClosureOnMultiType(self):
     with self.Infer("""
       def f():
-        if __any_object__:
+        if __random__:
           x = 1
         else:
           x = 3.5
@@ -457,7 +457,7 @@ class MethodsTest(test_inference.InferenceTest):
       def f(x):
         return 0
       kwargs = {}
-      if __any_object__:
+      if __random__:
         kwargs['x'] = 3
       else:
         kwargs['x'] = 3.1
@@ -561,12 +561,12 @@ class MethodsTest(test_inference.InferenceTest):
         return 3
 
       def f():
-        if g:
+        if __random__:
           x = None
         else:
           x = g
 
-        if x:
+        if __random__:
           return x()
       f()
     """, deep=False, solve_unknowns=False, extract_locals=False) as ty:

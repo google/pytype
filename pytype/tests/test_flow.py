@@ -11,6 +11,17 @@ class FlowTest(test_inference.InferenceTest):
   Even though they check the validity of the latter, they're mostly smoke tests.
   """
 
+  def test_if(self):
+    with self.Infer("""
+      if __random__:
+        x = 3
+      else:
+        x = 3.1
+    """, deep=False, solve_unknowns=False, extract_locals=False) as ty:
+      self.assertTypesMatchPytd(ty, """
+        x: int or float
+      """)
+
   def testException(self):
     with self.Infer("""
       def f():

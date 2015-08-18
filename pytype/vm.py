@@ -1089,7 +1089,12 @@ class VirtualMachine(object):
   def load_builtin(self, state, name):
     if name == "__any_object__":
       # for type_inferencer/tests/test_pgms/*.py
-      return state, abstract.Unknown(self).to_variable(state.node, name)
+      return state, abstract.Unknown(self).to_variable(
+          state.node, name)
+    elif name == "__random__":
+      # for more pretty branching tests
+      return state, self.primitive_class_instances[bool].to_variable(
+          state.node, name)
     return self.load_from(state, self.frame.f_builtins, name)
 
   def store_local(self, state, name, value):
