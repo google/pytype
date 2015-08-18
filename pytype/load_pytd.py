@@ -104,11 +104,11 @@ class Loader(object):
     self._modules[module_name] = module
     deps = visitors.CollectDependencies()
     ast.Visit(deps)
-    if deps.modules:
-      module.dirty = True
     for name in deps.modules:
       if name not in self._modules:
         self.import_name(name)
+    if deps.modules:
+      module.dirty = True
     self._resolve_all()
     return ast
 

@@ -439,6 +439,37 @@ class ImportTest(test_inference.InferenceTest):
           def h() -> float
         """)
 
+  def testCircular(self):
+    with utils.Tempdir() as d:
+      d.create_file("x.pytd", """
+          class X:
+            pass
+          y: y.Y
+          z: z.Z
+      """)
+      d.create_file("y.pytd", """
+          class Y:
+            pass
+          x: x.X
+      """)
+      d.create_file("z.pytd", """
+          class Z:
+            pass
+          x: x.X
+      """)
+      with self.Infer("""\
+        import x
+        xx = x.X()
+        yy = x.y
+        zz = x.z
+      """, deep=True, solve_unknowns=False, pythonpath=[d.path]) as ty:
+        self.assertTypesMatchPytd(ty, """
+          x: module
+          xx: x.X
+          yy: y.Y
+          zz: z.Z
+        """)
+
 
 if __name__ == "__main__":
   test_inference.main()

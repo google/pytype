@@ -688,7 +688,13 @@ class VirtualMachine(object):
         log.debug("Failed to find pytd", exc_info=True)
         raise
     elif isinstance(pyval, pytd.Class):
-      return abstract.PyTDClass(name, pyval, self)
+      if "." in name:
+        module, base_name = name.rsplit(".", 1)
+        cls = abstract.PyTDClass(base_name, pyval, self)
+        cls.module = module
+        return cls
+      else:
+        return abstract.PyTDClass(name, pyval, self)
     elif isinstance(pyval, pytd.Function):
       f = abstract.PyTDFunction(pyval.name, [abstract.PyTDSignature(sig, self)
                                              for sig in pyval.signatures], self)
