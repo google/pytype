@@ -909,9 +909,6 @@ class WrongArgTypes(FailedFunctionCall):
     super(WrongArgTypes, self).__init__(sig)
     self.passed_args = passed_args
 
-  def __repr__(self):
-    return "FailedFunctionCall(%s, %s)" % (self.sig, self.explanation_lines)
-
 
 class WrongArgCount(FailedFunctionCall):
   """E.g. if a function expecting 4 parameters is called with 3."""
