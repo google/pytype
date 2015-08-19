@@ -1031,9 +1031,8 @@ class VirtualMachine(object):
     else:
       if fallback_to_unsolvable:
         assert error
-        log.error("FailedFunctionCall for %s", error.obj)
-        for msg in error.explanation_lines:
-          log.error("... %s", msg)
+        self.errorlog.invalid_function_call(self.frame.current_opcode, e)
+        log.warning("failed function call for %s", error.sig.name)
         return node, self.create_new_unsolvable(node, "failed call")
       else:
         # We were called by something that returns errors, so don't report

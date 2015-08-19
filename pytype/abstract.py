@@ -554,9 +554,7 @@ class SimpleAbstractValue(AtomicAbstractValue):
     # End up here for:
     #   f = 1
     #   f()  # Can't call an int
-    # TODO(kramm): What if we have a __call__ attribute?
-    raise FailedFunctionCall(
-        self, ["__call__ on SimpleAbstractValue not implemented"])
+    return node, self.vm.create_new_unsolvable(node, "calling " + self.name)
 
   def __repr__(self):
     if self.cls:
@@ -897,21 +895,30 @@ FunctionCallResult = collections.namedtuple(
 
 
 class FailedFunctionCall(Exception):
-  """Exception for when there's no possible value from a call.
+  """Exception for failed function calls."""
 
-  This is caught wherever there is the possibility of multiple call signatures
-  matching, and it's OK to have individual failures as long as there's at least
-  one that matches. If nothing matches, a new exception is thrown and will
-  eventually bubble up to typegraphvm.call_function().
-  """
-
-  def __init__(self, obj, explanation_lines):
+  def __init__(self, sig):
     super(FailedFunctionCall, self).__init__()
-    self.obj = obj
-    self.explanation_lines = explanation_lines
+    self.sig = sig
+
+
+class WrongArgTypes(FailedFunctionCall):
+  """For functions that were called with the wrong types."""
+
+  def __init__(self, sig, passed_args):
+    super(WrongArgTypes, self).__init__(sig)
+    self.passed_args = passed_args
 
   def __repr__(self):
-    return "FailedFunctionCall(%s, %s)" % (self.obj, self.explanation_lines)
+    return "FailedFunctionCall(%s, %s)" % (self.sig, self.explanation_lines)
+
+
+class WrongArgCount(FailedFunctionCall):
+  """E.g. if a function expecting 4 parameters is called with 3."""
+
+  def __init__(self, sig, call_arg_count):
+    super(WrongArgCount, self).__init__(sig)
+    self.call_arg_count = call_arg_count
 
 
 class Function(Instance):
@@ -989,13 +996,7 @@ class PyTDSignature(object):
       # Number of parameters mismatch is possible when matching against an
       # overloaded function (e.g., a __builtins__ entry that has optional
       # parameters that are specified by multiple def's).
-      msg_lines = [
-          "Function %s was called with %d args instead of expected %d" %
-          (self.function.name, len(args),
-           len(self.pytd_sig.params)),
-          "  Expected: %r" % [p.name for p in self.pytd_sig.params],
-          "  Actually passed: %r" % (args_selected,)]
-      raise FailedFunctionCall(self, msg_lines)
+      raise WrongArgCount(self, len(args))
     r = self._call_with_values(node, args_selected, kws_selected, view)
     assert r.subst is not None
     t = (r.return_type, r.subst)
@@ -1066,17 +1067,9 @@ class PyTDSignature(object):
     for actual, formal in zip(arg_values, self.param_types):
       subst = match_value_against_type(actual, formal, subst, node, view)
       if subst is None:
-        # This parameter combination didn't work.
-        # This is typically a real error: The user program is calling a
-        # builtin type with incorrect arguments. However, for multiple
-        # signatures, it's not an error (unless nothing matches).
-        msg_lines = ["Function %s was called with the wrong arguments" %
-                     self.function.name,
-                     "  Expected: %r" % ["%s: %s" % (p.name, pytd.Print(p.type))
-                                         for p in self.pytd_sig.params],
-                     "  Actually passed: %r" % [a.data.name
-                                                for a in arg_values]]
-        raise FailedFunctionCall(self, msg_lines)
+        # These parameters didn't match this signature. There might be other
+        # signatures that work, but figuring that out is up to the caller.
+        raise WrongArgTypes(self, [a.data for a in arg_values])
     return utils.HashableDict(subst)
 
   def _get_mutation(self, node, arg_values, kw_values, subst):
@@ -2039,7 +2032,7 @@ class Nothing(AtomicAbstractValue, FormalType):
     raise AttributeError("Object %r has no attribute %s" % (self, name))
 
   def call(self, node, unused_func, args, kws, starargs=None):
-    raise FailedFunctionCall(self, ["Can't call empty object ('nothing')"])
+    raise AssertionError("Can't call empty object ('nothing')")
 
   def to_type(self):
     return pytd.NothingType()

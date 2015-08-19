@@ -4,6 +4,10 @@ import os
 import sys
 
 
+from pytype import abstract
+from pytype.pytd import pytd
+
+
 # "Error level" enum for distinguishing between warnings and errors:
 SEVERITY_WARNING = 1
 SEVERITY_ERROR = 2
@@ -36,7 +40,7 @@ class Error(object):
       return "Line %d, in %s" % (self.opcode.line, self.opcode.code.co_name)
 
   def __str__(self):
-    return self.position() + ":\n  " + self.message
+    return self.position() + ":\n  " + self.message.replace("\n", "\n  ")
 
 
 class ErrorLogBase(object):
@@ -76,4 +80,33 @@ class ErrorLog(ErrorLogBase):
 
   def import_error(self, opcode, module_name):
     self.error(opcode, "Can't find module %r" % module_name)
+
+  def wrong_arg_count(self, opcode, sig, call_arg_count):
+    self.error(
+        opcode,
+        "Function %s was called with %d args instead of expected %d" % (
+            (sig.name, call_arg_count, len(sig.get_parameter_names())))
+        )
+
+  def wrong_arg_types(self, opcode, sig, passed_args):
+    """A function was called with the wrong parameter types."""
+    message = "".join([
+        "Function %s was called with the wrong arguments\n" % sig.name,
+        "Expected: (",
+        ", ".join("%s: %s" % (p.name, pytd.Print(p.type))
+                  for p in sig.pytd_sig.params),
+        ")\n",
+        "Actually passed: (",
+        ", ".join("%s: %s" % (name, arg.name)
+                  for name, arg in zip(sig.get_parameter_names(), passed_args)),
+        ")"])
+    self.error(opcode, message)
+
+  def invalid_function_call(self, opcode, error):
+    if isinstance(error, abstract.WrongArgCount):
+      self.wrong_arg_count(opcode, error.sig, error.call_arg_count)
+    elif isinstance(error, abstract.WrongArgTypes):
+      self.wrong_arg_types(opcode, error.sig, error.passed_args)
+    else:
+      raise AssertionError(error)
 
