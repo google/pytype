@@ -2169,8 +2169,6 @@ class Unknown(AtomicAbstractValue):
     Unknown._current_id += 1
     self.class_name = self.name
     self._calls = []
-    # Remember the pytd class we created in to_pytd_class, to keep them unique:
-    self._pytd_class = None
     log.info("Creating %s", self.class_name)
 
   def get_children_maps(self):
@@ -2198,7 +2196,6 @@ class Unknown(AtomicAbstractValue):
       return node, None
     if name in self.members:
       return node, self.members[name]
-    assert not self._pytd_class
     new = self.vm.create_new_unknown(self.vm.root_cfg_node,
                                      self.name + "." + name,
                                      action="getattr:" + name)
@@ -2216,7 +2213,6 @@ class Unknown(AtomicAbstractValue):
     return self.get_attribute(node, name)
 
   def set_attribute(self, node, name, v):
-    assert not self._pytd_class
     if name in self.members:
       self.members[name].PasteVariable(v, node)
     else:
@@ -2238,35 +2234,32 @@ class Unknown(AtomicAbstractValue):
 
   def to_structural_def(self, class_name):
     """Convert this Unknown to a pytd.Class."""
-    if not self._pytd_class:
-      self_param = (pytd.Parameter("self", pytd.NamedType("object")),)
-      calls = tuple(pytd_utils.OrderedSet(
-          pytd.Signature(params=self_param + self._make_params(args),
-                         return_type=Unknown._to_pytd(ret),
-                         exceptions=(),
-                         template=(),
-                         has_optional=False)
-          for args, _, ret in self._calls))
-      if calls:
-        methods = (pytd.Function("__call__", calls),)
-      else:
-        methods = ()
-      self._pytd_class = pytd.Class(
-          name=class_name,
-          parents=(pytd.NamedType("object"),),
-          methods=methods,
-          constants=tuple(pytd.Constant(name, Unknown._to_pytd(c))
-                          for name, c in self.members.items()),
-          template=())
-    return self._pytd_class
+    self_param = (pytd.Parameter("self", pytd.NamedType("object")),)
+    calls = tuple(pytd_utils.OrderedSet(
+        pytd.Signature(params=self_param + self._make_params(args),
+                       return_type=Unknown._to_pytd(ret),
+                       exceptions=(),
+                       template=(),
+                       has_optional=False)
+        for args, _, ret in self._calls))
+    if calls:
+      methods = (pytd.Function("__call__", calls),)
+    else:
+      methods = ()
+    return pytd.Class(
+        name=class_name,
+        parents=(pytd.NamedType("object"),),
+        methods=methods,
+        constants=tuple(pytd.Constant(name, Unknown._to_pytd(c))
+                        for name, c in self.members.items()),
+        template=())
 
   def get_class(self):
     # We treat instances of an Unknown as the same as the class.
     return self.to_variable(self.vm.root_cfg_node, "class of " + self.name)
 
   def to_type(self):
-    cls = self.to_structural_def(self.class_name)
-    return pytd.ClassType(cls.name, cls)  # pylint: disable=no-member
+    return pytd.NamedType(self.class_name)
 
   def get_instance_type(self, _):
     log.info("Using ? for instance of %s", self.name)
