@@ -2072,8 +2072,8 @@ class Module(LazyAbstractValue):
     return node
 
   def items(self):
-    # TODO(kramm): Test.
-    return self._member_map.keys()
+    return [(name, self.convert_member(name, ty))
+            for name, ty in self._member_map.items()]
 
   def to_type(self):
     return pytd.NamedType("module")

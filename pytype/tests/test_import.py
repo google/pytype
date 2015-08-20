@@ -31,6 +31,33 @@ class ImportTest(test_inference.InferenceTest):
       from path.to.module import bar, baz
       """)
 
+  def testStarImportSmoke(self):
+    self.assert_ok("""\
+      from sys import *
+      """)
+
+  def testStarImportUnknownSmoke(self):
+    self.assert_ok("""\
+      from unknown_module import *
+      """)
+
+  def testStarImport(self):
+    with utils.Tempdir() as d:
+      d.create_file("my_module.pytd", """
+        def f() -> str
+        class A:
+          pass
+        a: A
+      """)
+      with self.Infer("""\
+      from my_module import *
+      """, deep=True, solve_unknowns=True, pythonpath=[d.path]) as ty:
+        self.assertTypesMatchPytd(ty, """
+          f: function
+          A: type
+          a: my_module.A
+        """)
+
   def testPathImport(self):
     with utils.Tempdir() as d:
       d.create_file("path/to/my_module.pytd",
