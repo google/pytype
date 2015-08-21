@@ -1262,8 +1262,15 @@ class VirtualMachine(object):
   def import_module(self, name, level):
     """Import the module and return the module object."""
     if name:
-      assert level <= 0
+      # level:
+      # -1: (Python <= 3.1) "Normal" import. Try both absolute and relative.
+      #  0: Absolute import.
+      #  1: "from . import abc"
+      #  2: "from .. import abc"
+      assert level in [-1, 0]
       ast = self.loader.import_name(name)
+      if level == -1 and self.loader.base_module and not ast:
+        ast = self.loader.import_relative_name(name)
     else:
       assert level > 0
       ast = self.loader.import_relative(level)

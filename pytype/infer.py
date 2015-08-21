@@ -467,6 +467,7 @@ def _get_module_name(filename, pythonpath):
   if filename:
     filename, _ = os.path.splitext(filename)
     for path in pythonpath:
+      # TODO(kramm): What if filename starts with "../"?
       if filename.startswith(path):
         subdir = filename[len(path):].lstrip(os.path.sep)
         return subdir.replace(os.path.sep, ".")
@@ -518,7 +519,8 @@ def infer_types(src, python_version, errorlog, filename=None, run_builtins=True,
     run_builtins: Whether to preload the native Python builtins when running
       the program.
     pybuiltins_filename: Path to Python builtins, or None for default.
-    pythonpath: List of directories to search for .pytd-gen files.
+    pythonpath: List of directories to search for *.pytd (or
+                *.${find_pytd_import_ext}) files.
     find_pytd_import_ext: Extension pattern to use when looking up import PyTD
                           in pythonpath.
     import_drop_prefixes: List of prefixes to drop when resolving module names.

@@ -112,16 +112,21 @@ class Loader(object):
     self._resolve_all()
     return ast
 
+  def import_relative_name(self, name):
+    """IMPORT_NAME with level=-1. A name relative to the current direcory."""
+    if self.base_module is None:
+      raise ValueError("Attempting relative import in non-package.")
+    path = self.base_module.split(".")[:-1]
+    path.append(name)
+    return self.import_name(".".join(path))
+
   def import_relative(self, level):
     """Import a module relative to our base module.
 
     Args:
       level: Relative level:
         https://docs.python.org/2/library/functions.html#__import__
-        https://docs.python.org/3/library/functions.html#__import__
         E.g.
-         -1: (Python <= 3.1) "Normal" import. Try both absolute and relative.
-          0: Absolute import.
           1: "from . import abc"
           2: "from .. import abc"
           etc.

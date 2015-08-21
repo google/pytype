@@ -403,7 +403,9 @@ def main(argv):
   # on Forge because of the symlink tree pointing into the cache:
   # MOE:end_strip
 
-  pythonpath = [f for f in options.pythonpath.split(os.pathsep) if f]
+  # Note that the below is [""] for "", and e.g. ["x", ""] for "x:"
+  # ("" is a valid entry to denote the current directory)
+  pythonpath = options.pythonpath.split(os.pathsep)
 
   import_drop_prefixes = [
       p for p in options.import_drop_prefixes.split(os.pathsep) if p]

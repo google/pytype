@@ -318,6 +318,20 @@ class ImportTest(test_inference.InferenceTest):
         def f() -> int
     """)
 
+  def testRelativeName(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo/baz.pytd", """x: int""")
+      d.create_file("foo/bar.py", """
+        import baz
+        x = baz.x
+      """)
+      ty = self.InferFromFile(filename=d["foo/bar.py"],
+                              pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        baz: module
+        x: int
+    """)
+
   def testRelativeImport(self):
     with utils.Tempdir() as d:
       d.create_file("foo/baz.pytd", """x: int""")
