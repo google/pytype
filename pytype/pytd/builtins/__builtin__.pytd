@@ -442,7 +442,7 @@ class dict<K, V>:
     def __setitem__<K2, V2>(self, i: K2, y: V2) -> NoneType:
       self := dict<K or K2, V or V2>
     def clear(self) -> NoneType
-    def copy(self) -> dict<object, object>
+    def copy(self) -> dict<K, V>
     # TODO(pludemann): dict.fromkeys is also classmethod:
     def fromkeys(self, keys: list<K> or tuple<K>) -> dict<K, NoneType>
     def fromkeys(self, keys: str) -> dict<str, NoneType>

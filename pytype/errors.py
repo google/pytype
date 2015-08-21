@@ -5,6 +5,7 @@ import sys
 
 
 from pytype import abstract
+from pytype import utils
 from pytype.pytd import pytd
 
 
@@ -64,7 +65,8 @@ class ErrorLogBase(object):
     self.errors = self.errors[:checkpoint.position]
 
   def print_to_file(self, fi):
-    for error in self.errors:
+    for error in sorted(self.errors,
+                        key=lambda x: utils.numeric_sort_key(x.position())):
       print >>fi, error
 
   def print_to_stderr(self):
