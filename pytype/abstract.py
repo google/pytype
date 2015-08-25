@@ -954,6 +954,10 @@ class Super(AtomicAbstractValue):
       result = self.vm.create_new_unsolvable(node, "super()")
     return node, result
 
+  def get_attribute(self, node, name, valself=None, valcls=None):
+    # In Python 3, you can do "super.__init__".
+    raise NotImplementedError("Python 3 super not implemented yet")
+
 
 class Function(Instance):
   """Base class for function objects (NativeFunction, InterpreterFunction).

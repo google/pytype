@@ -562,10 +562,16 @@ class list<T>:
     def reverse(self) -> NoneType
     def sort(self, ...) -> NoneType
 
-class reversed:  # TODO(pludemann): should be def reversed(x:T) -> listreverseiterator<T>?
-    def __init__(self, sequence) -> NoneType
+# "reversed" is a type, see PyReversed_Type in Objects/enumobject.c
+class reversed<T>:
+    def __init__<N>(self, sequence: list<N>) -> NoneType:
+      self := reversed<N>
+    def __init__<N>(self, sequence: tuple<N>) -> NoneType:
+      self := reversed<N>
+    def __init__<N>(self, sequence: str) -> NoneType:
+      self := reversed<str>
     def __iter__(self) -> reversed
-    def next(self) -> str
+    def next(self) -> T
 
 class tuple<T>:
     def __init__(self, p0) -> NoneType
