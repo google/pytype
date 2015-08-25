@@ -183,6 +183,13 @@ def _parse_options(args):
       dest="import_error_is_fatal", default=False,
       help=("Temporary flag that turns load errors (typically a missing "
             ".pytd file) into critical errors."))
+  o.add_option(
+      "--output_id", type="string", action="store",
+      dest="output_id",
+      default="",
+      help=("A string that's prepended to the contents of each output PyTD, "
+            "to identify what created it.  If empty (the default), "
+            "nothing is prepended."))
 
   options, input_filenames = o.parse_args(args)
   return options, input_filenames
@@ -344,6 +351,7 @@ def generate_pytd(input_filename, output_filename, options, pythonpath,
       log.warn("***Caught exception: %s", str(e), exc_info=True)
       result = ("# Caught error in pytype: " + str(e) + "\n# " +
                 "\n# ".join(traceback.format_exc().splitlines()))
+      mod = None
     else:
       raise
   else:
@@ -369,6 +377,9 @@ def generate_pytd(input_filename, output_filename, options, pythonpath,
     sys.stdout.write(result)
   else:
     with open(output_filename, "w") as fi:
+      if options.output_id:
+        print >>fi, "#", options.output_id, "src:", input_filename
+        print >>fi
       fi.write(result)
   return mod
 
@@ -377,13 +388,12 @@ def process_one_file(input_filename, output_filename,
                      options, pythonpath, import_drop_prefixes, python_version):
   errorlog = errors.ErrorLog()
   if options.check:
-    result = check_pytd(input_filename, output_filename, options, pythonpath,
-                        import_drop_prefixes, python_version, errorlog)
+    check_pytd(input_filename, output_filename, options, pythonpath,
+               import_drop_prefixes, python_version, errorlog)
   else:
-    result = generate_pytd(input_filename, output_filename, options, pythonpath,
-                           import_drop_prefixes, python_version, errorlog)
+    generate_pytd(input_filename, output_filename, options, pythonpath,
+                  import_drop_prefixes, python_version, errorlog)
   errorlog.print_to_stderr()
-  return result
 
 
 def main(argv):
@@ -417,10 +427,14 @@ def main(argv):
     sys.exit(1)
 
   log.info("Process all: %s", src_out)
+  save_import_error_is_fatal = options.import_error_is_fatal
+  if len(src_out) > 1:
+    options.import_error_is_fatal = False
   for input_filename, output_filename in src_out:
     log.info("Process [1] %s => %s", input_filename, output_filename)
     process_one_file(input_filename, output_filename, options,
                      pythonpath, import_drop_prefixes, python_version)
+  options.import_error_is_fatal = save_import_error_is_fatal
 
   if len(src_out) > 1:
     # Do it once more, using any outputs that were produced the first time

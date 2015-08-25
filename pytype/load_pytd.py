@@ -97,9 +97,11 @@ class Loader(object):
         raise AssertionError("%s exists as both %s and %s" % (
             module_name, filename, existing.filename))
       return existing.ast
-    ast = ast or pytd_utils.ParsePyTD(filename=filename,
-                                      module=module_name,
-                                      python_version=self.python_version)
+    if not ast:
+      log.debug("Trying ParsePyTD %s", filename)
+      ast = pytd_utils.ParsePyTD(filename=filename,
+                                 module=module_name,
+                                 python_version=self.python_version)
     module = Module(module_name, filename, ast)
     self._modules[module_name] = module
     deps = visitors.CollectDependencies()
@@ -202,7 +204,8 @@ class Loader(object):
       log.critical("Couldn't import module %s", module_name)
       # TODO(pludemann): sys.exit(-1) ?
     else:
-      log.error("Couldn't import module %s", module_name)
+      # TODO(pludemann): suppress warning if main is processing multiple files:
+      log.warn("Couldn't import module %s", module_name)
     return None
 
   def _load_pytd_from_glob(self, path, module_name):
@@ -221,9 +224,12 @@ class Loader(object):
       if len(files) > 1:
         # TODO(pludemann): Check whether the contents differ?
         # MOE:strip_line TODO(pludemann): Prioritize "#" items (see pytype.bzl).
-        log.warn("Multiple files for %s: %s", pytd_path, files)
+        # TODO(pludemann): Limit the number of files in the message?
+        log.warn("Multiple files for %r: %s", pytd_path, files)
       return self._load_file(filename=files[0], module_name=module_name)
     else:
+      log.debug("Not found: module_name %r pytd_path %r",
+                module_name, pytd_path)
       return None
 
   def concat_all(self):

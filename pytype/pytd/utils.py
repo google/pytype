@@ -292,25 +292,29 @@ def WrapTypeDeclUnit(name, items):
     else:
       raise ValueError("Invalid top level pytd item: %r" % type(item))
 
-  intersection = set(functions) & set(classes)
-  if intersection:
-    raise NameError("Top level identifier %s is both function and class" % (
-        intersection.pop()))
-  intersection = set(classes) & set(constants)
-  if intersection:
-    raise NameError("Top level identifier %s is both class and constant" % (
-        intersection.pop()))
-  intersection = set(functions) & set(constants)
-  if intersection:
-    raise NameError("Top level identifier %s is both function and constant" % (
-        intersection.pop()))
-
+  _check_intersection(functions, classes, "function", "class")
+  _check_intersection(classes, constants, "class", "constant")
+  _check_intersection(functions, constants, "functions", "class")
   return pytd.TypeDeclUnit(
       name,
       tuple(pytd.Constant(name, t.build())
             for name, t in sorted(constants.items())),
       tuple(classes.values()),
       tuple(functions.values()))
+
+
+def _check_intersection(items1, items2, name1, name2):
+  items = set(items1) & set(items2)
+  if items:
+    if len(items) == 1:
+      raise NameError("Top level identifier %r is both %s and %s" % (
+          list(items)[0], name1, name2))
+    max_items = 5  # an arbitrary value
+    if len(items) > max_items:
+      raise NameError("Top level identifiers %s, ... are both %s and %s" % (
+          ", ".join(map(repr, sorted(items[:max_items]))), name1, name2))
+    raise NameError("Top level identifiers %s are both %s and %s" % (
+        ", ".join(map(repr, sorted(items))), name1, name2))
 
 
 def ParsePyTD(src=None, filename=None, python_version=None, module=None):
