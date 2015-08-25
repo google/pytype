@@ -340,11 +340,12 @@ def generate_pytd(input_filename, output_filename, options, pythonpath,
         skip_repeat_calls=options.skip_repeat_calls,
         import_error_is_fatal=options.import_error_is_fatal)
   except Exception as e:  # pylint: disable=broad-except
-    log_exc = log.warn if options.warn_on_exception else log.critical
-    exc_msg = str(e) or e.__doc__ or repr(e)
-    log_exc("***Caught exception: %s", exc_msg, exc_info=True)
-    result = ("# Caught error in pytype: " + exc_msg + "\n# " +
-              "\n# ".join(traceback.format_exc().splitlines()))
+    if options.warn_on_exception:
+      log.warn("***Caught exception: %s", str(e), exc_info=True)
+      result = ("# Caught error in pytype: " + str(e) + "\n# " +
+                "\n# ".join(traceback.format_exc().splitlines()))
+    else:
+      raise
   else:
     if options.optimize:
       mod = optimize.Optimize(mod,
