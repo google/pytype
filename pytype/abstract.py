@@ -660,17 +660,15 @@ class Instance(SimpleAbstractValue):
       cls.register_instance(self)
 
 
-class ValueWithSlots(SimpleAbstractValue):
+class ValueWithSlots(Instance):
   """Convenience class for overriding slots with custom methods.
 
   This makes it easier to emulate built-in classes like dict which need special
   handling of some magic methods (__setitem__ etc.)
   """
-  # TODO(kramm): This functionality should go into the class, not the instance.
 
-  def __init__(self, name, vm):
-    super(ValueWithSlots, self).__init__(name, vm)
-    self.name = name
+  def __init__(self, clsvar, vm):
+    super(ValueWithSlots, self).__init__(clsvar, vm)
     self._slots = {}
     self._self = {}  # TODO(kramm): Find a better place to store these.
     self._super = {}
@@ -739,10 +737,9 @@ class Dict(ValueWithSlots):
   VALUE_TYPE_PARAM = "V"
 
   def __init__(self, name, vm):
-    super(Dict, self).__init__(name, vm)
+    super(Dict, self).__init__(vm.dict_type, vm)
     self.name = name
     self._entries = {}
-    self.cls = vm.dict_type
     self.set_slot("__getitem__", self.getitem_slot)
     self.set_slot("__setitem__", self.setitem_slot)
     self.init_type_parameters(self.KEY_TYPE_PARAM, self.VALUE_TYPE_PARAM)
