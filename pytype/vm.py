@@ -1092,16 +1092,24 @@ class VirtualMachine(object):
   def load_global(self, state, name):
     return self.load_from(state, self.frame.f_globals, name)
 
-  def load_builtin(self, state, name):
-    if name == "__any_object__":
+  def load_special_builtin(self, name):
+    """Load builtins that have a special implementation in pytype."""
+    if name == "super":
+      # The super() function.
+      return abstract.Super(self)
+    elif name == "__any_object__":
       # for type_inferencer/tests/test_pgms/*.py
-      return state, abstract.Unknown(self).to_variable(
-          state.node, name)
+      return abstract.Unknown(self)
     elif name == "__random__":
       # for more pretty branching tests
-      return state, self.primitive_class_instances[bool].to_variable(
-          state.node, name)
-    return self.load_from(state, self.frame.f_builtins, name)
+      return self.primitive_class_instances[bool]
+
+  def load_builtin(self, state, name):
+    special = self.load_special_builtin(name)
+    if special:
+      return state, special.to_variable(state.node, name)
+    else:
+      return self.load_from(state, self.frame.f_builtins, name)
 
   def store_local(self, state, name, value):
     """Called when a local is written."""

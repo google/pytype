@@ -1,5 +1,7 @@
 """Tests for classes."""
 
+import unittest
+
 from pytype.tests import test_inference
 
 
@@ -131,9 +133,8 @@ class ClassesTest(test_inference.InferenceTest):
         def __init__(self, x) -> NoneType
       """)
 
-  def testFullSuper(self):
-    # TODO(kramm): This passes, but because raises isn't implemented, not
-    # because super actually yields the base object.
+  @unittest.skip("Fails, needs 'raises' support.")
+  def testSuperError(self):
     self.assert_ok("""
       class Base(object):
         def __init__(self, x, y, z):
@@ -142,6 +143,59 @@ class ClassesTest(test_inference.InferenceTest):
         def __init__(self, x):
           super(Foo, self).__init__()
     """, raises=ValueError)
+
+  def testSuperInInit(self):
+    with self.Infer("""
+      class A(object):
+        def __init__(self):
+          self.x = 3
+
+      class B(A):
+        def __init__(self):
+          super(B, self).__init__()
+
+        def get_x(self):
+          return self.x
+    """, deep=True, solve_unknowns=False, extract_locals=False) as ty:
+      self.assertTypesMatchPytd(ty, """
+          class A:
+            x: int
+
+          class B(A):
+            x: int  # TODO(kramm): optimize this out
+            def get_x(self) -> int
+      """)
+
+  def testSuperDiamond(self):
+    with self.Infer("""
+      class A(object):
+        x = 1
+      class B(A):
+        y = 4
+      class C(A):
+        y = "str"
+        z = 3j
+      class D(B, C):
+        def get_x(self):
+          return super(D, self).x
+        def get_y(self):
+          return super(D, self).y
+        def get_z(self):
+          return super(D, self).z
+    """, deep=True, solve_unknowns=False, extract_locals=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        class A:
+            x: int
+        class B(A):
+            y: int
+        class C(A):
+            y: str
+            z: complex
+        class D(B, C):
+            def get_x(self) -> int
+            def get_y(self) -> int
+            def get_z(self) -> complex
+      """)
 
 
 if __name__ == "__main__":

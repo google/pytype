@@ -120,3 +120,7 @@ class ErrorLog(ErrorLogBase):
     self.error(opcode, "Can't retrieve item%s. Empty?",
                out_of)
 
+  def super_error(self, opcode, arg_count):
+    self.error(opcode, "super() takes one or two arguments. %d given.",
+               arg_count)
+

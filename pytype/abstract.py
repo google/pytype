@@ -915,6 +915,46 @@ class WrongArgCount(FailedFunctionCall):
     self.call_arg_count = call_arg_count
 
 
+class SuperInstance(AtomicAbstractValue):
+  """The result of a super() call, i.e., a lookup proxy."""
+
+  def __init__(self, cls, obj, vm):
+    super(SuperInstance, self).__init__("super", vm)
+    self.super_cls = cls
+    self.super_obj = obj
+
+  def get_attribute(self, node, name, valself=None, valcls=None):
+    if self.super_obj:
+      valself = self.super_obj.to_variable(node, "self").values[0]
+    valcls = self.super_cls.to_variable(node, "cls").values[0]
+    return node, self.super_cls.lookup_from_mro(
+        node, name, valself, valcls, skip=self.super_cls)
+
+
+class Super(AtomicAbstractValue):
+  """The super() function. Calling it will create a SuperInstance."""
+
+  def __init__(self, vm):
+    super(Super, self).__init__("super", vm)
+
+  def call(self, node, _, args, kws, starargs=None):
+    result = self.vm.program.NewVariable("super")
+    if len(args) == 1:
+      # TODO(kramm): Add a test for this
+      for cls in args[0].values:
+        result.AddValue(
+            SuperInstance(cls.data, None, self.vm), [cls], node)
+    elif len(args) == 2:
+      for cls in args[0].values:
+        for obj in args[1].values:
+          result.AddValue(
+              SuperInstance(cls.data, obj.data, self.vm), [cls, obj], node)
+    else:
+      self.errorlog.super_error(self.vm.frame.current_opcode, len(args))
+      result = self.vm.create_new_unsolvable(node, "super()")
+    return node, result
+
+
 class Function(Instance):
   """Base class for function objects (NativeFunction, InterpreterFunction).
 
@@ -1287,8 +1327,8 @@ class Class(object):
     """Mix-in equivalent of __init__."""
     pass
 
-  def get_attribute(self, node, name, valself=None, valcls=None):
-    """Retrieve an attribute by looking at the MRO of this class."""
+  def lookup_from_mro(self, node, name, valself, valcls, skip=None):
+    """Find an identifier in the MRO of the class."""
     ret = self.vm.program.NewVariable(name)
     add_origins = []
     if valself and valcls:
@@ -1301,9 +1341,10 @@ class Class(object):
     else:
       variableself = variablecls = None
 
-    # Trace down the MRO if there is one.
-    # TODO(ampere): Handle case where class has variables INSIDE it?
     for base in self.mro:
+      # Potentially skip start of MRO, for super()
+      if base is skip:
+        continue
       node, var = base.get_attribute_flat(node, name)
       if var is None:
         continue
@@ -1313,7 +1354,12 @@ class Class(object):
           value = value.property_get(variableself, variablecls)
         ret.AddValue(value, [varval] + add_origins, node)
       break  # we found a class which has this attribute
-    return node, ret
+    return ret
+
+  def get_attribute(self, node, name, valself=None, valcls=None):
+    """Retrieve an attribute by looking at the MRO of this class."""
+    var = self.lookup_from_mro(node, name, valself, valcls)
+    return node, var
 
   def to_pytd_def(self, name):
     # Default method. Generate an empty pytd. Subclasses override this.
