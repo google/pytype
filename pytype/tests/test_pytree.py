@@ -13,7 +13,7 @@ class PyTreeTests(test_inference.InferenceTest):
       sourcecode = fi.read()
     # TODO(pludemann): extract_locals - see class test_inference.Infer
     # TODO(pludemann): ? solve_unknowns=True ?
-    with self.Infer(sourcecode, deep=True) as ty:
+    with self.Infer(sourcecode, deep=True, report_errors=False) as ty:
       function_names = {f.name for f in ty.functions}
       class_names = {cls.name for cls in ty.classes}
       self.assertIn("type_repr", function_names)

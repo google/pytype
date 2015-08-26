@@ -135,7 +135,7 @@ class ClassesTest(test_inference.InferenceTest):
 
   @unittest.skip("Fails, needs 'raises' support.")
   def testSuperError(self):
-    self.assert_ok("""
+    self.assertNoErrors("""
       class Base(object):
         def __init__(self, x, y, z):
           pass

@@ -9,7 +9,7 @@ from pytype.tests import test_inference
 class TestFunctions(test_inference.InferenceTest):
 
   def test_functions(self):
-    self.assert_ok("""\
+    self.assertNoErrors("""\
       def fn(a, b=17, c="Hello", d=[]):
         d.append(99)
         print(a, b, c, d)
@@ -21,7 +21,7 @@ class TestFunctions(test_inference.InferenceTest):
       """)
 
   def test_function_locals(self):
-    self.assert_ok("""\
+    self.assertNoErrors("""\
       def f():
         x = "Spite"
         print(x)
@@ -36,7 +36,7 @@ class TestFunctions(test_inference.InferenceTest):
       """)
 
   def test_recursion(self):
-    self.assert_ok("""\
+    self.assertNoErrors("""\
       def fact(n):
         if n <= 1:
           return 1
@@ -48,7 +48,7 @@ class TestFunctions(test_inference.InferenceTest):
       """)
 
   def test_calling_functions_with_args_kwargs(self):
-    self.assert_ok("""\
+    self.assertNoErrors("""\
       def fn(a, b=17, c="Hello", d=[]):
         d.append(99)
         print(a, b, c, d)
@@ -58,7 +58,7 @@ class TestFunctions(test_inference.InferenceTest):
       """)
 
   def test_calling_functions_with_generator_args(self):
-    self.assert_ok("""\
+    self.assertNoErrors("""\
       class A(object):
         def next(self):
           raise StopIteration()
@@ -70,23 +70,23 @@ class TestFunctions(test_inference.InferenceTest):
     """)
 
   def test_defining_functions_with_args_kwargs(self):
-    self.assert_ok("""\
+    self.assertNoErrors("""\
       def fn(*args):
         print("args is %r" % (args,))
       fn(1, 2)
       """)
-    self.assert_ok("""\
+    self.assertNoErrors("""\
       def fn(**kwargs):
         print("kwargs is %r" % (kwargs,))
       fn(red=True, blue=False)
       """)
-    self.assert_ok("""\
+    self.assertNoErrors("""\
       def fn(*args, **kwargs):
         print("args is %r" % (args,))
         print("kwargs is %r" % (kwargs,))
       fn(1, 2, red=True, blue=False)
       """)
-    self.assert_ok("""\
+    self.assertNoErrors("""\
       def fn(x, y, *args, **kwargs):
         print("x is %r, y is %r" % (x, y))
         print("args is %r" % (args,))
@@ -95,24 +95,24 @@ class TestFunctions(test_inference.InferenceTest):
       """)
 
   def test_defining_functions_with_empty_args_kwargs(self):
-    self.assert_ok("""\
+    self.assertNoErrors("""\
       def fn(*args):
         print("args is %r" % (args,))
       fn()
       """)
-    self.assert_ok("""\
+    self.assertNoErrors("""\
       def fn(**kwargs):
         print("kwargs is %r" % (kwargs,))
       fn()
       """)
-    self.assert_ok("""\
+    self.assertNoErrors("""\
       def fn(*args, **kwargs):
         print("args is %r, kwargs is %r" % (args, kwargs))
       fn()
       """)
 
   def test_partial(self):
-    self.assert_ok("""\
+    self.assertNoErrors("""\
       from _functools import partial
 
       def f(a,b):
@@ -124,7 +124,7 @@ class TestFunctions(test_inference.InferenceTest):
       """)
 
   def test_partial_with_kwargs(self):
-    self.assert_ok("""\
+    self.assertNoErrors("""\
       from _functools import partial
 
       def f(a,b,c=0,d=0):
@@ -136,7 +136,7 @@ class TestFunctions(test_inference.InferenceTest):
       """)
 
   def test_wraps(self):
-    self.assert_ok("""\
+    self.assertNoErrors("""\
       from functools import wraps
       def my_decorator(f):
         dec = wraps(f)
@@ -158,7 +158,7 @@ class TestFunctions(test_inference.InferenceTest):
 class TestClosures(test_inference.InferenceTest):
 
   def test_closures(self):
-    self.assert_ok("""\
+    self.assertNoErrors("""\
       def make_adder(x):
         def add(y):
           return x+y
@@ -169,7 +169,7 @@ class TestClosures(test_inference.InferenceTest):
       """)
 
   def test_closures_store_deref(self):
-    self.assert_ok("""\
+    self.assertNoErrors("""\
       def make_adder(x):
         z = x+1
         def add(y):
@@ -181,7 +181,7 @@ class TestClosures(test_inference.InferenceTest):
       """)
 
   def test_closures_in_loop(self):
-    self.assert_ok("""\
+    self.assertNoErrors("""\
       def make_fns(x):
         fns = []
         for i in range(x):
@@ -194,7 +194,7 @@ class TestClosures(test_inference.InferenceTest):
       """)
 
   def test_closures_with_defaults(self):
-    self.assert_ok("""\
+    self.assertNoErrors("""\
       def make_adder(x, y=13, z=43):
         def add(q, r=11):
           return x+y+z+q+r
@@ -205,7 +205,7 @@ class TestClosures(test_inference.InferenceTest):
       """)
 
   def test_deep_closures(self):
-    self.assert_ok("""\
+    self.assertNoErrors("""\
       def f1(a):
         b = 2*a
         def f2(c):
@@ -226,7 +226,7 @@ class TestClosures(test_inference.InferenceTest):
 class TestGenerators(test_inference.InferenceTest):
 
   def test_first(self):
-    self.assert_ok("""\
+    self.assertNoErrors("""\
       def two():
         yield 1
         yield 2
@@ -235,7 +235,7 @@ class TestGenerators(test_inference.InferenceTest):
       """)
 
   def test_partial_generator(self):
-    self.assert_ok("""\
+    self.assertNoErrors("""\
       from _functools import partial
 
       def f(a,b):
@@ -250,7 +250,8 @@ class TestGenerators(test_inference.InferenceTest):
       """)
 
   def test_yield_multiple_values(self):
-    self.assert_ok("""\
+    # TODO(kramm): The generator doesn't have __iter__?
+    self.assertNoCrash("""\
       def triples():
         yield 1, 2, 3
         yield 4, 5, 6
@@ -260,14 +261,14 @@ class TestGenerators(test_inference.InferenceTest):
       """)
 
   def test_generator_reuse(self):
-    self.assert_ok("""\
+    self.assertNoErrors("""\
       g = (x*x for x in range(5))
       print(list(g))
       print(list(g))
       """)
 
   def test_generator_from_generator2(self):
-    self.assert_ok("""\
+    self.assertNoErrors("""\
       g = (x*x for x in range(3))
       print(list(g))
 
@@ -277,7 +278,8 @@ class TestGenerators(test_inference.InferenceTest):
       """)
 
   def test_generator_from_generator(self):
-    self.assert_ok("""\
+    # TODO(kramm): The generator doesn't have __iter__?
+    self.assertNoCrash("""\
       class Thing(object):
         RESOURCES = ('abc', 'def')
         def get_abc(self):
@@ -324,10 +326,10 @@ class TestGenerators(test_inference.InferenceTest):
       def e():
         global f
         s = 0
-        f = (lambda: ctypes.foo(s))
+        f = (lambda: ctypes.foo(s))  # ctypes.foo doesn't exist
         return f()
       e()
-    """, deep=True, solve_unknowns=True) as ty:
+    """, deep=True, solve_unknowns=True, report_errors=False) as ty:
       self.assertHasReturnType(ty.Lookup("e"), self.anything)
       self.assertTrue(ty.Lookup("f"))
 

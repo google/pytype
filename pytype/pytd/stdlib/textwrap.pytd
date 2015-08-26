@@ -11,7 +11,7 @@ re: module
 string: module
 
 def dedent(text) -> ?
-def fill(text: unicode, ...) -> str
+def fill(text: unicode or str, ...) -> str
 def wrap(text: unicode, ...) -> list<str>
 
 class TextWrapper(nothing):

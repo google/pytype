@@ -78,11 +78,11 @@ class SolverTests(test_inference.InferenceTest):
 
   def testTopLevelClass(self):
     with self.Infer("""
-      import Foo
+      import Foo  # bad import
 
       class Bar(Foo):
         pass
-    """, deep=True, solve_unknowns=True) as ty:
+    """, deep=True, solve_unknowns=True, report_errors=False) as ty:
       self.assertTypesMatchPytd(ty, """
         Foo: ?
 

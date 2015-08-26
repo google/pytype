@@ -34,7 +34,7 @@ class ifilterfalse:
     pass
 
 class imap:
-    pass
+    def __init__(self, ...) -> NoneType
 
 class islice:
     pass

@@ -19,25 +19,25 @@ class ImportTest(test_inference.InferenceTest):
 
   def testBasicImport2(self):
     with self.Infer("""\
-      import bad_import
-      """, deep=True, solve_unknowns=True) as ty:
+      import bad_import  # doesn't exist
+      """, deep=True, solve_unknowns=True, report_errors=False) as ty:
       self.assertTypesMatchPytd(ty, """
         bad_import: ?
       """)
 
   def testFromImportSmoke(self):
-    self.assert_ok("""\
+    self.assertNoCrash("""\
       from sys import exit
       from path.to.module import bar, baz
       """)
 
   def testStarImportSmoke(self):
-    self.assert_ok("""\
+    self.assertNoErrors("""\
       from sys import *
       """)
 
   def testStarImportUnknownSmoke(self):
-    self.assert_ok("""\
+    self.assertNoCrash("""\
       from unknown_module import *
       """)
 
@@ -77,23 +77,24 @@ class ImportTest(test_inference.InferenceTest):
       d.create_file("path/to/my_module.pytd",
                     "def qqsv() -> str")
       with self.Infer("""\
-      import nonexistant_path.to.my_module
+      import nonexistant_path.to.my_module  # doesn't exist
       def foo():
         return path.to.my_module.qqsv()
-      """, deep=True, solve_unknowns=True, pythonpath=[d.path]) as ty:
+      """, deep=True, solve_unknowns=True, report_errors=False,
+                      pythonpath=[d.path]) as ty:
         self.assertTypesMatchPytd(ty, """
           nonexistant_path: ?
           def foo() -> ?
         """)
 
   def testImportAll(self):
-    self.assert_ok("""\
+    self.assertNoCrash("""\
       from module import *
       from path.to.module import *
       """)
 
   def testAssignMember(self):
-    self.assert_ok("""\
+    self.assertNoErrors("""\
       import sys
       sys.path = []
       """)
@@ -149,14 +150,14 @@ class ImportTest(test_inference.InferenceTest):
   def testImportSys2(self):
     with self.Infer("""
       import sys
-      import bad_import
+      import bad_import  # doesn't exist
       def f():
         return sys.stderr
       def g():
         return sys.maxint
       def h():
         return sys.getrecursionlimit()
-    """, deep=True, solve_unknowns=True) as ty:
+    """, deep=True, solve_unknowns=True, report_errors=False) as ty:
       self.assertTypesMatchPytd(ty, """
         bad_import: ?
         sys: module

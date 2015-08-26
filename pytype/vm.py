@@ -962,7 +962,7 @@ class VirtualMachine(object):
     rname = self.reverse_operator_name(name)
     if self.reverse_operators and rname:
       try:
-        state, attr = self.load_attr(state, y, rname)
+        state, attr = self.load_attr_noerror(state, y, rname)
       except exceptions.ByteCodeAttributeError:
         log.debug("No reverse operator %s on %r",
                   self.reverse_operator_name(name), y)
@@ -1129,7 +1129,7 @@ class VirtualMachine(object):
     log.warning("Local variable removal does not actually do "
                 "anything in the abstract interpreter")
 
-  def get_attr(self, node, obj, attr):
+  def _retrieve_attr(self, node, obj, attr, errors=True):
     """Load an attribute from an object."""
     assert isinstance(obj, typegraph.Variable), obj
     # Resolve the value independently for each value of obj
@@ -1148,12 +1148,17 @@ class VirtualMachine(object):
       result.PasteVariable(attr_var, node2)
       nodes.append(node2)
     if not result.values:
-      self.errorlog.attribute_error(self.frame.current_opcode, obj, attr)
+      if errors:
+        self.errorlog.attribute_error(self.frame.current_opcode, obj, attr)
       raise exceptions.ByteCodeAttributeError("No such attribute %s" % attr)
     return self.join_cfg_nodes(nodes), result
 
   def load_attr(self, state, obj, attr):
-    node, result = self.get_attr(state.node, obj, attr)
+    node, result = self._retrieve_attr(state.node, obj, attr)
+    return state.change_cfg_node(node), result
+
+  def load_attr_noerror(self, state, obj, attr):
+    node, result = self._retrieve_attr(state.node, obj, attr, errors=False)
     return state.change_cfg_node(node), result
 
   def store_attr(self, state, obj, attr, value):

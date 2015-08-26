@@ -437,7 +437,8 @@ class ContainerTest(test_inference.InferenceTest):
           e = d[key]
         e.next = None
         return e
-    """, deep=True, solve_unknowns=False, extract_locals=True) as ty:
+    """, deep=True, solve_unknowns=False, extract_locals=True,
+                    report_errors=False) as ty:
       self.assertTypesMatchPytd(ty, """
         class Foo:
           next: NoneType

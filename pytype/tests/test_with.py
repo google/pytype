@@ -6,7 +6,7 @@ from pytype.tests import test_inference
 class TestWithStatement(test_inference.InferenceTest):
 
   def test_simple_context_manager(self):
-    self.assert_ok("""\
+    self.assertNoErrors("""\
       class NullContext(object):
         def __enter__(self):
           l.append('i')
@@ -30,7 +30,7 @@ class TestWithStatement(test_inference.InferenceTest):
       """)
 
   def test_raise_in_context_manager(self):
-    self.assert_ok("""\
+    self.assertNoErrors("""\
       class NullContext(object):
         def __enter__(self):
           l.append('i')
@@ -57,7 +57,7 @@ class TestWithStatement(test_inference.InferenceTest):
       """)
 
   def test_suppressed_raise_in_context_manager(self):
-    self.assert_ok("""\
+    self.assertNoErrors("""\
       class SuppressingContext(object):
         def __enter__(self):
           l.append('i')
@@ -84,7 +84,7 @@ class TestWithStatement(test_inference.InferenceTest):
       """)
 
   def test_return_in_with(self):
-    self.assert_ok("""\
+    self.assertNoErrors("""\
       class NullContext(object):
         def __enter__(self):
           l.append('i')
@@ -109,7 +109,7 @@ class TestWithStatement(test_inference.InferenceTest):
       """)
 
   def test_continue_in_with(self):
-    self.assert_ok("""\
+    self.assertNoErrors("""\
       class NullContext(object):
         def __enter__(self):
           l.append('i')
@@ -135,7 +135,7 @@ class TestWithStatement(test_inference.InferenceTest):
       """)
 
   def test_break_in_with(self):
-    self.assert_ok("""\
+    self.assertNoErrors("""\
       class NullContext(object):
         def __enter__(self):
           l.append('i')
@@ -161,7 +161,7 @@ class TestWithStatement(test_inference.InferenceTest):
       """)
 
   def test_raise_in_with(self):
-    self.assert_ok("""\
+    self.assertNoErrors("""\
       class NullContext(object):
         def __enter__(self):
           l.append('i')
@@ -188,7 +188,7 @@ class TestWithStatement(test_inference.InferenceTest):
       """)
 
   def test_at_context_manager_simplified(self):
-    self.assert_ok("""\
+    self.assertNoErrors("""\
       class GeneratorContextManager(object):
         def __init__(self, gen):
           self.gen = gen
@@ -237,7 +237,7 @@ class TestWithStatement(test_inference.InferenceTest):
   def test_at_context_manager_complete(self):
     # The complete code for an @contextmanager example, lifted from
     # the stdlib.
-    self.assert_ok("""\
+    self.assertNoErrors("""\
       from _functools import partial
 
       WRAPPER_ASSIGNMENTS = ('__module__', '__name__', '__doc__')

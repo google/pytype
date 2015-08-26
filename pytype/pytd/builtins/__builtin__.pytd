@@ -141,6 +141,12 @@ class object(nothing):
     def __sizeof__(self) -> int
     def __repr__(self) -> str
     def __cmp__(self, y) -> bool
+    def __eq__(self, other) -> bool
+    def __ne__(self, other) -> bool
+    def __ge__(self, other) -> bool
+    def __gt__(self, other) -> bool
+    def __le__(self, other) -> bool
+    def __lt__(self, other) -> bool
     def __rmod__(self, y: str) -> str
     def __rmod__(self, y: unicode) -> unicode
     # TODO(pludemann): add these methods/attributes:
@@ -522,7 +528,7 @@ class list<T>:
         self := list<?>  # "?" should be x.type.element_type or abc.Iterator
     def __add__<A>(self, y: list<A>) -> list<T or A>
     def __contains__(self, y: T) -> bool
-    def __delitem__(self, y: int) -> NoneType
+    def __delitem__(self, y: int or slice) -> NoneType
     def __delslice__(self, i: int, j: int) -> NoneType
     # TODO(pludemann): for __eq__, the most likely interpretation is the types
     #                  are the same (i.e.: def __eq__(self, y: list<T>) -> bool)
@@ -548,7 +554,10 @@ class list<T>:
     def __ne__(self, y: list) -> bool
     def __reversed__(self) -> listreverseiterator<T>
     def __rmul__(self, n: int) -> list<T>
-    def __setitem__(self, i: int, y) -> NoneType
+    def __setitem__<N>(self, i: int, y: N) -> NoneType:
+      self := list<T or N>
+    def __setitem__(self, i: slice, y) -> NoneType:
+      self := list<?>
     def __setslice__(self, i: int, j: int, y) -> NoneType
     def append<A>(self, object: A) -> NoneType:
       self := list<T or A>

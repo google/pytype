@@ -15,7 +15,7 @@ class RecoveryTests(test_inference.InferenceTest):
       def f():
         t = 0.0
         return t - ("bla" - t)
-    """, deep=True, solve_unknowns=True) as ty:
+    """, deep=True, solve_unknowns=True, report_errors=False) as ty:
       self.assertTypesMatchPytd(ty, """
         def f() -> ?
       """)
@@ -24,7 +24,7 @@ class RecoveryTests(test_inference.InferenceTest):
     with self.Infer("""
       def f():
         return "%s" % chr("foo")
-    """, deep=True, solve_unknowns=True) as ty:
+    """, deep=True, solve_unknowns=True, report_errors=False) as ty:
       self.assertTypesMatchPytd(ty, """
         def f() -> ?
       """)
@@ -36,7 +36,7 @@ class RecoveryTests(test_inference.InferenceTest):
         return time.unknown_function(3)
       def g():
         return '%s' % f()
-    """, deep=True, solve_unknowns=True) as ty:
+    """, deep=True, solve_unknowns=True, report_errors=False) as ty:
       self.assertTypesMatchPytd(ty, """
         time: module
         def f() -> ?

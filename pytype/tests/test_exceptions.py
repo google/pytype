@@ -9,7 +9,7 @@ class TestExceptions(test_inference.InferenceTest):
 
   def test_catching_exceptions(self):
     # Catch the exception precisely
-    self.assert_ok("""\
+    self.assertNoErrors("""\
       try:
         x[1]
         print("Shouldn't be here...")
@@ -17,7 +17,7 @@ class TestExceptions(test_inference.InferenceTest):
         print("caught it!")
       """)
     # Catch the exception by a parent class
-    self.assert_ok("""\
+    self.assertNoErrors("""\
       try:
         x[1]
         print("Shouldn't be here...")
@@ -25,7 +25,7 @@ class TestExceptions(test_inference.InferenceTest):
         print("caught it!")
       """)
     # Catch all exceptions
-    self.assert_ok("""\
+    self.assertNoErrors("""\
       try:
         x[1]
         print("Shouldn't be here...")
@@ -34,16 +34,16 @@ class TestExceptions(test_inference.InferenceTest):
       """)
 
   def test_raise_exception(self):
-    self.assert_ok("raise Exception('oops')", raises=Exception)
+    self.assertNoErrors("raise Exception('oops')", raises=Exception)
 
   def test_raise_exception_class(self):
-    self.assert_ok("raise ValueError", raises=ValueError)
+    self.assertNoErrors("raise ValueError", raises=ValueError)
 
   def test_raise_exception_2args(self):
-    self.assert_ok("raise ValueError, 'bad'", raises=ValueError)
+    self.assertNoErrors("raise ValueError, 'bad'", raises=ValueError)
 
   def test_raise_exception_3args(self):
-    self.assert_ok("""\
+    self.assertNoErrors("""\
       from sys import exc_info
       try:
         raise Exception
@@ -53,7 +53,7 @@ class TestExceptions(test_inference.InferenceTest):
       """, raises=ValueError)
 
   def test_raise_and_catch_exception(self):
-    self.assert_ok("""\
+    self.assertNoErrors("""\
       try:
         raise ValueError("oops")
       except ValueError as e:
@@ -64,13 +64,13 @@ class TestExceptions(test_inference.InferenceTest):
   @unittest.skip("Python 3 specific")
   def test_raise_exception_from(self):
     assert self.PYTHON_VERSION[0] == 3
-    self.assert_ok(
+    self.assertNoErrors(
         "raise ValueError from NameError",
         raises=ValueError
     )
 
   def test_raise_and_catch_exception_in_function(self):
-    self.assert_ok("""\
+    self.assertNoErrors("""\
       def fn():
         raise ValueError("oops")
 
@@ -82,8 +82,8 @@ class TestExceptions(test_inference.InferenceTest):
       """)
 
   def test_global_name_error(self):
-    self.assert_ok("fooey", raises=NameError)
-    self.assert_ok("""\
+    self.assertNoErrors("fooey", raises=NameError)
+    self.assertNoErrors("""\
       try:
         fooey
         print("Yes fooey?")
@@ -92,14 +92,14 @@ class TestExceptions(test_inference.InferenceTest):
       """)
 
   def test_local_name_error(self):
-    self.assert_ok("""\
+    self.assertNoErrors("""\
       def fn():
         fooey
       fn()
       """, raises=NameError)
 
   def test_catch_local_name_error(self):
-    self.assert_ok("""\
+    self.assertNoErrors("""\
       def fn():
         try:
           fooey
@@ -110,7 +110,7 @@ class TestExceptions(test_inference.InferenceTest):
       """)
 
   def test_reraise(self):
-    self.assert_ok("""\
+    self.assertNoErrors("""\
       def fn():
         try:
           fooey
@@ -122,7 +122,7 @@ class TestExceptions(test_inference.InferenceTest):
       """, raises=NameError)
 
   def test_reraise_explicit_exception(self):
-    self.assert_ok("""\
+    self.assertNoErrors("""\
       def fn():
         try:
           raise ValueError("ouch")
@@ -133,7 +133,7 @@ class TestExceptions(test_inference.InferenceTest):
       """, raises=ValueError)
 
   def test_finally_while_throwing(self):
-    self.assert_ok("""\
+    self.assertNoErrors("""\
       def fn():
         try:
           print("About to..")
@@ -145,7 +145,7 @@ class TestExceptions(test_inference.InferenceTest):
       """, raises=ValueError)
 
   def test_coverage_issue_92(self):
-    self.assert_ok("""\
+    self.assertNoErrors("""\
       l = []
       for i in range(3):
         try:
@@ -159,7 +159,7 @@ class TestExceptions(test_inference.InferenceTest):
       """)
 
   def test_continue_in_except(self):
-    self.assert_ok("""\
+    self.assertNoErrors("""\
       for i in range(3):
         try:
           pass
@@ -170,7 +170,7 @@ class TestExceptions(test_inference.InferenceTest):
       """)
 
   def test_loop_finally_except(self):
-    self.assert_ok("""
+    self.assertNoErrors("""
       def f():
         for s in (1, 2):
           try:

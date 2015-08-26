@@ -1,5 +1,6 @@
 # TODO(pludemann): parameterize by type?
 class array:
+    def __init__(self, ...) -> NoneType
     def __copy__() -> ?
     def __deepcopy__(...) -> ?
     def __reduce__() -> tuple raises AttributeError

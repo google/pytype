@@ -11,6 +11,7 @@ __package__: NoneType
 def cmp_to_key(mycmp: ?) -> ?
 def partial(func: ?, ...) -> ?  # from _functools
 def reduce(func: ?, iterable: ?, ...) -> ?  # from _functools
+def wraps(...) -> ?
 # TODO(pludemann): The following are decorators ... what should be done with them?
 # def total_ordering ...
 # def update_wrapper ...

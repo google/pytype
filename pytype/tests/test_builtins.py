@@ -558,5 +558,14 @@ class BuiltinTests(test_inference.InferenceTest):
       z: complex
       """)
 
+  def testTypeEquals(self):
+    with self.Infer("""
+      def f(n):
+        return type(n) == type(0)
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        def f(n) -> bool
+      """)
+
 if __name__ == "__main__":
   test_inference.main()
