@@ -2,7 +2,6 @@
 
 import logging
 
-from pytype.pytd import abc_hierarchy
 from pytype.pytd import booleq
 from pytype.pytd import optimize
 from pytype.pytd import pytd
@@ -104,24 +103,6 @@ class TypeSolver(object):
       raise FlawedQuery("Bad call %s%s" % (call_record.name, faulty_signature))
     solver.always_true(formula)
 
-  def get_all_subclasses(self):
-    """Compute a class->subclasses mapping.
-
-    Returns:
-      A dictionary, mapping instances of pytd.TYPE (types) to lists of
-      pytd.Class (the derived classes).
-    """
-    hierarchy = self.ast.Visit(visitors.ExtractSuperClasses())
-    hierarchy.update(self.builtins.Visit(visitors.ExtractSuperClasses()))
-    hierarchy = {cls: [superclass for superclass in superclasses
-                       if (hasattr(superclass, "name") and
-                           is_complete(superclass))]
-                 for cls, superclasses in hierarchy.items()
-                 if is_complete(cls)}
-    # typically this is a fairly short list, e.g.:
-    #  [ClassType(basestring), ClassType(int), ClassType(object)]
-    return abc_hierarchy.Invert(hierarchy)
-
   def solve(self):
     """Solve the equations generated from the pytd.
 
@@ -130,7 +111,8 @@ class TypeSolver(object):
     Raises:
       AssertionError: If we detect an internal error.
     """
-    factory = type_match.TypeMatch(self.get_all_subclasses())
+    hierarchy = type_match.get_all_subclasses([self.ast, self.builtins])
+    factory = type_match.TypeMatch(hierarchy)
     solver = factory.solver
 
     unknown_classes = set()

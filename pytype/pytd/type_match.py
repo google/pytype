@@ -26,12 +26,18 @@ inference, but could also be used when merging pytd files, to match existing
 signatures against new inference results.
 """
 
+import logging
 
+
+from pytype.pytd import abc_hierarchy
 from pytype.pytd import booleq
 from pytype.pytd import optimize
 from pytype.pytd import pytd
 from pytype.pytd import utils
 from pytype.pytd.parse import node
+from pytype.pytd.parse import visitors
+
+log = logging.getLogger(__name__)
 
 
 # Might not be needed anymore once pytd has builtin support for ~unknown.
@@ -70,6 +76,29 @@ def unpack_name_of_partial(name):
   assert isinstance(name, str)
   assert name.startswith("~")
   return name.lstrip("~")
+
+
+def get_all_subclasses(asts):
+  """Compute a class->subclasses mapping.
+
+  Args:
+    asts: A list of ASTs.
+
+  Returns:
+    A dictionary, mapping instances of pytd.TYPE (types) to lists of
+    pytd.Class (the derived classes).
+  """
+  hierarchy = {}
+  for ast in asts:
+    hierarchy.update(ast.Visit(visitors.ExtractSuperClasses()))
+  hierarchy = {cls: [superclass for superclass in superclasses
+                     if (hasattr(superclass, "name") and
+                         is_complete(superclass))]
+               for cls, superclasses in hierarchy.items()
+               if is_complete(cls)}
+  # typically this is a fairly short list, e.g.:
+  #  [ClassType(basestring), ClassType(int), ClassType(object)]
+  return abc_hierarchy.Invert(hierarchy)
 
 
 class StrictType(node.Node("name")):
@@ -341,20 +370,41 @@ class TypeMatch(utils.TypeMatcher):
         self.match_Signature_against_Function(s1, f2, subst, skip_self)
         for s1 in f1.signatures)
 
+  def match_Function_against_Class(self, f1, cls2, subst, cache):
+    cls2_methods = cache.get(id(cls2))
+    if cls2_methods is None:
+      cls2_methods = cache[id(cls2)] = {f.name: f for f in cls2.methods}
+    if f1.name not in cls2_methods:
+      # The class itself doesn't have this method, but base classes might.
+      # TODO(kramm): This should do MRO order, not depth-first.
+      for base in cls2.parents:
+        if isinstance(base, pytd.AnythingType):
+          # AnythingType can contain any method.
+          return booleq.TRUE
+        elif isinstance(base, pytd.ClassType):
+          cls = base.cls
+          implication = self.match_Function_against_Class(f1, cls, subst, cache)
+          if implication is not booleq.FALSE:
+            return implication
+        else:
+          # Funky types like GenericType, UnionType, etc. are hard (or
+          # impossible) to match against (and shouldn't appear as a base class)
+          # so we treat them as catch-all.
+          log.warning("Assuming that %s has method %s",
+                      pytd.Print(base), f1.name)
+          return booleq.TRUE
+      return booleq.FALSE
+    else:
+      f2 = cls2_methods[f1.name]
+      return self.match_Function_against_Function(
+          f1, f2, subst, skip_self=True)
+
   def match_Class_against_Class(self, cls1, cls2, subst):  # pylint: disable=invalid-name
     """Match a pytd.Class against another pytd.Class."""
     implications = []
-    cls2_methods = {f.name: f for f in cls2.methods}
+    cache = {}
     for f1 in cls1.methods:
-      if f1.name not in cls2_methods:
-        # The class we're matching against doesn't even have this method. This
-        # is the easiest and most common case.
-        # TODO(kramm): Search base classes
-        implication = booleq.FALSE
-      else:
-        f2 = cls2_methods[f1.name]
-        implication = (
-            self.match_Function_against_Function(f1, f2, subst, skip_self=True))
+      implication = self.match_Function_against_Class(f1, cls2, subst, cache)
       implications.append(implication)
       if implication is booleq.FALSE:
         break

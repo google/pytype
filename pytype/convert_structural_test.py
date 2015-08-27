@@ -124,7 +124,7 @@ class MatchTest(unittest.TestCase):
         def join(self, iterable: unicode) -> str or unicode
         def join(self, iterable: iterator) -> str or unicode
     """)
-    self.assertItemsEqual(["str"], mapping["~unknown1"])
+    self.assertItemsEqual(["str", "bytes"], mapping["~unknown1"])
 
   def test_multiple(self):
     mapping = self.parse_and_solve("""
@@ -143,7 +143,7 @@ class MatchTest(unittest.TestCase):
     """)
     self.assertItemsEqual(["float"], mapping["~unknown1"])
     self.assertItemsEqual(["bytearray"], mapping["~unknown2"])
-    self.assertItemsEqual(["str"], mapping["~unknown3"])
+    self.assertItemsEqual(["str", "bytes"], mapping["~unknown3"])
     self.assertItemsEqual(["list"], mapping["~unknown4"])
     self.assertItemsEqual(["NoneType"], mapping["~unknown4.list.T"])
 
@@ -486,7 +486,7 @@ class MatchTest(unittest.TestCase):
       class `~unknown12`(nothing):
           pass
     """)
-    self.assertItemsEqual(["int"], mapping["~unknown4"])
+    self.assertItemsEqual(["int", "bool"], mapping["~unknown4"])
 
   def test_add(self):
     mapping = self.parse_and_solve("""
@@ -620,6 +620,20 @@ class MatchTest(unittest.TestCase):
     ast = parser.parse_string(sourcecode)
     ast = convert_structural.convert_pytd(ast, self.builtins_pytd)
     self.assertMultiLineEqual(pytd.Print(ast), expected)
+
+  def test_match_superclass(self):
+    mapping = self.parse_and_solve("""
+      class Base1(nothing):
+        def f(self, x:Base1) -> Base2
+      class Base2(nothing):
+        def g(self) -> Base1
+      class Foo(Base1, Base2):
+        pass
+
+      class `~unknown1`(nothing):
+        def f(self, x:Base1) -> Base2
+    """)
+    self.assertItemsEqual(["Foo", "Base1"], mapping["~unknown1"])
 
 if __name__ == "__main__":
   test_inference.main()

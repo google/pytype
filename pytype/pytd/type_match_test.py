@@ -118,7 +118,7 @@ class TestTypeMatch(unittest.TestCase):
       def right(a: A) -> A
     """))
     ast = visitors.LookupClasses(ast)
-    m = type_match.TypeMatch({ast.Lookup("a").type: [ast.Lookup("B")]})
+    m = type_match.TypeMatch(type_match.get_all_subclasses([ast]))
     left, right = ast.Lookup("left"), ast.Lookup("right")
     self.assertEquals(m.match(left, right, {}), booleq.TRUE)
     self.assertNotEquals(m.match(right, left, {}), booleq.TRUE)
@@ -163,7 +163,7 @@ class TestTypeMatch(unittest.TestCase):
       def right() -> list<A>
     """))
     ast = visitors.LookupClasses(ast)
-    m = type_match.TypeMatch({ast.Lookup("a").type: [ast.Lookup("B")]})
+    m = type_match.TypeMatch(type_match.get_all_subclasses([ast]))
     left, right = ast.Lookup("left"), ast.Lookup("right")
     self.assertEquals(m.match(left, right, {}),
                       booleq.And((booleq.Eq("~unknown0", "list"),
@@ -175,13 +175,27 @@ class TestTypeMatch(unittest.TestCase):
         pass
       class Foo(Base):
         pass
-      base: Foo
-      foo: Foo
+      base: Base
     """))
     ast = visitors.LookupClasses(ast)
-    m = type_match.TypeMatch({ast.Lookup("foo").type: [ast.Lookup("Base")]})
+    m = type_match.TypeMatch(type_match.get_all_subclasses([ast]))
     mod1_foo = pytd.ExternalType("Foo", module="mod1", cls=ast.Lookup("Foo"))
     eq = m.match_type_against_type(mod1_foo, ast.Lookup("base").type, {})
+    self.assertEquals(eq, booleq.TRUE)
+
+  def testBaseClass(self):
+    ast = parser.parse_string(textwrap.dedent("""
+      class Base(nothing):
+        def f(self, x:Base) -> Base
+      class Foo(Base):
+        pass
+
+      class Match(nothing):
+        def f(self, x:Base) -> Base
+    """))
+    ast = visitors.LookupClasses(ast)
+    m = type_match.TypeMatch(type_match.get_all_subclasses([ast]))
+    eq = m.match_Class_against_Class(ast.Lookup("Match"), ast.Lookup("Foo"), {})
     self.assertEquals(eq, booleq.TRUE)
 
 

@@ -567,6 +567,17 @@ class BuiltinTests(test_inference.InferenceTest):
         def f(n) -> bool
       """)
 
+  def testTypeEquals2(self):
+    with self.Infer("""
+      import types
+      def f(num):
+        return type(num) == types.IntType
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        types: module
+        def f(num) -> bool
+      """)
+
   def testDateTime(self):
     with self.Infer("""
       import datetime
