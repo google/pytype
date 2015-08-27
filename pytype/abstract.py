@@ -198,6 +198,21 @@ class AtomicAbstractValue(object):
     """
     return self
 
+  def get_attribute_flat(self, node, name):  # pylint: disable=unused-argument
+    """Get a shallow attribute from this object.
+
+    Unlike get_attribute, this will not ascend into superclasses.
+
+    Args:
+      node: The current CFG node.
+      name: The name of the attribute to retrieve.
+    Returns:
+      A tuple (CFGNode, typegraph.Variable). If this attribute doesn't exist,
+      the Variable will be None.
+
+    """
+    return node, None
+
   def get_attribute(self, node, name, valself=None, valcls=None):  # pylint: disable=unused-argument
     """Get the named attribute from this object.
 
@@ -296,6 +311,11 @@ class AtomicAbstractValue(object):
   def get_class(self):
     """Return the class of this object. Equivalent of x.__class__ in Python."""
     raise NotImplementedError(self.__class__.__name__)
+
+  def get_instance_type(self, instance=None):  # pylint: disable=unused-argument
+    """Return the type an instance of us would have."""
+    # We don't know whether we even *are* a type, so the default is anything.
+    return pytd.AnythingType()
 
   def to_type(self):
     """Get a PyTD type representing this object."""
@@ -1396,7 +1416,7 @@ class ParameterizedClass(AtomicAbstractValue, Class, FormalType):
     type_arguments = []
     for type_param in self.base_cls.pytd_cls.template:
       type_arguments.append(
-          self.type_parameters[type_param.name].get_instance_type(None))
+          self.type_parameters[type_param.name].get_instance_type())
     return pytd_utils.MakeClassOrContainerType(
         pytd_utils.NamedOrExternalType(self.base_cls.pytd_cls.name,
                                        self.base_cls.module),
@@ -1439,8 +1459,7 @@ class PyTDClass(LazyAbstractValue, Class):
     return c.to_variable(self.vm.root_cfg_node, name)
 
   def get_attribute_flat(self, node, name):
-    # delegate to LazyAbstractValue
-    return super(PyTDClass, self).get_attribute(node, name)
+    return LazyAbstractValue.get_attribute(self, node, name)
 
   def call(self, node, func, args, kws, starargs=None):
     value = Instance(self.vm.convert_constant(
@@ -1466,7 +1485,7 @@ class PyTDClass(LazyAbstractValue, Class):
   def to_type(self):
     return pytd.NamedType("type")
 
-  def get_instance_type(self, instance):
+  def get_instance_type(self, instance=None):
     """Convert instances of this class to their PYTD type."""
     type_arguments = []
     for type_param in self.pytd_cls.template:
@@ -1542,7 +1561,7 @@ class InterpreterClass(SimpleAbstractValue, Class):
     return utils.concat_lists(b.data for b in self._bases)
 
   def get_attribute_flat(self, node, name):
-    return super(InterpreterClass, self).get_attribute(node, name)
+    return SimpleAbstractValue.get_attribute(self, node, name)
 
   def get_attribute(self, node, name, valself=None, valcls=None):
     node, attr_var = Class.get_attribute(self, node, name, valself, valcls)
@@ -1644,7 +1663,7 @@ class InterpreterClass(SimpleAbstractValue, Class):
           for value in member.FilteredData(self.vm.exitpoint):
             constants[name].add_type(value.to_type())
 
-    bases = [pytd_utils.JoinTypes(b.get_instance_type(None)
+    bases = [pytd_utils.JoinTypes(b.get_instance_type()
                                   for b in basevar.data)
              for basevar in self._bases]
     constants = [pytd.Constant(name, builder.build())
@@ -1656,7 +1675,7 @@ class InterpreterClass(SimpleAbstractValue, Class):
                       constants=tuple(constants),
                       template=())
 
-  def get_instance_type(self, _):
+  def get_instance_type(self, unused_instance=None):
     if self.official_name:
       return pytd_utils.NamedOrExternalType(self.official_name, self.module)
     else:
@@ -2170,7 +2189,7 @@ class Unsolvable(AtomicAbstractValue):
   def to_type(self):
     return pytd.AnythingType()
 
-  def get_instance_type(self, _):
+  def get_instance_type(self, unused_instance=None):
     return pytd.AnythingType()
 
   def match_against_type(self, other_type, subst, node, view):
@@ -2298,7 +2317,7 @@ class Unknown(AtomicAbstractValue):
   def to_type(self):
     return pytd.NamedType(self.class_name)
 
-  def get_instance_type(self, _):
+  def get_instance_type(self, unused_instance=None):
     log.info("Using ? for instance of %s", self.name)
     return pytd.AnythingType()
 

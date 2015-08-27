@@ -7,6 +7,7 @@ import sys
 from pytype import abstract
 from pytype import utils
 from pytype.pytd import pytd
+from pytype.pytd import utils as pytd_utils
 
 
 # "Error level" enum for distinguishing between warnings and errors:
@@ -123,4 +124,9 @@ class ErrorLog(ErrorLogBase):
   def super_error(self, opcode, arg_count):
     self.error(opcode, "super() takes one or two arguments. %d given.",
                arg_count)
+
+  def base_class_error(self, opcode, base_var):
+    pytd_type = pytd_utils.JoinTypes(t.get_instance_type()
+                                     for t in base_var.data)
+    self.error(opcode, "Invalid base class: %s", pytd.Print(pytd_type))
 

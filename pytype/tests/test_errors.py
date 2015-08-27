@@ -51,5 +51,13 @@ class ErrorTest(test_inference.InferenceTest):
     # "Line 3, in f: Can't retrieve item out of list. Empty?"
     self.assertErrorLogContains(errors, r"line 3.*item out of list")
 
+  def testInvalidBaseClass(self):
+    _, errors = self.InferAndCheck("""
+      class Foo(3):
+        pass
+    """)
+    # "Line 2, in <module>: Invalid base class: `~unknown0`"
+    self.assertErrorLogContains(errors, r"Invalid base class")
+
 if __name__ == "__main__":
   test_inference.main()

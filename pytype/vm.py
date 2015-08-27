@@ -782,6 +782,8 @@ class VirtualMachine(object):
     Returns:
       An instance of Class.
     """
+    bases_values = bases.values
+    bases = list(_get_atomic_python_constant(bases))
     name = _get_atomic_python_constant(name_var)
     log.info("Declaring class %s", name)
     try:
@@ -789,13 +791,19 @@ class VirtualMachine(object):
     except ConversionError:
       log.error("Error initializing class %r", name)
       return self.create_new_unknown(node, name)
+    for base in bases:
+      if not any(isinstance(t, (abstract.Class,
+                                abstract.Unknown,
+                                abstract.Unsolvable))
+                 for t in base.data):
+        self.errorlog.base_class_error(self.frame.current_opcode, base)
     val = abstract.InterpreterClass(
         name,
-        list(_get_atomic_python_constant(bases)),
+        bases,
         class_dict.members,
         self)
     var = self.program.NewVariable(name)
-    var.AddValue(val, bases.values + class_dict_var.values, node)
+    var.AddValue(val, bases_values + class_dict_var.values, node)
     return var
 
   def make_function(self, name, code, globs, defaults, closure=None):

@@ -43,6 +43,16 @@ class RecoveryTests(test_inference.InferenceTest):
         def g() -> ?
       """)
 
+  def testInheritFromInstance(self):
+    with self.Infer("""
+      class Foo(3):
+        pass
+    """, deep=True, solve_unknowns=True, report_errors=False) as ty:
+      self.assertTypesMatchPytd(ty, """
+        class Foo(?):
+          pass
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()
