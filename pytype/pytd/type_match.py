@@ -312,10 +312,12 @@ class TypeMatch(utils.TypeMatcher):
     params2 = sig2.params
     params1 = sig1.params[:len(params2)] if sig2.has_optional else sig1.params
     if skip_self:
-      assert params1[0].name == "self"
-      assert params2[0].name == "self"
+      # Methods in an ~unknown need to declare their methods with "self"
+      assert params1 and params1[0].name == "self"
       params1 = params1[1:]
-      params2 = params2[1:]
+      # For loaded pytd, we allow methods to omit the "self" parameter.
+      if params2 and params2[0].name == "self":
+        params2 = params2[1:]
     if len(params1) == len(params2):
       equalities = []
       for p1, p2 in zip(params1, params2):

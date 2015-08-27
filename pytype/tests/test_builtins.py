@@ -567,5 +567,17 @@ class BuiltinTests(test_inference.InferenceTest):
         def f(n) -> bool
       """)
 
+  def testDateTime(self):
+    with self.Infer("""
+      import datetime
+
+      def f(date):
+        return date.ctime()
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        datetime: module
+        def f(date: datetime.datetime or datetime.date) -> bytes or str
+    """)
+
 if __name__ == "__main__":
   test_inference.main()

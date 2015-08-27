@@ -1,6 +1,7 @@
 """Test cases that need solve_unknowns."""
 
 
+from pytype import utils
 from pytype.tests import test_inference
 
 
@@ -260,6 +261,23 @@ class SolverTests(test_inference.InferenceTest):
         def f() -> NoneType
         def g() -> NoneType
       """)
+
+  def testMatchAgainstFunctionWithoutSelf(self):
+    with utils.Tempdir() as d:
+      d.create_file("bad_mod.pytd", """
+        class myclass:
+          def bad_method() -> bool
+      """)
+      with self.Infer("""\
+        import bad_mod
+        def f(date):
+          return date.bad_method()
+      """, deep=True, solve_unknowns=True, pythonpath=[d.path]) as ty:
+        self.assertTypesMatchPytd(ty, """
+          bad_mod: module
+          def f(date: bad_mod.myclass) -> bool
+        """)
+
 
 if __name__ == "__main__":
   test_inference.main()
