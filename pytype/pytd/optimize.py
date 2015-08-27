@@ -734,7 +734,7 @@ class RemoveInheritedMethods(visitors.Visitor):
     for method in t.cls.methods:
       for sig in method.signatures:
         if (sig.params and
-            sig.params[0].name == "self" or
+            sig.params[0].name == "self" and
             isinstance(sig.params[0].type, pytd.ClassType)):
           stripped_signatures.add((method.name,
                                    sig.Replace(params=sig.params[1:])))

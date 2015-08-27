@@ -447,6 +447,27 @@ class TestOptimize(parser_test.ParserTest):
     ast = ast.Visit(optimize.AddInheritedMethods())
     self.AssertSourceEquals(ast, expected)
 
+  def testRemoveInheritedMethodsWithoutSelf(self):
+    src = textwrap.dedent("""
+        class Bar:
+          def baz(self) -> int
+
+        class Foo(Bar):
+          def baz(self) -> int
+          def bar() -> float
+    """)
+    expected = textwrap.dedent("""
+        class Bar:
+          def baz(self) -> int
+
+        class Foo(Bar):
+          def bar() -> float
+    """)
+    ast = self.Parse(src)
+    ast = visitors.LookupClasses(ast, builtins.GetBuiltinsPyTD())
+    ast = ast.Visit(optimize.RemoveInheritedMethods())
+    self.AssertSourceEquals(ast, expected)
+
   def testRemoveInheritedMethods(self):
     src = textwrap.dedent("""
         class A(nothing):
