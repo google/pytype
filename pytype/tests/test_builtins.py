@@ -590,5 +590,17 @@ class BuiltinTests(test_inference.InferenceTest):
         def f(date: datetime.datetime or datetime.date) -> bytes or str
     """)
 
+  def testFromUTC(self):
+    with self.Infer("""
+      import datetime
+
+      def f(tz):
+        tz.fromutc(None)
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        datetime: module
+        def f(tz: datetime.tzinfo) -> NoneType
+    """)
+
 if __name__ == "__main__":
   test_inference.main()

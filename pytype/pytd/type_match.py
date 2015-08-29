@@ -342,8 +342,9 @@ class TypeMatch(utils.TypeMatcher):
     params1 = sig1.params[:len(params2)] if sig2.has_optional else sig1.params
     if skip_self:
       # Methods in an ~unknown need to declare their methods with "self"
-      assert params1 and params1[0].name == "self"
-      params1 = params1[1:]
+      assert (params1 and params1[0].name == "self") or sig2.has_optional
+      if params1 and params1[0].name == "self":
+        params1 = params1[1:]
       # For loaded pytd, we allow methods to omit the "self" parameter.
       if params2 and params2[0].name == "self":
         params2 = params2[1:]
@@ -361,9 +362,9 @@ class TypeMatch(utils.TypeMatcher):
   def match_Signature_against_Function(self, sig, f, subst, skip_self=False):  # pylint: disable=invalid-name
     return booleq.And(
         booleq.Or(
-            self.match_Signature_against_Signature(sig, s, subst, skip_self)
+            self.match_Signature_against_Signature(inner, s, subst, skip_self)
             for s in f.signatures)
-        for inner_sig in sig.Visit(optimize.ExpandSignatures()))
+        for inner in sig.Visit(optimize.ExpandSignatures()))
 
   def match_Function_against_Function(self, f1, f2, subst, skip_self=False):  # pylint: disable=invalid-name
     return booleq.And(
