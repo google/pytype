@@ -289,14 +289,25 @@ class HashableDict(dict):
     return self._hash
 
 
-def mro_merge(seqs):
+def dedup(seq):
+  """Return a sequence in the same order, but with duplicates removed."""
+  seen = set()
+  result = []
+  for s in seq:
+    if s not in seen:
+      result.append(s)
+    seen.add(s)
+  return result
+
+
+def mro_merge(input_seqs):
   """Merge a sequence of MROs into a single resulting MRO.
 
-  This code is copied from the following URL with print statments removed.
-  https://www.python.org/download/releases/2.3/mro/
+  This code is copied from https://www.python.org/download/releases/2.3/mro/
+  with print statements removed and modified to take a sequence of MROs.
 
   Args:
-    seqs: A sequence of MROs.
+    input_seqs: A sequence of MROs.
 
   Returns:
     A single resulting MRO.
@@ -304,6 +315,7 @@ def mro_merge(seqs):
   Raises:
     TypeError: If we discovered an illegal inheritance.
   """
+  seqs = [dedup(s) for s in input_seqs]
   res = []
   while True:
     nonemptyseqs = [seq for seq in seqs if seq]
@@ -311,7 +323,7 @@ def mro_merge(seqs):
       return res
     for seq in nonemptyseqs:  # find merge candidates among seq heads
       cand = seq[0]
-      nothead = [s for s in nonemptyseqs if cand in s[1:]]
+      nothead = [s for s in nonemptyseqs if cand in s[1:] and s is not seq]
       if nothead:
         cand = None  # reject candidate
       else:
