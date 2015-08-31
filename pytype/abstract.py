@@ -1271,8 +1271,9 @@ class PyTDFunction(Function):
   def _call_with_view(self, node, func, view, args, kws,
                       ret_map, starargs=None):
     """Call function using a specific Variable->Value view."""
-    log.debug("Calling function %r: %d signature(s)",
+    log.debug("call_with_view function %r: %d signature(s)",
               self.name, len(self.signatures))
+    log.debug("args in view: %r", [(a.values and view[a].data) for a in args])
 
     if not all(a.values for a in args):
       raise exceptions.ByteCodeTypeError(
@@ -1292,7 +1293,8 @@ class PyTDFunction(Function):
         # Even though we don't know which signature got picked, if the return
         # type is unique, we can use it.
         if unique_type:
-          log.debug("Returning %s", pytd.Print(unique_type))
+          log.debug("Unknown args. But return is always %s",
+                    pytd.Print(unique_type))
           result = self.vm.create_pytd_instance(
               "ret", ret_type, {}, node)
         else:

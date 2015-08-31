@@ -541,6 +541,22 @@ class MatchTest(unittest.TestCase):
     """)
     self.assertItemsEqual(["complex", "float"], mapping["~unknown4"])
 
+  def test_match_builtin_class(self):
+    mapping = self.parse_and_solve("""
+      class `~unknown1`:
+          pass
+      class `~unknown2`:
+          pass
+
+      class mylist<T>:
+        def __setitem__<N>(self, i: int, y: N) -> NoneType:
+          self := mylist<T or N>
+
+      class `~mylist`(nothing):
+        def __setitem__(self, i: int, y: `~unknown2`) -> `~unknown1`
+    """)
+    self.assertItemsEqual(["NoneType"], mapping["~unknown1"])
+
   def test_subclasses2(self):
     mapping = self.parse_and_solve("""
       class Foo:
