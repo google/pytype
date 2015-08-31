@@ -602,5 +602,16 @@ class BuiltinTests(test_inference.InferenceTest):
         def f(tz: datetime.tzinfo) -> NoneType
     """)
 
+  def testDivModWithUnknown(self):
+    with self.Infer("""
+      def f(x, y):
+        divmod(x, __any_object__)
+        return divmod(3, y)
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        def f(x: bool or int or float or complex or long,
+              y: bool or int or float or complex or long) -> tuple<int or float or complex or long>
+      """)
+
 if __name__ == "__main__":
   test_inference.main()

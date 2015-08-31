@@ -472,7 +472,6 @@ class ContainerTest(test_inference.InferenceTest):
         y: tuple<complex or float>
       """)
 
-  @unittest.skip("needs better handling of calls that contain unknowns")
   def testIndex(self):
     with self.Infer("""
       def f():
@@ -485,9 +484,10 @@ class ContainerTest(test_inference.InferenceTest):
         return l
     """, deep=True, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
-        def f() -> list<int or float or complex or bool or long>
+        # The element types aren't more precise since the solver doesn't know
+        # which element of the list gets modified.
+        def f() -> list<?>
       """)
-
 
 if __name__ == "__main__":
   test_inference.main()

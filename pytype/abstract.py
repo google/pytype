@@ -1042,7 +1042,8 @@ class PyTDSignature(object):
     self._bound_sig_cache = {}
 
   # pylint: disable=unused-argument
-  def call_with_view(self, node, func, view, args, kws, ret_map, starargs=None):
+  def call_with_view(self, node, func, view, args, kws, ret_map, starargs=None,
+                     record_call=False):
     """Call this signature. Used by PyTDFunction."""
     args_selected = [view[arg] for arg in args]
     kws_selected = {name: view[arg] for name, arg in kws.items()}
@@ -1067,7 +1068,8 @@ class PyTDSignature(object):
       # add the new sources
       for data in ret_map[t].data:
         ret_map[t].AddValue(data, sources, node)
-    self.vm.trace_call(func, args_selected, kws_selected, ret_map[t])
+    if record_call:
+      self.vm.trace_call(func, args_selected, kws_selected, ret_map[t])
     return node, ret_map[t], r.mutations
 
   def _call_with_values(self, node, arg_values, kw_values, view):
@@ -1278,41 +1280,57 @@ class PyTDFunction(Function):
     if not all(a.values for a in args):
       raise exceptions.ByteCodeTypeError(
           "Can't call function with <nothing> parameter")
+
     # If we're calling an overloaded pytd function with an unknown as a
     # parameter, we can't tell whether it matched or not. Hence, we don't know
     # which signature got called. Check if this is the case.
-    if len(self.signatures) > 1:
-      if any(isinstance(view[arg].data, Unknown)
-             for arg in chain(args, kws.values())):
-        unique_type = None
-        if len(self._return_types) == 1:
-          ret_type, = self._return_types
-          # TODO(kramm): This needs to do a deep scan
-          if not isinstance(ret_type, pytd.TypeParameter):
-            unique_type = ret_type
-        # Even though we don't know which signature got picked, if the return
-        # type is unique, we can use it.
-        if unique_type:
-          log.debug("Unknown args. But return is always %s",
-                    pytd.Print(unique_type))
-          result = self.vm.create_pytd_instance(
-              "ret", ret_type, {}, node)
-        else:
-          log.debug("Creating unknown return")
-          result = self.vm.create_new_unknown(
-              node, "<unknown return of " + self.name + ">", action="pytd_call")
-        if self._has_mutable:
-          # TODO(kramm): We only need to whack the type params that appear in
-          # a MutableParameter.
-          mutations = self._get_mutation_to_unknown(
-              node, (view[p].data for p in chain(args, kws.values())))
-        else:
-          mutations = []
-        self.vm.trace_call(func,
-                           [view[arg] for arg in args],
-                           {name: view[arg] for name, arg in kws.items()},
-                           result)
-        return node, result, mutations
+    if len(self.signatures) > 1 and any(isinstance(view[arg].data, Unknown)
+                                        for arg in chain(args, kws.values())):
+      return self.call_with_unknowns(node, func, view, args, kws,
+                                     ret_map, starargs)
+    else:
+      return self.find_matching_signature(node, func, view, args, kws,
+                                          ret_map, starargs, record_call=True)
+
+  def call_with_unknowns(self, node, func, view, args, kws, ret_map, starargs):
+    """Perform a function call that involves unknowns."""
+
+    # Make sure that at least one signature is possible:
+    self.find_matching_signature(node, func, view, args, kws, ret_map, starargs)
+
+    unique_type = None
+    if len(self._return_types) == 1:
+      ret_type, = self._return_types
+      # TODO(kramm): This needs to do a deep scan
+      if not isinstance(ret_type, pytd.TypeParameter):
+        unique_type = ret_type
+    # Even though we don't know which signature got picked, if the return
+    # type is unique, we can use it.
+    if unique_type:
+      log.debug("Unknown args. But return is always %s",
+                pytd.Print(unique_type))
+      result = self.vm.create_pytd_instance(
+          "ret", ret_type, {}, node)
+    else:
+      log.debug("Creating unknown return")
+      result = self.vm.create_new_unknown(
+          node, "<unknown return of " + self.name + ">", action="pytd_call")
+    if self._has_mutable:
+      # TODO(kramm): We only need to whack the type params that appear in
+      # a MutableParameter.
+      mutations = self._get_mutation_to_unknown(
+          node, (view[p].data for p in chain(args, kws.values())))
+    else:
+      mutations = []
+    self.vm.trace_call(func,
+                       [view[arg] for arg in args],
+                       {name: view[arg] for name, arg in kws.items()},
+                       result)
+    return node, result, mutations
+
+  def find_matching_signature(self, node, func, view, args, kws,
+                              ret_map, starargs, record_call=False):
+    """Try, in order, all pytd signatures until we find one that matches."""
 
     # We only take the first signature that matches, and ignore all after it.
     # This is because in the pytds for the standard library, the last
@@ -1322,12 +1340,14 @@ class PyTDFunction(Function):
     # def __init__(self, x: generator)
     # def __init__(self, x: object)
     # with the last signature only being used if none of the others match.
+
     error = None
     for sig in self.signatures:
       try:
         new_node, result, mutations = sig.call_with_view(node, func, view,
                                                          args, kws,
-                                                         ret_map, starargs)
+                                                         ret_map, starargs,
+                                                         record_call)
       except FailedFunctionCall as e:
         error = error or e
       else:
