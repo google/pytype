@@ -251,6 +251,7 @@ class unicode(basestring):
     def __init__(self, string, ...) -> NoneType
     def __init__(self) -> NoneType
     def __add__(self, y: str or unicode or bytearray) -> unicode
+    def __iadd__(self, y: str or unicode or bytearray) -> unicode
     def __contains__(self, y: str or unicode or bytearray) -> bool
     def __eq__(self, y: str or unicode or bytearray) -> bool
     def __ge__(self, y: str or unicode or bytearray) -> bool
