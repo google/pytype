@@ -348,6 +348,30 @@ class ImportTest(test_inference.InferenceTest):
         def f() -> int
     """)
 
+  def testDotPackage(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.py", """
+        from .bar import x
+      """)
+      d.create_file("bar.pytd", """x: int""")
+      ty = self.InferFromFile(filename=d["foo.py"],
+                              pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        x: int
+      """)
+
+  def testDotDotPackage(self):
+    with utils.Tempdir() as d:
+      d.create_file("baz/foo.py", """
+        from ..bar import x
+      """)
+      d.create_file("bar.pytd", """x: int""")
+      ty = self.InferFromFile(filename=d["baz/foo.py"],
+                              pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        x: int
+      """)
+
   def testDotDot(self):
     with utils.Tempdir() as d:
       d.create_file("foo/baz.pytd", """x: int""")

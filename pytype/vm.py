@@ -1281,17 +1281,31 @@ class VirtualMachine(object):
 
   # TODO(kramm): memoize
   def import_module(self, name, level):
-    """Import the module and return the module object."""
+    """Import the module and return the module object.
+
+    Args:
+      name: Name of the module. E.g. "sys".
+      level: Specifies whether to use absolute or relative imports.
+        -1: (Python <= 3.1) "Normal" import. Try both absolute and relative.
+         0: Absolute import.
+         1: "from . import abc"
+         2: "from .. import abc"
+         etc.
+    Returns:
+      An instance of abstract.Module or None if we couldn't find the module.
+    """
     if name:
-      # level:
-      # -1: (Python <= 3.1) "Normal" import. Try both absolute and relative.
-      #  0: Absolute import.
-      #  1: "from . import abc"
-      #  2: "from .. import abc"
-      assert level in [-1, 0]
-      ast = self.loader.import_name(name)
-      if level == -1 and self.loader.base_module and not ast:
-        ast = self.loader.import_relative_name(name)
+      if level <= 0:
+        assert level in [-1, 0]
+        ast = self.loader.import_name(name)
+        if level == -1 and self.loader.base_module and not ast:
+          ast = self.loader.import_relative_name(name)
+      else:
+        # "from .x import *"
+        base = self.loader.import_relative(level)
+        if base is None:
+          return None
+        ast = self.loader.import_name(base.name + "." + name)
     else:
       assert level > 0
       ast = self.loader.import_relative(level)

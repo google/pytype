@@ -2146,7 +2146,7 @@ class Module(LazyAbstractValue):
     node, val = super(Module, self).get_attribute(node, name, valself, valcls)
     if val is None:
       full_name = self.name + "." + name
-      mod = self.vm.import_module(full_name, -1)
+      mod = self.vm.import_module(full_name, 0)  # 0: absolute import
       if mod is None:
         log.warning("Couldn't find attribute / module %r", full_name)
       else:
