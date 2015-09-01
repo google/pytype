@@ -79,8 +79,8 @@ class Loader(object):
                   for name, module in self._modules.items()}
     for module in self._modules.values():
       if module.dirty:
-        module.ast.Visit(visitors.InPlaceLookupExternalClasses(module_map,
-                                                               True))
+        module.ast.Visit(
+            visitors.InPlaceLookupExternalClasses(module_map, True))
         module.dirty = False
 
   def _create_empty(self, module_name, filename):
@@ -104,18 +104,27 @@ class Loader(object):
                                  python_version=self.python_version)
     module = Module(module_name, filename, ast)
     self._modules[module_name] = module
+    self.resolve_ast(ast)
+    module.dirty = False
+    return ast
+
+  def resolve_ast(self, ast):
+    """Fill in all ExternalType.cls pointers."""
     deps = visitors.CollectDependencies()
     ast.Visit(deps)
-    for name in deps.modules:
-      if name not in self._modules:
-        self.import_name(name)
     if deps.modules:
-      module.dirty = True
-    self._resolve_all()
+      for name in deps.modules:
+        if name not in self._modules:
+          self.import_name(name)
+      self._resolve_all()
+      module_map = {name: module.ast
+                    for name, module in self._modules.items()}
+      ast.Visit(
+          visitors.InPlaceLookupExternalClasses(module_map, True))
     return ast
 
   def import_relative_name(self, name):
-    """IMPORT_NAME with level=-1. A name relative to the current direcory."""
+    """IMPORT_NAME with level=-1. A name relative to the current directory."""
     if self.base_module is None:
       raise ValueError("Attempting relative import in non-package.")
     path = self.base_module.split(".")[:-1]

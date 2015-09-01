@@ -494,6 +494,7 @@ def check_types(py_src, pytd_src, py_filename, pytd_filename,
                       import_error_is_fatal=import_error_is_fatal)
   loc, defs, _ = tracer.run_program(py_src, py_filename, run_builtins)
   ast = pytd_utils.ParsePyTD(pytd_src, pytd_filename, python_version)
+  tracer.loader.resolve_ast(ast)
   tracer.check_types(loc, defs, ast,
                      os.path.basename(py_filename),
                      os.path.basename(pytd_filename))

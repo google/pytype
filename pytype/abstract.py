@@ -1468,7 +1468,7 @@ class PyTDClass(LazyAbstractValue, Class):
     return Class.get_attribute(self, node, name, valself, valcls)
 
   def bases(self):
-    return [self.vm.convert_constant_to_value(parent.name, parent)
+    return [self.vm.convert_constant_to_value(pytd.Print(parent), parent)
             for parent in self.pytd_cls.parents]
 
   def _retrieve_member(self, name, pyval):
