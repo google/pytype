@@ -483,7 +483,7 @@ def check_types(py_src, pytd_src, py_filename, pytd_filename,
   """Verify a PyTD against the Python code."""
   tracer = CallTracer(python_version=python_version,
                       errorlog=errorlog,
-                      module_name=_get_module_name(py_src, pythonpath),
+                      module_name=_get_module_name(py_filename, pythonpath),
                       reverse_operators=reverse_operators,
                       cache_unknowns=cache_unknowns,
                       pythonpath=pythonpath,
