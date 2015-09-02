@@ -197,6 +197,17 @@ class ClassesTest(test_inference.InferenceTest):
             def get_z(self) -> complex
       """)
 
+  def testInheritFromList(self):
+    with self.Infer("""
+      class MyList(list):
+        def foo(self):
+          return getattr(self, '__str__')
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        class MyList(list<?>):
+          def foo(self) -> ?
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()

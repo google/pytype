@@ -137,6 +137,8 @@ class TypeMatch(utils.TypeMatcher):
     elif isinstance(t, pytd.AnythingType):
       # All types, even "?", inherit from object.
       return [pytd.NamedType("object")]
+    elif isinstance(t, pytd.GenericType):
+      return self.get_superclasses(t.base_type)
     else:
       raise NotImplementedError("Can't extract superclasses from %s", type(t))
 
