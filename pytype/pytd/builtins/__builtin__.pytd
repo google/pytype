@@ -123,7 +123,7 @@ def sum(sequence, ...) -> int
 def unichr(i: int) -> unicode
 def vars(...) -> dict<str, object>
 def zip(seq1, ...) -> list<tuple>  # TODO(pludemann): zip(seq1: iterator<...>, ...) -> list<tuple<...>>
-def zip() -> list
+def zip() -> list<nothing>
 def exit() -> NoneType raises SystemExit
 def quit() -> NoneType raises SystemExit
 def input() -> ?

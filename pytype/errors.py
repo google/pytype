@@ -42,7 +42,8 @@ class Error(object):
       return "Line %d, in %s" % (self.opcode.line, self.opcode.code.co_name)
 
   def __str__(self):
-    return self.position() + ":\n  " + self.message.replace("\n", "\n  ")
+    pos = self.position() + ":\n  " if self.opcode else ""
+    return pos + self.message.replace("\n", "\n  ")
 
 
 class ErrorLogBase(object):
@@ -129,4 +130,13 @@ class ErrorLog(ErrorLogBase):
     pytd_type = pytd_utils.JoinTypes(t.get_instance_type()
                                      for t in base_var.data)
     self.error(opcode, "Invalid base class: %s", pytd.Print(pytd_type))
+
+  def missing_definition(self, item, pytd_filename, py_filename):
+    self.error(None, "%s %s declared in pytd %s, but not defined in %s",
+               type(item).__name__, item.name, pytd_filename, py_filename)
+
+  def bad_return_type(self, opcode, unused_function, actual, expected):
+    self.error(opcode, "return type is %s, should be %s",
+               pytd.Print(actual.to_type()),
+               pytd.Print(expected))
 

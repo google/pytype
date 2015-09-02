@@ -116,7 +116,7 @@ class CallTracer(vm.VirtualMachine):
         cls.AssignToNewVariable(cls.data.name, node), self
     ).to_variable(node, name=cls.data.name)
 
-  def analyze_class(self, val, node):
+  def init_class(self, node, val):
     instance = self.instantiate(val, node)
     cls = val.data
     node, init = cls.get_attribute(node, "__init__", instance.values[0], val)
@@ -124,7 +124,11 @@ class CallTracer(vm.VirtualMachine):
     if init:
       bound_init = self.bind_method("__init__", init, instance, clsvar, node)
       node = self.analyze_method_var("__init__", bound_init, node)
-    for name, methodvar in sorted(cls.members.items()):
+    return node, clsvar, instance
+
+  def analyze_class(self, val, node):
+    node, clsvar, instance = self.init_class(node, val)
+    for name, methodvar in sorted(val.data.members.items()):
       b = self.bind_method(name, methodvar, instance, clsvar, node)
       node2 = self.analyze_method_var(name, b, node)
       node2.ConnectTo(node)
@@ -280,6 +284,40 @@ class CallTracer(vm.VirtualMachine):
     ty = ty.Visit(visitors.DefaceUnresolved([ty, self.loader.concat_all()]))
     return ty
 
+  def _create_call_arg(self, name, t, node):
+    if t == pytd.ClassType("object"):
+      # As an arg, "object" means: we can use anything for this argument,
+      # because everything inherits from object.
+      # TODO(kramm): Maybe we should use AnythingType for params without type.
+      return self.create_new_unsolvable(node, name)
+    else:
+      return self.create_pytd_instance(name, t, {}, node)
+
+  def _check_function(self, pytd_function, f, node, skip_self=False):
+    """Check that a function or method is compatible with its PYTD."""
+    for sig in pytd_function.signatures:
+      args = [self._create_call_arg(name, t, node)
+              for name, t in sig.params[(1 if skip_self else 0):]]
+      nominal_return = self.convert_constant_to_value("ret", sig.return_type)
+      for val in f.values:
+        fvar = val.AssignToNewVariable("f", node)
+        _, retvar = self.call_function_in_frame(node, fvar, args, None, None)
+        if retvar.values:
+          for combination in utils.deep_variable_product([retvar]):
+            view = {value.variable: value for value in combination}
+            match = abstract.match_var_against_type(retvar, nominal_return,
+                                                    {}, node, view)
+            if match is None:
+              if isinstance(val.data, (abstract.InterpreterFunction,
+                                       abstract.BoundInterpreterFunction)):
+                self.errorlog.bad_return_type(
+                    val.data.get_first_opcode(),
+                    pytd_function, view[retvar].data, sig.return_type)
+              else:
+                log.error("%s is not a function?", val.data.name)
+        else:
+          log.error("Couldn't call %s", pytd_function.name)
+
   def check_types(self, node, defs, ast, py_filename, pytd_filename):
     """Verify that the types declared in PyTD work with the Python code.
 
@@ -299,24 +337,23 @@ class CallTracer(vm.VirtualMachine):
     # TODO(kramm): Do much more checking here.
     for item in ast.functions + ast.classes + ast.constants:
       if item.name not in defs:
-        log.error("%s %s declared in pytd %s, but not defined in %s",
-                  type(item).__name__, item.name, pytd_filename, py_filename)
-    for f in ast.functions:
-      for sig in f.signatures:
-        args = tuple(self.create_pytd_instance(name, t, {}, node)
-                     for name, t in sig.params)
-        nominal_return = self.convert_constant_to_value("ret", sig.return_type)
-        for val in defs[f.name].values:
-          fvar = val.AssignToNewVariable("f", node)
-          _, retvar = self.call_function_in_frame(node, fvar, args, None, None)
-          for combination in utils.deep_variable_product([retvar]):
-            view = {value.variable: value for value in combination}
-            match = abstract.match_var_against_type(retvar, nominal_return,
-                                                    {}, node, view)
-            if match is None:
-              log.error("return type is %s, should be %s",
-                        pytd.Print(view[retvar].data.to_type()),
-                        pytd.Print(sig.return_type))
+        self.errorlog.missing_definition(item, pytd_filename, py_filename)
+
+    if self.errorlog.errors:
+      return
+
+    for pytd_function in ast.functions:
+      self._check_function(pytd_function, defs[pytd_function.name], node)
+
+    for pytd_cls in ast.classes:
+      cls = defs[pytd_cls.name]
+      for val in cls.values:
+        # TODO(kramm): The call to the constructor of this should use the pytd.
+        node2, _, instance = self.init_class(node, val)
+        for pytd_method in pytd_cls.methods:
+          _, method = self._retrieve_attr(node, instance,
+                                          pytd_method.name, errors=True)
+          self._check_function(pytd_method, method, node2, skip_self=True)
 
 
 def pretty_assignment(v, short=False):

@@ -1802,6 +1802,9 @@ class InterpreterFunction(Function):
   # 'func_{code, name, defaults, globals, locals, dict, closure},
   # '__name__', '__dict__', '__doc__', '_vm', '_func'
 
+  def get_first_opcode(self):
+    return self.code.co_code[0]
+
   def is_closure(self):
     return self.closure is not None
 
@@ -2032,7 +2035,10 @@ class BoundFunction(AtomicAbstractValue):
 
 
 class BoundInterpreterFunction(BoundFunction):
-  pass
+  """The method flavor of InterpreterFunction."""
+
+  def get_first_opcode(self):
+    return self.underlying.code.co_code[0]
 
 
 class BoundPyTDFunction(BoundFunction):
