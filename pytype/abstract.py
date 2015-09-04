@@ -1485,7 +1485,7 @@ class PyTDClass(LazyAbstractValue, Class):
 
   def call(self, node, func, args, kws, starargs=None):
     value = Instance(self.vm.convert_constant(
-        self.name + ".__class__", self.pytd_cls), self.vm)
+        self.name, self.pytd_cls), self.vm)
 
     for type_param in self.pytd_cls.template:
       value.type_parameters[type_param.name] = self.vm.program.NewVariable(
@@ -1617,7 +1617,7 @@ class InterpreterClass(SimpleAbstractValue, Class):
     # We allow only one "instance" per code location, regardless of call stack.
     key = self.vm.frame.current_opcode
     if key not in self._instance_cache:
-      cls = self.vm.program.NewVariable("__class__")
+      cls = self.vm.program.NewVariable(self.name)
       cls.AddValue(self, [value], node)
       self._instance_cache[key] = Instance(cls, self.vm)
     return self._instance_cache[key]

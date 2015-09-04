@@ -49,7 +49,7 @@ class permutations:
     pass
 
 class product:
-    pass
+    def __init__(self, ...) -> NoneType
 
 class repeat:
     def __length_hint__() -> int raises TypeError

@@ -367,6 +367,13 @@ class InferenceTest(unittest.TestCase):
     errorlog.print_to_stderr()
     raise AssertionError("Couldn't find regexp %r in errors" % regexp)
 
+  def assertErrorLogDoesNotContain(self, errorlog, regexp):
+    for error in errorlog.errors:
+      if re.compile(regexp, re.I | re.S).search(str(error)):
+        print >>sys.stderr, "Found regexp %r in errors:" % regexp
+        errorlog.print_to_stderr()
+        raise AssertionError("Found regexp %r in errors" % regexp)
+
   def Infer(self, srccode, deep=False, solve_unknowns=False,
             reverse_operators=True, extract_locals=False, extra_verbose=False,
             report_errors=True, pythonpath=(), find_pytd_import_ext=".pytd"):

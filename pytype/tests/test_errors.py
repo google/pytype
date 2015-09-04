@@ -59,5 +59,31 @@ class ErrorTest(test_inference.InferenceTest):
     # "Line 2, in <module>: Invalid base class: `~unknown0`"
     self.assertErrorLogContains(errors, r"Invalid base class")
 
+  def testInvalidIteratorFromImport(self):
+    _, errors = self.InferAndCheck("""
+      import codecs
+      def f():
+        for row in codecs.Codec():
+          pass
+    """)
+    # "Line 4, in f: No attribute '__iter__' on Codec"
+    self.assertErrorLogContains(
+        errors, r"line 4.*No attribute.*__iter__.*on Codec")
+    self.assertErrorLogDoesNotContain(
+        errors, "__class__")
+
+  def testInvalidIteratorFromClass(self):
+    _, errors = self.InferAndCheck("""
+      class A(object):
+        pass
+      def f():
+        for row in A():
+          pass
+    """)
+    self.assertErrorLogContains(
+        errors, r"line 5.*No attribute.*__iter__.*on A")
+    self.assertErrorLogDoesNotContain(
+        errors, "__class__")
+
 if __name__ == "__main__":
   test_inference.main()
