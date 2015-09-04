@@ -96,8 +96,7 @@ def min<T>(iterable: list<T>, ...) -> T
 def min<T>(iterable: tuple<T>, ...) -> T
 def min<T>(iterable: set<T>, ...) -> T
 def min<T>(iterable: iterator<T>, ...) -> T
-def next<T>(iterator: iterator<T>, ...) -> T
-def next<T>(generator: generator<T>, ...) -> T
+def next PYTHONCODE
 def oct(number: int) -> str
 # TODO(pludemann): Python3 allows open(int or str or bytes or memoryview, ...)
 # TODO(pludemann): Python3: encapsulate details of file (str, bytes) based on mode

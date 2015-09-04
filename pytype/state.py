@@ -210,6 +210,7 @@ class Frame(object):
 
     self.return_variable = self.vm.program.NewVariable(
         "return(frame:" + f_code.co_name + ")")
+    self.yield_variable = self.vm.program.NewVariable("yield")
 
     # A closure g communicates with its outer function f through two
     # fields in CodeType (both of which are tuples of strings):

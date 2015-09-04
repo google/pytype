@@ -1934,8 +1934,11 @@ class InterpreterFunction(Function):
       ret = self.vm.program.NewVariable(old_ret.name, old_ret.data, [], node)
       return node, ret
     if self.code.co_flags & loadmarshal.CodeType.CO_GENERATOR:
-      generator = Generator(frame, self.vm).to_variable(node, self.name)
-      node_after_call, ret = node, generator
+      generator = Generator(frame, self.vm)
+      # Run the generator right now, even though the program didn't call it,
+      # because we need to know the contained type for futher matching.
+      node2, _ = generator.run_until_yield(node)
+      node_after_call, ret = node2, generator.to_variable(node2, self.name)
     else:
       node_after_call, ret = self.vm.run_frame(frame, node)
     self._call_records[callkey] = (callargs, ret, node_after_call)
@@ -2045,7 +2048,7 @@ class BoundPyTDFunction(BoundFunction):
   pass
 
 
-class Generator(AtomicAbstractValue):
+class Generator(Instance):
   """A representation of instances of generators.
 
   (I.e., the return type of coroutines).
@@ -2054,15 +2057,9 @@ class Generator(AtomicAbstractValue):
   TYPE_PARAM = "T"  # See class generator in pytd/builtins/__builtin__.pytd
 
   def __init__(self, generator_frame, vm):
-    super(Generator, self).__init__("generator", vm)
+    super(Generator, self).__init__(vm.generator_type, vm)
     self.generator_frame = generator_frame
-    self.retvar = None
-
-  def _next(self, unused_value=None):
-    # TODO(kramm): "send" value to generator:
-    # self.generator_frame.push(value or self.vm.make_none())
-    # Run the generator, by pushing its frame and running it:
-    return self.vm.resume_frame(self.generator_frame)
+    self.runs = 0
 
   def get_attribute(self, node, name, valself=None, valcls=None):
     if name == "__iter__":
@@ -2070,40 +2067,28 @@ class Generator(AtomicAbstractValue):
       return node, f.to_variable(node, name)
     elif name in ["next", "__next__"]:
       return node, self.to_variable(node, name)
+    elif name == "throw":
+      # We don't model exceptions in a way that would allow us to induce one
+      # inside a coroutine. So just return ourselves, mapping the call of
+      # throw() to a next() (which won't be executed).
+      return node, self.to_variable(node, name)
     else:
       return node, None
 
   def __iter__(self, node):  # pylint: disable=non-iterator-returned
     return node, self.to_variable(node, "__iter__")
 
-  def get_yielded_type(self):
-    if not self.retvar:
-      try:
-        self.retvar = self._next()
-      except StopIteration:
-        # Happens for iterators that return zero entries.
-        log.info("Iterator raised StopIteration before first entry")
-        self.retvar = self.vm.program.NewVariable("StopIteration")
-    return self.retvar
+  def run_until_yield(self, node):
+    if self.runs == 0:  # Optimization: We only run the coroutine once.
+      node, _ = self.vm.resume_frame(node, self.generator_frame)
+      contained_type = self.generator_frame.yield_variable
+      self.type_parameters[self.TYPE_PARAM] = contained_type
+      self.runs += 1
+    return node, self.type_parameters[self.TYPE_PARAM]
 
   def call(self, node, unused_func, args, kws, starargs=None):
     """Call this generator or (more common) its "next" attribute."""
-    return node, self.get_yielded_type()
-
-  def match_against_type(self, other_type, subst, node, view):
-    if other_type.name == "object":
-      return subst
-    elif (isinstance(other_type, ParameterizedClass) and
-          other_type.base_cls.name == "generator"):
-      return match_var_against_type(self.get_yielded_type(),
-                                    other_type.type_parameters[self.TYPE_PARAM],
-                                    subst, node, view)
-    else:
-      log.warn("Matching generator against wrong type (%r)", other_type)
-      return None
-
-  def to_type(self):
-    return pytd.ClassType("generator")
+    return self.run_until_yield(node)
 
 
 class Nothing(AtomicAbstractValue, FormalType):

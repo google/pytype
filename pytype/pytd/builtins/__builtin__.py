@@ -23,6 +23,10 @@ def repr(x):
   return ''
 
 
+def next(iterator, unused_default=None):
+  return iterator.next()
+
+
 class property(object):
   """Property method decorator."""
   # TODO(kramm): Support for setter(), getter(), deleter()

@@ -132,7 +132,6 @@ class VirtualMachine(object):
     self.frames = []
     # The current frame.
     self.frame = None
-    self.return_value = None
 
     self.program = typegraph.Program()
 
@@ -175,6 +174,8 @@ class VirtualMachine(object):
     self.dict_type = self.convert_constant("dict", dict)
     self.function_type = self.convert_constant(
         "function_type", types.FunctionType)
+    self.generator_type = self.convert_constant(
+        "generator_type", types.GeneratorType)
 
     self.vmbuiltins = {b.name: b for b in (self.loader.builtins.constants +
                                            self.loader.builtins.classes +
@@ -205,11 +206,6 @@ class VirtualMachine(object):
         state = bytecode_fn(state, op)
       else:
         state = bytecode_fn(state)
-    except StopIteration:
-      # TODO(kramm): Use abstract types for this.
-      state = state.set_exception(
-          sys.exc_info()[0], sys.exc_info()[1], None)
-      state = state.set_why("exception")
     except RecursionException as e:
       # This is not an error - it just means that the block we're analyzing
       # goes into a recursion, and we're already two levels deep.
@@ -677,7 +673,10 @@ class VirtualMachine(object):
     elif isinstance(pyval, (loadmarshal.CodeType, blocks.OrderedCode)):
       return abstract.AbstractOrConcreteValue(
           pyval, self.primitive_classes[types.CodeType], self)
-    elif pyval.__class__ in [types.FunctionType, types.ModuleType, type]:
+    elif pyval.__class__ in [types.FunctionType,
+                             types.ModuleType,
+                             types.GeneratorType,
+                             type]:
       try:
         # TODO(ampere): This will incorrectly handle any object that is named
         # the same as a builtin but is distinct. It will need to be extended to
@@ -880,14 +879,12 @@ class VirtualMachine(object):
     exctype = self.program.NewVariable("exctype", [], [], state.node)
     return state.push(tb, value, exctype)
 
-  def resume_frame(self, frame):
-    # TODO(kramm): The concrete interpreter did this:
-    # frame.f_back = self.frame
-    # log.info("resume_frame: %r", frame)
-    # val = self.run_frame(frame)
-    # frame.f_back = None
-    # return val
-    raise StopIteration()
+  def resume_frame(self, node, frame):
+    frame.f_back = self.frame
+    log.info("resume_frame: %r", frame)
+    node, val = self.run_frame(frame, node)
+    frame.f_back = None
+    return node, val
 
   def backtrace(self):
     items = []
@@ -1792,10 +1789,7 @@ class VirtualMachine(object):
     self.store_jump(op.target, state.pop_and_discard())
     state, f = self.load_attr(state, state.top(), "next")
     state = state.push(f)
-    try:
-      return self.call_function_from_stack(state, 0, [])
-    except StopIteration:
-      return state
+    return self.call_function_from_stack(state, 0, [])
 
   def byte_BREAK_LOOP(self, state):
     return state.set_why("break")
@@ -1808,7 +1802,6 @@ class VirtualMachine(object):
     # pushed on the stack for both, so continue puts the jump destination
     # into return_value.
     # TODO(kramm): This probably doesn't work.
-    self.return_value = op.target
     return state.set_why("continue")
 
   def byte_SETUP_EXCEPT(self, state, op):
@@ -1995,7 +1988,8 @@ class VirtualMachine(object):
     return self.call_function_from_stack(state, op.arg, args, kwargs)
 
   def byte_YIELD_VALUE(self, state):
-    state, self.return_value = state.pop()
+    state, ret = state.pop()
+    self.frame.yield_variable.PasteVariable(ret, state.node)
     return state.set_why("yield")
 
   def byte_IMPORT_NAME(self, state, op):
