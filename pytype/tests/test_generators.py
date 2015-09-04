@@ -33,6 +33,14 @@ class GeneratorTest(test_inference.InferenceTest):
         z: list<int>
       """)
 
+  def testNextWithDefault(self):
+    with self.Infer("""
+      def f():
+        return next((i for i in [1,2,3]), None)
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        def f() -> int or NoneType
+      """)
 
 if __name__ == "__main__":
   test_inference.main()

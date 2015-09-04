@@ -7,6 +7,7 @@ Each PYTHONCODE item in __builtin__.pytd will have a single python `def` here.
 # pylint: disable=redefined-builtin
 # pylint: disable=invalid-name
 # pylint: disable=unused-argument
+# pylint: disable=undefined-variable
 
 
 def abs(number):
@@ -23,8 +24,11 @@ def repr(x):
   return ''
 
 
-def next(iterator, unused_default=None):
-  return iterator.next()
+def next(iterator, default=__undefined__):
+  if __random__:
+    return iterator.next()
+  else:
+    return default
 
 
 class property(object):

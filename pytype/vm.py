@@ -177,6 +177,8 @@ class VirtualMachine(object):
     self.generator_type = self.convert_constant(
         "generator_type", types.GeneratorType)
 
+    self.undefined = self.program.NewVariable("undefined")
+
     self.vmbuiltins = {b.name: b for b in (self.loader.builtins.constants +
                                            self.loader.builtins.classes +
                                            self.loader.builtins.functions)}
@@ -1108,8 +1110,13 @@ class VirtualMachine(object):
     elif name == "__random__":
       # for more pretty branching tests
       return self.primitive_class_instances[bool]
+    else:
+      return None
 
   def load_builtin(self, state, name):
+    if name == "__undefined__":
+      # For values that don't exist. (Unlike None, which is a valid object)
+      return state, self.undefined
     special = self.load_special_builtin(name)
     if special:
       return state, special.to_variable(state.node, name)
