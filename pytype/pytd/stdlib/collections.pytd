@@ -29,7 +29,9 @@ class OrderedDict:
 class defaultdict:
   pass
 
-class Counter(dict<?, ?>):
+# Strictly speaking, this should be dict<?, ?>. (E.g. it's legal to do
+# collections.Counter()[x] = 'foobar'.) But the counts are typically integers.
+class Counter(dict<?, int>):
     __doc__: str
     fromkeys: classmethod
     def __add__(self, other: dict<object, object>) -> Counter or NotImplementedType
