@@ -42,5 +42,29 @@ class GeneratorTest(test_inference.InferenceTest):
         def f() -> int or NoneType
       """)
 
+  def testIterMatch(self):
+    with self.Infer("""
+      class Foo(object):
+        def bar(self):
+          for x in __any_object__:
+            return x
+        def __iter__(self):
+          return generator()
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        class Foo:
+          def bar(self) -> ?
+          def __iter__(self) -> generator<nothing>
+      """)
+
+  def testCoroutineType(self):
+    with self.Infer("""
+      def foo(self):
+        yield 3
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        def foo(self) -> generator<int>
+      """)
+
 if __name__ == "__main__":
   test_inference.main()

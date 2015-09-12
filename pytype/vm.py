@@ -173,9 +173,9 @@ class VirtualMachine(object):
     self.set_type = self.convert_constant("set", set)
     self.dict_type = self.convert_constant("dict", dict)
     self.function_type = self.convert_constant(
-        "function_type", types.FunctionType)
+        "function", types.FunctionType)
     self.generator_type = self.convert_constant(
-        "generator_type", types.GeneratorType)
+        "generator", types.GeneratorType)
 
     self.undefined = self.program.NewVariable("undefined")
 
