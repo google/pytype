@@ -382,8 +382,11 @@ class TypeMatch(utils.TypeMatcher):
       # TODO(kramm): This should do MRO order, not depth-first.
       for base in cls2.parents:
         if isinstance(base, pytd.AnythingType):
-          # AnythingType can contain any method.
-          return booleq.TRUE
+          # AnythingType can contain any method. However, that would mean that
+          # a class that inherits from AnythingType contains any method
+          # imaginable, and hence is a match for anything. To prevent the bad
+          # results caused by that, return FALSE here.
+          return booleq.FALSE
         elif isinstance(base, pytd.ClassType):
           cls = base.cls
           implication = self.match_Function_against_Class(f1, cls, subst, cache)
