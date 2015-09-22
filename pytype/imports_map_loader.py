@@ -53,26 +53,6 @@ class FilePaths(collections.namedtuple(
     return "FilePaths(%r + %r + %r)" % (prefix, common, suffix)
 
 
-# Unless otherwise stated, the fields are set(FilePath).
-# The short_path and path components of the FilePath might refer
-# to different files (e.g., in src_out)
-ImportsInfo = collections.namedtuple(
-    "ImportsInfo", [
-        "label",                    # rule label (string)
-        "src_out_pairs_py",         # Args to pytype: short .py, long .pytd
-        "src_out_pairs_pytd",       # short .pytd, long .pytd
-        "srcs_filter_py",           # files.srcs, .py only
-        "srcs_filter_pytd",          # files.srcs, .pytd only
-        "pytype_provider_deps_files",   # transitive src_out_pairs_py
-        "transitive_inputs",        # transitive pytd (short_path, path)
-        "py_transitive_srcs",       # transitive .py.transitive_sources
-        "py_deps",                  # {dependency: list(FilePath)}
-        "pytype_deps",              # {dependency: list(FilePath)}
-        "py_deps_files",            # list(FilePath) for all py_* dependencies
-        "pytype_deps_files",        # list(FilePath) for all pytype dependencies
-        ])
-
-
 def build_imports_map(options_info_path, empty_init_path, src_out):
   """Create a file mapping from a .imports_info file.
 
@@ -92,15 +72,15 @@ def build_imports_map(options_info_path, empty_init_path, src_out):
     Dict of .py short_path to list of .pytd path or None if no options_info_path
 
   """
-  imports_info = _read_imports_info(options_info_path)
+  pytype_provider_deps_files = _read_pytype_provider_deps_files(
+      options_info_path)
   # build up a dict of short_path -> list of paths
   imports_multimap = collections.defaultdict(list)
-  for short_path, path in imports_info.pytype_provider_deps_files:
+  for short_path, path in pytype_provider_deps_files:
     path_key, path_ext = os.path.splitext(short_path)
     # TODO(pludemann): parameterize this check:
     assert path_ext in (".py", ".pytd"), (path_key, path_ext, short_path)
     imports_multimap[path_key].append(path)
-
 
   # Sort the paths (that is, the values in the multimap), so that "#" items are
   # first (using os.path.basename, because that's where the "#" is
@@ -141,11 +121,30 @@ def build_imports_map(options_info_path, empty_init_path, src_out):
       log.error("end tree walk of files from '.'")
       raise
 
-  return imports_map
+  # Add the potential directory nodes for adding "__init__", because some build
+  # systems automatically create __init__.py in empty directories. These are
+  # added with the path name appended with "/" (os.sep), mapping to the empty
+  # file.  See also load_pytd._import_file which also checks for an empty
+  # directory and acts as if an empty __init__.py is there.
+  # TODO(pludemann): remove either this code or the code in pytd_load.
+  dir_paths = {}
+  for short_path, path in sorted(imports_map.items()):
+    dir_paths[short_path] = path
+    short_path_pieces = short_path.split(os.sep)
+    # If we have a mapping file foo/bar/quux.py', then the pieces are ["foo",
+    # "bar", "quux"] and we want to add foo/__init__.py and foo/bar/__init__.py
+    for i in range(1, len(short_path_pieces)):
+      intermediate_dir_init = os.path.join(*(
+          short_path_pieces[:i] + ["__init__"]))
+      if (intermediate_dir_init not in imports_map and
+          intermediate_dir_init not in dir_paths):
+        log.warn("Created empty __init__ %r", intermediate_dir_init)
+        dir_paths[intermediate_dir_init] = empty_init_path
+  return dir_paths
 
 
-def _read_imports_info(options_info_path):
-  """Read file options_info_path, producing ImportsInfo."""
+def _read_pytype_provider_deps_files(options_info_path):
+  """Read file options_info_path, producing pytype_provider_deps_files."""
   if options_info_path is None:
     return  None
   # Read the imports map file and turn it into a dict(key: list-of-items).
@@ -154,49 +153,11 @@ def _read_imports_info(options_info_path):
   # Throw away empty lines and sort the list.
   # Group by the first token in each line(list of tokens)
   # Transform into a dict, mapping to list of FilePaths.
+  # Extract the "pytype_provider_deps_files", ignoring the rest
   imports_dict = collections.defaultdict(
       list,
       {k: [x[1:] for x in gr] for k, gr in itertools.groupby(
           sorted(filter(None, map(shlex.split, open(options_info_path)))),
           operator.itemgetter(0))})
-
-  # TODO(pludemann): Delete all that aren't used here.
-  label, = imports_dict["label"]
-  label, = label  # label = imports_dict["label"][0][0] with verification
-  imports_info = ImportsInfo(
-      label=label,
-      src_out_pairs_py=frozenset(
-          FilePaths(*f) for f in imports_dict["src_out_pairs_py"]),
-      src_out_pairs_pytd=frozenset(
-          FilePaths(*f) for f in imports_dict["src_out_pairs_pytd"]),
-      srcs_filter_py=frozenset(
-          FilePaths(*f) for f in imports_dict["srcs_filter_py"]),
-      srcs_filter_pytd=frozenset(
-          FilePaths(*f) for f in imports_dict["srcs_filter_pytd"]),
-      pytype_provider_deps_files=frozenset(
-          FilePaths(*f) for f in imports_dict["pytype_provider_deps_files"]),
-      py_transitive_srcs=frozenset(
-          FilePaths(*f) for f in imports_dict["py_transitive_srcs"]),
-      py_deps={dep[0]: _list_to_file_paths(dep[1:])
-               for dep in imports_dict["py_deps"]},
-      pytype_deps={dep[0]: _list_to_file_paths(dep[1:])
-                   for dep in imports_dict["pytype_deps"]},
-      py_deps_files=frozenset(
-          FilePaths(*f) for f in imports_dict["py_deps_files"]),
-      pytype_deps_files=frozenset(
-          FilePaths(*f) for f in imports_dict["pytype_deps_files"]),
-      transitive_inputs=frozenset(
-          FilePaths(*f) for f in imports_dict["transitive_inputs"]),
-      )
-  # Program sanity check: anything in imports_dict that wasn't processed
-  # (this catches some typos, but not all)
-  if set(imports_dict) > set(vars(imports_info)):
-    raise ValueError("Unprocessed keys in imports_dict: %r" % sorted(
-        set(imports_dict) - set(vars(imports_info))))
-  return imports_info
-
-
-def _list_to_file_paths(items):
-  """Make FilePaths list from linear list of short_path, path, ..."""
-  return [FilePaths(short_path=short_path, path=path)
-          for short_path, path in zip(items[0::2], items[1::2])]
+  return frozenset(
+      FilePaths(*f) for f in imports_dict["pytype_provider_deps_files"])

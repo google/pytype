@@ -2,10 +2,8 @@
 
 import os
 import sys
-import tempfile
 import unittest
 
-from pytype import imports_map_loader
 from pytype import load_pytd
 from pytype import utils
 
@@ -150,133 +148,6 @@ class ImportPathsTest(unittest.TestCase):
             print >>sys.stderr, "***Loading", module_name
             self.assertTrue(loader.import_name(module_name),
                             msg="Failed loading " + module_name)
-
-  def testFilePaths(self):
-    """Test the various permutations of output from FilePaths."""
-    # Test both repr and str, in case there's still any test that depends
-    # on the precise output form. Note that the output form is similar to
-    # the args to _MakeFilePaths.
-    for to_str_fn in repr, str:
-      self.assertEqual(
-          "FilePaths('abc.xyz')",
-          to_str_fn(imports_map_loader.FilePaths(path="abc.xyz",
-                                                 short_path="abc.xyz")))
-      self.assertEqual(
-          "FilePaths(short_path='mmm', path='abcdefg')",
-          to_str_fn(imports_map_loader.FilePaths(short_path="mmm",
-                                                 path="abcdefg")))
-      self.assertEqual(
-          "FilePaths('prefix/' + 'common' + '.suffix')",
-          to_str_fn(imports_map_loader.FilePaths(short_path="common",
-                                                 path="prefix/common.suffix")))
-      self.assertEqual(
-          "FilePaths('prefix/' + 'common' + '')",
-          to_str_fn(imports_map_loader.FilePaths(short_path="common",
-                                                 path="prefix/common")))
-      self.assertEqual(
-          "FilePaths('' + 'common' + '.suffix')",
-          to_str_fn(imports_map_loader.FilePaths(short_path="common",
-                                                 path="common.suffix")))
-      # In the following, note the stuttered "path/to/"
-      self.assertEqual(
-          "FilePaths('BINDIR/bin/path/to/' + 'path/to/src/b.py' + '~~pytype')",
-          to_str_fn(imports_map_loader.FilePaths(
-              short_path="path/to/src/b.py",
-              path="BINDIR/bin/path/to/path/to/src/b.py~~pytype")))
-      self.assertEqual(
-          "FilePaths('BINDIR/bin/path/to/' + 'path/to/src/b.py' + '~~pytype')",
-          to_str_fn(_MakeFilePaths(
-              "BINDIR/bin/path/to/",
-              "path/to/src/b.py", "~~pytype")))
-
-  @unittest.skip("Needs to be updated")
-  def testReadImportsInfo(self):
-    """Test the reading an imports_info file into ImportsInfo."""
-    # TODO(pludemann): This is slightly out of date and doesn't cover all
-    #                  the fields in ImportsInfo; but it does exercise the
-    #                  various ways of grouping the input into ImportsInfo.
-    with tempfile.NamedTemporaryFile() as fi:
-      fi.write("""\
-label "path/to/b_lib~~pytype"
-
-src_to_out "path/to/src/b.py" "BINDIR/bin/path/to/path/to/src/b.py~~pytype"
-
-transitive "path/to/src2/d.py" "path/to/src2/d.py"
-transitive "path/to/src/__init__.py" "path/to/src/__init__.py"
-transitive "path/to/src/c.py" "path/to/src/c.py"
-transitive "path/to/src/c2.py" "path/to/src/c2.py"
-transitive "path/to/src/c3.py" "BINDIR/bin/path/to/src/c3.py"
-
-python_deps "path/to/d_lib" "path/to/src2/d.py" "path/to/src2/d.py"
-python_deps "path/to/c_lib" "path/to/src/__init__.py" "path/to/src/__init__.py" "path/to/src/c.py" "path/to/src/c.py" "path/to/src/c2.py" "path/to/src/c2.py" "path/to/src/c3.py" "BINDIR/bin/path/to/src/c3.py"
-
-pytype_deps "path/to/d_lib~~pytype" "path/to/path/to/src2/d.py~~pytype" "BINDIR/bin/path/to/path/to/src2/d.py~~pytype" "path/to/d_lib~~pytype.imports_info" "BINDIR/bin/path/to/d_lib~~pytype.imports_info"
-pytype_deps "path/to/c_lib~~pytype" "path/to/path/to/src/__init__.py~~pytype" "BINDIR/bin/path/to/path/to/src/__init__.py~~pytype" "path/to/path/to/src/c.py~~pytype" "BINDIR/bin/path/to/path/to/src/c.py~~pytype" "path/to/path/to/src/c2.py~~pytype" "BINDIR/bin/path/to/path/to/src/c2.py~~pytype" "path/to/path/to/src/c3.py~~pytype" "BINDIR/bin/path/to/path/to/src/c3.py~~pytype" "path/to/c_lib~~pytype.imports_info" "BINDIR/bin/path/to/c_lib~~pytype.imports_info"
-
-python_dep_files "path/to/src2/d.py" "path/to/src2/d.py"
-python_dep_files "path/to/src/__init__.py" "path/to/src/__init__.py"
-python_dep_files "path/to/src/c.py" "path/to/src/c.py"
-python_dep_files "path/to/src/c2.py" "path/to/src/c2.py"
-python_dep_files "path/to/src/c3.py" "BINDIR/bin/path/to/src/c3.py"
-
-pytype_dep_files "path/to/path/to/src2/d.py~~pytype" "BINDIR/bin/path/to/path/to/src2/d.py~~pytype"
-pytype_dep_files "path/to/d_lib~~pytype.imports_info" "BINDIR/bin/path/to/d_lib~~pytype.imports_info"
-pytype_dep_files "path/to/path/to/src/__init__.py~~pytype" "BINDIR/bin/path/to/path/to/src/__init__.py~~pytype"
-pytype_dep_files "path/to/path/to/src/c.py~~pytype" "BINDIR/bin/path/to/path/to/src/c.py~~pytype"
-pytype_dep_files "path/to/path/to/src/c2.py~~pytype" "BINDIR/bin/path/to/path/to/src/c2.py~~pytype"
-pytype_dep_files "path/to/path/to/src/c3.py~~pytype" "BINDIR/bin/path/to/path/to/src/c3.py~~pytype"
-pytype_dep_files "path/to/c_lib~~pytype.imports_info" "BINDIR/bin/path/to/c_lib~~pytype.imports_info"
-""")
-      fi.seek(0)  # ready for reading
-      self.assertEqual(
-          load_pytd._read_imports_info(fi.name),
-          load_pytd.ImportsInfo(
-              label="path/to/b_lib~~pytype",
-              src_to_out=[
-                  _MakeFilePaths("BINDIR/bin/path/to/", "path/to/src/b.py", "~~pytype")],
-              transitive=[
-                  _MakeFilePaths("", "path/to/src/__init__.py", ""),
-                  _MakeFilePaths("", "path/to/src/c.py", ""),
-                  _MakeFilePaths("", "path/to/src/c2.py", ""),
-                  _MakeFilePaths("BINDIR/bin/", "path/to/src/c3.py", ""),
-                  _MakeFilePaths("", "path/to/src2/d.py", "")],
-              python_deps={
-                  "path/to/c_lib": [
-                      _MakeFilePaths("", "path/to/src/__init__.py", ""),
-                      _MakeFilePaths("", "path/to/src/c.py", ""),
-                      _MakeFilePaths("", "path/to/src/c2.py", ""),
-                      _MakeFilePaths("BINDIR/bin/", "path/to/src/c3.py", "")],
-                  "path/to/d_lib": [
-                      _MakeFilePaths("", "path/to/src2/d.py", "")]},
-              pytype_deps={
-                  "path/to/c_lib~~pytype": [
-                      _MakeFilePaths("BINDIR/bin/", "path/to/path/to/src/__init__.py~~pytype", ""),
-                      _MakeFilePaths("BINDIR/bin/", "path/to/path/to/src/c.py~~pytype", ""),
-                      _MakeFilePaths("BINDIR/bin/", "path/to/path/to/src/c2.py~~pytype", ""),
-                      _MakeFilePaths("BINDIR/bin/", "path/to/path/to/src/c3.py~~pytype", ""),
-                      _MakeFilePaths("BINDIR/bin/", "path/to/c_lib~~pytype.imports_info", "")],
-                  "path/to/d_lib~~pytype": [
-                      _MakeFilePaths("BINDIR/bin/", "path/to/path/to/src2/d.py~~pytype", ""),
-                      _MakeFilePaths("BINDIR/bin/", "path/to/d_lib~~pytype.imports_info", "")]},
-              python_dep_files=[
-                  _MakeFilePaths("", "path/to/src/__init__.py", ""),
-                  _MakeFilePaths("", "path/to/src/c.py", ""),
-                  _MakeFilePaths("", "path/to/src/c2.py", ""),
-                  _MakeFilePaths("BINDIR/bin/", "path/to/src/c3.py", ""),
-                  _MakeFilePaths("", "path/to/src2/d.py", "")],
-              pytype_dep_files=[
-                  _MakeFilePaths("BINDIR/bin/", "path/to/c_lib~~pytype.imports_info", ""),
-                  _MakeFilePaths("BINDIR/bin/", "path/to/d_lib~~pytype.imports_info", ""),
-                  _MakeFilePaths("BINDIR/bin/", "path/to/path/to/src/__init__.py~~pytype", ""),
-                  _MakeFilePaths("BINDIR/bin/", "path/to/path/to/src/c.py~~pytype", ""),
-                  _MakeFilePaths("BINDIR/bin/", "path/to/path/to/src/c2.py~~pytype", ""),
-                  _MakeFilePaths("BINDIR/bin/", "path/to/path/to/src/c3.py~~pytype", ""),
-                  _MakeFilePaths("BINDIR/bin/", "path/to/path/to/src2/d.py~~pytype", "")]))
-
-
-def _MakeFilePaths(prefix, common, suffix):
-  return imports_map_loader.FilePaths(path=prefix + common + suffix,
-                                      short_path=common)
 
 
 if __name__ == "__main__":
