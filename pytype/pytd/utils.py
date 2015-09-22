@@ -46,13 +46,11 @@ def GetPredefinedFile(pytd_subdir, module, extension=".pytd"):
   Raises:
     IOError: if file not found
   """
-  # COV_NF_START
   full_filename = os.path.abspath(
       os.path.join(os.path.dirname(pytd.__file__),
                    pytd_subdir, module + extension))
   with open(full_filename, "rb") as fi:
     return fi.read()
-  # COV_NF_END
 
 
 def UnpackUnion(t):

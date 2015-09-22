@@ -33,7 +33,9 @@ class TestUtils(parser_test.ParserTest):
 
   def testGetPredefinedFileThrows(self):
     # smoke test, only checks that it does throw
-    with self.assertRaisesRegexp(IOError, "File not found|Resource not found"):
+    with self.assertRaisesRegexp(
+        IOError,
+        r"File not found|Resource not found|No such file or directory"):
       utils.GetPredefinedFile("builtins", "-this-file-does-not-exist")
 
   def testUnpackUnion(self):
