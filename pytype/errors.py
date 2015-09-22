@@ -52,6 +52,15 @@ class ErrorLogBase(object):
   def __init__(self):
     self.errors = []
 
+  def __len__(self):
+    return len(self.errors)
+
+  def __nonzero__(self):
+    return bool(len(self))
+
+  def __iter__(self):
+    return iter(self.errors)
+
   def warn(self, opcode, message, *args):
     self.errors.append(Error(SEVERITY_WARNING, opcode, message % args))
 

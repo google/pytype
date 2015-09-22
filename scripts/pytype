@@ -142,11 +142,6 @@ def _parse_options(args):
       dest="skip_repeat_calls", default=True,
       help=("Don't reuse the results of previous function calls."))
   o.add_option(
-      "--irascible", type="int", action="store",
-      dest="irascible", default=None,
-      help=("Non-zero return code: 0=critical, 1=error, 2=warn, ... "
-            "-1 means to not check"))
-  o.add_option(
       "--pythonpath", type="string", action="store",
       dest="pythonpath", default="",
       help=("Directories for reading dependencies - a list of paths "
@@ -178,17 +173,9 @@ def _parse_options(args):
             "your module names.") % os.pathsep)
   # MOE:strip_line TODO(pludemann): remove when Bazel integration is done:
   o.add_option(
-      "--warn_on_exception", action="store_true",
-      dest="warn_on_exception", default=False,
-      help=("Temporary flag that turns exceptions into warnings. "
-            "Default is for exceptions to be critical errors."))
-  # MOE:strip_line TODO(pludemann): remove when Bazel intergration is done:
-  o.add_option(
-      "--import_error_irascible", type="int", action="store",
-      dest="import_error_irascible", default=1,
-      help=("Temporary flag that turns load errors (typically a missing "
-            ".pytd file) into a specific error code: "
-            "0=critical, 1=error, 2=warn, ... (default: 1)"))
+      "--nofail", action="store_true",
+      dest="nofail", default=False,
+      help=("Don't allow pytype to fail."))
   o.add_option(
       "--output_id", type="string", action="store",
       dest="output_id",
@@ -206,20 +193,7 @@ def _parse_options(args):
   return options, input_filenames
 
 
-class TrackLevel(logging.Handler):
-
-  def __init__(self):
-    super(TrackLevel, self).__init__()
-    self.clear()
-
-  def clear(self):
-    self.max_level = logging.NOTSET
-
-  def emit(self, record):
-    self.max_level = max(self.max_level, record.levelno)
-
-
-def _initialize_logging(options, log_level_tracker):
+def _initialize_logging(options):
   """Set up appropriate logging verbosity + tracking max log severity."""
   if options.verbosity >= 0:
     if options.verbosity >= len(LOG_LEVELS):
@@ -230,7 +204,6 @@ def _initialize_logging(options, log_level_tracker):
     # "verbosity=-1" can be used to disable all logging, so configure logging
     # accordingly.
     logging.basicConfig(level=logging.CRITICAL + 1)
-  logging.getLogger().addHandler(log_level_tracker)
 
 
 def _initialize_filenames_and_output(options, input_filenames):
@@ -268,19 +241,6 @@ def _initialize_filenames_and_output(options, input_filenames):
     else:
       src_out.append(split)
 
-  if options.irascible == -1:
-    options.irascible = None
-  if (options.irascible is not None and
-      options.irascible < -1 or options.irascible > len(LOG_LEVELS)):
-    print >> sys.stderr, "Invalid irascible: %d" % options.irascible
-    sys.exit(1)
-  if options.import_error_irascible < 0 or options.irascible > len(LOG_LEVELS):
-    print >> sys.stderr, ("Invalid import_error_irascible: %d" %
-                          options.import_error_irascible)
-    sys.exit(1)
-  options.import_error_logging_level = (
-      LOG_LEVELS[options.import_error_irascible])
-
   return src_out
 
 
@@ -290,7 +250,7 @@ def check_pytd(input_filename, output_filename, options, imports_map,
     py_src = fi.read()
   with open(output_filename, "r") as fi:
     pytd_src = fi.read()
-  return infer.check_types(
+  infer.check_types(
       py_src,
       pytd_src,
       py_filename=input_filename,
@@ -305,8 +265,7 @@ def check_pytd(input_filename, output_filename, options, imports_map,
       import_drop_prefixes=import_drop_prefixes,
       reverse_operators=options.reverse_operators,
       cache_unknowns=options.cache_unknowns,
-      skip_repeat_calls=options.skip_repeat_calls,
-      import_error_logging_level=options.import_error_logging_level)
+      skip_repeat_calls=options.skip_repeat_calls)
 
 
 def generate_pytd(input_filename, output_filename, options, imports_map,
@@ -358,10 +317,9 @@ def generate_pytd(input_filename, output_filename, options, imports_map,
         output_pseudocode=options.output_pseudocode,
         reverse_operators=options.reverse_operators,
         cache_unknowns=options.cache_unknowns,
-        skip_repeat_calls=options.skip_repeat_calls,
-        import_error_logging_level=options.import_error_logging_level)
+        skip_repeat_calls=options.skip_repeat_calls)
   except Exception as e:  # pylint: disable=broad-except
-    if options.warn_on_exception:
+    if options.nofail:
       log.warn("***Caught exception: %s", str(e), exc_info=True)
       result = ("# Caught error in pytype: " + str(e) + "\n# " +
                 "\n# ".join(traceback.format_exc().splitlines()))
@@ -396,7 +354,6 @@ def generate_pytd(input_filename, output_filename, options, imports_map,
         print >>fi, "#", options.output_id, "src:", input_filename
         print >>fi
       fi.write(result)
-  return mod
 
 
 def process_one_file(input_filename, output_filename, options, imports_map,
@@ -404,23 +361,22 @@ def process_one_file(input_filename, output_filename, options, imports_map,
   """Check or generate a .pytd, according to options."""
   errorlog = errors.ErrorLog()
   if options.check:
-    result = check_pytd(input_filename, output_filename, options,
-                        imports_map, pythonpath, import_drop_prefixes,
-                        python_version, errorlog)
+    check_pytd(input_filename, output_filename, options,
+               imports_map, pythonpath, import_drop_prefixes,
+               python_version, errorlog)
   else:
-    result = generate_pytd(input_filename, output_filename, options,
-                           imports_map, pythonpath, import_drop_prefixes,
-                           python_version, errorlog)
+    generate_pytd(input_filename, output_filename, options,
+                  imports_map, pythonpath, import_drop_prefixes,
+                  python_version, errorlog)
   errorlog.print_to_stderr()
-  return result
+  return 1 if errorlog else 0  # exit code
 
 
 def main(argv):
-  log_level_tracker = TrackLevel()
   options, input_filenames = _parse_options(argv)
   unused_executable = input_filenames.pop(0)
 
-  _initialize_logging(options, log_level_tracker)
+  _initialize_logging(options)
 
   src_out = _initialize_filenames_and_output(options, input_filenames)
   # TODO(pludemann): maybe select __init__.py items and put them first
@@ -466,29 +422,19 @@ def main(argv):
   # biggest file and only process it once.  So, sort by size of the input files:
   if len(src_out) > 1:
     src_out.sort(reverse=True, key=lambda s: os.path.getsize(s[0]))
-
-  if len(src_out) > 1:
-    save_import_error_logging_level = options.import_error_logging_level
-    options.import_error_logging_level = 3  # logging.INFO
     for input_filename, output_filename in src_out[1:]:
       log.info("Process [pre-pass] %s => %s", input_filename, output_filename)
-      process_one_file(input_filename, output_filename, options, imports_map,
-                       pythonpath, import_drop_prefixes, python_version)
-    options.import_error_logging_level = save_import_error_logging_level
+      _ = process_one_file(input_filename, output_filename, options,
+                           imports_map, pythonpath, import_drop_prefixes,
+                           python_version)
 
-  log_level_tracker.clear()
   for input_filename, output_filename in src_out:
     log.info("Process %s => %s", input_filename, output_filename)
-    process_one_file(input_filename, output_filename, options, imports_map,
-                     pythonpath, import_drop_prefixes, python_version)
-
-  if (options.irascible is not None and
-      log_level_tracker.max_level >= LOG_LEVELS[options.irascible]):
-    log.critical("Maximum log message %s >= %s",
-                 logging.getLevelName(log_level_tracker.max_level),
-                 logging.getLevelName(LOG_LEVELS[options.irascible]))
-    sys.exit(1)
-
+    ret = process_one_file(input_filename, output_filename, options,
+                           imports_map, pythonpath, import_drop_prefixes,
+                           python_version)
+    if ret and not options.nofail:
+      return ret
 
 if __name__ == "__main__":
-  main(sys.argv)
+  sys.exit(main(sys.argv) or 0)

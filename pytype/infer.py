@@ -515,8 +515,7 @@ def check_types(py_src, pytd_src, py_filename, pytd_filename,
                 pybuiltins_filename=None, pythonpath=(),
                 find_pytd_import_ext=".pytd",
                 import_drop_prefixes=(), reverse_operators=False,
-                cache_unknowns=False, skip_repeat_calls=True,
-                import_error_logging_level=logging.DEBUG):
+                cache_unknowns=False, skip_repeat_calls=True):
   """Verify a PyTD against the Python code."""
   tracer = CallTracer(python_version=python_version,
                       errorlog=errorlog,
@@ -527,8 +526,7 @@ def check_types(py_src, pytd_src, py_filename, pytd_filename,
                       find_pytd_import_ext=find_pytd_import_ext,
                       import_drop_prefixes=import_drop_prefixes,
                       pybuiltins_filename=pybuiltins_filename,
-                      skip_repeat_calls=skip_repeat_calls,
-                      import_error_logging_level=import_error_logging_level)
+                      skip_repeat_calls=skip_repeat_calls)
   loc, defs, _ = tracer.run_program(py_src, py_filename, run_builtins)
   ast = pytd_utils.ParsePyTD(pytd_src, pytd_filename, python_version)
   tracer.loader.resolve_ast(ast)
@@ -547,8 +545,7 @@ def infer_types(src, python_version, errorlog,
                 output_cfg=None, output_typegraph=None,
                 output_pseudocode=None, deep=True, solve_unknowns=True,
                 reverse_operators=False, cache_unknowns=False,
-                skip_repeat_calls=True,
-                import_error_logging_level=logging.DEBUG):
+                skip_repeat_calls=True):
   """Given Python source return its types.
 
   Args:
@@ -577,8 +574,6 @@ def infer_types(src, python_version, errorlog,
     cache_unknowns: If True, do a faster approximation of unknown types.
     skip_repeat_calls: If True, don't rerun functions that have been called
       before with the same arguments and environment.
-    import_error_logging_level: logging level for reporting import load failure.
-      See main option --import_error_irascible
   Returns:
     A TypeDeclUnit
   Raises:
@@ -594,8 +589,7 @@ def infer_types(src, python_version, errorlog,
                       find_pytd_import_ext=find_pytd_import_ext,
                       import_drop_prefixes=import_drop_prefixes,
                       pybuiltins_filename=pybuiltins_filename,
-                      skip_repeat_calls=skip_repeat_calls,
-                      import_error_logging_level=import_error_logging_level)
+                      skip_repeat_calls=skip_repeat_calls)
   loc, defs, builtin_names = tracer.run_program(src, filename, run_builtins)
   log.info("===Done run_program===")
   # TODO(pludemann): make test_inference.InferDedent and this code the same:

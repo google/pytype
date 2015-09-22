@@ -23,9 +23,9 @@ class CheckerTest(test_inference.InferenceTest):
 
   def check_against_pytd(self, python, pytd):
     errorlog = self.get_checking_errors(python, pytd)
-    if errorlog.errors:
+    if errorlog:
       errorlog.print_to_stderr()
-      self.fail("Inferencer found %d errors" % len(errorlog.errors))
+      self.fail("Inferencer found %d errors" % len(errorlog))
 
   def testBasic(self):
     pytd = """

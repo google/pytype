@@ -243,7 +243,7 @@ class InferenceTest(unittest.TestCase):
         cache_unknowns=True)
     if report_errors and errorlog.errors:
       errorlog.print_to_stderr()
-      self.fail("Inferencer found %d errors" % len(errorlog.errors))
+      self.fail("Inferencer found %d errors" % len(errorlog))
     unit.Visit(visitors.VerifyVisitor())
     return pytd_utils.CanonicalOrdering(unit)
 
@@ -360,7 +360,7 @@ class InferenceTest(unittest.TestCase):
                         "Not identity: %r" % pytd.Print(func))
 
   def assertErrorLogContains(self, errorlog, regexp):
-    for error in errorlog.errors:
+    for error in errorlog:
       if re.compile(regexp, re.I | re.S).search(str(error)):
         return
     print >>sys.stderr, "Couldn't find regexp %r in errors:" % regexp
@@ -368,7 +368,7 @@ class InferenceTest(unittest.TestCase):
     raise AssertionError("Couldn't find regexp %r in errors" % regexp)
 
   def assertErrorLogDoesNotContain(self, errorlog, regexp):
-    for error in errorlog.errors:
+    for error in errorlog:
       if re.compile(regexp, re.I | re.S).search(str(error)):
         print >>sys.stderr, "Found regexp %r in errors:" % regexp
         errorlog.print_to_stderr()
@@ -405,9 +405,9 @@ class InferenceTest(unittest.TestCase):
     errorlog = errors.ErrorLog()
     unit = infer.infer_types(src, self.PYTHON_VERSION, errorlog, **kwargs)
     unit = pytd_utils.CanonicalOrdering(unit.Visit(visitors.VerifyVisitor()))
-    if report_errors and errorlog.errors:
+    if report_errors and errorlog:
       errorlog.print_to_stderr()
-      self.fail("Inferencer found %d errors" % len(errorlog.errors))
+      self.fail("Inferencer found %d errors" % len(errorlog))
     return unit
 
   def assertTypesMatchPytd(self, ty, pytd_src, version=None):

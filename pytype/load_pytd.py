@@ -52,10 +52,8 @@ class Loader(object):
       A string. (Builtins always use ".pytd" and ignore this option.)
     import_drop_prefixes: list of prefixes to drop when resolving
       module name to file name.
-   import_error_logging_level: logging level for reporting import load failure.
-     See main option --import_error_irascible
-   _modules: A map, filename to Module, for caching modules already loaded.
-   _concatenated: A concatenated pytd of all the modules. Refreshed when
+    _modules: A map, filename to Module, for caching modules already loaded.
+    _concatenated: A concatenated pytd of all the modules. Refreshed when
       necessary.
   """
 
@@ -64,15 +62,13 @@ class Loader(object):
   def __init__(self, base_module, python_version,
                imports_map=None, pythonpath=(),
                find_pytd_import_ext=".pytd",
-               import_drop_prefixes=(),
-               import_error_logging_level=logging.DEBUG):
+               import_drop_prefixes=()):
     self.base_module = base_module
     self.python_version = python_version
     self.imports_map = imports_map
     self.pythonpath = pythonpath
     self.find_pytd_import_ext = find_pytd_import_ext
     self.import_drop_prefixes = import_drop_prefixes
-    self.import_error_logging_level = import_error_logging_level
     self.builtins = builtins.GetBuiltinsPyTD()
     self._modules = {
         "__builtin__":
@@ -197,11 +193,10 @@ class Loader(object):
       return self._load_file(filename="stdlib:"+module_name,
                              module_name=module_name, ast=mod)
     else:
-      # TODO(pludemann): remove self.imports_map from this message:
-      log.log(self.import_error_logging_level,
-              "Couldn't import module %s %r in (path=%r) %r => %r",
-              module_name, module_name_split, self.pythonpath,
-              sorted(self.imports_map or []), self.imports_map)
+      log.warning(
+          "Couldn't import module %s %r in (path=%r) imports_map: %s",
+          module_name, module_name_split, self.pythonpath,
+          "%d items" % len(self.imports_map) if self.imports_map else "none")
     return None
 
   def _import_file(self, module_name, module_name_split):
