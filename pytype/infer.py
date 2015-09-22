@@ -504,10 +504,10 @@ def _get_module_name(filename, pythonpath):
   if filename:
     filename, _ = os.path.splitext(filename)
     for path in pythonpath:
-      # TODO(kramm): What if filename starts with "../"?
+      # TODO(kramm): What if filename starts with "../"?  (os.pardir)
       if filename.startswith(path):
-        subdir = filename[len(path):].lstrip(os.path.sep)
-        return subdir.replace(os.path.sep, ".")
+        subdir = filename[len(path):].lstrip(os.sep)
+        return subdir.replace(os.sep, ".")
 
 
 def check_types(py_src, pytd_src, py_filename, pytd_filename,
@@ -516,7 +516,7 @@ def check_types(py_src, pytd_src, py_filename, pytd_filename,
                 find_pytd_import_ext=".pytd",
                 import_drop_prefixes=(), reverse_operators=False,
                 cache_unknowns=False, skip_repeat_calls=True,
-                import_error_is_fatal=False):
+                import_error_logging_level=logging.DEBUG):
   """Verify a PyTD against the Python code."""
   tracer = CallTracer(python_version=python_version,
                       errorlog=errorlog,
@@ -528,7 +528,7 @@ def check_types(py_src, pytd_src, py_filename, pytd_filename,
                       import_drop_prefixes=import_drop_prefixes,
                       pybuiltins_filename=pybuiltins_filename,
                       skip_repeat_calls=skip_repeat_calls,
-                      import_error_is_fatal=import_error_is_fatal)
+                      import_error_logging_level=import_error_logging_level)
   loc, defs, _ = tracer.run_program(py_src, py_filename, run_builtins)
   ast = pytd_utils.ParsePyTD(pytd_src, pytd_filename, python_version)
   tracer.loader.resolve_ast(ast)
@@ -537,8 +537,10 @@ def check_types(py_src, pytd_src, py_filename, pytd_filename,
                      os.path.basename(pytd_filename))
 
 
-def infer_types(src, python_version, errorlog, filename=None, run_builtins=True,
+def infer_types(src, python_version, errorlog,
+                filename=None, run_builtins=True,
                 pybuiltins_filename=None,
+                imports_map=None,
                 pythonpath=(),
                 find_pytd_import_ext=".pytd",
                 import_drop_prefixes=(),
@@ -546,7 +548,7 @@ def infer_types(src, python_version, errorlog, filename=None, run_builtins=True,
                 output_pseudocode=None, deep=True, solve_unknowns=True,
                 reverse_operators=False, cache_unknowns=False,
                 skip_repeat_calls=True,
-                import_error_is_fatal=False):
+                import_error_logging_level=logging.DEBUG):
   """Given Python source return its types.
 
   Args:
@@ -557,6 +559,8 @@ def infer_types(src, python_version, errorlog, filename=None, run_builtins=True,
     run_builtins: Whether to preload the native Python builtins when running
       the program.
     pybuiltins_filename: Path to Python builtins, or None for default.
+    imports_map: map of .py file name to corresponding pytd file (generated
+                 by a separate invocation of pytype).
     pythonpath: List of directories to search for *.pytd (or
                 *.${find_pytd_import_ext}) files.
     find_pytd_import_ext: Extension pattern to use when looking up import PyTD
@@ -573,15 +577,15 @@ def infer_types(src, python_version, errorlog, filename=None, run_builtins=True,
     cache_unknowns: If True, do a faster approximation of unknown types.
     skip_repeat_calls: If True, don't rerun functions that have been called
       before with the same arguments and environment.
-    import_error_is_fatal: whether a load_pytd (for importing a dependency)
-      should generate a fatal error or just a regular error.
-      See main option --import_error_is_fatal
+    import_error_logging_level: logging level for reporting import load failure.
+      See main option --import_error_irascible
   Returns:
     A TypeDeclUnit
   Raises:
     AssertionError: In case of a bad parameter combination.
   """
   tracer = CallTracer(python_version=python_version,
+                      imports_map=imports_map,
                       errorlog=errorlog,
                       module_name=_get_module_name(filename, pythonpath),
                       reverse_operators=reverse_operators,
@@ -591,7 +595,7 @@ def infer_types(src, python_version, errorlog, filename=None, run_builtins=True,
                       import_drop_prefixes=import_drop_prefixes,
                       pybuiltins_filename=pybuiltins_filename,
                       skip_repeat_calls=skip_repeat_calls,
-                      import_error_is_fatal=import_error_is_fatal)
+                      import_error_logging_level=import_error_logging_level)
   loc, defs, builtin_names = tracer.run_program(src, filename, run_builtins)
   log.info("===Done run_program===")
   # TODO(pludemann): make test_inference.InferDedent and this code the same:

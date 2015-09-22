@@ -13,6 +13,7 @@ trace of the program execution.
 import collections
 import linecache
 import logging
+import os
 import re
 import repr as reprlib
 import sys
@@ -109,24 +110,27 @@ class VirtualMachine(object):
                module_name=None,
                reverse_operators=False,
                cache_unknowns=True,
+               imports_map=None,
                pythonpath=(),
                find_pytd_import_ext=".pytd",
                import_drop_prefixes=(),
                pybuiltins_filename=None,
                skip_repeat_calls=True,
-               import_error_is_fatal=False):
+               import_error_logging_level=logging.DEBUG):
     """Construct a TypegraphVirtualMachine."""
     self.python_version = python_version
     self.errorlog = errorlog
     self.pybuiltins_filename = pybuiltins_filename
     self.reverse_operators = reverse_operators
     self.cache_unknowns = cache_unknowns
-    self.loader = load_pytd.Loader(base_module=module_name,
-                                   python_version=python_version,
-                                   pythonpath=pythonpath,
-                                   find_pytd_import_ext=find_pytd_import_ext,
-                                   import_drop_prefixes=import_drop_prefixes,
-                                   import_error_is_fatal=import_error_is_fatal)
+    self.loader = load_pytd.Loader(
+        base_module=module_name,
+        python_version=python_version,
+        imports_map=imports_map,
+        pythonpath=pythonpath,
+        find_pytd_import_ext=find_pytd_import_ext,
+        import_drop_prefixes=import_drop_prefixes,
+        import_error_logging_level=import_error_logging_level)
     self.skip_repeat_calls = skip_repeat_calls
     # The call stack of frames.
     self.frames = []
@@ -320,7 +324,7 @@ class VirtualMachine(object):
   def module_name(self):
     if self.frame.f_code.co_filename:
       return ".".join(re.sub(
-          r"\.py$", "", self.frame.f_code.co_filename).split("/")[-2:])
+          r"\.py$", "", self.frame.f_code.co_filename).split(os.sep)[-2:])
     else:
       return ""
 
@@ -1612,7 +1616,7 @@ class VirtualMachine(object):
     """Pop an object, and retrieve a named attribute from it."""
     name = self.frame.f_code.co_names[op.arg]
     state, obj = state.pop()
-    log.info("LOAD_ATTR: %r %s", type(obj), name)
+    log.debug("LOAD_ATTR: %r %r", obj, name)
     try:
       state, val = self.load_attr(state, obj, name)
     except exceptions.ByteCodeAttributeError:

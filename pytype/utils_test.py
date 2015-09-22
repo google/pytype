@@ -294,7 +294,7 @@ class TypegraphUtilsTest(unittest.TestCase):
     self.assertFalse(os.path.isdir(os.path.join(d.path, "d1", "d2")))
     self.assertFalse(os.path.isdir(filename5))
 
-  def testListLstrip(self):
+  def testListStripPrefix(self):
     self.assertEqual([1, 2, 3], utils.list_strip_prefix([1, 2, 3], []))
     self.assertEqual([2, 3], utils.list_strip_prefix([1, 2, 3], [1]))
     self.assertEqual([3], utils.list_strip_prefix([1, 2, 3], [1, 2]))
@@ -304,6 +304,11 @@ class TypegraphUtilsTest(unittest.TestCase):
     self.assertEqual([], utils.list_strip_prefix([], [1, 2, 3]))
     self.assertEqual(list("wellington"), utils.list_strip_prefix(
         list("newwellington"), list("new")))
+    self.assertEqual(
+        "a.somewhat.long.path.src2.d3.shrdlu".split("."),
+        utils.list_strip_prefix(
+            "top.a.somewhat.long.path.src2.d3.shrdlu".split("."),
+            "top".split(".")))
 
   def testListStartsWith(self):
     self.assertTrue(utils.list_startswith([1, 2, 3], []))

@@ -62,6 +62,8 @@ class ImportTest(test_inference.InferenceTest):
     with utils.Tempdir() as d:
       d.create_file("path/to/my_module.pytd",
                     "def qqsv() -> str")
+      d.create_file("path/to/__init__.pytd", "")
+      d.create_file("path/__init__.pytd", "")
       with self.Infer("""\
       import path.to.my_module
       def foo():
@@ -76,6 +78,8 @@ class ImportTest(test_inference.InferenceTest):
     with utils.Tempdir() as d:
       d.create_file("path/to/my_module.pytd",
                     "def qqsv() -> str")
+      d.create_file("path/to/__init__.pytd", "")
+      d.create_file("path/__init__.pytd", "")
       with self.Infer("""\
       import nonexistant_path.to.my_module  # doesn't exist
       def foo():
@@ -241,6 +245,8 @@ class ImportTest(test_inference.InferenceTest):
     with utils.Tempdir() as d:
       d.create_file("sub/other_file.pytd", "def f() -> int")
       d.create_file("sub/bar/baz.pytd", "def g() -> float")
+      d.create_file("sub/__init__.pytd", "")
+      d.create_file("sub/bar/__init__.pytd", "")
       d.create_file("main.py", """
         from sub import other_file
         import sub.bar.baz
@@ -326,6 +332,7 @@ class ImportTest(test_inference.InferenceTest):
         import baz
         x = baz.x
       """)
+      d.create_file("foo/__init__.pytd", "")
       ty = self.InferFromFile(filename=d["foo/bar.py"],
                               pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
@@ -341,6 +348,7 @@ class ImportTest(test_inference.InferenceTest):
         def f():
           return baz.x
       """)
+      d.create_file("foo/__init__.pytd", "")
       ty = self.InferFromFile(filename=d["foo/bar.py"],
                               pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
@@ -349,6 +357,39 @@ class ImportTest(test_inference.InferenceTest):
     """)
 
   def testDotPackage(self):
+    # This tests up one level: note that the test file (foo.py)
+    # is tested in the context of the up-level director "up1".
+    with utils.Tempdir() as d:
+      d.create_file("up1/foo.py", """
+        from .bar import x
+      """)
+      d.create_file("up1/bar.pytd", """x: int""")
+      d.create_file("up1/__init__.pytd", "")
+      d.create_file("__init__.pytd", "")
+      ty = self.InferFromFile(filename=d["up1/foo.py"],
+                              pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        x: int
+    """)
+
+  def testDotDotPackage(self):
+    # Similar to testDotPackage, except two levels
+    with utils.Tempdir() as d:
+      d.create_file("up2/baz/foo.py", """
+        from ..bar import x
+      """)
+      d.create_file("up2/bar.pytd", """x: int""")
+      d.create_file("__init__.pytd", "")
+      d.create_file("up2/__init__.pytd", "")
+      d.create_file("up2/baz/__init__.pytd", "")
+      ty = self.InferFromFile(filename=d["up2/baz/foo.py"],
+                              pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        x: int
+      """)
+
+  @unittest.skip("Only works if the isdir test is enabled in load_pytd")
+  def testDotPackageNoInit(self):
     with utils.Tempdir() as d:
       d.create_file("foo.py", """
         from .bar import x
@@ -360,7 +401,8 @@ class ImportTest(test_inference.InferenceTest):
         x: int
       """)
 
-  def testDotDotPackage(self):
+  @unittest.skip("Only works if the isdir test is enabled in load_pytd")
+  def testDotDotPackagNoInit(self):
     with utils.Tempdir() as d:
       d.create_file("baz/foo.py", """
         from ..bar import x
@@ -380,6 +422,8 @@ class ImportTest(test_inference.InferenceTest):
         def f():
           return baz.x
       """)
+      d.create_file("foo/__init__.pytd", "")
+      d.create_file("foo/deep/__init__.pytd", "")
       ty = self.InferFromFile(filename=d["foo/deep/bar.py"],
                               pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
@@ -391,6 +435,9 @@ class ImportTest(test_inference.InferenceTest):
     with utils.Tempdir() as d:
       d.create_file("path/to/some/module.pytd",
                     "def foo(x:int) -> str")
+      d.create_file("path/to/some/__init__.pytd", "")
+      d.create_file("path/to/__init__.pytd", "")
+      d.create_file("path/__init__.pytd", "")
       with self.Infer("""\
         import path.to.some.module
         def my_foo(x):
@@ -405,6 +452,9 @@ class ImportTest(test_inference.InferenceTest):
     with utils.Tempdir() as d:
       d.create_file("path/to/some/module.pytd",
                     "def foo(x:int) -> str")
+      d.create_file("path/to/some/__init__.pytd", "")
+      d.create_file("path/to/__init__.pytd", "")
+      d.create_file("path/__init__.pytd", "")
       with self.Infer("""\
         from path.to.some import module
         def my_foo(x):

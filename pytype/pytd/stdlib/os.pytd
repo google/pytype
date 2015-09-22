@@ -87,6 +87,8 @@ def fsync(...) -> NoneType
 def ftruncate(...) -> NoneType
 def getcwd() -> str
 def getcwdu() -> unicode
+# TODO(pludemann): 2nd arg default=str or unicode or NoneType
+def getenv(name: str or unicode, ...) -> str or unicode or NoneType
 def getegid() -> long or int
 def geteuid() -> long or int
 def getgid() -> long or int
@@ -112,6 +114,7 @@ def lseek(...) -> int
 def lstat(...) -> tuple
 def major(...) -> int
 def makedev(...) -> int
+def makedirs(...) -> NoneType
 def minor(...) -> int
 def mkdir(...) -> NoneType
 def mkfifo(...) -> NoneType
@@ -126,6 +129,7 @@ def putenv(...) -> NoneType raises MemoryError
 def read(...) -> str
 def readlink(...) -> str
 def remove(...) -> NoneType
+def removedirs(...) -> NoneType raises OSError
 def rename(...) -> NoneType
 def rmdir(...) -> NoneType
 def setegid(...) -> NoneType

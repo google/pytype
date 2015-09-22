@@ -7,3 +7,5 @@ attrgetter: ?
 os: module
 sys: module
 urlparse: ?
+
+def escape(x: str or unicode) -> str or unicode

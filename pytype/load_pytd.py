@@ -1,4 +1,4 @@
-"""Code for loading and linking .pytd files."""
+"""Load and link .pytd files."""
 
 import glob
 import logging
@@ -43,30 +43,36 @@ class Loader(object):
       that's importing other modules using this loader).
     python_version: The Python version to import the module for. Used for
       builtin modules.
+    imports_map: map of .py file name to corresponding pytd file. These will
+                 have been created by separate invocations of pytype -- that is,
+                 the situation is similar to javac using .class files that have
+                 been created by other invocations of javac.
     pythonpath: list of directory names to be tried.
     find_pytd_import_ext: file extension pattern for finding an import PyTD.
       A string. (Builtins always use ".pytd" and ignore this option.)
     import_drop_prefixes: list of prefixes to drop when resolving
       module name to file name.
-   import_error_is_fatal: whether a load_pytd (for importing a dependency)
-     should generate a fatal error or just a regular error.
-     See main option --import_error_is_fatal
-    _modules: A map, filename to Module, for caching modules already loaded.
-    _concatenated: A concatenated pytd of all the modules. Refreshed when
+   import_error_logging_level: logging level for reporting import load failure.
+     See main option --import_error_irascible
+   _modules: A map, filename to Module, for caching modules already loaded.
+   _concatenated: A concatenated pytd of all the modules. Refreshed when
       necessary.
   """
 
   PREFIX = "pytd:"  # for pytd files that ship with pytype
 
-  def __init__(self, base_module, python_version, pythonpath=(),
+  def __init__(self, base_module, python_version,
+               imports_map=None, pythonpath=(),
                find_pytd_import_ext=".pytd",
-               import_drop_prefixes=(), import_error_is_fatal=False):
+               import_drop_prefixes=(),
+               import_error_logging_level=logging.DEBUG):
     self.base_module = base_module
     self.python_version = python_version
+    self.imports_map = imports_map
     self.pythonpath = pythonpath
     self.find_pytd_import_ext = find_pytd_import_ext
     self.import_drop_prefixes = import_drop_prefixes
-    self.import_error_is_fatal = import_error_is_fatal
+    self.import_error_logging_level = import_error_logging_level
     self.builtins = builtins.GetBuiltinsPyTD()
     self._modules = {
         "__builtin__":
@@ -98,7 +104,6 @@ class Loader(object):
             module_name, filename, existing.filename))
       return existing.ast
     if not ast:
-      log.debug("Trying ParsePyTD %s", filename)
       ast = pytd_utils.ParsePyTD(filename=filename,
                                  module=module_name,
                                  python_version=self.python_version)
@@ -161,18 +166,19 @@ class Loader(object):
 
     Args:
       module_name: The name of the module. May contain dots.
+
     Returns:
-      The parsed pytd, instance of pytd.TypeDeclUnit, or None if we didn't
-      find the module.
+      The parsed pytd, instance of pytd.TypeDeclUnit, or None if we
+      the module wasn't found.
     """
-    assert "/" not in module_name
-    log.debug("Trying to import %s", module_name)
+    assert os.sep not in module_name, (os.sep, module_name)
+    log.debug("Trying to import %r", module_name)
     # Builtin modules (but not standard library modules!) take precedence
     # over modules in PYTHONPATH.
     mod = pytd_utils.ParsePredefinedPyTD("builtins", module_name,
                                          self.python_version)
     if mod:
-      log.debug("Found builtins %s", module_name)
+      log.debug("Found builtins %r", module_name)
       return self._load_file(filename=self.PREFIX + module_name,
                              module_name=module_name, ast=mod)
 
@@ -180,41 +186,60 @@ class Loader(object):
     for prefix in self.import_drop_prefixes:
       module_name_split = utils.list_strip_prefix(module_name_split,
                                                   prefix.split("."))
-
-    for searchdir in self.pythonpath:
-      path = os.path.join(searchdir, *module_name_split)
-      if os.path.isdir(path):
-        # TODO(pludemann): need test case (esp. for empty __init__.py)
-        init_ast = self._load_pytd_from_glob(os.path.join(path, "__init__"),
-                                             module_name)
-        if init_ast is not None:
-          log.debug("Found module %s/__init__ in path %s", module_name, path)
-          return init_ast
-        else:
-          # We allow directories to not have an __init__ file.
-          # The module's empty, but you can still load submodules.
-          return self._create_empty(
-              filename=os.path.join(path, "__init__.pytd"),
-              module_name=module_name)
-      else:
-        file_ast = self._load_pytd_from_glob(path, module_name)
-        if file_ast is not None:
-          log.debug("Found module %s in path %s", module_name, path)
-          return file_ast
+    file_ast = self._import_file(module_name, module_name_split)
+    if file_ast:
+      return file_ast
 
     # The standard library is (typically) at the end of PYTHONPATH.
     mod = pytd_utils.ParsePredefinedPyTD("stdlib", module_name,
                                          self.python_version)
     if mod:
-      log.debug("Found stdlib %s", module_name)
       return self._load_file(filename="stdlib:"+module_name,
                              module_name=module_name, ast=mod)
-    elif self.import_error_is_fatal:
-      log.critical("Couldn't import module %s", module_name)
-      # TODO(pludemann): sys.exit(-1) ?
     else:
-      # TODO(pludemann): suppress warning if main is processing multiple files:
-      log.warn("Couldn't import module %s", module_name)
+      # TODO(pludemann): remove self.imports_map from this message:
+      log.log(self.import_error_logging_level,
+              "Couldn't import module %s %r in (path=%r) %r => %r",
+              module_name, module_name_split, self.pythonpath,
+              sorted(self.imports_map or []), self.imports_map)
+    return None
+
+  def _import_file(self, module_name, module_name_split):
+    """Helper for import_relative: try to load an AST, using pythonpath.
+
+    Loops over self.pythonpath, taking care of the semantics for __init__, and
+    pretending there's an empty __init__ if the path (derived from
+    module_name_split) is a directory.
+
+    Args:
+      module_name: The name of the module. May contain dots.
+      module_name_split: module_name.split(".")
+    Returns:
+      The parsed pytd (AST) if found, otherwise None.
+    """
+    for searchdir in self.pythonpath:
+      path = os.path.join(searchdir, *module_name_split)
+      # See if this is a directory with a "__init__.py" defined.
+      # MOE:strip_line For Bazel, have already created a __init__.py file
+      init_path = os.path.join(path, "__init__")
+      init_ast = self._load_pytd_from_glob(init_path, module_name)
+      if init_ast is not None:
+        log.debug("Found module %r with path %r", module_name, init_path)
+        return init_ast
+      elif os.path.isdir(path):
+        # We allow directories to not have an __init__ file.
+        # The module's empty, but you can still load submodules.
+        # TODO(pludemann): remove this? - it's not standard Python.
+        log.debug("Created empty module %r with path %r",
+                  module_name, init_path)
+        return self.create_empty(
+            filename=os.path.join(path, "__init__.pytd"),
+            module_name=module_name)
+      else:  # Not a directory
+        file_ast = self._load_pytd_from_glob(path, module_name)
+        if file_ast is not None:
+          log.debug("Found module %r in path %r", module_name, path)
+          return file_ast
     return None
 
   def _load_pytd_from_glob(self, path, module_name):
@@ -228,17 +253,22 @@ class Loader(object):
       find the module.
     """
     pytd_path = path + self.find_pytd_import_ext
+    if self.imports_map is not None:
+      if pytd_path in self.imports_map:
+        pytd_path = self.imports_map.get(pytd_path)
+      else:
+        return None
+    # MOE:strip_line TODO(pludemann): do we need the "glob" functionality any
+    # MOE:strip_line                  more? (for running outside this repository)
     files = sorted(glob.glob(pytd_path))
     if files:
       if len(files) > 1:
         # TODO(pludemann): Check whether the contents differ?
         # MOE:strip_line TODO(pludemann): Prioritize "#" items (see pytype.bzl).
         # TODO(pludemann): Limit the number of files in the message?
-        log.warn("Multiple files for %r: %s", pytd_path, files)
+        log.warn("Multiple files for %r: %r", pytd_path, files)
       return self._load_file(filename=files[0], module_name=module_name)
     else:
-      log.debug("Not found: module_name %r pytd_path %r",
-                module_name, pytd_path)
       return None
 
   def concat_all(self):
