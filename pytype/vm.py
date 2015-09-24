@@ -1182,6 +1182,9 @@ class VirtualMachine(object):
     assert isinstance(obj, typegraph.Variable)
     assert isinstance(attr, str)
     assert isinstance(value, typegraph.Variable)
+    if not obj.values:
+      log.info("Ignoring setattr on %r", obj)
+      return state
     nodes = []
     for val in obj.values:
       # TODO(kramm): Check whether val.data is a descriptor (i.e. has "__set__")

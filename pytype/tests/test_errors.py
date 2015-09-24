@@ -103,5 +103,13 @@ class ErrorTest(test_inference.InferenceTest):
     self.assertErrorLogDoesNotContain(
         errors, "__class__")
 
+  def testWriteIndexError(self):
+    _, errors = self.InferAndCheck("""
+      def f():
+        {}[0].x = 3
+    """)
+    # "Line 3, in f: Can't retrieve item out of dict. Empty?"
+    self.assertErrorLogContains(errors, r"line 3.*item out of dict")
+
 if __name__ == "__main__":
   test_inference.main()
