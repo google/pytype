@@ -67,10 +67,12 @@ class TestVisitors(parser_test.ParserTest):
     src = textwrap.dedent("""
         class A(X):
             def a(self, a: A, b: X, c: int) -> X raises X
+            def b(self) -> X<int>
     """)
     expected = textwrap.dedent("""
         class A(?):
             def a(self, a: A, b: ?, c: int) -> ? raises ?
+            def b(self) -> ?
     """)
     tree = self.Parse(src)
     new_tree = tree.Visit(visitors.DefaceUnresolved([tree, builtins]))

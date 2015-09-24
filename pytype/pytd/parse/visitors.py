@@ -389,6 +389,18 @@ class DefaceUnresolved(Visitor):
       logging.error("Setting %s to ?", node.name)
       return pytd.AnythingType()
 
+  def VisitHomogeneousContainerType(self, node):
+    if isinstance(node.base_type, pytd.AnythingType):
+      return node.base_type
+    else:
+      return node
+
+  def VisitGenericType(self, node):
+    if isinstance(node.base_type, pytd.AnythingType):
+      return node.base_type
+    else:
+      return node
+
   def VisitClassType(self, node):
     return self.VisitNamedType(node)
 
