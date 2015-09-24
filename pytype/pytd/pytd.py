@@ -409,6 +409,9 @@ TYPE = (NamedType, NativeType, ClassType, AnythingType, UnionType,
         NothingType, GenericType, TypeParameter, Scalar,
         IntersectionType, ExternalType)
 
+# Types that can be a base type of GenericType:
+GENERIC_BASE_TYPE = (NamedType, ClassType, ExternalType)
+
 
 def Print(n, print_format=None):
   """Convert a PYTD node to a string."""

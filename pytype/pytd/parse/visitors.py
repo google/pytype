@@ -854,13 +854,13 @@ class VerifyVisitor(Visitor):
     assert isinstance(node.name, str), node
 
   def EnterHomogeneousContainerType(self, node):
-    assert isinstance(node.base_type, pytd.TYPE), node
+    assert isinstance(node.base_type, pytd.GENERIC_BASE_TYPE), node
     assert isinstance(node.parameters, tuple), node
     assert len(node.parameters) == 1, node
     assert all(isinstance(p, pytd.TYPE) for p in node.parameters), node
 
   def EnterGenericType(self, node):
-    assert isinstance(node.base_type, pytd.TYPE), node
+    assert isinstance(node.base_type, pytd.GENERIC_BASE_TYPE), node
     assert isinstance(node.parameters, tuple), node
     assert all(isinstance(p, pytd.TYPE) for p in node.parameters), node
 
