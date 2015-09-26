@@ -17,6 +17,7 @@
 """Visitor(s) for walking ASTs."""
 
 import logging
+import re
 
 
 from pytype.pytd import pytd
@@ -788,6 +789,10 @@ class VerifyVisitor(Visitor):
 
   enters_all_node_types = True
 
+  def __init__(self):
+    super(VerifyVisitor, self).__init__()
+    self._valid_param_name = re.compile(r"[a-zA-Z_]\w*$")
+
   def EnterTypeDeclUnit(self, node):
     assert isinstance(node.constants, (list, tuple)), node
     assert all(isinstance(c, pytd.Constant) for c in node.constants)
@@ -833,6 +838,7 @@ class VerifyVisitor(Visitor):
 
   def EnterParameter(self, node):
     assert isinstance(node.name, str), node
+    assert self._valid_param_name.match(node.name), node.name
     assert isinstance(node.type, pytd.TYPE), node
 
   def EnterMutableParameter(self, node):

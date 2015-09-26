@@ -342,6 +342,14 @@ class TestGenerators(test_inference.InferenceTest):
         def f(elements) -> str
       """)
 
+  def testTupleArgsSmoke(self):
+    with self.Infer("""
+      def foo((x, y), z):
+        pass
+    """, deep=True, solve_unknowns=True) as unused_ty:
+      # Smoke test only. pytd doesn't support automatic tuple unpacking in args.
+      pass
+
   def test_matching_functions(self):
     with self.Infer("""
       def f():

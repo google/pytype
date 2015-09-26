@@ -1958,13 +1958,20 @@ class InterpreterFunction(Function):
             signature_data.add(data)
             yield combination, return_value
 
+  def _fix_param_name(self, name):
+    """Sanitize a parameter name; remove Python intrinstics."""
+    # Python uses ".0" etc. for parameters that are tuples, like e.g. in:
+    # "def f((x, y), z)".
+    return name.replace(".", "_")
+
   def to_pytd_def(self, function_name):
     """Generate a pytd.Function definition."""
     num_defaults = len(self.defaults)
     signatures = []
     has_optional = num_defaults > 0 or self.has_varargs() or self.has_kwargs()
     for combination, return_value in self._get_call_combinations():
-      params = tuple(pytd.Parameter(name, combination[name].data.to_type())
+      params = tuple(pytd.Parameter(self._fix_param_name(name),
+                                    combination[name].data.to_type())
                      for name in self.get_parameter_names())
       if num_defaults:
         params = params[:-num_defaults]
