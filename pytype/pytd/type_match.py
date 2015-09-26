@@ -107,7 +107,9 @@ class StrictType(node.Node("name")):
   For example, "int" is considered a valid argument for a function that accepts
   "object", but StrictType("int") is not.
   """
-  pass
+
+  def __str__(self):
+    return self.name
 
 
 class TypeMatch(utils.TypeMatcher):
@@ -175,6 +177,7 @@ class TypeMatch(utils.TypeMatcher):
       A type (pytd.Node) to represent this type parameter.
     """
     assert is_unknown(unknown)
+    assert isinstance(base_class, pytd.Class)
     name = unknown.name + "." + base_class.name + "." + item.type_param.name
     # We do *not* consider subclasses or superclasses when matching type
     # parameters.
@@ -197,10 +200,10 @@ class TypeMatch(utils.TypeMatcher):
       # types can never match.
       base_type_cmp = booleq.FALSE
     else:
-      base_type_cmp = booleq.Eq(t1.base_type.name, t2.base_type.name)
+      base_type_cmp = booleq.Eq(t1.base_type.cls.name, t2.base_type.cls.name)
     if base_type_cmp is booleq.FALSE:
       return booleq.FALSE
-    assert len(t1.parameters) == len(t2.parameters), t1.base_type.name
+    assert len(t1.parameters) == len(t2.parameters), t1.base_type.cls.name
     # Type parameters are covariant:
     # E.g. passing list<int> as argument for list<object> succeeds.
     param_cmp = [self.match_type_against_type(p1, p2, subst)
@@ -211,7 +214,7 @@ class TypeMatch(utils.TypeMatcher):
     assert isinstance(t2.base_type, pytd.ClassType)
     # No inheritance for base classes - you can only inherit from an
     # instantiated template, but not from a template itself.
-    base_match = booleq.Eq(t1.name, t2.base_type.name)
+    base_match = booleq.Eq(t1.name, t2.base_type.cls.name)
     type_params = [self.type_parameter(t1, t2.base_type.cls, item)
                    for item in t2.base_type.cls.template]
     for type_param in type_params:
@@ -261,6 +264,12 @@ class TypeMatch(utils.TypeMatcher):
         t1, t2, subst)
     return implication
 
+  def _full_name(self, t):
+    if isinstance(t, pytd.ExternalType):
+      return t.module + "." + t.name
+    else:
+      return t.name
+
   def _match_type_against_type(self, t1, t2, subst):
     """Match a pytd.TYPE against another pytd.TYPE."""
     t1 = self.maybe_lookup_type_param(t1, subst)
@@ -284,7 +293,7 @@ class TypeMatch(utils.TypeMatcher):
     elif (isinstance(t1, pytd.ClassType) and isinstance(t2, StrictType) or
           isinstance(t1, StrictType) and isinstance(t2, pytd.ClassType)):
       # For strict types, avoid subclasses of the left side.
-      return booleq.Eq(t1.name, t2.name)
+      return booleq.Eq(self._full_name(t1), self._full_name(t2))
     elif isinstance(t1, pytd.ClassType):
       # ClassTypes are similar to Unions, except they're disjunctions: We can
       # match the type or any of its base classes against the formal parameter.

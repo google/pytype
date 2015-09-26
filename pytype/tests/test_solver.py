@@ -278,6 +278,18 @@ class SolverTests(test_inference.InferenceTest):
           def f(date: bad_mod.myclass) -> bool
         """)
 
+  def testExternalName(self):
+    with self.Infer("""\
+      import collections
+      def bar(d):
+          d[""] = collections.defaultdict(int)
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        collections: module
+        def bar(d: collections.Counter or dict<str, collections.defaultdict>
+                ) -> NoneType
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()

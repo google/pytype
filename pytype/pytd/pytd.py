@@ -297,6 +297,10 @@ class ExternalType(ClassType):
   def __str__(self):
     return self.module + '.' + self.name
 
+  def __repr__(self):
+    return 'ExternalType(%r, %r, cls=%s)' % (
+        self.name, self.module, '...' if self.cls else 'None')
+
 
 class AnythingType(node.Node()):
   """A type we know nothing about yet ('?' in pytd)."""

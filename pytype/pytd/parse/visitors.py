@@ -229,6 +229,11 @@ class PrintVisitor(Visitor):
     """Convert a type to a string."""
     return self._SafeName(node.name)
 
+  def VisitStrictType(self, node):
+    # 'StrictType' is defined, and internally used, by booleq.py. We allow it
+    # here so that booleq.py can use pytd.Print().
+    return self.VisitNamedType(node)
+
   def VisitExternalType(self, node):
     """Convert an external type to a string."""
     return self._SafeName(node.module) + "." + self._SafeName(node.name)
@@ -433,15 +438,10 @@ class ClassTypeToNamedType(Visitor):
   """
 
   def VisitClassType(self, node):
-    """Converts a class type to a named type.
-
-    Args:
-      node: The ClassType.
-
-    Returns:
-      A NamedType.
-    """
     return pytd.NamedType(node.name)
+
+  def VisitExternalType(self, node):
+    return pytd.NamedType(node.module + "." + node.name)
 
 
 def InPlaceFillInClasses(target, global_module=None):

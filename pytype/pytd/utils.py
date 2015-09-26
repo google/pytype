@@ -380,6 +380,17 @@ class TypeBuilder(object):
     return not isinstance(self.union, pytd.NothingType)
 
 
+def ExternalOrNamedOrClassType(name, cls):
+  """Create Classtype / NamedType / ExternalType."""
+  if "." in name:
+    module, name = name.rsplit(".", 1)
+    return pytd.ExternalType(name, module, cls)
+  elif cls is None:
+    return pytd.NamedType(name)
+  else:
+    return pytd.ClassType(name, cls)
+
+
 def NamedOrExternalType(name, module=None):
   """Create NamedType / ExternalType, depending on whether we have a module."""
   if module is None:

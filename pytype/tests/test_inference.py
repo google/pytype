@@ -419,6 +419,8 @@ class InferenceTest(unittest.TestCase):
     pytd_tree = parser.TypeDeclParser(version=version).Parse(
         textwrap.dedent(pytd_src))
     pytd_tree = pytd_tree.Visit(
+        visitors.ClassTypeToNamedType())
+    pytd_tree = pytd_tree.Visit(
         visitors.CanonicalOrderingVisitor(sort_signatures=True))
     pytd_tree.Visit(visitors.VerifyVisitor())
     ty = ty.Visit(visitors.ClassTypeToNamedType())

@@ -184,11 +184,11 @@ def convert_string_type(string_type, unknown, mapping, global_lookup, depth=0):
   try:
     # Check whether this is a type declared in a pytd.
     cls = global_lookup.Lookup(string_type)
-    base_type = pytd.ClassType(cls.name, cls)
+    base_type = pytd_utils.ExternalOrNamedOrClassType(cls.name, cls)
   except KeyError:
     # If we don't have a pytd for this type, it can't be a template.
     cls = None
-    base_type = pytd.NamedType(string_type)
+    base_type = pytd_utils.ExternalOrNamedOrClassType(string_type, cls)
 
   if cls and cls.template:
     parameters = []
@@ -238,11 +238,11 @@ def convert_pytd(ast, builtins_pytd):
   builtins_pytd = builtins_pytd.Visit(visitors.ClassTypeToNamedType())
   mapping, result = solve(ast, builtins_pytd)
   log_info_mapping(mapping)
+  lookup = pytd_utils.Concat(builtins_pytd, result)
+  result = insert_solution(result, mapping, lookup)
   if log.isEnabledFor(logging.INFO):
     log.info("=========== solve result =============\n%s", pytd.Print(result))
     log.info("=========== solve result (end) =============")
-  lookup = pytd_utils.Concat(builtins_pytd, result)
-  result = insert_solution(result, mapping, lookup)
   return result
 
 
