@@ -135,13 +135,17 @@ class ImportPathsTest(unittest.TestCase):
     loader = load_pytd.Loader("base", python_version=self.PYTHON_VERSION)
     pytd_dir = os.path.join(os.path.dirname(load_pytd.__file__), "pytd")
     for builtins_subdir in ("builtins", "stdlib"):
-      for _, _, files in os.walk(
-          os.path.join(pytd_dir, builtins_subdir)):
+      subdir_path = os.path.join(pytd_dir, builtins_subdir)
+      for dirpath, _, files in os.walk(subdir_path):
         # We don't need to know the directory we're in because these are builtin
         # .pytd files and load_pytd.import_name takes care of looking in
-        # multiple directories.
+        # multiple directories. But because there can be subdirectories, we need
+        # to construct an appropriate module name.
+        rel_dirpath = os.path.relpath(dirpath, start=subdir_path)
+        module_prefix = rel_dirpath.replace(os.sep, ".") + (
+            "." if rel_dirpath else "")
         for name in files:
-          module_name, ext = os.path.splitext(name)
+          module_name, ext = os.path.splitext(module_prefix + name)
           if ext == ".pytd":
             # We could do something fancier with try/except, but for
             # now, just print out each module as we load it.

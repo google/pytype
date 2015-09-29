@@ -20,6 +20,7 @@ from pytype import infer
 from pytype.pytd import optimize
 from pytype.pytd import pytd
 from pytype.pytd import utils as pytd_utils
+from pytype.pytd.parse import visitors
 
 
 log = logging.getLogger(__name__)
@@ -344,6 +345,12 @@ def generate_pytd(input_filename, output_filename, options, imports_map,
     result = pytd.Print(mod)
     if not result.endswith("\n"):  # TODO(pludemann): fix this hack
       result += "\n"
+
+    # Ensure that the output is valid
+    mod.Visit(visitors.VerifyVisitor())
+    # TODO(pludemann): remove the following (which simply verifies
+    #                  that what we've output is valid):
+    _ = pytd_utils.ParsePyTD(src=result, python_version=python_version)
 
   if output_filename == "-" or not output_filename:
     sys.stdout.write(result)

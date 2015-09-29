@@ -47,14 +47,19 @@ class Loader(object):
                  have been created by separate invocations of pytype -- that is,
                  the situation is similar to javac using .class files that have
                  been created by other invocations of javac.
+                 imports_map may be None, which is different from {} -- None
+                 means that there was no imports_map whereas {} means it's
+                 empty.
+
     pythonpath: list of directory names to be tried.
     find_pytd_import_ext: file extension pattern for finding an import PyTD.
-      A string. (Builtins always use ".pytd" and ignore this option.)
+                          A string. (Builtins always use ".pytd" and ignore
+                          this option.)
     import_drop_prefixes: list of prefixes to drop when resolving
-      module name to file name.
+                          module name to file name.
     _modules: A map, filename to Module, for caching modules already loaded.
     _concatenated: A concatenated pytd of all the modules. Refreshed when
-      necessary.
+                   necessary.
   """
 
   PREFIX = "pytd:"  # for pytd files that ship with pytype
@@ -197,6 +202,9 @@ class Loader(object):
           "Couldn't import module %s %r in (path=%r) imports_map: %s",
           module_name, module_name_split, self.pythonpath,
           "%d items" % len(self.imports_map) if self.imports_map else "none")
+      if self.imports_map is not None:
+        for short_path, long_path in self.imports_map.items():
+          log.debug("%r => %r", short_path, long_path)
     return None
 
   def _import_file(self, module_name, module_name_split):
@@ -227,7 +235,7 @@ class Loader(object):
         # TODO(pludemann): remove this? - it's not standard Python.
         log.debug("Created empty module %r with path %r",
                   module_name, init_path)
-        return self.create_empty(
+        return self._create_empty(
             filename=os.path.join(path, "__init__.pytd"),
             module_name=module_name)
       else:  # Not a directory

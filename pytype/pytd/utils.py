@@ -46,10 +46,9 @@ def GetPredefinedFile(pytd_subdir, module, extension=".pytd"):
   Raises:
     IOError: if file not found
   """
-  full_filename = os.path.abspath(
-      os.path.join(os.path.dirname(pytd.__file__),
-                   pytd_subdir, module + extension))
-  with open(full_filename, "rb") as fi:
+  path = os.path.join(os.path.dirname(__file__),
+                      pytd_subdir, os.path.join(*module.split(".")) + extension)
+  with open(path, "rb") as fi:
     return fi.read()
 
 

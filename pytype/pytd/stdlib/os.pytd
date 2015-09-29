@@ -41,8 +41,6 @@ extsep: str
 linesep: str
 name: str
 pardir: str
-path: ?  # TODO(kramm): add submodule
-# TODO(pludemann): create os/path.pytd
 pathsep: str
 sep: str
 SEEK_SET: int
