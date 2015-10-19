@@ -159,9 +159,8 @@ def _parse_options(args):
       "--find_pytd_import_ext", type="string", action="store",
       dest="find_pytd_import_ext",
       default=DEFAULT_PYTD_IMPORT_EXT,
-      help=("Pattern appended to filename when looking up import PyTD files in "
-            "pythonpath. Supports '*' and [...] expansions. "
-            "Default is '%s'.") % DEFAULT_PYTD_IMPORT_EXT)
+      help=("Extension appended to filename when looking up import PyTD files "
+            "in the pythonpath. Default is '%s'.") % DEFAULT_PYTD_IMPORT_EXT)
   o.add_option(
       "--import_drop_prefixes", type="string", action="store",
       dest="import_drop_prefixes",

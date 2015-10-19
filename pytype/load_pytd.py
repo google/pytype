@@ -1,6 +1,5 @@
 """Load and link .pytd files."""
 
-import glob
 import logging
 import os
 
@@ -225,7 +224,7 @@ class Loader(object):
       # See if this is a directory with a "__init__.py" defined.
       # MOE:strip_line For Bazel, have already created a __init__.py file
       init_path = os.path.join(path, "__init__")
-      init_ast = self._load_pytd_from_glob(init_path, module_name)
+      init_ast = self._load_pytd(init_path, module_name)
       if init_ast is not None:
         log.debug("Found module %r with path %r", module_name, init_path)
         return init_ast
@@ -239,13 +238,13 @@ class Loader(object):
             filename=os.path.join(path, "__init__.pytd"),
             module_name=module_name)
       else:  # Not a directory
-        file_ast = self._load_pytd_from_glob(path, module_name)
+        file_ast = self._load_pytd(path, module_name)
         if file_ast is not None:
           log.debug("Found module %r in path %r", module_name, path)
           return file_ast
     return None
 
-  def _load_pytd_from_glob(self, path, module_name):
+  def _load_pytd(self, path, module_name):
     """Load a pytd from the path, using '*'-expansion.
 
     Args:
@@ -261,16 +260,8 @@ class Loader(object):
         pytd_path = self.imports_map.get(pytd_path)
       else:
         return None
-    # MOE:strip_line TODO(pludemann): do we need the "glob" functionality any
-    # MOE:strip_line                  more? (for running outside this repository)
-    files = sorted(glob.glob(pytd_path))
-    if files:
-      if len(files) > 1:
-        # TODO(pludemann): Check whether the contents differ?
-        # MOE:strip_line TODO(pludemann): Prioritize "#" items (see pytype.bzl).
-        # TODO(pludemann): Limit the number of files in the message?
-        log.warn("Multiple files for %r: %r", pytd_path, files)
-      return self._load_file(filename=files[0], module_name=module_name)
+    if os.path.isfile(pytd_path):
+      return self._load_file(filename=pytd_path, module_name=module_name)
     else:
       return None
 
