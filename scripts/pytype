@@ -323,7 +323,7 @@ def generate_pytd(input_filename, output_filename, options, imports_map,
         reverse_operators=options.reverse_operators,
         cache_unknowns=options.cache_unknowns,
         skip_repeat_calls=options.skip_repeat_calls,
-        maximum_depth=(2 if options.quick else None))
+        maximum_depth=(1 if options.quick else None))
   except Exception as e:  # pylint: disable=broad-except
     if options.nofail:
       log.warn("***Caught exception: %s", str(e), exc_info=True)

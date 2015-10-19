@@ -14,11 +14,26 @@ class OptionsTest(test_inference.InferenceTest):
         return f3(x)
       def f3(x):
         return 1
-    """, deep=True, extract_locals=True, maximum_depth=0) as ty:
+    """, deep=True, extract_locals=True, maximum_depth=None) as ty:
       self.assertTypesMatchPytd(ty, """
         def f1(x) -> int
         def f2(x) -> int
         def f3(x) -> int
+      """)
+
+  def testMaxDepth0(self):
+    with self.Infer("""
+      def f1(x):
+        return f2(x)
+      def f2(x):
+        return f3(x)
+      def f3(x):
+        return 1
+    """, deep=True, extract_locals=True, maximum_depth=0) as ty:
+      self.assertTypesMatchPytd(ty, """
+        def f1(x) -> ?
+        def f2(x) -> ?
+        def f3(x) -> ?
       """)
 
   def testMaxDepth1(self):
@@ -37,6 +52,21 @@ class OptionsTest(test_inference.InferenceTest):
       """)
 
   def testMaxDepth2(self):
+    with self.Infer("""
+      def f1(x):
+        return f2(x)
+      def f2(x):
+        return f3(x)
+      def f3(x):
+        return 1
+    """, deep=True, extract_locals=True, maximum_depth=2) as ty:
+      self.assertTypesMatchPytd(ty, """
+        def f1(x) -> ?
+        def f2(x) -> int
+        def f3(x) -> int
+      """)
+
+  def testMaxDepth2Explicit(self):
     with self.Infer("""
       def f1(x):
         return f2(x)

@@ -116,9 +116,9 @@ class VirtualMachine(object):
                import_drop_prefixes=(),
                pybuiltins_filename=None,
                skip_repeat_calls=True,
-               maximum_depth=0):
+               maximum_depth=None):
     """Construct a TypegraphVirtualMachine."""
-    self.maximum_depth = maximum_depth or sys.maxint
+    self.maximum_depth = sys.maxint if maximum_depth is None else maximum_depth
     self.python_version = python_version
     self.errorlog = errorlog
     self.pybuiltins_filename = pybuiltins_filename
