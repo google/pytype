@@ -1912,6 +1912,9 @@ class InterpreterFunction(Function):
                                for args in hash_args)).digest()
 
   def call(self, node, unused_func, args, kws, starargs=None):
+    if self.vm.is_at_maximum_depth():
+      log.info("Maximum depth reached. Not analyzing %r", self.name)
+      return node, self.vm.create_new_unsolvable(node, self.name + ":ret")
     callargs = self._map_args(node, args, kws, starargs)
     # Might throw vm.RecursionException:
     frame = self.vm.make_frame(node, self.code, callargs,

@@ -115,8 +115,10 @@ class VirtualMachine(object):
                find_pytd_import_ext=".pytd",
                import_drop_prefixes=(),
                pybuiltins_filename=None,
-               skip_repeat_calls=True):
+               skip_repeat_calls=True,
+               maximum_depth=0):
     """Construct a TypegraphVirtualMachine."""
+    self.maximum_depth = maximum_depth or sys.maxint
     self.python_version = python_version
     self.errorlog = errorlog
     self.pybuiltins_filename = pybuiltins_filename
@@ -184,6 +186,9 @@ class VirtualMachine(object):
     self.vmbuiltins = {b.name: b for b in (self.loader.builtins.constants +
                                            self.loader.builtins.classes +
                                            self.loader.builtins.functions)}
+
+  def is_at_maximum_depth(self):
+    return len(self.frames) > self.maximum_depth
 
   def run_instruction(self, op, state):
     """Run a single bytecode instruction.

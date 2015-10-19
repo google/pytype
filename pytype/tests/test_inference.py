@@ -68,9 +68,7 @@ class Infer(object):
 
   def __init__(self, test, srccode, deep=False,
                solve_unknowns=False, extract_locals=False,
-               reverse_operators=True, extra_verbose=False,
-               report_errors=True, pythonpath=(),
-               find_pytd_import_ext=".pytd"):
+               extra_verbose=False, report_errors=True, **kwargs):
     """Constructor for Infer.
 
     Args:
@@ -80,11 +78,9 @@ class Infer(object):
             that don't have a caller)
       solve_unknowns: try to solve for all ~unknown types
       extract_locals: strip ~unknown types from the output pytd
-      reverse_operators: Whether to try e.g. both __add__ and __radd__
       extra_verbose: extra intermeidate output (for debugging)
       report_errors: Whether to fail if the type inferencer reports any erros.
-      pythonpath: list of directories for imports
-      find_pytd_import_ext: the file extension pattern for imports
+      **kwargs: Additional options to pass through to infer_types().
     """
     # TODO(pludemann): There are eight possible combinations of these three
     # boolean flags. Do all of these combinations make sense? Or would it be
@@ -104,10 +100,9 @@ class Infer(object):
     # Exceptions raised in the body of 'with' will be presented to __exit__.
     try:
       self.types = test._InferAndVerify(
-          self.srccode, deep=deep, solve_unknowns=solve_unknowns,
-          reverse_operators=reverse_operators, cache_unknowns=True,
-          report_errors=report_errors,
-          pythonpath=pythonpath, find_pytd_import_ext=find_pytd_import_ext)
+          self.srccode, deep=deep, cache_unknowns=True,
+          solve_unknowns=solve_unknowns,
+          report_errors=report_errors, **kwargs)
       self.inferred = self.types
       if extract_locals:
         # Rename "~unknown" to "?"
@@ -254,7 +249,7 @@ class InferenceTest(unittest.TestCase):
     errorlog = errors.ErrorLog()
     unit = infer.infer_types(
         textwrap.dedent(code), self.PYTHON_VERSION, errorlog, deep=True,
-        solve_unknowns=True, reverse_operators=True, cache_unknowns=True)
+        reverse_operators=True, cache_unknowns=True)
     unit.Visit(visitors.VerifyVisitor())
     return pytd_utils.CanonicalOrdering(unit), errorlog
 
@@ -375,16 +370,14 @@ class InferenceTest(unittest.TestCase):
         raise AssertionError("Found regexp %r in errors" % regexp)
 
   def Infer(self, srccode, deep=False, solve_unknowns=False,
-            reverse_operators=True, extract_locals=False, extra_verbose=False,
-            report_errors=True, pythonpath=(), find_pytd_import_ext=".pytd"):
+            extract_locals=False, extra_verbose=False,
+            report_errors=True, **kwargs):
     # Wraps Infer object to make it seem less magical
     # See class Infer for more on the arguments
     return Infer(self, srccode=srccode, deep=deep,
                  solve_unknowns=solve_unknowns, extract_locals=extract_locals,
-                 reverse_operators=reverse_operators,
                  extra_verbose=extra_verbose, report_errors=report_errors,
-                 pythonpath=pythonpath,
-                 find_pytd_import_ext=find_pytd_import_ext)
+                 **kwargs)
 
   def _InferAndVerify(self, src, report_errors=False, **kwargs):
     """Infer types for the source code treating it as a module.

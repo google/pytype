@@ -74,6 +74,10 @@ def _parse_options(args):
       help=("Set logging verbosity: "
             "-1=quiet, 0=fatal, 1=error (default), 2=warn, 3=info, 4=debug"))
   o.add_option(
+      "-Z", "--quick", action="store_true",
+      dest="quick",
+      help=("Only do an approximation."))
+  o.add_option(
       "-O", "--optimize", action="store_true",
       dest="optimize",
       help=("Optimize generated pytd (default)."))
@@ -265,7 +269,8 @@ def check_pytd(input_filename, output_filename, options, imports_map,
       import_drop_prefixes=import_drop_prefixes,
       reverse_operators=options.reverse_operators,
       cache_unknowns=options.cache_unknowns,
-      skip_repeat_calls=options.skip_repeat_calls)
+      skip_repeat_calls=options.skip_repeat_calls,
+      maximum_depth=(1 if options.quick else None))
 
 
 def generate_pytd(input_filename, output_filename, options, imports_map,
@@ -317,7 +322,8 @@ def generate_pytd(input_filename, output_filename, options, imports_map,
         output_pseudocode=options.output_pseudocode,
         reverse_operators=options.reverse_operators,
         cache_unknowns=options.cache_unknowns,
-        skip_repeat_calls=options.skip_repeat_calls)
+        skip_repeat_calls=options.skip_repeat_calls,
+        maximum_depth=(2 if options.quick else None))
   except Exception as e:  # pylint: disable=broad-except
     if options.nofail:
       log.warn("***Caught exception: %s", str(e), exc_info=True)
