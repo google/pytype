@@ -643,6 +643,7 @@ class set<T>:
     def difference_update(self, ...) -> NoneType
     def intersection(self, ...) -> set<T>
     def intersection_update(self, ...) -> NoneType
+    def pop(self) -> T
     def union(self, ...) -> set<T>
     def update(self, ...) -> NoneType
     def add<A>(self, object: A) -> NoneType:

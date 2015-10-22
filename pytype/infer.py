@@ -282,7 +282,8 @@ class CallTracer(vm.VirtualMachine):
             tuple(self.pytd_classes_for_call_traces()),
             tuple(self.pytd_functions_for_call_traces())))
     ty = ty.Visit(optimize.PullInMethodClasses())
-    ty = ty.Visit(visitors.DefaceUnresolved([ty, self.loader.concat_all()]))
+    ty = ty.Visit(visitors.DefaceUnresolved(
+        [ty, self.loader.concat_all()], "~unknown"))
     return ty
 
   def _create_call_arg(self, name, t, node):

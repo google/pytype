@@ -368,31 +368,36 @@ class InPlaceFillInExternalTypes(Visitor):
 class DefaceUnresolved(Visitor):
   """Replace all types not in a symbol table with AnythingType."""
 
-  def __init__(self, lookup_list):
+  def __init__(self, lookup_list, do_not_log_prefix=None):
     """Create this visitor.
 
     Args:
       lookup_list: An iterable of symbol tables (i.e., objects that have a
         "lookup" function)
+      do_not_log_prefix: If given, don't log error messages for classes with
+        this prefix.
     """
     super(DefaceUnresolved, self).__init__()
     self._lookup_list = lookup_list
+    self._do_not_log_prefix = do_not_log_prefix
 
   def VisitNamedType(self, node):
+    name = node.name
     for lookup in self._lookup_list:
       try:
-        cls = lookup.Lookup(node.name)
+        cls = lookup.Lookup(name)
         if isinstance(cls, pytd.Class):
           return node
       except KeyError:
         pass
     if "." in node.name:
-      logging.warning("Marking %s as external", node.name)
-      module_name, base_name = node.name.rsplit(".", 1)
+      logging.warning("Marking %s as external", name)
+      module_name, base_name = name.rsplit(".", 1)
       return pytd.ExternalType(base_name, module_name)
     else:
-      # TODO(kramm): This should throw an exception
-      logging.error("Setting %s to ?", node.name)
+      if (self._do_not_log_prefix is None or
+          not name.startswith(self._do_not_log_prefix)):
+        logging.error("Setting %s to ?", name)
       return pytd.AnythingType()
 
   def VisitHomogeneousContainerType(self, node):
