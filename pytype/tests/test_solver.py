@@ -19,7 +19,7 @@ class SolverTests(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=True, extract_locals=True) as ty:
       self.assertTypesMatchPytd(ty, """
       class Node:
-        children: list<nothing> or tuple<nothing>
+        children: list[nothing] or tuple[nothing]
       """)
 
   def testCall(self):
@@ -42,7 +42,7 @@ class SolverTests(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
           # TODO(kramm): This is missing int, bool, long, complex
-          def f(A: dict<?, float>) -> list<float>
+          def f(A: dict[?, float]) -> list[float]
       """)
 
   def testAnythingTypeParameters(self):
@@ -51,7 +51,7 @@ class SolverTests(test_inference.InferenceTest):
         return x.keys()
     """, deep=True, solve_unknowns=True, extract_locals=True) as ty:
       self.assertTypesMatchPytd(ty, """
-        def f(x: dict<?, ?>) -> list<?>
+        def f(x: dict[?, ?]) -> list[?]
       """)
 
   def testNameConflict(self):
@@ -114,7 +114,7 @@ class SolverTests(test_inference.InferenceTest):
       self.assertTypesMatchPytd(ty, """
       class Foo(object):
         def __init__(self, ...) -> NoneType
-        types: tuple<type>
+        types: tuple[type]
         def bar(self, val) -> bool
       """)
 
@@ -154,8 +154,8 @@ class SolverTests(test_inference.InferenceTest):
         def f(x: int) -> int
         def f(x) -> ?
 
-        d: dict<str, int>
-        l: list<str>
+        d: dict[str, int]
+        l: list[str]
       """)
 
   def testCallConstructor(self):
@@ -204,8 +204,8 @@ class SolverTests(test_inference.InferenceTest):
         f()
     """, deep=True, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
-        foo: list<list<int>>
-        bar: list<int>
+        foo: list[list[int]]
+        bar: list[int]
 
         def f() -> NoneType
         def g() -> NoneType
@@ -226,8 +226,8 @@ class SolverTests(test_inference.InferenceTest):
         f()
     """, deep=True, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
-        foo: list<list<list<int>>>
-        bar: list<int>
+        foo: list[list[list[int]]]
+        bar: list[int]
 
         def f() -> NoneType
         def g() -> NoneType
@@ -253,8 +253,8 @@ class SolverTests(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
         class Container:
-          foo: list<list<int>>
-          bar: list<int>
+          foo: list[list[int]]
+          bar: list[int]
 
         container: Container
 
@@ -286,7 +286,7 @@ class SolverTests(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
         collections: module
-        def bar(d: collections.Counter or dict<str, collections.defaultdict>
+        def bar(d: collections.Counter or dict[str, collections.defaultdict]
                 ) -> NoneType
       """)
 

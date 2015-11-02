@@ -11,7 +11,7 @@ QUOTE_NONE: int
 QUOTE_NONNUMERIC: int
 StringIO: function or type
 _Dialect: type
-__all__: list<str>
+__all__: list[str]
 __version__: str
 complex: type
 field_size_limit: function

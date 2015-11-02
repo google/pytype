@@ -2,7 +2,7 @@
 #         pytype --api python_runtime/v2_7/Lib/atexit.py
 
 
-__all__: list<?>
+__all__: list[?]
 _abcoll: ?
 _chain: type
 _class_template: str
@@ -21,7 +21,7 @@ deque: ?
 dumps: function
 loads: function
 
-def namedtuple(typename: str, field_names: str or list<str>, ...) -> type  # TODO(pludemann): add verbose, rename
+def namedtuple(typename: str, field_names: str or list[str], ...) -> type  # TODO(pludemann): add verbose, rename
 
 class OrderedDict:
   pass
@@ -29,20 +29,20 @@ class OrderedDict:
 class defaultdict:
   def __init__(self, ...) -> NoneType
 
-# Strictly speaking, this should be dict<?, ?>. (E.g. it's legal to do
+# Strictly speaking, this should be dict[?, ?]. (E.g. it's legal to do
 # collections.Counter()[x] = 'foobar'.) But the counts are typically integers.
-class Counter(dict<?, int>):
+class Counter(dict[?, int]):
     __doc__: str
     fromkeys: classmethod
-    def __add__(self, other: dict<object, object>) -> Counter or NotImplementedType
-    def __and__(self, other: bytearray or xrange or dict<?, object> or list<object> or tuple<object>) -> Counter or NotImplementedType
+    def __add__(self, other: dict[object, object]) -> Counter or NotImplementedType
+    def __and__(self, other: bytearray or xrange or dict[?, object] or list[object] or tuple[object]) -> Counter or NotImplementedType
     def __delitem__(self, elem) -> NoneType
     def __init__(self, ...) -> NoneType
     def __missing__(self, key) -> int
-    def __or__(self, other: dict<object, object>) -> Counter or NotImplementedType
-    def __reduce__(self) -> tuple<?>
+    def __or__(self, other: dict[object, object]) -> Counter or NotImplementedType
+    def __reduce__(self) -> tuple[?]
     def __repr__(self) -> str
-    def __sub__(self, other: dict<object, object>) -> Counter or NotImplementedType
+    def __sub__(self, other: dict[object, object]) -> Counter or NotImplementedType
     def copy(self) -> ?
     def elements(self) -> ?
     def most_common(self, ...) -> ?

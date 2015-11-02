@@ -69,7 +69,7 @@ class OperatorsWithAnyTests(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=True, extract_locals=True) as ty:
       # Currently missing str and unicode
       self.assertTypesMatchPytd(ty, """
-        def t_testAdd5(x: str or unicode or bytearray or list<?>) -> str or unicode or bytearray or list<?>
+        def t_testAdd5(x: str or unicode or bytearray or list[?]) -> str or unicode or bytearray or list[?]
       """)
 
   def testPow1(self):

@@ -2,8 +2,8 @@
 #         pytype --api python_runtime/v2_7/Lib/shutil.py
 
 WindowsError: NoneType
-_ARCHIVE_FORMATS: dict<?, tuple<?>>
-__all__: list<str>
+_ARCHIVE_FORMATS: dict[?, tuple[?]]
+__all__: list[str]
 abspath: function
 collections: ?
 errno: module
@@ -34,7 +34,7 @@ def copystat(src, dst) -> NoneType
 def copystat(src: buffer or str or unicode, dst: buffer or str or unicode) -> NoneType
 def copytree(src, dst, ...) -> NoneType
 def copytree(src: str or unicode, dst: buffer or str or unicode, ...) -> NoneType
-def get_archive_formats() -> list<tuple<function or str or list<tuple<NoneType or str>> or tuple<function or str or list<tuple<NoneType or str>>>>>
+def get_archive_formats() -> list[tuple[function or str or list[tuple[NoneType or str]] or tuple[function or str or list[tuple[NoneType or str]]]]]
 def ignore_patterns(...) -> function
 def make_archive(base_name: buffer or bytearray or str or unicode, format, ...) -> bytearray or str or unicode
 def move(src: str or unicode, dst: buffer or str or unicode) -> NoneType

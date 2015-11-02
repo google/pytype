@@ -24,7 +24,7 @@ provide types for **"application.py"**, you define the type inside the file
 Here’s an example of a simple type declaration file:
 ```python
 class Logger:
-  def log(self, messages: list<str>) -> NoneType raises IOException
+  def log(self, messages: list[str]) -> NoneType raises IOException
 ```
 
 ## How to get started

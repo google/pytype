@@ -3,7 +3,7 @@
 
 Repr: function
 TESTCMD: str
-__all__: list<str>
+__all__: list[str]
 _repr: ?
 _saferepr: function
 bdb: ?
@@ -33,25 +33,25 @@ def test() -> NoneType
 class Pdb(?, ?):
     _user_requested_quit: int
     _wait_for_mainpyfile: int
-    aliases: dict<bytearray or str or unicode, str or unicode>
-    cmdqueue: list<bytes or str or unicode>
-    commands: dict<int, list<bytearray or bytes or str or unicode>>
+    aliases: dict[bytearray or str or unicode, str or unicode]
+    cmdqueue: list[bytes or str or unicode]
+    commands: dict[int, list[bytearray or bytes or str or unicode]]
     commands_bnum: NoneType or int
     commands_defining: bool
-    commands_doprompt: dict<NoneType or int, bool>
-    commands_resuming: list<str>
-    commands_silent: dict<NoneType or int, bool>
+    commands_doprompt: dict[NoneType or int, bool]
+    commands_resuming: list[str]
+    commands_silent: dict[NoneType or int, bool]
     curframe: ?
     curframe_locals: ?
-    curindex: complex or float or int or long or dict<dict<?, ?>, bytearray or xrange or dict<?, ?> or list<?> or tuple<?>>
+    curindex: complex or float or int or long or dict[dict[?, ?], bytearray or xrange or dict[?, ?] or list[?] or tuple[?]]
     currentbp: int
     do_h: ?
     lastcmd: ?
     lineno: NoneType or int
     mainpyfile: ?
     prompt: str
-    rcLines: list<str>
-    stack: dict<dict<?, ?>, bytearray or xrange or dict<?, ?> or list<?> or tuple<?>> or list<nothing>
+    rcLines: list[str]
+    stack: dict[dict[?, ?], bytearray or xrange or dict[?, ?] or list[?] or tuple[?]] or list[nothing]
     use_rawinput: int
     def __init__(self, ...) -> NoneType
     def _getval(self, arg) -> ?
@@ -84,8 +84,8 @@ class Pdb(?, ?):
     def do_enable(self, arg: ?) -> NoneType
     def do_exit(self, arg) -> int
     def do_ignore(self, arg: bytearray or str or unicode) -> NoneType
-    def do_j(self, arg: bool or complex or float or int or long or dict_keys<?>) -> NoneType
-    def do_jump(self, arg: bool or complex or float or int or long or dict_keys<?>) -> NoneType
+    def do_j(self, arg: bool or complex or float or int or long or dict_keys[?]) -> NoneType
+    def do_jump(self, arg: bool or complex or float or int or long or dict_keys[?]) -> NoneType
     def do_l(self, arg) -> NoneType
     def do_list(self, arg) -> NoneType
     def do_n(self, arg) -> int
@@ -166,7 +166,7 @@ class Pdb(?, ?):
     def help_where(self) -> NoneType
     def interaction(self, frame: NoneType, traceback: ?) -> NoneType
     def interaction(self, frame, traceback) -> NoneType
-    def lineinfo(self, identifier: str or unicode) -> tuple<NoneType>
+    def lineinfo(self, identifier: str or unicode) -> tuple[NoneType]
     def lookupmodule(self, filename: buffer or str or unicode) -> ?
     def onecmd(self, line: str) -> ?
     def precmd(self, line: str or unicode) -> bytes or str or unicode

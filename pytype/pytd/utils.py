@@ -202,12 +202,12 @@ def CanonicalOrdering(n, sort_signatures=False):
 def RemoveMutableParameters(ast):
   """Change all mutable parameters in a pytd AST to a non-mutable form."""
   # transforms
-  #   class list<T>:
-  #     def append<T2>(self, v: T2) -> NoneType:
+  #   class list[T]:
+  #     def append[T2](self, v: T2) -> NoneType:
   #       self := T or T2
   # to
-  #   class list<T'>:
-  #     def append<T'>(self, V:T') -> NoneType
+  #   class list[T']:
+  #     def append[T'](self, V:T') -> NoneType
   # by creating a *new* template variable T' that propagates the
   # mutations to the outermost level (in this example, T' = T or T2)
 

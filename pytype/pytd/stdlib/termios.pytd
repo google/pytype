@@ -230,6 +230,6 @@ class error(Exception):
 def tcdrain(fd: int) -> NoneType
 def tcflow(fd: int, action: int) -> NoneType
 def tcflush(fd: int, queue: int) -> NoneType
-def tcgetattr(fd: int) -> list<str>
+def tcgetattr(fd: int) -> list[str]
 def tcsendbreak(fd: int, duration: float) -> NoneType
 def tcsetattr(fd: int, when: int, attributes) -> NoneType  raises TypeError

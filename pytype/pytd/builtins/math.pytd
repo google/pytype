@@ -29,7 +29,7 @@ def fabs(x: float or int) -> float
 def factorial(x: float or int) -> float raises ValueError
 def floor(x: float or int) -> float
 def fmod(x: float or int) -> float
-def frexp(x: float or int) -> tuple<float or int, float or int>
+def frexp(x: float or int) -> tuple[float or int, float or int]
 def fsum(x: float or int) -> float raises OverflowError, ValueError
 def gamma(x: float or int) -> float
 def hypot(x: float or int) -> float
@@ -40,7 +40,7 @@ def lgamma(x: float or int) -> float
 def log(x: float or int) -> float
 def log10(x: float or int) -> float
 def log1p(x: float or int) -> float
-def modf(x: float or int) -> float<float or int, float or int>
+def modf(x: float or int) -> float[float or int, float or int]
 def pow(x: float or int) -> float
 def radians(x: float or int) -> float
 def sin(x: float or int) -> float

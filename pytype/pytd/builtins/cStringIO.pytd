@@ -9,7 +9,7 @@ class OutputType(StringO):
   def isatty() -> bool
   def read(...) -> str
   def readline(...) -> str
-  def readlines(...) -> list<str>
+  def readlines(...) -> list[str]
   def reset() -> NoneType
   def seek(a: int, ...) -> NoneType
   def tell() -> int
@@ -26,7 +26,7 @@ class StringO:
   def isatty() -> bool
   def read(...) -> str
   def readline(...) -> str
-  def readlines(...) -> list<str>
+  def readlines(...) -> list[str]
   def reset() -> NoneType
   def seek(a: int, ...) -> NoneType
   def tell() -> int
@@ -41,7 +41,7 @@ class StringI:
   def isatty() -> bool
   def read(...) -> str
   def readline(...) -> str
-  def readlines(...) -> list<str>
+  def readlines(...) -> list[str]
   def reset() -> NoneType
   def seek(a: int, ...) -> NoneType
   def tell() -> int
@@ -54,7 +54,7 @@ class InputType(StringI):
   def isatty() -> bool
   def read(...) -> str
   def readline(...) -> str
-  def readlines(...) -> list<str>
+  def readlines(...) -> list[str]
   def reset() -> NoneType
   def seek(a: int, ...) -> NoneType
   def tell() -> int

@@ -3,7 +3,7 @@
 #     and:
 #          for d in dir(logging): print d, type(getattr(logging, d))
 
-__all__: list<str>
+__all__: list[str]
 
 BASIC_FORMAT: str
 class BufferingFormatter:

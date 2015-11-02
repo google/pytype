@@ -4,7 +4,7 @@ TMP_MAX: int
 def TemporaryFile(mode: str, ...) -> ?
 _Random: ?
 _StringIO: type
-__all__: list<str>
+__all__: list[str]
 _allocate_lock: function
 _bin_openflags: int
 _errno: module

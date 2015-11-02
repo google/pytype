@@ -137,7 +137,7 @@ class Print484StubVisitor(visitors.Visitor):
     return self.VisitGenericType(node)
 
   def VisitGenericType(self, node):
-    """Convert a generic type (E.g. list<int>) to a string."""
+    """Convert a generic type (E.g. list[int]) to a string."""
     param_str = ", ".join(node.parameters)
     return self._MaybeCapitalize(node.base_type) + "[" + param_str + "]"
 

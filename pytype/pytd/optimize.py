@@ -175,9 +175,9 @@ class CombineContainers(visitors.Visitor):
   """Change unions of containers to containers of unions.
 
   For example, this transforms
-    list<int> or list<float>
+    list[int] or list[float]
   to
-    list<int or float>
+    list[int or float]
   .
   """
 
@@ -897,12 +897,12 @@ class AbsorbMutableParameters(visitors.Visitor):
   """Converts mutable parameters to unions. This is lossy.
 
   For example, this will change
-    def f(x: list<int>):
-      x := list<int or float>
+    def f(x: list[int]):
+      x := list[int or float]
   to
-    def f(x: list<int> or list<int or float>)
+    def f(x: list[int] or list[int or float])
   .
-  (Use optimize.CombineContainers to then change x to list<int or float>.)
+  (Use optimize.CombineContainers to then change x to list[int or float].)
 
   This also works for methods - it will then potentially change the type of
   "self". The resulting AST is temporary and needs careful handling.
@@ -948,22 +948,22 @@ class MergeTypeParameters(TypeParameterScope):
   """Remove all function type parameters in a union with a class type param.
 
   For example, this will change
-    class A<T>:
-      def append<T2>(self, T or T2) -> T2
+    class A[T]:
+      def append[T2](self, T or T2) -> T2
   to
-    class A<T>:
+    class A[T]:
       def append(self, T) -> T
   .
   Use this visitor after using AbsorbMutableParameters.
 
   As another example, the combination of AbsorbMutableParameters and
   MergeTypeParameters transforms
-    class list<T>:
-      def append<T2>(self, v: T2) -> NoneType:
+    class list[T]:
+      def append[T2](self, v: T2) -> NoneType:
         self := T or T2
   to
-    class list<T'>:
-      def append<T'>(self, V:T') -> NoneType
+    class list[T']:
+      def append[T'](self, V:T') -> NoneType
   by creating a *new* template variable T' that propagates the
   mutations to the outermost level (in this example, T' = T or T2)
   """

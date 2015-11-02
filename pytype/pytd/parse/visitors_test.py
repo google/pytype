@@ -67,7 +67,7 @@ class TestVisitors(parser_test.ParserTest):
     src = textwrap.dedent("""
         class A(X):
             def a(self, a: A, b: X, c: int) -> X raises X
-            def b(self) -> X<int>
+            def b(self) -> X[int]
     """)
     expected = textwrap.dedent("""
         class A(?):
@@ -199,15 +199,15 @@ class TestVisitors(parser_test.ParserTest):
   def testCanonicalOrderingVisitor(self):
     src1 = textwrap.dedent("""
     def f() -> ? raises MemoryError, IOError
-    def f(x: list<a>) -> ?
-    def f(x: list<b or c>) -> ?
-    def f(x: list<tuple<d>>) -> ?
+    def f(x: list[a]) -> ?
+    def f(x: list[b or c]) -> ?
+    def f(x: list[tuple[d]]) -> ?
     """)
     src2 = textwrap.dedent("""
     def f() -> ? raises IOError, MemoryError
-    def f(x: list<tuple<d>>) -> ?
-    def f(x: list<a>) -> ?
-    def f(x: list<b or c>) -> ?
+    def f(x: list[tuple[d]]) -> ?
+    def f(x: list[a]) -> ?
+    def f(x: list[b or c]) -> ?
     """)
     tree1 = self.Parse(src1)
     tree1 = tree1.Visit(visitors.CanonicalOrderingVisitor(sort_signatures=True))
@@ -259,7 +259,7 @@ class TestVisitors(parser_test.ParserTest):
 
   def testCollectDependencies(self):
     src = textwrap.dedent("""
-      l: list<int or baz.BigInt>
+      l: list[int or baz.BigInt]
       def f1() -> bar.Bar
       def f2() -> foo.bar.Baz
     """)

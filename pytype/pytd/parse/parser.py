@@ -86,6 +86,8 @@ class PyLexer(object):
       # 'COMMENT',  # Not used in the grammar; only used to discard comments
       'DEDENT',
       'DOT',
+      'LT',
+      'GT',
       'LE',
       'GE',
       'EQ',
@@ -101,12 +103,6 @@ class PyLexer(object):
       'STRING',
   ] + [id.upper() for id in reserved]
 
-  def CancelLBracket(self):
-    self.open_brackets -= 1
-
-  def CancelRBracket(self):
-    self.open_brackets += 1
-
   # LE and GE need to be functions (not constants) because ply prioritizes
   # functions, and we need them before LBRACKET / RBRACKET.
   def t_LE(self, t):
@@ -118,13 +114,21 @@ class PyLexer(object):
     return t
 
   def t_LBRACKET(self, t):
-    r"""<"""
+    r"""\["""
     self.open_brackets += 1
     return t
 
   def t_RBRACKET(self, t):
-    r""">"""
+    r"""\]"""
     self.open_brackets -= 1
+    return t
+
+  def t_LT(self, t):
+    r"""<"""
+    return t
+
+  def t_GT(self, t):
+    r""">"""
     return t
 
   def t_LPAREN(self, t):
@@ -423,16 +427,14 @@ class TypeDeclParser(object):
     p[0] = p[5] if p[2] else p[10]
 
   def p_version_expr_lt(self, p):
-    """version_expr : NAME RBRACKET NUMBER"""
-    self.lexer.CancelRBracket()
-    CheckStringIsPython(self, p[1], p)
-    p[0] = self.python_version > p[3].AsVersion(self, p)
-
-  def p_version_expr_gt(self, p):
-    """version_expr : NAME LBRACKET NUMBER"""
-    self.lexer.CancelLBracket()
+    """version_expr : NAME LT NUMBER"""
     CheckStringIsPython(self, p[1], p)
     p[0] = self.python_version < p[3].AsVersion(self, p)
+
+  def p_version_expr_gt(self, p):
+    """version_expr : NAME GT NUMBER"""
+    CheckStringIsPython(self, p[1], p)
+    p[0] = self.python_version > p[3].AsVersion(self, p)
 
   def p_version_expr_ge(self, p):
     """version_expr : NAME GE NUMBER"""
@@ -719,7 +721,7 @@ class TypeDeclParser(object):
   # TODO(raoulDoc): should we consider nested generics?
 
   # TODO(pludemann): for generic types, we explicitly don't allow
-  #                  type<...> but insist on identifier<...> ... this
+  #                  type[...] but insist on identifier[...] ... this
   #                  is because the grammar would be ambiguous, but for some
   #                  reason PLY didn't come up with a shift/reduce conflict but
   #                  just quietly promoted OR and AND above LBRACKET

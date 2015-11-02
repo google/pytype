@@ -139,7 +139,7 @@ class PrintVisitor(Visitor):
     """Entering a class - record class name for children's use."""
     n = self._SafeName(node.name)
     if node.template:
-      n += "<{}>".format(
+      n += "[{}]".format(
           ", ".join(t.Visit(PrintVisitor()) for t in node.template))
     self.class_names.append(n)
 
@@ -154,7 +154,7 @@ class PrintVisitor(Visitor):
       parents = "(" + ", ".join(node.parents) + ")"
     else:
       parents = "(nothing)"
-    template = "<" + ", ".join(node.template) + ">" if node.template else ""
+    template = "[" + ", ".join(node.template) + "]" if node.template else ""
     header = "class " + self._SafeName(node.name) + template + parents + ":"
     if node.methods or node.constants:
       # We have multiple methods, and every method has multiple signatures
@@ -179,7 +179,7 @@ class PrintVisitor(Visitor):
 
   def VisitSignature(self, node):
     """Visit a signature, producing a string."""
-    template = "<" + ", ".join(node.template) + ">" if node.template else ""
+    template = "[" + ", ".join(node.template) + "]" if node.template else ""
 
     # TODO(pludemann): might want special handling for __init__(...) -> NoneType
     # Design decision: we used to allow the return type to default to "?"  (see
@@ -259,14 +259,14 @@ class PrintVisitor(Visitor):
 
   def VisitHomogeneousContainerType(self, node):
     """Convert a homogeneous container type to a string."""
-    return node.base_type + "<" + node.element_type + ">"
+    return node.base_type + "[" + node.element_type + "]"
 
   def VisitGenericType(self, node):
-    """Convert a generic type (E.g. list<int>) to a string."""
-    # The syntax for a parameterized type with one parameter is "X<T,>"
-    # (E.g. "tuple<int,>")
+    """Convert a generic type (E.g. list[int]) to a string."""
+    # The syntax for a parameterized type with one parameter is "X[T,]"
+    # (E.g. "tuple[int,]")
     param_str = node.parameters[0] + ", " + ", ".join(node.parameters[1:])
-    return node.base_type + "<" + param_str + ">"
+    return node.base_type + "[" + param_str + "]"
 
   def VisitUnionType(self, node):
     """Convert a union type ("x or y") to a string."""
@@ -513,7 +513,7 @@ class VerifyLookup(Visitor):
   def VisitClassType(self, node):
     # TODO(pludemann): Can we give more context for this error? It's not very
     #                  useful when it says that "T" is unresolved (e.g., from
-    #                  "def foo(x: list<T>))" ... it would be nice to know what
+    #                  "def foo(x: list[T]))" ... it would be nice to know what
     #                  it's inside.
     if node.cls is None:
       raise ValueError("Unresolved class: %r" % node.name)

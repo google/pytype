@@ -18,7 +18,7 @@ class BufferedIncrementalDecoder:
     def __init__(self, ...) -> NoneType
     def _buffer_decode(self, input, errors, final) -> ? raises NotImplementedError
     def decode(self, input, final) -> ? raises NotImplementedError
-    def getstate(self) -> tuple<str, int>
+    def getstate(self) -> tuple[str, int]
     def reset(self) -> NoneType
     def setstate(self, state) -> NoneType
 

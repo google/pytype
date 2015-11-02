@@ -17,7 +17,7 @@ atol_error: type
 digits: str
 hexdigits: str
 index_error: type
-l: list<?>
+l: list[?]
 letters: str
 lowercase: str
 # maketrans: function  # TODO(pludemann): pytype generated this but shouldn't have

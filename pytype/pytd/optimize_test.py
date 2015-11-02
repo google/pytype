@@ -53,16 +53,16 @@ class TestOptimize(parser_test.ParserTest):
 
   def testComplexFunctionDuplicate(self):
     src = textwrap.dedent("""
-        def foo(a: int or float, c: bool) -> list<int> raises IndexError
+        def foo(a: int or float, c: bool) -> list[int] raises IndexError
         def foo(a: str, c: str) -> str
-        def foo(a: int, ...) -> int or float raises list<str>
-        def foo(a: int or float, c: bool) -> list<int> raises IndexError
-        def foo(a: int, ...) -> int or float raises list<str>
+        def foo(a: int, ...) -> int or float raises list[str]
+        def foo(a: int or float, c: bool) -> list[int] raises IndexError
+        def foo(a: int, ...) -> int or float raises list[str]
     """)
     new_src = textwrap.dedent("""
-        def foo(a: int or float, c: bool) -> list<int> raises IndexError
+        def foo(a: int or float, c: bool) -> list[int] raises IndexError
         def foo(a: str, c: str) -> str
-        def foo(a: int, ...) -> int or float raises list<str>
+        def foo(a: int, ...) -> int or float raises list[str]
     """)
     self.AssertOptimizeEquals(src, new_src)
 
@@ -218,23 +218,23 @@ class TestOptimize(parser_test.ParserTest):
 
   def testFactorizeMutable(self):
     src = textwrap.dedent("""
-        def foo(a: list<bool>, b: X) -> file:
-            a := list<int>
-        def foo(a: list<bool>, b: Y) -> file:
-            a := list<int>
+        def foo(a: list[bool], b: X) -> file:
+            a := list[int]
+        def foo(a: list[bool], b: Y) -> file:
+            a := list[int]
         # not groupable:
-        def bar(a: int, b: list<int>) -> file:
-            b := list<complex>
-        def bar(a: int, b: list<float>) -> file:
-            b := list<str>
+        def bar(a: int, b: list[int]) -> file:
+            b := list[complex]
+        def bar(a: int, b: list[float]) -> file:
+            b := list[str]
     """)
     new_src = textwrap.dedent("""
-        def foo(a: list<bool>, b: X or Y) -> file:
-            a := list<int>
-        def bar(a: int, b: list<int>) -> file:
-            b := list<complex>
-        def bar(a: int, b: list<float>) -> file:
-            b := list<str>
+        def foo(a: list[bool], b: X or Y) -> file:
+            a := list[int]
+        def bar(a: int, b: list[int]) -> file:
+            b := list[complex]
+        def bar(a: int, b: list[float]) -> file:
+            b := list[str]
     """)
     self.AssertSourceEquals(
         self.ApplyVisitorToString(src, optimize.Factorize()), new_src)
@@ -351,30 +351,30 @@ class TestOptimize(parser_test.ParserTest):
 
   def testCombineContainers(self):
     src = textwrap.dedent("""
-        def f(x: list<int> or list<float>) -> ?
-        def g(x: list<int> or str or list<float> or set<int> or long) -> ?
-        def h(x: list<int> or list<str> or set<int> or set<float>) -> ?
-        def i(x: list<int> or list<int>) -> ?
-        def j(x: dict<int, float> or dict<float, int>) -> ?
-        def k(x: dict<int, bool> or list<int> or dict<bool, int> or list<bool>) -> ?
+        def f(x: list[int] or list[float]) -> ?
+        def g(x: list[int] or str or list[float] or set[int] or long) -> ?
+        def h(x: list[int] or list[str] or set[int] or set[float]) -> ?
+        def i(x: list[int] or list[int]) -> ?
+        def j(x: dict[int, float] or dict[float, int]) -> ?
+        def k(x: dict[int, bool] or list[int] or dict[bool, int] or list[bool]) -> ?
     """)
     expected = textwrap.dedent("""
-        def f(x: list<int or float>) -> ?
-        def g(x: list<int or float> or str or set<int> or long) -> ?
-        def h(x: list<int or str> or set<int or float>) -> ?
-        def i(x: list<int>) -> ?
-        def j(x: dict<int or float, float or int>) -> ?
-        def k(x: dict<int or bool, bool or int> or list<int or bool>) -> ?
+        def f(x: list[int or float]) -> ?
+        def g(x: list[int or float] or str or set[int] or long) -> ?
+        def h(x: list[int or str] or set[int or float]) -> ?
+        def i(x: list[int]) -> ?
+        def j(x: dict[int or float, float or int]) -> ?
+        def k(x: dict[int or bool, bool or int] or list[int or bool]) -> ?
     """)
     new_src = self.ApplyVisitorToString(src, optimize.CombineContainers())
     self.AssertSourceEquals(new_src, expected)
 
   def testCombineContainersMultiLevel(self):
     src = textwrap.dedent("""
-      v: list<tuple<long or int>> or list<tuple<float or bool>>
+      v: list[tuple[long or int]] or list[tuple[float or bool]]
     """)
     expected = textwrap.dedent("""
-      v: list<tuple<long or int or float or bool>>
+      v: list[tuple[long or int or float or bool]]
     """)
     new_src = self.ApplyVisitorToString(src, optimize.CombineContainers())
     self.AssertSourceEquals(new_src, expected)
@@ -507,17 +507,17 @@ class TestOptimize(parser_test.ParserTest):
 
   def testAbsorbMutableParameters(self):
     src = textwrap.dedent("""
-        def popall(x: list<?>) -> ?:
-            x := list<nothing>
-        def add_float(x: list<int>) -> ?:
-            x := list<int or float>
-        def f(x: list<int>) -> ?:
-            x := list<int or float>
+        def popall(x: list[?]) -> ?:
+            x := list[nothing]
+        def add_float(x: list[int]) -> ?:
+            x := list[int or float]
+        def f(x: list[int]) -> ?:
+            x := list[int or float]
     """)
     expected = textwrap.dedent("""
-        def popall(x: list<?>) -> ?
-        def add_float(x: list<int or float>) -> ?
-        def f(x: list<int or float>) -> ?
+        def popall(x: list[?]) -> ?
+        def add_float(x: list[int or float]) -> ?
+        def f(x: list[int or float]) -> ?
     """)
     tree = self.Parse(src)
     new_tree = tree.Visit(optimize.AbsorbMutableParameters())
@@ -528,13 +528,13 @@ class TestOptimize(parser_test.ParserTest):
     # This is a test for intermediate data. See AbsorbMutableParameters class
     # pydoc about how AbsorbMutableParameters works on methods.
     src = textwrap.dedent("""
-        class MyClass<T>:
-            def append<NEW>(self, x: NEW) -> ?:
-                self := MyClass<T or NEW>
+        class MyClass[T]:
+            def append[NEW](self, x: NEW) -> ?:
+                self := MyClass[T or NEW]
     """)
     expected = textwrap.dedent("""
-        class MyClass<T>:
-            def append<NEW>(self: MyClass<T or NEW>, x: NEW) -> ?
+        class MyClass[T]:
+            def append[NEW](self: MyClass[T or NEW], x: NEW) -> ?
     """)
     tree = self.Parse(src)
     new_tree = tree.Visit(optimize.AbsorbMutableParameters())
@@ -546,25 +546,25 @@ class TestOptimize(parser_test.ParserTest):
     # AbsorbMutableParameters.
     # See comment in RemoveMutableParameters
     src = textwrap.dedent("""
-      class A<T>:
-          def foo<T2>(self, x: T or T2) -> T2
-          def bar<T2, T3>(self, x: T or T2 or T3) -> T3
-          def baz<T2, T3>(self, x: T or T2, y: T2 or T3) -> ?
+      class A[T]:
+          def foo[T2](self, x: T or T2) -> T2
+          def bar[T2, T3](self, x: T or T2 or T3) -> T3
+          def baz[T2, T3](self, x: T or T2, y: T2 or T3) -> ?
 
-      class D<K, V>:
-          def foo<T>(self, x: T) -> K or T
-          def bar<T>(self, x: T) -> V or T
+      class D[K, V]:
+          def foo[T](self, x: T) -> K or T
+          def bar[T](self, x: T) -> V or T
           def baz(self, x: K or V) -> K or V
-          def lorem<T>(self, x: T) -> T or K or V
-          def ipsum<T>(self, x: T) -> T or K
+          def lorem[T](self, x: T) -> T or K or V
+          def ipsum[T](self, x: T) -> T or K
     """)
     expected = textwrap.dedent("""
-      class A<T>:
+      class A[T]:
           def foo(self, x: T) -> T
           def bar(self, x: T) -> T
           def baz(self, x: T, y: T) -> ?
 
-      class D<K, V>:
+      class D[K, V]:
           def foo(self, x: K) -> K
           def bar(self, x: V) -> V
           def baz(self, x: K or V) -> K or V

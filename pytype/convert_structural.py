@@ -53,7 +53,7 @@ class TypeSolver(object):
     subst = type_params.copy()
     implication = matcher.match_Class_against_Class(unknown, complete, subst)
     if implication is not booleq.FALSE and type_params:
-      # If we're matching against a templated class (E.g. list<T>), record the
+      # If we're matching against a templated class (E.g. list[T]), record the
       # fact that we'll also have to solve the type parameters.
       for param in type_params.values():
         solver.register_variable(param.name)

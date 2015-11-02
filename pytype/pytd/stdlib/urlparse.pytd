@@ -3,15 +3,15 @@
 
 
 MAX_CACHE_SIZE: int
-__all__: list<str>
-_parse_cache: dict<nothing, nothing>
-non_hierarchical: list<str>
+__all__: list[str]
+_parse_cache: dict[nothing, nothing]
+non_hierarchical: list[str]
 re: module
 scheme_chars: str
-uses_fragment: list<str>
-uses_netloc: list<str>
-uses_params: list<str>
-uses_query: list<str>
-uses_relative: list<str>
+uses_fragment: list[str]
+uses_netloc: list[str]
+uses_params: list[str]
+uses_query: list[str]
+uses_relative: list[str]
 
 def clear_cache() -> NoneType

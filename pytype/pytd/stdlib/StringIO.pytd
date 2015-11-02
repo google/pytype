@@ -1,6 +1,6 @@
 EINVAL: int
-__all__: list<str>
-__builtins__: dict<str, object>
+__all__: list[str]
+__builtins__: dict[str, object]
 __doc__: str
 __file__: str
 __name__: str
@@ -12,7 +12,7 @@ def test() -> NoneType
 class StringIO(nothing):
     __doc__: str
     buf: ?
-    buflist: list<?>
+    buflist: list[?]
     closed: bool
     len: ?
     pos: ?
@@ -26,8 +26,8 @@ class StringIO(nothing):
     def next(self) -> ?
     def read(self, ...) -> str
     def readline(self, ...) -> str
-    def readlines(self, ...) -> list<str>
-    def seek(self, pos: int or list<?>, ...) -> NoneType
+    def readlines(self, ...) -> list[str]
+    def seek(self, pos: int or list[?], ...) -> NoneType
     def tell(self) -> int
     def truncate(self, ...) -> NoneType
     def write(self, s) -> NoneType

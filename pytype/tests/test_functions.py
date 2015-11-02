@@ -370,10 +370,10 @@ class TestGenerators(test_inference.InferenceTest):
       self.assertTypesMatchPytd(ty, """
         def f() -> int
         class Foo:
-          def match_method(self) -> list<nothing>
-          def match_function(self) -> list<nothing>
-          def match_pytd_function(self) -> list<nothing>
-          def match_bound_pytd_function(self) -> list<nothing>
+          def match_method(self) -> list[nothing]
+          def match_function(self) -> list[nothing]
+          def match_pytd_function(self) -> list[nothing]
+          def match_bound_pytd_function(self) -> list[nothing]
           def method(self) -> NoneType
       """)
 

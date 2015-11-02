@@ -11,11 +11,11 @@ def replace(...) -> str raises MemoryError, ValueError, DeprecationWarning
 def translate(...) -> str raises ValueError, DeprecationWarning
 def count(...) -> int raises DeprecationWarning
 def strip(...) -> str raises DeprecationWarning
-def split(...) -> list<str> raises ValueError, DeprecationWarning
+def split(...) -> list[str] raises ValueError, DeprecationWarning
 def atof(...) -> float raises ValueError, DeprecationWarning
 def atoi(...) -> int raises ValueError, DeprecationWarning
 def expandtabs(...) -> str raises OverflowError, ValueError, DeprecationWarning
-def splitfields(...) -> list<str> raises ValueError, DeprecationWarning
+def splitfields(...) -> list[str] raises ValueError, DeprecationWarning
 def atol(...) -> long raises ValueError, DeprecationWarning
 def joinfields(...) -> object or str raises TypeError, OverflowError, DeprecationWarning
 def lstrip(...) -> str raises DeprecationWarning

@@ -19,7 +19,7 @@
 "Matching" x against y means roughly: If we have a function f(param: y) and
 a type x, would we be able to pass (an instance of) x to f. (I.e.,
 "execute f(x)"). So for example, str would "match" against basestring, and
-list<int> would match against list<Number>.
+list[int] would match against list[Number].
 
 This is used for converting structural types to nominal types during type
 inference, but could also be used when merging pytd files, to match existing
@@ -162,13 +162,13 @@ class TypeMatch(utils.TypeMatcher):
   def type_parameter(self, unknown, base_class, item):
     """This generates the type parameter when matching against a generic type.
 
-    For example, when we match ~unknown1 against list<T>, we need an additional
-    type to model the T in "~unknown1<T>". This type would have the name
+    For example, when we match ~unknown1 against list[T], we need an additional
+    type to model the T in "~unknown1[T]". This type would have the name
     "~unknown1.list.T".
 
     Args:
       unknown: An unknown type. This is the type that's matched against
-        base_class<T>
+        base_class[T]
       base_class: The base class of the generic we're matching the unknown
         against. E.g. "list".
       item: The pytd.TemplateItem, i.e., the actual type parameter. ("T" in
@@ -181,7 +181,7 @@ class TypeMatch(utils.TypeMatcher):
     name = unknown.name + "." + base_class.name + "." + item.type_param.name
     # We do *not* consider subclasses or superclasses when matching type
     # parameters.
-    # So for example, if we pass list<int> to f(x: list<T>), we assume that
+    # So for example, if we pass list[int] to f(x: list[T]), we assume that
     # T can only be "int", not "int + object". This might be considered
     # incorrect, but typically gives us more intuitive results.
     # Note that this only happens if we match ~unknown against generic types,
@@ -205,7 +205,7 @@ class TypeMatch(utils.TypeMatcher):
       return booleq.FALSE
     assert len(t1.parameters) == len(t2.parameters), t1.base_type.cls.name
     # Type parameters are covariant:
-    # E.g. passing list<int> as argument for list<object> succeeds.
+    # E.g. passing list[int] as argument for list[object] succeeds.
     param_cmp = [self.match_type_against_type(p1, p2, subst)
                  for p1, p2 in zip(t1.parameters, t2.parameters)]
     return booleq.And([base_type_cmp] + param_cmp)
@@ -313,7 +313,7 @@ class TypeMatch(utils.TypeMatcher):
     elif isinstance(t1, pytd.GenericType) and isinstance(t2, pytd.GenericType):
       return self.match_Generic_against_Generic(t1, t2, subst)
     elif isinstance(t1, pytd.GenericType):
-      # E.g. list<...> matches against list, or even object.
+      # E.g. list[...] matches against list, or even object.
       return self.match_type_against_type(t1.base_type, t2, subst)
     elif isinstance(t2, pytd.GenericType):
       assert t1 != t2.base_type

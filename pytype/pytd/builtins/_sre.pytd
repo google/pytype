@@ -21,12 +21,12 @@ class SRE_Match:
 class SRE_Pattern:
     def __copy__() -> ? raises TypeError  # TODO(pludemann): fix return type
     def __deepcopy__(...) -> ? raises TypeError  # TODO(pludemann): fix return type
-    def findall(source, ...) -> list<NoneType or tuple>
+    def findall(source, ...) -> list[NoneType or tuple]
     def finditer(...) -> `callable-iterator`
     def match(pattern, ...) -> NoneType or SRE_Match
     def scanner(...) -> SRE_Scanner
     def search(pattern, ...) -> NoneType or SRE_Match
-    def split(source, ...) -> list<NoneType>
+    def split(source, ...) -> list[NoneType]
     def sub(repl, string, ...) -> tuple
     def subn(repl, string, ...) -> tuple
 

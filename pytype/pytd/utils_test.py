@@ -43,7 +43,7 @@ class TestUtils(parser_test.ParserTest):
     ast = self.Parse("""
       c1: int or float
       c2: int
-      c3: list<int or float>""")
+      c3: list[int or float]""")
     c1 = ast.Lookup("c1").type
     c2 = ast.Lookup("c2").type
     c3 = ast.Lookup("c3").type
@@ -160,25 +160,25 @@ class TestUtils(parser_test.ParserTest):
   def testRemoveMutableList(self):
     # Simple test for RemoveMutableParameters, with simplified list class
     src = textwrap.dedent("""
-      class TrivialList<T>:
-        def append<T2>(self, v: T2) -> NoneType:
+      class TrivialList[T]:
+        def append[T2](self, v: T2) -> NoneType:
           self := T or T2
 
-      class TrivialList2<T>:
+      class TrivialList2[T]:
         # TODO(pludemann): instead of self := T2 use
         #                  T = T2, when it's implemented
-        # def __init__<T2>(self, x: T2) -> NoneType:
+        # def __init__[T2](self, x: T2) -> NoneType:
         #   self := T2
         def __init__(self, x: T) -> NoneType
-        def append<T2>(self, v: T2) -> NoneType:
+        def append[T2](self, v: T2) -> NoneType:
           self := T or T2
         def get_first(self) -> T
     """)
     expected = textwrap.dedent("""
-      class TrivialList<T>:
+      class TrivialList[T]:
           def append(self, v: T) -> NoneType
 
-      class TrivialList2<T>:
+      class TrivialList2[T]:
           def __init__(self, x: T) -> NoneType
           def append(self, v: T) -> NoneType
           def get_first(self) -> T
@@ -190,16 +190,16 @@ class TestUtils(parser_test.ParserTest):
   def testRemoveMutableDict(self):
     # Test for RemoveMutableParameters, with simplified dict class.
     src = textwrap.dedent("""
-      class MyDict<K, V>:
-          def getitem<T>(self, k: K, default: T) -> V or T
-          def setitem<K2, V2>(self, k: K2, value: V2) -> NoneType:
-              self := dict<K or K2, V or V2>
+      class MyDict[K, V]:
+          def getitem[T](self, k: K, default: T) -> V or T
+          def setitem[K2, V2](self, k: K2, value: V2) -> NoneType:
+              self := dict[K or K2, V or V2]
           def getanykeyorvalue(self) -> K or V
-          def setdefault<K2, V2>(self, k: K2, v: V2) -> V or V2:
-              self := dict<K or K2, V or V2>
+          def setdefault[K2, V2](self, k: K2, v: V2) -> V or V2:
+              self := dict[K or K2, V or V2]
     """)
     expected = textwrap.dedent("""
-      class MyDict<K, V>:
+      class MyDict[K, V]:
           def getitem(self, k: K, default: V) -> V
           def setitem(self, k: K, value: V) -> NoneType
           def getanykeyorvalue(self) -> K or V
@@ -213,10 +213,10 @@ class TestUtils(parser_test.ParserTest):
     """Smoketests for printing pytd."""
     ast = self.Parse("""
       c1: int
-      class A<T>:
+      class A[T]:
         bar: T
-        def foo(self, x: list<int>, y: T) -> list<T> or float raises ValueError
-      def bar<X, Y>(x: X or Y) -> ?
+        def foo(self, x: list[int], y: T) -> list[T] or float raises ValueError
+      def bar[X, Y](x: X or Y) -> ?
     """)
     # TODO(kramm): Do more extensive testing.
     utils.Print(ast, print_format="pytd")

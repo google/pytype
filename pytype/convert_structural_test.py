@@ -160,15 +160,15 @@ class MatchTest(unittest.TestCase):
   def test_containers(self):
     mapping = self.parse_and_solve("""
       class `~unknown1`:
-        def foo(self, x: list<bool>) -> int
+        def foo(self, x: list[bool]) -> int
       class A(object):
-        def foo(self, x: list<int>) -> int
+        def foo(self, x: list[int]) -> int
     """)
     self.assertItemsEqual(["A"], mapping["~unknown1"])
 
   def test_type_parameters(self):
     mapping = self.parse_and_solve("""
-      class A<T>:
+      class A[T]:
         def foo(self) -> ?
         def bar(self, x: T) -> ?
       class `~unknown1`:
@@ -181,22 +181,22 @@ class MatchTest(unittest.TestCase):
   def test_generic_against_generic(self):
     mapping = self.parse_and_solve("""
       class A(nothing):
-        def f(self, x: list<int>) -> ?
-        def g(self, x: list<float>) -> ?
+        def f(self, x: list[int]) -> ?
+        def g(self, x: list[float]) -> ?
       class B(nothing):
-        def f(self, x: set<int>) -> ?
-        def g(self, x: list<int>) -> ?
+        def f(self, x: set[int]) -> ?
+        def g(self, x: list[int]) -> ?
       class `~unknown1`:
-        def f(self, x: list<int>) -> ?
+        def f(self, x: list[int]) -> ?
       class `~unknown2`:
-        def g(self, x: list<int>) -> ?
+        def g(self, x: list[int]) -> ?
     """)
     self.assertItemsEqual(["A"], mapping["~unknown1"])
     self.assertItemsEqual(["B"], mapping["~unknown2"])
 
   def test_unknown_against_generic(self):
     mapping = self.parse_and_solve("""
-      def f(A: `~unknown0`) -> list<`~unknown8`>
+      def f(A: `~unknown0`) -> list[`~unknown8`]
       class `~unknown0`(nothing):
         def values(self) -> `~unknown2`
       class `~unknown2`(nothing):
@@ -218,15 +218,15 @@ class MatchTest(unittest.TestCase):
   def test_subclass_of_elements(self):
     mapping = self.parse_and_solve("""
       class A(nothing):
-        def f(self, x: list<int>) -> list<int>
+        def f(self, x: list[int]) -> list[int]
       class `~unknown1`:
-        def f(self, x: list<bool>) -> ?
+        def f(self, x: list[bool]) -> ?
       class `~unknown2`:
-        def f(self, x: ?) -> list<object>
+        def f(self, x: ?) -> list[object]
       class `~unknown3`:
-        def f(self, x: list<object>) -> ?
+        def f(self, x: list[object]) -> ?
       class `~unknown4`:
-        def f(self, x: ?) -> list<bool>
+        def f(self, x: ?) -> list[bool]
     """)
     self.assertItemsEqual(["A"], mapping["~unknown1"])
     self.assertItemsEqual([], mapping["~unknown2"])
@@ -269,9 +269,9 @@ class MatchTest(unittest.TestCase):
         def foobar(self) -> ?
       class C(A or B):
         def foobar(self) -> ?
-      class D(list<int>):
+      class D(list[int]):
         def foobar(self) -> ?
-      class E<T>(T):
+      class E[T](T):
         def foobar(self) -> ?
       class `~unknown1`:
         def foobar(self) -> ?
@@ -428,7 +428,7 @@ class MatchTest(unittest.TestCase):
         pass
       class `~listiterator`:
           def next(self) -> `~unknown1`
-          def next(self) -> tuple<nothing>
+          def next(self) -> tuple[nothing]
     """)
 
   def test_enumerate(self):
@@ -436,8 +436,8 @@ class MatchTest(unittest.TestCase):
       class `~unknown1`:
         pass
       class `~enumerate`:
-          def __init__(self, iterable: list<`~unknown1`>) -> NoneType
-          def next(self) -> tuple<?>
+          def __init__(self, iterable: list[`~unknown1`]) -> NoneType
+          def next(self) -> tuple[?]
     """)
 
   def test_call_builtin(self):
@@ -548,9 +548,9 @@ class MatchTest(unittest.TestCase):
       class `~unknown2`:
           pass
 
-      class mylist<T>:
-        def __setitem__<N>(self, i: int, y: N) -> NoneType:
-          self := mylist<T or N>
+      class mylist[T]:
+        def __setitem__[N](self, i: int, y: N) -> NoneType:
+          self := mylist[T or N]
 
       class `~mylist`(nothing):
         def __setitem__(self, i: int, y: `~unknown2`) -> `~unknown1`
@@ -610,14 +610,14 @@ class MatchTest(unittest.TestCase):
 
       class `~unknown1`(nothing):
           def __setitem__(self, _1: str, _2: `~unknown2`) -> ?
-          def update(self, _1: NoneType or dict<nothing, nothing>) -> ?
+          def update(self, _1: NoneType or dict[nothing, nothing]) -> ?
 
       class `~unknown2`(nothing):
           def append(self, v:NoneType) -> NoneType
     """)
     expected = textwrap.dedent("""
       class A:
-          def foo(self, x: dict<str, list<?>>) -> bool
+          def foo(self, x: dict[str, list[?]]) -> bool
     """).lstrip()
     ast = parser.parse_string(sourcecode)
     ast = convert_structural.convert_pytd(ast, self.builtins_pytd)
@@ -626,7 +626,7 @@ class MatchTest(unittest.TestCase):
   def test_isinstance(self):
     sourcecode = textwrap.dedent("""
       x: `~unknown1`
-      def `~isinstance`(object: int, class_or_type_or_tuple: tuple<nothing>) -> `~unknown1`
+      def `~isinstance`(object: int, class_or_type_or_tuple: tuple[nothing]) -> `~unknown1`
       class `~unknown1`:
         pass
     """)

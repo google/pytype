@@ -2,8 +2,8 @@
 #         pytype --api python_runtime/v2_7/Lib/atexit.py
 # and hand-removed x1, x2, x3
 
-__all__: list<str>
-_exithandlers: list<tuple<?>>
+__all__: list[str]
+_exithandlers: list[tuple[?]]
 sys: module
 
 def _run_exitfuncs() -> NoneType

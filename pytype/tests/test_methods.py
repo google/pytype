@@ -491,9 +491,9 @@ class MethodsTest(test_inference.InferenceTest):
         return args
     """, deep=True, solve_unknowns=False, extract_locals=True) as ty:
       self.assertTypesMatchPytd(ty, """
-      def f(...) -> tuple<?>
-      def g(x, ...) -> tuple<?>
-      def h(x, y, ...) -> tuple<?>
+      def f(...) -> tuple[?]
+      def g(x, ...) -> tuple[?]
+      def h(x, y, ...) -> tuple[?]
       """)
 
   def testEmptyStarArgsType(self):
@@ -537,7 +537,7 @@ class MethodsTest(test_inference.InferenceTest):
       self.assertTypesMatchPytd(ty, """
       class Foo(object):
         def __init__(self, ...) -> NoneType
-        kwargs: dict<str, ?>
+        kwargs: dict[str, ?]
       """)
 
   def testStarStarDeep2(self):
@@ -550,9 +550,9 @@ class MethodsTest(test_inference.InferenceTest):
         return kwargs
     """, deep=True, solve_unknowns=False, extract_locals=True) as ty:
       self.assertTypesMatchPytd(ty, """
-      def f(...) -> dict<str, ?>
-      def g(x, ...) -> dict<str, ?>
-      def h(x, y, ...) -> dict<str, ?>
+      def f(...) -> dict[str, ?]
+      def g(x, ...) -> dict[str, ?]
+      def h(x, y, ...) -> dict[str, ?]
       """)
 
   def testNoneOrFunction(self):

@@ -2,7 +2,7 @@
 # only in `os`.  See the code in /usr/lib/python2.7/os.py for how __all__ is
 # set, for items that are only in `os`.
 
-environ: dict<str, str>
+environ: dict[str, str]
 
 F_OK: int
 R_OK: int
@@ -107,7 +107,7 @@ def kill(...) -> NoneType
 def killpg(...) -> NoneType
 def lchown(...) -> NoneType
 def link(...) -> NoneType
-def listdir(...) -> list<str or unicode>
+def listdir(...) -> list[str or unicode]
 def lseek(...) -> int
 def lstat(...) -> tuple
 def major(...) -> int

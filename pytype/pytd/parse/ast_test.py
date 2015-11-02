@@ -42,7 +42,7 @@ class TestASTGeneration(parser_test.ParserTest):
   def testBackticks(self):
     """Test parsing of names in backticks."""
     src = textwrap.dedent("""
-      def `foo-bar`(x: `~unknown3`) -> `funny-type`<int>
+      def `foo-bar`(x: `~unknown3`) -> `funny-type`[int]
       """)
     self.TestRoundTrip(src)
 
@@ -57,18 +57,18 @@ class TestASTGeneration(parser_test.ParserTest):
 
   def testTemplated(self):
     src = textwrap.dedent("""
-        def foo(x: int) -> T1<float>
-        def foo(x: int) -> T2<int, complex>
-        def foo(x: int) -> T3<int, T4<str>>
-        def bar(y: int) -> T1<float,>
-        def qqsv<T>(x: T) -> list<T>
-        def qux<S,T>(x: T) -> list<S,>
+        def foo(x: int) -> T1[float]
+        def foo(x: int) -> T2[int, complex]
+        def foo(x: int) -> T3[int, T4[str]]
+        def bar(y: int) -> T1[float,]
+        def qqsv[T](x: T) -> list[T]
+        def qux[S,T](x: T) -> list[S,]
 
-        class T1<X>:
-            def foo(a: X) -> T2<X, int> raises float
+        class T1[X]:
+            def foo(a: X) -> T2[X, int] raises float
 
-        class T2<X, Y>:
-            def foo(a: X) -> complex raises Except<X, Y>
+        class T2[X, Y]:
+            def foo(a: X) -> complex raises Except[X, Y]
     """)
     self.TestRoundTrip(src)
 
@@ -114,9 +114,9 @@ class TestASTGeneration(parser_test.ParserTest):
         def c() -> object
         def d() -> None
         def e() -> a or b
-        def f() -> a<x>
-        def g() -> a<x,>
-        def h() -> a<x,y>
+        def f() -> a[x]
+        def g() -> a[x,]
+        def h() -> a[x,y]
         def i() -> nothing  # never returns
     """)
     result = self.Parse(src)
@@ -133,7 +133,7 @@ class TestASTGeneration(parser_test.ParserTest):
 
   def testTemplateReturn(self):
     src = textwrap.dedent("""
-        def foo(a: int or float, c: bool) -> list<int> raises Foo, Test
+        def foo(a: int or float, c: bool) -> list[int] raises Foo, Test
     """)
     self.TestRoundTrip(src)
 
@@ -169,36 +169,36 @@ class TestASTGeneration(parser_test.ParserTest):
     self.TestRoundTrip("x: int\n\n")
 
   def testSpacesWithIndent(self):
-    self.TestRoundTrip("def f(x: list<nothing>) -> ?:\n    x := list<int>")
-    self.TestRoundTrip("\ndef f(x: list<nothing>) -> ?:\n    x := list<int>")
-    self.TestRoundTrip("\ndef f(x: list<nothing>) -> ?:\n    x := list<int>  ")
-    self.TestRoundTrip("def f(x: list<nothing>) -> ?:\n    x := list<int>  \n")
-    self.TestRoundTrip("def f(x: list<nothing>) -> ?:\n    x := list<int>\n  ")
+    self.TestRoundTrip("def f(x: list[nothing]) -> ?:\n    x := list[int]")
+    self.TestRoundTrip("\ndef f(x: list[nothing]) -> ?:\n    x := list[int]")
+    self.TestRoundTrip("\ndef f(x: list[nothing]) -> ?:\n    x := list[int]  ")
+    self.TestRoundTrip("def f(x: list[nothing]) -> ?:\n    x := list[int]  \n")
+    self.TestRoundTrip("def f(x: list[nothing]) -> ?:\n    x := list[int]\n  ")
 
   def testAlignedComments(self):
     src = textwrap.dedent("""
         # comment 0
         class Foo: # eol line comment 0
           # comment 1
-          def bar(x: list<nothing>) -> ?: # eol line comment 1
+          def bar(x: list[nothing]) -> ?: # eol line comment 1
             # comment 2
-            x := list<float> # eol line comment 2
+            x := list[float] # eol line comment 2
             # comment 3
           # comment 4
         # comment 5
-        def baz(i: list<nothing>) -> ?: # eol line comment 3
+        def baz(i: list[nothing]) -> ?: # eol line comment 3
           # comment 6
-          i := list<int> # eol line comment 4
+          i := list[int] # eol line comment 4
           # comment 7
         # comment 8
     """)
     dest = textwrap.dedent("""
-        def baz(i: list<nothing>) -> ?:
-            i := list<int>
+        def baz(i: list[nothing]) -> ?:
+            i := list[int]
 
         class Foo:
-            def bar(x: list<nothing>) -> ?:
-                x := list<float>
+            def bar(x: list[nothing]) -> ?:
+                x := list[float]
     """)
     self.TestRoundTrip(src, dest)
 
@@ -231,20 +231,20 @@ class TestASTGeneration(parser_test.ParserTest):
 
   def testDuplicates1(self):
     src = textwrap.dedent("""
-        def baz<T, T>(i: int)
+        def baz[T, T](i: int)
     """)
     self.TestThrowsSyntaxError(src)
 
   def testDuplicates2(self):
     src = textwrap.dedent("""
-        class A<T>:
-          def baz<T>(i: int)
+        class A[T]:
+          def baz[T](i: int)
     """)
     self.TestThrowsSyntaxError(src)
 
   def testDuplicates3(self):
     src = textwrap.dedent("""
-        class A<T, T>:
+        class A[T, T]:
           pass
     """)
     self.TestThrowsSyntaxError(src)
@@ -334,9 +334,9 @@ class TestASTGeneration(parser_test.ParserTest):
     src = textwrap.dedent("""
         class Foo:
           def append_int(l: list) -> ?:
-            l := list<int>
+            l := list[int]
         def append_float(l: list) -> ?:
-          l := list<float>
+          l := list[float]
     """)
     module = self.Parse(src)
     foo = module.Lookup("Foo")
@@ -350,11 +350,11 @@ class TestASTGeneration(parser_test.ParserTest):
   def testMutableRoundTrip(self):
     src = textwrap.dedent("""
         def append_float(l: list) -> ?:
-            l := list<float>
+            l := list[float]
 
         class Foo:
             def append_int(l: list) -> ?:
-                l := list<int>
+                l := list[int]
     """)
     self.TestRoundTrip(src)
 
@@ -587,9 +587,9 @@ class TestASTGeneration(parser_test.ParserTest):
     """Test template parsing."""
 
     data = textwrap.dedent("""
-        class MyClass<C>:
+        class MyClass[C]:
           def f1(p1: C) -> ?
-          def f2<T,U>(p1: C, p2: T, p3: dict<C, C or T or int>) -> T raises Error<T>
+          def f2[T,U](p1: C, p2: T, p3: dict[C, C or T or int]) -> T raises Error[T]
         """)
 
     result = self.Parse(data)
@@ -619,7 +619,7 @@ class TestASTGeneration(parser_test.ParserTest):
     """Test handling of self."""
 
     data = textwrap.dedent("""
-        class MyClass<U, V>:
+        class MyClass[U, V]:
           def f1(self) -> ?
         """)
 
@@ -638,12 +638,12 @@ class TestASTGeneration(parser_test.ParserTest):
   def testAutoGenerated(self):
     """Test some source that caused a bug."""
     src = textwrap.dedent("""
-        def foo(a: list<bool>, b: X or Y) -> Z:
-            a := list<int>
-        def bar(a: int, b: list<int>) -> Z:
-            b := list<complex>
-        def bar(a: int, b: list<float>) -> Z:
-            b := list<str>""")
+        def foo(a: list[bool], b: X or Y) -> Z:
+            a := list[int]
+        def bar(a: int, b: list[int]) -> Z:
+            b := list[complex]
+        def bar(a: int, b: list[float]) -> Z:
+            b := list[str]""")
     self.TestRoundTrip(src)
 
 

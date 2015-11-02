@@ -82,10 +82,10 @@ class TestTypeMatch(unittest.TestCase):
 
   def testGeneric(self):
     ast = parser.parse_string(textwrap.dedent("""
-      class A<T>(nothing):
+      class A[T](nothing):
         pass
-      left: A<?>
-      right: A<?>
+      left: A[?]
+      right: A[?]
     """))
     ast = visitors.LookupClasses(ast)
     m = type_match.TypeMatch()
@@ -127,12 +127,12 @@ class TestTypeMatch(unittest.TestCase):
     ast = parser.parse_string(textwrap.dedent("""
       class `~unknown0`(nothing):
         def next(self) -> ?
-      class A<T>(nothing):
+      class A[T](nothing):
         def next(self) -> ?
       class B(nothing):
         pass
       def left(x: `~unknown0`) -> ?
-      def right(x: A<B>) -> ?
+      def right(x: A[B]) -> ?
     """))
     ast = visitors.LookupClasses(ast)
     m = type_match.TypeMatch()
@@ -150,7 +150,7 @@ class TestTypeMatch(unittest.TestCase):
 
   def testStrict(self):
     ast = parser.parse_string(textwrap.dedent("""
-      class list<T>(nothing):
+      class list[T](nothing):
         pass
       class A(nothing):
         pass
@@ -160,7 +160,7 @@ class TestTypeMatch(unittest.TestCase):
         pass
       a : A
       def left() -> `~unknown0`
-      def right() -> list<A>
+      def right() -> list[A]
     """))
     ast = visitors.LookupClasses(ast)
     m = type_match.TypeMatch(type_match.get_all_subclasses([ast]))

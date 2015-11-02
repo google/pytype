@@ -17,7 +17,7 @@ SEEK_SET: int
 StringIO: ?
 TextIOWrapper: ?
 UnsupportedOperation: ?
-__all__: list<str>
+__all__: list[str]
 __author__: str
 _io: ?
 abc: ?

@@ -2,7 +2,7 @@ __doc__: str
 __name__: str
 __package__: NoneType
 
-errorcode: dict<int, str>
+errorcode: dict[int, str]
 
 E2BIG: int
 EACCES: int
