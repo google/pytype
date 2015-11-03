@@ -88,7 +88,7 @@ class TestIt(test_inference.InferenceTest):
         return s[3:8:2]
       """, deep=True, solve_unknowns=False, extract_locals=False) as ty:
       self.assertTypesMatchPytd(ty, """
-      s: str
+      s = ...  # type: str
       def f1() -> str
       def f2() -> str
       def f3() -> str

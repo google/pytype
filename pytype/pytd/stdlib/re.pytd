@@ -2,33 +2,33 @@
 #         pytype --api python_runtime/v2_7/Lib/re.py
 #    (needs _sre and others)
 
-DEBUG: ?
-DOTALL: ?
-I: ?
-IGNORECASE: ?
-L: ?
-LOCALE: ?
-M: ?
-MULTILINE: ?
-S: ?
-T: ?
-TEMPLATE: ?
-U: ?
-UNICODE: ?
-VERBOSE: ?
-X: ?
-_MAXCACHE: int
-__all__: list[str]
-__version__: str
-_alphanum: frozenset[?]
-_cache: dict[tuple[?], ?]
-_cache_repl: dict[tuple[?], ?]
-_pattern_type: type
-copy_reg: ?
-error: ?
-sre_compile: ?
-sre_parse: ?
-sys: module
+DEBUG = ...  # type: ?
+DOTALL = ...  # type: ?
+I = ...  # type: ?
+IGNORECASE = ...  # type: ?
+L = ...  # type: ?
+LOCALE = ...  # type: ?
+M = ...  # type: ?
+MULTILINE = ...  # type: ?
+S = ...  # type: ?
+T = ...  # type: ?
+TEMPLATE = ...  # type: ?
+U = ...  # type: ?
+UNICODE = ...  # type: ?
+VERBOSE = ...  # type: ?
+X = ...  # type: ?
+_MAXCACHE = ...  # type: int
+__all__ = ...  # type: list[str]
+__version__ = ...  # type: str
+_alphanum = ...  # type: frozenset[?]
+_cache = ... # type: dict[tuple[?], ?]
+_cache_repl = ... # type: dict[tuple[?], ?]
+_pattern_type = ...  # type: type
+copy_reg = ...  # type: ?
+error = ...  # type: ?
+sre_compile = ...  # type: ?
+sre_parse = ...  # type: ?
+sys = ...  # type: module
 
 def _compile(...) -> ?
 def _compile_repl(...) -> ?
@@ -48,7 +48,7 @@ def subn(pattern: ?, repl, string, ...) -> ?
 def template(pattern, ...) -> ?
 
 class Scanner(nothing):
-    lexicon: dict[?, ?] or list[?] or tuple[?]
-    scanner: ?
+    lexicon = ... # type: dict[?, ?] or list[?] or tuple[?]
+    scanner = ...  # type: ?
     def __init__(self, lexicon: dict[object, ?] or list[object] or tuple[object], ...) -> NoneType
     def scan(self, string) -> ?

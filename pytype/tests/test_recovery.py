@@ -38,7 +38,7 @@ class RecoveryTests(test_inference.InferenceTest):
         return '%s' % f()
     """, deep=True, solve_unknowns=True, report_errors=False) as ty:
       self.assertTypesMatchPytd(ty, """
-        time: module
+        time = ...  # type: module
         def f() -> ?
         def g() -> ?
       """)

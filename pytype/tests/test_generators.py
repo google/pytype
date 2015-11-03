@@ -20,7 +20,7 @@ class GeneratorTest(test_inference.InferenceTest):
       y = list(x for x in [1, 2, 3])
     """, deep=True, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
-        y: list[int]
+        y = ...  # type: list[int]
       """)
 
   def testReuse(self):
@@ -29,8 +29,8 @@ class GeneratorTest(test_inference.InferenceTest):
       z = list(x for x in [1, 2, 3])
     """, deep=True, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
-        y: list[int]
-        z: list[int]
+        y = ...  # type: list[int]
+        z = ...  # type: list[int]
       """)
 
   def testNextWithDefault(self):

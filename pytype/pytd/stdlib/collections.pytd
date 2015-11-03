@@ -2,24 +2,24 @@
 #         pytype --api python_runtime/v2_7/Lib/atexit.py
 
 
-__all__: list[?]
-_abcoll: ?
-_chain: type
-_class_template: str
-_eq: ?
-_field_template: str
-_get_ident: ?
-_heapq: ?
-_imap: type
-_iskeyword: ?
-_itemgetter: function
-_repeat: type
-_repr_template: str
-_starmap: type
-_sys: module
-deque: ?
-dumps: function
-loads: function
+__all__ = ...  # type: list[?]
+_abcoll = ...  # type: ?
+_chain = ...  # type: type
+_class_template = ...  # type: str
+_eq = ...  # type: ?
+_field_template = ...  # type: str
+_get_ident = ...  # type: ?
+_heapq = ...  # type: ?
+_imap = ...  # type: type
+_iskeyword = ...  # type: ?
+_itemgetter = ...  # type: function
+_repeat = ...  # type: type
+_repr_template = ...  # type: str
+_starmap = ...  # type: type
+_sys = ...  # type: module
+deque = ...  # type: ?
+dumps = ...  # type: function
+loads = ...  # type: function
 
 def namedtuple(typename: str, field_names: str or list[str], ...) -> type  # TODO(pludemann): add verbose, rename
 
@@ -32,8 +32,8 @@ class defaultdict:
 # Strictly speaking, this should be dict[?, ?]. (E.g. it's legal to do
 # collections.Counter()[x] = 'foobar'.) But the counts are typically integers.
 class Counter(dict[?, int]):
-    __doc__: str
-    fromkeys: classmethod
+    __doc__ = ...  # type: str
+    fromkeys = ...  # type: classmethod
     def __add__(self, other: dict[object, object]) -> Counter or NotImplementedType
     def __and__(self, other: bytearray or xrange or dict[?, object] or list[object] or tuple[object]) -> Counter or NotImplementedType
     def __delitem__(self, elem) -> NoneType

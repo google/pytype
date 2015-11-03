@@ -2,30 +2,30 @@
 #         pytype --api python_runtime/v2_7/Lib/string.py
 # TODO(pludemann): needs strop.lowercase
 
-_float: type
-_idmap: str
-_idmapL: NoneType
-_int: type
-_long: type
-_re: module
-ascii_letters: str
-ascii_lowercase: str
-ascii_uppercase: str
-atof_error: type
-atoi_error: type
-atol_error: type
-digits: str
-hexdigits: str
-index_error: type
-l: list[?]
-letters: str
-lowercase: str
+_float = ...  # type: type
+_idmap = ...  # type: str
+_idmapL = ...  # type: NoneType
+_int = ...  # type: type
+_long = ...  # type: type
+_re = ...  # type: module
+ascii_letters = ...  # type: str
+ascii_lowercase = ...  # type: str
+ascii_uppercase = ...  # type: str
+atof_error = ...  # type: type
+atoi_error = ...  # type: type
+atol_error = ...  # type: type
+digits = ...  # type: str
+hexdigits = ...  # type: str
+index_error = ...  # type: type
+l = ...  # type: list[?]
+letters = ...  # type: str
+lowercase = ...  # type: str
 # maketrans: function  # TODO(pludemann): pytype generated this but shouldn't have
-octdigits: str
-printable: str
-punctuation: str
-uppercase: str
-whitespace: str
+octdigits = ...  # type: str
+printable = ...  # type: str
+punctuation = ...  # type: str
+uppercase = ...  # type: str
+whitespace = ...  # type: str
 
 def atof(s) -> ?
 def atoi(s, base, ...) -> ?
@@ -69,20 +69,20 @@ class Formatter:
     def vformat(self, format_string, args, kwargs) -> ?
 
 class Template(nothing):
-    __doc__: str
-    __metaclass__: type
-    delimiter: str
-    idpattern: str
+    __doc__ = ...  # type: str
+    __metaclass__ = ...  # type: type
+    delimiter = ...  # type: str
+    idpattern = ...  # type: str
     def __init__(self, template) -> ?
     def _invalid(self, mo) -> ?
     def safe_substitute(self) -> ?
     def substitute(self) -> ?
 
 class _TemplateMetaclass(type):
-    pattern: str
+    pattern = ...  # type: str
     def __init__(cls, name, bases, dct) -> ?
 
 class _multimap(nothing):
-    __doc__: str
+    __doc__ = ...  # type: str
     def __getitem__(self, key) -> ?
     def __init__(self, primary, secondary) -> ?

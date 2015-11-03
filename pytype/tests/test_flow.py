@@ -19,7 +19,7 @@ class FlowTest(test_inference.InferenceTest):
         x = 3.1
     """, deep=False, solve_unknowns=False, extract_locals=False) as ty:
       self.assertTypesMatchPytd(ty, """
-        x: int or float
+        x = ...  # type: int or float
       """)
 
   def testException(self):

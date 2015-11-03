@@ -1,45 +1,45 @@
-ITIMER_PROF: int or long
-ITIMER_REAL: int or long
-ITIMER_VIRTUAL: int or long
-ItimerError: object
-NSIG: int or long
-SIGABRT: int or long
-SIGALRM: int or long
-SIGBUS: int or long
-SIGCHLD: int or long
-SIGCLD: int or long
-SIGCONT: int or long
-SIGFPE: int or long
-SIGHUP: int or long
-SIGILL: int or long
-SIGINT: int or long
-SIGIO: int or long
-SIGIOT: int or long
-SIGKILL: int or long
-SIGPIPE: int or long
-SIGPOLL: int or long
-SIGPROF: int or long
-SIGPWR: int or long
-SIGQUIT: int or long
-SIGRTMAX: int or long
-SIGRTMIN: int or long
-SIGSEGV: int or long
-SIGSTOP: int or long
-SIGSYS: int or long
-SIGTERM: int or long
-SIGTRAP: int or long
-SIGTSTP: int or long
-SIGTTIN: int or long
-SIGTTOU: int or long
-SIGURG: int or long
-SIGUSR1: int or long
-SIGUSR2: int or long
-SIGVTALRM: int or long
-SIGWINCH: int or long
-SIGXCPU: int or long
-SIGXFSZ: int or long
-SIG_DFL: int or long
-SIG_IGN: int or long
+ITIMER_PROF = ...  # type: int or long
+ITIMER_REAL = ...  # type: int or long
+ITIMER_VIRTUAL = ...  # type: int or long
+ItimerError = ...  # type: object
+NSIG = ...  # type: int or long
+SIGABRT = ...  # type: int or long
+SIGALRM = ...  # type: int or long
+SIGBUS = ...  # type: int or long
+SIGCHLD = ...  # type: int or long
+SIGCLD = ...  # type: int or long
+SIGCONT = ...  # type: int or long
+SIGFPE = ...  # type: int or long
+SIGHUP = ...  # type: int or long
+SIGILL = ...  # type: int or long
+SIGINT = ...  # type: int or long
+SIGIO = ...  # type: int or long
+SIGIOT = ...  # type: int or long
+SIGKILL = ...  # type: int or long
+SIGPIPE = ...  # type: int or long
+SIGPOLL = ...  # type: int or long
+SIGPROF = ...  # type: int or long
+SIGPWR = ...  # type: int or long
+SIGQUIT = ...  # type: int or long
+SIGRTMAX = ...  # type: int or long
+SIGRTMIN = ...  # type: int or long
+SIGSEGV = ...  # type: int or long
+SIGSTOP = ...  # type: int or long
+SIGSYS = ...  # type: int or long
+SIGTERM = ...  # type: int or long
+SIGTRAP = ...  # type: int or long
+SIGTSTP = ...  # type: int or long
+SIGTTIN = ...  # type: int or long
+SIGTTOU = ...  # type: int or long
+SIGURG = ...  # type: int or long
+SIGUSR1 = ...  # type: int or long
+SIGUSR2 = ...  # type: int or long
+SIGVTALRM = ...  # type: int or long
+SIGWINCH = ...  # type: int or long
+SIGXCPU = ...  # type: int or long
+SIGXFSZ = ...  # type: int or long
+SIG_DFL = ...  # type: int or long
+SIG_IGN = ...  # type: int or long
 
 def alarm(a: int) -> int
 # def default_int_handler(...) raises KeyboardInterrupt  # TODO(pludemann): is this defined?

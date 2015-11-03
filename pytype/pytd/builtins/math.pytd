@@ -2,12 +2,12 @@
 #        for d in dir(math):  print d, type(getattr(math, d))
 #     With all functions converted to single args taking float and returning float
 
-__doc__: str
-__name__: str
-__package__: NoneType
+__doc__ = ...  # type: str
+__name__ = ...  # type: str
+__package__ = ...  # type: NoneType
 
-e: float
-pi: float
+e = ...  # type: float
+pi = ...  # type: float
 
 def acos(x: float or int) -> float
 def acosh(x: float or int) -> float

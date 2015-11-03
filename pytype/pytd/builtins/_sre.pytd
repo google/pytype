@@ -1,7 +1,7 @@
-CODESIZE: long or int or str
-MAGIC: long or int or str
-MAXREPEAT: long or int or str
-copyright: long or int or str
+CODESIZE = ...  # type: long or int or str
+MAGIC = ...  # type: long or int or str
+MAXREPEAT = ...  # type: long or int or str
+copyright = ...  # type: long or int or str
 
 def compile(...) -> SRE_Pattern raises OverflowError
 def getcodesize() -> int

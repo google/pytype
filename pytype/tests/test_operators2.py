@@ -103,7 +103,7 @@ class CallErrorTests(test_inference.InferenceTest):
       f()  # error
     """, deep=False, solve_unknowns=True, extract_locals=True) as ty:
       self.assertTypesMatchPytd(ty, """
-        f: int
+        f = ...  # type: int
       """)
 
   def testCallAny(self):
@@ -119,7 +119,7 @@ class CallErrorTests(test_inference.InferenceTest):
       t_testCallAny()  # error because there's no "def f()..."
     """, deep=False, solve_unknowns=False, extract_locals=True) as ty:
       self.assertTypesMatchPytd(ty, """
-        t_testCallAny: ?
+        t_testCallAny = ...  # type: ?
       """)
 
   @unittest.skip("Need to handle undefined function call")

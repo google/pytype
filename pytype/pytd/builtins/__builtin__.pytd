@@ -129,13 +129,13 @@ def input() -> ?
 def raw_input() -> str raises EOFError
 def print(value, ...) -> NoneType
 
-False: bool
-True: bool
-NotImplemented: NotImplementedType
-None: NoneType
+False = ...  # type: bool
+True = ...  # type: bool
+NotImplemented = ...  # type: NotImplementedType
+None = ...  # type: NoneType
 
 class object(nothing):
-    __mro__: list[?]
+    __mro__ = ...  # type: list[?]
     def __init__(self) -> NoneType
     def __sizeof__(self) -> int
     def __repr__(self) -> str

@@ -211,7 +211,7 @@ class BuiltinTests(test_inference.InferenceTest):
     print z + 1
     """, deep=False, solve_unknowns=True, reverse_operators=False) as ty:
       self.assertTypesMatchPytd(ty, """
-        z: bool or complex or float or int or long
+        z = ...  # type: bool or complex or float or int or long
 
         def t_testListInit2(x: object, i: bool or complex or float or int or long) -> ?
       """)
@@ -333,7 +333,7 @@ class BuiltinTests(test_inference.InferenceTest):
         signal.signal(signal.SIGALRM, 0)
     """, deep=True, solve_unknowns=True, extract_locals=False) as ty:
       self.assertTypesMatchPytd(ty, """
-        signal: module
+        signal = ...  # type: module
 
         def f() -> NoneType
       """)
@@ -346,7 +346,7 @@ class BuiltinTests(test_inference.InferenceTest):
       args()
     """, deep=False, solve_unknowns=False, extract_locals=False) as ty:
       self.assertTypesMatchPytd(ty, """
-        sys: module
+        sys = ...  # type: module
         def args() -> str
       """)
 
@@ -402,9 +402,9 @@ class BuiltinTests(test_inference.InferenceTest):
           self.bar = array.array('i')
     """, deep=True, solve_unknowns=False) as ty:
       self.assertTypesMatchPytd(ty, """
-        array: module
+        array = ...  # type: module
         class Foo(object):
-          bar: array.array
+          bar = ...  # type: array.array
       """)
 
   def testInheritFromBuiltin(self):
@@ -452,7 +452,7 @@ class BuiltinTests(test_inference.InferenceTest):
           return 3j
     """, deep=True, solve_unknowns=False, extract_locals=True) as ty:
       self.assertTypesMatchPytd(ty, """
-        time: module
+        time = ...  # type: module
 
         def f(x) -> complex or float
       """)
@@ -498,7 +498,7 @@ class BuiltinTests(test_inference.InferenceTest):
         return os.open("/dev/null", os.O_RDONLY, 0777)
     """, deep=True, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
-        os: module
+        os = ...  # type: module
 
         def f() -> file
         def g() -> int
@@ -520,7 +520,7 @@ class BuiltinTests(test_inference.InferenceTest):
         return 'py%d' % sys.version_info[0]
     """, deep=True, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
-        sys: module
+        sys = ...  # type: module
         def f() -> str
       """)
 
@@ -533,7 +533,7 @@ class BuiltinTests(test_inference.InferenceTest):
         pass
     """, deep=True, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
-        collections: module
+        collections = ...  # type: module
 
         class Foo(?):
           pass
@@ -551,11 +551,11 @@ class BuiltinTests(test_inference.InferenceTest):
       z = t.z
     """, deep=True, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
-      collections: module
-      t: ?  # TODO(kramm): Should this be a class, with attribute x, y and z?
-      x: int
-      y: str
-      z: complex
+      collections = ...  # type: module
+      t = ...  # type: ?  # TODO(kramm): Should this be a class, with attribute x, y and z?
+      x = ...  # type: int
+      y = ...  # type: str
+      z = ...  # type: complex
       """)
 
   def testTypeEquals(self):
@@ -574,7 +574,7 @@ class BuiltinTests(test_inference.InferenceTest):
         return type(num) == types.IntType
     """, deep=True, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
-        types: module
+        types = ...  # type: module
         def f(num) -> bool
       """)
 
@@ -586,7 +586,7 @@ class BuiltinTests(test_inference.InferenceTest):
         return date.ctime()
     """, deep=True, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
-        datetime: module
+        datetime = ...  # type: module
         def f(date: datetime.datetime or datetime.date) -> bytes or str
     """)
 
@@ -598,7 +598,7 @@ class BuiltinTests(test_inference.InferenceTest):
         tz.fromutc(None)
     """, deep=True, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
-        datetime: module
+        datetime = ...  # type: module
         def f(tz: datetime.tzinfo) -> NoneType
     """)
 

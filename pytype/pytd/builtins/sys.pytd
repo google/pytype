@@ -1,56 +1,56 @@
 class _flags:  # TODO(pludemann): allow calling this `flags`
-  debug: int
-  py3k_warning: int
-  division_warning: int
-  division_new: int
-  inspect: int
-  interactive: int
-  optimize: int
-  dont_write_bytecode: int
-  no_user_site: int
-  no_site: int
-  ignore_environment: int
-  tabcheck: int
-  verbose: int
-  unicode: int
-  bytes_warning: int
-  hash_randomization: int
+  debug = ...  # type: int
+  py3k_warning = ...  # type: int
+  division_warning = ...  # type: int
+  division_new = ...  # type: int
+  inspect = ...  # type: int
+  interactive = ...  # type: int
+  optimize = ...  # type: int
+  dont_write_bytecode = ...  # type: int
+  no_user_site = ...  # type: int
+  no_site = ...  # type: int
+  ignore_environment = ...  # type: int
+  tabcheck = ...  # type: int
+  verbose = ...  # type: int
+  unicode = ...  # type: int
+  bytes_warning = ...  # type: int
+  hash_randomization = ...  # type: int
 
 
-__displayhook__: object
-__excepthook__: object
-__stderr__: file
-__stdin__: file
-__stdout__: file
-_mercurial: tuple
-api_version: int
-argv: list[str]
-builtin_module_names: list[str]
-byteorder: str
-copyright: str
-dont_write_bytecode: bool
-exec_prefix: str
-executable: str
-flags: _flags  # shadows class flags in sys.py
-float_info: object
-float_repr_style: str
-hexversion: int
-long_info: object
-maxint: int
-maxsize: int
-maxunicode: int
-modules: dict[str, module]
-path: list[str]
-platform: str
-prefix: str
-py3kwarning: bool
-stderr: file
-stdin: file
-stdout: file
-subversion: tuple
-version: str
-version_info: tuple[int]
-warnoptions: object
+__displayhook__ = ...  # type: object
+__excepthook__ = ...  # type: object
+__stderr__ = ...  # type: file
+__stdin__ = ...  # type: file
+__stdout__ = ...  # type: file
+_mercurial = ...  # type: tuple
+api_version = ...  # type: int
+argv = ...  # type: list[str]
+builtin_module_names = ...  # type: list[str]
+byteorder = ...  # type: str
+copyright = ...  # type: str
+dont_write_bytecode = ...  # type: bool
+exec_prefix = ...  # type: str
+executable = ...  # type: str
+flags = ...  # type: _flags
+float_info = ...  # type: object
+float_repr_style = ...  # type: str
+hexversion = ...  # type: int
+long_info = ...  # type: object
+maxint = ...  # type: int
+maxsize = ...  # type: int
+maxunicode = ...  # type: int
+modules = ... # type: dict[str, module]
+path = ...  # type: list[str]
+platform = ...  # type: str
+prefix = ...  # type: str
+py3kwarning = ...  # type: bool
+stderr = ...  # type: file
+stdin = ...  # type: file
+stdout = ...  # type: file
+subversion = ...  # type: tuple
+version = ...  # type: str
+version_info = ...  # type: tuple[int]
+warnoptions = ...  # type: object
 
 def _clear_type_cache() -> NoneType
 def _current_frames() -> ?  # TODO(pludemann): fix return type

@@ -1,17 +1,17 @@
-__all__: list[str]
-__builtins__: dict[str, object]
-__doc__: str
-__file__: str
-__name__: str
-__package__: NoneType
-default_action: str
-defaultaction: str
-filters: list[tuple]
-linecache: module
-once_registry: dict
-onceregistry: dict
-sys: module
-types: module
+__all__ = ...  # type: list[str]
+__builtins__ = ...  # type: dict[str, object]
+__doc__ = ...  # type: str
+__file__ = ...  # type: str
+__name__ = ...  # type: str
+__package__ = ...  # type: NoneType
+default_action = ...  # type: str
+defaultaction = ...  # type: str
+filters = ...  # type: list[tuple]
+linecache = ...  # type: module
+once_registry = ...  # type: dict
+onceregistry = ...  # type: dict
+sys = ...  # type: module
+types = ...  # type: module
 
 def _getaction(action) -> str
 def _processoptions(args) -> NoneType

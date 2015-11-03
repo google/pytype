@@ -6,12 +6,12 @@ class PrettyPrinter:
   pass
 
 def _StringIO(...) -> ?
-__all__: list
-__builtins__: dict
-__doc__: str
-__file__: str
-__name__: str
-__package__: str
+__all__ = ...  # type: list
+__builtins__ = ...  # type: dict
+__doc__ = ...  # type: str
+__file__ = ...  # type: str
+__name__ = ...  # type: str
+__package__ = ...  # type: str
 def _commajoin(...) -> ?
 def _id(...) -> ?
 def _len(...) -> ?
@@ -19,8 +19,8 @@ def _perfcheck(...) -> ?
 def _recursion(...) -> ?
 def _safe_repr(...) -> ?
 def _sorted(...) -> ?
-_sys: module
-_type: type
+_sys = ...  # type: module
+_type = ...  # type: type
 def isreadable(...) -> ?
 def isrecursive(...) -> ?
 def pformat(...) -> ?

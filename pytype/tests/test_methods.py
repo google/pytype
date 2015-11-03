@@ -537,7 +537,7 @@ class MethodsTest(test_inference.InferenceTest):
       self.assertTypesMatchPytd(ty, """
       class Foo(object):
         def __init__(self, ...) -> NoneType
-        kwargs: dict[str, ?]
+        kwargs = ...  # type: dict[str, ?]
       """)
 
   def testStarStarDeep2(self):
@@ -744,15 +744,15 @@ class MethodsTest(test_inference.InferenceTest):
       d = os.chmod.x
     """, deep=True, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
-      os: module
+      os = ...  # type: module
       def f() -> NoneType
       class Foo:
         def method(self) -> NoneType
-      foo: Foo
-      a: int
-      b: complex
-      c: complex
-      d: float
+      foo = ...  # type: Foo
+      a = ...  # type: int
+      b = ...  # type: complex
+      c = ...  # type: complex
+      d = ...  # type: float
       """)
 
 

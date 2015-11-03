@@ -18,7 +18,8 @@ class ClassesTest(test_inference.InferenceTest):
         return MyClass()
     """, deep=True, solve_unknowns=True, extract_locals=False) as ty:
       self.assertTypesMatchPytd(ty, """
-        MyClass: function  # "function" because it gets called in f()
+        # "function" because it gets called in f()
+        MyClass = ...  # type: function
         def f() -> ?
       """)
 
@@ -57,7 +58,7 @@ class ClassesTest(test_inference.InferenceTest):
           x.__init__(self)
     """, deep=True, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
-      x: ?
+      x = ...  # type: ?
       class A(?):
         def __init__(self) -> NoneType
       """)
@@ -84,11 +85,11 @@ class ClassesTest(test_inference.InferenceTest):
         return Foo.bar()
     """, deep=True, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
-      module: ?
+      module = ...  # type: ?
       def f() -> NoneType
       class Foo:
         # TODO(kramm): pytd needs better syntax for classmethods
-        bar: classmethod
+        bar = ...  # type: classmethod
       """)
 
   def testInheritFromUnknownAttributes(self):
@@ -100,8 +101,8 @@ class ClassesTest(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
       class Foo(?):
-        x: list[int]
-        y: list[int]
+        x = ...  # type: list[int]
+        y = ...  # type: list[int]
         def f(self) -> NoneType
       """)
 
@@ -159,10 +160,11 @@ class ClassesTest(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=False, extract_locals=False) as ty:
       self.assertTypesMatchPytd(ty, """
           class A:
-            x: int
+            x = ...  # type: int
 
           class B(A):
-            x: int  # TODO(kramm): optimize this out
+            # TODO(kramm): optimize this out
+            x = ...  # type: int
             def get_x(self) -> int
       """)
 
@@ -185,12 +187,12 @@ class ClassesTest(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=False, extract_locals=True) as ty:
       self.assertTypesMatchPytd(ty, """
         class A:
-            x: int
+            x = ...  # type: int
         class B(A):
-            y: int
+            y = ...  # type: int
         class C(A):
-            y: str
-            z: complex
+            y = ...  # type: str
+            z = ...  # type: complex
         class D(B, C):
             def get_x(self) -> int
             def get_y(self) -> int

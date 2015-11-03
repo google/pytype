@@ -172,14 +172,14 @@ class TestOptimize(parser_test.ParserTest):
 
   def testSimplifyUnions(self):
     src = textwrap.dedent("""
-      a: int or int
-      b: int or ?
-      c: int or (int or float)
+      a = ...  # type: int or int
+      b = ...  # type: int or ?
+      c = ...  # type: int or (int or float)
     """)
     new_src = textwrap.dedent("""
-      a: int
-      b: ?
-      c: int or float
+      a = ...  # type: int
+      b = ...  # type: ?
+      c = ...  # type: int or float
     """)
     self.AssertSourceEquals(
         self.ApplyVisitorToString(src, optimize.SimplifyUnions()),
@@ -338,12 +338,12 @@ class TestOptimize(parser_test.ParserTest):
 
   def testCollapseLongConstantUnions(self):
     src = textwrap.dedent("""
-      x: A or B or C or D
-      y: A or B or C or D or E
+      x = ...  # type: A or B or C or D
+      y = ...  # type: A or B or C or D or E
     """)
     expected = textwrap.dedent("""
-      x: A or B or C or D
-      y: ?
+      x = ...  # type: A or B or C or D
+      y = ...  # type: ?
     """)
     new_src = self.ApplyVisitorToString(
         src, optimize.CollapseLongConstantUnions(max_length=4))
@@ -371,10 +371,10 @@ class TestOptimize(parser_test.ParserTest):
 
   def testCombineContainersMultiLevel(self):
     src = textwrap.dedent("""
-      v: list[tuple[long or int]] or list[tuple[float or bool]]
+      v = ...  # type: list[tuple[long or int]] or list[tuple[float or bool]]
     """)
     expected = textwrap.dedent("""
-      v: list[tuple[long or int or float or bool]]
+      v = ...  # type: list[tuple[long or int or float or bool]]
     """)
     new_src = self.ApplyVisitorToString(src, optimize.CombineContainers())
     self.AssertSourceEquals(new_src, expected)
@@ -382,10 +382,10 @@ class TestOptimize(parser_test.ParserTest):
   def testPullInMethodClasses(self):
     src = textwrap.dedent("""
         class A:
-            mymethod1: Method1
-            mymethod2: Method2
-            member: Method3
-            mymethod4: Method4
+            mymethod1 = ...  # type: Method1
+            mymethod2 = ...  # type: Method2
+            member = ...  # type: Method3
+            mymethod4 = ...  # type: Method4
         class Method1:
             def __call__(self: A, x: int) -> ?
         class Method2:
@@ -399,7 +399,7 @@ class TestOptimize(parser_test.ParserTest):
     """)
     expected = textwrap.dedent("""
         class A:
-            member: Method3
+            member = ...  # type: Method3
             def mymethod1(self, x: int) -> ?
             def mymethod2(self, x: int) -> ?
             def mymethod4(self) -> ?
@@ -420,24 +420,24 @@ class TestOptimize(parser_test.ParserTest):
   def testAddInheritedMethods(self):
     src = textwrap.dedent("""
         class A(nothing):
-            foo: bool
+            foo = ...  # type: bool
             def f(self, x: int) -> float
             def h(self) -> complex
 
         class B(A):
-            bar: int
+            bar = ...  # type: int
             def g(self, y: int) -> bool
             def h(self, z: float) -> ?
     """)
     expected = textwrap.dedent("""
         class A(nothing):
-            foo: bool
+            foo = ...  # type: bool
             def f(self, x: int) -> float
             def h(self) -> complex
 
         class B(A):
-            bar: int
-            foo: bool
+            bar = ...  # type: int
+            foo = ...  # type: bool
             def g(self, y: int) -> bool
             def h(self, z: float) -> ?
             def f(self, x: int) -> float

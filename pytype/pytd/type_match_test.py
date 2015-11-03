@@ -84,8 +84,8 @@ class TestTypeMatch(unittest.TestCase):
     ast = parser.parse_string(textwrap.dedent("""
       class A[T](nothing):
         pass
-      left: A[?]
-      right: A[?]
+      left = ...  # type: A[?]
+      right = ...  # type: A[?]
     """))
     ast = visitors.LookupClasses(ast)
     m = type_match.TypeMatch()
@@ -113,7 +113,7 @@ class TestTypeMatch(unittest.TestCase):
         pass
       class B(A):
         pass
-      a : A
+      a = ...  # type: A
       def left(a: B) -> B
       def right(a: A) -> A
     """))
@@ -158,7 +158,7 @@ class TestTypeMatch(unittest.TestCase):
         pass
       class `~unknown0`(nothing):
         pass
-      a : A
+      a = ...  # type: A
       def left() -> `~unknown0`
       def right() -> list[A]
     """))
@@ -175,7 +175,7 @@ class TestTypeMatch(unittest.TestCase):
         pass
       class Foo(Base):
         pass
-      base: Base
+      base = ...  # type: Base
     """))
     ast = visitors.LookupClasses(ast)
     m = type_match.TypeMatch(type_match.get_all_subclasses([ast]))

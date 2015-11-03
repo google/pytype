@@ -41,9 +41,9 @@ class TestUtils(parser_test.ParserTest):
   def testUnpackUnion(self):
     """Test for UnpackUnion."""
     ast = self.Parse("""
-      c1: int or float
-      c2: int
-      c3: list[int or float]""")
+      c1 = ...  # type: int or float
+      c2 = ...  # type: int
+      c3 = ...  # type: list[int or float]""")
     c1 = ast.Lookup("c1").type
     c2 = ast.Lookup("c2").type
     c3 = ast.Lookup("c3").type
@@ -54,7 +54,7 @@ class TestUtils(parser_test.ParserTest):
   def testConcat(self):
     """Test for concatenating two pytd ASTs."""
     ast1 = self.Parse("""
-      c1: int
+      c1 = ...  # type: int
 
       def f1() -> int
 
@@ -62,7 +62,7 @@ class TestUtils(parser_test.ParserTest):
         pass
     """)
     ast2 = self.Parse("""
-      c2: int
+      c2 = ...  # type: int
 
       def f2() -> int
 
@@ -70,8 +70,8 @@ class TestUtils(parser_test.ParserTest):
         pass
     """)
     expected = textwrap.dedent("""
-      c1: int
-      c2: int
+      c1 = ...  # type: int
+      c2 = ...  # type: int
 
       def f1() -> int
       def f2() -> int
@@ -87,14 +87,14 @@ class TestUtils(parser_test.ParserTest):
 
   def testConcat3(self):
     """Test for concatenating three pytd ASTs."""
-    ast1 = self.Parse("""c1: int""")
-    ast2 = self.Parse("""c2: float""")
-    ast3 = self.Parse("""c3: bool""")
+    ast1 = self.Parse("""c1 = ...  # type: int""")
+    ast2 = self.Parse("""c2 = ...  # type: float""")
+    ast3 = self.Parse("""c3 = ...  # type: bool""")
     combined = utils.Concat(ast1, ast2, ast3)
     expected = textwrap.dedent("""
-      c1: int
-      c2: float
-      c3: bool
+      c1 = ...  # type: int
+      c2 = ...  # type: float
+      c3 = ...  # type: bool
     """)
     self.AssertSourceEquals(combined, expected)
 
@@ -212,9 +212,9 @@ class TestUtils(parser_test.ParserTest):
   def testPrint(self):
     """Smoketests for printing pytd."""
     ast = self.Parse("""
-      c1: int
+      c1 = ...  # type: int
       class A[T]:
-        bar: T
+        bar = ...  # type: T
         def foo(self, x: list[int], y: T) -> list[T] or float raises ValueError
       def bar[X, Y](x: X or Y) -> ?
     """)
@@ -224,7 +224,8 @@ class TestUtils(parser_test.ParserTest):
 
   def testParsePyTD(self):
     """Test ParsePyTD()."""
-    ast = utils.ParsePyTD("a: int", "<inline>", python_version=(2, 7, 6))
+    ast = utils.ParsePyTD("a = ...  # type: int",
+                          "<inline>", python_version=(2, 7, 6))
     a = ast.Lookup("a").type
     self.assertItemsEqual(a, pytd.ClassType("int"))
     self.assertIsNotNone(a.cls)  # verify that the lookup succeeded
@@ -259,15 +260,15 @@ class TestUtils(parser_test.ParserTest):
   def testWrapTypeDeclUnit(self):
     """Test WrapTypeDeclUnit."""
     ast1 = self.Parse("""
-      c: int
+      c = ...  # type: int
       def f(x: int) -> int
       def f(x: float) -> float
       class A:
         pass
     """)
     ast2 = self.Parse("""
-      c: float
-      d: int
+      c = ...  # type: float
+      d = ...  # type: int
       def f(x: complex) -> complex
       class B:
         pass
@@ -277,8 +278,8 @@ class TestUtils(parser_test.ParserTest):
         ast1.classes + ast1.functions + ast1.constants +
         ast2.classes + ast2.functions + ast2.constants)
     expected = textwrap.dedent("""
-      c: int or float
-      d: int
+      c = ...  # type: int or float
+      d = ...  # type: int
       def f(x: int) -> int
       def f(x: float) -> float
       def f(x: complex) -> complex

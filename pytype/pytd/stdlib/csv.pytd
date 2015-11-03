@@ -5,41 +5,41 @@
 class Error:
   pass
 
-QUOTE_ALL: int
-QUOTE_MINIMAL: int
-QUOTE_NONE: int
-QUOTE_NONNUMERIC: int
-StringIO: function or type
-_Dialect: type
-__all__: list[str]
-__version__: str
-complex: type
-field_size_limit: function
-get_dialect: function
-list_dialects: function
-re: module
-reader: type
-reduce: function
-register_dialect: function
-unregister_dialect: function
-writer: type
+QUOTE_ALL = ...  # type: int
+QUOTE_MINIMAL = ...  # type: int
+QUOTE_NONE = ...  # type: int
+QUOTE_NONNUMERIC = ...  # type: int
+StringIO = ...  # type: function or type
+_Dialect = ...  # type: type
+__all__ = ...  # type: list[str]
+__version__ = ...  # type: str
+complex = ...  # type: type
+field_size_limit = ...  # type: function
+get_dialect = ...  # type: function
+list_dialects = ...  # type: function
+re = ...  # type: module
+reader = ...  # type: type
+reduce = ...  # type: function
+register_dialect = ...  # type: function
+unregister_dialect = ...  # type: function
+writer = ...  # type: type
 
 class Dialect(nothing):
-    __doc__: str
-    _name: str
-    _valid: bool
-    delimiter: NoneType
-    doublequote: NoneType
-    escapechar: NoneType
-    lineterminator: NoneType
-    quotechar: NoneType
-    quoting: NoneType
-    skipinitialspace: NoneType
+    __doc__ = ...  # type: str
+    _name = ...  # type: str
+    _valid = ...  # type: bool
+    delimiter = ...  # type: NoneType
+    doublequote = ...  # type: NoneType
+    escapechar = ...  # type: NoneType
+    lineterminator = ...  # type: NoneType
+    quotechar = ...  # type: NoneType
+    quoting = ...  # type: NoneType
+    skipinitialspace = ...  # type: NoneType
     def __init__(self) -> ?
     def _validate(self) -> ?
 
 class DictReader(nothing):
-    fieldnames: ?
+    fieldnames = ...  # type: ?
     def __init__(self, f, fieldnames, restkey, restval, dialect, ...) -> ?
     def __iter__(self) -> ?
     def next(self) -> ?
@@ -52,7 +52,7 @@ class DictWriter(nothing):
     def writerows(self, rowdicts) -> ?
 
 class Sniffer(nothing):
-    __doc__: str
+    __doc__ = ...  # type: str
     def __init__(self) -> ?
     def _guess_delimiter(self, data, delimiters) -> ?
     def _guess_quote_and_delimiter(self, data, delimiters) -> ?
@@ -60,14 +60,14 @@ class Sniffer(nothing):
     def sniff(self, sample, delimiters, ...) -> ?
 
 class excel(Dialect):
-    __doc__: str
-    delimiter: str
-    doublequote: bool
-    lineterminator: str
-    quotechar: str
-    quoting: int
-    skipinitialspace: bool
+    __doc__ = ...  # type: str
+    delimiter = ...  # type: str
+    doublequote = ...  # type: bool
+    lineterminator = ...  # type: str
+    quotechar = ...  # type: str
+    quoting = ...  # type: int
+    skipinitialspace = ...  # type: bool
 
 class excel_tab(excel):
-    __doc__: str
-    delimiter: str
+    __doc__ = ...  # type: str
+    delimiter = ...  # type: str

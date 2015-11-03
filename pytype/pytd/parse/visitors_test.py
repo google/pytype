@@ -184,7 +184,7 @@ class TestVisitors(parser_test.ParserTest):
         class B(nothing):
           def foobar(self, x: `~int`) -> ?
         class C(nothing):
-          x: `~unknown_foobar`
+          x = ... # type: `~unknown_foobar`
         class D(`~unknown1`):
           pass
     """)
@@ -259,7 +259,7 @@ class TestVisitors(parser_test.ParserTest):
 
   def testCollectDependencies(self):
     src = textwrap.dedent("""
-      l: list[int or baz.BigInt]
+      l = ... # type: list[int or baz.BigInt]
       def f1() -> bar.Bar
       def f2() -> foo.bar.Baz
     """)

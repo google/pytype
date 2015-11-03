@@ -226,7 +226,7 @@ class StructuralTest(test_inference.InferenceTest):
               pass
     """, deep=True, solve_unknowns=False, extract_locals=True) as ty:
       self.assertTypesMatchPytd(ty, """
-        _unicode: type
+        _unicode = ...  # type: type
       """)
 
 if __name__ == "__main__":

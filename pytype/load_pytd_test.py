@@ -63,7 +63,7 @@ class ImportPathsTest(unittest.TestCase):
 
   def testInit(self):
     with utils.Tempdir() as d1:
-      d1.create_file("baz/__init__.pytd", "x: int")
+      d1.create_file("baz/__init__.pytd", "x = ... # type: int")
       loader = load_pytd.Loader("base", python_version=self.PYTHON_VERSION,
                                 pythonpath=[d1.path])
       self.assertTrue(loader.import_name("baz").Lookup("baz.x"))
@@ -114,10 +114,10 @@ class ImportPathsTest(unittest.TestCase):
 
   def testRelative(self):
     with utils.Tempdir() as d:
-      d.create_file("__init__.pytd", "base: ?")
-      d.create_file("path/__init__.pytd", "path: ?")
-      d.create_file("path/to/__init__.pytd", "to: ?")
-      d.create_file("path/to/some/__init__.pytd", "some: ?")
+      d.create_file("__init__.pytd", "base = ...  # type: ?")
+      d.create_file("path/__init__.pytd", "path = ...  # type: ?")
+      d.create_file("path/to/__init__.pytd", "to = ...  # type: ?")
+      d.create_file("path/to/some/__init__.pytd", "some = ...  # type: ?")
       d.create_file("path/to/some/module.pytd", "")
       loader = load_pytd.Loader("path.to.some.module",
                                 python_version=self.PYTHON_VERSION,

@@ -16,7 +16,7 @@ class TestAttributes(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=False, extract_locals=True) as ty:
       self.assertTypesMatchPytd(ty, """
         class A:
-          a: complex or int
+          a = ...  # type: complex or int
           def method1(self) -> NoneType
           def method2(self) -> NoneType
       """)
@@ -32,7 +32,7 @@ class TestAttributes(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=False, extract_locals=True) as ty:
       self.assertTypesMatchPytd(ty, """
         class A:
-          a: complex or int
+          a = ...  # type: complex or int
         def f1() -> NoneType
         def f2() -> NoneType
       """)
@@ -47,7 +47,7 @@ class TestAttributes(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=False, extract_locals=True) as ty:
       self.assertTypesMatchPytd(ty, """
         class C:
-          _x: int
+          _x = ...  # type: int
           def foo(self) -> int
       """)
 
@@ -61,7 +61,7 @@ class TestAttributes(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=False, extract_locals=True) as ty:
       self.assertTypesMatchPytd(ty, """
         class C:
-          x: int
+          x = ...  # type: int
           def foo(self) -> int
       """)
 
@@ -82,12 +82,12 @@ class TestAttributes(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=False, extract_locals=True) as ty:
       self.assertTypesMatchPytd(ty, """
         class A:
-          b: B
-          x: complex
+          b = ...  # type: B
+          x = ...  # type: complex
           def set_on_b(self) -> NoneType
         class B:
-          a: A
-          x: int
+          a = ...  # type: A
+          x = ...  # type: int
           def set_on_a(self) -> NoneType
       """)
 

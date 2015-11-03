@@ -19,7 +19,7 @@ class SolverTests(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=True, extract_locals=True) as ty:
       self.assertTypesMatchPytd(ty, """
       class Node:
-        children: list[nothing] or tuple[nothing]
+        children = ...  # type: list[nothing] or tuple[nothing]
       """)
 
   def testCall(self):
@@ -67,7 +67,7 @@ class SolverTests(test_inference.InferenceTest):
           __any_object__.foobar(StringIO.StringIO())
     """, deep=True, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
-        StringIO: module
+        StringIO = ...  # type: module
 
         class Foobar(object):
           # TODO(kramm): Should 'out' be 'file or StringIO.StringIO'?
@@ -85,7 +85,7 @@ class SolverTests(test_inference.InferenceTest):
         pass
     """, deep=True, solve_unknowns=True, report_errors=False) as ty:
       self.assertTypesMatchPytd(ty, """
-        Foo: ?
+        Foo = ...  # type: ?
 
         class Bar(?):
           pass
@@ -114,7 +114,7 @@ class SolverTests(test_inference.InferenceTest):
       self.assertTypesMatchPytd(ty, """
       class Foo(object):
         def __init__(self, ...) -> NoneType
-        types: tuple[type]
+        types = ...  # type: tuple[type]
         def bar(self, val) -> bool
       """)
 
@@ -154,8 +154,8 @@ class SolverTests(test_inference.InferenceTest):
         def f(x: int) -> int
         def f(x) -> ?
 
-        d: dict[str, int]
-        l: list[str]
+        d = ...  # type: dict[str, int]
+        l = ...  # type: list[str]
       """)
 
   def testCallConstructor(self):
@@ -184,7 +184,7 @@ class SolverTests(test_inference.InferenceTest):
         return all(itertools.imap(f, array))
     """, deep=True, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
-        itertools: module
+        itertools = ...  # type: module
 
         def every(f, array) -> bool
       """)
@@ -204,8 +204,8 @@ class SolverTests(test_inference.InferenceTest):
         f()
     """, deep=True, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
-        foo: list[list[int]]
-        bar: list[int]
+        foo = ...  # type: list[list[int]]
+        bar = ...  # type: list[int]
 
         def f() -> NoneType
         def g() -> NoneType
@@ -226,8 +226,8 @@ class SolverTests(test_inference.InferenceTest):
         f()
     """, deep=True, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
-        foo: list[list[list[int]]]
-        bar: list[int]
+        foo = ...  # type: list[list[list[int]]]
+        bar = ...  # type: list[int]
 
         def f() -> NoneType
         def g() -> NoneType
@@ -253,10 +253,10 @@ class SolverTests(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
         class Container:
-          foo: list[list[int]]
-          bar: list[int]
+          foo = ...  # type: list[list[int]]
+          bar = ...  # type: list[int]
 
-        container: Container
+        container = ...  # type: Container
 
         def f() -> NoneType
         def g() -> NoneType
@@ -274,7 +274,7 @@ class SolverTests(test_inference.InferenceTest):
           return date.bad_method()
       """, deep=True, solve_unknowns=True, pythonpath=[d.path]) as ty:
         self.assertTypesMatchPytd(ty, """
-          bad_mod: module
+          bad_mod = ...  # type: module
           def f(date: bad_mod.myclass) -> bool
         """)
 
@@ -285,7 +285,7 @@ class SolverTests(test_inference.InferenceTest):
           d[""] = collections.defaultdict(int)
     """, deep=True, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
-        collections: module
+        collections = ...  # type: module
         def bar(d: collections.Counter or dict[str, collections.defaultdict]
                 ) -> NoneType
       """)

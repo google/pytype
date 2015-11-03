@@ -157,9 +157,9 @@ class ContainerTest(test_inference.InferenceTest):
       l.append(x)
     """, deep=False, solve_unknowns=False, extract_locals=True) as ty:
       self.assertTypesMatchPytd(ty, """
-        x: int or float
-        y: ?
-        l: list[int or float]
+        x = ...  # type: int or float
+        y = ...  # type: ?
+        l = ...  # type: list[int or float]
       """)
 
   def testListConcatUnlike(self):
@@ -368,9 +368,9 @@ class ContainerTest(test_inference.InferenceTest):
       a = [str(ty) for ty in (int, bool)[:len(sys.argv)]]
     """, deep=True, solve_unknowns=False, extract_locals=True) as ty:
       self.assertTypesMatchPytd(ty, """
-        sys: module
-        a: list[str]
-        ty: type
+        sys = ...  # type: module
+        a = ...  # type: list[str]
+        ty = ...  # type: type
       """)
 
   def testEmptyOrString(self):
@@ -381,8 +381,8 @@ class ContainerTest(test_inference.InferenceTest):
       open('%s' % entry, 'w')
     """, deep=False, solve_unknowns=False, extract_locals=True) as ty:
       self.assertTypesMatchPytd(ty, """
-        d: dict[str, str]
-        entry: str
+        d = ...  # type: dict[str, str]
+        entry = ...  # type: str
       """)
 
   def testDictInit(self):
@@ -441,7 +441,7 @@ class ContainerTest(test_inference.InferenceTest):
                     report_errors=False) as ty:
       self.assertTypesMatchPytd(ty, """
         class Foo:
-          next: NoneType
+          next = ...  # type: NoneType
 
         def f(key) -> Foo
       """)
@@ -455,8 +455,8 @@ class ContainerTest(test_inference.InferenceTest):
       y = divmod(x, x)
     """, deep=True, solve_unknowns=False, extract_locals=True) as ty:
       self.assertTypesMatchPytd(ty, """
-        x: float or int
-        y: tuple[float or int]
+        x = ...  # type: float or int
+        y = ...  # type: tuple[float or int]
       """)
 
   def testMaybeAny(self):
@@ -468,8 +468,8 @@ class ContainerTest(test_inference.InferenceTest):
       y = divmod(x, 3.14)
     """, deep=True, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
-        x: float or int
-        y: tuple[complex or float]
+        x = ...  # type: float or int
+        y = ...  # type: tuple[complex or float]
       """)
 
   def testIndex(self):

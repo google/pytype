@@ -133,7 +133,7 @@ class PrintVisitor(Visitor):
 
   def VisitConstant(self, node):
     """Convert a class-level or module-level constant to a string."""
-    return self._SafeName(node.name) + ": " + node.type
+    return self._SafeName(node.name) + " = ...  # type: " + node.type
 
   def EnterClass(self, node):
     """Entering a class - record class name for children's use."""

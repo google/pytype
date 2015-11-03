@@ -58,10 +58,10 @@ class TestPytd(unittest.TestCase):
         def foo(a: int or str) -> C
         class C[T]:
             def bar(x: T) -> NoneType
-        CONSTANT: C[float]
+        CONSTANT = ...  # type: C[float]
         """)
     src2 = textwrap.dedent("""
-        CONSTANT: C[float]
+        CONSTANT = ...  # type: C[float]
         class C[T]:
             def bar(x: T) -> NoneType
         def foo(a: str or int) -> C

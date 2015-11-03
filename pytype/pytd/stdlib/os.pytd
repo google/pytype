@@ -2,50 +2,51 @@
 # only in `os`.  See the code in /usr/lib/python2.7/os.py for how __all__ is
 # set, for items that are only in `os`.
 
-environ: dict[str, str]
+environ = ...  # type: dict[str, str]
 
-F_OK: int
-R_OK: int
-W_OK: int
-X_OK: int
-O_APPEND: int
-O_ASYNC: int
-O_CREAT: int
-O_DIRECT: int
-O_DIRECTORY: int
-O_DSYNC: int
-O_EXCL: int
-O_LARGEFILE: int
-O_NDELAY: int
-O_NOATIME: int
-O_NOCTTY: int
-O_NOFOLLOW: int
-O_NONBLOCK: int
-O_RDONLY: int
-O_RDWR: int
-O_RSYNC: int
-O_SYNC: int
-O_TRUNC: int
-O_WRONLY: int
+F_OK = ...  # type: int
+R_OK = ...  # type: int
+W_OK = ...  # type: int
+X_OK = ...  # type: int
+O_APPEND = ...  # type: int
+O_ASYNC = ...  # type: int
+O_CREAT = ...  # type: int
+O_DIRECT = ...  # type: int
+O_DIRECTORY = ...  # type: int
+O_DSYNC = ...  # type: int
+O_EXCL = ...  # type: int
+O_LARGEFILE = ...  # type: int
+O_NDELAY = ...  # type: int
+O_NOATIME = ...  # type: int
+O_NOCTTY = ...  # type: int
+O_NOFOLLOW = ...  # type: int
+O_NONBLOCK = ...  # type: int
+O_RDONLY = ...  # type: int
+O_RDWR = ...  # type: int
+O_RSYNC = ...  # type: int
+O_SYNC = ...  # type: int
+O_TRUNC = ...  # type: int
+O_WRONLY = ...  # type: int
 
-TMP_MAX: int
-EX_OK:  int  # TODO(pludemann): add other os.EX_* values
+TMP_MAX = ...  # type: int
+# TODO(pludemann): add other os.EX_* values
+EX_OK = ...  # type:  int
 # TODO(pludemann): add os.P_NOWAIT etc
 
 # TODO(pludemann): Split out the following to `os` only:
-altsep: str
-curdir: str
-defpath: str
-devnull: str
-extsep: str
-linesep: str
-name: str
-pardir: str
-pathsep: str
-sep: str
-SEEK_SET: int
-SEEK_DUR: int
-SEEK_END: int
+altsep = ...  # type: str
+curdir = ...  # type: str
+defpath = ...  # type: str
+devnull = ...  # type: str
+extsep = ...  # type: str
+linesep = ...  # type: str
+name = ...  # type: str
+pardir = ...  # type: str
+pathsep = ...  # type: str
+sep = ...  # type: str
+SEEK_SET = ...  # type: int
+SEEK_DUR = ...  # type: int
+SEEK_END = ...  # type: int
 # TODO(pludemann): end of only in `os`
 
 def WCOREDUMP(...) -> bool

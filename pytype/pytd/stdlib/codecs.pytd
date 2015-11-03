@@ -1,17 +1,17 @@
-BOM: str
-BOM32_BE: str
-BOM32_LE: str
-BOM64_BE: str
-BOM64_LE: str
-BOM_BE: str
-BOM_LE: str
-BOM_UTF16: str
-BOM_UTF16_BE: str
-BOM_UTF16_LE: str
-BOM_UTF32: str
-BOM_UTF32_BE: str
-BOM_UTF32_LE: str
-BOM_UTF8: str
+BOM = ...  # type: str
+BOM32_BE = ...  # type: str
+BOM32_LE = ...  # type: str
+BOM64_BE = ...  # type: str
+BOM64_LE = ...  # type: str
+BOM_BE = ...  # type: str
+BOM_LE = ...  # type: str
+BOM_UTF16 = ...  # type: str
+BOM_UTF16_BE = ...  # type: str
+BOM_UTF16_LE = ...  # type: str
+BOM_UTF32 = ...  # type: str
+BOM_UTF32_BE = ...  # type: str
+BOM_UTF32_LE = ...  # type: str
+BOM_UTF8 = ...  # type: str
 
 # TODO(pludemann): check def's with "-> ?"
 class BufferedIncrementalDecoder:

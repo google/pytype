@@ -102,8 +102,8 @@ class TestASTGeneration(parser_test.ParserTest):
   def testConstants(self):
     """Test parsing of constants."""
     src = textwrap.dedent("""
-      a: int
-      b: int or float
+      a = ...  # type: int
+      b = ...  # type: int or float
     """).strip()
     self.TestRoundTrip(src)
 
@@ -157,16 +157,16 @@ class TestASTGeneration(parser_test.ParserTest):
 
   def testSpaces(self):
     """Test that start-of-file / end-of-file whitespace is handled correctly."""
-    self.TestRoundTrip("x: int")
-    self.TestRoundTrip("x: int\n")
-    self.TestRoundTrip("\nx: int")
-    self.TestRoundTrip("\nx: int")
-    self.TestRoundTrip("\n\nx: int")
-    self.TestRoundTrip("  \nx: int")
-    self.TestRoundTrip("x: int  ")
-    self.TestRoundTrip("x: int  \n")
-    self.TestRoundTrip("x: int\n  ")
-    self.TestRoundTrip("x: int\n\n")
+    self.TestRoundTrip("def f() -> int")
+    self.TestRoundTrip("def f() -> int\n")
+    self.TestRoundTrip("\ndef f() -> int")
+    self.TestRoundTrip("\ndef f() -> int")
+    self.TestRoundTrip("\n\ndef f() -> int")
+    self.TestRoundTrip("  \ndef f() -> int")
+    self.TestRoundTrip("def f() -> int  ")
+    self.TestRoundTrip("def f() -> int  \n")
+    self.TestRoundTrip("def f() -> int\n  ")
+    self.TestRoundTrip("def f() -> int\n\n")
 
   def testSpacesWithIndent(self):
     self.TestRoundTrip("def f(x: list[nothing]) -> ?:\n    x := list[int]")
@@ -212,7 +212,7 @@ class TestASTGeneration(parser_test.ParserTest):
             x := X # eol line comment 2
                # comment 3
          # comment 4
-          c: int
+          c = ...  # type: int
         def baz(i: X) -> ?:
            # comment 6
           i := X
@@ -223,7 +223,7 @@ class TestASTGeneration(parser_test.ParserTest):
             i := X
 
         class Foo:
-            c: int
+            c = ...  # type: int
             def bar(x: X) -> ?:
                 x := X
     """)
@@ -361,9 +361,9 @@ class TestASTGeneration(parser_test.ParserTest):
   def testExternalTypes(self):
     """Test parsing of names with dots."""
     src = textwrap.dedent("""
-      a: Foo
-      b: x.Bar
-      c: x.y.Baz
+      a = ... # type: Foo
+      b = ... # type: x.Bar
+      c = ... # type: x.y.Baz
       """)
     result = self.Parse(src)
     self.assertEquals(pytd.NamedType("Foo"), result.Lookup("a").type)
@@ -489,22 +489,22 @@ class TestASTGeneration(parser_test.ParserTest):
     """Test version conditionals."""
     data = textwrap.dedent("""
     if python < 3:
-      c1: int
+      c1 = ...  # type: int
       def f() -> ?
       class A:
         pass
     else:
-      c2: int
+      c2 = ...  # type: int
       def g() -> ?
       class B:
         pass
 
     class Foo:
       if python > 2.7.3:
-        attr2 : int
+        attr2 = ...  # type: int
         def m2() -> ?
       else:
-        attr1 : int
+        attr1 = ...  # type: int
         def m1() -> ?
     """)
     unit = self.Parse(data, version=(2, 7, 3))
@@ -523,33 +523,33 @@ class TestASTGeneration(parser_test.ParserTest):
   def testVersionSyntax(self):
     data = textwrap.dedent("""
     if python < 3:
-      c1: int
+      c1 = ...  # type: int
     if python < 3.1:
-      c2: int
+      c2 = ...  # type: int
     if python < 3.1.1:
-      c3: int
+      c3 = ...  # type: int
     if python <= 3:
-      c4: int
+      c4 = ...  # type: int
     if python <= 3.1:
-      c5: int
+      c5 = ...  # type: int
     if python <= 3.1.1:
-      c6: int
+      c6 = ...  # type: int
     if python > 3:
-      c7: int
+      c7 = ...  # type: int
     if python > 3.1:
-      c8: int
+      c8 = ...  # type: int
     if python > 3.1.1:
-      c9: int
+      c9 = ...  # type: int
     if python >= 3:
-      c10: int
+      c10 = ...  # type: int
     if python >= 3.1:
-      c11: int
+      c11 = ...  # type: int
     if python >= 3.1.1:
-      c12: int
+      c12 = ...  # type: int
     if python == 3.0.0:
-      c13: int
+      c13 = ...  # type: int
     if python != 3.0.0:
-      c14: int
+      c14 = ...  # type: int
     """)
     unit = self.Parse(data, version=(3, 0, 0))
     self.assertEquals([f.name for f in unit.constants],
@@ -564,17 +564,17 @@ class TestASTGeneration(parser_test.ParserTest):
   def testVersionNormalization(self):
     data = textwrap.dedent("""
     if python <= 3:
-      c1: int
+      c1 = ...  # type: int
     if python <= 3.0:
-      c2: int
+      c2 = ...  # type: int
     if python <= 3.0.0:
-      c3: int
+      c3 = ...  # type: int
     if python > 3:
-      c4: int
+      c4 = ...  # type: int
     if python > 3.0:
-      c5: int
+      c5 = ...  # type: int
     if python > 3.0.0:
-      c6: int
+      c6 = ...  # type: int
     """)
     unit = self.Parse(data, version=(3, 0, 0))
     self.assertEquals([f.name for f in unit.constants],
@@ -645,6 +645,13 @@ class TestASTGeneration(parser_test.ParserTest):
         def bar(a: int, b: list[float]) -> Z:
             b := list[str]""")
     self.TestRoundTrip(src)
+
+  def testTypeComment(self):
+    """Test types in comments."""
+    self.TestRoundTrip(textwrap.dedent("""
+      x = ...  # type: list[int]
+      y = ... # type: int
+    """))
 
 
 class TestDecorate(unittest.TestCase):

@@ -2,7 +2,7 @@
 #         pytype --api python_runtime/v2_7/Lib/threading.py
 #                  hand-added Lock, RLock
 
-_sys: module
-thread: ?
-Lock:?
+_sys = ...  # type: module
+thread = ...  # type: ?
+Lock = ...  # type: ?
 def RLock(...) -> ?

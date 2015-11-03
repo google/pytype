@@ -18,13 +18,13 @@ class WorkflowTest(test_inference.InferenceTest):
       cp.read()
       """, deep=False, solve_unknowns=True, extract_locals=False) as ty:
       self.assertTypesMatchPytd(ty, """
-        cp: ConfigParser
+        cp = ...  # type: ConfigParser
 
         class ConfigParser:
           # TODO(pludemann): remove '-> NoneType'
           def __init__(self, filename: str or bytes or buffer or unicode) -> NoneType
           def read(self) -> str
-          filename: str or bytes or buffer or unicode
+          filename = ...  # type: str or bytes or buffer or unicode
       """)
 
 if __name__ == '__main__':

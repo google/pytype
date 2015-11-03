@@ -2,16 +2,16 @@
 #         supplemented by:
 #             for d in dir(datetime):  print d, type(getattr(datetime, d))
 
-MAXYEAR: int
-MINYEAR: int
-__doc__: str
-__file__: str
-__name__: str
-__package__: NoneType
+MAXYEAR = ...  # type: int
+MINYEAR = ...  # type: int
+__doc__ = ...  # type: str
+__file__ = ...  # type: str
+__name__ = ...  # type: str
+__package__ = ...  # type: NoneType
 
-max: object
-resolution: object
-min: object
+max = ...  # type: object
+resolution = ...  # type: object
+min = ...  # type: object
 class datetime:
   def now(...) -> object
   def utcnow() -> object

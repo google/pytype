@@ -67,6 +67,7 @@ class PyLexer(object):
   t_DEDENT = r'(?!d)d'
   t_DOT = r'\.'
   t_EQ = r'=='
+  t_ASSIGN = r'='
   t_INDENT = r'(?!i)i'
   t_NE = r'!='
   t_QUESTIONMARK = r'\?'
@@ -79,6 +80,7 @@ class PyLexer(object):
 
   tokens = [
       'ARROW',
+      'ASSIGN',
       'AT',
       'COLON',
       'COLONEQUALS',
@@ -101,10 +103,9 @@ class PyLexer(object):
       'RBRACKET',
       'RPAREN',
       'STRING',
+      'TYPECOMMENT',
   ] + [id.upper() for id in reserved]
 
-  # LE and GE need to be functions (not constants) because ply prioritizes
-  # functions, and we need them before LBRACKET / RBRACKET.
   def t_LE(self, t):
     r"""<="""
     return t
@@ -225,6 +226,10 @@ class PyLexer(object):
     # TODO(pludemann): full Python number syntax
     # TODO(pludemann): move +/- to grammar?
     t.value = Number(t.value)
+    return t
+
+  def t_TYPECOMMENT(self, t):
+    r"""\#\s*type:"""
     return t
 
   def t_COMMENT(self, t):
@@ -550,9 +555,9 @@ class TypeDeclParser(object):
     """funcdefs :"""
     p[0] = []
 
-  def p_constantdef(self, p):
-    """constantdef : NAME COLON type"""
-    p[0] = pytd.Constant(p[1], p[3])
+  def p_constantdef_comment(self, p):
+    """constantdef : NAME ASSIGN DOT DOT DOT TYPECOMMENT type"""
+    p[0] = pytd.Constant(p[1], p[7])
 
   def p_funcdef(self, p):
     """funcdef : DEF NAME template LPAREN params RPAREN return raises signature maybe_body"""
