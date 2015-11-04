@@ -435,7 +435,7 @@ class BuiltinTests(test_inference.InferenceTest):
         pass
     """, deep=True, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
-      class Bar:
+      class Bar(object):
         def foo(self) -> bool
 
       class Baz(Bar):

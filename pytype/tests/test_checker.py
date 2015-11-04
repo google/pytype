@@ -61,11 +61,11 @@ class CheckerTest(test_inference.InferenceTest):
 
   def testClass(self):
     pytd = """
-      class A:
+      class A(object):
         def method(self, x: int) -> int
     """
     python = """
-      class A:
+      class A(object):
         def method(self, x):
           return x
     """

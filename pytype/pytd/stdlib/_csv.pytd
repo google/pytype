@@ -17,15 +17,15 @@ def list_dialects() -> list
 def register_dialect(...) -> NoneType raises TypeError
 def unregister_dialect(...) -> NoneType
 
-class Dialect:
+class Dialect(object):
   pass
 
-class Error:
+class Error(object):
   pass
 
-class writer:
+class writer(object):
   def writerow(...) -> object
   def writerows(...) -> NoneType raises TypeError
 
-class reader:
+class reader(object):
   pass

@@ -1,5 +1,5 @@
 # TODO(pludemann): parameterize by type?
-class array:
+class array(object):
     def __init__(self, ...) -> NoneType
     def __copy__() -> ?
     def __deepcopy__(...) -> ?
@@ -26,5 +26,5 @@ class array:
     def tounicode() -> unicode raises ValueError
     def write(...) -> NoneType raises DeprecationWarning
 
-class arrayiterator:
+class arrayiterator(object):
     pass

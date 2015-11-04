@@ -57,7 +57,7 @@ def translate(s, table, deletions, ...) -> ?
 def upper(s) -> ?
 def zfill(x, width) -> ?
 
-class Formatter:
+class Formatter(object):
     def _vformat(self, format_string, args, kwargs, used_args, recursion_depth) -> ?
     def check_unused_args(self, used_args, args, kwargs) -> ?
     def convert_field(self, value, conversion) -> ?
@@ -68,7 +68,7 @@ class Formatter:
     def parse(self, format_string) -> ?
     def vformat(self, format_string, args, kwargs) -> ?
 
-class Template(nothing):
+class Template():
     __doc__ = ...  # type: str
     __metaclass__ = ...  # type: type
     delimiter = ...  # type: str
@@ -82,7 +82,7 @@ class _TemplateMetaclass(type):
     pattern = ...  # type: str
     def __init__(cls, name, bases, dct) -> ?
 
-class _multimap(nothing):
+class _multimap():
     __doc__ = ...  # type: str
     def __getitem__(self, key) -> ?
     def __init__(self, primary, secondary) -> ?

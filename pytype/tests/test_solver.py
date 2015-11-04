@@ -18,7 +18,7 @@ class SolverTests(test_inference.InferenceTest):
                   pass
     """, deep=True, solve_unknowns=True, extract_locals=True) as ty:
       self.assertTypesMatchPytd(ty, """
-      class Node:
+      class Node(object):
         children = ...  # type: list[nothing] or tuple[nothing]
       """)
 
@@ -252,7 +252,7 @@ class SolverTests(test_inference.InferenceTest):
         f()
     """, deep=True, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
-        class Container:
+        class Container(object):
           foo = ...  # type: list[list[int]]
           bar = ...  # type: list[int]
 

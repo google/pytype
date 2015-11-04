@@ -1,6 +1,6 @@
 # TODO(pludemann): Fill this in -- it's a minimal file for running some tests.
 
-class Random:
+class Random(object):
   def __init__(self) -> NoneType
   def seed(self, x: int) -> NoneType
   def randint(self, x: int, y: int) -> int

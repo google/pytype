@@ -6,39 +6,39 @@
 __all__ = ...  # type: list[str]
 
 BASIC_FORMAT = ...  # type: str
-class BufferingFormatter:
+class BufferingFormatter(object):
   pass
 CRITICAL = ...  # type: int
 DEBUG = ...  # type: int
 ERROR = ...  # type: int
 FATAL = ...  # type: int
-class FileHandler:
+class FileHandler(object):
   pass
-class Filter:
+class Filter(object):
   pass
-class Filterer:
+class Filterer(object):
   pass
-class Formatter:
+class Formatter(object):
   pass
-class Handler:
+class Handler(object):
   pass
 INFO = ...  # type: int
-class LogRecord:
+class LogRecord(object):
   pass
-class Logger:
+class Logger(object):
   pass
-class LoggerAdapter:
+class LoggerAdapter(object):
   pass
-class Manager:
+class Manager(object):
   pass
 NOTSET = ...  # type: int
-class NullHandler:
+class NullHandler(object):
   pass
-class PlaceHolder:
+class PlaceHolder(object):
   pass
-class RootLogger:
+class RootLogger(object):
   pass
-class StreamHandler:
+class StreamHandler(object):
   pass
 WARN = ...  # type: int
 WARNING = ...  # type: int
@@ -60,7 +60,7 @@ _handlerList = ...  # type: list
 # _handlers: instance  # TODO(pludemann): add instance class to __builtins__.pytd?
 _levelNames = ...  # type: dict
 # _lock: threading._RLock  # TODO(pludemann)
-class _loggerClass:
+class _loggerClass(object):
   pass
 _releaseLock = ...  # type: function
 _removeHandlerRef = ...  # type: function

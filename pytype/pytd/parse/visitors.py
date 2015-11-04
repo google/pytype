@@ -148,14 +148,12 @@ class PrintVisitor(Visitor):
 
   def VisitClass(self, node):
     """Visit a class, producing a multi-line, properly indented string."""
-    if node.parents == ("object",):
-      parents = ""  # object is the default superclass
-    elif node.parents:
-      parents = "(" + ", ".join(node.parents) + ")"
+    if node.template:
+      parents = ("Generic[%s]" % ", ".join(node.template),) + node.parents
     else:
-      parents = "(nothing)"
-    template = "[" + ", ".join(node.template) + "]" if node.template else ""
-    header = "class " + self._SafeName(node.name) + template + parents + ":"
+      parents = node.parents
+    parents_str = "(" + ", ".join(parents) + ")" if parents else ""
+    header = "class " + self._SafeName(node.name) + parents_str + ":"
     if node.methods or node.constants:
       # We have multiple methods, and every method has multiple signatures
       # (i.e., the method string will have multiple lines). Combine this into
@@ -812,12 +810,12 @@ class VerifyVisitor(Visitor):
 
   def EnterClass(self, node):
     assert isinstance(node.parents, tuple), node
-    assert all(isinstance(p, pytd.TYPE) for p in node.parents)
+    assert all(isinstance(p, pytd.TYPE) for p in node.parents), node.parents
     assert isinstance(node.methods, tuple), node
     assert all(isinstance(f, pytd.Function) for f in node.methods)
     assert isinstance(node.constants, tuple), node
     assert all(isinstance(c, pytd.Constant) for c in node.constants)
-    assert isinstance(node.template, tuple), node
+    assert isinstance(node.template, tuple), node.template
     assert all(isinstance(t, pytd.TemplateItem) for t in node.template)
 
   def EnterFunction(self, node):

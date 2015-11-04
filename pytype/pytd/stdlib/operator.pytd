@@ -110,11 +110,11 @@ def __pos__(...) -> object
 def floordiv(...) -> object
 def __ne__(...) -> object
 def __invert__(...) -> object
-class attrgetter:
+class attrgetter(object):
   pass
 
-class methodcaller:
+class methodcaller(object):
   pass
 
-class itemgetter:
+class itemgetter(object):
   pass

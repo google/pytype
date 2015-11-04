@@ -246,7 +246,7 @@ class ContainerTest(test_inference.InferenceTest):
 
   def testForIter(self):
     with self.Infer("""
-      class A:
+      class A(object):
         def __init__(self):
           self.parent = "foo"
 
@@ -440,7 +440,7 @@ class ContainerTest(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=False, extract_locals=True,
                     report_errors=False) as ty:
       self.assertTypesMatchPytd(ty, """
-        class Foo:
+        class Foo(object):
           next = ...  # type: NoneType
 
         def f(key) -> Foo

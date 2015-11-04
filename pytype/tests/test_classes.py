@@ -87,7 +87,7 @@ class ClassesTest(test_inference.InferenceTest):
       self.assertTypesMatchPytd(ty, """
       module = ...  # type: ?
       def f() -> NoneType
-      class Foo:
+      class Foo(object):
         # TODO(kramm): pytd needs better syntax for classmethods
         bar = ...  # type: classmethod
       """)
@@ -109,7 +109,7 @@ class ClassesTest(test_inference.InferenceTest):
   def testInnerClass(self):
     with self.Infer("""
       def f():
-        class Foo:
+        class Foo(object):
           x = 3
         l = Foo()
         return l.x
@@ -159,7 +159,7 @@ class ClassesTest(test_inference.InferenceTest):
           return self.x
     """, deep=True, solve_unknowns=False, extract_locals=False) as ty:
       self.assertTypesMatchPytd(ty, """
-          class A:
+          class A(object):
             x = ...  # type: int
 
           class B(A):
@@ -186,7 +186,7 @@ class ClassesTest(test_inference.InferenceTest):
           return super(D, self).z
     """, deep=True, solve_unknowns=False, extract_locals=True) as ty:
       self.assertTypesMatchPytd(ty, """
-        class A:
+        class A(object):
             x = ...  # type: int
         class B(A):
             y = ...  # type: int

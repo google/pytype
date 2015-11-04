@@ -20,11 +20,11 @@ def resetwarnings() -> NoneType
 def warn(x, ...) -> NoneType
 def warnpy3k(message, category, stacklevel) -> NoneType
 
-class WarningMessage:
+class WarningMessage(object):
     pass
 
-class _OptionError:
+class _OptionError(object):
     def __unicode__(self, ...) -> unicode
 
-class catch_warnings:
+class catch_warnings(object):
     pass

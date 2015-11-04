@@ -12,7 +12,7 @@ __package__ = ...  # type: NoneType
 max = ...  # type: object
 resolution = ...  # type: object
 min = ...  # type: object
-class datetime:
+class datetime(object):
   def now(...) -> object
   def utcnow() -> object
   def fromtimestamp(timestamp: float, ...) -> object
@@ -33,7 +33,7 @@ class datetime:
   def astimezone(tz: object) -> object raises ValueError
   def __reduce__() -> tuple
 
-class date:
+class date(object):
   def fromtimestamp(a: float) -> object
   def fromordinal(a: int) -> object raises ValueError
   def today() -> object
@@ -49,18 +49,18 @@ class date:
   def replace(...) -> object
   def __reduce__() -> tuple
 
-class tzinfo:
+class tzinfo(object):
   def tzname(...) -> object
   def utcoffset(...) -> object
   def dst(...) -> object
   def fromutc(...) -> object raises TypeError, ValueError
   def __reduce__() -> tuple
 
-class timedelta:
+class timedelta(object):
   def total_seconds() -> int
   def __reduce__() -> tuple
 
-class time:
+class time(object):
   def isoformat() -> str
   def strftime(format: str or bytes or buffer) -> object
   def __format__(a: object) -> unicode raises ValueError

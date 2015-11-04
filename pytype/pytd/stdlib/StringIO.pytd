@@ -9,7 +9,7 @@ __package__ = ...  # type: NoneType
 def _complain_ifclosed(closed) -> NoneType
 def test() -> NoneType
 
-class StringIO(nothing):
+class StringIO():
     __doc__ = ...  # type: str
     buf = ...  # type: ?
     buflist = ...  # type: list[?]

@@ -8,12 +8,12 @@ Array = ...  # type: _ctypes.PyCArrayType
 CDLL = ...  # type: type
 CFUNCTYPE = ...  # type: function
 DEFAULT_MODE = ...  # type: int
-class LibraryLoader:
+class LibraryLoader(object):
   pass
 LittleEndianStructure = ...  # type: _ctypes.PyCStructType
 POINTER = ...  # type: function
 PYFUNCTYPE = ...  # type: function
-class PyDLL:
+class PyDLL(object):
   pass
 RTLD_GLOBAL = ...  # type: int
 RTLD_LOCAL = ...  # type: int

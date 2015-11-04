@@ -323,6 +323,34 @@ def CheckStringIsPython(parser, string, p):
       parser, 'If conditions can only depend on the \'python\' variable', p)
 
 
+def SplitParents(parser, p, parents):
+  """Strip the special Generic[...] class out of the base classes."""
+  template = ()
+  other_parents = []
+  for parent in parents:
+    if (isinstance(parent, pytd.GenericType) and
+        parent.base_type == pytd.NamedType('Generic')):
+      if not all(isinstance(p, pytd.NamedType) for p in parent.parameters):
+        make_syntax_error(
+            parser, 'Illegal template parameter %s' % pytd.Print(p), p)
+      if template:
+        make_syntax_error(
+            parser, 'Duplicate Template base class', p)
+      template = tuple(pytd.TemplateItem(pytd.TypeParameter(p.name))
+                       for p in parent.parameters)
+      all_names = [t.name for t in template]
+      duplicates = [name
+                    for name, count in collections.Counter(all_names).items()
+                    if count >= 2]
+      if duplicates:
+        make_syntax_error(
+            parser, 'Duplicate template parameters' + ', '.join(duplicates), p)
+    else:
+      if parent != pytd.NothingType():
+        other_parents.append(parent)
+  return template, tuple(other_parents)
+
+
 class TypeDeclParser(object):
   """Parser for type declaration language."""
 
@@ -463,29 +491,26 @@ class TypeDeclParser(object):
 
   # TODO(raoulDoc): doesn't support nested classes
   def p_classdef(self, p):
-    """classdef : CLASS NAME template parents COLON INDENT class_funcs DEDENT"""
-    #             1     2     3        4       5     6      7           8
-    methoddefs = [x for x in p[7] if isinstance(x, NameAndSig)]
-    constants = [x for x in p[7] if isinstance(x, pytd.Constant)]
+    """classdef : CLASS NAME parents COLON INDENT class_funcs DEDENT"""
+    #             1     2     3      4     5      6           7
+    template, parents = SplitParents(self, p, p[3])
+    methoddefs = [x for x in p[6] if isinstance(x, NameAndSig)]
+    constants = [x for x in p[6] if isinstance(x, pytd.Constant)]
     if (set(f.name for f in methoddefs) | set(c.name for c in constants) !=
-        set(d.name for d in p[7])):
+        set(d.name for d in p[6])):
       # TODO(kramm): raise a syntax error right when the identifier is defined.
       raise make_syntax_error(self, 'Duplicate identifier(s)', p)
-    # Check that template parameter names are unique:
-    template_names = {t.name for t in p[3]}
+
+    template_names = {t.name for t in template}
     for _, sig, _ in methoddefs:
       for t in sig.template:
         if t.name in template_names:
           raise make_syntax_error(self, 'Duplicate template parameter %s' %
                                   t.name, p)
-    if p[4] == [pytd.NothingType()]:
-      bases = ()
-    else:
-      # Everything implicitly subclasses "object"
-      bases = tuple(p[4]) or (pytd.NamedType('object'),)
-    cls = pytd.Class(name=p[2], parents=bases,
+
+    cls = pytd.Class(name=p[2], parents=parents,
                      methods=tuple(self.MergeSignatures(methoddefs)),
-                     constants=tuple(constants), template=tuple(p[3]))
+                     constants=tuple(constants), template=template)
     p[0] = cls.Visit(visitors.AdjustSelf())
 
   def p_class_funcs(self, p):
@@ -499,6 +524,10 @@ class TypeDeclParser(object):
   def p_parents(self, p):
     """parents : LPAREN parent_list RPAREN"""
     p[0] = p[2]
+
+  def p_parents_empty(self, p):
+    """parents : LPAREN RPAREN"""
+    p[0] = []
 
   def p_parents_null(self, p):
     """parents :"""

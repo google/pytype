@@ -134,7 +134,7 @@ True = ...  # type: bool
 NotImplemented = ...  # type: NotImplementedType
 None = ...  # type: NoneType
 
-class object(nothing):
+class object():
     __mro__ = ...  # type: list[?]
     def __init__(self) -> NoneType
     def __sizeof__(self) -> int
@@ -152,27 +152,27 @@ class object(nothing):
     # ['__class__', '__delattr__', '__doc__', '__format__', '__getattribute__', '__hash__', '__new__', '__reduce__', '__reduce_ex__', '__setattr__', '__str__', '__subclasshook__']
 
 
-class NotImplementedType:
+class NotImplementedType(object):
     pass
 
-class NoneType:
+class NoneType(object):
     pass
 
 # TODO(kramm): Only define this for Python 2
-class basestring:
+class basestring(object):
     pass
 
-class property:  # Also defined in __builtin__.py
+class property(object):  # Also defined in __builtin__.py
     def __init__(self, fget, ...) -> NoneType
     def __get__(self, ...) -> ?
     def __set__(self, ...) -> ?
     def __delete__(self, ...) -> ?
 
-class staticmethod:  # Also defined in __builtin__.py
+class staticmethod(object):  # Also defined in __builtin__.py
     def __init__(self, func) -> NoneType
     def __get__(self, ...) -> ?
 
-class classmethod:  # Also defined in __builtin__.py
+class classmethod(object):  # Also defined in __builtin__.py
     def __init__(self, func) -> NoneType
     def __get__(self, ...) -> ?
 
@@ -306,7 +306,7 @@ class unicode(basestring):
     def upper(self) -> unicode
     def zfill(self, width: int) -> unicode
 
-class bytearray:
+class bytearray(object):
     def __init__(self, iterable_of_ints) -> NoneType
     def __init__(self) -> NoneType
     def __add__(self, y: str or bytearray) -> bytearray
@@ -370,23 +370,23 @@ class bytearray:
     def upper(self) -> bytearray
     def zfill(self, width: int) -> bytearray
 
-class bytearray_iterator:
+class bytearray_iterator(object):
     def __iter__(self) -> bytearray_iterator
     def next(self) -> int
 
-class `dictionary-keyiterator`[K]:
+class `dictionary-keyiterator`(Generic[K]):
     def __iter__(self) -> `dictionary-keyiterator`[K]
     def next(self) -> K
 
-class `dictionary-valueiterator`[V]:
+class `dictionary-valueiterator`(Generic[V]):
     def __iter__(self) -> `dictionary-valueiterator`[V]
     def next(self) -> V
 
-class `dictionary-itemiterator`[K,V]:
-    def __iter__(self) -> `dictionary-itemiterator`[K,V]
-    def next(self) -> tuple[object]  # tuple[K,V]  # TODO(pludemann): a pair
+class `dictionary-itemiterator`(Generic[K, V]):
+    def __iter__(self) -> `dictionary-itemiterator`[K, V]
+    def next(self) -> tuple[object]  # tuple[K, V]  # TODO(pludemann): a pair
 
-class dict_keys[K]:
+class dict_keys(Generic[K], object):
     def __and__(self, y: set[K] or dict_keys[K]) -> set[K]
     def __contains__(self, y: K) -> bool
     def __eq__(self, y: set[K] or dict_keys[K]) -> bool
@@ -405,11 +405,11 @@ class dict_keys[K]:
     def __sub__(self, y) -> set[K]
     def __xor__(self, y) -> set[K]
 
-class dict_values[V]:
+class dict_values(Generic[V], object):
     def __iter__(self) -> `dictionary-valueiterator`[V]
     def __len__(self) -> int
 
-class dict_items[K,V]:
+class dict_items(Generic[K, V], object):
     # TODO(pludemann): set[pair[K,V]] etc.
     def __and__(self, y: set or dict_items[K,V]) -> set
     def __contains__(self, y) -> bool
@@ -430,7 +430,7 @@ class dict_items[K,V]:
     def __xor__(self, y: set or dict_items[K,V]) -> set
 
 # "K" and "V" are hardcoded in other places (e.g. atomic_abstract_value.Dict)
-class dict[K, V]:
+class dict(Generic[K, V], object):
     def __init__(self) -> NoneType:
         self := dict[nothing, nothing]
     def __init__(self, list: list[nothing]) -> NoneType:
@@ -482,11 +482,11 @@ class dict[K, V]:
     def viewkeys(self) -> dict_keys[K]
     def viewvalues(self) -> dict_values
 
-class listiterator[T]:
+class listiterator(Generic[T], object):
     def __iter__(self) -> listiterator[T]
     def next(self) -> T
 
-class enumerate[T]:
+class enumerate(Generic[T], object):
     def __init__[T2](self, iterable: list[T2], ...) -> NoneType:
         self := enumerate[T2]
     def __init__[T2](self, iterable: tuple[T2], ...) -> NoneType:
@@ -498,11 +498,11 @@ class enumerate[T]:
     def __iter__(self) -> enumerate[T]  # enumerate.__iter__() returns itself
     def next(self) -> tuple[int or long or T]  # tuple[int or long, T]
 
-class listreverseiterator[T]:
+class listreverseiterator(Generic[T], object):
     def __iter__(self) -> listreverseiterator[T]
     def next(self) -> T
 
-class list[T]:
+class list(Generic[T], object):
     def __init__(self) -> NoneType:
         self := list[nothing]
     def __init__[N](self, iterable: list[N] or `dictionary-keyiterator`[N] or `dictionary-valueiterator`[N] or listiterator[N] or listreverseiterator[N] or tupleiterator[N] or setiterator[N] or iterator[N] or `callable-iterator`[N]) -> NoneType:
@@ -572,7 +572,7 @@ class list[T]:
     def sort(self, ...) -> NoneType
 
 # "reversed" is a type, see PyReversed_Type in Objects/enumobject.c
-class reversed[T]:
+class reversed(Generic[T], object):
     def __init__[N](self, sequence: list[N]) -> NoneType:
       self := reversed[N]
     def __init__[N](self, sequence: tuple[N]) -> NoneType:
@@ -582,7 +582,7 @@ class reversed[T]:
     def __iter__(self) -> reversed
     def next(self) -> T
 
-class tuple[T]:
+class tuple(Generic[T], object):
     def __init__(self, p0) -> NoneType
     def __init__(self) -> NoneType
     def __add__[A](self, y: tuple[A]) -> tuple[T or A]
@@ -603,11 +603,11 @@ class tuple[T]:
     def count(self, value: T) -> int
     def index(self, value, ...) -> int
 
-class tupleiterator[T]:
+class tupleiterator(Generic[T], object):
     def __iter__(self) -> tupleiterator[T]
     def next(self) -> T
 
-class set[T]:
+class set(Generic[T], object):
     # TODO(pludemann): some of the combining methods may have wrong set[...] types
     #                  cf: __and__, __or__
     def __init__(self) -> NoneType:
@@ -649,7 +649,7 @@ class set[T]:
     def add[A](self, object: A) -> NoneType:
         self := set[T or A]
 
-class frozenset[T]:
+class frozenset(Generic[T], object):
     # TODO(pludemann): some of the combining methods may have wrong frozenset[...] types
     #                  cf: __and__, __or__
     def __init__(self) -> NoneType:
@@ -684,7 +684,7 @@ class frozenset[T]:
     def intersection(self, ...) -> frozenset[T]
     def union(self, ...) -> frozenset[T]
 
-class setiterator[T]:
+class setiterator(Generic[T], object):
     def __iter__(self) -> setiterator[T]
     def next(self) -> T
 
@@ -747,7 +747,7 @@ class bool(int):
     def bit_length(self) -> int
     def conjugate(self, ...) -> int
 
-class int:
+class int(object):
     def __init__(self, x: int or float, ...) -> NoneType
     def __init__(self) -> NoneType
     def __abs__(self) -> int
@@ -808,7 +808,7 @@ class int:
     def __rtruediv__(self, y: int) -> float
 
 # TODO(pludemann): # if version [ 3:
-class long:
+class long(object):
     def __init__(self, x: int or float or long, ...) -> NoneType
     def __init__(self) -> NoneType
     def __abs__(self) -> long
@@ -863,7 +863,7 @@ class long:
     def __rmod__(self, y: int or long) -> long
     def __rtruediv__(self, y: int or long) -> float
 
-class float:
+class float(object):
     def __init__(self, x: int or float) -> NoneType
     def __init__(self) -> NoneType
     def __abs__(self) -> float
@@ -916,7 +916,7 @@ class float:
     def hex(self) -> str
     def is_integer(self, ...) -> bool
 
-class complex:
+class complex(object):
     def __init__(self, real: int or float or complex, ...) -> NoneType
     def __init__(self) -> NoneType
     def __abs__(self) -> float
@@ -947,7 +947,7 @@ class complex:
     def __rmod__(self, y: int or float or complex) -> complex
     def __rtruediv__(self, y: int or float or complex) -> complex
 
-class buffer:
+class buffer(object):
     def __init__(self, object: str or unicode or bytearray or buffer, ...) -> NoneType
     def __add__(self, y: str or unicode or bytearray or buffer) -> str
     def __getitem__(self, index: int) -> str
@@ -956,7 +956,7 @@ class buffer:
     def __mul__(self, n: int) -> str
     def __rmul__(self, n: int) -> str
 
-class file:
+class file(object):
     def __init__(self, name: str, ...) -> NoneType
     def __iter__(self) -> file  # TODO(pludemann): This looks wrong ... iterator[str]  ?
     def __enter__(self) -> file
@@ -976,28 +976,28 @@ class file:
     def writelines(self, sequence_of_strings) -> NoneType
     def xreadlines(self) -> file
 
-class function:
+class function(object):
     def __call__(self, ...) -> ?
     def __get__(self, obj, ...) -> instancemethod
 
-class generator[T]:  # "T" is also hardcoded in abstract.py:Generator
+class generator(Generic[T], object):  # "T" is also hardcoded in abstract.py:Generator
     def __iter__(self) -> generator[T]
     def send(self, arg) -> ?  # TODO(pludemann): or should be "-> T" ?  or needs 2 parameter types for generator?
     def close(self) -> NoneType
     def next(self) -> T
 
-class instancemethod:
+class instancemethod(object):
     def __init__(self, function: function or type or instancemethod, instance, cls) -> NoneType
     def __get__(self, obj, ...) -> instancemethod
 
-class module:
+class module(object):
     def __init__(self, name: str or bytearray, ...) -> NoneType
 
-class slice:
+class slice(object):
     def __init__(self, stop, ...) -> NoneType
     def indices(self, len: int) -> tuple[int]  # tuple[int, int, int]
 
-class memoryview:
+class memoryview(object):
     def __init__(self, object: str or bytearray or memoryview) -> NoneType
     def __eq__(self, y: str or bytearray or memoryview) -> bool
     def __getitem__(self, index: int) -> str
@@ -1006,265 +1006,265 @@ class memoryview:
     def tobytes(self, ...) -> str
     def tolist(self, ...) -> list[int]
 
-class type:
+class type(object):
     def __init__(self, object) -> NoneType
     def __len__(self, p0: str or bytearray) -> int  # TODO(pludemann): remove?
 
-class iterator[T]:
+class iterator(Generic[T], object):
     def __iter__(self) -> iterator[T]
     def next(self) -> T
 
-class `callable-iterator`[T]:  # TODO(pludemann): is this correct?
+class `callable-iterator`(Generic[T]):  # TODO(pludemann): is this correct?
     def __iter__(self) -> `callable-iterator`[T]
     def next(self) -> T
 
-class super:
+class super(object):
     # This constructor constructs the super object itself but also handles the
     # case of doing super(...).__init__(...).
     def __init__(self, ...) -> NoneType
     def __get__(self, obj, ...) -> super
 
-class xrange:
+class xrange(object):
     def __init__(self, stop: int, ...) -> NoneType
     def __getitem__(self, index: int) -> int
     def __iter__(self) -> rangeiterator
     def __len__(self) -> int
     def __reversed__(self, ...) -> rangeiterator
 
-class rangeiterator:
+class rangeiterator(object):
     def __iter__(self) -> rangeiterator
     def next(self) -> int
 
 # From Python/objects/capsule.c. Used e.g. by datetime.datetime_CAPI
-class PyCapsule:
+class PyCapsule(object):
     pass
 
 # types.CodeType, a.k.a., [type 'code']
-class code:
+class code(object):
     pass
 
-class ArithmeticError:
+class ArithmeticError(object):
     def __init__(self, ...) -> NoneType
     def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
     def __unicode__(self, ...) -> unicode
 
-class AssertionError:
+class AssertionError(object):
     def __init__(self, ...) -> NoneType
     def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
     def __unicode__(self, ...) -> unicode
 
-class AttributeError:
+class AttributeError(object):
     def __init__(self, ...) -> NoneType
     def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
     def __unicode__(self, ...) -> unicode
 
-class BaseException:
+class BaseException(object):
     def __init__(self, ...) -> NoneType
     def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
     def __unicode__(self, ...) -> unicode
 
-class BufferError:
+class BufferError(object):
     def __init__(self, ...) -> NoneType
     def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
     def __unicode__(self, ...) -> unicode
 
-class BytesWarning:
+class BytesWarning(object):
     def __init__(self, ...) -> NoneType
     def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
     def __unicode__(self, ...) -> unicode
 
-class DeprecationWarning:
+class DeprecationWarning(object):
     def __init__(self, ...) -> NoneType
     def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
     def __unicode__(self, ...) -> unicode
 
-class EOFError:
+class EOFError(object):
     def __init__(self, ...) -> NoneType
     def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
     def __unicode__(self, ...) -> unicode
 
-class EnvironmentError:
+class EnvironmentError(object):
     def __init__(self, ...) -> NoneType
     def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
     def __unicode__(self, ...) -> unicode
 
-class Exception:
+class Exception(object):
     def __init__(self, ...) -> NoneType
     def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
     def __unicode__(self, ...) -> unicode
 
-class FloatingPointError:
+class FloatingPointError(object):
     def __init__(self, ...) -> NoneType
     def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
     def __unicode__(self, ...) -> unicode
 
-class FutureWarning:
+class FutureWarning(object):
     def __init__(self, ...) -> NoneType
     def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
     def __unicode__(self, ...) -> unicode
 
-class GeneratorExit:
+class GeneratorExit(object):
     def __init__(self, ...) -> NoneType
     def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
     def __unicode__(self, ...) -> unicode
 
-class IOError:
+class IOError(object):
     def __init__(self, ...) -> NoneType
     def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
     def __unicode__(self, ...) -> unicode
 
-class ImportError:
+class ImportError(object):
     def __init__(self, ...) -> NoneType
     def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
     def __unicode__(self, ...) -> unicode
 
-class ImportWarning:
+class ImportWarning(object):
     def __init__(self, ...) -> NoneType
     def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
     def __unicode__(self, ...) -> unicode
 
-class IndentationError:
+class IndentationError(object):
     def __init__(self, ...) -> NoneType
     def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
     def __unicode__(self, ...) -> unicode
 
-class IndexError:
+class IndexError(object):
     def __init__(self, ...) -> NoneType
     def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
     def __unicode__(self, ...) -> unicode
 
-class KeyError:
+class KeyError(object):
     def __init__(self, ...) -> NoneType
     def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
     def __unicode__(self, ...) -> unicode
 
-class KeyboardInterrupt:
+class KeyboardInterrupt(object):
     def __init__(self, ...) -> NoneType
     def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
     def __unicode__(self, ...) -> unicode
 
-class LookupError:
+class LookupError(object):
     def __init__(self, ...) -> NoneType
     def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
     def __unicode__(self, ...) -> unicode
 
-class MemoryError:
+class MemoryError(object):
     def __init__(self, ...) -> NoneType
     def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
     def __unicode__(self, ...) -> unicode
 
-class NameError:
+class NameError(object):
     def __init__(self, ...) -> NoneType
     def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
     def __unicode__(self, ...) -> unicode
 
-class NotImplementedError:
+class NotImplementedError(object):
     def __init__(self, ...) -> NoneType
     def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
     def __unicode__(self, ...) -> unicode
 
-class OSError:
+class OSError(object):
     def __init__(self, ...) -> NoneType
     def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
     def __unicode__(self, ...) -> unicode
 
-class OverflowError:
+class OverflowError(object):
     def __init__(self, ...) -> NoneType
     def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
     def __unicode__(self, ...) -> unicode
 
-class PendingDeprecationWarning:
+class PendingDeprecationWarning(object):
     def __init__(self, ...) -> NoneType
     def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
     def __unicode__(self, ...) -> unicode
 
-class ReferenceError:
+class ReferenceError(object):
     def __init__(self, ...) -> NoneType
     def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
     def __unicode__(self, ...) -> unicode
 
-class RuntimeError:
+class RuntimeError(object):
     def __init__(self, ...) -> NoneType
     def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
     def __unicode__(self, ...) -> unicode
 
-class RuntimeWarning:
+class RuntimeWarning(object):
     def __init__(self, ...) -> NoneType
     def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
     def __unicode__(self, ...) -> unicode
 
-class StandardError:
+class StandardError(object):
     def __init__(self, ...) -> NoneType
     def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
     def __unicode__(self, ...) -> unicode
 
-class StopIteration:
+class StopIteration(object):
     def __init__(self, p0) -> NoneType
     def __init__(self) -> NoneType
     def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
     def __unicode__(self, ...) -> unicode
 
-class SyntaxError:
+class SyntaxError(object):
     def __init__(self, ...) -> NoneType
     def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
     def __unicode__(self, ...) -> unicode
 
-class SyntaxWarning:
+class SyntaxWarning(object):
     def __init__(self, ...) -> NoneType
     def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
     def __unicode__(self, ...) -> unicode
 
-class SystemError:
+class SystemError(object):
     def __init__(self, ...) -> NoneType
     def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
     def __unicode__(self, ...) -> unicode
 
-class SystemExit:
+class SystemExit(object):
     def __init__(self, ...) -> NoneType
     def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
     def __unicode__(self, ...) -> unicode
 
-class TabError:
+class TabError(object):
     def __init__(self, ...) -> NoneType
     def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
     def __unicode__(self, ...) -> unicode
 
-class TypeError:
+class TypeError(object):
     def __init__(self, ...) -> NoneType
     def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
     def __unicode__(self, ...) -> unicode
 
-class UnboundLocalError:
+class UnboundLocalError(object):
     def __init__(self, ...) -> NoneType
     def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
     def __unicode__(self, ...) -> unicode
 
-class UnicodeError:
+class UnicodeError(object):
     def __init__(self, ...) -> NoneType
     def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
     def __unicode__(self, ...) -> unicode
 
-class UnicodeWarning:
+class UnicodeWarning(object):
     def __init__(self, ...) -> NoneType
     def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
     def __unicode__(self, ...) -> unicode
 
-class UserWarning:
+class UserWarning(object):
     def __init__(self, ...) -> NoneType
     def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
     def __unicode__(self, ...) -> unicode
 
-class ValueError:
+class ValueError(object):
     def __init__(self, ...) -> NoneType
     def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
     def __unicode__(self, ...) -> unicode
 
-class Warning:
+class Warning(object):
     def __init__(self, ...) -> NoneType
     def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
     def __unicode__(self, ...) -> unicode
 
-class ZeroDivisionError:
+class ZeroDivisionError(object):
     def __init__(self, ...) -> NoneType
     def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
     def __unicode__(self, ...) -> unicode

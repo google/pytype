@@ -14,7 +14,7 @@ def dedent(text) -> ?
 def fill(text: unicode or str, ...) -> str
 def wrap(text: unicode, ...) -> list[str]
 
-class TextWrapper(nothing):
+class TextWrapper():
     __doc__ = ...  # type: str
     break_long_words = ...  # type: ?
     break_on_hyphens = ...  # type: ?

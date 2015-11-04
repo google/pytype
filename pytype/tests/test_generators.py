@@ -52,7 +52,7 @@ class GeneratorTest(test_inference.InferenceTest):
           return generator()
     """, deep=True, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
-        class Foo:
+        class Foo(object):
           def bar(self) -> ?
           def __iter__(self) -> generator[nothing]
       """)

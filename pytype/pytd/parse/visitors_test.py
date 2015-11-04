@@ -32,13 +32,13 @@ class TestVisitors(parser_test.ParserTest):
 
   def testLookupClasses(self):
     src = textwrap.dedent("""
-        class object:
+        class object(object):
             pass
 
-        class A:
+        class A(object):
             def a(self, a: A, b: B) -> A or B raises A, B
 
-        class B:
+        class B(object):
             def b(self, a: A, b: B) -> A or B raises A, B
     """)
     tree = self.Parse(src)
@@ -48,7 +48,7 @@ class TestVisitors(parser_test.ParserTest):
 
   def testMaybeInPlaceFillInClasses(self):
     src = textwrap.dedent("""
-        class A:
+        class A(object):
             def a(self, a: A, b: B) -> A or B raises A, B
     """)
     tree = self.Parse(src)
@@ -61,7 +61,7 @@ class TestVisitors(parser_test.ParserTest):
 
   def testDefaceUnresolved(self):
     builtins = self.Parse(textwrap.dedent("""
-      class int:
+      class int(object):
         pass
     """))
     src = textwrap.dedent("""
@@ -80,11 +80,11 @@ class TestVisitors(parser_test.ParserTest):
 
   def testReplaceTypes(self):
     src = textwrap.dedent("""
-        class A:
+        class A(object):
             def a(self, a: A or B) -> A or B raises A, B
     """)
     expected = textwrap.dedent("""
-        class A:
+        class A(object):
             def a(self: A2, a: A2 or B) -> A2 or B raises A2, B
     """)
     tree = self.Parse(src)
@@ -93,9 +93,9 @@ class TestVisitors(parser_test.ParserTest):
 
   def testSuperClassesByName(self):
     src = textwrap.dedent("""
-      class A(nothing):
+      class A():
           pass
-      class B(nothing):
+      class B():
           pass
       class C(A):
           pass
@@ -114,9 +114,9 @@ class TestVisitors(parser_test.ParserTest):
 
   def testSuperClasses(self):
     src = textwrap.dedent("""
-      class A(nothing):
+      class A():
           pass
-      class B(nothing):
+      class B():
           pass
       class C(A):
           pass
@@ -137,7 +137,7 @@ class TestVisitors(parser_test.ParserTest):
   def testStripSelf(self):
     src = textwrap.dedent("""
         def add(x: int, y: int) -> int
-        class A:
+        class A(object):
             def bar(self, x: int) -> float
             def baz(self) -> float
             def foo(self, x: int, y: float) -> float
@@ -145,7 +145,7 @@ class TestVisitors(parser_test.ParserTest):
     expected = textwrap.dedent("""
         def add(x: int, y: int) -> int
 
-        class A:
+        class A(object):
             def bar(x: int) -> float
             def baz() -> float
             def foo(x: int, y: float) -> float
@@ -156,15 +156,15 @@ class TestVisitors(parser_test.ParserTest):
 
   def testRemoveUnknownClasses(self):
     src = textwrap.dedent("""
-        class `~unknown1`(nothing):
+        class `~unknown1`():
             pass
-        class `~unknown2`(nothing):
+        class `~unknown2`():
             pass
-        class A:
+        class A(object):
             def foobar(x: `~unknown1`, y: `~unknown2`) -> `~unknown1` or int
     """)
     expected = textwrap.dedent("""
-        class A:
+        class A(object):
             def foobar(x, y) -> ? or int
     """)
     tree = self.Parse(src)
@@ -173,17 +173,17 @@ class TestVisitors(parser_test.ParserTest):
 
   def testFindUnknownVisitor(self):
     src = textwrap.dedent("""
-        class `~unknown1`(nothing):
+        class `~unknown1`():
           pass
-        class `~unknown_foobar`(nothing):
+        class `~unknown_foobar`():
           pass
-        class `~int`(nothing):
+        class `~int`():
           pass
-        class A(nothing):
+        class A():
           def foobar(self, x: `~unknown1`) -> ?
-        class B(nothing):
+        class B():
           def foobar(self, x: `~int`) -> ?
-        class C(nothing):
+        class C():
           x = ... # type: `~unknown_foobar`
         class D(`~unknown1`):
           pass
@@ -218,12 +218,12 @@ class TestVisitors(parser_test.ParserTest):
   def testInPlaceLookupExternalClasses(self):
     src1 = textwrap.dedent("""
       def f1() -> bar.Bar
-      class Foo:
+      class Foo(object):
         pass
     """)
     src2 = textwrap.dedent("""
       def f2() -> foo.Foo
-      class Bar:
+      class Bar(object):
         pass
     """)
     ast1 = self.Parse(src1)
@@ -238,12 +238,12 @@ class TestVisitors(parser_test.ParserTest):
   def testInPlaceLookupExternalClassesByFullName(self):
     src1 = textwrap.dedent("""
       def f1() -> bar.Bar
-      class Foo:
+      class Foo(object):
         pass
     """)
     src2 = textwrap.dedent("""
       def f2() -> foo.Foo
-      class Bar:
+      class Bar(object):
         pass
     """)
     ast1 = self.Parse(src1).Visit(visitors.AddNamePrefix("foo."))

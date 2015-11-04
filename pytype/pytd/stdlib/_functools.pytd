@@ -1,5 +1,5 @@
 def reduce(...) -> object raises TypeError
-class partial:
+class partial(object):
   def __init__(self, ...) -> NoneType
   def __reduce__() -> tuple
   def __setstate__(a: object, b: object, c: object, d: object) -> NoneType

@@ -5,7 +5,7 @@ def pack_into(...) -> NoneType raises TypeError
 def unpack(...) -> tuple
 def unpack_from(...) -> tuple raises TypeError
 
-class Struct:
+class Struct(object):
     def __sizeof__() -> long
     def pack(...) -> str
     def pack_into(...) -> NoneType

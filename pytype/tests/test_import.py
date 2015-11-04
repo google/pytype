@@ -45,7 +45,7 @@ class ImportTest(test_inference.InferenceTest):
     with utils.Tempdir() as d:
       d.create_file("my_module.pytd", """
         def f() -> str
-        class A:
+        class A(object):
           pass
         a = ...  # type: A
       """)
@@ -290,7 +290,7 @@ class ImportTest(test_inference.InferenceTest):
   def testImportName(self):
     with utils.Tempdir() as d:
       d.create_file("foo.pytd", """
-        class A:
+        class A(object):
           pass
         def f() -> A
       """)
@@ -310,7 +310,7 @@ class ImportTest(test_inference.InferenceTest):
     with utils.Tempdir() as d:
       d.create_file("foo.pytd", "x = ...  # type: bar.Bar")
       d.create_file("bar.pytd", """
-          class Bar:
+          class Bar(object):
             def bar(self) -> int
       """)
       d.create_file("main.py", """
@@ -497,18 +497,18 @@ class ImportTest(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
         os = ...  # type: module
-        class Foo:
+        class Foo(object):
           killpg = ...  # type: function
       """)
 
   def testMatchAgainstImported(self):
     with utils.Tempdir() as d:
       d.create_file("foo.pytd", """
-        class Foo:
+        class Foo(object):
           pass
-        class Bar:
+        class Bar(object):
           def f1(self, x: Foo) -> Baz
-        class Baz:
+        class Baz(object):
           pass
       """)
       with self.Infer("""\
@@ -536,7 +536,7 @@ class ImportTest(test_inference.InferenceTest):
     with utils.Tempdir() as d:
       d.create_file("module.pytd", """
         x = ...  # type: int
-        class Foo:
+        class Foo(object):
           x = ...  # type: float
       """)
       with self.Infer("""\
@@ -558,18 +558,18 @@ class ImportTest(test_inference.InferenceTest):
   def testCircular(self):
     with utils.Tempdir() as d:
       d.create_file("x.pytd", """
-          class X:
+          class X(object):
             pass
           y = ...  # type: y.Y
           z = ...  # type: z.Z
       """)
       d.create_file("y.pytd", """
-          class Y:
+          class Y(object):
             pass
           x = ...  # type: x.X
       """)
       d.create_file("z.pytd", """
-          class Z:
+          class Z(object):
             pass
           x = ...  # type: x.X
       """)

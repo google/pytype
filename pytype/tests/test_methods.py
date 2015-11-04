@@ -720,7 +720,7 @@ class MethodsTest(test_inference.InferenceTest):
       myfunction = Foo.mymethod
     """, deep=True, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
-        class Foo:
+        class Foo(object):
           def mymethod(self, x, y) -> int
         def myfunction(self: Foo, x, y) -> int
       """)
@@ -746,7 +746,7 @@ class MethodsTest(test_inference.InferenceTest):
       self.assertTypesMatchPytd(ty, """
       os = ...  # type: module
       def f() -> NoneType
-      class Foo:
+      class Foo(object):
         def method(self) -> NoneType
       foo = ...  # type: Foo
       a = ...  # type: int

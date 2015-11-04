@@ -76,7 +76,7 @@ class ParserTest(unittest.TestCase):
         print >>sys.stderr, "-" * 36, "Expected", "-" * 36
         print >>sys.stderr, textwrap.dedent(src2).strip()
         print >>sys.stderr, "-" * 80
-      if ast1 == ast2:
+      if not ast1.ASTeq(ast2):
         print >>sys.stderr, "Actual AST:", ast1
         print >>sys.stderr, "Expect AST:", ast2
       self.fail("source files differ")

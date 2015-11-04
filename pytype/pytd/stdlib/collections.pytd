@@ -23,10 +23,10 @@ loads = ...  # type: function
 
 def namedtuple(typename: str, field_names: str or list[str], ...) -> type  # TODO(pludemann): add verbose, rename
 
-class OrderedDict:
+class OrderedDict(object):
   pass
 
-class defaultdict:
+class defaultdict(object):
   def __init__(self, ...) -> NoneType
 
 # Strictly speaking, this should be dict[?, ?]. (E.g. it's legal to do

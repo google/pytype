@@ -55,6 +55,17 @@ class TestASTGeneration(parser_test.ParserTest):
         """)
     self.TestRoundTrip(src)
 
+  def testGeneric(self):
+    src = textwrap.dedent("""
+        class T1(Generic[X], object):
+          pass
+        class T2(Generic[X, Y], T1):
+          pass
+        class T3(Generic[X, Y], T1, T2):
+          pass
+    """)
+    self.TestRoundTrip(src)
+
   def testTemplated(self):
     src = textwrap.dedent("""
         def foo(x: int) -> T1[float]
@@ -64,10 +75,10 @@ class TestASTGeneration(parser_test.ParserTest):
         def qqsv[T](x: T) -> list[T]
         def qux[S,T](x: T) -> list[S,]
 
-        class T1[X]:
+        class T1(Generic[X], object):
             def foo(a: X) -> T2[X, int] raises float
 
-        class T2[X, Y]:
+        class T2(Generic[X, Y], object):
             def foo(a: X) -> complex raises Except[X, Y]
     """)
     self.TestRoundTrip(src)
@@ -146,7 +157,7 @@ class TestASTGeneration(parser_test.ParserTest):
 
   def testIndent(self):
     src = textwrap.dedent("""
-        class Foo:
+        class Foo(object):
           def bar() -> ?
         def baz(i: int) -> ?
     """)
@@ -178,7 +189,7 @@ class TestASTGeneration(parser_test.ParserTest):
   def testAlignedComments(self):
     src = textwrap.dedent("""
         # comment 0
-        class Foo: # eol line comment 0
+        class Foo(object): # eol line comment 0
           # comment 1
           def bar(x: list[nothing]) -> ?: # eol line comment 1
             # comment 2
@@ -196,7 +207,7 @@ class TestASTGeneration(parser_test.ParserTest):
         def baz(i: list[nothing]) -> ?:
             i := list[int]
 
-        class Foo:
+        class Foo(object):
             def bar(x: list[nothing]) -> ?:
                 x := list[float]
     """)
@@ -205,7 +216,7 @@ class TestASTGeneration(parser_test.ParserTest):
   def testUnalignedComments(self):
     src = textwrap.dedent("""
           # comment 0
-        class Foo:
+        class Foo(object):
             # comment 1
           def bar(x: X) -> ?:
               # comment 2
@@ -222,7 +233,7 @@ class TestASTGeneration(parser_test.ParserTest):
         def baz(i: X) -> ?:
             i := X
 
-        class Foo:
+        class Foo(object):
             c = ...  # type: int
             def bar(x: X) -> ?:
                 x := X
@@ -237,23 +248,23 @@ class TestASTGeneration(parser_test.ParserTest):
 
   def testDuplicates2(self):
     src = textwrap.dedent("""
-        class A[T]:
+        class A(Generic[T], object):
           def baz[T](i: int)
     """)
     self.TestThrowsSyntaxError(src)
 
   def testDuplicates3(self):
     src = textwrap.dedent("""
-        class A[T, T]:
+        class A(Generic[T, T], object):
           pass
     """)
     self.TestThrowsSyntaxError(src)
 
   def testDuplicates4(self):
     src = textwrap.dedent("""
-        class A:
+        class A(object):
           pass
-        class A:
+        class A(object):
           pass
     """)
     self.TestThrowsSyntaxError(src)
@@ -261,7 +272,7 @@ class TestASTGeneration(parser_test.ParserTest):
   def testDuplicates5(self):
     src = textwrap.dedent("""
         def x()
-        class x:
+        class x(object):
           pass
     """)
     self.TestThrowsSyntaxError(src)
@@ -269,7 +280,7 @@ class TestASTGeneration(parser_test.ParserTest):
   def testDuplicates6(self):
     src = textwrap.dedent("""
         x = int
-        class x:
+        class x(object):
           pass
     """)
     self.TestThrowsSyntaxError(src)
@@ -309,7 +320,7 @@ class TestASTGeneration(parser_test.ParserTest):
 
   def testDuplicates9b(self):
     src = textwrap.dedent("""
-    class Foo:
+    class Foo(object):
        def bar(x: int) -> NoneType
        def bar PYTHONCODE
     """)
@@ -325,14 +336,14 @@ class TestASTGeneration(parser_test.ParserTest):
   def testPythonCode2(self):
     """Smoke test for PYTHONCODE."""
     src = textwrap.dedent("""
-    class Foo:
+    class Foo(object):
       def bar PYTHONCODE
     """)
     self.TestRoundTrip(src)
 
   def testMutable(self):
     src = textwrap.dedent("""
-        class Foo:
+        class Foo(object):
           def append_int(l: list) -> ?:
             l := list[int]
         def append_float(l: list) -> ?:
@@ -352,7 +363,7 @@ class TestASTGeneration(parser_test.ParserTest):
         def append_float(l: list) -> ?:
             l := list[float]
 
-        class Foo:
+        class Foo(object):
             def append_int(l: list) -> ?:
                 l := list[int]
     """)
@@ -491,15 +502,15 @@ class TestASTGeneration(parser_test.ParserTest):
     if python < 3:
       c1 = ...  # type: int
       def f() -> ?
-      class A:
+      class A(object):
         pass
     else:
       c2 = ...  # type: int
       def g() -> ?
-      class B:
+      class B(object):
         pass
 
-    class Foo:
+    class Foo(object):
       if python > 2.7.3:
         attr2 = ...  # type: int
         def m2() -> ?
@@ -587,7 +598,7 @@ class TestASTGeneration(parser_test.ParserTest):
     """Test template parsing."""
 
     data = textwrap.dedent("""
-        class MyClass[C]:
+        class MyClass(Generic[C], object):
           def f1(p1: C) -> ?
           def f2[T,U](p1: C, p2: T, p3: dict[C, C or T or int]) -> T raises Error[T]
         """)
@@ -619,7 +630,7 @@ class TestASTGeneration(parser_test.ParserTest):
     """Test handling of self."""
 
     data = textwrap.dedent("""
-        class MyClass[U, V]:
+        class MyClass(Generic[U, V], object):
           def f1(self) -> ?
         """)
 

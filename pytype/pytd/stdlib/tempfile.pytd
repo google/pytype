@@ -32,7 +32,7 @@ def mkdtemp(suffix, prefix, dir, ...) -> ?
 def mkstemp(suffix, prefix, dir, text, ...) -> ?
 def mktemp(suffix, prefix, dir, ...) -> ?
 
-class SpooledTemporaryFile(nothing):
+class SpooledTemporaryFile():
     __doc__ = ...  # type: str
     _rolled = ...  # type: bool
     closed = ...  # type: property
@@ -60,7 +60,7 @@ class SpooledTemporaryFile(nothing):
     def writelines(self, iterable) -> ?
     def xreadlines(self) -> ?
 
-class _RandomNameSequence(nothing):
+class _RandomNameSequence():
     __doc__ = ...  # type: str
     characters = ...  # type: str
     rng = ...  # type: property
@@ -68,7 +68,7 @@ class _RandomNameSequence(nothing):
     def __iter__(self) -> ?
     def next(self) -> ?
 
-class _TemporaryFileWrapper(nothing):
+class _TemporaryFileWrapper():
     __doc__ = ...  # type: str
     unlink = ...  # type: function
     def __del__(self) -> ?

@@ -2,7 +2,7 @@
 #         pytype --api python_runtime/v2_7/Lib/csv.py
 # TODO(pludemann): Needs _csv, operator, UserDict, warnings
 
-class Error:
+class Error(object):
   pass
 
 QUOTE_ALL = ...  # type: int
@@ -24,7 +24,7 @@ register_dialect = ...  # type: function
 unregister_dialect = ...  # type: function
 writer = ...  # type: type
 
-class Dialect(nothing):
+class Dialect():
     __doc__ = ...  # type: str
     _name = ...  # type: str
     _valid = ...  # type: bool
@@ -38,20 +38,20 @@ class Dialect(nothing):
     def __init__(self) -> ?
     def _validate(self) -> ?
 
-class DictReader(nothing):
+class DictReader():
     fieldnames = ...  # type: ?
     def __init__(self, f, fieldnames, restkey, restval, dialect, ...) -> ?
     def __iter__(self) -> ?
     def next(self) -> ?
 
-class DictWriter(nothing):
+class DictWriter():
     def __init__(self, f, fieldnames, restval, extrasaction, dialect, ...) -> ?
     def _dict_to_list(self, rowdict) -> ?
     def writeheader(self) -> ?
     def writerow(self, rowdict) -> ?
     def writerows(self, rowdicts) -> ?
 
-class Sniffer(nothing):
+class Sniffer():
     __doc__ = ...  # type: str
     def __init__(self) -> ?
     def _guess_delimiter(self, data, delimiters) -> ?

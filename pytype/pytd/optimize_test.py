@@ -282,10 +282,10 @@ class TestOptimize(parser_test.ParserTest):
 
   def testUserSuperClassHierarchy(self):
     class_data = textwrap.dedent("""
-        class AB:
+        class AB(object):
             pass
 
-        class EFG:
+        class EFG(object):
             pass
 
         class A(AB, EFG):
@@ -381,33 +381,33 @@ class TestOptimize(parser_test.ParserTest):
 
   def testPullInMethodClasses(self):
     src = textwrap.dedent("""
-        class A:
+        class A(object):
             mymethod1 = ...  # type: Method1
             mymethod2 = ...  # type: Method2
             member = ...  # type: Method3
             mymethod4 = ...  # type: Method4
-        class Method1:
+        class Method1(object):
             def __call__(self: A, x: int) -> ?
-        class Method2:
+        class Method2(object):
             def __call__(self: ?, x: int) -> ?
-        class Method3:
+        class Method3(object):
             def __call__(x: bool, y: int) -> ?
-        class Method4:
+        class Method4(object):
             def __call__(self: ?) -> ?
         class B(Method4):
             pass
     """)
     expected = textwrap.dedent("""
-        class A:
+        class A(object):
             member = ...  # type: Method3
             def mymethod1(self, x: int) -> ?
             def mymethod2(self, x: int) -> ?
             def mymethod4(self) -> ?
 
-        class Method3:
+        class Method3(object):
             def __call__(x: bool, y: int) -> ?
 
-        class Method4:
+        class Method4(object):
             def __call__(self) -> ?
 
         class B(Method4):
@@ -419,7 +419,7 @@ class TestOptimize(parser_test.ParserTest):
 
   def testAddInheritedMethods(self):
     src = textwrap.dedent("""
-        class A(nothing):
+        class A():
             foo = ...  # type: bool
             def f(self, x: int) -> float
             def h(self) -> complex
@@ -430,7 +430,7 @@ class TestOptimize(parser_test.ParserTest):
             def h(self, z: float) -> ?
     """)
     expected = textwrap.dedent("""
-        class A(nothing):
+        class A():
             foo = ...  # type: bool
             def f(self, x: int) -> float
             def h(self) -> complex
@@ -449,7 +449,7 @@ class TestOptimize(parser_test.ParserTest):
 
   def testRemoveInheritedMethodsWithoutSelf(self):
     src = textwrap.dedent("""
-        class Bar:
+        class Bar(object):
           def baz(self) -> int
 
         class Foo(Bar):
@@ -457,7 +457,7 @@ class TestOptimize(parser_test.ParserTest):
           def bar() -> float
     """)
     expected = textwrap.dedent("""
-        class Bar:
+        class Bar(object):
           def baz(self) -> int
 
         class Foo(Bar):
@@ -470,7 +470,7 @@ class TestOptimize(parser_test.ParserTest):
 
   def testRemoveInheritedMethods(self):
     src = textwrap.dedent("""
-        class A(nothing):
+        class A():
             def f(self, y: int) -> bool
             def g(self) -> float
 
@@ -487,7 +487,7 @@ class TestOptimize(parser_test.ParserTest):
             def d(self) -> D
     """)
     expected = textwrap.dedent("""
-        class A(nothing):
+        class A():
             def f(self, y: int) -> bool
             def g(self) -> float
 
@@ -528,12 +528,12 @@ class TestOptimize(parser_test.ParserTest):
     # This is a test for intermediate data. See AbsorbMutableParameters class
     # pydoc about how AbsorbMutableParameters works on methods.
     src = textwrap.dedent("""
-        class MyClass[T]:
+        class MyClass(Generic[T], object):
             def append[NEW](self, x: NEW) -> ?:
                 self := MyClass[T or NEW]
     """)
     expected = textwrap.dedent("""
-        class MyClass[T]:
+        class MyClass(Generic[T], object):
             def append[NEW](self: MyClass[T or NEW], x: NEW) -> ?
     """)
     tree = self.Parse(src)
@@ -546,12 +546,12 @@ class TestOptimize(parser_test.ParserTest):
     # AbsorbMutableParameters.
     # See comment in RemoveMutableParameters
     src = textwrap.dedent("""
-      class A[T]:
+      class A(Generic[T], object):
           def foo[T2](self, x: T or T2) -> T2
           def bar[T2, T3](self, x: T or T2 or T3) -> T3
           def baz[T2, T3](self, x: T or T2, y: T2 or T3) -> ?
 
-      class D[K, V]:
+      class D(Generic[K, V], object):
           def foo[T](self, x: T) -> K or T
           def bar[T](self, x: T) -> V or T
           def baz(self, x: K or V) -> K or V
@@ -559,12 +559,12 @@ class TestOptimize(parser_test.ParserTest):
           def ipsum[T](self, x: T) -> T or K
     """)
     expected = textwrap.dedent("""
-      class A[T]:
+      class A(Generic[T], object):
           def foo(self, x: T) -> T
           def bar(self, x: T) -> T
           def baz(self, x: T, y: T) -> ?
 
-      class D[K, V]:
+      class D(Generic[K, V], object):
           def foo(self, x: K) -> K
           def bar(self, x: V) -> V
           def baz(self, x: K or V) -> K or V

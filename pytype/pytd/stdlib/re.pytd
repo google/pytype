@@ -47,7 +47,7 @@ def sub(pattern: ?, repl, string, ...) -> ?
 def subn(pattern: ?, repl, string, ...) -> ?
 def template(pattern, ...) -> ?
 
-class Scanner(nothing):
+class Scanner():
     lexicon = ... # type: dict[?, ?] or list[?] or tuple[?]
     scanner = ...  # type: ?
     def __init__(self, lexicon: dict[object, ?] or list[object] or tuple[object], ...) -> NoneType

@@ -14,7 +14,7 @@ BOM_UTF32_LE = ...  # type: str
 BOM_UTF8 = ...  # type: str
 
 # TODO(pludemann): check def's with "-> ?"
-class BufferedIncrementalDecoder:
+class BufferedIncrementalDecoder(object):
     def __init__(self, ...) -> NoneType
     def _buffer_decode(self, input, errors, final) -> ? raises NotImplementedError
     def decode(self, input, final) -> ? raises NotImplementedError
@@ -22,7 +22,7 @@ class BufferedIncrementalDecoder:
     def reset(self) -> NoneType
     def setstate(self, state) -> NoneType
 
-class BufferedIncrementalEncoder:
+class BufferedIncrementalEncoder(object):
     def __init__(self, ...) -> NoneType
     def _buffer_encode(self, input, errors, final) -> ? raises NotImplementedError
     def encode(self, input, final) -> ? raises NotImplementedError
@@ -30,7 +30,7 @@ class BufferedIncrementalEncoder:
     def reset(self) -> NoneType
     def setstate(self, state) -> NoneType
 
-class Codec:
+class Codec(object):
     def __init__(self, ...) -> NoneType
     def decode(self, input, errors) -> ? raises NotImplementedError
     def encode(self, input, errors) -> ? raises NotImplementedError

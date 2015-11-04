@@ -20,20 +20,20 @@ class TestTransforms(parser_test.ParserTest):
 
   def testPreprocessReverseOperatorsVisitor(self):
     src1 = textwrap.dedent("""
-      class A(nothing):
+      class A():
         def __add__(self, other: B) -> int
         def __rdiv__(self, other: A) -> float
         def __rmod__(self, other: B) -> str
-      class B(nothing):
+      class B():
         def __radd__(self, other: A) -> complex  # ignored
         def __rmul__(self, other: A) -> complex
     """)
     src2 = textwrap.dedent("""
-      class A(nothing):
+      class A():
         def __add__(self, other: B) -> int
         def __div__(self, other: A) -> float
         def __mul__(self, other: B) -> complex
-      class B(nothing):
+      class B():
         def __mod__(self, other: A) -> str
     """)
     tree = self.ParseWithLookup(src1)
@@ -42,11 +42,11 @@ class TestTransforms(parser_test.ParserTest):
 
   def testReverseOperatorsWithInheritance(self):
     src1 = textwrap.dedent("""
-      class A:
+      class A(object):
         def __add__(self, other: B) -> int
         def __add__(self, other: C) -> bool
         def __rdiv__(self, other: A) -> complex
-      class B:
+      class B(object):
         def __radd__(self, other: A) -> str
         def __rmul__(self, other: A) -> float
       class C(A):
@@ -55,13 +55,13 @@ class TestTransforms(parser_test.ParserTest):
         def __rmul__(self, other: A) -> float
     """)
     src2 = textwrap.dedent("""
-      class A:
+      class A(object):
         def __add__(self, other: B) -> int  # unchanged
         def __add__(self, other: C) -> float  # overwritten
         def __div__(self, other: A) -> complex  # added, __rdiv__ removed
         def __mul__(self, other: B) -> float  # added, __rmul__ from B
         def __mul__(self, other: C) -> float  # added, __rmul__ from C
-      class B:
+      class B(object):
         pass
       class C(A):
         def __add__(self, other: A) -> bool

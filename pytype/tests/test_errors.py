@@ -15,7 +15,7 @@ class ErrorTest(test_inference.InferenceTest):
         return "foo"
     """)
     self.assertTypesMatchPytd(ty, """
-      class A:
+      class A(object):
         pass
 
       def f() -> str

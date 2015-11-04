@@ -29,6 +29,12 @@ from pytype.pytd.parse import visitors
 class TestTypeMatch(unittest.TestCase):
   """Test algorithms and datastructures of booleq.py."""
 
+  def setUp(self):
+    self.mini_builtins = parser.parse_string(textwrap.dedent("""
+      class object:  # implicitly added by Generic
+        pass
+    """))
+
   def testUnknown(self):
     m = type_match.TypeMatch({})
     eq = m.match_type_against_type(pytd.AnythingType(), pytd.AnythingType(), {})
@@ -82,12 +88,12 @@ class TestTypeMatch(unittest.TestCase):
 
   def testGeneric(self):
     ast = parser.parse_string(textwrap.dedent("""
-      class A[T](nothing):
+      class A(Generic[T], object):
         pass
       left = ...  # type: A[?]
       right = ...  # type: A[?]
     """))
-    ast = visitors.LookupClasses(ast)
+    ast = visitors.LookupClasses(ast, self.mini_builtins)
     m = type_match.TypeMatch()
     self.assertEquals(m.match_type_against_type(
         ast.Lookup("left").type,
@@ -95,13 +101,13 @@ class TestTypeMatch(unittest.TestCase):
 
   def testClassMatch(self):
     ast = parser.parse_string(textwrap.dedent("""
-      class Left(nothing):
+      class Left():
         def method(self) -> ?
-      class Right(nothing):
+      class Right():
         def method(self) -> ?
         def method2(self) -> ?
     """))
-    ast = visitors.LookupClasses(ast)
+    ast = visitors.LookupClasses(ast, self.mini_builtins)
     m = type_match.TypeMatch()
     left, right = ast.Lookup("Left"), ast.Lookup("Right")
     self.assertEquals(m.match(left, right, {}), booleq.TRUE)
@@ -109,7 +115,7 @@ class TestTypeMatch(unittest.TestCase):
 
   def testSubclasses(self):
     ast = parser.parse_string(textwrap.dedent("""
-      class A(nothing):
+      class A():
         pass
       class B(A):
         pass
@@ -117,7 +123,7 @@ class TestTypeMatch(unittest.TestCase):
       def left(a: B) -> B
       def right(a: A) -> A
     """))
-    ast = visitors.LookupClasses(ast)
+    ast = visitors.LookupClasses(ast, self.mini_builtins)
     m = type_match.TypeMatch(type_match.get_all_subclasses([ast]))
     left, right = ast.Lookup("left"), ast.Lookup("right")
     self.assertEquals(m.match(left, right, {}), booleq.TRUE)
@@ -125,16 +131,16 @@ class TestTypeMatch(unittest.TestCase):
 
   def _TestTypeParameters(self, reverse=False):
     ast = parser.parse_string(textwrap.dedent("""
-      class `~unknown0`(nothing):
+      class `~unknown0`():
         def next(self) -> ?
-      class A[T](nothing):
+      class A(Generic[T], object):
         def next(self) -> ?
-      class B(nothing):
+      class B():
         pass
       def left(x: `~unknown0`) -> ?
       def right(x: A[B]) -> ?
     """))
-    ast = visitors.LookupClasses(ast)
+    ast = visitors.LookupClasses(ast, self.mini_builtins)
     m = type_match.TypeMatch()
     left, right = ast.Lookup("left"), ast.Lookup("right")
     match = m.match(right, left, {}) if reverse else m.match(left, right, {})
@@ -150,19 +156,20 @@ class TestTypeMatch(unittest.TestCase):
 
   def testStrict(self):
     ast = parser.parse_string(textwrap.dedent("""
-      class list[T](nothing):
+
+      class list(Generic[T], object):
         pass
-      class A(nothing):
+      class A():
         pass
       class B(A):
         pass
-      class `~unknown0`(nothing):
+      class `~unknown0`():
         pass
       a = ...  # type: A
       def left() -> `~unknown0`
       def right() -> list[A]
     """))
-    ast = visitors.LookupClasses(ast)
+    ast = visitors.LookupClasses(ast, self.mini_builtins)
     m = type_match.TypeMatch(type_match.get_all_subclasses([ast]))
     left, right = ast.Lookup("left"), ast.Lookup("right")
     self.assertEquals(m.match(left, right, {}),
@@ -171,13 +178,13 @@ class TestTypeMatch(unittest.TestCase):
 
   def testExternal(self):
     ast = parser.parse_string(textwrap.dedent("""
-      class Base(nothing):
+      class Base():
         pass
       class Foo(Base):
         pass
       base = ...  # type: Base
     """))
-    ast = visitors.LookupClasses(ast)
+    ast = visitors.LookupClasses(ast, self.mini_builtins)
     m = type_match.TypeMatch(type_match.get_all_subclasses([ast]))
     mod1_foo = pytd.ExternalType("Foo", module="mod1", cls=ast.Lookup("Foo"))
     eq = m.match_type_against_type(mod1_foo, ast.Lookup("base").type, {})
@@ -185,15 +192,15 @@ class TestTypeMatch(unittest.TestCase):
 
   def testBaseClass(self):
     ast = parser.parse_string(textwrap.dedent("""
-      class Base(nothing):
+      class Base():
         def f(self, x:Base) -> Base
       class Foo(Base):
         pass
 
-      class Match(nothing):
+      class Match():
         def f(self, x:Base) -> Base
     """))
-    ast = visitors.LookupClasses(ast)
+    ast = visitors.LookupClasses(ast, self.mini_builtins)
     m = type_match.TypeMatch(type_match.get_all_subclasses([ast]))
     eq = m.match_Class_against_Class(ast.Lookup("Match"), ast.Lookup("Foo"), {})
     self.assertEquals(eq, booleq.TRUE)

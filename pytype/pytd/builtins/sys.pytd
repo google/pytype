@@ -1,4 +1,4 @@
-class _flags:  # TODO(pludemann): allow calling this `flags`
+class _flags(object):  # TODO(pludemann): allow calling this `flags`
   debug = ...  # type: int
   py3k_warning = ...  # type: int
   division_warning = ...  # type: int

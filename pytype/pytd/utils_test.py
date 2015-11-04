@@ -58,7 +58,7 @@ class TestUtils(parser_test.ParserTest):
 
       def f1() -> int
 
-      class Class1:
+      class Class1(object):
         pass
     """)
     ast2 = self.Parse("""
@@ -66,7 +66,7 @@ class TestUtils(parser_test.ParserTest):
 
       def f2() -> int
 
-      class Class2:
+      class Class2(object):
         pass
     """)
     expected = textwrap.dedent("""
@@ -76,10 +76,10 @@ class TestUtils(parser_test.ParserTest):
       def f1() -> int
       def f2() -> int
 
-      class Class1:
+      class Class1(object):
           pass
 
-      class Class2:
+      class Class2(object):
           pass
     """)
     combined = utils.Concat(ast1, ast2)
@@ -160,11 +160,11 @@ class TestUtils(parser_test.ParserTest):
   def testRemoveMutableList(self):
     # Simple test for RemoveMutableParameters, with simplified list class
     src = textwrap.dedent("""
-      class TrivialList[T]:
+      class TrivialList(Generic[T], object):
         def append[T2](self, v: T2) -> NoneType:
           self := T or T2
 
-      class TrivialList2[T]:
+      class TrivialList2(Generic[T], object):
         # TODO(pludemann): instead of self := T2 use
         #                  T = T2, when it's implemented
         # def __init__[T2](self, x: T2) -> NoneType:
@@ -175,10 +175,10 @@ class TestUtils(parser_test.ParserTest):
         def get_first(self) -> T
     """)
     expected = textwrap.dedent("""
-      class TrivialList[T]:
+      class TrivialList(Generic[T], object):
           def append(self, v: T) -> NoneType
 
-      class TrivialList2[T]:
+      class TrivialList2(Generic[T], object):
           def __init__(self, x: T) -> NoneType
           def append(self, v: T) -> NoneType
           def get_first(self) -> T
@@ -190,7 +190,7 @@ class TestUtils(parser_test.ParserTest):
   def testRemoveMutableDict(self):
     # Test for RemoveMutableParameters, with simplified dict class.
     src = textwrap.dedent("""
-      class MyDict[K, V]:
+      class MyDict(Generic[K, V], object):
           def getitem[T](self, k: K, default: T) -> V or T
           def setitem[K2, V2](self, k: K2, value: V2) -> NoneType:
               self := dict[K or K2, V or V2]
@@ -199,7 +199,7 @@ class TestUtils(parser_test.ParserTest):
               self := dict[K or K2, V or V2]
     """)
     expected = textwrap.dedent("""
-      class MyDict[K, V]:
+      class MyDict(Generic[K, V], object):
           def getitem(self, k: K, default: V) -> V
           def setitem(self, k: K, value: V) -> NoneType
           def getanykeyorvalue(self) -> K or V
@@ -213,7 +213,7 @@ class TestUtils(parser_test.ParserTest):
     """Smoketests for printing pytd."""
     ast = self.Parse("""
       c1 = ...  # type: int
-      class A[T]:
+      class A(Generic[T], object):
         bar = ...  # type: T
         def foo(self, x: list[int], y: T) -> list[T] or float raises ValueError
       def bar[X, Y](x: X or Y) -> ?
@@ -263,14 +263,14 @@ class TestUtils(parser_test.ParserTest):
       c = ...  # type: int
       def f(x: int) -> int
       def f(x: float) -> float
-      class A:
+      class A(object):
         pass
     """)
     ast2 = self.Parse("""
       c = ...  # type: float
       d = ...  # type: int
       def f(x: complex) -> complex
-      class B:
+      class B(object):
         pass
     """)
     w = utils.WrapTypeDeclUnit(
@@ -283,9 +283,9 @@ class TestUtils(parser_test.ParserTest):
       def f(x: int) -> int
       def f(x: float) -> float
       def f(x: complex) -> complex
-      class A:
+      class A(object):
         pass
-      class B:
+      class B(object):
         pass
     """)
     self.AssertSourceEquals(w, expected)

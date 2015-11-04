@@ -7,7 +7,7 @@ def compile(...) -> SRE_Pattern raises OverflowError
 def getcodesize() -> int
 def getlower(...) -> int
 
-class SRE_Match:
+class SRE_Match(object):
     def __copy__() -> ? raises TypeError  # TODO(pludemann): fix return type
     def __deepcopy__(...) -> ? raises TypeError  # TODO(pludemann): fix return type
     def end(...) -> int raises IndexError
@@ -18,7 +18,7 @@ class SRE_Match:
     def span(...) -> tuple raises IndexError
     def start(...) -> int raises IndexError
 
-class SRE_Pattern:
+class SRE_Pattern(object):
     def __copy__() -> ? raises TypeError  # TODO(pludemann): fix return type
     def __deepcopy__(...) -> ? raises TypeError  # TODO(pludemann): fix return type
     def findall(source, ...) -> list[NoneType or tuple]
@@ -30,6 +30,6 @@ class SRE_Pattern:
     def sub(repl, string, ...) -> tuple
     def subn(repl, string, ...) -> tuple
 
-class SRE_Scanner:
+class SRE_Scanner(object):
     def match() -> NoneType or SRE_Match
     def search() -> NoneType or SRE_Match

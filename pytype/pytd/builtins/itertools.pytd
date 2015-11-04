@@ -1,64 +1,64 @@
 def tee(a, ...) -> tuple raises ValueError
 
-class _grouper:
+class _grouper(object):
     pass
 
-class chain:
+class chain(object):
     def from_iterable(...) -> ?
 
-class combinations:
+class combinations(object):
     pass
 
-class combinations_with_replacement:
+class combinations_with_replacement(object):
     pass
 
-class compress:
+class compress(object):
     pass
 
-class count:
+class count(object):
     def __reduce__() -> tuple
 
-class cycle:
+class cycle(object):
     pass
 
-class dropwhile:
+class dropwhile(object):
     pass
 
-class groupby:
+class groupby(object):
     pass
 
-class ifilter:
+class ifilter(object):
     pass
 
-class ifilterfalse:
+class ifilterfalse(object):
     pass
 
-class imap:
+class imap(object):
     def __init__(self, ...) -> NoneType
 
-class islice:
+class islice(object):
     pass
 
-class izip:
+class izip(object):
     pass
 
-class izip_longest:
+class izip_longest(object):
     pass
 
-class permutations:
+class permutations(object):
     pass
 
-class product:
+class product(object):
     def __init__(self, ...) -> NoneType
 
-class repeat:
+class repeat(object):
     def __length_hint__() -> int raises TypeError
 
-class starmap:
+class starmap(object):
     pass
 
-class takewhile:
+class takewhile(object):
     pass
 
-class tee_dataobject:
+class tee_dataobject(object):
     pass

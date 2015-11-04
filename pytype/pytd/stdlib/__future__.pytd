@@ -18,7 +18,7 @@ print_function = ...  # type: _Feature
 unicode_literals = ...  # type: _Feature
 with_statement = ...  # type: _Feature
 
-class _Feature(nothing):
+class _Feature():
     compiler_flag = ...  # type: ?
     mandatory = ...  # type: ?
     optional = ...  # type: ?

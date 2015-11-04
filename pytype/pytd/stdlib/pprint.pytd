@@ -2,7 +2,7 @@
 #       (crashed)  pytype --api python_runtime/v2_7/Lib/pdb.py
 #     for d in dir(pprint): print d, type(getattr(pprint, d))
 
-class PrettyPrinter:
+class PrettyPrinter(object):
   pass
 
 def _StringIO(...) -> ?

@@ -27,9 +27,9 @@ class MatchTest(unittest.TestCase):
 
   def test_simple(self):
     mapping = self.parse_and_solve("""
-      class `~unknown2`:
+      class `~unknown2`(object):
         pass
-      class `~unknown1`:
+      class `~unknown1`(object):
         def __add__(self, other: `~unknown2`) -> int
     """)
     self.assertItemsEqual(["int", "bool"], mapping["~unknown1"])
@@ -37,10 +37,10 @@ class MatchTest(unittest.TestCase):
 
   def test_float_and_bytearray(self):
     mapping = self.parse_and_solve("""
-      class `~unknown1`:
+      class `~unknown1`(object):
         def __add__(self, y: int) -> float
         def __add__(self, y: float) -> float
-      class `~unknown2`:
+      class `~unknown2`(object):
         def __add__(self, y: str) -> bytearray
         def __add__(self, y: bytearray) -> bytearray
       """)
@@ -49,9 +49,9 @@ class MatchTest(unittest.TestCase):
 
   def test_float_and_bytearray2(self):
     mapping = self.parse_and_solve("""
-      class `~unknown1`:
+      class `~unknown1`(object):
         def __add__(self, y: int or float) -> float
-      class `~unknown2`:
+      class `~unknown2`(object):
         def __add__(self, y: bytearray) -> bytearray
       """)
     self.assertItemsEqual(["float"], mapping["~unknown1"])
@@ -59,7 +59,7 @@ class MatchTest(unittest.TestCase):
 
   def test_append(self):
     mapping = self.parse_and_solve("""
-      class `~unknown1`:
+      class `~unknown1`(object):
         def append(self, v: int) -> NoneType
     """)
     self.assertItemsEqual(["list", "bytearray"], mapping["~unknown1"])
@@ -67,7 +67,7 @@ class MatchTest(unittest.TestCase):
   def test_single_list(self):
     # Differs from test_append in that append(float) doesn't match bytearray
     mapping = self.parse_and_solve("""
-      class `~unknown1`:
+      class `~unknown1`(object):
         def append(self, v: float) -> NoneType
     """)
     convert_structural.log_info_mapping(mapping)
@@ -76,11 +76,11 @@ class MatchTest(unittest.TestCase):
 
   def test_list(self):
     mapping = self.parse_and_solve("""
-      class `~unknown2`:
+      class `~unknown2`(object):
         def append(self, v: `~unknown1`) -> NoneType
         def __getitem__(self, i: ?) -> `~unknown1`
 
-      class `~unknown1`:
+      class `~unknown1`(object):
         def __add__(self: float, y: int) -> float
         def __add__(self: float, y: float) -> float
       """)
@@ -91,7 +91,7 @@ class MatchTest(unittest.TestCase):
 
   def test_float_list(self):
     mapping = self.parse_and_solve("""
-      class `~unknown1`:
+      class `~unknown1`(object):
         def append(self, v: ?) -> NoneType
         def __getitem__(self, i: int) -> float
       """)
@@ -101,9 +101,9 @@ class MatchTest(unittest.TestCase):
 
   def test_two_lists(self):
     mapping = self.parse_and_solve("""
-      class `~unknown1`:
+      class `~unknown1`(object):
         def append(self: list, v: NoneType) -> NoneType
-      class `~unknown2`:
+      class `~unknown2`(object):
         def remove(self: list, v: float) -> NoneType
       """)
     self.assertItemsEqual(["list"], mapping["~unknown1"])
@@ -113,14 +113,14 @@ class MatchTest(unittest.TestCase):
 
   def test_float(self):
     mapping = self.parse_and_solve("""
-      class `~unknown1`:
+      class `~unknown1`(object):
         def __add__(self, v: int) -> float
     """)
     self.assertItemsEqual(["float"], mapping["~unknown1"])
 
   def test_or(self):
     mapping = self.parse_and_solve("""
-      class `~unknown1`:
+      class `~unknown1`(object):
         def join(self, iterable: unicode) -> str or unicode
         def join(self, iterable: iterator) -> str or unicode
     """)
@@ -128,17 +128,17 @@ class MatchTest(unittest.TestCase):
 
   def test_multiple(self):
     mapping = self.parse_and_solve("""
-      class `~unknown1`:
+      class `~unknown1`(object):
         def __add__(self, y: int) -> float
         def __add__(self, y: float) -> float
-      class `~unknown2`:
+      class `~unknown2`(object):
         def __add__(self, y: str) -> bytearray
         def __add__(self, y: bytearray) -> bytearray
-      class `~unknown3`:
+      class `~unknown3`(object):
         def join(self, iterable) -> str
         def join(self, iterable: unicode) -> str or unicode
         def join(self, iterable: iterator) -> str or unicode
-      class `~unknown4`:
+      class `~unknown4`(object):
         def append(self, v: NoneType) -> NoneType
     """)
     self.assertItemsEqual(["float"], mapping["~unknown1"])
@@ -149,9 +149,9 @@ class MatchTest(unittest.TestCase):
 
   def test_union(self):
     mapping = self.parse_and_solve("""
-      class `~unknown1`:
+      class `~unknown1`(object):
         def __add__(self, x:int or float) -> float
-      class `~unknown2`:
+      class `~unknown2`(object):
         def __add__(self, x:bytearray) -> bytearray
     """)
     self.assertItemsEqual(["float"], mapping["~unknown1"])
@@ -159,7 +159,7 @@ class MatchTest(unittest.TestCase):
 
   def test_containers(self):
     mapping = self.parse_and_solve("""
-      class `~unknown1`:
+      class `~unknown1`(object):
         def foo(self, x: list[bool]) -> int
       class A(object):
         def foo(self, x: list[int]) -> int
@@ -168,10 +168,10 @@ class MatchTest(unittest.TestCase):
 
   def test_type_parameters(self):
     mapping = self.parse_and_solve("""
-      class A[T]:
+      class A(Generic[T], object):
         def foo(self) -> ?
         def bar(self, x: T) -> ?
-      class `~unknown1`:
+      class `~unknown1`(object):
         def foo(self) -> ?
         def bar(self, x: int) -> ?
     """)
@@ -180,15 +180,15 @@ class MatchTest(unittest.TestCase):
 
   def test_generic_against_generic(self):
     mapping = self.parse_and_solve("""
-      class A(nothing):
+      class A():
         def f(self, x: list[int]) -> ?
         def g(self, x: list[float]) -> ?
-      class B(nothing):
+      class B():
         def f(self, x: set[int]) -> ?
         def g(self, x: list[int]) -> ?
-      class `~unknown1`:
+      class `~unknown1`(object):
         def f(self, x: list[int]) -> ?
-      class `~unknown2`:
+      class `~unknown2`(object):
         def g(self, x: list[int]) -> ?
     """)
     self.assertItemsEqual(["A"], mapping["~unknown1"])
@@ -197,15 +197,15 @@ class MatchTest(unittest.TestCase):
   def test_unknown_against_generic(self):
     mapping = self.parse_and_solve("""
       def f(A: `~unknown0`) -> list[`~unknown8`]
-      class `~unknown0`(nothing):
+      class `~unknown0`():
         def values(self) -> `~unknown2`
-      class `~unknown2`(nothing):
+      class `~unknown2`():
         def __iter__(self) -> `~unknown4`
-      class `~unknown4`(nothing):
+      class `~unknown4`():
         def next(self) -> `~unknown6`
-      class `~unknown6`(nothing):
+      class `~unknown6`():
         def __sub__(self, _1: float) -> `~unknown8`
-      class `~unknown8`(nothing):
+      class `~unknown8`():
         pass
     """)
     self.assertItemsEqual(["dict"], mapping["~unknown0"])
@@ -217,15 +217,15 @@ class MatchTest(unittest.TestCase):
 
   def test_subclass_of_elements(self):
     mapping = self.parse_and_solve("""
-      class A(nothing):
+      class A():
         def f(self, x: list[int]) -> list[int]
-      class `~unknown1`:
+      class `~unknown1`(object):
         def f(self, x: list[bool]) -> ?
-      class `~unknown2`:
+      class `~unknown2`(object):
         def f(self, x: ?) -> list[object]
-      class `~unknown3`:
+      class `~unknown3`(object):
         def f(self, x: list[object]) -> ?
-      class `~unknown4`:
+      class `~unknown4`(object):
         def f(self, x: ?) -> list[bool]
     """)
     self.assertItemsEqual(["A"], mapping["~unknown1"])
@@ -235,25 +235,25 @@ class MatchTest(unittest.TestCase):
 
   def test_subclass(self):
     mapping = self.parse_and_solve("""
-      class A(nothing):
+      class A():
         pass
       class B(A):
         pass
-      class AA:
+      class AA(object):
         def foo(self, x: A) -> A
-      class AB:
+      class AB(object):
         def foo(self, x: A) -> B
-      class BA:
+      class BA(object):
         def foo(self, x: B) -> A
-      class BB:
+      class BB(object):
         def foo(self, x: B) -> B
-      class `~unknown1`:
+      class `~unknown1`(object):
         def foo(self, x: A) -> A
-      class `~unknown2`:
+      class `~unknown2`(object):
         def foo(self, x: A) -> B
-      class `~unknown3`:
+      class `~unknown3`(object):
         def foo(self, x: B) -> A
-      class `~unknown4`:
+      class `~unknown4`(object):
         def foo(self, x: B) -> B
     """)
     self.assertItemsEqual(["AA"], mapping["~unknown1"])
@@ -271,9 +271,9 @@ class MatchTest(unittest.TestCase):
         def foobar(self) -> ?
       class D(list[int]):
         def foobar(self) -> ?
-      class E[T](T):
+      class E(Generic[T], T):
         def foobar(self) -> ?
-      class `~unknown1`:
+      class `~unknown1`(object):
         def foobar(self) -> ?
     """)
     self.assertContainsSubset(["A", "B", "C", "D", "E"], mapping["~unknown1"])
@@ -282,11 +282,11 @@ class MatchTest(unittest.TestCase):
   def test_unknown_superclass(self):
     # E.g. "class A(x): def foobar(self): pass" with (unknown) x = type(3)
     mapping = self.parse_and_solve("""
-      class `~unknown1`:
+      class `~unknown1`(object):
         def __add__(self, _1: int) -> int
       class A(`~unknown1`):
         def foobar(self) -> NoneType
-      class `~unknown2`:
+      class `~unknown2`(object):
         def __add__(self, _1: int) -> int
         def foobar(self) -> NoneType
     """)
@@ -295,21 +295,21 @@ class MatchTest(unittest.TestCase):
 
   def test_nothing(self):
     mapping = self.parse_and_solve("""
-      class A(nothing):
+      class A():
         def f(self, x:nothing) -> nothing
-      class B(nothing):
+      class B():
         def f(self, x:int) -> nothing
-      class C(nothing):
+      class C():
         def f(self, x:nothing) -> int
-      class D(nothing):
+      class D():
         def f(self, x:int) -> int
-      class `~unknown1`:
+      class `~unknown1`(object):
         def f(self, x:nothing) -> nothing
-      class `~unknown2`:
+      class `~unknown2`(object):
         def f(self, x:int) -> nothing
-      class `~unknown3`:
+      class `~unknown3`(object):
         def f(self, x:nothing) -> int
-      class `~unknown4`:
+      class `~unknown4`(object):
         def f(self, x:int) -> int
     """)
     self.assertItemsEqual(["A"], mapping["~unknown1"])
@@ -327,7 +327,7 @@ class MatchTest(unittest.TestCase):
         def f(self, x:?) -> int
       class D(?):
         def f(self, x:int) -> int
-      class `~unknown1`:
+      class `~unknown1`(object):
         def f(self, x:?) -> ?
         def f(self, x:int) -> ?
         def f(self, x:?) -> int
@@ -338,19 +338,19 @@ class MatchTest(unittest.TestCase):
 
   def test_union_left_right(self):
     mapping = self.parse_and_solve("""
-      class A:
+      class A(object):
         def f(self, x:int) -> int
-      class B:
+      class B(object):
         def f(self, x:int) -> int or float
-      class C:
+      class C(object):
         def f(self, x:int or float) -> int
-      class D:
+      class D(object):
         def f(self, x:int or float) -> int or float
-      class `~unknown1`:
+      class `~unknown1`(object):
         def f(self, x:int) -> int
-      class `~unknown2`:
+      class `~unknown2`(object):
         def f(self, x:int or float) -> int
-      class `~unknown3`:
+      class `~unknown3`(object):
         def f(self, x:int) -> int or float
     """)
     self.assertItemsEqual(["A", "B", "C", "D"], mapping["~unknown1"])
@@ -359,17 +359,17 @@ class MatchTest(unittest.TestCase):
 
   def test_different_lengths(self):
     mapping = self.parse_and_solve("""
-      class A:
+      class A(object):
         def f(self) -> ?
-      class B:
+      class B(object):
         def f(self, x) -> ?
-      class C:
+      class C(object):
         def f(self, x, y) -> ?
-      class `~unknown1`:
+      class `~unknown1`(object):
         def f(self) -> ?
-      class `~unknown2`:
+      class `~unknown2`(object):
         def f(self, x) -> ?
-      class `~unknown3`:
+      class `~unknown3`(object):
         def f(self, x, y) -> ?
     """)
     self.assertItemsEqual(["A"], mapping["~unknown1"])
@@ -378,11 +378,11 @@ class MatchTest(unittest.TestCase):
 
   def test_filter(self):
     mapping = self.parse_and_solve("""
-      class A:
+      class A(object):
         def f(self, x: int or bytearray) -> ?
-      class `~unknown1`:
+      class `~unknown1`(object):
         def f(self, _1: `~unknown2`) -> ?
-      class `~unknown2`:
+      class `~unknown2`(object):
         def capitalize(self) -> ?
     """)
     self.assertItemsEqual(["A"], mapping["~unknown1"])
@@ -390,12 +390,12 @@ class MatchTest(unittest.TestCase):
 
   def test_partial(self):
     mapping = self.parse_and_solve("""
-      class `~unknown1`:
+      class `~unknown1`(object):
         pass
-      class `~bool`:
+      class `~bool`(object):
         def __and__(self, _1: `~unknown1`) -> bool
         def __and__(self, _1: `~unknown2`) -> bool
-      class `~unknown2`:
+      class `~unknown2`(object):
         pass
     """)
     self.assertItemsEqual(["bool", "int"], mapping["~unknown1"])
@@ -403,19 +403,19 @@ class MatchTest(unittest.TestCase):
 
   def test_optional_parameters(self):
     mapping = self.parse_and_solve("""
-      class A:
+      class A(object):
         def f(self, ...) -> ?
-      class B:
+      class B(object):
         def f(self, x, ...) -> ?
-      class C:
+      class C(object):
         def f(self, x, y, ...) -> ?
-      class `~unknown1`:
+      class `~unknown1`(object):
         def f(self) -> ?
-      class `~unknown2`:
+      class `~unknown2`(object):
         def f(self, x) -> ?
-      class `~unknown3`:
+      class `~unknown3`(object):
         def f(self, x, y) -> ?
-      class `~unknown4`:
+      class `~unknown4`(object):
         def f(self, x, y, z) -> ?
     """)
     self.assertItemsEqual(["A"], mapping["~unknown1"])
@@ -424,27 +424,27 @@ class MatchTest(unittest.TestCase):
 
   def test_listiterator(self):
     self.parse_and_solve("""
-      class `~unknown1`:
+      class `~unknown1`(object):
         pass
-      class `~listiterator`:
+      class `~listiterator`(object):
           def next(self) -> `~unknown1`
           def next(self) -> tuple[nothing]
     """)
 
   def test_enumerate(self):
     self.parse_and_solve("""
-      class `~unknown1`:
+      class `~unknown1`(object):
         pass
-      class `~enumerate`:
+      class `~enumerate`(object):
           def __init__(self, iterable: list[`~unknown1`]) -> NoneType
           def next(self) -> tuple[?]
     """)
 
   def test_call_builtin(self):
     mapping = self.parse_and_solve("""
-      class `~unknown1`:
+      class `~unknown1`(object):
         pass
-      class `~unknown2`:
+      class `~unknown2`(object):
         pass
       def `~round`(number: `~unknown1`) -> `~unknown2`
     """)
@@ -457,33 +457,33 @@ class MatchTest(unittest.TestCase):
       def fib(n: `~unknown8` or int) -> int
       def foo(x: `~unknown1`) -> `~unknown3` or int
 
-      class `~int`:  # TODO(kramm): Make pytype add the ~
+      class `~int`(object):  # TODO(kramm): Make pytype add the ~
           def __rmul__(self, y: `~unknown4`) -> int
           def __eq__(self, y: int) -> `~unknown10` or bool
           def __radd__(self, y: `~unknown1`) -> int
           def __rsub__(self, y: `~unknown4`) -> int
 
-      class `~unknown1`(nothing):
+      class `~unknown1`():
           def __add__(self, _1: int) -> `~unknown3`
 
-      class `~unknown3`(nothing):
+      class `~unknown3`():
           pass
 
-      class `~unknown4`(nothing):
+      class `~unknown4`():
           def __eq__(self, _1: int) -> `~unknown6`
           def __sub__(self, _1: int) -> `~unknown8`
           def __mul__(self, _1: int) -> `~unknown12`
 
-      class `~unknown6`(nothing):
+      class `~unknown6`():
           pass
 
-      class `~unknown8`(nothing):
+      class `~unknown8`():
           def __eq__(self, _1: int) -> `~unknown10`
 
-      class `~unknown10`(nothing):
+      class `~unknown10`():
           pass
 
-      class `~unknown12`(nothing):
+      class `~unknown12`():
           pass
     """)
     self.assertItemsEqual(["int", "bool"], mapping["~unknown4"])
@@ -492,10 +492,10 @@ class MatchTest(unittest.TestCase):
     mapping = self.parse_and_solve("""
       def f(self, x: `~unknown4`) -> `~unknown6`
 
-      class `~unknown4`(nothing):
+      class `~unknown4`():
           def __add__(self, _1: int) -> `~unknown6`
 
-      class `~unknown6`(nothing):
+      class `~unknown6`():
           pass
     """)
     # TODO(pludemann): remove "bool" from list when we do the
@@ -507,22 +507,22 @@ class MatchTest(unittest.TestCase):
 
   def test_subclasses(self):
     mapping = self.parse_and_solve("""
-      class Foo:
+      class Foo(object):
         def foo(self) -> Bar1
 
-      class Bar1:
+      class Bar1(object):
         def bar(self) -> complex
 
       class Bar2(Bar1):
         def bar(self) -> float
 
-      class `~unknown1`:
+      class `~unknown1`(object):
         def foo(self) -> `~unknown2`
 
-      class `~unknown2`:
+      class `~unknown2`(object):
         def bar(self) -> `~unknown3`
 
-      class `~unknown3`:
+      class `~unknown3`(object):
         pass
     """)
     self.assertItemsEqual(["complex", "float"], mapping["~unknown3"])
@@ -533,36 +533,36 @@ class MatchTest(unittest.TestCase):
       def baz(complex) -> complex
       def `~baz`(`~unknown3`) -> `~unknown4`
 
-      class `~unknown3`:
+      class `~unknown3`(object):
         pass
 
-      class `~unknown4`:
+      class `~unknown4`(object):
         pass
     """)
     self.assertItemsEqual(["complex", "float"], mapping["~unknown4"])
 
   def test_match_builtin_class(self):
     mapping = self.parse_and_solve("""
-      class `~unknown1`:
+      class `~unknown1`(object):
           pass
-      class `~unknown2`:
+      class `~unknown2`(object):
           pass
 
-      class mylist[T]:
+      class mylist(Generic[T], object):
         def __setitem__[N](self, i: int, y: N) -> NoneType:
           self := mylist[T or N]
 
-      class `~mylist`(nothing):
+      class `~mylist`():
         def __setitem__(self, i: int, y: `~unknown2`) -> `~unknown1`
     """)
     self.assertItemsEqual(["NoneType"], mapping["~unknown1"])
 
   def test_subclasses2(self):
     mapping = self.parse_and_solve("""
-      class Foo:
+      class Foo(object):
         def foo(self) -> Bar1
 
-      class Bar1:
+      class Bar1(object):
         def bar(self) -> Bar1
 
       class Bar2(Bar1):
@@ -572,30 +572,30 @@ class MatchTest(unittest.TestCase):
       def baz(Bar2) -> float
       def `~baz`(`~unknown3`) -> `~unknown4`
 
-      class `~unknown1`:
+      class `~unknown1`(object):
         def foo(self) -> `~unknown2`
 
-      class `~unknown2`:
+      class `~unknown2`(object):
         def bar(self) -> `~unknown3`
 
-      class `~unknown3`:
+      class `~unknown3`(object):
         pass
 
-      class `~unknown4`:
+      class `~unknown4`(object):
         pass
     """)
     self.assertItemsEqual(["complex", "float"], mapping["~unknown4"])
 
   def test_convert(self):
     sourcecode = textwrap.dedent("""
-      class A:
+      class A(object):
           def foo(self, x: `~unknown1`) -> ?
           def foobaz(self, x: int) -> int
-      class `~unknown1`:
+      class `~unknown1`(object):
           def foobaz(self, x: int) -> int
     """)
     expected = textwrap.dedent("""
-      class A:
+      class A(object):
           def foo(self, x: A) -> ?
           def foobaz(self, x: int) -> int
     """).lstrip()
@@ -605,18 +605,18 @@ class MatchTest(unittest.TestCase):
 
   def test_convert_with_type_params(self):
     sourcecode = textwrap.dedent("""
-      class A:
+      class A(object):
           def foo(self, x: `~unknown1`) -> bool
 
-      class `~unknown1`(nothing):
+      class `~unknown1`():
           def __setitem__(self, _1: str, _2: `~unknown2`) -> ?
           def update(self, _1: NoneType or dict[nothing, nothing]) -> ?
 
-      class `~unknown2`(nothing):
+      class `~unknown2`():
           def append(self, v:NoneType) -> NoneType
     """)
     expected = textwrap.dedent("""
-      class A:
+      class A(object):
           def foo(self, x: dict[str, list[?]]) -> bool
     """).lstrip()
     ast = parser.parse_string(sourcecode)
@@ -627,7 +627,7 @@ class MatchTest(unittest.TestCase):
     sourcecode = textwrap.dedent("""
       x = ...  # type: `~unknown1`
       def `~isinstance`(object: int, class_or_type_or_tuple: tuple[nothing]) -> `~unknown1`
-      class `~unknown1`:
+      class `~unknown1`(object):
         pass
     """)
     expected = textwrap.dedent("""
@@ -639,14 +639,14 @@ class MatchTest(unittest.TestCase):
 
   def test_match_superclass(self):
     mapping = self.parse_and_solve("""
-      class Base1(nothing):
+      class Base1():
         def f(self, x:Base1) -> Base2
-      class Base2(nothing):
+      class Base2():
         def g(self) -> Base1
       class Foo(Base1, Base2):
         pass
 
-      class `~unknown1`(nothing):
+      class `~unknown1`():
         def f(self, x:Base1) -> Base2
     """)
     self.assertItemsEqual(["Foo", "Base1"], mapping["~unknown1"])

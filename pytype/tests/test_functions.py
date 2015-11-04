@@ -369,7 +369,7 @@ class TestGenerators(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
         def f() -> int
-        class Foo:
+        class Foo(object):
           def match_method(self) -> list[nothing]
           def match_function(self) -> list[nothing]
           def match_pytd_function(self) -> list[nothing]
