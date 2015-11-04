@@ -456,49 +456,59 @@ class TypeDeclParser(object):
 
   def p_toplevel_if(self, p):
     """toplevel_if : IF version_expr COLON INDENT alldefs DEDENT"""
-    p[0] = p[5] if p[2] else []
+    _, _, version_expr, _, _, alldefs, _ = p
+    p[0] = alldefs if version_expr else []
 
   def p_toplevel_if_else(self, p):
     """toplevel_if : IF version_expr COLON INDENT alldefs DEDENT ELSE COLON INDENT alldefs DEDENT"""
-    p[0] = p[5] if p[2] else p[10]
+    _, _, version_expr, _, _, alldefs1, _, _, _, _, alldefs2, _ = p
+    p[0] = alldefs1 if version_expr else alldefs2
 
   def p_funcdefs_if(self, p):
     """funcdefs_if : IF version_expr COLON INDENT funcdefs DEDENT"""
-    p[0] = p[5] if p[2] else []
+    _, _, version_expr, _, _, funcdefs, _ = p
+    p[0] = funcdefs if version_expr else []
 
   def p_funcdefs_if_else(self, p):
     """funcdefs_if : IF version_expr COLON INDENT funcdefs DEDENT ELSE COLON INDENT funcdefs DEDENT"""
-    p[0] = p[5] if p[2] else p[10]
+    _, _, version_expr, _, _, funcdefs1, _, _, _, _, funcdefs2, _ = p
+    p[0] = funcdefs1 if version_expr else funcdefs2
 
   def p_version_expr_lt(self, p):
     """version_expr : NAME LT NUMBER"""
-    CheckStringIsPython(self, p[1], p)
-    p[0] = self.python_version < p[3].AsVersion(self, p)
+    _, name, _, number = p
+    CheckStringIsPython(self, name, p)
+    p[0] = self.python_version < number.AsVersion(self, p)
 
   def p_version_expr_gt(self, p):
     """version_expr : NAME GT NUMBER"""
-    CheckStringIsPython(self, p[1], p)
-    p[0] = self.python_version > p[3].AsVersion(self, p)
+    _, name, _, number = p
+    CheckStringIsPython(self, name, p)
+    p[0] = self.python_version > number.AsVersion(self, p)
 
   def p_version_expr_ge(self, p):
     """version_expr : NAME GE NUMBER"""
-    CheckStringIsPython(self, p[1], p)
-    p[0] = self.python_version >= p[3].AsVersion(self, p)
+    _, name, _, number = p
+    CheckStringIsPython(self, name, p)
+    p[0] = self.python_version >= number.AsVersion(self, p)
 
   def p_version_expr_le(self, p):
     """version_expr : NAME LE NUMBER"""
-    CheckStringIsPython(self, p[1], p)
-    p[0] = self.python_version <= p[3].AsVersion(self, p)
+    _, name, _, number = p
+    CheckStringIsPython(self, name, p)
+    p[0] = self.python_version <= number.AsVersion(self, p)
 
   def p_version_expr_eq(self, p):
     """version_expr : NAME EQ NUMBER"""
-    CheckStringIsPython(self, p[1], p)
-    p[0] = self.python_version == p[3].AsVersion(self, p)
+    _, name, _, number = p
+    CheckStringIsPython(self, name, p)
+    p[0] = self.python_version == number.AsVersion(self, p)
 
   def p_version_expr_ne(self, p):
     """version_expr : NAME NE NUMBER"""
-    CheckStringIsPython(self, p[1], p)
-    p[0] = self.python_version != p[3].AsVersion(self, p)
+    _, name, _, number = p
+    CheckStringIsPython(self, name, p)
+    p[0] = self.python_version != number.AsVersion(self, p)
 
   def p_class_parents(self, p):
     """class_parents : parents"""
@@ -523,12 +533,11 @@ class TypeDeclParser(object):
   # TODO(raoulDoc): doesn't support nested classes
   def p_classdef(self, p):
     """classdef : CLASS NAME class_parents COLON INDENT class_funcs DEDENT end_class"""
-    #             1     2     3      4     5      6           7
-    template, parents = p[3]
-    methoddefs = [x for x in p[6] if isinstance(x, NameAndSig)]
-    constants = [x for x in p[6] if isinstance(x, pytd.Constant)]
+    _, _, name, (template, parents), _, _, class_funcs, _, _ = p
+    methoddefs = [x for x in class_funcs  if isinstance(x, NameAndSig)]
+    constants = [x for x in class_funcs if isinstance(x, pytd.Constant)]
     if (set(f.name for f in methoddefs) | set(c.name for c in constants) !=
-        set(d.name for d in p[6])):
+        set(d.name for d in class_funcs)):
       # TODO(kramm): raise a syntax error right when the identifier is defined.
       raise make_syntax_error(self, 'Duplicate identifier(s)', p)
 
@@ -539,7 +548,7 @@ class TypeDeclParser(object):
           raise make_syntax_error(self, 'Duplicate template parameter %s' %
                                   t.name, p)
 
-    cls = pytd.Class(name=p[2], parents=parents,
+    cls = pytd.Class(name=name, parents=parents,
                      methods=tuple(self.MergeSignatures(methoddefs)),
                      constants=tuple(constants), template=template)
     p[0] = cls.Visit(visitors.AdjustSelf())
@@ -554,7 +563,8 @@ class TypeDeclParser(object):
 
   def p_parents(self, p):
     """parents : LPAREN parent_list RPAREN"""
-    p[0] = p[2]
+    _, _, parent_list, _ = p
+    p[0] = parent_list
 
   def p_parents_empty(self, p):
     """parents : LPAREN RPAREN"""
@@ -566,7 +576,8 @@ class TypeDeclParser(object):
 
   def p_parent_list_multi(self, p):
     """parent_list : parent_list COMMA type"""
-    p[0] = p[1] + [p[3]]
+    _, parent_list, _, parent = p
+    p[0] = parent_list + [parent]
 
   def p_parent_list_1(self, p):
     """parent_list : type"""
@@ -599,30 +610,28 @@ class TypeDeclParser(object):
 
   def p_typevardef(self, p):
     """typevardef : NAME ASSIGN TYPEVAR LPAREN STRING RPAREN"""
-    #               1    2      3       4      5      6
-    if p[1] != p[5]:
+    _, name, _, _, _, name_param, _ = p
+    if name != name_param:
       make_syntax_error(self, 'TypeVar name needs to be %r (not %r)' % (
-          p[5], p[1]), p)
-    self.context.typevars.add(p[1])
-    if p[1] in self.context.bound:
+          name_param, name), p)
+    self.context.typevars.add(name)
+    if name in self.context.bound:
       make_syntax_error(
           self, 'Illegal redefine of TypeVar(%r) from outer scope' % p[1], p)
     p[0] = []
 
   def p_funcdef(self, p):
     """funcdef : DEF NAME LPAREN params RPAREN return raises signature maybe_body"""
-    #            1   2    3      4      5      6      7      8         9
+    _, _, name, _, params, _, return_type, raises, _, body = p
     # TODO(kramm): Output a warning if we already encountered a signature
     #              with these types (but potentially different argument names)
-    if p[2] == '__init__' and isinstance(p[6], pytd.AnythingType):
-      # TODO(pludemann): see TODO for p_return_null.
-      # for __init__, the default return value is None -> NoneType
+    if name == '__init__' and isinstance(return_type, pytd.AnythingType):
       ret = pytd.NamedType('NoneType')
     else:
-      ret = p[6]
-    signature = pytd.Signature(params=tuple(p[4].required), return_type=ret,
-                               exceptions=tuple(p[7]), template=(),
-                               has_optional=p[4].has_optional)
+      ret = return_type
+    signature = pytd.Signature(params=tuple(params.required), return_type=ret,
+                               exceptions=tuple(raises), template=(),
+                               has_optional=params.has_optional)
 
     typeparams = {name: pytd.TypeParameter(name)
                   for name in self.context.typevars}
@@ -634,17 +643,18 @@ class TypeDeclParser(object):
           template=tuple(pytd.TemplateItem(typeparams[name])
                          for name in used_typeparams))
 
-    for mutator in p[9]:
+    for mutator in body:
       signature = signature.Visit(mutator)
       if not mutator.successful:
         make_syntax_error(self, 'No parameter named %s' % mutator.name, p)
-    p[0] = NameAndSig(name=p[2], signature=signature, external_code=False)
+    p[0] = NameAndSig(name=name, signature=signature, external_code=False)
 
   def p_funcdef_code(self, p):
     """funcdef : DEF NAME PYTHONCODE"""
     # NAME (not: module_name) because PYTHONCODE is always local.
+    _, _, name, _ = p
     p[0] = NameAndSig(
-        name=p[2],
+        name=name,
         # signature is for completeness - it's ignored
         signature=pytd.Signature(params=(),
                                  return_type=pytd.NothingType(),
@@ -659,7 +669,8 @@ class TypeDeclParser(object):
 
   def p_has_body(self, p):
     """maybe_body : COLON INDENT body DEDENT"""
-    p[0] = p[3]
+    _, _, _, body, _ = p
+    p[0] = body
 
   def p_body_1(self, p):
     """body : mutator"""
@@ -793,16 +804,18 @@ class TypeDeclParser(object):
 
   def p_type_homogeneous(self, p):
     """type : named_or_external_type LBRACKET parameters RBRACKET"""
-    if len(p[3]) == 1:
-      element_type, = p[3]
-      p[0] = pytd.HomogeneousContainerType(base_type=p[1],
+    _, base_type, _, parameters, _ = p
+    if len(parameters) == 1:
+      element_type, = parameters
+      p[0] = pytd.HomogeneousContainerType(base_type=base_type,
                                            parameters=(element_type,))
     else:
-      p[0] = pytd.GenericType(base_type=p[1], parameters=p[3])
+      p[0] = pytd.GenericType(base_type=base_type, parameters=parameters)
 
   def p_type_generic_1(self, p):
     """type : named_or_external_type LBRACKET parameters COMMA RBRACKET"""
-    p[0] = pytd.GenericType(base_type=p[1], parameters=p[3])
+    _, base_type, _, parameters, _, _ = p
+    p[0] = pytd.GenericType(base_type=base_type, parameters=parameters)
 
   def p_type_paren(self, p):
     """type : LPAREN type RPAREN"""
@@ -818,7 +831,8 @@ class TypeDeclParser(object):
 
   def p_named_or_external_type_multi(self, p):
     """named_or_external_type : module_name DOT NAME"""
-    p[0] = pytd.ExternalType(p[3], p[1])
+    _, module_name, _, name = p
+    p[0] = pytd.ExternalType(name, module_name)
 
   def p_type_unknown(self, p):
     """type : QUESTIONMARK"""
