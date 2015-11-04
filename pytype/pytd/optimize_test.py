@@ -528,13 +528,17 @@ class TestOptimize(parser_test.ParserTest):
     # This is a test for intermediate data. See AbsorbMutableParameters class
     # pydoc about how AbsorbMutableParameters works on methods.
     src = textwrap.dedent("""
+        T = TypeVar('T')
         class MyClass(Generic[T], object):
-            def append[NEW](self, x: NEW) -> ?:
+            NEW = TypeVar('NEW')
+            def append(self, x: NEW) -> ?:
                 self := MyClass[T or NEW]
     """)
     expected = textwrap.dedent("""
+        T = TypeVar('T')
         class MyClass(Generic[T], object):
-            def append[NEW](self: MyClass[T or NEW], x: NEW) -> ?
+            NEW = TypeVar('NEW')
+            def append(self: MyClass[T or NEW], x: NEW) -> ?
     """)
     tree = self.Parse(src)
     new_tree = tree.Visit(optimize.AbsorbMutableParameters())
@@ -546,24 +550,33 @@ class TestOptimize(parser_test.ParserTest):
     # AbsorbMutableParameters.
     # See comment in RemoveMutableParameters
     src = textwrap.dedent("""
+      T = TypeVar('T')
       class A(Generic[T], object):
-          def foo[T2](self, x: T or T2) -> T2
-          def bar[T2, T3](self, x: T or T2 or T3) -> T3
-          def baz[T2, T3](self, x: T or T2, y: T2 or T3) -> ?
+          T2 = TypeVar('T2')
+          T3 = TypeVar('T3')
+          def foo(self, x: T or T2) -> T2
+          def bar(self, x: T or T2 or T3) -> T3
+          def baz(self, x: T or T2, y: T2 or T3) -> ?
 
+      K = TypeVar('K')
+      V = TypeVar('V')
       class D(Generic[K, V], object):
-          def foo[T](self, x: T) -> K or T
-          def bar[T](self, x: T) -> V or T
+          T = TypeVar('T')
+          def foo(self, x: T) -> K or T
+          def bar(self, x: T) -> V or T
           def baz(self, x: K or V) -> K or V
-          def lorem[T](self, x: T) -> T or K or V
-          def ipsum[T](self, x: T) -> T or K
+          def lorem(self, x: T) -> T or K or V
+          def ipsum(self, x: T) -> T or K
     """)
     expected = textwrap.dedent("""
+      T = TypeVar('T')
       class A(Generic[T], object):
           def foo(self, x: T) -> T
           def bar(self, x: T) -> T
           def baz(self, x: T, y: T) -> ?
 
+      K = TypeVar('K')
+      V = TypeVar('V')
       class D(Generic[K, V], object):
           def foo(self, x: K) -> K
           def bar(self, x: V) -> V

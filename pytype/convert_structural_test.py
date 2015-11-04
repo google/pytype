@@ -168,6 +168,7 @@ class MatchTest(unittest.TestCase):
 
   def test_type_parameters(self):
     mapping = self.parse_and_solve("""
+      T = TypeVar('T')
       class A(Generic[T], object):
         def foo(self) -> ?
         def bar(self, x: T) -> ?
@@ -271,6 +272,7 @@ class MatchTest(unittest.TestCase):
         def foobar(self) -> ?
       class D(list[int]):
         def foobar(self) -> ?
+      T = TypeVar('T')
       class E(Generic[T], T):
         def foobar(self) -> ?
       class `~unknown1`(object):
@@ -548,8 +550,10 @@ class MatchTest(unittest.TestCase):
       class `~unknown2`(object):
           pass
 
+      T = TypeVar('T')
       class mylist(Generic[T], object):
-        def __setitem__[N](self, i: int, y: N) -> NoneType:
+        N = TypeVar('N')
+        def __setitem__(self, i: int, y: N) -> NoneType:
           self := mylist[T or N]
 
       class `~mylist`():

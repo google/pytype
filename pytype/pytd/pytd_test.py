@@ -56,12 +56,14 @@ class TestPytd(unittest.TestCase):
     # ordering is ignored when testing for equality (which ASTeq uses).
     src1 = textwrap.dedent("""
         def foo(a: int or str) -> C
+        T = TypeVar('T')
         class C(Generic[T], object):
             def bar(x: T) -> NoneType
         CONSTANT = ...  # type: C[float]
         """)
     src2 = textwrap.dedent("""
         CONSTANT = ...  # type: C[float]
+        T = TypeVar('T')
         class C(Generic[T], object):
             def bar(x: T) -> NoneType
         def foo(a: str or int) -> C

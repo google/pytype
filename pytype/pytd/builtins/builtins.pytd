@@ -50,7 +50,8 @@ def filter(function_or_None, sequence: str) -> str
 def filter(function_or_None, sequence: bytearray) -> list[int]
 def filter(function_or_None, sequence: unicode) -> unicode
 def filter(function_or_None, sequence: list or set or iterator) -> list
-def filter[A](function_or_None, sequence: tuple[A]) -> tuple[A]
+A = TypeVar('A')
+def filter(function_or_None, sequence: tuple[A]) -> tuple[A]
 def format(value, ...) -> str
 def format(value: unicode, ...) -> unicode
 def getattr(value: object, attr: str or unicode, ...) -> ?
@@ -67,35 +68,36 @@ def issubclass(C, B: tuple[nothing]) -> bool
 def iter(collection: str) -> iterator[str]
 def iter(collection: unicode) -> iterator[unicode]
 def iter(collection: bytearray) -> bytearray_iterator
-def iter[T](collection: iterator[T]) -> iterator[T]
-def iter[T](collection: list[T]) -> listiterator[T]
-def iter[T](collection: tuple[T]) -> tupleiterator[T]
-def iter[T](collection: set[T]) -> setiterator[T]
+T = TypeVar('T')
+def iter(collection: iterator[T]) -> iterator[T]
+def iter(collection: list[T]) -> listiterator[T]
+def iter(collection: tuple[T]) -> tupleiterator[T]
+def iter(collection: set[T]) -> setiterator[T]
 def len(obj) -> int  # TODO(pludemann): leave this out and call obj.__len__() ?
 def locals() -> dict[str, object]
 def map(function, sequence: list[nothing], ...) -> list[nothing]
 def map(function, sequence, ...) -> list
 # TODO(pludemann): max(*args: iterable[T], ...) ?
-def max[T](arg1: T, arg2: T) -> T
-def max[T](arg1: T, arg2: T, arg3: T) -> T
-def max[T](arg1, arg2, arg3, ...) -> ?  # TODO(pludemann): handle more args?
+def max(arg1: T, arg2: T) -> T
+def max(arg1: T, arg2: T, arg3: T) -> T
+def max(arg1, arg2, arg3, ...) -> ?  # TODO(pludemann): handle more args?
 def max(iterable: str, ...) -> str
 def max(iterable: unicode, ...) -> unicode
 def max(iterable: bytearray, ...) -> int  # TODO(pludemann): lint warning if programmer does this?
-def max[T](iterable: list[T], ...) -> T
-def max[T](iterable: tuple[T] or set[T], ...) -> T
-def max[T](iterable: iterator[T], ...) -> T
+def max(iterable: list[T], ...) -> T
+def max(iterable: tuple[T] or set[T], ...) -> T
+def max(iterable: iterator[T], ...) -> T
 # TODO(pludemann): min(*args: iterable[T], ...) ?
-def min[T](arg1: T, arg2: T) -> T
-def min[T](arg1: T, arg2: T, arg3: T) -> T
-def min[T](arg1, arg2, arg3, ...) -> ?  # TODO(pludemann): handle more args?
+def min(arg1: T, arg2: T) -> T
+def min(arg1: T, arg2: T, arg3: T) -> T
+def min(arg1, arg2, arg3, ...) -> ?  # TODO(pludemann): handle more args?
 def min(iterable: str, ...) -> str
 def min(iterable: bytearray, ...) -> str  # TODO(pludemann): lint warning if programmer does this?
 def min(iterable: unicode, ...) -> unicode
-def min[T](iterable: list[T], ...) -> T
-def min[T](iterable: tuple[T], ...) -> T
-def min[T](iterable: set[T], ...) -> T
-def min[T](iterable: iterator[T], ...) -> T
+def min(iterable: list[T], ...) -> T
+def min(iterable: tuple[T], ...) -> T
+def min(iterable: set[T], ...) -> T
+def min(iterable: iterator[T], ...) -> T
 def next PYTHONCODE
 def oct(number: int) -> str
 # TODO(pludemann): Python3 allows open(int or str or bytes or memoryview, ...)
@@ -374,18 +376,23 @@ class bytearray_iterator(object):
     def __iter__(self) -> bytearray_iterator
     def next(self) -> int
 
-class `dictionary-keyiterator`(Generic[K]):
+K = TypeVar('K')
+class `dictionary-keyiterator`(Generic[K], object):
     def __iter__(self) -> `dictionary-keyiterator`[K]
     def next(self) -> K
 
-class `dictionary-valueiterator`(Generic[V]):
+V = TypeVar('V')
+class `dictionary-valueiterator`(Generic[V], object):
     def __iter__(self) -> `dictionary-valueiterator`[V]
     def next(self) -> V
 
-class `dictionary-itemiterator`(Generic[K, V]):
+K = TypeVar('K')
+V = TypeVar('V')
+class `dictionary-itemiterator`(Generic[K, V], object):
     def __iter__(self) -> `dictionary-itemiterator`[K, V]
     def next(self) -> tuple[object]  # tuple[K, V]  # TODO(pludemann): a pair
 
+K = TypeVar('K')
 class dict_keys(Generic[K], object):
     def __and__(self, y: set[K] or dict_keys[K]) -> set[K]
     def __contains__(self, y: K) -> bool
@@ -405,10 +412,13 @@ class dict_keys(Generic[K], object):
     def __sub__(self, y) -> set[K]
     def __xor__(self, y) -> set[K]
 
+V = TypeVar('V')
 class dict_values(Generic[V], object):
     def __iter__(self) -> `dictionary-valueiterator`[V]
     def __len__(self) -> int
 
+K = TypeVar('K')
+V = TypeVar('V')
 class dict_items(Generic[K, V], object):
     # TODO(pludemann): set[pair[K,V]] etc.
     def __and__(self, y: set or dict_items[K,V]) -> set
@@ -429,13 +439,18 @@ class dict_items(Generic[K, V], object):
     def __sub__(self, y: set or dict_items[K,V]) -> set
     def __xor__(self, y: set or dict_items[K,V]) -> set
 
+K = TypeVar('K')
+V = TypeVar('V')
 # "K" and "V" are hardcoded in other places (e.g. atomic_abstract_value.Dict)
 class dict(Generic[K, V], object):
+    X = TypeVar('X')
+    K2 = TypeVar('K2')
+    V2 = TypeVar('V2')
     def __init__(self) -> NoneType:
         self := dict[nothing, nothing]
     def __init__(self, list: list[nothing]) -> NoneType:
         self := dict[nothing, nothing]
-    def __init__[X](self, list: list[tuple[X]]) -> NoneType:
+    def __init__(self, list: list[tuple[X]]) -> NoneType:
         self := dict[X, X]
     def __init__(self, x) -> NoneType
     def __contains__(self, k: K) -> bool
@@ -445,7 +460,7 @@ class dict(Generic[K, V], object):
     def __iter__(self) -> `dictionary-keyiterator`[K]
     def __len__(self) -> int
     def __ne__(self, y: dict) -> bool
-    def __setitem__[K2, V2](self, i: K2, y: V2) -> NoneType:
+    def __setitem__(self, i: K2, y: V2) -> NoneType:
       self := dict[K or K2, V or V2]
     def clear(self) -> NoneType
     def copy(self) -> dict[K, V]
@@ -461,7 +476,7 @@ class dict(Generic[K, V], object):
     # def fromkeys(self, S: iterator, ...) -> dict[str, NoneType] or dict[unicode, NoneType] or dict
     # def fromkeys(self, S: dict, ...) -> dict[object, NoneType]
     def get(self, k: K) -> V or NoneType
-    def get[V2](self, k: K, d: V2) -> V or V2
+    def get(self, k: K, d: V2) -> V or V2
     def has_key(self, k: K) -> bool
     def items(self) -> list[tuple[K or V]]  # list[tuple[K, V]]
     def iteritems(self) -> `dictionary-itemiterator`[K,V]
@@ -469,11 +484,11 @@ class dict(Generic[K, V], object):
     def itervalues(self) -> `dictionary-valueiterator`[V]
     def keys(self) -> list[K]
     def pop(self, k) -> V
-    def pop[V2](self, k, d: V2) -> V or V2
+    def pop(self, k, d: V2) -> V or V2
     def popitem(self) -> tuple[K or V]  # tuple[K, V]
-    def setdefault[K2](self, k: K2) -> V or NoneType:
+    def setdefault(self, k: K2) -> V or NoneType:
         self := dict[K or K2, V or NoneType]
-    def setdefault[K2, V2](self, k: K2, v: V2) -> V or V2:
+    def setdefault(self, k: K2, v: V2) -> V or V2:
         self := dict[K or K2, V or V2]
     def update(self, E, ...) -> NoneType
     def update(self) -> NoneType
@@ -482,32 +497,39 @@ class dict(Generic[K, V], object):
     def viewkeys(self) -> dict_keys[K]
     def viewvalues(self) -> dict_values
 
+T = TypeVar('T')
 class listiterator(Generic[T], object):
     def __iter__(self) -> listiterator[T]
     def next(self) -> T
 
+T = TypeVar('T')
 class enumerate(Generic[T], object):
-    def __init__[T2](self, iterable: list[T2], ...) -> NoneType:
+    T2 = TypeVar('T2')
+    def __init__(self, iterable: list[T2], ...) -> NoneType:
         self := enumerate[T2]
-    def __init__[T2](self, iterable: tuple[T2], ...) -> NoneType:
+    def __init__(self, iterable: tuple[T2], ...) -> NoneType:
         self := enumerate[T2]
-    def __init__[T2](self, iterable: generator[T2], ...) -> NoneType:
+    def __init__(self, iterable: generator[T2], ...) -> NoneType:
         self := enumerate[T2]
     def __init__(self, ...) -> NoneType:
         self := enumerate[?]
     def __iter__(self) -> enumerate[T]  # enumerate.__iter__() returns itself
     def next(self) -> tuple[int or long or T]  # tuple[int or long, T]
 
+T = TypeVar('T')
 class listreverseiterator(Generic[T], object):
     def __iter__(self) -> listreverseiterator[T]
     def next(self) -> T
 
+T = TypeVar('T')
 class list(Generic[T], object):
+    N = TypeVar('N')
+    A = TypeVar('A')
     def __init__(self) -> NoneType:
         self := list[nothing]
-    def __init__[N](self, iterable: list[N] or `dictionary-keyiterator`[N] or `dictionary-valueiterator`[N] or listiterator[N] or listreverseiterator[N] or tupleiterator[N] or setiterator[N] or iterator[N] or `callable-iterator`[N]) -> NoneType:
+    def __init__(self, iterable: list[N] or `dictionary-keyiterator`[N] or `dictionary-valueiterator`[N] or listiterator[N] or listreverseiterator[N] or tupleiterator[N] or setiterator[N] or iterator[N] or `callable-iterator`[N]) -> NoneType:
         self := list[N]
-    def __init__[V](self, iterable: `dictionary-itemiterator`[T,V]) -> NoneType:
+    def __init__(self, iterable: `dictionary-itemiterator`[T,V]) -> NoneType:
         self := list[T]
     def __init__(self, iterable: str) -> NoneType:  # TODO(pludemann): lint warning if programmer does this?
         self := list[str]
@@ -515,18 +537,18 @@ class list(Generic[T], object):
         self := list[int]
     def __init__(self, iterable: rangeiterator) -> NoneType:
         self := list[int]
-    def __init__[N](self, generator: generator[N]) -> NoneType:
+    def __init__(self, generator: generator[N]) -> NoneType:
         # TODO(kramm): We should be able to just write "T := N"
         # TODO(pludemann): see comment above -- why does self:=list[int] do the
         #                  the wrong thing for some tests?
         self := list[N]
-    def __init__[N](self, iterable: list[N]) -> NoneType:
+    def __init__(self, iterable: list[N]) -> NoneType:
         self := list[N]
     def __init__(self, x) -> NoneType:
         # TODO(pludemann): this is a fall-through ... what happens if called
         #                  with __any_object__?
         self := list[?]  # "?" should be x.type.element_type or abc.Iterator
-    def __add__[A](self, y: list[A]) -> list[T or A]
+    def __add__(self, y: list[A]) -> list[T or A]
     def __contains__(self, y: T) -> bool
     def __delitem__(self, y: int or slice) -> NoneType
     def __delslice__(self, i: int, j: int) -> NoneType
@@ -543,7 +565,7 @@ class list(Generic[T], object):
     def __getitem__(self, index: slice) -> list[T]
     def __getslice__(self, i: int, j: int) -> list[T]
     def __gt__(self, y: list) -> bool
-    def __iadd__[A](self, y: list[A]) -> list[T or A]
+    def __iadd__(self, y: list[A]) -> list[T or A]
     def __iadd__(self, y) -> list
     def __imul__(self, y: int) -> list
     def __iter__(self) -> listiterator[T]
@@ -554,16 +576,16 @@ class list(Generic[T], object):
     def __ne__(self, y: list) -> bool
     def __reversed__(self) -> listreverseiterator[T]
     def __rmul__(self, n: int) -> list[T]
-    def __setitem__[N](self, i: int, y: N) -> NoneType:
+    def __setitem__(self, i: int, y: N) -> NoneType:
       self := list[T or N]
     def __setitem__(self, i: slice, y) -> NoneType:
       self := list[?]
     def __setslice__(self, i: int, j: int, y) -> NoneType
-    def append[A](self, object: A) -> NoneType:
+    def append(self, object: A) -> NoneType:
       self := list[T or A]
     def count(self, value: T) -> int
     def index(self, value, ...) -> int
-    def insert[A](self, index: int, object: A) -> NoneType:
+    def insert(self, index: int, object: A) -> NoneType:
       self := list[T or A]
     def pop(self) -> T
     def pop(self, i: int) -> T
@@ -572,20 +594,24 @@ class list(Generic[T], object):
     def sort(self, ...) -> NoneType
 
 # "reversed" is a type, see PyReversed_Type in Objects/enumobject.c
+T = TypeVar('T')
 class reversed(Generic[T], object):
-    def __init__[N](self, sequence: list[N]) -> NoneType:
+    N = TypeVar('N')
+    def __init__(self, sequence: list[N]) -> NoneType:
       self := reversed[N]
-    def __init__[N](self, sequence: tuple[N]) -> NoneType:
+    def __init__(self, sequence: tuple[N]) -> NoneType:
       self := reversed[N]
-    def __init__[N](self, sequence: str) -> NoneType:
+    def __init__(self, sequence: str) -> NoneType:
       self := reversed[str]
     def __iter__(self) -> reversed
     def next(self) -> T
 
+T = TypeVar('T')
 class tuple(Generic[T], object):
+    A = TypeVar('A')
     def __init__(self, p0) -> NoneType
     def __init__(self) -> NoneType
-    def __add__[A](self, y: tuple[A]) -> tuple[T or A]
+    def __add__(self, y: tuple[A]) -> tuple[T or A]
     def __contains__(self, y: T) -> bool
     def __eq__(self, y: tuple) -> bool
     def __ge__(self, y: tuple) -> bool
@@ -603,16 +629,22 @@ class tuple(Generic[T], object):
     def count(self, value: T) -> int
     def index(self, value, ...) -> int
 
+T = TypeVar('T')
 class tupleiterator(Generic[T], object):
     def __iter__(self) -> tupleiterator[T]
     def next(self) -> T
 
+T = TypeVar('T')
 class set(Generic[T], object):
     # TODO(pludemann): some of the combining methods may have wrong set[...] types
     #                  cf: __and__, __or__
+    A = TypeVar('A')
+    N = TypeVar('N')
+    X = TypeVar('X')
+    T2 = TypeVar('T2')
     def __init__(self) -> NoneType:
         self := set[nothing]
-    def __init__[N](self, iterable: list[N]) -> NoneType:
+    def __init__(self, iterable: list[N]) -> NoneType:
         self := set[N]
     def __init__(self, x) -> NoneType:
         self := set[nothing]  # TODO(kramm): should be set[?]
@@ -630,12 +662,12 @@ class set(Generic[T], object):
     def __len__(self) -> int
     def __lt__(self, y: set[T]) -> bool
     def __ne__(self, y) -> bool
-    def __or__[T2](self, y: set[T2]) -> set[T2]
+    def __or__(self, y: set[T2]) -> set[T2]
     def __rand__(self, y: set[T]) -> set[T]
     def __ror__(self, y: set[T]) -> set[T]
-    def __rsub__[X](self, y: set[X] or frozenset[X]) -> set[X]
+    def __rsub__(self, y: set[X] or frozenset[X]) -> set[X]
     def __rxor__(self, y: set[T]) -> set[T]
-    def __sub__[X](self, y: set[X] or frozenset[X]) -> set[T]
+    def __sub__(self, y: set[X] or frozenset[X]) -> set[T]
     def __xor__(self, y: set[T]) -> set[T]
     def clear(self, ...) -> NoneType
     def copy(self, ...) -> set[T]
@@ -646,15 +678,18 @@ class set(Generic[T], object):
     def pop(self) -> T
     def union(self, ...) -> set[T]
     def update(self, ...) -> NoneType
-    def add[A](self, object: A) -> NoneType:
+    def add(self, object: A) -> NoneType:
         self := set[T or A]
 
+T = TypeVar('T')
 class frozenset(Generic[T], object):
     # TODO(pludemann): some of the combining methods may have wrong frozenset[...] types
     #                  cf: __and__, __or__
+    N = TypeVar('N')
+    T2 = TypeVar('T2')
     def __init__(self) -> NoneType:
         self := frozenset[nothing]
-    def __init__[N](self, x: list[N]) -> NoneType:
+    def __init__(self, x: list[N]) -> NoneType:
         self := frozenset[N]
     def __init__(self, x) -> NoneType:
         self := frozenset[?]
@@ -668,7 +703,7 @@ class frozenset(Generic[T], object):
     def __len__(self) -> int
     def __lt__(self, y: set[T] or frozenset[T]) -> bool
     def __ne__(self, y) -> bool
-    def __or__[T2](self, y: set[T2] or frozenset[T2]) -> frozenset[T or T2]
+    def __or__(self, y: set[T2] or frozenset[T2]) -> frozenset[T or T2]
     def __rand__(self, y: set[T]) -> set[T]
     def __rand__(self, y: frozenset[T]) -> frozenset[T]
     def __ror__(self, y: set[T]) -> set[T]
@@ -684,6 +719,7 @@ class frozenset(Generic[T], object):
     def intersection(self, ...) -> frozenset[T]
     def union(self, ...) -> frozenset[T]
 
+T = TypeVar('T')
 class setiterator(Generic[T], object):
     def __iter__(self) -> setiterator[T]
     def next(self) -> T
@@ -980,6 +1016,7 @@ class function(object):
     def __call__(self, ...) -> ?
     def __get__(self, obj, ...) -> instancemethod
 
+T = TypeVar('T')
 class generator(Generic[T], object):  # "T" is also hardcoded in abstract.py:Generator
     def __iter__(self) -> generator[T]
     def send(self, arg) -> ?  # TODO(pludemann): or should be "-> T" ?  or needs 2 parameter types for generator?
@@ -1010,11 +1047,12 @@ class type(object):
     def __init__(self, object) -> NoneType
     def __len__(self, p0: str or bytearray) -> int  # TODO(pludemann): remove?
 
+T = TypeVar('T')
 class iterator(Generic[T], object):
     def __iter__(self) -> iterator[T]
     def next(self) -> T
 
-class `callable-iterator`(Generic[T]):  # TODO(pludemann): is this correct?
+class `callable-iterator`(Generic[T], object):  # TODO(pludemann): is this correct?
     def __iter__(self) -> `callable-iterator`[T]
     def next(self) -> T
 

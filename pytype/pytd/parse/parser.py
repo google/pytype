@@ -17,10 +17,11 @@
 
 """Parser & Lexer for type declaration language."""
 
+# needed for ply grammar rules:
 # pylint: disable=g-bad-name, g-short-docstring-punctuation
+# pylint: disable=g-bad-name, g-short-docstring-space
 # pylint: disable=g-doc-args, g-no-space-after-docstring-summary
 # pylint: disable=g-space-before-docstring-summary
-# pylint: disable=g-backslash-continuation
 # pylint: disable=line-too-long
 
 import collections
@@ -60,7 +61,6 @@ class PyLexer(object):
 
   # The ply parsing library expects class members to be named in a specific way.
   t_ARROW = r'->'
-  t_AT = r'@'
   t_COLON = r':'
   t_COLONEQUALS = r':='
   t_COMMA = r','
@@ -81,7 +81,6 @@ class PyLexer(object):
   tokens = [
       'ARROW',
       'ASSIGN',
-      'AT',
       'COLON',
       'COLONEQUALS',
       'COMMA',
@@ -323,6 +322,15 @@ def CheckStringIsPython(parser, string, p):
       parser, 'If conditions can only depend on the \'python\' variable', p)
 
 
+class Context(object):
+  """The global scope, or a class scope."""
+
+  def __init__(self, typevars, bound=(), parent=None):
+    self.typevars = typevars
+    self.bound = bound
+    self.parent = parent
+
+
 def SplitParents(parser, p, parents):
   """Strip the special Generic[...] class out of the base classes."""
   template = ()
@@ -386,11 +394,10 @@ class TypeDeclParser(object):
   def Parse(self, src, name=None, filename='<string>', **kwargs):
     self.src = src  # Keep a copy of what's being parsed
     self.filename = filename if filename else '<string>'
+    self.context = Context(typevars=set())
     self.lexer.set_parse_info(self.src, self.filename)
     ast = self.parser.parse(src, **kwargs)
-    # If there's no name, compute an MD5 to make something unique but comparable
-    # from the src. (The original code had object.__repr__(src) which meant that
-    # in effect object identity was forced.)
+    # If there's no unique name, hash the sourcecode.
     name = name or hashlib.md5(src).hexdigest()
     return ast.Visit(InsertTypeParameters()).Replace(name=name)
 
@@ -433,6 +440,10 @@ class TypeDeclParser(object):
 
   def p_alldefs_func(self, p):
     """alldefs : alldefs funcdef"""
+    p[0] = p[1] + [p[2]]
+
+  def p_alldefs_typevar(self, p):
+    """alldefs : alldefs typevardef"""
     p[0] = p[1] + [p[2]]
 
   def p_alldefs_if(self, p):
@@ -489,11 +500,31 @@ class TypeDeclParser(object):
     CheckStringIsPython(self, p[1], p)
     p[0] = self.python_version != p[3].AsVersion(self, p)
 
+  def p_class_parents(self, p):
+    """class_parents : parents"""
+    template, parents = SplitParents(self, p, p[1])
+    p[0] = template, parents
+    for t in template:
+      if t.name not in self.context.typevars:
+        make_syntax_error(
+            self, 'Name %r must be defined as a TypeVar' % t.name, p)
+    # The new scope has its own set of type variables (to allow class-level
+    # scoping of TypeVar). But any type variable bound to the class is not a
+    # (free) type parameter in the body of the class.
+    bound = {t.name for t in template}
+    new_typevars = self.context.typevars.copy() - bound
+    self.context = Context(new_typevars, bound, parent=self.context)
+
+  def p_end_class(self, p):
+    """end_class : """
+    self.context = self.context.parent
+    p[0] = None
+
   # TODO(raoulDoc): doesn't support nested classes
   def p_classdef(self, p):
-    """classdef : CLASS NAME parents COLON INDENT class_funcs DEDENT"""
+    """classdef : CLASS NAME class_parents COLON INDENT class_funcs DEDENT end_class"""
     #             1     2     3      4     5      6           7
-    template, parents = SplitParents(self, p, p[3])
+    template, parents = p[3]
     methoddefs = [x for x in p[6] if isinstance(x, NameAndSig)]
     constants = [x for x in p[6] if isinstance(x, pytd.Constant)]
     if (set(f.name for f in methoddefs) | set(c.name for c in constants) !=
@@ -541,32 +572,6 @@ class TypeDeclParser(object):
     """parent_list : type"""
     p[0] = [p[1]]
 
-  def p_template(self, p):
-    """template : LBRACKET template_items RBRACKET"""
-    p[0] = p[2]
-    # Verify we don't have duplicate identifiers.
-    names = [template.name for template in p[2]]
-    for name in names:
-      if names.count(name) > 1:
-        make_syntax_error(self, 'Duplicate name %s' % name, p)
-
-  def p_template_null(self, p):
-    """template : """  # pylint: disable=g-short-docstring-space
-    # TODO(pludemann): test cases
-    p[0] = []
-
-  def p_template_items_multi(self, p):
-    """template_items : template_items COMMA template_item"""
-    p[0] = p[1] + [p[3]]
-
-  def p_template_items_1(self, p):
-    """template_items : template_item"""
-    p[0] = [p[1]]
-
-  def p_template_item(self, p):
-    """template_item : NAME"""
-    p[0] = pytd.TemplateItem(pytd.TypeParameter(p[1]))
-
   def p_funcdefs_func(self, p):
     """funcdefs : funcdefs funcdef"""
     p[0] = p[1] + [p[2]]
@@ -579,6 +584,10 @@ class TypeDeclParser(object):
     """funcdefs : funcdefs funcdefs_if"""
     p[0] = p[1] + p[2]
 
+  def p_funcdefs_typevar(self, p):
+    """funcdefs : funcdefs typevardef"""
+    p[0] = p[1] + p[2]
+
   # TODO(raoulDoc): doesn't support nested functions
   def p_funcdefs_null(self, p):
     """funcdefs :"""
@@ -588,21 +597,44 @@ class TypeDeclParser(object):
     """constantdef : NAME ASSIGN DOT DOT DOT TYPECOMMENT type"""
     p[0] = pytd.Constant(p[1], p[7])
 
+  def p_typevardef(self, p):
+    """typevardef : NAME ASSIGN TYPEVAR LPAREN STRING RPAREN"""
+    #               1    2      3       4      5      6
+    if p[1] != p[5]:
+      make_syntax_error(self, 'TypeVar name needs to be %r (not %r)' % (
+          p[5], p[1]), p)
+    self.context.typevars.add(p[1])
+    if p[1] in self.context.bound:
+      make_syntax_error(
+          self, 'Illegal redefine of TypeVar(%r) from outer scope' % p[1], p)
+    p[0] = []
+
   def p_funcdef(self, p):
-    """funcdef : DEF NAME template LPAREN params RPAREN return raises signature maybe_body"""
-    #            1   2    3        4      5      6      7      8      9         10
+    """funcdef : DEF NAME LPAREN params RPAREN return raises signature maybe_body"""
+    #            1   2    3      4      5      6      7      8         9
     # TODO(kramm): Output a warning if we already encountered a signature
     #              with these types (but potentially different argument names)
-    if p[2] == '__init__' and isinstance(p[7], pytd.AnythingType):
+    if p[2] == '__init__' and isinstance(p[6], pytd.AnythingType):
       # TODO(pludemann): see TODO for p_return_null.
       # for __init__, the default return value is None -> NoneType
       ret = pytd.NamedType('NoneType')
     else:
-      ret = p[7]
-    signature = pytd.Signature(params=tuple(p[5].required), return_type=ret,
-                               exceptions=tuple(p[8]), template=tuple(p[3]),
-                               has_optional=p[5].has_optional)
-    for mutator in p[10]:
+      ret = p[6]
+    signature = pytd.Signature(params=tuple(p[4].required), return_type=ret,
+                               exceptions=tuple(p[7]), template=(),
+                               has_optional=p[4].has_optional)
+
+    typeparams = {name: pytd.TypeParameter(name)
+                  for name in self.context.typevars}
+    used_typeparams = set()
+    signature = signature.Visit(visitors.ReplaceTypes(typeparams,
+                                                      used_typeparams))
+    if used_typeparams:
+      signature = signature.Replace(
+          template=tuple(pytd.TemplateItem(typeparams[name])
+                         for name in used_typeparams))
+
+    for mutator in p[9]:
       signature = signature.Visit(mutator)
       if not mutator.successful:
         make_syntax_error(self, 'No parameter named %s' % mutator.name, p)
@@ -725,10 +757,6 @@ class TypeDeclParser(object):
   def p_parameter(self, p):
     """parameter : type"""
     p[0] = p[1]
-
-  def p_signature_(self, p):
-    """signature : AT STRING"""
-    p[0] = p[2]
 
   def p_signature_none(self, p):
     """signature :"""

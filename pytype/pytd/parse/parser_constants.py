@@ -15,6 +15,8 @@ RESERVED = [
     'PYTHONCODE',  # upper-case: stands out + unlikely name
     'nothing',
     'raises',
+    # Names from typing.py
+    'TypeVar',
     # 'strict',  # TODO(pludemann): add
     ]
 

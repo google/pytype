@@ -149,8 +149,12 @@ class PrintVisitor(Visitor):
   def VisitClass(self, node):
     """Visit a class, producing a multi-line, properly indented string."""
     if node.template:
+      typevars = "".join(
+          "%s = TypeVar('%s')\n" % (t.name, t.name)
+          for t in sorted(self.old_node.template))
       parents = ("Generic[%s]" % ", ".join(node.template),) + node.parents
     else:
+      typevars = ""
       parents = node.parents
     parents_str = "(" + ", ".join(parents) + ")" if parents else ""
     header = "class " + self._SafeName(node.name) + parents_str + ":"
@@ -164,12 +168,18 @@ class PrintVisitor(Visitor):
     else:
       constants = []
       methods = [self.INDENT + "pass"]
-    return "\n".join([header] + constants + methods) + "\n"
+    return typevars + "\n".join([header] + constants + methods) + "\n"
 
   def VisitFunction(self, node):
     """Visit function, producing multi-line string (one for each signature)."""
+    typevars = "".join(
+        "%s = TypeVar('%s')\n" % (t.name, t.name)
+        for sig in self.old_node.signatures
+        for t in sorted(sig.template))
     function_name = self._SafeName(node.name)
-    return "\n".join("def " + function_name + sig for sig in node.signatures)
+    signatures = "\n".join("def " + function_name + sig
+                           for sig in node.signatures)
+    return typevars + signatures
 
   def VisitExternalFunction(self, node):
     """Visit function defined with PYTHONCODE."""
@@ -177,8 +187,6 @@ class PrintVisitor(Visitor):
 
   def VisitSignature(self, node):
     """Visit a signature, producing a string."""
-    template = "[" + ", ".join(node.template) + "]" if node.template else ""
-
     # TODO(pludemann): might want special handling for __init__(...) -> NoneType
     # Design decision: we used to allow the return type to default to "?"  (see
     # comments in parser.py for the "return" rule) but that led to confusion, so
@@ -201,8 +209,8 @@ class PrintVisitor(Visitor):
     else:
       body = ""
 
-    return "{template}({params}){ret}{exc}{body}".format(
-        template=template, params=", ".join(node.params + optional),
+    return "({params}){ret}{exc}{body}".format(
+        params=", ".join(node.params + optional),
         ret=ret, exc=exc, body=body)
 
   def VisitParameter(self, node):
@@ -264,7 +272,7 @@ class PrintVisitor(Visitor):
     # The syntax for a parameterized type with one parameter is "X[T,]"
     # (E.g. "tuple[int,]")
     param_str = node.parameters[0] + ", " + ", ".join(node.parameters[1:])
-    return node.base_type + "[" + param_str + "]"
+    return node.base_type + "[" + param_str.rstrip() + "]"
 
   def VisitUnionType(self, node):
     """Convert a union type ("x or y") to a string."""
@@ -570,15 +578,29 @@ class ReplaceTypes(Visitor):
   mapping. The two cases are not distinguished.
   """
 
-  def __init__(self, mapping):
+  def __init__(self, mapping, record=None):
+    """Initialize this visitor.
+
+    Args:
+      mapping: A dictionary, mapping strings to node instances. Any NamedType
+        or ClassType with a name in this dictionary will be replaced with
+        the corresponding value.
+      record: Optional. A set. If given, this records which entries in
+        the map were used.
+    """
     super(ReplaceTypes, self).__init__()
     self.mapping = mapping
+    self.record = record
 
   def VisitNamedType(self, node):
-    return self.mapping.get(node.name, node)
+    if node.name in self.mapping:
+      if self.record is not None:
+        self.record.add(node.name)
+      return self.mapping[node.name]
+    return node
 
   def VisitClassType(self, node):
-    return self.mapping.get(node.name, node)
+    return self.VisitNamedType(node)
 
   # We do *not* want to have 'def VisitClass' because that will replace a class
   # definition with itself, which is almost certainly not what is wanted,
@@ -832,7 +854,7 @@ class VerifyVisitor(Visitor):
     assert isinstance(node.params, tuple), node
     assert all(isinstance(p, (pytd.Parameter, pytd.MutableParameter))
                for p in node.params)
-    assert isinstance(node.return_type, pytd.TYPE), node
+    assert isinstance(node.return_type, pytd.TYPE), node.return_type
     assert isinstance(node.exceptions, tuple), node
     assert all(isinstance(e, pytd.TYPE) for e in node.exceptions)
     assert isinstance(node.template, tuple), node

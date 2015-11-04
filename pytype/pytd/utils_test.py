@@ -160,24 +160,26 @@ class TestUtils(parser_test.ParserTest):
   def testRemoveMutableList(self):
     # Simple test for RemoveMutableParameters, with simplified list class
     src = textwrap.dedent("""
+      T = TypeVar('T')
       class TrivialList(Generic[T], object):
-        def append[T2](self, v: T2) -> NoneType:
+        T2 = TypeVar('T2')
+        def append(self, v: T2) -> NoneType:
           self := T or T2
 
+      T = TypeVar('T')
       class TrivialList2(Generic[T], object):
-        # TODO(pludemann): instead of self := T2 use
-        #                  T = T2, when it's implemented
-        # def __init__[T2](self, x: T2) -> NoneType:
-        #   self := T2
         def __init__(self, x: T) -> NoneType
-        def append[T2](self, v: T2) -> NoneType:
+        T2 = TypeVar('T2')
+        def append(self, v: T2) -> NoneType:
           self := T or T2
         def get_first(self) -> T
     """)
     expected = textwrap.dedent("""
+      T = TypeVar('T')
       class TrivialList(Generic[T], object):
           def append(self, v: T) -> NoneType
 
+      T = TypeVar('T')
       class TrivialList2(Generic[T], object):
           def __init__(self, x: T) -> NoneType
           def append(self, v: T) -> NoneType
@@ -190,15 +192,22 @@ class TestUtils(parser_test.ParserTest):
   def testRemoveMutableDict(self):
     # Test for RemoveMutableParameters, with simplified dict class.
     src = textwrap.dedent("""
+      K = TypeVar('K')
+      V = TypeVar('V')
       class MyDict(Generic[K, V], object):
-          def getitem[T](self, k: K, default: T) -> V or T
-          def setitem[K2, V2](self, k: K2, value: V2) -> NoneType:
+          T = TypeVar('T')
+          K2 = TypeVar('K2')
+          V2 = TypeVar('V2')
+          def getitem(self, k: K, default: T) -> V or T
+          def setitem(self, k: K2, value: V2) -> NoneType:
               self := dict[K or K2, V or V2]
           def getanykeyorvalue(self) -> K or V
-          def setdefault[K2, V2](self, k: K2, v: V2) -> V or V2:
+          def setdefault(self, k: K2, v: V2) -> V or V2:
               self := dict[K or K2, V or V2]
     """)
     expected = textwrap.dedent("""
+      K = TypeVar('K')
+      V = TypeVar('V')
       class MyDict(Generic[K, V], object):
           def getitem(self, k: K, default: V) -> V
           def setitem(self, k: K, value: V) -> NoneType
@@ -213,10 +222,13 @@ class TestUtils(parser_test.ParserTest):
     """Smoketests for printing pytd."""
     ast = self.Parse("""
       c1 = ...  # type: int
+      T = TypeVar('T')
       class A(Generic[T], object):
         bar = ...  # type: T
         def foo(self, x: list[int], y: T) -> list[T] or float raises ValueError
-      def bar[X, Y](x: X or Y) -> ?
+      X = TypeVar('X')
+      Y = TypeVar('Y')
+      def bar(x: X or Y) -> ?
     """)
     # TODO(kramm): Do more extensive testing.
     utils.Print(ast, print_format="pytd")
