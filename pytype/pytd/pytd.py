@@ -170,9 +170,23 @@ class Parameter(node.Node('name', 'type')):
   __slots__ = ()
 
 
+class OptionalParameter(Parameter):
+  """Represents an optional parameter of a function definition.
+
+  Can never be mutable.
+
+  Attributes:
+    name: The name of the parameter.
+    type: The type of the parameter.
+  """
+  __slots__ = ()
+
+
 # Conceptually, this is a subtype of Parameter:
 class MutableParameter(node.Node('name', 'type', 'new_type')):
   """Represents a parameter that's modified by the function.
+
+  Can never be optional.
 
   Attributes:
     name: The name of the parameter.

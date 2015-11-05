@@ -583,6 +583,12 @@ class CollapseLongParameterUnions(visitors.Visitor):
   def VisitParameter(self, param):
     return param.Visit(CollapseLongUnions(self.max_length))
 
+  def VisitOptionalParameter(self, param):
+    return param.Visit(CollapseLongUnions(self.max_length))
+
+  def VisitMutableParameter(self, param):
+    return param.Visit(CollapseLongUnions(self.max_length))
+
 
 class CollapseLongReturnUnions(visitors.Visitor):
   """Shortens long unions in return types to ?.

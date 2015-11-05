@@ -302,6 +302,9 @@ class Mutator(visitors.Visitor):
     else:
       return p
 
+  def VisitOptionalParameter(self, p):
+    raise NotImplementedError("Optional parameters can't be mutable")
+
 
 class InsertTypeParameters(visitors.Visitor):
   """Visitor for inserting TypeParameter instances."""
@@ -660,7 +663,10 @@ class TypeDeclParser(object):
                          for name in used_typeparams))
 
     for mutator in body:
-      signature = signature.Visit(mutator)
+      try:
+        signature = signature.Visit(mutator)
+      except NotImplementedError as e:
+        make_syntax_error(self, e.message, p)
       if not mutator.successful:
         make_syntax_error(self, 'No parameter named %s' % mutator.name, p)
     p[0] = NameAndSig(name=name, signature=signature, external_code=False)
@@ -757,9 +763,17 @@ class TypeDeclParser(object):
     # type is optional and defaults to "object"
     p[0] = pytd.Parameter(p[1], pytd.NamedType('object'))
 
+  def p_param_optional(self, p):
+    """param : NAME ASSIGN DOT DOT DOT"""
+    p[0] = pytd.OptionalParameter(p[1], pytd.NamedType('object'))
+
   def p_param_and_type(self, p):
     """param : NAME COLON type"""
     p[0] = pytd.Parameter(p[1], p[3])
+
+  def p_param_and_type_optional(self, p):
+    """param : NAME COLON type ASSIGN DOT DOT DOT"""
+    p[0] = pytd.OptionalParameter(p[1], p[3])
 
   def p_raise(self, p):
     """raises : RAISES exceptions"""

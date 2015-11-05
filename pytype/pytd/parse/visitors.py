@@ -224,6 +224,9 @@ class PrintVisitor(Visitor):
     else:
       return self._SafeName(node.name) + ": " + node.type
 
+  def VisitOptionalParameter(self, node):
+    return self.VisitParameter(node) + " = ..."
+
   def VisitMutableParameter(self, node):
     """Convert a mutable function parameter to a string."""
     return self.VisitParameter(node)
@@ -709,6 +712,9 @@ class AdjustSelf(Visitor):
     # pylint: disable=maybe-no-member
     return pytd.MutableParameter(p2.name, p2.type, p.new_type)
 
+  def VisitOptionalParameter(self, p):
+    return pytd.OptionalParameter(*self.VisitParameter(p))
+
   def VisitParameter(self, p):
     """Adjust all parameters called "self" to have their parent class type.
 
@@ -862,6 +868,11 @@ class VerifyVisitor(Visitor):
     assert isinstance(node.has_optional, bool), node
 
   def EnterParameter(self, node):
+    assert isinstance(node.name, str), node
+    assert self._valid_param_name.match(node.name), node.name
+    assert isinstance(node.type, pytd.TYPE), node
+
+  def EnterOptionalParameter(self, node):
     assert isinstance(node.name, str), node
     assert self._valid_param_name.match(node.name), node.name
     assert isinstance(node.type, pytd.TYPE), node

@@ -126,6 +126,16 @@ class TestASTGeneration(parser_test.ParserTest):
     """)
     self.TestRoundTrip(src)
 
+  def testOptionalParameters(self):
+    """Test parsing of individual optional parameters."""
+    src = textwrap.dedent("""
+        def f(x) -> int
+        def f(x = ...) -> int
+        def f(x: int = ...) -> int
+        def f(x, s: str = ..., t: str = ...) -> int
+        """)
+    self.TestRoundTrip(src, check_the_sourcecode=False)
+
   def testOnlyOptional(self):
     """Test parsing of optional parameters."""
     src = textwrap.dedent("""
@@ -399,6 +409,13 @@ class TestASTGeneration(parser_test.ParserTest):
     append_float = module.functions[0].signatures[0]
     self.assertIsInstance(append_int.params[0], pytd.MutableParameter)
     self.assertIsInstance(append_float.params[0], pytd.MutableParameter)
+
+  def testMutableOptional(self):
+    src = textwrap.dedent("""
+        def append_float(l: list = ...) -> int:
+          l := list[float]
+    """)
+    self.TestThrowsSyntaxError(src)
 
   def testMutableRoundTrip(self):
     src = textwrap.dedent("""

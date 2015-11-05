@@ -102,6 +102,10 @@ class Print484StubVisitor(visitors.Visitor):
     else:
       return self._SafeName(node.name) + ": " + node.type
 
+  def VisitOptionalParameter(self, node):
+    """Convert a optional function parameter to a string."""
+    return self.VisitParameter(node) + " = ..."
+
   def VisitMutableParameter(self, node):
     """Convert a mutable function parameter to a string."""
     return self.VisitParameter(node)
