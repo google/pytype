@@ -532,8 +532,8 @@ class TypeDeclParser(object):
 
   # TODO(raoulDoc): doesn't support nested classes
   def p_classdef(self, p):
-    """classdef : CLASS NAME class_parents COLON INDENT class_funcs DEDENT end_class"""
-    _, _, name, (template, parents), _, _, class_funcs, _, _ = p
+    """classdef : CLASS NAME class_parents COLON maybe_class_funcs end_class"""
+    _, _, name, (template, parents), _, class_funcs, _ = p
     methoddefs = [x for x in class_funcs  if isinstance(x, NameAndSig)]
     constants = [x for x in class_funcs if isinstance(x, pytd.Constant)]
     if (set(f.name for f in methoddefs) | set(c.name for c in constants) !=
@@ -553,12 +553,28 @@ class TypeDeclParser(object):
                      constants=tuple(constants), template=template)
     p[0] = cls.Visit(visitors.AdjustSelf())
 
+  def p_maybe_class_funcs(self, p):
+    """maybe_class_funcs : INDENT class_funcs DEDENT"""
+    p[0] = p[2]
+
+  def p_maybe_class_funcs_ellipsis(self, p):
+    """maybe_class_funcs : DOT DOT DOT"""
+    p[0] = []
+
+  def p_maybe_class_funcs_pass(self, p):
+    """maybe_class_funcs : PASS"""
+    p[0] = []
+
   def p_class_funcs(self, p):
     """class_funcs : funcdefs"""
     p[0] = p[1]
 
   def p_class_funcs_pass(self, p):
     """class_funcs : PASS"""
+    p[0] = []
+
+  def p_class_funcs_ellipsis(self, p):
+    """class_funcs : DOT DOT DOT"""
     p[0] = []
 
   def p_parents(self, p):
@@ -665,6 +681,14 @@ class TypeDeclParser(object):
 
   def p_empty_body(self, p):
     """maybe_body :"""
+    p[0] = []
+
+  def p_sameline_body(self, p):
+    """maybe_body : COLON DOT DOT DOT"""
+    p[0] = []
+
+  def p_ellipsis_body(self, p):
+    """maybe_body : COLON INDENT DOT DOT DOT DEDENT"""
     p[0] = []
 
   def p_has_body(self, p):
@@ -827,7 +851,11 @@ class TypeDeclParser(object):
 
   def p_named_or_external_type(self, p):
     """named_or_external_type : NAME"""
-    p[0] = pytd.NamedType(p[1])
+    _, name = p
+    if name in parser_constants.PEP484_TRANSLATIONS:
+      p[0] = parser_constants.PEP484_TRANSLATIONS[name]
+    else:
+      p[0] = pytd.NamedType(name)
 
   def p_named_or_external_type_multi(self, p):
     """named_or_external_type : module_name DOT NAME"""

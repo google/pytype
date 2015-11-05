@@ -2,6 +2,23 @@
 
 import re
 
+
+from pytype.pytd import pytd
+
+PEP484_TRANSLATIONS = {
+    # PEP 484 allows 'None' as an abbreviation of 'NoneType'.
+    'None': pytd.NamedType('NoneType'),
+    # PEP 484 definitions of built-in types:
+    'List': pytd.NamedType('list'),
+    'Dict': pytd.NamedType('dict'),
+    'Tuple': pytd.NamedType('tuple'),
+    'Set': pytd.NamedType('set'),
+    'Generator': pytd.NamedType('generator'),
+    # PEP 484 definitions of special purpose types:
+    'Any': pytd.AnythingType(),
+    # TODO(kramm): 'typing.NamedTuple'
+}
+
 RESERVED = [
     # Python keywords that are used by PyTD:
     'and',

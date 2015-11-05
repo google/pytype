@@ -58,6 +58,33 @@ class TestASTGeneration(parser_test.ParserTest):
         """)
     self.TestRoundTrip(src)
 
+  def testEllipsis1(self):
+    """Test parsing of function bodies."""
+    src = textwrap.dedent("""
+        def f(x) -> None: ...
+        def f(x) -> None:
+          ...
+        """)
+    self.TestRoundTrip(src, check_the_sourcecode=False)
+
+  def testEllipsis2(self):
+    """Test parsing of class bodies."""
+    src = textwrap.dedent("""
+        class A(object):
+          ...
+        class B(object): ...
+        class C(object):
+          pass
+        """)
+    self.TestRoundTrip(src, check_the_sourcecode=False)
+
+  def testAny(self):
+    """Test parsing of 'Any'."""
+    src = textwrap.dedent("""
+        def eval(s: str) -> Any
+        """)
+    self.TestRoundTrip(src, check_the_sourcecode=False)
+
   def testGeneric(self):
     src = textwrap.dedent("""
         X = TypeVar('X')
@@ -151,7 +178,7 @@ class TestASTGeneration(parser_test.ParserTest):
     self.assertIsInstance(ret["a"], pytd.AnythingType)
     self.assertIsInstance(ret["b"], pytd.AnythingType)
     self.assertEquals(ret["c"], pytd.NamedType("object"))
-    self.assertEquals(ret["d"], pytd.NamedType("None"))
+    self.assertEquals(ret["d"], pytd.NamedType("NoneType"))
     self.assertIsInstance(ret["e"], pytd.UnionType)
     self.assertIsInstance(ret["f"], pytd.HomogeneousContainerType)
     self.assertIsInstance(ret["g"], pytd.GenericType)
@@ -418,7 +445,7 @@ class TestASTGeneration(parser_test.ParserTest):
     self.assertEquals(len(f.signatures), 2)
 
     sig1, = [s for s in f.signatures if not s.params]
-    self.assertEquals(sig1.return_type.name, "None")
+    self.assertEquals(sig1.return_type.name, "NoneType")
     sig2, = [s for s in f.signatures if len(s.params) == 2]
     self.assertEquals(sig2.return_type.name, "int")
     self.assertEquals([p.type.name for p in sig2.params],
@@ -506,7 +533,7 @@ class TestASTGeneration(parser_test.ParserTest):
     """Test a parsing error (no return type)."""
 
     data1 = "def foo() -> ?"
-    data2 = "def foo() -> None"
+    data2 = "def foo() -> NoneType"
 
     self.TestRoundTrip(data1)
     self.TestRoundTrip(data2)
