@@ -19,8 +19,8 @@ PEP484_TRANSLATIONS = {
     # TODO(kramm): 'typing.NamedTuple'
 }
 
+# PyTD keywords
 RESERVED = [
-    # Python keywords that are used by PyTD:
     'and',
     'class',
     'def',
@@ -28,18 +28,19 @@ RESERVED = [
     'if',
     'or',
     'pass',
+    'import',
+    'from',
+    'as',
     # Keywords that are valid identifiers in Python (PyTD keywords):
     'PYTHONCODE',  # upper-case: stands out + unlikely name
     'nothing',
     'raises',
     # Names from typing.py
     'TypeVar',
-    # 'strict',  # TODO(pludemann): add
     ]
 
 RESERVED_PYTHON = [
     # Python keywords that aren't used by PyTD:
-    'as',
     'assert',
     'break',
     'continue',
@@ -49,9 +50,7 @@ RESERVED_PYTHON = [
     'exec',
     'finally',
     'for',
-    'from',
     'global',
-    'import',
     'in',
     'is',
     'lambda',

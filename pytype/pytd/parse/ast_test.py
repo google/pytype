@@ -27,12 +27,73 @@ class TestASTGeneration(parser_test.ParserTest):
 
   def TestRoundTrip(self, src, canonical_src=None, check_the_sourcecode=True):
     """Compile a string, and convert the result back to a string. Compare."""
+    if canonical_src is None:
+      canonical_src = src
     tree = self.Parse(src)
     new_src = pytd.Print(tree)
-    self.AssertSourceEquals(new_src, (canonical_src or src))
+    self.AssertSourceEquals(new_src, canonical_src)
     if check_the_sourcecode:
       self.assertMultiLineEqual(new_src.rstrip().lstrip("\n"),
-                                (canonical_src or src).rstrip().lstrip("\n"))
+                                canonical_src.rstrip().lstrip("\n"))
+
+  def testImport(self):
+    """Test parsing of import."""
+    src = textwrap.dedent("""
+        import abc
+        import abc as efg
+        import abc.efg
+        import abc.efg as efg
+        from abc import a, b, c
+        from abc.efg import e, f, g
+        from abc import a as aa, b as bb, c
+        from abc.efg import a as aa, b as bb, c
+        from abc import *
+        from abc.efg import *
+        """)
+    self.TestRoundTrip(src, "")  # Imports are currently ignored.
+
+  def testDocStrings(self):
+    """Test doc strings."""
+    src = textwrap.dedent("""
+        \"\"\"Lorem ipsum\"\"\"
+        """)
+    self.TestRoundTrip(src, "")  # Doc strings are ignored
+
+  def testMultiLineDocStrings(self):
+    """Test doc strings over multiple lines."""
+    src = textwrap.dedent("""
+        \"\"\"Lorem ipsum
+        dolor sit "amet", consectetur adipiscing elit, sed do eiusmod
+        tempor incididunt ut labore et dolore magna aliqua. Ut enim
+        \"\"\"
+        """)
+    self.TestRoundTrip(src, "")  # Doc strings are ignored
+
+  def testClassDocStrings(self):
+    """Test doc strings in classes."""
+    src = textwrap.dedent("""
+        class A(object):
+          \"\"\"Implements the "A" functionality.\"\"\"
+
+        class B(object):
+          \"\"\"Implements the "B" functionality.\"\"\"
+          pass
+
+        class C(object):
+          \"\"\"Implements the "C" functionality.
+
+          \"\"\"
+          ...
+        """)
+    self.TestRoundTrip(src, check_the_sourcecode=False)
+
+  def testFunctionDocStrings(self):
+    """Test doc strings in functions."""
+    src = textwrap.dedent("""
+        def random() -> int:
+          \"\"\"Returns a random integer.\"\"\"
+        """)
+    self.TestRoundTrip(src, check_the_sourcecode=False)
 
   def testOneFunction(self):
     """Test parsing of a single function definition."""

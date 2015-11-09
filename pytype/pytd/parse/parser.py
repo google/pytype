@@ -61,6 +61,7 @@ class PyLexer(object):
 
   # The ply parsing library expects class members to be named in a specific way.
   t_ARROW = r'->'
+  t_ASTERISK = r'[*]'
   t_COLON = r':'
   t_COLONEQUALS = r':='
   t_COMMA = r','
@@ -81,6 +82,7 @@ class PyLexer(object):
   tokens = [
       'ARROW',
       'ASSIGN',
+      'ASTERISK',
       'COLON',
       'COLONEQUALS',
       'COMMA',
@@ -103,6 +105,7 @@ class PyLexer(object):
       'RPAREN',
       'STRING',
       'TYPECOMMENT',
+      'TRIPLEQUOTED',
   ] + [id.upper() for id in reserved]
 
   def t_LE(self, t):
@@ -209,6 +212,10 @@ class PyLexer(object):
       t.type = 'NAME'
     elif t.value in self.reserved:
       t.type = t.value.upper()
+    return t
+
+  def t_TRIPLEQUOTED(self, t):
+    r'"""((?!""")(.|\n))*"""'  # pylint: disable=g-docstring-quotes
     return t
 
   def t_STRING(self, t):
@@ -414,6 +421,10 @@ class TypeDeclParser(object):
     """start : unit"""
     p[0] = p[1]
 
+  def p_start_with_docstring(self, p):
+    """start : TRIPLEQUOTED unit"""
+    p[0] = p[2]
+
   def p_unit(self, p):
     """unit : alldefs"""
     funcdefs = [x for x in p[1] if isinstance(x, NameAndSig)]
@@ -453,8 +464,64 @@ class TypeDeclParser(object):
     """alldefs : alldefs toplevel_if"""
     p[0] = p[1] + p[2]
 
+  def p_alldefs_import(self, p):
+    """alldefs : alldefs import"""
+    p[0] = p[1] + p[2]
+
   def p_alldefs_null(self, p):
     """alldefs :"""
+    p[0] = []
+
+  def p_import_simple(self, p):
+    """import : IMPORT import_list"""
+    p[0] = []
+
+  def p_import_from(self, p):
+    """import : FROM dotted_name IMPORT import_from_list"""
+    p[0] = []
+
+  def p_import_list_1(self, p):
+    """import_list : import_item"""
+    p[0] = []
+
+  def p_import_list(self, p):
+    """import_list : import_list COMMA import_item"""
+    p[0] = []
+
+  def p_import_item(self, p):
+    """import_item : dotted_name"""
+    p[0] = []
+
+  def p_import_item_as(self, p):
+    """import_item : dotted_name AS NAME"""
+    p[0] = []
+
+  def p_import_from_list_1(self, p):
+    """import_from_list : from_item"""
+    p[0] = []
+
+  def p_import_from_list(self, p):
+    """import_from_list : import_from_list COMMA from_item"""
+    p[0] = []
+
+  def p_from_item(self, p):
+    """from_item : NAME"""
+    p[0] = []
+
+  def p_from_item_as(self, p):
+    """from_item : NAME AS NAME"""
+    p[0] = []
+
+  def p_from_item_asterisk(self, p):
+    """from_item : ASTERISK"""
+    p[0] = []
+
+  def p_dotted_name_1(self, p):
+    """dotted_name : NAME"""
+    p[0] = []
+
+  def p_dotted_name(self, p):
+    """dotted_name : dotted_name DOT NAME"""
     p[0] = []
 
   def p_toplevel_if(self, p):
@@ -560,6 +627,10 @@ class TypeDeclParser(object):
     """maybe_class_funcs : INDENT class_funcs DEDENT"""
     p[0] = p[2]
 
+  def p_maybe_class_funcs_docstring(self, p):
+    """maybe_class_funcs : INDENT TRIPLEQUOTED class_funcs DEDENT"""
+    p[0] = p[3]
+
   def p_maybe_class_funcs_ellipsis(self, p):
     """maybe_class_funcs : DOT DOT DOT"""
     p[0] = []
@@ -569,7 +640,7 @@ class TypeDeclParser(object):
     p[0] = []
 
   def p_class_funcs(self, p):
-    """class_funcs : funcdefs"""
+    """class_funcs : funcdefs"""  # funcdefs can be empty
     p[0] = p[1]
 
   def p_class_funcs_pass(self, p):
@@ -695,6 +766,10 @@ class TypeDeclParser(object):
 
   def p_ellipsis_body(self, p):
     """maybe_body : COLON INDENT DOT DOT DOT DEDENT"""
+    p[0] = []
+
+  def p_docstring_body(self, p):
+    """maybe_body : COLON INDENT TRIPLEQUOTED DEDENT"""
     p[0] = []
 
   def p_has_body(self, p):
