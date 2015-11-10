@@ -529,14 +529,14 @@ class TestOptimize(parser_test.ParserTest):
     # pydoc about how AbsorbMutableParameters works on methods.
     src = textwrap.dedent("""
         T = TypeVar('T')
-        class MyClass(Generic[T], object):
+        class MyClass(typing.Generic[T], object):
             NEW = TypeVar('NEW')
             def append(self, x: NEW) -> ?:
                 self := MyClass[T or NEW]
     """)
     expected = textwrap.dedent("""
         T = TypeVar('T')
-        class MyClass(Generic[T], object):
+        class MyClass(typing.Generic[T], object):
             NEW = TypeVar('NEW')
             def append(self: MyClass[T or NEW], x: NEW) -> ?
     """)
@@ -551,7 +551,7 @@ class TestOptimize(parser_test.ParserTest):
     # See comment in RemoveMutableParameters
     src = textwrap.dedent("""
       T = TypeVar('T')
-      class A(Generic[T], object):
+      class A(typing.Generic[T], object):
           T2 = TypeVar('T2')
           T3 = TypeVar('T3')
           def foo(self, x: T or T2) -> T2
@@ -560,7 +560,7 @@ class TestOptimize(parser_test.ParserTest):
 
       K = TypeVar('K')
       V = TypeVar('V')
-      class D(Generic[K, V], object):
+      class D(typing.Generic[K, V], object):
           T = TypeVar('T')
           def foo(self, x: T) -> K or T
           def bar(self, x: T) -> V or T
@@ -570,14 +570,14 @@ class TestOptimize(parser_test.ParserTest):
     """)
     expected = textwrap.dedent("""
       T = TypeVar('T')
-      class A(Generic[T], object):
+      class A(typing.Generic[T], object):
           def foo(self, x: T) -> T
           def bar(self, x: T) -> T
           def baz(self, x: T, y: T) -> ?
 
       K = TypeVar('K')
       V = TypeVar('V')
-      class D(Generic[K, V], object):
+      class D(typing.Generic[K, V], object):
           def foo(self, x: K) -> K
           def bar(self, x: V) -> V
           def baz(self, x: K or V) -> K or V

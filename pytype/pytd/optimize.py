@@ -954,23 +954,23 @@ class MergeTypeParameters(TypeParameterScope):
   """Remove all function type parameters in a union with a class type param.
 
   For example, this will change
-    class A(Generic(T)):
+    class A(typing.Generic(T)):
       T2 = TypeVar('T2')
       def append(self, T or T2) -> T2
   to
-    class A(Generic(T)):
+    class A(typing.Generic(T)):
       def append(self, T) -> T
   .
   Use this visitor after using AbsorbMutableParameters.
 
   As another example, the combination of AbsorbMutableParameters and
   MergeTypeParameters transforms
-    class list(Generic(T)):
+    class list(typing.Generic(T)):
       T2 = TypeVar('T2')
       def append(self, v: T2) -> NoneType:
         self := T or T2
   to
-    class list(Generic(T')):
+    class list(typing.Generic(T')):
       def append(self, V:T') -> NoneType
   by creating a *new* template variable T' that propagates the
   mutations to the outermost level (in this example, T' = T or T2)

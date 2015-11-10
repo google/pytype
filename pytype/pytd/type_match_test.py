@@ -89,7 +89,7 @@ class TestTypeMatch(unittest.TestCase):
   def testGeneric(self):
     ast = parser.parse_string(textwrap.dedent("""
       T = TypeVar('T')
-      class A(Generic[T], object):
+      class A(typing.Generic[T], object):
         pass
       left = ...  # type: A[?]
       right = ...  # type: A[?]
@@ -135,7 +135,7 @@ class TestTypeMatch(unittest.TestCase):
       class `~unknown0`():
         def next(self) -> ?
       T = TypeVar('T')
-      class A(Generic[T], object):
+      class A(typing.Generic[T], object):
         def next(self) -> ?
       class B():
         pass
@@ -160,7 +160,7 @@ class TestTypeMatch(unittest.TestCase):
     ast = parser.parse_string(textwrap.dedent("""
 
       T = TypeVar('T')
-      class list(Generic[T], object):
+      class list(typing.Generic[T], object):
         pass
       class A():
         pass

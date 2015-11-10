@@ -40,9 +40,7 @@ class TestASTGeneration(parser_test.ParserTest):
     """Test parsing of import."""
     src = textwrap.dedent("""
         import abc
-        import abc as efg
         import abc.efg
-        import abc.efg as efg
         from abc import a, b, c
         from abc.efg import e, f, g
         from abc import a as aa, b as bb, c
@@ -50,7 +48,38 @@ class TestASTGeneration(parser_test.ParserTest):
         from abc import *
         from abc.efg import *
         """)
-    self.TestRoundTrip(src, "")  # Imports are currently ignored.
+    self.TestRoundTrip(src, "")  # Imports are not part of the AST
+
+  def testImport(self):
+    """Test import errors."""
+    self.assertRaises(textwrap.dedent("""
+        import abc as efg
+    """))
+    self.assertRaises(textwrap.dedent("""
+        import abc.efg as efg
+    """))
+
+  def testRenaming(self):
+    """Test parsing of import."""
+    src = textwrap.dedent("""
+        from foobar import SomeClass
+        class A(SomeClass): ...
+        """)
+    self.TestRoundTrip(src, textwrap.dedent("""
+        class A(foobar.SomeClass):
+            pass
+    """))
+
+  def testRenaming2(self):
+    """Test parsing of import."""
+    src = textwrap.dedent("""
+        from foo.bar import Base as BaseClass
+        class A(BaseClass): ...
+        """)
+    self.TestRoundTrip(src, textwrap.dedent("""
+        class A(foo.bar.Base):
+            pass
+    """))
 
   def testDocStrings(self):
     """Test doc strings."""
@@ -155,20 +184,60 @@ class TestASTGeneration(parser_test.ParserTest):
         """)
     self.TestRoundTrip(src, check_the_sourcecode=False)
 
+  def testCallable(self):
+    """Test parsing Callable."""
+    src = textwrap.dedent("""
+        def get_listener() -> Callable[[int, int], str]"
+        """)
+    self.TestRoundTrip(src, check_the_sourcecode=False)
+
+  def testAlias(self):
+    """Test parsing Callable."""
+    src = textwrap.dedent("""
+        StrDict = Dict[str, str]
+        def get_listener(x: StrDict) -> StrDict
+        """)
+    self.TestRoundTrip(src, check_the_sourcecode=False)
+
+  def testDecorator(self):
+    """Test overload decorators."""
+    src = textwrap.dedent("""
+        @overload
+        def abs(x: int) -> int
+        @overload
+        def abs(x: float) -> float
+
+        class A(object):
+          @overload
+          def abs(self, x: int, y: int) -> int
+          @overload
+          def abs(self, x: float, y: float) -> float
+        """)
+    self.TestRoundTrip(src, check_the_sourcecode=False)
+
+  def testRaise(self):
+    """Test raise statements."""
+    src = textwrap.dedent("""
+        def read(x) -> None:
+            raise IndexError
+            raise IOError()
+        """)
+    self.TestRoundTrip(src, check_the_sourcecode=False)
+
   def testGeneric(self):
     src = textwrap.dedent("""
         X = TypeVar('X')
-        class T1(Generic[X], object):
+        class T1(typing.Generic[X], object):
             pass
 
         X = TypeVar('X')
         Y = TypeVar('Y')
-        class T2(Generic[X, Y], T1):
+        class T2(typing.Generic[X, Y], T1):
             pass
 
         X = TypeVar('X')
         Y = TypeVar('Y')
-        class T3(Generic[X, Y], T1, T2):
+        class T3(typing.Generic[X, Y], T1, T2):
             pass
     """)
     self.TestRoundTrip(src)
@@ -186,12 +255,12 @@ class TestASTGeneration(parser_test.ParserTest):
         def qux(x: T) -> list[S,]
 
         X = TypeVar('X')
-        class T1(Generic[X], object):
+        class T1(typing.Generic[X], object):
             def foo(a: X) -> T2[X, int] raises float
 
         X = TypeVar('X')
         Y = TypeVar('Y')
-        class T2(Generic[X, Y], object):
+        class T2(typing.Generic[X, Y], object):
             def foo(a: X) -> complex raises Except[X, Y]
     """)
     self.TestRoundTrip(src)
@@ -377,7 +446,7 @@ class TestASTGeneration(parser_test.ParserTest):
 
   def testDuplicates3(self):
     src = textwrap.dedent("""
-        class A(Generic[T, T], object):
+        class A(typing.Generic[T, T], object):
           pass
     """)
     self.TestThrowsSyntaxError(src)
@@ -401,7 +470,7 @@ class TestASTGeneration(parser_test.ParserTest):
 
   def testDuplicates6(self):
     src = textwrap.dedent("""
-        x = int
+        x = ...  # type: int
         class x(object):
           pass
     """)
@@ -409,7 +478,7 @@ class TestASTGeneration(parser_test.ParserTest):
 
   def testDuplicates7(self):
     src = textwrap.dedent("""
-        x = int
+        x = ...  # type: int
         def x()
     """)
     self.TestThrowsSyntaxError(src)
@@ -701,7 +770,7 @@ class TestASTGeneration(parser_test.ParserTest):
     """Test simple class template."""
     data = textwrap.dedent("""
         T = TypeVar('T')
-        class MyClass(Generic[T], object):
+        class MyClass(typing.Generic[T], object):
             def f(self, T) -> T
         """)
     self.TestRoundTrip(data)
@@ -710,11 +779,11 @@ class TestASTGeneration(parser_test.ParserTest):
     """Test name reuse between templated classes."""
     data = textwrap.dedent("""
         T = TypeVar('T')
-        class MyClass1(Generic[T], object):
+        class MyClass1(typing.Generic[T], object):
             def f(self, T) -> T
 
         T = TypeVar('T')
-        class MyClass2(Generic[T], object):
+        class MyClass2(typing.Generic[T], object):
             def f(self, T) -> T
         """)
     self.TestRoundTrip(data)
@@ -724,11 +793,11 @@ class TestASTGeneration(parser_test.ParserTest):
     data = textwrap.dedent("""
         T = TypeVar('T')
         V = TypeVar('V')
-        class MyClass1(Generic[T], object):
+        class MyClass1(typing.Generic[T], object):
             def f(self, T, V) -> V
 
         T = TypeVar('T')
-        class MyClass2(Generic[T], object):
+        class MyClass2(typing.Generic[T], object):
             def f(self, T, V) -> V
         """)
     self.TestRoundTrip(data, check_the_sourcecode=False)
@@ -769,7 +838,7 @@ class TestASTGeneration(parser_test.ParserTest):
     data = textwrap.dedent("""
         T = TypeVar('T')
         C = TypeVar('C')
-        class MyClass(Generic[C], object):
+        class MyClass(typing.Generic[C], object):
           def f1(p1: C) -> ?
           def f2(p1: C, p2: T, p3: dict[C, C or T or int]) -> T raises Error[T]
         """)
@@ -803,7 +872,7 @@ class TestASTGeneration(parser_test.ParserTest):
     data = textwrap.dedent("""
         U = TypeVar('U')
         V = TypeVar('V')
-        class MyClass(Generic[U, V], object):
+        class MyClass(typing.Generic[U, V], object):
           def f1(self) -> ?
         """)
 

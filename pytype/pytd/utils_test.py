@@ -161,13 +161,13 @@ class TestUtils(parser_test.ParserTest):
     # Simple test for RemoveMutableParameters, with simplified list class
     src = textwrap.dedent("""
       T = TypeVar('T')
-      class TrivialList(Generic[T], object):
+      class TrivialList(typing.Generic[T], object):
         T2 = TypeVar('T2')
         def append(self, v: T2) -> NoneType:
           self := T or T2
 
       T = TypeVar('T')
-      class TrivialList2(Generic[T], object):
+      class TrivialList2(typing.Generic[T], object):
         def __init__(self, x: T) -> NoneType
         T2 = TypeVar('T2')
         def append(self, v: T2) -> NoneType:
@@ -176,11 +176,11 @@ class TestUtils(parser_test.ParserTest):
     """)
     expected = textwrap.dedent("""
       T = TypeVar('T')
-      class TrivialList(Generic[T], object):
+      class TrivialList(typing.Generic[T], object):
           def append(self, v: T) -> NoneType
 
       T = TypeVar('T')
-      class TrivialList2(Generic[T], object):
+      class TrivialList2(typing.Generic[T], object):
           def __init__(self, x: T) -> NoneType
           def append(self, v: T) -> NoneType
           def get_first(self) -> T
@@ -194,7 +194,7 @@ class TestUtils(parser_test.ParserTest):
     src = textwrap.dedent("""
       K = TypeVar('K')
       V = TypeVar('V')
-      class MyDict(Generic[K, V], object):
+      class MyDict(typing.Generic[K, V], object):
           T = TypeVar('T')
           K2 = TypeVar('K2')
           V2 = TypeVar('V2')
@@ -208,7 +208,7 @@ class TestUtils(parser_test.ParserTest):
     expected = textwrap.dedent("""
       K = TypeVar('K')
       V = TypeVar('V')
-      class MyDict(Generic[K, V], object):
+      class MyDict(typing.Generic[K, V], object):
           def getitem(self, k: K, default: V) -> V
           def setitem(self, k: K, value: V) -> NoneType
           def getanykeyorvalue(self) -> K or V
@@ -223,7 +223,7 @@ class TestUtils(parser_test.ParserTest):
     ast = self.Parse("""
       c1 = ...  # type: int
       T = TypeVar('T')
-      class A(Generic[T], object):
+      class A(typing.Generic[T], object):
         bar = ...  # type: T
         def foo(self, x: list[int], y: T) -> list[T] or float raises ValueError
       X = TypeVar('X')

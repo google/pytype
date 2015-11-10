@@ -61,6 +61,7 @@ class PyLexer(object):
     self.at_eof = False
 
   # The ply parsing library expects class members to be named in a specific way.
+  t_AT = r'@'
   t_ARROW = r'->'
   t_ASTERISK = r'[*]'
   t_COLON = r':'
@@ -84,6 +85,7 @@ class PyLexer(object):
       'ARROW',
       'ASSIGN',
       'ASTERISK',
+      'AT',
       'COLON',
       'COLONEQUALS',
       'COMMA',
@@ -340,7 +342,7 @@ def SplitParents(parser, p, parents):
   other_parents = []
   for parent in parents:
     if (isinstance(parent, pytd.GenericType) and
-        parent.base_type == pytd.NamedType('Generic')):
+        parent.base_type == pytd.ExternalType('Generic', 'typing')):
       if not all(isinstance(p, pytd.NamedType) for p in parent.parameters):
         make_syntax_error(
             parser, 'Illegal template parameter %s' % pytd.Print(p), p)
@@ -398,6 +400,7 @@ class TypeDeclParser(object):
     self.src = src  # Keep a copy of what's being parsed
     self.filename = filename if filename else '<string>'
     self.context = Context(typevars=set())
+    self.aliases = parser_constants.PEP484_TRANSLATIONS.copy()
     self.lexer.set_parse_info(self.src, self.filename)
     ast = self.parser.parse(src, **kwargs)
     # If there's no unique name, hash the sourcecode.
@@ -461,60 +464,92 @@ class TypeDeclParser(object):
     """alldefs : alldefs import"""
     p[0] = p[1] + p[2]
 
+  def p_alldefs_alias(self, p):
+    """alldefs : alldefs alias"""
+    p[0] = p[1] + p[2]
+
+  def p_alldefs_decorator(self, p):
+    """alldefs : alldefs decorator"""
+    p[0] = p[1] + p[2]
+
   def p_alldefs_null(self, p):
     """alldefs :"""
     p[0] = []
 
   def p_import_simple(self, p):
     """import : IMPORT import_list"""
+    for module, new_name in p[2]:
+      if module != new_name:
+        make_syntax_error(
+            self, "Renaming of modules not supported. Use 'from' syntax.", p)
     p[0] = []
 
   def p_import_from(self, p):
     """import : FROM dotted_name IMPORT import_from_list"""
+    _, _, dotted_name, _, import_from_list = p
+    for name, new_name in import_from_list:
+      self.aliases[new_name] = pytd.ExternalType(name, dotted_name)
     p[0] = []
+
+  def p_quoted_from_list(self, p):
+    """import_from_list : LPAREN import_from_items RPAREN"""
+    p[0] = p[2]
+
+  def p_nonquoted_from_list(self, p):
+    """import_from_list : import_from_items"""
+    p[0] = p[1]
 
   def p_import_list_1(self, p):
     """import_list : import_item"""
-    p[0] = []
+    p[0] = [p[1]]
 
   def p_import_list(self, p):
     """import_list : import_list COMMA import_item"""
-    p[0] = []
+    p[0] = p[1] + [p[3]]
 
   def p_import_item(self, p):
     """import_item : dotted_name"""
-    p[0] = []
+    p[0] = (p[1], p[1])
 
   def p_import_item_as(self, p):
     """import_item : dotted_name AS NAME"""
-    p[0] = []
+    p[0] = (p[1], p[3])
 
-  def p_import_from_list_1(self, p):
-    """import_from_list : from_item"""
-    p[0] = []
+  def p_import_from_items_1(self, p):
+    """import_from_items : from_item"""
+    p[0] = [p[1]]
 
-  def p_import_from_list(self, p):
-    """import_from_list : import_from_list COMMA from_item"""
-    p[0] = []
+  def p_import_from_items(self, p):
+    """import_from_items : import_from_items COMMA from_item"""
+    p[0] = p[1] + [p[3]]
 
   def p_from_item(self, p):
     """from_item : NAME"""
-    p[0] = []
+    p[0] = (p[1], p[1])
+
+  def p_from_item_typevar(self, p):
+    """from_item : TYPEVAR"""
+    p[0] = ("TypeVar", "TypeVar")
 
   def p_from_item_as(self, p):
     """from_item : NAME AS NAME"""
-    p[0] = []
+    p[0] = (p[1], p[3])
 
   def p_from_item_asterisk(self, p):
     """from_item : ASTERISK"""
-    p[0] = []
+    p[0] = ("*", "*")
 
   def p_dotted_name_1(self, p):
     """dotted_name : NAME"""
-    p[0] = []
+    p[0] = p[1]
 
   def p_dotted_name(self, p):
     """dotted_name : dotted_name DOT NAME"""
+    p[0] = p[1] + "." + p[3]
+
+  def p_alias(self, p):
+    """alias : NAME ASSIGN type"""
+    self.aliases[p[1]] = p[3]
     p[0] = []
 
   def p_toplevel_if(self, p):
@@ -682,6 +717,10 @@ class TypeDeclParser(object):
     """funcdefs : funcdefs typevardef"""
     p[0] = p[1] + p[2]
 
+  def p_funcdefs_decorator(self, p):
+    """funcdefs : funcdefs decorator"""
+    p[0] = p[1] + p[2]
+
   # TODO(raoulDoc): doesn't support nested functions
   def p_funcdefs_null(self, p):
     """funcdefs :"""
@@ -701,6 +740,14 @@ class TypeDeclParser(object):
     if name in self.context.bound:
       make_syntax_error(
           self, 'Illegal redefine of TypeVar(%r) from outer scope' % p[1], p)
+    p[0] = []
+
+  def p_decorator(self, p):
+    # @overload is used for multiple signatures for the same function
+    """decorator : AT NAME"""
+    if p[2] != "overload":
+      make_syntax_error(
+          self, 'Decorator %r not supported' % p[2], p)
     p[0] = []
 
   def p_funcdef(self, p):
@@ -757,8 +804,16 @@ class TypeDeclParser(object):
     """maybe_body : COLON DOT DOT DOT"""
     p[0] = []
 
+  def p_sameline_body_pass(self, p):
+    """maybe_body : COLON PASS"""
+    p[0] = []
+
   def p_ellipsis_body(self, p):
     """maybe_body : COLON INDENT DOT DOT DOT DEDENT"""
+    p[0] = []
+
+  def p_pass_body(self, p):
+    """maybe_body : COLON INDENT PASS DEDENT"""
     p[0] = []
 
   def p_docstring_body(self, p):
@@ -771,16 +826,32 @@ class TypeDeclParser(object):
     p[0] = body
 
   def p_body_1(self, p):
-    """body : mutator"""
-    p[0] = [p[1]]
+    """body : body_stmt"""
+    p[0] = p[1]
 
   def p_body_multiple(self, p):
-    """body : mutator body"""
-    p[0] = p[1] + [p[2]]
+    """body : body_stmt body"""
+    p[0] = p[1] + p[2]
+
+  def p_body_stmt_mutator(self, p):
+    """body_stmt : mutator"""
+    p[0] = p[1]
+
+  def p_body_stmt_raise(self, p):
+    """body_stmt : raise"""
+    p[0] = p[1]
 
   def p_mutator(self, p):
     """mutator : NAME COLONEQUALS type"""
-    p[0] = Mutator(p[1], p[3])
+    p[0] = [Mutator(p[1], p[3])]
+
+  def p_raise(self, p):
+    """raise : RAISE NAME"""
+    p[0] = []  # TODO(kramm): process
+
+  def p_raise_parens(self, p):
+    """raise : RAISE NAME LPAREN RPAREN"""
+    p[0] = []  # TODO(kramm): process
 
   def p_return(self, p):
     """return : ARROW type"""
@@ -806,7 +877,7 @@ class TypeDeclParser(object):
 
   def p_params_multi(self, p):
     """params : params COMMA param"""
-    # TODO(kramm): Disallow "self" and "cls" as names for param (since it's not
+    # TODO(kramm): Disallow "self" and "cls" as names for param (if it's not
     # the first parameter).
     p[0] = Params(p[1].required + [p[3]], has_optional=False)
 
@@ -843,11 +914,19 @@ class TypeDeclParser(object):
     """param : NAME COLON type ASSIGN DOT DOT DOT"""
     p[0] = pytd.OptionalParameter(p[1], p[3])
 
-  def p_raise(self, p):
+  def p_param_star(self, p):
+    """param : ASTERISK NAME"""
+    p[0] = pytd.OptionalParameter("*" + p[2], pytd.NamedType('tuple'))
+
+  def p_param_kw(self, p):
+    """param : ASTERISK ASTERISK NAME"""
+    p[0] = pytd.OptionalParameter("**" + p[2], pytd.NamedType('tuple'))
+
+  def p_raises(self, p):
     """raises : RAISES exceptions"""
     p[0] = p[2]
 
-  def p_raise_null(self, p):
+  def p_raises_null(self, p):
     """raises :"""
     p[0] = []
 
@@ -878,6 +957,19 @@ class TypeDeclParser(object):
   def p_signature_none(self, p):
     """signature :"""
     p[0] = None
+
+  def p_type_tuple(self, p):
+    # Used for function types, e.g.  # Callable[[args...], return]
+    """type : LBRACKET type_list RBRACKET"""
+    p[0] = pytd.GenericType(pytd.NamedType("tuple"), tuple(p[2]))
+
+  def p_type_list_1(self, p):
+    """type_list : type """
+    p[0] = [p[1]]
+
+  def p_type_list(self, p):
+    """type_list : type_list COMMA type """
+    p[0] = p[1] + [p[3]]
 
   def p_type_and(self, p):
     """type : type AND type"""
@@ -911,7 +1003,11 @@ class TypeDeclParser(object):
   def p_type_homogeneous(self, p):
     """type : named_or_external_type LBRACKET parameters RBRACKET"""
     _, base_type, _, parameters, _ = p
-    if len(parameters) == 1:
+    if p[1] == pytd.NamedType("Union"):
+      p[0] = pytd.UnionType(parameters)
+    elif p[1] == pytd.NamedType("Optional"):
+      p[0] = pytd.UnionType(parameters[0], pytd.NamedType("None"))
+    elif len(parameters) == 1:
       element_type, = parameters
       p[0] = pytd.HomogeneousContainerType(base_type=base_type,
                                            parameters=(element_type,))
@@ -934,8 +1030,8 @@ class TypeDeclParser(object):
   def p_named_or_external_type(self, p):
     """named_or_external_type : NAME"""
     _, name = p
-    if name in parser_constants.PEP484_TRANSLATIONS:
-      p[0] = parser_constants.PEP484_TRANSLATIONS[name]
+    if name in self.aliases:
+      p[0] = self.aliases[name]
     else:
       p[0] = pytd.NamedType(name)
 

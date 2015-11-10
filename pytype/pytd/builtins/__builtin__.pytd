@@ -1,5 +1,6 @@
 # -*- mode:Python; coding:utf-8; python-indent:4; indent-tabs-mode:nil -*-
 
+from typing import Generic
 
 # Currently the type annotations are just enough to make the tests
 # work. These should be extended.

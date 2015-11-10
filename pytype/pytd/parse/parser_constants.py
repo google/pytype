@@ -14,8 +14,10 @@ PEP484_TRANSLATIONS = {
     'Tuple': pytd.NamedType('tuple'),
     'Set': pytd.NamedType('set'),
     'Generator': pytd.NamedType('generator'),
+    'Iterator': pytd.NamedType('iterator'),
     # PEP 484 definitions of special purpose types:
     'Any': pytd.AnythingType(),
+    'AnyStr': pytd.UnionType((tuple('str'), tuple('unicode')))
     # TODO(kramm): 'typing.NamedTuple'
 }
 
@@ -31,6 +33,7 @@ RESERVED = [
     'import',
     'from',
     'as',
+    'raise',
     # Keywords that are valid identifiers in Python (PyTD keywords):
     'PYTHONCODE',  # upper-case: stands out + unlikely name
     'nothing',

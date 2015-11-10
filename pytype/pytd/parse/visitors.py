@@ -152,7 +152,7 @@ class PrintVisitor(Visitor):
       typevars = "".join(
           "%s = TypeVar('%s')\n" % (t.name, t.name)
           for t in sorted(self.old_node.template))
-      parents = ("Generic[%s]" % ", ".join(node.template),) + node.parents
+      parents = ("typing.Generic[%s]" % ", ".join(node.template),) + node.parents
     else:
       typevars = ""
       parents = node.parents
