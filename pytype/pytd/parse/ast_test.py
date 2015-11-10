@@ -146,6 +146,15 @@ class TestASTGeneration(parser_test.ParserTest):
         """)
     self.TestRoundTrip(src, check_the_sourcecode=False)
 
+  def testQuotes(self):
+    """Test parsing of quoted types."""
+    src = textwrap.dedent("""
+        def occurences() -> "Dict[str, List[int]]"
+        class A(object): ...
+        def invert(d: 'Dict[A, A]') -> 'Dict[A, A]'
+        """)
+    self.TestRoundTrip(src, check_the_sourcecode=False)
+
   def testGeneric(self):
     src = textwrap.dedent("""
         X = TypeVar('X')
@@ -580,32 +589,6 @@ class TestASTGeneration(parser_test.ParserTest):
             exceptions=()),))
     self.assertEqual(f, result1.Lookup("foo"))
     self.assertEqual(f, result2.Lookup("foo"))
-
-  def testTokens(self):
-    """Test various token forms (int, float, n"...", etc.)."""
-    # TODO(pludemann): a test with '"' or "'" in a string
-    data = textwrap.dedent("""
-        def `interface`(abcde: "xyz", foo: 'a"b', b: -1.0, c: 666) -> int
-        """)
-
-    result = self.Parse(data)
-    f1 = result.Lookup("interface")
-    f2 = pytd.Function(
-        name="interface",
-        signatures=(pytd.Signature(
-            params=(
-                pytd.Parameter(name="abcde",
-                               type=pytd.Scalar(value="xyz")),
-                pytd.Parameter(name="foo",
-                               type=pytd.Scalar(value='a"b')),
-                pytd.Parameter(name="b",
-                               type=pytd.Scalar(value=-1.0)),
-                pytd.Parameter(name="c",
-                               type=pytd.Scalar(value=666))),
-            return_type=pytd.NamedType("int"),
-            exceptions=(),
-            template=(), has_optional=False),))
-    self.assertEqual(f1, f2)
 
   def testNoReturnType(self):
     """Test a parsing error (no return type)."""

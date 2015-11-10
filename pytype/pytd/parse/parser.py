@@ -23,6 +23,7 @@
 # pylint: disable=g-doc-args, g-no-space-after-docstring-summary
 # pylint: disable=g-space-before-docstring-summary
 # pylint: disable=line-too-long
+# pylint: disable=g-docstring-quotes
 
 import collections
 import hashlib
@@ -103,7 +104,6 @@ class PyLexer(object):
       'QUESTIONMARK',
       'RBRACKET',
       'RPAREN',
-      'STRING',
       'TYPECOMMENT',
       'TRIPLEQUOTED',
   ] + [id.upper() for id in reserved]
@@ -151,7 +151,8 @@ class PyLexer(object):
     make_syntax_error(self, 'Use spaces, not tabs', t)
 
   def t_WHITESPACE(self, t):
-    r"""[\n\r ]+"""  # explicit [...] instead of \s, to omit tab
+    # Treat ["] and ['] as whitespace, too, since they wrap types.
+    r"""([\n\r ]|(?!\"\"\"|''')["'])+"""
 
     if self.queued_dedents:
       self.queued_dedents -= 1
@@ -215,16 +216,8 @@ class PyLexer(object):
     return t
 
   def t_TRIPLEQUOTED(self, t):
-    r'"""((?!""")(.|\n))*"""'  # pylint: disable=g-docstring-quotes
-    return t
-
-  def t_STRING(self, t):
-    (r"""'([^']|\\')*'|"""
-     r'"([^"]|\\")*"')
-    # TODO(pludemann): full Python string syntax (e.g., """...""", r"...")
-    # TODO(pludemann): use something like devtools/python/library_types/ast.py
-    #                  _ParseLiteral
-    t.value = eval(t.value)  # pylint: disable=eval-used
+    (r'"""((?!""")(.|\n))*"""|'
+     r"'''((?!''')(.|\n))*'''")
     return t
 
   def t_NUMBER(self, t):
@@ -699,7 +692,7 @@ class TypeDeclParser(object):
     p[0] = pytd.Constant(p[1], p[7])
 
   def p_typevardef(self, p):
-    """typevardef : NAME ASSIGN TYPEVAR LPAREN STRING RPAREN"""
+    """typevardef : NAME ASSIGN TYPEVAR LPAREN NAME RPAREN"""
     _, name, _, _, _, name_param, _ = p
     if name != name_param:
       make_syntax_error(self, 'TypeVar name needs to be %r (not %r)' % (
@@ -959,10 +952,6 @@ class TypeDeclParser(object):
     """type : NOTHING"""
     p[0] = pytd.NothingType()
 
-  def p_type_constant(self, p):
-    """type : scalar"""
-    p[0] = p[1]
-
   def p_module_name_1(self, p):
     """module_name : NAME"""
     p[0] = p[1]
@@ -970,14 +959,6 @@ class TypeDeclParser(object):
   def p_module_name_multi(self, p):
     """module_name : module_name DOT NAME"""
     p[0] = p[1] + '.' + p[3]
-
-  def p_scalar_string(self, p):
-    """scalar : STRING"""
-    p[0] = pytd.Scalar(p[1])
-
-  def p_scalar_number(self, p):
-    """scalar : NUMBER"""
-    p[0] = pytd.Scalar(p[1].AsFloatOrInt())
 
   def p_error(self, t):
     if t is None:
