@@ -20,7 +20,7 @@ class GeneratorTest(test_inference.InferenceTest):
       y = list(x for x in [1, 2, 3])
     """, deep=True, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
-        y = ...  # type: list[int]
+        y = ...  # type: List[int, ...]
       """)
 
   def testReuse(self):
@@ -29,8 +29,8 @@ class GeneratorTest(test_inference.InferenceTest):
       z = list(x for x in [1, 2, 3])
     """, deep=True, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
-        y = ...  # type: list[int]
-        z = ...  # type: list[int]
+        y = ...  # type: List[int, ...]
+        z = ...  # type: List[int, ...]
       """)
 
   def testNextWithDefault(self):
@@ -54,7 +54,7 @@ class GeneratorTest(test_inference.InferenceTest):
       self.assertTypesMatchPytd(ty, """
         class Foo(object):
           def bar(self) -> ?
-          def __iter__(self) -> generator[nothing]
+          def __iter__(self) -> Generator[nothing, ...]
       """)
 
   def testCoroutineType(self):
@@ -63,7 +63,7 @@ class GeneratorTest(test_inference.InferenceTest):
         yield 3
     """, deep=True, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
-        def foo(self) -> generator[int]
+        def foo(self) -> Generator[int, ...]
       """)
 
 if __name__ == "__main__":

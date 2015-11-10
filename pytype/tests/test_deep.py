@@ -213,7 +213,7 @@ class StructuralTest(test_inference.InferenceTest):
         return lines
     """, deep=True, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
-        def trim(docstring: bytearray or bytes or str or unicode) -> list[bytearray or str or unicode]
+        def trim(docstring: bytearray or bytes or str or unicode) -> List[bytearray or str or unicode, ...]
       """)
 
   def testAmbiguousTopLevelIdentifier(self):

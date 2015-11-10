@@ -159,7 +159,7 @@ class ContainerTest(test_inference.InferenceTest):
       self.assertTypesMatchPytd(ty, """
         x = ...  # type: int or float
         y = ...  # type: ?
-        l = ...  # type: list[int or float]
+        l = ...  # type: List[int or float, ...]
       """)
 
   def testListConcatUnlike(self):
@@ -369,7 +369,7 @@ class ContainerTest(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=False, extract_locals=True) as ty:
       self.assertTypesMatchPytd(ty, """
         sys = ...  # type: module
-        a = ...  # type: list[str]
+        a = ...  # type: List[str, ...]
         ty = ...  # type: type
       """)
 
@@ -381,7 +381,7 @@ class ContainerTest(test_inference.InferenceTest):
       open('%s' % entry, 'w')
     """, deep=False, solve_unknowns=False, extract_locals=True) as ty:
       self.assertTypesMatchPytd(ty, """
-        d = ...  # type: dict[str, str]
+        d = ...  # type: Dict[str, str]
         entry = ...  # type: str
       """)
 
@@ -391,7 +391,7 @@ class ContainerTest(test_inference.InferenceTest):
         return dict([])
     """, deep=True, solve_unknowns=False, extract_locals=True) as ty:
       self.assertTypesMatchPytd(ty, """
-        def f() -> dict[nothing, nothing]
+        def f() -> Dict[nothing, nothing]
       """)
 
   def testDictTupleInit(self):
@@ -400,7 +400,7 @@ class ContainerTest(test_inference.InferenceTest):
         return dict([("foo", "foo")])
     """, deep=True, solve_unknowns=False, extract_locals=True) as ty:
       self.assertTypesMatchPytd(ty, """
-        def f() -> dict[str, str]
+        def f() -> Dict[str, str]
       """)
 
   def testEmptyTupleAsArg(self):
@@ -456,7 +456,7 @@ class ContainerTest(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=False, extract_locals=True) as ty:
       self.assertTypesMatchPytd(ty, """
         x = ...  # type: float or int
-        y = ...  # type: tuple[float or int]
+        y = ...  # type: Tuple[float or int, ...]
       """)
 
   def testMaybeAny(self):
@@ -469,7 +469,7 @@ class ContainerTest(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
         x = ...  # type: float or int
-        y = ...  # type: tuple[complex or float]
+        y = ...  # type: Tuple[complex or float, ...]
       """)
 
   def testIndex(self):
@@ -486,7 +486,7 @@ class ContainerTest(test_inference.InferenceTest):
       self.assertTypesMatchPytd(ty, """
         # The element types aren't more precise since the solver doesn't know
         # which element of the list gets modified.
-        def f() -> list[?]
+        def f() -> List[?, ...]
       """)
 
 if __name__ == "__main__":

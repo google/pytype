@@ -137,7 +137,7 @@ class ImportTest(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
         sys = ...  # type: module
-        def f() -> list[str]
+        def f() -> List[str, ...]
       """)
 
   def testFromSysImport(self):
@@ -147,8 +147,8 @@ class ImportTest(test_inference.InferenceTest):
         return path
     """, deep=True, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
-        path = ...  # type: list[str]
-        def f() -> list[str]
+        path = ...  # type: List[str, ...]
+        def f() -> List[str, ...]
       """)
 
   def testImportSys2(self):

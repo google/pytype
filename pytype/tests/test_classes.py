@@ -101,8 +101,8 @@ class ClassesTest(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
       class Foo(?):
-        x = ...  # type: list[int]
-        y = ...  # type: list[int]
+        x = ...  # type: List[int, ...]
+        y = ...  # type: List[int, ...]
         def f(self) -> NoneType
       """)
 
@@ -206,7 +206,7 @@ class ClassesTest(test_inference.InferenceTest):
           return getattr(self, '__str__')
     """, deep=True, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
-        class MyList(list[?]):
+        class MyList(List[?, ...]):
           def foo(self) -> ?
       """)
 

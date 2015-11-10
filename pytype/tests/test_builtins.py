@@ -131,13 +131,13 @@ class BuiltinTests(test_inference.InferenceTest):
       self.assertTypesMatchPytd(ty, """
         def t_testDict() -> float or int
         # _i1_, _i2_ capture the more precise definitions of the ~dict, ~list
-        def _i1_(x: list[float or int]) -> list[float or int]
-        def _i2_(x: dict[complex or str, float or int]) -> dict[complex or str, float or int]
+        def _i1_(x: List[float or int, ...]) -> List[float or int, ...]
+        def _i2_(x: dict[complex or str, float or int]) -> Dict[complex or str, float or int]
         # TODO(pludemann): solve_unknowns=True removes this:
         # class `~dict`:
         #   def __setitem__(self, i: complex, y: float) -> NoneType
         #   def __setitem__(self, i: str, y: int) -> NoneType
-        #   def values(self) -> list[float or int]
+        #   def values(self) -> List[float or int, ...]
         # class `~list`:
         #   def __getitem__(self, index: int) -> float or int
       """)
@@ -190,7 +190,7 @@ class BuiltinTests(test_inference.InferenceTest):
       return list(x)
     """, deep=True, solve_unknowns=True, extract_locals=True) as ty:
       self.assertTypesMatchPytd(ty, """
-        def t_testListInit0(x: object) -> list[?]
+        def t_testListInit0(x: object) -> List[?, ...]
       """)
 
   def testListInit1(self):
@@ -199,7 +199,7 @@ class BuiltinTests(test_inference.InferenceTest):
       return x + [y]
     """, deep=True, solve_unknowns=True, extract_locals=False) as ty:
       self.assertTypesMatchPytd(ty, """
-        def t_testListInit1(x: list[object], y) -> list[?]
+        def t_testListInit1(x: List[object, ...], y) -> List[?, ...]
       """)
 
   def testListInit2(self):
@@ -223,7 +223,7 @@ class BuiltinTests(test_inference.InferenceTest):
     t_testListInit3([1,2,3,'abc'], 0)
     """, deep=False, solve_unknowns=True, extract_locals=True) as ty:
       self.assertTypesMatchPytd(ty, """
-        def t_testListInit3(x: list[int or str], i: int) -> int or str
+        def t_testListInit3(x: List[int or str, ...], i: int) -> int or str
       """)
 
   def testListInit4(self):
@@ -241,7 +241,7 @@ class BuiltinTests(test_inference.InferenceTest):
       self.assertTypesMatchPytd(ty, """
         def t_testListInit4(x) -> ?
         # _i_ captures the more precise definition of the list
-        def _i_(x: list[object]) -> list[?]
+        def _i_(x: List[object, ...]) -> List[?, ...]
       """)
 
   def testAbsInt(self):
@@ -382,7 +382,7 @@ class BuiltinTests(test_inference.InferenceTest):
         class Foo(object):
           pass
 
-        def f() -> list[?]
+        def f() -> List[?, ...]
       """)
 
   def testArraySmoke(self):
@@ -413,7 +413,7 @@ class BuiltinTests(test_inference.InferenceTest):
         pass
     """, deep=True, solve_unknowns=False) as ty:
       self.assertTypesMatchPytd(ty, """
-        class Foo(list[?]):
+        class Foo(List[?, ...]):
           pass
       """)
 
@@ -475,7 +475,7 @@ class BuiltinTests(test_inference.InferenceTest):
         return divmod(a, 30268)
     """, deep=True, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
-        def seed(self, ...) -> tuple[int or long or float or complex]
+        def seed(self, ...) -> Tuple[int or long or float or complex, ...]
       """)
 
   def testDivMod3(self):
@@ -486,7 +486,7 @@ class BuiltinTests(test_inference.InferenceTest):
         return divmod(a, 30268)
     """, deep=True, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
-        def seed(self, ...) -> tuple[int or long or float or complex]
+        def seed(self, ...) -> Tuple[int or long or float or complex, ...]
       """)
 
   def testOsOpen(self):
@@ -610,7 +610,7 @@ class BuiltinTests(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
         def f(x: bool or int or float or complex or long,
-              y: bool or int or float or complex or long) -> tuple[int or float or complex or long]
+              y: bool or int or float or complex or long) -> Tuple[int or float or complex or long, ...]
       """)
 
 if __name__ == "__main__":

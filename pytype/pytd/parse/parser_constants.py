@@ -5,21 +5,21 @@ import re
 
 from pytype.pytd import pytd
 
+PEP484_CAPITALIZED = {
+    # The PEP 484 definition of these built-in types is the capitalized name.
+    # E.g. "List" to represent the "list" type.
+    'list', 'dict', 'tuple', 'set', 'generator', 'iterator'
+}
 PEP484_TRANSLATIONS = {
     # PEP 484 allows 'None' as an abbreviation of 'NoneType'.
     'None': pytd.NamedType('NoneType'),
-    # PEP 484 definitions of built-in types:
-    'List': pytd.NamedType('list'),
-    'Dict': pytd.NamedType('dict'),
-    'Tuple': pytd.NamedType('tuple'),
-    'Set': pytd.NamedType('set'),
-    'Generator': pytd.NamedType('generator'),
-    'Iterator': pytd.NamedType('iterator'),
     # PEP 484 definitions of special purpose types:
     'Any': pytd.AnythingType(),
-    'AnyStr': pytd.UnionType((tuple('str'), tuple('unicode')))
+    'AnyStr': pytd.UnionType((tuple('str'), tuple('unicode'))),
     # TODO(kramm): 'typing.NamedTuple'
 }
+PEP484_TRANSLATIONS.update({name.capitalize(): pytd.NamedType(name)
+                            for name in PEP484_CAPITALIZED})
 
 # PyTD keywords
 RESERVED = [

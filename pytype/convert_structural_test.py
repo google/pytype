@@ -614,14 +614,14 @@ class MatchTest(unittest.TestCase):
 
       class `~unknown1`():
           def __setitem__(self, _1: str, _2: `~unknown2`) -> ?
-          def update(self, _1: NoneType or dict[nothing, nothing]) -> ?
+          def update(self, _1: NoneType or Dict[nothing, nothing]) -> ?
 
       class `~unknown2`():
           def append(self, v:NoneType) -> NoneType
     """)
     expected = textwrap.dedent("""
       class A(object):
-          def foo(self, x: dict[str, list[?]]) -> bool
+          def foo(self, x: Dict[str, List[?, ...]]) -> bool
     """).lstrip()
     ast = parser.parse_string(sourcecode)
     ast = convert_structural.convert_pytd(ast, self.builtins_pytd)

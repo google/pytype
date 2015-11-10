@@ -68,6 +68,7 @@ class PyLexer(object):
   t_COLONEQUALS = r':='
   t_COMMA = r','
   t_DEDENT = r'(?!d)d'
+  t_ELLIPSIS = r'\.\.\.'
   t_DOT = r'\.'
   t_EQ = r'=='
   t_ASSIGN = r'='
@@ -92,6 +93,7 @@ class PyLexer(object):
       # 'COMMENT',  # Not used in the grammar; only used to discard comments
       'DEDENT',
       'DOT',
+      'ELLIPSIS',
       'LT',
       'GT',
       'LE',
@@ -278,6 +280,9 @@ class Number(collections.namedtuple('Number', ['string'])):
     prefix = tuple(int(digit) for digit in components)
     return (prefix + (0, 0, 0))[0:3]
 
+  def __int__(self):
+    return int(self.string)
+
 
 class Mutator(visitors.Visitor):
   """Visitor for changing parameters to BeforeAfterType instances.
@@ -343,14 +348,15 @@ def SplitParents(parser, p, parents):
   for parent in parents:
     if (isinstance(parent, pytd.GenericType) and
         parent.base_type == pytd.ExternalType('Generic', 'typing')):
-      if not all(isinstance(p, pytd.NamedType) for p in parent.parameters):
+      if not all(isinstance(param, pytd.NamedType)
+                 for param in parent.parameters):
         make_syntax_error(
-            parser, 'Illegal template parameter %s' % pytd.Print(p), p)
+            parser, 'Illegal template parameter %s' % pytd.Print(parent), p)
       if template:
         make_syntax_error(
             parser, 'Duplicate Template base class', p)
-      template = tuple(pytd.TemplateItem(pytd.TypeParameter(p.name))
-                       for p in parent.parameters)
+      template = tuple(pytd.TemplateItem(pytd.TypeParameter(param.name))
+                       for param in parent.parameters)
       all_names = [t.name for t in template]
       duplicates = [name
                     for name, count in collections.Counter(all_names).items()
@@ -529,7 +535,7 @@ class TypeDeclParser(object):
 
   def p_from_item_typevar(self, p):
     """from_item : TYPEVAR"""
-    p[0] = ("TypeVar", "TypeVar")
+    p[0] = ('TypeVar', 'TypeVar')
 
   def p_from_item_as(self, p):
     """from_item : NAME AS NAME"""
@@ -537,7 +543,7 @@ class TypeDeclParser(object):
 
   def p_from_item_asterisk(self, p):
     """from_item : ASTERISK"""
-    p[0] = ("*", "*")
+    p[0] = ('*', '*')
 
   def p_dotted_name_1(self, p):
     """dotted_name : NAME"""
@@ -545,7 +551,7 @@ class TypeDeclParser(object):
 
   def p_dotted_name(self, p):
     """dotted_name : dotted_name DOT NAME"""
-    p[0] = p[1] + "." + p[3]
+    p[0] = p[1] + '.' + p[3]
 
   def p_alias(self, p):
     """alias : NAME ASSIGN type"""
@@ -660,7 +666,7 @@ class TypeDeclParser(object):
     p[0] = p[3]
 
   def p_maybe_class_funcs_ellipsis(self, p):
-    """maybe_class_funcs : DOT DOT DOT"""
+    """maybe_class_funcs : ELLIPSIS"""
     p[0] = []
 
   def p_maybe_class_funcs_pass(self, p):
@@ -676,7 +682,7 @@ class TypeDeclParser(object):
     p[0] = []
 
   def p_class_funcs_ellipsis(self, p):
-    """class_funcs : DOT DOT DOT"""
+    """class_funcs : ELLIPSIS"""
     p[0] = []
 
   def p_parents(self, p):
@@ -727,8 +733,14 @@ class TypeDeclParser(object):
     p[0] = []
 
   def p_constantdef_comment(self, p):
-    """constantdef : NAME ASSIGN DOT DOT DOT TYPECOMMENT type"""
-    p[0] = pytd.Constant(p[1], p[7])
+    """constantdef : NAME ASSIGN ELLIPSIS TYPECOMMENT type"""
+    p[0] = pytd.Constant(p[1], p[5])
+
+  def p_constantdef_int(self, p):
+    """constantdef : NAME ASSIGN NUMBER"""
+    if int(p[3]) != 0:
+      make_syntax_error(self, "Only '0' allowed as int literal", p)
+    p[0] = pytd.Constant(p[1], pytd.NamedType('int'))
 
   def p_typevardef(self, p):
     """typevardef : NAME ASSIGN TYPEVAR LPAREN NAME RPAREN"""
@@ -745,7 +757,7 @@ class TypeDeclParser(object):
   def p_decorator(self, p):
     # @overload is used for multiple signatures for the same function
     """decorator : AT NAME"""
-    if p[2] != "overload":
+    if p[2] != 'overload':
       make_syntax_error(
           self, 'Decorator %r not supported' % p[2], p)
     p[0] = []
@@ -801,7 +813,7 @@ class TypeDeclParser(object):
     p[0] = []
 
   def p_sameline_body(self, p):
-    """maybe_body : COLON DOT DOT DOT"""
+    """maybe_body : COLON ELLIPSIS"""
     p[0] = []
 
   def p_sameline_body_pass(self, p):
@@ -809,7 +821,7 @@ class TypeDeclParser(object):
     p[0] = []
 
   def p_ellipsis_body(self, p):
-    """maybe_body : COLON INDENT DOT DOT DOT DEDENT"""
+    """maybe_body : COLON INDENT ELLIPSIS DEDENT"""
     p[0] = []
 
   def p_pass_body(self, p):
@@ -882,7 +894,7 @@ class TypeDeclParser(object):
     p[0] = Params(p[1].required + [p[3]], has_optional=False)
 
   def p_params_ellipsis(self, p):
-    """params : params COMMA DOT DOT DOT"""
+    """params : params COMMA ELLIPSIS"""
     p[0] = Params(p[1].required, has_optional=True)
 
   def p_params_1(self, p):
@@ -890,7 +902,7 @@ class TypeDeclParser(object):
     p[0] = Params([p[1]], has_optional=False)
 
   def p_params_only_ellipsis(self, p):
-    """params : DOT DOT DOT"""
+    """params : ELLIPSIS"""
     p[0] = Params([], has_optional=True)
 
   def p_params_null(self, p):
@@ -903,7 +915,7 @@ class TypeDeclParser(object):
     p[0] = pytd.Parameter(p[1], pytd.NamedType('object'))
 
   def p_param_optional(self, p):
-    """param : NAME ASSIGN DOT DOT DOT"""
+    """param : NAME ASSIGN ELLIPSIS"""
     p[0] = pytd.OptionalParameter(p[1], pytd.NamedType('object'))
 
   def p_param_and_type(self, p):
@@ -911,16 +923,16 @@ class TypeDeclParser(object):
     p[0] = pytd.Parameter(p[1], p[3])
 
   def p_param_and_type_optional(self, p):
-    """param : NAME COLON type ASSIGN DOT DOT DOT"""
+    """param : NAME COLON type ASSIGN ELLIPSIS"""
     p[0] = pytd.OptionalParameter(p[1], p[3])
 
   def p_param_star(self, p):
     """param : ASTERISK NAME"""
-    p[0] = pytd.OptionalParameter("*" + p[2], pytd.NamedType('tuple'))
+    p[0] = pytd.OptionalParameter('*' + p[2], pytd.NamedType('tuple'))
 
   def p_param_kw(self, p):
     """param : ASTERISK ASTERISK NAME"""
-    p[0] = pytd.OptionalParameter("**" + p[2], pytd.NamedType('tuple'))
+    p[0] = pytd.OptionalParameter('**' + p[2], pytd.NamedType('tuple'))
 
   def p_raises(self, p):
     """raises : RAISES exceptions"""
@@ -954,6 +966,10 @@ class TypeDeclParser(object):
     """parameter : type"""
     p[0] = p[1]
 
+  def p_parameter_dotdotdot(self, p):
+    """parameter : ELLIPSIS"""
+    p[0] = Ellipsis
+
   def p_signature_none(self, p):
     """signature :"""
     p[0] = None
@@ -961,7 +977,7 @@ class TypeDeclParser(object):
   def p_type_tuple(self, p):
     # Used for function types, e.g.  # Callable[[args...], return]
     """type : LBRACKET type_list RBRACKET"""
-    p[0] = pytd.GenericType(pytd.NamedType("tuple"), tuple(p[2]))
+    p[0] = pytd.GenericType(pytd.NamedType('tuple'), tuple(p[2]))
 
   def p_type_list_1(self, p):
     """type_list : type """
@@ -991,30 +1007,26 @@ class TypeDeclParser(object):
   # data  Tree a  =  Leaf a | Branch (Tree a) (Tree a)
   # TODO(raoulDoc): should we consider nested generics?
 
-  # TODO(pludemann): for generic types, we explicitly don't allow
-  #                  type[...] but insist on identifier[...] ... this
-  #                  is because the grammar would be ambiguous, but for some
-  #                  reason PLY didn't come up with a shift/reduce conflict but
-  #                  just quietly promoted OR and AND above LBRACKET
-  #                  (or, at least, that's what I think happened). Probably best
-  #                  to not use precedence and write everything out fully, even
-  #                  if it's a more verbose grammar.
-
   def p_type_homogeneous(self, p):
     """type : named_or_external_type LBRACKET parameters RBRACKET"""
     _, base_type, _, parameters, _ = p
-    if p[1] == pytd.NamedType("Union"):
+    if p[1] == pytd.NamedType('Union'):
       p[0] = pytd.UnionType(parameters)
-    elif p[1] == pytd.NamedType("Optional"):
-      p[0] = pytd.UnionType(parameters[0], pytd.NamedType("None"))
-    elif len(parameters) == 1:
-      element_type, = parameters
+    elif p[1] == pytd.NamedType('Optional'):
+      p[0] = pytd.UnionType(parameters[0], pytd.NamedType('None'))
+    elif len(parameters) == 2 and parameters[-1] is Ellipsis:
+      element_type, _ = parameters
+      if element_type is Ellipsis:
+        make_syntax_error(self, '[..., ...] not supported', p)
       p[0] = pytd.HomogeneousContainerType(base_type=base_type,
                                            parameters=(element_type,))
     else:
+      parameters = tuple(pytd.AnythingType() if p is Ellipsis else p
+                         for p in parameters)
       p[0] = pytd.GenericType(base_type=base_type, parameters=parameters)
 
-  def p_type_generic_1(self, p):
+  # deprecated
+  def p_type_generic(self, p):
     """type : named_or_external_type LBRACKET parameters COMMA RBRACKET"""
     _, base_type, _, parameters, _, _ = p
     p[0] = pytd.GenericType(base_type=base_type, parameters=parameters)

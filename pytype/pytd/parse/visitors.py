@@ -152,7 +152,8 @@ class PrintVisitor(Visitor):
       typevars = "".join(
           "%s = TypeVar('%s')\n" % (t.name, t.name)
           for t in sorted(self.old_node.template))
-      parents = ("typing.Generic[%s]" % ", ".join(node.template),) + node.parents
+      parents = ("typing.Generic[%s]" %
+                 ", ".join(node.template),) + node.parents
     else:
       typevars = ""
       parents = node.parents
@@ -266,16 +267,23 @@ class PrintVisitor(Visitor):
   def VisitTypeParameter(self, node):
     return self._SafeName(node.name)
 
+  def MaybeCaptialize(self, name):
+    """Capitalize a generic type, if necessary."""
+    if name in parser_constants.PEP484_CAPITALIZED:
+      return name.capitalize()
+    else:
+      return name
+
   def VisitHomogeneousContainerType(self, node):
     """Convert a homogeneous container type to a string."""
-    return node.base_type + "[" + node.element_type + "]"
+    return (self.MaybeCaptialize(node.base_type) +
+            "[" + node.element_type + ", ...]")
 
   def VisitGenericType(self, node):
     """Convert a generic type (E.g. list[int]) to a string."""
-    # The syntax for a parameterized type with one parameter is "X[T,]"
-    # (E.g. "tuple[int,]")
-    param_str = node.parameters[0] + ", " + ", ".join(node.parameters[1:])
-    return node.base_type + "[" + param_str.rstrip() + "]"
+    param_str = ", ".join(node.parameters)
+    return (self.MaybeCaptialize(node.base_type) +
+            "[" + param_str + "]")
 
   def VisitUnionType(self, node):
     """Convert a union type ("x or y") to a string."""
@@ -668,10 +676,7 @@ def ClassAsType(cls):
   params = tuple(item.type_param for item in cls.template)
   if not params:
     return pytd.NamedType(cls.name)
-  elif len(params) == 1:
-    return pytd.HomogeneousContainerType(pytd.NamedType(cls.name),
-                                         params)
-  else:  # len(cls.template) >= 2
+  else:
     return pytd.GenericType(pytd.NamedType(cls.name), params)
 
 
