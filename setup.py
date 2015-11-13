@@ -12,5 +12,5 @@ setup(
     packages=['pytype', 'pytype/pyc', 'pytype/pytd', 'pytype/pytd/parse'],
     scripts=['scripts/pytype', 'scripts/pytd'],
     package_data={'pytype': ['pytd/builtins/*']},
-    requires=['ply (>=3.4)'],
+    install_requires=['ply>=3.4'],
 )
