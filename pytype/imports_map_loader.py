@@ -11,6 +11,7 @@
 # system. The complete mapping of imports name to actual file can be generated
 # by recursively starting with the current invocations.
 
+
 # The keys are the module paths *without* the trailing .py
 # TODO(pludemann): revisit this decision and reinstate the .py, because: (a)
 #                  that's the only thing that should appear (.pytd inputs are
@@ -75,12 +76,12 @@ def build_imports_map(options_info_path, empty_init_path, src_out):
   pytype_provider_deps_files = _read_pytype_provider_deps_files(
       options_info_path)
   # build up a dict of short_path -> list of paths
-  imports_multimap = collections.defaultdict(list)
+  imports_multimap = collections.defaultdict(set)
   for short_path, path in pytype_provider_deps_files:
     path_key, path_ext = os.path.splitext(short_path)
     # TODO(pludemann): parameterize this check:
     assert path_ext in (".py", ".pytd"), (path_key, path_ext, short_path)
-    imports_multimap[path_key].append(path)
+    imports_multimap[path_key].add(path)
 
   # Sort the paths (that is, the values in the multimap), so that "#" items are
   # first (using os.path.basename, because that's where the "#" is

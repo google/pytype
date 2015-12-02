@@ -357,14 +357,19 @@ def generate_pytd(input_filename, output_filename, options, imports_map,
     #                  that what we've output is valid):
     _ = pytd_utils.ParsePyTD(src=result, python_version=python_version)
 
+    result_prefix = ""
+    if options.output_id:
+      result_prefix += "# %s src: %r\n" % (options.output_id, input_filename)
+    if options.quick:
+      result_prefix += "# (generated with --quick)\n"
+    if result_prefix:
+      result = result_prefix + "\n" + result
+
   if output_filename == "-" or not output_filename:
     sys.stdout.write(result)
   else:
     log.info("write pytd %r => %r", input_filename, output_filename)
     with open(output_filename, "w") as fi:
-      if options.output_id:
-        print >>fi, "#", options.output_id, "src:", input_filename
-        print >>fi
       fi.write(result)
 
 
