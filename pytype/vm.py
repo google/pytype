@@ -984,10 +984,11 @@ class VirtualMachine(object):
         state, ret = self.call_function_with_state(state, attr, [x],
                                                    fallback_to_unsolvable=False)
         results.append(ret)
-    log.debug("Results: %r", results)
-    if not results:
+    result = self.join_variables(state.node, name, results)
+    log.debug("Result: %r", result)
+    if not result.values:
       self.errorlog.unsupported_operands(self.frame.current_opcode, name, x, y)
-    return state, self.join_variables(state.node, name, results)
+    return state, result
 
   def binary_operator(self, state, name):
     state, (x, y) = state.popn(2)

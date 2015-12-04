@@ -46,6 +46,17 @@ class ErrorTest(test_inference.InferenceTest):
     self.assertErrorLogContains(errors,
                                 r"line 5.*Unsupported.*__xor__.*str.*str")
 
+  def testUnsupportedOperands2(self):
+    _, errors = self.InferAndCheck("""
+      def f():
+        x = "foo"
+        y = 3
+        return x + y
+    """)
+    # "Line 2, in f: Unsupported operands for __add__: 'str' and 'int'
+    self.assertErrorLogContains(errors,
+                                r"line 5.*Unsupported.*__add__.*str.*int")
+
   def testWrongArgCount(self):
     _, errors = self.InferAndCheck("""
       hex(1, 2, 3, 4)

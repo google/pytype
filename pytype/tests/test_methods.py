@@ -66,16 +66,6 @@ class MethodsTest(test_inference.InferenceTest):
     """, deep=False, solve_unknowns=False, extract_locals=False) as ty:
       self.assertHasSignature(ty.Lookup("f"), (self.intorfloat,), self.float)
 
-  def testAddStr(self):
-    with self.Infer("""
-      def f(x):
-        return x + "Test"
-      f(3.2)
-    """, deep=False, solve_unknowns=False, extract_locals=False) as ty:
-      self.assertTypesMatchPytd(ty, """
-        def f(x) -> ?
-      """)
-
   def testConjugate(self):
     with self.Infer("""
       def f(x, y):
