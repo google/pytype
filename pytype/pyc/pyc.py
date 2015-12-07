@@ -10,6 +10,34 @@ from pytype.pyc import loadmarshal
 from pytype.pyc import magic
 
 
+def python_pyc_name(py_filename, python_version):
+  """Convert a py filename to the filename of the compiled pyc file.
+
+  E.g. this converts
+    /tmp/tmpqF9GFq.py
+  to:
+    /tmp/tmpqF9GFq.pyc [Python 2, 3.0, 3.1]
+    /tmp/__pycache__/tmpqF9GFq.cpython-34.pyc [Python >= 3.2]
+  .
+
+  Args:
+    py_filename: A path to a .py file.
+    python_version: Python version, (major, minor).
+  Returns:
+    Path to the .pyc file.
+  """
+  if python_version < (3, 2):
+    basename, py = os.path.splitext(py_filename)
+    assert py == ".py", py_filename
+    return basename + ".pyc"
+  else:
+    path, basename = os.path.split(py_filename)
+    body, _ = os.path.splitext(basename)
+    short_version = "".join(map(str, python_version))
+    return os.path.join(path, "__pycache__",
+                        body + ".cpython-" + short_version + ".pyc")
+
+
 def compile_src_string_to_pyc_string(src, python_version):
   """Compile Python source code to pyc data.
 
@@ -25,9 +53,7 @@ def compile_src_string_to_pyc_string(src, python_version):
     The compiled pyc file as a binary string.
   """
   fi = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
-  basename, py = os.path.splitext(fi.name)
-  assert py == ".py", fi.name
-  pyc_name = basename + ".pyc"
+  pyc_name = python_pyc_name(fi.name, python_version)
   try:
     fi.write(src)
     fi.close()
