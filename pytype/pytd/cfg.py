@@ -189,6 +189,9 @@ class CFGNode(object):
   def RegisterValue(self, value):
     self.values.add(value)
 
+  def __repr__(self):
+    return "<cfgnode %d %s>" % (self.id, self.name)
+
 
 class SourceSet(frozenset):
   """A SourceSet is a combination of Values that was used to form a Value.

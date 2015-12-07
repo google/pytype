@@ -1507,6 +1507,9 @@ class VirtualMachine(object):
     name = self.frame.f_code.co_names[op.arg]
     state, value = state.pop()
     state = self.store_local(state, name, value)
+    # TODO(kramm): Why does adding
+    #  state = state.forward_cfg_node()
+    # here break the 'testMaybeAny' test in test_containers.py?
     return state
 
   def byte_DELETE_NAME(self, state, op):

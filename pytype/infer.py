@@ -100,14 +100,14 @@ class CallTracer(vm.VirtualMachine):
 
   def analyze_method_var(self, name, var, node):
     log.info("Analyzing %s", name)
-    for val in var.values:
+    for val in var.Values(node):
       node2 = self.analyze_method(val, node)
       node2.ConnectTo(node)
     return node
 
   def bind_method(self, name, methodvar, instance, clsvar, node):
     bound = self.program.NewVariable(name)
-    for m in methodvar.data:
+    for m in methodvar.Data(node):
       bound.AddValue(m.property_get(instance, clsvar), [], node)
     return bound
 
