@@ -1972,7 +1972,8 @@ class VirtualMachine(object):
       name = None
     else:
       assert self.python_version[0] == 3
-      state, name = state.pop()
+      state, name_var = state.pop()
+      name = _get_atomic_python_constant(name_var)
     state, code = state.pop()
     state, defaults = state.popn(argc)
     globs = self.get_globals_dict()
