@@ -175,7 +175,7 @@ def _parse_options(args):
             "The intended use case is for when you're running tests in "
             "a directory structure that starts below the root module in "
             "your module names.") % os.pathsep)
-  # MOE:strip_line TODO(pludemann): remove when Bazel integration is done:
+# MOE:strip_line TODO(pludemann): remove when Bazel integration is done:
   o.add_option(
       "--nofail", action="store_true",
       dest="nofail", default=False,
@@ -401,10 +401,10 @@ def main(argv):
 
   # Do *not* apply os.path.abspath here because we could be in a symlink tree
   # and bad things happen if you go to relative directories.
-  # MOE:begin_strip
+# MOE:begin_strip
   # Note that you should not do os.path.abspath(f) below; it will probably fail
   # on Forge because of the symlink tree pointing into the cache:
-  # MOE:end_strip
+# MOE:end_strip
 
   # Note that the below is [""] for "", and e.g. ["x", ""] for "x:"
   # ("" is a valid entry to denote the current directory)
