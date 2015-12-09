@@ -54,13 +54,13 @@ def main():
   options, filenames = parse_options(sys.argv)
   unused_executable = filenames.pop(0)
   if len(filenames) != 2:
-    print >> sys.stderr, "Need exactly two filenames"
+    print >>sys.stderr, "Need exactly two filenames"
     sys.exit(1)
   filename_in, filename_out = filenames
 
   if options.output_format not in utils.OUTPUT_FORMATS:
-    print >> sys.stderr, "Invalid output format:", options.output_format
-    print >> sys.stderr, "Supported formats:", ", ".join(utils.OUTPUT_FORMATS)
+    print >>sys.stderr, "Invalid output format:", options.output_format
+    print >>sys.stderr, "Supported formats:", ", ".join(utils.OUTPUT_FORMATS)
     sys.exit(1)
 
   with open(filename_in) as fi:

@@ -513,7 +513,7 @@ def _get_module_name(filename, pythonpath):
 
 
 def check_types(py_src, pytd_src, py_filename, pytd_filename,
-                python_version, errorlog, run_builtins=True,
+                python_version, python_exe, errorlog, run_builtins=True,
                 pybuiltins_filename=None, pythonpath=(),
                 find_pytd_import_ext=".pytd",
                 import_drop_prefixes=(), reverse_operators=False,
@@ -521,6 +521,7 @@ def check_types(py_src, pytd_src, py_filename, pytd_filename,
                 maximum_depth=None):
   """Verify a PyTD against the Python code."""
   tracer = CallTracer(python_version=python_version,
+                      python_exe=python_exe,
                       errorlog=errorlog,
                       module_name=_get_module_name(py_filename, pythonpath),
                       reverse_operators=reverse_operators,
@@ -539,7 +540,9 @@ def check_types(py_src, pytd_src, py_filename, pytd_filename,
                      os.path.basename(pytd_filename))
 
 
-def infer_types(src, python_version, errorlog,
+def infer_types(src,
+                python_version, python_exe,
+                errorlog,
                 filename=None, run_builtins=True,
                 pybuiltins_filename=None,
                 imports_map=None,
@@ -555,6 +558,7 @@ def infer_types(src, python_version, errorlog,
   Args:
     src: A string containing Python source code.
     python_version: The python version to emulate (major, minor).
+    python_exe: Path to a python interpreter or None.
     errorlog: Where error messages go. Instance of ErrorLog.
     filename: Filename of the program we're parsing.
     run_builtins: Whether to preload the native Python builtins when running
@@ -585,6 +589,7 @@ def infer_types(src, python_version, errorlog,
     AssertionError: In case of a bad parameter combination.
   """
   tracer = CallTracer(python_version=python_version,
+                      python_exe=python_exe,
                       imports_map=imports_map,
                       errorlog=errorlog,
                       module_name=_get_module_name(filename, pythonpath),

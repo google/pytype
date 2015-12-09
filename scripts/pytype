@@ -69,6 +69,13 @@ def _parse_options(args):
       dest="python_version", default="2.7",
       help=("Python version to emulate (\"major.minor\", e.g. \"2.7\")"))
   o.add_option(
+      "--python_exe", type="string", action="store",
+      dest="python_exe", default=None,
+      # TODO(pludemann): pyc.py implements the following and might change.
+      help=("Full path to a Python interpreter that is used to compile the "
+            "source(s) to byte code. If not specified, --python_version is "
+            "used to create the name of an interpreter."))
+  o.add_option(
       "-v", "--verbosity", type="int", action="store",
       dest="verbosity", default=1,
       help=("Set logging verbosity: "
@@ -201,7 +208,7 @@ def _initialize_logging(options):
   """Set up appropriate logging verbosity + tracking max log severity."""
   if options.verbosity >= 0:
     if options.verbosity >= len(LOG_LEVELS):
-      print >> sys.stderr, "Invalid verbosity: %d" % options.verbosity
+      print >>sys.stderr, "Invalid verbosity: %d" % options.verbosity
       sys.exit(1)
     logging.basicConfig(level=LOG_LEVELS[options.verbosity])
   else:
@@ -223,10 +230,10 @@ def _initialize_filenames_and_output(options, input_filenames):
     is None if derived input_filename using the command options.
   """
   if not input_filenames:
-    print >> sys.stderr, "Need at least one filename."
+    print >>sys.stderr, "Need at least one filename."
     sys.exit(1)
   if len(input_filenames) > 1 and options.output:
-    print >> sys.stderr, "-o only allowed for single input"
+    print >>sys.stderr, "-o only allowed for single input"
     sys.exit(1)
 
   src_out = []
@@ -238,9 +245,9 @@ def _initialize_filenames_and_output(options, input_filenames):
         # pytype infile -o outfile.
         src_out.append((item, options.output))
       else:
-        print >> sys.stderr, ("Argument %r is not a pair of non"
-                              "empty file names separated by %r" %
-                              (item, os.pathsep))
+        print >>sys.stderr, ("Argument %r is not a pair of non-"
+                             "empty file names separated by %r" %
+                             (item, os.pathsep))
         sys.exit(1)
     else:
       src_out.append(split)
@@ -249,7 +256,8 @@ def _initialize_filenames_and_output(options, input_filenames):
 
 
 def check_pytd(input_filename, output_filename, options, imports_map,
-               pythonpath, import_drop_prefixes, python_version, errorlog):
+               pythonpath, import_drop_prefixes, python_version, python_exe,
+               errorlog):
   with open(input_filename, "r") as fi:
     py_src = fi.read()
   with open(output_filename, "r") as fi:
@@ -260,6 +268,7 @@ def check_pytd(input_filename, output_filename, options, imports_map,
       py_filename=input_filename,
       pytd_filename=output_filename,
       python_version=python_version,
+      python_exe=python_exe,
       errorlog=errorlog,
       run_builtins=options.run_builtins,
       pybuiltins_filename=options.pybuiltins_filename,
@@ -274,7 +283,8 @@ def check_pytd(input_filename, output_filename, options, imports_map,
 
 
 def generate_pytd(input_filename, output_filename, options, imports_map,
-                  pythonpath, import_drop_prefixes, python_version, errorlog):
+                  pythonpath, import_drop_prefixes, python_version, python_exe,
+                  errorlog):
   """Run the inferencer on one file, producing output.
 
   Args:
@@ -288,6 +298,7 @@ def generate_pytd(input_filename, output_filename, options, imports_map,
     pythonpath: from --pythonpath
     import_drop_prefixes: from --import_drop_prefixes
     python_version: A tuple of length 2. (major, minor)
+    python_exe: Path to a Python interpreter, or None
     errorlog: Where to put error messages. Instance or ErrorLog.
 
   Returns:
@@ -307,6 +318,7 @@ def generate_pytd(input_filename, output_filename, options, imports_map,
     mod = infer.infer_types(
         src,
         python_version=python_version,
+        python_exe=python_exe,
         errorlog=errorlog,
         filename=input_filename,
         run_builtins=options.run_builtins,
@@ -374,17 +386,18 @@ def generate_pytd(input_filename, output_filename, options, imports_map,
 
 
 def process_one_file(input_filename, output_filename, options, imports_map,
-                     pythonpath, import_drop_prefixes, python_version):
+                     pythonpath, import_drop_prefixes,
+                     python_version, python_exe):
   """Check or generate a .pytd, according to options."""
   errorlog = errors.ErrorLog()
   if options.check:
     check_pytd(input_filename, output_filename, options,
                imports_map, pythonpath, import_drop_prefixes,
-               python_version, errorlog)
+               python_version, python_exe, errorlog)
   else:
     generate_pytd(input_filename, output_filename, options,
                   imports_map, pythonpath, import_drop_prefixes,
-                  python_version, errorlog)
+                  python_version, python_exe, errorlog)
   errorlog.print_to_stderr()
   return 1 if errorlog else 0  # exit code
 
@@ -396,8 +409,6 @@ def main(argv):
   _initialize_logging(options)
 
   src_out = _initialize_filenames_and_output(options, input_filenames)
-  # TODO(pludemann): maybe select __init__.py items and put them first
-  #                  in the list? For now, just process in given order
 
   # Do *not* apply os.path.abspath here because we could be in a symlink tree
   # and bad things happen if you go to relative directories.
@@ -406,7 +417,7 @@ def main(argv):
   # on Forge because of the symlink tree pointing into the cache:
 # MOE:end_strip
 
-  # Note that the below is [""] for "", and e.g. ["x", ""] for "x:"
+  # Note that the below gives [""] for "", and ["x", ""] for "x:"
   # ("" is a valid entry to denote the current directory)
   pythonpath = options.pythonpath.split(os.pathsep)
 
@@ -443,13 +454,13 @@ def main(argv):
       log.info("Process [pre-pass] %s => %s", input_filename, output_filename)
       _ = process_one_file(input_filename, output_filename, options,
                            imports_map, pythonpath, import_drop_prefixes,
-                           python_version)
+                           python_version, options.python_exe)
 
   for input_filename, output_filename in src_out:
     log.info("Process %s => %s", input_filename, output_filename)
     ret = process_one_file(input_filename, output_filename, options,
                            imports_map, pythonpath, import_drop_prefixes,
-                           python_version)
+                           python_version, options.python_exe)
     if ret and not options.nofail:
       return ret
 

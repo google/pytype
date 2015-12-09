@@ -17,6 +17,7 @@ class CheckerTest(test_inference.InferenceTest):
                       py_filename="<inline>",
                       pytd_filename="<inline>",
                       python_version=self.PYTHON_VERSION,
+                      python_exe=self.PYTHON_EXE,
                       errorlog=errorlog,
                       cache_unknowns=True)
     return errorlog

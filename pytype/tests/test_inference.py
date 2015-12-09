@@ -146,6 +146,7 @@ class InferenceTest(unittest.TestCase):
   """Base class for implementing tests that check PyTD output."""
 
   PYTHON_VERSION = (2, 7)  # can be overwritten by subclasses
+  PYTHON_EXE = None  # can be overwritten by subclasses
 
   def setUp(self):
     self.bool = pytd.ClassType("bool")
@@ -232,7 +233,7 @@ class InferenceTest(unittest.TestCase):
       log.warning("Ignoring 'raises' parameter to assertNoErrors")
     errorlog = errors.ErrorLog()
     unit = infer.infer_types(
-        textwrap.dedent(code), self.PYTHON_VERSION, errorlog,
+        textwrap.dedent(code), self.PYTHON_VERSION, self.PYTHON_EXE, errorlog,
         deep=False, solve_unknowns=False, reverse_operators=True,
         pythonpath=pythonpath, find_pytd_import_ext=find_pytd_import_ext,
         cache_unknowns=True)
@@ -248,7 +249,8 @@ class InferenceTest(unittest.TestCase):
   def InferAndCheck(self, code):
     errorlog = errors.ErrorLog()
     unit = infer.infer_types(
-        textwrap.dedent(code), self.PYTHON_VERSION, errorlog, deep=True,
+        textwrap.dedent(code), self.PYTHON_VERSION, self.PYTHON_EXE,
+        errorlog, deep=True,
         reverse_operators=True, cache_unknowns=True)
     unit.Visit(visitors.VerifyVisitor())
     return pytd_utils.CanonicalOrdering(unit), errorlog
@@ -256,8 +258,8 @@ class InferenceTest(unittest.TestCase):
   def InferFromFile(self, filename, pythonpath, find_pytd_import_ext=".pytd"):
     errorlog = errors.ErrorLog()
     with open(filename, "rb") as fi:
-      unit = infer.infer_types(fi.read(), self.PYTHON_VERSION, errorlog,
-                               filename=filename, cache_unknowns=True,
+      unit = infer.infer_types(fi.read(), self.PYTHON_VERSION, self.PYTHON_EXE,
+                               errorlog, filename=filename, cache_unknowns=True,
                                pythonpath=pythonpath,
                                find_pytd_import_ext=find_pytd_import_ext)
       unit.Visit(visitors.VerifyVisitor())
@@ -396,7 +398,8 @@ class InferenceTest(unittest.TestCase):
       A pytd.TypeDeclUnit
     """
     errorlog = errors.ErrorLog()
-    unit = infer.infer_types(src, self.PYTHON_VERSION, errorlog, **kwargs)
+    unit = infer.infer_types(src, self.PYTHON_VERSION, self.PYTHON_EXE,
+                             errorlog, **kwargs)
     unit = pytd_utils.CanonicalOrdering(unit.Visit(visitors.VerifyVisitor()))
     if report_errors and errorlog:
       errorlog.print_to_stderr()

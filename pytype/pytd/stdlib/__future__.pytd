@@ -13,6 +13,10 @@ absolute_import = ...  # type: _Feature
 all_feature_names = ...  # type: list[str]
 division = ...  # type: _Feature
 generators = ...  # type: _Feature
+# MOE:begin_strip
+# google_type_annotations is for the back-ported type annotations into python2.7
+google_type_annotations = ...  # type: _Feature
+# MOE:end_strip
 nested_scopes = ...  # type: _Feature
 print_function = ...  # type: _Feature
 unicode_literals = ...  # type: _Feature

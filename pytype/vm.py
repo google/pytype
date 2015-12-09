@@ -106,7 +106,9 @@ class VirtualMachine(object):
       types.
   """
 
-  def __init__(self, python_version, errorlog,
+  def __init__(self,
+               python_version, python_exe,
+               errorlog,
                module_name=None,
                reverse_operators=False,
                cache_unknowns=True,
@@ -120,6 +122,7 @@ class VirtualMachine(object):
     """Construct a TypegraphVirtualMachine."""
     self.maximum_depth = sys.maxint if maximum_depth is None else maximum_depth
     self.python_version = python_version
+    self.python_exe = python_exe
     self.errorlog = errorlog
     self.pybuiltins_filename = pybuiltins_filename
     self.reverse_operators = reverse_operators
@@ -908,7 +911,8 @@ class VirtualMachine(object):
 
   def compile_src(self, src, filename=None):
     code = pyc.compile_src(
-        src, python_version=self.python_version, filename=filename)
+        src, python_version=self.python_version, python_exe=self.python_exe,
+        filename=filename)
     return blocks.process_code(code)
 
   def run_bytecode(self, node, code, f_globals=None, f_locals=None):

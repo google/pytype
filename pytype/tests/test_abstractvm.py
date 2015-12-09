@@ -13,8 +13,8 @@ from pytype.tests import test_inference
 
 class TraceVM(vm.VirtualMachine):
 
-  def __init__(self, python_version):
-    super(TraceVM, self).__init__(python_version, errors.ErrorLog())
+  def __init__(self, python_version, python_exe):
+    super(TraceVM, self).__init__(python_version, python_exe, errors.ErrorLog())
     # There are multiple possible orderings of the basic blocks of the code, so
     # we collect the instructions in an order-independent way:
     self.instructions_executed = set()
@@ -38,7 +38,8 @@ class AncestorTraversalVirtualMachineTest(unittest.TestCase):
 
   def setUp(self):
     self.python_version = (2, 7)  # used to generate the bytecode below
-    self.vm = TraceVM(self.python_version)
+    self.python_exe = None
+    self.vm = TraceVM(self.python_version, self.python_exe)
 
   src_nested_loop = textwrap.dedent("""
     y = [1,2,3]
@@ -86,6 +87,7 @@ class AncestorTraversalVirtualMachineTest(unittest.TestCase):
   def testEachInstructionOnceLoops(self):
     code_nested_loop = pyc.compile_src(src=self.src_nested_loop,
                                        python_version=self.python_version,
+                                       python_exe=self.python_exe,
                                        filename="<>")
     self.assertEqual(code_nested_loop.co_code,
                      self.code_nested_loop)
@@ -117,6 +119,7 @@ class AncestorTraversalVirtualMachineTest(unittest.TestCase):
   def testEachInstructionOnceDeadCode(self):
     code_deadcode = pyc.compile_src(src=self.src_deadcode,
                                     python_version=self.python_version,
+                                    python_exe=self.python_exe,
                                     filename="<>")
     self.assertEqual(code_deadcode.co_code,
                      self.code_deadcode)

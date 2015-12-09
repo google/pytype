@@ -13,7 +13,7 @@ class TestPyc(unittest.TestCase):
 
   def _compile(self, src):
     pyc_data = pyc.compile_src_string_to_pyc_string(
-        src, python_version=self.python_version)
+        src, python_version=self.python_version, python_exe=None)
     return pyc.parse_pyc_string(pyc_data)
 
   def test_compile(self):
