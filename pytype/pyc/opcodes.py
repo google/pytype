@@ -1002,6 +1002,7 @@ def _dis(data, mapping,
       # its argument.
       assert not extended_arg, "two EXTENDED_ARGs in a row"
       extended_arg = ord(data[pos]) << 16 | ord(data[pos+1]) << 24
+      pos += 2
     elif cls.FLAGS & HAS_ARGUMENT:
       oparg = ord(data[pos]) | ord(data[pos+1]) << 8 | extended_arg
       extended_arg = 0

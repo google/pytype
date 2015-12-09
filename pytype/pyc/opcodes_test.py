@@ -732,6 +732,18 @@ class Python2Test(unittest.TestCase):
     self.assertEquals(ops[7].arg, 0)
     self.assertEquals(ops[8].name, 'RETURN_VALUE')
 
+  def test_extended_arg(self):
+    code = ''.join(chr(c) for c in ([
+        0x91, 1, 0,  # 0 EXTENDED_ARG, arg=1,
+        0x64, 2, 0,  # 3 LOAD_CONST, arg=2
+        0x53,  # 6 RETURN_VALUE
+    ]))
+    ops = opcodes.dis(code, self.PYTHON_VERSION)
+    self.assertEquals(len(ops), 2)
+    self.assertEquals(ops[0].name, 'LOAD_CONST')
+    self.assertEquals(ops[0].arg, 0x10002)
+    self.assertEquals(ops[1].name, 'RETURN_VALUE')
+
 
 class Python3Test(unittest.TestCase):
   """Test bytecodes.dis for Python 3 opcodes."""
@@ -1450,6 +1462,18 @@ class Python3Test(unittest.TestCase):
     self.assertEquals(ops[7].name, 'LOAD_CONST')
     self.assertEquals(ops[7].arg, 0)
     self.assertEquals(ops[8].name, 'RETURN_VALUE')
+
+  def test_extended_arg(self):
+    code = ''.join(chr(c) for c in ([
+        0x90, 1, 0,  # 0 EXTENDED_ARG, arg=1,
+        0x64, 2, 0,  # 3 LOAD_CONST, arg=2
+        0x53,  # 6 RETURN_VALUE
+    ]))
+    ops = opcodes.dis(code, self.PYTHON_VERSION)
+    self.assertEquals(len(ops), 2)
+    self.assertEquals(ops[0].name, 'LOAD_CONST')
+    self.assertEquals(ops[0].arg, 0x10002)
+    self.assertEquals(ops[1].name, 'RETURN_VALUE')
 
 if __name__ == '__main__':
   unittest.main()
