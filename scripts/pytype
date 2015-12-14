@@ -181,7 +181,8 @@ def _parse_options(args):
             "The individual items may contain '.'. "
             "The intended use case is for when you're running tests in "
             "a directory structure that starts below the root module in "
-            "your module names.") % os.pathsep)
+            "your module names. "
+            "This option is incompatible with --imports_info.") % os.pathsep)
 # MOE:strip_line TODO(pludemann): remove when Bazel integration is done:
   o.add_option(
       "--nofail", action="store_true",
@@ -198,7 +199,8 @@ def _parse_options(args):
       "--imports_info", type="string", action="store",
       dest="imports_info", default=None,
       help=("TODO(pludemann): document this. "
-            "Information for mapping import .pytd to files."))
+            "Information for mapping import .pytd to files. "
+            "This options is incompatible with --import_drop_prefixes."))
 
   options, input_filenames = o.parse_args(args)
   return options, input_filenames
@@ -431,6 +433,9 @@ def main(argv):
 
   # Process the imports_info file if present.
   if options.imports_info:
+    if options.import_drop_prefixes:
+      log.error("Only one of --import_drop_prefixes and --imports_info allowed")
+      sys.exit(1)
     # Be sure to keep empty_file at the outermost level so that it isn't closed
     # by going out of scope. (And it'll be automatically cleaned up on
     # program exit.)

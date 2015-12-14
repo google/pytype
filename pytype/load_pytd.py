@@ -63,8 +63,11 @@ class Loader(object):
 
   PREFIX = "pytd:"  # for pytd files that ship with pytype
 
-  def __init__(self, base_module, python_version,
-               imports_map=None, pythonpath=(),
+  def __init__(self,
+               base_module,
+               python_version,
+               imports_map=None,
+               pythonpath=(),
                find_pytd_import_ext=".pytd",
                import_drop_prefixes=()):
     self.base_module = base_module
@@ -79,6 +82,10 @@ class Loader(object):
         Module("__builtin__", self.PREFIX + "__builtin__", self.builtins)
     }
     self._concatenated = None
+    if self.imports_map is not None:
+      assert not self.import_drop_prefixes, (self.imports_map, self.imports_map)
+    if self.import_drop_prefixes:
+      assert not self.imports_map, (self.imports_map, self.imports_map)
 
   def _resolve_all(self):
     module_map = {name: module.ast
@@ -90,8 +97,7 @@ class Loader(object):
         module.dirty = False
 
   def _create_empty(self, module_name, filename):
-    return self._load_file(module_name,
-                           filename,
+    return self._load_file(module_name, filename,
                            pytd_utils.EmptyModule(module_name))
 
   def _load_file(self, module_name, filename, ast=None):
@@ -100,8 +106,8 @@ class Loader(object):
     existing = self._modules.get(module_name)
     if existing:
       if existing.filename != filename:
-        raise AssertionError("%s exists as both %s and %s" % (
-            module_name, filename, existing.filename))
+        raise AssertionError("%s exists as both %s and %s" %
+                             (module_name, filename, existing.filename))
       return existing.ast
     if not ast:
       ast = pytd_utils.ParsePyTD(filename=filename,
@@ -124,8 +130,7 @@ class Loader(object):
       self._resolve_all()
       module_map = {name: module.ast
                     for name, module in self._modules.items()}
-      ast.Visit(
-          visitors.InPlaceLookupExternalClasses(module_map, True))
+      ast.Visit(visitors.InPlaceLookupExternalClasses(module_map, True))
     return ast
 
   def import_relative_name(self, name):
@@ -180,8 +185,13 @@ class Loader(object):
     if mod:
       log.debug("Found builtins %r", module_name)
       return self._load_file(filename=self.PREFIX + module_name,
-                             module_name=module_name, ast=mod)
+                             module_name=module_name,
+                             ast=mod)
 
+    # We're guaranteed that self.import_drop_prefixes is empty if
+    # self.imports_map was given, so there's no conflict between the lookup in
+    # self.import_drop_prefixes and self.imports_map (which is used by
+    # _load_pytd, which is called by _import_file).
     module_name_split = module_name.split(".")
     for prefix in self.import_drop_prefixes:
       module_name_split = utils.list_strip_prefix(module_name_split,
@@ -194,13 +204,13 @@ class Loader(object):
     mod = pytd_utils.ParsePredefinedPyTD("stdlib", module_name,
                                          self.python_version)
     if mod:
-      return self._load_file(filename="stdlib:"+module_name,
-                             module_name=module_name, ast=mod)
+      return self._load_file(filename="stdlib:" + module_name,
+                             module_name=module_name,
+                             ast=mod)
     else:
-      log.warning(
-          "Couldn't import module %s %r in (path=%r) imports_map: %s",
-          module_name, module_name_split, self.pythonpath,
-          "%d items" % len(self.imports_map) if self.imports_map else "none")
+      log.warning("Couldn't import module %s %r in (path=%r) imports_map: %s",
+                  module_name, module_name_split, self.pythonpath, "%d items" %
+                  len(self.imports_map) if self.imports_map else "none")
       if self.imports_map is not None:
         for short_path, long_path in self.imports_map.items():
           log.debug("%r => %r", short_path, long_path)
@@ -234,9 +244,8 @@ class Loader(object):
         # TODO(pludemann): remove this? - it's not standard Python.
         log.debug("Created empty module %r with path %r",
                   module_name, init_path)
-        return self._create_empty(
-            filename=os.path.join(path, "__init__.pytd"),
-            module_name=module_name)
+        return self._create_empty(filename=os.path.join(path, "__init__.pytd"),
+                                  module_name=module_name)
       else:  # Not a directory
         file_ast = self._load_pytd(path, module_name)
         if file_ast is not None:
