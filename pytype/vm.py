@@ -1969,9 +1969,22 @@ class VirtualMachine(object):
         state = state.push("silenced")
     return state
 
+  def _pop_extra_function_args(self, state, arg):
+    """Pop function annotations and defaults from the stack."""
+    if self.python_version[0] == 2:
+      num_pos_defaults = arg & 0xffff
+      num_kw_defaults = 0
+    else:
+      assert self.python_version[0] == 3
+      num_pos_defaults = arg & 0xff
+      num_kw_defaults = (arg >> 8) & 0xff
+    state, annotations = state.popn((arg >> 16) & 0x7fff)
+    state, kw_defaults = state.popn(2 * num_kw_defaults)
+    state, pos_defaults = state.popn(num_pos_defaults)
+    return state, pos_defaults, kw_defaults, annotations
+
   def byte_MAKE_FUNCTION(self, state, op):
     """Create a function and push it onto the stack."""
-    argc = op.arg
     if self.python_version[0] == 2:
       name = None
     else:
@@ -1979,14 +1992,14 @@ class VirtualMachine(object):
       state, name_var = state.pop()
       name = _get_atomic_python_constant(name_var)
     state, code = state.pop()
-    state, defaults = state.popn(argc)
+    # TODO(dbaum): Handle kw_defaults and annotations (Python 3).
+    state, defaults, _, _ = self._pop_extra_function_args(state, op.arg)
     globs = self.get_globals_dict()
     fn = self.make_function(name, code, globs, defaults)
     return state.push(fn)
 
   def byte_MAKE_CLOSURE(self, state, op):
     """Make a function that binds local variables."""
-    argc = op.arg
     if self.python_version[0] == 2:
       # The py3 docs don't mention this change.
       name = None
@@ -1995,7 +2008,8 @@ class VirtualMachine(object):
       state, name_var = state.pop()
       name = _get_atomic_python_constant(name_var)
     state, (closure, code) = state.popn(2)
-    state, defaults = state.popn(argc)
+    # TODO(dbaum): Handle kw_defaults and annotations (Python 3).
+    state, defaults, _, _ = self._pop_extra_function_args(state, op.arg)
     globs = self.get_globals_dict()
     fn = self.make_function(name, code, globs, defaults, closure)
     return state.push(fn)
