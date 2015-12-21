@@ -76,9 +76,13 @@ class ErrorLogBase(object):
     self.errors = self.errors[:checkpoint.position]
 
   def print_to_file(self, fi):
+    seen = set()
     for error in sorted(self.errors,
                         key=lambda x: utils.numeric_sort_key(x.position())):
-      print >>fi, error
+      text = str(error)
+      if text not in seen:
+        print >>fi, error
+        seen.add(text)
 
   def print_to_stderr(self):
     self.print_to_file(sys.stderr)
