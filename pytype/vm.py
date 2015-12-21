@@ -1174,7 +1174,7 @@ class VirtualMachine(object):
       result.PasteVariable(attr_var, node2)
       nodes.append(node2)
     if not result.values:
-      if errors:
+      if errors and obj.values:
         self.errorlog.attribute_error(self.frame.current_opcode, obj, attr)
       raise exceptions.ByteCodeAttributeError("No such attribute %s" % attr)
     return self.join_cfg_nodes(nodes), result
