@@ -20,6 +20,7 @@ from typing import Generic
 #                       def Method PYTHONCODE Foo_Method
 #                  If not useful, remove.
 
+T = TypeVar('T')
 def __import__(name: str or unicode or bytearray, ...) -> module
 def abs PYTHONCODE
 def all(iterable) -> bool
@@ -34,8 +35,8 @@ def coerce(x: int or float, y: float) -> tuple[float]  # tuple[float, float]
 def coerce(x: int or float or complex, y: complex) -> tuple[complex]  # tuple[complex, complex]
 def coerce(x: float, y: int) -> tuple[float]  # tuple[float, float]
 def coerce(x, y) -> tuple[object]  # tuple[object, object]
-def coerce(x: list, y: list) -> tuple[list]  # tuple[list, list]
-def coerce(x: tuple, y: tuple) -> tuple[tuple]  # tuple[tuple, tuple]
+def coerce(x: list[T], y: list[T]) -> tuple[list[T]]  # tuple[list, list]
+def coerce(x: tuple[T], y: tuple[T]) -> tuple[tuple[T]]  # tuple[tuple, tuple]
 def coerce(x: complex, y: int or float) -> tuple[complex]  # tuple[complex, complex]
 def coerce(x: function, y: function) -> tuple[function]  # tuple[function, function]
 def coerce(x: type, y: type) -> tuple[type]  # tuple[type, type]
@@ -50,7 +51,7 @@ def execfile(filename: str, ...) -> NoneType
 def filter(function_or_None, sequence: str) -> str
 def filter(function_or_None, sequence: bytearray) -> list[int]
 def filter(function_or_None, sequence: unicode) -> unicode
-def filter(function_or_None, sequence: list or set or iterator) -> list
+def filter(function_or_None, sequence: list[T] or set[T] or iterator[T]) -> list[T]
 A = TypeVar('A')
 def filter(function_or_None, sequence: tuple[A]) -> tuple[A]
 def format(value, ...) -> str
@@ -69,7 +70,6 @@ def issubclass(C, B: tuple[nothing]) -> bool
 def iter(collection: str) -> iterator[str]
 def iter(collection: unicode) -> iterator[unicode]
 def iter(collection: bytearray) -> bytearray_iterator
-T = TypeVar('T')
 def iter(collection: iterator[T]) -> iterator[T]
 def iter(collection: list[T]) -> listiterator[T]
 def iter(collection: tuple[T]) -> tupleiterator[T]
@@ -117,13 +117,13 @@ def reduce(function, sequence: set, ...) -> ?
 def repr PYTHONCODE
 def round(number: int or float, ...) -> float
 def setattr(object, name: str or unicode or bytearray, value) -> NoneType
-def sorted(iterable: str or bytearray, ...) -> list[str] or list
-def sorted(iterable: unicode, ...) -> list[unicode] or list
-def sorted(iterable: list or tuple or set, ...) -> list[object] or list
-def sorted(iterable: iterator, ...) -> list[str] or list[unicode] or list
+def sorted(iterable: str or bytearray, ...) -> list[str]
+def sorted(iterable: unicode, ...) -> list[unicode]
+def sorted(iterable: list[T] or tuple[T] or set[T] or iterator[T], ...) -> list[T]
+def sorted(...) -> list[?]
 def sum(sequence, ...) -> int
 def unichr(i: int) -> unicode
-def vars(...) -> dict[str, object]
+def vars(...) -> dict[str, ?]
 def zip(seq1, ...) -> list[tuple]  # TODO(pludemann): zip(seq1: iterator[...], ...) -> list[tuple[...]]
 def zip() -> list[nothing]
 def exit() -> NoneType raises SystemExit
@@ -391,7 +391,7 @@ K = TypeVar('K')
 V = TypeVar('V')
 class `dictionary-itemiterator`(Generic[K, V], object):
     def __iter__(self) -> `dictionary-itemiterator`[K, V]
-    def next(self) -> tuple[object]  # tuple[K, V]  # TODO(pludemann): a pair
+    def next(self) -> tuple[K or V]  # tuple[K, V]  # TODO(pludemann): a pair
 
 K = TypeVar('K')
 class dict_keys(Generic[K], object):
@@ -422,23 +422,19 @@ K = TypeVar('K')
 V = TypeVar('V')
 class dict_items(Generic[K, V], object):
     # TODO(pludemann): set[pair[K,V]] etc.
-    def __and__(self, y: set or dict_items[K,V]) -> set
+    K2 = TypeVar('K2')
+    V2 = TypeVar('V2')
+    def __and__(self, y: set or dict_items) -> set[tuple[K or V]]
+    def __rand__(self, y: set or dict_items) -> set[tuple[K or V]]
+    def __or__(self, y: set or dict_items[K2, V2]) -> set[tuple[K or V or K2 or V2]]
+    def __ror__(self, y: set or dict_items[K2, V2]) -> set[tuple[K or V or K2 or V2]]
+    def __xor__(self, y: set or dict_items[K2, V2]) -> set[tuple[K or V or K2 or V2]]
+    def __rxor__(self, y: set or dict_items[K2, V2]) -> set[tuple[K or V or K2 or V2]]
+    def __sub__(self, y: set or dict_items[K2, V2]) -> set[tuple[K or V]]
+    def __rsub__(self, y: set or dict_items) -> set[tuple[K or V]]
     def __contains__(self, y) -> bool
-    def __eq__(self, y: set or dict_items[K,V]) -> bool
-    def __ge__(self, y: set or dict_items[K,V]) -> bool
-    def __gt__(self, y: set or dict_items[K,V]) -> bool
     def __iter__(self) -> `dictionary-itemiterator`[K,V]
-    def __le__(self, y: set or dict_items[K,V]) -> bool
     def __len__(self) -> int
-    def __lt__(self, y: set or dict_items[K,V]) -> bool
-    def __ne__(self, y: set or dict_items[K,V]) -> bool
-    def __or__(self, y: set or dict_items[K,V]) -> set
-    def __rand__(self, y: set or dict_items[K,V]) -> set
-    def __ror__(self, y: set or dict_items[K,V]) -> set
-    def __rsub__(self, y: set or dict_items[K,V]) -> set
-    def __rxor__(self, y: set or dict_items[K,V]) -> set
-    def __sub__(self, y: set or dict_items[K,V]) -> set
-    def __xor__(self, y: set or dict_items[K,V]) -> set
 
 K = TypeVar('K')
 V = TypeVar('V')
@@ -584,6 +580,10 @@ class list(Generic[T], object):
     def __setslice__(self, i: int, j: int, y) -> NoneType
     def append(self, object: A) -> NoneType:
       self := list[T or A]
+    def extend(self, i: list[A] or tuple[A] or set[A] or frozenset[A]) -> NoneType:
+      self := list[T or A]
+    def extend(self, i: ?) -> NoneType:
+      self := list[?]
     def count(self, value: T) -> int
     def index(self, value, ...) -> int
     def insert(self, index: int, object: A) -> NoneType:
@@ -1045,6 +1045,7 @@ class memoryview(object):
     def tolist(self, ...) -> list[int]
 
 class type(object):
+    __name__ = ...  # type: str
     def __init__(self, object) -> NoneType
     def __len__(self, p0: str or bytearray) -> int  # TODO(pludemann): remove?
 

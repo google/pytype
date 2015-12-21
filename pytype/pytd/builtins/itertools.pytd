@@ -4,6 +4,7 @@ class _grouper(object):
     pass
 
 class chain(object):
+    def __init__(self, ...) -> NoneType
     def from_iterable(...) -> ?
 
 class combinations(object):
@@ -40,7 +41,7 @@ class islice(object):
     pass
 
 class izip(object):
-    pass
+    def __init__(self, ...) -> NoneType
 
 class izip_longest(object):
     pass
@@ -55,7 +56,7 @@ class repeat(object):
     def __length_hint__() -> int raises TypeError
 
 class starmap(object):
-    pass
+    def __init__(self, ...) -> NoneType
 
 class takewhile(object):
     pass
