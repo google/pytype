@@ -166,6 +166,16 @@ class Loader(object):
     sub_module = ".".join(components[0:-level])
     return self.import_name(sub_module)
 
+  def _load_builtin(self, subdir, module_name):
+    mod = pytd_utils.ParsePredefinedPyTD(subdir, module_name,
+                                         self.python_version)
+    if mod:
+      log.debug("Found %s entry for %r", subdir, module_name)
+      return self._load_file(filename=self.PREFIX + module_name,
+                             module_name=module_name,
+                             ast=mod)
+    return None
+
   def import_name(self, module_name):
     """Load a name like 'sys' or 'foo.bar.baz'.
 
@@ -180,13 +190,9 @@ class Loader(object):
     log.debug("Trying to import %r", module_name)
     # Builtin modules (but not standard library modules!) take precedence
     # over modules in PYTHONPATH.
-    mod = pytd_utils.ParsePredefinedPyTD("builtins", module_name,
-                                         self.python_version)
+    mod = self._load_builtin("builtins", module_name)
     if mod:
-      log.debug("Found builtins %r", module_name)
-      return self._load_file(filename=self.PREFIX + module_name,
-                             module_name=module_name,
-                             ast=mod)
+      return mod
 
     # We're guaranteed that self.import_drop_prefixes is empty if
     # self.imports_map was given, so there's no conflict between the lookup in
@@ -201,19 +207,16 @@ class Loader(object):
       return file_ast
 
     # The standard library is (typically) at the end of PYTHONPATH.
-    mod = pytd_utils.ParsePredefinedPyTD("stdlib", module_name,
-                                         self.python_version)
+    mod = self._load_builtin("stdlib", module_name)
     if mod:
-      return self._load_file(filename="stdlib:" + module_name,
-                             module_name=module_name,
-                             ast=mod)
-    else:
-      log.warning("Couldn't import module %s %r in (path=%r) imports_map: %s",
-                  module_name, module_name_split, self.pythonpath, "%d items" %
-                  len(self.imports_map) if self.imports_map else "none")
-      if self.imports_map is not None:
-        for short_path, long_path in self.imports_map.items():
-          log.debug("%r => %r", short_path, long_path)
+      return mod
+
+    log.warning("Couldn't import module %s %r in (path=%r) imports_map: %s",
+                module_name, module_name_split, self.pythonpath, "%d items" %
+                len(self.imports_map) if self.imports_map else "none")
+    if self.imports_map is not None:
+      for short_path, long_path in self.imports_map.items():
+        log.debug("%r => %r", short_path, long_path)
     return None
 
   def _import_file(self, module_name, module_name_split):
