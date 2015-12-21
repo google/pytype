@@ -142,8 +142,10 @@ class ImportPathsTest(unittest.TestCase):
         # multiple directories. But because there can be subdirectories, we need
         # to construct an appropriate module name.
         rel_dirpath = os.path.relpath(dirpath, start=subdir_path)
-        module_prefix = rel_dirpath.replace(os.sep, ".") + (
-            "." if rel_dirpath else "")
+        if rel_dirpath in [".", ""]:
+          module_prefix = ""
+        else:
+          module_prefix = rel_dirpath.replace(os.sep, ".") + "."
         for name in files:
           module_name, ext = os.path.splitext(module_prefix + name)
           if ext == ".pytd":

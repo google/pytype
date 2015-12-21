@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import textwrap
+import unittest
 from pytype.pytd import pytd
 from pytype.pytd.parse import decorate
 from pytype.pytd.parse import parser_test
@@ -58,6 +59,17 @@ class TestASTGeneration(parser_test.ParserTest):
     self.assertRaises(textwrap.dedent("""
         import abc.efg as efg
     """))
+
+  @unittest.skip("Should List and Tuple be fully qualified?")
+  def testImportTyping(self):
+    """Test parsing of import."""
+    src = textwrap.dedent("""
+        import typing
+        def f(x: typing.List[int]) -> typing.Tuple[int]
+        """)
+    self.TestRoundTrip(src, textwrap.dedent("""
+        def f(x: List[int]) -> Tuple[int]
+        """))
 
   def testRenaming(self):
     """Test parsing of import."""
