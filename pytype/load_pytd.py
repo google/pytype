@@ -5,6 +5,7 @@ import os
 
 
 from pytype import utils
+from pytype.pytd import typeshed
 from pytype.pytd import utils as pytd_utils
 from pytype.pytd.parse import builtins
 from pytype.pytd.parse import visitors
@@ -167,8 +168,11 @@ class Loader(object):
     return self.import_name(sub_module)
 
   def _load_builtin(self, subdir, module_name):
-    mod = pytd_utils.ParsePredefinedPyTD(subdir, module_name,
-                                         self.python_version)
+    """Load a pytd that ships with pytype or typeshed."""
+    version = self.python_version
+    # Try our own type definitions first, but then fall back to typeshed.
+    mod = (pytd_utils.ParsePredefinedPyTD(subdir, module_name, version) or
+           typeshed.parse_type_definition(subdir, module_name, version))
     if mod:
       log.debug("Found %s entry for %r", subdir, module_name)
       return self._load_file(filename=self.PREFIX + module_name,
