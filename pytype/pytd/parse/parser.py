@@ -31,6 +31,7 @@ import sys
 import traceback
 from ply import lex
 from ply import yacc
+from pytype.pytd import pep484
 from pytype.pytd import pytd
 from pytype.pytd.parse import parser_constants
 from pytype.pytd.parse import visitors
@@ -403,15 +404,22 @@ class TypeDeclParser(object):
         **kwargs)
 
   def Parse(self, src, name=None, filename='<string>', **kwargs):
+    """Run tokenizer, parser, and postprocess the AST."""
     self.src = src  # Keep a copy of what's being parsed
     self.filename = filename if filename else '<string>'
     self.context = Context(typevars=set())
-    self.aliases = parser_constants.PEP484_TRANSLATIONS.copy()
+    self.aliases = pep484.PEP484_TRANSLATIONS.copy()
+    # For the time being, also allow shortcuts, i.e., using "List" for
+    # "typing.List", even without having imported typing:
+    self.aliases.update({name: pytd.ExternalType(name, 'typing')
+                         for name in pep484.PEP484_NAMES})
     self.lexer.set_parse_info(self.src, self.filename)
     ast = self.parser.parse(src, **kwargs)
     # If there's no unique name, hash the sourcecode.
     name = name or hashlib.md5(src).hexdigest()
-    return ast.Visit(InsertTypeParameters()).Replace(name=name)
+    ast = ast.Visit(InsertTypeParameters())
+    ast = ast.Visit(pep484.ConvertTypingToNative())
+    return ast.Replace(name=name)
 
   precedence = (
       ('left', 'OR'),
@@ -634,9 +642,14 @@ class TypeDeclParser(object):
     self.context = self.context.parent
     p[0] = None
 
+  def p_class_name(self, p):
+    """class_name : NAME """
+    self.aliases[p[1]] = pytd.NamedType(p[1])
+    p[0] = p[1]
+
   # TODO(raoulDoc): doesn't support nested classes
   def p_classdef(self, p):
-    """classdef : CLASS NAME class_parents COLON maybe_class_funcs end_class"""
+    """classdef : CLASS class_name class_parents COLON maybe_class_funcs end_class"""
     _, _, name, (template, parents), _, class_funcs, _ = p
     methoddefs = [x for x in class_funcs  if isinstance(x, NameAndSig)]
     constants = [x for x in class_funcs if isinstance(x, pytd.Constant)]

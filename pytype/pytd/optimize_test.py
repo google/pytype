@@ -254,6 +254,7 @@ class TestOptimize(parser_test.ParserTest):
     new_src = self.ApplyVisitorToString(src, optimize.ApplyOptionalArguments())
     self.AssertSourceEquals(new_src, expected)
 
+  @unittest.skip("Collision between abc.py and typing.py")
   def testABCSuperClasses(self):
     src = textwrap.dedent("""
         def f(x: list or tuple, y: frozenset or set) -> int or float

@@ -92,6 +92,11 @@ class PrintVisitor(Visitor):
   INDENT = " " * 4
   _RESERVED = frozenset(parser_constants.RESERVED +
                         parser_constants.RESERVED_PYTHON)
+  PEP484_CAPITALIZED = {
+      # The PEP 484 definition of built-in types.
+      # E.g. "typing.List" is used to represent the "list" type.
+      "List", "Dict", "Tuple", "Set", "Generator", "Iterator"
+  }
 
   def __init__(self):
     super(PrintVisitor, self).__init__()
@@ -269,8 +274,9 @@ class PrintVisitor(Visitor):
 
   def MaybeCaptialize(self, name):
     """Capitalize a generic type, if necessary."""
-    if name in parser_constants.PEP484_CAPITALIZED:
-      return name.capitalize()
+    capitalized = name.capitalize()
+    if capitalized in self.PEP484_CAPITALIZED:
+      return capitalized
     else:
       return name
 

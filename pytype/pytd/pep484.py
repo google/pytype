@@ -2,9 +2,35 @@
 
 import re
 
+
+from pytype.pytd import pytd
 from pytype.pytd.parse import visitors
 
 
+PEP484_NAMES = ["AbstractSet", "Any", "AnyMeta", "AnyStr", "BinaryIO",
+                "ByteString", "Callable", "CallableMeta", "Container", "Dict",
+                "Final", "FrozenSet", "Generator", "Generic", "GenericMeta",
+                "Hashable", "IO", "ItemsView", "Iterable", "Iterator",
+                "KeysView", "List", "Mapping", "MappingView", "Match",
+                "MutableMapping", "MutableSequence", "MutableSet", "NamedTuple",
+                "Optional", "OptionalMeta", "Pattern", "Reversible", "Sequence",
+                "Set", "Sized", "SupportsAbs", "SupportsBytes",
+                "SupportsComplex", "SupportsFloat", "SupportsInt",
+                "SupportsRound", "TextIO", "Tuple", "TupleMeta", "TypeVar",
+                "TypingMeta", "Union", "UnionMeta"]
+
+
+PEP484_TRANSLATIONS = {
+    # PEP 484 allows "None" as an abbreviation of "NoneType".
+    "None": pytd.NamedType("NoneType"),
+    # PEP 484 definitions of special purpose types:
+    "Any": pytd.AnythingType(),
+    "AnyStr": pytd.UnionType((tuple("str"), tuple("unicode"))),
+    # TODO(kramm): "typing.NamedTuple"
+}
+
+
+# TODO(kramm): This class is deprecated.
 class Print484StubVisitor(visitors.Visitor):
   """Visitor for converting ASTs to the PEP 484 format.
 
@@ -148,3 +174,31 @@ class Print484StubVisitor(visitors.Visitor):
   def VisitUnionType(self, node):
     """Convert a union type ("x or y") to a string."""
     return "Union[%s]" % ", ".join(node.type_list)
+
+
+class ConvertTypingToNative(visitors.Visitor):
+  """Visitor for converting PEP 484 types to native representation."""
+
+  def __init__(self):
+    super(ConvertTypingToNative, self).__init__()
+
+  def VisitExternalType(self, t):
+    if t.module == "typing":
+      if t.name in visitors.PrintVisitor.PEP484_CAPITALIZED:
+        return pytd.NamedType(t.name.lower())  # "typing.List" -> "list" etc.
+      elif t.name == "Any":
+        return pytd.AnythingType()
+      else:
+        # IO, Callable, etc. (I.e., names in typing we leave alone)
+        return t
+    else:
+      return t
+
+  def VisitGenericType(self, t):
+    if t.base_type == pytd.ExternalType("Optional", "typing"):
+      return pytd.UnionType([t, pytd.NamedType("NoneType")])
+    elif t.base_type == pytd.ExternalType("Union", "typing"):
+      return pytd.UnionType(t.parameters)
+    else:
+      return t
+

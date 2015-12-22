@@ -71,6 +71,16 @@ class TestASTGeneration(parser_test.ParserTest):
         def f(x: List[int]) -> Tuple[int]
         """))
 
+  def testImportAs(self):
+    """Test parsing of 'import as'."""
+    src = textwrap.dedent("""
+        from typing import Tuple as TypingTuple
+        _attributes = ...  # type: TypingTuple[str]
+    """)
+    self.TestRoundTrip(src, textwrap.dedent("""
+        _attributes = ...  # type: Tuple[str]
+        """))
+
   def testRenaming(self):
     """Test parsing of import."""
     src = textwrap.dedent("""
@@ -321,6 +331,32 @@ class TestASTGeneration(parser_test.ParserTest):
       b = ...  # type: int or float
     """).strip()
     self.TestRoundTrip(src)
+
+  def testUnion(self):
+    """Test parsing of Unions."""
+    src = textwrap.dedent("""
+        a = ...  # type: Union[int, float]
+        b = ...  # type: int or float or complex
+        c = ...  # type: typing.Union[int, float, complex]
+    """)
+    self.TestRoundTrip(src, textwrap.dedent("""
+        a = ...  # type: int or float
+        b = ...  # type: int or float or complex
+        c = ...  # type: int or float or complex
+    """))
+
+  def testAnythingType(self):
+    """Test parsing of Any."""
+    src = textwrap.dedent("""
+        a = ...  # type: ?
+        b = ...  # type: Any
+        c = ...  # type: typing.Any
+    """)
+    self.TestRoundTrip(src, textwrap.dedent("""
+        a = ...  # type: ?
+        b = ...  # type: ?
+        c = ...  # type: ?
+    """))
 
   def testReturnTypes(self):
     src = textwrap.dedent("""
