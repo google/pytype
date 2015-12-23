@@ -139,6 +139,9 @@ None = ...  # type: NoneType
 
 class object():
     __mro__ = ...  # type: list[?]
+    __dict__ = ...  # type: Dict[str, Any]
+    __subclasshook__ = ...  # type: Any
+    __subclasses__ = ...  # type: Any
     def __init__(self) -> NoneType
     def __sizeof__(self) -> int
     def __repr__(self) -> str
@@ -1046,7 +1049,7 @@ class memoryview(object):
 
 class type(object):
     __name__ = ...  # type: str
-    def __init__(self, object) -> NoneType
+    def __init__(self, object: Any) -> NoneType
     def __len__(self, p0: str or bytearray) -> int  # TODO(pludemann): remove?
 
 T = TypeVar('T')
@@ -1063,6 +1066,7 @@ class super(object):
     # case of doing super(...).__init__(...).
     def __init__(self, ...) -> NoneType
     def __get__(self, obj, ...) -> super
+    def __new__(self, ...) -> super
 
 class xrange(object):
     def __init__(self, stop: int, ...) -> NoneType
