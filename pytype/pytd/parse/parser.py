@@ -922,7 +922,10 @@ class TypeDeclParser(object):
     """params : params COMMA param"""
     # TODO(kramm): Disallow "self" and "cls" as names for param (if it's not
     # the first parameter).
-    p[0] = Params(p[1].required + [p[3]], has_optional=False)
+    if p[3].name.startswith('*'):
+      p[0] = Params(p[1].required, has_optional=True)
+    else:
+      p[0] = Params(p[1].required + [p[3]], has_optional=False)
 
   def p_params_ellipsis(self, p):
     """params : params COMMA ELLIPSIS"""
@@ -930,7 +933,10 @@ class TypeDeclParser(object):
 
   def p_params_1(self, p):
     """params : param"""
-    p[0] = Params([p[1]], has_optional=False)
+    if p[1].name.startswith('*'):
+      p[0] = Params([], has_optional=True)
+    else:
+      p[0] = Params([p[1]], has_optional=False)
 
   def p_params_only_ellipsis(self, p):
     """params : ELLIPSIS"""
@@ -963,7 +969,7 @@ class TypeDeclParser(object):
 
   def p_param_kw(self, p):
     """param : ASTERISK ASTERISK NAME"""
-    p[0] = pytd.OptionalParameter('**' + p[2], pytd.NamedType('tuple'))
+    p[0] = pytd.OptionalParameter('**' + p[3], pytd.NamedType('tuple'))
 
   def p_raises(self, p):
     """raises : RAISES exceptions"""
