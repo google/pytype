@@ -267,6 +267,17 @@ class TestVisitors(parser_test.ParserTest):
     self.Parse(src).Visit(deps)
     self.assertSetEqual({"baz", "bar", "foo.bar"}, deps.modules)
 
+  def testSimplifyOptionalParameters(self):
+    src = textwrap.dedent("""
+       def f(x: T, y: T = ..., z: T = ...) -> NoneType
+    """)
+    dest = textwrap.dedent("""
+       def f(x: T, ...) -> NoneType
+    """)
+    tree = self.Parse(src)
+    new_tree = tree.Visit(visitors.SimplifyOptionalParameters())
+    self.AssertSourceEquals(dest, new_tree)
+
 
 if __name__ == "__main__":
   unittest.main()

@@ -33,6 +33,7 @@ from pytype.pytd import pytd
 from pytype.pytd import slots
 from pytype.pytd import utils as pytd_utils
 from pytype.pytd.parse import builtins
+from pytype.pytd.parse import visitors
 
 log = logging.getLogger(__name__)
 
@@ -1300,6 +1301,11 @@ class VirtualMachine(object):
     return abstract.LazyAbstractValue(
         name, d, self.maybe_convert_constant, self)
 
+  def _postprocess_pyi(self, ast):
+    """Apply all the PYI transformations we need."""
+    ast = ast.Visit(visitors.SimplifyOptionalParameters())
+    return ast
+
   # TODO(kramm): memoize
   def import_module(self, name, level):
     """Import the module and return the module object.
@@ -1331,6 +1337,7 @@ class VirtualMachine(object):
       assert level > 0
       ast = self.loader.import_relative(level)
     if ast:
+      ast = self._postprocess_pyi(ast)
       members = {val.name.rsplit(".")[-1]: val
                  for val in ast.constants + ast.classes + ast.functions}
       return abstract.Module(self, ast.name, members)

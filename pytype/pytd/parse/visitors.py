@@ -1091,3 +1091,26 @@ class CollectDependencies(Visitor):
 
   def EnterExternalType(self, t):
     self.modules.add(t.module)
+
+
+class SimplifyOptionalParameters(Visitor):
+  """Lossy visitor for simplifying functions with optional parameters.
+
+     Transforms
+       def f(x: T, y: T = ..., z: T = ...)
+     to
+       def f(x: T, ...)
+     .
+  """
+
+  def __init__(self):
+    super(SimplifyOptionalParameters, self).__init__()
+
+  def VisitSignature(self, sig):
+    for i, p in enumerate(sig.params):
+      if isinstance(p, pytd.OptionalParameter):
+        assert all(isinstance(p, pytd.OptionalParameter)
+                   for p in sig.params[i+1:])
+        return sig.Replace(params=sig.params[0:i], has_optional=True)
+    return sig
+
