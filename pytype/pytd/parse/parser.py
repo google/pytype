@@ -27,7 +27,6 @@
 
 import collections
 import hashlib
-import sys
 import traceback
 from ply import lex
 from ply import yacc
@@ -38,6 +37,25 @@ from pytype.pytd.parse import visitors
 
 
 DEFAULT_VERSION = (2, 7, 6)
+
+
+class ParseError(Exception):
+  """Exception for representing parse errors."""
+
+  def __init__(self, msg, filename, lineno=None, column=None, line=None):
+    super(ParseError, self).__init__(msg)
+    assert filename is not None
+    self.msg = msg
+    self.filename = filename
+    self.lineno = lineno
+    self.column = column
+    self.line = line
+
+  def __str__(self):
+    e = SyntaxError(self.msg, (self.filename, self.lineno,
+                               self.column, self.line))
+    return ('Error while parsing pyi:\n\n' +
+            ''.join(traceback.format_exception(type(e), e, None)))
 
 
 class PyLexer(object):
@@ -1083,9 +1101,9 @@ class TypeDeclParser(object):
 
   def p_error(self, t):
     if t is None:
-      make_syntax_error(self, 'Parse error: unexpected EOF', t)
+      make_syntax_error(self, 'Unexpected EOF', t)
     else:
-      raise make_syntax_error(self, 'Parse error: unexpected %r' % t.type, t)
+      raise make_syntax_error(self, 'Unexpected %r' % t.type, t)
 
   def MergeSignatures(self, signatures):
     """Given a list of pytd function signature declarations, group them by name.
@@ -1128,45 +1146,42 @@ class TypeDeclParser(object):
                                 name, None)
 
 
+def _find_line_and_column(lexpos, src):
+  """Determine column and line contents, for pretty-printing."""
+  # TODO(pludemann): use regexp to split on r'[\r\n]' (for Windows, old MacOS):
+  if lexpos is not None and src is not None:
+    last_line_offset = src.rfind('\n', 0, lexpos) + 1
+    line, _, _ = src[last_line_offset:].partition('\n')
+    column = lexpos - last_line_offset + 1
+    return column, line
+  else:
+    return None, None
+
+
 def make_syntax_error(parser_or_tokenizer, msg, p):
   """Convert a parser error into a SyntaxError and throw it."""
-  # SyntaxError(msg, (filename, lineno, offset, line))
-  # is output in a nice format by traceback.print_exception
   # TODO(pludemann): add test cases for this (including beginning/end of file,
   #                  lexer error, parser error)
   # TODO(kramm): Add test cases for all the various places where this function
   #              is used (duplicate detection etc.)
 
   if isinstance(p, yacc.YaccProduction):
-    # TODO(kramm): pretty-print lexpos / lineno
-    lexpos = p.lexpos(1)
     lineno = p.lineno(1)
-    # TODO(kramm): The code below only works in the tokenizer, not in the
-    # parser. Additionally, ply's yacc catches SyntaxError, but has broken
-    # error handling (so we throw a SystemError for the time being).
-    raise SystemError(msg, parser_or_tokenizer.filename, (lexpos, lineno))
+    column, line = _find_line_and_column(p.lexpos(1), parser_or_tokenizer.src)
+  elif isinstance(p, lex.LexToken):
+    lineno = p.lineno
+    column, line = _find_line_and_column(p.lexpos, parser_or_tokenizer.src)
   elif p is None:
-    raise SystemError(msg, parser_or_tokenizer.filename)
-
-  # Convert the lexer's offset to an offset within the line with the error
-  # TODO(pludemann): use regexp to split on r'[\r\n]' (for Windows, old MacOS):
-  last_line_offset = parser_or_tokenizer.src.rfind('\n', 0, p.lexpos) + 1
-  line, _, _ = parser_or_tokenizer.src[last_line_offset:].partition('\n')
-
-  raise SyntaxError(msg,
-                    (parser_or_tokenizer.filename,
-                     p.lineno, p.lexpos - last_line_offset + 1, line))
+    lineno = None
+    column, line = None, None
+  else:
+    assert False, 'Invalid error data %r' % p
+  raise ParseError(msg, parser_or_tokenizer.filename, lineno, column, line)
 
 
 def parse_string(string, name=None, filename=None,
                  python_version=DEFAULT_VERSION):
-  try:
-    return TypeDeclParser(python_version).Parse(string, name, filename)
-  except SyntaxError as unused_exception:
-    # without all the tedious traceback stuff from PLY:
-    # TODO(pludemann): What happens if we don't catch SyntaxError?
-    traceback.print_exception(sys.exc_type, sys.exc_value, None)
-    sys.exit(1)
+  return TypeDeclParser(python_version).Parse(string, name, filename)
 
 
 def parse_file(filename, name=None, python_version=DEFAULT_VERSION):

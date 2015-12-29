@@ -17,6 +17,7 @@ import textwrap
 import unittest
 from pytype.pytd import pytd
 from pytype.pytd.parse import decorate
+from pytype.pytd.parse import parser
 from pytype.pytd.parse import parser_test
 import unittest
 
@@ -24,7 +25,7 @@ import unittest
 class TestASTGeneration(parser_test.ParserTest):
 
   def TestThrowsSyntaxError(self, src):
-    self.assertRaises((SyntaxError, SystemError), self.parser.Parse, src)
+    self.assertRaises(parser.ParseError, self.parser.Parse, src)
 
   def TestRoundTrip(self, src, canonical_src=None, check_the_sourcecode=True):
     """Compile a string, and convert the result back to a string. Compare."""

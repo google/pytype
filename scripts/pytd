@@ -66,7 +66,11 @@ def main():
   with open(filename_in) as fi:
     sourcecode = fi.read()
     p = parser.TypeDeclParser()
-    parsed = p.Parse(sourcecode, filename=filename_in)
+    try:
+      parsed = p.Parse(sourcecode, filename=filename_in)
+    except parser.ParseError as e:
+      sys.stderr.write(str(e))
+      sys.exit(1)
 
   if options.optimize:
     parsed = optimize.Optimize(parsed,

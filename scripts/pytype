@@ -20,6 +20,7 @@ from pytype import infer
 from pytype.pytd import optimize
 from pytype.pytd import pytd
 from pytype.pytd import utils as pytd_utils
+from pytype.pytd.parse import parser
 from pytype.pytd.parse import visitors
 
 
@@ -307,7 +308,7 @@ def generate_pytd(input_filename, output_filename, options, imports_map,
     The pytd AST.
 
   Raises:
-    ValueError: for some invalid options
+    SystemExit: If we couldn't parse a PYI file.
   """
   with open(input_filename, "r") as fi:
     src = fi.read()
@@ -338,11 +339,20 @@ def generate_pytd(input_filename, output_filename, options, imports_map,
         cache_unknowns=options.cache_unknowns,
         skip_repeat_calls=options.skip_repeat_calls,
         maximum_depth=(1 if options.quick else None))
+  except parser.ParseError as e:
+    if options.nofail:
+      log.warn("Parser error: %s", str(e))
+      result = "# Caught error in pyi file:\n# " + str(e).replace("\n", "\n# ")
+    else:
+      # TODO(kramm): We should store errors of this kind in the errorlog and
+      # continue processing.
+      sys.stderr.write(str(e))
+      sys.exit(1)
   except Exception as e:  # pylint: disable=broad-except
     if options.nofail:
       log.warn("***Caught exception: %s", str(e), exc_info=True)
-      result = ("# Caught error in pytype: " + str(e) + "\n# " +
-                "\n# ".join(traceback.format_exc().splitlines()))
+      result = ("# Caught error in pytype: " + str(e).replace("\n", "\n#")
+                + "\n# " + "\n# ".join(traceback.format_exc().splitlines()))
       mod = None
     else:
       raise
