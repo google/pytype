@@ -53,6 +53,19 @@ class RecoveryTests(test_inference.InferenceTest):
           pass
       """)
 
+  def testNameError(self):
+    with self.Infer("""
+      x = foobar
+      class A(x):
+        pass
+      pow(A(), 2)
+    """, deep=True, solve_unknowns=True, report_errors=False) as ty:
+      self.assertTypesMatchPytd(ty, """
+        x = ...  # type: ?
+        class A(?):
+          pass
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()

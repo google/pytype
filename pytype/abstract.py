@@ -1639,14 +1639,19 @@ class InterpreterClass(SimpleAbstractValue, Class):
 
   def match_instance_against_type(self, instance, other_type,
                                   subst, node, view):
+    if other_type.name == "object":
+      return subst
     if isinstance(other_type, Class):
       for base in self.mro:
         if isinstance(base, Class):
           if base is other_type:
             return subst
-        elif isinstance(base, Unknown):
-          # For all we know, said unknown is other_type.
-          return subst
+        elif isinstance(base, (Unknown, Unsolvable)):
+          # See match_Function_against_Class in type_match.py. Even though it's
+          # possible that this Unknown is of type other_type, our class would
+          # then be a match for *everything*. Hence, return False, to keep
+          # the list of possible types from exploding.
+          return None
         else:
           raise AssertionError("Bad base class %r", base)
       return None
