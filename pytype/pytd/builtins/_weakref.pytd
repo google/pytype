@@ -1,3 +1,0 @@
-def getweakrefcount(...) -> int
-def getweakrefs(...) -> list
-def proxy(...) -> ?  # TODO(pludemann): fix return type

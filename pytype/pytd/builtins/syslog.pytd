@@ -1,8 +1,0 @@
-# TODO(pludemann): check this -- genreated by c2pyt
-
-def syslog(a: int, b: str) -> NoneType
-def LOG_UPTO(a: int) -> int
-def LOG_MASK(a: int) -> int
-def setlogmask(a: int) -> int
-def closelog() -> NoneType
-def openlog(...) -> NoneType

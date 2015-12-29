@@ -1,2 +1,0 @@
-def warn(message, ...) -> NoneType
-def warn_explicit(message, category, filename, lineno: int, ...) -> NoneType

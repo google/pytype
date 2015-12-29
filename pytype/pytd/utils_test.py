@@ -28,7 +28,7 @@ class TestUtils(parser_test.ParserTest):
   def testGetPredefinedFileReturnsString(self):
     # smoke test, only checks that it doesn't throw and the result is a string
     self.assertIsInstance(
-        utils.GetPredefinedFile("builtins", "errno"),
+        utils.GetPredefinedFile("builtins", "__builtin__"),
         str)
 
   def testGetPredefinedFileThrows(self):
