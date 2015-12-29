@@ -566,6 +566,12 @@ class TestASTGeneration(parser_test.ParserTest):
     """)
     self.TestThrowsSyntaxError(src)
 
+  def testMissingReturn(self):
+    src = textwrap.dedent("""
+        def f(x: int)
+    """)
+    self.TestThrowsSyntaxError(src)
+
   def testPythonCode1(self):
     """Smoke test for PYTHONCODE."""
     src = textwrap.dedent("""

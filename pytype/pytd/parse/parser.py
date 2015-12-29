@@ -1101,9 +1101,9 @@ class TypeDeclParser(object):
 
   def p_error(self, t):
     if t is None:
-      make_syntax_error(self, 'Unexpected EOF', t)
+      make_syntax_error(self, 'Unexpected EOF', self.lexer.lexer)
     else:
-      raise make_syntax_error(self, 'Unexpected %r' % t.type, t)
+      make_syntax_error(self, 'Unexpected %r' % t.type, t)
 
   def MergeSignatures(self, signatures):
     """Given a list of pytd function signature declarations, group them by name.
@@ -1168,7 +1168,7 @@ def make_syntax_error(parser_or_tokenizer, msg, p):
   if isinstance(p, yacc.YaccProduction):
     lineno = p.lineno(1)
     column, line = _find_line_and_column(p.lexpos(1), parser_or_tokenizer.src)
-  elif isinstance(p, lex.LexToken):
+  elif isinstance(p, (lex.LexToken, lex.Lexer)):
     lineno = p.lineno
     column, line = _find_line_and_column(p.lexpos, parser_or_tokenizer.src)
   elif p is None:
