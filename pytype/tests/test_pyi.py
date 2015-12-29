@@ -28,6 +28,20 @@ class PYITest(test_inference.InferenceTest):
           def g() -> NoneType
         """)
 
+  def testSolve(self):
+    with utils.Tempdir() as d:
+      d.create_file("mod.pytd", """
+        def f(node: int, *args, **kwargs) -> str
+      """)
+      with self.Infer("""\
+        import mod
+        def g(x):
+          return mod.f(x)
+      """, deep=True, solve_unknowns=True, pythonpath=[d.path]) as ty:
+        self.assertTypesMatchPytd(ty, """
+          mod = ...  # type: module
+          def g(x: bool or int) -> str
+        """)
 
 if __name__ == "__main__":
   test_inference.main()

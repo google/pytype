@@ -182,7 +182,7 @@ class PrintVisitor(Visitor):
         "%s = TypeVar('%s')\n" % (t.name, t.name)
         for sig in self.old_node.signatures
         for t in sorted(sig.template))
-    function_name = self._SafeName(node.name)
+    function_name = self._EscapedName(node.name)
     signatures = "\n".join("def " + function_name + sig
                            for sig in node.signatures)
     return typevars + signatures

@@ -88,6 +88,11 @@ class Loader(object):
     if self.import_drop_prefixes:
       assert not self.imports_map, (self.imports_map, self.imports_map)
 
+  def _postprocess_pyi(self, ast):
+    """Apply all the PYI transformations we need."""
+    ast = ast.Visit(visitors.SimplifyOptionalParameters())
+    return ast
+
   def _resolve_all(self):
     module_map = {name: module.ast
                   for name, module in self._modules.items()}
@@ -114,6 +119,7 @@ class Loader(object):
       ast = pytd_utils.ParsePyTD(filename=filename,
                                  module=module_name,
                                  python_version=self.python_version)
+      ast = self._postprocess_pyi(ast)
     module = Module(module_name, filename, ast)
     self._modules[module_name] = module
     self.resolve_ast(ast)
