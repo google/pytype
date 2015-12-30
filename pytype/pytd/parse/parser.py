@@ -967,9 +967,23 @@ class TypeDeclParser(object):
     """param : ASTERISK NAME"""
     p[0] = pytd.OptionalParameter('*' + p[2], pytd.NamedType('tuple'))
 
+  def p_param_star_type(self, p):
+    """param : ASTERISK NAME COLON type"""
+    _, _, name, _, t = p
+    p[0] = pytd.OptionalParameter(
+        '*' + name,
+        pytd.HomogeneousContainerType(pytd.NamedType('tuple'), (t,)))
+
   def p_param_kw(self, p):
     """param : ASTERISK ASTERISK NAME"""
-    p[0] = pytd.OptionalParameter('**' + p[3], pytd.NamedType('tuple'))
+    p[0] = pytd.OptionalParameter('**' + p[3], pytd.NamedType('dict'))
+
+  def p_param_kw_type(self, p):
+    """param : ASTERISK ASTERISK NAME COLON type"""
+    _, _, _, name, _, t = p
+    p[0] = pytd.OptionalParameter(
+        '**' + name,
+        pytd.GenericType(pytd.NamedType('dict'), (pytd.NamedType('str'), t)))
 
   def p_raises(self, p):
     """raises : RAISES exceptions"""

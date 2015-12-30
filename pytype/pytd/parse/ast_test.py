@@ -338,6 +338,19 @@ class TestASTGeneration(parser_test.ParserTest):
         def h(x, ...) -> NoneType
     """))
 
+  def testTypedKwArgs(self):
+    """Test parsing of *args, **kwargs with types."""
+    src = textwrap.dedent("""
+        def f(x, *args: int) -> NoneType
+        def g(x, *args: int or float, **kwargs: str) -> NoneType
+        def h(x, **kwargs: Optional[int]) -> NoneType
+        """)
+    self.TestRoundTrip(src, textwrap.dedent("""
+        def f(x, ...) -> NoneType
+        def g(x, ...) -> NoneType
+        def h(x, ...) -> NoneType
+    """))
+
   def testConstants(self):
     """Test parsing of constants."""
     src = textwrap.dedent("""
