@@ -436,7 +436,7 @@ class TypeDeclParser(object):
     # If there's no unique name, hash the sourcecode.
     name = name or hashlib.md5(src).hexdigest()
     ast = ast.Visit(InsertTypeParameters())
-    ast = ast.Visit(pep484.ConvertTypingToNative())
+    ast = ast.Visit(pep484.ConvertTypingToNative(self.python_version))
     return ast.Replace(name=name)
 
   precedence = (

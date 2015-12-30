@@ -7,17 +7,17 @@ from pytype.pytd import pytd
 from pytype.pytd.parse import visitors
 
 
-PEP484_NAMES = ["AbstractSet", "Any", "AnyMeta", "AnyStr", "BinaryIO",
-                "ByteString", "Callable", "CallableMeta", "Container", "Dict",
-                "Final", "FrozenSet", "Generator", "Generic", "GenericMeta",
+PEP484_NAMES = ["AbstractSet", "Any", "AnyStr", "BinaryIO",
+                "ByteString", "Callable", "Container", "Dict",
+                "Final", "FrozenSet", "Generator", "Generic",
                 "Hashable", "IO", "ItemsView", "Iterable", "Iterator",
                 "KeysView", "List", "Mapping", "MappingView", "Match",
                 "MutableMapping", "MutableSequence", "MutableSet", "NamedTuple",
-                "Optional", "OptionalMeta", "Pattern", "Reversible", "Sequence",
+                "Optional", "Pattern", "Reversible", "Sequence",
                 "Set", "Sized", "SupportsAbs", "SupportsBytes",
                 "SupportsComplex", "SupportsFloat", "SupportsInt",
-                "SupportsRound", "TextIO", "Tuple", "TupleMeta", "TypeVar",
-                "TypingMeta", "Union", "UnionMeta"]
+                "SupportsRound", "TextIO", "Tuple", "TypeVar",
+                "Union"]
 
 
 PEP484_TRANSLATIONS = {
@@ -179,8 +179,9 @@ class Print484StubVisitor(visitors.Visitor):
 class ConvertTypingToNative(visitors.Visitor):
   """Visitor for converting PEP 484 types to native representation."""
 
-  def __init__(self):
+  def __init__(self, python_version):
     super(ConvertTypingToNative, self).__init__()
+    self.python_version = python_version
 
   def VisitExternalType(self, t):
     if t.module == "typing":
@@ -188,6 +189,13 @@ class ConvertTypingToNative(visitors.Visitor):
         return pytd.NamedType(t.name.lower())  # "typing.List" -> "list" etc.
       elif t.name == "Any":
         return pytd.AnythingType()
+      elif t.name == "AnyStr":
+        if self.python_version[0] >= 3:
+          return pytd.UnionType((pytd.NamedType("bytes"),
+                                 pytd.NamedType("str")))
+        else:
+          return pytd.UnionType((pytd.NamedType("str"),
+                                 pytd.NamedType("unicode")))
       else:
         # IO, Callable, etc. (I.e., names in typing we leave alone)
         return t
@@ -196,9 +204,12 @@ class ConvertTypingToNative(visitors.Visitor):
 
   def VisitGenericType(self, t):
     if t.base_type == pytd.ExternalType("Optional", "typing"):
-      return pytd.UnionType([t, pytd.NamedType("NoneType")])
+      return pytd.UnionType(t.parameters + (pytd.NamedType("NoneType"),))
     elif t.base_type == pytd.ExternalType("Union", "typing"):
       return pytd.UnionType(t.parameters)
     else:
       return t
+
+  def VisitHomogeneousContainerType(self, t):
+    return self.VisitGenericType(t)
 
