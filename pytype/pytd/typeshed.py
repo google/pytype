@@ -6,21 +6,32 @@ import os
 from pytype.pytd import utils
 
 
-def get_typeshed_file(toplevel, module, version):
+def get_typeshed_file(toplevel, module, version, typeshed_dir=None):
   """Get the contents of a typeshed file, typically with a file name *.pyi.
 
   Arguments:
-    toplevel: the top-level directory, typically "builtins", "stdlib" or
-        "third_party".
+    toplevel: the top-level directory within typeshed/, typically "builtins",
+      "stdlib" or "third_party".
     module: module name (e.g., "sys" or "__builtins__"). Can contain dots, if
       it's a submodule.
     version: The Python version. (major, minor)
+    typeshed_dir: Optional. The directory of typeshed. If this isn't passed,
+      the directory is either retrieved from the environment variable
+      "TYPESHED_HOME" (if that is set) or otherwise assumed to be
+      directly under pytype (i.e., /{some_path}/pytype/typeshed).
+
   Returns:
     The contents of the file
   Raises:
     IOError: if file not found
   """
-  prefix = os.path.join(os.path.dirname(__file__), "..", "typeshed", toplevel)
+  loader = globals().get("__loader__", None)
+  if typeshed_dir is None:
+    typeshed_dir = os.getenv("TYPESHED_HOME")
+  if typeshed_dir is not None:
+    prefix = os.path.join(typeshed_dir, toplevel)
+  else:
+    prefix = os.path.join(os.path.dirname(__file__), "..", "typeshed", toplevel)
   assert os.path.isdir(prefix)
   filename = os.path.join(*module.split(".")) + ".pyi"
   versions = ["%d.%d" % (version[0], minor)
@@ -31,6 +42,11 @@ def get_typeshed_file(toplevel, module, version):
   # https://github.com/JukkaL/mypy/blob/master/mypy/build.py#L249
   for v in ["2and3", str(version[0])] + versions:
     path = os.path.join(prefix, v, filename)
+    if loader and typeshed_dir is None:
+      # PEP 302 loader API
+      data = loader.get_data(path)  # See GetPredefinedFile in utils.py
+      if data:
+        return data
     if os.path.isfile(path):
       with open(path, "rb") as fi:
         return fi.read()
