@@ -512,28 +512,21 @@ def _get_module_name(filename, pythonpath):
         return subdir.replace(os.sep, ".")
 
 
-def check_types(py_src, pytd_src, py_filename, pytd_filename,
-                python_version, python_exe, errorlog, run_builtins=True,
-                pybuiltins_filename=None, pythonpath=(),
-                find_pytd_import_ext=".pytd",
-                import_drop_prefixes=(), reverse_operators=False,
-                cache_unknowns=False, skip_repeat_calls=True,
+def check_types(py_src, pytd_src, py_filename, pytd_filename, errorlog,
+                options,
+                run_builtins=True,
+                reverse_operators=False,
+                cache_unknowns=False,
                 maximum_depth=None):
   """Verify a PyTD against the Python code."""
-  tracer = CallTracer(python_version=python_version,
-                      python_exe=python_exe,
-                      errorlog=errorlog,
-                      module_name=_get_module_name(py_filename, pythonpath),
+  tracer = CallTracer(errorlog=errorlog, options=options,
+                      module_name=_get_module_name(py_filename,
+                                                   options.pythonpath),
                       reverse_operators=reverse_operators,
                       cache_unknowns=cache_unknowns,
-                      pythonpath=pythonpath,
-                      find_pytd_import_ext=find_pytd_import_ext,
-                      import_drop_prefixes=import_drop_prefixes,
-                      pybuiltins_filename=pybuiltins_filename,
-                      skip_repeat_calls=skip_repeat_calls,
                       maximum_depth=maximum_depth)
   loc, defs, _ = tracer.run_program(py_src, py_filename, run_builtins)
-  ast = pytd_utils.ParsePyTD(pytd_src, pytd_filename, python_version)
+  ast = pytd_utils.ParsePyTD(pytd_src, pytd_filename, options.python_version)
   tracer.loader.resolve_ast(ast)
   tracer.check_types(loc, defs, ast,
                      os.path.basename(py_filename),
@@ -541,65 +534,37 @@ def check_types(py_src, pytd_src, py_filename, pytd_filename,
 
 
 def infer_types(src,
-                python_version, python_exe,
-                errorlog,
+                errorlog, options,
                 filename=None, run_builtins=True,
-                pybuiltins_filename=None,
-                imports_map=None,
-                pythonpath=(),
-                find_pytd_import_ext=".pytd",
-                import_drop_prefixes=(),
-                output_cfg=None, output_typegraph=None,
-                output_pseudocode=None, deep=True, solve_unknowns=True,
+                deep=True, solve_unknowns=True,
                 reverse_operators=True, cache_unknowns=False,
-                skip_repeat_calls=True, maximum_depth=None):
+                maximum_depth=None):
   """Given Python source return its types.
 
   Args:
     src: A string containing Python source code.
-    python_version: The python version to emulate (major, minor).
-    python_exe: Path to a python interpreter or None.
-    errorlog: Where error messages go. Instance of ErrorLog.
+    errorlog: Where error messages go. Instance of errors.ErrorLog.
+    options: config.Options object
     filename: Filename of the program we're parsing.
     run_builtins: Whether to preload the native Python builtins when running
       the program.
-    pybuiltins_filename: Path to Python builtins, or None for default.
-    imports_map: map of .py file name to corresponding pytd file (generated
-                 by a separate invocation of pytype).
-    pythonpath: List of directories to search for *.pytd (or
-                *.${find_pytd_import_ext}) files.
-    find_pytd_import_ext: Extension pattern to use when looking up import PyTD
-                          in pythonpath.
-    import_drop_prefixes: List of prefixes to drop when resolving module names.
-    output_cfg: A filename into which to save an SVG of the control flow graph.
-    output_typegraph: A filename into which to save an SVG of the typegraph.
-    output_pseudocode: A filename to write pseudo code to.
     deep: If True, analyze all functions, even the ones not called by the main
       execution flow.
     solve_unknowns: If yes, try to replace structural types ("~unknowns") with
       nominal types.
     reverse_operators: If True, emulate operations like __radd__.
     cache_unknowns: If True, do a faster approximation of unknown types.
-    skip_repeat_calls: If True, don't rerun functions that have been called
-      before with the same arguments and environment.
     maximum_depth: Depth of the analysis. Default: unlimited.
   Returns:
     A TypeDeclUnit
   Raises:
     AssertionError: In case of a bad parameter combination.
   """
-  tracer = CallTracer(python_version=python_version,
-                      python_exe=python_exe,
-                      imports_map=imports_map,
-                      errorlog=errorlog,
-                      module_name=_get_module_name(filename, pythonpath),
+  tracer = CallTracer(errorlog=errorlog, options=options,
+                      module_name=_get_module_name(filename,
+                                                   options.pythonpath),
                       reverse_operators=reverse_operators,
                       cache_unknowns=cache_unknowns,
-                      pythonpath=pythonpath,
-                      find_pytd_import_ext=find_pytd_import_ext,
-                      import_drop_prefixes=import_drop_prefixes,
-                      pybuiltins_filename=pybuiltins_filename,
-                      skip_repeat_calls=skip_repeat_calls,
                       maximum_depth=maximum_depth)
   loc, defs, builtin_names = tracer.run_program(src, filename, run_builtins)
   log.info("===Done run_program===")
@@ -612,18 +577,18 @@ def infer_types(src,
   if solve_unknowns:
     log.info("=========== PyTD to solve =============\n%s", pytd.Print(ast))
     ast = convert_structural.convert_pytd(ast, tracer.loader.concat_all())
-  if output_cfg or output_typegraph:
-    if output_cfg and output_typegraph:
+  if options.output_cfg or options.output_typegraph:
+    if options.output_cfg and options.output_typegraph:
       raise AssertionError("Can output CFG or typegraph, but not both")
-    dot = program_to_dot(tracer.program, set([]), bool(output_cfg))
+    dot = program_to_dot(tracer.program, set([]), bool(options.output_cfg))
     proc = subprocess.Popen(["/usr/bin/dot", "-T", "svg", "-o",
-                             output_cfg or output_typegraph],
+                             options.output_cfg or options.output_typegraph],
                             stdin=subprocess.PIPE)
     proc.stdin.write(dot)
     proc.stdin.close()
-  if output_pseudocode:
+  if options.output_pseudocode:
     src = program_to_pseudocode(tracer.program)
-    with open(output_pseudocode, "w") as fi:
+    with open(options.output_pseudocode, "w") as fi:
       fi.write(src)
 
   return ast

@@ -107,34 +107,22 @@ class VirtualMachine(object):
   """
 
   def __init__(self,
-               python_version, python_exe,
                errorlog,
+               options,
                module_name=None,
                reverse_operators=False,
                cache_unknowns=True,
-               imports_map=None,
-               pythonpath=(),
-               find_pytd_import_ext=".pytd",
-               import_drop_prefixes=(),
-               pybuiltins_filename=None,
-               skip_repeat_calls=True,
                maximum_depth=None):
     """Construct a TypegraphVirtualMachine."""
     self.maximum_depth = sys.maxint if maximum_depth is None else maximum_depth
-    self.python_version = python_version
-    self.python_exe = python_exe
     self.errorlog = errorlog
-    self.pybuiltins_filename = pybuiltins_filename
+    self.options = options
+    self.python_version = options.python_version
     self.reverse_operators = reverse_operators
     self.cache_unknowns = cache_unknowns
     self.loader = load_pytd.Loader(
         base_module=module_name,
-        python_version=python_version,
-        imports_map=imports_map,
-        pythonpath=pythonpath,
-        find_pytd_import_ext=find_pytd_import_ext,
-        import_drop_prefixes=import_drop_prefixes)
-    self.skip_repeat_calls = skip_repeat_calls
+        options=options)
     # The call stack of frames.
     self.frames = []
     # The current frame.
@@ -911,7 +899,8 @@ class VirtualMachine(object):
 
   def compile_src(self, src, filename=None):
     code = pyc.compile_src(
-        src, python_version=self.python_version, python_exe=self.python_exe,
+        src, python_version=self.python_version,
+        python_exe=self.options.python_exe,
         filename=filename)
     return blocks.process_code(code)
 
@@ -926,8 +915,8 @@ class VirtualMachine(object):
 
   def preload_builtins(self, node):
     """Parse __builtin__.py and return the definitions as a globals dict."""
-    if self.pybuiltins_filename:
-      with open(self.pybuiltins_filename, "rb") as fi:
+    if self.options.pybuiltins_filename:
+      with open(self.options.pybuiltins_filename, "rb") as fi:
         src = fi.read()
     else:
       src = builtins.GetBuiltinsCode(self.python_version)
@@ -1415,7 +1404,8 @@ class VirtualMachine(object):
     if state.top().values:
       return state
     else:
-      self.errorlog.index_error(self.frame.current_opcode, container, index)
+      self.errorlog.index_error(
+          self.frame.current_opcode, container, index)
       return state
 
   def byte_INPLACE_ADD(self, state):

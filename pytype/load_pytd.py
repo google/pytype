@@ -41,22 +41,7 @@ class Loader(object):
   Attributes:
     base_module: The full name of the module we're based in (i.e., the module
       that's importing other modules using this loader).
-    python_version: The Python version to import the module for. Used for
-      builtin modules.
-    imports_map: map of .py file name to corresponding pytd file. These will
-                 have been created by separate invocations of pytype -- that is,
-                 the situation is similar to javac using .class files that have
-                 been created by other invocations of javac.
-                 imports_map may be None, which is different from {} -- None
-                 means that there was no imports_map whereas {} means it's
-                 empty.
-
-    pythonpath: list of directory names to be tried.
-    find_pytd_import_ext: file extension pattern for finding an import PyTD.
-                          A string. (Builtins always use ".pytd" and ignore
-                          this option.)
-    import_drop_prefixes: list of prefixes to drop when resolving
-                          module name to file name.
+    options: config.Options object
     _modules: A map, filename to Module, for caching modules already loaded.
     _concatenated: A concatenated pytd of all the modules. Refreshed when
                    necessary.
@@ -66,27 +51,22 @@ class Loader(object):
 
   def __init__(self,
                base_module,
-               python_version,
-               imports_map=None,
-               pythonpath=(),
-               find_pytd_import_ext=".pytd",
-               import_drop_prefixes=()):
+               options):
     self.base_module = base_module
-    self.python_version = python_version
-    self.imports_map = imports_map
-    self.pythonpath = pythonpath
-    self.find_pytd_import_ext = find_pytd_import_ext
-    self.import_drop_prefixes = import_drop_prefixes
+    self.options = options
     self.builtins = builtins.GetBuiltinsPyTD()
     self._modules = {
         "__builtin__":
         Module("__builtin__", self.PREFIX + "__builtin__", self.builtins)
     }
     self._concatenated = None
-    if self.imports_map is not None:
-      assert not self.import_drop_prefixes, (self.imports_map, self.imports_map)
-    if self.import_drop_prefixes:
-      assert not self.imports_map, (self.imports_map, self.imports_map)
+    # Paranoid verification that pytype.main properly checked the flags:
+    if self.options.imports_map is not None:
+      assert not self.options.import_drop_prefixes
+      assert self.options.pythonpath == [""]
+      assert not self.options.import_pytd_ext
+    if self.options.import_drop_prefixes:
+      assert not self.options.imports_map
 
   def _postprocess_pyi(self, ast):
     """Apply all the PYI transformations we need."""
@@ -118,7 +98,7 @@ class Loader(object):
     if not ast:
       ast = pytd_utils.ParsePyTD(filename=filename,
                                  module=module_name,
-                                 python_version=self.python_version)
+                                 python_version=self.options.python_version)
       ast = self._postprocess_pyi(ast)
     module = Module(module_name, filename, ast)
     self._modules[module_name] = module
@@ -175,7 +155,7 @@ class Loader(object):
 
   def _load_builtin(self, subdir, module_name):
     """Load a pytd that ships with pytype or typeshed."""
-    version = self.python_version
+    version = self.options.python_version
     # Try our own type definitions first, but then fall back to typeshed.
     mod = (pytd_utils.ParsePredefinedPyTD(subdir, module_name, version) or
            typeshed.parse_type_definition(subdir, module_name, version))
@@ -204,12 +184,12 @@ class Loader(object):
     if mod:
       return mod
 
-    # We're guaranteed that self.import_drop_prefixes is empty if
-    # self.imports_map was given, so there's no conflict between the lookup in
-    # self.import_drop_prefixes and self.imports_map (which is used by
-    # _load_pytd, which is called by _import_file).
+    # We're guaranteed that self.options.import_drop_prefixes is empty if
+    # self.options.imports_map was given, so there's no conflict between the
+    # lookup in self.options.import_drop_prefixes and self.options.imports_map
+    # (which is used by _load_pytd, which is called by _import_file).
     module_name_split = module_name.split(".")
-    for prefix in self.import_drop_prefixes:
+    for prefix in self.options.import_drop_prefixes:
       module_name_split = utils.list_strip_prefix(module_name_split,
                                                   prefix.split("."))
     file_ast = self._import_file(module_name, module_name_split)
@@ -222,18 +202,16 @@ class Loader(object):
       return mod
 
     log.warning("Couldn't import module %s %r in (path=%r) imports_map: %s",
-                module_name, module_name_split, self.pythonpath, "%d items" %
-                len(self.imports_map) if self.imports_map else "none")
-    if self.imports_map is not None:
-      for short_path, long_path in self.imports_map.items():
-        log.debug("%r => %r", short_path, long_path)
+                module_name, module_name_split, self.options.pythonpath,
+                "%d items" % len(self.options.imports_map) if
+                self.options.imports_map else "none")
     return None
 
   def _import_file(self, module_name, module_name_split):
     """Helper for import_relative: try to load an AST, using pythonpath.
 
-    Loops over self.pythonpath, taking care of the semantics for __init__, and
-    pretending there's an empty __init__ if the path (derived from
+    Loops over self.options.pythonpath, taking care of the semantics for
+    __init__, and pretending there's an empty __init__ if the path (derived from
     module_name_split) is a directory.
 
     Args:
@@ -241,8 +219,9 @@ class Loader(object):
       module_name_split: module_name.split(".")
     Returns:
       The parsed pytd (AST) if found, otherwise None.
+
     """
-    for searchdir in self.pythonpath:
+    for searchdir in self.options.pythonpath:
       path = os.path.join(searchdir, *module_name_split)
       # See if this is a directory with a "__init__.py" defined.
 # MOE:strip_line For Bazel, have already created a __init__.py file
@@ -267,7 +246,7 @@ class Loader(object):
     return None
 
   def _load_pytd(self, path, module_name):
-    """Load a pytd from the path, using '*'-expansion.
+    """Load a pytd from the path.
 
     Args:
       path: Path to the file (without '.pytd' or similar extension).
@@ -276,10 +255,10 @@ class Loader(object):
       The parsed pytd, instance of pytd.TypeDeclUnit, or None if we didn't
       find the module.
     """
-    pytd_path = path + self.find_pytd_import_ext
-    if self.imports_map is not None:
-      if pytd_path in self.imports_map:
-        pytd_path = self.imports_map.get(pytd_path)
+    pytd_path = path + self.options.import_pytd_ext
+    if self.options.imports_map is not None:
+      if pytd_path in self.options.imports_map:
+        pytd_path = self.options.imports_map[pytd_path]
       else:
         return None
     if os.path.isfile(pytd_path):

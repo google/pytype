@@ -5,6 +5,7 @@ import textwrap
 import unittest
 
 
+from pytype import config
 from pytype import errors
 from pytype import vm
 from pytype.pyc import pyc
@@ -13,8 +14,8 @@ from pytype.tests import test_inference
 
 class TraceVM(vm.VirtualMachine):
 
-  def __init__(self, python_version, python_exe):
-    super(TraceVM, self).__init__(python_version, python_exe, errors.ErrorLog())
+  def __init__(self, options):
+    super(TraceVM, self).__init__(errors.ErrorLog(), options)
     # There are multiple possible orderings of the basic blocks of the code, so
     # we collect the instructions in an order-independent way:
     self.instructions_executed = set()
@@ -39,7 +40,9 @@ class AncestorTraversalVirtualMachineTest(unittest.TestCase):
   def setUp(self):
     self.python_version = (2, 7)  # used to generate the bytecode below
     self.python_exe = None
-    self.vm = TraceVM(self.python_version, self.python_exe)
+    options = config.Options.create(python_version=self.python_version,
+                                    python_exe=self.python_exe)
+    self.vm = TraceVM(options)
 
   src_nested_loop = textwrap.dedent("""
     y = [1,2,3]

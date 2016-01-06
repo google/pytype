@@ -54,7 +54,7 @@ class FilePaths(collections.namedtuple(
     return "FilePaths(%r + %r + %r)" % (prefix, common, suffix)
 
 
-def build_imports_map(options_info_path, empty_init_path, src_out):
+def build_imports_map(options_info_path, src_out):
   """Create a file mapping from a .imports_info file.
 
   Builds a dict of short_path to full name
@@ -62,9 +62,6 @@ def build_imports_map(options_info_path, empty_init_path, src_out):
            "$GENDIR/rulename~~pytype-gen/path_to_file.py~~pytype"
   Args:
     options_info_path: The file with the info (may be None, for do-nothing)
-    empty_init_path: If given, is the path to an empty file (for auto-generated
-                     __init__.py files, which applies only to processing under
-                     some build systems.
     src_out: The src/output files from the command line. When validating the
              imports_info, these outputs should *not* exist. (The check is only
              done if options_Info_path is not None, because other build systems
@@ -140,7 +137,7 @@ def build_imports_map(options_info_path, empty_init_path, src_out):
       if (intermediate_dir_init not in imports_map and
           intermediate_dir_init not in dir_paths):
         log.warn("Created empty __init__ %r", intermediate_dir_init)
-        dir_paths[intermediate_dir_init] = empty_init_path
+        dir_paths[intermediate_dir_init] = os.devnull
   return dir_paths
 
 

@@ -1924,7 +1924,7 @@ class InterpreterFunction(Function):
     # Might throw vm.RecursionException:
     frame = self.vm.make_frame(node, self.code, callargs,
                                self.f_globals, self.f_locals, self.closure)
-    if self.vm.skip_repeat_calls:
+    if self.vm.options.skip_repeat_calls:
       callkey = self._hash_all(
           (callargs, None),
           (frame.f_globals.members, set(self.code.co_names)),

@@ -8,12 +8,11 @@ Usage:
 """
 
 import logging
-import optparse
 import os
 import sys
-import tempfile
 import traceback
 
+from pytype import config
 from pytype import errors
 from pytype import imports_map_loader
 from pytype import infer
@@ -26,241 +25,8 @@ from pytype.pytd.parse import visitors
 
 log = logging.getLogger(__name__)
 
-LOG_LEVELS = [logging.CRITICAL, logging.ERROR, logging.WARNING,
-              logging.INFO, logging.DEBUG]
 
-
-# The input files will typically end with ".py".
-
-# There may also be input files that end with ".pytd" -- these are PyTD and are
-# used to supplement function annotations (e.g., for Python2 source) -- they are
-# similar to PEP 484 "stubs" but with a different syntax; and we'll eventually
-# switch to PEP 484 syntax.
-
-# TODO(pludemann): Add this to the pytype documentation:
-# TODO(pludemann): 2017-07-14: Merging .py and .pytd inputs not yet implemented
-#
-# If you use .pytd for output files and also have .pytd inputs, you should be
-# careful to distinguish the two usages, and consider using a different file
-# extension for output from pytype (e.g., .pytd-gen).  The output from pytype is
-# "complete" ... that is, it is made up of a combination of the function
-# annotations and inferences, and has an entry for every function, method,
-# global variable. If you have hand-crafted a .pytd, it does not need to be
-# "complete" but will be used to specify type annotations that pytype will only
-# verify and won't try to infer.
-
-
-DEFAULT_PYTD_IMPORT_EXT = ".pytd"
-
-
-def _parse_options(args):
-  """Use optparse to parse command line options."""
-  o = optparse.OptionParser(
-      usage="usage: %prog [options] input1:output1 [input2:output2 [...]]",
-      description="Infer/check types in a Python module")
-  o.set_defaults(optimize=True)
-  o.set_defaults(api=True)
-  o.add_option(
-      "-o", "--output", type="string", action="store",
-      dest="output", default=None,
-      help=("Output file (default: stdout). Only allowed if only one input."
-            "Use '-' or '' for stdout."))
-  o.add_option(
-      "-V", "--python_version", type="string", action="store",
-      dest="python_version", default="2.7",
-      help=("Python version to emulate (\"major.minor\", e.g. \"2.7\")"))
-  o.add_option(
-      "--python_exe", type="string", action="store",
-      dest="python_exe", default=None,
-      # TODO(pludemann): pyc.py implements the following and might change.
-      help=("Full path to a Python interpreter that is used to compile the "
-            "source(s) to byte code. If not specified, --python_version is "
-            "used to create the name of an interpreter."))
-  o.add_option(
-      "-v", "--verbosity", type="int", action="store",
-      dest="verbosity", default=1,
-      help=("Set logging verbosity: "
-            "-1=quiet, 0=fatal, 1=error (default), 2=warn, 3=info, 4=debug"))
-  o.add_option(
-      "-Z", "--quick", action="store_true",
-      dest="quick",
-      help=("Only do an approximation."))
-  o.add_option(
-      "-O", "--optimize", action="store_true",
-      dest="optimize",
-      help=("Optimize generated pytd (default)."))
-  o.add_option(
-      "-R", "--raw", action="store_false",
-      dest="optimize",
-      help=("Do not optimize generated pytd"))
-  o.add_option(
-      "-A", "--api", action="store_true",
-      dest="api",
-      help=("Analyze all functions and classes, "
-            "also those not called from anywhere (default)."))
-  o.add_option(
-      "-m", "--main", action="store_false",
-      dest="api",
-      help=("Only analyze the main method and everything called from it"))
-  o.add_option(
-      "-c", "--check", action="store_true",
-      dest="check",
-      help=("Verify against existing \"output\" pytd files."))
-  o.add_option(
-      "-S", "--structural", action="store_true",
-      dest="structural", default=False,
-      help=("Analyze all functions and classes, also those not called from "
-            "anywhere. Output the result in structural form."))
-  o.add_option(
-      "-K", "--keep-unknowns", action="store_false",
-      dest="solve_unknowns", default=True,
-      help=("Keep 'unknown' classes generated during the first analysis pass."))
-  o.add_option(
-      "--no-native-builtins", action="store_false",
-      dest="run_builtins", default=True,
-      help=("Run the program without the native Python builtins preloaded."))
-  o.add_option(
-      "-B", "--builtins", type="string", action="store",
-      dest="pybuiltins_filename", default=None,
-      help=("Use user-supplied custom definition of __builtin__.py "
-            "(for debugging). This should be an absolute file name; "
-            "if it is not an absolute file name, it is resolved using "
-            "--pythonpath. "
-            "The default resolves to pytd/builtins/__builtin__.py. "
-            "Note that this does not affect the PyTD for builtins, which "
-            "is always in pytd/builtins/__builtin__.pytd."))
-  o.add_option(
-      "--output-cfg", type="string", action="store",
-      dest="output_cfg", default=None,
-      help="Output control flow graph as SVG.")
-  o.add_option(
-      "--output-typegraph", type="string", action="store",
-      dest="output_typegraph", default=None,
-      help="Output typegraph as SVG.")
-  o.add_option(
-      "--output-pseudocode", type="string", action="store",
-      dest="output_pseudocode", default=None,
-      help="Output pseudo code.")
-  o.add_option(
-      "-r", "--reverse-operators", action="store_true",
-      dest="reverse_operators", default=False,
-      help=("Enable support for Python reverse "
-            "operator overloading (__radd__ etc.)"))
-  o.add_option(
-      "-N", "--no-cache-unknowns", action="store_false",
-      dest="cache_unknowns", default=True,
-      help="Do slower and more precise processing of unknown types.")
-  o.add_option(
-      "--no-skip-calls", action="store_false",
-      dest="skip_repeat_calls", default=True,
-      help=("Don't reuse the results of previous function calls."))
-  o.add_option(
-      "--pythonpath", type="string", action="store",
-      dest="pythonpath", default="",
-      help=("Directories for reading dependencies - a list of paths "
-            "separated by '%s'. The files must have been generated "
-            "by running pytype on dependencies of the file(s) "
-            "being analyzed. That is, if an input .py file has an "
-            "'import path.to.foo', and pytype has already been run "
-            "with 'pytype path.to.foo.py -o $OUTDIR/path/to/foo%s', "
-            "then pytype should be invoked with $OUTDIR in "
-            "--pythonpath. This option also works with an "
-            "imports map from --imports_info.") % (
-                os.pathsep, DEFAULT_PYTD_IMPORT_EXT))
-  o.add_option(
-      "--find_pytd_import_ext", type="string", action="store",
-      dest="find_pytd_import_ext",
-      default=DEFAULT_PYTD_IMPORT_EXT,
-      help=("Extension appended to filename when looking up import PyTD files "
-            "in the pythonpath. Default is '%s'.") % DEFAULT_PYTD_IMPORT_EXT)
-  o.add_option(
-      "--import_drop_prefixes", type="string", action="store",
-      dest="import_drop_prefixes",
-      default="",
-      help=("List of prefixes to be dropped when resolving module names "
-            "in import statements. The items are separated by '%s'. "
-            "The individual items may contain '.'. "
-            "The intended use case is for when you're running tests in "
-            "a directory structure that starts below the root module in "
-            "your module names. "
-            "This option is incompatible with --imports_info.") % os.pathsep)
-# MOE:strip_line TODO(pludemann): remove when Bazel integration is done:
-  o.add_option(
-      "--nofail", action="store_true",
-      dest="nofail", default=False,
-      help=("Don't allow pytype to fail."))
-  o.add_option(
-      "--output_id", type="string", action="store",
-      dest="output_id",
-      default="",
-      help=("A string that's prepended to the contents of each output PyTD, "
-            "to identify what created it.  If empty (the default), "
-            "nothing is prepended."))
-  o.add_option(
-      "--imports_info", type="string", action="store",
-      dest="imports_info", default=None,
-      help=("TODO(pludemann): document this. "
-            "Information for mapping import .pytd to files. "
-            "This options is incompatible with --import_drop_prefixes."))
-
-  options, input_filenames = o.parse_args(args)
-  return options, input_filenames
-
-
-def _initialize_logging(options):
-  """Set up appropriate logging verbosity + tracking max log severity."""
-  if options.verbosity >= 0:
-    if options.verbosity >= len(LOG_LEVELS):
-      print >>sys.stderr, "Invalid verbosity: %d" % options.verbosity
-      sys.exit(1)
-    logging.basicConfig(level=LOG_LEVELS[options.verbosity])
-  else:
-    # "verbosity=-1" can be used to disable all logging, so configure logging
-    # accordingly.
-    logging.basicConfig(level=logging.CRITICAL + 1)
-
-
-def _initialize_filenames_and_output(options, input_filenames):
-  """Figure out the input(s) and output(s).
-
-  Calls sys.exit(1) if there's an error in the options or input_filenames.
-
-  Args:
-    options: from command line
-    input_filenames: any bare filename(s) on the command line
-  Returns:
-    list of (input_filename, output_filename) pairs where output_filename
-    is None if derived input_filename using the command options.
-  """
-  if not input_filenames:
-    print >>sys.stderr, "Need at least one filename."
-    sys.exit(1)
-  if len(input_filenames) > 1 and options.output:
-    print >>sys.stderr, "-o only allowed for single input"
-    sys.exit(1)
-
-  src_out = []
-  for item in input_filenames:
-    split = item.split(os.pathsep)
-    if len(split) != 2:
-      if len(split) == 1 and len(input_filenames) == 1:
-        # special case: For single input, you're allowed to use
-        # pytype infile -o outfile.
-        src_out.append((item, options.output))
-      else:
-        print >>sys.stderr, ("Argument %r is not a pair of non-"
-                             "empty file names separated by %r" %
-                             (item, os.pathsep))
-        sys.exit(1)
-    else:
-      src_out.append(split)
-
-  return src_out
-
-
-def check_pytd(input_filename, output_filename, options, imports_map,
-               pythonpath, import_drop_prefixes, python_version, python_exe,
-               errorlog):
+def check_pytd(input_filename, output_filename, errorlog, options):
   with open(input_filename, "r") as fi:
     py_src = fi.read()
   with open(output_filename, "r") as fi:
@@ -270,24 +36,16 @@ def check_pytd(input_filename, output_filename, options, imports_map,
       pytd_src,
       py_filename=input_filename,
       pytd_filename=output_filename,
-      python_version=python_version,
-      python_exe=python_exe,
       errorlog=errorlog,
+      options=options,
       run_builtins=options.run_builtins,
-      pybuiltins_filename=options.pybuiltins_filename,
-      imports_map=imports_map,
-      pythonpath=pythonpath,
-      find_pytd_import_ext=options.find_pytd_import_ext,
-      import_drop_prefixes=import_drop_prefixes,
+      import_pytd_ext=options.import_pytd_ext,
       reverse_operators=options.reverse_operators,
       cache_unknowns=options.cache_unknowns,
-      skip_repeat_calls=options.skip_repeat_calls,
       maximum_depth=(1 if options.quick else None))
 
 
-def generate_pytd(input_filename, output_filename, options, imports_map,
-                  pythonpath, import_drop_prefixes, python_version, python_exe,
-                  errorlog):
+def generate_pytd(input_filename, output_filename, errorlog, options):
   """Run the inferencer on one file, producing output.
 
   Args:
@@ -295,14 +53,8 @@ def generate_pytd(input_filename, output_filename, options, imports_map,
     output_filename: name of the file for writing the output. If this is None,
                      then the options are used to determine where to write the
                      output.
-    options: the command-line flags (processed)
-    imports_map: map of .py file name to corresponding pytd file (generated
-                 by a separate invocation of pytype) ... from --imports_info
-    pythonpath: from --pythonpath
-    import_drop_prefixes: from --import_drop_prefixes
-    python_version: A tuple of length 2. (major, minor)
-    python_exe: Path to a Python interpreter, or None
-    errorlog: Where to put error messages. Instance or ErrorLog.
+    errorlog: Where error messages go. Instance of errors.ErrorLog.
+    options: config.Options object.
 
   Returns:
     The pytd AST.
@@ -313,31 +65,18 @@ def generate_pytd(input_filename, output_filename, options, imports_map,
   with open(input_filename, "r") as fi:
     src = fi.read()
 
-  # TODO(pludemann): sanity check options.find_pytd_import_ext.startswith(".")
-  #                  for something like .pytd or <*>.pytd
-
   mod = None
   try:
     mod = infer.infer_types(
         src,
-        python_version=python_version,
-        python_exe=python_exe,
         errorlog=errorlog,
+        options=options,
         filename=input_filename,
         run_builtins=options.run_builtins,
-        pybuiltins_filename=options.pybuiltins_filename,
-        imports_map=imports_map,
-        pythonpath=pythonpath,
-        find_pytd_import_ext=options.find_pytd_import_ext,
-        import_drop_prefixes=import_drop_prefixes,
         deep=options.api or options.structural,
         solve_unknowns=options.solve_unknowns or options.api,
-        output_cfg=options.output_cfg,
-        output_typegraph=options.output_typegraph,
-        output_pseudocode=options.output_pseudocode,
         reverse_operators=options.reverse_operators,
         cache_unknowns=options.cache_unknowns,
-        skip_repeat_calls=options.skip_repeat_calls,
         maximum_depth=(1 if options.quick else None))
   except parser.ParseError as e:
     if options.nofail:
@@ -379,7 +118,7 @@ def generate_pytd(input_filename, output_filename, options, imports_map,
     mod.Visit(visitors.VerifyVisitor())
     # TODO(pludemann): remove the following (which simply verifies
     #                  that what we've output is valid):
-    _ = pytd_utils.ParsePyTD(src=result, python_version=python_version)
+    _ = pytd_utils.ParsePyTD(src=result, python_version=options.python_version)
 
     result_prefix = ""
     if options.output_id:
@@ -397,30 +136,34 @@ def generate_pytd(input_filename, output_filename, options, imports_map,
       fi.write(result)
 
 
-def process_one_file(input_filename, output_filename, options, imports_map,
-                     pythonpath, import_drop_prefixes,
-                     python_version, python_exe):
+def process_one_file(input_filename, output_filename, options):
   """Check or generate a .pytd, according to options."""
   errorlog = errors.ErrorLog()
   if options.check:
-    check_pytd(input_filename, output_filename, options,
-               imports_map, pythonpath, import_drop_prefixes,
-               python_version, python_exe, errorlog)
+    check_pytd(input_filename=input_filename,
+               output_filename=output_filename,
+               errorlog=errorlog,
+               options=options)
   else:
-    generate_pytd(input_filename, output_filename, options,
-                  imports_map, pythonpath, import_drop_prefixes,
-                  python_version, python_exe, errorlog)
+    generate_pytd(input_filename=input_filename,
+                  output_filename=output_filename,
+                  errorlog=errorlog,
+                  options=options)
   errorlog.print_to_stderr()
   return 1 if errorlog else 0  # exit code
 
 
 def main(argv):
-  options, input_filenames = _parse_options(argv)
-  unused_executable = input_filenames.pop(0)
+  try:
+    options = config.Options(argv)
+  except config.OptParseError as e:
+    print >>sys.stderr, e.msg
+    sys.exit(1)
+  if not options.src_out:
+    print >>sys.stderr, "Need at least one filename."
+    sys.exit(1)
 
-  _initialize_logging(options)
-
-  src_out = _initialize_filenames_and_output(options, input_filenames)
+  logging.basicConfig(level=options.basic_logging_level)
 
   # Do *not* apply os.path.abspath here because we could be in a symlink tree
   # and bad things happen if you go to relative directories.
@@ -429,31 +172,10 @@ def main(argv):
   # on Forge because of the symlink tree pointing into the cache:
 # MOE:end_strip
 
-  # Note that the below gives [""] for "", and ["x", ""] for "x:"
-  # ("" is a valid entry to denote the current directory)
-  pythonpath = options.pythonpath.split(os.pathsep)
-
-  import_drop_prefixes = [
-      p for p in options.import_drop_prefixes.split(os.pathsep) if p]
-
-  python_version = tuple(map(int, options.python_version.split(".")))
-  if len(python_version) != 2:
-    log.error("--python_version must be <major>.<minor>")
-    sys.exit(1)
-
   # Process the imports_info file if present.
   if options.imports_info:
-    if options.import_drop_prefixes:
-      log.error("Only one of --import_drop_prefixes and --imports_info allowed")
-      sys.exit(1)
-    # Be sure to keep empty_file at the outermost level so that it isn't closed
-    # by going out of scope. (And it'll be automatically cleaned up on
-    # program exit.)
-    empty_init_file = tempfile.NamedTemporaryFile(suffix="empty__init__.py")
-    imports_map = imports_map_loader.build_imports_map(
-        options.imports_info, empty_init_file.name, src_out)
-  else:
-    imports_map = None
+    options.imports_map = imports_map_loader.build_imports_map(
+        options.imports_info, options.src_out)
 
   # TODO(pludemann): this is a moderately awful hack: it ensures that any
   #                  multually-dependent generated .pytd files have been
@@ -463,21 +185,18 @@ def main(argv):
   # If we're processing more than one file, we need to do two passes (if we
   # don't know what the dependencies are). To speed things up, separate out the
   # biggest file and only process it once.  So, sort by size of the input files:
-  if len(src_out) > 1:
-    src_out.sort(reverse=True, key=lambda s: os.path.getsize(s[0]))
-    for input_filename, output_filename in src_out[1:]:
+  if len(options.src_out) > 1:
+    options.src_out.sort(reverse=True, key=lambda s: os.path.getsize(s[0]))
+    for input_filename, output_filename in options.src_out[1:]:
       log.info("Process [pre-pass] %s => %s", input_filename, output_filename)
-      _ = process_one_file(input_filename, output_filename, options,
-                           imports_map, pythonpath, import_drop_prefixes,
-                           python_version, options.python_exe)
+      _ = process_one_file(input_filename, output_filename, options)
 
-  for input_filename, output_filename in src_out:
+  for input_filename, output_filename in options.src_out:
     log.info("Process %s => %s", input_filename, output_filename)
-    ret = process_one_file(input_filename, output_filename, options,
-                           imports_map, pythonpath, import_drop_prefixes,
-                           python_version, options.python_exe)
+    ret = process_one_file(input_filename, output_filename, options)
     if ret and not options.nofail:
       return ret
+
 
 if __name__ == "__main__":
   sys.exit(main(sys.argv) or 0)

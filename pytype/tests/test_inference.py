@@ -6,6 +6,7 @@ import sys
 import textwrap
 
 
+from pytype import config
 from pytype import convert_structural
 from pytype import errors
 from pytype import infer
@@ -66,7 +67,8 @@ class Infer(object):
   #     ty = i.Infer("""....""")
   #     self.assertOnlyHasReturnType(ty.Lookup(...), ...)
 
-  def __init__(self, test, srccode, deep=False,
+  def __init__(self, test, srccode, pythonpath=(),
+               deep=False,
                solve_unknowns=False, extract_locals=False,
                extra_verbose=False, report_errors=True, **kwargs):
     """Constructor for Infer.
@@ -74,6 +76,7 @@ class Infer(object):
     Args:
       test: the Testcase (see inferenceTest.Infer)
       srccode: the Python source code to do type inferencing on
+      pythonpath: --pythonpath as list/tuple of string
       deep: see class comments (assume --api - analyize all methods, even those
             that don't have a caller)
       solve_unknowns: try to solve for all ~unknown types
@@ -100,7 +103,7 @@ class Infer(object):
     # Exceptions raised in the body of 'with' will be presented to __exit__.
     try:
       self.types = test._InferAndVerify(
-          self.srccode, deep=deep, cache_unknowns=True,
+          self.srccode, pythonpath=pythonpath, deep=deep, cache_unknowns=True,
           solve_unknowns=solve_unknowns,
           report_errors=report_errors, **kwargs)
       self.inferred = self.types
@@ -149,6 +152,9 @@ class InferenceTest(unittest.TestCase):
   PYTHON_EXE = None  # can be overwritten by subclasses
 
   def setUp(self):
+    self.options = config.Options.create(python_version=self.PYTHON_VERSION,
+                                         python_exe=self.PYTHON_EXE)
+    self.errorlog = errors.ErrorLog()
     self.bool = pytd.ClassType("bool")
     self.dict = pytd.ClassType("dict")
     self.float = pytd.ClassType("float")
@@ -225,21 +231,20 @@ class InferenceTest(unittest.TestCase):
   # TODO(kramm): Rename this function.
   # pylint: disable=invalid-name
   def assertNoErrors(self, code, raises=None,
-                     pythonpath=(), find_pytd_import_ext=".pytd",
+                     pythonpath=(),
                      report_errors=True):
     """Run an inference smoke test for the given code."""
     if raises is not None:
       # TODO(kramm): support this
       log.warning("Ignoring 'raises' parameter to assertNoErrors")
-    errorlog = errors.ErrorLog()
+    self.options.tweak(pythonpath=pythonpath)
     unit = infer.infer_types(
-        textwrap.dedent(code), self.PYTHON_VERSION, self.PYTHON_EXE, errorlog,
+        textwrap.dedent(code), self.errorlog, self.options,
         deep=False, solve_unknowns=False, reverse_operators=True,
-        pythonpath=pythonpath, find_pytd_import_ext=find_pytd_import_ext,
         cache_unknowns=True)
-    if report_errors and errorlog.errors:
-      errorlog.print_to_stderr()
-      self.fail("Inferencer found %d errors" % len(errorlog))
+    if report_errors and self.errorlog.errors:
+      self.errorlog.print_to_stderr()
+      self.fail("Inferencer found %d errors" % len(self.errorlog))
     unit.Visit(visitors.VerifyVisitor())
     return pytd_utils.CanonicalOrdering(unit)
 
@@ -247,21 +252,18 @@ class InferenceTest(unittest.TestCase):
     self.assertNoErrors(code, report_errors=False, **kwargs)
 
   def InferAndCheck(self, code):
-    errorlog = errors.ErrorLog()
     unit = infer.infer_types(
-        textwrap.dedent(code), self.PYTHON_VERSION, self.PYTHON_EXE,
-        errorlog, deep=True,
+        textwrap.dedent(code), self.errorlog, self.options,
+        deep=True,
         reverse_operators=True, cache_unknowns=True)
     unit.Visit(visitors.VerifyVisitor())
-    return pytd_utils.CanonicalOrdering(unit), errorlog
+    return pytd_utils.CanonicalOrdering(unit), self.errorlog
 
-  def InferFromFile(self, filename, pythonpath, find_pytd_import_ext=".pytd"):
-    errorlog = errors.ErrorLog()
+  def InferFromFile(self, filename, pythonpath):
+    self.options.tweak(pythonpath=pythonpath)
     with open(filename, "rb") as fi:
-      unit = infer.infer_types(fi.read(), self.PYTHON_VERSION, self.PYTHON_EXE,
-                               errorlog, filename=filename, cache_unknowns=True,
-                               pythonpath=pythonpath,
-                               find_pytd_import_ext=find_pytd_import_ext)
+      unit = infer.infer_types(fi.read(), self.errorlog, self.options,
+                               filename=filename, cache_unknowns=True)
       unit.Visit(visitors.VerifyVisitor())
       return pytd_utils.CanonicalOrdering(unit)
 
@@ -371,23 +373,25 @@ class InferenceTest(unittest.TestCase):
         errorlog.print_to_stderr()
         raise AssertionError("Found regexp %r in errors" % regexp)
 
-  def Infer(self, srccode, deep=False, solve_unknowns=False,
+  def Infer(self, srccode, pythonpath=(),
+            deep=False, solve_unknowns=False,
             extract_locals=False, extra_verbose=False,
             report_errors=True, **kwargs):
     # Wraps Infer object to make it seem less magical
     # See class Infer for more on the arguments
-    return Infer(self, srccode=srccode, deep=deep,
+    return Infer(self, srccode=srccode, pythonpath=pythonpath, deep=deep,
                  solve_unknowns=solve_unknowns, extract_locals=extract_locals,
                  extra_verbose=extra_verbose, report_errors=report_errors,
                  **kwargs)
 
-  def _InferAndVerify(self, src, report_errors=False, **kwargs):
+  def _InferAndVerify(self, src, pythonpath=(), report_errors=False, **kwargs):
     """Infer types for the source code treating it as a module.
 
     Used by class Infer (which sets up a 'with' framework)
 
     Args:
       src: The source code of a module. Treat it as "__main__".
+      pythonpath: --pythonpath as list/tuple of string
       report_errors: Whether to fail if the type inferencer reports any errors
         in the program.
       **kwargs: Keyword paramters to pass through to the type inferencer.
@@ -397,13 +401,12 @@ class InferenceTest(unittest.TestCase):
     Returns:
       A pytd.TypeDeclUnit
     """
-    errorlog = errors.ErrorLog()
-    unit = infer.infer_types(src, self.PYTHON_VERSION, self.PYTHON_EXE,
-                             errorlog, **kwargs)
+    self.options.tweak(pythonpath=pythonpath)
+    unit = infer.infer_types(src, self.errorlog, self.options, **kwargs)
     unit = pytd_utils.CanonicalOrdering(unit.Visit(visitors.VerifyVisitor()))
-    if report_errors and errorlog:
-      errorlog.print_to_stderr()
-      self.fail("Inferencer found %d errors" % len(errorlog))
+    if report_errors and self.errorlog:
+      self.errorlog.print_to_stderr()
+      self.fail("Inferencer found %d errors" % len(self.errorlog))
     return unit
 
   def assertTypesMatchPytd(self, ty, pytd_src, version=None):

@@ -2,6 +2,7 @@
 
 import textwrap
 
+from pytype import config
 from pytype import errors
 from pytype import infer
 from pytype.tests import test_inference
@@ -11,14 +12,15 @@ class CheckerTest(test_inference.InferenceTest):
   """Tests for --check."""
 
   def get_checking_errors(self, python, pytd):
+    options = config.Options.create(python_version=self.PYTHON_VERSION,
+                                    python_exe=self.PYTHON_EXE)
     errorlog = errors.ErrorLog()
     infer.check_types(py_src=textwrap.dedent(python),
                       pytd_src=textwrap.dedent(pytd),
                       py_filename="<inline>",
                       pytd_filename="<inline>",
-                      python_version=self.PYTHON_VERSION,
-                      python_exe=self.PYTHON_EXE,
                       errorlog=errorlog,
+                      options=options,
                       cache_unknowns=True)
     return errorlog
 
