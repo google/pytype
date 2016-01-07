@@ -396,3 +396,107 @@ class OrderedSet(collections.OrderedDict):
 
   def add(self, item):
     self[item] = None
+
+
+def WrapsDict(member_name, writable=False, implement_len=False):
+  """Returns a mixin class for wrapping a dictionary.
+
+  This can be used like this:
+    class MyClass(WrapsDict("inner_dict")):
+      def __init__(self):
+        self.inner_dict = {}
+  The resulting class will delegate all dictionary operations to inner_dict.
+
+  Args:
+    member_name: Name of the attribute that contains the wrapped dictionary.
+    writable: Whether to implement operations that modify the dict, like "del".
+    implement_len: Whether the parent class should have a __len__ method that
+      maps to the inner dictionary.
+  Returns:
+    A type.
+  """
+  src = "if True:\n"  # To allow the code below to be indented
+  src += """
+    class WrapsDict(object):
+
+      def __getitem__(self, key):
+        return self.{member_name}[key]
+
+      def get(self, key, default=None):
+        return self.{member_name}.get(key, default)
+
+      def __contains__(self, key):
+        return key in self.{member_name}
+
+      def has_key(self, key):
+        return self.{member_name}.has_key(key)
+
+      def copy(self):
+        return self.{member_name}.copy()
+
+      def __iter__(self):
+        return iter(self.{member_name})
+
+      def items(self):
+        return self.{member_name}.items()
+
+      def iteritems(self):
+        return self.{member_name}.iteritems()
+
+      def iterkeys(self):
+        return self.{member_name}.iterkeys()
+
+      def itervalues(self):
+        return self.{member_name}.itervalues()
+
+      def keys(self):
+        return self.{member_name}.keys()
+
+      def values(self):
+        return self.{member_name}.values()
+
+      def viewitems(self):
+        return self.{member_name}.viewitems()
+
+      def viewkeys(self):
+        return self.{member_name}.viewkeys()
+
+      def viewvalues(self):
+        return self.{member_name}.viewvalues()
+  """.format(member_name=member_name)
+
+  if writable:
+    src += """
+      def pop(self, key):
+        return self.{member_name}.pop(key)
+
+      def popitem(self):
+        return self.{member_name}.popitem()
+
+      def setdefault(self, key, value=None):
+        return self.{member_name}.setdefault(key, value)
+
+      def update(self, other_dict):
+        return self.{member_name}.update(other_dict)
+
+      def clear(self):
+        return self.{member_name}.clear()
+
+      def __setitem__(self, key, value):
+        self.{member_name}[key] = value
+
+      def __delitem__(self, key):
+        del self.{member_name}[key]
+    """.format(member_name=member_name)
+
+  if implement_len:
+    src += """
+      def __len__(self):
+        return len(self.{member_name})
+    """.format(member_name=member_name)
+
+  namespace = {}
+  exec src in namespace  # pylint: disable=exec-used
+  return namespace["WrapsDict"]
+
+

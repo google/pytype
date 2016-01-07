@@ -302,6 +302,67 @@ class TestUtils(parser_test.ParserTest):
     """)
     self.AssertSourceEquals(w, expected)
 
+  def testWrapsDict(self):
+    class A(utils.WrapsDict("m")):
+      pass
+    a = A()
+    a.m = {}
+    a.m = {"foo": 1, "bar": 2}
+    self.assertEquals(a.get("x", "baz"), "baz")
+    self.assertFalse("x" in a)
+    self.assertEquals(a.get("foo"), 1)
+    self.assertEquals(a["foo"], 1)
+    self.assertTrue(a.has_key("foo"))
+    self.assertTrue("foo" in a)
+    self.assertTrue("bar" in a)
+    self.assertEquals(a.copy(), a.m)
+    self.assertItemsEqual(iter(a), ["foo", "bar"])
+    self.assertItemsEqual(a.keys(), ["foo", "bar"])
+    self.assertItemsEqual(a.viewkeys(), ["foo", "bar"])
+    self.assertItemsEqual(a.iterkeys(), ["foo", "bar"])
+    self.assertItemsEqual(a.values(), [1, 2])
+    self.assertItemsEqual(a.viewvalues(), [1, 2])
+    self.assertItemsEqual(a.itervalues(), [1, 2])
+    self.assertItemsEqual(a.items(), [("foo", 1), ("bar", 2)])
+    self.assertItemsEqual(a.viewitems(), [("foo", 1), ("bar", 2)])
+    self.assertItemsEqual(a.iteritems(), [("foo", 1), ("bar", 2)])
+    self.assertFalse(hasattr(a, "popitem"))
+
+  def testWrapsWritableDict(self):
+    class A(utils.WrapsDict("m", writable=True)):
+      pass
+    a = A()
+    a.m = {}
+    a.m = {"foo": 1, "bar": 2}
+    self.assertTrue(a.has_key("foo"))
+    self.assertTrue(a.has_key("bar"))
+    del a["foo"]
+    a["bar"] = 3
+    self.assertFalse(a.has_key("foo"))
+    self.assertTrue(a.has_key("bar"))
+    value = a.pop("bar")
+    self.assertEquals(3, value)
+    self.assertFalse(a.has_key("bar"))
+    a["new"] = 7
+    item = a.popitem()
+    self.assertEquals(item, ("new", 7))
+    a["1"] = 1
+    a.setdefault("1", 11)
+    a.setdefault("2", 22)
+    self.assertEquals(a["1"], 1)
+    self.assertEquals(a["2"], 22)
+    a.update({"3": 33})
+    self.assertItemsEqual(a.items(), (("1", 1), ("2", 22), ("3", 33)))
+    a.clear()
+    self.assertItemsEqual(a.items(), ())
+
+  def testWrapsDictWithLength(self):
+    class A(utils.WrapsDict("m", implement_len=True)):
+      pass
+    a = A()
+    a.m = {x: x for x in range(42)}
+    self.assertEquals(42, len(a))
+
 
 if __name__ == "__main__":
   unittest.main()
