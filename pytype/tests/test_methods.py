@@ -486,6 +486,17 @@ class MethodsTest(test_inference.InferenceTest):
       def h(x, y, ...) -> Tuple[?, ...]
       """)
 
+  def testStarArgsPassThrough(self):
+    with self.Infer("""
+      class Foo(object):
+        def __init__(self, *args, **kwargs):
+          super(Foo, self).__init__(*args, **kwargs)
+    """, deep=True, solve_unknowns=False, extract_locals=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+      class Foo(object):
+        def __init__(self, ...) -> NoneType
+      """)
+
   def testEmptyStarArgsType(self):
     with self.Infer("""
       def f(nr, *args):
@@ -543,6 +554,40 @@ class MethodsTest(test_inference.InferenceTest):
       def f(...) -> dict[str, ?]
       def g(x, ...) -> dict[str, ?]
       def h(x, y, ...) -> dict[str, ?]
+      """)
+
+  def testBuiltinStarArgs(self):
+    with self.Infer("""
+      import json
+      def f(*args):
+        return json.loads(*args)
+    """, deep=True, solve_unknowns=False, extract_locals=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+      json = ...  # type: module
+      def f(...) -> ?
+      """)
+
+  def testBuiltinStarStarArgs(self):
+    with self.Infer("""
+      import json
+      def f(**args):
+        return json.loads(**args)
+    """, deep=True, solve_unknowns=False, extract_locals=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+      json = ...  # type: module
+      def f(...) -> ?
+      """)
+
+  def testBuiltinKeyword(self):
+    with self.Infer("""
+      import json
+      def f():
+        return json.loads(s="{}")
+    """, deep=True, solve_unknowns=False, extract_locals=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+      json = ...  # type: module
+
+      def f() -> ?
       """)
 
   def testNoneOrFunction(self):

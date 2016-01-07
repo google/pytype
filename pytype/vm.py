@@ -399,8 +399,7 @@ class VirtualMachine(object):
         return state.set_why("exception")
       else:
         return state.set_why("reraise")
-
-    elif type(exc) == type:
+    elif isinstance(exc, type):
       # As in `raise ValueError`
       exc_type = exc
       val = exc()       # Make an instance.
@@ -415,7 +414,7 @@ class VirtualMachine(object):
     # val is a valid exception instance and exc_type is its class.
     # Now do a similar thing for the cause, if present.
     if cause:
-      if type(cause) == type:
+      if isinstance(cause, type):
         cause = cause()
       elif not isinstance(cause, BaseException):
         return state
@@ -1002,13 +1001,15 @@ class VirtualMachine(object):
     return NotImplemented
 
   def call_function_with_state(self, state, funcu, posargs, namedargs=None,
-                               starargs=None, fallback_to_unsolvable=True):
+                               starargs=None, starstarargs=None,
+                               fallback_to_unsolvable=True):
     node, ret = self.call_function(
-        state.node, funcu, posargs, namedargs, starargs, fallback_to_unsolvable)
+        state.node, funcu, posargs, namedargs,
+        starargs, starstarargs, fallback_to_unsolvable)
     return state.change_cfg_node(node), ret
 
-  def call_function(self, node, funcu, posargs, namedargs=None,
-                    starargs=None, fallback_to_unsolvable=True):
+  def call_function(self, node, funcu, posargs, namedargs=None, starargs=None,
+                    starstarargs=None, fallback_to_unsolvable=True):
     """Call a function.
 
     Args:
@@ -1016,7 +1017,8 @@ class VirtualMachine(object):
       funcu: A variable of the possible functions to call.
       posargs: The known positional arguments to pass (as variables).
       namedargs: The known keyword arguments to pass. dict of str -> Variable.
-      starargs: The contents of the *args parameter, if passed. (None otherwise)
+      starargs: The contents of the *args parameter, if passed, or None.
+      starstarargs: The contents of the **kwargs parameter, if passed, or None.
       fallback_to_unsolvable: If the function call fails, create an unknown.
     Returns:
       A tuple (CFGNode, Variable). The Variable is the return value.
@@ -1030,7 +1032,7 @@ class VirtualMachine(object):
       assert isinstance(func, abstract.AtomicAbstractValue), type(func)
       try:
         new_node, one_result = func.call(
-            node, funcv, posargs, namedargs or {}, starargs)
+            node, funcv, posargs, namedargs or {}, starargs, starstarargs)
       except abstract.FailedFunctionCall as e:
         error = error or e
       else:
@@ -1057,14 +1059,22 @@ class VirtualMachine(object):
     for _ in range(num_kw):
       state, (key, val) = state.popn(2)
       namedargs.setitem(state.node, key, val)
+    starstarargs = None
     if kwargs:
-      for v in kwargs.data:
-        namedargs.update(state.node, v)
+      for v in kwargs.data:  # TODO(kramm): .Data(node)
+        did_update = namedargs.update(state.node, v)
+        if not did_update and starstarargs is None:
+          starstarargs = self.create_new_unsolvable(state.node, "**kwargs")
     state, posargs = state.popn(num_pos)
     posargs = list(posargs)
-    posargs.extend(args)
+    if args is not None:
+      posargs.extend(args)
+      starargs = None
+    else:
+      starargs = self.create_new_unsolvable(state.node, "*args")
     state, func = state.pop()
-    state, ret = self.call_function_with_state(state, func, posargs, namedargs)
+    state, ret = self.call_function_with_state(
+        state, func, posargs, namedargs, starargs, starstarargs)
     state = state.push(ret)
     return state
 
@@ -1278,7 +1288,7 @@ class VirtualMachine(object):
       # TODO(kramm): When calling a method, we should instead insert Unknown for
       # all parameters that are not otherwise set.
       log.error("Unable to resolve positional arguments: *%s", args_var.name)
-      args = []
+      args = None
     return state, args
 
   def pop_kwargs(self, state):

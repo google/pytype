@@ -61,25 +61,26 @@ class CallTracer(vm.VirtualMachine):
     value = abstract.Instance(self.tuple_type, self)
     value.overwrite_type_parameter(
         node, "T", self.create_new_unknown(node, "varargs_value"))
-    return value
+    return value.to_variable(node, "*args")
 
   def create_kwargs(self, node):
     key_type = self.primitive_class_instances[str].to_variable(node, "str")
     value_type = self.create_new_unknown(node, "kwargs_value")
-    kwargs = abstract.Dict("kwargs", self)
+    kwargs = abstract.Instance(self.dict_type, self)
     kwargs.overwrite_type_parameter(
         node, abstract.Dict.KEY_TYPE_PARAM, key_type)
     kwargs.overwrite_type_parameter(
         node, abstract.Dict.VALUE_TYPE_PARAM, value_type)
-    return kwargs
+    return kwargs.to_variable(node, "**kwargs")
 
-  def call_function_in_frame(self, node, var, args, kwargs, varargs):
+  def call_function_in_frame(self, node, var, args, kwargs,
+                             starargs, starstarargs):
     frame = AnalysisFrame()
     self.push_frame(frame)
     log.info("Analyzing %r", [v.name for v in var.data])
     state = frame_state.FrameState.init(node)
-    state, ret = self.call_function_with_state(state, var, args,
-                                               kwargs, varargs)
+    state, ret = self.call_function_with_state(
+        state, var, args, kwargs, starargs, starstarargs)
     self.pop_frame(frame)
     return state.node, ret
 
@@ -92,8 +93,8 @@ class CallTracer(vm.VirtualMachine):
       varargs = self.create_varargs(node) if method.has_varargs() else None
       kwargs = self.create_kwargs(node) if method.has_kwargs() else None
       fvar = val.AssignToNewVariable("f", node)
-      new_node, _ = self.call_function_in_frame(node, fvar,
-                                                args, kwargs, varargs)
+      new_node, _ = self.call_function_in_frame(
+          node, fvar, args, {}, varargs, kwargs)
       new_node.ConnectTo(node)
       node = new_node
     return node
@@ -303,7 +304,8 @@ class CallTracer(vm.VirtualMachine):
       nominal_return = self.convert_constant_to_value("ret", sig.return_type)
       for val in f.values:
         fvar = val.AssignToNewVariable("f", node)
-        _, retvar = self.call_function_in_frame(node, fvar, args, None, None)
+        _, retvar = self.call_function_in_frame(
+            node, fvar, args, {}, None, None)
         if retvar.values:
           for combination in utils.deep_variable_product([retvar]):
             view = {value.variable: value for value in combination}
