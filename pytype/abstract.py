@@ -1573,9 +1573,8 @@ class PyTDClass(SimpleAbstractValue, Class):
   def __repr__(self):
     return self.name
 
-  def match_instance_against_type(self, instance, other_type,
-                                  subst, node, view):
-    """Match an instance of this class against an other type."""
+  def _match_instance(self, instance, other_type, subst, node, view):
+    """Used by match_instance_against_type. Matches each MRO entry."""
     if other_type is self:
       return subst
     elif (isinstance(other_type, ParameterizedClass) and
@@ -1590,9 +1589,16 @@ class PyTDClass(SimpleAbstractValue, Class):
         if subst is None:
           return None
       return subst
-    elif other_type.name == "object":
-      return subst
     return None
+
+  def match_instance_against_type(self, instance, other_type,
+                                  subst, node, view):
+    """Match an instance of this class against an other type."""
+    for cls in self.mro:
+      # pylint: disable=protected-access
+      new_subst = cls._match_instance(instance, other_type, subst, node, view)
+      if new_subst is not None:
+        return new_subst
 
   def match_against_type(self, other_type, subst, node, view):
     if other_type.name in ["type", "object"]:
