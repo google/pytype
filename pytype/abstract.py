@@ -2151,13 +2151,14 @@ class Nothing(AtomicAbstractValue, FormalType):
       return None
 
 
-class Module(SimpleAbstractValue):
+class Module(Instance):
   """Represents an (imported) module."""
 
   is_lazy = True  # uses _convert_member
 
   def __init__(self, vm, name, member_map):
-    super(Module, self).__init__(name, vm=vm)
+    super(Module, self).__init__(vm.module_type, vm=vm)
+    self.name = name
     self._member_map = member_map
 
   def _convert_member(self, name, ty):
@@ -2178,10 +2179,10 @@ class Module(SimpleAbstractValue):
         val = mod.to_variable(node, name)
     return node, val
 
-  def set_attribute(self, node, name, value):
+  def set_attribute(self, node, name, value):  # pylint: disable=unused-argument
     # Assigning attributes on modules is pretty common. E.g.
     # sys.path, sys.excepthook.
-    log.warning("Ignoring overwrite of %s.%s", self.name, name)
+    log.warning("Ignoring overwrite of %s.%s using", self.name, name)
     return node
 
   def items(self):

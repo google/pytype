@@ -167,6 +167,7 @@ class VirtualMachine(object):
     self.list_type = self.convert_constant("list", list)
     self.set_type = self.convert_constant("set", set)
     self.dict_type = self.convert_constant("dict", dict)
+    self.module_type = self.convert_constant("module", types.ModuleType)
     self.function_type = self.convert_constant(
         "function", types.FunctionType)
     self.generator_type = self.convert_constant(

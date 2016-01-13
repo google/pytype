@@ -1032,7 +1032,11 @@ class instancemethod(object):
     def __get__(self, obj, ...) -> instancemethod
 
 class module(object):
-    def __init__(self, name: str or bytearray, ...) -> NoneType
+    __file__ = ...  # type: str
+    __name__ = ...  # type: str
+    __doc__ = ...  # type: AnyStr
+    __package__ = ...  # type: Optional[str]
+    def __init__(self, name: str or bytearray, doc = ...) -> NoneType
 
 class slice(object):
     def __init__(self, stop, ...) -> NoneType
