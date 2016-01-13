@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+# pylint: disable=bad-indentation
+
 from distutils.core import setup
 
 import glob
@@ -8,9 +10,10 @@ import os
 
 def scan_package_data(path, pattern):
     result = []
-    for subdir, _, _, in os.walk(path):
+    for subdir, _, _ in os.walk(path):
         full_pattern = os.path.join(subdir, pattern)
         if glob.glob(full_pattern):
+          # Once we know that it matches files, we store the pattern itself.
           result.append(full_pattern)
     return result
 
