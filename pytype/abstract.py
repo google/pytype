@@ -2675,13 +2675,14 @@ class Nothing(AtomicAbstractValue, FormalType):
       return None
 
 
-class Module(SimpleAbstractValue):
+class Module(Instance):
   """Represents an (imported) module."""
 
   is_lazy = True  # uses _convert_member
 
   def __init__(self, vm, name, member_map):
-    super(Module, self).__init__(name, vm=vm)
+    super(Module, self).__init__(vm.module_type, vm=vm)
+    self.name = name
     self._member_map = member_map
 
   def _convert_member(self, name, ty):

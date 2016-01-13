@@ -714,6 +714,22 @@ class ImportTest(test_inference.InferenceTest):
         x = ...  # type: complex
       """)
 
+  def testModuleAttributes(self):
+    with self.Infer("""\
+      import os
+      f = os.__file__
+      n = os.__name__
+      d = os.__doc__
+      p = os.__package__
+      """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+         os = ...  # type: module
+         f = ...  # type: str
+         n = ...  # type: str
+         d = ...  # type: AnyStr
+         p = ...  # type: Optional[str]
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()
