@@ -36,11 +36,11 @@ def get_typeshed_file(toplevel, module, version, typeshed_dir=None):
   filename = os.path.join(*module.split(".")) + ".pyi"
   versions = ["%d.%d" % (version[0], minor)
               for minor in range(version[1], -1, -1)]
-  # E.g. for Python 3.5, try 2and3/, then 3/, then 3.5/, 3.4/, 3.3/, ..., 3.0/.
-  # E.g. for Python 2.7  try 2and3/, then 2/, then 2.7/, 2.6/, ...
+  # E.g. for Python 3.5, try 3.5/, 3.4/, 3.3/, ..., 3.0/, 3/, 2and3.
+  # E.g. for Python 2.7, try 2.7/, 2.6/, ..., 2/, 2and3.
   # The order is the same as that of mypy. See default_lib_path in
   # https://github.com/JukkaL/mypy/blob/master/mypy/build.py#L249
-  for v in ["2and3", str(version[0])] + versions:
+  for v in versions + [str(version[0]), "2and3"]:
     path = os.path.join(prefix, v, filename)
     if loader and typeshed_dir is None:
       # PEP 302 loader API
