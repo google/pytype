@@ -1296,8 +1296,8 @@ class VirtualMachine(object):
     return state.pop()
 
   def convert_locals_or_globals(self, d, name="globals"):
-    return abstract.LazyAbstractValue(
-        name, d, self.maybe_convert_constant, self)
+    return abstract.LazyAbstractOrConcreteValue(
+        name, d, d, self.maybe_convert_constant, self)
 
   # TODO(kramm): memoize
   def import_module(self, name, level):

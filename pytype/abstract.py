@@ -439,6 +439,7 @@ class SimpleAbstractValue(AtomicAbstractValue):
   Note that the cls attribute will point to another abstract value that
   represents the class object itself, not to some special type representation.
   """
+  is_lazy = False
 
   def __init__(self, name, vm):
     """Initialize a SimpleAbstractValue.
@@ -517,7 +518,17 @@ class SimpleAbstractValue(AtomicAbstractValue):
     self.type_parameters = utils.MonitorDict(
         (name, self.vm.program.NewVariable("empty")) for name in names)
 
+  def _load_lazy_attribute(self, name):
+    """Load the named attribute into self.members."""
+    if name not in self.members and name in self._member_map:
+      variable = self._convert_member(name, self._member_map[name])
+      assert isinstance(variable, typegraph.Variable)
+      self.members[name] = variable
+
   def get_attribute(self, node, name, valself=None, valcls=None):
+    if self.is_lazy:
+      self._load_lazy_attribute(name)
+
     candidates = []
     nodes = []
 
@@ -552,6 +563,9 @@ class SimpleAbstractValue(AtomicAbstractValue):
 
   def set_attribute(self, node, name, var):
     assert isinstance(var, typegraph.Variable)
+
+    if self.is_lazy:
+      self._load_lazy_attribute(name)
 
     if name == "__class__":
       return self.set_class(node, var)
@@ -841,56 +855,19 @@ class AbstractOrConcreteValue(Instance, PythonConstant):
     PythonConstant.init_mixin(self, pyval)
 
 
-class LazyAbstractValue(SimpleAbstractValue):
-  """Extend SimpleAbstractValue with support for lazy resolution of its members.
-
-  This is mostly useful for large context dictionaries or classes (the actual
-  class object), since it avoids loading members that are not needed in the
-  program.
-  """
-
-  def __init__(self, name, member_map, resolver, vm):
-    """Initialize a LazyAbstractValue.
-
-    Args:
-      name: Name of this value. For debugging and error reporting.
-      member_map: A dict from names to arbitrary python values.
-      resolver: A function that takes an arbitrary value from member_map and
-        returns typegraph.Variables.
-      vm: The TypegraphVirtualMachine to use.
-    """
-    super(LazyAbstractValue, self).__init__(name, vm)
-    assert callable(resolver)
-    self._member_map = member_map
-    self._resolver = resolver
-
-  def _load_attribute(self, name):
-    """Load the named attribute into self.members."""
-    if name not in self.members and name in self._member_map:
-      variable = self._resolver(name, self._member_map[name])
-      assert isinstance(variable, typegraph.Variable)
-      self.members[name] = variable
-
-  def get_attribute(self, node, name, valself=None, valcls=None):
-    self._load_attribute(name)
-    return super(LazyAbstractValue, self).get_attribute(
-        node, name, valself, valcls)
-
-  def set_attribute(self, node, name, value):
-    self._load_attribute(name)
-    return super(LazyAbstractValue, self).set_attribute(
-        node, name, value)
-
-  def __repr__(self):
-    return utils.maybe_truncate(self.name)
-
-
-class LazyAbstractOrConcreteValue(LazyAbstractValue, PythonConstant):
+class LazyAbstractOrConcreteValue(SimpleAbstractValue, PythonConstant):
   """Lazy abstract value with a concrete fallback."""
 
+  is_lazy = True  # uses _convert_member
+
   def __init__(self, name, pyval, member_map, resolver, vm):
-    LazyAbstractValue.__init__(self, name, member_map, resolver, vm)
+    SimpleAbstractValue.__init__(self, name, vm)
+    self._member_map = member_map
+    self._resolver = resolver
     PythonConstant.init_mixin(self, pyval)
+
+  def _convert_member(self, name, pyval):
+    return self._resolver(name, pyval)
 
 
 class Union(AtomicAbstractValue, FormalType):
@@ -1464,7 +1441,7 @@ class ParameterizedClass(AtomicAbstractValue, Class, FormalType):
         type_arguments)
 
 
-class PyTDClass(LazyAbstractValue, Class):
+class PyTDClass(SimpleAbstractValue, Class):
   """An abstract wrapper for PyTD class objects.
 
   These are the abstract values for class objects that are described in PyTD.
@@ -1473,12 +1450,14 @@ class PyTDClass(LazyAbstractValue, Class):
     cls: A pytd.Class
     mro: Method resolution order. An iterable of AtomicAbstractValue.
   """
+  is_lazy = True  # uses _convert_member
 
   def __init__(self, name, pytd_cls, vm):
+    super(PyTDClass, self).__init__(name, vm)
     mm = {}
     for val in pytd_cls.constants + pytd_cls.methods:
       mm[val.name] = val
-    super(PyTDClass, self).__init__(name, mm, self._retrieve_member, vm)
+    self._member_map = mm
     Class.init_mixin(self)
     self.pytd_cls = pytd_cls
     self.mro = utils.compute_mro(self)
@@ -1486,11 +1465,15 @@ class PyTDClass(LazyAbstractValue, Class):
   def get_attribute(self, node, name, valself=None, valcls=None):
     return Class.get_attribute(self, node, name, valself, valcls)
 
+  def get_attribute_flat(self, node, name):
+    # get_attribute_flat ?
+    return SimpleAbstractValue.get_attribute(self, node, name)
+
   def bases(self):
     return [self.vm.convert_constant_to_value(pytd.Print(parent), parent)
             for parent in self.pytd_cls.parents]
 
-  def _retrieve_member(self, name, pyval):
+  def _convert_member(self, name, pyval):
     """Convert a member as a variable. For lazy lookup."""
     if isinstance(pyval, pytd.Constant):
       return self.vm.create_pytd_instance(name, pyval.type, {},
@@ -1498,9 +1481,6 @@ class PyTDClass(LazyAbstractValue, Class):
     c = self.vm.convert_constant_to_value(repr(pyval), pyval)
     c.parent = self
     return c.to_variable(self.vm.root_cfg_node, name)
-
-  def get_attribute_flat(self, node, name):
-    return LazyAbstractValue.get_attribute(self, node, name)
 
   def call(self, node, func, posargs, namedargs,
            starargs=None, starstarargs=None):
@@ -2171,13 +2151,16 @@ class Nothing(AtomicAbstractValue, FormalType):
       return None
 
 
-class Module(LazyAbstractValue):
+class Module(SimpleAbstractValue):
   """Represents an (imported) module."""
 
-  def __init__(self, vm, name, member_map):
-    super(Module, self).__init__(name, member_map, self.convert_member, vm=vm)
+  is_lazy = True  # uses _convert_member
 
-  def convert_member(self, name, ty):
+  def __init__(self, vm, name, member_map):
+    super(Module, self).__init__(name, vm=vm)
+    self._member_map = member_map
+
+  def _convert_member(self, name, ty):
     var = self.vm.convert_constant(name, ty)
     for value in var.data:
       value.module = self.name
@@ -2202,7 +2185,7 @@ class Module(LazyAbstractValue):
     return node
 
   def items(self):
-    return [(name, self.convert_member(name, ty))
+    return [(name, self._convert_member(name, ty))
             for name, ty in self._member_map.items()]
 
   def to_type(self):
