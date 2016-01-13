@@ -609,18 +609,7 @@ class SimpleAbstractValue(AtomicAbstractValue):
       assert isinstance(variable, typegraph.Variable)
       self.members[name] = variable
 
-  def _load_special_attribute(self, node, name):
-    if name == "__class__" and self.cls is not None:
-      return node, self.cls
-    else:
-      return node, None
-
-  def get_attribute(self, node, name, valself=None, valcls=None,
-                    condition=None):
-    node, attr = self._load_special_attribute(node, name)
-    if attr is not None:
-      return node, attr
-
+  def get_attribute(self, node, name, valself=None, valcls=None):
     if self.is_lazy:
       self._load_lazy_attribute(name)
 
@@ -997,7 +986,6 @@ class AbstractOrConcreteValue(Instance, PythonConstant):
   def compatible_with(self, logical_value):
     return bool(self.pyval) == logical_value
 
-
 class LazyAbstractOrConcreteValue(SimpleAbstractValue, PythonConstant):
   """Lazy abstract value with a concrete fallback."""
 
@@ -1011,9 +999,6 @@ class LazyAbstractOrConcreteValue(SimpleAbstractValue, PythonConstant):
 
   def _convert_member(self, name, pyval):
     return self._resolver(name, pyval)
-
-  def compatible_with(self, logical_value):
-    return bool(self.pyval) == logical_value
 
 
 class Union(AtomicAbstractValue, FormalType):
@@ -1874,6 +1859,10 @@ class PyTDClass(SimpleAbstractValue, Class):
     # get_attribute_flat ?
     return SimpleAbstractValue.get_attribute(self, node, name)
 
+  def get_attribute_flat(self, node, name):
+    # get_attribute_flat ?
+    return SimpleAbstractValue.get_attribute(self, node, name)
+
   def bases(self):
     return [self.vm.convert_constant_to_value(pytd.Print(parent), parent)
             for parent in self.pytd_cls.parents]
@@ -1883,12 +1872,9 @@ class PyTDClass(SimpleAbstractValue, Class):
     if isinstance(pyval, pytd.Constant):
       return self.vm.create_pytd_instance(name, pyval.type, {},
                                           self.vm.root_cfg_node)
-    elif isinstance(pyval, pytd.Function):
-      c = self.vm.convert_constant_to_value(repr(pyval), pyval)
-      c.parent = self
-      return c.to_variable(self.vm.root_cfg_node, name)
-    else:
-      raise AssertionError("Invalid class member %s", pytd.Print(pyval))
+    c = self.vm.convert_constant_to_value(repr(pyval), pyval)
+    c.parent = self
+    return c.to_variable(self.vm.root_cfg_node, name)
 
   def call(self, node, func, posargs, namedargs,
            starargs=None, starstarargs=None):
@@ -2689,18 +2675,16 @@ class Nothing(AtomicAbstractValue, FormalType):
       return None
 
 
-class Module(Instance):
+class Module(SimpleAbstractValue):
   """Represents an (imported) module."""
 
   is_lazy = True  # uses _convert_member
 
   def __init__(self, vm, name, member_map):
-    super(Module, self).__init__(vm.module_type, vm=vm)
-    self.name = name
+    super(Module, self).__init__(name, vm=vm)
     self._member_map = member_map
 
   def _convert_member(self, name, ty):
-    """Called to convert the items in _member_map to cfg.Variable."""
     var = self.vm.convert_constant(name, ty)
     for value in var.data:
       # Only do this if this class isn't already part of a module.
