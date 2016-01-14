@@ -35,7 +35,7 @@ def get_typeshed_file(toplevel, module, version, typeshed_dir=None):
   if not os.path.isdir(prefix):
     # typeshed doesn't have 'builtins' anymore.
     assert toplevel == "builtins"
-    return None
+    raise IOError("No %s" % prefix)
   filename = os.path.join(*module.split(".")) + ".pyi"
   versions = ["%d.%d" % (version[0], minor)
               for minor in range(version[1], -1, -1)]
