@@ -26,8 +26,35 @@ def namedtuple(typename: str, field_names: str or list[str], ...) -> type  # TOD
 class OrderedDict(object):
   pass
 
+# TODO(kramm): Make into a Generic.
 class defaultdict(object):
-  def __init__(self, ...) -> NoneType
+    def __init__(self, ...) -> NoneType
+    def __contains__(self, k) -> bool
+    def __delitem__(self, y) -> NoneType
+    def __eq__(self, y: dict) -> bool
+    def __getitem__(self, index) -> ?
+    def __iter__(self) -> `dictionary-keyiterator`[?]
+    def __len__(self) -> int
+    def __ne__(self, y: dict) -> bool
+    def __setitem__(self, i, y) -> NoneType
+    def clear(self) -> NoneType
+    def copy(self) -> defaultdict
+    def get(self, k) -> ?
+    def has_key(self, k) -> bool
+    def items(self) -> list[tuple[?]]
+    def iteritems(self) -> `dictionary-itemiterator`[?, ?]
+    def iterkeys(self) -> `dictionary-keyiterator`[?]
+    def itervalues(self) -> `dictionary-valueiterator`[?]
+    def keys(self) -> list[?]
+    def pop(self, k) -> ?
+    def pop(self, k, d) -> ?
+    def popitem(self) -> tuple[?]
+    def setdefault(self, k: ?) -> ?
+    def update(self, ...) -> NoneType
+    def values(self) -> list[?]
+    def viewitems(self) -> dict_items[?, ?]
+    def viewkeys(self) -> dict_keys[?]
+    def viewvalues(self) -> dict_values
 
 # Strictly speaking, this should be dict[?, ?]. (E.g. it's legal to do
 # collections.Counter()[x] = 'foobar'.) But the counts are typically integers.

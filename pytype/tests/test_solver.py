@@ -286,7 +286,7 @@ class SolverTests(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
         collections = ...  # type: module
-        def bar(d: collections.Counter or Dict[str, collections.defaultdict]
+        def bar(d: collections.Counter or Dict[str, collections.defaultdict] or collections.defaultdict
                 ) -> NoneType
       """)
 

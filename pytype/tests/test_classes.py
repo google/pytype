@@ -210,6 +210,23 @@ class ClassesTest(test_inference.InferenceTest):
           def foo(self) -> ?
       """)
 
+  def testClassAttr(self):
+    with self.Infer("""
+      class Foo(object):
+        pass
+      OtherFoo = Foo().__class__
+      Foo.x = 3
+      OtherFoo.x = "bar"
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        class Foo(object):
+          # TODO(kramm): should be just "str". Also below.
+          x = ...  # type: int or str
+        # TODO(kramm): Should this be an alias?
+        class OtherFoo(object):
+          x = ...  # type: int or str
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()
