@@ -39,15 +39,17 @@ def get_typeshed_file(toplevel, module, version, typeshed_dir=None):
   """
   loader = globals().get("__loader__", None)
   if typeshed_dir is None:
-    typeshed_dir = get_typeshed_dir()
-
-  prefix = os.path.join(typeshed_dir, toplevel)
+    typeshed_dir = os.getenv("TYPESHED_HOME")
+  if typeshed_dir is not None:
+    prefix = os.path.join(typeshed_dir, toplevel)
+  else:
+    prefix = os.path.join(os.path.dirname(__file__), "..", "typeshed", toplevel)
   if not os.path.isdir(prefix):
     # typeshed doesn't have 'builtins' anymore:
     # https://github.com/python/typeshed/pull/42
     assert toplevel == "builtins"
     raise IOError("No directory %s" % prefix)
-  module_path = os.path.join(*module.split("."))
+  filename = os.path.join(*module.split(".")) + ".pyi"
   versions = ["%d.%d" % (version[0], minor)
               for minor in range(version[1], -1, -1)]
   # E.g. for Python 3.5, try 3.5/, 3.4/, 3.3/, ..., 3.0/, 3/, 2and3.
