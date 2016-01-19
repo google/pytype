@@ -15,7 +15,7 @@
 # The keys are the module paths *without* the trailing .py
 # TODO(pludemann): revisit this decision and reinstate the .py, because: (a)
 #                  that's the only thing that should appear (.pytd inputs are
-#                  handled outside of pytype; (b) the src_out_pairs_py data
+#                  handled outside of pytype); (b) the src_out_pairs_py data
 #                  already has .py for src; and (c) it removes one hard-coding
 #                  of ".py".
 
@@ -68,7 +68,6 @@ def build_imports_map(options_info_path, src_out):
              might not ensure that output files are deleted before processing).
   Returns:
     Dict of .py short_path to list of .pytd path or None if no options_info_path
-
   """
   pytype_provider_deps_files = _read_pytype_provider_deps_files(
       options_info_path)
