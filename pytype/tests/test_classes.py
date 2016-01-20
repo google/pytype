@@ -357,21 +357,23 @@ class ClassesTest(test_inference.InferenceTest):
           x = ...  # type: int or str
       """)
 
->>>>>>> Add support for __class__.
+  def testClassAttr(self):
+    with self.Infer("""
+      class Foo(object):
+        pass
+      OtherFoo = Foo().__class__
+      Foo.x = 3
+      OtherFoo.x = "bar"
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        class Foo(object):
+          # TODO(kramm): should be just "str". Also below.
+          x = ...  # type: int or str
+        # TODO(kramm): Should this be an alias?
+        class OtherFoo(object):
+          x = ...  # type: int or str
+      """)
 
-  def testGetAttr(self):
-    ty = self.Infer("""
-      class Foo(object):
-        def __getattr__(self, name):
-          return "attr"
-      def f():
-        return Foo().foo
-    """, deep=True, solve_unknowns=True)
-    self.assertTypesMatchPytd(ty, """
-      class Foo(object):
-        def __getattr__(self, name) -> str: ...
-      def f() -> str: ...
-    """)
 
 if __name__ == "__main__":
   test_inference.main()

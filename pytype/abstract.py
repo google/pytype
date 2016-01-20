@@ -609,7 +609,17 @@ class SimpleAbstractValue(AtomicAbstractValue):
       assert isinstance(variable, typegraph.Variable)
       self.members[name] = variable
 
+  def _load_special_attribute(self, node, name):
+    if name == "__class__" and self.cls is not None:
+      return node, self.cls
+    else:
+      return node, None
+
   def get_attribute(self, node, name, valself=None, valcls=None):
+    node, attr = self._load_special_attribute(node, name)
+    if attr is not None:
+      return node, attr
+
     if self.is_lazy:
       self._load_lazy_attribute(name)
 
