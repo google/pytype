@@ -233,6 +233,7 @@ class ClassesTest(test_inference.InferenceTest):
           def seed(self):
             pass
 
+<<<<<<< 1cfc23e744426c9df3f023a6500a78fbcaa65608
       _inst = Random()
       seed = _inst.seed
     """, deep=True, solve_unknowns=True)
@@ -338,6 +339,25 @@ class ClassesTest(test_inference.InferenceTest):
         foo = ...  # type: Foo
         def test(self) -> str: ...
     """)
+=======
+  def testClassAttr(self):
+    with self.Infer("""
+      class Foo(object):
+        pass
+      OtherFoo = Foo().__class__
+      Foo.x = 3
+      OtherFoo.x = "bar"
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        class Foo(object):
+          # TODO(kramm): should be just "str". Also below.
+          x = ...  # type: int or str
+        # TODO(kramm): Should this be an alias?
+        class OtherFoo(object):
+          x = ...  # type: int or str
+      """)
+
+>>>>>>> Add support for __class__.
 
 if __name__ == "__main__":
   test_inference.main()
