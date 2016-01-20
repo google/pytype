@@ -624,28 +624,6 @@ class BuiltinTests(test_inference.InferenceTest):
         r = ...  # type: collections.defaultdict
       """)
 
-  def testDefaultDict(self):
-    with self.Infer("""
-      import collections
-      r = collections.defaultdict()
-      r[3] = 3
-    """, deep=True, solve_unknowns=True) as ty:
-      self.assertTypesMatchPytd(ty, """
-        collections = ...  # type: module
-        r = ...  # type: collections.defaultdict
-      """)
-
-  def testDefaultDict(self):
-    with self.Infer("""
-      import collections
-      r = collections.defaultdict()
-      r[3] = 3
-    """, deep=True, solve_unknowns=True) as ty:
-      self.assertTypesMatchPytd(ty, """
-        collections = ...  # type: module
-        r = ...  # type: collections.defaultdict
-      """)
-
   def testImportLib(self):
     with self.Infer("""
       import importlib
