@@ -273,15 +273,20 @@ class CallTracer(vm.VirtualMachine):
       ))
     return classes
 
+  def pytd_aliases(self):
+    return ()  # TODO(kramm): Compute these.
+
   def compute_types(self, defs, ignore):
     self.program.Freeze()
     ty = pytd_utils.Concat(
         self.pytd_for_types(defs, ignore),
         pytd.TypeDeclUnit(
-            "unknowns", (),
+            "unknowns",
+            tuple(),  # constants
             tuple(self.pytd_classes_for_unknowns()) +
             tuple(self.pytd_classes_for_call_traces()),
-            tuple(self.pytd_functions_for_call_traces())))
+            tuple(self.pytd_functions_for_call_traces()),
+            tuple(self.pytd_aliases())))
     ty = ty.Visit(optimize.PullInMethodClasses())
     ty = ty.Visit(visitors.DefaceUnresolved(
         [ty, self.loader.concat_all()], "~unknown"))

@@ -458,19 +458,23 @@ class TypeDeclParser(object):
     funcdefs = [x for x in p[1] if isinstance(x, NameAndSig)]
     constants = [x for x in p[1] if isinstance(x, pytd.Constant)]
     classes = [x for x in p[1] if isinstance(x, pytd.Class)]
+    aliases = [x for x in p[1] if isinstance(x, pytd.Alias)]
     all_names = (list(set(f.name for f in funcdefs)) +
                  [c.name for c in constants] +
-                 [c.name for c in classes])
+                 [c.name for c in classes] +
+                 [c.name for c in aliases])
     duplicates = [name
                   for name, count in collections.Counter(all_names).items()
                   if count >= 2]
     if duplicates:
       make_syntax_error(
-          self, 'Duplicate top-level identifier(s):' + ', '.join(duplicates), p)
+          self, 'Duplicate top-level identifier(s): ' + ', '.join(duplicates),
+          p)
     p[0] = pytd.TypeDeclUnit(name=None,  # replaced later, in Parse
                              constants=tuple(constants),
                              functions=tuple(self.MergeSignatures(funcdefs)),
-                             classes=tuple(classes))
+                             classes=tuple(classes),
+                             aliases=tuple(aliases))
 
   def p_alldefs_constant(self, p):
     """alldefs : alldefs constantdef"""
@@ -497,8 +501,8 @@ class TypeDeclParser(object):
     p[0] = p[1] + p[2]
 
   def p_alldefs_alias(self, p):
-    """alldefs : alldefs alias"""
-    p[0] = p[1] + p[2]
+    """alldefs : alldefs aliasdef"""
+    p[0] = p[1] + [p[2]]
 
   def p_alldefs_decorator(self, p):
     """alldefs : alldefs decorator"""
@@ -510,18 +514,27 @@ class TypeDeclParser(object):
 
   def p_import_simple(self, p):
     """import : IMPORT import_list"""
+    aliases = []
     for module, new_name in p[2]:
       if module != new_name:
         make_syntax_error(
             self, "Renaming of modules not supported. Use 'from' syntax.", p)
-    p[0] = []
+      # TODO(kramm): Put modules into aliases, too.
+    p[0] = aliases
 
   def p_import_from(self, p):
     """import : FROM dotted_name IMPORT import_from_list"""
     _, _, dotted_name, _, import_from_list = p
+    aliases = []
     for name, new_name in import_from_list:
-      self.aliases[new_name] = pytd.ExternalType(name, dotted_name)
-    p[0] = []
+      if name != '*':
+        t = pytd.ExternalType(name, dotted_name)
+        self.aliases[new_name] = t
+        if dotted_name != 'typing':
+          aliases.append(pytd.Alias(new_name, t))
+      else:
+        pass  # TODO(kramm): Handle '*' imports in pyi
+    p[0] = aliases
 
   def p_quoted_from_list(self, p):
     """import_from_list : LPAREN import_from_items RPAREN"""
@@ -579,10 +592,10 @@ class TypeDeclParser(object):
     """dotted_name : dotted_name DOT NAME"""
     p[0] = p[1] + '.' + p[3]
 
-  def p_alias(self, p):
-    """alias : NAME ASSIGN type"""
+  def p_aliasdef(self, p):
+    """aliasdef : NAME ASSIGN type"""
     self.aliases[p[1]] = p[3]
-    p[0] = []
+    p[0] = pytd.Alias(p[1], p[3])
 
   def p_toplevel_if(self, p):
     """toplevel_if : IF version_expr COLON INDENT alldefs DEDENT"""

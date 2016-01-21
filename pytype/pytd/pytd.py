@@ -24,7 +24,8 @@ import itertools
 from pytype.pytd.parse import node
 
 
-class TypeDeclUnit(node.Node('name', 'constants', 'classes', 'functions')):
+class TypeDeclUnit(node.Node('name',
+                             'constants', 'classes', 'functions', 'aliases')):
   """Module node. Holds module contents (constants / classes / functions).
 
   Attributes:
@@ -32,6 +33,7 @@ class TypeDeclUnit(node.Node('name', 'constants', 'classes', 'functions')):
     constants: Iterable of module-level constants.
     functions: Iterable of functions defined in this type decl unit.
     classes: Iterable of classes defined in this type decl unit.
+    aliases: Iterable of aliases (or imports) for types in other modules.
   """
   __slots__ = ()
 
@@ -49,12 +51,13 @@ class TypeDeclUnit(node.Node('name', 'constants', 'classes', 'functions')):
     Raises:
       KeyError: if this identifier doesn't exist.
     """
-    # TODO(kramm): Remove. Change constants, classes and functions to dict.
+    # TODO(kramm): Put constants, functions, classes and aliases into a
+    # combined dict.
     try:
       return self._name2item[name]
     except AttributeError:
       self._name2item = {}
-      for x in self.constants + self.functions + self.classes:
+      for x in self.constants + self.functions + self.classes + self.aliases:
         self._name2item[x.name] = x
       return self._name2item[name]
 
@@ -73,10 +76,21 @@ class TypeDeclUnit(node.Node('name', 'constants', 'classes', 'functions')):
     # Used in tests.
     return (self.constants == other.constants and
             self.classes == other.classes and
-            self.functions == other.functions)
+            self.functions == other.functions and
+            self.aliases == other.aliases)
 
 
 class Constant(node.Node('name', 'type')):
+  __slots__ = ()
+
+
+class Alias(node.Node('name', 'type')):
+  """An alias (symbolic link) for a class implemented in some other module.
+
+  Unlike Constant, the Alias is the same type, as opposed to an instance of that
+  type. It's generated, among others, from imports - e.g. "from x import y as z"
+  will create a local alias "z" for "x.y".
+  """
   __slots__ = ()
 
 

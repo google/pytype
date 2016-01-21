@@ -44,12 +44,37 @@ class TestASTGeneration(parser_test.ParserTest):
         import abc.efg
         from abc import a, b, c
         from abc.efg import e, f, g
-        from abc import a as aa, b as bb, c
-        from abc.efg import a as aa, b as bb, c
+        from abc import a as aa, b as bb, j
+        from abc.efg import d as dd, e as ee, h
         from abc import *
         from abc.efg import *
         """)
-    self.TestRoundTrip(src, "")  # Imports are not part of the AST
+    self.TestRoundTrip(src, textwrap.dedent("""
+        from abc import a
+        from abc import b
+        from abc import c
+        from abc.efg import e
+        from abc.efg import f
+        from abc.efg import g
+        from abc import a as aa
+        from abc import b as bb
+        from abc import j
+        from abc.efg import d as dd
+        from abc.efg import e as ee
+        from abc.efg import h
+    """))
+
+  def testAliasForImport(self):
+    """Test parsing of import."""
+    src = textwrap.dedent("""
+        import abc
+        X = abc.X
+        Y = abc.Y
+        """)
+    self.TestRoundTrip(src, textwrap.dedent("""
+        from abc import X
+        from abc import Y
+        """))
 
   def testImportErrors(self):
     """Test import errors."""
@@ -80,6 +105,15 @@ class TestASTGeneration(parser_test.ParserTest):
         x = ...  # type: a
         """)
     self.TestRoundTrip(src, textwrap.dedent("""
+        from abc import a
+        from abc import b
+        from abc import c
+        from abc import d
+        from abc import e
+        from abc import f
+        from abc import g
+        from abc import h
+
         x = ...  # type: abc.a
     """))
 
@@ -97,9 +131,12 @@ class TestASTGeneration(parser_test.ParserTest):
     """Test parsing of import."""
     src = textwrap.dedent("""
         from foobar import SomeClass
+
         class A(SomeClass): ...
         """)
     self.TestRoundTrip(src, textwrap.dedent("""
+        from foobar import SomeClass
+
         class A(foobar.SomeClass):
             pass
     """))
@@ -108,9 +145,12 @@ class TestASTGeneration(parser_test.ParserTest):
     """Test parsing of import."""
     src = textwrap.dedent("""
         from foo.bar import Base as BaseClass
+
         class A(BaseClass): ...
         """)
     self.TestRoundTrip(src, textwrap.dedent("""
+        from foo.bar import Base as BaseClass
+
         class A(foo.bar.Base):
             pass
     """))

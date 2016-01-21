@@ -176,7 +176,8 @@ def extract_local(ast):
       name=ast.name,
       classes=tuple(cls for cls in ast.classes if is_complete(cls)),
       functions=tuple(f for f in ast.functions if is_complete(f)),
-      constants=tuple(c for c in ast.constants if is_complete(c)))
+      constants=tuple(c for c in ast.constants if is_complete(c)),
+      aliases=ast.aliases)
 
 
 def convert_string_type(string_type, unknown, mapping, global_lookup, depth=0):

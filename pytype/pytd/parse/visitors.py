@@ -130,7 +130,7 @@ class PrintVisitor(Visitor):
 
   def VisitTypeDeclUnit(self, node):
     """Convert the AST for an entire module back to a string."""
-    sections = [node.constants, node.functions, node.classes]
+    sections = [node.aliases, node.constants, node.functions, node.classes]
     sections_as_string = ("\n".join(section_suite)
                           for section_suite in sections
                           if section_suite)
@@ -139,6 +139,16 @@ class PrintVisitor(Visitor):
   def VisitConstant(self, node):
     """Convert a class-level or module-level constant to a string."""
     return self._SafeName(node.name) + " = ...  # type: " + node.type
+
+  def VisitAlias(self, node):
+    """Convert an import or alias to a string."""
+    if isinstance(self.old_node.type, pytd.ExternalType):
+      name = self.old_node.type.name
+      if name != self.old_node.name:
+        name += " as " + self.old_node.name
+      return "from " + self.old_node.type.module + " import " + name
+    else:
+      return self._SafeName(node.name) + " = " + node.type
 
   def EnterClass(self, node):
     """Entering a class - record class name for children's use."""
@@ -847,6 +857,10 @@ class VerifyVisitor(Visitor):
     assert isinstance(node.name, str), node
     assert isinstance(node.type, pytd.TYPE), node
 
+  def EnterAlias(self, node):
+    assert isinstance(node.name, str), node
+    assert isinstance(node.type, pytd.TYPE), node
+
   def EnterClass(self, node):
     assert isinstance(node.parents, tuple), node
     assert all(isinstance(p, pytd.TYPE) for p in node.parents), node.parents
@@ -957,7 +971,8 @@ class CanonicalOrderingVisitor(Visitor):
     return pytd.TypeDeclUnit(name=node.name,
                              constants=tuple(sorted(node.constants)),
                              functions=tuple(sorted(node.functions)),
-                             classes=tuple(sorted(node.classes)))
+                             classes=tuple(sorted(node.classes)),
+                             aliases=tuple(sorted(node.aliases)))
 
   def VisitClass(self, node):
     return pytd.Class(name=node.name,

@@ -78,7 +78,8 @@ def Concat(*args, **kwargs):
       name=name or " + ".join(arg.name for arg in args),
       constants=sum((arg.constants for arg in args), ()),
       classes=sum((arg.classes for arg in args), ()),
-      functions=sum((arg.functions for arg in args), ()))
+      functions=sum((arg.functions for arg in args), ()),
+      aliases=sum((arg.aliases for arg in args), ()))
 
 
 def JoinTypes(types):
@@ -242,7 +243,8 @@ def Print(ast, print_format=None):
 
 
 def EmptyModule(name="<empty>"):
-  return pytd.TypeDeclUnit(name, constants=(), classes=(), functions=())
+  return pytd.TypeDeclUnit(name,
+                           constants=(), classes=(), functions=(), aliases=())
 
 
 def WrapTypeDeclUnit(name, items):
@@ -262,6 +264,7 @@ def WrapTypeDeclUnit(name, items):
   functions = collections.OrderedDict()
   classes = collections.OrderedDict()
   constants = collections.defaultdict(TypeBuilder)
+  aliases = collections.OrderedDict()
   for item in items:
     if isinstance(item, pytd.Function):
       if item.name in functions:
@@ -276,18 +279,27 @@ def WrapTypeDeclUnit(name, items):
       classes[item.name] = item
     elif isinstance(item, pytd.Constant):
       constants[item.name].add_type(item.type)
+    elif isinstance(item, pytd.Alias):
+      if item.name in aliases:
+        raise NameError("Duplicate top level alias or import: %r", item.name)
+      aliases[item.name] = item
     else:
       raise ValueError("Invalid top level pytd item: %r" % type(item))
 
   _check_intersection(functions, classes, "function", "class")
+  _check_intersection(functions, constants, "functions", "constant")
+  _check_intersection(functions, aliases, "functions", "aliases")
   _check_intersection(classes, constants, "class", "constant")
-  _check_intersection(functions, constants, "functions", "class")
+  _check_intersection(classes, aliases, "class", "alias")
+  _check_intersection(constants, aliases, "constant", "alias")
+
   return pytd.TypeDeclUnit(
       name,
       tuple(pytd.Constant(name, t.build())
             for name, t in sorted(constants.items())),
       tuple(classes.values()),
-      tuple(functions.values()))
+      tuple(functions.values()),
+      tuple(aliases.values()))
 
 
 def _check_intersection(items1, items2, name1, name2):
