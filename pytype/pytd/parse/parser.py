@@ -471,20 +471,11 @@ class TypeDeclParser(object):
                   if count >= 2]
     if duplicates:
       make_syntax_error(
-          self, "Duplicate top-level identifier(s): " + ", ".join(duplicates),
+          self, 'Duplicate top-level identifier(s): ' + ', '.join(duplicates),
           p)
-
-    functions, properties = self.MergeSignatures(funcdefs)
-    if properties:
-      prop_names = ", ".join(p.name for p in properties)
-      make_syntax_error(
-          self,
-          "Module-level functions with property decorators: " + prop_names,
-          p)
-
     p[0] = pytd.TypeDeclUnit(name=None,  # replaced later, in Parse
                              constants=tuple(constants),
-                             functions=tuple(functions),
+                             functions=tuple(self.MergeSignatures(funcdefs)),
                              classes=tuple(classes),
                              aliases=tuple(aliases))
 
@@ -513,8 +504,12 @@ class TypeDeclParser(object):
     p[0] = p[1] + p[2]
 
   def p_alldefs_alias(self, p):
-    """alldefs : alldefs alias_or_constant"""
+    """alldefs : alldefs aliasdef"""
     p[0] = p[1] + [p[2]]
+
+  def p_alldefs_decorator(self, p):
+    """alldefs : alldefs decorator"""
+    p[0] = p[1] + p[2]
 
   def p_alldefs_null(self, p):
     """alldefs :"""
@@ -535,10 +530,10 @@ class TypeDeclParser(object):
     _, _, dotted_name, _, import_from_list = p
     aliases = []
     for name, new_name in import_from_list:
-      if name != "*":
+      if name != '*':
         t = pytd.ExternalType(name, dotted_name)
         self.aliases[new_name] = t
-        if dotted_name != "typing":
+        if dotted_name != 'typing':
           aliases.append(pytd.Alias(new_name, t))
       else:
         pass  # TODO(kramm): Handle '*' imports in pyi
@@ -598,18 +593,12 @@ class TypeDeclParser(object):
 
   def p_dotted_name(self, p):
     """dotted_name : dotted_name DOT NAME"""
-    p[0] = p[1] + "." + p[3]
+    p[0] = p[1] + '.' + p[3]
 
-  def p_alias_or_constant(self, p):
-    """alias_or_constant : NAME ASSIGN type"""
-    # Other special cases of constant definitions are handled in constantdef,
-    # e.g.  p_constantdef_int (for "name = 0")
-    if p[3] in [pytd.NamedType("True"), pytd.NamedType("False")]:
-      # See https://github.com/google/pytype/issues/14
-      p[0] = pytd.Constant(p[1], pytd.NamedType("bool"))
-    else:
-      self.aliases[p[1]] = p[3]
-      p[0] = pytd.Alias(p[1], p[3])
+  def p_aliasdef(self, p):
+    """aliasdef : NAME ASSIGN type"""
+    self.aliases[p[1]] = p[3]
+    p[0] = pytd.Alias(p[1], p[3])
 
   def p_toplevel_if(self, p):
     """toplevel_if : IF version_expr COLON INDENT alldefs DEDENT"""

@@ -184,9 +184,7 @@ class PrintVisitor(Visitor):
 
   def VisitTypeDeclUnit(self, node):
     """Convert the AST for an entire module back to a string."""
-    sections = [self._GenerateImportStrings(), node.aliases,
-                node.constants, node.functions, node.classes]
-
+    sections = [node.aliases, node.constants, node.functions, node.classes]
     sections_as_string = ("\n".join(section_suite)
                           for section_suite in sections
                           if section_suite)

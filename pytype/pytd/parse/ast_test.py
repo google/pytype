@@ -107,8 +107,6 @@ class TestASTGeneration(parser_test_base.ParserTest):
         x = ...  # type: a
         """)
     self.TestRoundTrip(src, textwrap.dedent("""
-        import abc
-
         from abc import a
         from abc import b
         from abc import c
@@ -141,8 +139,6 @@ class TestASTGeneration(parser_test_base.ParserTest):
         class A(SomeClass): ...
         """)
     self.TestRoundTrip(src, textwrap.dedent("""
-        import foobar
-
         from foobar import SomeClass
 
         class A(foobar.SomeClass):
@@ -157,8 +153,6 @@ class TestASTGeneration(parser_test_base.ParserTest):
         class A(BaseClass): ...
         """)
     self.TestRoundTrip(src, textwrap.dedent("""
-        import foo.bar
-
         from foo.bar import Base as BaseClass
 
         class A(foo.bar.Base):
