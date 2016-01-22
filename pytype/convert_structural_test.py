@@ -621,7 +621,7 @@ class MatchTest(unittest.TestCase):
     """)
     expected = textwrap.dedent("""
       class A(object):
-          def foo(self, x: Dict[str, List[Any, ...]]) -> bool: ...
+          def foo(self, x: Dict[str, List[Any]]) -> bool: ...
     """).lstrip()
     ast = parser.parse_string(sourcecode)
     ast = convert_structural.convert_pytd(ast, self.builtins_pytd)

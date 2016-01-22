@@ -128,6 +128,14 @@ class PrintVisitor(Visitor):
     split_result = (self._EscapedName(piece) for piece in split_name)
     return ".".join(split_result)
 
+  def _NeedsTupleEllipsis(self, t):
+    """Do we need to use Tuple[x, ...] instead of Tuple[x]?"""
+    assert isinstance(t, pytd.HomogeneousContainerType)
+    if t.base_type == "tuple":
+      return True
+    else:
+      return False
+
   def VisitTypeDeclUnit(self, node):
     """Convert the AST for an entire module back to a string."""
     sections = [node.aliases, node.constants, node.functions, node.classes]
@@ -296,8 +304,9 @@ class PrintVisitor(Visitor):
 
   def VisitHomogeneousContainerType(self, node):
     """Convert a homogeneous container type to a string."""
+    ellipsis = ", ..." if self._NeedsTupleEllipsis(node) else ""
     return (self.MaybeCaptialize(node.base_type) +
-            "[" + node.element_type + ", ...]")
+            "[" + node.element_type + ellipsis + "]")
 
   def VisitGenericType(self, node):
     """Convert a generic type (E.g. list[int]) to a string."""
