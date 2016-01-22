@@ -758,6 +758,22 @@ class ImportTest(test_inference.InferenceTest):
           d = ...  # type: function
         """)
 
+  def testImportConstant(self):
+    with utils.Tempdir() as d:
+      d.create_file("mymath.pytd", """
+          from math import pi as half_tau
+      """)
+      with self.Infer("""\
+        import mymath
+        from mymath import half_tau as x
+        y = mymath.half_tau
+      """, deep=False, solve_unknowns=False, pythonpath=[d.path]) as ty:
+        self.assertTypesMatchPytd(ty, """
+          mymath = ...  # type: module
+          x = ...  # type: float
+          y = ...  # type: float
+        """)
+
 
 if __name__ == "__main__":
   test_inference.main()

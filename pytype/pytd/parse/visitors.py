@@ -804,6 +804,10 @@ class LookupExternalTypes(Visitor):
         logging.warn("importing function %s", t)
         # TODO(kramm): Is it sound to do this?
         t.cls = item
+      elif isinstance(item, pytd.Constant):
+        logging.warn("importing constant %s", t)
+        # TODO(kramm): Is it sound to do this?
+        t.cls = item
       else:
         raise KeyError("%s in module %s isn't a class" % (t.name, t.module))
 
