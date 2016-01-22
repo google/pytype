@@ -32,7 +32,7 @@ class TestASTGeneration(parser_test.ParserTest):
       canonical_src = src
     tree = self.Parse(src)
     new_src = pytd.Print(tree)
-    self.AssertSourceEquals(new_src, canonical_src)
+    self.AssertSourceEquals(canonical_src, new_src)
     if check_the_sourcecode:
       self.assertMultiLineEqual(new_src.rstrip().lstrip("\n"),
                                 canonical_src.rstrip().lstrip("\n"))
@@ -218,7 +218,7 @@ class TestASTGeneration(parser_test.ParserTest):
     # We won't normally use __builtins__ ... this is just for testing.
     src = textwrap.dedent("""
         def foo(a: __builtins__.int) -> __builtins__.int raises foo.Foo
-        def qqsv(x_or_y: compiler.symbols.types.BooleanType) -> NoneType
+        def qqsv(x_or_y: compiler.symbols.types.BooleanType) -> None
         """)
     self.TestRoundTrip(src)
 
@@ -384,9 +384,9 @@ class TestASTGeneration(parser_test.ParserTest):
         def h(x, **kwargs) -> NoneType
         """)
     self.TestRoundTrip(src, textwrap.dedent("""
-        def f(x, ...) -> NoneType
-        def g(x, ...) -> NoneType
-        def h(x, ...) -> NoneType
+        def f(x, ...) -> None
+        def g(x, ...) -> None
+        def h(x, ...) -> None
     """))
 
   def testTypedKwArgs(self):
@@ -397,9 +397,9 @@ class TestASTGeneration(parser_test.ParserTest):
         def h(x, **kwargs: Optional[int]) -> NoneType
         """)
     self.TestRoundTrip(src, textwrap.dedent("""
-        def f(x, ...) -> NoneType
-        def g(x, ...) -> NoneType
-        def h(x, ...) -> NoneType
+        def f(x, ...) -> None
+        def g(x, ...) -> None
+        def h(x, ...) -> None
     """))
 
   def testConstants(self):
@@ -795,7 +795,7 @@ class TestASTGeneration(parser_test.ParserTest):
     """Test a parsing error (no return type)."""
 
     data1 = "def foo() -> ?"
-    data2 = "def foo() -> NoneType"
+    data2 = "def foo() -> None"
 
     self.TestRoundTrip(data1)
     self.TestRoundTrip(data2)

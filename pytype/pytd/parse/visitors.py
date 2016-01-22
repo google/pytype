@@ -253,7 +253,14 @@ class PrintVisitor(Visitor):
 
   def VisitNamedType(self, node):
     """Convert a type to a string."""
-    return self._SafeName(node.name)
+    if node.name == "NoneType":
+      # PEP 484 allows this special abbreviation.
+      return "None"
+    else:
+      return self._SafeName(node.name)
+
+  def VisitClassType(self, node):
+    return self.VisitNamedType(node)
 
   def VisitStrictType(self, node):
     # 'StrictType' is defined, and internally used, by booleq.py. We allow it
@@ -275,9 +282,6 @@ class PrintVisitor(Visitor):
   def VisitNothingType(self, unused_node):
     """Convert the nothing type to a string."""
     return "nothing"
-
-  def VisitClassType(self, node):
-    return self._SafeName(node.name)
 
   def VisitTypeParameter(self, node):
     return self._SafeName(node.name)
