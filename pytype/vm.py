@@ -611,6 +611,10 @@ class VirtualMachine(object):
       return self.program.NewVariable(name, options, [], self.root_cfg_node)
     elif isinstance(pyval, pytd.NothingType):
       return self.program.NewVariable(name, [], [], self.root_cfg_node)
+    elif isinstance(pyval, pytd.Alias):
+      return self.convert_constant(pytd.Print(pyval), pyval.type)
+    elif isinstance(pyval, pytd.ExternalType):
+      return self.convert_constant(pytd.Print(pyval), pyval.cls)
     elif isinstance(pyval, pytd.Constant):
       return self.create_pytd_instance(name, pyval.type, {}, self.root_cfg_node)
     result = self.convert_constant_to_value(name, pyval)
@@ -698,12 +702,7 @@ class VirtualMachine(object):
       f = abstract.PyTDFunction(pyval.name, [abstract.PyTDSignature(sig, self)
                                              for sig in pyval.signatures], self)
       return f
-    elif isinstance(pyval, pytd.ExternalType):  # needs to be before ClassType
-      assert pyval.cls
-      return self.convert_constant_to_value(str(pyval), pyval.cls)
-    elif isinstance(pyval, pytd.Alias):
-      return self.convert_constant_to_value(pytd.Print(pyval.type), pyval.type)
-    elif isinstance(pyval, pytd.ClassType):  # needs to be after ExternalType
+    elif isinstance(pyval, pytd.ClassType):
       assert pyval.cls
       return self.convert_constant_to_value(pyval.name, pyval.cls)
     elif isinstance(pyval, pytd.NothingType):
