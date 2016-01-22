@@ -229,7 +229,7 @@ class TestVisitors(parser_test.ParserTest):
     ast1 = self.Parse(src1)
     ast2 = self.Parse(src2)
     ast1.Visit(visitors.InPlaceLookupExternalClasses(dict(foo=ast1, bar=ast2)))
-    ast2.Visit(visitors.InPlaceLookupExternalClasses(dict(foo=ast1, bar= ast2)))
+    ast2.Visit(visitors.InPlaceLookupExternalClasses(dict(foo=ast1, bar=ast2)))
     f1, = ast1.Lookup("f1").signatures
     f2, = ast2.Lookup("f2").signatures
     self.assertIs(ast2.Lookup("Bar"), f1.return_type.cls)

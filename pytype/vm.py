@@ -701,6 +701,8 @@ class VirtualMachine(object):
     elif isinstance(pyval, pytd.ExternalType):  # needs to be before ClassType
       assert pyval.cls
       return self.convert_constant_to_value(str(pyval), pyval.cls)
+    elif isinstance(pyval, pytd.Alias):
+      return self.convert_constant_to_value(pytd.Print(pyval.type), pyval.type)
     elif isinstance(pyval, pytd.ClassType):  # needs to be after ExternalType
       assert pyval.cls
       return self.convert_constant_to_value(pyval.name, pyval.cls)
@@ -1331,8 +1333,9 @@ class VirtualMachine(object):
       assert level > 0
       ast = self.loader.import_relative(level)
     if ast:
+      module_data = ast.constants + ast.classes + ast.functions + ast.aliases
       members = {val.name.rsplit(".")[-1]: val
-                 for val in ast.constants + ast.classes + ast.functions}
+                 for val in module_data}
       return abstract.Module(self, ast.name, members)
     else:
       return None

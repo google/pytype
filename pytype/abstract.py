@@ -2172,9 +2172,16 @@ class Module(Instance):
     self._member_map = member_map
 
   def _convert_member(self, name, ty):
+    """Called to convert the items in _member_map to cfg.Variable."""
     var = self.vm.convert_constant(name, ty)
     for value in var.data:
-      value.module = self.name
+      if value.module:
+        # If this class is already part of a module, we musn't "rebrand" it.
+        # This happens if e.g. foo.py does "from bar import x" and we then
+        # do "from foo import x".
+        pass
+      else:
+        value.module = self.name
     return var
 
   def get_attribute(self, node, name, valself=None, valcls=None):

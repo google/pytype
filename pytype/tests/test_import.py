@@ -602,6 +602,34 @@ class ImportTest(test_inference.InferenceTest):
          p = ...  # type: Optional[str]
       """)
 
+  def testReimport(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pytd", """
+          from collections import OrderedDict as MyOrderedDict
+      """)
+      with self.Infer("""\
+        import foo
+        d = foo.MyOrderedDict()
+      """, deep=False, solve_unknowns=False, pythonpath=[d.path]) as ty:
+        self.assertTypesMatchPytd(ty, """
+          foo = ...  # type: module
+          d = ...  # type: collections.OrderedDict
+        """)
+
+  def testImportFunction(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pytd", """
+          from math import pow as mypow
+      """)
+      with self.Infer("""\
+        import foo
+        d = foo.mypow
+      """, deep=False, solve_unknowns=False, pythonpath=[d.path]) as ty:
+        self.assertTypesMatchPytd(ty, """
+          foo = ...  # type: module
+          d = ...  # type: function
+        """)
+
 
 if __name__ == "__main__":
   test_inference.main()

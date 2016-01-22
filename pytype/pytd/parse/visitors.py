@@ -593,9 +593,12 @@ class InPlaceLookupExternalClasses(Visitor):
         raise KeyError("No %s in module %s" % (t.name, t.module))
       if isinstance(item, pytd.Class):
         t.cls = item
+      elif isinstance(item, pytd.Function):
+        logging.warn("importing function %s", t)
+        # TODO(kramm): Is it sound to do this?
+        t.cls = item
       else:
         raise KeyError("%s in module %s isn't a class" % (t.name, t.module))
-    return t
 
 
 class ReplaceTypes(Visitor):

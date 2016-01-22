@@ -79,7 +79,7 @@ class Loader(object):
     for module in self._modules.values():
       if module.dirty:
         module.ast.Visit(
-            visitors.InPlaceLookupExternalClasses(module_map, True))
+            visitors.InPlaceLookupExternalClasses(module_map, full_names=True))
         module.dirty = False
 
   def _create_empty(self, module_name, filename):
@@ -117,7 +117,8 @@ class Loader(object):
       self._resolve_all()
       module_map = {name: module.ast
                     for name, module in self._modules.items()}
-      ast.Visit(visitors.InPlaceLookupExternalClasses(module_map, True))
+      ast.Visit(
+          visitors.InPlaceLookupExternalClasses(module_map, full_names=True))
     return ast
 
   def import_relative_name(self, name):
