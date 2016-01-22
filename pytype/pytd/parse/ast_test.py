@@ -89,11 +89,11 @@ class TestASTGeneration(parser_test.ParserTest):
     """Test parsing of import."""
     src = textwrap.dedent("""
         import typing
-        def f(x: typing.List[int]) -> typing.Tuple[int]
+        def f(x: typing.List[int]) -> typing.Tuple[int]: ...
         """)
     # TODO(kramm): Should List and Tuple be fully qualified?
     self.TestRoundTrip(src, textwrap.dedent("""
-        def f(x: List[int]) -> Tuple[int]
+        def f(x: List[int]) -> Tuple[int]: ...
         """))
 
   def testParenthesisImport(self):
@@ -202,14 +202,14 @@ class TestASTGeneration(parser_test.ParserTest):
     """Test parsing of a single function definition."""
     # a function def with two params
     src = textwrap.dedent("""
-        def foo(a: int, c: bool) -> int raises Foo, Test
+        def foo(a: int, c: bool) -> int raises Foo, Test: ...
         """)
     self.TestRoundTrip(src)
 
   def testBackticks(self):
     """Test parsing of names in backticks."""
     src = textwrap.dedent("""
-      def `foo-bar`(x: `~unknown3`) -> `funny-type`[int]
+      def `foo-bar`(x: `~unknown3`) -> `funny-type`[int]: ...
       """)
     self.TestRoundTrip(src)
 
@@ -217,8 +217,8 @@ class TestASTGeneration(parser_test.ParserTest):
     """Test parsing of a single function with dotted names."""
     # We won't normally use __builtins__ ... this is just for testing.
     src = textwrap.dedent("""
-        def foo(a: __builtins__.int) -> __builtins__.int raises foo.Foo
-        def qqsv(x_or_y: compiler.symbols.types.BooleanType) -> None
+        def foo(a: __builtins__.int) -> __builtins__.int raises foo.Foo: ...
+        def qqsv(x_or_y: compiler.symbols.types.BooleanType) -> None: ...
         """)
     self.TestRoundTrip(src)
 
@@ -245,23 +245,23 @@ class TestASTGeneration(parser_test.ParserTest):
   def testAny(self):
     """Test parsing of 'Any'."""
     src = textwrap.dedent("""
-        def eval(s: str) -> Any
+        def eval(s: str) -> Any: ...
         """)
     self.TestRoundTrip(src, check_the_sourcecode=False)
 
   def testQuotes(self):
     """Test parsing of quoted types."""
     src = textwrap.dedent("""
-        def occurences() -> "Dict[str, List[int]]"
+        def occurences() -> "Dict[str, List[int]]": ...
         class A(object): ...
-        def invert(d: 'Dict[A, A]') -> 'Dict[A, A]'
+        def invert(d: 'Dict[A, A]') -> 'Dict[A, A]': ...
         """)
     self.TestRoundTrip(src, check_the_sourcecode=False)
 
   def testCallable(self):
     """Test parsing Callable."""
     src = textwrap.dedent("""
-        def get_listener() -> Callable[[int, int], str]"
+        def get_listener() -> Callable[[int, int], str]": ...
         """)
     self.TestRoundTrip(src, check_the_sourcecode=False)
 
@@ -269,7 +269,7 @@ class TestASTGeneration(parser_test.ParserTest):
     """Test parsing Callable."""
     src = textwrap.dedent("""
         StrDict = Dict[str, str]
-        def get_listener(x: StrDict) -> StrDict
+        def get_listener(x: StrDict) -> StrDict: ...
         """)
     self.TestRoundTrip(src, check_the_sourcecode=False)
 
@@ -277,15 +277,15 @@ class TestASTGeneration(parser_test.ParserTest):
     """Test overload decorators."""
     src = textwrap.dedent("""
         @overload
-        def abs(x: int) -> int
+        def abs(x: int) -> int: ...
         @overload
-        def abs(x: float) -> float
+        def abs(x: float) -> float: ...
 
         class A(object):
           @overload
-          def abs(self, x: int, y: int) -> int
+          def abs(self, x: int, y: int) -> int: ...
           @overload
-          def abs(self, x: float, y: float) -> float
+          def abs(self, x: float, y: float) -> float: ...
         """)
     self.TestRoundTrip(src, check_the_sourcecode=False)
 
@@ -300,7 +300,7 @@ class TestASTGeneration(parser_test.ParserTest):
 
   def testHomogeneous(self):
     src = textwrap.dedent("""
-        def f() -> List[int, ...]
+        def f() -> List[int, ...]: ...
     """)
     self.TestRoundTrip(src)
 
@@ -324,89 +324,89 @@ class TestASTGeneration(parser_test.ParserTest):
 
   def testTemplated(self):
     src = textwrap.dedent("""
-        def foo(x: int) -> T1[float, ...]
-        def foo(x: int) -> T2[int, complex]
-        def foo(x: int) -> T3[int, T4[str]]
-        def bar(y: int) -> T1[float]
+        def foo(x: int) -> T1[float, ...]: ...
+        def foo(x: int) -> T2[int, complex]: ...
+        def foo(x: int) -> T3[int, T4[str]]: ...
+        def bar(y: int) -> T1[float]: ...
         T = TypeVar('T')
-        def qqsv(x: T) -> List[T, ...]
+        def qqsv(x: T) -> List[T, ...]: ...
         S = TypeVar('S')
         T = TypeVar('T')
-        def qux(x: T) -> List[S]
+        def qux(x: T) -> List[S]: ...
 
         X = TypeVar('X')
         class T1(typing.Generic[X], object):
-            def foo(a: X) -> T2[X, int] raises float
+            def foo(a: X) -> T2[X, int] raises float: ...
 
         X = TypeVar('X')
         Y = TypeVar('Y')
         class T2(typing.Generic[X, Y], object):
-            def foo(a: X) -> complex raises Except[X, Y]
+            def foo(a: X) -> complex raises Except[X, Y]: ...
     """)
     self.TestRoundTrip(src)
 
   def testOptionalParameters(self):
     """Test parsing of individual optional parameters."""
     src = textwrap.dedent("""
-        def f(x) -> int
-        def f(x = ...) -> int
-        def f(x: int = ...) -> int
-        def f(x, s: str = ..., t: str = ...) -> int
+        def f(x) -> int: ...
+        def f(x = ...) -> int: ...
+        def f(x: int = ...) -> int: ...
+        def f(x, s: str = ..., t: str = ...) -> int: ...
         """)
     self.TestRoundTrip(src, check_the_sourcecode=False)
 
   def testOnlyOptional(self):
     """Test parsing of optional parameters."""
     src = textwrap.dedent("""
-        def foo(...) -> int
+        def foo(...) -> int: ...
     """).strip()
     self.TestRoundTrip(src)
 
   def testOptional1(self):
     """Test parsing of optional parameters."""
     src = textwrap.dedent("""
-        def foo(a: int, ...) -> int
+        def foo(a: int, ...) -> int: ...
     """).strip()
     self.TestRoundTrip(src)
 
   def testOptional2(self):
     """Test parsing of optional parameters."""
     src = textwrap.dedent("""
-        def foo(a: int, c: bool, ...) -> int
+        def foo(a: int, c: bool, ...) -> int: ...
     """).strip()
     self.TestRoundTrip(src)
 
   def testKwArgs(self):
     """Test parsing of *args, **kwargs."""
     src = textwrap.dedent("""
-        def f(x, *args) -> NoneType
-        def g(x, *args, **kwargs) -> NoneType
-        def h(x, **kwargs) -> NoneType
+        def f(x, *args) -> NoneType: ...
+        def g(x, *args, **kwargs) -> NoneType: ...
+        def h(x, **kwargs) -> NoneType: ...
         """)
     self.TestRoundTrip(src, textwrap.dedent("""
-        def f(x, ...) -> None
-        def g(x, ...) -> None
-        def h(x, ...) -> None
+        def f(x, ...) -> None: ...
+        def g(x, ...) -> None: ...
+        def h(x, ...) -> None: ...
     """))
 
   def testTypedKwArgs(self):
     """Test parsing of *args, **kwargs with types."""
     src = textwrap.dedent("""
-        def f(x, *args: int) -> NoneType
-        def g(x, *args: int or float, **kwargs: str) -> NoneType
-        def h(x, **kwargs: Optional[int]) -> NoneType
+        def f(x, *args: int) -> NoneType: ...
+        def g(x, *args: int or float, **kwargs: str) -> NoneType: ...
+        def h(x, **kwargs: Optional[int]) -> NoneType: ...
         """)
     self.TestRoundTrip(src, textwrap.dedent("""
-        def f(x, ...) -> None
-        def g(x, ...) -> None
-        def h(x, ...) -> None
+        def f(x, ...) -> None: ...
+        def g(x, ...) -> None: ...
+        def h(x, ...) -> None: ...
     """))
 
   def testConstants(self):
     """Test parsing of constants."""
     src = textwrap.dedent("""
       a = ...  # type: int
-      b = ...  # type: int or float
+      b = ...  # type: Union[int, float]
     """).strip()
     self.TestRoundTrip(src)
 
@@ -418,9 +418,9 @@ class TestASTGeneration(parser_test.ParserTest):
         c = ...  # type: typing.Union[int, float, complex]
     """)
     self.TestRoundTrip(src, textwrap.dedent("""
-        a = ...  # type: int or float
-        b = ...  # type: int or float or complex
-        c = ...  # type: int or float or complex
+        a = ...  # type: Union[int, float]
+        b = ...  # type: Union[int, float, complex]
+        c = ...  # type: Union[int, float, complex]
     """))
 
   def testAnythingType(self):
@@ -431,22 +431,22 @@ class TestASTGeneration(parser_test.ParserTest):
         c = ...  # type: typing.Any
     """)
     self.TestRoundTrip(src, textwrap.dedent("""
-        a = ...  # type: ?
-        b = ...  # type: ?
-        c = ...  # type: ?
+        a = ...  # type: Any
+        b = ...  # type: Any
+        c = ...  # type: Any
     """))
 
   def testReturnTypes(self):
     src = textwrap.dedent("""
-        def a() -> ?  # TODO(pludemann): remove "-> ?" if we allow implicit result
-        def b() -> ?
-        def c() -> object
-        def d() -> None
-        def e() -> a or b
-        def f() -> a[x, ...]
-        def g() -> a[x]
-        def h() -> a[x,y]
-        def i() -> nothing  # never returns
+        def a() -> Any: ...
+        def b() -> Any: ...
+        def c() -> object: ...
+        def d() -> None: ...
+        def e() -> a or b: ...
+        def f() -> a[x, ...]: ...
+        def g() -> a[x]: ...
+        def h() -> a[x, y]: ...
+        def i() -> nothing: ...  # never returns
     """)
     result = self.Parse(src)
     ret = {f.name: f.signatures[0].return_type for f in result.functions}
@@ -462,7 +462,7 @@ class TestASTGeneration(parser_test.ParserTest):
 
   def testTemplateReturn(self):
     src = textwrap.dedent("""
-        def foo(a: int or float, c: bool) -> List[int] raises Foo, Test
+        def foo(a: Union[int, float], c: bool) -> List[int] raises Foo, Test: ...
     """)
     self.TestRoundTrip(src)
 
@@ -477,7 +477,7 @@ class TestASTGeneration(parser_test.ParserTest):
     src = textwrap.dedent("""
         class Foo(object):
           def bar() -> ?
-        def baz(i: int) -> ?
+        def baz(i: int) -> Any: ...
     """)
     result = self.Parse(src)
     foo = result.Lookup("Foo")
@@ -487,7 +487,7 @@ class TestASTGeneration(parser_test.ParserTest):
   def testFunctionTypeParams(self):
     src = textwrap.dedent("""
         T1 = TypeVar('T1')
-        def f(x: T1) -> T1
+        def f(x: T1) -> T1: ...
     """)
     self.TestRoundTrip(src)
 
@@ -560,12 +560,12 @@ class TestASTGeneration(parser_test.ParserTest):
             # comment 6
     """)
     dest = textwrap.dedent("""
-        def baz(i: X) -> ?:
+        def baz(i: X) -> Any:
             i := X
 
         class Foo(object):
             c = ...  # type: int
-            def bar(x: X) -> ?:
+            def bar(x: X) -> Any:
                 x := X
     """)
     self.TestRoundTrip(src, dest)
@@ -605,15 +605,15 @@ class TestASTGeneration(parser_test.ParserTest):
   def testDuplicates7(self):
     src = textwrap.dedent("""
         x = ...  # type: int
-        def x()
+        def x(): ...
     """)
     self.TestThrowsSyntaxError(src)
 
   def testDuplicates8(self):
     src = textwrap.dedent("""
-       def bar(x: int) -> NoneType
+       def bar(x: int) -> NoneType: ...
        def foo PYTHONCODE
-       def bar(x: float) -> str
+       def bar(x: float) -> str: ...
        def foo PYTHONCODE
     """)
     self.TestThrowsSyntaxError(src)
@@ -621,16 +621,16 @@ class TestASTGeneration(parser_test.ParserTest):
   def testDuplicates8b(self):
     src = textwrap.dedent("""
     class Foo(object):
-       def bar(x: int) -> NoneType
+       def bar(x: int) -> NoneType: ...
        def foo PYTHONCODE
-       def bar(x: float) -> str
+       def bar(x: float) -> str: ...
        def foo PYTHONCODE
     """)
     self.TestThrowsSyntaxError(src)
 
   def testDuplicates9(self):
     src = textwrap.dedent("""
-       def bar(x: int) -> NoneType
+       def bar(x: int) -> NoneType: ...
        def bar PYTHONCODE
     """)
     self.TestThrowsSyntaxError(src)
@@ -638,14 +638,14 @@ class TestASTGeneration(parser_test.ParserTest):
   def testDuplicates9b(self):
     src = textwrap.dedent("""
     class Foo(object):
-       def bar(x: int) -> NoneType
+       def bar(x: int) -> NoneType: ...
        def bar PYTHONCODE
     """)
     self.TestThrowsSyntaxError(src)
 
   def testMissingReturn(self):
     src = textwrap.dedent("""
-        def f(x: int)
+        def f(x: int): ...
     """)
     self.TestThrowsSyntaxError(src)
 
@@ -690,11 +690,11 @@ class TestASTGeneration(parser_test.ParserTest):
 
   def testMutableRoundTrip(self):
     src = textwrap.dedent("""
-        def append_float(l: list) -> ?:
+        def append_float(l: list) -> Any:
             l := List[float]
 
         class Foo(object):
-            def append_int(l: list) -> ?:
+            def append_int(l: list) -> Any:
                 l := List[int]
     """)
     self.TestRoundTrip(src)
@@ -716,9 +716,9 @@ class TestASTGeneration(parser_test.ParserTest):
 
     data = textwrap.dedent("""
         # several function defs with different sigs
-        def foo(a : int, c : bool) -> int raises Test, Foo
-        def foo() -> None
-        def add(x : int, y : int) -> int
+        def foo(a : int, c : bool) -> int raises Test, Foo: ...
+        def foo() -> None: ...
+        def add(x : int, y : int) -> int: ...
         """)
 
     result = self.Parse(data)
@@ -766,8 +766,8 @@ class TestASTGeneration(parser_test.ParserTest):
   def testComplexCombinedType(self):
     """Test parsing a type with both union and intersection."""
 
-    data1 = r"def foo(a: Foo or Bar and Zot) -> object"
-    data2 = r"def foo(a: Foo or (Bar and Zot)) -> object"
+    data1 = r"def foo(a: Foo or Bar and Zot) -> object: ..."
+    data2 = r"def foo(a: Foo or (Bar and Zot)) -> object: ..."
     result1 = self.Parse(data1)
     result2 = self.Parse(data2)
     f = pytd.Function(
@@ -794,8 +794,8 @@ class TestASTGeneration(parser_test.ParserTest):
   def testNoReturnType(self):
     """Test a parsing error (no return type)."""
 
-    data1 = "def foo() -> ?"
-    data2 = "def foo() -> None"
+    data1 = "def foo() -> Any: ..."
+    data2 = "def foo() -> None: ..."
 
     self.TestRoundTrip(data1)
     self.TestRoundTrip(data2)
@@ -903,7 +903,7 @@ class TestASTGeneration(parser_test.ParserTest):
     data = textwrap.dedent("""
         T = TypeVar('T')
         class MyClass(typing.Generic[T], object):
-            def f(self, T) -> T
+            def f(self, T) -> T: ...
         """)
     self.TestRoundTrip(data)
 
@@ -912,11 +912,11 @@ class TestASTGeneration(parser_test.ParserTest):
     data = textwrap.dedent("""
         T = TypeVar('T')
         class MyClass1(typing.Generic[T], object):
-            def f(self, T) -> T
+            def f(self, T) -> T: ...
 
         T = TypeVar('T')
         class MyClass2(typing.Generic[T], object):
-            def f(self, T) -> T
+            def f(self, T) -> T: ...
         """)
     self.TestRoundTrip(data)
 
@@ -926,11 +926,11 @@ class TestASTGeneration(parser_test.ParserTest):
         T = TypeVar('T')
         V = TypeVar('V')
         class MyClass1(typing.Generic[T], object):
-            def f(self, T, V) -> V
+            def f(self, T, V) -> V: ...
 
         T = TypeVar('T')
         class MyClass2(typing.Generic[T], object):
-            def f(self, T, V) -> V
+            def f(self, T, V) -> V: ...
         """)
     self.TestRoundTrip(data, check_the_sourcecode=False)
 
@@ -939,29 +939,29 @@ class TestASTGeneration(parser_test.ParserTest):
     data = textwrap.dedent("""
         class MyClass1(object):
             SomeType = TypeVar('SomeType')
-            def g(x: SomeType) -> SomeType
-        def f(x: SomeType) -> SomeType
+            def g(x: SomeType) -> SomeType: ...
+        def f(x: SomeType) -> SomeType: ...
         """)
     self.TestRoundTrip(data, textwrap.dedent("""
-        def f(x: SomeType) -> SomeType
+        def f(x: SomeType) -> SomeType: ...
 
         class MyClass1(object):
             SomeType = TypeVar('SomeType')
-            def g(x: SomeType) -> SomeType
+            def g(x: SomeType) -> SomeType: ...
         """))
 
   def testTypeVarReuseOnGlobalMethods(self):
     """Test two global methods sharing a type variable."""
     data = textwrap.dedent("""
         T = TypeVar('T')
-        def f(x: T) -> T
-        def g(x: T) -> T
+        def f(x: T) -> T: ...
+        def g(x: T) -> T: ...
         """)
     self.TestRoundTrip(data, textwrap.dedent("""
         T = TypeVar('T')
-        def f(x: T) -> T
+        def f(x: T) -> T: ...
         T = TypeVar('T')
-        def g(x: T) -> T
+        def g(x: T) -> T: ...
     """))
 
   def testTemplates(self):
@@ -1005,7 +1005,7 @@ class TestASTGeneration(parser_test.ParserTest):
         U = TypeVar('U')
         V = TypeVar('V')
         class MyClass(typing.Generic[U, V], object):
-          def f1(self) -> ?
+          def f1(self) -> ?: ...
         """)
 
     result = self.Parse(data)
@@ -1023,7 +1023,7 @@ class TestASTGeneration(parser_test.ParserTest):
   def testAutoGenerated(self):
     """Test some source that caused a bug."""
     src = textwrap.dedent("""
-        def foo(a: List[bool], b: X or Y) -> Z:
+        def foo(a: List[bool], b: Union[X, Y]) -> Z:
             a := List[int]
         def bar(a: int, b: List[int]) -> Z:
             b := List[complex]

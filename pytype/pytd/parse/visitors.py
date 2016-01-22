@@ -223,7 +223,7 @@ class PrintVisitor(Visitor):
           new_type=new_type.Visit(PrintVisitor()))
                                for name, new_type in mutable_params)
     else:
-      body = ""
+      body = ": ..."
 
     return "({params}){ret}{exc}{body}".format(
         params=", ".join(node.params + optional),
@@ -277,7 +277,7 @@ class PrintVisitor(Visitor):
 
   def VisitAnythingType(self, unused_node):
     """Convert an anything type to a string."""
-    return "?"
+    return "Any"
 
   def VisitNothingType(self, unused_node):
     """Convert the nothing type to a string."""
@@ -307,9 +307,11 @@ class PrintVisitor(Visitor):
 
   def VisitUnionType(self, node):
     """Convert a union type ("x or y") to a string."""
-    # TODO(kramm): insert parentheses if necessary (i.e., if the parent is
-    # an intersection.)
-    return " or ".join(node.type_list)
+    if len(node.type_list) == 1:
+      # TODO(kramm): Why doesn't the optimizer do this?
+      return node.type_list[0]
+    else:
+      return "Union[" + ", ".join(node.type_list) + "]"
 
   def VisitIntersectionType(self, node):
     """Convert an intersection type ("x and y") to a string."""
