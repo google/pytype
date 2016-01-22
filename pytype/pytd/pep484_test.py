@@ -18,7 +18,7 @@ class TestPEP484(parser_test_base.ParserTest):
   def test_convert_optional(self):
     t = pytd.GenericType(pytd.ExternalType("Optional", module="typing"),
                          (pytd.NamedType("str")))
-    self.assertEquals(self.convert(t), "Union[str, None]")
+    self.assertEquals(self.convert(t), "str or None")
 
   def test_convert_union(self):
     t = pytd.GenericType(pytd.ExternalType("Union", module="typing"),

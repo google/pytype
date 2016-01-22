@@ -336,22 +336,11 @@ class PrintVisitor(Visitor):
 
   def VisitNamedType(self, node):
     """Convert a type to a string."""
-    module, _, suffix = node.name.partition(".")
-    if self._IsBuiltin(module, suffix):
-      node_name = suffix
-      if node_name == "function":
-        node_name = "typing.Callable"
-    else:
-      node_name = node.name
-    if node_name == "NoneType":
+    if node.name == "NoneType":
       # PEP 484 allows this special abbreviation.
       return "None"
     else:
-      name = self._SafeName(node_name)
-      if "." in name:
-        module = name[:name.rfind(".")]
-        self._RequireImport(module)
-      return name
+      return self._SafeName(node.name)
 
   def VisitClassType(self, node):
     return self.VisitNamedType(node)

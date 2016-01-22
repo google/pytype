@@ -32,7 +32,7 @@ class TestASTGeneration(parser_test_base.ParserTest):
       canonical_src = src
     tree = self.Parse(src)
     new_src = pytd.Print(tree)
-    self.AssertSourceEquals(new_src, canonical_src)
+    self.AssertSourceEquals(canonical_src, new_src)
     if check_the_sourcecode:
       self.assertMultiLineEqual(canonical_src.rstrip().lstrip("\n"),
                                 new_src.rstrip().lstrip("\n"))
@@ -221,8 +221,8 @@ class TestASTGeneration(parser_test_base.ParserTest):
     """Test parsing of a single function with dotted names."""
     # We won't normally use __builtins__ ... this is just for testing.
     src = textwrap.dedent("""
-        def foo(a: __builtins__.int) -> __builtins__.int raises foo.Foo: ...
-        def qqsv(x_or_y: compiler.symbols.types.BooleanType) -> None: ...
+        def foo(a: __builtins__.int) -> __builtins__.int raises foo.Foo
+        def qqsv(x_or_y: compiler.symbols.types.BooleanType) -> None
         """)
     expected = (textwrap.dedent("""
         import __builtins__
@@ -594,9 +594,9 @@ class TestASTGeneration(parser_test_base.ParserTest):
         def h(x, **kwargs) -> NoneType: ...
         """)
     self.TestRoundTrip(src, textwrap.dedent("""
-        def f(x, *args, **kwargs) -> None: ...
-        def g(x, *args, **kwargs) -> None: ...
-        def h(x, *args, **kwargs) -> None: ...
+        def f(x, ...) -> None
+        def g(x, ...) -> None
+        def h(x, ...) -> None
     """))
 
   def testTypedKwArgs(self):
@@ -607,9 +607,9 @@ class TestASTGeneration(parser_test_base.ParserTest):
         def h(x, **kwargs: Optional[int]) -> NoneType: ...
         """)
     self.TestRoundTrip(src, textwrap.dedent("""
-        def f(x, *args, **kwargs) -> None: ...
-        def g(x, *args, **kwargs) -> None: ...
-        def h(x, *args, **kwargs) -> None: ...
+        def f(x, ...) -> None
+        def g(x, ...) -> None
+        def h(x, ...) -> None
     """))
 
   def testConstants(self):
@@ -1022,8 +1022,8 @@ class TestASTGeneration(parser_test_base.ParserTest):
   def testNoReturnType(self):
     """Test a parsing error (no return type)."""
 
-    data1 = "def foo() -> Any: ..."
-    data2 = "def foo() -> None: ..."
+    data1 = "def foo() -> ?"
+    data2 = "def foo() -> None"
 
     self.TestRoundTrip(data1,
                        "from typing import Any\n\n" + data1)
