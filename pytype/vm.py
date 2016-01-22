@@ -665,7 +665,12 @@ class VirtualMachine(object):
                                 [abstract.PyTDSignature(pyval.name, sig, self)
                                  for sig in pyval.signatures], pyval.kind, self)
       return f
-    elif isinstance(pyval, pytd.ClassType):
+    elif isinstance(pyval, pytd.ExternalType):  # needs to be before ClassType
+      assert pyval.cls
+      return self.convert_constant_to_value(str(pyval), pyval.cls)
+    elif isinstance(pyval, pytd.Alias):
+      return self.convert_constant_to_value(pytd.Print(pyval.type), pyval.type)
+    elif isinstance(pyval, pytd.ClassType):  # needs to be after ExternalType
       assert pyval.cls
       return self.convert_constant_to_value(pyval.name, pyval.cls)
     elif isinstance(pyval, pytd.NothingType):
@@ -1328,12 +1333,10 @@ class VirtualMachine(object):
       assert level > 0
       ast = self.loader.import_relative(level)
     if ast:
-      module = self.construct_constant_from_value(ast.name, ast)
-      if level <= 0 and name == "typing":
-        # use a special overlay for stdlib/typing.pytd
-        return typing.TypingOverlay(self, module)
-      else:
-        return module
+      module_data = ast.constants + ast.classes + ast.functions + ast.aliases
+      members = {val.name.rsplit(".")[-1]: val
+                 for val in module_data}
+      return abstract.Module(self, ast.name, members)
     else:
       return None
 

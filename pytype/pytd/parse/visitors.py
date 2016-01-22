@@ -789,17 +789,23 @@ class LookupExternalTypes(Visitor):
       KeyError: If we can't find a module, or an identifier in a module, or
         if an identifier in a module isn't a class.
     """
-    module = self._module_map[t.module]
-    try:
-      if self.full_names:
-        item = module.Lookup(t.module + "." + t.name)
-      else:
-        item = module.Lookup(t.name)
-    except KeyError:
-      item = self._ResolveUsingGetattr(t, module)
-      if item is None:
+    if t.cls is None:
+      module = self._module_map[t.module]
+      try:
+        if self.full_names:
+          item = module.Lookup(t.module + "." + t.name)
+        else:
+          item = module.Lookup(t.name)
+      except KeyError:
         raise KeyError("No %s in module %s" % (t.name, t.module))
-    return _ToType(item)
+      if isinstance(item, pytd.Class):
+        t.cls = item
+      elif isinstance(item, pytd.Function):
+        logging.warn("importing function %s", t)
+        # TODO(kramm): Is it sound to do this?
+        t.cls = item
+      else:
+        raise KeyError("%s in module %s isn't a class" % (t.name, t.module))
 
 
 class ReplaceTypes(Visitor):

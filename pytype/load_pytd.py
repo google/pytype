@@ -82,6 +82,15 @@ class Loader(object):
     ast = ast.Visit(visitors.NamedTypeToClassType())
     return ast
 
+  def _resolve_all(self):
+    module_map = {name: module.ast
+                  for name, module in self._modules.items()}
+    for module in self._modules.values():
+      if module.dirty:
+        module.ast.Visit(
+            visitors.InPlaceLookupExternalClasses(module_map, full_names=True))
+        module.dirty = False
+
   def _create_empty(self, module_name, filename):
     return self._load_file(module_name, filename,
                            pytd_utils.EmptyModule(module_name))
@@ -121,25 +130,8 @@ class Loader(object):
             raise DependencyNotFoundError(name)
       module_map = {name: module.ast
                     for name, module in self._modules.items()}
-      ast = ast.Visit(
-          visitors.LookupExternalTypes(module_map, full_names=True))
-      ast = ast.Visit(visitors.VerifyNoExternalTypes())
-    return ast
-
-  def _finish_ast(self, ast):
-    module_map = {name: module.ast
-                  for name, module in self._modules.items()}
-    module_map[""] = ast  # The module itself (local lookup)
-    ast.Visit(visitors.FillInModuleClasses(module_map))
-    ast.Visit(visitors.VerifyLookup())
-    ast.Visit(visitors.VerifyNoExternalTypes())
-
-  def resolve_ast(self, ast):
-    """Resolve the dependencies of an AST, without adding it to our modules."""
-    ast = self._postprocess_pyi(ast)
-    ast = self._load_and_resolve_ast_dependencies(ast)
-    self._lookup_all_classes()
-    self._finish_ast(ast)
+      ast.Visit(
+          visitors.InPlaceLookupExternalClasses(module_map, full_names=True))
     return ast
 
   def _lookup_all_classes(self):
