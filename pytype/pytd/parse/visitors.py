@@ -136,51 +136,10 @@ class PrintVisitor(Visitor):
   def _NeedsTupleEllipsis(self, t):
     """Do we need to use Tuple[x, ...] instead of Tuple[x]?"""
     assert isinstance(t, pytd.HomogeneousContainerType)
-    return t.base_type == "tuple"
-
-  def _RequireImport(self, module, name=None):
-    """Register that we're using name from module.
-
-    Args:
-      module: string identifier.
-      name: if None, means we want 'import module'. Otherwise string identifier
-       that we want to import.
-    """
-    if not self.in_alias:
-      self.imports[module].add(name)
-
-  def _RequireTypingImport(self, name=None):
-    """Convenience function, wrapper for _RequireImport("typing", name)."""
-    self._RequireImport("typing", name)
-
-  def _GenerateImportStrings(self):
-    """Generate import statements needed by the nodes we've visited so far.
-
-    Returns:
-      List of strings.
-    """
-    ret = []
-    for module in sorted(self.imports):
-      names = set(self.imports[module])
-      if None in names:
-        ret.append("import %s" % module)
-        names.remove(None)
-
-      if names:
-        name_str = ", ".join(sorted(names))
-        ret.append("from %s import %s" % (module, name_str))
-
-    return ret
-
-  def _IsBuiltin(self, module, name):
-    return module == "__builtin__" and name not in self._local_names
-
-  def EnterTypeDeclUnit(self, unit):
-    definitions = unit.classes + unit.functions + unit.constants + unit.aliases
-    self._local_names = {c.name for c in definitions}
-
-  def LeaveTypeDeclUnit(self, _):
-    self._local_names = set()
+    if t.base_type == "tuple":
+      return True
+    else:
+      return False
 
   def VisitTypeDeclUnit(self, node):
     """Convert the AST for an entire module back to a string."""
@@ -391,7 +350,7 @@ class PrintVisitor(Visitor):
   def VisitHomogeneousContainerType(self, node):
     """Convert a homogeneous container type to a string."""
     ellipsis = ", ..." if self._NeedsTupleEllipsis(node) else ""
-    return (self.MaybeCapitalize(node.base_type) +
+    return (self.MaybeCaptialize(node.base_type) +
             "[" + node.element_type + ellipsis + "]")
 
   def VisitGenericType(self, node):

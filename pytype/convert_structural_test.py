@@ -628,7 +628,7 @@ class MatchTest(unittest.TestCase):
       from typing import Any, Dict, List
 
       class A(object):
-          def foo(self, x: Dict[str, List[Any, ...]]) -> bool: ...
+          def foo(self, x: Dict[str, List[Any]]) -> bool: ...
     """).lstrip()
     ast = convert_structural.convert_pytd(ast, self.builtins_pytd)
     self.assertMultiLineEqual(pytd.Print(ast), expected)
