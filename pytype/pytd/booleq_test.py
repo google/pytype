@@ -27,10 +27,6 @@ TRUE = booleq.TRUE
 FALSE = booleq.FALSE
 
 
-# TODO(kramm): pludemann@ wants me to remind him to create more tests for
-#              booleq.py.
-
-
 class TestBoolEq(unittest.TestCase):
   """Test algorithms and datastructures of booleq.py."""
 
@@ -149,6 +145,16 @@ class TestBoolEq(unittest.TestCase):
       solver.register_variable(variable)
     return solver
 
+  def _PrintMapping(self, mapping, cutoff=12):
+    for unknown, possible_types in sorted(mapping.items()):
+      assert isinstance(possible_types, (set, frozenset))
+      if len(possible_types) > cutoff:
+        print "%s can be   %s, ... (total: %d)" % (
+            unknown, ", ".join(sorted(possible_types)[0:cutoff]),
+            len(possible_types))
+      else:
+        print "%s can be %s" % (unknown, ", ".join(sorted(possible_types)))
+
   def testGetFalseFirstApproximation(self):
     solver = self._MakeSolver(["x"])
     solver.implies(Eq("x", "1"), FALSE)
@@ -231,6 +237,26 @@ class TestBoolEq(unittest.TestCase):
     solver.solve()
     self.assertRaises(AssertionError, solver.register_variable, "z")
     self.assertRaises(AssertionError, solver.implies, Eq("x", "1"), TRUE)
+
+  @unittest.skip("Needs a way to mark 'z' as type variable")
+  def testNested(self):
+    solver = booleq.Solver()
+    solver.register_variable("x")
+    solver.register_variable("y")
+    solver.register_variable("z")
+
+    solver.implies(Eq("x", "b"), Eq("y", "b"))
+    solver.implies(Eq("x", "d"), Eq("y", "z"))
+    solver.implies(Eq("x", "e"), Eq("y", "e"))
+    solver.implies(Eq("y", "a"), TRUE)
+    solver.implies(Eq("y", "b"), TRUE)
+    solver.implies(Eq("y", "d"), FALSE)
+    solver.implies(Eq("y", "e"), FALSE)
+
+    m = solver.solve()
+    self._PrintMapping(m)
+    self.assertItemsEqual(m["z"], {"a", "b"})
+
 
 if __name__ == "__main__":
   unittest.main()
