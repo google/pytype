@@ -32,10 +32,10 @@ class TestASTGeneration(parser_test.ParserTest):
       canonical_src = src
     tree = self.Parse(src)
     new_src = pytd.Print(tree)
-    self.AssertSourceEquals(canonical_src, new_src)
+    self.AssertSourceEquals(new_src, canonical_src)
     if check_the_sourcecode:
-      self.assertMultiLineEqual(new_src.rstrip().lstrip("\n"),
-                                canonical_src.rstrip().lstrip("\n"))
+      self.assertMultiLineEqual(canonical_src.rstrip().lstrip("\n"),
+                                new_src.rstrip().lstrip("\n"))
 
   def testImport(self):
     """Test parsing of import."""
@@ -273,6 +273,14 @@ class TestASTGeneration(parser_test.ParserTest):
         """)
     self.TestRoundTrip(src, check_the_sourcecode=False)
 
+  def testDefineTrueFalse(self):
+    """Test defining True/False."""
+    src = textwrap.dedent("""
+        True = ...  # type: bool
+        False = ...  # type: bool
+        """)
+    self.TestRoundTrip(src, check_the_sourcecode=False)
+
   def testDecorator(self):
     """Test overload decorators."""
     src = textwrap.dedent("""
@@ -409,6 +417,19 @@ class TestASTGeneration(parser_test.ParserTest):
       b = ...  # type: Union[int, float]
     """).strip()
     self.TestRoundTrip(src)
+
+  def testBoolConstant(self):
+    """Test abbreviated constant definitions."""
+    src = textwrap.dedent("""
+        a = 0
+        b = True
+        c = False
+        """)
+    self.TestRoundTrip(src, textwrap.dedent("""
+        a = ...  # type: int
+        b = ...  # type: bool
+        c = ...  # type: bool
+    """))
 
   def testUnion(self):
     """Test parsing of Unions."""
