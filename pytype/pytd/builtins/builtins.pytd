@@ -247,10 +247,7 @@ class str(basestring):
     def upper(self) -> str
     def zfill(self, width: int) -> str
 
-class bytes(str):
-    # TODO(pludemann): This is technically incorrect because in Python2,
-    #                  bytes is str.  However, it'll do what we want for now.
-    pass  # TODO(pludemann): add aliasing to PyTD and use that.
+bytes = str
 
 class unicode(basestring):
     def __init__(self, string, ...) -> NoneType

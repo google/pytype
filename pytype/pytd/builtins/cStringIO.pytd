@@ -15,7 +15,7 @@ class OutputType(StringO):
   def tell() -> int
   def truncate(...) -> NoneType raises IOError
   def close() -> NoneType
-  def write(a: str or bytes or bytearray or buffer) -> NoneType
+  def write(a: str or bytearray or buffer) -> NoneType
   def writelines(...) -> NoneType
 
 def StringIO(...) -> StringI or StringO
@@ -32,7 +32,7 @@ class StringO(object):
   def tell() -> int
   def truncate(...) -> NoneType raises IOError
   def close() -> NoneType
-  def write(a: str or bytes or bytearray or buffer) -> NoneType
+  def write(a: str or bytearray or buffer) -> NoneType
   def writelines(...) -> NoneType
 
 class StringI(object):

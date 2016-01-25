@@ -34,8 +34,8 @@ class Pdb(?, ?):
     _user_requested_quit = ...  # type: int
     _wait_for_mainpyfile = ...  # type: int
     aliases = ...  # type: dict[bytearray or str or unicode, str or unicode]
-    cmdqueue = ...  # type: list[bytes or str or unicode]
-    commands = ...  # type: dict[int, list[bytearray or bytes or str or unicode]]
+    cmdqueue = ...  # type: list[str or unicode]
+    commands = ...  # type: dict[int, list[bytearray or str or unicode]]
     commands_bnum = ...  # type: NoneType or int
     commands_defining = ...  # type: bool
     commands_doprompt = ...  # type: dict[NoneType or int, bool]
@@ -169,7 +169,7 @@ class Pdb(?, ?):
     def lineinfo(self, identifier: str or unicode) -> tuple[NoneType]
     def lookupmodule(self, filename: buffer or str or unicode) -> ?
     def onecmd(self, line: str) -> ?
-    def precmd(self, line: str or unicode) -> bytes or str or unicode
+    def precmd(self, line: str or unicode) -> str or unicode
     def print_stack_entry(self, frame_lineno, ...) -> NoneType
     def print_stack_trace(self) -> NoneType
     def reset(self) -> NoneType

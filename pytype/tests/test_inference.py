@@ -168,7 +168,6 @@ class InferenceTest(unittest.TestCase):
     self.set = pytd.ClassType("set")
     self.frozenset = pytd.ClassType("frozenset")
     self.str = pytd.ClassType("str")
-    self.bytes = pytd.ClassType("bytes")
     self.bytearray = pytd.ClassType("bytearray")
     self.tuple = pytd.ClassType("tuple")
     self.unicode = pytd.ClassType("unicode")
@@ -181,8 +180,7 @@ class InferenceTest(unittest.TestCase):
 
     # The various union types use pytd_utils.CanonicalOrdering()'s ordering:
     self.intorstr = pytd.UnionType((self.int, self.str))
-    self.strorunicodeorbytes = pytd.UnionType(
-        (self.str, self.unicode, self.bytes))
+    self.strorunicode = pytd.UnionType((self.str, self.unicode))
     self.intorfloat = pytd.UnionType((self.float, self.int))
     self.intorfloatorstr = pytd.UnionType((self.float, self.int, self.str))
     self.complexorstr = pytd.UnionType((self.complex, self.str))

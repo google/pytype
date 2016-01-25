@@ -124,7 +124,7 @@ class MatchTest(unittest.TestCase):
         def join(self, iterable: unicode) -> str or unicode
         def join(self, iterable: iterator) -> str or unicode
     """)
-    self.assertItemsEqual(["str", "bytes"], mapping["~unknown1"])
+    self.assertItemsEqual(["str"], mapping["~unknown1"])
 
   def test_multiple(self):
     mapping = self.parse_and_solve("""
@@ -143,7 +143,7 @@ class MatchTest(unittest.TestCase):
     """)
     self.assertItemsEqual(["float"], mapping["~unknown1"])
     self.assertItemsEqual(["bytearray"], mapping["~unknown2"])
-    self.assertItemsEqual(["str", "bytes"], mapping["~unknown3"])
+    self.assertItemsEqual(["str"], mapping["~unknown3"])
     self.assertItemsEqual(["list"], mapping["~unknown4"])
     self.assertItemsEqual(["NoneType"], mapping["~unknown4.list.T"])
 

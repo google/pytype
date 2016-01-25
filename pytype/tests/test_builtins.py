@@ -323,7 +323,7 @@ class BuiltinTests(test_inference.InferenceTest):
           return fi.read()
       """, deep=True, solve_unknowns=True, extract_locals=False) as ty:
       self.assertTypesMatchPytd(ty, """
-        def f(x: str or bytes or buffer or unicode) -> str
+        def f(x: str or buffer or unicode) -> str
       """)
 
   def testSignal(self):
@@ -368,7 +368,7 @@ class BuiltinTests(test_inference.InferenceTest):
         return ''.join(map(lambda ch: ch, input_string))
     """, deep=True, solve_unknowns=True) as ty:
       self.assertOnlyHasReturnType(
-          ty.Lookup("f"), self.strorunicodeorbytes)
+          ty.Lookup("f"), self.strorunicode)
 
   def testMap2(self):
     with self.Infer("""
@@ -587,7 +587,7 @@ class BuiltinTests(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
         datetime = ...  # type: module
-        def f(date: datetime.datetime or datetime.date) -> bytes or str
+        def f(date: datetime.datetime or datetime.date) -> str
     """)
 
   def testFromUTC(self):

@@ -38,7 +38,7 @@ class date(object):
   def fromordinal(a: int) -> object raises ValueError
   def today() -> object
   def ctime() -> str
-  def strftime(format: str or bytes or buffer) -> object
+  def strftime(format: str or buffer) -> object
   def __format__(a: object) -> unicode raises ValueError
   def timetuple() -> object
   def isocalendar() -> tuple
@@ -62,7 +62,7 @@ class timedelta(object):
 
 class time(object):
   def isoformat() -> str
-  def strftime(format: str or bytes or buffer) -> object
+  def strftime(format: str or buffer) -> object
   def __format__(a: object) -> unicode raises ValueError
   def utcoffset() -> object
   def tzname() -> object
