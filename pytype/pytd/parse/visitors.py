@@ -136,10 +136,7 @@ class PrintVisitor(Visitor):
   def _NeedsTupleEllipsis(self, t):
     """Do we need to use Tuple[x, ...] instead of Tuple[x]?"""
     assert isinstance(t, pytd.HomogeneousContainerType)
-    if t.base_type == "tuple":
-      return True
-    else:
-      return False
+    return t.base_type == "tuple"
 
   def VisitTypeDeclUnit(self, node):
     """Convert the AST for an entire module back to a string."""
