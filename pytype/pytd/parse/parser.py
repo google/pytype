@@ -54,8 +54,8 @@ class ParseError(Exception):
   def __str__(self):
     e = SyntaxError(self.msg, (self.filename, self.lineno,
                                self.column, self.line))
-    return ('Error while parsing pyi:\n\n' +
-            ''.join(traceback.format_exception(type(e), e, None)))
+    return ("Error while parsing pyi:\n\n" +
+            "".join(traceback.format_exception(type(e), e, None)))
 
 
 class PyLexer(object):
@@ -80,55 +80,55 @@ class PyLexer(object):
     self.at_eof = False
 
   # The ply parsing library expects class members to be named in a specific way.
-  t_AT = r'@'
-  t_ARROW = r'->'
-  t_ASTERISK = r'[*]'
-  t_COLON = r':'
-  t_COLONEQUALS = r':='
-  t_COMMA = r','
-  t_DEDENT = r'(?!d)d'
-  t_ELLIPSIS = r'\.\.\.'
-  t_DOT = r'\.'
-  t_EQ = r'=='
-  t_ASSIGN = r'='
-  t_INDENT = r'(?!i)i'
-  t_NE = r'!='
-  t_QUESTIONMARK = r'\?'
+  t_AT = r"@"
+  t_ARROW = r"->"
+  t_ASTERISK = r"[*]"
+  t_COLON = r":"
+  t_COLONEQUALS = r":="
+  t_COMMA = r","
+  t_DEDENT = r"(?!d)d"
+  t_ELLIPSIS = r"\.\.\."
+  t_DOT = r"\."
+  t_EQ = r"=="
+  t_ASSIGN = r"="
+  t_INDENT = r"(?!i)i"
+  t_NE = r"!="
+  t_QUESTIONMARK = r"\?"
 
   reserved = parser_constants.RESERVED
 
   # Define keyword tokens, so parser knows about them.
   # We generate them in t_NAME.
-  locals().update({'t_' + id.upper(): id for id in reserved})
+  locals().update({"t_" + id.upper(): id for id in reserved})
 
   tokens = [
-      'ARROW',
-      'ASSIGN',
-      'ASTERISK',
-      'AT',
-      'COLON',
-      'COLONEQUALS',
-      'COMMA',
-      # 'COMMENT',  # Not used in the grammar; only used to discard comments
-      'DEDENT',
-      'DOT',
-      'ELLIPSIS',
-      'LT',
-      'GT',
-      'LE',
-      'GE',
-      'EQ',
-      'NE',
-      'INDENT',
-      'LBRACKET',
-      'LPAREN',
-      'NAME',
-      'NUMBER',
-      'QUESTIONMARK',
-      'RBRACKET',
-      'RPAREN',
-      'TYPECOMMENT',
-      'TRIPLEQUOTED',
+      "ARROW",
+      "ASSIGN",
+      "ASTERISK",
+      "AT",
+      "COLON",
+      "COLONEQUALS",
+      "COMMA",
+      # "COMMENT",  # Not used in the grammar; only used to discard comments
+      "DEDENT",
+      "DOT",
+      "ELLIPSIS",
+      "LT",
+      "GT",
+      "LE",
+      "GE",
+      "EQ",
+      "NE",
+      "INDENT",
+      "LBRACKET",
+      "LPAREN",
+      "NAME",
+      "NUMBER",
+      "QUESTIONMARK",
+      "RBRACKET",
+      "RPAREN",
+      "TYPECOMMENT",
+      "TRIPLEQUOTED",
   ] + [id.upper() for id in reserved]
 
   def t_LE(self, t):
@@ -171,7 +171,7 @@ class PyLexer(object):
     r"""\t"""
     # Since nobody can agree anymore how wide tab characters are supposed
     # to be, disallow them altogether.
-    make_syntax_error(self, 'Use spaces, not tabs', t)
+    make_syntax_error(self, "Use spaces, not tabs", t)
 
   def t_WHITESPACE(self, t):
     # Treat ["] and ['] as whitespace, too, since they wrap types.
@@ -179,14 +179,14 @@ class PyLexer(object):
 
     if self.queued_dedents:
       self.queued_dedents -= 1
-      t.type = 'DEDENT'
+      t.type = "DEDENT"
       return t
-    t.lexer.lineno += t.value.count('\n')
+    t.lexer.lineno += t.value.count("\n")
     if self.open_brackets:
       # inside (...) and <...>, we allow any kind of whitespace and indentation.
       return
-    spaces_and_newlines = t.value.replace('\r', '')
-    i = spaces_and_newlines.rfind('\n')
+    spaces_and_newlines = t.value.replace("\r", "")
+    i = spaces_and_newlines.rfind("\n")
     if i < 0:
       # whitespace in the middle of line
       return
@@ -196,7 +196,7 @@ class PyLexer(object):
       # Ignore white space at end of file.
       return None
 
-    if not eof and t.lexer.lexdata[t.lexer.lexpos] in '#':
+    if not eof and t.lexer.lexdata[t.lexer.lexpos] in "#":
       # empty line (ends with comment)
       return
 
@@ -209,14 +209,14 @@ class PyLexer(object):
         # and make the lexer reprocess the last whitespace.
         self.queued_dedents += 1
       if indent != self.indent_stack[-1]:
-        make_syntax_error(self, 'invalid dedent', t)
+        make_syntax_error(self, "invalid dedent", t)
       if self.queued_dedents:
         t.lexer.skip(-1)  # reprocess this whitespace
-      t.type = 'DEDENT'
+      t.type = "DEDENT"
       return t
     elif indent > self.indent_stack[-1]:
       self.indent_stack.append(indent)
-      t.type = 'INDENT'
+      t.type = "INDENT"
       return t
     else:
       # same indent as before, ignore.
@@ -228,12 +228,12 @@ class PyLexer(object):
     # you change this, also change parser_constants._BACKTICK_NAME.
     (r"""([a-zA-Z_][a-zA-Z0-9_-]*)|"""
      r"""(`[a-zA-Z_~][-a-zA-Z0-9_]*`)""")
-    if t.value[0] == r'`':
+    if t.value[0] == r"`":
       # Permit token names to be enclosed by backticks (``), to allow for names
       # that are keywords in pytd syntax.
-      assert t.value[-1] == r'`'
+      assert t.value[-1] == r"`"
       t.value = t.value[1:-1]
-      t.type = 'NAME'
+      t.type = "NAME"
     elif t.value in self.reserved:
       t.type = t.value.upper()
     return t
@@ -269,7 +269,7 @@ class PyLexer(object):
       t = lex.LexToken()
       t.lexpos = self.lexer.lexpos
       t.lineno = self.lexer.lineno
-      t.type = 'DEDENT'
+      t.type = "DEDENT"
       t.value = None
       return t
     else:
@@ -279,23 +279,23 @@ class PyLexer(object):
     make_syntax_error(self, "Illegal character '%s'" % t.value[0], t)
 
 
-Params = collections.namedtuple('_', ['required', 'has_optional'])
-NameAndSig = collections.namedtuple('_', ['name', 'signature', 'external_code'])
+Params = collections.namedtuple("_", ["required", "has_optional"])
+NameAndSig = collections.namedtuple("_", ["name", "signature", "external_code"])
 
 
-class Number(collections.namedtuple('Number', ['string'])):
+class Number(collections.namedtuple("Number", ["string"])):
   """Store a number token (float or int, or a version number)."""
 
   def AsFloatOrInt(self):
-    return float(self.string) if '.' in self.string else int(self.string)
+    return float(self.string) if "." in self.string else int(self.string)
 
   def AsVersion(self, parser, p):
-    components = self.string.split('.')
+    components = self.string.split(".")
     if (len(components) not in (1, 2, 3) or
         any(not digit.isdigit() for digit in components) or
         not all(0 <= int(digit) <= 9 for digit in components)):
       make_syntax_error(parser,
-                        'Illegal version \"%s\"' % self.string, p)
+                        "Illegal version \"%s\"" % self.string, p)
     prefix = tuple(int(digit) for digit in components)
     return (prefix + (0, 0, 0))[0:3]
 
@@ -345,10 +345,10 @@ class InsertTypeParameters(visitors.Visitor):
 
 
 def CheckStringIsPython(parser, string, p):
-  if string == 'python':
+  if string == "python":
     return
   make_syntax_error(
-      parser, 'If conditions can only depend on the \'python\' variable', p)
+      parser, "If conditions can only depend on the \"python\" variable", p)
 
 
 class Context(object):
@@ -366,14 +366,14 @@ def SplitParents(parser, p, parents):
   other_parents = []
   for parent in parents:
     if (isinstance(parent, pytd.GenericType) and
-        parent.base_type == pytd.ExternalType('Generic', 'typing')):
+        parent.base_type == pytd.ExternalType("Generic", "typing")):
       if not all(isinstance(param, pytd.NamedType)
                  for param in parent.parameters):
         make_syntax_error(
-            parser, 'Illegal template parameter %s' % pytd.Print(parent), p)
+            parser, "Illegal template parameter %s" % pytd.Print(parent), p)
       if template:
         make_syntax_error(
-            parser, 'Duplicate Template base class', p)
+            parser, "Duplicate Template base class", p)
       template = tuple(pytd.TemplateItem(pytd.TypeParameter(param.name))
                        for param in parent.parameters)
       all_names = [t.name for t in template]
@@ -382,7 +382,7 @@ def SplitParents(parser, p, parents):
                     if count >= 2]
       if duplicates:
         make_syntax_error(
-            parser, 'Duplicate template parameters' + ', '.join(duplicates), p)
+            parser, "Duplicate template parameters" + ", ".join(duplicates), p)
     else:
       if parent != pytd.NothingType():
         other_parents.append(parent)
@@ -413,7 +413,7 @@ class TypeDeclParser(object):
     self.python_version = version or DEFAULT_VERSION
 
     self.parser = yacc.yacc(
-        start='start',  # warning: ply ignores this
+        start="start",  # warning: ply ignores this
         module=self,
         debug=False,
         write_tables=False,
@@ -421,15 +421,15 @@ class TypeDeclParser(object):
         # errorlog=yacc.NullLogger(),  # If you really want to suppress messages
         **kwargs)
 
-  def Parse(self, src, name=None, filename='<string>', **kwargs):
+  def Parse(self, src, name=None, filename="<string>", **kwargs):
     """Run tokenizer, parser, and postprocess the AST."""
     self.src = src  # Keep a copy of what's being parsed
-    self.filename = filename if filename else '<string>'
+    self.filename = filename if filename else "<string>"
     self.context = Context(typevars=set())
     self.aliases = pep484.PEP484_TRANSLATIONS.copy()
     # For the time being, also allow shortcuts, i.e., using "List" for
     # "typing.List", even without having imported typing:
-    self.aliases.update({name: pytd.ExternalType(name, 'typing')
+    self.aliases.update({name: pytd.ExternalType(name, "typing")
                          for name in pep484.PEP484_NAMES})
     self.lexer.set_parse_info(self.src, self.filename)
     ast = self.parser.parse(src, **kwargs)
@@ -440,9 +440,9 @@ class TypeDeclParser(object):
     return ast.Replace(name=name)
 
   precedence = (
-      ('left', 'OR'),
-      ('left', 'AND'),
-      ('left', 'COMMA'),
+      ("left", "OR"),
+      ("left", "AND"),
+      ("left", "COMMA"),
   )
 
   def p_start(self, p):
@@ -468,7 +468,7 @@ class TypeDeclParser(object):
                   if count >= 2]
     if duplicates:
       make_syntax_error(
-          self, 'Duplicate top-level identifier(s): ' + ', '.join(duplicates),
+          self, "Duplicate top-level identifier(s): " + ", ".join(duplicates),
           p)
     p[0] = pytd.TypeDeclUnit(name=None,  # replaced later, in Parse
                              constants=tuple(constants),
@@ -527,10 +527,10 @@ class TypeDeclParser(object):
     _, _, dotted_name, _, import_from_list = p
     aliases = []
     for name, new_name in import_from_list:
-      if name != '*':
+      if name != "*":
         t = pytd.ExternalType(name, dotted_name)
         self.aliases[new_name] = t
-        if dotted_name != 'typing':
+        if dotted_name != "typing":
           aliases.append(pytd.Alias(new_name, t))
       else:
         pass  # TODO(kramm): Handle '*' imports in pyi
@@ -574,7 +574,7 @@ class TypeDeclParser(object):
 
   def p_from_item_typevar(self, p):
     """from_item : TYPEVAR"""
-    p[0] = ('TypeVar', 'TypeVar')
+    p[0] = ("TypeVar", "TypeVar")
 
   def p_from_item_as(self, p):
     """from_item : NAME AS NAME"""
@@ -582,7 +582,7 @@ class TypeDeclParser(object):
 
   def p_from_item_asterisk(self, p):
     """from_item : ASTERISK"""
-    p[0] = ('*', '*')
+    p[0] = ("*", "*")
 
   def p_dotted_name_1(self, p):
     """dotted_name : NAME"""
@@ -590,15 +590,17 @@ class TypeDeclParser(object):
 
   def p_dotted_name(self, p):
     """dotted_name : dotted_name DOT NAME"""
-    p[0] = p[1] + '.' + p[3]
+    p[0] = p[1] + "." + p[3]
 
   def p_alias_or_constant(self, p):
     """alias_or_constant : NAME ASSIGN type"""
     # Other special cases of constant definitions are handled in constantdef,
     # e.g.  p_constantdef_int (for "name = 0")
-    if p[3] in [pytd.NamedType('True'), pytd.NamedType('False')]:
+    if p[3] in [pytd.NamedType("True"), pytd.NamedType("False")]:
+      p[0] = pytd.Constant(p[1], pytd.NamedType("bool"))
+    if p[3] in [pytd.NamedType("True"), pytd.NamedType("False")]:
       # See https://github.com/google/pytype/issues/14
-      p[0] = pytd.Constant(p[1], pytd.NamedType('bool'))
+      p[0] = pytd.Constant(p[1], pytd.NamedType("bool"))
     else:
       self.aliases[p[1]] = p[3]
       p[0] = pytd.Alias(p[1], p[3])
@@ -666,7 +668,7 @@ class TypeDeclParser(object):
     for t in template:
       if t.name not in self.context.typevars:
         make_syntax_error(
-            self, 'Name %r must be defined as a TypeVar' % t.name, p)
+            self, "Name %r must be defined as a TypeVar" % t.name, p)
     # The new scope has its own set of type variables (to allow class-level
     # scoping of TypeVar). But any type variable bound to the class is not a
     # (free) type parameter in the body of the class.
@@ -693,13 +695,13 @@ class TypeDeclParser(object):
     if (set(f.name for f in methoddefs) | set(c.name for c in constants) !=
         set(d.name for d in class_funcs)):
       # TODO(kramm): raise a syntax error right when the identifier is defined.
-      raise make_syntax_error(self, 'Duplicate identifier(s)', p)
+      raise make_syntax_error(self, "Duplicate identifier(s)", p)
 
     template_names = {t.name for t in template}
     for _, sig, _ in methoddefs:
       for t in sig.template:
         if t.name in template_names:
-          raise make_syntax_error(self, 'Duplicate template parameter %s' %
+          raise make_syntax_error(self, "Duplicate template parameter %s" %
                                   t.name, p)
 
     cls = pytd.Class(name=name, parents=parents,
@@ -790,26 +792,26 @@ class TypeDeclParser(object):
     """constantdef : NAME ASSIGN NUMBER"""
     if int(p[3]) != 0:
       make_syntax_error(self, "Only '0' allowed as int literal", p)
-    p[0] = pytd.Constant(p[1], pytd.NamedType('int'))
+    p[0] = pytd.Constant(p[1], pytd.NamedType("int"))
 
   def p_typevardef(self, p):
     """typevardef : NAME ASSIGN TYPEVAR LPAREN NAME RPAREN"""
     _, name, _, _, _, name_param, _ = p
     if name != name_param:
-      make_syntax_error(self, 'TypeVar name needs to be %r (not %r)' % (
+      make_syntax_error(self, "TypeVar name needs to be %r (not %r)" % (
           name_param, name), p)
     self.context.typevars.add(name)
     if name in self.context.bound:
       make_syntax_error(
-          self, 'Illegal redefine of TypeVar(%r) from outer scope' % p[1], p)
+          self, "Illegal redefine of TypeVar(%r) from outer scope" % p[1], p)
     p[0] = []
 
   def p_decorator(self, p):
     # @overload is used for multiple signatures for the same function
     """decorator : AT NAME"""
-    if p[2] != 'overload':
+    if p[2] != "overload":
       make_syntax_error(
-          self, 'Decorator %r not supported' % p[2], p)
+          self, "Decorator %r not supported" % p[2], p)
     p[0] = []
 
   def p_funcdef(self, p):
@@ -817,8 +819,8 @@ class TypeDeclParser(object):
     _, _, name, _, params, _, return_type, raises, _, body = p
     # TODO(kramm): Output a warning if we already encountered a signature
     #              with these types (but potentially different argument names)
-    if name == '__init__' and isinstance(return_type, pytd.AnythingType):
-      ret = pytd.NamedType('NoneType')
+    if name == "__init__" and isinstance(return_type, pytd.AnythingType):
+      ret = pytd.NamedType("NoneType")
     else:
       ret = return_type
     signature = pytd.Signature(params=tuple(params.required), return_type=ret,
@@ -841,7 +843,7 @@ class TypeDeclParser(object):
       except NotImplementedError as e:
         make_syntax_error(self, e.message, p)
       if not mutator.successful:
-        make_syntax_error(self, 'No parameter named %s' % mutator.name, p)
+        make_syntax_error(self, "No parameter named %s" % mutator.name, p)
     p[0] = NameAndSig(name=name, signature=signature, external_code=False)
 
   def p_funcdef_code(self, p):
@@ -941,7 +943,7 @@ class TypeDeclParser(object):
     """params : params COMMA param"""
     # TODO(kramm): Disallow "self" and "cls" as names for param (if it's not
     # the first parameter).
-    if p[3].name.startswith('*'):
+    if p[3].name.startswith("*"):
       p[0] = Params(p[1].required, has_optional=True)
     else:
       p[0] = Params(p[1].required + [p[3]], has_optional=False)
@@ -952,7 +954,7 @@ class TypeDeclParser(object):
 
   def p_params_1(self, p):
     """params : param"""
-    if p[1].name.startswith('*'):
+    if p[1].name.startswith("*"):
       p[0] = Params([], has_optional=True)
     else:
       p[0] = Params([p[1]], has_optional=False)
@@ -968,11 +970,11 @@ class TypeDeclParser(object):
   def p_param(self, p):
     """param : NAME"""
     # type is optional and defaults to "object"
-    p[0] = pytd.Parameter(p[1], pytd.NamedType('object'))
+    p[0] = pytd.Parameter(p[1], pytd.NamedType("object"))
 
   def p_param_optional(self, p):
     """param : NAME ASSIGN ELLIPSIS"""
-    p[0] = pytd.OptionalParameter(p[1], pytd.NamedType('object'))
+    p[0] = pytd.OptionalParameter(p[1], pytd.NamedType("object"))
 
   def p_param_and_type(self, p):
     """param : NAME COLON type"""
@@ -984,25 +986,25 @@ class TypeDeclParser(object):
 
   def p_param_star(self, p):
     """param : ASTERISK NAME"""
-    p[0] = pytd.OptionalParameter('*' + p[2], pytd.NamedType('tuple'))
+    p[0] = pytd.OptionalParameter("*" + p[2], pytd.NamedType("tuple"))
 
   def p_param_star_type(self, p):
     """param : ASTERISK NAME COLON type"""
     _, _, name, _, t = p
     p[0] = pytd.OptionalParameter(
-        '*' + name,
-        pytd.HomogeneousContainerType(pytd.NamedType('tuple'), (t,)))
+        "*" + name,
+        pytd.HomogeneousContainerType(pytd.NamedType("tuple"), (t,)))
 
   def p_param_kw(self, p):
     """param : ASTERISK ASTERISK NAME"""
-    p[0] = pytd.OptionalParameter('**' + p[3], pytd.NamedType('dict'))
+    p[0] = pytd.OptionalParameter("**" + p[3], pytd.NamedType("dict"))
 
   def p_param_kw_type(self, p):
     """param : ASTERISK ASTERISK NAME COLON type"""
     _, _, _, name, _, t = p
     p[0] = pytd.OptionalParameter(
-        '**' + name,
-        pytd.GenericType(pytd.NamedType('dict'), (pytd.NamedType('str'), t)))
+        "**" + name,
+        pytd.GenericType(pytd.NamedType("dict"), (pytd.NamedType("str"), t)))
 
   def p_raises(self, p):
     """raises : RAISES exceptions"""
@@ -1047,7 +1049,7 @@ class TypeDeclParser(object):
   def p_type_tuple(self, p):
     # Used for function types, e.g.  # Callable[[args...], return]
     """type : LBRACKET type_list RBRACKET"""
-    p[0] = pytd.GenericType(pytd.NamedType('tuple'), tuple(p[2]))
+    p[0] = pytd.GenericType(pytd.NamedType("tuple"), tuple(p[2]))
 
   def p_type_list_1(self, p):
     """type_list : type """
@@ -1080,14 +1082,14 @@ class TypeDeclParser(object):
   def p_type_homogeneous(self, p):
     """type : named_or_external_type LBRACKET parameters RBRACKET"""
     _, base_type, _, parameters, _ = p
-    if p[1] == pytd.NamedType('Union'):
+    if p[1] == pytd.NamedType("Union"):
       p[0] = pytd.UnionType(parameters)
-    elif p[1] == pytd.NamedType('Optional'):
-      p[0] = pytd.UnionType(parameters[0], pytd.NamedType('None'))
+    elif p[1] == pytd.NamedType("Optional"):
+      p[0] = pytd.UnionType(parameters[0], pytd.NamedType("None"))
     elif len(parameters) == 2 and parameters[-1] is Ellipsis:
       element_type, _ = parameters
       if element_type is Ellipsis:
-        make_syntax_error(self, '[..., ...] not supported', p)
+        make_syntax_error(self, "[..., ...] not supported", p)
       p[0] = pytd.HomogeneousContainerType(base_type=base_type,
                                            parameters=(element_type,))
     else:
@@ -1136,13 +1138,13 @@ class TypeDeclParser(object):
 
   def p_module_name_multi(self, p):
     """module_name : module_name DOT NAME"""
-    p[0] = p[1] + '.' + p[3]
+    p[0] = p[1] + "." + p[3]
 
   def p_error(self, t):
     if t is None:
-      make_syntax_error(self, 'Unexpected EOF', self.lexer.lexer)
+      make_syntax_error(self, "Unexpected EOF", self.lexer.lexer)
     else:
-      make_syntax_error(self, 'Unexpected %r' % t.type, t)
+      make_syntax_error(self, "Unexpected %r" % t.type, t)
 
   def MergeSignatures(self, signatures):
     """Given a list of pytd function signature declarations, group them by name.
@@ -1178,10 +1180,10 @@ class TypeDeclParser(object):
   def VerifyPythonCode(self, name_external):
     for name in name_external:
       if name_external[name][True] > 1:
-        raise make_syntax_error(self, 'Multiple PYTHONCODEs for %s' %
+        raise make_syntax_error(self, "Multiple PYTHONCODEs for %s" %
                                 name, None)
       if name_external[name][True] and name_external[name][False]:
-        raise make_syntax_error(self, 'Mixed pytd and PYTHONCODEs for %s' %
+        raise make_syntax_error(self, "Mixed pytd and PYTHONCODEs for %s" %
                                 name, None)
 
 
@@ -1189,8 +1191,8 @@ def _find_line_and_column(lexpos, src):
   """Determine column and line contents, for pretty-printing."""
   # TODO(pludemann): use regexp to split on r'[\r\n]' (for Windows, old MacOS):
   if lexpos is not None and src is not None:
-    last_line_offset = src.rfind('\n', 0, lexpos) + 1
-    line, _, _ = src[last_line_offset:].partition('\n')
+    last_line_offset = src.rfind("\n", 0, lexpos) + 1
+    line, _, _ = src[last_line_offset:].partition("\n")
     column = lexpos - last_line_offset + 1
     return column, line
   else:
@@ -1214,7 +1216,7 @@ def make_syntax_error(parser_or_tokenizer, msg, p):
     lineno = None
     column, line = None, None
   else:
-    assert False, 'Invalid error data %r' % p
+    assert False, "Invalid error data %r" % p
   raise ParseError(msg, parser_or_tokenizer.filename, lineno, column, line)
 
 
