@@ -32,7 +32,7 @@ class TestASTGeneration(parser_test_base.ParserTest):
       canonical_src = src
     tree = self.Parse(src)
     new_src = pytd.Print(tree)
-    self.AssertSourceEquals(canonical_src, new_src)
+    self.AssertSourceEquals(new_src, canonical_src)
     if check_the_sourcecode:
       self.assertMultiLineEqual(canonical_src.rstrip().lstrip("\n"),
                                 new_src.rstrip().lstrip("\n"))
@@ -288,6 +288,14 @@ class TestASTGeneration(parser_test_base.ParserTest):
     src = textwrap.dedent("""
         StrDict = Dict[str, str]
         def get_listener(x: StrDict) -> StrDict: ...
+        """)
+    self.TestRoundTrip(src, check_the_sourcecode=False)
+
+  def testDefineTrueFalse(self):
+    """Test defining True/False."""
+    src = textwrap.dedent("""
+        True = ...  # type: bool
+        False = ...  # type: bool
         """)
     self.TestRoundTrip(src, check_the_sourcecode=False)
 
@@ -594,6 +602,19 @@ class TestASTGeneration(parser_test_base.ParserTest):
     """).strip()
     expected = "from typing import Union\n\n" + src
     self.TestRoundTrip(src, expected)
+
+  def testBoolConstant(self):
+    """Test abbreviated constant definitions."""
+    src = textwrap.dedent("""
+        a = 0
+        b = True
+        c = False
+        """)
+    self.TestRoundTrip(src, textwrap.dedent("""
+        a = ...  # type: int
+        b = ...  # type: bool
+        c = ...  # type: bool
+    """))
 
   def testBoolConstant(self):
     """Test abbreviated constant definitions."""
