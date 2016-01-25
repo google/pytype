@@ -229,7 +229,7 @@ class PyLexer(object):
     # with '~' or contain a dash, we also allow an escape with backticks.  If
     # you change this, also change parser_constants._BACKTICK_NAME.
     (r"""([a-zA-Z_][a-zA-Z0-9_-]*)|"""
-     r"""(`[a-zA-Z_~][-a-zA-Z0-9_~]*`)""")
+     r"""(`[a-zA-Z_~][-a-zA-Z0-9_]*`)""")
     if t.value[0] == r"`":
       # Permit token names to be enclosed by backticks (``), to allow for names
       # that are keywords in pytd syntax.
@@ -282,8 +282,7 @@ class PyLexer(object):
 
 
 Params = collections.namedtuple("_", ["required", "has_optional"])
-NameAndSig = collections.namedtuple("_", ["name", "signature",
-                                          "decorators", "external_code"])
+NameAndSig = collections.namedtuple("_", ["name", "signature", "external_code"])
 
 
 class Number(collections.namedtuple("Number", ["string"])):
@@ -347,11 +346,11 @@ class InsertTypeParameters(visitors.Visitor):
                                              for p in node.template}))
 
 
-def CheckIsSysPythonInfo(parser, string, p):
-  if string == "sys.version_info":
+def CheckStringIsPython(parser, string, p):
+  if string == "python":
     return
   make_syntax_error(
-      parser, "If conditions can only use \"sys.version_info\": %s" % string, p)
+      parser, "If conditions can only depend on the \"python\" variable", p)
 
 
 class Context(object):
@@ -471,7 +470,7 @@ class TypeDeclParser(object):
                   if count >= 2]
     if duplicates:
       make_syntax_error(
-          self, 'Duplicate top-level identifier(s): ' + ', '.join(duplicates),
+          self, "Duplicate top-level identifier(s): " + ", ".join(duplicates),
           p)
     p[0] = pytd.TypeDeclUnit(name=None,  # replaced later, in Parse
                              constants=tuple(constants),
@@ -530,10 +529,10 @@ class TypeDeclParser(object):
     _, _, dotted_name, _, import_from_list = p
     aliases = []
     for name, new_name in import_from_list:
-      if name != '*':
+      if name != "*":
         t = pytd.ExternalType(name, dotted_name)
         self.aliases[new_name] = t
-        if dotted_name != 'typing':
+        if dotted_name != "typing":
           aliases.append(pytd.Alias(new_name, t))
       else:
         pass  # TODO(kramm): Handle '*' imports in pyi
@@ -593,15 +592,17 @@ class TypeDeclParser(object):
 
   def p_dotted_name(self, p):
     """dotted_name : dotted_name DOT NAME"""
-    p[0] = p[1] + '.' + p[3]
+    p[0] = p[1] + "." + p[3]
 
   def p_alias_or_constant(self, p):
     """alias_or_constant : NAME ASSIGN type"""
     # Other special cases of constant definitions are handled in constantdef,
     # e.g.  p_constantdef_int (for "name = 0")
-    if p[3] in [pytd.NamedType('True'), pytd.NamedType('False')]:
+    if p[3] in [pytd.NamedType("True"), pytd.NamedType("False")]:
+      p[0] = pytd.Constant(p[1], pytd.NamedType("bool"))
+    if p[3] in [pytd.NamedType("True"), pytd.NamedType("False")]:
       # See https://github.com/google/pytype/issues/14
-      p[0] = pytd.Constant(p[1], pytd.NamedType('bool'))
+      p[0] = pytd.Constant(p[1], pytd.NamedType("bool"))
     else:
       self.aliases[p[1]] = p[3]
       p[0] = pytd.Alias(p[1], p[3])
@@ -821,21 +822,11 @@ class TypeDeclParser(object):
     p[0] = []
 
   def p_decorator(self, p):
-    """decorator : AT dotted_name"""
-    name = p[2]
-    if name == "overload":
-      # used for multiple signatures for the same function, discard
-      p[0] = []
-    elif (name in ("staticmethod", "classmethod", "property") or
-          "." in name):
-      # dotted_name decorators need more context to be validated, done in
-      # TryParseSignatureAsProperty
-      p[0] = [name]
-    else:
-      make_syntax_error(self, "Decorator %r not supported" % name, p)
-
-  def p_decorators_0(self, p):
-    """decorators : """
+    # @overload is used for multiple signatures for the same function
+    """decorator : AT NAME"""
+    if p[2] != "overload":
+      make_syntax_error(
+          self, "Decorator %r not supported" % p[2], p)
     p[0] = []
 
   def p_decorators_many(self, p):
@@ -874,14 +865,7 @@ class TypeDeclParser(object):
         make_syntax_error(self, e.message, p)
       if not mutator.successful:
         make_syntax_error(self, "No parameter named %s" % mutator.name, p)
-
-    # TODO(acaceres): if not inside a class, any decorator should be an error
-    if len(decorators) > 1:
-      make_syntax_error(self, "Too many decorators for %s" % name, p)
-
-    p[0] = NameAndSig(name=name, signature=signature,
-                      decorators=tuple(sorted(decorators)),
-                      external_code=False)
+    p[0] = NameAndSig(name=name, signature=signature, external_code=False)
 
   def p_funcdef_code(self, p):
     """funcdef : decorators DEF NAME PYTHONCODE"""
@@ -1014,27 +998,9 @@ class TypeDeclParser(object):
     # type is optional and defaults to "object"
     p[0] = pytd.Parameter(p[1], pytd.NamedType("object"))
 
-  def p_optional_ellipsis(self, p):
-    """optional : ELLIPSIS"""
-    p[0] = pytd.NamedType("object")
-
-  def p_optional_id(self, p):
-    """optional : NAME"""
-    if p[1] == "None":
-      p[0] = pytd.NamedType("NoneType")
-    else:
-      p[0] = pytd.NamedType("object")
-
-  def p_optional_number(self, p):
-    """optional : NUMBER"""
-    if "." in p[1].string:
-      p[0] = pytd.NamedType("float")
-    else:
-      p[0] = pytd.NamedType("int")
-
   def p_param_optional(self, p):
-    """param : NAME ASSIGN optional"""
-    p[0] = pytd.OptionalParameter(p[1], p[3])
+    """param : NAME ASSIGN ELLIPSIS"""
+    p[0] = pytd.OptionalParameter(p[1], pytd.NamedType("object"))
 
   def p_param_and_type(self, p):
     """param : NAME COLON type"""
@@ -1112,7 +1078,7 @@ class TypeDeclParser(object):
 
   def p_type_tuple(self, p):
     # Used for function types, e.g.  # Callable[[args...], return]
-    """type : LBRACKET maybe_type_list RBRACKET"""
+    """type : LBRACKET type_list RBRACKET"""
     p[0] = pytd.GenericType(pytd.NamedType("tuple"), tuple(p[2]))
 
   def p_type_list_1(self, p):
@@ -1154,9 +1120,10 @@ class TypeDeclParser(object):
   def p_type_homogeneous(self, p):
     """type : named_or_external_type LBRACKET parameters RBRACKET"""
     _, base_type, _, parameters, _ = p
-    if p[1] == pytd.ExternalType("Callable", "typing"):
-      # TODO(kramm): Support Callable[[params], ret].
-      p[0] = p[1]
+    if p[1] == pytd.NamedType("Union"):
+      p[0] = pytd.UnionType(parameters)
+    elif p[1] == pytd.NamedType("Optional"):
+      p[0] = pytd.UnionType(parameters[0], pytd.NamedType("None"))
     elif len(parameters) == 2 and parameters[-1] is Ellipsis:
       element_type, _ = parameters
       if element_type is Ellipsis:
@@ -1226,61 +1193,6 @@ class TypeDeclParser(object):
       make_syntax_error(self, "Unexpected EOF", self.lexer.lexer)
     else:
       make_syntax_error(self, "Unexpected %r" % t.type, t)
-
-  def TryParseSignatureAsProperty(self, full_signature):
-    """Given a signature, see if it corresponds to a @property.
-
-    Return whether it's compatible with a @property, and the properties' type
-    if specified in the signature's return value (for @property methods) or
-    argument (for @foo.setter methods).
-
-    Arguments:
-      full_signature: NameAndSig
-
-    Returns:
-      (is_property: bool, property_type: Union[None, NamedType, ...?)].
-    """
-    name, signature, decorators, _ = full_signature
-    # TODO(acaceres): validate full_signature.external_code?
-
-    def MaybePropertyDecorator(dec_string):
-      return "." in dec_string or "property" == dec_string
-
-    if all(not MaybePropertyDecorator(d) for d in decorators):
-      return False, None
-
-    if 1 != len(decorators):
-      make_syntax_error(
-          self, "Can't handle more than one decorator for %s" % name, None)
-
-    decorator = decorators[0]
-    num_params = len(signature.params)
-    property_type = None
-    is_valid = False
-
-    if "property" == decorator:
-      is_valid = (1 == num_params)
-      property_type = signature.return_type
-    elif 1 == decorator.count("."):
-      dec_name, dec_type = decorator.split(".")
-      if "setter" == dec_type and 2 == num_params:
-        is_valid = True
-        property_type = signature.params[1].type
-        if property_type == pytd.NamedType("object"):
-          # default, different from signature.return_type
-          property_type = None
-      elif "deleter" == dec_type:
-        is_valid = (1 == num_params)
-
-      is_valid &= (dec_name == name)
-
-    # Property decorators are the only decorators where we accept dotted-names,
-    # so any other dotted-name uses will throw an error here.
-    if not is_valid:
-      make_syntax_error(
-          self, "Unhandled decorator: %s" % decorator, None)
-
-    return True, property_type
 
   def MergeSignatures(self, signatures):
     """Given a list of pytd function signature declarations, group them by name.
