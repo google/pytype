@@ -444,44 +444,33 @@ class ApplyOptionalArguments(visitors.Visitor):
     return f.Replace(signatures=tuple(new_signatures))
 
 
-class FindCommonSuperClasses(visitors.Visitor):
-  """Find common super classes. Optionally also uses abstract base classes.
+class SuperClassHierarchy(object):
+  """Utility class for optimizations working with superclasses."""
 
-  E.g., this changes
-    def f(x: list or tuple, y: frozenset or set) -> int or float
-  to
-    def f(x: Sequence, y: Set) -> Real
-  """
-
-  def __init__(self, superclasses=None, use_abcs=True):
-    super(FindCommonSuperClasses, self).__init__()
-    self._superclasses = builtins.GetBuiltinsPyTD().Visit(
-        visitors.ExtractSuperClassesByName())
-    self._superclasses.update(superclasses or {})
-    if use_abcs:
-      self._superclasses.update(abc_hierarchy.GetSuperClasses())
+  def __init__(self, superclasses):
+    self._superclasses = superclasses
     self._subclasses = abc_hierarchy.Invert(self._superclasses)
 
-  def _CollectSuperclasses(self, node, collect):
+  def _CollectSuperclasses(self, type_name, collect):
     """Recursively collect super classes for a type.
 
     Arguments:
-      node: A type node.
-      collect: A set(), modified to contain all superclasses.
+      type_name: A string, the type's name.
+      collect: A set() of strings, modified to contain all superclasses.
     """
-    collect.add(node)
-    superclasses = [pytd.NamedType(name)
-                    for name in self._superclasses.get(str(node), [])]
+    collect.add(type_name)
+    superclasses = [name
+                    for name in self._superclasses.get(type_name, [])]
 
     # The superclasses might have superclasses of their own, so recurse.
     for superclass in superclasses:
       self._CollectSuperclasses(superclass, collect)
 
-  def _Expand(self, t):
+  def ExpandSuperClasses(self, t):
     """Generate a list of all (known) superclasses for a type.
 
     Arguments:
-      t: A type. E.g. NamedType("int").
+      t: A type name. E.g. "int".
 
     Returns:
       A set of types. This set includes t as well as all its superclasses. For
@@ -491,11 +480,81 @@ class FindCommonSuperClasses(visitors.Visitor):
     self._CollectSuperclasses(t, superclasses)
     return superclasses
 
-  def _HasSubClassInSet(self, cls, known):
-    """Queries whether a subclass of a type is present in a given set."""
+  def ExpandSubClasses(self, t):
+    """Generate a set of all (known) subclasses for a type.
 
-    return any(pytd.NamedType(sub) in known
-               for sub in self._subclasses[str(cls)])
+    Arguments:
+      t: A type. E.g. NamedType("int").
+
+    Returns:
+      A set of types. This set includes t as well as all its subclasses. For
+      example, this will return "int" and "bool" for "int".
+    """
+    queue = [t]
+    seen = set()
+    while queue:
+      item = queue.pop()
+      if item not in seen:
+        seen.add(item)
+        queue.extend(self._subclasses[item])
+    return seen
+
+  def HasSubClassInSet(self, cls, known):
+    """Queries whether a subclass of a type is present in a given set."""
+    return any(sub in known
+               for sub in self._subclasses[cls])
+
+  def HasSuperClassInSet(self, cls, known):
+    """Queries whether a superclass of a type is present in a given set."""
+    return any(sub in known
+               for sub in self._superclasses[cls])
+
+
+class SimplifyUnionsWithSuperclasses(visitors.Visitor):
+  """Simplify Unions with superclasses.
+
+  E.g., this changes
+    int or bool
+  to
+    int
+  since bool is a subclass of int.
+
+  (Interpreting types as "sets of values", this simplification is sound since
+   A union B = A, if B is a subset of A.)
+  """
+
+  def __init__(self, hierarchy):
+    super(SimplifyUnionsWithSuperclasses, self).__init__()
+    self.hierarchy = hierarchy
+
+  def VisitUnionType(self, union):
+    c = collections.Counter()
+    for t in set(union.type_list):
+      if isinstance(t, pytd.GENERIC_BASE_TYPE):
+        c += collections.Counter(self.hierarchy.ExpandSubClasses(str(t)))
+        # TODO(kramm): Handle GenericType et al
+
+    # Below, c[str[t]] can be zero - that's the default for non-existent items
+    # in collections.Counter. It'll happen for types that are not
+    # instances of GENERIC_BASE_TYPE, like container types.
+    new_type_list = [t for t in union.type_list
+                     if c[str(t)] <= 1
+                    ]
+    return utils.JoinTypes(new_type_list)
+
+
+class FindCommonSuperClasses(visitors.Visitor):
+  """Find common super classes. Optionally also uses abstract base classes.
+
+  E.g., this changes
+    def f(x: list or tuple, y: frozenset or set) -> int or float
+  to
+    def f(x: Sequence, y: Set) -> Real
+  """
+
+  def __init__(self, hierarchy):
+    super(FindCommonSuperClasses, self).__init__()
+    self.hierarchy = hierarchy
 
   def VisitUnionType(self, union):
     """Given a union type, try to find a simplification by using superclasses.
@@ -510,16 +569,18 @@ class FindCommonSuperClasses(visitors.Visitor):
     Returns:
       A simplified type, if available.
     """
-    intersection = self._Expand(union.type_list[0])
+    intersection = self.hierarchy.ExpandSuperClasses(str(union.type_list[0]))
 
     for t in union.type_list[1:]:
-      intersection.intersection_update(self._Expand(t))
+      intersection.intersection_update(
+          self.hierarchy.ExpandSuperClasses(str(t)))
 
     # Remove "redundant" superclasses, by removing everything from the tree
     # that's not a leaf. I.e., we don't need "object" if we have more
     # specialized types.
-    new_type_list = tuple(cls for cls in intersection
-                          if not self._HasSubClassInSet(cls, intersection))
+    new_type_list = tuple(
+        cls for cls in intersection
+        if not self.hierarchy.HasSubClassInSet(cls, intersection))
 
     return utils.JoinTypes(new_type_list)
 
@@ -1068,10 +1129,17 @@ def Optimize(node,
   node = node.Visit(Factorize())
   node = node.Visit(ApplyOptionalArguments())
   node = node.Visit(CombineContainers())
+  superclasses = builtins.GetBuiltinsPyTD().Visit(
+      visitors.ExtractSuperClassesByName())
+  superclasses.update(node.Visit(
+      visitors.ExtractSuperClassesByName()))
+  if use_abcs:
+    superclasses.update(abc_hierarchy.GetSuperClasses())
+  hierarchy = SuperClassHierarchy(superclasses)
+  node = node.Visit(SimplifyUnionsWithSuperclasses(hierarchy))
   if lossy:
-    hierarchy = node.Visit(visitors.ExtractSuperClassesByName())
     node = node.Visit(
-        FindCommonSuperClasses(hierarchy, use_abcs)
+        FindCommonSuperClasses(hierarchy)
     )
   if max_union:
     node = node.Visit(CollapseLongParameterUnions(max_union))

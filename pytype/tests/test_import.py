@@ -445,7 +445,7 @@ class ImportTest(test_inference.InferenceTest):
       """, deep=True, solve_unknowns=True, pythonpath=[d.path]) as ty:
         self.assertTypesMatchPytd(ty, """
           path = ...  # type: module
-          def my_foo(x:bool or int) -> str
+          def my_foo(x:int) -> str
         """)
 
   def testFileImport2(self):
@@ -462,7 +462,7 @@ class ImportTest(test_inference.InferenceTest):
       """, deep=True, solve_unknowns=True, pythonpath=[d.path]) as ty:
         self.assertTypesMatchPytd(ty, """
           module = ...  # type: module
-          def my_foo(x:bool or int) -> str
+          def my_foo(x:int) -> str
         """)
 
   def testSolveForImported(self):

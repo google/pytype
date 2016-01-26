@@ -80,7 +80,7 @@ class OperatorsWithAnyTests(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=True, extract_locals=True) as ty:
       self.assertTypesMatchPytd(ty, """
         # TODO(pludemann): bool should be removed (by either solver (if __builtin__ changes or optimizer)
-        def t_testPow1(x: bool or complex or float or int or long, y: bool or complex or float or int or long) -> bool or complex or float or int or long
+        def t_testPow1(x: complex or float or int or long, y: complex or float or int or long) -> complex or float or int or long
       """)
 
   def testIsinstance1(self):

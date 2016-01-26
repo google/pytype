@@ -40,7 +40,7 @@ class PYITest(test_inference.InferenceTest):
       """, deep=True, solve_unknowns=True, pythonpath=[d.path]) as ty:
         self.assertTypesMatchPytd(ty, """
           mod = ...  # type: module
-          def g(x: bool or int) -> str
+          def g(x: int) -> str
         """)
 
   def testTyping(self):

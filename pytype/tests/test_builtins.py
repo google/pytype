@@ -91,7 +91,7 @@ class BuiltinTests(test_inference.InferenceTest):
         return pow(x, y)
     """, deep=True, solve_unknowns=True, extract_locals=True) as ty:
       self.assertTypesMatchPytd(ty, """
-        def t_testPow2(x: bool or complex or float or int or long, y: bool or complex or float or int or long) -> bool or complex or float or int or long
+        def t_testPow2(x: complex or float or int or long, y: complex or float or int or long) -> complex or float or int or long
       """)
 
   def testMax1(self):
@@ -181,7 +181,7 @@ class BuiltinTests(test_inference.InferenceTest):
         return mydict.get("42", False)
     """, deep=True, solve_unknowns=True, extract_locals=True) as ty:
       self.assertTypesMatchPytd(ty, """
-        def f() -> int or bool
+        def f() -> int
       """)
 
   def testListInit0(self):
@@ -211,9 +211,9 @@ class BuiltinTests(test_inference.InferenceTest):
     print z + 1
     """, deep=False, solve_unknowns=True, reverse_operators=False) as ty:
       self.assertTypesMatchPytd(ty, """
-        z = ...  # type: bool or complex or float or int or long
+        z = ...  # type: complex or float or int or long
 
-        def t_testListInit2(x: object, i: bool or complex or float or int or long) -> ?
+        def t_testListInit2(x: object, i: complex or float or int or long) -> ?
       """)
 
   def testListInit3(self):
@@ -261,7 +261,7 @@ class BuiltinTests(test_inference.InferenceTest):
       t_testAbs(__any_object__)
     """, deep=False, solve_unknowns=True, extract_locals=True) as ty:
       self.assertTypesMatchPytd(ty, """
-        def t_testAbs(x: bool or complex or float or int or long) -> bool or float or int or long
+        def t_testAbs(x: complex or float or int or long) -> float or int or long
       """)
 
   def testCmp(self):
@@ -609,8 +609,8 @@ class BuiltinTests(test_inference.InferenceTest):
         return divmod(3, y)
     """, deep=True, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
-        def f(x: bool or int or float or complex or long,
-              y: bool or int or float or complex or long) -> Tuple[int or float or complex or long, ...]
+        def f(x: int or float or complex or long,
+              y: int or float or complex or long) -> Tuple[int or float or complex or long, ...]
       """)
 
   def testDefaultDict(self):

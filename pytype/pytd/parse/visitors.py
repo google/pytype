@@ -670,7 +670,10 @@ class ExtractSuperClassesByName(Visitor):
     return result
 
   def VisitClass(self, cls):
-    return (cls.name, [parent.name for parent in cls.parents])
+    return (cls.name, [
+        parent.name for parent in cls.parents
+        if isinstance(parent, pytd.GENERIC_BASE_TYPE)
+    ])
 
 
 class ExtractSuperClasses(Visitor):

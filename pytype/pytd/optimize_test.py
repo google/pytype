@@ -254,22 +254,6 @@ class TestOptimize(parser_test.ParserTest):
     new_src = self.ApplyVisitorToString(src, optimize.ApplyOptionalArguments())
     self.AssertSourceEquals(new_src, expected)
 
-  @unittest.skip("Collision between abc.py and typing.py")
-  def testABCSuperClasses(self):
-    src = textwrap.dedent("""
-        def f(x: list or tuple, y: frozenset or set) -> int or float
-        def g(x: dict or Mapping, y: complex or int) -> set or dict or tuple or Container
-        def h(x) -> ?
-    """)
-    expected = textwrap.dedent("""
-        def f(x: Sequence, y: Set) -> Real
-        def g(x: Mapping, y: Complex) -> Container
-        def h(x) -> ?
-    """)
-    visitor = optimize.FindCommonSuperClasses(use_abcs=True)
-    new_src = self.ApplyVisitorToString(src, visitor)
-    self.AssertSourceEquals(new_src, expected)
-
   def testBuiltinSuperClasses(self):
     src = textwrap.dedent("""
         def f(x: list or object, y: int or float) -> int or bool
@@ -277,7 +261,10 @@ class TestOptimize(parser_test.ParserTest):
     expected = textwrap.dedent("""
         def f(x, y) -> int
     """)
-    visitor = optimize.FindCommonSuperClasses(use_abcs=False)
+    hierarchy = builtins.GetBuiltinsPyTD().Visit(
+        visitors.ExtractSuperClassesByName())
+    visitor = optimize.FindCommonSuperClasses(
+        optimize.SuperClassHierarchy(hierarchy))
     new_src = self.ApplyVisitorToString(src, visitor)
     self.AssertSourceEquals(new_src, expected)
 
@@ -317,8 +304,28 @@ class TestOptimize(parser_test.ParserTest):
         def h(x) -> ?
     """) + class_data
 
-    hierarchy = self.Parse(src).Visit(visitors.ExtractSuperClassesByName())
-    visitor = optimize.FindCommonSuperClasses(hierarchy, use_abcs=False)
+    hierarchy = self.Parse(src).Visit(
+        visitors.ExtractSuperClassesByName())
+    visitor = optimize.FindCommonSuperClasses(
+        optimize.SuperClassHierarchy(hierarchy))
+    new_src = self.ApplyVisitorToString(src, visitor)
+    self.AssertSourceEquals(new_src, expected)
+
+  def testSimplifyUnionsWithSuperclasses(self):
+    src = textwrap.dedent("""
+        x = ...  # type: int or bool
+        y = ...  # type: int or bool or float
+        z = ...  # type: list[int] or int
+    """)
+    expected = textwrap.dedent("""
+        x = ...  # type: int
+        y = ...  # type: int or float
+        z = ...  # type: list[int] or int
+    """)
+    hierarchy = builtins.GetBuiltinsPyTD().Visit(
+        visitors.ExtractSuperClassesByName())
+    visitor = optimize.SimplifyUnionsWithSuperclasses(
+        optimize.SuperClassHierarchy(hierarchy))
     new_src = self.ApplyVisitorToString(src, visitor)
     self.AssertSourceEquals(new_src, expected)
 

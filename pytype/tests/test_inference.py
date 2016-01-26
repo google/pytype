@@ -184,16 +184,14 @@ class InferenceTest(unittest.TestCase):
     self.intorfloat = pytd.UnionType((self.float, self.int))
     self.intorfloatorstr = pytd.UnionType((self.float, self.int, self.str))
     self.complexorstr = pytd.UnionType((self.complex, self.str))
-    # TODO(pludemann): fix the boolorintor... stuff when __builtins__
-    #                  is modified to exclude bool from the result
     if self.PYTHON_VERSION[0] == 3:
       self.intorfloatorlong = self.intorfloat
       self.intorfloatorlongorcomplex = pytd.UnionType(
           (self.int, self.float, self.complex))
     else:
       self.intorfloatorlong = pytd.UnionType((self.int, self.float, self.long))
-      self.boolorintorfloatorlongorcomplex = pytd.UnionType(
-          (self.bool, self.int, self.float, self.long, self.complex))
+      self.intorfloatorlongorcomplex = pytd.UnionType(
+          (self.int, self.float, self.long, self.complex))
     self.int_tuple = pytd.HomogeneousContainerType(self.tuple, (self.int,))
     self.nothing_tuple = pytd.HomogeneousContainerType(self.tuple,
                                                        (self.nothing,))
