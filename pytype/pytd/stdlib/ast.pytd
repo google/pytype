@@ -5,7 +5,7 @@
 from typing import Any, Tuple, Generator
 
 from _ast import (
-        AST, alias, arguments, boolop, cmpop, comprehension,
+        AST, alias, arguments, boolop, cmpop, comprehension, excepthandler,
         expr, expr_context, keyword, mod, operator, stmt, unaryop, Add,
         And, Assert, Assign, Attribute, AugAssign, AugLoad, AugStore, BinOp,
         BitAnd, BitOr, BitXor, BoolOp, Break, Call, ClassDef, Compare, Continue,
