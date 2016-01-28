@@ -16,6 +16,7 @@ from pytype import config
 from pytype import errors
 from pytype import imports_map_loader
 from pytype import infer
+from pytype import utils
 from pytype.pytd import optimize
 from pytype.pytd import pytd
 from pytype.pytd import utils as pytd_utils
@@ -27,6 +28,8 @@ log = logging.getLogger(__name__)
 
 
 def check_pytd(input_filename, output_filename, errorlog, options):
+  if output_filename is None:
+    output_filename = utils.replace_extension(input_filename, ".pyi")
   with open(input_filename, "r") as fi:
     py_src = fi.read()
   with open(output_filename, "r") as fi:
@@ -39,7 +42,6 @@ def check_pytd(input_filename, output_filename, errorlog, options):
       errorlog=errorlog,
       options=options,
       run_builtins=options.run_builtins,
-      import_pytd_ext=options.import_pytd_ext,
       reverse_operators=options.reverse_operators,
       cache_unknowns=options.cache_unknowns,
       maximum_depth=(1 if options.quick else None))

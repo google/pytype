@@ -33,13 +33,15 @@ class Error(object):
 
   def position(self):
     """Return human-readable filename + line number."""
-    if self.opcode.code.co_filename:
+    if self.opcode and self.opcode.code.co_filename:
       filename = os.path.basename(self.opcode.code.co_filename)
       return "File \"%s\", line %d, in %s" % (filename,
                                               self.opcode.line,
                                               self.opcode.code.co_name)
-    else:
+    elif self.opcode:
       return "Line %d, in %s" % (self.opcode.line, self.opcode.code.co_name)
+    else:
+      return ""
 
   def __str__(self):
     pos = self.position() + ":\n  " if self.opcode else ""

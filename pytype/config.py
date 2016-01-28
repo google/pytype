@@ -325,7 +325,9 @@ class Options(object):
       if len(split) != 2:
         if len(split) == 1 and len(self.input_filenames) == 1:
           # special case: For single input, you're allowed to use
-          # pytype infile -o outfile.
+          #   pytype myfile.py -o myfile.pyi
+          # and
+          #   pytype -c myfile.py
           self.src_out.append((item, self.output))
         else:
           raise optparse.OptionValueError("Argument %r is not a pair of non-"

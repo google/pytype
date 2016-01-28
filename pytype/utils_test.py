@@ -30,11 +30,18 @@ class DummyValue(object):
     return "x%d" % self.index
 
 
-class TypegraphUtilsTest(unittest.TestCase):
+class UtilsTest(unittest.TestCase):
 
   def setUp(self):
     self.prog = typegraph.Program()
     self.current_location = self.prog.NewCFGNode()
+
+  def testReplaceExtension(self):
+    self.assertEquals("foo.bar", utils.replace_extension("foo.txt", "bar"))
+    self.assertEquals("foo.bar", utils.replace_extension("foo.txt", ".bar"))
+    self.assertEquals("a.b.c.bar", utils.replace_extension("a.b.c.txt", ".bar"))
+    self.assertEquals("a.b/c.bar", utils.replace_extension("a.b/c.d", ".bar"))
+    self.assertEquals("xyz.bar", utils.replace_extension("xyz", "bar"))
 
   def testVariableProduct(self):
     u1 = self.prog.NewVariable("u1", [1, 2], [], self.current_location)

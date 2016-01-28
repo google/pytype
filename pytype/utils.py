@@ -13,6 +13,14 @@ import types
 from pytype.pytd import pytd
 
 
+def replace_extension(filename, new_extension):
+  name, _ = os.path.splitext(filename)
+  if new_extension.startswith("."):
+    return name + new_extension
+  else:
+    return name + "." + new_extension
+
+
 def variable_product(variables):
   """Take the Cartesian product of a number of Variables.
 

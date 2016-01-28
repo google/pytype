@@ -35,7 +35,7 @@ class TestTypeMatch(unittest.TestCase):
         pass
     """))
 
-  def testUnknown(self):
+  def testAnything(self):
     m = type_match.TypeMatch({})
     eq = m.match_type_against_type(pytd.AnythingType(), pytd.AnythingType(), {})
     self.assertEquals(eq, booleq.TRUE)
