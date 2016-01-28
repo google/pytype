@@ -12,7 +12,6 @@ import os
 
 LOG_LEVELS = [logging.CRITICAL, logging.ERROR, logging.WARNING,
               logging.INFO, logging.DEBUG]
-DEFAULT_PYTD_IMPORT_EXT = ".pytd"
 
 # Export the exception that main.py needs:
 OptParseError = optparse.OptParseError
@@ -42,7 +41,6 @@ class Options(object):
       api
       cache_unknowns
       check
-      import_pytd_ext
       imports_info
       nofail
       optimize
@@ -134,21 +132,6 @@ class Options(object):
               "a directory structure that starts below the root module in "
               "your module names. "
               "This option is incompatible with --imports_info.") % os.pathsep)
-    # TODO(pludemann): delete import_pytd_ext
-    # There may also be input files that end with ".pytd" -- these are PyTD and
-    # are used to supplement function annotations (e.g., for Python2 source) --
-    # they are similar to PEP 484 "stubs" but with a different syntax; and we'll
-    # eventually switch to PEP 484 syntax.
-    o.add_option(
-        "--import_pytd_ext", type="string", action="store",
-        dest="import_pytd_ext",
-        default=None,  # Post-procesed below
-        help=("Extension appended to filename when looking up import PyTD "
-              "files in the pythonpath. This option is incompatible with "
-              "--imports_info. "
-              "(Builtins always use %r and ignore this option.) "
-              "Default is %r.") % (DEFAULT_PYTD_IMPORT_EXT,
-                                   DEFAULT_PYTD_IMPORT_EXT))
     o.add_option(
         "--imports_info", type="string", action="store",
         dest="imports_info", default=None,
@@ -228,11 +211,11 @@ class Options(object):
               "by running pytype on dependencies of the file(s) "
               "being analyzed. That is, if an input .py file has an "
               "'import path.to.foo', and pytype has already been run "
-              "with 'pytype path.to.foo.py -o $OUTDIR/path/to/foo%s', "
+              "with 'pytype path.to.foo.py -o "
+              "$OUTDIR/path/to/foo.pytd', "  # TODO(kramm): Change to .pyi
               "then pytype should be invoked with $OUTDIR in "
               "--pythonpath. This option is incompatible with "
-              "--imports_info.") % (
-                  os.pathsep, DEFAULT_PYTD_IMPORT_EXT))
+              "--imports_info.") % os.pathsep)
     o.add_option(
         "-Z", "--quick", action="store_true",
         dest="quick",
@@ -282,11 +265,6 @@ class Options(object):
       # accordingly.
       self.basic_logging_level = logging.CRITICAL + 1
 
-    if self.import_pytd_ext is None and not self.imports_info:
-      self.import_pytd_ext = DEFAULT_PYTD_IMPORT_EXT
-    else:
-      self.import_pytd_ext = self.import_pytd_ext
-
     # Note that the below gives [""] for "", and ["x", ""] for "x:"
     # ("" is a valid entry to denote the current directory)
     self.pythonpath = self.pythonpath.split(os.pathsep)
@@ -306,9 +284,6 @@ class Options(object):
       if self.pythonpath not in ([], [""]):
         raise optparse.OptionConflictError(
             "Not allowed with --pythonpath", "imports_info")
-      if self.import_pytd_ext:
-        raise optparse.OptionConflictError(
-            "Not allowed with --import_pytd_ext", "imports_info")
 
   def _initialize_filenames_and_output(self):
     """Figure out the input(s) and output(s).

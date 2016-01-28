@@ -32,14 +32,6 @@ class ImportPathsTest(unittest.TestCase):
       ast = loader.import_name("path.to.some.module")
       self.assertTrue(ast.Lookup("path.to.some.module.foo"))
 
-  def testCustomExtension(self):
-    with utils.Tempdir() as d:
-      d.create_file("path/to/some/module.dat", "def foo() -> str")
-      self.options.tweak(pythonpath=[d.path], import_pytd_ext=".dat")
-      loader = load_pytd.Loader("base", self.options)
-      ast = loader.import_name("path.to.some.module")
-      self.assertTrue(ast.Lookup("path.to.some.module.foo"))
-
   def testStripPrefix(self):
     with utils.Tempdir() as d:
       d.create_file("path/to/some/module.pytd", "def foo() -> str")

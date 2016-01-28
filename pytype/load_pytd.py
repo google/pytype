@@ -64,7 +64,6 @@ class Loader(object):
     if self.options.imports_map is not None:
       assert not self.options.import_drop_prefixes
       assert self.options.pythonpath == [""]
-      assert not self.options.import_pytd_ext
     if self.options.import_drop_prefixes:
       assert not self.options.imports_map
 
@@ -256,14 +255,15 @@ class Loader(object):
       The parsed pytd, instance of pytd.TypeDeclUnit, or None if we didn't
       find the module.
     """
-    pytd_path = path + self.options.import_pytd_ext
     if self.options.imports_map is not None:
-      if pytd_path in self.options.imports_map:
-        pytd_path = self.options.imports_map[pytd_path]
+      if path in self.options.imports_map:
+        full_path = self.options.imports_map[path]
       else:
         return None
-    if os.path.isfile(pytd_path):
-      return self._load_file(filename=pytd_path, module_name=module_name)
+    else:
+      full_path = path + ".pytd"  # TODO(kramm): change to .pyi
+    if os.path.isfile(full_path):
+      return self._load_file(filename=full_path, module_name=module_name)
     else:
       return None
 
