@@ -35,8 +35,9 @@ class TestTypeMatch(unittest.TestCase):
         pass
     """))
 
-  def assertMatch(self, m, t1, t2):
-    eq = m.match_type_against_type(t1, t2, {})
+  def testAnything(self):
+    m = type_match.TypeMatch({})
+    eq = m.match_type_against_type(pytd.AnythingType(), pytd.AnythingType(), {})
     self.assertEquals(eq, booleq.TRUE)
 
   def assertNoMatch(self, m, t1, t2):

@@ -94,15 +94,13 @@ class Error(object):
 
   def _position(self):
     """Return human-readable filename + line number."""
-    method = ", in %s" % self._methodname if self._methodname else ""
-
-    if self._filename:
-      filename = os.path.basename(self._filename)
-      return "File \"%s\", line %d%s" % (filename,
-                                         self._lineno,
-                                         method)
-    elif self._lineno:
-      return "Line %d%s" % (self._lineno, method)
+    if self.opcode and self.opcode.code.co_filename:
+      filename = os.path.basename(self.opcode.code.co_filename)
+      return "File \"%s\", line %d, in %s" % (filename,
+                                              self.opcode.line,
+                                              self.opcode.code.co_name)
+    elif self.opcode:
+      return "Line %d, in %s" % (self.opcode.line, self.opcode.code.co_name)
     else:
       return ""
 
