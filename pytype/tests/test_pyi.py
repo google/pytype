@@ -1,5 +1,7 @@
 """Tests for handling PYI code."""
 
+import unittest
+
 
 from pytype import utils
 from pytype.tests import test_inference
@@ -290,6 +292,24 @@ def process_function(func: Callable[..., Any]) -> None: ...
         def g() -> Any
       """)
 
+
+  @unittest.skip("pytd matching needs to understand inheritance")
+  def testClasses(self):
+    with utils.Tempdir() as d:
+      d.create_file("classes.pytd", """
+        class A(object):
+          def foo(self) -> A
+        class B(A):
+          pass
+      """)
+      with self.Infer("""\
+        import classes
+        x = classes.B().foo()
+      """, deep=False, solve_unknowns=False, pythonpath=[d.path]) as ty:
+        self.assertTypesMatchPytd(ty, """
+          classes = ...  # type: module
+          x = ...  # type: int
+        """)
 
 if __name__ == "__main__":
   test_inference.main()
