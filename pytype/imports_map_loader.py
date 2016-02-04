@@ -35,30 +35,24 @@ import textwrap
 log = logging.getLogger(__name__)
 
 
-def _read_imports_map(options_info_path):
-  """Read the imports_map file, fold duplicate entries into a multimap."""
-  if options_info_path is None:
-    return None
-  imports_multimap = collections.defaultdict(set)
-  with open(options_info_path) as fi:
-    for line in fi:
-      line = line.strip()
-      if line:
-        short_path, path = shlex.split(line)
-        short_path, _ = os.path.splitext(short_path)  # drop extension
-        imports_multimap[short_path].add(path)
-  # Sort the multimap. Move items with '#' in the base name, generated for
-  # analysis results via --api, first, so we prefer them over others.
-  return {short_path: sorted(paths, key=os.path.basename)
-          for short_path, paths in imports_multimap.items()}
+# ModulePathAndPyiPath normally has the short and full path for the same file,
+# but sometimes it has two different files (e.g., for a src-out pair).
+class ModulePathAndPyiPath(collections.namedtuple(
+    "ModulePathAndPyiPath", [
+        "short_path",  # The short path as used in the build system
+        "path"         # The full path to the actual file
+        ])):
+  __slots__ = ()
 
+  def __repr__(self):
+    prefix, common, suffix = self.path.rpartition(self.short_path)
+    if not prefix and not suffix:
+      return "[%r]" % common
+    elif not prefix and not common:  # short path isn't in path
+      return "[%r -> %r]" % (self.short_path, self.path)
+    else:
+      return "[%r + %r + %r]" % (prefix, common, suffix)
 
-def _validate_map(imports_map, src_out):
-  """Validate the imports map against the command line arguments.
-
-  Validate the map. Note that main.py has ensured that all output files also
-  exist, in case they're actually used for input, e.g. when there are multiple
-  files being processed.
 
   Args:
     imports_map: The map returned by _read_imports_map.
@@ -144,3 +138,12 @@ def build_imports_map(options_info_path, src_out=None):
         log.warn("Created empty __init__ %r", intermediate_dir_init)
         dir_paths[intermediate_dir_init] = os.devnull
   return dir_paths
+
+
+def _read_pytype_provider_deps_files(options_info_path):
+  """Read file options_info_path, producing pytype_provider_deps_files."""
+  if options_info_path is None:
+    return None
+  with open(options_info_path) as fi:
+    return {ModulePathAndPyiPath(*shlex.split(line.strip()))
+            for line in fi if line.strip()}
