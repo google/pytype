@@ -27,19 +27,17 @@
 
 
 import collections
-import itertools
 import logging
-import operator
 import os
 import shlex
 
 log = logging.getLogger(__name__)
 
 
-# FilePaths normally has the short and full path for the same file, but
-# sometimes it has two different files (e.g., for a src-out pair).
-class FilePaths(collections.namedtuple(
-    "FilePaths", [
+# ModulePathAndPyiPath normally has the short and full path for the same file,
+# but sometimes it has two different files (e.g., for a src-out pair).
+class ModulePathAndPyiPath(collections.namedtuple(
+    "ModulePathAndPyiPath", [
         "short_path",  # The short path as used in the build system
         "path"         # The full path to the actual file
         ])):
@@ -48,10 +46,11 @@ class FilePaths(collections.namedtuple(
   def __repr__(self):
     prefix, common, suffix = self.path.rpartition(self.short_path)
     if not prefix and not suffix:
-      return "FilePaths(%r)" % common
-    if not prefix and not common:  # short path isn't in path
-      return super(FilePaths, self).__repr__()
-    return "FilePaths(%r + %r + %r)" % (prefix, common, suffix)
+      return "[%r]" % common
+    elif not prefix and not common:  # short path isn't in path
+      return "[%r -> %r]" % (self.short_path, self.path)
+    else:
+      return "[%r + %r + %r]" % (prefix, common, suffix)
 
 
 def build_imports_map(options_info_path, src_out):
@@ -143,18 +142,7 @@ def build_imports_map(options_info_path, src_out):
 def _read_pytype_provider_deps_files(options_info_path):
   """Read file options_info_path, producing pytype_provider_deps_files."""
   if options_info_path is None:
-    return  None
-  # Read the imports map file and turn it into a dict(key: list-of-items).
-  # For each line:
-  #   Process using shlex.split, which gives a list of tokens.
-  # Throw away empty lines and sort the list.
-  # Group by the first token in each line(list of tokens)
-  # Transform into a dict, mapping to list of FilePaths.
-  # Extract the "pytype_provider_deps_files", ignoring the rest
-  imports_dict = collections.defaultdict(
-      list,
-      {k: [x[1:] for x in gr] for k, gr in itertools.groupby(
-          sorted(filter(None, map(shlex.split, open(options_info_path)))),
-          operator.itemgetter(0))})
-  return frozenset(
-      FilePaths(*f) for f in imports_dict["pytype_provider_deps_files"])
+    return None
+  with open(options_info_path) as fi:
+    return {ModulePathAndPyiPath(*shlex.split(line.strip()))
+            for line in fi if line.strip()}
