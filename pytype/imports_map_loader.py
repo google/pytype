@@ -34,69 +34,38 @@ import shlex
 log = logging.getLogger(__name__)
 
 
-# ModulePathAndPyiPath normally has the short and full path for the same file,
-# but sometimes it has two different files (e.g., for a src-out pair).
-class ModulePathAndPyiPath(collections.namedtuple(
-    "ModulePathAndPyiPath", [
-        "short_path",  # The short path as used in the build system
-        "path"         # The full path to the actual file
-        ])):
-  __slots__ = ()
-
-  def __repr__(self):
-    prefix, common, suffix = self.path.rpartition(self.short_path)
-    if not prefix and not suffix:
-      return "[%r]" % common
-    elif not prefix and not common:  # short path isn't in path
-      return "[%r -> %r]" % (self.short_path, self.path)
-    else:
-      return "[%r + %r + %r]" % (prefix, common, suffix)
-
-
-def build_imports_map(options_info_path, src_out):
-  """Create a file mapping from a .imports_info file.
-
-  Builds a dict of short_path to full name
-     (e.g. "path/to/file.py" =>
-           "$GENDIR/rulename~~pytype-gen/path_to_file.py~~pytype"
-  Args:
-    options_info_path: The file with the info (may be None, for do-nothing)
-    src_out: The src/output files from the command line. When validating the
-             imports_info, these outputs should *not* exist. (The check is only
-             done if options_Info_path is not None, because other build systems
-             might not ensure that output files are deleted before processing).
-  Returns:
-    Dict of .py short_path to list of .pytd path or None if no options_info_path
-  """
-  pytype_provider_deps_files = _read_pytype_provider_deps_files(
-      options_info_path)
-  # build up a dict of short_path -> list of paths
+def _read_imports_map(options_info_path):
+  """Read the imports_map file, fold duplicate entries into a multimap."""
+  if options_info_path is None:
+    return None
   imports_multimap = collections.defaultdict(set)
-  for short_path, path in pytype_provider_deps_files:
-    path_key, path_ext = os.path.splitext(short_path)
-    # TODO(pludemann): parameterize this check:
-    assert path_ext in (".py", ".pytd"), (path_key, path_ext, short_path)
-    imports_multimap[path_key].add(path)
+  with open(options_info_path) as fi:
+    for line in fi:
+      line = line.strip()
+      if line:
+        short_path, path = shlex.split(line)
+        short_path, _ = os.path.splitext(short_path)  # drop extension
+        imports_multimap[short_path].add(path)
+  # Sort the multimap. Move items with '#' in the base name, generated for
+  # analysis results via --api, first, so we prefer them over others.
+  return {short_path: sorted(paths, key=os.path.basename)
+          for short_path, paths in imports_multimap.items()}
 
-  # Sort the paths (that is, the values in the multimap), so that "#" items are
-  # first (using os.path.basename, because that's where the "#" is
-  # prepended). This is for situations with multiple versions of the annotations
-  # file; we follow the convention that files generated with the --api option
-  # have "#", so that they sort first.  Output warnings for all multiple
-  # mappings and keep the lexicographically first.
-  imports_multimap = {short_path: sorted(paths, key=os.path.basename)
-                      for short_path, paths in imports_multimap.items()}
-  for short_path, paths in imports_multimap.items():
-    if len(paths) > 1:
-      log.warn("Multiple files for %r => %r ignoring %r",
-               short_path, paths[0], paths[1:])
-  # The realpath is only needed for the sanity checks below
-  imports_map = {short_path: os.path.realpath(paths[0])
-                 for short_path, paths in imports_multimap.items()}
 
-  # Validate the map. Note that main.py has ensured that all output files also
-  # exist, in case they're actually used for input, e.g. when there are multiple
-  # files being processed.
+def _validate_map(imports_map, src_out):
+  """Validate the imports map against the command line arguments.
+
+  Validate the map. Note that main.py has ensured that all output files also
+  exist, in case they're actually used for input, e.g. when there are multiple
+  files being processed.
+
+  Args:
+    imports_map: The map returned by _read_imports_map.
+    src_out: The command line arguments - pairs of file, as specified on the
+      command line as "src:out".
+  Raises:
+    AssertionError: If we found an error in the imports map.
+  """
   # TODO(pludemann): the tests depend on os.path.realpath being canonical
   #                  and for os.path.samefile(path1, path2) being equivalent
   #                  to os.path.realpath(path1) == os.path.realpath(path2)
@@ -115,7 +84,38 @@ def build_imports_map(options_info_path, src_out):
       for dirpath, _, files in os.walk(".", followlinks=False):
         logging.error("... dir %r: %r", dirpath, files)
       log.error("end tree walk of files from '.'")
-      raise
+      raise AssertionError("bad import map")
+
+
+def build_imports_map(options_info_path, src_out=None):
+  """Create a file mapping from a .imports_info file.
+
+  Builds a dict of short_path to full name
+     (e.g. "path/to/file.py" =>
+           "$GENDIR/rulename~~pytype-gen/path_to_file.py~~pytype"
+  Args:
+    options_info_path: The file with the info (may be None, for do-nothing)
+    src_out: The src/output files from the command line. When validating the
+             imports_info, these outputs should *not* exist. (The check is only
+             done if options_Info_path is not None, because other build systems
+             might not ensure that output files are deleted before processing).
+  Returns:
+    Dict of .py short_path to list of .pytd path or None if no options_info_path
+  """
+  imports_multimap = _read_imports_map(options_info_path)
+
+  # Output warnings for all multiple
+  # mappings and keep the lexicographically first.
+  for short_path, paths in imports_multimap.items():
+    if len(paths) > 1:
+      log.warn("Multiple files for %r => %r ignoring %r",
+               short_path, paths[0], paths[1:])
+  # The realpath is only needed for the sanity checks below
+  imports_map = {short_path: os.path.realpath(paths[0])
+                 for short_path, paths in imports_multimap.items()}
+
+  if src_out is not None:
+    _validate_map(imports_multimap, src_out)
 
   # Add the potential directory nodes for adding "__init__", because some build
   # systems automatically create __init__.py in empty directories. These are
@@ -137,12 +137,3 @@ def build_imports_map(options_info_path, src_out):
         log.warn("Created empty __init__ %r", intermediate_dir_init)
         dir_paths[intermediate_dir_init] = os.devnull
   return dir_paths
-
-
-def _read_pytype_provider_deps_files(options_info_path):
-  """Read file options_info_path, producing pytype_provider_deps_files."""
-  if options_info_path is None:
-    return None
-  with open(options_info_path) as fi:
-    return {ModulePathAndPyiPath(*shlex.split(line.strip()))
-            for line in fi if line.strip()}

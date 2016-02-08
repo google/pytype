@@ -380,7 +380,8 @@ class InferenceTest(unittest.TestCase):
                  extra_verbose=extra_verbose, report_errors=report_errors,
                  **kwargs)
 
-  def _InferAndVerify(self, src, pythonpath=(), report_errors=False, **kwargs):
+  def _InferAndVerify(self, src, pythonpath=(), imports_map=None,
+                      report_errors=False, **kwargs):
     """Infer types for the source code treating it as a module.
 
     Used by class Infer (which sets up a 'with' framework)
@@ -388,6 +389,7 @@ class InferenceTest(unittest.TestCase):
     Args:
       src: The source code of a module. Treat it as "__main__".
       pythonpath: --pythonpath as list/tuple of string
+      imports_map: --imports_info data
       report_errors: Whether to fail if the type inferencer reports any errors
         in the program.
       **kwargs: Keyword paramters to pass through to the type inferencer.
@@ -397,7 +399,7 @@ class InferenceTest(unittest.TestCase):
     Returns:
       A pytd.TypeDeclUnit
     """
-    self.options.tweak(pythonpath=pythonpath)
+    self.options.tweak(pythonpath=pythonpath, imports_map=imports_map)
     unit = infer.infer_types(src, self.errorlog, self.options, **kwargs)
     unit = pytd_utils.CanonicalOrdering(unit.Visit(visitors.VerifyVisitor()))
     if report_errors and self.errorlog:
