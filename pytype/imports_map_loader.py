@@ -77,15 +77,16 @@ def _validate_map(imports_map, src_out):
       log.error("output file %r (from processing %r) already exists; "
                 "will be overwritten",
                 path, cmd_line_outputs[path])
-  for short_path, path in imports_map.items():
-    if not os.path.exists(path) and path not in cmd_line_outputs:
-      log.error("imports_map file does not exist: %r (mapped from %r)",
-                path, short_path)
-      log.error("tree walk of files from '.' (%r):", os.path.abspath("."))
-      for dirpath, _, files in os.walk(".", followlinks=False):
-        logging.error("... dir %r: %r", dirpath, files)
-      log.error("end tree walk of files from '.'")
-      raise AssertionError("bad import map")
+  for short_path, paths in imports_map.items():
+    for path in paths:
+      if not os.path.exists(path) and path not in cmd_line_outputs:
+        log.error("imports_map file does not exist: %r (mapped from %r)",
+                  path, short_path)
+        log.error("tree walk of files from '.' (%r):", os.path.abspath("."))
+        for dirpath, _, files in os.walk(".", followlinks=False):
+          logging.error("... dir %r: %r", dirpath, files)
+        log.error("end tree walk of files from '.'")
+        raise AssertionError("bad import map")
 
 
 def build_imports_map(options_info_path, src_out=None):
