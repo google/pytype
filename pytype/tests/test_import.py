@@ -774,6 +774,24 @@ class ImportTest(test_inference.InferenceTest):
           y = ...  # type: float
         """)
 
+  def testImportMap(self):
+    with utils.Tempdir() as d:
+      foo_filename = d.create_file("foo.pytd", """
+          bar = ...  # type: int
+      """)
+      imports_map_filename = d.create_file("imports_map.txt", """
+          foo %s
+      """ % foo_filename)
+      imports_map = imports_map_loader.build_imports_map(
+          imports_map_filename)
+      with self.Infer("""\
+        from foo import bar
+      """, deep=False, solve_unknowns=False, imports_map=imports_map,
+                      pythonpath=[""]) as ty:
+        self.assertTypesMatchPytd(ty, """
+          bar = ...  # type: int
+        """)
+
 
 if __name__ == "__main__":
   test_inference.main()

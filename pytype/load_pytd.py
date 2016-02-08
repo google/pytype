@@ -236,7 +236,7 @@ class Loader(object):
                 module_name, module_name_split, self.options.pythonpath,
                 "%d items" % len(self.options.imports_map) if
                 self.options.imports_map else "none")
-    if log.isEnabledFor(logging.DEBUG) and self.options.imports_map:
+    if log.isEnabledFor(logging.DEBUG):
       for module, path in self.options.imports_map.items():
         log.debug("%s -> %s", module, path)
     return None

@@ -267,25 +267,19 @@ class InferenceTest(unittest.TestCase):
         errorlog.print_to_stderr()
         raise AssertionError("Found regexp %r in errors" % regexp)
 
-  def Infer(self, srccode, pythonpath=(), deep=False, solve_unknowns=False,
-            extract_locals=False, report_errors=True, **kwargs):
-    types = self._InferAndVerify(
-        textwrap.dedent(srccode), pythonpath=pythonpath, deep=deep,
-        cache_unknowns=True, solve_unknowns=solve_unknowns,
-        report_errors=report_errors, **kwargs)
-    if extract_locals:
-      # Rename "~unknown" to "?"
-      types = types.Visit(visitors.RemoveUnknownClasses())
-      # Remove "~list" etc.:
-      types = convert_structural.extract_local(types)
-    types = optimize.Optimize(types, lossy=False, use_abcs=False,
-                              max_union=7, remove_mutable=False)
-    types = pytd_utils.CanonicalOrdering(types)
-    return types
+  def Infer(self, srccode, pythonpath=(),
+            deep=False, solve_unknowns=False,
+            extract_locals=False, extra_verbose=False,
+            report_errors=True, **kwargs):
+    # Wraps Infer object to make it seem less magical
+    # See class Infer for more on the arguments
+    return Infer(self, srccode=srccode, pythonpath=pythonpath, deep=deep,
+                 solve_unknowns=solve_unknowns, extract_locals=extract_locals,
+                 extra_verbose=extra_verbose, report_errors=report_errors,
+                 **kwargs)
 
-  def _InferAndVerify(self, src, pythonpath=(), module_name=None,
-                      imports_map=None, report_errors=False, quick=False,
-                      **kwargs):
+  def _InferAndVerify(self, src, pythonpath=(), imports_map=None,
+                      report_errors=False, **kwargs):
     """Infer types for the source code treating it as a module.
 
     Used by Infer().
@@ -293,7 +287,6 @@ class InferenceTest(unittest.TestCase):
     Args:
       src: The source code of a module. Treat it as "__main__".
       pythonpath: --pythonpath as list/tuple of string
-      module_name: Name of the module we're analyzing. E.g. "foo.bar.mymodule".
       imports_map: --imports_info data
       report_errors: Whether to fail if the type inferencer reports any errors
         in the program.
@@ -305,12 +298,8 @@ class InferenceTest(unittest.TestCase):
     Returns:
       A pytd.TypeDeclUnit
     """
-    self.options.tweak(pythonpath=pythonpath,
-                       module_name=module_name,
-                       imports_map=imports_map,
-                       quick=quick)
-    errorlog = self._InitErrorLog(src)
-    unit = infer.infer_types(src, errorlog, self.options, **kwargs)
+    self.options.tweak(pythonpath=pythonpath, imports_map=imports_map)
+    unit = infer.infer_types(src, self.errorlog, self.options, **kwargs)
     unit = pytd_utils.CanonicalOrdering(unit.Visit(visitors.VerifyVisitor()))
     if report_errors and errorlog.has_error():
       errorlog.print_to_stderr()
