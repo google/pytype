@@ -296,7 +296,7 @@ class Options(object):
 
     self.src_out = []
     for item in self.input_filenames:
-      split = item.split(os.pathsep)
+      split = tuple(item.split(os.pathsep))
       if len(split) != 2:
         if len(split) == 1 and len(self.input_filenames) == 1:
           # special case: For single input, you're allowed to use
