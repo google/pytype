@@ -70,16 +70,24 @@ def _validate_map(imports_map, src_out):
   # TODO(pludemann): the tests depend on os.path.realpath being canonical
   #                  and for os.path.samefile(path1, path2) being equivalent
   #                  to os.path.realpath(path1) == os.path.realpath(path2)
-  cmd_line_outputs = {os.path.realpath(output_filename): input_filename
-                      for input_filename, output_filename in src_out}
-  for path in cmd_line_outputs:
-    if os.path.exists(path):
+  # The imports_map contains mappings from already existing .pyi files and also
+  # the input command line. We want to ensure that these all exist and, in the
+  # case of stuff on the input command line, that it be effectively empty
+  # (pytype should fill this, but in the case of 2-pass processing, the first
+  # pass should find an empty file). So, make sure there's something there first.
+  for input, output in src_out:
+    if os.path.exists(output):
       log.error("output file %r (from processing %r) already exists; "
                 "will be overwritten",
-                path, cmd_line_outputs[path])
+                os.path.realpath(output), input)
+    with open(output, "w") as fi:
+      fi.write("# If you see this message, it means pytype hasn't properly "
+               "processed %r to %r\n" % (input, output))
+
+  # Now, validate the imports_map.
   for short_path, paths in imports_map.items():
     for path in paths:
-      if not os.path.exists(path) and path not in cmd_line_outputs:
+      if not os.path.exists(path):
         log.error("imports_map file does not exist: %r (mapped from %r)",
                   path, short_path)
         log.error("tree walk of files from '.' (%r):", os.path.abspath("."))
