@@ -516,6 +516,15 @@ class TestIt(test_inference.InferenceTest):
       assert(foobar)
       """)
 
+  def test_delete_global(self):
+    # TODO(kramm): Also test that a is inaccessible after f() has run.
+    self.assertNoErrors("""\
+      a = 3
+      def f():
+        global a
+        del a
+      """)
+
 
 class TestPrinting(test_inference.InferenceTest):
 

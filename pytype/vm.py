@@ -1156,6 +1156,11 @@ class VirtualMachine(object):
     log.warning("Local variable removal does not actually do "
                 "anything in the abstract interpreter")
 
+  def del_global(self, name):
+    """Called when a global is deleted."""
+    log.warning("Global variable removal does not actually do "
+                "anything in the abstract interpreter")
+
   def _retrieve_attr(self, node, obj, attr, errors=True):
     """Load an attribute from an object."""
     assert isinstance(obj, typegraph.Variable), obj
@@ -1565,6 +1570,10 @@ class VirtualMachine(object):
     state, value = state.pop()
     state = self.store_global(state, name, value)
     return state
+
+  def byte_DELETE_GLOBAL(self, state, op):
+    name = self.frame.f_code.co_names[op.arg]
+    self.del_global(name)
 
   def byte_LOAD_CLOSURE(self, state, op):
     """Used to generate the 'closure' tuple for MAKE_CLOSURE.
