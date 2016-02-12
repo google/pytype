@@ -30,6 +30,7 @@ import collections
 import logging
 import os
 import shlex
+import textwrap
 
 log = logging.getLogger(__name__)
 
@@ -66,24 +67,25 @@ def _validate_map(imports_map, src_out):
   Raises:
     AssertionError: If we found an error in the imports map.
   """
-  # TODO(pludemann): the tests depend on os.path.realpath being canonical
-  #                  and for os.path.samefile(path1, path2) being equivalent
-  #                  to os.path.realpath(path1) == os.path.realpath(path2)
-  # The imports_map contains mappings from already existing .pyi files and also
-  # the input command line. We want to ensure that these all exist and, in the
-  # case of stuff on the input command line, that it be effectively empty
-  # (pytype should fill this, but in the case of 2-pass processing, the first
-  # pass should find an empty file). So, make sure there's something there first.
+  # If pytype is processing multiple files that import each other, during the
+  # first pass, we don't have a .pyi for them yet, even though they might be
+  # mentioned in the imports_map. So fill them with temporary contents.
   for input, output in src_out:
     if os.path.exists(output):
       log.error("output file %r (from processing %r) already exists; "
                 "will be overwritten",
                 os.path.realpath(output), input)
     with open(output, "w") as fi:
-      fi.write("# If you see this message, it means pytype hasn't properly "
-               "processed %r to %r\n" % (input, output))
+      fi.write(textwrap.dedent("""\
+          # If you see this comment, it means pytype hasn't properly
+          # processed %r to %r.
+          def __getattr(name) -> Any: ...
+      """ % (input, output)))
 
   # Now, validate the imports_map.
+  # TODO(pludemann): the tests depend on os.path.realpath being canonical
+  #                  and for os.path.samefile(path1, path2) being equivalent
+  #                  to os.path.realpath(path1) == os.path.realpath(path2)
   for short_path, paths in imports_map.items():
     for path in paths:
       if not os.path.exists(path):

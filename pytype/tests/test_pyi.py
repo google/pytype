@@ -79,5 +79,19 @@ class PYITest(test_inference.InferenceTest):
           x = ...  # type: int
         """)
 
+  def testEmptyModule(self):
+    with utils.Tempdir() as d:
+      d.create_file("vague.pytd", """
+        def __getattr__(name) -> Any
+      """)
+      with self.Infer("""\
+        import vague
+        x = vague.foo + vague.bar
+      """, deep=False, solve_unknowns=False, pythonpath=[d.path]) as ty:
+        self.assertTypesMatchPytd(ty, """
+          vague = ...  # type: module
+          x = ...  # type: Any
+        """)
+
 if __name__ == "__main__":
   test_inference.main()

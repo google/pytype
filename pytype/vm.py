@@ -502,7 +502,7 @@ class VirtualMachine(object):
     if not source_sets:
       source_sets = [[]]
     if isinstance(pytype, pytd.AnythingType):
-      return self.create_new_unknown(node, "?")
+      return self.create_new_unsolvable(node, "?")
     name = pytype.name if hasattr(pytype, "name") else pytype.__class__.__name__
     var = self.program.NewVariable(name)
     for t in pytd_utils.UnpackUnion(pytype):

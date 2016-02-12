@@ -2182,17 +2182,44 @@ class Module(Instance):
         value.module = self.name
     return var
 
+  def has_getattr(self):
+    """Does this module have a module-level __getattr__?
+
+    We allow __getattr__ on the module level to specify that this module doesn't
+    have any contents. The typical syntax is
+      def __getattr__(name) -> Any
+    .
+    See https://www.python.org/dev/peps/pep-0484/#stub-files
+
+    Returns:
+      True if we have __getattr__.
+    """
+    f = self._member_map.get("__getattr__")
+    if f:
+      if isinstance(f, pytd.Function):
+        if len(f.signatures) != 1:
+          log.warning("overloaded module-level __getattr__ (in %s)", self.name)
+        elif f.signatures[0].return_type != pytd.AnythingType():
+          log.warning("module-level __getattr__ doesn't return Any (in %s)",
+                      self.name)
+        return True
+      else:
+        log.warning("__getattr__ in %s is not a function", self.name)
+    return False
+
   def get_attribute(self, node, name, valself=None, valcls=None):
     # Local variables in __init__.py take precedence over submodules.
-    node, val = super(Module, self).get_attribute(node, name, valself, valcls)
-    if val is None:
+    node, var = super(Module, self).get_attribute(node, name, valself, valcls)
+    if var is None:
       full_name = self.name + "." + name
       mod = self.vm.import_module(full_name, 0)  # 0: absolute import
-      if mod is None:
-        log.warning("Couldn't find attribute / module %r", full_name)
+      if mod is not None:
+        var = mod.to_variable(node, name)
+      elif self.has_getattr():
+        var = self.vm.create_new_unsolvable(node, full_name)
       else:
-        val = mod.to_variable(node, name)
-    return node, val
+        log.warning("Couldn't find attribute / module %r", full_name)
+    return node, var
 
   def set_attribute(self, node, name, value):  # pylint: disable=unused-argument
     # Assigning attributes on modules is pretty common. E.g.
