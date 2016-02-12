@@ -1,7 +1,7 @@
 #!/usr/bin/python2.7
 """Tool for inferring types from Python programs.
 
-'pytype' is a tool for generating pytd from Python programs.
+'pytype' is a tool for generating pyi from Python programs.
 
 Usage:
   pytype [flags] file.py
@@ -27,18 +27,18 @@ from pytype.pytd.parse import visitors
 log = logging.getLogger(__name__)
 
 
-def check_pytd(input_filename, output_filename, errorlog, options):
+def check_pyi(input_filename, output_filename, errorlog, options):
   if output_filename is None:
     output_filename = utils.replace_extension(input_filename, ".pyi")
   with open(input_filename, "r") as fi:
     py_src = fi.read()
   with open(output_filename, "r") as fi:
-    pytd_src = fi.read()
+    pyi_src = fi.read()
   infer.check_types(
       py_src,
-      pytd_src,
+      pyi_src,
       py_filename=input_filename,
-      pytd_filename=output_filename,
+      pyi_filename=output_filename,
       errorlog=errorlog,
       options=options,
       run_builtins=options.run_builtins,
@@ -47,7 +47,7 @@ def check_pytd(input_filename, output_filename, errorlog, options):
       maximum_depth=(1 if options.quick else None))
 
 
-def generate_pytd(input_filename, output_filename, errorlog, options):
+def generate_pyi(input_filename, output_filename, errorlog, options):
   """Run the inferencer on one file, producing output.
 
   Args:
@@ -59,7 +59,7 @@ def generate_pytd(input_filename, output_filename, errorlog, options):
     options: config.Options object.
 
   Returns:
-    The pytd AST.
+    The pyi AST.
 
   Raises:
     SystemExit: If we couldn't parse a PYI file.
@@ -105,9 +105,9 @@ def generate_pytd(input_filename, output_filename, errorlog, options):
                               use_abcs=False,
                               max_union=7,
                               remove_mutable=False)
-      log.info("=========== PyTD optimized =============")
+      log.info("=========== pyi optimized =============")
     else:
-      log.info("=========== PyTD =============")
+      log.info("=========== pyi =============")
     mod = pytd_utils.CanonicalOrdering(mod, sort_signatures=True)
     log.info("\n%s", pytd.Print(mod))
     log.info("========================================")
@@ -133,25 +133,43 @@ def generate_pytd(input_filename, output_filename, errorlog, options):
   if output_filename == "-" or not output_filename:
     sys.stdout.write(result)
   else:
-    log.info("write pytd %r => %r", input_filename, output_filename)
+    log.info("write pyi %r => %r", input_filename, output_filename)
     with open(output_filename, "w") as fi:
       fi.write(result)
 
 
-def process_one_file(input_filename, output_filename, options):
-  """Check or generate a .pytd, according to options."""
+def process_one_file(input_filename, output_filename, options,
+                     print_errors=True):
+  """Check or generate a .pyi, according to options.
+
+  Args:
+    input_filename: name of the file to process
+    output_filename: name of the file for writing the output. If this is None,
+                     then the options are used to determine where to write the
+                     output.
+    options: config.Options object.
+    print_errors: whether to print the error log. This does not suppress all
+                  errors (e.g., syntax errors) but is intended to suppress
+                  possibly spurious messages during the first pass if pytype is
+                  doing two passes.
+
+  Returns:
+    An error code (0 means no error).
+
+  """
   errorlog = errors.ErrorLog()
   if options.check:
-    check_pytd(input_filename=input_filename,
-               output_filename=output_filename,
-               errorlog=errorlog,
-               options=options)
+    check_pyi(input_filename=input_filename,
+              output_filename=output_filename,
+              errorlog=errorlog,
+              options=options)
   else:
-    generate_pytd(input_filename=input_filename,
-                  output_filename=output_filename,
-                  errorlog=errorlog,
-                  options=options)
-  errorlog.print_to_stderr()
+    generate_pyi(input_filename=input_filename,
+                 output_filename=output_filename,
+                 errorlog=errorlog,
+                 options=options)
+  if print_errors:
+    errorlog.print_to_stderr()
   return 1 if errorlog else 0  # exit code
 
 
@@ -180,7 +198,7 @@ def main(argv):
         options.imports_info, options.src_out)
 
   # TODO(pludemann): this is a moderately awful hack: it ensures that any
-  #                  multually-dependent generated .pytd files have been
+  #                  multually-dependent generated .pyi files have been
   #                  created, so any further import errors are real import
   #                  errors.
 
@@ -191,7 +209,8 @@ def main(argv):
     options.src_out.sort(reverse=True, key=lambda s: os.path.getsize(s[0]))
     for input_filename, output_filename in options.src_out[1:]:
       log.info("Process [pre-pass] %s => %s", input_filename, output_filename)
-      _ = process_one_file(input_filename, output_filename, options)
+      _ = process_one_file(input_filename, output_filename, options,
+                           print_errors=False)
 
   for input_filename, output_filename in options.src_out:
     log.info("Process %s => %s", input_filename, output_filename)
