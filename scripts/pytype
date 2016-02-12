@@ -29,7 +29,7 @@ from pytype.pytd.parse import visitors
 log = logging.getLogger(__name__)
 
 
-def check_pytd(input_filename, output_filename, errorlog, options):
+def check_pyi(input_filename, output_filename, errorlog, options):
   if output_filename is None:
     output_filename = utils.replace_extension(input_filename, ".pyi")
   with open(input_filename, "r") as fi:
@@ -40,7 +40,7 @@ def check_pytd(input_filename, output_filename, errorlog, options):
       py_src,
       pyi_src,
       py_filename=input_filename,
-      pytd_filename=output_filename,
+      pyi_filename=output_filename,
       errorlog=errorlog,
       options=options,
       run_builtins=options.run_builtins,
@@ -175,35 +175,9 @@ def process_one_file(input_filename, output_filename, options,
                  output_filename=output_filename,
                  errorlog=errorlog,
                  options=options)
-  if options.report_errors:
-    if print_errors:
-      errorlog.print_to_stderr()
-    return 1 if errorlog.has_error() else 0  # exit code
-  else:
-    return 0
-
-
-class _ProfileContext(object):
-  """A context manager for optionally profiling code."""
-
-  def __init__(self, output_path):
-    """Initialize.
-
-    Args:
-      output_path: A pathname for the profiler output.  An empty string
-          indicates that no profiling should be done.
-    """
-    self._output_path = output_path
-    self._profile = cProfile.Profile() if self._output_path else None
-
-  def __enter__(self):
-    if self._profile:
-      self._profile.enable()
-
-  def __exit__(self, exc_type, exc_value, traceback):  # pylint: disable=redefined-outer-name
-    if self._profile:
-      self._profile.disable()
-      self._profile.dump_stats(self._output_path)
+  if print_errors:
+    errorlog.print_to_stderr()
+  return 1 if errorlog else 0  # exit code
 
 
 def main(argv):
