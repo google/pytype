@@ -2731,19 +2731,12 @@ class Module(Instance):
         log.warning("__getattr__ in %s is not a function", self.name)
     return False
 
-  def get_attribute(self, node, name, valself=None, valcls=None,
-                    condition=None):
+  def get_attribute(self, node, name, valself=None, valcls=None):
     # Local variables in __init__.py take precedence over submodules.
-    node, var = super(Module, self).get_attribute(node, name, valself, valcls,
-                                                  condition)
+    node, var = super(Module, self).get_attribute(node, name, valself, valcls)
     if var is None:
       full_name = self.name + "." + name
-      try:
-        mod = self.vm.import_module(full_name, 0)  # 0: absolute import
-      except load_pytd.DependencyNotFoundError:
-        # TODO(kramm): vm.py will now generate an run-of-the-mill import-error.
-        # Should we give the user more specific information about what happened?
-        mod = None
+      mod = self.vm.import_module(full_name, 0)  # 0: absolute import
       if mod is not None:
         var = mod.to_variable(node, name)
       elif self.has_getattr():
