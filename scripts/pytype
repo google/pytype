@@ -40,7 +40,7 @@ def check_pyi(input_filename, output_filename, errorlog, options):
       py_src,
       pyi_src,
       py_filename=input_filename,
-      pyi_filename=output_filename,
+      pytd_filename=output_filename,
       errorlog=errorlog,
       options=options,
       run_builtins=options.run_builtins,
