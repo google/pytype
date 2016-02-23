@@ -237,5 +237,14 @@ class StructuralTest(test_inference.InferenceTest):
       def foo(a: Union[Dict[slice, Union[bytearray, str, unicode]], str, unicode]) -> Union[bytearray, str, unicode]
     """)
 
+  def testSlice(self):
+    with self.Infer("""
+      def foo(a):
+        return a[:10].lower()
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        def foo(a: Union[Dict[slice, Union[bytearray, str, unicode]], str, unicode]) -> Union[bytearray, str, unicode]
+      """)
+
 if __name__ == "__main__":
   test_inference.main()
