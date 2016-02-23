@@ -15,6 +15,9 @@
 
 """Data structures and algorithms for boolean equations."""
 
+# "a += b" looks odd if a is a frozenset:
+# pylint: disable=g-no-augmented-assignment
+
 import collections
 import itertools
 
@@ -42,7 +45,7 @@ class BooleanTerm(object):
     raise NotImplementedError()
 
   # TODO(kramm): "pivot" is probably the wrong name.
-  def extract_pivots(self):
+  def extract_pivots(self, assignments):
     """Find variables that appear in every term.
 
     This searches for variables that appear in all terms of disjunctions, or
@@ -51,9 +54,9 @@ class BooleanTerm(object):
       t = v1 | (t = v2 & (t = v2 | t = v3))
     Here, t can be limited to [v1, v2]. (v3 is impossible.)
 
-    It's possible for this function to return another variable as the value for
-    a given variable. If you don't want that, call simplify() before calling
-    extract_pivots().
+    Args:
+      assignments: The current "upper bound", i.e. all values that are still
+        possible for variables. Used for extracting pivots out of Eq(var, var).
 
     Returns:
       A dictionary mapping strings (variable names) to sets of strings (value
@@ -83,7 +86,7 @@ class TrueValue(BooleanTerm):
   def __str__(self):
     return "TRUE"
 
-  def extract_pivots(self):
+  def extract_pivots(self, assignments):
     return {}
 
   def extract_equalities(self):
@@ -102,7 +105,7 @@ class FalseValue(BooleanTerm):
   def __str__(self):
     return "FALSE"
 
-  def extract_pivots(self):
+  def extract_pivots(self, assignments):
     return {}
 
   def extract_equalities(self):
@@ -172,7 +175,7 @@ class _Eq(BooleanTerm):
     self.right = right
 
   def __repr__(self):
-    return "%s(%r, %r)" % (type(self).__name__, self.left, self.right)
+    return "Eq(%r, %r)" % (self.left, self.right)
 
   def __str__(self):
     return "%s == %s" % (self.left, self.right)
@@ -181,7 +184,7 @@ class _Eq(BooleanTerm):
     return hash((self.left, self.right))
 
   def __eq__(self, other):
-    return (type(self) == type(other) and
+    return (self.__class__ == other.__class__ and
             self.left == other.left and
             self.right == other.right)
 
@@ -204,22 +207,19 @@ class _Eq(BooleanTerm):
       A new BooleanTerm.
     """
     if self.right in assignments:
-      intersection = assignments[self.left] & assignments[self.right]
-      if len(intersection) > 1:
-        return _Or({_And({_Eq(self.left, i), _Eq(self.right, i)})
-                    for i in intersection})
-      elif intersection:
-        value, = intersection
-        return _And({_Eq(self.left, value), _Eq(self.right, value)})
-      else:
-        return FALSE
+      return self
     else:
       return self if self.right in assignments[self.left] else FALSE
 
-  def extract_pivots(self):
+  def extract_pivots(self, assignments):
     """Extract the pivots. See BooleanTerm.extract_pivots()."""
-    return {self.left: frozenset((self.right,)),
-            self.right: frozenset((self.left,))}
+    if self.left in assignments and self.right in assignments:
+      intersection = assignments[self.left] & assignments[self.right]
+      return {self.left: frozenset(intersection),
+              self.right: frozenset(intersection)}
+    else:
+      return {self.left: frozenset((self.right,)),
+              self.right: frozenset((self.left,))}
 
   def extract_equalities(self):
     return ((self.left, self.right),)
@@ -242,13 +242,13 @@ class _And(BooleanTerm):
     self.exprs = exprs
 
   def __eq__(self, other):
-    return type(self) == type(other) and self.exprs == other.exprs
+    return self.__class__ == other.__class__ and self.exprs == other.exprs
 
   def __ne__(self, other):
     return not self == other
 
   def __repr__(self):
-    return "%s%r" % (type(self).__name__, tuple(self.exprs))
+    return "And(%r)" % list(self.exprs)
 
   def __str__(self):
     return "(" + " & ".join(str(t) for t in self.exprs) + ")"
@@ -257,17 +257,17 @@ class _And(BooleanTerm):
     return simplify_exprs((e.simplify(assignments) for e in self.exprs), _And,
                           FALSE, TRUE)
 
-  def extract_pivots(self):
+  def extract_pivots(self, assignments):
     """Extract the pivots. See BooleanTerm.extract_pivots()."""
-    pivots = {}
+    pivots = {}  # dict of frozenset
     for expr in self.exprs:
-      expr_pivots = expr.extract_pivots()
+      expr_pivots = expr.extract_pivots(assignments)
       for name, values in expr_pivots.items():
         if name in pivots:
-          pivots[name] &= values
+          pivots[name] = pivots[name] & values
         else:
           pivots[name] = values
-    return pivots
+    return {var: values for var, values in pivots.items() if values}
 
   def extract_equalities(self):
     return tuple(chain(expr.extract_equalities() for expr in self.exprs))
@@ -290,13 +290,13 @@ class _Or(BooleanTerm):
     self.exprs = exprs
 
   def __eq__(self, other):  # for unit tests
-    return type(self) == type(other) and self.exprs == other.exprs
+    return self.__class__ == other.__class__ and self.exprs == other.exprs
 
   def __ne__(self, other):
     return not self == other
 
   def __repr__(self):
-    return "%s%r" % (type(self).__name__, tuple(self.exprs))
+    return "Or(%r)" % list(self.exprs)
 
   def __str__(self):
     return "(" + " | ".join(str(t) for t in self.exprs) + ")"
@@ -305,25 +305,16 @@ class _Or(BooleanTerm):
     return simplify_exprs((e.simplify(assignments) for e in self.exprs), _Or,
                           TRUE, FALSE)
 
-  def extract_pivots(self):
+  def extract_pivots(self, assignments):
     """Extract the pivots. See BooleanTerm.extract_pivots()."""
-    exprs_iter = iter(self.exprs)
-    pivots_list = [exprs_iter.next().extract_pivots()]
-    # Extract the names that appear in all subexpressions:
-    intersection = frozenset(pivots_list[0])
-    for expr in exprs_iter:
-      p = expr.extract_pivots()
-      intersection = intersection.intersection(p)
-      if not intersection:
-        break
-      pivots_list.append(p)
-    # Now, for each of the above, collect the list of possible values.
-    pivots = {}
-    for pivot in intersection:
-      values = frozenset()
-      for p in pivots_list:
-        values |= p[pivot]
-      pivots[pivot] = values
+    pivots = {}  # dict of frozenset
+    for expr in self.exprs:
+      expr_pivots = expr.extract_pivots(assignments)
+      for name, values in expr_pivots.items():
+        if name in pivots:
+          pivots[name] = pivots[name] | values
+        else:
+          pivots[name] = values
     return pivots
 
   def extract_equalities(self):
@@ -434,6 +425,16 @@ class Solver(object):
     return "%s\n(not shown: %d always FALSE, %d always TRUE)\n" % (
         "\n".join(lines), count_false, count_true)
 
+  def __repr__(self):
+    lines = []
+    for var in self.variables:
+      lines.append("solver.register_variable(%r)" % var)
+    if self.ground_truth is not TRUE:
+      lines.append("solver.always_true(%r)" % (self.ground_truth,))
+    for var, value, implication in self._iter_implications():
+      lines.append("solver.implies(%r, %r)" % (_Eq(var, value), implication))
+    return "\n" + "".join(line + "\n" for line in lines)
+
   def register_variable(self, variable):
     """Register a variable. Call before calling solve()."""
     self.variables.add(variable)
@@ -538,7 +539,8 @@ class Solver(object):
     assignments = {var: self._get_nonfalse_values(var)
                    for var in self.variables}
 
-    ground_pivots = self.ground_truth.simplify(assignments).extract_pivots()
+    ground_pivots = self.ground_truth.simplify(assignments).extract_pivots(
+        assignments)
     for pivot, possible_values in ground_pivots.items():
       if pivot in assignments:
         assignments[pivot] &= set(possible_values)
@@ -546,29 +548,25 @@ class Solver(object):
     something_changed = True
     while something_changed:
       something_changed = False
+
+      and_terms = []
       for var in self.variables:
-        pivot_possible = True
-        terms = []
+        or_terms = []
         for value in assignments[var].copy():
-          implication = self.implications[var][value]
-          if implication is TRUE:
-            pivot_possible = False
-            continue
-          implication = implication.simplify(assignments)
+          implication = self.implications[var][value].simplify(assignments)
           if implication is FALSE:
             # As an example of what kind of code triggers this,
             # see TestBoolEq.testFilter
             assignments[var].remove(value)
             something_changed = True
           else:
-            terms.append(implication)
+            or_terms.append(implication)
           self.implications[var][value] = implication
-        if not pivot_possible:
-          continue
-        d = Or(terms)
-        for pivot, possible_values in d.extract_pivots().items():
-          if pivot not in assignments:
-            continue
+        and_terms.append(Or(or_terms))
+      d = And(and_terms)
+
+      for pivot, possible_values in d.extract_pivots(assignments).items():
+        if pivot in assignments:
           length_before = len(assignments[pivot])
           assignments[pivot] &= set(possible_values)
           length_after = len(assignments[pivot])
