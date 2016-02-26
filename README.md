@@ -30,7 +30,10 @@ class Logger:
 ## How to get started
 ```
 git clone https://github.com/google/pytype.git
+git submodule init
+git submodule update
 python setup.py install
+pip install ply
 pytype your_python_code.py
 ```
 ## How to contribute to the project
