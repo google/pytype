@@ -163,7 +163,7 @@ class Options(object):
     o.add_option(
         "--nofail", action="store_true",
         dest="nofail", default=False,
-        help=("Don't allow pytype to fail."))
+        help=("Don't allow pytype to fail (for testing only)."))
     o.add_option(
         "-O", "--optimize", action="store_true",
         dest="optimize",
@@ -189,7 +189,7 @@ class Options(object):
         "--output_id", type="string", action="store",
         dest="output_id",
         default="",
-        help=("A string that's prepended to the contents of each output PyTD, "
+        help=("A string that's prepended to the contents of each output pyi, "
               "to identify what created it.  If empty (the default), "
               "nothing is prepended."))
     o.add_option(
