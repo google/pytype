@@ -5,12 +5,10 @@ import re
 
 
 from pytype.pytd import typeshed
-from pytype.pytd import utils
 from pytype.pytd.parse import parser_test_base
-import unittest
 
 
-class TestTypeshedLoading(parser_test_base.ParserTest):
+class TestTypeshed(parser_test_base.ParserTest):
   """Test the code for loading files from typeshed."""
 
   def test_get_typeshed_file(self):

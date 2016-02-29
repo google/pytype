@@ -22,7 +22,20 @@ from pytype.pytd.parse import parser_test_base
 
 
 class TestUtils(parser_test_base.ParserTest):
-  """Test pytype.pytd.utils."""
+  """Test the visitors in optimize.py."""
+
+  def testGetPredefinedFileReturnsString(self):
+    # smoke test, only checks that it doesn't throw and the result is a string
+    self.assertIsInstance(
+        utils.GetPredefinedFile("builtins", "__builtin__"),
+        str)
+
+  def testGetPredefinedFileThrows(self):
+    # smoke test, only checks that it does throw
+    with self.assertRaisesRegexp(
+        IOError,
+        r"File not found|Resource not found|No such file or directory"):
+      utils.GetPredefinedFile("builtins", "-this-file-does-not-exist")
 
   def testUnpackUnion(self):
     """Test for UnpackUnion."""
