@@ -19,10 +19,10 @@ import textwrap
 import unittest
 from pytype.pytd import pytd
 from pytype.pytd import utils
-from pytype.pytd.parse import parser_test
+from pytype.pytd.parse import parser_test_base
 
 
-class TestUtils(parser_test.ParserTest):
+class TestUtils(parser_test_base.ParserTest):
   """Test the visitors in optimize.py."""
 
   def testGetPredefinedFileReturnsString(self):

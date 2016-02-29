@@ -70,17 +70,17 @@ def _validate_map(imports_map, src_out):
   # If pytype is processing multiple files that import each other, during the
   # first pass, we don't have a .pyi for them yet, even though they might be
   # mentioned in the imports_map. So fill them with temporary contents.
-  for input, output in src_out:
+  for src, output in src_out:
     if os.path.exists(output):
       log.error("output file %r (from processing %r) already exists; "
                 "will be overwritten",
-                os.path.realpath(output), input)
+                os.path.realpath(output), src)
     with open(output, "w") as fi:
       fi.write(textwrap.dedent("""\
           # If you see this comment, it means pytype hasn't properly
           # processed %r to %r.
           def __getattr(name) -> Any: ...
-      """ % (input, output)))
+      """ % (src, output)))
 
   # Now, validate the imports_map.
   # TODO(pludemann): the tests depend on os.path.realpath being canonical

@@ -1,10 +1,10 @@
 import unittest
 from pytype.pytd import pep484
 from pytype.pytd import pytd
-from pytype.pytd.parse import parser_test
+from pytype.pytd.parse import parser_test_base
 
 
-class TestPEP484(parser_test.ParserTest):
+class TestPEP484(parser_test_base.ParserTest):
   """Test the visitors in optimize.py."""
 
   DEFAULT_PYTHON_VERSION = (2, 7)

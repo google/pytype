@@ -18,16 +18,16 @@ import textwrap
 
 
 from pytype.pytd import pytd
-from pytype.pytd.parse import parser_test
+from pytype.pytd.parse import parser_test_base
 from pytype.pytd.parse import visitors
 import unittest
 
 
 # All of these tests implicitly test pytd.Print because
-# parser_test.AssertSourceEquals() uses pytd.Print.
+# parser_test_base.AssertSourceEquals() uses pytd.Print.
 
 
-class TestVisitors(parser_test.ParserTest):
+class TestVisitors(parser_test_base.ParserTest):
   """Tests the classes in parse/visitors."""
 
   def testLookupClasses(self):

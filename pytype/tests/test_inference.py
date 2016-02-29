@@ -409,7 +409,7 @@ class InferenceTest(unittest.TestCase):
 
   def assertTypesMatchPytd(self, ty, pytd_src, version=None):
     """Parses pytd_src and compares with ty."""
-    # TODO(pludemann): This is a copy of pytd.parse.parser_test.Parse()
+    # TODO(pludemann): This is a copy of pytd.parse.parser_test_base.Parse()
     # TODO(pludemann): Consider using the pytd_tree to call
     #                  assertHasOnlySignatures (or similar) to guard against the
     #                  inferencer adding additional but harmless calls.

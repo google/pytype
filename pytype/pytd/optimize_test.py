@@ -19,12 +19,12 @@ import unittest
 from pytype.pytd import optimize
 from pytype.pytd import pytd
 from pytype.pytd.parse import builtins
-from pytype.pytd.parse import parser_test
+from pytype.pytd.parse import parser_test_base
 from pytype.pytd.parse import visitors
 import unittest
 
 
-class TestOptimize(parser_test.ParserTest):
+class TestOptimize(parser_test_base.ParserTest):
   """Test the visitors in optimize.py."""
 
   def OptimizedString(self, data):

@@ -17,11 +17,11 @@ import textwrap
 from pytype.pytd import pytd
 from pytype.pytd.parse import decorate
 from pytype.pytd.parse import parser
-from pytype.pytd.parse import parser_test
+from pytype.pytd.parse import parser_test_base
 import unittest
 
 
-class TestASTGeneration(parser_test.ParserTest):
+class TestASTGeneration(parser_test_base.ParserTest):
 
   def TestThrowsSyntaxError(self, src):
     self.assertRaises(parser.ParseError, self.parser.Parse, src)

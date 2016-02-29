@@ -5,12 +5,12 @@ import textwrap
 
 from pytype.pytd import transforms
 from pytype.pytd.parse import builtins
-from pytype.pytd.parse import parser_test
+from pytype.pytd.parse import parser_test_base
 from pytype.pytd.parse import visitors
 import unittest
 
 
-class TestTransforms(parser_test.ParserTest):
+class TestTransforms(parser_test_base.ParserTest):
   """Tests the code in transforms.py."""
 
   def ParseWithLookup(self, src):

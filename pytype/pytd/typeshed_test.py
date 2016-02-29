@@ -4,10 +4,10 @@ import unittest
 
 
 from pytype.pytd import typeshed
-from pytype.pytd.parse import parser_test
+from pytype.pytd.parse import parser_test_base
 
 
-class TestTypeshed(parser_test.ParserTest):
+class TestTypeshed(parser_test_base.ParserTest):
   """Test the code for loading files from typeshed."""
 
   def test_get_typeshed_file(self):

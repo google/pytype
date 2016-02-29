@@ -1,8 +1,6 @@
 """Test functions etc, for Byterun."""
 
 
-import unittest
-
 from pytype.tests import test_inference
 
 
