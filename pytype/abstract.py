@@ -1004,7 +1004,7 @@ class Function(Instance):
     return pytd.NamedType("function")
 
   def match_against_type(self, other_type, subst, node, view):
-    if other_type.name in ["function", "object"]:
+    if other_type.name in ["function", "object", "Callable"]:
       return subst
 
 
