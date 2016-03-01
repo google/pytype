@@ -189,11 +189,11 @@ class ImportTest(test_inference.InferenceTest):
       import StringIO
       def f():
         return StringIO.StringIO().isatty()
-    """, deep=True, solve_unknowns=True)
-    self.assertTypesMatchPytd(ty, """
-      StringIO = ...  # type: module
-      def f() -> bool
-    """)
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        StringIO = ...  # type: module
+        def f() -> bool
+      """)
 
   def testImportPytd(self):
     with utils.Tempdir() as d:
