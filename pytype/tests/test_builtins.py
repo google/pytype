@@ -646,5 +646,14 @@ class BuiltinTests(test_inference.InferenceTest):
         r = ...  # type: collections.defaultdict
       """)
 
+  def testImportLib(self):
+    with self.Infer("""
+      import importlib
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        importlib = ...  # type: module
+      """)
+
+
 if __name__ == "__main__":
   test_inference.main()
