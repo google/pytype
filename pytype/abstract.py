@@ -1261,7 +1261,7 @@ class Function(Instance):
   def property_get(self, callself, callcls):
     if not callself or not callcls:
       return self
-    self.is_attribute_of_class = True
+    self.parent_class = callcls.values[0].data
     key = tuple(sorted(callself.data))
     if key not in self._bound_functions_cache:
       self._bound_functions_cache[key] = (self.bound_class)(
@@ -1490,26 +1490,6 @@ class ClassMethod(AtomicAbstractValue):
       return subst
 
 
-class StaticMethod(AtomicAbstractValue):
-  """Implements @staticmethod methods in pyi."""
-
-  def __init__(self, name, method, callself, callcls, vm):
-    super(StaticMethod, self).__init__(name, vm)
-    self.method = method
-    self.callself = callself  # unused
-    self.callcls = callcls  # unused
-    self.signatures = self.method.signatures
-
-  def call(self, *args, **kwargs):
-    return self.method.call(*args, **kwargs)
-
-  def match_against_type(self, other_type, subst, node, view):
-    if other_type.name in ["staticmethod", "object"]:
-      return subst
-    else:
-      return None
-
-
 class PyTDFunction(Function):
   """A PyTD function (name + list of signatures).
 
@@ -1533,7 +1513,7 @@ class PyTDFunction(Function):
 
   def property_get(self, callself, callcls):
     if self.kind == pytd.STATICMETHOD:
-      return StaticMethod(self.name, self, callself, callcls, self.vm)
+      return self
     elif self.kind == pytd.CLASSMETHOD:
       return ClassMethod(self.name, self, callself, callcls, self.vm)
     else:
@@ -1726,11 +1706,11 @@ class Class(object):
     add_origins = []
     variableself = variablecls = None
     if valself:
-      assert isinstance(valself, typegraph.Binding)
+      assert isinstance(valself, typegraph.Value)
       variableself = valself.AssignToNewVariable(valself.variable.name, node)
       add_origins.append(valself)
     if valcls:
-      assert isinstance(valcls, typegraph.Binding)
+      assert isinstance(valcls, typegraph.Value)
       variablecls = valcls.AssignToNewVariable(valcls.variable.name, node)
       add_origins.append(valcls)
 
@@ -1882,9 +1862,12 @@ class PyTDClass(SimpleAbstractValue, Class):
     if isinstance(pyval, pytd.Constant):
       return self.vm.create_pytd_instance(name, pyval.type, {},
                                           self.vm.root_cfg_node)
-    c = self.vm.convert_constant_to_value(repr(pyval), pyval)
-    c.parent = self
-    return c.to_variable(self.vm.root_cfg_node, name)
+    elif isinstance(pyval, pytd.Function):
+      c = self.vm.convert_constant_to_value(repr(pyval), pyval)
+      c.parent = self
+      return c.to_variable(self.vm.root_cfg_node, name)
+    else:
+      raise AssertionError("Invalid class member %s", pytd.Print(pyval))
 
   def call(self, node, func, posargs, namedargs,
            starargs=None, starstarargs=None):

@@ -282,7 +282,8 @@ class PyLexer(object):
 
 
 Params = collections.namedtuple("_", ["required", "has_optional"])
-NameAndSig = collections.namedtuple("_", ["name", "signature", "external_code"])
+NameAndSig = collections.namedtuple("_", ["name", "signature",
+                                          "decorators", "external_code"])
 
 
 class Number(collections.namedtuple("Number", ["string"])):
@@ -507,7 +508,7 @@ class TypeDeclParser(object):
     p[0] = p[1] + [p[2]]
 
   def p_alldefs_decorator(self, p):
-    """alldefs : alldefs decorator"""
+    """alldefs : alldefs overload"""
     p[0] = p[1] + p[2]
 
   def p_alldefs_null(self, p):
@@ -821,12 +822,25 @@ class TypeDeclParser(object):
           self, "Illegal redefine of TypeVar(%r) from outer scope" % p[1], p)
     p[0] = []
 
-  def p_decorator(self, p):
+  def p_overload(self, p):
     # @overload is used for multiple signatures for the same function
-    """decorator : AT NAME"""
+    """overload : AT NAME"""
     if p[2] != "overload":
-      make_syntax_error(
-          self, "Decorator %r not supported" % p[2], p)
+      make_syntax_error(self, " %r not supported on module level" % p[2], p)
+    p[0] = []
+
+  def p_decorator(self, p):
+    """decorator : AT NAME"""
+    if p[2] == "overload":
+      p[0] = []
+    else:
+      if p[2] not in ("overload", "staticmethod", "classmethod"):
+        make_syntax_error(
+            self, "Decorator %r not supported" % p[2], p)
+      p[0] = [p[2]]
+
+  def p_decorators_0(self, p):
+    """decorators : """
     p[0] = []
 
   def p_decorators_many(self, p):
@@ -836,8 +850,6 @@ class TypeDeclParser(object):
   def p_funcdef(self, p):
     """funcdef : decorators DEF NAME LPAREN params RPAREN return raises signature maybe_body"""
     _, decorators, _, name, _, params, _, return_type, raises, _, body = p
-    # needed e.g. for warnings.pyi
-    self.aliases[name] = pytd.NamedType("function")
     # TODO(kramm): Output a warning if we already encountered a signature
     #              with these types (but potentially different argument names)
     if name == "__init__" and isinstance(return_type, pytd.AnythingType):
@@ -865,7 +877,13 @@ class TypeDeclParser(object):
         make_syntax_error(self, e.message, p)
       if not mutator.successful:
         make_syntax_error(self, "No parameter named %s" % mutator.name, p)
-    p[0] = NameAndSig(name=name, signature=signature, external_code=False)
+
+    if len(decorators) > 1:
+      make_syntax_error(self, "Too many decorators for %s" % name, p)
+
+    p[0] = NameAndSig(name=name, signature=signature,
+                      decorators=tuple(sorted(decorators)),
+                      external_code=False)
 
   def p_funcdef_code(self, p):
     """funcdef : decorators DEF NAME PYTHONCODE"""
@@ -1227,22 +1245,15 @@ class TypeDeclParser(object):
     name_external = collections.defaultdict(lambda: {False: 0, True: 0})
 
     name_to_decorators = {}
-    for name, signature, decorators, external_code in method_signatures:
-      if name in name_to_property_type:
-        make_syntax_error(
-            self, "Incompatible signatures for %s" % name,
-            None)
-
+    for name, signature, decorators, external_code in signatures:
       if name not in name_to_signatures:
         name_to_signatures[name] = []
         name_to_decorators[name] = decorators
-
+      name_to_signatures[name].append(signature)
       if name_to_decorators[name] != decorators:
-        make_syntax_error(
+        self.make_syntax_error(
             self, "Overloaded signatures for %s disagree on decorators" % name,
             None)
-
-      name_to_signatures[name].append(signature)
       name_external[name][external_code] += 1
 
     self.VerifyPythonCode(name_external)
@@ -1255,17 +1266,10 @@ class TypeDeclParser(object):
       if "staticmethod" in decorators:
         kind = pytd.STATICMETHOD
       if name_external[name][True]:
-        methods.append(pytd.ExternalFunction(name, (), kind))
+        ret.append(pytd.ExternalFunction(name, (), kind))
       else:
-        methods.append(pytd.Function(name, tuple(signatures), kind))
-
-    constants = []
-    for name, property_type in name_to_property_type.items():
-      if not property_type:
-        property_type = pytd.AnythingType()
-      constants.append(pytd.Constant(name, property_type))
-
-    return methods, constants
+        ret.append(pytd.Function(name, tuple(signatures), kind))
+    return ret
 
   def VerifyPythonCode(self, name_external):
     for name in name_external:
