@@ -370,6 +370,20 @@ def process_function(func: Callable[..., Any]) -> None: ...
           u = ...  # type: int
         """)
 
+  def testOptionalParameters(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pytd", """
+        def parse(source, filename = ..., mode = ..., *args, **kwargs) -> int: ...
+      """)
+      with self.Infer("""\
+        import a
+        u = a.parse("True")
+      """, deep=False, solve_unknowns=True, pythonpath=[d.path]) as ty:
+        self.assertTypesMatchPytd(ty, """
+          a = ...  # type: module
+          u = ...  # type: int
+        """)
+
 
 if __name__ == "__main__":
   test_inference.main()
