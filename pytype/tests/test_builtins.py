@@ -654,6 +654,21 @@ class BuiltinTests(test_inference.InferenceTest):
         importlib = ...  # type: module
       """)
 
+  def testSetUnion(self):
+    with self.Infer("""
+      def f(y):
+        return set.union(*y)
+      def g(y):
+        return set.intersection(*y)
+      def h(y):
+        return set.difference(*y)
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        def f(y) -> Set[Any]: ...
+        def g(y) -> Set[Any]: ...
+        def h(y) -> Set[Any]: ...
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()

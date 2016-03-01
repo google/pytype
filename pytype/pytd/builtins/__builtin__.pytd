@@ -672,15 +672,19 @@ class set(Generic[T], object):
     def __xor__(self, y: set[T]) -> set[T]
     def clear(self, ...) -> NoneType
     def copy(self, ...) -> set[T]
-    def difference(self, ...) -> set[T]
     def difference_update(self, ...) -> NoneType
-    def intersection(self, ...) -> set[T]
     def intersection_update(self, ...) -> NoneType
     def pop(self) -> T
-    def union(self, ...) -> set[T]
     def update(self, ...) -> NoneType
     def add(self, object: A) -> NoneType:
         self := set[T or A]
+    # Even though these look like methods, they're not:
+    @staticmethod
+    def union(...) -> set[?]
+    @staticmethod
+    def intersection(...) -> set[?]
+    @staticmethod
+    def difference(...) -> set[?]
 
 T = TypeVar('T')
 class frozenset(Generic[T], object):
