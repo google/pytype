@@ -952,7 +952,7 @@ class PullInMethodClasses(visitors.Visitor):
         signatures = c.methods[0].signatures
         self._processed_count[c.name] += 1
         new_methods.append(
-            pytd.Function(const.name, signatures))
+            pytd.Function(const.name, signatures, c.methods[0].kind))
       else:
         new_constants.append(const)  # keep
     cls = cls.Replace(constants=tuple(new_constants),

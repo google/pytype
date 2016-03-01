@@ -280,7 +280,8 @@ class PyLexer(object):
 
 
 Params = collections.namedtuple("_", ["required", "has_optional"])
-NameAndSig = collections.namedtuple("_", ["name", "signature", "external_code"])
+NameAndSig = collections.namedtuple("_", ["name", "signature",
+                                          "decorators", "external_code"])
 
 
 class Number(collections.namedtuple("Number", ["string"])):
@@ -505,7 +506,7 @@ class TypeDeclParser(object):
     p[0] = p[1] + [p[2]]
 
   def p_alldefs_decorator(self, p):
-    """alldefs : alldefs decorator"""
+    """alldefs : alldefs overload"""
     p[0] = p[1] + p[2]
 
   def p_alldefs_null(self, p):
@@ -698,7 +699,7 @@ class TypeDeclParser(object):
       raise make_syntax_error(self, "Duplicate identifier(s)", p)
 
     template_names = {t.name for t in template}
-    for _, sig, _ in methoddefs:
+    for _, sig, _, _ in methoddefs:
       for t in sig.template:
         if t.name in template_names:
           raise make_syntax_error(self, "Duplicate template parameter %s" %
@@ -775,10 +776,6 @@ class TypeDeclParser(object):
     """funcdefs : funcdefs typevardef"""
     p[0] = p[1] + p[2]
 
-  def p_funcdefs_decorator(self, p):
-    """funcdefs : funcdefs decorator"""
-    p[0] = p[1] + p[2]
-
   # TODO(raoulDoc): doesn't support nested functions
   def p_funcdefs_null(self, p):
     """funcdefs :"""
@@ -806,17 +803,34 @@ class TypeDeclParser(object):
           self, "Illegal redefine of TypeVar(%r) from outer scope" % p[1], p)
     p[0] = []
 
-  def p_decorator(self, p):
+  def p_overload(self, p):
     # @overload is used for multiple signatures for the same function
-    """decorator : AT NAME"""
+    """overload : AT NAME"""
     if p[2] != "overload":
-      make_syntax_error(
-          self, "Decorator %r not supported" % p[2], p)
+      make_syntax_error(self, " %r not supported on module level" % p[2], p)
     p[0] = []
 
+  def p_decorator(self, p):
+    """decorator : AT NAME"""
+    if p[2] == "overload":
+      p[0] = []
+    else:
+      if p[2] not in ("overload", "staticmethod", "classmethod"):
+        make_syntax_error(
+            self, "Decorator %r not supported" % p[2], p)
+      p[0] = [p[2]]
+
+  def p_decorators_0(self, p):
+    """decorators : """
+    p[0] = []
+
+  def p_decorators_many(self, p):
+    """decorators : decorators decorator"""
+    p[0] = p[1] + p[2]
+
   def p_funcdef(self, p):
-    """funcdef : DEF NAME LPAREN params RPAREN return raises signature maybe_body"""
-    _, _, name, _, params, _, return_type, raises, _, body = p
+    """funcdef : decorators DEF NAME LPAREN params RPAREN return raises signature maybe_body"""
+    _, decorators, _, name, _, params, _, return_type, raises, _, body = p
     # TODO(kramm): Output a warning if we already encountered a signature
     #              with these types (but potentially different argument names)
     if name == "__init__" and isinstance(return_type, pytd.AnythingType):
@@ -844,12 +858,18 @@ class TypeDeclParser(object):
         make_syntax_error(self, e.message, p)
       if not mutator.successful:
         make_syntax_error(self, "No parameter named %s" % mutator.name, p)
-    p[0] = NameAndSig(name=name, signature=signature, external_code=False)
+
+    if len(decorators) > 1:
+      make_syntax_error(self, "Too many decorators for %s" % name, p)
+
+    p[0] = NameAndSig(name=name, signature=signature,
+                      decorators=tuple(sorted(decorators)),
+                      external_code=False)
 
   def p_funcdef_code(self, p):
-    """funcdef : DEF NAME PYTHONCODE"""
+    """funcdef : decorators DEF NAME PYTHONCODE"""
     # NAME (not: module_name) because PYTHONCODE is always local.
-    _, _, name, _ = p
+    _, _, _, name, _ = p
     p[0] = NameAndSig(
         name=name,
         # signature is for completeness - it's ignored
@@ -858,6 +878,7 @@ class TypeDeclParser(object):
                                  exceptions=(),
                                  template=(),
                                  has_optional=False),
+        decorators=(),
         external_code=True)
 
   def p_empty_body(self, p):
@@ -1163,18 +1184,30 @@ class TypeDeclParser(object):
     # map name to (# external_code is {False,True}):
     name_external = collections.defaultdict(lambda: {False: 0, True: 0})
 
-    for name, signature, external_code in signatures:
+    name_to_decorators = {}
+    for name, signature, decorators, external_code in signatures:
       if name not in name_to_signatures:
         name_to_signatures[name] = []
+        name_to_decorators[name] = decorators
       name_to_signatures[name].append(signature)
+      if name_to_decorators[name] != decorators:
+        self.make_syntax_error(
+            self, "Overloaded signatures for %s disagree on decorators" % name,
+            None)
       name_external[name][external_code] += 1
     self.VerifyPythonCode(name_external)
     ret = []
     for name, signatures in name_to_signatures.items():
+      kind = pytd.METHOD
+      decorators = name_to_decorators[name]
+      if "classmethod" in decorators:
+        kind = pytd.CLASSMETHOD
+      if "staticmethod" in decorators:
+        kind = pytd.STATICMETHOD
       if name_external[name][True]:
-        ret.append(pytd.ExternalFunction(name, ()))
+        ret.append(pytd.ExternalFunction(name, (), kind))
       else:
-        ret.append(pytd.Function(name, tuple(signatures)))
+        ret.append(pytd.Function(name, tuple(signatures), kind))
     return ret
 
   def VerifyPythonCode(self, name_external):

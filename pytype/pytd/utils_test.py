@@ -149,12 +149,12 @@ class TestUtils(parser_test_base.ParserTest):
     s1 = pytd.Signature((), pytd.NothingType(), (), (), False)
     s2 = pytd.Signature((), pytd.AnythingType(), (), (), False)
     self.assertTrue(MyTypeMatcher().match(
-        pytd.Function("f1", (s1, s2)),
-        pytd.Function("f2", (s1, s2)),
+        pytd.Function("f1", (s1, s2), pytd.METHOD),
+        pytd.Function("f2", (s1, s2), pytd.METHOD),
         mykeyword="foobar"))
     self.assertFalse(MyTypeMatcher().match(
-        pytd.Function("f1", (s1, s2)),
-        pytd.Function("f2", (s2, s2)),
+        pytd.Function("f1", (s1, s2), pytd.METHOD),
+        pytd.Function("f2", (s2, s2), pytd.METHOD),
         mykeyword="foobar"))
 
   def testRemoveMutableList(self):

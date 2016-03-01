@@ -297,6 +297,17 @@ class TestASTGeneration(parser_test_base.ParserTest):
         """)
     self.TestRoundTrip(src, check_the_sourcecode=False)
 
+  def testOtherDecorators(self):
+    """Test overload decorators."""
+    src = textwrap.dedent("""
+        class A(object):
+            @staticmethod
+            def name() -> str: ...
+            @classmethod
+            def version(cls) -> int: ...
+        """)
+    self.TestRoundTrip(src)
+
   def testRaise(self):
     """Test raise statements."""
     src = textwrap.dedent("""
@@ -808,7 +819,8 @@ class TestASTGeneration(parser_test_base.ParserTest):
                 ),),
             return_type=pytd.NamedType("object"),
             template=(), has_optional=False,
-            exceptions=()),))
+            exceptions=()),),
+        kind=pytd.METHOD)
     self.assertEqual(f, result1.Lookup("foo"))
     self.assertEqual(f, result2.Lookup("foo"))
 

@@ -989,9 +989,9 @@ class Function(Instance):
     return super(Function, self).get_attribute(node, name, valself, valcls)
 
   def property_get(self, callself, callcls):
+    if not callself or not callcls:
+      return self
     self.parent_class = callcls.values[0].data
-    if not callself:
-      raise NotImplementedError()
     key = tuple(sorted(callself.data))
     if key not in self._bound_functions_cache:
       self._bound_functions_cache[key] = (self.bound_class)(callself, self)
@@ -1190,15 +1190,41 @@ class PyTDSignature(object):
     return pytd.Print(self.pytd_sig)
 
 
+class ClassMethod(AtomicAbstractValue):
+  """Implements @classmethod methods in pyi."""
+
+  def __init__(self, name, method, callself, callcls, vm):
+    super(ClassMethod, self).__init__(name, vm)
+    self.method = method
+    self.callself = callself  # unused
+    self.callcls = callcls  # unused
+    self.signatures = self.method.signatures
+
+  def call(self, node, func, posargs, namedargs,
+           starargs=None, starstarargs=None):
+    # Since this only used in pyi, we don't need to verify the type of the "cls"
+    # arg a second time. So just pass an unsolveable. (All we care about is the
+    # return type, anyway.)
+    cls = self.vm.create_new_unsolvable(node, "cls")
+    return self.method.call(node, func,
+                            [cls] + posargs,
+                            namedargs, starargs, starstarargs)
+
+  def match_against_type(self, other_type, subst, node, view):
+    if other_type.name in ["classmethod", "object"]:
+      return subst
+
+
 class PyTDFunction(Function):
   """A PyTD function (name + list of signatures).
 
   This represents (potentially overloaded) functions.
   """
 
-  def __init__(self, name, signatures, vm):
+  def __init__(self, name, signatures, kind, vm):
     super(PyTDFunction, self).__init__(name, vm)
     assert signatures
+    self.kind = kind
     self.bound_class = BoundPyTDFunction
     self.signatures = signatures
     self._signature_cache = {}
@@ -1209,6 +1235,14 @@ class PyTDFunction(Function):
     for sig in signatures:
       sig.function = self
       sig.name = self.name
+
+  def property_get(self, callself, callcls):
+    if self.kind == pytd.STATICMETHOD:
+      return self
+    elif self.kind == pytd.CLASSMETHOD:
+      return ClassMethod(self.name, self, callself, callcls, self.vm)
+    else:
+      return Function.property_get(self, callself, callcls)
 
   def _log_args(self, arg_values_list, level=0):
     if log.isEnabledFor(logging.DEBUG):
@@ -1383,15 +1417,15 @@ class Class(object):
     """Find an identifier in the MRO of the class."""
     ret = self.vm.program.NewVariable(name)
     add_origins = []
-    if valself and valcls:
+    variableself = variablecls = None
+    if valself:
       assert isinstance(valself, typegraph.Value)
-      assert isinstance(valcls, typegraph.Value)
       variableself = valself.AssignToNewVariable(valself.variable.name, node)
-      variablecls = valcls.AssignToNewVariable(valcls.variable.name, node)
       add_origins.append(valself)
+    if valcls:
+      assert isinstance(valcls, typegraph.Value)
+      variablecls = valcls.AssignToNewVariable(valcls.variable.name, node)
       add_origins.append(valcls)
-    else:
-      variableself = variablecls = None
 
     for base in self.mro:
       # Potentially skip start of MRO, for super()
@@ -1402,7 +1436,7 @@ class Class(object):
         continue
       for varval in var.values:
         value = varval.data
-        if variableself and variablecls:
+        if variableself or variablecls:
           value = value.property_get(variableself, variablecls)
         ret.AddValue(value, [varval] + add_origins, node)
       break  # we found a class which has this attribute
@@ -1488,9 +1522,12 @@ class PyTDClass(SimpleAbstractValue, Class):
     if isinstance(pyval, pytd.Constant):
       return self.vm.create_pytd_instance(name, pyval.type, {},
                                           self.vm.root_cfg_node)
-    c = self.vm.convert_constant_to_value(repr(pyval), pyval)
-    c.parent = self
-    return c.to_variable(self.vm.root_cfg_node, name)
+    elif isinstance(pyval, pytd.Function):
+      c = self.vm.convert_constant_to_value(repr(pyval), pyval)
+      c.parent = self
+      return c.to_variable(self.vm.root_cfg_node, name)
+    else:
+      raise AssertionError("Invalid class member %s", pytd.Print(pyval))
 
   def call(self, node, func, posargs, namedargs,
            starargs=None, starstarargs=None):
@@ -2011,11 +2048,12 @@ class InterpreterFunction(Function):
           exceptions=(),  # TODO(kramm): record exceptions
           template=(), has_optional=has_optional))
     if signatures:
-      return pytd.Function(function_name, tuple(signatures))
+      return pytd.Function(function_name, tuple(signatures), pytd.METHOD)
     else:
       # Fallback: Generate a pytd signature only from the definition of the
       # method, not the way it's being used.
-      return pytd.Function(function_name, (self.simple_pytd_signature(),))
+      return pytd.Function(function_name, (self.simple_pytd_signature(),),
+                           pytd.METHOD)
 
   def simple_pytd_signature(self):
     return pytd.Signature(
@@ -2391,7 +2429,7 @@ class Unknown(AtomicAbstractValue):
                        has_optional=False)
         for args, _, ret in self._calls))
     if calls:
-      methods = (pytd.Function("__call__", calls),)
+      methods = (pytd.Function("__call__", calls, pytd.METHOD),)
     else:
       methods = ()
     return pytd.Class(

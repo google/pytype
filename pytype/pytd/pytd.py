@@ -101,10 +101,11 @@ class Class(node.Node('name', 'parents', 'methods', 'constants', 'template')):
 
   Attributes:
     name: Class name (string)
-    parents: The super classes of this class (instances of Type).
-    methods: Tuple of class methods (instances of Function).
-    constants: Tuple of constant class attributes (instances of Constant).
-    template: Tuple of TemplateItem instances.
+    parents: The super classes of this class (instances of pytd.TYPE).
+    methods: Tuple of methods, classmethods, staticmethods
+      (instances of pytd.Function).
+    constants: Tuple of constant class attributes (instances of pytd.Constant).
+    template: Tuple of pytd.TemplateItem instances.
   """
   # TODO(kramm): Rename "parents" to "bases". "Parents" is confusing since we're
   #              in a tree.
@@ -135,12 +136,16 @@ class Class(node.Node('name', 'parents', 'methods', 'constants', 'template')):
       return self._name2item[name]
 
 
-class Function(node.Node('name', 'signatures')):
+STATICMETHOD, CLASSMETHOD, METHOD = 'staticmethod', 'classmethod', 'method'
+
+
+class Function(node.Node('name', 'signatures', 'kind')):
   """A function or a method, defined by one or more PyTD signatures.
 
   Attributes:
     name: The name of this function.
     signatures: Tuple of possible parameter type combinations for this function.
+    kind: The type of this function. One of: STATICMETHOD, CLASSMETHOD, METHOD
   """
   __slots__ = ()
 

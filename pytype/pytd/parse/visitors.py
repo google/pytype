@@ -198,7 +198,12 @@ class PrintVisitor(Visitor):
         for sig in self.old_node.signatures
         for t in sorted(sig.template))
     function_name = self._EscapedName(node.name)
-    signatures = "\n".join("def " + function_name + sig
+    decorators = ""
+    if node.kind == pytd.STATICMETHOD:
+      decorators += "@staticmethod\n"
+    elif node.kind == pytd.CLASSMETHOD:
+      decorators += "@classmethod\n"
+    signatures = "\n".join(decorators + "def " + function_name + sig
                            for sig in node.signatures)
     return typevars + signatures
 

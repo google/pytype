@@ -191,7 +191,7 @@ class PreprocessReverseOperatorsVisitor(visitors.Visitor):
       try:
         method = cls.Lookup(method_name)
       except KeyError:
-        method = pytd.Function(method_name, ())
+        method = pytd.Function(method_name, (), pytd.METHOD)
       # wrap the extra signatures into a method, for easier matching
       extra_signatures = methods_to_add.get(method_name, [])
       new_signatures = []

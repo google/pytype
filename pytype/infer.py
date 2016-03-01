@@ -244,7 +244,8 @@ class CallTracer(vm.VirtualMachine):
           ret, has_optional=False, exceptions=(), template=()))
     functions = []
     for name, signatures in funcs.items():
-      functions.append(pytd.Function(prefix + name, tuple(signatures)))
+      functions.append(pytd.Function(prefix + name, tuple(signatures),
+                                     pytd.METHOD))
     return functions
 
   def pytd_functions_for_call_traces(self):
