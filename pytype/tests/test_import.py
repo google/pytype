@@ -1,6 +1,5 @@
 """Tests for import."""
 
-import unittest
 
 from pytype import imports_map_loader
 from pytype import utils
@@ -180,33 +179,6 @@ class ImportTest(test_inference.InferenceTest):
       self.assertTypesMatchPytd(ty, """
         StringIO = ...  # type: module
         def f() -> bool
-      """)
-
-  # TODO(pludemann): Implement import of .py
-  # This test has never worked, except in the sense that it didn't fail.
-  # We need to define how import works if there's a .py file; also how it
-  # works if there are both a .py file and a .pytd file.
-  @unittest.skip("Broken - def g() -> long list of types")
-  def testImportPy(self):
-    with utils.Tempdir() as d:
-      d.create_file("other_file.py", """
-        def f():
-          return 3.14159
-      """)
-      d.create_file("main.py", """
-        from other_file import f
-        def g():
-          return f()
-      """)
-      ty = self.InferFromFile(
-          filename=d["main.py"],
-          # Note that .pytd is the extension for pythonpath and not .py, so
-          # "import" will fail to find other_file.py
-          pythonpath=[d.path])
-      # TODO(kramm): Do more testing here once pludemann@ has implemented logic
-      #              for actually using pythonpath. Also below.
-      self.assertTypesMatchPytd(ty, """
-        def g() -> float
       """)
 
   def testImportPytd(self):
@@ -389,7 +361,6 @@ class ImportTest(test_inference.InferenceTest):
         x = ...  # type: int
       """)
 
-  @unittest.skip("Only works if the isdir test is enabled in load_pytd")
   def testDotPackageNoInit(self):
     with utils.Tempdir() as d:
       d.create_file("foo.py", """
@@ -402,7 +373,6 @@ class ImportTest(test_inference.InferenceTest):
         x = ...  # type: int
       """)
 
-  @unittest.skip("Only works if the isdir test is enabled in load_pytd")
   def testDotDotPackagNoInit(self):
     with utils.Tempdir() as d:
       d.create_file("baz/foo.py", """
