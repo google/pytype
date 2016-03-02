@@ -166,9 +166,9 @@ class SolverTests(test_inference.InferenceTest):
       d = {}
       d[l[0]] = 3
       f(**d)
-    """, deep=True, solve_unknowns=True)
-    self.assertTypesMatchPytd(ty, """
-      def f(x) -> ?
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        def f(x) -> ?
 
       d = ...  # type: Dict[str, int]
       l = ...  # type: List[str, ...]

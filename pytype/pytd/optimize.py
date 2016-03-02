@@ -85,8 +85,9 @@ class RemoveRedundantSignatures(visitors.Visitor):
 
   def __init__(self, hierarchy):
     super(RemoveRedundantSignatures, self).__init__()
-    self.match = type_match.TypeMatch(hierarchy.GetSuperClasses(),
-                                      any_also_is_bottom=False)
+    # TODO(kramm): fix circular import
+    from pytype.pytd import type_match  # pylint: disable=g-import-not-at-top
+    self.match = type_match.TypeMatch(hierarchy.GetSuperClasses())
 
   def VisitFunction(self, node):
     new_signatures = []

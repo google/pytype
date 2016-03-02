@@ -16,7 +16,6 @@
 
 """Visitor(s) for walking ASTs."""
 
-import collections
 import itertools
 import logging
 import re
@@ -1360,3 +1359,4 @@ class ExpandSignatures(Visitor):
                       for combination in itertools.product(*params)]
 
     return new_signatures  # Hand list over to VisitFunction
+

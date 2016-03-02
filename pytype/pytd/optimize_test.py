@@ -106,62 +106,6 @@ class TestOptimize(parser_test_base.ParserTest):
     new_src = textwrap.dedent("""
         def foo(a: int) -> int
     """)
-    ast = self.ParseAndResolve(src)
-    self.AssertOptimizeEquals(ast, new_src)
-
-  def testRemoveRedundantSignatureWithAny(self):
-    src = textwrap.dedent("""
-        def foo(a: Any) -> Any
-        def foo(a: int) -> int
-    """)
-    new_src = textwrap.dedent("""
-        def foo(a: Any) -> Any
-    """)
-    ast = self.ParseAndResolve(src)
-    self.AssertOptimizeEquals(ast, new_src)
-
-  def testRemoveRedundantSignatureWithObject(self):
-    src = textwrap.dedent("""
-        def foo(x) -> ?
-        def foo(x: int) -> int
-    """)
-    new_src = textwrap.dedent("""
-        def foo(x) -> ?
-    """)
-    ast = self.ParseAndResolve(src)
-    self.AssertOptimizeEquals(ast, new_src)
-
-  def testRemoveRedundantSignatureAnyType(self):
-    src = textwrap.dedent("""
-        def foo(a: int) -> int
-        def foo(a: ?) -> int
-        def bar(a: ?) -> int
-        def bar(a: int) -> int
-        def baz(a: ?) -> ?
-        def baz(a: int) -> int
-        def two(a: ?) -> int
-        def two(a: int) -> ?
-    """)
-    new_src = textwrap.dedent("""
-        def foo(a: ?) -> int
-        def bar(a: ?) -> int
-        def baz(a: ?) -> ?
-        def two(a: ?) -> int
-        def two(a: int) -> ?
-    """)
-    self.AssertOptimizeEquals(src, new_src)
-
-  def testRemoveRedundantSignatureGeneric(self):
-    src = textwrap.dedent("""
-        def foo(a: list[int]) -> list[int]
-        def foo(a: list) -> list
-        def bar(a: list) -> list
-        def bar(a: list[int]) -> list[int]
-    """)
-    new_src = textwrap.dedent("""
-        def foo(a: list) -> list
-        def bar(a: list) -> list
-    """)
     self.AssertOptimizeEquals(src, new_src)
 
   def testCombineReturns(self):
