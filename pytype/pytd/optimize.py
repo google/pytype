@@ -24,10 +24,10 @@
 """
 
 import collections
-import itertools
 import logging
 
 from pytype.pytd import abc_hierarchy
+from pytype.pytd import booleq
 from pytype.pytd import pytd
 from pytype.pytd import utils
 from pytype.pytd.parse import builtins
@@ -68,6 +68,41 @@ class RemoveDuplicates(visitors.Visitor):
   def VisitFunction(self, node):
     # We remove duplicates, but keep existing entries in the same order.
     return node.Replace(signatures=tuple(utils.OrderedSet(node.signatures)))
+
+
+class RemoveRedundantSignatures(visitors.Visitor):
+  """Remove duplicate function signatures.
+
+  For example, this transforms
+    def f(x: int) -> float
+    def f(x: int or float) -> float
+  to
+    def f(x: int or float) -> float
+  In order to be removed, a signature has to be "contained" (a subclass of)
+  an existing one.
+  """
+
+  def __init__(self, hierarchy):
+    super(RemoveRedundantSignatures, self).__init__()
+    # TODO(kramm): fix circular import
+    from pytype.pytd import type_match  # pylint: disable=g-import-not-at-top
+    self.match = type_match.TypeMatch(hierarchy.GetSuperClasses())
+
+  def VisitFunction(self, node):
+    new_signatures = []
+    # We keep track of which signature matched which other signatures, purely
+    # for optimization - that way we don't have to query the reverse direction.
+    matches = set()
+    for i, s1 in enumerate(node.signatures):
+      for j, s2 in enumerate(node.signatures):
+        if (i != j and (j, i) not in matches
+            and not s1.exceptions and not s2.exceptions
+            and self.match.match(s1, s2, {}) == booleq.TRUE):
+          matches.add((i, j))
+          break
+      else:
+        new_signatures.append(s1)
+    return node.Replace(signatures=tuple(new_signatures))
 
 
 class SimplifyUnions(visitors.Visitor):
@@ -229,74 +264,6 @@ class CombineContainers(visitors.Visitor):
     return result
 
 
-class ExpandSignatures(visitors.Visitor):
-  """Expand to Cartesian product of parameter types.
-
-  For example, this transforms
-    def f(x: int or float, y: int or float)
-  to
-    def f(x: int, y: int)
-    def f(x: int, y: float)
-    def f(x: float, y: int)
-    def f(x: float, y: float)
-
-  The expansion by this class is typically *not* an optimization. But it can be
-  the precursor for optimizations that need the expanded signatures, and it can
-  simplify code generation, e.g. when generating type declarations for a type
-  inferencer.
-  """
-
-  def VisitFunction(self, f):
-    """Rebuild the function with the new signatures.
-
-    This is called after its children (i.e. when VisitSignature has already
-    converted each signature into a list) and rebuilds the function using the
-    new signatures.
-
-    Arguments:
-      f: A pytd.Function instance.
-
-    Returns:
-      Function with the new signatures.
-    """
-
-    # concatenate return value(s) from VisitSignature
-    new_signatures = tuple(sum(f.signatures, []))
-
-    return f.Replace(signatures=new_signatures)
-
-  def VisitSignature(self, sig):
-    """Expand a single signature.
-
-    For argument lists that contain disjunctions, generates all combinations
-    of arguments. The expansion will be done right to left.
-    E.g., from (a or b, c or d), this will generate the signatures
-    (a, c), (a, d), (b, c), (b, d). (In that order)
-
-    Arguments:
-      sig: A pytd.Signature instance.
-
-    Returns:
-      A list. The visit function of the parent of this node (VisitFunction) will
-      process this list further.
-    """
-    params = []
-    for param in sig.params:
-      # To make this work with MutableParameter
-      name, param_type = param.name, param.type
-      if isinstance(param_type, pytd.UnionType):
-        # multiple types
-        params.append([pytd.Parameter(name, t) for t in param_type.type_list])
-      else:
-        # single type
-        params.append([pytd.Parameter(name, param_type)])
-
-    new_signatures = [sig.Replace(params=tuple(combination))
-                      for combination in itertools.product(*params)]
-
-    return new_signatures  # Hand list over to VisitFunction
-
-
 class Factorize(visitors.Visitor):
   """Opposite of ExpandSignatures. Factorizes cartesian products of functions.
 
@@ -450,6 +417,9 @@ class SuperClassHierarchy(object):
   def __init__(self, superclasses):
     self._superclasses = superclasses
     self._subclasses = abc_hierarchy.Invert(self._superclasses)
+
+  def GetSuperClasses(self):
+    return self._superclasses
 
   def _CollectSuperclasses(self, type_name, collect):
     """Recursively collect super classes for a type.
@@ -1152,4 +1122,5 @@ def Optimize(node,
     node = node.Visit(visitors.AdjustSelf(force=True))
   node = visitors.LookupClasses(node, builtins.GetBuiltinsPyTD())
   node = node.Visit(RemoveInheritedMethods())
+  node = node.Visit(RemoveRedundantSignatures(hierarchy))
   return node

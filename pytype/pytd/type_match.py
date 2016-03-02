@@ -31,7 +31,6 @@ import logging
 
 from pytype.pytd import abc_hierarchy
 from pytype.pytd import booleq
-from pytype.pytd import optimize
 from pytype.pytd import pytd
 from pytype.pytd import utils
 from pytype.pytd.parse import node
@@ -142,7 +141,8 @@ class TypeMatch(utils.TypeMatcher):
     elif isinstance(t, pytd.GenericType):
       return self.get_superclasses(t.base_type)
     else:
-      raise NotImplementedError("Can't extract superclasses from %s", type(t))
+      log.warning("Can't extract superclasses from %s", type(t))
+      return [pytd.NamedType("object")]
 
   def get_subclasses(self, t):
     """Get all classes derived from this type.
@@ -332,7 +332,9 @@ class TypeMatch(utils.TypeMatcher):
       raise AssertionError("Don't know how to match %s against %s" % (
           type(t1), type(t2)))
 
-  def match_Signature_against_Signature(self, sig1, sig2, subst, skip_self):  # pylint: disable=invalid-name
+  # pylint: disable=invalid-name
+  def match_Signature_against_Signature(self, sig1, sig2, subst,
+                                        skip_self=False):
     """Match a pytd.Signature against another pytd.Signature.
 
     Args:
@@ -345,12 +347,22 @@ class TypeMatch(utils.TypeMatcher):
       An instance of booleq.BooleanTerm, i.e. a boolean formula.
     """
     assert not sig1.template
-    assert not sig1.has_optional
     # Signatures have type parameters, too. We ignore them, since they can
     # be anything. (See maybe_lookup_type_param())
     subst.update({p.type_param: None for p in sig2.template})
-    params2 = sig2.params
-    params1 = sig1.params[:len(params2)] if sig2.has_optional else sig1.params
+    if sig1.has_optional and sig2.has_optional:
+      m = max(len(sig1.params), len(sig2.params))
+      params1 = sig1.params[:m]
+      params2 = sig2.params[:m]
+    elif sig1.has_optional:
+      params1 = sig1.params
+      params2 = sig2.params[:len(sig1.params)]
+    elif sig2.has_optional:
+      params1 = sig1.params[:len(sig2.params)]
+      params2 = sig2.params
+    else:
+      params1 = sig1.params
+      params2 = sig2.params
     if skip_self:
       # Methods in an ~unknown need to declare their methods with "self"
       assert (params1 and params1[0].name == "self") or sig2.has_optional
@@ -375,7 +387,7 @@ class TypeMatch(utils.TypeMatcher):
         booleq.Or(
             self.match_Signature_against_Signature(inner, s, subst, skip_self)
             for s in f.signatures)
-        for inner in sig.Visit(optimize.ExpandSignatures()))
+        for inner in sig.Visit(visitors.ExpandSignatures()))
 
   def match_Function_against_Function(self, f1, f2, subst, skip_self=False):  # pylint: disable=invalid-name
     return booleq.And(

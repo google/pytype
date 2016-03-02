@@ -66,6 +66,43 @@ class TestOptimize(parser_test_base.ParserTest):
     """)
     self.AssertOptimizeEquals(src, new_src)
 
+  def testRemoveRedundantSignature(self):
+    src = textwrap.dedent("""
+        def foo(a: int) -> int
+        def foo(a: int or bool) -> int
+    """)
+    expected = textwrap.dedent("""
+        def foo(a: int or bool) -> int
+    """)
+    ast = self.Parse(src)
+    ast = ast.Visit(optimize.RemoveRedundantSignatures(
+        optimize.SuperClassHierarchy({})))
+    self.AssertSourceEquals(ast, expected)
+
+  def testRemoveRedundantSignatureWithExceptions(self):
+    src = textwrap.dedent("""
+        def foo(a: int) -> int raises IOError
+        def foo(a: int or bool) -> int
+    """)
+    expected = textwrap.dedent("""
+        def foo(a: int) -> int raises IOError
+        def foo(a: int or bool) -> int
+    """)
+    ast = self.Parse(src)
+    ast = ast.Visit(optimize.RemoveRedundantSignatures(
+        optimize.SuperClassHierarchy({})))
+    self.AssertSourceEquals(ast, expected)
+
+  def testRemoveRedundantSignatureWithSubclasses(self):
+    src = textwrap.dedent("""
+        def foo(a: bool) -> int
+        def foo(a: int) -> int
+    """)
+    new_src = textwrap.dedent("""
+        def foo(a: int) -> int
+    """)
+    self.AssertOptimizeEquals(src, new_src)
+
   def testCombineReturns(self):
     src = textwrap.dedent("""
         def foo(a: int) -> int
@@ -183,20 +220,6 @@ class TestOptimize(parser_test_base.ParserTest):
     """)
     self.AssertSourceEquals(
         self.ApplyVisitorToString(src, optimize.SimplifyUnions()),
-        new_src)
-
-  def testExpand(self):
-    src = textwrap.dedent("""
-        def foo(a: int or float, z: complex or str, u: bool) -> file
-    """)
-    new_src = textwrap.dedent("""
-        def foo(a: int, z: complex, u: bool) -> file
-        def foo(a: int, z: str, u: bool) -> file
-        def foo(a: float, z: complex, u: bool) -> file
-        def foo(a: float, z: str, u: bool) -> file
-    """)
-    self.AssertSourceEquals(
-        self.ApplyVisitorToString(src, optimize.ExpandSignatures()),
         new_src)
 
   def testFactorize(self):

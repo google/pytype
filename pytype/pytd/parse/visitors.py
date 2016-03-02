@@ -16,6 +16,7 @@
 
 """Visitor(s) for walking ASTs."""
 
+import itertools
 import logging
 import re
 
@@ -1155,4 +1156,72 @@ class SimplifyOptionalParameters(Visitor):
                    for p in sig.params[i+1:])
         return sig.Replace(params=sig.params[0:i], has_optional=True)
     return sig
+
+
+class ExpandSignatures(Visitor):
+  """Expand to Cartesian product of parameter types.
+
+  For example, this transforms
+    def f(x: int or float, y: int or float) -> str or unicode
+  to
+    def f(x: int, y: int) -> str or unicode
+    def f(x: int, y: float) -> str or unicode
+    def f(x: float, y: int) -> str or unicode
+    def f(x: float, y: float) -> str or unicode
+
+  The expansion by this class is typically *not* an optimization. But it can be
+  the precursor for optimizations that need the expanded signatures, and it can
+  simplify code generation, e.g. when generating type declarations for a type
+  inferencer.
+  """
+
+  def VisitFunction(self, f):
+    """Rebuild the function with the new signatures.
+
+    This is called after its children (i.e. when VisitSignature has already
+    converted each signature into a list) and rebuilds the function using the
+    new signatures.
+
+    Arguments:
+      f: A pytd.Function instance.
+
+    Returns:
+      Function with the new signatures.
+    """
+
+    # concatenate return value(s) from VisitSignature
+    new_signatures = tuple(sum(f.signatures, []))
+
+    return f.Replace(signatures=new_signatures)
+
+  def VisitSignature(self, sig):
+    """Expand a single signature.
+
+    For argument lists that contain disjunctions, generates all combinations
+    of arguments. The expansion will be done right to left.
+    E.g., from (a or b, c or d), this will generate the signatures
+    (a, c), (a, d), (b, c), (b, d). (In that order)
+
+    Arguments:
+      sig: A pytd.Signature instance.
+
+    Returns:
+      A list. The visit function of the parent of this node (VisitFunction) will
+      process this list further.
+    """
+    params = []
+    for param in sig.params:
+      # To make this work with MutableParameter
+      name, param_type = param.name, param.type
+      if isinstance(param_type, pytd.UnionType):
+        # multiple types
+        params.append([pytd.Parameter(name, t) for t in param_type.type_list])
+      else:
+        # single type
+        params.append([pytd.Parameter(name, param_type)])
+
+    new_signatures = [sig.Replace(params=tuple(combination))
+                      for combination in itertools.product(*params)]
+
+    return new_signatures  # Hand list over to VisitFunction
 

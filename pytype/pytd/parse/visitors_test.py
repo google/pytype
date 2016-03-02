@@ -278,6 +278,22 @@ class TestVisitors(parser_test_base.ParserTest):
     new_tree = tree.Visit(visitors.SimplifyOptionalParameters())
     self.AssertSourceEquals(dest, new_tree)
 
+  def testExpand(self):
+    src = textwrap.dedent("""
+        def foo(a: int or float, z: complex or str, u: bool) -> file
+        def bar(a: int) -> str or unicode
+    """)
+    new_src = textwrap.dedent("""
+        def foo(a: int, z: complex, u: bool) -> file
+        def foo(a: int, z: str, u: bool) -> file
+        def foo(a: float, z: complex, u: bool) -> file
+        def foo(a: float, z: str, u: bool) -> file
+        def bar(a: int) -> str or unicode
+    """)
+    self.AssertSourceEquals(
+        self.ApplyVisitorToString(src, visitors.ExpandSignatures()),
+        new_src)
+
 
 if __name__ == "__main__":
   unittest.main()
