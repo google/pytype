@@ -199,18 +199,6 @@ def CanonicalOrdering(n, sort_signatures=False):
       visitors.CanonicalOrderingVisitor(sort_signatures=sort_signatures))
 
 
-# TODO(kramm): Move to transforms.py.
-def RemoveMutableParameters(ast):
-  """Change all mutable parameters in a pytd AST to a non-mutable form."""
-  # late import, because optimize uses utils.py.
-  from pytype.pytd import optimize  # pylint: disable=g-import-not-at-top
-  ast = ast.Visit(optimize.AbsorbMutableParameters())
-  ast = ast.Visit(optimize.CombineContainers())
-  ast = ast.Visit(optimize.MergeTypeParameters())
-  ast = ast.Visit(visitors.AdjustSelf(force=True))
-  return ast
-
-
 def GetAllSubClasses(ast):
   """Compute a class->subclasses mapping.
 
@@ -513,5 +501,3 @@ def WrapsDict(member_name, writable=False, implement_len=False):
   namespace = {}
   exec src in namespace  # pylint: disable=exec-used
   return namespace["WrapsDict"]
-
-

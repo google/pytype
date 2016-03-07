@@ -5,6 +5,7 @@ import logging
 from pytype.pytd import booleq
 from pytype.pytd import optimize
 from pytype.pytd import pytd
+from pytype.pytd import transforms
 from pytype.pytd import type_match
 from pytype.pytd import utils as pytd_utils
 from pytype.pytd.parse import visitors
@@ -163,7 +164,7 @@ def solve(ast, builtins_pytd):
     A tuple of (1) a dictionary (str->str) mapping unknown class names to known
     class names and (2) a pytd.TypeDeclUnit of the complete classes in ast.
   """
-  builtins_pytd = pytd_utils.RemoveMutableParameters(builtins_pytd)
+  builtins_pytd = transforms.RemoveMutableParameters(builtins_pytd)
   builtins_pytd = visitors.LookupClasses(builtins_pytd, overwrite=True)
   ast = visitors.LookupClasses(ast, builtins_pytd, overwrite=True)
   ast.Visit(visitors.InPlaceFillInExternalTypes(builtins_pytd))

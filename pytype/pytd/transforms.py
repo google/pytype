@@ -208,3 +208,14 @@ class PreprocessReverseOperatorsVisitor(visitors.Visitor):
           method.Replace(signatures=(
               tuple(new_signatures + extra_signatures))))
     return cls.Replace(methods=tuple(new_methods))
+
+
+def RemoveMutableParameters(ast):
+  """Change all mutable parameters in a pytd AST to a non-mutable form."""
+  # late import, because optimize uses utils.py.
+  from pytype.pytd import optimize  # pylint: disable=g-import-not-at-top
+  ast = ast.Visit(optimize.AbsorbMutableParameters())
+  ast = ast.Visit(optimize.CombineContainers())
+  ast = ast.Visit(optimize.MergeTypeParameters())
+  ast = ast.Visit(visitors.AdjustSelf(force=True))
+  return ast
