@@ -5,6 +5,7 @@ import logging
 
 
 from pytype.pytd import booleq
+from pytype.pytd import optimize
 from pytype.pytd import pytd
 from pytype.pytd import slots
 from pytype.pytd import type_match
@@ -212,8 +213,6 @@ class PreprocessReverseOperatorsVisitor(visitors.Visitor):
 
 def RemoveMutableParameters(ast):
   """Change all mutable parameters in a pytd AST to a non-mutable form."""
-  # late import, because optimize uses utils.py.
-  from pytype.pytd import optimize  # pylint: disable=g-import-not-at-top
   ast = ast.Visit(optimize.AbsorbMutableParameters())
   ast = ast.Visit(optimize.CombineContainers())
   ast = ast.Visit(optimize.MergeTypeParameters())
