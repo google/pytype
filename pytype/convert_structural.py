@@ -167,12 +167,9 @@ def solve(ast, builtins_pytd):
     class names and (2) a pytd.TypeDeclUnit of the complete classes in ast.
   """
   builtins_pytd = transforms.RemoveMutableParameters(builtins_pytd)
-  builtins_pytd = builtins_pytd.Visit(visitors.NamedTypeToClassType())
-  builtins_pytd = builtins_pytd.Visit(visitors.LookupFullNames([builtins_pytd]))
-  builtins_pytd.Visit(visitors.VerifyLookup())
-  ast = ast.Visit(visitors.NamedTypeToClassType())
-  ast = ast.Visit(visitors.LookupFullNames([builtins_pytd, ast]))
-  ast.Visit(visitors.VerifyLookup())
+  builtins_pytd = visitors.LookupClasses(builtins_pytd, overwrite=True)
+  ast = visitors.LookupClasses(ast, builtins_pytd, overwrite=True)
+  ast.Visit(visitors.InPlaceFillInExternalTypes(builtins_pytd))
   return TypeSolver(ast, builtins_pytd).solve(), extract_local(ast)
 
 
