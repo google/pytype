@@ -29,6 +29,7 @@ import logging
 from pytype.pytd import abc_hierarchy
 from pytype.pytd import booleq
 from pytype.pytd import pytd
+from pytype.pytd import type_match
 from pytype.pytd import utils
 from pytype.pytd.parse import builtins
 from pytype.pytd.parse import visitors
@@ -84,8 +85,6 @@ class RemoveRedundantSignatures(visitors.Visitor):
 
   def __init__(self, hierarchy):
     super(RemoveRedundantSignatures, self).__init__()
-    # TODO(kramm): fix circular import
-    from pytype.pytd import type_match  # pylint: disable=g-import-not-at-top
     self.match = type_match.TypeMatch(hierarchy.GetSuperClasses())
 
   def VisitFunction(self, node):
