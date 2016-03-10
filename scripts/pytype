@@ -80,6 +80,7 @@ def generate_pyi(input_filename, output_filename, errorlog, options):
         reverse_operators=options.reverse_operators,
         cache_unknowns=options.cache_unknowns,
         maximum_depth=(1 if options.quick else None))
+    mod.Visit(visitors.VerifyVisitor())
   except parser.ParseError as e:
     if options.nofail:
       log.warn("Parser error: %s", str(e))
@@ -115,12 +116,6 @@ def generate_pyi(input_filename, output_filename, errorlog, options):
     result = pytd.Print(mod)
     if not result.endswith("\n"):  # TODO(pludemann): fix this hack
       result += "\n"
-
-    # Ensure that the output is valid
-    mod.Visit(visitors.VerifyVisitor())
-    # TODO(pludemann): remove the following (which simply verifies
-    #                  that what we've output is valid):
-    _ = pytd_utils.ParsePyTD(src=result, python_version=options.python_version)
 
     result_prefix = ""
     if options.output_id:
