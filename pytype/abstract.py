@@ -2505,12 +2505,9 @@ class InterpreterFunction(Function):
                            pytd.METHOD)
 
   def simple_pytd_signature(self):
-    num_defaults = len(self.defaults)
     params = self._with_replaced_annotations(
-        [pytd.Parameter(name, pytd.NamedType("__builtin__.object"))
+        [pytd.Parameter(name, pytd.NamedType("object"))
          for name in self.get_parameter_names()])
-    if num_defaults:
-      params = params[:-num_defaults]
     ret = self._get_annotation_return(default=pytd.AnythingType())
     return pytd.Signature(
         params=params,

@@ -111,8 +111,7 @@ class VirtualMachine(object):
     self.primitive_classes = {v: self.convert_constant(v.__name__, v)
                               for v in [int, long, float, str, unicode, object,
                                         types.NoneType, complex, bool, slice,
-                                        types.CodeType, types.EllipsisType,
-                                        types.ClassType]}
+                                        types.CodeType, types.EllipsisType]}
 
     self.none = abstract.AbstractOrConcreteValue(
         None, self.primitive_classes[types.NoneType], self)
@@ -2013,11 +2012,11 @@ class VirtualMachine(object):
   def _convert_function_annotations(self, node, raw_annotations):
     if raw_annotations:
       # {"i": int, "return": str} is stored as (int, str, ("i, "return"))
-      names = abstract.get_atomic_python_constant(raw_annotations[-1])
+      names = _get_atomic_python_constant(raw_annotations[-1])
       type_list = raw_annotations[:-1]
       annotations = {}
       for name, t in zip(names, type_list):
-        name = abstract.get_atomic_python_constant(name)
+        name = _get_atomic_python_constant(name)
         visible = t.Data(node)
         if len(visible) > 1:
           self.errorlog.invalid_annotation(self.frame.current_opcode, name)

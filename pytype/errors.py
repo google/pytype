@@ -325,19 +325,10 @@ class ErrorLog(ErrorLogBase):
     left = pytd_utils.JoinTypes(t.to_type() for t in var1.data)
     right = pytd_utils.JoinTypes(t.to_type() for t in var2.data)
     # TODO(kramm): Display things like '__add__' as '+'
-    self.error(opcode, "unsupported operand type(s) for %s: %r and %r",
-               operation, pytd.Print(left), pytd.Print(right))
+    self.error(opcode, "unsupported operand type(s) for %s: %r and %r" % (
+        operation, pytd.Print(left), pytd.Print(right)))
 
-  @_error_name("invalid-annotation")
   def invalid_annotation(self, opcode, name):
-    self.error(opcode, "Invalid type annotation for %s. Must be constant",
+    self.error(opcode, "Invalid type annotation for %s. Must be constant" %
                name)
 
-  @_error_name("mro-error")
-  def mro_error(self, opcode, name):
-    self.error(opcode, "Class %r has invalid (cyclic?) inheritance.", name)
-
-  @_error_name("invalid-directive")
-  def invalid_directive(self, filename, lineno, message):
-    self._add(Error(
-        SEVERITY_WARNING, message, filename=filename, lineno=lineno))
