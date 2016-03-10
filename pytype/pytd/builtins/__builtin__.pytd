@@ -136,6 +136,7 @@ False = ...  # type: bool
 True = ...  # type: bool
 NotImplemented = ...  # type: NotImplementedType
 None = ...  # type: NoneType
+Ellipsis = ...  # type: ellipsis
 
 class object():
     __mro__ = ...  # type: list[?]
@@ -162,6 +163,9 @@ class NotImplementedType(object):
     pass
 
 class NoneType(object):
+    pass
+
+class ellipsis(object):
     pass
 
 # TODO(kramm): Only define this for Python 2

@@ -4,6 +4,7 @@ import copy
 import os
 import StringIO
 import subprocess
+import sys
 import tempfile
 
 from pytype.pyc import loadmarshal
@@ -56,13 +57,20 @@ def compile_src_string_to_pyc_string(src, python_version, python_exe):
   """
   fi = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
   pyc_name = python_pyc_name(fi.name, python_version)
+
+  if python_exe is None:
+    python_exe = os.getenv("PYTYPE_PYTHON_EXE")
+    if python_exe:
+      print >>sys.stderr, "[Using PYTYPE_PYTHON_EXE from environment]"
+
   try:
     fi.write(src)
     fi.close()
     # In order to be able to compile pyc files for both Python 2 and Python 3,
     # we spawn an external process.
     if python_exe:
-      subprocess.check_call([python_exe, "-mpy_compile", fi.name])
+      # Allow python_exe to contain parameters (E.g. "-T")
+      subprocess.check_call(python_exe.split() + ["-mpy_compile", fi.name])
     # The following code has been removed because it might not use the
     # same subdirectory as the regular compiler (see python_pyc_name).
     # And the slight performance gain probably isn't worth it.

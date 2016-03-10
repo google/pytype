@@ -165,3 +165,7 @@ class ErrorLog(ErrorLogBase):
     self.error(opcode, "unsupported operand type(s) for %s: %r and %r" % (
         operation, pytd.Print(left), pytd.Print(right)))
 
+  def invalid_annotation(self, opcode, name):
+    self.error(opcode, "Invalid type annotation for %s. Must be constant" %
+               name)
+

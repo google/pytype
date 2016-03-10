@@ -1816,7 +1816,8 @@ class InterpreterFunction(Function):
   _function_cache = {}
 
   @staticmethod
-  def make_function(name, code, f_locals, f_globals, defaults, closure, vm):
+  def make_function(name, code, f_locals, f_globals, defaults, closure,
+                    annotations, vm):
     """Get an InterpreterFunction.
 
     Things like anonymous functions and generator expressions are created
@@ -1831,23 +1832,29 @@ class InterpreterFunction(Function):
       f_globals: The globals used for name resolution.
       defaults: Default arguments.
       closure: The free variables this closure binds to.
+      annotations: Function annotations. Dict of name -> AtomicAbstractValue.
       vm: VirtualMachine instance.
 
     Returns:
       An InterpreterFunction.
     """
+    annotations = annotations or {}
     key = (name, code,
            InterpreterFunction._hash_all(
                (f_globals.members, set(code.co_names)),
                (f_locals.members, set(code.co_varnames)),
+               ({key: vm.program.NewVariable(key, [value], [],
+                                             vm.root_cfg_node)
+                 for key, value in annotations.items()}, None),
                (dict(enumerate(defaults)), None),
                (dict(enumerate(closure or ())), None)))
     if key not in InterpreterFunction._function_cache:
       InterpreterFunction._function_cache[key] = InterpreterFunction(
-          name, code, f_locals, f_globals, defaults, closure, vm)
+          name, code, f_locals, f_globals, defaults, closure, annotations, vm)
     return InterpreterFunction._function_cache[key]
 
-  def __init__(self, name, code, f_locals, f_globals, defaults, closure, vm):
+  def __init__(self, name, code, f_locals, f_globals, defaults, closure,
+               annotations, vm):
     super(InterpreterFunction, self).__init__(name, vm)
     log.debug("Creating InterpreterFunction %r for %r", name, code.co_name)
     self.bound_class = BoundInterpreterFunction
@@ -1858,6 +1865,7 @@ class InterpreterFunction(Function):
     self.f_locals = f_locals
     self.defaults = tuple(defaults)
     self.closure = closure
+    self.annotations = annotations
     self.cls = self.vm.function_type
     self._call_records = {}
 
@@ -2038,6 +2046,25 @@ class InterpreterFunction(Function):
     # "def f((x, y), z)".
     return name.replace(".", "_")
 
+  def _with_replaced_annotations(self, params):
+    """Insert type annotations into parameter list."""
+    params = list(params)
+    for name, formal_type in self.annotations.items():
+      try:
+        i = self.code.co_varnames.index(name)
+      except ValueError:
+        i = -1
+      if 0 <= i < self.code.co_argcount:
+        params[i] = pytd.Parameter(name,
+                                   formal_type.get_instance_type())
+    return tuple(params)
+
+  def _get_annotation_return(self, default):
+    if "return" in self.annotations:
+      return self.annotations["return"].get_instance_type()
+    else:
+      return default
+
   def to_pytd_def(self, function_name):
     """Generate a pytd.Function definition."""
     num_defaults = len(self.defaults)
@@ -2049,8 +2076,12 @@ class InterpreterFunction(Function):
                      for name in self.get_parameter_names())
       if num_defaults:
         params = params[:-num_defaults]
+
+      params = self._with_replaced_annotations(params)
+      ret = self._get_annotation_return(default=return_value.data.to_type())
+
       signatures.append(pytd.Signature(
-          params=params, return_type=return_value.data.to_type(),
+          params=params, return_type=ret,
           exceptions=(),  # TODO(kramm): record exceptions
           template=(), has_optional=has_optional))
     if signatures:
@@ -2062,10 +2093,13 @@ class InterpreterFunction(Function):
                            pytd.METHOD)
 
   def simple_pytd_signature(self):
+    params = self._with_replaced_annotations(
+        [pytd.Parameter(name, pytd.NamedType("object"))
+         for name in self.get_parameter_names()])
+    ret = self._get_annotation_return(default=pytd.AnythingType())
     return pytd.Signature(
-        params=tuple(pytd.Parameter(name, pytd.NamedType("object"))
-                     for name in self.get_parameter_names()),
-        return_type=pytd.AnythingType(),
+        params=params,
+        return_type=ret,
         exceptions=(), template=(), has_optional=bool(self.defaults))
 
   def get_parameter_names(self):
