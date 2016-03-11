@@ -298,10 +298,10 @@ class ClassType(node.Node('name')):
 
   __slots__ = ()
 
-  def __new__(cls, name, clsref=None):
-    self = super(ClassType, cls).__new__(cls, name)
+  def __new__(pycls, name, cls=None):  # pylint: disable=bad-classmethod-argument
+    self = super(ClassType, pycls).__new__(pycls, name)
     # self.cls potentially filled in later (by visitors.InPlaceFillInClasses)
-    self.cls = clsref
+    self.cls = cls
     return self
 
   # __eq__ is inherited (using tuple equality + requiring the two classes
@@ -316,23 +316,28 @@ class ClassType(node.Node('name')):
         cls='<unresolved>' if self.cls is None else '')
 
 
-class ExternalType(ClassType):
+class FunctionType(node.Node('name', 'function')):
+  """The type of a function. E.g. the type of 'x' in 'x = lambda y: y'."""
+  __slots__ = ()
+
+
+class ExternalType(node.Node('name')):
   """A type specified by name and the module it is in."""
 
-  # This type is mutable. (Like ClassType is). The "cls" pointer can be modified
-  # in-place. See the comments in ClassType for more information.
+  # This type is mutable. The "t" pointer can be modified in-place.
 
-  def __new__(pycls, name, module, cls=None):  # pylint: disable=bad-classmethod-argument
-    self = super(ExternalType, pycls).__new__(pycls, name, cls)
+  def __new__(pycls, name, module, t=None):  # pylint: disable=bad-classmethod-argument
+    self = super(ExternalType, pycls).__new__(pycls, name)
     self.module = module
+    self.t = t
     return self
 
   def __str__(self):
     return self.module + '.' + self.name
 
   def __repr__(self):
-    return 'ExternalType(%r, %r, cls=%s)' % (
-        self.name, self.module, '...' if self.cls else 'None')
+    return 'ExternalType(%r, %r, t=%s)' % (
+        self.name, self.module, '...' if self.t else 'None')
 
 
 class AnythingType(node.Node()):

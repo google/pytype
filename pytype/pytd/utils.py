@@ -376,7 +376,7 @@ def ExternalOrNamedOrClassType(name, cls):
   """Create Classtype / NamedType / ExternalType."""
   if "." in name:
     module, name = name.rsplit(".", 1)
-    return pytd.ExternalType(name, module, cls)
+    return pytd.ExternalType(name, module, pytd.ClassType(name, cls))
   elif cls is None:
     return pytd.NamedType(name)
   else:

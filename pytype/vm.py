@@ -542,6 +542,8 @@ class VirtualMachine(object):
     Raises:
       ValueError: if pytype is not of a known type.
     """
+    while isinstance(pytype, pytd.ExternalType):
+      pytype = pytype.t
     if isinstance(pytype, pytd.ClassType):
       # This key is also used in __init__
       key = (abstract.Instance, pytype.cls)
@@ -616,7 +618,7 @@ class VirtualMachine(object):
     elif isinstance(pyval, pytd.Alias):
       return self.convert_constant(pytd.Print(pyval), pyval.type)
     elif isinstance(pyval, pytd.ExternalType):
-      return self.convert_constant(pytd.Print(pyval), pyval.cls)
+      return self.convert_constant(pytd.Print(pyval), pyval.t)
     elif isinstance(pyval, pytd.Constant):
       return self.create_pytd_instance(name, pyval.type, {}, self.root_cfg_node)
     result = self.convert_constant_to_value(name, pyval)
@@ -705,13 +707,18 @@ class VirtualMachine(object):
                                 [abstract.PyTDSignature(sig, self)
                                  for sig in pyval.signatures], pyval.kind, self)
       return f
+    elif isinstance(pyval, pytd.ExternalType):
+      return self.construct_constant_from_value(name, pyval.t)
     elif isinstance(pyval, pytd.ClassType):
       assert pyval.cls
       return self.convert_constant_to_value(pyval.name, pyval.cls)
     elif isinstance(pyval, pytd.NothingType):
       return self.nothing
     elif isinstance(pyval, pytd.AnythingType):
+      # TODO(kramm): This should be an Unsolveable. We don't need to solve this.
       return self._create_new_unknown_value("AnythingType")
+    elif isinstance(pyval, pytd.FunctionType):
+      return self.construct_constant_from_value(name, pyval.function)
     elif isinstance(pyval, pytd.UnionType):
       return abstract.Union([self.convert_constant_to_value(pytd.Print(t), t)
                              for t in pyval.type_list], self)

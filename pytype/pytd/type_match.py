@@ -241,9 +241,7 @@ class TypeMatch(utils.TypeMatcher):
 
   def unclass(self, t):
     """Prevent further subclass or superclass expansion for this type."""
-    if isinstance(t, pytd.ExternalType):
-      return pytd.NamedType(t.module + "." + t.name)
-    elif isinstance(t, pytd.ClassType):
+    if isinstance(t, pytd.ClassType):
       return pytd.NamedType(t.name)
     else:
       return t
@@ -265,10 +263,7 @@ class TypeMatch(utils.TypeMatcher):
     return implication
 
   def _full_name(self, t):
-    if isinstance(t, pytd.ExternalType):
-      return t.module + "." + t.name
-    else:
-      return t.name
+    return t.name
 
   def _match_type_against_type(self, t1, t2, subst):
     """Match a pytd.TYPE against another pytd.TYPE."""

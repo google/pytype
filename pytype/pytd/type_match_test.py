@@ -179,20 +179,6 @@ class TestTypeMatch(unittest.TestCase):
                       booleq.And((booleq.Eq("~unknown0", "list"),
                                   booleq.Eq("~unknown0.list.T", "A"))))
 
-  def testExternal(self):
-    ast = parser.parse_string(textwrap.dedent("""
-      class Base():
-        pass
-      class Foo(Base):
-        pass
-      base = ...  # type: Base
-    """))
-    ast = visitors.LookupClasses(ast, self.mini_builtins)
-    m = type_match.TypeMatch(type_match.get_all_subclasses([ast]))
-    mod1_foo = pytd.ExternalType("Foo", module="mod1", cls=ast.Lookup("Foo"))
-    eq = m.match_type_against_type(mod1_foo, ast.Lookup("base").type, {})
-    self.assertEquals(eq, booleq.TRUE)
-
   def testBaseClass(self):
     ast = parser.parse_string(textwrap.dedent("""
       class Base():

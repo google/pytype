@@ -21,16 +21,13 @@ class Module(object):
     filename: The filename of the pytd that describes the module. Needs to be
       unique.
     ast: The parsed PyTD. Internal references will be resolved, but
-      ExternalType nodes might still be dangling, in which case the Module is
-      marked "dirty".
-    dirty: Whether this module is fully resolved.
+      ExternalType nodes might still be dangling.
   """
 
   def __init__(self, module_name, filename, ast):
     self.module_name = module_name
     self.filename = filename
     self.ast = ast
-    self.dirty = False
 
 
 class Loader(object):
@@ -72,15 +69,6 @@ class Loader(object):
     ast = ast.Visit(visitors.SimplifyOptionalParameters())
     return ast
 
-  def _resolve_all(self):
-    module_map = {name: module.ast
-                  for name, module in self._modules.items()}
-    for module in self._modules.values():
-      if module.dirty:
-        module.ast.Visit(
-            visitors.InPlaceLookupExternalClasses(module_map, full_names=True))
-        module.dirty = False
-
   def _create_empty(self, module_name, filename):
     return self._load_file(module_name, filename,
                            pytd_utils.EmptyModule(module_name))
@@ -102,7 +90,6 @@ class Loader(object):
     module = Module(module_name, filename, ast)
     self._modules[module_name] = module
     self.resolve_ast(ast)
-    module.dirty = False
     return ast
 
   def resolve_ast(self, ast):
@@ -113,7 +100,6 @@ class Loader(object):
       for name in deps.modules:
         if name not in self._modules:
           self.import_name(name)
-      self._resolve_all()
       module_map = {name: module.ast
                     for name, module in self._modules.items()}
       ast.Visit(
@@ -205,7 +191,7 @@ class Loader(object):
                 module_name, module_name_split, self.options.pythonpath,
                 "%d items" % len(self.options.imports_map) if
                 self.options.imports_map else "none")
-    if log.isEnabledFor(logging.DEBUG):
+    if log.isEnabledFor(logging.DEBUG) and self.options.imports_map:
       for module, path in self.options.imports_map.items():
         log.debug("%s -> %s", module, path)
     return None
