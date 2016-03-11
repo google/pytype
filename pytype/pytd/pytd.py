@@ -324,16 +324,20 @@ class FunctionType(node.Node('name', 'function')):
 class ExternalType(node.Node('name')):
   """A type specified by name and the module it is in."""
 
-  def __new__(pycls, name, module):  # pylint: disable=bad-classmethod-argument
+  # This type is mutable. The "t" pointer can be modified in-place.
+
+  def __new__(pycls, name, module, t=None):  # pylint: disable=bad-classmethod-argument
     self = super(ExternalType, pycls).__new__(pycls, name)
     self.module = module
+    self.t = t
     return self
 
   def __str__(self):
     return self.module + '.' + self.name
 
   def __repr__(self):
-    return 'ExternalType(%r, %r)' % (self.name, self.module)
+    return 'ExternalType(%r, %r, t=%s)' % (
+        self.name, self.module, '...' if self.t else 'None')
 
 
 class AnythingType(node.Node()):

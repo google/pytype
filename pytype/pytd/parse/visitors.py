@@ -439,29 +439,6 @@ class FillInModuleClasses(Visitor):
             node.cls = cls
             return
 
-
-class LookupFullNames(Visitor):
-  """Fill in ClassType pointers using a symbol table, using the full names."""
-
-  def __init__(self, lookup_list):
-    super(LookupFullNames, self).__init__()
-    self._lookup_list = lookup_list
-
-  def EnterClassType(self, node):
-    for lookup in self._lookup_list:
-      try:
-        cls = lookup.Lookup(node.name)
-      except KeyError:
-        try:
-          cls = lookup.Lookup("__builtin__." + node.name)
-        except KeyError:
-          continue
-      if not isinstance(cls, pytd.Class):
-        raise KeyError("%s is not a class: %s" % (node.name, type(cls)))
-      node.cls = cls
-      return
-
-
 def _ToType(item):
   """Convert a pytd AST item into a type."""
   if isinstance(item, pytd.TYPE):
@@ -471,13 +448,31 @@ def _ToType(item):
   elif isinstance(item, pytd.Function):
     return pytd.FunctionType(item.name, item)
   elif isinstance(item, pytd.Constant):
-    # TODO(kramm): This is wrong. It would be better if we resolve pytd.Alias
+    # TODO(kramm): This is wrong. It would be better if we resolve pytd.Aliase
     # in the same way we resolve pytd.ExternalType.
     return item
-  elif isinstance(item, pytd.Alias):
-    return item.type
   else:
     raise
+
+
+class InPlaceFillInExternalTypes(Visitor):
+  """Fill in ExternalType cls pointers using a symbol table.
+
+class LookupFullNames(Visitor):
+  """Fill in ClassType pointers using a symbol table, using the full names."""
+
+  def __init__(self, lookup_list):
+    super(LookupFullNames, self).__init__()
+    self._lookup_list = lookup_list
+
+  def VisitExternalType(self, node):
+    if node.module == "__builtin__":
+      full_name = node.name
+    else:
+      full_name = node.module + "." + node.name
+    cls = self._lookup.Lookup(full_name)
+    node.t = _ToType(cls)
+    return node
 
 
 class DefaceUnresolved(Visitor):
@@ -731,27 +726,26 @@ class LookupExternalTypes(Visitor):
       KeyError: If we can't find a module, or an identifier in a module, or
         if an identifier in a module isn't a class.
     """
-    if t.cls is None:
+    if t.t is None:
       module = self._module_map[t.module]
       try:
-        if self.full_names:
+        if self.full_names and t.module != "__builtin__":
           item = module.Lookup(t.module + "." + t.name)
         else:
           item = module.Lookup(t.name)
       except KeyError:
-        raise KeyError("No %s in module %s" % (t.name, t.module))
-      if isinstance(item, pytd.Class):
-        t.cls = item
-      elif isinstance(item, pytd.Function):
-        logging.warn("importing function %s", t)
-        # TODO(kramm): Is it sound to do this?
-        t.cls = item
-      elif isinstance(item, pytd.Constant):
-        logging.warn("importing constant %s", t)
-        # TODO(kramm): Is it sound to do this?
-        t.cls = item
-      else:
-        raise KeyError("%s in module %s isn't a class" % (t.name, t.module))
+        item = self._ResolveUsingGetattr(t, module)
+        if item is None:
+          raise KeyError("No %s in module %s" % (t.name, t.module))
+      t.t = _ToType(item)
+
+
+class DissolveExternalTypes(Visitor):
+  """Replace external types with what they point to."""
+
+  def VisitExternalType(self, node):
+    assert node.t is not None, str(node)
+    return node.t
 
 
 class ReplaceTypes(Visitor):
@@ -1075,6 +1069,7 @@ class VerifyVisitor(Visitor):
   def EnterExternalType(self, node):
     assert isinstance(node.name, str), node
     assert isinstance(node.module, str), node
+    assert isinstance(node.t, pytd.TYPE) or node.t is None
 
   def EnterNativeType(self, node):
     assert isinstance(node.python_type, type), node

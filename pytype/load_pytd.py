@@ -28,15 +28,6 @@ class Module(object):
     self.module_name = module_name
     self.filename = filename
     self.ast = ast
-    self.dirty = True
-
-
-class DependencyNotFoundError(Exception):
-  """If we can't find a module referenced by the module we're trying to load."""
-
-  def __init__(self, module_name):
-    super(DependencyNotFoundError, self).__init__("Can't find %s" % module_name)
-    self.module_name = module_name
 
 
 class Loader(object):
@@ -82,15 +73,6 @@ class Loader(object):
     ast = ast.Visit(visitors.NamedTypeToClassType())
     return ast
 
-  def _resolve_all(self):
-    module_map = {name: module.ast
-                  for name, module in self._modules.items()}
-    for module in self._modules.values():
-      if module.dirty:
-        module.ast.Visit(
-            visitors.InPlaceLookupExternalClasses(module_map, full_names=True))
-        module.dirty = False
-
   def _create_empty(self, module_name, filename):
     return self._load_file(module_name, filename,
                            pytd_utils.EmptyModule(module_name))
@@ -111,23 +93,17 @@ class Loader(object):
     ast = self._postprocess_pyi(ast)
     module = Module(module_name, filename, ast)
     self._modules[module_name] = module
-    try:
-      module.ast = self._load_and_resolve_ast_dependencies(module.ast)
-    except:
-      del self._modules[module_name]  # don't leave half-resolved modules around
-      raise
-    return module.ast
+    self.resolve_ast(ast)
+    return ast
 
-  def _load_and_resolve_ast_dependencies(self, ast):
+  def resolve_ast(self, ast):
     """Fill in all ExternalType.cls pointers."""
     deps = visitors.CollectDependencies()
     ast.Visit(deps)
     if deps.modules:
       for name in deps.modules:
         if name not in self._modules:
-          other_ast = self._import_name(name)
-          if other_ast is None:
-            raise DependencyNotFoundError(name)
+          self.import_name(name)
       module_map = {name: module.ast
                     for name, module in self._modules.items()}
       ast.Visit(
@@ -236,7 +212,7 @@ class Loader(object):
                 module_name, module_name_split, self.options.pythonpath,
                 "%d items" % len(self.options.imports_map) if
                 self.options.imports_map else "none")
-    if log.isEnabledFor(logging.DEBUG):
+    if log.isEnabledFor(logging.DEBUG) and self.options.imports_map:
       for module, path in self.options.imports_map.items():
         log.debug("%s -> %s", module, path)
     return None

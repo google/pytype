@@ -90,7 +90,7 @@ class ImportPathsTest(unittest.TestCase):
       loader = load_pytd.Loader("base", self.options)
       module1 = loader.import_name("module1")
       f, = module1.Lookup("module1.get_bar").signatures
-      self.assertEquals("module2.Bar", f.return_type.cls.name)
+      self.assertEquals("module2.Bar", f.return_type.t.cls.name)
 
   def testCircularDependency(self):
     with utils.Tempdir() as d:
@@ -110,8 +110,8 @@ class ImportPathsTest(unittest.TestCase):
       bar = loader.import_name("bar")
       f1, = foo.Lookup("foo.get_bar").signatures
       f2, = bar.Lookup("bar.get_foo").signatures
-      self.assertEquals("bar.Bar", f1.return_type.cls.name)
-      self.assertEquals("foo.Foo", f2.return_type.cls.name)
+      self.assertEquals("bar.Bar", f1.return_type.t.cls.name)
+      self.assertEquals("foo.Foo", f2.return_type.t.cls.name)
 
   def testRelative(self):
     with utils.Tempdir() as d:

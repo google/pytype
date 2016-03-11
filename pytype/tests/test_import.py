@@ -487,8 +487,8 @@ class ImportTest(test_inference.InferenceTest):
     self.assertTypesMatchPytd(ty, """
       builtins = ...  # type: module
 
-      def f() -> int
-    """)
+        def f() -> int
+      """)
 
   def testImportedMethodAsClassAttribute(self):
     ty = self.Infer("""
@@ -790,6 +790,26 @@ class ImportTest(test_inference.InferenceTest):
                       pythonpath=[""]) as ty:
         self.assertTypesMatchPytd(ty, """
           bar = ...  # type: int
+        """)
+
+  def testImportResolveOnDummy(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pytd", """
+          def __getattr__(name) -> Any: ...
+      """)
+      d.create_file("b.pytd", """
+          from a import Foo
+          def f(x: Foo) -> Foo: ...
+      """)
+      with self.Infer("""\
+        import b
+        foo = b.Foo()
+        bar = b.f(foo)
+      """, deep=False, solve_unknowns=True, pythonpath=[d.path]) as ty:
+        self.assertTypesMatchPytd(ty, """
+          b = ...  # type: module
+          foo = ...  # type: Any
+          bar = ...  # type: function
         """)
 
 
