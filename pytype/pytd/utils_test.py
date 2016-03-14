@@ -14,7 +14,6 @@
 # limitations under the License.
 
 
-import os
 import textwrap
 import unittest
 from pytype.pytd import pytd
@@ -23,20 +22,7 @@ from pytype.pytd.parse import parser_test_base
 
 
 class TestUtils(parser_test_base.ParserTest):
-  """Test the visitors in optimize.py."""
-
-  def testGetPredefinedFileReturnsString(self):
-    # smoke test, only checks that it doesn't throw and the result is a string
-    self.assertIsInstance(
-        utils.GetPredefinedFile("builtins", "__builtin__"),
-        str)
-
-  def testGetPredefinedFileThrows(self):
-    # smoke test, only checks that it does throw
-    with self.assertRaisesRegexp(
-        IOError,
-        r"File not found|Resource not found|No such file or directory"):
-      utils.GetPredefinedFile("builtins", "-this-file-does-not-exist")
+  """Test pytype.pytd.utils."""
 
   def testUnpackUnion(self):
     """Test for UnpackUnion."""
@@ -188,14 +174,6 @@ class TestUtils(parser_test_base.ParserTest):
                       pytd.NamedType("name"))
     self.assertEquals(utils.NamedOrExternalType("name", "package"),
                       pytd.ExternalType("name", "package"))
-
-  def testPytdBuiltin(self):
-    """Verify 'import sys'."""
-    import_contents = utils.GetPredefinedFile("builtins", "sys")
-    with open(os.path.join(os.path.dirname(pytd.__file__),
-                           "builtins", "sys.pytd"), "rb") as fi:
-      file_contents = fi.read()
-    self.assertMultiLineEqual(import_contents, file_contents)
 
   def testParsePredefinedPyTD(self):
     """Test ParsePredefinedPyTD()."""

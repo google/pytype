@@ -48,7 +48,7 @@ def get_typeshed_file(toplevel, module, version, typeshed_dir=None):
     path = os.path.join(prefix, v, filename)
     if loader and typeshed_dir is None:
       # PEP 302 loader API
-      data = loader.get_data(path)  # See GetPredefinedFile in utils.py
+      data = loader.get_data(path)  # See pytd.data_files.GetPredefinedFile
       if data:
         return data
     if os.path.isfile(path):
@@ -75,4 +75,3 @@ def parse_type_definition(pyi_subdir, module, python_version):
   name = os.path.join(str(python_version), module + ".pyi")  # for debugging
   return utils.ParsePyTD(src, filename=name, module=module,
                          python_version=python_version).Replace(name=module)
-

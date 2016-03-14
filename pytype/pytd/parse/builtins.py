@@ -18,14 +18,13 @@
 """Utilities for parsing pytd files for builtins."""
 
 
+from pytype.pytd import data_files
 from pytype.pytd.parse import parser
 from pytype.pytd.parse import visitors
 
 
 def _FindBuiltinFile(name, extension=".pytd"):
-  # TODO(kramm): fix circular import
-  from pytype.pytd import utils  # pylint: disable=g-import-not-at-top
-  return utils.GetPredefinedFile("builtins", name, extension)
+  return data_files.GetPredefinedFile("builtins", name, extension)
 
 
 # Keyed by the parameter(s) passed to GetBuiltinsPyTD:
