@@ -57,6 +57,7 @@ class Options(object):
       skip_repeat_calls
       solve_unknowns
       structural
+      typeshed
       verbosity
   """
 
@@ -234,6 +235,11 @@ class Options(object):
         dest="structural", default=False,
         help=("Analyze all functions and classes, also those not called from "
               "anywhere. Output the result in structural form."))
+    o.add_option(
+        "-T", "--no-typeshed", action="store_false",
+        dest="typeshed", default=True,
+        help=("Do not use typeshed to look up types in the Python stdlib. "
+              "For testing."))
     o.add_option(
         "-v", "--verbosity", type="int", action="store",
         dest="verbosity", default=1,

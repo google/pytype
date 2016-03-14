@@ -142,9 +142,11 @@ class Loader(object):
   def _load_builtin(self, subdir, module_name):
     """Load a pytd that ships with pytype or typeshed."""
     version = self.options.python_version
-    # Try our own type definitions first, but then fall back to typeshed.
-    mod = (pytd_utils.ParsePredefinedPyTD(subdir, module_name, version) or
-           typeshed.parse_type_definition(subdir, module_name, version))
+    # Try our own type definitions first.
+    mod = pytd_utils.ParsePredefinedPyTD(subdir, module_name, version)
+    if not mod and self.options.typeshed:
+      # Fall back to typeshed.
+      mod = typeshed.parse_type_definition(subdir, module_name, version)
     if mod:
       log.debug("Found %s entry for %r", subdir, module_name)
       return self._load_file(filename=self.PREFIX + module_name,
