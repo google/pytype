@@ -60,7 +60,7 @@ def get_typeshed_file(toplevel, module, version, typeshed_dir=None):
     path = os.path.join(prefix, v, filename)
     if loader and typeshed_dir is None:
       # PEP 302 loader API
-      data = loader.get_data(path)  # See GetPredefinedFile in utils.py
+      data = loader.get_data(path)  # See pytd.data_files.GetPredefinedFile
       if data:
         return data
     if os.path.isfile(path):

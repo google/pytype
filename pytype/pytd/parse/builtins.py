@@ -27,10 +27,6 @@ def _FindBuiltinFile(name, extension=".pytd"):
   return data_files.GetPredefinedFile("builtins", name, extension)
 
 
-def _FindStdlibFile(name, extension=".pytd"):
-  return data_files.GetPredefinedFile("stdlib", name, extension)
-
-
 # Keyed by the parameter(s) passed to GetBuiltinsPyTD:
 _cached_builtins_pytd = None  # ... => pytype.pytd.pytd.TypeDeclUnit
 
