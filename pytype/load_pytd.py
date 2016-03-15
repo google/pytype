@@ -1,4 +1,4 @@
-"""Load and link .pytd files."""
+"""Load and link .pyi files."""
 
 import logging
 import os
@@ -140,7 +140,7 @@ class Loader(object):
     return self.import_name(sub_module)
 
   def _load_builtin(self, subdir, module_name):
-    """Load a pytd that ships with pytype or typeshed."""
+    """Load a pytd/pyi that ships with pytype or typeshed."""
     version = self.options.python_version
     # Try our own type definitions first.
     mod = pytd_utils.ParsePredefinedPyTD(subdir, module_name, version)
@@ -161,7 +161,7 @@ class Loader(object):
       module_name: The name of the module. May contain dots.
 
     Returns:
-      The parsed pytd, instance of pytd.TypeDeclUnit, or None if we
+      The parsed file, instance of pytd.TypeDeclUnit, or None if we
       the module wasn't found.
     """
     assert os.sep not in module_name, (os.sep, module_name)
@@ -175,7 +175,7 @@ class Loader(object):
     # We're guaranteed that self.options.import_drop_prefixes is empty if
     # self.options.imports_map was given, so there's no conflict between the
     # lookup in self.options.import_drop_prefixes and self.options.imports_map
-    # (which is used by _load_pytd, which is called by _import_file).
+    # (which is used by _load_pyi, which is called by _import_file).
     module_name_split = module_name.split(".")
     for prefix in self.options.import_drop_prefixes:
       module_name_split = utils.list_strip_prefix(module_name_split,
@@ -209,7 +209,7 @@ class Loader(object):
       module_name: The name of the module. May contain dots.
       module_name_split: module_name.split(".")
     Returns:
-      The parsed pytd (AST) if found, otherwise None.
+      The parsed file (AST) if found, otherwise None.
 
     """
     for searchdir in self.options.pythonpath:
@@ -217,7 +217,7 @@ class Loader(object):
       # See if this is a directory with a "__init__.py" defined.
 # MOE:strip_line For Bazel, have already created a __init__.py file
       init_path = os.path.join(path, "__init__")
-      init_ast = self._load_pytd(init_path, module_name)
+      init_ast = self._load_pyi(init_path, module_name)
       if init_ast is not None:
         log.debug("Found module %r with path %r", module_name, init_path)
         return init_ast
@@ -227,23 +227,23 @@ class Loader(object):
         # TODO(pludemann): remove this? - it's not standard Python.
         log.debug("Created empty module %r with path %r",
                   module_name, init_path)
-        return self._create_empty(filename=os.path.join(path, "__init__.pytd"),
+        return self._create_empty(filename=os.path.join(path, "__init__.pyi"),
                                   module_name=module_name)
       else:  # Not a directory
-        file_ast = self._load_pytd(path, module_name)
+        file_ast = self._load_pyi(path, module_name)
         if file_ast is not None:
           log.debug("Found module %r in path %r", module_name, path)
           return file_ast
     return None
 
-  def _load_pytd(self, path, module_name):
-    """Load a pytd from the path.
+  def _load_pyi(self, path, module_name):
+    """Load a pyi from the path.
 
     Args:
-      path: Path to the file (without '.pytd' or similar extension).
+      path: Path to the file (without '.pyi' or similar extension).
       module_name: Name of the module (may contain dots).
     Returns:
-      The parsed pytd, instance of pytd.TypeDeclUnit, or None if we didn't
+      The parsed pyi, instance of pytd.TypeDeclUnit, or None if we didn't
       find the module.
     """
     if self.options.imports_map is not None:
@@ -252,7 +252,7 @@ class Loader(object):
       else:
         return None
     else:
-      full_path = path + ".pytd"  # TODO(kramm): change to .pyi
+      full_path = path + ".pyi"
     # We have /dev/null entries in the import_map - os.path.isfile() returns
     # False for those. However, we *do* want to load them. Hence exists / isdir.
     if os.path.exists(full_path) and not os.path.isdir(full_path):

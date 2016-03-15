@@ -10,7 +10,7 @@ class PYITest(test_inference.InferenceTest):
 
   def testOptional(self):
     with utils.Tempdir() as d:
-      d.create_file("mod.pytd", """
+      d.create_file("mod.pyi", """
         def f(x: int = ...) -> None
       """)
       with self.Infer("""\
@@ -30,7 +30,7 @@ class PYITest(test_inference.InferenceTest):
 
   def testSolve(self):
     with utils.Tempdir() as d:
-      d.create_file("mod.pytd", """
+      d.create_file("mod.pyi", """
         def f(node: int, *args, **kwargs) -> str
       """)
       with self.Infer("""\
@@ -45,7 +45,7 @@ class PYITest(test_inference.InferenceTest):
 
   def testTyping(self):
     with utils.Tempdir() as d:
-      d.create_file("mod.pytd", """
+      d.create_file("mod.pyi", """
         from typing import Optional, List, Any, IO
         def split(s: Optional[float]) -> List[str, ...]: ...
       """)
@@ -61,7 +61,7 @@ class PYITest(test_inference.InferenceTest):
 
   def testClasses(self):
     with utils.Tempdir() as d:
-      d.create_file("classes.pytd", """
+      d.create_file("classes.pyi", """
         class A(object):
           def foo(self) -> A
         class B(A):
@@ -78,7 +78,7 @@ class PYITest(test_inference.InferenceTest):
 
   def testEmptyModule(self):
     with utils.Tempdir() as d:
-      d.create_file("vague.pytd", """
+      d.create_file("vague.pyi", """
         def __getattr__(name) -> Any
       """)
       with self.Infer("""\
@@ -92,7 +92,7 @@ class PYITest(test_inference.InferenceTest):
 
   def testDecorators(self):
     with utils.Tempdir() as d:
-      d.create_file("decorated.pytd", """
+      d.create_file("decorated.pyi", """
         class A(object):
           @staticmethod
           def u(a, b) -> int: ...
@@ -122,7 +122,7 @@ class PYITest(test_inference.InferenceTest):
 
   def testPassPyiClassmethod(self):
     with utils.Tempdir() as d:
-      d.create_file("a.pytd", """
+      d.create_file("a.pyi", """
         class A(object):
           @classmethod
           def v(cls) -> float: ...
@@ -140,7 +140,7 @@ class PYITest(test_inference.InferenceTest):
 
   def testOptionalParameters(self):
     with utils.Tempdir() as d:
-      d.create_file("a.pytd", """
+      d.create_file("a.pyi", """
         def parse(source, filename = ..., mode = ..., *args, **kwargs) -> int: ...
       """)
       with self.Infer("""\

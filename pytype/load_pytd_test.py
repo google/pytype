@@ -26,7 +26,7 @@ class ImportPathsTest(unittest.TestCase):
 
   def testBasic(self):
     with utils.Tempdir() as d:
-      d.create_file("path/to/some/module.pytd", "def foo(x:int) -> str")
+      d.create_file("path/to/some/module.pyi", "def foo(x:int) -> str")
       self.options.tweak(pythonpath=[d.path])
       loader = load_pytd.Loader("base", self.options)
       ast = loader.import_name("path.to.some.module")
@@ -34,7 +34,7 @@ class ImportPathsTest(unittest.TestCase):
 
   def testStripPrefix(self):
     with utils.Tempdir() as d:
-      d.create_file("path/to/some/module.pytd", "def foo() -> str")
+      d.create_file("path/to/some/module.pyi", "def foo() -> str")
       self.options.tweak(
           pythonpath=[d.path],
           import_drop_prefixes=("extra.long", "even.longer"))
@@ -45,8 +45,8 @@ class ImportPathsTest(unittest.TestCase):
   def testPath(self):
     with utils.Tempdir() as d1:
       with utils.Tempdir() as d2:
-        d1.create_file("dir1/module1.pytd", "def foo1() -> str")
-        d2.create_file("dir2/module2.pytd", "def foo2() -> str")
+        d1.create_file("dir1/module1.pyi", "def foo1() -> str")
+        d2.create_file("dir2/module2.pyi", "def foo2() -> str")
         self.options.tweak(pythonpath=[d1.path, d2.path])
         loader = load_pytd.Loader("base", self.options)
         module1 = loader.import_name("dir1.module1")
@@ -56,7 +56,7 @@ class ImportPathsTest(unittest.TestCase):
 
   def testInit(self):
     with utils.Tempdir() as d1:
-      d1.create_file("baz/__init__.pytd", "x = ... # type: int")
+      d1.create_file("baz/__init__.pyi", "x = ... # type: int")
       self.options.tweak(pythonpath=[d1.path])
       loader = load_pytd.Loader("base", self.options)
       self.assertTrue(loader.import_name("baz").Lookup("baz.x"))
@@ -76,8 +76,8 @@ class ImportPathsTest(unittest.TestCase):
 
   def testDeepDependency(self):
     with utils.Tempdir() as d:
-      d.create_file("module1.pytd", "def get_bar() -> module2.Bar")
-      d.create_file("module2.pytd", "class Bar:\n  pass")
+      d.create_file("module1.pyi", "def get_bar() -> module2.Bar")
+      d.create_file("module2.pyi", "class Bar:\n  pass")
       self.options.tweak(pythonpath=[d.path])
       loader = load_pytd.Loader("base", self.options)
       module1 = loader.import_name("module1")
@@ -86,12 +86,12 @@ class ImportPathsTest(unittest.TestCase):
 
   def testCircularDependency(self):
     with utils.Tempdir() as d:
-      d.create_file("foo.pytd", """
+      d.create_file("foo.pyi", """
         def get_bar() -> bar.Bar
         class Foo:
           pass
       """)
-      d.create_file("bar.pytd", """
+      d.create_file("bar.pyi", """
         def get_foo() -> foo.Foo
         class Bar:
           pass
@@ -107,11 +107,11 @@ class ImportPathsTest(unittest.TestCase):
 
   def testRelative(self):
     with utils.Tempdir() as d:
-      d.create_file("__init__.pytd", "base = ...  # type: ?")
-      d.create_file("path/__init__.pytd", "path = ...  # type: ?")
-      d.create_file("path/to/__init__.pytd", "to = ...  # type: ?")
-      d.create_file("path/to/some/__init__.pytd", "some = ...  # type: ?")
-      d.create_file("path/to/some/module.pytd", "")
+      d.create_file("__init__.pyi", "base = ...  # type: ?")
+      d.create_file("path/__init__.pyi", "path = ...  # type: ?")
+      d.create_file("path/to/__init__.pyi", "to = ...  # type: ?")
+      d.create_file("path/to/some/__init__.pyi", "some = ...  # type: ?")
+      d.create_file("path/to/some/module.pyi", "")
       self.options.tweak(pythonpath=[d.path])
       loader = load_pytd.Loader("path.to.some.module", self.options)
       some = loader.import_relative(1)
@@ -123,14 +123,14 @@ class ImportPathsTest(unittest.TestCase):
       self.assertTrue(path.Lookup("path.path"))
 
   def testSmokePyTD(self):
-    """Smoke test to ensure all *.pytd files load properly."""
+    """Smoke test to ensure all *.pyi files load properly."""
     loader = load_pytd.Loader("base", self.options)
     pytd_dir = os.path.join(os.path.dirname(load_pytd.__file__), "pytd")
     for builtins_subdir in ("builtins", "stdlib"):
       subdir_path = os.path.join(pytd_dir, builtins_subdir)
       for dirpath, _, files in os.walk(subdir_path):
         # We don't need to know the directory we're in because these are builtin
-        # .pytd files and load_pytd.import_name takes care of looking in
+        # .pyi files and load_pytd.import_name takes care of looking in
         # multiple directories. But because there can be subdirectories, we need
         # to construct an appropriate module name.
         rel_dirpath = os.path.relpath(dirpath, start=subdir_path)

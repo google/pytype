@@ -263,7 +263,7 @@ class SolverTests(test_inference.InferenceTest):
 
   def testMatchAgainstFunctionWithoutSelf(self):
     with utils.Tempdir() as d:
-      d.create_file("bad_mod.pytd", """
+      d.create_file("bad_mod.pyi", """
         class myclass:
           def bad_method() -> bool
       """)
