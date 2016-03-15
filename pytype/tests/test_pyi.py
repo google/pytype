@@ -293,7 +293,7 @@ def process_function(func: Callable[..., Any]) -> None: ...
 
   def testClasses(self):
     with utils.Tempdir() as d:
-      d.create_file("classes.pytd", """
+      d.create_file("classes.pyi", """
         class A(object):
           def foo(self) -> A
         class B(A):
@@ -310,7 +310,7 @@ def process_function(func: Callable[..., Any]) -> None: ...
 
   def testEmptyModule(self):
     with utils.Tempdir() as d:
-      d.create_file("vague.pytd", """
+      d.create_file("vague.pyi", """
         def __getattr__(name) -> Any
       """)
       with self.Infer("""\
@@ -324,7 +324,7 @@ def process_function(func: Callable[..., Any]) -> None: ...
 
   def testDecorators(self):
     with utils.Tempdir() as d:
-      d.create_file("decorated.pytd", """
+      d.create_file("decorated.pyi", """
         class A(object):
           @staticmethod
           def u(a, b) -> int: ...
@@ -354,7 +354,7 @@ def process_function(func: Callable[..., Any]) -> None: ...
 
   def testPassPyiClassmethod(self):
     with utils.Tempdir() as d:
-      d.create_file("a.pytd", """
+      d.create_file("a.pyi", """
         class A(object):
           @classmethod
           def v(cls) -> float: ...
@@ -372,7 +372,7 @@ def process_function(func: Callable[..., Any]) -> None: ...
 
   def testOptionalParameters(self):
     with utils.Tempdir() as d:
-      d.create_file("a.pytd", """
+      d.create_file("a.pyi", """
         def parse(source, filename = ..., mode = ..., *args, **kwargs) -> int: ...
       """)
       with self.Infer("""\

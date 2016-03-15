@@ -35,15 +35,15 @@ class ImportTest(test_inference.InferenceTest):
     with utils.Tempdir() as d:
       d.create_file("path/to/my_module.pyi",
                     "def foo() -> str")
-      ty = self.Infer("""\
+      with self.Infer("""\
       from path.to import my_module
       def foo():
         return my_module.foo()
-      """, deep=True, solve_unknowns=True, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
-        my_module = ...  # type: module
-        def foo() -> str
-      """)
+      """, deep=True, solve_unknowns=True, pythonpath=[d.path]) as ty:
+        self.assertTypesMatchPytd(ty, """
+          my_module = ...  # type: module
+          def foo() -> str
+        """)
 
   def testStarImportSmoke(self):
     self.assertNoErrors("""\
@@ -78,7 +78,7 @@ class ImportTest(test_inference.InferenceTest):
                     "def qqsv() -> str")
       d.create_file("path/to/__init__.pyi", "")
       d.create_file("path/__init__.pyi", "")
-      ty = self.Infer("""\
+      with self.Infer("""\
       import path.to.my_module
       def foo():
         return path.to.my_module.qqsv()
@@ -94,7 +94,7 @@ class ImportTest(test_inference.InferenceTest):
                     "def qqsv() -> str")
       d.create_file("path/to/__init__.pyi", "")
       d.create_file("path/__init__.pyi", "")
-      ty = self.Infer("""\
+      with self.Infer("""\
       import nonexistant_path.to.my_module  # doesn't exist
       def foo():
         return path.to.my_module.qqsv()
@@ -439,7 +439,7 @@ class ImportTest(test_inference.InferenceTest):
       d.create_file("path/to/some/__init__.pyi", "")
       d.create_file("path/to/__init__.pyi", "")
       d.create_file("path/__init__.pyi", "")
-      ty = self.Infer("""\
+      with self.Infer("""\
         import path.to.some.module
         def my_foo(x):
           return path.to.some.module.foo(x)
@@ -456,7 +456,7 @@ class ImportTest(test_inference.InferenceTest):
       d.create_file("path/to/some/__init__.pyi", "")
       d.create_file("path/to/__init__.pyi", "")
       d.create_file("path/__init__.pyi", "")
-      ty = self.Infer("""\
+      with self.Infer("""\
         from path.to.some import module
         def my_foo(x):
           return module.foo(x)
@@ -732,7 +732,7 @@ class ImportTest(test_inference.InferenceTest):
 
   def testReimport(self):
     with utils.Tempdir() as d:
-      d.create_file("foo.pytd", """
+      d.create_file("foo.pyi", """
           from collections import OrderedDict as MyOrderedDict
       """)
       with self.Infer("""\
@@ -746,7 +746,7 @@ class ImportTest(test_inference.InferenceTest):
 
   def testImportFunction(self):
     with utils.Tempdir() as d:
-      d.create_file("foo.pytd", """
+      d.create_file("foo.pyi", """
           from math import pow as mypow
       """)
       with self.Infer("""\
@@ -760,7 +760,7 @@ class ImportTest(test_inference.InferenceTest):
 
   def testImportConstant(self):
     with utils.Tempdir() as d:
-      d.create_file("mymath.pytd", """
+      d.create_file("mymath.pyi", """
           from math import pi as half_tau
       """)
       with self.Infer("""\
@@ -776,7 +776,7 @@ class ImportTest(test_inference.InferenceTest):
 
   def testImportMap(self):
     with utils.Tempdir() as d:
-      foo_filename = d.create_file("foo.pytd", """
+      foo_filename = d.create_file("foo.pyi", """
           bar = ...  # type: int
       """)
       imports_map_filename = d.create_file("imports_map.txt", """
@@ -794,10 +794,10 @@ class ImportTest(test_inference.InferenceTest):
 
   def testImportResolveOnDummy(self):
     with utils.Tempdir() as d:
-      d.create_file("a.pytd", """
+      d.create_file("a.pyi", """
           def __getattr__(name) -> Any: ...
       """)
-      d.create_file("b.pytd", """
+      d.create_file("b.pyi", """
           from a import Foo
           def f(x: Foo) -> Foo: ...
       """)

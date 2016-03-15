@@ -271,7 +271,7 @@ class Loader(object):
       else:
         return None
     else:
-      full_path = path + ".pytd"  # TODO(kramm): change to .pyi
+      full_path = path + ".pyi"
     # We have /dev/null entries in the import_map - os.path.isfile() returns
     # False for those. However, we *do* want to load them. Hence exists / isdir.
     if os.path.exists(full_path) and not os.path.isdir(full_path):

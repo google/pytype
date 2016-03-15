@@ -130,24 +130,30 @@ class ImportPathsTest(unittest.TestCase):
       self.assertTrue(to.Lookup("path.to.to"))
       self.assertTrue(path.Lookup("path.path"))
 
-  def testTypeShed(self):
+  def testSmokePyTD(self):
+    """Smoke test to ensure all *.pyi files load properly."""
     loader = load_pytd.Loader("base", self.options)
-    self.assertTrue(loader.import_name("UserDict"))
-
-  def testResolveAlias(self):
-    with utils.Tempdir() as d:
-      d.create_file("module1.pyi", """
-          from typing import List
-          x = List[int]
-      """)
-      d.create_file("module2.pyi", """
-          def f() -> module1.x
-      """)
-      self.options.tweak(pythonpath=[d.path])
-      loader = load_pytd.Loader("base", self.options)
-      module2 = loader.import_name("module2")
-      f, = module2.Lookup("module2.f").signatures
-      self.assertEquals("List[int]", pytd.Print(f.return_type))
+    pytd_dir = os.path.join(os.path.dirname(load_pytd.__file__), "pytd")
+    for builtins_subdir in ("builtins", "stdlib"):
+      subdir_path = os.path.join(pytd_dir, builtins_subdir)
+      for dirpath, _, files in os.walk(subdir_path):
+        # We don't need to know the directory we're in because these are builtin
+        # .pyi files and load_pytd.import_name takes care of looking in
+        # multiple directories. But because there can be subdirectories, we need
+        # to construct an appropriate module name.
+        rel_dirpath = os.path.relpath(dirpath, start=subdir_path)
+        if rel_dirpath in [".", ""]:
+          module_prefix = ""
+        else:
+          module_prefix = rel_dirpath.replace(os.sep, ".") + "."
+        for name in files:
+          module_name, ext = os.path.splitext(module_prefix + name)
+          if ext == ".pytd":
+            # We could do something fancier with try/except, but for
+            # now, just print out each module as we load it.
+            print >>sys.stderr, "***Loading", module_name
+            self.assertTrue(loader.import_name(module_name),
+                            msg="Failed loading " + module_name)
 
 
 if __name__ == "__main__":
