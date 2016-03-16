@@ -289,7 +289,7 @@ class MethodsTest(test_inference.InferenceTest):
     self.assertHasSignature(ty.Lookup("f"), (self.int,), self.int)
 
   def testBranchAndLoopCFG(self):
-    ty = self.Infer("""
+    with self.Infer("""
       def g():
           pass
       def f():

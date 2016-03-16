@@ -31,8 +31,8 @@ class FlowTest(test_inference.InferenceTest):
           return 3
       f()
     """, deep=False, solve_unknowns=False, extract_locals=False,
-                    report_errors=False)
-    self.assertHasSignature(ty.Lookup("f"), (), self.int)
+                    report_errors=False) as ty:
+      self.assertHasSignature(ty.Lookup("f"), (), self.int)
 
   def testTwoExceptHandlers(self):
     ty = self.Infer("""
@@ -45,8 +45,8 @@ class FlowTest(test_inference.InferenceTest):
           return 3.5
       f()
     """, deep=False, solve_unknowns=False, extract_locals=False,
-                    report_errors=False)
-    self.assertHasSignature(ty.Lookup("f"), (), self.intorfloat)
+                    report_errors=False) as ty:
+      self.assertHasSignature(ty.Lookup("f"), (), self.intorfloat)
 
   def testNestedExceptions(self):
     ty = self.Infer("""
@@ -60,8 +60,8 @@ class FlowTest(test_inference.InferenceTest):
           return 3.5
       f()
     """, deep=False, solve_unknowns=False, extract_locals=False,
-                    report_errors=False)
-    self.assertHasSignature(ty.Lookup("f"), (), self.int)
+                    report_errors=False) as ty:
+      self.assertHasSignature(ty.Lookup("f"), (), self.int)
 
   def testRaise(self):
     ty = self.Infer("""
@@ -86,8 +86,8 @@ class FlowTest(test_inference.InferenceTest):
           return 3
       f()
     """, deep=False, solve_unknowns=False, extract_locals=False,
-                    report_errors=False)
-    self.assertHasSignature(ty.Lookup("f"), (), self.int)
+                    report_errors=False) as ty:
+      self.assertHasSignature(ty.Lookup("f"), (), self.int)
 
   def testFinallySuffix(self):
     ty = self.Infer("""
@@ -99,8 +99,8 @@ class FlowTest(test_inference.InferenceTest):
         return x
       f()
     """, deep=False, solve_unknowns=False, extract_locals=False,
-                    report_errors=False)
-    self.assertHasSignature(ty.Lookup("f"), (), self.int)
+                    report_errors=False) as ty:
+      self.assertHasSignature(ty.Lookup("f"), (), self.int)
 
   def testTryAndLoop(self):
     ty = self.Infer("""

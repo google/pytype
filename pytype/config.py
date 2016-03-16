@@ -259,6 +259,10 @@ class Options(object):
         help=("Do not use typeshed to look up types in the Python stdlib. "
               "For testing."))
     o.add_option(
+        "--no-report-errors", action="store_false",
+        dest="report_errors", default=True,
+        help=("Don't report errors. Only generate a .pyi."))
+    o.add_option(
         "-v", "--verbosity", type="int", action="store",
         dest="verbosity", default=1,
         help=("Set logging verbosity: "
