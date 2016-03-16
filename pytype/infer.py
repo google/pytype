@@ -602,7 +602,7 @@ def infer_types(src,
   else:
     tracer.exitpoint = loc
   ast = tracer.compute_types(defs, builtin_names)
-  tracer.loader.resolve_ast(ast)
+  ast = tracer.loader.resolve_ast(ast)
   if solve_unknowns:
     log.info("=========== PyTD to solve =============\n%s", pytd.Print(ast))
     ast = convert_structural.convert_pytd(ast, tracer.loader.concat_all())

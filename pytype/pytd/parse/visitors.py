@@ -320,7 +320,6 @@ class PrintVisitor(Visitor):
 
   def VisitFunctionType(self, unused_node):
     """Convert a function type to a string."""
-    self._RequireTypingImport("Callable")
     return "Callable"
 
   def VisitAnythingType(self, unused_node):
@@ -422,22 +421,41 @@ class FillInModuleClasses(Visitor):
     """
     module, _, _ = node.name.rpartition(".")
     if module:
-      modules_to_try = [("", module)]
+      modules_to_try = [module]
     else:
-      modules_to_try = [("", ""),
-                        ("", "__builtin__"),
-                        ("__builtin__.", "__builtin__")]
-    for prefix, module in modules_to_try:
+      modules_to_try = ["", "__builtin__"]
+    for module in modules_to_try:
       mod_ast = self._lookup_map.get(module)
       if mod_ast:
         try:
-          cls = mod_ast.Lookup(prefix + node.name)
+          cls = mod_ast.Lookup(node.name)
         except KeyError:
           pass
         else:
           if isinstance(cls, pytd.Class):
             node.cls = cls
             return
+
+
+class LookupFullNames(Visitor):
+  """Fill in ClassType pointers using a symbol table, using the full names."""
+
+  def __init__(self, lookup_list):
+    super(LookupFullNames, self).__init__()
+    self._lookup_list = lookup_list
+
+  def EnterClassType(self, node):
+    for lookup in self._lookup_list:
+      try:
+        cls = lookup.Lookup(node.name)
+      except KeyError:
+        pass
+      else:
+        if not isinstance(cls, pytd.Class):
+          raise KeyError("%s is not a class: %s" % (node.name, type(cls)))
+        node.cls = cls
+        return
+
 
 def _ToType(item):
   """Convert a pytd AST item into a type."""
@@ -453,26 +471,6 @@ def _ToType(item):
     return item
   else:
     raise
-
-
-class InPlaceFillInExternalTypes(Visitor):
-  """Fill in ExternalType cls pointers using a symbol table.
-
-class LookupFullNames(Visitor):
-  """Fill in ClassType pointers using a symbol table, using the full names."""
-
-  def __init__(self, lookup_list):
-    super(LookupFullNames, self).__init__()
-    self._lookup_list = lookup_list
-
-  def VisitExternalType(self, node):
-    if node.module == "__builtin__":
-      full_name = node.name
-    else:
-      full_name = node.module + "." + node.name
-    cls = self._lookup.Lookup(full_name)
-    node.t = _ToType(cls)
-    return node
 
 
 class DefaceUnresolved(Visitor):
@@ -649,6 +647,13 @@ class VerifyNoExternalTypes(Visitor):
     raise ValueError("Unresolved ExternalType: %s" % str(node))
 
 
+class LookupExternalTypes(Visitor):
+  """Fill in ExternalType pointers using a symbol table.
+
+  def VisitExternalType(self, node):
+    raise ValueError("Unresolved ExternalType: %s" % str(node))
+
+
 class LookupBuiltins(Visitor):
   """Look up built-in NamedTypes and give them fully-qualified names."""
 
@@ -726,26 +731,17 @@ class LookupExternalTypes(Visitor):
       KeyError: If we can't find a module, or an identifier in a module, or
         if an identifier in a module isn't a class.
     """
-    if t.t is None:
-      module = self._module_map[t.module]
-      try:
-        if self.full_names and t.module != "__builtin__":
-          item = module.Lookup(t.module + "." + t.name)
-        else:
-          item = module.Lookup(t.name)
-      except KeyError:
-        item = self._ResolveUsingGetattr(t, module)
-        if item is None:
-          raise KeyError("No %s in module %s" % (t.name, t.module))
-      t.t = _ToType(item)
-
-
-class DissolveExternalTypes(Visitor):
-  """Replace external types with what they point to."""
-
-  def VisitExternalType(self, node):
-    assert node.t is not None, str(node)
-    return node.t
+    module = self._module_map[t.module]
+    try:
+      if self.full_names and t.module != "__builtin__":
+        item = module.Lookup(t.module + "." + t.name)
+      else:
+        item = module.Lookup(t.name)
+    except KeyError:
+      item = self._ResolveUsingGetattr(t, module)
+      if item is None:
+        raise KeyError("No %s in module %s" % (t.name, t.module))
+    return _ToType(item)
 
 
 class ReplaceTypes(Visitor):
@@ -1069,7 +1065,6 @@ class VerifyVisitor(Visitor):
   def EnterExternalType(self, node):
     assert isinstance(node.name, str), node
     assert isinstance(node.module, str), node
-    assert isinstance(node.t, pytd.TYPE) or node.t is None
 
   def EnterNativeType(self, node):
     assert isinstance(node.python_type, type), node

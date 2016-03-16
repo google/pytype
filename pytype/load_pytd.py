@@ -28,6 +28,7 @@ class Module(object):
     self.module_name = module_name
     self.filename = filename
     self.ast = ast
+    self.dirty = True
 
 
 class Loader(object):
@@ -69,7 +70,6 @@ class Loader(object):
   def _postprocess_pyi(self, ast):
     """Apply all the PYI transformations we need."""
     ast = ast.Visit(visitors.SimplifyOptionalParameters())
-    ast = ast.Visit(visitors.LookupBuiltins(self.builtins))
     ast = ast.Visit(visitors.NamedTypeToClassType())
     return ast
 
@@ -93,21 +93,38 @@ class Loader(object):
     ast = self._postprocess_pyi(ast)
     module = Module(module_name, filename, ast)
     self._modules[module_name] = module
-    self.resolve_ast(ast)
-    return ast
+    module.ast = self._load_and_resolve_ast_dependencies(module.ast)
+    return module.ast
 
-  def resolve_ast(self, ast):
+  def _load_and_resolve_ast_dependencies(self, ast):
     """Fill in all ExternalType.cls pointers."""
     deps = visitors.CollectDependencies()
     ast.Visit(deps)
     if deps.modules:
       for name in deps.modules:
         if name not in self._modules:
-          self.import_name(name)
+          self._import_name(name)
       module_map = {name: module.ast
                     for name, module in self._modules.items()}
-      ast.Visit(
-          visitors.InPlaceLookupExternalClasses(module_map, full_names=True))
+      ast = ast.Visit(
+          visitors.LookupExternalTypes(module_map, full_names=True))
+      ast = ast.Visit(visitors.VerifyNoExternalTypes())
+    return ast
+
+  def _finish_ast(self, ast):
+    module_map = {name: module.ast
+                  for name, module in self._modules.items()}
+    module_map[""] = ast  # The module itself (local lookup)
+    ast.Visit(visitors.FillInModuleClasses(module_map))
+    ast.Visit(visitors.VerifyLookup())
+    ast.Visit(visitors.VerifyNoExternalTypes())
+
+  def resolve_ast(self, ast):
+    """Resolve the dependencies of an AST, without adding it to our modules."""
+    ast = self._postprocess_pyi(ast)
+    ast = self._load_and_resolve_ast_dependencies(ast)
+    self._lookup_all_classes()
+    self._finish_ast(ast)
     return ast
 
   def _lookup_all_classes(self):

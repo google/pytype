@@ -492,8 +492,6 @@ class VirtualMachine(object):
     Raises:
       ValueError: if pytype is not of a known type.
     """
-    while isinstance(pytype, pytd.ExternalType):
-      pytype = pytype.t
     if isinstance(pytype, pytd.ClassType):
       # This key is also used in __init__
       key = (abstract.Instance, pytype.cls)
@@ -571,8 +569,6 @@ class VirtualMachine(object):
       return self.program.NewVariable(name, [], [], self.root_cfg_node)
     elif isinstance(pyval, pytd.Alias):
       return self.convert_constant(pytd.Print(pyval), pyval.type)
-    elif isinstance(pyval, pytd.ExternalType):
-      return self.convert_constant(pytd.Print(pyval), pyval.t)
     elif isinstance(pyval, pytd.Constant):
       return self.create_pytd_instance(name, pyval.type, {}, self.root_cfg_node)
     result = self.convert_constant_to_value(name, pyval)
@@ -668,8 +664,6 @@ class VirtualMachine(object):
                                 [abstract.PyTDSignature(sig, self)
                                  for sig in pyval.signatures], pyval.kind, self)
       return f
-    elif isinstance(pyval, pytd.ExternalType):
-      return self.construct_constant_from_value(name, pyval.t)
     elif isinstance(pyval, pytd.ClassType):
       assert pyval.cls
       return self.convert_constant_to_value(pyval.name, pyval.cls)

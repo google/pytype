@@ -384,6 +384,25 @@ def process_function(func: Callable[..., Any]) -> None: ...
           u = ...  # type: int
         """)
 
+  def testOptimize(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        class Bar(dict[?, int]): ...
+      """)
+      with self.Infer("""\
+      import a
+      def f(foo, bar):
+        return __any_object__[1]
+      def g():
+        out = f('foo', 'bar')
+        out = out.split()
+      """, deep=True, solve_unknowns=True, pythonpath=[d.path]) as ty:
+        self.assertTypesMatchPytd(ty, """
+          a = ...  # type: module
+          def f(foo, bar) -> Union[a.Bar, bytearray, str, unicode]: ...
+          def g() -> NoneType: ...
+        """)
+
 
 if __name__ == "__main__":
   test_inference.main()
