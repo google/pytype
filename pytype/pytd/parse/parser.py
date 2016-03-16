@@ -1096,7 +1096,7 @@ class TypeDeclParser(object):
 
   def p_type_tuple(self, p):
     # Used for function types, e.g.  # Callable[[args...], return]
-    """type : LBRACKET type_list RBRACKET"""
+    """type : LBRACKET maybe_type_list RBRACKET"""
     p[0] = pytd.GenericType(pytd.NamedType("tuple"), tuple(p[2]))
 
   def p_type_list_1(self, p):

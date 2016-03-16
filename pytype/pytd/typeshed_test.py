@@ -12,8 +12,7 @@ class TestTypeshed(parser_test_base.ParserTest):
   """Test the code for loading files from typeshed."""
 
   def test_get_typeshed_file(self):
-    filename, data = typeshed.get_typeshed_file("stdlib", "errno", (2, 7))
-    self.assertEqual("errno.pyi", os.path.basename(filename))
+    data = typeshed.get_typeshed_file("stdlib", "errno", (2, 7))
     self.assertIn("errorcode", data)
 
   def test_get_typeshed_dir(self):

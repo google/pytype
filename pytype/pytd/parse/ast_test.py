@@ -244,8 +244,6 @@ class TestASTGeneration(parser_test_base.ParserTest):
         def f(x): ...
         """)
     self.TestRoundTrip(src, textwrap.dedent("""
-        from typing import Any
-
         def f(x) -> Any: ...
         """))
 
@@ -732,12 +730,6 @@ class TestASTGeneration(parser_test_base.ParserTest):
     class Foo(object):
        def bar(x: int) -> NoneType: ...
        def bar PYTHONCODE
-    """)
-    self.TestThrowsSyntaxError(src)
-
-  def testMissingReturn(self):
-    src = textwrap.dedent("""
-        def f(x: int): ...
     """)
     self.TestThrowsSyntaxError(src)
 
