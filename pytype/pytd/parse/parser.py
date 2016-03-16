@@ -942,6 +942,10 @@ class TypeDeclParser(object):
     """return : ARROW type"""
     p[0] = p[2]
 
+  def p_no_return(self, p):
+    """return : """
+    p[0] = pytd.AnythingType()
+
   # TODO(pludemann): add
   # def p_return_2(self, p):
   #   """return : ARROW STRICT type"""
@@ -1069,7 +1073,7 @@ class TypeDeclParser(object):
 
   def p_type_tuple(self, p):
     # Used for function types, e.g.  # Callable[[args...], return]
-    """type : LBRACKET type_list RBRACKET"""
+    """type : LBRACKET maybe_type_list RBRACKET"""
     p[0] = pytd.GenericType(pytd.NamedType("tuple"), tuple(p[2]))
 
   def p_type_list_1(self, p):
@@ -1079,6 +1083,14 @@ class TypeDeclParser(object):
   def p_type_list(self, p):
     """type_list : type_list COMMA type """
     p[0] = p[1] + [p[3]]
+
+  def p_maybe_type_list(self, p):
+    """maybe_type_list : type_list"""
+    p[0] = p[1]
+
+  def p_maybe_type_list_0(self, p):
+    """maybe_type_list : """
+    p[0] = []
 
   def p_type_and(self, p):
     """type : type AND type"""

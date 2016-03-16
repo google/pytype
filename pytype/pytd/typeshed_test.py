@@ -11,11 +11,11 @@ class TestTypeshed(parser_test_base.ParserTest):
   """Test the code for loading files from typeshed."""
 
   def test_get_typeshed_file(self):
-    data = typeshed.get_typeshed_file("builtins", "errno", (2, 7))
+    data = typeshed.get_typeshed_file("stdlib", "errno", (2, 7))
     self.assertIn("errorcode", data)
 
   def test_parse_type_definition(self):
-    ast = typeshed.parse_type_definition("builtins", "_random", (2, 7))
+    ast = typeshed.parse_type_definition("stdlib", "_random", (2, 7))
     self.assertIn("_random.Random", [cls.name for cls in ast.classes])
 
 

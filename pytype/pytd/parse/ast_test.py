@@ -231,6 +231,15 @@ class TestASTGeneration(parser_test_base.ParserTest):
         """)
     self.TestRoundTrip(src, check_the_sourcecode=False)
 
+  def testMissingReturn(self):
+    """Test parsing of functions without a return type."""
+    src = textwrap.dedent("""
+        def f(x): ...
+        """)
+    self.TestRoundTrip(src, textwrap.dedent("""
+        def f(x) -> Any: ...
+        """))
+
   def testEllipsis2(self):
     """Test parsing of class bodies."""
     src = textwrap.dedent("""
@@ -672,12 +681,6 @@ class TestASTGeneration(parser_test_base.ParserTest):
     class Foo(object):
        def bar(x: int) -> NoneType: ...
        def bar PYTHONCODE
-    """)
-    self.TestThrowsSyntaxError(src)
-
-  def testMissingReturn(self):
-    src = textwrap.dedent("""
-        def f(x: int): ...
     """)
     self.TestThrowsSyntaxError(src)
 
