@@ -666,7 +666,7 @@ class ImportTest(test_inference.InferenceTest):
         self.assertTypesMatchPytd(ty, """
           b = ...  # type: module
           foo = ...  # type: Any
-          bar = ...  # type: function
+          bar = ...  # type: Any
         """)
 
 

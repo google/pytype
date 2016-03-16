@@ -286,6 +286,10 @@ class PrintVisitor(Visitor):
     """Convert a native type to a string."""
     return self._SafeName(node.python_type.__name__)
 
+  def VisitFunctionType(self, unused_node):
+    """Convert a function type to a string."""
+    return "Callable"
+
   def VisitAnythingType(self, unused_node):
     """Convert an anything type to a string."""
     return "Any"
@@ -351,26 +355,26 @@ class StripSelf(Visitor):
     return node.Replace(params=node.params[1:])
 
 
-class _InPlaceFillInClasses(Visitor):
+class FillInModuleClasses(Visitor):
   """Fill in ClassType pointers using a symbol table.
 
   This is an in-place visitor! It modifies the original tree. This is
   necessary because we introduce loops.
   """
 
-  def __init__(self, lookup_list):
+  def __init__(self, lookup_map):
     """Create this visitor.
 
     You're expected to then pass this instance to node.Visit().
 
     Args:
-      lookup_list: An iterable of symbol tables (i.e., objects that have a
+      lookup_map: An iterable of symbol tables (i.e., objects that have a
         "Lookup" function)
     """
-    super(_InPlaceFillInClasses, self).__init__()
-    self._lookup_list = lookup_list
+    super(FillInModuleClasses, self).__init__()
+    self._lookup_map = lookup_map
 
-  def VisitClassType(self, node):
+  def EnterClassType(self, node):
     """Fills in a class type.
 
     Args:
@@ -382,16 +386,42 @@ class _InPlaceFillInClasses(Visitor):
     Raises:
       KeyError: If we can't find a given class.
     """
-    if node.cls is None:
-      for lookup in self._lookup_list:
+    module, _, _ = node.name.rpartition(".")
+    if module:
+      modules_to_try = [module]
+    else:
+      modules_to_try = ["", "__builtin__"]
+    for module in modules_to_try:
+      mod_ast = self._lookup_map.get(module)
+      if mod_ast:
         try:
-          cls = lookup.Lookup(node.name)
+          cls = mod_ast.Lookup(node.name)
+        except KeyError:
+          pass
+        else:
           if isinstance(cls, pytd.Class):
             node.cls = cls
-            break
-        except KeyError:
-          continue
-      return node
+            return
+
+
+class LookupFullNames(Visitor):
+  """Fill in ClassType pointers using a symbol table, using the full names."""
+
+  def __init__(self, lookup_list):
+    super(LookupFullNames, self).__init__()
+    self._lookup_list = lookup_list
+
+  def EnterClassType(self, node):
+    for lookup in self._lookup_list:
+      try:
+        cls = lookup.Lookup(node.name)
+      except KeyError:
+        pass
+      else:
+        if not isinstance(cls, pytd.Class):
+          raise KeyError("%s is not a class: %s" % (node.name, type(cls)))
+        node.cls = cls
+        return
 
 
 def _ToType(item):
@@ -408,26 +438,6 @@ def _ToType(item):
     return item
   else:
     raise
-
-
-class InPlaceFillInExternalTypes(Visitor):
-  """Fill in ExternalType cls pointers using a symbol table.
-
-  This is an in-place visitor! It modifies the original tree.
-  """
-
-  def __init__(self, lookup):
-    super(InPlaceFillInExternalTypes, self).__init__()
-    self._lookup = lookup
-
-  def VisitExternalType(self, node):
-    if node.module == "__builtin__":
-      full_name = node.name
-    else:
-      full_name = node.module + "." + node.name
-    cls = self._lookup.Lookup(full_name)
-    node.t = _ToType(cls)
-    return node
 
 
 class DefaceUnresolved(Visitor):
@@ -538,9 +548,11 @@ def InPlaceFillInClasses(target, global_module=None):
   # TODO(kramm): Node.Visit() should support blacklisting of attributes so
   # we don't recurse into submodules multiple times.
   if isinstance(target, pytd.TypeDeclUnit):
-    target.Visit(_InPlaceFillInClasses([target, global_module]))
+    # "" is the module itself (local lookup)
+    target.Visit(FillInModuleClasses({"": target,
+                                      "__builtin__": global_module}))
   else:
-    target.Visit(_InPlaceFillInClasses([global_module]))
+    target.Visit(FillInModuleClasses({"__builtin__": global_module}))
 
 
 def LookupClasses(module, global_module=None, overwrite=False):
@@ -584,7 +596,14 @@ class VerifyLookup(Visitor):
       raise ValueError("Unresolved class: %r" % node.name)
 
 
-class InPlaceLookupExternalClasses(Visitor):
+class VerifyNoExternalTypes(Visitor):
+  """Utility class for testing visitors.LookupExternalTypes."""
+
+  def VisitExternalType(self, node):
+    raise ValueError("Unresolved ExternalType: %s" % str(node))
+
+
+class LookupExternalTypes(Visitor):
   """Fill in ExternalType pointers using a symbol table.
 
   This is an in-place visitor! It modifies the original tree. This is
@@ -599,7 +618,7 @@ class InPlaceLookupExternalClasses(Visitor):
       full_names: If True, then the modules in the module_map use fully
         qualified names ("collections.OrderedDict" instead of "OrderedDict")
     """
-    super(InPlaceLookupExternalClasses, self).__init__()
+    super(LookupExternalTypes, self).__init__()
     self._module_map = module_map
     self.full_names = full_names
 
@@ -627,26 +646,17 @@ class InPlaceLookupExternalClasses(Visitor):
       KeyError: If we can't find a module, or an identifier in a module, or
         if an identifier in a module isn't a class.
     """
-    if t.t is None:
-      module = self._module_map[t.module]
-      try:
-        if self.full_names and t.module != "__builtin__":
-          item = module.Lookup(t.module + "." + t.name)
-        else:
-          item = module.Lookup(t.name)
-      except KeyError:
-        item = self._ResolveUsingGetattr(t, module)
-        if item is None:
-          raise KeyError("No %s in module %s" % (t.name, t.module))
-      t.t = _ToType(item)
-
-
-class DissolveExternalTypes(Visitor):
-  """Replace external types with what they point to."""
-
-  def VisitExternalType(self, node):
-    assert node.t is not None, str(node)
-    return node.t
+    module = self._module_map[t.module]
+    try:
+      if self.full_names and t.module != "__builtin__":
+        item = module.Lookup(t.module + "." + t.name)
+      else:
+        item = module.Lookup(t.name)
+    except KeyError:
+      item = self._ResolveUsingGetattr(t, module)
+      if item is None:
+        raise KeyError("No %s in module %s" % (t.name, t.module))
+    return _ToType(item)
 
 
 class ReplaceTypes(Visitor):
@@ -970,7 +980,6 @@ class VerifyVisitor(Visitor):
   def EnterExternalType(self, node):
     assert isinstance(node.name, str), node
     assert isinstance(node.module, str), node
-    assert isinstance(node.t, pytd.TYPE) or node.t is None
 
   def EnterNativeType(self, node):
     assert isinstance(node.python_type, type), node

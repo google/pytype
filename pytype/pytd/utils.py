@@ -290,7 +290,8 @@ def _check_intersection(items1, items2, name1, name2):
         ", ".join(map(repr, sorted(items))), name1, name2))
 
 
-def ParsePyTD(src=None, filename=None, python_version=None, module=None):
+def ParsePyTD(src=None, filename=None, python_version=None, module=None,
+              lookup_classes=False):
   """Parse pytd sourcecode and do name lookup for builtins.
 
   This loads a pytd and also makes sure that all names are resolved (i.e.,
@@ -301,6 +302,7 @@ def ParsePyTD(src=None, filename=None, python_version=None, module=None):
     filename: The filename the source code is from.
     python_version: The Python version to parse the pytd for.
     module: The name of the module we're parsing.
+    lookup_classes: If we should also lookup the class of every ClassType.
 
   Returns:
     A pytd.TypeDeclUnit.
@@ -313,7 +315,8 @@ def ParsePyTD(src=None, filename=None, python_version=None, module=None):
                             python_version=python_version)
   if module is not None:  # Allow "" as module name
     ast = ast.Visit(visitors.AddNamePrefix(ast.name + "."))
-  ast = visitors.LookupClasses(ast, builtins.GetBuiltinsPyTD())
+  if lookup_classes:
+    ast = visitors.LookupClasses(ast, builtins.GetBuiltinsPyTD())
   return ast
 
 
@@ -359,7 +362,7 @@ def ExternalOrNamedOrClassType(name, cls):
   """Create Classtype / NamedType / ExternalType."""
   if "." in name:
     module, name = name.rsplit(".", 1)
-    return pytd.ExternalType(name, module, pytd.ClassType(name, cls))
+    return pytd.ExternalType(name, module)
   elif cls is None:
     return pytd.NamedType(name)
   else:

@@ -215,7 +215,7 @@ class TestVisitors(parser_test_base.ParserTest):
     tree2 = tree2.Visit(visitors.CanonicalOrderingVisitor(sort_signatures=True))
     self.AssertSourceEquals(tree1, tree2)
 
-  def testInPlaceLookupExternalClasses(self):
+  def testInPlaceFillInExternalClasses(self):
     src1 = textwrap.dedent("""
       def f1() -> bar.Bar
       class Foo(object):
@@ -228,12 +228,12 @@ class TestVisitors(parser_test_base.ParserTest):
     """)
     ast1 = self.Parse(src1)
     ast2 = self.Parse(src2)
-    ast1.Visit(visitors.InPlaceLookupExternalClasses(dict(foo=ast1, bar=ast2)))
-    ast2.Visit(visitors.InPlaceLookupExternalClasses(dict(foo=ast1, bar=ast2)))
+    ast1 = ast1.Visit(visitors.LookupExternalTypes(dict(foo=ast1, bar=ast2)))
+    ast2 = ast2.Visit(visitors.LookupExternalTypes(dict(foo=ast1, bar=ast2)))
     f1, = ast1.Lookup("f1").signatures
     f2, = ast2.Lookup("f2").signatures
-    self.assertIs(ast2.Lookup("Bar"), f1.return_type.t.cls)
-    self.assertIs(ast1.Lookup("Foo"), f2.return_type.t.cls)
+    self.assertIs(ast2.Lookup("Bar"), f1.return_type.cls)
+    self.assertIs(ast1.Lookup("Foo"), f2.return_type.cls)
 
   def testInPlaceLookupExternalClassesByFullName(self):
     src1 = textwrap.dedent("""
@@ -248,14 +248,14 @@ class TestVisitors(parser_test_base.ParserTest):
     """)
     ast1 = self.Parse(src1).Visit(visitors.AddNamePrefix("foo."))
     ast2 = self.Parse(src2).Visit(visitors.AddNamePrefix("bar."))
-    ast1.Visit(visitors.InPlaceLookupExternalClasses(dict(foo=ast1, bar=ast2),
-                                                     full_names=True))
-    ast2.Visit(visitors.InPlaceLookupExternalClasses(dict(foo=ast1, bar=ast2),
-                                                     full_names=True))
+    ast1 = ast1.Visit(visitors.LookupExternalTypes(dict(foo=ast1, bar=ast2),
+                                                   full_names=True))
+    ast2 = ast2.Visit(visitors.LookupExternalTypes(dict(foo=ast1, bar=ast2),
+                                                   full_names=True))
     f1, = ast1.Lookup("foo.f1").signatures
     f2, = ast2.Lookup("bar.f2").signatures
-    self.assertIs(ast2.Lookup("bar.Bar"), f1.return_type.t.cls)
-    self.assertIs(ast1.Lookup("foo.Foo"), f2.return_type.t.cls)
+    self.assertIs(ast2.Lookup("bar.Bar"), f1.return_type.cls)
+    self.assertIs(ast1.Lookup("foo.Foo"), f2.return_type.cls)
 
   def testCollectDependencies(self):
     src = textwrap.dedent("""

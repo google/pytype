@@ -28,6 +28,7 @@ class Module(object):
     self.module_name = module_name
     self.filename = filename
     self.ast = ast
+    self.dirty = True
 
 
 class Loader(object):
@@ -67,6 +68,7 @@ class Loader(object):
   def _postprocess_pyi(self, ast):
     """Apply all the PYI transformations we need."""
     ast = ast.Visit(visitors.SimplifyOptionalParameters())
+    ast = ast.Visit(visitors.NamedTypeToClassType())
     return ast
 
   def _create_empty(self, module_name, filename):
@@ -86,25 +88,48 @@ class Loader(object):
       ast = pytd_utils.ParsePyTD(filename=filename,
                                  module=module_name,
                                  python_version=self.options.python_version)
-      ast = self._postprocess_pyi(ast)
+    ast = self._postprocess_pyi(ast)
     module = Module(module_name, filename, ast)
     self._modules[module_name] = module
-    self.resolve_ast(ast)
-    return ast
+    module.ast = self._load_and_resolve_ast_dependencies(module.ast)
+    return module.ast
 
-  def resolve_ast(self, ast):
+  def _load_and_resolve_ast_dependencies(self, ast):
     """Fill in all ExternalType.cls pointers."""
     deps = visitors.CollectDependencies()
     ast.Visit(deps)
     if deps.modules:
       for name in deps.modules:
         if name not in self._modules:
-          self.import_name(name)
+          self._import_name(name)
       module_map = {name: module.ast
                     for name, module in self._modules.items()}
-      ast.Visit(
-          visitors.InPlaceLookupExternalClasses(module_map, full_names=True))
+      ast = ast.Visit(
+          visitors.LookupExternalTypes(module_map, full_names=True))
+      ast = ast.Visit(visitors.VerifyNoExternalTypes())
     return ast
+
+  def _finish_ast(self, ast):
+    module_map = {name: module.ast
+                  for name, module in self._modules.items()}
+    module_map[""] = ast  # The module itself (local lookup)
+    ast.Visit(visitors.FillInModuleClasses(module_map))
+    ast.Visit(visitors.VerifyLookup())
+    ast.Visit(visitors.VerifyNoExternalTypes())
+
+  def resolve_ast(self, ast):
+    """Resolve the dependencies of an AST, without adding it to our modules."""
+    ast = self._postprocess_pyi(ast)
+    ast = self._load_and_resolve_ast_dependencies(ast)
+    self._lookup_all_classes()
+    self._finish_ast(ast)
+    return ast
+
+  def _lookup_all_classes(self):
+    for module in self._modules.values():
+      if module.dirty:
+        self._finish_ast(module.ast)
+        module.dirty = False
 
   def import_relative_name(self, name):
     """IMPORT_NAME with level=-1. A name relative to the current directory."""
@@ -112,7 +137,9 @@ class Loader(object):
       raise ValueError("Attempting relative import in non-package.")
     path = self.base_module.split(".")[:-1]
     path.append(name)
-    return self.import_name(".".join(path))
+    ast = self._import_name(".".join(path))
+    self._lookup_all_classes()
+    return ast
 
   def import_relative(self, level):
     """Import a module relative to our base module.
@@ -137,7 +164,14 @@ class Loader(object):
       raise ValueError("Attempting relative import in non-package.")
     components = self.base_module.split(".")
     sub_module = ".".join(components[0:-level])
-    return self.import_name(sub_module)
+    ast = self._import_name(sub_module)
+    self._lookup_all_classes()
+    return ast
+
+  def import_name(self, module_name):
+    ast = self._import_name(module_name)
+    self._lookup_all_classes()
+    return ast
 
   def _load_builtin(self, subdir, module_name):
     """Load a pytd/pyi that ships with pytype or typeshed."""
@@ -154,7 +188,7 @@ class Loader(object):
                              ast=mod)
     return None
 
-  def import_name(self, module_name):
+  def _import_name(self, module_name):
     """Load a name like 'sys' or 'foo.bar.baz'.
 
     Args:

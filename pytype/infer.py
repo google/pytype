@@ -534,8 +534,9 @@ def check_types(py_src, pytd_src, py_filename, pytd_filename, errorlog,
                       cache_unknowns=cache_unknowns,
                       maximum_depth=maximum_depth)
   loc, defs, _ = tracer.run_program(py_src, py_filename, run_builtins)
-  ast = pytd_utils.ParsePyTD(pytd_src, pytd_filename, options.python_version)
-  tracer.loader.resolve_ast(ast)
+  ast = pytd_utils.ParsePyTD(pytd_src, pytd_filename, options.python_version,
+                             lookup_classes=True)
+  ast = tracer.loader.resolve_ast(ast)
   tracer.check_types(loc, defs, ast,
                      os.path.basename(py_filename),
                      os.path.basename(pytd_filename))
@@ -582,7 +583,7 @@ def infer_types(src,
   else:
     tracer.exitpoint = loc
   ast = tracer.compute_types(defs, builtin_names)
-  tracer.loader.resolve_ast(ast)
+  ast = tracer.loader.resolve_ast(ast)
   if solve_unknowns:
     log.info("=========== PyTD to solve =============\n%s", pytd.Print(ast))
     ast = convert_structural.convert_pytd(ast, tracer.loader.concat_all())

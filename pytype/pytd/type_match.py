@@ -270,7 +270,11 @@ class TypeMatch(utils.TypeMatcher):
     t1 = self.maybe_lookup_type_param(t1, subst)
     t2 = self.maybe_lookup_type_param(t2, subst)
     # TODO(kramm): Use utils:TypeMatcher to simplify this?
-    if isinstance(t1, pytd.AnythingType) or isinstance(t2, pytd.AnythingType):
+    if isinstance(t1, pytd.ExternalType) or isinstance(t2, pytd.ExternalType):
+      # These are unresolved. Only happens when type_matcher is called from
+      # outside the type inferencer (e.g. by optimize.py)
+      return booleq.TRUE
+    elif isinstance(t1, pytd.AnythingType) or isinstance(t2, pytd.AnythingType):
       # We can match anything against AnythingType
       return booleq.TRUE
     elif isinstance(t1, pytd.NothingType) and isinstance(t2, pytd.NothingType):

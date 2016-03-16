@@ -162,7 +162,8 @@ class TestUtils(parser_test_base.ParserTest):
   def testParsePyTD(self):
     """Test ParsePyTD()."""
     ast = utils.ParsePyTD("a = ...  # type: int",
-                          "<inline>", python_version=(2, 7, 6))
+                          "<inline>", python_version=(2, 7, 6),
+                          lookup_classes=True)
     a = ast.Lookup("a").type
     self.assertItemsEqual(a, pytd.ClassType("int"))
     self.assertIsNotNone(a.cls)  # verify that the lookup succeeded
