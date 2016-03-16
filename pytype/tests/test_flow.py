@@ -30,7 +30,8 @@ class FlowTest(test_inference.InferenceTest):
         except Exception, error:
           return 3
       f()
-    """, deep=False, solve_unknowns=False, extract_locals=False) as ty:
+    """, deep=False, solve_unknowns=False, extract_locals=False,
+                    report_errors=False) as ty:
       self.assertHasSignature(ty.Lookup("f"), (), self.int)
 
   def testTwoExceptHandlers(self):
@@ -43,7 +44,8 @@ class FlowTest(test_inference.InferenceTest):
         except:
           return 3.5
       f()
-    """, deep=False, solve_unknowns=False, extract_locals=False) as ty:
+    """, deep=False, solve_unknowns=False, extract_locals=False,
+                    report_errors=False) as ty:
       self.assertHasSignature(ty.Lookup("f"), (), self.intorfloat)
 
   def testNestedExceptions(self):
@@ -57,7 +59,8 @@ class FlowTest(test_inference.InferenceTest):
         except:
           return 3.5
       f()
-    """, deep=False, solve_unknowns=False, extract_locals=False) as ty:
+    """, deep=False, solve_unknowns=False, extract_locals=False,
+                    report_errors=False) as ty:
       self.assertHasSignature(ty.Lookup("f"), (), self.int)
 
   def testRaise(self):
@@ -82,7 +85,8 @@ class FlowTest(test_inference.InferenceTest):
         finally:
           return 3
       f()
-    """, deep=False, solve_unknowns=False, extract_locals=False) as ty:
+    """, deep=False, solve_unknowns=False, extract_locals=False,
+                    report_errors=False) as ty:
       self.assertHasSignature(ty.Lookup("f"), (), self.int)
 
   def testFinallySuffix(self):
@@ -94,7 +98,8 @@ class FlowTest(test_inference.InferenceTest):
           x = 3
         return x
       f()
-    """, deep=False, solve_unknowns=False, extract_locals=False) as ty:
+    """, deep=False, solve_unknowns=False, extract_locals=False,
+                    report_errors=False) as ty:
       self.assertHasSignature(ty.Lookup("f"), (), self.int)
 
   def testTryAndLoop(self):

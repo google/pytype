@@ -1568,8 +1568,8 @@ class VirtualMachine(object):
       try:
         state, val = self.load_builtin(state, name)
       except KeyError:
-        raise exceptions.ByteCodeNameError(
-            "global name '%s' is not defined" % name)
+        self.errorlog.name_error(self.frame.current_opcode, name)
+        return state.push(self.create_new_unsolvable(state.node, name))
     return state.push(val)
 
   def byte_STORE_GLOBAL(self, state, op):

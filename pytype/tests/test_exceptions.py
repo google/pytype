@@ -94,14 +94,14 @@ class TestExceptions(test_inference.InferenceTest):
       """)
 
   def test_local_name_error(self):
-    self.assertNoErrors("""\
+    self.assertNoCrash("""\
       def fn():
         fooey
       fn()
       """, raises=NameError)
 
   def test_catch_local_name_error(self):
-    self.assertNoErrors("""\
+    self.assertNoCrash("""\
       def fn():
         try:
           fooey
@@ -112,7 +112,7 @@ class TestExceptions(test_inference.InferenceTest):
       """)
 
   def test_reraise(self):
-    self.assertNoErrors("""\
+    self.assertNoCrash("""\
       def fn():
         try:
           fooey

@@ -20,6 +20,13 @@ class ErrorTest(test_inference.InferenceTest):
     self.assertEquals(1, len([line for line in s.getvalue().splitlines()
                               if "foobar" in line]))
 
+  def testUnknownGlobal(self):
+    _, errors = self.InferAndCheck("""
+      def f():
+        return foobar()
+    """)
+    self.assertErrorLogContains(errors, r"line 3.*foobar")
+
   def testInvalidAttribute(self):
     ty, errors = self.InferAndCheck("""
       class A(object):

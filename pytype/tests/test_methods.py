@@ -288,6 +288,8 @@ class MethodsTest(test_inference.InferenceTest):
 
   def testBranchAndLoopCFG(self):
     with self.Infer("""
+      def g():
+          pass
       def f():
           if True:
             while True:

@@ -189,6 +189,7 @@ class TestWithStatement(test_inference.InferenceTest):
 
   def test_at_context_manager_simplified(self):
     self.assertNoErrors("""\
+      import sys
       class GeneratorContextManager(object):
         def __init__(self, gen):
           self.gen = gen
