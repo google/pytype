@@ -214,7 +214,7 @@ def main(argv):
   for input_filename, output_filename in options.src_out:
     log.info("Process %s => %s", input_filename, output_filename)
     ret = process_one_file(input_filename, output_filename, options)
-    if ret and not options.nofail:
+    if ret:
       return ret
 
 
