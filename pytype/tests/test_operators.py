@@ -153,6 +153,9 @@ class ConcreteTest(test_inference.InferenceTest):
   def test_lshift(self):
     self.check_expr("x << y", ["x=1", "y=2"], self.int)
 
+  def test_rshift(self):
+    self.check_expr("x >> y", ["x=1", "y=2"], self.int)
+
   def test_sub(self):
     self.check_expr("x - y", ["x=1", "y=2"], self.int)
     self.check_expr("x - y", ["x=1.0", "y=2"], self.float)
@@ -411,38 +414,6 @@ class InplaceTest(test_inference.InferenceTest):
   def test_sub(self):
     self.check_inplace("isub", "-=")
 
-
-class AddTest(test_inference.InferenceTest):
-  """Test for "x + y". Also test overloading."""
-
-  def test_inplace(self):
-    with self.Infer("""
-      def f(x, y):
-        x += y
-        return x
-      f(1, 2)
-      f("1", "2")
-      f([1], [2])
-      f((1,), (2,))
-      f(1.1, 2.1)
-      f(1j, 2j)
-    """, deep=False, solve_unknowns=False, extract_locals=False,
-                    report_errors=False  # TODO(kramm): FIXME
-                   ) as ty:
-      self.assertHasAllReturnTypes(ty.Lookup("f"),
-                                   [self.int, self.str,
-                                    self.int_list, self.int_tuple,
-                                    self.float, self.complex])
-
-  def test_float(self):
-    with self.Infer("""
-      def f(x, y):
-        return x + y
-      f(1.0, 2.0)
-    """, deep=False, solve_unknowns=False, extract_locals=False) as ty:
-      self.assertHasSignature(ty.Lookup("f"),
-                              (self.float, self.float),
-                              self.float)
 
 if __name__ == "__main__":
   test_inference.main()

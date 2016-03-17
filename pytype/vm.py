@@ -967,9 +967,9 @@ class VirtualMachine(object):
     results = []
     log.debug("Calling binary operator %s", name)
     try:
-      state, attr = self.load_attr(state, x, name)
+      state, attr = self.load_attr_noerror(state, x, name)
     except exceptions.ByteCodeAttributeError:  # from load_attr
-      log.info("Failed to find %s on %r", name, x, exc_info=True)
+      log.info("Failed to find %s on %r", name, x)
     else:
       state, ret = self.call_function_with_state(state, attr, [y],
                                                  fallback_to_unsolvable=False)
@@ -991,6 +991,21 @@ class VirtualMachine(object):
       self.errorlog.unsupported_operands(self.frame.current_opcode, name, x, y)
     return state, result
 
+  def call_inplace_operator(self, state, iname, x, y):
+    """Try to call a method like __iadd__, possibly fall back to __add__."""
+    try:
+      state, attr = self.load_attr_noerror(state, x, iname)
+    except exceptions.ByteCodeAttributeError:  # from load_attr
+      log.info("No inplace operator %s on %r", iname, x)
+      name = iname.replace("i", "", 1)  # __iadd__ -> __add__ etc.
+      state, ret = self.call_binary_operator(state, name, x, y)
+    else:
+      # TODO(kramm): If x is a Variable with distinct types, both __add__
+      # and __iadd__ might happen.
+      state, ret = self.call_function_with_state(state, attr, [y],
+                                                 fallback_to_unsolvable=False)
+    return state, ret
+
   def binary_operator(self, state, name):
     state, (x, y) = state.popn(2)
     state, ret = self.call_binary_operator(state, name, x, y)
@@ -998,7 +1013,7 @@ class VirtualMachine(object):
 
   def inplace_operator(self, state, name):
     state, (x, y) = state.popn(2)
-    state, ret = self.call_binary_operator(state, name, x, y)
+    state, ret = self.call_inplace_operator(state, name, x, y)
     return state.push(ret)
 
   def trace_unknown(self, *args):
@@ -1434,8 +1449,7 @@ class VirtualMachine(object):
       return state
 
   def byte_INPLACE_ADD(self, state):
-    # TODO(kramm): This should fall back to __add__ (also below)
-    return self.binary_operator(state, "__iadd__")
+    return self.inplace_operator(state, "__iadd__")
 
   def byte_INPLACE_SUBTRACT(self, state):
     return self.inplace_operator(state, "__isub__")

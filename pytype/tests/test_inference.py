@@ -319,6 +319,11 @@ class InferenceTest(unittest.TestCase):
       self.fail("Found signature: f{} -> {} in {}".
                 format(pytd.Print(target), pytd.Print(func)))
 
+  def assertTypeEquals(self, t1, t2):
+    self.assertEquals(t1, t2,
+                      "Type %r != %r" % (pytd.Print(t1),
+                                         pytd.Print(t2)))
+
   def assertOnlyHasReturnType(self, func, t):
     """Test that a given return type is the only one."""
     ret = pytd_utils.JoinTypes(sig.return_type
