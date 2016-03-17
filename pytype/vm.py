@@ -940,8 +940,9 @@ class VirtualMachine(object):
     # TODO(pludemann): See TODO.txt for more on reverse operator subtleties.
     results = []
     log.debug("Calling binary operator %s", name)
-    state, attr = self.load_attr_noerror(state, x, name)
-    if attr is None:
+    try:
+      state, attr = self.load_attr_noerror(state, x, name)
+    except exceptions.ByteCodeAttributeError:  # from load_attr
       log.info("Failed to find %s on %r", name, x)
     else:
       state, ret = self.call_function_with_state(state, attr, [y],
@@ -965,8 +966,9 @@ class VirtualMachine(object):
 
   def call_inplace_operator(self, state, iname, x, y):
     """Try to call a method like __iadd__, possibly fall back to __add__."""
-    state, attr = self.load_attr_noerror(state, x, iname)
-    if attr is None:
+    try:
+      state, attr = self.load_attr_noerror(state, x, iname)
+    except exceptions.ByteCodeAttributeError:  # from load_attr
       log.info("No inplace operator %s on %r", iname, x)
       name = iname.replace("i", "", 1)  # __iadd__ -> __add__ etc.
       state, ret = self.call_binary_operator(state, name, x, y)

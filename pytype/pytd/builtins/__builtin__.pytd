@@ -764,10 +764,10 @@ class bool(int, SupportsInt, SupportsFloat):
 class int(object):  # TODO(kramm): SupportsInt, SupportsFloat, SupportsAbs)
     def __init__(self, x: int or float or str, ...) -> NoneType
     def __init__(self) -> NoneType
-    def __add__(self, y: int) -> int
-    def __add__(self, y: float) -> float
-    def __add__(self, y: long) -> long
-    def __add__(self, y: complex) -> complex
+    def __abs__(self) -> int
+    # TODO(pludemann): change other "y: int" to "y: int or bool" (also
+    #                  in other classes, such as float)
+    def __add__(self, y: int or bool) -> int
     def __and__(self, y: int) -> int
     def __and__(self, y: float) -> float
     def __and__(self, y: long) -> long

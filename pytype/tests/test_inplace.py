@@ -15,8 +15,8 @@ class InplaceTest(test_inference.InferenceTest):
         return x
       a = f(1, 2)
     """.format(assignments=assignments, op=op)
-    ty = self.Infer(src, deep=False, solve_unknowns=False)
-    self.assertTypeEquals(ty.Lookup("a").type, expected_return)
+    with self.Infer(src, deep=False, solve_unknowns=False) as ty:
+      self.assertTypeEquals(ty.Lookup("a").type, expected_return)
 
   def test_iadd(self):
     self._check_inplace("+", ["x=1", "y=2"], self.int)
@@ -74,7 +74,7 @@ class InplaceTest(test_inference.InferenceTest):
 
   def test_isub_frozenset(self):
     self._check_inplace("-", ["x={1, 2}", "y=frozenset([1.0])"],
-                        self.int_set)
+                        self.intorfloat_set)
 
   def test_imod(self):
     self._check_inplace("%", ["x=1", "y=2"], self.int)
