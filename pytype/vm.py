@@ -430,29 +430,7 @@ class VirtualMachine(object):
   # Importing
 
   def join_variables(self, node, name, variables):
-    """Create a combined Variable for a list of variables.
-
-    This is destructive: It will reuse and overwrite the input variables. The
-    purpose of this function is to create a final result variable for functions
-    that return a list of "temporary" variables. (E.g. function calls)
-
-    Args:
-      node: The current CFG node.
-      name: Name of the new variable.
-      variables: List of variables.
-    Returns:
-      A typegraph.Variable.
-    """
-    if not variables:
-      return self.program.NewVariable(name)  # return empty var
-    elif len(variables) == 1:
-      v, = variables
-      return v
-    else:
-      v = self.program.NewVariable(name)
-      for r in variables:
-        v.PasteVariable(r, node)
-      return v
+    return self.program.MergeVariables(node, name, variables)
 
   def convert_value_to_string(self, val):
     if isinstance(val, abstract.PythonConstant) and isinstance(val.pyval, str):
@@ -1874,7 +1852,8 @@ class VirtualMachine(object):
   def byte_SETUP_FINALLY(self, state, op):
     # Emulate finally by connecting the try to the finally block (with
     # empty reason/why/continuation):
-    self.store_jump(op.target, state.push(None))
+    self.store_jump(op.target, state.push(
+        self.none.to_variable(state.node, "None")))
     return self.push_block(state, "finally", op.target)
 
   def byte_POP_BLOCK(self, state):

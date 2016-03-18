@@ -57,8 +57,8 @@ class Program(object):
     Arguments:
       name: Name of the variable. For logging. Doesn't need to be unique.
       values: Optionally, a sequence of possible values this variable can have.
-      source_set: If we have values, the source_set they depend on. An instance
-        of SourceSet.
+      source_set: If we have values, the source_set they all depend on. An
+        instance of SourceSet.
       where: Where in the CFG this node is assigned.
 
     Returns:
@@ -85,6 +85,33 @@ class Program(object):
     self._CompressGraph()
     self.solver = Solver(self)
     self.NewCFGNode = utils.disabled_function  # pylint: disable=invalid-name
+
+  def MergeVariables(self, node, name, variables):
+    """Create a combined Variable for a list of variables.
+
+    The purpose of this function is to create a final result variable for
+    functions that return a list of "temporary" variables. (E.g. function
+    calls).
+
+    Args:
+      node: The current CFG node.
+      name: Name of the new variable.
+      variables: List of variables.
+    Returns:
+      A typegraph.Variable.
+    """
+    if not variables:
+      return self.NewVariable(name)  # return empty var
+    elif len(variables) == 1:
+      v, = variables
+      return v
+    elif all(v is variables[0] for v in variables):
+      return variables[0]
+    else:
+      v = self.NewVariable(name)
+      for r in variables:
+        v.PasteVariable(r, node)
+      return v
 
   def _CompressGraph(self):
     """Compress the graph for faster traversal.
@@ -290,6 +317,17 @@ class Value(object):
     value = variable.AddValue(self.data)
     value.AddOrigin(where, {self})
     return variable
+
+  def HasSource(self, value):
+    """Does this value depend on a given source?"""
+    if self is value:
+      return True
+    for origin in self.origins:
+      for source_set in origin.source_sets:
+        for source in source_set:
+          if source.HasSource(value):
+            return True
+    return False
 
   def __repr__(self):
     return "<value %x of variable %d>" % (id(self), self.variable.id)

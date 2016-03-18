@@ -53,7 +53,7 @@ class FrameState(object):
     if n > 0:
       return self.data_stack[-n:]
     else:
-      return []
+      return ()
 
   def pop(self):
     """Pop a value from the value stack."""
@@ -128,14 +128,23 @@ class FrameState(object):
       return self
     assert len(self.data_stack) == len(other.data_stack)
     assert len(self.block_stack) == len(other.block_stack)
+    node = other.node
+    if self.node is not node:
+      self.node.ConnectTo(node)
+    both = zip(self.data_stack, other.data_stack)
+    if all(v1 is v2 for v1, v2 in both):
+      data_stack = self.data_stack
+    else:
+      data_stack = tuple(
+          self.node.program.MergeVariables(node, "stack%d" % i, [v1, v2])
+          for i, (v1, v2) in enumerate(both))
     if self.node is not other.node:
       self.node.ConnectTo(other.node)
-      return FrameState(self.data_stack,
+      return FrameState(data_stack,
                         self.block_stack,
                         other.node,
                         self.exception,
                         self.why)
-    # TODO(kramm): Also merge data stack
     return self
 
   def set_exception(self, exc_type, value, tb):
