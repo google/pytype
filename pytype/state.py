@@ -168,8 +168,7 @@ class FrameState(object):
                         self.block_stack,
                         other.node,
                         self.exception,
-                        self.why,
-                        _common_condition(self.condition, other.condition))
+                        self.why)
     return self
 
   def set_exception(self, exc_type, value, tb):

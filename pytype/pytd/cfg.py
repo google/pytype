@@ -57,9 +57,8 @@ class Program(object):
 
     Arguments:
       name: Name of the variable. For logging. Doesn't need to be unique.
-      bindings: Optionally, a sequence of possible bindings this variable can
-        have.
-      source_set: If we have bindings, the source_set they all depend on. An
+      values: Optionally, a sequence of possible values this variable can have.
+      source_set: If we have values, the source_set they all depend on. An
         instance of SourceSet.
       where: Where in the CFG this node is assigned.
 
@@ -324,20 +323,16 @@ class Binding(object):
     binding.AddOrigin(where, {self})
     return variable
 
-  def HasSource(self, binding):
-    """Does this binding depend on a given source?"""
-    if self is binding:
+  def HasSource(self, value):
+    """Does this value depend on a given source?"""
+    if self is value:
       return True
     for origin in self.origins:
       for source_set in origin.source_sets:
         for source in source_set:
-          if source.HasSource(binding):
+          if source.HasSource(value):
             return True
     return False
-
-  def __str__(self):
-    data_id = getattr(self.data, "id", id(self.data))
-    return "$%d=#%d" % (self.variable.id, data_id)
 
   def __repr__(self):
     return "<binding %x of variable %d>" % (id(self), self.variable.id)
