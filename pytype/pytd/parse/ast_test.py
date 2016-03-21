@@ -89,11 +89,11 @@ class TestASTGeneration(parser_test_base.ParserTest):
     """Test parsing of import."""
     src = textwrap.dedent("""
         import typing
-        def f(x: typing.List[int]) -> typing.Tuple[int]: ...
+        def f(x: typing.List[int]) -> typing.Tuple[int, ...]: ...
         """)
     # TODO(kramm): Should List and Tuple be fully qualified?
     self.TestRoundTrip(src, textwrap.dedent("""
-        def f(x: List[int]) -> Tuple[int]: ...
+        def f(x: List[int]) -> Tuple[int, ...]: ...
         """))
 
   def testParenthesisImport(self):
@@ -121,10 +121,10 @@ class TestASTGeneration(parser_test_base.ParserTest):
     """Test parsing of 'import as'."""
     src = textwrap.dedent("""
         from typing import Tuple as TypingTuple
-        _attributes = ...  # type: TypingTuple[str]
+        _attributes = ...  # type: TypingTuple[str, ...]
     """)
     self.TestRoundTrip(src, textwrap.dedent("""
-        _attributes = ...  # type: Tuple[str]
+        _attributes = ...  # type: Tuple[str, ...]
         """))
 
   def testRenaming(self):
@@ -331,6 +331,14 @@ class TestASTGeneration(parser_test_base.ParserTest):
         def f() -> Tuple[int, ...]: ...
     """)
     self.TestRoundTrip(src)
+
+  def testTuple(self):
+    src = textwrap.dedent("""
+        def walk() -> Tuple[AnyStr, List[AnyStr]]
+    """)
+    self.TestRoundTrip(src, textwrap.dedent("""
+        def walk() -> Tuple[Union[str, unicode, List[Union[str, unicode]]], ...]: ...
+    """))
 
   def testGeneric(self):
     src = textwrap.dedent("""

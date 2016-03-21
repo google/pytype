@@ -405,7 +405,7 @@ class TestOptimize(parser_test_base.ParserTest):
       v = ...  # type: list[tuple[long or int]] or list[tuple[float or bool]]
     """)
     expected = textwrap.dedent("""
-      v = ...  # type: list[tuple[long or int or float or bool]]
+      v = ...  # type: list[tuple[long or int or float or bool, ...]]
     """)
     new_src = self.ApplyVisitorToString(src, optimize.CombineContainers())
     self.AssertSourceEquals(new_src, expected)

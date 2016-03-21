@@ -165,4 +165,5 @@ def wait() -> tuple
 def wait3(...) -> tuple
 def wait4(...) -> tuple
 def waitpid(...) -> tuple
+def walk(top: AnyStr, ...) -> iterator[Tuple[AnyStr, List[AnyStr]]]
 def write(...) -> int
