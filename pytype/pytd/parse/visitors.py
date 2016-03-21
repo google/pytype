@@ -221,7 +221,18 @@ class PrintVisitor(Visitor):
     ret = " -> " + node.return_type
 
     exc = " raises " + ", ".join(node.exceptions) if node.exceptions else ""
-    optional = ("...",) if node.has_optional else ()
+
+    if node.has_optional:
+      existing_names = {p.name for p in self.old_node.params}
+      args, kwargs = "args", "kwargs"
+      # Try to find names that aren't taken already.
+      while args in existing_names:
+        args = "_" + args
+      while kwargs in existing_names:
+        kwargs = "_" + kwargs
+      optional = ("*"+args, "**"+kwargs)
+    else:
+      optional = ()
 
     # pylint: disable=no-member
     #     (old_node is set in parse/node.py)

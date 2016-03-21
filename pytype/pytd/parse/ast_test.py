@@ -396,21 +396,35 @@ class TestASTGeneration(parser_test_base.ParserTest):
     src = textwrap.dedent("""
         def foo(...) -> int: ...
     """).strip()
-    self.TestRoundTrip(src)
+    self.TestRoundTrip(src, check_the_sourcecode=False)
 
   def testOptional1(self):
     """Test parsing of optional parameters."""
     src = textwrap.dedent("""
         def foo(a: int, ...) -> int: ...
     """).strip()
-    self.TestRoundTrip(src)
+    self.TestRoundTrip(src, check_the_sourcecode=False)
 
   def testOptional2(self):
     """Test parsing of optional parameters."""
     src = textwrap.dedent("""
         def foo(a: int, c: bool, ...) -> int: ...
     """).strip()
+    self.TestRoundTrip(src, check_the_sourcecode=False)
+
+  def testOptional3(self):
+    """Test parsing of optional parameters."""
+    src = textwrap.dedent("""
+        def foo(a: int, c: bool, *args, **kwargs) -> int: ...
+    """).strip()
     self.TestRoundTrip(src)
+
+  def testOptional4(self):
+    """Test parsing Callable."""
+    src = textwrap.dedent("""
+        def f(args, kwargs, *x, **y) -> int: ...
+        """)
+    self.TestRoundTrip(src, check_the_sourcecode=False)
 
   def testKwArgs(self):
     """Test parsing of *args, **kwargs."""
@@ -420,9 +434,9 @@ class TestASTGeneration(parser_test_base.ParserTest):
         def h(x, **kwargs) -> NoneType: ...
         """)
     self.TestRoundTrip(src, textwrap.dedent("""
-        def f(x, ...) -> None: ...
-        def g(x, ...) -> None: ...
-        def h(x, ...) -> None: ...
+        def f(x, *args, **kwargs) -> None: ...
+        def g(x, *args, **kwargs) -> None: ...
+        def h(x, *args, **kwargs) -> None: ...
     """))
 
   def testTypedKwArgs(self):
@@ -433,9 +447,9 @@ class TestASTGeneration(parser_test_base.ParserTest):
         def h(x, **kwargs: Optional[int]) -> NoneType: ...
         """)
     self.TestRoundTrip(src, textwrap.dedent("""
-        def f(x, ...) -> None: ...
-        def g(x, ...) -> None: ...
-        def h(x, ...) -> None: ...
+        def f(x, *args, **kwargs) -> None: ...
+        def g(x, *args, **kwargs) -> None: ...
+        def h(x, *args, **kwargs) -> None: ...
     """))
 
   def testConstants(self):
