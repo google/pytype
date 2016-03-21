@@ -1138,10 +1138,9 @@ class TypeDeclParser(object):
   def p_type_homogeneous(self, p):
     """type : named_or_external_type LBRACKET parameters RBRACKET"""
     _, base_type, _, parameters, _ = p
-    if p[1] == pytd.NamedType("Union"):
-      p[0] = pytd.UnionType(parameters)
-    elif p[1] == pytd.NamedType("Optional"):
-      p[0] = pytd.UnionType(parameters[0], pytd.NamedType("None"))
+    if p[1] == pytd.ExternalType("Callable", "typing"):
+      # TODO(kramm): Support Callable[[params], ret].
+      p[0] = p[1]
     elif len(parameters) == 2 and parameters[-1] is Ellipsis:
       element_type, _ = parameters
       if element_type is Ellipsis:

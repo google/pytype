@@ -89,11 +89,11 @@ class TestASTGeneration(parser_test_base.ParserTest):
     """Test parsing of import."""
     src = textwrap.dedent("""
         import typing
-        def f(x: typing.List[int]) -> typing.Tuple[int]: ...
+        def f(x: typing.List[int]) -> typing.Tuple[int, ...]: ...
         """)
     # TODO(kramm): Should List and Tuple be fully qualified?
     self.TestRoundTrip(src, textwrap.dedent("""
-        def f(x: List[int]) -> Tuple[int]: ...
+        def f(x: List[int]) -> Tuple[int, ...]: ...
         """))
 
   def testParenthesisImport(self):
@@ -124,8 +124,6 @@ class TestASTGeneration(parser_test_base.ParserTest):
         _attributes = ...  # type: TypingTuple[str, ...]
     """)
     self.TestRoundTrip(src, textwrap.dedent("""
-        from typing import Tuple
-
         _attributes = ...  # type: Tuple[str, ...]
         """))
 
@@ -347,6 +345,14 @@ class TestASTGeneration(parser_test_base.ParserTest):
     self.TestRoundTrip(src, textwrap.dedent("""
         from typing import List, Tuple, Union
 
+        def walk() -> Tuple[Union[str, unicode, List[Union[str, unicode]]], ...]: ...
+    """))
+
+  def testTuple(self):
+    src = textwrap.dedent("""
+        def walk() -> Tuple[AnyStr, List[AnyStr]]
+    """)
+    self.TestRoundTrip(src, textwrap.dedent("""
         def walk() -> Tuple[Union[str, unicode, List[Union[str, unicode]]], ...]: ...
     """))
 

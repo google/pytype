@@ -26,6 +26,27 @@ class StdlibTests(test_inference.InferenceTest):
         urllib = ...  # type: module
       """)
 
+  def testTraceBack(self):
+    with self.Infer("""
+      import traceback
+      def f(exc):
+        return traceback.format_exception(*exc)
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        traceback = ...  # type: module
+        def f(exc) -> str
+      """)
+
+  def testOsWalk(self):
+    with self.Infer("""
+      import os
+      x = list(os.walk("/tmp"))
+    """, deep=False, extract_locals=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        os = ...  # type: module
+        x = ...  # type: List[Tuple[Union[str, unicode, List[Union[str, unicode]]], ...]]
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()
