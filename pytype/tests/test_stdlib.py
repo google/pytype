@@ -26,6 +26,17 @@ class StdlibTests(test_inference.InferenceTest):
         urllib = ...  # type: module
       """)
 
+  def testTraceBack(self):
+    with self.Infer("""
+      import traceback
+      def f(exc):
+        return traceback.format_exception(*exc)
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        traceback = ...  # type: module
+        def f(exc) -> str
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()

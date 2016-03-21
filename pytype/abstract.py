@@ -83,6 +83,7 @@ def match_value_against_type(value, other_type, subst, node, view):
     None otherwise.
   """
   left = value.data
+  assert isinstance(left, AtomicAbstractValue), left
   assert not isinstance(left, FormalType)
 
   # TODO(kramm): Use view
@@ -118,7 +119,8 @@ def match_value_against_type(value, other_type, subst, node, view):
           other_value.data.get_type_key() == type_key):
         new_var.AddValue(other_value.data, {other_value}, node)
     return subst
-  elif isinstance(other_type, Unknown) or isinstance(left, Unknown):
+  elif (isinstance(other_type, (Unknown, Unsolvable)) or
+        isinstance(left, (Unknown, Unsolvable))):
     # We can match anything against unknown types, and unknown types against
     # anything.
     # TODO(kramm): Do we want to record what we matched them against?
@@ -1037,24 +1039,26 @@ class PyTDSignature(object):
 
     if self.pytd_sig.has_optional:
       # Truncate extraneous params. E.g. when calling f(a, b, ...) as f(1, 2, 3)
-      posargs = posargs[0:len(self.pytd_sig.params)]
-    if len(posargs) < len(self.pytd_sig.params):
-      for p in self.pytd_sig.params[len(posargs):]:
-        if p.name in namedargs:
-          posargs.append(namedargs[p.name])
+      args_selected = args_selected[0:len(self.pytd_sig.params)]
+    if len(args_selected) < len(self.pytd_sig.params):
+      for p in self.pytd_sig.params[len(args_selected):]:
+        if p.name in kws_selected:
+          args_selected.append(kws_selected[p.name])
         elif starargs is not None or starstarargs is not None:
           # Assume the missing parameter is filled in by *args or **kwargs.
           # TODO(kramm): Can we use the contents of [star]starargs to fill in a
           # more precise type than just "unsolvable"?
-          posargs.append(self.vm.create_new_unsolvable(node, p.name))
+          var = self.vm.create_new_unsolvable(node, p.name)
+          args_selected.append(var.values[0])
         else:
           break  # We just found a missing parameter. Raise error below.
-    if len(posargs) != len(self.pytd_sig.params):
+    if len(args_selected) != len(self.pytd_sig.params):
       # Either too many or too few parameters.
       # Number of parameters mismatch is allowed when matching against an
       # overloaded function (e.g., a __builtins__ entry that has optional
       # parameters that are specified by multiple def's).
-      raise WrongArgCount(self, len(posargs))
+      raise WrongArgCount(self, len(args_selected))
+
     r = self._call_with_values(node, args_selected, kws_selected, view)
     assert r.subst is not None
     t = (r.return_type, r.subst)
@@ -1321,7 +1325,7 @@ class PyTDFunction(Function):
     # parameter, we can't tell whether it matched or not. Hence, we don't know
     # which signature got called. Check if this is the case.
     if (len(self.signatures) > 1 and
-        any(isinstance(view[arg].data, Unknown)
+        any(isinstance(view[arg].data, (Unknown, Unsolvable))
             for arg in chain(posargs, namedargs.values()))):
       return self.call_with_unknowns(node, func, view, posargs, namedargs,
                                      ret_map, starargs, starstarargs)
@@ -2363,7 +2367,19 @@ class Unsolvable(AtomicAbstractValue):
 
   def match_against_type(self, other_type, subst, node, view):
     if isinstance(other_type, ParameterizedClass):
-      return None
+      subst = subst.copy()
+      for name, class_param in other_type.type_parameters.items():
+        # unsolvables are indistinguishable, so just use self.
+        instance_param = self.to_variable(node, name)
+        # Since we only just conjured this unsolveable into existence, it won't
+        # have an entry in the view yet. So just add it.
+        view = view.copy()
+        view[instance_param] = instance_param.values[0]
+        subst = match_var_against_type(instance_param, class_param,
+                                       subst, node, view)
+        if subst is None:
+          return None
+      return subst
     else:
       return subst
 

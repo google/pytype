@@ -247,6 +247,11 @@ class TestGenerators(test_inference.InferenceTest):
       assert list(three) == [3,2,1]
       """)
 
+  def test_unsolvable(self):
+    self.assertNoCrash("""\
+      assert list(three) == [3,2,1]
+      """)
+
   def test_yield_multiple_values(self):
     # TODO(kramm): The generator doesn't have __iter__?
     self.assertNoCrash("""\

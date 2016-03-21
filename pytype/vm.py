@@ -1053,9 +1053,10 @@ class VirtualMachine(object):
         # the failed call.
         return node, result
 
-  def call_function_from_stack(self, state, arg, args, kwargs=None):
+  def call_function_from_stack(self, state, num, args, kwargs=None):
     """Pop arguments for a function and call it."""
-    num_kw, num_pos = divmod(arg, 256)
+    num_kw, num_pos = divmod(num, 256)
+
     # TODO(kramm): Can we omit creating this dict if kwargs=None and num_kw=0?
     namedargs = abstract.Dict("kwargs", self)
     for _ in range(num_kw):
@@ -1067,6 +1068,7 @@ class VirtualMachine(object):
         did_update = namedargs.update(state.node, v)
         if not did_update and starstarargs is None:
           starstarargs = self.create_new_unsolvable(state.node, "**kwargs")
+
     state, posargs = state.popn(num_pos)
     posargs = list(posargs)
     if args is not None:
@@ -1074,6 +1076,7 @@ class VirtualMachine(object):
       starargs = None
     else:
       starargs = self.create_new_unsolvable(state.node, "*args")
+
     state, func = state.pop()
     state, ret = self.call_function_with_state(
         state, func, posargs, namedargs, starargs, starstarargs)
@@ -1290,12 +1293,7 @@ class VirtualMachine(object):
       if not isinstance(args, tuple):
         raise ConversionError(type(args))
     except ConversionError:
-      # If the *args parameter is non-trivial, just try calling with no
-      # arguments.
-      # TODO(kramm): When calling a method, we should instead insert Unknown for
-      # all parameters that are not otherwise set.
-      log.error("Unable to resolve positional arguments: *%s", args_var.name)
-      args = None
+      args = None  # will get special processing in call_function_from_stack
     return state, args
 
   def pop_kwargs(self, state):

@@ -13,9 +13,9 @@ def _some_str(value: ?) -> str
 def extract_stack(...) -> list[tuple[NoneType or bytearray or str or unicode]]
 def extract_tb(tb, ...) -> list[tuple[NoneType or bytearray or str or unicode]]
 def format_exc(limit, ...) -> ?
-def format_exception(etype, value, tb, ...) -> list[str]
-def format_exception_only(etype: ?, value: ?) -> list[str]
-def format_exception_only(etype, value) -> list[str]
+def format_exception(etype, value: List[str], tb, ...) -> str
+def format_exception_only(etype: ?, value: ?) -> str
+def format_exception_only(etype, value) -> str
 def format_list(extracted_list) -> list[str]
 def format_stack(...) -> list[str]
 def format_tb(tb, ...) -> list[str]
