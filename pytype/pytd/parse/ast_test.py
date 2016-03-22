@@ -415,6 +415,15 @@ class TestASTGeneration(parser_test_base.ParserTest):
         """)
     self.TestRoundTrip(src, check_the_sourcecode=False)
 
+  def testOptionalParametersWithType(self):
+    """Test parsing of individual optional parameters."""
+    src = textwrap.dedent("""
+        def f(x = 0) -> int: ...
+        def f(x: int = None) -> int: ...
+        def f(x, s: str = None) -> int: ...
+        """)
+    self.TestRoundTrip(src, check_the_sourcecode=False)
+
   def testOnlyOptional(self):
     """Test parsing of optional parameters."""
     src = textwrap.dedent("""
