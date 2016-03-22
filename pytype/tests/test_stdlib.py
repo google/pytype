@@ -47,6 +47,16 @@ class StdlibTests(test_inference.InferenceTest):
         x = ...  # type: List[Tuple[Union[str, unicode, List[Union[str, unicode]]], ...]]
       """)
 
+  def testStruct(self):
+    with self.Infer("""
+      import struct
+      x = struct.Struct("b")
+    """, deep=False) as ty:
+      self.assertTypesMatchPytd(ty, """
+        struct = ...  # type: module
+        x = ...  # type: struct.Struct
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()
