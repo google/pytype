@@ -997,17 +997,39 @@ class TypeDeclParser(object):
     # type is optional and defaults to "object"
     p[0] = pytd.Parameter(p[1], pytd.NamedType("object"))
 
+  def p_optional_ellipsis(self, p):
+    """optional : ELLIPSIS"""
+    p[0] = pytd.NamedType("object")
+
+  def p_optional_id(self, p):
+    """optional : NAME"""
+    if p[1] == "None":
+      p[0] = pytd.NamedType("NoneType")
+    else:
+      p[0] = pytd.NamedType("object")
+
+  def p_optional_number(self, p):
+    """optional : NUMBER"""
+    if "." in p[1].string:
+      p[0] = pytd.NamedType("float")
+    else:
+      p[0] = pytd.NamedType("int")
+
   def p_param_optional(self, p):
-    """param : NAME ASSIGN ELLIPSIS"""
-    p[0] = pytd.OptionalParameter(p[1], pytd.NamedType("object"))
+    """param : NAME ASSIGN optional"""
+    p[0] = pytd.OptionalParameter(p[1], p[3])
 
   def p_param_and_type(self, p):
     """param : NAME COLON type"""
     p[0] = pytd.Parameter(p[1], p[3])
 
   def p_param_and_type_optional(self, p):
-    """param : NAME COLON type ASSIGN ELLIPSIS"""
-    p[0] = pytd.OptionalParameter(p[1], p[3])
+    """param : NAME COLON type ASSIGN optional"""
+    _, name, _, t, _, opt = p
+    if opt == pytd.NamedType("NoneType"):
+      p[0] = pytd.OptionalParameter(name, pytd.UnionType([t, opt]))
+    else:
+      p[0] = pytd.OptionalParameter(name, t)
 
   def p_param_star(self, p):
     """param : ASTERISK NAME"""
