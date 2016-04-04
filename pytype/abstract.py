@@ -1488,6 +1488,21 @@ class ParameterizedClass(AtomicAbstractValue, Class, FormalType):
                                        self.base_cls.module),
         type_arguments)
 
+  def dummy_match(self, subst, node, view):
+    """Match an unknown or unsolvable against this class."""
+    subst = subst.copy()
+    for name, class_param in self.type_parameters.items():
+      instance_param = self.vm.create_new_unsolvable(node, name)
+      # Since we only just created this unsolveable, it won't
+      # have an entry in the view yet. So just add it.
+      view = view.copy()
+      view[instance_param] = instance_param.values[0]
+      subst = match_var_against_type(instance_param, class_param,
+                                     subst, node, view)
+      if subst is None:
+        return None
+    return subst
+
 
 class PyTDClass(SimpleAbstractValue, Class):
   """An abstract wrapper for PyTD class objects.
@@ -2367,19 +2382,7 @@ class Unsolvable(AtomicAbstractValue):
 
   def match_against_type(self, other_type, subst, node, view):
     if isinstance(other_type, ParameterizedClass):
-      subst = subst.copy()
-      for name, class_param in other_type.type_parameters.items():
-        # unsolvables are indistinguishable, so just use self.
-        instance_param = self.to_variable(node, name)
-        # Since we only just conjured this unsolveable into existence, it won't
-        # have an entry in the view yet. So just add it.
-        view = view.copy()
-        view[instance_param] = instance_param.values[0]
-        subst = match_var_against_type(instance_param, class_param,
-                                       subst, node, view)
-        if subst is None:
-          return None
-      return subst
+      return other_type.dummy_match(subst, node, view)
     else:
       return subst
 
@@ -2510,5 +2513,6 @@ class Unknown(AtomicAbstractValue):
   def match_against_type(self, other_type, subst, node, view):
     # TODO(kramm): Do we want to match the instance or the class?
     if isinstance(other_type, ParameterizedClass):
-      return None
-    return subst
+      return other_type.dummy_match(subst, node, view)
+    else:
+      return subst
