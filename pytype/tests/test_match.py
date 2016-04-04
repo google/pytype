@@ -4,6 +4,7 @@ from pytype.tests import test_inference
 
 
 class MatchTest(test_inference.InferenceTest):
+  """Tests for matching types."""
 
   def testCallable(self):
     with self.Infer("""
@@ -16,6 +17,18 @@ class MatchTest(test_inference.InferenceTest):
         tokenize = ...  # type: module
         def f() -> NoneType
         x = ...  # type: Generator[Tuple[Union[Tuple[int, ...], int, str], ...]]
+      """)
+
+  def testMatchUnknownAgainstContainer(self):
+    with self.Infer("""
+      a = {1}
+      def f(x):
+        return a & x
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: Set[int]
+
+        def f(x: Set[int]) -> Set[Any]: ...
       """)
 
 
