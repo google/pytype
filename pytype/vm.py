@@ -678,7 +678,7 @@ class VirtualMachine(object):
         return abstract.PyTDClass(name, pyval, self)
     elif isinstance(pyval, pytd.Function):
       f = abstract.PyTDFunction(pyval.name,
-                                [abstract.PyTDSignature(sig, self)
+                                [abstract.PyTDSignature(pyval.name, sig, self)
                                  for sig in pyval.signatures], pyval.kind, self)
       return f
     elif isinstance(pyval, pytd.ClassType):

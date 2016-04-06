@@ -15,6 +15,7 @@ import logging
 
 
 from pytype import exceptions
+from pytype import function
 from pytype import output
 from pytype import utils
 from pytype.pyc import loadmarshal
@@ -1021,13 +1022,15 @@ class PyTDSignature(object):
   type.
   """
 
-  def __init__(self, pytd_sig, vm):
+  def __init__(self, name, pytd_sig, vm):
     self.vm = vm
+    self.name = name
     self.pytd_sig = pytd_sig
     self.param_types = [
         self.vm.convert_constant_to_value(pytd.Print(p), p.type)
         for p in self.pytd_sig.params]
     self._bound_sig_cache = {}
+    self.signature = function.Signature.from_pytd(vm, name, pytd_sig)
 
   # pylint: disable=unused-argument
   def call_with_view(self, node, func, view, posargs, namedargs, ret_map,
@@ -1057,7 +1060,7 @@ class PyTDSignature(object):
       # Number of parameters mismatch is allowed when matching against an
       # overloaded function (e.g., a __builtins__ entry that has optional
       # parameters that are specified by multiple def's).
-      raise WrongArgCount(self, len(args_selected))
+      raise WrongArgCount(self.signature, len(args_selected))
 
     r = self._call_with_values(node, args_selected, kws_selected, view)
     assert r.subst is not None
@@ -1132,7 +1135,7 @@ class PyTDSignature(object):
       if subst is None:
         # These parameters didn't match this signature. There might be other
         # signatures that work, but figuring that out is up to the caller.
-        raise WrongArgTypes(self, [a.data for a in arg_values])
+        raise WrongArgTypes(self.signature, [a.data for a in arg_values])
     return utils.HashableDict(subst)
 
   def _get_mutation(self, node, arg_values, kw_values, subst):
@@ -1907,6 +1910,29 @@ class InterpreterFunction(Function):
     self.annotations = annotations
     self.cls = self.vm.function_type
     self._call_records = {}
+    self.signature = self._build_signature()
+
+  def _build_signature(self):
+    """Build a function.Signature object representing this function."""
+    arg_pos = self.code.co_argcount
+    vararg_name = None
+    kwarg_name = None
+    if self.has_varargs():
+      vararg_name = self.code.co_varnames[arg_pos]
+      arg_pos += 1
+    if self.has_kwargs():
+      kwarg_name = self.code.co_varnames[arg_pos]
+      arg_pos += 1
+    defaults = dict(zip(
+        self.get_parameter_names()[-len(self.defaults):], self.defaults))
+    return function.Signature(
+        self.name,
+        self.get_parameter_names(),
+        vararg_name,
+        set(),  # TODO(kramm): Support Python 3 kwonly args
+        kwarg_name,
+        defaults,
+        self.annotations)
 
   # TODO(kramm): support retrieving the following attributes:
   # 'func_{code, name, defaults, globals, locals, dict, closure},
@@ -2028,11 +2054,22 @@ class InterpreterFunction(Function):
     return hashlib.md5("".join(InterpreterFunction._hash(*args)
                                for args in hash_args)).digest()
 
+  def _check_call(self, node, posargs, namedargs, starargs, starstarargs):
+    if not self.signature.has_param_annotations:
+      return
+    for _, param_var, formal in self.signature.iter_args(
+        posargs, namedargs, starargs, starstarargs):
+      for combination in utils.deep_variable_product([param_var]):
+        view = {value.variable: value for value in combination}
+        if match_var_against_type(param_var, formal, {}, node, view) is None:
+          raise WrongArgTypes(self.signature, [view[a].data for a in posargs])
+
   def call(self, node, unused_func, posargs, namedargs,
            starargs=None, starstarargs=None):
     if self.vm.is_at_maximum_depth():
       log.info("Maximum depth reached. Not analyzing %r", self.name)
       return node, self.vm.program.NewVariable(self.name + ":ret", [], [], node)
+    self._check_call(node, posargs, namedargs, starargs, starstarargs)
     callargs = self._map_args(node, posargs, namedargs, starargs, starstarargs)
     # Might throw vm.RecursionException:
     frame = self.vm.make_frame(node, self.code, callargs,

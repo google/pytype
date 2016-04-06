@@ -143,5 +143,6 @@ class ErrorTest(test_inference.InferenceTest):
     # "Line 3, in f: Can't retrieve item out of dict. Empty?"
     self.assertErrorLogContains(errors, r"line 3.*item out of dict")
 
+
 if __name__ == "__main__":
   test_inference.main()
