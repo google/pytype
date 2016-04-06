@@ -59,7 +59,7 @@ class CallTracer(vm.VirtualMachine):
     if t:
       return self.instantiate(t.to_variable(node, t.name), node)
     else:
-      return self.create_new_unknown(node, name)
+      return abstract.Unknown(self).to_variable(node, name)
 
   def create_varargs(self, node):
     value = abstract.Instance(self.tuple_type, self)
@@ -118,11 +118,7 @@ class CallTracer(vm.VirtualMachine):
 
   def instantiate(self, clsv, node):
     """Build an (dummy) instance from a class, for analyzing it."""
-    n = self.program.NewVariable(clsv.name)
-    for cls in clsv.Data(node):
-      instance = cls.instantiate(node)
-      n.PasteVariable(instance, node)
-    return n
+    return abstract.Instance(cls, self).to_variable(node, name=cls.name)
 
   def init_class(self, node, val):
     instance = self.instantiate(val.AssignToNewVariable(val.data.name, node),
