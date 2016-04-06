@@ -670,7 +670,9 @@ class set(Generic[T], object):
     def update(self, ...) -> NoneType
     def add(self, object: A) -> NoneType:
         self := set[T or A]
-    # Even though these look like methods, they're not:
+    # Even though these look like instance methods (i.e., you can call
+    # {1}.union(x)), they're actually static methods. (Which will accept a
+    # variable number of arguments, the first of which can e.g. be self.)
     @staticmethod
     def union(...) -> set[?]
     @staticmethod

@@ -1219,6 +1219,26 @@ class ClassMethod(AtomicAbstractValue):
       return subst
 
 
+class StaticMethod(AtomicAbstractValue):
+  """Implements @staticmethod methods in pyi."""
+
+  def __init__(self, name, method, callself, callcls, vm):
+    super(StaticMethod, self).__init__(name, vm)
+    self.method = method
+    self.callself = callself  # unused
+    self.callcls = callcls  # unused
+    self.signatures = self.method.signatures
+
+  def call(self, *args, **kwargs):
+    return self.method.call(*args, **kwargs)
+
+  def match_against_type(self, other_type, subst, node, view):
+    if other_type.name in ["staticmethod", "object"]:
+      return subst
+    else:
+      return None
+
+
 class PyTDFunction(Function):
   """A PyTD function (name + list of signatures).
 
@@ -1242,7 +1262,7 @@ class PyTDFunction(Function):
 
   def property_get(self, callself, callcls):
     if self.kind == pytd.STATICMETHOD:
-      return self
+      return StaticMethod(self.name, self, callself, callcls, self.vm)
     elif self.kind == pytd.CLASSMETHOD:
       return ClassMethod(self.name, self, callself, callcls, self.vm)
     else:

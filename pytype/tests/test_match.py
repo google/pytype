@@ -31,6 +31,18 @@ class MatchTest(test_inference.InferenceTest):
         def f(x: Set[int]) -> Set[Any]: ...
       """)
 
+  def testMatchStatic(self):
+    with self.Infer("""
+      s = {1}
+      def f(x):
+        # set.intersection is a static method:
+        return s.intersection(x)
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        s = ...  # type: Set[int]
+
+        def f(x) -> Set[Any]: ...
+      """)
 
 if __name__ == "__main__":
   test_inference.main()

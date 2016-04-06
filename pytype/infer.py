@@ -181,12 +181,9 @@ class CallTracer(vm.VirtualMachine):
               func, len(posargs), result)
     args = tuple(posargs)
     kwargs = tuple((namedargs or {}).items())
-    if isinstance(func.data, abstract.BoundFunction):
-      # We only need to record calls to pytd classes, since these are the
-      # only calls the solver is going to care about later.
-      if isinstance(func.data, abstract.BoundPyTDFunction):
-        self._method_calls.add(CallRecord(func, args, kwargs, result))
-    else:
+    if isinstance(func.data, abstract.BoundPyTDFunction):
+      self._method_calls.add(CallRecord(func, args, kwargs, result))
+    elif isinstance(func.data, abstract.PyTDFunction):
       self._calls.add(CallRecord(func, args, kwargs, result))
 
   def pytd_classes_for_unknowns(self):
