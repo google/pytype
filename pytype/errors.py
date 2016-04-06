@@ -242,11 +242,11 @@ class ErrorLog(ErrorLogBase):
   @_error_name("wrong-arg-types")
   def wrong_arg_types(self, opcode, sig, passed_args):
     """A function was called with the wrong parameter types."""
-    message = "Function %s was called with the wrong arguments" % sig.name
-    details = "".join([
+    message = "".join([
+        "Function %s was called with the wrong arguments\n" % sig.name,
         "Expected: (", str(sig), ")\n",
         "Actually passed: (",
-        ", ".join("%s: %s" % (name, self._prettyprint_arg(arg))
+        ", ".join("%s: %s" % (name, arg.name)
                   for name, arg in zip(sig.param_names, passed_args)),
         ")"])
     self.error_with_details(opcode, message, details)

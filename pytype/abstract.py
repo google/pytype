@@ -16,7 +16,6 @@ import logging
 
 from pytype import exceptions
 from pytype import function
-from pytype import load_pytd
 from pytype import output
 from pytype import utils
 from pytype.pyc import loadmarshal
@@ -1314,24 +1313,14 @@ class PyTDSignature(object):
       if p.name not in arg_dict:
         if starargs is None and starstarargs is None:
           break  # We just found a missing parameter. Raise error below.
-        # Assume the missing parameter is filled in by *args or **kwargs.
-        # TODO(kramm): Can we use the contents of [star]starargs to fill in a
-        # more precise type than just "unsolvable"?
-        var = self.vm.create_new_unsolvable(node, p.name)
-        arg_dict[p.name] = var.bindings[0]
+    if len(args_selected) != len(self.pytd_sig.params):
+      # Either too many or too few parameters.
+      # Number of parameters mismatch is allowed when matching against an
+      # overloaded function (e.g., a __builtins__ entry that has optional
+      # parameters that are specified by multiple def's).
+      raise WrongArgCount(self.signature, len(args_selected))
 
-    allowed_params = frozenset(p.name for p in self.pytd_sig.params)
-    for name in allowed_params:
-      if name not in arg_dict:
-        raise MissingParameter(self.signature, name)
-    if not self.pytd_sig.has_optional:
-      if len(posargs) > len(self.pytd_sig.params):
-        raise WrongArgCount(self.signature, len(posargs))
-      invalid_names = set(namedargs) - allowed_params
-      if invalid_names:
-        raise WrongKeywordArgs(self.signature, sorted(invalid_names))
-
-    r = self._call_with_values(node, arg_dict, view)
+    r = self._call_with_values(node, args_selected, kws_selected, view)
     assert r.subst is not None
     t = (r.return_type, r.subst)
     sources = [func] + arg_dict.values()
@@ -1403,9 +1392,7 @@ class PyTDSignature(object):
       if subst is None:
         # These parameters didn't match this signature. There might be other
         # signatures that work, but figuring that out is up to the caller.
-        passed = [arg_dict[name].data
-                  for name in self.signature.param_names]
-        raise WrongArgTypes(self.signature, passed)
+        raise WrongArgTypes(self.signature, [a.data for a in arg_values])
     return utils.HashableDict(subst)
 
   def _get_mutation(self, node, arg_dict, subst):
@@ -2241,7 +2228,6 @@ class InterpreterFunction(Function):
     self.cls = self.vm.function_type
     self._call_records = {}
     self.signature = self._build_signature()
-    self.last_frame = None  # for BuildClass
 
   def _build_signature(self):
     """Build a function.Signature object representing this function."""
@@ -2388,16 +2374,12 @@ class InterpreterFunction(Function):
   def _check_call(self, node, posargs, namedargs, starargs, starstarargs):
     if not self.signature.has_param_annotations:
       return
-    args = list(self.signature.iter_args(
-        posargs, namedargs, starargs, starstarargs))
-    for i, (_, param_var, formal) in enumerate(args):
-      if formal is not None:
-        for combination in utils.deep_variable_product([param_var]):
-          view = {value.variable: value for value in combination}
-          if match_var_against_type(param_var, formal, {}, node, view) is None:
-            passed = [p.data[0] for _, p, _ in args]
-            passed[i] = view[param_var].data
-            raise WrongArgTypes(self.signature, passed)
+    for _, param_var, formal in self.signature.iter_args(
+        posargs, namedargs, starargs, starstarargs):
+      for combination in utils.deep_variable_product([param_var]):
+        view = {value.variable: value for value in combination}
+        if match_var_against_type(param_var, formal, {}, node, view) is None:
+          raise WrongArgTypes(self.signature, [view[a].data for a in posargs])
 
   def call(self, node, unused_func, posargs, namedargs,
            starargs=None, starstarargs=None, new_locals=None):
