@@ -2205,6 +2205,10 @@ class BoundFunction(AtomicAbstractValue):
   def argcount(self):
     return self.underlying.argcount() - 1  # account for self
 
+  @property
+  def signature(self):
+    return self.underlying.signature
+
   def call(self, node, func, posargs, namedargs,
            starargs=None, starstarargs=None):
     return self.underlying.call(node, func, [self._callself] + posargs,

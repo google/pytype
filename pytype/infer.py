@@ -53,9 +53,13 @@ class CallTracer(vm.VirtualMachine):
     self._method_calls = set()
     self.exitpoint = None
 
-  def create_argument(self, node, method_name, i):
-    name = "arg %d of %s" % (i, method_name)
-    return abstract.Unknown(self).to_variable(node, name)
+  def create_argument(self, node, signature, method_name, i):
+    name = signature.param_names[i]
+    t = signature.annotations.get(name)
+    if t:
+      return self.instantiate(t.to_variable(node, t.name), node)
+    else:
+      return abstract.Unknown(self).to_variable(node, name)
 
   def create_varargs(self, node):
     value = abstract.Instance(self.tuple_type, self)
@@ -88,7 +92,7 @@ class CallTracer(vm.VirtualMachine):
     method = val.data
     if isinstance(method, (abstract.InterpreterFunction,
                            abstract.BoundInterpreterFunction)):
-      args = [self.create_argument(node, val.data.name, i)
+      args = [self.create_argument(node, method.signature, val.data.name, i)
               for i in range(method.argcount())]
       varargs = self.create_varargs(node) if method.has_varargs() else None
       kwargs = self.create_kwargs(node) if method.has_kwargs() else None
@@ -114,12 +118,11 @@ class CallTracer(vm.VirtualMachine):
 
   def instantiate(self, cls, node):
     """Build an (dummy) instance from a class, for analyzing it."""
-    return abstract.Instance(
-        cls.AssignToNewVariable(cls.data.name, node), self
-    ).to_variable(node, name=cls.data.name)
+    return abstract.Instance(cls, self).to_variable(node, name=cls.name)
 
   def init_class(self, node, val):
-    instance = self.instantiate(val, node)
+    instance = self.instantiate(val.AssignToNewVariable(val.data.name, node),
+                                node)
     cls = val.data
     node, init = cls.get_attribute(node, "__init__", instance.values[0], val)
     clsvar = val.AssignToNewVariable("cls", node)
