@@ -47,12 +47,12 @@ def variable_set_official_name(variable, name):
 
 
 def get_atomic_value(variable):
-  if len(variable.bindings) == 1:
-    return variable.bindings[0].data
+  if len(variable.values) == 1:
+    return variable.values[0].data
   else:
     raise ConversionError(
         "Variable with too many options when trying to get atomic value. %s %s"
-        % (variable, [a.data for a in variable.bindings]))
+        % (variable, [a.data for a in variable.values]))
 
 
 def get_atomic_python_constant(variable):
@@ -79,7 +79,7 @@ def get_atomic_python_constant(variable):
 def match_var_against_type(var, other_type, subst, node, view):
   if hasattr(other_type, "match_var_against"):
     return other_type.match_var_against(var, subst, node, view)
-  elif var.bindings:
+  elif var.values:
     return match_value_against_type(view[var], other_type, subst, node, view)
   else:  # Empty set of values. The "nothing" type.
     if isinstance(other_type, Union):
@@ -391,6 +391,10 @@ class AtomicAbstractValue(object):
       A hashable object built from this value's type information.
     """
     return self.get_default_type_key()
+
+  def instantiate(self, node):
+    return Instance(self.to_variable(node, self.name), self.vm).to_variable(
+        node, self.name)
 
   def instantiate(self, node):
     return Instance(self.to_variable(node, self.name), self.vm).to_variable(
@@ -2798,7 +2802,6 @@ class Unsolvable(AtomicAbstractValue):
       return subst
 
   def instantiate(self, node):
-    # return ourself.
     return self.to_variable(node, self.name)
 
 

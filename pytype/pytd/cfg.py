@@ -460,7 +460,7 @@ class Variable(object):
       The new binding.
     """
     assert not isinstance(data, Variable)
-    binding = self._FindOrAddBinding(data)
+    value = self._FindOrAddValue(data)
     if source_set or where:
       assert source_set is not None and where is not None
       binding.AddOrigin(where, source_set)

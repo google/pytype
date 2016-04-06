@@ -41,30 +41,27 @@ class Signature(object):
   @classmethod
   def from_pytd(cls, vm, name, sig):
     # TODO(kramm): templates
-    param_names = tuple(p.name for p in sig.params)
     return cls(
-        name,
-        param_names,
-        "args" if sig.has_optional else None,
-        set(),
-        "kwargs" if sig.has_optional else None,
-        [p.name for p in sig.params if isinstance(p, pytd.OptionalParameter)],
-        {p.name: vm.convert_constant(p.name, p.type).data[0]
-         for p in sig.params}
+        name=name,
+        param_names=tuple(p.name for p in sig.params),
+        varargs_name="args" if sig.has_optional else None,
+        kwonly_params=set(),
+        kwargs_name="kwargs" if sig.has_optional else None,
+        defaults=[p.name
+                  for p in sig.params
+                  if isinstance(p, pytd.OptionalParameter)],
+        annotations={p.name: vm.convert_constant(p.name, p.type).data[0]
+                     for p in sig.params}
     )
 
   def __str__(self):
+    def default_suffix(name):
+      return " = ..." if name in self.defaults else ""
     def annotate(name):
       if name in self.annotations:
-        if name in self.defaults:
-          return name + ": " + str(self.annotations[name]) + " = ..."
-        else:
-          return name + ": " + str(self.annotations[name])
+        return name + ": " + str(self.annotations[name]) + default_suffix(name)
       else:
-        if name in self.defaults:
-          return name + " = ..."
-        else:
-          return name
+        return name + default_suffix(name)
     s = []
     for name in self.param_names:
       s.append(annotate(name))

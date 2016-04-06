@@ -54,8 +54,6 @@ repper = repr_obj.repr
 
 Block = collections.namedtuple("Block", ["type", "handler", "level"])
 
-_opcode_counter = metrics.MapCounter("vm_opcode")
-
 
 class RecursionException(Exception):
   pass
@@ -749,6 +747,8 @@ class VirtualMachine(object):
     Returns:
       An instance of Class.
     """
+    bases_values = bases.values
+    bases = list(abstract.get_atomic_python_constant(bases))
     name = abstract.get_atomic_python_constant(name_var)
     log.info("Declaring class %s", name)
     try:
@@ -1295,6 +1295,13 @@ class VirtualMachine(object):
     return abstract.LazyAbstractOrConcreteValue(
         name, d, d, self.maybe_convert_constant, self)
 
+  def get_special_module(self, name):
+    """Look up a hardcoded module implementation, or return None."""
+    if name == "typing":
+      return typing.Module(self)
+    else:
+      return None
+
   # TODO(kramm): memoize
   def import_module(self, name, level):
     """Import the module and return the module object.
@@ -1313,12 +1320,12 @@ class VirtualMachine(object):
     if name:
       if level <= 0:
         assert level in [-1, 0]
-        if level == -1 and self.loader.base_module:
-          # Python 2 tries relative imports first.
-          ast = (self.loader.import_relative_name(name) or
-                 self.loader.import_name(name))
-        else:
-          ast = self.loader.import_name(name)
+        module = self.get_special_module(name)
+        if module is not None:
+          return module
+        ast = self.loader.import_name(name)
+        if level == -1 and self.loader.base_module and not ast:
+          ast = self.loader.import_relative_name(name)
       else:
         # "from .x import *"
         base = self.loader.import_relative(level)
@@ -2012,11 +2019,11 @@ class VirtualMachine(object):
   def _convert_function_annotations(self, node, raw_annotations):
     if raw_annotations:
       # {"i": int, "return": str} is stored as (int, str, ("i, "return"))
-      names = _get_atomic_python_constant(raw_annotations[-1])
+      names = abstract.get_atomic_python_constant(raw_annotations[-1])
       type_list = raw_annotations[:-1]
       annotations = {}
       for name, t in zip(names, type_list):
-        name = _get_atomic_python_constant(name)
+        name = abstract.get_atomic_python_constant(name)
         visible = t.Data(node)
         if len(visible) > 1:
           self.errorlog.invalid_annotation(self.frame.current_opcode, name)
@@ -2094,14 +2101,9 @@ class VirtualMachine(object):
       name = full_name.split(".", 1)[0]  # "a.b.c" -> "a"
     else:
       name = full_name
-    level = abstract.get_atomic_python_constant(level_var)
-    try:
-      module = self.import_module(name, level)
-    except parser.ParseError as e:
-      log.warning("Couldn't parse module %r", name)
-      self.errorlog.pyi_error(op, e)
-      module = abstract.Unsolvable(self)
-    except load_pytd.DependencyNotFoundError as e:
+    module = self.import_module(
+        name, abstract.get_atomic_python_constant(level))
+    if module is None:
       log.warning("Couldn't find module %r", name)
       self.errorlog.pyi_not_found(op, name, level, e.module_name)
       module = abstract.Unsolvable(self)
@@ -2163,7 +2165,7 @@ class VirtualMachine(object):
     # TODO(kramm): this doesn't use __all__ properly.
     state, mod_var = state.pop()
     mod = abstract.get_atomic_value(mod_var)
-    if isinstance(mod, (abstract.Unknown, abstract.Unsolvable)):
+    if isinstance(mod, abstract.Unknown):
       log.error("Doing 'from module import *' from unresolved module")
       return state
     log.info("%r", mod)
