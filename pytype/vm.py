@@ -25,6 +25,7 @@ from pytype import blocks
 from pytype import exceptions
 from pytype import load_pytd
 from pytype import state as frame_state
+from pytype import typing
 from pytype import utils
 from pytype.pyc import loadmarshal
 from pytype.pyc import pyc
@@ -52,43 +53,8 @@ repper = repr_obj.repr
 Block = collections.namedtuple("Block", ["type", "handler", "level"])
 
 
-class ConversionError(ValueError):
-  pass
-
-
 class RecursionException(Exception):
   pass
-
-
-def _get_atomic_value(variable):
-  values = variable.values
-  if len(values) == 1:
-    return values[0].data
-  else:
-    raise ConversionError(
-        "Variable with too many options when trying to get atomic value. %s %s"
-        % (variable, [a.data for a in values]))
-
-
-def _get_atomic_python_constant(variable):
-  """Get the concrete atomic Python value stored in this variable.
-
-  This is used for things that are stored in typegraph.Variable, but we
-  need the actual data in order to proceed. E.g. function / class defintions.
-
-  Args:
-    variable: A typegraph.Variable. It can only have one possible value.
-  Returns:
-    A Python constant. (Typically, a string, a tuple, or a code object.)
-  Raises:
-    ValueError: If the value in this Variable is purely abstract, i.e. doesn't
-      store a Python value.
-    IndexError: If there is more than one possibility for this value.
-  """
-  atomic = _get_atomic_value(variable)
-  if isinstance(atomic, abstract.PythonConstant):
-    return atomic.pyval
-  raise ConversionError("Only some types are supported: %r" % type(atomic))
 
 
 class VirtualMachineError(Exception):
@@ -435,7 +401,7 @@ class VirtualMachine(object):
   def convert_value_to_string(self, val):
     if isinstance(val, abstract.PythonConstant) and isinstance(val.pyval, str):
       return val.pyval
-    raise ConversionError("%s is not a string" % val)
+    raise abstract.ConversionError("%s is not a string" % val)
 
   def _get_maybe_abstract_instance(self, data):
     """Get an instance of the same type as the given data, abstract if possible.
@@ -767,12 +733,12 @@ class VirtualMachine(object):
       An instance of Class.
     """
     bases_values = bases.values
-    bases = list(_get_atomic_python_constant(bases))
-    name = _get_atomic_python_constant(name_var)
+    bases = list(abstract.get_atomic_python_constant(bases))
+    name = abstract.get_atomic_python_constant(name_var)
     log.info("Declaring class %s", name)
     try:
-      class_dict = _get_atomic_value(class_dict_var)
-    except ConversionError:
+      class_dict = abstract.get_atomic_value(class_dict_var)
+    except abstract.ConversionError:
       log.error("Error initializing class %r", name)
       return self.create_new_unknown(node, name)
     for base in bases:
@@ -794,15 +760,15 @@ class VirtualMachine(object):
                     closure=None, annotations=None):
     """Create a function or closure given the arguments."""
     if closure:
-      closure = tuple(c for c in _get_atomic_python_constant(closure))
+      closure = tuple(c for c in abstract.get_atomic_python_constant(closure))
       log.info("closure: %r", closure)
     if not name:
-      if _get_atomic_python_constant(code).co_name:
-        name = "<function:%s>" % _get_atomic_python_constant(code).co_name
+      if abstract.get_atomic_python_constant(code).co_name:
+        name = abstract.get_atomic_python_constant(code).co_name
       else:
         name = "<lambda>"
     val = abstract.InterpreterFunction.make_function(
-        name, code=_get_atomic_python_constant(code),
+        name, code=abstract.get_atomic_python_constant(code),
         f_locals=self.frame.f_locals, f_globals=globs,
         defaults=defaults, closure=closure, annotations=annotations, vm=self)
     # TODO(ampere): What else needs to be an origin in this case? Probably stuff
@@ -855,8 +821,8 @@ class VirtualMachine(object):
       Whether the value is None. False if it isn't or if we don't know.
     """
     try:
-      return value is None or _get_atomic_python_constant(value) is None
-    except ConversionError:
+      return value is None or abstract.get_atomic_python_constant(value) is None
+    except abstract.ConversionError:
       return False
 
   def push_abstract_exception(self, state):
@@ -1289,10 +1255,10 @@ class VirtualMachine(object):
     """Retrieve a varargs tuple from the stack. Used by call_function."""
     state, args_var = state.pop()
     try:
-      args = _get_atomic_python_constant(args_var)
+      args = abstract.get_atomic_python_constant(args_var)
       if not isinstance(args, tuple):
-        raise ConversionError(type(args))
-    except ConversionError:
+        raise abstract.ConversionError(type(args))
+    except abstract.ConversionError:
       args = None  # will get special processing in call_function_from_stack
     return state, args
 
@@ -1303,6 +1269,13 @@ class VirtualMachine(object):
   def convert_locals_or_globals(self, d, name="globals"):
     return abstract.LazyAbstractOrConcreteValue(
         name, d, d, self.maybe_convert_constant, self)
+
+  def get_special_module(self, name):
+    """Look up a hardcoded module implementation, or return None."""
+    if name == "typing":
+      return typing.Module(self)
+    else:
+      return None
 
   # TODO(kramm): memoize
   def import_module(self, name, level):
@@ -1322,6 +1295,9 @@ class VirtualMachine(object):
     if name:
       if level <= 0:
         assert level in [-1, 0]
+        module = self.get_special_module(name)
+        if module is not None:
+          return module
         ast = self.loader.import_name(name)
         if level == -1 and self.loader.base_module and not ast:
           ast = self.loader.import_relative_name(name)
@@ -1996,11 +1972,11 @@ class VirtualMachine(object):
   def _convert_function_annotations(self, node, raw_annotations):
     if raw_annotations:
       # {"i": int, "return": str} is stored as (int, str, ("i, "return"))
-      names = _get_atomic_python_constant(raw_annotations[-1])
+      names = abstract.get_atomic_python_constant(raw_annotations[-1])
       type_list = raw_annotations[:-1]
       annotations = {}
       for name, t in zip(names, type_list):
-        name = _get_atomic_python_constant(name)
+        name = abstract.get_atomic_python_constant(name)
         visible = t.Data(node)
         if len(visible) > 1:
           self.errorlog.invalid_annotation(self.frame.current_opcode, name)
@@ -2017,7 +1993,7 @@ class VirtualMachine(object):
     else:
       assert self.python_version[0] == 3
       state, name_var = state.pop()
-      name = _get_atomic_python_constant(name_var)
+      name = abstract.get_atomic_python_constant(name_var)
     state, code = state.pop()
     # TODO(dbaum): Handle kw_defaults and annotations (Python 3).
     state, defaults, _, raw_annotations = self._pop_extra_function_args(
@@ -2037,7 +2013,7 @@ class VirtualMachine(object):
     else:
       assert self.python_version[0] == 3
       state, name_var = state.pop()
-      name = _get_atomic_python_constant(name_var)
+      name = abstract.get_atomic_python_constant(name_var)
     state, (closure, code) = state.popn(2)
     # TODO(dbaum): Handle kw_defaults and annotations (Python 3).
     state, defaults, _, _ = self._pop_extra_function_args(state, op.arg)
@@ -2078,7 +2054,8 @@ class VirtualMachine(object):
       name = full_name.split(".", 1)[0]  # "a.b.c" -> "a"
     else:
       name = full_name
-    module = self.import_module(name, _get_atomic_python_constant(level))
+    module = self.import_module(
+        name, abstract.get_atomic_python_constant(level))
     if module is None:
       log.warning("Couldn't find module %r", name)
       self.errorlog.import_error(self.frame.current_opcode, name)
@@ -2107,7 +2084,7 @@ class VirtualMachine(object):
 
   def byte_STORE_LOCALS(self, state):
     state, locals_dict = state.pop()
-    self.frame.f_locals = _get_atomic_value(locals_dict)
+    self.frame.f_locals = abstract.get_atomic_value(locals_dict)
     return state
 
   def byte_END_FINALLY(self, state):
@@ -2129,7 +2106,7 @@ class VirtualMachine(object):
     """Pops a module and stores all its contents in locals()."""
     # TODO(kramm): this doesn't use __all__ properly.
     state, mod_var = state.pop()
-    mod = _get_atomic_value(mod_var)
+    mod = abstract.get_atomic_value(mod_var)
     if isinstance(mod, abstract.Unknown):
       log.error("Doing 'from module import *' from unresolved module")
       return state

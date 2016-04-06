@@ -29,6 +29,10 @@ chain = itertools.chain  # pylint: disable=invalid-name
 WrapsDict = pytd_utils.WrapsDict  # pylint: disable=invalid-name
 
 
+class ConversionError(ValueError):
+  pass
+
+
 def variable_set_official_name(variable, name):
   """Set official_name on each value in the variable.
 
@@ -42,8 +46,40 @@ def variable_set_official_name(variable, name):
     v.data.official_name = name
 
 
+def get_atomic_value(variable):
+  if len(variable.values) == 1:
+    return variable.values[0].data
+  else:
+    raise ConversionError(
+        "Variable with too many options when trying to get atomic value. %s %s"
+        % (variable, [a.data for a in variable.values]))
+
+
+def get_atomic_python_constant(variable):
+  """Get the concrete atomic Python value stored in this variable.
+
+  This is used for things that are stored in typegraph.Variable, but we
+  need the actual data in order to proceed. E.g. function / class defintions.
+
+  Args:
+    variable: A typegraph.Variable. It can only have one possible value.
+  Returns:
+    A Python constant. (Typically, a string, a tuple, or a code object.)
+  Raises:
+    ValueError: If the value in this Variable is purely abstract, i.e. doesn't
+      store a Python value, or if it has more than one possible value.
+    IndexError: If there is more than one possibility for this value.
+  """
+  atomic = get_atomic_value(variable)
+  if isinstance(atomic, PythonConstant):
+    return atomic.pyval
+  raise ConversionError("Only some types are supported: %r" % type(atomic))
+
+
 def match_var_against_type(var, other_type, subst, node, view):
-  if var.values:
+  if hasattr(other_type, "match_var_against"):
+    return other_type.match_var_against(var, subst, node, view)
+  elif var.values:
     return match_value_against_type(view[var], other_type, subst, node, view)
   else:  # Empty set of values. The "nothing" type.
     if isinstance(other_type, Union):
@@ -338,6 +374,10 @@ class AtomicAbstractValue(object):
       A hashable object built from this value's type information.
     """
     return type(self)
+
+  def instantiate(self, node):
+    return Instance(self.to_variable(node, self.name), self.vm).to_variable(
+        node, self.name)
 
   def to_variable(self, node, name=None):
     """Build a variable out of this abstract value.
@@ -2446,6 +2486,9 @@ class Unsolvable(AtomicAbstractValue):
       return other_type.dummy_match(subst, node, view)
     else:
       return subst
+
+  def instantiate(self, node):
+    return self.to_variable(node, self.name)
 
 
 class Unknown(AtomicAbstractValue):

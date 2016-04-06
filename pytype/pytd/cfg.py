@@ -453,6 +453,7 @@ class Variable(object):
     Returns:
       The new value.
     """
+    assert not isinstance(data, Variable)
     value = self._FindOrAddValue(data)
     if source_set or where:
       assert source_set is not None and where is not None
