@@ -1,6 +1,7 @@
 """Code and data structures for storing and displaying errors."""
 
 import os
+import StringIO
 import sys
 
 
@@ -26,26 +27,33 @@ class CheckPoint(object):
 class Error(object):
   """Representation of an error in the error log."""
 
-  def __init__(self, severity, opcode, message):
+  def __init__(self, severity, filename, lineno, column,
+               methodname, linetext, message):
     self.severity = severity
-    self.opcode = opcode
+    self.filename = filename
+    self.lineno = lineno
+    self.column = column
+    self.methodname = methodname
+    self.linetext = linetext
     self.message = message
 
   def position(self):
     """Return human-readable filename + line number."""
-    if self.opcode and self.opcode.code.co_filename:
-      filename = os.path.basename(self.opcode.code.co_filename)
-      return "File \"%s\", line %d, in %s" % (filename,
-                                              self.opcode.line,
-                                              self.opcode.code.co_name)
-    elif self.opcode:
-      return "Line %d, in %s" % (self.opcode.line, self.opcode.code.co_name)
+    method = ", in %s" % self.methodname if self.methodname else ""
+
+    if self.filename:
+      filename = os.path.basename(self.filename)
+      return "File \"%s\", line %d%s" % (filename,
+                                         self.lineno,
+                                         method)
+    elif self.lineno:
+      return "Line %d%s" % (self.lineno, method)
     else:
       return ""
 
   def __str__(self):
-    pos = self.position() + ":\n  " if self.opcode else ""
-    return pos + self.message.replace("\n", "\n  ")
+    pos = self.position()
+    return (pos + ": " if pos else "") + self.message.replace("\n", "\n  ")
 
 
 class ErrorLogBase(object):
@@ -63,11 +71,21 @@ class ErrorLogBase(object):
   def __iter__(self):
     return iter(self.errors)
 
+  def _add(self, severity, opcode, message, args):
+    self.errors.append(Error(
+        severity=severity,
+        filename=opcode.code.co_filename if opcode else None,
+        lineno=opcode.line if opcode else None,
+        column=None,
+        methodname=opcode.code.co_name if opcode else None,
+        linetext=None,
+        message=message % args))
+
   def warn(self, opcode, message, *args):
-    self.errors.append(Error(SEVERITY_WARNING, opcode, message % args))
+    self._add(SEVERITY_WARNING, opcode, message, args)
 
   def error(self, opcode, message, *args):
-    self.errors.append(Error(SEVERITY_ERROR, opcode, message % args))
+    self._add(SEVERITY_ERROR, opcode, message, args)
 
   def save(self):
     """Returns a checkpoint that represents the log messages up to now."""
@@ -89,9 +107,24 @@ class ErrorLogBase(object):
   def print_to_stderr(self):
     self.print_to_file(sys.stderr)
 
+  def __str__(self):
+    io = StringIO.StringIO()
+    self.print_to_file(io)
+    return io.getvalue()
+
 
 class ErrorLog(ErrorLogBase):
   """ErrorLog with convenience functions."""
+
+  def pyi_error(self, e):
+    self.errors.append(Error(
+        severity=SEVERITY_ERROR,
+        filename=e.filename,
+        lineno=e.lineno,
+        column=e.column,
+        methodname=None,
+        linetext=e.line,
+        message=e.msg))
 
   def attribute_error(self, opcode, obj, attr_name):
     on = " on %s" % obj.data[0].name if obj.values else ""
@@ -165,4 +198,3 @@ class ErrorLog(ErrorLogBase):
   def invalid_annotation(self, opcode, name):
     self.error(opcode, "Invalid type annotation for %s. Must be constant" %
                name)
-

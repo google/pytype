@@ -34,6 +34,7 @@ from pytype.pytd import pytd
 from pytype.pytd import slots
 from pytype.pytd import utils as pytd_utils
 from pytype.pytd.parse import builtins
+from pytype.pytd.parse import parser
 
 log = logging.getLogger(__name__)
 
@@ -1012,7 +1013,6 @@ class VirtualMachine(object):
       if fallback_to_unsolvable:
         assert error
         self.errorlog.invalid_function_call(self.frame.current_opcode, e)
-        log.warning("failed function call for %s", error.sig.name)
         return node, self.create_new_unsolvable(node, "failed call")
       else:
         # We were called by something that ignores errors, so don't report
@@ -2054,12 +2054,18 @@ class VirtualMachine(object):
       name = full_name.split(".", 1)[0]  # "a.b.c" -> "a"
     else:
       name = full_name
-    module = self.import_module(
-        name, abstract.get_atomic_python_constant(level))
-    if module is None:
-      log.warning("Couldn't find module %r", name)
-      self.errorlog.import_error(self.frame.current_opcode, name)
-      module = self._create_new_unknown_value("import")
+    try:
+      module = self.import_module(
+          name, abstract.get_atomic_python_constant(level))
+    except parser.ParseError as e:
+      log.warning("Couldn't parse module %r", name)
+      self.errorlog.pyi_error(e)
+      module = self.unsolvable
+    else:
+      if module is None:
+        log.warning("Couldn't find module %r", name)
+        self.errorlog.import_error(self.frame.current_opcode, name)
+        module = self.unsolvable
     return state.push(module.to_variable(state.node, name))
 
   def byte_IMPORT_FROM(self, state, op):
@@ -2107,7 +2113,7 @@ class VirtualMachine(object):
     # TODO(kramm): this doesn't use __all__ properly.
     state, mod_var = state.pop()
     mod = abstract.get_atomic_value(mod_var)
-    if isinstance(mod, abstract.Unknown):
+    if isinstance(mod, (abstract.Unknown, abstract.Unsolvable)):
       log.error("Doing 'from module import *' from unresolved module")
       return state
     log.info("%r", mod)

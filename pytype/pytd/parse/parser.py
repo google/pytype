@@ -831,6 +831,8 @@ class TypeDeclParser(object):
   def p_funcdef(self, p):
     """funcdef : decorators DEF NAME LPAREN params RPAREN return raises signature maybe_body"""
     _, decorators, _, name, _, params, _, return_type, raises, _, body = p
+    # needed e.g. for warnings.pyi
+    self.aliases[name] = pytd.NamedType("function")
     # TODO(kramm): Output a warning if we already encountered a signature
     #              with these types (but potentially different argument names)
     if name == "__init__" and isinstance(return_type, pytd.AnythingType):

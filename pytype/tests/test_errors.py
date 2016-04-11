@@ -2,6 +2,7 @@
 
 import StringIO
 
+from pytype import utils
 from pytype.tests import test_inference
 
 
@@ -142,6 +143,20 @@ class ErrorTest(test_inference.InferenceTest):
     """)
     # "Line 3, in f: Can't retrieve item out of dict. Empty?"
     self.assertErrorLogContains(errors, r"line 3.*item out of dict")
+
+  def testInheritFromGeneric(self):
+    with utils.Tempdir() as d:
+      d.create_file("mod.pyi", """
+        T = TypeVar("T")
+        class Foo(Generic[T]): ...
+        class Bar(Foo[int]): ...
+      """)
+      _, errors = self.InferAndCheck("""
+        import mod
+        chr(mod.Bar())
+      """, pythonpath=[d.path])
+      # "Line 3, in f: Can't retrieve item out of dict. Empty?"
+      self.assertErrorLogContains(errors, r"chr.*wrong arguments")
 
 
 if __name__ == "__main__":

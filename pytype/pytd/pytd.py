@@ -424,7 +424,7 @@ class GenericType(node.Node('base_type', 'parameters')):
 
   Attributes:
     base_type: The base type. Instance of Type.
-    parameters: Type paramters. Tuple of instances of Type.
+    parameters: Type parameters. Tuple of instances of Type.
   """
   __slots__ = ()
 
