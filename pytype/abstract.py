@@ -1804,6 +1804,24 @@ class ParameterizedClass(AtomicAbstractValue, Class, FormalType):
         return None
     return subst
 
+  def _match_instance(self, instance, other_type, subst, node, view):
+    """Used by match_instance_against_type. Called for each MRO entry."""
+    subst = subst.copy()
+    for name, class_param in self.type_parameters.items():
+      subst[name] = class_param.to_variable(node, name)
+    # TODO(kramm): Is this correct?
+    subst = self.base_cls.match_against_type(other_type, subst, node, view)
+    if subst is None:
+      return None
+    # typically empty
+    for name, class_param in instance.type_parameters.items():
+      instance_param = instance.type_parameters[name]
+      subst = match_var_against_type(instance_param, class_param,
+                                     subst, node, view)
+      if subst is None:
+        return None
+    return subst
+
 
 class PyTDClass(SimpleAbstractValue, Class):
   """An abstract wrapper for PyTD class objects.

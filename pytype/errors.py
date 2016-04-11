@@ -1,7 +1,6 @@
 """Code and data structures for storing and displaying errors."""
 
 import os
-import re
 import StringIO
 import sys
 
@@ -45,44 +44,15 @@ class CheckPoint(object):
 class Error(object):
   """Representation of an error in the error log."""
 
-  def __init__(self, severity, message, filename=None, lineno=0, column=None,
-               linetext=None, methodname=None, details=None):
-    name = _CURRENT_ERROR_NAME.get()
-    assert name, ("Errors must be created from a caller annotated "
-                  "with @error_name.")
-    # Required for every Error.
-    self._severity = severity
-    self._message = message
-    self._name = name
-    # Optional information about the error.
-    self._details = details
-    # Optional information about error position.
-    # TODO(dbaum): Do not allow filename (and maybe lineno) of None.
-    self._filename = filename
-    self._lineno = lineno or 0
-    self._column = column
-    self._linetext = linetext
-    self._methodname = methodname
-
-  @classmethod
-  def at_opcode(cls, opcode, severity, message, details=None):
-    """Return an error using an opcode for position information."""
-    if opcode is None:
-      return cls(severity, message, details=details)
-    else:
-      return cls(severity, message, filename=opcode.code.co_filename,
-                 lineno=opcode.line, methodname=opcode.code.co_name,
-                 details=details)
-
-  @classmethod
-  def for_test(cls, severity, message, name, **kwargs):
-    """Create an _Error with the specified name, for use in tests."""
-    with _CURRENT_ERROR_NAME.bind(name):
-      return cls(severity, message, **kwargs)
-
-  @property
-  def name(self):
-    return self._name
+  def __init__(self, severity, filename, lineno, column,
+               methodname, linetext, message):
+    self.severity = severity
+    self.filename = filename
+    self.lineno = lineno
+    self.column = column
+    self.methodname = methodname
+    self.linetext = linetext
+    self.message = message
 
   @property
   def lineno(self):
@@ -94,24 +64,21 @@ class Error(object):
 
   def _position(self):
     """Return human-readable filename + line number."""
-    if self.opcode and self.opcode.code.co_filename:
-      filename = os.path.basename(self.opcode.code.co_filename)
-      return "File \"%s\", line %d, in %s" % (filename,
-                                              self.opcode.line,
-                                              self.opcode.code.co_name)
-    elif self.opcode:
-      return "Line %d, in %s" % (self.opcode.line, self.opcode.code.co_name)
+    method = ", in %s" % self.methodname if self.methodname else ""
+
+    if self.filename:
+      filename = os.path.basename(self.filename)
+      return "File \"%s\", line %d%s" % (filename,
+                                         self.lineno,
+                                         method)
+    elif self.lineno:
+      return "Line %d%s" % (self.lineno, method)
     else:
       return ""
 
   def __str__(self):
-    pos = self._position()
-    if pos:
-      pos += ": "
-    text = "%s%s [%s]" % (pos, self._message.replace("\n", "\n  "), self._name)
-    if self._details:
-      text += "\n  " + self._details.replace("\n", "\n  ")
-    return text
+    pos = self.position()
+    return (pos + ": " if pos else "") + self.message.replace("\n", "\n  ")
 
 
 class ErrorLogBase(object):
@@ -151,15 +118,21 @@ class ErrorLogBase(object):
     if self._filter is None or self._filter(error):
       self._errors.append(error)
 
+  def _add(self, severity, opcode, message, args):
+    self.errors.append(Error(
+        severity=severity,
+        filename=opcode.code.co_filename if opcode else None,
+        lineno=opcode.line if opcode else None,
+        column=None,
+        methodname=opcode.code.co_name if opcode else None,
+        linetext=None,
+        message=message % args))
+
   def warn(self, opcode, message, *args):
-    self._add(Error.at_opcode(opcode, SEVERITY_WARNING, message % args))
+    self._add(SEVERITY_WARNING, opcode, message, args)
 
   def error(self, opcode, message, *args):
-    self._add(Error.at_opcode(opcode, SEVERITY_ERROR, message % args))
-
-  def error_with_details(self, opcode, message, details):
-    self._add(Error.at_opcode(opcode, SEVERITY_ERROR, message,
-                              details=details))
+    self._add(SEVERITY_ERROR, opcode, message, args)
 
   def save(self):
     """Returns a checkpoint that represents the log messages up to now."""
@@ -194,23 +167,16 @@ class ErrorLogBase(object):
 class ErrorLog(ErrorLogBase):
   """ErrorLog with convenience functions."""
 
-  @_error_name("pyi-error")
-  def pyi_error(self, opcode, e):
-    self.error(opcode, "%s (file %s, line %d)",
-               e.msg, os.path.basename(e.filename), e.lineno)
+  def pyi_error(self, e):
+    self.errors.append(Error(
+        severity=SEVERITY_ERROR,
+        filename=e.filename,
+        lineno=e.lineno,
+        column=e.column,
+        methodname=None,
+        linetext=e.line,
+        message=e.msg))
 
-  @_error_name("pyi-error")
-  def pyi_not_found(self, opcode, name, level, root_cause):
-    if root_cause == name:
-      self.error(opcode, "Can't find .pyi for %r", name)
-    elif name:
-      self.error(opcode, "Can't find .pyi %r referenced by %r",
-                 root_cause, name)
-    else:
-      assert level > 0
-      self.error(opcode, "Can't find .pyi for %s", "." * level)
-
-  @_error_name("attribute-error")
   def attribute_error(self, opcode, obj, attr_name):
     on = " on %s" % obj.data[0].name if obj.bindings else ""
     self.error(opcode, "No attribute %r%s" % (attr_name, on))
@@ -331,4 +297,3 @@ class ErrorLog(ErrorLogBase):
   def invalid_annotation(self, opcode, name):
     self.error(opcode, "Invalid type annotation for %s. Must be constant" %
                name)
-

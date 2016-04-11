@@ -2101,17 +2101,18 @@ class VirtualMachine(object):
       name = full_name.split(".", 1)[0]  # "a.b.c" -> "a"
     else:
       name = full_name
-    module = self.import_module(
-        name, abstract.get_atomic_python_constant(level))
-    if module is None:
-      log.warning("Couldn't find module %r", name)
-      self.errorlog.pyi_not_found(op, name, level, e.module_name)
-      module = abstract.Unsolvable(self)
+    try:
+      module = self.import_module(
+          name, abstract.get_atomic_python_constant(level))
+    except parser.ParseError as e:
+      log.warning("Couldn't parse module %r", name)
+      self.errorlog.pyi_error(e)
+      module = self.unsolvable
     else:
       if module is None:
         log.warning("Couldn't find module %r", name)
         self.errorlog.import_error(self.frame.current_opcode, name)
-        module = abstract.Unsolvable(self)
+        module = self.unsolvable
     return state.push(module.to_variable(state.node, name))
 
   def byte_IMPORT_FROM(self, state, op):
@@ -2165,7 +2166,7 @@ class VirtualMachine(object):
     # TODO(kramm): this doesn't use __all__ properly.
     state, mod_var = state.pop()
     mod = abstract.get_atomic_value(mod_var)
-    if isinstance(mod, abstract.Unknown):
+    if isinstance(mod, (abstract.Unknown, abstract.Unsolvable)):
       log.error("Doing 'from module import *' from unresolved module")
       return state
     log.info("%r", mod)

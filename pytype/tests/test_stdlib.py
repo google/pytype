@@ -57,6 +57,14 @@ class StdlibTests(test_inference.InferenceTest):
         x = ...  # type: struct.Struct
       """)
 
+  def testWarning(self):
+    with self.Infer("""
+      import warnings
+    """, deep=False) as ty:
+      self.assertTypesMatchPytd(ty, """
+        warnings = ...  # type: module
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()
