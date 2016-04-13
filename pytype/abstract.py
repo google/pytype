@@ -964,6 +964,22 @@ class WrongArgCount(FailedFunctionCall):
     self.call_arg_count = call_arg_count
 
 
+class WrongKeywordArgs(FailedFunctionCall):
+  """E.g. an arg "x" is passed to a function that doesn't have an "x" param."""
+
+  def __init__(self, sig, extra_keywords):
+    super(WrongKeywordArgs, self).__init__(sig)
+    self.extra_keywords = tuple(extra_keywords)
+
+
+class MissingParameter(FailedFunctionCall):
+  """E.g. a function requires parameter 'x' but 'x' isn't passed."""
+
+  def __init__(self, sig, missing_parameter):
+    super(MissingParameter, self).__init__(sig)
+    self.missing_parameter = missing_parameter
+
+
 class SuperInstance(AtomicAbstractValue):
   """The result of a super() call, i.e., a lookup proxy."""
 
@@ -1077,35 +1093,36 @@ class PyTDSignature(object):
                      starargs=None, starstarargs=None,
                      record_call=False):
     """Call this signature. Used by PyTDFunction."""
-    args_selected = [view[arg] for arg in posargs]
-    kws_selected = {name: view[arg] for name, arg in namedargs.items()}
+    arg_dict = {name: view[arg]
+                for name, arg in zip(self.signature.param_names, posargs)}
+    arg_dict.update({name: view[arg]
+                     for name, arg in namedargs.items()})
 
-    if self.pytd_sig.has_optional:
-      # Truncate extraneous params. E.g. when calling f(a, b, ...) as f(1, 2, 3)
-      args_selected = args_selected[0:len(self.pytd_sig.params)]
-    if len(args_selected) < len(self.pytd_sig.params):
-      for p in self.pytd_sig.params[len(args_selected):]:
-        if p.name in kws_selected:
-          args_selected.append(kws_selected[p.name])
-        elif starargs is not None or starstarargs is not None:
-          # Assume the missing parameter is filled in by *args or **kwargs.
-          # TODO(kramm): Can we use the contents of [star]starargs to fill in a
-          # more precise type than just "unsolvable"?
-          var = self.vm.create_new_unsolvable(node, p.name)
-          args_selected.append(var.values[0])
-        else:
+    for p in self.pytd_sig.params:
+      if p.name not in arg_dict:
+        if starargs is None and starstarargs is None:
           break  # We just found a missing parameter. Raise error below.
-    if len(args_selected) != len(self.pytd_sig.params):
-      # Either too many or too few parameters.
-      # Number of parameters mismatch is allowed when matching against an
-      # overloaded function (e.g., a __builtins__ entry that has optional
-      # parameters that are specified by multiple def's).
-      raise WrongArgCount(self.signature, len(args_selected))
+        # Assume the missing parameter is filled in by *args or **kwargs.
+        # TODO(kramm): Can we use the contents of [star]starargs to fill in a
+        # more precise type than just "unsolvable"?
+        var = self.vm.create_new_unsolvable(node, p.name)
+        arg_dict[p.name] = var.values[0]
 
-    r = self._call_with_values(node, args_selected, kws_selected, view)
+    allowed_params = frozenset(p.name for p in self.pytd_sig.params)
+    for name in allowed_params:
+      if name not in arg_dict:
+        raise MissingParameter(self.signature, name)
+    if not self.pytd_sig.has_optional:
+      if len(posargs) > len(self.pytd_sig.params):
+        raise WrongArgCount(self.signature, len(posargs))
+      invalid_names = set(namedargs) - allowed_params
+      if invalid_names:
+        raise WrongKeywordArgs(self.signature, sorted(invalid_names))
+
+    r = self._call_with_values(node, arg_dict, view)
     assert r.subst is not None
     t = (r.return_type, r.subst)
-    sources = [func] + args_selected + kws_selected.values()
+    sources = [func] + arg_dict.values()
     if t not in ret_map:
       ret_map[t] = self.vm.create_pytd_instance(
           "ret", r.return_type, r.subst, node,
@@ -1115,10 +1132,13 @@ class PyTDSignature(object):
       for data in ret_map[t].data:
         ret_map[t].AddValue(data, sources, node)
     if record_call:
-      self.vm.trace_call(func, args_selected, kws_selected, ret_map[t])
+      self.vm.trace_call(func,
+                         tuple(arg_dict[p.name] for p in self.pytd_sig.params),
+                         {},
+                         ret_map[t])
     return node, ret_map[t], r.mutations
 
-  def _call_with_values(self, node, arg_values, kw_values, view):
+  def _call_with_values(self, node, arg_dict, view):
     """Try to execute this signature with the given arguments.
 
     This uses specific typegraph.Value instances (not: Variables) to try to
@@ -1127,8 +1147,7 @@ class PyTDSignature(object):
 
     Args:
       node: The current CFG node.
-      arg_values: A list of pytd.Value instances.
-      kw_values: A map of strings to pytd.Values instances.
+      arg_dict: A map of strings to pytd.Value instances.
       view: A mapping of Variable to Value.
     Returns:
       A FunctionCallResult instance
@@ -1136,20 +1155,18 @@ class PyTDSignature(object):
       FailedFunctionCall
     """
     return_type = self.pytd_sig.return_type
-    subst = self._compute_subst(node, arg_values, kw_values, view)
+    subst = self._compute_subst(node, arg_dict, view)
     # FailedFunctionCall is thrown by _compute_subst if no signature could be
     # matched (subst might be []).
     log.debug("Matched arguments against sig%s", pytd.Print(self.pytd_sig))
-    for nr, (actual, formal) in enumerate(zip(arg_values,
-                                              self.pytd_sig.params)):
-      log.info("param %d) %s: %s <=> %s", nr, formal.name, formal.type,
-               actual.data)
+    for nr, p in enumerate(self.pytd_sig.params):
+      log.info("param %d) %s: %s <=> %s", nr, p.name, p.type, arg_dict[p.name])
     for name, var in sorted(subst.items()):
       log.debug("Using %s=%r %r", name, var, var.data)
-    mutations = self._get_mutation(node, arg_values, kw_values, subst)
+    mutations = self._get_mutation(node, arg_dict, subst)
     return FunctionCallResult(return_type, subst, mutations)
 
-  def _compute_subst(self, node, arg_values, kw_values, view):
+  def _compute_subst(self, node, arg_dict, view):
     """Compute information about type parameters using one-way unification.
 
     Given the arguments of a function call, try to find a substitution that
@@ -1157,28 +1174,27 @@ class PyTDSignature(object):
 
     Args:
       node: The current CFG node.
-      arg_values: A list of pytd.Value instances.
-      kw_values: A map of strings to pytd.Values instances.
+      arg_dict: A map of strings to pytd.Values instances.
       view: A mapping of Variable to Value.
     Returns:
       utils.HashableDict if we found a working substition, None otherwise.
     Raises:
       FailedFunctionCall: For incorrect parameter types.
     """
-    if not arg_values:
+    if not arg_dict:
       return utils.HashableDict()
-    if kw_values:
-      log.warning("Ignoring keyword parameters %r", kw_values)
     subst = {}
-    for actual, formal in zip(arg_values, self.param_types):
+    for p in self.pytd_sig.params:
+      actual = arg_dict[p.name]
+      formal = self.signature.annotations[p.name]
       subst = match_value_against_type(actual, formal, subst, node, view)
       if subst is None:
         # These parameters didn't match this signature. There might be other
         # signatures that work, but figuring that out is up to the caller.
-        raise WrongArgTypes(self.signature, [a.data for a in arg_values])
+        raise WrongArgTypes(self.signature, [a.data for a in arg_dict.values()])
     return utils.HashableDict(subst)
 
-  def _get_mutation(self, node, arg_values, kw_values, subst):
+  def _get_mutation(self, node, arg_dict, subst):
     """Mutation for changing the type parameters of mutable arguments.
 
     This will adjust the type parameters as needed for pytd functions like:
@@ -1189,8 +1205,7 @@ class PyTDSignature(object):
 
     Args:
       node: The current CFG node.
-      arg_values: A list of pytd.Value instances.
-      kw_values: A map of strings to pytd.Values instances.
+      arg_dict: A map of strings to pytd.Values instances.
       subst: Current type parameters.
     Returns:
       A list of Mutation instances.
@@ -1198,10 +1213,9 @@ class PyTDSignature(object):
       ValueError: If the pytd contains invalid MutableParameter information.
     """
     # Handle mutable parameters using the information type parameters
-    if kw_values:
-      log.warning("Ignoring keyword parameters %r", kw_values)
     mutations = []
-    for actual, formal in zip(arg_values, self.pytd_sig.params):
+    for formal in self.pytd_sig.params:
+      actual = arg_dict[formal.name]
       if isinstance(formal, pytd.MutableParameter):
         if (isinstance(formal.type, pytd.GenericType) and
             isinstance(formal.new_type, pytd.GenericType) and

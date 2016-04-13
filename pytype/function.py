@@ -50,7 +50,7 @@ class Signature(object):
         defaults=[p.name
                   for p in sig.params
                   if isinstance(p, pytd.OptionalParameter)],
-        annotations={p.name: vm.convert_constant(p.name, p.type).data[0]
+        annotations={p.name: vm.convert_constant_to_value(p.name, p.type)
                      for p in sig.params}
     )
 
