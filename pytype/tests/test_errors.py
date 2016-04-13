@@ -184,6 +184,18 @@ class ErrorTest(test_inference.InferenceTest):
       # "Line 3, in foo: Missing parameter 'zulu' in call to function foo.bar."
       self.assertErrorLogContains(errors, r"(?=.*foo.bar).*zulu")
 
+  def testBadInheritance(self):
+    _, errors = self.InferAndCheck("""
+      class X:
+          pass
+      class Bar(X):
+          pass
+      class Baz(X, Bar):
+          pass
+    """)
+    # "Line 6: Bad inheritance."
+    self.assertErrorLogContains(errors, r"line 6.*inheritance")
+
 
 if __name__ == "__main__":
   test_inference.main()

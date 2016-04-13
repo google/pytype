@@ -308,6 +308,10 @@ def dedup(seq):
   return result
 
 
+class MROError(Exception):
+  pass
+
+
 def mro_merge(input_seqs):
   """Merge a sequence of MROs into a single resulting MRO.
 
@@ -321,7 +325,7 @@ def mro_merge(input_seqs):
     A single resulting MRO.
 
   Raises:
-    TypeError: If we discovered an illegal inheritance.
+    MROError: If we discovered an illegal inheritance.
   """
   seqs = [dedup(s) for s in input_seqs]
   res = []
@@ -337,7 +341,7 @@ def mro_merge(input_seqs):
       else:
         break
     if not cand:
-      raise TypeError("Illegal inheritance.")
+      raise MROError("Illegal inheritance.")
     res.append(cand)
     for seq in nonemptyseqs:  # remove candidate
       if seq[0] == cand:

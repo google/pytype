@@ -748,14 +748,19 @@ class VirtualMachine(object):
                                 abstract.Unsolvable))
                  for t in base.data):
         self.errorlog.base_class_error(self.frame.current_opcode, base)
-    val = abstract.InterpreterClass(
-        name,
-        bases,
-        class_dict.members,
-        self)
-    var = self.program.NewVariable(name)
-    var.AddValue(val, bases_values + class_dict_var.values, node)
-    return var
+    try:
+      val = abstract.InterpreterClass(
+          name,
+          bases,
+          class_dict.members,
+          self)
+    except utils.MROError:
+      self.errorlog.mro_error(self.frame.current_opcode, name)
+      return self.create_new_unsolvable(node, "mro_error")
+    else:
+      var = self.program.NewVariable(name)
+      var.AddValue(val, bases_values + class_dict_var.values, node)
+      return var
 
   def make_function(self, name, code, globs, defaults,
                     closure=None, annotations=None):

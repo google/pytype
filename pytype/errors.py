@@ -218,3 +218,7 @@ class ErrorLog(ErrorLogBase):
   def invalid_annotation(self, opcode, name):
     self.error(opcode, "Invalid type annotation for %s. Must be constant" %
                name)
+
+  def mro_error(self, opcode, name):
+    self.error(opcode, "Class %r has invalid (cyclic?) inheritance.", name)
+
