@@ -241,6 +241,22 @@ class ErrorLog(ErrorLogBase):
     message = "%r object is not callable" % (function.name)
     self.error(opcode, message)
 
+  def wrong_keyword_args(self, opcode, sig, extra_keywords):
+    """A function was called with extra keywords."""
+    if len(extra_keywords) == 1:
+      message = "Invalid keyword argument %s to function %s\n" % (
+          extra_keywords[0], sig.name)
+    else:
+      message = "Invalid keyword arguments %s to function %s\n" % (
+          "(" + ", ".join(extra_keywords) + ")", sig.name)
+    self.error(opcode, message)
+
+  def missing_parameter(self, opcode, sig, missing_parameter):
+    """A function call is missing parameters."""
+    message = "Missing parameter %r in call to function %s\n" % (
+        missing_parameter, sig.name)
+    self.error(opcode, message)
+
   def invalid_function_call(self, opcode, error):
     if isinstance(error, abstract.WrongArgCount):
       self.wrong_arg_count(opcode, error.sig, error.call_arg_count)
@@ -250,8 +266,6 @@ class ErrorLog(ErrorLogBase):
       self.wrong_keyword_args(opcode, error.sig, error.extra_keywords)
     elif isinstance(error, abstract.MissingParameter):
       self.missing_parameter(opcode, error.sig, error.missing_parameter)
-    elif isinstance(error, abstract.NotCallable):
-      self.not_callable(opcode, error.obj)
     else:
       raise AssertionError(error)
 

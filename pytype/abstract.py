@@ -1067,7 +1067,7 @@ class WrongArgCount(InvalidParameters):
     self.call_arg_count = call_arg_count
 
 
-class WrongKeywordArgs(InvalidParameters):
+class WrongKeywordArgs(FailedFunctionCall):
   """E.g. an arg "x" is passed to a function that doesn't have an "x" param."""
 
   def __init__(self, sig, extra_keywords):
@@ -1075,7 +1075,7 @@ class WrongKeywordArgs(InvalidParameters):
     self.extra_keywords = tuple(extra_keywords)
 
 
-class MissingParameter(InvalidParameters):
+class MissingParameter(FailedFunctionCall):
   """E.g. a function requires parameter 'x' but 'x' isn't passed."""
 
   def __init__(self, sig, missing_parameter):
@@ -1317,14 +1317,24 @@ class PyTDSignature(object):
       if p.name not in arg_dict:
         if starargs is None and starstarargs is None:
           break  # We just found a missing parameter. Raise error below.
-    if len(args_selected) != len(self.pytd_sig.params):
-      # Either too many or too few parameters.
-      # Number of parameters mismatch is allowed when matching against an
-      # overloaded function (e.g., a __builtins__ entry that has optional
-      # parameters that are specified by multiple def's).
-      raise WrongArgCount(self.signature, len(args_selected))
+        # Assume the missing parameter is filled in by *args or **kwargs.
+        # TODO(kramm): Can we use the contents of [star]starargs to fill in a
+        # more precise type than just "unsolvable"?
+        var = self.vm.create_new_unsolvable(node, p.name)
+        arg_dict[p.name] = var.values[0]
 
-    r = self._call_with_values(node, args_selected, kws_selected, view)
+    allowed_params = frozenset(p.name for p in self.pytd_sig.params)
+    for name in allowed_params:
+      if name not in arg_dict:
+        raise MissingParameter(self.signature, name)
+    if not self.pytd_sig.has_optional:
+      if len(posargs) > len(self.pytd_sig.params):
+        raise WrongArgCount(self.signature, len(posargs))
+      invalid_names = set(namedargs) - allowed_params
+      if invalid_names:
+        raise WrongKeywordArgs(self.signature, sorted(invalid_names))
+
+    r = self._call_with_values(node, arg_dict, view)
     assert r.subst is not None
     t = (r.return_type, r.subst)
     sources = [func] + arg_dict.values()
@@ -1379,7 +1389,7 @@ class PyTDSignature(object):
 
     Args:
       node: The current CFG node.
-      arg_dict: A map of strings to pytd.Bindings instances.
+      arg_dict: A map of strings to pytd.Values instances.
       view: A mapping of Variable to Value.
     Returns:
       utils.HashableDict if we found a working substition, None otherwise.
@@ -1396,7 +1406,7 @@ class PyTDSignature(object):
       if subst is None:
         # These parameters didn't match this signature. There might be other
         # signatures that work, but figuring that out is up to the caller.
-        raise WrongArgTypes(self.signature, [a.data for a in arg_values])
+        raise WrongArgTypes(self.signature, [a.data for a in arg_dict.values()])
     return utils.HashableDict(subst)
 
   def _get_mutation(self, node, arg_dict, subst):
@@ -1410,7 +1420,7 @@ class PyTDSignature(object):
 
     Args:
       node: The current CFG node.
-      arg_dict: A map of strings to pytd.Bindings instances.
+      arg_dict: A map of strings to pytd.Values instances.
       subst: Current type parameters.
     Returns:
       A list of Mutation instances.

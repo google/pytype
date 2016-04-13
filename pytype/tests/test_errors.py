@@ -167,6 +167,32 @@ class ErrorTest(test_inference.InferenceTest):
       # "Line 3, in f: Can't retrieve item out of dict. Empty?"
       self.assertErrorLogContains(errors, r"chr.*wrong arguments")
 
+  def testWrongKeywordArg(self):
+    with utils.Tempdir() as d:
+      d.create_file("mycgi.pyi", """
+        def escape(x: str or unicode) -> str or unicode
+      """)
+      _, errors = self.InferAndCheck("""
+        import mycgi
+        def foo(s):
+          return mycgi.escape(s, quote=1)
+      """, pythonpath=[d.path])
+      # "Line 4, in foo: Function mycgi.escape was called with extra argument
+      #                  "quote"."
+      self.assertErrorLogContains(errors, r"(?=.*quote).*mycgi.escape")
+
+  def testMissingParameter(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        def bar(xray, yankee, zulu) -> str
+      """)
+      _, errors = self.InferAndCheck("""
+        import foo
+        foo.bar(1, 2)
+      """, pythonpath=[d.path])
+      # "Line 3, in foo: Missing parameter 'zulu' in call to function foo.bar."
+      self.assertErrorLogContains(errors, r"(?=.*foo.bar).*zulu")
+
 
 if __name__ == "__main__":
   test_inference.main()
