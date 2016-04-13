@@ -762,21 +762,18 @@ class VirtualMachine(object):
                                 abstract.Unsolvable))
                  for t in base.data):
         self.errorlog.base_class_error(self.frame.current_opcode, base)
-    if not bases:
-      # Old style class.
-      bases = [self.oldstyleclass_type]
     try:
       val = abstract.InterpreterClass(
           name,
           bases,
           class_dict.members,
           self)
-    except pytd_utils.MROError:
+    except utils.MROError:
       self.errorlog.mro_error(self.frame.current_opcode, name)
       return self.create_new_unsolvable(node, "mro_error")
     else:
       var = self.program.NewVariable(name)
-      var.AddBinding(val, class_dict_var.bindings, node)
+      var.AddValue(val, bases_values + class_dict_var.values, node)
       return var
 
   def make_function(self, name, code, globs, defaults,
