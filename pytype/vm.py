@@ -884,7 +884,7 @@ class VirtualMachine(object):
     builtin_names = frozenset(f_globals.members)
     return node, f_globals, f_locals, builtin_names
 
-  def run_program(self, src, filename=None, run_builtins=True):
+  def run_program(self, src, filename, run_builtins=True):
     """Run the code and return the CFG nodes.
 
     This function loads in the builtins and puts them ahead of `code`,

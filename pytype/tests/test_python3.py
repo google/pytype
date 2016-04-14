@@ -1,9 +1,11 @@
 """Python 3 tests for Byterun."""
 
+import os
+
 from pytype.tests import test_inference
 
 
-class TestFunctions(test_inference.InferenceTest):
+class TestPython3(test_inference.InferenceTest):
 
   PYTHON_VERSION = (3, 4)
 
@@ -23,7 +25,7 @@ class TestFunctions(test_inference.InferenceTest):
         return 3
     """, run_builtins=False) as ty:
       self.assertTypesMatchPytd(ty, """
-        def uses_annotations(x) -> ?
+        def uses_annotations(x: int) -> int
         def uses_kw_defaults(x) -> ?
         def uses_pos_defaults(x, y, ...) -> ?
       """)

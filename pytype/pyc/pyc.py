@@ -4,42 +4,20 @@ import copy
 import os
 import StringIO
 import subprocess
-import sys
 import tempfile
 
 from pytype.pyc import loadmarshal
 from pytype.pyc import magic
 
 
-def python_pyc_name(py_filename, python_version):
-  """Convert a py filename to the filename of the compiled pyc file.
-
-  E.g. this converts
-    /tmp/tmpqF9GFq.py
-  to:
-    /tmp/tmpqF9GFq.pyc [Python 2, 3.0, 3.1]
-    /tmp/__pycache__/tmpqF9GFq.cpython-34.pyc [Python >= 3.2]
-  .
-
-  Args:
-    py_filename: A path to a .py file.
-    python_version: Python version, (major, minor).
-  Returns:
-    Path to the .pyc file.
-  """
-  if python_version < (3, 2):
-    basename, py = os.path.splitext(py_filename)
-    assert py == ".py", py_filename
-    return basename + ".pyc"
-  else:
-    path, basename = os.path.split(py_filename)
-    body, _ = os.path.splitext(basename)
-    short_version = "".join(map(str, python_version))
-    return os.path.join(path, "__pycache__",
-                        body + ".cpython-" + short_version + ".pyc")
+COMPILE_SCRIPT = os.path.join(os.path.dirname(__file__), "_compile.py")
 
 
-def compile_src_string_to_pyc_string(src, python_version, python_exe):
+class CompileError(Exception):
+  pass
+
+
+def compile_src_string_to_pyc_string(src, filename, python_version, python_exe):
   """Compile Python source code to pyc data.
 
   This may use py_compile if the src is for the same version as we're running,
@@ -48,20 +26,18 @@ def compile_src_string_to_pyc_string(src, python_version, python_exe):
 
   Args:
     src: Python sourcecode
+    filename: Name of the source file. For error messages.
     python_version: Python version, (major, minor). E.g. (2, 7). Will be used
       to determine the Python executable to call.
     python_exe: Path to a Python interpreter, or None.
 
   Returns:
     The compiled pyc file as a binary string.
+  Raises:
+    CompileError: If we find a syntax error in the file.
+    IOError: If our compile script failed.
   """
   fi = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
-  pyc_name = python_pyc_name(fi.name, python_version)
-
-  if python_exe is None:
-    python_exe = os.getenv("PYTYPE_PYTHON_EXE")
-    if python_exe:
-      print >>sys.stderr, "[Using PYTYPE_PYTHON_EXE from environment]"
 
   try:
     fi.write(src)
@@ -70,23 +46,19 @@ def compile_src_string_to_pyc_string(src, python_version, python_exe):
     # we spawn an external process.
     if python_exe:
       # Allow python_exe to contain parameters (E.g. "-T")
-      subprocess.check_call(python_exe.split() + ["-mpy_compile", fi.name])
-    # The following code has been removed because it might not use the
-    # same subdirectory as the regular compiler (see python_pyc_name).
-    # And the slight performance gain probably isn't worth it.
-    # Or we could use sys.executable with the subprocess.
-    # -- elif python_version[:2] == sys.version_info[:2]:
-    # --   py_compile.compile(fi.name, cfile=pyc_name, doraise=True)
+      exe = python_exe.split() + ["-S"]
     else:
-# MOE:strip_line  TODO(b/26068255)
-      exe = "python" + ".".join(map(str, python_version))
-      subprocess.check_call([exe, "-mpy_compile", fi.name])
-    with open(pyc_name, "rb") as output:
-      return output.read()
+      exe = ["python" + ".".join(map(str, python_version))]
+    bytecode = subprocess.check_output(exe + [
+        COMPILE_SCRIPT, fi.name, filename or fi.name])
   finally:
     os.unlink(fi.name)
-    if os.path.isfile(pyc_name):
-      os.unlink(pyc_name)
+  if bytecode[0] == chr(0):  # compile OK
+    return bytecode[1:]
+  elif bytecode[0] == chr(1):  # compile error
+    raise CompileError(bytecode[1:])
+  else:
+    raise IOError("_compile.py produced invalid result")
 
 
 def parse_pyc_stream(fi):
@@ -149,7 +121,7 @@ def compile_src(src, python_version, python_exe, filename=None):
     An instance of loadmarshal.CodeType.
   """
   pyc_data = compile_src_string_to_pyc_string(
-      src, python_version, python_exe)
+      src, filename, python_version, python_exe)
   code = parse_pyc_string(pyc_data)
   assert code.python_version == python_version
   visit(code, AdjustFilename(filename))

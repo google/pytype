@@ -13,13 +13,16 @@ class TestPyc(unittest.TestCase):
 
   def _compile(self, src):
     pyc_data = pyc.compile_src_string_to_pyc_string(
-        src, python_version=self.python_version, python_exe=None)
+        src, filename="", python_version=self.python_version, python_exe=None)
     return pyc.parse_pyc_string(pyc_data)
 
   def test_compile(self):
     code = self._compile("foobar = 3")
     self.assertIn("foobar", code.co_names)
     self.assertEquals(self.python_version, code.python_version)
+
+  def test_erroneous_file(self):
+    self.assertRaises(pyc.CompileError, self._compile, "foo ==== bar--")
 
   def test_lineno(self):
     code = self._compile("a = 1\n"      # line 1

@@ -94,7 +94,7 @@ class AncestorTraversalVirtualMachineTest(unittest.TestCase):
                                        filename="<>")
     self.assertEqual(code_nested_loop.co_code,
                      self.code_nested_loop)
-    self.vm.run_program(self.src_nested_loop, run_builtins=False)
+    self.vm.run_program(self.src_nested_loop, "", run_builtins=False)
     # We expect all instructions, except 26, in the above to execute.
     self.assertItemsEqual(self.vm.instructions_executed,
                           set(range(32)) - {26})
@@ -127,7 +127,7 @@ class AncestorTraversalVirtualMachineTest(unittest.TestCase):
     self.assertEqual(code_deadcode.co_code,
                      self.code_deadcode)
     try:
-      self.vm.run_program(self.src_deadcode, run_builtins=False)
+      self.vm.run_program(self.src_deadcode, "", run_builtins=False)
     except vm.VirtualMachineError:
       pass  # The code we test throws an exception. Ignore it.
     self.assertItemsEqual(self.vm.instructions_executed, range(7))
