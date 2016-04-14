@@ -4,7 +4,6 @@ import copy
 import os
 import StringIO
 import subprocess
-import sys
 import tempfile
 
 from pytype.pyc import compile_bytecode
@@ -12,7 +11,7 @@ from pytype.pyc import loadmarshal
 from pytype.pyc import magic
 
 
-COMPILE_SCRIPT = os.path.join(os.path.dirname(__file__), "compile_bytecode.py")
+COMPILE_SCRIPT = os.path.join(os.path.dirname(__file__), "_compile.py")
 
 
 class CompileError(Exception):
@@ -41,12 +40,6 @@ def compile_src_string_to_pyc_string(src, filename, python_version, python_exe):
     IOError: If our compile script failed.
   """
   fi = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
-  pyc_name = python_pyc_name(fi.name, python_version)
-
-  if python_exe is None:
-    python_exe = os.getenv("PYTYPE_PYTHON_EXE")
-    if python_exe:
-      print >>sys.stderr, "[Using PYTYPE_PYTHON_EXE from environment]"
 
   try:
     fi.write(src)
@@ -55,23 +48,11 @@ def compile_src_string_to_pyc_string(src, filename, python_version, python_exe):
     # we spawn an external process.
     if python_exe:
       # Allow python_exe to contain parameters (E.g. "-T")
-      subprocess.check_call(python_exe.split() + ["-mpy_compile", fi.name])
-    # The following code has been removed because it might not use the
-    # same subdirectory as the regular compiler (see python_pyc_name).
-    # And the slight performance gain probably isn't worth it.
-    # Or we could use sys.executable with the subprocess.
-    # -- elif python_version[:2] == sys.version_info[:2]:
-    # --   py_compile.compile(fi.name, cfile=pyc_name, doraise=True)
+      exe = python_exe.split() + ["-S"]
     else:
-      # In order to be able to compile pyc files for both Python 2 and Python 3,
-      # we spawn an external process.
-      if python_exe:
-        # Allow python_exe to contain parameters (E.g. "-T")
-        exe = python_exe.split() + ["-S"]
-      else:
-        exe = ["python" + ".".join(map(str, python_version))]
-      bytecode = subprocess.check_output(exe + [
-          COMPILE_SCRIPT, fi.name, filename or fi.name])
+      exe = ["python" + ".".join(map(str, python_version))]
+    bytecode = subprocess.check_output(exe + [
+        COMPILE_SCRIPT, fi.name, filename or fi.name])
   finally:
     os.unlink(fi.name)
   if bytecode[0] == chr(0):  # compile OK

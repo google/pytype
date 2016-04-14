@@ -19,6 +19,7 @@ from pytype import errors
 from pytype import imports_map_loader
 from pytype import infer
 from pytype import utils
+from pytype.pyc import pyc
 from pytype.pytd import optimize
 from pytype.pytd import pytd
 from pytype.pytd import utils as pytd_utils
@@ -83,6 +84,10 @@ def generate_pyi(input_filename, output_filename, errorlog, options):
         cache_unknowns=options.cache_unknowns,
         maximum_depth=(1 if options.quick else None))
     mod.Visit(visitors.VerifyVisitor())
+  except pyc.CompileError as e:
+    # Compiling a *.py failed. Tell the user what Python told us and exit.
+    sys.stderr.write(e.message + "\n")
+    sys.exit(1)
   except parser.ParseError as e:
     if options.nofail:
       log.warn("Parser error: %s", str(e))
