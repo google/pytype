@@ -8,6 +8,7 @@ set of flags, except that it's one extra parameter to a number of objects.
 import logging
 import optparse
 import os
+import subprocess
 
 
 LOG_LEVELS = [logging.CRITICAL, logging.ERROR, logging.WARNING,
@@ -294,6 +295,16 @@ class Options(object):
       if self.pythonpath not in ([], [""]):
         raise optparse.OptionConflictError(
             "Not allowed with --pythonpath", "imports_info")
+
+    if self.python_exe is None:
+      exe = "python%d.%d" % self.python_version
+      try:
+        with open(os.devnull, "w") as null:
+          subprocess.check_call(exe + " -V",
+                                shell=True, stderr=null, stdout=null)
+      except subprocess.CalledProcessError:
+        raise optparse.OptionError("Need valid %s executable in $PATH" % exe,
+                                   "V")
 
   def _initialize_filenames_and_output(self):
     """Figure out the input(s) and output(s).
