@@ -6,6 +6,7 @@ from pytype.tests import test_inference
 
 
 class TestPython3(test_inference.InferenceTest):
+  """Tests for Python 3 compatiblity."""
 
   PYTHON_VERSION = (3, 4)
 
@@ -23,11 +24,38 @@ class TestPython3(test_inference.InferenceTest):
 
       def uses_kw_defaults(x, *args, y=1):
         return 3
-    """, run_builtins=False) as ty:
+    """) as ty:
       self.assertTypesMatchPytd(ty, """
         def uses_annotations(x: int) -> int
         def uses_kw_defaults(x) -> ?
         def uses_pos_defaults(x, y, ...) -> ?
+      """)
+
+  def test_make_class(self):
+    with self.Infer("""
+      class Thing(tuple):
+        def __init__(self, x):
+          self.x = x
+      def f():
+        x = Thing(1)
+        x.y = 3
+        return x
+    """, deep=True, extract_locals=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+      class Thing(Tuple[Any, ...]):
+        x = ...  # type: Any
+        y = ...  # type: int
+        def __init__(self, x) -> NoneType: ...
+      def f() -> Thing: ...
+      """)
+
+  def test_class_kwargs(self):
+    with self.Infer("""
+      # x, y are passed to type() or the metaclass. We currently ignore them.
+      class Thing(x=True, y="foo"): pass
+    """, deep=True, extract_locals=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+      class Thing: ...
       """)
 
 

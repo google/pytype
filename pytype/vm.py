@@ -747,8 +747,6 @@ class VirtualMachine(object):
     Returns:
       An instance of Class.
     """
-    bases_values = bases.values
-    bases = list(abstract.get_atomic_python_constant(bases))
     name = abstract.get_atomic_python_constant(name_var)
     log.info("Declaring class %s", name)
     try:
@@ -773,7 +771,7 @@ class VirtualMachine(object):
       return self.create_new_unsolvable(node, "mro_error")
     else:
       var = self.program.NewVariable(name)
-      var.AddValue(val, bases_values + class_dict_var.values, node)
+      var.AddValue(val, class_dict_var.values, node)
       return var
 
   def make_function(self, name, code, globs, defaults,

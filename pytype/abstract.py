@@ -2260,6 +2260,7 @@ class InterpreterFunction(Function):
     self.cls = self.vm.function_type
     self._call_records = {}
     self.signature = self._build_signature()
+    self.last_frame = None  # for BuildClass
 
   def _build_signature(self):
     """Build a function.Signature object representing this function."""
@@ -2763,14 +2764,14 @@ class BuildClass(AtomicAbstractValue):
   def call(self, node, unused_func, posargs, namedargs,
            starargs=None, starstarargs=None):
     funcvar, name = posargs[0:2]
-    if len(funcvar.bindings) != 1:
+    if len(funcvar.values) != 1:
       raise ConversionError("Invalid ambiguous argument to __build_class__")
     func, = funcvar.data
     if not isinstance(func, InterpreterFunction):
       raise ConversionError("Invalid argument to __build_class__")
     bases = posargs[2:]
-    node, _ = func.call(node, funcvar.bindings[0], [], {}, starargs,
-                        starstarargs, new_locals=True)
+    node, _ = func.call(node, funcvar.values[0], [], {}, starargs, starstarargs,
+                        new_locals=True)
     return node, self.vm.make_class(
         node, name, bases,
         func.last_frame.f_locals.to_variable(node, "locals()"))
