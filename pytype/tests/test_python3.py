@@ -58,6 +58,21 @@ class TestPython3(test_inference.InferenceTest):
       class Thing: ...
       """)
 
+  def test_exceptions(self):
+    with self.Infer("""
+      def f():
+        try:
+          raise ValueError()  # exercise byte_RAISE_VARARGS
+        except ValueError as e:
+          x = "s"
+        finally:  # exercise byte_POP_EXCEPT
+          x = 3
+        return x
+    """, deep=True, extract_locals=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        def f() -> int
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()
