@@ -2,7 +2,7 @@
 
 import struct
 
-# These constants are from Python-3.x.x/Lib/importlib/_bootstrap.py
+# These constants are from Python-3.x.x/Lib/importlib/_bootstrap_external.py
 PYTHON_MAGIC = {
     # Python 1
     20121: (1, 5),
@@ -73,6 +73,16 @@ PYTHON_MAGIC = {
     3290: (3, 4),  # a4
     3300: (3, 4),  # a4
     3310: (3, 4),  # rc2
+
+    # Python 3.5
+    3320: (3, 5),  # a0
+    3330: (3, 5),  # b1
+    3340: (3, 5),  # b2
+    3350: (3, 5),  # b2
+
+    # Python 3.6
+    3360: (3, 6),  # a0
+    3361: (3, 6),  # a0
 }
 
 
