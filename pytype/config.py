@@ -288,6 +288,14 @@ class Options(object):
       raise optparse.OptionError("must be <major>.<minor>: %r" %
                                  self._options.python_version,
                                  "python_version")
+    if (3, 0) <= self.python_version <= (3, 3):
+      # These have odd __build_class__ parameters, store co_code.co_name fields
+      # as unicode, and don't yet have the extra qualname parameter to
+      # MAKE_FUNCTION. Jumping through these extra hoops is not worth it, given
+      # that typing.py isn't introduced until 3.5, anyway.
+      raise optparse.OptionError(
+          "Python versions 3.0 - 3.3 are not supported. "
+          "Use 3.4 and higher.", "python_version")
     if self.imports_info:
       if self.import_drop_prefixes:
         raise optparse.OptionConflictError(
