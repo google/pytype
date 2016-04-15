@@ -1983,6 +1983,7 @@ class InterpreterFunction(Function):
     self.cls = self.vm.function_type
     self._call_records = {}
     self.signature = self._build_signature()
+    self.last_frame = None  # for BuildClass
 
   def _build_signature(self):
     """Build a function.Signature object representing this function."""
@@ -2137,7 +2138,7 @@ class InterpreterFunction(Function):
           raise WrongArgTypes(self.signature, [view[a].data for a in posargs])
 
   def call(self, node, unused_func, posargs, namedargs,
-           starargs=None, starstarargs=None):
+           starargs=None, starstarargs=None, new_locals=None):
     if self.vm.is_at_maximum_depth():
       log.info("Maximum depth reached. Not analyzing %r", self.name)
       return node, self.vm.program.NewVariable(self.name + ":ret", [], [], node)
@@ -2145,7 +2146,8 @@ class InterpreterFunction(Function):
     callargs = self._map_args(node, posargs, namedargs, starargs, starstarargs)
     # Might throw vm.RecursionException:
     frame = self.vm.make_frame(node, self.code, callargs,
-                               self.f_globals, self.f_locals, self.closure)
+                               self.f_globals, self.f_locals, self.closure,
+                               new_locals=new_locals)
     if self.vm.options.skip_repeat_calls:
       callkey = self._hash_all(
           (callargs, None),
@@ -2172,6 +2174,7 @@ class InterpreterFunction(Function):
     else:
       node_after_call, ret = self.vm.run_frame(frame, node)
     self._call_records[callkey] = (callargs, ret, node_after_call)
+    self.last_frame = frame
     return node_after_call, ret
 
   def _get_call_combinations(self):
@@ -2467,6 +2470,28 @@ class Module(Instance):
   def match_against_type(self, other_type, subst, node, view):
     if other_type.name in ["module", "object"]:
       return subst
+
+
+class BuildClass(AtomicAbstractValue):
+  """Representation of the Python 3 __build_class__ object."""
+
+  def __init__(self, vm):
+    super(BuildClass, self).__init__("__build_class__", vm)
+
+  def call(self, node, unused_func, posargs, namedargs,
+           starargs=None, starstarargs=None):
+    funcvar, name = posargs[0:2]
+    if len(funcvar.values) != 1:
+      raise ConversionError("Invalid ambiguous argument to __build_class__")
+    func, = funcvar.data
+    if not isinstance(func, InterpreterFunction):
+      raise ConversionError("Invalid argument to __build_class__")
+    bases = posargs[2:]
+    node, _ = func.call(node, funcvar.values[0], [], {}, starargs, starstarargs,
+                        new_locals=True)
+    return node, self.vm.make_class(
+        node, name, bases,
+        func.last_frame.f_locals.to_variable(node, "locals()"))
 
 
 class Unsolvable(AtomicAbstractValue):

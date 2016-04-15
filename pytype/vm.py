@@ -733,8 +733,6 @@ class VirtualMachine(object):
     Returns:
       An instance of Class.
     """
-    bases_values = bases.values
-    bases = list(abstract.get_atomic_python_constant(bases))
     name = abstract.get_atomic_python_constant(name_var)
     log.info("Declaring class %s", name)
     try:
@@ -759,7 +757,7 @@ class VirtualMachine(object):
       return self.create_new_unsolvable(node, "mro_error")
     else:
       var = self.program.NewVariable(name)
-      var.AddValue(val, bases_values + class_dict_var.values, node)
+      var.AddValue(val, class_dict_var.values, node)
       return var
 
   def make_function(self, name, code, globs, defaults,
@@ -784,7 +782,7 @@ class VirtualMachine(object):
     return var
 
   def make_frame(self, node, code, callargs=None,
-                 f_globals=None, f_locals=None, closure=None):
+                 f_globals=None, f_locals=None, closure=None, new_locals=None):
     """Create a new frame object, using the given args, globals and locals."""
     if any(code is f.f_code for f in self.frames):
       log.info("Detected recursion in %s", code.co_name or code.co_filename)
@@ -809,7 +807,9 @@ class VirtualMachine(object):
       })
 
     # Implement NEWLOCALS flag. See Objects/frameobject.c in CPython.
-    if code.co_flags & loadmarshal.CodeType.CO_NEWLOCALS:
+    # (Also allow to override this with a parameter, Python 3 doesn't always set
+    #  it to the right value, e.g. for class-level code.)
+    if code.co_flags & loadmarshal.CodeType.CO_NEWLOCALS or new_locals:
       f_locals = self.convert_locals_or_globals({}, "locals")
 
     return frame_state.Frame(node, self, code, f_globals, f_locals,
@@ -2086,12 +2086,14 @@ class VirtualMachine(object):
     return state
 
   def byte_BUILD_CLASS(self, state):
-    state, (name, bases, methods) = state.popn(3)
-    return state.push(self.make_class(state.node, name, bases, methods))
+    state, (name, _bases, members) = state.popn(3)
+    bases = list(abstract.get_atomic_python_constant(_bases))
+    return state.push(self.make_class(state.node, name, bases, members))
 
   def byte_LOAD_BUILD_CLASS(self, state):
     # New in py3
-    return state.push(__builtins__.__build_class__)
+    return state.push(abstract.BuildClass(self).to_variable(
+        state.node, "__build_class__"))
 
   def byte_STORE_LOCALS(self, state):
     state, locals_dict = state.pop()
