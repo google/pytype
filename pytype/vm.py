@@ -275,16 +275,6 @@ class VirtualMachine(object):
       if line:
         print "  " + line.strip()
 
-  def unwind_block(self, block, state):
-    """Adjusts the data stack to account for removing the passed block."""
-    if block.type == "except-handler":
-      offset = 3
-    else:
-      offset = 0
-
-    while len(state.data_stack) > block.level + offset:
-      state = state.pop_and_discard()
-
   def module_name(self):
     if self.frame.f_code.co_filename:
       return ".".join(re.sub(
@@ -1888,10 +1878,9 @@ class VirtualMachine(object):
       return self.byte_RAISE_VARARGS_PY3(state, op)
 
   def byte_POP_EXCEPT(self, state):  # Python 3 only
-    state, block = state.pop_block()
-    if block.type != "except-handler":
-      raise VirtualMachineError("popped block is not an except handler")
-    return self.unwind_block(block, state)
+    # We don't push the special except-handler block, so we don't need to
+    # pop it, either.
+    return state
 
   def byte_SETUP_WITH(self, state, op):
     """Starts a 'with' statement. Will push a block."""
