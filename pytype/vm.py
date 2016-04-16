@@ -136,6 +136,7 @@ class VirtualMachine(object):
     self.list_type = self.convert_constant("list", list)
     self.set_type = self.convert_constant("set", set)
     self.dict_type = self.convert_constant("dict", dict)
+    self.type_type = self.convert_constant("type", type)
     self.module_type = self.convert_constant("module", types.ModuleType)
     self.function_type = self.convert_constant(
         "function", types.FunctionType)
@@ -1268,7 +1269,7 @@ class VirtualMachine(object):
   def get_special_module(self, name):
     """Look up a hardcoded module implementation, or return None."""
     if name == "typing":
-      return typing.Module(self)
+      return typing.Typing(self)
     else:
       return None
 
