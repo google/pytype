@@ -5,11 +5,11 @@ from pytype import abstract
 from pytype.pytd import pytd
 
 
-class Module(abstract.Module):
+class Typing(abstract.Module):
   is_lazy = True  # uses _convert_member
 
   def __init__(self, vm):
-    super(Module, self).__init__(vm, "typing", typing_members)
+    super(Typing, self).__init__(vm, "typing", typing_members)
 
   def _convert_member(self, name, constructor):
     return constructor(name, self.vm).to_variable(self.vm.root_cfg_node, name)
@@ -19,7 +19,7 @@ class Union(abstract.ValueWithSlots):
   """Implementation of typing.Union[...]."""
 
   def __init__(self, name, vm, elements=()):
-    super(Union, self).__init__(vm.module_type, vm)
+    super(Union, self).__init__(vm.type_type, vm)
     self.name = "Union"
     self.elements = elements
     self.set_slot("__getitem__", self.getitem_slot)
@@ -53,6 +53,38 @@ class Union(abstract.ValueWithSlots):
         for e in self.elements])
 
 
+class List(abstract.ValueWithSlots):
+  """Implementation of typing.List[...]."""
+
+  def __init__(self, name, vm, inner_type=None):
+    # TODO(kramm): type_type is wrong. Correct would be "typing.GenericMeta".
+    # But in the output, we'd want this to become an alias.
+    super(List, self).__init__(vm.type_type, vm)
+    self.name = "List"
+    self.inner_type = inner_type
+    self.set_slot("__getitem__", self.getitem_slot)
+
+  def getitem_slot(self, node, type_var):
+    inner_type = abstract.get_atomic_value(type_var)
+    new_list = List(self.name, self.vm, inner_type)
+    return node, new_list.to_variable(node, "List")
+
+  def instantiate(self, node):
+    return self.vm.build_list(node, [
+        self.inner_type.to_variable(node, "inner")])
+
+  def match_var_against(self, var, subst, node, view):
+    new_subst = abstract.match_var_against_type(
+        var, self.vm.list_type.data[0], subst, node, view)
+    if new_subst is not None:
+      return new_subst
+
+  def get_instance_type(self, instance=None):
+    return pytd.GenericType(pytd.NamedType("list"),
+                            (self.inner_type.get_instance_type(),))
+
+
 typing_members = {
-    "Union": Union
+    "Union": Union,
+    "List": List,
 }

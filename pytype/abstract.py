@@ -2412,7 +2412,7 @@ class InterpreterFunction(Function):
       for combination in utils.deep_variable_product([param_var]):
         view = {value.variable: value for value in combination}
         if match_var_against_type(param_var, formal, {}, node, view) is None:
-          raise WrongArgTypes(self.signature, [view[a].data for a in posargs])
+          raise WrongArgTypes(self.signature, [view[param_var].data])
 
   def call(self, node, unused_func, posargs, namedargs,
            starargs=None, starstarargs=None, new_locals=None):
