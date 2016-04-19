@@ -6,11 +6,12 @@ import StringIO
 import subprocess
 import tempfile
 
+from pytype.pyc import compile_bytecode
 from pytype.pyc import loadmarshal
 from pytype.pyc import magic
 
 
-COMPILE_SCRIPT = os.path.join(os.path.dirname(__file__), "_compile.py")
+COMPILE_SCRIPT = os.path.join(os.path.dirname(__file__), "compile_bytecode.py")
 
 
 class CompileError(Exception):
@@ -29,7 +30,8 @@ def compile_src_string_to_pyc_string(src, filename, python_version, python_exe):
     filename: Name of the source file. For error messages.
     python_version: Python version, (major, minor). E.g. (2, 7). Will be used
       to determine the Python executable to call.
-    python_exe: Path to a Python interpreter, or None.
+    python_exe: Path to a Python interpreter, or "HOST", or None. If this is
+      None, the system "pythonX.X" interpreter will be used.
 
   Returns:
     The compiled pyc file as a binary string.
@@ -42,15 +44,21 @@ def compile_src_string_to_pyc_string(src, filename, python_version, python_exe):
   try:
     fi.write(src)
     fi.close()
-    # In order to be able to compile pyc files for both Python 2 and Python 3,
-    # we spawn an external process.
-    if python_exe:
-      # Allow python_exe to contain parameters (E.g. "-T")
-      exe = python_exe.split() + ["-S"]
+    if python_exe == "HOST":
+      # We were asked to use the version of Python we're running to compile.
+      output = StringIO.StringIO()
+      compile_bytecode.compile_to_pyc(fi.name, filename or fi.name, output)
+      bytecode = output.getvalue()
     else:
-      exe = ["python" + ".".join(map(str, python_version))]
-    bytecode = subprocess.check_output(exe + [
-        COMPILE_SCRIPT, fi.name, filename or fi.name])
+      # In order to be able to compile pyc files for both Python 2 and Python 3,
+      # we spawn an external process.
+      if python_exe:
+        # Allow python_exe to contain parameters (E.g. "-T")
+        exe = python_exe.split() + ["-S"]
+      else:
+        exe = ["python" + ".".join(map(str, python_version))]
+      bytecode = subprocess.check_output(exe + [
+          COMPILE_SCRIPT, fi.name, filename or fi.name])
   finally:
     os.unlink(fi.name)
   if bytecode[0] == chr(0):  # compile OK

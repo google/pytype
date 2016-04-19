@@ -23,15 +23,10 @@ def write_pyc(f, codeobject, source_size=0, timestamp=0):
   _write32(f, timestamp)
   if tuple(sys.version_info[:2]) >= (3, 3):
     _write32(f, source_size)
-  marshal.dump(codeobject, f)
+  f.write(marshal.dumps(codeobject))
 
 
-def main():
-  if len(sys.argv) != 3:
-    sys.exit(1)
-  data_file = sys.argv[1]
-  filename = sys.argv[2]
-  output = sys.stdout.buffer if hasattr(sys.stdout, "buffer") else sys.stdout
+def compile_to_pyc(data_file, filename, output):
   with open(data_file, "r") as fi:
     src = fi.read()
   try:
@@ -42,6 +37,13 @@ def main():
   else:
     output.write(b"\0")
     write_pyc(output, codeobject)
+
+
+def main():
+  if len(sys.argv) != 3:
+    sys.exit(1)
+  output = sys.stdout.buffer if hasattr(sys.stdout, "buffer") else sys.stdout
+  compile_to_pyc(data_file=sys.argv[1], filename=sys.argv[2], output=output)
 
 
 if __name__ == "__main__":
