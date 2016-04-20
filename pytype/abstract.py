@@ -1406,7 +1406,9 @@ class PyTDSignature(object):
       if subst is None:
         # These parameters didn't match this signature. There might be other
         # signatures that work, but figuring that out is up to the caller.
-        raise WrongArgTypes(self.signature, [a.data for a in arg_dict.values()])
+        passed = [arg_dict[name].data
+                  for name in self.signature.param_names]
+        raise WrongArgTypes(self.signature, passed)
     return utils.HashableDict(subst)
 
   def _get_mutation(self, node, arg_dict, subst):

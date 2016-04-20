@@ -205,6 +205,17 @@ class ErrorTest(test_inference.InferenceTest):
     # "Line 6: Bad inheritance."
     self.assertErrorLogContains(errors, r"line 6.*inheritance")
 
+  def testBadCall(self):
+    with utils.Tempdir() as d:
+      d.create_file("other.pyi", """
+	def foo(x: int, y: str) -> str: ...
+      """)
+      _, errors = self.InferAndCheck("""
+        import other
+        other.foo(1.2, [])
+      """, pythonpath=[d.path])
+      self.assertErrorLogContains(errors, r"(x: float, y: list)")
+
 
 if __name__ == "__main__":
   test_inference.main()
