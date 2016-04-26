@@ -126,11 +126,12 @@ class InferenceTest(unittest.TestCase):
     self.options.tweak(pythonpath=pythonpath)
     errorlog = self._InitErrorLog(code)
     unit = infer.infer_types(
-        textwrap.dedent(code), errorlog, self.options,
-        deep=True, solve_unknowns=True, cache_unknowns=True)
-    if report_errors and errorlog.has_error():
-      errorlog.print_to_stderr()
-      self.fail("Inferencer found %d errors" % len(errorlog))
+        textwrap.dedent(code), self.errorlog, self.options,
+        deep=False, solve_unknowns=False, reverse_operators=True,
+        cache_unknowns=True)
+    if report_errors and self.errorlog.has_error():
+      self.errorlog.print_to_stderr()
+      self.fail("Inferencer found %d errors" % len(self.errorlog))
     unit.Visit(visitors.VerifyVisitor())
     return pytd_utils.CanonicalOrdering(unit)
 
@@ -300,9 +301,9 @@ class InferenceTest(unittest.TestCase):
     self.options.tweak(pythonpath=pythonpath, imports_map=imports_map)
     unit = infer.infer_types(src, self.errorlog, self.options, **kwargs)
     unit = pytd_utils.CanonicalOrdering(unit.Visit(visitors.VerifyVisitor()))
-    if report_errors and errorlog.has_error():
-      errorlog.print_to_stderr()
-      self.fail("Inferencer found %d errors" % len(errorlog))
+    if report_errors and self.errorlog.has_error():
+      self.errorlog.print_to_stderr()
+      self.fail("Inferencer found %d errors" % len(self.errorlog))
     return unit
 
   def assertTypesMatchPytd(self, ty, pytd_src, version=None):

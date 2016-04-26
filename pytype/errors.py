@@ -86,8 +86,6 @@ class ErrorLogBase(object):
 
   def __init__(self):
     self._errors = []
-    # An error filter (initially None)
-    self._filter = None
 
   def __len__(self):
     return len(self._errors)
@@ -95,31 +93,12 @@ class ErrorLogBase(object):
   def __iter__(self):
     return iter(self._errors)
 
-  def is_valid_error_name(self, name):
-    """Return True iff name was defined in an @error_name() decorator."""
-    return name in _ERROR_NAMES
-
-  def set_error_filter(self, filt):
-    """Set the error filter.
-
-    Args:
-      filt: A function or callable object that accepts a single argument of
-          type Error and returns True if that error should be included in the
-          log.  A filter of None will add all errors.
-    """
-    self._filter = filt
-
   def has_error(self):
     """Return true iff an Error with SEVERITY_ERROR is present."""
-    # pylint: disable=protected-access
-    return any(e._severity == SEVERITY_ERROR for e in self._errors)
-
-  def _add(self, error):
-    if self._filter is None or self._filter(error):
-      self._errors.append(error)
+    return any(e.severity == SEVERITY_ERROR for e in self._errors)
 
   def _add(self, severity, opcode, message, args):
-    self.errors.append(Error(
+    self._errors.append(Error(
         severity=severity,
         filename=opcode.code.co_filename if opcode else None,
         lineno=opcode.line if opcode else None,
@@ -144,7 +123,8 @@ class ErrorLogBase(object):
 
   def print_to_file(self, fi):
     seen = set()
-    for error in self.sorted_errors():
+    for error in sorted(self._errors,
+                        key=lambda x: utils.numeric_sort_key(x.position())):
       text = str(error)
       if text not in seen:
         print >>fi, error
