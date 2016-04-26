@@ -60,19 +60,20 @@ class ErrorLogBase(object):
   """A stream of errors."""
 
   def __init__(self):
-    self.errors = []
+    self._errors = []
 
   def __len__(self):
-    return len(self.errors)
-
-  def __nonzero__(self):
-    return bool(len(self))
+    return len(self._errors)
 
   def __iter__(self):
-    return iter(self.errors)
+    return iter(self._errors)
+
+  def has_error(self):
+    """Return true iff an Error with SEVERITY_ERROR is present."""
+    return any(e.severity == SEVERITY_ERROR for e in self._errors)
 
   def _add(self, severity, opcode, message, args):
-    self.errors.append(Error(
+    self._errors.append(Error(
         severity=severity,
         filename=opcode.code.co_filename if opcode else None,
         lineno=opcode.line if opcode else None,
@@ -93,11 +94,11 @@ class ErrorLogBase(object):
 
   def revert_to(self, checkpoint):
     assert checkpoint.log is self
-    self.errors = self.errors[:checkpoint.position]
+    self._errors = self._errors[:checkpoint.position]
 
   def print_to_file(self, fi):
     seen = set()
-    for error in sorted(self.errors,
+    for error in sorted(self._errors,
                         key=lambda x: utils.numeric_sort_key(x.position())):
       text = str(error)
       if text not in seen:

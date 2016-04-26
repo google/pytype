@@ -238,7 +238,7 @@ class InferenceTest(unittest.TestCase):
         textwrap.dedent(code), self.errorlog, self.options,
         deep=False, solve_unknowns=False, reverse_operators=True,
         cache_unknowns=True)
-    if report_errors and self.errorlog.errors:
+    if report_errors and self.errorlog.has_error():
       self.errorlog.print_to_stderr()
       self.fail("Inferencer found %d errors" % len(self.errorlog))
     unit.Visit(visitors.VerifyVisitor())
@@ -407,7 +407,7 @@ class InferenceTest(unittest.TestCase):
     self.options.tweak(pythonpath=pythonpath, imports_map=imports_map)
     unit = infer.infer_types(src, self.errorlog, self.options, **kwargs)
     unit = pytd_utils.CanonicalOrdering(unit.Visit(visitors.VerifyVisitor()))
-    if report_errors and self.errorlog:
+    if report_errors and self.errorlog.has_error():
       self.errorlog.print_to_stderr()
       self.fail("Inferencer found %d errors" % len(self.errorlog))
     return unit

@@ -353,7 +353,7 @@ class CallTracer(vm.VirtualMachine):
       if item.name not in defs:
         self.errorlog.missing_definition(item, pytd_filename, py_filename)
 
-    if self.errorlog.errors:
+    if self.errorlog.has_error():
       return
 
     for pytd_function in ast.functions:

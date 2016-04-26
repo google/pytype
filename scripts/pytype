@@ -171,7 +171,7 @@ def process_one_file(input_filename, output_filename, options,
   if options.report_errors:
     if print_errors:
       errorlog.print_to_stderr()
-    return 1 if errorlog else 0  # exit code
+    return 1 if errorlog.has_error() else 0  # exit code
   else:
     return 0
 
