@@ -417,6 +417,16 @@ class UtilsTest(unittest.TestCase):
     del d["key"]
     self.assertGreater(d.changestamp, changestamp)
 
+  def testDynamicVar(self):
+    var = utils.DynamicVar()
+    self.assertIsNone(var.get())
+    with var.bind(123):
+      self.assertEquals(123, var.get())
+      with var.bind(456):
+        self.assertEquals(456, var.get())
+      self.assertEquals(123, var.get())
+    self.assertIsNone(var.get())
+
 
 if __name__ == "__main__":
   test_inference.main()

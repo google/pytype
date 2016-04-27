@@ -15,6 +15,23 @@ from pytype.pytd import utils as pytd_utils
 SEVERITY_WARNING = 1
 SEVERITY_ERROR = 2
 
+# The set of known error names.
+_ERROR_NAMES = set()
+
+# The current error name, managed by the error_name decorator.
+_CURRENT_ERROR_NAME = utils.DynamicVar()
+
+
+def _error_name(name):
+  """Decorate a function so that it binds the current error name."""
+  _ERROR_NAMES.add(name)
+  def wrap(func):
+    def invoke(*args, **kwargs):
+      with _CURRENT_ERROR_NAME.bind(name):
+        return func(*args, **kwargs)
+    return invoke
+  return wrap
+
 
 class CheckPoint(object):
   """Represents a position in an error log."""
@@ -24,36 +41,53 @@ class CheckPoint(object):
     self.position = position
 
 
-class Error(object):
+class _Error(object):
   """Representation of an error in the error log."""
 
-  def __init__(self, severity, filename, lineno, column,
-               methodname, linetext, message):
-    self.severity = severity
-    self.filename = filename
-    self.lineno = lineno
-    self.column = column
-    self.methodname = methodname
-    self.linetext = linetext
-    self.message = message
+  def __init__(self, severity, message, filename=None, lineno=None, column=None,
+               linetext=None, methodname=None):
+    name = _CURRENT_ERROR_NAME.get()
+    assert name, ("Errors must be created from a caller annotated "
+                  "with @error_name.")
+    # Required for every Error.
+    self._severity = severity
+    self._message = message
+    self._name = name
+    # Optional information about error position.
+    self._filename = filename
+    self._lineno = lineno
+    self._column = column
+    self._linetext = linetext
+    self._methodname = methodname
 
-  def position(self):
+  @classmethod
+  def at_opcode(cls, opcode, severity, message):
+    """Return an error using an opcode for position information."""
+    if opcode is None:
+      return cls(severity, message)
+    else:
+      return cls(severity, message, filename=opcode.code.co_filename,
+                 lineno=opcode.line, methodname=opcode.code.co_name)
+
+  def _position(self):
     """Return human-readable filename + line number."""
-    method = ", in %s" % self.methodname if self.methodname else ""
+    method = ", in %s" % self._methodname if self._methodname else ""
 
-    if self.filename:
-      filename = os.path.basename(self.filename)
+    if self._filename:
+      filename = os.path.basename(self._filename)
       return "File \"%s\", line %d%s" % (filename,
-                                         self.lineno,
+                                         self._lineno,
                                          method)
-    elif self.lineno:
-      return "Line %d%s" % (self.lineno, method)
+    elif self._lineno:
+      return "Line %d%s" % (self._lineno, method)
     else:
       return ""
 
   def __str__(self):
-    pos = self.position()
-    return (pos + ": " if pos else "") + self.message.replace("\n", "\n  ")
+    pos = self._position()
+    if pos:
+      pos += ": "
+    return "%s%s [%s]" % (pos, self._message.replace("\n", "\n  "), self._name)
 
 
 class ErrorLogBase(object):
@@ -70,23 +104,17 @@ class ErrorLogBase(object):
 
   def has_error(self):
     """Return true iff an Error with SEVERITY_ERROR is present."""
-    return any(e.severity == SEVERITY_ERROR for e in self._errors)
+    # pylint: disable=protected-access
+    return any(e._severity == SEVERITY_ERROR for e in self._errors)
 
-  def _add(self, severity, opcode, message, args):
-    self._errors.append(Error(
-        severity=severity,
-        filename=opcode.code.co_filename if opcode else None,
-        lineno=opcode.line if opcode else None,
-        column=None,
-        methodname=opcode.code.co_name if opcode else None,
-        linetext=None,
-        message=message % args))
+  def _add(self, error):
+    self._errors.append(error)
 
   def warn(self, opcode, message, *args):
-    self._add(SEVERITY_WARNING, opcode, message, args)
+    self._add(_Error.at_opcode(opcode, SEVERITY_WARNING, message % args))
 
   def error(self, opcode, message, *args):
-    self._add(SEVERITY_ERROR, opcode, message, args)
+    self._add(_Error.at_opcode(opcode, SEVERITY_ERROR, message % args))
 
   def save(self):
     """Returns a checkpoint that represents the log messages up to now."""
@@ -98,8 +126,9 @@ class ErrorLogBase(object):
 
   def print_to_file(self, fi):
     seen = set()
+    # pylint: disable=protected-access
     for error in sorted(self._errors,
-                        key=lambda x: utils.numeric_sort_key(x.position())):
+                        key=lambda x: utils.numeric_sort_key(x._position())):
       text = str(error)
       if text not in seen:
         print >>fi, error
@@ -117,26 +146,25 @@ class ErrorLogBase(object):
 class ErrorLog(ErrorLogBase):
   """ErrorLog with convenience functions."""
 
+  @_error_name("pyi-error")
   def pyi_error(self, e):
-    self.errors.append(Error(
-        severity=SEVERITY_ERROR,
-        filename=e.filename,
-        lineno=e.lineno,
-        column=e.column,
-        methodname=None,
-        linetext=e.line,
-        message=e.msg))
+    self._add(_Error(SEVERITY_ERROR, e.msg, filename=e.filename,
+                     lineno=e.lineno, column=e.column, linetext=e.line))
 
+  @_error_name("attribute-error")
   def attribute_error(self, opcode, obj, attr_name):
     on = " on %s" % obj.data[0].name if obj.values else ""
     self.error(opcode, "No attribute %r%s" % (attr_name, on))
 
+  @_error_name("name-error")
   def name_error(self, opcode, name):
     self.error(opcode, "Name %r is not defined" % name)
 
+  @_error_name("import-error")
   def import_error(self, opcode, module_name):
     self.error(opcode, "Can't find module %r" % module_name)
 
+  @_error_name("wrong-arg-count")
   def wrong_arg_count(self, opcode, sig, call_arg_count):
     self.error(
         opcode,
@@ -144,6 +172,7 @@ class ErrorLog(ErrorLogBase):
             sig.name, call_arg_count, sig.mandatory_param_count())
         )
 
+  @_error_name("wrong-arg-types")
   def wrong_arg_types(self, opcode, sig, passed_args):
     """A function was called with the wrong parameter types."""
     message = "".join([
@@ -155,6 +184,7 @@ class ErrorLog(ErrorLogBase):
         ")"])
     self.error(opcode, message)
 
+  @_error_name("wrong-keyword-args")
   def wrong_keyword_args(self, opcode, sig, extra_keywords):
     """A function was called with extra keywords."""
     if len(extra_keywords) == 1:
@@ -165,6 +195,7 @@ class ErrorLog(ErrorLogBase):
           "(" + ", ".join(extra_keywords) + ")", sig.name)
     self.error(opcode, message)
 
+  @_error_name("missing-parameter")
   def missing_parameter(self, opcode, sig, missing_parameter):
     """A function call is missing parameters."""
     message = "Missing parameter %r in call to function %s\n" % (
@@ -183,6 +214,7 @@ class ErrorLog(ErrorLogBase):
     else:
       raise AssertionError(error)
 
+  @_error_name("index-error")
   def index_error(self, opcode, container, unused_index):
     if container.data:
       out_of = " out of %s" % container.data[0].name
@@ -191,35 +223,42 @@ class ErrorLog(ErrorLogBase):
     self.error(opcode, "Can't retrieve item%s. Empty?",
                out_of)
 
+  @_error_name("super-error")
   def super_error(self, opcode, arg_count):
     self.error(opcode, "super() takes one or two arguments. %d given.",
                arg_count)
 
+  @_error_name("base-class-error")
   def base_class_error(self, opcode, base_var):
     pytd_type = pytd_utils.JoinTypes(t.get_instance_type()
                                      for t in base_var.data)
     self.error(opcode, "Invalid base class: %s", pytd.Print(pytd_type))
 
+  @_error_name("missing-definition")
   def missing_definition(self, item, pytd_filename, py_filename):
     self.error(None, "%s %s declared in pytd %s, but not defined in %s",
                type(item).__name__, item.name, pytd_filename, py_filename)
 
+  @_error_name("bad-return-type")
   def bad_return_type(self, opcode, unused_function, actual, expected):
     self.error(opcode, "return type is %s, should be %s",
                pytd.Print(actual.to_type()),
                pytd.Print(expected))
 
+  @_error_name("unsupported-operands")
   def unsupported_operands(self, opcode, operation, var1, var2):
     left = pytd_utils.JoinTypes(t.to_type() for t in var1.data)
     right = pytd_utils.JoinTypes(t.to_type() for t in var2.data)
     # TODO(kramm): Display things like '__add__' as '+'
-    self.error(opcode, "unsupported operand type(s) for %s: %r and %r" % (
-        operation, pytd.Print(left), pytd.Print(right)))
+    self.error(opcode, "unsupported operand type(s) for %s: %r and %r",
+               operation, pytd.Print(left), pytd.Print(right))
 
+  @_error_name("invalid-annotation")
   def invalid_annotation(self, opcode, name):
-    self.error(opcode, "Invalid type annotation for %s. Must be constant" %
+    self.error(opcode, "Invalid type annotation for %s. Must be constant",
                name)
 
+  @_error_name("mro-error")
   def mro_error(self, opcode, name):
     self.error(opcode, "Class %r has invalid (cyclic?) inheritance.", name)
 

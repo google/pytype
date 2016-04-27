@@ -1,5 +1,6 @@
 """Generic functions."""
 
+import contextlib
 import errno
 import itertools
 import os
@@ -7,6 +8,7 @@ import re
 import shutil
 import tempfile
 import textwrap
+import threading
 import types
 
 
@@ -532,3 +534,37 @@ class MonitorDict(dict):
   @property
   def data(self):
     return itertools.chain.from_iterable(v.data for v in self.values())
+
+
+class DynamicVar(object):
+  """A dynamically scoped variable.
+
+  This is a per-thread dynamic variable, with an initial value of None.
+  The bind() call establishes a new value that will be in effect for the
+  duration of the resulting context manager.  This is intended to be used
+  in conjunction with a decorator.
+  """
+
+  def __init__(self):
+    self._local = threading.local()
+
+  def _values(self):
+    values = getattr(self._local, "values", None)
+    if values is None:
+      values = [None]  # Stack of bindings, with an initial default of None.
+      self._local.values = values
+    return values
+
+  @contextlib.contextmanager
+  def bind(self, value):
+    """Bind the dynamic variable to the supplied value."""
+    values = self._values()
+    try:
+      values.append(value)  # Push the new binding.
+      yield
+    finally:
+      values.pop()  # Pop the binding.
+
+  def get(self):
+    """Return the current value of the dynamic variable."""
+    return self._values()[-1]
