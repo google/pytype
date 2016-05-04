@@ -9,6 +9,7 @@ import subprocess
 
 from pytype import abstract
 from pytype import convert_structural
+from pytype import directors
 from pytype import output
 from pytype import state as frame_state
 from pytype import utils
@@ -531,6 +532,8 @@ def check_types(py_src, pytd_src, py_filename, pytd_filename, errorlog,
                 cache_unknowns=False,
                 maximum_depth=None):
   """Verify a PyTD against the Python code."""
+  director = directors.Director(py_src, errorlog, py_filename)
+  errorlog.set_error_filter(director.should_report_error)
   tracer = CallTracer(errorlog=errorlog, options=options,
                       module_name=_get_module_name(py_filename,
                                                    options.pythonpath),
@@ -573,6 +576,8 @@ def infer_types(src,
   Raises:
     AssertionError: In case of a bad parameter combination.
   """
+  director = directors.Director(src, errorlog, filename)
+  errorlog.set_error_filter(director.should_report_error)
   tracer = CallTracer(errorlog=errorlog, options=options,
                       module_name=_get_module_name(filename,
                                                    options.pythonpath),
