@@ -41,7 +41,7 @@ class CheckPoint(object):
     self.position = position
 
 
-class _Error(object):
+class Error(object):
   """Representation of an error in the error log."""
 
   def __init__(self, severity, message, filename=None, lineno=None, column=None,
@@ -54,6 +54,7 @@ class _Error(object):
     self._message = message
     self._name = name
     # Optional information about error position.
+    # TODO(dbaum): Do not allow filename (and maybe lineno) of None.
     self._filename = filename
     self._lineno = lineno
     self._column = column
@@ -68,6 +69,24 @@ class _Error(object):
     else:
       return cls(severity, message, filename=opcode.code.co_filename,
                  lineno=opcode.line, methodname=opcode.code.co_name)
+
+  @classmethod
+  def for_test(cls, severity, message, name, **kwargs):
+    """Create an _Error with the specified name, for use in tests."""
+    with _CURRENT_ERROR_NAME.bind(name):
+      return cls(severity, message, **kwargs)
+
+  @property
+  def name(self):
+    return self._name
+
+  @property
+  def lineno(self):
+    return self._lineno
+
+  @property
+  def filename(self):
+    return self._filename
 
   def _position(self):
     """Return human-readable filename + line number."""
@@ -95,6 +114,8 @@ class ErrorLogBase(object):
 
   def __init__(self):
     self._errors = []
+    # An error filter (initially None)
+    self._filter = None
 
   def __len__(self):
     return len(self._errors)
@@ -102,19 +123,34 @@ class ErrorLogBase(object):
   def __iter__(self):
     return iter(self._errors)
 
+  def is_valid_error_name(self, name):
+    """Return True iff name was defined in an @error_name() decorator."""
+    return name in _ERROR_NAMES
+
+  def set_error_filter(self, filt):
+    """Set the error filter.
+
+    Args:
+      filt: A function or callable object that accepts a single argument of
+          type Error and returns True if that error should be included in the
+          log.  A filter of None will add all errors.
+    """
+    self._filter = filt
+
   def has_error(self):
     """Return true iff an Error with SEVERITY_ERROR is present."""
     # pylint: disable=protected-access
     return any(e._severity == SEVERITY_ERROR for e in self._errors)
 
   def _add(self, error):
-    self._errors.append(error)
+    if self._filter is None or self._filter(error):
+      self._errors.append(error)
 
   def warn(self, opcode, message, *args):
-    self._add(_Error.at_opcode(opcode, SEVERITY_WARNING, message % args))
+    self._add(Error.at_opcode(opcode, SEVERITY_WARNING, message % args))
 
   def error(self, opcode, message, *args):
-    self._add(_Error.at_opcode(opcode, SEVERITY_ERROR, message % args))
+    self._add(Error.at_opcode(opcode, SEVERITY_ERROR, message % args))
 
   def save(self):
     """Returns a checkpoint that represents the log messages up to now."""
@@ -153,8 +189,10 @@ class ErrorLog(ErrorLogBase):
 
   @_error_name("pyi-error")
   def pyi_error(self, e):
-    self._add(_Error(SEVERITY_ERROR, e.msg, filename=e.filename,
-                     lineno=e.lineno, column=e.column, linetext=e.line))
+    # TODO(dbaum): Use the filename/line of the import rather than that
+    # of the parse error.
+    self._add(Error(SEVERITY_ERROR, e.msg, filename=e.filename,
+                    lineno=e.lineno, column=e.column, linetext=e.line))
 
   @_error_name("attribute-error")
   def attribute_error(self, opcode, obj, attr_name):
@@ -296,3 +334,7 @@ class ErrorLog(ErrorLogBase):
   def mro_error(self, opcode, name):
     self.error(opcode, "Class %r has invalid (cyclic?) inheritance.", name)
 
+  @_error_name("invalid-directive")
+  def invalid_directive(self, filename, lineno, message):
+    self._add(Error(
+        SEVERITY_WARNING, message, filename=filename, lineno=lineno))

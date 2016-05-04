@@ -23,8 +23,8 @@ class ErrorTest(unittest.TestCase):
 
   @errors._error_name(_TEST_ERROR)
   def test_init(self):
-    e = errors._Error(errors.SEVERITY_ERROR, _MESSAGE, filename="foo.py",
-                      lineno=123, column=2, linetext="hello", methodname="foo")
+    e = errors.Error(errors.SEVERITY_ERROR, _MESSAGE, filename="foo.py",
+                     lineno=123, column=2, linetext="hello", methodname="foo")
     self.assertEquals(errors.SEVERITY_ERROR, e._severity)
     self.assertEquals(_MESSAGE, e._message)
     self.assertEquals(e._name, _TEST_ERROR)
@@ -37,7 +37,7 @@ class ErrorTest(unittest.TestCase):
   @errors._error_name(_TEST_ERROR)
   def test_at_opcode(self):
     # Opcode of None.
-    e = errors._Error.at_opcode(None, errors.SEVERITY_ERROR, _MESSAGE)
+    e = errors.Error.at_opcode(None, errors.SEVERITY_ERROR, _MESSAGE)
     self.assertEquals(errors.SEVERITY_ERROR, e._severity)
     self.assertEquals(_MESSAGE, e._message)
     self.assertEquals(e._name, _TEST_ERROR)
@@ -48,7 +48,7 @@ class ErrorTest(unittest.TestCase):
     self.assertEquals(None, e._methodname)
     # Opcode of None.
     op = FakeOpcode("foo.py", 123, "foo")
-    e = errors._Error.at_opcode(op, errors.SEVERITY_ERROR, _MESSAGE)
+    e = errors.Error.at_opcode(op, errors.SEVERITY_ERROR, _MESSAGE)
     self.assertEquals(errors.SEVERITY_ERROR, e._severity)
     self.assertEquals(_MESSAGE, e._message)
     self.assertEquals(e._name, _TEST_ERROR)
@@ -65,13 +65,13 @@ class ErrorTest(unittest.TestCase):
 
   def test_no_error_name(self):
     # It is illegal to create an error outside of an @error_name annotation.
-    self.assertRaises(AssertionError, errors._Error, errors.SEVERITY_ERROR,
+    self.assertRaises(AssertionError, errors.Error, errors.SEVERITY_ERROR,
                       _MESSAGE)
 
   @errors._error_name(_TEST_ERROR)
   def test_str(self):
-    e = errors._Error(errors.SEVERITY_ERROR, _MESSAGE, filename="foo.py",
-                      lineno=123, column=2, linetext="hello", methodname="foo")
+    e = errors.Error(errors.SEVERITY_ERROR, _MESSAGE, filename="foo.py",
+                     lineno=123, column=2, linetext="hello", methodname="foo")
     self.assertEquals(
         'File "foo.py", line 123, in foo: an error message [test-error]',
         str(e))

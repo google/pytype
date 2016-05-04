@@ -48,7 +48,7 @@ class _LineSet(object):
 class Director(object):
   """Holds all of the directive information for a source file."""
 
-  def __init__(self, src, errorlog, filename, disable):
+  def __init__(self, src, errorlog, filename):
     """Create a Director for a source file.
 
     Args:
@@ -56,7 +56,6 @@ class Director(object):
       errorlog: An ErrorLog object.  Directive errors will be logged to the
           errorlog.
       filename: The name of the source file.
-      disable: List of error messages to always ignore.
     """
     self._filename = filename
     self._errorlog = errorlog
@@ -66,9 +65,6 @@ class Director(object):
     # Map from error name to lines for which that error is disabled.  Note
     # that _ALL_ERRORS is essentially a wildcard name (it matches all names).
     self._disables = collections.defaultdict(_LineSet)
-    # Apply global disable, from the command line arguments:
-    for error_name in disable:
-      self._disables[error_name].add(0, open_ended=True)
     # Parse the source code for directives.
     self._parse_source(src)
 
