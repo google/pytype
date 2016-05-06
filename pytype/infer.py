@@ -460,8 +460,8 @@ def program_to_dot(program, ignored, only_cfg=False):
   for node in program.cfg_nodes:
     if node in ignored:
       continue
-    sb.write("%s[shape=polygon,sides=4,label=\"%s\"];\n"
-             % (objname(node), node.name))
+    sb.write("%s[shape=polygon,sides=4,label=\"<%d>%s\"];\n"
+             % (objname(node), node.id, node.name))
     for other in node.outgoing:
       sb.write("%s -> %s [penwidth=2.0];\n" % (objname(node), objname(other)))
 
