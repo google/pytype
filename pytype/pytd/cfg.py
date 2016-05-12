@@ -221,6 +221,10 @@ class CFGNode(object):
     """Return a string containing the node name and id."""
     return "<%d>%s" % (self.id, self.name)
 
+  def Label(self):
+    """Return a string containing the node name and id."""
+    return "<%d>%s" % (self.id, self.name)
+
   def __repr__(self):
     return "<cfgnode %d %s>" % (self.id, self.name)
 
@@ -333,6 +337,10 @@ class Binding(object):
           if source.HasSource(value):
             return True
     return False
+
+  def __str__(self):
+    data_id = getattr(self.data, "id", id(self.data))
+    return "$%d=#%d" % (self.variable.id, data_id)
 
   def __repr__(self):
     return "<binding %x of variable %d>" % (id(self), self.variable.id)
