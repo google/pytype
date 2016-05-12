@@ -135,54 +135,6 @@ class CFGTest(unittest.TestCase):
     val1, = [v for v in vw.bindings if v.data == 1]
     self.assertTrue(val1.HasSource(u1))
 
-  def testHasSource(self):
-    p = cfg.Program()
-    n0, n1, n2 = p.NewCFGNode("n0"), p.NewCFGNode("n1"), p.NewCFGNode("n2")
-    u = p.NewVariable("u")
-    u1 = u.AddValue(0, source_set=[], where=n0)
-    v = p.NewVariable("v")
-    v1 = v.AddValue(1, source_set=[], where=n1)
-    v2 = v.AddValue(2, source_set=[u1], where=n1)
-    v3a = v.AddValue(3, source_set=[], where=n1)
-    v3b = v.AddValue(3, source_set=[u1], where=n2)
-    self.assertEquals(v3a, v3b)
-    v3 = v3a
-    self.assertTrue(v1.HasSource(v1))
-    self.assertTrue(v2.HasSource(v2))
-    self.assertTrue(v3.HasSource(v3))
-    self.assertFalse(v1.HasSource(u1))
-    self.assertTrue(v2.HasSource(u1))
-    self.assertTrue(v3.HasSource(u1))
-
-  def testMergeZeroVariables(self):
-    p = cfg.Program()
-    n0 = p.NewCFGNode("n0")
-    self.assertIsInstance(p.MergeVariables(n0, "u", []), cfg.Variable)
-
-  def testMergeOneVariable(self):
-    p = cfg.Program()
-    n0 = p.NewCFGNode("n0")
-    u = p.NewVariable("u", [0], [], n0)
-    self.assertIs(p.MergeVariables(n0, "u", [u]), u)
-    self.assertIs(p.MergeVariables(n0, "u", [u, u]), u)
-    self.assertIs(p.MergeVariables(n0, "u", [u, u, u]), u)
-
-  def testMergeVariables(self):
-    p = cfg.Program()
-    n0, n1, n2 = p.NewCFGNode("n0"), p.NewCFGNode("n1"), p.NewCFGNode("n2")
-    u = p.NewVariable("u")
-    u1 = u.AddValue(0, source_set=[], where=n0)
-    v = p.NewVariable("v")
-    v1 = v.AddValue(1, source_set=[], where=n1)
-    v2 = v.AddValue(2, source_set=[], where=n1)
-    w = p.NewVariable("w")
-    w1 = w.AddValue(1, source_set=[u1], where=n1)
-    w2 = w.AddValue(3, source_set=[], where=n1)
-    vw = p.MergeVariables(n2, "vw", [v, w])
-    self.assertItemsEqual(vw.data, [1, 2, 3])
-    val1, = [v for v in vw.values if v.data == 1]
-    self.assertTrue(val1.HasSource(u1))
-
   def testFilter1(self):
     #                    x.ab = A()
     #               ,---+------------.

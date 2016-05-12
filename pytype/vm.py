@@ -772,7 +772,7 @@ class VirtualMachine(object):
       return self.create_new_unsolvable(node, "mro_error")
     else:
       var = self.program.NewVariable(name)
-      var.AddValue(val, class_dict_var.values, node)
+      var.AddBinding(val, class_dict_var.bindings, node)
       return var
 
   def make_function(self, name, code, globs, defaults,
@@ -1156,8 +1156,8 @@ class VirtualMachine(object):
     log.debug("getting attr %s from %r", attr, obj)
     nodes = []
     for val in obj.Bindings(node):
-      node2, attr_var = val.data.get_attribute_generic(node, attr, val)
-      if attr_var is None or not attr_var.bindings:
+      node2, attr_var = val.data.get_attribute(node, attr, val)
+      if not attr_var:
         log.debug("No %s on %s", attr, val.data.__class__)
         continue
       log.debug("got choice for attr %s from %r of %r (0x%x): %r", attr, obj,
@@ -1166,10 +1166,11 @@ class VirtualMachine(object):
         continue
       result.PasteVariable(attr_var, node2)
       nodes.append(node2)
-    if nodes:
-      return self.join_cfg_nodes(nodes), result
-    else:
-      return node, None
+    if not result.bindings:
+      if errors and obj.bindings:
+        self.errorlog.attribute_error(self.frame.current_opcode, obj, attr)
+      raise exceptions.ByteCodeAttributeError("No such attribute %s" % attr)
+    return self.join_cfg_nodes(nodes), result
 
   def load_attr(self, state, obj, attr):
     node, result = self._retrieve_attr(state.node, obj, attr)

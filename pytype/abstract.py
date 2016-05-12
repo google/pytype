@@ -47,12 +47,12 @@ def variable_set_official_name(variable, name):
 
 
 def get_atomic_value(variable):
-  if len(variable.values) == 1:
-    return variable.values[0].data
+  if len(variable.bindings) == 1:
+    return variable.bindings[0].data
   else:
     raise ConversionError(
         "Variable with too many options when trying to get atomic value. %s %s"
-        % (variable, [a.data for a in variable.values]))
+        % (variable, [a.data for a in variable.bindings]))
 
 
 def get_atomic_python_constant(variable):
@@ -79,7 +79,7 @@ def get_atomic_python_constant(variable):
 def match_var_against_type(var, other_type, subst, node, view):
   if hasattr(other_type, "match_var_against"):
     return other_type.match_var_against(var, subst, node, view)
-  elif var.values:
+  elif var.bindings:
     return match_value_against_type(view[var], other_type, subst, node, view)
   else:  # Empty set of values. The "nothing" type.
     if isinstance(other_type, Union):
@@ -653,7 +653,7 @@ class SimpleAbstractValue(AtomicAbstractValue):
     else:
       ret = self.vm.program.NewVariable(name)
       for candidate in candidates:
-        ret.FilterAndPasteVariable(candidate, node, condition=condition)
+        ret.FilterAndPasteVariable(candidate, node)
       if not ret.bindings:
         return node, None
       return node, ret
@@ -772,10 +772,8 @@ class SimpleAbstractValue(AtomicAbstractValue):
       clsval, = self.cls.bindings
       key.add(clsval.data)
     for name, var in self.type_parameters.items():
-      subkey = frozenset(value.data.get_default_type_key() if value.data in seen
-                         else value.data.get_type_key(seen)
-                         for value in var.bindings)
-      key.add((name, subkey))
+      key.add((name, frozenset(value.data.get_type_key()
+                               for value in var.bindings)))
     if key:
       return frozenset(key)
     else:
@@ -882,7 +880,6 @@ class ValueWithSlots(Instance):
         the slot mechanism might kick in.
       valself: A typegraph.Binding. See AtomicAbstractValue.get_attribute.
       valcls: A typegraph.Binding. See AtomicAbstractValue.get_attribute.
-      condition: A Condition.  See AtomicAbstractValue.get_attribute.
 
     Returns:
       A tuple (CFGNode, Variable). The Variable will be None if the attribute
@@ -1264,7 +1261,7 @@ class Function(Instance):
   def property_get(self, callself, callcls):
     if not callself or not callcls:
       return self
-    self.parent_class = callcls.values[0].data
+    self.parent_class = callcls.bindings[0].data
     key = tuple(sorted(callself.data))
     if key not in self._bound_functions_cache:
       self._bound_functions_cache[key] = (self.bound_class)(
@@ -1321,7 +1318,7 @@ class PyTDSignature(object):
         # TODO(kramm): Can we use the contents of [star]starargs to fill in a
         # more precise type than just "unsolvable"?
         var = self.vm.create_new_unsolvable(node, p.name)
-        arg_dict[p.name] = var.values[0]
+        arg_dict[p.name] = var.bindings[0]
 
     allowed_params = frozenset(p.name for p in self.pytd_sig.params)
     for name in allowed_params:
@@ -1389,7 +1386,7 @@ class PyTDSignature(object):
 
     Args:
       node: The current CFG node.
-      arg_dict: A map of strings to pytd.Values instances.
+      arg_dict: A map of strings to pytd.Bindings instances.
       view: A mapping of Variable to Value.
     Returns:
       utils.HashableDict if we found a working substition, None otherwise.
@@ -1422,7 +1419,7 @@ class PyTDSignature(object):
 
     Args:
       node: The current CFG node.
-      arg_dict: A map of strings to pytd.Values instances.
+      arg_dict: A map of strings to pytd.Bindings instances.
       subst: Current type parameters.
     Returns:
       A list of Mutation instances.
@@ -1729,11 +1726,11 @@ class Class(object):
     add_origins = []
     variableself = variablecls = None
     if valself:
-      assert isinstance(valself, typegraph.Value)
+      assert isinstance(valself, typegraph.Binding)
       variableself = valself.AssignToNewVariable(valself.variable.name, node)
       add_origins.append(valself)
     if valcls:
-      assert isinstance(valcls, typegraph.Value)
+      assert isinstance(valcls, typegraph.Binding)
       variablecls = valcls.AssignToNewVariable(valcls.variable.name, node)
       add_origins.append(valcls)
 
@@ -1809,7 +1806,7 @@ class ParameterizedClass(AtomicAbstractValue, Class, FormalType):
       # Since we only just created this unsolveable, it won't
       # have an entry in the view yet. So just add it.
       view = view.copy()
-      view[instance_param] = instance_param.values[0]
+      view[instance_param] = instance_param.bindings[0]
       subst = match_var_against_type(instance_param, class_param,
                                      subst, node, view)
       if subst is None:
@@ -1935,7 +1932,7 @@ class PyTDClass(SimpleAbstractValue, Class):
       if instance is not None and type_param.name in instance.type_parameters:
         param = instance.type_parameters[type_param.name]
         type_arguments.append(pytd_utils.JoinTypes(
-            v.data.to_type(seen=seen) for v in param.bindings))
+            v.data.to_type() for v in param.bindings))
       else:
         type_arguments.append(pytd.AnythingType())
     return pytd_utils.MakeClassOrContainerType(
@@ -2026,14 +2023,8 @@ class InterpreterClass(SimpleAbstractValue, Class):
       value = v.data
       node2, getter = value.get_attribute(node, "__get__", v)
       if getter is not None:
-        posargs = []
-        if valself:
-          posargs.append(valself.variable)
-        if valcls:
-          if not valself:
-            posargs.append(self.vm.none.to_variable(node, "None"))
-          posargs.append(valcls.variable)
-        node2, get_result = self.vm.call_function(node2, getter, posargs)
+        node2, get_result = self.vm.call_function(
+            node2, getter, [getter, value.get_class()])
         for getter in get_result.bindings:
           result.AddBinding(getter.data, [getter], node2)
       else:
@@ -2766,14 +2757,14 @@ class BuildClass(AtomicAbstractValue):
   def call(self, node, unused_func, posargs, namedargs,
            starargs=None, starstarargs=None):
     funcvar, name = posargs[0:2]
-    if len(funcvar.values) != 1:
+    if len(funcvar.bindings) != 1:
       raise ConversionError("Invalid ambiguous argument to __build_class__")
     func, = funcvar.data
     if not isinstance(func, InterpreterFunction):
       raise ConversionError("Invalid argument to __build_class__")
     bases = posargs[2:]
-    node, _ = func.call(node, funcvar.values[0], [], {}, starargs, starstarargs,
-                        new_locals=True)
+    node, _ = func.call(node, funcvar.bindings[0], [], {}, starargs,
+                        starstarargs, new_locals=True)
     return node, self.vm.make_class(
         node, name, bases,
         func.last_frame.f_locals.to_variable(node, "locals()"))

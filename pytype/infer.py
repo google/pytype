@@ -381,13 +381,13 @@ class CallTracer(vm.VirtualMachine):
 def _pretty_variable(var):
   """Return a pretty printed string for a Variable."""
   lines = []
-  single_value = len(var.values) == 1
+  single_value = len(var.bindings) == 1
   if not single_value:
     # Write a description of the variable (for single value variables this
     # will be written along with the value later on).
     lines.append("$%d %s" % (var.id, var.name))
 
-  for value in var.values:
+  for value in var.bindings:
     data = utils.maybe_truncate(value.data)
     if single_value:
       binding = "%s, %s = %s" % (value, var.name, data)
@@ -429,7 +429,7 @@ def program_to_text(program):
     s.write("  From: %s\n" % ", ".join(n.Label() for n in node.incoming))
     s.write("  To: %s\n" % ", ".join(n.Label() for n in node.outgoing))
     s.write("\n")
-    variables = set(value.variable for value in node.values)
+    variables = set(value.variable for value in node.bindings)
     for var in sorted(variables, key=lambda v: v.id):
       # If a variable is bound in more than one node then it will be listed
       # redundantly multiple times.  One alternative would be to only list the

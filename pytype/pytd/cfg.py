@@ -57,8 +57,9 @@ class Program(object):
 
     Arguments:
       name: Name of the variable. For logging. Doesn't need to be unique.
-      values: Optionally, a sequence of possible values this variable can have.
-      source_set: If we have values, the source_set they all depend on. An
+      bindings: Optionally, a sequence of possible bindings this variable can
+        have.
+      source_set: If we have bindings, the source_set they all depend on. An
         instance of SourceSet.
       where: Where in the CFG this node is assigned.
 
@@ -221,10 +222,6 @@ class CFGNode(object):
     """Return a string containing the node name and id."""
     return "<%d>%s" % (self.id, self.name)
 
-  def Label(self):
-    """Return a string containing the node name and id."""
-    return "<%d>%s" % (self.id, self.name)
-
   def __repr__(self):
     return "<cfgnode %d %s>" % (self.id, self.name)
 
@@ -327,14 +324,14 @@ class Binding(object):
     binding.AddOrigin(where, {self})
     return variable
 
-  def HasSource(self, value):
-    """Does this value depend on a given source?"""
-    if self is value:
+  def HasSource(self, binding):
+    """Does this binding depend on a given source?"""
+    if self is binding:
       return True
     for origin in self.origins:
       for source_set in origin.source_sets:
         for source in source_set:
-          if source.HasSource(value):
+          if source.HasSource(binding):
             return True
     return False
 
@@ -468,7 +465,7 @@ class Variable(object):
       The new binding.
     """
     assert not isinstance(data, Variable)
-    value = self._FindOrAddValue(data)
+    binding = self._FindOrAddBinding(data)
     if source_set or where:
       assert source_set is not None and where is not None
       binding.AddOrigin(where, source_set)
@@ -477,26 +474,17 @@ class Variable(object):
   def PasteVariable(self, variable, where):
     """Adds all the bindings from another variable to this one."""
     for binding in variable.bindings:
+      # TODO(kramm): If where == binding.where, this should just copy the
+      # source_sets from binding, instead of adding another level of indirection
+      # by creating a new source set with binding in it.
       copy = self.AddBinding(binding.data)
-      if all(origin.where == where for origin in binding.origins):
-        # Optimization: If all the bindings of the old variable happen at the
-        # same CFG node as the one we're assigning now, we can copy the old
-        # source_set instead of linking to it. That way, the solver has to
-        # consider fewer levels.
-        for origin in binding.origins:
-          for source_set in origin.source_sets:
-            copy.AddOrigin(origin.where, source_set)
-      else:
-        copy.AddOrigin(where, {binding})
+      copy.AddOrigin(where, {binding})
 
-  def FilterAndPasteVariable(self, variable, where, condition=None):
+  def FilterAndPasteVariable(self, variable, where):
     """Adds all the visible bindings from another variable to this one."""
     for binding in variable.Bindings(where):
       copy = self.AddBinding(binding.data)
-      sources = {binding}
-      if condition:
-        sources.add(condition.binding)
-      copy.AddOrigin(where, sources)
+      copy.AddOrigin(where, {binding})
 
   def AssignToNewVariable(self, name, where):
     """Assign this variable to a new variable.
