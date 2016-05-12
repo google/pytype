@@ -26,13 +26,13 @@ class CFGTest(unittest.TestCase):
     self.assertIn(n1, n3.incoming)
     self.assertIn(n3, n4.incoming)
 
-  def testValueValue(self):
+  def testBindingBinding(self):
     p = cfg.Program()
     node = p.NewCFGNode()
     u = p.NewVariable("v")
-    v1 = u.AddValue(None, source_set=[], where=node)
-    v2 = u.AddValue(u"data", source_set=[], where=node)
-    v3 = u.AddValue({1: 2}, source_set=[], where=node)
+    v1 = u.AddBinding(None, source_set=[], where=node)
+    v2 = u.AddBinding(u"data", source_set=[], where=node)
+    v3 = u.AddBinding({1: 2}, source_set=[], where=node)
     self.assertEquals(v1.data, None)
     self.assertEquals(v2.data, u"data")
     self.assertEquals(v3.data, {1: 2})
@@ -43,9 +43,9 @@ class CFGTest(unittest.TestCase):
     node = p.NewCFGNode()
     u = p.NewVariable("foo")
     data = [1, 2, 3]
-    a = u.AddValue(data, source_set=[], where=node)
+    a = u.AddBinding(data, source_set=[], where=node)
     self.assertEquals(a.variable.name, "foo")
-    self.assertEquals(a.variable.values, [a])
+    self.assertEquals(a.variable.bindings, [a])
     origin, = a.origins  # we expect exactly one origin
     self.assertEquals(origin.where, node)
     self.assertEquals(len(origin.source_sets), 1)
@@ -57,17 +57,17 @@ class CFGTest(unittest.TestCase):
     p = cfg.Program()
     node = p.NewCFGNode()
     u = p.NewVariable("foo")
-    a = u.AddValue(1, source_set=[], where=node)
-    b = u.AddValue(2, source_set=[a], where=node)
-    c = u.AddValue(3, source_set=[a, b], where=node)
+    a = u.AddBinding(1, source_set=[], where=node)
+    b = u.AddBinding(2, source_set=[a], where=node)
+    c = u.AddBinding(3, source_set=[a, b], where=node)
     expected_source_sets = [[], [a], [a, b]]
-    for value, expected_source_set in zip([a, b, c], expected_source_sets):
-      origin, = value.origins
+    for binding, expected_source_set in zip([a, b, c], expected_source_sets):
+      origin, = binding.origins
       self.assertEquals(origin.where, node)
       source_set, = origin.source_sets
       self.assertItemsEqual(list(source_set), expected_source_set)
 
-  def testValueName(self):
+  def testBindingName(self):
     p = cfg.Program()
     u = p.NewVariable("foo")
     self.assertEquals(u.name, "foo")
@@ -83,20 +83,20 @@ class CFGTest(unittest.TestCase):
     node1 = p.NewCFGNode()
     node2 = node1.ConnectNew()
     d = p.NewVariable("d")
-    d.AddValue("v1", source_set=[], where=node1)
-    d.AddValue("v2", source_set=[], where=node2)
-    self.assertEquals(len(d.values), 2)
+    d.AddBinding("v1", source_set=[], where=node1)
+    d.AddBinding("v2", source_set=[], where=node2)
+    self.assertEquals(len(d.bindings), 2)
 
   def testHasSource(self):
     p = cfg.Program()
     n0, n1, n2 = p.NewCFGNode("n0"), p.NewCFGNode("n1"), p.NewCFGNode("n2")
     u = p.NewVariable("u")
-    u1 = u.AddValue(0, source_set=[], where=n0)
+    u1 = u.AddBinding(0, source_set=[], where=n0)
     v = p.NewVariable("v")
-    v1 = v.AddValue(1, source_set=[], where=n1)
-    v2 = v.AddValue(2, source_set=[u1], where=n1)
-    v3a = v.AddValue(3, source_set=[], where=n1)
-    v3b = v.AddValue(3, source_set=[u1], where=n2)
+    v1 = v.AddBinding(1, source_set=[], where=n1)
+    v2 = v.AddBinding(2, source_set=[u1], where=n1)
+    v3a = v.AddBinding(3, source_set=[], where=n1)
+    v3b = v.AddBinding(3, source_set=[u1], where=n2)
     self.assertEquals(v3a, v3b)
     v3 = v3a
     self.assertTrue(v1.HasSource(v1))
@@ -123,16 +123,16 @@ class CFGTest(unittest.TestCase):
     p = cfg.Program()
     n0, n1, n2 = p.NewCFGNode("n0"), p.NewCFGNode("n1"), p.NewCFGNode("n2")
     u = p.NewVariable("u")
-    u1 = u.AddValue(0, source_set=[], where=n0)
+    u1 = u.AddBinding(0, source_set=[], where=n0)
     v = p.NewVariable("v")
-    v1 = v.AddValue(1, source_set=[], where=n1)
-    v2 = v.AddValue(2, source_set=[], where=n1)
+    v1 = v.AddBinding(1, source_set=[], where=n1)
+    v2 = v.AddBinding(2, source_set=[], where=n1)
     w = p.NewVariable("w")
-    w1 = w.AddValue(1, source_set=[u1], where=n1)
-    w2 = w.AddValue(3, source_set=[], where=n1)
+    w1 = w.AddBinding(1, source_set=[u1], where=n1)
+    w2 = w.AddBinding(3, source_set=[], where=n1)
     vw = p.MergeVariables(n2, "vw", [v, w])
     self.assertItemsEqual(vw.data, [1, 2, 3])
-    val1, = [v for v in vw.values if v.data == 1]
+    val1, = [v for v in vw.bindings if v.data == 1]
     self.assertTrue(val1.HasSource(u1))
 
   def testFilter1(self):
@@ -153,11 +153,11 @@ class CFGTest(unittest.TestCase):
     n5.ConnectTo(n6)
 
     all_x = p.NewVariable("x")
-    x = all_x.AddValue({}, source_set=[], where=n1)
+    x = all_x.AddBinding({}, source_set=[], where=n1)
     ab = p.NewVariable("x.ab")
     x.data["ab"] = ab
-    a = ab.AddValue("A", source_set=[], where=n3)
-    b = ab.AddValue("B", source_set=[], where=n4)
+    a = ab.AddBinding("A", source_set=[], where=n3)
+    b = ab.AddBinding("B", source_set=[], where=n4)
 
     self._Freeze(p, entrypoint=n1)
     self.assertFalse(a.IsVisible(n1) or b.IsVisible(n1))
@@ -186,10 +186,10 @@ class CFGTest(unittest.TestCase):
     n3.ConnectTo(n4)
     x = p.NewVariable("x")
     y = p.NewVariable("y")
-    xa = x.AddValue("a", source_set=[], where=n2)
-    ya = y.AddValue("a", source_set=[], where=n2)
-    xb = x.AddValue("b", source_set=[], where=n3)
-    yb = y.AddValue("b", source_set=[], where=n3)
+    xa = x.AddBinding("a", source_set=[], where=n2)
+    ya = y.AddBinding("a", source_set=[], where=n2)
+    xb = x.AddBinding("b", source_set=[], where=n3)
+    yb = y.AddBinding("b", source_set=[], where=n3)
     self._Freeze(p, entrypoint=n1)
     self.assertTrue(n4.HasCombination([xa, ya]))
     self.assertTrue(n4.HasCombination([xb, yb]))
@@ -200,8 +200,8 @@ class CFGTest(unittest.TestCase):
     p = cfg.Program()
     n1 = p.NewCFGNode("n1")
     x = p.NewVariable("x")
-    a = x.AddValue("a", source_set=[], where=n1)
-    b = x.AddValue("b", source_set=[], where=n1)
+    a = x.AddBinding("a", source_set=[], where=n1)
+    b = x.AddBinding("b", source_set=[], where=n1)
     self._Freeze(p, entrypoint=n1)
     # At n1, x can either be a or b, but not both.
     self.assertTrue(n1.HasCombination([a]))
@@ -220,12 +220,12 @@ class CFGTest(unittest.TestCase):
     x = p.NewVariable("x")
     y = p.NewVariable("y")
     z = p.NewVariable("z")
-    a = x.AddValue("a", source_set=[], where=n1)
-    b = x.AddValue("b", source_set=[], where=n1)
-    ya = y.AddValue("ya", source_set=[a], where=n2)
-    yb = y.AddValue("yb", source_set=[b], where=n2)
-    za = z.AddValue("za", source_set=[a], where=n2)
-    zb = z.AddValue("zb", source_set=[b], where=n2)
+    a = x.AddBinding("a", source_set=[], where=n1)
+    b = x.AddBinding("b", source_set=[], where=n1)
+    ya = y.AddBinding("ya", source_set=[a], where=n2)
+    yb = y.AddBinding("yb", source_set=[b], where=n2)
+    za = z.AddBinding("za", source_set=[a], where=n2)
+    zb = z.AddBinding("zb", source_set=[b], where=n2)
     self._Freeze(p, entrypoint=n1)
     self.assertTrue(n2.HasCombination([ya, za]))
     self.assertTrue(n2.HasCombination([yb, zb]))
@@ -238,17 +238,17 @@ class CFGTest(unittest.TestCase):
     n1 = p.NewCFGNode("n1")
     x = p.NewVariable("x")
     y = p.NewVariable("y")
-    xa = x.AddValue("xa", source_set=[], where=n1)
-    xb = x.AddValue("xb", source_set=[], where=n1)
-    ya = y.AddValue("ya", source_set=[xa], where=n1)
-    yb = y.AddValue("yb", source_set=[xb], where=n1)
+    xa = x.AddBinding("xa", source_set=[], where=n1)
+    xb = x.AddBinding("xb", source_set=[], where=n1)
+    ya = y.AddBinding("ya", source_set=[xa], where=n1)
+    yb = y.AddBinding("yb", source_set=[xb], where=n1)
     self._Freeze(p, entrypoint=n1)
     self.assertTrue(n1.HasCombination([xa]))
     self.assertTrue(n1.HasCombination([xb]))
     self.assertTrue(n1.HasCombination([xa, ya]))
     self.assertTrue(n1.HasCombination([xb, yb]))
     # We don't check the other two combinations, because within one CFG node,
-    # values are treated as having any order, so the other combinations
+    # bindings are treated as having any order, so the other combinations
     # are possible, too:
     # n1.HasCombination([xa, yb]) == True (because x = b; y = x; x = a)
     # n1.HasCombination([xb, ya]) == True (because x = a; y = x; x = b)
@@ -259,25 +259,25 @@ class CFGTest(unittest.TestCase):
     n2 = p.NewCFGNode()
     x, y, z = "x", "y", "z"
     variable = p.NewVariable("xyz",
-                             values=[x, y],
+                             bindings=[x, y],
                              source_set=[],
                              where=n1)
-    variable.AddValue(z, source_set=variable.values, where=n2)
-    self.assertSameElements([x, y, z], [v.data for v in variable.values])
-    self.assertTrue(any(len(e.origins) for e in variable.values))
+    variable.AddBinding(z, source_set=variable.bindings, where=n2)
+    self.assertSameElements([x, y, z], [v.data for v in variable.bindings])
+    self.assertTrue(any(len(e.origins) for e in variable.bindings))
 
-  def testNodeValues(self):
+  def testNodeBindings(self):
     p = cfg.Program()
     n1 = p.NewCFGNode("node1")
     n2 = n1.ConnectNew("node2")
     self.assertEquals(n1.name, "node1")
     self.assertEquals(n2.name, "node2")
     u = p.NewVariable("var")
-    a1 = u.AddValue(1, source_set=[], where=n1)
-    a2 = u.AddValue(2, source_set=[], where=n1)
-    a3 = u.AddValue(3, source_set=[], where=n1)
-    a4 = u.AddValue(4, source_set=[], where=n1)
-    self.assertSameElements([a1, a2, a3, a4], n1.values)
+    a1 = u.AddBinding(1, source_set=[], where=n1)
+    a2 = u.AddBinding(2, source_set=[], where=n1)
+    a3 = u.AddBinding(3, source_set=[], where=n1)
+    a4 = u.AddBinding(4, source_set=[], where=n1)
+    self.assertSameElements([a1, a2, a3, a4], n1.bindings)
 
   def testProgram(self):
     p = cfg.Program()
@@ -287,14 +287,14 @@ class CFGTest(unittest.TestCase):
     u2 = p.NewVariable("var2")
     self.assertEquals(u1.name, "var1")
     self.assertEquals(u2.name, "var2")
-    a11 = u1.AddValue(11, source_set=[], where=n1)
-    a12 = u1.AddValue(12, source_set=[], where=n2)
-    a21 = u2.AddValue(21, source_set=[], where=n1)
-    a22 = u2.AddValue(22, source_set=[], where=n2)
+    a11 = u1.AddBinding(11, source_set=[], where=n1)
+    a12 = u1.AddBinding(12, source_set=[], where=n2)
+    a21 = u2.AddBinding(21, source_set=[], where=n1)
+    a22 = u2.AddBinding(22, source_set=[], where=n2)
     self.assertSameElements([n1, n2], p.cfg_nodes)
     self.assertSameElements([u1, u2], p.variables)
-    self.assertSameElements([a11, a21], n1.values)
-    self.assertSameElements([a12, a22], n2.values)
+    self.assertSameElements([a11, a21], n1.bindings)
+    self.assertSameElements([a12, a22], n2.bindings)
 
   def testDisconnected(self):
     p = cfg.Program()
@@ -308,8 +308,8 @@ class CFGTest(unittest.TestCase):
     n1 = p.NewCFGNode("n1")
     n2 = n1.ConnectNew("n2")
     x = p.NewVariable("x")
-    a = x.AddValue("a", source_set=[], where=n1)
-    a = x.AddValue("b", source_set=[], where=n2)
+    a = x.AddBinding("a", source_set=[], where=n1)
+    a = x.AddBinding("b", source_set=[], where=n2)
     self._Freeze(p, entrypoint=n1)
     self.assertTrue(n2.HasCombination([a]))
 
@@ -319,17 +319,17 @@ class CFGTest(unittest.TestCase):
     n2 = p.NewCFGNode("n2")
     n1.ConnectTo(n2)
     x = p.NewVariable("x")
-    a = x.AddValue("a", source_set=[], where=n2)
+    a = x.AddBinding("a", source_set=[], where=n2)
     self._Freeze(p, entrypoint=n1)
     self.assertEquals(x.Filter(n1), [])
     self.assertEquals(x.Filter(n2), [a])
 
-  def testEmptyValue(self):
+  def testEmptyBinding(self):
     p = cfg.Program()
     n1 = p.NewCFGNode("n1")
     n2 = n1.ConnectNew()
     x = p.NewVariable("x")
-    a = x.AddValue("a")
+    a = x.AddBinding("a")
     self._Freeze(p, entrypoint=n1)
     self.assertEquals(x.Filter(n1), [])
     self.assertEquals(x.Filter(n2), [])
@@ -348,13 +348,13 @@ class CFGTest(unittest.TestCase):
     n2 = n1.ConnectNew()
     n3 = n2.ConnectNew()
     x = p.NewVariable("x")
-    ax = x.AddValue("a", source_set=[], where=n1)
+    ax = x.AddBinding("a", source_set=[], where=n1)
     y = ax.AssignToNewVariable("y", n2)
-    ay, = y.values
+    ay, = y.bindings
     z = y.AssignToNewVariable("x", n3)
-    az, = z.values
-    self.assertEquals([v.data for v in y.values], ["a"])
-    self.assertEquals([v.data for v in z.values], ["a"])
+    az, = z.bindings
+    self.assertEquals([v.data for v in y.bindings], ["a"])
+    self.assertEquals([v.data for v in z.bindings], ["a"])
     self._Freeze(p, entrypoint=n1)
     self.assertTrue(n1.HasCombination([ax]))
     self.assertTrue(n2.HasCombination([ax, ay]))
@@ -367,13 +367,13 @@ class CFGTest(unittest.TestCase):
     n1 = p.NewCFGNode("n1")
     n2 = n1.ConnectNew()
     x = p.NewVariable("x")
-    ax = x.AddValue("a", source_set=[], where=n1)
-    bx = x.AddValue("b", source_set=[], where=n1)
+    ax = x.AddBinding("a", source_set=[], where=n1)
+    bx = x.AddBinding("b", source_set=[], where=n1)
     y = p.NewVariable("y")
     y.PasteVariable(x, n2)
-    ay, by = y.values
-    self.assertEquals([v.data for v in x.values], ["a", "b"])
-    self.assertEquals([v.data for v in y.values], ["a", "b"])
+    ay, by = y.bindings
+    self.assertEquals([v.data for v in x.bindings], ["a", "b"])
+    self.assertEquals([v.data for v in y.bindings], ["a", "b"])
     self._Freeze(p, entrypoint=n1)
     self.assertTrue(n1.HasCombination([ax]))
     self.assertTrue(n1.HasCombination([bx]))
@@ -403,13 +403,13 @@ class CFGTest(unittest.TestCase):
     n4 = n3.ConnectNew("n4")
     n1.ConnectTo(n4)
     x = p.NewVariable("x")
-    x.AddValue(1, [], n1)
-    x.AddValue(2, [], n2)
-    x.AddValue(3, [], n3)
-    self.assertSameElements([1], [v.data for v in x.Values(n1)])
-    self.assertSameElements([2], [v.data for v in x.Values(n2)])
-    self.assertSameElements([3], [v.data for v in x.Values(n3)])
-    self.assertSameElements([1, 3], [v.data for v in x.Values(n4)])
+    x.AddBinding(1, [], n1)
+    x.AddBinding(2, [], n2)
+    x.AddBinding(3, [], n3)
+    self.assertSameElements([1], [v.data for v in x.Bindings(n1)])
+    self.assertSameElements([2], [v.data for v in x.Bindings(n2)])
+    self.assertSameElements([3], [v.data for v in x.Bindings(n3)])
+    self.assertSameElements([1, 3], [v.data for v in x.Bindings(n4)])
     self.assertSameElements([1], x.Data(n1))
     self.assertSameElements([2], x.Data(n2))
     self.assertSameElements([3], x.Data(n3))
@@ -432,15 +432,15 @@ class CFGTest(unittest.TestCase):
     p = cfg.Program()
     x = p.NewVariable("x")
     x.RegisterChangeListener(callback1)
-    x.AddValue("a")
+    x.AddBinding("a")
     self.assertListEqual(counters, [1, 0])
     x.RegisterChangeListener(callback2)
-    x.AddValue("b")
+    x.AddBinding("b")
     self.assertListEqual(counters, [2, 1])
-    x.AddValue("a")  # Duplicate value; callbacks should not be triggered
+    x.AddBinding("a")  # Duplicate binding; callbacks should not be triggered
     self.assertListEqual(counters, [2, 1])
     x.UnregisterChangeListener(callback1)
-    x.AddValue("c")
+    x.AddBinding("c")
     self.assertListEqual(counters, [2, 2])
 
 if __name__ == "__main__":

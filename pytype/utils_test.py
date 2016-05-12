@@ -24,7 +24,7 @@ class DummyValue(object):
     self._parameters = parameters
 
   def unique_parameter_values(self):
-    return [param.values for param in self._parameters]
+    return [param.bindings for param in self._parameters]
 
   def __repr__(self):
     return "x%d" % self.index
@@ -409,10 +409,10 @@ class UtilsTest(unittest.TestCase):
     d["key"] = var
     self.assertGreater(d.changestamp, changestamp)
     changestamp = d.changestamp
-    var.AddValue("data")
+    var.AddBinding("data")
     self.assertGreater(d.changestamp, changestamp)
     changestamp = d.changestamp
-    var.AddValue("data")  # No change because this is duplicate data
+    var.AddBinding("data")  # No change because this is duplicate data
     self.assertEquals(d.changestamp, changestamp)
     del d["key"]
     self.assertGreater(d.changestamp, changestamp)

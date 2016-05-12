@@ -126,7 +126,7 @@ class VirtualMachine(object):
     for name, clsvar in self.primitive_classes.items():
       instance = abstract.Instance(clsvar, self)
       self.primitive_class_instances[name] = instance
-      clsval, = clsvar.values
+      clsval, = clsvar.bindings
       self._convert_cache[(abstract.Instance, clsval.data.pytd_cls)] = instance
     self.primitive_class_instances[types.NoneType] = self.none
 
@@ -448,17 +448,17 @@ class VirtualMachine(object):
         if not subst or t.name not in subst:
           raise ValueError("Can't resolve type parameter %s using %r" % (
               t.name, subst))
-        for v in subst[t.name].values:
+        for v in subst[t.name].bindings:
           for source_set in source_sets:
-            var.AddValue(self._get_maybe_abstract_instance(v.data)
-                         if discard_concrete_values else v.data,
-                         source_set + [v], node)
+            var.AddBinding(self._get_maybe_abstract_instance(v.data)
+                           if discard_concrete_values else v.data,
+                           source_set + [v], node)
       elif isinstance(t, pytd.NothingType):
         pass
       else:
         value = self._create_pytd_instance_value(name, t, subst, node)
         for source_set in source_sets:
-          var.AddValue(value, source_set, node)
+          var.AddBinding(value, source_set, node)
     return var
 
   def _create_pytd_instance_value(self, name, pytype, subst, node):
@@ -517,7 +517,8 @@ class VirtualMachine(object):
     """Create a new variable containing unknown, originating from this one."""
     unknown = self._create_new_unknown_value(action)
     v = self.program.NewVariable(name)
-    val = v.AddValue(unknown, source_set=[source] if source else [], where=node)
+    val = v.AddBinding(
+        unknown, source_set=[source] if source else [], where=node)
     unknown.owner = val
     self.trace_unknown(unknown.class_name, v)
     return v
@@ -748,7 +749,7 @@ class VirtualMachine(object):
       return self.create_new_unsolvable(node, "mro_error")
     else:
       var = self.program.NewVariable(name)
-      var.AddValue(val, class_dict_var.values, node)
+      var.AddBinding(val, class_dict_var.bindings, node)
       return var
 
   def make_function(self, name, code, globs, defaults,
@@ -769,7 +770,7 @@ class VirtualMachine(object):
     # TODO(ampere): What else needs to be an origin in this case? Probably stuff
     # in closure.
     var = self.program.NewVariable(name)
-    var.AddValue(val, code.values, self.root_cfg_node)
+    var.AddBinding(val, code.bindings, self.root_cfg_node)
     return var
 
   def make_frame(self, node, code, callargs=None,
@@ -928,7 +929,7 @@ class VirtualMachine(object):
         results.append(ret)
     result = self.join_variables(state.node, name, results)
     log.debug("Result: %r", result)
-    if not result.values:
+    if not result.bindings:
       self.errorlog.unsupported_operands(self.frame.current_opcode, name, x, y)
     return state, result
 
@@ -988,11 +989,11 @@ class VirtualMachine(object):
     Returns:
       A tuple (CFGNode, Variable). The Variable is the return value.
     """
-    assert funcu.values
+    assert funcu.bindings
     result = self.program.NewVariable("<return:%s>" % funcu.name)
     nodes = []
     error = None
-    for funcv in funcu.values:
+    for funcv in funcu.bindings:
       func = funcv.data
       assert isinstance(func, abstract.AtomicAbstractValue), type(func)
       try:
@@ -1133,7 +1134,7 @@ class VirtualMachine(object):
     result = self.program.NewVariable(str(attr))
     log.debug("getting attr %s from %r", attr, obj)
     nodes = []
-    for val in obj.Values(node):
+    for val in obj.Bindings(node):
       node2, attr_var = val.data.get_attribute(node, attr, val)
       if not attr_var:
         log.debug("No %s on %s", attr, val.data.__class__)
@@ -1144,8 +1145,8 @@ class VirtualMachine(object):
         continue
       result.PasteVariable(attr_var, node2)
       nodes.append(node2)
-    if not result.values:
-      if errors and obj.values:
+    if not result.bindings:
+      if errors and obj.bindings:
         self.errorlog.attribute_error(self.frame.current_opcode, obj, attr)
       raise exceptions.ByteCodeAttributeError("No such attribute %s" % attr)
     return self.join_cfg_nodes(nodes), result
@@ -1163,11 +1164,11 @@ class VirtualMachine(object):
     assert isinstance(obj, typegraph.Variable)
     assert isinstance(attr, str)
     assert isinstance(value, typegraph.Variable)
-    if not obj.values:
+    if not obj.bindings:
       log.info("Ignoring setattr on %r", obj)
       return state
     nodes = []
-    for val in obj.values:
+    for val in obj.bindings:
       # TODO(kramm): Check whether val.data is a descriptor (i.e. has "__set__")
       nodes.append(val.data.set_attribute(state.node, attr, value))
     return state.change_cfg_node(
@@ -1389,7 +1390,7 @@ class VirtualMachine(object):
   def byte_BINARY_SUBSCR(self, state):
     (container, index) = state.topn(2)
     state = self.binary_operator(state, "__getitem__")
-    if state.top().values:
+    if state.top().bindings:
       return state
     else:
       self.errorlog.index_error(

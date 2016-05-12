@@ -106,7 +106,7 @@ class CallTracer(vm.VirtualMachine):
 
   def analyze_method_var(self, name, var, node):
     log.info("Analyzing %s", name)
-    for val in var.Values(node):
+    for val in var.Bindings(node):
       node2 = self.analyze_method(val, node)
       node2.ConnectTo(node)
     return node
@@ -114,7 +114,7 @@ class CallTracer(vm.VirtualMachine):
   def bind_method(self, name, methodvar, instance, clsvar, node):
     bound = self.program.NewVariable(name)
     for m in methodvar.Data(node):
-      bound.AddValue(m.property_get(instance, clsvar), [], node)
+      bound.AddBinding(m.property_get(instance, clsvar), [], node)
     return bound
 
   def instantiate(self, clsv, node):
@@ -129,7 +129,7 @@ class CallTracer(vm.VirtualMachine):
     instance = self.instantiate(val.AssignToNewVariable(val.data.name, node),
                                 node)
     cls = val.data
-    node, init = cls.get_attribute(node, "__init__", instance.values[0], val)
+    node, init = cls.get_attribute(node, "__init__", instance.bindings[0], val)
     clsvar = val.AssignToNewVariable("cls", node)
     if init:
       bound_init = self.bind_method("__init__", init, instance, clsvar, node)
@@ -159,7 +159,7 @@ class CallTracer(vm.VirtualMachine):
   def analyze_toplevel(self, node, defs, ignore):
     for name, var in sorted(defs.items()):  # sort, for determinicity
       if name not in ignore:
-        for value in var.values:
+        for value in var.bindings:
           if isinstance(value.data, abstract.InterpreterClass):
             node2 = self.analyze_class(value, node)
             node2.ConnectTo(node)
@@ -313,11 +313,11 @@ class CallTracer(vm.VirtualMachine):
       args = [self._create_call_arg(name, t, node)
               for name, t in sig.params[(1 if skip_self else 0):]]
       nominal_return = self.convert_constant_to_value("ret", sig.return_type)
-      for val in f.values:
+      for val in f.bindings:
         fvar = val.AssignToNewVariable("f", node)
         _, retvar = self.call_function_in_frame(
             node, fvar, args, {}, None, None)
-        if retvar.values:
+        if retvar.bindings:
           for combination in utils.deep_variable_product([retvar]):
             view = {value.variable: value for value in combination}
             match = abstract.match_var_against_type(retvar, nominal_return,
@@ -362,7 +362,7 @@ class CallTracer(vm.VirtualMachine):
 
     for pytd_cls in ast.classes:
       cls = defs[pytd_cls.name]
-      for val in cls.values:
+      for val in cls.bindings:
         # TODO(kramm): The call to the constructor of this should use the pytd.
         node2, _, instance = self.init_class(node, val)
         for pytd_method in pytd_cls.methods:
@@ -374,13 +374,13 @@ class CallTracer(vm.VirtualMachine):
 def _pretty_variable(var):
   """Return a pretty printed string for a Variable."""
   lines = []
-  single_value = len(var.values) == 1
+  single_value = len(var.bindings) == 1
   if not single_value:
     # Write a description of the variable (for single value variables this
     # will be written along with the value later on).
     lines.append("$%d %s" % (var.id, var.name))
 
-  for value in var.values:
+  for value in var.bindings:
     data = utils.maybe_truncate(value.data)
     if single_value:
       binding = "%s, %s = %s" % (value, var.name, data)
@@ -422,7 +422,7 @@ def program_to_text(program):
     s.write("  From: %s\n" % ", ".join(n.Label() for n in node.incoming))
     s.write("  To: %s\n" % ", ".join(n.Label() for n in node.outgoing))
     s.write("\n")
-    variables = set(value.variable for value in node.values)
+    variables = set(value.variable for value in node.bindings)
     for var in sorted(variables, key=lambda v: v.id):
       # If a variable is bound in more than one node then it will be listed
       # redundantly multiple times.  One alternative would be to only list the
@@ -455,7 +455,7 @@ def program_to_dot(program, ignored, only_cfg=False):
 
   print("cfg nodes=%d, vals=%d, variables=%d" % (
       len(program.cfg_nodes),
-      sum(len(v.values) for v in program.variables),
+      sum(len(v.bindings) for v in program.variables),
       len(program.variables)))
 
   sb = StringIO.StringIO()
@@ -476,13 +476,13 @@ def program_to_dot(program, ignored, only_cfg=False):
     if variable.name in ignored:
       continue
     if all(origin.where == program.entrypoint
-           for value in variable.values
+           for value in variable.bindings
            for origin in value.origins):
       # Ignore "boring" values (a.k.a. constants)
       continue
     sb.write('%s[label="%s",shape=polygon,sides=4,distortion=.1];\n'
              % (objname(variable), escape(variable.name)))
-    for val in variable.values:
+    for val in variable.bindings:
       sb.write("%s -> %s [arrowhead=none];\n" %
                (objname(variable), objname(val)))
       sb.write("%s[label=\"%s@0x%x\",fillcolor=%s];\n" %

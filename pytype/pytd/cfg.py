@@ -18,9 +18,9 @@ _supernode_reachable = {}
 class Program(object):
   """Program instances describe program entities.
 
-  This class ties together the CFG, the data flow graph (variables + values) as
-  well as methods. We use this for issuing IDs: We need every CFG node to have a
-  unique ID, and this class does the corresponding counting.
+  This class ties together the CFG, the data flow graph (variables + bindings)
+  as well as methods. We use this for issuing IDs: We need every CFG node to
+  have a unique ID, and this class does the corresponding counting.
 
   Attributes:
     entrypoint: Entrypoint of the program, if it has one. (None otherwise)
@@ -43,21 +43,22 @@ class Program(object):
 
   @property
   def variables(self):
-    return {value.variable for node in self.cfg_nodes for value in node.values}
+    return {b.variable for node in self.cfg_nodes for b in node.bindings}
 
-  def NewVariable(self, name, values=None, source_set=None, where=None):
+  def NewVariable(self, name, bindings=None, source_set=None, where=None):
     """Create a new Variable.
 
     A Variable typically models a "union type", i.e., a disjunction of different
-    possible types.  This constructor assumes that all the values in this
+    possible types.  This constructor assumes that all the bindings in this
     Variable have the same origin(s). If that's not the case, construct a
-    variable with values=[] and origins=[] and then call AddValue() to add the
-    different values.
+    variable with bindings=[] and origins=[] and then call AddBinding() to add
+    the different bindings.
 
     Arguments:
       name: Name of the variable. For logging. Doesn't need to be unique.
-      values: Optionally, a sequence of possible values this variable can have.
-      source_set: If we have values, the source_set they all depend on. An
+      bindings: Optionally, a sequence of possible bindings this variable can
+        have.
+      source_set: If we have bindings, the source_set they all depend on. An
         instance of SourceSet.
       where: Where in the CFG this node is assigned.
 
@@ -66,11 +67,11 @@ class Program(object):
     """
     variable = Variable(self, name, self.next_variable_id)
     self.next_variable_id += 1
-    if values is not None:
+    if bindings is not None:
       assert source_set is not None and where is not None
-      for data in values:
-        value = variable.AddValue(data)
-        value.AddOrigin(where, source_set)
+      for data in bindings:
+        binding = variable.AddBinding(data)
+        binding.AddOrigin(where, source_set)
     return variable
 
   def Freeze(self):
@@ -152,7 +153,7 @@ class CFGNode(object):
   """A node in the CFG.
 
   Assignments within one CFG node are treated as unordered: E.g. if "x = x + 1"
-  is in a single CFG node, both values for x will be visible from inside that
+  is in a single CFG node, both bindings for x will be visible from inside that
   node.
 
   Attributes:
@@ -161,14 +162,14 @@ class CFGNode(object):
     name: Name of this CFGNode, or None. For debugging.
     incoming: Other CFGNodes that are connected to this node.
     outgoing: CFGNodes we connect to.
-    values: Values that are being assigned to Variables at this CFGNode.
+    bindings: Bindings that are being assigned to Variables at this CFGNode.
     reachable_subset: A subset of the nodes reachable (going backwards) from
       this one.
     supernode: A list of nodes comprising a "supernode" to which this one
       belongs. See Program._CompressGraph.
     position: This node's position in the supernode.
   """
-  __slots__ = ("program", "id", "name", "incoming", "outgoing", "values",
+  __slots__ = ("program", "id", "name", "incoming", "outgoing", "bindings",
                "reachable_subset", "supernode", "position")
 
   def __init__(self, program, name, cfgnode_id):
@@ -178,7 +179,7 @@ class CFGNode(object):
     self.name = name
     self.incoming = set()
     self.outgoing = set()
-    self.values = set()  # filled through RegisterValue()
+    self.bindings = set()  # filled through RegisterBinding()
     self.reachable_subset = {self}
     self.supernode = None
     self.position = None
@@ -195,26 +196,26 @@ class CFGNode(object):
     cfg_node.incoming.add(self)
     cfg_node.reachable_subset |= self.reachable_subset
 
-  def HasCombination(self, values):
+  def HasCombination(self, bindings):
     """Query whether a combination is possible.
 
-    Query whether its possible to have the given combination of values at
+    Query whether its possible to have the given combination of bindings at
     this CFG node (I.e., whether they can all be assigned at the same time.)
-    This will e.g. tell us whether a return value is possible given a specific
-    combination of argument values.
+    This will e.g. tell us whether a return binding is possible given a specific
+    combination of argument bindings.
 
     Arguments:
-      values: A list of Values
+      bindings: A list of Bindings.
     Returns:
       True if the combination is possible, False otherwise.
     """
-    # Optimization: check the entire combination only if all of the values are
+    # Optimization: check the entire combination only if all of the bindings are
     # possible separately.
-    return (all(self.program.solver.Solve({value}, self) for value in values)
-            and self.program.solver.Solve(values, self))
+    return (all(self.program.solver.Solve({b}, self) for b in bindings)
+            and self.program.solver.Solve(bindings, self))
 
-  def RegisterValue(self, value):
-    self.values.add(value)
+  def RegisterBinding(self, binding):
+    self.bindings.add(binding)
 
   def Label(self):
     """Return a string containing the node name and id."""
@@ -225,23 +226,23 @@ class CFGNode(object):
 
 
 class SourceSet(frozenset):
-  """A SourceSet is a combination of Values that was used to form a Value.
+  """A SourceSet is a combination of Bindings that was used to form a Binding.
 
-  In this context, a "source" is a Value that was used to create another Value.
-  E.g., for a statement like "z = a.x + y", a, a.x and y would be the
+  In this context, a "source" is a Binding that was used to create another
+  Binding.  E.g., for a statement like "z = a.x + y", a, a.x and y would be the
   Sources to create z, and would form a SourceSet.
   """
   __slots__ = ()
 
 
 class Origin(collections.namedtuple("_", "where, source_sets")):
-  """An "origin" is an explanation of how a value was constructed.
+  """An "origin" is an explanation of how a binding was constructed.
 
   It consists of a CFG node and a set of sourcesets.
 
   Attributes:
     where: The CFG node where this assignment happened.
-    source_sets: Possible SourceSets used to construct the value we belong to.
+    source_sets: Possible SourceSets used to construct the binding we belong to.
       A set of SourceSet instances.
   """
   __slots__ = ()
@@ -255,23 +256,23 @@ class Origin(collections.namedtuple("_", "where, source_sets")):
     self.source_sets.add(SourceSet(source_set))
 
 
-class Value(object):
-  """A Value assigns a value to a (specific) variable.
+class Binding(object):
+  """A Binding assigns a binding to a (specific) variable.
 
-  Values will therefore be stored in a dictionary in the Variable class, mapping
-  strings to Value instances.
-  Depending on context, a Value might also be called a "Source" (if it's
-  used for creating another value) or a "goal" (if we want to find a solution
+  Bindings will therefore be stored in a dictionary in the Variable class,
+  mapping strings to Binding instances.
+  Depending on context, a Binding might also be called a "Source" (if it's
+  used for creating another binding) or a "goal" (if we want to find a solution
   for a path through the program that assigns it).
 
-  A value has history ("origins"): It knows where the value was
+  A binding has history ("origins"): It knows where the binding was
   originally retrieved from, before being assigned to something else here.
-  Origins contain, through source_sets, "sources", which are other values.
+  Origins contain, through source_sets, "sources", which are other bindings.
   """
   __slots__ = ("program", "variable", "origins", "data", "_cfgnode_to_origin")
 
   def __init__(self, program, variable, data):
-    """Initialize a new Value. Usually called through Variable.AddValue."""
+    """Initialize a new Binding. Usually called through Variable.AddBinding."""
     self.program = program
     self.variable = variable
     self.origins = []
@@ -279,19 +280,19 @@ class Value(object):
     self._cfgnode_to_origin = {}
 
   def IsVisible(self, viewpoint):
-    """Can we "see" this value from the current cfg node?
+    """Can we "see" this binding from the current cfg node?
 
     This will run a solver to determine whether there's a path through the
-    program that makes our variable have this value at the given CFG node.
+    program that makes our variable have this binding at the given CFG node.
 
     Arguments:
-      viewpoint: The CFG node at which this value is possible / not possible.
+      viewpoint: The CFG node at which this binding is possible / not possible.
 
     Returns:
       True if there is at least one path through the program
-      in which the value was assigned (and not overwritten afterwards), and all
-      the values it depends on were assigned (and not overwritten) before that,
-      etc.
+      in which the binding was assigned (and not overwritten afterwards), and
+      all the bindings it depends on were assigned (and not overwritten) before
+      that, etc.
     """
     return self.program.solver.Solve({self}, viewpoint)
 
@@ -302,8 +303,8 @@ class Value(object):
       origin = Origin(cfg_node)
       self.origins.append(origin)
       self._cfgnode_to_origin[cfg_node] = origin
-      self.variable.RegisterValueAtNode(self, cfg_node)
-      cfg_node.RegisterValue(self)
+      self.variable.RegisterBindingAtNode(self, cfg_node)
+      cfg_node.RegisterBinding(self)
     return origin
 
   def FindOrigin(self, cfg_node):
@@ -311,25 +312,25 @@ class Value(object):
     return self._cfgnode_to_origin.get(cfg_node)
 
   def AddOrigin(self, where, source_set):
-    """Add another possible origin to this value."""
+    """Add another possible origin to this binding."""
     origin = self._FindOrAddOrigin(where)
     origin.AddSourceSet(source_set)
 
   def AssignToNewVariable(self, name, where):
-    """Assign this value to a new variable."""
+    """Assign this binding to a new variable."""
     variable = self.program.NewVariable(name)
-    value = variable.AddValue(self.data)
-    value.AddOrigin(where, {self})
+    binding = variable.AddBinding(self.data)
+    binding.AddOrigin(where, {self})
     return variable
 
-  def HasSource(self, value):
-    """Does this value depend on a given source?"""
-    if self is value:
+  def HasSource(self, binding):
+    """Does this binding depend on a given source?"""
+    if self is binding:
       return True
     for origin in self.origins:
       for source_set in origin.source_sets:
         for source in source_set:
-          if source.HasSource(value):
+          if source.HasSource(binding):
             return True
     return False
 
@@ -338,44 +339,45 @@ class Value(object):
     return "$%d=#%d" % (self.variable.id, data_id)
 
   def __repr__(self):
-    return "<value %x of variable %d>" % (id(self), self.variable.id)
+    return "<binding %x of variable %d>" % (id(self), self.variable.id)
 
 
 class Variable(object):
-  """A collection of possible values for a variable, along with their origins.
+  """A collection of possible bindings for a variable, along with their origins.
 
-  A variable stores the values it can have as well as the CFG nodes at which
-  the values occur. Callback functions can be registered with it, to be executed
-  when a value is added. The values are stored in a list for determinicity; new
-  values should be added via AddValue or (FilterAnd)PasteVariable rather than
-  appended to values directly to ensure that values and _data_id_to_value are
-  updated together. We do this rather than making _data_id_to_value a
-  collections.OrderedDict because a CFG can easily have tens of thousands of
-  variables, and it takes about 40x as long to create an OrderedDict instance as
-  to create a list and a dict, while adding a value to the OrderedDict takes
-  2-3x as long as adding it to both the list and the dict.
+  A variable stores the bindings it can have as well as the CFG nodes at which
+  the bindings occur. Callback functions can be registered with it, to be
+  executed when a binding is added. The bindings are stored in a list for
+  determinicity; new bindings should be added via AddBinding or
+  (FilterAnd)PasteVariable rather than appended to bindings directly to ensure
+  that bindings and _data_id_to_bindings are updated together. We do this rather
+  than making _data_id_to_binding a collections.OrderedDict because a CFG can
+  easily have tens of thousands of variables, and it takes about 40x as long to
+  create an OrderedDict instance as to create a list and a dict, while adding a
+  binding to the OrderedDict takes 2-3x as long as adding it to both the list
+  and the dict.
   """
-  __slots__ = ("program", "name", "id", "values", "_data_id_to_value",
-               "_cfgnode_to_values", "_callbacks")
+  __slots__ = ("program", "name", "id", "bindings", "_data_id_to_binding",
+               "_cfgnode_to_bindings", "_callbacks")
 
   def __init__(self, program, name, variable_id):
     """Initialize a new Variable. Called through Program.NewVariable."""
     self.program = program
     self.name = name
     self.id = variable_id
-    self.values = []
-    self._data_id_to_value = {}
-    self._cfgnode_to_values = collections.defaultdict(set)
+    self.bindings = []
+    self._data_id_to_binding = {}
+    self._cfgnode_to_bindings = collections.defaultdict(set)
     self._callbacks = []
 
   def __repr__(self):
     return "<Variable %d \"%s\": %d choices>" % (
-        self.id, self.name, len(self.values))
+        self.id, self.name, len(self.bindings))
 
   __str__ = __repr__
 
-  def Values(self, viewpoint):
-    """Filters down the possibilities of values for this variable.
+  def Bindings(self, viewpoint):
+    """Filters down the possibilities of bindings for this variable.
 
     It determines this by analyzing the control flow graph. Any definition for
     this variable that is invisible from the current point in the CFG is
@@ -383,28 +385,28 @@ class Variable(object):
     CFG, not the source sets. As such, it's much faster.
 
     Arguments:
-      viewpoint: The CFG node at which to determine the possible values.
+      viewpoint: The CFG node at which to determine the possible bindings.
 
     Returns:
-      A filtered list of values for this variable.
+      A filtered list of bindings for this variable.
     """
-    num_values = len(self.values)
-    if (len(self._cfgnode_to_values) == 1 or num_values == 1) and any(
-        node in viewpoint.reachable_subset for node in self._cfgnode_to_values):
-      return self.values
+    num_bindings = len(self.bindings)
+    if (len(self._cfgnode_to_bindings) == 1 or num_bindings == 1) and any(
+        n in viewpoint.reachable_subset for n in self._cfgnode_to_bindings):
+      return self.bindings
     result = set()
     seen = set()
     stack = [viewpoint]
     while stack:
-      if len(result) == num_values:
+      if len(result) == num_bindings:
         break
       node = stack.pop()
       seen.add(node)
-      # _cfgnode_to_values is a defaultdict, so don't use "get"
-      if node in self._cfgnode_to_values:
-        values = self._cfgnode_to_values[node]
-        assert values, "empty value list"
-        result.update(values)
+      # _cfgnode_to_bindings is a defaultdict, so don't use "get"
+      if node in self._cfgnode_to_bindings:
+        bindings = self._cfgnode_to_bindings[node]
+        assert bindings, "empty binding list"
+        result.update(bindings)
         # Don't expand this node - previous assignments to this variable will
         # be invisible, since they're overwritten here.
         continue
@@ -413,8 +415,8 @@ class Variable(object):
     return result
 
   def Data(self, viewpoint):
-    """Like Values(cfg_node), but only return the data."""
-    return [value.data for value in self.Values(viewpoint)]
+    """Like Bindings(cfg_node), but only return the data."""
+    return [binding.data for binding in self.Bindings(viewpoint)]
 
   def Filter(self, viewpoint):
     """Filters down the possibilities of this variable.
@@ -423,71 +425,71 @@ class Variable(object):
     impossible at the current point in the CFG is filtered out.
 
     Arguments:
-      viewpoint: The CFG node at which to determine the possible values.
+      viewpoint: The CFG node at which to determine the possible bindings.
 
     Returns:
-      A filtered list of values for this variable.
+      A filtered list of bindings for this variable.
     """
-    return [value for value in self.values if value.IsVisible(viewpoint)]
+    return [b for b in self.bindings if b.IsVisible(viewpoint)]
 
   def FilteredData(self, viewpoint):
     """Like Filter(viewpoint), but only return the data."""
-    return [value.data for value in self.values if value.IsVisible(viewpoint)]
+    return [b.data for b in self.bindings if b.IsVisible(viewpoint)]
 
-  def _FindOrAddValue(self, data):
+  def _FindOrAddBinding(self, data):
     try:
-      value = self._data_id_to_value[id(data)]
+      binding = self._data_id_to_binding[id(data)]
     except KeyError:
-      value = Value(self.program, self, data)
-      self.values.append(value)
-      self._data_id_to_value[id(data)] = value
+      binding = Binding(self.program, self, data)
+      self.bindings.append(binding)
+      self._data_id_to_binding[id(data)] = binding
       for callback in self._callbacks:
         callback()
-    return value
+    return binding
 
-  def AddValue(self, data, source_set=None, where=None):
+  def AddBinding(self, data, source_set=None, where=None):
     """Add another choice to this variable.
 
     This will not overwrite this variable in the current CFG node - do that
     explicitly with RemoveChoicesFromCFGNode.  (It's legitimate to have multiple
-    values for a variable on the same CFG node, e.g. if a union type is
+    bindings for a variable on the same CFG node, e.g. if a union type is
     introduced at that node)
 
     Arguments:
-      data: A user specified object to uniquely identify this value.
+      data: A user specified object to uniquely identify this binding.
       source_set: An instance of SourceSet, i.e. a set of instances of Origin.
-      where: Where in the CFG this variable was assigned to this value.
+      where: Where in the CFG this variable was assigned to this binding.
 
     Returns:
-      The new value.
+      The new binding.
     """
     assert not isinstance(data, Variable)
-    value = self._FindOrAddValue(data)
+    binding = self._FindOrAddBinding(data)
     if source_set or where:
       assert source_set is not None and where is not None
-      value.AddOrigin(where, source_set)
-    return value
+      binding.AddOrigin(where, source_set)
+    return binding
 
   def PasteVariable(self, variable, where):
-    """Adds all the values from another variable to this one."""
-    for value in variable.values:
-      # TODO(kramm): If where == value.where, this should just copy the
-      # source_sets from value, instead of adding another level of indirection
-      # by creating a new source set with value in it.
-      copy = self.AddValue(value.data)
-      copy.AddOrigin(where, {value})
+    """Adds all the bindings from another variable to this one."""
+    for binding in variable.bindings:
+      # TODO(kramm): If where == binding.where, this should just copy the
+      # source_sets from binding, instead of adding another level of indirection
+      # by creating a new source set with binding in it.
+      copy = self.AddBinding(binding.data)
+      copy.AddOrigin(where, {binding})
 
   def FilterAndPasteVariable(self, variable, where):
-    """Adds all the visible values from another variable to this one."""
-    for value in variable.Values(where):
-      copy = self.AddValue(value.data)
-      copy.AddOrigin(where, {value})
+    """Adds all the visible bindings from another variable to this one."""
+    for binding in variable.Bindings(where):
+      copy = self.AddBinding(binding.data)
+      copy.AddOrigin(where, {binding})
 
   def AssignToNewVariable(self, name, where):
     """Assign this variable to a new variable.
 
     This is essentially a copy: All entries in the Union will be copied to
-    the new variable, but with the corresponding current variable value
+    the new variable, but with the corresponding current variable binding
     as an origin.
 
     Arguments:
@@ -498,13 +500,13 @@ class Variable(object):
       A new variable.
     """
     new_variable = self.program.NewVariable(name)
-    for value in self.values:
-      new_value = new_variable.AddValue(value.data)
-      new_value.AddOrigin(where, {value})
+    for binding in self.bindings:
+      new_binding = new_variable.AddBinding(binding.data)
+      new_binding.AddOrigin(where, {binding})
     return new_variable
 
-  def RegisterValueAtNode(self, value, node):
-    self._cfgnode_to_values[node].add(value)
+  def RegisterBindingAtNode(self, binding, node):
+    self._cfgnode_to_bindings[node].add(binding)
 
   def RegisterChangeListener(self, callback):
     self._callbacks.append(callback)
@@ -514,11 +516,11 @@ class Variable(object):
 
   @property
   def data(self):
-    return [value.data for value in self.values]
+    return [binding.data for binding in self.bindings]
 
   @property
   def nodes(self):
-    return set(self._cfgnode_to_values)
+    return set(self._cfgnode_to_bindings)
 
 
 class State(object):
@@ -526,13 +528,13 @@ class State(object):
 
   Attributes:
     pos: Our current position in the CFG.
-    goals: A list of values we'd like to be valid at this position.
+    goals: A list of bindings we'd like to be valid at this position.
   """
   __slots__ = ("pos", "goals")
 
   def __init__(self, pos, goals):
     """Initialize a state that starts at the given cfg node."""
-    assert all(isinstance(goal, Value) for goal in goals)
+    assert all(isinstance(goal, Binding) for goal in goals)
     self.pos = pos
     self.goals = set(goals)  # Make a copy. We modify these.
 
@@ -541,11 +543,11 @@ class State(object):
     return not self.goals
 
   def HasConflictingGoals(self):
-    """Are there values in this state that can't be valid at the same time?
+    """Are there bindings in this state that can't be valid at the same time?
 
     Returns:
       True if we would need a variable to be assigned to two distinct
-      values at the same time in order to solve this state. False if there are
+      bindings at the same time in order to solve this state. False if there are
       no conflicting goals.
 
     Raises:
@@ -558,7 +560,7 @@ class State(object):
         if existing is goal:
           raise AssertionError("Internal error. Duplicate goal.")
         if existing.data is goal.data:
-          raise AssertionError("Internal error. Duplicate data across values")
+          raise AssertionError("Internal error. Duplicate data across bindings")
         return True
       variables[goal.variable] = goal
     return False
@@ -566,9 +568,9 @@ class State(object):
   def NodesWithAssignments(self):
     """Find all CFG nodes corresponding to goal variable assignments.
 
-    Mark all nodes that assign any of the goal variables (even to values not
+    Mark all nodes that assign any of the goal variables (even to bindings not
     specified in goals).  This is used to "block" all cfg nodes that are
-    conflicting assignments for the set of values in state.
+    conflicting assignments for the set of bindings in state.
 
     Returns:
       A set of instances of CFGNode. At every CFGNode in this set, at least
@@ -726,7 +728,7 @@ class Solver(object):
   def Solve(self, start_attrs, start_node):
     """Try to solve the given problem.
 
-    Try to prove one or more values starting (and going backwards from) a
+    Try to prove one or more bindings starting (and going backwards from) a
     given node, all the way to the program entrypoint.
 
     Arguments:
@@ -735,9 +737,9 @@ class Solver(object):
 
     Returns:
       True if there is a path through the program that would give "start_attr"
-      its value at the "start_node" program position. For larger programs, this
-      might only look for a partial path (i.e., a path that doesn't go back all
-      the way to the entry point of the program).
+      its binding at the "start_node" program position. For larger programs,
+      this might only look for a partial path (i.e., a path that doesn't go
+      back all the way to the entry point of the program).
     """
     state = State(start_node, start_attrs)
     return self._RecallOrFindSolution(state)
@@ -765,7 +767,7 @@ class Solver(object):
     blocked = state.NodesWithAssignments()
     # We don't treat our current CFG node as blocked: If one of the goal
     # variables is overwritten by an assignment at our current pos, we assume
-    # that assignment can still see the previous values.
+    # that assignment can still see the previous bindings.
     blocked.discard(state.pos)
     blocked = frozenset(blocked)
     # Find the goal cfg node that was assigned last.  Due to the fact that we

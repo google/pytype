@@ -175,7 +175,7 @@ class Explainer(object):
     """Get all cfg nodes where anything in a combination is assigned."""
     blocked = set()
     for value in combination:
-      for other_value in value.variable.values:
+      for other_value in value.variable.bindings:
         for node, _ in other_value.origins:
           blocked.add(node)
     if current_node in blocked:

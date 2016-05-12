@@ -211,7 +211,7 @@ class Frame(object):
       self.f_builtins = f_back.f_builtins
     else:
       _, bltin = f_globals.get_attribute(self.vm.root_cfg_node, "__builtins__")
-      builtins_pu, = bltin.values
+      builtins_pu, = bltin.bindings
       self.f_builtins = builtins_pu.data
     self.f_lineno = f_code.co_firstlineno
     self.cells = {}

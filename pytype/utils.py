@@ -33,7 +33,7 @@ def variable_product(variables):
     A list of lists of Values, where each sublist has one element from each
     of the given Variables.
   """
-  return itertools.product(*(v.values for v in variables))
+  return itertools.product(*(v.bindings for v in variables))
 
 
 def _variable_product_items(variableitems):
@@ -50,7 +50,7 @@ def _variable_product_items(variableitems):
   if variableitems:
     headkey, headvar = variableitems[0]
     for tail in _variable_product_items(variableitems[1:]):
-      for headvalue in headvar.values:
+      for headvalue in headvar.bindings:
         yield [(headkey, headvalue)] + tail
   else:
     yield []
@@ -78,7 +78,7 @@ def deep_variable_product(variables):
     A list of lists of Values, where each sublist has one Value from each
     of the corresponding Variables and the Variables of their Values' children.
   """
-  return _deep_values_list_product(v.values for v in variables)
+  return _deep_values_list_product(v.bindings for v in variables)
 
 
 def _deep_values_list_product(values_list):
