@@ -371,25 +371,40 @@ class CallTracer(vm.VirtualMachine):
           self._check_function(pytd_method, method, node2, skip_self=True)
 
 
-def pretty_assignment(v, short=False):
-  """Prettyprint a variable assignment.
+def _pretty_variable(var):
+  """Return a pretty printed string for a Variable."""
+  lines = []
+  single_value = len(var.values) == 1
+  if not single_value:
+    # Write a description of the variable (for single value variables this
+    # will be written along with the value later on).
+    lines.append("$%d %s" % (var.id, var.name))
 
-  Args:
-    v: A typegraph.Value
-    short: If True, save horizontal space.
+  for value in var.values:
+    data = utils.maybe_truncate(value.data)
+    if single_value:
+      binding = "%s, %s = %s" % (value, var.name, data)
+    else:
+      binding = "  #%d %s" % (value.data.id, data)
 
-  Returns:
-    A string.
-  """
-  if short:
-    return "[%d=v%d]" % (v.variable.id, v.data.id)
-  else:
-    return "[%d=v%d] %s = %r" % (
-        v.variable.id, v.data.id, v.variable.name, utils.maybe_truncate(v.data))
+    if len(value.origins) == 1:
+      # Single origin.  Use the binding as a prefix when writing the orign.
+      prefix = binding + ", "
+    else:
+      # Multiple origins, write the binding on its own line, then indent all
+      # of the origins.
+      lines.append(binding)
+      prefix = "    "
+
+    for origin in value.origins:
+      src = utils.pretty_dnf([[str(v) for v in source_set]
+                              for source_set in origin.source_sets])
+      lines.append("%s%s @%d" %(prefix, src, origin.where.id))
+  return "\n".join(lines)
 
 
-def program_to_pseudocode(program):
-  """Generate a pseudocode (CFG nodes + assignments) version of a program.
+def program_to_text(program):
+  """Generate a text (CFG nodes + assignments) version of a program.
 
   For debugging only.
 
@@ -397,38 +412,26 @@ def program_to_pseudocode(program):
     program: An instance of cfg.Program
 
   Returns:
-    A string, the "pseudocode" of this program.
+    A string representing all of the data for this program.
   """
   s = StringIO.StringIO()
   seen = set()
   for node in utils.order_nodes(program.cfg_nodes):
     seen.add(node)
-    s.write("<%d>%s\n" % (node.id, node.name))
-    for value in node.values:
-      s.write("  %s\n" % pretty_assignment(value))
-      overwritten = False
-      for cfg_node, source_sets in value.origins:
-        if node != cfg_node:
-          overwritten = True
-          continue
-        if source_sets == [set()]:
-          pass  # don't print trivially true source_sets
-        else:
-          src = utils.pretty_dnf([[pretty_assignment(v, short=True)
-                                   for v in source_set]
-                                  for source_set in source_sets])
-          s.write("    from: %s\n" % src)
-      if overwritten:
-        s.write("    (also set to this value in other nodes)\n")
-    for out in node.outgoing:
-      s.write("  jump to <%d>%s\n" % (out.id, out.name))
+    s.write("%s\n" % node.Label())
+    s.write("  From: %s\n" % ", ".join(n.Label() for n in node.incoming))
+    s.write("  To: %s\n" % ", ".join(n.Label() for n in node.outgoing))
+    s.write("\n")
+    variables = set(value.variable for value in node.values)
+    for var in sorted(variables, key=lambda v: v.id):
+      # If a variable is bound in more than one node then it will be listed
+      # redundantly multiple times.  One alternative would be to only list the
+      # values that occur in the given node, and then also list the other nodes
+      # that assign the same variable.
 
-  # "stray" nodes are nodes that are unreachable in the CFG.
-  stray_nodes = set(program.cfg_nodes) - seen
-  if stray_nodes:
-    s.write("Stray nodes:\n")
-    for node in stray_nodes:
-      s.write("<%d>%s\n" % (node.id, node.name))
+      # Write the variable, indenting by two spaces.
+      s.write("  %s\n" % _pretty_variable(var).replace("\n", "\n  "))
+    s.write("\n")
 
   return s.getvalue()
 
@@ -605,9 +608,12 @@ def infer_types(src,
                             stdin=subprocess.PIPE)
     proc.stdin.write(dot)
     proc.stdin.close()
-  if options.output_pseudocode:
-    src = program_to_pseudocode(tracer.program)
-    with open(options.output_pseudocode, "w") as fi:
-      fi.write(src)
+  if options.output_debug:
+    text = program_to_text(tracer.program)
+    if options.output_debug == "-":
+      log.info("=========== Program Dump =============\n%s", text)
+    else:
+      with open(options.output_debug, "w") as fi:
+        fi.write(text)
 
   return ast

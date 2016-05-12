@@ -9,10 +9,11 @@ class CFGTest(unittest.TestCase):
 
   def testSimpleGraph(self):
     p = cfg.Program()
-    n1 = p.NewCFGNode()
+    n1 = p.NewCFGNode("foo")
     n2 = n1.ConnectNew()
     n3 = n1.ConnectNew()
     n4 = n3.ConnectNew()
+    self.assertEquals("<0>foo", n1.Label())
     self.assertEquals(len(n1.outgoing), 2)
     self.assertEquals(len(n2.outgoing), 0)
     self.assertEquals(len(n3.outgoing), 1)
@@ -35,6 +36,7 @@ class CFGTest(unittest.TestCase):
     self.assertEquals(v1.data, None)
     self.assertEquals(v2.data, u"data")
     self.assertEquals(v3.data, {1: 2})
+    self.assertEquals("$0=#%d" % id(v3.data), str(v3))
 
   def testGetAttro(self):
     p = cfg.Program()

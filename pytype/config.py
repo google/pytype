@@ -47,8 +47,8 @@ class Options(object):
       optimize
       output
       output_cfg
+      output_debug
       output_id
-      output_pseudocode
       output_typegraph
       pybuiltins_filename
       python_exe
@@ -180,9 +180,9 @@ class Options(object):
         dest="output_cfg", default=None,
         help="Output control flow graph as SVG.")
     o.add_option(
-        "--output-pseudocode", type="string", action="store",
-        dest="output_pseudocode", default=None,
-        help="Output pseudo code.")
+        "--output-debug", type="string", action="store",
+        dest="output_debug", default=None,
+        help="Output debugging data (use - to add this output to the log).")
     o.add_option(
         "--output-typegraph", type="string", action="store",
         dest="output_typegraph", default=None,

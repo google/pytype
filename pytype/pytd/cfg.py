@@ -216,6 +216,10 @@ class CFGNode(object):
   def RegisterValue(self, value):
     self.values.add(value)
 
+  def Label(self):
+    """Return a string containing the node name and id."""
+    return "<%d>%s" % (self.id, self.name)
+
   def __repr__(self):
     return "<cfgnode %d %s>" % (self.id, self.name)
 
@@ -328,6 +332,10 @@ class Value(object):
           if source.HasSource(value):
             return True
     return False
+
+  def __str__(self):
+    data_id = getattr(self.data, "id", id(self.data))
+    return "$%d=#%d" % (self.variable.id, data_id)
 
   def __repr__(self):
     return "<value %x of variable %d>" % (id(self), self.variable.id)
