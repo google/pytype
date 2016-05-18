@@ -37,13 +37,11 @@ class InferenceTest(unittest.TestCase):
   def setUp(self):
     self.options = config.Options.create(python_version=self.PYTHON_VERSION,
                                          python_exe=self.PYTHON_EXE)
-    def t(name):  # pylint: disable=invalid-name
-      return pytd.ClassType("__builtin__." + name)
-    self.bool = t("bool")
-    self.dict = t("dict")
-    self.float = t("float")
-    self.complex = t("complex")
-    self.int = t("int")
+    self.bool = pytd.ClassType("bool")
+    self.dict = pytd.ClassType("dict")
+    self.float = pytd.ClassType("float")
+    self.complex = pytd.ClassType("complex")
+    self.int = pytd.ClassType("int")
     if self.PYTHON_VERSION[0] == 2:
       self.long = t("long")
     self.list = t("list")
@@ -126,12 +124,12 @@ class InferenceTest(unittest.TestCase):
     self.options.tweak(pythonpath=pythonpath)
     errorlog = self._InitErrorLog(code)
     unit = infer.infer_types(
-        textwrap.dedent(code), self.errorlog, self.options,
+        textwrap.dedent(code), errorlog, self.options,
         deep=False, solve_unknowns=False, reverse_operators=True,
         cache_unknowns=True)
-    if report_errors and self.errorlog.has_error():
-      self.errorlog.print_to_stderr()
-      self.fail("Inferencer found %d errors" % len(self.errorlog))
+    if report_errors and errorlog.has_error():
+      errorlog.print_to_stderr()
+      self.fail("Inferencer found %d errors" % len(errorlog))
     unit.Visit(visitors.VerifyVisitor())
     return pytd_utils.CanonicalOrdering(unit)
 
@@ -140,8 +138,10 @@ class InferenceTest(unittest.TestCase):
 
   def InferAndCheck(self, code, pythonpath=()):
     self.options.tweak(pythonpath=pythonpath)
+    code = textwrap.dedent(code)
+    errorlog = self._InitErrorLog(code)
     unit = infer.infer_types(
-        textwrap.dedent(code), self.errorlog, self.options,
+        code, errorlog, self.options,
         deep=True, reverse_operators=True, cache_unknowns=True)
     unit.Visit(visitors.VerifyVisitor())
     return pytd_utils.CanonicalOrdering(unit), errorlog
@@ -299,11 +299,12 @@ class InferenceTest(unittest.TestCase):
       A pytd.TypeDeclUnit
     """
     self.options.tweak(pythonpath=pythonpath, imports_map=imports_map)
-    unit = infer.infer_types(src, self.errorlog, self.options, **kwargs)
+    errorlog = self._InitErrorLog(src)
+    unit = infer.infer_types(src, errorlog, self.options, **kwargs)
     unit = pytd_utils.CanonicalOrdering(unit.Visit(visitors.VerifyVisitor()))
-    if report_errors and self.errorlog.has_error():
-      self.errorlog.print_to_stderr()
-      self.fail("Inferencer found %d errors" % len(self.errorlog))
+    if report_errors and errorlog.has_error():
+      errorlog.print_to_stderr()
+      self.fail("Inferencer found %d errors" % len(errorlog))
     return unit
 
   def assertTypesMatchPytd(self, ty, pytd_src, version=None):

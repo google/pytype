@@ -50,9 +50,10 @@ class DirectorTest(unittest.TestCase):
     for name in ["test-error", "test-other-error"]:
       errors._error_name(name)
 
-  def _create(self, src):
+  def _create(self, src, disable=()):
     self._errorlog = errors.ErrorLog()
-    self._director = directors.Director(src, self._errorlog, _TEST_FILENAME)
+    self._director = directors.Director(src, self._errorlog, _TEST_FILENAME,
+                                        disable)
 
   def _should_report(self, expected, lineno, error_name="test-error",
                      filename=_TEST_FILENAME):
@@ -62,6 +63,10 @@ class DirectorTest(unittest.TestCase):
     self.assertEquals(
         expected,
         self._director.should_report_error(error))
+
+  def test_ignore_globally(self):
+    self._create("", ["my-error"])
+    self._should_report(False, 42, error_name="my-error")
 
   def test_ignore_one_line(self):
     self._create("""

@@ -42,6 +42,7 @@ class Options(object):
       api
       cache_unknowns
       check
+      disable
       imports_info
       nofail
       optimize
@@ -320,6 +321,11 @@ class Options(object):
       if self.pythonpath not in ([], [""]):
         raise optparse.OptionConflictError(
             "Not allowed with --pythonpath", "imports_info")
+
+    if self.disable:
+      self.disable = self.disable.split(",")
+    else:
+      self.disable = []
 
     if self.python_exe is None:
       exe = "python%d.%d" % self.python_version
