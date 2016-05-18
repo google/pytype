@@ -42,6 +42,7 @@ class Options(object):
       api
       cache_unknowns
       check
+      disable
       imports_info
       nofail
       optimize
@@ -123,6 +124,10 @@ class Options(object):
         "-c", "--check", action="store_true",
         dest="check",
         help=("Verify against existing \"output\" pytd files."))
+    o.add_option(
+        "-d", "--disable", action="store",
+        dest="disable", default=None,
+        help=("Comma separated list of error names to ignore."))
     o.add_option(
         "--import_drop_prefixes", type="string", action="store",
         dest="import_drop_prefixes",
@@ -207,7 +212,7 @@ class Options(object):
         dest="python_version", default="2.7",
         help=("Python version to emulate (\"major.minor\", e.g. \"2.7\")"))
     o.add_option(
-        "--pythonpath", type="string", action="store",
+        "-P", "--pythonpath", type="string", action="store",
         dest="pythonpath", default="",
         help=("Directories for reading dependencies - a list of paths "
               "separated by '%s'. The files must have been generated "
@@ -304,6 +309,11 @@ class Options(object):
       if self.pythonpath not in ([], [""]):
         raise optparse.OptionConflictError(
             "Not allowed with --pythonpath", "imports_info")
+
+    if self.disable:
+      self.disable = self.disable.split(",")
+    else:
+      self.disable = []
 
     if self.python_exe is None:
       exe = "python%d.%d" % self.python_version

@@ -44,7 +44,7 @@ class CheckPoint(object):
 class Error(object):
   """Representation of an error in the error log."""
 
-  def __init__(self, severity, message, filename=None, lineno=None, column=None,
+  def __init__(self, severity, message, filename=None, lineno=0, column=None,
                linetext=None, methodname=None):
     name = _CURRENT_ERROR_NAME.get()
     assert name, ("Errors must be created from a caller annotated "
@@ -56,7 +56,7 @@ class Error(object):
     # Optional information about error position.
     # TODO(dbaum): Do not allow filename (and maybe lineno) of None.
     self._filename = filename
-    self._lineno = lineno
+    self._lineno = lineno or 0
     self._column = column
     self._linetext = linetext
     self._methodname = methodname

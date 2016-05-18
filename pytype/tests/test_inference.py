@@ -8,6 +8,7 @@ import textwrap
 
 from pytype import config
 from pytype import convert_structural
+from pytype import directors
 from pytype import errors
 from pytype import infer
 from pytype.pyc import loadmarshal
@@ -154,7 +155,6 @@ class InferenceTest(unittest.TestCase):
   def setUp(self):
     self.options = config.Options.create(python_version=self.PYTHON_VERSION,
                                          python_exe=self.PYTHON_EXE)
-    self.errorlog = errors.ErrorLog()
     self.bool = pytd.ClassType("bool")
     self.dict = pytd.ClassType("dict")
     self.float = pytd.ClassType("float")
@@ -223,6 +223,12 @@ class InferenceTest(unittest.TestCase):
     self.nothing_nothing_dict = pytd.GenericType(self.dict,
                                                  (self.nothing, self.nothing))
 
+  def _InitErrorLog(self, src, filename=None):
+    errorlog = errors.ErrorLog()
+    director = directors.Director(src, errorlog, filename, ())
+    errorlog.set_error_filter(director.should_report_error)
+    return errorlog
+
   # For historical reasons (byterun), this method name is snakecase:
   # TODO(kramm): Rename this function.
   # pylint: disable=invalid-name
@@ -234,13 +240,14 @@ class InferenceTest(unittest.TestCase):
       # TODO(kramm): support this
       log.warning("Ignoring 'raises' parameter to assertNoErrors")
     self.options.tweak(pythonpath=pythonpath)
+    errorlog = self._InitErrorLog(code)
     unit = infer.infer_types(
-        textwrap.dedent(code), self.errorlog, self.options,
+        textwrap.dedent(code), errorlog, self.options,
         deep=False, solve_unknowns=False, reverse_operators=True,
         cache_unknowns=True)
-    if report_errors and self.errorlog.has_error():
-      self.errorlog.print_to_stderr()
-      self.fail("Inferencer found %d errors" % len(self.errorlog))
+    if report_errors and errorlog.has_error():
+      errorlog.print_to_stderr()
+      self.fail("Inferencer found %d errors" % len(errorlog))
     unit.Visit(visitors.VerifyVisitor())
     return pytd_utils.CanonicalOrdering(unit)
 
@@ -249,16 +256,20 @@ class InferenceTest(unittest.TestCase):
 
   def InferAndCheck(self, code, pythonpath=()):
     self.options.tweak(pythonpath=pythonpath)
+    code = textwrap.dedent(code)
+    errorlog = self._InitErrorLog(code)
     unit = infer.infer_types(
-        textwrap.dedent(code), self.errorlog, self.options,
+        code, errorlog, self.options,
         deep=True, reverse_operators=True, cache_unknowns=True)
     unit.Visit(visitors.VerifyVisitor())
-    return pytd_utils.CanonicalOrdering(unit), self.errorlog
+    return pytd_utils.CanonicalOrdering(unit), errorlog
 
   def InferFromFile(self, filename, pythonpath):
     self.options.tweak(pythonpath=pythonpath)
     with open(filename, "rb") as fi:
-      unit = infer.infer_types(fi.read(), self.errorlog, self.options,
+      code = fi.read()
+      errorlog = self._InitErrorLog(code, filename)
+      unit = infer.infer_types(code, errorlog, self.options,
                                filename=filename, cache_unknowns=True)
       unit.Visit(visitors.VerifyVisitor())
       return pytd_utils.CanonicalOrdering(unit)
@@ -405,11 +416,12 @@ class InferenceTest(unittest.TestCase):
       A pytd.TypeDeclUnit
     """
     self.options.tweak(pythonpath=pythonpath, imports_map=imports_map)
-    unit = infer.infer_types(src, self.errorlog, self.options, **kwargs)
+    errorlog = self._InitErrorLog(src)
+    unit = infer.infer_types(src, errorlog, self.options, **kwargs)
     unit = pytd_utils.CanonicalOrdering(unit.Visit(visitors.VerifyVisitor()))
-    if report_errors and self.errorlog.has_error():
-      self.errorlog.print_to_stderr()
-      self.fail("Inferencer found %d errors" % len(self.errorlog))
+    if report_errors and errorlog.has_error():
+      errorlog.print_to_stderr()
+      self.fail("Inferencer found %d errors" % len(errorlog))
     return unit
 
   def assertTypesMatchPytd(self, ty, pytd_src, version=None):

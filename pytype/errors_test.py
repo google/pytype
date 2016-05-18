@@ -42,7 +42,7 @@ class ErrorTest(unittest.TestCase):
     self.assertEquals(_MESSAGE, e._message)
     self.assertEquals(e._name, _TEST_ERROR)
     self.assertEquals(None, e._filename)
-    self.assertEquals(None, e._lineno)
+    self.assertEquals(0, e._lineno)
     self.assertEquals(None, e._column)
     self.assertEquals(None, e._linetext)
     self.assertEquals(None, e._methodname)

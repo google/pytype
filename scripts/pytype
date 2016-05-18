@@ -13,6 +13,7 @@ import sys
 import traceback
 
 from pytype import config
+from pytype import directors
 from pytype import errors
 from pytype import imports_map_loader
 from pytype import infer
@@ -158,6 +159,10 @@ def process_one_file(input_filename, output_filename, options,
 
   """
   errorlog = errors.ErrorLog()
+  with open(input_filename, "rb") as fi:
+    director = directors.Director(fi.read(), errorlog, input_filename,
+                                  options.disable)
+  errorlog.set_error_filter(director.should_report_error)
   if options.check:
     check_pyi(input_filename=input_filename,
               output_filename=output_filename,
