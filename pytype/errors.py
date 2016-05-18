@@ -205,12 +205,8 @@ class ErrorLog(ErrorLogBase):
 
   @_error_name("import-error")
   def import_error(self, opcode, module_name):
-    self.error(opcode, "Can't find module %r." % module_name)
-
-  @_error_name("import-error")
-  def import_from_error(self, opcode, module, name):
-    module_name = module.data[0].name
-    self.error(opcode, "Can't find %s.%s" % (module_name, name))
+    self.error(opcode, "Can't find module %r.\n" % module_name +
+               "Did you generate a .pyi?")
 
   @_error_name("wrong-arg-count")
   def wrong_arg_count(self, opcode, sig, call_arg_count):
