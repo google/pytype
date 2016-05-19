@@ -7,6 +7,7 @@ Usage:
   pytype [flags] file.py
 """
 
+import cProfile
 import logging
 import os
 import sys
@@ -181,6 +182,28 @@ def process_one_file(input_filename, output_filename, options,
     return 0
 
 
+class _ProfileContext(object):
+  """A context manager for optionally profiling code."""
+
+  def __init__(self, output_path):
+    """Initialize.
+
+    Args:
+      output_path: A pathname for the profiler output.  An empty string
+          indicates that no profiling should be done.
+    """
+    self._output_path = output_path
+    self._profile = cProfile.Profile() if self._output_path else None
+
+  def __enter__(self):
+    if self._profile:
+      self._profile.enable()
+
+  def __exit__(self, exc_type, exc_value, traceback):  # pylint: disable=redefined-outer-name
+    if self._profile:
+      self._profile.disable()
+      self._profile.dump_stats(self._output_path)
+
 
 def main(argv):
   try:
@@ -188,6 +211,13 @@ def main(argv):
   except config.OptParseError as e:
     print >>sys.stderr, e.msg
     sys.exit(1)
+
+  with _ProfileContext(options.profile):
+    return _run_pytype(options)
+
+
+def _run_pytype(options):
+  """Run pytype with the given configuration options."""
   if not options.src_out:
     print >>sys.stderr, "Need at least one filename."
     sys.exit(1)

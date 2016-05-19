@@ -200,6 +200,10 @@ class Options(object):
               "to identify what created it.  If empty (the default), "
               "nothing is prepended."))
     o.add_option(
+        "--profile", type="string", action="store",
+        dest="profile", default=None,
+        help="Profile pytype and output the stats to the specified file.")
+    o.add_option(
         "--python_exe", type="string", action="store",
         dest="python_exe", default=None,
         # TODO(pludemann): pyc.py implements the following and might change.
