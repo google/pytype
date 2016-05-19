@@ -45,7 +45,7 @@ class Error(object):
   """Representation of an error in the error log."""
 
   def __init__(self, severity, message, filename=None, lineno=0, column=None,
-               linetext=None, methodname=None):
+               linetext=None, methodname=None, details=None):
     name = _CURRENT_ERROR_NAME.get()
     assert name, ("Errors must be created from a caller annotated "
                   "with @error_name.")
@@ -53,6 +53,8 @@ class Error(object):
     self._severity = severity
     self._message = message
     self._name = name
+    # Optional information about the error.
+    self._details = details
     # Optional information about error position.
     # TODO(dbaum): Do not allow filename (and maybe lineno) of None.
     self._filename = filename
@@ -62,13 +64,14 @@ class Error(object):
     self._methodname = methodname
 
   @classmethod
-  def at_opcode(cls, opcode, severity, message):
+  def at_opcode(cls, opcode, severity, message, details=None):
     """Return an error using an opcode for position information."""
     if opcode is None:
-      return cls(severity, message)
+      return cls(severity, message, details=details)
     else:
       return cls(severity, message, filename=opcode.code.co_filename,
-                 lineno=opcode.line, methodname=opcode.code.co_name)
+                 lineno=opcode.line, methodname=opcode.code.co_name,
+                 details=details)
 
   @classmethod
   def for_test(cls, severity, message, name, **kwargs):
@@ -106,7 +109,10 @@ class Error(object):
     pos = self._position()
     if pos:
       pos += ": "
-    return "%s%s [%s]" % (pos, self._message.replace("\n", "\n  "), self._name)
+    text = "%s%s [%s]" % (pos, self._message.replace("\n", "\n  "), self._name)
+    if self._details:
+      text += "\n  " + self._details.replace("\n", "\n  ")
+    return text
 
 
 class ErrorLogBase(object):
@@ -151,6 +157,10 @@ class ErrorLogBase(object):
 
   def error(self, opcode, message, *args):
     self._add(Error.at_opcode(opcode, SEVERITY_ERROR, message % args))
+
+  def error_with_details(self, opcode, message, details):
+    self._add(Error.at_opcode(opcode, SEVERITY_ERROR, message,
+                              details=details))
 
   def save(self):
     """Returns a checkpoint that represents the log messages up to now."""
@@ -205,8 +215,8 @@ class ErrorLog(ErrorLogBase):
 
   @_error_name("import-error")
   def import_error(self, opcode, module_name):
-    self.error(opcode, "Can't find module %r.\n" % module_name +
-               "Did you generate a .pyi?")
+    self.error_with_details(opcode, "Can't find module %r." % module_name,
+                            "Did you generate a .pyi?")
 
   @_error_name("wrong-arg-count")
   def wrong_arg_count(self, opcode, sig, call_arg_count):
@@ -219,8 +229,8 @@ class ErrorLog(ErrorLogBase):
   @_error_name("wrong-arg-types")
   def wrong_arg_types(self, opcode, sig, passed_args):
     """A function was called with the wrong parameter types."""
-    message = "".join([
-        "Function %s was called with the wrong arguments\n" % sig.name,
+    message = "Function %s was called with the wrong arguments" % sig.name
+    details = "".join([
         "Expected: (", str(sig), ")\n",
         "Actually passed: (",
         ", ".join("%s: %s" % (name, arg.name)
@@ -243,30 +253,6 @@ class ErrorLog(ErrorLogBase):
   def missing_parameter(self, opcode, sig, missing_parameter):
     """A function call is missing parameters."""
     message = "Missing parameter %r in call to function %s" % (
-        missing_parameter, sig.name)
-    self.error(opcode, message)
-
-  @_error_name("not-callable")
-  def not_callable(self, opcode, function):
-    """Calling an object that isn't callable."""
-    message = "%r object is not callable" % (function.name)
-    self.error(opcode, message)
-
-  @_error_name("wrong-keyword-args")
-  def wrong_keyword_args(self, opcode, sig, extra_keywords):
-    """A function was called with extra keywords."""
-    if len(extra_keywords) == 1:
-      message = "Invalid keyword argument %s to function %s\n" % (
-          extra_keywords[0], sig.name)
-    else:
-      message = "Invalid keyword arguments %s to function %s\n" % (
-          "(" + ", ".join(extra_keywords) + ")", sig.name)
-    self.error(opcode, message)
-
-  @_error_name("missing-parameter")
-  def missing_parameter(self, opcode, sig, missing_parameter):
-    """A function call is missing parameters."""
-    message = "Missing parameter %r in call to function %s\n" % (
         missing_parameter, sig.name)
     self.error(opcode, message)
 
