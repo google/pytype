@@ -1,6 +1,7 @@
 """Test errors.py."""
 
 import collections
+import textwrap
 
 from pytype import errors
 
@@ -92,6 +93,16 @@ class ErrorLogBaseTest(unittest.TestCase):
     self.assertEquals("foo.py", e._filename)
 
   @errors._error_name(_TEST_ERROR)
+  def test_error_with_details(self):
+    errorlog = errors.ErrorLog()
+    errorlog.error_with_details(None, "My message", "one\ntwo")
+    self.assertEquals(textwrap.dedent("""\
+        My message [test-error]
+          one
+          two
+        """), str(errorlog))
+
+  @errors._error_name(_TEST_ERROR)
   def test_warn(self):
     errorlog = errors.ErrorLog()
     op = FakeOpcode("foo.py", 123, "foo")
@@ -115,11 +126,6 @@ class ErrorLogBaseTest(unittest.TestCase):
     errorlog.error(None, "An error")
     self.assertEquals(2, len(errorlog))
     self.assertTrue(errorlog.has_error())
-
-  # TODO(dbaum): Test save/revert_to.
-
-
-# TODO(dbaum): Test ErrorLog.
 
 
 if __name__ == "__main__":

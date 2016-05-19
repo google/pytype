@@ -48,7 +48,8 @@ class ErrorTest(test_inference.InferenceTest):
     _, errors = self.InferAndCheck("""
       import rumplestiltskin
     """)
-    self.assertErrorLogContains(errors, r"line 2.*module.*rumplestiltskin")
+    self.assertErrorLogContains(
+        errors, r".*line 2.*module.*rumplestiltskin[^\n]+\[import-error\]")
 
   def testNameError(self):
     _, errors = self.InferAndCheck("""
@@ -91,7 +92,8 @@ class ErrorTest(test_inference.InferenceTest):
       hex(3j)
     """)
     self.assertErrorLogContains(
-        errors, (r"line 2.*hex was called with the wrong arguments.*"
+        errors, (r"line 2.*hex was called with the wrong arguments"
+                 r"[^\n]+\[wrong-arg-types\]\n.*"
                  r"expected:.*int.*passed:.*complex"))
 
   def testIndexError(self):
