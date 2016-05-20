@@ -27,11 +27,31 @@ def _FindBuiltinFile(name, extension=".pytd"):
   return data_files.GetPredefinedFile("builtins", name, extension)
 
 
+def _FindStdlibFile(name, extension=".pytd"):
+  return data_files.GetPredefinedFile("stdlib", name, extension)
+
+
 # Keyed by the parameter(s) passed to GetBuiltinsPyTD:
 _cached_builtins_pytd = None  # ... => pytype.pytd.pytd.TypeDeclUnit
 
 
-_BUILTIN_NAME = "__builtin__"
+def GetBuiltinsAndTyping():
+  """Get __builtin__.pytd and typing.pytd."""
+  global _cached_builtins_pytd
+  if not _cached_builtins_pytd:
+    t = parser.TypeDeclParser().Parse(_FindStdlibFile("typing"), name="typing")
+    t = t.Visit(visitors.AddNamePrefix("typing."))
+    t = t.Visit(visitors.NamedTypeToClassType())
+    b = parser.TypeDeclParser().Parse(_FindBuiltinFile("__builtin__"),
+                                      name="__builtin__")
+    b = b.Visit(visitors.NamedTypeToClassType())
+    b = b.Visit(visitors.LookupExternalTypes({"typing": t}, full_names=True))
+    b = b.Visit(visitors.FillInModuleClasses({"": b}))
+    t = t.Visit(visitors.FillInModuleClasses({"": t, "__builtin__": b}))
+    b = b.Visit(visitors.VerifyNoExternalTypes())
+    t = t.Visit(visitors.VerifyNoExternalTypes())
+    _cached_builtins_pytd = b, t
+  return _cached_builtins_pytd
 
 
 def GetBuiltinsPyTD():
@@ -44,17 +64,13 @@ def GetBuiltinsPyTD():
     A pytd.TypeDeclUnit instance. It'll directly contain the builtin classes
     and functions, and submodules for each of the standard library modules.
   """
-  global _cached_builtins_pytd
-  if not _cached_builtins_pytd:
-    builtins_pytd = parser.TypeDeclParser().Parse(
-        _FindBuiltinFile(_BUILTIN_NAME),
-        name=_BUILTIN_NAME)
-    _cached_builtins_pytd = visitors.LookupClasses(builtins_pytd)
-  return _cached_builtins_pytd
+  # TODO(kramm): Fix circular import.
+  from pytype.pytd import utils  # pylint: disable=g-import-not-at-top
+  return utils.Concat(*GetBuiltinsAndTyping())
 
 
 # TODO(kramm): Use python_version, once we have builtins for both Python 2 and
 # Python 3.
 def GetBuiltinsCode(unused_python_version):
   """Similar to GetBuiltinsPyTD, but for code in the .py file."""
-  return _FindBuiltinFile(_BUILTIN_NAME, extension=".py")
+  return _FindBuiltinFile("__builtin__", extension=".py")

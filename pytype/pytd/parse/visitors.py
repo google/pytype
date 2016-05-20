@@ -615,11 +615,7 @@ class VerifyNoExternalTypes(Visitor):
 
 
 class LookupExternalTypes(Visitor):
-  """Fill in ExternalType pointers using a symbol table.
-
-  This is an in-place visitor! It modifies the original tree. This is
-  necessary because we introduce loops.
-  """
+  """Look up ExternalType pointers using a symbol table."""
 
   def __init__(self, module_map, full_names=False):
     """Create this visitor.

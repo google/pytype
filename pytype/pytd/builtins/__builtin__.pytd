@@ -518,7 +518,7 @@ class listreverseiterator(Generic[T], object):
     def next(self) -> T
 
 T = TypeVar('T')
-class list(Generic[T], object):
+class list(Generic[T], Iterable, Sequence):
     N = TypeVar('N')
     A = TypeVar('A')
     def __init__(self) -> NoneType:

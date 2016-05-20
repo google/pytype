@@ -52,10 +52,12 @@ class Loader(object):
                options):
     self.base_module = base_module
     self.options = options
-    self.builtins = builtins.GetBuiltinsPyTD()
+    self.builtins, self.typing = builtins.GetBuiltinsAndTyping()
     self._modules = {
         "__builtin__":
-        Module("__builtin__", self.PREFIX + "__builtin__", self.builtins)
+        Module("__builtin__", self.PREFIX + "__builtin__", self.builtins),
+        "typing":
+        Module("typing", self.PREFIX + "typing", self.typing)
     }
     self._concatenated = None
     # Paranoid verification that pytype.main properly checked the flags:
