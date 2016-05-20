@@ -403,6 +403,20 @@ def process_function(func: Callable[..., Any]) -> None: ...
           def g() -> NoneType: ...
         """)
 
+  def testIterable(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        def f(l: Iterable[int]) -> int: ...
+      """)
+      with self.Infer("""\
+        import a
+        u = a.f([1, 2, 3])
+      """, deep=False, pythonpath=[d.path], extract_locals=True) as ty:
+        self.assertTypesMatchPytd(ty, """
+          a = ...  # type: module
+          u = ...  # type: int
+        """)
+
 
 if __name__ == "__main__":
   test_inference.main()

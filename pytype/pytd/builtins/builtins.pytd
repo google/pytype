@@ -522,7 +522,7 @@ class listreverseiterator(Generic[T], Iterator):
 
 # "T" is hardcoded in typing.py
 T = TypeVar('T')
-class list(Generic[T], MutableSequence):
+class list(Generic[T], Iterable, Sequence):
     N = TypeVar('N')
     A = TypeVar('A')
     def __init__(self) -> NoneType:

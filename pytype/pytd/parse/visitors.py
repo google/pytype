@@ -648,51 +648,6 @@ class VerifyNoExternalTypes(Visitor):
 
 
 class LookupExternalTypes(Visitor):
-  """Fill in ExternalType pointers using a symbol table.
-
-  def VisitExternalType(self, node):
-    raise ValueError("Unresolved ExternalType: %s" % str(node))
-
-
-class LookupBuiltins(Visitor):
-  """Look up built-in NamedTypes and give them fully-qualified names."""
-
-  def __init__(self, builtins):
-    """Create this visitor.
-
-    Args:
-      builtins: The builtins module.
-    """
-    super(LookupBuiltins, self).__init__()
-    self._builtins = builtins
-
-  def EnterTypeDeclUnit(self, unit):
-    self._current_unit = unit
-    self._prefix = unit.name + "."
-
-  def LeaveTypeDeclUnit(self, _):
-    del self._current_unit
-    del self._prefix
-
-  def VisitNamedType(self, t):
-    if "." in t.name:
-      return t
-    try:
-      self._current_unit.Lookup(self._prefix + t.name)
-    except KeyError:
-      # We can't find this identifier in our current module, and it isn't fully
-      # qualified (doesn't contain a dot). Now check whether it's a builtin.
-      try:
-        item = self._builtins.Lookup(self._builtins.name + "." + t.name)
-      except KeyError:
-        return t
-      else:
-        return _ToType(item)
-    else:
-      return t
-
-
-class LookupExternalTypes(Visitor):
   """Look up ExternalType pointers using a symbol table."""
 
   def __init__(self, module_map, full_names=False):

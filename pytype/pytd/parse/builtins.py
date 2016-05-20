@@ -27,6 +27,10 @@ def _FindBuiltinFile(name, extension=".pytd"):
   return data_files.GetPredefinedFile("builtins", name, extension)
 
 
+def _FindStdlibFile(name, extension=".pytd"):
+  return data_files.GetPredefinedFile("stdlib", name, extension)
+
+
 # Keyed by the parameter(s) passed to GetBuiltinsPyTD:
 _cached_builtins_pytd = None  # ... => pytype.pytd.pytd.TypeDeclUnit
 
@@ -37,21 +41,15 @@ def GetBuiltinsAndTyping():
   if not _cached_builtins_pytd:
     t = parser.TypeDeclParser().Parse(_FindStdlibFile("typing"), name="typing")
     t = t.Visit(visitors.AddNamePrefix("typing."))
+    t = t.Visit(visitors.NamedTypeToClassType())
     b = parser.TypeDeclParser().Parse(_FindBuiltinFile("__builtin__"),
                                       name="__builtin__")
-    b = b.Visit(visitors.AddNamePrefix("__builtin__."))
     b = b.Visit(visitors.NamedTypeToClassType())
     b = b.Visit(visitors.LookupExternalTypes({"typing": t}, full_names=True))
-    t = t.Visit(visitors.LookupBuiltins(b))
-    t = t.Visit(visitors.NamedTypeToClassType())
-    b.Visit(visitors.FillInModuleClasses({"": b, "typing": t,
-                                          "__builtin__": b}))
-    t.Visit(visitors.FillInModuleClasses({"": t, "typing": t,
-                                          "__builtin__": b}))
-    b.Visit(visitors.VerifyNoExternalTypes())
-    t.Visit(visitors.VerifyNoExternalTypes())
-    b.Visit(visitors.VerifyLookup())
-    t.Visit(visitors.VerifyLookup())
+    b = b.Visit(visitors.FillInModuleClasses({"": b}))
+    t = t.Visit(visitors.FillInModuleClasses({"": t, "__builtin__": b}))
+    b = b.Visit(visitors.VerifyNoExternalTypes())
+    t = t.Visit(visitors.VerifyNoExternalTypes())
     _cached_builtins_pytd = b, t
   return _cached_builtins_pytd
 
