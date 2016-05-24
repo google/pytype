@@ -41,8 +41,7 @@ class SolverTests(test_inference.InferenceTest):
         return [a - 42.0 for a in A.values()]
     """, deep=True, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
-          # TODO(kramm): This is missing int, bool, long, complex
-          def f(A: dict[?, float]) -> List[float, ...]
+          def f(A: dict[?, float or complex or int or long]) -> List[float or complex, ...]
       """)
 
   def testAnythingTypeParameters(self):

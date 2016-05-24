@@ -917,7 +917,7 @@ class VirtualMachine(object):
                                                  fallback_to_unsolvable=False)
       results.append(ret)
     rname = self.reverse_operator_name(name)
-    if self.reverse_operators and rname:
+    if self.reverse_operators and rname:  # experimental, typically false
       try:
         state, attr = self.load_attr_noerror(state, y, rname)
       except exceptions.ByteCodeAttributeError:

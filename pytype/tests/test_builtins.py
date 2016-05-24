@@ -209,7 +209,7 @@ class BuiltinTests(test_inference.InferenceTest):
     z = __any_object__
     t_testListInit2(__any_object__, z)
     print z + 1
-    """, deep=False, solve_unknowns=True, reverse_operators=False) as ty:
+    """, deep=False, solve_unknowns=True) as ty:
       self.assertTypesMatchPytd(ty, """
         z = ...  # type: complex or float or int or long
 

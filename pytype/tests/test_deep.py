@@ -66,11 +66,10 @@ class StructuralTest(test_inference.InferenceTest):
       self.assertTrue(ty.Lookup("f"))
 
   def testAddInt(self):
-    # This one works, but depends on int.__radd__
     with self.Infer("""
       def f(x):
         return x + 1
-    """, deep=True, solve_unknowns=False, extract_locals=False) as ty:
+    """, deep=True, solve_unknowns=True) as ty:
       self.assertHasReturnType(ty.Lookup("f"), self.int)
 
   def testIdentity(self):

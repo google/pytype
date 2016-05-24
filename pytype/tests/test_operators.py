@@ -1,6 +1,7 @@
 """Test operators (basic tests)."""
 
 import textwrap
+import unittest
 from pytype.pytd import pytd
 from pytype.pytd.parse import visitors
 from pytype.tests import test_inference
@@ -171,7 +172,7 @@ class ConcreteTest(test_inference.InferenceTest):
 
   def test_sub_frozenset(self):
     self.check_expr("x - y", ["x={1, 2}", "y=frozenset([1.0])"],
-                    self.intorfloat_set)
+                    self.int_set)
 
   def test_mod(self):
     self.check_expr("x % y", ["x=1", "y=2"], self.int)
@@ -299,12 +300,11 @@ class OverloadTest(test_inference.InferenceTest):
     self.check_unary("__nonzero__", "not", self.bool)
 
 
+@unittest.skip("Reverse operator overloading isn't supported")
 class ReverseTest(test_inference.InferenceTest):
   """Tests for reverse operators."""
 
   def check_reverse(self, function_name, op):
-    # TODO(pludemann): See comment for ConcreteTest about using variables to
-    #                  in the expressions to defeat the peephole optimizer.
     with self.Infer("""
       class Foo(object):
         def __{function_name}__(self, x):

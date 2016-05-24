@@ -243,8 +243,7 @@ class InferenceTest(unittest.TestCase):
     errorlog = self._InitErrorLog(code)
     unit = infer.infer_types(
         textwrap.dedent(code), errorlog, self.options,
-        deep=False, solve_unknowns=False, reverse_operators=True,
-        cache_unknowns=True)
+        deep=False, solve_unknowns=False, cache_unknowns=True)
     if report_errors and errorlog.has_error():
       errorlog.print_to_stderr()
       self.fail("Inferencer found %d errors" % len(errorlog))
@@ -259,8 +258,7 @@ class InferenceTest(unittest.TestCase):
     code = textwrap.dedent(code)
     errorlog = self._InitErrorLog(code)
     unit = infer.infer_types(
-        code, errorlog, self.options,
-        deep=True, reverse_operators=True, cache_unknowns=True)
+        code, errorlog, self.options, deep=True, cache_unknowns=True)
     unit.Visit(visitors.VerifyVisitor())
     return pytd_utils.CanonicalOrdering(unit), errorlog
 

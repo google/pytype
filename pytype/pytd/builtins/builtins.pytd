@@ -153,8 +153,6 @@ class object():
     def __gt__(self, other) -> bool
     def __le__(self, other) -> bool
     def __lt__(self, other) -> bool
-    def __rmod__(self, y: str) -> str
-    def __rmod__(self, y: unicode) -> unicode
     # TODO(pludemann): add these methods/attributes:
     # ['__class__', '__delattr__', '__doc__', '__format__', '__getattribute__', '__hash__', '__new__', '__reduce__', '__reduce_ex__', '__setattr__', '__str__', '__subclasshook__']
 
@@ -204,7 +202,6 @@ class str(basestring, Sequence):  # TODO(kramm): Sequence[str]
     def __mod__(self, y) -> str
     def __mul__(self, n: int) -> str
     def __ne__(self, y: str or bytearray) -> bool
-    def __rmul__(self, n: int) -> str
     def capitalize(self) -> str
     def center(self, width: int, ...) -> str
     def count(self, sub: str or unicode or bytearray, ...) -> int
@@ -264,11 +261,9 @@ class unicode(basestring, Sequence):  # TODO(kramm): Sequence[unicode]
     def __le__(self, y: str or unicode or bytearray) -> bool
     def __len__(self) -> int
     def __lt__(self, y: str or unicode or bytearray) -> bool
-    def __mod__(self, y: list or tuple) -> unicode
+    def __mod__(self, y) -> unicode
     def __mul__(self, n: int) -> unicode
     def __ne__(self, y: str or unicode or bytearray) -> bool
-    def __rmod__(self, y: unicode) -> unicode
-    def __rmul__(self, n: int) -> unicode
     def capitalize(self) -> unicode
     def center(self, width: int, ...) -> unicode
     def count(self, sub: str or unicode or bytearray, ...) -> int
@@ -327,7 +322,6 @@ class bytearray(Sequence):  # TODO(kramm): Sequence[int]
     def __lt__(self, y: str or bytearray) -> bool
     def __mul__(self, n: int) -> bytearray
     def __ne__(self, y: str or bytearray) -> bool
-    def __rmul__(self, n: int) -> bytearray
     def append(self, int: str or int) -> NoneType
     def capitalize(self) -> bytearray
     def center(self, width: int, ...) -> bytearray
@@ -402,11 +396,7 @@ class dict_keys(Generic[T], Iterator):
     def __lt__(self, y: set[T] or dict_keys[T]) -> bool
     def __ne__(self, y: set[T] or dict_keys[T]) -> bool
     def __or__(self, y) -> set[T]
-    def __rand__(self, y) -> set[T]
-    def __ror__(self, y) -> set[T]
-    def __rsub__(self, y) -> set[T]
-    def __rxor__(self, y) -> set[T]
-    def __sub__(self, y) -> set[T]
+    def __sub__(self, y: Iterator[T]) -> set[T]
     def __xor__(self, y) -> set[T]
 
 class dict_values(Generic[T], Iterator):
@@ -420,13 +410,9 @@ class dict_items(Generic[K, V], object):
     K2 = TypeVar('K2')
     V2 = TypeVar('V2')
     def __and__(self, y: set or dict_items) -> set[tuple[K or V]]
-    def __rand__(self, y: set or dict_items) -> set[tuple[K or V]]
     def __or__(self, y: set or dict_items[K2, V2]) -> set[tuple[K or V or K2 or V2]]
-    def __ror__(self, y: set or dict_items[K2, V2]) -> set[tuple[K or V or K2 or V2]]
     def __xor__(self, y: set or dict_items[K2, V2]) -> set[tuple[K or V or K2 or V2]]
-    def __rxor__(self, y: set or dict_items[K2, V2]) -> set[tuple[K or V or K2 or V2]]
     def __sub__(self, y: set or dict_items[K2, V2]) -> set[tuple[K or V]]
-    def __rsub__(self, y: set or dict_items) -> set[tuple[K or V]]
     def __contains__(self, y) -> bool
     def __iter__(self) -> `dictionary-itemiterator`[K,V]
     def __len__(self) -> int
@@ -564,7 +550,6 @@ class list(Generic[T], MutableSequence):
     def __mul__(self, n: int) -> list[T]
     def __ne__(self, y: list) -> bool
     def __reversed__(self) -> listreverseiterator[T]
-    def __rmul__(self, n: int) -> list[T]
     def __setitem__(self, i: int, y: N) -> NoneType:
       self := list[T or N]
     def __setitem__(self, i: slice, y) -> NoneType:
@@ -618,7 +603,6 @@ class tuple(Generic[T], Sequence):
     def __lt__(self, y: tuple) -> bool
     def __mul__(self, n: int) -> tuple[T]
     def __ne__(self, y: tuple) -> bool
-    def __rmul__(self, n: int) -> tuple[T]
     def count(self, value: T) -> int
     def index(self, value, ...) -> int
 
@@ -652,11 +636,7 @@ class set(Generic[T], MutableSet):
     def __lt__(self, y: set[T]) -> bool
     def __ne__(self, y) -> bool
     def __or__(self, y: set[T2]) -> set[T2]
-    def __rand__(self, y: set[T]) -> set[T]
-    def __ror__(self, y: set[T]) -> set[T]
-    def __rsub__(self, y: set[X] or frozenset[X]) -> set[X]
-    def __rxor__(self, y: set[T]) -> set[T]
-    def __sub__(self, y: set[X] or frozenset[X]) -> set[T]
+    def __sub__(self, y: AbstractSet[X]) -> set[T]
     def __xor__(self, y: set[T]) -> set[T]
     def clear(self, ...) -> NoneType
     def copy(self, ...) -> set[T]
@@ -678,8 +658,6 @@ class set(Generic[T], MutableSet):
 
 T = TypeVar('T')
 class frozenset(Generic[T], AbstractSet):
-    # TODO(pludemann): some of the combining methods may have wrong frozenset[...] types
-    #                  cf: __and__, __or__
     N = TypeVar('N')
     T2 = TypeVar('T2')
     def __init__(self) -> NoneType:
@@ -688,27 +666,19 @@ class frozenset(Generic[T], AbstractSet):
         self := frozenset[N]
     def __init__(self, x) -> NoneType:
         self := frozenset[?]
-    def __and__(self, y: set[T] or frozenset[T]) -> frozenset[T]
+    def __and__(self, y: AbstractSet[T2]) -> frozenset[T]
     def __contains__(self, y) -> bool
     def __eq__(self, y) -> bool
-    def __ge__(self, y: set[T] or frozenset[T]) -> bool
-    def __gt__(self, y: set[T] or frozenset[T]) -> bool
+    def __ge__(self, y: AbstractSet[T]) -> bool
+    def __gt__(self, y: AbstractSet[T]) -> bool
     def __iter__(self) -> setiterator[T]
-    def __le__(self, y: set[T] or frozenset[T]) -> bool
+    def __le__(self, y: AbstractSet[T]) -> bool
     def __len__(self) -> int
-    def __lt__(self, y: set[T] or frozenset[T]) -> bool
+    def __lt__(self, y: AbstractSet[T]) -> bool
     def __ne__(self, y) -> bool
-    def __or__(self, y: set[T2] or frozenset[T2]) -> frozenset[T or T2]
-    def __rand__(self, y: set[T]) -> set[T]
-    def __rand__(self, y: frozenset[T]) -> frozenset[T]
-    def __ror__(self, y: set[T]) -> set[T]
-    def __ror__(self, y: frozenset[T]) -> frozenset[T]
-    def __rsub__(self, y: set[T]) -> set[T]
-    def __rsub__(self, y: frozenset[T]) -> frozenset[T]
-    def __rxor__(self, y: set[T]) -> set[T]
-    def __rxor__(self, y: frozenset[T]) -> frozenset[T]
-    def __sub__(self, y: set[T] or frozenset[T]) -> frozenset[T]
-    def __xor__(self, y: set[T] or frozenset[T]) -> frozenset[T]
+    def __or__(self, y: AbstractSet[T2]) -> frozenset[T or T2]
+    def __sub__(self, y: AbstractSet[T2]) -> frozenset[T]
+    def __xor__(self, y: AbstractSet[T2]) -> frozenset[T or T2]
     def copy(self, ...) -> frozenset[T]
     def difference(self, ...) -> frozenset[T]
     def intersection(self, ...) -> frozenset[T]
@@ -724,73 +694,14 @@ class bool(int, SupportsInt, SupportsFloat):
     def __init__(self) -> NoneType
     def __abs__(self) -> int
     def __add__(self, y: int or bool) -> int
-    def __and__(self, y: int) -> int
     def __and__(self, y: bool) -> bool
-    def __coerce__(self, y: int) -> tuple[bool or int]  # tuple[bool, int]
-    def __coerce__(self, y: bool) -> tuple[bool]  # tuple[bool, bool]
-    def __div__(self, y: int or bool) -> int  # TODO(pludemann): or float for Python 3 (__truediv__)
-    def __divmod__(self, y: int or bool) -> tuple[int]  # tuple[int, int]
+    def __and__(self, y: int) -> int
+    def __coerce__(self, y: int) -> Tuple[bool, int]
+    def __coerce__(self, y: bool) -> Tuple[bool, bool]
+    def __div__(self, y: int or bool) -> int
+    def __divmod__(self, y: int or bool) -> Tuple[int, int]
     def __float__(self) -> float
     def __floordiv__(self, y: int or bool) -> int
-    def __hex__(self) -> str
-    def __index__(self) -> int
-    def __int__(self) -> int
-    def __invert__(self) -> int
-    def __long__(self) -> long
-    def __lshift__(self, y: int or bool) -> int
-    def __mod__(self, y: int or bool) -> int
-    def __mul__(self, y: int or bool) -> int
-    def __neg__(self) -> int
-    def __nonzero__(self) -> bool
-    def __oct__(self) -> str
-    def __or__(self, y: int) -> int
-    def __or__(self, y: bool) -> bool
-    def __pos__(self) -> int
-    def __pow__(self, y: bool) -> int
-    def __pow__(self, y: int) -> int or float  # True ** -2 == 0.5
-    # 3-arg __pow__ raises TypeError if 2nd arg is negative
-    # TODO(pludemann): disallow bool for 3rd arg?
-    # TODO(pludemann): remove "or bool" when we sort out bool subclass of int
-    def __pow__(self, y: int or bool, modulo: int or bool) -> int raises TypeError
-    def __radd__(self, y: int or bool) -> int
-    def __rand__(self, y: int) -> int
-    def __rand__(self, y: bool) -> bool
-    def __rdiv__(self, y: int or bool) -> int
-    def __rdivmod__(self, y: int or bool) -> tuple[int]  # tuple[int, int]
-    def __rfloordiv__(self, y: int or bool) -> int
-    def __rlshift__(self, y: int or bool) -> int
-    def __rmod__(self, y: int or bool) -> int
-    def __rmul__(self, y: int or bool) -> int
-    def __ror__(self, y: int) -> int
-    def __ror__(self, y: bool) -> bool
-    def __rpow__(self, x: int or bool) -> int or float
-    def __rrshift__(self, y: int or bool) -> int
-    def __rshift__(self, y: int or bool) -> int
-    def __rsub__(self, y: int or bool) -> int
-    def __rtruediv__(self, y: int or bool) -> float
-    def __rxor__(self, y: int) -> int
-    def __rxor__(self, y: bool) -> bool
-    def __sub__(self, y: int or bool) -> int
-    def __truediv__(self, y: int or bool) -> float
-    def __trunc__(self, ...) -> int
-    def __xor__(self, y: int) -> int
-    def __xor__(self, y: bool) -> bool
-    def bit_length(self) -> int
-    def conjugate(self, ...) -> int
-
-class int(object):  # TODO(kramm): SupportsInt, SupportsFloat, SupportsAbs)
-    def __init__(self, x: int or float, ...) -> NoneType
-    def __init__(self) -> NoneType
-    def __abs__(self) -> int
-    # TODO(pludemann): change other "y: int" to "y: int or bool" (also
-    #                  in other classes, such as float)
-    def __add__(self, y: int or bool) -> int
-    def __and__(self, y: int) -> int
-    def __coerce__(self, y: int) -> tuple[int]  # tuple[int, int]
-    def __div__(self, y: int) -> int
-    def __divmod__(self, y: int) -> tuple[int]  # tuple[int, int]
-    def __float__(self) -> float
-    def __floordiv__(self, y: int) -> int
     def __hex__(self) -> str
     def __index__(self) -> int
     def __int__(self) -> int
@@ -802,25 +713,85 @@ class int(object):  # TODO(kramm): SupportsInt, SupportsFloat, SupportsAbs)
     def __neg__(self) -> int
     def __nonzero__(self) -> bool
     def __oct__(self) -> str
+    def __or__(self, y: bool) -> bool
     def __or__(self, y: int) -> int
     def __pos__(self) -> int
     def __pow__(self, y: bool) -> int
-    def __pow__(self, y: int) -> int or float  # 1 ** -2 == 0.5
-    # 3-arg __pow__ raises TypeError if 2nd arg is negative
-    # TODO(pludemann): disallow bool for 3rd arg?
-    def __pow__(self, y: int or bool, modulo: int or bool) -> int raises TypeError
-    def __radd__(self, y: int) -> int
-    def __rand__(self, y: int) -> int
-    def __rlshift__(self, y: int) -> int
-    def __rmul__(self, y: int) -> int
-    def __ror__(self, y: int) -> int
-    def __rpow__(self, x: int) -> int or float
-    def __rrshift__(self, y: int) -> int
-    def __rshift__(self, y: int) -> int
-    def __rsub__(self, y: int) -> int
-    def __rxor__(self, y: int) -> int
-    def __sub__(self, y: int or bool) -> int
+    def __pow__(self, y: int) -> int or float  # True ** -2 == 0.5
+    def __pow__(self, y: int, modulo: int or bool) -> int
+    def __rshift__(self, y: int or long) -> int
+    def __sub__(self, y: int) -> int
     def __truediv__(self, y: int) -> float
+    def __trunc__(self, ...) -> int
+    def __xor__(self, y: bool) -> bool
+    def __xor__(self, y: int) -> int
+    def bit_length(self) -> int
+    def conjugate(self, ...) -> int
+
+class int(object):  # TODO(kramm): SupportsInt, SupportsFloat, SupportsAbs)
+    def __init__(self, x: int or float, ...) -> NoneType
+    def __init__(self) -> NoneType
+    def __add__(self, y: int) -> int
+    def __add__(self, y: float) -> float
+    def __add__(self, y: long) -> long
+    def __add__(self, y: complex) -> complex
+    def __and__(self, y: int) -> int
+    def __and__(self, y: float) -> float
+    def __and__(self, y: long) -> long
+    def __and__(self, y: complex) -> complex
+    def __div__(self, y: int) -> int
+    def __div__(self, y: float) -> float
+    def __div__(self, y: long) -> long
+    def __div__(self, y: complex) -> complex
+    def __divmod__(self, y: int) -> Tuple[int, int]
+    def __divmod__(self, y: float) -> Tuple[float, float]
+    def __divmod__(self, y: long) -> Tuple[long, float]
+    def __divmod__(self, y: complex) -> Tuple[complex, complex]
+    def __floordiv__(self, y: int) -> int
+    def __floordiv__(self, y: float) -> float
+    def __floordiv__(self, y: long) -> long
+    def __floordiv__(self, y: complex) -> complex
+    def __mod__(self, y: int) -> int
+    def __mod__(self, y: float) -> float
+    def __mod__(self, y: long) -> long
+    def __mod__(self, y: complex) -> complex
+    def __mul__(self, y: int) -> int
+    def __mul__(self, y: float) -> float
+    def __mul__(self, y: long) -> long
+    def __mul__(self, y: complex) -> complex
+    def __mul__(self, n: str) -> str
+    def __mul__(self, n: list[T]) -> list[T]
+    def __mul__(self, n: tuple[T]) -> tuple[T]
+    def __mul__(self, n: buffer) -> str
+    def __mul__(self, n: bytearray) -> bytearray
+    def __pow__(self, y: int, modulo: int) -> int
+    def __pow__(self, y: int) -> int or float  # 1 ** -2 == 0.5
+    def __pow__(self, y: float) -> float
+    def __pow__(self, y: long) -> long
+    def __pow__(self, y: complex) -> complex
+    def __rshift__(self, y: int) -> int
+    def __rshift__(self, y: long) -> long
+    def __sub__(self, y: int) -> int
+    def __sub__(self, y: float) -> float
+    def __sub__(self, y: long) -> long
+    def __sub__(self, y: complex) -> complex
+    def __truediv__(self, y: int or float or long) -> float
+    def __truediv__(self, y: complex) -> complex
+    def __abs__(self) -> int
+    def __coerce__(self, y: int) -> Tuple[int, int]
+    def __float__(self) -> float
+    def __hex__(self) -> str
+    def __index__(self) -> int
+    def __int__(self) -> int
+    def __invert__(self) -> int
+    def __long__(self) -> long
+    def __lshift__(self, y: int) -> int
+    def __lshift__(self, y: long) -> long
+    def __neg__(self) -> int
+    def __nonzero__(self) -> bool
+    def __oct__(self) -> str
+    def __or__(self, y: int) -> int
+    def __pos__(self) -> int
     def __trunc__(self, ...) -> int
     def __xor__(self, y: int) -> int
     def __eq__(self, y) -> bool
@@ -831,24 +802,25 @@ class int(object):  # TODO(kramm): SupportsInt, SupportsFloat, SupportsAbs)
     def __ne__(self, y) -> bool
     def bit_length(self) -> int
     def conjugate(self, ...) -> int
-    def __rdiv__(self, y: int) -> int
-    def __rdivmod__(self, y: int) -> tuple[int]  # tuple[int, int]
-    def __rfloordiv__(self, y: int) -> int
-    def __rmod__(self, y: int) -> int
-    def __rtruediv__(self, y: int) -> float
 
-# TODO(pludemann): # if version [ 3:
+# TODO(pludemann): # if version < 3:
 class long(SupportsInt, SupportsFloat, SupportsAbs):
     def __init__(self, x: int or float or long, ...) -> NoneType
     def __init__(self) -> NoneType
     def __abs__(self) -> long
     def __add__(self, y: int or long) -> long
     def __and__(self, y: int or long) -> long
-    def __coerce__(self, y: int or long) -> tuple[long]  # tuple[long, long]
+    def __coerce__(self, y: int or long) -> Tuple[long, long]
     def __div__(self, y: int or long) -> long
-    def __divmod__(self, y: int or long) -> tuple[long]  # tuple[long, long]
+    def __div__(self, y: float) -> float
+    def __div__(self, y: complex) -> complex
+    def __divmod__(self, y: int or long) -> Tuple[long]
+    def __divmod__(self, y: float) -> Tuple[float]
+    def __divmod__(self, y: complex) -> Tuple[complex]
     def __float__(self) -> float
     def __floordiv__(self, y: int or long) -> long
+    def __floordiv__(self, y: float) -> float
+    def __floordiv__(self, y: complex) -> complex
     def __hex__(self) -> str
     def __index__(self) -> long
     def __int__(self) -> int
@@ -856,26 +828,27 @@ class long(SupportsInt, SupportsFloat, SupportsAbs):
     def __long__(self) -> long
     def __lshift__(self, y: int or long) -> long
     def __mod__(self, y: int or long) -> long
+    def __mod__(self, y: float) -> float
+    def __mod__(self, y: complex) -> complex
     def __mul__(self, y: int or long) -> long
+    def __mul__(self, y: float) -> float
+    def __mul__(self, y: complex) -> complex
+    def __mul__(self, n: list[T]) -> list[T]
+    def __mul__(self, n: tuple[T]) -> tuple[T]
+    def __mul__(self, n: bytearray) -> bytearray
     def __neg__(self) -> long
     def __nonzero__(self) -> bool
     def __oct__(self) -> str
     def __or__(self, y: int or long) -> long
     def __pos__(self) -> long
-    def __pow__(self, y: int or long or bool) -> long or float  # 1L ** -2 = 0.5
-    # TODO(pludemann): disallow bool for 3rd arg?
-    def __pow__(self, y: long or int or bool, modulo: long or int or bool) -> long raises TypeError
-    def __radd__(self, y: int or long) -> long
-    def __rand__(self, y: int or long) -> long
-    def __rlshift__(self, y: int or long) -> long
-    def __rmul__(self, y: int or long) -> long
-    def __ror__(self, y: int or long) -> long
-    def __rpow__(self, x: int or long) -> long
-    def __rrshift__(self, y: int or long) -> long
+    def __pow__(self, y: long or int, modulo: long or int) -> long raises TypeError
+    def __pow__(self, y: int or long) -> long or float  # 1L ** -2 = 0.5
+    def __pow__(self, y: float) -> float
+    def __pow__(self, y: complex) -> complex
     def __rshift__(self, y: int or long) -> long
-    def __rsub__(self, y: int or long) -> long
-    def __rxor__(self, y: int or long) -> long
     def __sub__(self, y: int or long) -> long
+    def __sub__(self, y: float) -> float
+    def __sub__(self, y: complex) -> complex
     def __truediv__(self, y: int or long) -> float
     def __trunc__(self, ...) -> long
     def __xor__(self, y: int or long) -> long
@@ -887,46 +860,40 @@ class long(SupportsInt, SupportsFloat, SupportsAbs):
     def __ne__(self, y) -> bool
     def bit_length(self) -> int
     def conjugate(self, ...) -> long
-    def __rdiv__(self, y: int or long) -> long
-    def __rdivmod__(self, y: int or long) -> tuple[long]  # tuple[long, long]
-    def __rfloordiv__(self, y: int or long) -> long
-    def __rmod__(self, y: int or long) -> long
-    def __rtruediv__(self, y: int or long) -> float
 
 class float(SupportsInt, SupportsFloat, SupportsAbs):
-    def __init__(self, x: int or float) -> NoneType
+    def __init__(self, x: int or long or float) -> NoneType
     def __init__(self) -> NoneType
     def __abs__(self) -> float
-    def __add__(self, y: int or float) -> float
-    def __coerce__(self, y: int or float) -> tuple[float or int]  # tuple[float, float] or tuple[int, int]
-    def __div__(self, y: int) -> float
-    def __div__(self, y: float) -> float
-    def __divmod__(self, y: int or float) -> tuple[float]  # tuple[float, float]
+    def __add__(self, y: int or long or float) -> float
+    def __add__(self, y: complex) -> complex
+    def __coerce__(self, y: int or long or float) -> Tuple[float, float or int]
+    def __div__(self, y: int or long or float) -> float
+    def __div__(self, y: complex) -> complex
+    def __divmod__(self, y: int or long or float) -> Tuple[float, float]
+    def __divmod__(self, y: complex) -> Tuple[complex, complex]
     def __float__(self) -> float
-    def __floordiv__(self, y: int or float) -> float
+    def __floordiv__(self, y: int or long or float) -> float
+    def __floordiv__(self, y: complex) -> complex
     def __hex__(self) -> str
     def __index__(self) -> int
     def __int__(self) -> int
     def __invert__(self) -> int
     def __long__(self) -> long
-    def __lshift__(self, y: int or float) -> int
-    def __mod__(self, y: int or float) -> float
-    def __mul__(self, y: int or float) -> float
+    def __mod__(self, y: int or long or float) -> float
+    def __mod__(self, y: complex) -> complex
+    def __mul__(self, y: int or long or float) -> float
+    def __mul__(self, y: complex) -> complex
     def __neg__(self) -> float
     def __nonzero__(self) -> bool
     def __oct__(self) -> str
     def __pos__(self) -> float
-    def __pow__(self, y: int or bool or float or long) -> float
-    # there is no 3-arg version of __pow__ for float
-    def __radd__(self, y: int or float) -> float
-    def __rlshift__(self, y: int or float) -> int
-    def __rmul__(self, y: int or float) -> float
-    def __rpow__(self, x: int or bool or long or float) -> float
-    def __rrshift__(self, y: int or float) -> int
-    def __rshift__(self, y: int or float) -> int
-    def __rsub__(self, y: int or float) -> float
-    def __sub__(self, y: int or float) -> float
-    def __truediv__(self, y: int or float) -> float
+    def __pow__(self, y: int or long or float) -> float
+    def __pow__(self, y: complex) -> complex
+    def __sub__(self, y: int or long or float) -> float
+    def __sub__(self, y: complex) -> complex
+    def __truediv__(self, y: int or long or float) -> float
+    def __truediv__(self, y: complex) -> complex
     def __trunc__(self, ...) -> int
     def bit_length(self) -> int
     def conjugate(self, ...) -> float or int
@@ -936,46 +903,31 @@ class float(SupportsInt, SupportsFloat, SupportsAbs):
     def __le__(self, y: int or float) -> bool
     def __lt__(self, y: int or float) -> bool
     def __ne__(self, y: int or float) -> bool
-    def __rdiv__(self, y: int or float) -> float
-    def __rdivmod__(self, y: int or float) -> tuple[float]  # tuple[float, float]
-    def __rfloordiv__(self, y: int or float) -> float
-    def __rmod__(self, y: int or float) -> float
-    def __rtruediv__(self, y: int or float) -> float
     def as_integer_ratio(self) -> tuple[int]  # tuple[int, int]
     def fromhex(self, string: str or unicode or bytearray) -> float
     def hex(self) -> str
     def is_integer(self, ...) -> bool
 
 class complex(SupportsAbs):
-    def __init__(self, real: int or float or complex, ...) -> NoneType
+    def __init__(self, real: int or long or float or complex, ...) -> NoneType
     def __init__(self) -> NoneType
     def __abs__(self) -> float
-    def __add__(self, y: int or float or complex) -> complex
-    def __coerce__(self, y: int or float or complex) -> tuple[complex]  # tuple[complex, complex]
-    def __div__(self, y: int or float or complex) -> complex
-    def __divmod__(self, y: int or float or complex) -> tuple[complex]  # tuple[complex, complex]
-    def __eq__(self, y: int or float or complex) -> bool
-    def __floordiv__(self, y: int or float or complex) -> complex
-    def __mod__(self, y: int or float or complex) -> complex
-    def __mul__(self, y: int or float or complex) -> complex
-    def __ne__(self, y: int or float or complex) -> bool
+    def __add__(self, y: int or long or float or complex) -> complex
+    def __coerce__(self, y: int or long or float or complex) -> Tuple[complex, complex]
+    def __div__(self, y: int or long or float or complex) -> complex
+    def __divmod__(self, y: int or long or float or complex) -> Tuple[complex, complex]
+    def __eq__(self, y: int or long or float or complex) -> bool
+    def __floordiv__(self, y: int or long or float or complex) -> complex
+    def __mod__(self, y: int or long or float or complex) -> complex
+    def __mul__(self, y: int or long or float or complex) -> complex
+    def __ne__(self, y: int or long or float or complex) -> bool
     def __neg__(self) -> complex
     def __nonzero__(self) -> bool
     def __pos__(self) -> complex
-    def __pow__(self, y: int or float or long or bool or complex) -> complex
-    # there is no 3-arg version of __pow__ for complex
-    def __radd__(self, y: int or float or complex) -> complex
-    def __rmul__(self, y: int or float or complex) -> complex
-    def __rpow__(self, x: int or float or long or bool or complex) -> complex
-    def __rsub__(self, y: int or float or complex) -> complex
-    def __sub__(self, y: int or float or complex) -> complex
-    def __truediv__(self, y: int or float or complex) -> complex
+    def __pow__(self, y: int or long or float or complex) -> complex
+    def __sub__(self, y: int or long or float or complex) -> complex
+    def __truediv__(self, y: int or long or float or complex) -> complex
     def conjugate(self) -> complex
-    def __rdiv__(self, y: int or float or complex) -> complex
-    def __rdivmod__(self, y: int or float or complex) -> tuple[complex]  # tuple[complex, complex]
-    def __rfloordiv__(self, y: int or float or complex) -> complex
-    def __rmod__(self, y: int or float or complex) -> complex
-    def __rtruediv__(self, y: int or float or complex) -> complex
 
 class buffer(Sized):
     def __init__(self, object: str or unicode or bytearray or buffer, ...) -> NoneType
@@ -984,7 +936,6 @@ class buffer(Sized):
     def __getslice__(self, i: int, j: int) -> str
     def __len__(self) -> int
     def __mul__(self, n: int) -> str
-    def __rmul__(self, n: int) -> str
 
 class file(IO):
     def __init__(self, name: str, ...) -> NoneType

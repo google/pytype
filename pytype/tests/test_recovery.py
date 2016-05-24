@@ -26,7 +26,7 @@ class RecoveryTests(test_inference.InferenceTest):
         return "%s" % chr("foo")
     """, deep=True, solve_unknowns=True, report_errors=False) as ty:
       self.assertTypesMatchPytd(ty, """
-        def f() -> ?
+        def f() -> str
       """)
 
   def testBadFunction(self):
@@ -40,7 +40,7 @@ class RecoveryTests(test_inference.InferenceTest):
       self.assertTypesMatchPytd(ty, """
         time = ...  # type: module
         def f() -> ?
-        def g() -> ?
+        def g() -> str
       """)
 
   def testInheritFromInstance(self):

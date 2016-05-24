@@ -553,7 +553,7 @@ def infer_types(src,
                 errorlog, options,
                 filename=None, run_builtins=True,
                 deep=True, solve_unknowns=True,
-                reverse_operators=True, cache_unknowns=False,
+                reverse_operators=False, cache_unknowns=False,
                 maximum_depth=None):
   """Given Python source return its types.
 
@@ -568,7 +568,8 @@ def infer_types(src,
       execution flow.
     solve_unknowns: If yes, try to replace structural types ("~unknowns") with
       nominal types.
-    reverse_operators: If True, emulate operations like __radd__.
+    reverse_operators: Experimental. Allow overloading __radd__ etc.
+      For user-defined types only - our builtins don't need reverse operators.
     cache_unknowns: If True, do a faster approximation of unknown types.
     maximum_depth: Depth of the analysis. Default: unlimited.
   Returns:

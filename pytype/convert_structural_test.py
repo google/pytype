@@ -460,10 +460,7 @@ class MatchTest(unittest.TestCase):
       def foo(x: `~unknown1`) -> `~unknown3` or int
 
       class `~int`(object):  # TODO(kramm): Make pytype add the ~
-          def __rmul__(self, y: `~unknown4`) -> int
           def __eq__(self, y: int) -> `~unknown10` or bool
-          def __radd__(self, y: `~unknown1`) -> int
-          def __rsub__(self, y: `~unknown4`) -> int
 
       class `~unknown1`():
           def __add__(self, _1: int) -> `~unknown3`
@@ -488,7 +485,8 @@ class MatchTest(unittest.TestCase):
       class `~unknown12`():
           pass
     """)
-    self.assertItemsEqual(["int", "bool"], mapping["~unknown4"])
+    self.assertItemsEqual(["int", "bool", "long",
+                           "float", "complex"], mapping["~unknown4"])
 
   def test_add(self):
     mapping = self.parse_and_solve("""

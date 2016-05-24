@@ -28,7 +28,7 @@ class MatchTest(test_inference.InferenceTest):
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: Set[int]
 
-        def f(x: Set[int]) -> Set[Any]: ...
+        def f(x: Set[Any]) -> Set[Any]: ...
       """)
 
   def testMatchStatic(self):
