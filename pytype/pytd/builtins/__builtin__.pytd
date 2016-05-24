@@ -186,7 +186,7 @@ class classmethod(object):  # Also defined in __builtin__.py
     def __init__(self, func) -> NoneType
     def __get__(self, ...) -> ?
 
-class str(basestring):
+class str(basestring, Sequence):  # TODO(kramm): Sequence[str]
     # TODO(pludemann): See comment in TODO.txt for str.__init__
     def __init__(self, object) -> NoneType
     def __init__(self) -> NoneType
@@ -251,7 +251,7 @@ class str(basestring):
 
 bytes = str
 
-class unicode(basestring):
+class unicode(basestring, Sequence):  # TODO(kramm): Sequence[unicode]
     def __init__(self, string, ...) -> NoneType
     def __init__(self) -> NoneType
     def __add__(self, y: str or unicode or bytearray) -> unicode
@@ -310,7 +310,7 @@ class unicode(basestring):
     def upper(self) -> unicode
     def zfill(self, width: int) -> unicode
 
-class bytearray(object):
+class bytearray(Sequence):  # TODO(kramm): Sequence[int]
     def __init__(self, iterable_of_ints) -> NoneType
     def __init__(self) -> NoneType
     def __add__(self, y: str or bytearray) -> bytearray
@@ -372,49 +372,45 @@ class bytearray(object):
     def upper(self) -> bytearray
     def zfill(self, width: int) -> bytearray
 
-class bytearray_iterator(object):
+class bytearray_iterator(Iterator):  # TODO(kramm): Iterator[int]
     def __iter__(self) -> bytearray_iterator
     def next(self) -> int
 
-K = TypeVar('K')
-class `dictionary-keyiterator`(Generic[K], object):
-    def __iter__(self) -> `dictionary-keyiterator`[K]
-    def next(self) -> K
+class `dictionary-keyiterator`(Generic[T], Iterator):
+    def __iter__(self) -> `dictionary-keyiterator`[T]
+    def next(self) -> T
 
-V = TypeVar('V')
-class `dictionary-valueiterator`(Generic[V], object):
-    def __iter__(self) -> `dictionary-valueiterator`[V]
-    def next(self) -> V
+class `dictionary-valueiterator`(Generic[T], Iterator):
+    def __iter__(self) -> `dictionary-valueiterator`[T]
+    def next(self) -> T
 
 K = TypeVar('K')
 V = TypeVar('V')
-class `dictionary-itemiterator`(Generic[K, V], object):
+class `dictionary-itemiterator`(Generic[K, V]):
     def __iter__(self) -> `dictionary-itemiterator`[K, V]
     def next(self) -> tuple[K or V]  # tuple[K, V]  # TODO(pludemann): a pair
 
-K = TypeVar('K')
-class dict_keys(Generic[K], object):
-    def __and__(self, y: set[K] or dict_keys[K]) -> set[K]
-    def __contains__(self, y: K) -> bool
-    def __eq__(self, y: set[K] or dict_keys[K]) -> bool
-    def __ge__(self, y: set[K] or dict_keys[K]) -> bool
-    def __gt__(self, y: set[K] or dict_keys[K]) -> bool
-    def __iter__(self) -> `dictionary-keyiterator`[K]
-    def __le__(self, y: set[K] or dict_keys[K]) -> bool
+class dict_keys(Generic[T], Iterator):
+    def __and__(self, y: set[T] or dict_keys[T]) -> set[T]
+    def __contains__(self, y: T) -> bool
+    def __eq__(self, y: set[T] or dict_keys[T]) -> bool
+    def __ge__(self, y: set[T] or dict_keys[T]) -> bool
+    def __gt__(self, y: set[T] or dict_keys[T]) -> bool
+    def __iter__(self) -> `dictionary-keyiterator`[T]
+    def __le__(self, y: set[T] or dict_keys[T]) -> bool
     def __len__(self) -> int
-    def __lt__(self, y: set[K] or dict_keys[K]) -> bool
-    def __ne__(self, y: set[K] or dict_keys[K]) -> bool
-    def __or__(self, y) -> set[K]
-    def __rand__(self, y) -> set[K]
-    def __ror__(self, y) -> set[K]
-    def __rsub__(self, y) -> set[K]
-    def __rxor__(self, y) -> set[K]
-    def __sub__(self, y) -> set[K]
-    def __xor__(self, y) -> set[K]
+    def __lt__(self, y: set[T] or dict_keys[T]) -> bool
+    def __ne__(self, y: set[T] or dict_keys[T]) -> bool
+    def __or__(self, y) -> set[T]
+    def __rand__(self, y) -> set[T]
+    def __ror__(self, y) -> set[T]
+    def __rsub__(self, y) -> set[T]
+    def __rxor__(self, y) -> set[T]
+    def __sub__(self, y) -> set[T]
+    def __xor__(self, y) -> set[T]
 
-V = TypeVar('V')
-class dict_values(Generic[V], object):
-    def __iter__(self) -> `dictionary-valueiterator`[V]
+class dict_values(Generic[T], Iterator):
+    def __iter__(self) -> `dictionary-valueiterator`[T]
     def __len__(self) -> int
 
 K = TypeVar('K')
@@ -438,7 +434,7 @@ class dict_items(Generic[K, V], object):
 K = TypeVar('K')
 V = TypeVar('V')
 # "K" and "V" are hardcoded in other places (e.g. atomic_abstract_value.Dict)
-class dict(Generic[K, V], object):
+class dict(Generic[K, V], MutableMapping):
     X = TypeVar('X')
     K2 = TypeVar('K2')
     V2 = TypeVar('V2')
@@ -494,12 +490,12 @@ class dict(Generic[K, V], object):
     def viewvalues(self) -> dict_values
 
 T = TypeVar('T')
-class listiterator(Generic[T], object):
+class listiterator(Generic[T], Iterator):
     def __iter__(self) -> listiterator[T]
     def next(self) -> T
 
 T = TypeVar('T')
-class enumerate(Generic[T], object):
+class enumerate(Generic[T], Iterator):
     T2 = TypeVar('T2')
     def __init__(self, iterable: list[T2], ...) -> NoneType:
         self := enumerate[T2]
@@ -513,12 +509,12 @@ class enumerate(Generic[T], object):
     def next(self) -> tuple[int or long or T]  # tuple[int or long, T]
 
 T = TypeVar('T')
-class listreverseiterator(Generic[T], object):
+class listreverseiterator(Generic[T], Iterator):
     def __iter__(self) -> listreverseiterator[T]
     def next(self) -> T
 
 T = TypeVar('T')
-class list(Generic[T], Iterable, Sequence):
+class list(Generic[T], MutableSequence):
     N = TypeVar('N')
     A = TypeVar('A')
     def __init__(self) -> NoneType:
@@ -592,7 +588,7 @@ class list(Generic[T], Iterable, Sequence):
 
 # "reversed" is a type, see PyReversed_Type in Objects/enumobject.c
 T = TypeVar('T')
-class reversed(Generic[T], object):
+class reversed(Generic[T], Iterator):
     N = TypeVar('N')
     def __init__(self, sequence: list[N]) -> NoneType:
       self := reversed[N]
@@ -604,7 +600,7 @@ class reversed(Generic[T], object):
     def next(self) -> T
 
 T = TypeVar('T')
-class tuple(Generic[T], object):
+class tuple(Generic[T], Sequence):
     A = TypeVar('A')
     def __init__(self, p0) -> NoneType
     def __init__(self) -> NoneType
@@ -627,12 +623,12 @@ class tuple(Generic[T], object):
     def index(self, value, ...) -> int
 
 T = TypeVar('T')
-class tupleiterator(Generic[T], object):
+class tupleiterator(Generic[T], Iterator):
     def __iter__(self) -> tupleiterator[T]
     def next(self) -> T
 
 T = TypeVar('T')
-class set(Generic[T], object):
+class set(Generic[T], MutableSet):
     # TODO(pludemann): some of the combining methods may have wrong set[...] types
     #                  cf: __and__, __or__
     A = TypeVar('A')
@@ -681,7 +677,7 @@ class set(Generic[T], object):
     def difference(...) -> set[?]
 
 T = TypeVar('T')
-class frozenset(Generic[T], object):
+class frozenset(Generic[T], AbstractSet):
     # TODO(pludemann): some of the combining methods may have wrong frozenset[...] types
     #                  cf: __and__, __or__
     N = TypeVar('N')
@@ -719,11 +715,11 @@ class frozenset(Generic[T], object):
     def union(self, ...) -> frozenset[T]
 
 T = TypeVar('T')
-class setiterator(Generic[T], object):
+class setiterator(Generic[T], Iterator):
     def __iter__(self) -> setiterator[T]
     def next(self) -> T
 
-class bool(int):
+class bool(int, SupportsInt, SupportsFloat):
     def __init__(self, x) -> NoneType
     def __init__(self) -> NoneType
     def __abs__(self) -> int
@@ -782,7 +778,7 @@ class bool(int):
     def bit_length(self) -> int
     def conjugate(self, ...) -> int
 
-class int(object):
+class int(object):  # TODO(kramm): SupportsInt, SupportsFloat, SupportsAbs)
     def __init__(self, x: int or float, ...) -> NoneType
     def __init__(self) -> NoneType
     def __abs__(self) -> int
@@ -842,7 +838,7 @@ class int(object):
     def __rtruediv__(self, y: int) -> float
 
 # TODO(pludemann): # if version [ 3:
-class long(object):
+class long(SupportsInt, SupportsFloat, SupportsAbs):
     def __init__(self, x: int or float or long, ...) -> NoneType
     def __init__(self) -> NoneType
     def __abs__(self) -> long
@@ -897,7 +893,7 @@ class long(object):
     def __rmod__(self, y: int or long) -> long
     def __rtruediv__(self, y: int or long) -> float
 
-class float(object):
+class float(SupportsInt, SupportsFloat, SupportsAbs):
     def __init__(self, x: int or float) -> NoneType
     def __init__(self) -> NoneType
     def __abs__(self) -> float
@@ -950,7 +946,7 @@ class float(object):
     def hex(self) -> str
     def is_integer(self, ...) -> bool
 
-class complex(object):
+class complex(SupportsAbs):
     def __init__(self, real: int or float or complex, ...) -> NoneType
     def __init__(self) -> NoneType
     def __abs__(self) -> float
@@ -981,7 +977,7 @@ class complex(object):
     def __rmod__(self, y: int or float or complex) -> complex
     def __rtruediv__(self, y: int or float or complex) -> complex
 
-class buffer(object):
+class buffer(Sized):
     def __init__(self, object: str or unicode or bytearray or buffer, ...) -> NoneType
     def __add__(self, y: str or unicode or bytearray or buffer) -> str
     def __getitem__(self, index: int) -> str
@@ -990,7 +986,7 @@ class buffer(object):
     def __mul__(self, n: int) -> str
     def __rmul__(self, n: int) -> str
 
-class file(object):
+class file(IO):
     def __init__(self, name: str, ...) -> NoneType
     def __iter__(self) -> file  # TODO(pludemann): This looks wrong ... iterator[str]  ?
     def __enter__(self) -> file
@@ -1066,7 +1062,7 @@ class super(object):
     def __get__(self, obj, ...) -> super
     def __new__(self, ...) -> super
 
-class xrange(object):
+class xrange(Sized, Iterable, Reversible):
     def __init__(self, stop: int, ...) -> NoneType
     def __getitem__(self, index: int) -> int
     def __iter__(self) -> rangeiterator

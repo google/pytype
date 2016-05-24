@@ -46,10 +46,13 @@ def GetBuiltinsAndTyping():
                                       name="__builtin__")
     b = b.Visit(visitors.NamedTypeToClassType())
     b = b.Visit(visitors.LookupExternalTypes({"typing": t}, full_names=True))
-    b = b.Visit(visitors.FillInModuleClasses({"": b}))
-    t = t.Visit(visitors.FillInModuleClasses({"": t, "__builtin__": b}))
-    b = b.Visit(visitors.VerifyNoExternalTypes())
-    t = t.Visit(visitors.VerifyNoExternalTypes())
+    b.Visit(visitors.FillInModuleClasses({"": b, "typing": t}))
+    t.Visit(visitors.FillInModuleClasses({"": t, "typing": t,
+                                          "__builtin__": b}))
+    b.Visit(visitors.VerifyNoExternalTypes())
+    t.Visit(visitors.VerifyNoExternalTypes())
+    b.Visit(visitors.VerifyLookup())
+    t.Visit(visitors.VerifyLookup())
     _cached_builtins_pytd = b, t
   return _cached_builtins_pytd
 
