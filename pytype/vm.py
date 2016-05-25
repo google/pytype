@@ -1294,13 +1294,6 @@ class VirtualMachine(object):
     return abstract.LazyAbstractOrConcreteValue(
         name, d, d, self.maybe_convert_constant, self)
 
-  def get_special_module(self, name):
-    """Look up a hardcoded module implementation, or return None."""
-    if name == "typing":
-      return typing.Typing(self)
-    else:
-      return None
-
   # TODO(kramm): memoize
   def import_module(self, name, level):
     """Import the module and return the module object.
@@ -1319,9 +1312,6 @@ class VirtualMachine(object):
     if name:
       if level <= 0:
         assert level in [-1, 0]
-        module = self.get_special_module(name)
-        if module is not None:
-          return module
         ast = self.loader.import_name(name)
         if level == -1 and self.loader.base_module and not ast:
           ast = self.loader.import_relative_name(name)
@@ -1338,7 +1328,12 @@ class VirtualMachine(object):
       module_data = ast.constants + ast.classes + ast.functions + ast.aliases
       members = {val.name.rsplit(".")[-1]: val
                  for val in module_data}
-      return abstract.Module(self, ast.name, members)
+      module = abstract.Module(self, ast.name, members)
+      if level <= 0 and name == "typing":
+        # use a special overlay for stdlib/typing.pytd
+        return typing.TypingOverlay(self, module)
+      else:
+        return module
     else:
       return None
 

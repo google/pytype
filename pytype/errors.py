@@ -1,6 +1,7 @@
 """Code and data structures for storing and displaying errors."""
 
 import os
+import re
 import StringIO
 import sys
 
@@ -226,6 +227,9 @@ class ErrorLog(ErrorLogBase):
             sig.name, call_arg_count, sig.mandatory_param_count())
         )
 
+  def _prettyprint_arg(self, arg):
+    return re.sub(r"~unknown\d*", "?", arg.name)
+
   @_error_name("wrong-arg-types")
   def wrong_arg_types(self, opcode, sig, passed_args):
     """A function was called with the wrong parameter types."""
@@ -233,7 +237,7 @@ class ErrorLog(ErrorLogBase):
     details = "".join([
         "Expected: (", str(sig), ")\n",
         "Actually passed: (",
-        ", ".join("%s: %s" % (name, arg.name)
+        ", ".join("%s: %s" % (name, self._prettyprint_arg(arg))
                   for name, arg in zip(sig.param_names, passed_args)),
         ")"])
     self.error_with_details(opcode, message, details)
