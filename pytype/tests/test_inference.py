@@ -132,8 +132,9 @@ class Infer(object):
   def __exit__(self, error_type, value, traceback):
     if not error_type:
       return
-    log.error("*** unittest ERROR *** %s: %s", error_type.__name__, value)
-    _PrintErrorDebug("source", self.srccode)
+    if self.extra_verbose and self.srccode:
+      log.error("*** unittest ERROR *** %s: %s", error_type.__name__, value)
+      _PrintErrorDebug("source", self.srccode)
     if self.extra_verbose and self.inferred:
       _PrintErrorDebug("inferred PyTD", pytd.Print(self.inferred))
     if self.extra_verbose and self.optimized_types:
@@ -253,12 +254,12 @@ class InferenceTest(unittest.TestCase):
   def assertNoCrash(self, code, **kwargs):
     self.assertNoErrors(code, report_errors=False, **kwargs)
 
-  def InferAndCheck(self, code, pythonpath=()):
+  def InferAndCheck(self, code, deep=True, pythonpath=()):
     self.options.tweak(pythonpath=pythonpath)
     code = textwrap.dedent(code)
     errorlog = self._InitErrorLog(code)
     unit = infer.infer_types(
-        code, errorlog, self.options, deep=True, cache_unknowns=True)
+        code, errorlog, self.options, deep=deep, cache_unknowns=True)
     unit.Visit(visitors.VerifyVisitor())
     return pytd_utils.CanonicalOrdering(unit), errorlog
 

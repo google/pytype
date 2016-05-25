@@ -2132,12 +2132,15 @@ class InterpreterFunction(Function):
   def _check_call(self, node, posargs, namedargs, starargs, starstarargs):
     if not self.signature.has_param_annotations:
       return
-    for _, param_var, formal in self.signature.iter_args(
-        posargs, namedargs, starargs, starstarargs):
+    args = list(self.signature.iter_args(
+        posargs, namedargs, starargs, starstarargs))
+    for i, (_, param_var, formal) in enumerate(args):
       for combination in utils.deep_variable_product([param_var]):
         view = {value.variable: value for value in combination}
         if match_var_against_type(param_var, formal, {}, node, view) is None:
-          raise WrongArgTypes(self.signature, [view[param_var].data])
+          passed = [p.data[0] for _, p, _ in args]
+          passed[i] = view[param_var].data
+          raise WrongArgTypes(self.signature, passed)
 
   def call(self, node, unused_func, posargs, namedargs,
            starargs=None, starstarargs=None, new_locals=None):

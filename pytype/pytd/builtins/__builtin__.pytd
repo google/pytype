@@ -499,6 +499,7 @@ class listreverseiterator(Generic[T], Iterator):
     def __iter__(self) -> listreverseiterator[T]
     def next(self) -> T
 
+# "T" is hardcoded in typing.py
 T = TypeVar('T')
 class list(Generic[T], MutableSequence):
     N = TypeVar('N')
@@ -584,6 +585,7 @@ class reversed(Generic[T], Iterator):
     def __iter__(self) -> reversed
     def next(self) -> T
 
+# "T" is hardcoded in typing.py
 T = TypeVar('T')
 class tuple(Generic[T], Sequence):
     A = TypeVar('A')
