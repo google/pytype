@@ -18,6 +18,7 @@ from pytype import directors
 from pytype import errors
 from pytype import imports_map_loader
 from pytype import infer
+from pytype import metrics
 from pytype import utils
 from pytype.pyc import pyc
 from pytype.pytd import optimize
@@ -215,7 +216,8 @@ def main(argv):
     sys.exit(1)
 
   with _ProfileContext(options.profile):
-    return _run_pytype(options)
+    with metrics.MetricsContext(options.metrics):
+      return _run_pytype(options)
 
 
 def _run_pytype(options):

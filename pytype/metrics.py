@@ -21,8 +21,6 @@ def bar(n):
 import math
 import re
 
-import yaml
-
 
 # TODO(dbaum): Investigate mechanisms to ensure that counter variable names
 # match metric names.
@@ -40,23 +38,11 @@ def _prepare_for_test(enabled=True):
   _enabled = enabled
 
 
-def get_report():
+def _get_report():
   """Return a string listing all metrics, one per line."""
   lines = [str(_registered_metrics[n]) + "\n"
            for n in sorted(_registered_metrics)]
   return "".join(lines)
-
-
-def merge_from_file(metrics_file):
-  """Merge metrics recorded in another file into the current metrics."""
-  for metric in yaml.load(metrics_file):
-    existing = _registered_metrics.get(metric.name)
-    if existing is None:
-      _registered_metrics[metric.name] = metric
-    else:
-      if type(metric) != type(existing):  # pylint: disable=unidiomatic-typecheck
-        raise TypeError("Cannot merge metrics of different types.")
-      existing._merge(metric)  # pylint: disable=protected-access
 
 
 class Metric(object):
@@ -77,10 +63,6 @@ class Metric(object):
 
   def _summary(self):
     """Return a string sumamrizing the value of the metric."""
-    raise NotImplementedError
-
-  def _merge(self, other):
-    """Merge data from another metric of the same type."""
     raise NotImplementedError
 
   def __str__(self):
@@ -104,10 +86,6 @@ class Counter(Metric):
 
   def _summary(self):
     return str(self._total)
-
-  def _merge(self, other):
-    # pylint: disable=protected-access
-    self._total += other._total
 
 
 class MapCounter(Metric):
@@ -139,12 +117,6 @@ class MapCounter(Metric):
     details = ", ".join(["%s=%d" % (k, self._counts[k])
                          for k in sorted(self._counts)])
     return "%d {%s}" % (self._total, details)
-
-  def _merge(self, other):
-    # pylint: disable=protected-access
-    for key, count in other._counts.items():
-      self._counts[key] = self._counts.get(key, 0) + count
-      self._total += count
 
 
 class Distribution(Metric):
@@ -191,30 +163,15 @@ class Distribution(Metric):
         self._total, self._count, self._min, self._max, self._mean(),
         self._stdev())
 
-  def _merge(self, other):
-    # pylint: disable=protected-access
-    if other._count == 0:
-      # Exit early so we don't have to worry about min/max of None.
-      return
-    self._count += other._count
-    self._total += other._total
-    self._squared += other._squared
-    if self._min is None:
-      self._min = other._min
-      self._max = other._max
-    else:
-      self._min = min(self._min, other._min)
-      self._max = max(self._max, other._max)
-
 
 class MetricsContext(object):
-  """A context manager that configures metrics and writes their output."""
+  """A context manager that configures and writes a metrics report."""
 
   def __init__(self, output_path):
     """Initialize.
 
     Args:
-      output_path: The path for the metrics data.  If empty, no metrics are
+      output_path: The path for the metrics report.  If empty, no metrics are
           collected.
     """
     self._output_path = output_path
@@ -230,4 +187,4 @@ class MetricsContext(object):
     _enabled = self._old_enabled
     if self._output_path:
       with open(self._output_path, "w") as f:
-        yaml.dump(_registered_metrics.values(), f)
+        f.write(_get_report())

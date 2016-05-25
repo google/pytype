@@ -54,6 +54,8 @@ repper = repr_obj.repr
 
 Block = collections.namedtuple("Block", ["type", "handler", "level"])
 
+_opcode_counter = metrics.MapCounter("vm_opcode")
+
 
 class RecursionException(Exception):
   pass
