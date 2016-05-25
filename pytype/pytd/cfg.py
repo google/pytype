@@ -8,6 +8,7 @@ and to model path-specific visibility of nested data structures.
 import collections
 
 
+from pytype import metrics
 from pytype.pytd import utils
 
 
@@ -716,6 +717,9 @@ class Solver(object):
   they reoccur in the solving process.
   """
 
+  _cache_metric = metrics.MapCounter("cfg_solver_cache")
+  _goals_per_find_metric = metrics.Distribution("cfg_solver_goals_per_find")
+
   def __init__(self, program):
     """Initialize a solver instance. Every instance has their own cache.
 
@@ -747,6 +751,7 @@ class Solver(object):
   def _RecallOrFindSolution(self, state):
     """Memoized version of FindSolution()."""
     if state in self._solved_states:
+      Solver._cache_metric.inc("hit")
       return self._solved_states[state]
 
     # To prevent infinite loops, we insert this state into the hashmap as a
@@ -755,6 +760,7 @@ class Solver(object):
     # can also be solved in any of the children.
     self._solved_states[state] = True
 
+    Solver._cache_metric.inc("miss")
     result = self._solved_states[state] = self._FindSolution(state)
     return result
 
@@ -764,6 +770,7 @@ class Solver(object):
       return True
     if state.HasConflictingGoals():
       return False
+    Solver._goals_per_find_metric.add(len(state.goals))
     blocked = state.NodesWithAssignments()
     # We don't treat our current CFG node as blocked: If one of the goal
     # variables is overwritten by an assignment at our current pos, we assume

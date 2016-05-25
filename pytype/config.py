@@ -155,6 +155,10 @@ class Options(object):
         dest="api",
         help=("Only analyze the main method and everything called from it"))
     o.add_option(
+        "--metrics", type="string", action="store",
+        dest="metrics", default=None,
+        help="Write a metrics report to the specified file.")
+    o.add_option(
         "--no-native-builtins", action="store_false",
         dest="run_builtins", default=True,
         help=("Run the program without the native Python builtins preloaded."))

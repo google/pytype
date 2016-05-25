@@ -24,6 +24,7 @@ from pytype import abstract
 from pytype import blocks
 from pytype import exceptions
 from pytype import load_pytd
+from pytype import metrics
 from pytype import state as frame_state
 from pytype import typing
 from pytype import utils
@@ -52,6 +53,8 @@ repper = repr_obj.repr
 
 
 Block = collections.namedtuple("Block", ["type", "handler", "level"])
+
+_opcode_counter = metrics.MapCounter("vm_opcode")
 
 
 class RecursionException(Exception):
@@ -165,6 +168,7 @@ class VirtualMachine(object):
       FrameState right after this instruction that should roll over to the
       subsequent instruction.
     """
+    _opcode_counter.inc(op.name)
     if log.isEnabledFor(logging.INFO):
       self.log_opcode(op, state)
     self.frame.current_opcode = op
