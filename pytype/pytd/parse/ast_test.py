@@ -93,6 +93,8 @@ class TestASTGeneration(parser_test_base.ParserTest):
         """)
     # TODO(kramm): Should List and Tuple be fully qualified?
     self.TestRoundTrip(src, textwrap.dedent("""
+        from typing import List, Tuple
+
         def f(x: List[int]) -> Tuple[int, ...]: ...
         """))
 
@@ -105,6 +107,8 @@ class TestASTGeneration(parser_test_base.ParserTest):
         x = ...  # type: a
         """)
     self.TestRoundTrip(src, textwrap.dedent("""
+        import abc
+
         from abc import a
         from abc import b
         from abc import c
@@ -124,6 +128,8 @@ class TestASTGeneration(parser_test_base.ParserTest):
         _attributes = ...  # type: TypingTuple[str, ...]
     """)
     self.TestRoundTrip(src, textwrap.dedent("""
+        from typing import Tuple
+
         _attributes = ...  # type: Tuple[str, ...]
         """))
 
@@ -135,6 +141,8 @@ class TestASTGeneration(parser_test_base.ParserTest):
         class A(SomeClass): ...
         """)
     self.TestRoundTrip(src, textwrap.dedent("""
+        import foobar
+
         from foobar import SomeClass
 
         class A(foobar.SomeClass):
@@ -149,6 +157,8 @@ class TestASTGeneration(parser_test_base.ParserTest):
         class A(BaseClass): ...
         """)
     self.TestRoundTrip(src, textwrap.dedent("""
+        import foo.bar
+
         from foo.bar import Base as BaseClass
 
         class A(foo.bar.Base):
@@ -242,6 +252,8 @@ class TestASTGeneration(parser_test_base.ParserTest):
         def f(x): ...
         """)
     self.TestRoundTrip(src, textwrap.dedent("""
+        from typing import Any
+
         def f(x) -> Any: ...
         """))
 
@@ -345,14 +357,6 @@ class TestASTGeneration(parser_test_base.ParserTest):
     self.TestRoundTrip(src, textwrap.dedent("""
         from typing import List, Tuple, Union
 
-        def walk() -> Tuple[Union[str, unicode, List[Union[str, unicode]]], ...]: ...
-    """))
-
-  def testTuple(self):
-    src = textwrap.dedent("""
-        def walk() -> Tuple[AnyStr, List[AnyStr]]
-    """)
-    self.TestRoundTrip(src, textwrap.dedent("""
         def walk() -> Tuple[Union[str, unicode, List[Union[str, unicode]]], ...]: ...
     """))
 
@@ -507,19 +511,6 @@ class TestASTGeneration(parser_test_base.ParserTest):
         c = ...  # type: bool
     """))
 
-  def testBoolConstant(self):
-    """Test abbreviated constant definitions."""
-    src = textwrap.dedent("""
-        a = 0
-        b = True
-        c = False
-        """)
-    self.TestRoundTrip(src, textwrap.dedent("""
-        a = ...  # type: int
-        b = ...  # type: bool
-        c = ...  # type: bool
-    """))
-
   def testUnion(self):
     """Test parsing of Unions."""
     src = textwrap.dedent("""
@@ -528,6 +519,8 @@ class TestASTGeneration(parser_test_base.ParserTest):
         c = ...  # type: typing.Union[int, float, complex]
     """)
     self.TestRoundTrip(src, textwrap.dedent("""
+        from typing import Union
+
         a = ...  # type: Union[int, float]
         b = ...  # type: Union[int, float, complex]
         c = ...  # type: Union[int, float, complex]
@@ -541,6 +534,8 @@ class TestASTGeneration(parser_test_base.ParserTest):
         c = ...  # type: typing.Any
     """)
     self.TestRoundTrip(src, textwrap.dedent("""
+        from typing import Any
+
         a = ...  # type: Any
         b = ...  # type: Any
         c = ...  # type: Any
@@ -672,6 +667,8 @@ class TestASTGeneration(parser_test_base.ParserTest):
             # comment 6
     """)
     dest = textwrap.dedent("""
+        from typing import Any
+
         def baz(i: X) -> Any:
             i := X
 
@@ -1060,6 +1057,8 @@ class TestASTGeneration(parser_test_base.ParserTest):
         def f(x: SomeType) -> SomeType: ...
         """)
     self.TestRoundTrip(data, textwrap.dedent("""
+        from typing import TypeVar
+
         def f(x: SomeType) -> SomeType: ...
 
         class MyClass1(object):

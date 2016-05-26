@@ -295,6 +295,45 @@ class TestVisitors(parser_test_base.ParserTest):
         self.ApplyVisitorToString(src, visitors.ExpandSignatures()),
         new_src)
 
+  def testPrintImports(self):
+    no_import_src = textwrap.dedent("""
+      def f(x: Union[int, slice]) -> List[Any]: ...
+      def g(x: foo.C.C2) -> None: ...
+    """)
+    imports = textwrap.dedent("""
+      import foo.C
+      from typing import Any, List, Union
+    """)
+    expected_src = (imports + no_import_src).strip()  # Extra newlines
+
+    tree = self.Parse(no_import_src)
+    res = tree.Visit(visitors.PrintVisitor())
+
+    # AssertSourceEquals strips imports
+    self.AssertSourceEquals(res, no_import_src)
+    self.assertMultiLineEqual(res, expected_src)
+
+  def testPrintImportsNamedType(self):
+    # Can't get tree by parsing so build explicitly
+    node = pytd.Constant("x", pytd.NamedType("typing.List"))
+    tree = pytd.TypeDeclUnit(constants=(node,),
+                             functions=(), classes=(), aliases=(), name=None)
+
+    expected_src = textwrap.dedent("""
+      import typing
+
+      x = ...  # type: typing.List
+    """).strip()
+    res = tree.Visit(visitors.PrintVisitor())
+    self.assertMultiLineEqual(res, expected_src)
+
+  def testPrintImportsIgnoresExisting(self):
+    src = "from foo import b"
+
+    tree = self.Parse(src)
+    res = tree.Visit(visitors.PrintVisitor())
+    self.assertMultiLineEqual(res, src)
+
 
 if __name__ == "__main__":
   unittest.main()
