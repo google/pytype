@@ -93,6 +93,8 @@ class TestASTGeneration(parser_test_base.ParserTest):
         """)
     # TODO(kramm): Should List and Tuple be fully qualified?
     self.TestRoundTrip(src, textwrap.dedent("""
+        from typing import List, Tuple
+
         def f(x: List[int]) -> Tuple[int, ...]: ...
         """))
 
@@ -105,6 +107,8 @@ class TestASTGeneration(parser_test_base.ParserTest):
         x = ...  # type: a
         """)
     self.TestRoundTrip(src, textwrap.dedent("""
+        import abc
+
         from abc import a
         from abc import b
         from abc import c
@@ -124,6 +128,8 @@ class TestASTGeneration(parser_test_base.ParserTest):
         _attributes = ...  # type: TypingTuple[str, ...]
     """)
     self.TestRoundTrip(src, textwrap.dedent("""
+        from typing import Tuple
+
         _attributes = ...  # type: Tuple[str, ...]
         """))
 
@@ -135,6 +141,8 @@ class TestASTGeneration(parser_test_base.ParserTest):
         class A(SomeClass): ...
         """)
     self.TestRoundTrip(src, textwrap.dedent("""
+        import foobar
+
         from foobar import SomeClass
 
         class A(foobar.SomeClass):
@@ -149,6 +157,8 @@ class TestASTGeneration(parser_test_base.ParserTest):
         class A(BaseClass): ...
         """)
     self.TestRoundTrip(src, textwrap.dedent("""
+        import foo.bar
+
         from foo.bar import Base as BaseClass
 
         class A(foo.bar.Base):
@@ -220,7 +230,12 @@ class TestASTGeneration(parser_test_base.ParserTest):
         def foo(a: __builtins__.int) -> __builtins__.int raises foo.Foo: ...
         def qqsv(x_or_y: compiler.symbols.types.BooleanType) -> None: ...
         """)
-    self.TestRoundTrip(src)
+    expected = (textwrap.dedent("""
+        import __builtins__
+        import compiler.symbols.types
+        import foo
+        """) + src)
+    self.TestRoundTrip(src, expected)
 
   def testEllipsis1(self):
     """Test parsing of function bodies."""
@@ -237,6 +252,8 @@ class TestASTGeneration(parser_test_base.ParserTest):
         def f(x): ...
         """)
     self.TestRoundTrip(src, textwrap.dedent("""
+        from typing import Any
+
         def f(x) -> Any: ...
         """))
 
@@ -330,13 +347,16 @@ class TestASTGeneration(parser_test_base.ParserTest):
     src = textwrap.dedent("""
         def f() -> Tuple[int, ...]: ...
     """)
-    self.TestRoundTrip(src)
+    expected = "from typing import Tuple\n" + src
+    self.TestRoundTrip(src, expected)
 
   def testTuple(self):
     src = textwrap.dedent("""
         def walk() -> Tuple[AnyStr, List[AnyStr]]
     """)
     self.TestRoundTrip(src, textwrap.dedent("""
+        from typing import List, Tuple, Union
+
         def walk() -> Tuple[Union[str, unicode, List[Union[str, unicode]]], ...]: ...
     """))
 
@@ -356,7 +376,11 @@ class TestASTGeneration(parser_test_base.ParserTest):
         class T3(typing.Generic[X, Y], T1, T2):
             pass
     """)
-    self.TestRoundTrip(src)
+    expected = (textwrap.dedent("""
+        import typing
+        from typing import TypeVar
+    """) + src)
+    self.TestRoundTrip(src, expected)
 
   def testTemplated(self):
     src = textwrap.dedent("""
@@ -379,7 +403,11 @@ class TestASTGeneration(parser_test_base.ParserTest):
         class T2(typing.Generic[X, Y], object):
             def foo(a: X) -> complex raises Except[X, Y]: ...
     """)
-    self.TestRoundTrip(src)
+    expected = (textwrap.dedent("""
+        import typing
+        from typing import List, TypeVar
+    """) + src)
+    self.TestRoundTrip(src, expected)
 
   def testOptionalParameters(self):
     """Test parsing of individual optional parameters."""
@@ -467,7 +495,8 @@ class TestASTGeneration(parser_test_base.ParserTest):
       a = ...  # type: int
       b = ...  # type: Union[int, float]
     """).strip()
-    self.TestRoundTrip(src)
+    expected = "from typing import Union\n\n" + src
+    self.TestRoundTrip(src, expected)
 
   def testBoolConstant(self):
     """Test abbreviated constant definitions."""
@@ -490,6 +519,8 @@ class TestASTGeneration(parser_test_base.ParserTest):
         c = ...  # type: typing.Union[int, float, complex]
     """)
     self.TestRoundTrip(src, textwrap.dedent("""
+        from typing import Union
+
         a = ...  # type: Union[int, float]
         b = ...  # type: Union[int, float, complex]
         c = ...  # type: Union[int, float, complex]
@@ -503,6 +534,8 @@ class TestASTGeneration(parser_test_base.ParserTest):
         c = ...  # type: typing.Any
     """)
     self.TestRoundTrip(src, textwrap.dedent("""
+        from typing import Any
+
         a = ...  # type: Any
         b = ...  # type: Any
         c = ...  # type: Any
@@ -536,7 +569,8 @@ class TestASTGeneration(parser_test_base.ParserTest):
     src = textwrap.dedent("""
         def foo(a: Union[int, float], c: bool) -> List[int] raises Foo, Test: ...
     """)
-    self.TestRoundTrip(src)
+    expected = "from typing import List, Union\n" + src
+    self.TestRoundTrip(src, expected)
 
   def testPass(self):
     src = textwrap.dedent("""
@@ -561,7 +595,8 @@ class TestASTGeneration(parser_test_base.ParserTest):
         T1 = TypeVar('T1')
         def f(x: T1) -> T1: ...
     """)
-    self.TestRoundTrip(src)
+    expected = "from typing import TypeVar\n" + src
+    self.TestRoundTrip(src, expected)
 
   def testSpaces(self):
     """Test that start-of-file / end-of-file whitespace is handled correctly."""
@@ -632,6 +667,8 @@ class TestASTGeneration(parser_test_base.ParserTest):
             # comment 6
     """)
     dest = textwrap.dedent("""
+        from typing import Any
+
         def baz(i: X) -> Any:
             i := X
 
@@ -763,7 +800,8 @@ class TestASTGeneration(parser_test_base.ParserTest):
             def append_int(l: list) -> Any:
                 l := List[int]
     """)
-    self.TestRoundTrip(src)
+    expected = "from typing import Any, List\n" + src
+    self.TestRoundTrip(src, expected)
 
   def testExternalTypes(self):
     """Test parsing of names with dots."""
@@ -864,7 +902,8 @@ class TestASTGeneration(parser_test_base.ParserTest):
     data1 = "def foo() -> Any: ..."
     data2 = "def foo() -> None: ..."
 
-    self.TestRoundTrip(data1)
+    self.TestRoundTrip(data1,
+                       "from typing import Any\n\n" + data1)
     self.TestRoundTrip(data2)
 
   def testVersionSplitFunction(self):
@@ -972,7 +1011,11 @@ class TestASTGeneration(parser_test_base.ParserTest):
         class MyClass(typing.Generic[T], object):
             def f(self, T) -> T: ...
         """)
-    self.TestRoundTrip(data)
+    expected = (textwrap.dedent("""
+        import typing
+        from typing import TypeVar
+        """) + data)
+    self.TestRoundTrip(data, expected)
 
   def testTemplateNameReuseOnClass(self):
     """Test name reuse between templated classes."""
@@ -985,7 +1028,11 @@ class TestASTGeneration(parser_test_base.ParserTest):
         class MyClass2(typing.Generic[T], object):
             def f(self, T) -> T: ...
         """)
-    self.TestRoundTrip(data)
+    expected = (textwrap.dedent("""
+        import typing
+        from typing import TypeVar
+        """) + data)
+    self.TestRoundTrip(data, expected)
 
   def testTemplateNameReuseOnMethods(self):
     """Test name reuse between methods."""
@@ -1010,6 +1057,8 @@ class TestASTGeneration(parser_test_base.ParserTest):
         def f(x: SomeType) -> SomeType: ...
         """)
     self.TestRoundTrip(data, textwrap.dedent("""
+        from typing import TypeVar
+
         def f(x: SomeType) -> SomeType: ...
 
         class MyClass1(object):
@@ -1025,6 +1074,8 @@ class TestASTGeneration(parser_test_base.ParserTest):
         def g(x: T) -> T: ...
         """)
     self.TestRoundTrip(data, textwrap.dedent("""
+        from typing import TypeVar
+
         T = TypeVar('T')
         def f(x: T) -> T: ...
         T = TypeVar('T')
@@ -1096,7 +1147,8 @@ class TestASTGeneration(parser_test_base.ParserTest):
             b := List[complex]
         def bar(a: int, b: List[float]) -> Z:
             b := List[str]""")
-    self.TestRoundTrip(src)
+    expected = "from typing import List, Union\n" + src
+    self.TestRoundTrip(src, expected)
 
   def testTypeCommentSpaces(self):
     """Test types in comments."""
@@ -1105,6 +1157,8 @@ class TestASTGeneration(parser_test_base.ParserTest):
       y = ... # type: int
       z = ...# type: float
     """), textwrap.dedent("""
+      from typing import List
+
       x = ...  # type: List[int]
       y = ...  # type: int
       z = ...  # type: float

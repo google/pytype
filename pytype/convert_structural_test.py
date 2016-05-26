@@ -597,6 +597,8 @@ class MatchTest(unittest.TestCase):
           def foobaz(self, x: int) -> int
     """)
     expected = textwrap.dedent("""
+      from typing import Any
+
       class A(object):
           def foo(self, x: A) -> Any: ...
           def foobaz(self, x: int) -> int: ...
@@ -618,6 +620,8 @@ class MatchTest(unittest.TestCase):
           def append(self, v:NoneType) -> NoneType
     """)
     expected = textwrap.dedent("""
+      from typing import Any, Dict, List
+
       class A(object):
           def foo(self, x: Dict[str, List[Any]]) -> bool: ...
     """).lstrip()

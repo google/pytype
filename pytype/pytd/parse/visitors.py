@@ -16,6 +16,7 @@
 
 """Visitor(s) for walking ASTs."""
 
+import collections
 import itertools
 import logging
 import re
@@ -102,6 +103,8 @@ class PrintVisitor(Visitor):
   def __init__(self):
     super(PrintVisitor, self).__init__()
     self.class_names = []  # allow nested classes
+    self.imports = collections.defaultdict(set)
+    self.in_alias = False
 
   def _EscapedName(self, name):
     """Name, possibly escaped with backticks.
@@ -134,9 +137,45 @@ class PrintVisitor(Visitor):
     assert isinstance(t, pytd.HomogeneousContainerType)
     return t.base_type == "tuple"
 
+  def _RequireImport(self, module, name=None):
+    """Register that we're using name from module.
+
+    Args:
+      module: string identifier.
+      name: if None, means we want 'import module'. Otherwise string identifier
+       that we want to import.
+    """
+    if not self.in_alias:
+      self.imports[module].add(name)
+
+  def _RequireTypingImport(self, name=None):
+    """Convenience function, wrapper for _RequireImport("typing", name)."""
+    self._RequireImport("typing", name)
+
+  def _GenerateImportStrings(self):
+    """Generate import statements needed by the nodes we've visited so far.
+
+    Returns:
+      List of strings.
+    """
+    ret = []
+    for module in sorted(self.imports):
+      names = set(self.imports[module])
+      if None in names:
+        ret.append("import %s" % module)
+        names.remove(None)
+
+      if names:
+        name_str = ", ".join(sorted(names))
+        ret.append("from %s import %s" % (module, name_str))
+
+    return ret
+
   def VisitTypeDeclUnit(self, node):
     """Convert the AST for an entire module back to a string."""
-    sections = [node.aliases, node.constants, node.functions, node.classes]
+    sections = [self._GenerateImportStrings(), node.aliases,
+                node.constants, node.functions, node.classes]
+
     sections_as_string = ("\n".join(section_suite)
                           for section_suite in sections
                           if section_suite)
@@ -167,14 +206,25 @@ class PrintVisitor(Visitor):
   def LeaveClass(self, unused_node):
     self.class_names.pop()
 
+  def EnterAlias(self, unused_node):
+    assert not self.in_alias
+    self.in_alias = True
+
+  def LeaveAlias(self, unused_node):
+    assert self.in_alias
+    self.in_alias = False
+
   def VisitClass(self, node):
     """Visit a class, producing a multi-line, properly indented string."""
     if node.template:
       typevars = "".join(
           "%s = TypeVar('%s')\n" % (t.name, t.name)
           for t in sorted(self.old_node.template))
+      if typevars:
+        self._RequireTypingImport("TypeVar")
       parents = ("typing.Generic[%s]" %
                  ", ".join(node.template),) + node.parents
+      self._RequireTypingImport()
     else:
       typevars = ""
       parents = node.parents
@@ -198,6 +248,8 @@ class PrintVisitor(Visitor):
         "%s = TypeVar('%s')\n" % (t.name, t.name)
         for sig in self.old_node.signatures
         for t in sorted(sig.template))
+    if typevars:
+      self._RequireTypingImport("TypeVar")
     function_name = self._EscapedName(node.name)
     decorators = ""
     if node.kind == pytd.STATICMETHOD:
@@ -279,7 +331,11 @@ class PrintVisitor(Visitor):
       # PEP 484 allows this special abbreviation.
       return "None"
     else:
-      return self._SafeName(node.name)
+      name = self._SafeName(node.name)
+      if "." in name:
+        module = name[:name.rfind(".")]
+        self._RequireImport(module)
+      return name
 
   def VisitClassType(self, node):
     return self.VisitNamedType(node)
@@ -291,7 +347,9 @@ class PrintVisitor(Visitor):
 
   def VisitExternalType(self, node):
     """Convert an external type to a string."""
-    return self._SafeName(node.module) + "." + self._SafeName(node.name)
+    module = self._SafeName(node.module)
+    self._RequireImport(module)
+    return module + "." + self._SafeName(node.name)
 
   def VisitNativeType(self, node):
     """Convert a native type to a string."""
@@ -299,10 +357,12 @@ class PrintVisitor(Visitor):
 
   def VisitFunctionType(self, unused_node):
     """Convert a function type to a string."""
+    self._RequireTypingImport("Callable")
     return "Callable"
 
   def VisitAnythingType(self, unused_node):
     """Convert an anything type to a string."""
+    self._RequireTypingImport("Any")
     return "Any"
 
   def VisitNothingType(self, unused_node):
@@ -316,6 +376,7 @@ class PrintVisitor(Visitor):
     """Capitalize a generic type, if necessary."""
     capitalized = name.capitalize()
     if capitalized in self.PEP484_CAPITALIZED:
+      self._RequireTypingImport(capitalized)
       return capitalized
     else:
       return name
@@ -338,6 +399,7 @@ class PrintVisitor(Visitor):
       # TODO(kramm): Why doesn't the optimizer do this?
       return node.type_list[0]
     else:
+      self._RequireTypingImport("Union")
       return "Union[" + ", ".join(node.type_list) + "]"
 
   def VisitIntersectionType(self, node):
