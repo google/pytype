@@ -1233,6 +1233,11 @@ class UnboundLocalError(object):
     def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
     def __unicode__(self, ...) -> unicode
 
+class UnicodeDecodeError(object):
+    def __init__(self, ...) -> NoneType
+    def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
+    def __unicode__(self, ...) -> unicode
+
 class UnicodeError(object):
     def __init__(self, ...) -> NoneType
     def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
