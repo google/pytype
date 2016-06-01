@@ -20,6 +20,8 @@ from typing import Generic
 #                       def Method PYTHONCODE Foo_Method
 #                  If not useful, remove.
 
+__file__ = ...  # type:str
+
 T = TypeVar('T')
 def __import__(name: str or unicode or bytearray, ...) -> module
 def abs PYTHONCODE
