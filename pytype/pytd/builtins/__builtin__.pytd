@@ -116,6 +116,7 @@ def pow(x: complex, y: int or float, ...) -> complex
 def range(stop: int, ...) -> list[int] or list
 def reduce(function, sequence: str, ...) -> str
 def reduce(function, sequence: set, ...) -> ?
+def reload(x: module) -> module
 def repr PYTHONCODE
 def round(number: int or float, ...) -> float
 def setattr(object, name: str or unicode or bytearray, value) -> NoneType
