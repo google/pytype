@@ -38,6 +38,6 @@ setup(
     package_data={'pytype': ['pytd/builtins/*',
                              'pytd/stdlib/*',
                             ] + typeshed},
-    requires=['ply (>=3.4)'],
-    install_requires=['ply>=3.4'],
+    requires=['ply (>=3.4)', 'pyyaml (>=3.11)'],
+    install_requires=['ply>=3.4', 'pyyaml>=3.11'],
 )
