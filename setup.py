@@ -40,4 +40,5 @@ setup(
                             ] + typeshed},
     requires=['ply (>=3.4)', 'pyyaml (>=3.11)'],
     install_requires=['ply>=3.4', 'pyyaml>=3.11'],
+    classifier=["Programming Language :: Python :: 2.7"],
 )

@@ -14,6 +14,9 @@ aims to help you annotate your source files and to provide automatic static
 type-checking for your code.
 
 ## How to get started
+
+You currently need Python 2.7 to *run* pytype. (It can *analyze* Python 3, though)
+
 ```
 git clone https://github.com/google/pytype.git
 git submodule init
