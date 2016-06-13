@@ -382,6 +382,22 @@ class CFGTest(unittest.TestCase):
     self.assertTrue(n2.HasCombination([ay]))
     self.assertTrue(n2.HasCombination([by]))
 
+  def testPasteAtSameNode(self):
+    p = cfg.Program()
+    n1 = p.NewCFGNode("n1")
+    x = p.NewVariable("x")
+    ax = x.AddBinding("a", source_set=[], where=n1)
+    bx = x.AddBinding("b", source_set=[], where=n1)
+    y = p.NewVariable("y")
+    y.PasteVariable(x, n1)
+    ay, by = y.bindings
+    self.assertEquals([v.data for v in x.bindings], ["a", "b"])
+    self.assertEquals([v.data for v in y.bindings], ["a", "b"])
+    o, = ay.origins
+    self.assertItemsEqual([cfg.SourceSet([])], o.source_sets)
+    o, = ay.origins
+    self.assertItemsEqual([cfg.SourceSet([])], o.source_sets)
+
   def testId(self):
     p = cfg.Program()
     n1 = p.NewCFGNode("n1")

@@ -142,7 +142,7 @@ class Infer(object):
     if self.extra_verbose and self.extract_locals:
       _PrintErrorDebug("extract_locals (removed unknown) PyTD",
                        pytd.Print(self.extract_locals))
-    if self.canonical_types:
+    if self.extra_verbose and self.canonical_types:
       _PrintErrorDebug("canonical PyTD", pytd.Print(self.canonical_types))
     return False  # re-raise the exception that was passed in
 

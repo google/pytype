@@ -39,7 +39,7 @@ class Explainer(object):
   def ExplainWhy(self, combination, cfg_node):
     """Explain why a combination is possible."""
     self.out.write("At %s, we can have the following assignments:\n" %
-                   cfg_node.name)
+                   cfg_node)
     self.DisplayPossible(combination, cfg_node)
 
   def DisplayPossible(self, combination, cfg_node):
@@ -68,7 +68,7 @@ class Explainer(object):
     # Is it just one assignment, which is impossible?
     if len(combination) == 1:
       v, = combination
-      self.out.write("At %s, the assignment\n" % cfg_node.name)
+      self.out.write("At %s, the assignment\n" % cfg_node)
       self.out.write("  %s = %s\n" % (v.variable.name, repr(v.data)))
       self.out.write("is impossible for the following reason(s):\n")
       self.PrintBadSources(v, cfg_node)
@@ -81,7 +81,7 @@ class Explainer(object):
       shortened = LeaveOneOut(combination, i)
       if cfg_node.HasCombination(shortened):
         bad_apple = combination[i]
-        self.out.write("At %s, it's impossible that\n" % cfg_node.name)
+        self.out.write("At %s, it's impossible that\n" % cfg_node)
         self.out.write("  %s = %s\n" %
                        (bad_apple.variable.name, repr(bad_apple.data)))
         self.out.write("if we want this to be valid at the same time:\n")
@@ -97,20 +97,24 @@ class Explainer(object):
     for new_cfg_node, source_sets in value.origins:
       if not self.CanReach(cfg_node, new_cfg_node, blocked):
         if self.CanReach(cfg_node, new_cfg_node, set()):
-          n = None  # make pylint happy
-          assert any(n in blocked
-                     for n in self.FindPathBackwards(cfg_node, new_cfg_node)), (
-                         "Discrepancy between FindPathBackwards and CanReach")
-          self.out.write("%s from %s is overwritten at %s\n" %
-                         (value.variable.name, new_cfg_node.name, n.name))
+          for n in self.FindPathBackwards(cfg_node, new_cfg_node):
+            if n in blocked:
+              break
+          else:
+            assert False, "Discrepancy between FindPathBackwards and CanReach"
+          self.out.write("%s from %s is overwritten at %s:\n" %
+                         (value.variable.name, new_cfg_node, n))
+          for v in value.variable.bindings:
+            if v is not value and any(n == o.where for o in v.origins):
+              self.out.write("%s = %s\n" % (v.variable.name, v.data))
         else:
           self.out.write("The assignment at %s isn't reachable from %s.\n" %
-                         (new_cfg_node.name, cfg_node.name))
+                         (new_cfg_node, cfg_node))
         continue
       for source_set in source_sets:
         if new_cfg_node.HasCombination(list(source_set)):
           continue
-        self.out.write("At %s, this:\n" % new_cfg_node.name)
+        self.out.write("At %s, this:\n" % new_cfg_node)
         for v in source_set:
           self.out.write("  %s = %s\n" % (v.variable.name, repr(v.data)))
         self.out.write("isn't possible because:\n")
