@@ -391,5 +391,22 @@ class ClassesTest(test_inference.InferenceTest):
       seed = ...  # type: function
       """)
 
+  def testMROWithUnsolvables(self):
+    with self.Infer("""
+      from nowhere import X, Y  # pytype: disable=import-error
+      class Foo(Y):
+        pass
+      class Bar(X, Foo, Y):
+        pass
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        X = ...  # type: ?
+        Y = ...  # type: ?
+        class Foo(?):
+          ...
+        class Bar(?, Foo, ?):
+          ...
+      """)
+
 if __name__ == "__main__":
   test_inference.main()

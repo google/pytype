@@ -2101,12 +2101,12 @@ class VirtualMachine(object):
     except parser.ParseError as e:
       log.warning("Couldn't parse module %r", name)
       self.errorlog.pyi_error(e)
-      module = self.unsolvable
+      module = abstract.Unsolvable(self)
     else:
       if module is None:
         log.warning("Couldn't find module %r", name)
         self.errorlog.import_error(self.frame.current_opcode, name)
-        module = self.unsolvable
+        module = abstract.Unsolvable(self)
     return state.push(module.to_variable(state.node, name))
 
   def byte_IMPORT_FROM(self, state, op):
