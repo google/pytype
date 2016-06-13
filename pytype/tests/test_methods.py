@@ -796,6 +796,20 @@ class MethodsTest(test_inference.InferenceTest):
       def myfunction(self: Foo, x, y) -> int
     """)
 
+  def testAssignMethod(self):
+    with self.Infer("""
+      class Foo(object):
+        pass
+      def myfunction(self, x, y):
+        return 3
+      Foo.mymethod = myfunction
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+        class Foo(object):
+          def mymethod(self, x, y) -> int
+        def myfunction(self: Foo, x, y) -> int
+      """)
+
   def testFunctionAttr(self):
     ty = self.Infer("""
       import os

@@ -1261,7 +1261,7 @@ class Function(Instance):
   def property_get(self, callself, callcls):
     if not callself or not callcls:
       return self
-    self.parent_class = callcls.bindings[0].data
+    self.is_attribute_of_class = True
     key = tuple(sorted(callself.data))
     if key not in self._bound_functions_cache:
       self._bound_functions_cache[key] = (self.bound_class)(

@@ -374,6 +374,22 @@ class ClassesTest(test_inference.InferenceTest):
           x = ...  # type: int or str
       """)
 
+  def testBoundMethod(self):
+    with self.Infer("""
+      class Random(object):
+          def seed(self):
+            pass
+
+      _inst = Random()
+      seed = _inst.seed
+    """, deep=True, solve_unknowns=True) as ty:
+      self.assertTypesMatchPytd(ty, """
+      class Random(object):
+         def seed(self) -> None: ...
+
+      _inst = ...  # type: Random
+      seed = ...  # type: function
+      """)
 
 if __name__ == "__main__":
   test_inference.main()
