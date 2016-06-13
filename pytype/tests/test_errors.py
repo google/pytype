@@ -209,6 +209,15 @@ class ErrorTest(test_inference.InferenceTest):
       """, pythonpath=[d.path])
       self.assertErrorLogContains(errors, r"(x: float, y: list)")
 
+  def testEmpty(self):
+    _, errors = self.InferAndCheck("""
+      [][1]
+    """)
+    self.assertErrorLogContains(
+        errors, "empty")
+    self.assertErrorLogDoesNotContain(
+        errors, "unsupported.operands")
+
 
 if __name__ == "__main__":
   test_inference.main()

@@ -1391,10 +1391,12 @@ class VirtualMachine(object):
 
   def byte_BINARY_SUBSCR(self, state):
     (container, index) = state.topn(2)
+    checkpoint = self.errorlog.save()
     state = self.binary_operator(state, "__getitem__")
     if state.top().bindings:
       return state
     else:
+      self.errorlog.revert_to(checkpoint)
       self.errorlog.index_error(
           self.frame.current_opcode, container, index)
       return state

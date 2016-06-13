@@ -165,7 +165,7 @@ class ErrorLogBase(object):
 
   def save(self):
     """Returns a checkpoint that represents the log messages up to now."""
-    return CheckPoint(self, len(self.errors))
+    return CheckPoint(self, len(self._errors))
 
   def revert_to(self, checkpoint):
     assert checkpoint.log is self
