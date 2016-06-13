@@ -398,7 +398,7 @@ class InferenceTest(unittest.TestCase):
                  **kwargs)
 
   def _InferAndVerify(self, src, pythonpath=(), imports_map=None,
-                      report_errors=False, **kwargs):
+                      report_errors=False, quick=False, **kwargs):
     """Infer types for the source code treating it as a module.
 
     Used by Infer().
@@ -417,7 +417,9 @@ class InferenceTest(unittest.TestCase):
     Returns:
       A pytd.TypeDeclUnit
     """
-    self.options.tweak(pythonpath=pythonpath, imports_map=imports_map)
+    self.options.tweak(pythonpath=pythonpath,
+                       imports_map=imports_map,
+                       quick=quick)
     errorlog = self._InitErrorLog(src)
     unit = infer.infer_types(src, errorlog, self.options, **kwargs)
     unit = pytd_utils.CanonicalOrdering(unit.Visit(visitors.VerifyVisitor()))
