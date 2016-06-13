@@ -2147,7 +2147,7 @@ class InterpreterFunction(Function):
            starargs=None, starstarargs=None, new_locals=None):
     if self.vm.is_at_maximum_depth():
       log.info("Maximum depth reached. Not analyzing %r", self.name)
-      return node, self.vm.program.NewVariable(self.name + ":ret", [], [], node)
+      return node, self.vm.create_new_unsolvable(node, "maxdepth")
     self._check_call(node, posargs, namedargs, starargs, starstarargs)
     callargs = self._map_args(node, posargs, namedargs, starargs, starstarargs)
     # Might throw vm.RecursionException:

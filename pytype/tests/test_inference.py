@@ -396,7 +396,7 @@ class InferenceTest(unittest.TestCase):
                  **kwargs)
 
   def _InferAndVerify(self, src, pythonpath=(), imports_map=None,
-                      report_errors=False, **kwargs):
+                      report_errors=False, quick=False, **kwargs):
     """Infer types for the source code treating it as a module.
 
     Used by class Infer (which sets up a 'with' framework)
@@ -407,6 +407,7 @@ class InferenceTest(unittest.TestCase):
       imports_map: --imports_info data
       report_errors: Whether to fail if the type inferencer reports any errors
         in the program.
+      quick: Try to run faster, by avoiding costly computations.
       **kwargs: Keyword paramters to pass through to the type inferencer.
 
     Raises:
@@ -414,7 +415,9 @@ class InferenceTest(unittest.TestCase):
     Returns:
       A pytd.TypeDeclUnit
     """
-    self.options.tweak(pythonpath=pythonpath, imports_map=imports_map)
+    self.options.tweak(pythonpath=pythonpath,
+                       imports_map=imports_map,
+                       quick=quick)
     errorlog = self._InitErrorLog(src)
     unit = infer.infer_types(src, errorlog, self.options, **kwargs)
     unit = pytd_utils.CanonicalOrdering(unit.Visit(visitors.VerifyVisitor()))
