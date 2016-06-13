@@ -474,11 +474,17 @@ class Variable(object):
   def PasteVariable(self, variable, where):
     """Adds all the bindings from another variable to this one."""
     for binding in variable.bindings:
-      # TODO(kramm): If where == binding.where, this should just copy the
-      # source_sets from binding, instead of adding another level of indirection
-      # by creating a new source set with binding in it.
       copy = self.AddBinding(binding.data)
-      copy.AddOrigin(where, {binding})
+      if all(origin.where == where for origin in binding.origins):
+        # Optimization: If all the bindings of the old variable happen at the
+        # same CFG node as the one we're assigning now, we can copy the old
+        # source_set instead of linking to it. That way, the solver has to
+        # consider fewer levels.
+        for origin in binding.origins:
+          for source_set in origin.source_sets:
+            copy.AddOrigin(origin.where, source_set)
+      else:
+        copy.AddOrigin(where, {binding})
 
   def FilterAndPasteVariable(self, variable, where):
     """Adds all the visible bindings from another variable to this one."""

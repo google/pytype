@@ -386,11 +386,11 @@ class CFGTest(unittest.TestCase):
     p = cfg.Program()
     n1 = p.NewCFGNode("n1")
     x = p.NewVariable("x")
-    x.AddBinding("a", source_set=[], where=n1)
-    x.AddBinding("b", source_set=[], where=n1)
+    ax = x.AddBinding("a", source_set=[], where=n1)
+    bx = x.AddBinding("b", source_set=[], where=n1)
     y = p.NewVariable("y")
     y.PasteVariable(x, n1)
-    ay, _ = y.bindings
+    ay, by = y.bindings
     self.assertEquals([v.data for v in x.bindings], ["a", "b"])
     self.assertEquals([v.data for v in y.bindings], ["a", "b"])
     o, = ay.origins
