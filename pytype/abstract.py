@@ -2349,7 +2349,7 @@ class Generator(Instance):
       return node, self.to_variable(node, name)
     elif name == "throw":
       # We don't model exceptions in a way that would allow us to induce one
-      # inside a coroutine. So just return ourselves, mapping the call of
+      # inside a coroutine. So just return ourself, mapping the call of
       # throw() to a next() (which won't be executed).
       return node, self.to_variable(node, name)
     else:
@@ -2518,7 +2518,7 @@ class Unsolvable(AtomicAbstractValue):
   def get_attribute(self, node, name, valself=None, valcls=None):
     if name in self.IGNORED_ATTRIBUTES:
       return node, None
-    return node, self.to_variable(node, self.name)
+    return node, Unsolvable(self.vm).to_variable(node, self.name)
 
   def get_attribute_flat(self, node, name):
     return self.get_attribute(node, name)
@@ -2528,12 +2528,14 @@ class Unsolvable(AtomicAbstractValue):
 
   def call(self, node, unused_func, posargs, namedargs,
            starargs=None, starstarargs=None):
+    # return ourself.
     return node, self.to_variable(node, self.name)
 
   def to_variable(self, node, name=None):
     return self.vm.program.NewVariable(name, [self], source_set=[], where=node)
 
   def get_class(self):
+    # return ourself.
     return self.to_variable(self.vm.root_cfg_node, self.name)
 
   def to_pytd_def(self, name):
@@ -2553,6 +2555,7 @@ class Unsolvable(AtomicAbstractValue):
       return subst
 
   def instantiate(self, node):
+    # return ourself.
     return self.to_variable(node, self.name)
 
 

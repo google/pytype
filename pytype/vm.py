@@ -519,6 +519,9 @@ class VirtualMachine(object):
 
   def create_new_unknown(self, node, name, source=None, action=None):
     """Create a new variable containing unknown, originating from this one."""
+    if self.options.quick:
+      # unsolvable instances are cheaper than unknown, so use those for --quick.
+      return abstract.Unsolvable(self).to_variable(node, name)
     unknown = self._create_new_unknown_value(action)
     v = self.program.NewVariable(name)
     val = v.AddBinding(
@@ -2055,12 +2058,12 @@ class VirtualMachine(object):
     except parser.ParseError as e:
       log.warning("Couldn't parse module %r", name)
       self.errorlog.pyi_error(e)
-      module = self.unsolvable
+      module = abstract.Unsolvable(self)
     else:
       if module is None:
         log.warning("Couldn't find module %r", name)
         self.errorlog.import_error(self.frame.current_opcode, name)
-        module = self.unsolvable
+        module = abstract.Unsolvable(self)
     return state.push(module.to_variable(state.node, name))
 
   def byte_IMPORT_FROM(self, state, op):
