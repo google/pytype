@@ -417,6 +417,24 @@ def process_function(func: Callable[..., Any]) -> None: ...
           u = ...  # type: int
         """)
 
+  def testObject(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        def make_object() -> object
+      """)
+      with self.Infer("""\
+        import a
+        def f(x=None):
+          x = a.make_object()
+          z = x - __any_object__  # type: ignore
+          z + __any_object__
+          return True
+      """, deep=True, pythonpath=[d.path], solve_unknowns=True) as ty:
+        self.assertTypesMatchPytd(ty, """
+          a = ...  # type: module
+          def f(*args, **kwargs) -> Any: ...
+        """)
+
 
 if __name__ == "__main__":
   test_inference.main()

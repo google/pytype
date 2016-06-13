@@ -2414,7 +2414,8 @@ class InterpreterFunction(Function):
            starargs=None, starstarargs=None, new_locals=None):
     if self.vm.is_at_maximum_depth():
       log.info("Maximum depth reached. Not analyzing %r", self.name)
-      return node, self.vm.create_new_unsolvable(node, "maxdepth")
+      # TODO(kramm): Return an unsolvable here.
+      return node, self.vm.program.NewVariable(self.name + ":ret", [], [], node)
     self._check_call(node, posargs, namedargs, starargs, starstarargs)
     callargs = self._map_args(node, posargs, namedargs, starargs, starstarargs)
     # Might throw vm.RecursionException:
@@ -2517,9 +2518,12 @@ class InterpreterFunction(Function):
                            pytd.METHOD)
 
   def simple_pytd_signature(self):
+    num_defaults = len(self.defaults)
     params = self._with_replaced_annotations(
         [pytd.Parameter(name, pytd.NamedType("object"))
          for name in self.get_parameter_names()])
+    if num_defaults:
+      params = params[:-num_defaults]
     ret = self._get_annotation_return(default=pytd.AnythingType())
     return pytd.Signature(
         params=params,
