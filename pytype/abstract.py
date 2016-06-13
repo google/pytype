@@ -1035,7 +1035,7 @@ class Function(Instance):
   def __init__(self, name, vm):
     super(Function, self).__init__(vm.function_type, vm)
     self.name = name
-    self.parent_class = None
+    self.is_attribute_of_class = False
     self._bound_functions_cache = {}
     self.members["func_name"] = self.vm.build_string(
         self.vm.root_cfg_node, name)
@@ -1050,10 +1050,11 @@ class Function(Instance):
   def property_get(self, callself, callcls):
     if not callself or not callcls:
       return self
-    self.parent_class = callcls.bindings[0].data
+    self.is_attribute_of_class = True
     key = tuple(sorted(callself.data))
     if key not in self._bound_functions_cache:
-      self._bound_functions_cache[key] = (self.bound_class)(callself, self)
+      self._bound_functions_cache[key] = (self.bound_class)(
+          callself, callcls, self)
     return self._bound_functions_cache[key]
 
   def get_class(self):
@@ -2271,10 +2272,12 @@ class InterpreterFunction(Function):
 class BoundFunction(AtomicAbstractValue):
   """An function type which has had an argument bound into it."""
 
-  def __init__(self, callself, underlying):
+  def __init__(self, callself, callcls, underlying):
     super(BoundFunction, self).__init__(underlying.name, underlying.vm)
     self._callself = callself
+    self._callcls = callcls
     self.underlying = underlying
+    self.is_attribute_of_class = False
 
   def get_attribute(self, node, name, valself=None, valcls=None):
     return self.underlying.get_attribute(node, name, valself, valcls)
