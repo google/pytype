@@ -28,7 +28,7 @@ class TestPython3(test_inference.InferenceTest):
       self.assertTypesMatchPytd(ty, """
         def uses_annotations(x: int) -> int
         def uses_kw_defaults(x) -> ?
-        def uses_pos_defaults(x, y, ...) -> ?
+        def uses_pos_defaults(x, ...) -> ?
       """)
 
   def test_make_class(self):
