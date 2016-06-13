@@ -110,7 +110,7 @@ def lchown(...) -> NoneType
 def link(...) -> NoneType
 def listdir(...) -> list[str or unicode]
 def lseek(...) -> int
-def lstat(...) -> tuple
+def lstat(AnyStr) -> Any
 def major(...) -> int
 def makedev(...) -> int
 def makedirs(...) -> NoneType
@@ -143,9 +143,9 @@ def setresuid(...) -> NoneType
 def setreuid(...) -> NoneType
 def setsid() -> NoneType
 def setuid(...) -> NoneType
-def stat(...) -> tuple
+def stat(AnyStr) -> Any
 def stat_float_times(...) -> bool or NoneType
-def statvfs(...) -> tuple
+def statvfs(AnyStr) -> Any
 def strerror(...) -> str raises ValueError
 def symlink(...) -> NoneType
 def sysconf(...) -> int
