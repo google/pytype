@@ -532,7 +532,10 @@ class SimpleAbstractValue(AtomicAbstractValue):
       value: The value that is being used for this type parameter as a Variable.
     """
     log.info("Modifying type param %s", name)
-    self.type_parameters[name].PasteVariable(value, node)
+    if name in self.type_parameters:
+      self.type_parameters[name].PasteVariable(value, node)
+    else:
+      self.type_parameters[name] = value
 
   # TODO(kramm): remove
   def overwrite_type_parameter(self, node, name, value):
@@ -1356,6 +1359,7 @@ class PyTDFunction(Function):
             node, func, view, posargs, namedargs, ret_map,
             starargs, starstarargs)
       except FailedFunctionCall as e:
+        # TODO(kramm): Does this ever happen?
         error = error or e
       else:
         retvar.PasteVariable(result, node)
@@ -1473,7 +1477,7 @@ class PyTDFunction(Function):
             node, func, view, posargs, namedargs, ret_map,
             starargs, starstarargs, record_call)
       except FailedFunctionCall as e:
-        error = error or e
+        error = e
       else:
         return new_node, result, mutations
     raise error  # pylint: disable=raising-bad-type
@@ -1818,8 +1822,15 @@ class InterpreterClass(SimpleAbstractValue, Class):
     if isinstance(other_type, Class):
       for base in self.mro:
         if isinstance(base, Class):
-          if base is other_type:
-            return subst
+          if isinstance(other_type, ParameterizedClass):
+            if base is other_type.base_cls:
+              subst = other_type.dummy_match(subst, node, view)
+              # Make sure the InterpreterClass instance has the type parameters
+              # we need.
+              return subst
+          else:
+            if base is other_type:
+              return subst
         elif isinstance(base, (Unknown, Unsolvable)):
           # See match_Function_against_Class in type_match.py. Even though it's
           # possible that this Unknown is of type other_type, our class would

@@ -666,7 +666,7 @@ class frozenset(Generic[T], AbstractSet):
         self := frozenset[nothing]
     def __init__(self, x: list[N]) -> NoneType:
         self := frozenset[N]
-    def __init__(self, x) -> NoneType:
+    def __init__(self, x: Any) -> NoneType:
         self := frozenset[?]
     def __and__(self, y: AbstractSet[T2]) -> frozenset[T]
     def __contains__(self, y) -> bool
