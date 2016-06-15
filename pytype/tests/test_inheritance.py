@@ -10,23 +10,23 @@ class InheritanceTest(test_inference.InferenceTest):
 
   @unittest.skip("needs (re-)analyzing methods on subclasses")
   def testSubclassAttributes(self):
-    with self.Infer("""
+    ty = self.Infer("""
       class Base(object):
         def get_lineno(self):
           return self.lineno
       class Leaf(Base):
         lineno = 0
-    """, deep=True, solve_unknowns=False, extract_locals=False) as ty:
-      self.assertTypesMatchPytd(ty, """
-        class Base:
-          pass
-        class Leaf(Base):
-          lineno: int
-          def get_lineno(self) -> int
-      """)
+    """, deep=True, solve_unknowns=False, extract_locals=False)
+    self.assertTypesMatchPytd(ty, """
+      class Base:
+        pass
+      class Leaf(Base):
+        lineno: int
+        def get_lineno(self) -> int
+    """)
 
   def testClassAttributes(self):
-    with self.Infer("""
+    ty = self.Infer("""
       class A(object):
         pass
       class B(A):
@@ -42,14 +42,14 @@ class InheritanceTest(test_inference.InferenceTest):
         return A.y
       def by():
         return A.y
-    """, deep=True, solve_unknowns=False, extract_locals=False) as ty:
-      self.assertOnlyHasReturnType(ty.Lookup("ax"), self.int)
-      self.assertOnlyHasReturnType(ty.Lookup("bx"), self.str)
-      self.assertOnlyHasReturnType(ty.Lookup("ay"), self.int)
-      self.assertOnlyHasReturnType(ty.Lookup("by"), self.int)
+    """, deep=True, solve_unknowns=False, extract_locals=False)
+    self.assertOnlyHasReturnType(ty.Lookup("ax"), self.int)
+    self.assertOnlyHasReturnType(ty.Lookup("bx"), self.str)
+    self.assertOnlyHasReturnType(ty.Lookup("ay"), self.int)
+    self.assertOnlyHasReturnType(ty.Lookup("by"), self.int)
 
   def testMultipleInheritance(self):
-    with self.Infer("""
+    ty = self.Infer("""
       class A(object):
         x = 1
       class B(A):
@@ -65,29 +65,29 @@ class InheritanceTest(test_inference.InferenceTest):
         return D.y
       def z():
         return D.z
-    """, deep=True, solve_unknowns=False, extract_locals=False) as ty:
-      self.assertOnlyHasReturnType(ty.Lookup("x"), self.int)
-      self.assertOnlyHasReturnType(ty.Lookup("y"), self.int)
-      self.assertOnlyHasReturnType(ty.Lookup("z"), self.complex)
+    """, deep=True, solve_unknowns=False, extract_locals=False)
+    self.assertOnlyHasReturnType(ty.Lookup("x"), self.int)
+    self.assertOnlyHasReturnType(ty.Lookup("y"), self.int)
+    self.assertOnlyHasReturnType(ty.Lookup("z"), self.complex)
 
   @unittest.skip("Needs type parameters on inherited classes.")
   def testInheritFromBuiltins(self):
-    with self.Infer("""
+    ty = self.Infer("""
       class MyDict(dict):
         def __init__(self):
           dict.__setitem__(self, "abc", "foo")
 
       def f():
         return NoCaseKeysDict()
-    """, deep=False, solve_unknowns=False, extract_locals=False) as ty:
-      mydict = ty.Lookup("MyDict")
-      self.assertOnlyHasReturnType(ty.Lookup("f"),
-                                   pytd.ClassType("MyDict", mydict))
+    """, deep=False, solve_unknowns=False, extract_locals=False)
+    mydict = ty.Lookup("MyDict")
+    self.assertOnlyHasReturnType(ty.Lookup("f"),
+                                 pytd.ClassType("MyDict", mydict))
 
   def testInheritMethodsFromObject(self):
     # Test that even in the presence of multi-level inheritance,
     # we can still see attributes from "object".
-    with self.Infer("""
+    ty = self.Infer("""
       class A(object):
         pass
       class B(A):
@@ -99,13 +99,13 @@ class InheritanceTest(test_inference.InferenceTest):
       def h():
         return "bla".__sizeof__()
       f(); g(); h()
-    """, deep=False, solve_unknowns=False, extract_locals=False) as ty:
-      self.assertOnlyHasReturnType(ty.Lookup("f"), self.int)
-      self.assertOnlyHasReturnType(ty.Lookup("g"), self.int)
-      self.assertOnlyHasReturnType(ty.Lookup("h"), self.int)
+    """, deep=False, solve_unknowns=False, extract_locals=False)
+    self.assertOnlyHasReturnType(ty.Lookup("f"), self.int)
+    self.assertOnlyHasReturnType(ty.Lookup("g"), self.int)
+    self.assertOnlyHasReturnType(ty.Lookup("h"), self.int)
 
   def testMRO(self):
-    with self.Infer("""
+    ty = self.Infer("""
       class A(object):
         def a(self):
           return 1
@@ -126,11 +126,11 @@ class InheritanceTest(test_inference.InferenceTest):
         return C().b()
       def i():
         return D().b()
-    """, deep=True, solve_unknowns=False, extract_locals=False) as ty:
-      self.assertOnlyHasReturnType(ty.Lookup("f"), self.int)
-      self.assertOnlyHasReturnType(ty.Lookup("g"), self.float)
-      self.assertOnlyHasReturnType(ty.Lookup("h"), self.str)
-      self.assertOnlyHasReturnType(ty.Lookup("i"), self.float)
+    """, deep=True, solve_unknowns=False, extract_locals=False)
+    self.assertOnlyHasReturnType(ty.Lookup("f"), self.int)
+    self.assertOnlyHasReturnType(ty.Lookup("g"), self.float)
+    self.assertOnlyHasReturnType(ty.Lookup("h"), self.str)
+    self.assertOnlyHasReturnType(ty.Lookup("i"), self.float)
 
 if __name__ == "__main__":
   test_inference.main()

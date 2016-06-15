@@ -72,7 +72,7 @@ class TestIt(test_inference.InferenceTest):
       """)
 
   def test_slice(self):
-    with self.Infer("""
+    ty = self.Infer("""
       s = "hello, world"
       def f1():
         return s[3:8]
@@ -86,16 +86,16 @@ class TestIt(test_inference.InferenceTest):
         return s[::-1]
       def f6():
         return s[3:8:2]
-      """, deep=True, solve_unknowns=False, extract_locals=False) as ty:
-      self.assertTypesMatchPytd(ty, """
-      s = ...  # type: str
-      def f1() -> str
-      def f2() -> str
-      def f3() -> str
-      def f4() -> str
-      def f5() -> str
-      def f6() -> str
-      """)
+      """, deep=True, solve_unknowns=False, extract_locals=False)
+    self.assertTypesMatchPytd(ty, """
+    s = ...  # type: str
+    def f1() -> str
+    def f2() -> str
+    def f3() -> str
+    def f4() -> str
+    def f5() -> str
+    def f6() -> str
+    """)
 
   def test_slice_assignment(self):
     self.assertNoErrors("""\

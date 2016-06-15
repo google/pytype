@@ -27,126 +27,6 @@ log = logging.getLogger(__name__)
 CAPTURE_STDOUT = ("-s" not in sys.argv)
 
 
-class Infer(object):
-  """Calls infer, produces useful output on failure.
-
-  Typically called indirectly from InferenceTest.Infer, which has
-  the same args.
-
-  This implements the 'with' protocol. Typical use is (where 'self'
-  is the test instance, e.g. test_inference.InferenceTest (below)):
-
-      with self.Infer(src) as ty:
-        self.assertOnlyHasReturnType(ty.Lookup("f"), self.bool)
-
-  This code catches exceptions that happen inside Infer(src), so no need to test
-  for ty being non-None (although if it is None, the failed method call will be
-  caught and reported nicely).
-
-  Comments on the flags:
-  The type inferencer has three layers:
-
-  1. Run concrete bytecode
-  2. Run abstract bytecode
-  3. Convert ("solve") unknowns
-
-  It's useful to be able to test all three things in isolation.
-
-  Solving unknowns in a test where you don't expect unknowns will give you
-  more complex debug output and make tests slower. It might also be confusing,
-  since the output you're checking is the one from the type converter, causing
-  you to suspect the latter as the cause of bugs even though it's not actually
-  doing anything.
-
-  As for "deep": this causes all public functions to be called with
-  __any_object__ args, so for precise control, you can set deep=False
-  and explicitly make the calls.
-  """
-
-  # TODO(pludemann): This is possibly a slightly less magical paradigm:
-  #   with self.Inferencer(deep=False, solve_unknowns=False) as ty:
-  #     ty = i.Infer("""....""")
-  #     self.assertOnlyHasReturnType(ty.Lookup(...), ...)
-
-  def __init__(self, test, srccode, pythonpath=(),
-               deep=False,
-               solve_unknowns=False, extract_locals=False,
-               extra_verbose=False, report_errors=True, **kwargs):
-    """Constructor for Infer.
-
-    Args:
-      test: the Testcase (see inferenceTest.Infer)
-      srccode: the Python source code to do type inferencing on
-      pythonpath: --pythonpath as list/tuple of string
-      deep: see class comments (assume --api - analyize all methods, even those
-            that don't have a caller)
-      solve_unknowns: try to solve for all ~unknown types
-      extract_locals: strip ~unknown types from the output pytd
-      extra_verbose: extra intermeidate output (for debugging)
-      report_errors: Whether to fail if the type inferencer reports any erros.
-      **kwargs: Additional options to pass through to infer_types().
-    """
-    # TODO(pludemann): There are eight possible combinations of these three
-    # boolean flags. Do all of these combinations make sense? Or would it be
-    # possible to simplify this into something like a "mode" parameter:
-    # mode="solve" => deep=True, solve_unknowns=True
-    # mode="structural" => deep=True, solve_unknowns=False, extract_locals=False
-    # mode="deep" => deep=True, solve_unknowns=False, extract_locals=True
-    # mode="main" => deep=False, solve_unknowns=False, extract_locals=True
-
-    self.srccode = textwrap.dedent(srccode)
-    self.inferred = None
-    self.optimized_types = None
-    self.extract_locals = None  # gets set if extract_locals is set (below)
-    self.extra_verbose = extra_verbose
-    self.canonical_types = None
-    # We need to catch any exceptions here and preserve them for __exit__.
-    # Exceptions raised in the body of 'with' will be presented to __exit__.
-    try:
-      self.types = test._InferAndVerify(
-          self.srccode, pythonpath=pythonpath, deep=deep, cache_unknowns=True,
-          solve_unknowns=solve_unknowns,
-          report_errors=report_errors, **kwargs)
-      self.inferred = self.types
-      if extract_locals:
-        # Rename "~unknown" to "?"
-        self.types = self.types.Visit(visitors.RemoveUnknownClasses())
-        # Remove "~list" etc.:
-        self.types = convert_structural.extract_local(self.types)
-        self.extract_locals = self.types
-      # TODO(pludemann): These flags are the same as those in main.py; there
-      #                  should be a way of ensuring that they're the same.
-      self.types = self.optimized_types = optimize.Optimize(
-          self.types, lossy=False, use_abcs=False,
-          max_union=7, remove_mutable=False)
-      self.types = self.canonical_types = pytd_utils.CanonicalOrdering(
-          self.types)
-    except Exception:  # pylint: disable=broad-except
-      self.types = None
-      if not self.__exit__(*sys.exc_info()):
-        raise
-
-  def __enter__(self):
-    return self.types
-
-  def __exit__(self, error_type, value, traceback):
-    if not error_type:
-      return
-    if self.extra_verbose and self.srccode:
-      log.error("*** unittest ERROR *** %s: %s", error_type.__name__, value)
-      _PrintErrorDebug("source", self.srccode)
-    if self.extra_verbose and self.inferred:
-      _PrintErrorDebug("inferred PyTD", pytd.Print(self.inferred))
-    if self.extra_verbose and self.optimized_types:
-      _PrintErrorDebug("optimized PyTD", pytd.Print(self.optimized_types))
-    if self.extra_verbose and self.extract_locals:
-      _PrintErrorDebug("extract_locals (removed unknown) PyTD",
-                       pytd.Print(self.extract_locals))
-    if self.extra_verbose and self.canonical_types:
-      _PrintErrorDebug("canonical PyTD", pytd.Print(self.canonical_types))
-    return False  # re-raise the exception that was passed in
-
-
 class InferenceTest(unittest.TestCase):
   """Base class for implementing tests that check PyTD output."""
 
@@ -384,22 +264,27 @@ class InferenceTest(unittest.TestCase):
         errorlog.print_to_stderr()
         raise AssertionError("Found regexp %r in errors" % regexp)
 
-  def Infer(self, srccode, pythonpath=(),
-            deep=False, solve_unknowns=False,
-            extract_locals=False, extra_verbose=False,
-            report_errors=True, **kwargs):
-    # Wraps Infer object to make it seem less magical
-    # See class Infer for more on the arguments
-    return Infer(self, srccode=srccode, pythonpath=pythonpath, deep=deep,
-                 solve_unknowns=solve_unknowns, extract_locals=extract_locals,
-                 extra_verbose=extra_verbose, report_errors=report_errors,
-                 **kwargs)
+  def Infer(self, srccode, pythonpath=(), deep=False, solve_unknowns=False,
+            extract_locals=False, report_errors=True, **kwargs):
+    types = self._InferAndVerify(
+        textwrap.dedent(srccode), pythonpath=pythonpath, deep=deep,
+        cache_unknowns=True, solve_unknowns=solve_unknowns,
+        report_errors=report_errors, **kwargs)
+    if extract_locals:
+      # Rename "~unknown" to "?"
+      types = types.Visit(visitors.RemoveUnknownClasses())
+      # Remove "~list" etc.:
+      types = convert_structural.extract_local(types)
+    types = optimize.Optimize(types, lossy=False, use_abcs=False,
+                              max_union=7, remove_mutable=False)
+    types = pytd_utils.CanonicalOrdering(types)
+    return types
 
   def _InferAndVerify(self, src, pythonpath=(), imports_map=None,
                       report_errors=False, quick=False, **kwargs):
     """Infer types for the source code treating it as a module.
 
-    Used by class Infer (which sets up a 'with' framework)
+    Used by Infer().
 
     Args:
       src: The source code of a module. Treat it as "__main__".

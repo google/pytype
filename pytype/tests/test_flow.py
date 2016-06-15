@@ -12,18 +12,18 @@ class FlowTest(test_inference.InferenceTest):
   """
 
   def test_if(self):
-    with self.Infer("""
+    ty = self.Infer("""
       if __random__:
         x = 3
       else:
         x = 3.1
-    """, deep=False, solve_unknowns=False, extract_locals=False) as ty:
-      self.assertTypesMatchPytd(ty, """
-        x = ...  # type: int or float
-      """)
+    """, deep=False, solve_unknowns=False, extract_locals=False)
+    self.assertTypesMatchPytd(ty, """
+      x = ...  # type: int or float
+    """)
 
   def testException(self):
-    with self.Infer("""
+    ty = self.Infer("""
       def f():
         try:
           x = UndefinedName()
@@ -31,11 +31,11 @@ class FlowTest(test_inference.InferenceTest):
           return 3
       f()
     """, deep=False, solve_unknowns=False, extract_locals=False,
-                    report_errors=False) as ty:
-      self.assertHasSignature(ty.Lookup("f"), (), self.int)
+                    report_errors=False)
+    self.assertHasSignature(ty.Lookup("f"), (), self.int)
 
   def testTwoExceptHandlers(self):
-    with self.Infer("""
+    ty = self.Infer("""
       def f():
         try:
           x = UndefinedName()
@@ -45,11 +45,11 @@ class FlowTest(test_inference.InferenceTest):
           return 3.5
       f()
     """, deep=False, solve_unknowns=False, extract_locals=False,
-                    report_errors=False) as ty:
-      self.assertHasSignature(ty.Lookup("f"), (), self.intorfloat)
+                    report_errors=False)
+    self.assertHasSignature(ty.Lookup("f"), (), self.intorfloat)
 
   def testNestedExceptions(self):
-    with self.Infer("""
+    ty = self.Infer("""
       def f():
         try:
           try:
@@ -60,11 +60,11 @@ class FlowTest(test_inference.InferenceTest):
           return 3.5
       f()
     """, deep=False, solve_unknowns=False, extract_locals=False,
-                    report_errors=False) as ty:
-      self.assertHasSignature(ty.Lookup("f"), (), self.int)
+                    report_errors=False)
+    self.assertHasSignature(ty.Lookup("f"), (), self.int)
 
   def testRaise(self):
-    with self.Infer("""
+    ty = self.Infer("""
       def f():
         try:
           try:
@@ -74,11 +74,11 @@ class FlowTest(test_inference.InferenceTest):
         except:
           return 3.5
       f()
-    """, deep=False, solve_unknowns=False, extract_locals=False) as ty:
-      self.assertHasSignature(ty.Lookup("f"), (), self.int)
+    """, deep=False, solve_unknowns=False, extract_locals=False)
+    self.assertHasSignature(ty.Lookup("f"), (), self.int)
 
   def testFinally(self):
-    with self.Infer("""
+    ty = self.Infer("""
       def f():
         try:
           x = RaiseANameError()
@@ -86,11 +86,11 @@ class FlowTest(test_inference.InferenceTest):
           return 3
       f()
     """, deep=False, solve_unknowns=False, extract_locals=False,
-                    report_errors=False) as ty:
-      self.assertHasSignature(ty.Lookup("f"), (), self.int)
+                    report_errors=False)
+    self.assertHasSignature(ty.Lookup("f"), (), self.int)
 
   def testFinallySuffix(self):
-    with self.Infer("""
+    ty = self.Infer("""
       def f():
         try:
           x = RaiseANameError()
@@ -99,11 +99,11 @@ class FlowTest(test_inference.InferenceTest):
         return x
       f()
     """, deep=False, solve_unknowns=False, extract_locals=False,
-                    report_errors=False) as ty:
-      self.assertHasSignature(ty.Lookup("f"), (), self.int)
+                    report_errors=False)
+    self.assertHasSignature(ty.Lookup("f"), (), self.int)
 
   def testTryAndLoop(self):
-    with self.Infer("""
+    ty = self.Infer("""
       def f():
         for s in (1, 2):
           try:
@@ -114,22 +114,22 @@ class FlowTest(test_inference.InferenceTest):
           finally:
             return 3
       f()
-    """, deep=False, solve_unknowns=False, extract_locals=False) as ty:
-      self.assertHasSignature(ty.Lookup("f"), (), self.int)
+    """, deep=False, solve_unknowns=False, extract_locals=False)
+    self.assertHasSignature(ty.Lookup("f"), (), self.int)
 
   def testSimpleWith(self):
-    with self.Infer("""
+    ty = self.Infer("""
       def f(x):
         y = 1
         with __any_object__:
           y = 2
         return x
       f(1)
-    """, deep=False, solve_unknowns=False, extract_locals=False) as ty:
-      self.assertHasSignature(ty.Lookup("f"), (self.int,), self.int)
+    """, deep=False, solve_unknowns=False, extract_locals=False)
+    self.assertHasSignature(ty.Lookup("f"), (self.int,), self.int)
 
   def testNestedWith(self):
-    with self.Infer("""
+    ty = self.Infer("""
       def f(x):
         y = 1
         with __any_object__:
@@ -138,8 +138,8 @@ class FlowTest(test_inference.InferenceTest):
             pass
         return x
       f(1)
-    """, deep=False, solve_unknowns=False, extract_locals=False) as ty:
-      self.assertHasSignature(ty.Lookup("f"), (self.int,), self.int)
+    """, deep=False, solve_unknowns=False, extract_locals=False)
+    self.assertHasSignature(ty.Lookup("f"), (self.int,), self.int)
 
   def testNullFLow(self):
     # This example comes from
@@ -151,7 +151,7 @@ class FlowTest(test_inference.InferenceTest):
     #                  http://flowtype.org/docs/five-simple-examples.html#_ and
     #                  also from Python mailing list discussion of typing, e.g.:
     #                  https://mail.python.org/pipermail/python-ideas/2014-December/thread.html#30430
-    with self.Infer("""
+    ty = self.Infer("""
       def f(x):
         if x is None:
           return 0
@@ -160,13 +160,13 @@ class FlowTest(test_inference.InferenceTest):
         return len(x)
       # f(None)  # TODO(pludemann): reinstate this
       f(__any_object__)
-    """, deep=False, solve_unknowns=False, extract_locals=True) as ty:
-      self.assertTypesMatchPytd(ty, """
-        def f(x) -> int
-      """)
+    """, deep=False, solve_unknowns=False, extract_locals=True)
+    self.assertTypesMatchPytd(ty, """
+      def f(x) -> int
+    """)
 
   def testContinueInWith(self):
-    with self.Infer("""
+    ty = self.Infer("""
       def f():
         l = []
         for i in range(3):
@@ -178,11 +178,11 @@ class FlowTest(test_inference.InferenceTest):
           l.append(i)
         return l
       f()
-    """, deep=False, solve_unknowns=False, extract_locals=True) as ty:
-      self.assertHasSignature(ty.Lookup("f"), (), self.int_list)
+    """, deep=False, solve_unknowns=False, extract_locals=True)
+    self.assertHasSignature(ty.Lookup("f"), (), self.int_list)
 
   def testBreakInWith(self):
-    with self.Infer("""
+    ty = self.Infer("""
       def f():
         l = []
         for i in range(3):
@@ -196,11 +196,11 @@ class FlowTest(test_inference.InferenceTest):
         s = ''.join(l)
         return s
       f()
-    """, deep=False, solve_unknowns=False, extract_locals=True) as ty:
-      self.assertHasSignature(ty.Lookup("f"), (), self.str)
+    """, deep=False, solve_unknowns=False, extract_locals=True)
+    self.assertHasSignature(ty.Lookup("f"), (), self.str)
 
   def testRaiseInWith(self):
-    with self.Infer("""
+    ty = self.Infer("""
       def f():
         l = []
         try:
@@ -216,17 +216,17 @@ class FlowTest(test_inference.InferenceTest):
         s = ''.join(l)
         return s
       f()
-    """, deep=False, solve_unknowns=False, extract_locals=True) as ty:
-      self.assertHasSignature(ty.Lookup("f"), (), self.str)
+    """, deep=False, solve_unknowns=False, extract_locals=True)
+    self.assertHasSignature(ty.Lookup("f"), (), self.str)
 
   def testReturnInWith(self):
-    with self.Infer("""
+    ty = self.Infer("""
       def f():
         with __any_object__:
           return "foo"
       f()
-    """, deep=False, solve_unknowns=False, extract_locals=True) as ty:
-      self.assertHasSignature(ty.Lookup("f"), (), self.str)
+    """, deep=False, solve_unknowns=False, extract_locals=True)
+    self.assertHasSignature(ty.Lookup("f"), (), self.str)
 
 
 if __name__ == "__main__":

@@ -7,7 +7,7 @@ class ClosuresTest(test_inference.InferenceTest):
   """Tests for closures."""
 
   def testBasicClosure(self):
-    with self.Infer("""
+    ty = self.Infer("""
       def f():
         x = 3
         def g():
@@ -16,14 +16,14 @@ class ClosuresTest(test_inference.InferenceTest):
       def caller():
         return f()()
       caller()
-    """, deep=False, solve_unknowns=False, extract_locals=True) as ty:
-      self.assertTypesMatchPytd(ty, """
-        def f() -> function
-        def caller() -> int
-      """)
+    """, deep=False, solve_unknowns=False, extract_locals=True)
+    self.assertTypesMatchPytd(ty, """
+      def f() -> function
+      def caller() -> int
+    """)
 
   def testClosureOnArg(self):
-    with self.Infer("""
+    ty = self.Infer("""
       def f(x):
         def g():
           return x
@@ -31,14 +31,14 @@ class ClosuresTest(test_inference.InferenceTest):
       def caller():
         return f(3)()
       caller()
-    """, deep=False, solve_unknowns=False, extract_locals=True) as ty:
-      self.assertTypesMatchPytd(ty, """
-        def f(x: int) -> function
-        def caller() -> int
-      """)
+    """, deep=False, solve_unknowns=False, extract_locals=True)
+    self.assertTypesMatchPytd(ty, """
+      def f(x: int) -> function
+      def caller() -> int
+    """)
 
   def testClosureWithArg(self):
-    with self.Infer("""
+    ty = self.Infer("""
       def f(x):
         def g(y):
           return x[y]
@@ -46,14 +46,14 @@ class ClosuresTest(test_inference.InferenceTest):
       def caller():
         return f([1.0])(0)
       caller()
-    """, deep=False, solve_unknowns=False, extract_locals=True) as ty:
-      self.assertTypesMatchPytd(ty, """
-        def f(x: List[float, ...]) -> function
-        def caller() -> float
-      """)
+    """, deep=False, solve_unknowns=False, extract_locals=True)
+    self.assertTypesMatchPytd(ty, """
+      def f(x: List[float, ...]) -> function
+      def caller() -> float
+    """)
 
   def testClosureSameName(self):
-    with self.Infer("""
+    ty = self.Infer("""
       def f():
         x = 1
         y = 2
@@ -67,14 +67,14 @@ class ClosuresTest(test_inference.InferenceTest):
       def caller():
         return f()()()
       caller()
-    """, deep=False, solve_unknowns=False, extract_locals=True) as ty:
-      self.assertTypesMatchPytd(ty, """
-        def f() -> function
-        def caller() -> str
-      """)
+    """, deep=False, solve_unknowns=False, extract_locals=True)
+    self.assertTypesMatchPytd(ty, """
+      def f() -> function
+      def caller() -> str
+    """)
 
   def testClosuresAdd(self):
-    with self.Infer("""
+    ty = self.Infer("""
       def f(x):
         z = x+1
         def g(y):
@@ -83,14 +83,14 @@ class ClosuresTest(test_inference.InferenceTest):
       def caller():
         return f(1)(2)
       caller()
-    """, deep=False, solve_unknowns=False, extract_locals=True) as ty:
-      self.assertTypesMatchPytd(ty, """
-        def caller() -> int
-        def f(x: int) -> function
-      """)
+    """, deep=False, solve_unknowns=False, extract_locals=True)
+    self.assertTypesMatchPytd(ty, """
+      def caller() -> int
+      def f(x: int) -> function
+    """)
 
   def testClosuresWithDefaults(self):
-    with self.Infer("""
+    ty = self.Infer("""
       def f(x, y=13, z=43):
         def g(q, r=11):
           return x+y+z+q+r
@@ -104,16 +104,16 @@ class ClosuresTest(test_inference.InferenceTest):
       t1()
       t2()
       t3()
-    """, deep=False, solve_unknowns=False, extract_locals=True) as ty:
-      self.assertTypesMatchPytd(ty, """
-        def f(x: int, ...) -> function
-        def t1() -> int
-        def t2() -> int
-        def t3() -> int
-      """)
+    """, deep=False, solve_unknowns=False, extract_locals=True)
+    self.assertTypesMatchPytd(ty, """
+      def f(x: int, ...) -> function
+      def t1() -> int
+      def t2() -> int
+      def t3() -> int
+    """)
 
   def testClosureScope(self):
-    with self.Infer("""
+    ty = self.Infer("""
       def f():
         x = ["foo"]
         def inner():
@@ -129,15 +129,15 @@ class ClosuresTest(test_inference.InferenceTest):
       def caller():
         return g(f())
       caller()
-    """, deep=False, solve_unknowns=False, extract_locals=True) as ty:
-      self.assertTypesMatchPytd(ty, """
-        def caller() -> List[str, ...]
-        def f() -> function
-        def g(funcptr: function) -> List[str, ...]
-      """)
+    """, deep=False, solve_unknowns=False, extract_locals=True)
+    self.assertTypesMatchPytd(ty, """
+      def caller() -> List[str, ...]
+      def f() -> function
+      def g(funcptr: function) -> List[str, ...]
+    """)
 
   def testDeepClosures(self):
-    with self.Infer("""
+    ty = self.Infer("""
       def f1(a):
         b = a
         def f2(c):
@@ -153,11 +153,11 @@ class ClosuresTest(test_inference.InferenceTest):
       def caller():
         return f1(3)(4)(5)(6)
       caller()
-    """, deep=False, solve_unknowns=False, extract_locals=True) as ty:
-      self.assertTypesMatchPytd(ty, """
-        def f1(a: int) -> function
-        def caller() -> int
-      """)
+    """, deep=False, solve_unknowns=False, extract_locals=True)
+    self.assertTypesMatchPytd(ty, """
+      def f1(a: int) -> function
+      def caller() -> int
+    """)
 
 if __name__ == "__main__":
   test_inference.main()

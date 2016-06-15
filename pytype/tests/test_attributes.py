@@ -7,66 +7,66 @@ class TestAttributes(test_inference.InferenceTest):
   """Tests for attributes."""
 
   def testSimpleAttribute(self):
-    with self.Infer("""
+    ty = self.Infer("""
       class A(object):
         def method1(self):
           self.a = 3
         def method2(self):
           self.a = 3j
-    """, deep=True, solve_unknowns=False, extract_locals=True) as ty:
-      self.assertTypesMatchPytd(ty, """
-        class A(object):
-          a = ...  # type: complex or int
-          def method1(self) -> NoneType
-          def method2(self) -> NoneType
-      """)
+    """, deep=True, solve_unknowns=False, extract_locals=True)
+    self.assertTypesMatchPytd(ty, """
+      class A(object):
+        a = ...  # type: complex or int
+        def method1(self) -> NoneType
+        def method2(self) -> NoneType
+    """)
 
   def testOutsideAttributeAccess(self):
-    with self.Infer("""
+    ty = self.Infer("""
       class A(object):
         pass
       def f1():
         A().a = 3
       def f2():
         A().a = 3j
-    """, deep=True, solve_unknowns=False, extract_locals=True) as ty:
-      self.assertTypesMatchPytd(ty, """
-        class A(object):
-          a = ...  # type: complex or int
-        def f1() -> NoneType
-        def f2() -> NoneType
-      """)
+    """, deep=True, solve_unknowns=False, extract_locals=True)
+    self.assertTypesMatchPytd(ty, """
+      class A(object):
+        a = ...  # type: complex or int
+      def f1() -> NoneType
+      def f2() -> NoneType
+    """)
 
   def testPrivate(self):
-    with self.Infer("""
+    ty = self.Infer("""
       class C(object):
         def __init__(self):
           self._x = 3
         def foo(self):
           return self._x
-    """, deep=True, solve_unknowns=False, extract_locals=True) as ty:
-      self.assertTypesMatchPytd(ty, """
-        class C(object):
-          _x = ...  # type: int
-          def foo(self) -> int
-      """)
+    """, deep=True, solve_unknowns=False, extract_locals=True)
+    self.assertTypesMatchPytd(ty, """
+      class C(object):
+        _x = ...  # type: int
+        def foo(self) -> int
+    """)
 
   def testPublic(self):
-    with self.Infer("""
+    ty = self.Infer("""
       class C(object):
         def __init__(self):
           self.x = 3
         def foo(self):
           return self.x
-    """, deep=True, solve_unknowns=False, extract_locals=True) as ty:
-      self.assertTypesMatchPytd(ty, """
-        class C(object):
-          x = ...  # type: int
-          def foo(self) -> int
-      """)
+    """, deep=True, solve_unknowns=False, extract_locals=True)
+    self.assertTypesMatchPytd(ty, """
+      class C(object):
+        x = ...  # type: int
+        def foo(self) -> int
+    """)
 
   def testCrosswise(self):
-    with self.Infer("""
+    ty = self.Infer("""
       class A(object):
         def __init__(self):
           if id(self):
@@ -79,17 +79,17 @@ class TestAttributes(test_inference.InferenceTest):
             self.a = A()
         def set_on_a(self):
           self.a.x = 3j
-    """, deep=True, solve_unknowns=False, extract_locals=True) as ty:
-      self.assertTypesMatchPytd(ty, """
-        class A(object):
-          b = ...  # type: B
-          x = ...  # type: complex
-          def set_on_b(self) -> NoneType
-        class B(object):
-          a = ...  # type: A
-          x = ...  # type: int
-          def set_on_a(self) -> NoneType
-      """)
+    """, deep=True, solve_unknowns=False, extract_locals=True)
+    self.assertTypesMatchPytd(ty, """
+      class A(object):
+        b = ...  # type: B
+        x = ...  # type: complex
+        def set_on_b(self) -> NoneType
+      class B(object):
+        a = ...  # type: A
+        x = ...  # type: int
+        def set_on_a(self) -> NoneType
+    """)
 
 if __name__ == "__main__":
   test_inference.main()

@@ -303,27 +303,27 @@ class TestGenerators(test_inference.InferenceTest):
       """)
 
   def test_pass_through_args(self):
-    with self.Infer("""
+    ty = self.Infer("""
       def f(a, b):
         return a * b
       def g(*args, **kwargs):
         return f(*args, **kwargs)
       g(1, 2)
-    """, deep=False, solve_unknowns=False, extract_locals=False) as ty:
-      self.assertHasReturnType(ty.Lookup("g"), self.int)
+    """, deep=False, solve_unknowns=False, extract_locals=False)
+    self.assertHasReturnType(ty.Lookup("g"), self.int)
 
   def test_pass_through_kwargs(self):
-    with self.Infer("""
+    ty = self.Infer("""
       def f(a, b):
         return a * b
       def g(*args, **kwargs):
         return f(*args, **kwargs)
       g(a=1, b=2)
-    """, deep=False, solve_unknowns=False, extract_locals=False) as ty:
-      self.assertHasReturnType(ty.Lookup("g"), self.int)
+    """, deep=False, solve_unknowns=False, extract_locals=False)
+    self.assertHasReturnType(ty.Lookup("g"), self.int)
 
   def test_closure(self):
-    with self.Infer("""
+    ty = self.Infer("""
       import ctypes
       f = 0
       def e():
@@ -332,29 +332,28 @@ class TestGenerators(test_inference.InferenceTest):
         f = (lambda: ctypes.foo(s))  # ctypes.foo doesn't exist
         return f()
       e()
-    """, deep=True, solve_unknowns=True, report_errors=False) as ty:
-      self.assertHasReturnType(ty.Lookup("e"), self.anything)
-      self.assertTrue(ty.Lookup("f"))
+    """, deep=True, solve_unknowns=True, report_errors=False)
+    self.assertHasReturnType(ty.Lookup("e"), self.anything)
+    self.assertTrue(ty.Lookup("f"))
 
   def testListComprehension(self):
-    with self.Infer("""
+    ty = self.Infer("""
       def f(elements):
         return "%s" % ",".join(t for t in elements)
-    """, deep=True, solve_unknowns=True) as ty:
-      self.assertTypesMatchPytd(ty, """
-        def f(elements) -> str
-      """)
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      def f(elements) -> str
+    """)
 
   def testTupleArgsSmoke(self):
-    with self.Infer("""
+    unused_ty = self.Infer("""
       def foo((x, y), z):
         pass
-    """, deep=True, solve_unknowns=True) as unused_ty:
-      # Smoke test only. pytd doesn't support automatic tuple unpacking in args.
-      pass
+    """, deep=True, solve_unknowns=True)
+    # Smoke test only. pytd doesn't support automatic tuple unpacking in args.
 
   def test_matching_functions(self):
-    with self.Infer("""
+    ty = self.Infer("""
       def f():
         return 3
 
@@ -369,16 +368,16 @@ class TestGenerators(test_inference.InferenceTest):
           return map({}.keys, [])
         def method(self):
           pass
-    """, deep=True, solve_unknowns=True) as ty:
-      self.assertTypesMatchPytd(ty, """
-        def f() -> int
-        class Foo(object):
-          def match_method(self) -> List[nothing, ...]
-          def match_function(self) -> List[nothing, ...]
-          def match_pytd_function(self) -> List[nothing, ...]
-          def match_bound_pytd_function(self) -> List[nothing, ...]
-          def method(self) -> NoneType
-      """)
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      def f() -> int
+      class Foo(object):
+        def match_method(self) -> List[nothing, ...]
+        def match_function(self) -> List[nothing, ...]
+        def match_pytd_function(self) -> List[nothing, ...]
+        def match_bound_pytd_function(self) -> List[nothing, ...]
+        def method(self) -> NoneType
+    """)
 
 
 if __name__ == "__main__":

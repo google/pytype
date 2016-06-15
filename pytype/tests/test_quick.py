@@ -7,7 +7,7 @@ class QuickTest(test_inference.InferenceTest):
   """Tests for --quick."""
 
   def testMaxDepth(self):
-    with self.Infer("""
+    ty = self.Infer("""
       class Foo(object):
         def __init__(self, elements):
           assert all(e for e in elements)
@@ -15,13 +15,13 @@ class QuickTest(test_inference.InferenceTest):
 
         def bar(self):
           return self.elements
-    """, deep=True, extract_locals=True, quick=True) as ty:
-      self.assertTypesMatchPytd(ty, """
-        class Foo(object):
-          elements = ...  # type: Any
-          def __init__(self, elements: Any) -> None: ...
-          def bar(self) -> Any: ...
-      """)
+    """, deep=True, extract_locals=True, quick=True)
+    self.assertTypesMatchPytd(ty, """
+      class Foo(object):
+        elements = ...  # type: Any
+        def __init__(self, elements: Any) -> None: ...
+        def bar(self) -> Any: ...
+    """)
 
 
 if __name__ == "__main__":

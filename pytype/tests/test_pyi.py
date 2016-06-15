@@ -13,7 +13,7 @@ class PYITest(test_inference.InferenceTest):
       d.create_file("mod.pyi", """
         def f(x: int = ...) -> None
       """)
-      with self.Infer("""\
+      ty = self.Infer("""\
         import mod
         def f():
           return mod.f()
@@ -21,27 +21,27 @@ class PYITest(test_inference.InferenceTest):
           return mod.f(3)
       """, deep=True, solve_unknowns=False,
                       extract_locals=True,  # TODO(kramm): Shouldn't need this.
-                      pythonpath=[d.path]) as ty:
-        self.assertTypesMatchPytd(ty, """
-          mod = ...  # type: module
-          def f() -> NoneType
-          def g() -> NoneType
-        """)
+                      pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        mod = ...  # type: module
+        def f() -> NoneType
+        def g() -> NoneType
+      """)
 
   def testSolve(self):
     with utils.Tempdir() as d:
       d.create_file("mod.pyi", """
         def f(node: int, *args, **kwargs) -> str
       """)
-      with self.Infer("""\
+      ty = self.Infer("""\
         import mod
         def g(x):
           return mod.f(x)
-      """, deep=True, solve_unknowns=True, pythonpath=[d.path]) as ty:
-        self.assertTypesMatchPytd(ty, """
-          mod = ...  # type: module
-          def g(x: int) -> str
-        """)
+      """, deep=True, solve_unknowns=True, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        mod = ...  # type: module
+        def g(x: int) -> str
+      """)
 
   def testTyping(self):
     with utils.Tempdir() as d:
@@ -49,15 +49,15 @@ class PYITest(test_inference.InferenceTest):
         from typing import Optional, List, Any, IO
         def split(s: Optional[float]) -> List[str, ...]: ...
       """)
-      with self.Infer("""\
+      ty = self.Infer("""\
         import mod
         def g(x):
           return mod.split(x)
-      """, deep=True, solve_unknowns=True, pythonpath=[d.path]) as ty:
-        self.assertTypesMatchPytd(ty, """
-          mod = ...  # type: module
-          def g(x: NoneType or float) -> List[str, ...]
-        """)
+      """, deep=True, solve_unknowns=True, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        mod = ...  # type: module
+        def g(x: NoneType or float) -> List[str, ...]
+      """)
 
   def testClasses(self):
     with utils.Tempdir() as d:
@@ -67,28 +67,28 @@ class PYITest(test_inference.InferenceTest):
         class B(A):
           pass
       """)
-      with self.Infer("""\
+      ty = self.Infer("""\
         import classes
         x = classes.B().foo()
-      """, deep=False, solve_unknowns=False, pythonpath=[d.path]) as ty:
-        self.assertTypesMatchPytd(ty, """
-          classes = ...  # type: module
-          x = ...  # type: classes.A
-        """)
+      """, deep=False, solve_unknowns=False, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        classes = ...  # type: module
+        x = ...  # type: classes.A
+      """)
 
   def testEmptyModule(self):
     with utils.Tempdir() as d:
       d.create_file("vague.pyi", """
         def __getattr__(name) -> Any
       """)
-      with self.Infer("""\
+      ty = self.Infer("""\
         import vague
         x = vague.foo + vague.bar
-      """, deep=False, solve_unknowns=False, pythonpath=[d.path]) as ty:
-        self.assertTypesMatchPytd(ty, """
-          vague = ...  # type: module
-          x = ...  # type: Any
-        """)
+      """, deep=False, solve_unknowns=False, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        vague = ...  # type: module
+        x = ...  # type: Any
+      """)
 
   def testDecorators(self):
     with utils.Tempdir() as d:
@@ -100,7 +100,7 @@ class PYITest(test_inference.InferenceTest):
           def v(cls, a, b) -> int: ...
           def w(self, a, b) -> int: ...
       """)
-      with self.Infer("""\
+      ty = self.Infer("""\
         import decorated
         u = decorated.A.u(1, 2)
         v = decorated.A.v(1, 2)
@@ -109,16 +109,16 @@ class PYITest(test_inference.InferenceTest):
         y = a.v(1, 2)
         z = a.w(1, 2)
       """, deep=False, solve_unknowns=False, extract_locals=True,
-                      pythonpath=[d.path]) as ty:
-        self.assertTypesMatchPytd(ty, """
-          decorated = ...  # type: module
-          a = ...  # type: decorated.A
-          u = ...  # type: int
-          v = ...  # type: int
-          x = ...  # type: int
-          y = ...  # type: int
-          z = ...  # type: int
-        """)
+                      pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        decorated = ...  # type: module
+        a = ...  # type: decorated.A
+        u = ...  # type: int
+        v = ...  # type: int
+        x = ...  # type: int
+        y = ...  # type: int
+        z = ...  # type: int
+      """)
 
   def testPassPyiClassmethod(self):
     with utils.Tempdir() as d:
@@ -128,80 +128,80 @@ class PYITest(test_inference.InferenceTest):
           def v(cls) -> float: ...
           def w(self, x: classmethod) -> int: ...
       """)
-      with self.Infer("""\
+      ty = self.Infer("""\
         import a
         u = a.A().w(a.A.v)
       """, deep=False, solve_unknowns=False, extract_locals=True,
-                      pythonpath=[d.path]) as ty:
-        self.assertTypesMatchPytd(ty, """
-          a = ...  # type: module
-          u = ...  # type: int
-        """)
+                      pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        u = ...  # type: int
+      """)
 
   def testOptionalParameters(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
         def parse(source, filename = ..., mode = ..., *args, **kwargs) -> int: ...
       """)
-      with self.Infer("""\
+      ty = self.Infer("""\
         import a
         u = a.parse("True")
-      """, deep=False, solve_unknowns=True, pythonpath=[d.path]) as ty:
-        self.assertTypesMatchPytd(ty, """
-          a = ...  # type: module
-          u = ...  # type: int
-        """)
+      """, deep=False, solve_unknowns=True, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        u = ...  # type: int
+      """)
 
   def testOptimize(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
         class Bar(dict[?, int]): ...
       """)
-      with self.Infer("""\
+      ty = self.Infer("""\
       import a
       def f(foo, bar):
         return __any_object__[1]
       def g():
         out = f('foo', 'bar')
         out = out.split()
-      """, deep=True, solve_unknowns=True, pythonpath=[d.path]) as ty:
-        self.assertTypesMatchPytd(ty, """
-          a = ...  # type: module
-          def f(foo, bar) -> Union[a.Bar, bytearray, str, unicode]: ...
-          def g() -> NoneType: ...
-        """)
+      """, deep=True, solve_unknowns=True, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        def f(foo, bar) -> Union[a.Bar, bytearray, str, unicode]: ...
+        def g() -> NoneType: ...
+      """)
 
   def testIterable(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
         def f(l: Iterable[int]) -> int: ...
       """)
-      with self.Infer("""\
+      ty = self.Infer("""\
         import a
         u = a.f([1, 2, 3])
-      """, deep=False, pythonpath=[d.path], extract_locals=True) as ty:
-        self.assertTypesMatchPytd(ty, """
-          a = ...  # type: module
-          u = ...  # type: int
-        """)
+      """, deep=False, pythonpath=[d.path], extract_locals=True)
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        u = ...  # type: int
+      """)
 
   def testObject(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
         def make_object() -> object
       """)
-      with self.Infer("""\
+      ty = self.Infer("""\
         import a
         def f(x=None):
           x = a.make_object()
           z = x - __any_object__  # type: ignore
           z + __any_object__
           return True
-      """, deep=True, pythonpath=[d.path], solve_unknowns=True) as ty:
-        self.assertTypesMatchPytd(ty, """
-          a = ...  # type: module
-          def f(*args, **kwargs) -> Any: ...
-        """)
+      """, deep=True, pythonpath=[d.path], solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        def f(*args, **kwargs) -> Any: ...
+      """)
 
 
 if __name__ == "__main__":

@@ -31,10 +31,10 @@ class ConcreteTest(test_inference.InferenceTest):
         return {expr}
       f()
     """.format(expr=expr, assignments=assignments)
-    with self.Infer(src, deep=False, solve_unknowns=False,
-                    extract_locals=True) as ty:
-      self.assertOnlyHasReturnType(ty.Lookup("f"), expected_return)
-      self.check_native_call(src, "f", expected_return)
+    ty = self.Infer(src, deep=False, solve_unknowns=False,
+                    extract_locals=True)
+    self.assertOnlyHasReturnType(ty.Lookup("f"), expected_return)
+    self.check_native_call(src, "f", expected_return)
 
   def check_native_call(self, src, function_name, expected_return):
     # Given the source code for a function, compile it, run it and check its
@@ -224,7 +224,7 @@ class OverloadTest(test_inference.InferenceTest):
   """Tests for overloading operators."""
 
   def check_binary(self, function_name, op):
-    with self.Infer("""
+    ty = self.Infer("""
       class Foo(object):
         def {function_name}(self, unused_x):
           return 3j
@@ -235,11 +235,11 @@ class OverloadTest(test_inference.InferenceTest):
       f()
     """.format(function_name=function_name, op=op),
                     deep=False, solve_unknowns=False,
-                    extract_locals=False) as ty:
-      self.assertOnlyHasReturnType(ty.Lookup("f"), self.complex)
+                    extract_locals=False)
+    self.assertOnlyHasReturnType(ty.Lookup("f"), self.complex)
 
   def check_unary(self, function_name, op, ret=None):
-    with self.Infer("""
+    ty = self.Infer("""
       class Foo(object):
         def {function_name}(self):
           return 3j
@@ -248,8 +248,8 @@ class OverloadTest(test_inference.InferenceTest):
       f()
     """.format(function_name=function_name, op=op),
                     deep=False, solve_unknowns=False,
-                    extract_locals=False) as ty:
-      self.assertOnlyHasReturnType(ty.Lookup("f"), ret or self.complex)
+                    extract_locals=False)
+    self.assertOnlyHasReturnType(ty.Lookup("f"), ret or self.complex)
 
   def test_add(self):
     self.check_binary("__add__", "+")
@@ -305,7 +305,7 @@ class ReverseTest(test_inference.InferenceTest):
   """Tests for reverse operators."""
 
   def check_reverse(self, function_name, op):
-    with self.Infer("""
+    ty = self.Infer("""
       class Foo(object):
         def __{function_name}__(self, x):
           return 3j
@@ -323,11 +323,11 @@ class ReverseTest(test_inference.InferenceTest):
       f(); g(); h(); i()
     """.format(op=op, function_name=function_name),
                     deep=False, solve_unknowns=False,
-                    extract_locals=False) as ty:
-      self.assertHasReturnType(ty.Lookup("f"), self.complex)
-      self.assertHasReturnType(ty.Lookup("g"), self.str)
-      self.assertHasReturnType(ty.Lookup("h"), self.str)
-      self.assertHasReturnType(ty.Lookup("i"), self.complex)
+                    extract_locals=False)
+    self.assertHasReturnType(ty.Lookup("f"), self.complex)
+    self.assertHasReturnType(ty.Lookup("g"), self.str)
+    self.assertHasReturnType(ty.Lookup("h"), self.str)
+    self.assertHasReturnType(ty.Lookup("i"), self.complex)
 
   def test_add(self):
     self.check_reverse("add", "+")
@@ -367,7 +367,7 @@ class InplaceTest(test_inference.InferenceTest):
   """Tests for in-place operators."""
 
   def check_inplace(self, function_name, op):
-    with self.Infer("""
+    ty = self.Infer("""
       class Foo(object):
         def __{function_name}__(self, x):
           return 3j
@@ -378,8 +378,8 @@ class InplaceTest(test_inference.InferenceTest):
       f()
     """.format(op=op, function_name=function_name),
                     deep=False, solve_unknowns=False,
-                    extract_locals=False) as ty:
-      self.assertHasReturnType(ty.Lookup("f"), self.complex)
+                    extract_locals=False)
+    self.assertHasReturnType(ty.Lookup("f"), self.complex)
 
   def test_add(self):
     self.check_inplace("iadd", "+=")

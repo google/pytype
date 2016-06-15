@@ -11,60 +11,60 @@ class RecoveryTests(test_inference.InferenceTest):
   """
 
   def testBadSubtract(self):
-    with self.Infer("""
+    ty = self.Infer("""
       def f():
         t = 0.0
         return t - ("bla" - t)
-    """, deep=True, solve_unknowns=True, report_errors=False) as ty:
-      self.assertTypesMatchPytd(ty, """
-        def f() -> ?
-      """)
+    """, deep=True, solve_unknowns=True, report_errors=False)
+    self.assertTypesMatchPytd(ty, """
+      def f() -> ?
+    """)
 
   def testBadCall(self):
-    with self.Infer("""
+    ty = self.Infer("""
       def f():
         return "%s" % chr("foo")
-    """, deep=True, solve_unknowns=True, report_errors=False) as ty:
-      self.assertTypesMatchPytd(ty, """
-        def f() -> str
-      """)
+    """, deep=True, solve_unknowns=True, report_errors=False)
+    self.assertTypesMatchPytd(ty, """
+      def f() -> str
+    """)
 
   def testBadFunction(self):
-    with self.Infer("""
+    ty = self.Infer("""
       import time
       def f():
         return time.unknown_function(3)
       def g():
         return '%s' % f()
-    """, deep=True, solve_unknowns=True, report_errors=False) as ty:
-      self.assertTypesMatchPytd(ty, """
-        time = ...  # type: module
-        def f() -> ?
-        def g() -> str
-      """)
+    """, deep=True, solve_unknowns=True, report_errors=False)
+    self.assertTypesMatchPytd(ty, """
+      time = ...  # type: module
+      def f() -> ?
+      def g() -> str
+    """)
 
   def testInheritFromInstance(self):
-    with self.Infer("""
+    ty = self.Infer("""
       class Foo(3):
         pass
-    """, deep=True, solve_unknowns=True, report_errors=False) as ty:
-      self.assertTypesMatchPytd(ty, """
-        class Foo(?):
-          pass
-      """)
+    """, deep=True, solve_unknowns=True, report_errors=False)
+    self.assertTypesMatchPytd(ty, """
+      class Foo(?):
+        pass
+    """)
 
   def testNameError(self):
-    with self.Infer("""
+    ty = self.Infer("""
       x = foobar
       class A(x):
         pass
       pow(A(), 2)
-    """, deep=True, solve_unknowns=True, report_errors=False) as ty:
-      self.assertTypesMatchPytd(ty, """
-        x = ...  # type: ?
-        class A(?):
-          pass
-      """)
+    """, deep=True, solve_unknowns=True, report_errors=False)
+    self.assertTypesMatchPytd(ty, """
+      x = ...  # type: ?
+      class A(?):
+        pass
+    """)
 
 
 if __name__ == "__main__":

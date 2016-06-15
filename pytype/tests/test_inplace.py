@@ -15,8 +15,8 @@ class InplaceTest(test_inference.InferenceTest):
         return x
       a = f(1, 2)
     """.format(assignments=assignments, op=op)
-    with self.Infer(src, deep=False, solve_unknowns=False) as ty:
-      self.assertTypeEquals(ty.Lookup("a").type, expected_return)
+    ty = self.Infer(src, deep=False, solve_unknowns=False)
+    self.assertTypeEquals(ty.Lookup("a").type, expected_return)
 
   def test_iadd(self):
     self._check_inplace("+", ["x=1", "y=2"], self.int)

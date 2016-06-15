@@ -13,7 +13,7 @@ class LogicTest(test_inference.InferenceTest):
 
   def testGetItemInLoop(self):
     # Extracted from unicode_urlparse.py:
-    with self.Infer("""
+    ty = self.Infer("""
       def f(args_list):
         args = dict()
         for k, v in args_list:
@@ -21,10 +21,10 @@ class LogicTest(test_inference.InferenceTest):
             args[k] = "foo"
           else:
             assert isinstance(args[k], str)
-    """, deep=True, solve_unknowns=False, extract_locals=True) as ty:
-      self.assertTypesMatchPytd(ty, """
-        def f(args_list) -> NoneType
-      """)
+    """, deep=True, solve_unknowns=False, extract_locals=True)
+    self.assertTypesMatchPytd(ty, """
+      def f(args_list) -> NoneType
+    """)
 
 
 if __name__ == "__main__":
