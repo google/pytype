@@ -206,7 +206,7 @@ class ClassesTest(test_inference.InferenceTest):
           return getattr(self, '__str__')
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
-      class MyList(list):
+      class MyList(List[?, ...]):
         def foo(self) -> ?
     """)
 
@@ -233,7 +233,6 @@ class ClassesTest(test_inference.InferenceTest):
           def seed(self):
             pass
 
-<<<<<<< 1cfc23e744426c9df3f023a6500a78fbcaa65608
       _inst = Random()
       seed = _inst.seed
     """, deep=True, solve_unknowns=True)
@@ -261,152 +260,6 @@ class ClassesTest(test_inference.InferenceTest):
       class Bar(?, Foo, ?):
         ...
     """)
-
-  def testProperty(self):
-    ty = self.Infer("""
-      class Foo(object):
-        def __init__(self):
-          self._name = "name"
-        def test(self):
-          return self.name
-        name = property(fget=lambda self: self._name)
-    """, deep=True, solve_unknowns=True)
-    self.assertTypesMatchPytd(ty, """
-      class Foo(object):
-        _name = ...  # type: str
-        name = ...  # type: property
-        def test(self) -> str: ...
-    """)
-
-  def testDescriptorSelf(self):
-    ty = self.Infer("""
-      class Foo(object):
-        def __init__(self):
-          self._name = "name"
-        def __get__(self, obj, objtype):
-          return self._name
-      class Bar(object):
-        def test(self):
-          return self.foo
-        foo = Foo()
-    """, deep=True, solve_unknowns=True)
-    self.assertTypesMatchPytd(ty, """
-      class Foo(object):
-        _name = ...  # type: str
-        def __get__(self, obj, objtype) -> str: ...
-      class Bar(object):
-        foo = ...  # type: Foo
-        def test(self) -> str: ...
-    """)
-
-  def testDescriptorInstance(self):
-    ty = self.Infer("""
-      class Foo(object):
-        def __get__(self, obj, objtype):
-          return obj._name
-      class Bar(object):
-        def __init__(self):
-          self._name = "name"
-        def test(self):
-          return self.foo
-        foo = Foo()
-    """, deep=True, solve_unknowns=True)
-    self.assertTypesMatchPytd(ty, """
-      class Foo(object):
-        def __get__(self, obj, objtype) -> Any: ...
-      class Bar(object):
-        _name = ...  # type: str
-        foo = ...  # type: Foo
-        def test(self) -> str: ...
-    """)
-
-  def testDescriptorClass(self):
-    ty = self.Infer("""
-      class Foo(object):
-        def __get__(self, obj, objtype):
-          return objtype._name
-      class Bar(object):
-        def test(self):
-          return self.foo
-        _name = "name"
-        foo = Foo()
-    """, deep=True, solve_unknowns=True)
-    self.assertTypesMatchPytd(ty, """
-      class Foo(object):
-        def __get__(self, obj, objtype) -> Any: ...
-      class Bar(object):
-        _name = ...  # type: str
-        foo = ...  # type: Foo
-        def test(self) -> str: ...
-    """)
-=======
-  def testClassAttr(self):
-    with self.Infer("""
-      class Foo(object):
-        pass
-      OtherFoo = Foo().__class__
-      Foo.x = 3
-      OtherFoo.x = "bar"
-    """, deep=True, solve_unknowns=True) as ty:
-      self.assertTypesMatchPytd(ty, """
-        class Foo(object):
-          # TODO(kramm): should be just "str". Also below.
-          x = ...  # type: int or str
-        # TODO(kramm): Should this be an alias?
-        class OtherFoo(object):
-          x = ...  # type: int or str
-      """)
-
-  def testClassAttr(self):
-    with self.Infer("""
-      class Foo(object):
-        pass
-      OtherFoo = Foo().__class__
-      Foo.x = 3
-      OtherFoo.x = "bar"
-    """, deep=True, solve_unknowns=True) as ty:
-      self.assertTypesMatchPytd(ty, """
-        class Foo(object):
-          # TODO(kramm): should be just "str". Also below.
-          x = ...  # type: int or str
-        # TODO(kramm): Should this be an alias?
-        class OtherFoo(object):
-          x = ...  # type: int or str
-      """)
-
-  def testBoundMethod(self):
-    with self.Infer("""
-      class Random(object):
-          def seed(self):
-            pass
-
-      _inst = Random()
-      seed = _inst.seed
-    """, deep=True, solve_unknowns=True) as ty:
-      self.assertTypesMatchPytd(ty, """
-      class Random(object):
-         def seed(self) -> None: ...
-
-      _inst = ...  # type: Random
-      seed = ...  # type: function
-      """)
-
-  def testMROWithUnsolvables(self):
-    with self.Infer("""
-      from nowhere import X, Y  # pytype: disable=import-error
-      class Foo(Y):
-        pass
-      class Bar(X, Foo, Y):
-        pass
-    """, deep=True, solve_unknowns=True) as ty:
-      self.assertTypesMatchPytd(ty, """
-        X = ...  # type: ?
-        Y = ...  # type: ?
-        class Foo(?):
-          ...
-        class Bar(?, Foo, ?):
-          ...
-      """)
 
 if __name__ == "__main__":
   test_inference.main()

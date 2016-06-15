@@ -96,6 +96,16 @@ class OperatorsWithAnyTests(test_inference.InferenceTest):
 
 class CallErrorTests(test_inference.InferenceTest):
 
+  def testInvalidCall(self):
+    # TODO(pludemann): verify that this generates an error
+    ty = self.Infer("""
+      f = 1
+      f()  # error
+    """, deep=False, solve_unknowns=True, extract_locals=True)
+    self.assertTypesMatchPytd(ty, """
+      f = ...  # type: int
+    """)
+
   def testCallAny(self):
     # TODO(pludemann): verify that this generates
     # class `~unknown1`(nothing):

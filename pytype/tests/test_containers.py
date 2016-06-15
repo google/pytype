@@ -60,7 +60,7 @@ class ContainerTest(test_inference.InferenceTest):
     """, deep=False, solve_unknowns=False, extract_locals=False)
     self.assertHasOnlySignatures(
         ty.Lookup("f"),
-        ((), pytd.HomogeneousContainerType(self.set, (self.int,))))
+        ((), pytd.HomogeneousContainerType(pytd.ClassType("set"), (self.int,))))
 
   def testSetsAdd(self):
     ty = self.Infer("""
@@ -73,7 +73,7 @@ class ContainerTest(test_inference.InferenceTest):
     """, deep=False, solve_unknowns=False, extract_locals=False)
     self.assertHasOnlySignatures(
         ty.Lookup("f"),
-        ((), pytd.HomogeneousContainerType(self.set, (self.int,))))
+        ((), pytd.HomogeneousContainerType(pytd.ClassType("set"), (self.int,))))
 
   def testSets(self):
     ty = self.Infer("""
@@ -90,7 +90,7 @@ class ContainerTest(test_inference.InferenceTest):
     """, deep=False, solve_unknowns=False, extract_locals=False)
     self.assertHasOnlySignatures(
         ty.Lookup("f"),
-        ((), pytd.HomogeneousContainerType(self.set, (self.int,))))
+        ((), pytd.HomogeneousContainerType(pytd.ClassType("set"), (self.int,))))
 
   def testListLiteral(self):
     ty = self.Infer("""
@@ -486,37 +486,8 @@ class ContainerTest(test_inference.InferenceTest):
     self.assertTypesMatchPytd(ty, """
       # The element types aren't more precise since the solver doesn't know
       # which element of the list gets modified.
-      def f() -> list
+      def f() -> List[?, ...]
     """)
-
-  def testCircularReferenceList(self):
-    ty = self.Infer("""
-      def f():
-        lst = []
-        lst.append(lst)
-        return lst
-    """, deep=True, solve_unknowns=True)
-    self.assertTypesMatchPytd(ty, """
-      def f() -> List[list]: ...
-    """)
-
-  def testCircularReferenceDictionary(self):
-    ty = self.Infer("""
-      def f():
-        g = __any_object__
-        s = {}
-        if g:
-          s1 = {}
-          s[__any_object__] = s1
-          s = s1
-        g = s.get('$end', None)
-        s['$end'] = g
-        return s1
-    """, deep=True, solve_unknowns=True)
-    self.assertTypesMatchPytd(ty, """
-      def f() -> Dict[str, Union[None, dict]]: ...
-    """)
-
 
 if __name__ == "__main__":
   test_inference.main()

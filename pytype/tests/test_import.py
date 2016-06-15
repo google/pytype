@@ -35,15 +35,15 @@ class ImportTest(test_inference.InferenceTest):
     with utils.Tempdir() as d:
       d.create_file("path/to/my_module.pyi",
                     "def foo() -> str")
-      with self.Infer("""\
+      ty = self.Infer("""\
       from path.to import my_module
       def foo():
         return my_module.foo()
-      """, deep=True, solve_unknowns=True, pythonpath=[d.path]) as ty:
-        self.assertTypesMatchPytd(ty, """
-          my_module = ...  # type: module
-          def foo() -> str
-        """)
+      """, deep=True, solve_unknowns=True, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        my_module = ...  # type: module
+        def foo() -> str
+      """)
 
   def testStarImportSmoke(self):
     self.assertNoErrors("""\
@@ -78,7 +78,7 @@ class ImportTest(test_inference.InferenceTest):
                     "def qqsv() -> str")
       d.create_file("path/to/__init__.pyi", "")
       d.create_file("path/__init__.pyi", "")
-      with self.Infer("""\
+      ty = self.Infer("""\
       import path.to.my_module
       def foo():
         return path.to.my_module.qqsv()
@@ -94,7 +94,7 @@ class ImportTest(test_inference.InferenceTest):
                     "def qqsv() -> str")
       d.create_file("path/to/__init__.pyi", "")
       d.create_file("path/__init__.pyi", "")
-      with self.Infer("""\
+      ty = self.Infer("""\
       import nonexistant_path.to.my_module  # doesn't exist
       def foo():
         return path.to.my_module.qqsv()
@@ -189,11 +189,11 @@ class ImportTest(test_inference.InferenceTest):
       import StringIO
       def f():
         return StringIO.StringIO().isatty()
-    """, deep=True, solve_unknowns=True) as ty:
-      self.assertTypesMatchPytd(ty, """
-        StringIO = ...  # type: module
-        def f() -> bool
-      """)
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      StringIO = ...  # type: module
+      def f() -> bool
+    """)
 
   def testImportPytd(self):
     with utils.Tempdir() as d:
@@ -439,7 +439,7 @@ class ImportTest(test_inference.InferenceTest):
       d.create_file("path/to/some/__init__.pyi", "")
       d.create_file("path/to/__init__.pyi", "")
       d.create_file("path/__init__.pyi", "")
-      with self.Infer("""\
+      ty = self.Infer("""\
         import path.to.some.module
         def my_foo(x):
           return path.to.some.module.foo(x)
@@ -456,13 +456,13 @@ class ImportTest(test_inference.InferenceTest):
       d.create_file("path/to/some/__init__.pyi", "")
       d.create_file("path/to/__init__.pyi", "")
       d.create_file("path/__init__.pyi", "")
-      with self.Infer("""\
+      ty = self.Infer("""\
         from path.to.some import module
         def my_foo(x):
           return module.foo(x)
       """, deep=True, solve_unknowns=True, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        module = ...  # type: __builtin__.module
+        module = ...  # type: module
         def my_foo(x:int) -> str
       """)
 
@@ -487,8 +487,8 @@ class ImportTest(test_inference.InferenceTest):
     self.assertTypesMatchPytd(ty, """
       builtins = ...  # type: module
 
-        def f() -> int
-      """)
+      def f() -> int
+    """)
 
   def testImportedMethodAsClassAttribute(self):
     ty = self.Infer("""
@@ -550,7 +550,7 @@ class ImportTest(test_inference.InferenceTest):
           return module.Foo.x
       """, deep=True, solve_unknowns=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        module = ...  # type: __builtin__.module
+        module = ...  # type: module
         def f() -> int
         def g() -> float
         def h() -> float
@@ -684,133 +684,6 @@ class ImportTest(test_inference.InferenceTest):
         foo = ...  # type: Any
         bar = ...  # type: Any
       """)
-
-  def testTwoLevel(self):
-    with utils.Tempdir() as d:
-      d.create_file("a.pyi", """
-        +++ /&* unparseable *&/ +++
-      """)
-      d.create_file("b.pyi", """
-        import a
-        class B(a.A):
-          pass
-      """)
-      _, errors = self.InferAndCheck("""\
-        import b
-        x = b.B()
-      """, pythonpath=[d.path])
-    self.assertErrorLogContains(errors, "a.pyi")
-
-  def testRelativePriority(self):
-    with utils.Tempdir() as d:
-      d.create_file("a.pyi", "x = ...  # type: int")
-      d.create_file("b/a.pyi", "x = ...  # type: complex")
-      ty = self.Infer("""\
-        import a
-        x = a.x
-      """, pythonpath=[d.path], module_name="b.main")
-      self.assertTypesMatchPytd(ty, """
-        a = ...  # type: module
-        x = ...  # type: complex
-      """)
-
-  def testModuleAttributes(self):
-    with self.Infer("""\
-      import os
-      f = os.__file__
-      n = os.__name__
-      d = os.__doc__
-      p = os.__package__
-      """, deep=True, solve_unknowns=True) as ty:
-      self.assertTypesMatchPytd(ty, """
-         os = ...  # type: module
-         f = ...  # type: str
-         n = ...  # type: str
-         d = ...  # type: AnyStr
-         p = ...  # type: Optional[str]
-      """)
-
-  def testReimport(self):
-    with utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
-          from collections import OrderedDict as MyOrderedDict
-      """)
-      with self.Infer("""\
-        import foo
-        d = foo.MyOrderedDict()
-      """, deep=False, solve_unknowns=False, pythonpath=[d.path]) as ty:
-        self.assertTypesMatchPytd(ty, """
-          foo = ...  # type: module
-          d = ...  # type: collections.OrderedDict
-        """)
-
-  def testImportFunction(self):
-    with utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
-          from math import pow as mypow
-      """)
-      with self.Infer("""\
-        import foo
-        d = foo.mypow
-      """, deep=False, solve_unknowns=False, pythonpath=[d.path]) as ty:
-        self.assertTypesMatchPytd(ty, """
-          foo = ...  # type: module
-          d = ...  # type: function
-        """)
-
-  def testImportConstant(self):
-    with utils.Tempdir() as d:
-      d.create_file("mymath.pyi", """
-          from math import pi as half_tau
-      """)
-      with self.Infer("""\
-        import mymath
-        from mymath import half_tau as x
-        y = mymath.half_tau
-      """, deep=False, solve_unknowns=False, pythonpath=[d.path]) as ty:
-        self.assertTypesMatchPytd(ty, """
-          mymath = ...  # type: module
-          x = ...  # type: float
-          y = ...  # type: float
-        """)
-
-  def testImportMap(self):
-    with utils.Tempdir() as d:
-      foo_filename = d.create_file("foo.pyi", """
-          bar = ...  # type: int
-      """)
-      imports_map_filename = d.create_file("imports_map.txt", """
-          foo %s
-      """ % foo_filename)
-      imports_map = imports_map_loader.build_imports_map(
-          imports_map_filename)
-      with self.Infer("""\
-        from foo import bar
-      """, deep=False, solve_unknowns=False, imports_map=imports_map,
-                      pythonpath=[""]) as ty:
-        self.assertTypesMatchPytd(ty, """
-          bar = ...  # type: int
-        """)
-
-  def testImportResolveOnDummy(self):
-    with utils.Tempdir() as d:
-      d.create_file("a.pyi", """
-          def __getattr__(name) -> Any: ...
-      """)
-      d.create_file("b.pyi", """
-          from a import Foo
-          def f(x: Foo) -> Foo: ...
-      """)
-      with self.Infer("""\
-        import b
-        foo = b.Foo()
-        bar = b.f(foo)
-      """, deep=False, solve_unknowns=True, pythonpath=[d.path]) as ty:
-        self.assertTypesMatchPytd(ty, """
-          b = ...  # type: module
-          foo = ...  # type: Any
-          bar = ...  # type: Any
-        """)
 
 
 if __name__ == "__main__":

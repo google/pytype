@@ -194,7 +194,7 @@ class BuiltinTests(test_inference.InferenceTest):
       return list(x)
     """, deep=True, solve_unknowns=True, extract_locals=True)
     self.assertTypesMatchPytd(ty, """
-      def t_testListInit0(x: object) -> list
+      def t_testListInit0(x: object) -> List[?, ...]
     """)
 
   def testListInit1(self):
@@ -203,7 +203,7 @@ class BuiltinTests(test_inference.InferenceTest):
       return x + [y]
     """, deep=True, solve_unknowns=True, extract_locals=False)
     self.assertTypesMatchPytd(ty, """
-      def t_testListInit1(x: List[object, ...], y) -> list
+      def t_testListInit1(x: List[object, ...], y) -> List[?, ...]
     """)
 
   def testListInit2(self):
@@ -245,7 +245,7 @@ class BuiltinTests(test_inference.InferenceTest):
     self.assertTypesMatchPytd(ty, """
       def t_testListInit4(x) -> ?
       # _i_ captures the more precise definition of the list
-      def _i_(x: List[object, ...]) -> list
+      def _i_(x: List[object, ...]) -> List[?, ...]
     """)
 
   def testAbsInt(self):
@@ -386,7 +386,7 @@ class BuiltinTests(test_inference.InferenceTest):
       class Foo(object):
         pass
 
-      def f() -> list
+      def f() -> List[?, ...]
     """)
 
   def testArraySmoke(self):
@@ -417,7 +417,7 @@ class BuiltinTests(test_inference.InferenceTest):
         pass
     """, deep=True, solve_unknowns=False)
     self.assertTypesMatchPytd(ty, """
-      class Foo(list):
+      class Foo(List[?, ...]):
         pass
     """)
 

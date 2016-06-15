@@ -66,34 +66,6 @@ class RecoveryTests(test_inference.InferenceTest):
         pass
     """)
 
-  def testObjectAttr(self):
-    self.assertNoCrash("""
-      object.bla(int)
-    """)
-
-  def testAttrError(self):
-    ty = self.Infer("""
-      class A:
-        pass
-      x = A.x
-      class B:
-        pass
-      y = "foo".foo()
-      object.bar(int)
-      class C:
-        pass
-    """, deep=True, extract_locals=True, report_errors=False)
-    self.assertTypesMatchPytd(ty, """
-      class A:
-        pass
-      x = ...  # type: ?
-      class B:
-        pass
-      y = ...  # type: ?
-      class C:
-        pass
-    """)
-
 
 if __name__ == "__main__":
   test_inference.main()

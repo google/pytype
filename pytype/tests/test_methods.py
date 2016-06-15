@@ -289,7 +289,7 @@ class MethodsTest(test_inference.InferenceTest):
     self.assertHasSignature(ty.Lookup("f"), (self.int,), self.int)
 
   def testBranchAndLoopCFG(self):
-    with self.Infer("""
+    ty = self.Infer("""
       def g():
           pass
       def f():
@@ -485,9 +485,9 @@ class MethodsTest(test_inference.InferenceTest):
         return args
     """, deep=True, solve_unknowns=False, extract_locals=True)
     self.assertTypesMatchPytd(ty, """
-    def f(...) -> tuple
-    def g(x, ...) -> tuple
-    def h(x, y, ...) -> tuple
+    def f(...) -> Tuple[?, ...]
+    def g(x, ...) -> Tuple[?, ...]
+    def h(x, y, ...) -> Tuple[?, ...]
     """)
 
   def testStarArgsPassThrough(self):
@@ -561,56 +561,38 @@ class MethodsTest(test_inference.InferenceTest):
     """)
 
   def testBuiltinStarArgs(self):
-    with utils.Tempdir() as d:
-      d.create_file("myjson.pyi", """
-        def loads(s: str, encoding: Any = ...) -> Any: ...
-      """)
-      ty = self.Infer("""
-        import myjson
-        def f(*args):
-          return myjson.loads(*args)
-      """, deep=True, pythonpath=[d.path],
-                      solve_unknowns=False,
-                      extract_locals=True)
-      self.assertTypesMatchPytd(ty, """
-      myjson = ...  # type: module
-      def f(...) -> ?
-      """)
+    ty = self.Infer("""
+      import json
+      def f(*args):
+        return json.loads(*args)
+    """, deep=True, solve_unknowns=False, extract_locals=True)
+    self.assertTypesMatchPytd(ty, """
+    json = ...  # type: module
+    def f(...) -> ?
+    """)
 
   def testBuiltinStarStarArgs(self):
-    with utils.Tempdir() as d:
-      d.create_file("myjson.pyi", """
-        def loads(s: str, encoding: Any = ...) -> Any: ...
-      """)
-      ty = self.Infer("""
-        import myjson
-        def f(**args):
-          return myjson.loads(**args)
-      """, deep=True, pythonpath=[d.path],
-                      solve_unknowns=False,
-                      extract_locals=True)
-      self.assertTypesMatchPytd(ty, """
-      myjson = ...  # type: module
-      def f(...) -> ?
-      """)
+    ty = self.Infer("""
+      import json
+      def f(**args):
+        return json.loads(**args)
+    """, deep=True, solve_unknowns=False, extract_locals=True)
+    self.assertTypesMatchPytd(ty, """
+    json = ...  # type: module
+    def f(...) -> ?
+    """)
 
   def testBuiltinKeyword(self):
-    with utils.Tempdir() as d:
-      d.create_file("myjson.pyi", """
-        def loads(s: str, encoding: Any = ...) -> Any: ...
-      """)
-      ty = self.Infer("""
-        import myjson
-        def f():
-          return myjson.loads(s="{}")
-      """, deep=True, pythonpath=[d.path],
-                      solve_unknowns=False,
-                      extract_locals=True)
-      self.assertTypesMatchPytd(ty, """
-      myjson = ...  # type: module
+    ty = self.Infer("""
+      import json
+      def f():
+        return json.loads(s="{}")
+    """, deep=True, solve_unknowns=False, extract_locals=True)
+    self.assertTypesMatchPytd(ty, """
+    json = ...  # type: module
 
-      def f() -> ?
-      """)
+    def f() -> ?
+    """)
 
   def testNoneOrFunction(self):
     ty = self.Infer("""
@@ -796,20 +778,6 @@ class MethodsTest(test_inference.InferenceTest):
       def myfunction(self: Foo, x, y) -> int
     """)
 
-  def testAssignMethod(self):
-    with self.Infer("""
-      class Foo(object):
-        pass
-      def myfunction(self, x, y):
-        return 3
-      Foo.mymethod = myfunction
-    """, deep=True, solve_unknowns=True) as ty:
-      self.assertTypesMatchPytd(ty, """
-        class Foo(object):
-          def mymethod(self, x, y) -> int
-        def myfunction(self: Foo, x, y) -> int
-      """)
-
   def testFunctionAttr(self):
     ty = self.Infer("""
       import os
@@ -838,15 +806,6 @@ class MethodsTest(test_inference.InferenceTest):
     b = ...  # type: complex
     c = ...  # type: complex
     d = ...  # type: float
-    """)
-
-  @unittest.skip("broken by typeshed upgrade")
-  def testJson(self):
-    ty = self.Infer("""
-      import json
-    """)
-    self.assertTypesMatchPytd(ty, """
-    json = ...  # type: module
     """)
 
 

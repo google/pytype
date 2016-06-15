@@ -52,7 +52,7 @@ class SolverTests(test_inference.InferenceTest):
         return x.keys()
     """, deep=True, solve_unknowns=True, extract_locals=True)
     self.assertTypesMatchPytd(ty, """
-      def f(x: dict) -> list
+      def f(x: dict[?, ?]) -> List[?, ...]
     """)
 
   def testNameConflict(self):
@@ -110,22 +110,6 @@ class SolverTests(test_inference.InferenceTest):
         def __init__(self, *types):
           self.types = types
         def bar(self, val):
-          return issubclass(val, self.types)
-    """, deep=True, solve_unknowns=True)
-    self.assertTypesMatchPytd(ty, """
-    class Foo(object):
-      def __init__(self, ...) -> NoneType
-      types = ...  # type: Tuple[type, ...]
-      def bar(self, val) -> bool
-    """)
-
-  @unittest.skip("isinstance() doesn't record a type signature")
-  def testOptionalParams_obsolete(self):
-    ty = self.Infer("""
-      class Foo(object):
-        def __init__(self, *types):
-          self.types = types
-        def bar(self, val):
           return isinstance(val, self.types)
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
@@ -166,9 +150,9 @@ class SolverTests(test_inference.InferenceTest):
       d = {}
       d[l[0]] = 3
       f(**d)
-    """, deep=True, solve_unknowns=True) as ty:
-      self.assertTypesMatchPytd(ty, """
-        def f(x) -> ?
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      def f(x) -> ?
 
       d = ...  # type: Dict[str, int]
       l = ...  # type: List[str, ...]
@@ -180,7 +164,8 @@ class SolverTests(test_inference.InferenceTest):
         return int(x, 16)
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
-      def f(x: int or float or str) -> int
+      # TODO(kramm): Why is bool here?
+      def f(x: int or float) -> int
     """)
 
   def testCallMethod(self):
@@ -301,21 +286,9 @@ class SolverTests(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
       collections = ...  # type: module
-      def bar(d: Dict[str, collections.defaultdict]
+      def bar(d: collections.Counter or Dict[str, collections.defaultdict]
                  or collections.defaultdict
               ) -> NoneType
-    """)
-
-  def testNameConflictWithBuiltin(self):
-    ty = self.Infer("""\
-      class LookupError(KeyError):
-        pass
-      def f(x):
-        pass
-    """, deep=True, solve_unknowns=True)
-    self.assertTypesMatchPytd(ty, """
-      class LookupError(KeyError): ...
-      def f(x) -> NoneType
     """)
 
 

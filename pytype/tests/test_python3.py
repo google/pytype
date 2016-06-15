@@ -24,15 +24,15 @@ class TestPython3(test_inference.InferenceTest):
 
       def uses_kw_defaults(x, *args, y=1):
         return 3
-    """) as ty:
-      self.assertTypesMatchPytd(ty, """
-        def uses_annotations(x: int) -> int
-        def uses_kw_defaults(x) -> ?
-        def uses_pos_defaults(x, ...) -> ?
-      """)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      def uses_annotations(x: int) -> int
+      def uses_kw_defaults(x) -> ?
+      def uses_pos_defaults(x, ...) -> ?
+    """)
 
   def test_make_class(self):
-    with self.Infer("""
+    ty = self.Infer("""
       class Thing(tuple):
         def __init__(self, x):
           self.x = x
@@ -40,26 +40,26 @@ class TestPython3(test_inference.InferenceTest):
         x = Thing(1)
         x.y = 3
         return x
-    """, deep=True, extract_locals=True) as ty:
-      self.assertTypesMatchPytd(ty, """
-      class Thing(Tuple[Any, ...]):
-        x = ...  # type: Any
-        y = ...  # type: int
-        def __init__(self, x) -> NoneType: ...
-      def f() -> Thing: ...
-      """)
+    """, deep=True, extract_locals=True)
+    self.assertTypesMatchPytd(ty, """
+    class Thing(Tuple[Any, ...]):
+      x = ...  # type: Any
+      y = ...  # type: int
+      def __init__(self, x) -> NoneType: ...
+    def f() -> Thing: ...
+    """)
 
   def test_class_kwargs(self):
-    with self.Infer("""
+    ty = self.Infer("""
       # x, y are passed to type() or the metaclass. We currently ignore them.
       class Thing(x=True, y="foo"): pass
-    """, deep=True, extract_locals=True) as ty:
-      self.assertTypesMatchPytd(ty, """
-      class Thing: ...
-      """)
+    """, deep=True, extract_locals=True)
+    self.assertTypesMatchPytd(ty, """
+    class Thing: ...
+    """)
 
   def test_exceptions(self):
-    with self.Infer("""
+    ty = self.Infer("""
       def f():
         try:
           raise ValueError()  # exercise byte_RAISE_VARARGS
@@ -68,10 +68,10 @@ class TestPython3(test_inference.InferenceTest):
         finally:  # exercise byte_POP_EXCEPT
           x = 3
         return x
-    """, deep=True, extract_locals=True) as ty:
-      self.assertTypesMatchPytd(ty, """
-        def f() -> int
-      """)
+    """, deep=True, extract_locals=True)
+    self.assertTypesMatchPytd(ty, """
+      def f() -> int
+    """)
 
 
 if __name__ == "__main__":
