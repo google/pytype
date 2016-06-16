@@ -976,7 +976,7 @@ class file(IO):
     def writelines(self, sequence_of_strings) -> NoneType
     def xreadlines(self) -> file
 
-class function(object):
+class function(Callable):
     def __call__(self, ...) -> ?
     def __get__(self, obj, ...) -> instancemethod
 

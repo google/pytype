@@ -203,6 +203,25 @@ class PYITest(test_inference.InferenceTest):
         def f(*args, **kwargs) -> Any: ...
       """)
 
+  def testCallable(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+from typing import Callable
+def process_function(func: Callable[..., Any]) -> None: ...
+      """)
+      ty = self.Infer("""\
+        import foo
+        def bar():
+          pass
+        x = foo.process_function(bar)
+      """, deep=False, pythonpath=[d.path], solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        from typing import Any
+        foo = ...  # type: module
+        def bar() -> Any: ...   # 'Any' because deep=False
+        x = ...  # type: NoneType
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()
