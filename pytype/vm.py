@@ -111,7 +111,8 @@ class VirtualMachine(object):
     self.primitive_classes = {v: self.convert_constant(v.__name__, v)
                               for v in [int, long, float, str, unicode, object,
                                         types.NoneType, complex, bool, slice,
-                                        types.CodeType, types.EllipsisType]}
+                                        types.CodeType, types.EllipsisType,
+                                        types.ClassType]}
 
     self.none = abstract.AbstractOrConcreteValue(
         None, self.primitive_classes[types.NoneType], self)
@@ -763,6 +764,9 @@ class VirtualMachine(object):
                                 abstract.Unsolvable))
                  for t in base.data):
         self.errorlog.base_class_error(self.frame.current_opcode, base)
+    if not bases:
+      # Old style class.
+      bases = [self.oldstyleclass_type]
     try:
       val = abstract.InterpreterClass(
           name,
