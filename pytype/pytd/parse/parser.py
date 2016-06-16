@@ -507,10 +507,6 @@ class TypeDeclParser(object):
     """alldefs : alldefs alias_or_constant"""
     p[0] = p[1] + [p[2]]
 
-  def p_alldefs_decorator(self, p):
-    """alldefs : alldefs overload"""
-    p[0] = p[1] + p[2]
-
   def p_alldefs_null(self, p):
     """alldefs :"""
     p[0] = []
@@ -822,16 +818,10 @@ class TypeDeclParser(object):
           self, "Illegal redefine of TypeVar(%r) from outer scope" % p[1], p)
     p[0] = []
 
-  def p_overload(self, p):
-    # @overload is used for multiple signatures for the same function
-    """overload : AT NAME"""
-    if p[2] != "overload":
-      make_syntax_error(self, " %r not supported on module level" % p[2], p)
-    p[0] = []
-
   def p_decorator(self, p):
     """decorator : AT NAME"""
     if p[2] == "overload":
+      # @overload is used for multiple signatures for the same function
       p[0] = []
     else:
       if p[2] not in ("overload", "staticmethod", "classmethod"):
