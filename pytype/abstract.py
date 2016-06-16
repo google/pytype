@@ -1877,7 +1877,8 @@ class InterpreterClass(SimpleAbstractValue, Class):
 
     bases = [pytd_utils.JoinTypes(b.get_instance_type()
                                   for b in basevar.data)
-             for basevar in self._bases]
+             for basevar in self._bases
+             if basevar is not self.vm.oldstyleclass_type]
     constants = [pytd.Constant(name, builder.build())
                  for name, builder in constants.items()
                  if builder]

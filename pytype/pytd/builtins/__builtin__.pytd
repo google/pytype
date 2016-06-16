@@ -139,10 +139,13 @@ None = ...  # type: NoneType
 Ellipsis = ...  # type: ellipsis
 
 class object():
-    __mro__ = ...  # type: list[?]
+    __bases__ = ...  # type: List[Any]
     __dict__ = ...  # type: Dict[str, Any]
-    __subclasshook__ = ...  # type: Any
+    __doc__ = ...  # type: str
+    __mro__ = ...  # type: list[Any]
+    __name__ = ...  # type: str
     __subclasses__ = ...  # type: Any
+    __subclasshook__ = ...  # type: Any
     def __init__(self) -> NoneType
     def __sizeof__(self) -> int
     def __repr__(self) -> str
@@ -153,9 +156,23 @@ class object():
     def __gt__(self, other) -> bool
     def __le__(self, other) -> bool
     def __lt__(self, other) -> bool
-    # TODO(pludemann): add these methods/attributes:
-    # ['__class__', '__delattr__', '__doc__', '__format__', '__getattribute__', '__hash__', '__new__', '__reduce__', '__reduce_ex__', '__setattr__', '__str__', '__subclasshook__']
+    def __hash__(self) -> int
 
+# old style class
+class classobj():
+    __bases__ = ...  # type: List[Any]
+    __dict__ = ...  # type: Dict[str, Any]
+    __doc__ = ...  # type: str
+    __name__ = ...  # type: str
+    def __init__(self) -> NoneType
+    def __repr__(self) -> str
+    def __cmp__(self, y) -> bool
+    def __eq__(self, other) -> bool
+    def __ne__(self, other) -> bool
+    def __ge__(self, other) -> bool
+    def __gt__(self, other) -> bool
+    def __le__(self, other) -> bool
+    def __lt__(self, other) -> bool
 
 class NotImplementedType(object):
     pass

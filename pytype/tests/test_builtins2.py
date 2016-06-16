@@ -65,6 +65,64 @@ class BuiltinTests2(test_inference.InferenceTest):
         pass
     """)
 
+  def testOldStyleClass(self):
+    ty = self.Infer("""
+      class Foo:
+        def get_dict(self):
+          return self.__dict__
+        def get_name(self):
+          return self.__name__
+        def get_class(self):
+          return self.__class__
+        def get_doc(self):
+          return self.__doc__
+        def get_module(self):
+          return self.__module__
+        def get_bases(self):
+          return self.__bases__
+    """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      class Foo:
+        def get_dict(self) -> Dict[str, Any]
+        def get_name(self) -> str
+        def get_class(self) -> type
+        def get_doc(self) -> str
+        def get_module(self) -> str
+        def get_bases(self) -> List[Any]
+    """)
+
+  def testNewStyleClass(self):
+    ty = self.Infer("""
+      class Foo(object):
+        def get_dict(self):
+          return self.__dict__
+        def get_name(self):
+          return self.__name__
+        def get_class(self):
+          return self.__class__
+        def get_doc(self):
+          return self.__doc__
+        def get_module(self):
+          return self.__module__
+        def get_bases(self):
+          return self.__bases__
+        def get_hash(self):
+          return self.__hash__()
+        def get_mro(self):
+          return self.__mro__
+    """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      class Foo(object):
+        def get_dict(self) -> Dict[str, Any]
+        def get_name(self) -> str
+        def get_class(self) -> type
+        def get_doc(self) -> str
+        def get_module(self) -> str
+        def get_hash(self) -> int
+        def get_mro(self) -> List[Any]
+        def get_bases(self) -> List[Any]
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()
