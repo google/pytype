@@ -504,23 +504,29 @@ def program_to_dot(program, ignored, only_cfg=False):
   return sb.getvalue()
 
 
-def _get_module_name(filename, pythonpath):
-  """Try to reverse-engineer the module name from the filename.
+def _get_module_name(filename, options):
+  """Return, or try to reverse-engineer, the name of the module we're analyzing.
 
-  This will not always be possible. It depends on the filename starting with
-  an entry in the pythonpath. It's used for relative imports.
+  If a module was passed using --module-name, that name will be returned.
+  Otherwise, this method tries to deduce the module name from the PYTHONPATH
+  and the filename. This will not always be possible. (It depends on the
+  filename starting with an entry in the pythonpath.)
+
+  The module name is used for relative imports.
 
   Args:
     filename: The filename of a Python file. E.g. "src/foo/bar/my_module.py".
-    pythonpath: A tuple of paths.
+    options: An instance of config.Options.
 
   Returns:
     A module name, e.g. "foo.bar.my_module", or None if we can't determine the
     module name.
   """
-  if filename:
+  if options.module_name is not None:
+    return options.module_name
+  elif filename:
     filename, _ = os.path.splitext(filename)
-    for path in pythonpath:
+    for path in options.pythonpath:
       # TODO(kramm): What if filename starts with "../"?  (os.pardir)
       if filename.startswith(path):
         subdir = filename[len(path):].lstrip(os.sep)
@@ -535,8 +541,7 @@ def check_types(py_src, pytd_src, py_filename, pytd_filename, errorlog,
                 maximum_depth=None):
   """Verify a PyTD against the Python code."""
   tracer = CallTracer(errorlog=errorlog, options=options,
-                      module_name=_get_module_name(py_filename,
-                                                   options.pythonpath),
+                      module_name=_get_module_name(py_filename, options),
                       reverse_operators=reverse_operators,
                       cache_unknowns=cache_unknowns,
                       maximum_depth=maximum_depth)
@@ -578,8 +583,7 @@ def infer_types(src,
     AssertionError: In case of a bad parameter combination.
   """
   tracer = CallTracer(errorlog=errorlog, options=options,
-                      module_name=_get_module_name(filename,
-                                                   options.pythonpath),
+                      module_name=_get_module_name(filename, options),
                       reverse_operators=reverse_operators,
                       cache_unknowns=cache_unknowns,
                       maximum_depth=maximum_depth)

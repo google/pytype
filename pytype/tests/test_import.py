@@ -343,6 +343,22 @@ class ImportTest(test_inference.InferenceTest):
         def f() -> int
     """)
 
+  def testModuleName(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo/baz.pyi", """x = ...  # type: int""")
+      bar = """
+        import baz
+        x = baz.x
+      """
+      d.create_file("foo/bar.py", bar)
+      ty = self.Infer(bar,
+                      module_name="foo.bar",
+                      pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        baz = ...  # type: module
+        x = ...  # type: int
+    """)
+
   def testDotPackage(self):
     # This tests up one level: note that the test file (foo.py)
     # is tested in the context of the up-level director "up1".
