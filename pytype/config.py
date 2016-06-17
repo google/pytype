@@ -155,6 +155,10 @@ class Options(object):
         dest="api",
         help=("Only analyze the main method and everything called from it"))
     o.add_option(
+        "-M", "--module-name", action="store",
+        dest="module_name", default=None,
+        help=("Name of the module we're analyzing. E.g. 'foo.bar.mymodule'"))
+    o.add_option(
         "--metrics", type="string", action="store",
         dest="metrics", default=None,
         help="Write a metrics report to the specified file.")

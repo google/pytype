@@ -282,8 +282,9 @@ class InferenceTest(unittest.TestCase):
     types = pytd_utils.CanonicalOrdering(types)
     return types
 
-  def _InferAndVerify(self, src, pythonpath=(), imports_map=None,
-                      report_errors=False, quick=False, **kwargs):
+  def _InferAndVerify(self, src, pythonpath=(), module_name=None,
+                      imports_map=None, report_errors=False, quick=False,
+                      **kwargs):
     """Infer types for the source code treating it as a module.
 
     Used by Infer().
@@ -291,6 +292,7 @@ class InferenceTest(unittest.TestCase):
     Args:
       src: The source code of a module. Treat it as "__main__".
       pythonpath: --pythonpath as list/tuple of string
+      module_name: Name of the module we're analyzing. E.g. "foo.bar.mymodule".
       imports_map: --imports_info data
       report_errors: Whether to fail if the type inferencer reports any errors
         in the program.
@@ -303,6 +305,7 @@ class InferenceTest(unittest.TestCase):
       A pytd.TypeDeclUnit
     """
     self.options.tweak(pythonpath=pythonpath,
+                       module_name=module_name,
                        imports_map=imports_map,
                        quick=quick)
     errorlog = self._InitErrorLog(src)
