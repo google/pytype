@@ -685,6 +685,22 @@ class ImportTest(test_inference.InferenceTest):
         bar = ...  # type: Any
       """)
 
+  def testTwoLevel(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        +++ /&* unparseable *&/ +++
+      """)
+      d.create_file("b.pyi", """
+        import a
+        class B(a.A):
+          pass
+      """)
+      _, errors = self.InferAndCheck("""\
+        import b
+        x = b.B()
+      """, pythonpath=[d.path])
+    self.assertErrorLogContains(errors, "a.pyi")
+
 
 if __name__ == "__main__":
   test_inference.main()

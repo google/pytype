@@ -93,7 +93,11 @@ class Loader(object):
     ast = self._postprocess_pyi(ast)
     module = Module(module_name, filename, ast)
     self._modules[module_name] = module
-    module.ast = self._load_and_resolve_ast_dependencies(module.ast)
+    try:
+      module.ast = self._load_and_resolve_ast_dependencies(module.ast)
+    except:
+      del self._modules[module_name]  # don't leave half-resolved modules around
+      raise
     return module.ast
 
   def _load_and_resolve_ast_dependencies(self, ast):
