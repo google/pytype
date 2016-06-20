@@ -334,6 +334,135 @@ class TestASTGeneration(parser_test_base.ParserTest):
         """)
     self.TestRoundTrip(src)
 
+  def testPropertyDecorator(self):
+    """Test property decorators."""
+    expected = textwrap.dedent("""
+        class A(object):
+            name = ...  # type: str
+      """)
+
+    def MatchExpected(src):
+      self.TestRoundTrip(textwrap.dedent(src), expected)
+
+    MatchExpected("""
+        class A(object):
+            @property
+            def name(self) -> str:...
+            """)
+
+    MatchExpected("""
+        class A(object):
+            @name.setter
+            def name(self, value: str) -> None: ...
+            """)
+
+    MatchExpected("""
+        class A(object):
+            @property
+            def name(self) -> str:...
+
+            @name.setter
+            def name(self, value: str) -> None: ...
+            """)
+
+    MatchExpected("""
+        class A(object):
+            @property
+            def name(self) -> str:...
+
+            @name.setter
+            def name(self, value) -> None: ...
+            """)
+
+    MatchExpected("""
+        class A(object):
+            @property
+            def name(self) -> int:...
+
+            # Last type gets used (should improve).
+            @name.setter
+            def name(self, value: str) -> None: ...
+            """)
+
+  def testPropertyDecoratorAnyType(self):
+    """Test property decorators that don't provide a type."""
+    expected = textwrap.dedent("""
+          from typing import Any
+
+          class A(object):
+              name = ...  # type: Any
+              """)
+
+    def MatchExpected(src):
+      self.TestRoundTrip(textwrap.dedent(src), expected)
+
+    MatchExpected("""
+        class A(object):
+            @property
+            def name(self): ...
+            """)
+
+    MatchExpected("""
+        class A(object):
+            @name.setter
+            def name(self, value): ...
+            """)
+
+    MatchExpected("""
+        class A(object):
+            @name.deleter
+            def name(self): ...
+            """)
+
+  def testPropertyDecoratorBadSyntax(self):
+    """Property decorator uses that should give errors."""
+    def ExpectError(src):
+      self.TestThrowsSyntaxError(textwrap.dedent(src))
+
+    ExpectError("""
+        class A(object):
+            @property
+            def name(self, bad_arg): ...
+            """)
+
+    ExpectError("""
+        class A(object):
+            @name.setter
+            def name(self): ...
+            """)
+
+    ExpectError("""
+        class A(object):
+            @name.foo
+            def name(self): ...
+            """)
+
+    ExpectError("""
+        class A(object):
+            @notname.deleter
+            def name(self): ...
+            """)
+
+    ExpectError("""
+        class A(object):
+            @property
+            @staticmethod
+            def name(self): ...
+            """)
+
+    ExpectError("""
+        class A(object):
+            @property
+            def name(self): ...
+
+            def name(self): ...
+            """)
+
+    ExpectError("""
+        @property
+        def name(self): ...
+        """)
+
   def testRaise(self):
     """Test raise statements."""
     src = textwrap.dedent("""

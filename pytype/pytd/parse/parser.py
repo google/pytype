@@ -473,9 +473,18 @@ class TypeDeclParser(object):
       make_syntax_error(
           self, "Duplicate top-level identifier(s): " + ", ".join(duplicates),
           p)
+
+    functions, properties = self.MergeSignatures(funcdefs)
+    if properties:
+      prop_names = ", ".join(p.name for p in properties)
+      make_syntax_error(
+          self,
+          "Module-level functions with property decorators: " + prop_names,
+          p)
+
     p[0] = pytd.TypeDeclUnit(name=None,  # replaced later, in Parse
                              constants=tuple(constants),
-                             functions=tuple(self.MergeSignatures(funcdefs)),
+                             functions=tuple(functions),
                              classes=tuple(classes),
                              aliases=tuple(aliases))
 
@@ -819,15 +828,18 @@ class TypeDeclParser(object):
     p[0] = []
 
   def p_decorator(self, p):
-    """decorator : AT NAME"""
-    if p[2] == "overload":
-      # @overload is used for multiple signatures for the same function
+    """decorator : AT dotted_name"""
+    name = p[2]
+    if name == "overload":
+      # used for multiple signatures for the same function, discard
       p[0] = []
+    elif (name in ("staticmethod", "classmethod", "property") or
+          "." in name):
+      # dotted_name decorators need more context to be validated, done in
+      # TryParseSignatureAsProperty
+      p[0] = [name]
     else:
-      if p[2] not in ("overload", "staticmethod", "classmethod"):
-        make_syntax_error(
-            self, "Decorator %r not supported" % p[2], p)
-      p[0] = [p[2]]
+      make_syntax_error(self, "Decorator %r not supported" % name, p)
 
   def p_decorators_0(self, p):
     """decorators : """
@@ -870,6 +882,7 @@ class TypeDeclParser(object):
       if not mutator.successful:
         make_syntax_error(self, "No parameter named %s" % mutator.name, p)
 
+    # TODO(acaceres): if not inside a class, any decorator should be an error
     if len(decorators) > 1:
       make_syntax_error(self, "Too many decorators for %s" % name, p)
 
@@ -1221,6 +1234,61 @@ class TypeDeclParser(object):
     else:
       make_syntax_error(self, "Unexpected %r" % t.type, t)
 
+  def TryParseSignatureAsProperty(self, full_signature):
+    """Given a signature, see if it corresponds to a @property.
+
+    Return whether it's compatible with a @property, and the properties' type
+    if specified in the signature's return value (for @property methods) or
+    argument (for @foo.setter methods).
+
+    Arguments:
+      full_signature: NameAndSig
+
+    Returns:
+      (is_property: bool, property_type: Union[None, NamedType, ...?)].
+    """
+    name, signature, decorators, _ = full_signature
+    # TODO(acaceres): validate full_signature.external_code?
+
+    def MaybePropertyDecorator(dec_string):
+      return "." in dec_string or "property" == dec_string
+
+    if all(not MaybePropertyDecorator(d) for d in decorators):
+      return False, None
+
+    if 1 != len(decorators):
+      make_syntax_error(
+          self, "Can't handle more than one decorator for %s" % name, None)
+
+    decorator = decorators[0]
+    num_params = len(signature.params)
+    property_type = None
+    is_valid = False
+
+    if "property" == decorator:
+      is_valid = (1 == num_params)
+      property_type = signature.return_type
+    elif 1 == decorator.count("."):
+      dec_name, dec_type = decorator.split(".")
+      if "setter" == dec_type and 2 == num_params:
+        is_valid = True
+        property_type = signature.params[1].type
+        if property_type == pytd.NamedType("object"):
+          # default, different from signature.return_type
+          property_type = None
+      elif "deleter" == dec_type:
+        is_valid = (1 == num_params)
+
+      is_valid &= (dec_name == name)
+
+    # Property decorators are the only decorators where we accept dotted-names,
+    # so any other dotted-name uses will throw an error here.
+    if not is_valid:
+      make_syntax_error(
+          self, "Unhandled decorator: %s" % decorator, None)
+
+    return True, property_type
+
   def MergeSignatures(self, signatures):
     """Given a list of pytd function signature declarations, group them by name.
 
@@ -1254,15 +1322,22 @@ class TypeDeclParser(object):
     name_external = collections.defaultdict(lambda: {False: 0, True: 0})
 
     name_to_decorators = {}
-    for name, signature, decorators, external_code in signatures:
+    for name, signature, decorators, external_code in method_signatures:
+      if name in name_to_property_type:
+        make_syntax_error(
+            self, "Incompatible signatures for %s" % name,
+            None)
+
       if name not in name_to_signatures:
         name_to_signatures[name] = []
         name_to_decorators[name] = decorators
-      name_to_signatures[name].append(signature)
+
       if name_to_decorators[name] != decorators:
-        self.make_syntax_error(
+        make_syntax_error(
             self, "Overloaded signatures for %s disagree on decorators" % name,
             None)
+
+      name_to_signatures[name].append(signature)
       name_external[name][external_code] += 1
 
     self.VerifyPythonCode(name_external)
@@ -1275,10 +1350,17 @@ class TypeDeclParser(object):
       if "staticmethod" in decorators:
         kind = pytd.STATICMETHOD
       if name_external[name][True]:
-        ret.append(pytd.ExternalFunction(name, (), kind))
+        methods.append(pytd.ExternalFunction(name, (), kind))
       else:
-        ret.append(pytd.Function(name, tuple(signatures), kind))
-    return ret
+        methods.append(pytd.Function(name, tuple(signatures), kind))
+
+    constants = []
+    for name, property_type in name_to_property_type.items():
+      if not property_type:
+        property_type = pytd.AnythingType()
+      constants.append(pytd.Constant(name, property_type))
+
+    return methods, constants
 
   def VerifyPythonCode(self, name_external):
     for name in name_external:
