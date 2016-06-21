@@ -39,11 +39,9 @@ def get_typeshed_file(toplevel, module, version, typeshed_dir=None):
   """
   loader = globals().get("__loader__", None)
   if typeshed_dir is None:
-    typeshed_dir = os.getenv("TYPESHED_HOME")
-  if typeshed_dir is not None:
-    prefix = os.path.join(typeshed_dir, toplevel)
-  else:
-    prefix = os.path.join(os.path.dirname(__file__), "..", "typeshed", toplevel)
+    typeshed_dir = get_typeshed_dir()
+
+  prefix = os.path.join(typeshed_dir, toplevel)
   if not os.path.isdir(prefix):
     # typeshed doesn't have 'builtins' anymore:
     # https://github.com/python/typeshed/pull/42
