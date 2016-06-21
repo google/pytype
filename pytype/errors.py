@@ -194,11 +194,9 @@ class ErrorLog(ErrorLogBase):
   """ErrorLog with convenience functions."""
 
   @_error_name("pyi-error")
-  def pyi_error(self, e):
-    # TODO(dbaum): Use the filename/line of the import rather than that
-    # of the parse error.
-    self._add(Error(SEVERITY_ERROR, e.msg, filename=e.filename,
-                    lineno=e.lineno, column=e.column, linetext=e.line))
+  def pyi_error(self, opcode, e):
+    self.error(opcode, "%s (file %s, line %d)",
+               e.msg, os.path.basename(e.filename), e.lineno)
 
   @_error_name("attribute-error")
   def attribute_error(self, opcode, obj, attr_name):
