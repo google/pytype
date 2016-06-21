@@ -6,6 +6,18 @@ import os
 from pytype.pytd import utils
 
 
+def get_typeshed_dir():
+  """Get the default typeshed location."""
+  ret = os.getenv("TYPESHED_HOME")
+  if ret is None:
+    ret = os.path.join(os.path.dirname(__file__), "..", "typeshed")
+
+  if not os.path.isdir(ret):
+    raise IOError("No typeshed directory %s" % ret)
+
+  return ret
+
+
 def get_typeshed_file(toplevel, module, version, typeshed_dir=None):
   """Get the contents of a typeshed file, typically with a file name *.pyi.
 
@@ -27,11 +39,9 @@ def get_typeshed_file(toplevel, module, version, typeshed_dir=None):
   """
   loader = globals().get("__loader__", None)
   if typeshed_dir is None:
-    typeshed_dir = os.getenv("TYPESHED_HOME")
-  if typeshed_dir is not None:
-    prefix = os.path.join(typeshed_dir, toplevel)
-  else:
-    prefix = os.path.join(os.path.dirname(__file__), "..", "typeshed", toplevel)
+    typeshed_dir = get_typeshed_dir()
+
+  prefix = os.path.join(typeshed_dir, toplevel)
   if not os.path.isdir(prefix):
     # typeshed doesn't have 'builtins' anymore:
     # https://github.com/python/typeshed/pull/42
