@@ -2104,7 +2104,7 @@ class VirtualMachine(object):
           name, abstract.get_atomic_python_constant(level))
     except parser.ParseError as e:
       log.warning("Couldn't parse module %r", name)
-      self.errorlog.pyi_error(e)
+      self.errorlog.pyi_error(op, e)
       module = abstract.Unsolvable(self)
     else:
       if module is None:
