@@ -102,9 +102,9 @@ class RestrictConditionTest(ConditionTestBase):
 
   def test_no_bindings(self):
     c = state._restrict_condition(self._node, self._parent, [], False)
-    self.assertIs(state.UNSATISFIABLE, c)
+    self.assertIs(self._parent, c)
     c = state._restrict_condition(self._node, self._parent, [], True)
-    self.assertIs(state.UNSATISFIABLE, c)
+    self.assertIs(self._parent, c)
 
   def test_none_restricted(self):
     x = self.new_binding("x")
@@ -118,7 +118,7 @@ class RestrictConditionTest(ConditionTestBase):
     x = self.new_binding("x", ONLY_FALSE)
     y = self.new_binding("y", ONLY_FALSE)
     c = state._restrict_condition(self._node, self._parent, [x, y], True)
-    self.assertIs(state.UNSATISFIABLE, c)
+    self.assertIs(self._parent, c)
 
   def test_some_restricted_no_parent(self):
     x = self.new_binding("x")  # Can be true or false.

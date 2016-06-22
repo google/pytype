@@ -168,7 +168,8 @@ class FrameState(object):
                         self.block_stack,
                         other.node,
                         self.exception,
-                        self.why)
+                        self.why,
+                        _common_condition(self.condition, other.condition))
     return self
 
   def set_exception(self, exc_type, value, tb):
@@ -344,10 +345,9 @@ def _restrict_condition(node, parent, bindings, logical_value):
       # very unlikely to occur, and treating it as a restriction will not
       # cause any problems.
       restricted = True
-  if not dnf:
-    _restrict_counter.inc("unsatisfiable")
-    return UNSATISFIABLE
-  elif restricted:
+  # TODO(dbaum):  Add support to avoid dead code, and signal dead code
+  # when dnf is empty.
+  if dnf and restricted:
     _restrict_counter.inc("restricted")
     return Condition(node, parent, dnf)
   else:

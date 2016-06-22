@@ -486,11 +486,14 @@ class Variable(object):
       else:
         copy.AddOrigin(where, {binding})
 
-  def FilterAndPasteVariable(self, variable, where):
+  def FilterAndPasteVariable(self, variable, where, condition=None):
     """Adds all the visible bindings from another variable to this one."""
     for binding in variable.Bindings(where):
       copy = self.AddBinding(binding.data)
-      copy.AddOrigin(where, {binding})
+      sources = {binding}
+      if condition:
+        sources.add(condition.binding)
+      copy.AddOrigin(where, sources)
 
   def AssignToNewVariable(self, name, where):
     """Assign this variable to a new variable.

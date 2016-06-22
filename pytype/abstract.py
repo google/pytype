@@ -257,9 +257,6 @@ class AtomicAbstractValue(object):
     """
     return node, None
 
-  def get_attribute_generic(self, node, name, val):
-    return self.get_attribute(node, name, valself=val)
-
   def get_attribute(self, node, name, valself=None, valcls=None,
                     condition=None):
     """Get the named attribute from this object.
@@ -618,7 +615,8 @@ class SimpleAbstractValue(AtomicAbstractValue):
     else:
       return node, None
 
-  def get_attribute(self, node, name, valself=None, valcls=None):
+  def get_attribute(self, node, name, valself=None, valcls=None,
+                    condition=None):
     node, attr = self._load_special_attribute(node, name)
     if attr is not None:
       return node, attr
@@ -653,7 +651,7 @@ class SimpleAbstractValue(AtomicAbstractValue):
     else:
       ret = self.vm.program.NewVariable(name)
       for candidate in candidates:
-        ret.FilterAndPasteVariable(candidate, node)
+        ret.FilterAndPasteVariable(candidate, node, condition=condition)
       if not ret.bindings:
         return node, None
       return node, ret
@@ -880,6 +878,7 @@ class ValueWithSlots(Instance):
         the slot mechanism might kick in.
       valself: A typegraph.Binding. See AtomicAbstractValue.get_attribute.
       valcls: A typegraph.Binding. See AtomicAbstractValue.get_attribute.
+      condition: A Condition.  See AtomicAbstractValue.get_attribute.
 
     Returns:
       A tuple (CFGNode, Variable). The Variable will be None if the attribute
@@ -996,6 +995,7 @@ class AbstractOrConcreteValue(Instance, PythonConstant):
   def compatible_with(self, logical_value):
     return bool(self.pyval) == logical_value
 
+
 class LazyAbstractOrConcreteValue(SimpleAbstractValue, PythonConstant):
   """Lazy abstract value with a concrete fallback."""
 
@@ -1009,6 +1009,9 @@ class LazyAbstractOrConcreteValue(SimpleAbstractValue, PythonConstant):
 
   def _convert_member(self, name, pyval):
     return self._resolver(name, pyval)
+
+  def compatible_with(self, logical_value):
+    return bool(self.pyval) == logical_value
 
 
 class Union(AtomicAbstractValue, FormalType):
@@ -1853,21 +1856,9 @@ class PyTDClass(SimpleAbstractValue, Class):
     self.pytd_cls = pytd_cls
     self.mro = utils.compute_mro(self)
 
-  def get_attribute_generic(self, node, name, val):
-    return self.get_attribute(node, name, valcls=val)
-
   def get_attribute(self, node, name, valself=None, valcls=None,
                     condition=None):
-    node, var = Class.get_attribute(
-        self, node, name, valself, valcls, condition)
-    if var.bindings or not valself:
-      return node, var
-    else:
-      return self.get_attribute_computed(node, name, valself, valcls, condition)
-
-  def get_attribute_flat(self, node, name):
-    # get_attribute_flat ?
-    return SimpleAbstractValue.get_attribute(self, node, name)
+    return Class.get_attribute(self, node, name, valself, valcls, condition)
 
   def get_attribute_flat(self, node, name):
     # get_attribute_flat ?
@@ -2008,9 +1999,6 @@ class InterpreterClass(SimpleAbstractValue, Class):
 
   def get_attribute_flat(self, node, name):
     return SimpleAbstractValue.get_attribute(self, node, name)
-
-  def get_attribute_generic(self, node, name, val):
-    return self.get_attribute(node, name, valcls=val)
 
   def get_attribute(self, node, name, valself=None, valcls=None,
                     condition=None):
@@ -2722,9 +2710,11 @@ class Module(Instance):
         log.warning("__getattr__ in %s is not a function", self.name)
     return False
 
-  def get_attribute(self, node, name, valself=None, valcls=None):
+  def get_attribute(self, node, name, valself=None, valcls=None,
+                    condition=None):
     # Local variables in __init__.py take precedence over submodules.
-    node, var = super(Module, self).get_attribute(node, name, valself, valcls)
+    node, var = super(Module, self).get_attribute(node, name, valself, valcls,
+                                                  condition)
     if var is None:
       full_name = self.name + "." + name
       mod = self.vm.import_module(full_name, 0)  # 0: absolute import
