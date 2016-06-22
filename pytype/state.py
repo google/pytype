@@ -3,6 +3,7 @@
 import logging
 
 
+from pytype import metrics
 from pytype.pytd import cfg
 
 log = logging.getLogger(__name__)
@@ -11,18 +12,21 @@ log = logging.getLogger(__name__)
 class FrameState(object):
   """Immutable state object, for attaching to opcodes."""
 
-  __slots__ = ["block_stack", "data_stack", "node", "exception", "why"]
+  __slots__ = ["block_stack", "data_stack", "node", "exception", "why",
+               "condition"]
 
-  def __init__(self, data_stack, block_stack, node, exception, why):
+  def __init__(self, data_stack, block_stack, node, exception, why,
+               condition=None):
     self.data_stack = data_stack
     self.block_stack = block_stack
     self.node = node
     self.exception = exception
     self.why = why
+    self.condition = condition
 
   @classmethod
   def init(cls, node):
-    return FrameState((), (), node, None, None)
+    return FrameState((), (), node, None, None, None)
 
   def __setattribute__(self):
     raise AttributeError("States are immutable.")
@@ -32,7 +36,16 @@ class FrameState(object):
                       self.block_stack,
                       self.node,
                       self.exception,
-                      why)
+                      why,
+                      self.condition)
+
+  def set_condition(self, condition):
+    return FrameState(self.data_stack,
+                      self.block_stack,
+                      self.node,
+                      self.exception,
+                      self.why,
+                      condition)
 
   def push(self, *values):
     """Push value(s) onto the value stack."""
@@ -40,7 +53,8 @@ class FrameState(object):
                       self.block_stack,
                       self.node,
                       self.exception,
-                      self.why)
+                      self.why,
+                      self.condition)
 
   def peek(self, n):
     """Get a value `n` entries down in the stack, without changing the stack."""
@@ -62,7 +76,8 @@ class FrameState(object):
                       self.block_stack,
                       self.node,
                       self.exception,
-                      self.why), value
+                      self.why,
+                      self.condition), value
 
   def pop_and_discard(self):
     """Pop a value from the value stack and discard it."""
@@ -70,7 +85,8 @@ class FrameState(object):
                       self.block_stack,
                       self.node,
                       self.exception,
-                      self.why)
+                      self.why,
+                      self.condition)
 
   def popn(self, n):
     """Return n values, ordered oldest-to-newest."""
@@ -85,7 +101,8 @@ class FrameState(object):
                       self.block_stack,
                       self.node,
                       self.exception,
-                      self.why), values
+                      self.why,
+                      self.condition), values
 
   def push_block(self, block):
     """Push a block on to the block stack."""
@@ -93,7 +110,8 @@ class FrameState(object):
                       self.block_stack + (block,),
                       self.node,
                       self.exception,
-                      self.why)
+                      self.why,
+                      self.condition)
 
   def pop_block(self):
     """Pop a block from the block stack."""
@@ -102,7 +120,8 @@ class FrameState(object):
                       self.block_stack[:-1],
                       self.node,
                       self.exception,
-                      self.why), block
+                      self.why,
+                      self.condition), block
 
   def change_cfg_node(self, node):
     assert isinstance(node, cfg.CFGNode)
@@ -112,7 +131,8 @@ class FrameState(object):
                       self.block_stack,
                       node,
                       self.exception,
-                      self.why)
+                      self.why,
+                      self.condition)
 
   def connect_to_cfg_node(self, node):
     self.node.ConnectTo(node)
@@ -144,7 +164,8 @@ class FrameState(object):
                         self.block_stack,
                         other.node,
                         self.exception,
-                        self.why)
+                        self.why,
+                        _common_condition(self.condition, other.condition))
     return self
 
   def set_exception(self, exc_type, value, tb):
@@ -152,7 +173,8 @@ class FrameState(object):
                       self.block_stack,
                       self.node.ConnectNew(self.node.name),
                       (exc_type, value, tb),
-                      self.why)
+                      self.why,
+                      self.condition)
 
 
 class Frame(object):
@@ -247,3 +269,114 @@ class Frame(object):
     return "<Frame at 0x%08x: %r @ %d>" % (
         id(self), self.f_code.co_filename, self.f_lineno
     )
+
+
+class Condition(object):
+  """Represents a condition due to if-splitting.
+
+  Properties:
+    node: A CFGNode.
+    parent: The parent Condition (or None).
+    binding: A Binding for the condition's constraints.
+  """
+
+  def __init__(self, node, parent, dnf):
+    self._parent = parent
+    # The condition is represented by a dummy variable with a single binding
+    # to None.  The origins for this binding are the dnf clauses with the
+    # addition of the parent's binding.
+    self._var = node.program.NewVariable("__split")
+    self._binding = self._var.AddBinding(None)
+    for clause in dnf:
+      sources = set(clause)
+      if parent:
+        sources.add(parent.binding)
+      self._binding.AddOrigin(node, sources)
+
+  @property
+  def parent(self):
+    return self._parent
+
+  @property
+  def binding(self):
+    return self._binding
+
+
+_restrict_counter = metrics.MapCounter("state_restrict")
+
+
+def split_conditions(node, parent, var):
+  """Return a pair of conditions for the value being true and false."""
+  return (_restrict_condition(node, parent, var.bindings, True),
+          _restrict_condition(node, parent, var.bindings, False))
+
+
+def _restrict_condition(node, parent, bindings, logical_value):
+  """Return a restricted condition based on a parent and filtered bindings.
+
+  Args:
+    node: The CFGNode.
+    parent: A parent Condition or None.
+    bindings: A sequence of bindings.
+    logical_value: Either True or False.
+
+  Returns:
+    A Condition or None.  Each binding is checked for compatability with
+    logical_value.  If either no bindings match, or all bindings match, then
+    parent is returned.  Otherwise a new Condition is built from the specified
+    parent and the compatible bindings.
+  """
+  dnf = []
+  restricted = False
+  for b in bindings:
+    match = b.data.compatible_with(logical_value)
+    if match is True:
+      dnf.append([b])
+    elif match is False:
+      restricted = True
+    else:
+      dnf.extend(match)
+      # In theory, the value could have returned [[b]] as its DNF, in which
+      # case this isn't really a restriction.  However in practice this is
+      # very unlikely to occur, and treating it as a restriction will not
+      # cause any problems.
+      restricted = True
+  # TODO(dbaum):  Add support to avoid dead code, and signal dead code
+  # when dnf is empty.
+  if dnf and restricted:
+    _restrict_counter.inc("restricted")
+    return Condition(node, parent, dnf)
+  else:
+    _restrict_counter.inc("unrestricted")
+    return parent
+
+
+def _transitive_conditions(condition):
+  """Return the transitive closure of a condition and its ancestors."""
+  transitive = set()
+  while condition:
+    transitive.add(condition)
+    condition = condition.parent
+  return transitive
+
+
+def _common_condition(cond1, cond2):
+  """Return the closest common ancestor of two conditions."""
+  # If either condition is None, then return None.
+  if cond1 is None or cond2 is None:
+    return None
+
+  # Determine the transitive closures of the two conditions.
+  common = (_transitive_conditions(cond1) &
+            _transitive_conditions(cond2))
+
+  # Walk up each tree until reaching a condition that is common.
+  while cond1 and cond1 not in common:
+    cond1 = cond1.parent
+  while cond2 and cond2 not in common:
+    cond2 = cond2.parent
+
+  # We should get the same answer from both sides.
+  assert cond1 == cond2
+  return cond1
+

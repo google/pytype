@@ -253,7 +253,8 @@ class AtomicAbstractValue(object):
     """
     return node, None
 
-  def get_attribute(self, node, name, valself=None, valcls=None):  # pylint: disable=unused-argument
+  def get_attribute(self, node, name, valself=None, valcls=None,
+                    condition=None):
     """Get the named attribute from this object.
 
     Args:
@@ -265,11 +266,13 @@ class AtomicAbstractValue(object):
         the attribute. If valself is given then valcls will be ignored. Note
         that most implementations of this method ignore this value as only class
         objects need it (PyTDClass and InterpreterClass)
+      condition: A Condition object or None.
 
     Returns:
       A tuple (CFGNode, typegraph.Variable). If this attribute doesn't exist,
       the Variable will be None.
     """
+    del name, valself, valcls, condition  # unused args.
     return node, None
 
   def set_attribute(self, node, name, value):
@@ -434,6 +437,26 @@ class AtomicAbstractValue(object):
   def unique_parameter_values(self):
     return []
 
+  def compatible_with(self, logical_value):  # pylint: disable=unused-argument
+    """Returns the conditions under which the value could be True or False.
+
+    Args:
+      logical_value: Either True or False.
+
+    Returns:
+      False: If the value could not evaluate to logical_value under any
+          circumstance (i.e. value is the empty list and logical_value is True).
+      True: If it is possible for the value to evaluate to the logical_value,
+          and any ambiguity cannot be described by additional bindings.
+      DNF: A list of lists of bindings under which the value can evaluate to
+          the logical value.  For example, isinstance() could be reduced
+          to the set of bindings that would satisfy th isinstance() condition.
+    """
+    # By default a value is ambiguous - if could potentially evaluate to
+    # either True or False, thus we return True here regardless of
+    # logical_value.
+    return True
+
 
 class FormalType(object):
   """A mix-in for marking types that can not actually be instantiated.
@@ -577,7 +600,8 @@ class SimpleAbstractValue(AtomicAbstractValue):
     else:
       return node, None
 
-  def get_attribute(self, node, name, valself=None, valcls=None):
+  def get_attribute(self, node, name, valself=None, valcls=None,
+                    condition=None):
     node, attr = self._load_special_attribute(node, name)
     if attr is not None:
       return node, attr
@@ -612,7 +636,7 @@ class SimpleAbstractValue(AtomicAbstractValue):
     else:
       ret = self.vm.program.NewVariable(name)
       for candidate in candidates:
-        ret.FilterAndPasteVariable(candidate, node)
+        ret.FilterAndPasteVariable(candidate, node, condition=condition)
       if not ret.bindings:
         return node, None
       return node, ret
@@ -793,7 +817,8 @@ class ValueWithSlots(Instance):
           "Can't call bound method %s: We don't know how it was bound.", name)
     return node, ret
 
-  def get_attribute(self, node, name, valself=None, valcls=None):
+  def get_attribute(self, node, name, valself=None, valcls=None,
+                    condition=None):
     """Get an attribute.
 
     Will delegate to SimpleAbstractValue if we don't have a slot for it.
@@ -804,6 +829,7 @@ class ValueWithSlots(Instance):
         the slot mechanism might kick in.
       valself: A typegraph.Binding. See AtomicAbstractValue.get_attribute.
       valcls: A typegraph.Binding. See AtomicAbstractValue.get_attribute.
+      condition: A Condition.  See AtomicAbstractValue.get_attribute.
 
     Returns:
       A tuple (CFGNode, Variable). The Variable will be None if the attribute
@@ -910,6 +936,9 @@ class AbstractOrConcreteValue(Instance, PythonConstant):
     super(AbstractOrConcreteValue, self).__init__(clsvar, vm)
     PythonConstant.init_mixin(self, pyval)
 
+  def compatible_with(self, logical_value):
+    return bool(self.pyval) == logical_value
+
 
 class LazyAbstractOrConcreteValue(SimpleAbstractValue, PythonConstant):
   """Lazy abstract value with a concrete fallback."""
@@ -924,6 +953,9 @@ class LazyAbstractOrConcreteValue(SimpleAbstractValue, PythonConstant):
 
   def _convert_member(self, name, pyval):
     return self._resolver(name, pyval)
+
+  def compatible_with(self, logical_value):
+    return bool(self.pyval) == logical_value
 
 
 class Union(AtomicAbstractValue, FormalType):
@@ -991,7 +1023,8 @@ class SuperInstance(AtomicAbstractValue):
     self.super_cls = cls
     self.super_obj = obj
 
-  def get_attribute(self, node, name, valself=None, valcls=None):
+  def get_attribute(self, node, name, valself=None, valcls=None,
+                    condition=None):
     if self.super_obj:
       valself = self.super_obj.to_variable(node, "self").bindings[0]
     valcls = self.super_cls.to_variable(node, "cls").bindings[0]
@@ -1022,7 +1055,8 @@ class Super(AtomicAbstractValue):
       result = self.vm.create_new_unsolvable(node, "super()")
     return node, result
 
-  def get_attribute(self, node, name, valself=None, valcls=None):
+  def get_attribute(self, node, name, valself=None, valcls=None,
+                    condition=None):
     # In Python 3, you can do "super.__init__".
     raise NotImplementedError("Python 3 super not implemented yet")
 
@@ -1043,12 +1077,14 @@ class Function(Instance):
     self.members["func_name"] = self.vm.build_string(
         self.vm.root_cfg_node, name)
 
-  def get_attribute(self, node, name, valself=None, valcls=None):
+  def get_attribute(self, node, name, valself=None, valcls=None,
+                    condition=None):
     if name == "__get__":
       # The pytd for "function" has a __get__ attribute, but if we already
       # have a function we don't want to be treated as a descriptor.
       return node, None
-    return super(Function, self).get_attribute(node, name, valself, valcls)
+    return super(Function, self).get_attribute(node, name, valself, valcls,
+                                               condition)
 
   def property_get(self, callself, callcls):
     if not callself or not callcls:
@@ -1530,8 +1566,10 @@ class Class(object):
       break  # we found a class which has this attribute
     return ret
 
-  def get_attribute(self, node, name, valself=None, valcls=None):
+  def get_attribute(self, node, name, valself=None, valcls=None,
+                    condition=None):
     """Retrieve an attribute by looking at the MRO of this class."""
+    del condition  # unused arg.
     var = self.lookup_from_mro(node, name, valself, valcls)
     return node, var
 
@@ -1627,8 +1665,9 @@ class PyTDClass(SimpleAbstractValue, Class):
     self.pytd_cls = pytd_cls
     self.mro = utils.compute_mro(self)
 
-  def get_attribute(self, node, name, valself=None, valcls=None):
-    return Class.get_attribute(self, node, name, valself, valcls)
+  def get_attribute(self, node, name, valself=None, valcls=None,
+                    condition=None):
+    return Class.get_attribute(self, node, name, valself, valcls, condition)
 
   def get_attribute_flat(self, node, name):
     # get_attribute_flat ?
@@ -1761,8 +1800,10 @@ class InterpreterClass(SimpleAbstractValue, Class):
   def get_attribute_flat(self, node, name):
     return SimpleAbstractValue.get_attribute(self, node, name)
 
-  def get_attribute(self, node, name, valself=None, valcls=None):
-    node, attr_var = Class.get_attribute(self, node, name, valself, valcls)
+  def get_attribute(self, node, name, valself=None, valcls=None,
+                    condition=None):
+    node, attr_var = Class.get_attribute(self, node, name, valself, valcls,
+                                         condition)
     result = self.vm.program.NewVariable(name)
     nodes = []
     # Deal with descriptors as a potential additional level of indirection.
@@ -2295,8 +2336,9 @@ class BoundFunction(AtomicAbstractValue):
     self.underlying = underlying
     self.is_attribute_of_class = False
 
-  def get_attribute(self, node, name, valself=None, valcls=None):
-    return self.underlying.get_attribute(node, name, valself, valcls)
+  def get_attribute(self, node, name, valself=None, valcls=None,
+                    condition=None):
+    return self.underlying.get_attribute(node, name, valself, valcls, condition)
 
   def set_attribute(self, node, name, value):
     return self.underlying.set_attribute(node, name, value)
@@ -2357,7 +2399,8 @@ class Generator(Instance):
     self.generator_frame = generator_frame
     self.runs = 0
 
-  def get_attribute(self, node, name, valself=None, valcls=None):
+  def get_attribute(self, node, name, valself=None, valcls=None,
+                    condition=None):
     if name == "__iter__":
       f = NativeFunction(name, self.__iter__, self.vm)
       return node, f.to_variable(node, name)
@@ -2398,7 +2441,8 @@ class Nothing(AtomicAbstractValue, FormalType):
   def __init__(self, vm):
     super(Nothing, self).__init__("nothing", vm)
 
-  def get_attribute(self, node, name, valself=None, valcls=None):
+  def get_attribute(self, node, name, valself=None, valcls=None,
+                    condition=None):
     return node, None
 
   def set_attribute(self, node, name, value):
@@ -2464,9 +2508,11 @@ class Module(Instance):
         log.warning("__getattr__ in %s is not a function", self.name)
     return False
 
-  def get_attribute(self, node, name, valself=None, valcls=None):
+  def get_attribute(self, node, name, valself=None, valcls=None,
+                    condition=None):
     # Local variables in __init__.py take precedence over submodules.
-    node, var = super(Module, self).get_attribute(node, name, valself, valcls)
+    node, var = super(Module, self).get_attribute(node, name, valself, valcls,
+                                                  condition)
     if var is None:
       full_name = self.name + "." + name
       mod = self.vm.import_module(full_name, 0)  # 0: absolute import
@@ -2531,7 +2577,8 @@ class Unsolvable(AtomicAbstractValue):
   def __init__(self, vm):
     super(Unsolvable, self).__init__("unsolveable", vm)
 
-  def get_attribute(self, node, name, valself=None, valcls=None):
+  def get_attribute(self, node, name, valself=None, valcls=None,
+                    condition=None):
     if name in self.IGNORED_ATTRIBUTES:
       return node, None
     return node, Unsolvable(self.vm).to_variable(node, self.name)
@@ -2623,7 +2670,8 @@ class Unknown(AtomicAbstractValue):
     return tuple(pytd.Parameter("_%d" % (i + 1), Unknown._to_pytd(p))
                  for i, p in enumerate(args))
 
-  def get_attribute(self, node, name, valself=None, valcls=None):
+  def get_attribute(self, node, name, valself=None, valcls=None,
+                    condition=None):
     if name in self.IGNORED_ATTRIBUTES:
       return node, None
     if name in self.members:

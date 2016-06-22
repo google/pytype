@@ -1069,7 +1069,7 @@ class VirtualMachine(object):
 
   def load_from(self, state, store, name):
     node = state.node
-    node, attr = store.get_attribute(node, name)
+    node, attr = store.get_attribute(node, name, condition=state.condition)
     assert isinstance(node, typegraph.CFGNode)
     if not attr:
       raise KeyError(name)
@@ -1760,30 +1760,42 @@ class VirtualMachine(object):
     return state
 
   def byte_JUMP_IF_TRUE_OR_POP(self, state, op):
-    self.store_jump(op.target, state.forward_cfg_node())
-    return state.pop_and_discard()
+    cond_t, cond_f = frame_state.split_conditions(
+        state.node, state.condition, state.top())
+    self.store_jump(op.target, state.forward_cfg_node().set_condition(cond_t))
+    return state.pop_and_discard().set_condition(cond_f)
 
   def byte_JUMP_IF_FALSE_OR_POP(self, state, op):
-    self.store_jump(op.target, state.forward_cfg_node())
-    return state.pop_and_discard()
+    cond_t, cond_f = frame_state.split_conditions(
+        state.node, state.condition, state.top())
+    self.store_jump(op.target, state.forward_cfg_node().set_condition(cond_f))
+    return state.pop_and_discard().set_condition(cond_t)
 
   def byte_JUMP_IF_TRUE(self, state, op):  # Not in py2.7
-    self.store_jump(op.target, state.forward_cfg_node())
-    return state
+    cond_t, cond_f = frame_state.split_conditions(
+        state.node, state.condition, state.top())
+    self.store_jump(op.target, state.forward_cfg_node().set_condition(cond_t))
+    return state.set_condition(cond_f)
 
   def byte_JUMP_IF_FALSE(self, state, op):  # Not in py2.7
-    self.store_jump(op.target, state.forward_cfg_node())
-    return state
+    cond_t, cond_f = frame_state.split_conditions(
+        state.node, state.condition, state.top())
+    self.store_jump(op.target, state.forward_cfg_node().set_condition(cond_f))
+    return state.set_condition(cond_t)
 
   def byte_POP_JUMP_IF_TRUE(self, state, op):
-    state, unused_val = state.pop()
-    self.store_jump(op.target, state.forward_cfg_node())
-    return state
+    state, val = state.pop()
+    cond_t, cond_f = frame_state.split_conditions(
+        state.node, state.condition, val)
+    self.store_jump(op.target, state.forward_cfg_node().set_condition(cond_t))
+    return state.set_condition(cond_f)
 
   def byte_POP_JUMP_IF_FALSE(self, state, op):
-    state, unused_val = state.pop()
-    self.store_jump(op.target, state.forward_cfg_node())
-    return state
+    state, val = state.pop()
+    cond_t, cond_f = frame_state.split_conditions(
+        state.node, state.condition, val)
+    self.store_jump(op.target, state.forward_cfg_node().set_condition(cond_f))
+    return state.set_condition(cond_t)
 
   def byte_JUMP_FORWARD(self, state, op):
     self.store_jump(op.target, state.forward_cfg_node())
