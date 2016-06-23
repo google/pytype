@@ -29,6 +29,7 @@ class MethodsTest(test_inference.InferenceTest):
           return 1
         else:
           return 1.5
+      f(0)
       f(1)
     """, deep=False, solve_unknowns=False, extract_locals=False)
     self.assertHasOnlySignatures(ty.Lookup("f"),

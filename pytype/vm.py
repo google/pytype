@@ -1759,43 +1759,58 @@ class VirtualMachine(object):
     self.print_newline(to)
     return state
 
+  def _jump_if(self, state, op, pop=False, jump_if=False, or_pop=False):
+    """Implementation of various _JUMP_IF bytecodes.
+
+    Args:
+      state: Initial FrameState.
+      op: An opcode.
+      pop: True if a value is popped off the stack regardless.
+      jump_if: True or False (indicates which value will lead to a jump).
+      or_pop: True if a value is popped off the stack only when the jump is
+          not taken.
+    Returns:
+      The new FrameState.
+    """
+    assert not (pop and or_pop)
+    # Determine the conditions.  Assume jump-if-true, then swap conditions
+    # if necessary.
+    if pop:
+      state, value = state.pop()
+    else:
+      value = state.top()
+    jump, normal = frame_state.split_conditions(
+        state.node, state.condition, value)
+    if not jump_if:
+      jump, normal = normal, jump
+    # Jump.
+    if jump is not frame_state.UNSATISFIABLE:
+      self.store_jump(op.target, state.forward_cfg_node().set_condition(jump))
+    # Don't jump.
+    if or_pop:
+      state = state.pop_and_discard()
+    if normal is frame_state.UNSATISFIABLE:
+      return state.set_why("unsatisfiable")
+    else:
+      return state.set_condition(normal)
+
   def byte_JUMP_IF_TRUE_OR_POP(self, state, op):
-    cond_t, cond_f = frame_state.split_conditions(
-        state.node, state.condition, state.top())
-    self.store_jump(op.target, state.forward_cfg_node().set_condition(cond_t))
-    return state.pop_and_discard().set_condition(cond_f)
+    return self._jump_if(state, op, jump_if=True, or_pop=True)
 
   def byte_JUMP_IF_FALSE_OR_POP(self, state, op):
-    cond_t, cond_f = frame_state.split_conditions(
-        state.node, state.condition, state.top())
-    self.store_jump(op.target, state.forward_cfg_node().set_condition(cond_f))
-    return state.pop_and_discard().set_condition(cond_t)
+    return self._jump_if(state, op, jump_if=False, or_pop=True)
 
   def byte_JUMP_IF_TRUE(self, state, op):  # Not in py2.7
-    cond_t, cond_f = frame_state.split_conditions(
-        state.node, state.condition, state.top())
-    self.store_jump(op.target, state.forward_cfg_node().set_condition(cond_t))
-    return state.set_condition(cond_f)
+    return self._jump_if(state, op, jump_if=True)
 
   def byte_JUMP_IF_FALSE(self, state, op):  # Not in py2.7
-    cond_t, cond_f = frame_state.split_conditions(
-        state.node, state.condition, state.top())
-    self.store_jump(op.target, state.forward_cfg_node().set_condition(cond_f))
-    return state.set_condition(cond_t)
+    return self._jump_if(state, op, jump_if=False)
 
   def byte_POP_JUMP_IF_TRUE(self, state, op):
-    state, val = state.pop()
-    cond_t, cond_f = frame_state.split_conditions(
-        state.node, state.condition, val)
-    self.store_jump(op.target, state.forward_cfg_node().set_condition(cond_t))
-    return state.set_condition(cond_f)
+    return self._jump_if(state, op, pop=True, jump_if=True)
 
   def byte_POP_JUMP_IF_FALSE(self, state, op):
-    state, val = state.pop()
-    cond_t, cond_f = frame_state.split_conditions(
-        state.node, state.condition, val)
-    self.store_jump(op.target, state.forward_cfg_node().set_condition(cond_f))
-    return state.set_condition(cond_t)
+    return self._jump_if(state, op, pop=True, jump_if=False)
 
   def byte_JUMP_FORWARD(self, state, op):
     self.store_jump(op.target, state.forward_cfg_node())

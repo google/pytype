@@ -8,6 +8,10 @@ from pytype.pytd import cfg
 
 log = logging.getLogger(__name__)
 
+# A special constant, returned by split_conditions() to signal that the
+# condition cannot be satisfied with any known bindings.
+UNSATISFIABLE = object()
+
 
 class FrameState(object):
   """Immutable state object, for attaching to opcodes."""
@@ -341,9 +345,10 @@ def _restrict_condition(node, parent, bindings, logical_value):
       # very unlikely to occur, and treating it as a restriction will not
       # cause any problems.
       restricted = True
-  # TODO(dbaum):  Add support to avoid dead code, and signal dead code
-  # when dnf is empty.
-  if dnf and restricted:
+  if not dnf:
+    _restrict_counter.inc("unsatisfiable")
+    return UNSATISFIABLE
+  elif restricted:
     _restrict_counter.inc("restricted")
     return Condition(node, parent, dnf)
   else:
