@@ -284,9 +284,6 @@ class TypeMatch(utils.TypeMatcher):
       # These are unresolved. Only happens when type_matcher is called from
       # outside the type inferencer (e.g. by optimize.py)
       return booleq.TRUE
-    elif isinstance(t1, pytd.AnythingType) or isinstance(t2, pytd.AnythingType):
-      # We can match anything against AnythingType
-      return booleq.TRUE
     elif isinstance(t2, pytd.AnythingType):
       # We can match anything against AnythingType. (It's like top)
       return booleq.TRUE

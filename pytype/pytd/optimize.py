@@ -85,7 +85,8 @@ class RemoveRedundantSignatures(visitors.Visitor):
 
   def __init__(self, hierarchy):
     super(RemoveRedundantSignatures, self).__init__()
-    self.match = type_match.TypeMatch(hierarchy.GetSuperClasses())
+    self.match = type_match.TypeMatch(hierarchy.GetSuperClasses(),
+                                      any_also_is_bottom=False)
 
   def VisitFunction(self, node):
     new_signatures = []
