@@ -114,8 +114,18 @@ class StrictType(node.Node("name")):
 class TypeMatch(utils.TypeMatcher):
   """Class for matching types against other types."""
 
-  def __init__(self, direct_subclasses=None):
+  def __init__(self, direct_subclasses=None, any_also_is_bottom=True):
+    """Construct.
+
+    Args:
+      direct_subclasses: A dictionary, mapping pytd.TYPE to lists of pytd.TYPE.
+      any_also_is_bottom: Whether we should, (if True) consider
+        pytd.AnythingType() to also be at the bottom of the type hierarchy,
+        thus making it a subclass of everything, or (if False) to be only
+        at the top.
+    """
     self.direct_subclasses = direct_subclasses or {}
+    self.any_also_is_bottom = any_also_is_bottom
     self.solver = booleq.Solver()
     self._implications = {}
 
@@ -274,9 +284,15 @@ class TypeMatch(utils.TypeMatcher):
       # These are unresolved. Only happens when type_matcher is called from
       # outside the type inferencer (e.g. by optimize.py)
       return booleq.TRUE
-    elif isinstance(t1, pytd.AnythingType) or isinstance(t2, pytd.AnythingType):
-      # We can match anything against AnythingType
+    elif isinstance(t2, pytd.AnythingType):
+      # We can match anything against AnythingType. (It's like top)
       return booleq.TRUE
+    elif isinstance(t1, pytd.AnythingType):
+      if self.any_also_is_bottom:
+        # We can match AnythingType against everything. (It's like bottom)
+        return booleq.TRUE
+      else:
+        return booleq.FALSE
     elif isinstance(t1, pytd.NothingType) and isinstance(t2, pytd.NothingType):
       # nothing matches against nothing.
       return booleq.TRUE

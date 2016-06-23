@@ -344,8 +344,8 @@ class AnythingType(node.Node()):
 class NothingType(node.Node()):
   """An "impossible" type, with no instances ('nothing' in pytd).
 
-  Also known as the "uninhabited" type. For representing empty lists, and
-  functions that never return.
+  Also known as the "uninhabited" type, or, in type systems, the "bottom" type.
+  For representing empty lists, and functions that never return.
   """
   __slots__ = ()
 

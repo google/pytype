@@ -35,10 +35,25 @@ class TestTypeMatch(unittest.TestCase):
         pass
     """))
 
+  def assertMatch(self, m, t1, t2):
+    eq = m.match_type_against_type(t1, t2, {})
+    self.assertEquals(eq, booleq.TRUE)
+
+  def assertNoMatch(self, m, t1, t2):
+    eq = m.match_type_against_type(t1, t2, {})
+    self.assertEquals(eq, booleq.FALSE)
+
   def testAnything(self):
     m = type_match.TypeMatch({})
-    eq = m.match_type_against_type(pytd.AnythingType(), pytd.AnythingType(), {})
-    self.assertEquals(eq, booleq.TRUE)
+    self.assertMatch(m, pytd.AnythingType(), pytd.AnythingType())
+    self.assertMatch(m, pytd.AnythingType(), pytd.NamedType("x"))
+    self.assertMatch(m, pytd.NamedType("x"), pytd.AnythingType())
+
+  def testAnythingAsTop(self):
+    m = type_match.TypeMatch({}, any_also_is_bottom=False)
+    self.assertMatch(m, pytd.AnythingType(), pytd.AnythingType())
+    self.assertNoMatch(m, pytd.AnythingType(), pytd.NamedType("x"))
+    self.assertMatch(m, pytd.NamedType("x"), pytd.AnythingType())
 
   def testNothing(self):
     m = type_match.TypeMatch({})
