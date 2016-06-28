@@ -2100,8 +2100,12 @@ class VirtualMachine(object):
     """IMPORT_FROM is mostly like LOAD_ATTR but doesn't pop the container."""
     name = self.frame.f_code.co_names[op.arg]
     module = state.top()
-    state, attr = self.load_attr(state, module, name)
-    return state.push(attr)
+    state, attr = self.load_attr_noerror(state, module, name)
+    if attr is None:
+      self.errorlog.import_from_error(self.frame.current_opcode, module, name)
+      return state.push(abstract.Unsolvable(self).to_variable(state.node, name))
+    else:
+      return state.push(attr)
 
   def byte_EXEC_STMT(self, state):
     state, (unused_stmt, unused_globs, unused_locs) = state.popn(3)
