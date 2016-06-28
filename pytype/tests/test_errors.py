@@ -51,6 +51,13 @@ class ErrorTest(test_inference.InferenceTest):
     self.assertErrorLogContains(
         errors, r".*line 2.*module.*rumplestiltskin[^\n]+\[import-error\]")
 
+  def testImportFromError(self):
+    _, errors = self.InferAndCheck("""
+      from sys import foobar
+    """)
+    self.assertErrorLogContains(
+        errors, r"sys.foobar.*\[import-error\]")
+
   def testNameError(self):
     _, errors = self.InferAndCheck("""
       foobar
@@ -201,7 +208,7 @@ class ErrorTest(test_inference.InferenceTest):
   def testBadCall(self):
     with utils.Tempdir() as d:
       d.create_file("other.pyi", """
-	def foo(x: int, y: str) -> str: ...
+        def foo(x: int, y: str) -> str: ...
       """)
       _, errors = self.InferAndCheck("""
         import other
