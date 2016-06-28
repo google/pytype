@@ -41,12 +41,15 @@ def GetBuiltinsAndTyping():
   if not _cached_builtins_pytd:
     t = parser.TypeDeclParser().Parse(_FindStdlibFile("typing"), name="typing")
     t = t.Visit(visitors.AddNamePrefix("typing."))
-    t = t.Visit(visitors.NamedTypeToClassType())
     b = parser.TypeDeclParser().Parse(_FindBuiltinFile("__builtin__"),
                                       name="__builtin__")
+    b = b.Visit(visitors.AddNamePrefix("__builtin__."))
     b = b.Visit(visitors.NamedTypeToClassType())
     b = b.Visit(visitors.LookupExternalTypes({"typing": t}, full_names=True))
-    b.Visit(visitors.FillInModuleClasses({"": b, "typing": t}))
+    t = t.Visit(visitors.LookupBuiltins(b))
+    t = t.Visit(visitors.NamedTypeToClassType())
+    b.Visit(visitors.FillInModuleClasses({"": b, "typing": t,
+                                          "__builtin__": b}))
     t.Visit(visitors.FillInModuleClasses({"": t, "typing": t,
                                           "__builtin__": b}))
     b.Visit(visitors.VerifyNoExternalTypes())

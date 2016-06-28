@@ -169,8 +169,10 @@ def solve(ast, builtins_pytd):
   builtins_pytd = transforms.RemoveMutableParameters(builtins_pytd)
   builtins_pytd = builtins_pytd.Visit(visitors.NamedTypeToClassType())
   builtins_pytd = builtins_pytd.Visit(visitors.LookupFullNames([builtins_pytd]))
+  builtins_pytd.Visit(visitors.VerifyLookup())
   ast = ast.Visit(visitors.NamedTypeToClassType())
   ast = ast.Visit(visitors.LookupFullNames([builtins_pytd, ast]))
+  ast.Visit(visitors.VerifyLookup())
   return TypeSolver(ast, builtins_pytd).solve(), extract_local(ast)
 
 

@@ -105,6 +105,7 @@ class PrintVisitor(Visitor):
     self.class_names = []  # allow nested classes
     self.imports = collections.defaultdict(set)
     self.in_alias = False
+    self._local_names = set()
 
   def _EscapedName(self, name):
     """Name, possibly escaped with backticks.
@@ -170,6 +171,16 @@ class PrintVisitor(Visitor):
         ret.append("from %s import %s" % (module, name_str))
 
     return ret
+
+  def _IsBuiltin(self, module, name):
+    return module == "__builtin__" and name not in self._local_names
+
+  def EnterTypeDeclUnit(self, unit):
+    definitions = unit.classes + unit.functions + unit.constants + unit.aliases
+    self._local_names = {c.name for c in definitions}
+
+  def LeaveTypeDeclUnit(self, _):
+    self._local_names = set()
 
   def VisitTypeDeclUnit(self, node):
     """Convert the AST for an entire module back to a string."""
@@ -327,11 +338,16 @@ class PrintVisitor(Visitor):
 
   def VisitNamedType(self, node):
     """Convert a type to a string."""
-    if node.name == "NoneType":
+    module, _, suffix = node.name.partition(".")
+    if self._IsBuiltin(module, suffix):
+      node_name = suffix
+    else:
+      node_name = node.name
+    if node_name == "NoneType":
       # PEP 484 allows this special abbreviation.
       return "None"
     else:
-      name = self._SafeName(node.name)
+      name = self._SafeName(node_name)
       if "." in name:
         module = name[:name.rfind(".")]
         self._RequireImport(module)
@@ -347,9 +363,12 @@ class PrintVisitor(Visitor):
 
   def VisitExternalType(self, node):
     """Convert an external type to a string."""
-    module = self._SafeName(node.module)
-    self._RequireImport(module)
-    return module + "." + self._SafeName(node.name)
+    if self._IsBuiltin(node.module, node.name):
+      return self._SafeName(node.name)
+    else:
+      module = self._SafeName(node.module)
+      self._RequireImport(module)
+      return module + "." + self._SafeName(node.name)
 
   def VisitNativeType(self, node):
     """Convert a native type to a string."""
@@ -461,14 +480,16 @@ class FillInModuleClasses(Visitor):
     """
     module, _, _ = node.name.rpartition(".")
     if module:
-      modules_to_try = [module]
+      modules_to_try = [("", module)]
     else:
-      modules_to_try = ["", "__builtin__"]
-    for module in modules_to_try:
+      modules_to_try = [("", ""),
+                        ("", "__builtin__"),
+                        ("__builtin__.", "__builtin__")]
+    for prefix, module in modules_to_try:
       mod_ast = self._lookup_map.get(module)
       if mod_ast:
         try:
-          cls = mod_ast.Lookup(node.name)
+          cls = mod_ast.Lookup(prefix + node.name)
         except KeyError:
           pass
         else:
@@ -489,12 +510,14 @@ class LookupFullNames(Visitor):
       try:
         cls = lookup.Lookup(node.name)
       except KeyError:
-        pass
-      else:
-        if not isinstance(cls, pytd.Class):
-          raise KeyError("%s is not a class: %s" % (node.name, type(cls)))
-        node.cls = cls
-        return
+        try:
+          cls = lookup.Lookup("__builtin__." + node.name)
+        except KeyError:
+          continue
+      if not isinstance(cls, pytd.Class):
+        raise KeyError("%s is not a class: %s" % (node.name, type(cls)))
+      node.cls = cls
+      return
 
 
 def _ToType(item):
@@ -687,6 +710,44 @@ class VerifyNoExternalTypes(Visitor):
     raise ValueError("Unresolved ExternalType: %s" % str(node))
 
 
+class LookupBuiltins(Visitor):
+  """Look up built-in NamedTypes and give them fully-qualified names."""
+
+  def __init__(self, builtins):
+    """Create this visitor.
+
+    Args:
+      builtins: The builtins module.
+    """
+    super(LookupBuiltins, self).__init__()
+    self._builtins = builtins
+
+  def EnterTypeDeclUnit(self, unit):
+    self._current_unit = unit
+    self._prefix = unit.name + "."
+
+  def LeaveTypeDeclUnit(self, _):
+    del self._current_unit
+    del self._prefix
+
+  def VisitNamedType(self, t):
+    if "." in t.name:
+      return t
+    try:
+      self._current_unit.Lookup(self._prefix + t.name)
+    except KeyError:
+      # We can't find this identifier in our current module, and it isn't fully
+      # qualified (doesn't contain a dot). Now check whether it's a builtin.
+      try:
+        item = self._builtins.Lookup(self._builtins.name + "." + t.name)
+      except KeyError:
+        return t
+      else:
+        return _ToType(item)
+    else:
+      return t
+
+
 class LookupExternalTypes(Visitor):
   """Look up ExternalType pointers using a symbol table."""
 
@@ -728,7 +789,7 @@ class LookupExternalTypes(Visitor):
     """
     module = self._module_map[t.module]
     try:
-      if self.full_names and t.module != "__builtin__":
+      if self.full_names:
         item = module.Lookup(t.module + "." + t.name)
       else:
         item = module.Lookup(t.name)
@@ -1239,9 +1300,6 @@ class AddNamePrefix(Visitor):
     return self._VisitNamedNode(node)
 
   def VisitConstant(self, node):
-    return self._VisitNamedNode(node)
-
-  def VisitAlias(self, node):
     return self._VisitNamedNode(node)
 
 

@@ -37,11 +37,13 @@ class InferenceTest(unittest.TestCase):
   def setUp(self):
     self.options = config.Options.create(python_version=self.PYTHON_VERSION,
                                          python_exe=self.PYTHON_EXE)
-    self.bool = pytd.ClassType("bool")
-    self.dict = pytd.ClassType("dict")
-    self.float = pytd.ClassType("float")
-    self.complex = pytd.ClassType("complex")
-    self.int = pytd.ClassType("int")
+    def t(name):  # pylint: disable=invalid-name
+      return pytd.ClassType("__builtin__." + name)
+    self.bool = t("bool")
+    self.dict = t("dict")
+    self.float = t("float")
+    self.complex = t("complex")
+    self.int = t("int")
     if self.PYTHON_VERSION[0] == 2:
       self.long = t("long")
     self.list = t("list")

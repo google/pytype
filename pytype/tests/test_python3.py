@@ -41,6 +41,7 @@ class TestPython3(test_inference.InferenceTest):
         x.y = 3
         return x
     """, deep=True, extract_locals=True)
+
     self.assertTypesMatchPytd(ty, """
     class Thing(Tuple[Any, ...]):
       x = ...  # type: Any

@@ -152,7 +152,7 @@ class TypeMatch(utils.TypeMatcher):
       return self.get_superclasses(t.base_type)
     else:
       log.warning("Can't extract superclasses from %s", type(t))
-      return [pytd.NamedType("object")]
+      return [pytd.NamedType("__builtin__.object")]
 
   def get_subclasses(self, t):
     """Get all classes derived from this type.

@@ -222,6 +222,14 @@ def process_function(func: Callable[..., Any]) -> None: ...
         x = ...  # type: NoneType
       """)
 
+  def testHex(self):
+    ty = self.Infer("""\
+      x = hex(4)
+    """, deep=False, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      x = ...  # type: str
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

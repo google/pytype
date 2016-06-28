@@ -60,7 +60,7 @@ class ContainerTest(test_inference.InferenceTest):
     """, deep=False, solve_unknowns=False, extract_locals=False)
     self.assertHasOnlySignatures(
         ty.Lookup("f"),
-        ((), pytd.HomogeneousContainerType(pytd.ClassType("set"), (self.int,))))
+        ((), pytd.HomogeneousContainerType(self.set, (self.int,))))
 
   def testSetsAdd(self):
     ty = self.Infer("""
@@ -73,7 +73,7 @@ class ContainerTest(test_inference.InferenceTest):
     """, deep=False, solve_unknowns=False, extract_locals=False)
     self.assertHasOnlySignatures(
         ty.Lookup("f"),
-        ((), pytd.HomogeneousContainerType(pytd.ClassType("set"), (self.int,))))
+        ((), pytd.HomogeneousContainerType(self.set, (self.int,))))
 
   def testSets(self):
     ty = self.Infer("""
@@ -90,7 +90,7 @@ class ContainerTest(test_inference.InferenceTest):
     """, deep=False, solve_unknowns=False, extract_locals=False)
     self.assertHasOnlySignatures(
         ty.Lookup("f"),
-        ((), pytd.HomogeneousContainerType(pytd.ClassType("set"), (self.int,))))
+        ((), pytd.HomogeneousContainerType(self.set, (self.int,))))
 
   def testListLiteral(self):
     ty = self.Infer("""

@@ -152,18 +152,6 @@ class VirtualMachine(object):
     self.undefined = self.program.NewVariable("undefined")
     self.vmbuiltins = self.loader.builtins
 
-    # Map from builtin names to canonical objects.
-    self.special_builtins = {
-        # The super() function.
-        "super": abstract.Super(self),
-        # for more pretty branching tests.
-        "__random__": self.primitive_class_instances[bool],
-        # boolean values.
-        "True": self.true,
-        "False": self.false,
-        "isinstance": abstract.IsInstance(self),
-    }
-
   def is_at_maximum_depth(self):
     return len(self.frames) > self.maximum_depth
 
@@ -498,8 +486,8 @@ class VirtualMachine(object):
       # This key is also used in __init__
       key = (abstract.Instance, pytype.cls)
       if key not in self._convert_cache:
-        if pytype.name in ["__builtin__.type", "__builtin__.property"]:
-          # An instance of "type" or of an anonymous property can be anything.
+        if pytype.name == "__builtin__.type":
+          # special case: An instantiation of "type" can be anything.
           instance = self._create_new_unknown_value("type")
         else:
           cls = self.convert_constant(str(pytype), pytype)
@@ -1329,10 +1317,7 @@ class VirtualMachine(object):
       assert level > 0
       ast = self.loader.import_relative(level)
     if ast:
-      module_data = ast.constants + ast.classes + ast.functions + ast.aliases
-      members = {val.name.rsplit(".")[-1]: val
-                 for val in module_data}
-      module = abstract.Module(self, ast.name, members)
+      module = self.construct_constant_from_value(ast.name, ast)
       if level <= 0 and name == "typing":
         # use a special overlay for stdlib/typing.pytd
         return typing.TypingOverlay(self, module)

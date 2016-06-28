@@ -106,9 +106,32 @@ class TestOptimize(parser_test_base.ParserTest):
     new_src = textwrap.dedent("""
         def foo(a: int) -> int
     """)
-    self.AssertOptimizeEquals(src, new_src)
+    ast = self.ParseAndResolve(src)
+    self.AssertOptimizeEquals(ast, new_src)
 
   def testRemoveRedundantSignatureWithAny(self):
+    src = textwrap.dedent("""
+        def foo(a: Any) -> Any
+        def foo(a: int) -> int
+    """)
+    new_src = textwrap.dedent("""
+        def foo(a: Any) -> Any
+    """)
+    ast = self.ParseAndResolve(src)
+    self.AssertOptimizeEquals(ast, new_src)
+
+  def testRemoveRedundantSignatureWithObject(self):
+    src = textwrap.dedent("""
+        def foo(x) -> ?
+        def foo(x: int) -> int
+    """)
+    new_src = textwrap.dedent("""
+        def foo(x) -> ?
+    """)
+    ast = self.ParseAndResolve(src)
+    self.AssertOptimizeEquals(ast, new_src)
+
+  def testRemoveRedundantSignatureAnyType(self):
     src = textwrap.dedent("""
         def foo(a: int) -> int
         def foo(a: ?) -> int
@@ -372,23 +395,6 @@ class TestOptimize(parser_test_base.ParserTest):
         x = ...  # type: int
         y = ...  # type: int or float
         z = ...  # type: list[int] or int
-    """)
-    hierarchy = builtins.GetBuiltinsPyTD().Visit(
-        visitors.ExtractSuperClassesByName())
-    visitor = optimize.SimplifyUnionsWithSuperclasses(
-        optimize.SuperClassHierarchy(hierarchy))
-    ast = self.Parse(src)
-    ast = visitors.LookupClasses(ast, builtins.GetBuiltinsPyTD())
-    ast = ast.Visit(visitor)
-    self.AssertSourceEquals(ast, expected)
-
-  @unittest.skip("Needs better handling of GenericType")
-  def testSimplifyUnionsWithSuperclassesGeneric(self):
-    src = textwrap.dedent("""
-        x = ...  # type: frozenset[int] or AbstractSet[int]
-    """)
-    expected = textwrap.dedent("""
-        x = ...  # type: AbstractSet[int]
     """)
     hierarchy = builtins.GetBuiltinsPyTD().Visit(
         visitors.ExtractSuperClassesByName())

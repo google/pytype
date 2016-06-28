@@ -568,7 +568,10 @@ class CollapseLongUnions(visitors.Visitor):
   def __init__(self, max_length=7):
     assert isinstance(max_length, (int, long))
     super(CollapseLongUnions, self).__init__()
-    self.generic_type = pytd.ClassType("__builtin__.object")
+    if generic_type is None:
+      self.generic_type = pytd.ClassType("__builtin__.object")
+    else:
+      self.generic_type = generic_type
     self.max_length = max_length
 
   def VisitUnionType(self, union):

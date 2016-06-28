@@ -120,7 +120,7 @@ class _Container(abstract.ValueWithSlots):
 
 
 class List(_Container):
-  pytd_name = "list"
+  pytd_name = "__builtin__.list"
 
   def __init__(self, name, vm, inner=None):
     super(List, self).__init__(vm.type_type, vm, inner)

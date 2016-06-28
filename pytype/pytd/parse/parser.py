@@ -229,7 +229,7 @@ class PyLexer(object):
     # with '~' or contain a dash, we also allow an escape with backticks.  If
     # you change this, also change parser_constants._BACKTICK_NAME.
     (r"""([a-zA-Z_][a-zA-Z0-9_-]*)|"""
-     r"""(`[a-zA-Z_~][-a-zA-Z0-9_]*`)""")
+     r"""(`[a-zA-Z_~][-a-zA-Z0-9_~]*`)""")
     if t.value[0] == r"`":
       # Permit token names to be enclosed by backticks (``), to allow for names
       # that are keywords in pytd syntax.

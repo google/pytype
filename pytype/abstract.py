@@ -1274,7 +1274,7 @@ class Function(Instance):
   def get_class(self):
     return self.vm.function_type
 
-  def to_type(self, seen=None):
+  def to_type(self):
     return pytd.NamedType("__builtin__.function")
 
   def match_against_type(self, other_type, subst, node, view):
@@ -1783,12 +1783,7 @@ class ParameterizedClass(AtomicAbstractValue, Class, FormalType):
     return "ParameterizedClass(cls=%r params=%s)" % (self.base_cls,
                                                      self.type_parameters)
 
-  def __str__(self):
-    params = [self.type_parameters[type_param.name]
-              for type_param in self.base_cls.pytd_cls.template]
-    return "%s[%s]" % (self.base_cls, ", ".join(str(p) for p in params))
-
-  def to_type(self, seen=None):
+  def to_type(self):
     return pytd.NamedType("__builtin__.type")
 
   def get_instance_type(self, _, seen=None):
@@ -1904,7 +1899,7 @@ class PyTDClass(SimpleAbstractValue, Class):
 
     return node, results
 
-  def to_type(self, seen=None):
+  def to_type(self):
     return pytd.NamedType("__builtin__.type")
 
   def get_instance_type(self, instance=None, seen=None):
@@ -2089,7 +2084,7 @@ class InterpreterClass(SimpleAbstractValue, Class):
       raise NotImplementedError(
           "Can't match instance %r against %r", self, other_type)
 
-  def to_type(self, seen=None):
+  def to_type(self):
     return pytd.NamedType("__builtin__.type")
 
   def to_pytd_def(self, class_name):
@@ -2508,7 +2503,7 @@ class InterpreterFunction(Function):
   def simple_pytd_signature(self):
     num_defaults = len(self.defaults)
     params = self._with_replaced_annotations(
-        [pytd.Parameter(name, pytd.NamedType("object"))
+        [pytd.Parameter(name, pytd.NamedType("__builtin__.object"))
          for name in self.get_parameter_names()])
     if num_defaults:
       params = params[:-num_defaults]
@@ -2569,7 +2564,7 @@ class BoundFunction(AtomicAbstractValue):
   def has_kwargs(self):
     return self.underlying.has_kwargs()
 
-  def to_type(self, seen=None):
+  def to_type(self):
     return pytd.NamedType("__builtin__.function")
 
   def match_against_type(self, other_type, subst, node, view):
@@ -2736,7 +2731,7 @@ class Module(Instance):
     return [(name, self._convert_member(name, ty))
             for name, ty in self._member_map.items()]
 
-  def to_type(self, seen=None):
+  def to_type(self):
     return pytd.NamedType("__builtin__.module")
 
   def match_against_type(self, other_type, subst, node, view):
