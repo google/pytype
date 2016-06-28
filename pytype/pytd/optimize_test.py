@@ -151,6 +151,19 @@ class TestOptimize(parser_test_base.ParserTest):
     """)
     self.AssertOptimizeEquals(src, new_src)
 
+  def testRemoveRedundantSignatureGeneric(self):
+    src = textwrap.dedent("""
+        def foo(a: list[int]) -> list[int]
+        def foo(a: list) -> list
+        def bar(a: list) -> list
+        def bar(a: list[int]) -> list[int]
+    """)
+    new_src = textwrap.dedent("""
+        def foo(a: list) -> list
+        def bar(a: list) -> list
+    """)
+    self.AssertOptimizeEquals(src, new_src)
+
   def testCombineReturns(self):
     src = textwrap.dedent("""
         def foo(a: int) -> int

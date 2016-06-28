@@ -331,8 +331,11 @@ class TypeMatch(utils.TypeMatcher):
       # E.g. list[...] matches against list, or even object.
       return self.match_type_against_type(t1.base_type, t2, subst)
     elif isinstance(t2, pytd.GenericType):
-      assert t1 != t2.base_type
-      return booleq.FALSE
+      if self.any_also_is_bottom:
+        # E.g. list (a.k.a. list[Any]) matches against list[str]
+        return self.match_type_against_type(t1, t2.base_type, subst)
+      else:
+        return booleq.FALSE
     elif is_unknown(t1) and is_unknown(t2):
       return booleq.Eq(t1.name, t2.name)
     elif (isinstance(t1, (pytd.NamedType, StrictType)) and
