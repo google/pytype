@@ -370,8 +370,10 @@ class CallTracer(vm.VirtualMachine):
         # TODO(kramm): The call to the constructor of this should use the pytd.
         node2, _, instance = self.init_class(node, val)
         for pytd_method in pytd_cls.methods:
-          _, method = self._retrieve_attr(node, instance,
-                                          pytd_method.name, errors=True)
+          _, method = self._retrieve_attr(node, instance, pytd_method.name)
+          if method is None:
+            raise NotImplementedError("getattr(%s) failed!" % pytd_method.name)
+          # TODO(kramm): Should this be the node returned from _retrieve_attr?
           self._check_function(pytd_method, method, node2, skip_self=True)
 
 

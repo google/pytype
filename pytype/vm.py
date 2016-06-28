@@ -925,9 +925,8 @@ class VirtualMachine(object):
     # TODO(pludemann): See TODO.txt for more on reverse operator subtleties.
     results = []
     log.debug("Calling binary operator %s", name)
-    try:
-      state, attr = self.load_attr_noerror(state, x, name)
-    except exceptions.ByteCodeAttributeError:  # from load_attr
+    state, attr = self.load_attr_noerror(state, x, name)
+    if attr is None:
       log.info("Failed to find %s on %r", name, x)
     else:
       state, ret = self.call_function_with_state(state, attr, [y],
@@ -935,9 +934,8 @@ class VirtualMachine(object):
       results.append(ret)
     rname = self.reverse_operator_name(name)
     if self.reverse_operators and rname:  # experimental, typically false
-      try:
-        state, attr = self.load_attr_noerror(state, y, rname)
-      except exceptions.ByteCodeAttributeError:
+      state, attr = self.load_attr_noerror(state, y, rname)
+      if attr is None:
         log.debug("No reverse operator %s on %r",
                   self.reverse_operator_name(name), y)
       else:
@@ -952,9 +950,8 @@ class VirtualMachine(object):
 
   def call_inplace_operator(self, state, iname, x, y):
     """Try to call a method like __iadd__, possibly fall back to __add__."""
-    try:
-      state, attr = self.load_attr_noerror(state, x, iname)
-    except exceptions.ByteCodeAttributeError:  # from load_attr
+    state, attr = self.load_attr_noerror(state, x, iname)
+    if attr is None:
       log.info("No inplace operator %s on %r", iname, x)
       name = iname.replace("i", "", 1)  # __iadd__ -> __add__ etc.
       state, ret = self.call_binary_operator(state, name, x, y)
@@ -1144,7 +1141,7 @@ class VirtualMachine(object):
     log.warning("Global variable removal does not actually do "
                 "anything in the abstract interpreter")
 
-  def _retrieve_attr(self, node, obj, attr, errors=True):
+  def _retrieve_attr(self, node, obj, attr):
     """Load an attribute from an object."""
     assert isinstance(obj, typegraph.Variable), obj
     # Resolve the value independently for each value of obj
@@ -1153,7 +1150,7 @@ class VirtualMachine(object):
     nodes = []
     for val in obj.Bindings(node):
       node2, attr_var = val.data.get_attribute(node, attr, val)
-      if not attr_var:
+      if attr_var is None or not attr_var.bindings:
         log.debug("No %s on %s", attr, val.data.__class__)
         continue
       log.debug("got choice for attr %s from %r of %r (0x%x): %r", attr, obj,
@@ -1162,18 +1159,21 @@ class VirtualMachine(object):
         continue
       result.PasteVariable(attr_var, node2)
       nodes.append(node2)
-    if not result.bindings:
-      if errors and obj.bindings:
-        self.errorlog.attribute_error(self.frame.current_opcode, obj, attr)
-      raise exceptions.ByteCodeAttributeError("No such attribute %s" % attr)
-    return self.join_cfg_nodes(nodes), result
+    if nodes:
+      return self.join_cfg_nodes(nodes), result
+    else:
+      return node, None
 
   def load_attr(self, state, obj, attr):
     node, result = self._retrieve_attr(state.node, obj, attr)
+    if result is None:
+      if obj.bindings:
+        self.errorlog.attribute_error(self.frame.current_opcode, obj, attr)
+      result = self.create_new_unsolvable(node, "bad attr")
     return state.change_cfg_node(node), result
 
   def load_attr_noerror(self, state, obj, attr):
-    node, result = self._retrieve_attr(state.node, obj, attr, errors=False)
+    node, result = self._retrieve_attr(state.node, obj, attr)
     return state.change_cfg_node(node), result
 
   def store_attr(self, state, obj, attr, value):
@@ -1624,14 +1624,8 @@ class VirtualMachine(object):
     name = self.frame.f_code.co_names[op.arg]
     state, obj = state.pop()
     log.debug("LOAD_ATTR: %r %r", obj, name)
-    try:
-      state, val = self.load_attr(state, obj, name)
-    except exceptions.ByteCodeAttributeError:
-      log.warning("No such attribute %s", name)
-      state = state.push(self.create_new_unsolvable(state.node, "bad attr"))
-    else:
-      state = state.push(val)
-    return state
+    state, val = self.load_attr(state, obj, name)
+    return state.push(val)
 
   def byte_STORE_ATTR(self, state, op):
     name = self.frame.f_code.co_names[op.arg]
