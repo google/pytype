@@ -691,13 +691,6 @@ class SimpleAbstractValue(AtomicAbstractValue):
     else:
       raise NotCallable(self)
 
-  def __str__(self):
-    if self.cls:
-      cls = self.cls.data[0]
-      return "<instance of %s>" % cls.name
-    else:
-      return "<instance>"
-
   def __repr__(self):
     if self.cls:
       cls = self.cls.data[0]
@@ -1067,7 +1060,7 @@ class WrongArgCount(InvalidParameters):
     self.call_arg_count = call_arg_count
 
 
-class WrongKeywordArgs(FailedFunctionCall):
+class WrongKeywordArgs(InvalidParameters):
   """E.g. an arg "x" is passed to a function that doesn't have an "x" param."""
 
   def __init__(self, sig, extra_keywords):
@@ -1075,7 +1068,7 @@ class WrongKeywordArgs(FailedFunctionCall):
     self.extra_keywords = tuple(extra_keywords)
 
 
-class MissingParameter(FailedFunctionCall):
+class MissingParameter(InvalidParameters):
   """E.g. a function requires parameter 'x' but 'x' isn't passed."""
 
   def __init__(self, sig, missing_parameter):

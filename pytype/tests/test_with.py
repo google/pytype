@@ -309,14 +309,6 @@ class TestWithStatement(test_inference.InferenceTest):
         assert x == 17
       """)
 
-  def test_tempfile(self):
-    self.Infer("""\
-      import tempfile
-      def f():
-        with tempfile.NamedTemporaryFile(dir="bla", delete=False) as fi:
-          pass
-      """, deep=True, solve_unknowns=True)
-
 
 if __name__ == "__main__":
   test_inference.main()

@@ -225,6 +225,12 @@ class ErrorTest(test_inference.InferenceTest):
     self.assertErrorLogDoesNotContain(
         errors, "unsupported.operands")
 
+  def testCallUncallable(self):
+    _, errors = self.InferAndCheck("""
+      0()
+    """)
+    self.assertErrorLogContains(errors, r"int.*\[not-callable\]")
+
 
 if __name__ == "__main__":
   test_inference.main()

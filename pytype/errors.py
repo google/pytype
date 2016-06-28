@@ -262,6 +262,12 @@ class ErrorLog(ErrorLogBase):
         missing_parameter, sig.name)
     self.error(opcode, message)
 
+  @_error_name("not-callable")
+  def not_callable(self, opcode, function):
+    """Calling an object that isn't callable."""
+    message = "%r object is not callable" % (function.name)
+    self.error(opcode, message)
+
   def invalid_function_call(self, opcode, error):
     if isinstance(error, abstract.WrongArgCount):
       self.wrong_arg_count(opcode, error.sig, error.call_arg_count)
@@ -271,6 +277,8 @@ class ErrorLog(ErrorLogBase):
       self.wrong_keyword_args(opcode, error.sig, error.extra_keywords)
     elif isinstance(error, abstract.MissingParameter):
       self.missing_parameter(opcode, error.sig, error.missing_parameter)
+    elif isinstance(error, abstract.NotCallable):
+      self.not_callable(opcode, error.obj)
     else:
       raise AssertionError(error)
 
