@@ -210,7 +210,7 @@ class TestWithStatement(test_inference.InferenceTest):
               raise RuntimeError("generator didn't stop")
           else:
             if value is None:
-              value = type()
+              value = type()  # pytype: disable=not-callable (needs if-split)
             try:
               self.gen.throw(type, value, traceback)
               raise RuntimeError(
@@ -307,6 +307,7 @@ class TestWithStatement(test_inference.InferenceTest):
       with my_context_manager(17) as x:
         assert x == 17
       """)
+
 
 if __name__ == "__main__":
   test_inference.main()

@@ -668,10 +668,13 @@ class SimpleAbstractValue(AtomicAbstractValue):
 
   def call(self, node, unused_func, posargs, namedargs,
            starargs=None, starstarargs=None):
-    # End up here for:
-    #   f = 1
-    #   f()  # Can't call an int
-    return node, self.vm.create_new_unsolvable(node, "calling " + self.name)
+    node, var = self.get_attribute(node, "__call__")
+    self_var = self.to_variable(node, self.name)
+    if var is not None and var.bindings:
+      return self.vm.call_function(node, var, [self_var] + posargs, namedargs,
+                                   starargs, starstarargs)
+    else:
+      raise NotCallable(self)
 
   def __repr__(self):
     if self.cls:
@@ -978,12 +981,24 @@ FunctionCallResult = collections.namedtuple(
 class FailedFunctionCall(Exception):
   """Exception for failed function calls."""
 
+
+class NotCallable(FailedFunctionCall):
+  """For objects that don't have __call__."""
+
+  def __init__(self, obj):
+    super(NotCallable, self).__init__()
+    self.obj = obj
+
+
+class InvalidParameters(FailedFunctionCall):
+  """Exception for functions called with an incorrect parameter combination."""
+
   def __init__(self, sig):
-    super(FailedFunctionCall, self).__init__()
+    super(InvalidParameters, self).__init__()
     self.sig = sig
 
 
-class WrongArgTypes(FailedFunctionCall):
+class WrongArgTypes(InvalidParameters):
   """For functions that were called with the wrong types."""
 
   def __init__(self, sig, passed_args):
@@ -991,7 +1006,7 @@ class WrongArgTypes(FailedFunctionCall):
     self.passed_args = passed_args
 
 
-class WrongArgCount(FailedFunctionCall):
+class WrongArgCount(InvalidParameters):
   """E.g. if a function expecting 4 parameters is called with 3."""
 
   def __init__(self, sig, call_arg_count):
@@ -999,7 +1014,7 @@ class WrongArgCount(FailedFunctionCall):
     self.call_arg_count = call_arg_count
 
 
-class WrongKeywordArgs(FailedFunctionCall):
+class WrongKeywordArgs(InvalidParameters):
   """E.g. an arg "x" is passed to a function that doesn't have an "x" param."""
 
   def __init__(self, sig, extra_keywords):
@@ -1007,7 +1022,7 @@ class WrongKeywordArgs(FailedFunctionCall):
     self.extra_keywords = tuple(extra_keywords)
 
 
-class MissingParameter(FailedFunctionCall):
+class MissingParameter(InvalidParameters):
   """E.g. a function requires parameter 'x' but 'x' isn't passed."""
 
   def __init__(self, sig, missing_parameter):
