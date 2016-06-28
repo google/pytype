@@ -169,6 +169,7 @@ class TestVisitors(parser_test_base.ParserTest):
     """)
     tree = self.Parse(src)
     tree = tree.Visit(visitors.RemoveUnknownClasses())
+    tree = tree.Visit(visitors.DropBuiltinPrefix())
     self.AssertSourceEquals(tree, expected)
 
   def testFindUnknownVisitor(self):

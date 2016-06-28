@@ -7,6 +7,7 @@ from pytype import convert_structural
 from pytype.pytd import pytd
 from pytype.pytd.parse import builtins
 from pytype.pytd.parse import parser
+from pytype.pytd.parse import visitors
 from pytype.tests import test_inference
 import unittest
 
@@ -18,12 +19,16 @@ class MatchTest(unittest.TestCase):
     cls.builtins_pytd = builtins.GetBuiltinsPyTD()
 
   def parse(self, src):
-    return parser.parse_string(textwrap.dedent(src))
+    ast = parser.parse_string(textwrap.dedent(src))
+    ast = ast.Visit(visitors.LookupBuiltins(builtins.GetBuiltinsAndTyping()[0]))
+    return ast
 
   def parse_and_solve(self, src):
-    types, _ = convert_structural.solve(self.parse(src),
-                                        builtins_pytd=self.builtins_pytd)
-    return types
+    ast = self.parse(src)
+    types, _ = convert_structural.solve(ast, builtins_pytd=self.builtins_pytd)
+    # Drop "__builtin__" prefix, for more readable tests.
+    return {k: {v.rpartition("__builtin__.")[2] for v in l}
+            for k, l in types.items()}
 
   def test_simple(self):
     mapping = self.parse_and_solve("""
@@ -72,7 +77,7 @@ class MatchTest(unittest.TestCase):
     """)
     convert_structural.log_info_mapping(mapping)
     self.assertItemsEqual(["list"], mapping["~unknown1"])
-    self.assertItemsEqual(["float"], mapping["~unknown1.list.T"])
+    self.assertItemsEqual(["float"], mapping["~unknown1.__builtin__.list.T"])
 
   def test_list(self):
     mapping = self.parse_and_solve("""
@@ -87,7 +92,7 @@ class MatchTest(unittest.TestCase):
     convert_structural.log_info_mapping(mapping)
     self.assertItemsEqual(["float"], mapping["~unknown1"])
     self.assertItemsEqual(["list"], mapping["~unknown2"])
-    self.assertItemsEqual(["float"], mapping["~unknown2.list.T"])
+    self.assertItemsEqual(["float"], mapping["~unknown2.__builtin__.list.T"])
 
   def test_float_list(self):
     mapping = self.parse_and_solve("""
@@ -97,7 +102,7 @@ class MatchTest(unittest.TestCase):
       """)
     convert_structural.log_info_mapping(mapping)
     self.assertItemsEqual(["list"], mapping["~unknown1"])
-    self.assertItemsEqual(["float"], mapping["~unknown1.list.T"])
+    self.assertItemsEqual(["float"], mapping["~unknown1.__builtin__.list.T"])
 
   def test_two_lists(self):
     mapping = self.parse_and_solve("""
@@ -108,8 +113,8 @@ class MatchTest(unittest.TestCase):
       """)
     self.assertItemsEqual(["list"], mapping["~unknown1"])
     self.assertItemsEqual(["list"], mapping["~unknown2"])
-    self.assertItemsEqual(["NoneType"], mapping["~unknown1.list.T"])
-    self.assertItemsEqual(["float"], mapping["~unknown2.list.T"])
+    self.assertItemsEqual(["NoneType"], mapping["~unknown1.__builtin__.list.T"])
+    self.assertItemsEqual(["float"], mapping["~unknown2.__builtin__.list.T"])
 
   def test_float(self):
     mapping = self.parse_and_solve("""
@@ -145,7 +150,7 @@ class MatchTest(unittest.TestCase):
     self.assertItemsEqual(["bytearray"], mapping["~unknown2"])
     self.assertItemsEqual(["str"], mapping["~unknown3"])
     self.assertItemsEqual(["list"], mapping["~unknown4"])
-    self.assertItemsEqual(["NoneType"], mapping["~unknown4.list.T"])
+    self.assertItemsEqual(["NoneType"], mapping["~unknown4.__builtin__.list.T"])
 
   def test_union(self):
     mapping = self.parse_and_solve("""
@@ -210,7 +215,8 @@ class MatchTest(unittest.TestCase):
         pass
     """)
     self.assertItemsEqual(["dict"], mapping["~unknown0"])
-    self.assertContainsSubset(["complex", "float"], mapping["~unknown0.dict.V"])
+    self.assertContainsSubset(["complex", "float"],
+                              mapping["~unknown0.__builtin__.dict.V"])
     self.assertItemsEqual(["list"], mapping["~unknown2"])
     self.assertItemsEqual(["listiterator"], mapping["~unknown4"])
     self.assertContainsSubset(["complex", "float"], mapping["~unknown6"])
@@ -394,7 +400,7 @@ class MatchTest(unittest.TestCase):
     mapping = self.parse_and_solve("""
       class `~unknown1`(object):
         pass
-      class `~bool`(object):
+      class `~__builtin__~bool`(object):
         def __and__(self, _1: `~unknown1`) -> bool
         def __and__(self, _1: `~unknown2`) -> bool
       class `~unknown2`(object):
@@ -428,7 +434,7 @@ class MatchTest(unittest.TestCase):
     self.parse_and_solve("""
       class `~unknown1`(object):
         pass
-      class `~listiterator`(object):
+      class `~__builtin__~listiterator`(object):
           def next(self) -> `~unknown1`
           def next(self) -> tuple[nothing]
     """)
@@ -437,7 +443,7 @@ class MatchTest(unittest.TestCase):
     self.parse_and_solve("""
       class `~unknown1`(object):
         pass
-      class `~enumerate`(object):
+      class `~__builtin__~enumerate`(object):
           def __init__(self, iterable: list[`~unknown1`]) -> NoneType
           def next(self) -> tuple[?]
     """)
@@ -448,7 +454,7 @@ class MatchTest(unittest.TestCase):
         pass
       class `~unknown2`(object):
         pass
-      def `~round`(number: `~unknown1`) -> `~unknown2`
+      def `~__builtin__~round`(number: `~unknown1`) -> `~unknown2`
     """)
     self.assertIn("float", mapping["~unknown1"])
     self.assertNotIn("str", mapping["~unknown1"])
@@ -459,7 +465,7 @@ class MatchTest(unittest.TestCase):
       def fib(n: `~unknown8` or int) -> int
       def foo(x: `~unknown1`) -> `~unknown3` or int
 
-      class `~int`(object):  # TODO(kramm): Make pytype add the ~
+      class `~__builtin__~int`(object):  # TODO(kramm): Make pytype add the ~
           def __eq__(self, y: int) -> `~unknown10` or bool
 
       class `~unknown1`():
@@ -589,7 +595,7 @@ class MatchTest(unittest.TestCase):
     self.assertItemsEqual(["complex", "float"], mapping["~unknown4"])
 
   def test_convert(self):
-    sourcecode = textwrap.dedent("""
+    ast = self.parse("""
       class A(object):
           def foo(self, x: `~unknown1`) -> ?
           def foobaz(self, x: int) -> int
@@ -603,12 +609,11 @@ class MatchTest(unittest.TestCase):
           def foo(self, x: A) -> Any: ...
           def foobaz(self, x: int) -> int: ...
     """).lstrip()
-    ast = parser.parse_string(sourcecode)
     ast = convert_structural.convert_pytd(ast, self.builtins_pytd)
     self.assertMultiLineEqual(pytd.Print(ast), expected)
 
   def test_convert_with_type_params(self):
-    sourcecode = textwrap.dedent("""
+    ast = self.parse("""
       class A(object):
           def foo(self, x: `~unknown1`) -> bool
 
@@ -625,21 +630,19 @@ class MatchTest(unittest.TestCase):
       class A(object):
           def foo(self, x: Dict[str, List[Any]]) -> bool: ...
     """).lstrip()
-    ast = parser.parse_string(sourcecode)
     ast = convert_structural.convert_pytd(ast, self.builtins_pytd)
     self.assertMultiLineEqual(pytd.Print(ast), expected)
 
   def test_isinstance(self):
-    sourcecode = textwrap.dedent("""
+    ast = self.parse("""
       x = ...  # type: `~unknown1`
-      def `~isinstance`(object: int, class_or_type_or_tuple: tuple[nothing]) -> `~unknown1`
+      def `~__builtin__~isinstance`(object: int, class_or_type_or_tuple: tuple[nothing]) -> `~unknown1`
       class `~unknown1`(object):
         pass
     """)
     expected = textwrap.dedent("""
       x = ...  # type: bool
     """).strip()
-    ast = parser.parse_string(sourcecode)
     ast = convert_structural.convert_pytd(ast, self.builtins_pytd)
     self.assertMultiLineEqual(pytd.Print(ast), expected)
 

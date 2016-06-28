@@ -807,6 +807,14 @@ class MethodsTest(test_inference.InferenceTest):
     d = ...  # type: float
     """)
 
+  def testJson(self):
+    ty = self.Infer("""
+      import json
+    """)
+    self.assertTypesMatchPytd(ty, """
+    json = ...  # type: module
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

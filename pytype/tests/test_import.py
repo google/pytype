@@ -462,7 +462,7 @@ class ImportTest(test_inference.InferenceTest):
           return module.foo(x)
       """, deep=True, solve_unknowns=True, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        module = ...  # type: module
+        module = ...  # type: __builtin__.module
         def my_foo(x:int) -> str
       """)
 
@@ -550,7 +550,7 @@ class ImportTest(test_inference.InferenceTest):
           return module.Foo.x
       """, deep=True, solve_unknowns=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        module = ...  # type: module
+        module = ...  # type: __builtin__.module
         def f() -> int
         def g() -> float
         def h() -> float

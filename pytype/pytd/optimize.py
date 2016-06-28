@@ -549,7 +549,7 @@ class FindCommonSuperClasses(visitors.Visitor):
     # that's not a leaf. I.e., we don't need "object" if we have more
     # specialized types.
     new_type_list = tuple(
-        cls for cls in intersection
+        pytd.NamedType(cls) for cls in intersection
         if not self.hierarchy.HasSubClassInSet(cls, intersection))
 
     return utils.JoinTypes(new_type_list)
@@ -574,7 +574,7 @@ class CollapseLongUnions(visitors.Visitor):
     assert isinstance(max_length, (int, long))
     super(CollapseLongUnions, self).__init__()
     if generic_type is None:
-      self.generic_type = pytd.NamedType("object")
+      self.generic_type = pytd.ClassType("__builtin__.object")
     else:
       self.generic_type = generic_type
     self.max_length = max_length

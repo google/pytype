@@ -289,6 +289,18 @@ class SolverTests(test_inference.InferenceTest):
               ) -> NoneType
     """)
 
+  def testNameConflictWithBuiltin(self):
+    ty = self.Infer("""\
+      class LookupError(KeyError):
+        pass
+      def f(x):
+        pass
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      class LookupError(KeyError): ...
+      def f(x) -> NoneType
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

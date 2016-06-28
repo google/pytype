@@ -18,19 +18,19 @@ class UtilsTest(unittest.TestCase):
     visitors.LookupClasses(self.builtins)
 
   def testHasMutableParameters(self):
-    append = self.builtins.Lookup("list").Lookup("append")
+    append = self.builtins.Lookup("__builtin__.list").Lookup("append")
     self.assertIsInstance(append.signatures[0].params[0], pytd.MutableParameter)
 
   def testHasCorrectSelf(self):
-    update = self.builtins.Lookup("dict").Lookup("update")
+    update = self.builtins.Lookup("__builtin__.dict").Lookup("update")
     t = update.signatures[0].params[0].type
     self.assertIsInstance(t, pytd.GenericType)
-    self.assertEquals(t.base_type, pytd.ClassType("dict"))
+    self.assertEquals(t.base_type, pytd.ClassType("__builtin__.dict"))
 
   def testHasObjectSuperClass(self):
-    cls = self.builtins.Lookup("int")
-    self.assertEquals(cls.parents, (pytd.ClassType("object"),))
-    cls = self.builtins.Lookup("object")
+    cls = self.builtins.Lookup("__builtin__.int")
+    self.assertEquals(cls.parents, (pytd.ClassType("__builtin__.object"),))
+    cls = self.builtins.Lookup("__builtin__.object")
     self.assertEquals(cls.parents, ())
 
 

@@ -15,6 +15,7 @@ from pytype.pyc import loadmarshal
 from pytype.pytd import optimize
 from pytype.pytd import pytd
 from pytype.pytd import utils as pytd_utils
+from pytype.pytd.parse import builtins
 from pytype.pytd.parse import parser
 from pytype.pytd.parse import visitors
 
@@ -36,28 +37,30 @@ class InferenceTest(unittest.TestCase):
   def setUp(self):
     self.options = config.Options.create(python_version=self.PYTHON_VERSION,
                                          python_exe=self.PYTHON_EXE)
-    self.bool = pytd.ClassType("bool")
-    self.dict = pytd.ClassType("dict")
-    self.float = pytd.ClassType("float")
-    self.complex = pytd.ClassType("complex")
-    self.int = pytd.ClassType("int")
+    def t(name):  # pylint: disable=invalid-name
+      return pytd.ClassType("__builtin__." + name)
+    self.bool = t("bool")
+    self.dict = t("dict")
+    self.float = t("float")
+    self.complex = t("complex")
+    self.int = t("int")
     if self.PYTHON_VERSION[0] == 2:
-      self.long = pytd.ClassType("long")
-    self.list = pytd.ClassType("list")
-    self.none_type = pytd.ClassType("NoneType")
-    self.object = pytd.ClassType("object")
-    self.set = pytd.ClassType("set")
-    self.frozenset = pytd.ClassType("frozenset")
-    self.str = pytd.ClassType("str")
-    self.bytearray = pytd.ClassType("bytearray")
-    self.tuple = pytd.ClassType("tuple")
-    self.unicode = pytd.ClassType("unicode")
-    self.generator = pytd.ClassType("generator")
-    self.function = pytd.ClassType("function")
+      self.long = t("long")
+    self.list = t("list")
+    self.none_type = t("NoneType")
+    self.object = t("object")
+    self.set = t("set")
+    self.frozenset = t("frozenset")
+    self.str = t("str")
+    self.bytearray = t("bytearray")
+    self.tuple = t("tuple")
+    self.unicode = t("unicode")
+    self.generator = t("generator")
+    self.function = t("function")
     self.anything = pytd.AnythingType()
     self.nothing = pytd.NothingType()
-    self.module = pytd.ClassType("module")
-    self.file = pytd.ClassType("file")
+    self.module = t("module")
+    self.file = t("file")
 
     # The various union types use pytd_utils.CanonicalOrdering()'s ordering:
     self.intorstr = pytd.UnionType((self.int, self.str))
@@ -322,6 +325,8 @@ class InferenceTest(unittest.TestCase):
     #                  inferencer adding additional but harmless calls.
     pytd_tree = parser.TypeDeclParser(version=version).Parse(
         textwrap.dedent(pytd_src))
+    pytd_tree = pytd_tree.Visit(
+        visitors.LookupBuiltins(builtins.GetBuiltinsAndTyping()[0]))
     pytd_tree = pytd_tree.Visit(
         visitors.ClassTypeToNamedType())
     pytd_tree = pytd_tree.Visit(

@@ -229,7 +229,7 @@ class CallTracer(vm.VirtualMachine):
     return pytd_utils.WrapTypeDeclUnit("inferred", data)
 
   @staticmethod
-  def _call_traces_to_function(call_traces, prefix=""):
+  def _call_traces_to_function(call_traces, name_transform=lambda x: x):
     funcs = collections.defaultdict(pytd_utils.OrderedSet)
     for funcvar, args, kws, retvar in call_traces:
       if isinstance(funcvar.data, abstract.BoundFunction):
@@ -248,12 +248,16 @@ class CallTracer(vm.VirtualMachine):
           ret, has_optional=False, exceptions=(), template=()))
     functions = []
     for name, signatures in funcs.items():
-      functions.append(pytd.Function(prefix + name, tuple(signatures),
+      functions.append(pytd.Function(name_transform(name), tuple(signatures),
                                      pytd.METHOD))
     return functions
 
+  def _pack_name(self, name):
+    """Pack a name, for unpacking with type_match.unpack_name_of_partial()."""
+    return "~" + name.replace(".", "~")
+
   def pytd_functions_for_call_traces(self):
-    return self._call_traces_to_function(self._calls, "~")
+    return self._call_traces_to_function(self._calls, self._pack_name)
 
   def pytd_classes_for_call_traces(self):
     class_to_records = collections.defaultdict(list)
@@ -269,8 +273,9 @@ class CallTracer(vm.VirtualMachine):
           class_to_records[cls].append(call_record)
     classes = []
     for cls, call_records in class_to_records.items():
+      full_name = cls.module + "." + cls.name if cls.module else cls.name
       classes.append(pytd.Class(
-          name="~" + cls.name,
+          name=self._pack_name(full_name),
           parents=(),  # not used in solver
           methods=self._call_traces_to_function(call_records),
           constants=(),
@@ -298,7 +303,7 @@ class CallTracer(vm.VirtualMachine):
     return ty
 
   def _create_call_arg(self, name, t, node):
-    if t == pytd.ClassType("object"):
+    if t == pytd.ClassType("__builtin__.object"):
       # As an arg, "object" means: we can use anything for this argument,
       # because everything inherits from object.
       # TODO(kramm): Maybe we should use AnythingType for params without type.

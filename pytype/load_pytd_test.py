@@ -61,6 +61,15 @@ class ImportPathsTest(unittest.TestCase):
       loader = load_pytd.Loader("base", self.options)
       self.assertTrue(loader.import_name("baz").Lookup("baz.x"))
 
+  def testBuiltins(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", "x = ... # type: int")
+      self.options.tweak(pythonpath=[d.path])
+      loader = load_pytd.Loader("base", self.options)
+      mod = loader.import_name("foo")
+      self.assertEquals("__builtin__.int", mod.Lookup("foo.x").type.cls.name)
+      self.assertEquals("__builtin__.int", mod.Lookup("foo.x").type.name)
+
   @unittest.skip("automatic creation of __init__ only works with imports_map")
   def testNoInit(self):
     with utils.Tempdir() as d:

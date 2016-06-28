@@ -150,10 +150,7 @@ class VirtualMachine(object):
         "generator", types.GeneratorType)
 
     self.undefined = self.program.NewVariable("undefined")
-
-    self.vmbuiltins = {b.name: b for b in (self.loader.builtins.constants +
-                                           self.loader.builtins.classes +
-                                           self.loader.builtins.functions)}
+    self.vmbuiltins = self.loader.builtins
 
   def is_at_maximum_depth(self):
     return len(self.frames) > self.maximum_depth
@@ -489,12 +486,12 @@ class VirtualMachine(object):
       # This key is also used in __init__
       key = (abstract.Instance, pytype.cls)
       if key not in self._convert_cache:
-        if pytype.name == "type":
+        if pytype.name == "__builtin__.type":
           # special case: An instantiation of "type" can be anything.
           instance = self._create_new_unknown_value("type")
         else:
-          instance = abstract.Instance(
-              self.convert_constant(str(pytype), pytype), self)
+          cls = self.convert_constant(str(pytype), pytype)
+          instance = abstract.Instance(cls, self)
         log.info("New pytd instance for %s: %r", pytype.cls.name, instance)
         self._convert_cache[key] = instance
       return self._convert_cache[key]
@@ -629,22 +626,24 @@ class VirtualMachine(object):
                              types.GeneratorType,
                              type]:
       try:
-        # TODO(ampere): This will incorrectly handle any object that is named
-        # the same as a builtin but is distinct. It will need to be extended to
-        # support imports and the like.
-        pyclass = self.loader.builtins.Lookup(pyval.__name__)
+        pyclass = self.loader.builtins.Lookup("__builtin__." + pyval.__name__)
         return self.convert_constant_to_value(name, pyclass)
       except (KeyError, AttributeError):
         log.debug("Failed to find pytd", exc_info=True)
         raise
+    elif isinstance(pyval, pytd.TypeDeclUnit):
+      data = pyval.constants + pyval.classes + pyval.functions + pyval.aliases
+      members = {val.name.rsplit(".")[-1]: val
+                 for val in data}
+      return abstract.Module(self, pyval.name, members)
     elif isinstance(pyval, pytd.Class):
-      if "." in name:
-        module, base_name = name.rsplit(".", 1)
+      if "." in pyval.name:
+        module, base_name = pyval.name.rsplit(".", 1)
         cls = abstract.PyTDClass(base_name, pyval, self)
         cls.module = module
-        return cls
       else:
-        return abstract.PyTDClass(name, pyval, self)
+        cls = abstract.PyTDClass(name, pyval, self)
+      return cls
     elif isinstance(pyval, pytd.Function):
       f = abstract.PyTDFunction(pyval.name,
                                 [abstract.PyTDSignature(pyval.name, sig, self)
@@ -885,6 +884,11 @@ class VirtualMachine(object):
       src = builtins.GetBuiltinsCode(self.python_version)
     builtins_code = self.compile_src(src)
     node, f_globals, f_locals = self.run_bytecode(node, builtins_code)
+    # TODO(kramm): pytype doesn't support namespacing of the currently parsed
+    # module, so add the module name manually.
+    for definition in f_globals.members.values():
+      for d in definition.data:
+        d.module = "__builtin__"
     # at the outer layer, locals are the same as globals
     builtin_names = frozenset(f_globals.members)
     return node, f_globals, f_locals, builtin_names
@@ -1311,10 +1315,7 @@ class VirtualMachine(object):
       assert level > 0
       ast = self.loader.import_relative(level)
     if ast:
-      module_data = ast.constants + ast.classes + ast.functions + ast.aliases
-      members = {val.name.rsplit(".")[-1]: val
-                 for val in module_data}
-      module = abstract.Module(self, ast.name, members)
+      module = self.construct_constant_from_value(ast.name, ast)
       if level <= 0 and name == "typing":
         # use a special overlay for stdlib/typing.pytd
         return typing.TypingOverlay(self, module)

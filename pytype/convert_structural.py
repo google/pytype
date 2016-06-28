@@ -101,7 +101,9 @@ class TypeSolver(object):
           break
       else:
         faulty_signature = ""
-      raise FlawedQuery("Bad call %s%s" % (call_record.name, faulty_signature))
+      raise FlawedQuery("Bad call\n%s%s\nagainst:\n%s" % (
+          type_match.unpack_name_of_partial(call_record.name),
+          faulty_signature, pytd.Print(complete)))
     solver.always_true(formula)
 
   def solve(self):
@@ -167,8 +169,10 @@ def solve(ast, builtins_pytd):
   builtins_pytd = transforms.RemoveMutableParameters(builtins_pytd)
   builtins_pytd = builtins_pytd.Visit(visitors.NamedTypeToClassType())
   builtins_pytd = builtins_pytd.Visit(visitors.LookupFullNames([builtins_pytd]))
+  builtins_pytd.Visit(visitors.VerifyLookup())
   ast = ast.Visit(visitors.NamedTypeToClassType())
   ast = ast.Visit(visitors.LookupFullNames([builtins_pytd, ast]))
+  ast.Visit(visitors.VerifyLookup())
   return TypeSolver(ast, builtins_pytd).solve(), extract_local(ast)
 
 
@@ -187,11 +191,11 @@ def convert_string_type(string_type, unknown, mapping, global_lookup, depth=0):
   try:
     # Check whether this is a type declared in a pytd.
     cls = global_lookup.Lookup(string_type)
-    base_type = pytd_utils.ExternalOrNamedOrClassType(cls.name, cls)
+    base_type = pytd_utils.NamedOrClassType(cls.name, cls)
   except KeyError:
     # If we don't have a pytd for this type, it can't be a template.
     cls = None
-    base_type = pytd_utils.ExternalOrNamedOrClassType(string_type, cls)
+    base_type = pytd_utils.NamedOrClassType(string_type, cls)
 
   if cls and cls.template:
     parameters = []

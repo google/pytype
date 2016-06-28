@@ -74,7 +74,7 @@ def unpack_name_of_partial(name):
   """Convert e.g. "~int" to "int"."""
   assert isinstance(name, str)
   assert name.startswith("~")
-  return name.lstrip("~")
+  return name.lstrip("~").replace("~", ".")
 
 
 def get_all_subclasses(asts):
@@ -147,12 +147,12 @@ class TypeMatch(utils.TypeMatcher):
       return sum((self.get_superclasses(c) for c in t.cls.parents), [t])
     elif isinstance(t, pytd.AnythingType):
       # All types, even "?", inherit from object.
-      return [pytd.NamedType("object")]
+      return [pytd.NamedType("__builtin__.object")]
     elif isinstance(t, pytd.GenericType):
       return self.get_superclasses(t.base_type)
     else:
       log.warning("Can't extract superclasses from %s", type(t))
-      return [pytd.NamedType("object")]
+      return [pytd.NamedType("__builtin__.object")]
 
   def get_subclasses(self, t):
     """Get all classes derived from this type.

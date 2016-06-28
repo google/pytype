@@ -27,8 +27,13 @@ import unittest
 class TestOptimize(parser_test_base.ParserTest):
   """Test the visitors in optimize.py."""
 
+  def ParseAndResolve(self, src):
+    ast = self.Parse(src)
+    return ast.Visit(
+        visitors.LookupBuiltins(builtins.GetBuiltinsAndTyping()[0]))
+
   def OptimizedString(self, data):
-    tree = self.Parse(data)
+    tree = self.Parse(data) if isinstance(data, basestring) else data
     new_tree = optimize.Optimize(tree)
     return pytd.Print(new_tree)
 
@@ -101,9 +106,32 @@ class TestOptimize(parser_test_base.ParserTest):
     new_src = textwrap.dedent("""
         def foo(a: int) -> int
     """)
-    self.AssertOptimizeEquals(src, new_src)
+    ast = self.ParseAndResolve(src)
+    self.AssertOptimizeEquals(ast, new_src)
 
   def testRemoveRedundantSignatureWithAny(self):
+    src = textwrap.dedent("""
+        def foo(a: Any) -> Any
+        def foo(a: int) -> int
+    """)
+    new_src = textwrap.dedent("""
+        def foo(a: Any) -> Any
+    """)
+    ast = self.ParseAndResolve(src)
+    self.AssertOptimizeEquals(ast, new_src)
+
+  def testRemoveRedundantSignatureWithObject(self):
+    src = textwrap.dedent("""
+        def foo(x) -> ?
+        def foo(x: int) -> int
+    """)
+    new_src = textwrap.dedent("""
+        def foo(x) -> ?
+    """)
+    ast = self.ParseAndResolve(src)
+    self.AssertOptimizeEquals(ast, new_src)
+
+  def testRemoveRedundantSignatureAnyType(self):
     src = textwrap.dedent("""
         def foo(a: int) -> int
         def foo(a: ?) -> int
@@ -223,8 +251,9 @@ class TestOptimize(parser_test_base.ParserTest):
       def e(x: float or int) -> bool
       def f(x: float or int) -> bool
     """)
-    optimized = optimize.Optimize(self.Parse(src),
-                                  lossy=False, max_union=2)
+    ast = self.ParseAndResolve(src)
+    optimized = optimize.Optimize(ast, lossy=False, max_union=2)
+    optimized = optimized.Visit(visitors.DropBuiltinPrefix())
     self.AssertSourceEquals(optimized, new_src)
 
   def testSimplifyUnions(self):
@@ -304,12 +333,14 @@ class TestOptimize(parser_test_base.ParserTest):
     expected = textwrap.dedent("""
         def f(x, y) -> int
     """)
-    hierarchy = builtins.GetBuiltinsPyTD().Visit(
-        visitors.ExtractSuperClassesByName())
+    b = builtins.GetBuiltinsPyTD()
+    hierarchy = b.Visit(visitors.ExtractSuperClassesByName())
     visitor = optimize.FindCommonSuperClasses(
         optimize.SuperClassHierarchy(hierarchy))
-    new_src = self.ApplyVisitorToString(src, visitor)
-    self.AssertSourceEquals(new_src, expected)
+    ast = self.ParseAndResolve(src)
+    ast = ast.Visit(visitor)
+    ast = ast.Visit(visitors.DropBuiltinPrefix())
+    self.AssertSourceEquals(ast, expected)
 
   def testUserSuperClassHierarchy(self):
     class_data = textwrap.dedent("""
@@ -369,8 +400,10 @@ class TestOptimize(parser_test_base.ParserTest):
         visitors.ExtractSuperClassesByName())
     visitor = optimize.SimplifyUnionsWithSuperclasses(
         optimize.SuperClassHierarchy(hierarchy))
-    new_src = self.ApplyVisitorToString(src, visitor)
-    self.AssertSourceEquals(new_src, expected)
+    ast = self.Parse(src)
+    ast = visitors.LookupClasses(ast, builtins.GetBuiltinsPyTD())
+    ast = ast.Visit(visitor)
+    self.AssertSourceEquals(ast, expected)
 
   def testCollapseLongUnions(self):
     src = textwrap.dedent("""
@@ -383,9 +416,10 @@ class TestOptimize(parser_test_base.ParserTest):
         def g(x) -> X
         def h(x) -> X
     """)
-    new_src = self.ApplyVisitorToString(
-        src, optimize.CollapseLongUnions(max_length=4))
-    self.AssertSourceEquals(new_src, expected)
+    ast = self.ParseAndResolve(src)
+    ast = ast.Visit(optimize.CollapseLongUnions(max_length=4))
+    ast = ast.Visit(visitors.DropBuiltinPrefix())
+    self.AssertSourceEquals(ast, expected)
 
   def testCollapseLongConstantUnions(self):
     src = textwrap.dedent("""
