@@ -152,6 +152,17 @@ class VirtualMachine(object):
     self.undefined = self.program.NewVariable("undefined")
     self.vmbuiltins = self.loader.builtins
 
+    # Map from builtin names to canonical objects.
+    self.special_builtins = {
+        # The super() function.
+        "super": abstract.Super(self),
+        # for more pretty branching tests.
+        "__random__": self.primitive_class_instances[bool],
+        # boolean values.
+        "True": self.true,
+        "False": self.false,
+    }
+
   def is_at_maximum_depth(self):
     return len(self.frames) > self.maximum_depth
 
@@ -1095,18 +1106,12 @@ class VirtualMachine(object):
     return self.load_from(state, self.frame.f_globals, name)
 
   def load_special_builtin(self, name):
-    """Load builtins that have a special implementation in pytype."""
-    if name == "super":
-      # The super() function.
-      return abstract.Super(self)
-    elif name == "__any_object__":
-      # for type_inferencer/tests/test_pgms/*.py
+    if name == "__any_object__":
+      # For type_inferencer/tests/test_pgms/*.py, must be a new object
+      # each time.
       return abstract.Unknown(self)
-    elif name == "__random__":
-      # for more pretty branching tests
-      return self.primitive_class_instances[bool]
     else:
-      return None
+      return self.special_builtins.get(name)
 
   def load_builtin(self, state, name):
     if name == "__undefined__":

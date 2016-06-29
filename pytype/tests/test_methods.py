@@ -275,7 +275,7 @@ class MethodsTest(test_inference.InferenceTest):
       def h():
         return 1
       def f(x):
-        if True:
+        if x:
           while x:
             pass
           while x:

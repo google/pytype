@@ -130,7 +130,7 @@ class AncestorTraversalVirtualMachineTest(unittest.TestCase):
       self.vm.run_program(self.src_deadcode, "", run_builtins=False)
     except vm.VirtualMachineError:
       pass  # The code we test throws an exception. Ignore it.
-    self.assertItemsEqual(self.vm.instructions_executed, range(7))
+    self.assertItemsEqual(self.vm.instructions_executed, [0, 1, 5, 6])
 
 
 if __name__ == "__main__":
