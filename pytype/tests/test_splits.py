@@ -142,23 +142,66 @@ class SplitTest(test_inference.InferenceTest):
     # not appear to be optimized away by the compiler.  Therefore these
     # simple tests do in fact execute if-splitting logic.
     #
-    # TODO(dbaum): Add checks for list, dict, and tuple once those
-    # are supported by if-splitting.
+    # TODO(dbaum): Add checks for list once it is supported.
     ty = self.Infer("""
-      def int1(x): return 1 or x
-      def int2(x): return 0 and x
-      def str1(x): return "s" or x
-      def str2(x): return "" and x
-      def bool1(x): return True or x
-      def bool2(x): return False and x
+      def int_t(x): return 1 or x
+      def int_f(x): return 0 and x
+      def str_t(x): return "s" or x
+      def str_f(x): return "" and x
+      def bool_t(x): return True or x
+      def bool_f(x): return False and x
+      def tuple_t(x): return (1, ) or x
+      def tuple_f(x): return () and x
+      def dict_f(x): return {} and x
     """, deep=True, extract_locals=True)
     self.assertTypesMatchPytd(ty, """
-      def int1(x) -> int: ...
-      def int2(x) -> int: ...
-      def str1(x) -> str: ...
-      def str2(x) -> str: ...
-      def bool1(x) -> bool: ...
-      def bool2(x) -> bool: ...
+      def int_t(x) -> int: ...
+      def int_f(x) -> int: ...
+      def str_t(x) -> str: ...
+      def str_f(x) -> str: ...
+      def bool_t(x) -> bool: ...
+      def bool_f(x) -> bool: ...
+      def tuple_t(x) -> Tuple[int, ...]: ...
+      def tuple_f(x) -> Tuple[nothing]: ...
+      def dict_f(x) -> Dict[nothing, nothing]: ...
+    """)
+
+  def testDict(self):
+    # Dicts start out as empty, which is compatible with False and not
+    # compatible with True.  Any operation that possibly adds an item will
+    # make the dict ambiguous - compatible with both True and False.
+    ty = self.Infer("""
+      def f1():
+        d = {}
+        return 123 if d else "hello"
+
+      def f2(x):
+        d = {}
+        d[x] = x
+        return 123 if d else "hello"
+    """, deep=True, extract_locals=True)
+    self.assertTypesMatchPytd(ty, """
+      def f1() -> str: ...
+      def f2(x) -> Union[int, str]: ...
+    """)
+
+  @unittest.skip("Dict.update() doesn't establish a key parameter.")
+  def testDictBroken(self):
+    ty = self.Infer("""
+      def f1():
+        d = {}
+        d.update({})
+        return 123 if d else "hello"
+
+      def f2():
+        d = {}
+        d.update({"a": 1})
+        return 123 if d else "hello"
+
+    """, deep=True, extract_locals=True)
+    self.assertTypesMatchPytd(ty, """
+      def f1() -> Union[int, str]: ...
+      def f2() -> Union[int, str]: ...
     """)
 
   @unittest.skip("If-splitting isn't smart enough for this.")

@@ -934,6 +934,13 @@ class Dict(ValueWithSlots, WrapsDict("_entries")):
       assert isinstance(other_dict, AtomicAbstractValue)
       return False
 
+  def compatible_with(self, logical_value):
+    # Always compatible with False.  Compatible with True only if type
+    # parameters have been established (meaning that the dict can be
+    # non-empty).
+    return (not logical_value or
+            bool(self.type_parameters[self.KEY_TYPE_PARAM].bindings))
+
 
 class AbstractOrConcreteValue(Instance, PythonConstant):
   """Abstract value with a concrete fallback."""
