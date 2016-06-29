@@ -152,6 +152,17 @@ class VirtualMachine(object):
     self.undefined = self.program.NewVariable("undefined")
     self.vmbuiltins = self.loader.builtins
 
+    # Map from builtin names to canonical objects.
+    self.special_builtins = {
+        # The super() function.
+        "super": abstract.Super(self),
+        # for more pretty branching tests.
+        "__random__": self.primitive_class_instances[bool],
+        # boolean values.
+        "True": self.true,
+        "False": self.false,
+    }
+
   def is_at_maximum_depth(self):
     return len(self.frames) > self.maximum_depth
 

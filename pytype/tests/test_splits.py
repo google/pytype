@@ -142,19 +142,23 @@ class SplitTest(test_inference.InferenceTest):
     # not appear to be optimized away by the compiler.  Therefore these
     # simple tests do in fact execute if-splitting logic.
     #
-    # TODO(dbaum): Add checks for bool, list, dict, and tuple once those
+    # TODO(dbaum): Add checks for list, dict, and tuple once those
     # are supported by if-splitting.
     ty = self.Infer("""
       def int1(x): return 1 or x
       def int2(x): return 0 and x
       def str1(x): return "s" or x
       def str2(x): return "" and x
+      def bool1(x): return True or x
+      def bool2(x): return False and x
     """, deep=True, extract_locals=True)
     self.assertTypesMatchPytd(ty, """
       def int1(x) -> int: ...
       def int2(x) -> int: ...
       def str1(x) -> str: ...
       def str2(x) -> str: ...
+      def bool1(x) -> bool: ...
+      def bool2(x) -> bool: ...
     """)
 
   @unittest.skip("If-splitting isn't smart enough for this.")
