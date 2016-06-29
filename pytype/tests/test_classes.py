@@ -261,5 +261,83 @@ class ClassesTest(test_inference.InferenceTest):
         ...
     """)
 
+  def testProperty(self):
+    ty = self.Infer("""
+      class Foo(object):
+        def __init__(self):
+          self._name = "name"
+        def test(self):
+          return self.name
+        name = property(fget=lambda self: self._name)
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      class Foo(object):
+        _name = ...  # type: str
+        name = ...  # type: property
+        def test(self) -> str: ...
+    """)
+
+  def testDescriptorSelf(self):
+    ty = self.Infer("""
+      class Foo(object):
+        def __init__(self):
+          self._name = "name"
+        def __get__(self, obj, objtype):
+          return self._name
+      class Bar(object):
+        def test(self):
+          return self.foo
+        foo = Foo()
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      class Foo(object):
+        _name = ...  # type: str
+        def __get__(self, obj, objtype) -> str: ...
+      class Bar(object):
+        foo = ...  # type: Foo
+        def test(self) -> str: ...
+    """)
+
+  def testDescriptorInstance(self):
+    ty = self.Infer("""
+      class Foo(object):
+        def __get__(self, obj, objtype):
+          return obj._name
+      class Bar(object):
+        def __init__(self):
+          self._name = "name"
+        def test(self):
+          return self.foo
+        foo = Foo()
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      class Foo(object):
+        def __get__(self, obj, objtype) -> Any: ...
+      class Bar(object):
+        _name = ...  # type: str
+        foo = ...  # type: Foo
+        def test(self) -> str: ...
+    """)
+
+  def testDescriptorClass(self):
+    ty = self.Infer("""
+      class Foo(object):
+        def __get__(self, obj, objtype):
+          return objtype._name
+      class Bar(object):
+        def test(self):
+          return self.foo
+        _name = "name"
+        foo = Foo()
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      class Foo(object):
+        def __get__(self, obj, objtype) -> Any: ...
+      class Bar(object):
+        _name = ...  # type: str
+        foo = ...  # type: Foo
+        def test(self) -> str: ...
+    """)
+
 if __name__ == "__main__":
   test_inference.main()

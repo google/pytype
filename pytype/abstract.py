@@ -257,6 +257,9 @@ class AtomicAbstractValue(object):
     """
     return node, None
 
+  def get_attribute_generic(self, node, name, val):
+    return self.get_attribute(node, name, valself=val)
+
   def get_attribute(self, node, name, valself=None, valcls=None,
                     condition=None):
     """Get the named attribute from this object.
@@ -1844,6 +1847,9 @@ class PyTDClass(SimpleAbstractValue, Class):
     self.pytd_cls = pytd_cls
     self.mro = utils.compute_mro(self)
 
+  def get_attribute_generic(self, node, name, val):
+    return self.get_attribute(node, name, valcls=val)
+
   def get_attribute(self, node, name, valself=None, valcls=None,
                     condition=None):
     return Class.get_attribute(self, node, name, valself, valcls, condition)
@@ -1988,6 +1994,9 @@ class InterpreterClass(SimpleAbstractValue, Class):
   def get_attribute_flat(self, node, name):
     return SimpleAbstractValue.get_attribute(self, node, name)
 
+  def get_attribute_generic(self, node, name, val):
+    return self.get_attribute(node, name, valcls=val)
+
   def get_attribute(self, node, name, valself=None, valcls=None,
                     condition=None):
     node, attr_var = Class.get_attribute(self, node, name, valself, valcls,
@@ -1999,8 +2008,14 @@ class InterpreterClass(SimpleAbstractValue, Class):
       value = v.data
       node2, getter = value.get_attribute(node, "__get__", v)
       if getter is not None:
-        node2, get_result = self.vm.call_function(
-            node2, getter, [getter, value.get_class()])
+        posargs = []
+        if valself:
+          posargs.append(valself.variable)
+        if valcls:
+          if not valself:
+            posargs.append(self.vm.none.to_variable(node, "None"))
+          posargs.append(valcls.variable)
+        node2, get_result = self.vm.call_function(node2, getter, posargs)
         for getter in get_result.bindings:
           result.AddBinding(getter.data, [getter], node2)
       else:
