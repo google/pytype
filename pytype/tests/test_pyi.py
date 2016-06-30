@@ -167,7 +167,7 @@ class PYITest(test_inference.InferenceTest):
       """, deep=True, solve_unknowns=True, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
-        def f(foo, bar) -> Union[a.Bar, bytearray, str, unicode]: ...
+        def f(foo, bar) -> Union[bytearray, str, unicode]: ...
         def g() -> NoneType: ...
       """)
 
@@ -229,6 +229,34 @@ def process_function(func: Callable[..., Any]) -> None: ...
     self.assertTypesMatchPytd(ty, """
       x = ...  # type: str
     """)
+
+  def testBaseClass(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        S = TypeVar('S')
+        T = TypeVar('T')
+        class A(Generic[S]):
+          def bar(self, s: S) -> S: ...
+        class B(Generic[T], A[T]): ...
+        class C(A[int]): ...
+        class D(object):
+          def baz(self) -> int
+      """)
+      ty = self.Infer("""\
+        import foo
+        def f(x):
+          return x.bar("foo")
+        def g(x):
+          return x.bar(3)
+        def h(x):
+          return x.baz()
+      """, deep=True, pythonpath=[d.path], solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        foo = ...  # type: module
+        def f(x: Union[foo.A[str], foo.B[str]]) -> str
+        def g(x: Union[foo.A[int], foo.B[int], foo.C]) -> int
+        def h(x: foo.D) -> int
+      """)
 
 
 if __name__ == "__main__":

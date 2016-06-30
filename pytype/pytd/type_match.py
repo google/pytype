@@ -238,16 +238,16 @@ class TypeMatch(utils.TypeMatcher):
     return self.match_Unknown_against_Generic(t2, t1, subst)
 
   def maybe_lookup_type_param(self, t, subst):
-    if not isinstance(t, pytd.TypeParameter):
-      return t
-    # We can only have type parameters in a class, and if so, we should have
-    # added them to the type paramter substitution map (subst) beforehand:
-    assert t in subst
-    if subst[t] is None:
-      # Function type parameter. Can be anything.
-      return pytd.AnythingType()
-    else:
-      return subst[t]
+    while isinstance(t, pytd.TypeParameter):
+      # We can only have type parameters in a class, and if so, we should have
+      # added them to the type paramter substitution map (subst) beforehand:
+      assert t in subst
+      if subst[t] is None:
+        # Function type parameter. Can be anything.
+        t = pytd.AnythingType()
+      else:
+        t = subst[t]
+    return t
 
   def unclass(self, t):
     """Prevent further subclass or superclass expansion for this type."""
@@ -428,6 +428,14 @@ class TypeMatch(utils.TypeMatcher):
           return booleq.FALSE
         elif isinstance(base, pytd.ClassType):
           cls = base.cls
+          implication = self.match_Function_against_Class(f1, cls, subst, cache)
+          if implication is not booleq.FALSE:
+            return implication
+        elif isinstance(base, pytd.GenericType):
+          cls = base.base_type.cls
+          subst = subst.copy()
+          for param, value in zip(cls.template, base.parameters):
+            subst[param.type_param] = value
           implication = self.match_Function_against_Class(f1, cls, subst, cache)
           if implication is not booleq.FALSE:
             return implication
