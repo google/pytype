@@ -396,10 +396,6 @@ class AtomicAbstractValue(object):
     return Instance(self.to_variable(node, self.name), self.vm).to_variable(
         node, self.name)
 
-  def instantiate(self, node):
-    return Instance(self.to_variable(node, self.name), self.vm).to_variable(
-        node, self.name)
-
   def to_variable(self, node, name=None):
     """Build a variable out of this abstract value.
 
@@ -766,8 +762,10 @@ class SimpleAbstractValue(AtomicAbstractValue):
       clsval, = self.cls.bindings
       key.add(clsval.data)
     for name, var in self.type_parameters.items():
-      key.add((name, frozenset(value.data.get_type_key()
-                               for value in var.bindings)))
+      subkey = frozenset(value.data.get_default_type_key() if value.data in seen
+                         else value.data.get_type_key(seen)
+                         for value in var.bindings)
+      key.add((name, subkey))
     if key:
       return frozenset(key)
     else:
@@ -1270,7 +1268,7 @@ class Function(Instance):
   def get_class(self):
     return self.vm.function_type
 
-  def to_type(self):
+  def to_type(self, seen=None):
     return pytd.NamedType("__builtin__.function")
 
   def match_against_type(self, other_type, subst, node, view):
@@ -1779,7 +1777,7 @@ class ParameterizedClass(AtomicAbstractValue, Class, FormalType):
     return "ParameterizedClass(cls=%r params=%s)" % (self.base_cls,
                                                      self.type_parameters)
 
-  def to_type(self):
+  def to_type(self, seen=None):
     return pytd.NamedType("__builtin__.type")
 
   def get_instance_type(self, _, seen=None):
@@ -1898,7 +1896,7 @@ class PyTDClass(SimpleAbstractValue, Class):
 
     return node, results
 
-  def to_type(self):
+  def to_type(self, seen=None):
     return pytd.NamedType("__builtin__.type")
 
   def get_instance_type(self, instance=None, seen=None):
@@ -1917,7 +1915,7 @@ class PyTDClass(SimpleAbstractValue, Class):
       if instance is not None and type_param.name in instance.type_parameters:
         param = instance.type_parameters[type_param.name]
         type_arguments.append(pytd_utils.JoinTypes(
-            v.data.to_type() for v in param.bindings))
+            v.data.to_type(seen=seen) for v in param.bindings))
       else:
         type_arguments.append(pytd.AnythingType())
     return pytd_utils.MakeClassOrContainerType(
@@ -2092,7 +2090,7 @@ class InterpreterClass(SimpleAbstractValue, Class):
       raise NotImplementedError(
           "Can't match instance %r against %r", self, other_type)
 
-  def to_type(self):
+  def to_type(self, seen=None):
     return pytd.NamedType("__builtin__.type")
 
   def to_pytd_def(self, class_name):
@@ -2572,7 +2570,7 @@ class BoundFunction(AtomicAbstractValue):
   def has_kwargs(self):
     return self.underlying.has_kwargs()
 
-  def to_type(self):
+  def to_type(self, seen=None):
     return pytd.NamedType("__builtin__.function")
 
   def match_against_type(self, other_type, subst, node, view):
@@ -2739,7 +2737,7 @@ class Module(Instance):
     return [(name, self._convert_member(name, ty))
             for name, ty in self._member_map.items()]
 
-  def to_type(self):
+  def to_type(self, seen=None):
     return pytd.NamedType("__builtin__.module")
 
   def match_against_type(self, other_type, subst, node, view):
