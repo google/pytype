@@ -91,6 +91,24 @@ class UtilsTest(unittest.TestCase):
             for row in product]
     self.assertItemsEqual(rows, [{x1}])
 
+  def testDeepVariableProductWithCycle(self):
+    x1, x2, x3, x4, x5, x6 = [DummyValue(i + 1) for i in range(6)]
+    v1 = self.prog.NewVariable("v1", [x1, x2], [], self.current_location)
+    v2 = self.prog.NewVariable("v2", [x3], [], self.current_location)
+    v3 = self.prog.NewVariable("v3", [x4, x5], [], self.current_location)
+    v4 = self.prog.NewVariable("v4", [x6], [], self.current_location)
+    x1.set_parameters([v2, v3])
+    x5.set_parameters([v1])
+    product = utils.deep_variable_product([v1, v4])
+    rows = [{a.data for a in row}
+            for row in product]
+    self.assertItemsEqual(rows, [
+        {x1, x3, x4, x6},
+        {x1, x2, x3, x5, x6},
+        {x1, x3, x5, x6},
+        {x2, x6},
+    ])
+
   def testVariableProductDict(self):
     u1 = self.prog.NewVariable("u1", [1, 2], [], self.current_location)
     u2 = self.prog.NewVariable("u2", [3, 4], [], self.current_location)

@@ -359,16 +359,20 @@ class AtomicAbstractValue(object):
     """Return the class of this object. Equivalent of x.__class__ in Python."""
     raise NotImplementedError(self.__class__.__name__)
 
-  def get_instance_type(self, instance=None):  # pylint: disable=unused-argument
+  def get_instance_type(self, instance=None, seen=None):  # pylint: disable=unused-argument
     """Return the type an instance of us would have."""
     # We don't know whether we even *are* a type, so the default is anything.
     return pytd.AnythingType()
 
-  def to_type(self):
+  def to_type(self, seen=None):
     """Get a PyTD type representing this object."""
     raise NotImplementedError(self.__class__.__name__)
 
-  def get_type_key(self):
+  def get_default_type_key(self):
+    """Gets a default type key. See get_type_key."""
+    return type(self)
+
+  def get_type_key(self, seen=None):  # pylint: disable=unused-argument
     """Build a key from the information used to perform type matching.
 
     Get a hashable object containing this value's type information. Type keys
@@ -376,10 +380,13 @@ class AtomicAbstractValue(object):
     look like, only that values with different types *always* have different
     type keys and values with the same type preferably have the same type key.
 
+    Args:
+      seen: The set of values seen before while computing the type key.
+
     Returns:
       A hashable object built from this value's type information.
     """
-    return type(self)
+    return self.get_default_type_key()
 
   def instantiate(self, node):
     return Instance(self.to_variable(node, self.name), self.vm).to_variable(
@@ -703,10 +710,13 @@ class SimpleAbstractValue(AtomicAbstractValue):
       cls.register_instance(self)
     return node
 
-  def to_type(self):
+  def to_type(self, seen=None):
     """Get a PyTD type representing this object.
 
     This uses both the instance (for type parameters) as well as the class.
+
+    Args:
+      seen: The set of values seen before while computing the type.
 
     Returns:
       A PyTD Type
@@ -715,7 +725,7 @@ class SimpleAbstractValue(AtomicAbstractValue):
       classvalues = (v.data for v in self.cls.bindings)
       types = []
       for cls in classvalues:
-        types.append(cls.get_instance_type(self))
+        types.append(cls.get_instance_type(self, seen=seen))
       ret = pytd_utils.JoinTypes(types)
       visitors.InPlaceFillInClasses(ret, self.vm.loader.builtins)
       return ret
@@ -739,14 +749,19 @@ class SimpleAbstractValue(AtomicAbstractValue):
         return None
     return subst
 
-  def get_type_key(self):
+  def get_type_key(self, seen=None):
+    if not seen:
+      seen = set()
+    seen.add(self)
     key = set()
     if self.cls:
       clsval, = self.cls.bindings
       key.add(clsval.data)
     for name, var in self.type_parameters.items():
-      key.add((name, frozenset(value.data.get_type_key()
-                               for value in var.bindings)))
+      subkey = frozenset(value.data.get_default_type_key() if value.data in seen
+                         else value.data.get_type_key(seen)
+                         for value in var.bindings)
+      key.add((name, subkey))
     if key:
       return frozenset(key)
     else:
@@ -1124,7 +1139,7 @@ class Function(Instance):
   def get_class(self):
     return self.vm.function_type
 
-  def to_type(self):
+  def to_type(self, seen=None):
     return pytd.NamedType("__builtin__.function")
 
   def match_against_type(self, other_type, subst, node, view):
@@ -1622,14 +1637,14 @@ class ParameterizedClass(AtomicAbstractValue, Class, FormalType):
     return "ParameterizedClass(cls=%r params=%s)" % (self.base_cls,
                                                      self.type_parameters)
 
-  def to_type(self):
+  def to_type(self, seen=None):
     return pytd.NamedType("__builtin__.type")
 
-  def get_instance_type(self, _):
+  def get_instance_type(self, _, seen=None):
     type_arguments = []
     for type_param in self.base_cls.pytd_cls.template:
       type_arguments.append(
-          self.type_parameters[type_param.name].get_instance_type())
+          self.type_parameters[type_param.name].get_instance_type(seen=seen))
     return pytd_utils.MakeClassOrContainerType(
         pytd_utils.NamedOrExternalType(self.base_cls.pytd_cls.name,
                                        self.base_cls.module),
@@ -1741,17 +1756,26 @@ class PyTDClass(SimpleAbstractValue, Class):
 
     return node, results
 
-  def to_type(self):
+  def to_type(self, seen=None):
     return pytd.NamedType("__builtin__.type")
 
-  def get_instance_type(self, instance=None):
+  def get_instance_type(self, instance=None, seen=None):
     """Convert instances of this class to their PYTD type."""
+    if seen is None:
+      seen = set()
+    type_params = self.pytd_cls.template
+    if instance in seen:
+      # We have a circular dependency in our types (e.g., lst[0] == lst). Stop
+      # descending into the type parameters.
+      type_params = ()
+    if instance is not None:
+      seen.add(instance)
     type_arguments = []
-    for type_param in self.pytd_cls.template:
+    for type_param in type_params:
       if instance is not None and type_param.name in instance.type_parameters:
         param = instance.type_parameters[type_param.name]
         type_arguments.append(pytd_utils.JoinTypes(
-            v.data.to_type() for v in param.bindings))
+            v.data.to_type(seen=seen) for v in param.bindings))
       else:
         type_arguments.append(pytd.AnythingType())
     return pytd_utils.MakeClassOrContainerType(
@@ -1924,7 +1948,7 @@ class InterpreterClass(SimpleAbstractValue, Class):
       raise NotImplementedError(
           "Can't match instance %r against %r", self, other_type)
 
-  def to_type(self):
+  def to_type(self, seen=None):
     return pytd.NamedType("__builtin__.type")
 
   def to_pytd_def(self, class_name):
@@ -1966,7 +1990,7 @@ class InterpreterClass(SimpleAbstractValue, Class):
                       constants=tuple(constants),
                       template=())
 
-  def get_instance_type(self, unused_instance=None):
+  def get_instance_type(self, unused_instance=None, seen=None):
     if self.official_name:
       return pytd_utils.NamedOrExternalType(self.official_name, self.module)
     else:
@@ -2404,7 +2428,7 @@ class BoundFunction(AtomicAbstractValue):
   def has_kwargs(self):
     return self.underlying.has_kwargs()
 
-  def to_type(self):
+  def to_type(self, seen=None):
     return pytd.NamedType("__builtin__.function")
 
   def match_against_type(self, other_type, subst, node, view):
@@ -2489,7 +2513,7 @@ class Nothing(AtomicAbstractValue, FormalType):
            starargs=None, starstarargs=None):
     raise AssertionError("Can't call empty object ('nothing')")
 
-  def to_type(self):
+  def to_type(self, seen=None):
     return pytd.NothingType()
 
   def match_against_type(self, other_type, subst, node, view):
@@ -2571,7 +2595,7 @@ class Module(Instance):
     return [(name, self._convert_member(name, ty))
             for name, ty in self._member_map.items()]
 
-  def to_type(self):
+  def to_type(self, seen=None):
     return pytd.NamedType("__builtin__.module")
 
   def match_against_type(self, other_type, subst, node, view):
@@ -2642,10 +2666,10 @@ class Unsolvable(AtomicAbstractValue):
     """Convert this Unknown to a pytd.Class."""
     return pytd.Constant(name, self.to_type())
 
-  def to_type(self):
+  def to_type(self, seen=None):
     return pytd.AnythingType()
 
-  def get_instance_type(self, unused_instance=None):
+  def get_instance_type(self, unused_instance=None, seen=None):
     return pytd.AnythingType()
 
   def match_against_type(self, other_type, subst, node, view):
@@ -2776,10 +2800,10 @@ class Unknown(AtomicAbstractValue):
     # We treat instances of an Unknown as the same as the class.
     return self.to_variable(self.vm.root_cfg_node, "class of " + self.name)
 
-  def to_type(self):
+  def to_type(self, seen=None):
     return pytd.NamedType(self.class_name)
 
-  def get_instance_type(self, unused_instance=None):
+  def get_instance_type(self, unused_instance=None, seen=None):
     log.info("Using ? for instance of %s", self.name)
     return pytd.AnythingType()
 

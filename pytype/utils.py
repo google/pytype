@@ -81,13 +81,14 @@ def deep_variable_product(variables):
   return _deep_values_list_product(v.bindings for v in variables)
 
 
-def _deep_values_list_product(values_list):
+def _deep_values_list_product(values_list, seen=()):
   """Take the deep Cartesian product of a list of list of Values."""
   result = []
   for row in itertools.product(*(values for values in values_list if values)):
     extra_params = sum([entry.data.unique_parameter_values()
-                        for entry in row], [])
-    extra_values = extra_params and _deep_values_list_product(extra_params)
+                        for entry in row if entry not in seen], [])
+    extra_values = (extra_params and
+                    _deep_values_list_product(extra_params, seen + row))
     if extra_values:
       for new_row in extra_values:
         result.append(row + new_row)
