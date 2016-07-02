@@ -231,6 +231,14 @@ class ErrorTest(test_inference.InferenceTest):
     """)
     self.assertErrorLogContains(errors, r"int.*\[not-callable\]")
 
+  def testSuperError(self):
+    _, errors = self.InferAndCheck("""
+      class A(object):
+        def __init__(self):
+          super(A, self, "foo").__init__()
+    """)
+    self.assertErrorLogContains(errors, r"\[super-error\]")
+
 
 if __name__ == "__main__":
   test_inference.main()
