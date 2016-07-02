@@ -1091,7 +1091,7 @@ class Super(AtomicAbstractValue):
           result.AddBinding(
               SuperInstance(cls.data, obj.data, self.vm), [cls, obj], node)
     else:
-      self.errorlog.super_error(self.vm.frame.current_opcode, len(posargs))
+      self.vm.errorlog.super_error(self.vm.frame.current_opcode, len(posargs))
       result = self.vm.create_new_unsolvable(node, "super()")
     return node, result
 
