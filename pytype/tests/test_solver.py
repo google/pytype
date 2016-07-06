@@ -110,6 +110,22 @@ class SolverTests(test_inference.InferenceTest):
         def __init__(self, *types):
           self.types = types
         def bar(self, val):
+          return issubclass(val, self.types)
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+    class Foo(object):
+      def __init__(self, ...) -> NoneType
+      types = ...  # type: Tuple[type, ...]
+      def bar(self, val) -> bool
+    """)
+
+  @unittest.skip("isinstance() doesn't record a type signature")
+  def testOptionalParams_obsolete(self):
+    ty = self.Infer("""
+      class Foo(object):
+        def __init__(self, *types):
+          self.types = types
+        def bar(self, val):
           return isinstance(val, self.types)
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """

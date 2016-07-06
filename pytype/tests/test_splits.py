@@ -204,6 +204,30 @@ class SplitTest(test_inference.InferenceTest):
       def f2() -> Union[int, str]: ...
     """)
 
+  def testIsInstance(self):
+    ty = self.Infer("""
+      # Always returns a bool.
+      def sig(x): return isinstance(x, str)
+      # Cases where isinstance() can be determined, if-split will
+      # narrow the return to a single type.
+      def d1(): return "y" if isinstance("s", str) else 0
+      def d2(): return "y" if isinstance("s", object) else 0
+      def d3(): return "y" if isinstance("s", int) else 0
+      def d4(): return "y" if isinstance("s", (float, str)) else 0
+      # Cases where isinstance() is ambiguous.
+      def a1(x): return "y" if isinstance(x, str) else 0
+      def a2(x): return "y" if isinstance("a", 123) else 0
+    """, deep=True, extract_locals=True)
+    self.assertTypesMatchPytd(ty, """
+      def sig(x) -> bool: ...
+      def d1() -> str: ...
+      def d2() -> str: ...
+      def d3() -> int: ...
+      def d4() -> str: ...
+      def a1(x) -> Union[int, str]: ...
+      def a2(x) -> Union[int, str]: ...
+    """)
+
   @unittest.skip("If-splitting isn't smart enough for this.")
   def testBroken(self):
     # TODO(dbaum): I don't think this test can work.

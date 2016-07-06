@@ -161,6 +161,7 @@ class VirtualMachine(object):
         # boolean values.
         "True": self.true,
         "False": self.false,
+        "isinstance": abstract.IsInstance(self),
     }
 
   def is_at_maximum_depth(self):
