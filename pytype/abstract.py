@@ -1101,6 +1101,113 @@ class Super(AtomicAbstractValue):
     raise NotImplementedError("Python 3 super not implemented yet")
 
 
+class IsInstance(AtomicAbstractValue):
+  """The isinstance() function."""
+
+  # Minimal signature, only used for constructing exceptions.
+  _SIGNATURE = function.Signature(
+      "isinstance", ("obj", "type_or_types"), None, set(), None, {},
+      {"return": None})
+
+  def __init__(self, vm):
+    super(IsInstance, self).__init__("isinstance", vm)
+    # Map of True/False/None (where None signals an ambiguous bool) to
+    # vm values.
+    self._vm_values = {
+        True: vm.true,
+        False: vm.false,
+        None: vm.primitive_class_instances[bool],
+    }
+
+  def call(self, node, _, posargs, namedargs, starargs=None, starstarargs=None):
+    try:
+      if len(posargs) != 2:
+        raise WrongArgCount(self._SIGNATURE, len(posargs))
+      elif namedargs.keys():
+        raise WrongKeywordArgs(self._SIGNATURE, namedargs.keys())
+      else:
+        result = self.vm.program.NewVariable("isinstance")
+        for left in posargs[0].bindings:
+          for right in posargs[1].bindings:
+            pyval = self._is_instance(left.data, right.data)
+            result.AddBinding(self._vm_values[pyval],
+                              source_set=(left, right), where=node)
+    except InvalidParameters as ex:
+      self.vm.errorlog.invalid_function_call(self.vm.frame.current_opcode, ex)
+      result = self.vm.create_new_unsolvable(node, "isinstance()")
+
+    return node, result
+
+  def _is_instance(self, obj, class_spec):
+    """Check if the object matches a class specficiation.
+
+    Args:
+      obj: An AtomicAbstractValue, generally the left hand side of an
+          isinstance() call.
+      class_spec: An AtomicAbstractValue, generally the right hand side of an
+          isinstance() call.
+
+    Returns:
+      True if the object is derived from a class in the class_spec, False if
+      it is not, and None if it is ambiguous whether obj matches class_spec.
+    """
+    # Unknown and Unsolvable objects are ambiguous.
+    if isinstance(obj, (Unknown, Unsolvable)):
+      return None
+    # Assume a single binding for the object's class variable.  If this isn't
+    # the case, treat the call as ambiguous.
+    try:
+      obj_class = get_atomic_value(obj.get_class())
+    except ConversionError:
+      return None
+
+    # Determine the flattened list of classes to check.
+    classes = []
+    ambiguous = self._flatten(class_spec, classes)
+
+    for c in classes:
+      if c in obj_class.mro:
+        return True  # A definite match.
+    # No matches, return result depends on whether _flatten() was
+    # ambiguous.
+    return None if ambiguous else False
+
+  def _flatten(self, value, classes):
+    """Flatten the contents of value into classes.
+
+    If value is a Class, it is appended to classes.
+    If value is a PythonConstant of type tuple, then each element of the tuple
+    that has a single binding is also flattened.
+    Any other type of value, or tuple elements that have multiple bindings are
+    ignored.
+
+    Args:
+      value: An abstract value.
+      classes: A list to be modified.
+
+    Returns:
+      True iff a value was ignored during flattening.
+    """
+    if isinstance(value, Class):
+      # A single class, no ambiguity.
+      classes.append(value)
+      return False
+    elif (isinstance(value, PythonConstant) and
+          value.get_class() is self.vm.tuple_type and
+          isinstance(value.pyval, tuple)):
+      # A tuple, need to process each element.
+      ambiguous = False
+      for var in value.pyval:
+        if (len(var.bindings) != 1 or
+            self._flatten(var.bindings[0].data, classes)):
+          # There were either multiple bindings or ambiguity deeper in the
+          # recursion.
+          ambiguous = True
+      return ambiguous
+    else:
+      return True
+
+
 class Function(Instance):
   """Base class for function objects (NativeFunction, InterpreterFunction).
 
