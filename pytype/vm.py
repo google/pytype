@@ -1561,6 +1561,7 @@ class VirtualMachine(object):
   def byte_DELETE_GLOBAL(self, state, op):
     name = self.frame.f_code.co_names[op.arg]
     self.del_global(name)
+    return state
 
   def byte_LOAD_CLOSURE(self, state, op):
     """Used to generate the 'closure' tuple for MAKE_CLOSURE.

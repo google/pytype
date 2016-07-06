@@ -127,7 +127,7 @@ class InferenceTest(unittest.TestCase):
     errorlog = self._InitErrorLog(code)
     unit = infer.infer_types(
         textwrap.dedent(code), errorlog, self.options,
-        deep=False, solve_unknowns=False, cache_unknowns=True)
+        deep=True, solve_unknowns=True, cache_unknowns=True)
     if report_errors and errorlog.has_error():
       errorlog.print_to_stderr()
       self.fail("Inferencer found %d errors" % len(errorlog))

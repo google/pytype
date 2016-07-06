@@ -240,6 +240,7 @@ class TestWithStatement(test_inference.InferenceTest):
     # the stdlib.
     self.assertNoErrors("""\
       from _functools import partial
+      import sys
 
       WRAPPER_ASSIGNMENTS = ('__module__', '__name__', '__doc__')
       WRAPPER_UPDATES = ('__dict__',)
