@@ -57,7 +57,7 @@ def filter(function_or_None, sequence: tuple[A]) -> tuple[A]
 def format(value, ...) -> str
 def format(value: unicode, ...) -> unicode
 def getattr(value: object, attr: str or unicode, ...) -> ?
-def globals() -> dict[str, object]
+def globals() -> dict[str, Any]
 def hasattr(object, name: str or unicode or bytearray) -> bool
 def hash(obj) -> int
 def hex(number: int) -> str
