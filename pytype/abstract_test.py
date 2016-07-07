@@ -46,6 +46,42 @@ class AbstractTestBase(unittest.TestCase):
     return d
 
 
+class InstanceTest(AbstractTestBase):
+
+  # TODO(dbaum): Is it worth adding a test for frozenset()?  There isn't
+  # an easy way to create one directly from the vm, it is already covered
+  # in test_splits.py, and there aren't any new code paths.  Perhaps it isn't
+  # worth the effort.
+
+  def test_compatible_with_non_container(self):
+    # Compatible with either True or False.
+    i = abstract.Instance(self._vm.object_type, self._vm)
+    self.assertIs(True, i.compatible_with(True))
+    self.assertIs(True, i.compatible_with(False))
+
+  def test_compatible_with_list(self):
+    i = abstract.Instance(self._vm.list_type, self._vm)
+    i.init_type_parameters("T")
+    # Empty list is not compatible with True.
+    self.assertIs(False, i.compatible_with(True))
+    self.assertIs(True, i.compatible_with(False))
+    # Once a type parameter is set, list is compatible with True and False.
+    i.merge_type_parameter(self._node, "T", self._vm.object_type)
+    self.assertIs(True, i.compatible_with(True))
+    self.assertIs(True, i.compatible_with(False))
+
+  def test_compatible_with_set(self):
+    i = abstract.Instance(self._vm.set_type, self._vm)
+    i.init_type_parameters("T")
+    # Empty list is not compatible with True.
+    self.assertIs(False, i.compatible_with(True))
+    self.assertIs(True, i.compatible_with(False))
+    # Once a type parameter is set, list is compatible with True and False.
+    i.merge_type_parameter(self._node, "T", self._vm.object_type)
+    self.assertIs(True, i.compatible_with(True))
+    self.assertIs(True, i.compatible_with(False))
+
+
 class DictTest(AbstractTestBase):
 
   def setUp(self):

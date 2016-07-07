@@ -195,6 +195,10 @@ class AtomicAbstractValue(object):
     self.module = None
     self.official_name = None
 
+  @property
+  def full_name(self):
+    return (self.module + "." if self.module else "") + self.name
+
   def get_fullhash(self):
     """Hash this value and all of its children."""
     m = hashlib.md5()
@@ -790,12 +794,30 @@ class SimpleAbstractValue(AtomicAbstractValue):
 
 
 class Instance(SimpleAbstractValue):
+  """An instance of some object."""
+
+  # Fully qualified names of types that are parameterized containers.
+  _CONTAINER_NAMES = set([
+      "__builtin__.list", "__builtin__.set", "__builtin__.frozenset"])
 
   def __init__(self, clsvar, vm):
     super(Instance, self).__init__(clsvar.name, vm)
     self.cls = clsvar
     for cls in clsvar.data:
       cls.register_instance(self)
+
+  def compatible_with(self, logical_value):  # pylint: disable=unused-argument
+    # Containers with unset parameters cannot match True.
+    if logical_value and self._is_container():
+      return bool(self.type_parameters["T"].bindings)
+    return True
+
+  def _is_container(self):
+    try:
+      name = get_atomic_value(self.get_class()).full_name
+      return name in Instance._CONTAINER_NAMES
+    except ConversionError:
+      return False
 
 
 class ValueWithSlots(Instance):
