@@ -97,6 +97,7 @@ class TestTypeshedParsing(parser_test_base.ParserTest):
       2and3/logging/config.pyi
       2and3/logging/handlers.pyi
       2and3/math.pyi
+      2and3/warnings.pyi
       2and3/webbrowser.pyi
   """
   WANTED = re.compile(r"stdlib/(2\.7|2and3)/.*\.pyi$")
