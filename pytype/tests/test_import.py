@@ -701,6 +701,19 @@ class ImportTest(test_inference.InferenceTest):
       """, pythonpath=[d.path])
     self.assertErrorLogContains(errors, "a.pyi")
 
+  def testRelativePriority(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", "x = ...  # type: int")
+      d.create_file("b/a.pyi", "x = ...  # type: complex")
+      ty = self.Infer("""\
+        import a
+        x = a.x
+      """, pythonpath=[d.path], module_name="b.main")
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        x = ...  # type: complex
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()

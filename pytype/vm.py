@@ -1297,7 +1297,7 @@ class VirtualMachine(object):
     Args:
       name: Name of the module. E.g. "sys".
       level: Specifies whether to use absolute or relative imports.
-        -1: (Python <= 3.1) "Normal" import. Try both absolute and relative.
+        -1: (Python <= 3.1) "Normal" import. Try both relative and absolute.
          0: Absolute import.
          1: "from . import abc"
          2: "from .. import abc"
@@ -1308,9 +1308,12 @@ class VirtualMachine(object):
     if name:
       if level <= 0:
         assert level in [-1, 0]
-        ast = self.loader.import_name(name)
-        if level == -1 and self.loader.base_module and not ast:
-          ast = self.loader.import_relative_name(name)
+        if level == -1 and self.loader.base_module:
+          # Python 2 tries relative imports first.
+          ast = (self.loader.import_relative_name(name) or
+                 self.loader.import_name(name))
+        else:
+          ast = self.loader.import_name(name)
       else:
         # "from .x import *"
         base = self.loader.import_relative(level)
