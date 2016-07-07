@@ -141,8 +141,6 @@ class SplitTest(test_inference.InferenceTest):
     # Unlike normal if statement, the and/or short circuit logic does
     # not appear to be optimized away by the compiler.  Therefore these
     # simple tests do in fact execute if-splitting logic.
-    #
-    # TODO(dbaum): Add checks for list once it is supported.
     ty = self.Infer("""
       def int_t(x): return 1 or x
       def int_f(x): return 0 and x
@@ -153,6 +151,9 @@ class SplitTest(test_inference.InferenceTest):
       def tuple_t(x): return (1, ) or x
       def tuple_f(x): return () and x
       def dict_f(x): return {} and x
+      def list_f(x): return [] and x
+      def set_f(x): return set() and x
+      def frozenset_f(x): return frozenset() and x
     """, deep=True, extract_locals=True)
     self.assertTypesMatchPytd(ty, """
       def int_t(x) -> int: ...
@@ -164,6 +165,9 @@ class SplitTest(test_inference.InferenceTest):
       def tuple_t(x) -> Tuple[int, ...]: ...
       def tuple_f(x) -> Tuple[nothing]: ...
       def dict_f(x) -> Dict[nothing, nothing]: ...
+      def list_f(x) -> List[nothing]: ...
+      def set_f(x) -> set[nothing]: ...
+      def frozenset_f(x) -> frozenset[nothing]: ...
     """)
 
   def testDict(self):
