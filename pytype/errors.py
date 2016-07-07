@@ -173,13 +173,16 @@ class ErrorLogBase(object):
 
   def print_to_file(self, fi):
     seen = set()
-    # pylint: disable=protected-access
-    for error in sorted(self._errors,
-                        key=lambda x: utils.numeric_sort_key(x._position())):
+    for error in self.sorted_errors():
       text = str(error)
       if text not in seen:
         print >>fi, error
         seen.add(text)
+
+  def sorted_errors(self):
+    # pylint: disable=protected-access
+    return sorted(self._errors,
+                  key=lambda x: (x._filename, x._lineno))
 
   def print_to_stderr(self):
     self.print_to_file(sys.stderr)
