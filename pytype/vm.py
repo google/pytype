@@ -1313,9 +1313,12 @@ class VirtualMachine(object):
     if name:
       if level <= 0:
         assert level in [-1, 0]
-        ast = self.loader.import_name(name)
-        if level == -1 and self.loader.base_module and not ast:
-          ast = self.loader.import_relative_name(name)
+        if level == -1 and self.loader.base_module:
+          # Python 2 tries relative imports first.
+          ast = (self.loader.import_relative_name(name) or
+                 self.loader.import_name(name))
+        else:
+          ast = self.loader.import_name(name)
       else:
         # "from .x import *"
         base = self.loader.import_relative(level)
