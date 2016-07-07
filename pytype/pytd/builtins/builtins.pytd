@@ -662,6 +662,9 @@ class set(Generic[T], MutableSet):
     def copy(self, ...) -> set[T]
     def difference_update(self, ...) -> NoneType
     def intersection_update(self, ...) -> NoneType
+    def isdisjoint(self, y: AbstractSet[T2]) -> bool
+    def issubset(self, y: AbstractSet[T2]) -> bool
+    def issuperset(self, y: AbstractSet[T2]) -> bool
     def pop(self) -> T
     def update(self, ...) -> NoneType
     def add(self, object: A) -> NoneType:
@@ -700,9 +703,15 @@ class frozenset(Generic[T], AbstractSet):
     def __sub__(self, y: AbstractSet[T2]) -> frozenset[T]
     def __xor__(self, y: AbstractSet[T2]) -> frozenset[T or T2]
     def copy(self, ...) -> frozenset[T]
-    def difference(self, ...) -> frozenset[T]
-    def intersection(self, ...) -> frozenset[T]
-    def union(self, ...) -> frozenset[T]
+    def isdisjoint(self, y: AbstractSet[T2]) -> bool
+    def issubset(self, y: AbstractSet[T2]) -> bool
+    def issuperset(self, y: AbstractSet[T2]) -> bool
+    @staticmethod
+    def union(...) -> frozenset[?]
+    @staticmethod
+    def intersection(...) -> frozenset[?]
+    @staticmethod
+    def difference(...) -> frozenset[?]
 
 T = TypeVar('T')
 class setiterator(Generic[T], Iterator):
@@ -1277,4 +1286,3 @@ class ZeroDivisionError(object):
     def __init__(self, ...) -> NoneType
     def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
     def __unicode__(self, ...) -> unicode
-
