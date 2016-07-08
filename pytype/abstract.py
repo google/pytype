@@ -1850,7 +1850,12 @@ class PyTDClass(SimpleAbstractValue, Class):
 
   def get_attribute(self, node, name, valself=None, valcls=None,
                     condition=None):
-    return Class.get_attribute(self, node, name, valself, valcls, condition)
+    node, var = Class.get_attribute(
+        self, node, name, valself, valcls, condition)
+    if var.bindings or not valself:
+      return node, var
+    else:
+      return self.get_attribute_computed(node, name, valself, valcls, condition)
 
   def get_attribute_flat(self, node, name):
     # get_attribute_flat ?

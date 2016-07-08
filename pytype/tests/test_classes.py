@@ -339,5 +339,19 @@ class ClassesTest(test_inference.InferenceTest):
         def test(self) -> str: ...
     """)
 
+  def testGetAttr(self):
+    ty = self.Infer("""
+      class Foo(object):
+        def __getattr__(self, name):
+          return "attr"
+      def f():
+        return Foo().foo
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      class Foo(object):
+        def __getattr__(self, name) -> str: ...
+      def f() -> str: ...
+    """)
+
 if __name__ == "__main__":
   test_inference.main()
