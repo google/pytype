@@ -1706,6 +1706,17 @@ class Class(object):
     """Mix-in equivalent of __init__."""
     pass
 
+  def get_attribute_computed(self, node, name, valself, valcls, condition):
+    """Call __getattr__ (if defined) to compute an attribute."""
+    node, attr_var = Class.get_attribute(self, node, "__getattr__", valself,
+                                         valcls, condition)
+    if attr_var and attr_var.bindings:
+      name_var = AbstractOrConcreteValue(
+          name, self.vm.str_type, self.vm).to_variable(node, name)
+      return self.vm.call_function(node, attr_var, [name_var])
+    else:
+      return node, None
+
   def lookup_from_mro(self, node, name, valself, valcls, skip=None):
     """Find an identifier in the MRO of the class."""
     ret = self.vm.program.NewVariable(name)
@@ -1839,7 +1850,12 @@ class PyTDClass(SimpleAbstractValue, Class):
 
   def get_attribute(self, node, name, valself=None, valcls=None,
                     condition=None):
-    return Class.get_attribute(self, node, name, valself, valcls, condition)
+    node, var = Class.get_attribute(
+        self, node, name, valself, valcls, condition)
+    if var.bindings or not valself:
+      return node, var
+    else:
+      return self.get_attribute_computed(node, name, valself, valcls, condition)
 
   def get_attribute_flat(self, node, name):
     # get_attribute_flat ?
@@ -2010,6 +2026,8 @@ class InterpreterClass(SimpleAbstractValue, Class):
       nodes.append(node2)
     if nodes:
       return self.vm.join_cfg_nodes(nodes), result
+    elif valself:
+      return self.get_attribute_computed(node, name, valself, valcls, condition)
     else:
       return node, None
 

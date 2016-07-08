@@ -239,6 +239,16 @@ class ErrorTest(test_inference.InferenceTest):
     """)
     self.assertErrorLogContains(errors, r"\[super-error\]")
 
+  def testAttributeError(self):
+    _, errors = self.InferAndCheck("""
+      class Foo(object):
+        def __getattr__(self, name):
+          return "attr"
+      def f():
+        return Foo.foo
+    """)
+    self.assertErrorLogContains(errors, r"\[attribute-error\]")
+
 
 if __name__ == "__main__":
   test_inference.main()
