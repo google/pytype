@@ -2590,7 +2590,7 @@ class BoundFunction(AtomicAbstractValue):
     return pytd.NamedType("__builtin__.function")
 
   def match_against_type(self, other_type, subst, node, view):
-    if other_type.name in ["function", "object"]:
+    if other_type.name in ["function", "object", "Callable"]:
       return subst
 
 
