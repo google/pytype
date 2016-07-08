@@ -249,6 +249,16 @@ class ErrorTest(test_inference.InferenceTest):
     """)
     self.assertErrorLogContains(errors, r"\[attribute-error\]")
 
+  def testPyiType(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        def f(x: list[int]) -> int: ...
+      """)
+      _, errors = self.InferAndCheck("""\
+        import foo
+        foo.f([""])
+      """, deep=True, pythonpath=[d.path])
+      self.assertErrorLogContains(errors, r"List\[int\]")
 
 if __name__ == "__main__":
   test_inference.main()
