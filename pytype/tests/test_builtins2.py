@@ -123,6 +123,14 @@ class BuiltinTests2(test_inference.InferenceTest):
         def get_bases(self) -> List[Any]
     """)
 
+  def testDictInit(self):
+    ty = self.Infer("""
+      x = dict(u=3, v=4, w=5)
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      x = ...  # type: Dict[Any, Any]
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()
