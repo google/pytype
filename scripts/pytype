@@ -92,7 +92,8 @@ def generate_pyi(input_filename, output_filename, errorlog, options):
   except parser.ParseError as e:
     if options.nofail:
       log.warn("Parser error: %s", str(e))
-      result = "# Caught error in pyi file:\n# " + str(e).replace("\n", "\n# ")
+      result = "def __getattr__(name) -> Any: ...\n"
+      result += "# Caught error in pyi file:\n# " + str(e).replace("\n", "\n# ")
     else:
       # TODO(kramm): We should store errors of this kind in the errorlog and
       # continue processing.
