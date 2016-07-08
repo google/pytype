@@ -450,7 +450,8 @@ class dict(Generic[K, V], MutableMapping):
         self := dict[nothing, nothing]
     def __init__(self, list: list[tuple[X]]) -> NoneType:
         self := dict[X, X]
-    def __init__(self, x) -> NoneType
+    def __init__(self, ...) -> NoneType:
+        self := dict[?, ?]
     def __contains__(self, k: K) -> bool
     def __delitem__(self, y: K) -> NoneType
     def __eq__(self, y: dict) -> bool
