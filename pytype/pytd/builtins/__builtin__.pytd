@@ -21,6 +21,7 @@ from typing import Generic
 #                  If not useful, remove.
 
 T = TypeVar('T')
+T2 = TypeVar('T2')
 def __import__(name: str or unicode or bytearray, ...) -> module
 def abs PYTHONCODE
 def all(iterable) -> bool
@@ -75,6 +76,7 @@ def iter(collection: iterator[T]) -> iterator[T]
 def iter(collection: list[T]) -> listiterator[T]
 def iter(collection: tuple[T]) -> tupleiterator[T]
 def iter(collection: set[T]) -> setiterator[T]
+def iter(collection: dict[T, T2]) -> `dictionary-keyiterator`[T]
 def len(obj) -> int  # TODO(pludemann): leave this out and call obj.__len__() ?
 def locals() -> dict[str, object]
 def map(function, sequence: list[nothing], ...) -> list[nothing]
@@ -660,6 +662,7 @@ class set(Generic[T], MutableSet):
     def __xor__(self, y: set[T]) -> set[T]
     def clear(self, ...) -> NoneType
     def copy(self, ...) -> set[T]
+    def discard(self, y) -> NoneType
     def difference_update(self, ...) -> NoneType
     def intersection_update(self, ...) -> NoneType
     def isdisjoint(self, y: AbstractSet[T2]) -> bool
@@ -758,7 +761,7 @@ class bool(int, SupportsInt, SupportsFloat):
     def conjugate(self, ...) -> int
 
 class int(object):  # TODO(kramm): SupportsInt, SupportsFloat, SupportsAbs)
-    def __init__(self, x: int or float, ...) -> NoneType
+    def __init__(self, x: int or float or str, ...) -> NoneType
     def __init__(self) -> NoneType
     def __add__(self, y: int) -> int
     def __add__(self, y: float) -> float
@@ -834,7 +837,7 @@ class int(object):  # TODO(kramm): SupportsInt, SupportsFloat, SupportsAbs)
 
 # TODO(pludemann): # if version < 3:
 class long(SupportsInt, SupportsFloat, SupportsAbs):
-    def __init__(self, x: int or float or long, ...) -> NoneType
+    def __init__(self, x: int or float or long or str, ...) -> NoneType
     def __init__(self) -> NoneType
     def __abs__(self) -> long
     def __add__(self, y: int or long) -> long
@@ -891,7 +894,7 @@ class long(SupportsInt, SupportsFloat, SupportsAbs):
     def conjugate(self, ...) -> long
 
 class float(SupportsInt, SupportsFloat, SupportsAbs):
-    def __init__(self, x: int or long or float) -> NoneType
+    def __init__(self, x: int or long or float or str) -> NoneType
     def __init__(self) -> NoneType
     def __abs__(self) -> float
     def __add__(self, y: int or long or float) -> float
@@ -938,7 +941,7 @@ class float(SupportsInt, SupportsFloat, SupportsAbs):
     def is_integer(self, ...) -> bool
 
 class complex(SupportsAbs):
-    def __init__(self, real: int or long or float or complex, ...) -> NoneType
+    def __init__(self, real: int or long or float or complex or str, ...) -> NoneType
     def __init__(self) -> NoneType
     def __abs__(self) -> float
     def __add__(self, y: int or long or float or complex) -> complex

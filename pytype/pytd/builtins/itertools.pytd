@@ -17,7 +17,10 @@ class compress(object):
     pass
 
 class count(object):
+    def __init__(self, ...) -> NoneType
+    def __iter__(self) -> count
     def __reduce__() -> tuple
+    def next(self) -> int or long or float or complex
 
 class cycle(object):
     pass
