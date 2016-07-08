@@ -180,8 +180,7 @@ class SolverTests(test_inference.InferenceTest):
         return int(x, 16)
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
-      # TODO(kramm): Why is bool here?
-      def f(x: int or float) -> int
+      def f(x: int or float or str) -> int
     """)
 
   def testCallMethod(self):
