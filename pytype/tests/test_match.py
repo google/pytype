@@ -19,6 +19,18 @@ class MatchTest(test_inference.InferenceTest):
       x = ...  # type: Generator[Tuple[Union[Tuple[int, ...], int, str], ...]]
     """)
 
+  def testBoundAgainstCallable(self):
+    ty = self.Infer("""
+      import tokenize
+      import StringIO
+      x = tokenize.generate_tokens(StringIO.StringIO("").readline)
+    """, deep=True, solve_unknowns=False, extract_locals=True)
+    self.assertTypesMatchPytd(ty, """
+      tokenize = ...  # type: module
+      StringIO = ...  # type: module
+      x = ...  # type: Generator[Tuple[Union[Tuple[int, ...], int, str], ...]]
+    """)
+
   def testMatchUnknownAgainstContainer(self):
     ty = self.Infer("""
       a = {1}
@@ -43,6 +55,7 @@ class MatchTest(test_inference.InferenceTest):
 
       def f(x) -> Set[Any]: ...
     """)
+
 
 if __name__ == "__main__":
   test_inference.main()
