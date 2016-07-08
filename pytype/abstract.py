@@ -690,6 +690,13 @@ class SimpleAbstractValue(AtomicAbstractValue):
     else:
       raise NotCallable(self)
 
+  def __str__(self):
+    if self.cls:
+      cls = self.cls.data[0]
+      return "<instance of %s>" % cls.name
+    else:
+      return "<instance>"
+
   def __repr__(self):
     if self.cls:
       cls = self.cls.data[0]
@@ -1930,6 +1937,9 @@ class PyTDClass(SimpleAbstractValue, Class):
   def __repr__(self):
     return self.name
 
+  def __str__(self):
+    return self.name
+
   def _match_instance(self, instance, other_type, subst, node, view):
     """Used by match_instance_against_type. Matches each MRO entry."""
     if other_type is self:
@@ -2397,12 +2407,13 @@ class InterpreterFunction(Function):
     args = list(self.signature.iter_args(
         posargs, namedargs, starargs, starstarargs))
     for i, (_, param_var, formal) in enumerate(args):
-      for combination in utils.deep_variable_product([param_var]):
-        view = {value.variable: value for value in combination}
-        if match_var_against_type(param_var, formal, {}, node, view) is None:
-          passed = [p.data[0] for _, p, _ in args]
-          passed[i] = view[param_var].data
-          raise WrongArgTypes(self.signature, passed)
+      if formal is not None:
+        for combination in utils.deep_variable_product([param_var]):
+          view = {value.variable: value for value in combination}
+          if match_var_against_type(param_var, formal, {}, node, view) is None:
+            passed = [p.data[0] for _, p, _ in args]
+            passed[i] = view[param_var].data
+            raise WrongArgTypes(self.signature, passed)
 
   def call(self, node, unused_func, posargs, namedargs,
            starargs=None, starstarargs=None, new_locals=None):

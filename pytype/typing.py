@@ -101,13 +101,16 @@ class _Container(abstract.ValueWithSlots):
     if self.inner:
       v = view[var].data
       # __builtins__.pytd always uses T as type parameter for sequence classes.
-      if "T" in v.type_parameters:
+      if (isinstance(v, abstract.SimpleAbstractValue) and
+          "T" in v.type_parameters):
         inner = v.type_parameters["T"]
         for formal in self.inner.data:
           new_subst = abstract.match_var_against_type(
               inner, formal, subst, node, view)
           if new_subst is not None:
             return new_subst
+      elif isinstance(v, (abstract.Unknown, abstract.Unsolvable)):
+        return subst
     else:
       return subst
 
@@ -119,12 +122,18 @@ class _Container(abstract.ValueWithSlots):
     else:
       return pytd.NamedType(self.pytd_name)
 
+  def __str__(self):
+    if self.inner:
+      return self.name + "[" + str(self.inner.data[0]) + "]"
+    else:
+      return self.name
+
 
 class List(_Container):
   pytd_name = "__builtin__.list"
 
   def __init__(self, name, vm, inner=None):
-    super(List, self).__init__(vm.type_type, vm, inner)
+    super(List, self).__init__("List", vm, inner)
     self.concrete_classes = [self.vm.list_type]
 
 
@@ -132,7 +141,7 @@ class Sequence(_Container):
   pytd_name = "typing.Sequence"
 
   def __init__(self, name, vm, inner=None):
-    super(Sequence, self).__init__(vm.type_type, vm, inner)
+    super(Sequence, self).__init__("Sequence", vm, inner)
     self.concrete_classes = [self.vm.list_type, self.vm.tuple_type]
 
 
