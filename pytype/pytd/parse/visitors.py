@@ -370,7 +370,6 @@ class PrintVisitor(Visitor):
 
   def VisitAnythingType(self, unused_node):
     """Convert an anything type to a string."""
-    self._RequireTypingImport("Any")
     return "Any"
 
   def VisitNothingType(self, unused_node):
@@ -407,7 +406,6 @@ class PrintVisitor(Visitor):
       # TODO(kramm): Why doesn't the optimizer do this?
       return node.type_list[0]
     else:
-      self._RequireTypingImport("Union")
       return "Union[" + ", ".join(node.type_list) + "]"
 
   def VisitIntersectionType(self, node):
