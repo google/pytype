@@ -1784,6 +1784,11 @@ class ParameterizedClass(AtomicAbstractValue, Class, FormalType):
     return "ParameterizedClass(cls=%r params=%s)" % (self.base_cls,
                                                      self.type_parameters)
 
+  def __str__(self):
+    params = [self.type_parameters[type_param.name]
+              for type_param in self.base_cls.pytd_cls.template]
+    return "%s[%s]" % (self.base_cls, ", ".join(str(p) for p in params))
+
   def to_type(self, seen=None):
     return pytd.NamedType("__builtin__.type")
 
