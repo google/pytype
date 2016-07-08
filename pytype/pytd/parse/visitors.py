@@ -341,6 +341,8 @@ class PrintVisitor(Visitor):
     module, _, suffix = node.name.partition(".")
     if self._IsBuiltin(module, suffix):
       node_name = suffix
+      if node_name == "function":
+        node_name = "typing.Callable"
     else:
       node_name = node.name
     if node_name == "NoneType":
