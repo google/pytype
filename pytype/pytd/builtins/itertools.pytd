@@ -8,13 +8,16 @@ class chain(object):
     def from_iterable(...) -> ?
 
 class combinations(object):
-    pass
+    def __init__(self, ...) -> NoneType
+    def __iter__(self) -> Any
 
 class combinations_with_replacement(object):
-    pass
+    def __init__(self, ...) -> NoneType
+    def __iter__(self) -> Any
 
 class compress(object):
-    pass
+    def __init__(self, ...) -> NoneType
+    def __iter__(self) -> count
 
 class count(object):
     def __init__(self, ...) -> NoneType
@@ -23,46 +26,61 @@ class count(object):
     def next(self) -> int or long or float or complex
 
 class cycle(object):
-    pass
+    def __init__(self, ...) -> NoneType
+    def __iter__(self) -> Any
 
 class dropwhile(object):
-    pass
+    def __init__(self, ...) -> NoneType
+    def __iter__(self) -> Any
 
 class groupby(object):
-    pass
+    def __init__(self, ...) -> NoneType
+    def __iter__(self) -> Any
 
 class ifilter(object):
-    pass
+    def __init__(self, ...) -> NoneType
+    def __iter__(self) -> Any
 
 class ifilterfalse(object):
-    pass
+    def __init__(self, ...) -> NoneType
+    def __iter__(self) -> Any
 
 class imap(object):
     def __init__(self, ...) -> NoneType
+    def __iter__(self) -> Any
 
 class islice(object):
-    pass
+    def __init__(self, ...) -> NoneType
+    def __iter__(self) -> Any
 
 class izip(object):
     def __init__(self, ...) -> NoneType
+    def __iter__(self) -> Any
 
 class izip_longest(object):
-    pass
+    def __init__(self, ...) -> NoneType
+    def __iter__(self) -> Any
 
 class permutations(object):
-    pass
+    def __init__(self, ...) -> NoneType
+    def __iter__(self) -> Any
 
 class product(object):
     def __init__(self, ...) -> NoneType
+    def __iter__(self) -> Any
 
 class repeat(object):
-    def __length_hint__() -> int raises TypeError
+    def __init__(self, ...) -> NoneType
+    def __iter__(self) -> Any
 
 class starmap(object):
     def __init__(self, ...) -> NoneType
+    def __iter__(self) -> Any
 
 class takewhile(object):
-    pass
+    def __init__(self, ...) -> NoneType
+    def __iter__(self) -> Any
 
 class tee_dataobject(object):
-    pass
+    def __init__(self, ...) -> NoneType
+    def __iter__(self) -> Any
