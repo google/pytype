@@ -74,7 +74,7 @@ def _validate_map(imports_map, src_out):
     if os.path.exists(output):
       log.error("output file %r (from processing %r) already exists; "
                 "will be overwritten",
-                os.path.realpath(output), src)
+                os.path.abspath(output), src)
     with open(output, "w") as fi:
       fi.write(textwrap.dedent("""\
           # If you see this comment, it means pytype hasn't properly
@@ -83,9 +83,6 @@ def _validate_map(imports_map, src_out):
       """ % (src, output)))
 
   # Now, validate the imports_map.
-  # TODO(pludemann): the tests depend on os.path.realpath being canonical
-  #                  and for os.path.samefile(path1, path2) being equivalent
-  #                  to os.path.realpath(path1) == os.path.realpath(path2)
   for short_path, paths in imports_map.items():
     for path in paths:
       if not os.path.exists(path):
