@@ -199,7 +199,7 @@ def _VisitNode(node, visitor, *args, **kwargs):
           returned, or the original node if the callback returned None.  Before
           calling the Visit callback, the following attribute(s) on the Visitor
           class will be populated:
-            vistor.old_node: The node before the child nodes were visited.
+            visitor.old_node: The node before the child nodes were visited.
 
           Additionally, if the visitor has a "Enter<Name>" method, that method
           will be called on the original node before descending into it. If

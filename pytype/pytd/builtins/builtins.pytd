@@ -12,7 +12,7 @@
 # TODO(pludemann): PYTHONCODE is a no-op right now, but might be useful as
 #                  documentation, or needed for class methods (that is, we might
 #                  want PYTHONCODE to allow definition of a single method via
-#                  __builtin__.pytd, and would need a way of specifrying the
+#                  __builtin__.pytd, and would need a way of specifying the
 #                  name in __builtin__.py, e.g.:
 #                     class Foo:
 #                       def Method PYTHONCODE Foo_Method
@@ -982,7 +982,6 @@ class file(BinaryIO):
     def xreadlines(self) -> file
 
 class function(Callable):
-    def __call__(self, ...) -> ?
     def __get__(self, obj, ...) -> instancemethod
 
 class generator(Generator[T]):  # "T" is also hardcoded in abstract.py:Generator
