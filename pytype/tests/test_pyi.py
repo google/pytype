@@ -258,6 +258,22 @@ def process_function(func: Callable[..., Any]) -> None: ...
         def h(x: foo.D) -> int
       """)
 
+  def testAnonymousProperty(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        class Foo:
+          x = ...  # type: property
+      """)
+      ty = self.Infer("""\
+        import foo
+        x = foo.Foo().x
+        x.bar()
+      """, deep=True, pythonpath=[d.path], solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        foo = ...  # type: module
+        x = ...  # type: ?
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()

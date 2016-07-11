@@ -498,8 +498,8 @@ class VirtualMachine(object):
       # This key is also used in __init__
       key = (abstract.Instance, pytype.cls)
       if key not in self._convert_cache:
-        if pytype.name == "__builtin__.type":
-          # special case: An instantiation of "type" can be anything.
+        if pytype.name in ["__builtin__.type", "__builtin__.property"]:
+          # An instance of "type" or of an anonymous property can be anything.
           instance = self._create_new_unknown_value("type")
         else:
           cls = self.convert_constant(str(pytype), pytype)
