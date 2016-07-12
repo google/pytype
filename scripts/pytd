@@ -25,7 +25,7 @@ def parse_options(args):
   o = optparse.OptionParser("Usage: %prog [options] infile.pytd outfile.pytd")
   o.add_option(
       "-O", "--optimize", action="store_true",
-      dest="optimize", default=True,
+      dest="optimize", default=False,
       help="Optimize pytd file.")
   o.add_option(
       "--lossy", action="store_true",
@@ -54,10 +54,13 @@ def parse_options(args):
 def main():
   options, filenames = parse_options(sys.argv)
   unused_executable = filenames.pop(0)
-  if len(filenames) != 2:
-    print >>sys.stderr, "Need exactly two filenames"
+  if len(filenames) == 1:
+    filename_in, filename_out = filenames[0], None
+  elif len(filenames) == 2:
+    filename_in, filename_out = filenames
+  else:
+    print >>sys.stderr, "Need one or two filenames"
     sys.exit(1)
-  filename_in, filename_out = filenames
 
   if options.output_format not in utils.OUTPUT_FORMATS:
     print >>sys.stderr, "Invalid output format:", options.output_format
@@ -80,8 +83,9 @@ def main():
                                max_union=options.max_union,
                                remove_mutable=options.remove_mutable)
 
-  with open(filename_out, "w") as out:
-    out.write(pytd.Print(parsed, print_format=options.output_format))
+  if filename_out is not None:
+    with open(filename_out, "w") as out:
+      out.write(pytd.Print(parsed, print_format=options.output_format))
 
 
 if __name__ == "__main__":
