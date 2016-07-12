@@ -132,7 +132,7 @@ def zip() -> list[nothing]
 def exit() -> NoneType raises SystemExit
 def quit() -> NoneType raises SystemExit
 def input() -> ?
-def raw_input() -> str raises EOFError
+def raw_input(prompt: str or unicode = ...) -> str raises EOFError
 def print(value, ...) -> NoneType
 
 False = ...  # type: bool
