@@ -4,7 +4,7 @@ def ctime(...) -> str raises ValueError
 def gmtime(...) -> tuple
 def localtime(...) -> tuple
 def mktime(...) -> float raises OverflowError
-def sleep(a: float) -> NoneType
+def sleep(a: Union[int, long, float]) -> NoneType
 def strftime(a: str, ...) -> str raises ValueError, MemoryError
 def strptime(...) -> object
 def time() -> float raises IOError
