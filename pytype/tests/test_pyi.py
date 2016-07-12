@@ -274,6 +274,22 @@ def process_function(func: Callable[..., Any]) -> None: ...
         x = ...  # type: ?
       """)
 
+  def testOldStyleClassObjectMatch(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        def f(x) -> Any
+        class Foo: pass
+      """)
+      ty = self.Infer("""
+        import foo
+        def g():
+          return foo.f(foo.Foo())
+      """, deep=True, pythonpath=[d.path], solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        foo = ...  # type: module
+        def g() -> Any
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()

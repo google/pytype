@@ -1966,6 +1966,8 @@ class PyTDClass(SimpleAbstractValue, Class):
   def match_instance_against_type(self, instance, other_type,
                                   subst, node, view):
     """Match an instance of this class against an other type."""
+    if other_type.name == "object":
+      return subst
     for cls in self.mro:
       # pylint: disable=protected-access
       new_subst = cls._match_instance(instance, other_type, subst, node, view)
