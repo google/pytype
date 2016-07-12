@@ -309,6 +309,9 @@ class TypeMatch(utils.TypeMatcher):
           isinstance(t1, StrictType) and isinstance(t2, pytd.ClassType)):
       # For strict types, avoid subclasses of the left side.
       return booleq.Eq(self._full_name(t1), self._full_name(t2))
+    elif (isinstance(t1, pytd.ClassType) and hasattr(t2, "name") and
+          t2.name == "__builtin__.object"):
+      return booleq.TRUE
     elif isinstance(t1, pytd.ClassType):
       # ClassTypes are similar to Unions, except they're disjunctions: We can
       # match the type or any of its base classes against the formal parameter.
