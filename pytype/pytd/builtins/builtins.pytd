@@ -1266,6 +1266,12 @@ class UnicodeError(object):
     def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
     def __unicode__(self, ...) -> unicode
 
+class UnicodeDecodeError(UnicodeError): ...
+
+class UnicodeEncodeError(UnicodeError): ...
+
+class UnicodeTranslateError(UnicodeError): ...
+
 class UnicodeWarning(object):
     def __init__(self, ...) -> NoneType
     def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
