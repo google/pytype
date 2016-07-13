@@ -773,7 +773,7 @@ class VirtualMachine(object):
           bases,
           class_dict.members,
           self)
-    except utils.MROError:
+    except pytd_utils.MROError:
       self.errorlog.mro_error(self.frame.current_opcode, name)
       return self.create_new_unsolvable(node, "mro_error")
     else:

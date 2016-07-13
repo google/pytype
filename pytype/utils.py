@@ -24,14 +24,6 @@ def replace_extension(filename, new_extension):
     return name + "." + new_extension
 
 
-def replace_extension(filename, new_extension):
-  name, _ = os.path.splitext(filename)
-  if new_extension.startswith("."):
-    return name + new_extension
-  else:
-    return name + "." + new_extension
-
-
 def variable_product(variables):
   """Take the Cartesian product of a number of Variables.
 
@@ -307,57 +299,6 @@ class HashableDict(dict):
 
   def __hash__(self):
     return self._hash
-
-
-def dedup(seq):
-  """Return a sequence in the same order, but with duplicates removed."""
-  seen = set()
-  result = []
-  for s in seq:
-    if s not in seen:
-      result.append(s)
-    seen.add(s)
-  return result
-
-
-class MROError(Exception):
-  pass
-
-
-def mro_merge(input_seqs):
-  """Merge a sequence of MROs into a single resulting MRO.
-
-  This code is copied from https://www.python.org/download/releases/2.3/mro/
-  with print statements removed and modified to take a sequence of MROs.
-
-  Args:
-    input_seqs: A sequence of MROs.
-
-  Returns:
-    A single resulting MRO.
-
-  Raises:
-    MROError: If we discovered an illegal inheritance.
-  """
-  seqs = [dedup(s) for s in input_seqs]
-  res = []
-  while True:
-    nonemptyseqs = [seq for seq in seqs if seq]
-    if not nonemptyseqs:
-      return res
-    for seq in nonemptyseqs:  # find merge candidates among seq heads
-      cand = seq[0]
-      nothead = [s for s in nonemptyseqs if cand in s[1:] and s is not seq]
-      if nothead:
-        cand = None  # reject candidate
-      else:
-        break
-    if not cand:
-      raise MROError("Illegal inheritance.")
-    res.append(cand)
-    for seq in nonemptyseqs:  # remove candidate
-      if seq[0] == cand:
-        del seq[0]
 
 
 def compute_mro(c):
