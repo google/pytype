@@ -531,9 +531,11 @@ def _ToType(item):
   elif isinstance(item, pytd.Function):
     return pytd.FunctionType(item.name, item)
   elif isinstance(item, pytd.Constant):
-    # TODO(kramm): This is wrong. It would be better if we resolve pytd.Aliase
+    # TODO(kramm): This is wrong. It would be better if we resolve pytd.Alias
     # in the same way we resolve pytd.ExternalType.
     return item
+  elif isinstance(item, pytd.Alias):
+    return item.type
   else:
     raise
 
@@ -1302,6 +1304,9 @@ class AddNamePrefix(Visitor):
     return self._VisitNamedNode(node)
 
   def VisitConstant(self, node):
+    return self._VisitNamedNode(node)
+
+  def VisitAlias(self, node):
     return self._VisitNamedNode(node)
 
 

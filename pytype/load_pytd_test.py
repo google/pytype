@@ -5,6 +5,7 @@ import unittest
 from pytype import config
 from pytype import load_pytd
 from pytype import utils
+from pytype.pytd import pytd
 
 import unittest
 
@@ -132,6 +133,21 @@ class ImportPathsTest(unittest.TestCase):
   def testTypeShed(self):
     loader = load_pytd.Loader("base", self.options)
     self.assertTrue(loader.import_name("UserDict"))
+
+  def testResolveAlias(self):
+    with utils.Tempdir() as d:
+      d.create_file("module1.pyi", """
+          from typing import List
+          x = List[int]
+      """)
+      d.create_file("module2.pyi", """
+          def f() -> module1.x
+      """)
+      self.options.tweak(pythonpath=[d.path])
+      loader = load_pytd.Loader("base", self.options)
+      module2 = loader.import_name("module2")
+      f, = module2.Lookup("module2.f").signatures
+      self.assertEquals("List[int]", pytd.Print(f.return_type))
 
 
 if __name__ == "__main__":
