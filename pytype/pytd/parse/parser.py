@@ -605,8 +605,6 @@ class TypeDeclParser(object):
     # Other special cases of constant definitions are handled in constantdef,
     # e.g.  p_constantdef_int (for "name = 0")
     if p[3] in [pytd.NamedType("True"), pytd.NamedType("False")]:
-      p[0] = pytd.Constant(p[1], pytd.NamedType("bool"))
-    if p[3] in [pytd.NamedType("True"), pytd.NamedType("False")]:
       # See https://github.com/google/pytype/issues/14
       p[0] = pytd.Constant(p[1], pytd.NamedType("bool"))
     else:
