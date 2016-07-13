@@ -60,13 +60,10 @@ class TestTypeshedParsing(parser_test_base.ParserTest):
       2.7/SocketServer.pyi
       2.7/StringIO.pyi
       2.7/__builtin__.pyi
-      2.7/__future__.pyi
       2.7/argparse.pyi
       2.7/builtins.pyi
       2.7/calendar.pyi
       2.7/codecs.pyi
-      2.7/collections.pyi
-      2.7/csv.pyi
       2.7/email/utils.pyi
       2.7/functools.pyi
       2.7/inspect.pyi
@@ -79,10 +76,8 @@ class TestTypeshedParsing(parser_test_base.ParserTest):
       2.7/socket.pyi
       2.7/sqlite3/dbapi2.pyi
       2.7/ssl.pyi
-      2.7/subprocess.pyi
       2.7/threading.pyi
       2.7/time.pyi
-      2.7/token.pyi
       2.7/types.pyi
       2.7/typing.pyi
       2.7/unittest.pyi
