@@ -201,6 +201,17 @@ class ErrorLog(ErrorLogBase):
     self.error(opcode, "%s (file %s, line %d)",
                e.msg, os.path.basename(e.filename), e.lineno)
 
+  @_error_name("pyi-error")
+  def pyi_not_found(self, opcode, name, level, root_cause):
+    if root_cause == name:
+      self.error(opcode, "Can't find .pyi for %r", name)
+    elif name:
+      self.error(opcode, "Can't find .pyi %r referenced by %r",
+                 root_cause, name)
+    else:
+      assert level > 0
+      self.error(opcode, "Can't find .pyi for %s", "." * level)
+
   @_error_name("attribute-error")
   def attribute_error(self, opcode, obj, attr_name):
     on = " on %s" % obj.data[0].name if obj.bindings else ""

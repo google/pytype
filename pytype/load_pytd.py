@@ -31,6 +31,14 @@ class Module(object):
     self.dirty = True
 
 
+class DependencyNotFoundError(Exception):
+  """If we can't find a module referenced by the module we're trying to load."""
+
+  def __init__(self, module_name):
+    super(DependencyNotFoundError, self).__init__("Can't find %s" % module_name)
+    self.module_name = module_name
+
+
 class Loader(object):
   """A cache for loaded PyTD files.
 
@@ -108,7 +116,9 @@ class Loader(object):
     if deps.modules:
       for name in deps.modules:
         if name not in self._modules:
-          self._import_name(name)
+          other_ast = self._import_name(name)
+          if other_ast is None:
+            raise DependencyNotFoundError(name)
       module_map = {name: module.ast
                     for name, module in self._modules.items()}
       ast = ast.Visit(

@@ -2097,12 +2097,16 @@ class VirtualMachine(object):
       name = full_name.split(".", 1)[0]  # "a.b.c" -> "a"
     else:
       name = full_name
+    level = abstract.get_atomic_python_constant(level_var)
     try:
-      module = self.import_module(
-          name, abstract.get_atomic_python_constant(level))
+      module = self.import_module(name, level)
     except parser.ParseError as e:
       log.warning("Couldn't parse module %r", name)
       self.errorlog.pyi_error(op, e)
+      module = abstract.Unsolvable(self)
+    except load_pytd.DependencyNotFoundError as e:
+      log.warning("Couldn't find module %r", name)
+      self.errorlog.pyi_not_found(op, name, level, e.module_name)
       module = abstract.Unsolvable(self)
     else:
       if module is None:
