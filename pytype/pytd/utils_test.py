@@ -281,6 +281,27 @@ class TestUtils(parser_test_base.ParserTest):
     a.m = {x: x for x in range(42)}
     self.assertEquals(42, len(a))
 
+  def testDedup(self):
+    self.assertEquals([], utils.Dedup([]))
+    self.assertEquals([1], utils.Dedup([1]))
+    self.assertEquals([1, 2], utils.Dedup([1, 2]))
+    self.assertEquals([1, 2], utils.Dedup([1, 2, 1]))
+    self.assertEquals([1, 2], utils.Dedup([1, 1, 2, 2]))
+    self.assertEquals([3, 2, 1], utils.Dedup([3, 2, 1, 3]))
+
+  def testMROMerge(self):
+    self.assertEquals([], utils.MROMerge([[], []]))
+    self.assertEquals([1], utils.MROMerge([[], [1]]))
+    self.assertEquals([1], utils.MROMerge([[1], []]))
+    self.assertEquals([1, 2], utils.MROMerge([[1], [2]]))
+    self.assertEquals([1, 2], utils.MROMerge([[1, 2], [2]]))
+    self.assertEquals([1, 2, 3, 4], utils.MROMerge([[1, 2, 3], [2, 4]]))
+    self.assertEquals([1, 2, 3], utils.MROMerge([[1, 2], [1, 2, 3]]))
+    self.assertEquals([1, 2], utils.MROMerge([[1, 1], [2, 2]]))
+    self.assertEquals([1, 2, 3, 4, 5, 6],
+                      utils.MROMerge([[1, 3, 5], [2, 3, 4], [4, 5, 6]]))
+    self.assertEquals([1, 2, 3], utils.MROMerge([[1, 2, 1], [2, 3, 2]]))
+
 
 if __name__ == "__main__":
   unittest.main()

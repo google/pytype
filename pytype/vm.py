@@ -602,7 +602,12 @@ class VirtualMachine(object):
     # structures we're building.
     key = ("constant", pyval, type(pyval))
     if key not in self._convert_cache:
+      self._convert_cache[key] = None  # for recursion detection
       self._convert_cache[key] = self.construct_constant_from_value(name, pyval)
+    elif self._convert_cache[key] is None:
+      # This error is triggered by, e.g., classes inheriting from each other
+      raise VirtualMachineError(
+          "Detected recursion while converting %s to value" % name)
     return self._convert_cache[key]
 
   def construct_constant_from_value(self, name, pyval):
@@ -768,7 +773,7 @@ class VirtualMachine(object):
           bases,
           class_dict.members,
           self)
-    except utils.MROError:
+    except pytd_utils.MROError:
       self.errorlog.mro_error(self.frame.current_opcode, name)
       return self.create_new_unsolvable(node, "mro_error")
     else:

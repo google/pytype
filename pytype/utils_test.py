@@ -263,27 +263,6 @@ class UtilsTest(unittest.TestCase):
     self.assertItemsEqual(utils.flattened_superclasses(cls_e),
                           [cls_a, cls_b, cls_c, cls_d, cls_e])
 
-  def testDedup(self):
-    self.assertEquals([], utils.dedup([]))
-    self.assertEquals([1], utils.dedup([1]))
-    self.assertEquals([1, 2], utils.dedup([1, 2]))
-    self.assertEquals([1, 2], utils.dedup([1, 2, 1]))
-    self.assertEquals([1, 2], utils.dedup([1, 1, 2, 2]))
-    self.assertEquals([3, 2, 1], utils.dedup([3, 2, 1, 3]))
-
-  def testMROMerge(self):
-    self.assertEquals([], utils.mro_merge([[], []]))
-    self.assertEquals([1], utils.mro_merge([[], [1]]))
-    self.assertEquals([1], utils.mro_merge([[1], []]))
-    self.assertEquals([1, 2], utils.mro_merge([[1], [2]]))
-    self.assertEquals([1, 2], utils.mro_merge([[1, 2], [2]]))
-    self.assertEquals([1, 2, 3, 4], utils.mro_merge([[1, 2, 3], [2, 4]]))
-    self.assertEquals([1, 2, 3], utils.mro_merge([[1, 2], [1, 2, 3]]))
-    self.assertEquals([1, 2], utils.mro_merge([[1, 1], [2, 2]]))
-    self.assertEquals([1, 2, 3, 4, 5, 6],
-                      utils.mro_merge([[1, 3, 5], [2, 3, 4], [4, 5, 6]]))
-    self.assertEquals([1, 2, 3], utils.mro_merge([[1, 2, 1], [2, 3, 2]]))
-
   def testTempdir(self):
     with utils.Tempdir() as d:
       filename1 = d.create_file("foo.txt")

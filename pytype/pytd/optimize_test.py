@@ -603,6 +603,48 @@ class TestOptimize(parser_test_base.ParserTest):
     ast = ast.Visit(optimize.RemoveInheritedMethods())
     self.AssertSourceEquals(ast, expected)
 
+  def testRemoveInheritedMethodsWithOverride(self):
+    src = textwrap.dedent("""
+        class A(object):
+            def f(self, x) -> Any
+        class B(A):
+            def f(self) -> Any
+        class C(B):
+            def f(self) -> Any
+        class D(B):
+            def f(self, x) -> Any
+    """)
+    expected = textwrap.dedent("""
+        class A(object):
+            def f(self, x) -> Any
+        class B(A):
+            def f(self) -> Any
+        class C(B):
+            pass
+        class D(B):
+            def f(self, x) -> Any
+    """)
+    ast = self.Parse(src)
+    ast = visitors.LookupClasses(ast, builtins.GetBuiltinsPyTD())
+    ast = ast.Visit(optimize.RemoveInheritedMethods())
+    self.AssertSourceEquals(ast, expected)
+
+  def testRemoveInheritedMethodsWithDiamond(self):
+    src = textwrap.dedent("""
+        class A(object):
+            def f(self, x) -> Any
+        class B(A):
+            pass
+        class C(A):
+            def f(self, x, y) -> Any
+        class D(B, C):
+            def f(self, x) -> Any
+    """)
+    ast = self.Parse(src)
+    ast = visitors.LookupClasses(ast, builtins.GetBuiltinsPyTD())
+    ast = ast.Visit(optimize.RemoveInheritedMethods())
+    self.AssertSourceEquals(ast, src)
+
   def testAbsorbMutableParameters(self):
     src = textwrap.dedent("""
         def popall(x: list[?]) -> ?:

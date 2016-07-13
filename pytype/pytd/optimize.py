@@ -765,28 +765,27 @@ class RemoveInheritedMethods(visitors.Visitor):
       # For union types, generic types etc., inheritance is more complicated.
       # Be conservative and default to not removing methods inherited from
       # those.
-      return frozenset()
+      return {}
 
-    stripped_signatures = set()
+    stripped_signatures = {}
     for method in t.cls.methods:
       for sig in method.signatures:
         if (sig.params and
             sig.params[0].name == "self" and
             isinstance(sig.params[0].type, pytd.ClassType)):
-          stripped_signatures.add((method.name,
-                                   sig.Replace(params=sig.params[1:])))
+          stripped_signatures[method.name] = sig.Replace(params=sig.params[1:])
     return stripped_signatures
 
-  def _FindSigAndName(self, t, sig_and_name):
+  def _FindNameAndSig(self, classes, name, sig):
     """Find a tuple(name, signature) in all methods of a type/class."""
-    if t not in self.class_to_stripped_signatures:
-      self.class_to_stripped_signatures[t] = self._StrippedSignatures(t)
-    if sig_and_name in self.class_to_stripped_signatures[t]:
-      return True
-    if isinstance(t, pytd.ClassType):
-      for base in t.cls.parents:
-        if self._FindSigAndName(base, sig_and_name):
-          return True
+    if classes:
+      t = classes[0]
+      classes = classes[1:]
+      if t not in self.class_to_stripped_signatures:
+        self.class_to_stripped_signatures[t] = self._StrippedSignatures(t)
+      if name in self.class_to_stripped_signatures[t]:
+        return sig == self.class_to_stripped_signatures[t][name]
+      return self._FindNameAndSig(classes, name, sig)
     return False
 
   def VisitSignature(self, sig):
@@ -796,12 +795,12 @@ class RemoveInheritedMethods(visitors.Visitor):
         sig.params[0].name != "self" or
         not isinstance(sig.params[0].type, pytd.ClassType)):
       return sig  # Not a method
-    cls = sig.params[0].type.cls
-    if cls is None:
+    t = sig.params[0].type
+    if t.cls is None:
       # TODO(kramm): Remove once pytype stops generating ClassType(name, None).
       return sig
-    sig_and_name = (self.function.name, sig.Replace(params=sig.params[1:]))
-    if any(self._FindSigAndName(base, sig_and_name) for base in cls.parents):
+    if self._FindNameAndSig(utils.ComputeMRO(t)[1:], self.function.name,
+                            sig.Replace(params=sig.params[1:])):
       return None  # remove (see VisitFunction)
     return sig
 
