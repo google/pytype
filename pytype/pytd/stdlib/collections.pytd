@@ -39,7 +39,7 @@ class defaultdict(object):
     def __setitem__(self, i, y) -> NoneType
     def clear(self) -> NoneType
     def copy(self) -> defaultdict
-    def get(self, k) -> ?
+    def get(self, k, default=...) -> ?
     def has_key(self, k) -> bool
     def items(self) -> list[tuple[?]]
     def iteritems(self) -> `dictionary-itemiterator`[?, ?]
