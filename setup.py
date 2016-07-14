@@ -35,7 +35,7 @@ setup(
               'pytype/pytd/parse',
              ],
     scripts=['scripts/pytype', 'scripts/pytd'],
-    package_data={'pytype': ['pytd/builtins/*.pytd',
+    package_data={'pytype': ['pytd/builtins/*.py*',
                              'pytd/stdlib/*.pytd',
                              'pytd/stdlib/*/*.pytd',
                             ] + typeshed},
