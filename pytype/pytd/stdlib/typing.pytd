@@ -2,7 +2,8 @@ ARGS = TypeVar('ARGS')
 RET = TypeVar('RET')
 K = TypeVar('K')
 V = TypeVar('V')
-class Callable(typing.Generic[ARGS, RET], object): ...
+class Callable(typing.Generic[ARGS, RET], object):
+  def __call__(self, ...) -> Any
 T = TypeVar('T')
 class AnyStr(object): ...
 class Iterator(typing.Generic[T], object): ...
