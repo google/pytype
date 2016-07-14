@@ -342,7 +342,7 @@ class PrintVisitor(Visitor):
     if self._IsBuiltin(module, suffix):
       node_name = suffix
       if node_name == "function":
-        node_name = "typing.Callable"
+        node_name = "typing.Callable[Any, Any]"
     else:
       node_name = node.name
     if node_name == "NoneType":
@@ -393,7 +393,7 @@ class PrintVisitor(Visitor):
   def VisitTypeParameter(self, node):
     return self._SafeName(node.name)
 
-  def MaybeCaptialize(self, name):
+  def MaybeCapitalize(self, name):
     """Capitalize a generic type, if necessary."""
     capitalized = name.capitalize()
     if capitalized in self.PEP484_CAPITALIZED:
@@ -405,13 +405,13 @@ class PrintVisitor(Visitor):
   def VisitHomogeneousContainerType(self, node):
     """Convert a homogeneous container type to a string."""
     ellipsis = ", ..." if self._NeedsTupleEllipsis(node) else ""
-    return (self.MaybeCaptialize(node.base_type) +
+    return (self.MaybeCapitalize(node.base_type) +
             "[" + node.element_type + ellipsis + "]")
 
   def VisitGenericType(self, node):
     """Convert a generic type (E.g. list[int]) to a string."""
     param_str = ", ".join(node.parameters)
-    return (self.MaybeCaptialize(node.base_type) +
+    return (self.MaybeCapitalize(node.base_type) +
             "[" + param_str + "]")
 
   def VisitUnionType(self, node):
@@ -1409,4 +1409,3 @@ class ExpandSignatures(Visitor):
                       for combination in itertools.product(*params)]
 
     return new_signatures  # Hand list over to VisitFunction
-

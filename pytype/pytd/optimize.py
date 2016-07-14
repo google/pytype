@@ -497,19 +497,26 @@ class SimplifyUnionsWithSuperclasses(visitors.Visitor):
     super(SimplifyUnionsWithSuperclasses, self).__init__()
     self.hierarchy = hierarchy
 
+  def _GetBase(self, t):
+    if isinstance(t, pytd.GENERIC_BASE_TYPE):
+      return t
+    elif (isinstance(t, pytd.GenericType) and
+          all(isinstance(p, pytd.AnythingType) for p in t.parameters)):
+      # For now, handle generic types very conservatively: attempt
+      # simplification only if all of the parameters are Any.
+      return t.base_type
+    else:
+      return None
+
   def VisitUnionType(self, union):
     c = collections.Counter()
     for t in set(union.type_list):
-      if isinstance(t, pytd.GENERIC_BASE_TYPE):
-        c += collections.Counter(self.hierarchy.ExpandSubClasses(str(t)))
-        # TODO(kramm): Handle GenericType et al
-
+      base = self._GetBase(t)
+      if base is not None:
+        c += collections.Counter(self.hierarchy.ExpandSubClasses(str(base)))
     # Below, c[str[t]] can be zero - that's the default for non-existent items
-    # in collections.Counter. It'll happen for types that are not
-    # instances of GENERIC_BASE_TYPE, like container types.
-    new_type_list = [t for t in union.type_list
-                     if c[str(t)] <= 1
-                    ]
+    # in collections.Counter.
+    new_type_list = [t for t in union.type_list if c[str(t)] <= 1]
     return utils.JoinTypes(new_type_list)
 
 
