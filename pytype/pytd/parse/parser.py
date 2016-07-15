@@ -347,11 +347,11 @@ class InsertTypeParameters(visitors.Visitor):
                                              for p in node.template}))
 
 
-def CheckStringIsPython(parser, string, p):
-  if string == "python":
+def CheckIsSysPythonInfo(parser, string, p):
+  if string == "sys.version_info":
     return
   make_syntax_error(
-      parser, "If conditions can only depend on the \"python\" variable", p)
+      parser, "If conditions can only use \"sys.version_info\": %s" % string, p)
 
 
 class Context(object):
@@ -631,40 +631,54 @@ class TypeDeclParser(object):
     _, _, version_expr, _, _, funcdefs1, _, _, _, _, funcdefs2, _ = p
     p[0] = funcdefs1 if version_expr else funcdefs2
 
+  def p_version_tuple_1(self, p):
+    """number_tuple : LPAREN NUMBER COMMA RPAREN"""
+    p[0] = p[2]
+
+  def p_version_tuple_2(self, p):
+    """number_tuple : LPAREN NUMBER COMMA NUMBER RPAREN"""
+    _, _, major, _, minor, _ = p
+    p[0] = Number(major.string + "." + minor.string)
+
+  def p_version_tuple_3(self, p):
+    """number_tuple : LPAREN NUMBER COMMA NUMBER COMMA NUMBER RPAREN"""
+    _, _, major, _, minor, _, micro, _ = p
+    p[0] = Number(major.string + "." + minor.string + "." + micro.string)
+
   def p_version_expr_lt(self, p):
-    """version_expr : NAME LT NUMBER"""
+    """version_expr : dotted_name LT number_tuple"""
     _, name, _, number = p
-    CheckStringIsPython(self, name, p)
+    CheckIsSysPythonInfo(self, name, p)
     p[0] = self.python_version < number.AsVersion(self, p)
 
   def p_version_expr_gt(self, p):
-    """version_expr : NAME GT NUMBER"""
+    """version_expr : dotted_name GT number_tuple"""
     _, name, _, number = p
-    CheckStringIsPython(self, name, p)
+    CheckIsSysPythonInfo(self, name, p)
     p[0] = self.python_version > number.AsVersion(self, p)
 
   def p_version_expr_ge(self, p):
-    """version_expr : NAME GE NUMBER"""
+    """version_expr : dotted_name GE number_tuple"""
     _, name, _, number = p
-    CheckStringIsPython(self, name, p)
+    CheckIsSysPythonInfo(self, name, p)
     p[0] = self.python_version >= number.AsVersion(self, p)
 
   def p_version_expr_le(self, p):
-    """version_expr : NAME LE NUMBER"""
+    """version_expr : dotted_name LE number_tuple"""
     _, name, _, number = p
-    CheckStringIsPython(self, name, p)
+    CheckIsSysPythonInfo(self, name, p)
     p[0] = self.python_version <= number.AsVersion(self, p)
 
   def p_version_expr_eq(self, p):
-    """version_expr : NAME EQ NUMBER"""
+    """version_expr : dotted_name EQ number_tuple"""
     _, name, _, number = p
-    CheckStringIsPython(self, name, p)
+    CheckIsSysPythonInfo(self, name, p)
     p[0] = self.python_version == number.AsVersion(self, p)
 
   def p_version_expr_ne(self, p):
-    """version_expr : NAME NE NUMBER"""
+    """version_expr : dotted_name NE number_tuple"""
     _, name, _, number = p
-    CheckStringIsPython(self, name, p)
+    CheckIsSysPythonInfo(self, name, p)
     p[0] = self.python_version != number.AsVersion(self, p)
 
   def p_class_parents(self, p):

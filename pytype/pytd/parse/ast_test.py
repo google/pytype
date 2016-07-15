@@ -1038,7 +1038,7 @@ class TestASTGeneration(parser_test_base.ParserTest):
   def testVersionSplitFunction(self):
     """Test version conditionals."""
     data = textwrap.dedent("""
-    if python < 3:
+    if sys.version_info < (3,):
       c1 = ...  # type: int
       def f() -> ?
       class A(object):
@@ -1050,7 +1050,7 @@ class TestASTGeneration(parser_test_base.ParserTest):
         pass
 
     class Foo(object):
-      if python > 2.7.3:
+      if sys.version_info > (2, 7, 3):
         attr2 = ...  # type: int
         def m2() -> ?
       else:
@@ -1072,33 +1072,33 @@ class TestASTGeneration(parser_test_base.ParserTest):
 
   def testVersionSyntax(self):
     data = textwrap.dedent("""
-    if python < 3:
+    if sys.version_info < (3,):
       c1 = ...  # type: int
-    if python < 3.1:
+    if sys.version_info < (3, 1):
       c2 = ...  # type: int
-    if python < 3.1.1:
+    if sys.version_info < (3, 1, 1):
       c3 = ...  # type: int
-    if python <= 3:
+    if sys.version_info <= (3,):
       c4 = ...  # type: int
-    if python <= 3.1:
+    if sys.version_info <= (3, 1):
       c5 = ...  # type: int
-    if python <= 3.1.1:
+    if sys.version_info <= (3, 1, 1):
       c6 = ...  # type: int
-    if python > 3:
+    if sys.version_info > (3,):
       c7 = ...  # type: int
-    if python > 3.1:
+    if sys.version_info > (3, 1):
       c8 = ...  # type: int
-    if python > 3.1.1:
+    if sys.version_info > (3, 1, 1):
       c9 = ...  # type: int
-    if python >= 3:
+    if sys.version_info >= (3,):
       c10 = ...  # type: int
-    if python >= 3.1:
+    if sys.version_info >= (3,1):
       c11 = ...  # type: int
-    if python >= 3.1.1:
+    if sys.version_info >= (3, 1, 1):
       c12 = ...  # type: int
-    if python == 3.0.0:
+    if sys.version_info == (3, 0, 0):
       c13 = ...  # type: int
-    if python != 3.0.0:
+    if sys.version_info != (3, 0, 0):
       c14 = ...  # type: int
     """)
     unit = self.Parse(data, version=(3, 0, 0))
@@ -1113,17 +1113,17 @@ class TestASTGeneration(parser_test_base.ParserTest):
 
   def testVersionNormalization(self):
     data = textwrap.dedent("""
-    if python <= 3:
+    if sys.version_info <= (3,):
       c1 = ...  # type: int
-    if python <= 3.0:
+    if sys.version_info <= (3, 0):
       c2 = ...  # type: int
-    if python <= 3.0.0:
+    if sys.version_info <= (3, 0, 0):
       c3 = ...  # type: int
-    if python > 3:
+    if sys.version_info > (3,):
       c4 = ...  # type: int
-    if python > 3.0:
+    if sys.version_info > (3, 0):
       c5 = ...  # type: int
-    if python > 3.0.0:
+    if sys.version_info > (3, 0, 0):
       c6 = ...  # type: int
     """)
     unit = self.Parse(data, version=(3, 0, 0))
