@@ -43,6 +43,7 @@ class TestASTGeneration(parser_test_base.ParserTest):
         import abc
         import abc.efg
         from abc import a, b, c
+        from abc import (x, y, z,)
         from abc.efg import e, f, g
         from abc import a as aa, b as bb, j
         from abc.efg import d as dd, e as ee, h
@@ -53,6 +54,9 @@ class TestASTGeneration(parser_test_base.ParserTest):
         from abc import a
         from abc import b
         from abc import c
+        from abc import x
+        from abc import y
+        from abc import z
         from abc.efg import e
         from abc.efg import f
         from abc.efg import g

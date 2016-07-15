@@ -545,7 +545,10 @@ class TypeDeclParser(object):
     p[0] = aliases
 
   def p_quoted_from_list(self, p):
-    """import_from_list : LPAREN import_from_items RPAREN"""
+    """
+    import_from_list : LPAREN import_from_items       RPAREN
+    import_from_list : LPAREN import_from_items COMMA RPAREN
+    """
     p[0] = p[2]
 
   def p_nonquoted_from_list(self, p):
