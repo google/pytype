@@ -290,6 +290,20 @@ def process_function(func: Callable[..., Any]) -> None: ...
         def g() -> Any
       """)
 
+  def testBytes(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        def f() -> bytes
+      """)
+      ty = self.Infer("""
+        import foo
+        x = foo.f()
+      """, deep=True, pythonpath=[d.path], solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        foo = ...  # type: module
+        x = ...  # type: str
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()
