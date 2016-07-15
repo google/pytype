@@ -35,7 +35,9 @@ def _walk_dir(path):
 
 
 def _filename_to_testname(f):
-  return "test" + os.path.splitext(os.path.basename(f))[0]
+  base = "stdlib"
+  f = f[f.index(base) + len(base) + 1:].replace(os.sep, "_")
+  return "test_" + os.path.splitext(f)[0]
 
 
 def _test_parse(pyi_file):
@@ -57,7 +59,6 @@ class TestTypeshedParsing(parser_test_base.ParserTest):
   # Files that we currently can't parse
   SKIPPED_FILES = """
       2.7/Cookie.pyi
-      2.7/SocketServer.pyi
       2.7/StringIO.pyi
       2.7/__builtin__.pyi
       2.7/argparse.pyi
