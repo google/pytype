@@ -1297,6 +1297,65 @@ class TestASTGeneration(parser_test_base.ParserTest):
       z = ...  # type: float
     """))
 
+  def testNamedTupleParse(self):
+    """Test NamedTuple parsing variations."""
+
+    data = textwrap.dedent("""
+        from typing import NamedTuple
+
+        class C1(NamedTuple("nt", [])):
+          pass
+
+        class C2(NamedTuple("nt", [("f1", int), ("f2", int)])):
+          pass
+
+        class C3(NamedTuple("nt", [("f1", int,), ])):
+          pass
+
+        class C4(NamedTuple("nt", [("f1", NamedTuple("nt", []))])):
+          pass
+        """)
+
+    self.Parse(data)
+
+  def testNamedTupleDedup(self):
+    """Test NamedTuple class dedup."""
+
+    src = textwrap.dedent("""
+        from typing import NamedTuple, Tuple
+
+        x = ... # type: NamedTuple("nt", [("f1", int), ("f2", float)])
+        y = ... # type: NamedTuple("nt", [("f1", int)])
+        """)
+
+    tree = self.Parse(src)
+    x = tree.Lookup("x")
+    y = tree.Lookup("y")
+    self.assertNotEqual(x.type, y.type)
+    self.assertNotEqual(tree.Lookup(x.type.name), tree.Lookup(y.type.name))
+
+  def testNamedTupleMatchesTuple(self):
+    """Test that NamedTuple matches Tuple."""
+
+    src = textwrap.dedent("""
+        from typing import NamedTuple, Tuple
+
+        class C1(NamedTuple("nt", [("f1", int), ("f2", float)])):
+          pass
+
+        class C2(Tuple[int, float]):
+          f1 = ...  # type: int
+          f2 = ...  # type: float
+        """)
+    tree = self.Parse(src)
+
+    nt = tree.Lookup("`nt`")
+    c1 = tree.Lookup("C1")
+    c2 = tree.Lookup("C2")
+
+    self.assertEquals(c1.parents, (pytd.NamedType("`nt`"),))
+    self.assertEquals(c2.Replace(name="`nt`"), nt)
+
 
 class TestDecorate(unittest.TestCase):
   """Test adding additional methods to nodes in a tree using decorate.py."""

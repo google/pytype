@@ -21,6 +21,7 @@ RESERVED = [
     'nothing',
     'raises',
     # Names from typing.py
+    'NamedTuple',
     'TypeVar',
     ]
 

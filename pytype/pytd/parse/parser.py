@@ -430,6 +430,7 @@ class TypeDeclParser(object):
     self.filename = filename if filename else "<string>"
     self.context = Context(typevars=set())
     self.aliases = pep484.PEP484_TRANSLATIONS.copy()
+    self.generated_classes = collections.defaultdict(list)
     # For the time being, also allow shortcuts, i.e., using "List" for
     # "typing.List", even without having imported typing:
     self.aliases.update({name: pytd.ExternalType(name, "typing")
@@ -458,9 +459,13 @@ class TypeDeclParser(object):
 
   def p_unit(self, p):
     """unit : alldefs"""
+    generated_classes = [x for class_list in self.generated_classes.values()
+                         for x in class_list]
+
     funcdefs = [x for x in p[1] if isinstance(x, NameAndSig)]
     constants = [x for x in p[1] if isinstance(x, pytd.Constant)]
-    classes = [x for x in p[1] if isinstance(x, pytd.Class)]
+    classes = (generated_classes +
+               [x for x in p[1] if isinstance(x, pytd.Class)])
     aliases = [x for x in p[1] if isinstance(x, pytd.Alias)]
     all_names = (list(set(f.name for f in funcdefs)) +
                  [c.name for c in constants] +
@@ -583,8 +588,14 @@ class TypeDeclParser(object):
     """from_item : NAME"""
     p[0] = (p[1], p[1])
 
+  def p_from_item_namedtuple(self, p):
+    """from_item : NAMEDTUPLE"""
+    # So NamedTuple can be imported from typing
+    p[0] = ("NamedTuple", "NamedTuple")
+
   def p_from_item_typevar(self, p):
     """from_item : TYPEVAR"""
+    # So TypeVar can be imported from typing
     p[0] = ("TypeVar", "TypeVar")
 
   def p_from_item_as(self, p):
@@ -827,6 +838,59 @@ class TypeDeclParser(object):
       make_syntax_error(
           self, "Illegal redefine of TypeVar(%r) from outer scope" % p[1], p)
     p[0] = []
+
+  def p_namedtuple_field(self, p):
+    """
+    namedtuple_field : LPAREN NAME COMMA type       RPAREN
+    namedtuple_field : LPAREN NAME COMMA type COMMA RPAREN
+    """
+    p[0] = (p[2], p[4])
+
+  def p_namedtuple_field_list(self, p):
+    """namedtuple_field_list : namedtuple_field_list COMMA namedtuple_field"""
+    p[0] = p[1] + [p[3]]
+
+  def p_namedtuple_field_list_1(self, p):
+    """namedtuple_field_list : namedtuple_field"""
+    p[0] = [p[1]]
+
+  def p_namedtuple_fields(self, p):
+    """
+    namedtuple_fields : LBRACKET                             RBRACKET
+    namedtuple_fields : LBRACKET namedtuple_field_list       RBRACKET
+    namedtuple_fields : LBRACKET namedtuple_field_list COMMA RBRACKET
+    """
+    p[0] = tuple() if len(p) == 3 else tuple(p[2])
+
+  def p_type_namedtupledef(self, p):
+    """type : NAMEDTUPLE LPAREN NAME COMMA namedtuple_fields RPAREN"""
+    base_name, fields = p[3], p[5]
+
+    # Handle previously defined NamedTuples with the same name
+    prev_list = self.generated_classes[base_name]
+    name_dedup = "~%d" % len(prev_list) if prev_list else ""
+    class_name = "`%s%s`" % (base_name, name_dedup)
+
+    # Like for typing.Tuple, heterogeneous NamedTuples get converted to
+    # homogeneous ones:
+    # NamedTuple[("x", X), ("y", Y)] -> Tuple[X, Y] -> Tuple[Union[X, Y], ...]
+    types = tuple(t for _, t in fields)
+    container_param = (pytd.UnionType(type_list=types) if types
+                       else pytd.AnythingType())
+
+    class_parent = pytd.HomogeneousContainerType(
+        base_type=pytd.NamedType("tuple"),
+        parameters=(container_param,))
+
+    class_constants = tuple(pytd.Constant(n, t) for n, t in fields)
+    nt_class = pytd.Class(name=class_name,
+                          parents=(class_parent,),
+                          methods=(),
+                          constants=class_constants,
+                          template=())
+
+    self.generated_classes[base_name].append(nt_class)
+    p[0] = pytd.NamedType(nt_class.name)
 
   def p_decorator(self, p):
     """decorator : AT dotted_name"""

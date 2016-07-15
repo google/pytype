@@ -71,20 +71,16 @@ class TestTypeshedParsing(parser_test_base.ParserTest):
       2.7/logging/__init__.pyi
       2.7/os/__init__.pyi
       2.7/platform.pyi
-      2.7/resource.pyi
       2.7/rfc822.pyi
       2.7/simplejson/__init__.pyi
       2.7/socket.pyi
       2.7/sqlite3/dbapi2.pyi
       2.7/ssl.pyi
       2.7/threading.pyi
-      2.7/time.pyi
       2.7/types.pyi
       2.7/typing.pyi
       2.7/unittest.pyi
       2.7/urllib2.pyi
-      2.7/urlparse.pyi
-      2.7/uuid.pyi
       2.7/xml/etree/ElementInclude.pyi
       2.7/xml/etree/ElementPath.pyi
       2.7/xml/etree/ElementTree.pyi
