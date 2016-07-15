@@ -59,18 +59,19 @@ class CallTracer(vm.VirtualMachine):
     if t:
       return self.instantiate(t.to_variable(node, t.name), node)
     else:
-      return self.create_new_unknown(node, name)
+      return self.convert.create_new_unknown(node, name)
 
   def create_varargs(self, node):
-    value = abstract.Instance(self.tuple_type, self)
+    value = abstract.Instance(self.convert.tuple_type, self)
     value.overwrite_type_parameter(
-        node, "T", self.create_new_unknown(node, "varargs_value"))
+        node, "T", self.convert.create_new_unknown(node, "varargs_value"))
     return value.to_variable(node, "*args")
 
   def create_kwargs(self, node):
-    key_type = self.primitive_class_instances[str].to_variable(node, "str")
-    value_type = self.create_new_unknown(node, "kwargs_value")
-    kwargs = abstract.Instance(self.dict_type, self)
+    key_type = self.convert.primitive_class_instances[str].to_variable(
+        node, "str")
+    value_type = self.convert.create_new_unknown(node, "kwargs_value")
+    kwargs = abstract.Instance(self.convert.dict_type, self)
     kwargs.overwrite_type_parameter(
         node, abstract.Dict.KEY_TYPE_PARAM, key_type)
     kwargs.overwrite_type_parameter(
@@ -307,16 +308,17 @@ class CallTracer(vm.VirtualMachine):
       # As an arg, "object" means: we can use anything for this argument,
       # because everything inherits from object.
       # TODO(kramm): Maybe we should use AnythingType for params without type.
-      return self.create_new_unsolvable(node, name)
+      return self.convert.create_new_unsolvable(node, name)
     else:
-      return self.create_pytd_instance(name, t, {}, node)
+      return self.convert.create_pytd_instance(name, t, {}, node)
 
   def _check_function(self, pytd_function, f, node, skip_self=False):
     """Check that a function or method is compatible with its PYTD."""
     for sig in pytd_function.signatures:
       args = [self._create_call_arg(name, t, node)
               for name, t in sig.params[(1 if skip_self else 0):]]
-      nominal_return = self.convert_constant_to_value("ret", sig.return_type)
+      nominal_return = self.convert.convert_constant_to_value(
+          "ret", sig.return_type)
       for val in f.bindings:
         fvar = val.AssignToNewVariable("f", node)
         _, retvar = self.call_function_in_frame(

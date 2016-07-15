@@ -187,7 +187,7 @@ class AtomicAbstractValue(object):
 
   def __init__(self, name, vm):
     """Basic initializer for all AtomicAbstractValues."""
-    assert hasattr(vm, "program")
+    assert hasattr(vm, "program"), type(self)
     self.vm = vm
     self.mro = []
     AtomicAbstractValue._value_id += 1
@@ -907,7 +907,7 @@ class Dict(ValueWithSlots, WrapsDict("_entries")):
   VALUE_TYPE_PARAM = "V"
 
   def __init__(self, name, vm):
-    super(Dict, self).__init__(vm.dict_type, vm)
+    super(Dict, self).__init__(vm.convert.dict_type, vm)
     self.name = name
     self._entries = {}
     self.set_slot("__getitem__", self.getitem_slot)
@@ -919,7 +919,7 @@ class Dict(ValueWithSlots, WrapsDict("_entries")):
     results = []
     for val in name_var.bindings:
       try:
-        name = self.vm.convert_value_to_string(val.data)
+        name = self.vm.convert.convert_value_to_string(val.data)
       except ValueError:  # ConversionError
         # We *do* know the overall type of the values through the "V" type
         # parameter, even if we don't know the exact type of self[name]:
@@ -936,7 +936,7 @@ class Dict(ValueWithSlots, WrapsDict("_entries")):
 
   def set_str_item(self, node, name, value_var):
     self.merge_type_parameter(
-        node, self.KEY_TYPE_PARAM, self.vm.build_string(node, name))
+        node, self.KEY_TYPE_PARAM, self.vm.convert.build_string(node, name))
     self.merge_type_parameter(
         node, self.VALUE_TYPE_PARAM, value_var)
     if name in self._entries:
@@ -950,7 +950,7 @@ class Dict(ValueWithSlots, WrapsDict("_entries")):
     assert isinstance(value_var, typegraph.Variable)
     for val in name_var.bindings:
       try:
-        name = self.vm.convert_value_to_string(val.data)
+        name = self.vm.convert.convert_value_to_string(val.data)
       except ValueError:  # ConversionError
         continue
       if name in self._entries:
@@ -1122,7 +1122,7 @@ class Super(AtomicAbstractValue):
               SuperInstance(cls.data, obj.data, self.vm), [cls, obj], node)
     else:
       self.vm.errorlog.super_error(self.vm.frame.current_opcode, len(posargs))
-      result = self.vm.create_new_unsolvable(node, "super()")
+      result = self.vm.convert.create_new_unsolvable(node, "super()")
     return node, result
 
   def get_attribute(self, node, name, valself=None, valcls=None,
@@ -1144,9 +1144,9 @@ class IsInstance(AtomicAbstractValue):
     # Map of True/False/None (where None signals an ambiguous bool) to
     # vm values.
     self._vm_values = {
-        True: vm.true,
-        False: vm.false,
-        None: vm.primitive_class_instances[bool],
+        True: vm.convert.true,
+        False: vm.convert.false,
+        None: vm.convert.primitive_class_instances[bool],
     }
 
   def call(self, node, _, posargs, namedargs, starargs=None, starstarargs=None):
@@ -1164,7 +1164,7 @@ class IsInstance(AtomicAbstractValue):
                               source_set=(left, right), where=node)
     except InvalidParameters as ex:
       self.vm.errorlog.invalid_function_call(self.vm.frame.current_opcode, ex)
-      result = self.vm.create_new_unsolvable(node, "isinstance()")
+      result = self.vm.convert.create_new_unsolvable(node, "isinstance()")
 
     return node, result
 
@@ -1223,7 +1223,7 @@ class IsInstance(AtomicAbstractValue):
       classes.append(value)
       return False
     elif (isinstance(value, PythonConstant) and
-          value.get_class() is self.vm.tuple_type and
+          value.get_class() is self.vm.convert.tuple_type and
           isinstance(value.pyval, tuple)):
       # A tuple, need to process each element.
       ambiguous = False
@@ -1247,11 +1247,11 @@ class Function(Instance):
   """
 
   def __init__(self, name, vm):
-    super(Function, self).__init__(vm.function_type, vm)
+    super(Function, self).__init__(vm.convert.function_type, vm)
     self.name = name
     self.is_attribute_of_class = False
     self._bound_functions_cache = {}
-    self.members["func_name"] = self.vm.build_string(
+    self.members["func_name"] = self.vm.convert.build_string(
         self.vm.root_cfg_node, name)
 
   def get_attribute(self, node, name, valself=None, valcls=None,
@@ -1274,7 +1274,7 @@ class Function(Instance):
     return self._bound_functions_cache[key]
 
   def get_class(self):
-    return self.vm.function_type
+    return self.vm.convert.function_type
 
   def to_type(self, seen=None):
     return pytd.NamedType("__builtin__.function")
@@ -1300,7 +1300,7 @@ class PyTDSignature(object):
     self.name = name
     self.pytd_sig = pytd_sig
     self.param_types = [
-        self.vm.convert_constant_to_value(pytd.Print(p), p.type)
+        self.vm.convert.convert_constant_to_value(pytd.Print(p), p.type)
         for p in self.pytd_sig.params]
     self._bound_sig_cache = {}
     self.signature = function.Signature.from_pytd(vm, name, pytd_sig)
@@ -1322,7 +1322,7 @@ class PyTDSignature(object):
         # Assume the missing parameter is filled in by *args or **kwargs.
         # TODO(kramm): Can we use the contents of [star]starargs to fill in a
         # more precise type than just "unsolvable"?
-        var = self.vm.create_new_unsolvable(node, p.name)
+        var = self.vm.convert.create_new_unsolvable(node, p.name)
         arg_dict[p.name] = var.bindings[0]
 
     allowed_params = frozenset(p.name for p in self.pytd_sig.params)
@@ -1341,7 +1341,7 @@ class PyTDSignature(object):
     t = (r.return_type, r.subst)
     sources = [func] + arg_dict.values()
     if t not in ret_map:
-      ret_map[t] = self.vm.create_pytd_instance(
+      ret_map[t] = self.vm.convert.create_pytd_instance(
           "ret", r.return_type, r.subst, node,
           source_sets=[sources])
     else:
@@ -1448,7 +1448,7 @@ class PyTDSignature(object):
             log.info("Mutating %s to %s",
                      tparam.name,
                      pytd.Print(type_actual))
-            type_actual_val = self.vm.create_pytd_instance(
+            type_actual_val = self.vm.convert.create_pytd_instance(
                 tparam.name, type_actual, subst, node,
                 discard_concrete_values=True)
             mutations.append(Mutation(arg, tparam.name, type_actual_val))
@@ -1485,7 +1485,7 @@ class ClassMethod(AtomicAbstractValue):
     # Since this only used in pyi, we don't need to verify the type of the "cls"
     # arg a second time. So just pass an unsolveable. (All we care about is the
     # return type, anyway.)
-    cls = self.vm.create_new_unsolvable(node, "cls")
+    cls = self.vm.convert.create_new_unsolvable(node, "cls")
     return self.method.call(node, func,
                             [cls] + posargs,
                             namedargs, starargs, starstarargs)
@@ -1600,9 +1600,8 @@ class PyTDFunction(Function):
     Returns:
       A list of Mutation instances.
     """
-    return [Mutation(v, name,
-                     self.vm.create_new_unknown(node, name,
-                                                action="type_param_" + name))
+    return [Mutation(v, name, self.vm.convert.create_new_unknown(
+        node, name, action="type_param_" + name))
             for v in values if isinstance(v, SimpleAbstractValue)
             for name in v.type_parameters]
 
@@ -1650,11 +1649,11 @@ class PyTDFunction(Function):
     if unique_type:
       log.debug("Unknown args. But return is always %s",
                 pytd.Print(unique_type))
-      result = self.vm.create_pytd_instance(
+      result = self.vm.convert.create_pytd_instance(
           "ret", ret_type, {}, node)
     else:
       log.debug("Creating unknown return")
-      result = self.vm.create_new_unknown(
+      result = self.vm.convert.create_new_unknown(
           node, "<unknown return of " + self.name + ">", action="pytd_call")
     if self._has_mutable:
       # TODO(kramm): We only need to whack the type params that appear in
@@ -1720,7 +1719,7 @@ class Class(object):
                                          valcls, condition)
     if attr_var and attr_var.bindings:
       name_var = AbstractOrConcreteValue(
-          name, self.vm.str_type, self.vm).to_variable(node, name)
+          name, self.vm.convert.str_type, self.vm).to_variable(node, name)
       return self.vm.call_function(node, attr_var, [name_var])
     else:
       return node, None
@@ -1807,7 +1806,7 @@ class ParameterizedClass(AtomicAbstractValue, Class, FormalType):
     """Match an unknown or unsolvable against this class."""
     subst = subst.copy()
     for name, class_param in self.type_parameters.items():
-      instance_param = self.vm.create_new_unsolvable(node, name)
+      instance_param = self.vm.convert.create_new_unsolvable(node, name)
       # Since we only just created this unsolveable, it won't
       # have an entry in the view yet. So just add it.
       view = view.copy()
@@ -1875,16 +1874,17 @@ class PyTDClass(SimpleAbstractValue, Class):
     return SimpleAbstractValue.get_attribute(self, node, name)
 
   def bases(self):
-    return [self.vm.convert_constant_to_value(pytd.Print(parent), parent)
+    convert = self.vm.convert
+    return [convert.convert_constant_to_value(pytd.Print(parent), parent)
             for parent in self.pytd_cls.parents]
 
   def _convert_member(self, name, pyval):
     """Convert a member as a variable. For lazy lookup."""
     if isinstance(pyval, pytd.Constant):
-      return self.vm.create_pytd_instance(name, pyval.type, {},
-                                          self.vm.root_cfg_node)
+      return self.vm.convert.create_pytd_instance(name, pyval.type, {},
+                                                  self.vm.root_cfg_node)
     elif isinstance(pyval, pytd.Function):
-      c = self.vm.convert_constant_to_value(repr(pyval), pyval)
+      c = self.vm.convert.convert_constant_to_value(repr(pyval), pyval)
       c.parent = self
       return c.to_variable(self.vm.root_cfg_node, name)
     else:
@@ -1892,7 +1892,7 @@ class PyTDClass(SimpleAbstractValue, Class):
 
   def call(self, node, func, posargs, namedargs,
            starargs=None, starstarargs=None):
-    value = Instance(self.vm.convert_constant(
+    value = Instance(self.vm.convert.convert_constant(
         self.name, self.pytd_cls), self.vm)
 
     for type_param in self.pytd_cls.template:
@@ -2034,7 +2034,7 @@ class InterpreterClass(SimpleAbstractValue, Class):
           posargs.append(valself.variable)
         if valcls:
           if not valself:
-            posargs.append(self.vm.none.to_variable(node, "None"))
+            posargs.append(self.vm.convert.none.to_variable(node, "None"))
           posargs.append(valcls.variable)
         node2, get_result = self.vm.call_function(node2, getter, posargs)
         for getter in get_result.bindings:
@@ -2145,7 +2145,7 @@ class InterpreterClass(SimpleAbstractValue, Class):
     bases = [pytd_utils.JoinTypes(b.get_instance_type()
                                   for b in basevar.data)
              for basevar in self._bases
-             if basevar is not self.vm.oldstyleclass_type]
+             if basevar is not self.vm.convert.oldstyleclass_type]
     constants = [pytd.Constant(name, builder.build())
                  for name, builder in constants.items()
                  if builder]
@@ -2178,7 +2178,7 @@ class NativeFunction(Function):
     super(NativeFunction, self).__init__(name, vm)
     self.name = name
     self.func = func
-    self.cls = self.vm.function_type
+    self.cls = self.vm.convert.function_type
 
   def argcount(self):
     return self.func.func_code.co_argcount
@@ -2262,7 +2262,7 @@ class InterpreterFunction(Function):
     self.defaults = tuple(defaults)
     self.closure = closure
     self.annotations = annotations
-    self.cls = self.vm.function_type
+    self.cls = self.vm.convert.function_type
     self._call_records = {}
     self.signature = self._build_signature()
     self.last_frame = None  # for BuildClass
@@ -2360,7 +2360,7 @@ class InterpreterFunction(Function):
         callargs[vararg_name] = starargs.AssignToNewVariable(
             "*args", node)
       else:
-        callargs[vararg_name] = self.vm.build_tuple(node, extraneous)
+        callargs[vararg_name] = self.vm.convert.build_tuple(node, extraneous)
       arg_pos += 1
     elif len(args) > self.code.co_argcount:
       raise exceptions.ByteCodeTypeError(
@@ -2622,7 +2622,7 @@ class Generator(Instance):
   TYPE_PARAM = "T"  # See class generator in pytd/builtins/__builtin__.pytd
 
   def __init__(self, generator_frame, vm):
-    super(Generator, self).__init__(vm.generator_type, vm)
+    super(Generator, self).__init__(vm.convert.generator_type, vm)
     self.generator_frame = generator_frame
     self.runs = 0
 
@@ -2695,13 +2695,13 @@ class Module(Instance):
   is_lazy = True  # uses _convert_member
 
   def __init__(self, vm, name, member_map):
-    super(Module, self).__init__(vm.module_type, vm=vm)
+    super(Module, self).__init__(vm.convert.module_type, vm=vm)
     self.name = name
     self._member_map = member_map
 
   def _convert_member(self, name, ty):
     """Called to convert the items in _member_map to cfg.Variable."""
-    var = self.vm.convert_constant(name, ty)
+    var = self.vm.convert.convert_constant(name, ty)
     for value in var.data:
       # Only do this if this class isn't already part of a module.
       # (This happens if e.g. foo.py does "from bar import x" and we then
@@ -2751,7 +2751,7 @@ class Module(Instance):
       if mod is not None:
         var = mod.to_variable(node, name)
       elif self.has_getattr():
-        var = self.vm.create_new_unsolvable(node, full_name)
+        var = self.vm.convert.create_new_unsolvable(node, full_name)
       else:
         log.warning("Couldn't find attribute / module %r", full_name)
     return node, var
@@ -2908,9 +2908,9 @@ class Unknown(AtomicAbstractValue):
       return node, None
     if name in self.members:
       return node, self.members[name]
-    new = self.vm.create_new_unknown(self.vm.root_cfg_node,
-                                     self.name + "." + name,
-                                     action="getattr:" + name)
+    new = self.vm.convert.create_new_unknown(self.vm.root_cfg_node,
+                                             self.name + "." + name,
+                                             action="getattr:" + name)
     # We store this at the root node, even though we only just created this.
     # From the analyzing point of view, we don't know when the "real" version
     # of this attribute (the one that's not an unknown) gets created, hence
@@ -2933,8 +2933,8 @@ class Unknown(AtomicAbstractValue):
 
   def call(self, node, unused_func, posargs, namedargs,
            starargs=None, starstarargs=None):
-    ret = self.vm.create_new_unknown(node, self.name + "()", source=self.owner,
-                                     action="call:" + self.name)
+    ret = self.vm.convert.create_new_unknown(
+        node, self.name + "()", source=self.owner, action="call:" + self.name)
     self._calls.append((posargs, namedargs, ret))
     return node, ret
 

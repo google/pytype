@@ -31,7 +31,7 @@ class Union(abstract.ValueWithSlots):
   """Implementation of typing.Union[...]."""
 
   def __init__(self, name, vm, elements=()):
-    super(Union, self).__init__(vm.type_type, vm)
+    super(Union, self).__init__(vm.convert.type_type, vm)
     self.name = "Union"
     self.elements = elements
     self.set_slot("__getitem__", self.getitem_slot)
@@ -71,7 +71,7 @@ class _Container(abstract.ValueWithSlots):
   def __init__(self, name, vm, inner=None):
     # TODO(kramm): type_type is wrong. Correct would be "typing.GenericMeta".
     # But in the output, we'd want this to become an alias.
-    super(_Container, self).__init__(vm.type_type, vm)
+    super(_Container, self).__init__(vm.convert.type_type, vm)
     self.name = name
     self.inner = inner
     self.set_slot("__getitem__", self.getitem_slot)
@@ -82,11 +82,11 @@ class _Container(abstract.ValueWithSlots):
 
   def instantiate(self, node):
     if self.inner:
-      return self.vm.build_list(node, [
+      return self.vm.convert.build_list(node, [
           self.vm.instantiate(self.inner, node)])
     else:
-      return self.vm.build_list(node, [
-          self.vm.create_new_unknown(node, "inner")])
+      return self.vm.convert.build_list(node, [
+          self.vm.convert.create_new_unknown(node, "inner")])
 
   def match_var_against(self, var, subst, node, view):
     new_subst = None
@@ -134,7 +134,7 @@ class List(_Container):
 
   def __init__(self, name, vm, inner=None):
     super(List, self).__init__("List", vm, inner)
-    self.concrete_classes = [self.vm.list_type]
+    self.concrete_classes = [self.vm.convert.list_type]
 
 
 class Sequence(_Container):
@@ -142,7 +142,8 @@ class Sequence(_Container):
 
   def __init__(self, name, vm, inner=None):
     super(Sequence, self).__init__("Sequence", vm, inner)
-    self.concrete_classes = [self.vm.list_type, self.vm.tuple_type]
+    self.concrete_classes = [self.vm.convert.list_type,
+                             self.vm.convert.tuple_type]
 
 
 typing_overload = {

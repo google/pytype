@@ -55,29 +55,29 @@ class InstanceTest(AbstractTestBase):
 
   def test_compatible_with_non_container(self):
     # Compatible with either True or False.
-    i = abstract.Instance(self._vm.object_type, self._vm)
+    i = abstract.Instance(self._vm.convert.object_type, self._vm)
     self.assertIs(True, i.compatible_with(True))
     self.assertIs(True, i.compatible_with(False))
 
   def test_compatible_with_list(self):
-    i = abstract.Instance(self._vm.list_type, self._vm)
+    i = abstract.Instance(self._vm.convert.list_type, self._vm)
     i.init_type_parameters("T")
     # Empty list is not compatible with True.
     self.assertIs(False, i.compatible_with(True))
     self.assertIs(True, i.compatible_with(False))
     # Once a type parameter is set, list is compatible with True and False.
-    i.merge_type_parameter(self._node, "T", self._vm.object_type)
+    i.merge_type_parameter(self._node, "T", self._vm.convert.object_type)
     self.assertIs(True, i.compatible_with(True))
     self.assertIs(True, i.compatible_with(False))
 
   def test_compatible_with_set(self):
-    i = abstract.Instance(self._vm.set_type, self._vm)
+    i = abstract.Instance(self._vm.convert.set_type, self._vm)
     i.init_type_parameters("T")
     # Empty list is not compatible with True.
     self.assertIs(False, i.compatible_with(True))
     self.assertIs(True, i.compatible_with(False))
     # Once a type parameter is set, list is compatible with True and False.
-    i.merge_type_parameter(self._node, "T", self._vm.object_type)
+    i.merge_type_parameter(self._node, "T", self._vm.convert.object_type)
     self.assertIs(True, i.compatible_with(True))
     self.assertIs(True, i.compatible_with(False))
 
@@ -121,16 +121,16 @@ class IsInstanceTest(AbstractTestBase):
     super(IsInstanceTest, self).setUp()
     self._is_instance = abstract.IsInstance(self._vm)
     # Easier access to some primitive instances.
-    self._bool = self._vm.primitive_class_instances[bool]
-    self._int = self._vm.primitive_class_instances[int]
-    self._str = self._vm.primitive_class_instances[str]
+    self._bool = self._vm.convert.primitive_class_instances[bool]
+    self._int = self._vm.convert.primitive_class_instances[int]
+    self._str = self._vm.convert.primitive_class_instances[str]
     # Values that represent primitive classes.
     self._obj_class = abstract.get_atomic_value(
-        self._vm.primitive_classes[object])
+        self._vm.convert.primitive_classes[object])
     self._int_class = abstract.get_atomic_value(
-        self._vm.primitive_classes[int])
+        self._vm.convert.primitive_classes[int])
     self._str_class = abstract.get_atomic_value(
-        self._vm.primitive_classes[str])
+        self._vm.convert.primitive_classes[str])
 
   def assert_call(self, expected, left, right):
     """Check that call() returned the desired results.
@@ -161,11 +161,11 @@ class IsInstanceTest(AbstractTestBase):
   def test_call_single_bindings(self):
     right = self.new_var("right", self._str_class)
     self.assert_call(
-        {self._vm.true: {"left:0 right:0"}},
+        {self._vm.convert.true: {"left:0 right:0"}},
         self.new_var("left", self._str),
         right)
     self.assert_call(
-        {self._vm.false: {"left:0 right:0"}},
+        {self._vm.convert.false: {"left:0 right:0"}},
         self.new_var("left", self._int),
         right)
     self.assert_call(
@@ -176,8 +176,8 @@ class IsInstanceTest(AbstractTestBase):
   def test_call_multiple_bindings(self):
     self.assert_call(
         {
-            self._vm.true: {"left:0 right:0", "left:1 right:1"},
-            self._vm.false: {"left:0 right:1", "left:1 right:0"},
+            self._vm.convert.true: {"left:0 right:0", "left:1 right:1"},
+            self._vm.convert.false: {"left:0 right:1", "left:1 right:0"},
         },
         self.new_var("left", self._int, self._str),
         self.new_var("right", self._int_class, self._str_class)
@@ -209,7 +209,7 @@ class IsInstanceTest(AbstractTestBase):
     def check(expected, left, right):
       self.assertEquals(expected, self._is_instance._is_instance(left, right))
 
-    obj_class = self._vm.primitive_classes[object].bindings[0].data
+    obj_class = self._vm.convert.primitive_classes[object].bindings[0].data
 
     # Unknown and Unsolvable are ambiguous.
     check(None, abstract.Unknown(self._vm), obj_class)
@@ -236,7 +236,7 @@ class IsInstanceTest(AbstractTestBase):
     def new_tuple(*args):
       pyval = tuple(maybe_var(a) for a in args)
       return abstract.AbstractOrConcreteValue(
-          pyval, self._vm.tuple_type, self._vm)
+          pyval, self._vm.convert.tuple_type, self._vm)
 
     def check(expected_ambiguous, expected_classes, value):
       classes = []

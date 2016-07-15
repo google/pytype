@@ -17,11 +17,11 @@ import os
 import re
 import repr as reprlib
 import sys
-import types
 
 
 from pytype import abstract
 from pytype import blocks
+from pytype import convert
 from pytype import exceptions
 from pytype import load_pytd
 from pytype import metrics
@@ -31,16 +31,12 @@ from pytype import utils
 from pytype.pyc import loadmarshal
 from pytype.pyc import pyc
 from pytype.pytd import cfg as typegraph
-from pytype.pytd import pytd
 from pytype.pytd import slots
 from pytype.pytd import utils as pytd_utils
 from pytype.pytd.parse import builtins
 from pytype.pytd.parse import parser
 
 log = logging.getLogger(__name__)
-
-
-MAX_IMPORT_DEPTH = 12
 
 
 # Create a repr that won't overflow.
@@ -90,77 +86,24 @@ class VirtualMachine(object):
     self.python_version = options.python_version
     self.reverse_operators = reverse_operators
     self.cache_unknowns = cache_unknowns
-    self.loader = load_pytd.Loader(
-        base_module=module_name,
-        options=options)
-    # The call stack of frames.
-    self.frames = []
-    # The current frame.
-    self.frame = None
-
+    self.loader = load_pytd.Loader(base_module=module_name, options=options)
+    self.frames = []  # The call stack of frames.
+    self.frame = None  # The current frame.
     self.program = typegraph.Program()
-
     self.root_cfg_node = self.program.NewCFGNode("root")
     self.program.entrypoint = self.root_cfg_node
-
-    self._convert_cache = {}
-
-    # Initialize primitive_classes to empty to allow convert_constant to run
-    self.primitive_classes = {}
-    # Now fill primitive_classes with the real values using convert_constant
-    self.primitive_classes = {v: self.convert_constant(v.__name__, v)
-                              for v in [int, long, float, str, unicode, object,
-                                        types.NoneType, complex, bool, slice,
-                                        types.CodeType, types.EllipsisType,
-                                        types.ClassType]}
-
-    self.none = abstract.AbstractOrConcreteValue(
-        None, self.primitive_classes[types.NoneType], self)
-    self.true = abstract.AbstractOrConcreteValue(
-        True, self.primitive_classes[bool], self)
-    self.false = abstract.AbstractOrConcreteValue(
-        False, self.primitive_classes[bool], self)
-    self.ellipsis = abstract.AbstractOrConcreteValue(
-        Ellipsis, self.primitive_classes[types.EllipsisType], self)
-
-    self.nothing = abstract.Nothing(self)
-    self.unsolvable = abstract.Unsolvable(self)
-
-    self.primitive_class_instances = {}
-    for name, clsvar in self.primitive_classes.items():
-      instance = abstract.Instance(clsvar, self)
-      self.primitive_class_instances[name] = instance
-      clsval, = clsvar.bindings
-      self._convert_cache[(abstract.Instance, clsval.data.pytd_cls)] = instance
-    self.primitive_class_instances[types.NoneType] = self.none
-
-    self.object_type = self.primitive_classes[object]
-    self.oldstyleclass_type = self.primitive_classes[types.ClassType]
-    self.str_type = self.primitive_classes[str]
-    self.int_type = self.primitive_classes[int]
-    self.tuple_type = self.convert_constant("tuple", tuple)
-    self.list_type = self.convert_constant("list", list)
-    self.set_type = self.convert_constant("set", set)
-    self.dict_type = self.convert_constant("dict", dict)
-    self.type_type = self.convert_constant("type", type)
-    self.module_type = self.convert_constant("module", types.ModuleType)
-    self.function_type = self.convert_constant(
-        "function", types.FunctionType)
-    self.generator_type = self.convert_constant(
-        "generator", types.GeneratorType)
-
-    self.undefined = self.program.NewVariable("undefined")
     self.vmbuiltins = self.loader.builtins
+    self.convert = convert.Converter(self)
 
     # Map from builtin names to canonical objects.
     self.special_builtins = {
         # The super() function.
         "super": abstract.Super(self),
         # for more pretty branching tests.
-        "__random__": self.primitive_class_instances[bool],
+        "__random__": self.convert.primitive_class_instances[bool],
         # boolean values.
-        "True": self.true,
-        "False": self.false,
+        "True": self.convert.true,
+        "False": self.convert.false,
         "isinstance": abstract.IsInstance(self),
     }
 
@@ -346,7 +289,7 @@ class VirtualMachine(object):
       # call __len__.
       state, f = self.load_attr(state, obj, "__len__")
       state, end = self.call_function_with_state(state, f, [], {})
-    return state, self.build_slice(state.node, start, end, 1), obj
+    return state, self.convert.build_slice(state.node, start, end, 1), obj
 
   def store_slice(self, state, count):
     state, slice_obj, obj = self.pop_slice_and_obj(state, count)
@@ -406,338 +349,6 @@ class VirtualMachine(object):
   def join_variables(self, node, name, variables):
     return self.program.MergeVariables(node, name, variables)
 
-  def convert_value_to_string(self, val):
-    if isinstance(val, abstract.PythonConstant) and isinstance(val.pyval, str):
-      return val.pyval
-    raise abstract.ConversionError("%s is not a string" % val)
-
-  def _get_maybe_abstract_instance(self, data):
-    """Get an instance of the same type as the given data, abstract if possible.
-
-    Get an abstract instance of primitive data stored as an
-    AbstractOrConcreteValue. Return any other data as-is. This is used by
-    create_pytd_instance to discard concrete values that have been kept
-    around for InterpreterFunction.
-
-    Arguments:
-      data: The data.
-
-    Returns:
-      An instance of the same type as the data, abstract if possible.
-    """
-    if isinstance(data, abstract.AbstractOrConcreteValue):
-      data_type = type(data.pyval)
-      if data_type in self.primitive_class_instances:
-        return self.primitive_class_instances[data_type]
-    return data
-
-  def create_pytd_instance(self, name, pytype, subst, node, source_sets=None,
-                           discard_concrete_values=False):
-    """Create an instance of a PyTD type as a typegraph.Variable.
-
-    Because this (unlike create_pytd_instance_value) creates variables, it can
-    also handle union types.
-
-    Args:
-      name: What to call the resulting variable.
-      pytype: A PyTD type to construct an instance of.
-      subst: The current type parameters.
-      node: The current CFG node.
-      source_sets: An iterator over instances of SourceSet (or just tuples).
-        Each SourceSet describes a combination of values that were used to
-        build the new value (e.g., for a function call, parameter types).
-      discard_concrete_values: Whether concrete values should be discarded from
-        type parameters.
-    Returns:
-      A typegraph.Variable.
-    Raises:
-      ValueError: If we can't resolve a type parameter.
-    """
-    if not source_sets:
-      source_sets = [[]]
-    if isinstance(pytype, pytd.AnythingType):
-      return self.create_new_unsolvable(node, "?")
-    name = pytype.name if hasattr(pytype, "name") else pytype.__class__.__name__
-    var = self.program.NewVariable(name)
-    for t in pytd_utils.UnpackUnion(pytype):
-      if isinstance(t, pytd.TypeParameter):
-        if not subst or t.name not in subst:
-          raise ValueError("Can't resolve type parameter %s using %r" % (
-              t.name, subst))
-        for v in subst[t.name].bindings:
-          for source_set in source_sets:
-            var.AddBinding(self._get_maybe_abstract_instance(v.data)
-                           if discard_concrete_values else v.data,
-                           source_set + [v], node)
-      elif isinstance(t, pytd.NothingType):
-        pass
-      else:
-        value = self._create_pytd_instance_value(name, t, subst, node)
-        for source_set in source_sets:
-          var.AddBinding(value, source_set, node)
-    return var
-
-  def _create_pytd_instance_value(self, name, pytype, subst, node):
-    """Create an instance of PyTD type.
-
-    This can handle any PyTD type and is used for generating both methods of
-    classes (when given a Signature) and instance of classes (when given a
-    ClassType).
-
-    Args:
-      name: What to call the value.
-      pytype: A PyTD type to construct an instance of.
-      subst: The current type parameters.
-      node: The current CFG node.
-    Returns:
-      An instance of AtomicAbstractType.
-    Raises:
-      ValueError: if pytype is not of a known type.
-    """
-    if isinstance(pytype, pytd.ClassType):
-      # This key is also used in __init__
-      key = (abstract.Instance, pytype.cls)
-      if key not in self._convert_cache:
-        if pytype.name in ["__builtin__.type", "__builtin__.property"]:
-          # An instance of "type" or of an anonymous property can be anything.
-          instance = self._create_new_unknown_value("type")
-        else:
-          cls = self.convert_constant(str(pytype), pytype)
-          instance = abstract.Instance(cls, self)
-        log.info("New pytd instance for %s: %r", pytype.cls.name, instance)
-        self._convert_cache[key] = instance
-      return self._convert_cache[key]
-    elif isinstance(pytype, pytd.GenericType):
-      assert isinstance(pytype.base_type, pytd.ClassType)
-      cls = pytype.base_type.cls
-      instance = abstract.Instance(
-          self.convert_constant(cls.name, cls), self)
-      for formal, actual in zip(cls.template, pytype.parameters):
-        p = self.create_pytd_instance(repr(formal), actual, subst, node)
-        instance.initialize_type_parameter(node, formal.name, p)
-      return instance
-    else:
-      return self.convert_constant_to_value(name, pytype)
-
-  def _create_new_unknown_value(self, action):
-    if not self.cache_unknowns or not action or not self.frame:
-      return abstract.Unknown(self)
-    # We allow only one Unknown at each point in the program, regardless of
-    # what the call stack is.
-    key = ("unknown", self.frame.current_opcode, action)
-    if key not in self._convert_cache:
-      self._convert_cache[key] = abstract.Unknown(self)
-    return self._convert_cache[key]
-
-  def create_new_unknown(self, node, name, source=None, action=None):
-    """Create a new variable containing unknown, originating from this one."""
-    if self.options.quick:
-      # unsolvable instances are cheaper than unknown, so use those for --quick.
-      return abstract.Unsolvable(self).to_variable(node, name)
-    unknown = self._create_new_unknown_value(action)
-    v = self.program.NewVariable(name)
-    val = v.AddBinding(
-        unknown, source_set=[source] if source else [], where=node)
-    unknown.owner = val
-    self.trace_unknown(unknown.class_name, v)
-    return v
-
-  def create_new_unsolvable(self, node, name):
-    """Create a new variable containing an unsolvable."""
-    return self.unsolvable.to_variable(node, name)
-
-  def convert_constant(self, name, pyval):
-    """Convert a constant to a Variable.
-
-    This converts a constant to a typegraph.Variable. Unlike
-    convert_constant_to_value, it can handle things that need to be represented
-    as a Variable with multiple possible values (i.e., a union type), like
-    pytd.Function.
-
-    Args:
-      name: The name to give the new variable.
-      pyval: The Python constant to convert. Can be a PyTD definition or a
-      builtin constant.
-    Returns:
-      A typegraph.Variable.
-    Raises:
-      ValueError: if pytype is not of a known type.
-    """
-    if isinstance(pyval, pytd.UnionType):
-      options = [self.convert_constant_to_value(pytd.Print(t), t)
-                 for t in pyval.type_list]
-      return self.program.NewVariable(name, options, [], self.root_cfg_node)
-    elif isinstance(pyval, pytd.NothingType):
-      return self.program.NewVariable(name, [], [], self.root_cfg_node)
-    elif isinstance(pyval, pytd.Alias):
-      return self.convert_constant(pytd.Print(pyval), pyval.type)
-    elif isinstance(pyval, pytd.Constant):
-      return self.create_pytd_instance(name, pyval.type, {}, self.root_cfg_node)
-    result = self.convert_constant_to_value(name, pyval)
-    if result is not None:
-      return result.to_variable(self.root_cfg_node, name)
-    # There might still be bugs on the abstract intepreter when it returns,
-    # e.g. a list of values instead of a list of types:
-    assert pyval.__class__ != typegraph.Variable, pyval
-    if pyval.__class__ == tuple:
-      # TODO(ampere): This does not allow subclasses. Handle namedtuple
-      # correctly.
-      # This case needs to go at the end because many things are actually also
-      # tuples.
-      return self.build_tuple(
-          self.root_cfg_node,
-          (self.maybe_convert_constant("tuple[%d]" % i, v)
-           for i, v in enumerate(pyval)))
-    raise ValueError(
-        "Cannot convert {} to an abstract value".format(pyval.__class__))
-
-  def convert_constant_to_value(self, name, pyval):
-    # We don't memoize on name, as builtin types like str or list might be
-    # reinitialized under different names (e.g. "param 1"), but we want the
-    # canonical name and type.
-    # We *do* memoize on the type as well, to make sure that e.g. "1.0" and
-    # "1" get converted to different constants.
-    # Memoization is an optimization, but an important one- mapping constants
-    # like "None" to the same AbstractValue greatly simplifies the typegraph
-    # structures we're building.
-    key = ("constant", pyval, type(pyval))
-    if key not in self._convert_cache:
-      self._convert_cache[key] = None  # for recursion detection
-      self._convert_cache[key] = self.construct_constant_from_value(name, pyval)
-    elif self._convert_cache[key] is None:
-      # This error is triggered by, e.g., classes inheriting from each other
-      raise VirtualMachineError(
-          "Detected recursion while converting %s to value" % name)
-    return self._convert_cache[key]
-
-  def construct_constant_from_value(self, name, pyval):
-    """Create a AtomicAbstractValue that represents a python constant.
-
-    This supports both constant from code constant pools and PyTD constants such
-    as classes. This also supports built-in python objects such as int and
-    float.
-
-    Args:
-      name: The name of this constant. Used for naming its attribute variables.
-      pyval: The python or PyTD value to convert.
-    Returns:
-      A Value that represents the constant, or None if we couldn't convert.
-    Raises:
-      NotImplementedError: If we don't know how to convert a value.
-    """
-    if pyval is type:
-      return abstract.SimpleAbstractValue(name, self)
-    elif isinstance(pyval, str):
-      return abstract.AbstractOrConcreteValue(pyval, self.str_type, self)
-    elif isinstance(pyval, int) and -1 <= pyval <= MAX_IMPORT_DEPTH:
-      # For small integers, preserve the actual value (for things like the
-      # level in IMPORT_NAME).
-      return abstract.AbstractOrConcreteValue(pyval, self.int_type, self)
-    elif pyval.__class__ in self.primitive_classes:
-      return self.primitive_class_instances[pyval.__class__]
-    elif isinstance(pyval, (loadmarshal.CodeType, blocks.OrderedCode)):
-      return abstract.AbstractOrConcreteValue(
-          pyval, self.primitive_classes[types.CodeType], self)
-    elif pyval.__class__ in [types.FunctionType,
-                             types.ModuleType,
-                             types.GeneratorType,
-                             type]:
-      try:
-        pyclass = self.loader.builtins.Lookup("__builtin__." + pyval.__name__)
-        return self.convert_constant_to_value(name, pyclass)
-      except (KeyError, AttributeError):
-        log.debug("Failed to find pytd", exc_info=True)
-        raise
-    elif isinstance(pyval, pytd.TypeDeclUnit):
-      data = pyval.constants + pyval.classes + pyval.functions + pyval.aliases
-      members = {val.name.rsplit(".")[-1]: val
-                 for val in data}
-      return abstract.Module(self, pyval.name, members)
-    elif isinstance(pyval, pytd.Class):
-      if "." in pyval.name:
-        module, base_name = pyval.name.rsplit(".", 1)
-        cls = abstract.PyTDClass(base_name, pyval, self)
-        cls.module = module
-      else:
-        cls = abstract.PyTDClass(name, pyval, self)
-      return cls
-    elif isinstance(pyval, pytd.Function):
-      f = abstract.PyTDFunction(pyval.name,
-                                [abstract.PyTDSignature(pyval.name, sig, self)
-                                 for sig in pyval.signatures], pyval.kind, self)
-      return f
-    elif isinstance(pyval, pytd.ClassType):
-      assert pyval.cls
-      return self.convert_constant_to_value(pyval.name, pyval.cls)
-    elif isinstance(pyval, pytd.NothingType):
-      return self.nothing
-    elif isinstance(pyval, pytd.AnythingType):
-      # TODO(kramm): This should be an Unsolveable. We don't need to solve this.
-      return self._create_new_unknown_value("AnythingType")
-    elif isinstance(pyval, pytd.FunctionType):
-      return self.construct_constant_from_value(name, pyval.function)
-    elif isinstance(pyval, pytd.UnionType):
-      return abstract.Union([self.convert_constant_to_value(pytd.Print(t), t)
-                             for t in pyval.type_list], self)
-    elif isinstance(pyval, pytd.TypeParameter):
-      return abstract.TypeParameter(pyval.name, self)
-    elif isinstance(pyval, pytd.GenericType):
-      # TODO(kramm): Remove ParameterizedClass. This should just create a
-      # SimpleAbstractValue with type parameters.
-      assert isinstance(pyval.base_type, pytd.ClassType)
-      type_parameters = {
-          param.name: self.convert_constant_to_value(param.name, value)
-          for param, value in zip(pyval.base_type.cls.template,
-                                  pyval.parameters)
-      }
-      cls = self.convert_constant_to_value(pytd.Print(pyval.base_type),
-                                           pyval.base_type.cls)
-      return abstract.ParameterizedClass(cls, type_parameters, self)
-    elif pyval.__class__ is tuple:  # only match raw tuple, not namedtuple/Node
-      return self.tuple_to_value(self.root_cfg_node,
-                                 [self.convert_constant("tuple[%d]" % i, item)
-                                  for i, item in enumerate(pyval)])
-    elif pyval is Ellipsis:
-      return self.ellipsis_value
-    else:
-      raise NotImplementedError("Can't convert constant %s %r" %
-                                (type(pyval), pyval))
-
-  def maybe_convert_constant(self, name, pyval):
-    """Create a variable that represents a python constant if needed.
-
-    Call self.convert_constant if pyval is not an AtomicAbstractValue, otherwise
-    store said value in a variable. This also handles dict values by
-    constructing a new abstract value representing it. Dict values are not
-    cached.
-
-    Args:
-      name: The name to give to the variable.
-      pyval: The python value or PyTD value to convert or pass
-        through.
-    Returns:
-      A Variable.
-    """
-    assert not isinstance(pyval, typegraph.Variable)
-    if isinstance(pyval, abstract.AtomicAbstractValue):
-      return pyval.to_variable(self.root_cfg_node, name)
-    elif isinstance(pyval, dict):
-      value = abstract.LazyAbstractOrConcreteValue(
-          name,
-          pyval,  # for class members
-          member_map=pyval,
-          resolver=self.maybe_convert_constant,
-          vm=self)
-      value.set_attribute(self.root_cfg_node, "__class__", self.dict_type)
-      return value.to_variable(self.root_cfg_node, name)
-    else:
-      return self.convert_constant(name, pyval)
-
-  def make_none(self, node):
-    none = self.none.to_variable(node, "None")
-    assert self.is_none(none)
-    return none
-
   def make_class(self, node, name_var, bases, class_dict_var):
     """Create a class with the name, bases and methods given.
 
@@ -757,7 +368,7 @@ class VirtualMachine(object):
       class_dict = abstract.get_atomic_value(class_dict_var)
     except abstract.ConversionError:
       log.error("Error initializing class %r", name)
-      return self.create_new_unknown(node, name)
+      return self.convert.create_new_unknown(node, name)
     for base in bases:
       if not any(isinstance(t, (abstract.Class,
                                 abstract.Unknown,
@@ -766,7 +377,7 @@ class VirtualMachine(object):
         self.errorlog.base_class_error(self.frame.current_opcode, base)
     if not bases:
       # Old style class.
-      bases = [self.oldstyleclass_type]
+      bases = [self.convert.oldstyleclass_type]
     try:
       val = abstract.InterpreterClass(
           name,
@@ -775,7 +386,7 @@ class VirtualMachine(object):
           self)
     except pytd_utils.MROError:
       self.errorlog.mro_error(self.frame.current_opcode, name)
-      return self.create_new_unsolvable(node, "mro_error")
+      return self.convert.create_new_unsolvable(node, "mro_error")
     else:
       var = self.program.NewVariable(name)
       var.AddBinding(val, class_dict_var.bindings, node)
@@ -853,9 +464,9 @@ class VirtualMachine(object):
       return False
 
   def push_abstract_exception(self, state):
-    tb = self.build_list(state.node, [])
-    value = self.create_new_unknown(state.node, "value")
-    exctype = self.create_new_unknown(state.node, "exctype")
+    tb = self.convert.build_list(state.node, [])
+    value = self.convert.create_new_unknown(state.node, "value")
+    exctype = self.convert.create_new_unknown(state.node, "exctype")
     return state.push(tb, value, exctype)
 
   def resume_frame(self, node, frame):
@@ -1041,7 +652,7 @@ class VirtualMachine(object):
       if fallback_to_unsolvable:
         assert error
         self.errorlog.invalid_function_call(self.frame.current_opcode, e)
-        return node, self.create_new_unsolvable(node, "failed call")
+        return node, self.convert.create_new_unsolvable(node, "failed call")
       else:
         # We were called by something that ignores errors, so don't report
         # the failed call.
@@ -1061,7 +672,8 @@ class VirtualMachine(object):
       for v in kwargs.data:  # TODO(kramm): .Data(node)
         did_update = namedargs.update(state.node, v)
         if not did_update and starstarargs is None:
-          starstarargs = self.create_new_unsolvable(state.node, "**kwargs")
+          starstarargs = self.convert.create_new_unsolvable(state.node,
+                                                            "**kwargs")
 
     state, posargs = state.popn(num_pos)
     posargs = list(posargs)
@@ -1069,7 +681,7 @@ class VirtualMachine(object):
       posargs.extend(args)
       starargs = None
     else:
-      starargs = self.create_new_unsolvable(state.node, "*args")
+      starargs = self.convert.create_new_unsolvable(state.node, "*args")
 
     state, func = state.pop()
     state, ret = self.call_function_with_state(
@@ -1079,7 +691,7 @@ class VirtualMachine(object):
 
   def load_constant(self, value):
     """Converts a Python value to an abstract value."""
-    return self.convert_constant(type(value).__name__, value)
+    return self.convert.convert_constant(type(value).__name__, value)
 
   def get_globals_dict(self):
     """Get a real python dict of the globals."""
@@ -1122,7 +734,7 @@ class VirtualMachine(object):
   def load_builtin(self, state, name):
     if name == "__undefined__":
       # For values that don't exist. (Unlike None, which is a valid object)
-      return state, self.undefined
+      return state, self.convert.undefined
     special = self.load_special_builtin(name)
     if special:
       return state, special.to_variable(state.node, name)
@@ -1180,7 +792,7 @@ class VirtualMachine(object):
     if result is None:
       if obj.bindings:
         self.errorlog.attribute_error(self.frame.current_opcode, obj, attr)
-      result = self.create_new_unsolvable(node, "bad attr")
+      result = self.convert.create_new_unsolvable(node, "bad attr")
     return state.change_cfg_node(node), result
 
   def load_attr_noerror(self, state, obj, attr):
@@ -1208,62 +820,6 @@ class VirtualMachine(object):
     log.warning("Attribute removal does not actually do "
                 "anything in the abstract interpreter")
     return state
-
-  def build_bool(self, node, value=None):
-    if value is None:
-      name, val = "bool", self.primitive_class_instances[bool]
-    elif value is True:
-      name, val = "True", self.true_value
-    elif value is False:
-      name, val = "False", self.false_value
-    else:
-      raise ValueError("Invalid bool value: %r", value)
-    return val.to_variable(node, name)
-
-  def build_string(self, node, s):
-    return self.convert_constant(repr(s), s)
-
-  def build_content(self, node, elements):
-    var = self.program.NewVariable("<elements>")
-    for v in elements:
-      var.PasteVariable(v, node)
-    return var
-
-  def build_slice(self, node, start, stop, step=None):
-    return self.primitive_class_instances[slice].to_variable(node, "slice")
-
-  def tuple_to_value(self, node, content):
-    """Create a VM tuple from the given sequence."""
-    content = tuple(content)  # content might be a generator
-    value = abstract.AbstractOrConcreteValue(
-        content, self.tuple_type, self)
-    value.initialize_type_parameter(node, "T",
-                                    self.build_content(node, content))
-    return value
-
-  def build_tuple(self, node, content):
-    """Create a VM tuple from the given sequence."""
-    return self.tuple_to_value(node, content).to_variable(node, name="tuple")
-
-  def build_list(self, node, content):
-    """Create a VM list from the given sequence."""
-    content = list(content)  # content might be a generator
-    value = abstract.Instance(self.list_type, self)
-    value.initialize_type_parameter(node, "T",
-                                    self.build_content(node, content))
-    return value.to_variable(node, name="list(...)")
-
-  def build_set(self, node, content):
-    """Create a VM set from the given sequence."""
-    content = list(content)  # content might be a generator
-    value = abstract.Instance(self.set_type, self)
-    value.initialize_type_parameter(node, "T",
-                                    self.build_content(node, content))
-    return value.to_variable(node, name="set(...)")
-
-  def build_map(self, node):
-    """Create an empty VM dict."""
-    return abstract.Dict("dict()", self).to_variable(node, "dict()")
 
   def push_last_exception(self, state):
     log.info("Pushing exception %r", state.exception)
@@ -1293,7 +849,7 @@ class VirtualMachine(object):
 
   def convert_locals_or_globals(self, d, name="globals"):
     return abstract.LazyAbstractOrConcreteValue(
-        name, d, d, self.maybe_convert_constant, self)
+        name, d, d, self.convert.maybe_convert_constant, self)
 
   # TODO(kramm): memoize
   def import_module(self, name, level):
@@ -1329,7 +885,7 @@ class VirtualMachine(object):
       assert level > 0
       ast = self.loader.import_relative(level)
     if ast:
-      module = self.construct_constant_from_value(ast.name, ast)
+      module = self.convert.construct_constant_from_value(ast.name, ast)
       if level <= 0 and name == "typing":
         # use a special overlay for stdlib/typing.pytd
         return typing.TypingOverlay(self, module)
@@ -1356,7 +912,7 @@ class VirtualMachine(object):
 
   def byte_UNARY_NOT(self, state):
     state = state.pop_and_discard()
-    state = state.push(self.build_bool(state.node))
+    state = state.push(self.convert.build_bool(state.node))
     return state
 
   def byte_UNARY_CONVERT(self, state):
@@ -1507,7 +1063,8 @@ class VirtualMachine(object):
           state, val = self.load_builtin(state, name)
         except KeyError:
           self.errorlog.name_error(self.frame.current_opcode, name)
-          return state.push(self.create_new_unsolvable(state.node, name))
+          return state.push(
+              self.convert.create_new_unsolvable(state.node, name))
     return state.push(val)
 
   def byte_STORE_NAME(self, state, op):
@@ -1557,7 +1114,7 @@ class VirtualMachine(object):
         state, val = self.load_builtin(state, name)
       except KeyError:
         self.errorlog.name_error(self.frame.current_opcode, name)
-        return state.push(self.create_new_unsolvable(state.node, name))
+        return state.push(self.convert.create_new_unsolvable(state.node, name))
     return state.push(val)
 
   def byte_STORE_GLOBAL(self, state, op):
@@ -1600,7 +1157,8 @@ class VirtualMachine(object):
 
   def byte_LOAD_LOCALS(self, state):
     log.debug("Returning locals: %r", self.frame.f_locals)
-    locals_dict = self.maybe_convert_constant("locals", self.frame.f_locals)
+    locals_dict = self.convert.maybe_convert_constant(
+        "locals", self.frame.f_locals)
     return state.push(locals_dict)
 
   def byte_COMPARE_OP(self, state, op):
@@ -1621,15 +1179,15 @@ class VirtualMachine(object):
     elif op.arg == slots.CMP_GE:
       state, ret = self.call_binary_operator(state, "__ge__", x, y)
     elif op.arg == slots.CMP_IS:
-      ret = self.build_bool(state.node)
+      ret = self.convert.build_bool(state.node)
     elif op.arg == slots.CMP_IS_NOT:
-      ret = self.build_bool(state.node)
+      ret = self.convert.build_bool(state.node)
     elif op.arg == slots.CMP_NOT_IN:
-      ret = self.build_bool(state.node)
+      ret = self.convert.build_bool(state.node)
     elif op.arg == slots.CMP_IN:
-      ret = self.build_bool(state.node)
+      ret = self.convert.build_bool(state.node)
     elif op.arg == slots.CMP_EXC_MATCH:
-      ret = self.build_bool(state.node)
+      ret = self.convert.build_bool(state.node)
     else:
       raise VirtualMachineError("Invalid argument to COMPARE_OP: %d", op.arg)
     return state.push(ret)
@@ -1672,21 +1230,21 @@ class VirtualMachine(object):
   def byte_BUILD_TUPLE(self, state, op):
     count = op.arg
     state, elts = state.popn(count)
-    return state.push(self.build_tuple(state.node, elts))
+    return state.push(self.convert.build_tuple(state.node, elts))
 
   def byte_BUILD_LIST(self, state, op):
     count = op.arg
     state, elts = state.popn(count)
-    return state.push(self.build_list(state.node, elts))
+    return state.push(self.convert.build_list(state.node, elts))
 
   def byte_BUILD_SET(self, state, op):
     count = op.arg
     state, elts = state.popn(count)
-    return state.push(self.build_set(state.node, elts))
+    return state.push(self.convert.build_set(state.node, elts))
 
   def byte_BUILD_MAP(self, state, op):
     # op.arg (size) is ignored.
-    return state.push(self.build_map(state.node))
+    return state.push(self.convert.build_map(state.node))
 
   def byte_STORE_MAP(self, state):
     state, (the_map, val, key) = state.popn(3)
@@ -1711,10 +1269,10 @@ class VirtualMachine(object):
   def byte_BUILD_SLICE(self, state, op):
     if op.arg == 2:
       state, (x, y) = state.popn(2)
-      return state.push(self.build_slice(state.node, x, y))
+      return state.push(self.convert.build_slice(state.node, x, y))
     elif op.arg == 3:
       state, (x, y, z) = state.popn(3)
-      return state.push(self.build_slice(state.node, x, y, z))
+      return state.push(self.convert.build_slice(state.node, x, y, z))
     else:       # pragma: no cover
       raise VirtualMachineError("Strange BUILD_SLICE count: %r" % op.arg)
 
@@ -1870,8 +1428,7 @@ class VirtualMachine(object):
   def byte_SETUP_FINALLY(self, state, op):
     # Emulate finally by connecting the try to the finally block (with
     # empty reason/why/continuation):
-    self.store_jump(op.target, state.push(
-        self.none.to_variable(state.node, "None")))
+    self.store_jump(op.target, state.push(self.convert.make_none(state.node)))
     return self.push_block(state, "finally", op.target)
 
   def byte_POP_BLOCK(self, state):
@@ -1956,9 +1513,9 @@ class VirtualMachine(object):
         state, exit_func = state.pop_nth(2)
       else:
         state, exit_func = state.pop_nth(1)
-      v = self.make_none(state.node)
-      w = self.make_none(state.node)
-      u = self.make_none(state.node)
+      v = self.convert.make_none(state.node)
+      w = self.convert.make_none(state.node)
+      u = self.convert.make_none(state.node)
     elif isinstance(u, type) and issubclass(u, BaseException):
       if self.python_version[0] == 2:
         state, (w, v, u) = state.popn(3)
@@ -1970,7 +1527,7 @@ class VirtualMachine(object):
         state, (tp, exc, tb) = state.popn(3)
         state, (exit_func) = state.pop()
         state = state.push(tp, exc, tb)
-        state = state.push(self.make_none(state.node))
+        state = state.push(self.convert.make_none(state.node))
         state = state.push(w, v, u)
         state, block = state.pop_block()
         assert block.type == "except-handler"
@@ -1981,9 +1538,9 @@ class VirtualMachine(object):
       # occured.
       state = state.pop_and_discard()  # pop None
       state, exit_func = state.pop()
-      state = state.push(self.make_none(state.node))
-      v = self.make_none(state.node)
-      w = self.make_none(state.node)
+      state = state.push(self.convert.make_none(state.node))
+      v = self.convert.make_none(state.node)
+      w = self.convert.make_none(state.node)
     state, suppress_exception = self.call_function_with_state(
         state, exit_func, [u, v, w])
     log.info("u is None: %r", self.is_none(u))
@@ -1992,7 +1549,7 @@ class VirtualMachine(object):
       # An error occurred, and was suppressed
       if self.python_version[0] == 2:
         state, _ = state.popn(3)
-        state.push(self.make_none(state.node))
+        state.push(self.convert.make_none(state.node))
       else:
         assert self.python_version[0] == 3
         state = state.push("silenced")
