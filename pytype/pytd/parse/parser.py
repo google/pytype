@@ -347,11 +347,11 @@ class InsertTypeParameters(visitors.Visitor):
                                              for p in node.template}))
 
 
-def CheckStringIsPython(parser, string, p):
-  if string == "python":
+def CheckIsSysPythonInfo(parser, string, p):
+  if string == "sys.version_info":
     return
   make_syntax_error(
-      parser, "If conditions can only depend on the \"python\" variable", p)
+      parser, "If conditions can only use \"sys.version_info\": %s" % string, p)
 
 
 class Context(object):
