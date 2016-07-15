@@ -52,7 +52,7 @@ class SolverTests(test_inference.InferenceTest):
         return x.keys()
     """, deep=True, solve_unknowns=True, extract_locals=True)
     self.assertTypesMatchPytd(ty, """
-      def f(x: dict[?, ?]) -> List[?, ...]
+      def f(x: dict) -> list
     """)
 
   def testNameConflict(self):

@@ -418,6 +418,23 @@ class TestOptimize(parser_test_base.ParserTest):
     ast = ast.Visit(visitor)
     self.AssertSourceEquals(ast, expected)
 
+  @unittest.skip("Needs better handling of GenericType")
+  def testSimplifyUnionsWithSuperclassesGeneric(self):
+    src = textwrap.dedent("""
+        x = ...  # type: frozenset[int] or AbstractSet[int]
+    """)
+    expected = textwrap.dedent("""
+        x = ...  # type: AbstractSet[int]
+    """)
+    hierarchy = builtins.GetBuiltinsPyTD().Visit(
+        visitors.ExtractSuperClassesByName())
+    visitor = optimize.SimplifyUnionsWithSuperclasses(
+        optimize.SuperClassHierarchy(hierarchy))
+    ast = self.Parse(src)
+    ast = visitors.LookupClasses(ast, builtins.GetBuiltinsPyTD())
+    ast = ast.Visit(visitor)
+    self.AssertSourceEquals(ast, expected)
+
   def testCollapseLongUnions(self):
     src = textwrap.dedent("""
         def f(x: A or B or C or D) -> X

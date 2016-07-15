@@ -485,9 +485,9 @@ class MethodsTest(test_inference.InferenceTest):
         return args
     """, deep=True, solve_unknowns=False, extract_locals=True)
     self.assertTypesMatchPytd(ty, """
-    def f(...) -> Tuple[?, ...]
-    def g(x, ...) -> Tuple[?, ...]
-    def h(x, y, ...) -> Tuple[?, ...]
+    def f(...) -> tuple
+    def g(x, ...) -> tuple
+    def h(x, y, ...) -> tuple
     """)
 
   def testStarArgsPassThrough(self):
