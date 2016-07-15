@@ -206,7 +206,7 @@ class ClassesTest(test_inference.InferenceTest):
           return getattr(self, '__str__')
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
-      class MyList(List[?, ...]):
+      class MyList(list):
         def foo(self) -> ?
     """)
 

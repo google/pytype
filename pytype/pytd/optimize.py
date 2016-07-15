@@ -497,25 +497,14 @@ class SimplifyUnionsWithSuperclasses(visitors.Visitor):
     super(SimplifyUnionsWithSuperclasses, self).__init__()
     self.hierarchy = hierarchy
 
-  def _GetBase(self, t):
-    if isinstance(t, pytd.GENERIC_BASE_TYPE):
-      return t
-    elif (isinstance(t, pytd.GenericType) and
-          all(isinstance(p, pytd.AnythingType) for p in t.parameters)):
-      # For now, handle generic types very conservatively: attempt
-      # simplification only if all of the parameters are Any.
-      return t.base_type
-    else:
-      return None
-
   def VisitUnionType(self, union):
     c = collections.Counter()
     for t in set(union.type_list):
-      base = self._GetBase(t)
-      if base is not None:
-        c += collections.Counter(self.hierarchy.ExpandSubClasses(str(base)))
+      if isinstance(t, pytd.GENERIC_BASE_TYPE):
+        c += collections.Counter(self.hierarchy.ExpandSubClasses(str(t)))
     # Below, c[str[t]] can be zero - that's the default for non-existent items
-    # in collections.Counter.
+    # in collections.Counter. It'll happen for types that are not
+    # instances of GENERIC_BASE_TYPE, like container types.
     new_type_list = [t for t in union.type_list if c[str(t)] <= 1]
     return utils.JoinTypes(new_type_list)
 
@@ -574,16 +563,12 @@ class CollapseLongUnions(visitors.Visitor):
   Attributes:
     max_length: The maximum number of types to allow in a union. If there are
       more types than this, it is shortened.
-    generic_type: What type to treat as the generic "object" type.
   """
 
-  def __init__(self, max_length=7, generic_type=None):
+  def __init__(self, max_length=7):
     assert isinstance(max_length, (int, long))
     super(CollapseLongUnions, self).__init__()
-    if generic_type is None:
-      self.generic_type = pytd.ClassType("__builtin__.object")
-    else:
-      self.generic_type = generic_type
+    self.generic_type = pytd.ClassType("__builtin__.object")
     self.max_length = max_length
 
   def VisitUnionType(self, union):
@@ -595,90 +580,29 @@ class CollapseLongUnions(visitors.Visitor):
       return union
 
 
-class CollapseLongParameterUnions(visitors.Visitor):
-  """Shortens long unions in parameters to object.
+class AdjustGenericType(visitors.Visitor):
+  """Changes the generic type from "object" to "Any"."""
 
-  This is a lossy optimization that changes overlong disjunctions in arguments
-  to just "object".
-  Some signature extractions generate signatures like
-    class str:
-      def __init__(self, obj: str or unicode or int or float or list)
-  We shorten that to
-    class str:
-      def __init__(self, obj: object)
-  In other words, if there are too many types "or"ed together, we just replace
-  the entire thing with "object".
+  def __init__(self):
+    super(AdjustGenericType, self).__init__()
+    self.old_generic_type = pytd.ClassType("__builtin__.object")
+    self.new_generic_type = pytd.AnythingType()
 
-  Attributes:
-    max_length: The maximum number of types to allow in a parameter. See
-      CollapseLongUnions.
-  """
-
-  def __init__(self, max_length=7):
-    super(CollapseLongParameterUnions, self).__init__()
-    self.max_length = max_length
-
-  def VisitParameter(self, param):
-    return param.Visit(CollapseLongUnions(self.max_length))
-
-  def VisitOptionalParameter(self, param):
-    return param.Visit(CollapseLongUnions(self.max_length))
-
-  def VisitMutableParameter(self, param):
-    return param.Visit(CollapseLongUnions(self.max_length))
+  def VisitClassType(self, t):
+    if t == self.old_generic_type:
+      return self.new_generic_type
+    else:
+      return t
 
 
-class CollapseLongReturnUnions(visitors.Visitor):
-  """Shortens long unions in return types to ?.
-
-  This is a lossy optimization that changes overlong disjunctions in returns
-  to just "object".
-  Some signature extractions generate signatures like
-    class str:
-      def __init__(self) -> str or unicode or int or float or list
-  We shorten that to
-    class str:
-      def __init__(self) -> ?
-  In other words, if there are too many types "or"ed together, we just replace
-  the entire thing with "?" (AnythingType).
-
-  Attributes:
-    max_length: The maximum number of types to allow in a return type. See
-      CollapseLongUnions.
-  """
-
-  def __init__(self, max_length=7):
-    super(CollapseLongReturnUnions, self).__init__()
-    self.max_length = max_length
+class AdjustReturnAndConstantGenericType(visitors.Visitor):
+  """Changes "object" to "Any" in return and constant types."""
 
   def VisitSignature(self, sig):
-    return sig.Replace(return_type=sig.return_type.Visit(
-        CollapseLongUnions(self.max_length, pytd.AnythingType())))
-
-
-class CollapseLongConstantUnions(visitors.Visitor):
-  """Shortens long unions in constants to ?.
-
-  This is a lossy optimization that changes overlong constants to "?".
-  So
-    class str:
-      x: str or unicode or int or float or list
-  would be shortened to
-    class str:
-      x: ?
-
-  Attributes:
-    max_length: The maximum number of types to allow in a constant. See
-      CollapseLongUnions.
-  """
-
-  def __init__(self, max_length=7):
-    super(CollapseLongConstantUnions, self).__init__()
-    self.max_length = max_length
+    return sig.Replace(return_type=sig.return_type.Visit(AdjustGenericType()))
 
   def VisitConstant(self, c):
-    return c.Replace(type=c.type.Visit(
-        CollapseLongUnions(self.max_length, pytd.AnythingType())))
+    return c.Replace(type=c.type.Visit(AdjustGenericType()))
 
 
 class AddInheritedMethods(visitors.Visitor):
@@ -955,6 +879,28 @@ class AbsorbMutableParameters(visitors.Visitor):
     return pytd.Parameter(p.name, utils.JoinTypes([p.type, p.new_type]))
 
 
+class SimplifyContainers(visitors.Visitor):
+  """Simplifies containers whose type parameters are all Any.
+
+  For example, this will change
+    def f() -> List[any]
+  to
+    def f() -> list
+  """
+
+  def _Simplify(self, t):
+    if all(isinstance(p, pytd.AnythingType) for p in t.parameters):
+      return t.base_type
+    else:
+      return t
+
+  def VisitHomogeneousContainerType(self, t):
+    return self._Simplify(t)
+
+  def VisitGenericType(self, t):
+    return self._Simplify(t)
+
+
 class TypeParameterScope(visitors.Visitor):
   """Common superclass for optimizations that track type parameters."""
 
@@ -1105,6 +1051,7 @@ def Optimize(node,
   node = node.Visit(Factorize())
   node = node.Visit(ApplyOptionalArguments())
   node = node.Visit(CombineContainers())
+  node = node.Visit(SimplifyContainers())
   superclasses = builtins.GetBuiltinsPyTD().Visit(
       visitors.ExtractSuperClassesByName())
   superclasses.update(node.Visit(
@@ -1118,15 +1065,15 @@ def Optimize(node,
         FindCommonSuperClasses(hierarchy)
     )
   if max_union:
-    node = node.Visit(CollapseLongParameterUnions(max_union))
-    node = node.Visit(CollapseLongReturnUnions(max_union))
-    node = node.Visit(CollapseLongConstantUnions(max_union))
+    node = node.Visit(CollapseLongUnions(max_union))
+  node = node.Visit(AdjustReturnAndConstantGenericType())
   if remove_mutable:
     node = node.Visit(AbsorbMutableParameters())
     node = node.Visit(CombineContainers())
     node = node.Visit(MergeTypeParameters())
     node = node.Visit(visitors.AdjustSelf(force=True))
   node = visitors.LookupClasses(node, builtins.GetBuiltinsPyTD())
+  node = node.Visit(SimplifyContainers())
   node = node.Visit(RemoveInheritedMethods())
   node = node.Visit(RemoveRedundantSignatures(hierarchy))
   return node

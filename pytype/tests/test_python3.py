@@ -43,7 +43,7 @@ class TestPython3(test_inference.InferenceTest):
     """, deep=True, extract_locals=True)
 
     self.assertTypesMatchPytd(ty, """
-    class Thing(Tuple[Any, ...]):
+    class Thing(tuple):
       x = ...  # type: Any
       y = ...  # type: int
       def __init__(self, x) -> NoneType: ...

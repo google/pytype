@@ -49,9 +49,9 @@ class BuiltinTests2(test_inference.InferenceTest):
         return set.difference(*y)
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
-      def f(y) -> Set[Any]: ...
-      def g(y) -> Set[Any]: ...
-      def h(y) -> Set[Any]: ...
+      def f(y) -> set: ...
+      def g(y) -> set: ...
+      def h(y) -> set: ...
     """)
 
   def testFrozenSetInheritance(self):
@@ -61,7 +61,7 @@ class BuiltinTests2(test_inference.InferenceTest):
       Foo([])
     """, deep=False, extract_locals=True)
     self.assertTypesMatchPytd(ty, """
-      class Foo(frozenset[Any]):
+      class Foo(frozenset):
         pass
     """)
 
@@ -88,7 +88,7 @@ class BuiltinTests2(test_inference.InferenceTest):
         def get_class(self) -> type
         def get_doc(self) -> str
         def get_module(self) -> str
-        def get_bases(self) -> List[Any]
+        def get_bases(self) -> list
     """)
 
   def testNewStyleClass(self):
@@ -119,8 +119,8 @@ class BuiltinTests2(test_inference.InferenceTest):
         def get_doc(self) -> str
         def get_module(self) -> str
         def get_hash(self) -> int
-        def get_mro(self) -> List[Any]
-        def get_bases(self) -> List[Any]
+        def get_mro(self) -> list
+        def get_bases(self) -> list
     """)
 
   def testDictInit(self):
@@ -128,7 +128,7 @@ class BuiltinTests2(test_inference.InferenceTest):
       x = dict(u=3, v=4, w=5)
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
-      x = ...  # type: Dict[Any, Any]
+      x = ...  # type: dict
     """)
 
 

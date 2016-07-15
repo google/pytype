@@ -486,7 +486,7 @@ class ContainerTest(test_inference.InferenceTest):
     self.assertTypesMatchPytd(ty, """
       # The element types aren't more precise since the solver doesn't know
       # which element of the list gets modified.
-      def f() -> List[?, ...]
+      def f() -> list
     """)
 
   def testCircularReferenceList(self):

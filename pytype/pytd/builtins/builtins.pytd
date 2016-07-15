@@ -161,8 +161,8 @@ class object():
     def __lt__(self, other) -> bool
     def __hash__(self) -> int
 
-# old style class
-class classobj():
+# old style class. classobj is in fact a subclass of object in Python.
+class classobj(object):
     __bases__ = ...  # type: List[Any]
     __dict__ = ...  # type: Dict[str, Any]
     __doc__ = ...  # type: str
@@ -400,7 +400,7 @@ class `dictionary-valueiterator`(Generic[T], Iterator):
 
 K = TypeVar('K')
 V = TypeVar('V')
-class `dictionary-itemiterator`(Generic[K, V]):
+class `dictionary-itemiterator`(Generic[K, V], object):
     def __iter__(self) -> `dictionary-itemiterator`[K, V]
     def next(self) -> tuple[K or V]  # tuple[K, V]  # TODO(pludemann): a pair
 
