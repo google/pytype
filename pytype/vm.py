@@ -1729,7 +1729,7 @@ class VirtualMachine(object):
     log.info("%r", mod)
     # TODO(kramm): Add Module type to abstract.py
     for name, var in mod.items():
-      if name[0] != "_":
+      if name[0] != "_" or name == "__getattr__":
         state = self.store_local(state, name, var)
     return state
 

@@ -210,8 +210,7 @@ class CallTracer(vm.VirtualMachine):
         continue
       options = var.FilteredData(self.exitpoint)
       if (len(options) > 1 and not
-          all(isinstance(o, (abstract.InterpreterFunction,
-                             abstract.BoundInterpreterFunction))
+          all(isinstance(o, (abstract.Function, abstract.BoundFunction))
               for o in options)):
         # It's ambiguous whether this is a type, a function or something
         # else, so encode it as a constant.

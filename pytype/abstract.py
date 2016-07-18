@@ -1694,8 +1694,9 @@ class PyTDFunction(Function):
         return new_node, result, mutations
     raise error  # pylint: disable=raising-bad-type
 
-  def to_pytd_def(self, _):
-    return pytd.NamedType("__builtin__.function")
+  def to_pytd_def(self, name):
+    return pytd.Function(
+        name, tuple(sig.pytd_sig for sig in self.signatures), pytd.METHOD)
 
   def __repr__(self):
     return self.name + "(...)"
