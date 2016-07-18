@@ -1,5 +1,6 @@
 """Tests for utils.py."""
 
+import itertools
 import os
 
 
@@ -28,6 +29,17 @@ class DummyValue(object):
 
   def __repr__(self):
     return "x%d" % self.index
+
+
+class Node(object):
+  """A graph node, for testing topological sorting."""
+
+  def __init__(self, name, *incoming):
+    self.name = name
+    self.incoming = incoming
+
+  def __repr__(self):
+    return "Node(%s)" % self.name
 
 
 class UtilsTest(unittest.TestCase):
@@ -253,6 +265,41 @@ class UtilsTest(unittest.TestCase):
     n1.ConnectTo(n6)
     order = utils.order_nodes([n1, n2, n3, n4, n5, n6, n7, n8])
     self.assertItemsEqual([n1, n2, n3, n7, n4, n5, n8, n6], order)
+
+  def testTopologicalSort(self):
+    n1 = Node("1")
+    n2 = Node("2", n1)
+    n3 = Node("3", n2)
+    n4 = Node("4", n2, n3)
+    for permutation in itertools.permutations([n1, n2, n3, n4]):
+      self.assertEquals(list(utils.topological_sort(permutation)),
+                        [n1, n2, n3, n4])
+
+  def testTopologicalSort2(self):
+    n1 = Node("1")
+    n2 = Node("2", n1)
+    self.assertEquals(list(utils.topological_sort([n1, n2, 3, 4]))[-1], n2)
+
+  def testTopologicalSortCycle(self):
+    n1 = Node("1")
+    n2 = Node("2")
+    n1.incoming = [n2]
+    n2.incoming = [n1]
+    generator = utils.topological_sort([n1, n2])
+    self.assertRaises(ValueError, list, generator)
+
+  def testTopologicalSortSubCycle(self):
+    n1 = Node("1")
+    n2 = Node("2")
+    n3 = Node("3")
+    n1.incoming = [n2]
+    n2.incoming = [n1]
+    n3.incoming = [n1, n2]
+    generator = utils.topological_sort([n1, n2, n3])
+    self.assertRaises(ValueError, list, generator)
+
+  def testTopologicalSortGetattr(self):
+    self.assertEquals(list(utils.topological_sort([1])), [1])
 
   def testFlattenSuperclasses(self):
     cls_a = pytd.Class("A", (), (), (), ())

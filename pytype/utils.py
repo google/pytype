@@ -1,5 +1,6 @@
 """Generic functions."""
 
+import collections
 import contextlib
 import errno
 import itertools
@@ -247,6 +248,42 @@ def order_nodes(nodes):
   assert len(set(order) | dead) == len(set(nodes))
 
   return order
+
+
+def topological_sort(nodes):
+  """Sort a list of nodes topologically.
+
+  This will order the nodes so that any node that appears in the "incoming"
+  list of another node n2 will appear in the output before n2. It assumes that
+  the graph doesn't have any cycles.
+  If there are multiple ways to sort the list, a random one is picked.
+
+  Args:
+    nodes: A sequence of nodes. Each node may have an attribute "incoming",
+      a list of nodes (every node in this list needs to be in "nodes"). If
+      "incoming" is not there, it's assumed to be empty. The list of nodes
+      can't have duplicates.
+  Yields:
+    The nodes in their topological order.
+  Raises:
+    ValueError: If the graph contains a cycle.
+  """
+  incoming = {node: set(getattr(node, "incoming", ())) for node in nodes}
+  outgoing = collections.defaultdict(set)
+  for node in nodes:
+    for inc in incoming[node]:
+      outgoing[inc].add(node)
+  stack = [node for node in nodes if not incoming[node]]
+  for _ in nodes:
+    if not stack:
+      raise ValueError("Circular graph")
+    leaf = stack.pop()
+    yield leaf
+    for out in outgoing[leaf]:
+      incoming[out].remove(leaf)
+      if not incoming[out]:
+        stack.append(out)
+  assert not stack
 
 
 def flattened_superclasses(cls):
