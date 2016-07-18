@@ -471,6 +471,13 @@ class UtilsTest(unittest.TestCase):
       self.assertEquals(123, var.get())
     self.assertIsNone(var.get())
 
+  def testAnnotatingDecorator(self):
+    foo = utils.AnnotatingDecorator()
+    @foo(3)
+    def f():  # pylint: disable=unused-variable
+      pass
+    self.assertEquals(foo.lookup["f"], 3)
+
 
 if __name__ == "__main__":
   test_inference.main()

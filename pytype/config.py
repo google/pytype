@@ -1,8 +1,7 @@
 """Configuration for pytype (mostly derived from the commandline args).
 
 Various parts of pytype use the command-line options. This module packages the
-options into a single object (Options class). This is very similar to a global
-set of flags, except that it's one extra parameter to a number of objects.
+options into an Options class.
 """
 
 import logging
@@ -11,62 +10,21 @@ import os
 import subprocess
 
 
+from pytype import utils
+
+
 LOG_LEVELS = [logging.CRITICAL, logging.ERROR, logging.WARNING,
               logging.INFO, logging.DEBUG]
 
-# Export the exception that main.py needs:
-OptParseError = optparse.OptParseError
+
+OptParseError = optparse.OptParseError  # used by main.py
+
+
+uses = utils.AnnotatingDecorator()  # model relationship between options
 
 
 class Options(object):
-  """Encapsulation of the command-line options.
-
-  Attributes:
-    _options:             The parsed options
-    basic_logging_level:  Used to set logging.basicConfig(level=...)
-    input_filenames:      The filenames from the command line
-    imports_map:          dict of .py file name to corresponding pytd file.
-                          These will have been created by separate invocations
-                          of pytype -- that is, the situation is similar to
-                          javac using .class files that have been created by
-                          other invocations of javac.  imports_map may be None,
-                          which is different from {} -- None means that there
-                          was no imports_map whereas {} means it's empty.
-    src_out:              List of (input,output) file name pairs
-    The following are from the command-line options, but have been processesd
-    into a list (or tuple):
-      import_drop_prefixes
-      python_version
-      pythonpath
-    The following are "inherited" from the command-line options as-is:
-      api
-      cache_unknowns
-      check
-      disable
-      imports_info
-      nofail
-      optimize
-      output
-      output_cfg
-      output_debug
-      output_id
-      output_typegraph
-      pybuiltins_filename
-      python_exe
-      quick
-      reverse_operators
-      run_builtins
-      skip_repeat_calls
-      solve_unknowns
-      structural
-      typeshed
-      verbosity
-  """
-
-  # List of attributes that aren't options on the command line:
-  extra_attributes = ["basic_logging_level", "input_filenames", "imports_map",
-                      "src_out"]
-
+  """Encapsulation of the command-line options."""
 
   def __init__(self, argv):
     """Parse and encapsulate the command-line options.
@@ -74,18 +32,16 @@ class Options(object):
     Also sets up some basic logger configuration.
 
     Args:
-      argv: typically sys.argv (argv[0] is the script pathname if known)
-            Can be None for unit tests.
+      argv: sys.argv (argv[0] is the main script). None for unit tests.
 
     Raises:
       optarse.OptParseError: bad option or input filenames.
     """
-    for a in self.extra_attributes:
-      setattr(self, a, None)
-    # Allow argv to be None for unit tests
-    self._parse_options([""] if argv is None else argv)
-    self._process_options()
-    self._initialize_filenames_and_output()
+    o = self._options()
+    argv = argv if argv is not None else [""]
+    self._options, arguments = o.parse_args(argv)
+    self.imports_map = None  # changed by main, using self.imports_info
+    self._postprocess_options(o.option_list, arguments[1:])
 
   @classmethod
   def create(cls, **kwargs):
@@ -98,10 +54,11 @@ class Options(object):
       assert hasattr(self, k)  # Don't allow adding arbitrary junk
       setattr(self, k, v)
 
-  def _parse_options(self, args):
+  def _options(self):
     """Use optparse to parse command line options."""
     o = optparse.OptionParser(
-        usage="usage: %prog [options] input1[:output1] [input2:output2 [...]]",
+        usage=("Usage: %prog [options] "
+               "file1.py[:file1.pyi] [file2.py:file2.pyi [...]]"),
         description="Infer/check types in a Python module")
     o.set_defaults(optimize=True)
     o.set_defaults(api=True)
@@ -123,7 +80,7 @@ class Options(object):
     o.add_option(
         "-c", "--check", action="store_true",
         dest="check",
-        help=("Verify against existing \"output\" pytd files."))
+        help=("Don't do type inference. Only check for type errors."))
     o.add_option(
         "-d", "--disable", action="store",
         dest="disable", default=None,
@@ -142,17 +99,17 @@ class Options(object):
     o.add_option(
         "--imports_info", type="string", action="store",
         dest="imports_info", default=None,
-        help=("TODO(pludemann): document this. "
-              "Information for mapping import .pytd to files. "
-              "This options is incompatible with --import_drop_prefixes."))
+        help=("Information for mapping import .pytd to files. "
+              "This options is incompatible with --import_drop_prefixes "
+              "and --pythonpath."))
     o.add_option(
         "-K", "--keep-unknowns", action="store_false",
         dest="solve_unknowns", default=True,
         help=("Keep 'unknown' classes generated during the first analysis "
               "pass."))
     o.add_option(
-        "-m", "--main", action="store_false",
-        dest="api",
+        "-m", "--main", action="store_true",
+        dest="main_only",
         help=("Only analyze the main method and everything called from it"))
     o.add_option(
         "-M", "--module-name", action="store",
@@ -174,7 +131,6 @@ class Options(object):
         "--no-skip-calls", action="store_false",
         dest="skip_repeat_calls", default=True,
         help=("Don't reuse the results of previous function calls."))
-# MOE:strip_line TODO(pludemann): remove when Bazel integration is done:
     o.add_option(
         "--nofail", action="store_true",
         dest="nofail", default=False,
@@ -214,7 +170,6 @@ class Options(object):
     o.add_option(
         "--python_exe", type="string", action="store",
         dest="python_exe", default=None,
-        # TODO(pludemann): pyc.py implements the following and might change.
         help=("Full path to a Python interpreter that is used to compile the "
               "source(s) to byte code. Can be \"HOST\" to use the same Python "
               "that is running pytype. If not specified, --python_version is "
@@ -264,44 +219,80 @@ class Options(object):
         dest="report_errors", default=True,
         help=("Don't report errors. Only generate a .pyi."))
     o.add_option(
+        # stored in basic_logging_level
         "-v", "--verbosity", type="int", action="store",
         dest="verbosity", default=1,
         help=("Set logging verbosity: "
               "-1=quiet, 0=fatal, 1=error (default), 2=warn, 3=info, 4=debug"))
+    return o
 
-    self._option_list = o.option_list
-    self._options, self.input_filenames = o.parse_args(args)
+  def _postprocess_options(self, option_list, arguments):
+    """Store all options in self._option in self, possibly postprocessed.
 
-  def _process_options(self):
-    """Process the options from _parse_options."""
-    unused_executable = self.input_filenames.pop(0)
-    self.imports_map = None  # changed by main, using self.imports_info
+    This will iterate through all options in self._options and make them
+    attributes on our Options instance. If, for an option {name}, there is
+    a _store_{name} method on this class, it'll call the method instead of
+    storing the option directly. Additionally, it'll store the remaining
+    command line arguments as "arguments" (or call _store_arguments).
 
-    # Propagate all the underlying options. The net effect is the same as if:
-    #    def __getattr__(self, name): return getattr(self._options, name)
-    for opt in self._option_list:
-      if opt.dest:
-        setattr(self, opt.dest, getattr(self._options, opt.dest))
+    Args:
+      option_list: Same as optparse.OptionParser().option_list.
+      arguments: Other arguments on the command-line (i.e., things that don't
+        start with '-')
+    """
+    # prepare function objects for topological sort:
+    class Node(object):  # pylint: disable=g-wrong-blank-lines
+      def __init__(self, name, processor):  # pylint: disable=g-wrong-blank-lines
+        self.name = name
+        self.processor = processor
+    nodes = {
+        opt.dest: Node(opt.dest, getattr(self, "_store_" + opt.dest, None))
+        for opt in option_list if opt.dest
+    }
+    # The "arguments" attribute is not an option, but we treat it as one,
+    # for dependency checking:
+    nodes["arguments"] = Node("arguments",
+                              getattr(self, "_store_arguments", None))
+    for f in nodes.values():
+      if f.processor:
+        # option has a _store_{name} method
+        dependencies = uses.lookup.get(f.processor.__name__)
+        if dependencies:
+          # that method has a @uses decorator
+          f.incoming = tuple(nodes[use] for use in dependencies)
 
-    # Post-process options, overriding a few
+    # process the option list in the right order:
+    for node in utils.topological_sort(nodes.values()):
+      if node.name == "arguments":
+        value = arguments
+      else:
+        value = getattr(self._options, node.name)
+      if node.processor is not None:
+        value = node.processor(value)
+      else:
+        setattr(self, node.name, value)
 
-    if self.verbosity >= 0:
-      if self.verbosity >= len(LOG_LEVELS):
+  def _store_verbosity(self, verbosity):
+    if verbosity >= 0:
+      if verbosity >= len(LOG_LEVELS):
         raise optparse.OptionError(self._options.verbosity, "verbosity")
-      self.basic_logging_level = LOG_LEVELS[self.verbosity]
+      self.basic_logging_level = LOG_LEVELS[verbosity]
     else:
-      # "verbosity=-1" can be used to disable all logging, so configure logging
-      # accordingly.
+      # "verbosity=-1" can be used to disable all logging, so configure
+      # logging accordingly.
       self.basic_logging_level = logging.CRITICAL + 1
 
+  def _store_pythonpath(self, pythonpath):
     # Note that the below gives [""] for "", and ["x", ""] for "x:"
     # ("" is a valid entry to denote the current directory)
-    self.pythonpath = self.pythonpath.split(os.pathsep)
+    self.pythonpath = pythonpath.split(os.pathsep)
 
+  def _store_import_drop_prefixes(self, import_drop_prefixes):
     self.import_drop_prefixes = [
-        p for p in self.import_drop_prefixes.split(os.pathsep) if p]
+        p for p in import_drop_prefixes.split(os.pathsep) if p]
 
-    self.python_version = tuple(map(int, self.python_version.split(".")))
+  def _store_python_version(self, python_version):
+    self.python_version = tuple(map(int, python_version.split(".")))
     if len(self.python_version) != 2:
       raise optparse.OptionError("must be <major>.<minor>: %r" %
                                  self._options.python_version,
@@ -314,43 +305,46 @@ class Options(object):
       raise optparse.OptionError(
           "Python versions 3.0 - 3.3 are not supported. "
           "Use 3.4 and higher.", "python_version")
-    if self.imports_info:
-      if self.import_drop_prefixes:
-        raise optparse.OptionConflictError(
-            "Not allowed with --import_drop_prefixes", "imports_info")
-      if self.pythonpath not in ([], [""]):
-        raise optparse.OptionConflictError(
-            "Not allowed with --pythonpath", "imports_info")
 
-    if self.disable:
-      self.disable = self.disable.split(",")
+  def _store_disable(self, disable):
+    if disable:
+      self.disable = disable.split(",")
     else:
       self.disable = []
 
-    if self.python_exe is None:
-      exe = "python%d.%d" % self.python_version
+  @uses(["python_version"])
+  def _store_python_exe(self, python_exe):
+    """Postprocess --python_exe."""
+    if python_exe is None:
+      python_exe = "python%d.%d" % self.python_version
       try:
         with open(os.devnull, "w") as null:
-          subprocess.check_call(exe + " -V",
+          subprocess.check_call(python_exe + " -V",
                                 shell=True, stderr=null, stdout=null)
       except subprocess.CalledProcessError:
-        raise optparse.OptionError("Need valid %s executable in $PATH" % exe,
-                                   "V")
+        raise optparse.OptionError("Need valid %s executable in $PATH" %
+                                   python_exe, "--python_exe")
+    self.python_exe = python_exe
 
-  def _initialize_filenames_and_output(self):
-    """Figure out the input(s) and output(s).
+  @uses(["import_drop_prefixes", "pythonpath"])
+  def _store_imports_info(self, imports_info):
+    if self.import_drop_prefixes:
+      raise optparse.OptionConflictError(
+          "Not allowed with --import_drop_prefixes", "imports_info")
+    if self.pythonpath not in ([], [""]):
+      raise optparse.OptionConflictError(
+          "Not allowed with --pythonpath", "imports_info")
+    self.imports_info = imports_info
 
-    Raises:
-      optarse.OptParseError: bad option or input filenames.
-    """
-    if len(self.input_filenames) > 1 and self.output:
+  @uses(["output"])
+  def _store_arguments(self, input_filenames):
+    if len(input_filenames) > 1 and self.output:
       raise optparse.OptionError("only allowed for single input", "o")
-
     self.src_out = []
-    for item in self.input_filenames:
+    for item in input_filenames:
       split = tuple(item.split(os.pathsep))
       if len(split) != 2:
-        if len(split) == 1 and len(self.input_filenames) == 1:
+        if len(split) == 1 and len(input_filenames) == 1:
           # special case: For single input, you're allowed to use
           #   pytype myfile.py -o myfile.pyi
           # and

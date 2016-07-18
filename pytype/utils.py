@@ -556,3 +556,21 @@ class DynamicVar(object):
   def get(self):
     """Return the current value of the dynamic variable."""
     return self._values()[-1]
+
+
+class AnnotatingDecorator(object):
+  """A decorator for storing function attributes.
+
+  Attributes:
+    mapping: maps functions to their attributes.
+  """
+
+  def __init__(self):
+    self.lookup = {}
+
+  def __call__(self, value):
+    def decorate(f):
+      self.lookup[f.__name__] = value
+      return f
+    return decorate
+

@@ -212,7 +212,7 @@ def main(argv):
   try:
     options = config.Options(argv)
   except config.OptParseError as e:
-    print >>sys.stderr, e.msg
+    print >>sys.stderr, str(e)
     sys.exit(1)
 
   with _ProfileContext(options.profile):
