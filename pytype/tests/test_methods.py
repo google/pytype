@@ -192,7 +192,8 @@ class MethodsTest(test_inference.InferenceTest):
     self.assertHasSignature(ty.Lookup("test"), (), self.unicode)
 
   def testProperty(self):
-    ty = self.Infer("""
+    ty = self.Infer(
+        """
       class A(object):
         @property
         def my_property(self):
@@ -205,7 +206,8 @@ class MethodsTest(test_inference.InferenceTest):
         return x.foo()
 
       test()
-    """, deep=False, solve_unknowns=False, extract_locals=False)
+    """, deep=False, solve_unknowns=False,
+        extract_locals=False, maximum_depth=4)
     self.assertHasSignature(ty.Lookup("test"), (), self.int)
 
   def testExplicitProperty(self):

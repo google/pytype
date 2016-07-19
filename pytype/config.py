@@ -78,7 +78,7 @@ class Options(object):
               "Note that this does not affect the PyTD for builtins, which "
               "is always in pytd/builtins/__builtin__.pytd."))
     o.add_option(
-        "-c", "--check", action="store_true",
+        "-C", "--check", action="store_true",
         dest="check",
         help=("Don't do type inference. Only check for type errors."))
     o.add_option(
@@ -156,13 +156,6 @@ class Options(object):
         "--output-typegraph", type="string", action="store",
         dest="output_typegraph", default=None,
         help="Output typegraph as SVG.")
-    o.add_option(
-        "--output_id", type="string", action="store",
-        dest="output_id",
-        default="",
-        help=("A string that's prepended to the contents of each output pyi, "
-              "to identify what created it.  If empty (the default), "
-              "nothing is prepended."))
     o.add_option(
         "--profile", type="string", action="store",
         dest="profile", default=None,
@@ -275,7 +268,8 @@ class Options(object):
   def _store_verbosity(self, verbosity):
     if verbosity >= 0:
       if verbosity >= len(LOG_LEVELS):
-        raise optparse.OptionError(self._options.verbosity, "verbosity")
+        raise optparse.OptParseError("invalid --verbosity: %s" %
+                                     self._options.verbosity)
       self.basic_logging_level = LOG_LEVELS[verbosity]
     else:
       # "verbosity=-1" can be used to disable all logging, so configure
@@ -294,17 +288,17 @@ class Options(object):
   def _store_python_version(self, python_version):
     self.python_version = tuple(map(int, python_version.split(".")))
     if len(self.python_version) != 2:
-      raise optparse.OptionError("must be <major>.<minor>: %r" %
-                                 self._options.python_version,
-                                 "python_version")
+      raise optparse.OptionValueError(
+          "--python_version must be <major>.<minor>: %r" % (
+              self._options.python_version))
     if (3, 0) <= self.python_version <= (3, 3):
       # These have odd __build_class__ parameters, store co_code.co_name fields
       # as unicode, and don't yet have the extra qualname parameter to
       # MAKE_FUNCTION. Jumping through these extra hoops is not worth it, given
       # that typing.py isn't introduced until 3.5, anyway.
-      raise optparse.OptionError(
+      raise optparse.OptParseError(
           "Python versions 3.0 - 3.3 are not supported. "
-          "Use 3.4 and higher.", "python_version")
+          "Use 3.4 and higher.")
 
   def _store_disable(self, disable):
     if disable:
@@ -322,8 +316,8 @@ class Options(object):
           subprocess.check_call(python_exe + " -V",
                                 shell=True, stderr=null, stdout=null)
       except subprocess.CalledProcessError:
-        raise optparse.OptionError("Need valid %s executable in $PATH" %
-                                   python_exe, "--python_exe")
+        raise optparse.OptParseError("Need valid %s executable in $PATH" %
+                                     python_exe)
     self.python_exe = python_exe
 
   @uses(["import_drop_prefixes", "pythonpath"])
@@ -336,23 +330,28 @@ class Options(object):
           "Not allowed with --pythonpath", "imports_info")
     self.imports_info = imports_info
 
-  @uses(["output"])
+  def _store_output(self, output):
+    self.output = output
+
+  @uses(["output", "check"])
   def _store_arguments(self, input_filenames):
-    if len(input_filenames) > 1 and self.output:
-      raise optparse.OptionError("only allowed for single input", "o")
+    if len(input_filenames) > 1:
+      if self.output:
+        raise optparse.OptionValueError("-o only allowed for single input")
     self.src_out = []
     for item in input_filenames:
       split = tuple(item.split(os.pathsep))
-      if len(split) != 2:
-        if len(split) == 1 and len(input_filenames) == 1:
+      if len(split) == 1:
+        if len(input_filenames) == 1 and self.output:
           # special case: For single input, you're allowed to use
           #   pytype myfile.py -o myfile.pyi
-          # and
-          #   pytype -c myfile.py
           self.src_out.append((item, self.output))
         else:
-          raise optparse.OptionValueError("Argument %r is not a pair of non-"
-                                          "empty file names separated by %r" %
-                                          (item, os.pathsep))
-      else:
+          self.src_out.append((item, None))
+          self.check = True
+      elif len(split) == 2:
         self.src_out.append(split)
+      else:
+        raise optparse.OptionValueError("Argument %r is not a pair of non-"
+                                        "empty file names separated by %r" %
+                                        (item, os.pathsep))

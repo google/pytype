@@ -77,6 +77,7 @@ class VirtualMachine(object):
                options,
                module_name=None,
                reverse_operators=False,
+               generate_unknowns=False,
                cache_unknowns=True,
                maximum_depth=None):
     """Construct a TypegraphVirtualMachine."""
@@ -85,6 +86,7 @@ class VirtualMachine(object):
     self.options = options
     self.python_version = options.python_version
     self.reverse_operators = reverse_operators
+    self.generate_unknowns = generate_unknowns
     self.cache_unknowns = cache_unknowns
     self.loader = load_pytd.Loader(base_module=module_name, options=options)
     self.frames = []  # The call stack of frames.

@@ -268,7 +268,7 @@ class Converter(object):
 
   def create_new_unknown(self, node, name, source=None, action=None):
     """Create a new variable containing unknown, originating from this one."""
-    if self.vm.options.quick:
+    if not self.vm.generate_unknowns:
       # unsolvable instances are cheaper than unknown, so use those for --quick.
       return abstract.Unsolvable(self.vm).to_variable(node, name)
     unknown = self._create_new_unknown_value(action)

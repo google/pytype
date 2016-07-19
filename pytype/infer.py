@@ -545,21 +545,25 @@ def check_types(py_src, pytd_src, py_filename, pytd_filename, errorlog,
                 options,
                 run_builtins=True,
                 reverse_operators=False,
-                cache_unknowns=False,
-                maximum_depth=None):
+                cache_unknowns=False):
   """Verify a PyTD against the Python code."""
   tracer = CallTracer(errorlog=errorlog, options=options,
                       module_name=_get_module_name(py_filename, options),
                       reverse_operators=reverse_operators,
                       cache_unknowns=cache_unknowns,
-                      maximum_depth=maximum_depth)
-  loc, defs, _ = tracer.run_program(py_src, py_filename, run_builtins)
-  ast = pytd_utils.ParsePyTD(pytd_src, pytd_filename, options.python_version,
-                             lookup_classes=True)
-  ast = tracer.loader.resolve_ast(ast)
-  tracer.check_types(loc, defs, ast,
-                     os.path.basename(py_filename),
-                     os.path.basename(pytd_filename))
+                      generate_unknowns=False,
+                      maximum_depth=(1 if options.quick else None))
+  loc, defs, builtin_names = tracer.run_program(
+      py_src, py_filename, run_builtins)
+  if pytd_src is not None:
+    ast = pytd_utils.ParsePyTD(pytd_src, pytd_filename, options.python_version,
+                               lookup_classes=True)
+    ast = tracer.loader.resolve_ast(ast)
+    tracer.check_types(loc, defs, ast,
+                       os.path.basename(py_filename),
+                       os.path.basename(pytd_filename))
+  else:
+    tracer.analyze(loc, defs, builtin_names)
 
 
 def infer_types(src,
@@ -567,7 +571,7 @@ def infer_types(src,
                 filename=None, run_builtins=True,
                 deep=True, solve_unknowns=True,
                 reverse_operators=False, cache_unknowns=False,
-                maximum_depth=None):
+                maximum_depth=3):
   """Given Python source return its types.
 
   Args:
@@ -594,6 +598,7 @@ def infer_types(src,
                       module_name=_get_module_name(filename, options),
                       reverse_operators=reverse_operators,
                       cache_unknowns=cache_unknowns,
+                      generate_unknowns=not options.quick,
                       maximum_depth=maximum_depth)
   loc, defs, builtin_names = tracer.run_program(src, filename, run_builtins)
   log.info("===Done run_program===")
