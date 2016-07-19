@@ -10,6 +10,7 @@ import os
 import subprocess
 
 
+from pytype import imports_map_loader
 from pytype import utils
 
 
@@ -40,7 +41,6 @@ class Options(object):
     o = self._options()
     argv = argv if argv is not None else [""]
     self._options, arguments = o.parse_args(argv)
-    self.imports_map = None  # changed by main, using self.imports_info
     self._postprocess_options(o.option_list, arguments[1:])
 
   @classmethod
@@ -320,8 +320,9 @@ class Options(object):
                                      python_exe)
     self.python_exe = python_exe
 
-  @uses(["import_drop_prefixes", "pythonpath"])
+  @uses(["import_drop_prefixes", "pythonpath", "arguments"])
   def _store_imports_info(self, imports_info):
+    """Postprocess --imports_info."""
     if imports_info:
       if self.import_drop_prefixes:
         raise optparse.OptionConflictError(
@@ -329,6 +330,12 @@ class Options(object):
       if self.pythonpath not in ([], [""]):
         raise optparse.OptionConflictError(
             "Not allowed with --pythonpath", "imports_info")
+
+      self.imports_map = imports_map_loader.build_imports_map(imports_info,
+                                                              self.src_out)
+    else:
+      self.imports_map = None
+
     self.imports_info = imports_info
 
   def _store_output(self, output):

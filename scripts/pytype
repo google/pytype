@@ -16,7 +16,6 @@ import traceback
 from pytype import config
 from pytype import directors
 from pytype import errors
-from pytype import imports_map_loader
 from pytype import infer
 from pytype import metrics
 from pytype.pyc import pyc
@@ -230,16 +229,6 @@ def _run_pytype(options):
   # Note that you should not do os.path.abspath(f) below; it will probably fail
   # on Forge because of the symlink tree pointing into the cache:
 # MOE:end_strip
-
-  # Process the imports_info file if present.
-  if options.imports_info:
-    options.imports_map = imports_map_loader.build_imports_map(
-        options.imports_info, options.src_out)
-
-  # TODO(pludemann): this is a moderately awful hack: it ensures that any
-  #                  multually-dependent generated .pyi files have been
-  #                  created, so any further import errors are real import
-  #                  errors.
 
   # If we're processing more than one file, we need to do two passes (if we
   # don't know what the dependencies are). To speed things up, separate out the
