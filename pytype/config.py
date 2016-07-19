@@ -322,12 +322,13 @@ class Options(object):
 
   @uses(["import_drop_prefixes", "pythonpath"])
   def _store_imports_info(self, imports_info):
-    if self.import_drop_prefixes:
-      raise optparse.OptionConflictError(
-          "Not allowed with --import_drop_prefixes", "imports_info")
-    if self.pythonpath not in ([], [""]):
-      raise optparse.OptionConflictError(
-          "Not allowed with --pythonpath", "imports_info")
+    if imports_info:
+      if self.import_drop_prefixes:
+        raise optparse.OptionConflictError(
+            "Not allowed with --import_drop_prefixes", "imports_info")
+      if self.pythonpath not in ([], [""]):
+        raise optparse.OptionConflictError(
+            "Not allowed with --pythonpath", "imports_info")
     self.imports_info = imports_info
 
   def _store_output(self, output):
