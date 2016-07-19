@@ -1821,14 +1821,12 @@ class ParameterizedClass(AtomicAbstractValue, Class, FormalType):
   def _match_instance(self, instance, other_type, subst, node, view):
     """Used by match_instance_against_type. Called for each MRO entry."""
     subst = subst.copy()
-    for name, class_param in self.type_parameters.items():
-      subst[name] = class_param.to_variable(node, name)
-    # TODO(kramm): Is this correct?
-    subst = self.base_cls.match_against_type(other_type, subst, node, view)
+    subst = self.base_cls.match_instance_against_type(
+        instance, other_type, subst, node, view)
     if subst is None:
       return None
     # typically empty
-    for name, class_param in instance.type_parameters.items():
+    for name, class_param in other_type.type_parameters.items():
       instance_param = instance.type_parameters[name]
       subst = match_var_against_type(instance_param, class_param,
                                      subst, node, view)
@@ -2341,7 +2339,7 @@ class InterpreterFunction(Function):
     num_defaults = len(self.defaults)
     callargs = dict(zip(param_names[-num_defaults:], self.defaults))
     positional = dict(zip(param_names, args))
-    for key in positional.keys():
+    for key in positional:
       if key in kws:
         raise exceptions.ByteCodeTypeError(
             "function got multiple values for keyword argument %r" % key)

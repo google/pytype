@@ -363,33 +363,55 @@ class Context(object):
     self.parent = parent
 
 
+def _IsTemplate(parser, p, t):
+  """Check if the type is of the form Container[TypeVar, ...]"""
+  if isinstance(t, pytd.GenericType):
+    for param in t.parameters:
+      error = None
+      # TODO(rechen): allow concrete types in addition to typevars, e.g.,
+      # Container[int]
+      if not isinstance(param, pytd.NamedType):
+        error = "Illegal template parameter %s" % pytd.Print(t)
+      elif param.name not in parser.context.typevars:
+        error = "Name %r must be defined as a TypeVar" % param.name
+      if error:
+        if t.base_type == pytd.ExternalType("Generic", "typing"):
+          make_syntax_error(parser, error, p)
+        else:
+          return False
+    return True
+  else:
+    return False
+
+
 def SplitParents(parser, p, parents):
   """Strip the special Generic[...] class out of the base classes."""
   template = ()
-  other_parents = []
+  bases = []
   for parent in parents:
-    if (isinstance(parent, pytd.GenericType) and
-        parent.base_type == pytd.ExternalType("Generic", "typing")):
-      if not all(isinstance(param, pytd.NamedType)
-                 for param in parent.parameters):
-        make_syntax_error(
-            parser, "Illegal template parameter %s" % pytd.Print(parent), p)
-      if template:
+    if _IsTemplate(parser, p, parent):
+      t = tuple(pytd.TemplateItem(pytd.TypeParameter(param.name))
+                for param in parent.parameters)
+      if template and t != template:
         make_syntax_error(
             parser, "Duplicate Template base class", p)
-      template = tuple(pytd.TemplateItem(pytd.TypeParameter(param.name))
-                       for param in parent.parameters)
+      template = t
       all_names = [t.name for t in template]
       duplicates = [name
                     for name, count in collections.Counter(all_names).items()
                     if count >= 2]
       if duplicates:
         make_syntax_error(
-            parser, "Duplicate template parameters" + ", ".join(duplicates), p)
-    else:
-      if parent != pytd.NothingType():
-        other_parents.append(parent)
-  return template, tuple(other_parents)
+            parser, "Duplicate template parameters " + ", ".join(duplicates), p)
+    if parent != pytd.NothingType():
+      # TODO(rechen): Do we really want to explicitly store typing.Generic in
+      # the class hierarchy?
+      # Pros: simplifies printing; allows easy checking that a class can have
+      # type parameters.
+      # Cons: semantically dubious, as Generic is a marker for parameterized
+      # classes rather than an actual superclass; might mess with matching.
+      bases.append(parent)
+  return template, tuple(bases)
 
 
 class TypeDeclParser(object):
@@ -424,23 +446,32 @@ class TypeDeclParser(object):
         # errorlog=yacc.NullLogger(),  # If you really want to suppress messages
         **kwargs)
 
-  def Parse(self, src, name=None, filename="<string>", **kwargs):
+  def Parse(self, src, name=None, filename="<string>",
+            convert_typing_to_native=False, **kwargs):
     """Run tokenizer, parser, and postprocess the AST."""
     self.src = src  # Keep a copy of what's being parsed
     self.filename = filename if filename else "<string>"
     self.context = Context(typevars=set())
-    self.aliases = pep484.PEP484_TRANSLATIONS.copy()
     self.generated_classes = collections.defaultdict(list)
     # For the time being, also allow shortcuts, i.e., using "List" for
     # "typing.List", even without having imported typing:
-    self.aliases.update({name: pytd.ExternalType(name, "typing")
-                         for name in pep484.PEP484_NAMES})
+    if name != "typing":
+      self.aliases = {name: pytd.ExternalType(name, "typing")
+                      for name in pep484.PEP484_NAMES}
+    else:
+      self.aliases = {}
+    # If a translation overwrites a shortcut, the definition in the typing
+    # module is ignored. We disallow this confusing behavior.
+    intersection = set(self.aliases) & set(pep484.PEP484_TRANSLATIONS)
+    assert not intersection, "Multiple definitions: " + str(intersection)
+    self.aliases.update(pep484.PEP484_TRANSLATIONS)
     self.lexer.set_parse_info(self.src, self.filename)
     ast = self.parser.parse(src, **kwargs)
     # If there's no unique name, hash the sourcecode.
     name = name or hashlib.md5(src).hexdigest()
     ast = ast.Visit(InsertTypeParameters())
-    ast = ast.Visit(pep484.ConvertTypingToNative(self.python_version))
+    if convert_typing_to_native:
+      ast = ast.Visit(pep484.ConvertTypingToNative(self.python_version))
     return ast.Replace(name=name)
 
   precedence = (
@@ -699,10 +730,6 @@ class TypeDeclParser(object):
     """class_parents : parents"""
     template, parents = SplitParents(self, p, p[1])
     p[0] = template, parents
-    for t in template:
-      if t.name not in self.context.typevars:
-        make_syntax_error(
-            self, "Name %r must be defined as a TypeVar" % t.name, p)
     # The new scope has its own set of type variables (to allow class-level
     # scoping of TypeVar). But any type variable bound to the class is not a
     # (free) type parameter in the body of the class.
@@ -1480,8 +1507,3 @@ def make_syntax_error(parser_or_tokenizer, msg, p):
 def parse_string(string, name=None, filename=None,
                  python_version=DEFAULT_VERSION):
   return TypeDeclParser(python_version).Parse(string, name, filename)
-
-
-def parse_file(filename, name=None, python_version=DEFAULT_VERSION):
-  with open(filename) as f:
-    return parse_string(f.read(), name, filename, python_version)

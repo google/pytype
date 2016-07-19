@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import textwrap
+from pytype.pytd import pep484
 from pytype.pytd import pytd
 from pytype.pytd.parse import decorate
 from pytype.pytd.parse import parser
@@ -30,7 +31,8 @@ class TestASTGeneration(parser_test_base.ParserTest):
     """Compile a string, and convert the result back to a string. Compare."""
     if canonical_src is None:
       canonical_src = src
-    tree = self.Parse(src)
+    tree = self.Parse(src).Visit(
+        pep484.ConvertTypingToNative(self.parser.python_version))
     new_src = pytd.Print(tree)
     self.AssertSourceEquals(new_src, canonical_src)
     if check_the_sourcecode:

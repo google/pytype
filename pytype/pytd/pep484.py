@@ -7,13 +7,12 @@ from pytype.pytd import pytd
 from pytype.pytd.parse import visitors
 
 
-PEP484_NAMES = ["AbstractSet", "Any", "AnyStr", "BinaryIO",
-                "ByteString", "Callable", "Container", "Dict",
-                "Final", "FrozenSet", "Generator", "Generic",
-                "Hashable", "IO", "ItemsView", "Iterable", "Iterator",
-                "KeysView", "List", "Mapping", "MappingView", "Match",
-                "MutableMapping", "MutableSequence", "MutableSet", "NamedTuple",
-                "Optional", "Pattern", "Reversible", "Sequence",
+PEP484_NAMES = ["AbstractSet", "BinaryIO", "ByteString", "Callable",
+                "Container", "Dict", "Final", "FrozenSet", "Generator",
+                "Generic", "Hashable", "IO", "ItemsView", "Iterable",
+                "Iterator", "KeysView", "List", "Mapping", "MappingView",
+                "Match", "MutableMapping", "MutableSequence", "MutableSet",
+                "NamedTuple", "Optional", "Pattern", "Reversible", "Sequence",
                 "Set", "Sized", "SupportsAbs", "SupportsBytes",
                 "SupportsComplex", "SupportsFloat", "SupportsInt",
                 "SupportsRound", "TextIO", "Tuple", "TypeVar",
@@ -25,7 +24,8 @@ PEP484_TRANSLATIONS = {
     "None": pytd.NamedType("NoneType"),
     # PEP 484 definitions of special purpose types:
     "Any": pytd.AnythingType(),
-    "AnyStr": pytd.UnionType((tuple("str"), tuple("unicode"))),
+    "AnyStr": pytd.UnionType([pytd.NamedType("str"),
+                              pytd.NamedType("unicode")]),
     # TODO(kramm): "typing.NamedTuple"
 }
 
@@ -75,11 +75,16 @@ class Print484StubVisitor(visitors.Visitor):
     """Convert a class-level or module-level constant to a string."""
     return self._SafeName(node.name) + " = Undefined(" + node.type + ")"
 
+  def VisitExternalType(self, node):
+    assert node == pytd.ExternalType("Generic", "typing")
+    return "GenericType"
+
   def VisitClass(self, node):
     """Visit a class, producing a multi-line, properly indented string."""
     parents = list(node.parents)
     if node.template:
-      parents += ["GenericType[%s]" % ", ".join(node.template)]
+      parents = ["%s[%s]" % (parent, ", ".join(node.template))
+                 if parent == "GenericType" else parent for parent in parents]
     header = "class " + self._SafeName(node.name)
     if parents:
       header += "(" + ", ".join(parents) + ")"
@@ -183,13 +188,22 @@ class ConvertTypingToNative(visitors.Visitor):
     super(ConvertTypingToNative, self).__init__()
     self.python_version = python_version
 
-  def VisitExternalType(self, t):
-    if t.module == "typing":
-      if t.name in visitors.PrintVisitor.PEP484_CAPITALIZED:
-        return pytd.NamedType(t.name.lower())  # "typing.List" -> "list" etc.
-      elif t.name == "Any":
+  def _GetModuleAndName(self, t):
+    if isinstance(t, pytd.ClassType) and "." in t.name:
+      return t.name.split(".", 1)
+    elif isinstance(t, pytd.ExternalType):
+      return t.module, t.name
+    else:
+      return None, t.name
+
+  def _Convert(self, t):
+    module, name = self._GetModuleAndName(t)
+    if module == "typing":
+      if name in visitors.PrintVisitor.PEP484_CAPITALIZED:
+        return pytd.NamedType(name.lower())  # "typing.List" -> "list" etc.
+      elif name == "Any":
         return pytd.AnythingType()
-      elif t.name == "AnyStr":
+      elif name == "AnyStr":
         if self.python_version[0] >= 3:
           return pytd.UnionType((pytd.NamedType("bytes"),
                                  pytd.NamedType("str")))
@@ -202,14 +216,30 @@ class ConvertTypingToNative(visitors.Visitor):
     else:
       return t
 
+  def VisitClassType(self, t):
+    return self._Convert(t)
+
+  def VisitExternalType(self, t):
+    return self._Convert(t)
+
   def VisitGenericType(self, t):
-    if t.base_type == pytd.ExternalType("Optional", "typing"):
-      return pytd.UnionType(t.parameters + (pytd.NamedType("NoneType"),))
-    elif t.base_type == pytd.ExternalType("Union", "typing"):
-      return pytd.UnionType(t.parameters)
-    else:
-      return t
+    module, name = self._GetModuleAndName(t.base_type)
+    if module == "typing":
+      if name == "Optional":
+        return pytd.UnionType(t.parameters + (pytd.NamedType("NoneType"),))
+      elif name == "Union":
+        return pytd.UnionType(t.parameters)
+    return t
 
   def VisitHomogeneousContainerType(self, t):
     return self.VisitGenericType(t)
 
+
+class Translate(visitors.Visitor):
+  """Visitor to apply PEP484_TRANSLATIONS."""
+
+  def VisitExternalType(self, t):
+    if t.module == "typing" and t.name in PEP484_TRANSLATIONS:
+      return PEP484_TRANSLATIONS[t.name]
+    else:
+      return t

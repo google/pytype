@@ -324,7 +324,7 @@ class InferenceTest(unittest.TestCase):
     #                  assertHasOnlySignatures (or similar) to guard against the
     #                  inferencer adding additional but harmless calls.
     pytd_tree = parser.TypeDeclParser(version=version).Parse(
-        textwrap.dedent(pytd_src))
+        textwrap.dedent(pytd_src), convert_typing_to_native=True)
     pytd_tree = pytd_tree.Visit(
         visitors.LookupBuiltins(builtins.GetBuiltinsAndTyping()[0]))
     pytd_tree = pytd_tree.Visit(

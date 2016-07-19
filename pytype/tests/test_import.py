@@ -726,6 +726,23 @@ class ImportTest(test_inference.InferenceTest):
         x = ...  # type: complex
       """)
 
+  def testGenericSubclass(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        T = TypeVar("T")
+        class A(List[T]): pass
+        def f() -> A[int]
+      """)
+      ty = self.Infer("""
+        import a
+        def f():
+          return a.f()
+      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        def f() -> a.A[int]
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()

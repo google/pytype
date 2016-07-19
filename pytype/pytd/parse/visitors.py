@@ -233,13 +233,10 @@ class PrintVisitor(Visitor):
           for t in sorted(self.old_node.template))
       if typevars:
         self._RequireTypingImport("TypeVar")
-      parents = ("typing.Generic[%s]" %
-                 ", ".join(node.template),) + node.parents
       self._RequireTypingImport()
     else:
       typevars = ""
-      parents = node.parents
-    parents_str = "(" + ", ".join(parents) + ")" if parents else ""
+    parents_str = "(" + ", ".join(node.parents) + ")" if node.parents else ""
     header = "class " + self._SafeName(node.name) + parents_str + ":"
     if node.methods or node.constants:
       # We have multiple methods, and every method has multiple signatures
@@ -857,10 +854,13 @@ class ExtractSuperClassesByName(Visitor):
     return result
 
   def VisitClass(self, cls):
-    return (cls.name, [
-        parent.name for parent in cls.parents
-        if isinstance(parent, pytd.GENERIC_BASE_TYPE)
-    ])
+    parent_names = []
+    for parent in cls.parents:
+      if isinstance(parent, pytd.GenericType):
+        parent_names.append(parent.base_type.name)
+      elif isinstance(parent, pytd.GENERIC_BASE_TYPE):
+        parent_names.append(parent.name)
+    return (cls.name, parent_names)
 
 
 class ExtractSuperClasses(Visitor):
@@ -1409,3 +1409,27 @@ class ExpandSignatures(Visitor):
                       for combination in itertools.product(*params)]
 
     return new_signatures  # Hand list over to VisitFunction
+
+
+class VerifyContainers(Visitor):
+  """Visitor for verifying that all classes with templates inherit from Generic.
+
+  Raises:
+    TypeError: When a container does not inherit from typing.Generic.
+  """
+
+  def _IsContainer(self, t):
+    for p in t.parents:
+      if isinstance(p, pytd.GenericType):
+        if p.base_type.name == "typing.Generic":
+          return True
+        else:
+          p = p.base_type
+        if isinstance(p, pytd.ClassType) and p.cls and self._IsContainer(p.cls):
+          return True
+    return False
+
+  def VisitClass(self, node):
+    if node.template and not self._IsContainer(node):
+      raise TypeError("%s does not inherit from Generic" % node.name)
+    return node

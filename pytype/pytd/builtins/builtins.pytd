@@ -1,7 +1,5 @@
 # -*- mode:Python; coding:utf-8; python-indent:4; indent-tabs-mode:nil -*-
 
-from typing import Generic
-
 # Currently the type annotations are just enough to make the tests
 # work. These should be extended.
 # TODO(kramm): Add type parameters to many more types. Among them:
@@ -390,11 +388,11 @@ class bytearray_iterator(Iterator):  # TODO(kramm): Iterator[int]
     def __iter__(self) -> bytearray_iterator
     def next(self) -> int
 
-class `dictionary-keyiterator`(Generic[T], Iterator):
+class `dictionary-keyiterator`(Iterator[T]):
     def __iter__(self) -> `dictionary-keyiterator`[T]
     def next(self) -> T
 
-class `dictionary-valueiterator`(Generic[T], Iterator):
+class `dictionary-valueiterator`(Iterator[T]):
     def __iter__(self) -> `dictionary-valueiterator`[T]
     def next(self) -> T
 
@@ -404,7 +402,7 @@ class `dictionary-itemiterator`(Generic[K, V], object):
     def __iter__(self) -> `dictionary-itemiterator`[K, V]
     def next(self) -> tuple[K or V]  # tuple[K, V]  # TODO(pludemann): a pair
 
-class dict_keys(Generic[T], Iterator):
+class dict_keys(Iterator[T]):
     def __and__(self, y: set[T] or dict_keys[T]) -> set[T]
     def __contains__(self, y: T) -> bool
     def __eq__(self, y: set[T] or dict_keys[T]) -> bool
@@ -423,7 +421,7 @@ class dict_keys(Generic[T], Iterator):
     def __sub__(self, y) -> set[T]
     def __xor__(self, y) -> set[T]
 
-class dict_values(Generic[T], Iterator):
+class dict_values(Iterator[T]):
     def __iter__(self) -> `dictionary-valueiterator`[T]
     def __len__(self) -> int
 
@@ -444,7 +442,7 @@ class dict_items(Generic[K, V], object):
 K = TypeVar('K')
 V = TypeVar('V')
 # "K" and "V" are hardcoded in other places (e.g. atomic_abstract_value.Dict)
-class dict(Generic[K, V], MutableMapping):
+class dict(Dict[K, V]):
     X = TypeVar('X')
     K2 = TypeVar('K2')
     V2 = TypeVar('V2')
@@ -501,12 +499,12 @@ class dict(Generic[K, V], MutableMapping):
     def viewvalues(self) -> dict_values
 
 T = TypeVar('T')
-class listiterator(Generic[T], Iterator):
+class listiterator(Iterator[T]):
     def __iter__(self) -> listiterator[T]
     def next(self) -> T
 
 T = TypeVar('T')
-class enumerate(Generic[T], Iterator):
+class enumerate(Iterator[T]):
     T2 = TypeVar('T2')
     def __init__(self, iterable: list[T2], ...) -> NoneType:
         self := enumerate[T2]
@@ -520,13 +518,13 @@ class enumerate(Generic[T], Iterator):
     def next(self) -> tuple[int or long or T]  # tuple[int or long, T]
 
 T = TypeVar('T')
-class listreverseiterator(Generic[T], Iterator):
+class listreverseiterator(Iterator[T]):
     def __iter__(self) -> listreverseiterator[T]
     def next(self) -> T
 
 # "T" is hardcoded in typing.py
 T = TypeVar('T')
-class list(Generic[T], MutableSequence):
+class list(List[T]):
     N = TypeVar('N')
     A = TypeVar('A')
     def __init__(self) -> NoneType:
@@ -599,7 +597,7 @@ class list(Generic[T], MutableSequence):
 
 # "reversed" is a type, see PyReversed_Type in Objects/enumobject.c
 T = TypeVar('T')
-class reversed(Generic[T], Iterator):
+class reversed(Iterator[T]):
     N = TypeVar('N')
     def __init__(self, sequence: list[N]) -> NoneType:
       self := reversed[N]
@@ -612,7 +610,7 @@ class reversed(Generic[T], Iterator):
 
 # "T" is hardcoded in typing.py
 T = TypeVar('T')
-class tuple(Generic[T], Sequence):
+class tuple(Tuple[T]):
     A = TypeVar('A')
     def __init__(self, p0) -> NoneType
     def __init__(self) -> NoneType
@@ -634,12 +632,12 @@ class tuple(Generic[T], Sequence):
     def index(self, value, ...) -> int
 
 T = TypeVar('T')
-class tupleiterator(Generic[T], Iterator):
+class tupleiterator(Iterator[T]):
     def __iter__(self) -> tupleiterator[T]
     def next(self) -> T
 
 T = TypeVar('T')
-class set(Generic[T], MutableSet):
+class set(Set[T]):
     # TODO(pludemann): some of the combining methods may have wrong set[...] types
     #                  cf: __and__, __or__
     A = TypeVar('A')
@@ -688,9 +686,7 @@ class set(Generic[T], MutableSet):
     def difference(...) -> set[?]
 
 T = TypeVar('T')
-class frozenset(Generic[T], AbstractSet):
-    # TODO(pludemann): some of the combining methods may have wrong frozenset[...] types
-    #                  cf: __and__, __or__
+class frozenset(FrozenSet[T]):
     N = TypeVar('N')
     T2 = TypeVar('T2')
     def __init__(self) -> NoneType:
@@ -724,7 +720,7 @@ class frozenset(Generic[T], AbstractSet):
     def difference(...) -> frozenset[?]
 
 T = TypeVar('T')
-class setiterator(Generic[T], Iterator):
+class setiterator(Iterator[T]):
     def __iter__(self) -> setiterator[T]
     def next(self) -> T
 
@@ -1011,7 +1007,7 @@ class function(Callable):
     def __get__(self, obj, ...) -> instancemethod
 
 T = TypeVar('T')
-class generator(Generic[T], object):  # "T" is also hardcoded in abstract.py:Generator
+class generator(Generator[T]):  # "T" is also hardcoded in abstract.py:Generator
     def __iter__(self) -> generator[T]
     def send(self, arg) -> ?  # TODO(pludemann): or should be "-> T" ?  or needs 2 parameter types for generator?
     def close(self) -> NoneType
@@ -1047,7 +1043,7 @@ class type(object):
     def __len__(self, p0: str or bytearray) -> int  # TODO(pludemann): remove?
 
 T = TypeVar('T')
-class iterator(Generic[T], object):
+class iterator(Iterator[T]):
     def __iter__(self) -> iterator[T]
     def next(self) -> T
 

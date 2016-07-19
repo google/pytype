@@ -56,6 +56,8 @@ def GetBuiltinsAndTyping():
     t.Visit(visitors.VerifyNoExternalTypes())
     b.Visit(visitors.VerifyLookup())
     t.Visit(visitors.VerifyLookup())
+    b.Visit(visitors.VerifyContainers())
+    t.Visit(visitors.VerifyContainers())
     _cached_builtins_pytd = b, t
   return _cached_builtins_pytd
 

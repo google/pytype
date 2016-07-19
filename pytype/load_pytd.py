@@ -5,6 +5,7 @@ import os
 
 
 from pytype import utils
+from pytype.pytd import pep484
 from pytype.pytd import typeshed
 from pytype.pytd import utils as pytd_utils
 from pytype.pytd.parse import builtins
@@ -77,6 +78,9 @@ class Loader(object):
 
   def _postprocess_pyi(self, ast):
     """Apply all the PYI transformations we need."""
+    ast = self._load_and_resolve_ast_dependencies(ast)
+    ast.Visit(visitors.VerifyContainers())
+    ast = ast.Visit(pep484.ConvertTypingToNative(self.options.python_version))
     ast = ast.Visit(visitors.SimplifyOptionalParameters())
     ast = ast.Visit(visitors.LookupBuiltins(self.builtins))
     ast = ast.Visit(visitors.NamedTypeToClassType())
@@ -99,11 +103,10 @@ class Loader(object):
       ast = pytd_utils.ParsePyTD(filename=filename,
                                  module=module_name,
                                  python_version=self.options.python_version)
-    ast = self._postprocess_pyi(ast)
     module = Module(module_name, filename, ast)
     self._modules[module_name] = module
     try:
-      module.ast = self._load_and_resolve_ast_dependencies(module.ast)
+      module.ast = self._postprocess_pyi(module.ast)
     except:
       del self._modules[module_name]  # don't leave half-resolved modules around
       raise
@@ -121,6 +124,9 @@ class Loader(object):
             raise DependencyNotFoundError(name)
       module_map = {name: module.ast
                     for name, module in self._modules.items()}
+      # Do the pep484 translations before looking up external types so that we
+      # don't crash on, e.g., typing.Any
+      ast = ast.Visit(pep484.Translate())
       ast = ast.Visit(
           visitors.LookupExternalTypes(module_map, full_names=True))
       ast = ast.Visit(visitors.VerifyNoExternalTypes())
@@ -137,7 +143,6 @@ class Loader(object):
   def resolve_ast(self, ast):
     """Resolve the dependencies of an AST, without adding it to our modules."""
     ast = self._postprocess_pyi(ast)
-    ast = self._load_and_resolve_ast_dependencies(ast)
     self._lookup_all_classes()
     self._finish_ast(ast)
     return ast
