@@ -92,6 +92,10 @@ class Error(object):
   def filename(self):
     return self._filename
 
+  @property
+  def message(self):
+    return self._message
+
   def _position(self):
     """Return human-readable filename + line number."""
     method = ", in %s" % self._methodname if self._methodname else ""
