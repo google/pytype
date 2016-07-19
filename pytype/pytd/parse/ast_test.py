@@ -515,6 +515,38 @@ class TestASTGeneration(parser_test_base.ParserTest):
     """) + src)
     self.TestRoundTrip(src, expected)
 
+  def testGenericIgnoreExtraArgs(self):
+    src1 = textwrap.dedent("""
+        import typing
+        from typing import TypeVar
+
+        X = TypeVar('X', covariant=True)
+        class T1(typing.Generic[X], object):
+            pass
+    """)
+
+    src2 = textwrap.dedent("""
+        import typing
+        from typing import TypeVar
+
+        X = TypeVar('X')
+        class T1(typing.Generic[X], object):
+            pass
+    """)
+
+    self.TestRoundTrip(src1, src2)
+
+  def testGenericRequiresArg(self):
+    """Test TypeVar arg-checking."""
+    srcs = [
+        "X = TypeVar()",
+        "X = TypeVar(0)",
+        "X = TypeVar('')",
+        "X = TypeVar(,)"]
+
+    for src in srcs:
+      self.TestThrowsSyntaxError(src)
+
   def testTemplated(self):
     src = textwrap.dedent("""
         def foo(x: int) -> T1[float]: ...

@@ -828,8 +828,15 @@ class TypeDeclParser(object):
     p[0] = pytd.Constant(p[1], pytd.NamedType("int"))
 
   def p_typevardef(self, p):
-    """typevardef : NAME ASSIGN TYPEVAR LPAREN NAME RPAREN"""
-    _, name, _, _, _, name_param, _ = p
+    """typevardef : NAME ASSIGN TYPEVAR LPAREN params RPAREN"""
+    name, params = p[1], p[5]
+
+    if (not params.required or
+        not isinstance(params.required[0], pytd.Parameter)):
+      make_syntax_error(self, "TypeVar's first arg should be a string", p)
+
+    # Allow and ignore any other arguments (types, covariant=..., etc)
+    name_param = params.required[0].name
     if name != name_param:
       make_syntax_error(self, "TypeVar name needs to be %r (not %r)" % (
           name_param, name), p)
