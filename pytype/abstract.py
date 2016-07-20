@@ -1790,6 +1790,16 @@ class ParameterizedClass(AtomicAbstractValue, Class, FormalType):
               for type_param in self.base_cls.pytd_cls.template]
     return "%s[%s]" % (self.base_cls, ", ".join(str(p) for p in params))
 
+  def get_attribute_generic(self, node, name, val):
+    return self.base_cls.get_attribute_generic(node, name, val)
+
+  def get_attribute(self, node, name, valself=None, valcls=None,
+                    condition=None):
+    return self.base_cls.get_attribute(node, name, valself, valcls, condition)
+
+  def get_attribute_flat(self, node, name):
+    return self.base_cls.get_attribute_flat(node, name)
+
   def to_type(self, seen=None):
     return pytd.NamedType("__builtin__.type")
 
