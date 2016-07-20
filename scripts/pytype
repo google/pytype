@@ -245,6 +245,7 @@ def _run_pytype(options):
     log.info("Process %s => %s", input_filename, output_filename)
     ret = process_one_file(input_filename, output_filename, options)
     exit_status = ret or exit_status
+  return exit_status
 
 
 if __name__ == "__main__":
