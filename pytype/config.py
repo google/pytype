@@ -217,6 +217,10 @@ class Options(object):
         dest="verbosity", default=1,
         help=("Set logging verbosity: "
               "-1=quiet, 0=fatal, 1=error (default), 2=warn, 3=info, 4=debug"))
+    o.add_option(
+        "--output-errors-csv", type="string", action="store",
+        dest="output_errors_csv", default=None,
+        help=("Outputs the error contents to a csv file"))
     return o
 
   def _postprocess_options(self, option_list, arguments):
@@ -363,3 +367,10 @@ class Options(object):
         raise optparse.OptionValueError("Argument %r is not a pair of non-"
                                         "empty file names separated by %r" %
                                         (item, os.pathsep))
+
+  @uses(["report_errors"])
+  def _store_output_errors_csv(self, output_errors_csv):
+    if output_errors_csv and not self.report_errors:
+      raise optparse.OptionConflictError("Not allowed with --no-report-errors",
+                                         "output-errors-csv")
+    self.output_errors_csv = output_errors_csv

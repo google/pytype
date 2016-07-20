@@ -7,7 +7,9 @@ Usage:
   pytype [flags] file.py
 """
 
+import atexit
 import cProfile
+import csv
 import logging
 import os
 import sys
@@ -138,8 +140,11 @@ def generate_pyi(input_filename, output_filename, errorlog, options):
       fi.write(result)
 
 
-def process_one_file(input_filename, output_filename, options,
-                     print_errors=True):
+def process_one_file(input_filename,
+                     output_filename,
+                     options,
+                     print_errors=True,
+                     errors_csv_file=None):
   """Check or generate a .pyi, according to options.
 
   Args:
@@ -152,6 +157,8 @@ def process_one_file(input_filename, output_filename, options,
                   errors (e.g., syntax errors) but is intended to suppress
                   possibly spurious messages during the first pass if pytype is
                   doing two passes.
+    errors_csv_file: a csv writer object to write errors into. If None,
+                     errors are not written into a csv file.
 
   Returns:
     An error code (0 means no error).
@@ -174,7 +181,11 @@ def process_one_file(input_filename, output_filename, options,
                  options=options)
   if options.report_errors:
     if print_errors:
-      errorlog.print_to_stderr()
+      if errors_csv_file:
+        errorlog.print_to_csv_file(errors_csv_file)
+      else:
+        errorlog.print_to_stderr()
+
     return 1 if errorlog.has_error() else 0  # exit code
   else:
     return 0
@@ -240,11 +251,23 @@ def _run_pytype(options):
       _ = process_one_file(input_filename, output_filename, options,
                            print_errors=False)
 
+  if options.output_errors_csv:
+    f = open(options.output_errors_csv, "wb")
+    errors_csv_file = csv.writer(f, delimiter=",")
+    atexit.register(f.close)
+  else:
+    errors_csv_file = None
+
   exit_status = 0
   for input_filename, output_filename in options.src_out:
     log.info("Process %s => %s", input_filename, output_filename)
-    ret = process_one_file(input_filename, output_filename, options)
+    ret = process_one_file(input_filename,
+                           output_filename,
+                           options,
+                           print_errors=True,
+                           errors_csv_file=errors_csv_file)
     exit_status = ret or exit_status
+
   return exit_status
 
 
