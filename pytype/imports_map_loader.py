@@ -71,6 +71,8 @@ def _validate_map(imports_map, src_out):
   # first pass, we don't have a .pyi for them yet, even though they might be
   # mentioned in the imports_map. So fill them with temporary contents.
   for src, output in src_out:
+    if output is None:
+      continue
     if os.path.exists(output):
       log.error("output file %r (from processing %r) already exists; "
                 "will be overwritten",
