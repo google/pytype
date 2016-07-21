@@ -66,7 +66,6 @@ class TestTypeshedParsing(parser_test_base.ParserTest):
       2.7/calendar.pyi
       2.7/codecs.pyi
       2.7/email/utils.pyi
-      2.7/functools.pyi
       2.7/inspect.pyi
       2.7/logging/__init__.pyi
       2.7/os/__init__.pyi

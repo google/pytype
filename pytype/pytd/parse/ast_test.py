@@ -1317,6 +1317,23 @@ class TestASTGeneration(parser_test_base.ParserTest):
     expected = "from typing import List, Union\n" + src
     self.TestRoundTrip(src, expected)
 
+  def testTypeCommentIgnore(self):
+    self.TestRoundTrip(textwrap.dedent("""
+      x = ...  # type: ignore
+
+      # Unclear pattern common in typeshed
+      class C(object):
+        def writepy(self,  # type: ignore
+              basename: str = ...) -> None: ...
+    """), textwrap.dedent("""
+      from typing import Any
+
+      x = ...  # type: Any
+
+      class C(object):
+          def writepy(self, basename: str = ...) -> None: ...
+    """))
+
   def testTypeCommentSpaces(self):
     """Test types in comments."""
     self.TestRoundTrip(textwrap.dedent("""

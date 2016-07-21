@@ -252,6 +252,12 @@ class PyLexer(object):
     t.value = Number(t.value)
     return t
 
+  def t_IGNORETYPECOMMENT(self, t):
+    r"""\#\s*type:\s*ignore\s*"""
+    # These are valid PEP484 type comments but their current use in typeshed
+    # is complicated, so discard for now. Related to
+    # https://github.com/python/mypy/issues/1032
+
   def t_TYPECOMMENT(self, t):
     r"""\#\s*type:"""
     return t
@@ -844,7 +850,11 @@ class TypeDeclParser(object):
     """funcdefs :"""
     p[0] = []
 
-  def p_constantdef_comment(self, p):
+  def p_constantdef_ellipsis(self, p):
+    """constantdef : NAME ASSIGN ELLIPSIS"""
+    p[0] = pytd.Constant(p[1], pytd.AnythingType())
+
+  def p_constantdef_ellipsis_comment(self, p):
     """constantdef : NAME ASSIGN ELLIPSIS TYPECOMMENT type"""
     p[0] = pytd.Constant(p[1], p[5])
 
