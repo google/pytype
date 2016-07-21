@@ -77,6 +77,14 @@ class ErrorTest(unittest.TestCase):
         'File "foo.py", line 123, in foo: an error message [test-error]',
         str(e))
 
+  def test_from_csv_row(self):
+    row = ["a.py", "123", "index-error", "This is an error"]
+    error = errors.Error.from_csv_row(row)
+    self.assertEquals(error.filename, row[0])
+    self.assertEquals(error.lineno, int(row[1]))
+    self.assertEquals(error.name, row[2])
+    self.assertEquals(error.message, row[3])
+
 
 class ErrorLogBaseTest(unittest.TestCase):
 

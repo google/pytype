@@ -65,6 +65,17 @@ class Error(object):
     self._methodname = methodname
 
   @classmethod
+  def from_csv_row(cls, row):
+    """Translate a CSV row back into an Error object."""
+
+    filename, lineno, name, message = row
+
+    with _CURRENT_ERROR_NAME.bind(name):
+      return cls(SEVERITY_ERROR, message,
+                 lineno=int(lineno),
+                 filename=filename)
+
+  @classmethod
   def at_opcode(cls, opcode, severity, message, details=None):
     """Return an error using an opcode for position information."""
     if opcode is None:
