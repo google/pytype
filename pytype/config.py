@@ -212,7 +212,7 @@ class Options(object):
         dest="report_errors", default=True,
         help=("Don't report errors. Only generate a .pyi."))
     o.add_option(
-        # stored in basic_logging_level
+        # Not stored, just used to configure logging.
         "-v", "--verbosity", type="int", action="store",
         dest="verbosity", default=1,
         help=("Set logging verbosity: "
@@ -270,15 +270,17 @@ class Options(object):
         setattr(self, node.name, value)
 
   def _store_verbosity(self, verbosity):
+    """Configure logging."""
     if verbosity >= 0:
       if verbosity >= len(LOG_LEVELS):
         raise optparse.OptParseError("invalid --verbosity: %s" %
                                      self._options.verbosity)
-      self.basic_logging_level = LOG_LEVELS[verbosity]
+      basic_logging_level = LOG_LEVELS[verbosity]
     else:
       # "verbosity=-1" can be used to disable all logging, so configure
       # logging accordingly.
-      self.basic_logging_level = logging.CRITICAL + 1
+      basic_logging_level = logging.CRITICAL + 1
+    logging.basicConfig(level=basic_logging_level)
 
   def _store_pythonpath(self, pythonpath):
     # Note that the below gives [""] for "", and ["x", ""] for "x:"
@@ -324,7 +326,7 @@ class Options(object):
                                      python_exe)
     self.python_exe = python_exe
 
-  @uses(["import_drop_prefixes", "pythonpath", "arguments"])
+  @uses(["import_drop_prefixes", "pythonpath", "arguments", "verbosity"])
   def _store_imports_info(self, imports_info):
     """Postprocess --imports_info."""
     if imports_info:

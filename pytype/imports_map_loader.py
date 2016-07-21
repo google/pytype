@@ -92,7 +92,7 @@ def _validate_map(imports_map, src_out):
                   path, short_path)
         log.error("tree walk of files from '.' (%r):", os.path.abspath("."))
         for dirpath, _, files in os.walk(".", followlinks=False):
-          logging.error("... dir %r: %r", dirpath, files)
+          log.error("... dir %r: %r", dirpath, files)
         log.error("end tree walk of files from '.'")
         raise AssertionError("bad import map")
 

@@ -232,8 +232,6 @@ def _run_pytype(options):
     print >>sys.stderr, "Need at least one filename."
     sys.exit(1)
 
-  logging.basicConfig(level=options.basic_logging_level)
-
   # Do *not* apply os.path.abspath here because we could be in a symlink tree
   # and bad things happen if you go to relative directories.
 # MOE:begin_strip
