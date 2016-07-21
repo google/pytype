@@ -970,7 +970,7 @@ class TestASTGeneration(parser_test_base.ParserTest):
     expected = "from typing import Any, List\n" + src
     self.TestRoundTrip(src, expected)
 
-  def testExternalTypes(self):
+  def testDottedNames(self):
     """Test parsing of names with dots."""
     src = textwrap.dedent("""
       a = ... # type: Foo
@@ -979,8 +979,8 @@ class TestASTGeneration(parser_test_base.ParserTest):
       """)
     result = self.Parse(src)
     self.assertEquals(pytd.NamedType("Foo"), result.Lookup("a").type)
-    self.assertEquals(pytd.ExternalType("Bar", "x"), result.Lookup("b").type)
-    self.assertEquals(pytd.ExternalType("Baz", "x.y"), result.Lookup("c").type)
+    self.assertEquals(pytd.NamedType("x.Bar"), result.Lookup("b").type)
+    self.assertEquals(pytd.NamedType("x.y.Baz"), result.Lookup("c").type)
 
   def testMultiFunction(self):
     """Test parsing of multiple function defs including overloaded version."""

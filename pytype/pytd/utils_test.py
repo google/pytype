@@ -168,13 +168,13 @@ class TestUtils(parser_test_base.ParserTest):
     self.assertItemsEqual(a, pytd.ClassType("int"))
     self.assertIsNotNone(a.cls)  # verify that the lookup succeeded
 
-  def testNamedOrExternalType(self):
-    """Test NamedOrExternalType()."""
-    self.assertEquals(utils.NamedOrExternalType("name"), pytd.NamedType("name"))
-    self.assertEquals(utils.NamedOrExternalType("name", None),
+  def testNamedTypeWithModule(self):
+    """Test NamedTypeWithModule()."""
+    self.assertEquals(utils.NamedTypeWithModule("name"), pytd.NamedType("name"))
+    self.assertEquals(utils.NamedTypeWithModule("name", None),
                       pytd.NamedType("name"))
-    self.assertEquals(utils.NamedOrExternalType("name", "package"),
-                      pytd.ExternalType("name", "package"))
+    self.assertEquals(utils.NamedTypeWithModule("name", "package"),
+                      pytd.NamedType("package.name"))
 
   def testParsePredefinedPyTD(self):
     """Test ParsePredefinedPyTD()."""

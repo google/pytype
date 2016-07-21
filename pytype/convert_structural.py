@@ -242,7 +242,6 @@ def insert_solution(result, mapping, global_lookup):
 
 def convert_pytd(ast, builtins_pytd):
   """Convert pytd with unknowns (structural types) to one with nominal types."""
-  builtins_pytd = builtins_pytd.Visit(visitors.VerifyNoExternalTypes())
   builtins_pytd = builtins_pytd.Visit(visitors.ClassTypeToNamedType())
   mapping, result = solve(ast, builtins_pytd)
   log_info_mapping(mapping)

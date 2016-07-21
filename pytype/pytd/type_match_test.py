@@ -22,6 +22,7 @@ import unittest
 from pytype.pytd import booleq
 from pytype.pytd import pytd
 from pytype.pytd import type_match
+from pytype.pytd import utils as pytd_utils
 from pytype.pytd.parse import parser
 from pytype.pytd.parse import visitors
 
@@ -30,10 +31,18 @@ class TestTypeMatch(unittest.TestCase):
   """Test algorithms and datastructures of booleq.py."""
 
   def setUp(self):
-    self.mini_builtins = parser.parse_string(textwrap.dedent("""
-      class object:  # implicitly added by Generic
-        pass
-    """))
+    builtins = parser.parse_string("class object: ...").Visit(
+        visitors.AddNamePrefix("__builtin__."))
+    typing = parser.parse_string("class Generic: ...").Visit(
+        visitors.AddNamePrefix("typing."))
+    self.mini_builtins = pytd_utils.Concat(builtins, typing)
+
+  def LinkAgainstSimpleBuiltins(self, ast):
+    ast = ast.Visit(visitors.NamedTypeToClassType())
+    ast.Visit(visitors.FillInModuleClasses({"": ast}))
+    ast = ast.Visit(visitors.LookupFullNames([self.mini_builtins]))
+    ast.Visit(visitors.VerifyLookup())
+    return ast
 
   def assertMatch(self, m, t1, t2):
     eq = m.match_type_against_type(t1, t2, {})
@@ -125,7 +134,7 @@ class TestTypeMatch(unittest.TestCase):
       left = ...  # type: A[?]
       right = ...  # type: A[?]
     """))
-    ast = visitors.LookupClasses(ast, self.mini_builtins)
+    ast = self.LinkAgainstSimpleBuiltins(ast)
     m = type_match.TypeMatch()
     self.assertEquals(m.match_type_against_type(
         ast.Lookup("left").type,
@@ -173,7 +182,7 @@ class TestTypeMatch(unittest.TestCase):
       def left(x: `~unknown0`) -> ?
       def right(x: A[B]) -> ?
     """))
-    ast = visitors.LookupClasses(ast, self.mini_builtins)
+    ast = self.LinkAgainstSimpleBuiltins(ast)
     m = type_match.TypeMatch()
     left, right = ast.Lookup("left"), ast.Lookup("right")
     match = m.match(right, left, {}) if reverse else m.match(left, right, {})
@@ -203,7 +212,7 @@ class TestTypeMatch(unittest.TestCase):
       def left() -> `~unknown0`
       def right() -> list[A]
     """))
-    ast = visitors.LookupClasses(ast, self.mini_builtins)
+    ast = self.LinkAgainstSimpleBuiltins(ast)
     m = type_match.TypeMatch(type_match.get_all_subclasses([ast]))
     left, right = ast.Lookup("left"), ast.Lookup("right")
     self.assertEquals(m.match(left, right, {}),
@@ -220,7 +229,7 @@ class TestTypeMatch(unittest.TestCase):
       class Match():
         def f(self, x:Base) -> Base
     """))
-    ast = visitors.LookupClasses(ast, self.mini_builtins)
+    ast = self.LinkAgainstSimpleBuiltins(ast)
     m = type_match.TypeMatch(type_match.get_all_subclasses([ast]))
     eq = m.match_Class_against_Class(ast.Lookup("Match"), ast.Lookup("Foo"), {})
     self.assertEquals(eq, booleq.TRUE)

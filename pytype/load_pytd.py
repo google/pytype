@@ -22,7 +22,7 @@ class Module(object):
     filename: The filename of the pytd that describes the module. Needs to be
       unique.
     ast: The parsed PyTD. Internal references will be resolved, but
-      ExternalType nodes might still be dangling.
+      NamedType nodes referencing other modules might still be unresolved.
   """
 
   def __init__(self, module_name, filename, ast):
@@ -113,7 +113,7 @@ class Loader(object):
     return module.ast
 
   def _load_and_resolve_ast_dependencies(self, ast):
-    """Fill in all ExternalType.cls pointers."""
+    """Fill in all ClassType.cls pointers."""
     deps = visitors.CollectDependencies()
     ast.Visit(deps)
     if deps.modules:
@@ -129,7 +129,6 @@ class Loader(object):
       ast = ast.Visit(pep484.Translate())
       ast = ast.Visit(
           visitors.LookupExternalTypes(module_map, full_names=True))
-      ast = ast.Visit(visitors.VerifyNoExternalTypes())
     return ast
 
   def _finish_ast(self, ast):
@@ -138,7 +137,6 @@ class Loader(object):
     module_map[""] = ast  # The module itself (local lookup)
     ast.Visit(visitors.FillInModuleClasses(module_map))
     ast.Visit(visitors.VerifyLookup())
-    ast.Visit(visitors.VerifyNoExternalTypes())
 
   def resolve_ast(self, ast):
     """Resolve the dependencies of an AST, without adding it to our modules."""

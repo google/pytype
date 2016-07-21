@@ -200,8 +200,8 @@ class TypeMatch(utils.TypeMatcher):
 
   def match_Generic_against_Generic(self, t1, t2, subst):  # pylint: disable=invalid-name
     """Match a pytd.GenericType against another pytd.GenericType."""
-    assert isinstance(t1.base_type, pytd.ClassType)
-    assert isinstance(t2.base_type, pytd.ClassType)
+    assert isinstance(t1.base_type, pytd.ClassType), type(t1.base_type)
+    assert isinstance(t2.base_type, pytd.ClassType), type(t2.base_type)
     # We don't do inheritance for base types, since right now, inheriting from
     # instantiations of templated types is not supported by pytd.
     if (is_complete(t1.base_type.cls) and is_complete(t2.base_type.cls) and
@@ -280,11 +280,7 @@ class TypeMatch(utils.TypeMatcher):
     t1 = self.maybe_lookup_type_param(t1, subst)
     t2 = self.maybe_lookup_type_param(t2, subst)
     # TODO(kramm): Use utils:TypeMatcher to simplify this?
-    if isinstance(t1, pytd.ExternalType) or isinstance(t2, pytd.ExternalType):
-      # These are unresolved. Only happens when type_matcher is called from
-      # outside the type inferencer (e.g. by optimize.py)
-      return booleq.TRUE
-    elif isinstance(t2, pytd.AnythingType):
+    if isinstance(t2, pytd.AnythingType):
       # We can match anything against AnythingType. (It's like top)
       return booleq.TRUE
     elif isinstance(t1, pytd.AnythingType):

@@ -75,10 +75,6 @@ class Print484StubVisitor(visitors.Visitor):
     """Convert a class-level or module-level constant to a string."""
     return self._SafeName(node.name) + " = Undefined(" + node.type + ")"
 
-  def VisitExternalType(self, node):
-    assert node == pytd.ExternalType("Generic", "typing")
-    return "GenericType"
-
   def VisitClass(self, node):
     """Visit a class, producing a multi-line, properly indented string."""
     parents = list(node.parents)
@@ -189,10 +185,8 @@ class ConvertTypingToNative(visitors.Visitor):
     self.python_version = python_version
 
   def _GetModuleAndName(self, t):
-    if isinstance(t, pytd.ClassType) and "." in t.name:
-      return t.name.split(".", 1)
-    elif isinstance(t, pytd.ExternalType):
-      return t.module, t.name
+    if isinstance(t, (pytd.ClassType, pytd.NamedType)) and "." in t.name:
+      return t.name.rsplit(".", 1)
     else:
       return None, t.name
 
@@ -219,7 +213,7 @@ class ConvertTypingToNative(visitors.Visitor):
   def VisitClassType(self, t):
     return self._Convert(t)
 
-  def VisitExternalType(self, t):
+  def VisitNamedType(self, t):
     return self._Convert(t)
 
   def VisitGenericType(self, t):
@@ -238,8 +232,9 @@ class ConvertTypingToNative(visitors.Visitor):
 class Translate(visitors.Visitor):
   """Visitor to apply PEP484_TRANSLATIONS."""
 
-  def VisitExternalType(self, t):
-    if t.module == "typing" and t.name in PEP484_TRANSLATIONS:
-      return PEP484_TRANSLATIONS[t.name]
+  def VisitNamedType(self, t):
+    module_name, _, name = t.name.rpartition(".")
+    if module_name == "typing" and name in PEP484_TRANSLATIONS:
+      return PEP484_TRANSLATIONS[name]
     else:
       return t

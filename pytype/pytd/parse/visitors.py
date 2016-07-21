@@ -198,11 +198,13 @@ class PrintVisitor(Visitor):
 
   def VisitAlias(self, node):
     """Convert an import or alias to a string."""
-    if isinstance(self.old_node.type, pytd.ExternalType):
-      name = self.old_node.type.name
+    if isinstance(self.old_node.type, pytd.NamedType):
+      full_name = self.old_node.type.name
+      suffix = ""
+      module, _, name = full_name.rpartition(".")
       if name != self.old_node.name:
-        name += " as " + self.old_node.name
-      return "from " + self.old_node.type.module + " import " + name
+        suffix += " as " + self.old_node.name
+      return "from " + module + " import " + name + suffix
     else:
       return self._SafeName(node.name) + " = " + node.type
 
@@ -359,15 +361,6 @@ class PrintVisitor(Visitor):
     # 'StrictType' is defined, and internally used, by booleq.py. We allow it
     # here so that booleq.py can use pytd.Print().
     return self.VisitNamedType(node)
-
-  def VisitExternalType(self, node):
-    """Convert an external type to a string."""
-    if self._IsBuiltin(node.module, node.name):
-      return self._SafeName(node.name)
-    else:
-      module = self._SafeName(node.module)
-      self._RequireImport(module)
-      return module + "." + self._SafeName(node.name)
 
   def VisitNativeType(self, node):
     """Convert a native type to a string."""
@@ -529,7 +522,7 @@ def _ToType(item):
     return pytd.FunctionType(item.name, item)
   elif isinstance(item, pytd.Constant):
     # TODO(kramm): This is wrong. It would be better if we resolve pytd.Alias
-    # in the same way we resolve pytd.ExternalType.
+    # in the same way we resolve pytd.NamedType.
     return item
   elif isinstance(item, pytd.Alias):
     return item.type
@@ -563,9 +556,7 @@ class DefaceUnresolved(Visitor):
       except KeyError:
         pass
     if "." in node.name:
-      logging.warning("Marking %s as external", name)
-      module_name, base_name = name.rsplit(".", 1)
-      return pytd.ExternalType(base_name, module_name)
+      return node
     else:
       if (self._do_not_log_prefix is None or
           not name.startswith(self._do_not_log_prefix)):
@@ -617,9 +608,6 @@ class ClassTypeToNamedType(Visitor):
 
   def VisitClassType(self, node):
     return pytd.NamedType(node.name)
-
-  def VisitExternalType(self, node):
-    return pytd.NamedType(node.module + "." + node.name)
 
 
 class DropBuiltinPrefix(Visitor):
@@ -692,23 +680,16 @@ def LookupClasses(module, global_module=None, overwrite=False):
 class VerifyLookup(Visitor):
   """Utility class for testing visitors.LookupClasses."""
 
-  def VisitNamedType(self, node):
+  def EnterNamedType(self, node):
     raise ValueError("Unreplaced NamedType: %r" % node.name)
 
-  def VisitClassType(self, node):
+  def EnterClassType(self, node):
     # TODO(pludemann): Can we give more context for this error? It's not very
     #                  useful when it says that "T" is unresolved (e.g., from
     #                  "def foo(x: list[T]))" ... it would be nice to know what
     #                  it's inside.
     if node.cls is None:
       raise ValueError("Unresolved class: %r" % node.name)
-
-
-class VerifyNoExternalTypes(Visitor):
-  """Utility class for testing visitors.LookupExternalTypes."""
-
-  def VisitExternalType(self, node):
-    raise ValueError("Unresolved ExternalType: %s" % str(node))
 
 
 class LookupBuiltins(Visitor):
@@ -750,7 +731,7 @@ class LookupBuiltins(Visitor):
 
 
 class LookupExternalTypes(Visitor):
-  """Look up ExternalType pointers using a symbol table."""
+  """Look up NamedType pointers using a symbol table."""
 
   def __init__(self, module_map, full_names=False):
     """Create this visitor.
@@ -764,11 +745,11 @@ class LookupExternalTypes(Visitor):
     self._module_map = module_map
     self.full_names = full_names
 
-  def _ResolveUsingGetattr(self, t, module):
+  def _ResolveUsingGetattr(self, module_name, module):
     """Try to resolve an identifier using the top level __getattr__ function."""
     try:
       if self.full_names:
-        g = module.Lookup(t.module + ".__getattr__")
+        g = module.Lookup(module_name + ".__getattr__")
       else:
         g = module.Lookup("__getattr__")
     except KeyError:
@@ -777,27 +758,32 @@ class LookupExternalTypes(Visitor):
     assert len(g.signatures) == 1
     return g.signatures[0].return_type
 
-  def VisitExternalType(self, t):
-    """Try to fill in the cls pointer of an ExternalType.
+  def VisitNamedType(self, t):
+    """Try to look up a NamedType.
 
     Args:
-      t: An instance of pytd.ExternalType
+      t: An instance of pytd.NamedType
     Returns:
       The same node t.
     Raises:
       KeyError: If we can't find a module, or an identifier in a module, or
         if an identifier in a module isn't a class.
     """
-    module = self._module_map[t.module]
+    module_name, dot, name = t.name.rpartition(".")
+    if not dot:
+      # Nothing to do here. This visitor will only look up nodes in other
+      # modules.
+      return t
+    module = self._module_map[module_name]
     try:
       if self.full_names:
-        item = module.Lookup(t.module + "." + t.name)
+        item = module.Lookup(module_name + "." + name)
       else:
-        item = module.Lookup(t.name)
+        item = module.Lookup(name)
     except KeyError:
-      item = self._ResolveUsingGetattr(t, module)
+      item = self._ResolveUsingGetattr(module_name, module)
       if item is None:
-        raise KeyError("No %s in module %s" % (t.name, t.module))
+        raise KeyError("No %s in module %s" % (name, module_name))
     return _ToType(item)
 
 
@@ -1122,10 +1108,6 @@ class VerifyVisitor(Visitor):
   def EnterNamedType(self, node):
     assert isinstance(node.name, str), node
 
-  def EnterExternalType(self, node):
-    assert isinstance(node.name, str), node
-    assert isinstance(node.module, str), node
-
   def EnterNativeType(self, node):
     assert isinstance(node.python_type, type), node
 
@@ -1317,8 +1299,10 @@ class CollectDependencies(Visitor):
     super(CollectDependencies, self).__init__()
     self.modules = set()
 
-  def EnterExternalType(self, t):
-    self.modules.add(t.module)
+  def EnterNamedType(self, t):
+    module_name, dot, unused_name = t.name.rpartition(".")
+    if dot:
+      self.modules.add(module_name)
 
 
 class SimplifyOptionalParameters(Visitor):

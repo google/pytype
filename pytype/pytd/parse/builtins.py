@@ -52,8 +52,6 @@ def GetBuiltinsAndTyping():
                                           "__builtin__": b}))
     t.Visit(visitors.FillInModuleClasses({"": t, "typing": t,
                                           "__builtin__": b}))
-    b.Visit(visitors.VerifyNoExternalTypes())
-    t.Visit(visitors.VerifyNoExternalTypes())
     b.Visit(visitors.VerifyLookup())
     t.Visit(visitors.VerifyLookup())
     b.Visit(visitors.VerifyContainers())

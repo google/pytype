@@ -250,7 +250,7 @@ class TemplateItem(node.Node('type_param')):
 
 # Types can be:
 # 1.) NamedType:
-#     Specifies a type by name (i.e., a string)
+#     Specifies a type or import by name.
 # 2.) NativeType
 #     Points to a Python type. (int, float etc.)
 # 3.) ClassType
@@ -265,8 +265,6 @@ class TemplateItem(node.Node('type_param')):
 #     A placeholder for a type.
 # 8.) Scalar
 #     A singleton type. Not currently used, but supported by the parser.
-# 9.) ExternalType:
-#     A type in another module. We may only know the name.
 # For 1-3, the file visitors.py contains tools for converting between the
 # corresponding AST representations.
 
@@ -319,21 +317,6 @@ class ClassType(node.Node('name')):
 class FunctionType(node.Node('name', 'function')):
   """The type of a function. E.g. the type of 'x' in 'x = lambda y: y'."""
   __slots__ = ()
-
-
-class ExternalType(node.Node('name')):
-  """A type specified by name and the module it is in."""
-
-  def __new__(pycls, name, module):  # pylint: disable=bad-classmethod-argument
-    self = super(ExternalType, pycls).__new__(pycls, name)
-    self.module = module
-    return self
-
-  def __str__(self):
-    return self.module + '.' + self.name
-
-  def __repr__(self):
-    return 'ExternalType(%r, %r)' % (self.name, self.module)
 
 
 class AnythingType(node.Node()):
@@ -445,10 +428,10 @@ class HomogeneousContainerType(GenericType):
 # So we can do "isinstance(node, pytd.TYPE)":
 TYPE = (NamedType, NativeType, ClassType, AnythingType, UnionType,
         NothingType, GenericType, TypeParameter, Scalar,
-        IntersectionType, ExternalType)
+        IntersectionType)
 
 # Types that can be a base type of GenericType:
-GENERIC_BASE_TYPE = (NamedType, ClassType, ExternalType)
+GENERIC_BASE_TYPE = (NamedType, ClassType)
 
 
 def Print(n, print_format=None):

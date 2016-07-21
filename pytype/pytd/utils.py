@@ -359,19 +359,19 @@ class TypeBuilder(object):
 
 
 def NamedOrClassType(name, cls):
-  """Create Classtype / NamedType / ExternalType."""
+  """Create Classtype / NamedType."""
   if cls is None:
     return pytd.NamedType(name)
   else:
     return pytd.ClassType(name, cls)
 
 
-def NamedOrExternalType(name, module=None):
-  """Create NamedType / ExternalType, depending on whether we have a module."""
+def NamedTypeWithModule(name, module=None):
+  """Create NamedType, dotted if we have a module."""
   if module is None:
     return pytd.NamedType(name)
   else:
-    return pytd.ExternalType(name, module)
+    return pytd.NamedType(module + "." + name)
 
 
 class OrderedSet(collections.OrderedDict):

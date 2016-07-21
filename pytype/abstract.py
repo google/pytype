@@ -1809,7 +1809,7 @@ class ParameterizedClass(AtomicAbstractValue, Class, FormalType):
       type_arguments.append(
           self.type_parameters[type_param.name].get_instance_type(seen=seen))
     return pytd_utils.MakeClassOrContainerType(
-        pytd_utils.NamedOrExternalType(self.base_cls.pytd_cls.name,
+        pytd_utils.NamedTypeWithModule(self.base_cls.pytd_cls.name,
                                        self.base_cls.module),
         type_arguments)
 
@@ -1946,7 +1946,7 @@ class PyTDClass(SimpleAbstractValue, Class):
       else:
         type_arguments.append(pytd.AnythingType())
     return pytd_utils.MakeClassOrContainerType(
-        pytd_utils.NamedOrExternalType(self.name, self.module),
+        pytd_utils.NamedTypeWithModule(self.name, self.module),
         type_arguments)
 
   def __repr__(self):
@@ -2166,7 +2166,7 @@ class InterpreterClass(SimpleAbstractValue, Class):
 
   def get_instance_type(self, unused_instance=None, seen=None):
     if self.official_name:
-      return pytd_utils.NamedOrExternalType(self.official_name, self.module)
+      return pytd_utils.NamedTypeWithModule(self.official_name, self.module)
     else:
       return pytd.AnythingType()
 

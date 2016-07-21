@@ -381,7 +381,7 @@ def _IsTemplate(parser, p, t):
       elif param.name not in parser.context.typevars:
         error = "Name %r must be defined as a TypeVar" % param.name
       if error:
-        if t.base_type == pytd.ExternalType("Generic", "typing"):
+        if t.base_type == pytd.NamedType("typing.Generic"):
           make_syntax_error(parser, error, p)
         else:
           return False
@@ -462,7 +462,7 @@ class TypeDeclParser(object):
     # For the time being, also allow shortcuts, i.e., using "List" for
     # "typing.List", even without having imported typing:
     if name != "typing":
-      self.aliases = {name: pytd.ExternalType(name, "typing")
+      self.aliases = {name: pytd.NamedType("typing." + name)
                       for name in pep484.PEP484_NAMES}
     else:
       self.aliases = {}
@@ -578,7 +578,7 @@ class TypeDeclParser(object):
     aliases = []
     for name, new_name in import_from_list:
       if name != "*":
-        t = pytd.ExternalType(name, dotted_name)
+        t = pytd.NamedType(dotted_name + "." + name)
         self.aliases[new_name] = t
         if dotted_name != "typing":
           aliases.append(pytd.Alias(new_name, t))
@@ -1270,7 +1270,7 @@ class TypeDeclParser(object):
   def p_type_homogeneous(self, p):
     """type : named_or_external_type LBRACKET parameters RBRACKET"""
     _, base_type, _, parameters, _ = p
-    if p[1] == pytd.ExternalType("Callable", "typing"):
+    if p[1] == pytd.NamedType("typing.Callable"):
       # TODO(kramm): Support Callable[[params], ret].
       p[0] = p[1]
     elif len(parameters) == 2 and parameters[-1] is Ellipsis:
@@ -1282,7 +1282,7 @@ class TypeDeclParser(object):
     else:
       parameters = tuple(pytd.AnythingType() if p is Ellipsis else p
                          for p in parameters)
-      if p[1] == pytd.ExternalType("Tuple", "typing"):
+      if p[1] == pytd.NamedType("typing.Tuple"):
         # Since we only support homogeneous tuples, convert heterogeneous
         # tuples to tuples of a union.
         if len(parameters) > 1:
@@ -1319,7 +1319,7 @@ class TypeDeclParser(object):
   def p_named_or_external_type_multi(self, p):
     """named_or_external_type : module_name DOT NAME"""
     _, module_name, _, name = p
-    p[0] = pytd.ExternalType(name, module_name)
+    p[0] = pytd.NamedType(module_name + "." + name)
 
   def p_type_unknown(self, p):
     """type : QUESTIONMARK"""

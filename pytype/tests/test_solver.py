@@ -192,7 +192,7 @@ class SolverTests(test_inference.InferenceTest):
       def f(x: str or unicode or bytearray) -> int
     """)
 
-  def testExternalType(self):
+  def testImport(self):
     ty = self.Infer("""
       import itertools
       def every(f, array):
