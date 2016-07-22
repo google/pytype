@@ -1086,6 +1086,14 @@ class WrongKeywordArgs(InvalidParameters):
     self.extra_keywords = tuple(extra_keywords)
 
 
+class DuplicateKeyword(InvalidParameters):
+  """E.g. an arg "x" is passed to a function that doesn't have an "x" param."""
+
+  def __init__(self, sig, duplicate):
+    super(DuplicateKeyword, self).__init__(sig)
+    self.duplicate = duplicate
+
+
 class MissingParameter(InvalidParameters):
   """E.g. a function requires parameter 'x' but 'x' isn't passed."""
 
@@ -2345,7 +2353,7 @@ class InterpreterFunction(Function):
       A dictionary, mapping strings (parameter names) to typegraph.Variable.
 
     Raises:
-      ByteCodeTypeError
+      FailedFunctionCall: If the caller supplied incorrect arguments.
     """
     # Originate a new variable for each argument and call.
     args = [u.AssignToNewVariable(u.name, node)
@@ -2367,14 +2375,12 @@ class InterpreterFunction(Function):
     positional = dict(zip(param_names, args))
     for key in positional:
       if key in kws:
-        raise exceptions.ByteCodeTypeError(
-            "function got multiple values for keyword argument %r" % key)
+        raise DuplicateKeyword(self.signature, key)
     callargs.update(positional)
     callargs.update(kws)
     for key in param_names:
       if key not in callargs:
-        raise exceptions.ByteCodeTypeError(
-            "No value for parameter %r" % key)
+        raise MissingParameter(self.signature, key)
     arg_pos = self.code.co_argcount
     if self.has_varargs():
       vararg_name = self.code.co_varnames[arg_pos]
@@ -2388,9 +2394,7 @@ class InterpreterFunction(Function):
         callargs[vararg_name] = self.vm.convert.build_tuple(node, extraneous)
       arg_pos += 1
     elif len(args) > self.code.co_argcount:
-      raise exceptions.ByteCodeTypeError(
-          "Function takes %d positional arguments (%d given)" % (
-              arg_pos, len(args)))
+      raise WrongArgCount(self.signature, len(args))
     if self.has_kwargs():
       kwvararg_name = self.code.co_varnames[arg_pos]
       # Build a **kwargs dictionary out of the extraneous parameters

@@ -353,5 +353,6 @@ class ClassesTest(test_inference.InferenceTest):
       def f() -> str: ...
     """)
 
+
 if __name__ == "__main__":
   test_inference.main()

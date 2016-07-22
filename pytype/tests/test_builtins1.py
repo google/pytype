@@ -318,6 +318,15 @@ class BuiltinTests(test_inference.InferenceTest):
         return x
       def g(args):
         f(*tuple(args))
+    """, deep=True, solve_unknowns=False, report_errors=False)
+
+  @unittest.skip("Needs better *tuple handling in _map_args")
+  def testTuple2(self):
+    self.Infer("""
+      def f(x):
+        return x
+      def g(args):
+        f(*tuple(args))
     """, deep=True, solve_unknowns=False, extract_locals=False)
 
   def testOpen(self):

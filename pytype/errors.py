@@ -302,6 +302,11 @@ class ErrorLog(ErrorLogBase):
     message = "%r object is not callable" % (function.name)
     self.error(opcode, message)
 
+  @_error_name("duplicate-keyword-argument")
+  def duplicate_keyword(self, opcode, sig, duplicate):
+    self.error(opcode, "function %s got multiple values "
+                       "for keyword argument %r" % (sig.name, duplicate))
+
   def invalid_function_call(self, opcode, error):
     if isinstance(error, abstract.WrongArgCount):
       self.wrong_arg_count(opcode, error.sig, error.call_arg_count)
@@ -313,6 +318,8 @@ class ErrorLog(ErrorLogBase):
       self.missing_parameter(opcode, error.sig, error.missing_parameter)
     elif isinstance(error, abstract.NotCallable):
       self.not_callable(opcode, error.obj)
+    elif isinstance(error, abstract.DuplicateKeyword):
+      self.duplicate_keyword(opcode, error.sig, error.duplicate)
     else:
       raise AssertionError(error)
 

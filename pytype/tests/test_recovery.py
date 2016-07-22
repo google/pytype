@@ -94,6 +94,29 @@ class RecoveryTests(test_inference.InferenceTest):
         pass
     """)
 
+  def testNoSelf(self):
+    ty = self.Infer("""
+      class Foo(object):
+        def foo():
+          pass
+    """, deep=True, solve_unknowns=True, report_errors=False)
+    self.assertTypesMatchPytd(ty, """
+      class Foo(object):
+        def foo(): ...
+    """)
+
+  def testWrongCall(self):
+    ty = self.Infer("""
+      def f():
+        pass
+      f("foo")
+      x = 3
+    """, deep=True, solve_unknowns=True, report_errors=False)
+    self.assertTypesMatchPytd(ty, """
+      def f() -> None: ...
+      x = ...  # type: int
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

@@ -260,5 +260,30 @@ class ErrorTest(test_inference.InferenceTest):
       """, deep=True, pythonpath=[d.path])
       self.assertErrorLogContains(errors, r"List\[int\]")
 
+  def testTooManyArgs(self):
+    _, errors = self.InferAndCheck("""\
+      def f():
+        pass
+      f(3)
+    """, deep=True)
+    self.assertErrorLogContains(errors, r"Line 3.*wrong-arg-count")
+
+  def testTooFewArgs(self):
+    _, errors = self.InferAndCheck("""\
+      def f(x):
+        pass
+      f()
+    """, deep=True)
+    self.assertErrorLogContains(errors, r"Line 3.*missing-parameter")
+
+  def testDuplicateKeyword(self):
+    _, errors = self.InferAndCheck("""\
+      def f(x, y):
+        pass
+      f(3, x=3)
+    """, deep=True)
+    self.assertErrorLogContains(errors, r"Line 3.*duplicate-keyword")
+
+
 if __name__ == "__main__":
   test_inference.main()
