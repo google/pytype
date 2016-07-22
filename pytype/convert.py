@@ -7,7 +7,7 @@ import types
 from pytype import abstract
 from pytype import blocks
 from pytype.pyc import loadmarshal
-from pytype.pytd import cfg as typegraph
+from pytype.pytd import cfg
 from pytype.pytd import pytd
 from pytype.pytd import utils as pytd_utils
 
@@ -33,7 +33,7 @@ class Converter(object):
     self._convert_cache = {}
 
     # Initialize primitive_classes to empty to allow convert_constant to run
-    self.primitive_classes = {}
+    self.primitive_classes = ()
     # Now fill primitive_classes with the real values using convert_constant
     self.primitive_classes = {v: self.convert_constant(v.__name__, v)
                               for v in [int, long, float, str, unicode, object,
@@ -179,7 +179,7 @@ class Converter(object):
     return self._convert_cache[key]
 
   def create_new_unknown(self, node, name, source=None, action=None):
-    """Create a new variable containing unknown, originating from this one."""
+    """Create a new variable containing unknown."""
     if not self.vm.generate_unknowns:
       # unsolvable instances are cheaper than unknown, so use those for --quick.
       return abstract.Unsolvable(self.vm).to_variable(node, name)
@@ -199,7 +199,7 @@ class Converter(object):
                        source_sets=None, discard_concrete_values=False):
     """Convert a constant to a Variable.
 
-    This converts a constant to a typegraph.Variable. Unlike
+    This converts a constant to a cfg.Variable. Unlike
     convert_constant_to_value, it can handle things that need to be represented
     as a Variable with multiple possible values (i.e., a union type), like
     pytd.Function.
@@ -214,14 +214,12 @@ class Converter(object):
       discard_concrete_values: Whether concrete values should be discarded from
         type parameters.
     Returns:
-      A typegraph.Variable.
+      A cfg.Variable.
     Raises:
       ValueError: if pytype is not of a known type.
     """
-    if not source_sets:
-      source_sets = [[]]
-    if not node:
-      node = self.vm.root_cfg_node
+    source_sets = source_sets or [[]]
+    node = node or self.vm.root_cfg_node
     if isinstance(pyval, pytd.UnionType):
       options = [self.convert_constant_to_value(pytd.Print(t), t, subst, node)
                  for t in pyval.type_list]
@@ -268,7 +266,7 @@ class Converter(object):
       return result.to_variable(self.vm.root_cfg_node, name)
     # There might still be bugs on the abstract intepreter when it returns,
     # e.g. a list of values instead of a list of types:
-    assert pyval.__class__ != typegraph.Variable, pyval
+    assert pyval.__class__ != cfg.Variable, pyval
     if pyval.__class__ == tuple:
       # TODO(ampere): This does not allow subclasses. Handle namedtuple
       # correctly.
@@ -291,7 +289,7 @@ class Converter(object):
     as well, to make sure that e.g. "1.0" and "1" get converted to different
     constants.  Memoization is an optimization, but an important one- mapping
     constants like "None" to the same AbstractValue greatly simplifies the
-    typegraph structures we're building.
+    cfg structures we're building.
 
     Args:
       name: The name to give to the AtomicAbstractValue.
@@ -453,7 +451,7 @@ class Converter(object):
     Returns:
       A Variable.
     """
-    assert not isinstance(pyval, typegraph.Variable)
+    assert not isinstance(pyval, cfg.Variable)
     if isinstance(pyval, abstract.AtomicAbstractValue):
       return pyval.to_variable(self.vm.root_cfg_node, name)
     else:

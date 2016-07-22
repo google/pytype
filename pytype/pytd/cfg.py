@@ -130,6 +130,7 @@ class Program(object):
     (It is also possible for n7 to be in the [n2, n3, n4] supernode.)  Every
     node stores a pointer to and its position in its supernode.
     """
+    assert self.entrypoint
     seen = set()
     stack = [self.entrypoint]
     while stack:
