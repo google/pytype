@@ -227,14 +227,3 @@ class ConvertTypingToNative(visitors.Visitor):
 
   def VisitHomogeneousContainerType(self, t):
     return self.VisitGenericType(t)
-
-
-class Translate(visitors.Visitor):
-  """Visitor to apply PEP484_TRANSLATIONS."""
-
-  def VisitNamedType(self, t):
-    module_name, _, name = t.name.rpartition(".")
-    if module_name == "typing" and name in PEP484_TRANSLATIONS:
-      return PEP484_TRANSLATIONS[name]
-    else:
-      return t

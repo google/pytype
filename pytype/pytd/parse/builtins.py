@@ -45,7 +45,8 @@ def GetBuiltinsAndTyping():
                                       name="__builtin__")
     b = b.Visit(visitors.AddNamePrefix("__builtin__."))
     b = b.Visit(visitors.NamedTypeToClassType())
-    b = b.Visit(visitors.LookupExternalTypes({"typing": t}, full_names=True))
+    b = b.Visit(visitors.LookupExternalTypes({"typing": t}, full_names=True,
+                                             self_name="__builtin__"))
     t = t.Visit(visitors.LookupBuiltins(b))
     t = t.Visit(visitors.NamedTypeToClassType())
     b.Visit(visitors.FillInModuleClasses({"": b, "typing": t,

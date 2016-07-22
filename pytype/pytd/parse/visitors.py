@@ -733,17 +733,20 @@ class LookupBuiltins(Visitor):
 class LookupExternalTypes(Visitor):
   """Look up NamedType pointers using a symbol table."""
 
-  def __init__(self, module_map, full_names=False):
+  def __init__(self, module_map, full_names=False, self_name=None):
     """Create this visitor.
 
     Args:
       module_map: A dictionary mapping module names to symbol tables.
       full_names: If True, then the modules in the module_map use fully
         qualified names ("collections.OrderedDict" instead of "OrderedDict")
+      self_name: The name of the current module. If provided, then the visitor
+        will ignore nodes with this module name.
     """
     super(LookupExternalTypes, self).__init__()
     self._module_map = module_map
     self.full_names = full_names
+    self.name = self_name
 
   def _ResolveUsingGetattr(self, module_name, module):
     """Try to resolve an identifier using the top level __getattr__ function."""
@@ -770,7 +773,7 @@ class LookupExternalTypes(Visitor):
         if an identifier in a module isn't a class.
     """
     module_name, dot, name = t.name.rpartition(".")
-    if not dot:
+    if not dot or module_name == self.name:
       # Nothing to do here. This visitor will only look up nodes in other
       # modules.
       return t
@@ -785,6 +788,9 @@ class LookupExternalTypes(Visitor):
       if item is None:
         raise KeyError("No %s in module %s" % (name, module_name))
     return _ToType(item)
+
+  def VisitClassType(self, t):
+    return self.VisitNamedType(t)
 
 
 class ReplaceTypes(Visitor):
@@ -1303,6 +1309,9 @@ class CollectDependencies(Visitor):
     module_name, dot, unused_name = t.name.rpartition(".")
     if dot:
       self.modules.add(module_name)
+
+  def EnterClassType(self, t):
+    self.EnterNamedType(t)
 
 
 class SimplifyOptionalParameters(Visitor):
