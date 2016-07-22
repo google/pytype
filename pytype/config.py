@@ -60,13 +60,6 @@ class Options(object):
         usage=("Usage: %prog [options] "
                "file1.py[:file1.pyi] [file2.py:file2.pyi [...]]"),
         description="Infer/check types in a Python module")
-    o.set_defaults(optimize=True)
-    o.set_defaults(api=True)
-    o.add_option(
-        "-A", "--api", action="store_true",
-        dest="api",
-        help=("Analyze all functions and classes, "
-              "also those not called from anywhere (default)."))
     o.add_option(
         "-B", "--builtins", type="string", action="store",
         dest="pybuiltins_filename", default=None,
@@ -86,30 +79,13 @@ class Options(object):
         dest="disable", default=None,
         help=("Comma separated list of error names to ignore."))
     o.add_option(
-        "--import_drop_prefixes", type="string", action="store",
-        dest="import_drop_prefixes",
-        default="",
-        help=("List of prefixes to be dropped when resolving module names "
-              "in import statements. The items are separated by '%s'. "
-              "The individual items may contain '.'. "
-              "The intended use case is for when you're running tests in "
-              "a directory structure that starts below the root module in "
-              "your module names. "
-              "This option is incompatible with --imports_info.") % os.pathsep)
-    o.add_option(
         "--imports_info", type="string", action="store",
         dest="imports_info", default=None,
         help=("Information for mapping import .pytd to files. "
-              "This options is incompatible with --import_drop_prefixes "
-              "and --pythonpath."))
-    o.add_option(
-        "-K", "--keep-unknowns", action="store_false",
-        dest="solve_unknowns", default=True,
-        help=("Keep 'unknown' classes generated during the first analysis "
-              "pass."))
+              "This options is incompatible with --pythonpath."))
     o.add_option(
         "-m", "--main", action="store_true",
-        dest="main_only",
+        dest="main_only", default=False,
         help=("Only analyze the main method and everything called from it"))
     o.add_option(
         "-M", "--module-name", action="store",
@@ -144,6 +120,10 @@ class Options(object):
         dest="output", default=None,
         help=("Output file (default: stdout). Only allowed if only one input."
               "Use '-' or '' for stdout."))
+    o.add_option(
+        "--output-errors-csv", type="string", action="store",
+        dest="output_errors_csv", default=None,
+        help=("Outputs the error contents to a csv file"))
     o.add_option(
         "--output-cfg", type="string", action="store",
         dest="output_cfg", default=None,
@@ -189,20 +169,6 @@ class Options(object):
         dest="quick",
         help=("Only do an approximation."))
     o.add_option(
-        "-R", "--raw", action="store_false",
-        dest="optimize",
-        help=("Do not optimize generated pytd"))
-    o.add_option(
-        "-r", "--reverse-operators", action="store_true",
-        dest="reverse_operators", default=False,
-        help=("Enable support for Python reverse "
-              "operator overloading (__radd__ etc.)"))
-    o.add_option(
-        "-S", "--structural", action="store_true",
-        dest="structural", default=False,
-        help=("Analyze all functions and classes, also those not called from "
-              "anywhere. Output the result in structural form."))
-    o.add_option(
         "-T", "--no-typeshed", action="store_false",
         dest="typeshed", default=True,
         help=("Do not use typeshed to look up types in the Python stdlib. "
@@ -217,10 +183,6 @@ class Options(object):
         dest="verbosity", default=1,
         help=("Set logging verbosity: "
               "-1=quiet, 0=fatal, 1=error (default), 2=warn, 3=info, 4=debug"))
-    o.add_option(
-        "--output-errors-csv", type="string", action="store",
-        dest="output_errors_csv", default=None,
-        help=("Outputs the error contents to a csv file"))
     return o
 
   def _postprocess_options(self, option_list, arguments):
@@ -287,10 +249,6 @@ class Options(object):
     # ("" is a valid entry to denote the current directory)
     self.pythonpath = pythonpath.split(os.pathsep)
 
-  def _store_import_drop_prefixes(self, import_drop_prefixes):
-    self.import_drop_prefixes = [
-        p for p in import_drop_prefixes.split(os.pathsep) if p]
-
   def _store_python_version(self, python_version):
     self.python_version = tuple(map(int, python_version.split(".")))
     if len(self.python_version) != 2:
@@ -326,13 +284,10 @@ class Options(object):
                                      python_exe)
     self.python_exe = python_exe
 
-  @uses(["import_drop_prefixes", "pythonpath", "arguments", "verbosity"])
+  @uses(["pythonpath", "arguments", "verbosity"])
   def _store_imports_info(self, imports_info):
     """Postprocess --imports_info."""
     if imports_info:
-      if self.import_drop_prefixes:
-        raise optparse.OptionConflictError(
-            "Not allowed with --import_drop_prefixes", "imports_info")
       if self.pythonpath not in ([], [""]):
         raise optparse.OptionConflictError(
             "Not allowed with --pythonpath", "imports_info")

@@ -7,7 +7,6 @@ import textwrap
 
 
 from pytype import config
-from pytype import convert_structural
 from pytype import directors
 from pytype import errors
 from pytype import infer
@@ -272,12 +271,7 @@ class InferenceTest(unittest.TestCase):
     types = self._InferAndVerify(
         textwrap.dedent(srccode), pythonpath=pythonpath, deep=deep,
         cache_unknowns=True, solve_unknowns=solve_unknowns,
-        report_errors=report_errors, **kwargs)
-    if extract_locals:
-      # Rename "~unknown" to "?"
-      types = types.Visit(visitors.RemoveUnknownClasses())
-      # Remove "~list" etc.:
-      types = convert_structural.extract_local(types)
+        extract_locals=extract_locals, report_errors=report_errors, **kwargs)
     types = optimize.Optimize(types, lossy=False, use_abcs=False,
                               max_union=7, remove_mutable=False)
     types = pytd_utils.CanonicalOrdering(types)

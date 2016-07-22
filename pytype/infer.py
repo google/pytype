@@ -574,7 +574,7 @@ def infer_types(src,
                 filename=None, run_builtins=True,
                 deep=True, solve_unknowns=True,
                 reverse_operators=False, cache_unknowns=False,
-                maximum_depth=3):
+                extract_locals=True, maximum_depth=3):
   """Given Python source return its types.
 
   Args:
@@ -591,6 +591,8 @@ def infer_types(src,
     reverse_operators: Experimental. Allow overloading __radd__ etc.
       For user-defined types only - our builtins don't need reverse operators.
     cache_unknowns: If True, do a faster approximation of unknown types.
+    extract_locals: If not optimizing, should we at least remove the call
+      traces?
     maximum_depth: Depth of the analysis. Default: unlimited.
   Returns:
     A TypeDeclUnit
@@ -615,6 +617,12 @@ def infer_types(src,
   if solve_unknowns:
     log.info("=========== PyTD to solve =============\n%s", pytd.Print(ast))
     ast = convert_structural.convert_pytd(ast, tracer.loader.concat_all())
+  elif extract_locals:
+    log.info("Solving is turned off. Discarding call traces.")
+    # Rename "~unknown" to "?"
+    ast = ast.Visit(visitors.RemoveUnknownClasses())
+    # Remove "~list" etc.:
+    ast = convert_structural.extract_local(ast)
   if options.output_cfg or options.output_typegraph:
     if options.output_cfg and options.output_typegraph:
       raise AssertionError("Can output CFG or typegraph, but not both")

@@ -4,7 +4,6 @@ import logging
 import os
 
 
-from pytype import utils
 from pytype.pytd import pep484
 from pytype.pytd import typeshed
 from pytype.pytd import utils as pytd_utils
@@ -71,10 +70,7 @@ class Loader(object):
     self._concatenated = None
     # Paranoid verification that pytype.main properly checked the flags:
     if self.options.imports_map is not None:
-      assert not self.options.import_drop_prefixes
       assert self.options.pythonpath == [""]
-    if self.options.import_drop_prefixes:
-      assert not self.options.imports_map
 
   def _postprocess_pyi(self, ast):
     """Apply all the PYI transformations we need."""
@@ -224,15 +220,7 @@ class Loader(object):
     if mod:
       return mod
 
-    # We're guaranteed that self.options.import_drop_prefixes is empty if
-    # self.options.imports_map was given, so there's no conflict between the
-    # lookup in self.options.import_drop_prefixes and self.options.imports_map
-    # (which is used by _load_pyi, which is called by _import_file).
-    module_name_split = module_name.split(".")
-    for prefix in self.options.import_drop_prefixes:
-      module_name_split = utils.list_strip_prefix(module_name_split,
-                                                  prefix.split("."))
-    file_ast = self._import_file(module_name, module_name_split)
+    file_ast = self._import_file(module_name, module_name.split("."))
     if file_ast:
       return file_ast
 
@@ -242,7 +230,7 @@ class Loader(object):
       return mod
 
     log.warning("Couldn't import module %s %r in (path=%r) imports_map: %s",
-                module_name, module_name_split, self.options.pythonpath,
+                module_name, module_name, self.options.pythonpath,
                 "%d items" % len(self.options.imports_map) if
                 self.options.imports_map else "none")
     if log.isEnabledFor(logging.DEBUG) and self.options.imports_map:

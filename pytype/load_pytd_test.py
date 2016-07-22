@@ -31,16 +31,6 @@ class ImportPathsTest(unittest.TestCase):
       ast = loader.import_name("path.to.some.module")
       self.assertTrue(ast.Lookup("path.to.some.module.foo"))
 
-  def testStripPrefix(self):
-    with utils.Tempdir() as d:
-      d.create_file("path/to/some/module.pyi", "def foo() -> str")
-      self.options.tweak(
-          pythonpath=[d.path],
-          import_drop_prefixes=("extra.long", "even.longer"))
-      loader = load_pytd.Loader("base", self.options)
-      self.assertTrue(loader.import_name("extra.long.path.to.some.module"))
-      self.assertTrue(loader.import_name("even.longer.path.to.some.module"))
-
   def testPath(self):
     with utils.Tempdir() as d1:
       with utils.Tempdir() as d2:
