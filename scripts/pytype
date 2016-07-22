@@ -183,6 +183,7 @@ def process_one_file(input_filename,
     if print_errors:
       if errors_csv_file:
         errorlog.print_to_csv_file(errors_csv_file)
+        return 0  # Command is successful regardless of errors.
       else:
         errorlog.print_to_stderr()
 
