@@ -59,9 +59,9 @@ class Union(abstract.ValueWithSlots):
       if new_subst is not None:
         return new_subst
 
-  def get_instance_type(self, instance=None, seen=None):
+  def get_instance_type(self, node, instance=None, seen=None):
     return pytd.UnionType([
-        e.get_instance_type(seen=seen)
+        e.get_instance_type(node, seen=seen)
         for e in self.elements])
 
 
@@ -114,9 +114,9 @@ class _Container(abstract.ValueWithSlots):
     else:
       return subst
 
-  def get_instance_type(self, instance=None, seen=None):
+  def get_instance_type(self, node, instance=None, seen=None):
     if self.inner:
-      t = pytd_utils.JoinTypes([i.get_instance_type(seen=seen)
+      t = pytd_utils.JoinTypes([i.get_instance_type(node, seen=seen)
                                 for i in self.inner.data])
       return pytd.GenericType(pytd.NamedType(self.pytd_name), (t,))
     else:

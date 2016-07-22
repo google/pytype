@@ -22,7 +22,7 @@ log = logging.getLogger(__name__)
 
 
 CallRecord = collections.namedtuple("CallRecord",
-                                    ["function", "positional_arguments",
+                                    ["node", "function", "positional_arguments",
                                      "keyword_arguments", "return_value"])
 
 
@@ -176,10 +176,11 @@ class CallTracer(vm.VirtualMachine):
   def trace_unknown(self, name, unknown):
     self._unknowns[name] = unknown
 
-  def trace_call(self, func, posargs, namedargs, result):
+  def trace_call(self, node, func, posargs, namedargs, result):
     """Add an entry into the call trace.
 
     Args:
+      node: The CFG node right after this function call.
       func: A typegraph Value of functions that was called.
       posargs: The positional arguments, an iterable over cfg.Value.
       namedargs: The keyword arguments, a dict mapping str to cfg.Value.
@@ -190,15 +191,15 @@ class CallTracer(vm.VirtualMachine):
     args = tuple(posargs)
     kwargs = tuple((namedargs or {}).items())
     if isinstance(func.data, abstract.BoundPyTDFunction):
-      self._method_calls.add(CallRecord(func, args, kwargs, result))
+      self._method_calls.add(CallRecord(node, func, args, kwargs, result))
     elif isinstance(func.data, abstract.PyTDFunction):
-      self._calls.add(CallRecord(func, args, kwargs, result))
+      self._calls.add(CallRecord(node, func, args, kwargs, result))
 
   def pytd_classes_for_unknowns(self):
     classes = []
     for name, var in self._unknowns.items():
       for value in var.FilteredData(self.exitpoint):
-        classes.append(value.to_structural_def(name))
+        classes.append(value.to_structural_def(self.exitpoint, name))
     return classes
 
   def pytd_for_types(self, defs, ignore):
@@ -214,14 +215,15 @@ class CallTracer(vm.VirtualMachine):
               for o in options)):
         # It's ambiguous whether this is a type, a function or something
         # else, so encode it as a constant.
-        combined_types = pytd_utils.JoinTypes(t.to_type() for t in options)
+        combined_types = pytd_utils.JoinTypes(t.to_type(self.exitpoint)
+                                              for t in options)
         data.append(pytd.Constant(name, combined_types))
       else:
         for option in options:
           if hasattr(option, "to_pytd_def"):
-            d = option.to_pytd_def(name)  # Deep definition
+            d = option.to_pytd_def(self.exitpoint, name)  # Deep definition
           else:
-            d = option.to_type()  # Type only
+            d = option.to_type(self.exitpoint)  # Type only
           if isinstance(d, pytd.TYPE):
             data.append(pytd.Constant(name, d))
           else:
@@ -231,19 +233,19 @@ class CallTracer(vm.VirtualMachine):
   @staticmethod
   def _call_traces_to_function(call_traces, name_transform=lambda x: x):
     funcs = collections.defaultdict(pytd_utils.OrderedSet)
-    for funcvar, args, kws, retvar in call_traces:
+    for node, funcvar, args, kws, retvar in call_traces:
       if isinstance(funcvar.data, abstract.BoundFunction):
         func = funcvar.data.underlying.signatures[0]
       else:
         func = funcvar.data.signatures[0]
       arg_names = func.get_parameter_names()
-      arg_types = (a.data.to_type()
+      arg_types = (a.data.to_type(node)
                    for a in func.get_bound_arguments() + list(args))
-      ret = pytd_utils.JoinTypes(t.to_type() for t in retvar.data)
+      ret = pytd_utils.JoinTypes(t.to_type(node) for t in retvar.data)
       funcs[funcvar.data.name].add(pytd.Signature(
           tuple(pytd.Parameter(n, t)
                 for n, t in zip(arg_names, arg_types)) +
-          tuple(pytd.Parameter(name, a.data.to_type())
+          tuple(pytd.Parameter(name, a.data.to_type(node))
                 for name, a in kws),
           ret, has_optional=False, exceptions=(), template=()))
     functions = []
@@ -332,7 +334,7 @@ class CallTracer(vm.VirtualMachine):
               if isinstance(val.data, (abstract.InterpreterFunction,
                                        abstract.BoundInterpreterFunction)):
                 self.errorlog.bad_return_type(
-                    val.data.get_first_opcode(),
+                    val.data.get_first_opcode(), node,
                     pytd_function, view[retvar].data, sig.return_type)
               else:
                 log.error("%s is not a function?", val.data.name)

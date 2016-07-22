@@ -331,8 +331,8 @@ class ErrorLog(ErrorLogBase):
                arg_count)
 
   @_error_name("base-class-error")
-  def base_class_error(self, opcode, base_var):
-    pytd_type = pytd_utils.JoinTypes(t.get_instance_type()
+  def base_class_error(self, opcode, node, base_var):
+    pytd_type = pytd_utils.JoinTypes(t.get_instance_type(node)
                                      for t in base_var.data)
     self.error(opcode, "Invalid base class: %s", pytd.Print(pytd_type))
 
@@ -342,15 +342,15 @@ class ErrorLog(ErrorLogBase):
                type(item).__name__, item.name, pytd_filename, py_filename)
 
   @_error_name("bad-return-type")
-  def bad_return_type(self, opcode, unused_function, actual, expected):
+  def bad_return_type(self, opcode, node, unused_function, actual, expected):
     self.error(opcode, "return type is %s, should be %s",
-               pytd.Print(actual.to_type()),
+               pytd.Print(actual.to_type(node)),
                pytd.Print(expected))
 
   @_error_name("unsupported-operands")
-  def unsupported_operands(self, opcode, operation, var1, var2):
-    left = pytd_utils.JoinTypes(t.to_type() for t in var1.data)
-    right = pytd_utils.JoinTypes(t.to_type() for t in var2.data)
+  def unsupported_operands(self, opcode, node, operation, var1, var2):
+    left = pytd_utils.JoinTypes(t.to_type(node) for t in var1.data)
+    right = pytd_utils.JoinTypes(t.to_type(node) for t in var2.data)
     # TODO(kramm): Display things like '__add__' as '+'
     self.error(opcode, "unsupported operand type(s) for %s: %r and %r",
                operation, pytd.Print(left), pytd.Print(right))

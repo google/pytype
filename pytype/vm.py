@@ -376,7 +376,7 @@ class VirtualMachine(object):
                                 abstract.Unknown,
                                 abstract.Unsolvable))
                  for t in base.data):
-        self.errorlog.base_class_error(self.frame.current_opcode, base)
+        self.errorlog.base_class_error(self.frame.current_opcode, node, base)
     if not bases:
       # Old style class.
       bases = [self.convert.oldstyleclass_type]
@@ -575,7 +575,8 @@ class VirtualMachine(object):
     result = self.join_variables(state.node, name, results)
     log.debug("Result: %r", result)
     if not result.bindings:
-      self.errorlog.unsupported_operands(self.frame.current_opcode, name, x, y)
+      self.errorlog.unsupported_operands(self.frame.current_opcode, state.node,
+                                         name, x, y)
     return state, result
 
   def call_inplace_operator(self, state, iname, x, y):

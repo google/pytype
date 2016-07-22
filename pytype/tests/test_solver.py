@@ -318,6 +318,23 @@ class SolverTests(test_inference.InferenceTest):
       def f(x) -> NoneType
     """)
 
+  def testMutatingTypeParameters(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        def f() -> List[int]
+      """)
+      ty = self.Infer("""
+        import foo
+        def f():
+          x = foo.f()
+          x.append("str")
+          return x
+      """, deep=True, pythonpath=[d.path], solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        foo = ...  # type: module
+        def f() -> List[int or str]
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()
