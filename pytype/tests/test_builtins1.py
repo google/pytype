@@ -312,22 +312,26 @@ class BuiltinTests(test_inference.InferenceTest):
     """)
 
   def testTuple(self):
-    # smoke test
-    self.Infer("""
-      def f(x):
-        return x
-      def g(args):
-        f(*tuple(args))
-    """, deep=True, solve_unknowns=False, report_errors=False)
-
-  @unittest.skip("Needs better *tuple handling in _map_args")
-  def testTuple2(self):
     self.Infer("""
       def f(x):
         return x
       def g(args):
         f(*tuple(args))
     """, deep=True, solve_unknowns=False, extract_locals=False)
+
+  def testTuple2(self):
+    ty = self.Infer("""
+      def f(x, y):
+        return y
+      def g():
+        args = (4, )
+        return f(3, *args)
+      g()
+    """, deep=True, solve_unknowns=False, extract_locals=True)
+    self.assertTypesMatchPytd(ty, """
+      def f(x, y) -> Any: ...
+      def g() -> int: ...
+    """)
 
   def testOpen(self):
     ty = self.Infer("""

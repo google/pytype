@@ -2378,10 +2378,15 @@ class InterpreterFunction(Function):
         raise DuplicateKeyword(self.signature, key)
     callargs.update(positional)
     callargs.update(kws)
+    arg_pos = self.code.co_argcount
     for key in param_names:
       if key not in callargs:
-        raise MissingParameter(self.signature, key)
-    arg_pos = self.code.co_argcount
+        if not starargs and not starstarargs:
+          raise MissingParameter(self.signature, key)
+        else:
+          # We assume that because we have *args or **kwargs, we can use these
+          # to fill in any parameters we might be missing.
+          callargs[key] = self.vm.convert.create_new_unsolvable(node, key)
     if self.has_varargs():
       vararg_name = self.code.co_varnames[arg_pos]
       extraneous = args[self.code.co_argcount:]
