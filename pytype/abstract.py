@@ -34,6 +34,13 @@ class ConversionError(ValueError):
   pass
 
 
+class AsInstance(object):
+  """Wrapper, used for marking things that we want to convert to an instance."""
+
+  def __init__(self, cls):
+    self.cls = cls
+
+
 def variable_set_official_name(variable, name):
   """Set official_name on each value in the variable.
 
@@ -1300,7 +1307,8 @@ class PyTDSignature(object):
     self.name = name
     self.pytd_sig = pytd_sig
     self.param_types = [
-        self.vm.convert.convert_constant_to_value(pytd.Print(p), p.type)
+        self.vm.convert.convert_constant_to_value(
+            pytd.Print(p), p.type, subst={}, node=self.vm.root_cfg_node)
         for p in self.pytd_sig.params]
     self._bound_sig_cache = {}
     self.signature = function.Signature.from_pytd(vm, name, pytd_sig)
@@ -1341,8 +1349,8 @@ class PyTDSignature(object):
     t = (r.return_type, r.subst)
     sources = [func] + arg_dict.values()
     if t not in ret_map:
-      ret_map[t] = self.vm.convert.create_pytd_instance(
-          "ret", r.return_type, r.subst, node,
+      ret_map[t] = self.vm.convert.convert_constant(
+          "ret", AsInstance(r.return_type), r.subst, node,
           source_sets=[sources])
     else:
       # add the new sources
@@ -1448,8 +1456,8 @@ class PyTDSignature(object):
             log.info("Mutating %s to %s",
                      tparam.name,
                      pytd.Print(type_actual))
-            type_actual_val = self.vm.convert.create_pytd_instance(
-                tparam.name, type_actual, subst, node,
+            type_actual_val = self.vm.convert.convert_constant(
+                tparam.name, AsInstance(type_actual), subst, node,
                 discard_concrete_values=True)
             mutations.append(Mutation(arg, tparam.name, type_actual_val))
         else:
@@ -1649,8 +1657,8 @@ class PyTDFunction(Function):
     if unique_type:
       log.debug("Unknown args. But return is always %s",
                 pytd.Print(unique_type))
-      result = self.vm.convert.create_pytd_instance(
-          "ret", ret_type, {}, node)
+      result = self.vm.convert.convert_constant(
+          "ret", AsInstance(ret_type), {}, node)
     else:
       log.debug("Creating unknown return")
       result = self.vm.convert.create_new_unknown(
@@ -1884,16 +1892,18 @@ class PyTDClass(SimpleAbstractValue, Class):
 
   def bases(self):
     convert = self.vm.convert
-    return [convert.convert_constant_to_value(pytd.Print(parent), parent)
+    return [convert.convert_constant_to_value(
+        pytd.Print(parent), parent, subst={}, node=self.vm.root_cfg_node)
             for parent in self.pytd_cls.parents]
 
   def _convert_member(self, name, pyval):
     """Convert a member as a variable. For lazy lookup."""
     if isinstance(pyval, pytd.Constant):
-      return self.vm.convert.create_pytd_instance(name, pyval.type, {},
-                                                  self.vm.root_cfg_node)
+      return self.vm.convert.convert_constant(
+          name, AsInstance(pyval.type), {}, self.vm.root_cfg_node)
     elif isinstance(pyval, pytd.Function):
-      c = self.vm.convert.convert_constant_to_value(repr(pyval), pyval)
+      c = self.vm.convert.convert_constant_to_value(
+          repr(pyval), pyval, subst={}, node=self.vm.root_cfg_node)
       c.parent = self
       return c.to_variable(self.vm.root_cfg_node, name)
     else:

@@ -887,7 +887,8 @@ class VirtualMachine(object):
       assert level > 0
       ast = self.loader.import_relative(level)
     if ast:
-      module = self.convert.construct_constant_from_value(ast.name, ast)
+      module = self.convert.construct_constant_from_value(
+          ast.name, ast, subst={}, node=self.root_cfg_node)
       if level <= 0 and name == "typing":
         # use a special overlay for stdlib/typing.pytd
         return typing.TypingOverlay(self, module)
@@ -1431,7 +1432,7 @@ class VirtualMachine(object):
   def byte_SETUP_FINALLY(self, state, op):
     # Emulate finally by connecting the try to the finally block (with
     # empty reason/why/continuation):
-    self.store_jump(op.target, state.push(self.convert.make_none(state.node)))
+    self.store_jump(op.target, state.push(self.convert.build_none(state.node)))
     return self.push_block(state, "finally", op.target)
 
   def byte_POP_BLOCK(self, state):
@@ -1516,9 +1517,9 @@ class VirtualMachine(object):
         state, exit_func = state.pop_nth(2)
       else:
         state, exit_func = state.pop_nth(1)
-      v = self.convert.make_none(state.node)
-      w = self.convert.make_none(state.node)
-      u = self.convert.make_none(state.node)
+      v = self.convert.build_none(state.node)
+      w = self.convert.build_none(state.node)
+      u = self.convert.build_none(state.node)
     elif isinstance(u, type) and issubclass(u, BaseException):
       if self.python_version[0] == 2:
         state, (w, v, u) = state.popn(3)
@@ -1530,7 +1531,7 @@ class VirtualMachine(object):
         state, (tp, exc, tb) = state.popn(3)
         state, (exit_func) = state.pop()
         state = state.push(tp, exc, tb)
-        state = state.push(self.convert.make_none(state.node))
+        state = state.push(self.convert.build_none(state.node))
         state = state.push(w, v, u)
         state, block = state.pop_block()
         assert block.type == "except-handler"
@@ -1541,9 +1542,9 @@ class VirtualMachine(object):
       # occured.
       state = state.pop_and_discard()  # pop None
       state, exit_func = state.pop()
-      state = state.push(self.convert.make_none(state.node))
-      v = self.convert.make_none(state.node)
-      w = self.convert.make_none(state.node)
+      state = state.push(self.convert.build_none(state.node))
+      v = self.convert.build_none(state.node)
+      w = self.convert.build_none(state.node)
     state, suppress_exception = self.call_function_with_state(
         state, exit_func, [u, v, w])
     log.info("u is None: %r", self.is_none(u))
@@ -1552,7 +1553,7 @@ class VirtualMachine(object):
       # An error occurred, and was suppressed
       if self.python_version[0] == 2:
         state, _ = state.popn(3)
-        state.push(self.convert.make_none(state.node))
+        state.push(self.convert.build_none(state.node))
       else:
         assert self.python_version[0] == 3
         state = state.push("silenced")

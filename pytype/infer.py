@@ -309,7 +309,8 @@ class CallTracer(vm.VirtualMachine):
       # TODO(kramm): Maybe we should use AnythingType for params without type.
       return self.convert.create_new_unsolvable(node, name)
     else:
-      return self.convert.create_pytd_instance(name, t, {}, node)
+      return self.convert.convert_constant(
+          name, abstract.AsInstance(t), subst={}, node=self.root_cfg_node)
 
   def _check_function(self, pytd_function, f, node, skip_self=False):
     """Check that a function or method is compatible with its PYTD."""
@@ -317,7 +318,7 @@ class CallTracer(vm.VirtualMachine):
       args = [self._create_call_arg(name, t, node)
               for name, t in sig.params[(1 if skip_self else 0):]]
       nominal_return = self.convert.convert_constant_to_value(
-          "ret", sig.return_type)
+          "ret", sig.return_type, subst={}, node=self.root_cfg_node)
       for val in f.bindings:
         fvar = val.AssignToNewVariable("f", node)
         _, retvar = self.call_function_in_frame(
