@@ -11,12 +11,13 @@ class TypingOverlay(abstract.Module):
 
   is_lazy = True  # uses _convert_member
 
-  def __init__(self, vm, real_module):
-    super(TypingOverlay, self).__init__(vm, "typing", typing_overload)
+  def __init__(self, vm, node, real_module):
+    super(TypingOverlay, self).__init__(vm, node, "typing", typing_overload)
     self.real_module = real_module
 
   def _convert_member(self, name, m):
-    return m(name, self.vm).to_variable(self.vm.root_cfg_node, name)
+    return m(name, self.vm, self.vm.root_cfg_node).to_variable(
+        self.vm.root_cfg_node, name)
 
   def get_attribute(self, node, name, valself=None, valcls=None):
     if name in typing_overload:
@@ -30,8 +31,8 @@ class TypingOverlay(abstract.Module):
 class Union(abstract.ValueWithSlots):
   """Implementation of typing.Union[...]."""
 
-  def __init__(self, name, vm, elements=()):
-    super(Union, self).__init__(vm.convert.type_type, vm)
+  def __init__(self, name, vm, node, elements=()):
+    super(Union, self).__init__(vm.convert.type_type, vm, node)
     self.name = "Union"
     self.elements = elements
     self.set_slot("__getitem__", self.getitem_slot)
@@ -42,7 +43,7 @@ class Union(abstract.ValueWithSlots):
   def getitem_slot(self, node, slice_var):
     slice_tuple = abstract.get_atomic_python_constant(slice_var)
     values = tuple(s.Data(node)[0] for s in slice_tuple)
-    new_union = Union(self.name, self.vm, self.elements + values)
+    new_union = Union(self.name, self.vm, node, self.elements + values)
     return node, new_union.to_variable(node, "Union")
 
   def instantiate(self, node):
@@ -68,16 +69,16 @@ class Union(abstract.ValueWithSlots):
 class _Container(abstract.ValueWithSlots):
   """Implementation of typing.X[...]."""
 
-  def __init__(self, name, vm, inner=None):
+  def __init__(self, name, vm, node, inner=None):
     # TODO(kramm): type_type is wrong. Correct would be "typing.GenericMeta".
     # But in the output, we'd want this to become an alias.
-    super(_Container, self).__init__(vm.convert.type_type, vm)
+    super(_Container, self).__init__(vm.convert.type_type, vm, node)
     self.name = name
     self.inner = inner
     self.set_slot("__getitem__", self.getitem_slot)
 
   def getitem_slot(self, node, inner):
-    new_list = self.__class__(self.name, self.vm, inner)
+    new_list = self.__class__(self.name, self.vm, node, inner)
     return node, new_list.to_variable(node, self.name)
 
   def instantiate(self, node):
@@ -132,16 +133,16 @@ class _Container(abstract.ValueWithSlots):
 class List(_Container):
   pytd_name = "__builtin__.list"
 
-  def __init__(self, name, vm, inner=None):
-    super(List, self).__init__("List", vm, inner)
+  def __init__(self, name, vm, node, inner=None):
+    super(List, self).__init__("List", vm, node, inner)
     self.concrete_classes = [self.vm.convert.list_type]
 
 
 class Sequence(_Container):
   pytd_name = "typing.Sequence"
 
-  def __init__(self, name, vm, inner=None):
-    super(Sequence, self).__init__("Sequence", vm, inner)
+  def __init__(self, name, vm, node, inner=None):
+    super(Sequence, self).__init__("Sequence", vm, node, inner)
     self.concrete_classes = [self.vm.convert.list_type,
                              self.vm.convert.tuple_type]
 

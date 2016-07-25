@@ -667,7 +667,7 @@ class VirtualMachine(object):
     num_kw, num_pos = divmod(num, 256)
 
     # TODO(kramm): Can we omit creating this dict if kwargs=None and num_kw=0?
-    namedargs = abstract.Dict("kwargs", self)
+    namedargs = abstract.Dict("kwargs", self, state.node)
     for _ in range(num_kw):
       state, (key, val) = state.popn(2)
       namedargs.setitem(state.node, key, val)
@@ -893,7 +893,7 @@ class VirtualMachine(object):
           ast.name, ast, subst={}, node=self.root_cfg_node)
       if level <= 0 and name == "typing":
         # use a special overlay for stdlib/typing.pytd
-        return typing.TypingOverlay(self, module)
+        return typing.TypingOverlay(self, self.root_cfg_node, module)
       else:
         return module
     else:

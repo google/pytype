@@ -374,35 +374,36 @@ def _IsTemplate(parser, p, t):
   if isinstance(t, pytd.GenericType):
     for param in t.parameters:
       error = None
-      # TODO(rechen): allow concrete types in addition to typevars, e.g.,
-      # Container[int]
+      # TODO(rechen): Allow unions as type parameters.
       if not isinstance(param, pytd.NamedType):
-        error = "Illegal template parameter %s" % pytd.Print(t)
-      elif param.name not in parser.context.typevars:
-        error = "Name %r must be defined as a TypeVar" % param.name
-      if error:
         if t.base_type == pytd.NamedType("typing.Generic"):
-          make_syntax_error(parser, error, p)
+          error = "Illegal template parameter %s" % pytd.Print(t)
         else:
           return False
+      elif (t.base_type == pytd.NamedType("typing.Generic") and
+            param.name not in parser.context.typevars):
+        error = "Name %r must be defined as a TypeVar" % param.name
+      if error:
+        make_syntax_error(parser, error, p)
     return True
   else:
     return False
 
 
-def SplitParents(parser, p, parents):
-  """Strip the special Generic[...] class out of the base classes."""
+def GetTemplateAndParents(parser, p, parents):
+  """Build template from any parameterized classes in the base classes."""
   template = ()
   bases = []
   for parent in parents:
-    if _IsTemplate(parser, p, parent):
-      t = tuple(pytd.TemplateItem(pytd.TypeParameter(param.name))
-                for param in parent.parameters)
-      if template and t != template:
-        make_syntax_error(
-            parser, "Duplicate Template base class", p)
-      template = t
-      all_names = [t.name for t in template]
+    # TODO(rechen): Construct template from all GenericType parents.
+    if not template and _IsTemplate(parser, p, parent):
+      template = tuple(
+          pytd.TemplateItem(pytd.TypeParameter(param.name)
+                            if param.name in parser.context.typevars
+                            else pytd.NamedType(param.name))
+          for param in parent.parameters)
+      all_names = [t.name for t in template
+                   if isinstance(t.type_param, pytd.TypeParameter)]
       duplicates = [name
                     for name, count in collections.Counter(all_names).items()
                     if count >= 2]
@@ -410,12 +411,6 @@ def SplitParents(parser, p, parents):
         make_syntax_error(
             parser, "Duplicate template parameters " + ", ".join(duplicates), p)
     if parent != pytd.NothingType():
-      # TODO(rechen): Do we really want to explicitly store typing.Generic in
-      # the class hierarchy?
-      # Pros: simplifies printing; allows easy checking that a class can have
-      # type parameters.
-      # Cons: semantically dubious, as Generic is a marker for parameterized
-      # classes rather than an actual superclass; might mess with matching.
       bases.append(parent)
   return template, tuple(bases)
 
@@ -734,7 +729,7 @@ class TypeDeclParser(object):
 
   def p_class_parents(self, p):
     """class_parents : parents"""
-    template, parents = SplitParents(self, p, p[1])
+    template, parents = GetTemplateAndParents(self, p, p[1])
     p[0] = template, parents
     # The new scope has its own set of type variables (to allow class-level
     # scoping of TypeVar). But any type variable bound to the class is not a

@@ -726,11 +726,11 @@ class RemoveInheritedMethods(visitors.Visitor):
         sig.params[0].name != "self" or
         not isinstance(sig.params[0].type, pytd.ClassType)):
       return sig  # Not a method
-    t = sig.params[0].type
-    if t.cls is None:
+    cls = sig.params[0].type.cls
+    if cls is None:
       # TODO(kramm): Remove once pytype stops generating ClassType(name, None).
       return sig
-    if self._FindNameAndSig(utils.ComputeMRO(t)[1:], self.function.name,
+    if self._FindNameAndSig(utils.GetBasesInMRO(cls), self.function.name,
                             sig.Replace(params=sig.params[1:])):
       return None  # remove (see VisitFunction)
     return sig

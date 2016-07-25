@@ -42,20 +42,22 @@ class Converter(object):
                                         types.ClassType]}
 
     self.none = abstract.AbstractOrConcreteValue(
-        None, self.primitive_classes[types.NoneType], self.vm)
+        None, self.primitive_classes[types.NoneType], self.vm,
+        self.vm.root_cfg_node)
     self.true = abstract.AbstractOrConcreteValue(
-        True, self.primitive_classes[bool], self.vm)
+        True, self.primitive_classes[bool], self.vm, self.vm.root_cfg_node)
     self.false = abstract.AbstractOrConcreteValue(
-        False, self.primitive_classes[bool], self.vm)
+        False, self.primitive_classes[bool], self.vm, self.vm.root_cfg_node)
     self.ellipsis = abstract.AbstractOrConcreteValue(
-        Ellipsis, self.primitive_classes[types.EllipsisType], self.vm)
+        Ellipsis, self.primitive_classes[types.EllipsisType], self.vm,
+        self.vm.root_cfg_node)
 
     self.nothing = abstract.Nothing(self.vm)
     self.unsolvable = abstract.Unsolvable(self.vm)
 
     self.primitive_class_instances = {}
     for name, clsvar in self.primitive_classes.items():
-      instance = abstract.Instance(clsvar, self.vm)
+      instance = abstract.Instance(clsvar, self.vm, self.vm.root_cfg_node)
       self.primitive_class_instances[name] = instance
       clsval, = clsvar.bindings
       self._convert_cache[(abstract.Instance, clsval.data.pytd_cls)] = instance
@@ -87,7 +89,7 @@ class Converter(object):
     """Create a VM tuple from the given sequence."""
     content = tuple(content)  # content might be a generator
     value = abstract.AbstractOrConcreteValue(
-        content, self.tuple_type, self.vm)
+        content, self.tuple_type, self.vm, node)
     value.initialize_type_parameter(node, "T",
                                     self.build_content(node, content))
     return value
@@ -127,7 +129,7 @@ class Converter(object):
   def build_list(self, node, content):
     """Create a VM list from the given sequence."""
     content = list(content)  # content might be a generator
-    value = abstract.Instance(self.list_type, self.vm)
+    value = abstract.Instance(self.list_type, self.vm, node)
     value.initialize_type_parameter(node, "T",
                                     self.build_content(node, content))
     return value.to_variable(node, name="list(...)")
@@ -135,14 +137,14 @@ class Converter(object):
   def build_set(self, node, content):
     """Create a VM set from the given sequence."""
     content = list(content)  # content might be a generator
-    value = abstract.Instance(self.set_type, self.vm)
+    value = abstract.Instance(self.set_type, self.vm, node)
     value.initialize_type_parameter(node, "T",
                                     self.build_content(node, content))
     return value.to_variable(node, name="set(...)")
 
   def build_map(self, node):
     """Create an empty VM dict."""
-    return abstract.Dict("dict()", self.vm).to_variable(node, "dict()")
+    return abstract.Dict("dict()", self.vm, node).to_variable(node, "dict()")
 
   def build_tuple(self, node, content):
     """Create a VM tuple from the given sequence."""
@@ -331,16 +333,18 @@ class Converter(object):
     if pyval is type:
       return abstract.SimpleAbstractValue(name, self.vm)
     elif isinstance(pyval, str):
-      return abstract.AbstractOrConcreteValue(pyval, self.str_type, self.vm)
+      return abstract.AbstractOrConcreteValue(
+          pyval, self.str_type, self.vm, node)
     elif isinstance(pyval, int) and -1 <= pyval <= MAX_IMPORT_DEPTH:
       # For small integers, preserve the actual value (for things like the
       # level in IMPORT_NAME).
-      return abstract.AbstractOrConcreteValue(pyval, self.int_type, self.vm)
+      return abstract.AbstractOrConcreteValue(
+          pyval, self.int_type, self.vm, node)
     elif pyval.__class__ in self.primitive_classes:
       return self.primitive_class_instances[pyval.__class__]
     elif isinstance(pyval, (loadmarshal.CodeType, blocks.OrderedCode)):
       return abstract.AbstractOrConcreteValue(
-          pyval, self.primitive_classes[types.CodeType], self.vm)
+          pyval, self.primitive_classes[types.CodeType], self.vm, node)
     elif pyval.__class__ in [types.FunctionType,
                              types.ModuleType,
                              types.GeneratorType,
@@ -355,7 +359,7 @@ class Converter(object):
       data = pyval.constants + pyval.classes + pyval.functions + pyval.aliases
       members = {val.name.rsplit(".")[-1]: val
                  for val in data}
-      return abstract.Module(self.vm, pyval.name, members)
+      return abstract.Module(self.vm, node, pyval.name, members)
     elif isinstance(pyval, pytd.Class):
       if "." in pyval.name:
         module, base_name = pyval.name.rsplit(".", 1)
@@ -367,7 +371,8 @@ class Converter(object):
     elif isinstance(pyval, pytd.Function):
       signatures = [abstract.PyTDSignature(pyval.name, sig, self.vm)
                     for sig in pyval.signatures]
-      f = abstract.PyTDFunction(pyval.name, signatures, pyval.kind, self.vm)
+      f = abstract.PyTDFunction(
+          pyval.name, signatures, pyval.kind, self.vm, node)
       return f
     elif isinstance(pyval, pytd.ClassType):
       assert pyval.cls
@@ -397,7 +402,7 @@ class Converter(object):
             instance = self._create_new_unknown_value("type")
           else:
             mycls = self.convert_constant(str(cls), cls, subst, node)
-            instance = abstract.Instance(mycls, self.vm)
+            instance = abstract.Instance(mycls, self.vm, node)
           log.info("New pytd instance for %s: %r", cls.cls.name, instance)
           self._convert_cache[key] = instance
         return self._convert_cache[key]
@@ -406,7 +411,7 @@ class Converter(object):
         base_cls = cls.base_type.cls
         instance = abstract.Instance(
             self.convert_constant(base_cls.name, base_cls, subst, node),
-            self.vm)
+            self.vm, node)
         for formal, actual in zip(base_cls.template, cls.parameters):
           p = self.convert_constant(
               repr(formal), abstract.AsInstance(actual), subst, node)
@@ -456,4 +461,3 @@ class Converter(object):
       return pyval.to_variable(self.vm.root_cfg_node, name)
     else:
       return self.convert_constant(name, pyval)
-

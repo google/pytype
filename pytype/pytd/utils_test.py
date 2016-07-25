@@ -18,7 +18,9 @@ import textwrap
 import unittest
 from pytype.pytd import pytd
 from pytype.pytd import utils
+from pytype.pytd.parse import builtins
 from pytype.pytd.parse import parser_test_base
+from pytype.pytd.parse import visitors
 
 
 class TestUtils(parser_test_base.ParserTest):
@@ -287,6 +289,64 @@ class TestUtils(parser_test_base.ParserTest):
     self.assertEquals([1, 2, 3, 4, 5, 6],
                       utils.MROMerge([[1, 3, 5], [2, 3, 4], [4, 5, 6]]))
     self.assertEquals([1, 2, 3], utils.MROMerge([[1, 2, 1], [2, 3, 2]]))
+
+  def testGetBasesInMRO(self):
+    ast = self.parser.Parse(textwrap.dedent("""
+      T = TypeVar("T")
+      class Foo(Generic[T]): pass
+      class Bar(Foo[int]): pass
+    """))
+    b, t = builtins.GetBuiltinsAndTyping()
+    ast = ast.Visit(visitors.LookupExternalTypes(
+        {"__builtin__": b, "typing": t}, full_names=True))
+    ast = ast.Visit(visitors.NamedTypeToClassType())
+    mro = utils.GetBasesInMRO(ast.Lookup("Bar"), lookup_ast=ast)
+    self.assertListEqual(["Foo", "typing.Generic", "__builtin__.object"],
+                         [t.name for t in mro])
+
+  def testAdjustTemplates(self):
+    ast = self.parser.Parse(textwrap.dedent("""
+      T = TypeVar("T")
+      K = TypeVar("K")
+      V = TypeVar("V")
+      class Foo(List[int]): pass
+      class Bar(Dict[T, int]): pass
+      class Baz(Generic[K, V]): pass
+      class Qux(Baz[str, int]): pass
+    """))
+    b, t = builtins.GetBuiltinsAndTyping()
+    ast = ast.Visit(visitors.LookupExternalTypes(
+        {"__builtin__": b, "typing": t}, full_names=True))
+    ast = ast.Visit(visitors.NamedTypeToClassType())
+    ast = ast.Visit(utils.AdjustTemplates(ast))
+    ast.Visit(visitors.FillInModuleClasses({"": ast}))
+    ast.Visit(visitors.VerifyVisitor())
+    foo = ast.Lookup("Foo")
+    bar = ast.Lookup("Bar")
+    qux = ast.Lookup("Qux")
+    foo_parent, = foo.parents
+    bar_parent, = bar.parents
+    qux_parent, = qux.parents
+    # Expected:
+    #  Class(Foo, parent=GenericType(List, parameters=(int,)),
+    #             template=(T,))
+    #  Class(Bar, parent=GenericType(Dict, parameters=(T, int)),
+    #             template=(T, V))
+    #  Class(Qux, parent=GenericType(Baz, parameters=(str, int)),
+    #             template=(K, V))
+    self.assertEquals((pytd.ClassType("int"),), foo_parent.parameters)
+    self.assertEquals((pytd.TemplateItem(pytd.TypeParameter("T")),),
+                      foo.template)
+    self.assertEquals((pytd.TypeParameter("T"), pytd.ClassType("int")),
+                      bar_parent.parameters)
+    self.assertEquals((pytd.TemplateItem(pytd.TypeParameter("T")),
+                       pytd.TemplateItem(pytd.TypeParameter("V"))),
+                      bar.template)
+    self.assertEquals((pytd.ClassType("str"), pytd.ClassType("int")),
+                      qux_parent.parameters)
+    self.assertEquals((pytd.TemplateItem(pytd.TypeParameter("K")),
+                       pytd.TemplateItem(pytd.TypeParameter("V"))),
+                      qux.template)
 
 
 if __name__ == "__main__":

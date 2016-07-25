@@ -483,23 +483,92 @@ def MROMerge(input_seqs):
         del seq[0]
 
 
-def ComputeMRO(t, mros=None):
+def _GetClass(t, lookup_ast):
+  if t.cls:
+    return t.cls
+  if lookup_ast:
+    return lookup_ast.Lookup(t.name)
+  raise AttributeError("Class not found: %s" % t.name)
+
+
+def _Degenerify(types):
+  return [t.base_type if isinstance(t, pytd.GenericType) else t for t in types]
+
+
+def _ComputeMRO(t, mros, lookup_ast):
   if isinstance(t, pytd.ClassType):
-    if mros is None:
-      mros = {}
     if t not in mros:
       mros[t] = None
       parent_mros = []
-      for parent in t.cls.parents:
+      for parent in _GetClass(t, lookup_ast).parents:
         if parent in mros:
           if mros[parent] is None:
             raise MROError("Illegal inheritance.")
           else:
             parent_mro = mros[parent]
         else:
-          parent_mro = ComputeMRO(parent, mros)
+          parent_mro = _ComputeMRO(parent, mros, lookup_ast)
         parent_mros.append(parent_mro)
-      mros[t] = tuple(MROMerge([[t]] + parent_mros + [t.cls.parents]))
+      mros[t] = tuple(MROMerge([[t]] + parent_mros +
+                               [_Degenerify(_GetClass(t, lookup_ast).parents)]))
     return mros[t]
+  elif isinstance(t, pytd.GenericType):
+    return _ComputeMRO(t.base_type, mros, lookup_ast)
   else:
     return [t]
+
+
+def GetBasesInMRO(cls, lookup_ast=None):
+  """Get the given class's bases in Python's method resolution order."""
+  mros = {}
+  parent_mros = []
+  for p in cls.parents:
+    parent_mros.append(_ComputeMRO(p, mros, lookup_ast))
+  return tuple(MROMerge(parent_mros + [_Degenerify(cls.parents)]))
+
+
+class AdjustTemplates(visitors.Visitor):
+  """Visitor for adjusting type parameters in templates.
+
+  Turns Class(Foo, template=(int,)) into Class(Foo, template=(T,)). T=int is
+  preserved in the type parameters of the parent GenericType.
+  """
+
+  def __init__(self, lookup_ast):
+    """Initialize the visitor.
+
+    Args:
+      lookup_ast: An ast in which to look up the classes of unresolved
+        ClassType nodes.
+    """
+    super(AdjustTemplates, self).__init__()
+    self.lookup_ast = lookup_ast
+
+  def VisitClass(self, node):
+    bad_indices = []
+    for i, param in enumerate(node.template):
+      if not isinstance(param.type_param, pytd.TypeParameter):
+        bad_indices.append(i)
+    if bad_indices:
+      template = list(node.template)
+      for base in GetBasesInMRO(node, self.lookup_ast):
+        if isinstance(base, pytd.ClassType):
+          base_cls = _GetClass(base, self.lookup_ast)
+          # TODO(rechen): Support templates of different lengths, e.g.,
+          # class MyDict(Dict[K, V], Iterable[K]): pass
+          if len(base_cls.template) != len(template):
+            raise TypeError(
+                "Mismatched templates\nClass: %s%s\nParent: %s%s" %
+                (node.name, node.template, base_cls.name, base_cls.template))
+          for i in bad_indices[:]:  # Copy the list
+            if isinstance(
+                base_cls.template[i].type_param, pytd.TypeParameter):
+              template[i] = base_cls.template[i]
+              bad_indices.remove(i)
+        if not bad_indices:
+          break
+      assert all(isinstance(t.type_param, pytd.TypeParameter)
+                 for t in template), "Bad template: %s" % template
+      return node.Replace(template=tuple(template))
+    else:
+      return node

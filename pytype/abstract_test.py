@@ -40,7 +40,7 @@ class AbstractTestBase(unittest.TestCase):
 
   def new_dict(self, **kwargs):
     """Create a Dict from keywords mapping names to Variable objects."""
-    d = abstract.Dict("dict", self._vm)
+    d = abstract.Dict("dict", self._vm, self._node)
     for name, var in kwargs.items():
       d.set_str_item(self._node, name, var)
     return d
@@ -55,12 +55,14 @@ class InstanceTest(AbstractTestBase):
 
   def test_compatible_with_non_container(self):
     # Compatible with either True or False.
-    i = abstract.Instance(self._vm.convert.object_type, self._vm)
+    i = abstract.Instance(
+        self._vm.convert.object_type, self._vm, self._node)
     self.assertIs(True, i.compatible_with(True))
     self.assertIs(True, i.compatible_with(False))
 
   def test_compatible_with_list(self):
-    i = abstract.Instance(self._vm.convert.list_type, self._vm)
+    i = abstract.Instance(
+        self._vm.convert.list_type, self._vm, self._node)
     i.init_type_parameters("T")
     # Empty list is not compatible with True.
     self.assertIs(False, i.compatible_with(True))
@@ -71,7 +73,8 @@ class InstanceTest(AbstractTestBase):
     self.assertIs(True, i.compatible_with(False))
 
   def test_compatible_with_set(self):
-    i = abstract.Instance(self._vm.convert.set_type, self._vm)
+    i = abstract.Instance(
+        self._vm.convert.set_type, self._vm, self._node)
     i.init_type_parameters("T")
     # Empty list is not compatible with True.
     self.assertIs(False, i.compatible_with(True))
@@ -86,7 +89,7 @@ class DictTest(AbstractTestBase):
 
   def setUp(self):
     super(DictTest, self).setUp()
-    self._d = abstract.Dict("test_dict", self._vm)
+    self._d = abstract.Dict("test_dict", self._vm, self._node)
     self._var = self._program.NewVariable("test_var")
     self._var.AddBinding(abstract.Unknown(self._vm))
 
@@ -236,7 +239,7 @@ class IsInstanceTest(AbstractTestBase):
     def new_tuple(*args):
       pyval = tuple(maybe_var(a) for a in args)
       return abstract.AbstractOrConcreteValue(
-          pyval, self._vm.convert.tuple_type, self._vm)
+          pyval, self._vm.convert.tuple_type, self._vm, self._node)
 
     def check(expected_ambiguous, expected_classes, value):
       classes = []

@@ -101,13 +101,24 @@ class Loader(object):
     module = Module(module_name, filename, ast)
     self._modules[module_name] = module
     try:
-      module.ast = self._load_and_resolve_ast_dependencies(module.ast)
+      module.ast = self._load_and_resolve_ast_dependencies(module.ast,
+                                                           module_name)
+      # All external ClassType nodes have been resolved, but internal ones are
+      # unresolved, so we adjust templates in the module using itself as a
+      # lookup table.
+      module.ast = module.ast.Visit(pytd_utils.AdjustTemplates(module.ast))
+      # Now we can fill in the remaining cls pointers. This code executes when
+      # the module is first loaded, which happens before any others use it to
+      # resolve dependencies, so there are no external pointers into the module
+      # at this point.
+      module.ast.Visit(
+          visitors.FillInModuleClasses({"": ast, module_name: ast}))
     except:
       del self._modules[module_name]  # don't leave half-resolved modules around
       raise
     return module.ast
 
-  def _load_and_resolve_ast_dependencies(self, ast):
+  def _load_and_resolve_ast_dependencies(self, ast, ast_name=None):
     """Fill in all ClassType.cls pointers."""
     deps = visitors.CollectDependencies()
     ast.Visit(deps)
@@ -119,8 +130,8 @@ class Loader(object):
             raise DependencyNotFoundError(name)
       module_map = {name: module.ast
                     for name, module in self._modules.items()}
-      ast = ast.Visit(
-          visitors.LookupExternalTypes(module_map, full_names=True))
+      ast = ast.Visit(visitors.LookupExternalTypes(module_map, full_names=True,
+                                                   self_name=ast_name))
     return ast
 
   def _finish_ast(self, ast):

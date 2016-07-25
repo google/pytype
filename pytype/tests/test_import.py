@@ -1,6 +1,4 @@
 """Tests for import."""
-import unittest
-
 
 
 from pytype import imports_map_loader
@@ -726,79 +724,6 @@ class ImportTest(test_inference.InferenceTest):
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
         x = ...  # type: complex
-      """)
-
-  def testGenericSubclass(self):
-    with utils.Tempdir() as d:
-      d.create_file("a.pyi", """
-        T = TypeVar("T")
-        class A(List[T]): pass
-        def f() -> A[int]
-      """)
-      ty = self.Infer("""
-        import a
-        def f():
-          return a.f()
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
-      self.assertTypesMatchPytd(ty, """
-        a = ...  # type: module
-        def f() -> a.A[int]
-      """)
-
-  def testGenericSubclassBinop(self):
-    with utils.Tempdir() as d:
-      d.create_file("a.pyi", """
-        T = TypeVar("T")
-        class A(List[T]): pass
-      """)
-      ty = self.Infer("""
-        from a import A
-        def f():
-          return A() + [42]
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
-      self.assertTypesMatchPytd(ty, """
-        A = ...  # type: type
-        def f() -> List[int]
-      """)
-
-  @unittest.skip("Needs better GenericType support")
-  def testGenericSubclass2(self):
-    with utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
-        T = TypeVar("T")
-        class A(Generic[T]):
-          def bar(self) -> T: ...
-        class B(A[int]): ...
-      """)
-      ty = self.Infer("""
-        import foo
-        def f():
-          return foo.B().bar()
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
-      self.assertTypesMatchPytd(ty, """
-        foo = ...  # type: module
-        def f() -> int
-      """)
-
-  @unittest.skip("Needs better GenericType support")
-  def testGenericSubclass3(self):
-    with utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
-        U = TypeVar("U")
-        V = TypeVar("V")
-        class A(Generic[U]):
-          def bar(self) -> U: ...
-        class B(Generic[V], A[V]): ...
-        def baz() -> B[int]
-      """)
-      ty = self.Infer("""
-        import foo
-        def f():
-          return foo.baz().bar()
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
-      self.assertTypesMatchPytd(ty, """
-        foo = ...  # type: module
-        def f() -> int
       """)
 
 

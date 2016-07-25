@@ -402,8 +402,8 @@ class AtomicAbstractValue(object):
     return self.get_default_type_key()
 
   def instantiate(self, node):
-    return Instance(self.to_variable(node, self.name), self.vm).to_variable(
-        node, self.name)
+    return Instance(self.to_variable(node, self.name),
+                    self.vm, node).to_variable(node, self.name)
 
   def to_variable(self, node, name=None):
     """Build a variable out of this abstract value.
@@ -817,11 +817,20 @@ class Instance(SimpleAbstractValue):
   _CONTAINER_NAMES = set([
       "__builtin__.list", "__builtin__.set", "__builtin__.frozenset"])
 
-  def __init__(self, clsvar, vm):
+  def __init__(self, clsvar, vm, node):
     super(Instance, self).__init__(clsvar.name, vm)
     self.cls = clsvar
     for cls in clsvar.data:
       cls.register_instance(self)
+      for base in cls.mro:
+        if isinstance(base, ParameterizedClass):
+          for name, param in base.type_parameters.items():
+            if (not isinstance(param, FormalType) and
+                name not in self.type_parameters):
+              # We inherit from a ParameterizedClass with a non-formal
+              # parameter, e.g., class Foo(List[int]). Initialize the
+              # corresponding instance parameter appropriately.
+              self.type_parameters[name] = param.instantiate(node)
 
   def compatible_with(self, logical_value):  # pylint: disable=unused-argument
     # Containers with unset parameters cannot match True.
@@ -844,8 +853,8 @@ class ValueWithSlots(Instance):
   handling of some magic methods (__setitem__ etc.)
   """
 
-  def __init__(self, clsvar, vm):
-    super(ValueWithSlots, self).__init__(clsvar, vm)
+  def __init__(self, clsvar, vm, node):
+    super(ValueWithSlots, self).__init__(clsvar, vm, node)
     self._slots = {}
     self._self = {}  # TODO(kramm): Find a better place to store these.
     self._super = {}
@@ -854,7 +863,8 @@ class ValueWithSlots(Instance):
   def make_native_function(self, name, method):
     key = (name, method)
     if key not in self._function_cache:
-      self._function_cache[key] = NativeFunction(name, method, self.vm)
+      self._function_cache[key] = NativeFunction(name, method, self.vm,
+                                                 self.vm.root_cfg_node)
     return self._function_cache[key]
 
   def set_slot(self, name, method):
@@ -915,8 +925,8 @@ class Dict(ValueWithSlots, WrapsDict("_entries")):
   KEY_TYPE_PARAM = "K"
   VALUE_TYPE_PARAM = "V"
 
-  def __init__(self, name, vm):
-    super(Dict, self).__init__(vm.convert.dict_type, vm)
+  def __init__(self, name, vm, node):
+    super(Dict, self).__init__(vm.convert.dict_type, vm, node)
     self.name = name
     self._entries = {}
     self.set_slot("__getitem__", self.getitem_slot)
@@ -999,8 +1009,8 @@ class Dict(ValueWithSlots, WrapsDict("_entries")):
 class AbstractOrConcreteValue(Instance, PythonConstant):
   """Abstract value with a concrete fallback."""
 
-  def __init__(self, pyval, clsvar, vm):
-    super(AbstractOrConcreteValue, self).__init__(clsvar, vm)
+  def __init__(self, pyval, clsvar, vm, node):
+    super(AbstractOrConcreteValue, self).__init__(clsvar, vm, node)
     PythonConstant.init_mixin(self, pyval)
 
   def compatible_with(self, logical_value):
@@ -1263,8 +1273,8 @@ class Function(Instance):
     vm: TypegraphVirtualMachine instance.
   """
 
-  def __init__(self, name, vm):
-    super(Function, self).__init__(vm.convert.function_type, vm)
+  def __init__(self, name, vm, node):
+    super(Function, self).__init__(vm.convert.function_type, vm, node)
     self.name = name
     self.is_attribute_of_class = False
     self._bound_functions_cache = {}
@@ -1539,8 +1549,8 @@ class PyTDFunction(Function):
   This represents (potentially overloaded) functions.
   """
 
-  def __init__(self, name, signatures, kind, vm):
-    super(PyTDFunction, self).__init__(name, vm)
+  def __init__(self, name, signatures, kind, vm, node):
+    super(PyTDFunction, self).__init__(name, vm, node)
     assert signatures
     self.kind = kind
     self.bound_class = BoundPyTDFunction
@@ -1738,8 +1748,8 @@ class Class(object):
     node, attr_var = Class.get_attribute(self, node, "__getattr__", valself,
                                          valcls, condition)
     if attr_var and attr_var.bindings:
-      name_var = AbstractOrConcreteValue(
-          name, self.vm.convert.str_type, self.vm).to_variable(node, name)
+      name_var = AbstractOrConcreteValue(name, self.vm.convert.str_type,
+                                         self.vm, node).to_variable(node, name)
       return self.vm.call_function(node, attr_var, [name_var])
     else:
       return node, None
@@ -1818,7 +1828,8 @@ class ParameterizedClass(AtomicAbstractValue, Class, FormalType):
     return self.base_cls.get_attribute(node, name, valself, valcls, condition)
 
   def get_attribute_flat(self, node, name):
-    return self.base_cls.get_attribute_flat(node, name)
+    # Go into the base class's mro.
+    return self.base_cls.get_attribute(node, name)
 
   def to_type(self, node, seen=None):
     return pytd.NamedType("__builtin__.type")
@@ -1851,19 +1862,8 @@ class ParameterizedClass(AtomicAbstractValue, Class, FormalType):
 
   def _match_instance(self, instance, other_type, subst, node, view):
     """Used by match_instance_against_type. Called for each MRO entry."""
-    subst = subst.copy()
-    subst = self.base_cls.match_instance_against_type(
+    return self.base_cls.match_instance_against_type(
         instance, other_type, subst, node, view)
-    if subst is None:
-      return None
-    # typically empty
-    for name, class_param in other_type.type_parameters.items():
-      instance_param = instance.type_parameters[name]
-      subst = match_var_against_type(instance_param, class_param,
-                                     subst, node, view)
-      if subst is None:
-        return None
-    return subst
 
 
 class PyTDClass(SimpleAbstractValue, Class):
@@ -1925,11 +1925,12 @@ class PyTDClass(SimpleAbstractValue, Class):
   def call(self, node, func, posargs, namedargs,
            starargs=None, starstarargs=None):
     value = Instance(self.vm.convert.convert_constant(
-        self.name, self.pytd_cls), self.vm)
+        self.name, self.pytd_cls), self.vm, node)
 
     for type_param in self.pytd_cls.template:
-      value.type_parameters[type_param.name] = self.vm.program.NewVariable(
-          type_param.name)
+      if type_param.name not in value.type_parameters:
+        value.type_parameters[type_param.name] = self.vm.program.NewVariable(
+            type_param.name)
 
     results = self.vm.program.NewVariable(self.name)
     retval = results.AddBinding(value, [func], node)
@@ -2094,7 +2095,7 @@ class InterpreterClass(SimpleAbstractValue, Class):
     if key not in self._instance_cache:
       cls = self.vm.program.NewVariable(self.name)
       cls.AddBinding(self, [value], node)
-      self._instance_cache[key] = Instance(cls, self.vm)
+      self._instance_cache[key] = Instance(cls, self.vm, node)
     return self._instance_cache[key]
 
   def call(self, node, value, posargs, namedargs,
@@ -2207,8 +2208,8 @@ class NativeFunction(Function):
     vm: TypegraphVirtualMachine instance.
   """
 
-  def __init__(self, name, func, vm):
-    super(NativeFunction, self).__init__(name, vm)
+  def __init__(self, name, func, vm, node):
+    super(NativeFunction, self).__init__(name, vm, node)
     self.name = name
     self.func = func
     self.cls = self.vm.convert.function_type
@@ -2279,12 +2280,13 @@ class InterpreterFunction(Function):
                (dict(enumerate(closure or ())), None)))
     if key not in InterpreterFunction._function_cache:
       InterpreterFunction._function_cache[key] = InterpreterFunction(
-          name, code, f_locals, f_globals, defaults, closure, annotations, vm)
+          name, code, f_locals, f_globals, defaults,
+          closure, annotations, vm, vm.root_cfg_node)
     return InterpreterFunction._function_cache[key]
 
   def __init__(self, name, code, f_locals, f_globals, defaults, closure,
-               annotations, vm):
-    super(InterpreterFunction, self).__init__(name, vm)
+               annotations, vm, node):
+    super(InterpreterFunction, self).__init__(name, vm, node)
     log.debug("Creating InterpreterFunction %r for %r", name, code.co_name)
     self.bound_class = BoundInterpreterFunction
     self.doc = code.co_consts[0] if code.co_consts else None
@@ -2408,7 +2410,7 @@ class InterpreterFunction(Function):
         callargs[kwvararg_name] = starstarargs.AssignToNewVariable(
             "**kwargs", node)
       else:
-        k = Dict("kwargs", self.vm)
+        k = Dict("kwargs", self.vm, node)
         k.update(node, namedargs, omit=param_names)
         callargs[kwvararg_name] = k.to_variable(node, kwvararg_name)
       arg_pos += 1
@@ -2487,7 +2489,7 @@ class InterpreterFunction(Function):
       ret = self.vm.program.NewVariable(old_ret.name, old_ret.data, [], node)
       return node, ret
     if self.code.co_flags & loadmarshal.CodeType.CO_GENERATOR:
-      generator = Generator(frame, self.vm)
+      generator = Generator(frame, self.vm, node)
       # Run the generator right now, even though the program didn't call it,
       # because we need to know the contained type for futher matching.
       node2, _ = generator.run_until_yield(node)
@@ -2656,15 +2658,15 @@ class Generator(Instance):
 
   TYPE_PARAM = "T"  # See class generator in pytd/builtins/__builtin__.pytd
 
-  def __init__(self, generator_frame, vm):
-    super(Generator, self).__init__(vm.convert.generator_type, vm)
+  def __init__(self, generator_frame, vm, node):
+    super(Generator, self).__init__(vm.convert.generator_type, vm, node)
     self.generator_frame = generator_frame
     self.runs = 0
 
   def get_attribute(self, node, name, valself=None, valcls=None,
                     condition=None):
     if name == "__iter__":
-      f = NativeFunction(name, self.__iter__, self.vm)
+      f = NativeFunction(name, self.__iter__, self.vm, node)
       return node, f.to_variable(node, name)
     elif name in ["next", "__next__"]:
       return node, self.to_variable(node, name)
@@ -2729,8 +2731,8 @@ class Module(Instance):
 
   is_lazy = True  # uses _convert_member
 
-  def __init__(self, vm, name, member_map):
-    super(Module, self).__init__(vm.convert.module_type, vm=vm)
+  def __init__(self, vm, node, name, member_map):
+    super(Module, self).__init__(vm.convert.module_type, vm=vm, node=node)
     self.name = name
     self._member_map = member_map
 
