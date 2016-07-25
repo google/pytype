@@ -66,7 +66,7 @@ class OptionsTest(test_inference.InferenceTest):
       def f3(x) -> int
     """)
 
-  def testMaxDepth2Explicit(self):
+  def testInitMaxDepth(self):
     ty = self.Infer("""
       def f1(x):
         return f2(x)
@@ -80,7 +80,7 @@ class OptionsTest(test_inference.InferenceTest):
         return 1
       f1(__any_object__)
       g1(__any_object__)
-    """, deep=False, extract_locals=True, maximum_depth=2)
+    """, deep=False, extract_locals=True, init_maximum_depth=2)
     self.assertTypesMatchPytd(ty, """
       def f1(x) -> int
       def f2(x) -> int

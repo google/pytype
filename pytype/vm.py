@@ -78,10 +78,9 @@ class VirtualMachine(object):
                module_name=None,
                reverse_operators=False,
                generate_unknowns=False,
-               cache_unknowns=True,
-               maximum_depth=None):
+               cache_unknowns=True):
     """Construct a TypegraphVirtualMachine."""
-    self.maximum_depth = sys.maxint if maximum_depth is None else maximum_depth
+    self.maximum_depth = sys.maxint
     self.errorlog = errorlog
     self.options = options
     self.python_version = options.python_version
@@ -523,7 +522,7 @@ class VirtualMachine(object):
     builtin_names = frozenset(f_globals.members)
     return node, f_globals, f_locals, builtin_names
 
-  def run_program(self, src, filename, run_builtins=True):
+  def run_program(self, src, filename, maximum_depth, run_builtins):
     """Run the code and return the CFG nodes.
 
     This function loads in the builtins and puts them ahead of `code`,
@@ -532,11 +531,13 @@ class VirtualMachine(object):
     Args:
       src: The program source code.
       filename: The filename the source is from.
+      maximum_depth: Maximum depth to follow call chains.
       run_builtins: Whether to preload the native Python builtins.
     Returns:
       A tuple (CFGNode, set) containing the last CFGNode of the program as
         well as all the top-level names defined by it.
     """
+    self.maximum_depth = sys.maxint if maximum_depth is None else maximum_depth
     node = self.root_cfg_node.ConnectNew("builtins")
     if run_builtins:
       node, f_globals, f_locals, builtin_names = self.preload_builtins(node)

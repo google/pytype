@@ -5,6 +5,7 @@ import logging
 import os
 import StringIO
 import subprocess
+import sys
 
 
 from pytype import abstract
@@ -25,6 +26,10 @@ log = logging.getLogger(__name__)
 CallRecord = collections.namedtuple("CallRecord",
                                     ["node", "function", "positional_arguments",
                                      "keyword_arguments", "return_value"])
+
+
+# How deep to follow call chains, during module loading:
+INIT_MAXIMUM_DEPTH = 4
 
 
 class AnalysisFrame(object):
@@ -169,8 +174,9 @@ class CallTracer(vm.VirtualMachine):
             node2 = self.analyze_function(value, node)
             node2.ConnectTo(node)
 
-  def analyze(self, node, defs, ignore):
+  def analyze(self, node, defs, ignore, maximum_depth):
     assert not self.frame
+    self.maximum_depth = sys.maxint if maximum_depth is None else maximum_depth
     self.analyze_toplevel(node, defs, ignore)
     return node
 
@@ -549,16 +555,16 @@ def check_types(py_src, pytd_src, py_filename, pytd_filename, errorlog,
                 options,
                 run_builtins=True,
                 reverse_operators=False,
-                cache_unknowns=False):
+                cache_unknowns=False,
+                init_maximum_depth=INIT_MAXIMUM_DEPTH):
   """Verify a PyTD against the Python code."""
   tracer = CallTracer(errorlog=errorlog, options=options,
                       module_name=_get_module_name(py_filename, options),
                       reverse_operators=reverse_operators,
                       cache_unknowns=cache_unknowns,
-                      generate_unknowns=False,
-                      maximum_depth=(1 if options.quick else None))
+                      generate_unknowns=False)
   loc, defs, builtin_names = tracer.run_program(
-      py_src, py_filename, run_builtins)
+      py_src, py_filename, init_maximum_depth, run_builtins)
   if pytd_src is not None:
     ast = builtins.ParsePyTD(pytd_src, pytd_filename, options.python_version,
                              lookup_classes=True)
@@ -567,7 +573,8 @@ def check_types(py_src, pytd_src, py_filename, pytd_filename, errorlog,
                        os.path.basename(py_filename),
                        os.path.basename(pytd_filename))
   else:
-    tracer.analyze(loc, defs, builtin_names)
+    tracer.analyze(loc, defs, builtin_names,
+                   maximum_depth=(1 if options.quick else None))
 
 
 def infer_types(src,
@@ -575,7 +582,8 @@ def infer_types(src,
                 filename=None, run_builtins=True,
                 deep=True, solve_unknowns=True,
                 reverse_operators=False, cache_unknowns=False,
-                extract_locals=True, maximum_depth=3):
+                extract_locals=True, init_maximum_depth=INIT_MAXIMUM_DEPTH,
+                maximum_depth=None):
   """Given Python source return its types.
 
   Args:
@@ -594,6 +602,7 @@ def infer_types(src,
     cache_unknowns: If True, do a faster approximation of unknown types.
     extract_locals: If not optimizing, should we at least remove the call
       traces?
+    init_maximum_depth: Depth of analysis during module loading.
     maximum_depth: Depth of the analysis. Default: unlimited.
   Returns:
     A TypeDeclUnit
@@ -604,13 +613,12 @@ def infer_types(src,
                       module_name=_get_module_name(filename, options),
                       reverse_operators=reverse_operators,
                       cache_unknowns=cache_unknowns,
-                      generate_unknowns=not options.quick,
-                      maximum_depth=maximum_depth)
-  loc, defs, builtin_names = tracer.run_program(src, filename, run_builtins)
+                      generate_unknowns=not options.quick)
+  loc, defs, builtin_names = tracer.run_program(
+      src, filename, init_maximum_depth, run_builtins)
   log.info("===Done run_program===")
-  # TODO(pludemann): make test_inference.InferDedent and this code the same:
   if deep:
-    tracer.exitpoint = tracer.analyze(loc, defs, builtin_names)
+    tracer.exitpoint = tracer.analyze(loc, defs, builtin_names, maximum_depth)
   else:
     tracer.exitpoint = loc
   ast = tracer.compute_types(defs, builtin_names)
