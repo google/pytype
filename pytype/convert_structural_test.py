@@ -109,7 +109,7 @@ class MatchTest(unittest.TestCase):
       class `~unknown1`(object):
         def append(self: list, v: NoneType) -> NoneType
       class `~unknown2`(object):
-        def remove(self: list, v: float) -> NoneType
+        def insert(self: list, index: int, object: float) -> NoneType
       """)
     self.assertItemsEqual(["list"], mapping["~unknown1"])
     self.assertItemsEqual(["list"], mapping["~unknown2"])

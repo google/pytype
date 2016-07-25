@@ -638,11 +638,7 @@ class tupleiterator(Iterator[T]):
 
 T = TypeVar('T')
 class set(Set[T]):
-    # TODO(pludemann): some of the combining methods may have wrong set[...] types
-    #                  cf: __and__, __or__
-    A = TypeVar('A')
     N = TypeVar('N')
-    X = TypeVar('X')
     T2 = TypeVar('T2')
     def __init__(self) -> NoneType:
         self := set[nothing]
@@ -650,31 +646,28 @@ class set(Set[T]):
         self := set[N]
     def __init__(self, x) -> NoneType:
         self := set[nothing]  # TODO(kramm): should be set[?]
-    def __and__(self, y: set[T]) -> set[T]
+    def __and__(self, y: Iterable[T]) -> set[T]
     def __contains__(self, y) -> bool
-    def __eq__(self, y) -> bool
-    def __ge__(self, y: set[T]) -> bool
-    def __gt__(self, y: set[T]) -> bool
     def __iter__(self) -> setiterator[T]
-    def __le__(self, y: set[T]) -> bool
     def __len__(self) -> int
-    def __lt__(self, y: set[T]) -> bool
-    def __ne__(self, y) -> bool
-    def __or__(self, y: set[T2]) -> set[T2]
-    def __sub__(self, y: AbstractSet[X]) -> set[T]
-    def __xor__(self, y: set[T]) -> set[T]
-    def clear(self, ...) -> NoneType
-    def copy(self, ...) -> set[T]
+    def __or__(self, y: Iterable[T2]) -> set[T or T2]
+    def __sub__(self, y: Iterable) -> set[T]
+    def __xor__(self, y: Iterable[T2]) -> set[T or T2]
+    def clear(self) -> NoneType
+    def copy(self) -> set[T]
     def discard(self, y) -> NoneType
     def difference_update(self, ...) -> NoneType
+    def symmetric_difference_update(self, ...) -> NoneType
     def intersection_update(self, ...) -> NoneType
-    def isdisjoint(self, y: AbstractSet[T2]) -> bool
-    def issubset(self, y: AbstractSet[T2]) -> bool
-    def issuperset(self, y: AbstractSet[T2]) -> bool
+    def isdisjoint(self, y: Iterable) -> bool
+    def issubset(self, y: Iterable) -> bool
+    def issuperset(self, y: Iterable) -> bool
     def pop(self) -> T
-    def update(self, ...) -> NoneType
-    def add(self, object: A) -> NoneType:
-        self := set[T or A]
+    def remove(self, x) -> None
+    def update(self, ...) -> NoneType:
+        self := set[?]
+    def add(self, y: N) -> NoneType:
+        self := set[T or N]
     # Even though these look like instance methods (i.e., you can call
     # {1}.union(x)), they're actually static methods. (Which will accept a
     # variable number of arguments, the first of which can e.g. be self.)
@@ -684,6 +677,15 @@ class set(Set[T]):
     def intersection(...) -> set[?]
     @staticmethod
     def difference(...) -> set[?]
+    @staticmethod
+    def symmetric_difference(Iterable) -> set[?]
+    # TODO(kramm): These shouldn't be necessary:
+    def __eq__(self, other) -> bool
+    def __ne__(self, other) -> bool
+    def __ge__(self, other) -> bool
+    def __gt__(self, other) -> bool
+    def __le__(self, other) -> bool
+    def __lt__(self, other) -> bool
 
 T = TypeVar('T')
 class frozenset(FrozenSet[T]):
