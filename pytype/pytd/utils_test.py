@@ -159,15 +159,6 @@ class TestUtils(parser_test_base.ParserTest):
     utils.Print(ast, print_format="pytd")
     utils.Print(ast, print_format="pep484stub")
 
-  def testParsePyTD(self):
-    """Test ParsePyTD()."""
-    ast = utils.ParsePyTD("a = ...  # type: int",
-                          "<inline>", python_version=(2, 7, 6),
-                          lookup_classes=True)
-    a = ast.Lookup("a").type
-    self.assertItemsEqual(a, pytd.ClassType("int"))
-    self.assertIsNotNone(a.cls)  # verify that the lookup succeeded
-
   def testNamedTypeWithModule(self):
     """Test NamedTypeWithModule()."""
     self.assertEquals(utils.NamedTypeWithModule("name"), pytd.NamedType("name"))
@@ -175,11 +166,6 @@ class TestUtils(parser_test_base.ParserTest):
                       pytd.NamedType("name"))
     self.assertEquals(utils.NamedTypeWithModule("name", "package"),
                       pytd.NamedType("package.name"))
-
-  def testParsePredefinedPyTD(self):
-    """Test ParsePredefinedPyTD()."""
-    ast = utils.ParsePredefinedPyTD("builtins", "sys", python_version=(2, 7, 6))
-    self.assertIsNotNone(ast.Lookup("sys.stderr"))
 
   def testOrderedSet(self):
     ordered_set = utils.OrderedSet(n/2 for n in range(10))

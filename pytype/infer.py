@@ -16,6 +16,7 @@ from pytype import vm
 from pytype.pytd import optimize
 from pytype.pytd import pytd
 from pytype.pytd import utils as pytd_utils
+from pytype.pytd.parse import builtins
 from pytype.pytd.parse import visitors
 
 log = logging.getLogger(__name__)
@@ -559,8 +560,8 @@ def check_types(py_src, pytd_src, py_filename, pytd_filename, errorlog,
   loc, defs, builtin_names = tracer.run_program(
       py_src, py_filename, run_builtins)
   if pytd_src is not None:
-    ast = pytd_utils.ParsePyTD(pytd_src, pytd_filename, options.python_version,
-                               lookup_classes=True)
+    ast = builtins.ParsePyTD(pytd_src, pytd_filename, options.python_version,
+                             lookup_classes=True)
     ast = tracer.loader.resolve_ast(ast)
     tracer.check_types(loc, defs, ast,
                        os.path.basename(py_filename),

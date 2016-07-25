@@ -3,7 +3,7 @@
 import os
 
 
-from pytype.pytd import utils
+from pytype.pytd.parse import builtins
 
 
 def get_typeshed_dir():
@@ -84,5 +84,5 @@ def parse_type_definition(pyi_subdir, module, python_version):
     filename, src = get_typeshed_file(pyi_subdir, module, python_version)
   except IOError:
     return None
-  return utils.ParsePyTD(src, filename=filename, module=module,
-                         python_version=python_version).Replace(name=module)
+  return builtins.ParsePyTD(src, filename=filename, module=module,
+                            python_version=python_version).Replace(name=module)

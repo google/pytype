@@ -94,9 +94,9 @@ class Loader(object):
                              (module_name, filename, existing.filename))
       return existing.ast
     if not ast:
-      ast = pytd_utils.ParsePyTD(filename=filename,
-                                 module=module_name,
-                                 python_version=self.options.python_version)
+      ast = builtins.ParsePyTD(filename=filename,
+                               module=module_name,
+                               python_version=self.options.python_version)
     ast = self._postprocess_pyi(ast)
     module = Module(module_name, filename, ast)
     self._modules[module_name] = module
@@ -191,7 +191,7 @@ class Loader(object):
     """Load a pytd/pyi that ships with pytype or typeshed."""
     version = self.options.python_version
     # Try our own type definitions first.
-    mod = pytd_utils.ParsePredefinedPyTD(subdir, module_name, version)
+    mod = builtins.ParsePredefinedPyTD(subdir, module_name, version)
     if not mod and self.options.typeshed:
       # Fall back to typeshed.
       mod = typeshed.parse_type_definition(subdir, module_name, version)

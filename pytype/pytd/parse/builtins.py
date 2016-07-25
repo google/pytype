@@ -17,8 +17,11 @@
 
 """Utilities for parsing pytd files for builtins."""
 
+import os
+
 
 from pytype.pytd import data_files
+from pytype.pytd import utils
 from pytype.pytd.parse import parser
 from pytype.pytd.parse import visitors
 
@@ -71,8 +74,6 @@ def GetBuiltinsPyTD():
     A pytd.TypeDeclUnit instance. It'll directly contain the builtin classes
     and functions, and submodules for each of the standard library modules.
   """
-  # TODO(kramm): Fix circular import.
-  from pytype.pytd import utils  # pylint: disable=g-import-not-at-top
   return utils.Concat(*GetBuiltinsAndTyping())
 
 
@@ -81,3 +82,53 @@ def GetBuiltinsPyTD():
 def GetBuiltinsCode(unused_python_version):
   """Similar to GetBuiltinsPyTD, but for code in the .py file."""
   return _FindBuiltinFile("__builtin__", extension=".py")
+
+
+def ParsePyTD(src=None, filename=None, python_version=None, module=None,
+              lookup_classes=False):
+  """Parse pytd sourcecode and do name lookup for builtins.
+
+  This loads a pytd and also makes sure that all names are resolved (i.e.,
+  that all primitive types in the AST are ClassType, and not NameType).
+
+  Args:
+    src: PyTD source code.
+    filename: The filename the source code is from.
+    python_version: The Python version to parse the pytd for.
+    module: The name of the module we're parsing.
+    lookup_classes: If we should also lookup the class of every ClassType.
+
+  Returns:
+    A pytd.TypeDeclUnit.
+  """
+  assert python_version
+  if src is None:
+    with open(filename, "rb") as fi:
+      src = fi.read()
+  ast = parser.parse_string(src, filename=filename, name=module,
+                            python_version=python_version)
+  if module is not None:  # Allow "" as module name
+    ast = ast.Visit(visitors.AddNamePrefix(ast.name + "."))
+  if lookup_classes:
+    ast = visitors.LookupClasses(ast, GetBuiltinsPyTD())
+  return ast
+
+
+def ParsePredefinedPyTD(pytd_subdir, module, python_version):
+  """Load and parse a *.pytd from "pytd/{pytd_subdir}/{module}.pytd".
+
+  Args:
+    pytd_subdir: the directory where the module should be found
+    module: the module name (without any file extension)
+    python_version: sys.version_info[:2]
+
+  Returns:
+    The AST of the module; None if the module doesn't exist in pytd_subdir.
+  """
+  try:
+    src = data_files.GetPredefinedFile(pytd_subdir, module)
+  except IOError:
+    return None
+  return ParsePyTD(src, filename=os.path.join(pytd_subdir, module + ".pytd"),
+                   module=module,
+                   python_version=python_version).Replace(name=module)

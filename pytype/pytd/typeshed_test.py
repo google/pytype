@@ -5,7 +5,7 @@ import re
 
 
 from pytype.pytd import typeshed
-from pytype.pytd import utils
+from pytype.pytd.parse import builtins
 from pytype.pytd.parse import parser_test_base
 import unittest
 
@@ -48,10 +48,10 @@ def _test_parse(pyi_file):
   with open(pyi_file) as f:
     src = f.read()
   # Call ParsePyTD directly to avoid typeshed.get_typeshed_file logic
-  utils.ParsePyTD(src,
-                  filename=pyi_file,
-                  module=module,
-                  python_version=python_version)
+  builtins.ParsePyTD(src,
+                     filename=pyi_file,
+                     module=module,
+                     python_version=python_version)
 
 
 class TestTypeshedParsing(parser_test_base.ParserTest):
