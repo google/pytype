@@ -84,8 +84,12 @@ def main():
                                remove_mutable=options.remove_mutable)
 
   if filename_out is not None:
-    with open(filename_out, "w") as out:
-      out.write(pytd.Print(parsed, print_format=options.output_format))
+    out_text = pytd.Print(parsed, print_format=options.output_format)
+    if filename_out == "-":
+      sys.stdout.write(out_text)
+    else:
+      with open(filename_out, "w") as out:
+        out.write(out_text)
 
 
 if __name__ == "__main__":
