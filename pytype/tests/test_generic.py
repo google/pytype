@@ -109,7 +109,56 @@ class GenericTest(test_inference.InferenceTest):
         def f() -> int
       """)
 
-  @unittest.skip("Needs better GenericType support")
+  def testTypeParameterRenaming(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        U = TypeVar("U")
+        class A(List[U]): pass
+        class B(A[int]): pass
+      """)
+      ty = self.Infer("""
+        import a
+        def foo():
+          return a.A()
+        def bar():
+          return a.B()
+        def baz():
+          x = bar()
+          x.extend(["str"])
+          return x
+      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        def foo() -> a.A[nothing]
+        def bar() -> a.B[int]
+        def baz() -> a.B[int or str]
+      """)
+
+  def testTypeParameterRenamingChain(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        A = TypeVar("A")
+        B = TypeVar("B")
+        class Foo(List[A]):
+          def foo(self) -> None:
+            self := Foo[A or complex]
+        class Bar(Foo[B], Set[B]):
+          def bar(self) -> B
+      """)
+      ty = self.Infer("""
+        import a
+        def f():
+          x = a.Bar([42])
+          x.foo()
+          x.extend(["str"])
+          x.add(float(3))
+          return x.bar()
+      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        def f() -> int or float or complex or str
+      """)
+
   def testTypeParameterDeep(self):
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", """
@@ -147,7 +196,7 @@ class GenericTest(test_inference.InferenceTest):
       """)
 
   @unittest.skip("Needs better GenericType support")
-  def testMultiple(self):
+  def testMultipleTemplates(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
         K = TypeVar("K")
@@ -162,6 +211,26 @@ class GenericTest(test_inference.InferenceTest):
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
         def f() -> a.A[str, int]
+      """)
+
+  @unittest.skip("Needs better GenericType support")
+  def testMultipleTemplatesDifferent(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        K = TypeVar("K")
+        V = TypeVar("V")
+        class A(Dict[K, V], List[V]): pass
+      """)
+      ty = self.Infer("""
+        import a
+        def f():
+          x = a.A()
+          x.extend([42])
+          return x
+      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        def f() -> a.A[nothing, int]
       """)
 
 

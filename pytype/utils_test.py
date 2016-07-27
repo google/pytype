@@ -458,8 +458,78 @@ class UtilsTest(unittest.TestCase):
     changestamp = d.changestamp
     var.AddBinding("data")  # No change because this is duplicate data
     self.assertEquals(d.changestamp, changestamp)
+    changestamp = d.changestamp
     del d["key"]
     self.assertGreater(d.changestamp, changestamp)
+
+  def testAliasingDict(self):
+    # Since the aliasing dict changes the basic way a dictionary works, we
+    # require every method to be overridden
+    self.assertFalse(set(dict.__dict__) - set(utils.AliasingDict.__dict__))
+    d = utils.AliasingDict()
+    d.add_alias("alias", "name")
+    self.assertNotIn("alias", d)
+    self.assertNotIn("name", d)
+    var1 = self.prog.NewVariable("var1")
+    d["alias"] = var1
+    self.assertIn("name", d)
+    self.assertIn("alias", d)
+    self.assertEquals(var1, d["name"])
+    self.assertEquals(d["name"], d["alias"])
+    self.assertEquals(d["alias"], d.get("alias"))
+    self.assertEquals(d["name"], d.get("name"))
+    self.assertEquals(None, d.get("other_name"))
+    var2 = self.prog.NewVariable("var2")
+    d["name"] = var2
+    self.assertEquals(var2, d["name"])
+    self.assertEquals(d["name"], d["alias"])
+
+  def testAliasingDictRealiasing(self):
+    d = utils.AliasingDict()
+    d.add_alias("alias1", "name")
+    d.add_alias("alias2", "name")
+    self.assertRaises(AssertionError,
+                      lambda: d.add_alias("name", "other_name"))
+    self.assertRaises(AssertionError,
+                      lambda: d.add_alias("alias1", "other_name"))
+    d.add_alias("alias1", "name")
+    d.add_alias("alias2", "alias1")
+    d.add_alias("alias1", "alias2")
+    # Check that the name, alias1, and alias2 still all refer to the same key
+    var = self.prog.NewVariable("var")
+    d["alias1"] = var
+    self.assertEquals(1, len(d))
+    self.assertEquals(var, d["name"])
+    self.assertEquals(var, d["alias1"])
+    self.assertEquals(var, d["alias2"])
+
+  def testAliasingDictMatches(self):
+    d = utils.AliasingDict()
+    d["name1"] = None
+    d["name2"] = None
+    d.add_alias("alias1", "name1")
+    d.add_alias("alias2", "name2")
+    d.add_alias("alias3", "name2")
+    self.assertTrue(d.matches({"name1": None, "name2": None}))
+    self.assertTrue(d.matches({"name1": None, "alias2": None}))
+    self.assertTrue(d.matches({"name1": None, "alias3": None}))
+    self.assertTrue(d.matches({"alias1": None, "name2": None}))
+    self.assertTrue(d.matches({"alias1": None, "alias2": None}))
+    self.assertTrue(d.matches({"alias1": None, "alias3": None}))
+    self.assertTrue(d.matches({"name1": None, "name2": None, "name3": None}))
+    self.assertFalse(d.matches({"name1": None, "alias1": None}))
+    self.assertFalse(d.matches({"alias2": None, "alias3": None}))
+    self.assertFalse(d.matches({"name2": None}))
+    self.assertFalse(d.matches({"name1": None, "name4": None}))
+
+  def testAliasingDictTransitive(self):
+    d = utils.AliasingDict()
+    d.add_alias("alias1", "name")
+    d.add_alias("alias2", "alias1")
+    d["name"] = self.prog.NewVariable("var")
+    self.assertEquals(1, len(d))
+    self.assertEquals(d["name"], d["alias1"])
+    self.assertEquals(d["alias1"], d["alias2"])
 
   def testDynamicVar(self):
     var = utils.DynamicVar()

@@ -524,6 +524,153 @@ class MonitorDict(dict):
     return itertools.chain.from_iterable(v.data for v in self.values())
 
 
+class AliasingDict(dict):
+  """A dictionary that supports key aliasing.
+
+  This dictionary provides a way to register aliases for a key, which are then
+  treated like the key itself by getters and setters. It does not allow using
+  a pre-existing key as an alias or adding the same alias to different keys.
+  """
+
+  def __init__(self, *args, **kwargs):
+    super(AliasingDict, self).__init__(*args, **kwargs)
+    self._alias_map = {}
+
+  def add_alias(self, alias, name):
+    assert alias not in self
+    assert alias not in self._alias_map.values()
+    assert (alias not in self._alias_map or
+            self._alias_map.get(name, name) == self._alias_map[alias])
+    self._alias_map[alias] = self._alias_map.get(name, name)
+
+  def matches(self, other):
+    # This match is asymmetric: self can be missing parameters but
+    # cannot have extra ones.
+    return not set(self) - set(self._alias_map.get(name, name)
+                               for name in other)
+
+  def get(self, name):
+    try:
+      return self[name]
+    except KeyError:
+      return None
+
+  def __contains__(self, name):
+    return super(AliasingDict, self).__contains__(
+        self._alias_map.get(name, name))
+
+  def __setitem__(self, name, var):
+    super(AliasingDict, self).__setitem__(
+        self._alias_map.get(name, name), var)
+
+  def __getitem__(self, name):
+    return super(AliasingDict, self).__getitem__(
+        self._alias_map.get(name, name))
+
+  def __repr__(self):
+    return ("AliasingDict(dict=%r, _alias_map=%r)" %
+            (super(AliasingDict, self).__repr__(),
+             repr(self._alias_map)))
+
+  def values(self):
+    return super(AliasingDict, self).values()
+
+  def items(self):
+    return super(AliasingDict, self).items()
+
+  def __len__(self):
+    return super(AliasingDict, self).__len__()
+
+  def __iter__(self):
+    return super(AliasingDict, self).__iter__()
+
+  def __getattribute__(self, name):
+    return super(AliasingDict, self).__getattribute__(name)
+
+  def __new__(cls, *args, **kwargs):
+    mro = cls.mro()
+    return mro[mro.index(AliasingDict) + 1].__new__(cls, *args, **kwargs)
+
+  def __delitem__(self, *args, **kwargs):
+    raise NotImplementedError
+
+  def __eq__(self, *args, **kwargs):
+    raise NotImplementedError
+
+  def __ne__(self, *args, **kwargs):
+    raise NotImplementedError
+
+  def __gt__(self, *args, **kwargs):
+    raise NotImplementedError
+
+  def __ge__(self, *args, **kwargs):
+    raise NotImplementedError
+
+  def __lt__(self, *args, **kwargs):
+    raise NotImplementedError
+
+  def __le__(self, *args, **kwargs):
+    raise NotImplementedError
+
+  def __cmp__(self, *args, **kwargs):
+    return NotImplementedError
+
+  def __sizeof__(self, *args, **kwargs):
+    raise NotImplementedError
+
+  def __hash__(self, *args, **kwargs):
+    raise NotImplementedError
+
+  def pop(self, *args, **kwargs):
+    raise NotImplementedError
+
+  def popitem(self, *args, **kwargs):
+    raise NotImplementedError
+
+  def fromkeys(self, *args, **kwargs):
+    raise NotImplementedError
+
+  def has_key(self, *args, **kwargs):
+    raise NotImplementedError
+
+  def keys(self, *args, **kwargs):
+    raise NotImplementedError
+
+  def iterkeys(self, *args, **kwargs):
+    raise NotImplementedError
+
+  def itervalues(self, *args, **kwargs):
+    raise NotImplementedError
+
+  def iteritems(self, *args, **kwargs):
+    raise NotImplementedError
+
+  def viewkeys(self, *args, **kwargs):
+    raise NotImplementedError
+
+  def viewvalues(self, *args, **kwargs):
+    raise NotImplementedError
+
+  def viewitems(self, *args, **kwargs):
+    raise NotImplementedError
+
+  def setdefault(self, *args, **kwargs):
+    raise NotImplementedError
+
+  def copy(self, *args, **kwargs):
+    raise NotImplementedError
+
+  def update(self, *args, **kwargs):
+    raise NotImplementedError
+
+  def clear(self, *args, **kwargs):
+    raise NotImplementedError
+
+
+class AliasingMonitorDict(AliasingDict, MonitorDict):
+  pass
+
+
 class DynamicVar(object):
   """A dynamically scoped variable.
 
@@ -573,4 +720,3 @@ class AnnotatingDecorator(object):
       self.lookup[f.__name__] = value
       return f
     return decorate
-

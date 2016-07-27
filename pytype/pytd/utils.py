@@ -568,7 +568,8 @@ class AdjustTemplates(visitors.Visitor):
         if not bad_indices:
           break
       assert all(isinstance(t.type_param, pytd.TypeParameter)
-                 for t in template), "Bad template: %s" % template
+                 for t in template), ("Bad template: %s%s" %
+                                      (node.name, template))
       return node.Replace(template=tuple(template))
     else:
       return node

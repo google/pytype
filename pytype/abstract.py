@@ -539,7 +539,7 @@ class SimpleAbstractValue(AtomicAbstractValue):
     """
     super(SimpleAbstractValue, self).__init__(name, vm)
     self.members = utils.MonitorDict()
-    self.type_parameters = utils.MonitorDict()
+    self.type_parameters = utils.AliasingMonitorDict()
     self.cls = None
 
   def get_children_maps(self):
@@ -607,7 +607,7 @@ class SimpleAbstractValue(AtomicAbstractValue):
 
   def init_type_parameters(self, *names):
     """Initialize the named type parameters to nothing (empty)."""
-    self.type_parameters = utils.MonitorDict(
+    self.type_parameters = utils.AliasingMonitorDict(
         (name, self.vm.program.NewVariable("empty")) for name in names)
 
   def _load_lazy_attribute(self, name):
@@ -825,12 +825,17 @@ class Instance(SimpleAbstractValue):
       for base in cls.mro:
         if isinstance(base, ParameterizedClass):
           for name, param in base.type_parameters.items():
-            if (not isinstance(param, FormalType) and
-                name not in self.type_parameters):
+            if not isinstance(param, FormalType):
               # We inherit from a ParameterizedClass with a non-formal
               # parameter, e.g., class Foo(List[int]). Initialize the
               # corresponding instance parameter appropriately.
+              assert name not in self.type_parameters
               self.type_parameters[name] = param.instantiate(node)
+            elif name != param.name:
+              # We have type parameter renaming, e.g.,
+              #  class List(Generic[T]): pass
+              #  class Foo(List[U]): pass
+              self.type_parameters.add_alias(name, param.name)
 
   def compatible_with(self, logical_value):  # pylint: disable=unused-argument
     # Containers with unset parameters cannot match True.
@@ -1773,7 +1778,7 @@ class Class(object):
       if base is skip:
         continue
       node, var = base.get_attribute_flat(node, name)
-      if var is None:
+      if var is None or not var.bindings:
         continue
       for varval in var.bindings:
         value = varval.data
@@ -1810,6 +1815,7 @@ class ParameterizedClass(AtomicAbstractValue, Class, FormalType):
     Class.init_mixin(self)
     self.base_cls = base_cls
     self.type_parameters = type_parameters
+    self.mro = (self,) + self.base_cls.mro[1:]
 
   def __repr__(self):
     return "ParameterizedClass(cls=%r params=%s)" % (self.base_cls,
@@ -1828,8 +1834,7 @@ class ParameterizedClass(AtomicAbstractValue, Class, FormalType):
     return self.base_cls.get_attribute(node, name, valself, valcls, condition)
 
   def get_attribute_flat(self, node, name):
-    # Go into the base class's mro.
-    return self.base_cls.get_attribute(node, name)
+    return self.base_cls.get_attribute_flat(node, name)
 
   def to_type(self, node, seen=None):
     return pytd.NamedType("__builtin__.type")
@@ -1985,9 +1990,8 @@ class PyTDClass(SimpleAbstractValue, Class):
       return subst
     elif (isinstance(other_type, ParameterizedClass) and
           other_type.base_cls is self):
-      extra_params = (set(instance.type_parameters) -
-                      set(other_type.type_parameters))
-      assert not extra_params
+      assert instance.type_parameters.matches(other_type.type_parameters), (
+          instance.type_parameters, other_type.type_parameters)
       for name, class_param in other_type.type_parameters.items():
         instance_param = instance.get_type_parameter(node, name)
         subst = match_var_against_type(instance_param, class_param, subst,
