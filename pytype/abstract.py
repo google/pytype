@@ -1218,8 +1218,11 @@ class IsInstance(AtomicAbstractValue):
       return None
     # Assume a single binding for the object's class variable.  If this isn't
     # the case, treat the call as ambiguous.
+    cls_var = obj.get_class()
+    if cls_var is None:
+      return None
     try:
-      obj_class = get_atomic_value(obj.get_class())
+      obj_class = get_atomic_value(cls_var)
     except ConversionError:
       return None
 

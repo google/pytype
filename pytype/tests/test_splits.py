@@ -266,6 +266,15 @@ class SplitTest(test_inference.InferenceTest):
       def foo(x) -> None: ...
     """)
 
+  def testIsInstanceObjectWithoutClass(self):
+    ty = self.Infer("""
+      def foo(x):
+        return 1 if isinstance(dict, type) else "x"
+    """, deep=True, extract_locals=True)
+    self.assertTypesMatchPytd(ty, """
+      def foo(x) -> Union[int, str]: ...
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

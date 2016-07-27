@@ -220,6 +220,7 @@ class IsInstanceTest(AbstractTestBase):
 
     # If the object's class has multiple bindings, result is ambiguous.
     obj = abstract.SimpleAbstractValue("foo", self._vm)
+    check(None, obj, obj_class)
     obj.set_class(self._node, self.new_var(
         "foo_class", self._str_class, self._int_class))
     check(None, obj, self._str_class)
