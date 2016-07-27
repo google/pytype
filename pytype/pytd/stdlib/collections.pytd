@@ -21,6 +21,23 @@ deque = ...  # type: ?
 dumps = ...  # type: function
 loads = ...  # type: function
 
+Container = ... # type: ?
+Hashable = ... # type: ?
+Iterable = ... # type: ?
+Iterator = ... # type: ?
+Sized = ... # type: ?
+Callable = ... # type: ?
+Sequence = ... # type: ?
+MutableSequence = ... # type: ?
+Set = ... # type: ?
+MutableSet = ... # type: ?
+Mapping = ... # type: ?
+MutableMapping = ... # type: ?
+MappingView = ... # type: ?
+ItemsView = ... # type: ?
+KeysView = ... # type: ?
+ValuesView = ... # type: ?
+
 def namedtuple(typename: str, field_names: str or list[str], ...) -> type  # TODO(pludemann): add verbose, rename
 
 class OrderedDict(object):
