@@ -915,6 +915,16 @@ class VirtualMachine(object):
     state = state.push(result)
     return state
 
+  def expand_bool_result(self, node, left, right, name, maybe_predicate):
+    result = self.program.NewVariable(name)
+    for x in left.Bindings(node):
+      for y in right.Bindings(node):
+        pyval = maybe_predicate(x.data, y.data)
+        result.AddBinding(self.convert.bool_values[pyval],
+                          source_set=(x, y), where=node)
+
+    return result
+
   def byte_UNARY_NOT(self, state):
     state = state.pop_and_discard()
     state = state.push(self.convert.build_bool(state.node))
@@ -1185,9 +1195,11 @@ class VirtualMachine(object):
     elif op.arg == slots.CMP_GE:
       state, ret = self.call_binary_operator(state, "__ge__", x, y)
     elif op.arg == slots.CMP_IS:
-      ret = self.convert.build_bool(state.node)
+      ret = self.expand_bool_result(state.node, x, y,
+                                    "is_cmp", frame_state.is_cmp)
     elif op.arg == slots.CMP_IS_NOT:
-      ret = self.convert.build_bool(state.node)
+      ret = self.expand_bool_result(state.node, x, y,
+                                    "is_not_cmp", frame_state.is_not_cmp)
     elif op.arg == slots.CMP_NOT_IN:
       ret = self.convert.build_bool(state.node)
     elif op.arg == slots.CMP_IN:

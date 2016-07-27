@@ -3,6 +3,7 @@
 import logging
 
 
+from pytype import abstract
 from pytype import metrics
 from pytype.pytd import cfg
 
@@ -385,3 +386,21 @@ def _common_condition(cond1, cond2):
   assert cond1 == cond2
   return cond1
 
+
+def _is_or_is_not_cmp(left, right, is_not=False):
+  if (not isinstance(left, abstract.PythonConstant) or
+      not isinstance(right, abstract.PythonConstant)):
+    return None
+
+  if left.cls != right.cls:
+    return is_not
+
+  return is_not ^ (left.pyval == right.pyval)
+
+
+def is_cmp(left, right):
+  return _is_or_is_not_cmp(left, right, is_not=False)
+
+
+def is_not_cmp(left, right):
+  return _is_or_is_not_cmp(left, right, is_not=True)

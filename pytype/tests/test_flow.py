@@ -228,6 +228,18 @@ class FlowTest(test_inference.InferenceTest):
     """, deep=False, solve_unknowns=False, extract_locals=True)
     self.assertHasSignature(ty.Lookup("f"), (), self.str)
 
+  def test_dead_if(self):
+    self.assertNoErrors("""
+      x = None
+      if x is not None:
+        x.foo()
+    """)
+    self.assertNoErrors("""
+      x = 1
+      if x is not 1:
+        x.foo()
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

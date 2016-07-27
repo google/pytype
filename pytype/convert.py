@@ -77,7 +77,11 @@ class Converter(object):
         "function", types.FunctionType)
     self.generator_type = self.convert_constant(
         "generator", types.GeneratorType)
-
+    self.bool_values = {
+        True: self.true,
+        False: self.false,
+        None: self.primitive_class_instances[bool],
+    }
     self.undefined = self.vm.program.NewVariable("undefined")
 
   def convert_value_to_string(self, val):

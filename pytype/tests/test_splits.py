@@ -254,6 +254,18 @@ class SplitTest(test_inference.InferenceTest):
       def f1(x) -> Union[complex, int]: ...
     """)
 
+  def testDeadIf(self):
+    ty = self.Infer("""
+      def foo(x):
+        x = None
+        if x is not None:
+          x.foo()
+        return x
+    """, deep=True, extract_locals=True)
+    self.assertTypesMatchPytd(ty, """
+      def foo(x) -> None: ...
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()
