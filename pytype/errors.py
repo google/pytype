@@ -239,7 +239,7 @@ class ErrorLog(ErrorLogBase):
 
   @_error_name("attribute-error")
   def attribute_error(self, opcode, obj, attr_name):
-    on = " on %s" % obj.data[0].name if obj.bindings else ""
+    on = " on %s" % obj.data[0].name if len(obj.bindings) == 1 else ""
     self.error(opcode, "No attribute %r%s" % (attr_name, on))
 
   @_error_name("name-error")

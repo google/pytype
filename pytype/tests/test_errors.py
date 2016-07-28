@@ -246,8 +246,20 @@ class ErrorTest(test_inference.InferenceTest):
           return "attr"
       def f():
         return Foo.foo
+
+      def g(x):
+        if x:
+          y = None
+        else:
+          y = 1
+        return y.bar
     """)
-    self.assertErrorLogContains(errors, r"\[attribute-error\]")
+    # When there is one binding, include the object type in the error.
+    self.assertErrorLogContains(
+        errors, r"No attribute 'foo' on Foo \[attribute-error\]")
+    # When there are multiple bindings, there is no object type in the error.
+    self.assertErrorLogContains(
+        errors, r"No attribute 'bar' \[attribute-error\]")
 
   def testPyiType(self):
     with utils.Tempdir() as d:
