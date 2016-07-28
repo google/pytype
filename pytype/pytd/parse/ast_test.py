@@ -1171,6 +1171,28 @@ class TestASTGeneration(parser_test_base.ParserTest):
     self.assertEquals([f.name for f in unit.constants],
                       ["c4", "c5", "c6"])
 
+  def testPlatform(self):
+    data = textwrap.dedent("""
+      if sys.platform == 'win32':
+        c1 = ...  # type: int
+      if sys.platform != 'win32':
+        c2 = ...  # type: int
+      if sys.platform == 'linux':
+        c3 = ...  # type: int
+      if sys.platform != 'linux':
+        c4 = ...  # type: int
+      if sys.platform == 'foobar':
+        c5 = ...  # type: int
+      if sys.platform != 'foobar':
+        c6 = ...  # type: int
+    """)
+    unit = self.Parse(data, platform="linux")
+    self.assertEquals([f.name for f in unit.constants],
+                      ["c2", "c3", "c6"])
+    unit = self.Parse(data, platform="win32")
+    self.assertEquals([f.name for f in unit.constants],
+                      ["c1", "c4", "c6"])
+
   def testTemplateSimple(self):
     """Test simple class template."""
     data = textwrap.dedent("""

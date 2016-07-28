@@ -357,7 +357,16 @@ def CheckIsSysPythonInfo(parser, string, p):
   if string == "sys.version_info":
     return
   make_syntax_error(
-      parser, "If conditions can only use \"sys.version_info\": %s" % string, p)
+      parser, "Only \"sys.version_info\" can be compared with a tuple: %s" % (
+          string), p)
+
+
+def CheckIsSysPlatform(parser, string, p):
+  if string == "sys.platform":
+    return
+  make_syntax_error(
+      parser, "Only \"sys.platform\" can be compared with a string: %s" % (
+          string), p)
 
 
 class Context(object):
@@ -418,7 +427,7 @@ def GetTemplateAndParents(parser, p, parents):
 class TypeDeclParser(object):
   """Parser for type declaration language."""
 
-  def __init__(self, version=None, **kwargs):
+  def __init__(self, version=None, platform="linux", **kwargs):
     """Initialize.
 
     Parameters:
@@ -437,6 +446,7 @@ class TypeDeclParser(object):
     self.lexer = PyLexer()
     self.tokens = self.lexer.tokens
     self.python_version = version or DEFAULT_VERSION
+    self.platform = platform
 
     self.parser = yacc.yacc(
         start="start",  # warning: ply ignores this
@@ -693,39 +703,51 @@ class TypeDeclParser(object):
 
   def p_version_expr_lt(self, p):
     """version_expr : dotted_name LT number_tuple"""
-    _, name, _, number = p
-    CheckIsSysPythonInfo(self, name, p)
+    _, sys_version, _, number = p
+    CheckIsSysPythonInfo(self, sys_version, p)
     p[0] = self.python_version < number.AsVersion(self, p)
 
   def p_version_expr_gt(self, p):
     """version_expr : dotted_name GT number_tuple"""
-    _, name, _, number = p
-    CheckIsSysPythonInfo(self, name, p)
+    _, sys_version, _, number = p
+    CheckIsSysPythonInfo(self, sys_version, p)
     p[0] = self.python_version > number.AsVersion(self, p)
 
   def p_version_expr_ge(self, p):
     """version_expr : dotted_name GE number_tuple"""
-    _, name, _, number = p
-    CheckIsSysPythonInfo(self, name, p)
+    _, sys_version, _, number = p
+    CheckIsSysPythonInfo(self, sys_version, p)
     p[0] = self.python_version >= number.AsVersion(self, p)
 
   def p_version_expr_le(self, p):
     """version_expr : dotted_name LE number_tuple"""
-    _, name, _, number = p
-    CheckIsSysPythonInfo(self, name, p)
+    _, sys_version, _, number = p
+    CheckIsSysPythonInfo(self, sys_version, p)
     p[0] = self.python_version <= number.AsVersion(self, p)
 
   def p_version_expr_eq(self, p):
     """version_expr : dotted_name EQ number_tuple"""
-    _, name, _, number = p
-    CheckIsSysPythonInfo(self, name, p)
+    _, sys_version, _, number = p
+    CheckIsSysPythonInfo(self, sys_version, p)
     p[0] = self.python_version == number.AsVersion(self, p)
 
   def p_version_expr_ne(self, p):
     """version_expr : dotted_name NE number_tuple"""
-    _, name, _, number = p
-    CheckIsSysPythonInfo(self, name, p)
+    _, sys_version, _, number = p
+    CheckIsSysPythonInfo(self, sys_version, p)
     p[0] = self.python_version != number.AsVersion(self, p)
+
+  def p_platform_eq(self, p):
+    """version_expr : dotted_name EQ NAME"""
+    _, sys_platform, _, name = p
+    CheckIsSysPlatform(self, sys_platform, p)
+    p[0] = self.platform == name
+
+  def p_platform_ne(self, p):
+    """version_expr : dotted_name NE NAME"""
+    _, sys_platform, _, name = p
+    CheckIsSysPlatform(self, sys_platform, p)
+    p[0] = self.platform != name
 
   def p_class_parents(self, p):
     """class_parents : parents"""
