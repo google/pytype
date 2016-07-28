@@ -82,6 +82,7 @@ class TestTypeshedParsing(parser_test_base.ParserTest):
       2.7/urllib2.pyi
       2.7/xml/etree/ElementInclude.pyi
       2.7/xml/etree/ElementPath.pyi
+      2and3/argparse.pyi
       2and3/cmath.pyi
       2and3/logging/__init__.pyi
       2and3/logging/config.pyi
