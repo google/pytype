@@ -252,12 +252,6 @@ class PyLexer(object):
     t.value = Number(t.value)
     return t
 
-  def t_IGNORETYPECOMMENT(self, t):
-    r"""\#\s*type:\s*ignore\s*"""
-    # These are valid PEP484 type comments but their current use in typeshed
-    # is complicated, so discard for now. Related to
-    # https://github.com/python/mypy/issues/1032
-
   def t_TYPECOMMENT(self, t):
     r"""\#\s*type:"""
     return t
