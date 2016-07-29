@@ -58,37 +58,16 @@ class TestTypeshedParsing(parser_test_base.ParserTest):
   """Test that we can parse a given pyi file."""
   # Files that we currently can't parse
   SKIPPED_FILES = """
-      2.7/Cookie.pyi
-      2.7/StringIO.pyi
       2.7/__builtin__.pyi
-      2.7/argparse.pyi
       2.7/builtins.pyi
-      2.7/calendar.pyi
       2.7/codecs.pyi
-      2.7/email/utils.pyi
       2.7/inspect.pyi
-      2.7/logging/__init__.pyi
-      2.7/os/__init__.pyi
-      2.7/platform.pyi
-      2.7/rfc822.pyi
-      2.7/simplejson/__init__.pyi
-      2.7/socket.pyi
-      2.7/sqlite3/dbapi2.pyi
-      2.7/ssl.pyi
-      2.7/threading.pyi
       2.7/types.pyi
       2.7/typing.pyi
       2.7/unittest.pyi
-      2.7/urllib2.pyi
-      2.7/xml/etree/ElementInclude.pyi
-      2.7/xml/etree/ElementPath.pyi
       2and3/argparse.pyi
-      2and3/cmath.pyi
       2and3/logging/__init__.pyi
-      2and3/logging/config.pyi
       2and3/logging/handlers.pyi
-      2and3/math.pyi
-      2and3/warnings.pyi
       2and3/webbrowser.pyi
   """
   WANTED = re.compile(r"stdlib/(2\.7|2and3)/.*\.pyi$")
