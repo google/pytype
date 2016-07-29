@@ -81,7 +81,8 @@ def main():
                                lossy=options.lossy,
                                use_abcs=options.use_abcs,
                                max_union=options.max_union,
-                               remove_mutable=options.remove_mutable)
+                               remove_mutable=options.remove_mutable,
+                               can_do_lookup=False)
 
   if filename_out is not None:
     out_text = pytd.Print(parsed, print_format=options.output_format)

@@ -1026,7 +1026,8 @@ def Optimize(node,
              lossy=False,
              use_abcs=False,
              max_union=7,
-             remove_mutable=False):
+             remove_mutable=False,
+             can_do_lookup=True):
   """Optimize a PYTD tree.
 
   Tries to shrink a PYTD tree by applying various optimizations.
@@ -1041,6 +1042,9 @@ def Optimize(node,
         it to just "object".
     remove_mutable: Whether to simplify mutable parameters to normal
         parameters.
+    can_do_lookup: True: We're either allowed to try to resolve NamedType
+        instances in the AST, or the AST is already resolved. False: Skip any
+        optimizations that would require NamedTypes to be resolved.
 
   Returns:
     An optimized node.
@@ -1072,8 +1076,9 @@ def Optimize(node,
     node = node.Visit(CombineContainers())
     node = node.Visit(MergeTypeParameters())
     node = node.Visit(visitors.AdjustSelf(force=True))
-  node = visitors.LookupClasses(node, builtins.GetBuiltinsPyTD())
   node = node.Visit(SimplifyContainers())
-  node = node.Visit(RemoveInheritedMethods())
-  node = node.Visit(RemoveRedundantSignatures(hierarchy))
+  if can_do_lookup:
+    node = visitors.LookupClasses(node, builtins.GetBuiltinsPyTD())
+    node = node.Visit(RemoveInheritedMethods())
+    node = node.Visit(RemoveRedundantSignatures(hierarchy))
   return node
