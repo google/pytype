@@ -84,10 +84,10 @@ class TestASTGeneration(parser_test_base.ParserTest):
 
   def testImportErrors(self):
     """Test import errors."""
-    self.assertRaises(textwrap.dedent("""
+    self.TestThrowsSyntaxError(textwrap.dedent("""
         import abc as efg
     """))
-    self.assertRaises(textwrap.dedent("""
+    self.TestThrowsSyntaxError(textwrap.dedent("""
         import abc.efg as efg
     """))
 
@@ -629,6 +629,25 @@ class TestASTGeneration(parser_test_base.ParserTest):
         def f(args, kwargs, *x, **y) -> int: ...
         """)
     self.TestRoundTrip(src, check_the_sourcecode=False)
+
+  def testBareStar1(self):
+    """Test parsing of keyword-only syntax."""
+    src = textwrap.dedent("""
+        def f(x, *, y = ...) -> None: ...
+        def g(*, y = ...) -> None: ...
+        """)
+    self.TestRoundTrip(src, textwrap.dedent("""
+        def f(x, y = ...) -> None: ...
+        def g(y = ...) -> None: ...
+    """))
+
+  def testBareStar(self):
+    """Test keyword-only syntax errors."""
+    self.TestThrowsSyntaxError("def f(*): ...")
+    self.TestThrowsSyntaxError("def f(*,): ...")
+    self.TestThrowsSyntaxError("def f(a, *, b): ...")
+    self.TestThrowsSyntaxError("def f(*args, *, b=1): ...")
+    self.TestThrowsSyntaxError("def f(**kwargs, *, b=1): ...")
 
   def testKwArgs(self):
     """Test parsing of *args, **kwargs."""

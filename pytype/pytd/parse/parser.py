@@ -280,8 +280,8 @@ class PyLexer(object):
   def t_error(self, t):
     make_syntax_error(self, "Illegal character '%s'" % t.value[0], t)
 
-
-Params = collections.namedtuple("_", ["required", "has_optional"])
+Params = collections.namedtuple("_", ["required", "has_optional",
+                                      "has_bare_star"])
 NameAndSig = collections.namedtuple("_", ["name", "signature",
                                           "decorators", "external_code"])
 
@@ -1108,33 +1108,35 @@ class TypeDeclParser(object):
   #   """return :"""
   #   p[0] = pytd.NamedType("NoneType")
 
-  def p_params_multi(self, p):
-    """params : params COMMA param"""
-    # TODO(kramm): Disallow "self" and "cls" as names for param (if it's not
-    # the first parameter).
-    if p[3].name.startswith("*"):
-      p[0] = Params(p[1].required, has_optional=True)
-    else:
-      p[0] = Params(p[1].required + [p[3]], has_optional=False)
+  def p_param_list_single(self, p):
+    """param_list : param"""
+    # we don't let param_list be empty because params rules append to it
+    p[0] = [p[1]]
+
+  def p_param_list(self, p):
+    """param_list : param_list COMMA param"""
+    p[0] = p[1] + [p[3]]
+
+  def p_params_empty(self, p):
+    """params : """
+    p[0] = Params([], has_optional=False, has_bare_star=False)
+
+  def p_params_empty_ellipsis(self, p):
+    """params : ELLIPSIS"""
+    p[0] = Params([], has_optional=True, has_bare_star=False)
+
+  def p_params_from_list(self, p):
+    """params : param_list"""
+    p[0] = self.ValidateParamList(p, p[1])
 
   def p_params_ellipsis(self, p):
-    """params : params COMMA ELLIPSIS"""
-    p[0] = Params(p[1].required, has_optional=True)
+    """params : param_list COMMA ELLIPSIS"""
+    params = self.ValidateParamList(p, p[1])
 
-  def p_params_1(self, p):
-    """params : param"""
-    if p[1].name.startswith("*"):
-      p[0] = Params([], has_optional=True)
-    else:
-      p[0] = Params([p[1]], has_optional=False)
+    if params.has_bare_star:
+      make_syntax_error(self, "ellipsis (...) not compatible with bare *", p)
 
-  def p_params_only_ellipsis(self, p):
-    """params : ELLIPSIS"""
-    p[0] = Params([], has_optional=True)
-
-  def p_params_null(self, p):
-    """params :"""
-    p[0] = Params([], has_optional=False)
+    p[0] = Params(params.required, has_optional=True, has_bare_star=False)
 
   def p_param(self, p):
     """param : NAME"""
@@ -1174,6 +1176,11 @@ class TypeDeclParser(object):
       p[0] = pytd.OptionalParameter(name, pytd.UnionType([t, opt]))
     else:
       p[0] = pytd.OptionalParameter(name, t)
+
+  def p_param_only_star(self, p):
+    """param : ASTERISK"""
+    # Empty *args, for keyword-only args, see PEP3102
+    p[0] = pytd.OptionalParameter("*", pytd.NothingType())
 
   def p_param_star(self, p):
     """param : ASTERISK NAME"""
@@ -1353,6 +1360,55 @@ class TypeDeclParser(object):
       make_syntax_error(self, "Unexpected EOF", self.lexer.lexer)
     else:
       make_syntax_error(self, "Unexpected %r" % t.type, t)
+
+  def ValidateParamList(self, p, param_list):
+    """Validate and sanitize a param_list.
+
+    Does checks that are harder to do with grammar.
+
+    Args:
+      p: YaccProduction from a rule containing param_list.
+      param_list: param_list element of p.
+
+    Returns:
+      A Params instance.
+
+    Raises:
+      ParseError: param_list didn't follow our syntax.
+    """
+    # TODO(kramm): Disallow "self" and "cls" as names for param (if it's not
+    # the first parameter).
+
+    params = []
+    has_bare_star = False
+    has_optional = False
+
+    for param in param_list:
+      if param.name == "*":
+        if has_bare_star or has_optional:
+          make_syntax_error(self, "Unexpected bare *", p)
+        if param == param_list[-1]:
+          make_syntax_error(self, "Named arguments must follow bare *", p)
+        has_bare_star = True
+        continue
+      elif param.name.startswith("*"):
+        # *args or **kwargs
+        if has_bare_star:
+          make_syntax_error(self, "Only named args after bare *", p)
+        has_optional = True
+        continue
+
+      # TODO(acaceres): if has_bare_star, param is keyword-only, so may
+      # want to tell rest of pytype about it.
+
+      if has_bare_star and not isinstance(param, pytd.OptionalParameter):
+        make_syntax_error(self, "Only named args after bare *", p)
+
+      params.append(param)
+
+    return Params(params,
+                  has_optional=has_optional,
+                  has_bare_star=has_bare_star)
 
   def TryParseSignatureAsProperty(self, full_signature):
     """Given a signature, see if it corresponds to a @property.
