@@ -554,12 +554,8 @@ class AdjustTemplates(visitors.Visitor):
       for base in GetBasesInMRO(node, self.lookup_ast):
         if isinstance(base, pytd.ClassType):
           base_cls = _GetClass(base, self.lookup_ast)
-          # TODO(rechen): Support templates of different lengths, e.g.,
-          # class MyDict(Dict[K, V], Iterable[K]): pass
           if len(base_cls.template) != len(template):
-            raise TypeError(
-                "Mismatched templates\nClass: %s%s\nParent: %s%s" %
-                (node.name, node.template, base_cls.name, base_cls.template))
+            continue
           for i in bad_indices[:]:  # Copy the list
             if isinstance(
                 base_cls.template[i].type_param, pytd.TypeParameter):
@@ -567,9 +563,9 @@ class AdjustTemplates(visitors.Visitor):
               bad_indices.remove(i)
         if not bad_indices:
           break
-      assert all(isinstance(t.type_param, pytd.TypeParameter)
-                 for t in template), ("Bad template: %s%s" %
-                                      (node.name, template))
+      if not all(isinstance(t.type_param, pytd.TypeParameter)
+                 for t in template):
+        raise TypeError("Bad template: %s%s" % (node.name, template))
       return node.Replace(template=tuple(template))
     else:
       return node

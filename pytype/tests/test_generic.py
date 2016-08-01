@@ -180,6 +180,27 @@ class GenericTest(test_inference.InferenceTest):
       """)
 
   @unittest.skip("Needs better GenericType support")
+  def testTypeParameterAmbiguous(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        T = TypeVar("T")
+        class A(Generic[T]): pass
+        class B(A[int]): pass
+        class C(List[T], B): pass
+      """)
+      ty = self.Infer("""
+        import a
+        def f():
+          x = a.C()
+          return x
+      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      # Currently conflates the Ts, gives foo.C[int]
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        def f() -> foo.C[nothing]
+      """)
+
+  @unittest.skip("Needs better GenericType support")
   def testUnion(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
@@ -195,26 +216,7 @@ class GenericTest(test_inference.InferenceTest):
         def f() -> a.A[int or str]
       """)
 
-  @unittest.skip("Needs better GenericType support")
   def testMultipleTemplates(self):
-    with utils.Tempdir() as d:
-      d.create_file("a.pyi", """
-        K = TypeVar("K")
-        V = TypeVar("V")
-        class A(Dict[K, int], Dict[str, V]): pass
-      """)
-      ty = self.Infer("""
-        import a
-        def f():
-          return a.A()
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
-      self.assertTypesMatchPytd(ty, """
-        a = ...  # type: module
-        def f() -> a.A[str, int]
-      """)
-
-  @unittest.skip("Needs better GenericType support")
-  def testMultipleTemplatesDifferent(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
         K = TypeVar("K")
@@ -231,6 +233,32 @@ class GenericTest(test_inference.InferenceTest):
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
         def f() -> a.A[nothing, int]
+      """)
+
+  def testMultipleTemplatesFlipped(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        K = TypeVar("K")
+        V = TypeVar("V")
+        class A(List[V], Dict[K, V]):
+          def a(self) -> K
+      """)
+      ty = self.Infer("""
+        import a
+        def f():
+          x = a.A()
+          x.update({"hello": 0})
+          return x
+        def g():
+          return f().a()
+        def h():
+          return f()[0]
+      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        def f() -> a.A[str, int]
+        def g() -> str
+        def h() -> int
       """)
 
 

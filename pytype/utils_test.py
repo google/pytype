@@ -503,25 +503,6 @@ class UtilsTest(unittest.TestCase):
     self.assertEquals(var, d["alias1"])
     self.assertEquals(var, d["alias2"])
 
-  def testAliasingDictMatches(self):
-    d = utils.AliasingDict()
-    d["name1"] = None
-    d["name2"] = None
-    d.add_alias("alias1", "name1")
-    d.add_alias("alias2", "name2")
-    d.add_alias("alias3", "name2")
-    self.assertTrue(d.matches({"name1": None, "name2": None}))
-    self.assertTrue(d.matches({"name1": None, "alias2": None}))
-    self.assertTrue(d.matches({"name1": None, "alias3": None}))
-    self.assertTrue(d.matches({"alias1": None, "name2": None}))
-    self.assertTrue(d.matches({"alias1": None, "alias2": None}))
-    self.assertTrue(d.matches({"alias1": None, "alias3": None}))
-    self.assertTrue(d.matches({"name1": None, "name2": None, "name3": None}))
-    self.assertFalse(d.matches({"name1": None, "alias1": None}))
-    self.assertFalse(d.matches({"alias2": None, "alias3": None}))
-    self.assertFalse(d.matches({"name2": None}))
-    self.assertFalse(d.matches({"name1": None, "name4": None}))
-
   def testAliasingDictTransitive(self):
     d = utils.AliasingDict()
     d.add_alias("alias1", "name")

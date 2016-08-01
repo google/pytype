@@ -1993,8 +1993,6 @@ class PyTDClass(SimpleAbstractValue, Class):
       return subst
     elif (isinstance(other_type, ParameterizedClass) and
           other_type.base_cls is self):
-      assert instance.type_parameters.matches(other_type.type_parameters), (
-          instance.type_parameters, other_type.type_parameters)
       for name, class_param in other_type.type_parameters.items():
         instance_param = instance.get_type_parameter(node, name)
         subst = match_var_against_type(instance_param, class_param, subst,

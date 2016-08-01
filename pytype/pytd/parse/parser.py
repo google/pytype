@@ -395,27 +395,25 @@ def _IsTemplate(parser, p, t):
 
 def GetTemplateAndParents(parser, p, parents):
   """Build template from any parameterized classes in the base classes."""
-  template = ()
+  final_template = ()
   bases = []
   for parent in parents:
-    # TODO(rechen): Construct template from all GenericType parents.
-    if not template and _IsTemplate(parser, p, parent):
+    if _IsTemplate(parser, p, parent):
       template = tuple(
           pytd.TemplateItem(pytd.TypeParameter(param.name)
                             if param.name in parser.context.typevars
                             else pytd.NamedType(param.name))
           for param in parent.parameters)
-      all_names = [t.name for t in template
-                   if isinstance(t.type_param, pytd.TypeParameter)]
-      duplicates = [name
-                    for name, count in collections.Counter(all_names).items()
-                    if count >= 2]
-      if duplicates:
+      if len(template) > len(final_template):
+        # Happens in cases like class Foo(Iterable[K], Generic[K, V]): pass
+        final_template, template = template, final_template
+      if not all(t in final_template for t in template):
         make_syntax_error(
-            parser, "Duplicate template parameters " + ", ".join(duplicates), p)
+            parser, "Incompatible templates: %s missing parameters from %s" % (
+                final_template, template), p)
     if parent != pytd.NothingType():
       bases.append(parent)
-  return template, tuple(bases)
+  return final_template, tuple(bases)
 
 
 class TypeDeclParser(object):
@@ -1311,12 +1309,6 @@ class TypeDeclParser(object):
                                              parameters=(element_type,))
       else:
         p[0] = pytd.GenericType(base_type=base_type, parameters=parameters)
-
-  # deprecated
-  def p_type_generic(self, p):
-    """type : named_or_external_type LBRACKET parameters COMMA RBRACKET"""
-    _, base_type, _, parameters, _, _ = p
-    p[0] = pytd.GenericType(base_type=base_type, parameters=parameters)
 
   def p_type_paren(self, p):
     """type : LPAREN type RPAREN"""

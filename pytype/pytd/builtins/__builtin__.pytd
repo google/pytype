@@ -491,6 +491,8 @@ class dict(Dict[K, V]):
         self := dict[K or K2, V or NoneType]
     def setdefault(self, k: K2, v: V2) -> V or V2:
         self := dict[K or K2, V or V2]
+    def update(self, other: dict[K2, V2]):
+        self := dict[K or K2, V or V2]
     def update(self, E, ...) -> NoneType
     def update(self) -> NoneType
     def values(self) -> list[V]

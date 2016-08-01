@@ -543,12 +543,6 @@ class AliasingDict(dict):
             self._alias_map.get(name, name) == self._alias_map[alias])
     self._alias_map[alias] = self._alias_map.get(name, name)
 
-  def matches(self, other):
-    # This match is asymmetric: self can be missing parameters but
-    # cannot have extra ones.
-    return not set(self) - set(self._alias_map.get(name, name)
-                               for name in other)
-
   def get(self, name):
     try:
       return self[name]

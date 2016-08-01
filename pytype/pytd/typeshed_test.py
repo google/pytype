@@ -58,6 +58,7 @@ class TestTypeshedParsing(parser_test_base.ParserTest):
   """Test that we can parse a given pyi file."""
   # Files that we currently can't parse
   SKIPPED_FILES = """
+      2.7/StringIO.pyi
       2.7/__builtin__.pyi
       2.7/builtins.pyi
       2.7/codecs.pyi
