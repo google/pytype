@@ -821,6 +821,20 @@ class TypeDeclParser(object):
     _, _, parent_list, _ = p
     p[0] = parent_list
 
+  def p_parents_kwarg(self, p):
+    """parents : LPAREN parent_list COMMA NAME ASSIGN NAME RPAREN"""
+    parent_list, kwarg = p[2], p[4]
+    if kwarg != "metaclass":
+      make_syntax_error(self, "Only 'metaclass' allowed as classdef kwarg", p)
+    p[0] = parent_list
+
+  def p_parents_empty_kwarg(self, p):
+    """parents : LPAREN NAME ASSIGN NAME RPAREN"""
+    kwarg = p[2]
+    if kwarg != "metaclass":
+      make_syntax_error(self, "Only 'metaclass' allowed as classdef kwarg", p)
+    p[0] = []
+
   def p_parents_empty(self, p):
     """parents : LPAREN RPAREN"""
     p[0] = []
@@ -950,6 +964,9 @@ class TypeDeclParser(object):
     name = p[2]
     if name == "overload":
       # used for multiple signatures for the same function, discard
+      p[0] = []
+    elif name == "abstractmethod":
+      # discard
       p[0] = []
     elif (name in ("staticmethod", "classmethod", "property") or
           "." in name):

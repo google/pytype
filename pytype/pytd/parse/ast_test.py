@@ -1440,6 +1440,53 @@ class TestASTGeneration(parser_test_base.ParserTest):
     self.assertEquals(c1.parents, (pytd.NamedType("`nt`"),))
     self.assertEquals(c2.Replace(name="`nt`"), nt)
 
+  def testMetaclass(self):
+    """Test stripping of metaclass kwarg."""
+    self.TestRoundTrip(textwrap.dedent("""
+      class C1(metaclass=foo):
+          pass
+
+      class C2(C1, metaclass=foo):
+          pass
+    """), textwrap.dedent("""
+      class C1:
+          pass
+
+      class C2(C1):
+          pass
+    """))
+
+  def testBadClassKwarg(self):
+    """Test kwarg!=metaclass in classdef."""
+    self.TestThrowsSyntaxError(textwrap.dedent("""
+      class C(badword=foo):
+          pass
+    """))
+
+    self.TestThrowsSyntaxError(textwrap.dedent("""
+      class D:
+          pass
+
+      class C(D, badword=foo):
+          pass
+    """))
+
+  def testAbstractMethod(self):
+    """Test stripping of abstractmethod."""
+    self.TestRoundTrip(textwrap.dedent("""
+      from abc import abstractmethod, ABCMeta
+
+      class C(metaclass=foo):
+          @abstractmethod
+          def foo(self) -> int: ...
+    """), textwrap.dedent("""
+      from abc import abstractmethod
+      from abc import ABCMeta
+
+      class C:
+          def foo(self) -> int: ...
+    """))
+
 
 class TestDecorate(unittest.TestCase):
   """Test adding additional methods to nodes in a tree using decorate.py."""
