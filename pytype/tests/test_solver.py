@@ -71,8 +71,7 @@ class SolverTests(test_inference.InferenceTest):
       StringIO = ...  # type: module
 
       class Foobar(object):
-        # TODO(kramm): Should 'out' be 'file or StringIO.StringIO'?
-        def foobar(self, out: StringIO.StringIO) -> NoneType
+        def foobar(self, out: StringIO.StringIO[str] or file) -> NoneType
 
       class Barbaz(object):
         def barbaz(self) -> NoneType

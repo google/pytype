@@ -961,7 +961,7 @@ class buffer(Sized):
     def __len__(self) -> int
     def __mul__(self, n: int) -> str
 
-class file(IO):
+class file(BinaryIO):
     def __init__(self, name: str, ...) -> NoneType
     def __iter__(self) -> file  # TODO(pludemann): This looks wrong ... iterator[str]  ?
     def __enter__(self) -> file
