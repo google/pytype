@@ -1397,6 +1397,46 @@ class ExpandSignatures(Visitor):
     return new_signatures  # Hand list over to VisitFunction
 
 
+class InsertSignatureTemplates(Visitor):
+  """Visitor for inserting function templates."""
+
+  def __init__(self):
+    super(InsertSignatureTemplates, self).__init__()
+    self.bound_typeparams = set()
+    self.template_typeparams = None
+
+  def EnterClass(self, node):
+    for t in node.template:
+      # TODO(rechen): this check is necessary in cases like
+      # class Foo(Dict[str, V]): pass, in which only some of the template items
+      # are type parameters. We should instead remove types like str from the
+      # template altogether.
+      if isinstance(t.type_param, pytd.TypeParameter):
+        assert t.name not in self.bound_typeparams
+        self.bound_typeparams.add(t.name)
+
+  def LeaveClass(self, node):
+    for t in node.template:
+      if isinstance(t.type_param, pytd.TypeParameter):
+        self.bound_typeparams.remove(t.name)
+
+  def EnterSignature(self, unused_node):
+    assert self.template_typeparams is None
+    self.template_typeparams = set()
+
+  def LeaveSignature(self, unused_node):
+    self.template_typeparams = None
+
+  def VisitTypeParameter(self, node):
+    if (self.template_typeparams is not None and
+        node.name not in self.bound_typeparams):
+      self.template_typeparams.add(pytd.TemplateItem(node))
+    return node
+
+  def VisitSignature(self, node):
+    return node.Replace(template=tuple(self.template_typeparams))
+
+
 class VerifyContainers(Visitor):
   """Visitor for verifying that all classes with templates inherit from Generic.
 

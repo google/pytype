@@ -743,6 +743,7 @@ class TestOptimize(parser_test_base.ParserTest):
           def ipsum(self, x: K) -> K
       """)
     tree = self.Parse(src)
+    tree = tree.Visit(visitors.InsertSignatureTemplates())
     new_tree = tree.Visit(optimize.MergeTypeParameters())
     self.AssertSourceEquals(new_tree, expected)
 

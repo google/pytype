@@ -338,13 +338,34 @@ class Mutator(visitors.Visitor):
 class InsertTypeParameters(visitors.Visitor):
   """Visitor for inserting TypeParameter instances."""
 
-  def VisitClass(self, node):
-    return node.Visit(visitors.ReplaceTypes({p.name: p.type_param
-                                             for p in node.template}))
+  def EnterTypeDeclUnit(self, node):
+    self.type_params = {p.name: p for p in node.type_params}
+    self.old_type_params = None
 
-  def VisitSignature(self, node):
-    return node.Visit(visitors.ReplaceTypes({p.name: p.type_param
-                                             for p in node.template}))
+  def LeaveTypeDeclUnit(self, node):
+    self.type_params = None
+
+  def EnterClass(self, node):
+    assert self.old_type_params is None
+    self.old_type_params = {}
+    for p in node.type_params:
+      if p.name in self.type_params:
+        self.old_type_params[p.name] = self.type_params[p.name]
+      self.type_params[p.name] = p
+
+  def LeaveClass(self, node):
+    for p in node.type_params:
+      if p.name in self.old_type_params:
+        self.type_params[p.name] = self.old_type_params[p.name]
+      else:
+        del self.type_params[p.name]
+    self.old_type_params = None
+
+  def VisitNamedType(self, node):
+    if node.name in self.type_params:
+      return self.type_params[node.name]
+    else:
+      return node
 
 
 def CheckIsSysPythonInfo(parser, string, p):
@@ -376,18 +397,13 @@ def _IsTemplate(parser, p, t):
   """Check if the type is of the form Container[TypeVar, ...]"""
   if isinstance(t, pytd.GenericType):
     for param in t.parameters:
-      error = None
       # TODO(rechen): Allow unions as type parameters.
       if not isinstance(param, pytd.NamedType):
         if t.base_type == pytd.NamedType("typing.Generic"):
-          error = "Illegal template parameter %s" % pytd.Print(t)
+          make_syntax_error(
+              parser, "Illegal template parameter %s" % pytd.Print(t), p)
         else:
           return False
-      elif (t.base_type == pytd.NamedType("typing.Generic") and
-            param.name not in parser.context.typevars):
-        error = "Name %r must be defined as a TypeVar" % param.name
-      if error:
-        make_syntax_error(parser, error, p)
     return True
   else:
     return False
@@ -399,11 +415,8 @@ def GetTemplateAndParents(parser, p, parents):
   bases = []
   for parent in parents:
     if _IsTemplate(parser, p, parent):
-      template = tuple(
-          pytd.TemplateItem(pytd.TypeParameter(param.name)
-                            if param.name in parser.context.typevars
-                            else pytd.NamedType(param.name))
-          for param in parent.parameters)
+      template = tuple(pytd.TemplateItem(pytd.NamedType(param.name))
+                       for param in parent.parameters)
       if len(template) > len(final_template):
         # Happens in cases like class Foo(Iterable[K], Generic[K, V]): pass
         final_template, template = template, final_template
@@ -784,13 +797,6 @@ class TypeDeclParser(object):
       raise make_syntax_error(
           self, "Duplicate identifier(s): " + ", ".join(duplicates), p)
 
-    template_names = {t.name for t in template}
-    for _, sig, _, _ in methoddefs:
-      for t in sig.template:
-        if t.name in template_names:
-          raise make_syntax_error(self, "Duplicate template parameter %s" %
-                                  t.name, p)
-
     methods, properties = self.MergeSignatures(methoddefs)
 
     cls = pytd.Class(name=class_name, parents=parents,
@@ -1012,16 +1018,6 @@ class TypeDeclParser(object):
     signature = pytd.Signature(params=tuple(params.required), return_type=ret,
                                exceptions=tuple(raises), template=(),
                                has_optional=params.has_optional)
-
-    typeparams = {name: pytd.TypeParameter(name)
-                  for name in self.context.typevars}
-    used_typeparams = set()
-    signature = signature.Visit(visitors.ReplaceTypes(typeparams,
-                                                      used_typeparams))
-    if used_typeparams:
-      signature = signature.Replace(
-          template=tuple(pytd.TemplateItem(typeparams[name])
-                         for name in used_typeparams))
 
     for mutator in body:
       try:

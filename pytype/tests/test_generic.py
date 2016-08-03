@@ -91,6 +91,24 @@ class GenericTest(test_inference.InferenceTest):
           def bar() -> int or str
         """)
 
+  @unittest.skip("Needs better GenericType support")
+  def testSpecializedPartial(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        V = TypeVar("V")
+        class A(Dict[str, V]): pass
+        class B(A[int]): pass
+      """)
+      ty = self.Infer("""
+        import a
+        def f():
+          return a.B()
+      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        def f() -> a.B[str, int]
+      """)
+
   def testTypeParameter(self):
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", """
@@ -178,6 +196,32 @@ class GenericTest(test_inference.InferenceTest):
         foo = ...  # type: module
         def f() -> int
       """)
+
+  def testTypeParameterImport(self):
+    with utils.Tempdir() as d1:
+      d1.create_file("a.pyi", """
+        T = TypeVar("T")
+      """)
+      with utils.Tempdir() as d2:
+        d2.create_file("b.pyi", """
+          from a import T
+          class A(Generic[T]):
+            def __init__(self, x: T) -> None:
+              self := A[int or T]
+            def a(self) -> T
+        """)
+        ty = self.Infer("""
+          import b
+          def f():
+            return b.A("hello world")
+          def g():
+            return b.A(3.14).a()
+        """, pythonpath=[d1.path, d2.path], deep=True, solve_unknowns=True)
+        self.assertTypesMatchPytd(ty, """
+          b = ...  # type: module
+          def f() -> b.A[int or str]
+          def g() -> int or float
+        """)
 
   @unittest.skip("Needs better GenericType support")
   def testTypeParameterAmbiguous(self):

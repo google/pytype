@@ -103,6 +103,8 @@ class Loader(object):
     try:
       module.ast = self._load_and_resolve_ast_dependencies(module.ast,
                                                            module_name)
+      # Insert templates after resolving any imported TypeVar instances
+      module.ast = module.ast.Visit(visitors.InsertSignatureTemplates())
       # All external ClassType nodes have been resolved, but internal ones are
       # unresolved, so we adjust templates in the module using itself as a
       # lookup table.

@@ -961,25 +961,36 @@ class MergeTypeParameters(TypeParameterScope):
 
   def __init__(self):
     super(MergeTypeParameters, self).__init__()
-    self.type_param_union = collections.defaultdict(list)
+    self.type_param_union = None
 
   def _AppendNew(self, l1, l2):
     """Appends all items to l1 that are not in l2."""
     # l1 and l2 are small (2-3 elements), so just use two loops.
     l1.extend(e2 for e2 in l2 if not any(e1 is e2 for e1 in l1))
 
+  def EnterSignature(self, node):
+    # Necessary because TypeParameterScope also defines this function
+    super(MergeTypeParameters, self).EnterSignature(node)
+    assert self.type_param_union is None
+    self.type_param_union = collections.defaultdict(list)
+
+  def LeaveSignature(self, node):
+    # Necessary because TypeParameterScope also defines this function
+    super(MergeTypeParameters, self).LeaveSignature(node)
+    self.type_param_union = None
+
   def VisitUnionType(self, u):
     type_params = [t for t in u.type_list if isinstance(t, pytd.TypeParameter)]
     for t in type_params:
       if self.IsFunctionTypeParameter(t):
-        self._AppendNew(self.type_param_union[id(t)], type_params)
+        self._AppendNew(self.type_param_union[t.name], type_params)
     return u
 
   def _AllContaining(self, type_param, seen=None):
     """Gets all type parameters that are in a union with the passed one."""
     seen = seen or set()
     result = [type_param]
-    for other in self.type_param_union[id(type_param)]:
+    for other in self.type_param_union[type_param.name]:
       if other in seen:
         continue  # break cycles
       seen.add(other)
