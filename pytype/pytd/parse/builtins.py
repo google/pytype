@@ -52,10 +52,10 @@ def GetBuiltinsAndTyping():
                                              self_name="__builtin__"))
     t = t.Visit(visitors.LookupBuiltins(b))
     t = t.Visit(visitors.NamedTypeToClassType())
+    b = b.Visit(visitors.AdjustTemplates())
     b = b.Visit(visitors.InsertSignatureTemplates())
-    b = b.Visit(utils.AdjustTemplates(b))
+    t = t.Visit(visitors.AdjustTemplates())
     t = t.Visit(visitors.InsertSignatureTemplates())
-    t = t.Visit(utils.AdjustTemplates(t))
     b.Visit(visitors.FillInModuleClasses({"": b, "typing": t,
                                           "__builtin__": b}))
     t.Visit(visitors.FillInModuleClasses({"": t, "typing": t,

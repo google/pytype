@@ -61,7 +61,7 @@ class GenericTest(test_inference.InferenceTest):
       """, pythonpath=[d.path], deep=True, solve_unknowns=True)
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
-        def foo() -> a.B[str, int]
+        def foo() -> a.B
         def bar() -> dict[str, int]
       """)
 
@@ -87,11 +87,10 @@ class GenericTest(test_inference.InferenceTest):
         """, pythonpath=[d1.path, d2.path], deep=True, solve_unknowns=True)
         self.assertTypesMatchPytd(ty, """
           b = ...  # type: module
-          def foo() -> b.B[int or str]
+          def foo() -> b.B
           def bar() -> int or str
         """)
 
-  @unittest.skip("Needs better GenericType support")
   def testSpecializedPartial(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
@@ -101,12 +100,21 @@ class GenericTest(test_inference.InferenceTest):
       """)
       ty = self.Infer("""
         import a
-        def f():
+        def foo():
+          return a.A()
+        def bar():
+          return foo().keys()
+        def baz():
           return a.B()
+        def qux():
+          return baz().items()
       """, pythonpath=[d.path], deep=True, solve_unknowns=True)
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
-        def f() -> a.B[str, int]
+        def foo() -> a.A[nothing]
+        def bar() -> List[str]
+        def baz() -> a.B
+        def qux() -> List[Tuple[str or int]]
       """)
 
   def testTypeParameter(self):
@@ -139,17 +147,17 @@ class GenericTest(test_inference.InferenceTest):
         def foo():
           return a.A()
         def bar():
-          return a.B()
+          return a.B()[0]
         def baz():
-          x = bar()
+          x = a.B()
           x.extend(["str"])
-          return x
+          return x[0]
       """, pythonpath=[d.path], deep=True, solve_unknowns=True)
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
         def foo() -> a.A[nothing]
-        def bar() -> a.B[int]
-        def baz() -> a.B[int or str]
+        def bar() -> int
+        def baz() -> int or str
       """)
 
   def testTypeParameterRenamingChain(self):
@@ -238,10 +246,10 @@ class GenericTest(test_inference.InferenceTest):
           x = a.C()
           return x
       """, pythonpath=[d.path], deep=True, solve_unknowns=True)
-      # Currently conflates the Ts, gives foo.C[int]
+      # Currently conflates the Ts, gives a.C[int]
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
-        def f() -> foo.C[nothing]
+        def f() -> a.C[nothing]
       """)
 
   @unittest.skip("Needs better GenericType support")

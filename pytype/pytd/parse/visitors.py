@@ -1397,6 +1397,22 @@ class ExpandSignatures(Visitor):
     return new_signatures  # Hand list over to VisitFunction
 
 
+class AdjustTemplates(Visitor):
+  """Visitor for adjusting type parameters in templates.
+
+  Removes template items that have already been specialized. So
+    Class(Foo, parent=GenericType(Dict, parameters=(int, V)), template=(int, V))
+  turns into
+    Class(Foo, parent=GenericType(Dict, parameters=(int, V)), template=(V,))
+  .
+  """
+
+  def VisitClass(self, node):
+    template = tuple(t for t in node.template
+                     if isinstance(t.type_param, pytd.TypeParameter))
+    return node.Replace(template=template)
+
+
 class InsertSignatureTemplates(Visitor):
   """Visitor for inserting function templates."""
 
@@ -1407,18 +1423,13 @@ class InsertSignatureTemplates(Visitor):
 
   def EnterClass(self, node):
     for t in node.template:
-      # TODO(rechen): this check is necessary in cases like
-      # class Foo(Dict[str, V]): pass, in which only some of the template items
-      # are type parameters. We should instead remove types like str from the
-      # template altogether.
-      if isinstance(t.type_param, pytd.TypeParameter):
-        assert t.name not in self.bound_typeparams
-        self.bound_typeparams.add(t.name)
+      assert isinstance(t.type_param, pytd.TypeParameter)
+      assert t.name not in self.bound_typeparams
+      self.bound_typeparams.add(t.name)
 
   def LeaveClass(self, node):
     for t in node.template:
-      if isinstance(t.type_param, pytd.TypeParameter):
-        self.bound_typeparams.remove(t.name)
+      self.bound_typeparams.remove(t.name)
 
   def EnterSignature(self, unused_node):
     assert self.template_typeparams is None
@@ -1445,17 +1456,23 @@ class VerifyContainers(Visitor):
   """
 
   def _IsContainer(self, t):
+    if t.name == "typing.Generic":
+      return True
     for p in t.parents:
       if isinstance(p, pytd.GenericType):
-        if p.base_type.name == "typing.Generic":
-          return True
-        else:
-          p = p.base_type
-        if isinstance(p, pytd.ClassType) and p.cls and self._IsContainer(p.cls):
+        base = p.base_type
+        if isinstance(base, pytd.ClassType) and self._IsContainer(base.cls):
           return True
     return False
 
-  def VisitClass(self, node):
-    if node.template and not self._IsContainer(node):
-      raise TypeError("%s does not inherit from Generic" % node.name)
+  def VisitGenericType(self, node):
+    if not self._IsContainer(node.base_type.cls):
+      raise TypeError("%s does not inherit from Generic" % node.base_type.name)
+    elif node.base_type.cls.name == "typing.Generic":
+      for t in node.parameters:
+        if not isinstance(t, pytd.TypeParameter):
+          raise TypeError("Name %s must be defined as a TypeVar" % t.name)
     return node
+
+  def VisitHomogeneousContainerType(self, node):
+    return self.VisitGenericType(node)

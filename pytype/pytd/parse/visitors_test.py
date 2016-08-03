@@ -334,6 +334,54 @@ class TestVisitors(parser_test_base.ParserTest):
     res = tree.Visit(visitors.PrintVisitor())
     self.assertMultiLineEqual(res, src)
 
+  def testAdjustTemplates(self):
+    ast = self.ParseWithBuiltins("""
+      T = TypeVar("T")
+      K = TypeVar("K")
+      V = TypeVar("V")
+      class Foo(List[int]): pass
+      class Bar(Dict[T, int]): pass
+      class Baz(Generic[K, V]): pass
+      class Qux(Baz[str, int]): pass
+    """)
+    foo = ast.Lookup("Foo")
+    bar = ast.Lookup("Bar")
+    qux = ast.Lookup("Qux")
+    foo_parent, = foo.parents
+    bar_parent, = bar.parents
+    qux_parent, = qux.parents
+    # Expected:
+    #  Class(Foo, parent=GenericType(List, parameters=(int,)), template=())
+    #  Class(Bar, parent=GenericType(Dict, parameters=(T, int)), template=(T))
+    #  Class(Qux, parent=GenericType(Baz, parameters=(str, int)), template=())
+    self.assertEquals((pytd.ClassType("int"),), foo_parent.parameters)
+    self.assertEquals((), foo.template)
+    self.assertEquals((pytd.TypeParameter("T"), pytd.ClassType("int")),
+                      bar_parent.parameters)
+    self.assertEquals((pytd.TemplateItem(pytd.TypeParameter("T")),),
+                      bar.template)
+    self.assertEquals((pytd.ClassType("str"), pytd.ClassType("int")),
+                      qux_parent.parameters)
+    self.assertEquals((), qux.template)
+
+  def testVerifyContainers(self):
+    ast1 = self.ParseWithBuiltins("""
+      T = TypeVar("T")
+      class Foo(SupportsInt[T]): pass
+    """)
+    ast2 = self.ParseWithBuiltins("""
+      class Foo(SupportsInt[int]): pass
+    """)
+    ast3 = self.ParseWithBuiltins("""
+      class Foo(Generic[int]): pass
+    """)
+    self.assertRaises(
+        TypeError, lambda: ast1.Visit(visitors.VerifyContainers()))
+    self.assertRaises(
+        TypeError, lambda: ast2.Visit(visitors.VerifyContainers()))
+    self.assertRaises(
+        TypeError, lambda: ast3.Visit(visitors.VerifyContainers()))
+
 
 if __name__ == "__main__":
   unittest.main()

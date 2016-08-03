@@ -304,50 +304,6 @@ class TestUtils(parser_test_base.ParserTest):
     self.assertListEqual(["Foo", "typing.Generic", "__builtin__.object"],
                          [t.name for t in mro])
 
-  def testAdjustTemplates(self):
-    ast = self.parser.Parse(textwrap.dedent("""
-      T = TypeVar("T")
-      K = TypeVar("K")
-      V = TypeVar("V")
-      class Foo(List[int]): pass
-      class Bar(Dict[T, int]): pass
-      class Baz(Generic[K, V]): pass
-      class Qux(Baz[str, int]): pass
-    """))
-    b, t = builtins.GetBuiltinsAndTyping()
-    ast = ast.Visit(visitors.LookupExternalTypes(
-        {"__builtin__": b, "typing": t}, full_names=True))
-    ast = ast.Visit(visitors.NamedTypeToClassType())
-    ast = ast.Visit(utils.AdjustTemplates(ast))
-    ast.Visit(visitors.FillInModuleClasses({"": ast}))
-    ast.Visit(visitors.VerifyVisitor())
-    foo = ast.Lookup("Foo")
-    bar = ast.Lookup("Bar")
-    qux = ast.Lookup("Qux")
-    foo_parent, = foo.parents
-    bar_parent, = bar.parents
-    qux_parent, = qux.parents
-    # Expected:
-    #  Class(Foo, parent=GenericType(List, parameters=(int,)),
-    #             template=(T,))
-    #  Class(Bar, parent=GenericType(Dict, parameters=(T, int)),
-    #             template=(T, V))
-    #  Class(Qux, parent=GenericType(Baz, parameters=(str, int)),
-    #             template=(K, V))
-    self.assertEquals((pytd.ClassType("int"),), foo_parent.parameters)
-    self.assertEquals((pytd.TemplateItem(pytd.TypeParameter("T")),),
-                      foo.template)
-    self.assertEquals((pytd.TypeParameter("T"), pytd.ClassType("int")),
-                      bar_parent.parameters)
-    self.assertEquals((pytd.TemplateItem(pytd.TypeParameter("T")),
-                       pytd.TemplateItem(pytd.TypeParameter("V"))),
-                      bar.template)
-    self.assertEquals((pytd.ClassType("str"), pytd.ClassType("int")),
-                      qux_parent.parameters)
-    self.assertEquals((pytd.TemplateItem(pytd.TypeParameter("K")),
-                       pytd.TemplateItem(pytd.TypeParameter("V"))),
-                      qux.template)
-
 
 if __name__ == "__main__":
   unittest.main()

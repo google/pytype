@@ -19,6 +19,7 @@ import os
 import sys
 import textwrap
 from pytype.pytd import pytd
+from pytype.pytd.parse import builtins
 from pytype.pytd.parse import parser
 from pytype.pytd.parse import visitors
 import unittest
@@ -36,6 +37,17 @@ class ParserTest(unittest.TestCase):
         textwrap.dedent(src), convert_typing_to_native=True)
     tree.Visit(visitors.VerifyVisitor())
     return tree
+
+  def ParseWithBuiltins(self, src):
+    ast = parser.TypeDeclParser().Parse(textwrap.dedent(src))
+    b, t = builtins.GetBuiltinsAndTyping()
+    ast = ast.Visit(visitors.LookupExternalTypes(
+        {"__builtin__": b, "typing": t}, full_names=True))
+    ast = ast.Visit(visitors.NamedTypeToClassType())
+    ast = ast.Visit(visitors.AdjustTemplates())
+    ast.Visit(visitors.FillInModuleClasses({"": ast}))
+    ast.Visit(visitors.VerifyVisitor())
+    return ast
 
   def ToAST(self, src_or_tree):
     # TODO(pludemann): The callers are not consistent in how they use this
