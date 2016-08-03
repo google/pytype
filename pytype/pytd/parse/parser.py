@@ -498,11 +498,13 @@ class TypeDeclParser(object):
 
     funcdefs = [x for x in p[1] if isinstance(x, NameAndSig)]
     constants = [x for x in p[1] if isinstance(x, pytd.Constant)]
+    type_params = [x for x in p[1] if isinstance(x, pytd.TypeParameter)]
     classes = (generated_classes +
                [x for x in p[1] if isinstance(x, pytd.Class)])
     aliases = [x for x in p[1] if isinstance(x, pytd.Alias)]
     all_names = (list(set(f.name for f in funcdefs)) +
                  [c.name for c in constants] +
+                 [c.name for c in type_params] +
                  [c.name for c in classes] +
                  [c.name for c in aliases])
     duplicates = [name
@@ -523,6 +525,7 @@ class TypeDeclParser(object):
 
     p[0] = pytd.TypeDeclUnit(name=None,  # replaced later, in Parse
                              constants=tuple(constants),
+                             type_params=tuple(type_params),
                              functions=tuple(functions),
                              classes=tuple(classes),
                              aliases=tuple(aliases))
@@ -765,13 +768,21 @@ class TypeDeclParser(object):
   # TODO(raoulDoc): doesn't support nested classes
   def p_classdef(self, p):
     """classdef : CLASS class_name class_parents COLON maybe_class_funcs end_class"""
-    _, _, name, (template, parents), _, class_funcs, _ = p
+    _, _, class_name, (template, parents), _, class_funcs, _ = p
     methoddefs = [x for x in class_funcs  if isinstance(x, NameAndSig)]
     constants = [x for x in class_funcs if isinstance(x, pytd.Constant)]
-    if (set(f.name for f in methoddefs) | set(c.name for c in constants) !=
-        set(d.name for d in class_funcs)):
+    type_params = [x for x in class_funcs if isinstance(x, pytd.TypeParameter)]
+
+    all_names = (list(set(f.name for f in methoddefs)) +
+                 [c.name for c in constants] +
+                 [c.name for c in type_params])
+    duplicates = [name
+                  for name, count in collections.Counter(all_names).items()
+                  if count >= 2]
+    if duplicates:
       # TODO(kramm): raise a syntax error right when the identifier is defined.
-      raise make_syntax_error(self, "Duplicate identifier(s)", p)
+      raise make_syntax_error(
+          self, "Duplicate identifier(s): " + ", ".join(duplicates), p)
 
     template_names = {t.name for t in template}
     for _, sig, _, _ in methoddefs:
@@ -782,9 +793,10 @@ class TypeDeclParser(object):
 
     methods, properties = self.MergeSignatures(methoddefs)
 
-    cls = pytd.Class(name=name, parents=parents,
+    cls = pytd.Class(name=class_name, parents=parents,
                      methods=tuple(methods),
                      constants=tuple(constants + properties),
+                     type_params=tuple(type_params),
                      template=template)
     p[0] = cls.Visit(visitors.AdjustSelf())
 
@@ -866,7 +878,7 @@ class TypeDeclParser(object):
 
   def p_funcdefs_typevar(self, p):
     """funcdefs : funcdefs typevardef"""
-    p[0] = p[1] + p[2]
+    p[0] = p[1] + [p[2]]
 
   # TODO(raoulDoc): doesn't support nested functions
   def p_funcdefs_null(self, p):
@@ -887,6 +899,7 @@ class TypeDeclParser(object):
       make_syntax_error(self, "Only '0' allowed as int literal", p)
     p[0] = pytd.Constant(p[1], pytd.NamedType("int"))
 
+  # TODO(rechen): Get rid of class-scoped type parameters.
   def p_typevardef(self, p):
     """typevardef : NAME ASSIGN TYPEVAR LPAREN params RPAREN"""
     name, params = p[1], p[5]
@@ -904,7 +917,7 @@ class TypeDeclParser(object):
     if name in self.context.bound:
       make_syntax_error(
           self, "Illegal redefine of TypeVar(%r) from outer scope" % p[1], p)
-    p[0] = []
+    p[0] = pytd.TypeParameter(name)
 
   def p_namedtuple_field(self, p):
     """
@@ -954,6 +967,7 @@ class TypeDeclParser(object):
                           parents=(class_parent,),
                           methods=(),
                           constants=class_constants,
+                          type_params=(),
                           template=())
 
     self.generated_classes[base_name].append(nt_class)

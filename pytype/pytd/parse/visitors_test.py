@@ -247,8 +247,8 @@ class TestVisitors(parser_test_base.ParserTest):
       class Bar(object):
         pass
     """)
-    ast1 = self.Parse(src1).Visit(visitors.AddNamePrefix("foo."))
-    ast2 = self.Parse(src2).Visit(visitors.AddNamePrefix("bar."))
+    ast1 = self.Parse(src1).Replace(name="foo").Visit(visitors.AddNamePrefix())
+    ast2 = self.Parse(src2).Replace(name="bar").Visit(visitors.AddNamePrefix())
     ast1 = ast1.Visit(visitors.LookupExternalTypes(dict(foo=ast1, bar=ast2),
                                                    full_names=True))
     ast2 = ast2.Visit(visitors.LookupExternalTypes(dict(foo=ast1, bar=ast2),
@@ -316,7 +316,7 @@ class TestVisitors(parser_test_base.ParserTest):
   def testPrintImportsNamedType(self):
     # Can't get tree by parsing so build explicitly
     node = pytd.Constant("x", pytd.NamedType("typing.List"))
-    tree = pytd.TypeDeclUnit(constants=(node,),
+    tree = pytd.TypeDeclUnit(constants=(node,), type_params=(),
                              functions=(), classes=(), aliases=(), name=None)
 
     expected_src = textwrap.dedent("""

@@ -288,6 +288,7 @@ class CallTracer(vm.VirtualMachine):
           parents=(),  # not used in solver
           methods=self._call_traces_to_function(call_records),
           constants=(),
+          type_params=(),
           template=(),
       ))
     return classes
@@ -301,11 +302,12 @@ class CallTracer(vm.VirtualMachine):
         self.pytd_for_types(defs, ignore),
         pytd.TypeDeclUnit(
             "unknowns",
-            tuple(),  # constants
-            tuple(self.pytd_classes_for_unknowns()) +
+            constants=tuple(),
+            type_params=tuple(),
+            classes=tuple(self.pytd_classes_for_unknowns()) +
             tuple(self.pytd_classes_for_call_traces()),
-            tuple(self.pytd_functions_for_call_traces()),
-            tuple(self.pytd_aliases())))
+            functions=tuple(self.pytd_functions_for_call_traces()),
+            aliases=tuple(self.pytd_aliases())))
     ty = ty.Visit(optimize.PullInMethodClasses())
     ty = ty.Visit(visitors.DefaceUnresolved(
         [ty, self.loader.concat_all()], "~unknown"))

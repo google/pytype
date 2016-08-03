@@ -43,10 +43,10 @@ def GetBuiltinsAndTyping():
   global _cached_builtins_pytd
   if not _cached_builtins_pytd:
     t = parser.TypeDeclParser().Parse(_FindBuiltinFile("typing"), name="typing")
-    t = t.Visit(visitors.AddNamePrefix("typing."))
+    t = t.Visit(visitors.AddNamePrefix())
     b = parser.TypeDeclParser().Parse(_FindBuiltinFile("__builtin__"),
                                       name="__builtin__")
-    b = b.Visit(visitors.AddNamePrefix("__builtin__."))
+    b = b.Visit(visitors.AddNamePrefix())
     b = b.Visit(visitors.NamedTypeToClassType())
     b = b.Visit(visitors.LookupExternalTypes({"typing": t}, full_names=True,
                                              self_name="__builtin__"))
@@ -110,7 +110,7 @@ def ParsePyTD(src=None, filename=None, python_version=None, module=None,
   ast = parser.parse_string(src, filename=filename, name=module,
                             python_version=python_version)
   if module is not None:  # Allow "" as module name
-    ast = ast.Visit(visitors.AddNamePrefix(ast.name + "."))
+    ast = ast.Visit(visitors.AddNamePrefix())
   if lookup_classes:
     ast = visitors.LookupClasses(ast, GetBuiltinsPyTD())
   return ast

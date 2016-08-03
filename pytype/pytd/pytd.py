@@ -24,13 +24,14 @@ import itertools
 from pytype.pytd.parse import node
 
 
-class TypeDeclUnit(node.Node('name',
-                             'constants', 'classes', 'functions', 'aliases')):
+class TypeDeclUnit(node.Node('name', 'constants', 'type_params', 'classes',
+                             'functions', 'aliases')):
   """Module node. Holds module contents (constants / classes / functions).
 
   Attributes:
     name: Name of this module, or None for the top-level module.
     constants: Iterable of module-level constants.
+    type_params: Iterable of module-level type parameters.
     functions: Iterable of functions defined in this type decl unit.
     classes: Iterable of classes defined in this type decl unit.
     aliases: Iterable of aliases (or imports) for types in other modules.
@@ -57,7 +58,22 @@ class TypeDeclUnit(node.Node('name',
       return self._name2item[name]
     except AttributeError:
       self._name2item = {}
+      module_name, _, _ = name.rpartition('.')
+      if module_name == self.name:
+        # The names in this module are fully qualified
+        prefix = self.name + '.'
+      else:
+        prefix = ''
+      for x in self.type_params:
+        # There are hard-coded type parameters in the code (e.g., T for
+        # sequences), so the module prefix must be added here rather than
+        # directly to the parameter names.
+        self._name2item[prefix + x.name] = x
       for x in self.constants + self.functions + self.classes + self.aliases:
+        if x.name in self._name2item:
+          raise AttributeError(
+              'Duplicate name %s found: %s and %s' % (
+                  x.name, type(self._name2item[x.name]), type(x)))
         self._name2item[x.name] = x
       return self._name2item[name]
 
@@ -94,7 +110,8 @@ class Alias(node.Node('name', 'type')):
   __slots__ = ()
 
 
-class Class(node.Node('name', 'parents', 'methods', 'constants', 'template')):
+class Class(node.Node('name', 'parents', 'methods', 'constants', 'type_params',
+                      'template')):
   """Represents a class declaration.
 
   Used as dict/set key, so all components must be hashable.
@@ -105,7 +122,11 @@ class Class(node.Node('name', 'parents', 'methods', 'constants', 'template')):
     methods: Tuple of methods, classmethods, staticmethods
       (instances of pytd.Function).
     constants: Tuple of constant class attributes (instances of pytd.Constant).
-    template: Tuple of pytd.TemplateItem instances.
+    type_params: Tuple of type parameters (instances of pytd.TypeParameter)
+      defined inside this class. These type parameters are "free" and can
+      appear in method templates.
+    template: Tuple of pytd.TemplateItem instances. These type parameters are
+      bound in the class definition.
   """
   # TODO(kramm): Rename "parents" to "bases". "Parents" is confusing since we're
   #              in a tree.

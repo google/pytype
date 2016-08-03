@@ -175,8 +175,12 @@ class PrintVisitor(Visitor):
   def _IsBuiltin(self, module, name):
     return module == "__builtin__" and name not in self._local_names
 
+  def _FormatTypeParams(self, type_params):
+    return ["%s = TypeVar('%s')" % (t, t) for t in type_params]
+
   def EnterTypeDeclUnit(self, unit):
-    definitions = unit.classes + unit.functions + unit.constants + unit.aliases
+    definitions = (unit.classes + unit.functions + unit.constants +
+                   unit.type_params + unit.aliases)
     self._local_names = {c.name for c in definitions}
 
   def LeaveTypeDeclUnit(self, _):
@@ -184,8 +188,11 @@ class PrintVisitor(Visitor):
 
   def VisitTypeDeclUnit(self, node):
     """Convert the AST for an entire module back to a string."""
-    sections = [self._GenerateImportStrings(), node.aliases,
-                node.constants, node.functions, node.classes]
+    if node.type_params:
+      self._RequireTypingImport("TypeVar")
+    sections = [self._GenerateImportStrings(), node.aliases, node.constants,
+                self._FormatTypeParams(node.type_params), node.functions,
+                node.classes]
 
     sections_as_string = ("\n".join(section_suite)
                           for section_suite in sections
@@ -229,15 +236,10 @@ class PrintVisitor(Visitor):
 
   def VisitClass(self, node):
     """Visit a class, producing a multi-line, properly indented string."""
-    if node.template:
-      typevars = "".join(
-          "%s = TypeVar('%s')\n" % (t.name, t.name)
-          for t in sorted(self.old_node.template))
-      if typevars:
-        self._RequireTypingImport("TypeVar")
-      self._RequireTypingImport()
-    else:
-      typevars = ""
+    typevars = [self.INDENT + p
+                for p in self._FormatTypeParams(node.type_params)]
+    if typevars:
+      self._RequireTypingImport("TypeVar")
     parents_str = "(" + ", ".join(node.parents) + ")" if node.parents else ""
     header = "class " + self._SafeName(node.name) + parents_str + ":"
     if node.methods or node.constants:
@@ -250,16 +252,10 @@ class PrintVisitor(Visitor):
     else:
       constants = []
       methods = [self.INDENT + "pass"]
-    return typevars + "\n".join([header] + constants + methods) + "\n"
+    return "\n".join([header] + constants + typevars + methods) + "\n"
 
   def VisitFunction(self, node):
     """Visit function, producing multi-line string (one for each signature)."""
-    typevars = "".join(
-        "%s = TypeVar('%s')\n" % (t.name, t.name)
-        for sig in self.old_node.signatures
-        for t in sorted(sig.template))
-    if typevars:
-      self._RequireTypingImport("TypeVar")
     function_name = self._EscapedName(node.name)
     decorators = ""
     if node.kind == pytd.STATICMETHOD:
@@ -268,7 +264,7 @@ class PrintVisitor(Visitor):
       decorators += "@classmethod\n"
     signatures = "\n".join(decorators + "def " + function_name + sig
                            for sig in node.signatures)
-    return typevars + signatures
+    return signatures
 
   def VisitExternalFunction(self, node):
     """Visit function defined with PYTHONCODE."""
@@ -1167,6 +1163,7 @@ class CanonicalOrderingVisitor(Visitor):
   def VisitTypeDeclUnit(self, node):
     return pytd.TypeDeclUnit(name=node.name,
                              constants=tuple(sorted(node.constants)),
+                             type_params=tuple(sorted(node.type_params)),
                              functions=tuple(sorted(node.functions)),
                              classes=tuple(sorted(node.classes)),
                              aliases=tuple(sorted(node.aliases)))
@@ -1176,6 +1173,7 @@ class CanonicalOrderingVisitor(Visitor):
                       parents=node.parents,
                       methods=tuple(sorted(node.methods)),
                       constants=tuple(sorted(node.constants)),
+                      type_params=tuple(sorted(node.type_params)),
                       template=node.template)
 
   def VisitFunction(self, node):
@@ -1244,18 +1242,13 @@ class AddNamePrefix(Visitor):
   .
   """
 
-  def __init__(self, prefix):
-    """Initialize the visitor.
-
-    Args:
-      prefix: The string to prepend to all names. It typically has a trailing
-        dot. E.g. "mymodule.".
-    """
+  def __init__(self):
     super(AddNamePrefix, self).__init__()
     self.cls = None
-    self.prefix = prefix
+    self.prefix = None
 
   def EnterTypeDeclUnit(self, node):
+    self.prefix = node.name + "."
     self.classes = {cls.name for cls in node.classes}
 
   def EnterClass(self, cls):

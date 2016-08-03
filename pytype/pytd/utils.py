@@ -56,6 +56,7 @@ def Concat(*args, **kwargs):
   return pytd.TypeDeclUnit(
       name=name or " + ".join(arg.name for arg in args),
       constants=sum((arg.constants for arg in args), ()),
+      type_params=sum((arg.type_params for arg in args), ()),
       classes=sum((arg.classes for arg in args), ()),
       functions=sum((arg.functions for arg in args), ()),
       aliases=sum((arg.aliases for arg in args), ()))
@@ -210,8 +211,8 @@ def Print(ast, print_format=None):
 
 
 def EmptyModule(name="<empty>"):
-  return pytd.TypeDeclUnit(name,
-                           constants=(), classes=(), functions=(), aliases=())
+  return pytd.TypeDeclUnit(
+      name, type_params=(), constants=(), classes=(), functions=(), aliases=())
 
 
 def WrapTypeDeclUnit(name, items):
@@ -264,12 +265,13 @@ def WrapTypeDeclUnit(name, items):
   _check_intersection(constants, aliases, "constant", "alias")
 
   return pytd.TypeDeclUnit(
-      name,
-      tuple(pytd.Constant(name, t.build())
-            for name, t in sorted(constants.items())),
-      tuple(classes.values()),
-      tuple(functions.values()),
-      tuple(aliases.values()))
+      name=name,
+      constants=tuple(pytd.Constant(name, t.build())
+                      for name, t in sorted(constants.items())),
+      type_params=tuple(),
+      classes=tuple(classes.values()),
+      functions=tuple(functions.values()),
+      aliases=tuple(aliases.values()))
 
 
 def _check_intersection(items1, items2, name1, name2):

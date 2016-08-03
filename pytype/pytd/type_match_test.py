@@ -31,10 +31,10 @@ class TestTypeMatch(unittest.TestCase):
   """Test algorithms and datastructures of booleq.py."""
 
   def setUp(self):
-    builtins = parser.parse_string("class object: ...").Visit(
-        visitors.AddNamePrefix("__builtin__."))
-    typing = parser.parse_string("class Generic: ...").Visit(
-        visitors.AddNamePrefix("typing."))
+    builtins = parser.parse_string("class object: ...").Replace(
+        name="__builtin__").Visit(visitors.AddNamePrefix())
+    typing = parser.parse_string("class Generic: ...").Replace(
+        name="typing").Visit(visitors.AddNamePrefix())
     self.mini_builtins = pytd_utils.Concat(builtins, typing)
 
   def LinkAgainstSimpleBuiltins(self, ast):

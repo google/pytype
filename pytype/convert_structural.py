@@ -183,6 +183,7 @@ def extract_local(ast):
       classes=tuple(cls for cls in ast.classes if is_complete(cls)),
       functions=tuple(f for f in ast.functions if is_complete(f)),
       constants=tuple(c for c in ast.constants if is_complete(c)),
+      type_params=ast.type_params,
       aliases=ast.aliases)
 
 

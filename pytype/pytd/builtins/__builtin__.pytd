@@ -20,6 +20,8 @@
 
 T = TypeVar('T')
 T2 = TypeVar('T2')
+K = TypeVar('K')
+V = TypeVar('V')
 def __import__(name: str or unicode or bytearray, ...) -> module
 def abs PYTHONCODE
 def all(iterable) -> bool
@@ -52,8 +54,7 @@ def filter(function_or_None, sequence: str) -> str
 def filter(function_or_None, sequence: bytearray) -> list[int]
 def filter(function_or_None, sequence: unicode) -> unicode
 def filter(function_or_None, sequence: list[T] or set[T] or iterator[T]) -> list[T]
-A = TypeVar('A')
-def filter(function_or_None, sequence: tuple[A]) -> tuple[A]
+def filter(function_or_None, sequence: tuple[T2]) -> tuple[T2]
 def format(value, ...) -> str
 def format(value: unicode, ...) -> unicode
 def getattr(value: object, attr: str or unicode, ...) -> ?
@@ -396,8 +397,6 @@ class `dictionary-valueiterator`(Iterator[T]):
     def __iter__(self) -> `dictionary-valueiterator`[T]
     def next(self) -> T
 
-K = TypeVar('K')
-V = TypeVar('V')
 class `dictionary-itemiterator`(Generic[K, V], object):
     def __iter__(self) -> `dictionary-itemiterator`[K, V]
     def next(self) -> tuple[K or V]  # tuple[K, V]  # TODO(pludemann): a pair
@@ -425,8 +424,6 @@ class dict_values(Iterator[T]):
     def __iter__(self) -> `dictionary-valueiterator`[T]
     def __len__(self) -> int
 
-K = TypeVar('K')
-V = TypeVar('V')
 class dict_items(Generic[K, V], object):
     # TODO(pludemann): set[pair[K,V]] etc.
     K2 = TypeVar('K2')
@@ -439,8 +436,6 @@ class dict_items(Generic[K, V], object):
     def __iter__(self) -> `dictionary-itemiterator`[K,V]
     def __len__(self) -> int
 
-K = TypeVar('K')
-V = TypeVar('V')
 # "K" and "V" are hardcoded in other places (e.g. atomic_abstract_value.Dict)
 class dict(Dict[K, V]):
     X = TypeVar('X')
@@ -500,12 +495,10 @@ class dict(Dict[K, V]):
     def viewkeys(self) -> dict_keys[K]
     def viewvalues(self) -> dict_values
 
-T = TypeVar('T')
 class listiterator(Iterator[T]):
     def __iter__(self) -> listiterator[T]
     def next(self) -> T
 
-T = TypeVar('T')
 class enumerate(Iterator[T]):
     T2 = TypeVar('T2')
     def __init__(self, iterable: list[T2], ...) -> NoneType:
@@ -519,13 +512,11 @@ class enumerate(Iterator[T]):
     def __iter__(self) -> enumerate[T]  # enumerate.__iter__() returns itself
     def next(self) -> tuple[int or long or T]  # tuple[int or long, T]
 
-T = TypeVar('T')
 class listreverseiterator(Iterator[T]):
     def __iter__(self) -> listreverseiterator[T]
     def next(self) -> T
 
 # "T" is hardcoded in typing.py
-T = TypeVar('T')
 class list(List[T]):
     N = TypeVar('N')
     A = TypeVar('A')
@@ -598,7 +589,6 @@ class list(List[T]):
     def sort(self, ...) -> NoneType
 
 # "reversed" is a type, see PyReversed_Type in Objects/enumobject.c
-T = TypeVar('T')
 class reversed(Iterator[T]):
     N = TypeVar('N')
     def __init__(self, sequence: list[N]) -> NoneType:
@@ -611,7 +601,6 @@ class reversed(Iterator[T]):
     def next(self) -> T
 
 # "T" is hardcoded in typing.py
-T = TypeVar('T')
 class tuple(Tuple[T]):
     A = TypeVar('A')
     def __init__(self, p0) -> NoneType
@@ -633,12 +622,10 @@ class tuple(Tuple[T]):
     def count(self, value: T) -> int
     def index(self, value, ...) -> int
 
-T = TypeVar('T')
 class tupleiterator(Iterator[T]):
     def __iter__(self) -> tupleiterator[T]
     def next(self) -> T
 
-T = TypeVar('T')
 class set(Set[T]):
     N = TypeVar('N')
     T2 = TypeVar('T2')
@@ -689,7 +676,6 @@ class set(Set[T]):
     def __le__(self, other) -> bool
     def __lt__(self, other) -> bool
 
-T = TypeVar('T')
 class frozenset(FrozenSet[T]):
     N = TypeVar('N')
     T2 = TypeVar('T2')
@@ -723,7 +709,6 @@ class frozenset(FrozenSet[T]):
     @staticmethod
     def difference(...) -> frozenset[?]
 
-T = TypeVar('T')
 class setiterator(Iterator[T]):
     def __iter__(self) -> setiterator[T]
     def next(self) -> T
@@ -1010,7 +995,6 @@ class function(Callable):
     def __call__(self, ...) -> ?
     def __get__(self, obj, ...) -> instancemethod
 
-T = TypeVar('T')
 class generator(Generator[T]):  # "T" is also hardcoded in abstract.py:Generator
     def __iter__(self) -> generator[T]
     def send(self, arg) -> ?  # TODO(pludemann): or should be "-> T" ?  or needs 2 parameter types for generator?
@@ -1046,7 +1030,6 @@ class type(object):
     def __init__(self, object: Any) -> NoneType
     def __len__(self, p0: str or bytearray) -> int  # TODO(pludemann): remove?
 
-T = TypeVar('T')
 class iterator(Iterator[T]):
     def __iter__(self) -> iterator[T]
     def next(self) -> T

@@ -498,16 +498,14 @@ class TestASTGeneration(parser_test_base.ParserTest):
   def testGeneric(self):
     src = textwrap.dedent("""
         X = TypeVar('X')
+        Y = TypeVar('Y')
+
         class T1(typing.Generic[X], object):
             pass
 
-        X = TypeVar('X')
-        Y = TypeVar('Y')
         class T2(typing.Generic[X, Y], T1):
             pass
 
-        X = TypeVar('X')
-        Y = TypeVar('Y')
         class T3(typing.Generic[X, Y], T1, T2):
             pass
     """)
@@ -523,6 +521,7 @@ class TestASTGeneration(parser_test_base.ParserTest):
         from typing import TypeVar
 
         X = TypeVar('X', covariant=True)
+
         class T1(typing.Generic[X], object):
             pass
     """)
@@ -532,6 +531,7 @@ class TestASTGeneration(parser_test_base.ParserTest):
         from typing import TypeVar
 
         X = TypeVar('X')
+
         class T1(typing.Generic[X], object):
             pass
     """)
@@ -551,22 +551,21 @@ class TestASTGeneration(parser_test_base.ParserTest):
 
   def testTemplated(self):
     src = textwrap.dedent("""
+        S = TypeVar('S')
+        T = TypeVar('T')
+        X = TypeVar('X')
+        Y = TypeVar('Y')
+
         def foo(x: int) -> T1[float]: ...
         def foo(x: int) -> T2[int, complex]: ...
         def foo(x: int) -> T3[int, T4[str]]: ...
         def bar(y: int) -> T1[float]: ...
-        T = TypeVar('T')
         def qqsv(x: T) -> List[T]: ...
-        S = TypeVar('S')
-        T = TypeVar('T')
         def qux(x: T) -> List[S]: ...
 
-        X = TypeVar('X')
         class T1(typing.Generic[X], object):
             def foo(a: X) -> T2[X, int] raises float: ...
 
-        X = TypeVar('X')
-        Y = TypeVar('Y')
         class T2(typing.Generic[X, Y], object):
             def foo(a: X) -> complex raises Except[X, Y]: ...
     """)
@@ -779,6 +778,7 @@ class TestASTGeneration(parser_test_base.ParserTest):
   def testFunctionTypeParams(self):
     src = textwrap.dedent("""
         T1 = TypeVar('T1')
+
         def f(x: T1) -> T1: ...
     """)
     expected = "from typing import TypeVar\n" + src
@@ -1216,6 +1216,7 @@ class TestASTGeneration(parser_test_base.ParserTest):
     """Test simple class template."""
     data = textwrap.dedent("""
         T = TypeVar('T')
+
         class MyClass(typing.Generic[T], object):
             def f(self, T) -> T: ...
         """)
@@ -1229,10 +1230,10 @@ class TestASTGeneration(parser_test_base.ParserTest):
     """Test name reuse between templated classes."""
     data = textwrap.dedent("""
         T = TypeVar('T')
+
         class MyClass1(typing.Generic[T], object):
             def f(self, T) -> T: ...
 
-        T = TypeVar('T')
         class MyClass2(typing.Generic[T], object):
             def f(self, T) -> T: ...
         """)
@@ -1247,10 +1248,10 @@ class TestASTGeneration(parser_test_base.ParserTest):
     data = textwrap.dedent("""
         T = TypeVar('T')
         V = TypeVar('V')
+
         class MyClass1(typing.Generic[T], object):
             def f(self, T, V) -> V: ...
 
-        T = TypeVar('T')
         class MyClass2(typing.Generic[T], object):
             def f(self, T, V) -> V: ...
         """)
@@ -1278,6 +1279,7 @@ class TestASTGeneration(parser_test_base.ParserTest):
     """Test two global methods sharing a type variable."""
     data = textwrap.dedent("""
         T = TypeVar('T')
+
         def f(x: T) -> T: ...
         def g(x: T) -> T: ...
         """)
@@ -1285,8 +1287,8 @@ class TestASTGeneration(parser_test_base.ParserTest):
         from typing import TypeVar
 
         T = TypeVar('T')
+
         def f(x: T) -> T: ...
-        T = TypeVar('T')
         def g(x: T) -> T: ...
     """))
 
@@ -1486,6 +1488,26 @@ class TestASTGeneration(parser_test_base.ParserTest):
       class C:
           def foo(self) -> int: ...
     """))
+
+  def testTypeParameters(self):
+    """Test that type parameters show up correctly in the tree."""
+    src = textwrap.dedent("""
+      T = TypeVar("T")
+      class A(Generic[T]):
+        T2 = TypeVar("T2")
+        def a(self, x: T2) -> None:
+          self := A[T or T2]
+    """)
+    tree = self.Parse(src)
+    param = tree.Lookup("T")
+    self.assertEquals(param, pytd.TypeParameter("T"))
+    self.assertEquals(tree.type_params, (param,))
+    cls = tree.Lookup("A")
+    self.assertEquals(cls.type_params, (pytd.TypeParameter("T2"),))
+    f, = cls.methods
+    sig, = f.signatures
+    self.assertEquals(sig.template,
+                      (pytd.TemplateItem(pytd.TypeParameter("T2")),))
 
 
 class TestDecorate(unittest.TestCase):

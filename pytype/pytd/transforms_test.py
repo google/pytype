@@ -74,12 +74,12 @@ class TestTransforms(parser_test_base.ParserTest):
     # Simple test for RemoveMutableParameters, with simplified list class
     src = textwrap.dedent("""
       T = TypeVar('T')
+
       class TrivialList(typing.Generic[T], object):
         T2 = TypeVar('T2')
         def append(self, v: T2) -> NoneType:
           self := T or T2
 
-      T = TypeVar('T')
       class TrivialList2(typing.Generic[T], object):
         def __init__(self, x: T) -> NoneType
         T2 = TypeVar('T2')
@@ -89,10 +89,10 @@ class TestTransforms(parser_test_base.ParserTest):
     """)
     expected = textwrap.dedent("""
       T = TypeVar('T')
+
       class TrivialList(typing.Generic[T], object):
           def append(self, v: T) -> NoneType
 
-      T = TypeVar('T')
       class TrivialList2(typing.Generic[T], object):
           def __init__(self, x: T) -> NoneType
           def append(self, v: T) -> NoneType
@@ -107,6 +107,7 @@ class TestTransforms(parser_test_base.ParserTest):
     src = textwrap.dedent("""
       K = TypeVar('K')
       V = TypeVar('V')
+
       class MyDict(typing.Generic[K, V], object):
           T = TypeVar('T')
           K2 = TypeVar('K2')
@@ -121,6 +122,7 @@ class TestTransforms(parser_test_base.ParserTest):
     expected = textwrap.dedent("""
       K = TypeVar('K')
       V = TypeVar('V')
+
       class MyDict(typing.Generic[K, V], object):
           def getitem(self, k: K, default: V) -> V
           def setitem(self, k: K, value: V) -> NoneType

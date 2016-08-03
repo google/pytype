@@ -1021,6 +1021,13 @@ class MergeTypeParameters(TypeParameterScope):
       return sig.Replace(template=tuple(new_template)).Visit(
           visitors.ReplaceTypeParameters(substitutions)).Visit(SimplifyUnions())
 
+  def VisitClass(self, cls):
+    type_params = set()
+    for m in cls.methods:
+      for sig in m.signatures:
+        type_params |= set(t.type_param for t in sig.template)
+    return cls.Replace(type_params=tuple(type_params))
+
 
 def Optimize(node,
              lossy=False,
