@@ -484,11 +484,9 @@ class ImportTest(test_inference.InferenceTest):
       def my_foo(x):
         return x.read()
     """, deep=True, solve_unknowns=True)
-    # TODO(rechen): Instead of StringIO[object] we should have StringIO[AnyStr]
-    # (or StringIO[str or unicode]). The return type should be str or unicode.
     self.assertTypesMatchPytd(ty, """
       StringIO = ...  # type: module
-      def my_foo(x:file or StringIO.StringIO[object]) -> Any
+      def my_foo(x:file or StringIO.StringIO) -> str
     """)
 
   def testImportBuiltins(self):
@@ -609,14 +607,11 @@ class ImportTest(test_inference.InferenceTest):
       d = os.__doc__
       p = os.__package__
       """, deep=True, solve_unknowns=True)
-    # TODO(rechen): the type of module.__doc__ is AnyStr, which is currently
-    # interpreted as "nothing" but should be str or unicode. (type: str for d is
-    # from object.__doc__)
     self.assertTypesMatchPytd(ty, """
        os = ...  # type: module
        f = ...  # type: str
        n = ...  # type: str
-       d = ...  # type: str
+       d = ...  # type: AnyStr
        p = ...  # type: Optional[str]
     """)
 

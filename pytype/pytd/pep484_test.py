@@ -40,10 +40,10 @@ class TestPEP484(parser_test_base.ParserTest):
   def test_convert_anystr(self):
     t = pytd.NamedType("typing.AnyStr")
     self.assertEquals(self.convert(t, python_version=(2, 7)),
-                      "typing.AnyStr")
+                      "Union[str, unicode]")
     t = pytd.NamedType("typing.AnyStr")
     self.assertEquals(self.convert(t, python_version=(3, 4)),
-                      "typing.AnyStr")
+                      "Union[bytes, str]")
 
 
 if __name__ == "__main__":

@@ -313,40 +313,6 @@ class GenericTest(test_inference.InferenceTest):
         def h() -> int
       """)
 
-  def testTypeParameterEmpty(self):
-    with utils.Tempdir() as d:
-      d.create_file("a.pyi", """
-        T = TypeVar("T")
-        class A(Generic[T]):
-          def f(self) -> List[T]
-      """)
-      ty = self.Infer("""
-        import a
-        def f():
-          return a.A().f()
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
-      self.assertTypesMatchPytd(ty, """
-        a = ...  # type: module
-        def f() -> List[nothing]
-      """)
-
-  @unittest.skip("Needs better GenericType support")
-  def testTypeParameterLimits(self):
-    with utils.Tempdir() as d:
-      d.create_file("a.pyi", """
-        class A(Generic[AnyStr]):
-          def f(self) -> AnyStr
-      """)
-      ty = self.Infer("""
-        import a
-        def f():
-          return a.A().f()
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
-      self.assertTypesMatchPytd(ty, """
-        a = ...  # type: module
-        def f() -> str or unicode
-      """)
-
 
 if __name__ == "__main__":
   test_inference.main()

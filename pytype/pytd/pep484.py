@@ -7,7 +7,7 @@ from pytype.pytd import pytd
 from pytype.pytd.parse import visitors
 
 
-PEP484_NAMES = ["AbstractSet", "AnyStr", "BinaryIO", "ByteString", "Callable",
+PEP484_NAMES = ["AbstractSet", "BinaryIO", "ByteString", "Callable",
                 "Container", "Dict", "Final", "FrozenSet", "Generator",
                 "Generic", "Hashable", "IO", "ItemsView", "Iterable",
                 "Iterator", "KeysView", "List", "Mapping", "MappingView",
@@ -24,6 +24,8 @@ PEP484_TRANSLATIONS = {
     "None": pytd.NamedType("NoneType"),
     # PEP 484 definitions of special purpose types:
     "Any": pytd.AnythingType(),
+    "AnyStr": pytd.UnionType([pytd.NamedType("str"),
+                              pytd.NamedType("unicode")]),
     # TODO(kramm): "typing.NamedTuple"
 }
 
@@ -193,8 +195,15 @@ class ConvertTypingToNative(visitors.Visitor):
     if module == "typing":
       if name in visitors.PrintVisitor.PEP484_CAPITALIZED:
         return pytd.NamedType(name.lower())  # "typing.List" -> "list" etc.
-      elif name in PEP484_TRANSLATIONS:
-        return PEP484_TRANSLATIONS[name]
+      elif name == "Any":
+        return pytd.AnythingType()
+      elif name == "AnyStr":
+        if self.python_version[0] >= 3:
+          return pytd.UnionType((pytd.NamedType("bytes"),
+                                 pytd.NamedType("str")))
+        else:
+          return pytd.UnionType((pytd.NamedType("str"),
+                                 pytd.NamedType("unicode")))
       else:
         # IO, Callable, etc. (I.e., names in typing we leave alone)
         return t

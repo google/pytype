@@ -248,15 +248,13 @@ class Converter(object):
       for t in pytd_utils.UnpackUnion(cls):
         if isinstance(t, pytd.TypeParameter):
           if not subst or t.name not in subst:
-            # TODO(rechen): If the type parameter has limits, use a union of
-            # those instead of nothing.
-            var.AddBinding(self.nothing)
-          else:
-            for v in subst[t.name].bindings:
-              for source_set in source_sets:
-                var.AddBinding(self._get_maybe_abstract_instance(v.data)
-                               if discard_concrete_values else v.data,
-                               source_set + [v], node)
+            raise ValueError("Can't resolve type parameter %s using %r" % (
+                t.name, subst))
+          for v in subst[t.name].bindings:
+            for source_set in source_sets:
+              var.AddBinding(self._get_maybe_abstract_instance(v.data)
+                             if discard_concrete_values else v.data,
+                             source_set + [v], node)
         elif isinstance(t, pytd.NothingType):
           pass
         else:

@@ -491,10 +491,9 @@ class TestASTGeneration(parser_test_base.ParserTest):
         def walk() -> Tuple[AnyStr, List[AnyStr]]
     """)
     self.TestRoundTrip(src, textwrap.dedent("""
-        import typing
         from typing import List, Tuple, Union
 
-        def walk() -> Tuple[Union[typing.AnyStr, List[typing.AnyStr]], ...]: ...
+        def walk() -> Tuple[Union[str, unicode, List[Union[str, unicode]]], ...]: ...
     """))
 
   def testGeneric(self):
