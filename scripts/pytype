@@ -39,15 +39,20 @@ def check_pyi(input_filename, output_filename, errorlog, options):
       pyi_src = fi.read()
   else:
     pyi_src = None
-  infer.check_types(
-      py_src,
-      pyi_src,
-      py_filename=input_filename,
-      pytd_filename=output_filename,
-      errorlog=errorlog,
-      options=options,
-      run_builtins=options.run_builtins,
-      cache_unknowns=options.cache_unknowns)
+  try:
+    infer.check_types(
+        py_src,
+        pyi_src,
+        py_filename=input_filename,
+        pytd_filename=output_filename,
+        errorlog=errorlog,
+        options=options,
+        run_builtins=options.run_builtins,
+        cache_unknowns=options.cache_unknowns)
+  except Exception:  # pylint: disable=broad-except
+    # TODO(fyquah): We should store this error somewhere so the user knows.
+    if not options.nofail:
+      raise
 
 
 def generate_pyi(input_filename, output_filename, errorlog, options):
