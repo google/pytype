@@ -938,7 +938,6 @@ class MergeTypeParameters(TypeParameterScope):
 
   For example, this will change
     class A(typing.Generic(T)):
-      T2 = TypeVar('T2')
       def append(self, T or T2) -> T2
   to
     class A(typing.Generic(T)):
@@ -949,7 +948,6 @@ class MergeTypeParameters(TypeParameterScope):
   As another example, the combination of AbsorbMutableParameters and
   MergeTypeParameters transforms
     class list(typing.Generic(T)):
-      T2 = TypeVar('T2')
       def append(self, v: T2) -> NoneType:
         self := T or T2
   to
@@ -1031,13 +1029,6 @@ class MergeTypeParameters(TypeParameterScope):
     else:
       return sig.Replace(template=tuple(new_template)).Visit(
           visitors.ReplaceTypeParameters(substitutions)).Visit(SimplifyUnions())
-
-  def VisitClass(self, cls):
-    type_params = set()
-    for m in cls.methods:
-      for sig in m.signatures:
-        type_params |= set(t.type_param for t in sig.template)
-    return cls.Replace(type_params=tuple(type_params))
 
 
 def Optimize(node,

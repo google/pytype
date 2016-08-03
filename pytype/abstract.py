@@ -1801,7 +1801,7 @@ class Class(object):
   def to_pytd_def(self, node, name):
     # Default method. Generate an empty pytd. Subclasses override this.
     del node
-    return pytd.Class(name, (), (), (), (), ())
+    return pytd.Class(name, (), (), (), ())
 
 
 class ParameterizedClass(AtomicAbstractValue, Class, FormalType):
@@ -2191,7 +2191,6 @@ class InterpreterClass(SimpleAbstractValue, Class):
                       parents=tuple(bases),
                       methods=tuple(methods),
                       constants=tuple(constants),
-                      type_params=(),
                       template=())
 
   def get_instance_type(self, node, instance=None, seen=None):
@@ -3009,7 +3008,6 @@ class Unknown(AtomicAbstractValue):
         methods=methods,
         constants=tuple(pytd.Constant(name, Unknown._to_pytd(node, c))
                         for name, c in self.members.items()),
-        type_params=(),
         template=())
 
   def get_class(self):

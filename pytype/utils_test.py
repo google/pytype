@@ -302,11 +302,11 @@ class UtilsTest(unittest.TestCase):
     self.assertEquals(list(utils.topological_sort([1])), [1])
 
   def testFlattenSuperclasses(self):
-    cls_a = pytd.Class("A", (), (), (), (), ())
-    cls_b = pytd.Class("B", (cls_a,), (), (), (), ())
-    cls_c = pytd.Class("C", (cls_a,), (), (), (), ())
-    cls_d = pytd.Class("D", (cls_c,), (), (), (), ())
-    cls_e = pytd.Class("E", (cls_d, cls_b), (), (), (), ())
+    cls_a = pytd.Class("A", (), (), (), ())
+    cls_b = pytd.Class("B", (cls_a,), (), (), ())
+    cls_c = pytd.Class("C", (cls_a,), (), (), ())
+    cls_d = pytd.Class("D", (cls_c,), (), (), ())
+    cls_e = pytd.Class("E", (cls_d, cls_b), (), (), ())
     self.assertItemsEqual(utils.flattened_superclasses(cls_e),
                           [cls_a, cls_b, cls_c, cls_d, cls_e])
 

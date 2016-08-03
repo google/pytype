@@ -1252,22 +1252,13 @@ class TestASTGeneration(parser_test_base.ParserTest):
     self.TestRoundTrip(data, check_the_sourcecode=False)
 
   def testScopedTypevar(self):
-    """Test type parameters as class attributes."""
+    """Test type parameters as class attributes (not supported)."""
     data = textwrap.dedent("""
         class MyClass1(object):
             SomeType = TypeVar('SomeType')
             def g(x: SomeType) -> SomeType: ...
-        def f(x: SomeType) -> SomeType: ...
-        """)
-    self.TestRoundTrip(data, textwrap.dedent("""
-        from typing import TypeVar
-
-        def f(x: SomeType) -> SomeType: ...
-
-        class MyClass1(object):
-            SomeType = TypeVar('SomeType')
-            def g(x: SomeType) -> SomeType: ...
-        """))
+    """)
+    self.TestThrowsSyntaxError(data)
 
   def testTypeVarReuseOnGlobalMethods(self):
     """Test two global methods sharing a type variable."""
@@ -1488,17 +1479,19 @@ class TestASTGeneration(parser_test_base.ParserTest):
     """Test that the parser inserts TypeParameter instances."""
     src = textwrap.dedent("""
       T = TypeVar("T")
+      T2 = TypeVar("T2")
       def f(x: T) -> T
       class A(Generic[T]):
-        T2 = TypeVar("T2")
         def a(self, x: T2) -> None:
           self := A[T or T2]
     """)
     tree = self.Parse(src)
 
-    param = tree.Lookup("T")
-    self.assertEquals(param, pytd.TypeParameter("T"))
-    self.assertEquals(tree.type_params, (param,))
+    param1 = tree.Lookup("T")
+    param2 = tree.Lookup("T2")
+    self.assertEquals(param1, pytd.TypeParameter("T"))
+    self.assertEquals(param2, pytd.TypeParameter("T2"))
+    self.assertEquals(tree.type_params, (param1, param2))
 
     f = tree.Lookup("f")
     sig, = f.signatures
@@ -1508,7 +1501,6 @@ class TestASTGeneration(parser_test_base.ParserTest):
     cls = tree.Lookup("A")
     self.assertEquals(cls.template,
                       (pytd.TemplateItem(pytd.TypeParameter("T")),))
-    self.assertEquals(cls.type_params, (pytd.TypeParameter("T2"),))
     f_cls, = cls.methods
     sig_cls, = f_cls.signatures
     p_self, p_x_cls = sig_cls.params
@@ -1519,9 +1511,9 @@ class TestASTGeneration(parser_test_base.ParserTest):
     """Test that the correct templates are inserted for function signatures."""
     src = textwrap.dedent("""
       T = TypeVar("T")
+      T2 = TypeVar("T2")
       def f(x: T) -> T
       class A(Generic[T]):
-        T2 = TypeVar("T2")
         def a(self, x: T2) -> None:
           self := A[T or T2]
     """)

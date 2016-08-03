@@ -340,26 +340,9 @@ class InsertTypeParameters(visitors.Visitor):
 
   def EnterTypeDeclUnit(self, node):
     self.type_params = {p.name: p for p in node.type_params}
-    self.old_type_params = None
 
   def LeaveTypeDeclUnit(self, node):
     self.type_params = None
-
-  def EnterClass(self, node):
-    assert self.old_type_params is None
-    self.old_type_params = {}
-    for p in node.type_params:
-      if p.name in self.type_params:
-        self.old_type_params[p.name] = self.type_params[p.name]
-      self.type_params[p.name] = p
-
-  def LeaveClass(self, node):
-    for p in node.type_params:
-      if p.name in self.old_type_params:
-        self.type_params[p.name] = self.old_type_params[p.name]
-      else:
-        del self.type_params[p.name]
-    self.old_type_params = None
 
   def VisitNamedType(self, node):
     if node.name in self.type_params:
@@ -382,15 +365,6 @@ def CheckIsSysPlatform(parser, string, p):
   make_syntax_error(
       parser, "Only \"sys.platform\" can be compared with a string: %s" % (
           string), p)
-
-
-class Context(object):
-  """The global scope, or a class scope."""
-
-  def __init__(self, typevars, bound=(), parent=None):
-    self.typevars = typevars
-    self.bound = bound
-    self.parent = parent
 
 
 def _IsTemplate(parser, p, t):
@@ -467,7 +441,6 @@ class TypeDeclParser(object):
     """Run tokenizer, parser, and postprocess the AST."""
     self.src = src  # Keep a copy of what's being parsed
     self.filename = filename if filename else "<string>"
-    self.context = Context(typevars=set())
     self.generated_classes = collections.defaultdict(list)
     # For the time being, also allow shortcuts, i.e., using "List" for
     # "typing.List", even without having imported typing:
@@ -759,18 +732,10 @@ class TypeDeclParser(object):
 
   def p_class_parents(self, p):
     """class_parents : parents"""
-    template, parents = GetTemplateAndParents(self, p, p[1])
-    p[0] = template, parents
-    # The new scope has its own set of type variables (to allow class-level
-    # scoping of TypeVar). But any type variable bound to the class is not a
-    # (free) type parameter in the body of the class.
-    bound = {t.name for t in template}
-    new_typevars = self.context.typevars.copy() - bound
-    self.context = Context(new_typevars, bound, parent=self.context)
+    p[0] = GetTemplateAndParents(self, p, p[1])
 
   def p_end_class(self, p):
     """end_class : """
-    self.context = self.context.parent
     p[0] = None
 
   def p_class_name(self, p):
@@ -784,11 +749,9 @@ class TypeDeclParser(object):
     _, _, class_name, (template, parents), _, class_funcs, _ = p
     methoddefs = [x for x in class_funcs  if isinstance(x, NameAndSig)]
     constants = [x for x in class_funcs if isinstance(x, pytd.Constant)]
-    type_params = [x for x in class_funcs if isinstance(x, pytd.TypeParameter)]
 
     all_names = (list(set(f.name for f in methoddefs)) +
-                 [c.name for c in constants] +
-                 [c.name for c in type_params])
+                 [c.name for c in constants])
     duplicates = [name
                   for name, count in collections.Counter(all_names).items()
                   if count >= 2]
@@ -802,7 +765,6 @@ class TypeDeclParser(object):
     cls = pytd.Class(name=class_name, parents=parents,
                      methods=tuple(methods),
                      constants=tuple(constants + properties),
-                     type_params=tuple(type_params),
                      template=template)
     p[0] = cls.Visit(visitors.AdjustSelf())
 
@@ -882,10 +844,6 @@ class TypeDeclParser(object):
     """funcdefs : funcdefs funcdefs_if"""
     p[0] = p[1] + p[2]
 
-  def p_funcdefs_typevar(self, p):
-    """funcdefs : funcdefs typevardef"""
-    p[0] = p[1] + [p[2]]
-
   # TODO(raoulDoc): doesn't support nested functions
   def p_funcdefs_null(self, p):
     """funcdefs :"""
@@ -905,7 +863,6 @@ class TypeDeclParser(object):
       make_syntax_error(self, "Only '0' allowed as int literal", p)
     p[0] = pytd.Constant(p[1], pytd.NamedType("int"))
 
-  # TODO(rechen): Get rid of class-scoped type parameters.
   def p_typevardef(self, p):
     """typevardef : NAME ASSIGN TYPEVAR LPAREN params RPAREN"""
     name, params = p[1], p[5]
@@ -919,10 +876,6 @@ class TypeDeclParser(object):
     if name != name_param:
       make_syntax_error(self, "TypeVar name needs to be %r (not %r)" % (
           name_param, name), p)
-    self.context.typevars.add(name)
-    if name in self.context.bound:
-      make_syntax_error(
-          self, "Illegal redefine of TypeVar(%r) from outer scope" % p[1], p)
     p[0] = pytd.TypeParameter(name)
 
   def p_namedtuple_field(self, p):
@@ -973,7 +926,6 @@ class TypeDeclParser(object):
                           parents=(class_parent,),
                           methods=(),
                           constants=class_constants,
-                          type_params=(),
                           template=())
 
     self.generated_classes[base_name].append(nt_class)

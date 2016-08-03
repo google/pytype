@@ -288,7 +288,6 @@ class CallTracer(vm.VirtualMachine):
           parents=(),  # not used in solver
           methods=self._call_traces_to_function(call_records),
           constants=(),
-          type_params=(),
           template=(),
       ))
     return classes

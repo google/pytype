@@ -236,10 +236,6 @@ class PrintVisitor(Visitor):
 
   def VisitClass(self, node):
     """Visit a class, producing a multi-line, properly indented string."""
-    typevars = [self.INDENT + p
-                for p in self._FormatTypeParams(node.type_params)]
-    if typevars:
-      self._RequireTypingImport("TypeVar")
     parents_str = "(" + ", ".join(node.parents) + ")" if node.parents else ""
     header = "class " + self._SafeName(node.name) + parents_str + ":"
     if node.methods or node.constants:
@@ -252,7 +248,7 @@ class PrintVisitor(Visitor):
     else:
       constants = []
       methods = [self.INDENT + "pass"]
-    return "\n".join([header] + constants + typevars + methods) + "\n"
+    return "\n".join([header] + constants + methods) + "\n"
 
   def VisitFunction(self, node):
     """Visit function, producing multi-line string (one for each signature)."""
@@ -1173,7 +1169,6 @@ class CanonicalOrderingVisitor(Visitor):
                       parents=node.parents,
                       methods=tuple(sorted(node.methods)),
                       constants=tuple(sorted(node.constants)),
-                      type_params=tuple(sorted(node.type_params)),
                       template=node.template)
 
   def VisitFunction(self, node):

@@ -110,8 +110,7 @@ class Alias(node.Node('name', 'type')):
   __slots__ = ()
 
 
-class Class(node.Node('name', 'parents', 'methods', 'constants', 'type_params',
-                      'template')):
+class Class(node.Node('name', 'parents', 'methods', 'constants', 'template')):
   """Represents a class declaration.
 
   Used as dict/set key, so all components must be hashable.
@@ -122,11 +121,7 @@ class Class(node.Node('name', 'parents', 'methods', 'constants', 'type_params',
     methods: Tuple of methods, classmethods, staticmethods
       (instances of pytd.Function).
     constants: Tuple of constant class attributes (instances of pytd.Constant).
-    type_params: Tuple of type parameters (instances of pytd.TypeParameter)
-      defined inside this class. These type parameters are "free" and can
-      appear in method templates.
-    template: Tuple of pytd.TemplateItem instances. These type parameters are
-      bound in the class definition.
+    template: Tuple of pytd.TemplateItem instances.
   """
   # TODO(kramm): Rename "parents" to "bases". "Parents" is confusing since we're
   #              in a tree.
