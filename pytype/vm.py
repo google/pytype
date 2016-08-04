@@ -1676,12 +1676,10 @@ class VirtualMachine(object):
     try:
       module = self.import_module(name, level)
     except parser.ParseError as e:
-      log.warning("Couldn't parse module %r", name)
-      self.errorlog.pyi_error(op, e)
+      self.errorlog.pyi_error(op, full_name, e)
       module = abstract.Unsolvable(self)
     except load_pytd.DependencyNotFoundError as e:
-      log.warning("Couldn't find module %r", name)
-      self.errorlog.pyi_not_found(op, name, level, e.module_name)
+      self.errorlog.pyi_error(op, full_name, e)
       module = abstract.Unsolvable(self)
     else:
       if module is None:
@@ -1694,12 +1692,18 @@ class VirtualMachine(object):
     """IMPORT_FROM is mostly like LOAD_ATTR but doesn't pop the container."""
     name = self.frame.f_code.co_names[op.arg]
     module = state.top()
-    state, attr = self.load_attr_noerror(state, module, name)
-    if attr is None:
-      self.errorlog.import_from_error(self.frame.current_opcode, module, name)
-      return state.push(abstract.Unsolvable(self).to_variable(state.node, name))
+    try:
+      state, attr = self.load_attr_noerror(state, module, name)
+    except (parser.ParseError, load_pytd.DependencyNotFoundError) as e:
+      full_name = module.data[0].name + "." + name
+      self.errorlog.pyi_error(self.frame.current_opcode, full_name, e)
+      attr = None
     else:
-      return state.push(attr)
+      if attr is None:
+        self.errorlog.import_from_error(self.frame.current_opcode, module, name)
+    if attr is None:
+      attr = abstract.Unsolvable(self).to_variable(state.node, name)
+    return state.push(attr)
 
   def byte_EXEC_STMT(self, state):
     state, (unused_stmt, unused_globs, unused_locs) = state.popn(3)

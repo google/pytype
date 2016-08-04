@@ -296,6 +296,52 @@ class ErrorTest(test_inference.InferenceTest):
     """, deep=True)
     self.assertErrorLogContains(errors, r"Line 3.*duplicate-keyword")
 
+  def testBadImport(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        def f() -> int: ...
+        class f: ...
+      """)
+      _, errors = self.InferAndCheck("""
+        import a
+      """, pythonpath=[d.path])
+      self.assertErrorLogContains(errors, r"a.*pyi-error")
+
+  def testBadImportDependency(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        from b import X
+        class Y(X): ...
+      """)
+      _, errors = self.InferAndCheck("""
+        import a
+      """, pythonpath=[d.path])
+      self.assertErrorLogContains(errors, r"a.*pyi-error")
+
+  def testBadImportFrom(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo/a.pyi", """
+        def f() -> int: ...
+        class f: ...
+      """)
+      d.create_file("foo/__init__.pyi", "")
+      _, errors = self.InferAndCheck("""
+        from foo import a
+      """, pythonpath=[d.path])
+      self.assertErrorLogContains(errors, r"foo[.]a.*pyi-error")
+
+  def testBadImportFromDependency(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo/a.pyi", """
+          from a import X
+          class Y(X): ...
+      """)
+      d.create_file("foo/__init__.pyi", "")
+      _, errors = self.InferAndCheck("""
+        from foo import a
+      """, pythonpath=[d.path])
+      self.assertErrorLogContains(errors, r"foo[.]a.*pyi-error")
+
 
 if __name__ == "__main__":
   test_inference.main()

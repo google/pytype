@@ -56,8 +56,8 @@ class ParseError(Exception):
     lineno = -1 if self.lineno is None else self.lineno
     e = SyntaxError(self.msg, (self.filename, lineno,
                                self.column, self.line))
-    return ("Error while parsing pyi:\n\n" +
-            "".join(traceback.format_exception(type(e), e, None)))
+    return ("Error while parsing pyi:\n" +
+            "".join(traceback.format_exception(type(e), e, None)).rstrip())
 
 
 class PyLexer(object):
@@ -1526,6 +1526,8 @@ def _find_line_and_column(lexpos, src):
     last_line_offset = src.rfind("\n", 0, lexpos) + 1
     line, _, _ = src[last_line_offset:].partition("\n")
     column = lexpos - last_line_offset + 1
+    if not line:
+      line = None  # don't allow empty lines
     return column, line
   else:
     return None, None

@@ -16,7 +16,6 @@ import logging
 
 from pytype import exceptions
 from pytype import function
-from pytype import load_pytd
 from pytype import output
 from pytype import utils
 from pytype.pyc import loadmarshal
@@ -2784,12 +2783,9 @@ class Module(Instance):
                                                   condition)
     if var is None:
       full_name = self.name + "." + name
-      try:
-        mod = self.vm.import_module(full_name, 0)  # 0: absolute import
-      except load_pytd.DependencyNotFoundError:
-        # TODO(kramm): vm.py will now generate an run-of-the-mill import-error.
-        # Should we give the user more specific information about what happened?
-        mod = None
+      # The line below can raise load_pytd.DependencyNotFoundError. This is OK
+      # since we'll always be called from vm.byte_IMPORT_FROM which catches it.
+      mod = self.vm.import_module(full_name, 0)  # 0: absolute import
       if mod is not None:
         var = mod.to_variable(node, name)
       elif self.has_getattr():

@@ -34,9 +34,15 @@ class Module(object):
 class DependencyNotFoundError(Exception):
   """If we can't find a module referenced by the module we're trying to load."""
 
-  def __init__(self, module_name):
-    super(DependencyNotFoundError, self).__init__("Can't find %s" % module_name)
+  def __init__(self, module_name, src=None):
+    referenced = ", referenced from %r" % src if src else ""
+    super(DependencyNotFoundError, self).__init__(
+        "Can't find pyi for %r" % module_name + referenced)
     self.module_name = module_name
+    self.src = src
+
+  def __str__(self):
+    return self.message
 
 
 class Loader(object):
@@ -128,7 +134,7 @@ class Loader(object):
         if name not in self._modules:
           other_ast = self._import_name(name)
           if other_ast is None:
-            raise DependencyNotFoundError(name)
+            raise DependencyNotFoundError(name, ast_name or ast.name)
       module_map = {name: module.ast
                     for name, module in self._modules.items()}
       ast = ast.Visit(visitors.LookupExternalTypes(module_map, full_names=True,
