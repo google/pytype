@@ -730,9 +730,12 @@ class RemoveInheritedMethods(visitors.Visitor):
     if cls is None:
       # TODO(kramm): Remove once pytype stops generating ClassType(name, None).
       return sig
-    if self._FindNameAndSig(utils.GetBasesInMRO(cls), self.function.name,
-                            sig.Replace(params=sig.params[1:])):
-      return None  # remove (see VisitFunction)
+    try:
+      if self._FindNameAndSig(utils.GetBasesInMRO(cls), self.function.name,
+                              sig.Replace(params=sig.params[1:])):
+        return None  # remove (see VisitFunction)
+    except utils.MROError:
+      return sig
     return sig
 
   def VisitFunction(self, f):

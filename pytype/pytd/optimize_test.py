@@ -663,6 +663,18 @@ class TestOptimize(parser_test_base.ParserTest):
     ast = ast.Visit(optimize.RemoveInheritedMethods())
     self.AssertSourceEquals(ast, src)
 
+  def testRemoveInheritedMethodsWithCircle(self):
+    src = textwrap.dedent("""
+        class A(B):
+            def f(self) -> Any
+        class B(A):
+            def f(self) -> Any
+    """)
+    ast = self.Parse(src)
+    ast = visitors.LookupClasses(ast, builtins.GetBuiltinsPyTD())
+    ast = ast.Visit(optimize.RemoveInheritedMethods())
+    self.AssertSourceEquals(ast, src)
+
   def testAbsorbMutableParameters(self):
     src = textwrap.dedent("""
         def popall(x: list[?]) -> ?:
