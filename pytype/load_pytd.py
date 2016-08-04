@@ -112,7 +112,8 @@ class Loader(object):
       # happens before any others use it to resolve dependencies, so there are
       # no external pointers into the module at this point.
       module.ast.Visit(
-          visitors.FillInModuleClasses({"": ast, module_name: ast}))
+          visitors.FillInModuleClasses({"": module.ast,
+                                        module_name: module.ast}))
     except:
       del self._modules[module_name]  # don't leave half-resolved modules around
       raise
