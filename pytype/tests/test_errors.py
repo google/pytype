@@ -342,6 +342,16 @@ class ErrorTest(test_inference.InferenceTest):
       """, pythonpath=[d.path])
       self.assertErrorLogContains(errors, r"foo[.]a.*pyi-error")
 
+  def testContainerError(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        class A(SupportsInt[int]): pass
+      """)
+      _, errors = self.InferAndCheck("""
+        import a
+      """, deep=True, pythonpath=[d.path])
+      self.assertErrorLogContains(errors, "a.*pyi-error.*SupportsInt")
+
 
 if __name__ == "__main__":
   test_inference.main()

@@ -1443,11 +1443,19 @@ class InsertSignatureTemplates(Visitor):
     return node.Replace(template=tuple(self.template_typeparams))
 
 
+class ContainerError(Exception):
+  pass
+
+
 class VerifyContainers(Visitor):
-  """Visitor for verifying that all classes with templates inherit from Generic.
+  """Visitor for verifying containers.
+
+  Every container (except typing.Generic) must inherit from typing.Generic and
+  have an explicitly parameterized parent that is also a container. The
+  parameters on typing.Generic must all be TypeVar instances.
 
   Raises:
-    TypeError: When a container does not inherit from typing.Generic.
+    ContainerError: If a problematic container definition is encountered.
   """
 
   def _IsContainer(self, t):
@@ -1462,11 +1470,11 @@ class VerifyContainers(Visitor):
 
   def VisitGenericType(self, node):
     if not self._IsContainer(node.base_type.cls):
-      raise TypeError("%s does not inherit from Generic" % node.base_type.name)
-    elif node.base_type.cls.name == "typing.Generic":
+      raise ContainerError("Class %s is not a container" % node.base_type.name)
+    elif node.base_type.name == "typing.Generic":
       for t in node.parameters:
         if not isinstance(t, pytd.TypeParameter):
-          raise TypeError("Name %s must be defined as a TypeVar" % t.name)
+          raise ContainerError("Name %s must be defined as a TypeVar" % t.name)
     return node
 
   def VisitHomogeneousContainerType(self, node):

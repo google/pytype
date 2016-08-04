@@ -35,6 +35,7 @@ from pytype.pytd import slots
 from pytype.pytd import utils as pytd_utils
 from pytype.pytd.parse import builtins
 from pytype.pytd.parse import parser
+from pytype.pytd.parse import visitors
 
 log = logging.getLogger(__name__)
 
@@ -1675,10 +1676,8 @@ class VirtualMachine(object):
     level = abstract.get_atomic_python_constant(level_var)
     try:
       module = self.import_module(name, level)
-    except parser.ParseError as e:
-      self.errorlog.pyi_error(op, full_name, e)
-      module = abstract.Unsolvable(self)
-    except load_pytd.DependencyNotFoundError as e:
+    except (parser.ParseError, load_pytd.DependencyNotFoundError,
+            visitors.ContainerError) as e:
       self.errorlog.pyi_error(op, full_name, e)
       module = abstract.Unsolvable(self)
     else:
@@ -1694,7 +1693,8 @@ class VirtualMachine(object):
     module = state.top()
     try:
       state, attr = self.load_attr_noerror(state, module, name)
-    except (parser.ParseError, load_pytd.DependencyNotFoundError) as e:
+    except (parser.ParseError, load_pytd.DependencyNotFoundError,
+            visitors.ContainerError) as e:
       full_name = module.data[0].name + "." + name
       self.errorlog.pyi_error(self.frame.current_opcode, full_name, e)
       attr = None

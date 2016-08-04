@@ -222,9 +222,9 @@ class ErrorLog(ErrorLogBase):
   """ErrorLog with convenience functions."""
 
   @_error_name("pyi-error")
-  def pyi_error(self, opcode, name, parse_error):
+  def pyi_error(self, opcode, name, error):
     self.error_with_details(opcode, "Couldn't import pyi for %r" % name,
-                            str(parse_error))
+                            str(error))
 
   @_error_name("attribute-error")
   def attribute_error(self, opcode, obj, attr_name):

@@ -375,12 +375,12 @@ class TestVisitors(parser_test_base.ParserTest):
     ast3 = self.ParseWithBuiltins("""
       class Foo(Generic[int]): pass
     """)
-    self.assertRaises(
-        TypeError, lambda: ast1.Visit(visitors.VerifyContainers()))
-    self.assertRaises(
-        TypeError, lambda: ast2.Visit(visitors.VerifyContainers()))
-    self.assertRaises(
-        TypeError, lambda: ast3.Visit(visitors.VerifyContainers()))
+    self.assertRaises(visitors.ContainerError,
+                      lambda: ast1.Visit(visitors.VerifyContainers()))
+    self.assertRaises(visitors.ContainerError,
+                      lambda: ast2.Visit(visitors.VerifyContainers()))
+    self.assertRaises(visitors.ContainerError,
+                      lambda: ast3.Visit(visitors.VerifyContainers()))
 
 
 if __name__ == "__main__":

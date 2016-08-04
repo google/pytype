@@ -120,6 +120,9 @@ class Loader(object):
       module.ast.Visit(
           visitors.FillInModuleClasses({"": module.ast,
                                         module_name: module.ast}))
+      # TODO(rechen): Once generics are supported in inline type annotations, a
+      # VerifyContainers check should also be done on the final ast.
+      module.ast.Visit(visitors.VerifyContainers())
     except:
       del self._modules[module_name]  # don't leave half-resolved modules around
       raise
@@ -147,7 +150,6 @@ class Loader(object):
     module_map[""] = ast  # The module itself (local lookup)
     ast.Visit(visitors.FillInModuleClasses(module_map))
     ast.Visit(visitors.VerifyLookup())
-    ast.Visit(visitors.VerifyContainers())
 
   def resolve_ast(self, ast):
     """Resolve the dependencies of an AST, without adding it to our modules."""
