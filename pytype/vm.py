@@ -1088,10 +1088,7 @@ class VirtualMachine(object):
     name = self.frame.f_code.co_names[op.arg]
     state, value = state.pop()
     state = self.store_local(state, name, value)
-    # TODO(kramm): Why does adding
-    #  state = state.forward_cfg_node()
-    # here break the 'testMaybeAny' test in test_containers.py?
-    return state
+    return state.forward_cfg_node()
 
   def byte_DELETE_NAME(self, state, op):
     name = self.frame.f_code.co_names[op.arg]
@@ -1379,7 +1376,7 @@ class VirtualMachine(object):
     if normal is frame_state.UNSATISFIABLE:
       return state.set_why("unsatisfiable")
     else:
-      return state.set_condition(normal)
+      return state.forward_cfg_node().set_condition(normal)
 
   def byte_JUMP_IF_TRUE_OR_POP(self, state, op):
     return self._jump_if(state, op, jump_if=True, or_pop=True)

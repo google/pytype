@@ -334,11 +334,11 @@ class InferenceTest(unittest.TestCase):
     ty_src = pytd.Print(ty) + "\n"
     pytd_tree_src = pytd.Print(pytd_tree) + "\n"
 
-    log.info("====== ty ===")
+    log.info("========== result   ==========")
     _LogLines(log.info, ty_src)
-    log.info("=== TypeMatchPytd ===")
+    log.info("========== expected ==========")
     _LogLines(log.info, pytd_tree_src)
-    log.info("====== ====== ======")
+    log.info("==============================")
 
     # In the diff output, mark expected with "-" and actual with "+".
     # (In other words, display a change from "working" to "broken")

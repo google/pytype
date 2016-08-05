@@ -275,6 +275,13 @@ class SplitTest(test_inference.InferenceTest):
       def foo(x) -> Union[int, str]: ...
     """)
 
+  def testDoubleAssign(self):
+    self.assertNoErrors("""
+      x = 1
+      x = None
+      if x is not None:
+        x.foo()
+    """)
 
 if __name__ == "__main__":
   test_inference.main()
