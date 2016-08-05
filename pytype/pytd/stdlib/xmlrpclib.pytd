@@ -1,2 +1,2 @@
-TODO(acaceres): remove when typeshed version can be used
+# TODO(acaceres): remove when typeshed version can be used
 def __getattr__(name) -> Any: ...
