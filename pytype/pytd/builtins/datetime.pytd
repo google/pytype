@@ -57,7 +57,8 @@ class tzinfo(object):
   def __reduce__() -> tuple
 
 class timedelta(object):
-  def total_seconds() -> int
+  def __init__(self, *args, **kwargs) -> None
+  def total_seconds(self) -> int
   def __reduce__() -> tuple
 
 class time(object):

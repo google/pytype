@@ -224,7 +224,7 @@ class str(basestring, Sequence):  # TODO(kramm): Sequence[str]
     def __lt__(self, y: str or bytearray) -> bool
     def __mod__(self, y) -> str
     def __mul__(self, n: int) -> str
-    def __ne__(self, y: str or bytearray) -> bool
+    def __ne__(self, y) -> bool
     def capitalize(self) -> str
     def center(self, width: int, ...) -> str
     def count(self, sub: str or unicode or bytearray, ...) -> int
@@ -961,7 +961,7 @@ class buffer(Sized):
     def __len__(self) -> int
     def __mul__(self, n: int) -> str
 
-class file(IO):
+class file(BinaryIO):
     def __init__(self, name: str, ...) -> NoneType
     def __iter__(self) -> file  # TODO(pludemann): This looks wrong ... iterator[str]  ?
     def __enter__(self) -> file
