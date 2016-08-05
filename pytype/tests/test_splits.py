@@ -137,6 +137,39 @@ class SplitTest(test_inference.InferenceTest):
       def f4(x) -> int: ...
     """)
 
+  def testSourcesPropagatedThroughCall(self):
+    ty = self.Infer("""
+      class Foo(object):
+        def method(self):
+          return 1
+
+      class Bar(object):
+        def method(self):
+          return "x"
+
+      def foo(x):
+        if x:
+          obj = Foo()
+        else:
+          obj = Bar()
+
+        if isinstance(obj, Foo):
+          return obj.method()
+        return None
+    """, deep=True, extract_locals=True)
+    # TODO(dbaum): This test could be more focused if assertTypesMatchPytd
+    # accepted some sort of filter that would be applied to both pytd trees
+    # before matching.
+    self.assertTypesMatchPytd(ty, """
+      class Foo(object):
+        def method(self) -> int: ...
+
+      class Bar(object):
+        def method(self) -> str: ...
+
+      def foo(x) -> Union[None, int]: ...
+    """)
+
   def testShortCircuit(self):
     # Unlike normal if statement, the and/or short circuit logic does
     # not appear to be optimized away by the compiler.  Therefore these

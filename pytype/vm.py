@@ -649,7 +649,12 @@ class VirtualMachine(object):
       except abstract.FailedFunctionCall as e:
         error = error or e
       else:
-        result.PasteVariable(one_result, new_node)
+        # This is similar to PasteVariable() except that it adds funcv as
+        # an additional source.  If this is a common occurence then perhaps
+        # we should add an optional arg to PasteVariable().
+        for binding in one_result.bindings:
+          copy = result.AddBinding(binding.data)
+          copy.AddOrigin(new_node, {binding, funcv})
         nodes.append(new_node)
     if nodes:
       return self.join_cfg_nodes(nodes), result
