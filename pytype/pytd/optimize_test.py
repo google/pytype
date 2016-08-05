@@ -164,6 +164,76 @@ class TestOptimize(parser_test_base.ParserTest):
     """)
     self.AssertOptimizeEquals(src, new_src)
 
+  def testRemoveRedundantSignatureTemplate(self):
+    src = textwrap.dedent("""
+        T = TypeVar("T")
+        class A(Generic[T]):
+          def foo(a: int) -> int
+          def foo(a: T) -> T
+          def foo(a: int or bool) -> int
+    """)
+    expected = textwrap.dedent("""
+        T = TypeVar("T")
+        class A(Generic[T]):
+          def foo(a: T) -> T
+          def foo(a: int or bool) -> int
+    """)
+    ast = self.Parse(src)
+    ast = ast.Visit(optimize.RemoveRedundantSignatures(
+        optimize.SuperClassHierarchy({})))
+    self.AssertSourceEquals(ast, expected)
+
+  def testRemoveRedundantSignatureTwoTypeParams(self):
+    src = textwrap.dedent("""
+        X = TypeVar("X")
+        Y = TypeVar("Y")
+        class A(Generic[X, Y]):
+          def foo(a: X) -> Y
+          def foo(a: Y) -> Y
+    """)
+    expected = textwrap.dedent("""
+        X = TypeVar("X")
+        Y = TypeVar("Y")
+        class A(Generic[X, Y]):
+          def foo(a: X) -> Y
+          def foo(a: Y) -> Y
+    """)
+    ast = self.Parse(src)
+    ast = ast.Visit(optimize.RemoveRedundantSignatures(
+        optimize.SuperClassHierarchy({})))
+    self.AssertSourceEquals(ast, expected)
+
+  @unittest.skip("Not supported yet.")
+  def testRemoveRedundantSignatureGenericLeftSide(self):
+    src = textwrap.dedent("""
+        X = TypeVar("X")
+        def foo(a: X, b: int) -> X
+        def foo(a: X, b: Any) -> X
+    """)
+    expected = textwrap.dedent("""
+        X = TypeVar("X")
+        def foo(a: X, b: Any) -> X
+    """)
+    ast = self.Parse(src)
+    ast = ast.Visit(optimize.RemoveRedundantSignatures(
+        optimize.SuperClassHierarchy({})))
+    self.AssertSourceEquals(ast, expected)
+
+  def testRemoveRedundantSignaturePolymorphic(self):
+    src = textwrap.dedent("""
+        T = TypeVar("T")
+        def foo(a: T) -> T
+        def foo(a: int or bool) -> int
+    """)
+    expected = textwrap.dedent("""
+        T = TypeVar("T")
+        def foo(a: T) -> T
+    """)
+    ast = self.Parse(src)
+    ast = ast.Visit(optimize.RemoveRedundantSignatures(
+        optimize.SuperClassHierarchy({})))
+    self.AssertSourceEquals(ast, expected)
+
   def testCombineReturns(self):
     src = textwrap.dedent("""
         def foo(a: int) -> int

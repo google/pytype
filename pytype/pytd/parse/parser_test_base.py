@@ -35,6 +35,7 @@ class ParserTest(unittest.TestCase):
     # TODO(kramm): Using self.parser here breaks tests. Why?
     tree = parser.TypeDeclParser(version=version, platform=platform).Parse(
         textwrap.dedent(src), convert_typing_to_native=True)
+    tree = tree.Visit(visitors.InsertSignatureTemplates())
     tree.Visit(visitors.VerifyVisitor())
     return tree
 

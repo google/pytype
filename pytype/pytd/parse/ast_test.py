@@ -1517,7 +1517,7 @@ class TestASTGeneration(parser_test_base.ParserTest):
         def a(self, x: T2) -> None:
           self := A[T or T2]
     """)
-    tree = self.Parse(src)
+    tree = parser.TypeDeclParser().Parse(src)
 
     f = tree.Lookup("f")
     sig, = f.signatures

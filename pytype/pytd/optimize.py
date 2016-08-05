@@ -87,19 +87,35 @@ class RemoveRedundantSignatures(visitors.Visitor):
     super(RemoveRedundantSignatures, self).__init__()
     self.match = type_match.TypeMatch(hierarchy.GetSuperClasses(),
                                       any_also_is_bottom=False)
+    self.subst = {}
+
+  def EnterClass(self, cls):
+    # Preserve the identify of each type parameter, and don't
+    # allow them to match against anything by themselves.
+    self.subst = {p.type_param: pytd.NamedType("$" + p.name)
+                  for p in cls.template}
+
+  def LeaveClass(self, _):
+    self.subst = {}
 
   def VisitFunction(self, node):
     new_signatures = []
+    matches = set()
     # We keep track of which signature matched which other signatures, purely
     # for optimization - that way we don't have to query the reverse direction.
-    matches = set()
     for i, s1 in enumerate(node.signatures):
       for j, s2 in enumerate(node.signatures):
-        if (i != j and (j, i) not in matches
-            and not s1.exceptions and not s2.exceptions
-            and self.match.match(s1, s2, {}) == booleq.TRUE):
-          matches.add((i, j))
-          break
+        if i != j and (j, i) not in matches:
+          if s1.exceptions or s2.exceptions:
+            # We don't support matching of exceptions.
+            continue
+          if s1.template:
+            # type_match doesn't support polymorphic functions on the
+            # left side yet.
+            continue
+          if self.match.match(s1, s2, self.subst) == booleq.TRUE:
+            matches.add((i, j))
+            break
       else:
         new_signatures.append(s1)
     return node.Replace(signatures=tuple(new_signatures))
