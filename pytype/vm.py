@@ -1413,10 +1413,35 @@ class VirtualMachine(object):
     return self.push_block(state, "loop", op.target)
 
   def byte_GET_ITER(self, state):
-    state, seq = state.pop()
-    state, it = self.load_attr(state, seq, "__iter__")
-    state = state.push(it)
-    return self.call_function_from_stack(state, 0, [])
+    """Get the iterator for an object."""
+    pre_state, seq = state.pop()
+    state, func = self.load_attr_noerror(pre_state, seq, "__iter__")
+    if func:
+      # Call __iter__().
+      state, it = self.call_function_with_state(state, func, [])
+    else:
+      state, func = self.load_attr_noerror(pre_state, seq, "__getitem__")
+      if func:
+        # TODO(dbaum): Consider delaying the call to __getitem__ until
+        # the iterator's next() is called.  That would more closely match
+        # actual execution at the cost of making the code and Iterator class
+        # a little more complicated.
+
+        # Call __getitem__(int).
+        key = abstract.Instance(self.convert.int_type, self, state.node)
+        state, item = self.call_function_with_state(state, func, [
+            key.to_variable(state.node, "key")])
+        # Create a new iterator from the returned value.
+        it = abstract.Iterator(self, item, state.node).to_variable(
+            state.node, "it")
+      else:
+        # Cannot iterate this object.
+        if seq.bindings:
+          self.errorlog.attribute_error(
+              self.frame.current_opcode, seq, "__iter__")
+        it = self.convert.create_new_unsolvable(state.node, "bad attr")
+    # Push the iterator onto the stack and return.
+    return state.push(it)
 
   def store_jump(self, target, state):
     self.frame.states[target] = state.merge_into(self.frame.states.get(target))

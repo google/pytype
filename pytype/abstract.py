@@ -2699,6 +2699,23 @@ class Generator(Instance):
     return self.run_until_yield(node)
 
 
+class Iterator(ValueWithSlots):
+  """A representation of instances of iterators."""
+
+  TYPE_PARAM = "T"
+
+  def __init__(self, vm, return_var, node):
+    super(Iterator, self).__init__(vm.convert.iterator_type, vm, node)
+    self.set_slot("next", self.next_slot)
+    self.init_type_parameters(self.TYPE_PARAM)
+    # TODO(dbaum): Should we set type_parameters[self.TYPE_PARAM] to something
+    # based on return_var?
+    self._return_var = return_var
+
+  def next_slot(self, node):
+    return node, self._return_var
+
+
 class Nothing(AtomicAbstractValue, FormalType):
   """The VM representation of Nothing values.
 

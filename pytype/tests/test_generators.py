@@ -66,5 +66,22 @@ class GeneratorTest(test_inference.InferenceTest):
       def foo(self) -> Generator[int, ...]
     """)
 
+  def testIterationOfGetItem(self):
+    ty = self.Infer("""
+      class Foo(object):
+        def __getitem__(self, key):
+          return "hello"
+
+      def foo(self):
+        for x in Foo():
+          return x
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      class Foo(object):
+        def __getitem__(self, key) -> str
+      def foo(self) -> Union[None, str]
+    """)
+
+
 if __name__ == "__main__":
   test_inference.main()

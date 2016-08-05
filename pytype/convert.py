@@ -77,6 +77,12 @@ class Converter(object):
         "function", types.FunctionType)
     self.generator_type = self.convert_constant(
         "generator", types.GeneratorType)
+    # TODO(dbaum): There isn't a types.IteratorType.  This can probably be
+    # based on typing.Iterator, but that will also require changes to
+    # convert.py since that assumes all types can be looked up in
+    # __builtin__.
+    self.iterator_type = self.convert_constant(
+        "iterator", types.ObjectType)
     self.bool_values = {
         True: self.true,
         False: self.false,
