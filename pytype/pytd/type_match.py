@@ -246,6 +246,13 @@ class TypeMatch(utils.TypeMatcher):
         # Function type parameter. Can be anything.
         t = pytd.AnythingType()
       else:
+        # TODO(dbaum): This check is a temporary measure until type parameters
+        # are fully qualified.  The problem is that if two different type
+        # parameters have the same name, then we may wind up with subst[t] = t,
+        # which results in an infinite loop here.  Failing via an assert is
+        # better.  However the real fix is to have fully qualified type names
+        # so that this can't ever happen in the first place.
+        assert subst[t] != t
         t = subst[t]
     return t
 

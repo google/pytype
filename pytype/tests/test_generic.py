@@ -347,6 +347,21 @@ class GenericTest(test_inference.InferenceTest):
         def f() -> str or unicode
       """)
 
+  def testPreventInfiniteLoopOnTypeParamCollision(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        T = TypeVar("T")
+        class Foo(List[T]): pass
+      """)
+      self.assertRaises(AssertionError, self.Infer, """
+        import a
+        def f():
+          x = a.Foo()
+          x.append(42)
+          return x
+        g = lambda y: y+1
+      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+
 
 if __name__ == "__main__":
   test_inference.main()
