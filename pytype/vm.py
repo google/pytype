@@ -997,7 +997,8 @@ class VirtualMachine(object):
       self.errorlog.revert_to(checkpoint)
       self.errorlog.index_error(
           self.frame.current_opcode, container, index)
-      state.top().AddBinding(abstract.Unsolvable(self))
+      state.top().AddBinding(abstract.Unsolvable(self),
+                             source_set=[], where=state.node)
       return state
 
   def byte_INPLACE_ADD(self, state):
