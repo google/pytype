@@ -207,8 +207,7 @@ class Frame(object):
     generator: None or a Generator object if this frame is a generator frame.
     return_nodes: A list of nodes that return from the function. This is used to
       connect the next node in the CFG properly.
-    return_values: A set of (return value, location) pairs that will be merged
-      to produce the actual return from this frame.
+    return_variable: The return value of this function.
   """
 
   def __init__(self, node, vm, f_code, f_globals, f_locals, f_back, callargs,

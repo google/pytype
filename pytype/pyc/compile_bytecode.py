@@ -26,11 +26,11 @@ def write_pyc(f, codeobject, source_size=0, timestamp=0):
   f.write(marshal.dumps(codeobject))
 
 
-def compile_to_pyc(data_file, filename, output):
+def compile_to_pyc(data_file, filename, output, mode="exec"):
   with open(data_file, "r") as fi:
     src = fi.read()
   try:
-    codeobject = compile(src, filename, "exec")
+    codeobject = compile(src, filename, mode)
   except Exception as err:  # pylint: disable=broad-except
     output.write(b"\1")
     output.write(str(err))
@@ -40,10 +40,11 @@ def compile_to_pyc(data_file, filename, output):
 
 
 def main():
-  if len(sys.argv) != 3:
+  if len(sys.argv) != 4:
     sys.exit(1)
   output = sys.stdout.buffer if hasattr(sys.stdout, "buffer") else sys.stdout
-  compile_to_pyc(data_file=sys.argv[1], filename=sys.argv[2], output=output)
+  compile_to_pyc(data_file=sys.argv[1], filename=sys.argv[2],
+                 output=output, mode=sys.argv[3])
 
 
 if __name__ == "__main__":

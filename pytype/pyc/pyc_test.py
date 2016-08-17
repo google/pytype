@@ -11,9 +11,10 @@ class TestPyc(unittest.TestCase):
 
   python_version = (2, 7)
 
-  def _compile(self, src):
+  def _compile(self, src, mode="exec"):
     pyc_data = pyc.compile_src_string_to_pyc_string(
-        src, filename="", python_version=self.python_version, python_exe=None)
+        src, filename="", python_version=self.python_version, python_exe=None,
+        mode=mode)
     return pyc.parse_pyc_string(pyc_data)
 
   def test_compile(self):
@@ -39,6 +40,13 @@ class TestPyc(unittest.TestCase):
                        ("STORE_NAME", 3),
                        ("LOAD_CONST", 3),
                        ("RETURN_VALUE", 3)], op_and_line)
+
+  def test_mode(self):
+    code = self._compile("foo", mode="eval")
+    self.assertIn("foo", code.co_names)
+    ops = [op.name for op in opcodes.dis_code(code)]
+    self.assertEquals(["LOAD_NAME",
+                       "RETURN_VALUE"], ops)
 
   def test_singlelineno(self):
     code = self._compile("a = 1\n"      # line 1

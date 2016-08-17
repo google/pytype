@@ -266,6 +266,10 @@ class InferenceTest(unittest.TestCase):
         errorlog.print_to_stderr()
         raise AssertionError("Found regexp %r in errors" % regexp)
 
+  def assertErrorLogIs(self, errorlog, expected_lines_and_errors):
+    actual_lines_and_errors = {(error.lineno, error.name) for error in errorlog}
+    self.assertItemsEqual(expected_lines_and_errors, actual_lines_and_errors)
+
   def Infer(self, srccode, pythonpath=(), deep=False, solve_unknowns=False,
             extract_locals=False, report_errors=True, **kwargs):
     types = self._InferAndVerify(

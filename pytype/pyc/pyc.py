@@ -18,7 +18,8 @@ class CompileError(Exception):
   pass
 
 
-def compile_src_string_to_pyc_string(src, filename, python_version, python_exe):
+def compile_src_string_to_pyc_string(src, filename, python_version, python_exe,
+                                     mode="exec"):
   """Compile Python source code to pyc data.
 
   This may use py_compile if the src is for the same version as we're running,
@@ -32,6 +33,9 @@ def compile_src_string_to_pyc_string(src, filename, python_version, python_exe):
       to determine the Python executable to call.
     python_exe: Path to a Python interpreter, or "HOST", or None. If this is
       None, the system "pythonX.X" interpreter will be used.
+    mode: Same as __builtin__.compile: "exec" if source consists of a
+      sequence of statements, "eval" if it consists of a single expression,
+      or "single" if it consists of a single interactive statement.
 
   Returns:
     The compiled pyc file as a binary string.
@@ -47,7 +51,8 @@ def compile_src_string_to_pyc_string(src, filename, python_version, python_exe):
     if python_exe == "HOST":
       # We were asked to use the version of Python we're running to compile.
       output = StringIO.StringIO()
-      compile_bytecode.compile_to_pyc(fi.name, filename or fi.name, output)
+      compile_bytecode.compile_to_pyc(fi.name, filename or fi.name,
+                                      output, mode)
       bytecode = output.getvalue()
     else:
       # In order to be able to compile pyc files for both Python 2 and Python 3,
@@ -58,7 +63,7 @@ def compile_src_string_to_pyc_string(src, filename, python_version, python_exe):
       else:
         exe = ["python" + ".".join(map(str, python_version))]
       bytecode = subprocess.check_output(exe + [
-          COMPILE_SCRIPT, fi.name, filename or fi.name])
+          COMPILE_SCRIPT, fi.name, filename or fi.name, mode])
   finally:
     os.unlink(fi.name)
   if bytecode[0] == chr(0):  # compile OK
@@ -116,7 +121,7 @@ class AdjustFilename(object):
     return code
 
 
-def compile_src(src, python_version, python_exe, filename=None):
+def compile_src(src, python_version, python_exe, filename=None, mode="exec"):
   """Compile a string to pyc, and then load and parse the pyc.
 
   Args:
@@ -124,12 +129,13 @@ def compile_src(src, python_version, python_exe, filename=None):
     python_version: Python version, (major, minor).
     python_exe: Path to Python interpreter, or None.
     filename: The filename the sourcecode is from.
+    mode: "exec", "eval" or "single".
 
   Returns:
     An instance of loadmarshal.CodeType.
   """
   pyc_data = compile_src_string_to_pyc_string(
-      src, filename, python_version, python_exe)
+      src, filename, python_version, python_exe, mode)
   code = parse_pyc_string(pyc_data)
   assert code.python_version == python_version
   visit(code, AdjustFilename(filename))

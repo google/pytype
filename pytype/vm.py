@@ -489,21 +489,17 @@ class VirtualMachine(object):
         items.append("{%s}" % block.get_name())
     return " ".join(items)
 
-  def compile_src(self, src, filename=None):
+  def compile_src(self, src, filename=None, mode="exec"):
     code = pyc.compile_src(
         src, python_version=self.python_version,
         python_exe=self.options.python_exe,
-        filename=filename)
+        filename=filename, mode=mode)
     return blocks.process_code(code)
 
   def run_bytecode(self, node, code, f_globals=None, f_locals=None):
     frame = self.make_frame(node, code, f_globals=f_globals, f_locals=f_locals)
-    node, _ = self.run_frame(frame, node)
-    if self.frames:  # pragma: no cover
-      raise VirtualMachineError("Frames left over!")
-    if self.frame is not None and self.frame.data_stack:  # pragma: no cover
-      raise VirtualMachineError("Data left on stack!")
-    return node, frame.f_globals, frame.f_locals
+    node, return_var = self.run_frame(frame, node)
+    return node, frame.f_globals, frame.f_locals, return_var
 
   def preload_builtins(self, node):
     """Parse __builtin__.py and return the definitions as a globals dict."""
@@ -513,7 +509,8 @@ class VirtualMachine(object):
     else:
       src = builtins.GetBuiltinsCode(self.python_version)
     builtins_code = self.compile_src(src)
-    node, f_globals, f_locals = self.run_bytecode(node, builtins_code)
+    node, f_globals, f_locals, _ = self.run_bytecode(node, builtins_code)
+    assert not self.frames
     # TODO(kramm): pytype doesn't support namespacing of the currently parsed
     # module, so add the module name manually.
     for definition in f_globals.members.values():
@@ -548,9 +545,17 @@ class VirtualMachine(object):
     code = self.compile_src(src, filename=filename)
 
     node = node.ConnectNew("init")
-    node, f_globals, _ = self.run_bytecode(node, code, f_globals, f_locals)
+    node, f_globals, _, _ = self.run_bytecode(node, code, f_globals, f_locals)
+    assert not self.frames, "Frames left over!"
     log.info("Final node: <%d>%s", node.id, node.name)
     return node, f_globals.members, builtin_names
+
+  def _run_expression(self, node, src):
+    code = self.compile_src(src, mode="eval")
+    frame = self.frames[-1]
+    new_locals = self.convert_locals_or_globals({}, "locals")
+    node, _, _, ret = self.run_bytecode(node, code, frame.f_globals, new_locals)
+    return node, ret
 
   def call_binary_operator(self, state, name, x, y):
     """Map a binary operator to "magic methods" (__add__ etc.)."""
@@ -1616,6 +1621,31 @@ class VirtualMachine(object):
     state, pos_defaults = state.popn(num_pos_defaults)
     return state, pos_defaults, kw_defaults, raw_annotations
 
+  def _maybe_eval_annotation(self, node, raw_annotation, name):
+    """Evaluate strings as a Python expression. Pass through everything else."""
+    if (isinstance(raw_annotation, abstract.Instance) and
+        raw_annotation.cls.data == self.convert.str_type.data):
+      if isinstance(raw_annotation, abstract.PythonConstant):
+        node, var = self._run_expression(node, raw_annotation.pyval)
+        if len(var.data) > 1:
+          self.errorlog.invalid_annotation(self.frame.current_opcode, name)
+          return node, None
+        annotation = var.data[0]
+      else:
+        self.errorlog.invalid_annotation(self.frame.current_opcode, name)
+        return node, None
+    else:
+      annotation = raw_annotation
+    return node, annotation
+
+  def _convert_one_annotation(self, node, raw_annotation, name):
+    node, annotation = self._maybe_eval_annotation(node, raw_annotation, name)
+    if annotation == self.convert.none:
+      # PEP 484 allows to write "NoneType" as "None"
+      return node, self.convert.none_type.data[0]
+    else:
+      return node, annotation
+
   def _convert_function_annotations(self, node, raw_annotations):
     if raw_annotations:
       # {"i": int, "return": str} is stored as (int, str, ("i, "return"))
@@ -1628,7 +1658,9 @@ class VirtualMachine(object):
         if len(visible) > 1:
           self.errorlog.invalid_annotation(self.frame.current_opcode, name)
         else:
-          annotations[name], = visible
+          node, annot = self._convert_one_annotation(node, visible[0], name)
+          if annot is not None:
+            annotations[name] = annot
       return annotations
     else:
       return {}
