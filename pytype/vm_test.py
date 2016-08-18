@@ -1,18 +1,20 @@
-"""Tests for pytype.abstractvm."""
+"""Tests for vm.py."""
 
 import dis
 import textwrap
-import unittest
 
 
+from pytype import blocks
 from pytype import config
 from pytype import errors
 from pytype import vm
 from pytype.pyc import pyc
+from pytype.pytd import cfg
 from pytype.tests import test_inference
 
 
 class TraceVM(vm.VirtualMachine):
+  """Special VM that remembers which instructions it executed."""
 
   def __init__(self, options):
     super(TraceVM, self).__init__(errors.ErrorLog(), options)
@@ -20,7 +22,6 @@ class TraceVM(vm.VirtualMachine):
     # we collect the instructions in an order-independent way:
     self.instructions_executed = set()
     # Extra stuff that's defined in infer.CallTracer:
-    # TODO(pludemann): refactor the classes?
     self._call_trace = set()
     self._functions = set()
     self._classes = set()
@@ -35,14 +36,59 @@ def ListToString(lst):
   return "".join(chr(c) for c in lst)
 
 
-class AncestorTraversalVirtualMachineTest(unittest.TestCase):
+class BytecodeTest(test_inference.InferenceTest):
+  """Tests for process_code in blocks.py and VM integration."""
 
   def setUp(self):
-    self.python_version = (2, 7)  # used to generate the bytecode below
-    self.python_exe = None
-    options = config.Options.create(python_version=self.python_version,
-                                    python_exe=self.python_exe)
-    self.vm = TraceVM(options)
+    self.options = config.Options.create(python_version=self.PYTHON_VERSION,
+                                         python_exe=self.PYTHON_EXE)
+    self.errorlog = errors.ErrorLog()
+    self.trace_vm = TraceVM(self.options)
+
+  def test_simple(self):
+    program = cfg.Program()
+    # Disassembled from:
+    # | return None
+    code = self.make_code([
+        0x64, 1, 0,  # 0 LOAD_CONST, arg=1 (1)
+        0x53,  # 3 RETURN_VALUE
+    ], name="simple")
+    code = blocks.process_code(code)
+    v = vm.VirtualMachine(self.errorlog, self.options)
+    v.run_bytecode(program.NewCFGNode(), code)
+
+  def test_diamond(self):
+    program = cfg.Program()
+    # Disassembled from:
+    # | if []:
+    # |   y = 1
+    # | elif []:
+    # |   y = 2
+    # | elif []:
+    # |   y = None
+    # | return y
+    code = self.make_code([
+        0x67, 0, 0,   #  0 BUILD_LIST, arg=0,
+        0x72, 15, 0,  #  3 POP_JUMP_IF_FALSE, dest=15,
+        0x64, 1, 0,   #  6 LOAD_CONST, arg=1 (1),
+        0x7d, 1, 0,   #  9 STORE_FAST, arg=1 "y",
+        0x6e, 30, 0,  # 12 JUMP_FORWARD, dest=45,
+        0x67, 0, 0,   # 15 BUILD_LIST, arg=0,
+        0x72, 30, 0,  # 18 POP_JUMP_IF_FALSE, dest=30,
+        0x64, 2, 0,   # 21 LOAD_CONST, arg=2 (2),
+        0x7d, 1, 0,   # 24 STORE_FAST, arg=1 "y",
+        0x6e, 15, 0,  # 27 JUMP_FORWARD, dest=45,
+        0x67, 0, 0,   # 30 BUILD_LIST, arg=0,
+        0x72, 45, 0,  # 33 POP_JUMP_IF_FALSE, dest=45,
+        0x64, 0, 0,   # 36 LOAD_CONST, arg=0 (None),
+        0x7d, 1, 0,   # 39 STORE_FAST, arg=1 "y",
+        0x6e, 0, 0,   # 42 JUMP_FORWARD, dest=45,
+        0x7c, 1, 0,   # 45 LOAD_FAST, arg=1,
+        0x53,         # 48 RETURN_VALUE
+    ])
+    code = blocks.process_code(code)
+    v = vm.VirtualMachine(self.errorlog, self.options)
+    v.run_bytecode(program.NewCFGNode(), code)
 
   src_nested_loop = textwrap.dedent("""
     y = [1,2,3]
@@ -89,15 +135,15 @@ class AncestorTraversalVirtualMachineTest(unittest.TestCase):
 
   def testEachInstructionOnceLoops(self):
     code_nested_loop = pyc.compile_src(src=self.src_nested_loop,
-                                       python_version=self.python_version,
-                                       python_exe=self.python_exe,
+                                       python_version=self.PYTHON_VERSION,
+                                       python_exe=self.PYTHON_EXE,
                                        filename="<>")
     self.assertEqual(code_nested_loop.co_code,
                      self.code_nested_loop)
-    self.vm.run_program(self.src_nested_loop, "", maximum_depth=10,
-                        run_builtins=False)
+    self.trace_vm.run_program(self.src_nested_loop, "", maximum_depth=10,
+                              run_builtins=False)
     # We expect all instructions, except 26, in the above to execute.
-    self.assertItemsEqual(self.vm.instructions_executed,
+    self.assertItemsEqual(self.trace_vm.instructions_executed,
                           set(range(32)) - {26})
 
   src_deadcode = textwrap.dedent("""
@@ -122,17 +168,17 @@ class AncestorTraversalVirtualMachineTest(unittest.TestCase):
 
   def testEachInstructionOnceDeadCode(self):
     code_deadcode = pyc.compile_src(src=self.src_deadcode,
-                                    python_version=self.python_version,
-                                    python_exe=self.python_exe,
+                                    python_version=self.PYTHON_VERSION,
+                                    python_exe=self.PYTHON_EXE,
                                     filename="<>")
     self.assertEqual(code_deadcode.co_code,
                      self.code_deadcode)
     try:
-      self.vm.run_program(self.src_deadcode, "",
-                          maximum_depth=10, run_builtins=False)
+      self.trace_vm.run_program(self.src_deadcode, "",
+                                maximum_depth=10, run_builtins=False)
     except vm.VirtualMachineError:
       pass  # The code we test throws an exception. Ignore it.
-    self.assertItemsEqual(self.vm.instructions_executed, [0, 1, 5, 6])
+    self.assertItemsEqual(self.trace_vm.instructions_executed, [0, 1, 5, 6])
 
 
 if __name__ == "__main__":
