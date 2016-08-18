@@ -615,23 +615,12 @@ class TestOptimize(parser_test_base.ParserTest):
             def g(self, y: int) -> bool
             def h(self, z: float) -> ?
     """)
-    expected = textwrap.dedent("""
-        class A():
-            foo = ...  # type: bool
-            def f(self, x: int) -> float
-            def h(self) -> complex
-
-        class B(A):
-            bar = ...  # type: int
-            foo = ...  # type: bool
-            def g(self, y: int) -> bool
-            def h(self, z: float) -> ?
-            def f(self, x: int) -> float
-    """)
     ast = self.Parse(src)
     ast = visitors.LookupClasses(ast, builtins.GetBuiltinsPyTD())
+    self.assertItemsEqual(("g", "h"), [m.name for m in ast.Lookup("B").methods])
     ast = ast.Visit(optimize.AddInheritedMethods())
-    self.AssertSourceEquals(ast, expected)
+    self.assertItemsEqual(("f", "g", "h"),
+                          [m.name for m in ast.Lookup("B").methods])
 
   def testRemoveInheritedMethodsWithoutSelf(self):
     src = textwrap.dedent("""

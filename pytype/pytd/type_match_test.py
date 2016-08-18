@@ -27,11 +27,17 @@ from pytype.pytd.parse import parser
 from pytype.pytd.parse import visitors
 
 
+_BUILTINS = """
+  class object: ...
+  class classobj: ...
+"""
+
+
 class TestTypeMatch(unittest.TestCase):
   """Test algorithms and datastructures of booleq.py."""
 
   def setUp(self):
-    builtins = parser.parse_string("class object: ...").Replace(
+    builtins = parser.parse_string(textwrap.dedent(_BUILTINS)).Replace(
         name="__builtin__").Visit(visitors.AddNamePrefix())
     typing = parser.parse_string("class Generic: ...").Replace(
         name="typing").Visit(visitors.AddNamePrefix())

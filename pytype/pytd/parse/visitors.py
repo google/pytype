@@ -236,7 +236,12 @@ class PrintVisitor(Visitor):
 
   def VisitClass(self, node):
     """Visit a class, producing a multi-line, properly indented string."""
-    parents_str = "(" + ", ".join(node.parents) + ")" if node.parents else ""
+    parents = node.parents
+    # If classobj is the only parent, then this is an old-style class, don't
+    # list any parents.
+    if parents == ("classobj",):
+      parents = ()
+    parents_str = "(" + ", ".join(parents) + ")" if parents else ""
     header = "class " + self._SafeName(node.name) + parents_str + ":"
     if node.methods or node.constants:
       # We have multiple methods, and every method has multiple signatures

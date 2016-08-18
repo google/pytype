@@ -106,14 +106,16 @@ class TestVisitors(parser_test_base.ParserTest):
     """)
     tree = self.Parse(src)
     data = tree.Visit(visitors.ExtractSuperClassesByName())
-    self.assertItemsEqual((), data["A"])
-    self.assertItemsEqual((), data["B"])
+    self.assertItemsEqual(("classobj",), data["A"])
+    self.assertItemsEqual(("classobj",), data["B"])
     self.assertItemsEqual(("A",), data["C"])
     self.assertItemsEqual(("A", "B"), data["D"])
     self.assertItemsEqual(("A", "C", "D"), data["E"])
 
   def testSuperClasses(self):
     src = textwrap.dedent("""
+      class classobj:
+          pass
       class A():
           pass
       class B():
@@ -127,8 +129,8 @@ class TestVisitors(parser_test_base.ParserTest):
     """)
     ast = visitors.LookupClasses(self.Parse(src))
     data = ast.Visit(visitors.ExtractSuperClasses())
-    self.assertItemsEqual([], [t.name for t in data[ast.Lookup("A")]])
-    self.assertItemsEqual([], [t.name for t in data[ast.Lookup("B")]])
+    self.assertItemsEqual(["classobj"], [t.name for t in data[ast.Lookup("A")]])
+    self.assertItemsEqual(["classobj"], [t.name for t in data[ast.Lookup("B")]])
     self.assertItemsEqual(["A"], [t.name for t in data[ast.Lookup("C")]])
     self.assertItemsEqual(["A", "B"], [t.name for t in data[ast.Lookup("D")]])
     self.assertItemsEqual(["C", "D", "A"],
@@ -174,6 +176,8 @@ class TestVisitors(parser_test_base.ParserTest):
 
   def testFindUnknownVisitor(self):
     src = textwrap.dedent("""
+        class classobj:
+          pass
         class `~unknown1`():
           pass
         class `~unknown_foobar`():

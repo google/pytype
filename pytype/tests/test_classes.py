@@ -2,6 +2,7 @@
 
 import unittest
 
+from pytype import utils
 from pytype.tests import test_inference
 
 
@@ -352,6 +353,25 @@ class ClassesTest(test_inference.InferenceTest):
         def __getattr__(self, name) -> str: ...
       def f() -> str: ...
     """)
+
+  def testInheritFromClassobj(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        class A():
+          pass
+      """)
+      ty = self.Infer("""
+        import a
+        class C(a.A):
+          pass
+        name = C.__name__
+      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        a = ... # type: module
+        class C(a.A):
+          pass
+        name = ... # type: str
+      """)
 
 
 if __name__ == "__main__":

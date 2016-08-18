@@ -761,7 +761,9 @@ class TypeDeclParser(object):
           self, "Duplicate identifier(s): " + ", ".join(duplicates), p)
 
     methods, properties = self.MergeSignatures(methoddefs)
-
+    # Ensure that old style classes inherit from classobj.
+    if not parents and class_name not in ["classobj", "object"]:
+      parents = (pytd.NamedType("classobj"),)
     cls = pytd.Class(name=class_name, parents=parents,
                      methods=tuple(methods),
                      constants=tuple(constants + properties),
