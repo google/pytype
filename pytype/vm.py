@@ -109,6 +109,9 @@ class VirtualMachine(object):
         "isinstance": abstract.IsInstance(self),
     }
 
+  def remaining_depth(self):
+    return self.maximum_depth - len(self.frames)
+
   def is_at_maximum_depth(self):
     return len(self.frames) > self.maximum_depth
 

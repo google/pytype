@@ -2467,8 +2467,8 @@ class InterpreterFunction(Function):
            starargs=None, starstarargs=None, new_locals=None):
     if self.vm.is_at_maximum_depth():
       log.info("Maximum depth reached. Not analyzing %r", self.name)
-      # TODO(kramm): Return an unsolvable here.
-      return node, self.vm.program.NewVariable(self.name + ":ret", [], [], node)
+      return (node,
+              self.vm.convert.create_new_unsolvable(node, self.name + ":ret"))
     self._check_call(node, posargs, namedargs, starargs, starstarargs)
     callargs = self._map_args(node, posargs, namedargs, starargs, starstarargs)
     # Might throw vm.RecursionException:
@@ -2485,13 +2485,24 @@ class InterpreterFunction(Function):
       # that no call has the same key as a previous one.
       callkey = len(self._call_records)
     if callkey in self._call_records:
-      _, old_ret, _ = self._call_records[callkey]
+      _, old_ret, _, old_remaining_depth = self._call_records[callkey]
       # Optimization: This function has already been called, with the same
       # environment and arguments, so recycle the old return value and don't
       # record this call. We pretend that this return value originated at the
       # current node to make sure we don't miss any possible types.
-      ret = self.vm.program.NewVariable(old_ret.name, old_ret.data, [], node)
-      return node, ret
+      # We would want to skip this optimization and reanalyze the call
+      # if the all the possible types of the return value was unsolvable
+      # and we can transverse the function deeper.
+      if (all(x == self.vm.convert.unsolvable for x in old_ret.data) and
+          self.vm.remaining_depth() > old_remaining_depth):
+        log.info("Renalyzing %r because all of its call record's bindings are "
+                 "Unsolvable; remaining_depth = %d,"
+                 "record remaining_depth = %d",
+                 self.name, self.vm.remaining_depth(), old_remaining_depth)
+      else:
+        ret = self.vm.program.NewVariable(old_ret.name, old_ret.data, [], node)
+        return node, ret
+
     if self.code.co_flags & loadmarshal.CodeType.CO_GENERATOR:
       generator = Generator(frame, self.vm, node)
       # Run the generator right now, even though the program didn't call it,
@@ -2500,13 +2511,16 @@ class InterpreterFunction(Function):
       node_after_call, ret = node2, generator.to_variable(node2, self.name)
     else:
       node_after_call, ret = self.vm.run_frame(frame, node)
-    self._call_records[callkey] = (callargs, ret, node_after_call)
+    self._call_records[callkey] = (callargs,
+                                   ret,
+                                   node_after_call,
+                                   self.vm.remaining_depth())
     self.last_frame = frame
     return node_after_call, ret
 
   def _get_call_combinations(self):
     signature_data = set()
-    for callargs, ret, node_after_call in self._call_records.values():
+    for callargs, ret, node_after_call, _ in self._call_records.values():
       for combination in utils.variable_product_dict(callargs):
         for return_value in ret.bindings:
           values = combination.values() + [return_value]

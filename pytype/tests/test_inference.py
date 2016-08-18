@@ -136,12 +136,12 @@ class InferenceTest(unittest.TestCase):
   def assertNoCrash(self, code, **kwargs):
     self.assertNoErrors(code, report_errors=False, **kwargs)
 
-  def InferAndCheck(self, code, deep=True, pythonpath=()):
+  def InferAndCheck(self, code, deep=True, pythonpath=(), **kwargs):
     self.options.tweak(pythonpath=pythonpath)
     code = textwrap.dedent(code)
     errorlog = self._InitErrorLog(code)
     unit = infer.infer_types(
-        code, errorlog, self.options, deep=deep, cache_unknowns=True)
+        code, errorlog, self.options, deep=deep, cache_unknowns=True, **kwargs)
     unit.Visit(visitors.VerifyVisitor())
     return pytd_utils.CanonicalOrdering(unit), errorlog
 
