@@ -205,9 +205,9 @@ class Frame(object):
     "with"s.
     data_stack: The value stack that is used for instruction operands.
     generator: None or a Generator object if this frame is a generator frame.
-    return_nodes: A list of nodes that return from the function. This is used to
-      connect the next node in the CFG properly.
-    return_variable: The return value of this function.
+    allowed_returns: The return annotation of this function.
+    return_variable: The return value of this function, as a Variable.
+    yield_variable: The yield value of this function, as a Variable.
   """
 
   def __init__(self, node, vm, f_code, f_globals, f_locals, f_back, callargs,
@@ -243,6 +243,7 @@ class Frame(object):
     self.cells = {}
     self.generator = None
 
+    self.allowed_returns = None
     self.return_variable = self.vm.program.NewVariable(
         "return(frame:" + f_code.co_name + ")")
     self.yield_variable = self.vm.program.NewVariable("yield")

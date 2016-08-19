@@ -1643,7 +1643,9 @@ class VirtualMachine(object):
 
   def _convert_one_annotation(self, node, raw_annotation, name):
     node, annotation = self._maybe_eval_annotation(node, raw_annotation, name)
-    if annotation == self.convert.none:
+    if annotation is None:
+      return node, None  # Error in annotation, already logged.
+    if annotation.cls and annotation.cls.data == self.convert.none_type.data:
       # PEP 484 allows to write "NoneType" as "None"
       return node, self.convert.none_type.data[0]
     else:
@@ -1798,8 +1800,13 @@ class VirtualMachine(object):
       state = state.pop_and_discard()
     return state
 
+  def _check_return(self, node, actual, formal):
+    pass  # overridden in infer.py
+
   def byte_RETURN_VALUE(self, state):
     state, var = state.pop()
+    if self.frame.allowed_returns is not None:
+      self._check_return(state.node, var, self.frame.allowed_returns)
     self.frame.return_variable.PasteVariable(var, state.node)
     return state.set_why("return")
 

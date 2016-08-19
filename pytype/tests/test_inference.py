@@ -267,8 +267,26 @@ class InferenceTest(unittest.TestCase):
         raise AssertionError("Found regexp %r in errors" % regexp)
 
   def assertErrorLogIs(self, errorlog, expected_lines_and_errors):
-    actual_lines_and_errors = {(error.lineno, error.name) for error in errorlog}
-    self.assertItemsEqual(expected_lines_and_errors, actual_lines_and_errors)
+    actual_errors = {(error.lineno, error.name): error
+                     for error in errorlog}
+    for pattern in expected_lines_and_errors:
+      line = pattern[0]
+      name = pattern[1]
+      regexp = pattern[2] if len(pattern) > 2 else None
+      error = actual_errors.get((line, name))
+      if error is None:
+        errorlog.print_to_stderr()
+        raise AssertionError("Error %s not found on line %d %r" % (
+            name, line, " " + repr(regexp) if regexp else ""))
+      if regexp and not re.search(regexp, error.message):
+        errorlog.print_to_stderr()
+        raise AssertionError("Bad error message: %r doesn't match %r" % (
+            error.message, regexp))
+      del actual_errors[(line, name)]
+    if actual_errors:
+      any_error = next(actual_errors.items())
+      errorlog.print_to_stderr()
+      raise AssertionError("Unexpected error:\n%s" % any_error)
 
   def Infer(self, srccode, pythonpath=(), deep=False, solve_unknowns=False,
             extract_locals=False, report_errors=True, **kwargs):

@@ -2475,6 +2475,8 @@ class InterpreterFunction(Function):
     frame = self.vm.make_frame(node, self.code, callargs,
                                self.f_globals, self.f_locals, self.closure,
                                new_locals=new_locals)
+    if self.signature.has_return_annotation:
+      frame.allowed_returns = self.signature.annotations["return"]
     if self.vm.options.skip_repeat_calls:
       callkey = self._hash_all(
           (callargs, None),

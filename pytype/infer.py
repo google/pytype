@@ -322,6 +322,20 @@ class CallTracer(vm.VirtualMachine):
       return self.convert.convert_constant(
           name, abstract.AsInstance(t), subst={}, node=self.root_cfg_node)
 
+  def _check_return(self, node, actual, formal):
+    bad = []
+    for combination in utils.deep_variable_product([actual]):
+      view = {value.variable: value for value in combination}
+      if abstract.match_var_against_type(actual, formal, {},
+                                         node, view) is None:
+        bad.append(view[actual].data)
+    if bad:
+      combined = pytd_utils.JoinTypes([t.to_type(node) for t in bad])
+      self.errorlog.bad_return_type(
+          self.frame.current_opcode, self,
+          combined, formal.get_instance_type(node)
+      )
+
   def _check_function(self, pytd_function, f, node, skip_self=False):
     """Check that a function or method is compatible with its PYTD."""
     for sig in pytd_function.signatures:
@@ -342,8 +356,8 @@ class CallTracer(vm.VirtualMachine):
               if isinstance(val.data, (abstract.InterpreterFunction,
                                        abstract.BoundInterpreterFunction)):
                 self.errorlog.bad_return_type(
-                    val.data.get_first_opcode(), node,
-                    pytd_function, view[retvar].data, sig.return_type)
+                    val.data.get_first_opcode(), pytd_function,
+                    view[retvar].data.to_type(node), sig.return_type)
               else:
                 log.error("%s is not a function?", val.data.name)
         else:
