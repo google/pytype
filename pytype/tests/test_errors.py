@@ -103,14 +103,6 @@ class ErrorTest(test_inference.InferenceTest):
                  r"[^\n]+\[wrong-arg-types\]\n.*"
                  r"expected:.*int.*passed:.*complex"))
 
-  def testIndexError(self):
-    _, errors = self.InferAndCheck("""
-      def f():
-        return [][0]
-    """)
-    # "Line 3, in f: Can't retrieve item out of list. Empty?"
-    self.assertErrorLogContains(errors, r"line 3.*item out of list")
-
   def testInvalidBaseClass(self):
     _, errors = self.InferAndCheck("""
       class Foo(3):
@@ -144,14 +136,6 @@ class ErrorTest(test_inference.InferenceTest):
         errors, r"line 5.*No attribute.*__iter__.*on A")
     self.assertErrorLogDoesNotContain(
         errors, "__class__")
-
-  def testWriteIndexError(self):
-    _, errors = self.InferAndCheck("""
-      def f():
-        {}[0].x = 3
-    """)
-    # "Line 3, in f: Can't retrieve item out of dict. Empty?"
-    self.assertErrorLogContains(errors, r"line 3.*item out of dict")
 
   def testInheritFromGeneric(self):
     with utils.Tempdir() as d:
@@ -215,15 +199,6 @@ class ErrorTest(test_inference.InferenceTest):
         other.foo(1.2, [])
       """, pythonpath=[d.path])
       self.assertErrorLogContains(errors, r"(x: float, y: list)")
-
-  def testEmpty(self):
-    _, errors = self.InferAndCheck("""
-      [][1]
-    """)
-    self.assertErrorLogContains(
-        errors, "empty")
-    self.assertErrorLogDoesNotContain(
-        errors, "unsupported.operands")
 
   def testCallUncallable(self):
     _, errors = self.InferAndCheck("""

@@ -312,15 +312,6 @@ class ErrorLog(ErrorLogBase):
     else:
       raise AssertionError(error)
 
-  @_error_name("index-error")
-  def index_error(self, opcode, container, unused_index):
-    if container.data:
-      out_of = " out of %s" % container.data[0].name
-    else:
-      out_of = ""
-    self.error(opcode, "Can't retrieve item%s. Empty?",
-               out_of)
-
   @_error_name("super-error")
   def super_error(self, opcode, arg_count):
     self.error(opcode, "super() takes one or two arguments. %d given.",

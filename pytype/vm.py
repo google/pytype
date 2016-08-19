@@ -1002,9 +1002,10 @@ class VirtualMachine(object):
     if state.top().bindings:
       return state
     else:
+      # This typically happens if a dictionary is being filled by code we just
+      # haven't analyzed yet. So don't report an error.
       self.errorlog.revert_to(checkpoint)
-      self.errorlog.index_error(
-          self.frame.current_opcode, container, index)
+      log.info("Can't access %s at %s", container, index)
       state.top().AddBinding(abstract.Unsolvable(self),
                              source_set=[], where=state.node)
       return state

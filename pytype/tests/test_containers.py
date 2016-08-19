@@ -518,13 +518,10 @@ class ContainerTest(test_inference.InferenceTest):
     """)
 
   def testEqOperatorOnItemFromEmptyDict(self):
-    _, errorlog = self.InferAndCheck("""
+    self.Infer("""
       d = {}
       d[1] == d[1]
     """)
-    self.assertErrorLogContains(errorlog,
-                                r".*item out of dict.*\[index-error\]")
-    self.assertEquals(1, len(list(errorlog.unique_sorted_errors())))
 
 
 if __name__ == "__main__":
