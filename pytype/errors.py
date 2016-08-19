@@ -105,7 +105,10 @@ class Error(object):
 
   @property
   def message(self):
-    return self._message
+    if self._details is None:
+      return self._message
+    else:
+      return self._message + "\n" + self._details
 
   def _position(self):
     """Return human-readable filename + line number."""

@@ -87,7 +87,7 @@ def match_var_against_type(var, other_type, subst, node, view):
   if hasattr(other_type, "match_var_against"):
     return other_type.match_var_against(var, subst, node, view)
   elif var.bindings:
-    return match_value_against_type(view[var], other_type, subst, node, view)
+    return _match_value_against_type(view[var], other_type, subst, node, view)
   else:  # Empty set of values. The "nothing" type.
     if isinstance(other_type, Union):
       right_side_options = other_type.options
@@ -113,7 +113,7 @@ def match_var_against_type(var, other_type, subst, node, view):
 
 # TODO(kramm): This needs to match values, not variables. A variable can
 # consist of different types.
-def match_value_against_type(value, other_type, subst, node, view):
+def _match_value_against_type(value, other_type, subst, node, view):
   """One-way unify value into pytd type given a substitution.
 
   Args:
@@ -137,7 +137,7 @@ def match_value_against_type(value, other_type, subst, node, view):
     return left.match_against_type(other_type, subst, node, view)
   elif isinstance(other_type, Union):
     for t in other_type.options:
-      new_subst = match_value_against_type(value, t, subst, node, view)
+      new_subst = _match_value_against_type(value, t, subst, node, view)
       if new_subst is not None:
         # TODO(kramm): What if more than one type matches?
         return new_subst
@@ -175,6 +175,28 @@ def match_value_against_type(value, other_type, subst, node, view):
   else:
     log.error("Invalid type: %s", type(other_type))
     return None
+
+
+def bad_matches(var, other_type, node, subst=None):
+  """Match an Variable against a type. Return bindings that don't match.
+
+  Args:
+    var: A cfg.Variable, containing instances.
+    other_type: An instance of AtomicAbstractValue.
+    node: A cfg.CFGNode. The position in the CFG from which we "observe" the
+      match.
+    subst: Type parameter substitutions.
+  Returns:
+    A list of all the bindings of var that didn't match.
+  """
+  subst = subst or {}
+  bad = []
+  for combination in utils.deep_variable_product([var]):
+    view = {value.variable: value for value in combination}
+    if match_var_against_type(var, other_type, subst,
+                              node, view) is None:
+      bad.append(view[var])
+  return bad
 
 
 class AtomicAbstractValue(object):
@@ -803,7 +825,7 @@ class SimpleAbstractValue(AtomicAbstractValue):
     if clsvar:
       parameters.append(clsvar)
     # TODO(rechen): Remember which values were merged under which type keys so
-    # we don't have to recompute this information in match_value_against_type.
+    # we don't have to recompute this information in _match_value_against_type.
     return [{value.data.get_type_key(): value
              for value in parameter.bindings}.values()
             for parameter in parameters]
@@ -1047,7 +1069,8 @@ class Union(AtomicAbstractValue, FormalType):
   """
 
   def __init__(self, options, vm):
-    super(Union, self).__init__("union", vm)
+    super(Union, self).__init__("Union", vm)
+    self.name = "Union[%s]" % ", ".join(sorted([str(t) for t in options]))
     self.options = options
 
 
@@ -1439,7 +1462,7 @@ class PyTDSignature(object):
     for p in self.pytd_sig.params:
       actual = arg_dict[p.name]
       formal = self.signature.annotations[p.name]
-      subst = match_value_against_type(actual, formal, subst, node, view)
+      subst = _match_value_against_type(actual, formal, subst, node, view)
       if subst is None:
         # These parameters didn't match this signature. There might be other
         # signatures that work, but figuring that out is up to the caller.
@@ -2456,12 +2479,11 @@ class InterpreterFunction(Function):
         posargs, namedargs, starargs, starstarargs))
     for i, (_, param_var, formal) in enumerate(args):
       if formal is not None:
-        for combination in utils.deep_variable_product([param_var]):
-          view = {value.variable: value for value in combination}
-          if match_var_against_type(param_var, formal, {}, node, view) is None:
-            passed = [p.data[0] for _, p, _ in args]
-            passed[i] = view[param_var].data
-            raise WrongArgTypes(self.signature, passed)
+        bad = bad_matches(param_var, formal, node)
+        if bad:
+          passed = [p.data[0] for _, p, _ in args]
+          passed[i] = Union([b.data for b in bad], self.vm)
+          raise WrongArgTypes(self.signature, passed)
 
   def call(self, node, unused_func, posargs, namedargs,
            starargs=None, starstarargs=None, new_locals=None):

@@ -323,14 +323,9 @@ class CallTracer(vm.VirtualMachine):
           name, abstract.AsInstance(t), subst={}, node=self.root_cfg_node)
 
   def _check_return(self, node, actual, formal):
-    bad = []
-    for combination in utils.deep_variable_product([actual]):
-      view = {value.variable: value for value in combination}
-      if abstract.match_var_against_type(actual, formal, {},
-                                         node, view) is None:
-        bad.append(view[actual].data)
+    bad = abstract.bad_matches(actual, formal, node)
     if bad:
-      combined = pytd_utils.JoinTypes([t.to_type(node) for t in bad])
+      combined = pytd_utils.JoinTypes([t.data.to_type(node) for t in bad])
       self.errorlog.bad_return_type(
           self.frame.current_opcode, self,
           combined, formal.get_instance_type(node)
@@ -348,18 +343,17 @@ class CallTracer(vm.VirtualMachine):
         _, retvar = self.call_function_in_frame(
             node, fvar, args, {}, None, None)
         if retvar.bindings:
-          for combination in utils.deep_variable_product([retvar]):
-            view = {value.variable: value for value in combination}
-            match = abstract.match_var_against_type(retvar, nominal_return,
-                                                    {}, node, view)
-            if match is None:
-              if isinstance(val.data, (abstract.InterpreterFunction,
-                                       abstract.BoundInterpreterFunction)):
-                self.errorlog.bad_return_type(
-                    val.data.get_first_opcode(), pytd_function,
-                    view[retvar].data.to_type(node), sig.return_type)
-              else:
-                log.error("%s is not a function?", val.data.name)
+          bad = abstract.bad_matches(retvar, nominal_return, node)
+          if bad:
+            if isinstance(val.data, (abstract.InterpreterFunction,
+                                     abstract.BoundInterpreterFunction)):
+              combined = pytd_utils.JoinTypes([t.data.to_type(node)
+                                               for t in bad])
+              self.errorlog.bad_return_type(
+                  val.data.get_first_opcode(), pytd_function,
+                  combined, sig.return_type)
+            else:
+              log.error("%s is not a function?", val.data.name)
         else:
           log.error("Couldn't call %s", pytd_function.name)
 
