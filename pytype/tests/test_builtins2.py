@@ -131,6 +131,14 @@ class BuiltinTests2(test_inference.InferenceTest):
       x = ...  # type: dict
     """)
 
+  def testMax(self):
+    ty = self.Infer("""
+      x = dict(u=3, v=4, w=5)
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      x = ...  # type: dict
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

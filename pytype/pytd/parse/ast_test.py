@@ -1490,23 +1490,23 @@ class TestASTGeneration(parser_test_base.ParserTest):
 
     param1 = tree.Lookup("T")
     param2 = tree.Lookup("T2")
-    self.assertEquals(param1, pytd.TypeParameter("T"))
-    self.assertEquals(param2, pytd.TypeParameter("T2"))
+    self.assertEquals(param1, pytd.TypeParameter("T", None))
+    self.assertEquals(param2, pytd.TypeParameter("T2", None))
     self.assertEquals(tree.type_params, (param1, param2))
 
     f = tree.Lookup("f")
     sig, = f.signatures
     p_x, = sig.params
-    self.assertEquals(p_x.type, pytd.TypeParameter("T"))
+    self.assertEquals(p_x.type, pytd.TypeParameter("T", "f"))
 
     cls = tree.Lookup("A")
     self.assertEquals(cls.template,
-                      (pytd.TemplateItem(pytd.TypeParameter("T")),))
+                      (pytd.TemplateItem(pytd.TypeParameter("T", "A")),))
     f_cls, = cls.methods
     sig_cls, = f_cls.signatures
     p_self, p_x_cls = sig_cls.params
-    self.assertEquals(p_self.type.parameters, (pytd.TypeParameter("T"),))
-    self.assertEquals(p_x_cls.type, pytd.TypeParameter("T2"))
+    self.assertEquals(p_self.type.parameters, (pytd.TypeParameter("T", "A"),))
+    self.assertEquals(p_x_cls.type, pytd.TypeParameter("T2", "A.a"))
 
   def testInsertSignatureTemplates(self):
     """Test that the correct templates are inserted for function signatures."""
@@ -1535,13 +1535,13 @@ class TestASTGeneration(parser_test_base.ParserTest):
     f = tree.Lookup("f")
     sig, = f.signatures
     self.assertEquals(sig.template,
-                      (pytd.TemplateItem(pytd.TypeParameter("T")),))
+                      (pytd.TemplateItem(pytd.TypeParameter("T", "f")),))
 
     cls = tree.Lookup("A")
     f_cls, = cls.methods
     sig_cls, = f_cls.signatures
     self.assertEquals(sig_cls.template,
-                      (pytd.TemplateItem(pytd.TypeParameter("T2")),))
+                      (pytd.TemplateItem(pytd.TypeParameter("T2", "A.a")),))
 
 
 class TestDecorate(unittest.TestCase):

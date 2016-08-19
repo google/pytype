@@ -360,9 +360,9 @@ class TestVisitors(parser_test_base.ParserTest):
     #  Class(Qux, parent=GenericType(Baz, parameters=(str, int)), template=())
     self.assertEquals((pytd.ClassType("int"),), foo_parent.parameters)
     self.assertEquals((), foo.template)
-    self.assertEquals((pytd.TypeParameter("T"), pytd.ClassType("int")),
+    self.assertEquals((pytd.TypeParameter("T", "Bar"), pytd.ClassType("int")),
                       bar_parent.parameters)
-    self.assertEquals((pytd.TemplateItem(pytd.TypeParameter("T")),),
+    self.assertEquals((pytd.TemplateItem(pytd.TypeParameter("T", "Bar")),),
                       bar.template)
     self.assertEquals((pytd.ClassType("str"), pytd.ClassType("int")),
                       qux_parent.parameters)

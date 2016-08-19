@@ -1270,6 +1270,13 @@ class AddNamePrefix(Visitor):
   def VisitClass(self, node):
     return node.Replace(name=self.prefix + node.name)
 
+  def VisitTypeParameter(self, node):
+    if node.scope is not None:
+      return node.Replace(scope=self.prefix + node.scope)
+    else:
+      # Happens before the parser does Visit(InsertTypeParameters)
+      return node
+
   def _VisitNamedNode(self, node):
     if self.cls:
       # class attribute

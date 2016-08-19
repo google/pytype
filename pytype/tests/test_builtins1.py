@@ -109,7 +109,6 @@ class BuiltinTests(test_inference.InferenceTest):
       """)
 
   def testMax2(self):
-    # TODO(kramm): This test takes over six seconds
     ty = self.Infer("""
       def t_testMax2(x, y):
         # max is a parameterized function

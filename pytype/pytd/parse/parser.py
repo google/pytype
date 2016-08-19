@@ -338,15 +338,55 @@ class Mutator(visitors.Visitor):
 class InsertTypeParameters(visitors.Visitor):
   """Visitor for inserting TypeParameter instances."""
 
+  def __init__(self):
+    super(InsertTypeParameters, self).__init__()
+    self.class_name = None
+    self.function_name = None
+    self.bound_by_class = ()
+
   def EnterTypeDeclUnit(self, node):
     self.type_params = {p.name: p for p in node.type_params}
 
   def LeaveTypeDeclUnit(self, node):
     self.type_params = None
 
+  def EnterClass(self, node):
+    self.class_name = node.name
+    self.bound_by_class = {
+        n.type_param.name  # type_param: TypeParam or NamedType
+        for n in node.template
+    }
+
+  def LeaveClass(self, node):
+    self.class_name = None
+    self.bound_by_class = ()
+
+  def EnterFunction(self, node):
+    self.function_name = node.name
+
+  def LeaveFunction(self, node):
+    self.function_name = None
+
+  def _GetScope(self, name):
+    if name in self.bound_by_class:
+      return self.class_name
+    s = ".".join(n for n in [self.class_name, self.function_name] if n)
+    if s:
+      return s
+    else:
+      # This is a the top-level type parameter (TypeDeclUnit.type_params).
+      # Leave it as 'None'.
+      return None
+
+  def VisitTypeParameter(self, node):
+    # For the type parameters inside a TemplateItem
+    assert node.scope is None
+    return node.Replace(scope=self._GetScope(node.name))
+
   def VisitNamedType(self, node):
     if node.name in self.type_params:
-      return self.type_params[node.name]
+      return self.type_params[node.name].Replace(
+          scope=self._GetScope(node.name))
     else:
       return node
 
@@ -878,7 +918,7 @@ class TypeDeclParser(object):
     if name != name_param:
       make_syntax_error(self, "TypeVar name needs to be %r (not %r)" % (
           name_param, name), p)
-    p[0] = pytd.TypeParameter(name)
+    p[0] = pytd.TypeParameter(name, scope=None)
 
   def p_namedtuple_field(self, p):
     """

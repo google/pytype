@@ -91,6 +91,7 @@ class TypeDeclUnit(node.Node('name', 'constants', 'type_params', 'classes',
   def ASTeq(self, other):
     # Used in tests.
     return (self.constants == other.constants and
+            self.type_params == other.type_params and
             self.classes == other.classes and
             self.functions == other.functions and
             self.aliases == other.aliases)
@@ -231,13 +232,18 @@ class MutableParameter(node.Node('name', 'type', 'new_type')):
   __slots__ = ()
 
 
-class TypeParameter(node.Node('name')):
+class TypeParameter(node.Node('name', 'scope')):
   """Represents a type parameter.
 
   A type parameter is a bound variable in the context of a function or class
   definition. It specifies an equivalence between types.
-  For example, this defines a identity function:
+  For example, this defines an identity function:
     def f<T>(x: T) -> T
+
+  Attributes:
+    name: Name of the parameter. E.g. "T".
+    scope: Fully-qualified name of the class or function this parameter is
+      bound to. E.g. "mymodule.MyClass.mymethod".
   """
   __slots__ = ()
 

@@ -304,6 +304,22 @@ def process_function(func: Callable[..., Any]) -> None: ...
         x = ...  # type: str
       """)
 
+  def testIdentity(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import TypeVar
+        T = TypeVar("T")
+        def f(x: T) -> T
+      """)
+      ty = self.Infer("""\
+        import foo
+        x = foo.f(3)
+      """, deep=True, pythonpath=[d.path], solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        foo = ...  # type: module
+        x = ...  # type: int
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()

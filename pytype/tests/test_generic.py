@@ -353,14 +353,14 @@ class GenericTest(test_inference.InferenceTest):
         T = TypeVar("T")
         class Foo(List[T]): pass
       """)
-      self.assertRaises(AssertionError, self.Infer, """
+      self.assertNoCrash("""
         import a
         def f():
           x = a.Foo()
           x.append(42)
           return x
         g = lambda y: y+1
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path])
 
 
 if __name__ == "__main__":
