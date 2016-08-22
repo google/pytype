@@ -2027,7 +2027,11 @@ class PyTDClass(SimpleAbstractValue, Class):
   def match_instance_against_type(self, instance, other_type,
                                   subst, node, view):
     """Match an instance of this class against an other type."""
-    if other_type.name == "object":
+    if other_type.full_name == "__builtin__.object":
+      return subst
+    if (other_type.full_name == "__builtin__.bool" and
+        self.full_name == "__builtin__.NoneType"):
+      # See https://github.com/python/typeshed/issues/270
       return subst
     for cls in self.mro:
       # pylint: disable=protected-access
@@ -2482,7 +2486,10 @@ class InterpreterFunction(Function):
         bad = bad_matches(param_var, formal, node)
         if bad:
           passed = [p.data[0] for _, p, _ in args]
-          passed[i] = Union([b.data for b in bad], self.vm)
+          if len(bad) == 1:
+            passed[i] = bad[0].data
+          else:
+            passed[i] = Union([b.data for b in bad], self.vm)
           raise WrongArgTypes(self.signature, passed)
 
   def call(self, node, unused_func, posargs, namedargs,
