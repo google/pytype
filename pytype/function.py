@@ -31,6 +31,17 @@ class Signature(object):
     self.has_return_annotation = "return" in annotations
     self.has_param_annotations = bool(annotations.viewkeys() - {"return"})
 
+  def drop_first_parameter(self):
+    return self.__class__(
+        self.name,
+        self.param_names[1:],
+        self.varargs_name,
+        self.kwonly_params,
+        self.kwargs_name,
+        self.defaults,
+        self.annotations,
+    )
+
   def mandatory_param_count(self):
     num = len([name
                for name in self.param_names if name not in self.defaults])

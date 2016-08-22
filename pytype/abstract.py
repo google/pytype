@@ -2654,7 +2654,7 @@ class BoundFunction(AtomicAbstractValue):
 
   @property
   def signature(self):
-    return self.underlying.signature
+    return self.underlying.signature.drop_first_parameter()
 
   def call(self, node, func, posargs, namedargs,
            starargs=None, starstarargs=None):
