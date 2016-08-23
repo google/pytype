@@ -908,14 +908,13 @@ class AdjustSelf(Visitor):
    first argument to just "self")
   """
 
-  def __init__(self, replace_unknown=False, force=False):
+  def __init__(self, force=False):
     super(AdjustSelf, self).__init__()
     self.class_types = []  # allow nested classes
     self.force = force
     self.replaced_self_types = (pytd.NamedType("object"),
-                                pytd.ClassType("object"))
-    if replace_unknown:
-      self.replaced_self_types += (pytd.AnythingType(),)
+                                pytd.ClassType("object"),
+                                pytd.ClassType("__builtin__.object"))
 
   def EnterClass(self, cls):
     self.class_types.append(ClassAsType(cls))
@@ -1404,20 +1403,73 @@ class ExpandSignatures(Visitor):
     return new_signatures  # Hand list over to VisitFunction
 
 
-class AdjustTemplates(Visitor):
-  """Visitor for adjusting type parameters in templates.
+def MergeSequences(seqs):
+  """Merge a sequence of sequences into a single sequence.
 
-  Removes template items that have already been specialized. So
-    Class(Foo, parent=GenericType(Dict, parameters=(int, V)), template=(int, V))
-  turns into
-    Class(Foo, parent=GenericType(Dict, parameters=(int, V)), template=(V,))
-  .
+  This code is copied from https://www.python.org/download/releases/2.3/mro/
+  with print statements removed and modified to take a sequence of sequences.
+  We use it to merge both MROs and class templates.
+
+  Args:
+    seqs: A sequence of sequences.
+
+  Returns:
+    A single sequence in which every element of the input sequences appears
+    exactly once and local precedence order is preserved.
+
+  Raises:
+    ValueError: If the merge is impossible.
   """
+  res = []
+  while True:
+    nonemptyseqs = [seq for seq in seqs if seq]
+    if not nonemptyseqs:
+      return res
+    for seq in nonemptyseqs:  # find merge candidates among seq heads
+      cand = seq[0]
+      nothead = [s for s in nonemptyseqs if cand in s[1:] and s is not seq]
+      if nothead:
+        cand = None  # reject candidate
+      else:
+        break
+    if cand is None:
+      raise ValueError
+    res.append(cand)
+    for seq in nonemptyseqs:  # remove candidate
+      if seq[0] == cand:
+        del seq[0]
+
+
+class ContainerError(Exception):
+  pass
+
+
+class InsertClassTemplates(Visitor):
+  """Visitor for inserting class templates."""
 
   def VisitClass(self, node):
-    template = tuple(t for t in node.template
-                     if isinstance(t.type_param, pytd.TypeParameter))
-    return node.Replace(template=template)
+    """Builds a template for the class from its GenericType parents."""
+    templates = []
+    for parent in node.parents:
+      if isinstance(parent, pytd.GenericType):
+        templates.append([pytd.TemplateItem(param)
+                          for param in parent.parameters
+                          if isinstance(param, pytd.TypeParameter)])
+    try:
+      template = MergeSequences(templates)
+    except ValueError:
+      raise ContainerError(
+          "Illegal type parameter order in class %s" % node.name)
+    # This point is the earliest at which AdjustSelf can be called, since self
+    # needs the template for mutations
+    return node.Replace(template=tuple(template)).Visit(AdjustSelf()).Visit(
+        NamedTypeToClassType())
+
+  def VisitNamedType(self, unused_node):
+    # Type parameter adjustment should happen after all external types have
+    # been resolved, since TypeVar instances can be imported.
+    raise ValueError(
+        "Tried to adjust type parameters before converting to class types")
 
 
 class InsertSignatureTemplates(Visitor):
@@ -1455,8 +1507,50 @@ class InsertSignatureTemplates(Visitor):
     return node.Replace(template=tuple(self.template_typeparams))
 
 
-class ContainerError(Exception):
-  pass
+class AddTypeParameterScopes(Visitor):
+  """Visitor for scoping type parameters."""
+
+  def __init__(self):
+    super(AddTypeParameterScopes, self).__init__()
+    self.class_name = None
+    self.function_name = None
+    self.bound_by_class = ()
+
+  def EnterClass(self, node):
+    self.class_name = node.name
+    self.bound_by_class = {n.type_param.name for n in node.template}
+
+  def LeaveClass(self, unused_node):
+    self.class_name = None
+    self.bound_by_class = ()
+
+  def EnterFunction(self, node):
+    self.function_name = node.name
+
+  def LeaveFunction(self, unused_node):
+    self.function_name = None
+
+  def _GetScope(self, name):
+    if name in self.bound_by_class:
+      return self.class_name
+    s = ".".join(n for n in [self.class_name, self.function_name] if n)
+    if s:
+      return s
+    else:
+      # This is a top-level type parameter (TypeDeclUnit.type_params).
+      # Leave it as 'None'.
+      return None
+
+  def VisitTypeParameter(self, node):
+    assert node.scope is None
+    return node.Replace(scope=self._GetScope(node.name))
+
+
+def AdjustTypeParameters(ast):
+  ast = ast.Visit(InsertClassTemplates())
+  ast = ast.Visit(InsertSignatureTemplates())
+  ast = ast.Visit(AddTypeParameterScopes())
+  return ast
 
 
 class VerifyContainers(Visitor):

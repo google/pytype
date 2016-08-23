@@ -35,7 +35,10 @@ class ParserTest(unittest.TestCase):
     # TODO(kramm): Using self.parser here breaks tests. Why?
     tree = parser.TypeDeclParser(version=version, platform=platform).Parse(
         textwrap.dedent(src), convert_typing_to_native=True)
-    tree = tree.Visit(visitors.InsertSignatureTemplates())
+    tree = tree.Visit(visitors.NamedTypeToClassType())
+    tree = visitors.AdjustTypeParameters(tree)
+    # Convert back to named types for easier testing
+    tree = tree.Visit(visitors.ClassTypeToNamedType())
     tree.Visit(visitors.VerifyVisitor())
     return tree
 
@@ -45,7 +48,7 @@ class ParserTest(unittest.TestCase):
     ast = ast.Visit(visitors.LookupExternalTypes(
         {"__builtin__": b, "typing": t}, full_names=True))
     ast = ast.Visit(visitors.NamedTypeToClassType())
-    ast = ast.Visit(visitors.AdjustTemplates())
+    ast = visitors.AdjustTypeParameters(ast)
     ast.Visit(visitors.FillInModuleClasses({"": ast}))
     ast.Visit(visitors.VerifyVisitor())
     return ast

@@ -109,10 +109,9 @@ class Loader(object):
     try:
       module.ast = self._load_and_resolve_ast_dependencies(module.ast,
                                                            module_name)
-      # Now that any imported TypeVar instances have been resolved, fix our
-      # class templates and insert function templates.
-      module.ast = module.ast.Visit(visitors.AdjustTemplates())
-      module.ast = module.ast.Visit(visitors.InsertSignatureTemplates())
+      # Now that any imported TypeVar instances have been resolved, adjust type
+      # parameters in classes and functions.
+      module.ast = visitors.AdjustTypeParameters(module.ast)
       # Now we can fill in internal cls pointers to ClassType nodes in the
       # module. This code executes when the module is first loaded, which
       # happens before any others use it to resolve dependencies, so there are

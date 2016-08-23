@@ -338,7 +338,35 @@ class TestVisitors(parser_test_base.ParserTest):
     res = tree.Visit(visitors.PrintVisitor())
     self.assertMultiLineEqual(res, src)
 
-  def testAdjustTemplates(self):
+  def testAdjustTypeParameters(self):
+    ast = self.Parse("""
+      T = TypeVar("T")
+      T2 = TypeVar("T2")
+      def f(x: T) -> T
+      class A(Generic[T]):
+        def a(self, x: T2) -> None:
+          self := A[T or T2]
+    """)
+
+    f = ast.Lookup("f")
+    sig, = f.signatures
+    p_x, = sig.params
+    self.assertEquals(sig.template,
+                      (pytd.TemplateItem(pytd.TypeParameter("T", "f")),))
+    self.assertEquals(p_x.type, pytd.TypeParameter("T", "f"))
+
+    cls = ast.Lookup("A")
+    f_cls, = cls.methods
+    sig_cls, = f_cls.signatures
+    p_self, p_x_cls = sig_cls.params
+    self.assertEquals(cls.template,
+                      (pytd.TemplateItem(pytd.TypeParameter("T", "A")),))
+    self.assertEquals(sig_cls.template,
+                      (pytd.TemplateItem(pytd.TypeParameter("T2", "A.a")),))
+    self.assertEquals(p_self.type.parameters, (pytd.TypeParameter("T", "A"),))
+    self.assertEquals(p_x_cls.type, pytd.TypeParameter("T2", "A.a"))
+
+  def testAdjustTypeParametersWithBuiltins(self):
     ast = self.ParseWithBuiltins("""
       T = TypeVar("T")
       K = TypeVar("K")

@@ -19,7 +19,6 @@ from pytype.pytd import pytd
 from pytype.pytd.parse import decorate
 from pytype.pytd.parse import parser
 from pytype.pytd.parse import parser_test_base
-from pytype.pytd.parse import visitors
 import unittest
 
 
@@ -1290,7 +1289,6 @@ class TestASTGeneration(parser_test_base.ParserTest):
         """)
 
     result = self.Parse(data)
-    result = result.Visit(visitors.InsertSignatureTemplates())
     myclass = result.Lookup("MyClass")
     self.assertEquals({t.name for t in myclass.template}, {"C"})
 
@@ -1476,40 +1474,8 @@ class TestASTGeneration(parser_test_base.ParserTest):
           def foo(self) -> int: ...
     """))
 
-  def testInsertTypeParameters(self):
-    """Test that the parser inserts TypeParameter instances."""
-    src = textwrap.dedent("""
-      T = TypeVar("T")
-      T2 = TypeVar("T2")
-      def f(x: T) -> T
-      class A(Generic[T]):
-        def a(self, x: T2) -> None:
-          self := A[T or T2]
-    """)
-    tree = self.Parse(src)
-
-    param1 = tree.Lookup("T")
-    param2 = tree.Lookup("T2")
-    self.assertEquals(param1, pytd.TypeParameter("T", None))
-    self.assertEquals(param2, pytd.TypeParameter("T2", None))
-    self.assertEquals(tree.type_params, (param1, param2))
-
-    f = tree.Lookup("f")
-    sig, = f.signatures
-    p_x, = sig.params
-    self.assertEquals(p_x.type, pytd.TypeParameter("T", "f"))
-
-    cls = tree.Lookup("A")
-    self.assertEquals(cls.template,
-                      (pytd.TemplateItem(pytd.TypeParameter("T", "A")),))
-    f_cls, = cls.methods
-    sig_cls, = f_cls.signatures
-    p_self, p_x_cls = sig_cls.params
-    self.assertEquals(p_self.type.parameters, (pytd.TypeParameter("T", "A"),))
-    self.assertEquals(p_x_cls.type, pytd.TypeParameter("T2", "A.a"))
-
-  def testInsertSignatureTemplates(self):
-    """Test that the correct templates are inserted for function signatures."""
+  def testTypeParameters(self):
+    """Test parsing of type parameters."""
     src = textwrap.dedent("""
       T = TypeVar("T")
       T2 = TypeVar("T2")
@@ -1520,28 +1486,31 @@ class TestASTGeneration(parser_test_base.ParserTest):
     """)
     tree = parser.TypeDeclParser().Parse(src)
 
+    param1 = tree.Lookup("T")
+    param2 = tree.Lookup("T2")
+    self.assertEquals(param1, pytd.TypeParameter("T", None))
+    self.assertEquals(param2, pytd.TypeParameter("T2", None))
+    self.assertEquals(tree.type_params, (param1, param2))
+
     f = tree.Lookup("f")
     sig, = f.signatures
+    p_x, = sig.params
+    self.assertEquals(p_x.type, pytd.TypeParameter("T", None))
+
     cls = tree.Lookup("A")
+    cls_parent, = cls.parents
     f_cls, = cls.methods
     sig_cls, = f_cls.signatures
+    # AdjustSelf has not been called yet, so self may not have the right type
+    _, p_x_cls = sig_cls.params
+    self.assertEquals(cls_parent.parameters, (pytd.TypeParameter("T", None),))
+    self.assertEquals(p_x_cls.type, pytd.TypeParameter("T2", None))
+
     # The parser should not have attempted to insert templates! It does
     # not know about imported type parameters.
     self.assertEquals(sig.template, ())
+    self.assertEquals(cls.template, ())
     self.assertEquals(sig_cls.template, ())
-
-    tree = tree.Visit(visitors.InsertSignatureTemplates())
-
-    f = tree.Lookup("f")
-    sig, = f.signatures
-    self.assertEquals(sig.template,
-                      (pytd.TemplateItem(pytd.TypeParameter("T", "f")),))
-
-    cls = tree.Lookup("A")
-    f_cls, = cls.methods
-    sig_cls, = f_cls.signatures
-    self.assertEquals(sig_cls.template,
-                      (pytd.TemplateItem(pytd.TypeParameter("T2", "A.a")),))
 
 
 class TestDecorate(unittest.TestCase):

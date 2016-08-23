@@ -338,55 +338,15 @@ class Mutator(visitors.Visitor):
 class InsertTypeParameters(visitors.Visitor):
   """Visitor for inserting TypeParameter instances."""
 
-  def __init__(self):
-    super(InsertTypeParameters, self).__init__()
-    self.class_name = None
-    self.function_name = None
-    self.bound_by_class = ()
-
   def EnterTypeDeclUnit(self, node):
     self.type_params = {p.name: p for p in node.type_params}
 
   def LeaveTypeDeclUnit(self, node):
     self.type_params = None
 
-  def EnterClass(self, node):
-    self.class_name = node.name
-    self.bound_by_class = {
-        n.type_param.name  # type_param: TypeParam or NamedType
-        for n in node.template
-    }
-
-  def LeaveClass(self, node):
-    self.class_name = None
-    self.bound_by_class = ()
-
-  def EnterFunction(self, node):
-    self.function_name = node.name
-
-  def LeaveFunction(self, node):
-    self.function_name = None
-
-  def _GetScope(self, name):
-    if name in self.bound_by_class:
-      return self.class_name
-    s = ".".join(n for n in [self.class_name, self.function_name] if n)
-    if s:
-      return s
-    else:
-      # This is a the top-level type parameter (TypeDeclUnit.type_params).
-      # Leave it as 'None'.
-      return None
-
-  def VisitTypeParameter(self, node):
-    # For the type parameters inside a TemplateItem
-    assert node.scope is None
-    return node.Replace(scope=self._GetScope(node.name))
-
   def VisitNamedType(self, node):
     if node.name in self.type_params:
-      return self.type_params[node.name].Replace(
-          scope=self._GetScope(node.name))
+      return self.type_params[node.name]
     else:
       return node
 
@@ -405,42 +365,6 @@ def CheckIsSysPlatform(parser, string, p):
   make_syntax_error(
       parser, "Only \"sys.platform\" can be compared with a string: %s" % (
           string), p)
-
-
-def _IsTemplate(parser, p, t):
-  """Check if the type is of the form Container[TypeVar, ...]"""
-  if isinstance(t, pytd.GenericType):
-    for param in t.parameters:
-      # TODO(rechen): Allow unions as type parameters.
-      if not isinstance(param, pytd.NamedType):
-        if t.base_type == pytd.NamedType("typing.Generic"):
-          make_syntax_error(
-              parser, "Illegal template parameter %s" % pytd.Print(t), p)
-        else:
-          return False
-    return True
-  else:
-    return False
-
-
-def GetTemplateAndParents(parser, p, parents):
-  """Build template from any parameterized classes in the base classes."""
-  final_template = ()
-  bases = []
-  for parent in parents:
-    if _IsTemplate(parser, p, parent):
-      template = tuple(pytd.TemplateItem(pytd.NamedType(param.name))
-                       for param in parent.parameters)
-      if len(template) > len(final_template):
-        # Happens in cases like class Foo(Iterable[K], Generic[K, V]): pass
-        final_template, template = template, final_template
-      if not all(t in final_template for t in template):
-        make_syntax_error(
-            parser, "Incompatible templates: %s missing parameters from %s" % (
-                final_template, template), p)
-    if parent != pytd.NothingType():
-      bases.append(parent)
-  return final_template, tuple(bases)
 
 
 class TypeDeclParser(object):
@@ -772,7 +696,8 @@ class TypeDeclParser(object):
 
   def p_class_parents(self, p):
     """class_parents : parents"""
-    p[0] = GetTemplateAndParents(self, p, p[1])
+    p[0] = tuple(parent for parent in p[1]
+                 if not isinstance(parent, pytd.NothingType))
 
   def p_end_class(self, p):
     """end_class : """
@@ -786,7 +711,7 @@ class TypeDeclParser(object):
   # TODO(raoulDoc): doesn't support nested classes
   def p_classdef(self, p):
     """classdef : CLASS class_name class_parents COLON maybe_class_funcs end_class"""
-    _, _, class_name, (template, parents), _, class_funcs, _ = p
+    _, _, class_name, parents, _, class_funcs, _ = p
     methoddefs = [x for x in class_funcs  if isinstance(x, NameAndSig)]
     constants = [x for x in class_funcs if isinstance(x, pytd.Constant)]
 
@@ -804,11 +729,10 @@ class TypeDeclParser(object):
     # Ensure that old style classes inherit from classobj.
     if not parents and class_name not in ["classobj", "object"]:
       parents = (pytd.NamedType("classobj"),)
-    cls = pytd.Class(name=class_name, parents=parents,
-                     methods=tuple(methods),
-                     constants=tuple(constants + properties),
-                     template=template)
-    p[0] = cls.Visit(visitors.AdjustSelf())
+    p[0] = pytd.Class(name=class_name, parents=parents,
+                      methods=tuple(methods),
+                      constants=tuple(constants + properties),
+                      template=())
 
   def p_maybe_class_funcs(self, p):
     """maybe_class_funcs : INDENT class_funcs DEDENT"""

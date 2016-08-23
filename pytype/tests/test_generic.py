@@ -362,6 +362,35 @@ class GenericTest(test_inference.InferenceTest):
         g = lambda y: y+1
       """, pythonpath=[d.path])
 
+  def testTemplateConstruction(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        T = TypeVar("T")
+        U = TypeVar("U")
+        class A(Dict[int, U], List[T], Generic[T, U]):
+          def f(self) -> None:
+            self := A[int, str]
+          def g(self) -> T
+          def h(self) -> U
+      """)
+      ty = self.Infer("""
+        import a
+        def f():
+          x = a.A()
+          x.f()
+          return x
+        def g():
+          return f().g()
+        def h():
+          return f().h()
+      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        def f() -> a.A[int, str]
+        def g() -> int
+        def h() -> str
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()

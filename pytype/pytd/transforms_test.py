@@ -99,7 +99,6 @@ class TestTransforms(parser_test_base.ParserTest):
           def get_first(self) -> T
     """)
     ast = self.Parse(src)
-    ast = ast.Visit(visitors.InsertSignatureTemplates())
     ast = transforms.RemoveMutableParameters(ast)
     self.AssertSourceEquals(ast, expected)
 
@@ -134,7 +133,6 @@ class TestTransforms(parser_test_base.ParserTest):
           def setdefault(self, k: K, v: V) -> V
     """)
     ast = self.Parse(src)
-    ast = ast.Visit(visitors.InsertSignatureTemplates())
     ast = transforms.RemoveMutableParameters(ast)
     self.AssertSourceEquals(ast, expected)
 

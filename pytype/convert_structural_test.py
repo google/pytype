@@ -25,8 +25,8 @@ class MatchTest(unittest.TestCase):
 
   def parse_and_solve(self, src):
     ast = self.parse(src)
-    ast = ast.Visit(visitors.AdjustTemplates())
-    ast = ast.Visit(visitors.InsertSignatureTemplates())
+    ast = ast.Visit(visitors.NamedTypeToClassType())
+    ast = visitors.AdjustTypeParameters(ast)
     types, _ = convert_structural.solve(ast, builtins_pytd=self.builtins_pytd)
     # Drop "__builtin__" prefix, for more readable tests.
     return {k: {v.rpartition("__builtin__.")[2] for v in l}

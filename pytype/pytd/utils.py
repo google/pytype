@@ -452,9 +452,6 @@ class MROError(Exception):
 def MROMerge(input_seqs):
   """Merge a sequence of MROs into a single resulting MRO.
 
-  This code is copied from https://www.python.org/download/releases/2.3/mro/
-  with print statements removed and modified to take a sequence of MROs.
-
   Args:
     input_seqs: A sequence of MROs.
 
@@ -465,24 +462,10 @@ def MROMerge(input_seqs):
     MROError: If we discovered an illegal inheritance.
   """
   seqs = [Dedup(s) for s in input_seqs]
-  res = []
-  while True:
-    nonemptyseqs = [seq for seq in seqs if seq]
-    if not nonemptyseqs:
-      return res
-    for seq in nonemptyseqs:  # find merge candidates among seq heads
-      cand = seq[0]
-      nothead = [s for s in nonemptyseqs if cand in s[1:] and s is not seq]
-      if nothead:
-        cand = None  # reject candidate
-      else:
-        break
-    if cand is None:
-      raise MROError("Illegal inheritance.")
-    res.append(cand)
-    for seq in nonemptyseqs:  # remove candidate
-      if seq[0] == cand:
-        del seq[0]
+  try:
+    return visitors.MergeSequences(seqs)
+  except ValueError:
+    raise MROError("Illegal inheritance.")
 
 
 def _GetClass(t, lookup_ast):

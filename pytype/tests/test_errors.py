@@ -317,7 +317,7 @@ class ErrorTest(test_inference.InferenceTest):
       """, pythonpath=[d.path])
       self.assertErrorLogContains(errors, r"foo[.]a.*pyi-error")
 
-  def testContainerError(self):
+  def testBadContainer(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
         class A(SupportsInt[int]): pass
@@ -326,6 +326,18 @@ class ErrorTest(test_inference.InferenceTest):
         import a
       """, deep=True, pythonpath=[d.path])
       self.assertErrorLogContains(errors, "a.*pyi-error.*SupportsInt")
+
+  def testBadTypeParameterOrder(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        K = TypeVar("K")
+        V = TypeVar("V")
+        class A(Generic[K, V], Generic[V, K]): pass
+      """)
+      _, errors = self.InferAndCheck("""
+        import a
+      """, deep=True, pythonpath=[d.path])
+      self.assertErrorLogContains(errors, "a.*pyi-error.*A")
 
 
 if __name__ == "__main__":
