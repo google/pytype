@@ -463,10 +463,10 @@ class UtilsTest(unittest.TestCase):
     self.assertGreater(d.changestamp, changestamp)
 
   def testAliasingDict(self):
-    # Since the aliasing dict changes the basic way a dictionary works, we
-    # require every method to be overridden
-    self.assertFalse(set(dict.__dict__) - set(utils.AliasingDict.__dict__))
     d = utils.AliasingDict()
+    # To avoid surprising behavior, we require desired dict functionality to be
+    # explicitly overridden
+    self.assertRaises(NotImplementedError, lambda: d.viewitems)
     d.add_alias("alias", "name")
     self.assertNotIn("alias", d)
     self.assertNotIn("name", d)
@@ -511,6 +511,25 @@ class UtilsTest(unittest.TestCase):
     self.assertEquals(1, len(d))
     self.assertEquals(d["name"], d["alias1"])
     self.assertEquals(d["alias1"], d["alias2"])
+
+  def testLazyDict(self):
+    d = utils.LazyDict()
+    # To avoid surprising behavior, we require desired dict functionality to be
+    # explicitly overridden
+    self.assertRaises(NotImplementedError, lambda: d.viewitems)
+    x = []
+    def f(y):
+      # Change the state of x so that we can check whether f is evaluated at the
+      # right time
+      x.append(x)
+      return y
+    d.add_lazy_item("f", f, "foo")
+    self.assertNotIn("f", d)
+    self.assertEquals(0, len(x))
+    # Evaluate the item
+    self.assertEquals("foo", d["f"])
+    self.assertIn("f", d)
+    self.assertEquals(1, len(x))
 
   def testDynamicVar(self):
     var = utils.DynamicVar()

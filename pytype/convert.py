@@ -6,6 +6,7 @@ import types
 
 from pytype import abstract
 from pytype import blocks
+from pytype import utils
 from pytype.pyc import loadmarshal
 from pytype.pytd import cfg
 from pytype.pytd import pytd
@@ -407,8 +408,10 @@ class Converter(object):
     elif isinstance(pyval, abstract.AsInstance):
       cls = pyval.cls
       if isinstance(cls, pytd.ClassType):
+        cls = cls.cls
+      if isinstance(cls, pytd.Class):
         # This key is also used in __init__
-        key = (abstract.Instance, cls.cls)
+        key = (abstract.Instance, cls)
         if key not in self._convert_cache:
           if cls.name in ["__builtin__.type", "__builtin__.property"]:
             # An instance of "type" or of an anonymous property can be anything.
@@ -416,7 +419,7 @@ class Converter(object):
           else:
             mycls = self.convert_constant(str(cls), cls, subst, node)
             instance = abstract.Instance(mycls, self.vm, node)
-          log.info("New pytd instance for %s: %r", cls.cls.name, instance)
+          log.info("New pytd instance for %s: %r", cls.name, instance)
           self._convert_cache[key] = instance
         return self._convert_cache[key]
       elif isinstance(cls, pytd.GenericType):
@@ -433,15 +436,12 @@ class Converter(object):
       else:
         return self.convert_constant_to_value(name, cls, subst, node)
     elif isinstance(pyval, pytd.GenericType):
-      # TODO(kramm): Remove ParameterizedClass. This should just create a
-      # SimpleAbstractValue with type parameters.
       assert isinstance(pyval.base_type, pytd.ClassType)
-      type_parameters = {
-          param.name: self.convert_constant_to_value(
-              param.name, value, subst, node)
-          for param, value in zip(pyval.base_type.cls.template,
-                                  pyval.parameters)
-      }
+      type_parameters = utils.LazyDict()
+      for param, value in zip(pyval.base_type.cls.template, pyval.parameters):
+        type_parameters.add_lazy_item(
+            param.name, self.convert_constant_to_value,
+            param.name, value, subst, node)
       cls = self.convert_constant_to_value(
           pytd.Print(pyval.base_type), pyval.base_type.cls, subst, node)
       return abstract.ParameterizedClass(cls, type_parameters, self.vm)

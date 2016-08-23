@@ -391,6 +391,24 @@ class GenericTest(test_inference.InferenceTest):
         def h() -> str
       """)
 
+  def testRecursiveContainer(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        class A(List[A]): pass
+      """)
+      ty = self.Infer("""
+        import a
+        def f():
+          return a.A()[0]
+        def g():
+          return a.A()[0][0]
+      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        def f() -> a.A
+        def g() -> a.A
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()

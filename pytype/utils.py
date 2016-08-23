@@ -499,8 +499,8 @@ class MonitorDict(dict):
   """
 
   def __init__(self, *args, **kwargs):
-    super(MonitorDict, self).__init__(*args, **kwargs)
     self.changestamp = 0
+    super(MonitorDict, self).__init__(*args, **kwargs)
     for var in self.values():
       var.RegisterChangeListener(self._changed)
 
@@ -524,7 +524,35 @@ class MonitorDict(dict):
     return itertools.chain.from_iterable(v.data for v in self.values())
 
 
-class AliasingDict(dict):
+class DictTemplate(dict):
+  """A template class for dictionary subclasses.
+
+  Use this template as a base for complex dictionary subclasses that
+  should explicitly override dict methods that they wish to expose. A
+  NotImplementedError is raised upon any attempt to access other methods.
+  """
+
+  def get(self, name):
+    try:
+      return self[name]
+    except KeyError:
+      return None
+
+  def values(self):
+    return super(DictTemplate, self).values()
+
+  def items(self):
+    return super(DictTemplate, self).items()
+
+  def __getattribute__(self, name):
+    if (name not in type(self).__dict__ and name not in DictTemplate.__dict__
+        and name in dict.__dict__):
+      raise NotImplementedError
+    else:
+      return super(DictTemplate, self).__getattribute__(name)
+
+
+class AliasingDict(DictTemplate):
   """A dictionary that supports key aliasing.
 
   This dictionary provides a way to register aliases for a key, which are then
@@ -533,8 +561,8 @@ class AliasingDict(dict):
   """
 
   def __init__(self, *args, **kwargs):
-    super(AliasingDict, self).__init__(*args, **kwargs)
     self._alias_map = {}
+    super(AliasingDict, self).__init__(*args, **kwargs)
 
   def add_alias(self, alias, name):
     assert alias not in self
@@ -542,12 +570,6 @@ class AliasingDict(dict):
     assert (alias not in self._alias_map or
             self._alias_map.get(name, name) == self._alias_map[alias])
     self._alias_map[alias] = self._alias_map.get(name, name)
-
-  def get(self, name):
-    try:
-      return self[name]
-    except KeyError:
-      return None
 
   def __contains__(self, name):
     return super(AliasingDict, self).__contains__(
@@ -562,106 +584,47 @@ class AliasingDict(dict):
         self._alias_map.get(name, name))
 
   def __repr__(self):
-    return ("AliasingDict(dict=%r, _alias_map=%r)" %
-            (super(AliasingDict, self).__repr__(),
-             repr(self._alias_map)))
+    return ("%r, _alias_map=%r" %
+            (super(AliasingDict, self).__repr__(), repr(self._alias_map)))
+
+
+class LazyDict(DictTemplate):
+  """A dictionary that lazily adds and evaluates items.
+
+  A value is evaluated and the (key, value) pair added to the
+  dictionary when the user first tries to retrieve the value.
+  """
+
+  def __init__(self, *args, **kwargs):
+    self._lazy_map = {}
+    super(LazyDict, self).__init__(*args, **kwargs)
+
+  def add_lazy_item(self, name, func, *args):
+    assert callable(func)
+    self._lazy_map[name] = (func, args)
+
+  def __getitem__(self, name):
+    if name not in self:
+      func, args = self._lazy_map[name]
+      self[name] = func(*args)
+      del self._lazy_map[name]
+    return super(LazyDict, self).__getitem__(name)
+
+  def __repr__(self):
+    lazy_items = ("%r: %r(%r)" %
+                  (name, func.func_name, ", ".join(repr(a) for a in args))
+                  for name, (func, args) in self._lazy_map.items())
+    return ("%r, _lazy_map={%r}" %
+            (super(LazyDict, self).__repr__(), ", ".join(lazy_items)))
 
   def values(self):
-    return super(AliasingDict, self).values()
+    return [self[name] for name in set(self).union(self._lazy_map)]
 
   def items(self):
-    return super(AliasingDict, self).items()
-
-  def __len__(self):
-    return super(AliasingDict, self).__len__()
-
-  def __iter__(self):
-    return super(AliasingDict, self).__iter__()
-
-  def __getattribute__(self, name):
-    return super(AliasingDict, self).__getattribute__(name)
-
-  def __new__(cls, *args, **kwargs):
-    mro = cls.mro()
-    return mro[mro.index(AliasingDict) + 1].__new__(cls, *args, **kwargs)
-
-  def __delitem__(self, *args, **kwargs):
-    raise NotImplementedError
-
-  def __eq__(self, *args, **kwargs):
-    raise NotImplementedError
-
-  def __ne__(self, *args, **kwargs):
-    raise NotImplementedError
-
-  def __gt__(self, *args, **kwargs):
-    raise NotImplementedError
-
-  def __ge__(self, *args, **kwargs):
-    raise NotImplementedError
-
-  def __lt__(self, *args, **kwargs):
-    raise NotImplementedError
-
-  def __le__(self, *args, **kwargs):
-    raise NotImplementedError
-
-  def __cmp__(self, *args, **kwargs):
-    return NotImplementedError
-
-  def __sizeof__(self, *args, **kwargs):
-    raise NotImplementedError
-
-  def __hash__(self, *args, **kwargs):
-    raise NotImplementedError
-
-  def pop(self, *args, **kwargs):
-    raise NotImplementedError
-
-  def popitem(self, *args, **kwargs):
-    raise NotImplementedError
-
-  def fromkeys(self, *args, **kwargs):
-    raise NotImplementedError
-
-  def has_key(self, *args, **kwargs):
-    raise NotImplementedError
-
-  def keys(self, *args, **kwargs):
-    raise NotImplementedError
-
-  def iterkeys(self, *args, **kwargs):
-    raise NotImplementedError
-
-  def itervalues(self, *args, **kwargs):
-    raise NotImplementedError
-
-  def iteritems(self, *args, **kwargs):
-    raise NotImplementedError
-
-  def viewkeys(self, *args, **kwargs):
-    raise NotImplementedError
-
-  def viewvalues(self, *args, **kwargs):
-    raise NotImplementedError
-
-  def viewitems(self, *args, **kwargs):
-    raise NotImplementedError
-
-  def setdefault(self, *args, **kwargs):
-    raise NotImplementedError
-
-  def copy(self, *args, **kwargs):
-    raise NotImplementedError
-
-  def update(self, *args, **kwargs):
-    raise NotImplementedError
-
-  def clear(self, *args, **kwargs):
-    raise NotImplementedError
+    return [(name, self[name]) for name in set(self).union(self._lazy_map)]
 
 
-class AliasingMonitorDict(AliasingDict, MonitorDict):
+class LazyAliasingMonitorDict(LazyDict, AliasingDict, MonitorDict):
   pass
 
 

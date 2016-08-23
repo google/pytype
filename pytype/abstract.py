@@ -560,7 +560,7 @@ class SimpleAbstractValue(AtomicAbstractValue):
     """
     super(SimpleAbstractValue, self).__init__(name, vm)
     self.members = utils.MonitorDict()
-    self.type_parameters = utils.AliasingMonitorDict()
+    self.type_parameters = utils.LazyAliasingMonitorDict()
     self.cls = None
 
   def get_children_maps(self):
@@ -628,7 +628,7 @@ class SimpleAbstractValue(AtomicAbstractValue):
 
   def init_type_parameters(self, *names):
     """Initialize the named type parameters to nothing (empty)."""
-    self.type_parameters = utils.AliasingMonitorDict(
+    self.type_parameters = utils.LazyAliasingMonitorDict(
         (name, self.vm.program.NewVariable("empty")) for name in names)
 
   def _load_lazy_attribute(self, name):
@@ -851,7 +851,8 @@ class Instance(SimpleAbstractValue):
               # parameter, e.g., class Foo(List[int]). Initialize the
               # corresponding instance parameter appropriately.
               assert name not in self.type_parameters
-              self.type_parameters[name] = param.instantiate(node)
+              self.type_parameters.add_lazy_item(
+                  name, param.instantiate, node)
             elif name != param.name:
               # We have type parameter renaming, e.g.,
               #  class List(Generic[T]): pass
@@ -1976,6 +1977,10 @@ class PyTDClass(SimpleAbstractValue, Class):
       log.debug("%s.__init__(...) returned %r", self.name, ret)
 
     return node, results
+
+  def instantiate(self, node):
+    return self.vm.convert.convert_constant(
+        self.name, AsInstance(self.pytd_cls), {}, node)
 
   def to_type(self, node, seen=None):
     return pytd.NamedType("__builtin__.type")
