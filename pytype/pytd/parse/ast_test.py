@@ -636,44 +636,32 @@ class TestASTGeneration(parser_test_base.ParserTest):
         def f(x, *, y = ...) -> None: ...
         def g(*, y = ...) -> None: ...
         """)
-    self.TestRoundTrip(src, textwrap.dedent("""
-        def f(x, y = ...) -> None: ...
-        def g(y = ...) -> None: ...
-    """))
+    self.TestRoundTrip(src)
 
   def testBareStar(self):
     """Test keyword-only syntax errors."""
     self.TestThrowsSyntaxError("def f(*): ...")
     self.TestThrowsSyntaxError("def f(*,): ...")
-    self.TestThrowsSyntaxError("def f(a, *, b): ...")
     self.TestThrowsSyntaxError("def f(*args, *, b=1): ...")
     self.TestThrowsSyntaxError("def f(**kwargs, *, b=1): ...")
 
   def testKwArgs(self):
     """Test parsing of *args, **kwargs."""
     src = textwrap.dedent("""
-        def f(x, *args) -> NoneType: ...
-        def g(x, *args, **kwargs) -> NoneType: ...
-        def h(x, **kwargs) -> NoneType: ...
-        """)
-    self.TestRoundTrip(src, textwrap.dedent("""
-        def f(x, *args, **kwargs) -> None: ...
+        def f(x, *args) -> None: ...
         def g(x, *args, **kwargs) -> None: ...
-        def h(x, *args, **kwargs) -> None: ...
-    """))
+        def h(x, **kwargs) -> None: ...
+        """)
+    self.TestRoundTrip(src)
 
   def testTypedKwArgs(self):
     """Test parsing of *args, **kwargs with types."""
     src = textwrap.dedent("""
-        def f(x, *args: int) -> NoneType: ...
-        def g(x, *args: int or float, **kwargs: str) -> NoneType: ...
-        def h(x, **kwargs: Optional[int]) -> NoneType: ...
+        def f(x, *args: int) -> None: ...
+        def g(x, *args: int or float, **kwargs: str) -> None: ...
+        def h(x, **kwargs: Optional[int]) -> None: ...
         """)
-    self.TestRoundTrip(src, textwrap.dedent("""
-        def f(x, *args, **kwargs) -> None: ...
-        def g(x, *args, **kwargs) -> None: ...
-        def h(x, *args, **kwargs) -> None: ...
-    """))
+    self.TestRoundTrip(src, check_the_sourcecode=False)
 
   def testConstants(self):
     """Test parsing of constants."""
@@ -961,8 +949,8 @@ class TestASTGeneration(parser_test_base.ParserTest):
     self.assertEquals(["append_float"], [f.name for f in module.functions])
     append_int = foo.methods[0].signatures[0]
     append_float = module.functions[0].signatures[0]
-    self.assertIsInstance(append_int.params[0], pytd.MutableParameter)
-    self.assertIsInstance(append_float.params[0], pytd.MutableParameter)
+    self.assertIsNotNone(append_int.params[0].mutated_type)
+    self.assertIsNotNone(append_float.params[0].mutated_type)
 
   def testMutableOptional(self):
     src = textwrap.dedent("""
@@ -1067,11 +1055,11 @@ class TestASTGeneration(parser_test_base.ParserTest):
                                 type_list=(
                                     pytd.NamedType("Bar"),
                                     pytd.NamedType("Zot"))))
-                    )
+                    ), kwonly=False, optional=False, mutated_type=None
                 ),),
+            starargs=None, starstarargs=None,
             return_type=pytd.NamedType("object"),
-            template=(), has_optional=False,
-            exceptions=()),),
+            template=(), exceptions=()),),
         kind=pytd.METHOD)
     self.assertEqual(f, result1.Lookup("foo"))
     self.assertEqual(f, result2.Lookup("foo"))

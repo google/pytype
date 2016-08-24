@@ -47,11 +47,9 @@ def GetBuiltinsAndTyping():
     b = parser.TypeDeclParser().Parse(_FindBuiltinFile("__builtin__"),
                                       name="__builtin__")
     b = b.Visit(visitors.AddNamePrefix())
-    b = b.Visit(visitors.SimplifyOptionalParameters())
     b = b.Visit(visitors.NamedTypeToClassType())
     b = b.Visit(visitors.LookupExternalTypes({"typing": t}, full_names=True,
                                              self_name="__builtin__"))
-    t = t.Visit(visitors.SimplifyOptionalParameters())
     t = t.Visit(visitors.LookupBuiltins(b))
     t = t.Visit(visitors.NamedTypeToClassType())
     b = visitors.AdjustTypeParameters(b)

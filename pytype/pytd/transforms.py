@@ -110,17 +110,18 @@ class ExtractOperators(visitors.Visitor):
     """
     if self.unreversed_name:
       assert len(signature.params) == 2
-      left, right = signature.params[0].type, signature.params[1].type
-      if isinstance(left, pytd.ClassType) and isinstance(right, pytd.ClassType):
-        if self._ShouldReplace(right.cls, left.cls,
+      left, right = signature.params[0], signature.params[1]
+      if (isinstance(left.type, pytd.ClassType) and
+          isinstance(right.type, pytd.ClassType)):
+        if self._ShouldReplace(right.type.cls, left.type.cls,
                                self.unreversed_name, self.function_name):
-          self.operators[right.cls][self.unreversed_name].append(
-              signature.Replace(params=(pytd.Parameter("self", right),
-                                        pytd.Parameter("other", left))))
+          self.operators[right.type.cls][self.unreversed_name].append(
+              signature.Replace(params=(right.Replace(name="self"),
+                                        left.Replace(name="other"))))
         else:
           logging.warn("Ignoring %s on %s: %s has %s",
-                       self.function_name, left.name,
-                       right.name, self.unreversed_name)
+                       self.function_name, left.type.name,
+                       right.type.name, self.unreversed_name)
       else:
         logging.warn("Unsupported %s operator on %s", self.function_name,
                      type(right).__name__)

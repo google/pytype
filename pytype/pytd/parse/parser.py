@@ -280,7 +280,8 @@ class PyLexer(object):
   def t_error(self, t):
     make_syntax_error(self, "Illegal character '%s'" % t.value[0], t)
 
-Params = collections.namedtuple("_", ["required", "has_optional",
+Params = collections.namedtuple("_", ["required",
+                                      "starargs", "starstarargs",
                                       "has_bare_star"])
 NameAndSig = collections.namedtuple("_", ["name", "signature",
                                           "decorators", "external_code"])
@@ -327,12 +328,12 @@ class Mutator(visitors.Visitor):
   def VisitParameter(self, p):
     if p.name == self.name:
       self.successful = True
-      return pytd.MutableParameter(p.name, p.type, self.new_type)
+      if p.optional:
+        raise NotImplementedError(
+            "Argument %s can not be both mutable and optional" % p.name)
+      return p.Replace(mutated_type=self.new_type)
     else:
       return p
-
-  def VisitOptionalParameter(self, p):
-    raise NotImplementedError("Optional parameters can't be mutable")
 
 
 class InsertTypeParameters(visitors.Visitor):
@@ -934,8 +935,9 @@ class TypeDeclParser(object):
     else:
       ret = return_type
     signature = pytd.Signature(params=tuple(params.required), return_type=ret,
-                               exceptions=tuple(raises), template=(),
-                               has_optional=params.has_optional)
+                               starargs=params.starargs,
+                               starstarargs=params.starstarargs,
+                               exceptions=tuple(raises), template=())
 
     for mutator in body:
       try:
@@ -961,10 +963,10 @@ class TypeDeclParser(object):
         name=name,
         # signature is for completeness - it's ignored
         signature=pytd.Signature(params=(),
+                                 starargs=None, starstarargs=None,
                                  return_type=pytd.NothingType(),
                                  exceptions=(),
-                                 template=(),
-                                 has_optional=False),
+                                 template=()),
         decorators=(),
         external_code=True)
 
@@ -1062,11 +1064,12 @@ class TypeDeclParser(object):
 
   def p_params_empty(self, p):
     """params : """
-    p[0] = Params([], has_optional=False, has_bare_star=False)
+    p[0] = Params([], None, None, has_bare_star=False)
 
   def p_params_empty_ellipsis(self, p):
     """params : ELLIPSIS"""
-    p[0] = Params([], has_optional=True, has_bare_star=False)
+    starargs, starstarargs = visitors.InventStarArgParams([])
+    p[0] = Params([], starargs, starstarargs, has_bare_star=False)
 
   def p_params_from_list(self, p):
     """params : param_list"""
@@ -1075,16 +1078,16 @@ class TypeDeclParser(object):
   def p_params_ellipsis(self, p):
     """params : param_list COMMA ELLIPSIS"""
     params = self.ValidateParamList(p, p[1])
-
     if params.has_bare_star:
       make_syntax_error(self, "ellipsis (...) not compatible with bare *", p)
-
-    p[0] = Params(params.required, has_optional=True, has_bare_star=False)
+    starargs, starstarargs = visitors.InventStarArgParams([])
+    p[0] = Params(params.required, starargs, starstarargs, has_bare_star=False)
 
   def p_param(self, p):
     """param : NAME"""
     # type is optional and defaults to "object"
-    p[0] = pytd.Parameter(p[1], pytd.NamedType("object"))
+    p[0] = pytd.Parameter(p[1], pytd.NamedType("object"),
+                          False, False, None)
 
   def p_optional_ellipsis(self, p):
     """optional : ELLIPSIS"""
@@ -1106,46 +1109,61 @@ class TypeDeclParser(object):
 
   def p_param_optional(self, p):
     """param : NAME ASSIGN optional"""
-    p[0] = pytd.OptionalParameter(p[1], p[3])
+    p[0] = pytd.Parameter(p[1], p[3],
+                          kwonly=False,  # adjusted later
+                          optional=True, mutated_type=None)
 
   def p_param_and_type(self, p):
     """param : NAME COLON type"""
-    p[0] = pytd.Parameter(p[1], p[3])
+    p[0] = pytd.Parameter(p[1], p[3],
+                          kwonly=False,  # adjusted later
+                          optional=False, mutated_type=None)
 
   def p_param_and_type_optional(self, p):
     """param : NAME COLON type ASSIGN optional"""
     _, name, _, t, _, opt = p
     if opt == pytd.NamedType("NoneType"):
-      p[0] = pytd.OptionalParameter(name, pytd.UnionType([t, opt]))
+      p[0] = pytd.Parameter(name, pytd.UnionType([t, opt]),
+                            kwonly=False,  # adjusted later
+                            optional=True, mutated_type=None)
     else:
-      p[0] = pytd.OptionalParameter(name, t)
+      p[0] = pytd.Parameter(name, t,
+                            kwonly=False,  # adjusted later
+                            optional=True, mutated_type=None)
 
   def p_param_only_star(self, p):
     """param : ASTERISK"""
     # Empty *args, for keyword-only args, see PEP3102
-    p[0] = pytd.OptionalParameter("*", pytd.NothingType())
+    p[0] = pytd.Parameter("*", pytd.NothingType(),
+                          False, True, None)
 
   def p_param_star(self, p):
     """param : ASTERISK NAME"""
-    p[0] = pytd.OptionalParameter("*" + p[2], pytd.NamedType("tuple"))
+    p[0] = pytd.Parameter("*" + p[2], pytd.NamedType("tuple"),
+                          False, True, None)
 
   def p_param_star_type(self, p):
     """param : ASTERISK NAME COLON type"""
     _, _, name, _, t = p
-    p[0] = pytd.OptionalParameter(
+    p[0] = pytd.Parameter(
         "*" + name,
-        pytd.HomogeneousContainerType(pytd.NamedType("tuple"), (t,)))
+        pytd.HomogeneousContainerType(pytd.NamedType("tuple"), (t,)),
+        False, True, None)
 
   def p_param_kw(self, p):
     """param : ASTERISK ASTERISK NAME"""
-    p[0] = pytd.OptionalParameter("**" + p[3], pytd.NamedType("dict"))
+    p[0] = pytd.Parameter(
+        "**" + p[3],
+        pytd.NamedType("dict"),
+        False, True, None)
 
   def p_param_kw_type(self, p):
     """param : ASTERISK ASTERISK NAME COLON type"""
     _, _, _, name, _, t = p
-    p[0] = pytd.OptionalParameter(
+    p[0] = pytd.Parameter(
         "**" + name,
-        pytd.GenericType(pytd.NamedType("dict"), (pytd.NamedType("str"), t)))
+        pytd.GenericType(pytd.NamedType("dict"), (pytd.NamedType("str"), t)),
+        False, True, None)
 
   def p_raises(self, p):
     """raises : RAISES exceptions"""
@@ -1317,34 +1335,39 @@ class TypeDeclParser(object):
     # the first parameter).
 
     params = []
+    seen_star = False
+    seen_starstar = False
     has_bare_star = False
-    has_optional = False
+    stararg = None
+    starstararg = None
 
-    for param in param_list:
-      if param.name == "*":
-        if has_bare_star or has_optional:
-          make_syntax_error(self, "Unexpected bare *", p)
-        if param == param_list[-1]:
+    for i, param in enumerate(param_list):
+      if param.name.startswith("*") and not param.name.startswith("**"):
+        # *args
+        if seen_star:
+          make_syntax_error(self, "Unexpected second *", p)
+        if seen_starstar:
+          make_syntax_error(self, "* after **", p)
+        if param.name == "*" and i == len(param_list) - 1:
           make_syntax_error(self, "Named arguments must follow bare *", p)
-        has_bare_star = True
-        continue
-      elif param.name.startswith("*"):
-        # *args or **kwargs
-        if has_bare_star:
-          make_syntax_error(self, "Only named args after bare *", p)
-        has_optional = True
-        continue
-
-      # TODO(acaceres): if has_bare_star, param is keyword-only, so may
-      # want to tell rest of pytype about it.
-
-      if has_bare_star and not isinstance(param, pytd.OptionalParameter):
-        make_syntax_error(self, "Only named args after bare *", p)
-
-      params.append(param)
+        seen_star = True
+        has_bare_star = param.name == "*"
+        if param.name != "*":
+          stararg = param.Replace(name=param.name[1:])
+      elif param.name.startswith("**"):
+        # **kwargs
+        if seen_starstar:
+          make_syntax_error(self, "Unexpected second **", p)
+        if i != len(param_list) - 1:
+          make_syntax_error(self, "**%s must be last parameter" % param.name, p)
+        seen_starstar = True
+        starstararg = param.Replace(name=param.name[2:])
+      else:
+        params.append(param.Replace(kwonly=seen_star))
 
     return Params(params,
-                  has_optional=has_optional,
+                  stararg,
+                  starstararg,
                   has_bare_star=has_bare_star)
 
   def TryParseSignatureAsProperty(self, full_signature):

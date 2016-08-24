@@ -312,7 +312,7 @@ class Factorize(visitors.Visitor):
         # arguments. Represent this signature as (original, None).
         groups[sig] = None
         continue
-      if isinstance(sig.params[i], pytd.MutableParameter):
+      if sig.params[i].mutated_type is not None:
         # We can't group mutable parameters. Leave this signature alone.
         groups[sig] = None
         continue
@@ -320,7 +320,7 @@ class Factorize(visitors.Visitor):
       # Set type of parameter i to None
       params = list(sig.params)
       param_i = params[i]
-      params[i] = pytd.Parameter(param_i.name, None)
+      params[i] = param_i.Replace(type=None)
 
       stripped_signature = sig.Replace(params=tuple(params))
       existing = groups.get(stripped_signature)
@@ -355,8 +355,8 @@ class Factorize(visitors.Visitor):
         if types:
           # One or more options for argument <i>:
           new_params = list(sig.params)
-          new_params[i] = pytd.Parameter(sig.params[i].name,
-                                         utils.JoinTypes(types))
+          new_params[i] = sig.params[i].Replace(
+              type=utils.JoinTypes(types))
           sig = sig.Replace(params=tuple(new_params))
           new_sigs.append(sig)
         else:
@@ -399,8 +399,7 @@ class ApplyOptionalArguments(visitors.Visitor):
       param_count += 1  # also consider f(x, y, ...) for f(x, y)
 
     for i in xrange(param_count):
-      shortened = sig.Replace(params=sig.params[0:i], has_optional=True)
-      if shortened in optional_arg_sigs:
+      if sig.params[0:i] in optional_arg_sigs:
         return True
     return False
 
@@ -420,7 +419,9 @@ class ApplyOptionalArguments(visitors.Visitor):
 
     # Set of signatures that can replace longer ones. Only used for matching,
     # hence we can use an unordered data structure.
-    optional_arg_sigs = frozenset(s for s in f.signatures if s.has_optional)
+    optional_arg_sigs = frozenset(s.params
+                                  for s in f.signatures
+                                  if s.has_optional)
 
     new_signatures = (s for s in f.signatures
                       if not self._HasShorterVersion(s, optional_arg_sigs))
@@ -894,8 +895,12 @@ class AbsorbMutableParameters(visitors.Visitor):
   "self". The resulting AST is temporary and needs careful handling.
   """
 
-  def VisitMutableParameter(self, p):
-    return pytd.Parameter(p.name, utils.JoinTypes([p.type, p.new_type]))
+  def VisitParameter(self, p):
+    if p.mutated_type is None:
+      return p
+    else:
+      return p.Replace(type=utils.JoinTypes([p.type, p.mutated_type]),
+                       mutated_type=None)
 
 
 class SimplifyContainers(visitors.Visitor):

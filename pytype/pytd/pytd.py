@@ -177,8 +177,8 @@ class ExternalFunction(Function):
   __slots__ = ()
 
 
-class Signature(node.Node('params', 'return_type', 'exceptions', 'template',
-                          'has_optional')):
+class Signature(node.Node('params', 'starargs', 'starstarargs',
+                          'return_type', 'exceptions', 'template')):
   """Represents an individual signature of a function.
 
   For overloaded functions, this is one specific combination of parameters.
@@ -188,46 +188,30 @@ class Signature(node.Node('params', 'return_type', 'exceptions', 'template',
   Attributes:
     name: The name of this function.
     params: The list of parameters for this function definition.
+    starargs: Name of the "*" parameter. The "args" in "*args".
+    starstarargs: Name of the "*" parameter. The "kw" in "**kw".
     return_type: The return type of this function.
     exceptions: List of exceptions for this function definition.
     template: names for bindings for bounded types in params/return_type
-    has_optional: Do we have optional parameters ("...")?
   """
   __slots__ = ()
 
+  @property
+  def has_optional(self):
+    return self.starargs is not None or self.starstarargs is not None
 
-class Parameter(node.Node('name', 'type')):
+
+class Parameter(node.Node('name', 'type',
+                          'kwonly', 'optional', 'mutated_type')):
   """Represents a parameter of a function definition.
 
   Attributes:
     name: The name of the parameter.
     type: The type of the parameter.
-  """
-  __slots__ = ()
-
-
-class OptionalParameter(Parameter):
-  """Represents an optional parameter of a function definition.
-
-  Can never be mutable.
-
-  Attributes:
-    name: The name of the parameter.
-    type: The type of the parameter.
-  """
-  __slots__ = ()
-
-
-# Conceptually, this is a subtype of Parameter:
-class MutableParameter(node.Node('name', 'type', 'new_type')):
-  """Represents a parameter that's modified by the function.
-
-  Can never be optional.
-
-  Attributes:
-    name: The name of the parameter.
-    type: The type of the parameter.
-    new_type: The type the parameter will have after the function is called.
+    kwonly: True if this parameter can only be passed as a keyword parameter.
+    optional: If the parameter is optional.
+    mutated_type: The type the parameter will have after the function is called
+      if the type is mutated, None otherwise.
   """
   __slots__ = ()
 

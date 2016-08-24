@@ -81,7 +81,6 @@ class Loader(object):
   def _postprocess_pyi(self, ast):
     """Apply all the PYI transformations we need."""
     ast = ast.Visit(pep484.ConvertTypingToNative(self.options.python_version))
-    ast = ast.Visit(visitors.SimplifyOptionalParameters())
     ast = ast.Visit(visitors.LookupBuiltins(self.builtins))
     ast = ast.Visit(visitors.NamedTypeToClassType())
     return ast

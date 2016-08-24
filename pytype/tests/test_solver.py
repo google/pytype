@@ -113,7 +113,7 @@ class SolverTests(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
     class Foo(object):
-      def __init__(self, ...) -> NoneType
+      def __init__(self, *types) -> NoneType
       types = ...  # type: Tuple[type, ...]
       def bar(self, val) -> bool
     """)
@@ -129,7 +129,7 @@ class SolverTests(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
     class Foo(object):
-      def __init__(self, ...) -> NoneType
+      def __init__(self, *types) -> NoneType
       types = ...  # type: Tuple[type, ...]
       def bar(self, val) -> bool
     """)

@@ -487,9 +487,9 @@ class MethodsTest(test_inference.InferenceTest):
         return args
     """, deep=True, solve_unknowns=False, extract_locals=True)
     self.assertTypesMatchPytd(ty, """
-    def f(...) -> tuple
-    def g(x, ...) -> tuple
-    def h(x, y, ...) -> tuple
+    def f(*args) -> tuple
+    def g(x, *args) -> tuple
+    def h(x, y, *args) -> tuple
     """)
 
   def testStarArgsPassThrough(self):
@@ -500,7 +500,7 @@ class MethodsTest(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=False, extract_locals=True)
     self.assertTypesMatchPytd(ty, """
     class Foo(object):
-      def __init__(self, ...) -> NoneType
+      def __init__(self, *args, **kwargs) -> NoneType
     """)
 
   def testEmptyStarArgsType(self):
@@ -543,7 +543,7 @@ class MethodsTest(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=False, extract_locals=True)
     self.assertTypesMatchPytd(ty, """
     class Foo(object):
-      def __init__(self, ...) -> NoneType
+      def __init__(self, **kwargs) -> NoneType
       kwargs = ...  # type: dict[str, ?]
     """)
 
@@ -557,9 +557,9 @@ class MethodsTest(test_inference.InferenceTest):
         return kwargs
     """, deep=True, solve_unknowns=False, extract_locals=True)
     self.assertTypesMatchPytd(ty, """
-    def f(...) -> dict[str, ?]
-    def g(x, ...) -> dict[str, ?]
-    def h(x, y, ...) -> dict[str, ?]
+    def f(**kwargs) -> dict[str, ?]
+    def g(x, **kwargs) -> dict[str, ?]
+    def h(x, y, **kwargs) -> dict[str, ?]
     """)
 
   def testBuiltinStarArgs(self):
@@ -576,7 +576,7 @@ class MethodsTest(test_inference.InferenceTest):
                       extract_locals=True)
       self.assertTypesMatchPytd(ty, """
       myjson = ...  # type: module
-      def f(...) -> ?
+      def f(*args) -> ?
       """)
 
   def testBuiltinStarStarArgs(self):
@@ -593,7 +593,7 @@ class MethodsTest(test_inference.InferenceTest):
                       extract_locals=True)
       self.assertTypesMatchPytd(ty, """
       myjson = ...  # type: module
-      def f(...) -> ?
+      def f(**args) -> ?
       """)
 
   def testBuiltinKeyword(self):

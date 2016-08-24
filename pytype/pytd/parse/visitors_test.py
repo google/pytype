@@ -30,6 +30,16 @@ import unittest
 class TestVisitors(parser_test_base.ParserTest):
   """Tests the classes in parse/visitors."""
 
+  def testInventStarArgsParams(self):
+    call = lambda x: tuple(f.name for f in visitors.InventStarArgParams(x))
+    self.assertEquals(("args", "kwargs"), call({}))
+    self.assertEquals(("args", "kwargs"), call({"a"}))
+    self.assertEquals(("_args", "kwargs"), call({"args"}))
+    self.assertEquals(("args", "_kwargs"), call({"kwargs"}))
+    self.assertEquals(("_args", "_kwargs"), call({"args", "kwargs"}))
+    self.assertEquals(("__args", "_kwargs"), call({"args", "_args", "kwargs"}))
+    self.assertEquals(("args", "__kwargs"), call({"kwargs", "_kwargs"}))
+
   def testLookupClasses(self):
     src = textwrap.dedent("""
         class object(object):
@@ -271,17 +281,6 @@ class TestVisitors(parser_test_base.ParserTest):
     deps = visitors.CollectDependencies()
     self.Parse(src).Visit(deps)
     self.assertSetEqual({"baz", "bar", "foo.bar"}, deps.modules)
-
-  def testSimplifyOptionalParameters(self):
-    src = textwrap.dedent("""
-       def f(x: T, y: T = ..., z: T = ...) -> NoneType
-    """)
-    dest = textwrap.dedent("""
-       def f(x: T, ...) -> NoneType
-    """)
-    tree = self.Parse(src)
-    new_tree = tree.Visit(visitors.SimplifyOptionalParameters())
-    self.AssertSourceEquals(dest, new_tree)
 
   def testExpand(self):
     src = textwrap.dedent("""

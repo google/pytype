@@ -480,7 +480,7 @@ class BuiltinTests(test_inference.InferenceTest):
         divmod(a, 30268)
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
-      def seed(self, ...) -> NoneType
+      def seed(self, a=...) -> NoneType
     """)
 
   def testDivMod2(self):
@@ -491,7 +491,7 @@ class BuiltinTests(test_inference.InferenceTest):
         return divmod(a, 30268)
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
-      def seed(self, ...) -> Tuple[int or long or float or complex, ...]
+      def seed(self, a: Union[complex, float, int, long] = ...) -> Tuple[int or long or float or complex, ...]
     """)
 
   def testDivMod3(self):
@@ -502,7 +502,7 @@ class BuiltinTests(test_inference.InferenceTest):
         return divmod(a, 30268)
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
-      def seed(self, ...) -> Tuple[int or long or float or complex, ...]
+      def seed(self, a: Union[complex, float, int, long] = ...) -> Tuple[int or long or float or complex, ...]
     """)
 
   def testOsOpen(self):

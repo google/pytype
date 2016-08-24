@@ -59,8 +59,7 @@ class CallTracer(vm.VirtualMachine):
     self._method_calls = set()
     self.exitpoint = None
 
-  def create_argument(self, node, signature, method_name, i):
-    name = signature.param_names[i]
+  def create_argument(self, node, signature, name, method_name):
     t = signature.annotations.get(name)
     if t:
       return self.instantiate(t.to_variable(node, t.name), node)
@@ -97,15 +96,19 @@ class CallTracer(vm.VirtualMachine):
 
   def analyze_method(self, val, node):
     method = val.data
+    fname = val.data.name
     if isinstance(method, (abstract.InterpreterFunction,
                            abstract.BoundInterpreterFunction)):
-      args = [self.create_argument(node, method.signature, val.data.name, i)
+      args = [self.create_argument(node, method.signature,
+                                   method.signature.param_names[i], fname)
               for i in range(method.argcount())]
-      varargs = self.create_varargs(node) if method.has_varargs() else None
-      kwargs = self.create_kwargs(node) if method.has_kwargs() else None
+      kws = {key: self.create_argument(node, method.signature, key, fname)
+             for key in method.signature.kwonly_params}
+      starargs = self.create_varargs(node) if method.has_varargs() else None
+      starstarargs = self.create_kwargs(node) if method.has_kwargs() else None
       fvar = val.AssignToNewVariable("f", node)
       new_node, _ = self.call_function_in_frame(
-          node, fvar, args, {}, varargs, kwargs)
+          node, fvar, args, kws, starargs, starstarargs)
       new_node.ConnectTo(node)
       node = new_node
     return node
@@ -245,16 +248,20 @@ class CallTracer(vm.VirtualMachine):
         func = funcvar.data.underlying.signatures[0]
       else:
         func = funcvar.data.signatures[0]
-      arg_names = func.get_parameter_names()
+      arg_names = func.get_positional_names()
       arg_types = (a.data.to_type(node)
                    for a in func.get_bound_arguments() + list(args))
       ret = pytd_utils.JoinTypes(t.to_type(node) for t in retvar.data)
+      # TODO(kramm): Record these:
+      starargs = None
+      starstarargs = None
       funcs[funcvar.data.name].add(pytd.Signature(
-          tuple(pytd.Parameter(n, t)
+          tuple(pytd.Parameter(n, t, False, False, None)
                 for n, t in zip(arg_names, arg_types)) +
-          tuple(pytd.Parameter(name, a.data.to_type(node))
+          tuple(pytd.Parameter(name, a.data.to_type(node), False, False, None)
                 for name, a in kws),
-          ret, has_optional=False, exceptions=(), template=()))
+          starargs, starstarargs,
+          ret, exceptions=(), template=()))
     functions = []
     for name, signatures in funcs.items():
       functions.append(pytd.Function(name_transform(name), tuple(signatures),
@@ -334,8 +341,8 @@ class CallTracer(vm.VirtualMachine):
   def _check_function(self, pytd_function, f, node, skip_self=False):
     """Check that a function or method is compatible with its PYTD."""
     for sig in pytd_function.signatures:
-      args = [self._create_call_arg(name, t, node)
-              for name, t in sig.params[(1 if skip_self else 0):]]
+      args = [self._create_call_arg(p.name, p.type, node)
+              for p in sig.params[(1 if skip_self else 0):]]
       nominal_return = self.convert.convert_constant_to_value(
           "ret", sig.return_type, subst={}, node=self.root_cfg_node)
       for val in f.bindings:

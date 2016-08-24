@@ -397,8 +397,8 @@ class VirtualMachine(object):
       var.AddBinding(val, class_dict_var.bindings, node)
       return var
 
-  def make_function(self, name, code, globs, defaults,
-                    closure=None, annotations=None):
+  def _make_function(self, name, code, globs, defaults, kw_defaults,
+                     closure=None, annotations=None):
     """Create a function or closure given the arguments."""
     if closure:
       closure = tuple(c for c in abstract.get_atomic_python_constant(closure))
@@ -411,7 +411,8 @@ class VirtualMachine(object):
     val = abstract.InterpreterFunction.make_function(
         name, code=abstract.get_atomic_python_constant(code),
         f_locals=self.frame.f_locals, f_globals=globs,
-        defaults=defaults, closure=closure, annotations=annotations, vm=self)
+        defaults=defaults, kw_defaults=kw_defaults,
+        closure=closure, annotations=annotations, vm=self)
     # TODO(ampere): What else needs to be an origin in this case? Probably stuff
     # in closure.
     var = self.program.NewVariable(name)
@@ -1671,6 +1672,14 @@ class VirtualMachine(object):
     else:
       return {}
 
+  def _convert_kw_defaults(self, values):
+    kw_defaults = {}
+    for i in range(0, len(values), 2):
+      key_var, value = values[i:i + 2]
+      key = abstract.get_atomic_python_constant(key_var)
+      kw_defaults[key] = value
+    return kw_defaults
+
   def byte_MAKE_FUNCTION(self, state, op):
     """Create a function and push it onto the stack."""
     if self.python_version[0] == 2:
@@ -1681,13 +1690,13 @@ class VirtualMachine(object):
       name = abstract.get_atomic_python_constant(name_var)
     state, code = state.pop()
     # TODO(dbaum): Handle kw_defaults and annotations (Python 3).
-    state, defaults, _, raw_annotations = self._pop_extra_function_args(
+    state, defaults, kw_defaults, annot = self._pop_extra_function_args(
         state, op.arg)
-    annotations = self._convert_function_annotations(state.node,
-                                                     raw_annotations)
+    kw_defaults = self._convert_kw_defaults(kw_defaults)
+    annotations = self._convert_function_annotations(state.node, annot)
     globs = self.get_globals_dict()
-    fn = self.make_function(name, code, globs, defaults,
-                            annotations=annotations)
+    fn = self._make_function(name, code, globs, defaults, kw_defaults,
+                             annotations=annotations)
     return state.push(fn)
 
   def byte_MAKE_CLOSURE(self, state, op):
@@ -1701,9 +1710,11 @@ class VirtualMachine(object):
       name = abstract.get_atomic_python_constant(name_var)
     state, (closure, code) = state.popn(2)
     # TODO(dbaum): Handle kw_defaults and annotations (Python 3).
-    state, defaults, _, _ = self._pop_extra_function_args(state, op.arg)
+    state, defaults, kw_defaults, _ = self._pop_extra_function_args(state,
+                                                                    op.arg)
     globs = self.get_globals_dict()
-    fn = self.make_function(name, code, globs, defaults, closure=closure)
+    fn = self._make_function(name, code, globs, defaults, kw_defaults,
+                             closure=closure)
     return state.push(fn)
 
   def byte_CALL_FUNCTION(self, state, op):

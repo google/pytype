@@ -1376,22 +1376,21 @@ class PyTDSignature(object):
 
     for p in self.pytd_sig.params:
       if p.name not in arg_dict:
-        if starargs is None and starstarargs is None:
-          break  # We just found a missing parameter. Raise error below.
+        if not p.optional and starargs is None and starstarargs is None:
+          raise MissingParameter(self.signature, p.name)
         # Assume the missing parameter is filled in by *args or **kwargs.
         # TODO(kramm): Can we use the contents of [star]starargs to fill in a
         # more precise type than just "unsolvable"?
         var = self.vm.convert.create_new_unsolvable(node, p.name)
         arg_dict[p.name] = var.bindings[0]
 
-    allowed_params = frozenset(p.name for p in self.pytd_sig.params)
-    for name in allowed_params:
-      if name not in arg_dict:
-        raise MissingParameter(self.signature, name)
+    for p in self.pytd_sig.params:
+      if not (p.optional or p.name in arg_dict):
+        raise MissingParameter(self.signature, p.name)
     if not self.pytd_sig.has_optional:
       if len(posargs) > len(self.pytd_sig.params):
         raise WrongArgCount(self.signature, len(posargs))
-      invalid_names = set(namedargs) - allowed_params
+      invalid_names = set(namedargs) - {p.name for p in self.pytd_sig.params}
       if invalid_names:
         raise WrongKeywordArgs(self.signature, sorted(invalid_names))
 
@@ -1488,21 +1487,21 @@ class PyTDSignature(object):
     Returns:
       A list of Mutation instances.
     Raises:
-      ValueError: If the pytd contains invalid MutableParameter information.
+      ValueError: If the pytd contains invalid information for mutated params.
     """
     # Handle mutable parameters using the information type parameters
     mutations = []
     for formal in self.pytd_sig.params:
       actual = arg_dict[formal.name]
-      if isinstance(formal, pytd.MutableParameter):
+      if formal.mutated_type is not None:
         if (isinstance(formal.type, pytd.GenericType) and
-            isinstance(formal.new_type, pytd.GenericType) and
-            formal.type.base_type == formal.new_type.base_type and
+            isinstance(formal.mutated_type, pytd.GenericType) and
+            formal.type.base_type == formal.mutated_type.base_type and
             isinstance(formal.type.base_type, pytd.ClassType) and
             formal.type.base_type.cls):
           arg = actual.data
-          names_actuals = zip(formal.new_type.base_type.cls.template,
-                              formal.new_type.parameters)
+          names_actuals = zip(formal.mutated_type.base_type.cls.template,
+                              formal.mutated_type.parameters)
           for tparam, type_actual in names_actuals:
             log.info("Mutating %s to %s",
                      tparam.name,
@@ -1513,7 +1512,7 @@ class PyTDSignature(object):
             mutations.append(Mutation(arg, tparam.name, type_actual_val))
         else:
           log.error("Old: %s", pytd.Print(formal.type))
-          log.error("New: %s", pytd.Print(formal.new_type))
+          log.error("New: %s", pytd.Print(formal.mutated_type))
           log.error("Actual: %r", actual)
           raise ValueError("Mutable parameters setting a type to a "
                            "different base type is not allowed.")
@@ -1522,8 +1521,9 @@ class PyTDSignature(object):
   def get_bound_arguments(self):
     return []
 
-  def get_parameter_names(self):
-    return [p.name for p in self.pytd_sig.params]
+  def get_positional_names(self):
+    return [p.name for p in self.pytd_sig.params
+            if not p.kwonly]
 
   def __repr__(self):
     return pytd.Print(self.pytd_sig)
@@ -1588,7 +1588,7 @@ class PyTDFunction(Function):
     self.signatures = signatures
     self._signature_cache = {}
     self._return_types = {sig.pytd_sig.return_type for sig in signatures}
-    self._has_mutable = any(isinstance(param, pytd.MutableParameter)
+    self._has_mutable = any(param.mutated_type is not None
                             for sig in signatures
                             for param in sig.pytd_sig.params)
     for sig in signatures:
@@ -1716,7 +1716,7 @@ class PyTDFunction(Function):
           node, "<unknown return of " + self.name + ">", action="pytd_call")
     if self._has_mutable:
       # TODO(kramm): We only need to whack the type params that appear in
-      # a MutableParameter.
+      # a mutable parameter.
       mutations = self._get_mutation_to_unknown(
           node, (view[p].data for p in chain(posargs, namedargs.values())))
     else:
@@ -2263,7 +2263,7 @@ class NativeFunction(Function):
         **{k: u.AssignToNewVariable(u.name, node)
            for k, u in namedargs.items()})
 
-  def get_parameter_names(self):
+  def get_positional_names(self):
     code = self.func.func_code
     return list(code.co_varnames[:code.co_argcount])
 
@@ -2282,8 +2282,8 @@ class InterpreterFunction(Function):
   _function_cache = {}
 
   @staticmethod
-  def make_function(name, code, f_locals, f_globals, defaults, closure,
-                    annotations, vm):
+  def make_function(name, code, f_locals, f_globals, defaults, kw_defaults,
+                    closure, annotations, vm):
     """Get an InterpreterFunction.
 
     Things like anonymous functions and generator expressions are created
@@ -2297,6 +2297,7 @@ class InterpreterFunction(Function):
       f_locals: The locals used for name resolution.
       f_globals: The globals used for name resolution.
       defaults: Default arguments.
+      kw_defaults: Default arguments for kwonly parameters.
       closure: The free variables this closure binds to.
       annotations: Function annotations. Dict of name -> AtomicAbstractValue.
       vm: VirtualMachine instance.
@@ -2316,12 +2317,12 @@ class InterpreterFunction(Function):
                (dict(enumerate(closure or ())), None)))
     if key not in InterpreterFunction._function_cache:
       InterpreterFunction._function_cache[key] = InterpreterFunction(
-          name, code, f_locals, f_globals, defaults,
+          name, code, f_locals, f_globals, defaults, kw_defaults,
           closure, annotations, vm, vm.root_cfg_node)
     return InterpreterFunction._function_cache[key]
 
-  def __init__(self, name, code, f_locals, f_globals, defaults, closure,
-               annotations, vm, node):
+  def __init__(self, name, code, f_locals, f_globals, defaults, kw_defaults,
+               closure, annotations, vm, node):
     super(InterpreterFunction, self).__init__(name, vm, node)
     log.debug("Creating InterpreterFunction %r for %r", name, code.co_name)
     self.bound_class = BoundInterpreterFunction
@@ -2331,18 +2332,24 @@ class InterpreterFunction(Function):
     self.f_globals = f_globals
     self.f_locals = f_locals
     self.defaults = tuple(defaults)
+    self.kw_defaults = kw_defaults
     self.closure = closure
     self.annotations = annotations
     self.cls = self.vm.convert.function_type
     self._call_records = {}
+    self.nonstararg_count = self.code.co_argcount
+    if self.code.co_kwonlyargcount >= 0:  # This is usually -1 or 0 (fast call)
+      self.nonstararg_count += self.code.co_kwonlyargcount
     self.signature = self._build_signature()
     self.last_frame = None  # for BuildClass
 
   def _build_signature(self):
     """Build a function.Signature object representing this function."""
-    arg_pos = self.code.co_argcount
     vararg_name = None
     kwarg_name = None
+    kwonly = set(self.code.co_varnames[
+        self.code.co_argcount:self.nonstararg_count])
+    arg_pos = self.nonstararg_count
     if self.has_varargs():
       vararg_name = self.code.co_varnames[arg_pos]
       arg_pos += 1
@@ -2350,12 +2357,13 @@ class InterpreterFunction(Function):
       kwarg_name = self.code.co_varnames[arg_pos]
       arg_pos += 1
     defaults = dict(zip(
-        self.get_parameter_names()[-len(self.defaults):], self.defaults))
+        self.get_positional_names()[-len(self.defaults):], self.defaults))
+    defaults.update(self.kw_defaults)
     return function.Signature(
         self.name,
-        self.get_parameter_names(),
+        list(self.code.co_varnames[:self.nonstararg_count]),
         vararg_name,
-        set(),  # TODO(kramm): Support Python 3 kwonly args
+        kwonly,
         kwarg_name,
         defaults,
         self.annotations)
@@ -2407,24 +2415,25 @@ class InterpreterFunction(Function):
       # right thing."
       assert len(args) == 1, "Surprising comprehension!"
       return {".0": args[0]}
-    param_names = self.get_parameter_names()
+    param_names = self.get_positional_names()
     num_defaults = len(self.defaults)
     callargs = dict(zip(param_names[-num_defaults:], self.defaults))
+    callargs.update(self.kw_defaults)
     positional = dict(zip(param_names, args))
     for key in positional:
       if key in kws:
         raise DuplicateKeyword(self.signature, key)
     callargs.update(positional)
     callargs.update(kws)
-    arg_pos = self.code.co_argcount
-    for key in param_names:
+    for key, kwonly in self.get_nondefault_params():
       if key not in callargs:
-        if not starargs and not starstarargs:
-          raise MissingParameter(self.signature, key)
-        else:
+        if starstarargs or (starargs and not kwonly):
           # We assume that because we have *args or **kwargs, we can use these
           # to fill in any parameters we might be missing.
           callargs[key] = self.vm.convert.create_new_unsolvable(node, key)
+        else:
+          raise MissingParameter(self.signature, key)
+    arg_pos = self.nonstararg_count
     if self.has_varargs():
       vararg_name = self.code.co_varnames[arg_pos]
       extraneous = args[self.code.co_argcount:]
@@ -2577,14 +2586,14 @@ class InterpreterFunction(Function):
   def _with_replaced_annotations(self, node, params):
     """Insert type annotations into parameter list."""
     params = list(params)
+    varnames = self.code.co_varnames[0:self.nonstararg_count]
     for name, formal_type in self.annotations.items():
       try:
-        i = self.code.co_varnames.index(name)
+        i = varnames.index(name)
       except ValueError:
-        i = -1
-      if 0 <= i < self.code.co_argcount:
-        params[i] = pytd.Parameter(name,
-                                   formal_type.get_instance_type(node))
+        pass
+      else:
+        params[i] = params[i].Replace(type=formal_type.get_instance_type(node))
     return tuple(params)
 
   def _get_annotation_return(self, node, default):
@@ -2593,26 +2602,41 @@ class InterpreterFunction(Function):
     else:
       return default
 
+  def _get_star_params(self):
+    """Returns pytd nodes for *args, **kwargs."""
+    if self.has_varargs():
+      starargs = pytd.Parameter(self.signature.varargs_name,
+                                pytd.NamedType("__builtin__.tuple"),
+                                False, True, None)
+    else:
+      starargs = None
+    if self.has_kwargs():
+      starstarargs = pytd.Parameter(self.signature.kwargs_name,
+                                    pytd.NamedType("__builtin__.dict"),
+                                    False, True, None)
+    else:
+      starstarargs = None
+    return starargs, starstarargs
+
   def to_pytd_def(self, node, function_name):
     """Generate a pytd.Function definition."""
-    num_defaults = len(self.defaults)
     signatures = []
-    has_optional = num_defaults > 0 or self.has_varargs() or self.has_kwargs()
     for node_after, combination, return_value in self._get_call_combinations():
       params = tuple(pytd.Parameter(self._fix_param_name(name),
-                                    combination[name].data.to_type(node))
-                     for name in self.get_parameter_names())
-      if num_defaults:
-        params = params[:-num_defaults]
-
+                                    combination[name].data.to_type(node),
+                                    kwonly, optional, None)
+                     for name, kwonly, optional in self.get_parameters())
       params = self._with_replaced_annotations(node_after, params)
       ret = self._get_annotation_return(
           node, default=return_value.data.to_type(node_after))
-
+      starargs, starstarargs = self._get_star_params()
       signatures.append(pytd.Signature(
-          params=params, return_type=ret,
+          params=params,
+          starargs=starargs,
+          starstarargs=starstarargs,
+          return_type=ret,
           exceptions=(),  # TODO(kramm): record exceptions
-          template=(), has_optional=has_optional))
+          template=()))
     if signatures:
       return pytd.Function(function_name, tuple(signatures), pytd.METHOD)
     else:
@@ -2622,20 +2646,39 @@ class InterpreterFunction(Function):
                            pytd.METHOD)
 
   def _simple_pytd_signature(self, node):
-    num_defaults = len(self.defaults)
     params = self._with_replaced_annotations(
-        node, [pytd.Parameter(name, pytd.NamedType("__builtin__.object"))
-               for name in self.get_parameter_names()])
-    if num_defaults:
-      params = params[:-num_defaults]
+        node, [pytd.Parameter(name, pytd.NamedType("__builtin__.object"),
+                              kwonly, optional, None)
+               for name, kwonly, optional in self.get_parameters()])
+    starargs, starstarargs = self._get_star_params()
     ret = self._get_annotation_return(node, default=pytd.AnythingType())
     return pytd.Signature(
         params=params,
+        starargs=starargs,
+        starstarargs=starstarargs,
         return_type=ret,
-        exceptions=(), template=(), has_optional=bool(self.defaults))
+        exceptions=(), template=())
 
-  def get_parameter_names(self):
+  def get_positional_names(self):
     return list(self.code.co_varnames[:self.code.co_argcount])
+
+  def get_nondefault_params(self):
+    for i in range(self.nonstararg_count):
+      yield self.code.co_varnames[i], i >= self.code.co_argcount
+
+  def get_kwonly_names(self):
+    return list(
+        self.code.co_varnames[self.code.co_argcount:self.nonstararg_count])
+
+  def get_parameters(self):
+    default_pos = self.code.co_argcount - len(self.defaults)
+    i = 0
+    for name in self.get_positional_names():
+      yield name, False, i >= default_pos
+      i += 1
+    for name in self.get_kwonly_names():
+      yield name, True, name in self.kw_defaults
+      i += 1
 
   def has_varargs(self):
     return bool(self.code.co_flags & loadmarshal.CodeType.CO_VARARGS)
@@ -2676,8 +2719,8 @@ class BoundFunction(AtomicAbstractValue):
   def get_bound_arguments(self):
     return [self._callself]
 
-  def get_parameter_names(self):
-    return self.underlying.get_parameter_names()
+  def get_positional_names(self):
+    return self.underlying.get_positional_names()
 
   def has_varargs(self):
     return self.underlying.has_varargs()
@@ -3005,7 +3048,9 @@ class Unknown(AtomicAbstractValue):
   @staticmethod
   def _make_params(node, args):
     """Convert a list of types/variables to pytd parameters."""
-    return tuple(pytd.Parameter("_%d" % (i + 1), Unknown._to_pytd(node, p))
+    return tuple(pytd.Parameter("_%d" % (i + 1), Unknown._to_pytd(node, p),
+                                kwonly=False, optional=False,
+                                mutated_type=None)
                  for i, p in enumerate(args))
 
   def get_attribute(self, node, name, valself=None, valcls=None,
@@ -3053,13 +3098,18 @@ class Unknown(AtomicAbstractValue):
 
   def to_structural_def(self, node, class_name):
     """Convert this Unknown to a pytd.Class."""
-    self_param = (pytd.Parameter("self", pytd.NamedType("__builtin__.object")),)
+    self_param = (pytd.Parameter("self", pytd.NamedType("__builtin__.object"),
+                                 False, False, None),)
+    # TODO(kramm): Record these.
+    starargs = None
+    starstarargs = None
     calls = tuple(pytd_utils.OrderedSet(
-        pytd.Signature(params=self_param + self._make_params(node, args),
+        pytd.Signature(self_param + self._make_params(node, args),
+                       starargs,
+                       starstarargs,
                        return_type=Unknown._to_pytd(node, ret),
                        exceptions=(),
-                       template=(),
-                       has_optional=False)
+                       template=())
         for args, _, ret in self._calls))
     if calls:
       methods = (pytd.Function("__call__", calls, pytd.METHOD),)

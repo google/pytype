@@ -19,7 +19,7 @@ class UtilsTest(unittest.TestCase):
 
   def testHasMutableParameters(self):
     append = self.builtins.Lookup("__builtin__.list").Lookup("append")
-    self.assertIsInstance(append.signatures[0].params[0], pytd.MutableParameter)
+    self.assertIsNotNone(append.signatures[0].params[0].mutated_type)
 
   def testHasCorrectSelf(self):
     update = self.builtins.Lookup("__builtin__.dict").Lookup("update")

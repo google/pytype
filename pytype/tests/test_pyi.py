@@ -200,7 +200,7 @@ class PYITest(test_inference.InferenceTest):
       """, deep=True, pythonpath=[d.path], solve_unknowns=True)
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
-        def f(*args, **kwargs) -> Any: ...
+        def f(x=...) -> Any: ...
       """)
 
   def testCallable(self):

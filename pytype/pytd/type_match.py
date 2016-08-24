@@ -368,37 +368,27 @@ class TypeMatch(utils.TypeMatcher):
     # Signatures have type parameters, too. We ignore them, since they can
     # be anything. (See maybe_lookup_type_param())
     subst.update({p.type_param: None for p in sig2.template})
-    if sig1.has_optional and sig2.has_optional:
-      m = max(len(sig1.params), len(sig2.params))
-      params1 = sig1.params[:m]
-      params2 = sig2.params[:m]
-    elif sig1.has_optional:
-      params1 = sig1.params
-      params2 = sig2.params[:len(sig1.params)]
-    elif sig2.has_optional:
-      params1 = sig1.params[:len(sig2.params)]
-      params2 = sig2.params
-    else:
-      params1 = sig1.params
-      params2 = sig2.params
+    params1 = sig1.params
+    params2 = sig2.params
     if skip_self:
       # Methods in an ~unknown need to declare their methods with "self"
-      assert (params1 and params1[0].name == "self") or sig2.has_optional
-      if params1 and params1[0].name == "self":
-        params1 = params1[1:]
-      # For loaded pytd, we allow methods to omit the "self" parameter.
+      assert params1 and params1[0].name == "self"
+      params1 = params1[1:]
       if params2 and params2[0].name == "self":
         params2 = params2[1:]
-    if len(params1) == len(params2):
-      equalities = []
-      for p1, p2 in zip(params1, params2):
+    equalities = []
+    if len(params1) > len(params2) and not sig2.has_optional:
+      return booleq.FALSE  # extra parameters
+    for i, p2 in enumerate(params2):
+      if not p2.optional:
+        if i >= len(params1):
+          return booleq.FALSE  # missing parameter
+        p1 = params1[i]
         equalities.append(self.match_type_against_type(p1.type, p2.type, subst))
-      equalities.append(
-          self.match_type_against_type(
-              sig1.return_type, sig2.return_type, subst))
-      return booleq.And(equalities)
-    else:
-      return booleq.FALSE
+    equalities.append(
+        self.match_type_against_type(
+            sig1.return_type, sig2.return_type, subst))
+    return booleq.And(equalities)
 
   def match_Signature_against_Function(self, sig, f, subst, skip_self=False):  # pylint: disable=invalid-name
     return booleq.And(

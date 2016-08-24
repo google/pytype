@@ -1,9 +1,9 @@
 """Representation of Python function headers and calls."""
 
 
-from pytype.pytd import pytd
 
-
+# TODO(kramm): This class is deprecated and should be folded into
+# abstract.InterpreterFunction and/or pytd.Signature.
 class Signature(object):
   """Representation of a Python function signature.
 
@@ -60,7 +60,7 @@ class Signature(object):
         kwargs_name="kwargs" if sig.has_optional else None,
         defaults=[p.name
                   for p in sig.params
-                  if isinstance(p, pytd.OptionalParameter)],
+                  if p.optional],
         annotations={p.name: vm.convert.convert_constant_to_value(
             p.name, p.type, subst={}, node=vm.root_cfg_node)
                      for p in sig.params}

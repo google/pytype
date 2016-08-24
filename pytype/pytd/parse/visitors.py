@@ -87,6 +87,19 @@ class Visitor(object):
     self.leave_functions[node.__class__.__name__](self, node, *args, **kwargs)
 
 
+def InventStarArgParams(existing_names):
+  """Try to find names for *args, **kwargs that aren't taken already."""
+  names = {x if isinstance(x, str) else x.name
+           for x in existing_names}
+  args, kwargs = "args", "kwargs"
+  while args in names:
+    args = "_" + args
+  while kwargs in names:
+    kwargs = "_" + kwargs
+  return (pytd.Parameter(args, pytd.NamedType("tuple"), False, True, None),
+          pytd.Parameter(kwargs, pytd.NamedType("dict"), False, True, None))
+
+
 class PrintVisitor(Visitor):
   """Visitor for converting ASTs back to pytd source code."""
   visits_all_node_types = True
@@ -271,6 +284,16 @@ class PrintVisitor(Visitor):
     """Visit function defined with PYTHONCODE."""
     return "def " + self._SafeName(node.name) + " PYTHONCODE"
 
+  def _FormatContainerContents(self, node):
+    """Print out the last type parameter of a container. Used for *args/**kw."""
+    assert isinstance(node, pytd.Parameter)
+    if isinstance(node.type, pytd.GenericType):
+      return node.Replace(type=node.type.parameters[-1], optional=False).Visit(
+          PrintVisitor())
+    else:
+      return node.Replace(type=pytd.NamedType("object"), optional=False).Visit(
+          PrintVisitor())
+
   def VisitSignature(self, node):
     """Visit a signature, producing a string."""
     # TODO(pludemann): might want special handling for __init__(...) -> NoneType
@@ -281,22 +304,32 @@ class PrintVisitor(Visitor):
 
     exc = " raises " + ", ".join(node.exceptions) if node.exceptions else ""
 
-    if node.has_optional:
-      existing_names = {p.name for p in self.old_node.params}
-      args, kwargs = "args", "kwargs"
-      # Try to find names that aren't taken already.
-      while args in existing_names:
-        args = "_" + args
-      while kwargs in existing_names:
-        kwargs = "_" + kwargs
-      optional = ("*"+args, "**"+kwargs)
+    # Put parameters in the right order:
+    # (arg1, arg2, *args, kwonly1, kwonly2, **kwargs)
+    if self.old_node.starargs is not None:
+      starargs = self._FormatContainerContents(self.old_node.starargs)
     else:
-      optional = ()
+      # We don't have explicit *args, but we might need to print "*", for
+      # kwonly params.
+      starargs = ""
+    params = node.params
+    for i, p in enumerate(params):
+      if self.old_node.params[i].kwonly:
+        assert all(p.kwonly for p in self.old_node.params[i:])
+        params = params[0:i] + ("*"+starargs,) + params[i:]
+        break
+    else:
+      if starargs:
+        params += ("*" + starargs,)
+    if self.old_node.starstarargs is not None:
+      starstarargs = self._FormatContainerContents(self.old_node.starstarargs)
+      params += ("**" + starstarargs,)
 
+    # Handle Mutable parameters
     # pylint: disable=no-member
-    #     (old_node is set in parse/node.py)
-    mutable_params = [(p.name, p.new_type) for p in self.old_node.params
-                      if isinstance(p, pytd.MutableParameter)]
+    # (old_node is set in parse/node.py)
+    mutable_params = [(p.name, p.mutated_type) for p in self.old_node.params
+                      if p.mutated_type is not None]
     # pylint: enable=no-member
     if mutable_params:
       body = ":\n" + "\n".join("{indent}{name} := {new_type}".format(
@@ -307,26 +340,23 @@ class PrintVisitor(Visitor):
       body = ": ..."
 
     return "({params}){ret}{exc}{body}".format(
-        params=", ".join(node.params + optional),
+        params=", ".join(params),
         ret=ret, exc=exc, body=body)
 
   def VisitParameter(self, node):
     """Convert a function parameter to a string."""
+    suffix = " = ..." if node.optional else ""
     if node.type == "object":
       # Abbreviated form. "object" is the default.
-      return node.name
+      return node.name + suffix
     elif node.name == "self" and self.class_names and (
         node.type == self.class_names[-1]):
+      return self._SafeName(node.name) + suffix
+    elif node.type is None:
+      logging.warning("node.type is None")
       return self._SafeName(node.name)
     else:
-      return self._SafeName(node.name) + ": " + node.type
-
-  def VisitOptionalParameter(self, node):
-    return self.VisitParameter(node) + " = ..."
-
-  def VisitMutableParameter(self, node):
-    """Convert a mutable function parameter to a string."""
-    return self.VisitParameter(node)
+      return self._SafeName(node.name) + ": " + node.type + suffix
 
   def VisitTemplateItem(self, node):
     """Convert a template to a string."""
@@ -925,14 +955,6 @@ class AdjustSelf(Visitor):
   def VisitClass(self, node):
     return node
 
-  def VisitMutableParameter(self, p):
-    p2 = self.VisitParameter(p)
-    # pylint: disable=maybe-no-member
-    return pytd.MutableParameter(p2.name, p2.type, p.new_type)
-
-  def VisitOptionalParameter(self, p):
-    return pytd.OptionalParameter(*self.VisitParameter(p))
-
   def VisitParameter(self, p):
     """Adjust all parameters called "self" to have their parent class type.
 
@@ -949,7 +971,7 @@ class AdjustSelf(Visitor):
       # We're not within a class, so this is not a parameter of a method.
       return p
     if p.name == "self" and (self.force or p.type in self.replaced_self_types):
-      return pytd.Parameter("self", self.class_types[-1])
+      return p.Replace(type=self.class_types[-1])
     else:
       return p
 
@@ -1080,8 +1102,7 @@ class VerifyVisitor(Visitor):
 
   def EnterSignature(self, node):
     assert isinstance(node.params, tuple), node
-    assert all(isinstance(p, (pytd.Parameter, pytd.MutableParameter))
-               for p in node.params)
+    assert all(isinstance(p, pytd.Parameter) for p in node.params)
     assert isinstance(node.return_type, pytd.TYPE), type(node.return_type)
     assert isinstance(node.exceptions, tuple), node
     assert all(isinstance(e, pytd.TYPE) for e in node.exceptions)
@@ -1093,16 +1114,6 @@ class VerifyVisitor(Visitor):
     assert isinstance(node.name, str), node
     assert self._valid_param_name.match(node.name), node.name
     assert isinstance(node.type, pytd.TYPE), node
-
-  def EnterOptionalParameter(self, node):
-    assert isinstance(node.name, str), node
-    assert self._valid_param_name.match(node.name), node.name
-    assert isinstance(node.type, pytd.TYPE), node
-
-  def EnterMutableParameter(self, node):
-    assert isinstance(node.name, str), node
-    assert isinstance(node.type, pytd.TYPE), node
-    assert isinstance(node.new_type, pytd.TYPE), node
 
   def EnterTemplateItem(self, node):
     assert isinstance(node.type_param, pytd.TypeParameter), node
@@ -1313,28 +1324,6 @@ class CollectDependencies(Visitor):
     self.EnterNamedType(t)
 
 
-class SimplifyOptionalParameters(Visitor):
-  """Lossy visitor for simplifying functions with optional parameters.
-
-     Transforms
-       def f(x: T, y: T = ..., z: T = ...)
-     to
-       def f(x: T, ...)
-     .
-  """
-
-  def __init__(self):
-    super(SimplifyOptionalParameters, self).__init__()
-
-  def VisitSignature(self, sig):
-    for i, p in enumerate(sig.params):
-      if isinstance(p, pytd.OptionalParameter):
-        assert all(isinstance(p, pytd.OptionalParameter)
-                   for p in sig.params[i+1:])
-        return sig.Replace(params=sig.params[0:i], has_optional=True)
-    return sig
-
-
 class ExpandSignatures(Visitor):
   """Expand to Cartesian product of parameter types.
 
@@ -1388,14 +1377,12 @@ class ExpandSignatures(Visitor):
     """
     params = []
     for param in sig.params:
-      # To make this work with MutableParameter
-      name, param_type = param.name, param.type
-      if isinstance(param_type, pytd.UnionType):
+      if isinstance(param.type, pytd.UnionType):
         # multiple types
-        params.append([pytd.Parameter(name, t) for t in param_type.type_list])
+        params.append([param.Replace(type=t) for t in param.type.type_list])
       else:
         # single type
-        params.append([pytd.Parameter(name, param_type)])
+        params.append([param])
 
     new_signatures = [sig.Replace(params=tuple(combination))
                       for combination in itertools.product(*params)]
