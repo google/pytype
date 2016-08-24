@@ -14,7 +14,6 @@
 # limitations under the License.
 
 import textwrap
-from pytype.pytd import pep484
 from pytype.pytd import pytd
 from pytype.pytd.parse import decorate
 from pytype.pytd.parse import parser
@@ -31,8 +30,7 @@ class TestASTGeneration(parser_test_base.ParserTest):
     """Compile a string, and convert the result back to a string. Compare."""
     if canonical_src is None:
       canonical_src = src
-    tree = self.Parse(src).Visit(
-        pep484.ConvertTypingToNative(self.parser.python_version))
+    tree = self.Parse(src)
     new_src = pytd.Print(tree)
     self.AssertSourceEquals(new_src, canonical_src)
     if check_the_sourcecode:
@@ -1499,6 +1497,30 @@ class TestASTGeneration(parser_test_base.ParserTest):
     self.assertEquals(sig.template, ())
     self.assertEquals(cls.template, ())
     self.assertEquals(sig_cls.template, ())
+
+  def testConvertTypingToNativeOnBuiltins(self):
+    """Test typing to native conversion in parsing builtins."""
+    builtins_src = textwrap.dedent("""
+      class object():
+        __dict__ = ...  # type: Dict[str, Any]
+
+      class list(List): ...
+    """)
+    typing_src = textwrap.dedent("""
+      class Pattern(object):
+        def split(self) -> List
+    """)
+    builtins = parser.parse_string(builtins_src, name="__builtin__")
+    typing = parser.parse_string(typing_src, name="typing")
+
+    constant = builtins.Lookup("object").Lookup("__dict__")
+    self.assertEquals(pytd.NamedType("dict"), constant.type.base_type)
+
+    parent, = builtins.Lookup("list").parents
+    self.assertEquals(pytd.NamedType("typing.List"), parent)
+
+    method, = typing.Lookup("Pattern").Lookup("split").signatures
+    self.assertEquals(pytd.NamedType("list"), method.return_type)
 
 
 class TestDecorate(unittest.TestCase):

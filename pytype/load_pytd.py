@@ -4,7 +4,6 @@ import logging
 import os
 
 
-from pytype.pytd import pep484
 from pytype.pytd import typeshed
 from pytype.pytd import utils as pytd_utils
 from pytype.pytd.parse import builtins
@@ -80,7 +79,6 @@ class Loader(object):
 
   def _postprocess_pyi(self, ast):
     """Apply all the PYI transformations we need."""
-    ast = ast.Visit(pep484.ConvertTypingToNative(self.options.python_version))
     ast = ast.Visit(visitors.LookupBuiltins(self.builtins))
     ast = ast.Visit(visitors.NamedTypeToClassType())
     return ast

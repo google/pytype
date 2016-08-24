@@ -170,9 +170,12 @@ class Print484StubVisitor(visitors.Visitor):
 class ConvertTypingToNative(visitors.Visitor):
   """Visitor for converting PEP 484 types to native representation."""
 
-  def __init__(self, python_version):
+  def __init__(self, module):
     super(ConvertTypingToNative, self).__init__()
-    self.python_version = python_version
+    self.module = module
+    # We do not want to touch the class hierarchy in builtins, as something
+    # like class list(List) should not be changed to class list(list)
+    self.convert_parents = module != "__builtin__" and module != "typing"
 
   def _GetModuleAndName(self, t):
     if isinstance(t, (pytd.ClassType, pytd.NamedType)) and "." in t.name:
@@ -182,7 +185,7 @@ class ConvertTypingToNative(visitors.Visitor):
 
   def _Convert(self, t):
     module, name = self._GetModuleAndName(t)
-    if module == "typing":
+    if module == "typing" or (module is None and self.module == "typing"):
       if name in visitors.PrintVisitor.PEP484_CAPITALIZED:
         return pytd.NamedType(name.lower())  # "typing.List" -> "list" etc.
       elif name in PEP484_TRANSLATIONS:
@@ -210,3 +213,9 @@ class ConvertTypingToNative(visitors.Visitor):
 
   def VisitHomogeneousContainerType(self, t):
     return self.VisitGenericType(t)
+
+  def VisitClass(self, node):
+    if self.convert_parents:
+      return node
+    else:
+      return node.Replace(parents=self.old_node.parents)

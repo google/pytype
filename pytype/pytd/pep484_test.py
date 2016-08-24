@@ -11,9 +11,7 @@ class TestPEP484(parser_test_base.ParserTest):
 
   def convert(self, t, python_version=None):
     """Run ConvertTypingToNative and return the result as a string."""
-    return pytd.Print(t.Visit(
-        pep484.ConvertTypingToNative(
-            python_version or self.DEFAULT_PYTHON_VERSION)))
+    return pytd.Print(t.Visit(pep484.ConvertTypingToNative(None)))
 
   def test_convert_optional(self):
     t = pytd.GenericType(pytd.NamedType("typing.Optional"),

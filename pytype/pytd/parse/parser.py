@@ -401,8 +401,7 @@ class TypeDeclParser(object):
         # errorlog=yacc.NullLogger(),  # If you really want to suppress messages
         **kwargs)
 
-  def Parse(self, src, name=None, filename="<string>",
-            convert_typing_to_native=False, **kwargs):
+  def Parse(self, src, name=None, filename="<string>", **kwargs):
     """Run tokenizer, parser, and postprocess the AST."""
     self.src = src  # Keep a copy of what's being parsed
     self.filename = filename if filename else "<string>"
@@ -424,8 +423,7 @@ class TypeDeclParser(object):
     # If there's no unique name, hash the sourcecode.
     name = name or hashlib.md5(src).hexdigest()
     ast = ast.Visit(InsertTypeParameters())
-    if convert_typing_to_native:
-      ast = ast.Visit(pep484.ConvertTypingToNative(self.python_version))
+    ast = ast.Visit(pep484.ConvertTypingToNative(name))
     return ast.Replace(name=name)
 
   precedence = (
