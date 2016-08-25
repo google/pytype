@@ -236,10 +236,6 @@ def _run_pytype(options):
 
   # Do *not* apply os.path.abspath here because we could be in a symlink tree
   # and bad things happen if you go to relative directories.
-# MOE:begin_strip
-  # Note that you should not do os.path.abspath(f) below; it will probably fail
-  # on Forge because of the symlink tree pointing into the cache:
-# MOE:end_strip
 
   # If we're processing more than one file, we need to do two passes (if we
   # don't know what the dependencies are). To speed things up, separate out the
