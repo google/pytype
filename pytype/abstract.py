@@ -1603,17 +1603,21 @@ class PyTDFunction(Function):
     else:
       return Function.property_get(self, callself, callcls)
 
-  def _log_args(self, arg_values_list, level=0):
+  def _log_args(self, arg_values_list, level=0, logged=None):
     if log.isEnabledFor(logging.DEBUG):
+      if logged is None:
+        logged = set()
       for i, arg_values in enumerate(arg_values_list):
         if level:
-          if arg_values:
+          if arg_values and any(v.data not in logged for v in arg_values):
             log.debug("%s%s:", "  " * level, arg_values[0].variable.name)
         else:
           log.debug("Arg %d", i)
         for value in arg_values:
-          log.debug("%s%s", "  " * (level + 1), value.data)
-          self._log_args(value.data.unique_parameter_values(), level + 2)
+          if value.data not in logged:
+            log.debug("%s%s", "  " * (level + 1), value.data)
+            self._log_args(value.data.unique_parameter_values(), level + 2,
+                           logged | {value.data})
 
   def call(self, node, func, posargs, namedargs,
            starargs=None, starstarargs=None):
