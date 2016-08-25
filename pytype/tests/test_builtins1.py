@@ -611,11 +611,11 @@ class BuiltinTests(test_inference.InferenceTest):
       import datetime
 
       def f(tz):
-        tz.fromutc(None)
+        tz.fromutc(datetime.datetime(1929, 10, 29))
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
       datetime = ...  # type: module
-      def f(tz: datetime.tzinfo) -> NoneType
+      def f(tz: datetime.tzinfo or datetime.timezone) -> NoneType
   """)
 
 
