@@ -867,19 +867,22 @@ class ExtractSuperClassesByName(Visitor):
   }.
   """
 
-  def VisitTypeDeclUnit(self, module):
-    result = {base_class: superclasses
-              for base_class, superclasses in module.classes}
-    return result
+  def __init__(self):
+    super(ExtractSuperClassesByName, self).__init__()
+    self._superclasses = {}
 
-  def VisitClass(self, cls):
+  def VisitTypeDeclUnit(self, module):
+    del module
+    return self._superclasses
+
+  def EnterClass(self, cls):
     parent_names = []
     for parent in cls.parents:
       if isinstance(parent, pytd.GenericType):
         parent_names.append(parent.base_type.name)
       elif isinstance(parent, pytd.GENERIC_BASE_TYPE):
         parent_names.append(parent.name)
-    return (cls.name, parent_names)
+    self._superclasses[cls.name] = parent_names
 
 
 class ExtractSuperClasses(Visitor):
@@ -889,19 +892,22 @@ class ExtractSuperClasses(Visitor):
   to lists of pytd.TYPE.
   """
 
-  def VisitTypeDeclUnit(self, module):
-    # TODO(kramm): This uses the entire class node as a key, instead of just
-    # its id.
-    result = {base_class: superclasses
-              for base_class, superclasses in module.classes}
-    return result
+  def __init__(self):
+    super(ExtractSuperClasses, self).__init__()
+    self._superclasses = {}
 
-  def VisitNamedType(self, _):
+  def VisitTypeDeclUnit(self, module):
+    del module
+    return self._superclasses
+
+  def EnterNamedType(self, _):
     raise AssertionError(
         "This visitor needs a resolved AST. Call LookupClasses() before.")
 
-  def VisitClass(self, cls):
-    return (cls, cls.parents)
+  def EnterClass(self, cls):
+    # TODO(kramm): This uses the entire class node as a key, instead of just
+    # its id.
+    self._superclasses[cls] = cls.parents
 
 
 class ReplaceTypeParameters(Visitor):
