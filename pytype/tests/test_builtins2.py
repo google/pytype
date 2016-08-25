@@ -88,7 +88,7 @@ class BuiltinTests2(test_inference.InferenceTest):
         def get_class(self) -> type
         def get_doc(self) -> str
         def get_module(self) -> str
-        def get_bases(self) -> list
+        def get_bases(self) -> tuple
     """)
 
   def testNewStyleClass(self):
@@ -120,7 +120,7 @@ class BuiltinTests2(test_inference.InferenceTest):
         def get_module(self) -> str
         def get_hash(self) -> int
         def get_mro(self) -> list
-        def get_bases(self) -> list
+        def get_bases(self) -> tuple
     """)
 
   def testDictInit(self):

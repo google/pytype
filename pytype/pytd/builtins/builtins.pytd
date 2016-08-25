@@ -145,7 +145,7 @@ None = ...  # type: NoneType
 Ellipsis = ...  # type: ellipsis
 
 class object():
-    __bases__ = ...  # type: List[Any]
+    __bases__ = ...  # type: Tuple[Any, ...]
     __dict__ = ...  # type: Dict[str, Any]
     __doc__ = ...  # type: str
     __mro__ = ...  # type: list[Any]
@@ -166,7 +166,7 @@ class object():
 
 # old style class. classobj is in fact a subclass of object in Python.
 class classobj(object):
-    __bases__ = ...  # type: List[Any]
+    __bases__ = ...  # type: Tuple[Any, ...]
     __dict__ = ...  # type: Dict[str, Any]
     __doc__ = ...  # type: str
     __name__ = ...  # type: str
@@ -1002,8 +1002,17 @@ class memoryview(object):
 
 class type(object):
     __name__ = ...  # type: str
+    __module__ = ...  # type: str
+    __bases__ = ...  # type: Tuple[type, ...]
+    __base__ = ...  # type: Optional[type]
+    __dictoffset__ = ...  # type: int
+    __itemsize__ = ...  # type: int
     def __init__(self, object: Any) -> NoneType
-    def __len__(self, p0: str or bytearray) -> int  # TODO(pludemann): remove?
+    def __subclasses__(self) -> List[type]: ...
+    def __call__(self, x, ...) -> Any: ...
+    def __instancecheck__(self, object) -> bool: ...
+    def __subclasscheck__(self, cls) -> bool: ...
+    def mro(self) -> List[type]: ...
 
 class iterator(Iterator[T]):
     def __iter__(self) -> iterator[T]
