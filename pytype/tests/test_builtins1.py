@@ -463,7 +463,7 @@ class BuiltinTests(test_inference.InferenceTest):
       import time
       def f(x):
         if x:
-          return time.mktime(())
+          return time.mktime(time.struct_time((1, 2, 3, 4, 5, 6, 7, 8, 9)))
         else:
           return 3j
     """, deep=True, solve_unknowns=False, extract_locals=True)
