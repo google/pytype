@@ -2942,8 +2942,15 @@ class Unsolvable(AtomicAbstractValue):
   where values are needed, but make no effort to later try to map them
   to named types. This helps conserve memory where creating and solving
   hundreds of unknowns would yield us little to no information.
+
+  This is typically a singleton. Since unsolvables are indistinguishable, we
+  only need one.
   """
   IGNORED_ATTRIBUTES = ["__get__", "__set__"]
+
+  # Since an unsolvable gets generated e.g. for every unresolved import, we
+  # can have multiple circular Unsolvables in a class' MRO. Treat those special.
+  SINGLETON = True
 
   def __init__(self, vm):
     super(Unsolvable, self).__init__("unsolveable", vm)
@@ -2952,7 +2959,7 @@ class Unsolvable(AtomicAbstractValue):
                     condition=None):
     if name in self.IGNORED_ATTRIBUTES:
       return node, None
-    return node, Unsolvable(self.vm).to_variable(node, self.name)
+    return node, self.to_variable(node, self.name)
 
   def get_attribute_flat(self, node, name):
     return self.get_attribute(node, name)

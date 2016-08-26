@@ -1415,22 +1415,28 @@ def MergeSequences(seqs):
   """
   res = []
   while True:
-    nonemptyseqs = [seq for seq in seqs if seq]
-    if not nonemptyseqs:
+    if not any(seqs):  # any empty subsequence left?
       return res
-    for seq in nonemptyseqs:  # find merge candidates among seq heads
+    for seq in seqs:  # find merge candidates among seq heads
+      if not seq:
+        continue
       cand = seq[0]
-      nothead = [s for s in nonemptyseqs if cand in s[1:] and s is not seq]
-      if nothead:
+      if getattr(cand, "SINGLETON", False):
+        # Special class. Cycles are allowed. Emit and remove duplicates.
+        seqs = [[s for s in seq if s != cand]
+                for seq in seqs]
+        break
+      if any(s for s in seqs if cand in s[1:] and s is not seq):
         cand = None  # reject candidate
       else:
+        # Remove and emit. The candidate can be head of more than one list.
+        for seq in seqs:
+          if seq and seq[0] == cand:
+            del seq[0]
         break
     if cand is None:
       raise ValueError
     res.append(cand)
-    for seq in nonemptyseqs:  # remove candidate
-      if seq[0] == cand:
-        del seq[0]
 
 
 class ContainerError(Exception):

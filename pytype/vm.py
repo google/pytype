@@ -1007,7 +1007,7 @@ class VirtualMachine(object):
       # haven't analyzed yet. So don't report an error.
       self.errorlog.revert_to(checkpoint)
       log.info("Can't access %s at %s", container, index)
-      state.top().AddBinding(abstract.Unsolvable(self),
+      state.top().AddBinding(self.convert.unsolvable,
                              source_set=[], where=state.node)
       return state
 
@@ -1756,12 +1756,12 @@ class VirtualMachine(object):
     except (parser.ParseError, load_pytd.DependencyNotFoundError,
             visitors.ContainerError) as e:
       self.errorlog.pyi_error(op, full_name, e)
-      module = abstract.Unsolvable(self)
+      module = self.convert.unsolvable
     else:
       if module is None:
         log.warning("Couldn't find module %r", name)
         self.errorlog.import_error(self.frame.current_opcode, name)
-        module = abstract.Unsolvable(self)
+        module = self.convert.unsolvable
     return state.push(module.to_variable(state.node, name))
 
   def byte_IMPORT_FROM(self, state, op):
@@ -1779,7 +1779,7 @@ class VirtualMachine(object):
       if attr is None:
         self.errorlog.import_from_error(self.frame.current_opcode, module, name)
     if attr is None:
-      attr = abstract.Unsolvable(self).to_variable(state.node, name)
+      attr = self.convert.unsolvable.to_variable(state.node, name)
     return state.push(attr)
 
   def byte_EXEC_STMT(self, state):

@@ -455,7 +455,7 @@ def MROMerge(input_seqs):
   """Merge a sequence of MROs into a single resulting MRO.
 
   Args:
-    input_seqs: A sequence of MROs.
+    input_seqs: A sequence of MRO sequences.
 
   Returns:
     A single resulting MRO.

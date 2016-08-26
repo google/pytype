@@ -196,7 +196,7 @@ class Converter(object):
     """Create a new variable containing unknown."""
     if not self.vm.generate_unknowns:
       # unsolvable instances are cheaper than unknown, so use those for --quick.
-      return abstract.Unsolvable(self.vm).to_variable(node, name)
+      return self.unsolvable.to_variable(node, name)
     unknown = self._create_new_unknown_value(action)
     v = self.vm.program.NewVariable(name)
     val = v.AddBinding(
