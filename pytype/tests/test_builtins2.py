@@ -3,6 +3,8 @@
 File 2/2. Split into two parts to enable better test parallelism.
 """
 
+
+from pytype import utils
 from pytype.tests import test_inference
 
 
@@ -138,6 +140,23 @@ class BuiltinTests2(test_inference.InferenceTest):
     self.assertTypesMatchPytd(ty, """
       x = ...  # type: dict
     """)
+
+  def testModule(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        x = ...  # type: module
+      """)
+      ty = self.Infer("""\
+        import foo
+        foo.x.bar()
+        x = foo.__name__
+        y = foo.x.baz
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        foo = ...  # type: module
+        x = ...  # type: str
+        y = ...  # type: Any
+      """)
 
 
 if __name__ == "__main__":

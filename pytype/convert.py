@@ -417,7 +417,7 @@ class Converter(object):
             # An instance of "type" or of an anonymous property can be anything.
             instance = self._create_new_unknown_value("type")
           else:
-            mycls = self.convert_constant(str(cls), cls, subst, node)
+            mycls = self.convert_constant(cls.name, cls, subst, node)
             instance = abstract.Instance(mycls, self.vm, node)
           log.info("New pytd instance for %s: %r", cls.name, instance)
           self._convert_cache[key] = instance

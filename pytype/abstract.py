@@ -828,7 +828,7 @@ class Instance(SimpleAbstractValue):
       "__builtin__.list", "__builtin__.set", "__builtin__.frozenset"])
 
   def __init__(self, clsvar, vm, node):
-    super(Instance, self).__init__(clsvar.name, vm)
+    super(Instance, self).__init__(clsvar.data[0].name, vm)
     self.cls = clsvar
     for cls in clsvar.data:
       cls.register_instance(self)
@@ -1979,6 +1979,9 @@ class PyTDClass(SimpleAbstractValue, Class):
         self, node, name, valself, valcls, condition)
     if var.bindings or not valself:
       return node, var
+    elif isinstance(valself.data, Module):
+      # Modules do their own __getattr__ handling.
+      return node, None
     else:
       return self.get_attribute_computed(node, name, valself, valcls, condition)
 

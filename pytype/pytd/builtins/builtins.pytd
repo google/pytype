@@ -986,6 +986,7 @@ class module(object):
     __doc__ = ...  # type: AnyStr
     __package__ = ...  # type: Optional[str]
     def __init__(self, name: str or bytearray, doc = ...) -> NoneType
+    def __getattr__(self, name) -> Any  # modules can contain anything
 
 class slice(object):
     def __init__(self, stop, ...) -> NoneType
