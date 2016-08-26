@@ -791,7 +791,12 @@ class VirtualMachine(object):
     log.debug("getting attr %s from %r", attr, obj)
     nodes = []
     for val in obj.Bindings(node):
-      node2, attr_var = val.data.get_attribute_generic(node, attr, val)
+      try:
+        node2, attr_var = val.data.get_attribute_generic(node, attr, val)
+      except convert.ConversionError as e:
+        self.errorlog.attribute_error(
+            self.frame.current_opcode, obj, attr, str(e))
+        node2, attr_var = node, self.convert.unsolvable.to_variable(node, attr)
       if attr_var is None or not attr_var.bindings:
         log.debug("No %s on %s", attr, val.data.__class__)
         continue

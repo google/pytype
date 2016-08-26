@@ -325,7 +325,7 @@ class ErrorTest(test_inference.InferenceTest):
       _, errors = self.InferAndCheck("""
         import a
       """, deep=True, pythonpath=[d.path])
-      self.assertErrorLogContains(errors, "a.*pyi-error.*SupportsInt")
+      self.assertErrorLogContains(errors, r"a.*pyi-error.*SupportsInt")
 
   def testBadTypeParameterOrder(self):
     with utils.Tempdir() as d:
@@ -337,7 +337,44 @@ class ErrorTest(test_inference.InferenceTest):
       _, errors = self.InferAndCheck("""
         import a
       """, deep=True, pythonpath=[d.path])
-      self.assertErrorLogContains(errors, "a.*pyi-error.*A")
+      self.assertErrorLogContains(errors, r"a.*pyi-error.*A")
+
+  def testTypeParameterInModuleConstant(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        T = TypeVar("T")
+        x = ...  # type: T
+      """)
+      _, errors = self.InferAndCheck("""
+        import a
+      """, deep=True, pythonpath=[d.path])
+      self.assertErrorLogIs(errors, [(2, "pyi-error", r"a.*T.*a\.x")])
+
+  def testTypeParameterInClassAttribute(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        T = TypeVar("T")
+        class A(Generic[T]):
+          x = ...  # type: T
+      """)
+      _, errors = self.InferAndCheck("""
+        import a
+        def f():
+          return a.A.x
+      """, deep=True, pythonpath=[d.path])
+      self.assertErrorLogContains(errors, r"x.*A.*attribute-error.*T")
+
+  def testUnboundTypeParameterInInstanceAttribute(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        T = TypeVar("T")
+        class A(object):
+          x = ...  # type: T
+      """)
+      _, errors = self.InferAndCheck("""
+        import a
+      """, deep=True, pythonpath=[d.path])
+      self.assertErrorLogIs(errors, [(2, "pyi-error", r"a.*T.*a\.A\.x")])
 
 
 if __name__ == "__main__":

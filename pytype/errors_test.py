@@ -92,7 +92,7 @@ class ErrorLogBaseTest(unittest.TestCase):
   def test_error(self):
     errorlog = errors.ErrorLog()
     op = FakeOpcode("foo.py", 123, "foo")
-    errorlog.error(op, "unknown attribute %s", "xyz")
+    errorlog.error(op, "unknown attribute %s" % "xyz")
     self.assertEquals(1, len(errorlog))
     e = list(errorlog)[0]  # iterate the log and save the first error.
     self.assertEquals(errors.SEVERITY_ERROR, e._severity)
@@ -103,7 +103,7 @@ class ErrorLogBaseTest(unittest.TestCase):
   @errors._error_name(_TEST_ERROR)
   def test_error_with_details(self):
     errorlog = errors.ErrorLog()
-    errorlog.error_with_details(None, "My message", "one\ntwo")
+    errorlog.error(None, "My message", "one\ntwo")
     self.assertEquals(textwrap.dedent("""\
         My message [test-error]
           one

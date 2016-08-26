@@ -983,7 +983,7 @@ class instancemethod(object):
 class module(object):
     __file__ = ...  # type: str
     __name__ = ...  # type: str
-    __doc__ = ...  # type: AnyStr
+    __doc__ = ...  # type: str or unicode
     __package__ = ...  # type: Optional[str]
     def __init__(self, name: str or bytearray, doc = ...) -> NoneType
     def __getattr__(self, name) -> Any  # modules can contain anything

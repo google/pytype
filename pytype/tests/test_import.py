@@ -609,14 +609,11 @@ class ImportTest(test_inference.InferenceTest):
       d = os.__doc__
       p = os.__package__
       """, deep=True, solve_unknowns=True)
-    # TODO(rechen): the type of module.__doc__ is AnyStr, which is currently
-    # interpreted as "nothing" but should be str or unicode. (type: str for d is
-    # from object.__doc__.)
     self.assertTypesMatchPytd(ty, """
        os = ...  # type: module
        f = ...  # type: str
        n = ...  # type: str
-       d = ...  # type: str
+       d = ...  # type: str or unicode
        p = ...  # type: Optional[str]
     """)
 

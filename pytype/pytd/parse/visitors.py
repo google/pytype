@@ -1513,6 +1513,7 @@ class AddTypeParameterScopes(Visitor):
     super(AddTypeParameterScopes, self).__init__()
     self.class_name = None
     self.function_name = None
+    self.constant_name = None
     self.bound_by_class = ()
 
   def EnterClass(self, node):
@@ -1529,10 +1530,19 @@ class AddTypeParameterScopes(Visitor):
   def LeaveFunction(self, unused_node):
     self.function_name = None
 
+  def EnterConstant(self, node):
+    self.constant_name = node.name
+
+  def LeaveConstant(self, unused_node):
+    self.constant_name = None
+
+  def _GetFullName(self, name):
+    return ".".join(n for n in [self.class_name, name] if n)
+
   def _GetScope(self, name):
     if name in self.bound_by_class:
       return self.class_name
-    s = ".".join(n for n in [self.class_name, self.function_name] if n)
+    s = self._GetFullName(self.function_name)
     if s:
       return s
     else:
@@ -1542,6 +1552,10 @@ class AddTypeParameterScopes(Visitor):
 
   def VisitTypeParameter(self, node):
     assert node.scope is None
+    if self.constant_name and (not self.class_name or
+                               node.name not in self.bound_by_class):
+      raise ContainerError("Unbound type parameter %s in %s" % (
+          node.name, self._GetFullName(self.constant_name)))
     return node.Replace(scope=self._GetScope(node.name))
 
 

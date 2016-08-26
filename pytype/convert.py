@@ -230,6 +230,7 @@ class Converter(object):
     Returns:
       A cfg.Variable.
     Raises:
+      ConversionError: if conversion is attempted on an unbound type parameter.
       ValueError: if pytype is not of a known type.
     """
     source_sets = source_sets or [[]]
@@ -256,9 +257,7 @@ class Converter(object):
       for t in pytd_utils.UnpackUnion(cls):
         if isinstance(t, pytd.TypeParameter):
           if not subst or t.name not in subst:
-            # TODO(rechen): If the type parameter has limits, use a union of
-            # those instead of nothing.
-            var.AddBinding(self.nothing)
+            raise ConversionError("No binding for type parameter %s" % t.name)
           else:
             for v in subst[t.name].bindings:
               for source_set in source_sets:

@@ -174,12 +174,8 @@ class ErrorLogBase(object):
   def warn(self, opcode, message, *args):
     self._add(Error.at_opcode(opcode, SEVERITY_WARNING, message % args))
 
-  def error(self, opcode, message, *args):
-    self._add(Error.at_opcode(opcode, SEVERITY_ERROR, message % args))
-
-  def error_with_details(self, opcode, message, details):
-    self._add(Error.at_opcode(opcode, SEVERITY_ERROR, message,
-                              details=details))
+  def error(self, opcode, message, details=None):
+    self._add(Error.at_opcode(opcode, SEVERITY_ERROR, message, details=details))
 
   def save(self):
     """Returns a checkpoint that represents the log messages up to now."""
@@ -226,13 +222,12 @@ class ErrorLog(ErrorLogBase):
 
   @_error_name("pyi-error")
   def pyi_error(self, opcode, name, error):
-    self.error_with_details(opcode, "Couldn't import pyi for %r" % name,
-                            str(error))
+    self.error(opcode, "Couldn't import pyi for %r" % name, str(error))
 
   @_error_name("attribute-error")
-  def attribute_error(self, opcode, obj, attr_name):
+  def attribute_error(self, opcode, obj, attr_name, details=None):
     on = " on %s" % obj.data[0].name if len(obj.bindings) == 1 else ""
-    self.error(opcode, "No attribute %r%s" % (attr_name, on))
+    self.error(opcode, "No attribute %r%s" % (attr_name, on), details)
 
   @_error_name("name-error")
   def name_error(self, opcode, name):
@@ -268,7 +263,7 @@ class ErrorLog(ErrorLogBase):
         ", ".join("%s: %s" % (name, self._prettyprint_arg(arg))
                   for name, arg in zip(sig.param_names, passed_args)),
         ")"])
-    self.error_with_details(opcode, message, details)
+    self.error(opcode, message, details)
 
   @_error_name("wrong-keyword-args")
   def wrong_keyword_args(self, opcode, sig, extra_keywords):
@@ -317,43 +312,43 @@ class ErrorLog(ErrorLogBase):
 
   @_error_name("super-error")
   def super_error(self, opcode, arg_count):
-    self.error(opcode, "super() takes one or two arguments. %d given.",
+    self.error(opcode, "super() takes one or two arguments. %d given." %
                arg_count)
 
   @_error_name("base-class-error")
   def base_class_error(self, opcode, node, base_var):
     pytd_type = pytd_utils.JoinTypes(t.get_instance_type(node)
                                      for t in base_var.data)
-    self.error(opcode, "Invalid base class: %s", pytd.Print(pytd_type))
+    self.error(opcode, "Invalid base class: %s" % pytd.Print(pytd_type))
 
   @_error_name("missing-definition")
   def missing_definition(self, item, pytd_filename, py_filename):
-    self.error(None, "%s %s declared in pytd %s, but not defined in %s",
-               type(item).__name__, item.name, pytd_filename, py_filename)
+    self.error(None, "%s %s declared in pytd %s, but not defined in %s" % (
+        type(item).__name__, item.name, pytd_filename, py_filename))
 
   @_error_name("bad-return-type")
   def bad_return_type(self, opcode, unused_function,
                       actual_pytd, expected_pytd):
-    self.error(opcode, "return type is %s, should be %s",
-               pytd.Print(actual_pytd),
-               pytd.Print(expected_pytd))
+    self.error(opcode, "return type is %s, should be %s" % (
+        pytd.Print(actual_pytd),
+        pytd.Print(expected_pytd)))
 
   @_error_name("unsupported-operands")
   def unsupported_operands(self, opcode, node, operation, var1, var2):
     left = pytd_utils.JoinTypes(t.to_type(node) for t in var1.data)
     right = pytd_utils.JoinTypes(t.to_type(node) for t in var2.data)
     # TODO(kramm): Display things like '__add__' as '+'
-    self.error(opcode, "unsupported operand type(s) for %s: %r and %r",
-               operation, pytd.Print(left), pytd.Print(right))
+    self.error(opcode, "unsupported operand type(s) for %s: %r and %r" % (
+        operation, pytd.Print(left), pytd.Print(right)))
 
   @_error_name("invalid-annotation")
   def invalid_annotation(self, opcode, name):
-    self.error(opcode, "Invalid type annotation for %s. Must be constant",
+    self.error(opcode, "Invalid type annotation for %s. Must be constant" %
                name)
 
   @_error_name("mro-error")
   def mro_error(self, opcode, name):
-    self.error(opcode, "Class %r has invalid (cyclic?) inheritance.", name)
+    self.error(opcode, "Class %r has invalid (cyclic?) inheritance." % name)
 
   @_error_name("invalid-directive")
   def invalid_directive(self, filename, lineno, message):
