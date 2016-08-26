@@ -148,6 +148,8 @@ class CallTracer(vm.VirtualMachine):
   def analyze_class(self, val, node):
     node, clsvar, instance = self.init_class(node, val)
     for name, methodvar in sorted(val.data.members.items()):
+      if name == "__init__":
+        continue  # We already called __init__ in init_class
       b = self.bind_method(name, methodvar, instance, clsvar, node)
       node2 = self.analyze_method_var(name, b, node)
       node2.ConnectTo(node)

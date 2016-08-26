@@ -687,8 +687,8 @@ class SimpleAbstractValue(AtomicAbstractValue):
     if variable:
       old_len = len(variable.bindings)
       variable.PasteVariable(var, node)
-      log.debug("Adding choice(s) to %s: %d new values", name,
-                len(variable.bindings) - old_len)
+      log.debug("Adding choice(s) to %s: %d new values (%d total)", name,
+                len(variable.bindings) - old_len, len(variable.bindings))
     else:
       # TODO(kramm): Under what circumstances can we just reuse var?
       #              (variable = self.members[name] = var)?
