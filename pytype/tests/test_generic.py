@@ -409,6 +409,53 @@ class GenericTest(test_inference.InferenceTest):
         def g() -> a.A
       """)
 
+  def testPyTDSubclass(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        T = TypeVar("T")
+        class A(List[T]):
+          def __init__(self) -> None:
+            self := A[str]
+          def f(self) -> T
+        class B(A): pass
+      """)
+      ty = self.Infer("""
+        import a
+        def foo():
+          return a.B().f()
+        def bar():
+          return a.B()[0]
+      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        def foo() -> str
+        def bar() -> str
+      """)
+
+  def testInterpreterSubclass(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        T = TypeVar("T")
+        class A(List[T]):
+          def __init__(self) -> None:
+            self := A[str]
+          def f(self) -> T
+      """)
+      ty = self.Infer("""
+        import a
+        class B(a.A): pass
+        def foo():
+          return B().f()
+        def bar():
+          return B()[0]
+      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        class B(a.A): pass
+        def foo() -> str
+        def bar() -> str
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()
