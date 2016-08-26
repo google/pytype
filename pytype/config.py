@@ -75,6 +75,10 @@ class Options(object):
         dest="check",
         help=("Don't do type inference. Only check for type errors."))
     o.add_option(
+        "--check_preconditions", action="store_true",
+        dest="check_preconditions", default=False,
+        help=("Enable checking of preconditions."))
+    o.add_option(
         "-d", "--disable", action="store",
         dest="disable", default=None,
         help=("Comma separated list of error names to ignore."))

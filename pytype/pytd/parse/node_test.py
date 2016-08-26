@@ -217,5 +217,16 @@ class TestNode(unittest.TestCase):
     for p in itertools.permutations(nodes):
       self.assertEquals(list(sorted(p)), nodes)
 
+  def testPrecondition(self):
+    class MyNode(node.Node("s: str")):
+      pass
+    MyNode("a")  # OK.
+    with node.DisablePreconditions():
+      # Preconditions are ignored.
+      MyNode(1)
+    # Preconditions active.
+    self.assertRaises(ValueError, MyNode, 1)
+
+
 if __name__ == "__main__":
   unittest.main()

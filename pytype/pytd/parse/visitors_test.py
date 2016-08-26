@@ -310,7 +310,7 @@ class TestVisitors(parser_test_base.ParserTest):
     expected_src = (imports + no_import_src).strip()  # Extra newlines
 
     tree = self.Parse(no_import_src)
-    res = tree.Visit(visitors.PrintVisitor())
+    res = pytd.Print(tree)
 
     # AssertSourceEquals strips imports
     self.AssertSourceEquals(res, no_import_src)
@@ -327,14 +327,14 @@ class TestVisitors(parser_test_base.ParserTest):
 
       x = ...  # type: typing.List
     """).strip()
-    res = tree.Visit(visitors.PrintVisitor())
+    res = pytd.Print(tree)
     self.assertMultiLineEqual(res, expected_src)
 
   def testPrintImportsIgnoresExisting(self):
     src = "from foo import b"
 
     tree = self.Parse(src)
-    res = tree.Visit(visitors.PrintVisitor())
+    res = pytd.Print(tree)
     self.assertMultiLineEqual(res, src)
 
   def testAdjustTypeParameters(self):

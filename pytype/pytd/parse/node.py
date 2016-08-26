@@ -58,6 +58,26 @@ functionalities to be made part of collections.namedtuple.
 """
 
 import collections
+import contextlib
+
+from pytype.pytd.parse import preconditions
+
+
+_CHECK_PRECONDITIONS = True
+
+
+@contextlib.contextmanager
+def EnablePreconditions(enable):
+  """Disables precondition checking of Nodes, useful for printing."""
+  global _CHECK_PRECONDITIONS
+  old = _CHECK_PRECONDITIONS
+  _CHECK_PRECONDITIONS = enable
+  yield
+  _CHECK_PRECONDITIONS = old
+
+
+def DisablePreconditions():
+  return EnablePreconditions(False)
 
 
 def Node(*child_names):
@@ -75,10 +95,19 @@ def Node(*child_names):
     A subclass of (named)tuple.
   """
 
-  namedtuple_type = collections.namedtuple("_", child_names)
+  precondition_pairs = [preconditions.parse_arg(x) for x in child_names]
+  namedtuple_type = collections.namedtuple(
+      "_", (p[0] for p in precondition_pairs))
 
   class NamedTupleNode(namedtuple_type):
     """A Node class based on namedtuple."""
+
+    _CHECKER = preconditions.CallChecker(precondition_pairs)
+
+    def __init__(self, *args, **kwargs):
+      if _CHECK_PRECONDITIONS:
+        self._CHECKER.check(*args, **kwargs)
+      super(NamedTupleNode, self).__init__(*args, **kwargs)
 
     def __eq__(self, other):
       """Compare two nodes for equality.

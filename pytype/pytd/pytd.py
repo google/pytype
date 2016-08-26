@@ -24,8 +24,13 @@ import itertools
 from pytype.pytd.parse import node
 
 
-class TypeDeclUnit(node.Node('name', 'constants', 'type_params', 'classes',
-                             'functions', 'aliases')):
+# TODO(dbaum): Is tuple[None] really a valid type for classes?
+class TypeDeclUnit(node.Node('name: str or None',
+                             'constants: tuple[Constant]',
+                             'type_params: tuple[TypeParameter]',
+                             'classes: tuple[Class or None]',
+                             'functions: tuple[Function or ExternalFunction]',
+                             'aliases: tuple[Alias]')):
   """Module node. Holds module contents (constants / classes / functions).
 
   Attributes:

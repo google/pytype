@@ -24,6 +24,7 @@ from pytype.pyc import pyc
 from pytype.pytd import optimize
 from pytype.pytd import pytd
 from pytype.pytd import utils as pytd_utils
+from pytype.pytd.parse import node
 from pytype.pytd.parse import parser
 from pytype.pytd.parse import visitors
 
@@ -225,7 +226,8 @@ def main(argv):
 
   with _ProfileContext(options.profile):
     with metrics.MetricsContext(options.metrics):
-      return _run_pytype(options)
+      with node.EnablePreconditions(options.check_preconditions):
+        return _run_pytype(options)
 
 
 def _run_pytype(options):

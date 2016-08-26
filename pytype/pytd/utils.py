@@ -28,6 +28,7 @@ import collections
 from pytype.pytd import abc_hierarchy
 from pytype.pytd import pep484
 from pytype.pytd import pytd
+from pytype.pytd.parse import node
 from pytype.pytd.parse import visitors
 
 
@@ -203,10 +204,11 @@ OUTPUT_FORMATS = {
 def Print(ast, print_format=None):
   if print_format and print_format not in OUTPUT_FORMATS:
     raise ValueError("Invalid format %s" % print_format)
-  if print_format == "pytd" or print_format is None:
-    res = ast.Visit(visitors.PrintVisitor())
-  elif print_format == "pep484stub":
-    res = ast.Visit(pep484.Print484StubVisitor())
+  with node.DisablePreconditions():
+    if print_format == "pytd" or print_format is None:
+      res = ast.Visit(visitors.PrintVisitor())
+    elif print_format == "pep484stub":
+      res = ast.Visit(pep484.Print484StubVisitor())
   return res
 
 
