@@ -368,10 +368,10 @@ def CheckIsSysPlatform(parser, string, p):
           string), p)
 
 
-class TypeDeclParser(object):
+class _TypeDeclParser(object):
   """Parser for type declaration language."""
 
-  def __init__(self, version=None, platform="linux", **kwargs):
+  def __init__(self):
     """Initialize.
 
     Parameters:
@@ -389,22 +389,22 @@ class TypeDeclParser(object):
     #                  [might also need optimize=True]
     self.lexer = PyLexer()
     self.tokens = self.lexer.tokens
-    self.python_version = version or DEFAULT_VERSION
-    self.platform = platform
 
     self.parser = yacc.yacc(
         start="start",  # warning: ply ignores this
         module=self,
         debug=False,
-        write_tables=False,
+        write_tables=False)
         # debuglog=yacc.PlyLogger(sys.stderr),
-        # errorlog=yacc.NullLogger(),  # If you really want to suppress messages
-        **kwargs)
+        # errorlog=yacc.NullLogger())  # If you really want to suppress messages)
 
-  def Parse(self, src, name=None, filename="<string>", **kwargs):
+  def Parse(self, src, name=None, filename="<string>", version=None,
+            platform="linux"):
     """Run tokenizer, parser, and postprocess the AST."""
     self.src = src  # Keep a copy of what's being parsed
     self.filename = filename if filename else "<string>"
+    self.python_version = version or DEFAULT_VERSION
+    self.platform = platform
     self.generated_classes = collections.defaultdict(list)
     # For the time being, also allow shortcuts, i.e., using "List" for
     # "typing.List", even without having imported typing:
@@ -419,7 +419,7 @@ class TypeDeclParser(object):
     assert not intersection, "Multiple definitions: " + str(intersection)
     self.aliases.update(pep484.PEP484_TRANSLATIONS)
     self.lexer.set_parse_info(self.src, self.filename)
-    ast = self.parser.parse(src, lexer=self.lexer.lexer, **kwargs)
+    ast = self.parser.parse(src, lexer=self.lexer.lexer)
     # If there's no unique name, hash the sourcecode.
     name = name or hashlib.md5(src).hexdigest()
     ast = ast.Visit(InsertTypeParameters())
@@ -1505,6 +1505,23 @@ class TypeDeclParser(object):
         raise make_syntax_error(self, "Mixed pytd and PYTHONCODEs for %s" %
                                 name, None)
 
+_shared_parser = None
+
+
+def TypeDeclParser():
+  """Return a shared parser for TypeDeclUnits.
+
+  This instance is shared by all callers to TypeDeclParser, thus is not
+  appropriate for multi-threadeded or reentrant usage.
+
+  Returns:
+    A _TypeDeclParser instance.
+  """
+  global _shared_parser
+  if _shared_parser is None:
+    _shared_parser = _TypeDeclParser()
+  return _shared_parser
+
 
 def _find_line_and_column(lexpos, src):
   """Determine column and line contents, for pretty-printing."""
@@ -1543,4 +1560,4 @@ def make_syntax_error(parser_or_tokenizer, msg, p):
 
 def parse_string(string, name=None, filename=None,
                  python_version=DEFAULT_VERSION):
-  return TypeDeclParser(python_version).Parse(string, name, filename)
+  return TypeDeclParser().Parse(string, name, filename, version=python_version)
