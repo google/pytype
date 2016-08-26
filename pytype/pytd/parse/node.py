@@ -98,6 +98,7 @@ def Node(*child_names):
   precondition_pairs = [preconditions.parse_arg(x) for x in child_names]
   namedtuple_type = collections.namedtuple(
       "_", (p[0] for p in precondition_pairs))
+  assert "__init__" not in namedtuple_type.__dict__  # see below
 
   class NamedTupleNode(namedtuple_type):
     """A Node class based on namedtuple."""
@@ -107,7 +108,9 @@ def Node(*child_names):
     def __init__(self, *args, **kwargs):
       if _CHECK_PRECONDITIONS:
         self._CHECKER.check(*args, **kwargs)
-      super(NamedTupleNode, self).__init__(*args, **kwargs)
+      # We do *not* call super() here, for performance reasons. Neither
+      # namedtuple (our base class) nor tuple (namedtuple's base class) do
+      # anything in __init__, so it's safe to leave it out.
 
     def __eq__(self, other):
       """Compare two nodes for equality.
