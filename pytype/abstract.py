@@ -1060,11 +1060,6 @@ class Union(AtomicAbstractValue, FormalType):
     self.options = options
 
 
-# return value from PyTDSignature._call_with_values:
-FunctionCallResult = collections.namedtuple(
-    "_", ["return_type", "subst", "mutations"])
-
-
 class FunctionArgs(collections.namedtuple("_", ["posargs", "namedargs",
                                                 "starargs", "starstarargs"])):
 
@@ -1371,8 +1366,8 @@ class PyTDSignature(object):
     self._bound_sig_cache = {}
     self.signature = function.Signature.from_pytd(vm, name, pytd_sig)
 
-  def call_with_view(self, node, func, args, view, ret_map, record_call=False):
-    """Call this signature. Used by PyTDFunction."""
+  def match_args(self, node, args, view):
+    """Match arguments against this signature. Used by PyTDFunction."""
     arg_dict = {name: view[arg]
                 for name, arg in zip(self.signature.param_names, args.posargs)}
     arg_dict.update({name: view[arg]
@@ -1400,43 +1395,8 @@ class PyTDSignature(object):
       if invalid_names:
         raise WrongKeywordArgs(self.signature, sorted(invalid_names))
 
-    r = self._call_with_values(node, arg_dict, view)
-    assert r.subst is not None
-    t = (r.return_type, r.subst)
-    sources = [func] + arg_dict.values()
-    if t not in ret_map:
-      ret_map[t] = self.vm.convert.convert_constant(
-          "ret", AsInstance(r.return_type), r.subst, node,
-          source_sets=[sources])
-    else:
-      # add the new sources
-      for data in ret_map[t].data:
-        ret_map[t].AddBinding(data, sources, node)
-    if record_call:
-      self.vm.trace_call(node, func,
-                         tuple(arg_dict[p.name] for p in self.pytd_sig.params),
-                         {},
-                         ret_map[t])
-    return node, ret_map[t], r.mutations
-
-  def _call_with_values(self, node, arg_dict, view):
-    """Try to execute this signature with the given arguments.
-
-    This uses specific typegraph.Binding instances (not: Variables) to try to
-    match this signature. This is used by call(), which dissects
-    typegraph.Variable instances into Value lists.
-
-    Args:
-      node: The current CFG node.
-      arg_dict: A map of strings to pytd.Value instances.
-      view: A mapping of Variable to Value.
-    Returns:
-      A FunctionCallResult instance
-    Raises:
-      FailedFunctionCall
-    """
-    return_type = self.pytd_sig.return_type
     subst = self._compute_subst(node, arg_dict, view)
+    assert subst is not None
     # FailedFunctionCall is thrown by _compute_subst if no signature could be
     # matched (subst might be []).
     log.debug("Matched arguments against sig%s", pytd.Print(self.pytd_sig))
@@ -1444,8 +1404,27 @@ class PyTDSignature(object):
       log.info("param %d) %s: %s <=> %s", nr, p.name, p.type, arg_dict[p.name])
     for name, var in sorted(subst.items()):
       log.debug("Using %s=%r %r", name, var, var.data)
+
+    return arg_dict, subst
+
+  def call_with_args(self, node, func, arg_dict, subst, ret_map):
+    """Call this signature. Used by PyTDFunction."""
+    return_type = self.pytd_sig.return_type
+    t = (return_type, subst)
+    sources = [func] + arg_dict.values()
+    if t not in ret_map:
+      ret_map[t] = self.vm.convert.convert_constant(
+          "ret", AsInstance(return_type), subst, node, source_sets=[sources])
+    else:
+      # add the new sources
+      for data in ret_map[t].data:
+        ret_map[t].AddBinding(data, sources, node)
     mutations = self._get_mutation(node, arg_dict, subst)
-    return FunctionCallResult(return_type, subst, mutations)
+    self.vm.trace_call(node, func,
+                       tuple(arg_dict[p.name] for p in self.pytd_sig.params),
+                       {},
+                       ret_map[t])
+    return node, ret_map[t], mutations
 
   def _compute_subst(self, node, arg_dict, view):
     """Compute information about type parameters using one-way unification.
@@ -1687,17 +1666,24 @@ class PyTDFunction(Function):
     if (len(self.signatures) > 1 and
         any(isinstance(view[arg].data, (Unknown, Unsolvable))
             for arg in chain(args.posargs, args.namedargs.values()))):
-      return self.call_with_unknowns(node, func, args, view, ret_map)
+      # Make sure that at least one signature is possible:
+      tuple(self._yield_matching_signatures(node, args, view))
+      return self._call_with_unknowns(node, func, args, view)
     else:
-      return self.find_matching_signature(
-          node, func, args, view, ret_map, record_call=True)
+      # We only take the first signature that matches, and ignore all after it.
+      # This is because in the pytds for the standard library, the last
+      # signature(s) is/are fallback(s) - e.g. list is defined by
+      # def __init__(self: x: list)
+      # def __init__(self, x: iterable)
+      # def __init__(self, x: generator)
+      # def __init__(self, x: object)
+      # with the last signature only being used if none of the others match.
+      sig, arg_dict, subst = next(self._yield_matching_signatures(
+          node, args, view))
+      return sig.call_with_args(node, func, arg_dict, subst, ret_map)
 
-  def call_with_unknowns(self, node, func, args, view, ret_map):
+  def _call_with_unknowns(self, node, func, args, view):
     """Perform a function call that involves unknowns."""
-
-    # Make sure that at least one signature is possible:
-    self.find_matching_signature(node, func, args, view, ret_map)
-
     unique_type = None
     if len(self._return_types) == 1:
       ret_type, = self._return_types
@@ -1730,29 +1716,20 @@ class PyTDFunction(Function):
                        result)
     return node, result, mutations
 
-  def find_matching_signature(self, node, func, args, view, ret_map,
-                              record_call=False):
-    """Try, in order, all pytd signatures until we find one that matches."""
-
-    # We only take the first signature that matches, and ignore all after it.
-    # This is because in the pytds for the standard library, the last
-    # signature(s) is/are fallback(s) - e.g. list is defined by
-    # def __init__(self: x: list)
-    # def __init__(self, x: iterable)
-    # def __init__(self, x: generator)
-    # def __init__(self, x: object)
-    # with the last signature only being used if none of the others match.
-
+  def _yield_matching_signatures(self, node, args, view):
+    """Try, in order, all pytd signatures, yielding matches."""
     error = None
+    matched = False
     for sig in self.signatures:
       try:
-        new_node, result, mutations = sig.call_with_view(
-            node, func, args, view, ret_map, record_call)
+        arg_dict, subst = sig.match_args(node, args, view)
       except FailedFunctionCall as e:
         error = e
       else:
-        return new_node, result, mutations
-    raise error  # pylint: disable=raising-bad-type
+        matched = True
+        yield sig, arg_dict, subst
+    if not matched:
+      raise error  # pylint: disable=raising-bad-type
 
   def to_pytd_def(self, node, name):
     del node
@@ -1761,6 +1738,9 @@ class PyTDFunction(Function):
 
   def __repr__(self):
     return self.name + "(...)"
+
+  # We want to use __repr__ above rather than SimpleAbstractValue.__str__
+  __str__ = __repr__
 
 
 class Class(object):
