@@ -293,27 +293,26 @@ class VirtualMachine(object):
       # (it might be an abstract integer, or a union type), we just always
       # call __len__.
       state, f = self.load_attr(state, obj, "__len__")
-      state, end = self.call_function_with_state(state, f, [], {})
+      state, end = self.call_function_with_state(state, f, [])
     return state, self.convert.build_slice(state.node, start, end, 1), obj
 
   def store_slice(self, state, count):
     state, slice_obj, obj = self.pop_slice_and_obj(state, count)
     state, new_value = state.pop()
     state, f = self.load_attr(state, obj, "__setitem__")
-    state, _ = self.call_function_with_state(state, f, [slice_obj, new_value],
-                                             {})
+    state, _ = self.call_function_with_state(state, f, [slice_obj, new_value])
     return state
 
   def delete_slice(self, state, count):
     state, slice_obj, obj = self.pop_slice_and_obj(state, count)
     state, f = self.load_attr(state, obj, "__delitem__")
-    state, _ = self.call_function_with_state(state, f, [slice_obj], {})
+    state, _ = self.call_function_with_state(state, f, [slice_obj])
     return state
 
   def get_slice(self, state, count):
     state, slice_obj, obj = self.pop_slice_and_obj(state, count)
     state, f = self.load_attr(state, obj, "__getitem__")
-    state, ret = self.call_function_with_state(state, f, [slice_obj], {})
+    state, ret = self.call_function_with_state(state, f, [slice_obj])
     return state.push(ret)
 
   def do_raise(self, state, exc, cause):
@@ -625,22 +624,18 @@ class VirtualMachine(object):
   def call_function_with_state(self, state, funcu, posargs, namedargs=None,
                                starargs=None, starstarargs=None,
                                fallback_to_unsolvable=True):
-    node, ret = self.call_function(
-        state.node, funcu, posargs, namedargs,
-        starargs, starstarargs, fallback_to_unsolvable)
+    node, ret = self.call_function(state.node, funcu, abstract.FunctionArgs(
+        posargs=posargs, namedargs=namedargs, starargs=starargs,
+        starstarargs=starstarargs), fallback_to_unsolvable)
     return state.change_cfg_node(node), ret
 
-  def call_function(self, node, funcu, posargs, namedargs=None, starargs=None,
-                    starstarargs=None, fallback_to_unsolvable=True):
+  def call_function(self, node, funcu, args, fallback_to_unsolvable=True):
     """Call a function.
 
     Args:
       node: The current CFG node.
       funcu: A variable of the possible functions to call.
-      posargs: The known positional arguments to pass (as variables).
-      namedargs: The known keyword arguments to pass. dict of str -> Variable.
-      starargs: The contents of the *args parameter, if passed, or None.
-      starstarargs: The contents of the **kwargs parameter, if passed, or None.
+      args: The arguments to pass. See abstract.FunctionArgs.
       fallback_to_unsolvable: If the function call fails, create an unknown.
     Returns:
       A tuple (CFGNode, Variable). The Variable is the return value.
@@ -653,8 +648,7 @@ class VirtualMachine(object):
       func = funcv.data
       assert isinstance(func, abstract.AtomicAbstractValue), type(func)
       try:
-        new_node, one_result = func.call(
-            node, funcv, posargs, namedargs or {}, starargs, starstarargs)
+        new_node, one_result = func.call(node, funcv, args)
       except abstract.FailedFunctionCall as e:
         error = error or e
       else:
@@ -931,7 +925,7 @@ class VirtualMachine(object):
   def unary_operator(self, state, name):
     state, x = state.pop()
     state, method = self.load_attr(state, x, name)  # E.g. __not__
-    state, result = self.call_function_with_state(state, method, [], {})
+    state, result = self.call_function_with_state(state, method, [])
     state = state.push(result)
     return state
 
@@ -1251,7 +1245,7 @@ class VirtualMachine(object):
 
   def store_subscr(self, state, obj, key, val):
     state, f = self.load_attr(state, obj, "__setitem__")
-    state, _ = self.call_function_with_state(state, f, [key, val], {})
+    state, _ = self.call_function_with_state(state, f, [key, val])
     return state
 
   def byte_STORE_SUBSCR(self, state):
@@ -1292,12 +1286,12 @@ class VirtualMachine(object):
     """Pops a tuple (or other iterable) and pushes it onto the VM's stack."""
     state, seq = state.pop()
     state, f = self.load_attr(state, seq, "__iter__")
-    state, itr = self.call_function_with_state(state, f, [], {})
+    state, itr = self.call_function_with_state(state, f, [])
     values = []
     for _ in range(op.arg):
       # TODO(ampere): Fix for python 3
       state, f = self.load_attr(state, itr, "next")
-      state, result = self.call_function_with_state(state, f, [], {})
+      state, result = self.call_function_with_state(state, f, [])
       values.append(result)
     for value in reversed(values):
       state = state.push(value)
@@ -1319,7 +1313,7 @@ class VirtualMachine(object):
     state, val = state.pop()
     the_list = state.peek(count)
     state, f = self.load_attr(state, the_list, "append")
-    state, _ = self.call_function_with_state(state, f, [val], {})
+    state, _ = self.call_function_with_state(state, f, [val])
     return state
 
   def byte_SET_ADD(self, state, op):
@@ -1328,7 +1322,7 @@ class VirtualMachine(object):
     state, val = state.pop()
     the_set = state.peek(count)
     state, f = self.load_attr(state, the_set, "add")
-    state, _ = self.call_function_with_state(state, f, [val], {})
+    state, _ = self.call_function_with_state(state, f, [val])
     return state
 
   def byte_MAP_ADD(self, state, op):
@@ -1337,7 +1331,7 @@ class VirtualMachine(object):
     state, (val, key) = state.popn(2)
     the_map = state.peek(count)
     state, f = self.load_attr(state, the_map, "__setitem__")
-    state, _ = self.call_function_with_state(state, f, [key, val], {})
+    state, _ = self.call_function_with_state(state, f, [key, val])
     return state
 
   def byte_PRINT_EXPR(self, state):

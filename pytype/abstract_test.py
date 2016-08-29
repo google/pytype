@@ -146,8 +146,9 @@ class IsInstanceTest(AbstractTestBase):
       left: A Variable to use as the first arg to call().
       right: A Variable to use as the second arg to call().
     """
-    node, result = self._is_instance.call(self._node, None, (left, right),
-                                          self.new_dict())
+    node, result = self._is_instance.call(
+        self._node, None, abstract.FunctionArgs((left, right), self.new_dict(),
+                                                None, None))
     self.assertEquals(self._node, node)
     result_map = {}
     # Turning source sets into canonical string representations of the binding
@@ -188,7 +189,9 @@ class IsInstanceTest(AbstractTestBase):
 
   def test_call_wrong_argcount(self):
     self._vm.push_frame(FakeFrame())
-    node, result = self._is_instance.call(self._node, None, (), self.new_dict())
+    node, result = self._is_instance.call(
+        self._node, None, abstract.FunctionArgs((), self.new_dict(),
+                                                None, None))
     self.assertEquals(self._node, node)
     self.assertIsInstance(abstract.get_atomic_value(result),
                           abstract.Unsolvable)
@@ -200,7 +203,8 @@ class IsInstanceTest(AbstractTestBase):
     self._vm.push_frame(FakeFrame())
     x = self.new_var("x", abstract.Unknown(self._vm))
     node, result = self._is_instance.call(
-        self._node, None, (x, x), self.new_dict(foo=x))
+        self._node, None, abstract.FunctionArgs((x, x), self.new_dict(foo=x),
+                                                None, None))
     self.assertEquals(self._node, node)
     self.assertIsInstance(abstract.get_atomic_value(result),
                           abstract.Unsolvable)

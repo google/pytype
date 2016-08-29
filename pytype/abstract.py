@@ -331,18 +331,15 @@ class AtomicAbstractValue(object):
     """
     raise NotImplementedError()
 
-  def call(self, node, f, posargs, namedargs, starargs=None, starstarargs=None):
+  def call(self, node, func, args):
     """Call this abstract value with the given arguments.
 
     The posargs and namedargs arguments may be modified by this function.
 
     Args:
       node: The CFGNode calling this function
-      f: The typegraph.Binding containing this function.
-      posargs: Positional arguments for the call (list of Variables).
-      namedargs: Keyword arguments for the call (dict mapping str to Variable).
-      starargs: *args Variable, if passed. (None otherwise).
-      starstarargs: **kwargs Variable, if passed (None otherwise).
+      func: The typegraph.Binding containing this function.
+      args: Arguments for the call.
     Returns:
       A tuple (cfg.Node, typegraph.Variable). The CFGNode corresponds
       to the function's "return" statement(s).
@@ -699,13 +696,12 @@ class SimpleAbstractValue(AtomicAbstractValue):
       self.members[name] = variable
     return node
 
-  def call(self, node, unused_func, posargs, namedargs,
-           starargs=None, starstarargs=None):
+  def call(self, node, _, args):
     node, var = self.get_attribute(node, "__call__")
     self_var = self.to_variable(node, self.name)
     if var is not None and var.bindings:
-      return self.vm.call_function(node, var, [self_var] + posargs, namedargs,
-                                   starargs, starstarargs)
+      return self.vm.call_function(
+          node, var, args.replace(posargs=[self_var] + args.posargs))
     else:
       raise NotCallable(self)
 
@@ -896,7 +892,7 @@ class ValueWithSlots(Instance):
     """Call the (original) pytd version of a method we overwrote."""
     if name in self._self:
       node, ret = self.vm.call_function(
-          node, self._super[name], (self._self[name],) + args)
+          node, self._super[name], FunctionArgs((self._self[name],) + args))
     else:
       ret = None
       log.error(
@@ -1069,6 +1065,27 @@ FunctionCallResult = collections.namedtuple(
     "_", ["return_type", "subst", "mutations"])
 
 
+class FunctionArgs(collections.namedtuple("_", ["posargs", "namedargs",
+                                                "starargs", "starstarargs"])):
+
+  def __new__(cls, posargs, namedargs=None, starargs=None, starstarargs=None):
+    """Create arguments for a function under analysis.
+
+    Args:
+      posargs: The positional arguments. A tuple of typegraph.Variable.
+      namedargs: The keyword arguments. A dictionary, mapping strings to
+        typegraph.Variable.
+      starargs: The *args parameter, or None.
+      starstarargs: The **kwargs parameter, or None.
+    Returns:
+      A FunctionArgs instance.
+    """
+    cls.replace = cls._replace
+    return super(cls, FunctionArgs).__new__(
+        cls, posargs=posargs, namedargs=namedargs or {}, starargs=starargs,
+        starstarargs=starstarargs)
+
+
 class FailedFunctionCall(Exception):
   """Exception for failed function calls."""
 
@@ -1152,20 +1169,21 @@ class Super(AtomicAbstractValue):
   def __init__(self, vm):
     super(Super, self).__init__("super", vm)
 
-  def call(self, node, _, posargs, namedargs, starargs=None, starstarargs=None):
+  def call(self, node, _, args):
     result = self.vm.program.NewVariable("super")
-    if len(posargs) == 1:
+    if len(args.posargs) == 1:
       # TODO(kramm): Add a test for this
-      for cls in posargs[0].bindings:
+      for cls in args.posargs[0].bindings:
         result.AddBinding(
             SuperInstance(cls.data, None, self.vm), [cls], node)
-    elif len(posargs) == 2:
-      for cls in posargs[0].bindings:
-        for obj in posargs[1].bindings:
+    elif len(args.posargs) == 2:
+      for cls in args.posargs[0].bindings:
+        for obj in args.posargs[1].bindings:
           result.AddBinding(
               SuperInstance(cls.data, obj.data, self.vm), [cls, obj], node)
     else:
-      self.vm.errorlog.super_error(self.vm.frame.current_opcode, len(posargs))
+      self.vm.errorlog.super_error(
+          self.vm.frame.current_opcode, len(args.posargs))
       result = self.vm.convert.create_new_unsolvable(node, "super()")
     return node, result
 
@@ -1193,16 +1211,16 @@ class IsInstance(AtomicAbstractValue):
         None: vm.convert.primitive_class_instances[bool],
     }
 
-  def call(self, node, _, posargs, namedargs, starargs=None, starstarargs=None):
+  def call(self, node, _, args):
     try:
-      if len(posargs) != 2:
-        raise WrongArgCount(self._SIGNATURE, len(posargs))
-      elif namedargs.keys():
-        raise WrongKeywordArgs(self._SIGNATURE, namedargs.keys())
+      if len(args.posargs) != 2:
+        raise WrongArgCount(self._SIGNATURE, len(args.posargs))
+      elif args.namedargs.keys():
+        raise WrongKeywordArgs(self._SIGNATURE, args.namedargs.keys())
       else:
         result = self.vm.program.NewVariable("isinstance")
-        for left in posargs[0].bindings:
-          for right in posargs[1].bindings:
+        for left in args.posargs[0].bindings:
+          for right in args.posargs[1].bindings:
             pyval = self._is_instance(left.data, right.data)
             result.AddBinding(self._vm_values[pyval],
                               source_set=(left, right), where=node)
@@ -1353,19 +1371,17 @@ class PyTDSignature(object):
     self._bound_sig_cache = {}
     self.signature = function.Signature.from_pytd(vm, name, pytd_sig)
 
-  # pylint: disable=unused-argument
-  def call_with_view(self, node, func, view, posargs, namedargs, ret_map,
-                     starargs=None, starstarargs=None,
-                     record_call=False):
+  def call_with_view(self, node, func, args, view, ret_map, record_call=False):
     """Call this signature. Used by PyTDFunction."""
     arg_dict = {name: view[arg]
-                for name, arg in zip(self.signature.param_names, posargs)}
+                for name, arg in zip(self.signature.param_names, args.posargs)}
     arg_dict.update({name: view[arg]
-                     for name, arg in namedargs.items()})
+                     for name, arg in args.namedargs.items()})
 
     for p in self.pytd_sig.params:
       if p.name not in arg_dict:
-        if not p.optional and starargs is None and starstarargs is None:
+        if (not p.optional and args.starargs is None and
+            args.starstarargs is None):
           raise MissingParameter(self.signature, p.name)
         # Assume the missing parameter is filled in by *args or **kwargs.
         # TODO(kramm): Can we use the contents of [star]starargs to fill in a
@@ -1377,9 +1393,10 @@ class PyTDSignature(object):
       if not (p.optional or p.name in arg_dict):
         raise MissingParameter(self.signature, p.name)
     if not self.pytd_sig.has_optional:
-      if len(posargs) > len(self.pytd_sig.params):
-        raise WrongArgCount(self.signature, len(posargs))
-      invalid_names = set(namedargs) - {p.name for p in self.pytd_sig.params}
+      if len(args.posargs) > len(self.pytd_sig.params):
+        raise WrongArgCount(self.signature, len(args.posargs))
+      invalid_names = set(args.namedargs) - {p.name
+                                             for p in self.pytd_sig.params}
       if invalid_names:
         raise WrongKeywordArgs(self.signature, sorted(invalid_names))
 
@@ -1528,15 +1545,13 @@ class ClassMethod(AtomicAbstractValue):
     self.callcls = callcls  # unused
     self.signatures = self.method.signatures
 
-  def call(self, node, func, posargs, namedargs,
-           starargs=None, starstarargs=None):
+  def call(self, node, func, args):
     # Since this only used in pyi, we don't need to verify the type of the "cls"
     # arg a second time. So just pass an unsolveable. (All we care about is the
     # return type, anyway.)
     cls = self.vm.convert.create_new_unsolvable(node, "cls")
-    return self.method.call(node, func,
-                            [cls] + posargs,
-                            namedargs, starargs, starstarargs)
+    return self.method.call(
+        node, func, args.replace(posargs=[cls] + args.posargs))
 
   def match_against_type(self, other_type, subst, node, view):
     if other_type.name in ["classmethod", "object"]:
@@ -1608,21 +1623,19 @@ class PyTDFunction(Function):
             self._log_args(value.data.unique_parameter_values(), level + 2,
                            logged | {value.data})
 
-  def call(self, node, func, posargs, namedargs,
-           starargs=None, starstarargs=None):
-    self._log_args(arg.bindings for arg in posargs)
+  def call(self, node, func, args):
+    self._log_args(arg.bindings for arg in args.posargs)
     ret_map = {}
     retvar = self.vm.program.NewVariable("%s ret" % self.name)
     error = None
-    variables = tuple(posargs) + tuple(namedargs.values())
+    variables = tuple(args.posargs) + tuple(args.namedargs.values())
     all_calls_failed = True
     all_mutations = []
     for combination in utils.deep_variable_product(variables):
       view = {value.variable: value for value in combination}
       try:
         node, result, mutations = self._call_with_view(
-            node, func, view, posargs, namedargs, ret_map,
-            starargs, starstarargs)
+            node, func, args, view, ret_map)
       except FailedFunctionCall as e:
         # TODO(kramm): Does this ever happen?
         error = error or e
@@ -1657,15 +1670,14 @@ class PyTDFunction(Function):
             for v in values if isinstance(v, SimpleAbstractValue)
             for name in v.type_parameters]
 
-  def _call_with_view(self, node, func, view, posargs, namedargs,
-                      ret_map, starargs=None, starstarargs=None):
+  def _call_with_view(self, node, func, args, view, ret_map):
     """Call function using a specific Variable->Value view."""
     log.debug("call_with_view function %r: %d signature(s)",
               self.name, len(self.signatures))
     log.debug("args in view: %r", [(a.bindings and view[a].data)
-                                   for a in posargs])
+                                   for a in args.posargs])
 
-    if not all(a.bindings for a in posargs):
+    if not all(a.bindings for a in args.posargs):
       raise exceptions.ByteCodeTypeError(
           "Can't call function with <nothing> parameter")
 
@@ -1674,21 +1686,17 @@ class PyTDFunction(Function):
     # which signature got called. Check if this is the case.
     if (len(self.signatures) > 1 and
         any(isinstance(view[arg].data, (Unknown, Unsolvable))
-            for arg in chain(posargs, namedargs.values()))):
-      return self.call_with_unknowns(node, func, view, posargs, namedargs,
-                                     ret_map, starargs, starstarargs)
+            for arg in chain(args.posargs, args.namedargs.values()))):
+      return self.call_with_unknowns(node, func, args, view, ret_map)
     else:
       return self.find_matching_signature(
-          node, func, view, posargs, namedargs, ret_map,
-          starargs, starstarargs, record_call=True)
+          node, func, args, view, ret_map, record_call=True)
 
-  def call_with_unknowns(self, node, func, view, posargs, namedargs, ret_map,
-                         starargs, starstarargs):
+  def call_with_unknowns(self, node, func, args, view, ret_map):
     """Perform a function call that involves unknowns."""
 
     # Make sure that at least one signature is possible:
-    self.find_matching_signature(node, func, view, posargs, namedargs, ret_map,
-                                 starargs, starstarargs)
+    self.find_matching_signature(node, func, args, view, ret_map)
 
     unique_type = None
     if len(self._return_types) == 1:
@@ -1711,17 +1719,18 @@ class PyTDFunction(Function):
       # TODO(kramm): We only need to whack the type params that appear in
       # a mutable parameter.
       mutations = self._get_mutation_to_unknown(
-          node, (view[p].data for p in chain(posargs, namedargs.values())))
+          node, (view[p].data for p in chain(args.posargs,
+                                             args.namedargs.values())))
     else:
       mutations = []
     self.vm.trace_call(node, func,
-                       [view[arg] for arg in posargs],
-                       {name: view[arg] for name, arg in namedargs.items()},
+                       [view[arg] for arg in args.posargs],
+                       {name: view[arg]
+                        for name, arg in args.namedargs.items()},
                        result)
     return node, result, mutations
 
-  def find_matching_signature(self, node, func, view, posargs, namedargs,
-                              ret_map, starargs, starstarargs,
+  def find_matching_signature(self, node, func, args, view, ret_map,
                               record_call=False):
     """Try, in order, all pytd signatures until we find one that matches."""
 
@@ -1738,8 +1747,7 @@ class PyTDFunction(Function):
     for sig in self.signatures:
       try:
         new_node, result, mutations = sig.call_with_view(
-            node, func, view, posargs, namedargs, ret_map,
-            starargs, starstarargs, record_call)
+            node, func, args, view, ret_map, record_call)
       except FailedFunctionCall as e:
         error = e
       else:
@@ -1774,7 +1782,7 @@ class Class(object):
     if attr_var and attr_var.bindings:
       name_var = AbstractOrConcreteValue(name, self.vm.convert.str_type,
                                          self.vm, node).to_variable(node, name)
-      return self.vm.call_function(node, attr_var, [name_var])
+      return self.vm.call_function(node, attr_var, FunctionArgs([name_var]))
     else:
       return node, None
 
@@ -2008,8 +2016,7 @@ class PyTDClass(SimpleAbstractValue, Class):
     else:
       raise AssertionError("Invalid class member %s", pytd.Print(pyval))
 
-  def call(self, node, func, posargs, namedargs,
-           starargs=None, starstarargs=None):
+  def call(self, node, func, args):
     value = Instance(self.vm.convert.convert_constant(
         self.name, self.pytd_cls), self.vm, node)
 
@@ -2026,9 +2033,7 @@ class PyTDClass(SimpleAbstractValue, Class):
     # TODO(pludemann): Verify that this follows MRO:
     if init:
       log.debug("calling %s.__init__(...)", self.name)
-      node, ret = self.vm.call_function(node, init, posargs, namedargs,
-                                        starargs=starargs,
-                                        starstarargs=starstarargs)
+      node, ret = self.vm.call_function(node, init, args)
       log.debug("%s.__init__(...) returned %r", self.name, ret)
 
     return node, results
@@ -2130,7 +2135,8 @@ class InterpreterClass(SimpleAbstractValue, Class):
           if not valself:
             posargs.append(self.vm.convert.none.to_variable(node, "None"))
           posargs.append(valcls.variable)
-        node2, get_result = self.vm.call_function(node2, getter, posargs)
+        node2, get_result = self.vm.call_function(
+            node2, getter, FunctionArgs(posargs))
         for getter in get_result.bindings:
           result.AddBinding(getter.data, [getter], node2)
       else:
@@ -2159,16 +2165,14 @@ class InterpreterClass(SimpleAbstractValue, Class):
       self._instance_cache[key] = Instance(cls, self.vm, node)
     return self._instance_cache[key]
 
-  def call(self, node, value, posargs, namedargs,
-           starargs=None, starstarargs=None):
+  def call(self, node, value, args):
     value = self._new_instance(node, value)
     variable = self.vm.program.NewVariable(self.name + " instance")
     val = variable.AddBinding(value, [], node)
     node, init = value.get_attribute(node, "__init__", val)
     if init:
       log.debug("calling %s.__init__(...)", self.name)
-      node, ret = self.vm.call_function(node, init, posargs, namedargs,
-                                        starargs, starstarargs)
+      node, ret = self.vm.call_function(node, init, args)
       log.debug("%s.__init__(...) returned %r", self.name, ret)
     return node, variable
 
@@ -2247,15 +2251,14 @@ class NativeFunction(Function):
   def argcount(self):
     return self.func.func_code.co_argcount
 
-  def call(self, node, unused_func, posargs, namedargs,
-           starargs=None, starstarargs=None):
+  def call(self, node, _, args):
     # Originate a new variable for each argument and call.
     return self.func(
         node,
         *[u.AssignToNewVariable(u.name, node)
-          for u in posargs],
+          for u in args.posargs],
         **{k: u.AssignToNewVariable(u.name, node)
-           for k, u in namedargs.items()})
+           for k, u in args.namedargs.items()})
 
   def get_positional_names(self):
     code = self.func.func_code
@@ -2375,7 +2378,7 @@ class InterpreterFunction(Function):
   def argcount(self):
     return self.code.co_argcount
 
-  def _map_args(self, node, posargs, namedargs, starargs, starstarargs):
+  def _map_args(self, node, args):
     """Map call args to function args.
 
     This emulates how Python would map arguments of function calls. It takes
@@ -2383,11 +2386,7 @@ class InterpreterFunction(Function):
 
     Args:
       node: The current CFG node.
-      posargs: The positional arguments. A tuple of typegraph.Variable.
-      namedargs: The keyword arguments. A dictionary, mapping strings to
-        typegraph.Variable.
-      starargs: The *args parameter, or None.
-      starstarargs: The **kwargs parameter, or None.
+      args: The arguments.
 
     Returns:
       A dictionary, mapping strings (parameter names) to typegraph.Variable.
@@ -2396,10 +2395,10 @@ class InterpreterFunction(Function):
       FailedFunctionCall: If the caller supplied incorrect arguments.
     """
     # Originate a new variable for each argument and call.
-    args = [u.AssignToNewVariable(u.name, node)
-            for u in posargs]
+    posargs = [u.AssignToNewVariable(u.name, node)
+               for u in args.posargs]
     kws = {k: u.AssignToNewVariable(u.name, node)
-           for k, u in namedargs.items()}
+           for k, u in args.namedargs.items()}
     if (self.vm.python_version[0] == 2 and
         self.code.co_name in ["<setcomp>", "<dictcomp>", "<genexpr>"]):
       # This code is from github.com/nedbat/byterun. Apparently, Py2 doesn't
@@ -2407,13 +2406,13 @@ class InterpreterFunction(Function):
       # generator expressions properly. See http://bugs.python.org/issue19611.
       # Byterun says: "They are always functions of one argument, so just do the
       # right thing."
-      assert len(args) == 1, "Surprising comprehension!"
-      return {".0": args[0]}
+      assert len(posargs) == 1, "Surprising comprehension!"
+      return {".0": posargs[0]}
     param_names = self.get_positional_names()
     num_defaults = len(self.defaults)
     callargs = dict(zip(param_names[-num_defaults:], self.defaults))
     callargs.update(self.kw_defaults)
-    positional = dict(zip(param_names, args))
+    positional = dict(zip(param_names, posargs))
     for key in positional:
       if key in kws:
         raise DuplicateKeyword(self.signature, key)
@@ -2421,7 +2420,7 @@ class InterpreterFunction(Function):
     callargs.update(kws)
     for key, kwonly in self.get_nondefault_params():
       if key not in callargs:
-        if starstarargs or (starargs and not kwonly):
+        if args.starstarargs or (args.starargs and not kwonly):
           # We assume that because we have *args or **kwargs, we can use these
           # to fill in any parameters we might be missing.
           callargs[key] = self.vm.convert.create_new_unsolvable(node, key)
@@ -2430,27 +2429,27 @@ class InterpreterFunction(Function):
     arg_pos = self.nonstararg_count
     if self.has_varargs():
       vararg_name = self.code.co_varnames[arg_pos]
-      extraneous = args[self.code.co_argcount:]
-      if starargs:
+      extraneous = posargs[self.code.co_argcount:]
+      if args.starargs:
         if extraneous:
           log.warning("Not adding extra params to *%s", vararg_name)
-        callargs[vararg_name] = starargs.AssignToNewVariable(
+        callargs[vararg_name] = args.starargs.AssignToNewVariable(
             "*args", node)
       else:
         callargs[vararg_name] = self.vm.convert.build_tuple(node, extraneous)
       arg_pos += 1
-    elif len(args) > self.code.co_argcount:
-      raise WrongArgCount(self.signature, len(args))
+    elif len(posargs) > self.code.co_argcount:
+      raise WrongArgCount(self.signature, len(posargs))
     if self.has_kwargs():
       kwvararg_name = self.code.co_varnames[arg_pos]
       # Build a **kwargs dictionary out of the extraneous parameters
-      if starstarargs:
+      if args.starstarargs:
         # TODO(kramm): modify type parameters to account for namedargs
-        callargs[kwvararg_name] = starstarargs.AssignToNewVariable(
+        callargs[kwvararg_name] = args.starstarargs.AssignToNewVariable(
             "**kwargs", node)
       else:
         k = Dict("kwargs", self.vm, node)
-        k.update(node, namedargs, omit=param_names)
+        k.update(node, args.namedargs, omit=param_names)
         callargs[kwvararg_name] = k.to_variable(node, kwvararg_name)
       arg_pos += 1
     return callargs
@@ -2484,11 +2483,11 @@ class InterpreterFunction(Function):
     return hashlib.md5("".join(InterpreterFunction._hash(*args)
                                for args in hash_args)).digest()
 
-  def _check_call(self, node, posargs, namedargs, starargs, starstarargs):
+  def _check_call(self, node, args):
     if not self.signature.has_param_annotations:
       return
     args = list(self.signature.iter_args(
-        posargs, namedargs, starargs, starstarargs))
+        args.posargs, args.namedargs, args.starargs, args.starstarargs))
     for i, (_, param_var, formal) in enumerate(args):
       if formal is not None:
         bad = bad_matches(param_var, formal, node)
@@ -2500,14 +2499,13 @@ class InterpreterFunction(Function):
             passed[i] = Union([b.data for b in bad], self.vm)
           raise WrongArgTypes(self.signature, passed)
 
-  def call(self, node, unused_func, posargs, namedargs,
-           starargs=None, starstarargs=None, new_locals=None):
+  def call(self, node, _, args, new_locals=None):
     if self.vm.is_at_maximum_depth():
       log.info("Maximum depth reached. Not analyzing %r", self.name)
       return (node,
               self.vm.convert.create_new_unsolvable(node, self.name + ":ret"))
-    self._check_call(node, posargs, namedargs, starargs, starstarargs)
-    callargs = self._map_args(node, posargs, namedargs, starargs, starstarargs)
+    self._check_call(node, args)
+    callargs = self._map_args(node, args)
     # Might throw vm.RecursionException:
     frame = self.vm.make_frame(node, self.code, callargs,
                                self.f_globals, self.f_locals, self.closure,
@@ -2705,10 +2703,9 @@ class BoundFunction(AtomicAbstractValue):
   def signature(self):
     return self.underlying.signature.drop_first_parameter()
 
-  def call(self, node, func, posargs, namedargs,
-           starargs=None, starstarargs=None):
-    return self.underlying.call(node, func, [self._callself] + posargs,
-                                namedargs, starargs, starstarargs)
+  def call(self, node, func, args):
+    return self.underlying.call(
+        node, func, args.replace(posargs=[self._callself] + args.posargs))
 
   def get_bound_arguments(self):
     return [self._callself]
@@ -2780,9 +2777,9 @@ class Generator(Instance):
       self.runs += 1
     return node, self.type_parameters[self.TYPE_PARAM]
 
-  def call(self, node, unused_func, posargs, namedargs,
-           starargs=None, starstarargs=None):
+  def call(self, node, func, args):
     """Call this generator or (more common) its "next" attribute."""
+    del func, args
     return self.run_until_yield(node)
 
 
@@ -2820,8 +2817,7 @@ class Nothing(AtomicAbstractValue, FormalType):
   def set_attribute(self, node, name, value):
     raise AttributeError("Object %r has no attribute %s" % (self, name))
 
-  def call(self, node, unused_func, posargs, namedargs,
-           starargs=None, starstarargs=None):
+  def call(self, node, func, args):
     raise AssertionError("Can't call empty object ('nothing')")
 
   def to_type(self, node, seen=None):
@@ -2922,17 +2918,17 @@ class BuildClass(AtomicAbstractValue):
   def __init__(self, vm):
     super(BuildClass, self).__init__("__build_class__", vm)
 
-  def call(self, node, unused_func, posargs, namedargs,
-           starargs=None, starstarargs=None):
-    funcvar, name = posargs[0:2]
+  def call(self, node, _, args):
+    funcvar, name = args.posargs[0:2]
     if len(funcvar.bindings) != 1:
       raise ConversionError("Invalid ambiguous argument to __build_class__")
     func, = funcvar.data
     if not isinstance(func, InterpreterFunction):
       raise ConversionError("Invalid argument to __build_class__")
-    bases = posargs[2:]
-    node, _ = func.call(node, funcvar.bindings[0], [], {}, starargs,
-                        starstarargs, new_locals=True)
+    bases = args.posargs[2:]
+    node, _ = func.call(node, funcvar.bindings[0],
+                        args.replace(posargs=[], namedargs={}),
+                        new_locals=True)
     return node, self.vm.make_class(
         node, name, bases,
         func.last_frame.f_locals.to_variable(node, "locals()"))
@@ -2970,8 +2966,8 @@ class Unsolvable(AtomicAbstractValue):
   def set_attribute(self, node, name, _):
     return node
 
-  def call(self, node, unused_func, posargs, namedargs,
-           starargs=None, starstarargs=None):
+  def call(self, node, func, args):
+    del func, args
     # return ourself.
     return node, self.to_variable(node, self.name)
 
@@ -3080,11 +3076,10 @@ class Unknown(AtomicAbstractValue):
       self.members[name] = v.AssignToNewVariable(self.name + "." + name, node)
     return node
 
-  def call(self, node, unused_func, posargs, namedargs,
-           starargs=None, starstarargs=None):
+  def call(self, node, _, args):
     ret = self.vm.convert.create_new_unknown(
         node, self.name + "()", source=self.owner, action="call:" + self.name)
-    self._calls.append((posargs, namedargs, ret))
+    self._calls.append((args.posargs, args.namedargs, ret))
     return node, ret
 
   def to_variable(self, node, name=None):
