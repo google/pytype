@@ -289,7 +289,10 @@ class NamedType(node.Node('name')):
 
 
 class NativeType(node.Node('python_type')):
-  """A type specified by a native Python type. Used during runtime checking."""
+  """DEPRECATED; Please use NamedType instead.
+
+  A type specified by a native Python type. Used during runtime checking.
+  """
   __slots__ = ()
 
 

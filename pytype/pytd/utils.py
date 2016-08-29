@@ -12,8 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
 """Utilities for pytd.
 
 This provides a utility function to access data files in a way that works either
@@ -29,6 +27,7 @@ from pytype.pytd import abc_hierarchy
 from pytype.pytd import pep484
 from pytype.pytd import pytd
 from pytype.pytd.parse import node
+from pytype.pytd.parse import parser
 from pytype.pytd.parse import visitors
 
 
@@ -164,8 +163,7 @@ class TypeMatcher(object):
   def match(self, t1, t2, *args, **kwargs):
     name1 = t1.__class__.__name__
     name2 = t2.__class__.__name__
-    f = getattr(self, "match_" + name1 + "_against_" + name2,
-                None)
+    f = getattr(self, "match_" + name1 + "_against_" + name2, None)
     if f:
       return f(t1, t2, *args, **kwargs)
     else:
@@ -196,9 +194,7 @@ def GetAllSubClasses(ast):
   return abc_hierarchy.Invert(hierarchy)
 
 
-OUTPUT_FORMATS = {
-    "pytd", "pep484stub"
-}
+OUTPUT_FORMATS = {"pytd", "pep484stub"}
 
 
 def Print(ast, print_format=None):
@@ -239,11 +235,11 @@ def WrapTypeDeclUnit(name, items):
     if isinstance(item, pytd.Function):
       if item.name in functions:
         if item.kind != functions[item.name].kind:
-          raise ValueError("Can't combine %s and %s",
-                           item.kind, functions[item.name].kind)
+          raise ValueError("Can't combine %s and %s", item.kind,
+                           functions[item.name].kind)
         functions[item.name] = pytd.Function(
-            item.name,
-            functions[item.name].signatures + item.signatures, item.kind)
+            item.name, functions[item.name].signatures + item.signatures,
+            item.kind)
       else:
         functions[item.name] = item
     elif isinstance(item, pytd.Class):
@@ -268,8 +264,9 @@ def WrapTypeDeclUnit(name, items):
 
   return pytd.TypeDeclUnit(
       name=name,
-      constants=tuple(pytd.Constant(name, t.build())
-                      for name, t in sorted(constants.items())),
+      constants=tuple(
+          pytd.Constant(name, t.build())
+          for name, t in sorted(constants.items())),
       type_params=tuple(),
       classes=tuple(classes.values()),
       functions=tuple(functions.values()),
@@ -280,14 +277,15 @@ def _check_intersection(items1, items2, name1, name2):
   items = set(items1) & set(items2)
   if items:
     if len(items) == 1:
-      raise NameError("Top level identifier %r is both %s and %s" % (
-          list(items)[0], name1, name2))
+      raise NameError("Top level identifier %r is both %s and %s" %
+                      (list(items)[0], name1, name2))
     max_items = 5  # an arbitrary value
     if len(items) > max_items:
-      raise NameError("Top level identifiers %s, ... are both %s and %s" % (
-          ", ".join(map(repr, sorted(items[:max_items]))), name1, name2))
-    raise NameError("Top level identifiers %s are both %s and %s" % (
-        ", ".join(map(repr, sorted(items))), name1, name2))
+      raise NameError("Top level identifiers %s, ... are both %s and %s" %
+                      (", ".join(map(repr, sorted(items[:max_items]))), name1,
+                       name2))
+    raise NameError("Top level identifiers %s are both %s and %s" %
+                    (", ".join(map(repr, sorted(items))), name1, name2))
 
 
 class TypeBuilder(object):
@@ -496,8 +494,9 @@ def _ComputeMRO(t, mros, lookup_ast):
         else:
           parent_mro = _ComputeMRO(parent, mros, lookup_ast)
         parent_mros.append(parent_mro)
-      mros[t] = tuple(MROMerge([[t]] + parent_mros +
-                               [_Degenerify(_GetClass(t, lookup_ast).parents)]))
+      mros[t] = tuple(
+          MROMerge([[t]] + parent_mros + [_Degenerify(
+              _GetClass(t, lookup_ast).parents)]))
     return mros[t]
   elif isinstance(t, pytd.GenericType):
     return _ComputeMRO(t.base_type, mros, lookup_ast)
@@ -512,3 +511,11 @@ def GetBasesInMRO(cls, lookup_ast=None):
   for p in cls.parents:
     parent_mros.append(_ComputeMRO(p, mros, lookup_ast))
   return tuple(MROMerge(parent_mros + [_Degenerify(cls.parents)]))
+
+
+def canonical_pyi(pyi):
+  ast = parser.TypeDeclParser().Parse(pyi)
+  ast = ast.Visit(visitors.ClassTypeToNamedType())
+  ast = ast.Visit(visitors.CanonicalOrderingVisitor(sort_signatures=True))
+  ast.Visit(visitors.VerifyVisitor())
+  return pytd.Print(ast)
