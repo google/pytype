@@ -7,7 +7,7 @@ from pytype.pytd import utils as pytd_utils
 
 
 class TypingOverlay(abstract.Module):
-  """A representaion of the 'typing' module that allows custom overlays."""
+  """A representation of the 'typing' module that allows custom overlays."""
 
   is_lazy = True  # uses _convert_member
 

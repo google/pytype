@@ -46,11 +46,10 @@ class BooleanTerm(object):
 
   # TODO(kramm): "pivot" is probably the wrong name.
   def extract_pivots(self, assignments):
-    """Find variables that appear in every term.
+    """Find values for every variable that appears in this term.
 
-    This searches for variables that appear in all terms of disjunctions, or
-    at least one term of conjunctions. These types of variables can be limited
-    to the values they appear together with. For example, consider the equation
+    This finds all variables that appear in this term and limits them to the
+    values they appear together with. For example, consider the equation
       t = v1 | (t = v2 & (t = v2 | t = v3))
     Here, t can be limited to [v1, v2]. (v3 is impossible.)
 

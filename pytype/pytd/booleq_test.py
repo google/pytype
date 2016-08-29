@@ -99,6 +99,12 @@ class TestBoolEq(unittest.TestCase):
     equation = And([Eq("x", "0"), Eq("x", "0")])
     self.assertItemsEqual(["0"], equation.extract_pivots(values)["x"])
 
+    # x == 0 || y == 0
+    equation = Or([Eq("x", "0"), Eq("y", "0")])
+    pivots = equation.extract_pivots(values)
+    self.assertItemsEqual(["0"], pivots["x"])
+    self.assertItemsEqual(["0"], pivots["y"])
+
   def testSimplify(self):
     # x == 0 || x == 1  with x in {0}
     equation = Or([Eq("x", "0"), Eq("x", "1")])
