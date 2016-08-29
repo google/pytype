@@ -1146,6 +1146,7 @@ class SuperInstance(AtomicAbstractValue):
 
   def __init__(self, cls, obj, vm):
     super(SuperInstance, self).__init__("super", vm)
+    self.cls = self.vm.convert.super_type
     self.super_cls = cls
     self.super_obj = obj
 

@@ -44,7 +44,7 @@ class Converter(object):
                               for v in [int, long, float, str, unicode, object,
                                         types.NoneType, complex, bool, slice,
                                         types.CodeType, types.EllipsisType,
-                                        types.ClassType]}
+                                        types.ClassType, super]}
 
     self.none = abstract.AbstractOrConcreteValue(
         None, self.primitive_classes[types.NoneType], self.vm,
@@ -71,6 +71,7 @@ class Converter(object):
     self.none_type = self.primitive_classes[types.NoneType]
     self.object_type = self.primitive_classes[object]
     self.oldstyleclass_type = self.primitive_classes[types.ClassType]
+    self.super_type = self.primitive_classes[super]
     self.str_type = self.primitive_classes[str]
     self.int_type = self.primitive_classes[int]
     self.tuple_type = self.convert_constant("tuple", tuple)

@@ -163,6 +163,7 @@ class object():
     def __le__(self, other) -> bool
     def __lt__(self, other) -> bool
     def __hash__(self) -> int
+    def __setattr__(self, name, value) -> None
 
 # old style class. classobj is in fact a subclass of object in Python.
 class classobj(object):
@@ -1023,9 +1024,9 @@ class `callable-iterator`(Generic[T], object):  # TODO(pludemann): is this corre
     def __iter__(self) -> `callable-iterator`[T]
     def next(self) -> T
 
-class super(object):
-    # This constructor constructs the super object itself but also handles the
-    # case of doing super(...).__init__(...).
+# Usually the class argument to super() already inherits from object. So to
+# avoid confusion, super() inherits from nothing.
+class super(nothing):
     def __init__(self, ...) -> NoneType
     def __get__(self, obj, ...) -> super
     def __new__(self, ...) -> super
