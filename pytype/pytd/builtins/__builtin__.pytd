@@ -154,6 +154,7 @@ class object():
     __subclasshook__ = ...  # type: Any
     def __init__(self) -> NoneType
     def __sizeof__(self) -> int
+    def __str__(self) -> str
     def __repr__(self) -> str
     def __cmp__(self, y) -> bool
     def __eq__(self, other) -> bool
@@ -1029,6 +1030,7 @@ class `callable-iterator`(Generic[T], object):  # TODO(pludemann): is this corre
 class super(nothing):
     def __init__(self, ...) -> NoneType
     def __get__(self, obj, ...) -> super
+    def __set__(self, obj, value) -> super
     def __new__(self, ...) -> super
 
 class xrange(Sized, Iterable, Reversible):

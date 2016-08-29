@@ -1149,14 +1149,29 @@ class SuperInstance(AtomicAbstractValue):
     self.cls = self.vm.convert.super_type
     self.super_cls = cls
     self.super_obj = obj
+    self.get = NativeFunction(
+        "__get__", self.get, self.vm, self.vm.root_cfg_node)
+    self.set = NativeFunction(
+        "__set__", self.set, self.vm, self.vm.root_cfg_node)
+
+  def get(self, node, *unused_args, **unused_kwargs):
+    return node, self.to_variable(node, "get")
+
+  def set(self, node, *unused_args, **unused_kwargs):
+    return node, self.to_variable(node, "set")
 
   def get_attribute(self, node, name, valself=None, valcls=None,
                     condition=None):
     if self.super_obj:
       valself = self.super_obj.to_variable(node, "self").bindings[0]
-    valcls = self.super_cls.to_variable(node, "cls").bindings[0]
-    return node, self.super_cls.lookup_from_mro(
-        node, name, valself, valcls, skip=self.super_cls)
+    if name == "__get__":
+      return node, self.get.to_variable(node, name)
+    elif name == "__set__":
+      return node, self.set.to_variable(node, name)
+    else:
+      valcls = self.super_cls.to_variable(node, "cls").bindings[0]
+      return node, self.super_cls.lookup_from_mro(
+          node, name, valself, valcls, skip=self.super_cls)
 
 
 class Super(AtomicAbstractValue):
