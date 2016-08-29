@@ -1413,8 +1413,14 @@ class PyTDSignature(object):
     t = (return_type, subst)
     sources = [func] + arg_dict.values()
     if t not in ret_map:
-      ret_map[t] = self.vm.convert.convert_constant(
-          "ret", AsInstance(return_type), subst, node, source_sets=[sources])
+      try:
+        ret_map[t] = self.vm.convert.convert_constant(
+            "ret", AsInstance(return_type), subst, node, source_sets=[sources])
+      except self.vm.convert.TypeParameterError:
+        # The return type contains a type parameter without a substitution. See
+        # test_functions.test_type_parameter_in_return for an example of a
+        # return type being set to Unknown here and solved later.
+        ret_map[t] = Unknown(self.vm).to_variable(node, "ret")
     else:
       # add the new sources
       for data in ret_map[t].data:
@@ -1661,14 +1667,17 @@ class PyTDFunction(Function):
           "Can't call function with <nothing> parameter")
 
     # If we're calling an overloaded pytd function with an unknown as a
-    # parameter, we can't tell whether it matched or not. Hence, we don't know
-    # which signature got called. Check if this is the case.
+    # parameter, we can't tell whether it matched or not. Hence, if multiple
+    # signatures are possible matches, we don't know which got called. Check
+    # if this is the case.
     if (len(self.signatures) > 1 and
         any(isinstance(view[arg].data, (Unknown, Unsolvable))
             for arg in chain(args.posargs, args.namedargs.values()))):
-      # Make sure that at least one signature is possible:
-      tuple(self._yield_matching_signatures(node, args, view))
-      return self._call_with_unknowns(node, func, args, view)
+      signatures = tuple(self._yield_matching_signatures(node, args, view))
+      if len(signatures) > 1:
+        return self._call_with_signatures(node, func, args, view, signatures)
+      else:
+        (sig, arg_dict, subst), = signatures
     else:
       # We only take the first signature that matches, and ignore all after it.
       # This is because in the pytds for the standard library, the last
@@ -1680,27 +1689,41 @@ class PyTDFunction(Function):
       # with the last signature only being used if none of the others match.
       sig, arg_dict, subst = next(self._yield_matching_signatures(
           node, args, view))
-      return sig.call_with_args(node, func, arg_dict, subst, ret_map)
+    return sig.call_with_args(node, func, arg_dict, subst, ret_map)
 
-  def _call_with_unknowns(self, node, func, args, view):
-    """Perform a function call that involves unknowns."""
-    unique_type = None
+  def _call_with_signatures(self, node, func, args, view, signatures):
+    """Perform a function call that involves multiple signatures."""
     if len(self._return_types) == 1:
       ret_type, = self._return_types
-      # TODO(kramm): This needs to do a deep scan
-      if not isinstance(ret_type, pytd.TypeParameter):
-        unique_type = ret_type
-    # Even though we don't know which signature got picked, if the return
-    # type is unique, we can use it.
-    if unique_type:
-      log.debug("Unknown args. But return is always %s",
-                pytd.Print(unique_type))
-      result = self.vm.convert.convert_constant(
-          "ret", AsInstance(ret_type), {}, node)
+      try:
+        # Even though we don't know which signature got picked, if the return
+        # type is unique and does not contain any type parameter, we can use it.
+        result = self.vm.convert.convert_constant(
+            "ret", AsInstance(ret_type), {}, node)
+      except self.vm.convert.TypeParameterError:
+        # The return type contains a type parameter
+        result = None
+      else:
+        log.debug("Unknown args. But return is always %s", pytd.Print(ret_type))
     else:
+      result = None
+    if result is None:
       log.debug("Creating unknown return")
       result = self.vm.convert.create_new_unknown(
           node, "<unknown return of " + self.name + ">", action="pytd_call")
+    for i, arg in enumerate(args.posargs):
+      if isinstance(view[arg].data, Unknown):
+        for sig, _, _ in signatures:
+          if (len(sig.param_types) > i and
+              isinstance(sig.param_types[i], TypeParameter)):
+            # Change this parameter from unknown to unsolvable to prevent the
+            # unknown from being solved to a type in another signature. For
+            # instance, with the following definitions:
+            #  def f(x: T) -> T
+            #  def f(x: int) -> T
+            # the type of x should be Any, not int.
+            view[arg] = arg.AddBinding(self.vm.convert.unsolvable, [], node)
+            break
     if self._has_mutable:
       # TODO(kramm): We only need to whack the type params that appear in
       # a mutable parameter.

@@ -27,6 +27,10 @@ class ConversionError(Exception):
 class Converter(object):
   """Functions for creating the classes in abstract.py."""
 
+  # Define this error inside Converter so that it is exposed to abstract.py
+  class TypeParameterError(Exception):
+    pass
+
   def __init__(self, vm):
     self.vm = vm
     self.vm.convert = self  # to make convert_constant calls below work
@@ -230,7 +234,8 @@ class Converter(object):
     Returns:
       A cfg.Variable.
     Raises:
-      ConversionError: if conversion is attempted on an unbound type parameter.
+      TypeParameterError: if conversion is attempted on a type parameter without
+        a substitution.
       ValueError: if pytype is not of a known type.
     """
     source_sets = source_sets or [[]]
@@ -257,7 +262,8 @@ class Converter(object):
       for t in pytd_utils.UnpackUnion(cls):
         if isinstance(t, pytd.TypeParameter):
           if not subst or t.name not in subst:
-            raise ConversionError("No binding for type parameter %s" % t.name)
+            raise self.TypeParameterError(
+                "No binding for type parameter %s" % t.name)
           else:
             for v in subst[t.name].bindings:
               for source_set in source_sets:

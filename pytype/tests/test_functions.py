@@ -1,6 +1,8 @@
 """Test functions etc, for Byterun."""
 
 
+
+from pytype import utils
 from pytype.tests import test_inference
 
 
@@ -336,7 +338,7 @@ class TestGenerators(test_inference.InferenceTest):
     self.assertHasReturnType(ty.Lookup("e"), self.anything)
     self.assertTrue(ty.Lookup("f"))
 
-  def testListComprehension(self):
+  def test_list_comprehension(self):
     ty = self.Infer("""
       def f(elements):
         return "%s" % ",".join(t for t in elements)
@@ -345,7 +347,7 @@ class TestGenerators(test_inference.InferenceTest):
       def f(elements) -> str
     """)
 
-  def testTupleArgsSmoke(self):
+  def test_tuple_args_smoke(self):
     unused_ty = self.Infer("""
       def foo((x, y), z):
         pass
@@ -388,6 +390,108 @@ class TestGenerators(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=False, maximum_depth=1, extract_locals=True)
     self.assertEquals(1, len(errors))
     self.assertErrorLogContains(errors, r"iterable.*max.*\[missing-parameter\]")
+
+  def test_multiple_signatures_with_type_parameter(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        T = TypeVar("T")
+        def f(x: T, y: int) -> List[T]
+        def f(x: List[T], y: str) -> List[T]
+      """)
+      ty = self.Infer("""
+        import foo
+        def f(x, y):
+          return foo.f(x, y)
+      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        foo = ...  # type: module
+        def f(x, y: int or str) -> list
+      """)
+
+  def test_unknown_single_signature(self):
+    # Test that the right signature is picked in the presence of an unknown
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        T = TypeVar("T")
+        def f(x: T, y: int) -> List[T]
+        def f(x: List[T], y: str) -> List[T]
+      """)
+      ty = self.Infer("""
+        import foo
+        def f(y):
+          return foo.f("", y)
+      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        foo = ...  # type: module
+        def f(y: int) -> List[str]
+      """)
+
+  def test_unknown_with_solved_type_parameter(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        T = TypeVar("T")
+        def f(x: T, y: T) -> List[T]
+        def f(x: List[T], y: T) -> List[T]
+      """)
+      ty = self.Infer("""
+        import foo
+        def f(x):
+          return foo.f(x, "")
+      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        foo = ...  # type: module
+        # TODO(rechen): def f(x: str or List[str]) -> List[str]
+        def f(x) -> list
+      """)
+
+  def test_unknown_with_extra_information(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        T = TypeVar("T")
+        def f(x: T) -> List[T]
+        def f(x: List[T]) -> List[T]
+      """)
+      ty = self.Infer("""
+        import foo
+        def f(x):
+          return foo.f(x)[0].isnumeric()
+        def g(x):
+          return foo.f(x) + [""]
+        def h(x):
+          ret = foo.f(x)
+          x += ""
+          return ret
+      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        foo = ...  # type: module
+        # TODO(rechen): def f(unicode or List[unicode]) -> bool
+        def f(x) -> Any
+        # TODO(rechen): def g(x) -> list
+        def g(x) -> Any
+        # TODO(rechen): def h(x: bytearray or str or unicode) -> List[bytearray or str or unicode]
+        def h(x: Any) -> list
+      """)
+
+  def test_type_parameter_in_return(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        T = TypeVar("T")
+        class MyPattern(Generic[T]):
+          def match(self, string: T) -> MyMatch[T]
+        class MyMatch(Generic[T]):
+          pass
+        def compile() -> MyPattern[T]: ...
+      """)
+      ty = self.Infer("""\
+        import foo
+        x = foo.compile().match("")
+      """, deep=True, pythonpath=[d.path], solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        import typing
+
+        foo = ...  # type: module
+        x = ...  # type: foo.MyMatch[str]
+      """)
 
 
 if __name__ == "__main__":

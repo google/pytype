@@ -787,7 +787,7 @@ class VirtualMachine(object):
     for val in obj.Bindings(node):
       try:
         node2, attr_var = val.data.get_attribute_generic(node, attr, val)
-      except convert.ConversionError as e:
+      except self.convert.TypeParameterError as e:
         self.errorlog.attribute_error(
             self.frame.current_opcode, obj, attr, str(e))
         node2, attr_var = node, self.convert.unsolvable.to_variable(node, attr)
