@@ -109,13 +109,60 @@ class TestOptimize(parser_test_base.ParserTest):
     ast = self.ParseAndResolve(src)
     self.AssertOptimizeEquals(ast, new_src)
 
-  def testRemoveRedundantSignatureWithAny(self):
+  def testRemoveRedundantSignatureWithAny1(self):
     src = textwrap.dedent("""
         def foo(a: Any) -> Any
         def foo(a: int) -> int
     """)
     new_src = textwrap.dedent("""
         def foo(a: Any) -> Any
+    """)
+    ast = self.ParseAndResolve(src)
+    self.AssertOptimizeEquals(ast, new_src)
+
+  def testRemoveRedundantSignatureWithAny2(self):
+    src = textwrap.dedent("""
+        def foo(a: int) -> int
+        def foo(a: Any) -> Any
+    """)
+    new_src = textwrap.dedent("""
+        def foo(a: Any) -> Any
+    """)
+    ast = self.ParseAndResolve(src)
+    self.AssertOptimizeEquals(ast, new_src)
+
+  def testRemoveRedundantSignatureWithOptional1(self):
+    src = textwrap.dedent("""
+        def foo(a: int = ...) -> int
+        def foo(a: Any = ...) -> int
+    """)
+    new_src = textwrap.dedent("""
+        def foo(a: Any = ...) -> int
+    """)
+    ast = self.ParseAndResolve(src)
+    self.AssertOptimizeEquals(ast, new_src)
+
+  def testRemoveRedundantSignatureWithOptional2(self):
+    src = textwrap.dedent("""
+        def foo(a: Any = ...) -> int
+        def foo(a: int = ...) -> int
+    """)
+    new_src = textwrap.dedent("""
+        def foo(a: Any = ...) -> int
+    """)
+    ast = self.ParseAndResolve(src)
+    self.AssertOptimizeEquals(ast, new_src)
+
+  def testRemoveRedundantSignaturesWithLongUnion(self):
+    src = textwrap.dedent("""
+        def foo(x: None = ...) -> None: ...
+        def foo(x: Union[int, complex, float, long, set, list, unicode,
+                         dict, tuple, str, module, OSError, bytearray,
+                         KeyError, slice, None]) -> None: ...
+    """)
+    new_src = textwrap.dedent("""
+        def foo(x:None = ...) -> None
+        def foo(x) -> None
     """)
     ast = self.ParseAndResolve(src)
     self.AssertOptimizeEquals(ast, new_src)

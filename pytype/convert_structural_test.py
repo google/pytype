@@ -37,7 +37,7 @@ class MatchTest(unittest.TestCase):
       class `~unknown2`(object):
         pass
       class `~unknown1`(object):
-        def __add__(self, other: `~unknown2`) -> int
+        def __add__(self, _1: `~unknown2`) -> int
     """)
     self.assertItemsEqual(["int", "bool"], mapping["~unknown1"])
     self.assertItemsEqual(["int", "bool"], mapping["~unknown2"])
@@ -45,11 +45,11 @@ class MatchTest(unittest.TestCase):
   def test_float_and_bytearray(self):
     mapping = self.parse_and_solve("""
       class `~unknown1`(object):
-        def __add__(self, y: int) -> float
-        def __add__(self, y: float) -> float
+        def __add__(self, _1: int) -> float
+        def __add__(self, _1: float) -> float
       class `~unknown2`(object):
-        def __add__(self, y: str) -> bytearray
-        def __add__(self, y: bytearray) -> bytearray
+        def __add__(self, _1: str) -> bytearray
+        def __add__(self, _1: bytearray) -> bytearray
       """)
     self.assertItemsEqual(["float"], mapping["~unknown1"])
     self.assertItemsEqual(["bytearray"], mapping["~unknown2"])
@@ -57,9 +57,9 @@ class MatchTest(unittest.TestCase):
   def test_float_and_bytearray2(self):
     mapping = self.parse_and_solve("""
       class `~unknown1`(object):
-        def __add__(self, y: int or float) -> float
+        def __add__(self, _1: int or float) -> float
       class `~unknown2`(object):
-        def __add__(self, y: bytearray) -> bytearray
+        def __add__(self, _1: bytearray) -> bytearray
       """)
     self.assertItemsEqual(["float"], mapping["~unknown1"])
     self.assertItemsEqual(["bytearray"], mapping["~unknown2"])
@@ -67,7 +67,7 @@ class MatchTest(unittest.TestCase):
   def test_append(self):
     mapping = self.parse_and_solve("""
       class `~unknown1`(object):
-        def append(self, v: int) -> NoneType
+        def append(self, _1: int) -> NoneType
     """)
     self.assertItemsEqual(["list", "bytearray"], mapping["~unknown1"])
 
@@ -75,7 +75,7 @@ class MatchTest(unittest.TestCase):
     # Differs from test_append in that append(float) doesn't match bytearray
     mapping = self.parse_and_solve("""
       class `~unknown1`(object):
-        def append(self, v: float) -> NoneType
+        def append(self, _1: float) -> NoneType
     """)
     convert_structural.log_info_mapping(mapping)
     self.assertItemsEqual(["list"], mapping["~unknown1"])
@@ -84,12 +84,12 @@ class MatchTest(unittest.TestCase):
   def test_list(self):
     mapping = self.parse_and_solve("""
       class `~unknown2`(object):
-        def append(self, v: `~unknown1`) -> NoneType
-        def __getitem__(self, i: ?) -> `~unknown1`
+        def append(self, _1: `~unknown1`) -> NoneType
+        def __getitem__(self, _1: ?) -> `~unknown1`
 
       class `~unknown1`(object):
-        def __add__(self: float, y: int) -> float
-        def __add__(self: float, y: float) -> float
+        def __add__(self: float, _1: int) -> float
+        def __add__(self: float, _1: float) -> float
       """)
     convert_structural.log_info_mapping(mapping)
     self.assertItemsEqual(["float"], mapping["~unknown1"])
@@ -99,8 +99,8 @@ class MatchTest(unittest.TestCase):
   def test_float_list(self):
     mapping = self.parse_and_solve("""
       class `~unknown1`(object):
-        def append(self, v: ?) -> NoneType
-        def __getitem__(self, i: int) -> float
+        def append(self, _1: ?) -> NoneType
+        def __getitem__(self, _1: int) -> float
       """)
     convert_structural.log_info_mapping(mapping)
     self.assertItemsEqual(["list"], mapping["~unknown1"])
@@ -109,9 +109,9 @@ class MatchTest(unittest.TestCase):
   def test_two_lists(self):
     mapping = self.parse_and_solve("""
       class `~unknown1`(object):
-        def append(self: list, v: NoneType) -> NoneType
+        def append(self: list, _1: NoneType) -> NoneType
       class `~unknown2`(object):
-        def insert(self: list, index: int, object: float) -> NoneType
+        def insert(self: list, _1: int, _2: float) -> NoneType
       """)
     self.assertItemsEqual(["list"], mapping["~unknown1"])
     self.assertItemsEqual(["list"], mapping["~unknown2"])
@@ -121,32 +121,32 @@ class MatchTest(unittest.TestCase):
   def test_float(self):
     mapping = self.parse_and_solve("""
       class `~unknown1`(object):
-        def __add__(self, v: int) -> float
+        def __add__(self, _1: int) -> float
     """)
     self.assertItemsEqual(["float"], mapping["~unknown1"])
 
   def test_or(self):
     mapping = self.parse_and_solve("""
       class `~unknown1`(object):
-        def join(self, iterable: unicode) -> str or unicode
-        def join(self, iterable: iterator) -> str or unicode
+        def join(self, _1: unicode) -> str or unicode
+        def join(self, _1: iterator) -> str or unicode
     """)
     self.assertItemsEqual(["str"], mapping["~unknown1"])
 
   def test_multiple(self):
     mapping = self.parse_and_solve("""
       class `~unknown1`(object):
-        def __add__(self, y: int) -> float
-        def __add__(self, y: float) -> float
+        def __add__(self, _1: int) -> float
+        def __add__(self, _1: float) -> float
       class `~unknown2`(object):
-        def __add__(self, y: str) -> bytearray
-        def __add__(self, y: bytearray) -> bytearray
+        def __add__(self, _1: str) -> bytearray
+        def __add__(self, _1: bytearray) -> bytearray
       class `~unknown3`(object):
-        def join(self, iterable) -> str
-        def join(self, iterable: unicode) -> str or unicode
-        def join(self, iterable: iterator) -> str or unicode
+        def join(self, _1) -> str
+        def join(self, _1: unicode) -> str or unicode
+        def join(self, _1: iterator) -> str or unicode
       class `~unknown4`(object):
-        def append(self, v: NoneType) -> NoneType
+        def append(self, _1: NoneType) -> NoneType
     """)
     self.assertItemsEqual(["float"], mapping["~unknown1"])
     self.assertItemsEqual(["bytearray"], mapping["~unknown2"])
@@ -157,9 +157,9 @@ class MatchTest(unittest.TestCase):
   def test_union(self):
     mapping = self.parse_and_solve("""
       class `~unknown1`(object):
-        def __add__(self, x:int or float) -> float
+        def __add__(self, _1: int or float) -> float
       class `~unknown2`(object):
-        def __add__(self, x:bytearray) -> bytearray
+        def __add__(self, _1: bytearray) -> bytearray
     """)
     self.assertItemsEqual(["float"], mapping["~unknown1"])
     self.assertItemsEqual(["bytearray"], mapping["~unknown2"])
@@ -539,7 +539,7 @@ class MatchTest(unittest.TestCase):
     mapping = self.parse_and_solve("""
       def baz(int) -> float
       def baz(complex) -> complex
-      def `~baz`(`~unknown3`) -> `~unknown4`
+      def `~baz`(_1: `~unknown3`) -> `~unknown4`
 
       class `~unknown3`(object):
         pass
@@ -578,9 +578,9 @@ class MatchTest(unittest.TestCase):
       class Bar2(Bar1):
         def bar(self) -> Bar2
 
-      def baz(Bar1) -> complex
-      def baz(Bar2) -> float
-      def `~baz`(`~unknown3`) -> `~unknown4`
+      def baz(x: Bar1) -> complex
+      def baz(x: Bar2) -> float
+      def `~baz`(x: `~unknown3`) -> `~unknown4`
 
       class `~unknown1`(object):
         def foo(self) -> `~unknown2`
@@ -624,7 +624,7 @@ class MatchTest(unittest.TestCase):
           def update(self, _1: NoneType or Dict[nothing, nothing]) -> ?
 
       class `~unknown2`():
-          def append(self, v:NoneType) -> NoneType
+          def append(self, _1:NoneType) -> NoneType
     """)
     expected = textwrap.dedent("""
       from typing import Any, Dict, List

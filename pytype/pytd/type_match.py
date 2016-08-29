@@ -27,6 +27,7 @@ signatures against new inference results.
 """
 
 import logging
+import re
 
 
 from pytype.pytd import abc_hierarchy
@@ -37,6 +38,9 @@ from pytype.pytd.parse import node
 from pytype.pytd.parse import visitors
 
 log = logging.getLogger(__name__)
+
+
+ANON_PARAM = re.compile("_[0-9]+")
 
 
 # Might not be needed anymore once pytd has builtin support for ~unknown.
@@ -379,11 +383,28 @@ class TypeMatch(utils.TypeMatcher):
     equalities = []
     if len(params1) > len(params2) and not sig2.has_optional:
       return booleq.FALSE  # extra parameters
+    if sig1.starargs is not None and sig2.starargs is not None:
+      equalities.append(self.match_type_against_type(
+          sig1.starargs.type, sig2.starargs.type, subst))
+    if sig1.starstarargs is not None and sig2.starstarargs is not None:
+      equalities.append(self.match_type_against_type(
+          sig1.starstarargs.type, sig2.starstarargs.type, subst))
+    # TODO(kramm): Handle kwonly parameters (on either side). Presumably, a
+    #              kwonly on the left side means that it was a keyword param.
+    for p1, p2 in zip(params1, params2):
+      if p1.optional and not p2.optional:
+        return booleq.FALSE  # needed for optimize.py:RemoveRedundantSignatures
     for i, p2 in enumerate(params2):
-      if not p2.optional:
-        if i >= len(params1):
+      if i >= len(params1):
+        if not p2.optional:
           return booleq.FALSE  # missing parameter
+        else:
+          pass
+      else:
         p1 = params1[i]
+        if p1.name != p2.name and not (
+            ANON_PARAM.match(p1.name) or ANON_PARAM.match(p2.name)):
+          return booleq.FALSE
         equalities.append(self.match_type_against_type(p1.type, p2.type, subst))
     equalities.append(
         self.match_type_against_type(
