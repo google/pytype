@@ -1211,25 +1211,6 @@ class CanonicalOrderingVisitor(Visitor):
     return pytd.IntersectionType(tuple(sorted(node.type_list)))
 
 
-class PythonTypeNameVisitor(Visitor):
-  """A name that Python's type(...).__name__ would return (for testing)."""
-
-  def VisitNamedType(self, t):
-    return t.name
-
-  def VisitNativeType(self, t):
-    return t.python_type.__name__
-
-  def VisitClassType(self, t):
-    return t.name.rpartition("__builtin__.")[2]
-
-  def VisitGenericType(self, t):
-    return t.base_type
-
-  def VisitHomogeneousContainerType(self, t):
-    return t.base_type
-
-
 class RemoveFunctionsAndClasses(Visitor):
   """Visitor for removing unwanted functions or classes."""
 

@@ -745,13 +745,20 @@ class RemoveInheritedMethods(visitors.Visitor):
     signatures = tuple(self._MaybeRemoveSignature(f.name, sig)
                        for sig in f.signatures)
     if any(signatures):
-      return f.Replace(signatures=tuple(s for s in signatures if s is not None))
+      if signatures.count(None):
+        return f.Replace(
+            signatures=tuple(s for s in signatures if s is not None))
+      else:
+        return f  # unchanged
     else:
       return None  # delete function
 
   def VisitClass(self, cls):
     methods = tuple(self._MaybeDeleteFunction(m) for m in cls.methods)
-    return cls.Replace(methods=tuple(m for m in methods if m is not None))
+    if methods.count(None):
+      return cls.Replace(methods=tuple(m for m in methods if m is not None))
+    else:
+      return cls  # unchanged
 
 
 class PullInMethodClasses(visitors.Visitor):

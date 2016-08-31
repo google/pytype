@@ -1,9 +1,6 @@
 """Test operators (basic tests)."""
 
-import textwrap
 import unittest
-from pytype.pytd import pytd
-from pytype.pytd.parse import visitors
 from pytype.tests import test_inference
 
 
@@ -12,10 +9,6 @@ class ConcreteTest(test_inference.InferenceTest):
 
   def setUp(self):
     super(ConcreteTest, self).setUp()
-    self._test_tests = True  # control double-check that the test is correct
-    # TODO(pludemann):         control this by whether the testing version is
-    #                          the same version as the test code (see comment in
-    #                          check_native_call)
 
   def check_expr(self, expr, assignments, expected_return):
     # Note that testing "1+2" as opposed to "x=1; y=2; x+y" doesn't really test
@@ -34,35 +27,6 @@ class ConcreteTest(test_inference.InferenceTest):
     ty = self.Infer(src, deep=False, solve_unknowns=False,
                     extract_locals=True)
     self.assertOnlyHasReturnType(ty.Lookup("f"), expected_return)
-    self.check_native_call(src, "f", expected_return)
-
-  def check_native_call(self, src, function_name, expected_return):
-    # Given the source code for a function, compile it, run it and check its
-    # type ... this is a simple-minded check against typos in the tests -- the
-    # top-level Python type must match what `expected_return` has; but it
-    # doesn't verify that the contents of a container (e.g., list) is as
-    # expected.
-
-    # TODO(pludemann): check container contents?
-
-    # TODO(pludemann): This test is problematic if the inferencer is running
-    #                  under a different version of Python than what's being
-    #                  tested. For now, use _test_tests as a way of turning
-    #                  this off.
-    if self._test_tests:
-      src = textwrap.dedent(src)
-      my_globs = {}
-      # adds f to my_globs:
-      eval(compile(src, "<string>", "exec"), my_globs)  # pylint: disable=eval-used
-      f = my_globs["f"]  # was added to my_globs by eval above
-      f_return_type_name = type(f()).__name__
-      if isinstance(expected_return, pytd.UnionType):
-        self.assertIn(f_return_type_name,
-                      [t.Visit(visitors.PythonTypeNameVisitor())
-                       for t in expected_return.type_list])
-      else:
-        self.assertEqual(f_return_type_name, expected_return.Visit(
-            visitors.PythonTypeNameVisitor()))
 
   def test_add(self):
     self.check_expr("x + y", ["x=1", "y=2"], self.int)
