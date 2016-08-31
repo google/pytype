@@ -416,7 +416,7 @@ class TypeMatch(utils.TypeMatcher):
         booleq.Or(
             self.match_Signature_against_Signature(inner, s, subst, skip_self)
             for s in f.signatures)
-        for inner in sig.Visit(visitors.ExpandSignatures()))
+        for inner in visitors.ExpandSignature(sig))
 
   def match_Function_against_Function(self, f1, f2, subst, skip_self=False):  # pylint: disable=invalid-name
     return booleq.And(

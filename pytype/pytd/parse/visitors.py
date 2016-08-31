@@ -1330,6 +1330,36 @@ class CollectDependencies(Visitor):
     self.EnterNamedType(t)
 
 
+def ExpandSignature(sig):
+  """Expand a single signature.
+
+  For argument lists that contain disjunctions, generates all combinations
+  of arguments. The expansion will be done right to left.
+  E.g., from (a or b, c or d), this will generate the signatures
+  (a, c), (a, d), (b, c), (b, d). (In that order)
+
+  Arguments:
+    sig: A pytd.Signature instance.
+
+  Returns:
+    A list. The visit function of the parent of this node (VisitFunction) will
+    process this list further.
+  """
+  params = []
+  for param in sig.params:
+    if isinstance(param.type, pytd.UnionType):
+      # multiple types
+      params.append([param.Replace(type=t) for t in param.type.type_list])
+    else:
+      # single type
+      params.append([param])
+
+  new_signatures = [sig.Replace(params=tuple(combination))
+                    for combination in itertools.product(*params)]
+
+  return new_signatures  # Hand list over to VisitFunction
+
+
 class ExpandSignatures(Visitor):
   """Expand to Cartesian product of parameter types.
 
@@ -1362,38 +1392,8 @@ class ExpandSignatures(Visitor):
     """
 
     # concatenate return value(s) from VisitSignature
-    new_signatures = tuple(sum(f.signatures, []))
-
-    return f.Replace(signatures=new_signatures)
-
-  def VisitSignature(self, sig):
-    """Expand a single signature.
-
-    For argument lists that contain disjunctions, generates all combinations
-    of arguments. The expansion will be done right to left.
-    E.g., from (a or b, c or d), this will generate the signatures
-    (a, c), (a, d), (b, c), (b, d). (In that order)
-
-    Arguments:
-      sig: A pytd.Signature instance.
-
-    Returns:
-      A list. The visit function of the parent of this node (VisitFunction) will
-      process this list further.
-    """
-    params = []
-    for param in sig.params:
-      if isinstance(param.type, pytd.UnionType):
-        # multiple types
-        params.append([param.Replace(type=t) for t in param.type.type_list])
-      else:
-        # single type
-        params.append([param])
-
-    new_signatures = [sig.Replace(params=tuple(combination))
-                      for combination in itertools.product(*params)]
-
-    return new_signatures  # Hand list over to VisitFunction
+    signatures = sum([ExpandSignature(s) for s in f.signatures], [])
+    return f.Replace(signatures=tuple(signatures))
 
 
 def MergeSequences(seqs):

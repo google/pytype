@@ -684,20 +684,6 @@ class RemoveInheritedMethods(visitors.Visitor):
   def __init__(self):
     super(RemoveInheritedMethods, self).__init__()
     self.class_to_stripped_signatures = {}
-    self.function = None
-    self.class_stack = []
-
-  def EnterClass(self, cls):
-    self.class_stack.append(cls)
-
-  def LeaveClass(self, _):
-    self.class_stack.pop()
-
-  def EnterFunction(self, function):
-    self.function = function
-
-  def LeaveFunction(self, _):
-    self.function = None
 
   def _StrippedSignatures(self, t):
     """Given a class, list method name + signature without "self".
@@ -736,10 +722,9 @@ class RemoveInheritedMethods(visitors.Visitor):
       return self._FindNameAndSig(classes, name, sig)
     return False
 
-  def VisitSignature(self, sig):
+  def _MaybeRemoveSignature(self, name, sig):
     """Visit a Signature and return None if we can remove it."""
-    if (not self.class_stack or
-        not sig.params or
+    if (not sig.params or
         sig.params[0].name != "self" or
         not isinstance(sig.params[0].type, pytd.ClassType)):
       return sig  # Not a method
@@ -748,23 +733,25 @@ class RemoveInheritedMethods(visitors.Visitor):
       # TODO(kramm): Remove once pytype stops generating ClassType(name, None).
       return sig
     try:
-      if self._FindNameAndSig(utils.GetBasesInMRO(cls), self.function.name,
+      if self._FindNameAndSig(utils.GetBasesInMRO(cls), name,
                               sig.Replace(params=sig.params[1:])):
         return None  # remove (see VisitFunction)
     except utils.MROError:
       return sig
     return sig
 
-  def VisitFunction(self, f):
+  def _MaybeDeleteFunction(self, f):
     """Visit a Function and return None if we can remove it."""
-    signatures = tuple(sig for sig in f.signatures if sig)
-    if signatures:
-      return f.Replace(signatures=signatures)
+    signatures = tuple(self._MaybeRemoveSignature(f.name, sig)
+                       for sig in f.signatures)
+    if any(signatures):
+      return f.Replace(signatures=tuple(s for s in signatures if s is not None))
     else:
       return None  # delete function
 
   def VisitClass(self, cls):
-    return cls.Replace(methods=tuple(m for m in cls.methods if m))
+    methods = tuple(self._MaybeDeleteFunction(m) for m in cls.methods)
+    return cls.Replace(methods=tuple(m for m in methods if m is not None))
 
 
 class PullInMethodClasses(visitors.Visitor):
