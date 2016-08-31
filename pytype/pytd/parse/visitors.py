@@ -1024,13 +1024,9 @@ class RemoveUnknownClasses(Visitor):
     else:
       return t
 
-  def VisitClass(self, cls):
-    if cls.name.startswith("~unknown"):
-      return None
-    return cls
-
   def VisitTypeDeclUnit(self, u):
-    return u.Replace(classes=tuple(cls for cls in u.classes if cls is not None))
+    return u.Replace(classes=tuple(
+        cls for cls in u.classes if not cls.name.startswith("~unknown")))
 
 
 # TODO(kramm): The `~unknown` functionality is becoming more important. Should
