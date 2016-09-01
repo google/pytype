@@ -44,9 +44,7 @@ class Pattern(Generic[AnyStr]):
   flags = ...  # type: int
   groups = ...  # type: int
   groupindex = ...  # type: Dict[str, int]
-  # TODO(rechen): Change type to AnyStr once pytype is able to handle attributes
-  # that have type parameters in the type
-  pattern = ...  # type: str or unicode
+  pattern = ...  # type: AnyStr
   def search(self, string: AnyStr, pos: int = ..., endpos: int = ...) -> Match[AnyStr]: ...
   def match(self, string: AnyStr, pos: int = ..., endpos: int = ...) -> Match[AnyStr]: ...
   def split(self, string: AnyStr, maxsplit: int = ...) -> List[AnyStr]
@@ -60,11 +58,8 @@ class Match(Generic[AnyStr]):
   endpos = ...  # type: int
   lastindex = ...  # type: int
   lastgroup = ...  # type: str or None
-  # TODO(rechen): Change "str or unicode" to "AnyStr" in the following two
-  # definitions once pytype is able to handle attributes that have type
-  # parameters in the type
-  re = ...  # type: Pattern[str or unicode]
-  string = ...  # type: str or unicode
+  re = ...  # type: Pattern[AnyStr]
+  string = ...  # type: AnyStr
   def expand(self, template: AnyStr) -> AnyStr: ...
   def group(self) -> AnyStr: ...
   def group(self, group1: str or int) -> AnyStr: ...

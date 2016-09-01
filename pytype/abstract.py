@@ -526,6 +526,23 @@ class TypeParameter(AtomicAbstractValue, FormalType):
     return "TypeParameter(%r)" % self.name
 
 
+class TypeParameterInstance(AtomicAbstractValue):
+  """An instance of a type parameter."""
+
+  def __init__(self, name, instance, vm):
+    super(TypeParameterInstance, self).__init__(name, vm)
+    self.instance = instance
+
+  def to_type(self, node, seen=None):
+    if (self.name in self.instance.type_parameters and
+        self.instance.type_parameters[self.name].bindings):
+      return pytd_utils.JoinTypes(t.to_type(
+          node, seen) for t in self.instance.type_parameters[self.name].data)
+    else:
+      # The type parameter was never initialized
+      return pytd.AnythingType()
+
+
 class SimpleAbstractValue(AtomicAbstractValue):
   """A basic abstract value that represents instances.
 
@@ -630,6 +647,15 @@ class SimpleAbstractValue(AtomicAbstractValue):
     else:
       return node, None
 
+  def _maybe_load_as_instance_attribute(self, node, name):
+    for cls in self.cls.data:
+      var = cls.get_as_instance_attribute(node, name, self)
+      if var is not None:
+        if name in self.members:
+          self.members[name].PasteVariable(var, node)
+        else:
+          self.members[name] = var
+
   def get_attribute(self, node, name, valself=None, valcls=None,
                     condition=None):
     node, attr = self._load_special_attribute(node, name)
@@ -639,8 +665,16 @@ class SimpleAbstractValue(AtomicAbstractValue):
     if self.is_lazy:
       self._load_lazy_attribute(name)
 
+    # If we are looking up a member that we can determine is an instance
+    # rather than a class attribute, add it to the instance's members.
+    if valself:
+      assert isinstance(self, Instance)
+      if name not in self.members or not self.members[name].Bindings(node):
+        # See test_generic.testInstanceAttributeVisible for an example of an
+        # attribute in self.members needing to be reloaded.
+        self._maybe_load_as_instance_attribute(node, name)
+
     candidates = []
-    nodes = []
 
     # Retrieve instance attribute
     if name in self.members:
@@ -653,6 +687,7 @@ class SimpleAbstractValue(AtomicAbstractValue):
 
     # Retrieve class attribute
     if not candidates and self.cls:
+      nodes = []
       for clsval in self.cls.bindings:
         cls = clsval.data
         new_node, attr = cls.get_attribute(node, name, valself, clsval)
@@ -666,7 +701,21 @@ class SimpleAbstractValue(AtomicAbstractValue):
     else:
       ret = self.vm.program.NewVariable(name)
       for candidate in candidates:
-        ret.FilterAndPasteVariable(candidate, node, condition=condition)
+        for binding in candidate.Bindings(node):
+          val = binding.data
+          if isinstance(val, TypeParameterInstance):
+            var = val.instance.type_parameters[val.name]
+            if var.Bindings(node):
+              # If this type parameter has visible values, we want to add those
+              # to the return value. Otherwise, we add the TypeParameterInstance
+              # itself as a placeholder that can be passed around and converted
+              # to Any after analysis.
+              candidates.append(var)
+              continue
+          sources = {binding}
+          if condition:
+            sources.add(condition.binding)
+          ret.AddBinding(val, sources, node)
       if not ret.bindings:
         return node, None
       return node, ret
@@ -679,6 +728,12 @@ class SimpleAbstractValue(AtomicAbstractValue):
 
     if name == "__class__":
       return self.set_class(node, var)
+
+    if isinstance(self, Instance) and name not in self.members:
+      # The previous value needs to be loaded at the root node so that
+      # (1) it is overwritten by the current value and (2) it is still
+      # visible on branches where the current value is not
+      self._maybe_load_as_instance_attribute(self.vm.root_cfg_node, name)
 
     variable = self.members.get(name)
     if variable:
@@ -1841,6 +1896,15 @@ class Class(object):
     var = self.lookup_from_mro(node, name, valself, valcls)
     return node, var
 
+  def get_as_instance_attribute(self, node, name, instance):
+    for base in self.mro:
+      if isinstance(base, ParameterizedClass):
+        base = base.base_cls
+      if isinstance(base, PyTDClass):
+        var = base.get_as_instance_attribute_flat(node, name, instance)
+        if var is not None:
+          return var
+
   def to_pytd_def(self, node, name):
     # Default method. Generate an empty pytd. Subclasses override this.
     del node
@@ -2022,14 +2086,16 @@ class PyTDClass(SimpleAbstractValue, Class):
         pytd.Print(parent), parent, subst={}, node=self.vm.root_cfg_node)
             for parent in self.pytd_cls.parents]
 
-  def _convert_member(self, name, pyval):
+  def _convert_member(self, name, pyval, subst=None, node=None):
     """Convert a member as a variable. For lazy lookup."""
+    subst = subst or {}
+    node = node or self.vm.root_cfg_node
     if isinstance(pyval, pytd.Constant):
       return self.vm.convert.convert_constant(
-          name, AsInstance(pyval.type), {}, self.vm.root_cfg_node)
+          name, AsInstance(pyval.type), subst, node)
     elif isinstance(pyval, pytd.Function):
       c = self.vm.convert.convert_constant_to_value(
-          repr(pyval), pyval, subst={}, node=self.vm.root_cfg_node)
+          repr(pyval), pyval, subst=subst, node=node)
       c.parent = self
       return c.to_variable(self.vm.root_cfg_node, name)
     else:
@@ -2102,6 +2168,22 @@ class PyTDClass(SimpleAbstractValue, Class):
     # something from another module to the local namespace. We *could*
     # reproduce the entire class, but we choose a more dense representation.
     return pytd.NamedType("__builtin__.type")
+
+  def get_as_instance_attribute_flat(self, node, name, instance):
+    try:
+      c = self.pytd_cls.Lookup(name)
+    except KeyError:
+      return None
+    if isinstance(c, pytd.Constant):
+      try:
+        self._convert_member(name, c)
+      except self.vm.convert.TypeParameterError:
+        # Constant c cannot be converted without type parameter substitutions,
+        # so it must be an instance attribute.
+        subst = {itm.name: TypeParameterInstance(
+            itm.name, instance, self.vm).to_variable(node, name)
+                 for itm in self.pytd_cls.template}
+        return self._convert_member(name, c, subst, node)
 
 
 class InterpreterClass(SimpleAbstractValue, Class):

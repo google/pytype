@@ -362,7 +362,7 @@ class ErrorTest(test_inference.InferenceTest):
         def f():
           return a.A.x
       """, deep=True, pythonpath=[d.path])
-      self.assertErrorLogContains(errors, r"x.*A.*attribute-error.*T")
+      self.assertErrorLogIs(errors, [(4, "attribute-error", r"x.*A.*T")])
 
   def testUnboundTypeParameterInInstanceAttribute(self):
     with utils.Tempdir() as d:

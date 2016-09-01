@@ -479,6 +479,176 @@ class GenericTest(test_inference.InferenceTest):
         def bar() -> str
       """)
 
+  def testInstanceAttribute(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        T = TypeVar("T")
+        class A(List[T]):
+          x = ...  # type: T
+      """)
+      ty = self.Infer("""
+        import a
+        def f():
+          return a.A().x
+        def g():
+          return a.A([42]).x
+      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        def f() -> Any
+        def g() -> int
+      """)
+
+  def testInstanceAttributeVisible(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        T = TypeVar("T")
+        class MyPattern(Generic[T]):
+          pattern = ...  # type: T
+          def __init__(self, x: T):
+            self := MyPattern[T]
+      """)
+      ty = self.Infer("""
+        import a
+        RE = a.MyPattern("")
+        def f(x):
+          if x:
+            raise ValueError(RE.pattern)
+        def g():
+          return RE.pattern
+      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        RE = ...  # type: a.MyPattern[str]
+        def f(x) -> None
+        def g() -> str
+      """)
+
+  def testInstanceAttributeChange(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        T = TypeVar("T")
+        N = TypeVar("N")
+        class A(Generic[T]):
+          x = ...  # type: T
+          def f(self, x: N) -> None:
+            self := A[N]
+      """)
+      ty = self.Infer("""
+        import a
+        def f():
+          inst = a.A()
+          inst.f(0)
+          inst.x
+          inst.f("")
+          return inst.x
+        def g():
+          inst = a.A()
+          inst.f(0)
+          inst.x = True
+          inst.f("")
+          return inst.x
+        def h():
+          inst = a.A()
+          inst.f(0)
+          x = inst.x
+          inst.f("")
+          return x
+      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        def f() -> int or str
+        def g() -> bool
+        def h() -> int
+      """)
+
+  def testInstanceAttributeInherited(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        T = TypeVar("T")
+        class A(List[T]):
+          x = ...  # type: T
+      """)
+      ty = self.Infer("""
+        import a
+        class B(a.A): pass
+        def f():
+          return B().x
+        def g():
+          return B([42]).x
+      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        class B(a.A):
+          x = ...  # type: Any
+        def f() -> Any
+        def g() -> int
+      """)
+
+  @unittest.skip("Fails with attribute error: No attribute 'x' on A")
+  def testInstanceAttributeSet(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        T = TypeVar("T")
+        class A(Generic[T]):
+          def f(self) -> T
+      """)
+      ty = self.Infer("""
+        import a
+        def f():
+          inst = a.A()
+          inst.x = inst.f()
+          return inst.x
+      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        def f() -> Any
+      """)
+
+  def testInstanceAttributeConditional(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        T = TypeVar("T")
+        class A(List[T]):
+          x = ...  # type: T
+      """)
+      ty = self.Infer("""
+        import a
+        def f(x):
+          inst = a.A([42])
+          if x:
+            inst.x = 4.2
+          return inst.x
+        def g(x):
+          inst = a.A([42])
+          if x:
+            inst.x = 4.2
+          else:
+            return inst.x
+      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        def f(x) -> int or float
+        def g(x) -> None or int
+      """)
+
+  def testInstanceAttributeMethod(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        T = TypeVar("T")
+        class A(List[T]):
+          x = ...  # type: T
+      """)
+      ty = self.Infer("""
+        import a
+        def f():
+          return abs(a.A([42]).x)
+      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        def f() -> int
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()

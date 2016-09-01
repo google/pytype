@@ -459,8 +459,6 @@ class UtilsTest(unittest.TestCase):
     var.AddBinding("data")  # No change because this is duplicate data
     self.assertEquals(d.changestamp, changestamp)
     changestamp = d.changestamp
-    del d["key"]
-    self.assertGreater(d.changestamp, changestamp)
 
   def testAliasingDict(self):
     d = utils.AliasingDict()

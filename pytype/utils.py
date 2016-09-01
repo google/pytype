@@ -505,13 +505,10 @@ class MonitorDict(dict):
       var.RegisterChangeListener(self._changed)
 
   def __delitem__(self, name):
-    self[name].UnregisterChangeListener(self._changed)
-    super(MonitorDict, self).__delitem__(name)
-    self._changed()
+    raise NotImplementedError
 
   def __setitem__(self, name, var):
-    if name in self:
-      self[name].UnregisterChangeListener(self._changed)
+    assert name not in self
     super(MonitorDict, self).__setitem__(name, var)
     var.RegisterChangeListener(self._changed)
     self._changed()
