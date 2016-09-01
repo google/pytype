@@ -376,6 +376,18 @@ class ErrorTest(test_inference.InferenceTest):
       """, deep=True, pythonpath=[d.path])
       self.assertErrorLogIs(errors, [(2, "pyi-error", r"a.*T.*a\.A\.x")])
 
+  def testPrintUnionArg(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        def f(x: int or str) -> None
+      """)
+      _, errors = self.InferAndCheck("""
+        import a
+        x = a.f(4.2)
+      """, deep=True, pythonpath=[d.path])
+      pattern = r"Expected.*Union\[int, str\].*Actually passed"
+      self.assertErrorLogIs(errors, [(3, "wrong-arg-types", pattern)])
+
 
 if __name__ == "__main__":
   test_inference.main()

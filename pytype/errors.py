@@ -250,18 +250,18 @@ class ErrorLog(ErrorLogBase):
             sig.name, call_arg_count, sig.mandatory_param_count())
         )
 
-  def _prettyprint_arg(self, arg):
-    return re.sub(r"~unknown\d*", "?", arg.name)
+  def _prettyprint_sig(self, sig):
+    return re.sub(r"~unknown\d*", "Any", sig)
 
   @_error_name("wrong-arg-types")
   def wrong_arg_types(self, opcode, sig, passed_args):
     """A function was called with the wrong parameter types."""
     message = "Function %s was called with the wrong arguments" % sig.name
     details = "".join([
-        "Expected: (", str(sig), ")\n",
-        "Actually passed: (",
-        ", ".join("%s: %s" % (name, self._prettyprint_arg(arg))
-                  for name, arg in zip(sig.param_names, passed_args)),
+        "Expected: (", self._prettyprint_sig(str(sig)), ")\n",
+        "Actually passed: (", self._prettyprint_sig(
+            ", ".join("%s: %s" % (name, arg.name)
+                      for name, arg in zip(sig.param_names, passed_args))),
         ")"])
     self.error(opcode, message, details)
 

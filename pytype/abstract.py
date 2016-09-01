@@ -229,6 +229,9 @@ class AtomicAbstractValue(object):
   def full_name(self):
     return (self.module + "." if self.module else "") + self.name
 
+  def __str__(self):
+    return self.name
+
   def get_fullhash(self):
     """Hash this value and all of its children."""
     m = hashlib.md5()
