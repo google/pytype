@@ -94,10 +94,12 @@ def max(iterable: bytearray, ...) -> int  # TODO(pludemann): lint warning if pro
 def max(iterable: list[T], ...) -> T
 def max(iterable: tuple[T] or set[T], ...) -> T
 def max(iterable: iterator[T], ...) -> T
+def max(iterable: generator[T], ...) -> T
 # TODO(pludemann): min(*args: iterable[T], ...) ?
 def min(arg1: T, arg2: T) -> T
 def min(arg1: T, arg2: T, arg3: T) -> T
 def min(arg1, arg2, arg3, ...) -> ?  # TODO(pludemann): handle more args?
+# TODO(kramm): Use Iterable[T] instead of listing all known iterables.
 def min(iterable: str, ...) -> str
 def min(iterable: bytearray, ...) -> str  # TODO(pludemann): lint warning if programmer does this?
 def min(iterable: unicode, ...) -> unicode
@@ -105,6 +107,7 @@ def min(iterable: list[T], ...) -> T
 def min(iterable: tuple[T], ...) -> T
 def min(iterable: set[T], ...) -> T
 def min(iterable: iterator[T], ...) -> T
+def min(iterable: generator[T], ...) -> T
 def next PYTHONCODE
 def oct(number: int) -> str
 # TODO(pludemann): Python3 allows open(int or str or bytes or memoryview, ...)
@@ -201,11 +204,14 @@ class property(object):  # Also defined in __builtin__.py
     def __set__(self, ...) -> ?
     def __delete__(self, ...) -> ?
 
-class staticmethod(object):  # Also defined in __builtin__.py
+# TODO(kramm): This is wrong. These classes shouldn't inherit from
+# Callable. We should instead generate the right information in pyi (I.e.,
+# decorate classes instead of creating constants of type {class,static}method)
+class staticmethod(typing.Callable):  # Also defined in __builtin__.py
     def __init__(self, func) -> NoneType
     def __get__(self, ...) -> ?
 
-class classmethod(object):  # Also defined in __builtin__.py
+class classmethod(typing.Callable):  # Also defined in __builtin__.py
     def __init__(self, func) -> NoneType
     def __get__(self, ...) -> ?
 

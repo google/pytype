@@ -158,6 +158,50 @@ class BuiltinTests2(test_inference.InferenceTest):
         y = ...  # type: Any
       """)
 
+  def testClassMethod(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        class A(object):
+          x = ...  # type: classmethod
+      """)
+      ty = self.Infer("""\
+        from foo import A
+        y = A.x()
+        z = A().x()
+      """, pythonpath=[d.path], extract_locals=True)
+      self.assertTypesMatchPytd(ty, """
+        A = ...  # type: type
+        y = ...  # type: Any
+        z = ...  # type: Any
+      """)
+
+  def testStaticMethod(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        class A(object):
+          x = ...  # type: staticmethod
+      """)
+      ty = self.Infer("""\
+        from foo import A
+        y = A.x()
+        z = A().x()
+      """, pythonpath=[d.path], extract_locals=True)
+      self.assertTypesMatchPytd(ty, """
+        A = ...  # type: type
+        y = ...  # type: Any
+        z = ...  # type: Any
+      """)
+
+  def testMinMax(self):
+    ty = self.Infer("""
+      x = min(x for x in range(3))
+      y = max(x for x in range(3))
+    """, extract_locals=True)
+    self.assertTypesMatchPytd(ty, """
+      x = ...  # type: int
+      y = ...  # type: int
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()
