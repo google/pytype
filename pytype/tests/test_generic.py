@@ -232,6 +232,27 @@ class GenericTest(test_inference.InferenceTest):
         """)
 
   @unittest.skip("Needs better GenericType support")
+  def testTypeParameterConflict(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        T = TypeVar("T")
+        K = TypeVar("K")
+        V = TypeVar("V")
+        class MyIterable(Generic[T]): pass
+        class MyList(MyIterable[T]): pass
+        class MyDict(MyIterable[K], Generic[K, V]): pass
+        class Custom(MyDict[K, V], MyList[V]): pass
+      """)
+      ty = self.Infer("""
+        import a
+        x = a.Custom()
+      """, pythonpath=[d.path], solve_unknowns=True, deep=True)
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        x = ...  # type: a.Custom[nothing, nothing]
+      """)
+
+  @unittest.skip("Needs better GenericType support")
   def testTypeParameterAmbiguous(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
@@ -273,7 +294,7 @@ class GenericTest(test_inference.InferenceTest):
       d.create_file("a.pyi", """
         K = TypeVar("K")
         V = TypeVar("V")
-        class A(Dict[K, V], List[V]): pass
+        class A(Generic[K, V], List[V]): pass
       """)
       ty = self.Infer("""
         import a
@@ -292,7 +313,9 @@ class GenericTest(test_inference.InferenceTest):
       d.create_file("a.pyi", """
         K = TypeVar("K")
         V = TypeVar("V")
-        class A(List[V], Dict[K, V]):
+        class MyList(Generic[V]):
+          def __getitem__(self, x: int) -> V
+        class A(MyList[V], Dict[K, V]):
           def a(self) -> K
       """)
       ty = self.Infer("""
