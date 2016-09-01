@@ -357,12 +357,12 @@ class ErrorTest(test_inference.InferenceTest):
         class A(Generic[T]):
           x = ...  # type: T
       """)
-      _, errors = self.InferAndCheck("""
+      _, errors = self.InferAndCheck("""\
         import a
         def f():
           return a.A.x
       """, deep=True, pythonpath=[d.path])
-      self.assertErrorLogIs(errors, [(4, "attribute-error", r"x.*A.*T")])
+      self.assertErrorLogIs(errors, [(3, "unbound-type-param", r"x.*A.*T")])
 
   def testUnboundTypeParameterInInstanceAttribute(self):
     with utils.Tempdir() as d:

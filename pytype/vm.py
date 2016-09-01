@@ -788,8 +788,8 @@ class VirtualMachine(object):
       try:
         node2, attr_var = val.data.get_attribute_generic(node, attr, val)
       except self.convert.TypeParameterError as e:
-        self.errorlog.attribute_error(
-            self.frame.current_opcode, obj, attr, str(e))
+        self.errorlog.type_param_error(
+            self.frame.current_opcode, obj, attr, e.type_param_name)
         node2, attr_var = node, self.convert.unsolvable.to_variable(node, attr)
       if attr_var is None or not attr_var.bindings:
         log.debug("No %s on %s", attr, val.data.__class__)

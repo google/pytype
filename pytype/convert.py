@@ -29,7 +29,10 @@ class Converter(object):
 
   # Define this error inside Converter so that it is exposed to abstract.py
   class TypeParameterError(Exception):
-    pass
+
+    def __init__(self, type_param_name):
+      super(Converter.TypeParameterError, self).__init__()
+      self.type_param_name = type_param_name
 
   def __init__(self, vm):
     self.vm = vm
@@ -263,8 +266,7 @@ class Converter(object):
       for t in pytd_utils.UnpackUnion(cls):
         if isinstance(t, pytd.TypeParameter):
           if not subst or t.name not in subst:
-            raise self.TypeParameterError(
-                "No binding for type parameter %s" % t.name)
+            raise self.TypeParameterError(t.name)
           else:
             for v in subst[t.name].bindings:
               for source_set in source_sets:

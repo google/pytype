@@ -225,9 +225,15 @@ class ErrorLog(ErrorLogBase):
     self.error(opcode, "Couldn't import pyi for %r" % name, str(error))
 
   @_error_name("attribute-error")
-  def attribute_error(self, opcode, obj, attr_name, details=None):
+  def attribute_error(self, opcode, obj, attr_name):
     on = " on %s" % obj.data[0].name if len(obj.bindings) == 1 else ""
-    self.error(opcode, "No attribute %r%s" % (attr_name, on), details)
+    self.error(opcode, "No attribute %r%s" % (attr_name, on))
+
+  @_error_name("unbound-type-param")
+  def type_param_error(self, opcode, obj, attr_name, type_param_name):
+    on = " on %s" % obj.data[0].name if len(obj.bindings) == 1 else ""
+    self.error(opcode, "Can't access attribute %r%s" % (attr_name, on),
+               "No binding for type parameter %s" % type_param_name)
 
   @_error_name("name-error")
   def name_error(self, opcode, name):

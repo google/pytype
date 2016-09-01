@@ -279,7 +279,7 @@ class InferenceTest(unittest.TestCase):
         errorlog.print_to_stderr()
         raise AssertionError("Error %s not found on line %d %r" % (
             name, line, " " + repr(regexp) if regexp else ""))
-      if regexp and not re.search(regexp, error.message, flags=re.S):
+      if regexp and not re.search(regexp, error.message, flags=re.DOTALL):
         errorlog.print_to_stderr()
         raise AssertionError("Bad error message: %r doesn't match %r" % (
             error.message, regexp))
