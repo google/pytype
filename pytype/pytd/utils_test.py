@@ -134,8 +134,8 @@ class TestUtils(parser_test_base.ParserTest):
         return all(self.match(sig1, sig2, mykeyword)
                    for sig1, sig2 in zip(f1.signatures, f2.signatures))
 
-    s1 = pytd.Signature((), pytd.NothingType(), None, None, (), ())
-    s2 = pytd.Signature((), pytd.AnythingType(), None, None, (), ())
+    s1 = pytd.Signature((), None, None, pytd.NothingType(), (), ())
+    s2 = pytd.Signature((), None, None, pytd.AnythingType(), (), ())
     self.assertTrue(MyTypeMatcher().match(
         pytd.Function("f1", (s1, s2), pytd.METHOD),
         pytd.Function("f2", (s1, s2), pytd.METHOD),

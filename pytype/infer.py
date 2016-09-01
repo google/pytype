@@ -295,7 +295,7 @@ class CallTracer(vm.VirtualMachine):
       classes.append(pytd.Class(
           name=self._pack_name(full_name),
           parents=(),  # not used in solver
-          methods=self._call_traces_to_function(call_records),
+          methods=tuple(self._call_traces_to_function(call_records)),
           constants=(),
           template=(),
       ))

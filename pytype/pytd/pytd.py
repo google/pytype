@@ -22,13 +22,24 @@
 
 import itertools
 from pytype.pytd.parse import node
+from pytype.pytd.parse import preconditions
 
 
-# TODO(dbaum): Is tuple[None] really a valid type for classes?
+# This mixin is used to define the classes that satisfy the {Type}
+# precondition.  Each type class below should inherit from this mixin.
+# Note that the mixin must be registered with preconditions.register() below.
+
+
+class Type(object):
+  pass
+
+preconditions.register(Type)
+
+
 class TypeDeclUnit(node.Node('name: str or None',
                              'constants: tuple[Constant]',
                              'type_params: tuple[TypeParameter]',
-                             'classes: tuple[Class or None]',
+                             'classes: tuple[Class]',
                              'functions: tuple[Function or ExternalFunction]',
                              'aliases: tuple[Alias]')):
   """Module node. Holds module contents (constants / classes / functions).
@@ -102,11 +113,11 @@ class TypeDeclUnit(node.Node('name: str or None',
             self.aliases == other.aliases)
 
 
-class Constant(node.Node('name', 'type')):
+class Constant(node.Node('name: str', 'type: {Type}')):
   __slots__ = ()
 
 
-class Alias(node.Node('name', 'type')):
+class Alias(node.Node('name: str', 'type: {Type} or Constant')):
   """An alias (symbolic link) for a class implemented in some other module.
 
   Unlike Constant, the Alias is the same type, as opposed to an instance of that
@@ -116,7 +127,11 @@ class Alias(node.Node('name', 'type')):
   __slots__ = ()
 
 
-class Class(node.Node('name', 'parents', 'methods', 'constants', 'template')):
+class Class(node.Node('name: str',
+                      'parents: tuple[Class or {Type}]',
+                      'methods: tuple[Function or ExternalFunction]',
+                      'constants: tuple[Constant]',
+                      'template: tuple[TemplateItem]')):
   """Represents a class declaration.
 
   Used as dict/set key, so all components must be hashable.
@@ -161,7 +176,9 @@ class Class(node.Node('name', 'parents', 'methods', 'constants', 'template')):
 STATICMETHOD, CLASSMETHOD, METHOD = 'staticmethod', 'classmethod', 'method'
 
 
-class Function(node.Node('name', 'signatures', 'kind')):
+class Function(node.Node('name: str',
+                         'signatures: tuple[Signature]',
+                         'kind: str')):
   """A function or a method, defined by one or more PyTD signatures.
 
   Attributes:
@@ -182,8 +199,12 @@ class ExternalFunction(Function):
   __slots__ = ()
 
 
-class Signature(node.Node('params', 'starargs', 'starstarargs',
-                          'return_type', 'exceptions', 'template')):
+class Signature(node.Node('params: tuple[Parameter]',
+                          'starargs: Parameter or None',
+                          'starstarargs: Parameter or None',
+                          'return_type: {Type}',
+                          'exceptions: tuple[{Type}]',
+                          'template: tuple[TemplateItem]')):
   """Represents an individual signature of a function.
 
   For overloaded functions, this is one specific combination of parameters.
@@ -206,8 +227,11 @@ class Signature(node.Node('params', 'starargs', 'starstarargs',
     return self.starargs is not None or self.starstarargs is not None
 
 
-class Parameter(node.Node('name', 'type',
-                          'kwonly', 'optional', 'mutated_type')):
+class Parameter(node.Node('name: str',
+                          'type: {Type}',
+                          'kwonly: bool',
+                          'optional: bool',
+                          'mutated_type: {Type} or None')):
   """Represents a parameter of a function definition.
 
   Attributes:
@@ -221,7 +245,7 @@ class Parameter(node.Node('name', 'type',
   __slots__ = ()
 
 
-class TypeParameter(node.Node('name', 'scope')):
+class TypeParameter(node.Node('name: str', 'scope: str or None'), Type):
   """Represents a type parameter.
 
   A type parameter is a bound variable in the context of a function or class
@@ -232,12 +256,12 @@ class TypeParameter(node.Node('name', 'scope')):
   Attributes:
     name: Name of the parameter. E.g. "T".
     scope: Fully-qualified name of the class or function this parameter is
-      bound to. E.g. "mymodule.MyClass.mymethod".
+      bound to. E.g. "mymodule.MyClass.mymethod", or None.
   """
   __slots__ = ()
 
 
-class TemplateItem(node.Node('type_param')):
+class TemplateItem(node.Node('type_param: TypeParameter')):
   """Represents template name for generic types.
 
   This is used for classes and signatures. The 'template' field of both is
@@ -280,7 +304,7 @@ class TemplateItem(node.Node('type_param')):
 # corresponding AST representations.
 
 
-class NamedType(node.Node('name')):
+class NamedType(node.Node('name: str'), Type):
   """A type specified by name and, optionally, the module it is in."""
   __slots__ = ()
 
@@ -288,7 +312,7 @@ class NamedType(node.Node('name')):
     return self.name
 
 
-class NativeType(node.Node('python_type')):
+class NativeType(node.Node('python_type'), Type):
   """DEPRECATED; Please use NamedType instead.
 
   A type specified by a native Python type. Used during runtime checking.
@@ -296,7 +320,7 @@ class NativeType(node.Node('python_type')):
   __slots__ = ()
 
 
-class ClassType(node.Node('name')):
+class ClassType(node.Node('name: str'), Type):
   """A type specified through an existing class node."""
 
   # This type is different from normal nodes:
@@ -328,17 +352,17 @@ class ClassType(node.Node('name')):
         cls='<unresolved>' if self.cls is None else '')
 
 
-class FunctionType(node.Node('name', 'function')):
+class FunctionType(node.Node('name: str', 'function: Function'), Type):
   """The type of a function. E.g. the type of 'x' in 'x = lambda y: y'."""
   __slots__ = ()
 
 
-class AnythingType(node.Node()):
+class AnythingType(node.Node(), Type):
   """A type we know nothing about yet ('?' in pytd)."""
   __slots__ = ()
 
 
-class NothingType(node.Node()):
+class NothingType(node.Node(), Type):
   """An "impossible" type, with no instances ('nothing' in pytd).
 
   Also known as the "uninhabited" type, or, in type systems, the "bottom" type.
@@ -347,11 +371,12 @@ class NothingType(node.Node()):
   __slots__ = ()
 
 
-class Scalar(node.Node('value')):
+# TODO(dbaum): Remove Scalar, only used in tests.
+class Scalar(node.Node('value'), Type):
   __slots__ = ()
 
 
-class UnionType(node.Node('type_list')):
+class UnionType(node.Node('type_list: tuple[{Type}]'), Type):
   """A union type that contains all types in self.type_list."""
   __slots__ = ()
 
@@ -383,7 +408,7 @@ class UnionType(node.Node('type_list')):
 
 
 # TODO(kramm): Do we still need this?
-class IntersectionType(node.Node('type_list')):
+class IntersectionType(node.Node('type_list: tuple[{Type}]'), Type):
   """An intersection type that contains all types in self.type_list."""
   __slots__ = ()
 
@@ -414,7 +439,11 @@ class IntersectionType(node.Node('type_list')):
     return not self == other
 
 
-class GenericType(node.Node('base_type', 'parameters')):
+# TODO(dbaum): AnythingType is from visitors.DefaceUnresolved().  This is an
+# intermediate state, and not present in final ASTs.  Rework the visitor and
+# remove AnythingType from here.
+class GenericType(node.Node('base_type: NamedType or ClassType or AnythingType',
+                            'parameters: tuple[{Type}]'), Type):
   """Generic type. Takes a base type and type paramters.
 
   This corresponds to the syntax: type<type1,>, type<type1, type2> (etc.).
@@ -438,6 +467,9 @@ class HomogeneousContainerType(GenericType):
   def element_type(self):
     return self.parameters[0]
 
+
+# TODO(dbaum): Remove TYPE since Type serves a very similar role.  At present
+# the only difference is that FunctionType is a Type, but not in TYPE.
 
 # So we can do "isinstance(node, pytd.TYPE)":
 TYPE = (NamedType, NativeType, ClassType, AnythingType, UnionType,

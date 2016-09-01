@@ -1155,7 +1155,7 @@ class _TypeDeclParser(object):
     """param : NAME COLON type ASSIGN optional"""
     _, name, _, t, _, opt = p
     if opt == pytd.NamedType("NoneType"):
-      p[0] = pytd.Parameter(name, pytd.UnionType([t, opt]),
+      p[0] = pytd.Parameter(name, pytd.UnionType((t, opt)),
                             kwonly=False,  # adjusted later
                             optional=True, mutated_type=None)
     else:

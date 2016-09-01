@@ -40,8 +40,8 @@ class TestPytd(unittest.TestCase):
              pytd.GenericType(self.list, (self.int,)),
              pytd.NamedType("int"),
              pytd.NothingType(),
-             pytd.UnionType(self.float),
-             pytd.UnionType(self.int)]
+             pytd.UnionType((self.float,)),
+             pytd.UnionType((self.int,))]
     for n1, n2 in zip(nodes[:-1], nodes[1:]):
       self.assertLess(n1, n2)
       self.assertLessEqual(n1, n2)

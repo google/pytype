@@ -166,30 +166,33 @@ class InferenceTest(unittest.TestCase):
         return False
 
   @classmethod
-  def HasSignature(cls, func, target):
+  def HasSignature(cls, func, parameter_types, return_type):
     for sig in func.signatures:
-      if (target.params == tuple(p.type for p in sig.params) and
-          cls.SignatureHasReturnType(sig, target.return_type)):
+      if (parameter_types == tuple(p.type for p in sig.params) and
+          cls.SignatureHasReturnType(sig, return_type)):
         return True
     return False
 
   @classmethod
-  def HasExactSignature(cls, func, target):
+  def HasExactSignature(cls, func, parameter_types, return_type):
     for sig in func.signatures:
-      if (target.params == tuple(p.type for p in sig.params) and
-          target.return_type == sig.return_type):
+      if (parameter_types == tuple(p.type for p in sig.params) and
+          return_type == sig.return_type):
         return True
     return False
+
+  @classmethod
+  def PrintSignature(cls, parameter_types, return_type):
+    return "(%s) -> %s" % (", ".join(pytd.Print(t) for t in parameter_types),
+                           pytd.Print(return_type))
 
   def assertHasOnlySignatures(self, func, *sigs):
     self.assertIsInstance(func, pytd.Function)
     for parameter_types, return_type in sigs:
-      target = pytd.Signature(tuple(parameter_types), None, None,
-                              return_type, (), ())
-      if not self.HasExactSignature(func, target):
-        self.fail("Could not find signature: {name}{target} in {func}".
+      if not self.HasExactSignature(func, parameter_types, return_type):
+        self.fail("Could not find signature: {name}{sig} in {func}".
                   format(name=func.name,
-                         target=pytd.Print(target),
+                         sig=self.PrintSignature(parameter_types, return_type),
                          func=pytd.Print(func)))
     self.assertEqual(len(func.signatures), len(sigs),
                      "{func} has the wrong number of signatures ({has}), "
@@ -198,20 +201,16 @@ class InferenceTest(unittest.TestCase):
                             has=len(func.signatures), expect=len(sigs)))
 
   def assertHasSignature(self, func, parameter_types, return_type):
-    target = pytd.Signature(tuple(parameter_types), None, None,
-                            return_type, (), ())
-    if not self.HasSignature(func, target):
+    if not self.HasSignature(func, parameter_types, return_type):
       # TODO(pludemann): don't assume function is 'f'
-      self.fail("Could not find signature: f{} in {} ({} in {})".
-                format(pytd.Print(target), pytd.Print(func), target, func))
+      self.fail("Could not find signature: f{} in {}".format(
+          self.PrintSignature(parameter_types, return_type), pytd.Print(func)))
 
   def assertNotHasSignature(self, func, parameter_types, return_type):
-    target = pytd.Signature(tuple(parameter_types), None, None,
-                            return_type, (), ())
-    if self.HasSignature(func, target):
+    if self.HasSignature(func, parameter_types, return_type):
       # TODO(pludemann): don't assume function is 'f'
-      self.fail("Found signature: f{} -> {} in {}".
-                format(pytd.Print(target), pytd.Print(func)))
+      self.fail("Found signature: f{} in {}".format(
+          self.PrintSignature(parameter_types, return_type), pytd.Print(func)))
 
   def assertTypeEquals(self, t1, t2):
     self.assertEquals(t1, t2,

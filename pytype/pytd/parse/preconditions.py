@@ -44,6 +44,30 @@ class _ClassNamePrecondition(_Precondition):
           "actual=%s, expected=%s" % (actual, self._class_name))
 
 
+class _IsInstancePrecondition(_Precondition):
+  """Precondition that expects an instance of a class or subclass."""
+
+  def __init__(self, cls):
+    super(_IsInstancePrecondition, self).__init__()
+    self._cls = cls
+
+  def check(self, value):
+    if not isinstance(value, self._cls):
+      raise PreconditionError(
+          "actual=%s, expected_superclass=%s" % (
+              type(value).__name__, self._cls.__name__))
+
+
+_REGISTERED_CLASSES = {}
+
+
+def register(cls):
+  """Register a class object for use in {X} syntax."""
+  name = cls.__name__
+  assert name not in _REGISTERED_CLASSES
+  _REGISTERED_CLASSES[name] = _IsInstancePrecondition(cls)
+
+
 class _TuplePrecondition(_Precondition):
   """Precondition that expects a tuple."""
 
@@ -108,7 +132,7 @@ class CallChecker(object):
 # pylint: disable=g-docstring-quotes, g-short-docstring-punctuation
 
 tokens = ("NAME", "OR", "TUPLE", "NONE")
-literals = ["[", "]"]
+literals = ["[", "]", "{", "}"]
 
 t_ignore = " \t\n"
 
@@ -175,6 +199,15 @@ def p_cond2_none(p):
 def p_cond2_tuple(p):
   "cond2 : TUPLE '[' cond ']'"
   p[0] = _TuplePrecondition(p[3])
+
+
+def p_cond2_isinstance(p):
+  "cond2 : '{' NAME '}'"
+  name = p[2]
+  cond = _REGISTERED_CLASSES.get(name)
+  if cond is None:
+    raise ValueError("Class '%s' is not registered for preconditions." % name)
+  p[0] = cond
 
 
 def p_error(p):

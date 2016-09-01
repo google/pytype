@@ -61,9 +61,9 @@ class Union(abstract.ValueWithSlots):
         return new_subst
 
   def get_instance_type(self, node, instance=None, seen=None):
-    return pytd.UnionType([
+    return pytd.UnionType(tuple(
         e.get_instance_type(node, seen=seen)
-        for e in self.elements])
+        for e in self.elements))
 
 
 class _Container(abstract.ValueWithSlots):

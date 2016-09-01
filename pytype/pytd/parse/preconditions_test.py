@@ -18,6 +18,14 @@ from pytype.pytd.parse import preconditions
 import unittest
 
 
+class BaseClass(object):
+  pass
+
+
+class SubClass(BaseClass):
+  pass
+
+
 class PreconditionsTest(unittest.TestCase):
 
   def assertError(self, regex, condition, value):
@@ -46,6 +54,12 @@ class PreconditionsTest(unittest.TestCase):
     self.assertError(
         "actual=float.*expected=int.*actual=float.*expected=str",
         c, 1.23)
+
+  def testIsInstancePrecondition(self):
+    c = preconditions._IsInstancePrecondition(BaseClass)
+    c.check(BaseClass())
+    c.check(SubClass())
+    self.assertError("actual=str.*expected_superclass=BaseClass", c, "foo")
 
 
 class CallCheckerTest(unittest.TestCase):
@@ -88,6 +102,22 @@ class ParserTest(unittest.TestCase):
 
   def testName(self):
     self.assertClassName("Foo", preconditions.parse("Foo"))
+
+  def testIsInstance(self):
+    saved = dict(preconditions._REGISTERED_CLASSES)
+    try:
+      # Can't parse class until it is registered.
+      self.assertRaises(ValueError, preconditions.parse, "{BaseClass}")
+      # Check parsed condition.
+      preconditions.register(BaseClass)
+      condition = preconditions.parse("{BaseClass}")
+      self.assertIsInstance(condition, preconditions._IsInstancePrecondition)
+      self.assertEquals(BaseClass, condition._cls)
+      # Can't re-register a class.
+      self.assertRaises(AssertionError, preconditions.register, BaseClass)
+    finally:
+      # Leave the world as we found it.
+      preconditions._REGISTERED_CLASSES = saved
 
   def testNone(self):
     self.assertClassName("NoneType", preconditions.parse("None"))
