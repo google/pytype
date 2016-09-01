@@ -1192,6 +1192,49 @@ class TestASTGeneration(parser_test_base.ParserTest):
     self.assertEquals([f.name for f in unit.constants],
                       ["c1", "c4", "c6"])
 
+  def testElif(self):
+    data = textwrap.dedent("""
+    if sys.version_info < (3,):
+      a1 = ...  # type: int
+    elif sys.version_info > (3, 5):
+      a2 = ...  # type: int
+
+    if sys.version_info < (3,):
+      b1 = ...  # type: int
+    elif sys.version_info > (3, 5):
+      b2 = ...  # type: int
+    elif sys.platform == 'win32':
+      b3 = ...  # type: int
+
+    if sys.version_info < (3,):
+      c1 = ...  # type: int
+    elif sys.version_info > (3, 5):
+      c2 = ...  # type: int
+    else:
+      c3 = ...  # type: int
+
+    if sys.version_info < (3,):
+      d1 = ...  # type: int
+    elif sys.version_info > (3, 5):
+      d2 = ...  # type: int
+    elif sys.platform == 'win32':
+      d3 = ...  # type: int
+    else:
+      d4 = ...  # type: int
+    """)
+    unit = self.Parse(data, version=(2, 7, 6))
+    self.assertEquals([f.name for f in unit.constants],
+                      ["a1", "b1", "c1", "d1"])
+    unit = self.Parse(data, version=(3, 6, 0))
+    self.assertEquals([f.name for f in unit.constants],
+                      ["a2", "b2", "c2", "d2"])
+    unit = self.Parse(data, version=(3, 3, 3), platform="win32")
+    self.assertEquals([f.name for f in unit.constants],
+                      ["b3", "c3", "d3"])
+    unit = self.Parse(data, version=(3, 3, 3), platform="linux")
+    self.assertEquals([f.name for f in unit.constants],
+                      ["c3", "d4"])
+
   def testTemplateSimple(self):
     """Test simple class template."""
     data = textwrap.dedent("""

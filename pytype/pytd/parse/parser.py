@@ -368,6 +368,13 @@ def CheckIsSysPlatform(parser, string, p):
           string), p)
 
 
+def EvaluateIfElse(if_expr, if_body, elif_list, else_body):
+  for condition, body in [(if_expr, if_body)] + elif_list:
+    if condition:
+      return body
+  return else_body
+
+
 class _TypeDeclParser(object):
   """Parser for type declaration language."""
 
@@ -611,25 +618,52 @@ class _TypeDeclParser(object):
       self.aliases[p[1]] = p[3]
       p[0] = pytd.Alias(p[1], p[3])
 
-  def p_toplevel_if(self, p):
-    """toplevel_if : IF version_expr COLON INDENT alldefs DEDENT"""
-    _, _, version_expr, _, _, alldefs, _ = p
-    p[0] = alldefs if version_expr else []
+  def p_if(self, p):
+    """if : IF version_expr COLON INDENT"""
+    _, _, version_expr, _, _ = p
+    p[0] = version_expr
 
-  def p_toplevel_if_else(self, p):
-    """toplevel_if : IF version_expr COLON INDENT alldefs DEDENT ELSE COLON INDENT alldefs DEDENT"""
-    _, _, version_expr, _, _, alldefs1, _, _, _, _, alldefs2, _ = p
-    p[0] = alldefs1 if version_expr else alldefs2
+  def p_toplevel_else(self, p):
+    """toplevel_else : ELSE COLON INDENT alldefs DEDENT"""
+    p[0] = p[4]
+
+  def p_funcdefs_else(self, p):
+    """funcdefs_else : ELSE COLON INDENT funcdefs DEDENT"""
+    p[0] = p[4]
+
+  def p_toplevel_else_0(self, p):
+    """toplevel_else : """
+    p[0] = []
+
+  def p_funcdefs_else_0(self, p):
+    """funcdefs_else : """
+    p[0] = []
+
+  def p_toplevel_elifs(self, p):
+    """alldefs_elifs : ELIF version_expr COLON INDENT alldefs DEDENT alldefs_elifs"""
+    p[0] = [(p[2], p[5])] + p[7]
+
+  def p_funcdefs_elifs(self, p):
+    """funcdefs_elifs : ELIF version_expr COLON INDENT funcdefs DEDENT funcdefs_elifs"""
+    p[0] = [(p[2], p[5])] + p[7]
+
+  def p_toplevel_elifs_0(self, p):
+    """alldefs_elifs : """
+    p[0] = []
+
+  def p_funcdefs_elifs_0(self, p):
+    """funcdefs_elifs : """
+    p[0] = []
+
+  def p_toplevel_if(self, p):
+    """toplevel_if : if alldefs DEDENT alldefs_elifs toplevel_else"""
+    _, version_expr, alldefs, _, elifs, else_defs = p
+    p[0] = EvaluateIfElse(version_expr, alldefs, elifs, else_defs)
 
   def p_funcdefs_if(self, p):
-    """funcdefs_if : IF version_expr COLON INDENT funcdefs DEDENT"""
-    _, _, version_expr, _, _, funcdefs, _ = p
-    p[0] = funcdefs if version_expr else []
-
-  def p_funcdefs_if_else(self, p):
-    """funcdefs_if : IF version_expr COLON INDENT funcdefs DEDENT ELSE COLON INDENT funcdefs DEDENT"""
-    _, _, version_expr, _, _, funcdefs1, _, _, _, _, funcdefs2, _ = p
-    p[0] = funcdefs1 if version_expr else funcdefs2
+    """funcdefs_if : if funcdefs DEDENT funcdefs_elifs funcdefs_else"""
+    _, version_expr, funcdefs, _, elifs, else_defs = p
+    p[0] = EvaluateIfElse(version_expr, funcdefs, elifs, else_defs)
 
   def p_version_tuple_1(self, p):
     """number_tuple : LPAREN NUMBER COMMA RPAREN"""

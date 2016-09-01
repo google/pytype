@@ -9,6 +9,7 @@ RESERVED = [
     'class',
     'def',
     'else',
+    'elif',
     'if',
     'or',
     'pass',
