@@ -232,6 +232,9 @@ class AtomicAbstractValue(object):
   def __str__(self):
     return self.name
 
+  def default_mro(self):
+    return [self, self.vm.convert.object_type.data[0]]
+
   def get_fullhash(self):
     """Hash this value and all of its children."""
     m = hashlib.md5()
@@ -3053,6 +3056,7 @@ class Unsolvable(AtomicAbstractValue):
 
   def __init__(self, vm):
     super(Unsolvable, self).__init__("unsolveable", vm)
+    self.mro = self.default_mro()
 
   def get_attribute(self, node, name, valself=None, valcls=None,
                     condition=None):
@@ -3123,6 +3127,7 @@ class Unknown(AtomicAbstractValue):
     Unknown._current_id += 1
     self.class_name = self.name
     self._calls = []
+    self.mro = self.default_mro()
     log.info("Creating %s", self.class_name)
 
   def get_children_maps(self):

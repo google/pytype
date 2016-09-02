@@ -75,6 +75,44 @@ class ClassesTest(test_inference.InferenceTest):
       def __init__(self) -> NoneType
     """)
 
+  def testInheritFromUnknownAndInitialize(self):
+    ty = self.Infer("""
+      class Foo(object):
+        pass
+      class Bar(Foo, __any_object__):
+        pass
+      x = Bar(duration=0)
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      class Foo(object):
+        pass
+      class Bar(Foo, Any):
+        pass
+      x = ...  # type: Bar
+    """)
+
+  def testInheritFromUnsolvable(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        def __getattr__(name) -> Any
+      """)
+      ty = self.Infer("""
+        import a
+        class Foo(object):
+          pass
+        class Bar(Foo, a.A):
+          pass
+        x = Bar(duration=0)
+      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        class Foo(object):
+          pass
+        class Bar(Foo, Any):
+          pass
+        x = ...  # type: Bar
+      """)
+
   def testClassMethod(self):
     ty = self.Infer("""
       module = __any_object__

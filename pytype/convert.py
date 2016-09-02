@@ -60,9 +60,6 @@ class Converter(object):
         Ellipsis, self.primitive_classes[types.EllipsisType], self.vm,
         self.vm.root_cfg_node)
 
-    self.nothing = abstract.Nothing(self.vm)
-    self.unsolvable = abstract.Unsolvable(self.vm)
-
     self.primitive_class_instances = {}
     for name, clsvar in self.primitive_classes.items():
       instance = abstract.Instance(clsvar, self.vm, self.vm.root_cfg_node)
@@ -77,6 +74,10 @@ class Converter(object):
     self.super_type = self.primitive_classes[super]
     self.str_type = self.primitive_classes[str]
     self.int_type = self.primitive_classes[int]
+
+    self.nothing = abstract.Nothing(self.vm)
+    self.unsolvable = abstract.Unsolvable(self.vm)
+
     self.tuple_type = self.convert_constant("tuple", tuple)
     self.list_type = self.convert_constant("list", list)
     self.set_type = self.convert_constant("set", set)
