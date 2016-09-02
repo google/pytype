@@ -78,6 +78,40 @@ class MetricsTest(unittest.TestCase):
                       cStringIO.StringIO(dump))
 
 
+class StopWatchTest(unittest.TestCase):
+  """Tests for StopWatch."""
+
+  def setUp(self):
+    metrics._prepare_for_test()
+
+  def test_stopwatch(self):
+    c = metrics.StopWatch("foo")
+    with c:
+      pass
+    self.assertGreaterEqual(c._total, 0)
+
+  def test_merge(self):
+    c1 = metrics.StopWatch("foo")
+    c2 = metrics.StopWatch("bar")
+    with c1:
+      pass
+    with c2:
+      pass
+    t1 = c1._total
+    t2 = c2._total
+    c1._merge(c2)
+    t3 = c1._total
+    self.assertGreaterEqual(t3, t1)
+    self.assertGreaterEqual(t3, t2)
+
+  def test_summary(self):
+    c1 = metrics.StopWatch("foo")
+    with c1:
+      pass
+    self.assertIsInstance(c1._summary(), str)
+    self.assertIsInstance(str(c1), str)
+
+
 class MapCounterTest(unittest.TestCase):
   """Tests for MapCounter."""
 

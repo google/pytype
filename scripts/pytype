@@ -226,7 +226,8 @@ def main(argv):
 
   with _ProfileContext(options.profile):
     with metrics.MetricsContext(options.metrics):
-      return _run_pytype(options)
+      with metrics.StopWatch("total_time"):
+        return _run_pytype(options)
 
 
 def _run_pytype(options):

@@ -16,6 +16,9 @@ _solved_find_queries = {}
 _supernode_reachable = {}
 
 
+_variable_size_metric = metrics.Distribution("variable_size")
+
+
 class Program(object):
   """Program instances describe program entities.
 
@@ -439,6 +442,7 @@ class Variable(object):
     return [b.data for b in self.bindings if b.IsVisible(viewpoint)]
 
   def _FindOrAddBinding(self, data):
+    """Add a new binding if necessary, otherwise return existing binding."""
     try:
       binding = self._data_id_to_binding[id(data)]
     except KeyError:
@@ -447,6 +451,7 @@ class Variable(object):
       self._data_id_to_binding[id(data)] = binding
       for callback in self._callbacks:
         callback()
+      _variable_size_metric.add(len(self.bindings))
     return binding
 
   def AddBinding(self, data, source_set=None, where=None):

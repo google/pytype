@@ -20,6 +20,7 @@ def bar(n):
 
 import math
 import re
+import time
 
 import yaml
 
@@ -104,6 +105,27 @@ class Counter(Metric):
 
   def _summary(self):
     return str(self._total)
+
+  def _merge(self, other):
+    # pylint: disable=protected-access
+    self._total += other._total
+
+
+class StopWatch(Metric):
+  """A counter that measures the time spent in a "with" statement."""
+
+  def __init__(self, name):
+    super(StopWatch, self).__init__(name)
+
+  def __enter__(self):
+    self._start_time = time.clock()
+
+  def __exit__(self, exc_type, exc_value, traceback):
+    self._total = time.clock() - self._start_time
+    del self._start_time
+
+  def _summary(self):
+    return "%f seconds" % self._total
 
   def _merge(self, other):
     # pylint: disable=protected-access
