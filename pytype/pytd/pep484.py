@@ -38,6 +38,7 @@ class Print484StubVisitor(visitors.Visitor):
       def append(self, x: T) -> NoneType: pass
   """
   visits_all_node_types = True
+  unchecked_node_names = visitors.ALL_NODE_NAMES
   INDENT = " " * 4
 
   def _SafeName(self, name):

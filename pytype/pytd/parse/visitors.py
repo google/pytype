@@ -25,6 +25,13 @@ import re
 from pytype.pytd import pytd
 from pytype.pytd.parse import parser_constants  # pylint: disable=g-importing-member
 
+# A convenient value for unchecked_node_classnames if a visitor wants to
+# use unchecked nodes everywhere.
+ALL_NODE_NAMES = type(
+    "contains_everything",
+    (),
+    {"__contains__": lambda *args: True})()
+
 
 class Visitor(object):
   """Base class for visitors.
@@ -32,6 +39,10 @@ class Visitor(object):
   Attributes:
     enters_all_node_types: Whether the visitor can enter every node type.
     visits_all_node_types: Whether the visitor can visit every node type.
+    unchecked_node_names: Contains the names of node classes that are unchecked
+      when constructing a new node from visited children.  This is useful
+      if a visitor returns data in part or all of its walk that would violate
+      node preconditions.
     enter_functions: A dictionary mapping node class names to the
       corresponding Enter functions.
     visit_functions: A dictionary mapping node class names to the
@@ -41,6 +52,7 @@ class Visitor(object):
   """
   enters_all_node_types = False
   visits_all_node_types = False
+  unchecked_node_names = set()
 
   _visitor_functions_cache = {}
 
@@ -103,6 +115,7 @@ def InventStarArgParams(existing_names):
 class PrintVisitor(Visitor):
   """Visitor for converting ASTs back to pytd source code."""
   visits_all_node_types = True
+  unchecked_node_names = ALL_NODE_NAMES
 
   INDENT = " " * 4
   _RESERVED = frozenset(parser_constants.RESERVED +
@@ -559,6 +572,8 @@ def _ToType(item):
 
 class DefaceUnresolved(Visitor):
   """Replace all types not in a symbol table with AnythingType."""
+
+  unchecked_node_names = ("GenericType",)
 
   def __init__(self, lookup_list, do_not_log_prefix=None):
     """Create this visitor.
@@ -1065,6 +1080,12 @@ class VerifyVisitor(Visitor):
   def __init__(self):
     super(VerifyVisitor, self).__init__()
     self._valid_param_name = re.compile(r"[a-zA-Z_]\w*$")
+
+  def Enter(self, node):
+    # TODO(dbaum): Most of the EnterX methods are now redundant with the
+    # node.Validate() check that uses preconditions.  Consider removing them.
+    super(VerifyVisitor, self).Enter(node)
+    node.Validate()
 
   def EnterTypeDeclUnit(self, node):
     assert isinstance(node.constants, (list, tuple)), node

@@ -58,7 +58,6 @@ functionalities to be made part of collections.namedtuple.
 """
 
 import collections
-import contextlib
 
 from pytype.pytd.parse import preconditions
 
@@ -66,18 +65,9 @@ from pytype.pytd.parse import preconditions
 _CHECK_PRECONDITIONS = True
 
 
-@contextlib.contextmanager
-def EnablePreconditions(enable):
-  """Disables precondition checking of Nodes, useful for printing."""
-  global _CHECK_PRECONDITIONS
-  old = _CHECK_PRECONDITIONS
-  _CHECK_PRECONDITIONS = enable
-  yield
-  _CHECK_PRECONDITIONS = old
-
-
 def DisablePreconditions():
-  return EnablePreconditions(False)
+  global _CHECK_PRECONDITIONS
+  _CHECK_PRECONDITIONS = False
 
 
 def Node(*child_names):
@@ -111,6 +101,10 @@ def Node(*child_names):
       # We do *not* call super() here, for performance reasons. Neither
       # namedtuple (our base class) nor tuple (namedtuple's base class) do
       # anything in __init__, so it's safe to leave it out.
+
+    def Validate(self):
+      """Re-run precondition checks on the node's data."""
+      self._CHECKER.check(*self)
 
     def __eq__(self, other):
       """Compare two nodes for equality.
@@ -214,6 +208,17 @@ def Node(*child_names):
   return NamedTupleNode
 
 
+def _CreateUnchecked(cls, *args):
+  """Create a node without checking preconditions."""
+  global _CHECK_PRECONDITIONS
+  old = _CHECK_PRECONDITIONS
+  _CHECK_PRECONDITIONS = False
+  try:
+    return cls(*args)
+  finally:
+    _CHECK_PRECONDITIONS = old
+
+
 def _VisitNode(node, visitor, *args, **kwargs):
   """Transform a node and all its children using a visitor.
 
@@ -297,7 +302,10 @@ def _VisitNode(node, visitor, *args, **kwargs):
   if changed:
     # The constructor of namedtuple() differs from tuple(), so we have to
     # pass the current tuple using "*".
-    new_node = node_class(*new_children)
+    if node_class_name in visitor.unchecked_node_names:
+      new_node = _CreateUnchecked(node_class, *new_children)
+    else:
+      new_node = node_class(*new_children)
   else:
     new_node = node
 

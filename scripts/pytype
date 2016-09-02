@@ -226,8 +226,7 @@ def main(argv):
 
   with _ProfileContext(options.profile):
     with metrics.MetricsContext(options.metrics):
-      with node.EnablePreconditions(options.check_preconditions):
-        return _run_pytype(options)
+      return _run_pytype(options)
 
 
 def _run_pytype(options):
@@ -235,6 +234,11 @@ def _run_pytype(options):
   if not options.src_out:
     print >>sys.stderr, "Need at least one filename."
     sys.exit(1)
+
+  # TODO(dbaum): Consider changing flag default and/or polarity.  This will
+  # need to be coordinated with a change to pytype.bzl.
+  if not options.check_preconditions:
+    node.DisablePreconditions()
 
   # Do *not* apply os.path.abspath here because we could be in a symlink tree
   # and bad things happen if you go to relative directories.

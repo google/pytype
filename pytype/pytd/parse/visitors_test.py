@@ -86,6 +86,30 @@ class TestVisitors(parser_test_base.ParserTest):
     """)
     tree = self.Parse(src)
     new_tree = tree.Visit(visitors.DefaceUnresolved([tree, builtins]))
+    new_tree.Visit(visitors.VerifyVisitor())
+    self.AssertSourceEquals(new_tree, expected)
+
+  def testDefaceUnresolved2(self):
+    builtins = self.Parse(textwrap.dedent("""
+      class int(object):
+        pass
+      T = TypeVar("T")
+      class list(Generic[T]):
+        pass
+    """))
+    src = textwrap.dedent("""
+        class A(X):
+            def a(self, a: A, b: X, c: int) -> X raises X
+            def c(self) -> Union[list[X], int]
+    """)
+    expected = textwrap.dedent("""
+        class A(?):
+            def a(self, a: A, b: ?, c: int) -> ? raises ?
+            def c(self) -> Union[list[?], int]
+    """)
+    tree = self.Parse(src)
+    new_tree = tree.Visit(visitors.DefaceUnresolved([tree, builtins]))
+    new_tree.Visit(visitors.VerifyVisitor())
     self.AssertSourceEquals(new_tree, expected)
 
   def testReplaceTypes(self):

@@ -439,10 +439,7 @@ class IntersectionType(node.Node('type_list: tuple[{Type}]'), Type):
     return not self == other
 
 
-# TODO(dbaum): AnythingType is from visitors.DefaceUnresolved().  This is an
-# intermediate state, and not present in final ASTs.  Rework the visitor and
-# remove AnythingType from here.
-class GenericType(node.Node('base_type: NamedType or ClassType or AnythingType',
+class GenericType(node.Node('base_type: NamedType or ClassType',
                             'parameters: tuple[{Type}]'), Type):
   """Generic type. Takes a base type and type paramters.
 
