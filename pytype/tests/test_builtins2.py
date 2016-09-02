@@ -30,7 +30,7 @@ class BuiltinTests2(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
       collections = ...  # type: module
-      r = ...  # type: collections.defaultdict
+      r = ...  # type: collections.defaultdict[int, int]
     """)
 
   def testImportLib(self):

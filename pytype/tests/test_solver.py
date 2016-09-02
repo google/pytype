@@ -55,6 +55,16 @@ class SolverTests(test_inference.InferenceTest):
       def f(x: dict) -> list
     """)
 
+  @unittest.skip("Infers x as Any because dict params are nothing")
+  def testNothingTypeParameters(self):
+    ty = self.Infer("""
+      def f(x):
+        x[""] = dict()
+    """, deep=True, solve_unknowns=True, extract_locals=True)
+    self.assertTypesMatchPytd(ty, """
+      def f(x: Dict[str, dict]) -> None
+    """)
+
   def testNameConflict(self):
     ty = self.Infer("""
       import StringIO
@@ -296,12 +306,13 @@ class SolverTests(test_inference.InferenceTest):
     ty = self.Infer("""\
       import collections
       def bar(d):
-          d[""] = collections.defaultdict(int)
+          d[""] = collections.defaultdict(int, [(0, 0)])
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
       collections = ...  # type: module
-      def bar(d: Dict[str, collections.defaultdict]
-                 or collections.defaultdict
+      def bar(d: Dict[str, collections.defaultdict] or
+                 collections.OrderedDict[str, collections.defaultdict] or
+                 collections.defaultdict[str, collections.defaultdict]
               ) -> NoneType
     """)
 

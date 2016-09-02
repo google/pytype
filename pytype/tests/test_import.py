@@ -628,7 +628,7 @@ class ImportTest(test_inference.InferenceTest):
       """, deep=False, solve_unknowns=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         foo = ...  # type: module
-        d = ...  # type: collections.OrderedDict
+        d = ...  # type: collections.OrderedDict[nothing, nothing]
       """)
 
   def testImportFunction(self):
