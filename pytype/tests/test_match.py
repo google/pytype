@@ -1,5 +1,7 @@
 """Tests for the analysis phase matcher (match_var_against_type)."""
 
+
+from pytype import utils
 from pytype.tests import test_inference
 
 
@@ -30,6 +32,21 @@ class MatchTest(test_inference.InferenceTest):
       StringIO = ...  # type: module
       x = ...  # type: Generator[Tuple[Union[Tuple[int, ...], int, str], ...]]
     """)
+
+  def testTypeAgainstCallable(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        def f(x: Callable) -> str
+      """)
+      ty = self.Infer("""
+        import foo
+        def f():
+          return foo.f(int)
+      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        foo = ...  # type: module
+        def f() -> str
+      """)
 
   def testMatchUnknownAgainstContainer(self):
     ty = self.Infer("""

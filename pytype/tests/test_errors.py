@@ -395,6 +395,13 @@ class ErrorTest(test_inference.InferenceTest):
       pattern = r"Expected.*Union\[int, str\].*Actually passed"
       self.assertErrorLogIs(errors, [(3, "wrong-arg-types", pattern)])
 
+  def testPrintTypeArg(self):
+    _, errors = self.InferAndCheck("""
+      max(int)
+    """, deep=True)
+    self.assertErrorLogIs(
+        errors, [(2, "wrong-arg-types", r"Actually passed.*Type\[int\]")])
+
 
 if __name__ == "__main__":
   test_inference.main()

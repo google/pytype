@@ -823,10 +823,14 @@ class SimpleAbstractValue(AtomicAbstractValue):
       return pytd.AnythingType()
 
   def match_against_type(self, other_type, subst, node, view):
+    if isinstance(self, Class):
+      if other_type.name in ["type", "object", "Callable"]:
+        return subst
+      else:
+        return None
     my_type = self.get_class()
-    if not my_type:
-      log.warning("Can't match %s against %s", self.__class__, other_type.name)
-      return None
+    assert my_type
+    assert isinstance(self, Instance)
     for my_cls in my_type.data:
       subst = my_cls.match_instance_against_type(self, other_type,
                                                  subst, node, view)
@@ -2162,10 +2166,6 @@ class PyTDClass(SimpleAbstractValue, Class):
   def __str__(self):
     return self.name
 
-  def match_against_type(self, other_type, subst, node, view):
-    if other_type.name in ["type", "object"]:
-      return subst
-
   def to_pytd_def(self, node, name):
     # This happens if a module does e.g. "from x import y as z", i.e., copies
     # something from another module to the local namespace. We *could*
@@ -2279,10 +2279,6 @@ class InterpreterClass(SimpleAbstractValue, Class):
       node, ret = self.vm.call_function(node, init, args)
       log.debug("%s.__init__(...) returned %r", self.name, ret)
     return node, variable
-
-  def match_against_type(self, other_type, subst, node, view):
-    if other_type.name in ["type", "object"]:
-      return subst
 
   def to_type(self, node, seen=None):
     return pytd.NamedType("__builtin__.type")

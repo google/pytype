@@ -263,6 +263,12 @@ class ErrorLog(ErrorLogBase):
   def _prettyprint_sig(self, sig):
     return re.sub(r"~unknown\d*", "Any", sig)
 
+  def _prettyprint_arg(self, arg):
+    if isinstance(arg, abstract.Class):
+      return "Type[%s]" % arg.name
+    else:
+      return arg.name
+
   @_error_name("wrong-arg-types")
   def wrong_arg_types(self, opcode, sig, passed_args):
     """A function was called with the wrong parameter types."""
@@ -270,7 +276,7 @@ class ErrorLog(ErrorLogBase):
     details = "".join([
         "Expected: (", self._prettyprint_sig(str(sig)), ")\n",
         "Actually passed: (", self._prettyprint_sig(
-            ", ".join("%s: %s" % (name, arg.name)
+            ", ".join("%s: %s" % (name, self._prettyprint_arg(arg))
                       for name, arg in zip(sig.param_names, passed_args))),
         ")"])
     self.error(opcode, message, details)
