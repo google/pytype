@@ -229,6 +229,10 @@ class ErrorLog(ErrorLogBase):
     on = " on %s" % obj.data[0].name if len(obj.bindings) == 1 else ""
     self.error(opcode, "No attribute %r%s" % (attr_name, on))
 
+  @_error_name("none-attr")
+  def none_attr(self, opcode, attr_name):
+    self.error(opcode, "Access of attribute %r on NoneType" % (attr_name))
+
   @_error_name("unbound-type-param")
   def type_param_error(self, opcode, obj, attr_name, type_param_name):
     on = " on %s" % obj.data[0].name if len(obj.bindings) == 1 else ""

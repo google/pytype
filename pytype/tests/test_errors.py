@@ -236,6 +236,13 @@ class ErrorTest(test_inference.InferenceTest):
     self.assertErrorLogContains(
         errors, r"No attribute 'bar' \[attribute-error\]")
 
+  def testNoneAttribute(self):
+    _, errors = self.InferAndCheck("""\
+      None.foo
+    """)
+    self.assertErrorLogIs(errors, [
+        (1, "none-attr", r"foo")])
+
   def testPyiType(self):
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", """

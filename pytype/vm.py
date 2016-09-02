@@ -805,11 +805,24 @@ class VirtualMachine(object):
     else:
       return node, None
 
+  def _is_only_none(self, node, obj):
+    # TODO(kramm): Report an error for *any* None, as opposed to *all* None?
+    has_none = True
+    for x in obj.Data(node):
+      if getattr(x, "cls", False) and x.cls.data == self.convert.none_type.data:
+        has_none = True
+      else:
+        return False
+    return has_none
+
   def load_attr(self, state, obj, attr):
     node, result = self._retrieve_attr(state.node, obj, attr)
     if result is None:
       if obj.bindings:
-        self.errorlog.attribute_error(self.frame.current_opcode, obj, attr)
+        if self._is_only_none(state.node, obj):
+          self.errorlog.none_attr(self.frame.current_opcode, attr)
+        else:
+          self.errorlog.attribute_error(self.frame.current_opcode, obj, attr)
       result = self.convert.create_new_unsolvable(node, "bad attr")
     return state.change_cfg_node(node), result
 

@@ -91,5 +91,6 @@ class TestAttributes(test_inference.InferenceTest):
         def set_on_a(self) -> NoneType
     """)
 
+
 if __name__ == "__main__":
   test_inference.main()
