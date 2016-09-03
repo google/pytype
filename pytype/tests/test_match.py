@@ -73,6 +73,20 @@ class MatchTest(test_inference.InferenceTest):
       def f(x) -> set: ...
     """)
 
+  def testGenericHierarchy(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        def f(x: Iterable[str]) -> str
+      """)
+      ty = self.Infer("""
+        import a
+        x = a.f(["a", "b", "c"])
+      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        x = ...  # type: str
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()

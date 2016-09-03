@@ -206,15 +206,9 @@ class TypeMatch(utils.TypeMatcher):
     """Match a pytd.GenericType against another pytd.GenericType."""
     assert isinstance(t1.base_type, pytd.ClassType), type(t1.base_type)
     assert isinstance(t2.base_type, pytd.ClassType), type(t2.base_type)
-    # We don't do inheritance for base types, since right now, inheriting from
-    # instantiations of templated types is not supported by pytd.
-    if (is_complete(t1.base_type.cls) and is_complete(t2.base_type.cls) and
-        t1.base_type.cls.name != t2.base_type.cls.name):
-      # Optimization: If the base types are incompatible, these two generic
-      # types can never match.
-      base_type_cmp = booleq.FALSE
-    else:
-      base_type_cmp = booleq.Eq(t1.base_type.cls.name, t2.base_type.cls.name)
+    base1 = pytd.ClassType(t1.base_type.cls.name, t1.base_type.cls)
+    base2 = pytd.ClassType(t2.base_type.cls.name, t2.base_type.cls)
+    base_type_cmp = self.match_type_against_type(base1, base2, subst)
     if base_type_cmp is booleq.FALSE:
       return booleq.FALSE
     assert len(t1.parameters) == len(t2.parameters), t1.base_type.cls.name
