@@ -219,6 +219,7 @@ class AtomicAbstractValue(object):
     assert hasattr(vm, "program"), type(self)
     self.vm = vm
     self.mro = []
+    self.cls = None
     AtomicAbstractValue._value_id += 1
     self.id = AtomicAbstractValue._value_id
     self.name = name
@@ -570,7 +571,6 @@ class SimpleAbstractValue(AtomicAbstractValue):
     super(SimpleAbstractValue, self).__init__(name, vm)
     self.members = utils.MonitorDict()
     self.type_parameters = utils.LazyAliasingMonitorDict()
-    self.cls = None
 
   def get_children_maps(self):
     return (self.type_parameters, self.members)
