@@ -1965,7 +1965,6 @@ class Class(object):
         "__builtin__.bytes": "__builtin__.unicode",
         "__builtin__.int": "__builtin__.float"
     }
-    # LINT.ThenChange(//pytype/pytd/parse/visitors.py) # pylint: disable=line-too-long
 
     if compatible_builtins.get(self.full_name) == other_type.full_name:
       return subst

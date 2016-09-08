@@ -272,7 +272,6 @@ class Loader(object):
     for searchdir in self.options.pythonpath:
       path = os.path.join(searchdir, *module_name_split)
       # See if this is a directory with a "__init__.py" defined.
-# MOE:strip_line For Bazel, have already created a __init__.py file
       init_path = os.path.join(path, "__init__")
       init_ast = self._load_pyi(init_path, module_name)
       if init_ast is not None:

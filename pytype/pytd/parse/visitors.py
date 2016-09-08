@@ -1632,7 +1632,6 @@ class ExpandCompatibleBuiltins(Visitor):
         "unicode": ["str", "bytes"],
         "float": ["int"]
         }
-    # LINT.ThenChange(//pytype/abstract.py)
 
     rmap = {}
     for name, compats in compat_map.iteritems():
