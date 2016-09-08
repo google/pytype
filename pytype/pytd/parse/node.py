@@ -233,9 +233,8 @@ def _VisitNode(node, visitor, *args, **kwargs):
     visitor: The visitor to apply. If this visitor has a "Visit<Name>" method,
           with <Name> the name of the Node class, a callback will be triggered,
           and the transformed version of this node will be whatever the callback
-          returned, or the original node if the callback returned None.  Before
-          calling the Visit callback, the following attribute(s) on the Visitor
-          class will be populated:
+          returned.  Before calling the Visit callback, the following
+          attribute(s) on the Visitor class will be populated:
             visitor.old_node: The node before the child nodes were visited.
 
           Additionally, if the visitor has a "Enter<Name>" method, that method

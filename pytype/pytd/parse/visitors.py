@@ -1598,3 +1598,68 @@ class VerifyContainers(Visitor):
 
   def VisitHomogeneousContainerType(self, node):
     return self.VisitGenericType(node)
+
+
+class ExpandCompatibleBuiltins(Visitor):
+  """Ad-hoc inheritance.
+
+  In parameters, replaces
+    ClassType('__builtin__.float')
+  with
+    Union[ClassType('__builtin__.float'), ClassType('__builtin__.int')]
+
+  And similarly for unicode->(unicode, str, bytes) and bool->(bool, None).
+
+  Used to allow a function requiring a float to accept an int without making
+  int inherit from float.
+
+  See https://www.python.org/dev/peps/pep-0484/#the-numeric-tower
+  """
+
+  def __init__(self, builtins):
+    super(ExpandCompatibleBuiltins, self).__init__()
+    self.in_parameter = False
+    self.replacements = self._BuildReplacementMap(builtins)
+
+  @staticmethod
+  def _BuildReplacementMap(builtins):
+    """Dict[str, UnionType[ClassType, ...]] map."""
+    # LINT.IfChange
+    # Should keep in sync with abstract.Class.match_instance_against_type
+    compat_map = {
+        # See https://github.com/python/typeshed/issues/270
+        "bool": ["NoneType"],
+        "unicode": ["str", "bytes"],
+        "float": ["int"]
+        }
+    # LINT.ThenChange(//pytype/abstract.py)
+
+    rmap = {}
+    for name, compats in compat_map.iteritems():
+      prefix = builtins.name + "."
+      expansion = []
+      for short_name in [name] + compats:
+        full_name = prefix + short_name
+        t = builtins.Lookup(full_name)
+        if isinstance(t, pytd.Class):
+          # Depending on python version, bytes can be an Alias, if so don't
+          # want it in our union
+          expansion.append(pytd.ClassType(full_name, t))
+
+      rmap[prefix + name] = pytd.UnionType(tuple(expansion))
+
+    return rmap
+
+  def EnterParameter(self, _):
+    assert not self.in_parameter
+    self.in_parameter = True
+
+  def LeaveParameter(self, _):
+    assert self.in_parameter
+    self.in_parameter = False
+
+  def VisitClassType(self, node):
+    if self.in_parameter:
+      return self.replacements.get(node.name, node)
+    else:
+      return node

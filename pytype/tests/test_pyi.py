@@ -47,7 +47,7 @@ class PYITest(test_inference.InferenceTest):
     with utils.Tempdir() as d:
       d.create_file("mod.pyi", """
         from typing import Optional, List, Any, IO
-        def split(s: Optional[float]) -> List[str, ...]: ...
+        def split(s: Optional[int]) -> List[str, ...]: ...
       """)
       ty = self.Infer("""\
         import mod
@@ -56,7 +56,7 @@ class PYITest(test_inference.InferenceTest):
       """, deep=True, solve_unknowns=True, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         mod = ...  # type: module
-        def g(x: NoneType or float) -> List[str, ...]
+        def g(x: NoneType or int) -> List[str, ...]
       """)
 
   def testClasses(self):

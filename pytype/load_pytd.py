@@ -80,6 +80,7 @@ class Loader(object):
   def _postprocess_pyi(self, ast):
     """Apply all the PYI transformations we need."""
     ast = ast.Visit(visitors.LookupBuiltins(self.builtins))
+    ast = ast.Visit(visitors.ExpandCompatibleBuiltins(self.builtins))
     ast = ast.Visit(visitors.NamedTypeToClassType())
     return ast
 

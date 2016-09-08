@@ -20,6 +20,7 @@
 """AST representation of a pytd file."""
 
 
+import collections
 import itertools
 from pytype.pytd.parse import node
 from pytype.pytd.parse import preconditions
@@ -389,7 +390,11 @@ class UnionType(node.Node('type_list: tuple[{Type}]'), Type):
     assert type_list  # Disallow empty unions. Use NothingType for these.
     flattened = itertools.chain.from_iterable(
         t.type_list if isinstance(t, UnionType) else [t] for t in type_list)
-    return super(UnionType, cls).__new__(cls, tuple(flattened))
+
+    # Remove duplicates, preserving order
+    unique = tuple(collections.OrderedDict.fromkeys(flattened))
+
+    return super(UnionType, cls).__new__(cls, unique)
 
   def __hash__(self):
     # See __eq__ - order doesn't matter, so use frozenset

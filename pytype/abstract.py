@@ -1955,10 +1955,21 @@ class Class(object):
     """
     if other_type.full_name == "__builtin__.object":
       return subst
-    if (other_type.full_name == "__builtin__.bool" and
-        self.full_name == "__builtin__.NoneType"):
-      # See https://github.com/python/typeshed/issues/270
+
+    # LINT.IfChange
+    # Should keep in sync with visitors.ExpandCompatibleBuiltins
+    compatible_builtins = {
+        # See https://github.com/python/typeshed/issues/270
+        "__builtin__.NoneType": "__builtin__.bool",
+        "__builtin__.str": "__builtin__.unicode",
+        "__builtin__.bytes": "__builtin__.unicode",
+        "__builtin__.int": "__builtin__.float"
+    }
+    # LINT.ThenChange(//pytype/pytd/parse/visitors.py) # pylint: disable=line-too-long
+
+    if compatible_builtins.get(self.full_name) == other_type.full_name:
       return subst
+
     if isinstance(other_type, Class):
       for base in self.mro:
         if isinstance(base, ParameterizedClass):
