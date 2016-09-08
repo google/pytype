@@ -910,17 +910,19 @@ class Instance(SimpleAbstractValue):
               self.type_parameters.add_alias(name, param.name)
 
   def compatible_with(self, logical_value):  # pylint: disable=unused-argument
-    # Containers with unset parameters cannot match True.
-    if logical_value and self._is_container():
+    # Containers with unset parameters and NoneType instances cannot match True.
+    name = self._get_full_name()
+    if logical_value and name in Instance._CONTAINER_NAMES:
       return bool(self.type_parameters["T"].bindings)
+    elif name == "__builtin__.NoneType":
+      return not logical_value
     return True
 
-  def _is_container(self):
+  def _get_full_name(self):
     try:
-      name = get_atomic_value(self.get_class()).full_name
-      return name in Instance._CONTAINER_NAMES
+      return get_atomic_value(self.get_class()).full_name
     except ConversionError:
-      return False
+      return None
 
 
 class ValueWithSlots(Instance):

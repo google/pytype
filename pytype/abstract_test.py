@@ -84,6 +84,14 @@ class InstanceTest(AbstractTestBase):
     self.assertIs(True, i.compatible_with(True))
     self.assertIs(True, i.compatible_with(False))
 
+  def test_compatible_with_none(self):
+    # This test is specifically for abstract.Instance, so we don't use
+    # self._vm.convert.none, which is an AbstractOrConcreteValue.
+    i = abstract.Instance(
+        self._vm.convert.none_type, self._vm, self._node)
+    self.assertIs(False, i.compatible_with(True))
+    self.assertIs(True, i.compatible_with(False))
+
 
 class DictTest(AbstractTestBase):
 
