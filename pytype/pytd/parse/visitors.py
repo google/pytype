@@ -1549,11 +1549,13 @@ class AddTypeParameterScopes(Visitor):
       return None
 
   def VisitTypeParameter(self, node):
-    assert node.scope is None
     if self.constant_name and (not self.class_name or
                                node.name not in self.bound_by_class):
       raise ContainerError("Unbound type parameter %s in %s" % (
           node.name, self._GetFullName(self.constant_name)))
+    if node.scope is not None:
+      assert node.scope == self._GetScope(node.name)
+      return node
     return node.Replace(scope=self._GetScope(node.name))
 
 

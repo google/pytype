@@ -320,6 +320,27 @@ def process_function(func: Callable[..., Any]) -> None: ...
         x = ...  # type: int
       """)
 
+  def testImportFunctionTemplate(self):
+    with utils.Tempdir() as d1:
+      d1.create_file("foo.pyi", """
+        from typing import TypeVar
+        T = TypeVar("T")
+        def f(x: T) -> T
+      """)
+      with utils.Tempdir() as d2:
+        d2.create_file("bar.pyi", """
+          import foo
+          f = foo.f
+        """)
+        ty = self.Infer("""
+          import bar
+          x = bar.f("")
+        """, pythonpath=[d1.path, d2.path], deep=True, solve_unknowns=True)
+        self.assertTypesMatchPytd(ty, """
+          bar = ...  # type: module
+          x = ...  # type: str
+        """)
+
 
 if __name__ == "__main__":
   test_inference.main()
