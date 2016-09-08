@@ -1515,7 +1515,7 @@ class _TypeDeclParser(object):
       decorators = name_to_decorators[name]
       if "classmethod" in decorators:
         kind = pytd.CLASSMETHOD
-      if "staticmethod" in decorators:
+      if name == "__new__" or "staticmethod" in decorators:
         kind = pytd.STATICMETHOD
       if name_external[name][True]:
         methods.append(pytd.ExternalFunction(name, (), kind))

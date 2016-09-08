@@ -1405,7 +1405,7 @@ class Function(Instance):
                                                condition)
 
   def property_get(self, callself, callcls):
-    if not callself or not callcls:
+    if self.name == "__new__" or not callself or not callcls:
       return self
     self.is_attribute_of_class = True
     key = tuple(sorted(callself.data))
@@ -1423,6 +1423,12 @@ class Function(Instance):
   def match_against_type(self, other_type, subst, node, view):
     if other_type.name in ["function", "object", "Callable"]:
       return subst
+
+  def __repr__(self):
+    return self.name + "(...)"
+
+  # We want to use __repr__ above rather than SimpleAbstractValue.__str__
+  __str__ = __repr__
 
 
 class Mutation(collections.namedtuple("_", ["instance", "name", "value"])):
@@ -1839,12 +1845,6 @@ class PyTDFunction(Function):
     del node
     return pytd.Function(
         name, tuple(sig.pytd_sig for sig in self.signatures), pytd.METHOD)
-
-  def __repr__(self):
-    return self.name + "(...)"
-
-  # We want to use __repr__ above rather than SimpleAbstractValue.__str__
-  __str__ = __repr__
 
 
 class Class(object):

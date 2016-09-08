@@ -837,6 +837,25 @@ class MethodsTest(test_inference.InferenceTest):
     json = ...  # type: module
     """)
 
+  def testNew(self):
+    ty = self.Infer("""
+      x = str.__new__(str)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      x = ...  # type: str
+    """)
+
+  def testOverrideNew(self):
+    ty = self.Infer("""
+      class Foo(str):
+        def __new__(cls, string):
+          return str.__new__(cls, string)
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      class Foo(str):
+        def __new__(cls, string) -> str
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

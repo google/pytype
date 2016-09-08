@@ -285,7 +285,7 @@ class PrintVisitor(Visitor):
     """Visit function, producing multi-line string (one for each signature)."""
     function_name = self._EscapedName(node.name)
     decorators = ""
-    if node.kind == pytd.STATICMETHOD:
+    if node.kind == pytd.STATICMETHOD and function_name != "__new__":
       decorators += "@staticmethod\n"
     elif node.kind == pytd.CLASSMETHOD:
       decorators += "@classmethod\n"
