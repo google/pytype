@@ -182,6 +182,10 @@ class Options(object):
         dest="report_errors", default=True,
         help=("Don't report errors. Only generate a .pyi."))
     o.add_option(
+        "--abort-on-complex", action="store_true",
+        dest="abort_on_complex", default=False,
+        help=("Abort early on files that are too complex."))
+    o.add_option(
         # Not stored, just used to configure logging.
         "-v", "--verbosity", type="int", action="store",
         dest="verbosity", default=1,
@@ -335,3 +339,4 @@ class Options(object):
       raise optparse.OptionConflictError("Not allowed with --no-report-errors",
                                          "output-errors-csv")
     self.output_errors_csv = output_errors_csv
+

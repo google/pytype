@@ -302,7 +302,7 @@ class InferenceTest(unittest.TestCase):
 
   def _InferAndVerify(self, src, pythonpath=(), module_name=None,
                       imports_map=None, report_errors=False, quick=False,
-                      **kwargs):
+                      abort_on_complex=False, **kwargs):
     """Infer types for the source code treating it as a module.
 
     Used by Infer().
@@ -315,6 +315,7 @@ class InferenceTest(unittest.TestCase):
       report_errors: Whether to fail if the type inferencer reports any errors
         in the program.
       quick: Try to run faster, by avoiding costly computations.
+      abort_on_complex: Abort complex programs.
       **kwargs: Keyword paramters to pass through to the type inferencer.
 
     Raises:
@@ -325,7 +326,8 @@ class InferenceTest(unittest.TestCase):
     self.options.tweak(pythonpath=pythonpath,
                        module_name=module_name,
                        imports_map=imports_map,
-                       quick=quick)
+                       quick=quick,
+                       abort_on_complex=abort_on_complex)
     errorlog = self._InitErrorLog(src)
     unit = infer.infer_types(src, errorlog, self.options, **kwargs)
     unit = pytd_utils.CanonicalOrdering(unit.Visit(visitors.VerifyVisitor()))

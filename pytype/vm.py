@@ -91,7 +91,7 @@ class VirtualMachine(object):
     self.loader = load_pytd.Loader(base_module=module_name, options=options)
     self.frames = []  # The call stack of frames.
     self.frame = None  # The current frame.
-    self.program = typegraph.Program()
+    self.program = typegraph.Program(abort_on_complex=options.abort_on_complex)
     self.root_cfg_node = self.program.NewCFGNode("root")
     self.program.entrypoint = self.root_cfg_node
     self.vmbuiltins = self.loader.builtins

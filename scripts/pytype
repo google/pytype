@@ -21,11 +21,11 @@ from pytype import errors
 from pytype import infer
 from pytype import metrics
 from pytype.pyc import pyc
+from pytype.pytd import cfg
 from pytype.pytd import optimize
 from pytype.pytd import pytd
 from pytype.pytd import utils as pytd_utils
 from pytype.pytd.parse import node
-from pytype.pytd.parse import parser
 from pytype.pytd.parse import visitors
 
 
@@ -93,16 +93,10 @@ def generate_pyi(input_filename, output_filename, errorlog, options):
     # Compiling a *.py failed. Tell the user what Python told us and exit.
     sys.stderr.write(e.message + "\n")
     sys.exit(1)
-  except parser.ParseError as e:
-    if options.nofail:
-      log.warn("Parser error: %s", str(e))
-      result = "def __getattr__(name) -> Any: ...\n"
-      result += "# Caught error in pyi file:\n# " + str(e).replace("\n", "\n# ")
-    else:
-      # TODO(kramm): We should store errors of this kind in the errorlog and
-      # continue processing.
-      sys.stderr.write(str(e))
-      sys.exit(1)
+  except cfg.ProgramTooComplexError:
+    log.warn("Program too complex too analyze. Aborting.")
+    result = "# Program too complex for full analysis\n"
+    result += "def __getattr__(name) -> Any: ...\n"
   except Exception as e:  # pylint: disable=broad-except
     if options.nofail:
       log.warn("***Caught exception: %s", str(e), exc_info=True)
