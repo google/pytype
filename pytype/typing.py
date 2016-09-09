@@ -147,8 +147,16 @@ class Sequence(_Container):
                              self.vm.convert.tuple_type]
 
 
+def build_any(name, vm, node, inner=None):
+  del name
+  del node
+  del inner
+  return abstract.Unknown(vm)
+
+
 typing_overload = {
     "Union": Union,
     "List": List,
     "Sequence": Sequence,
+    "Any": build_any,
 }
