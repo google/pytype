@@ -233,6 +233,11 @@ CMP_IS_NOT = 9
 CMP_EXC_MATCH = 10
 
 
+CMP_ALWAYS_SUPPORTED = [
+    CMP_LT, CMP_LE, CMP_EQ, CMP_NE, CMP_GT, CMP_GE, CMP_IS, CMP_IS_NOT
+]
+
+
 COMPARE_OPS = [
     CompareOp("LT", CMP_LT, "__lt__"),
     CompareOp("LE", CMP_LE, "__le__"),

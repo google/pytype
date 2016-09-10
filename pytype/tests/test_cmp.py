@@ -254,6 +254,16 @@ class EqTest(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=False, extract_locals=False)
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.complex)
 
+  def test_class(self):
+    ty = self.Infer("""
+      def f(x, y):
+        return x.__class__ == y.__class__
+      f(1, 2)
+      f(1, "a")
+      f(object(), "x")
+    """)
+    self.assertOnlyHasReturnType(ty.Lookup("f"), self.bool)
+
 
 class NeTest(test_inference.InferenceTest):
   """Test for "x != y". Also test overloading."""

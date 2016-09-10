@@ -560,7 +560,7 @@ class VirtualMachine(object):
     node, _, _, ret = self.run_bytecode(node, code, frame.f_globals, new_locals)
     return node, ret
 
-  def call_binary_operator(self, state, name, x, y):
+  def call_binary_operator(self, state, name, x, y, report_errors=False):
     """Map a binary operator to "magic methods" (__add__ etc.)."""
     # TODO(pludemann): See TODO.txt for more on reverse operator subtleties.
     results = []
@@ -584,7 +584,7 @@ class VirtualMachine(object):
         results.append(ret)
     result = self.join_variables(state.node, name, results)
     log.debug("Result: %r", result)
-    if not result.bindings:
+    if not result.bindings and report_errors:
       self.errorlog.unsupported_operands(self.frame.current_opcode, state.node,
                                          name, x, y)
     return state, result
@@ -595,7 +595,8 @@ class VirtualMachine(object):
     if attr is None:
       log.info("No inplace operator %s on %r", iname, x)
       name = iname.replace("i", "", 1)  # __iadd__ -> __add__ etc.
-      state, ret = self.call_binary_operator(state, name, x, y)
+      state, ret = self.call_binary_operator(
+          state, name, x, y, report_errors=True)
     else:
       # TODO(kramm): If x is a Variable with distinct types, both __add__
       # and __iadd__ might happen.
@@ -605,7 +606,8 @@ class VirtualMachine(object):
 
   def binary_operator(self, state, name):
     state, (x, y) = state.popn(2)
-    state, ret = self.call_binary_operator(state, name, x, y)
+    state, ret = self.call_binary_operator(
+        state, name, x, y, report_errors=True)
     return state.push(ret)
 
   def inplace_operator(self, state, name):
@@ -1234,6 +1236,11 @@ class VirtualMachine(object):
       ret = self.convert.build_bool(state.node)
     else:
       raise VirtualMachineError("Invalid argument to COMPARE_OP: %d", op.arg)
+    if not ret.bindings and op.arg in slots.CMP_ALWAYS_SUPPORTED:
+      # Some comparison operations are always supported.
+      # (https://docs.python.org/2/library/stdtypes.html#comparisons)
+      ret.AddBinding(
+          self.convert.primitive_class_instances[bool], [], state.node)
     return state.push(ret)
 
   def byte_LOAD_ATTR(self, state, op):
