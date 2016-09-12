@@ -18,6 +18,8 @@
 #                       def Method PYTHONCODE Foo_Method
 #                  If not useful, remove.
 
+__file__ = ...  # type:str
+
 T = TypeVar('T')
 T2 = TypeVar('T2')
 K = TypeVar('K')
@@ -103,6 +105,7 @@ def pow(x: complex, y: int or float, ...) -> complex
 def range(stop: int, ...) -> list[int] or list
 def reduce(function, sequence: str, ...) -> str
 def reduce(function, sequence: set, ...) -> ?
+def reload(x: module) -> module
 def repr PYTHONCODE
 def round(number: int or float, ...) -> float
 def setattr(object, name: str or unicode or bytearray, value) -> NoneType
@@ -1232,6 +1235,11 @@ class TypeError(object):
     def __unicode__(self, ...) -> unicode
 
 class UnboundLocalError(object):
+    def __init__(self, ...) -> NoneType
+    def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
+    def __unicode__(self, ...) -> unicode
+
+class UnicodeDecodeError(object):
     def __init__(self, ...) -> NoneType
     def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
     def __unicode__(self, ...) -> unicode
