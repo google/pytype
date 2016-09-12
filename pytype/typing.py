@@ -31,6 +31,19 @@ class TypingOverlay(abstract.Module):
           node, name, valself, valcls)
 
 
+def _maybe_extract_tuple(convert, node, t):
+  """Returns a tuple of Variables."""
+  values = t.Data(node)
+  if len(values) > 1:
+    return (t,)
+  v, = values
+  if not (v.cls and v.cls.data == convert.tuple_type.data):
+    return (t,)
+  if not isinstance(v, abstract.AbstractOrConcreteValue):
+    return (t,)
+  return v.pyval
+
+
 class Union(abstract.ValueWithSlots):
   """Implementation of typing.Union[...]."""
 
@@ -44,7 +57,7 @@ class Union(abstract.ValueWithSlots):
     return "Union[" + ", ".join(str(n) for n in self.elements) + "]"
 
   def getitem_slot(self, node, slice_var):
-    slice_tuple = abstract.get_atomic_python_constant(slice_var)
+    slice_tuple = _maybe_extract_tuple(self.vm.convert, node, slice_var)
     values = tuple(s.Data(node)[0] for s in slice_tuple)
     new_union = Union(self.name, self.vm, node, self.elements + values)
     return node, new_union.to_variable(node, "Union")
@@ -82,19 +95,8 @@ class _Container(abstract.ValueWithSlots):
     self.inner = inner
     self.set_slot("__getitem__", self.getitem_slot)
 
-  def _maybe_extract_tuple(self, node, t):
-    values = t.Data(node)
-    if len(values) > 1:
-      return (t,)
-    v, = values
-    if not (v.cls and v.cls.data == self.vm.convert.tuple_type.data):
-      return (t,)
-    if not isinstance(v, abstract.AbstractOrConcreteValue):
-      return (t,)
-    return v.pyval
-
   def getitem_slot(self, node, inner):
-    inner = self._maybe_extract_tuple(node, inner)
+    inner = _maybe_extract_tuple(self.vm.convert, node, inner)
     new_list = self.__class__(self.name, self.vm, node, inner)
     return node, new_list.to_variable(node, self.name)
 
@@ -197,11 +199,14 @@ class Sequence(_Container):
                              self.vm.convert.set_type]
 
 
-def build_any(name, vm, node, inner=None):
+def build_any(name, vm, node):
   del name
   del node
-  del inner
   return abstract.Unsolvable(vm)
+
+
+def build_optional(name, vm, node):
+  return Union(name, vm, node, (vm.convert.none_type.data[0],))
 
 
 typing_overload = {
@@ -209,5 +214,6 @@ typing_overload = {
     "List": List,
     "Dict": Dict,
     "Sequence": Sequence,
+    "Optional": build_optional,
     "Any": build_any,
 }

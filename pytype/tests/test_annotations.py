@@ -331,6 +331,20 @@ class AnnotationTest(test_inference.InferenceTest):
         (8, "wrong-arg-types"),
     ])
 
+  def testOptional(self):
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      from typing import Optional
+      def f(s: Optional[int]):
+        return s
+      f(1)
+      f(None)
+      f("foo")
+    """, deep=True)
+    self.assertErrorLogIs(errors, [
+        (7, "wrong-arg-types"),
+    ])
+
 
 if __name__ == "__main__":
   test_inference.main()
