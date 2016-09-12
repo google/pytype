@@ -1,5 +1,8 @@
 """Implementation of the types in Python 3's typing.py."""
 
+# pylint's detection of this is error-prone:
+# pylint: disable=unpacking-non-sequence
+
 
 from pytype import abstract
 from pytype.pytd import pytd
@@ -69,6 +72,8 @@ class Union(abstract.ValueWithSlots):
 class _Container(abstract.ValueWithSlots):
   """Implementation of typing.X[...]."""
 
+  TYPE_PARAM_NAMES = ()
+
   def __init__(self, name, vm, node, inner=None):
     # TODO(kramm): type_type is wrong. Correct would be "typing.GenericMeta".
     # But in the output, we'd want this to become an alias.
@@ -77,17 +82,21 @@ class _Container(abstract.ValueWithSlots):
     self.inner = inner
     self.set_slot("__getitem__", self.getitem_slot)
 
+  def _maybe_extract_tuple(self, node, t):
+    values = t.Data(node)
+    if len(values) > 1:
+      return (t,)
+    v, = values
+    if not (v.cls and v.cls.data == self.vm.convert.tuple_type.data):
+      return (t,)
+    if not isinstance(v, abstract.AbstractOrConcreteValue):
+      return (t,)
+    return v.pyval
+
   def getitem_slot(self, node, inner):
+    inner = self._maybe_extract_tuple(node, inner)
     new_list = self.__class__(self.name, self.vm, node, inner)
     return node, new_list.to_variable(node, self.name)
-
-  def instantiate(self, node):
-    if self.inner:
-      return self.vm.convert.build_list(node, [
-          self.vm.instantiate(self.inner, node)])
-    else:
-      return self.vm.convert.build_list(node, [
-          self.vm.convert.create_new_unknown(node, "inner")])
 
   def match_var_against(self, var, subst, node, view):
     new_subst = None
@@ -101,62 +110,104 @@ class _Container(abstract.ValueWithSlots):
       return None
     if self.inner:
       v = view[var].data
-      # __builtins__.pytd always uses T as type parameter for sequence classes.
       if (isinstance(v, abstract.SimpleAbstractValue) and
-          "T" in v.type_parameters):
-        inner = v.type_parameters["T"]
-        for formal in self.inner.data:
-          new_subst = abstract.match_var_against_type(
-              inner, formal, subst, node, view)
-          if new_subst is not None:
-            return new_subst
+          all(param in v.type_parameters for param in self.type_param_names)):
+        for param_name, type_param in zip(self.type_param_names, self.inner):
+          inner = v.type_parameters[param_name]
+          for formal in type_param.data:
+            new_subst = abstract.match_var_against_type(
+                inner, formal, subst, node, view)
+            if new_subst is not None:
+              subst = new_subst
+              break
+          else:
+            return None
+          return new_subst
       elif isinstance(v, (abstract.Unknown, abstract.Unsolvable)):
         return subst
     else:
       return subst
 
+  def instantiate(self, node):
+    concrete_class = self.concrete_classes[0]
+    d = abstract.Instance(concrete_class, self.vm, node)
+    for i, name in enumerate(self.type_param_names):
+      if self.inner is not None:
+        param = self.inner[i]
+      else:
+        param = self.vm.convert.create_new_unsolvable(node, name)
+      d.overwrite_type_parameter(node, name, self.vm.instantiate(param, node))
+    return d.to_variable(node, self.pytd_name)
+
   def get_instance_type(self, node, instance=None, seen=None):
     if self.inner:
-      t = pytd_utils.JoinTypes([i.get_instance_type(node, seen=seen)
-                                for i in self.inner.data])
-      return pytd.GenericType(pytd.NamedType(self.pytd_name), (t,))
+      type_params = [pytd_utils.JoinTypes([i.get_instance_type(node, seen=seen)
+                                           for i in inner.data])
+                     for inner in self.inner
+                    ]
+      return pytd.GenericType(pytd.NamedType(self.pytd_name),
+                              tuple(type_params))
     else:
       return pytd.NamedType(self.pytd_name)
 
   def __str__(self):
     if self.inner:
-      return self.name + "[" + str(self.inner.data[0]) + "]"
+      list_entries = ", ".join(str(i.data[0]) for i in self.inner)
+      return self.name + "[" + list_entries + "]"
     else:
       return self.name
 
 
 class List(_Container):
   pytd_name = "__builtin__.list"
+  type_param_names = ("T",)
 
   def __init__(self, name, vm, node, inner=None):
     super(List, self).__init__("List", vm, node, inner)
     self.concrete_classes = [self.vm.convert.list_type]
 
+  def instantiate(self, node):
+    if self.inner is not None:
+      contained_type, = self.inner
+      list_items = [self.vm.instantiate(contained_type, node)]
+      return self.vm.convert.build_list(node, list_items)
+    else:
+      return self.vm.convert.build_list(node, [
+          self.vm.convert.create_new_unsolvable(node, "inner")])
+
+
+class Dict(_Container):
+  pytd_name = "__builtin__.dict"
+  type_param_names = ("K", "V")
+
+  def __init__(self, name, vm, node, inner=None):
+    super(Dict, self).__init__("Dict", vm, node, inner)
+    self.concrete_classes = [self.vm.convert.dict_type]
+
 
 class Sequence(_Container):
   pytd_name = "typing.Sequence"
+  type_param_names = ("T",)
 
   def __init__(self, name, vm, node, inner=None):
     super(Sequence, self).__init__("Sequence", vm, node, inner)
+    # TODO(kramm): These are incomplete:
     self.concrete_classes = [self.vm.convert.list_type,
-                             self.vm.convert.tuple_type]
+                             self.vm.convert.tuple_type,
+                             self.vm.convert.set_type]
 
 
 def build_any(name, vm, node, inner=None):
   del name
   del node
   del inner
-  return abstract.Unknown(vm)
+  return abstract.Unsolvable(vm)
 
 
 typing_overload = {
     "Union": Union,
     "List": List,
+    "Dict": Dict,
     "Sequence": Sequence,
     "Any": build_any,
 }

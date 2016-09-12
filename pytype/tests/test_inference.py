@@ -285,7 +285,7 @@ class InferenceTest(unittest.TestCase):
             error.message, regexp))
       del actual_errors[(line, name)]
     if actual_errors:
-      any_error = next(actual_errors.items())
+      any_error = next(iter(actual_errors.values()))
       errorlog.print_to_stderr()
       raise AssertionError("Unexpected error:\n%s" % any_error)
 
