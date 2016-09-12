@@ -74,7 +74,7 @@ class InplaceTest(test_inference.InferenceTest):
 
   def test_isub_frozenset(self):
     self._check_inplace("-", ["x={1, 2}", "y=frozenset([1.0])"],
-                        self.intorfloat_set)
+                        self.int_set)
 
   def test_imod(self):
     self._check_inplace("%", ["x=1", "y=2"], self.int)
