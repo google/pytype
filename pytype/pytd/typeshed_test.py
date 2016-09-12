@@ -60,15 +60,8 @@ class TestTypeshedParsing(parser_test_base.ParserTest):
   SKIPPED_FILES = """
       2.7/__builtin__.pyi
       2.7/builtins.pyi
-      2.7/codecs.pyi
-      2.7/inspect.pyi
       2.7/types.pyi
       2.7/typing.pyi
-      2.7/unittest.pyi
-      2and3/argparse.pyi
-      2and3/logging/__init__.pyi
-      2and3/logging/handlers.pyi
-      2and3/plistlib.pyi
       2and3/webbrowser.pyi
   """
   WANTED = re.compile(r"stdlib/(2\.7|2and3)/.*\.pyi$")

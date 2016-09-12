@@ -112,17 +112,22 @@ class ErrorTest(test_inference.InferenceTest):
     self.assertErrorLogContains(errors, r"Invalid base class")
 
   def testInvalidIteratorFromImport(self):
-    _, errors = self.InferAndCheck("""
-      import codecs
-      def f():
-        for row in codecs.Codec():
-          pass
-    """)
-    # "Line 4, in f: No attribute '__iter__' on Codec"
-    self.assertErrorLogContains(
-        errors, r"line 4.*No attribute.*__iter__.*on Codec")
-    self.assertErrorLogDoesNotContain(
-        errors, "__class__")
+    with utils.Tempdir() as d:
+      d.create_file("mod.pyi", """
+        class Codec(object):
+            def __init__(self) -> None: ...
+      """)
+      _, errors = self.InferAndCheck("""
+        import mod
+        def f():
+          for row in mod.Codec():
+            pass
+      """, pythonpath=[d.path])
+      # "Line 4, in f: No attribute '__iter__' on Codec"
+      self.assertErrorLogContains(
+          errors, r"line 4.*No attribute.*__iter__.*on Codec")
+      self.assertErrorLogDoesNotContain(
+          errors, "__class__")
 
   def testInvalidIteratorFromClass(self):
     _, errors = self.InferAndCheck("""
