@@ -187,6 +187,24 @@ class Dict(_Container):
     self.concrete_classes = [self.vm.convert.dict_type]
 
 
+class Set(_Container):
+  pytd_name = "__builtin__.set"
+  type_param_names = ("T",)
+
+  def __init__(self, name, vm, node, inner=None):
+    super(Set, self).__init__("Set", vm, node, inner)
+    self.concrete_classes = [self.vm.convert.set_type]
+
+
+class FrozenSet(_Container):
+  pytd_name = "__builtin__.frozenset"
+  type_param_names = ("T",)
+
+  def __init__(self, name, vm, node, inner=None):
+    super(FrozenSet, self).__init__("FrozenSet", vm, node, inner)
+    self.concrete_classes = [self.vm.convert.frozenset_type]
+
+
 class Sequence(_Container):
   pytd_name = "typing.Sequence"
   type_param_names = ("T",)
@@ -213,6 +231,8 @@ typing_overload = {
     "Union": Union,
     "List": List,
     "Dict": Dict,
+    "Set": Set,
+    "FrozenSet": FrozenSet,
     "Sequence": Sequence,
     "Optional": build_optional,
     "Any": build_any,

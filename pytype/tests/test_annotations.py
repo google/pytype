@@ -345,6 +345,36 @@ class AnnotationTest(test_inference.InferenceTest):
         (7, "wrong-arg-types"),
     ])
 
+  def testSet(self):
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      from typing import Set
+      def f(d: Set[str]):
+        return
+      f({"foo"})  # ok
+      f({})  # not allowed
+      f({3})  # not allowed
+    """, deep=True, extract_locals=True)
+    self.assertErrorLogIs(errors, [
+        (6, "wrong-arg-types"),
+        (7, "wrong-arg-types"),
+    ])
+
+  def testFrozenSet(self):
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      from typing import FrozenSet
+      def f(d: FrozenSet[str]):
+        return
+      f(frozenset(["foo"]))  # ok
+      f(frozenset())  # not allowed
+      f(frozenset([3]))  # not allowed
+    """, deep=True, extract_locals=True)
+    self.assertErrorLogIs(errors, [
+        (6, "wrong-arg-types"),
+        (7, "wrong-arg-types"),
+    ])
+
 
 if __name__ == "__main__":
   test_inference.main()

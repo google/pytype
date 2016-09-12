@@ -81,6 +81,7 @@ class Converter(object):
     self.tuple_type = self.convert_constant("tuple", tuple)
     self.list_type = self.convert_constant("list", list)
     self.set_type = self.convert_constant("set", set)
+    self.frozenset_type = self.convert_constant("frozenset", frozenset)
     self.dict_type = self.convert_constant("dict", dict)
     self.type_type = self.convert_constant("type", type)
     self.module_type = self.convert_constant("module", types.ModuleType)
