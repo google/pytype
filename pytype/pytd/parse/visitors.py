@@ -132,6 +132,7 @@ class PrintVisitor(Visitor):
     self.imports = collections.defaultdict(set)
     self.in_alias = False
     self._local_names = set()
+    self._class_members = set()
 
   def _EscapedName(self, name):
     """Name, possibly escaped with backticks.
@@ -247,9 +248,12 @@ class PrintVisitor(Visitor):
     if node.template:
       n += "[{}]".format(
           ", ".join(t.Visit(PrintVisitor()) for t in node.template))
+    for member in node.methods + node.constants:
+      self._class_members.add(member.name)
     self.class_names.append(n)
 
   def LeaveClass(self, unused_node):
+    self._class_members.clear()
     self.class_names.pop()
 
   def EnterAlias(self, unused_node):
@@ -427,8 +431,13 @@ class PrintVisitor(Visitor):
     """Capitalize a generic type, if necessary."""
     capitalized = name.capitalize()
     if capitalized in self.PEP484_CAPITALIZED:
-      self._RequireTypingImport(capitalized)
-      return capitalized
+      if (capitalized in self._local_names or
+          capitalized in self._class_members):
+        self._RequireTypingImport()
+        return "typing." + capitalized
+      else:
+        self._RequireTypingImport(capitalized)
+        return capitalized
     else:
       return name
 

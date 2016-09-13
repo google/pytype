@@ -309,6 +309,40 @@ class TestUtils(parser_test_base.ParserTest):
     ast = self.parser.Parse(src)
     self.assertMultiLineEqual(utils.Print(ast), src)
 
+  def testTypingNameConflict1(self):
+    src = textwrap.dedent("""
+      import typing
+
+      x = ...  # type: typing.List[str]
+
+      def List() -> None: ...
+    """)
+    ast = self.parser.Parse(src)
+    self.assertMultiLineEqual(utils.Print(ast).strip("\n"), src.strip("\n"))
+
+  def testTypingNameConflict2(self):
+    ast = self.parser.Parse(textwrap.dedent("""
+      import typing
+
+      x = ...  # type: typing.List[str]
+
+      class MyClass(object):
+          List = ...  # type: Any
+          x = ...  # type: typing.List[str]
+    """))
+    expected = textwrap.dedent("""
+      import typing
+      from typing import Any, List
+
+      x = ...  # type: List[str]
+
+      class MyClass(object):
+          List = ...  # type: Any
+          x = ...  # type: typing.List[str]
+    """)
+    self.assertMultiLineEqual(utils.Print(ast).strip("\n"),
+                              expected.strip("\n"))
+
 
 if __name__ == "__main__":
   unittest.main()
