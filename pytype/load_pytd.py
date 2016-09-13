@@ -30,15 +30,12 @@ class Module(object):
     self.dirty = True
 
 
-class DependencyNotFoundError(Exception):
-  """If we can't find a module referenced by the module we're trying to load."""
+class BadDependencyError(Exception):
+  """If we can't resolve a module referenced by the one we're trying to load."""
 
-  def __init__(self, module_name, src=None):
+  def __init__(self, module_error, src=None):
     referenced = ", referenced from %r" % src if src else ""
-    super(DependencyNotFoundError, self).__init__(
-        "Can't find pyi for %r" % module_name + referenced)
-    self.module_name = module_name
-    self.src = src
+    super(BadDependencyError, self).__init__(module_error + referenced)
 
   def __str__(self):
     return self.message
@@ -117,9 +114,7 @@ class Loader(object):
       module.ast.Visit(
           visitors.FillInModuleClasses({"": module.ast,
                                         module_name: module.ast}))
-      # TODO(rechen): Once generics are supported in inline type annotations, a
-      # VerifyContainers check should also be done on the final ast.
-      module.ast.Visit(visitors.VerifyContainers())
+      self._verify_ast(module.ast)
     except:
       del self._modules[module_name]  # don't leave half-resolved modules around
       raise
@@ -134,7 +129,8 @@ class Loader(object):
         if name not in self._modules:
           other_ast = self._import_name(name)
           if other_ast is None:
-            raise DependencyNotFoundError(name, ast_name or ast.name)
+            error = "Can't find pyi for %r" % name
+            raise BadDependencyError(error, ast_name or ast.name)
       module_map = {name: module.ast
                     for name, module in self._modules.items()}
       ast = ast.Visit(visitors.LookupExternalTypes(module_map, full_names=True,
@@ -146,7 +142,13 @@ class Loader(object):
                   for name, module in self._modules.items()}
     module_map[""] = ast  # The module itself (local lookup)
     ast.Visit(visitors.FillInModuleClasses(module_map))
-    ast.Visit(visitors.VerifyLookup())
+
+  def _verify_ast(self, ast):
+    try:
+      ast.Visit(visitors.VerifyLookup())
+    except ValueError as e:
+      raise BadDependencyError(e.message)
+    ast.Visit(visitors.VerifyContainers())
 
   def resolve_ast(self, ast):
     """Resolve the dependencies of an AST, without adding it to our modules."""
@@ -154,6 +156,7 @@ class Loader(object):
     ast = self._load_and_resolve_ast_dependencies(ast)
     self._lookup_all_classes()
     self._finish_ast(ast)
+    self._verify_ast(ast)
     return ast
 
   def _lookup_all_classes(self):

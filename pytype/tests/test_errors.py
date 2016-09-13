@@ -407,6 +407,17 @@ class ErrorTest(test_inference.InferenceTest):
     self.assertErrorLogIs(
         errors, [(2, "wrong-arg-types", r"Actually passed.*Type\[int\]")])
 
+  def testBadTypeComment(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        def SketchyType() -> None
+        x = ...  # type: SketchyType
+      """)
+      _, errors = self.InferAndCheck("""
+        import a
+      """, deep=True, pythonpath=[d.path])
+      self.assertErrorLogIs(errors, [(2, "pyi-error", r"SketchyType")])
+
 
 if __name__ == "__main__":
   test_inference.main()

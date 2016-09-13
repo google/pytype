@@ -1772,7 +1772,7 @@ class VirtualMachine(object):
     level = abstract.get_atomic_python_constant(level_var)
     try:
       module = self.import_module(name, level)
-    except (parser.ParseError, load_pytd.DependencyNotFoundError,
+    except (parser.ParseError, load_pytd.BadDependencyError,
             visitors.ContainerError) as e:
       self.errorlog.pyi_error(op, full_name, e)
       module = self.convert.unsolvable
@@ -1789,7 +1789,7 @@ class VirtualMachine(object):
     module = state.top()
     try:
       state, attr = self.load_attr_noerror(state, module, name)
-    except (parser.ParseError, load_pytd.DependencyNotFoundError,
+    except (parser.ParseError, load_pytd.BadDependencyError,
             visitors.ContainerError) as e:
       full_name = module.data[0].name + "." + name
       self.errorlog.pyi_error(self.frame.current_opcode, full_name, e)

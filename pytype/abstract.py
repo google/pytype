@@ -2998,8 +2998,8 @@ class Module(Instance):
                                                   condition)
     if var is None:
       full_name = self.name + "." + name
-      # The line below can raise load_pytd.DependencyNotFoundError. This is OK
-      # since we'll always be called from vm.byte_IMPORT_FROM which catches it.
+      # The line below can raise load_pytd.BadDependencyError. This is OK since
+      # we'll always be called from vm.byte_IMPORT_FROM which catches it.
       mod = self.vm.import_module(full_name, 0)  # 0: absolute import
       if mod is not None:
         var = mod.to_variable(node, name)
