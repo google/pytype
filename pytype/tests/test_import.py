@@ -84,6 +84,19 @@ class ImportTest(test_inference.InferenceTest):
         def __getattr__(name) -> Any
       """)
 
+  def testBadStarImport(self):
+    ty, errors = self.InferAndCheck("""
+      from nonsense import *
+      from other_nonsense import *
+      x = foo.bar()
+    """)
+    self.assertTypesMatchPytd(ty, """
+      def __getattr__(name) -> Any
+      x = ...  # type: Any
+    """)
+    self.assertErrorLogIs(errors, [(2, "import-error", r"nonsense"),
+                                   (3, "import-error", r"other_nonsense")])
+
   def testPathImport(self):
     with utils.Tempdir() as d:
       d.create_file("path/to/my_module.pyi",

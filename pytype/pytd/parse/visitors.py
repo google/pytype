@@ -363,8 +363,8 @@ class PrintVisitor(Visitor):
   def VisitParameter(self, node):
     """Convert a function parameter to a string."""
     suffix = " = ..." if node.optional else ""
-    if node.type == "object":
-      # Abbreviated form. "object" is the default.
+    if node.type == "object" or node.type == "Any":
+      # Abbreviated form. "object" or "Any" is the default.
       return node.name + suffix
     elif node.name == "self" and self.class_names and (
         node.type == self.class_names[-1]):

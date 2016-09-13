@@ -134,3 +134,8 @@ def ParsePredefinedPyTD(pytd_subdir, module, python_version):
   return ParsePyTD(src, filename=os.path.join(pytd_subdir, module + ".pytd"),
                    module=module,
                    python_version=python_version).Replace(name=module)
+
+
+def GetDefaultAst(python_version):
+  return ParsePyTD(src="def __getattr__(name) -> Any",
+                   python_version=python_version, lookup_classes=True)

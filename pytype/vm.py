@@ -96,6 +96,7 @@ class VirtualMachine(object):
     self.program.entrypoint = self.root_cfg_node
     self.vmbuiltins = self.loader.builtins
     self.convert = convert.Converter(self)
+    self.has_unknown_wildcard_imports = False
 
     # Map from builtin names to canonical objects.
     self.special_builtins = {
@@ -1109,7 +1110,8 @@ class VirtualMachine(object):
         try:
           state, val = self.load_builtin(state, name)
         except KeyError:
-          self.errorlog.name_error(self.frame.current_opcode, name)
+          if not self.has_unknown_wildcard_imports:
+            self.errorlog.name_error(self.frame.current_opcode, name)
           return state.push(
               self.convert.create_new_unsolvable(state.node, name))
     return state.push(val)
@@ -1847,7 +1849,7 @@ class VirtualMachine(object):
     state, mod_var = state.pop()
     mod = abstract.get_atomic_value(mod_var)
     if isinstance(mod, (abstract.Unknown, abstract.Unsolvable)):
-      log.error("Doing 'from module import *' from unresolved module")
+      self.has_unknown_wildcard_imports = True
       return state
     log.info("%r", mod)
     # TODO(kramm): Add Module type to abstract.py

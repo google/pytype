@@ -641,6 +641,9 @@ def infer_types(src,
     tracer.exitpoint = loc
   ast = tracer.compute_types(defs, builtin_names)
   ast = tracer.loader.resolve_ast(ast)
+  if tracer.has_unknown_wildcard_imports:
+    ast = pytd_utils.Concat(
+        ast, builtins.GetDefaultAst(options.python_version))
   if solve_unknowns:
     log.info("=========== PyTD to solve =============\n%s", pytd.Print(ast))
     ast = convert_structural.convert_pytd(ast, tracer.loader.concat_all())

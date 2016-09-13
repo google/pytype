@@ -115,7 +115,7 @@ class TestOptimize(parser_test_base.ParserTest):
         def foo(a: int) -> int
     """)
     new_src = textwrap.dedent("""
-        def foo(a: Any) -> Any
+        def foo(a) -> Any
     """)
     ast = self.ParseAndResolve(src)
     self.AssertOptimizeEquals(ast, new_src)
@@ -126,7 +126,7 @@ class TestOptimize(parser_test_base.ParserTest):
         def foo(a: Any) -> Any
     """)
     new_src = textwrap.dedent("""
-        def foo(a: Any) -> Any
+        def foo(a) -> Any
     """)
     ast = self.ParseAndResolve(src)
     self.AssertOptimizeEquals(ast, new_src)
@@ -137,7 +137,7 @@ class TestOptimize(parser_test_base.ParserTest):
         def foo(a: Any = ...) -> int
     """)
     new_src = textwrap.dedent("""
-        def foo(a: Any = ...) -> int
+        def foo(a = ...) -> int
     """)
     ast = self.ParseAndResolve(src)
     self.AssertOptimizeEquals(ast, new_src)
@@ -148,7 +148,7 @@ class TestOptimize(parser_test_base.ParserTest):
         def foo(a: int = ...) -> int
     """)
     new_src = textwrap.dedent("""
-        def foo(a: Any = ...) -> int
+        def foo(a = ...) -> int
     """)
     ast = self.ParseAndResolve(src)
     self.AssertOptimizeEquals(ast, new_src)
@@ -190,10 +190,10 @@ class TestOptimize(parser_test_base.ParserTest):
         def two(a: int) -> ?
     """)
     new_src = textwrap.dedent("""
-        def foo(a: ?) -> int
-        def bar(a: ?) -> int
-        def baz(a: ?) -> ?
-        def two(a: ?) -> int
+        def foo(a) -> int
+        def bar(a) -> int
+        def baz(a) -> ?
+        def two(a) -> int
         def two(a: int) -> ?
     """)
     self.AssertOptimizeEquals(src, new_src)
