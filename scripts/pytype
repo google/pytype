@@ -265,6 +265,11 @@ def _run_pytype(options):
                            errors_csv_file=errors_csv_file)
     exit_status = ret or exit_status
 
+  # Touch output file upon success.
+  if options.touch and not exit_status:
+    with open(options.touch, "a"):
+      os.utime(options.touch, None)
+
   return exit_status
 
 

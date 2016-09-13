@@ -152,6 +152,10 @@ class Options(object):
               "that is running pytype. If not specified, --python_version is "
               "used to create the name of an interpreter."))
     o.add_option(
+        "--touch", type="string", action="store",
+        dest="touch", default=None,
+        help="Output file to touch when exit status is ok.")
+    o.add_option(
         "-V", "--python_version", type="string", action="store",
         dest="python_version", default="2.7",
         help=("Python version to emulate (\"major.minor\", e.g. \"2.7\")"))
