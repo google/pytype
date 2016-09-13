@@ -235,11 +235,11 @@ class PrintVisitor(Visitor):
       full_name = self.old_node.type.name
       suffix = ""
       module, _, name = full_name.rpartition(".")
-      if name != self.old_node.name:
-        suffix += " as " + self.old_node.name
-      return "from " + module + " import " + name + suffix
-    else:
-      return self._SafeName(node.name) + " = " + node.type
+      if module:
+        if name != self.old_node.name:
+          suffix += " as " + self.old_node.name
+        return "from " + module + " import " + name + suffix
+    return self._SafeName(node.name) + " = " + node.type
 
   def EnterClass(self, node):
     """Entering a class - record class name for children's use."""

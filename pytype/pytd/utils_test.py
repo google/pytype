@@ -304,6 +304,11 @@ class TestUtils(parser_test_base.ParserTest):
     self.assertListEqual(["Foo", "typing.Generic", "__builtin__.object"],
                          [t.name for t in mro])
 
+  def testBuiltinAlias(self):
+    src = "Number = int"
+    ast = self.parser.Parse(src)
+    self.assertMultiLineEqual(utils.Print(ast), src)
+
 
 if __name__ == "__main__":
   unittest.main()
