@@ -407,6 +407,15 @@ class ErrorTest(test_inference.InferenceTest):
     self.assertErrorLogIs(
         errors, [(2, "wrong-arg-types", r"Actually passed.*Type\[int\]")])
 
+  def testNotSupported(self):
+    _, errors = self.InferAndCheck("""\
+      from typing import TypeVar
+      from typing import Generic
+    """)
+    self.assertErrorLogIs(
+        errors, [(1, "not-supported-yet"),
+                 (2, "not-supported-yet")])
+
   def testBadTypeComment(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """

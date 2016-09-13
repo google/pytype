@@ -370,3 +370,7 @@ class ErrorLog(ErrorLogBase):
   def invalid_directive(self, filename, lineno, message):
     self._add(Error(
         SEVERITY_WARNING, message, filename=filename, lineno=lineno))
+
+  @_error_name("not-supported-yet")
+  def not_supported_yet(self, opcode, feature):
+    self.error(opcode, "%s not supported yet" % feature)

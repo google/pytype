@@ -375,6 +375,15 @@ class AnnotationTest(test_inference.InferenceTest):
         (7, "wrong-arg-types"),
     ])
 
+  def testGenericAndTypeVar(self):
+    self.assertNoCrash("""\
+      from __future__ import google_type_annotations
+      import typing
+      _T = typing.TypeVar("_T")
+      class A(typing.Generic[_T]):
+        ...
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

@@ -227,6 +227,18 @@ def build_optional(name, vm, node):
   return Union(name, vm, node, (vm.convert.none_type.data[0],))
 
 
+def build_typevar(name, vm, node):
+  del node
+  vm.errorlog.not_supported_yet(vm.frame.current_opcode, name)
+  return abstract.Unknown(vm)
+
+
+def unsupported(name, vm, node):
+  del node
+  vm.errorlog.not_supported_yet(vm.frame.current_opcode, name)
+  return abstract.Unsolvable(vm)
+
+
 typing_overload = {
     "Union": Union,
     "List": List,
@@ -235,5 +247,7 @@ typing_overload = {
     "FrozenSet": FrozenSet,
     "Sequence": Sequence,
     "Optional": build_optional,
+    "TypeVar": build_typevar,
+    "Generic": unsupported,
     "Any": build_any,
 }
