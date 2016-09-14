@@ -495,6 +495,35 @@ class AtomicAbstractValue(object):
     return True
 
 
+class Empty(AtomicAbstractValue):
+  """An empty value.
+
+  Typically used to represent empty type parameters. These values are created
+  not only when a container is empty but also when we have no information about
+  the contents, so we need to support get_attribute, etc.
+  """
+
+  def __init__(self, vm):
+    super(Empty, self).__init__("empty", vm)
+
+  def to_type(self, node, seen=None):
+    return pytd.NothingType()
+
+  def get_instance_type(self, node, instance=None, seen=None):
+    raise NotImplementedError
+
+  def match_against_type(self, other_type, subst, node, view):
+    if isinstance(other_type, Empty):
+      return subst
+
+  def get_attribute(self, node, name, valself=None, valcls=None,
+                    condition=None):
+    return node, self.vm.convert.unsolvable.to_variable(node, name)
+
+  def set_attribute(self, node, name, value):
+    return node
+
+
 class FormalType(object):
   """A mix-in for marking types that can not actually be instantiated.
 
@@ -711,17 +740,18 @@ class SimpleAbstractValue(AtomicAbstractValue):
           val = binding.data
           if isinstance(val, TypeParameterInstance):
             var = val.instance.type_parameters[val.name]
+            # If this type parameter has visible values, we add those to the
+            # return value. Otherwise, we add an empty value as a placeholder
+            # that can be passed around and converted to Any after analysis.
             if var.Bindings(node):
-              # If this type parameter has visible values, we want to add those
-              # to the return value. Otherwise, we add the TypeParameterInstance
-              # itself as a placeholder that can be passed around and converted
-              # to Any after analysis.
               candidates.append(var)
-              continue
-          sources = {binding}
-          if condition:
-            sources.add(condition.binding)
-          ret.AddBinding(val, sources, node)
+            else:
+              ret.AddBinding(self.vm.convert.empty, [], node)
+          else:
+            sources = {binding}
+            if condition:
+              sources.add(condition.binding)
+            ret.AddBinding(val, sources, node)
       if not ret.bindings:
         return node, None
       return node, ret
@@ -1510,6 +1540,10 @@ class PyTDSignature(object):
         # test_functions.test_type_parameter_in_return for an example of a
         # return type being set to Unknown here and solved later.
         ret_map[t] = Unknown(self.vm).to_variable(node, "ret")
+      else:
+        if (not ret_map[t].bindings and
+            isinstance(return_type, pytd.TypeParameter)):
+          ret_map[t].AddBinding(self.vm.convert.empty, [], node)
     else:
       # add the new sources
       for data in ret_map[t].data:
@@ -2036,7 +2070,7 @@ class ParameterizedClass(AtomicAbstractValue, Class, FormalType):
   def to_type(self, node, seen=None):
     return pytd.NamedType("__builtin__.type")
 
-  def get_instance_type(self, node, instance, seen=None):
+  def get_instance_type(self, node, instance=None, seen=None):
     type_arguments = []
     for type_param in self.base_cls.pytd_cls.template:
       type_arguments.append(
@@ -2736,6 +2770,9 @@ class InterpreterFunction(Function):
       params = self._with_replaced_annotations(node_after, params)
       ret = self._get_annotation_return(
           node, default=return_value.data.to_type(node_after))
+      if isinstance(ret, pytd.NothingType):
+        assert isinstance(return_value.data, Empty)
+        ret = pytd.AnythingType()
       starargs, starstarargs = self._get_star_params()
       signatures.append(pytd.Signature(
           params=params,
@@ -2939,10 +2976,8 @@ class Nothing(AtomicAbstractValue, FormalType):
     return pytd.NothingType()
 
   def match_against_type(self, other_type, subst, node, view):
-    if other_type.name == "nothing":
+    if isinstance(other_type, Nothing):
       return subst
-    else:
-      return None
 
 
 class Module(Instance):

@@ -585,7 +585,6 @@ class GenericTest(test_inference.InferenceTest):
         def g() -> int
       """)
 
-  @unittest.skip("Fails with attribute error: No attribute 'x' on A")
   def testInstanceAttributeSet(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """

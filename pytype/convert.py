@@ -77,6 +77,7 @@ class Converter(object):
 
     self.nothing = abstract.Nothing(self.vm)
     self.unsolvable = abstract.Unsolvable(self.vm)
+    self.empty = abstract.Empty(self.vm)
 
     self.tuple_type = self.convert_constant("tuple", tuple)
     self.list_type = self.convert_constant("list", list)
@@ -150,6 +151,7 @@ class Converter(object):
 
   def build_list(self, node, content):
     """Create a VM list from the given sequence."""
+    # TODO(rechen): set T to empty if there is nothing in content
     content = list(content)  # content might be a generator
     value = abstract.Instance(self.list_type, self.vm, node)
     value.initialize_type_parameter(node, "T",

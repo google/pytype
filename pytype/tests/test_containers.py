@@ -523,6 +523,20 @@ class ContainerTest(test_inference.InferenceTest):
       d[1] == d[1]
     """)
 
+  def testIterateEmptyList(self):
+    ty = self.Infer("""
+      lst1 = []
+      lst2 = [x for x in lst1]
+      x.some_attribute = 42
+      y = x.some_attribute
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      lst1 = ...  # type: List[nothing]
+      lst2 = ...  # type: List[nothing]
+      x = ...  # type: Any
+      y = ...  # type: Any
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

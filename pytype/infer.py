@@ -242,6 +242,9 @@ class CallTracer(vm.VirtualMachine):
             d = option.to_pytd_def(self.exitpoint, name)  # Deep definition
           else:
             d = option.to_type(self.exitpoint)  # Type only
+            if isinstance(d, pytd.NothingType):
+              assert isinstance(option, abstract.Empty)
+              d = pytd.AnythingType()
           if isinstance(d, pytd.TYPE):
             data.append(pytd.Constant(name, d))
           else:
