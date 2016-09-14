@@ -2,6 +2,7 @@
 
 import copy
 import os
+import re
 import StringIO
 import subprocess
 import tempfile
@@ -12,10 +13,22 @@ from pytype.pyc import magic
 
 
 COMPILE_SCRIPT = os.path.join(os.path.dirname(__file__), "compile_bytecode.py")
+COMPILE_ERROR_RE = re.compile(r"^(.*) \((.*), line (\d+)\)$")
 
 
 class CompileError(Exception):
-  pass
+
+  def __init__(self, msg):
+    super(CompileError, self).__init__(msg)
+    match = COMPILE_ERROR_RE.match(msg)
+    if match:
+      self.error = match.group(1)
+      self.filename = match.group(2)
+      self.lineno = int(match.group(3))
+    else:
+      self.error = msg
+      self.filename = None
+      self.lineno = 1
 
 
 def compile_src_string_to_pyc_string(src, filename, python_version, python_exe,

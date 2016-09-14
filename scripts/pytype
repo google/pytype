@@ -165,16 +165,19 @@ def process_one_file(input_filename,
     director = directors.Director(fi.read(), errorlog, input_filename,
                                   options.disable)
   errorlog.set_error_filter(director.should_report_error)
-  if options.check:
-    check_pyi(input_filename=input_filename,
-              output_filename=output_filename,
-              errorlog=errorlog,
-              options=options)
-  else:
-    generate_pyi(input_filename=input_filename,
-                 output_filename=output_filename,
-                 errorlog=errorlog,
-                 options=options)
+  try:
+    if options.check:
+      check_pyi(input_filename=input_filename,
+                output_filename=output_filename,
+                errorlog=errorlog,
+                options=options)
+    else:
+      generate_pyi(input_filename=input_filename,
+                   output_filename=output_filename,
+                   errorlog=errorlog,
+                   options=options)
+  except pyc.CompileError as e:
+    errorlog.python_compiler_error(input_filename, e.lineno, e.error)
   if options.report_errors:
     if print_errors:
       if errors_csv_file:

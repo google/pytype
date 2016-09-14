@@ -6,6 +6,21 @@ from pytype.pyc import pyc
 import unittest
 
 
+class TestCompileError(unittest.TestCase):
+
+  def test_error_matches_re(self):
+    e = pyc.CompileError("some error (foo.py, line 123)")
+    self.assertEquals("foo.py", e.filename)
+    self.assertEquals(123, e.lineno)
+    self.assertEquals("some error", e.error)
+
+  def test_error_does_not_match_re(self):
+    e = pyc.CompileError("some error in foo.py at line 123")
+    self.assertEquals(None, e.filename)
+    self.assertEquals(1, e.lineno)
+    self.assertEquals("some error in foo.py at line 123", e.error)
+
+
 class TestPyc(unittest.TestCase):
   """Tests for pyc.py."""
 
@@ -13,8 +28,8 @@ class TestPyc(unittest.TestCase):
 
   def _compile(self, src, mode="exec"):
     pyc_data = pyc.compile_src_string_to_pyc_string(
-        src, filename="", python_version=self.python_version, python_exe=None,
-        mode=mode)
+        src, filename="test_input.py", python_version=self.python_version,
+        python_exe=None, mode=mode)
     return pyc.parse_pyc_string(pyc_data)
 
   def test_compile(self):
@@ -23,7 +38,13 @@ class TestPyc(unittest.TestCase):
     self.assertEquals(self.python_version, code.python_version)
 
   def test_erroneous_file(self):
-    self.assertRaises(pyc.CompileError, self._compile, "foo ==== bar--")
+    try:
+      self._compile("\nfoo ==== bar--")
+      self.fail("Did not raise CompileError")
+    except pyc.CompileError as e:
+      self.assertEquals("test_input.py", e.filename)
+      self.assertEquals(2, e.lineno)
+      self.assertEquals("invalid syntax", e.error)
 
   def test_lineno(self):
     code = self._compile("a = 1\n"      # line 1
