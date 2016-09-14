@@ -341,6 +341,20 @@ def process_function(func: Callable[..., Any]) -> None: ...
           x = ...  # type: str
         """)
 
+  def testMultipleGetAttr(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        def __getattr__(name) -> Any
+      """)
+      ty, errors = self.InferAndCheck("""
+        from foo import *
+        from bar import *  # Nonsense import generates a top-level __getattr__
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        def __getattr__(name) -> Any
+      """)
+      self.assertErrorLogIs(errors, [(3, "import-error", r"bar")])
+
 
 if __name__ == "__main__":
   test_inference.main()
