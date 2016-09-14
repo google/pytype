@@ -237,5 +237,6 @@ class StructuralTest(test_inference.InferenceTest):
       def foo(a: Union[Dict[slice, Union[bytearray, str, unicode]], str, unicode]) -> Union[bytearray, str, unicode]
     """)
 
+
 if __name__ == "__main__":
   test_inference.main()

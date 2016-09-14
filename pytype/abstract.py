@@ -2615,7 +2615,7 @@ class InterpreterFunction(Function):
           raise WrongArgTypes(self.signature, passed)
 
   def call(self, node, _, args, new_locals=None):
-    if self.vm.is_at_maximum_depth():
+    if self.vm.is_at_maximum_depth() and self.name != "__init__":
       log.info("Maximum depth reached. Not analyzing %r", self.name)
       return (node,
               self.vm.convert.create_new_unsolvable(node, self.name + ":ret"))

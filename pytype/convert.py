@@ -354,9 +354,7 @@ class Converter(object):
     Raises:
       NotImplementedError: If we don't know how to convert a value.
     """
-    if pyval is type:
-      return abstract.SimpleAbstractValue(name, self.vm)
-    elif isinstance(pyval, str):
+    if isinstance(pyval, str):
       return abstract.AbstractOrConcreteValue(
           pyval, self.str_type, self.vm, node)
     elif isinstance(pyval, int) and -1 <= pyval <= MAX_IMPORT_DEPTH:
@@ -369,10 +367,10 @@ class Converter(object):
     elif isinstance(pyval, (loadmarshal.CodeType, blocks.OrderedCode)):
       return abstract.AbstractOrConcreteValue(
           pyval, self.primitive_classes[types.CodeType], self.vm, node)
-    elif pyval.__class__ in [types.FunctionType,
-                             types.ModuleType,
-                             types.GeneratorType,
-                             type]:
+    elif (pyval.__class__ in [types.FunctionType,
+                              types.ModuleType,
+                              types.GeneratorType,
+                              type] or pyval is type):
       try:
         pyclass = self.vm.vmbuiltins.Lookup("__builtin__." + pyval.__name__)
         return self.convert_constant_to_value(name, pyclass, subst, node)

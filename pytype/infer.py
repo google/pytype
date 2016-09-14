@@ -62,9 +62,10 @@ class CallTracer(vm.VirtualMachine):
   def create_argument(self, node, signature, name, method_name):
     t = signature.annotations.get(name)
     if t:
-      return self.instantiate(t.to_variable(node, t.name), node)
+      node, _, instance = self.init_class(node, t)
+      return node, instance
     else:
-      return self.convert.create_new_unknown(node, name)
+      return node, self.convert.create_new_unknown(node, name)
 
   def create_varargs(self, node):
     value = abstract.Instance(self.convert.tuple_type, self, node)
@@ -99,11 +100,15 @@ class CallTracer(vm.VirtualMachine):
     fname = val.data.name
     if isinstance(method, (abstract.InterpreterFunction,
                            abstract.BoundInterpreterFunction)):
-      args = [self.create_argument(node, method.signature,
-                                   method.signature.param_names[i], fname)
-              for i in range(method.argcount())]
-      kws = {key: self.create_argument(node, method.signature, key, fname)
-             for key in method.signature.kwonly_params}
+      args = []
+      for i in range(method.argcount()):
+        node, arg = self.create_argument(node, method.signature,
+                                         method.signature.param_names[i], fname)
+        args.append(arg)
+      kws = {}
+      for key in method.signature.kwonly_params:
+        node, arg = self.create_argument(node, method.signature, key, fname)
+        kws[key] = arg
       starargs = self.create_varargs(node) if method.has_varargs() else None
       starstarargs = self.create_kwargs(node) if method.has_kwargs() else None
       fvar = val.AssignToNewVariable("f", node)
@@ -134,19 +139,20 @@ class CallTracer(vm.VirtualMachine):
       n.PasteVariable(instance, node)
     return n
 
-  def init_class(self, node, val):
-    instance = self.instantiate(val.AssignToNewVariable(val.data.name, node),
-                                node)
-    cls = val.data
-    node, init = cls.get_attribute(node, "__init__", instance.bindings[0], val)
-    clsvar = val.AssignToNewVariable("cls", node)
+  def init_class(self, node, cls):
+    """Instantiate a class, and also call __init__."""
+    clsvar = cls.to_variable(node, "cls")
+    instance = self.instantiate(clsvar, node)
+    node, init = cls.get_attribute(node, "__init__",
+                                   instance.bindings[0],
+                                   clsvar.bindings[0])
     if init:
       bound_init = self.bind_method("__init__", init, instance, clsvar, node)
       node = self.analyze_method_var("__init__", bound_init, node)
     return node, clsvar, instance
 
   def analyze_class(self, val, node):
-    node, clsvar, instance = self.init_class(node, val)
+    node, clsvar, instance = self.init_class(node, val.data)
     for name, methodvar in sorted(val.data.members.items()):
       if name == "__init__":
         continue  # We already called __init__ in init_class
@@ -397,7 +403,7 @@ class CallTracer(vm.VirtualMachine):
       cls = defs[pytd_cls.name]
       for val in cls.bindings:
         # TODO(kramm): The call to the constructor of this should use the pytd.
-        node2, _, instance = self.init_class(node, val)
+        node2, _, instance = self.init_class(node, val.data)
         for pytd_method in pytd_cls.methods:
           _, method = self._retrieve_attr(node, instance, pytd_method.name)
           if method is None:

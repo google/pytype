@@ -44,14 +44,21 @@ def _maybe_extract_tuple(convert, node, t):
   return v.pyval
 
 
-class Union(abstract.ValueWithSlots):
+class TypingClass(abstract.ValueWithSlots):
+  """Base class of all classes in typing.py."""
+
+  def __init__(self, name, vm, node):
+    super(TypingClass, self).__init__(vm.convert.type_type, vm, node)
+    self.name = name
+    self.set_slot("__getitem__", self.getitem_slot)
+
+
+class Union(TypingClass):
   """Implementation of typing.Union[...]."""
 
   def __init__(self, name, vm, node, elements=()):
-    super(Union, self).__init__(vm.convert.type_type, vm, node)
-    self.name = "Union"
+    super(Union, self).__init__(name, vm, node)
     self.elements = elements
-    self.set_slot("__getitem__", self.getitem_slot)
 
   def __str__(self):
     return "Union[" + ", ".join(str(n) for n in self.elements) + "]"
@@ -82,7 +89,7 @@ class Union(abstract.ValueWithSlots):
         for e in self.elements))
 
 
-class _Container(abstract.ValueWithSlots):
+class _Container(TypingClass):
   """Implementation of typing.X[...]."""
 
   TYPE_PARAM_NAMES = ()
@@ -90,10 +97,8 @@ class _Container(abstract.ValueWithSlots):
   def __init__(self, name, vm, node, inner=None):
     # TODO(kramm): type_type is wrong. Correct would be "typing.GenericMeta".
     # But in the output, we'd want this to become an alias.
-    super(_Container, self).__init__(vm.convert.type_type, vm, node)
-    self.name = name
+    super(_Container, self).__init__(name, vm, node)
     self.inner = inner
-    self.set_slot("__getitem__", self.getitem_slot)
 
   def getitem_slot(self, node, inner):
     inner = _maybe_extract_tuple(self.vm.convert, node, inner)

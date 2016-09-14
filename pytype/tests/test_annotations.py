@@ -115,7 +115,7 @@ class AnnotationTest(test_inference.InferenceTest):
         x.append(y)
     """, deep=True, extract_locals=True)
     self.assertTypesMatchPytd(ty, """
-        List = ...  # type: Any
+        List = ...  # type: type
         google_type_annotations = ...  # type: __future__._Feature
 
         def foo(l1: List[int], l2: List[str], b) -> None: ...
@@ -131,7 +131,7 @@ class AnnotationTest(test_inference.InferenceTest):
     """, deep=True, extract_locals=True)
     self.assertTypesMatchPytd(ty, """
       google_type_annotations = ...  # type: __future__._Feature
-      List = ...  # type: Any
+      List = ...  # type: type
       class Foo:
         def f(self, x: List[int]) -> None: ...
     """)
@@ -382,6 +382,19 @@ class AnnotationTest(test_inference.InferenceTest):
       _T = typing.TypeVar("_T")
       class A(typing.Generic[_T]):
         ...
+    """)
+
+  def testJumpIntoClassThroughAnnotation(self):
+    self.assertNoErrors("""\
+      from __future__ import google_type_annotations
+      class Foo(object):
+        def __init__(self) -> None:
+          self.myset = set()
+        def qux(self):
+          self.myset.add("foo")
+
+      def bar(foo: "Foo"):
+        foo.qux()
     """)
 
 
