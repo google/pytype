@@ -357,10 +357,10 @@ class ErrorTest(test_inference.InferenceTest):
         T = TypeVar("T")
         x = ...  # type: T
       """)
-      _, errors = self.InferAndCheck("""
+      _, errors = self.InferAndCheck("""\
         import a
       """, deep=True, pythonpath=[d.path])
-      self.assertErrorLogIs(errors, [(2, "pyi-error", r"a.*T.*a\.x")])
+      self.assertErrorLogIs(errors, [(1, "pyi-error", r"a.*T.*a\.x")])
 
   def testTypeParameterInClassAttribute(self):
     with utils.Tempdir() as d:
@@ -383,29 +383,29 @@ class ErrorTest(test_inference.InferenceTest):
         class A(object):
           x = ...  # type: T
       """)
-      _, errors = self.InferAndCheck("""
+      _, errors = self.InferAndCheck("""\
         import a
       """, deep=True, pythonpath=[d.path])
-      self.assertErrorLogIs(errors, [(2, "pyi-error", r"a.*T.*a\.A\.x")])
+      self.assertErrorLogIs(errors, [(1, "pyi-error", r"a.*T.*a\.A\.x")])
 
   def testPrintUnionArg(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
         def f(x: int or str) -> None
       """)
-      _, errors = self.InferAndCheck("""
+      _, errors = self.InferAndCheck("""\
         import a
         x = a.f(4.2)
       """, deep=True, pythonpath=[d.path])
       pattern = r"Expected.*Union\[int, str\].*Actually passed"
-      self.assertErrorLogIs(errors, [(3, "wrong-arg-types", pattern)])
+      self.assertErrorLogIs(errors, [(2, "wrong-arg-types", pattern)])
 
   def testPrintTypeArg(self):
-    _, errors = self.InferAndCheck("""
+    _, errors = self.InferAndCheck("""\
       max(int)
     """, deep=True)
     self.assertErrorLogIs(
-        errors, [(2, "wrong-arg-types", r"Actually passed.*Type\[int\]")])
+        errors, [(1, "wrong-arg-types", r"Actually passed.*Type\[int\]")])
 
   def testNotSupported(self):
     _, errors = self.InferAndCheck("""\
@@ -422,10 +422,17 @@ class ErrorTest(test_inference.InferenceTest):
         def SketchyType() -> None
         x = ...  # type: SketchyType
       """)
-      _, errors = self.InferAndCheck("""
+      _, errors = self.InferAndCheck("""\
         import a
       """, deep=True, pythonpath=[d.path])
-      self.assertErrorLogIs(errors, [(2, "pyi-error", r"SketchyType")])
+      self.assertErrorLogIs(errors, [(1, "pyi-error", r"SketchyType")])
+
+  def testDeleteFromSet(self):
+    _, errors = self.InferAndCheck("""\
+      s = {1}
+      del s[1]
+    """, deep=True, solve_unknowns=True)
+    self.assertErrorLogIs(errors, [(2, "attribute-error", r"__delitem__")])
 
 
 if __name__ == "__main__":

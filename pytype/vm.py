@@ -306,9 +306,7 @@ class VirtualMachine(object):
 
   def delete_slice(self, state, count):
     state, slice_obj, obj = self.pop_slice_and_obj(state, count)
-    state, f = self.load_attr(state, obj, "__delitem__")
-    state, _ = self.call_function_with_state(state, f, [slice_obj])
-    return state
+    return self._delete_item(state, obj, slice_obj)
 
   def get_slice(self, state, count):
     state, slice_obj, obj = self.pop_slice_and_obj(state, count)
@@ -818,6 +816,11 @@ class VirtualMachine(object):
         return False
     return has_none
 
+  def _delete_item(self, state, obj, arg):
+    state, f = self.load_attr(state, obj, "__delitem__")
+    state, _ = self.call_function_with_state(state, f, [arg])
+    return state
+
   def load_attr(self, state, obj, attr):
     node, result = self._retrieve_attr(state.node, obj, attr)
     if result is None:
@@ -861,10 +864,7 @@ class VirtualMachine(object):
     return state.push(tb, value, exctype)
 
   def del_subscr(self, state, obj, subscr):
-    log.warning("Subscript removal does not actually do "
-                "anything in the abstract interpreter")
-    # TODO(kramm): store abstract.Nothing
-    return state
+    return self._delete_item(state, obj, subscr)
 
   def pop_varargs(self, state):
     """Retrieve a varargs tuple from the stack. Used by call_function."""
