@@ -89,5 +89,32 @@ class OptionsTest(test_inference.InferenceTest):
       def g3(x) -> ?  # not analyzed
     """)
 
+  def testMaxDepthForInit(self):
+    # This test will fail if we don't whitelist "__init__" methods from
+    # maxdepth, because that would prevent the constructor of Foo from being
+    # executed.
+    _ = self.Infer("""
+      class Foo(object):
+        def __init__(self):
+          self.bar = 0.0
+        def get_bar(self):
+          return self.bar
+
+      def f1(my_set):
+        my_set.add(Foo())
+      def f2(my_set):
+        f1(my_set)
+      def f3(my_set):
+        f2(my_set)
+      def f4(my_set):
+        f3(my_set)
+
+      my_set = set()
+      f4(my_set)
+      for foo in my_set:
+        foo.get_bar()
+    """, deep=False, maximum_depth=3, init_maximum_depth=4)
+
+
 if __name__ == "__main__":
   test_inference.main()
