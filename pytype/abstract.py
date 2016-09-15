@@ -1203,6 +1203,7 @@ class InvalidParameters(FailedFunctionCall):
 
   def __init__(self, sig):
     super(InvalidParameters, self).__init__()
+    self.name = sig.name
     self.sig = sig
 
 
@@ -1231,7 +1232,7 @@ class WrongKeywordArgs(InvalidParameters):
 
 
 class DuplicateKeyword(InvalidParameters):
-  """E.g. an arg "x" is passed to a function that doesn't have an "x" param."""
+  """E.g. an arg "x" is passed to a function as both a posarg and a kwarg."""
 
   def __init__(self, sig, duplicate):
     super(DuplicateKeyword, self).__init__(sig)
@@ -1490,15 +1491,16 @@ class PyTDSignature(object):
         self.vm.convert.convert_constant_to_value(
             pytd.Print(p), p.type, subst={}, node=self.vm.root_cfg_node)
         for p in self.pytd_sig.params]
-    self._bound_sig_cache = {}
     self.signature = function.Signature.from_pytd(vm, name, pytd_sig)
 
   def match_args(self, node, args, view):
     """Match arguments against this signature. Used by PyTDFunction."""
     arg_dict = {name: view[arg]
                 for name, arg in zip(self.signature.param_names, args.posargs)}
-    arg_dict.update({name: view[arg]
-                     for name, arg in args.namedargs.items()})
+    for name, arg in args.namedargs.items():
+      if name in arg_dict:
+        raise DuplicateKeyword(self.signature, name)
+      arg_dict[name] = view[arg]
 
     for p in self.pytd_sig.params:
       if p.name not in arg_dict:
@@ -2867,8 +2869,13 @@ class BoundFunction(AtomicAbstractValue):
     return self.underlying.signature.drop_first_parameter()
 
   def call(self, node, func, args):
-    return self.underlying.call(
-        node, func, args.replace(posargs=[self._callself] + args.posargs))
+    try:
+      return self.underlying.call(
+          node, func, args.replace(posargs=[self._callself] + args.posargs))
+    except InvalidParameters as e:
+      if self._callself and self._callself.bindings:
+        e.name = "%s.%s" % (self._callself.data[0].name, e.name)
+      raise
 
   def get_bound_arguments(self):
     return [self._callself]

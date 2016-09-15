@@ -457,6 +457,27 @@ class ErrorTest(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=True)
     self.assertErrorLogIs(errors, [(2, "attribute-error", r"y")])
 
+  def testInvalidParametersOnMethod(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        class A(object):
+          def __init__(self, x: int) -> None
+      """)
+      _, errors = self.InferAndCheck("""\
+        import a
+        x = a.A("")
+        x = a.A("", 42)
+        x = a.A(42, y="")
+        x = a.A(42, x=42)
+        x = a.A()
+      """, pythonpath=[d.path])
+      self.assertErrorLogIs(errors, [(2, "wrong-arg-types", r"A\.__init__"),
+                                     (3, "wrong-arg-count", r"A\.__init__"),
+                                     (4, "wrong-keyword-args", r"A\.__init__"),
+                                     (5, "duplicate-keyword-argument",
+                                      r"A\.__init__"),
+                                     (6, "missing-parameter", r"A\.__init__")])
+
 
 if __name__ == "__main__":
   test_inference.main()

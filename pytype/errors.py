@@ -253,11 +253,11 @@ class ErrorLog(ErrorLogBase):
     self.error(opcode, "Can't find %s.%s" % (module_name, name))
 
   @_error_name("wrong-arg-count")
-  def wrong_arg_count(self, opcode, sig, call_arg_count):
+  def wrong_arg_count(self, opcode, name, sig, call_arg_count):
     self.error(
         opcode,
         "Function %s was called with %d args instead of expected %d" % (
-            sig.name, call_arg_count, sig.mandatory_param_count())
+            name, call_arg_count, sig.mandatory_param_count())
         )
 
   def _prettyprint_sig(self, sig):
@@ -270,9 +270,9 @@ class ErrorLog(ErrorLogBase):
       return arg.name
 
   @_error_name("wrong-arg-types")
-  def wrong_arg_types(self, opcode, sig, passed_args):
+  def wrong_arg_types(self, opcode, name, sig, passed_args):
     """A function was called with the wrong parameter types."""
-    message = "Function %s was called with the wrong arguments" % sig.name
+    message = "Function %s was called with the wrong arguments" % name
     details = "".join([
         "Expected: (", self._prettyprint_sig(str(sig)), ")\n",
         "Actually passed: (", self._prettyprint_sig(
@@ -282,21 +282,21 @@ class ErrorLog(ErrorLogBase):
     self.error(opcode, message, details)
 
   @_error_name("wrong-keyword-args")
-  def wrong_keyword_args(self, opcode, sig, extra_keywords):
+  def wrong_keyword_args(self, opcode, name, unused_sig, extra_keywords):
     """A function was called with extra keywords."""
     if len(extra_keywords) == 1:
       message = "Invalid keyword argument %s to function %s" % (
-          extra_keywords[0], sig.name)
+          extra_keywords[0], name)
     else:
       message = "Invalid keyword arguments %s to function %s" % (
-          "(" + ", ".join(extra_keywords) + ")", sig.name)
+          "(" + ", ".join(extra_keywords) + ")", name)
     self.error(opcode, message)
 
   @_error_name("missing-parameter")
-  def missing_parameter(self, opcode, sig, missing_parameter):
+  def missing_parameter(self, opcode, name, unused_sig, missing_parameter):
     """A function call is missing parameters."""
     message = "Missing parameter %r in call to function %s" % (
-        missing_parameter, sig.name)
+        missing_parameter, name)
     self.error(opcode, message)
 
   @_error_name("not-callable")
@@ -306,23 +306,25 @@ class ErrorLog(ErrorLogBase):
     self.error(opcode, message)
 
   @_error_name("duplicate-keyword-argument")
-  def duplicate_keyword(self, opcode, sig, duplicate):
+  def duplicate_keyword(self, opcode, name, unused_sig, duplicate):
     self.error(opcode, "function %s got multiple values "
-                       "for keyword argument %r" % (sig.name, duplicate))
+                       "for keyword argument %r" % (name, duplicate))
 
   def invalid_function_call(self, opcode, error):
     if isinstance(error, abstract.WrongArgCount):
-      self.wrong_arg_count(opcode, error.sig, error.call_arg_count)
+      self.wrong_arg_count(opcode, error.name, error.sig, error.call_arg_count)
     elif isinstance(error, abstract.WrongArgTypes):
-      self.wrong_arg_types(opcode, error.sig, error.passed_args)
+      self.wrong_arg_types(opcode, error.name, error.sig, error.passed_args)
     elif isinstance(error, abstract.WrongKeywordArgs):
-      self.wrong_keyword_args(opcode, error.sig, error.extra_keywords)
+      self.wrong_keyword_args(
+          opcode, error.name, error.sig, error.extra_keywords)
     elif isinstance(error, abstract.MissingParameter):
-      self.missing_parameter(opcode, error.sig, error.missing_parameter)
+      self.missing_parameter(
+          opcode, error.name, error.sig, error.missing_parameter)
     elif isinstance(error, abstract.NotCallable):
       self.not_callable(opcode, error.obj)
     elif isinstance(error, abstract.DuplicateKeyword):
-      self.duplicate_keyword(opcode, error.sig, error.duplicate)
+      self.duplicate_keyword(opcode, error.name, error.sig, error.duplicate)
     else:
       raise AssertionError(error)
 
