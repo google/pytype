@@ -100,7 +100,7 @@ def pow(x: int or float or complex, y: complex, ...) -> complex
 def pow(x: int or float, y: float, ...) -> float
 def pow(x: float, y: int, ...) -> float
 def pow(x: complex, y: int or float, ...) -> complex
-def range(stop: int, ...) -> list[int] or list
+def range(stop: int, ...) -> list[int]
 def reduce(function, sequence: str, ...) -> str
 def reduce(function, sequence: set, ...) -> ?
 def repr PYTHONCODE
