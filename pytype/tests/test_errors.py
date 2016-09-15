@@ -1,6 +1,7 @@
 """Tests for displaying errors."""
 
 import StringIO
+import unittest
 
 from pytype import utils
 from pytype.tests import test_inference
@@ -447,6 +448,14 @@ class ErrorTest(test_inference.InferenceTest):
     self.assertTypesMatchPytd(ty, """
       def main() -> Any
     """)
+
+  @unittest.skip("Some types shouldn't allow attribute setting.")
+  def testSetIntAttribute(self):
+    _, errors = self.InferAndCheck("""\
+      x = 42
+      x.y = 42
+    """, deep=True, solve_unknowns=True)
+    self.assertErrorLogIs(errors, [(2, "attribute-error", r"y")])
 
 
 if __name__ == "__main__":

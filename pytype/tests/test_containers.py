@@ -1,6 +1,7 @@
 """Test list, dict, etc."""
 
 import unittest
+from pytype import utils
 from pytype.pytd import pytd
 from pytype.tests import test_inference
 
@@ -536,6 +537,75 @@ class ContainerTest(test_inference.InferenceTest):
       x = ...  # type: Any
       y = ...  # type: Any
     """)
+
+  def testIteratePyiList(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        lst1 = ...  # type: list
+      """)
+      ty = self.Infer("""
+        import a
+        lst2 = [x for x in a.lst1]
+        x.some_attribute = 42
+        y = x.some_attribute
+      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        lst2 = ...  # type: list
+        x = ...  # type: Any
+        y = ...  # type: Any
+      """)
+
+  def testIteratePyiListAny(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        lst1 = ...  # type: List[Any]
+      """)
+      ty = self.Infer("""
+        import a
+        lst2 = [x for x in a.lst1]
+        x.some_attribute = 42
+        y = x.some_attribute
+      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        lst2 = ...  # type: list
+        x = ...  # type: Any
+        y = ...  # type: Any
+      """)
+
+  def testIteratePyiListInt(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        lst1 = ...  # type: List[int]
+      """)
+      ty = self.Infer("""
+        import a
+        lst2 = [x for x in a.lst1]
+      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        lst2 = ...  # type: List[int]
+        x = ...  # type: int
+      """)
+
+  def testIteratePyiListNothing(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        lst1 = ...  # type: List[nothing]
+      """)
+      ty = self.Infer("""
+        import a
+        lst2 = [x for x in a.lst1]
+        x.some_attribute = 42
+        y = x.some_attribute
+      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        lst2 = ...  # type: List[nothing]
+        x = ...  # type: Any
+        y = ...  # type: Any
+      """)
 
 
 if __name__ == "__main__":

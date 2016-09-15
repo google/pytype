@@ -429,6 +429,7 @@ class Converter(object):
           else:
             mycls = self.convert_constant(cls.name, cls, subst, node)
             instance = abstract.Instance(mycls, self.vm, node)
+            instance.make_template_unsolvable(cls.template, node)
           log.info("New pytd instance for %s: %r", cls.name, instance)
           self._convert_cache[key] = instance
         return self._convert_cache[key]

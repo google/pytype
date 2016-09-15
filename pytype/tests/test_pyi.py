@@ -355,6 +355,21 @@ def process_function(func: Callable[..., Any]) -> None: ...
       """)
       self.assertErrorLogIs(errors, [(3, "import-error", r"bar")])
 
+  def testPyiListItem(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        lst = ...  # type: list
+        def f(x: int) -> str
+      """)
+      ty = self.Infer("""
+        import a
+        x = a.f(a.lst[0])
+      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        x = ...  # type: str
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()

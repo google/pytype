@@ -129,7 +129,7 @@ def _match_value_against_type(value, other_type, subst, node, view):
   """
   left = value.data
   assert isinstance(left, AtomicAbstractValue), left
-  assert not isinstance(left, FormalType)
+  assert not left.formal
 
   # TODO(kramm): Use view
 
@@ -213,6 +213,7 @@ class AtomicAbstractValue(object):
   """
 
   _value_id = 0  # for pretty-printing
+  formal = False  # is this type non-instantiable?
 
   def __init__(self, name, vm):
     """Basic initializer for all AtomicAbstractValues."""
@@ -524,16 +525,6 @@ class Empty(AtomicAbstractValue):
     return node
 
 
-class FormalType(object):
-  """A mix-in for marking types that can not actually be instantiated.
-
-  This class marks all types that will only exist to declare formal parameter
-  types, but can't actually be passed around as values during abstract
-  interpretation.
-  """
-  pass
-
-
 class PythonConstant(object):
   """A mix-in for storing actual Python constants, not just their types.
 
@@ -548,12 +539,14 @@ class PythonConstant(object):
     self.pyval = pyval
 
 
-class TypeParameter(AtomicAbstractValue, FormalType):
+class TypeParameter(AtomicAbstractValue):
   """Parameter of a type.
 
   Attributes:
     name: Type parameter name
   """
+
+  formal = True
 
   def __init__(self, name, vm):
     super(TypeParameter, self).__init__(name, vm)
@@ -926,7 +919,7 @@ class Instance(SimpleAbstractValue):
       for base in cls.mro:
         if isinstance(base, ParameterizedClass):
           for name, param in base.type_parameters.items():
-            if not isinstance(param, FormalType):
+            if not param.formal:
               # We inherit from a ParameterizedClass with a non-formal
               # parameter, e.g., class Foo(List[int]). Initialize the
               # corresponding instance parameter appropriately.
@@ -938,6 +931,12 @@ class Instance(SimpleAbstractValue):
               #  class List(Generic[T]): pass
               #  class Foo(List[U]): pass
               self.type_parameters.add_alias(name, param.name)
+
+  def make_template_unsolvable(self, template, node):
+    for formal in template:
+      self.initialize_type_parameter(
+          node, formal.name, self.vm.convert.unsolvable.to_variable(
+              node, formal.name))
 
   def compatible_with(self, logical_value):  # pylint: disable=unused-argument
     # Containers with unset parameters and NoneType instances cannot match True.
@@ -1144,7 +1143,8 @@ class LazyAbstractOrConcreteValue(SimpleAbstractValue, PythonConstant):
     return bool(self.pyval) == logical_value
 
 
-class Union(AtomicAbstractValue, FormalType):
+# TODO(rechen): Merge this class with pytype.typing.Union.
+class Union(AtomicAbstractValue):
   """A list of types. Used for parameter matching.
 
   Attributes:
@@ -1155,6 +1155,14 @@ class Union(AtomicAbstractValue, FormalType):
     super(Union, self).__init__("Union", vm)
     self.name = "Union[%s]" % ", ".join(sorted([str(t) for t in options]))
     self.options = options
+    # TODO(rechen): Don't allow a mix of formal and non-formal types
+    self.formal = any(t.formal for t in options)
+
+  def instantiate(self, node):
+    var = self.vm.program.NewVariable(self.name)
+    for option in self.options:
+      var.PasteVariable(option.instantiate(node), node)
+    return var
 
 
 class FunctionArgs(collections.namedtuple("_", ["posargs", "namedargs",
@@ -2032,7 +2040,7 @@ class Class(object):
           "Can't match instance %r against %r", self, other_type)
 
 
-class ParameterizedClass(AtomicAbstractValue, Class, FormalType):
+class ParameterizedClass(AtomicAbstractValue, Class):
   """A class that contains additional parameters. E.g. a container.
 
   Attributes:
@@ -2040,6 +2048,8 @@ class ParameterizedClass(AtomicAbstractValue, Class, FormalType):
     type_parameters: An iterable of AtomicAbstractValue, one for each type
         parameter.
   """
+
+  formal = True
 
   def __init__(self, base_cls, type_parameters, vm):
     super(ParameterizedClass, self).__init__(base_cls.name, vm)
@@ -2953,12 +2963,14 @@ class Iterator(ValueWithSlots):
     return node, self._return_var
 
 
-class Nothing(AtomicAbstractValue, FormalType):
+class Nothing(AtomicAbstractValue):
   """The VM representation of Nothing values.
 
   These are fake values that never exist at runtime, but they appear if you, for
   example, extract a value from an empty list.
   """
+
+  formal = True
 
   def __init__(self, vm):
     super(Nothing, self).__init__("nothing", vm)

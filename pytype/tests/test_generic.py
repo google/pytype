@@ -273,7 +273,6 @@ class GenericTest(test_inference.InferenceTest):
         def f() -> a.C[nothing]
       """)
 
-  @unittest.skip("Needs better GenericType support")
   def testUnion(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
@@ -283,10 +282,13 @@ class GenericTest(test_inference.InferenceTest):
         import a
         def f():
           return a.A()
+        def g():
+          return f()[0]
       """, pythonpath=[d.path], deep=True, solve_unknowns=True)
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
-        def f() -> a.A[int or str]
+        def f() -> a.A
+        def g() -> int or str
       """)
 
   def testMultipleTemplates(self):
