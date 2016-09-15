@@ -434,6 +434,20 @@ class ErrorTest(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=True)
     self.assertErrorLogIs(errors, [(2, "attribute-error", r"__delitem__")])
 
+  def testBadReference(self):
+    ty, errors = self.InferAndCheck("""\
+      def main():
+        x = foo
+        for foo in []:
+          pass
+        return x
+    """, deep=True, solve_unknowns=True)
+    self.assertErrorLogIs(errors, [(2, "name-error", r"foo")])
+    # Make sure we recovered from the error and got the right return type
+    self.assertTypesMatchPytd(ty, """
+      def main() -> Any
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

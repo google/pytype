@@ -586,6 +586,7 @@ class VirtualMachine(object):
     if not result.bindings and report_errors:
       self.errorlog.unsupported_operands(self.frame.current_opcode, state.node,
                                          name, x, y)
+      result.AddBinding(self.convert.unsolvable, [], state.node)
     return state, result
 
   def call_inplace_operator(self, state, iname, x, y):
@@ -603,10 +604,10 @@ class VirtualMachine(object):
                                                  fallback_to_unsolvable=False)
     return state, ret
 
-  def binary_operator(self, state, name):
+  def binary_operator(self, state, name, report_errors=True):
     state, (x, y) = state.popn(2)
     state, ret = self.call_binary_operator(
-        state, name, x, y, report_errors=True)
+        state, name, x, y, report_errors=report_errors)
     return state.push(ret)
 
   def inplace_operator(self, state, name):
@@ -748,7 +749,7 @@ class VirtualMachine(object):
   def load_builtin(self, state, name):
     if name == "__undefined__":
       # For values that don't exist. (Unlike None, which is a valid object)
-      return state, self.convert.undefined
+      return state, self.convert.empty_type
     special = self.load_special_builtin(name)
     if special:
       return state, special.to_variable(state.node, name)
@@ -1012,16 +1013,12 @@ class VirtualMachine(object):
     return self.binary_operator(state, "__pow__")
 
   def byte_BINARY_SUBSCR(self, state):
-    (container, index) = state.topn(2)
-    checkpoint = self.errorlog.save()
-    state = self.binary_operator(state, "__getitem__")
+    state = self.binary_operator(state, "__getitem__", report_errors=False)
     if state.top().bindings:
       return state
     else:
       # This typically happens if a dictionary is being filled by code we just
       # haven't analyzed yet. So don't report an error.
-      self.errorlog.revert_to(checkpoint)
-      log.info("Can't access %s at %s", container, index)
       state.top().AddBinding(self.convert.unsolvable,
                              source_set=[], where=state.node)
       return state
@@ -1133,9 +1130,8 @@ class VirtualMachine(object):
     try:
       state, val = self.load_local(state, name)
     except KeyError:
-      raise exceptions.ByteCodeUnboundLocalError(
-          "local variable '%s' referenced before assignment" % name
-      )
+      self.errorlog.name_error(self.frame.current_opcode, name)
+      val = self.convert.create_new_unsolvable(state.node, name)
     return state.push(val)
 
   def byte_STORE_FAST(self, state, op):

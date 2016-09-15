@@ -2762,7 +2762,8 @@ class InterpreterFunction(Function):
   def to_pytd_def(self, node, function_name):
     """Generate a pytd.Function definition."""
     signatures = []
-    for node_after, combination, return_value in self._get_call_combinations():
+    combinations = tuple(self._get_call_combinations())
+    for node_after, combination, return_value in combinations:
       params = tuple(pytd.Parameter(self._fix_param_name(name),
                                     combination[name].data.to_type(node),
                                     kwonly, optional, None)
@@ -2770,7 +2771,7 @@ class InterpreterFunction(Function):
       params = self._with_replaced_annotations(node_after, params)
       ret = self._get_annotation_return(
           node, default=return_value.data.to_type(node_after))
-      if isinstance(ret, pytd.NothingType):
+      if isinstance(ret, pytd.NothingType) and len(combinations) == 1:
         assert isinstance(return_value.data, Empty)
         ret = pytd.AnythingType()
       starargs, starstarargs = self._get_star_params()

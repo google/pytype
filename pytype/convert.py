@@ -101,7 +101,7 @@ class Converter(object):
         False: self.false,
         None: self.primitive_class_instances[bool],
     }
-    self.undefined = self.vm.program.NewVariable("undefined")
+    self.empty_type = self.empty.to_variable(self.vm.root_cfg_node, "empty")
 
   def convert_value_to_string(self, val):
     if isinstance(val, abstract.PythonConstant) and isinstance(val.pyval, str):
