@@ -27,6 +27,9 @@ class TestTypeshedLoading(parser_test_base.ParserTest):
     ast = typeshed.parse_type_definition("stdlib", "_random", (2, 7))
     self.assertIn("_random.Random", [cls.name for cls in ast.classes])
 
+  def test_get_typeshed_missing(self):
+    missing = typeshed.load_missing()
+
 
 def _walk_dir(path):
   for root, _, filenames in os.walk(path):

@@ -18,6 +18,14 @@ def get_typeshed_dir():
   return ret
 
 
+_cached_missing = None
+
+
+def load_missing():
+  """Return set of known-missing typeshed modules, as strings of paths."""
+  return set()  # pylint: disable=unreachable
+
+
 def get_typeshed_file(toplevel, module, version, typeshed_dir=None):
   """Get the contents of a typeshed file, typically with a file name *.pyi.
 
@@ -41,12 +49,14 @@ def get_typeshed_file(toplevel, module, version, typeshed_dir=None):
   if typeshed_dir is None:
     typeshed_dir = get_typeshed_dir()
 
-  prefix = os.path.join(typeshed_dir, toplevel)
-  if not os.path.isdir(prefix):
+  toplevel_dir = os.path.join(typeshed_dir, toplevel)
+  if not os.path.isdir(toplevel_dir):
     # typeshed doesn't have 'builtins' anymore:
     # https://github.com/python/typeshed/pull/42
     assert toplevel == "builtins"
-    raise IOError("No directory %s" % prefix)
+    raise IOError("No directory %s" % toplevel_dir)
+
+  missing = load_missing()
   module_path = os.path.join(*module.split("."))
   versions = ["%d.%d" % (version[0], minor)
               for minor in range(version[1], -1, -1)]
@@ -55,7 +65,14 @@ def get_typeshed_file(toplevel, module, version, typeshed_dir=None):
   # The order is the same as that of mypy. See default_lib_path in
   # https://github.com/JukkaL/mypy/blob/master/mypy/build.py#L249
   for v in versions + [str(version[0]), "2and3"]:
-    path_base = os.path.join(prefix, v, module_path)
+    path_rel = os.path.join(toplevel, v, module_path)
+
+    # Give precedence to missing.txt
+    if path_rel in missing:
+      return (os.path.join(typeshed_dir, "nonexistent", path_rel + ".pyi"),
+              builtins.DEFAULT_SRC)
+
+    path_base = os.path.join(typeshed_dir, path_rel)
     for path in [os.path.join(path_base, "__init__.pyi"), path_base + ".pyi"]:
       if loader and typeshed_dir is None:
         # PEP 302 loader API

@@ -136,6 +136,13 @@ def ParsePredefinedPyTD(pytd_subdir, module, python_version):
                    python_version=python_version).Replace(name=module)
 
 
+# pyi for a catch-all module
+DEFAULT_SRC = """
+from typing import Any
+def __getattr__(name) -> Any
+"""
+
+
 def GetDefaultAst(python_version):
-  return ParsePyTD(src="def __getattr__(name) -> Any",
+  return ParsePyTD(src=DEFAULT_SRC,
                    python_version=python_version, lookup_classes=True)
