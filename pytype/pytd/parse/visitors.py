@@ -25,6 +25,15 @@ import re
 from pytype.pytd import pytd
 from pytype.pytd.parse import parser_constants  # pylint: disable=g-importing-member
 
+
+class ContainerError(Exception):
+  pass
+
+
+class SymbolLookupError(Exception):
+  pass
+
+
 # A convenient value for unchecked_node_classnames if a visitor wants to
 # use unchecked nodes everywhere.
 ALL_NODE_NAMES = type(
@@ -870,7 +879,11 @@ class LookupLocalTypes(Visitor):
         item = self.unit.Lookup(self.unit.name + "." + node.name)
       except KeyError:
         # Happens for infer calling load_pytd.resolve_ast() for the final pyi
-        item = self.unit.Lookup(node.name)
+        try:
+          item = self.unit.Lookup(node.name)
+        except KeyError:
+          raise SymbolLookupError("Couldn't find %s in %s" % (
+              node.name, self.unit.name))
       return _ToType(item, allow_constants=False)
     elif module_name == self.unit.name:
       return _ToType(self.unit.Lookup(node.name), allow_constants=False)
@@ -1478,10 +1491,6 @@ def MergeSequences(seqs):
     if cand is None:
       raise ValueError
     res.append(cand)
-
-
-class ContainerError(Exception):
-  pass
 
 
 class InsertClassTemplates(Visitor):

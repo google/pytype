@@ -1771,7 +1771,7 @@ class VirtualMachine(object):
     try:
       module = self.import_module(name, level)
     except (parser.ParseError, load_pytd.BadDependencyError,
-            visitors.ContainerError) as e:
+            visitors.ContainerError, visitors.SymbolLookupError) as e:
       self.errorlog.pyi_error(op, full_name, e)
       module = self.convert.unsolvable
     else:
