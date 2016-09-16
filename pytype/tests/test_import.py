@@ -741,6 +741,46 @@ class ImportTest(test_inference.InferenceTest):
         x = ...  # type: complex
       """)
 
+  def testRedefinedBuiltin(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        object = ...  # type: Any
+        def f(x) -> Any
+      """)
+      ty = self.Infer("""\
+        import foo
+        x = foo.f("")
+      """, pythonpath=[d.path], extract_locals=True)
+      self.assertTypesMatchPytd(ty, """
+        foo = ...  # type: module
+        x = ...  # type: Any
+      """)
+
+  def testRedefinedBuiltin2(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        class object:
+          def foo(self) -> None: ...
+        def f(x: object) -> object
+        def f(x) -> object  # same as above (abbreviated form)
+      """)
+      ty, errors = self.InferAndCheck("""\
+        import foo
+        x = foo.f(foo.object())
+        y = foo.f(foo.object())
+        foo.f(object())  # error
+        foo.f(object())  # error
+      """, pythonpath=[d.path], extract_locals=True)
+      self.assertTypesMatchPytd(ty, """
+        foo = ...  # type: module
+        x = ...  # type: foo.object
+        y = ...  # type: foo.object
+      """)
+      self.assertErrorLogIs(errors, [
+          (4, "wrong-arg-types"),
+          (5, "wrong-arg-types")
+      ])
+
 
 if __name__ == "__main__":
   test_inference.main()

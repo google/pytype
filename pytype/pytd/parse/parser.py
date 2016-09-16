@@ -1116,16 +1116,19 @@ class _TypeDeclParser(object):
   def p_param(self, p):
     """param : NAME"""
     # type is optional and defaults to "object"
+    # TODO(kramm): We should use __builtin__.object. (And other places)
     p[0] = pytd.Parameter(p[1], pytd.NamedType("object"),
                           False, False, None)
 
   def p_optional_ellipsis(self, p):
     """optional : ELLIPSIS"""
+    # TODO(kramm): We should use __builtin__.object. (And other places)
     p[0] = pytd.NamedType("object")
 
   def p_optional_id(self, p):
     """optional : NAME"""
     if p[1] == "None":
+      # TODO(kramm): We should use __builtin__.NoneType here. (And other places)
       p[0] = pytd.NamedType("NoneType")
     else:
       p[0] = pytd.NamedType("object")
@@ -1133,6 +1136,7 @@ class _TypeDeclParser(object):
   def p_optional_number(self, p):
     """optional : NUMBER"""
     if "." in p[1].string:
+      # TODO(kramm): We should use __builtin__.float here. (And other places)
       p[0] = pytd.NamedType("float")
     else:
       p[0] = pytd.NamedType("int")

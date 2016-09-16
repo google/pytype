@@ -78,7 +78,7 @@ class Loader(object):
     """Apply all the PYI transformations we need."""
     ast = ast.Visit(visitors.LookupBuiltins(self.builtins))
     ast = ast.Visit(visitors.ExpandCompatibleBuiltins(self.builtins))
-    ast = ast.Visit(visitors.NamedTypeToClassType())
+    ast = ast.Visit(visitors.LookupLocalTypes())
     return ast
 
   def _create_empty(self, module_name, filename):

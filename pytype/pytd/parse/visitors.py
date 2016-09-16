@@ -537,6 +537,9 @@ class FillInModuleClasses(Visitor):
           if isinstance(cls, pytd.Class):
             node.cls = cls
             return
+          else:
+            logging.warning("Couldn't resolve %s: Not a class: %s",
+                            prefix + node.name, type(cls))
 
 
 class LookupFullNames(Visitor):
@@ -561,7 +564,7 @@ class LookupFullNames(Visitor):
       return
 
 
-def _ToType(item):
+def _ToType(item, allow_constants=True):
   """Convert a pytd AST item into a type."""
   if isinstance(item, pytd.TYPE):
     return item
@@ -570,9 +573,16 @@ def _ToType(item):
   elif isinstance(item, pytd.Function):
     return pytd.FunctionType(item.name, item)
   elif isinstance(item, pytd.Constant):
-    # TODO(kramm): This is wrong. It would be better if we resolve pytd.Alias
-    # in the same way we resolve pytd.NamedType.
-    return item
+    if allow_constants:
+      # TODO(kramm): This is wrong. It would be better if we resolve pytd.Alias
+      # in the same way we resolve pytd.NamedType.
+      return item
+    else:
+      # TODO(kramm): We should be more picky here. In particular, we shouldn't
+      # allow pyi like this:
+      #  object = ...  # type: int
+      #  def f(x: object) -> Any
+      return pytd.AnythingType()
   elif isinstance(item, pytd.Alias):
     return item.type
   else:
@@ -842,6 +852,30 @@ class LookupExternalTypes(Visitor):
 
   def VisitClassType(self, t):
     return self.VisitNamedType(t)
+
+
+class LookupLocalTypes(Visitor):
+  """Look up local identifiers. Must be called on a TypeDeclUnit."""
+
+  def EnterTypeDeclUnit(self, unit):
+    self.unit = unit
+
+  def LeaveTypeDeclUnit(self, _):
+    del self.unit
+
+  def VisitNamedType(self, node):
+    module_name, dot, _ = node.name.rpartition(".")
+    if not dot:
+      try:
+        item = self.unit.Lookup(self.unit.name + "." + node.name)
+      except KeyError:
+        # Happens for infer calling load_pytd.resolve_ast() for the final pyi
+        item = self.unit.Lookup(node.name)
+      return _ToType(item, allow_constants=False)
+    elif module_name == self.unit.name:
+      return _ToType(self.unit.Lookup(node.name), allow_constants=False)
+    else:
+      return node
 
 
 class ReplaceTypes(Visitor):

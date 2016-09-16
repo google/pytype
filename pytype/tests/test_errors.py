@@ -417,17 +417,6 @@ class ErrorTest(test_inference.InferenceTest):
         errors, [(1, "not-supported-yet"),
                  (2, "not-supported-yet")])
 
-  def testBadTypeComment(self):
-    with utils.Tempdir() as d:
-      d.create_file("a.pyi", """
-        def SketchyType() -> None
-        x = ...  # type: SketchyType
-      """)
-      _, errors = self.InferAndCheck("""\
-        import a
-      """, deep=True, pythonpath=[d.path])
-      self.assertErrorLogIs(errors, [(1, "pyi-error", r"SketchyType")])
-
   def testDeleteFromSet(self):
     _, errors = self.InferAndCheck("""\
       s = {1}

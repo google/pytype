@@ -370,6 +370,22 @@ def process_function(func: Callable[..., Any]) -> None: ...
         x = ...  # type: str
       """)
 
+  def testSketchyFunctionReference(self):
+    with utils.Tempdir() as d:
+      # TODO(kramm): visitors._ToType() currently allows this. Should it?
+      d.create_file("a.pyi", """
+        def SketchyType() -> None
+        x = ...  # type: SketchyType
+      """)
+      ty = self.Infer("""\
+        import a
+        x = a.x
+      """, deep=True, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        def x() -> None: ...
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()
