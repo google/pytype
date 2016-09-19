@@ -39,6 +39,16 @@ class QuickTest(test_inference.InferenceTest):
       x = x + x
     """, abort_on_complex=True)
 
+  def testClosure(self):
+    ty = self.Infer("""
+      def f():
+        class A(object): pass
+        return {A: A()}
+    """, deep=True, extract_locals=True, quick=True, maximum_depth=1)
+    self.assertTypesMatchPytd(ty, """
+      def f() -> dict
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

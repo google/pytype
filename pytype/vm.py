@@ -385,19 +385,24 @@ class VirtualMachine(object):
     if not bases:
       # Old style class.
       bases = [self.convert.oldstyleclass_type]
-    try:
-      val = abstract.InterpreterClass(
-          name,
-          bases,
-          class_dict.members,
-          self)
-    except pytd_utils.MROError:
-      self.errorlog.mro_error(self.frame.current_opcode, name)
-      return self.convert.create_new_unsolvable(node, "mro_error")
+    if isinstance(class_dict, abstract.Unsolvable):
+      # An unsolvable appears here if the vm hit maximum depth and gave up on
+      # analyzing the class we're now building.
+      var = self.convert.create_new_unsolvable(node, name)
     else:
-      var = self.program.NewVariable(name)
-      var.AddBinding(val, class_dict_var.bindings, node)
-      return var
+      try:
+        val = abstract.InterpreterClass(
+            name,
+            bases,
+            class_dict.members,
+            self)
+      except pytd_utils.MROError:
+        self.errorlog.mro_error(self.frame.current_opcode, name)
+        var = self.convert.create_new_unsolvable(node, "mro_error")
+      else:
+        var = self.program.NewVariable(name)
+        var.AddBinding(val, class_dict_var.bindings, node)
+    return var
 
   def _make_function(self, name, code, globs, defaults, kw_defaults,
                      closure=None, annotations=None):
