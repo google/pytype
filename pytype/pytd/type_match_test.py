@@ -37,10 +37,9 @@ class TestTypeMatch(unittest.TestCase):
   """Test algorithms and datastructures of booleq.py."""
 
   def setUp(self):
-    builtins = parser.parse_string(textwrap.dedent(_BUILTINS)).Replace(
-        name="__builtin__").Visit(visitors.AddNamePrefix())
-    typing = parser.parse_string("class Generic: ...").Replace(
-        name="typing").Visit(visitors.AddNamePrefix())
+    builtins = parser.parse_string(textwrap.dedent(_BUILTINS),
+                                   name="__builtin__")
+    typing = parser.parse_string("class Generic: ...", name="typing")
     self.mini_builtins = pytd_utils.Concat(builtins, typing)
 
   def LinkAgainstSimpleBuiltins(self, ast):

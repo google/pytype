@@ -427,11 +427,14 @@ class _TypeDeclParser(object):
     self.aliases.update(pep484.PEP484_TRANSLATIONS)
     self.lexer.set_parse_info(self.src, self.filename)
     ast = self.parser.parse(src, lexer=self.lexer.lexer)
-    # If there's no unique name, hash the sourcecode.
-    name = name or hashlib.md5(src).hexdigest()
     ast = ast.Visit(InsertTypeParameters())
     ast = ast.Visit(pep484.ConvertTypingToNative(name))
-    return ast.Replace(name=name)
+    if name:
+      ast = ast.Replace(name=name)
+      return ast.Visit(visitors.AddNamePrefix())
+    else:
+      # If there's no unique name, hash the sourcecode.
+      return ast.Replace(name=hashlib.md5(src).hexdigest())
 
   precedence = (
       ("left", "OR"),

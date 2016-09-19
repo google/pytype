@@ -286,8 +286,8 @@ class TestVisitors(parser_test_base.ParserTest):
       class Bar(object):
         pass
     """)
-    ast1 = self.Parse(src1).Replace(name="foo").Visit(visitors.AddNamePrefix())
-    ast2 = self.Parse(src2).Replace(name="bar").Visit(visitors.AddNamePrefix())
+    ast1 = self.Parse(src1, name="foo")
+    ast2 = self.Parse(src2, name="bar")
     ast1 = ast1.Visit(visitors.LookupExternalTypes(dict(foo=ast1, bar=ast2),
                                                    full_names=True))
     ast2 = ast2.Visit(visitors.LookupExternalTypes(dict(foo=ast1, bar=ast2),
@@ -376,19 +376,20 @@ class TestVisitors(parser_test_base.ParserTest):
     sig, = f.signatures
     p_x, = sig.params
     self.assertEquals(sig.template,
-                      (pytd.TemplateItem(pytd.TypeParameter("T", "f")),))
-    self.assertEquals(p_x.type, pytd.TypeParameter("T", "f"))
+                      (pytd.TemplateItem(pytd.TypeParameter("T", scope="f")),))
+    self.assertEquals(p_x.type, pytd.TypeParameter("T", scope="f"))
 
     cls = ast.Lookup("A")
     f_cls, = cls.methods
     sig_cls, = f_cls.signatures
     p_self, p_x_cls = sig_cls.params
     self.assertEquals(cls.template,
-                      (pytd.TemplateItem(pytd.TypeParameter("T", "A")),))
-    self.assertEquals(sig_cls.template,
-                      (pytd.TemplateItem(pytd.TypeParameter("T2", "A.a")),))
-    self.assertEquals(p_self.type.parameters, (pytd.TypeParameter("T", "A"),))
-    self.assertEquals(p_x_cls.type, pytd.TypeParameter("T2", "A.a"))
+                      (pytd.TemplateItem(pytd.TypeParameter("T", scope="A")),))
+    self.assertEquals(sig_cls.template, (pytd.TemplateItem(
+        pytd.TypeParameter("T2", scope="A.a")),))
+    self.assertEquals(p_self.type.parameters,
+                      (pytd.TypeParameter("T", scope="A"),))
+    self.assertEquals(p_x_cls.type, pytd.TypeParameter("T2", scope="A.a"))
 
   def testAdjustTypeParametersWithBuiltins(self):
     ast = self.ParseWithBuiltins("""

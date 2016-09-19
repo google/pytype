@@ -1517,14 +1517,14 @@ class TestASTGeneration(parser_test_base.ParserTest):
 
     param1 = tree.Lookup("T")
     param2 = tree.Lookup("T2")
-    self.assertEquals(param1, pytd.TypeParameter("T", None))
-    self.assertEquals(param2, pytd.TypeParameter("T2", None))
+    self.assertEquals(param1, pytd.TypeParameter("T", scope=None))
+    self.assertEquals(param2, pytd.TypeParameter("T2", scope=None))
     self.assertEquals(tree.type_params, (param1, param2))
 
     f = tree.Lookup("f")
     sig, = f.signatures
     p_x, = sig.params
-    self.assertEquals(p_x.type, pytd.TypeParameter("T", None))
+    self.assertEquals(p_x.type, pytd.TypeParameter("T", scope=None))
 
     cls = tree.Lookup("A")
     cls_parent, = cls.parents
@@ -1532,8 +1532,9 @@ class TestASTGeneration(parser_test_base.ParserTest):
     sig_cls, = f_cls.signatures
     # AdjustSelf has not been called yet, so self may not have the right type
     _, p_x_cls = sig_cls.params
-    self.assertEquals(cls_parent.parameters, (pytd.TypeParameter("T", None),))
-    self.assertEquals(p_x_cls.type, pytd.TypeParameter("T2", None))
+    self.assertEquals(cls_parent.parameters,
+                      (pytd.TypeParameter("T", scope=None),))
+    self.assertEquals(p_x_cls.type, pytd.TypeParameter("T2", scope=None))
 
     # The parser should not have attempted to insert templates! It does
     # not know about imported type parameters.
@@ -1556,13 +1557,13 @@ class TestASTGeneration(parser_test_base.ParserTest):
     builtins = parser.parse_string(builtins_src, name="__builtin__")
     typing = parser.parse_string(typing_src, name="typing")
 
-    constant = builtins.Lookup("object").Lookup("__dict__")
+    constant = builtins.Lookup("__builtin__.object").Lookup("__dict__")
     self.assertEquals(pytd.NamedType("dict"), constant.type.base_type)
 
-    parent, = builtins.Lookup("list").parents
+    parent, = builtins.Lookup("__builtin__.list").parents
     self.assertEquals(pytd.NamedType("typing.List"), parent)
 
-    method, = typing.Lookup("Pattern").Lookup("split").signatures
+    method, = typing.Lookup("typing.Pattern").Lookup("split").signatures
     self.assertEquals(pytd.NamedType("list"), method.return_type)
 
 
