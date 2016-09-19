@@ -429,14 +429,14 @@ class TestIt(test_inference.InferenceTest):
       """)
 
   def test_exec_statement_python2(self):
-    self.assertNoErrors("""\
+    self.assertNoCrash("""\
       g = {}
       exec "a = 11" in g, g
       assert g['a'] == 11
       """)
 
   def test_exec_statement_python3(self):
-    self.assertNoErrors("""\
+    self.assertNoCrash("""\
       g = {}
       exec("a = 11", g, g)
       assert g['a'] == 11

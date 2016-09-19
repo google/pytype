@@ -377,6 +377,10 @@ class ErrorLog(ErrorLogBase):
   def not_supported_yet(self, opcode, feature):
     self.error(opcode, "%s not supported yet" % feature)
 
+  @_error_name("key-error")
+  def key_error(self, opcode, key):
+    self.error(opcode, "Key %r possibly not in dictionary (yet)" % key)
+
   @_error_name("python-compiler-error")
   def python_compiler_error(self, filename, lineno, message):
     self._add(Error(

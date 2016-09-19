@@ -607,6 +607,26 @@ class ContainerTest(test_inference.InferenceTest):
         y = ...  # type: Any
       """)
 
+  def testDict(self):
+    ty, errors = self.InferAndCheck("""
+      mymap = {'a': 3.14, 'b':1}
+      a = mymap['a']
+      b1 = mymap['b']
+      c = mymap['foobar']
+      mymap[str()] = 3j
+      b2 = mymap['b']
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      mymap = ...  # type: Dict[str, Union[int, float, complex]]
+      a = ...  # type: float
+      b1 = ...  # type: int
+      c = ...  # type: Union[int, float]
+      b2 = ...  # type: Union[int, float, complex]
+    """)
+    self.assertErrorLogIs(errors, [
+        (5, "key-error", "foobar")
+    ])
+
   def testIteratePyiListUnion(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """

@@ -1065,22 +1065,28 @@ class Dict(ValueWithSlots, WrapsDict("_entries")):
     self.set_slot("__getitem__", self.getitem_slot)
     self.set_slot("__setitem__", self.setitem_slot)
     self.init_type_parameters(self.KEY_TYPE_PARAM, self.VALUE_TYPE_PARAM)
+    self.could_contain_anything = False
 
   def getitem_slot(self, node, name_var):
     """Implements the __getitem__ slot."""
     results = []
-    for val in name_var.bindings:
-      try:
-        name = self.vm.convert.convert_value_to_string(val.data)
-      except ValueError:  # ConversionError
-        # We *do* know the overall type of the values through the "V" type
-        # parameter, even if we don't know the exact type of self[name]:
-        results.append(self.get_type_parameter(node, "V"))
-      else:
+    unresolved = False
+    if not self.could_contain_anything:
+      for val in name_var.bindings:
         try:
-          results.append(self._entries[name])
-        except KeyError:
-          raise exceptions.ByteCodeKeyError("KeyError: %r" % name)
+          name = self.vm.convert.convert_value_to_string(val.data)
+        except ValueError:  # ConversionError
+          unresolved = True
+        else:
+          try:
+            results.append(self._entries[name])
+          except KeyError:
+            self.vm.errorlog.key_error(self.vm.frame.current_opcode, name)
+            unresolved = True
+    if unresolved or self.could_contain_anything:
+      # We *do* know the overall type of the values through the "V" type
+      # parameter, even if we don't know the exact type of self[name]:
+      results.append(self.get_type_parameter(node, "V"))
     # For call tracing only, we don't actually use the return value:
     node, _ = self.call_pytd(node, "__getitem__", name_var)
     return node, self.vm.join_variables(
@@ -1104,6 +1110,10 @@ class Dict(ValueWithSlots, WrapsDict("_entries")):
       try:
         name = self.vm.convert.convert_value_to_string(val.data)
       except ValueError:  # ConversionError
+        # Now the dictionary is abstract: We don't know what it contains
+        # anymore. Note that the below is not a variable, so it'll affect
+        # all branches.
+        self.could_contain_anything = True
         continue
       if name in self._entries:
         self._entries[name].PasteVariable(value_var, node)
@@ -1116,6 +1126,7 @@ class Dict(ValueWithSlots, WrapsDict("_entries")):
     return self.call_pytd(node, "__setitem__", name_var, value_var)
 
   def update(self, node, other_dict, omit=()):
+    self.could_contain_anything = True
     if isinstance(other_dict, (Dict, dict)):
       for key, value in other_dict.items():
         # TODO(kramm): sources
