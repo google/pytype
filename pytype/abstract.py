@@ -810,7 +810,7 @@ class SimpleAbstractValue(AtomicAbstractValue):
     self_var = self.to_variable(node, self.name)
     if var is not None and var.bindings:
       return self.vm.call_function(
-          node, var, args.replace(posargs=[self_var] + args.posargs))
+          node, var, args.replace(posargs=(self_var,) + args.posargs))
     else:
       raise NotCallable(self)
 
@@ -1203,6 +1203,7 @@ class Union(AtomicAbstractValue):
 
 class FunctionArgs(collections.namedtuple("_", ["posargs", "namedargs",
                                                 "starargs", "starstarargs"])):
+  """Represents the parameters of a function call."""
 
   def __new__(cls, posargs, namedargs=None, starargs=None, starstarargs=None):
     """Create arguments for a function under analysis.
@@ -1216,10 +1217,48 @@ class FunctionArgs(collections.namedtuple("_", ["posargs", "namedargs",
     Returns:
       A FunctionArgs instance.
     """
+    assert isinstance(posargs, tuple), posargs
     cls.replace = cls._replace
     return super(cls, FunctionArgs).__new__(
         cls, posargs=posargs, namedargs=namedargs or {}, starargs=starargs,
         starstarargs=starstarargs)
+
+  def starargs_as_tuple(self):
+    try:
+      args = self.starargs and get_atomic_python_constant(self.starargs)
+      if isinstance(args, tuple):
+        return args
+    except ConversionError:
+      pass
+    return None
+
+  def starstarargs_as_dict(self):
+    try:
+      kws = self.starstarargs and get_atomic_value(self.starstarargs)
+      if isinstance(kws, Dict):
+        return kws
+    except ConversionError:
+      pass
+    return None
+
+  def simplify(self, node):
+    """Try to insert part of *args, **kwargs into posargs / namedargs."""
+    posargs = self.posargs
+    namedargs = self.namedargs
+    starargs = self.starargs
+    starstarargs = self.starstarargs
+    starargs_as_tuple = self.starargs_as_tuple()
+    if starargs_as_tuple is not None:
+      posargs += starargs_as_tuple
+      starargs = None
+    starstarargs_as_dict = self.starstarargs_as_dict()
+    if starstarargs_as_dict is not None:
+      if namedargs is None:
+        namedargs = starstarargs_as_dict
+      else:
+        namedargs.update(node, starstarargs_as_dict)
+      starstarargs = None
+    return FunctionArgs(posargs, namedargs, starargs, starstarargs)
 
 
 class FailedFunctionCall(Exception):
@@ -1559,8 +1598,8 @@ class PyTDSignature(object):
             args.starstarargs is None):
           raise MissingParameter(self.signature, p.name)
         # Assume the missing parameter is filled in by *args or **kwargs.
-        # TODO(kramm): Can we use the contents of [star]starargs to fill in a
-        # more precise type than just "unsolvable"?
+        # Unfortunately, we can't easily use *args or **kwargs to fill in
+        # something more precise, since we need a Value, not a Variable.
         var = self.vm.convert.create_new_unsolvable(node, p.name)
         arg_dict[p.name] = var.bindings[0]
 
@@ -1720,7 +1759,7 @@ class ClassMethod(AtomicAbstractValue):
     # return type, anyway.)
     cls = self.vm.convert.create_new_unsolvable(node, "cls")
     return self.method.call(
-        node, func, args.replace(posargs=[cls] + args.posargs))
+        node, func, args.replace(posargs=(cls,) + args.posargs))
 
   def match_against_type(self, other_type, subst, node, view):
     if other_type.name in ["classmethod", "object"]:
@@ -1793,6 +1832,7 @@ class PyTDFunction(Function):
                            logged | {value.data})
 
   def call(self, node, func, args):
+    args = args.simplify(node)
     self._log_args(arg.bindings for arg in args.posargs)
     ret_map = {}
     retvar = self.vm.program.NewVariable("%s ret" % self.name)
@@ -1963,7 +2003,7 @@ class Class(object):
     if attr_var and attr_var.bindings:
       name_var = AbstractOrConcreteValue(name, self.vm.convert.str_type,
                                          self.vm, node).to_variable(node, name)
-      return self.vm.call_function(node, attr_var, FunctionArgs([name_var]))
+      return self.vm.call_function(node, attr_var, FunctionArgs((name_var,)))
     else:
       return node, None
 
@@ -2352,7 +2392,7 @@ class InterpreterClass(SimpleAbstractValue, Class):
             posargs.append(self.vm.convert.none.to_variable(node, "None"))
           posargs.append(valcls.variable)
         node2, get_result = self.vm.call_function(
-            node2, getter, FunctionArgs(posargs))
+            node2, getter, FunctionArgs(tuple(posargs)))
         for getter in get_result.bindings:
           result.AddBinding(getter.data, [getter], node2)
       else:
@@ -2712,6 +2752,7 @@ class InterpreterFunction(Function):
           raise WrongArgTypes(self.signature, passed)
 
   def call(self, node, _, args, new_locals=None):
+    args = args.simplify(node)
     if self.vm.is_at_maximum_depth() and self.name != "__init__":
       log.info("Maximum depth reached. Not analyzing %r", self.name)
       return (node,
@@ -2922,7 +2963,7 @@ class BoundFunction(AtomicAbstractValue):
   def call(self, node, func, args):
     try:
       return self.underlying.call(
-          node, func, args.replace(posargs=[self._callself] + args.posargs))
+          node, func, args.replace(posargs=(self._callself,) + args.posargs))
     except InvalidParameters as e:
       if self._callself and self._callself.bindings:
         e.name = "%s.%s" % (self._callself.data[0].name, e.name)
@@ -3148,10 +3189,10 @@ class BuildClass(AtomicAbstractValue):
       raise ConversionError("Invalid argument to __build_class__")
     bases = args.posargs[2:]
     node, _ = func.call(node, funcvar.bindings[0],
-                        args.replace(posargs=[], namedargs={}),
+                        args.replace(posargs=(), namedargs={}),
                         new_locals=True)
     return node, self.vm.make_class(
-        node, name, bases,
+        node, name, list(bases),
         func.last_frame.f_locals.to_variable(node, "locals()"))
 
 

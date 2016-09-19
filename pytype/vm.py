@@ -297,14 +297,14 @@ class VirtualMachine(object):
       # (it might be an abstract integer, or a union type), we just always
       # call __len__.
       state, f = self.load_attr(state, obj, "__len__")
-      state, end = self.call_function_with_state(state, f, [])
+      state, end = self.call_function_with_state(state, f, ())
     return state, self.convert.build_slice(state.node, start, end, 1), obj
 
   def store_slice(self, state, count):
     state, slice_obj, obj = self.pop_slice_and_obj(state, count)
     state, new_value = state.pop()
     state, f = self.load_attr(state, obj, "__setitem__")
-    state, _ = self.call_function_with_state(state, f, [slice_obj, new_value])
+    state, _ = self.call_function_with_state(state, f, (slice_obj, new_value))
     return state
 
   def delete_slice(self, state, count):
@@ -314,7 +314,7 @@ class VirtualMachine(object):
   def get_slice(self, state, count):
     state, slice_obj, obj = self.pop_slice_and_obj(state, count)
     state, f = self.load_attr(state, obj, "__getitem__")
-    state, ret = self.call_function_with_state(state, f, [slice_obj])
+    state, ret = self.call_function_with_state(state, f, (slice_obj,))
     return state.push(ret)
 
   def do_raise(self, state, exc, cause):
@@ -577,7 +577,7 @@ class VirtualMachine(object):
     if attr is None:
       log.info("Failed to find %s on %r", name, x)
     else:
-      state, ret = self.call_function_with_state(state, attr, [y],
+      state, ret = self.call_function_with_state(state, attr, (y,),
                                                  fallback_to_unsolvable=False)
       results.append(ret)
     rname = self.reverse_operator_name(name)
@@ -587,7 +587,7 @@ class VirtualMachine(object):
         log.debug("No reverse operator %s on %r",
                   self.reverse_operator_name(name), y)
       else:
-        state, ret = self.call_function_with_state(state, attr, [x],
+        state, ret = self.call_function_with_state(state, attr, (x,),
                                                    fallback_to_unsolvable=False)
         results.append(ret)
     result = self.join_variables(state.node, name, results)
@@ -609,7 +609,7 @@ class VirtualMachine(object):
     else:
       # TODO(kramm): If x is a Variable with distinct types, both __add__
       # and __iadd__ might happen.
-      state, ret = self.call_function_with_state(state, attr, [y],
+      state, ret = self.call_function_with_state(state, attr, (y,),
                                                  fallback_to_unsolvable=False)
     return state, ret
 
@@ -635,6 +635,8 @@ class VirtualMachine(object):
   def call_function_with_state(self, state, funcu, posargs, namedargs=None,
                                starargs=None, starstarargs=None,
                                fallback_to_unsolvable=True):
+    assert starargs is None or isinstance(starargs, typegraph.Variable)
+    assert starstarargs is None or isinstance(starstarargs, typegraph.Variable)
     node, ret = self.call_function(state.node, funcu, abstract.FunctionArgs(
         posargs=posargs, namedargs=namedargs, starargs=starargs,
         starstarargs=starstarargs), fallback_to_unsolvable)
@@ -682,29 +684,16 @@ class VirtualMachine(object):
         # the failed call.
         return node, result
 
-  def call_function_from_stack(self, state, num, args, kwargs=None):
+  def call_function_from_stack(self, state, num, starargs, starstarargs):
     """Pop arguments for a function and call it."""
     num_kw, num_pos = divmod(num, 256)
 
-    # TODO(kramm): Can we omit creating this dict if kwargs=None and num_kw=0?
+    # TODO(kramm): Can we omit creating this Dict if num_kw=0?
     namedargs = abstract.Dict("kwargs", self, state.node)
     for _ in range(num_kw):
       state, (key, val) = state.popn(2)
       namedargs.setitem(state.node, key, val)
-    starstarargs = None
-    if kwargs:
-      for v in kwargs.data:  # TODO(kramm): .Data(node)
-        did_update = namedargs.update(state.node, v)
-        if not did_update and starstarargs is None:
-          starstarargs = self.convert.create_new_unsolvable(state.node,
-                                                            "**kwargs")
     state, posargs = state.popn(num_pos)
-    posargs = list(posargs)
-    if args is not None:
-      posargs.extend(args)
-      starargs = None
-    else:
-      starargs = self.convert.create_new_unsolvable(state.node, "*args")
 
     state, func = state.pop()
     state, ret = self.call_function_with_state(
@@ -827,7 +816,7 @@ class VirtualMachine(object):
 
   def _delete_item(self, state, obj, arg):
     state, f = self.load_attr(state, obj, "__delitem__")
-    state, _ = self.call_function_with_state(state, f, [arg])
+    state, _ = self.call_function_with_state(state, f, (arg,))
     return state
 
   def load_attr(self, state, obj, attr):
@@ -877,14 +866,7 @@ class VirtualMachine(object):
 
   def pop_varargs(self, state):
     """Retrieve a varargs tuple from the stack. Used by call_function."""
-    state, args_var = state.pop()
-    try:
-      args = abstract.get_atomic_python_constant(args_var)
-      if not isinstance(args, tuple):
-        raise abstract.ConversionError(type(args))
-    except abstract.ConversionError:
-      args = None  # will get special processing in call_function_from_stack
-    return state, args
+    return state.pop()
 
   def pop_kwargs(self, state):
     """Retrieve a kwargs dictionary from the stack. Used by call_function."""
@@ -950,7 +932,7 @@ class VirtualMachine(object):
   def unary_operator(self, state, name):
     state, x = state.pop()
     state, method = self.load_attr(state, x, name)  # E.g. __not__
-    state, result = self.call_function_with_state(state, method, [])
+    state, result = self.call_function_with_state(state, method, ())
     state = state.push(result)
     return state
 
@@ -1271,7 +1253,7 @@ class VirtualMachine(object):
 
   def store_subscr(self, state, obj, key, val):
     state, f = self.load_attr(state, obj, "__setitem__")
-    state, _ = self.call_function_with_state(state, f, [key, val])
+    state, _ = self.call_function_with_state(state, f, (key, val))
     return state
 
   def byte_STORE_SUBSCR(self, state):
@@ -1312,12 +1294,12 @@ class VirtualMachine(object):
     """Pops a tuple (or other iterable) and pushes it onto the VM's stack."""
     state, seq = state.pop()
     state, f = self.load_attr(state, seq, "__iter__")
-    state, itr = self.call_function_with_state(state, f, [])
+    state, itr = self.call_function_with_state(state, f, ())
     values = []
     for _ in range(op.arg):
       # TODO(ampere): Fix for python 3
       state, f = self.load_attr(state, itr, "next")
-      state, result = self.call_function_with_state(state, f, [])
+      state, result = self.call_function_with_state(state, f, ())
       values.append(result)
     for value in reversed(values):
       state = state.push(value)
@@ -1339,7 +1321,7 @@ class VirtualMachine(object):
     state, val = state.pop()
     the_list = state.peek(count)
     state, f = self.load_attr(state, the_list, "append")
-    state, _ = self.call_function_with_state(state, f, [val])
+    state, _ = self.call_function_with_state(state, f, (val,))
     return state
 
   def byte_SET_ADD(self, state, op):
@@ -1348,7 +1330,7 @@ class VirtualMachine(object):
     state, val = state.pop()
     the_set = state.peek(count)
     state, f = self.load_attr(state, the_set, "add")
-    state, _ = self.call_function_with_state(state, f, [val])
+    state, _ = self.call_function_with_state(state, f, (val,))
     return state
 
   def byte_MAP_ADD(self, state, op):
@@ -1357,7 +1339,7 @@ class VirtualMachine(object):
     state, (val, key) = state.popn(2)
     the_map = state.peek(count)
     state, f = self.load_attr(state, the_map, "__setitem__")
-    state, _ = self.call_function_with_state(state, f, [key, val])
+    state, _ = self.call_function_with_state(state, f, (key, val))
     return state
 
   def byte_PRINT_EXPR(self, state):
@@ -1454,7 +1436,7 @@ class VirtualMachine(object):
     state, func = self.load_attr_noerror(pre_state, seq, "__iter__")
     if func:
       # Call __iter__().
-      state, it = self.call_function_with_state(state, func, [])
+      state, it = self.call_function_with_state(state, func, ())
     else:
       state, func = self.load_attr_noerror(pre_state, seq, "__getitem__")
       if func:
@@ -1465,8 +1447,8 @@ class VirtualMachine(object):
 
         # Call __getitem__(int).
         key = abstract.Instance(self.convert.int_type, self, state.node)
-        state, item = self.call_function_with_state(state, func, [
-            key.to_variable(state.node, "key")])
+        state, item = self.call_function_with_state(state, func, (
+            key.to_variable(state.node, "key"),))
         # Create a new iterator from the returned value.
         it = abstract.Iterator(self, item, state.node).to_variable(
             state.node, "it")
@@ -1486,7 +1468,7 @@ class VirtualMachine(object):
     self.store_jump(op.target, state.pop_and_discard())
     state, f = self.load_attr(state, state.top(), "next")
     state = state.push(f)
-    return self.call_function_from_stack(state, 0, [])
+    return self.call_function_from_stack(state, 0, None, None)
 
   def byte_BREAK_LOOP(self, state):
     return state.set_why("break")
@@ -1576,7 +1558,7 @@ class VirtualMachine(object):
     state, exit_method = self.load_attr(state, ctxmgr, "__exit__")
     state = state.push(exit_method)
     state, enter = self.load_attr(state, ctxmgr, "__enter__")
-    state, ctxmgr_obj = self.call_function_with_state(state, enter, [])
+    state, ctxmgr_obj = self.call_function_with_state(state, enter, ())
     if self.python_version[0] == 2:
       state = self.push_block(state, "with", op.target)
     else:
@@ -1624,7 +1606,7 @@ class VirtualMachine(object):
       v = self.convert.build_none(state.node)
       w = self.convert.build_none(state.node)
     state, suppress_exception = self.call_function_with_state(
-        state, exit_func, [u, v, w])
+        state, exit_func, (u, v, w))
     log.info("u is None: %r", self.is_none(u))
     err = (not self.is_none(u)) and bool(suppress_exception)
     if err:
@@ -1743,15 +1725,15 @@ class VirtualMachine(object):
     return state.push(fn)
 
   def byte_CALL_FUNCTION(self, state, op):
-    return self.call_function_from_stack(state, op.arg, [])
+    return self.call_function_from_stack(state, op.arg, None, None)
 
   def byte_CALL_FUNCTION_VAR(self, state, op):
     state, args = self.pop_varargs(state)
-    return self.call_function_from_stack(state, op.arg, args)
+    return self.call_function_from_stack(state, op.arg, args, None)
 
   def byte_CALL_FUNCTION_KW(self, state, op):
     state, kwargs = self.pop_kwargs(state)
-    return self.call_function_from_stack(state, op.arg, [], kwargs)
+    return self.call_function_from_stack(state, op.arg, None, kwargs)
 
   def byte_CALL_FUNCTION_VAR_KW(self, state, op):
     state, kwargs = self.pop_kwargs(state)

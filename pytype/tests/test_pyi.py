@@ -433,6 +433,32 @@ def process_function(func: Callable[..., Any]) -> None: ...
         p = ...  # type: Any
       """)
 
+  def testStarArgs(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        K = TypeVar("K")
+        V = TypeVar("V")
+        def foo(a: K, *b, c: V, **d) -> Dict[K, V]: ...
+      """)
+      ty, errors = self.InferAndCheck("""\
+        import foo
+        a = foo.foo(*tuple(), **dict())
+        b = foo.foo(*(1,), **{"c": 3j})
+        c = foo.foo(*(1,))
+        d = foo.foo(*(), **{"d": 3j})
+      """, solve_unknowns=False, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        foo = ...  # type: module
+        a = ...  # type: Dict[Any, Any]
+        b = ...  # type: Dict[int, complex]
+        c = ...  # type: Any
+        d = ...  # type: Any
+      """)
+      self.assertErrorLogIs(errors, [
+          (4, "missing-parameter", r"\bc\b"),
+          (5, "missing-parameter", r"\ba\b"),
+      ])
+
 
 if __name__ == "__main__":
   test_inference.main()

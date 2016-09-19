@@ -113,7 +113,7 @@ class CallTracer(vm.VirtualMachine):
       starstarargs = self.create_kwargs(node) if method.has_kwargs() else None
       fvar = val.AssignToNewVariable("f", node)
       new_node, _ = self.call_function_in_frame(
-          node, fvar, args, kws, starargs, starstarargs)
+          node, fvar, tuple(args), kws, starargs, starstarargs)
       new_node.ConnectTo(node)
       node = new_node
     return node
@@ -352,8 +352,8 @@ class CallTracer(vm.VirtualMachine):
   def _check_function(self, pytd_function, f, node, skip_self=False):
     """Check that a function or method is compatible with its PYTD."""
     for sig in pytd_function.signatures:
-      args = [self._create_call_arg(p.name, p.type, node)
-              for p in sig.params[(1 if skip_self else 0):]]
+      args = tuple(self._create_call_arg(p.name, p.type, node)
+                   for p in sig.params[(1 if skip_self else 0):])
       nominal_return = self.convert.convert_constant_to_value(
           "ret", sig.return_type, subst={}, node=self.root_cfg_node)
       for val in f.bindings:
