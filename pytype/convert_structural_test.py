@@ -322,9 +322,9 @@ class MatchTest(unittest.TestCase):
       class `~unknown4`(object):
         def f(self, x:int) -> int
     """)
-    self.assertItemsEqual(["A"], mapping["~unknown1"])
-    self.assertItemsEqual(["B"], mapping["~unknown2"])
-    self.assertItemsEqual(["C"], mapping["~unknown3"])
+    self.assertItemsEqual(["A", "B", "C", "D"], mapping["~unknown1"])
+    self.assertItemsEqual(["B", "D"], mapping["~unknown2"])
+    self.assertItemsEqual(["C", "D"], mapping["~unknown3"])
     self.assertItemsEqual(["D"], mapping["~unknown4"])
 
   def test_unknown(self):

@@ -499,9 +499,27 @@ class AtomicAbstractValue(object):
 class Empty(AtomicAbstractValue):
   """An empty value.
 
-  Typically used to represent empty type parameters. These values are created
-  not only when a container is empty but also when we have no information about
-  the contents, so we need to support get_attribute, etc.
+  These values represent items extracted from empty containers. Because of false
+  positives in flagging containers as empty (consider:
+    x = []
+    def initialize():
+      populate(x)
+    def f():
+      iterate(x)
+  ), we treat these values as placeholders that we can do anything with, similar
+  to Unsolvable, with the difference that they eventually convert to
+  NothingType so that cases in which they are truly empty are discarded (see:
+    x = ...  # type: List[nothing] or Dict[int, str]
+    y = [i for i in x]  # The type of i is int; y is List[int]
+  ). On the other hand, if Empty is the sole type candidate, we assume that the
+  container was populated elsewhere:
+    x = []
+    def initialize():
+      populate(x)
+    def f():
+      return x[0]  # Oops! The return type should be Any rather than nothing.
+  The nothing -> anything conversion happens in InterpreterFunction.to_pytd_def
+  and infer.CallTracer.pytd_for_types.
   """
 
   def __init__(self, vm):
@@ -511,11 +529,10 @@ class Empty(AtomicAbstractValue):
     return pytd.NothingType()
 
   def get_instance_type(self, node, instance=None, seen=None):
-    raise NotImplementedError
+    return pytd.AnythingType()
 
   def match_against_type(self, other_type, subst, node, view):
-    if isinstance(other_type, Empty):
-      return subst
+    return other_type.match_instance(self, subst, node, view)
 
   def get_attribute(self, node, name, valself=None, valcls=None,
                     condition=None):
@@ -523,6 +540,14 @@ class Empty(AtomicAbstractValue):
 
   def set_attribute(self, node, name, value):
     return node
+
+  def call(self, node, func, args):
+    del func, args
+    return node, self.vm.convert.unsolvable.to_variable(node, self.name)
+
+  def get_class(self):
+    return self.vm.convert.unsolvable.to_variable(
+        self.vm.root_cfg_node, self.name)
 
 
 class PythonConstant(object):
@@ -2693,7 +2718,7 @@ class InterpreterFunction(Function):
       # and we can transverse the function deeper.
       if (all(x == self.vm.convert.unsolvable for x in old_ret.data) and
           self.vm.remaining_depth() > old_remaining_depth):
-        log.info("Renalyzing %r because all of its call record's bindings are "
+        log.info("Reanalyzing %r because all of its call record's bindings are "
                  "Unsolvable; remaining_depth = %d,"
                  "record remaining_depth = %d",
                  self.name, self.vm.remaining_depth(), old_remaining_depth)

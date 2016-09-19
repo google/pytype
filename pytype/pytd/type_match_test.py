@@ -71,11 +71,31 @@ class TestTypeMatch(unittest.TestCase):
     self.assertNoMatch(m, pytd.AnythingType(), pytd.NamedType("x"))
     self.assertMatch(m, pytd.NamedType("x"), pytd.AnythingType())
 
-  def testNothing(self):
+  def testNothingLeft(self):
     m = type_match.TypeMatch({})
     eq = m.match_type_against_type(pytd.NothingType(),
                                    pytd.NamedType("A"), {})
+    self.assertEquals(eq, booleq.TRUE)
+
+  def testNothingRight(self):
+    m = type_match.TypeMatch({})
+    eq = m.match_type_against_type(pytd.NamedType("A"), pytd.NothingType(), {})
     self.assertEquals(eq, booleq.FALSE)
+
+  def testNothingNothing(self):
+    m = type_match.TypeMatch({})
+    eq = m.match_type_against_type(pytd.NothingType(), pytd.NothingType(), {})
+    self.assertEquals(eq, booleq.TRUE)
+
+  def testNothingAnything(self):
+    m = type_match.TypeMatch({})
+    eq = m.match_type_against_type(pytd.NothingType(), pytd.AnythingType(), {})
+    self.assertEquals(eq, booleq.TRUE)
+
+  def testAnythingNothing(self):
+    m = type_match.TypeMatch({})
+    eq = m.match_type_against_type(pytd.AnythingType(), pytd.NothingType(), {})
+    self.assertEquals(eq, booleq.TRUE)
 
   def testNamed(self):
     m = type_match.TypeMatch({})

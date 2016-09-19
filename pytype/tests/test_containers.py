@@ -607,6 +607,87 @@ class ContainerTest(test_inference.InferenceTest):
         y = ...  # type: Any
       """)
 
+  def testIteratePyiListUnion(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        lst1 = ...  # type: List[nothing] or Set[int]
+      """)
+      ty = self.Infer("""
+        import a
+        lst2 = [x for x in a.lst1]
+      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        lst2 = ...  # type: List[int]
+        x = ...  # type: int
+      """)
+
+  def testCallEmpty(self):
+    ty = self.Infer("""
+      empty = []
+      y = [x() for x in empty]
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      empty = ...  # type: List[nothing]
+      y = ...  # type: list
+      x = ...  # type: Any
+    """)
+
+  def testBranchEmpty(self):
+    ty = self.Infer("""
+      empty = []
+      def f(x):
+        if x:
+          return 3
+        else:
+          return "foo"
+      y = [f(x) for x in empty]
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      empty = ...  # type: List[nothing]
+      def f(x) -> int or str
+      y = ...  # type: List[int or str]
+      x = ...  # type: Any
+    """)
+
+  def testConstructorEmpty(self):
+    ty = self.Infer("""
+      empty = []
+      y = [list(x) for x in empty]
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      empty = ...  # type: List[nothing]
+      y = ...  # type: List[list]
+      x = ...  # type: Any
+    """)
+
+  def testIsInstanceEmpty(self):
+    ty = self.Infer("""
+      empty = []
+      y = [isinstance(x, int) for x in empty]
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      empty = ...  # type: List[nothing]
+      y = ...  # type: List[bool]
+      x = ...  # type: Any
+    """)
+
+  def testInnerClassEmpty(self):
+    ty = self.Infer("""
+      empty = []
+      def f(x):
+        class X(x):
+          pass
+        return {X: X()}
+      y = [f(x) for x in empty]
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      empty = ...  # type: List[nothing]
+      def f(x) -> Dict[type, Any]
+      y = ...  # type: List[Dict[type, Any]]
+      x = ...  # type: Any
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

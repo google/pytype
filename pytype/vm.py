@@ -375,7 +375,8 @@ class VirtualMachine(object):
     for base in bases:
       if not any(isinstance(t, (abstract.Class,
                                 abstract.Unknown,
-                                abstract.Unsolvable))
+                                abstract.Unsolvable,
+                                abstract.Empty))
                  for t in base.data):
         self.errorlog.base_class_error(self.frame.current_opcode, node, base)
     if not bases:

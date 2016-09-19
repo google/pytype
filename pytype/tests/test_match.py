@@ -87,6 +87,17 @@ class MatchTest(test_inference.InferenceTest):
         x = ...  # type: str
       """)
 
+  def testEmpty(self):
+    ty = self.Infer("""
+      a = []
+      b = ["%d" % i for i in a]
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      a = ...  # type: List[nothing]
+      b = ...  # type: List[str]
+      i = ...  # type: Any
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

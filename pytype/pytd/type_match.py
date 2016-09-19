@@ -288,11 +288,13 @@ class TypeMatch(utils.TypeMatcher):
         return booleq.TRUE
       else:
         return booleq.FALSE
-    elif isinstance(t1, pytd.NothingType) and isinstance(t2, pytd.NothingType):
-      # nothing matches against nothing.
+    elif isinstance(t1, pytd.NothingType):
+      # nothing as an actual type matches against everything, since it
+      # represents an empty value.
       return booleq.TRUE
-    elif isinstance(t1, pytd.NothingType) or isinstance(t2, pytd.NothingType):
-      # We can't match anything against nothing. (Except nothing itself, above)
+    elif isinstance(t2, pytd.NothingType):
+      # We can't match anything against nothing as an expected type (except
+      # nothing itself, above).
       return booleq.FALSE
     elif isinstance(t1, pytd.UnionType):
       return booleq.And(self.match_type_against_type(u, t2, subst)
