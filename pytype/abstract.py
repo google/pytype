@@ -1315,6 +1315,21 @@ class SuperInstance(AtomicAbstractValue):
       return node, self.super_cls.lookup_from_mro(
           node, name, valself, valcls, skip=self.super_cls)
 
+  def to_type(self, node, seen=None):
+    return pytd.NamedType("__builtin__.super")
+
+  def get_class(self):
+    return self.cls
+
+  def match_against_type(self, other_type, subst, node, view):
+    return self.super_cls.match_instance_against_type(
+        self.super_obj, other_type, subst, node, view)
+
+  def call(self, node, _, args):
+    self.vm.errorlog.not_callable(
+        self.vm.frame.current_opcode, self)
+    return node, Unsolvable(self.vm).to_variable(node)
+
 
 class Super(AtomicAbstractValue):
   """The super() function. Calling it will create a SuperInstance."""
