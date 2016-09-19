@@ -240,6 +240,22 @@ class FlowTest(test_inference.InferenceTest):
         x.foo()
     """)
 
+  def test_return_after_loop(self):
+    ty = self.Infer("""
+      def f():
+        x = g()
+        return x
+
+      def g():
+        while True:
+          pass
+        return 42
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      def f() -> Any
+      def g() -> Any
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

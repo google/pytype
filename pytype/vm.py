@@ -197,8 +197,11 @@ class VirtualMachine(object):
       # Happens if all the function does is to throw an exception.
       # (E.g. "def f(): raise NoImplemented")
       # TODO(kramm): Return the exceptions, too.
-      return node, frame.return_variable
-    return self.join_cfg_nodes(return_nodes), frame.return_variable
+      assert not frame.return_variable.bindings
+      frame.return_variable.AddBinding(self.convert.unsolvable, [], node)
+    else:
+      node = self.join_cfg_nodes(return_nodes)
+    return node, frame.return_variable
 
   reversable_operators = set([
       "__add__", "__sub__", "__mul__",
