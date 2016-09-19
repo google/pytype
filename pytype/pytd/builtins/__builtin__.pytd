@@ -135,6 +135,8 @@ class object():
     __name__ = ...  # type: str
     __subclasses__ = ...  # type: Any
     __subclasshook__ = ...  # type: Any
+    # InterpreterClass will contain this, too:
+    __module__ = ...  # type: str
     def __init__(self) -> NoneType
     def __sizeof__(self) -> int
     def __str__(self) -> str
