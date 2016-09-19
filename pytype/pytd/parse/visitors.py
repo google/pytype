@@ -46,7 +46,6 @@ class Visitor(object):
   """Base class for visitors.
 
   Attributes:
-    enters_all_node_types: Whether the visitor can enter every node type.
     visits_all_node_types: Whether the visitor can visit every node type.
     unchecked_node_names: Contains the names of node classes that are unchecked
       when constructing a new node from visited children.  This is useful
@@ -59,7 +58,6 @@ class Visitor(object):
     leave_functions: A dictionary mapping node class names to the
       corresponding Leave functions.
   """
-  enters_all_node_types = False
   visits_all_node_types = False
   unchecked_node_names = set()
 
@@ -424,10 +422,6 @@ class PrintVisitor(Visitor):
     # here so that booleq.py can use pytd.Print().
     return self.VisitNamedType(node)
 
-  def VisitNativeType(self, node):
-    """Convert a native type to a string."""
-    return self._SafeName(node.python_type.__name__)
-
   def VisitFunctionType(self, unused_node):
     """Convert a function type to a string."""
     self._RequireTypingImport("Callable")
@@ -490,10 +484,6 @@ class PrintVisitor(Visitor):
     else:
       self._RequireTypingImport("Union")
       return "Union[" + ", ".join(type_list) + "]"
-
-  def VisitIntersectionType(self, node):
-    """Convert an intersection type ("x and y") to a string."""
-    return " and ".join(node.type_list)
 
 
 class StripSelf(Visitor):
@@ -1151,111 +1141,28 @@ class RaiseIfContainsUnknown(Visitor):
 class VerifyVisitor(Visitor):
   """Visitor for verifying pytd ASTs. For tests."""
 
-  enters_all_node_types = True
-
   def __init__(self):
     super(VerifyVisitor, self).__init__()
     self._valid_param_name = re.compile(r"[a-zA-Z_]\w*$")
 
   def Enter(self, node):
-    # TODO(dbaum): Most of the EnterX methods are now redundant with the
-    # node.Validate() check that uses preconditions.  Consider removing them.
     super(VerifyVisitor, self).Enter(node)
     node.Validate()
 
-  def EnterTypeDeclUnit(self, node):
-    assert isinstance(node.constants, (list, tuple)), node
-    assert all(isinstance(c, pytd.Constant) for c in node.constants)
-    assert isinstance(node.functions, (list, tuple)), node
-    assert all(isinstance(f, pytd.Function) for f in node.functions)
-    assert isinstance(node.classes, (list, tuple)), node
-    assert all(isinstance(cls, pytd.Class) for cls in node.classes)
-
-  def EnterConstant(self, node):
-    assert isinstance(node.name, str), node
-    assert isinstance(node.type, pytd.TYPE), node
-
-  def EnterAlias(self, node):
-    assert isinstance(node.name, str), node
-    assert isinstance(node.type, pytd.TYPE), node
-
-  def EnterClass(self, node):
-    assert isinstance(node.parents, tuple), node
-    assert all(isinstance(p, pytd.TYPE) for p in node.parents), node.parents
-    assert isinstance(node.methods, tuple), node
-    assert all(isinstance(f, pytd.Function) for f in node.methods)
-    assert isinstance(node.constants, tuple), node
-    assert all(isinstance(c, pytd.Constant) for c in node.constants)
-    assert isinstance(node.template, tuple), node.template
-    assert all(isinstance(t, pytd.TemplateItem) for t in node.template)
-
   def EnterFunction(self, node):
-    assert isinstance(node.name, str), node
     assert node.signatures, node
-    assert isinstance(node.signatures, tuple), node
-    assert all(isinstance(sig, pytd.Signature) for sig in node.signatures)
 
   def EnterExternalFunction(self, node):
-    assert isinstance(node.name, str), node
     assert node.signatures == (), node  # pylint: disable=g-explicit-bool-comparison
 
   def EnterSignature(self, node):
-    assert isinstance(node.params, tuple), node
-    assert all(isinstance(p, pytd.Parameter) for p in node.params)
-    assert isinstance(node.return_type, pytd.TYPE), type(node.return_type)
-    assert isinstance(node.exceptions, tuple), node
-    assert all(isinstance(e, pytd.TYPE) for e in node.exceptions)
-    assert isinstance(node.template, tuple), node
-    assert all(isinstance(t, pytd.TemplateItem) for t in node.template)
     assert isinstance(node.has_optional, bool), node
 
   def EnterParameter(self, node):
-    assert isinstance(node.name, str), node
     assert self._valid_param_name.match(node.name), node.name
-    assert isinstance(node.type, pytd.TYPE), node
-
-  def EnterTemplateItem(self, node):
-    assert isinstance(node.type_param, pytd.TypeParameter), node
-
-  def EnterNamedType(self, node):
-    assert isinstance(node.name, str), node
-
-  def EnterNativeType(self, node):
-    assert isinstance(node.python_type, type), node
-
-  def EnterAnythingType(self, unused_node):
-    pass
-
-  def EnterNothingType(self, unused_node):
-    pass
-
-  def EnterClassType(self, node):
-    assert isinstance(node.name, str), node
-
-  def EnterTypeParameter(self, node):
-    assert isinstance(node.name, str), node
 
   def EnterHomogeneousContainerType(self, node):
-    assert isinstance(node.base_type, pytd.GENERIC_BASE_TYPE), node
-    assert isinstance(node.parameters, tuple), node
     assert len(node.parameters) == 1, node
-    assert all(isinstance(p, pytd.TYPE) for p in node.parameters), node
-
-  def EnterGenericType(self, node):
-    assert isinstance(node.base_type, pytd.GENERIC_BASE_TYPE), node
-    assert isinstance(node.parameters, tuple), node
-    assert all(isinstance(p, pytd.TYPE) for p in node.parameters), node
-
-  def EnterUnionType(self, node):
-    assert isinstance(node.type_list, tuple), node
-    assert all(isinstance(t, pytd.TYPE) for t in node.type_list), node
-
-  def EnterIntersectionType(self, node):
-    assert isinstance(node.type_list, tuple), node
-    assert all(isinstance(t, pytd.TYPE) for t in node.type_list), node
-
-  def EnterScalar(self, node):
-    pass
 
 
 class CanonicalOrderingVisitor(Visitor):
@@ -1299,9 +1206,6 @@ class CanonicalOrderingVisitor(Visitor):
 
   def VisitUnionType(self, node):
     return pytd.UnionType(tuple(sorted(node.type_list)))
-
-  def VisitIntersectionType(self, node):
-    return pytd.IntersectionType(tuple(sorted(node.type_list)))
 
 
 class RemoveFunctionsAndClasses(Visitor):
@@ -1657,17 +1561,16 @@ class VerifyContainers(Visitor):
           return True
     return False
 
-  def VisitGenericType(self, node):
+  def EnterGenericType(self, node):
     if not self._IsContainer(node.base_type.cls):
       raise ContainerError("Class %s is not a container" % node.base_type.name)
     elif node.base_type.name == "typing.Generic":
       for t in node.parameters:
         if not isinstance(t, pytd.TypeParameter):
           raise ContainerError("Name %s must be defined as a TypeVar" % t.name)
-    return node
 
-  def VisitHomogeneousContainerType(self, node):
-    return self.VisitGenericType(node)
+  def EnterHomogeneousContainerType(self, node):
+    self.EnterGenericType(node)
 
 
 class ExpandCompatibleBuiltins(Visitor):

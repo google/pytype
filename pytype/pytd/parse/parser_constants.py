@@ -5,7 +5,6 @@ import re
 
 # PyTD keywords
 RESERVED = [
-    'and',
     'class',
     'def',
     'else',
@@ -28,6 +27,7 @@ RESERVED = [
 
 RESERVED_PYTHON = [
     # Python keywords that aren't used by PyTD:
+    'and',
     'assert',
     'break',
     'continue',

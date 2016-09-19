@@ -438,7 +438,6 @@ class _TypeDeclParser(object):
 
   precedence = (
       ("left", "OR"),
-      ("left", "AND"),
       ("left", "COMMA"),
   )
 
@@ -1262,15 +1261,6 @@ class _TypeDeclParser(object):
   def p_maybe_type_list_0(self, p):
     """maybe_type_list : """
     p[0] = []
-
-  def p_type_and(self, p):
-    """type : type AND type"""
-    # TODO(kramm): Unless we bring interfaces back, it's not clear when
-    #              "type1 and type2" would be useful for anything. We
-    #              should remove it.
-    # This rule depends on precedence specification
-    # IntersectionType flattens any contained IntersectinType's
-    p[0] = pytd.IntersectionType((p[1], p[3]))
 
   def p_type_or(self, p):
     """type : type OR type"""

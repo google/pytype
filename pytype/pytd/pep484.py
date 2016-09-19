@@ -136,10 +136,6 @@ class Print484StubVisitor(visitors.Visitor):
     """Convert a type to a string."""
     return self._SafeName(node.name)
 
-  def VisitNativeType(self, node):
-    """Convert a native type to a string."""
-    return self._SafeName(node.python_type.__name__)
-
   def VisitAnythingType(self, unused_node):
     """Convert an anything type to a string."""
     return "Any"

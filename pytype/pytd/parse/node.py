@@ -279,8 +279,7 @@ def _VisitNode(node, visitor, *args, **kwargs):
     return node.Visit(visitor, *args, **kwargs)
 
   node_class_name = node_class.__name__
-  if (visitor.enters_all_node_types or
-      node_class_name in visitor.enter_functions):
+  if node_class_name in visitor.enter_functions:
     # The visitor wants to be informed that we're descending into this part
     # of the tree.
     status = visitor.Enter(node, *args, **kwargs)

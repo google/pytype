@@ -287,21 +287,17 @@ class TemplateItem(node.Node('type_param: TypeParameter')):
 # Types can be:
 # 1.) NamedType:
 #     Specifies a type or import by name.
-# 2.) NativeType
-#     Points to a Python type. (int, float etc.)
-# 3.) ClassType
+# 2.) ClassType
 #     Points back to a Class in the AST. (This makes the AST circular)
-# 4.) GenericType
+# 3.) GenericType
 #     Contains a base type and parameters.
-# 5.) UnionType / IntersectionType
+# 4.) UnionType
 #     Can be multiple types at once.
-# 6.) NothingType / AnythingType
+# 5.) NothingType / AnythingType
 #     Special purpose types that represent nothing or everything.
-# 7.) TypeParameter
+# 6.) TypeParameter
 #     A placeholder for a type.
-# 8.) Scalar
-#     A singleton type. Not currently used, but supported by the parser.
-# For 1-3, the file visitors.py contains tools for converting between the
+# For 1 and 2, the file visitors.py contains tools for converting between the
 # corresponding AST representations.
 
 
@@ -311,14 +307,6 @@ class NamedType(node.Node('name: str'), Type):
 
   def __str__(self):
     return self.name
-
-
-class NativeType(node.Node('python_type'), Type):
-  """DEPRECATED; Please use NamedType instead.
-
-  A type specified by a native Python type. Used during runtime checking.
-  """
-  __slots__ = ()
 
 
 class ClassType(node.Node('name: str'), Type):
@@ -372,11 +360,6 @@ class NothingType(node.Node(), Type):
   __slots__ = ()
 
 
-# TODO(dbaum): Remove Scalar, only used in tests.
-class Scalar(node.Node('value'), Type):
-  __slots__ = ()
-
-
 class UnionType(node.Node('type_list: tuple[{Type}]'), Type):
   """A union type that contains all types in self.type_list."""
   __slots__ = ()
@@ -404,38 +387,6 @@ class UnionType(node.Node('type_list: tuple[{Type}]'), Type):
     if self is other:
       return True
     if isinstance(other, UnionType):
-      # equality doesn't care about the ordering of the type_list
-      return frozenset(self.type_list) == frozenset(other.type_list)
-    return NotImplemented
-
-  def __ne__(self, other):
-    return not self == other
-
-
-# TODO(kramm): Do we still need this?
-class IntersectionType(node.Node('type_list: tuple[{Type}]'), Type):
-  """An intersection type that contains all types in self.type_list."""
-  __slots__ = ()
-
-  # NOTE: type_list is kept as a tuple, to preserve the original order
-  #       even though in most respects it acts like a frozenset.
-  #       It also flattens the input, such that printing without
-  #       parentheses gives the same result.
-
-  def __new__(cls, type_list):
-    flattened = itertools.chain.from_iterable(
-        t.type_list if isinstance(t, IntersectionType) else [t]
-        for t in type_list)
-    return super(IntersectionType, cls).__new__(cls, tuple(flattened))
-
-  def __hash__(self):
-    # See __eq__ - order doesn't matter, so use frozenset
-    return hash(frozenset(self.type_list))
-
-  def __eq__(self, other):
-    if self is other:
-      return True
-    if isinstance(other, IntersectionType):
       # equality doesn't care about the ordering of the type_list
       return frozenset(self.type_list) == frozenset(other.type_list)
     return NotImplemented
@@ -474,9 +425,8 @@ class HomogeneousContainerType(GenericType):
 # the only difference is that FunctionType is a Type, but not in TYPE.
 
 # So we can do "isinstance(node, pytd.TYPE)":
-TYPE = (NamedType, NativeType, ClassType, AnythingType, UnionType,
-        NothingType, GenericType, TypeParameter, Scalar,
-        IntersectionType)
+TYPE = (NamedType, ClassType, AnythingType, UnionType, NothingType,
+        GenericType, TypeParameter)
 
 # Types that can be a base type of GenericType:
 GENERIC_BASE_TYPE = (NamedType, ClassType)

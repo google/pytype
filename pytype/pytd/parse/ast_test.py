@@ -1018,54 +1018,25 @@ class TestASTGeneration(parser_test_base.ParserTest):
     """Test parsing of a function with unions, none-able etc."""
 
     canonical = textwrap.dedent("""
-        def foo(a: int, b: float or None, c: Foo and `s`.`Bar` and Zot) -> int raises Bad
+        def foo(a: int, b: float or None, c: Foo or `s`.`Bar` or Zot) -> int raises Bad
     """)
     data1 = textwrap.dedent("""
-        def foo(a: int, b: int or float or None, c: Foo and s.Bar and Zot) -> int raises Bad
+        def foo(a: int, b: int or float or None, c: Foo or s.Bar or Zot) -> int raises Bad
     """)
     data2 = textwrap.dedent("""
-        def foo(a: int, b: int or (float or None), c: Foo and (s.Bar and Zot)) -> int raises Bad
+        def foo(a: int, b: int or (float or None), c: Foo or (s.Bar or Zot)) -> int raises Bad
     """)
     data3 = textwrap.dedent("""
-        def foo(a: int, b: (int or float) or None, c: (Foo and s.Bar) and Zot) -> int raises Bad
+        def foo(a: int, b: (int or float) or None, c: (Foo or s.Bar) or Zot) -> int raises Bad
     """)
     data4 = textwrap.dedent("""
-        def foo(a: int, b: ((((int or float)) or ((None)))), c: (((Foo) and s.Bar and (Zot)))) -> int raises Bad
+        def foo(a: int, b: ((((int or float)) or ((None)))), c: (((Foo) or s.Bar or (Zot)))) -> int raises Bad
     """)
 
     self.TestRoundTrip(data1, canonical, check_the_sourcecode=False)
     self.TestRoundTrip(data2, canonical, check_the_sourcecode=False)
     self.TestRoundTrip(data3, canonical, check_the_sourcecode=False)
     self.TestRoundTrip(data4, canonical, check_the_sourcecode=False)
-
-  def testComplexCombinedType(self):
-    """Test parsing a type with both union and intersection."""
-
-    data1 = r"def foo(a: Foo or Bar and Zot) -> object: ..."
-    data2 = r"def foo(a: Foo or (Bar and Zot)) -> object: ..."
-    result1 = self.Parse(data1)
-    result2 = self.Parse(data2)
-    f = pytd.Function(
-        name="foo",
-        signatures=(pytd.Signature(
-            params=(
-                pytd.Parameter(
-                    name="a",
-                    type=pytd.UnionType(
-                        type_list=(
-                            pytd.NamedType("Foo"),
-                            pytd.IntersectionType(
-                                type_list=(
-                                    pytd.NamedType("Bar"),
-                                    pytd.NamedType("Zot"))))
-                    ), kwonly=False, optional=False, mutated_type=None
-                ),),
-            starargs=None, starstarargs=None,
-            return_type=pytd.NamedType("object"),
-            template=(), exceptions=()),),
-        kind=pytd.METHOD)
-    self.assertEqual(f, result1.Lookup("foo"))
-    self.assertEqual(f, result2.Lookup("foo"))
 
   def testNoReturnType(self):
     """Test a parsing error (no return type)."""
@@ -1585,19 +1556,19 @@ class TestDecorate(unittest.TestCase):
       def Test1(self):
         pass
 
-    # Change pytd.Scalar to also have a method called "Test2"
+    # Change pytd.Constant to also have a method called "Test2"
     @decorator  # pylint: disable=unused-variable
-    class Scalar(pytd.Scalar):
+    class Constant(pytd.Constant):
 
       def Test2(self):
         pass
 
-    tree = pytd.Scalar(pytd.NamedType("test"))
+    tree = pytd.Constant("test", pytd.NamedType("test"))
     tree = decorator.Visit(tree)
-    # test that we now have the "test2" method on pytd.Scalar
+    # test that we now have the "test2" method on pytd.Constant
     tree.Test2()
     # test that we now have the "test1" method on pytd.NamedType
-    tree.value.Test1()
+    tree.type.Test1()
 
   def testDecoratorWithUndecoratedNodeType(self):
     decorator = decorate.Decorator()
@@ -1609,11 +1580,11 @@ class TestDecorate(unittest.TestCase):
       def Test(self):
         pass
 
-    tree = pytd.Scalar(pytd.NamedType("test"))
-    # test that we don't crash on encountering pytd.Scalar
+    tree = pytd.Constant("test", pytd.NamedType("test"))
+    # test that we don't crash on encountering pytd.Constant
     tree = decorator.Visit(tree)
     # test that we now have the "test" method on pytd.NamedType
-    tree.value.Test()
+    tree.type.Test()
 
 
 if __name__ == "__main__":
