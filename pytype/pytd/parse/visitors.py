@@ -140,6 +140,7 @@ class PrintVisitor(Visitor):
     self.class_names = []  # allow nested classes
     self.imports = collections.defaultdict(set)
     self.in_alias = False
+    self.in_parameter = False
     self._local_names = set()
     self._class_members = set()
 
@@ -369,6 +370,14 @@ class PrintVisitor(Visitor):
         params=", ".join(params),
         ret=ret, exc=exc, body=body)
 
+  def EnterParameter(self, unused_node):
+    assert not self.in_parameter
+    self.in_parameter = True
+
+  def LeaveParameter(self, unused_node):
+    assert self.in_parameter
+    self.in_parameter = False
+
   def VisitParameter(self, node):
     """Convert a function parameter to a string."""
     suffix = " = ..." if node.optional else ""
@@ -464,12 +473,23 @@ class PrintVisitor(Visitor):
 
   def VisitUnionType(self, node):
     """Convert a union type ("x or y") to a string."""
-    if len(node.type_list) == 1:
-      # TODO(kramm): Why doesn't the optimizer do this?
-      return node.type_list[0]
+    if self.in_parameter:
+      # Parameter's union types are merged after as a follow up to the
+      # ExpandCompatibleBuiltins visitor.
+      type_list = collections.OrderedDict.fromkeys(node.type_list)
+      if "int" in type_list and "float" in type_list:
+        del type_list["int"]
+      if "unicode" in type_list and "str" in type_list:
+        del type_list["str"]
+      type_list = tuple(type_list)
+    else:
+      type_list = node.type_list
+
+    if len(type_list) == 1:
+      return type_list[0]
     else:
       self._RequireTypingImport("Union")
-      return "Union[" + ", ".join(node.type_list) + "]"
+      return "Union[" + ", ".join(type_list) + "]"
 
   def VisitIntersectionType(self, node):
     """Convert an intersection type ("x and y") to a string."""

@@ -656,10 +656,10 @@ class TestASTGeneration(parser_test_base.ParserTest):
     """Test parsing of *args, **kwargs with types."""
     src = textwrap.dedent("""
         def f(x, *args: int) -> None: ...
-        def g(x, *args: int or float, **kwargs: str) -> None: ...
+        def g(x, *args: int or str, **kwargs: str) -> None: ...
         def h(x, **kwargs: Optional[int]) -> None: ...
         """)
-    self.TestRoundTrip(src, check_the_sourcecode=False)
+    self.TestRoundTrip(src, src, check_the_sourcecode=False)
 
   def testConstants(self):
     """Test parsing of constants."""
@@ -690,13 +690,14 @@ class TestASTGeneration(parser_test_base.ParserTest):
         b = ...  # type: int or float or complex
         c = ...  # type: typing.Union[int, float, complex]
     """)
-    self.TestRoundTrip(src, textwrap.dedent("""
+    expected = textwrap.dedent("""
         from typing import Union
 
         a = ...  # type: Union[int, float]
         b = ...  # type: Union[int, float, complex]
         c = ...  # type: Union[int, float, complex]
-    """))
+    """)
+    self.TestRoundTrip(src, expected)
 
   def testAnythingType(self):
     """Test parsing of Any."""
@@ -741,7 +742,11 @@ class TestASTGeneration(parser_test_base.ParserTest):
     src = textwrap.dedent("""
         def foo(a: Union[int, float], c: bool) -> List[int] raises Foo, Test: ...
     """)
-    expected = "from typing import List, Union\n" + src
+    expected = textwrap.dedent("""
+        from typing import List
+
+        def foo(a: float, c: bool) -> List[int] raises Foo, Test: ...
+    """)
     self.TestRoundTrip(src, expected)
 
   def testPass(self):
@@ -1013,7 +1018,7 @@ class TestASTGeneration(parser_test_base.ParserTest):
     """Test parsing of a function with unions, none-able etc."""
 
     canonical = textwrap.dedent("""
-        def foo(a: int, b: int or float or None, c: Foo and `s`.`Bar` and Zot) -> int raises Bad
+        def foo(a: int, b: float or None, c: Foo and `s`.`Bar` and Zot) -> int raises Bad
     """)
     data1 = textwrap.dedent("""
         def foo(a: int, b: int or float or None, c: Foo and s.Bar and Zot) -> int raises Bad

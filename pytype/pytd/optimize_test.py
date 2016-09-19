@@ -65,7 +65,7 @@ class TestOptimize(parser_test_base.ParserTest):
         def foo(a: int, ...) -> int or float raises list[str]
     """)
     new_src = textwrap.dedent("""
-        def foo(a: int or float, c: bool) -> list[int] raises IndexError
+        def foo(a: float, c: bool) -> list[int] raises IndexError
         def foo(a: str, c: str) -> str
         def foo(a: int, ...) -> int or float raises list[str]
     """)
@@ -412,7 +412,7 @@ class TestOptimize(parser_test_base.ParserTest):
     """)
     new_src = textwrap.dedent("""
         def foo(a: int) -> file
-        def foo(a: int or float, x: complex or str) -> file
+        def foo(a: float, x: complex or str) -> file
         def foo(a: int, x: file, ...) -> file
     """)
     self.AssertSourceEquals(
@@ -592,11 +592,11 @@ class TestOptimize(parser_test_base.ParserTest):
         def k(x: dict[int, bool] or list[int] or dict[bool, int] or list[bool]) -> ?
     """)
     expected = textwrap.dedent("""
-        def f(x: list[int or float]) -> Any: ...
-        def g(x: list[int or float] or str or set[int] or long) -> Any: ...
-        def h(x: list[int or str] or set[int or float]) -> Any: ...
+        def f(x: list[float]) -> Any: ...
+        def g(x: list[float] or str or set[int] or long) -> Any: ...
+        def h(x: list[int or str] or set[float]) -> Any: ...
         def i(x: list[int]) -> Any: ...
-        def j(x: dict[int or float, float or int]) -> Any: ...
+        def j(x: dict[float, float]) -> Any: ...
         def k(x: dict[int or bool, bool or int] or list[int or bool]) -> Any: ...
     """)
     new_src = self.ApplyVisitorToString(src, optimize.CombineContainers())
