@@ -75,17 +75,8 @@ class TypeDeclUnit(node.Node('name: str or None',
       return self._name2item[name]
     except AttributeError:
       self._name2item = {}
-      module_name, _, _ = name.rpartition('.')
-      if module_name == self.name:
-        # The names in this module are fully qualified
-        prefix = self.name + '.'
-      else:
-        prefix = ''
       for x in self.type_params:
-        # There are hard-coded type parameters in the code (e.g., T for
-        # sequences), so the module prefix must be added here rather than
-        # directly to the parameter names.
-        self._name2item[prefix + x.name] = x
+        self._name2item[x.full_name] = x
       for x in self.constants + self.functions + self.classes + self.aliases:
         if x.name in self._name2item:
           raise AttributeError(
@@ -260,6 +251,13 @@ class TypeParameter(node.Node('name: str', 'scope: str or None'), Type):
       bound to. E.g. "mymodule.MyClass.mymethod", or None.
   """
   __slots__ = ()
+
+  @property
+  def full_name(self):
+    # There are hard-coded type parameters in the code (e.g., T for sequences),
+    # so the full name cannot be stored directly in self.name. Note that "" is
+    # allowed as a module name.
+    return ('' if self.scope is None else self.scope + '.') + self.name
 
 
 class TemplateItem(node.Node('type_param: TypeParameter')):

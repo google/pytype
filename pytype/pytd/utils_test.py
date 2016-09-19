@@ -86,6 +86,15 @@ class TestUtils(parser_test_base.ParserTest):
     """)
     self.AssertSourceEquals(combined, expected)
 
+  def testConcatTypeParameters(self):
+    """Test for concatenating ASTs with type parameters."""
+    ast1 = self.Parse("""T = TypeVar("T")""", name="__builtin__")
+    ast2 = self.Parse("""T = TypeVar("T")""")
+    combined = utils.Concat(ast1, ast2)
+    self.assertEquals(combined.Lookup("__builtin__.T"),
+                      pytd.TypeParameter("T", scope="__builtin__"))
+    self.assertEquals(combined.Lookup("T"), pytd.TypeParameter("T", scope=None))
+
   def testJoinTypes(self):
     """Test that JoinTypes() does recursive flattening."""
     n1, n2, n3, n4, n5, n6 = [pytd.NamedType("n%d" % i) for i in xrange(6)]

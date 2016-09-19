@@ -1267,7 +1267,11 @@ class AddNamePrefix(Visitor):
   def VisitTypeParameter(self, node):
     if node.scope is not None:
       raise ValueError("AddNamePrefix called after AddTypeParameterScopes")
-    return node
+    # Give the type parameter the name of the module it is in as its scope.
+    # Module-level type parameters will keep this scope, but others will get a
+    # more specific one in AddTypeParameterScopes. The last character in the
+    # prefix is the dot appended by EnterTypeDeclUnit, so omit that.
+    return node.Replace(scope=self.prefix[:-1])
 
   def _VisitNamedNode(self, node):
     if self.cls:
@@ -1514,23 +1518,20 @@ class AddTypeParameterScopes(Visitor):
   def _GetScope(self, name):
     if name in self.bound_by_class:
       return self.class_name
-    s = self._GetFullName(self.function_name)
-    if s:
-      return s
-    else:
-      # This is a top-level type parameter (TypeDeclUnit.type_params).
-      # Leave it as 'None'.
-      return None
+    return self._GetFullName(self.function_name)
 
   def VisitTypeParameter(self, node):
     if self.constant_name and (not self.class_name or
                                node.name not in self.bound_by_class):
       raise ContainerError("Unbound type parameter %s in %s" % (
           node.name, self._GetFullName(self.constant_name)))
-    if node.scope is not None:
-      assert node.scope == self._GetScope(node.name)
+    scope = self._GetScope(node.name)
+    if scope:
+      return node.Replace(scope=scope)
+    else:
+      # This is a top-level type parameter (TypeDeclUnit.type_params).
+      # AddNamePrefix gave it the right scope, so leave it alone.
       return node
-    return node.Replace(scope=self._GetScope(node.name))
 
 
 def AdjustTypeParameters(ast):
