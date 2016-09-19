@@ -467,6 +467,22 @@ class ErrorTest(test_inference.InferenceTest):
                                       r"A\.__init__"),
                                      (6, "missing-parameter", r"A\.__init__")])
 
+  def testDuplicateKeywords(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        def f(x, *args, y) -> None
+      """)
+      _, errors = self.InferAndCheck("""\
+        import foo
+        foo.f(1, y=2)
+        foo.f(1, 2, y=3)
+        foo.f(1, x=1)
+        # foo.f(y=1, y=2)  # caught by compiler
+      """, deep=True, pythonpath=[d.path], solve_unknowns=False)
+      self.assertErrorLogIs(errors, [
+          (4, "duplicate-keyword-argument"),
+      ])
+
 
 if __name__ == "__main__":
   test_inference.main()

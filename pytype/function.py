@@ -54,9 +54,9 @@ class Signature(object):
     # TODO(kramm): templates
     return cls(
         name=name,
-        param_names=tuple(p.name for p in sig.params),
+        param_names=tuple(p.name for p in sig.params if not p.kwonly),
         varargs_name="args" if sig.has_optional else None,
-        kwonly_params=set(),
+        kwonly_params=set(p.name for p in sig.params if p.kwonly),
         kwargs_name="kwargs" if sig.has_optional else None,
         defaults=[p.name
                   for p in sig.params

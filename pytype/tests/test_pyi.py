@@ -386,6 +386,53 @@ def process_function(func: Callable[..., Any]) -> None: ...
         def x() -> None: ...
       """)
 
+  def testKeywordOnlyArgs(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        def foo(x: str, *y: Any, z: complex = ...) -> int: ...
+      """)
+      ty = self.Infer("""\
+        import a
+        x = a.foo("foo %d %d", 3, 3)
+      """, deep=True, extract_locals=True, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        x = ...  # type: int
+      """)
+
+  def testSignature(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        T = TypeVar("T")
+        def get_pos(x: T, *args: int, z: int, **kws: int) -> T: ...
+        def get_kwonly(x: int, *args: int, z: T, **kws: int) -> T: ...
+        def get_varargs(x: int, *args: T, z: int, **kws: int) -> T: ...
+        def get_kwargs(x: int, *args: int, z: int, **kws: T) -> T: ...
+      """)
+      ty = self.Infer("""\
+        import a
+        k = a.get_pos("foo", 3, 4, z=5)
+        l = a.get_kwonly(3, 4, z=5j)
+        m = a.get_varargs(1, *[1j, "foo"], z=3)
+        n = a.get_kwargs(1, **dict())
+        o = a.get_varargs(1, 2j, "foo", z=5)
+        p = a.get_kwargs(1, 2, 3, z=5, u=3j)
+      """, deep=True, extract_locals=True, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        k = ...  # type: str
+        l = ...  # type: complex
+        # TODO(kramm): Fix call_function_from_stack. The below should be:
+        # m = ...  # type: Union[complex, str]
+        # n = ...  # type: complex
+        # o = ...  # type: Union[complex, str]
+        # p = ...  # type: complex
+        m = ...  # type: Any
+        n = ...  # type: Any
+        o = ...  # type: Any
+        p = ...  # type: Any
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()

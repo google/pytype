@@ -345,6 +345,17 @@ class SolverTests(test_inference.InferenceTest):
         def f() -> List[int or str]
       """)
 
+  @unittest.skip("type_match.py needs support for kwonly.")
+  def testDuplicateKeyword(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        def f(x, *args, y) -> None
+      """)
+      self.Infer("""\
+        import foo
+        foo.f(1, y=2)
+      """, pythonpath=[d.path], solve_unknowns=True)
+
 
 if __name__ == "__main__":
   test_inference.main()

@@ -690,7 +690,6 @@ class VirtualMachine(object):
         if not did_update and starstarargs is None:
           starstarargs = self.convert.create_new_unsolvable(state.node,
                                                             "**kwargs")
-
     state, posargs = state.popn(num_pos)
     posargs = list(posargs)
     if args is not None:
