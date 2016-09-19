@@ -1373,6 +1373,10 @@ class SuperInstance(AtomicAbstractValue):
 class Super(AtomicAbstractValue):
   """The super() function. Calling it will create a SuperInstance."""
 
+  # Minimal signature, only used for constructing exceptions.
+  _SIGNATURE = function.Signature(
+      "super", ("cls", "self"), None, set(), None, {}, {"return": None})
+
   def __init__(self, vm):
     super(Super, self).__init__("super", vm)
 
@@ -1386,6 +1390,8 @@ class Super(AtomicAbstractValue):
     elif len(args.posargs) == 2:
       for cls in args.posargs[0].bindings:
         for obj in args.posargs[1].bindings:
+          if not isinstance(cls.data, Class):
+            raise WrongArgTypes(self._SIGNATURE, [cls.data, obj.data])
           result.AddBinding(
               SuperInstance(cls.data, obj.data, self.vm), [cls, obj], node)
     else:

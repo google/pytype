@@ -93,6 +93,18 @@ class SuperTest(test_inference.InferenceTest):
     self.assertEquals(1, len(errorlog))
     self.assertErrorLogContains(errorlog, r"super.*\[not\-callable\]")
 
+  def testSuperType(self):
+    ty = self.Infer("""
+      class A(object):
+        pass
+      x = super(type, A)
+    """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      class A(object):
+        pass
+      x = ...  # type: super
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

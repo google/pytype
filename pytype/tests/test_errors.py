@@ -483,6 +483,30 @@ class ErrorTest(test_inference.InferenceTest):
           (4, "duplicate-keyword-argument"),
       ])
 
+  def testBadSuperClass(self):
+    _, errors = self.InferAndCheck("""\
+      class A(object):
+        def f(self):
+          return "foo"
+
+      class B(A):
+        def f(self):
+          return super(self, B).f()  # should be super(B, self)
+    """, deep=True)
+    self.assertErrorLogIs(errors, [(7, "wrong-arg-types", r"B.*Type\[B\]")])
+
+  @unittest.skip("Need to type-check second argument to super")
+  def testBadSuperInstance(self):
+    _, errors = self.InferAndCheck("""\
+      class A(object):
+        pass
+      class B(A):
+        def __init__(self):
+          super(B, A).__init__()  # A cannot be the second argument to super
+    """, deep=True)
+    self.assertErrorLogIs(
+        errors, [(5, "wrong-arg-types", r"Type\[B\].*Type\[A\]")])
+
 
 if __name__ == "__main__":
   test_inference.main()
