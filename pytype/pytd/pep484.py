@@ -28,6 +28,16 @@ PEP484_TRANSLATIONS = {
 }
 
 
+# Maps a type to a more generalized type.
+COMPAT_MAP = {
+    "NoneType": "bool",
+    # pep484 allows None as an alias for NoneType in type annotations.
+    "None": "bool",
+    "str": "unicode",
+    "bytes": "unicode",
+    "int": "float"}
+
+
 # TODO(kramm): This class is deprecated.
 class Print484StubVisitor(visitors.Visitor):
   """Visitor for converting ASTs to the PEP 484 format.

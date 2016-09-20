@@ -470,11 +470,13 @@ class PrintVisitor(Visitor):
     if self.in_parameter:
       # Parameter's union types are merged after as a follow up to the
       # ExpandCompatibleBuiltins visitor.
+      # Import here due to circular import.
+      from pytype.pytd import pep484  # pylint: disable=g-import-not-at-top
       type_list = collections.OrderedDict.fromkeys(node.type_list)
-      if "int" in type_list and "float" in type_list:
-        del type_list["int"]
-      if "unicode" in type_list and "str" in type_list:
-        del type_list["str"]
+      for compat, name in pep484.COMPAT_MAP.iteritems():
+        # name can replace compat.
+        if compat in type_list and name in type_list:
+          del type_list[compat]
       type_list = tuple(type_list)
     else:
       type_list = node.type_list
@@ -1598,30 +1600,29 @@ class ExpandCompatibleBuiltins(Visitor):
   @staticmethod
   def _BuildReplacementMap(builtins):
     """Dict[str, UnionType[ClassType, ...]] map."""
-    # LINT.IfChange
-    # Should keep in sync with abstract.Class.match_instance_against_type
-    compat_map = {
-        # See https://github.com/python/typeshed/issues/270
-        "bool": ["NoneType"],
-        "unicode": ["str", "bytes"],
-        "float": ["int"]
-        }
+    prefix = builtins.name + "."
+    rmap = collections.defaultdict(list)
+    # Import here due to circular import.
+    from pytype.pytd import pep484  # pylint: disable=g-import-not-at-top
 
-    rmap = {}
-    for name, compats in compat_map.iteritems():
+    # compat_list :: [(compat, name)], where name is the more generalized
+    # type and compat is the less generalized one. (eg: name = float, compat =
+    # int)
+    compat_list = itertools.chain(
+        ((v, v) for v in set(pep484.COMPAT_MAP.values())),
+        pep484.COMPAT_MAP.iteritems())
+
+    for compat, name in compat_list:
       prefix = builtins.name + "."
-      expansion = []
-      for short_name in [name] + compats:
-        full_name = prefix + short_name
-        t = builtins.Lookup(full_name)
-        if isinstance(t, pytd.Class):
-          # Depending on python version, bytes can be an Alias, if so don't
-          # want it in our union
-          expansion.append(pytd.ClassType(full_name, t))
+      full_name = prefix + compat
+      t = builtins.Lookup(full_name)
+      if isinstance(t, pytd.Class):
+        # Depending on python version, bytes can be an Alias, if so don't
+        # want it in our union
+        rmap[prefix + name].append(pytd.ClassType(full_name, t))
 
-      rmap[prefix + name] = pytd.UnionType(tuple(expansion))
-
-    return rmap
+    return {k: pytd.UnionType(tuple(v))
+            for k, v in rmap.iteritems()}
 
   def EnterParameter(self, _):
     assert not self.in_parameter

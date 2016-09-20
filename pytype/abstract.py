@@ -21,6 +21,7 @@ from pytype import output
 from pytype import utils
 from pytype.pyc import loadmarshal
 from pytype.pytd import cfg as typegraph
+from pytype.pytd import pep484
 from pytype.pytd import pytd
 from pytype.pytd import utils as pytd_utils
 from pytype.pytd.parse import visitors
@@ -2100,16 +2101,10 @@ class Class(object):
     if other_type.full_name == "__builtin__.object":
       return subst
 
-    # LINT.IfChange
-    # Should keep in sync with visitors.ExpandCompatibleBuiltins
     compatible_builtins = {
-        # See https://github.com/python/typeshed/issues/270
-        "__builtin__.NoneType": "__builtin__.bool",
-        "__builtin__.str": "__builtin__.unicode",
-        "__builtin__.bytes": "__builtin__.unicode",
-        "__builtin__.int": "__builtin__.float"
+        "__builtin__." + k: "__builtin__." + v
+        for k, v in pep484.COMPAT_MAP.iteritems()
     }
-
     if compatible_builtins.get(self.full_name) == other_type.full_name:
       return subst
 
