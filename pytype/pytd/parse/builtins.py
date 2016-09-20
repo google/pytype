@@ -20,18 +20,17 @@
 import os
 
 
-from pytype.pytd import data_files
 from pytype.pytd import utils
 from pytype.pytd.parse import parser
 from pytype.pytd.parse import visitors
 
 
 def _FindBuiltinFile(name, extension=".pytd"):
-  return data_files.GetPredefinedFile("builtins", name, extension)
+  return utils.GetPredefinedFile("builtins", name, extension)
 
 
 def _FindStdlibFile(name, extension=".pytd"):
-  return data_files.GetPredefinedFile("stdlib", name, extension)
+  return utils.GetPredefinedFile("stdlib", name, extension)
 
 
 # Keyed by the parameter(s) passed to GetBuiltinsPyTD:
@@ -124,7 +123,7 @@ def ParsePredefinedPyTD(pytd_subdir, module, python_version):
     The AST of the module; None if the module doesn't exist in pytd_subdir.
   """
   try:
-    src = data_files.GetPredefinedFile(pytd_subdir, module)
+    src = utils.GetPredefinedFile(pytd_subdir, module)
   except IOError:
     return None
   return ParsePyTD(src, filename=os.path.join(pytd_subdir, module + ".pytd"),

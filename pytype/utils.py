@@ -369,6 +369,21 @@ class Tempdir(object):
     return os.path.join(self.path, filename)
 
 
+def load_pytype_file(filename):
+  """Get the contents of a data file from the pytype installation.
+
+  Arguments:
+    filename: the path, relative to "pytype/"
+  Returns:
+    The contents of the file
+  Raises:
+    IOError: if file not found
+  """
+  path = os.path.join(os.path.dirname(__file__), filename)
+  with open(path, "rb") as fi:
+    return fi.read()
+
+
 def list_startswith(l, prefix):
   """Like str.startswith, but for lists."""
   return l[:len(prefix)] == prefix

@@ -74,9 +74,10 @@ def get_typeshed_file(toplevel, module, version, typeshed_dir=None):
 
     path_base = os.path.join(typeshed_dir, path_rel)
     for path in [os.path.join(path_base, "__init__.pyi"), path_base + ".pyi"]:
+      # TODO(acaceres): use pytype.utils.load_pytype_file
       if loader and typeshed_dir is None:
         # PEP 302 loader API
-        data = loader.get_data(path)  # See pytd.data_files.GetPredefinedFile
+        data = loader.get_data(path)
         if data:
           return path, data
       if os.path.isfile(path):

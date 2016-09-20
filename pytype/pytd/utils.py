@@ -22,12 +22,14 @@ locally or within a larger repository.
 # pylint: disable=g-explicit-length-test
 
 import collections
+import os
 
 from pytype.pytd import abc_hierarchy
 from pytype.pytd import pep484
 from pytype.pytd import pytd
 from pytype.pytd.parse import parser
 from pytype.pytd.parse import visitors
+import pytype.utils
 
 
 def UnpackUnion(t):
@@ -517,3 +519,20 @@ def canonical_pyi(pyi):
   ast = ast.Visit(visitors.CanonicalOrderingVisitor(sort_signatures=True))
   ast.Visit(visitors.VerifyVisitor())
   return pytd.Print(ast)
+
+
+def GetPredefinedFile(pytd_subdir, module, extension=".pytd"):
+  """Get the contents of a predefined PyTD, typically with a file name *.pytd.
+
+  Arguments:
+    pytd_subdir: the directory, typically "builtins" or "stdlib"
+    module: module name (e.g., "sys" or "__builtins__")
+    extension: either ".pytd" or ".py"
+  Returns:
+    The contents of the file
+  Raises:
+    IOError: if file not found
+  """
+  path = os.path.join("pytd", pytd_subdir,
+                      os.path.join(*module.split(".")) + extension)
+  return pytype.utils.load_pytype_file(path)
