@@ -16,6 +16,7 @@ import logging
 
 from pytype import exceptions
 from pytype import function
+from pytype import mro
 from pytype import output
 from pytype import utils
 from pytype.pyc import loadmarshal
@@ -2224,7 +2225,7 @@ class PyTDClass(SimpleAbstractValue, Class):
     self._member_map = mm
     Class.init_mixin(self)
     self.pytd_cls = pytd_cls
-    self.mro = utils.compute_mro(self)
+    self.mro = mro.compute_mro(self)
 
   def get_attribute_generic(self, node, name, val):
     return self.get_attribute(node, name, valcls=val)
@@ -2361,7 +2362,7 @@ class InterpreterClass(SimpleAbstractValue, Class):
     super(InterpreterClass, self).__init__(name, vm)
     Class.init_mixin(self)
     self._bases = bases
-    self.mro = utils.compute_mro(self)
+    self.mro = mro.compute_mro(self)
     self.members = utils.MonitorDict(members)
     self.instances = set()  # filled through register_instance
     self._instance_cache = {}
