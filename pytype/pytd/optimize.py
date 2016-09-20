@@ -517,6 +517,7 @@ class SimplifyUnionsWithSuperclasses(visitors.Visitor):
   def VisitUnionType(self, union):
     c = collections.Counter()
     for t in set(union.type_list):
+      # TODO(rechen): How can we make this work with GenericType?
       if isinstance(t, pytd.GENERIC_BASE_TYPE):
         c += collections.Counter(self.hierarchy.ExpandSubClasses(str(t)))
     # Below, c[str[t]] can be zero - that's the default for non-existent items

@@ -77,11 +77,13 @@ class SolverTests(test_inference.InferenceTest):
         def barbaz(self):
           __any_object__.foobar(StringIO.StringIO())
     """, deep=True, solve_unknowns=True)
+    # TODO(rechen): Both StringIO[str] and BinaryIO are subclasses of IO[str],
+    # which therefore should be optimized away.
     self.assertTypesMatchPytd(ty, """
       StringIO = ...  # type: module
 
       class Foobar(object):
-        def foobar(self, out: StringIO.StringIO[str] or file) -> NoneType
+        def foobar(self, out: StringIO.StringIO[str] or BinaryIO or IO[str]) -> NoneType
 
       class Barbaz(object):
         def barbaz(self) -> NoneType
