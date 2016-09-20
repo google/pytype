@@ -7,12 +7,13 @@ import StringIO
 import subprocess
 import tempfile
 
+from pytype import utils
 from pytype.pyc import compile_bytecode
 from pytype.pyc import loadmarshal
 from pytype.pyc import magic
 
 
-COMPILE_SCRIPT = os.path.join(os.path.dirname(__file__), "compile_bytecode.py")
+COMPILE_SCRIPT = "pyc/compile_bytecode.py"
 COMPILE_ERROR_RE = re.compile(r"^(.*) \((.*), line (\d+)\)$")
 
 
@@ -75,8 +76,13 @@ def compile_src_string_to_pyc_string(src, filename, python_version, python_exe,
         exe = python_exe.split() + ["-S"]
       else:
         exe = ["python" + ".".join(map(str, python_version))]
-      bytecode = subprocess.check_output(exe + [
-          COMPILE_SCRIPT, fi.name, filename or fi.name, mode])
+      cmd = exe + ["-", fi.name, filename or fi.name, mode]
+
+      src = utils.load_pytype_file(COMPILE_SCRIPT)
+
+      p = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+      bytecode, _ = p.communicate(src)
+      assert p.poll() == 0, "Child process failed"
   finally:
     os.unlink(fi.name)
   if bytecode[0] == chr(0):  # compile OK
