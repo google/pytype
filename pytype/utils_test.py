@@ -54,6 +54,13 @@ class UtilsTest(unittest.TestCase):
     self.assertEquals("a.b/c.bar", utils.replace_extension("a.b/c.d", ".bar"))
     self.assertEquals("xyz.bar", utils.replace_extension("xyz", "bar"))
 
+  def testComplexityLimit(self):
+    limit = utils.ComplexityLimit(5)
+    limit.inc()
+    limit.inc(2)
+    limit.inc()
+    self.assertRaises(utils.ProgramTooComplexError, limit.inc)
+
   def testVariableProduct(self):
     u1 = self.prog.NewVariable("u1", [1, 2], [], self.current_location)
     u2 = self.prog.NewVariable("u2", [3, 4], [], self.current_location)
@@ -66,6 +73,31 @@ class UtilsTest(unittest.TestCase):
         [2, 3],
         [2, 4],
     ])
+
+  def testDeepVariableProductRaises(self):
+    x1, x2 = [DummyValue(i + 1) for i in range(2)]
+    v1 = self.prog.NewVariable("v1", [x1, x2], [], self.current_location)
+    v2 = self.prog.NewVariable("v2", [x1, x2], [], self.current_location)
+    v3 = self.prog.NewVariable("v3", [x1, x2], [], self.current_location)
+    v4 = self.prog.NewVariable("v4", [x1, x2], [], self.current_location)
+    v5 = self.prog.NewVariable("v5", [x1, x2], [], self.current_location)
+    v6 = self.prog.NewVariable("v6", [x1, x2], [], self.current_location)
+    v7 = self.prog.NewVariable("v7", [x1, x2], [], self.current_location)
+    v8 = self.prog.NewVariable("v8", [x1, x2], [], self.current_location)
+    self.assertRaises(utils.ProgramTooComplexError,
+                      utils.deep_variable_product, [v1, v2, v3, v4,
+                                                    v5, v6, v7, v8], 256)
+
+  def testDeepVariableProductRaises2(self):
+    x1, x2, x3, x4 = [DummyValue(i + 1) for i in range(4)]
+    v1 = self.prog.NewVariable("v1", [x1, x2], [], self.current_location)
+    v2 = self.prog.NewVariable("v2", [x1, x2], [], self.current_location)
+    v3 = self.prog.NewVariable("v3", [x3, x4], [], self.current_location)
+    v4 = self.prog.NewVariable("v4", [x3, x4], [], self.current_location)
+    x1.set_parameters([v3])
+    x2.set_parameters([v4])
+    self.assertRaises(utils.ProgramTooComplexError,
+                      utils.deep_variable_product, [v1, v2], 4)
 
   def testDeepVariableProduct(self):
     x1, x2, x3, x4, x5, x6 = [DummyValue(i + 1) for i in range(6)]

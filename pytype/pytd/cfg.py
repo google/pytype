@@ -10,6 +10,7 @@ import collections
 
 from pytype import metrics
 from pytype.pytd import utils
+import pytype.utils
 
 
 _solved_find_queries = {}
@@ -17,10 +18,6 @@ _supernode_reachable = {}
 
 
 _variable_size_metric = metrics.Distribution("variable_size")
-
-
-class ProgramTooComplexError(Exception):
-  """Thrown if we determine that something in our program is too complex."""
 
 
 class Program(object):
@@ -166,7 +163,7 @@ class Program(object):
       # seconds, it was 7. Additionally, for 99% of files, the largest variable
       # was below 64, so we use that as the cutoff.
       if var_size >= 64:
-        raise ProgramTooComplexError()
+        raise pytype.utils.ProgramTooComplexError()
 
 
 class CFGNode(object):

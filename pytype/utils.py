@@ -13,6 +13,11 @@ import threading
 import types
 
 
+# Limit on how many argument combinations we allow before aborting.
+# For a random sample of 350 (sane) source files, the highest value for argument
+# combinations was 54. One of the problematic files had 10,000 combinations.
+DEEP_VARIABLE_LIMIT = 64
+
 
 def replace_extension(filename, new_extension):
   name, _ = os.path.splitext(filename)
@@ -55,7 +60,24 @@ def _variable_product_items(variableitems):
     yield []
 
 
-def deep_variable_product(variables):
+class ProgramTooComplexError(Exception):
+  """Thrown if we determine that something in our program is too complex."""
+
+
+class ComplexityLimit(object):
+  """A class that raises ProgramTooComplexError if we hit a limit."""
+
+  def __init__(self, limit):
+    self.limit = limit
+    self.count = 0
+
+  def inc(self, add=1):
+    self.count += add
+    if self.count >= self.limit:
+      raise ProgramTooComplexError(Exception)
+
+
+def deep_variable_product(variables, limit=DEEP_VARIABLE_LIMIT):
   """Take the deep Cartesian product of a list of Variables.
 
   For example:
@@ -72,26 +94,33 @@ def deep_variable_product(variables):
   .
   Args:
     variables: A sequence of Variables.
+    limit: How many results we allow before aborting.
 
   Returns:
     A list of lists of Values, where each sublist has one Value from each
     of the corresponding Variables and the Variables of their Values' children.
+
+  Raises:
+    ProgramTooComplexError: If we expanded too many values.
   """
-  return _deep_values_list_product(v.bindings for v in variables)
+  return _deep_values_list_product((v.bindings for v in variables), (),
+                                   ComplexityLimit(limit))
 
 
-def _deep_values_list_product(values_list, seen=()):
+def _deep_values_list_product(values_list, seen, complexity_limit):
   """Take the deep Cartesian product of a list of list of Values."""
   result = []
   for row in itertools.product(*(values for values in values_list if values)):
     extra_params = sum([entry.data.unique_parameter_values()
                         for entry in row if entry not in seen], [])
     extra_values = (extra_params and
-                    _deep_values_list_product(extra_params, seen + row))
+                    _deep_values_list_product(extra_params, seen + row,
+                                              complexity_limit))
     if extra_values:
       for new_row in extra_values:
         result.append(row + new_row)
     else:
+      complexity_limit.inc()
       result.append(row)
   return result
 

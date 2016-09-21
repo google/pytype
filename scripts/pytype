@@ -20,8 +20,8 @@ from pytype import directors
 from pytype import errors
 from pytype import infer
 from pytype import metrics
+from pytype import utils
 from pytype.pyc import pyc
-from pytype.pytd import cfg
 from pytype.pytd import optimize
 from pytype.pytd import pytd
 from pytype.pytd import utils as pytd_utils
@@ -93,7 +93,7 @@ def generate_pyi(input_filename, output_filename, errorlog, options):
     # Compiling a *.py failed. Tell the user what Python told us and exit.
     sys.stderr.write(e.message + "\n")
     sys.exit(1)
-  except cfg.ProgramTooComplexError:
+  except utils.ProgramTooComplexError:
     log.warn("Program too complex too analyze. Aborting.")
     result = "# Program too complex for full analysis\n"
     result += "def __getattr__(name) -> Any: ...\n"

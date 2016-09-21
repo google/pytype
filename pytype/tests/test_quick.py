@@ -1,6 +1,6 @@
 """Tests for --quick and --abort-on-complex."""
 
-from pytype.pytd import cfg
+from pytype import utils
 from pytype.tests import test_inference
 
 
@@ -25,7 +25,7 @@ class QuickTest(test_inference.InferenceTest):
     """)
 
   def testAbortOnComplex(self):
-    self.assertRaises(cfg.ProgramTooComplexError, self.Infer, """
+    self.assertRaises(utils.ProgramTooComplexError, self.Infer, """
       if __any_object__:
         x = [1]
       else:
