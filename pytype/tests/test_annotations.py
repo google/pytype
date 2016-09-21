@@ -397,6 +397,96 @@ class AnnotationTest(test_inference.InferenceTest):
         foo.qux()
     """)
 
+  def testForwardDeclarations(self):
+    self.assertNoErrors("""
+      from __future__ import google_type_annotations
+
+      def f(a: "B"):
+        return a
+
+      class B(object):
+        pass
+    """)
+    self.assertNoErrors("""
+      from __future__ import google_type_annotations
+
+      def f(a) -> "B":
+        return B()
+
+      class B(object):
+        pass
+    """)
+
+  def testWithoutForwardDecl(self):
+    _, errorlog = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+
+      def f(a) -> Bar:
+        return Bar()
+
+      class Bar(object):
+        pass
+    """)
+    self.assertErrorLogIs(errorlog, [(3, "name-error", r"Bar")])
+
+  def testInvalidForwardDecl(self):
+    self.assertNoErrors("""
+      from __future__ import google_type_annotations
+
+      def f(a) -> "Foo":
+        return Foo()
+
+      class Foo(object):
+        pass
+    """)
+    _, errorlog = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+
+      def f(a: "Foo"):
+        return B()
+
+      class B(object):
+        pass
+    """)
+    self.assertErrorLogIs(
+        errorlog, [(1, "name-error", r"Foo")])
+
+  def testForwardDeclBadReturn(self):
+    _, errorlog = self.InferAndCheck("""\
+        from __future__ import google_type_annotations
+
+        def f() -> "Foo":
+          return 1
+
+        class Foo(object):
+          pass
+    """)
+    # Error message along the lines: No attribute 'bar' on Foo
+    self.assertErrorLogIs(
+        errorlog, [(4, "bad-return-type", r"return type.*int")])
+
+  def testConfusingForwardDecl(self):
+    _, errorlog = self.InferAndCheck("""\
+        from __future__ import google_type_annotations
+
+        class Foo(object):
+          def bar(self):
+            return 4
+
+        def f() -> "Foo":
+          return Foo()
+
+        class Foo(object):
+          def foo(self):
+            return 2
+
+        def g():
+          return f().bar()
+    """)
+    # Error message along the lines: No attribute 'bar' on Foo
+    self.assertErrorLogIs(
+        errorlog, [(15, "attribute-error", r"\'bar\'.*Foo")])
+
 
 if __name__ == "__main__":
   test_inference.main()

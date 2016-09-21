@@ -1377,7 +1377,7 @@ class Super(AtomicAbstractValue):
 
   # Minimal signature, only used for constructing exceptions.
   _SIGNATURE = function.Signature(
-      "super", ("cls", "self"), None, set(), None, {}, {"return": None})
+      "super", ("cls", "self"), None, set(), None, {}, {"return": None}, {})
 
   def __init__(self, vm):
     super(Super, self).__init__("super", vm)
@@ -1414,7 +1414,7 @@ class IsInstance(AtomicAbstractValue):
   # Minimal signature, only used for constructing exceptions.
   _SIGNATURE = function.Signature(
       "isinstance", ("obj", "type_or_types"), None, set(), None, {},
-      {"return": None})
+      {"return": None}, {})
 
   def __init__(self, vm):
     super(IsInstance, self).__init__("isinstance", vm)
@@ -2534,7 +2534,7 @@ class InterpreterFunction(Function):
 
   @staticmethod
   def make_function(name, code, f_locals, f_globals, defaults, kw_defaults,
-                    closure, annotations, vm):
+                    closure, annotations, late_annotations, vm):
     """Get an InterpreterFunction.
 
     Things like anonymous functions and generator expressions are created
@@ -2551,12 +2551,14 @@ class InterpreterFunction(Function):
       kw_defaults: Default arguments for kwonly parameters.
       closure: The free variables this closure binds to.
       annotations: Function annotations. Dict of name -> AtomicAbstractValue.
+      late_annotations: Late-evaled annotations. Dict of name -> str.
       vm: VirtualMachine instance.
 
     Returns:
       An InterpreterFunction.
     """
     annotations = annotations or {}
+    late_annotations = late_annotations or {}
     key = (name, code,
            InterpreterFunction._hash_all(
                (f_globals.members, set(code.co_names)),
@@ -2569,11 +2571,11 @@ class InterpreterFunction(Function):
     if key not in InterpreterFunction._function_cache:
       InterpreterFunction._function_cache[key] = InterpreterFunction(
           name, code, f_locals, f_globals, defaults, kw_defaults,
-          closure, annotations, vm, vm.root_cfg_node)
+          closure, annotations, late_annotations, vm, vm.root_cfg_node)
     return InterpreterFunction._function_cache[key]
 
   def __init__(self, name, code, f_locals, f_globals, defaults, kw_defaults,
-               closure, annotations, vm, node):
+               closure, annotations, late_annotations, vm, node):
     super(InterpreterFunction, self).__init__(name, vm, node)
     log.debug("Creating InterpreterFunction %r for %r", name, code.co_name)
     self.bound_class = BoundInterpreterFunction
@@ -2586,6 +2588,7 @@ class InterpreterFunction(Function):
     self.kw_defaults = kw_defaults
     self.closure = closure
     self.annotations = annotations
+    self.late_annotations = late_annotations
     self.cls = self.vm.convert.function_type
     self._call_records = {}
     self.nonstararg_count = self.code.co_argcount
@@ -2617,7 +2620,8 @@ class InterpreterFunction(Function):
         kwonly,
         kwarg_name,
         defaults,
-        self.annotations)
+        self.annotations,
+        self.late_annotations)
 
   # TODO(kramm): support retrieving the following attributes:
   # 'func_{code, name, defaults, globals, locals, dict, closure},

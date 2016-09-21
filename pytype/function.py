@@ -1,5 +1,11 @@
 """Representation of Python function headers and calls."""
 
+import collections
+
+
+
+LateAnnotation = collections.namedtuple(
+    "LateAnnotation", ["expr", "name", "opcode"])
 
 
 # TODO(kramm): This class is deprecated and should be folded into
@@ -20,7 +26,7 @@ class Signature(object):
   """
 
   def __init__(self, name, param_names, varargs_name, kwonly_params,
-               kwargs_name, defaults, annotations):
+               kwargs_name, defaults, annotations, late_annotations):
     self.name = name
     self.param_names = param_names
     self.varargs_name = varargs_name
@@ -28,7 +34,9 @@ class Signature(object):
     self.kwargs_name = kwargs_name
     self.defaults = defaults
     self.annotations = annotations
-    self.has_return_annotation = "return" in annotations
+    self.late_annotations = late_annotations
+    self.has_return_annotation = (("return" in annotations) or
+                                  ("return" in late_annotations))
     self.has_param_annotations = bool(annotations.viewkeys() - {"return"})
 
   def drop_first_parameter(self):
@@ -40,6 +48,7 @@ class Signature(object):
         self.kwargs_name,
         self.defaults,
         self.annotations,
+        self.late_annotations,
     )
 
   def mandatory_param_count(self):
@@ -63,7 +72,8 @@ class Signature(object):
                   if p.optional],
         annotations={p.name: vm.convert.convert_constant_to_value(
             p.name, p.type, subst={}, node=vm.root_cfg_node)
-                     for p in sig.params}
+                     for p in sig.params},
+        late_annotations={}
     )
 
   def __str__(self):

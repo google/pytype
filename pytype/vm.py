@@ -23,6 +23,7 @@ from pytype import abstract
 from pytype import blocks
 from pytype import convert
 from pytype import exceptions
+from pytype import function
 from pytype import load_pytd
 from pytype import metrics
 from pytype import state as frame_state
@@ -90,6 +91,7 @@ class VirtualMachine(object):
     self.cache_unknowns = cache_unknowns
     self.loader = load_pytd.Loader(base_module=module_name, options=options)
     self.frames = []  # The call stack of frames.
+    self.functions_with_late_annotations = []
     self.frame = None  # The current frame.
     self.program = typegraph.Program(abort_on_complex=options.abort_on_complex)
     self.root_cfg_node = self.program.NewCFGNode("root")
@@ -405,7 +407,7 @@ class VirtualMachine(object):
     return var
 
   def _make_function(self, name, code, globs, defaults, kw_defaults,
-                     closure=None, annotations=None):
+                     closure=None, annotations=None, late_annotations=None):
     """Create a function or closure given the arguments."""
     if closure:
       closure = tuple(c for c in abstract.get_atomic_python_constant(closure))
@@ -419,11 +421,14 @@ class VirtualMachine(object):
         name, code=abstract.get_atomic_python_constant(code),
         f_locals=self.frame.f_locals, f_globals=globs,
         defaults=defaults, kw_defaults=kw_defaults,
-        closure=closure, annotations=annotations, vm=self)
+        closure=closure, annotations=annotations,
+        late_annotations=late_annotations, vm=self)
     # TODO(ampere): What else needs to be an origin in this case? Probably stuff
     # in closure.
     var = self.program.NewVariable(name)
     var.AddBinding(val, code.bindings, self.root_cfg_node)
+    if late_annotations:
+      self.functions_with_late_annotations.append(val)
     return var
 
   def make_frame(self, node, code, callargs=None,
@@ -557,16 +562,43 @@ class VirtualMachine(object):
 
     node = node.ConnectNew("init")
     node, f_globals, _, _ = self.run_bytecode(node, code, f_globals, f_locals)
+    logging.info("Done running bytecode, resolving late annotations now!")
+    for func in self.functions_with_late_annotations:
+      self._eval_late_annotations(node, func, f_globals)
     assert not self.frames, "Frames left over!"
     log.info("Final node: <%d>%s", node.id, node.name)
     return node, f_globals.members, builtin_names
 
-  def _run_expression(self, node, src):
-    code = self.compile_src(src, mode="eval")
-    frame = self.frames[-1]
-    new_locals = self.convert_locals_or_globals({}, "locals")
-    node, _, _, ret = self.run_bytecode(node, code, frame.f_globals, new_locals)
-    return node, ret
+  def _eval_late_annotations(self, node, func, f_globals):
+    """Resolves an instance of abstract.LateClass's expression."""
+    for name, annot in func.late_annotations.iteritems():
+      # We don't chain node and f_globals as we want to remain in the context
+      # where we've just finished evaluating the module. This would prevent
+      # nasty things like:
+      #
+      # def f(a: "A = 1"):
+      #   pass
+      #
+      # def g(b: "A"):
+      #   pass
+      #
+      # Which should simply complain at both annotations that 'A' is not defined
+      # in both function annotations. Chaining would cause 'b' in 'g' to yield a
+      # different error message.
+      code = self.compile_src(annot.expr, mode="eval")
+      new_locals = self.convert_locals_or_globals({}, "locals")
+      _, _, _, ret = self.run_bytecode(
+          node, code, f_globals, new_locals)
+      if len(ret.data) == 1:
+        x = ret.data[0]
+        if x.cls and x.cls.data == self.convert.none_type.data:
+          resolved = self.convert.none_type.data[0]
+        else:
+          resolved = x
+      else:
+        self.errorlog.invalid_annotation(annot.opcode, annot.name)
+        resolved = self.convert.unsolvable
+      func.annotations[name] = resolved
 
   def call_binary_operator(self, state, name, x, y, report_errors=False):
     """Map a binary operator to "magic methods" (__add__ etc.)."""
@@ -1633,32 +1665,24 @@ class VirtualMachine(object):
     state, pos_defaults = state.popn(num_pos_defaults)
     return state, pos_defaults, kw_defaults, raw_annotations
 
-  def _maybe_eval_annotation(self, node, raw_annotation, name):
-    """Evaluate strings as a Python expression. Pass through everything else."""
-    if (isinstance(raw_annotation, abstract.Instance) and
-        raw_annotation.cls.data == self.convert.str_type.data):
-      if isinstance(raw_annotation, abstract.PythonConstant):
-        node, var = self._run_expression(node, raw_annotation.pyval)
-        if len(var.data) > 1:
-          self.errorlog.invalid_annotation(self.frame.current_opcode, name)
-          return node, None
-        annotation = var.data[0]
+  def _process_one_annotation(self, annotation, name):
+    """Change annotation / record errors where required."""
+    if (isinstance(annotation, abstract.Instance) and
+        annotation.cls.data == self.convert.str_type.data):
+      # String annotations : Late evaluation
+      if isinstance(annotation, abstract.PythonConstant):
+        return function.LateAnnotation(
+            name=name,
+            opcode=self.frame.current_opcode,
+            expr=annotation.pyval)
       else:
         self.errorlog.invalid_annotation(self.frame.current_opcode, name)
-        return node, None
-    else:
-      annotation = raw_annotation
-    return node, annotation
-
-  def _convert_one_annotation(self, node, raw_annotation, name):
-    node, annotation = self._maybe_eval_annotation(node, raw_annotation, name)
-    if annotation is None:
-      return node, None  # Error in annotation, already logged.
-    if annotation.cls and annotation.cls.data == self.convert.none_type.data:
+        return None
+    elif annotation.cls and annotation.cls.data == self.convert.none_type.data:
       # PEP 484 allows to write "NoneType" as "None"
-      return node, self.convert.none_type.data[0]
+      return self.convert.none_type.data[0]
     else:
-      return node, annotation
+      return annotation
 
   def _convert_function_annotations(self, node, raw_annotations):
     if raw_annotations:
@@ -1666,18 +1690,21 @@ class VirtualMachine(object):
       names = abstract.get_atomic_python_constant(raw_annotations[-1])
       type_list = raw_annotations[:-1]
       annotations = {}
+      late_annotations = {}
       for name, t in zip(names, type_list):
         name = abstract.get_atomic_python_constant(name)
         visible = t.Data(node)
         if len(visible) > 1:
           self.errorlog.invalid_annotation(self.frame.current_opcode, name)
         else:
-          node, annot = self._convert_one_annotation(node, visible[0], name)
-          if annot is not None:
+          annot = self._process_one_annotation(visible[0], name)
+          if isinstance(annot, function.LateAnnotation):
+            late_annotations[name] = annot
+          elif annot is not None:
             annotations[name] = annot
-      return annotations
+      return annotations, late_annotations
     else:
-      return {}
+      return {}, {}
 
   def _convert_kw_defaults(self, values):
     kw_defaults = {}
@@ -1700,10 +1727,12 @@ class VirtualMachine(object):
     state, defaults, kw_defaults, annot = self._pop_extra_function_args(
         state, op.arg)
     kw_defaults = self._convert_kw_defaults(kw_defaults)
-    annotations = self._convert_function_annotations(state.node, annot)
+    annotations, late_annotations = self._convert_function_annotations(
+        state.node, annot)
     globs = self.get_globals_dict()
     fn = self._make_function(name, code, globs, defaults, kw_defaults,
-                             annotations=annotations)
+                             annotations=annotations,
+                             late_annotations=late_annotations)
     return state.push(fn)
 
   def byte_MAKE_CLOSURE(self, state, op):
