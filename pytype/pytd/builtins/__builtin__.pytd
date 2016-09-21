@@ -256,7 +256,9 @@ class str(basestring, Sequence[str]):
     def strip(self, ...) -> str
     def swapcase(self) -> str
     def title(self) -> str
-    def translate(self, table: unicode, ...) -> unicode
+    def translate(self, table: unicode) -> unicode
+    def translate(self, table: str) -> str
+    def translate(self, table: str or NoneType, deletechars: str) -> str
     def upper(self) -> str
     def zfill(self, width: int) -> str
     def __new__(cls: type) -> str
