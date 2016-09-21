@@ -212,7 +212,7 @@ class SolverTests(test_inference.InferenceTest):
     self.assertTypesMatchPytd(ty, """
       itertools = ...  # type: module
 
-      def every(f, array) -> bool
+      def every(f: typing.Callable, array: typing.Iterable) -> bool
     """)
 
   def testNestedList(self):
