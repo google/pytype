@@ -352,6 +352,17 @@ class ErrorTest(test_inference.InferenceTest):
       """, deep=True, pythonpath=[d.path])
       self.assertErrorLogContains(errors, r"a.*pyi-error.*A")
 
+  def testDuplicateTypeParameter(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        T = TypeVar("T")
+        class A(Generic[T, T]): pass
+      """)
+      _, errors = self.InferAndCheck("""\
+        import a
+      """, deep=True, pythonpath=[d.path])
+      self.assertErrorLogIs(errors, [(1, "pyi-error", r"T")])
+
   def testTypeParameterInModuleConstant(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """

@@ -1460,7 +1460,9 @@ class InsertSignatureTemplates(Visitor):
   def EnterClass(self, node):
     for t in node.template:
       assert isinstance(t.type_param, pytd.TypeParameter)
-      assert t.name not in self.bound_typeparams
+      if t.name in self.bound_typeparams:
+        raise ContainerError(
+            "Duplicate type parameter %s in class %s" % (t.name, node.name))
       self.bound_typeparams.add(t.name)
 
   def LeaveClass(self, node):

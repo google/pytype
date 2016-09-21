@@ -421,6 +421,13 @@ class TestVisitors(parser_test_base.ParserTest):
                       qux_parent.parameters)
     self.assertEquals((), qux.template)
 
+  def testAdjustTypeParametersWithDuplicates(self):
+    src = textwrap.dedent("""
+      T = TypeVar("T")
+      class A(Generic[T, T]): pass
+    """)
+    self.assertRaises(visitors.ContainerError, lambda: self.Parse(src))
+
   def testVerifyContainers(self):
     ast1 = self.ParseWithBuiltins("""
       T = TypeVar("T")
