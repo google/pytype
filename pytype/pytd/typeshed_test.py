@@ -13,13 +13,17 @@ import unittest
 class TestTypeshedLoading(parser_test_base.ParserTest):
   """Test the code for loading files from typeshed."""
 
+  def setUp(self):
+    super(TestTypeshedLoading, self).setUp()
+    self.ts = typeshed.Typeshed()
+
   def test_get_typeshed_file(self):
-    filename, data = typeshed.get_typeshed_file("stdlib", "errno", (2, 7))
+    filename, data = self.ts.get_module_file("stdlib", "errno", (2, 7))
     self.assertEqual("errno.pyi", os.path.basename(filename))
     self.assertIn("errorcode", data)
 
   def test_get_typeshed_dir(self):
-    filename, data = typeshed.get_typeshed_file("stdlib", "logging", (2, 7))
+    filename, data = self.ts.get_module_file("stdlib", "logging", (2, 7))
     self.assertEqual("__init__.pyi", os.path.basename(filename))
     self.assertIn("LogRecord", data)
 
@@ -27,8 +31,6 @@ class TestTypeshedLoading(parser_test_base.ParserTest):
     ast = typeshed.parse_type_definition("stdlib", "_random", (2, 7))
     self.assertIn("_random.Random", [cls.name for cls in ast.classes])
 
-  def test_get_typeshed_missing(self):
-    missing = typeshed.load_missing()
 
 
 def _walk_dir(path):
@@ -50,7 +52,7 @@ def _test_parse(pyi_file):
     module = os.path.basename(os.path.dirname(pyi_file))
   with open(pyi_file) as f:
     src = f.read()
-  # Call ParsePyTD directly to avoid typeshed.get_typeshed_file logic
+  # Call ParsePyTD directly to avoid Typeshed.get_module_file logic
   builtins.ParsePyTD(src,
                      filename=pyi_file,
                      module=module,
@@ -69,7 +71,7 @@ class TestTypeshedParsing(parser_test_base.ParserTest):
   """
   WANTED = re.compile(r"stdlib/(2\.7|2and3)/.*\.pyi$")
   SKIPPED = re.compile("(%s)$" % "|".join(SKIPPED_FILES.split()))
-  TYPESHED_DIR = typeshed.get_typeshed_dir()
+  TYPESHED_DIR = typeshed.Typeshed().typeshed_path
 
   # Generate test methods
   # pylint: disable=no-self-argument,g-wrong-blank-lines,undefined-loop-variable
