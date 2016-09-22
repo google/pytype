@@ -33,6 +33,35 @@ class DecoratorsTest(test_inference.InferenceTest):
         def list() -> NoneType
     """)
 
+  def testProperty(self):
+    ty = self.Infer("""
+      class Foo(object):
+        def __init__(self, x):
+          self.x = x
+        @property
+        def f(self):
+          return self.x
+        @f.setter
+        def f(self, x):
+          self.x = x
+        @f.deleter
+        def f(self):
+          del self.x
+
+      foo = Foo("foo")
+      foo.x = 3
+      x = foo.x
+      del foo.x
+    """, deep=True, extract_locals=True)
+    self.assertTypesMatchPytd(ty, """
+      class Foo(object):
+        f = ...  # type: property
+        x = ...  # type: Any
+        def __init__(self, x) -> None
+      foo = ...  # type: Foo
+      x = ...  # type: int
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()
