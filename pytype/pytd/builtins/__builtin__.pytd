@@ -80,6 +80,7 @@ def iter(collection: list[T]) -> listiterator[T]
 def iter(collection: tuple[T]) -> tupleiterator[T]
 def iter(collection: set[T]) -> setiterator[T]
 def iter(collection: dict[T, T2]) -> `dictionary-keyiterator`[T]
+def iter(func: typing.Callable[[], Union[T, T2]], sentinel: T) -> iterator[T2]
 def len(obj) -> int  # TODO(pludemann): leave this out and call obj.__len__() ?
 def locals() -> dict[str, object]
 def map(function, sequence: list[nothing], ...) -> list[nothing]
