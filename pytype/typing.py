@@ -228,6 +228,13 @@ def build_any(name, vm, node):
   return abstract.Unsolvable(vm)
 
 
+# TODO(kramm): Do a full implementation of this.
+def build_namedtuple(name, vm, node):
+  del name
+  del node
+  return abstract.Unsolvable(vm)
+
+
 def build_optional(name, vm, node):
   return Union(name, vm, node, (vm.convert.none_type.data[0],))
 
@@ -253,6 +260,7 @@ typing_overload = {
     "Sequence": Sequence,
     "Optional": build_optional,
     "TypeVar": build_typevar,
+    "NamedTuple": build_namedtuple,
     "Generic": unsupported,
     "Any": build_any,
 }

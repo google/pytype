@@ -11,7 +11,8 @@ class TypingTest(test_inference.InferenceTest):
 
   _TEMPLATE = """
     from __future__ import google_type_annotations
-    from typing import List, Union, Sequence
+    import collections
+    import typing
     def f(s: %(annotation)s):
       return s
     f(%(arg)s)
@@ -25,16 +26,22 @@ class TypingTest(test_inference.InferenceTest):
     self.assertNotEqual(0, len(errors))
 
   def test_list(self):
-    self._test_match("[1, 2, 3]", "List")
-    self._test_match("[1, 2, 3]", "List[int]")
-    self._test_match("[1, 2, 3.1]", "List[Union[int, float]]")
-    self._test_no_match("[1.1, 2.1, 3.1]", "List[int]")
+    self._test_match("[1, 2, 3]", "typing.List")
+    self._test_match("[1, 2, 3]", "typing.List[int]")
+    self._test_match("[1, 2, 3.1]", "typing.List[typing.Union[int, float]]")
+    self._test_no_match("[1.1, 2.1, 3.1]", "typing.List[int]")
 
   def test_sequence(self):
-    self._test_match("[1, 2, 3]", "Sequence")
-    self._test_match("[1, 2, 3]", "Sequence[int]")
-    self._test_match("(1, 2, 3.1)", "Sequence[Union[int, float]]")
-    self._test_no_match("[1.1, 2.1, 3.1]", "Sequence[int]")
+    self._test_match("[1, 2, 3]", "typing.Sequence")
+    self._test_match("[1, 2, 3]", "typing.Sequence[int]")
+    self._test_match("(1, 2, 3.1)", "typing.Sequence[typing.Union[int, float]]")
+    self._test_no_match("[1.1, 2.1, 3.1]", "typing.Sequence[int]")
+
+  def test_namedtuple(self):
+    self._test_match("collections.namedtuple('foo', [])()",
+                     "typing.NamedTuple")
+    self._test_match("collections.namedtuple('foo', ('x', 'y'))()",
+                     "typing.NamedTuple('foo', [('x', int), ('y', int)])")
 
 
 if __name__ == "__main__":
