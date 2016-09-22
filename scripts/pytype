@@ -50,6 +50,8 @@ def check_pyi(input_filename, output_filename, errorlog, options):
         options=options,
         run_builtins=options.run_builtins,
         cache_unknowns=options.cache_unknowns)
+  except utils.ProgramTooComplexError:
+    errorlog.too_complex(input_filename)
   except Exception:  # pylint: disable=broad-except
     # TODO(fyquah): We should store this error somewhere so the user knows.
     if not options.nofail:

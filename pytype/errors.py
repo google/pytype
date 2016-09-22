@@ -385,3 +385,8 @@ class ErrorLog(ErrorLogBase):
   def python_compiler_error(self, filename, lineno, message):
     self._add(Error(
         SEVERITY_ERROR, message, filename=filename, lineno=lineno))
+
+  @_error_name("too-complex")
+  def too_complex(self, filename):
+    self._add(Error(
+        SEVERITY_ERROR, "Program too complex to check", filename=filename))
