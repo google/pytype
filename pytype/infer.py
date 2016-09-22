@@ -656,9 +656,10 @@ def infer_types(src,
     except KeyError:
       ast = pytd_utils.Concat(
           ast, builtins.GetDefaultAst(options.python_version))
+  builtins_pytd = tracer.loader.concat_all()
   if solve_unknowns:
     log.info("=========== PyTD to solve =============\n%s", pytd.Print(ast))
-    ast = convert_structural.convert_pytd(ast, tracer.loader.concat_all())
+    ast = convert_structural.convert_pytd(ast, builtins_pytd)
   elif extract_locals:
     log.info("Solving is turned off. Discarding call traces.")
     # Rename "~unknown" to "?"
@@ -682,4 +683,4 @@ def infer_types(src,
       with open(options.output_debug, "w") as fi:
         fi.write(text)
 
-  return ast
+  return ast, builtins_pytd

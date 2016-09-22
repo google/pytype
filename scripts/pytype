@@ -78,9 +78,8 @@ def generate_pyi(input_filename, output_filename, errorlog, options):
   with open(input_filename, "r") as fi:
     src = fi.read()
 
-  mod = None
   try:
-    mod = infer.infer_types(
+    mod, builtins = infer.infer_types(
         src,
         errorlog=errorlog,
         options=options,
@@ -105,11 +104,11 @@ def generate_pyi(input_filename, output_filename, errorlog, options):
       result = ("def __getattr__(name) -> Any: ...\n"
                 "# Caught error in pytype: " + str(e).replace("\n", "\n#")
                 + "\n# " + "\n# ".join(traceback.format_exc().splitlines()))
-      mod = None
     else:
       raise
   else:
     mod = optimize.Optimize(mod,
+                            builtins,
                             # TODO(kramm): Add FLAGs for these
                             lossy=False,
                             use_abcs=False,

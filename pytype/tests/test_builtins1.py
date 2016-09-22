@@ -615,7 +615,7 @@ class BuiltinTests(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
       datetime = ...  # type: module
-      def f(tz: datetime.tzinfo or datetime.timezone) -> NoneType
+      def f(tz: datetime.tzinfo) -> NoneType
   """)
 
 

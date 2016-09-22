@@ -459,6 +459,28 @@ def process_function(func: Callable[..., Any]) -> None: ...
           (5, "missing-parameter", r"\ba\b"),
       ])
 
+  def testUnionWithSuperclass(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        class A1(): pass
+        class A2(A1): pass
+        class A3(A2): pass
+      """)
+      ty = self.Infer("""
+        import a
+        def f(x):
+          # Constrain the type of x so it doesn't pull everything into our pytd
+          x = x + 16
+          if x:
+            return a.A1()
+          else:
+            return a.A3()
+      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        def f(x: complex or float or long) -> a.A1
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()

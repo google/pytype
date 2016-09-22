@@ -124,7 +124,7 @@ class InferenceTest(unittest.TestCase):
       log.warning("Ignoring 'raises' parameter to assertNoErrors")
     self.options.tweak(pythonpath=pythonpath)
     errorlog = self._InitErrorLog(code)
-    unit = infer.infer_types(
+    unit, _ = infer.infer_types(
         textwrap.dedent(code), errorlog, self.options,
         deep=True, solve_unknowns=True, cache_unknowns=True)
     if report_errors and errorlog.has_error():
@@ -140,7 +140,7 @@ class InferenceTest(unittest.TestCase):
     self.options.tweak(pythonpath=pythonpath)
     code = textwrap.dedent(code)
     errorlog = self._InitErrorLog(code)
-    unit = infer.infer_types(
+    unit, _ = infer.infer_types(
         code, errorlog, self.options, deep=deep, cache_unknowns=True, **kwargs)
     unit.Visit(visitors.VerifyVisitor())
     return pytd_utils.CanonicalOrdering(unit), errorlog
@@ -150,8 +150,8 @@ class InferenceTest(unittest.TestCase):
     with open(filename, "rb") as fi:
       code = fi.read()
       errorlog = self._InitErrorLog(code, filename)
-      unit = infer.infer_types(code, errorlog, self.options,
-                               filename=filename, cache_unknowns=True)
+      unit, _ = infer.infer_types(code, errorlog, self.options,
+                                  filename=filename, cache_unknowns=True)
       unit.Visit(visitors.VerifyVisitor())
       return pytd_utils.CanonicalOrdering(unit)
 
@@ -291,11 +291,11 @@ class InferenceTest(unittest.TestCase):
 
   def Infer(self, srccode, pythonpath=(), deep=False, solve_unknowns=False,
             extract_locals=False, report_errors=True, **kwargs):
-    types = self._InferAndVerify(
+    types, builtins_pytd = self._InferAndVerify(
         textwrap.dedent(srccode), pythonpath=pythonpath, deep=deep,
         cache_unknowns=True, solve_unknowns=solve_unknowns,
         extract_locals=extract_locals, report_errors=report_errors, **kwargs)
-    types = optimize.Optimize(types, lossy=False, use_abcs=False,
+    types = optimize.Optimize(types, builtins_pytd, lossy=False, use_abcs=False,
                               max_union=7, remove_mutable=False)
     types = pytd_utils.CanonicalOrdering(types)
     return types
@@ -329,12 +329,13 @@ class InferenceTest(unittest.TestCase):
                        quick=quick,
                        abort_on_complex=abort_on_complex)
     errorlog = self._InitErrorLog(src)
-    unit = infer.infer_types(src, errorlog, self.options, **kwargs)
+    unit, builtins_pytd = infer.infer_types(
+        src, errorlog, self.options, **kwargs)
     unit = pytd_utils.CanonicalOrdering(unit.Visit(visitors.VerifyVisitor()))
     if report_errors and errorlog.has_error():
       errorlog.print_to_stderr()
       self.fail("Inferencer found %d errors" % len(errorlog))
-    return unit
+    return unit, builtins_pytd
 
   def assertTypesMatchPytd(self, ty, pytd_src, version=None):
     """Parses pytd_src and compares with ty."""

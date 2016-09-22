@@ -32,9 +32,12 @@ class TestOptimize(parser_test_base.ParserTest):
     return ast.Visit(
         visitors.LookupBuiltins(builtins.GetBuiltinsAndTyping()[0]))
 
+  def Optimize(self, ast, **kwargs):
+    return optimize.Optimize(ast, builtins.GetBuiltinsPyTD(), **kwargs)
+
   def OptimizedString(self, data):
     tree = self.Parse(data) if isinstance(data, basestring) else data
-    new_tree = optimize.Optimize(tree)
+    new_tree = self.Optimize(tree)
     return pytd.Print(new_tree)
 
   def AssertOptimizeEquals(self, src, new_src):
@@ -346,8 +349,7 @@ class TestOptimize(parser_test_base.ParserTest):
         def foo(a: int) -> float raises IndexError
         def foo(a: str) -> complex raises AssertionError
     """)
-    optimized = optimize.Optimize(self.Parse(src),
-                                  lossy=True, use_abcs=False)
+    optimized = self.Optimize(self.Parse(src), lossy=True, use_abcs=False)
     self.AssertSourceEquals(optimized, src)
 
   @unittest.skip("Needs ABCs to be included in the builtins")
@@ -360,8 +362,7 @@ class TestOptimize(parser_test_base.ParserTest):
         def foo(a: Real) -> NoneType
         def foo(a: Complex) -> NoneType
     """)
-    optimized = optimize.Optimize(self.Parse(src),
-                                  lossy=True, use_abcs=True)
+    optimized = self.Optimize(self.Parse(src), lossy=True, use_abcs=True)
     self.AssertSourceEquals(optimized, new_src)
 
   def testDuplicatesInUnions(self):
@@ -382,7 +383,7 @@ class TestOptimize(parser_test_base.ParserTest):
       def f(x: float or int) -> bool
     """)
     ast = self.ParseAndResolve(src)
-    optimized = optimize.Optimize(ast, lossy=False, max_union=2)
+    optimized = self.Optimize(ast, lossy=False, max_union=2)
     optimized = optimized.Visit(visitors.DropBuiltinPrefix())
     self.AssertSourceEquals(optimized, new_src)
 

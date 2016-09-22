@@ -940,34 +940,6 @@ class ReplaceTypes(Visitor):
   # class names with no contents.
 
 
-class ExtractSuperClassesByName(Visitor):
-  """Visitor for extracting all superclasses (i.e., the class hierarchy).
-
-  This returns a mapping by name, e.g. {
-    "bool": ["int"],
-    "int": ["object"],
-    ...
-  }.
-  """
-
-  def __init__(self):
-    super(ExtractSuperClassesByName, self).__init__()
-    self._superclasses = {}
-
-  def VisitTypeDeclUnit(self, module):
-    del module
-    return self._superclasses
-
-  def EnterClass(self, cls):
-    parent_names = []
-    for parent in cls.parents:
-      if isinstance(parent, pytd.GenericType):
-        parent_names.append(parent.base_type.name)
-      elif isinstance(parent, pytd.GENERIC_BASE_TYPE):
-        parent_names.append(parent.name)
-    self._superclasses[cls.name] = parent_names
-
-
 class ExtractSuperClasses(Visitor):
   """Visitor for extracting all superclasses (i.e., the class hierarchy).
 
@@ -979,18 +951,39 @@ class ExtractSuperClasses(Visitor):
     super(ExtractSuperClasses, self).__init__()
     self._superclasses = {}
 
+  def _Key(self, node):
+    return node
+
   def VisitTypeDeclUnit(self, module):
     del module
     return self._superclasses
 
-  def EnterNamedType(self, _):
-    raise AssertionError(
-        "This visitor needs a resolved AST. Call LookupClasses() before.")
-
   def EnterClass(self, cls):
+    parents = []
+    for p in cls.parents:
+      parent = self._Key(p)
+      if parent is not None:
+        parents.append(parent)
     # TODO(kramm): This uses the entire class node as a key, instead of just
     # its id.
-    self._superclasses[cls] = cls.parents
+    self._superclasses[self._Key(cls)] = parents
+
+
+class ExtractSuperClassesByName(ExtractSuperClasses):
+  """Visitor for extracting all superclasses (i.e., the class hierarchy).
+
+  This returns a mapping by name, e.g. {
+    "bool": ["int"],
+    "int": ["object"],
+    ...
+  }.
+  """
+
+  def _Key(self, node):
+    if isinstance(node, pytd.GenericType):
+      return node.base_type.name
+    elif isinstance(node, (pytd.GENERIC_BASE_TYPE, pytd.Class)):
+      return node.name
 
 
 class ReplaceTypeParameters(Visitor):

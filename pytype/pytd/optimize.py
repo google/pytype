@@ -31,7 +31,6 @@ from pytype.pytd import booleq
 from pytype.pytd import pytd
 from pytype.pytd import type_match
 from pytype.pytd import utils
-from pytype.pytd.parse import builtins
 from pytype.pytd.parse import visitors
 
 log = logging.getLogger(__name__)
@@ -1051,6 +1050,7 @@ class MergeTypeParameters(TypeParameterScope):
 
 
 def Optimize(node,
+             builtins,
              lossy=False,
              use_abcs=False,
              max_union=7,
@@ -1063,9 +1063,10 @@ def Optimize(node,
   Arguments:
     node: A pytd node to be optimized. It won't be modified - this function
         will return a new node.
+    builtins: Definitions of all of the external types in node.
     lossy: Allow optimizations that change the meaning of the pytd.
     use_abcs: Use abstract base classes to represent unions like
-        e.g. "float or int" as "Real"
+        e.g. "float or int" as "Real".
     max_union: How many types we allow in a union before we simplify
         it to just "object".
     remove_mutable: Whether to simplify mutable parameters to normal
@@ -1084,8 +1085,7 @@ def Optimize(node,
   node = node.Visit(ApplyOptionalArguments())
   node = node.Visit(CombineContainers())
   node = node.Visit(SimplifyContainers())
-  superclasses = builtins.GetBuiltinsPyTD().Visit(
-      visitors.ExtractSuperClassesByName())
+  superclasses = builtins.Visit(visitors.ExtractSuperClassesByName())
   superclasses.update(node.Visit(
       visitors.ExtractSuperClassesByName()))
   if use_abcs:
@@ -1106,7 +1106,7 @@ def Optimize(node,
     node = node.Visit(visitors.AdjustSelf(force=True))
   node = node.Visit(SimplifyContainers())
   if can_do_lookup:
-    node = visitors.LookupClasses(node, builtins.GetBuiltinsPyTD())
+    node = visitors.LookupClasses(node, builtins)
     node = node.Visit(RemoveInheritedMethods())
     node = node.Visit(RemoveRedundantSignatures(hierarchy))
   return node
