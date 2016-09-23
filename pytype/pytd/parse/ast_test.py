@@ -923,6 +923,22 @@ class TestASTGeneration(parser_test_base.ParserTest):
     """)
     self.TestThrowsSyntaxError(src)
 
+  def testDuplicates10(self):
+    src = textwrap.dedent("""
+        # foobar
+        class A(object):
+          pass
+        class A(object):
+          pass
+    """)
+    try:
+      self.parser.Parse(src)
+    except parser.ParseError as e:
+      self.assertNotIn("foobar", str(e))
+      self.assertNotIn("^", str(e))
+    else:
+      self.fail("Should have raised error")
+
   def testPythonCode1(self):
     """Smoke test for PYTHONCODE."""
     src = textwrap.dedent("""

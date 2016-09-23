@@ -481,6 +481,21 @@ def process_function(func: Callable[..., Any]) -> None: ...
         def f(x: complex or float or long) -> a.A1
       """)
 
+  def testBuiltinsModule(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        import __builtin__
+        x = ...  # type: __builtin__.int
+      """)
+      ty = self.Infer("""
+        import a
+        x = a.x
+      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        x = ...  # type: int
+      """)
+
   def testFrozenSet(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """

@@ -1573,15 +1573,17 @@ def make_syntax_error(parser_or_tokenizer, msg, p):
   # TODO(kramm): Add test cases for all the various places where this function
   #              is used (duplicate detection etc.)
 
+  column, line = None, None
   if isinstance(p, yacc.YaccProduction):
     lineno = p.lineno(1)
-    column, line = _find_line_and_column(p.lexpos(1), parser_or_tokenizer.src)
+    if lineno > 1:
+      column, line = _find_line_and_column(p.lexpos(1), parser_or_tokenizer.src)
   elif isinstance(p, (lex.LexToken, lex.Lexer)):
     lineno = p.lineno
-    column, line = _find_line_and_column(p.lexpos, parser_or_tokenizer.src)
+    if lineno > 1:
+      column, line = _find_line_and_column(p.lexpos, parser_or_tokenizer.src)
   elif p is None:
     lineno = None
-    column, line = None, None
   else:
     assert False, "Invalid error data %r" % p
   raise ParseError(msg, parser_or_tokenizer.filename, lineno, column, line)
