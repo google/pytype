@@ -1,6 +1,5 @@
 """Test operators (basic tests)."""
 
-import unittest
 from pytype.tests import test_inference
 
 
@@ -264,7 +263,6 @@ class OverloadTest(test_inference.InferenceTest):
     self.check_unary("__nonzero__", "not", self.bool)
 
 
-@unittest.skip("Reverse operator overloading isn't supported")
 class ReverseTest(test_inference.InferenceTest):
   """Tests for reverse operators."""
 

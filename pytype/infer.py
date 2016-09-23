@@ -578,13 +578,11 @@ def _get_module_name(filename, options):
 def check_types(py_src, pytd_src, py_filename, pytd_filename, errorlog,
                 options,
                 run_builtins=True,
-                reverse_operators=False,
                 cache_unknowns=False,
                 init_maximum_depth=INIT_MAXIMUM_DEPTH):
   """Verify a PyTD against the Python code."""
   tracer = CallTracer(errorlog=errorlog, options=options,
                       module_name=_get_module_name(py_filename, options),
-                      reverse_operators=reverse_operators,
                       cache_unknowns=cache_unknowns,
                       generate_unknowns=False)
   loc, defs, builtin_names = tracer.run_program(
@@ -605,9 +603,8 @@ def infer_types(src,
                 errorlog, options,
                 filename=None, run_builtins=True,
                 deep=True, solve_unknowns=True,
-                reverse_operators=False, cache_unknowns=False,
-                extract_locals=True, init_maximum_depth=INIT_MAXIMUM_DEPTH,
-                maximum_depth=None):
+                cache_unknowns=False, extract_locals=True,
+                init_maximum_depth=INIT_MAXIMUM_DEPTH, maximum_depth=None):
   """Given Python source return its types.
 
   Args:
@@ -621,8 +618,6 @@ def infer_types(src,
       execution flow.
     solve_unknowns: If yes, try to replace structural types ("~unknowns") with
       nominal types.
-    reverse_operators: Experimental. Allow overloading __radd__ etc.
-      For user-defined types only - our builtins don't need reverse operators.
     cache_unknowns: If True, do a faster approximation of unknown types.
     extract_locals: If not optimizing, should we at least remove the call
       traces?
@@ -635,7 +630,6 @@ def infer_types(src,
   """
   tracer = CallTracer(errorlog=errorlog, options=options,
                       module_name=_get_module_name(filename, options),
-                      reverse_operators=reverse_operators,
                       cache_unknowns=cache_unknowns,
                       generate_unknowns=not options.quick)
   loc, defs, builtin_names = tracer.run_program(

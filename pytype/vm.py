@@ -78,7 +78,6 @@ class VirtualMachine(object):
                errorlog,
                options,
                module_name=None,
-               reverse_operators=False,
                generate_unknowns=False,
                cache_unknowns=True):
     """Construct a TypegraphVirtualMachine."""
@@ -86,7 +85,6 @@ class VirtualMachine(object):
     self.errorlog = errorlog
     self.options = options
     self.python_version = options.python_version
-    self.reverse_operators = reverse_operators
     self.generate_unknowns = generate_unknowns
     self.cache_unknowns = cache_unknowns
     self.loader = load_pytd.Loader(base_module=module_name, options=options)
@@ -217,6 +215,33 @@ class VirtualMachine(object):
     if name in VirtualMachine.reversable_operators:
       return "__r" + name[2:]
     return None
+
+  def _try_reverse_operator(self, obj, rname, unreversed_results):
+    """Whether we should attempt to call the given reverse operator.
+
+    Args:
+      obj: The object to (maybe) call the reverse operator on.
+      rname: The name of the reverse operator.
+      unreversed_results: Results from calling the unreversed operator.
+
+    Returns:
+      True if we should attempt the call.
+    """
+    if rname:
+      for v in obj.data:
+        # We do not want to look for a reverse operator on an Unsolvable or
+        # Empty value, since it'll simply hand back an Unsolvable. If obj is
+        # an Unknown and we already have results from the unreversed operator,
+        # trying the reverse one would only cause us to lose precision. See
+        # test_operators2.OperatorsWithAnyTests.testPow1 and
+        # test_match.MatchTest.testMatchUnknownAgainstContainer for cases for
+        # which omitting the Unknown check causes the inferred argument type
+        # to revert to "Any".
+        if (isinstance(v, (abstract.Unsolvable, abstract.Empty)) or
+            (isinstance(v, abstract.Unknown) and unreversed_results)):
+          return False
+      return True
+    return False
 
   def push_block(self, state, t, handler=None, level=None):
     if level is None:
@@ -613,11 +638,10 @@ class VirtualMachine(object):
                                                  fallback_to_unsolvable=False)
       results.append(ret)
     rname = self.reverse_operator_name(name)
-    if self.reverse_operators and rname:  # experimental, typically false
+    if self._try_reverse_operator(y, rname, results):
       state, attr = self.load_attr_noerror(state, y, rname)
       if attr is None:
-        log.debug("No reverse operator %s on %r",
-                  self.reverse_operator_name(name), y)
+        log.debug("No reverse operator %s on %r", rname, y)
       else:
         state, ret = self.call_function_with_state(state, attr, (x,),
                                                    fallback_to_unsolvable=False)
