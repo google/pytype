@@ -202,6 +202,19 @@ class BuiltinTests2(test_inference.InferenceTest):
       y = ...  # type: int
     """)
 
+  def testMap(self):
+    ty = self.Infer("""
+      lst1 = []
+      lst2 = [x for x in lst1]
+      lst3 = map(str, lst2)
+    """, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      lst1 = ...  # type: List[nothing]
+      lst2 = ...  # type: List[nothing]
+      x = ...  # type: Any
+      lst3 = ...  # type: List[nothing]
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

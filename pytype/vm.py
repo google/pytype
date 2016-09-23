@@ -403,10 +403,7 @@ class VirtualMachine(object):
       log.error("Error initializing class %r", name)
       return self.convert.create_new_unknown(node, name)
     for base in bases:
-      if not any(isinstance(t, (abstract.Class,
-                                abstract.Unknown,
-                                abstract.Unsolvable,
-                                abstract.Empty))
+      if not any(isinstance(t, (abstract.Class, abstract.AMBIGUOUS_OR_EMPTY))
                  for t in base.data):
         self.errorlog.base_class_error(self.frame.current_opcode, node, base)
     if not bases:
@@ -1887,6 +1884,7 @@ class VirtualMachine(object):
     # TODO(kramm): this doesn't use __all__ properly.
     state, mod_var = state.pop()
     mod = abstract.get_atomic_value(mod_var)
+    # TODO(rechen): Is mod ever an unknown?
     if isinstance(mod, (abstract.Unknown, abstract.Unsolvable)):
       self.has_unknown_wildcard_imports = True
       return state

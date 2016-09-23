@@ -534,7 +534,10 @@ class Empty(AtomicAbstractValue):
     return pytd.AnythingType()
 
   def match_against_type(self, other_type, subst, node, view):
-    return other_type.match_instance(self, subst, node, view)
+    if isinstance(other_type, Nothing):
+      return subst
+    else:
+      return other_type.match_instance(self, subst, node, view)
 
   def get_attribute(self, node, name, valself=None, valcls=None,
                     condition=None):
@@ -1446,7 +1449,7 @@ class IsInstance(AtomicAbstractValue):
     return node, result
 
   def _is_instance(self, obj, class_spec):
-    """Check if the object matches a class specficiation.
+    """Check if the object matches a class specification.
 
     Args:
       obj: An AtomicAbstractValue, generally the left hand side of an
@@ -1458,8 +1461,7 @@ class IsInstance(AtomicAbstractValue):
       True if the object is derived from a class in the class_spec, False if
       it is not, and None if it is ambiguous whether obj matches class_spec.
     """
-    # Unknown and Unsolvable objects are ambiguous.
-    if isinstance(obj, (Unknown, Unsolvable)):
+    if isinstance(obj, AMBIGUOUS_OR_EMPTY):
       return None
     # Assume a single binding for the object's class variable.  If this isn't
     # the case, treat the call as ambiguous.
@@ -1903,7 +1905,7 @@ class PyTDFunction(Function):
     # signatures are possible matches, we don't know which got called. Check
     # if this is the case.
     if (len(self.signatures) > 1 and
-        any(isinstance(view[arg].data, (Unknown, Unsolvable))
+        any(isinstance(view[arg].data, AMBIGUOUS_OR_EMPTY)
             for arg in chain(args.posargs, args.namedargs.values()))):
       signatures = tuple(self._yield_matching_signatures(node, args, view))
       if len(signatures) > 1:
@@ -2119,7 +2121,7 @@ class Class(object):
             new_subst = other_type.match_instance(instance, subst, node, view)
             if new_subst is not None:
               return new_subst
-        elif isinstance(base, (Unknown, Unsolvable)):
+        elif isinstance(base, AMBIGUOUS_OR_EMPTY):
           # See match_Function_against_Class in type_match.py. Even though it's
           # possible that this Unknown is of type other_type, our class would
           # then be a match for *everything*. Hence, return False, to keep
@@ -3068,6 +3070,7 @@ class Iterator(ValueWithSlots):
     return node, self._return_var
 
 
+# TODO(rechen): Merge this class with Empty.
 class Nothing(AtomicAbstractValue):
   """The VM representation of Nothing values.
 
@@ -3400,3 +3403,5 @@ class Unknown(AtomicAbstractValue):
   def match_against_type(self, other_type, subst, node, view):
     # TODO(kramm): Do we want to match the instance or the class?
     return other_type.match_instance(self, subst, node, view)
+
+AMBIGUOUS_OR_EMPTY = (Unknown, Unsolvable, Empty)

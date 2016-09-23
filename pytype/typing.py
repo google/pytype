@@ -130,7 +130,7 @@ class _Container(TypingClass):
           else:
             return None
           return new_subst
-      elif isinstance(v, (abstract.Unknown, abstract.Unsolvable)):
+      elif isinstance(v, abstract.AMBIGUOUS_OR_EMPTY):
         return subst
     else:
       return subst
