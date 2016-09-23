@@ -38,6 +38,19 @@ COMPAT_MAP = {
     "int": "float"}
 
 
+PEP484_CAPITALIZED = {
+    # The PEP 484 definition of built-in types.
+    # E.g. "typing.List" is used to represent the "list" type.
+    "List", "Dict", "Tuple", "Set", "FrozenSet", "Generator", "Iterator"
+}
+
+
+def PEP484_MaybeCapitalize(name):  # pylint: disable=invalid-name
+  for capitalized in PEP484_CAPITALIZED:
+    if capitalized.lower() == name:
+      return capitalized
+
+
 # TODO(kramm): This class is deprecated.
 class Print484StubVisitor(visitors.Visitor):
   """Visitor for converting ASTs to the PEP 484 format.
@@ -55,22 +68,6 @@ class Print484StubVisitor(visitors.Visitor):
     if not re.match(r"^[a-zA-Z_]", name):
       name = "_" + name
     return re.sub(r"[^a-zA-Z0-9_]", "_", name)
-
-  def _MaybeCapitalize(self, s):
-    """Capitalize container types.
-
-    PEP484 defines some container types in "typing.py". E.g. "List" or "Dict".
-    If we have a base type that corresponds to that, convert it to the
-    corresponding PEP484 name.
-    Args:
-      s: A type name, e.g. "int" or "list"
-    Returns:
-      A type name that can be used as a PEP 484 generic. E.g. "List".
-    """
-    if s in ["list", "tuple", "dict"]:
-      return s.capitalize()
-    else:
-      return s
 
   def VisitTypeDeclUnit(self, node):
     """Convert the AST for an entire module to a PEP484 stub."""
@@ -167,7 +164,8 @@ class Print484StubVisitor(visitors.Visitor):
   def VisitGenericType(self, node):
     """Convert a generic type (E.g. list[int]) to a string."""
     param_str = ", ".join(node.parameters)
-    return self._MaybeCapitalize(node.base_type) + "[" + param_str + "]"
+    return (PEP484_MaybeCapitalize(node.base_type) or
+            node.base_type) + "[" + param_str + "]"
 
   def VisitUnionType(self, node):
     """Convert a union type ("x or y") to a string."""
@@ -193,7 +191,7 @@ class ConvertTypingToNative(visitors.Visitor):
   def _Convert(self, t):
     module, name = self._GetModuleAndName(t)
     if module == "typing" or (module is None and self.module == "typing"):
-      if name in visitors.PrintVisitor.PEP484_CAPITALIZED:
+      if name in PEP484_CAPITALIZED:
         return pytd.NamedType(name.lower())  # "typing.List" -> "list" etc.
       elif name in PEP484_TRANSLATIONS:
         return PEP484_TRANSLATIONS[name]
