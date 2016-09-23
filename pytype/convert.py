@@ -404,8 +404,7 @@ class Converter(object):
     elif isinstance(pyval, pytd.NothingType):
       return self.nothing
     elif isinstance(pyval, pytd.AnythingType):
-      # TODO(kramm): This should be an Unsolveable. We don't need to solve this.
-      return self._create_new_unknown_value("AnythingType")
+      return self.unsolvable
     elif isinstance(pyval, pytd.FunctionType):
       return self.construct_constant_from_value(
           name, pyval.function, subst, node)

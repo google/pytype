@@ -687,6 +687,37 @@ class GenericTest(test_inference.InferenceTest):
         def f(x: a.A1[object] or a.A2) -> Any
       """)
 
+  def testAttributeOnAnythingTypeParameter(self):
+    """Test that we can access an attribute on "Any"."""
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        class A(List[Any]): pass
+      """)
+      ty = self.Infer("""
+        import a
+        def f():
+          return a.A()[0].someproperty
+      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        def f() -> Any
+      """)
+
+  def testMatchAnythingTypeParameter(self):
+    """Test that we can match "Any" against a formal function argument."""
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        class A(List[Any]): pass
+      """)
+      ty = self.Infer("""
+        import a
+        n = len(a.A()[0])
+      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        n = ...  # type: int
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()
