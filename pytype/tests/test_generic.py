@@ -650,6 +650,43 @@ class GenericTest(test_inference.InferenceTest):
         def f() -> int
       """)
 
+  @unittest.skip("Why do we get a.A1[object] instead of a.A1[str]?")
+  def testUnknown(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        T = TypeVar("T")
+        class A1(Generic[T]):
+          def f(self, x: T) -> T
+        class A2(A1[Any]): pass
+      """)
+      ty = self.Infer("""
+        import a
+        def f(x):
+          return x.f("")
+      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        def f(x: a.A1[str] or a.A2) -> Any
+      """)
+
+  def testInheritedTypeParameter(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        T = TypeVar("T")
+        class A1(Generic[T]):
+          def f(self) -> T
+        class A2(A1): pass
+      """)
+      ty = self.Infer("""
+        import a
+        def f(x):
+          return x.f()
+      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        def f(x: a.A1[object] or a.A2) -> Any
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()

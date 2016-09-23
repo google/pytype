@@ -433,23 +433,23 @@ class TypeMatch(utils.TypeMatcher):
           # imaginable, and hence is a match for anything. To prevent the bad
           # results caused by that, return FALSE here.
           return booleq.FALSE
-        elif isinstance(base, pytd.ClassType):
-          cls = base.cls
-          implication = self.match_Function_against_Class(f1, cls, subst, cache)
-          if implication is not booleq.FALSE:
-            return implication
-        elif isinstance(base, pytd.GenericType):
-          cls = base.base_type.cls
-          subst = subst.copy()
-          for param, value in zip(cls.template, base.parameters):
-            subst[param.type_param] = value
+        elif isinstance(base, (pytd.ClassType, pytd.GenericType)):
+          if isinstance(base, pytd.ClassType):
+            cls = base.cls
+            values = tuple(pytd.AnythingType() for _ in cls.template)
+          else:
+            cls = base.base_type.cls
+            values = base.parameters
+          if values:
+            subst = subst.copy()
+            for param, value in zip(cls.template, values):
+              subst[param.type_param] = value
           implication = self.match_Function_against_Class(f1, cls, subst, cache)
           if implication is not booleq.FALSE:
             return implication
         else:
-          # Funky types like GenericType, UnionType, etc. are hard (or
-          # impossible) to match against (and shouldn't appear as a base class)
-          # so we treat them as catch-all.
+          # Funky types like UnionType are hard to match against (and shouldn't
+          # appear as a base class) so we treat them as catch-all.
           log.warning("Assuming that %s has method %s",
                       pytd.Print(base), f1.name)
           return booleq.TRUE
