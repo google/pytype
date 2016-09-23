@@ -95,7 +95,8 @@ class DirectorTest(unittest.TestCase):
     self._should_report(False, 2)
     self._should_report(True, 2, filename=None)  # No file.
     self._should_report(True, 2, filename="some_other_file.py")  # Other file.
-    self._should_report(True, None)  # No line number.
+    self._should_report(False, None)  # No line number.
+    self._should_report(False, 0)  # line number 0.
 
   def test_disable(self):
     self._create("""
@@ -148,6 +149,13 @@ class DirectorTest(unittest.TestCase):
     self._should_report(True, 2)
     self._should_report(False, 3)
     self._should_report(True, 4)
+
+  def test_error_at_line_0(self):
+    self._create("""
+    x = "foo"
+    # pytype: disable=too-complex
+    """)
+    self._should_report(False, 0, error_name="too-complex")
 
   def test_invalid_disable(self):
     def check_warning(message_regex, text):

@@ -41,7 +41,7 @@ class _LineSet(object):
       self._lines.add(line)
 
   def __contains__(self, line):
-    """Return if a line is a memeber of the set."""
+    """Return if a line is a member of the set."""
     return line > self._limit or line in self._lines
 
 
@@ -133,8 +133,9 @@ class Director(object):
     # number.
     if error.filename != self._filename or error.lineno is None:
       return True
+    # Treat lineno=0 as below the file, so we can filter it.
+    lineno = error.lineno or sys.maxint
     # Report the error if it isn't subject to any ignore or disable.
-    lineno = error.lineno
     return (lineno not in self._ignore and
             lineno not in self._disables[_ALL_ERRORS] and
             lineno not in self._disables[error.name])

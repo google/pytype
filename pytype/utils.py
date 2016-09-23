@@ -74,7 +74,7 @@ class ComplexityLimit(object):
   def inc(self, add=1):
     self.count += add
     if self.count >= self.limit:
-      raise ProgramTooComplexError(Exception)
+      raise ProgramTooComplexError()
 
 
 def deep_variable_product(variables, limit=DEEP_VARIABLE_LIMIT):

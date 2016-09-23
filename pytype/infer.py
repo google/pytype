@@ -49,9 +49,6 @@ class CallTracer(vm.VirtualMachine):
       analyze_types.
   """
 
-  # TODO(pludemann): def isinstance(self, obj, classes) - see
-  #                  TypegraphVirtualMachine.isinstance
-
   def __init__(self, *args, **kwargs):
     super(CallTracer, self).__init__(*args, **kwargs)
     self._unknowns = {}
