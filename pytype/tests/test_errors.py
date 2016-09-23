@@ -518,6 +518,30 @@ class ErrorTest(test_inference.InferenceTest):
     self.assertErrorLogIs(
         errors, [(5, "wrong-arg-types", r"Type\[B\].*Type\[A\]")])
 
+  def testBadNameImport(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        import typing
+        x = ...  # type: typing.Rumpelstiltskin
+      """)
+      _, errors = self.InferAndCheck("""\
+        import a
+        x = a.x
+      """, pythonpath=[d.path], deep=True)
+      self.assertErrorLogIs(errors, [(1, "pyi-error", r"Rumpelstiltskin")])
+
+  def testBadNameImportFrom(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        from typing import Rumpelstiltskin
+        x = ...  # type: Rumpelstiltskin
+      """)
+      _, errors = self.InferAndCheck("""\
+        import a
+        x = a.x
+      """, pythonpath=[d.path], deep=True)
+      self.assertErrorLogIs(errors, [(1, "pyi-error", r"Rumpelstiltskin")])
+
 
 if __name__ == "__main__":
   test_inference.main()

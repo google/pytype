@@ -133,8 +133,11 @@ class Loader(object):
             raise BadDependencyError(error, ast_name or ast.name)
       module_map = {name: module.ast
                     for name, module in self._modules.items()}
-      ast = ast.Visit(visitors.LookupExternalTypes(module_map, full_names=True,
-                                                   self_name=ast_name))
+      try:
+        ast = ast.Visit(visitors.LookupExternalTypes(
+            module_map, full_names=True, self_name=ast_name))
+      except KeyError as e:
+        raise BadDependencyError(e.message, ast_name or ast.name)
     return ast
 
   def _finish_ast(self, ast):
