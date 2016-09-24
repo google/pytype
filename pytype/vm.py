@@ -11,7 +11,6 @@ trace of the program execution.
 # pylint: disable=unused-argument
 
 import collections
-import linecache
 import logging
 import os
 import re
@@ -260,17 +259,6 @@ class VirtualMachine(object):
     else:
       self.frame = None
 
-  def print_frames(self):
-    """Print the call stack, for debugging."""
-    for f in self.frames:
-      filename = f.f_code.co_filename
-      lineno = f.line_number()
-      print '  File "%s", line %d, in %s' % (filename, lineno, f.f_code.co_name)
-      linecache.checkcache(filename)
-      line = linecache.getline(filename, lineno, f.f_globals)
-      if line:
-        print "  " + line.strip()
-
   def module_name(self):
     if self.frame.f_code.co_filename:
       return ".".join(re.sub(
@@ -515,17 +503,6 @@ class VirtualMachine(object):
     node, val = self.run_frame(frame, node)
     frame.f_back = None
     return node, val
-
-  def backtrace(self):
-    items = []
-    for f in self.frames:
-      block = self.cfg.get_basic_block(f.f_code, f.f_lasti)
-      if block in f.cfgnode:
-        cfg_node = f.cfgnode[block]
-        items.append("[%d %s]" % (cfg_node.id, cfg_node.name))
-      else:
-        items.append("{%s}" % block.get_name())
-    return " ".join(items)
 
   def compile_src(self, src, filename=None, mode="exec"):
     code = pyc.compile_src(
