@@ -40,32 +40,22 @@ def check_pyi(input_filename, output_filename, errorlog, options):
       pyi_src = fi.read()
   else:
     pyi_src = None
-  try:
-    infer.check_types(
-        py_src,
-        pyi_src,
-        py_filename=input_filename,
-        pytd_filename=output_filename,
-        errorlog=errorlog,
-        options=options,
-        run_builtins=options.run_builtins,
-        cache_unknowns=options.cache_unknowns)
-  except utils.ProgramTooComplexError:
-    errorlog.too_complex(input_filename)
-  except Exception:  # pylint: disable=broad-except
-    # TODO(fyquah): We should store this error somewhere so the user knows.
-    if not options.nofail:
-      raise
+  infer.check_types(
+      py_src,
+      pyi_src,
+      py_filename=input_filename,
+      pytd_filename=output_filename,
+      errorlog=errorlog,
+      options=options,
+      run_builtins=options.run_builtins,
+      cache_unknowns=options.cache_unknowns)
 
 
-def generate_pyi(input_filename, output_filename, errorlog, options):
+def generate_pyi(input_filename, errorlog, options):
   """Run the inferencer on one file, producing output.
 
   Args:
     input_filename: name of the file to process
-    output_filename: name of the file for writing the output. If this is None,
-                     then the options are used to determine where to write the
-                     output.
     errorlog: Where error messages go. Instance of errors.ErrorLog.
     options: config.Options object.
 
@@ -73,68 +63,44 @@ def generate_pyi(input_filename, output_filename, errorlog, options):
     The pyi AST.
 
   Raises:
-    SystemExit: If we couldn't parse a PYI file.
+    CompileError: If we couldn't parse the input file.
+    ProgramTooComplexError: If the file was too complex to analyze.
   """
   with open(input_filename, "r") as fi:
     src = fi.read()
 
-  try:
-    mod, builtins = infer.infer_types(
-        src,
-        errorlog=errorlog,
-        options=options,
-        filename=input_filename,
-        run_builtins=options.run_builtins,
-        deep=not options.main_only,
-        solve_unknowns=not options.quick,
-        maximum_depth=1 if options.quick else 3,
-        cache_unknowns=options.cache_unknowns)
-    mod.Visit(visitors.VerifyVisitor())
-  except pyc.CompileError as e:
-    # Compiling a *.py failed. Tell the user what Python told us and exit.
-    sys.stderr.write(e.message + "\n")
-    sys.exit(1)
-  except utils.ProgramTooComplexError:
-    log.warn("Program too complex too analyze. Aborting.")
-    result = "# Program too complex for full analysis\n"
-    result += "def __getattr__(name) -> Any: ...\n"
-  except Exception as e:  # pylint: disable=broad-except
-    if options.nofail:
-      log.warn("***Caught exception: %s", str(e), exc_info=True)
-      result = ("def __getattr__(name) -> Any: ...\n"
-                "# Caught error in pytype: " + str(e).replace("\n", "\n#")
-                + "\n# " + "\n# ".join(traceback.format_exc().splitlines()))
-    else:
-      raise
-  else:
-    mod = optimize.Optimize(mod,
-                            builtins,
-                            # TODO(kramm): Add FLAGs for these
-                            lossy=False,
-                            use_abcs=False,
-                            max_union=7,
-                            remove_mutable=False)
-    log.info("=========== pyi optimized =============")
-    mod = pytd_utils.CanonicalOrdering(mod, sort_signatures=True)
-    log.info("\n%s", pytd.Print(mod))
-    log.info("========================================")
+  mod, builtins = infer.infer_types(
+      src,
+      errorlog=errorlog,
+      options=options,
+      filename=input_filename,
+      run_builtins=options.run_builtins,
+      deep=not options.main_only,
+      solve_unknowns=not options.quick,
+      maximum_depth=1 if options.quick else 3,
+      cache_unknowns=options.cache_unknowns)
+  mod.Visit(visitors.VerifyVisitor())
+  mod = optimize.Optimize(mod,
+                          builtins,
+                          # TODO(kramm): Add FLAGs for these
+                          lossy=False,
+                          use_abcs=False,
+                          max_union=7,
+                          remove_mutable=False)
+  log.info("=========== pyi optimized =============")
+  mod = pytd_utils.CanonicalOrdering(mod, sort_signatures=True)
+  log.info("\n%s", pytd.Print(mod))
+  log.info("========================================")
 
-    result = pytd.Print(mod)
-    if not result.endswith("\n"):  # TODO(pludemann): fix this hack
-      result += "\n"
-
-    result_prefix = ""
-    if options.quick:
-      result_prefix += "# (generated with --quick)\n"
-    if result_prefix:
-      result = result_prefix + "\n" + result
-
-  if output_filename == "-" or not output_filename:
-    sys.stdout.write(result)
-  else:
-    log.info("write pyi %r => %r", input_filename, output_filename)
-    with open(output_filename, "w") as fi:
-      fi.write(result)
+  result = pytd.Print(mod)
+  if not result.endswith("\n"):  # TODO(pludemann): fix this hack
+    result += "\n"
+  result_prefix = ""
+  if options.quick:
+    result_prefix += "# (generated with --quick)\n"
+  if result_prefix:
+    result = result_prefix + "\n" + result
+  return result
 
 
 def process_one_file(input_filename,
@@ -173,12 +139,31 @@ def process_one_file(input_filename,
                 errorlog=errorlog,
                 options=options)
     else:
-      generate_pyi(input_filename=input_filename,
-                   output_filename=output_filename,
-                   errorlog=errorlog,
-                   options=options)
+      # The default pyi that is used in the event that generate_pyi fails
+      result = "def __getattr__(name) -> Any: ...\n"
+      result = generate_pyi(input_filename=input_filename,
+                            errorlog=errorlog,
+                            options=options)
   except pyc.CompileError as e:
     errorlog.python_compiler_error(input_filename, e.lineno, e.error)
+  except utils.ProgramTooComplexError:
+    errorlog.too_complex(input_filename)
+  except Exception as e:  # pylint: disable=broad-except
+    if options.nofail:
+      log.warn("***Caught exception: %s", str(e), exc_info=True)
+      if not options.check:
+        result += (  # pytype: disable=name-error
+            "# Caught error in pytype: " + str(e).replace("\n", "\n#")
+            + "\n# " + "\n# ".join(traceback.format_exc().splitlines()))
+    else:
+      raise
+  if not options.check:
+    if output_filename == "-" or not output_filename:
+      sys.stdout.write(result)
+    else:
+      log.info("write pyi %r => %r", input_filename, output_filename)
+      with open(output_filename, "w") as fi:
+        fi.write(result)
   if options.report_errors:
     if print_errors:
       if errors_csv_file:

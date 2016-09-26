@@ -116,10 +116,6 @@ class Options(object):
         dest="nofail", default=False,
         help=("Don't allow pytype to fail (for testing only)."))
     o.add_option(
-        "-O", "--optimize", action="store_true",
-        dest="optimize",
-        help=("Optimize generated pytd (default)."))
-    o.add_option(
         "-o", "--output", type="string", action="store",
         dest="output", default=None,
         help=("Output file (default: stdout). Only allowed if only one input."
@@ -343,4 +339,3 @@ class Options(object):
       raise optparse.OptionConflictError("Not allowed with --no-report-errors",
                                          "output-errors-csv")
     self.output_errors_csv = output_errors_csv
-
