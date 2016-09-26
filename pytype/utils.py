@@ -14,9 +14,15 @@ import types
 
 
 # Limit on how many argument combinations we allow before aborting.
-# For a random sample of 350 (sane) source files, the highest value for argument
-# combinations was 54. One of the problematic files had 10,000 combinations.
-DEEP_VARIABLE_LIMIT = 64
+# For a sample of 16664 (sane) source files without imports, these are the
+# quantiles that were below the given number of argument combinations:
+#     50%  75%  90%  99%  99.9%  99.99%
+#       1    3    6   57    809    9638
+# We also know of two problematic files, with 4,800 and 10,000
+# combinations, respectively.
+# So pick a number that excludes as few files as possible (0.1%) but also
+# cuts off problematic files, with a comfortable margin.
+DEEP_VARIABLE_LIMIT = 1024
 
 
 def replace_extension(filename, new_extension):
