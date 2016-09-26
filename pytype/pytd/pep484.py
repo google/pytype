@@ -15,7 +15,7 @@ PEP484_NAMES = ["AbstractSet", "AnyStr", "BinaryIO", "ByteString", "Callable",
                 "NamedTuple", "Optional", "Pattern", "Reversible", "Sequence",
                 "Set", "Sized", "SupportsAbs", "SupportsBytes",
                 "SupportsComplex", "SupportsFloat", "SupportsInt",
-                "SupportsRound", "TextIO", "Tuple", "TypeVar",
+                "SupportsRound", "TextIO", "Tuple", "Type", "TypeVar",
                 "Union"]
 
 
@@ -41,7 +41,7 @@ COMPAT_MAP = {
 PEP484_CAPITALIZED = {
     # The PEP 484 definition of built-in types.
     # E.g. "typing.List" is used to represent the "list" type.
-    "List", "Dict", "Tuple", "Set", "FrozenSet", "Generator", "Iterator"
+    "List", "Dict", "Tuple", "Set", "FrozenSet", "Generator", "Iterator", "Type"
 }
 
 

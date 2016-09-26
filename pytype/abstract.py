@@ -880,10 +880,7 @@ class SimpleAbstractValue(AtomicAbstractValue):
 
   def match_against_type(self, other_type, subst, node, view):
     if isinstance(self, Class):
-      if other_type.name in ["type", "object", "Callable"]:
-        return subst
-      else:
-        return None
+      return Class.match_against_type(self, other_type, subst, node, view)
     my_type = self.get_class()
     assert my_type
     assert isinstance(self, Instance)
@@ -2087,6 +2084,26 @@ class Class(object):
     del instance, node, view
     return subst
 
+  def _match_from_mro(self, other_type):
+    for base in self.mro:
+      if isinstance(base, ParameterizedClass):
+        base_cls = base.base_cls
+      else:
+        base_cls = base
+      if isinstance(base_cls, Class):
+        if other_type is base_cls or (
+            isinstance(other_type, ParameterizedClass) and
+            other_type.base_cls is base_cls):
+          return base
+      elif isinstance(base_cls, AMBIGUOUS_OR_EMPTY):
+        # See match_Function_against_Class in type_match.py. Even though it's
+        # possible that this Unknown is of type other_type, our class would
+        # then be a match for *everything*. Hence, return False, to keep
+        # the list of possible types from exploding.
+        return None
+      else:
+        raise AssertionError("Bad base class %r", base_cls)
+
   def match_instance_against_type(self, instance, other_type,
                                   subst, node, view):
     """Checks whether an instance of us is compatible with a (formal) type.
@@ -2111,30 +2128,33 @@ class Class(object):
       return subst
 
     if isinstance(other_type, Class):
-      for base in self.mro:
-        if isinstance(base, ParameterizedClass):
-          base = base.base_cls
-        if isinstance(base, Class):
-          if other_type is base or (
-              isinstance(other_type, ParameterizedClass) and
-              other_type.base_cls is base):
-            new_subst = other_type.match_instance(instance, subst, node, view)
-            if new_subst is not None:
-              return new_subst
-        elif isinstance(base, AMBIGUOUS_OR_EMPTY):
-          # See match_Function_against_Class in type_match.py. Even though it's
-          # possible that this Unknown is of type other_type, our class would
-          # then be a match for *everything*. Hence, return False, to keep
-          # the list of possible types from exploding.
-          return None
-        else:
-          raise AssertionError("Bad base class %r", base)
-      return None
+      base = self._match_from_mro(other_type)
+      if base is None:
+        return None
+      else:
+        return other_type.match_instance(instance, subst, node, view)
     elif isinstance(other_type, Nothing):
       return None
     else:
       raise NotImplementedError(
           "Can't match instance %r against %r", self, other_type)
+
+  def match_against_type(self, other_type, subst, node, view):
+    del node, view
+    if (other_type.name == "type" and
+        isinstance(other_type, ParameterizedClass)):
+      other_type = other_type.type_parameters["T"]
+      base = self._match_from_mro(other_type)
+      if base is None:
+        return None
+      else:
+        # TODO(rechen): We should match type parameters when base and other_type
+        # are both parameterized classes.
+        return subst
+    elif other_type.name in ["type", "object", "Callable"]:
+      return subst
+    else:
+      return None
 
 
 class ParameterizedClass(AtomicAbstractValue, Class):
@@ -2162,7 +2182,8 @@ class ParameterizedClass(AtomicAbstractValue, Class):
   def __str__(self):
     params = [self.type_parameters[type_param.name]
               for type_param in self.base_cls.pytd_cls.template]
-    return "%s[%s]" % (self.base_cls, ", ".join(str(p) for p in params))
+    base = pep484.PEP484_MaybeCapitalize(str(self.base_cls)) or self.base_cls
+    return "%s[%s]" % (base, ", ".join(str(p) for p in params))
 
   def get_attribute_generic(self, node, name, val):
     return self.base_cls.get_attribute_generic(node, name, val)

@@ -542,6 +542,45 @@ class ErrorTest(test_inference.InferenceTest):
       """, pythonpath=[d.path], deep=True)
       self.assertErrorLogIs(errors, [(1, "pyi-error", r"Rumpelstiltskin")])
 
+  def testMatchType(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        class A(object): ...
+        class B(A): ...
+        class C(object): ...
+        def f(x: Type[A]) -> bool
+      """)
+      ty, errors = self.InferAndCheck("""\
+        import a
+        x = a.f(a.A)
+        y = a.f(a.B)
+        z = a.f(a.C)
+      """, pythonpath=[d.path], deep=True)
+      self.assertErrorLogIs(errors, [(
+          4, "wrong-arg-types", r"Expected.*Type\[A\].*Actual.*Type\[C\]")])
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        x = ...  # type: bool
+        y = ...  # type: bool
+        z = ...  # type: Any
+      """)
+
+  @unittest.skip("Need to match type parameters.")
+  def testMatchParameterizedType(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        T = TypeVar("T")
+        class A(Generic[T]): ...
+        class B(A[str]): ...
+        def f(x: Type[A[int]]): ...
+      """)
+      _, errors = self.InferAndCheck("""\
+        import a
+        x = a.f(a.B)
+      """, pythonpath=[d.path], deep=True)
+      expected_error = r"Expected.*Type\[A\[int\]\].*Actual.*Type\[B\]"
+      self.assertErrorLogIs(errors, [(4, "wrong-arg-types", expected_error)])
+
 
 if __name__ == "__main__":
   test_inference.main()

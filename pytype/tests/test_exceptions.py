@@ -2,6 +2,8 @@
 
 import unittest
 
+
+from pytype import utils
 from pytype.tests import test_inference
 
 
@@ -198,6 +200,25 @@ class TestExceptions(test_inference.InferenceTest):
 
       def bar(x) -> Foo
     """)
+
+  def test_match_exception_type(self):
+    with utils.Tempdir() as d:
+      d.create_file("warnings.pyi", """
+        def warn(message: Union[str, Warning],
+                 category: Optional[Type[Warning]] = ...,
+                 stacklevel: int = ...) -> None: ...
+      """)
+      ty = self.Infer("""
+        import warnings
+        def warn():
+          warnings.warn(
+            "set_prefix() is deprecated; use the prefix property",
+            DeprecationWarning, stacklevel=2)
+      """, pythonpath=[d.path], solve_unknowns=True, deep=True)
+      self.assertTypesMatchPytd(ty, """
+        warnings = ...  # type: module
+        def warn() -> None
+      """)
 
 
 if __name__ == "__main__":
