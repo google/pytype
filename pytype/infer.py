@@ -300,6 +300,7 @@ class CallTracer(vm.VirtualMachine):
       full_name = cls.module + "." + cls.name if cls.module else cls.name
       classes.append(pytd.Class(
           name=self._pack_name(full_name),
+          metaclass=None,
           parents=(),  # not used in solver
           methods=tuple(self._call_traces_to_function(call_records)),
           constants=(),

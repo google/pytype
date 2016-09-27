@@ -1449,7 +1449,7 @@ class TestASTGeneration(parser_test_base.ParserTest):
     self.assertEquals(c2.Replace(name="`nt`"), nt)
 
   def testMetaclass(self):
-    """Test stripping of metaclass kwarg."""
+    """Test parsing of metaclass kwarg."""
     self.TestRoundTrip(textwrap.dedent("""
       class C1(metaclass=foo):
           pass
@@ -1457,10 +1457,10 @@ class TestASTGeneration(parser_test_base.ParserTest):
       class C2(C1, metaclass=foo):
           pass
     """), textwrap.dedent("""
-      class C1:
+      class C1(metaclass=foo):
           pass
 
-      class C2(C1):
+      class C2(C1, metaclass=foo):
           pass
     """))
 
@@ -1491,7 +1491,7 @@ class TestASTGeneration(parser_test_base.ParserTest):
       from abc import abstractmethod
       from abc import ABCMeta
 
-      class C:
+      class C(metaclass=foo):
           def foo(self) -> int: ...
     """))
 

@@ -274,6 +274,8 @@ class PrintVisitor(Visitor):
     # list any parents.
     if parents == ("classobj",):
       parents = ()
+    if node.metaclass is not None:
+      parents += ("metaclass=" + node.metaclass,)
     parents_str = "(" + ", ".join(parents) + ")" if parents else ""
     header = "class " + self._SafeName(node.name) + parents_str + ":"
     if node.methods or node.constants:
@@ -1179,6 +1181,7 @@ class CanonicalOrderingVisitor(Visitor):
 
   def VisitClass(self, node):
     return pytd.Class(name=node.name,
+                      metaclass=node.metaclass,
                       parents=node.parents,
                       methods=tuple(sorted(node.methods)),
                       constants=tuple(sorted(node.constants)),

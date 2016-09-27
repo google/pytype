@@ -839,8 +839,8 @@ class SimpleAbstractValue(AtomicAbstractValue):
     else:
       return "<v%d %s>" % (self.id, self.name)
 
-  def to_variable(self, node, name):
-    return super(SimpleAbstractValue, self).to_variable(node, name)
+  def to_variable(self, node, name=None):
+    return super(SimpleAbstractValue, self).to_variable(node, name or self.name)
 
   def get_class(self):
     # See Py_TYPE() in Include/object.h
@@ -2005,9 +2005,17 @@ class Class(object):
     assert cls is not Class, "Cannot instantiate Class"
     return object.__new__(cls, *args, **kwds)
 
-  def init_mixin(self):
+  def init_mixin(self, metaclass):
     """Mix-in equivalent of __init__."""
-    pass
+    if metaclass is None:
+      for base in self.mro[1:]:
+        if isinstance(base, Class) and base.cls is not None:
+          self.cls = base.cls
+          break
+    else:
+      # TODO(rechen): Check that the metaclass is a (non-strict) subclass of the
+      # metaclasses of the base classes.
+      self.cls = metaclass
 
   def get_attribute_computed(self, node, name, valself, valcls,
                              compute_function):
@@ -2070,7 +2078,7 @@ class Class(object):
   def to_pytd_def(self, node, name):
     # Default method. Generate an empty pytd. Subclasses override this.
     del node
-    return pytd.Class(name, (), (), (), ())
+    return pytd.Class(name, None, (), (), (), ())
 
   def match_instance(self, instance, subst, node, view):
     """Used by match_instance_against_type. Matches a single MRO entry.
@@ -2177,11 +2185,14 @@ class ParameterizedClass(AtomicAbstractValue, Class):
   formal = True
 
   def __init__(self, base_cls, type_parameters, vm):
+    # A ParameterizedClass is created by converting a pytd.GenericType, whose
+    # base type is restricted to NamedType and ClassType.
+    assert isinstance(base_cls, Class)
     super(ParameterizedClass, self).__init__(base_cls.name, vm)
-    Class.init_mixin(self)
     self.base_cls = base_cls
     self.type_parameters = type_parameters
     self.mro = (self,) + self.base_cls.mro[1:]
+    Class.init_mixin(self, base_cls.cls)
 
   def __repr__(self):
     return "ParameterizedClass(cls=%r params=%s)" % (self.base_cls,
@@ -2249,9 +2260,15 @@ class PyTDClass(SimpleAbstractValue, Class):
     for val in pytd_cls.constants + pytd_cls.methods:
       mm[val.name] = val
     self._member_map = mm
-    Class.init_mixin(self)
+    if pytd_cls.metaclass is None:
+      metaclass = None
+    else:
+      metaclass = self.vm.convert.convert_constant(
+          pytd.Print(pytd_cls.metaclass), pytd_cls.metaclass, subst={},
+          node=self.vm.root_cfg_node)
     self.pytd_cls = pytd_cls
     self.mro = mro.compute_mro(self)
+    Class.init_mixin(self, metaclass)
 
   def get_attribute_generic(self, node, name, val):
     return self.get_attribute(node, name, valcls=val)
@@ -2383,9 +2400,9 @@ class InterpreterClass(SimpleAbstractValue, Class):
     assert isinstance(bases, list)
     assert isinstance(members, dict)
     super(InterpreterClass, self).__init__(name, vm)
-    Class.init_mixin(self)
     self._bases = bases
     self.mro = mro.compute_mro(self)
+    Class.init_mixin(self, None)
     self.members = utils.MonitorDict(members)
     self.instances = set()  # filled through register_instance
     self._instance_cache = {}
@@ -2496,7 +2513,9 @@ class InterpreterClass(SimpleAbstractValue, Class):
     constants = [pytd.Constant(name, builder.build())
                  for name, builder in constants.items()
                  if builder]
+    # TODO(rechen): Convert self.cls to a metaclass.
     return pytd.Class(name=class_name,
+                      metaclass=None,
                       parents=tuple(bases),
                       methods=tuple(methods),
                       constants=tuple(constants),
@@ -3268,7 +3287,8 @@ class Unsolvable(AtomicAbstractValue):
     return node, self.to_variable(node, self.name)
 
   def to_variable(self, node, name=None):
-    return self.vm.program.NewVariable(name, [self], source_set=[], where=node)
+    return self.vm.program.NewVariable(
+        name or self.name, [self], source_set=[], where=node)
 
   def get_class(self):
     # return ourself.
@@ -3380,7 +3400,7 @@ class Unknown(AtomicAbstractValue):
     return node, ret
 
   def to_variable(self, node, name=None):
-    v = self.vm.program.NewVariable(self.name or name)
+    v = self.vm.program.NewVariable(name or self.name)
     val = v.AddBinding(self, source_set=[], where=node)
     self.owner = val
     self.vm.trace_unknown(self.class_name, v)
@@ -3405,8 +3425,10 @@ class Unknown(AtomicAbstractValue):
       methods = (pytd.Function("__call__", calls, pytd.METHOD),)
     else:
       methods = ()
+    # TODO(rechen): Should we convert self.cls to a metaclass here as well?
     return pytd.Class(
         name=class_name,
+        metaclass=None,
         parents=(pytd.NamedType("__builtin__.object"),),
         methods=methods,
         constants=tuple(pytd.Constant(name, Unknown._to_pytd(node, c))

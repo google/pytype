@@ -120,6 +120,7 @@ class Alias(node.Node('name: str', 'type: {Type} or Constant')):
 
 
 class Class(node.Node('name: str',
+                      'metaclass: None or {Type}',
                       'parents: tuple[Class or {Type}]',
                       'methods: tuple[Function or ExternalFunction]',
                       'constants: tuple[Constant]',

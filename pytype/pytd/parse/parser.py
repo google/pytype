@@ -731,8 +731,10 @@ class _TypeDeclParser(object):
 
   def p_class_parents(self, p):
     """class_parents : parents"""
-    p[0] = tuple(parent for parent in p[1]
-                 if not isinstance(parent, pytd.NothingType))
+    parents, metaclass = p[1]
+    parents = tuple(parent for parent in parents
+                    if not isinstance(parent, pytd.NothingType))
+    p[0] = (parents, metaclass)
 
   def p_end_class(self, p):
     """end_class : """
@@ -746,7 +748,9 @@ class _TypeDeclParser(object):
   # TODO(raoulDoc): doesn't support nested classes
   def p_classdef(self, p):
     """classdef : CLASS class_name class_parents COLON maybe_class_funcs end_class"""
-    _, _, class_name, parents, _, class_funcs, _ = p
+    _, _, class_name, (parents, metaclass), _, class_funcs, _ = p
+    if metaclass is not None:
+      metaclass = pytd.NamedType(metaclass)
     methoddefs = [x for x in class_funcs  if isinstance(x, NameAndSig)]
     constants = [x for x in class_funcs if isinstance(x, pytd.Constant)]
 
@@ -764,7 +768,7 @@ class _TypeDeclParser(object):
     # Ensure that old style classes inherit from classobj.
     if not parents and class_name not in ["classobj", "object"]:
       parents = (pytd.NamedType("classobj"),)
-    p[0] = pytd.Class(name=class_name, parents=parents,
+    p[0] = pytd.Class(name=class_name, metaclass=metaclass, parents=parents,
                       methods=tuple(methods),
                       constants=tuple(constants + properties),
                       template=())
@@ -800,29 +804,29 @@ class _TypeDeclParser(object):
   def p_parents(self, p):
     """parents : LPAREN parent_list RPAREN"""
     _, _, parent_list, _ = p
-    p[0] = parent_list
+    p[0] = (parent_list, None)
 
   def p_parents_kwarg(self, p):
     """parents : LPAREN parent_list COMMA NAME ASSIGN NAME RPAREN"""
     parent_list, kwarg = p[2], p[4]
     if kwarg != "metaclass":
       make_syntax_error(self, "Only 'metaclass' allowed as classdef kwarg", p)
-    p[0] = parent_list
+    p[0] = (parent_list, p[6])
 
   def p_parents_empty_kwarg(self, p):
     """parents : LPAREN NAME ASSIGN NAME RPAREN"""
     kwarg = p[2]
     if kwarg != "metaclass":
       make_syntax_error(self, "Only 'metaclass' allowed as classdef kwarg", p)
-    p[0] = []
+    p[0] = ([], p[4])
 
   def p_parents_empty(self, p):
     """parents : LPAREN RPAREN"""
-    p[0] = []
+    p[0] = ([], None)
 
   def p_parents_null(self, p):
     """parents :"""
-    p[0] = []
+    p[0] = ([], None)
 
   def p_parent_list_multi(self, p):
     """parent_list : parent_list COMMA type"""
@@ -924,6 +928,7 @@ class _TypeDeclParser(object):
 
     class_constants = tuple(pytd.Constant(n, t) for n, t in fields)
     nt_class = pytd.Class(name=class_name,
+                          metaclass=None,
                           parents=(class_parent,),
                           methods=(),
                           constants=class_constants,
