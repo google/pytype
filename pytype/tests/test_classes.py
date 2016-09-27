@@ -392,6 +392,50 @@ class ClassesTest(test_inference.InferenceTest):
       def f() -> str: ...
     """)
 
+  def testGetAttrPyi(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        class Foo(object):
+          def __getattr__(self, name) -> str
+      """)
+      ty = self.Infer("""
+        import foo
+        def f():
+          return foo.Foo().foo
+      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        foo = ...  # type: module
+        def f() -> str
+      """)
+
+  def testGetAttribute(self):
+    ty = self.Infer("""
+      class A(object):
+        def __getattribute__(self, name):
+          return 42
+      x = A().x
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      class A(object):
+        def __getattribute__(self, name) -> int
+      x = ...  # type: int
+    """)
+
+  def testGetAttributePyi(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        class A(object):
+          def __getattribute__(self, name) -> int
+      """)
+      ty = self.Infer("""
+        import a
+        x = a.A().x
+      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        x = ...  # type: int
+      """)
+
   def testInheritFromClassobj(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """

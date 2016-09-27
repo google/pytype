@@ -748,7 +748,13 @@ class SimpleAbstractValue(AtomicAbstractValue):
       nodes = []
       for clsval in self.cls.bindings:
         cls = clsval.data
-        new_node, attr = cls.get_attribute(node, name, valself, clsval)
+        new_node, attr = cls.get_attribute_computed(
+            node, name, valself, clsval, compute_function="__getattribute__")
+        if attr is None:
+          new_node, attr = cls.get_attribute(node, name, valself, clsval)
+        if attr is None:
+          new_node, attr = cls.get_attribute_computed(
+              node, name, valself, clsval, compute_function="__getattr__")
         nodes.append(new_node)
         if attr is not None:
           candidates.append(attr)
@@ -2003,16 +2009,18 @@ class Class(object):
     """Mix-in equivalent of __init__."""
     pass
 
-  def get_attribute_computed(self, node, name, valself, valcls, condition):
-    """Call __getattr__ (if defined) to compute an attribute."""
-    node, attr_var = Class.get_attribute(self, node, "__getattr__", valself,
-                                         valcls, condition)
-    if attr_var and attr_var.bindings:
-      name_var = AbstractOrConcreteValue(name, self.vm.convert.str_type,
-                                         self.vm, node).to_variable(node, name)
-      return self.vm.call_function(node, attr_var, FunctionArgs((name_var,)))
-    else:
-      return node, None
+  def get_attribute_computed(self, node, name, valself, valcls,
+                             compute_function):
+    """Call compute_function (if defined) to compute an attribute."""
+    if valself and not isinstance(valself.data, Module) and name != "__init__":
+      node, attr_var = Class.get_attribute(
+          self, node, compute_function, valself, valcls)
+      if attr_var and attr_var.bindings:
+        vm = self.vm  # pytype: disable=attribute-error
+        name_var = AbstractOrConcreteValue(
+            name, vm.convert.str_type, vm, node).to_variable(node, name)
+        return vm.call_function(node, attr_var, FunctionArgs((name_var,)))
+    return node, None
 
   def lookup_from_mro(self, node, name, valself, valcls, skip=None):
     """Find an identifier in the MRO of the class."""
@@ -2254,11 +2262,8 @@ class PyTDClass(SimpleAbstractValue, Class):
         self, node, name, valself, valcls, condition)
     if var.bindings or not valself:
       return node, var
-    elif isinstance(valself.data, Module):
-      # Modules do their own __getattr__ handling.
-      return node, None
     else:
-      return self.get_attribute_computed(node, name, valself, valcls, condition)
+      return node, None
 
   def get_attribute_flat(self, node, name):
     # get_attribute_flat ?
@@ -2425,8 +2430,6 @@ class InterpreterClass(SimpleAbstractValue, Class):
       nodes.append(node2)
     if nodes:
       return self.vm.join_cfg_nodes(nodes), result
-    elif valself:
-      return self.get_attribute_computed(node, name, valself, valcls, condition)
     else:
       return node, None
 

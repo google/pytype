@@ -221,26 +221,38 @@ class ErrorTest(test_inference.InferenceTest):
     self.assertErrorLogContains(errors, r"\[super-error\]")
 
   def testAttributeError(self):
-    _, errors = self.InferAndCheck("""
+    _, errors = self.InferAndCheck("""\
       class Foo(object):
         def __getattr__(self, name):
           return "attr"
       def f():
         return Foo.foo
-
       def g(x):
         if x:
           y = None
         else:
           y = 1
         return y.bar
+      def h():
+        return Foo().foo  # No error
     """)
-    # When there is one binding, include the object type in the error.
-    self.assertErrorLogContains(
-        errors, r"No attribute 'foo' on Foo \[attribute-error\]")
-    # When there are multiple bindings, there is no object type in the error.
-    self.assertErrorLogContains(
-        errors, r"No attribute 'bar' \[attribute-error\]")
+    self.assertErrorLogIs(errors, [
+        # When there is one binding, include the object type in the error.
+        (5, "attribute-error", r"No attribute 'foo' on Foo"),
+        # With multiple bindings, there is no object type in the error.
+        (11, "attribute-error", "No attribute 'bar'")])
+
+  def testAttributeErrorGetAttribute(self):
+    _, errors = self.InferAndCheck("""\
+      class Foo(object):
+        def __getattribute__(self, name):
+          return "attr"
+      def f():
+        return Foo().x  # There should be no error on this line.
+      def g():
+        return Foo.x
+    """)
+    self.assertErrorLogIs(errors, [(7, "attribute-error", r"x")])
 
   def testNoneAttribute(self):
     _, errors = self.InferAndCheck("""\
