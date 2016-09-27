@@ -118,6 +118,20 @@ class RecoveryTests(test_inference.InferenceTest):
       x = ...  # type: int
     """)
 
+  def testDuplicateIdentifier(self):
+    ty = self.Infer("""
+      class A(object):
+        def __init__(self):
+          self.foo = 3
+        def foo(self):
+          pass
+    """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      class A(object):
+        foo = ...  # type: Any
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

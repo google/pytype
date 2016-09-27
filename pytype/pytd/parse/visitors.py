@@ -1143,6 +1143,26 @@ class VerifyVisitor(Visitor):
     super(VerifyVisitor, self).Enter(node)
     node.Validate()
 
+  def _AssertNoDuplicates(self, node, attrs):
+    attr_to_set = {attr: {entry.name for entry in getattr(node, attr)}
+                   for attr in attrs}
+    # Do a quick sanity check first, and a deeper check if that fails.
+    total1 = len(set.union(*attr_to_set.values()))  # all distinct names
+    total2 = sum(map(len, attr_to_set.values()), 0)  # all names
+    if total1 != total2:
+      for a1, a2 in itertools.combinations(attrs, 2):
+        both = attr_to_set[a1] & attr_to_set[a2]
+        if both:
+          raise AssertionError("Duplicate name(s) %s in both %s and %s" % (
+              list(both), a1, a2))
+
+  def EnterTypeDeclUnit(self, node):
+    self._AssertNoDuplicates(node, ["constants", "type_params", "classes",
+                                    "functions", "aliases"])
+
+  def EnterClass(self, node):
+    self._AssertNoDuplicates(node, ["methods", "constants"])
+
   def EnterFunction(self, node):
     assert node.signatures, node
 

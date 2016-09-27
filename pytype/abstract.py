@@ -2500,7 +2500,7 @@ class InterpreterClass(SimpleAbstractValue, Class):
     return pytd.NamedType("__builtin__.type")
 
   def to_pytd_def(self, node, class_name):
-    methods = []
+    methods = {}
     constants = collections.defaultdict(pytd_utils.TypeBuilder)
 
     # class-level attributes
@@ -2510,7 +2510,7 @@ class InterpreterClass(SimpleAbstractValue, Class):
           if isinstance(value, Function):
             v = value.to_pytd_def(node, name)
             if isinstance(v, pytd.Function):
-              methods.append(v)
+              methods[name] = v
             elif isinstance(v, pytd.TYPE):
               constants[name].add_type(v)
             else:
@@ -2525,6 +2525,13 @@ class InterpreterClass(SimpleAbstractValue, Class):
           for value in member.FilteredData(self.vm.exitpoint):
             constants[name].add_type(value.to_type(node))
 
+    for name in list(methods):
+      if name in constants:
+        # If something is both a constant and a method, it means that the class
+        # is, at some point, overwriting its own methods with an attribute.
+        del methods[name]
+        constants[name].add_type(pytd.AnythingType())
+
     bases = [pytd_utils.JoinTypes(b.get_instance_type(node)
                                   for b in basevar.data)
              for basevar in self._bases
@@ -2536,7 +2543,7 @@ class InterpreterClass(SimpleAbstractValue, Class):
     return pytd.Class(name=class_name,
                       metaclass=None,
                       parents=tuple(bases),
-                      methods=tuple(methods),
+                      methods=tuple(methods.values()),
                       constants=tuple(constants),
                       template=())
 
