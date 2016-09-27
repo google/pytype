@@ -215,6 +215,26 @@ class BuiltinTests2(test_inference.InferenceTest):
       lst3 = ...  # type: List[nothing]
     """)
 
+  def testFromKeys(self):
+    ty = self.Infer("""
+      d1 = dict.fromkeys([1])
+      d2 = dict.fromkeys([1], 0)
+      d3 = dict.fromkeys("123")
+      d4 = dict.fromkeys(bytearray("x"))
+      d5 = dict.fromkeys(u"x")
+      d6 = dict.fromkeys(iter("123"))
+      d7 = dict.fromkeys({True: False})
+    """, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      d1 = ...  # type: Dict[int, None]
+      d2 = ...  # type: Dict[int, int]
+      d3 = ...  # type: Dict[str, None]
+      d4 = ...  # type: Dict[int, None]
+      d5 = ...  # type: Dict[unicode, None]
+      d6 = ...  # type: Dict[str, None]
+      d7 = ...  # type: Dict[bool, None]
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

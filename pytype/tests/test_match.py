@@ -98,6 +98,27 @@ class MatchTest(test_inference.InferenceTest):
       i = ...  # type: Any
     """)
 
+  def testGeneric(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        K = TypeVar("K")
+        V = TypeVar("V")
+        Q = TypeVar("Q")
+        class A(Iterable[V], Generic[K, V]): ...
+        class B(A[K, V]):
+          def __init__(self):
+            self := B[bool, str]
+        def f(x: Iterable[Q]) -> Q
+      """)
+      ty = self.Infer("""
+        import a
+        x = a.f(a.B())
+      """, pythonpath=[d.path], solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        x = ...  # type: str
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()

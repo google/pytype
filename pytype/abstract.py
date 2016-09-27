@@ -537,7 +537,7 @@ class Empty(AtomicAbstractValue):
     if isinstance(other_type, Nothing):
       return subst
     else:
-      return other_type.match_instance(self, subst, node, view)
+      return other_type.match_instance(self, other_type, subst, node, view)
 
   def get_attribute(self, node, name, valself=None, valcls=None,
                     condition=None):
@@ -2080,7 +2080,7 @@ class Class(object):
     del node
     return pytd.Class(name, None, (), (), (), ())
 
-  def match_instance(self, instance, subst, node, view):
+  def match_instance(self, instance, instance_type, subst, node, view):
     """Used by match_instance_against_type. Matches a single MRO entry.
 
     Called after the instance has been successfully matched against a
@@ -2091,13 +2091,16 @@ class Class(object):
 
     Args:
       instance: The instance of this class.
+      instance_type: The instance type that successfully matched this formal
+        type, which may be different from instance.cls depending on where in
+        the mro the match happened.
       subst: The current type parameter assignment.
       node: The current CFG node.
       view: The current mapping of Variable to Value.
     Returns:
-      A new type parameter assignment of the matching succeeded, None otherwise.
+      A new type parameter assignment if the matching succeeded, None otherwise.
     """
-    del instance, node, view
+    del instance, instance_type, node, view
     return subst
 
   def _match_from_mro(self, other_type):
@@ -2148,7 +2151,7 @@ class Class(object):
       if base is None:
         return None
       else:
-        return other_type.match_instance(instance, subst, node, view)
+        return other_type.match_instance(instance, base, subst, node, view)
     elif isinstance(other_type, Nothing):
       return None
     else:
@@ -2228,9 +2231,25 @@ class ParameterizedClass(AtomicAbstractValue, Class):
                                        self.base_cls.module),
         type_arguments)
 
-  def match_instance(self, instance, subst, node, view):
-    for name, class_param in self.type_parameters.items():
-      instance_param = instance.get_type_parameter(node, name)
+  def match_instance(self, instance, instance_type, subst, node, view):
+    if isinstance(instance_type, ParameterizedClass):
+      assert instance_type.base_cls is self.base_cls
+    else:
+      # Parameterized classes can rename type parameters, which is why we need
+      # the instance type for lookup. But if the instance type is not
+      # parameterized, then it is safe to use the parameter names in self.
+      assert instance_type is self.base_cls
+      instance_type = self
+    for type_param in instance_type.base_cls.pytd_cls.template:
+      class_param = self.type_parameters[type_param.name]
+      instance_param = instance.get_type_parameter(node, type_param.name)
+      instance_type_param = instance_type.type_parameters[type_param.name]
+      if (not instance_param.bindings and isinstance(
+          instance_type_param, TypeParameter) and
+          instance_type_param.name != type_param.name):
+        # This type parameter was renamed!
+        instance_param = instance.get_type_parameter(
+            node, instance_type_param.name)
       if instance_param.bindings and instance_param not in view:
         binding, = instance_param.bindings
         assert isinstance(binding.data, Unsolvable)
@@ -3306,7 +3325,7 @@ class Unsolvable(AtomicAbstractValue):
     return pytd.AnythingType()
 
   def match_against_type(self, other_type, subst, node, view):
-    return other_type.match_instance(self, subst, node, view)
+    return other_type.match_instance(self, other_type, subst, node, view)
 
   def instantiate(self, node):
     # return ourself.
@@ -3448,6 +3467,6 @@ class Unknown(AtomicAbstractValue):
 
   def match_against_type(self, other_type, subst, node, view):
     # TODO(kramm): Do we want to match the instance or the class?
-    return other_type.match_instance(self, subst, node, view)
+    return other_type.match_instance(self, other_type, subst, node, view)
 
 AMBIGUOUS_OR_EMPTY = (Unknown, Unsolvable, Empty)

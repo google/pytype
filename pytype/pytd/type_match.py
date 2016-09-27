@@ -211,7 +211,8 @@ class TypeMatch(utils.TypeMatcher):
     base_type_cmp = self.match_type_against_type(base1, base2, subst)
     if base_type_cmp is booleq.FALSE:
       return booleq.FALSE
-    assert len(t1.parameters) == len(t2.parameters), t1.base_type.cls.name
+    # Matching, e.g., Dict[str, int] against Iterable[K] is legitimate.
+    assert len(t1.parameters) >= len(t2.parameters), t1.base_type.cls.name
     # Type parameters are covariant:
     # E.g. passing list[int] as argument for list[object] succeeds.
     param_cmp = [self.match_type_against_type(p1, p2, subst)

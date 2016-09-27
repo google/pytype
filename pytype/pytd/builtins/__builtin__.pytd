@@ -453,17 +453,10 @@ class dict(Dict[K, V]):
       self := dict[K or K2, V or V2]
     def clear(self) -> NoneType
     def copy(self) -> dict[K, V]
-    # TODO(pludemann): dict.fromkeys is also classmethod:
-    def fromkeys(self, keys: list[K] or tuple[K]) -> dict[K, NoneType]
-    def fromkeys(self, keys: str) -> dict[str, NoneType]
-    def fromkeys(self, keys: list[K] or tuple[K], V) -> dict[K, NoneType]
-    def fromkeys(self, keys: str, V) -> dict[str, V]
-    # TODO(pludemann): fix the following:
-    # def fromkeys(self, S: str or bytearray, ...) -> dict[str, NoneType] or dict
-    # def fromkeys(self, S: unicode, ...) -> dict[unicode, NoneType] or dict
-    # def fromkeys(self, S: list or tuple or set, ...) -> dict[object, NoneType] or dict
-    # def fromkeys(self, S: iterator, ...) -> dict[str, NoneType] or dict[unicode, NoneType] or dict
-    # def fromkeys(self, S: dict, ...) -> dict[object, NoneType]
+    @staticmethod
+    def fromkeys(keys: Iterable[K]) -> Dict[K, NoneType]
+    @staticmethod
+    def fromkeys(keys: Iterable[K], value: V) -> Dict[K, V]
     def get(self, k: K) -> V or NoneType
     def get(self, k: K, d: V2) -> V or V2
     def has_key(self, k: K) -> bool

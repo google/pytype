@@ -718,6 +718,21 @@ class GenericTest(test_inference.InferenceTest):
         n = ...  # type: int
       """)
 
+  def testRenamedTypeParameterMatch(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        Q = TypeVar("Q")
+        def f(x: Iterable[Q]) -> Q
+      """)
+      ty = self.Infer("""
+        import a
+        x = a.f({True: "false"})
+      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        x = ...  # type: bool
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()
