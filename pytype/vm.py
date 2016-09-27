@@ -408,8 +408,8 @@ class VirtualMachine(object):
             bases,
             class_dict.members,
             self)
-      except pytd_utils.MROError:
-        self.errorlog.mro_error(self.frame.current_opcode, name)
+      except pytd_utils.MROError as e:
+        self.errorlog.mro_error(self.frame.current_opcode, name, e.mro_seqs)
         var = self.convert.create_new_unsolvable(node, "mro_error")
       else:
         var = self.program.NewVariable(name)

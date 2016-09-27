@@ -385,12 +385,16 @@ class Converter(object):
                  for val in data}
       return abstract.Module(self.vm, node, pyval.name, members)
     elif isinstance(pyval, pytd.Class):
-      if "." in pyval.name:
-        module, base_name = pyval.name.rsplit(".", 1)
+      module, dot, base_name = pyval.name.rpartition(".")
+      try:
         cls = abstract.PyTDClass(base_name, pyval, self.vm)
-        cls.module = module
+      except pytd_utils.MROError as e:
+        self.vm.errorlog.mro_error(
+            self.vm.frame.current_opcode, base_name, e.mro_seqs)
+        cls = self.unsolvable
       else:
-        cls = abstract.PyTDClass(name, pyval, self.vm)
+        if dot:
+          cls.module = module
       return cls
     elif isinstance(pyval, pytd.Function):
       signatures = [abstract.PyTDSignature(pyval.name, sig, self.vm)

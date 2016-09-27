@@ -593,6 +593,33 @@ class ErrorTest(test_inference.InferenceTest):
       expected_error = r"Expected.*Type\[A\[int\]\].*Actual.*Type\[B\]"
       self.assertErrorLogIs(errors, [(4, "wrong-arg-types", expected_error)])
 
+  def testMROError(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        class A(object): ...
+        class B(object): ...
+        class C(A, B): ...
+        class D(B, A): ...
+        class E(C, D): ...
+      """)
+      _, errors = self.InferAndCheck("""\
+        import a
+        x = a.E()
+      """, pythonpath=[d.path])
+      self.assertErrorLogIs(errors, [(2, "mro-error", r"E")])
+
+  def testBadMRO(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        class A(BaseException, ValueError): ...
+      """)
+      _, errors = self.InferAndCheck("""\
+        import a
+        class B(a.A): pass
+        raise a.A()
+      """, pythonpath=[d.path])
+      self.assertErrorLogIs(errors, [(2, "mro-error", r"A")])
+
 
 if __name__ == "__main__":
   test_inference.main()

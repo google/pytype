@@ -235,6 +235,19 @@ class BuiltinTests2(test_inference.InferenceTest):
       d7 = ...  # type: Dict[bool, None]
     """)
 
+  def testRedefinedBuiltin(self):
+    ty = self.Infer("""
+      class BaseException(Exception): pass
+      class CryptoException(BaseException, ValueError): pass
+    """)
+    p1, p2 = ty.Lookup("CryptoException").parents
+    self.assertEqual(p1.name, "BaseException")
+    self.assertEqual(p2.name, "__builtin__.ValueError")
+    self.assertTypesMatchPytd(ty, """
+      class BaseException(Exception): ...
+      class CryptoException(BaseException, ValueError): ...
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

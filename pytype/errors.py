@@ -365,8 +365,12 @@ class ErrorLog(ErrorLogBase):
                name)
 
   @_error_name("mro-error")
-  def mro_error(self, opcode, name):
-    self.error(opcode, "Class %r has invalid (cyclic?) inheritance." % name)
+  def mro_error(self, opcode, name, mro_seqs):
+    seqs = []
+    for seq in mro_seqs:
+      seqs.append("[%s]" % ", ".join(cls.name for cls in seq))
+    self.error(opcode, "Class %s has invalid (cyclic?) inheritance: %s." % (
+        name, ", ".join(seqs)))
 
   @_error_name("invalid-directive")
   def invalid_directive(self, filename, lineno, message):

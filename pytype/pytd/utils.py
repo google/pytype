@@ -446,7 +446,10 @@ def Dedup(seq):
 
 
 class MROError(Exception):
-  pass
+
+  def __init__(self, seqs):
+    super(MROError, self).__init__()
+    self.mro_seqs = seqs
 
 
 def MROMerge(input_seqs):
@@ -465,7 +468,7 @@ def MROMerge(input_seqs):
   try:
     return visitors.MergeSequences(seqs)
   except ValueError:
-    raise MROError("Illegal inheritance.")
+    raise MROError(input_seqs)
 
 
 def _GetClass(t, lookup_ast):
@@ -488,7 +491,7 @@ def _ComputeMRO(t, mros, lookup_ast):
       for parent in _GetClass(t, lookup_ast).parents:
         if parent in mros:
           if mros[parent] is None:
-            raise MROError("Illegal inheritance.")
+            raise MROError([[t]])
           else:
             parent_mro = mros[parent]
         else:

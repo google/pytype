@@ -776,18 +776,20 @@ class VerifyLookup(Visitor):
 class LookupBuiltins(Visitor):
   """Look up built-in NamedTypes and give them fully-qualified names."""
 
-  def __init__(self, builtins):
+  def __init__(self, builtins, full_names=True):
     """Create this visitor.
 
     Args:
       builtins: The builtins module.
+      full_names: Whether to use fully qualified names for lookup.
     """
     super(LookupBuiltins, self).__init__()
     self._builtins = builtins
+    self._full_names = full_names
 
   def EnterTypeDeclUnit(self, unit):
     self._current_unit = unit
-    self._prefix = unit.name + "."
+    self._prefix = unit.name + "." if self._full_names else ""
 
   def LeaveTypeDeclUnit(self, _):
     del self._current_unit
