@@ -455,6 +455,37 @@ class ClassesTest(test_inference.InferenceTest):
         name = ... # type: str
       """)
 
+  def testMetaclassGetAttribute(self):
+    with utils.Tempdir() as d:
+      d.create_file("enum.pyi", """
+        class EnumMeta(type):
+          def __getattribute__(self, name) -> Any
+        class Enum(metaclass=EnumMeta): ...
+        class IntEnum(int, Enum): ...
+      """)
+      ty = self.Infer("""
+        import enum
+        class A(enum.Enum):
+          x = 1
+        class B(enum.IntEnum):
+          x = 1
+        enum1 = A.x
+        name1 = A.x.name
+        enum2 = B.x
+        name2 = B.x.name
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        enum = ...  # type: module
+        class A(enum.Enum):
+          x = ...  # type: int
+        class B(enum.IntEnum):
+          x = ...  # type: int
+        enum1 = ...  # type: Any
+        name1 = ...  # type: Any
+        enum2 = ...  # type: Any
+        name2 = ...  # type: Any
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()

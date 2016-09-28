@@ -7,6 +7,7 @@ combined using typegraph and that is what we compute over.
 # Because of false positives:
 # pylint: disable=unpacking-non-sequence
 # pylint: disable=abstract-method
+# pytype: disable=attribute-error
 
 import collections
 import hashlib
@@ -2063,6 +2064,15 @@ class Class(object):
                     condition=None):
     """Retrieve an attribute by looking at the MRO of this class."""
     del condition  # unused arg.
+    if self.cls and not valself:
+      # TODO(rechen): Use valcls instead of creating a dummy instance.
+      variableself, = Instance(
+          self.cls, self.vm, node).to_variable(node).bindings
+      variablecls, = self.cls.bindings
+      node, attr = variableself.data.get_attribute(
+          node, name, variableself, variablecls)
+      if attr is not None:
+        return node, attr
     var = self.lookup_from_mro(node, name, valself, valcls)
     return node, var
 
