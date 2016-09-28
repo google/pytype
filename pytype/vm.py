@@ -561,7 +561,9 @@ class VirtualMachine(object):
 
     node = node.ConnectNew("init")
     node, f_globals, _, _ = self.run_bytecode(node, code, f_globals, f_locals)
-    logging.info("Done running bytecode, resolving late annotations now!")
+    logging.info("Done running bytecode, postprocessing globals")
+    for name, var in f_globals.members.items():
+      abstract.variable_set_official_name(var, name)
     for func in self.functions_with_late_annotations:
       self._eval_late_annotations(node, func, f_globals)
     assert not self.frames, "Frames left over!"

@@ -489,6 +489,16 @@ class AnnotationTest(test_inference.InferenceTest):
     self.assertErrorLogIs(
         errorlog, [(15, "attribute-error", r"\'bar\'.*Foo")])
 
+  def testReturnTypeError(self):
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      class FooBar(object): pass
+      def f() -> FooBar:
+        return 3
+    """, deep=True)
+    self.assertErrorLogIs(errors, [(
+        4, "bad-return-type", r"should be FooBar")])
+
   def testUnknownArgument(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """

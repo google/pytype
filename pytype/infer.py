@@ -218,8 +218,6 @@ class CallTracer(vm.VirtualMachine):
     return classes
 
   def pytd_for_types(self, defs, ignore):
-    for name, var in defs.items():
-      abstract.variable_set_official_name(var, name)
     data = []
     for name, var in defs.items():
       if name in output.TOP_LEVEL_IGNORE or name in ignore:
