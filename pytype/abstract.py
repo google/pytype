@@ -708,12 +708,13 @@ class SimpleAbstractValue(AtomicAbstractValue):
 
   def _maybe_load_as_instance_attribute(self, node, name):
     for cls in self.cls.data:
-      var = cls.get_as_instance_attribute(node, name, self)
-      if var is not None:
-        if name in self.members:
-          self.members[name].PasteVariable(var, node)
-        else:
-          self.members[name] = var
+      if isinstance(cls, Class):
+        var = cls.get_as_instance_attribute(node, name, self)
+        if var is not None:
+          if name in self.members:
+            self.members[name].PasteVariable(var, node)
+          else:
+            self.members[name] = var
 
   def get_attribute(self, node, name, valself=None, valcls=None,
                     condition=None):
@@ -749,13 +750,7 @@ class SimpleAbstractValue(AtomicAbstractValue):
       nodes = []
       for clsval in self.cls.bindings:
         cls = clsval.data
-        new_node, attr = cls.get_attribute_computed(
-            node, name, valself, clsval, compute_function="__getattribute__")
-        if attr is None:
-          new_node, attr = cls.get_attribute(node, name, valself, clsval)
-        if attr is None:
-          new_node, attr = cls.get_attribute_computed(
-              node, name, valself, clsval, compute_function="__getattr__")
+        new_node, attr = cls.get_attribute(node, name, valself, clsval)
         nodes.append(new_node)
         if attr is not None:
           candidates.append(attr)
@@ -2013,7 +2008,7 @@ class Class(object):
         if isinstance(base, Class) and base.cls is not None:
           self.cls = base.cls
           break
-    else:
+    elif not any(isinstance(v, Unsolvable) for v in metaclass.data):
       # TODO(rechen): Check that the metaclass is a (non-strict) subclass of the
       # metaclasses of the base classes.
       self.cls = metaclass
@@ -2022,8 +2017,7 @@ class Class(object):
                              compute_function):
     """Call compute_function (if defined) to compute an attribute."""
     if valself and not isinstance(valself.data, Module) and name != "__init__":
-      node, attr_var = Class.get_attribute(
-          self, node, compute_function, valself, valcls)
+      attr_var = self.lookup_from_mro(node, compute_function, valself, valcls)
       if attr_var and attr_var.bindings:
         vm = self.vm  # pytype: disable=attribute-error
         name_var = AbstractOrConcreteValue(
@@ -2073,8 +2067,17 @@ class Class(object):
           node, name, variableself, variablecls)
       if attr is not None:
         return node, attr
-    var = self.lookup_from_mro(node, name, valself, valcls)
-    return node, var
+    node, attr = self.get_attribute_computed(
+        node, name, valself, valcls, compute_function="__getattribute__")
+    if attr is None:
+      # lookup_from_mro always returns a Variable.
+      attr = self.lookup_from_mro(node, name, valself, valcls)
+    if not attr.bindings:
+      node, new_attr = self.get_attribute_computed(
+          node, name, valself, valcls, compute_function="__getattr__")
+      if new_attr is not None:
+        attr = new_attr
+    return node, attr
 
   def get_as_instance_attribute(self, node, name, instance):
     for base in self.mro:
@@ -2304,12 +2307,8 @@ class PyTDClass(SimpleAbstractValue, Class):
 
   def get_attribute(self, node, name, valself=None, valcls=None,
                     condition=None):
-    node, var = Class.get_attribute(
+    return Class.get_attribute(
         self, node, name, valself, valcls, condition)
-    if var.bindings or not valself:
-      return node, var
-    else:
-      return node, None
 
   def get_attribute_flat(self, node, name):
     # get_attribute_flat ?
@@ -2566,6 +2565,8 @@ class InterpreterClass(SimpleAbstractValue, Class):
 
   def __repr__(self):
     return "InterpreterClass(%s)" % self.name
+
+  __str__ = __repr__
 
 
 class NativeFunction(Function):

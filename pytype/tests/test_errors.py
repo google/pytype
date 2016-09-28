@@ -620,6 +620,23 @@ class ErrorTest(test_inference.InferenceTest):
       """, pythonpath=[d.path])
       self.assertErrorLogIs(errors, [(2, "mro-error", r"A")])
 
+  def testUnsolvableAsMetaclass(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        def __getattr__(name) -> Any
+      """)
+      d.create_file("b.pyi", """
+        from a import A
+        class B(metaclass=A): ...
+      """)
+      _, errors = self.InferAndCheck("""\
+        import b
+        class C(b.B):
+          def __init__(self):
+            f = open(self.x, 'r')
+      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      self.assertErrorLogIs(errors, [(4, "attribute-error", r"x.*C")])
+
 
 if __name__ == "__main__":
   test_inference.main()
