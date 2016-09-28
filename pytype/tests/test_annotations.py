@@ -2,6 +2,8 @@
 
 import os
 
+
+from pytype import utils
 from pytype.tests import test_inference
 
 
@@ -486,6 +488,25 @@ class AnnotationTest(test_inference.InferenceTest):
     # Error message along the lines: No attribute 'bar' on Foo
     self.assertErrorLogIs(
         errorlog, [(15, "attribute-error", r"\'bar\'.*Foo")])
+
+  def testUnknownArgument(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        def factory() -> type
+      """)
+      ty = self.Infer("""\
+        from __future__ import google_type_annotations
+        import a
+        A = a.factory()
+        def f(x: A):
+          return x.name
+      """, deep=True, solve_unknowns=True, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        google_type_annotations = ...  # type: __future__._Feature
+        a = ...  # type: module
+        A = ...  # type: type
+        def f(x) -> Any
+      """)
 
 
 if __name__ == "__main__":

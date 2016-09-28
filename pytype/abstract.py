@@ -3475,6 +3475,9 @@ class Unknown(AtomicAbstractValue):
     # We treat instances of an Unknown as the same as the class.
     return self.to_variable(self.vm.root_cfg_node, "class of " + self.name)
 
+  def instantiate(self, node):
+    return self.to_variable(node, "instance of " + self.name)
+
   def to_type(self, node, seen=None):
     return pytd.NamedType(self.class_name)
 
