@@ -363,18 +363,6 @@ class AtomicAbstractValue(object):
     """
     raise NotImplementedError
 
-  def get_bound_arguments(self):
-    """Get the arguments bound into this object.
-
-    The default implementation returns [] since an object does not have any
-    bound arguments unless specified.
-
-    Returns:
-      A list of positional arguments that will be prepended to every call to
-      this value.
-    """
-    return []
-
   def is_closure(self):
     """Return whether this is a closure. Overridden by subclasses.
 
@@ -1658,7 +1646,7 @@ class PyTDSignature(object):
       for data in ret_map[t].data:
         ret_map[t].AddBinding(data, sources, node)
     mutations = self._get_mutation(node, arg_dict, subst)
-    self.vm.trace_call(node, func,
+    self.vm.trace_call(node, func, (self,),
                        tuple(arg_dict[p.name] for p in self.pytd_sig.params),
                        {},
                        ret_map[t])
@@ -1740,9 +1728,6 @@ class PyTDSignature(object):
           raise ValueError("Mutable parameters setting a type to a "
                            "different base type is not allowed.")
     return mutations
-
-  def get_bound_arguments(self):
-    return []
 
   def get_positional_names(self):
     return [p.name for p in self.pytd_sig.params
@@ -1965,7 +1950,7 @@ class PyTDFunction(Function):
                                              args.namedargs.values())))
     else:
       mutations = []
-    self.vm.trace_call(node, func,
+    self.vm.trace_call(node, func, tuple(sig[0] for sig in signatures),
                        [view[arg] for arg in args.posargs],
                        {name: view[arg]
                         for name, arg in args.namedargs.items()},
@@ -3056,9 +3041,6 @@ class BoundFunction(AtomicAbstractValue):
       if self._callself and self._callself.bindings:
         e.name = "%s.%s" % (self._callself.data[0].name, e.name)
       raise
-
-  def get_bound_arguments(self):
-    return [self._callself]
 
   def get_positional_names(self):
     return self.underlying.get_positional_names()

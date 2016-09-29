@@ -493,6 +493,69 @@ class TestGenerators(test_inference.InferenceTest):
         x = ...  # type: foo.MyMatch[str]
       """)
 
+  def test_multiple_signatures(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        def f(x: str) -> float
+        def f(x: int, y: bool) -> long
+      """)
+      ty = self.Infer("""
+        import foo
+        x = foo.f(0, True)
+      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        foo = ...  # type: module
+        x = ...  # type: long
+      """)
+
+  def test_multiple_signatures_with_unknown(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        def f(arg1: str) -> float
+        def f(arg2: int) -> long
+      """)
+      ty = self.Infer("""
+        import foo
+        def f(x):
+          return foo.f(x)
+      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        foo = ...  # type: module
+        def f(x: int or str) -> float or long
+      """)
+
+  def test_multiple_signatures_with_optional_arg(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        def f(x: str) -> int
+        def f(...) -> float
+      """)
+      ty = self.Infer("""
+        import foo
+        def f(x):
+          return foo.f(x)
+      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        foo = ...  # type: module
+        def f(x: str) -> int or float
+      """)
+
+  def test_multiple_signatures_with_kwarg(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        def f(*, y: int) -> bool
+        def f(y: str) -> long
+      """)
+      ty = self.Infer("""
+        import foo
+        def f(x):
+          return foo.f(y=x)
+      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        foo = ...  # type: module
+        def f(x: int or str) -> bool or long
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()

@@ -23,9 +23,9 @@ from pytype.pytd.parse import visitors
 log = logging.getLogger(__name__)
 
 
-CallRecord = collections.namedtuple("CallRecord",
-                                    ["node", "function", "positional_arguments",
-                                     "keyword_arguments", "return_value"])
+CallRecord = collections.namedtuple(
+    "CallRecord", ["node", "function", "signatures", "positional_arguments",
+                   "keyword_arguments", "return_value"])
 
 
 # How deep to follow call chains, during module loading:
@@ -191,12 +191,13 @@ class CallTracer(vm.VirtualMachine):
   def trace_unknown(self, name, unknown):
     self._unknowns[name] = unknown
 
-  def trace_call(self, node, func, posargs, namedargs, result):
+  def trace_call(self, node, func, sigs, posargs, namedargs, result):
     """Add an entry into the call trace.
 
     Args:
       node: The CFG node right after this function call.
-      func: A typegraph Value of functions that was called.
+      func: A typegraph Value of a function that was called.
+      sigs: The signatures that the function might have been called with.
       posargs: The positional arguments, an iterable over cfg.Value.
       namedargs: The keyword arguments, a dict mapping str to cfg.Value.
       result: A Variable of the possible result values.
@@ -205,10 +206,11 @@ class CallTracer(vm.VirtualMachine):
               func, len(posargs), result)
     args = tuple(posargs)
     kwargs = tuple((namedargs or {}).items())
+    record = CallRecord(node, func, sigs, args, kwargs, result)
     if isinstance(func.data, abstract.BoundPyTDFunction):
-      self._method_calls.add(CallRecord(node, func, args, kwargs, result))
+      self._method_calls.add(record)
     elif isinstance(func.data, abstract.PyTDFunction):
-      self._calls.add(CallRecord(node, func, args, kwargs, result))
+      self._calls.add(record)
 
   def pytd_classes_for_unknowns(self):
     classes = []
@@ -249,19 +251,18 @@ class CallTracer(vm.VirtualMachine):
   @staticmethod
   def _call_traces_to_function(call_traces, name_transform=lambda x: x):
     funcs = collections.defaultdict(pytd_utils.OrderedSet)
-    for node, funcvar, args, kws, retvar in call_traces:
-      if isinstance(funcvar.data, abstract.BoundFunction):
-        func = funcvar.data.underlying.signatures[0]
-      else:
-        func = funcvar.data.signatures[0]
-      arg_names = func.get_positional_names()
-      arg_types = (a.data.to_type(node)
-                   for a in func.get_bound_arguments() + list(args))
+    for node, func, sigs, args, kws, retvar in call_traces:
+      # The lengths may be different in the presence of optional and kw args.
+      arg_names = max((sig.get_positional_names() for sig in sigs), key=len)
+      for i in range(len(arg_names)):
+        if not isinstance(func.data, abstract.BoundFunction) or i > 0:
+          arg_names[i] = "_" + str(i)
+      arg_types = (a.data.to_type(node) for a in args)
       ret = pytd_utils.JoinTypes(t.to_type(node) for t in retvar.data)
       # TODO(kramm): Record these:
       starargs = None
       starstarargs = None
-      funcs[funcvar.data.name].add(pytd.Signature(
+      funcs[func.data.name].add(pytd.Signature(
           tuple(pytd.Parameter(n, t, False, False, None)
                 for n, t in zip(arg_names, arg_types)) +
           tuple(pytd.Parameter(name, a.data.to_type(node), False, False, None)
