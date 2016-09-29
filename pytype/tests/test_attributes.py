@@ -91,6 +91,27 @@ class TestAttributes(test_inference.InferenceTest):
         def set_on_a(self) -> NoneType
     """)
 
+  def testAttrWithBadGetAttr(self):
+    self.assertNoErrors("""
+      class AttrA(object):
+        def __getattr__(self, name2):
+          pass
+      class AttrB(object):
+        def __getattr__(self):
+          pass
+      class AttrC(object):
+        def __getattr__(self, x, y):
+          pass
+      class Foo(object):
+        A = AttrA
+        B = AttrB
+        C = AttrC
+        def foo(self):
+          self.A
+          self.B
+          self.C
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()
