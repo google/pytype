@@ -266,6 +266,19 @@ class ClassesTest(test_inference.InferenceTest):
         x = ...  # type: int or str
     """)
 
+  def testCallClassAttr(self):
+    ty = self.Infer("""
+      class Flag(object):
+        convert_method = int
+        def convert(self, value):
+          return self.convert_method(value)
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      class Flag(object):
+        convert_method = ...  # type: type
+        def convert(self, value: float or str) -> int
+    """)
+
   def testBoundMethod(self):
     ty = self.Infer("""
       class Random(object):

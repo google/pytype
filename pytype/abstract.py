@@ -2058,10 +2058,8 @@ class Class(object):
       # lookup_from_mro always returns a Variable.
       attr = self.lookup_from_mro(node, name, valself, valcls)
     if not attr.bindings:
-      node, new_attr = self.get_attribute_computed(
+      node, attr = self.get_attribute_computed(
           node, name, valself, valcls, compute_function="__getattr__")
-      if new_attr is not None:
-        attr = new_attr
     return node, attr
 
   def get_as_instance_attribute(self, node, name, instance):
@@ -2437,31 +2435,31 @@ class InterpreterClass(SimpleAbstractValue, Class):
                     condition=None):
     node, attr_var = Class.get_attribute(self, node, name, valself, valcls,
                                          condition)
-    result = self.vm.program.NewVariable(name)
-    nodes = []
-    # Deal with descriptors as a potential additional level of indirection.
-    for v in attr_var.Bindings(node):
-      value = v.data
-      node2, getter = value.get_attribute(node, "__get__", v)
-      if getter is not None:
-        posargs = []
-        if valself:
-          posargs.append(valself.variable)
-        if valcls:
-          if not valself:
-            posargs.append(self.vm.convert.none.to_variable(node, "None"))
-          posargs.append(valcls.variable)
-        node2, get_result = self.vm.call_function(
-            node2, getter, FunctionArgs(tuple(posargs)))
-        for getter in get_result.bindings:
-          result.AddBinding(getter.data, [getter], node2)
-      else:
-        result.AddBinding(value, [v], node2)
-      nodes.append(node2)
-    if nodes:
-      return self.vm.join_cfg_nodes(nodes), result
-    else:
-      return node, None
+    if attr_var is not None:
+      result = self.vm.program.NewVariable(name)
+      nodes = []
+      # Deal with descriptors as a potential additional level of indirection.
+      for v in attr_var.Bindings(node):
+        value = v.data
+        node2, getter = value.get_attribute(node, "__get__", v)
+        if getter is not None:
+          posargs = []
+          if valself:
+            posargs.append(valself.variable)
+          if valcls:
+            if not valself:
+              posargs.append(self.vm.convert.none.to_variable(node, "None"))
+            posargs.append(valcls.variable)
+          node2, get_result = self.vm.call_function(
+              node2, getter, FunctionArgs(tuple(posargs)))
+          for getter in get_result.bindings:
+            result.AddBinding(getter.data, [getter], node2)
+        else:
+          result.AddBinding(value, [v], node2)
+        nodes.append(node2)
+      if nodes:
+        return self.vm.join_cfg_nodes(nodes), result
+    return node, None
 
   def set_attribute(self, node, name, value):
     # Note that even if we have a superclass that already has an attribute
