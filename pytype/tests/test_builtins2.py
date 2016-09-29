@@ -248,6 +248,22 @@ class BuiltinTests2(test_inference.InferenceTest):
       class CryptoException(BaseException, ValueError): ...
     """)
 
+  def testSum(self):
+    ty = self.Infer("""
+      x1 = sum([1, 2])
+      x2 = sum([1, 2], 0)
+      x3 = sum([1.0, 3j])
+      x4 = sum([1.0, 3j], 0)
+      x5 = sum([[1], ["2"]], [])
+    """, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      x1 = ...  # type: int
+      x2 = ...  # type: int
+      x3 = ...  # type: long or float or complex
+      x4 = ...  # type: int or float or complex
+      x5 = ...  # type: List[int or str]
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

@@ -113,7 +113,9 @@ def sorted(iterable: str or bytearray, ...) -> list[str]
 def sorted(iterable: unicode, ...) -> list[unicode]
 def sorted(iterable: list[T] or tuple[T] or set[T] or iterator[T], ...) -> list[T]
 def sorted(...) -> list[?]
-def sum(sequence, ...) -> int
+def sum(iterable: Iterable[int]) -> int
+def sum(iterable: Iterable[int or long or float or complex]) -> long or float or complex
+def sum(iterable: Iterable[T], start: T) -> T
 def unichr(i: int) -> unicode
 def vars(...) -> dict[str, ?]
 def zip(seq1, ...) -> list[tuple]  # TODO(pludemann): zip(seq1: iterator[...], ...) -> list[tuple[...]]
