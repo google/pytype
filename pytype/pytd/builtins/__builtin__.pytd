@@ -575,12 +575,8 @@ class list(List[T]):
 
 # "reversed" is a type, see PyReversed_Type in Objects/enumobject.c
 class reversed(Iterator[T]):
-    def __init__(self, sequence: list[N]) -> NoneType:
+    def __init__(self, sequence: Reversible[N]) -> NoneType:
       self := reversed[N]
-    def __init__(self, sequence: tuple[N]) -> NoneType:
-      self := reversed[N]
-    def __init__(self, sequence: str) -> NoneType:
-      self := reversed[str]
     def __iter__(self) -> reversed
     def next(self) -> T
 
@@ -1023,7 +1019,7 @@ class super(nothing):
     def __set__(self, obj, value) -> super
     def __new__(cls: type, ...) -> super
 
-class xrange(Sized, Iterable, Reversible):
+class xrange(Sized, Iterable[int], Reversible[int]):
     def __init__(self, stop: int, ...) -> NoneType
     def __getitem__(self, index: int) -> int
     def __iter__(self) -> rangeiterator

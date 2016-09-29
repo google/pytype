@@ -264,6 +264,29 @@ class BuiltinTests2(test_inference.InferenceTest):
       x5 = ...  # type: List[int or str]
     """)
 
+  def testReversed(self):
+    ty, errors = self.InferAndCheck("""\
+      x1 = reversed(xrange(42))
+      x2 = reversed([42])
+      x3 = reversed((4, 2))
+      x4 = reversed("hello")
+      x5 = reversed({42})
+      x6 = reversed(frozenset([42]))
+      x7 = reversed({True: 42})
+    """)
+    self.assertTypesMatchPytd(ty, """
+      x1 = ...  # type: reversed[int]
+      x2 = ...  # type: reversed[int]
+      x3 = ...  # type: reversed[int]
+      x4 = ...  # type: reversed[str]
+      x5 = ...  # type: reversed[nothing]
+      x6 = ...  # type: reversed[nothing]
+      x7 = ...  # type: reversed[nothing]
+    """)
+    self.assertErrorLogIs(errors, [(5, "wrong-arg-types", r"set"),
+                                   (6, "wrong-arg-types", r"frozenset"),
+                                   (7, "wrong-arg-types", r"dict")])
+
 
 if __name__ == "__main__":
   test_inference.main()
