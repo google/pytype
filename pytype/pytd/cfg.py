@@ -213,6 +213,21 @@ class CFGNode(object):
     cfg_node.incoming.add(self)
     cfg_node.reachable_subset |= self.reachable_subset
 
+  def CanHaveCombination(self, bindings):
+    """Quick version of HasCombination below."""
+    goals = set(bindings)
+    seen = set()
+    stack = [self]
+    # TODO(kramm): Take blocked nodes into account, like in Bindings()?
+    while stack and goals:
+      node = stack.pop()
+      seen.add(node)
+      hits = goals & node.bindings
+      for hit in hits:
+        goals.remove(hit)
+      stack.extend(set(node.incoming) - seen)
+    return not goals
+
   def HasCombination(self, bindings):
     """Query whether a combination is possible.
 

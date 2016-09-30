@@ -171,6 +171,29 @@ class CFGTest(unittest.TestCase):
     self.assertSameElements(["A", "B"], ab.FilteredData(n5))
     self.assertSameElements(["A", "B"], ab.FilteredData(n6))
 
+  def testCanHaveCombination(self):
+    p = cfg.Program()
+    n1 = p.NewCFGNode()
+    n2 = n1.ConnectNew()
+    n3 = n1.ConnectNew()
+    n4 = p.NewCFGNode()
+    n2.ConnectTo(n4)
+    n3.ConnectTo(n4)
+    x = p.NewVariable("x")
+    y = p.NewVariable("y")
+    x1 = x.AddBinding("1", source_set=[], where=n2)
+    y2 = y.AddBinding("2", source_set=[], where=n3)
+    self.assertTrue(n4.CanHaveCombination([x1, y2]))
+    self.assertTrue(n4.CanHaveCombination([x1]))
+    self.assertTrue(n4.CanHaveCombination([y2]))
+    self.assertTrue(n3.CanHaveCombination([y2]))
+    self.assertTrue(n2.CanHaveCombination([x1]))
+    self.assertTrue(n1.CanHaveCombination([]))
+    self.assertFalse(n1.CanHaveCombination([x1]))
+    self.assertFalse(n1.CanHaveCombination([y2]))
+    self.assertFalse(n2.CanHaveCombination([x1, y2]))
+    self.assertFalse(n3.CanHaveCombination([x1, y2]))
+
   def testCombinations(self):
     # n1------->n2
     #  |        |

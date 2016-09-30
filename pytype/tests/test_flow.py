@@ -256,6 +256,28 @@ class FlowTest(test_inference.InferenceTest):
       def g() -> Any
     """)
 
+  def test_independent_calls(self):
+    ty = self.Infer("""
+      class _Item(object):
+        def __init__(self, stack):
+          self.name = "foo"
+          self.name_list = [s.name for s in stack]
+      def foo():
+        stack = []
+        if __any_object__:
+          stack.append(_Item(stack))
+        else:
+          stack.append(_Item(stack))
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      class _Item(object):
+        name = ...  # type: str
+        name_list = ...  # type: list
+        def __init__(self, stack) -> None: ...
+      def foo() -> None: ...
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

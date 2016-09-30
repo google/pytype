@@ -1836,6 +1836,8 @@ class PyTDFunction(Function):
     all_mutations = []
     for combination in utils.deep_variable_product(variables):
       view = {value.variable: value for value in combination}
+      if not node.CanHaveCombination(view.values()):
+        continue
       try:
         node, result, mutations = self._call_with_view(
             node, func, args, view, ret_map)
