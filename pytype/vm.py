@@ -705,7 +705,10 @@ class VirtualMachine(object):
           copy.AddOrigin(new_node, {binding, funcv})
         nodes.append(new_node)
     if nodes:
-      return self.join_cfg_nodes(nodes), result
+      node = self.join_cfg_nodes(nodes)
+      if not result.bindings:
+        result.AddBinding(self.convert.unsolvable, [], node)
+      return node, result
     else:
       if fallback_to_unsolvable:
         assert error

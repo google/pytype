@@ -708,6 +708,24 @@ class ContainerTest(test_inference.InferenceTest):
       x = ...  # type: Any
     """)
 
+  def testEmptyList(self):
+    ty = self.Infer("""
+      cache = {
+        "data": {},
+        "lru": [],
+      }
+      def read(path):
+        if path:
+          cache["lru"].append(path)
+        else:
+          oldest = cache["lru"].pop(0)
+          return oldest
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      cache = ...  # type: Dict[str, Dict[nothing, nothing] or list]
+      def read(path) -> Any
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()
