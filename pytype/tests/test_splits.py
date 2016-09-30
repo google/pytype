@@ -1,5 +1,6 @@
 """Tests for union types."""
 
+import os
 import unittest
 
 from pytype.tests import test_inference
@@ -7,6 +8,7 @@ from pytype.tests import test_inference
 
 class SplitTest(test_inference.InferenceTest):
   """Tests for union types."""
+
 
   def testRestrictNone(self):
     ty = self.Infer("""
@@ -315,6 +317,19 @@ class SplitTest(test_inference.InferenceTest):
       if x is not None:
         x.foo()
     """)
+
+  @unittest.skip("Needs looking into.")
+  def testUnion(self):
+    self.assertNoErrors("""
+      from __future__ import google_type_annotations
+      from typing import Union
+      def f(data: str):
+        pass
+      def as_my_string(data: Union[str, int]):
+        if isinstance(data, str):
+          f(data)
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

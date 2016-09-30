@@ -1519,7 +1519,6 @@ class Function(Instance):
     super(Function, self).__init__(vm.convert.function_type, vm, node)
     self.name = name
     self.is_attribute_of_class = False
-    self._bound_functions_cache = {}
     self.members["func_name"] = self.vm.convert.build_string(
         self.vm.root_cfg_node, name)
 
@@ -1536,11 +1535,11 @@ class Function(Instance):
     if self.name == "__new__" or not callself or not callcls:
       return self
     self.is_attribute_of_class = True
-    key = tuple(sorted(callself.data))
-    if key not in self._bound_functions_cache:
-      self._bound_functions_cache[key] = (self.bound_class)(
-          callself, callcls, self)
-    return self._bound_functions_cache[key]
+    # We'd like to cache this, but we can't. "callself" contains Variables
+    # that would be tied into a BoundFunction instance. However, those
+    # Variables aren't necessarily visible from other parts of the CFG binding
+    # this function. See test_duplicate_getproperty() in tests/test_flow.py.
+    return self.bound_class(callself, callcls, self)
 
   def get_class(self):
     return self.vm.convert.function_type
@@ -1816,12 +1815,13 @@ class PyTDFunction(Function):
       for i, arg_values in enumerate(arg_values_list):
         if level:
           if arg_values and any(v.data not in logged for v in arg_values):
-            log.debug("%s%s:", "  " * level, arg_values[0].variable.name)
+            log.debug("%s%s:", "  " * level, arg_values[0].variable.id)
         else:
           log.debug("Arg %d", i)
         for value in arg_values:
           if value.data not in logged:
-            log.debug("%s%s", "  " * (level + 1), value.data)
+            log.debug("%s%s [var %d]", "  " * (level + 1), value.data,
+                      value.variable.id)
             self._log_args(value.data.unique_parameter_values(), level + 2,
                            logged | {value.data})
 
@@ -1837,6 +1837,7 @@ class PyTDFunction(Function):
     for combination in utils.deep_variable_product(variables):
       view = {value.variable: value for value in combination}
       if not node.CanHaveCombination(view.values()):
+        log.info("Skipping combination %r", view.values())
         continue
       try:
         node, result, mutations = self._call_with_view(
@@ -2470,17 +2471,17 @@ class InterpreterClass(SimpleAbstractValue, Class):
     # come into play.
     return super(InterpreterClass, self).set_attribute(node, name, value)
 
-  def _new_instance(self, node, value):
+  def _new_instance(self):
     # We allow only one "instance" per code location, regardless of call stack.
     key = self.vm.frame.current_opcode
     if key not in self._instance_cache:
       cls = self.vm.program.NewVariable(self.name)
-      cls.AddBinding(self, [value], node)
-      self._instance_cache[key] = Instance(cls, self.vm, node)
+      cls.AddBinding(self, [], self.vm.root_cfg_node)
+      self._instance_cache[key] = Instance(cls, self.vm, self.vm.root_cfg_node)
     return self._instance_cache[key]
 
   def call(self, node, value, args):
-    value = self._new_instance(node, value)
+    value = self._new_instance()
     variable = self.vm.program.NewVariable(self.name + " instance")
     val = variable.AddBinding(value, [], node)
     node, init = value.get_attribute(node, "__init__", val)

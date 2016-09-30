@@ -278,6 +278,24 @@ class FlowTest(test_inference.InferenceTest):
       def foo() -> None: ...
     """)
 
+  def test_duplicate_getproperty(self):
+    ty = self.Infer("""
+      class Foo(object):
+        def __init__(self):
+          self._node = __any_object__
+        def bar(self):
+          if __any_object__:
+            raise Exception(
+            'No node with type %s could be extracted.' % self._node)
+      Foo().bar()
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      class Foo(object):
+        _node = ...  # type: Any
+        def bar(self) -> NoneType: ...
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()
