@@ -6,11 +6,15 @@ and to model path-specific visibility of nested data structures.
 
 
 import collections
+import logging
 
 
 from pytype import metrics
 from pytype.pytd import utils
 import pytype.utils
+
+
+log = logging.getLogger(__name__)
 
 
 _solved_find_queries = {}
@@ -256,6 +260,23 @@ class CFGNode(object):
   def __repr__(self):
     return "<cfgnode %d %s>" % (self.id, self.name)
 
+  def AsciiTree(self, forward=False):
+    """Draws an ascii tree, starting at this node.
+
+    Args:
+      forward: If True, draw the tree starting at this node. If False, draw
+        the "reverse" tree that starts at the current node when following all
+        edges in the reverse direction.
+        The default is False, because during CFG construction, the current node
+        typically doesn't have any outgoing nodes.
+    Returns:
+      A string.
+    """
+    if forward:
+      return pytype.utils.ascii_tree(self, lambda node: node.outgoing)
+    else:
+      return pytype.utils.ascii_tree(self, lambda node: node.incoming)
+
 
 class SourceSet(frozenset):
   """A SourceSet is a combination of Bindings that was used to form a Binding.
@@ -368,10 +389,9 @@ class Binding(object):
 
   def __str__(self):
     data_id = getattr(self.data, "id", id(self.data))
-    return "$%d=#%d" % (self.variable.id, data_id)
+    return "<binding of variable %d to data %d>" % (self.variable.id, data_id)
 
-  def __repr__(self):
-    return "<binding %x of variable %d>" % (id(self), self.variable.id)
+  __repr__ = __str__
 
 
 class Variable(object):

@@ -2,6 +2,7 @@
 
 import itertools
 import os
+import textwrap
 
 
 from pytype import utils
@@ -35,7 +36,14 @@ class Node(object):
 
   def __init__(self, name, *incoming):
     self.name = name
-    self.incoming = incoming
+    self.outgoing = []
+    self.incoming = list(incoming)
+    for n in incoming:
+      n.outgoing.append(self)
+
+  def connect_to(self, other_node):
+    self.outgoing.append(other_node)
+    other_node.incoming.append(self)
 
   def __repr__(self):
     return "Node(%s)" % self.name
@@ -568,6 +576,55 @@ class UtilsTest(unittest.TestCase):
       pass
     self.assertEquals(foo.lookup["f"], 3)
 
+  def testAsciiTree(self):
+    n1 = Node("n1")
+    n2 = Node("n2", n1)
+    n3 = Node("n3", n2)
+    n4 = Node("n4", n3)
+    n5 = Node("n5", n1)
+    n6 = Node("n6", n5)
+    n7 = Node("n7", n5)
+    del n4, n6  # make pylint happy
+    s = utils.ascii_tree(n1, lambda n: n.outgoing)
+    self.assertMultiLineEqual(textwrap.dedent("""\
+      Node(n1)
+      |
+      +-Node(n2)
+      | |
+      | +-Node(n3)
+      |   |
+      |   +-Node(n4)
+      |
+      +-Node(n5)
+        |
+        +-Node(n6)
+        |
+        +-Node(n7)
+    """), s)
+    s = utils.ascii_tree(n7, lambda n: n.incoming)
+    self.assertMultiLineEqual(textwrap.dedent("""\
+      Node(n7)
+      |
+      +-Node(n5)
+        |
+        +-Node(n1)
+    """), s)
+
+  def testAsciiGraph(self):
+    n1 = Node("n1")
+    n2 = Node("n2", n1)
+    n3 = Node("n3", n2)
+    n3.connect_to(n1)
+    s = utils.ascii_tree(n1, lambda n: n.outgoing)
+    self.assertMultiLineEqual(textwrap.dedent("""\
+      Node(n1)
+      |
+      +-Node(n2)
+        |
+        +-Node(n3)
+          |
+          +-[Node(n1)]
+    """), s)
 
 if __name__ == "__main__":
   test_inference.main()

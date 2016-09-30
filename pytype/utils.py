@@ -7,6 +7,7 @@ import itertools
 import os
 import re
 import shutil
+import StringIO
 import tempfile
 import textwrap
 import threading
@@ -688,3 +689,42 @@ class AnnotatingDecorator(object):
       self.lookup[f.__name__] = value
       return f
     return decorate
+
+
+def _ascii_tree(io, node, p1, p2, seen, get_children):
+  """Draw a graph, starting at a given position.
+
+  Args:
+    io: A file-like object to write the ascii tree to.
+    node: The node from where to draw.
+    p1: The current prefix.
+    p2: The upcoming prefix.
+    seen: Nodes we have seen so far (as a set).
+    get_children: The function to call to retrieve children.
+  """
+  children = list(get_children(node))
+  if node in seen:
+    io.write(p1 + "[" + str(node) + "]\n")
+  else:
+    io.write(p1 + str(node) + "\n")
+    seen.add(node)
+    for i, c in enumerate(children):
+      last = (i == len(children) - 1)
+      io.write(p2 + "|\n")
+      _ascii_tree(io, c, p2 + "+-", p2 + ("  " if last else "| "),
+                  seen, get_children)
+
+
+def ascii_tree(node, get_children):
+  """Draw a graph, starting at a given position.
+
+  Args:
+    node: The node from where to draw.
+    get_children: The function to call to retrieve children.
+
+  Returns:
+    A string.
+  """
+  io = StringIO.StringIO()
+  _ascii_tree(io, node, "", "", set(), get_children)
+  return io.getvalue()

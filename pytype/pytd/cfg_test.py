@@ -36,7 +36,8 @@ class CFGTest(unittest.TestCase):
     self.assertEquals(v1.data, None)
     self.assertEquals(v2.data, u"data")
     self.assertEquals(v3.data, {1: 2})
-    self.assertEquals("$0=#%d" % id(v3.data), str(v3))
+    self.assertEquals("<binding of variable 0 to data %d>" % id(v3.data),
+                      str(v3))
 
   def testGetAttro(self):
     p = cfg.Program()
@@ -86,6 +87,17 @@ class CFGTest(unittest.TestCase):
     d.AddBinding("v1", source_set=[], where=node1)
     d.AddBinding("v2", source_set=[], where=node2)
     self.assertEquals(len(d.bindings), 2)
+
+  def testAsciiTree(self):
+    p = cfg.Program()
+    node1 = p.NewCFGNode()
+    node2 = node1.ConnectNew()
+    node3 = node2.ConnectNew()
+    _ = node3.ConnectNew()
+    # Just check sanity. Actual verification of the drawing algorithm is
+    # done in utils_test.py.
+    self.assertIsInstance(node1.AsciiTree(), str)
+    self.assertIsInstance(node1.AsciiTree(forward=True), str)
 
   def testHasSource(self):
     p = cfg.Program()
