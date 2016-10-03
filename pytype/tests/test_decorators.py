@@ -33,6 +33,30 @@ class DecoratorsTest(test_inference.InferenceTest):
         def list() -> NoneType
     """)
 
+  @unittest.skip("This should fail for some reason it doesn't. Therefore "
+                 "testFgetIsOptional is probably a nop test")
+  def testFgetIsOptionalFail(self):
+    #
+    # is probably a nop test.
+    self.assertNoErrors("""
+      class Foo(object):
+        def __init__(self):
+          self._bar = 1
+        def _SetBar(self, value):
+          self._bar = value
+        bar = property(should_fail=_SetBar)
+        """)
+
+  def testFgetIsOptional(self):
+    self.assertNoErrors("""
+      class Foo(object):
+        def __init__(self):
+          self._bar = 1
+        def _SetBar(self, value):
+          self._bar = value
+        bar = property(fset=_SetBar)
+        """)
+
   def testProperty(self):
     ty = self.Infer("""
       class Foo(object):

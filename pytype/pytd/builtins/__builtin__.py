@@ -34,7 +34,7 @@ def next(iterator, default=__undefined__):
 class property(object):
   """Property method decorator."""
 
-  def __init__(self, fget, fset=None, fdel=None, doc=None):
+  def __init__(self, fget=None, fset=None, fdel=None, doc=None):
     self.fget = fget
     self.fset = fset
     self.fdel = fdel

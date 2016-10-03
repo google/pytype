@@ -187,7 +187,7 @@ class basestring(object):
     pass
 
 class property(object):  # Also defined in __builtin__.py
-    def __init__(self, fget, ...) -> NoneType
+    def __init__(self, fget=..., fset=..., fdel=..., doc=...) -> NoneType
     def __get__(self, ...) -> ?
     def __set__(self, ...) -> ?
     def __delete__(self, ...) -> ?
