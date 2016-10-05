@@ -67,7 +67,7 @@ class ImportTest(test_inference.InferenceTest):
       from my_module import *
       """, deep=True, solve_unknowns=True, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        A = ...  # type: type
+        A = ...  # type: Type[my_module.A]
         a = ...  # type: my_module.A
         def f() -> str
       """)

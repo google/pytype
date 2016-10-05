@@ -39,7 +39,7 @@ class GenericTest(test_inference.InferenceTest):
           return A() + [42]
       """, pythonpath=[d.path], deep=True, solve_unknowns=True)
       self.assertTypesMatchPytd(ty, """
-        A = ...  # type: type
+        A = ...  # type: Type[a.A]
         def f() -> List[int]
       """)
 

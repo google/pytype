@@ -1908,6 +1908,11 @@ class Class(object):
         if var is not None:
           return var
 
+  def to_type(self, node, seen=None):
+    del node, seen
+    return pytd.GenericType(base_type=pytd.NamedType("__builtin__.type"),
+                            parameters=(pytd.NamedType(self.full_name),))
+
   def to_pytd_def(self, node, name):
     # Default method. Generate an empty pytd. Subclasses override this.
     del node
@@ -1956,7 +1961,7 @@ class ParameterizedClass(AtomicAbstractValue, Class):
     return self.base_cls.get_attribute_flat(node, name)
 
   def to_type(self, node, seen=None):
-    return pytd.NamedType("__builtin__.type")
+    return Class.to_type(self, node, seen)
 
   def get_instance_type(self, node, instance=None, seen=None):
     type_arguments = []
@@ -2057,7 +2062,7 @@ class PyTDClass(SimpleAbstractValue, Class):
         self.name, AsInstance(self.pytd_cls), {}, node)
 
   def to_type(self, node, seen=None):
-    return pytd.NamedType("__builtin__.type")
+    return Class.to_type(self, node, seen)
 
   def get_instance_type(self, node, instance=None, seen=None):
     """Convert instances of this class to their PYTD type."""
@@ -2092,7 +2097,7 @@ class PyTDClass(SimpleAbstractValue, Class):
     # This happens if a module does e.g. "from x import y as z", i.e., copies
     # something from another module to the local namespace. We *could*
     # reproduce the entire class, but we choose a more dense representation.
-    return pytd.NamedType("__builtin__.type")
+    return self.to_type(node, name)
 
   def get_as_instance_attribute_flat(self, node, name, instance):
     try:
@@ -2201,7 +2206,7 @@ class InterpreterClass(SimpleAbstractValue, Class):
     return node, variable
 
   def to_type(self, node, seen=None):
-    return pytd.NamedType("__builtin__.type")
+    return Class.to_type(self, node, seen)
 
   def to_pytd_def(self, node, class_name):
     methods = {}

@@ -366,12 +366,12 @@ class ContainerTest(test_inference.InferenceTest):
   def testLeakingType(self):
     ty = self.Infer("""
       import sys
-      a = [str(ty) for ty in (int, bool)[:len(sys.argv)]]
+      a = [str(ty) for ty in (float, int, bool)[:len(sys.argv)]]
     """, deep=True, solve_unknowns=False, extract_locals=True)
     self.assertTypesMatchPytd(ty, """
       sys = ...  # type: module
       a = ...  # type: List[str, ...]
-      ty = ...  # type: type
+      ty = ...  # type: Type[float or int]
     """)
 
   def testEmptyOrString(self):

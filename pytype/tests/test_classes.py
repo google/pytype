@@ -275,7 +275,7 @@ class ClassesTest(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
       class Flag(object):
-        convert_method = ...  # type: type
+        convert_method = ...  # type: Type[int]
         def convert(self, value: float or str) -> int
     """)
 

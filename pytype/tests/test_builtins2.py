@@ -87,7 +87,7 @@ class BuiltinTests2(test_inference.InferenceTest):
       class Foo:
         def get_dict(self) -> Dict[str, Any]
         def get_name(self) -> str
-        def get_class(self) -> type
+        def get_class(self) -> Type[Foo]
         def get_doc(self) -> str
         def get_module(self) -> str
         def get_bases(self) -> tuple
@@ -117,7 +117,7 @@ class BuiltinTests2(test_inference.InferenceTest):
       class Foo(object):
         def get_dict(self) -> Dict[str, Any]
         def get_name(self) -> str
-        def get_class(self) -> type
+        def get_class(self) -> Type[Foo]
         def get_doc(self) -> str
         def get_module(self) -> str
         def get_hash(self) -> int
@@ -170,7 +170,7 @@ class BuiltinTests2(test_inference.InferenceTest):
         z = A().x()
       """, pythonpath=[d.path], extract_locals=True)
       self.assertTypesMatchPytd(ty, """
-        A = ...  # type: type
+        A = ...  # type: Type[foo.A]
         y = ...  # type: Any
         z = ...  # type: Any
       """)
@@ -187,7 +187,7 @@ class BuiltinTests2(test_inference.InferenceTest):
         z = A().x()
       """, pythonpath=[d.path], extract_locals=True)
       self.assertTypesMatchPytd(ty, """
-        A = ...  # type: type
+        A = ...  # type: Type[foo.A]
         y = ...  # type: Any
         z = ...  # type: Any
       """)
