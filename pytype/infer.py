@@ -338,7 +338,7 @@ class CallTracer(vm.VirtualMachine):
           name, abstract.AsInstance(t), subst={}, node=self.root_cfg_node)
 
   def _check_return(self, node, actual, formal):
-    bad = abstract.bad_matches(actual, formal, node)
+    bad = self.matcher.bad_matches(actual, formal, node)
     if bad:
       combined = pytd_utils.JoinTypes([t.data.to_type(node) for t in bad])
       self.errorlog.bad_return_type(
@@ -358,7 +358,7 @@ class CallTracer(vm.VirtualMachine):
         _, retvar = self.call_function_in_frame(
             node, fvar, args, {}, None, None)
         if retvar.bindings:
-          bad = abstract.bad_matches(retvar, nominal_return, node)
+          bad = self.matcher.bad_matches(retvar, nominal_return, node)
           if bad:
             if isinstance(val.data, (abstract.InterpreterFunction,
                                      abstract.BoundInterpreterFunction)):

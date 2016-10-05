@@ -456,9 +456,11 @@ class Converter(object):
         type_parameters.add_lazy_item(
             param.name, self.convert_constant_to_value,
             param.name, value, subst, node)
-      cls = self.convert_constant_to_value(
+      base_cls = self.convert_constant_to_value(
           pytd.Print(pyval.base_type), pyval.base_type.cls, subst, node)
-      return abstract.ParameterizedClass(cls, type_parameters, self.vm)
+      cls = abstract.ParameterizedClass(base_cls, type_parameters, self.vm)
+      cls.module = base_cls.module
+      return cls
     elif pyval.__class__ is tuple:  # only match raw tuple, not namedtuple/Node
       return self.tuple_to_value(self.vm.root_cfg_node,
                                  [self.convert_constant("tuple[%d]" % i, item,

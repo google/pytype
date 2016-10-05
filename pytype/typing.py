@@ -76,20 +76,13 @@ class Union(TypingClass):
       n.PasteVariable(instance, node)
     return n
 
-  def match_var_against(self, var, subst, node, view):
-    for element in self.elements:
-      new_subst = abstract.match_var_against_type(
-          var, element, subst, node, view)
-      if new_subst is not None:
-        return new_subst
-
   def get_instance_type(self, node, instance=None, seen=None):
     return pytd.UnionType(tuple(
         e.get_instance_type(node, seen=seen)
         for e in self.elements))
 
 
-class _Container(TypingClass):
+class Container(TypingClass):
   """Implementation of typing.X[...]."""
 
   TYPE_PARAM_NAMES = ()
@@ -97,43 +90,13 @@ class _Container(TypingClass):
   def __init__(self, name, vm, node, inner=None):
     # TODO(kramm): type_type is wrong. Correct would be "typing.GenericMeta".
     # But in the output, we'd want this to become an alias.
-    super(_Container, self).__init__(name, vm, node)
+    super(Container, self).__init__(name, vm, node)
     self.inner = inner
 
   def getitem_slot(self, node, inner):
     inner = _maybe_extract_tuple(self.vm.convert, node, inner)
     new_list = self.__class__(self.name, self.vm, node, inner)
     return node, new_list.to_variable(node, self.name)
-
-  def match_var_against(self, var, subst, node, view):
-    new_subst = None
-    for cls in [c for clsv in self.concrete_classes
-                for c in clsv.data]:
-      new_subst = abstract.match_var_against_type(var, cls, subst, node, view)
-      if new_subst is not None:
-        subst = new_subst
-        break
-    else:
-      return None
-    if self.inner:
-      v = view[var].data
-      if (isinstance(v, abstract.SimpleAbstractValue) and
-          all(param in v.type_parameters for param in self.type_param_names)):
-        for param_name, type_param in zip(self.type_param_names, self.inner):
-          inner = v.type_parameters[param_name]
-          for formal in type_param.data:
-            new_subst = abstract.match_var_against_type(
-                inner, formal, subst, node, view)
-            if new_subst is not None:
-              subst = new_subst
-              break
-          else:
-            return None
-          return new_subst
-      elif isinstance(v, abstract.AMBIGUOUS_OR_EMPTY):
-        return subst
-    else:
-      return subst
 
   def instantiate(self, node):
     concrete_class = self.concrete_classes[0]
@@ -165,7 +128,7 @@ class _Container(TypingClass):
       return self.name
 
 
-class List(_Container):
+class List(Container):
   pytd_name = "__builtin__.list"
   type_param_names = ("T",)
 
@@ -183,7 +146,7 @@ class List(_Container):
           self.vm.convert.create_new_unsolvable(node, "inner")])
 
 
-class Dict(_Container):
+class Dict(Container):
   pytd_name = "__builtin__.dict"
   type_param_names = ("K", "V")
 
@@ -192,7 +155,7 @@ class Dict(_Container):
     self.concrete_classes = [self.vm.convert.dict_type]
 
 
-class Set(_Container):
+class Set(Container):
   pytd_name = "__builtin__.set"
   type_param_names = ("T",)
 
@@ -201,7 +164,7 @@ class Set(_Container):
     self.concrete_classes = [self.vm.convert.set_type]
 
 
-class FrozenSet(_Container):
+class FrozenSet(Container):
   pytd_name = "__builtin__.frozenset"
   type_param_names = ("T",)
 
@@ -210,7 +173,7 @@ class FrozenSet(_Container):
     self.concrete_classes = [self.vm.convert.frozenset_type]
 
 
-class Sequence(_Container):
+class Sequence(Container):
   pytd_name = "typing.Sequence"
   type_param_names = ("T",)
 

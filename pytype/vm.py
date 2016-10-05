@@ -19,6 +19,7 @@ import sys
 
 
 from pytype import abstract
+from pytype import abstract_match
 from pytype import blocks
 from pytype import convert
 from pytype import exceptions
@@ -95,6 +96,7 @@ class VirtualMachine(object):
     self.program.entrypoint = self.root_cfg_node
     self.vmbuiltins = self.loader.builtins
     self.convert = convert.Converter(self)
+    self.matcher = abstract_match.AbstractMatcher()
     self.has_unknown_wildcard_imports = False
 
     # Map from builtin names to canonical objects.

@@ -86,123 +86,6 @@ def get_atomic_python_constant(variable):
   raise ConversionError("Only some types are supported: %r" % type(atomic))
 
 
-def match_var_against_type(var, other_type, subst, node, view):
-  if hasattr(other_type, "match_var_against"):
-    return other_type.match_var_against(var, subst, node, view)
-  elif var.bindings:
-    return _match_value_against_type(view[var], other_type, subst, node, view)
-  else:  # Empty set of values. The "nothing" type.
-    if isinstance(other_type, Union):
-      right_side_options = other_type.options
-    else:
-      right_side_options = [other_type]
-    for right in right_side_options:
-      if isinstance(right, Class):
-        # If this type is empty, the only thing we can match it against is
-        # object (for pytd convenience).
-        if right.name == "object":
-          return subst
-      elif isinstance(right, Nothing):
-        # Matching nothing against nothing is fine.
-        return subst
-      elif isinstance(right, TypeParameter):
-        # If we have a union like "K or V" and we match both against
-        # nothing, that will fill in both K and V.
-        if right.name not in subst:
-          subst = subst.copy()
-          subst[right.name] = var.program.NewVariable("empty")
-        return subst
-    return None
-
-
-# TODO(kramm): This needs to match values, not variables. A variable can
-# consist of different types.
-def _match_value_against_type(value, other_type, subst, node, view):
-  """One-way unify value into pytd type given a substitution.
-
-  Args:
-    value: A typegraph.Binding
-    other_type: An AtomicAbstractValue instance.
-    subst: The current substitution. This dictionary is not modified.
-    node: Current location (typegraph CFG node)
-    view: A mapping of Variable to Value.
-  Returns:
-    A new (or unmodified original) substitution dict if the matching succeded,
-    None otherwise.
-  """
-  left = value.data
-  assert isinstance(left, AtomicAbstractValue), left
-  assert not left.formal
-
-  # TODO(kramm): Use view
-
-  if isinstance(other_type, Class):
-    # Accumulate substitutions in "subst", or break in case of error:
-    return left.match_against_type(other_type, subst, node, view)
-  elif isinstance(other_type, Union):
-    for t in other_type.options:
-      new_subst = _match_value_against_type(value, t, subst, node, view)
-      if new_subst is not None:
-        # TODO(kramm): What if more than one type matches?
-        return new_subst
-    return None
-  elif isinstance(other_type, TypeParameter):
-    if other_type.name in subst:
-      # Merge the two variables.
-      subst = subst.copy()
-      new_var = subst[other_type.name].AssignToNewVariable(other_type.name,
-                                                           node)
-      new_var.AddBinding(left, [], node)
-      subst[other_type.name] = new_var
-    else:
-      subst = subst.copy()
-      subst[other_type.name] = new_var = value.AssignToNewVariable(
-          other_type.name, node)
-    type_key = left.get_type_key()
-    # Every value with this type key produces the same result when matched
-    # against other_type, so they can all be added to this substitution rather
-    # than matched separately.
-    for other_value in value.variable.bindings:
-      if (other_value is not value and
-          other_value.data.get_type_key() == type_key):
-        new_var.AddBinding(other_value.data, {other_value}, node)
-    return subst
-  elif (isinstance(other_type, (Unknown, Unsolvable)) or
-        isinstance(left, (Unknown, Unsolvable))):
-    # We can match anything against unknown types, and unknown types against
-    # anything.
-    # TODO(kramm): Do we want to record what we matched them against?
-    assert not isinstance(other_type, ParameterizedClass)
-    return subst
-  elif isinstance(other_type, Nothing):
-    return left.match_against_type(other_type, subst, node, view)
-  else:
-    log.error("Invalid type: %s", type(other_type))
-    return None
-
-
-def bad_matches(var, other_type, node, subst=None):
-  """Match an Variable against a type. Return bindings that don't match.
-
-  Args:
-    var: A cfg.Variable, containing instances.
-    other_type: An instance of AtomicAbstractValue.
-    node: A cfg.CFGNode. The position in the CFG from which we "observe" the
-      match.
-    subst: Type parameter substitutions.
-  Returns:
-    A list of all the bindings of var that didn't match.
-  """
-  subst = subst or {}
-  bad = []
-  for combination in utils.deep_variable_product([var]):
-    view = {value.variable: value for value in combination}
-    if match_var_against_type(var, other_type, subst,
-                              node, view) is None:
-      bad.append(view[var])
-  return bad
-
-
 class AtomicAbstractValue(object):
   """A single abstract value such as a type or function signature.
 
@@ -442,19 +325,6 @@ class AtomicAbstractValue(object):
     v.AddBinding(self, source_set=[], where=node)
     return v
 
-  def match_against_type(self, other_type, subst, node, view):
-    """Checks whether we're compatible with a (formal) type.
-
-    Args:
-      other_type: A formal type. E.g. abstract.Class or abstract.Union.
-      subst: The current type parameter assignment.
-      node: The current CFG node.
-      view: The current mapping of Variable to Value.
-    Returns:
-      A new type parameter assignment if the matching succeeded, None otherwise.
-    """
-    raise NotImplementedError("Matching not implemented for %s", type(self))
-
   def has_varargs(self):
     """Return True if this is a function and has a *args parameter."""
     return False
@@ -521,12 +391,6 @@ class Empty(AtomicAbstractValue):
 
   def get_instance_type(self, node, instance=None, seen=None):
     return pytd.AnythingType()
-
-  def match_against_type(self, other_type, subst, node, view):
-    if isinstance(other_type, Nothing):
-      return subst
-    else:
-      return other_type.match_instance(self, other_type, subst, node, view)
 
   def get_attribute(self, node, name, valself=None, valcls=None,
                     condition=None):
@@ -868,19 +732,6 @@ class SimpleAbstractValue(AtomicAbstractValue):
       log.info("Using ? for %s", self.name)
       return pytd.AnythingType()
 
-  def match_against_type(self, other_type, subst, node, view):
-    if isinstance(self, Class):
-      return Class.match_against_type(self, other_type, subst, node, view)
-    my_type = self.get_class()
-    assert my_type
-    assert isinstance(self, Instance)
-    for my_cls in my_type.data:
-      subst = my_cls.match_instance_against_type(self, other_type,
-                                                 subst, node, view)
-      if subst is None:
-        return None
-    return subst
-
   def get_type_key(self, seen=None):
     if not seen:
       seen = set()
@@ -915,7 +766,7 @@ class SimpleAbstractValue(AtomicAbstractValue):
     if clsvar:
       parameters.append(clsvar)
     # TODO(rechen): Remember which values were merged under which type keys so
-    # we don't have to recompute this information in _match_value_against_type.
+    # we don't have to recompute this information in match_value_against_type.
     return [{value.data.get_type_key(): value
              for value in parameter.bindings}.values()
             for parameter in parameters]
@@ -1352,10 +1203,6 @@ class SuperInstance(AtomicAbstractValue):
   def get_class(self):
     return self.cls
 
-  def match_against_type(self, other_type, subst, node, view):
-    return self.super_cls.match_instance_against_type(
-        self.super_obj, other_type, subst, node, view)
-
   def call(self, node, _, args):
     self.vm.errorlog.not_callable(
         self.vm.frame.current_opcode, self)
@@ -1547,10 +1394,6 @@ class Function(Instance):
   def to_type(self, node, seen=None):
     return pytd.NamedType("__builtin__.function")
 
-  def match_against_type(self, other_type, subst, node, view):
-    if other_type.name in ["function", "object", "Callable"]:
-      return subst
-
   def __repr__(self):
     return self.name + "(...)"
 
@@ -1672,7 +1515,8 @@ class PyTDSignature(object):
     for p in self.pytd_sig.params:
       actual = arg_dict[p.name]
       formal = self.signature.annotations[p.name]
-      subst = _match_value_against_type(actual, formal, subst, node, view)
+      subst = self.vm.matcher.match_value_against_type(
+          actual, formal, subst, node, view)
       if subst is None:
         # These parameters didn't match this signature. There might be other
         # signatures that work, but figuring that out is up to the caller.
@@ -1754,10 +1598,6 @@ class ClassMethod(AtomicAbstractValue):
     return self.method.call(
         node, func, args.replace(posargs=(cls,) + args.posargs))
 
-  def match_against_type(self, other_type, subst, node, view):
-    if other_type.name in ["classmethod", "object"]:
-      return subst
-
 
 class StaticMethod(AtomicAbstractValue):
   """Implements @staticmethod methods in pyi."""
@@ -1771,12 +1611,6 @@ class StaticMethod(AtomicAbstractValue):
 
   def call(self, *args, **kwargs):
     return self.method.call(*args, **kwargs)
-
-  def match_against_type(self, other_type, subst, node, view):
-    if other_type.name in ["staticmethod", "object"]:
-      return subst
-    else:
-      return None
 
 
 class PyTDFunction(Function):
@@ -2079,101 +1913,6 @@ class Class(object):
     del node
     return pytd.Class(name, None, (), (), (), ())
 
-  def match_instance(self, instance, instance_type, subst, node, view):
-    """Used by match_instance_against_type. Matches a single MRO entry.
-
-    Called after the instance has been successfully matched against a
-    formal type to do any remaining matching special to the type; e.g.,
-    ParameterizedClass overrides this method to match instance type
-    parameters against formal type parameters. By default this match
-    succeeds without doing anything.
-
-    Args:
-      instance: The instance of this class.
-      instance_type: The instance type that successfully matched this formal
-        type, which may be different from instance.cls depending on where in
-        the mro the match happened.
-      subst: The current type parameter assignment.
-      node: The current CFG node.
-      view: The current mapping of Variable to Value.
-    Returns:
-      A new type parameter assignment if the matching succeeded, None otherwise.
-    """
-    del instance, instance_type, node, view
-    return subst
-
-  def _match_from_mro(self, other_type):
-    for base in self.mro:
-      if isinstance(base, ParameterizedClass):
-        base_cls = base.base_cls
-      else:
-        base_cls = base
-      if isinstance(base_cls, Class):
-        if other_type is base_cls or (
-            isinstance(other_type, ParameterizedClass) and
-            other_type.base_cls is base_cls):
-          return base
-      elif isinstance(base_cls, AMBIGUOUS_OR_EMPTY):
-        # See match_Function_against_Class in type_match.py. Even though it's
-        # possible that this Unknown is of type other_type, our class would
-        # then be a match for *everything*. Hence, return False, to keep
-        # the list of possible types from exploding.
-        return None
-      else:
-        raise AssertionError("Bad base class %r", base_cls)
-
-  def match_instance_against_type(self, instance, other_type,
-                                  subst, node, view):
-    """Checks whether an instance of us is compatible with a (formal) type.
-
-    Args:
-      instance: The instance of this class. An abstract.Instance.
-      other_type: A formal type. E.g. abstract.Class or abstract.Union.
-      subst: The current type parameter assignment.
-      node: The current CFG node.
-      view: The current mapping of Variable to Value.
-    Returns:
-      A new type parameter assignment if the matching succeeded, None otherwise.
-    """
-    if other_type.full_name == "__builtin__.object":
-      return subst
-
-    compatible_builtins = {
-        "__builtin__." + k: "__builtin__." + v
-        for k, v in pep484.COMPAT_MAP.iteritems()
-    }
-    if compatible_builtins.get(self.full_name) == other_type.full_name:
-      return subst
-
-    if isinstance(other_type, Class):
-      base = self._match_from_mro(other_type)
-      if base is None:
-        return None
-      else:
-        return other_type.match_instance(instance, base, subst, node, view)
-    elif isinstance(other_type, Nothing):
-      return None
-    else:
-      raise NotImplementedError(
-          "Can't match instance %r against %r", self, other_type)
-
-  def match_against_type(self, other_type, subst, node, view):
-    del node, view
-    if (other_type.name == "type" and
-        isinstance(other_type, ParameterizedClass)):
-      other_type = other_type.type_parameters["T"]
-      base = self._match_from_mro(other_type)
-      if base is None:
-        return None
-      else:
-        # TODO(rechen): We should match type parameters when base and other_type
-        # are both parameterized classes.
-        return subst
-    elif other_type.name in ["type", "object", "Callable"]:
-      return subst
-    else:
-      return None
-
 
 class ParameterizedClass(AtomicAbstractValue, Class):
   """A class that contains additional parameters. E.g. a container.
@@ -2229,36 +1968,6 @@ class ParameterizedClass(AtomicAbstractValue, Class):
         pytd_utils.NamedTypeWithModule(self.base_cls.pytd_cls.name,
                                        self.base_cls.module),
         type_arguments)
-
-  def match_instance(self, instance, instance_type, subst, node, view):
-    if isinstance(instance_type, ParameterizedClass):
-      assert instance_type.base_cls is self.base_cls
-    else:
-      # Parameterized classes can rename type parameters, which is why we need
-      # the instance type for lookup. But if the instance type is not
-      # parameterized, then it is safe to use the parameter names in self.
-      assert instance_type is self.base_cls
-      instance_type = self
-    for type_param in instance_type.base_cls.pytd_cls.template:
-      class_param = self.type_parameters[type_param.name]
-      instance_param = instance.get_type_parameter(node, type_param.name)
-      instance_type_param = instance_type.type_parameters[type_param.name]
-      if (not instance_param.bindings and isinstance(
-          instance_type_param, TypeParameter) and
-          instance_type_param.name != type_param.name):
-        # This type parameter was renamed!
-        instance_param = instance.get_type_parameter(
-            node, instance_type_param.name)
-      if instance_param.bindings and instance_param not in view:
-        binding, = instance_param.bindings
-        assert isinstance(binding.data, Unsolvable)
-        view = view.copy()
-        view[instance_param] = binding
-      subst = match_var_against_type(instance_param, class_param,
-                                     subst, node, view)
-      if subst is None:
-        return None
-    return subst
 
 
 class PyTDClass(SimpleAbstractValue, Class):
@@ -2816,7 +2525,7 @@ class InterpreterFunction(Function):
         args.posargs, args.namedargs, args.starargs, args.starstarargs))
     for i, (_, param_var, formal) in enumerate(args):
       if formal is not None:
-        bad = bad_matches(param_var, formal, node)
+        bad = self.vm.matcher.bad_matches(param_var, formal, node)
         if bad:
           passed = [p.data[0] for _, p, _ in args]
           if len(bad) == 1:
@@ -3055,10 +2764,6 @@ class BoundFunction(AtomicAbstractValue):
   def to_type(self, node, seen=None):
     return pytd.NamedType("__builtin__.function")
 
-  def match_against_type(self, other_type, subst, node, view):
-    if other_type.name in ["function", "object", "Callable"]:
-      return subst
-
 
 class BoundInterpreterFunction(BoundFunction):
   """The method flavor of InterpreterFunction."""
@@ -3159,10 +2864,6 @@ class Nothing(AtomicAbstractValue):
   def to_type(self, node, seen=None):
     return pytd.NothingType()
 
-  def match_against_type(self, other_type, subst, node, view):
-    if isinstance(other_type, Nothing):
-      return subst
-
 
 class Module(Instance):
   """Represents an (imported) module."""
@@ -3240,10 +2941,6 @@ class Module(Instance):
 
   def to_type(self, node, seen=None):
     return pytd.NamedType("__builtin__.module")
-
-  def match_against_type(self, other_type, subst, node, view):
-    if other_type.name in ["module", "object"]:
-      return subst
 
 
 class BuildClass(AtomicAbstractValue):
@@ -3324,9 +3021,6 @@ class Unsolvable(AtomicAbstractValue):
   def get_instance_type(self, node, instance=None, seen=None):
     del node
     return pytd.AnythingType()
-
-  def match_against_type(self, other_type, subst, node, view):
-    return other_type.match_instance(self, other_type, subst, node, view)
 
   def instantiate(self, node):
     # return ourself.
@@ -3468,9 +3162,5 @@ class Unknown(AtomicAbstractValue):
   def get_instance_type(self, node, instance=None, seen=None):
     log.info("Using ? for instance of %s", self.name)
     return pytd.AnythingType()
-
-  def match_against_type(self, other_type, subst, node, view):
-    # TODO(kramm): Do we want to match the instance or the class?
-    return other_type.match_instance(self, other_type, subst, node, view)
 
 AMBIGUOUS_OR_EMPTY = (Unknown, Unsolvable, Empty)
