@@ -1,11 +1,11 @@
-"""Tests for --quick and --abort-on-complex."""
+"""Tests for --quick."""
 
 from pytype import utils
 from pytype.tests import test_inference
 
 
 class QuickTest(test_inference.InferenceTest):
-  """Tests for --quick and --abort-on-complex."""
+  """Tests for --quick."""
 
   def testMaxDepth(self):
     ty = self.Infer("""
@@ -37,7 +37,7 @@ class QuickTest(test_inference.InferenceTest):
       x = x + x
       x = x + x
       x = x + x
-    """, abort_on_complex=True)
+    """)
 
   def testClosure(self):
     ty = self.Infer("""

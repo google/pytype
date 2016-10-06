@@ -184,7 +184,7 @@ class Options(object):
     o.add_option(
         "--abort-on-complex", action="store_true",
         dest="abort_on_complex", default=False,
-        help=("Abort early on files that are too complex."))
+        help=("Ignored."))
     o.add_option(
         # Not stored, just used to configure logging.
         "-v", "--verbosity", type="int", action="store",

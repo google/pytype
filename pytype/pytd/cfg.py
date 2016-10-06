@@ -37,13 +37,12 @@ class Program(object):
     variables: Variables in use. Will be used for assigning variable IDs.
   """
 
-  def __init__(self, abort_on_complex=False):
+  def __init__(self):
     """Initialize a new (initially empty) program."""
     self.entrypoint = None
     self.cfg_nodes = []
     self.next_variable_id = 0
     self.solver = None
-    self.abort_on_complex = abort_on_complex
 
   def NewCFGNode(self, name=None):
     """Start a new CFG node."""
@@ -161,13 +160,12 @@ class Program(object):
 
   def _CheckComplexity(self, var_size):
     """Raise an error if we determine our variable patterns are too complex."""
-    if self.abort_on_complex:
-      # Across a sample of 19352 modules, for files which took more than 25
-      # seconds, the largest variable was, on average, 157. For files below 25
-      # seconds, it was 7. Additionally, for 99% of files, the largest variable
-      # was below 64, so we use that as the cutoff.
-      if var_size >= 64:
-        raise pytype.utils.ProgramTooComplexError()
+    # Across a sample of 19352 modules, for files which took more than 25
+    # seconds, the largest variable was, on average, 157. For files below 25
+    # seconds, it was 7. Additionally, for 99% of files, the largest variable
+    # was below 64, so we use that as the cutoff.
+    if var_size >= 64:
+      raise pytype.utils.ProgramTooComplexError()
 
 
 class CFGNode(object):

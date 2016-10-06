@@ -92,7 +92,7 @@ class VirtualMachine(object):
     self.frames = []  # The call stack of frames.
     self.functions_with_late_annotations = []
     self.frame = None  # The current frame.
-    self.program = typegraph.Program(abort_on_complex=options.abort_on_complex)
+    self.program = typegraph.Program()
     self.root_cfg_node = self.program.NewCFGNode("root")
     self.program.entrypoint = self.root_cfg_node
     self.vmbuiltins = self.loader.builtins
