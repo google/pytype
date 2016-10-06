@@ -236,7 +236,8 @@ class Frame(object):
     if f_back and f_back.f_builtins:
       self.f_builtins = f_back.f_builtins
     else:
-      _, bltin = f_globals.get_attribute(self.vm.root_cfg_node, "__builtins__")
+      _, bltin = self.vm.attribute_handler.get_attribute(
+          f_globals, self.vm.root_cfg_node, "__builtins__")
       builtins_pu, = bltin.bindings
       self.f_builtins = builtins_pu.data
     self.f_lineno = f_code.co_firstlineno
@@ -268,7 +269,7 @@ class Frame(object):
           i = f_code.co_cellvars.index(name)
           self.cells[i].PasteVariable(value, node)
         else:
-          self.f_locals.set_attribute(node, name, value)
+          self.vm.attribute_handler.set_attribute(f_locals, node, name, value)
 
   def __repr__(self):     # pragma: no cover
     return "<Frame at 0x%08x: %r @ %d>" % (

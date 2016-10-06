@@ -20,6 +20,7 @@ import sys
 
 from pytype import abstract
 from pytype import abstract_match
+from pytype import attribute
 from pytype import blocks
 from pytype import convert
 from pytype import exceptions
@@ -97,6 +98,7 @@ class VirtualMachine(object):
     self.vmbuiltins = self.loader.builtins
     self.convert = convert.Converter(self)
     self.matcher = abstract_match.AbstractMatcher()
+    self.attribute_handler = attribute.AbstractAttributeHandler()
     self.has_unknown_wildcard_imports = False
 
     # Map from builtin names to canonical objects.
@@ -748,7 +750,8 @@ class VirtualMachine(object):
 
   def load_from(self, state, store, name):
     node = state.node
-    node, attr = store.get_attribute(node, name, condition=state.condition)
+    node, attr = self.attribute_handler.get_attribute(
+        store, node, name, condition=state.condition)
     assert isinstance(node, typegraph.CFGNode)
     if not attr:
       raise KeyError(name)
@@ -793,13 +796,15 @@ class VirtualMachine(object):
   def store_local(self, state, name, value):
     """Called when a local is written."""
     assert isinstance(value, typegraph.Variable), (name, repr(value))
-    node = self.frame.f_locals.set_attribute(state.node, name, value)
+    node = self.attribute_handler.set_attribute(
+        self.frame.f_locals, state.node, name, value)
     return state.change_cfg_node(node)
 
   def store_global(self, state, name, value):
     """Same as store_local except for globals."""
     assert isinstance(value, typegraph.Variable)
-    node = self.frame.f_globals.set_attribute(state.node, name, value)
+    node = self.attribute_handler.set_attribute(
+        self.frame.f_globals, state.node, name, value)
     return state.change_cfg_node(node)
 
   def del_local(self, name):
@@ -822,7 +827,8 @@ class VirtualMachine(object):
     nodes = []
     for val in obj.Bindings(node):
       try:
-        node2, attr_var = val.data.get_attribute_generic(node, attr, val)
+        node2, attr_var = self.attribute_handler.get_attribute_generic(
+            val.data, node, attr, val)
       except self.convert.TypeParameterError as e:
         self.errorlog.type_param_error(
             self.frame.current_opcode, obj, attr, e.type_param_name)
@@ -882,7 +888,8 @@ class VirtualMachine(object):
     nodes = []
     for val in obj.bindings:
       # TODO(kramm): Check whether val.data is a descriptor (i.e. has "__set__")
-      nodes.append(val.data.set_attribute(state.node, attr, value))
+      nodes.append(self.attribute_handler.set_attribute(
+          val.data, state.node, attr, value))
     return state.change_cfg_node(
         self.join_cfg_nodes(nodes))
 

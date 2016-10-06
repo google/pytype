@@ -22,13 +22,11 @@ class TypingOverlay(abstract.Module):
     return m(name, self.vm, self.vm.root_cfg_node).to_variable(
         self.vm.root_cfg_node, name)
 
-  def get_attribute(self, node, name, valself=None, valcls=None):
+  def get_module(self, name):
     if name in typing_overload:
-      return super(TypingOverlay, self).get_attribute(
-          node, name, valself, valcls)
+      return self
     else:
-      return self.real_module.get_attribute(
-          node, name, valself, valcls)
+      return self.real_module
 
 
 def _maybe_extract_tuple(convert, node, t):

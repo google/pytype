@@ -169,61 +169,9 @@ class AtomicAbstractValue(object):
     """
     return self
 
-  def get_attribute_flat(self, node, name):  # pylint: disable=unused-argument
-    """Get a shallow attribute from this object.
-
-    Unlike get_attribute, this will not ascend into superclasses.
-
-    Args:
-      node: The current CFG node.
-      name: The name of the attribute to retrieve.
-    Returns:
-      A tuple (CFGNode, typegraph.Variable). If this attribute doesn't exist,
-      the Variable will be None.
-
-    """
-    return node, None
-
-  def get_attribute_generic(self, node, name, val):
-    return self.get_attribute(node, name, valself=val)
-
-  def get_attribute(self, node, name, valself=None, valcls=None,
-                    condition=None):
-    """Get the named attribute from this object.
-
-    Args:
-      node: The current CFG node.
-      name: The name of the attribute to retrieve.
-      valself: A typegraph.Binding, This is the self reference to use when
-        getting the attribute.
-      valcls: A typegraph.Binding. This is the cls reference to use when getting
-        the attribute. If valself is given then valcls will be ignored. Note
-        that most implementations of this method ignore this value as only class
-        objects need it (PyTDClass and InterpreterClass)
-      condition: A Condition object or None.
-
-    Returns:
-      A tuple (CFGNode, typegraph.Variable). If this attribute doesn't exist,
-      the Variable will be None.
-    """
-    del name, valself, valcls, condition  # unused args.
-    return node, None
-
-  def set_attribute(self, node, name, value):
-    """Set an attribute on this object.
-
-    The attribute might already have a Variable in it and in that case we cannot
-    overwrite it and instead need to add the elements of the new variable to the
-    old variable.
-
-    Args:
-      node: The current CFG node.
-      name: The name of the attribute to set.
-      value: The Variable to store in it.
-    Returns:
-      A (possibly changed) CFG node.
-    """
-    raise NotImplementedError()
+  def get_special_attribute(self, unused_node, unused_name, unused_valself):
+    """Fetch a special attribute (e.g., __get__, __iter__)."""
+    return None
 
   def call(self, node, func, args):
     """Call this abstract value with the given arguments.
@@ -392,12 +340,8 @@ class Empty(AtomicAbstractValue):
   def get_instance_type(self, node, instance=None, seen=None):
     return pytd.AnythingType()
 
-  def get_attribute(self, node, name, valself=None, valcls=None,
-                    condition=None):
-    return node, self.vm.convert.unsolvable.to_variable(node, name)
-
-  def set_attribute(self, node, name, value):
-    return node
+  def get_special_attribute(self, node, name, _):
+    return self.vm.convert.unsolvable.to_variable(node, name)
 
   def call(self, node, func, args):
     del func, args
@@ -545,127 +489,21 @@ class SimpleAbstractValue(AtomicAbstractValue):
     self.type_parameters = utils.LazyAliasingMonitorDict(
         (name, self.vm.program.NewVariable("empty")) for name in names)
 
-  def _load_lazy_attribute(self, name):
+  def load_lazy_attribute(self, name):
     """Load the named attribute into self.members."""
     if name not in self.members and name in self._member_map:
       variable = self._convert_member(name, self._member_map[name])
       assert isinstance(variable, typegraph.Variable)
       self.members[name] = variable
 
-  def _load_special_attribute(self, node, name):
+  def load_special_attribute(self, node, name):
     if name == "__class__" and self.cls is not None:
       return node, self.cls
     else:
       return node, None
 
-  def _maybe_load_as_instance_attribute(self, node, name):
-    for cls in self.cls.data:
-      if isinstance(cls, Class):
-        var = cls.get_as_instance_attribute(node, name, self)
-        if var is not None:
-          if name in self.members:
-            self.members[name].PasteVariable(var, node)
-          else:
-            self.members[name] = var
-
-  def get_attribute(self, node, name, valself=None, valcls=None,
-                    condition=None):
-    node, attr = self._load_special_attribute(node, name)
-    if attr is not None:
-      return node, attr
-
-    if self.is_lazy:
-      self._load_lazy_attribute(name)
-
-    # If we are looking up a member that we can determine is an instance
-    # rather than a class attribute, add it to the instance's members.
-    if valself:
-      assert isinstance(self, Instance)
-      if name not in self.members or not self.members[name].Bindings(node):
-        # See test_generic.testInstanceAttributeVisible for an example of an
-        # attribute in self.members needing to be reloaded.
-        self._maybe_load_as_instance_attribute(node, name)
-
-    candidates = []
-
-    # Retrieve instance attribute
-    if name in self.members:
-      # Allow an instance attribute to shadow a class attribute, but only
-      # if there's a path through the CFG that actually assigns it.
-      # TODO(kramm): It would be more precise to check whether there's NOT any
-      # path that DOESN'T have it.
-      if self.members[name].Bindings(node):
-        candidates.append(self.members[name])
-
-    # Retrieve class attribute
-    if not candidates and self.cls:
-      nodes = []
-      for clsval in self.cls.bindings:
-        cls = clsval.data
-        new_node, attr = cls.get_attribute(node, name, valself, clsval)
-        nodes.append(new_node)
-        if attr is not None:
-          candidates.append(attr)
-      node = self.vm.join_cfg_nodes(nodes)
-
-    if not candidates:
-      return node, None
-    else:
-      ret = self.vm.program.NewVariable(name)
-      for candidate in candidates:
-        for binding in candidate.Bindings(node):
-          val = binding.data
-          if isinstance(val, TypeParameterInstance):
-            var = val.instance.type_parameters[val.name]
-            # If this type parameter has visible values, we add those to the
-            # return value. Otherwise, we add an empty value as a placeholder
-            # that can be passed around and converted to Any after analysis.
-            if var.Bindings(node):
-              candidates.append(var)
-            else:
-              ret.AddBinding(self.vm.convert.empty, [], node)
-          else:
-            sources = {binding}
-            if condition:
-              sources.add(condition.binding)
-            ret.AddBinding(val, sources, node)
-      if not ret.bindings:
-        return node, None
-      return node, ret
-
-  def set_attribute(self, node, name, var):
-    assert isinstance(var, typegraph.Variable)
-
-    if self.is_lazy:
-      self._load_lazy_attribute(name)
-
-    if name == "__class__":
-      return self.set_class(node, var)
-
-    if isinstance(self, Instance) and name not in self.members:
-      # The previous value needs to be loaded at the root node so that
-      # (1) it is overwritten by the current value and (2) it is still
-      # visible on branches where the current value is not
-      self._maybe_load_as_instance_attribute(self.vm.root_cfg_node, name)
-
-    variable = self.members.get(name)
-    if variable:
-      old_len = len(variable.bindings)
-      variable.PasteVariable(var, node)
-      log.debug("Adding choice(s) to %s: %d new values (%d total)", name,
-                len(variable.bindings) - old_len, len(variable.bindings))
-    else:
-      # TODO(kramm): Under what circumstances can we just reuse var?
-      #              (variable = self.members[name] = var)?
-      log.debug("Setting %s to the %d values in %r",
-                name, len(var.bindings), var)
-      long_name = self.name + "." + name
-      variable = var.AssignToNewVariable(long_name, node)
-      self.members[name] = variable
-    return node
-
   def call(self, node, _, args):
-    node, var = self.get_attribute(node, "__call__")
+    node, var = self.vm.attribute_handler.get_attribute(self, node, "__call__")
     self_var = self.to_variable(node, self.name)
     if var is not None and var.bindings:
       return self.vm.call_function(
@@ -848,8 +686,8 @@ class ValueWithSlots(Instance):
     assert name not in self._slots, "slot %s already occupied" % name
     f = self.make_native_function(name, method)
     self._slots[name] = f.to_variable(self.vm.root_cfg_node, name)
-    _, attr = super(ValueWithSlots, self).get_attribute(
-        self.vm.root_cfg_node, name)
+    _, attr = self.vm.attribute_handler.get_instance_attribute(
+        self, self.vm.root_cfg_node, name)
     self._super[name] = attr
 
   def call_pytd(self, node, name, *args):
@@ -863,31 +701,11 @@ class ValueWithSlots(Instance):
           "Can't call bound method %s: We don't know how it was bound.", name)
     return node, ret
 
-  def get_attribute(self, node, name, valself=None, valcls=None,
-                    condition=None):
-    """Get an attribute.
-
-    Will delegate to SimpleAbstractValue if we don't have a slot for it.
-
-    Arguments:
-      node: The current CFG node.
-      name: name of the attribute. If this is something like "__getitem__",
-        the slot mechanism might kick in.
-      valself: A typegraph.Binding. See AtomicAbstractValue.get_attribute.
-      valcls: A typegraph.Binding. See AtomicAbstractValue.get_attribute.
-      condition: A Condition.  See AtomicAbstractValue.get_attribute.
-
-    Returns:
-      A tuple (CFGNode, Variable). The Variable will be None if the attribute
-      doesn't exist.
-    """
+  def get_special_attribute(self, node, name, valself):
     if name in self._slots:
       self._self[name] = valself.AssignToNewVariable(valself.variable.name,
                                                      node)
-      return node, self._slots[name]
-    else:
-      return super(ValueWithSlots, self).get_attribute(
-          node, name, valself, valcls)
+      return self._slots[name]
 
 
 class Dict(ValueWithSlots, WrapsDict("_entries")):
@@ -1184,18 +1002,11 @@ class SuperInstance(AtomicAbstractValue):
   def set(self, node, *unused_args, **unused_kwargs):
     return node, self.to_variable(node, "set")
 
-  def get_attribute(self, node, name, valself=None, valcls=None,
-                    condition=None):
-    if self.super_obj:
-      valself = self.super_obj.to_variable(node, "self").bindings[0]
+  def get_special_attribute(self, node, name, _):
     if name == "__get__":
-      return node, self.get.to_variable(node, name)
+      return self.get.to_variable(node, name)
     elif name == "__set__":
-      return node, self.set.to_variable(node, name)
-    else:
-      valcls = self.super_cls.to_variable(node, "cls").bindings[0]
-      return node, self.super_cls.lookup_from_mro(
-          node, name, valself, valcls, skip=self.super_cls)
+      return self.set.to_variable(node, name)
 
   def to_type(self, node, seen=None):
     return pytd.NamedType("__builtin__.super")
@@ -1238,11 +1049,6 @@ class Super(AtomicAbstractValue):
           self.vm.frame.current_opcode, len(args.posargs))
       result = self.vm.convert.create_new_unsolvable(node, "super()")
     return node, result
-
-  def get_attribute(self, node, name, valself=None, valcls=None,
-                    condition=None):
-    # In Python 3, you can do "super.__init__".
-    raise NotImplementedError("Python 3 super not implemented yet")
 
 
 class IsInstance(AtomicAbstractValue):
@@ -1368,15 +1174,6 @@ class Function(Instance):
     self.is_attribute_of_class = False
     self.members["func_name"] = self.vm.convert.build_string(
         self.vm.root_cfg_node, name)
-
-  def get_attribute(self, node, name, valself=None, valcls=None,
-                    condition=None):
-    if name == "__get__":
-      # The pytd for "function" has a __get__ attribute, but if we already
-      # have a function we don't want to be treated as a descriptor.
-      return node, None
-    return super(Function, self).get_attribute(node, name, valself, valcls,
-                                               condition)
 
   def property_get(self, callself, callcls):
     if self.name == "__new__" or not callself or not callcls:
@@ -1830,83 +1627,10 @@ class Class(object):
         if isinstance(base, Class) and base.cls is not None:
           self.cls = base.cls
           break
-    elif not any(isinstance(v, Unsolvable) for v in metaclass.data):
+    else:
       # TODO(rechen): Check that the metaclass is a (non-strict) subclass of the
       # metaclasses of the base classes.
       self.cls = metaclass
-
-  def get_attribute_computed(self, node, name, valself, valcls,
-                             compute_function):
-    """Call compute_function (if defined) to compute an attribute."""
-    if valself and not isinstance(valself.data, Module) and name != "__init__":
-      attr_var = self.lookup_from_mro(node, compute_function, valself, valcls)
-      if attr_var and attr_var.bindings:
-        vm = self.vm  # pytype: disable=attribute-error
-        name_var = AbstractOrConcreteValue(
-            name, vm.convert.str_type, vm, node).to_variable(node, name)
-        return vm.call_function(node, attr_var, FunctionArgs((name_var,)))
-    return node, None
-
-  def lookup_from_mro(self, node, name, valself, valcls, skip=None):
-    """Find an identifier in the MRO of the class."""
-    ret = self.vm.program.NewVariable(name)
-    add_origins = []
-    variableself = variablecls = None
-    if valself:
-      assert isinstance(valself, typegraph.Binding)
-      variableself = valself.AssignToNewVariable(valself.variable.name, node)
-      add_origins.append(valself)
-    if valcls:
-      assert isinstance(valcls, typegraph.Binding)
-      variablecls = valcls.AssignToNewVariable(valcls.variable.name, node)
-      add_origins.append(valcls)
-
-    for base in self.mro:
-      # Potentially skip start of MRO, for super()
-      if base is skip:
-        continue
-      node, var = base.get_attribute_flat(node, name)
-      if var is None or not var.bindings:
-        continue
-      for varval in var.bindings:
-        value = varval.data
-        if variableself or variablecls:
-          value = value.property_get(variableself, variablecls)
-        ret.AddBinding(value, [varval] + add_origins, node)
-      break  # we found a class which has this attribute
-    return ret
-
-  def get_attribute(self, node, name, valself=None, valcls=None,
-                    condition=None):
-    """Retrieve an attribute by looking at the MRO of this class."""
-    del condition  # unused arg.
-    if self.cls and not valself:
-      # TODO(rechen): Use valcls instead of creating a dummy instance.
-      variableself, = Instance(
-          self.cls, self.vm, node).to_variable(node).bindings
-      variablecls, = self.cls.bindings
-      node, attr = variableself.data.get_attribute(
-          node, name, variableself, variablecls)
-      if attr is not None:
-        return node, attr
-    node, attr = self.get_attribute_computed(
-        node, name, valself, valcls, compute_function="__getattribute__")
-    if attr is None:
-      # lookup_from_mro always returns a Variable.
-      attr = self.lookup_from_mro(node, name, valself, valcls)
-    if not attr.bindings:
-      node, attr = self.get_attribute_computed(
-          node, name, valself, valcls, compute_function="__getattr__")
-    return node, attr
-
-  def get_as_instance_attribute(self, node, name, instance):
-    for base in self.mro:
-      if isinstance(base, ParameterizedClass):
-        base = base.base_cls
-      if isinstance(base, PyTDClass):
-        var = base.get_as_instance_attribute_flat(node, name, instance)
-        if var is not None:
-          return var
 
   def to_type(self, node, seen=None):
     del node, seen
@@ -1950,16 +1674,6 @@ class ParameterizedClass(AtomicAbstractValue, Class):
     base = pep484.PEP484_MaybeCapitalize(str(self.base_cls)) or self.base_cls
     return "%s[%s]" % (base, ", ".join(str(p) for p in params))
 
-  def get_attribute_generic(self, node, name, val):
-    return self.base_cls.get_attribute_generic(node, name, val)
-
-  def get_attribute(self, node, name, valself=None, valcls=None,
-                    condition=None):
-    return self.base_cls.get_attribute(node, name, valself, valcls, condition)
-
-  def get_attribute_flat(self, node, name):
-    return self.base_cls.get_attribute_flat(node, name)
-
   def to_type(self, node, seen=None):
     return Class.to_type(self, node, seen)
 
@@ -2002,18 +1716,6 @@ class PyTDClass(SimpleAbstractValue, Class):
     self.mro = mro.compute_mro(self)
     Class.init_mixin(self, metaclass)
 
-  def get_attribute_generic(self, node, name, val):
-    return self.get_attribute(node, name, valcls=val)
-
-  def get_attribute(self, node, name, valself=None, valcls=None,
-                    condition=None):
-    return Class.get_attribute(
-        self, node, name, valself, valcls, condition)
-
-  def get_attribute_flat(self, node, name):
-    # get_attribute_flat ?
-    return SimpleAbstractValue.get_attribute(self, node, name)
-
   def bases(self):
     convert = self.vm.convert
     return [convert.convert_constant_to_value(
@@ -2047,8 +1749,8 @@ class PyTDClass(SimpleAbstractValue, Class):
     results = self.vm.program.NewVariable(self.name)
     retval = results.AddBinding(value, [func], node)
 
-    node, init = value.get_attribute(node, "__init__", retval,
-                                     value.cls.bindings[0])
+    node, init = self.vm.attribute_handler.get_attribute(
+        value, node, "__init__", retval, value.cls.bindings[0])
     # TODO(pludemann): Verify that this follows MRO:
     if init:
       log.debug("calling %s.__init__(...)", self.name)
@@ -2099,7 +1801,7 @@ class PyTDClass(SimpleAbstractValue, Class):
     # reproduce the entire class, but we choose a more dense representation.
     return self.to_type(node, name)
 
-  def get_as_instance_attribute_flat(self, node, name, instance):
+  def convert_as_instance_attribute(self, node, name, instance):
     try:
       c = self.pytd_cls.Lookup(name)
     except KeyError:
@@ -2142,49 +1844,6 @@ class InterpreterClass(SimpleAbstractValue, Class):
   def bases(self):
     return utils.concat_lists(b.data for b in self._bases)
 
-  def get_attribute_flat(self, node, name):
-    return SimpleAbstractValue.get_attribute(self, node, name)
-
-  def get_attribute_generic(self, node, name, val):
-    return self.get_attribute(node, name, valcls=val)
-
-  def get_attribute(self, node, name, valself=None, valcls=None,
-                    condition=None):
-    node, attr_var = Class.get_attribute(self, node, name, valself, valcls,
-                                         condition)
-    if attr_var is not None:
-      result = self.vm.program.NewVariable(name)
-      nodes = []
-      # Deal with descriptors as a potential additional level of indirection.
-      for v in attr_var.Bindings(node):
-        value = v.data
-        node2, getter = value.get_attribute(node, "__get__", v)
-        if getter is not None:
-          posargs = []
-          if valself:
-            posargs.append(valself.variable)
-          if valcls:
-            if not valself:
-              posargs.append(self.vm.convert.none.to_variable(node, "None"))
-            posargs.append(valcls.variable)
-          node2, get_result = self.vm.call_function(
-              node2, getter, FunctionArgs(tuple(posargs)))
-          for getter in get_result.bindings:
-            result.AddBinding(getter.data, [getter], node2)
-        else:
-          result.AddBinding(value, [v], node2)
-        nodes.append(node2)
-      if nodes:
-        return self.vm.join_cfg_nodes(nodes), result
-    return node, None
-
-  def set_attribute(self, node, name, value):
-    # Note that even if we have a superclass that already has an attribute
-    # with this name, Python will still set the (possibly new) attribute
-    # on this class, thus shadowing the one on the superclass. Hence MRO doesn't
-    # come into play.
-    return super(InterpreterClass, self).set_attribute(node, name, value)
-
   def _new_instance(self):
     # We allow only one "instance" per code location, regardless of call stack.
     key = self.vm.frame.current_opcode
@@ -2198,7 +1857,8 @@ class InterpreterClass(SimpleAbstractValue, Class):
     value = self._new_instance()
     variable = self.vm.program.NewVariable(self.name + " instance")
     val = variable.AddBinding(value, [], node)
-    node, init = value.get_attribute(node, "__init__", val)
+    node, init = self.vm.attribute_handler.get_attribute(
+        value, node, "__init__", val)
     if init:
       log.debug("calling %s.__init__(...)", self.name)
       node, ret = self.vm.call_function(node, init, args)
@@ -2734,13 +2394,6 @@ class BoundFunction(AtomicAbstractValue):
     self.underlying = underlying
     self.is_attribute_of_class = False
 
-  def get_attribute(self, node, name, valself=None, valcls=None,
-                    condition=None):
-    return self.underlying.get_attribute(node, name, valself, valcls, condition)
-
-  def set_attribute(self, node, name, value):
-    return self.underlying.set_attribute(node, name, value)
-
   def argcount(self):
     return self.underlying.argcount() - 1  # account for self
 
@@ -2794,20 +2447,17 @@ class Generator(Instance):
     self.generator_frame = generator_frame
     self.runs = 0
 
-  def get_attribute(self, node, name, valself=None, valcls=None,
-                    condition=None):
+  def get_special_attribute(self, node, name, _):
     if name == "__iter__":
       f = NativeFunction(name, self.__iter__, self.vm, node)
-      return node, f.to_variable(node, name)
+      return f.to_variable(node, name)
     elif name in ["next", "__next__"]:
-      return node, self.to_variable(node, name)
+      return self.to_variable(node, name)
     elif name == "throw":
       # We don't model exceptions in a way that would allow us to induce one
       # inside a coroutine. So just return ourself, mapping the call of
       # throw() to a next() (which won't be executed).
-      return node, self.to_variable(node, name)
-    else:
-      return node, None
+      return self.to_variable(node, name)
 
   def __iter__(self, node):  # pylint: disable=non-iterator-returned,unexpected-special-method-signature
     return node, self.to_variable(node, "__iter__")
@@ -2855,13 +2505,6 @@ class Nothing(AtomicAbstractValue):
 
   def __init__(self, vm):
     super(Nothing, self).__init__("nothing", vm)
-
-  def get_attribute(self, node, name, valself=None, valcls=None,
-                    condition=None):
-    return node, None
-
-  def set_attribute(self, node, name, value):
-    raise AttributeError("Object %r has no attribute %s" % (self, name))
 
   def call(self, node, func, args):
     raise AssertionError("Can't call empty object ('nothing')")
@@ -2916,29 +2559,18 @@ class Module(Instance):
         log.warning("__getattr__ in %s is not a function", self.name)
     return False
 
-  def get_attribute(self, node, name, valself=None, valcls=None,
-                    condition=None):
-    # Local variables in __init__.py take precedence over submodules.
-    node, var = super(Module, self).get_attribute(node, name, valself, valcls,
-                                                  condition)
-    if var is None:
-      full_name = self.name + "." + name
-      # The line below can raise load_pytd.BadDependencyError. This is OK since
-      # we'll always be called from vm.byte_IMPORT_FROM which catches it.
-      mod = self.vm.import_module(full_name, 0)  # 0: absolute import
-      if mod is not None:
-        var = mod.to_variable(node, name)
-      elif self.has_getattr():
-        var = self.vm.convert.create_new_unsolvable(node, full_name)
-      else:
-        log.warning("Couldn't find attribute / module %r", full_name)
-    return node, var
-
-  def set_attribute(self, node, name, value):  # pylint: disable=unused-argument
-    # Assigning attributes on modules is pretty common. E.g.
-    # sys.path, sys.excepthook.
-    log.warning("Ignoring overwrite of %s.%s using", self.name, name)
-    return node
+  def get_submodule(self, node, name):
+    full_name = self.name + "." + name
+    # The line below can raise load_pytd.BadDependencyError. This is OK since
+    # we'll always be called from vm.byte_IMPORT_FROM which catches it.
+    mod = self.vm.import_module(full_name, 0)  # 0: absolute import
+    if mod is not None:
+      return mod.to_variable(node, name)
+    elif self.has_getattr():
+      return self.vm.convert.create_new_unsolvable(node, full_name)
+    else:
+      log.warning("Couldn't find attribute / module %r", full_name)
+      return None
 
   def items(self):
     return [(name, self._convert_member(name, ty))
@@ -2991,17 +2623,11 @@ class Unsolvable(AtomicAbstractValue):
     super(Unsolvable, self).__init__("unsolveable", vm)
     self.mro = self.default_mro()
 
-  def get_attribute(self, node, name, valself=None, valcls=None,
-                    condition=None):
+  def get_special_attribute(self, node, name, _):
     if name in self.IGNORED_ATTRIBUTES:
-      return node, None
-    return node, self.to_variable(node, self.name)
-
-  def get_attribute_flat(self, node, name):
-    return self.get_attribute(node, name)
-
-  def set_attribute(self, node, name, _):
-    return node
+      return None
+    else:
+      return self.to_variable(node, self.name)
 
   def call(self, node, func, args):
     del func, args
@@ -3083,12 +2709,11 @@ class Unknown(AtomicAbstractValue):
                                 mutated_type=None)
                  for i, p in enumerate(args))
 
-  def get_attribute(self, node, name, valself=None, valcls=None,
-                    condition=None):
+  def get_special_attribute(self, unused_node, name, unused_valself):
     if name in self.IGNORED_ATTRIBUTES:
-      return node, None
+      return None
     if name in self.members:
-      return node, self.members[name]
+      return self.members[name]
     new = self.vm.convert.create_new_unknown(self.vm.root_cfg_node,
                                              self.name + "." + name,
                                              action="getattr:" + name)
@@ -3098,19 +2723,9 @@ class Unknown(AtomicAbstractValue):
     # we assume it's there since the program start.  If something overwrites it
     # in some later CFG node, that's fine, we'll then work only with the new
     # value, which is more accurate than the "fictional" value we create here.
-    self.set_attribute(self.vm.root_cfg_node, name, new)
-    return node, new
-
-  def get_attribute_flat(self, node, name):
-    # Unknown objects don't have an MRO, so this is the same as get_attribute.
-    return self.get_attribute(node, name)
-
-  def set_attribute(self, node, name, v):
-    if name in self.members:
-      self.members[name].PasteVariable(v, node)
-    else:
-      self.members[name] = v.AssignToNewVariable(self.name + "." + name, node)
-    return node
+    self.vm.attribute_handler.set_attribute(
+        self, self.vm.root_cfg_node, name, new)
+    return new
 
   def call(self, node, _, args):
     ret = self.vm.convert.create_new_unknown(
