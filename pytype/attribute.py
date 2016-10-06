@@ -218,7 +218,8 @@ class AbstractAttributeHandler(object):
     if (valself and not isinstance(valself.data, abstract.Module) and
         name != "__init__"):
       attr_var = self._lookup_from_mro(
-          cls, node, compute_function, valself, valcls)
+          cls, node, compute_function, valself, valcls,
+          skip=cls.vm.convert.object_type.data[0])
       if attr_var and attr_var.bindings:
         vm = cls.vm  # pytype: disable=attribute-error
         name_var = abstract.AbstractOrConcreteValue(

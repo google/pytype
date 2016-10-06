@@ -115,6 +115,31 @@ class TestAttributes(test_inference.InferenceTest):
           self.C
     """)
 
+  def testGetters(self):
+    ty = self.Infer("""
+      class MyClass1(object):
+        def __getattribute__(self, name):
+          return super(MyClass1, self).__getattribute__(name)
+
+      class MyClass2(object):
+        def __getattribute__(self, name):
+          return object.__getattribute__(self, name)
+
+      class MyClass3(object):
+        def __getattr__(self, name):
+          return super(MyClass3, self).__getattr__(name)
+
+      class MyClass4(object):
+        def __getattr__(self, name):
+          return object.__getattr__(self, name)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      class MyClass1(object): pass
+      class MyClass2(object): pass
+      class MyClass3(object): pass
+      class MyClass4(object): pass
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()
