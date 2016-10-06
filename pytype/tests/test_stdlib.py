@@ -1,7 +1,5 @@
 """Tests of selected stdlib functions."""
 
-import unittest
-
 
 from pytype.tests import test_inference
 
@@ -59,7 +57,6 @@ class StdlibTests(test_inference.InferenceTest):
       x = ...  # type: struct.Struct
     """)
 
-  @unittest.skip("Broken by typeshed upgrade")
   def testWarning(self):
     ty = self.Infer("""
       import warnings

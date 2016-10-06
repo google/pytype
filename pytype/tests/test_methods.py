@@ -828,7 +828,6 @@ class MethodsTest(test_inference.InferenceTest):
     d = ...  # type: float
     """)
 
-  @unittest.skip("broken by typeshed upgrade")
   def testJson(self):
     ty = self.Infer("""
       import json
