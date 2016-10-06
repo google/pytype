@@ -861,6 +861,9 @@ class Union(AtomicAbstractValue):
       var.PasteVariable(option.instantiate(node), node)
     return var
 
+  def to_type(self, node, seen=None):
+    return pytd.UnionType(tuple(t.to_type(node, seen) for t in self.options))
+
 
 class FunctionArgs(collections.namedtuple("_", ["posargs", "namedargs",
                                                 "starargs", "starstarargs"])):

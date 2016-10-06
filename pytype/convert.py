@@ -439,14 +439,19 @@ class Converter(object):
       elif isinstance(cls, pytd.GenericType):
         assert isinstance(cls.base_type, pytd.ClassType)
         base_cls = cls.base_type.cls
-        instance = abstract.Instance(
-            self.convert_constant(base_cls.name, base_cls, subst, node),
-            self.vm, node)
-        for formal, actual in zip(base_cls.template, cls.parameters):
-          p = self.convert_constant(
-              repr(formal), abstract.AsInstance(actual), subst, node)
-          instance.initialize_type_parameter(node, formal.name, p)
-        return instance
+        if base_cls.name == "__builtin__.type" and len(cls.parameters) == 1:
+          # TODO(rechen): pytype should warn when the parameter length is wrong.
+          c, = cls.parameters
+          return self.convert_constant_to_value(pytd.Print(c), c, subst, node)
+        else:
+          instance = abstract.Instance(
+              self.convert_constant(base_cls.name, base_cls, subst, node),
+              self.vm, node)
+          for formal, actual in zip(base_cls.template, cls.parameters):
+            p = self.convert_constant(
+                repr(formal), abstract.AsInstance(actual), subst, node)
+            instance.initialize_type_parameter(node, formal.name, p)
+          return instance
       else:
         return self.convert_constant_to_value(name, cls, subst, node)
     elif isinstance(pyval, pytd.GenericType):

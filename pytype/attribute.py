@@ -70,6 +70,19 @@ class AbstractAttributeHandler(object):
     elif isinstance(obj, abstract.SimpleAbstractValue):
       return self.get_instance_attribute(
           obj, node, name, valself, valcls, condition)
+    elif isinstance(obj, abstract.Union):
+      nodes = []
+      ret = obj.vm.program.NewVariable(name)
+      for o in obj.options:
+        node2, attr = self.get_attribute(
+            o, node, name, valself, valcls, condition)
+        if attr is not None:
+          ret.PasteVariable(attr, node2)
+          nodes.append(node2)
+      if ret.bindings:
+        return obj.vm.join_cfg_nodes(nodes), ret
+      else:
+        return node, None
     elif isinstance(obj, abstract.SuperInstance):
       if obj.super_obj:
         valself = obj.super_obj.to_variable(node, "self").bindings[0]

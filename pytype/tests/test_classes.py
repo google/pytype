@@ -499,6 +499,46 @@ class ClassesTest(test_inference.InferenceTest):
         name2 = ...  # type: Any
       """)
 
+  def testReturnClassType(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        class A(object):
+          x = ...  # type: int
+        class B(object):
+          x = ...  # type: str
+        def f(x: Type[A]) -> Type[A]
+        def g() -> Type[A or B]
+        def h() -> Type[int or B]
+      """)
+      ty = self.Infer("""
+        import a
+        x1 = a.f(a.A).x
+        x2 = a.g().x
+        x3 = a.h().x
+      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        x1 = ...  # type: int
+        x2 = ...  # type: int or str
+        x3 = ...  # type: str
+      """)
+
+  def testCallClassType(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        class A(object): ...
+        class B(object):
+          MyA = ...  # type: Type[A]
+      """)
+      ty = self.Infer("""
+        import a
+        x = a.B.MyA()
+      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        x = ...  # type: a.A
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()
