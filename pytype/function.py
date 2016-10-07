@@ -102,9 +102,9 @@ class Signature(object):
       yield (name, posarg, self.annotations.get(name))
     for name, namedarg in namedargs.items():
       yield (name, namedarg, self.annotations.get(name))
-    if self.varargs_name is not None:
+    if self.varargs_name is not None and starargs is not None:
       yield (self.varargs_name, starargs,
              self.annotations.get(self.varargs_name))
-    if self.kwargs_name is not None:
+    if self.kwargs_name is not None and starstarargs is not None:
       yield (self.kwargs_name, starstarargs,
              self.annotations.get(self.kwargs_name))

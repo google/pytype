@@ -518,6 +518,54 @@ class AnnotationTest(test_inference.InferenceTest):
         def f(x) -> Any
       """)
 
+  def testBadCallNoKwarg(self):
+    ty, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+
+      def foo():
+        labels = {
+          'baz': None
+        }
+
+        labels['baz'] = bar(
+          labels['baz'])
+
+      def bar(path: str, **kwargs):
+        return path
+
+    """)
+    self.assertTypesMatchPytd(ty, """
+      google_type_annotations = ...  # type: __future__._Feature
+      def foo() -> None
+      def bar(path: str, **kwargs) -> str
+    """)
+    error = r"Actually passed:.*path: NoneType"
+    self.assertErrorLogIs(errors, [(9, "wrong-arg-types", error)])
+
+  def testBadCallWithKwarg(self):
+    ty, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+
+      def foo():
+        labels = {
+          'baz': None
+        }
+
+        labels['baz'] = bar(
+          labels['baz'], x=42)
+
+      def bar(path: str, **kwargs):
+        return path
+
+    """)
+    self.assertTypesMatchPytd(ty, """
+      google_type_annotations = ...  # type: __future__._Feature
+      def foo() -> None
+      def bar(path: str, **kwargs) -> str
+    """)
+    error = r"Actually passed:.*path: NoneType, x: int"
+    self.assertErrorLogIs(errors, [(9, "wrong-arg-types", error)])
+
 
 if __name__ == "__main__":
   test_inference.main()

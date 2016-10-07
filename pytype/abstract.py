@@ -1044,7 +1044,8 @@ class Super(AtomicAbstractValue):
       for cls in args.posargs[0].bindings:
         for obj in args.posargs[1].bindings:
           if not isinstance(cls.data, Class):
-            raise WrongArgTypes(self._SIGNATURE, [cls.data, obj.data])
+            raise WrongArgTypes(self._SIGNATURE, zip(
+                self._SIGNATURE.param_names, [cls.data, obj.data]))
           result.AddBinding(
               SuperInstance(cls.data, obj.data, self.vm), [cls, obj], node)
     else:
@@ -1320,7 +1321,7 @@ class PyTDSignature(object):
       if subst is None:
         # These parameters didn't match this signature. There might be other
         # signatures that work, but figuring that out is up to the caller.
-        passed = [arg_dict[name].data
+        passed = [(name, arg_dict[name].data)
                   for name in self.signature.param_names]
         raise WrongArgTypes(self.signature, passed)
     return utils.HashableDict(subst)
@@ -2195,11 +2196,11 @@ class InterpreterFunction(Function):
       if formal is not None:
         bad = self.vm.matcher.bad_matches(param_var, formal, node)
         if bad:
-          passed = [p.data[0] for _, p, _ in args]
+          passed = [(name, param.data[0]) for name, param, _ in args]
           if len(bad) == 1:
-            passed[i] = bad[0].data
+            passed[i] = (passed[i][0], bad[0].data)
           else:
-            passed[i] = Union([b.data for b in bad], self.vm)
+            passed[i] = (passed[i][0], Union([b.data for b in bad], self.vm))
           raise WrongArgTypes(self.signature, passed)
 
   def call(self, node, _, args, new_locals=None):

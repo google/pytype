@@ -277,7 +277,7 @@ class ErrorLog(ErrorLogBase):
         "Expected: (", self._prettyprint_sig(str(sig)), ")\n",
         "Actually passed: (", self._prettyprint_sig(
             ", ".join("%s: %s" % (name, self._prettyprint_arg(arg))
-                      for name, arg in zip(sig.param_names, passed_args))),
+                      for name, arg in passed_args)),
         ")"])
     self.error(opcode, message, details)
 
