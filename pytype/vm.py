@@ -19,13 +19,13 @@ import sys
 
 
 from pytype import abstract
-from pytype import abstract_match
 from pytype import attribute
 from pytype import blocks
 from pytype import convert
 from pytype import exceptions
 from pytype import function
 from pytype import load_pytd
+from pytype import matcher
 from pytype import metrics
 from pytype import state as frame_state
 from pytype import typing
@@ -98,7 +98,7 @@ class VirtualMachine(object):
     self.vmbuiltins = self.loader.builtins
     self.convert = convert.Converter(self)
     self.program.default_data = self.convert.unsolvable
-    self.matcher = abstract_match.AbstractMatcher()
+    self.matcher = matcher.AbstractMatcher()
     self.attribute_handler = attribute.AbstractAttributeHandler()
     self.has_unknown_wildcard_imports = False
 
