@@ -131,6 +131,7 @@ True = ...  # type: bool
 NotImplemented = ...  # type: NotImplementedType
 None = ...  # type: NoneType
 Ellipsis = ...  # type: ellipsis
+__debug__ = ...  # type: bool
 
 class object():
     __bases__ = ...  # type: Tuple[Any, ...]
