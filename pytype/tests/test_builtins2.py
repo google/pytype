@@ -287,6 +287,29 @@ class BuiltinTests2(test_inference.InferenceTest):
                                    (6, "wrong-arg-types", r"frozenset"),
                                    (7, "wrong-arg-types", r"dict")])
 
+  def testFilter(self):
+    ty = self.Infer("""
+      def f(x):
+        pass
+      x1 = filter(f, {1: None}.iterkeys())
+      x2 = filter(None, {1: None}.iterkeys())
+      x3 = filter(None, "")
+      x4 = filter(None, u"")
+      x5 = filter(None, bytearray(""))
+      x6 = filter(None, (True, False))
+      x7 = filter(None, {True, False})
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      def f(x) -> None
+      x1 = ...  # type: List[int]
+      x2 = ...  # type: List[int]
+      x3 = ...  # type: str
+      x4 = ...  # type: unicode
+      x5 = ...  # type: List[int]
+      x6 = ...  # type: Tuple[bool]
+      x7 = ...  # type: List[bool]
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

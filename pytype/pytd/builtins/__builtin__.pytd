@@ -54,11 +54,12 @@ def divmod(x: int or long or float, y: int or long or float) -> tuple[float]  # 
 def divmod(x: int or long or float or complex, y: int or long or float or complex) -> tuple[complex]  # tuple[complex, complex]
 def eval(src, ...) -> ?  # Can't say *anything* about the result -- different from "-> object"
 def execfile(filename: str, ...) -> NoneType
-def filter(function_or_None, sequence: str) -> str
-def filter(function_or_None, sequence: bytearray) -> list[int]
-def filter(function_or_None, sequence: unicode) -> unicode
-def filter(function_or_None, sequence: list[T] or set[T] or iterator[T]) -> list[T]
-def filter(function_or_None, sequence: tuple[T]) -> tuple[T]
+# TODO(rechen): Replace the first two definitions with one using AnyStr once
+# pytype is smarter about constraints on TypeVar.
+def filter(function: Optional[Callable[[str], Any]], iterable: str) -> str
+def filter(function: Optional[Callable[[unicode], Any]], iterable: unicode) -> unicode
+def filter(function: Optional[Callable[[T], Any]], iterable: Tuple[T]) -> Tuple[T]
+def filter(function: Optional[Callable[[T], Any]], iterable: Iterable[T]) -> List[T]
 def format(value, ...) -> str
 def format(value: unicode, ...) -> unicode
 def getattr(value: object, attr: str or unicode, ...) -> ?
