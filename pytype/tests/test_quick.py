@@ -1,6 +1,5 @@
 """Tests for --quick."""
 
-from pytype import utils
 from pytype.tests import test_inference
 
 
@@ -22,21 +21,6 @@ class QuickTest(test_inference.InferenceTest):
         elements = ...  # type: Any
         def __init__(self, elements: Any) -> None: ...
         def bar(self) -> Any: ...
-    """)
-
-  def testAbortOnComplex(self):
-    self.assertRaises(utils.ProgramTooComplexError, self.Infer, """
-      if __any_object__:
-        x = [1]
-      else:
-        x = [1j]
-      x = x + x
-      x = x + x
-      x = x + x
-      x = x + x
-      x = x + x
-      x = x + x
-      x = x + x
     """)
 
   def testClosure(self):

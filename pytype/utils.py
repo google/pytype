@@ -67,12 +67,12 @@ def _variable_product_items(variableitems):
     yield []
 
 
-class ProgramTooComplexError(Exception):
+class TooComplexError(Exception):
   """Thrown if we determine that something in our program is too complex."""
 
 
 class ComplexityLimit(object):
-  """A class that raises ProgramTooComplexError if we hit a limit."""
+  """A class that raises TooComplexError if we hit a limit."""
 
   def __init__(self, limit):
     self.limit = limit
@@ -81,7 +81,7 @@ class ComplexityLimit(object):
   def inc(self, add=1):
     self.count += add
     if self.count >= self.limit:
-      raise ProgramTooComplexError()
+      raise TooComplexError()
 
 
 def deep_variable_product(variables, limit=DEEP_VARIABLE_LIMIT):
@@ -108,7 +108,7 @@ def deep_variable_product(variables, limit=DEEP_VARIABLE_LIMIT):
     of the corresponding Variables and the Variables of their Values' children.
 
   Raises:
-    ProgramTooComplexError: If we expanded too many values.
+    TooComplexError: If we expanded too many values.
   """
   return _deep_values_list_product((v.bindings for v in variables), (),
                                    ComplexityLimit(limit))

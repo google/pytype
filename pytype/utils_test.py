@@ -67,7 +67,7 @@ class UtilsTest(unittest.TestCase):
     limit.inc()
     limit.inc(2)
     limit.inc()
-    self.assertRaises(utils.ProgramTooComplexError, limit.inc)
+    self.assertRaises(utils.TooComplexError, limit.inc)
 
   def testVariableProduct(self):
     u1 = self.prog.NewVariable("u1", [1, 2], [], self.current_location)
@@ -92,7 +92,7 @@ class UtilsTest(unittest.TestCase):
     v6 = self.prog.NewVariable("v6", [x1, x2], [], self.current_location)
     v7 = self.prog.NewVariable("v7", [x1, x2], [], self.current_location)
     v8 = self.prog.NewVariable("v8", [x1, x2], [], self.current_location)
-    self.assertRaises(utils.ProgramTooComplexError,
+    self.assertRaises(utils.TooComplexError,
                       utils.deep_variable_product, [v1, v2, v3, v4,
                                                     v5, v6, v7, v8], 256)
 
@@ -104,7 +104,7 @@ class UtilsTest(unittest.TestCase):
     v4 = self.prog.NewVariable("v4", [x3, x4], [], self.current_location)
     x1.set_parameters([v3])
     x2.set_parameters([v4])
-    self.assertRaises(utils.ProgramTooComplexError,
+    self.assertRaises(utils.TooComplexError,
                       utils.deep_variable_product, [v1, v2], 4)
 
   def testDeepVariableProduct(self):

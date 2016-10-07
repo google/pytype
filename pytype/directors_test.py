@@ -153,9 +153,9 @@ class DirectorTest(unittest.TestCase):
   def test_error_at_line_0(self):
     self._create("""
     x = "foo"
-    # pytype: disable=too-complex
+    # pytype: disable=attribute-error
     """)
-    self._should_report(False, 0, error_name="too-complex")
+    self._should_report(False, 0, error_name="attribute-error")
 
   def test_invalid_disable(self):
     def check_warning(message_regex, text):

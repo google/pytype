@@ -24,6 +24,13 @@ _supernode_reachable = {}
 _variable_size_metric = metrics.Distribution("variable_size")
 
 
+# Across a sample of 19352 modules, for files which took more than 25 seconds,
+# the largest variable was, on average, 157. For files below 25 seconds, it was
+# 7. Additionally, for 99% of files, the largest variable was below 64, so we
+# use that as the cutoff.
+MAX_VAR_SIZE = 64
+
+
 class Program(object):
   """Program instances describe program entities.
 
@@ -43,6 +50,7 @@ class Program(object):
     self.cfg_nodes = []
     self.next_variable_id = 0
     self.solver = None
+    self.default_data = None
 
   def NewCFGNode(self, name=None):
     """Start a new CFG node."""
@@ -157,15 +165,6 @@ class Program(object):
         node.position = 0
       stack.extend(node.outgoing)
     assert len(seen) == len(self.cfg_nodes)
-
-  def _CheckComplexity(self, var_size):
-    """Raise an error if we determine our variable patterns are too complex."""
-    # Across a sample of 19352 modules, for files which took more than 25
-    # seconds, the largest variable was, on average, 157. For files below 25
-    # seconds, it was 7. Additionally, for 99% of files, the largest variable
-    # was below 64, so we use that as the cutoff.
-    if var_size >= 64:
-      raise pytype.utils.ProgramTooComplexError()
 
 
 class CFGNode(object):
@@ -488,6 +487,9 @@ class Variable(object):
 
   def _FindOrAddBinding(self, data):
     """Add a new binding if necessary, otherwise return existing binding."""
+    if (len(self.bindings) >= MAX_VAR_SIZE - 1 and
+        id(data) not in self._data_id_to_binding):
+      data = self.program.default_data
     try:
       binding = self._data_id_to_binding[id(data)]
     except KeyError:
@@ -496,17 +498,15 @@ class Variable(object):
       self._data_id_to_binding[id(data)] = binding
       for callback in self._callbacks:
         callback()
-      self.program._CheckComplexity(var_size=len(self.bindings))  # pylint: disable=protected-access
       _variable_size_metric.add(len(self.bindings))
     return binding
 
   def AddBinding(self, data, source_set=None, where=None):
     """Add another choice to this variable.
 
-    This will not overwrite this variable in the current CFG node - do that
-    explicitly with RemoveChoicesFromCFGNode.  (It's legitimate to have multiple
-    bindings for a variable on the same CFG node, e.g. if a union type is
-    introduced at that node)
+    This will not overwrite this variable in the current CFG node.  (It's
+    legitimate to have multiple bindings for a variable on the same CFG node,
+    e.g. if a union type is introduced at that node.)
 
     Arguments:
       data: A user specified object to uniquely identify this binding.

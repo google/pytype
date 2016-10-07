@@ -637,6 +637,24 @@ class ErrorTest(test_inference.InferenceTest):
       """, pythonpath=[d.path], deep=True, solve_unknowns=True)
       self.assertErrorLogIs(errors, [(4, "attribute-error", r"x.*C")])
 
+  def testAbortOnComplex(self):
+    ty = self.Infer("""\
+      if __any_object__:
+        x = [1]
+      else:
+        x = [1j]
+      x = x + x
+      x = x + x
+      x = x + x
+      x = x + x
+      x = x + x
+      x = x + x
+      x = x + x
+    """, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      x = ...  # type: Any
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

@@ -20,7 +20,6 @@ from pytype import directors
 from pytype import errors
 from pytype import infer
 from pytype import metrics
-from pytype import utils
 from pytype.pyc import pyc
 from pytype.pytd import optimize
 from pytype.pytd import pytd
@@ -64,7 +63,6 @@ def generate_pyi(input_filename, errorlog, options):
 
   Raises:
     CompileError: If we couldn't parse the input file.
-    ProgramTooComplexError: If the file was too complex to analyze.
   """
   with open(input_filename, "r") as fi:
     src = fi.read()
@@ -146,8 +144,6 @@ def process_one_file(input_filename,
                             options=options)
   except pyc.CompileError as e:
     errorlog.python_compiler_error(input_filename, e.lineno, e.error)
-  except utils.ProgramTooComplexError:
-    errorlog.too_complex(input_filename)
   except Exception as e:  # pylint: disable=broad-except
     if options.nofail:
       log.warn("***Caught exception: %s", str(e), exc_info=True)

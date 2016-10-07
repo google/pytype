@@ -97,6 +97,7 @@ class VirtualMachine(object):
     self.program.entrypoint = self.root_cfg_node
     self.vmbuiltins = self.loader.builtins
     self.convert = convert.Converter(self)
+    self.program.default_data = self.convert.unsolvable
     self.matcher = abstract_match.AbstractMatcher()
     self.attribute_handler = attribute.AbstractAttributeHandler()
     self.has_unknown_wildcard_imports = False
@@ -698,7 +699,7 @@ class VirtualMachine(object):
       assert isinstance(func, abstract.AtomicAbstractValue), type(func)
       try:
         new_node, one_result = func.call(node, funcv, args)
-      except abstract.FailedFunctionCall as e:
+      except (abstract.FailedFunctionCall, utils.TooComplexError) as e:
         error = error or e
       else:
         # This is similar to PasteVariable() except that it adds funcv as
@@ -715,8 +716,11 @@ class VirtualMachine(object):
       return node, result
     else:
       if fallback_to_unsolvable:
-        assert error
-        self.errorlog.invalid_function_call(self.frame.current_opcode, e)
+        if isinstance(error, abstract.FailedFunctionCall):
+          self.errorlog.invalid_function_call(self.frame.current_opcode, error)
+        else:
+          # This error isn't useful to a user, so we don't log it.
+          assert isinstance(error, utils.TooComplexError)
         return node, self.convert.create_new_unsolvable(node, "failed call")
       else:
         # We were called by something that ignores errors, so don't report
