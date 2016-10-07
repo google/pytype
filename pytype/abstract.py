@@ -576,8 +576,7 @@ class SimpleAbstractValue(AtomicAbstractValue):
     seen.add(self)
     key = set()
     if self.cls:
-      clsval, = self.cls.bindings
-      key.add(clsval.data)
+      key.update(self.cls.data)
     for name, var in self.type_parameters.items():
       subkey = frozenset(value.data.get_default_type_key() if value.data in seen
                          else value.data.get_type_key(seen)

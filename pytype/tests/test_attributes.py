@@ -140,6 +140,17 @@ class TestAttributes(test_inference.InferenceTest):
       class MyClass4(object): pass
     """)
 
+  def testSetClass(self):
+    ty = self.Infer("""
+      def f(x):
+        y = None
+        y.__class__ = x.__class__
+        return set([x, y])
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      def f(x) -> set
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()
