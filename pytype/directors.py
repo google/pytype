@@ -1,5 +1,6 @@
 """Code and data structures for managing source directives."""
 
+import bisect
 import collections
 import re
 import sys
@@ -17,32 +18,66 @@ class _LineSet(object):
   """A set of line numbers.
 
   The data structure is optimized to represent the union of a sparse set
-  of integers and all integers greater than X.  This supports the two
-  styles of directives: those after a statement apply only to that line
-  and those on their own line apply until the end of the file.
+  of integers and ranges of non-negative integers.  This supports the two styles
+  of directives: those after a statement apply only to that line and those on
+  their own line apply until countered by the opposing directive.
   """
 
   def __init__(self):
-    self._lines = set()  # Specific lines that belong to this set.
-    # All lines strictly greater than limit are in the set.
-    self._limit = sys.maxint
+    # Map of line->bool for specific lines, takes precedence over _transitions.
+    self._lines = {}
+    # A sorted list of the lines at which the range state changes
+    # polarity.  It is assumed to initially be false (not in a range).
+    # Even positions represent the start of a range, odd positions represent
+    # the end of a range.  Thus [2, 5, 10, 12] would include lines 2, 3, 4, 10,
+    # and 11.  If the length is odd, then an end of maxint is implied, thus
+    # [2, 5, 10] would disable lines 2, 3, 4, 10, 11, 12, ...
+    self._transitions = []
 
-  def add(self, line, open_ended=False):
-    """Add a line to the set.
+  def set_line(self, line, membership):
+    """Set whether a given line is a member of the set."""
+    self._lines[line] = membership
+
+  def start_range(self, line, membership):
+    """Start a range of lines that are either included/excluded from the set.
 
     Args:
       line: A line number.
-      open_ended: If False, then only line is added.  If True, then all lines
-          greater than or equal to line are added.
+      membership: If True, lines >= line are included in the set (starting
+        a range), otherwise they are excluded (ending a range).
+
+    Raises:
+      ValueError: if line is less than that of a previous call to start_range().
     """
-    if open_ended:
-      self._limit = min(line - 1, self._limit)
+    last = self._transitions[-1] if self._transitions else -1
+    # Assert that lines are monotonically increasing.  This simplifies the
+    # logic of adding new lines and ensures that _ranges is sorted.
+    if line < last:
+      raise ValueError("Line number less than previous start_range() call.")
+    # Determine previous membership state (True if the last range has an
+    # indefinite end).
+    previous = (len(self._transitions) % 2) == 1
+    if membership == previous:
+      # TODO(dbaum): Consider issuing a warning here.
+      return  # Redundant with previous state, do nothing.
+    elif line == last:
+      # We have either enable/disable or disable/enable on the same line,
+      # cancel them out by popping the previous transition.
+      self._transitions.pop()
     else:
-      self._lines.add(line)
+      # Normal case - add a transition at this line.
+      self._transitions.append(line)
 
   def __contains__(self, line):
     """Return if a line is a member of the set."""
-    return line > self._limit or line in self._lines
+    # First check for an entry in _lines.
+    specific = self._lines.get(line)
+    if specific is not None:
+      return specific
+    # Find the position in _ranges for line.  The polarity of this position
+    # determines whether we are inside a range (odd) or outside (even).
+    pos = bisect.bisect(self._transitions, line)
+    return (pos % 2) == 1
 
 
 class Director(object):
@@ -68,7 +103,7 @@ class Director(object):
     self._disables = collections.defaultdict(_LineSet)
     # Apply global disable, from the command line arguments:
     for error_name in disable:
-      self._disables[error_name].add(0, open_ended=True)
+      self._disables[error_name].start_range(0, True)
     # Parse the source code for directives.
     self._parse_source(src)
 
@@ -91,7 +126,10 @@ class Director(object):
   def _process_type(self, lineno, data, open_ended):
     """Process a type: comment."""
     if data == "ignore":
-      self._ignore.add(lineno, open_ended=open_ended)
+      if open_ended:
+        self._ignore.start_range(lineno, True)
+      else:
+        self._ignore.set_line(lineno, True)
 
   def _process_pytype(self, lineno, data, open_ended):
     """Process a pytype: comment."""
@@ -105,15 +143,24 @@ class Director(object):
       except ValueError:
         raise _DirectiveError("Invalid directive syntax.")
       # Additional commands may be added in the future.  For now, only
-      # "disable" is supported.
-      if command != "disable":
+      # "disable" and "enable" are supported.
+      if command == "disable":
+        disable = True
+      elif command == "enable":
+        disable = False
+      else:
         raise _DirectiveError("Unknown pytype directive: '%s'" % command)
       if not values:
-        raise _DirectiveError("Disable must specify one or more error names.")
+        raise _DirectiveError(
+            "Disable/enable must specify one or more error names.")
       for error_name in values:
         if (error_name == _ALL_ERRORS or
             self._errorlog.is_valid_error_name(error_name)):
-          self._disables[error_name].add(lineno, open_ended=open_ended)
+          lines = self._disables[error_name]
+          if open_ended:
+            lines.start_range(lineno, disable)
+          else:
+            lines.set_line(lineno, disable)
         else:
           self._errorlog.invalid_directive(
               self._filename, lineno, "Invalid error name: '%s'" % error_name)

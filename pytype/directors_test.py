@@ -10,35 +10,89 @@ _TEST_FILENAME = "my_file.py"
 
 class LineSetTest(unittest.TestCase):
 
-  def test_basic_operation(self):
+  def test_no_ranges(self):
     lines = directors._LineSet()
-    lines.add(7)
+    lines.set_line(2, True)
+    self.assertNotIn(0, lines)
+    self.assertNotIn(1, lines)
+    self.assertIn(2, lines)
+    self.assertNotIn(3, lines)
+
+  def test_closed_range(self):
+    lines = directors._LineSet()
+    lines.start_range(2, True)
+    lines.start_range(4, False)
+    self.assertNotIn(1, lines)
+    self.assertIn(2, lines)
+    self.assertIn(3, lines)
+    self.assertNotIn(4, lines)
+    self.assertNotIn(1000, lines)
+
+  def test_open_range(self):
+    lines = directors._LineSet()
+    lines.start_range(2, True)
+    lines.start_range(4, False)
+    lines.start_range(7, True)
+    self.assertNotIn(1, lines)
+    self.assertIn(2, lines)
+    self.assertIn(3, lines)
+    self.assertNotIn(4, lines)
+    self.assertNotIn(5, lines)
     self.assertNotIn(6, lines)
     self.assertIn(7, lines)
-    self.assertNotIn(8, lines)
-    self.assertNotIn(100, lines)
-    lines.add(100, open_ended=True)
-    self.assertNotIn(99, lines)
-    self.assertIn(100, lines)
-    self.assertIn(101, lines)
+    self.assertIn(1000, lines)
 
-  def test_increasing_limit(self):
+  def test_range_at_zero(self):
     lines = directors._LineSet()
-    lines.add(100, open_ended=True)
-    lines.add(200, open_ended=True)
-    self.assertNotIn(99, lines)
-    self.assertIn(100, lines)
-    self.assertIn(200, lines)
-    self.assertIn(201, lines)
+    lines.start_range(0, True)
+    lines.start_range(3, False)
+    self.assertNotIn(-1, lines)
+    self.assertIn(0, lines)
+    self.assertIn(1, lines)
+    self.assertIn(2, lines)
+    self.assertNotIn(3, lines)
 
-  def test_decreasing_limit(self):
+  def test_line_overrides_range(self):
     lines = directors._LineSet()
-    lines.add(200, open_ended=True)
-    lines.add(100, open_ended=True)
-    self.assertNotIn(99, lines)
-    self.assertIn(100, lines)
-    self.assertIn(200, lines)
-    self.assertIn(201, lines)
+    lines.start_range(2, True)
+    lines.start_range(5, False)
+    lines.set_line(3, False)
+    self.assertIn(2, lines)
+    self.assertNotIn(3, lines)
+    self.assertIn(4, lines)
+
+  def test_redundant_range(self):
+    lines = directors._LineSet()
+    lines.start_range(2, True)
+    lines.start_range(3, True)
+    lines.start_range(5, False)
+    lines.start_range(9, False)
+    self.assertNotIn(1, lines)
+    self.assertIn(2, lines)
+    self.assertIn(3, lines)
+    self.assertIn(4, lines)
+    self.assertNotIn(5, lines)
+    self.assertNotIn(9, lines)
+    self.assertNotIn(1000, lines)
+
+  def test_enable_disable_on_same_line(self):
+    lines = directors._LineSet()
+    lines.start_range(2, True)
+    lines.start_range(2, False)
+    lines.start_range(3, True)
+    lines.start_range(5, False)
+    lines.start_range(5, True)
+    self.assertNotIn(2, lines)
+    self.assertIn(3, lines)
+    self.assertIn(4, lines)
+    self.assertIn(5, lines)
+    self.assertIn(1000, lines)
+
+  def test_decreasing_lines_not_allowed(self):
+    lines = directors._LineSet()
+    self.assertRaises(ValueError, lines.start_range, -100, True)
+    lines.start_range(2, True)
+    self.assertRaises(ValueError, lines.start_range, 1, True)
 
 
 class DirectorTest(unittest.TestCase):
@@ -117,6 +171,33 @@ class DirectorTest(unittest.TestCase):
     self._should_report(True, 2)
     self._should_report(False, 3)
     self._should_report(False, 4)
+
+  def test_enable_after_disable(self):
+    self._create("""
+    # line 2
+    # pytype: disable=test-error
+    # line 4
+    # pytype: enable=test-error
+    """)
+    self._should_report(True, 2)
+    self._should_report(False, 3)
+    self._should_report(False, 4)
+    self._should_report(True, 5)
+    self._should_report(True, 100)
+
+  def test_enable_one_line(self):
+    self._create("""
+    # line 2
+    # pytype: disable=test-error
+    # line 4
+    x = 123 # pytype: enable=test-error
+    """)
+    self._should_report(True, 2)
+    self._should_report(False, 3)
+    self._should_report(False, 4)
+    self._should_report(True, 5)
+    self._should_report(False, 6)
+    self._should_report(False, 100)
 
   def test_disable_other_error(self):
     self._create("""
