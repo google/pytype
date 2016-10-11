@@ -97,14 +97,22 @@ class Signature(object):
       s.append("**" + annotate(self.kwargs_name))
     return ", ".join(s)
 
-  def iter_args(self, posargs, namedargs, starargs, starstarargs):
-    for name, posarg in zip(self.param_names, posargs):
-      yield (name, posarg, self.annotations.get(name))
-    for name, namedarg in namedargs.items():
+  def iter_args(self, args):
+    """Iterates through the given args, attaching names and expected types."""
+    for i, posarg in enumerate(args.posargs):
+      if i < len(self.param_names):
+        name = self.param_names[i]
+        yield (name, posarg, self.annotations.get(name))
+      else:
+        yield ("_" + str(i), posarg, None)
+    for name, namedarg in args.namedargs.items():
       yield (name, namedarg, self.annotations.get(name))
-    if self.varargs_name is not None and starargs is not None:
-      yield (self.varargs_name, starargs,
+    if self.varargs_name is not None and args.starargs is not None:
+      yield (self.varargs_name, args.starargs,
              self.annotations.get(self.varargs_name))
-    if self.kwargs_name is not None and starstarargs is not None:
-      yield (self.kwargs_name, starstarargs,
+    if self.kwargs_name is not None and args.starstarargs is not None:
+      yield (self.kwargs_name, args.starstarargs,
              self.annotations.get(self.kwargs_name))
+
+  def print_args(self, args):
+    return [(name, arg.data[0]) for name, arg, _ in self.iter_args(args)]

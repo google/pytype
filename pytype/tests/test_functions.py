@@ -383,13 +383,13 @@ class TestGenerators(test_inference.InferenceTest):
 
   def test_named_arg_unsolvable_max_depth(self):
     # Main test here is for this not to throw a KeyError exception while
-    # runing type inference. The given options simulate those of --quick.
+    # running type inference. The given options simulate those of --quick.
     _, errors = self.InferAndCheck("""
       def f(x):
         return max(foo=repr(__any_object__))
     """, deep=True, solve_unknowns=False, maximum_depth=1, extract_locals=True)
     self.assertEquals(1, len(errors))
-    self.assertErrorLogContains(errors, r"iterable.*max.*\[missing-parameter\]")
+    self.assertErrorLogContains(errors, r"max.*\[missing-parameter\]")
 
   def test_multiple_signatures_with_type_parameter(self):
     with utils.Tempdir() as d:

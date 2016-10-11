@@ -426,7 +426,7 @@ class ErrorTest(test_inference.InferenceTest):
 
   def testPrintTypeArg(self):
     _, errors = self.InferAndCheck("""\
-      max(int)
+      hex(int)
     """, deep=True)
     self.assertErrorLogIs(
         errors, [(1, "wrong-arg-types", r"Actually passed.*Type\[int\]")])
@@ -505,6 +505,25 @@ class ErrorTest(test_inference.InferenceTest):
       self.assertErrorLogIs(errors, [
           (4, "duplicate-keyword-argument"),
       ])
+
+  def testInvalidParametersDetails(self):
+    _, errors = self.InferAndCheck("""\
+      float(list())
+      float(1, list(), foobar=str)
+      float(1, foobar=list())
+      float(1, x="")
+      hex()
+    """)
+    self.assertErrorLogIs(errors, [
+        (1, "wrong-arg-types", r"Actually passed:.*self: float, x: list"),
+        (2, "wrong-arg-count", r"Actually passed:.*self: float, x: int, "
+         r"_2: list, foobar: Type\[str\]"),
+        (3, "wrong-keyword-args",
+         r"Actually passed:.*self: float, x: int, foobar: list"),
+        (4, "duplicate-keyword-argument",
+         r"Actually passed:.*self: float, x: int, x: str"),
+        (5, "missing-parameter", r"Actually passed: \(\)")
+    ])
 
   def testBadSuperClass(self):
     _, errors = self.InferAndCheck("""\
@@ -654,6 +673,19 @@ class ErrorTest(test_inference.InferenceTest):
     self.assertTypesMatchPytd(ty, """
       x = ...  # type: Any
     """)
+
+  def testFailedFunctionCall(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        def f(x: str, y: int) -> bool
+        def f(x: str) -> bool
+      """)
+      _, errors = self.InferAndCheck("""\
+        import a
+        x = a.f(0, "")
+      """, pythonpath=[d.path], solve_unknowns=True)
+      # Tests that [wrong-arg-types] rather than [wrong-arg-count] is reported
+      self.assertErrorLogIs(errors, [(2, "wrong-arg-types", r"")])
 
 
 if __name__ == "__main__":
