@@ -208,33 +208,26 @@ class classmethod(typing.Callable):  # Also defined in __builtin__.py
     def __get__(self, ...) -> ?
 
 class str(basestring, Sequence[str]):
-    # TODO(pludemann): See comment in TODO.txt for str.__init__
     def __init__(self, object) -> NoneType
     def __init__(self) -> NoneType
     def __add__(self, y: str or bytearray) -> str
-    def __add__(self, y: unicode) -> unicode
-    def __contains__(self, y: str or unicode or bytearray) -> bool
-    def __eq__(self, y: str or bytearray) -> bool
-    def __ge__(self, y: str or bytearray) -> bool
+    def __add__(self, y: basestring) -> unicode
+    def __contains__(self, y: basestring or bytearray) -> bool
     def __getitem__(self, index: int or slice) -> str
     def __getslice__(self, i: int, j: int) -> str
-    def __gt__(self, y: str or bytearray) -> bool
-    def __le__(self, y: str or bytearray) -> bool
     def __len__(self) -> int
-    def __lt__(self, y: str or bytearray) -> bool
     def __mod__(self, y) -> str
     def __mul__(self, n: int) -> str
-    def __ne__(self, y) -> bool
     def capitalize(self) -> str
     def center(self, width: int, ...) -> str
-    def count(self, sub: str or unicode or bytearray, ...) -> int
+    def count(self, sub: basestring or bytearray, ...) -> int
     def decode(self, ...) -> unicode
     def encode(self, ...) -> str
-    def endswith(self, suffix: str or unicode or bytearray or tuple[str or unicode or bytearray], ...) -> bool
+    def endswith(self, suffix: basestring or bytearray or tuple[basestring or bytearray], ...) -> bool
     def expandtabs(self, ...) -> str
-    def find(self, sub: str or unicode or bytearray, ...) -> int
+    def find(self, sub: basestring or bytearray, ...) -> int
     def format(self, ...) -> str
-    def index(self, sub: str or unicode or bytearray, ...) -> int
+    def index(self, sub: basestring or bytearray, ...) -> int
     def isalnum(self) -> bool
     def isalpha(self) -> bool
     def isdigit(self) -> bool
@@ -242,18 +235,17 @@ class str(basestring, Sequence[str]):
     def isspace(self) -> bool
     def istitle(self) -> bool
     def isupper(self) -> bool
-    def join(self, iterable) -> str
-    def join(self, iterable: unicode or iterator) -> str or unicode  # TODO(pludemann): fix
+    def join(self, iterable: Iterable[str]) -> str
+    def join(self, iterable: Iterable[unicode]) -> unicode
     def ljust(self, width: int, ...) -> str
     def lower(self) -> str
     def lstrip(self, ...) -> str
     def partition(self, sep: str or bytearray) -> tuple[str]  # tuple[str, str, str]
     def partition(self, sep: unicode) -> tuple[unicode]  # tuple[unicode, unicode, unicode]
     def replace(self, old: str or bytearray, new: str or bytearray, ...) -> str
-    def replace(self, old: str or unicode or bytearray, new: unicode, ...) -> unicode
-    def replace(self, old: unicode, new: str or bytearray, ...) -> unicode
-    def rfind(self, sub: str or unicode or bytearray, ...) -> int
-    def rindex(self, sub: str or unicode or bytearray, ...) -> int
+    def replace(self, old: basestring or bytearray, new: basestring or bytearray, ...) -> unicode
+    def rfind(self, sub: basestring or bytearray, ...) -> int
+    def rindex(self, sub: basestring or bytearray, ...) -> int
     def rjust(self, width: int, ...) -> str
     def rpartition(self, sep: str or bytearray) -> tuple[str]  # tuple[str, str, str]
     def rpartition(self, sep: unicode) -> tuple[unicode]  # tuple[unicode, unicode, unicode]
@@ -261,17 +253,16 @@ class str(basestring, Sequence[str]):
     def rstrip(self, ...) -> str
     def split(self, ...) -> list[str]
     def splitlines(self, ...) -> list[str]
-    def startswith(self, prefix: str or unicode or bytearray or tuple[str or unicode or bytearray], ...) -> bool
+    def startswith(self, prefix: basestring or bytearray or Iterable[basestring or bytearray], ...) -> bool
     def strip(self, ...) -> str
     def swapcase(self) -> str
     def title(self) -> str
-    def translate(self, table: unicode) -> unicode
     def translate(self, table: str) -> str
+    def translate(self, table: unicode) -> unicode
     def translate(self, table: str or NoneType, deletechars: str) -> str
     def upper(self) -> str
     def zfill(self, width: int) -> str
-    def __new__(cls: type) -> str
-    def __new__(cls: type, y: str or unicode or bytearray) -> str
+    def __new__(cls: type, y: str or unicode or bytearray = ...) -> str
 
 bytes = str
 
@@ -280,17 +271,11 @@ class unicode(basestring, Sequence[unicode]):
     def __init__(self) -> NoneType
     def __add__(self, y: str or unicode or bytearray) -> unicode
     def __contains__(self, y: str or unicode or bytearray) -> bool
-    def __eq__(self, y: str or unicode or bytearray) -> bool
-    def __ge__(self, y: str or unicode or bytearray) -> bool
     def __getitem__(self, index: int or slice) -> unicode
     def __getslice__(self, i: int, j: int) -> unicode
-    def __gt__(self, y: str or unicode or bytearray) -> bool
-    def __le__(self, y: str or unicode or bytearray) -> bool
     def __len__(self) -> int
-    def __lt__(self, y: str or unicode or bytearray) -> bool
     def __mod__(self, y) -> unicode
     def __mul__(self, n: int) -> unicode
-    def __ne__(self, y: str or unicode or bytearray) -> bool
     def capitalize(self) -> unicode
     def center(self, width: int, ...) -> unicode
     def count(self, sub: str or unicode or bytearray, ...) -> int
@@ -339,16 +324,10 @@ class bytearray(Sequence[int]):
     def __alloc__(self) -> int
     def __contains__(self, y: str or int or bytearray) -> bool
     def __delitem__(self, y: int) -> NoneType
-    def __eq__(self, y: str or bytearray) -> bool
-    def __ge__(self, y: str or bytearray) -> bool
     def __getitem__(self, index: int) -> int
-    def __gt__(self, y: str or bytearray) -> bool
     def __iter__(self) -> bytearray_iterator
-    def __le__(self, y: str or bytearray) -> bool
     def __len__(self) -> int
-    def __lt__(self, y: str or bytearray) -> bool
     def __mul__(self, n: int) -> bytearray
-    def __ne__(self, y: str or bytearray) -> bool
     def append(self, int: str or int) -> NoneType
     def capitalize(self) -> bytearray
     def center(self, width: int, ...) -> bytearray

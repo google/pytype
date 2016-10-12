@@ -128,8 +128,8 @@ class MatchTest(unittest.TestCase):
   def test_or(self):
     mapping = self.parse_and_solve("""
       class `~unknown1`(object):
-        def join(self, _1: unicode) -> str or unicode
-        def join(self, _1: iterator) -> str or unicode
+        def join(self, _1: unicode) -> unicode
+        def join(self, _1: Iterator[str]) -> str
     """)
     self.assertItemsEqual(["str"], mapping["~unknown1"])
 
@@ -142,9 +142,9 @@ class MatchTest(unittest.TestCase):
         def __add__(self, _1: str) -> bytearray
         def __add__(self, _1: bytearray) -> bytearray
       class `~unknown3`(object):
-        def join(self, _1) -> str
-        def join(self, _1: unicode) -> str or unicode
-        def join(self, _1: iterator) -> str or unicode
+        def join(self, _1: str) -> str
+        def join(self, _1: unicode) -> unicode
+        def join(self, _1: iterator) -> str
       class `~unknown4`(object):
         def append(self, _1: NoneType) -> NoneType
     """)

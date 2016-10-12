@@ -200,7 +200,7 @@ class SolverTests(test_inference.InferenceTest):
         return "abc".find(x)
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
-      def f(x: str or unicode or bytearray) -> int
+      def f(x: basestring or bytearray) -> int
     """)
 
   def testImport(self):
