@@ -526,7 +526,7 @@ class ImportTest(test_inference.InferenceTest):
     self.assertTypesMatchPytd(ty, """
       os = ...  # type: module
       class Foo(object):
-        def killpg(*args, **kwargs) -> None
+        def killpg(pgid: int, sig: int) -> None
     """)
 
   def testMatchAgainstImported(self):
