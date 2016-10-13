@@ -141,7 +141,7 @@ class CallTracer(vm.VirtualMachine):
     clsvar = cls.to_variable(node, "cls")
     instance = self.instantiate(clsvar, node)
     node, init = self.attribute_handler.get_attribute(
-        cls, node, "__init__", instance.bindings[0], clsvar.bindings[0])
+        node, cls, "__init__", instance.bindings[0], clsvar.bindings[0])
     if init:
       bound_init = self.bind_method("__init__", init, instance, clsvar, node)
       node = self.analyze_method_var("__init__", bound_init, node)

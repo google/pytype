@@ -503,7 +503,7 @@ class SimpleAbstractValue(AtomicAbstractValue):
       return node, None
 
   def call(self, node, _, args):
-    node, var = self.vm.attribute_handler.get_attribute(self, node, "__call__")
+    node, var = self.vm.attribute_handler.get_attribute(node, self, "__call__")
     self_var = self.to_variable(node, self.name)
     if var is not None and var.bindings:
       return self.vm.call_function(
@@ -686,7 +686,7 @@ class ValueWithSlots(Instance):
     f = self.make_native_function(name, method)
     self._slots[name] = f.to_variable(self.vm.root_cfg_node, name)
     _, attr = self.vm.attribute_handler.get_instance_attribute(
-        self, self.vm.root_cfg_node, name)
+        self.vm.root_cfg_node, self, name)
     self._super[name] = attr
 
   def call_pytd(self, node, name, *args):
@@ -1753,7 +1753,7 @@ class PyTDClass(SimpleAbstractValue, Class):
     retval = results.AddBinding(value, [func], node)
 
     node, init = self.vm.attribute_handler.get_attribute(
-        value, node, "__init__", retval, value.cls.bindings[0])
+        node, value, "__init__", retval, value.cls.bindings[0])
     # TODO(pludemann): Verify that this follows MRO:
     if init:
       log.debug("calling %s.__init__(...)", self.name)
@@ -1861,7 +1861,7 @@ class InterpreterClass(SimpleAbstractValue, Class):
     variable = self.vm.program.NewVariable(self.name + " instance")
     val = variable.AddBinding(value, [], node)
     node, init = self.vm.attribute_handler.get_attribute(
-        value, node, "__init__", val)
+        node, value, "__init__", val)
     if init:
       log.debug("calling %s.__init__(...)", self.name)
       node, ret = self.vm.call_function(node, init, args)
@@ -2620,7 +2620,7 @@ class Unsolvable(AtomicAbstractValue):
   This is typically a singleton. Since unsolvables are indistinguishable, we
   only need one.
   """
-  IGNORED_ATTRIBUTES = ["__get__", "__set__"]
+  IGNORED_ATTRIBUTES = ["__get__", "__set__", "__getattribute__"]
 
   # Since an unsolvable gets generated e.g. for every unresolved import, we
   # can have multiple circular Unsolvables in a class' MRO. Treat those special.
@@ -2681,7 +2681,7 @@ class Unknown(AtomicAbstractValue):
   _current_id = 0
 
   # For simplicity, Unknown doesn't emulate descriptors:
-  IGNORED_ATTRIBUTES = ["__get__", "__set__"]
+  IGNORED_ATTRIBUTES = ["__get__", "__set__", "__getattribute__"]
 
   def __init__(self, vm):
     name = "~unknown%d" % Unknown._current_id
@@ -2731,7 +2731,7 @@ class Unknown(AtomicAbstractValue):
     # in some later CFG node, that's fine, we'll then work only with the new
     # value, which is more accurate than the "fictional" value we create here.
     self.vm.attribute_handler.set_attribute(
-        self, self.vm.root_cfg_node, name, new)
+        self.vm.root_cfg_node, self, name, new)
     return new
 
   def call(self, node, _, args):

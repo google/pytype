@@ -99,7 +99,7 @@ class VirtualMachine(object):
     self.convert = convert.Converter(self)
     self.program.default_data = self.convert.unsolvable
     self.matcher = matcher.AbstractMatcher()
-    self.attribute_handler = attribute.AbstractAttributeHandler()
+    self.attribute_handler = attribute.AbstractAttributeHandler(self)
     self.has_unknown_wildcard_imports = False
 
     # Map from builtin names to canonical objects.
@@ -755,7 +755,7 @@ class VirtualMachine(object):
   def load_from(self, state, store, name):
     node = state.node
     node, attr = self.attribute_handler.get_attribute(
-        store, node, name, condition=state.condition)
+        node, store, name, condition=state.condition)
     assert isinstance(node, typegraph.CFGNode)
     if not attr:
       raise KeyError(name)
@@ -801,14 +801,14 @@ class VirtualMachine(object):
     """Called when a local is written."""
     assert isinstance(value, typegraph.Variable), (name, repr(value))
     node = self.attribute_handler.set_attribute(
-        self.frame.f_locals, state.node, name, value)
+        state.node, self.frame.f_locals, name, value)
     return state.change_cfg_node(node)
 
   def store_global(self, state, name, value):
     """Same as store_local except for globals."""
     assert isinstance(value, typegraph.Variable)
     node = self.attribute_handler.set_attribute(
-        self.frame.f_globals, state.node, name, value)
+        state.node, self.frame.f_globals, name, value)
     return state.change_cfg_node(node)
 
   def del_local(self, name):
@@ -832,7 +832,7 @@ class VirtualMachine(object):
     for val in obj.Bindings(node):
       try:
         node2, attr_var = self.attribute_handler.get_attribute_generic(
-            val.data, node, attr, val)
+            node, val.data, attr, val)
       except self.convert.TypeParameterError as e:
         self.errorlog.type_param_error(
             self.frame.current_opcode, obj, attr, e.type_param_name)
@@ -893,7 +893,7 @@ class VirtualMachine(object):
     for val in obj.bindings:
       # TODO(kramm): Check whether val.data is a descriptor (i.e. has "__set__")
       nodes.append(self.attribute_handler.set_attribute(
-          val.data, state.node, attr, value))
+          state.node, val.data, attr, value))
     return state.change_cfg_node(
         self.join_cfg_nodes(nodes))
 

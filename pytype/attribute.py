@@ -12,21 +12,24 @@ log = logging.getLogger(__name__)
 class AbstractAttributeHandler(object):
   """Handler for abstract attributes."""
 
-  def get_attribute_generic(self, obj, node, name, val):
-    if isinstance(obj, abstract.ParameterizedClass):
-      return self.get_attribute_generic(obj.base_cls, node, name, val)
-    elif isinstance(obj, abstract.Class):
-      return self.get_attribute(obj, node, name, valcls=val)
-    else:
-      return self.get_attribute(obj, node, name, valself=val)
+  def __init__(self, vm):
+    self.vm = vm
 
-  def get_attribute(self, obj, node, name, valself=None, valcls=None,
+  def get_attribute_generic(self, node, obj, name, val):
+    if isinstance(obj, abstract.ParameterizedClass):
+      return self.get_attribute_generic(node, obj.base_cls, name, val)
+    elif isinstance(obj, abstract.Class):
+      return self.get_attribute(node, obj, name, valcls=val)
+    else:
+      return self.get_attribute(node, obj, name, valself=val)
+
+  def get_attribute(self, node, obj, name, valself=None, valcls=None,
                     condition=None):
     """Get the named attribute from the given object.
 
     Args:
-      obj: The object.
       node: The current CFG node.
+      obj: The object.
       name: The name of the attribute to retrieve.
       valself: A typegraph.Binding, This is the self reference to use when
         getting the attribute.
@@ -46,7 +49,7 @@ class AbstractAttributeHandler(object):
       return node, special_attribute
     if isinstance(obj, abstract.ValueWithSlots):
       return self.get_instance_attribute(
-          obj, node, name, valself, valcls, condition)
+          node, obj, name, valself, valcls, condition)
     elif isinstance(obj, abstract.Function):
       if name == "__get__":
         # The pytd for "function" has a __get__ attribute, but if we already
@@ -54,33 +57,33 @@ class AbstractAttributeHandler(object):
         return node, None
       else:
         return self.get_instance_attribute(
-            obj, node, name, valself, valcls, condition)
+            node, obj, name, valself, valcls, condition)
     elif isinstance(obj, abstract.ParameterizedClass):
       return self.get_attribute(
-          obj.base_cls, node, name, valself, valcls, condition)
+          node, obj.base_cls, name, valself, valcls, condition)
     elif isinstance(obj, abstract.Class):
       return self.get_class_attribute(
-          obj, node, name, valself, valcls, condition)
+          node, obj, name, valself, valcls, condition)
     elif isinstance(obj, typing.TypingOverlay):
       return self.get_module_attribute(
-          obj.get_module(name), node, name, valself, valcls, condition)
+          node, obj.get_module(name), name, valself, valcls, condition)
     elif isinstance(obj, abstract.Module):
       return self.get_module_attribute(
-          obj, node, name, valself, valcls, condition)
+          node, obj, name, valself, valcls, condition)
     elif isinstance(obj, abstract.SimpleAbstractValue):
       return self.get_instance_attribute(
-          obj, node, name, valself, valcls, condition)
+          node, obj, name, valself, valcls, condition)
     elif isinstance(obj, abstract.Union):
       nodes = []
-      ret = obj.vm.program.NewVariable(name)
+      ret = self.vm.program.NewVariable(name)
       for o in obj.options:
         node2, attr = self.get_attribute(
-            o, node, name, valself, valcls, condition)
+            node, o, name, valself, valcls, condition)
         if attr is not None:
           ret.PasteVariable(attr, node2)
           nodes.append(node2)
       if ret.bindings:
-        return obj.vm.join_cfg_nodes(nodes), ret
+        return self.vm.join_cfg_nodes(nodes), ret
       else:
         return node, None
     elif isinstance(obj, abstract.SuperInstance):
@@ -88,30 +91,30 @@ class AbstractAttributeHandler(object):
         valself = obj.super_obj.to_variable(node, "self").bindings[0]
       valcls = obj.super_cls.to_variable(node, "cls").bindings[0]
       return node, self._lookup_from_mro(
-          obj.super_cls, node, name, valself, valcls, skip=obj.super_cls)
+          node, obj.super_cls, name, valself, valcls, skip=obj.super_cls)
     elif isinstance(obj, abstract.Super):
       # In Python 3, you can do "super.__init__".
       raise NotImplementedError("Python 3 super not implemented yet")
     elif isinstance(obj, abstract.BoundFunction):
       return self.get_attribute(
-          obj.underlying, node, name, valself, valcls, condition)
+          node, obj.underlying, name, valself, valcls, condition)
     elif isinstance(obj, abstract.Nothing):
       return node, None
     else:
       return node, None
 
-  def get_module_attribute(self, module, node, name, valself=None, valcls=None,
+  def get_module_attribute(self, node, module, name, valself=None, valcls=None,
                            condition=None):
     """Get an attribute from a module."""
     assert isinstance(module, abstract.Module)
     # Local variables in __init__.py take precedence over submodules.
     node, var = self.get_instance_attribute(
-        module, node, name, valself, valcls, condition)
+        node, module, name, valself, valcls, condition)
     if var is None:
       var = module.get_submodule(node, name)
     return node, var
 
-  def get_class_attribute(self, cls, node, name, valself=None, valcls=None,
+  def get_class_attribute(self, node, cls, name, valself=None, valcls=None,
                           condition=None):
     """Retrieve an attribute by looking at the MRO of this class."""
     del condition  # unused arg.
@@ -119,36 +122,36 @@ class AbstractAttributeHandler(object):
     if cls.cls and not valself:
       # TODO(rechen): Use valcls instead of creating a dummy instance.
       variableself, = abstract.Instance(
-          cls.cls, cls.vm, node).to_variable(node).bindings
+          cls.cls, self.vm, node).to_variable(node).bindings
       variablecls, = cls.cls.bindings
       node, attr = self.get_attribute(
-          variableself.data, node, name, variableself, variablecls)
+          node, variableself.data, name, variableself, variablecls)
       if attr is not None:
         return node, attr
     node, attr = self._get_attribute_computed(
-        cls, node, name, valself, valcls, compute_function="__getattribute__")
+        node, cls, name, valself, valcls, compute_function="__getattribute__")
     if attr is None:
       # _lookup_from_mro always returns a Variable.
-      attr = self._lookup_from_mro(cls, node, name, valself, valcls)
+      attr = self._lookup_from_mro(node, cls, name, valself, valcls)
     if not attr.bindings:
       node, attr = self._get_attribute_computed(
-          cls, node, name, valself, valcls, compute_function="__getattr__")
+          node, cls, name, valself, valcls, compute_function="__getattr__")
     if isinstance(cls, abstract.InterpreterClass) and attr is not None:
-      result = cls.vm.program.NewVariable(name)
+      result = self.vm.program.NewVariable(name)
       nodes = []
       # Deal with descriptors as a potential additional level of indirection.
       for v in attr.Bindings(node):
         value = v.data
-        node2, getter = self.get_attribute(value, node, "__get__", v)
+        node2, getter = self.get_attribute(node, value, "__get__", v)
         if getter is not None:
           posargs = []
           if valself:
             posargs.append(valself.variable)
           if valcls:
             if not valself:
-              posargs.append(cls.vm.convert.none.to_variable(node, "None"))
+              posargs.append(self.vm.convert.none.to_variable(node, "None"))
             posargs.append(valcls.variable)
-          node2, get_result = cls.vm.call_function(
+          node2, get_result = self.vm.call_function(
               node2, getter, abstract.FunctionArgs(tuple(posargs)))
           for getter in get_result.bindings:
             result.AddBinding(getter.data, [getter], node2)
@@ -156,32 +159,33 @@ class AbstractAttributeHandler(object):
           result.AddBinding(value, [v], node2)
         nodes.append(node2)
       if nodes:
-        return cls.vm.join_cfg_nodes(nodes), result
+        return self.vm.join_cfg_nodes(nodes), result
     return node, attr
 
-  def get_instance_attribute(self, obj, node, name, valself=None, valcls=None,
+  def get_instance_attribute(self, node, obj, name, valself=None, valcls=None,
                              condition=None):
     """Get an attribute from an instance."""
     del valcls  # unused
     assert isinstance(obj, abstract.SimpleAbstractValue)
-    node, attr = self._get_member(obj, node, name, valself)
-    if attr is None:
-      candidates = []
-      if obj.cls:
-        nodes = []
-        for clsval in obj.cls.bindings:
-          cls = clsval.data
-          new_node, attr = self.get_attribute(cls, node, name, valself, clsval)
-          nodes.append(new_node)
-          if attr is not None:
-            candidates.append(attr)
-        node = obj.vm.join_cfg_nodes(nodes)
-    else:
-      candidates = [attr]
+    def computer(clsval):
+      return self._get_attribute_computed(
+          node, clsval.data, name, valself, clsval,
+          compute_function="__getattribute__")
+    node, candidates = self._get_candidates_from_var(node, obj.cls, computer)
+    if not candidates or len(candidates) < len(obj.cls.bindings):
+      node, attr = self._get_member(node, obj, name, valself)
+      if attr is None:
+        def getter(clsval):
+          return self.get_attribute(node, clsval.data, name, valself, clsval)
+        node, new_candidates = self._get_candidates_from_var(
+            node, obj.cls, getter)
+        candidates.extend(new_candidates)
+      else:
+        candidates.append(attr)
     return node, self._filter_and_merge_candidates(
-        obj, node, name, candidates, condition)
+        node, candidates, name, condition)
 
-  def set_attribute(self, obj, node, name, value):
+  def set_attribute(self, node, obj, name, value):
     """Set an attribute on an object.
 
     The attribute might already have a Variable in it and in that case we cannot
@@ -189,8 +193,8 @@ class AbstractAttributeHandler(object):
     old variable.
 
     Args:
-      obj: The object.
       node: The current CFG node.
+      obj: The object.
       name: The name of the attribute to set.
       value: The Variable to store in it.
     Returns:
@@ -207,9 +211,9 @@ class AbstractAttributeHandler(object):
       log.warning("Ignoring overwrite of %s.%s", obj.name, name)
       return node
     elif isinstance(obj, abstract.SimpleAbstractValue):
-      return self._set_member(obj, node, name, value)
+      return self._set_member(node, obj, name, value)
     elif isinstance(obj, abstract.BoundFunction):
-      return self.set_attribute(obj.underlying, node, name, value)
+      return self.set_attribute(node, obj.underlying, name, value)
     elif isinstance(obj, abstract.Nothing):
       raise AttributeError("Object %r has no attribute %s" % (obj, name))
     elif isinstance(obj, abstract.Unsolvable):
@@ -224,26 +228,39 @@ class AbstractAttributeHandler(object):
     else:
       raise NotImplementedError(obj.__class__.__name__)
 
-  def _get_attribute_computed(self, cls, node, name, valself, valcls,
+  def _get_candidates_from_var(self, node, var, getter):
+    """Convenience method for calling get_x on a variable."""
+    candidates = []
+    if var:
+      nodes = []
+      for val in var.bindings:
+        new_node, candidate = getter(val)
+        nodes.append(new_node)
+        if candidate is not None:
+          candidates.append(candidate)
+      node = self.vm.join_cfg_nodes(nodes)
+    return node, candidates
+
+  def _get_attribute_computed(self, node, cls, name, valself, valcls,
                               compute_function):
     """Call compute_function (if defined) to compute an attribute."""
     assert isinstance(cls, abstract.Class)
     if (valself and not isinstance(valself.data, abstract.Module) and
         name != "__init__"):
       attr_var = self._lookup_from_mro(
-          cls, node, compute_function, valself, valcls,
-          skip=cls.vm.convert.object_type.data[0])
+          node, cls, compute_function, valself, valcls,
+          skip=self.vm.convert.object_type.data[0])
       if attr_var and attr_var.bindings:
-        vm = cls.vm  # pytype: disable=attribute-error
+        vm = self.vm  # pytype: disable=attribute-error
         name_var = abstract.AbstractOrConcreteValue(
             name, vm.convert.str_type, vm, node).to_variable(node, name)
         return vm.call_function(
             node, attr_var, abstract.FunctionArgs((name_var,)))
     return node, None
 
-  def _lookup_from_mro(self, obj, node, name, valself, valcls, skip=None):
+  def _lookup_from_mro(self, node, obj, name, valself, valcls, skip=None):
     """Find an identifier in the MRO of the class."""
-    ret = obj.vm.program.NewVariable(name)
+    ret = self.vm.program.NewVariable(name)
     add_origins = []
     variableself = variablecls = None
     if valself:
@@ -259,7 +276,7 @@ class AbstractAttributeHandler(object):
       # Potentially skip start of MRO, for super()
       if base is skip:
         continue
-      node, var = self._get_attribute_flat(base, node, name)
+      node, var = self._get_attribute_flat(node, base, name)
       if var is None or not var.bindings:
         continue
       for varval in var.bindings:
@@ -270,21 +287,21 @@ class AbstractAttributeHandler(object):
       break  # we found a class which has this attribute
     return ret
 
-  def _get_attribute_flat(self, obj, node, name):
+  def _get_attribute_flat(self, node, obj, name):
     if isinstance(obj, abstract.ParameterizedClass):
-      return self._get_attribute_flat(obj.base_cls, node, name)
+      return self._get_attribute_flat(node, obj.base_cls, name)
     elif isinstance(obj, abstract.Class):
-      node, attr = self._get_member(obj, node, name)
+      node, attr = self._get_member(node, obj, name)
       if attr is not None:
-        attr = self._filter_and_merge_candidates(obj, node, name, [attr])
+        attr = self._filter_and_merge_candidates(node, [attr], name)
       return node, attr
     elif isinstance(obj, (abstract.Unknown, abstract.Unsolvable)):
       # The object doesn't have an MRO, so this is the same as get_attribute
-      return self.get_attribute(obj, node, name)
+      return self.get_attribute(node, obj, name)
     else:
       return node, None
 
-  def _get_member(self, obj, node, name, valself=None):
+  def _get_member(self, node, obj, name, valself=None):
     """Get a member of an object."""
     node, attr = obj.load_special_attribute(node, name)
     if attr is not None:
@@ -300,7 +317,7 @@ class AbstractAttributeHandler(object):
       if name not in obj.members or not obj.members[name].Bindings(node):
         # See test_generic.testInstanceAttributeVisible for an example of an
         # attribute in self.members needing to be reloaded.
-        self._maybe_load_as_instance_attribute(obj, node, name)
+        self._maybe_load_as_instance_attribute(node, obj, name)
 
     # Retrieve instance attribute
     if name in obj.members:
@@ -312,10 +329,10 @@ class AbstractAttributeHandler(object):
         return node, obj.members[name]
     return node, None
 
-  def _filter_and_merge_candidates(self, obj, node, name, candidates,
+  def _filter_and_merge_candidates(self, node, candidates, name,
                                    condition=None):
     """Merge the given candidates into one variable, filtered by the node."""
-    ret = obj.vm.program.NewVariable(name)
+    ret = self.vm.program.NewVariable(name)
     for candidate in candidates:
       for binding in candidate.Bindings(node):
         val = binding.data
@@ -327,7 +344,7 @@ class AbstractAttributeHandler(object):
           if var.Bindings(node):
             candidates.append(var)
           else:
-            ret.AddBinding(obj.vm.convert.empty, [], node)
+            ret.AddBinding(self.vm.convert.empty, [], node)
         else:
           sources = {binding}
           if condition:
@@ -338,18 +355,18 @@ class AbstractAttributeHandler(object):
     else:
       return None
 
-  def _maybe_load_as_instance_attribute(self, obj, node, name):
+  def _maybe_load_as_instance_attribute(self, node, obj, name):
     assert isinstance(obj, abstract.SimpleAbstractValue)
     for cls in obj.cls.data:
       if isinstance(cls, abstract.Class):
-        var = self._get_as_instance_attribute(cls, node, name, obj)
+        var = self._get_as_instance_attribute(node, cls, name, obj)
         if var is not None:
           if name in obj.members:
             obj.members[name].PasteVariable(var, node)
           else:
             obj.members[name] = var
 
-  def _get_as_instance_attribute(self, cls, node, name, instance):
+  def _get_as_instance_attribute(self, node, cls, name, instance):
     assert isinstance(cls, abstract.Class)
     for base in cls.mro:
       if isinstance(base, abstract.ParameterizedClass):
@@ -359,7 +376,7 @@ class AbstractAttributeHandler(object):
         if var is not None:
           return var
 
-  def _set_member(self, obj, node, name, var):
+  def _set_member(self, node, obj, name, var):
     """Set a member on an object."""
     assert isinstance(var, typegraph.Variable)
 
@@ -373,7 +390,7 @@ class AbstractAttributeHandler(object):
       # The previous value needs to be loaded at the root node so that
       # (1) it is overwritten by the current value and (2) it is still
       # visible on branches where the current value is not
-      self._maybe_load_as_instance_attribute(obj, obj.vm.root_cfg_node, name)
+      self._maybe_load_as_instance_attribute(self.vm.root_cfg_node, obj, name)
 
     variable = obj.members.get(name)
     if variable:

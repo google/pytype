@@ -140,6 +140,44 @@ class TestAttributes(test_inference.InferenceTest):
       class MyClass4(object): pass
     """)
 
+  def testGetAttribute(self):
+    ty = self.Infer("""
+      class A(object):
+        def __getattribute__(self, name):
+          return 42
+      a = A()
+      a.x = "hello world"
+      x = a.x
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      class A(object):
+        x = ...  # type: str
+        def __getattribute__(self, name) -> int
+      a = ...  # type: A
+      x = ...  # type: int
+    """)
+
+  def testGetAttributeBranch(self):
+    ty = self.Infer("""
+      class A(object):
+        x = "hello world"
+      class B(object):
+        def __getattribute__(self, name):
+          return False
+      def f(x):
+        v = A()
+        if x:
+          v.__class__ = B
+        return v.x
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      class A(object):
+        x = ...  # type: str
+      class B(object):
+        def __getattribute__(self, name) -> bool
+      def f(x) -> str or bool
+    """)
+
   def testSetClass(self):
     ty = self.Infer("""
       def f(x):
