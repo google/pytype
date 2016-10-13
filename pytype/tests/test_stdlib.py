@@ -66,6 +66,16 @@ class StdlibTests(test_inference.InferenceTest):
     """)
 
 
+  def testPosix(self):
+    ty = self.Infer("""
+      import posix
+      x = posix.urandom(10)
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      posix = ...  # type: module
+      x = ...  # type: str
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()
