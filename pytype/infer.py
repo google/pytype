@@ -600,7 +600,7 @@ def check_types(py_src, pytd_src, py_filename, pytd_filename, errorlog,
                        os.path.basename(pytd_filename))
   else:
     tracer.analyze(loc, defs, builtin_names,
-                   maximum_depth=(1 if options.quick else None))
+                   maximum_depth=(2 if options.quick else None))
 
 
 def infer_types(src,
