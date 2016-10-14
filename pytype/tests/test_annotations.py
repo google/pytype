@@ -53,7 +53,7 @@ class AnnotationTest(test_inference.InferenceTest):
       import typing
       def foo(x: typing.Union[int, float], y: int):
         return x + y
-    """, deep=True, extract_locals=True)
+    """, deep=True, extract_locals=True, analyze_annotated=True)
     self.assertTypesMatchPytd(ty, """
       google_type_annotations = ...  # type: __future__._Feature
       typing = ...  # type: module
@@ -115,7 +115,7 @@ class AnnotationTest(test_inference.InferenceTest):
           x = l2
           y = "foo"
         x.append(y)
-    """, deep=True, extract_locals=True)
+    """, deep=True, extract_locals=True, analyze_annotated=True)
     self.assertTypesMatchPytd(ty, """
         List = ...  # type: type
         google_type_annotations = ...  # type: __future__._Feature
@@ -130,7 +130,7 @@ class AnnotationTest(test_inference.InferenceTest):
       class Foo:
         def f(self, x: List[int]):
           pass
-    """, deep=True, extract_locals=True)
+    """, deep=True, extract_locals=True, analyze_annotated=True)
     self.assertTypesMatchPytd(ty, """
       google_type_annotations = ...  # type: __future__._Feature
       List = ...  # type: type
@@ -510,7 +510,8 @@ class AnnotationTest(test_inference.InferenceTest):
         A = a.factory()
         def f(x: A):
           return x.name
-      """, deep=True, solve_unknowns=True, pythonpath=[d.path])
+      """, deep=True, solve_unknowns=True, pythonpath=[d.path],
+                      analyze_annotated=True)
       self.assertTypesMatchPytd(ty, """
         google_type_annotations = ...  # type: __future__._Feature
         a = ...  # type: module
@@ -565,6 +566,30 @@ class AnnotationTest(test_inference.InferenceTest):
     """)
     error = r"Actually passed:.*path: NoneType, x: int"
     self.assertErrorLogIs(errors, [(9, "wrong-arg-types", error)])
+
+  def testSkipFunctionsWithAnnotations(self):
+    ty = self.Infer("""\
+      from __future__ import google_type_annotations
+      _analyzed_baz = None
+      class Foo(object):
+        def __init__(self):
+          self._executed_init = True
+        def bar(self, x: int) -> None:
+          self._analyzed_bar = True
+      def baz(x: int) -> None:
+        global _analyzed_baz
+        _analyzed_baz = 3
+    """, deep=True, extract_locals=True)
+    self.assertTypesMatchPytd(ty, """
+      google_type_annotations = ...  # type: __future__._Feature
+      _analyzed_baz = ... # type: None
+      class Foo(object):
+        # We expect to *not* see _analyzed_bar here, because it's an attribute
+        # initialized by a function we're not analyzing.
+        _executed_init = ...  # type: bool
+        def bar(self, x: int) -> None: ...
+      def baz(x: int) -> None: ...
+    """)
 
 
 if __name__ == "__main__":

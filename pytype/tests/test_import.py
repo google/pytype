@@ -1,5 +1,7 @@
 """Tests for import."""
 
+import unittest
+
 
 from pytype import imports_map_loader
 from pytype import utils
@@ -789,6 +791,21 @@ class ImportTest(test_inference.InferenceTest):
       self.assertNoCrash("""\
         import foo
       """, pythonpath=[d.path])
+
+  @unittest.skip("instantiating 'type' should use 'Type[Any]', not 'Any'")
+  def testImportTypeFactory(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        def factory() -> type
+      """)
+      ty = self.Infer("""\
+        import a
+        A = a.factory()
+      """, deep=False, extract_locals=True, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        A = ...  # type: type
+      """)
 
 
 if __name__ == "__main__":

@@ -2433,6 +2433,10 @@ class BoundFunction(AtomicAbstractValue):
 class BoundInterpreterFunction(BoundFunction):
   """The method flavor of InterpreterFunction."""
 
+  @property
+  def annotations(self):
+    return self.underlying.annotations
+
   def get_first_opcode(self):
     return self.underlying.code.co_code[0]
 

@@ -80,6 +80,7 @@ class VirtualMachine(object):
                options,
                module_name=None,
                generate_unknowns=False,
+               analyze_annotated=False,
                cache_unknowns=True):
     """Construct a TypegraphVirtualMachine."""
     self.maximum_depth = sys.maxint
@@ -87,6 +88,7 @@ class VirtualMachine(object):
     self.options = options
     self.python_version = options.python_version
     self.generate_unknowns = generate_unknowns
+    self.analyze_annotated = analyze_annotated
     self.cache_unknowns = cache_unknowns
     self.loader = load_pytd.Loader(base_module=module_name, options=options)
     self.frames = []  # The call stack of frames.

@@ -124,14 +124,13 @@ class InferenceTest(unittest.TestCase):
       log.warning("Ignoring 'raises' parameter to assertNoErrors")
     self.options.tweak(pythonpath=pythonpath)
     errorlog = self._InitErrorLog(code)
-    unit, _ = infer.infer_types(
-        textwrap.dedent(code), errorlog, self.options,
-        deep=True, solve_unknowns=True, cache_unknowns=True)
+    infer.check_types(
+        textwrap.dedent(code), None, None, None,
+        errorlog=errorlog, options=self.options,
+        cache_unknowns=True)
     if report_errors and errorlog.has_error():
       errorlog.print_to_stderr()
       self.fail("Inferencer found %d errors" % len(errorlog))
-    unit.Visit(visitors.VerifyVisitor())
-    return pytd_utils.CanonicalOrdering(unit)
 
   def assertNoCrash(self, code, **kwargs):
     self.assertNoErrors(code, report_errors=False, **kwargs)
@@ -141,7 +140,8 @@ class InferenceTest(unittest.TestCase):
     code = textwrap.dedent(code)
     errorlog = self._InitErrorLog(code)
     unit, _ = infer.infer_types(
-        code, errorlog, self.options, deep=deep, cache_unknowns=True, **kwargs)
+        code, errorlog, self.options, deep=deep, analyze_annotated=True,
+        cache_unknowns=True, **kwargs)
     unit.Visit(visitors.VerifyVisitor())
     return pytd_utils.CanonicalOrdering(unit), errorlog
 

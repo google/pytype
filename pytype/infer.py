@@ -92,33 +92,37 @@ class CallTracer(vm.VirtualMachine):
     self.pop_frame(frame)
     return state.node, ret
 
-  def analyze_method(self, val, node):
+  def maybe_analyze_method(self, val, node):
     method = val.data
     fname = val.data.name
     if isinstance(method, (abstract.InterpreterFunction,
                            abstract.BoundInterpreterFunction)):
-      args = []
-      for i in range(method.argcount()):
-        node, arg = self.create_argument(node, method.signature,
-                                         method.signature.param_names[i], fname)
-        args.append(arg)
-      kws = {}
-      for key in method.signature.kwonly_params:
-        node, arg = self.create_argument(node, method.signature, key, fname)
-        kws[key] = arg
-      starargs = self.create_varargs(node) if method.has_varargs() else None
-      starstarargs = self.create_kwargs(node) if method.has_kwargs() else None
-      fvar = val.AssignToNewVariable("f", node)
-      new_node, _ = self.call_function_in_frame(
-          node, fvar, tuple(args), kws, starargs, starstarargs)
-      new_node.ConnectTo(node)
-      node = new_node
+      if not self.analyze_annotated and val.data.annotations:
+        log.info("%r has type annotations, not analyzing futher.", fname)
+      else:
+        args = []
+        for i in range(method.argcount()):
+          node, arg = self.create_argument(node, method.signature,
+                                           method.signature.param_names[i],
+                                           fname)
+          args.append(arg)
+        kws = {}
+        for key in method.signature.kwonly_params:
+          node, arg = self.create_argument(node, method.signature, key, fname)
+          kws[key] = arg
+        starargs = self.create_varargs(node) if method.has_varargs() else None
+        starstarargs = self.create_kwargs(node) if method.has_kwargs() else None
+        fvar = val.AssignToNewVariable("f", node)
+        new_node, _ = self.call_function_in_frame(
+            node, fvar, tuple(args), kws, starargs, starstarargs)
+        new_node.ConnectTo(node)
+        node = new_node
     return node
 
   def analyze_method_var(self, name, var, node):
     log.info("Analyzing %s", name)
     for val in var.Bindings(node):
-      node2 = self.analyze_method(val, node)
+      node2 = self.maybe_analyze_method(val, node)
       node2.ConnectTo(node)
     return node
 
@@ -165,7 +169,7 @@ class CallTracer(vm.VirtualMachine):
       # We analyze closures as part of the function they're defined in.
       log.info("Analyze functions: Skipping closure %s", val.data.name)
     else:
-      node2 = self.analyze_method(val, node)
+      node2 = self.maybe_analyze_method(val, node)
       node2.ConnectTo(node)
     return node
 
@@ -583,6 +587,7 @@ def check_types(py_src, pytd_src, py_filename, pytd_filename, errorlog,
   tracer = CallTracer(errorlog=errorlog, options=options,
                       module_name=_get_module_name(py_filename, options),
                       cache_unknowns=cache_unknowns,
+                      analyze_annotated=True,
                       generate_unknowns=False)
   loc, defs, builtin_names = tracer.run_program(
       py_src, py_filename, init_maximum_depth, run_builtins)
@@ -603,6 +608,7 @@ def infer_types(src,
                 filename=None, run_builtins=True,
                 deep=True, solve_unknowns=True,
                 cache_unknowns=False, extract_locals=True,
+                analyze_annotated=False,
                 init_maximum_depth=INIT_MAXIMUM_DEPTH, maximum_depth=None):
   """Given Python source return its types.
 
@@ -620,6 +626,7 @@ def infer_types(src,
     cache_unknowns: If True, do a faster approximation of unknown types.
     extract_locals: If not optimizing, should we at least remove the call
       traces?
+    analyze_annotated: If True, analyze methods with type annotations, too.
     init_maximum_depth: Depth of analysis during module loading.
     maximum_depth: Depth of the analysis. Default: unlimited.
   Returns:
@@ -630,6 +637,7 @@ def infer_types(src,
   tracer = CallTracer(errorlog=errorlog, options=options,
                       module_name=_get_module_name(filename, options),
                       cache_unknowns=cache_unknowns,
+                      analyze_annotated=analyze_annotated,
                       generate_unknowns=not options.quick)
   loc, defs, builtin_names = tracer.run_program(
       src, filename, init_maximum_depth, run_builtins)
