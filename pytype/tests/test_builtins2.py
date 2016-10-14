@@ -310,6 +310,28 @@ class BuiltinTests2(test_inference.InferenceTest):
       x7 = ...  # type: List[bool]
     """)
 
+  def testStrJoin(self):
+    ty = self.Infer("""
+      a = ",".join([])
+      b = u",".join([])
+      c = ",".join(["foo"])
+      d = u",".join(["foo"])
+      e = ",".join([u"foo"])
+      f = u",".join([u"foo"])
+      g = ",".join([u"foo", "bar"])
+      h = u",".join([u"foo", "bar"])
+    """, deep=False)
+    self.assertTypesMatchPytd(ty, """
+      a = ...  # type: str
+      b = ...  # type: unicode
+      c = ...  # type: str
+      d = ...  # type: unicode
+      e = ...  # type: unicode
+      f = ...  # type: unicode
+      g = ...  # type: str or unicode
+      h = ...  # type: unicode
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()
