@@ -569,7 +569,13 @@ class VirtualMachine(object):
     node = node.ConnectNew("init")
     node, f_globals, _, _ = self.run_bytecode(node, code, f_globals, f_locals)
     logging.info("Done running bytecode, postprocessing globals")
-    for name, var in f_globals.members.items():
+    # Sort the members so that the official names of values that appear multiple
+    # times don't depend on the dictionary's iteration order. When possible, we
+    # pick the official name that corresponds to a value's actual name.
+    global_members = sorted(
+        f_globals.members.items(),
+        key=lambda (name, var): (sum(name == v.name for v in var.data), name))
+    for name, var in global_members:
       abstract.variable_set_official_name(var, name)
     for func in self.functions_with_late_annotations:
       self._eval_late_annotations(node, func, f_globals)

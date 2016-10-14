@@ -539,6 +539,20 @@ class ClassesTest(test_inference.InferenceTest):
         x = ...  # type: a.A
       """)
 
+  def testCallAlias(self):
+    ty = self.Infer("""
+      class A: pass
+      B = A
+      x = B()
+    """)
+    # We don't care whether the type of x is inferred as A or B, but we want it
+    # to always be the same.
+    self.assertTypesMatchPytd(ty, """
+      class A: ...
+      class B: ...
+      x = ...  # type: A
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()
