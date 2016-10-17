@@ -332,6 +332,20 @@ class BuiltinTests2(test_inference.InferenceTest):
       h = ...  # type: unicode
     """)
 
+  def testBytearrayJoin(self):
+    ty = self.Infer("""
+      b = bytearray()
+      x1 = b.join([])
+      x2 = b.join(["x"])
+      x3 = b.join([b])
+    """)
+    self.assertTypesMatchPytd(ty, """
+      b = ...  # type: bytearray
+      x1 = ...  # type: bytearray
+      x2 = ...  # type: bytearray
+      x3 = ...  # type: bytearray
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

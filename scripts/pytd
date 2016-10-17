@@ -17,6 +17,7 @@ import sys
 from pytype.pytd import optimize
 from pytype.pytd import pytd
 from pytype.pytd import utils
+from pytype.pytd.parse import builtins
 from pytype.pytd.parse import parser
 
 
@@ -78,6 +79,7 @@ def main():
 
   if options.optimize:
     parsed = optimize.Optimize(parsed,
+                               builtins.GetBuiltinsPyTD(),
                                lossy=options.lossy,
                                use_abcs=options.use_abcs,
                                max_union=options.max_union,

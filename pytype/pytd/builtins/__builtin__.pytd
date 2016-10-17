@@ -348,7 +348,7 @@ class bytearray(Sequence[int]):
     def isspace(self) -> bool
     def istitle(self) -> bool
     def isupper(self) -> bool
-    def join(self, iterable_of_bytes) -> bytearray
+    def join(self, iterable: Iterable[nothing or str or bytearray]) -> bytearray
     def ljust(self, width: int, ...) -> bytearray
     def lower(self) -> bytearray
     def lstrip(self, ...) -> bytearray

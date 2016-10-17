@@ -117,7 +117,7 @@ class AtomicAbstractValue(object):
   def full_name(self):
     return (self.module + "." if self.module else "") + self.name
 
-  def __str__(self):
+  def __repr__(self):
     return self.name
 
   def default_mro(self):
@@ -511,13 +511,6 @@ class SimpleAbstractValue(AtomicAbstractValue):
     else:
       raise NotCallable(self)
 
-  def __str__(self):
-    if self.cls:
-      cls = self.cls.data[0]
-      return "<instance of %s>" % cls.name
-    else:
-      return "<instance>"
-
   def __repr__(self):
     if self.cls:
       cls = self.cls.data[0]
@@ -636,6 +629,13 @@ class Instance(SimpleAbstractValue):
               #  class List(Generic[T]): pass
               #  class Foo(List[U]): pass
               self.type_parameters.add_alias(name, param.name)
+
+  def __str__(self):
+    if self.cls:
+      cls = self.cls.data[0]
+      return "<instance of %s>" % cls.name
+    else:
+      return "<instance>"
 
   def make_template_unsolvable(self, template, node):
     for formal in template:
@@ -1196,7 +1196,7 @@ class Function(Instance):
   def __repr__(self):
     return self.name + "(...)"
 
-  # We want to use __repr__ above rather than SimpleAbstractValue.__str__
+  # We want to use __repr__ above rather than Instance.__str__
   __str__ = __repr__
 
 
@@ -1795,9 +1795,6 @@ class PyTDClass(SimpleAbstractValue, Class):
   def __repr__(self):
     return self.name
 
-  def __str__(self):
-    return self.name
-
   def to_pytd_def(self, node, name):
     # This happens if a module does e.g. "from x import y as z", i.e., copies
     # something from another module to the local namespace. We *could*
@@ -1928,8 +1925,6 @@ class InterpreterClass(SimpleAbstractValue, Class):
 
   def __repr__(self):
     return "InterpreterClass(%s)" % self.name
-
-  __str__ = __repr__
 
 
 class NativeFunction(Function):
@@ -2428,6 +2423,13 @@ class BoundFunction(AtomicAbstractValue):
 
   def to_type(self, node, seen=None):
     return pytd.NamedType("__builtin__.function")
+
+  def __repr__(self):
+    if self._callself and self._callself.bindings:
+      callself = self._callself.data[0].name
+    else:
+      callself = "<class>"
+    return callself + "." + repr(self.underlying)
 
 
 class BoundInterpreterFunction(BoundFunction):
