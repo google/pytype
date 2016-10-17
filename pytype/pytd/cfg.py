@@ -94,8 +94,8 @@ class Program(object):
   def Freeze(self):
     """'Freeze' the program in preparation for solving.
 
-    At this point, the graph must have an entrypoint and every node must be
-    reachable (going forwards) from it, in order for _CompressGraph to work.
+    At this point, the graph must have an entrypoint in order for _CompressGraph
+    to work.
     We disable NewCFGNode to prevent the addition of more nodes, but existing
     nodes also should not be changed.
     """
@@ -156,13 +156,10 @@ class Program(object):
       seen.add(node)
       if len(node.incoming) == 1:
         node_in, = node.incoming
-        if node_in.supernode and len(node_in.outgoing) == 1:
+        if len(node_in.outgoing) == 1:
           node.supernode = node_in.supernode
+          node.position = len(node.supernode)
           node.supernode.append(node)
-          node.position = node_in.position + 1
-      if not node.supernode:
-        node.supernode = [node]
-        node.position = 0
       stack.extend(node.outgoing)
     assert len(seen) == len(self.cfg_nodes)
 
@@ -199,8 +196,8 @@ class CFGNode(object):
     self.outgoing = set()
     self.bindings = set()  # filled through RegisterBinding()
     self.reachable_subset = {self}
-    self.supernode = None
-    self.position = None
+    self.supernode = [self]
+    self.position = 0
 
   def ConnectNew(self, name=None):
     """Add a new node connected to this node."""
@@ -242,10 +239,15 @@ class CFGNode(object):
     Returns:
       True if the combination is possible, False otherwise.
     """
-    # Optimization: check the entire combination only if all of the bindings are
-    # possible separately.
-    return (all(self.program.solver.Solve({b}, self) for b in bindings)
-            and self.program.solver.Solve(bindings, self))
+    if self.program.solver:
+      # Program already frozen. Use the fast solver.
+      # Optimization: check the entire combination only if all of the bindings
+      # are possible separately.
+      return (all(self.program.solver.Solve({b}, self) for b in bindings)
+              and self.program.solver.Solve(bindings, self))
+    else:
+      # Use the slower solving for the occasional solver call in between.
+      return Solver(self).Solve(bindings, self)
 
   def RegisterBinding(self, binding):
     self.bindings.add(binding)

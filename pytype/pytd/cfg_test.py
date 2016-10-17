@@ -361,6 +361,16 @@ class CFGTest(unittest.TestCase):
     self._Freeze(p, entrypoint=n1)
     self.assertTrue(n2.HasCombination([a]))
 
+  def testNonFrozenSolving(self):
+    p = cfg.Program()
+    n1 = p.NewCFGNode("n1")
+    n2 = n1.ConnectNew("n2")
+    x = p.NewVariable("x")
+    a = x.AddBinding("a", source_set=[], where=n1)
+    a = x.AddBinding("b", source_set=[], where=n2)
+    p.entrypoint = n1
+    self.assertTrue(n2.HasCombination([a]))
+
   def testFilter2(self):
     p = cfg.Program()
     n1 = p.NewCFGNode("n1")
