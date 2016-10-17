@@ -576,6 +576,33 @@ class Variable(object):
     return set(self._cfgnode_to_bindings)
 
 
+def _GoalsConflict(goals):
+  """Are the given bindings conflicting?
+
+  Args:
+    goals: A list of goals.
+
+  Returns:
+    True if we would need a variable to be assigned to two distinct
+    bindings at the same time in order to solve this combination of goals.
+    False if there are no conflicting goals.
+
+  Raises:
+    AssertionError: For internal errors.
+  """
+  variables = {}
+  for goal in goals:
+    existing = variables.get(goal.variable)
+    if existing:
+      if existing is goal:
+        raise AssertionError("Internal error. Duplicate goal.")
+      if existing.data is goal.data:
+        raise AssertionError("Internal error. Duplicate data across bindings")
+      return True
+    variables[goal.variable] = goal
+  return False
+
+
 class State(object):
   """A state needs to "solve" a list of goals to succeed.
 
@@ -594,29 +621,6 @@ class State(object):
   def Done(self):
     """Is this State solved? This checks whether the list of goals is empty."""
     return not self.goals
-
-  def HasConflictingGoals(self):
-    """Are there bindings in this state that can't be valid at the same time?
-
-    Returns:
-      True if we would need a variable to be assigned to two distinct
-      bindings at the same time in order to solve this state. False if there are
-      no conflicting goals.
-
-    Raises:
-      AssertionError: For internal errors.
-    """
-    variables = {}
-    for goal in self.goals:
-      existing = variables.get(goal.variable)
-      if existing:
-        if existing is goal:
-          raise AssertionError("Internal error. Duplicate goal.")
-        if existing.data is goal.data:
-          raise AssertionError("Internal error. Duplicate data across bindings")
-        return True
-      variables[goal.variable] = goal
-    return False
 
   def NodesWithAssignments(self):
     """Find all CFG nodes corresponding to goal variable assignments.
@@ -637,21 +641,17 @@ class State(object):
     self.goals.remove(goal)
     self.goals.update(replace_with)
 
-  def _AddSources(self, goal, seen_goals, new_goals):
+  def _AddSources(self, goal, new_goals):
     """If the goal is trivially fulfilled, add its sources as new goals.
 
     Args:
       goal: The goal.
-      seen_goals: The set of previously seen goals, which will be augmented
-        with goal. The caller is responsible for checking whether goal is
-        already present.
       new_goals: The set of new goals, to which goal's sources are added iff
         this method returns True.
 
     Returns:
       True if the goal is trivially fulfilled and False otherwise.
     """
-    seen_goals.add(goal)
     origin = goal.FindOrigin(self.pos)
     # For source sets > 2, we don't know which sources to use, so we have
     # to let the solver iterate over them later.
@@ -663,22 +663,29 @@ class State(object):
 
   def RemoveFinishedGoals(self):
     """Remove all goals that are trivially fulfilled at the current CFG node."""
-    seen_goals = set()
     new_goals = set()
-    for goal in self.goals.copy():
-      if self._AddSources(goal, seen_goals, new_goals):
-        self.goals.remove(goal)
+    goals_to_remove = set()
+    for goal in self.goals:
+      if self._AddSources(goal, new_goals):
+        goals_to_remove.add(goal)
     # We might remove multiple layers of nested goals, so loop until we don't
     # find anything to replace anymore. Storing new goals in a separate set is
     # faster than adding and removing them from self.goals.
+    seen_goals = self.goals.copy()
     while new_goals:
       goal = new_goals.pop()
       if goal in seen_goals:
         # Only process a given goal once, to prevent infinite loops for cyclic
         # data structures.
         continue
-      if not self._AddSources(goal, seen_goals, new_goals):
+      seen_goals.add(goal)
+      if self._AddSources(goal, new_goals):
+        goals_to_remove.add(goal)
+      else:
         self.goals.add(goal)
+    for goal in goals_to_remove:
+      self.goals.discard(goal)
+    return goals_to_remove
 
   def __hash__(self):
     """Compute hash for this State. We use States as keys when memoizing."""
@@ -820,7 +827,7 @@ class Solver(object):
     """Find a sequence of assignments that would solve the given state."""
     if state.Done():
       return True
-    if state.HasConflictingGoals():
+    if _GoalsConflict(state.goals):
       return False
     Solver._goals_per_find_metric.add(len(state.goals))
     blocked = state.NodesWithAssignments()
@@ -843,7 +850,11 @@ class Solver(object):
             new_state.Replace(goal, source_set)
             # Also remove all goals that are trivially fulfilled at the
             # new CFG node.
-            new_state.RemoveFinishedGoals()
+            removed = new_state.RemoveFinishedGoals()
+            removed.add(goal)
+            if _GoalsConflict(removed):
+              # Sometimes, we bulk-remove goals that are internally conflicting.
+              return False
             if self._RecallOrFindSolution(new_state):
               return True
     return False

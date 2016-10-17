@@ -134,15 +134,12 @@ class BuiltinTests(test_inference.InferenceTest):
     self.assertTypesMatchPytd(ty, """
       def t_testDict() -> float or int
       # _i1_, _i2_ capture the more precise definitions of the ~dict, ~list
-      def _i1_(x: List[float or int, ...]) -> List[float or int, ...]
+      # TODO(kramm): The float/int split happens because
+      # InterpreterFunction.to_pytd_def uses deep_product_dict(). Do we want
+      # the output in this form?
+      def _i1_(x: List[float]) -> List[float]
+      def _i1_(x: List[int]) -> List[int]
       def _i2_(x: dict[complex or str, float or int]) -> Dict[complex or str, float or int]
-      # TODO(pludemann): solve_unknowns=True removes this:
-      # class `~dict`:
-      #   def __setitem__(self, i: complex, y: float) -> NoneType
-      #   def __setitem__(self, i: str, y: int) -> NoneType
-      #   def values(self) -> List[float or int, ...]
-      # class `~list`:
-      #   def __getitem__(self, index: int) -> float or int
     """)
 
   def testDictDefaults(self):

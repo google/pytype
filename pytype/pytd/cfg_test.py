@@ -267,6 +267,19 @@ class CFGTest(unittest.TestCase):
     self.assertFalse(n2.HasCombination([ya, zb]))
     self.assertFalse(n2.HasCombination([yb, za]))
 
+  def testConflictingBindings(self):
+    p = cfg.Program()
+    n1 = p.NewCFGNode("n1")
+    n2 = n1.ConnectNew("n2")
+    x = p.NewVariable("x")
+    x_a = x.AddBinding("a", source_set=[], where=n1)
+    x_b = x.AddBinding("b", source_set=[], where=n1)
+    self._Freeze(p, entrypoint=n1)
+    self.assertTrue(n1.HasCombination([x_a]))
+    self.assertTrue(n1.HasCombination([x_b]))
+    self.assertFalse(n1.HasCombination([x_a, x_b]))
+    self.assertFalse(n2.HasCombination([x_a, x_b]))
+
   def testSameNodeOrigin(self):
     # [n1] x = a or b; y = x
     p = cfg.Program()
@@ -358,6 +371,42 @@ class CFGTest(unittest.TestCase):
     self._Freeze(p, entrypoint=n1)
     self.assertEquals(x.Filter(n1), [])
     self.assertEquals(x.Filter(n2), [a])
+
+  def testHiddenConflict1(self):
+    p = cfg.Program()
+    n1 = p.NewCFGNode("n1")
+    n2 = n1.ConnectNew("n2")
+    n3 = n1.ConnectNew("n3")
+    x = p.NewVariable("x")
+    y = p.NewVariable("y")
+    z = p.NewVariable("z")
+    x_a = x.AddBinding("a", source_set=[], where=n1)
+    x_b = x.AddBinding("b", source_set=[], where=n1)
+    y_a = y.AddBinding("a", source_set=[x_a], where=n1)
+    y_b = y.AddBinding("b", source_set=[x_b], where=n2)
+    z_ab1 = z.AddBinding("ab1", source_set=[x_a, x_b], where=n3)
+    z_ab2 = z.AddBinding("ab2", source_set=[y_a, x_b], where=n3)
+    z_ab3 = z.AddBinding("ab3", source_set=[y_b, x_a], where=n3)
+    z_ab4 = z.AddBinding("ab4", source_set=[y_a, y_b], where=n3)
+    self._Freeze(p, entrypoint=n1)
+    self.assertFalse(n2.HasCombination([y_a, x_b]))
+    self.assertFalse(n2.HasCombination([y_b, x_a]))
+    self.assertFalse(n3.HasCombination([z_ab1]))
+    self.assertFalse(n3.HasCombination([z_ab2]))
+    self.assertFalse(n3.HasCombination([z_ab3]))
+    self.assertFalse(n3.HasCombination([z_ab4]))
+
+  def testHiddenConflict2(self):
+    p = cfg.Program()
+    n1 = p.NewCFGNode("n1")
+    n2 = n1.ConnectNew("n2")
+    x = p.NewVariable("x")
+    y = p.NewVariable("y")
+    x_a = x.AddBinding("a", source_set=[], where=n1)
+    x_b = x.AddBinding("b", source_set=[], where=n1)
+    y_b = y.AddBinding("b", source_set=[x_b], where=n1)
+    self._Freeze(p, entrypoint=n1)
+    self.assertFalse(n2.HasCombination([y_b, x_a]))
 
   def testEmptyBinding(self):
     p = cfg.Program()
