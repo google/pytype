@@ -553,6 +553,94 @@ class ClassesTest(test_inference.InferenceTest):
       x = ...  # type: A
     """)
 
+  def testNew(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        class A(object):
+          def __new__(cls, x: int) -> B
+        class B: ...
+      """)
+      ty = self.Infer("""
+        import a
+        class C(object):
+          def __new__(cls):
+            return "hello world"
+        x1 = a.A(42)
+        x2 = C()
+        x3 = object.__new__(bool)
+      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        class C(object):
+          def __new__(cls) -> str
+        x1 = ...  # type: a.B
+        x2 = ...  # type: str
+        x3 = ...  # type: bool
+      """)
+
+  def testNewAndInit(self):
+    ty = self.Infer("""
+      class A(object):
+        def __new__(cls, a, b):
+          return super(A, cls).__new__(cls, a, b)
+        def __init__(self, a, b):
+          self.x = a + b
+      class B(object):
+        def __new__(cls, x):
+          v = A(x, 0)
+          v.y = False
+          return v
+        # __init__ should not be called
+        def __init__(self, x):
+          pass
+      x1 = A("hello", "world")
+      x2 = x1.x
+      x3 = B(3.14)
+      x4 = x3.x
+      x5 = x3.y
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      class A(object):
+        x = ...  # type: str or int or long or float or complex
+        y = ...  # type: bool
+        def __new__(cls, a, b) -> Any
+        def __init__(self, a: str, b: str) -> None
+        def __init__(self, a: float or long or complex, b: float or long or complex) -> None
+      class B(object):
+        def __new__(cls, x: float or long or complex) -> A
+        def __init__(self, x) -> None
+      x1 = ...  # type: A
+      x2 = ...  # type: str
+      x3 = ...  # type: A
+      x4 = ...  # type: float
+      x5 = ...  # type: bool
+    """)
+
+  def testNewAndInitPyi(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        T = TypeVar("T")
+        N = TypeVar("N")
+        class A(Generic[T]):
+          def __new__(cls, x) -> A[nothing]
+          def __init__(self, x: N):
+            self := A[N]
+        class B(object):
+          def __new__(cls) -> A[str]
+          # __init__ should not be called
+          def __init__(self, x, y) -> None
+      """)
+      ty = self.Infer("""
+        import a
+        x1 = a.A(0)
+        x2 = a.B()
+      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        x1 = ...  # type: a.A[int]
+        x2 = ...  # type: a.A[str]
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()

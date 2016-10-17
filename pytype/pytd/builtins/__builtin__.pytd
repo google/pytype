@@ -159,7 +159,7 @@ class object():
     def __setattr__(self, name, value) -> None
     def __getattr__(self, name) -> Any
     def __getattribute__(self, name) -> Any
-    def __new__(cls: type) -> object
+    def __new__(cls: Type[T], ...) -> T
 
 # old style class. classobj is in fact a subclass of object in Python.
 class classobj(object):
@@ -263,7 +263,7 @@ class str(basestring, Sequence[str]):
     def translate(self, table: str or NoneType, deletechars: str) -> str
     def upper(self) -> str
     def zfill(self, width: int) -> str
-    def __new__(cls: type, y: str or unicode or bytearray = ...) -> str
+    def __new__(cls: Type[str], y = ...) -> str
 
 bytes = str
 
@@ -1001,7 +1001,7 @@ class super(nothing):
     def __init__(self, ...) -> NoneType
     def __get__(self, obj, ...) -> super
     def __set__(self, obj, value) -> super
-    def __new__(cls: type, ...) -> super
+    def __new__(cls: Type[super], ...) -> super
 
 class xrange(Sized, Iterable[int], Reversible[int]):
     def __init__(self, stop: int, ...) -> NoneType

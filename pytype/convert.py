@@ -102,6 +102,9 @@ class Converter(object):
         None: self.primitive_class_instances[bool],
     }
     self.empty_type = self.empty.to_variable(self.vm.root_cfg_node, "empty")
+    object_val, = self.object_type.data
+    object_val.load_lazy_attribute("__new__")
+    self.object_new, = object_val.members["__new__"].data
 
   def convert_value_to_string(self, val):
     if isinstance(val, abstract.PythonConstant) and isinstance(val.pyval, str):

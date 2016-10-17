@@ -1645,6 +1645,38 @@ class Class(object):
     del node
     return pytd.Class(name, None, (), (), (), ())
 
+  def _call_new_and_init(self, node, value, args):
+    """Call __new__ if it has been overridden on the given value."""
+    node, new = self.vm.attribute_handler.get_attribute(
+        node, value.data, "__new__", value)
+    if new is None:
+      return node, None
+    if len(new.bindings) == 1:
+      f = new.bindings[0].data
+      if isinstance(f, StaticMethod):
+        f = f.method
+      if isinstance(f, AMBIGUOUS_OR_EMPTY) or f is self.vm.convert.object_new:
+        # Instead of calling object.__new__, our abstract classes directly
+        # create instances of themselves.
+        return node, None
+    cls = value.AssignToNewVariable(value.data.name, node)
+    new_args = args.replace(posargs=(cls,) + args.posargs)
+    node, variable = self.vm.call_function(node, new, new_args)
+    for val in variable.bindings:
+      if val.data.cls and self in val.data.cls.data:
+        node = self._call_init(node, val, args)
+    return node, variable
+
+  def _call_init(self, node, value, args):
+    node, init = self.vm.attribute_handler.get_attribute(
+        node, value.data, "__init__", value)
+    # TODO(pludemann): Verify that this follows MRO:
+    if init:
+      log.debug("calling %s.__init__(...)", self.name)
+      node, ret = self.vm.call_function(node, init, args)
+      log.debug("%s.__init__(...) returned %r", self.name, ret)
+    return node
+
 
 class ParameterizedClass(AtomicAbstractValue, Class):
   """A class that contains additional parameters. E.g. a container.
@@ -1741,25 +1773,17 @@ class PyTDClass(SimpleAbstractValue, Class):
       raise AssertionError("Invalid class member %s", pytd.Print(pyval))
 
   def call(self, node, func, args):
-    value = Instance(self.vm.convert.convert_constant(
-        self.name, self.pytd_cls), self.vm, node)
-
-    for type_param in self.pytd_cls.template:
-      if type_param.name not in value.type_parameters:
-        value.type_parameters[type_param.name] = self.vm.program.NewVariable(
-            type_param.name)
-
-    results = self.vm.program.NewVariable(self.name)
-    retval = results.AddBinding(value, [func], node)
-
-    node, init = self.vm.attribute_handler.get_attribute(
-        node, value, "__init__", retval, value.cls.bindings[0])
-    # TODO(pludemann): Verify that this follows MRO:
-    if init:
-      log.debug("calling %s.__init__(...)", self.name)
-      node, ret = self.vm.call_function(node, init, args)
-      log.debug("%s.__init__(...) returned %r", self.name, ret)
-
+    node, results = self._call_new_and_init(node, func, args)
+    if results is None:
+      value = Instance(self.vm.convert.convert_constant(
+          self.name, self.pytd_cls), self.vm, node)
+      for type_param in self.pytd_cls.template:
+        if type_param.name not in value.type_parameters:
+          value.type_parameters[type_param.name] = self.vm.program.NewVariable(
+              type_param.name)
+      results = self.vm.program.NewVariable(self.name)
+      retval = results.AddBinding(value, [func], node)
+      node = self._call_init(node, retval, args)
     return node, results
 
   def instantiate(self, node):
@@ -1854,15 +1878,12 @@ class InterpreterClass(SimpleAbstractValue, Class):
     return self._instance_cache[key]
 
   def call(self, node, value, args):
-    value = self._new_instance()
-    variable = self.vm.program.NewVariable(self.name + " instance")
-    val = variable.AddBinding(value, [], node)
-    node, init = self.vm.attribute_handler.get_attribute(
-        node, value, "__init__", val)
-    if init:
-      log.debug("calling %s.__init__(...)", self.name)
-      node, ret = self.vm.call_function(node, init, args)
-      log.debug("%s.__init__(...) returned %r", self.name, ret)
+    node, variable = self._call_new_and_init(node, value, args)
+    if variable is None:
+      value = self._new_instance()
+      variable = self.vm.program.NewVariable(self.name + " instance")
+      val = variable.AddBinding(value, [], node)
+      node = self._call_init(node, val, args)
     return node, variable
 
   def to_type(self, node, seen=None):
