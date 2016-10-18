@@ -118,74 +118,33 @@ class AbstractAttributeHandler(object):
 
   def get_class_attribute(self, node, cls, name, valself=None, valcls=None,
                           condition=None):
-    """Retrieve an attribute by looking at the MRO of this class."""
-    del condition  # unused arg.
+    """Get an attribute from a class."""
     assert isinstance(cls, abstract.Class)
-    if cls.cls and not valself:
-      # TODO(rechen): Use valcls instead of creating a dummy instance.
-      variableself, = abstract.Instance(
-          cls.cls, self.vm, node).to_variable(node).bindings
-      variablecls, = cls.cls.bindings
-      node, attr = self.get_attribute(
-          node, variableself.data, name, variableself, variablecls)
-      if attr is not None:
-        return node, attr
-    node, attr = self._get_attribute_computed(
-        node, cls, name, valself, valcls, compute_function="__getattribute__")
-    if attr is None:
-      # _lookup_from_mro always returns a Variable.
-      attr = self._lookup_from_mro(node, cls, name, valself, valcls)
-    if not attr.bindings:
-      node, attr = self._get_attribute_computed(
-          node, cls, name, valself, valcls, compute_function="__getattr__")
-    if isinstance(cls, abstract.InterpreterClass) and attr is not None:
-      result = self.vm.program.NewVariable(name)
-      nodes = []
-      # Deal with descriptors as a potential additional level of indirection.
-      for v in attr.Bindings(node):
-        value = v.data
-        node2, getter = self.get_attribute(node, value, "__get__", v)
-        if getter is not None:
-          posargs = []
-          if valself:
-            posargs.append(valself.variable)
-          if valcls:
-            if not valself:
-              posargs.append(self.vm.convert.none.to_variable(node, "None"))
-            posargs.append(valcls.variable)
-          node2, get_result = self.vm.call_function(
-              node2, getter, abstract.FunctionArgs(tuple(posargs)))
-          for getter in get_result.bindings:
-            result.AddBinding(getter.data, [getter], node2)
-        else:
-          result.AddBinding(value, [v], node2)
-        nodes.append(node2)
-      if nodes:
-        return self.vm.join_cfg_nodes(nodes), result
-    return node, attr
+    getter = lambda cls: self._class_getter(node, cls, name, valself, valcls)
+    if valself:
+      meta = None
+    else:
+      # We treat a class as an instance of its metaclass, but only if we are
+      # looking for a class rather than an instance attribute. (So, for
+      # instance, if we're analyzing int.mro(), we want to retrieve the mro
+      # method on the type class, but for (3).mro(), we want to report that the
+      # method does not exist.)
+      meta = cls.cls
+    if meta:
+      variableself = cls.to_variable(node).bindings[0]
+    else:
+      variableself = valself
+    return self._get_value_or_class_attribute(
+        node, cls, name, variableself, meta, condition, getter)
 
   def get_instance_attribute(self, node, obj, name, valself=None, valcls=None,
                              condition=None):
     """Get an attribute from an instance."""
     del valcls  # unused
     assert isinstance(obj, abstract.SimpleAbstractValue)
-    def computer(clsval):
-      return self._get_attribute_computed(
-          node, clsval.data, name, valself, clsval,
-          compute_function="__getattribute__")
-    node, candidates = self._get_candidates_from_var(node, obj.cls, computer)
-    if not candidates or len(candidates) < len(obj.cls.bindings):
-      node, attr = self._get_member(node, obj, name, valself)
-      if attr is None:
-        def getter(clsval):
-          return self.get_attribute(node, clsval.data, name, valself, clsval)
-        node, new_candidates = self._get_candidates_from_var(
-            node, obj.cls, getter)
-        candidates.extend(new_candidates)
-      else:
-        candidates.append(attr)
-    return node, self._filter_and_merge_candidates(
-        node, candidates, name, condition)
+    getter = lambda obj: self._get_member(node, obj, name, valself)
+    return self._get_value_or_class_attribute(
+        node, obj, name, valself, obj.cls, condition, getter)
 
   def set_attribute(self, node, obj, name, value):
     """Set an attribute on an object.
@@ -229,6 +188,77 @@ class AbstractAttributeHandler(object):
       return node
     else:
       raise NotImplementedError(obj.__class__.__name__)
+
+  def _get_value_or_class_attribute(self, node, obj, name, valself, clsvar,
+                                    condition, get_from_value):
+    """Get an attribute from a value or its class.
+
+    Args:
+      node: The current node.
+      obj: The value.
+      name: The name of the attribute.
+      valself: The object binding.
+      clsvar: A variable of the object class.
+      condition: A condition.
+      get_from_value: A function that looks up the attribute on a value.
+
+    Returns:
+      A tuple of the node and the attribute, or None if it was not found.
+    """
+    def computer(clsval):
+      return self._get_attribute_computed(
+          node, clsval.data, name, valself, clsval,
+          compute_function="__getattribute__")
+    node, candidates = self._get_candidates_from_var(node, clsvar, computer)
+    if not candidates or len(candidates) < len(clsvar.bindings):
+      node, attr = get_from_value(obj)
+      if attr is None:
+        def getter(clsval):
+          new_node, new_attr = self.get_attribute(
+              node, clsval.data, name, valself, clsval)
+          if new_attr is None:
+            new_node, new_attr = self._get_attribute_computed(
+                node, clsval.data, name, valself, clsval,
+                compute_function="__getattr__")
+          return new_node, new_attr
+        node, new_candidates = self._get_candidates_from_var(
+            node, clsvar, getter)
+        candidates.extend(new_candidates)
+      else:
+        candidates.append(attr)
+    return node, self._filter_and_merge_candidates(
+        node, candidates, name, condition)
+
+  def _class_getter(self, node, cls, name, valself, valcls):
+    """Retrieve an attribute by looking at the MRO of this class."""
+    attr = self._lookup_from_mro(node, cls, name, valself, valcls)
+    if not attr.bindings:
+      return node, None
+    if isinstance(cls, abstract.InterpreterClass):
+      result = self.vm.program.NewVariable(name)
+      nodes = []
+      # Deal with descriptors as a potential additional level of indirection.
+      for v in attr.Bindings(node):
+        value = v.data
+        node2, getter = self.get_attribute(node, value, "__get__", v)
+        if getter is not None:
+          posargs = []
+          if valself:
+            posargs.append(valself.variable)
+          if valcls:
+            if not valself:
+              posargs.append(self.vm.convert.none.to_variable(node, "None"))
+            posargs.append(valcls.variable)
+          node2, get_result = self.vm.call_function(
+              node2, getter, abstract.FunctionArgs(tuple(posargs)))
+          for getter in get_result.bindings:
+            result.AddBinding(getter.data, [getter], node2)
+        else:
+          result.AddBinding(value, [v], node2)
+        nodes.append(node2)
+      if nodes:
+        return self.vm.join_cfg_nodes(nodes), result
+    return node, attr
 
   def _get_candidates_from_var(self, node, var, getter):
     """Convenience method for calling get_x on a variable."""

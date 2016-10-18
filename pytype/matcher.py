@@ -194,18 +194,14 @@ class AbstractMatcher(object):
       elif other_type.full_name in [
           "__builtin__.type", "__builtin__.object", "typing.Callable"]:
         return subst
+      elif left.cls:
+        return self._match_instance_against_type(
+            left, other_type, subst, node, view)
     elif isinstance(left, abstract.SimpleAbstractValue):
-      left_type = left.get_class()
-      assert left_type
-      assert isinstance(left, abstract.Instance)
-      for left_cls in left_type.data:
-        subst = self._match_instance_against_type(
-            left_cls, left, other_type, subst, node, view)
-        if subst is None:
-          return None
-      return subst
-    elif isinstance(left, abstract.SuperInstance):
       return self._match_instance_against_type(
+          left, other_type, subst, node, view)
+    elif isinstance(left, abstract.SuperInstance):
+      return self._match_class_and_instance_against_type(
           left.super_cls, left.super_obj, other_type, subst, node, view)
     elif isinstance(left, (abstract.Function, abstract.BoundFunction)):
       if other_type.full_name in [
@@ -228,8 +224,18 @@ class AbstractMatcher(object):
     else:
       raise NotImplementedError("Matching not implemented for %s", type(left))
 
+  def _match_instance_against_type(self, left, other_type, subst, node, view):
+    left_type = left.get_class()
+    assert left_type
+    for left_cls in left_type.data:
+      subst = self._match_class_and_instance_against_type(
+          left_cls, left, other_type, subst, node, view)
+      if subst is None:
+        return None
+    return subst
+
   def _match_instance(self, left, instance, other_type, subst, node, view):
-    """Used by _match_instance_against_type. Matches a single MRO entry.
+    """Used by _match_class_and_instance_against_type. Matches one MRO entry.
 
     Called after the instance has been successfully matched against a
     formal type to do any remaining matching special to the type.
@@ -304,7 +310,7 @@ class AbstractMatcher(object):
       else:
         raise AssertionError("Bad base class %r", base_cls)
 
-  def _match_instance_against_type(
+  def _match_class_and_instance_against_type(
       self, left, instance, other_type, subst, node, view):
     """Checks whether an instance of a type is compatible with a (formal) type.
 
