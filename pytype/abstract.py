@@ -1156,6 +1156,9 @@ class IsInstance(AtomicAbstractValue):
     else:
       return True
 
+  def to_type(self, node, seen=None):
+    return pytd.NamedType("__builtin__.function")
+
 
 class Function(Instance):
   """Base class for function objects (NativeFunction, InterpreterFunction).

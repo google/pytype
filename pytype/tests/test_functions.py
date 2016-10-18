@@ -556,6 +556,21 @@ class TestGenerators(test_inference.InferenceTest):
         def f(x: int or str) -> bool or long
       """)
 
+  def test_isinstance(self):
+    ty = self.Infer("""
+      def f(isinstance=isinstance):
+        pass
+      def g():
+        f()
+      def h():
+        return isinstance
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      def f(isinstance = ...) -> None
+      def g() -> None
+      def h() -> Callable
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()
