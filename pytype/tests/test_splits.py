@@ -318,7 +318,6 @@ class SplitTest(test_inference.InferenceTest):
         x.foo()
     """)
 
-  @unittest.skip("Needs looking into.")
   def testUnion(self):
     self.assertNoErrors("""
       from __future__ import google_type_annotations
@@ -330,6 +329,21 @@ class SplitTest(test_inference.InferenceTest):
           f(data)
     """)
 
+  def testUnion2(self):
+    self.assertNoErrors("""
+      from __future__ import google_type_annotations
+      from typing import Union
+      class MyString(object):
+        def __init__(self, arg: str):
+          self.arg = arg
+      def as_my_string(data: Union[str, MyString]) -> MyString:
+        if isinstance(data, str):
+          result = MyString(data)
+        else:
+          # data has type MyString
+          result = data
+        return result
+    """)
 
 if __name__ == "__main__":
   test_inference.main()

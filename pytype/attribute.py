@@ -206,7 +206,7 @@ class AbstractAttributeHandler(object):
     def computer(clsval):
       return self._get_attribute_computed(
           node, clsval.data, name, valself, clsval,
-          compute_function="__getattribute__")
+          compute_function="__getattribute__", condition=condition)
     node, candidates = self._get_candidates_from_var(node, clsvar, computer)
     if not candidates or len(candidates) < len(clsvar.bindings):
       node, attr = get_from_value(obj)
@@ -217,7 +217,7 @@ class AbstractAttributeHandler(object):
           if new_attr is None:
             new_node, new_attr = self._get_attribute_computed(
                 node, clsval.data, name, valself, clsval,
-                compute_function="__getattr__")
+                compute_function="__getattr__", condition=condition)
           return new_node, new_attr
         node, new_candidates = self._get_candidates_from_var(
             node, clsvar, getter)
@@ -272,7 +272,7 @@ class AbstractAttributeHandler(object):
     return node, candidates
 
   def _get_attribute_computed(self, node, cls, name, valself, valcls,
-                              compute_function):
+                              compute_function, condition):
     """Call compute_function (if defined) to compute an attribute."""
     assert isinstance(cls, abstract.Class)
     if (valself and not isinstance(valself.data, abstract.Module) and
@@ -285,7 +285,7 @@ class AbstractAttributeHandler(object):
         name_var = abstract.AbstractOrConcreteValue(
             name, vm.convert.str_type, vm, node).to_variable(node, name)
         return vm.call_function(
-            node, attr_var, abstract.FunctionArgs((name_var,)))
+            node, attr_var, abstract.FunctionArgs((name_var,)), condition)
     return node, None
 
   def _lookup_from_mro(self, node, obj, name, valself, valcls, skip=None):

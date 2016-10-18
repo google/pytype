@@ -138,7 +138,7 @@ class AbstractMatcher(object):
       log.error("Invalid type: %s", type(other_type))
       return None
 
-  def bad_matches(self, var, other_type, node, subst=None):
+  def bad_matches(self, var, other_type, node, subst=None, condition=None):
     """Match a Variable against a type. Return bindings that don't match.
 
     Args:
@@ -147,6 +147,7 @@ class AbstractMatcher(object):
       node: A cfg.CFGNode. The position in the CFG from which we "observe" the
         match.
       subst: Type parameter substitutions.
+      condition: The currently active if condition.
     Returns:
       A list of all the bindings of var that didn't match.
     """
@@ -154,6 +155,10 @@ class AbstractMatcher(object):
     bad = []
     for combination in utils.deep_variable_product([var]):
       view = {value.variable: value for value in combination}
+      combination = view.values() + ([condition.binding] if condition else [])
+      if not node.HasCombination(combination):
+        log.info("No such combination %r", combination)
+        continue
       if self.match_var_against_type(var, other_type, subst,
                                      node, view) is None:
         bad.append(view[var])

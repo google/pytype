@@ -173,7 +173,7 @@ class AtomicAbstractValue(object):
     """Fetch a special attribute (e.g., __get__, __iter__)."""
     return None
 
-  def call(self, node, func, args):
+  def call(self, node, func, args, condition=None):
     """Call this abstract value with the given arguments.
 
     The posargs and namedargs arguments may be modified by this function.
@@ -182,6 +182,7 @@ class AtomicAbstractValue(object):
       node: The CFGNode calling this function
       func: The typegraph.Binding containing this function.
       args: Arguments for the call.
+      condition: The currently active if-condition.
     Returns:
       A tuple (cfg.Node, typegraph.Variable). The CFGNode corresponds
       to the function's "return" statement(s).
@@ -343,7 +344,7 @@ class Empty(AtomicAbstractValue):
   def get_special_attribute(self, node, name):
     return self.vm.convert.unsolvable.to_variable(node, name)
 
-  def call(self, node, func, args):
+  def call(self, node, func, args, condition=None):
     del func, args
     return node, self.vm.convert.unsolvable.to_variable(node, self.name)
 
@@ -502,13 +503,14 @@ class SimpleAbstractValue(AtomicAbstractValue):
     else:
       return node, None
 
-  def call(self, node, _, args):
+  def call(self, node, _, args, condition=None):
     self_var = self.to_variable(node, self.name)
     node, var = self.vm.attribute_handler.get_attribute(
         node, self, "__call__", self_var.bindings[0])
     if var is not None and var.bindings:
       return self.vm.call_function(
-          node, var, args.replace(posargs=(self_var,) + args.posargs))
+          node, var, args.replace(posargs=(self_var,) + args.posargs),
+          condition=condition)
     else:
       raise NotCallable(self)
 
@@ -1008,7 +1010,7 @@ class SuperInstance(AtomicAbstractValue):
   def get_class(self):
     return self.cls
 
-  def call(self, node, _, args):
+  def call(self, node, _, args, condition=None):
     self.vm.errorlog.not_callable(
         self.vm.frame.current_opcode, self)
     return node, Unsolvable(self.vm).to_variable(node)
@@ -1024,7 +1026,7 @@ class Super(AtomicAbstractValue):
   def __init__(self, vm):
     super(Super, self).__init__("super", vm)
 
-  def call(self, node, _, args):
+  def call(self, node, _, args, condition=None):
     result = self.vm.program.NewVariable("super")
     if len(args.posargs) == 1:
       # TODO(kramm): Add a test for this
@@ -1064,7 +1066,7 @@ class IsInstance(AtomicAbstractValue):
         None: vm.convert.primitive_class_instances[bool],
     }
 
-  def call(self, node, _, args):
+  def call(self, node, _, args, condition=None):
     try:
       if len(args.posargs) != 2:
         raise WrongArgCount(self._SIGNATURE, self._SIGNATURE.print_args(args))
@@ -1388,13 +1390,13 @@ class ClassMethod(AtomicAbstractValue):
     self.callcls = callcls  # unused
     self.signatures = self.method.signatures
 
-  def call(self, node, func, args):
+  def call(self, node, func, args, condition=None):
     # Since this only used in pyi, we don't need to verify the type of the "cls"
     # arg a second time. So just pass an unsolveable. (All we care about is the
     # return type, anyway.)
     cls = self.vm.convert.create_new_unsolvable(node, "cls")
     return self.method.call(
-        node, func, args.replace(posargs=(cls,) + args.posargs))
+        node, func, args.replace(posargs=(cls,) + args.posargs), condition)
 
 
 class StaticMethod(AtomicAbstractValue):
@@ -1457,7 +1459,7 @@ class PyTDFunction(Function):
             self._log_args(value.data.unique_parameter_values(), level + 2,
                            logged | {value.data})
 
-  def call(self, node, func, args):
+  def call(self, node, func, args, condition=None):
     args = args.simplify(node)
     self._log_args(arg.bindings for arg in args.posargs)
     ret_map = {}
@@ -1643,7 +1645,7 @@ class Class(object):
     del node
     return pytd.Class(name, None, (), (), (), ())
 
-  def _call_new_and_init(self, node, value, args):
+  def _call_new_and_init(self, node, value, args, condition):
     """Call __new__ if it has been overridden on the given value."""
     node, new = self.vm.attribute_handler.get_attribute(
         node, value.data, "__new__", value)
@@ -1659,19 +1661,20 @@ class Class(object):
         return node, None
     cls = value.AssignToNewVariable(value.data.name, node)
     new_args = args.replace(posargs=(cls,) + args.posargs)
-    node, variable = self.vm.call_function(node, new, new_args)
+    node, variable = self.vm.call_function(node, new, new_args,
+                                           condition=condition)
     for val in variable.bindings:
       if val.data.cls and self in val.data.cls.data:
-        node = self._call_init(node, val, args)
+        node = self._call_init(node, val, args, condition)
     return node, variable
 
-  def _call_init(self, node, value, args):
+  def _call_init(self, node, value, args, condition):
     node, init = self.vm.attribute_handler.get_attribute(
         node, value.data, "__init__", value)
     # TODO(pludemann): Verify that this follows MRO:
     if init:
       log.debug("calling %s.__init__(...)", self.name)
-      node, ret = self.vm.call_function(node, init, args)
+      node, ret = self.vm.call_function(node, init, args, condition=condition)
       log.debug("%s.__init__(...) returned %r", self.name, ret)
     return node
 
@@ -1770,8 +1773,8 @@ class PyTDClass(SimpleAbstractValue, Class):
     else:
       raise AssertionError("Invalid class member %s", pytd.Print(pyval))
 
-  def call(self, node, func, args):
-    node, results = self._call_new_and_init(node, func, args)
+  def call(self, node, func, args, condition=None):
+    node, results = self._call_new_and_init(node, func, args, condition)
     if results is None:
       value = Instance(self.vm.convert.convert_constant(
           self.name, self.pytd_cls), self.vm, node)
@@ -1781,7 +1784,7 @@ class PyTDClass(SimpleAbstractValue, Class):
               type_param.name)
       results = self.vm.program.NewVariable(self.name)
       retval = results.AddBinding(value, [func], node)
-      node = self._call_init(node, retval, args)
+      node = self._call_init(node, retval, args, condition)
     return node, results
 
   def instantiate(self, node):
@@ -1875,13 +1878,13 @@ class InterpreterClass(SimpleAbstractValue, Class):
       self._instance_cache[key] = Instance(cls, self.vm, self.vm.root_cfg_node)
     return self._instance_cache[key]
 
-  def call(self, node, value, args):
-    node, variable = self._call_new_and_init(node, value, args)
+  def call(self, node, value, args, condition=None):
+    node, variable = self._call_new_and_init(node, value, args, condition)
     if variable is None:
       value = self._new_instance()
       variable = self.vm.program.NewVariable(self.name + " instance")
       val = variable.AddBinding(value, [], node)
-      node = self._call_init(node, val, args)
+      node = self._call_init(node, val, args, condition)
     return node, variable
 
   def to_type(self, node, seen=None):
@@ -1964,7 +1967,7 @@ class NativeFunction(Function):
   def argcount(self):
     return self.func.func_code.co_argcount
 
-  def call(self, node, _, args):
+  def call(self, node, _, args, condition=None):
     # Originate a new variable for each argument and call.
     return self.func(
         node,
@@ -2202,13 +2205,14 @@ class InterpreterFunction(Function):
     return hashlib.md5("".join(InterpreterFunction._hash(*args)
                                for args in hash_args)).digest()
 
-  def _check_call(self, node, args):
+  def _check_call(self, node, args, condition):
     if not self.signature.has_param_annotations:
       return
     args = list(self.signature.iter_args(args))
     for i, (_, param_var, formal) in enumerate(args):
       if formal is not None:
-        bad = self.vm.matcher.bad_matches(param_var, formal, node)
+        bad = self.vm.matcher.bad_matches(param_var, formal, node,
+                                          condition=condition)
         if bad:
           passed = [(name, param.data[0]) for name, param, _ in args]
           if len(bad) == 1:
@@ -2220,13 +2224,13 @@ class InterpreterFunction(Function):
           # would allow us move the call to print_args into errors.py)?
           raise WrongArgTypes(self.signature, passed)
 
-  def call(self, node, _, args, new_locals=None):
+  def call(self, node, _, args, condition=None, new_locals=None):
     args = args.simplify(node)
     if self.vm.is_at_maximum_depth() and self.name != "__init__":
       log.info("Maximum depth reached. Not analyzing %r", self.name)
       return (node,
               self.vm.convert.create_new_unsolvable(node, self.name + ":ret"))
-    self._check_call(node, args)
+    self._check_call(node, args, condition)
     callargs = self._map_args(node, args)
     # Might throw vm.RecursionException:
     frame = self.vm.make_frame(node, self.code, callargs,
@@ -2422,10 +2426,11 @@ class BoundFunction(AtomicAbstractValue):
   def signature(self):
     return self.underlying.signature.drop_first_parameter()
 
-  def call(self, node, func, args):
+  def call(self, node, func, args, condition=None):
     try:
       return self.underlying.call(
-          node, func, args.replace(posargs=(self._callself,) + args.posargs))
+          node, func, args.replace(posargs=(self._callself,) + args.posargs),
+          condition)
     except InvalidParameters as e:
       if self._callself and self._callself.bindings:
         e.name = "%s.%s" % (self._callself.data[0].name, e.name)
@@ -2502,7 +2507,7 @@ class Generator(Instance):
       self.runs += 1
     return node, self.type_parameters[self.TYPE_PARAM]
 
-  def call(self, node, func, args):
+  def call(self, node, func, args, condition=None):
     """Call this generator or (more common) its "next" attribute."""
     del func, args
     return self.run_until_yield(node)
@@ -2538,7 +2543,7 @@ class Nothing(AtomicAbstractValue):
   def __init__(self, vm):
     super(Nothing, self).__init__("nothing", vm)
 
-  def call(self, node, func, args):
+  def call(self, node, func, args, condition=None):
     raise AssertionError("Can't call empty object ('nothing')")
 
   def to_type(self, node, seen=None):
@@ -2618,7 +2623,7 @@ class BuildClass(AtomicAbstractValue):
   def __init__(self, vm):
     super(BuildClass, self).__init__("__build_class__", vm)
 
-  def call(self, node, _, args):
+  def call(self, node, _, args, condition=None):
     funcvar, name = args.posargs[0:2]
     if len(funcvar.bindings) != 1:
       raise ConversionError("Invalid ambiguous argument to __build_class__")
@@ -2661,7 +2666,7 @@ class Unsolvable(AtomicAbstractValue):
     else:
       return self.to_variable(node, self.name)
 
-  def call(self, node, func, args):
+  def call(self, node, func, args, condition=None):
     del func, args
     # return ourself.
     return node, self.to_variable(node, self.name)
@@ -2759,7 +2764,7 @@ class Unknown(AtomicAbstractValue):
         self.vm.root_cfg_node, self, name, new)
     return new
 
-  def call(self, node, _, args):
+  def call(self, node, _, args, condition=None):
     ret = self.vm.convert.create_new_unknown(
         node, self.name + "()", source=self.owner, action="call:" + self.name)
     self._calls.append((args.posargs, args.namedargs, ret))

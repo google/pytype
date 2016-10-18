@@ -684,10 +684,11 @@ class VirtualMachine(object):
     assert starstarargs is None or isinstance(starstarargs, typegraph.Variable)
     node, ret = self.call_function(state.node, funcu, abstract.FunctionArgs(
         posargs=posargs, namedargs=namedargs, starargs=starargs,
-        starstarargs=starstarargs), fallback_to_unsolvable)
+        starstarargs=starstarargs), fallback_to_unsolvable, state.condition)
     return state.change_cfg_node(node), ret
 
-  def call_function(self, node, funcu, args, fallback_to_unsolvable=True):
+  def call_function(self, node, funcu, args, fallback_to_unsolvable=True,
+                    condition=None):
     """Call a function.
 
     Args:
@@ -695,6 +696,7 @@ class VirtualMachine(object):
       funcu: A variable of the possible functions to call.
       args: The arguments to pass. See abstract.FunctionArgs.
       fallback_to_unsolvable: If the function call fails, create an unknown.
+      condition: The currently active if condition.
     Returns:
       A tuple (CFGNode, Variable). The Variable is the return value.
     """
@@ -706,7 +708,7 @@ class VirtualMachine(object):
       func = funcv.data
       assert isinstance(func, abstract.AtomicAbstractValue), type(func)
       try:
-        new_node, one_result = func.call(node, funcv, args)
+        new_node, one_result = func.call(node, funcv, args, condition)
       except (abstract.FailedFunctionCall, utils.TooComplexError) as e:
         error = error or e
       else:
