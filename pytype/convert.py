@@ -224,6 +224,19 @@ class Converter(object):
     """Create a new variable containing an unsolvable."""
     return self.unsolvable.to_variable(node, name)
 
+  def _merge_classes(self, instances):
+    classes = set()
+    for v in instances:
+      cls = v.get_class()
+      if cls:
+        classes.update(cls.data)
+    if not classes:
+      return self.empty
+    elif len(classes) == 1:
+      return classes.pop()
+    else:
+      return abstract.Union(classes, self.vm)
+
   def convert_constant(self, name, pyval, subst=None, node=None,
                        source_sets=None, discard_concrete_values=False):
     """Convert a constant to a Variable.
@@ -358,6 +371,7 @@ class Converter(object):
       A Value that represents the constant, or None if we couldn't convert.
     Raises:
       NotImplementedError: If we don't know how to convert a value.
+      TypeParameterError: If we can't find a substitution for a type parameter.
     """
     if isinstance(pyval, str):
       return abstract.AbstractOrConcreteValue(
@@ -445,7 +459,12 @@ class Converter(object):
         if base_cls.name == "__builtin__.type" and len(cls.parameters) == 1:
           # TODO(rechen): pytype should warn when the parameter length is wrong.
           c, = cls.parameters
-          return self.convert_constant_to_value(pytd.Print(c), c, subst, node)
+          if isinstance(c, pytd.TypeParameter):
+            if not subst or c.name not in subst:
+              raise self.TypeParameterError(c.name)
+            return self._merge_classes(subst[c.name].data)
+          else:
+            return self.convert_constant_to_value(pytd.Print(c), c, subst, node)
         else:
           instance = abstract.Instance(
               self.convert_constant(base_cls.name, base_cls, subst, node),

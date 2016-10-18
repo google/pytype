@@ -641,6 +641,53 @@ class ClassesTest(test_inference.InferenceTest):
         x2 = ...  # type: a.A[str]
       """)
 
+  def testGetType(self):
+    ty = self.Infer("""
+      class A:
+        x = 3
+      def f():
+        return A() if __any_object__ else ""
+      B = type(A())
+      C = type(f())
+      D = type(int)
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      class A:
+        x = ...  # type: int
+      def f() -> A or str
+      class B:
+        x = ...  # type: int
+      C = ...  # type: Type[A or str]
+      D = ...  # type: Type[type]
+    """)
+
+  def testTypeAttribute(self):
+    ty = self.Infer("""
+      class A:
+        x = 3
+      B = type(A())
+      x = B.x
+      mro = B.mro()
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      class A:
+        x = ...  # type: int
+      class B:
+        x = ...  # type: int
+      x = ...  # type: int
+      mro = ...  # type: list
+    """)
+
+  def testTypeSubclass(self):
+    ty = self.Infer("""
+      class A(type): pass
+      Int = A(0)
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      class A(type): ...
+      Int = ...  # type: Type[int]
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()
