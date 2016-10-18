@@ -169,7 +169,7 @@ class AtomicAbstractValue(object):
     """
     return self
 
-  def get_special_attribute(self, unused_node, unused_name, unused_valself):
+  def get_special_attribute(self, unused_node, unused_name):
     """Fetch a special attribute (e.g., __get__, __iter__)."""
     return None
 
@@ -340,7 +340,7 @@ class Empty(AtomicAbstractValue):
   def get_instance_type(self, node, instance=None, seen=None):
     return pytd.AnythingType()
 
-  def get_special_attribute(self, node, name, _):
+  def get_special_attribute(self, node, name):
     return self.vm.convert.unsolvable.to_variable(node, name)
 
   def call(self, node, func, args):
@@ -503,8 +503,9 @@ class SimpleAbstractValue(AtomicAbstractValue):
       return node, None
 
   def call(self, node, _, args):
-    node, var = self.vm.attribute_handler.get_attribute(node, self, "__call__")
     self_var = self.to_variable(node, self.name)
+    node, var = self.vm.attribute_handler.get_attribute(
+        node, self, "__call__", self_var.bindings[0])
     if var is not None and var.bindings:
       return self.vm.call_function(
           node, var, args.replace(posargs=(self_var,) + args.posargs))
@@ -523,7 +524,10 @@ class SimpleAbstractValue(AtomicAbstractValue):
 
   def get_class(self):
     # See Py_TYPE() in Include/object.h
-    return self.cls
+    if self.cls:
+      return self.cls
+    elif isinstance(self, Class):
+      return self.vm.convert.type_type
 
   def set_class(self, node, var):
     """Set the __class__ of an instance, for code that does "x.__class__ = y."""
@@ -669,7 +673,6 @@ class ValueWithSlots(Instance):
   def __init__(self, clsvar, vm, node):
     super(ValueWithSlots, self).__init__(clsvar, vm, node)
     self._slots = {}
-    self._self = {}  # TODO(kramm): Find a better place to store these.
     self._super = {}
     self._function_cache = {}
 
@@ -686,24 +689,16 @@ class ValueWithSlots(Instance):
     f = self.make_native_function(name, method)
     self._slots[name] = f.to_variable(self.vm.root_cfg_node, name)
     _, attr = self.vm.attribute_handler.get_instance_attribute(
-        self.vm.root_cfg_node, self, name)
+        self.vm.root_cfg_node, self, name,
+        self.to_variable(self.vm.root_cfg_node).bindings[0])
     self._super[name] = attr
 
   def call_pytd(self, node, name, *args):
     """Call the (original) pytd version of a method we overwrote."""
-    if name in self._self:
-      node, ret = self.vm.call_function(
-          node, self._super[name], FunctionArgs((self._self[name],) + args))
-    else:
-      ret = None
-      log.error(
-          "Can't call bound method %s: We don't know how it was bound.", name)
-    return node, ret
+    return self.vm.call_function(node, self._super[name], FunctionArgs(args))
 
-  def get_special_attribute(self, node, name, valself):
+  def get_special_attribute(self, _, name):
     if name in self._slots:
-      self._self[name] = valself.AssignToNewVariable(valself.variable.name,
-                                                     node)
       return self._slots[name]
 
 
@@ -1001,7 +996,7 @@ class SuperInstance(AtomicAbstractValue):
   def set(self, node, *unused_args, **unused_kwargs):
     return node, self.to_variable(node, "set")
 
-  def get_special_attribute(self, node, name, _):
+  def get_special_attribute(self, node, name):
     if name == "__get__":
       return self.get.to_variable(node, name)
     elif name == "__set__":
@@ -2481,7 +2476,7 @@ class Generator(Instance):
     self.generator_frame = generator_frame
     self.runs = 0
 
-  def get_special_attribute(self, node, name, _):
+  def get_special_attribute(self, node, name):
     if name == "__iter__":
       f = NativeFunction(name, self.__iter__, self.vm, node)
       return f.to_variable(node, name)
@@ -2657,7 +2652,7 @@ class Unsolvable(AtomicAbstractValue):
     super(Unsolvable, self).__init__("unsolveable", vm)
     self.mro = self.default_mro()
 
-  def get_special_attribute(self, node, name, _):
+  def get_special_attribute(self, node, name):
     if name in self.IGNORED_ATTRIBUTES:
       return None
     else:
@@ -2743,7 +2738,7 @@ class Unknown(AtomicAbstractValue):
                                 mutated_type=None)
                  for i, p in enumerate(args))
 
-  def get_special_attribute(self, unused_node, name, unused_valself):
+  def get_special_attribute(self, _, name):
     if name in self.IGNORED_ATTRIBUTES:
       return None
     if name in self.members:

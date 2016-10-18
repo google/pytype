@@ -189,6 +189,14 @@ class TestAttributes(test_inference.InferenceTest):
       def f(x) -> set
     """)
 
+  def testGetMro(self):
+    ty = self.Infer("""
+      x = int.mro()
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      x = ...  # type: list
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

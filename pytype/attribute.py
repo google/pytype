@@ -46,7 +46,7 @@ class AbstractAttributeHandler(object):
       the Variable will be None.
     """
     # Some objects have special attributes, like "__get__" or "__iter__"
-    special_attribute = obj.get_special_attribute(node, name, valself)
+    special_attribute = obj.get_special_attribute(node, name)
     if special_attribute is not None:
       return node, special_attribute
     if isinstance(obj, abstract.ValueWithSlots):
@@ -123,17 +123,15 @@ class AbstractAttributeHandler(object):
     getter = lambda cls: self._class_getter(node, cls, name, valself, valcls)
     if valself:
       meta = None
+      variableself = valself
     else:
       # We treat a class as an instance of its metaclass, but only if we are
       # looking for a class rather than an instance attribute. (So, for
       # instance, if we're analyzing int.mro(), we want to retrieve the mro
-      # method on the type class, but for (3).mro(), we want to report that the
+      # method on the type class, but for 3.mro(), we want to report that the
       # method does not exist.)
-      meta = cls.cls
-    if meta:
+      meta = cls.get_class()
       variableself = cls.to_variable(node).bindings[0]
-    else:
-      variableself = valself
     return self._get_value_or_class_attribute(
         node, cls, name, variableself, meta, condition, getter)
 

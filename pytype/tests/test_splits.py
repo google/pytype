@@ -307,7 +307,7 @@ class SplitTest(test_inference.InferenceTest):
         return 1 if isinstance(dict, type) else "x"
     """, deep=True, extract_locals=True)
     self.assertTypesMatchPytd(ty, """
-      def foo(x) -> Union[int, str]: ...
+      def foo(x) -> int: ...
     """)
 
   def testDoubleAssign(self):
