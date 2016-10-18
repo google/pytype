@@ -879,7 +879,7 @@ class FunctionArgs(collections.namedtuple("_", ["posargs", "namedargs",
     """
     assert isinstance(posargs, tuple), posargs
     cls.replace = cls._replace
-    return super(cls, FunctionArgs).__new__(
+    return super(FunctionArgs, cls).__new__(
         cls, posargs=posargs, namedargs=namedargs or {}, starargs=starargs,
         starstarargs=starstarargs)
 
