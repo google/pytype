@@ -197,6 +197,33 @@ class TestAttributes(test_inference.InferenceTest):
       x = ...  # type: list
     """)
 
+  def testCall(self):
+    ty = self.Infer("""
+      class A(object):
+        def __call__(self):
+          return 42
+      x = A()()
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      class A(object):
+        def __call__(self) -> int
+      x = ...  # type: int
+    """)
+
+  @unittest.skip("Magic methods aren't computed")
+  def testCallComputed(self):
+    ty = self.Infer("""
+      class A(object):
+        def __getattribute__(self, name):
+          return int
+      x = A().__call__()
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      class A(object):
+        def __getattribute__(self, name) -> int
+      x = ...  # type: int
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

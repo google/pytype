@@ -508,9 +508,7 @@ class SimpleAbstractValue(AtomicAbstractValue):
     node, var = self.vm.attribute_handler.get_attribute(
         node, self, "__call__", self_var.bindings[0])
     if var is not None and var.bindings:
-      return self.vm.call_function(
-          node, var, args.replace(posargs=(self_var,) + args.posargs),
-          condition=condition)
+      return self.vm.call_function(node, var, args, condition=condition)
     else:
       raise NotCallable(self)
 

@@ -12,8 +12,6 @@ log = logging.getLogger(__name__)
 class AbstractAttributeHandler(object):
   """Handler for abstract attributes."""
 
-  NONCOMPUTABLE_ATTRIBUTES = ["__init__", "__new__"]
-
   def __init__(self, vm):
     self.vm = vm
 
@@ -271,12 +269,15 @@ class AbstractAttributeHandler(object):
       node = self.vm.join_cfg_nodes(nodes)
     return node, candidates
 
+  def _computable(self, name):
+    return not (name.startswith("__") and name.endswith("__"))
+
   def _get_attribute_computed(self, node, cls, name, valself, valcls,
                               compute_function, condition):
     """Call compute_function (if defined) to compute an attribute."""
     assert isinstance(cls, (abstract.Class, abstract.AMBIGUOUS_OR_EMPTY))
     if (valself and not isinstance(valself.data, abstract.Module) and
-        name not in self.NONCOMPUTABLE_ATTRIBUTES):
+        self._computable(name)):
       attr_var = self._lookup_from_mro(
           node, cls, compute_function, valself, valcls,
           skip=self.vm.convert.object_type.data[0])

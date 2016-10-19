@@ -687,6 +687,21 @@ class ErrorTest(test_inference.InferenceTest):
       # Tests that [wrong-arg-types] rather than [wrong-arg-count] is reported
       self.assertErrorLogIs(errors, [(2, "wrong-arg-types", r"")])
 
+  def testNoncomputableMethod(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        T = TypeVar("T")
+        def copy(x: T) -> T
+      """)
+      _, errors = self.InferAndCheck("""\
+        import a
+        class A(object):
+          def __getattribute__(self, name):
+            return a.copy(self)
+        x = A()()
+      """, pythonpath=[d.path], solve_unknowns=True)
+      self.assertErrorLogIs(errors, [(5, "not-callable", r"A")])
+
 
 if __name__ == "__main__":
   test_inference.main()
