@@ -688,6 +688,24 @@ class ClassesTest(test_inference.InferenceTest):
       Int = ...  # type: Type[int]
     """)
 
+  def testUnsolvableMetaclass(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        def __getattr__(name) -> Any
+      """)
+      d.create_file("b.pyi", """
+        from a import A
+        class B(metaclass=A): ...
+      """)
+      ty = self.Infer("""
+        import b
+        x = b.B.x
+      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        b = ...  # type: module
+        x = ...  # type: Any
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()
