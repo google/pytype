@@ -706,6 +706,19 @@ class ClassesTest(test_inference.InferenceTest):
         x = ...  # type: Any
       """)
 
+  def testTypeChange(self):
+    ty = self.Infer("""
+      class A(object):
+        def __init__(self):
+          self.__class__ = int
+      x = "" % type(A())
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      class A(object):
+        pass
+      x = ...  # type: str
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

@@ -49,6 +49,15 @@ class MatcherTest(unittest.TestCase):
     cls_binding, = instance_binding.data.cls.bindings
     self.assertEquals(cls_binding.data, left)
 
+  def testUnion(self):
+    left_option1 = abstract.InterpreterClass("o1", [], {}, self.vm)
+    left_option2 = abstract.InterpreterClass("o2", [], {}, self.vm)
+    left = abstract.Union([left_option1, left_option2], self.vm)
+    other_type = abstract.InterpreterClass("type", [], {}, self.vm)
+    other_type.module = "__builtin__"
+    result = self._match_value(left, other_type)
+    self.assertEquals(result, {})
+
 
 if __name__ == "__main__":
   unittest.main()

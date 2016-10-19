@@ -226,6 +226,12 @@ class AbstractMatcher(object):
     elif isinstance(left, abstract.Module):
       if other_type.full_name in ["__builtin__.module", "__builtin__.object"]:
         return subst
+    elif isinstance(left, abstract.Union):
+      for o in left.options:
+        new_subst = self._match_type_against_type(
+            o, other_type, subst, node, view)
+        if new_subst is not None:
+          return new_subst
     else:
       raise NotImplementedError("Matching not implemented for %s", type(left))
 
