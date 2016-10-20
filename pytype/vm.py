@@ -1630,55 +1630,13 @@ class VirtualMachine(object):
 
   def byte_WITH_CLEANUP(self, state, op):
     """Called at the end of a with block. Calls the exit handlers etc."""
-    # The code here does some weird stack manipulation: the exit function
-    # is buried in the stack, and where depends on what's on top of it.
-    # Pull out the exit function, and leave the rest in place.
-    u = state.top()
-    if isinstance(u, str):
-      if u in ("return", "continue"):
-        state, exit_func = state.pop_nth(2)
-      else:
-        state, exit_func = state.pop_nth(1)
-      v = self.convert.build_none(state.node)
-      w = self.convert.build_none(state.node)
-      u = self.convert.build_none(state.node)
-    elif isinstance(u, type) and issubclass(u, BaseException):
-      if self.python_version[0] == 2:
-        state, (w, v, u) = state.popn(3)
-        state, exit_func = state.pop()
-        state = state.push(w, v, u)
-      else:
-        assert self.python_version[0] == 3
-        state, (w, v, u) = state.popn(3)
-        state, (tp, exc, tb) = state.popn(3)
-        state, (exit_func) = state.pop()
-        state = state.push(tp, exc, tb)
-        state = state.push(self.convert.build_none(state.node))
-        state = state.push(w, v, u)
-        state, block = state.pop_block()
-        assert block.type == "except-handler"
-        state = state.push_block(block.type, op, block.handler, block.level - 1)
-    else:
-      # This is the case when None just got pushed to the top of the stack,
-      # to signal that we're at the end of the with block and no exception
-      # occured.
-      state = state.pop_and_discard()  # pop None
-      state, exit_func = state.pop()
-      state = state.push(self.convert.build_none(state.node))
-      v = self.convert.build_none(state.node)
-      w = self.convert.build_none(state.node)
+    state, u = state.pop()  # pop 'None'
+    state, exit_func = state.pop()
+    state = state.push(self.convert.build_none(state.node))
+    v = self.convert.build_none(state.node)
+    w = self.convert.build_none(state.node)
     state, suppress_exception = self.call_function_with_state(
         state, exit_func, (u, v, w))
-    log.info("u is None: %r", self.is_none(u))
-    err = (not self.is_none(u)) and bool(suppress_exception)
-    if err:
-      # An error occurred, and was suppressed
-      if self.python_version[0] == 2:
-        state, _ = state.popn(3)
-        state.push(self.convert.build_none(state.node))
-      else:
-        assert self.python_version[0] == 3
-        state = state.push("silenced")
     return state
 
   def _pop_extra_function_args(self, state, arg):
