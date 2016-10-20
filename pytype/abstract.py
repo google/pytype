@@ -2282,7 +2282,14 @@ class InterpreterFunction(Function):
   def _get_call_combinations(self):
     signature_data = set()
     for callargs, ret, node_after_call, _ in self._call_records.values():
-      for combination in utils.variable_product_dict(callargs):
+      try:
+        combinations = utils.variable_product_dict(callargs)
+      except utils.TooComplexError:
+        combination = {name: self.vm.convert.unsolvable.to_variable(
+            node_after_call).bindings[0] for name in callargs}
+        combinations = [combination]
+        ret = self.vm.convert.unsolvable.to_variable(node_after_call)
+      for combination in combinations:
         for return_value in ret.bindings:
           values = combination.values() + [return_value]
           data = tuple(v.data for v in values)

@@ -855,6 +855,43 @@ class MethodsTest(test_inference.InferenceTest):
         def __new__(cls, string) -> str
     """)
 
+  def testVariableProductComplexityLimit(self):
+    ty = self.Infer("""
+      class A(object):
+        def __new__(cls, w, x, y, z):
+          pass
+      class B(A):
+        pass
+      class C(A):
+        pass
+      class D(A):
+        pass
+      options = [
+          (1, 2, 3, 4),
+          (5, 6, 7, 8),
+          (9, 10, 11, 12),
+          (13, 14, 15, 16),
+          (17, 18, 19, 20),
+      ]
+      for w, x, y, z in options:
+        A(w, x, y, z)
+        B(w, x, y, z)
+        C(w, x, y, z)
+        D(w, x, y, z)
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      class A(object):
+        def __new__(cls, w, x, y, z) -> Any: ...
+      class B(A): ...
+      class C(A): ...
+      class D(A): ...
+      options = ...  # type: List[Tuple[int, ...]]
+      w = ...  # type: int
+      x = ...  # type: int
+      y = ...  # type: int
+      z = ...  # type: int
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

@@ -107,6 +107,16 @@ class UtilsTest(unittest.TestCase):
     self.assertRaises(utils.TooComplexError,
                       utils.deep_variable_product, [v1, v2], 4)
 
+  def testVariableProductDictRaises(self):
+    values = [DummyValue(i + 1) for i in range(4)]
+    v1 = self.prog.NewVariable("v1", values, [], self.current_location)
+    v2 = self.prog.NewVariable("v2", values, [], self.current_location)
+    v3 = self.prog.NewVariable("v3", values, [], self.current_location)
+    v4 = self.prog.NewVariable("v4", values, [], self.current_location)
+    variabledict = {"v1": v1, "v2": v2, "v3": v3, "v4": v4}
+    self.assertRaises(utils.TooComplexError,
+                      utils.variable_product_dict, variabledict, 4)
+
   def testDeepVariableProduct(self):
     x1, x2, x3, x4, x5, x6 = [DummyValue(i + 1) for i in range(6)]
     v1 = self.prog.NewVariable("v1", [x1, x2], [], self.current_location)

@@ -47,21 +47,24 @@ def variable_product(variables):
   return itertools.product(*(v.bindings for v in variables))
 
 
-def _variable_product_items(variableitems):
+def _variable_product_items(variableitems, complexity_limit):
   """Take the Cartesian product of a list of (key, value) tuples.
 
   See variable_product_dict below.
 
   Args:
     variableitems: A dict mapping object to typegraph.Variable.
+    complexity_limit: A counter that tracks how many combinations we've yielded
+      and aborts if we go over the limit.
 
   Yields:
     A sequence of [(key, typegraph.Value), ...] lists.
   """
   if variableitems:
     headkey, headvar = variableitems[0]
-    for tail in _variable_product_items(variableitems[1:]):
+    for tail in _variable_product_items(variableitems[1:], complexity_limit):
       for headvalue in headvar.bindings:
+        complexity_limit.inc()
         yield [(headkey, headvalue)] + tail
   else:
     yield []
@@ -132,7 +135,7 @@ def _deep_values_list_product(values_list, seen, complexity_limit):
   return result
 
 
-def variable_product_dict(variabledict):
+def variable_product_dict(variabledict, limit=DEEP_VARIABLE_LIMIT):
   """Take the Cartesian product of variables in the values of a dict.
 
   This Cartesian product is taken using the dict keys as the indices into the
@@ -146,11 +149,13 @@ def variable_product_dict(variabledict):
 
   Args:
     variabledict: A dict with variable values.
+    limit: How many results to allow before aborting.
 
   Returns:
     A list of dicts with Value values.
   """
-  return [dict(d) for d in _variable_product_items(variabledict.items())]
+  return [dict(d) for d in _variable_product_items(variabledict.items(),
+                                                   ComplexityLimit(limit))]
 
 
 def maybe_truncate(s, length=30):
