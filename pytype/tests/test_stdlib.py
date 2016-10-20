@@ -1,11 +1,14 @@
 """Tests of selected stdlib functions."""
 
+import os
+
 
 from pytype.tests import test_inference
 
 
 class StdlibTests(test_inference.InferenceTest):
   """Tests for files in typeshed/stdlib."""
+
 
   def testAST(self):
     ty = self.Infer("""
@@ -74,6 +77,33 @@ class StdlibTests(test_inference.InferenceTest):
     self.assertTypesMatchPytd(ty, """
       posix = ...  # type: module
       x = ...  # type: str
+    """)
+
+  def testTempfile(self):
+    ty = self.Infer("""
+      from __future__ import google_type_annotations
+      import tempfile
+      import typing
+      import os
+      def f(fi: typing.IO):
+        fi.write("foobar")
+        pos = fi.tell()
+        fi.seek(0, os.SEEK_SET)
+        s = fi.read(6)
+        fi.close()
+        return s
+      f(tempfile.TemporaryFile("wb", suffix=".foo"))
+      f(tempfile.NamedTemporaryFile("wb", suffix=".foo"))
+      f(tempfile.SpooledTemporaryFile(1048576, "wb", suffix=".foo"))
+    """, deep=False, extract_locals=True)
+    self.assertTypesMatchPytd(ty, """
+      import __future__
+      import typing
+      google_type_annotations = ...  # type: __future__._Feature
+      os = ...  # type: module
+      tempfile = ...  # type: module
+      typing = ...  # type: module
+      def f(fi: typing.IO) -> str: ...
     """)
 
 

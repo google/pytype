@@ -493,17 +493,21 @@ class ImportTest(test_inference.InferenceTest):
         def my_foo(x:int) -> str
       """)
 
+  @unittest.skip("flaky")
   def testSolveForImported(self):
     ty = self.Infer("""\
       import StringIO
       def my_foo(x):
         return x.read()
     """, deep=True, solve_unknowns=True)
-    # TODO(rechen): Instead of StringIO[object] we should have StringIO[AnyStr]
-    # (or StringIO[str or unicode]). The return type should be str or unicode.
+    # TODO(kramm): Instead of typing.IO[object] we should have typing.IO[AnyStr]
+    # (or typing.IO[str or unicode]). The return type should be str or unicode.
+    # Also, the optimizer should be smart enough to collapse the Union into just
+    # typing.IO[AnyStr].
     self.assertTypesMatchPytd(ty, """
       StringIO = ...  # type: module
-      def my_foo(x:file or StringIO.StringIO[object]) -> Any
+      def my_foo(x:StringIO.StringIO[object] or typing.IO[object] or
+                   typing.BinaryIO or typing.TextIO) -> Any
     """)
 
   def testImportBuiltins(self):
