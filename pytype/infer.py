@@ -581,6 +581,7 @@ def _get_module_name(filename, options):
 def check_types(py_src, pytd_src, py_filename, pytd_filename, errorlog,
                 options,
                 run_builtins=True,
+                deep=True,
                 cache_unknowns=False,
                 init_maximum_depth=INIT_MAXIMUM_DEPTH):
   """Verify a PyTD against the Python code."""
@@ -592,13 +593,14 @@ def check_types(py_src, pytd_src, py_filename, pytd_filename, errorlog,
   loc, defs, builtin_names = tracer.run_program(
       py_src, py_filename, init_maximum_depth, run_builtins)
   if pytd_src is not None:
+    del deep  # ignored
     ast = builtins.ParsePyTD(pytd_src, pytd_filename, options.python_version,
                              lookup_classes=True)
     ast = tracer.loader.resolve_ast(ast)
     tracer.check_types(loc, defs, ast,
                        os.path.basename(py_filename),
                        os.path.basename(pytd_filename))
-  else:
+  elif deep:
     tracer.analyze(loc, defs, builtin_names,
                    maximum_depth=(2 if options.quick else None))
 
