@@ -51,7 +51,7 @@ repr_obj.maxstring = _TRUNCATE_STR
 repper = repr_obj.repr
 
 
-Block = collections.namedtuple("Block", ["type", "handler", "level"])
+Block = collections.namedtuple("Block", ["type", "op", "handler", "level"])
 
 _opcode_counter = metrics.MapCounter("vm_opcode")
 
@@ -144,10 +144,7 @@ class VirtualMachine(object):
       bytecode_fn = getattr(self, "byte_%s" % op.name, None)
       if bytecode_fn is None:
         raise VirtualMachineError("Unknown opcode: %s" % op.name)
-      if op.has_arg():
-        state = bytecode_fn(state, op)
-      else:
-        state = bytecode_fn(state)
+      state = bytecode_fn(state, op)
     except RecursionException as e:
       # This is not an error - it just means that the block we're analyzing
       # goes into a recursion, and we're already two levels deep.
@@ -249,10 +246,10 @@ class VirtualMachine(object):
       return True
     return False
 
-  def push_block(self, state, t, handler=None, level=None):
+  def push_block(self, state, t, op, handler=None, level=None):
     if level is None:
       level = len(state.data_stack)
-    return state.push_block(Block(t, handler, level))
+    return state.push_block(Block(t, op, handler, level))
 
   def push_frame(self, frame):
     self.frames.append(frame)
@@ -1004,63 +1001,63 @@ class VirtualMachine(object):
 
     return result
 
-  def byte_UNARY_NOT(self, state):
+  def byte_UNARY_NOT(self, state, op):
     state = state.pop_and_discard()
     state = state.push(self.convert.build_bool(state.node))
     return state
 
-  def byte_UNARY_CONVERT(self, state):
+  def byte_UNARY_CONVERT(self, state, op):
     return self.unary_operator(state, "__repr__")
 
-  def byte_UNARY_NEGATIVE(self, state):
+  def byte_UNARY_NEGATIVE(self, state, op):
     return self.unary_operator(state, "__neg__")
 
-  def byte_UNARY_POSITIVE(self, state):
+  def byte_UNARY_POSITIVE(self, state, op):
     return self.unary_operator(state, "__pos__")
 
-  def byte_UNARY_INVERT(self, state):
+  def byte_UNARY_INVERT(self, state, op):
     return self.unary_operator(state, "__invert__")
 
-  def byte_BINARY_ADD(self, state):
+  def byte_BINARY_ADD(self, state, op):
     return self.binary_operator(state, "__add__")
 
-  def byte_BINARY_SUBTRACT(self, state):
+  def byte_BINARY_SUBTRACT(self, state, op):
     return self.binary_operator(state, "__sub__")
 
-  def byte_BINARY_DIVIDE(self, state):
+  def byte_BINARY_DIVIDE(self, state, op):
     return self.binary_operator(state, "__div__")
 
-  def byte_BINARY_MULTIPLY(self, state):
+  def byte_BINARY_MULTIPLY(self, state, op):
     return self.binary_operator(state, "__mul__")
 
-  def byte_BINARY_MODULO(self, state):
+  def byte_BINARY_MODULO(self, state, op):
     return self.binary_operator(state, "__mod__")
 
-  def byte_BINARY_LSHIFT(self, state):
+  def byte_BINARY_LSHIFT(self, state, op):
     return self.binary_operator(state, "__lshift__")
 
-  def byte_BINARY_RSHIFT(self, state):
+  def byte_BINARY_RSHIFT(self, state, op):
     return self.binary_operator(state, "__rshift__")
 
-  def byte_BINARY_AND(self, state):
+  def byte_BINARY_AND(self, state, op):
     return self.binary_operator(state, "__and__")
 
-  def byte_BINARY_XOR(self, state):
+  def byte_BINARY_XOR(self, state, op):
     return self.binary_operator(state, "__xor__")
 
-  def byte_BINARY_OR(self, state):
+  def byte_BINARY_OR(self, state, op):
     return self.binary_operator(state, "__or__")
 
-  def byte_BINARY_FLOOR_DIVIDE(self, state):
+  def byte_BINARY_FLOOR_DIVIDE(self, state, op):
     return self.binary_operator(state, "__floordiv__")
 
-  def byte_BINARY_TRUE_DIVIDE(self, state):
+  def byte_BINARY_TRUE_DIVIDE(self, state, op):
     return self.binary_operator(state, "__truediv__")
 
-  def byte_BINARY_POWER(self, state):
+  def byte_BINARY_POWER(self, state, op):
     return self.binary_operator(state, "__pow__")
 
-  def byte_BINARY_SUBSCR(self, state):
+  def byte_BINARY_SUBSCR(self, state, op):
     state = self.binary_operator(state, "__getitem__", report_errors=False)
     if state.top().bindings:
       return state
@@ -1071,53 +1068,53 @@ class VirtualMachine(object):
                              source_set=[], where=state.node)
       return state
 
-  def byte_INPLACE_ADD(self, state):
+  def byte_INPLACE_ADD(self, state, op):
     return self.inplace_operator(state, "__iadd__")
 
-  def byte_INPLACE_SUBTRACT(self, state):
+  def byte_INPLACE_SUBTRACT(self, state, op):
     return self.inplace_operator(state, "__isub__")
 
-  def byte_INPLACE_MULTIPLY(self, state):
+  def byte_INPLACE_MULTIPLY(self, state, op):
     return self.inplace_operator(state, "__imul__")
 
-  def byte_INPLACE_DIVIDE(self, state):
+  def byte_INPLACE_DIVIDE(self, state, op):
     return self.inplace_operator(state, "__idiv__")
 
-  def byte_INPLACE_MODULO(self, state):
+  def byte_INPLACE_MODULO(self, state, op):
     return self.inplace_operator(state, "__imod__")
 
-  def byte_INPLACE_POWER(self, state):
+  def byte_INPLACE_POWER(self, state, op):
     return self.inplace_operator(state, "__ipow__")
 
-  def byte_INPLACE_LSHIFT(self, state):
+  def byte_INPLACE_LSHIFT(self, state, op):
     return self.inplace_operator(state, "__ilshift__")
 
-  def byte_INPLACE_RSHIFT(self, state):
+  def byte_INPLACE_RSHIFT(self, state, op):
     return self.inplace_operator(state, "__irshift__")
 
-  def byte_INPLACE_AND(self, state):
+  def byte_INPLACE_AND(self, state, op):
     return self.inplace_operator(state, "__iand__")
 
-  def byte_INPLACE_XOR(self, state):
+  def byte_INPLACE_XOR(self, state, op):
     return self.inplace_operator(state, "__ixor__")
 
-  def byte_INPLACE_OR(self, state):
+  def byte_INPLACE_OR(self, state, op):
     return self.inplace_operator(state, "__ior__")
 
-  def byte_INPLACE_FLOOR_DIVIDE(self, state):
+  def byte_INPLACE_FLOOR_DIVIDE(self, state, op):
     return self.inplace_operator(state, "__ifloordiv__")
 
-  def byte_INPLACE_TRUE_DIVIDE(self, state):
+  def byte_INPLACE_TRUE_DIVIDE(self, state, op):
     return self.inplace_operator(state, "__itruediv__")
 
   def byte_LOAD_CONST(self, state, op):
     const = self.frame.f_code.co_consts[op.arg]
     return state.push(self.load_constant(const))
 
-  def byte_POP_TOP(self, state):
+  def byte_POP_TOP(self, state, op):
     return state.pop_and_discard()
 
-  def byte_DUP_TOP(self, state):
+  def byte_DUP_TOP(self, state, op):
     return state.push(state.top())
 
   def byte_DUP_TOPX(self, state, op):
@@ -1126,20 +1123,20 @@ class VirtualMachine(object):
     state = state.push(*items)
     return state
 
-  def byte_DUP_TOP_TWO(self, state):
+  def byte_DUP_TOP_TWO(self, state, op):
     # Py3 only
     state, (a, b) = state.popn(2)
     return state.push(a, b, a, b)
 
-  def byte_ROT_TWO(self, state):
+  def byte_ROT_TWO(self, state, op):
     state, (a, b) = state.popn(2)
     return state.push(b, a)
 
-  def byte_ROT_THREE(self, state):
+  def byte_ROT_THREE(self, state, op):
     state, (a, b, c) = state.popn(3)
     return state.push(c, a, b)
 
-  def byte_ROT_FOUR(self, state):
+  def byte_ROT_FOUR(self, state, op):
     state, (a, b, c, d) = state.popn(4)
     return state.push(d, a, b, c)
 
@@ -1245,7 +1242,7 @@ class VirtualMachine(object):
     self.frame.cells[op.arg].PasteVariable(value, state.node)
     return state
 
-  def byte_LOAD_LOCALS(self, state):
+  def byte_LOAD_LOCALS(self, state, op):
     log.debug("Returning locals: %r", self.frame.f_locals)
     locals_dict = self.convert.maybe_convert_constant(
         "locals", self.frame.f_locals)
@@ -1314,13 +1311,13 @@ class VirtualMachine(object):
     state, _ = self.call_function_with_state(state, f, (key, val))
     return state
 
-  def byte_STORE_SUBSCR(self, state):
+  def byte_STORE_SUBSCR(self, state, op):
     state, (val, obj, subscr) = state.popn(3)
     state = state.forward_cfg_node()
     state = self.store_subscr(state, obj, subscr, val)
     return state
 
-  def byte_DELETE_SUBSCR(self, state):
+  def byte_DELETE_SUBSCR(self, state, op):
     state, (obj, subscr) = state.popn(2)
     return self.del_subscr(state, obj, subscr)
 
@@ -1343,7 +1340,7 @@ class VirtualMachine(object):
     # op.arg (size) is ignored.
     return state.push(self.convert.build_map(state.node))
 
-  def byte_STORE_MAP(self, state):
+  def byte_STORE_MAP(self, state, op):
     state, (the_map, val, key) = state.popn(3)
     state = self.store_subscr(state, the_map, key, val)
     return state.push(the_map)
@@ -1400,26 +1397,26 @@ class VirtualMachine(object):
     state, _ = self.call_function_with_state(state, f, (key, val))
     return state
 
-  def byte_PRINT_EXPR(self, state):
+  def byte_PRINT_EXPR(self, state, op):
     # Only used in the interactive interpreter, not in modules.
     return state.pop_and_discard()
 
-  def byte_PRINT_ITEM(self, state):
+  def byte_PRINT_ITEM(self, state, op):
     state, item = state.pop()
     self.print_item(item)
     return state
 
-  def byte_PRINT_ITEM_TO(self, state):
+  def byte_PRINT_ITEM_TO(self, state, op):
     state, to = state.pop()
     state, item = state.pop()
     self.print_item(item, to)
     return state
 
-  def byte_PRINT_NEWLINE(self, state):
+  def byte_PRINT_NEWLINE(self, state, op):
     self.print_newline()
     return state
 
-  def byte_PRINT_NEWLINE_TO(self, state):
+  def byte_PRINT_NEWLINE_TO(self, state, op):
     state, to = state.pop()
     self.print_newline(to)
     return state
@@ -1486,9 +1483,9 @@ class VirtualMachine(object):
     return state
 
   def byte_SETUP_LOOP(self, state, op):
-    return self.push_block(state, "loop", op.target)
+    return self.push_block(state, "loop", op, op.target)
 
-  def byte_GET_ITER(self, state):
+  def byte_GET_ITER(self, state, op):
     """Get the iterator for an object."""
     pre_state, seq = state.pop()
     state, func = self.load_attr_noerror(pre_state, seq, "__iter__")
@@ -1528,32 +1525,38 @@ class VirtualMachine(object):
     state = state.push(f)
     return self.call_function_from_stack(state, 0, None, None)
 
-  def byte_BREAK_LOOP(self, state):
-    return state.set_why("break")
+  def _revert_state_to(self, state, name):
+    while state.block_stack[-1].type != name:
+      state, block = state.pop_block()
+      while block.level < len(state.data_stack):
+        state = state.pop_and_discard()
+    return state
+
+  def byte_BREAK_LOOP(self, state, op):
+    new_state, block = self._revert_state_to(state, "loop").pop_block()
+    while block.level < len(new_state.data_stack):
+      new_state = new_state.pop_and_discard()
+    self.store_jump(op.block_target, new_state)
+    return state
 
   def byte_CONTINUE_LOOP(self, state, op):
-    # This is a trick with the return value.
-    # While unrolling blocks, continue and return both have to preserve
-    # state as the finally blocks are executed.  For continue, it's
-    # where to jump to, for return, it's the value to return.  It gets
-    # pushed on the stack for both, so continue puts the jump destination
-    # into return_value.
-    # TODO(kramm): This probably doesn't work.
-    return state.set_why("continue")
+    new_state = self._revert_state_to(state, "loop")
+    self.store_jump(op.target, new_state)
+    return state
 
   def byte_SETUP_EXCEPT(self, state, op):
     # Assume that it's possible to throw the exception at the first
     # instruction of the code:
     self.store_jump(op.target, self.push_abstract_exception(state))
-    return self.push_block(state, "setup-except", op.target)
+    return self.push_block(state, "setup-except", op, op.target)
 
   def byte_SETUP_FINALLY(self, state, op):
     # Emulate finally by connecting the try to the finally block (with
     # empty reason/why/continuation):
     self.store_jump(op.target, state.push(self.convert.build_none(state.node)))
-    return self.push_block(state, "finally", op.target)
+    return self.push_block(state, "finally", op, op.target)
 
-  def byte_POP_BLOCK(self, state):
+  def byte_POP_BLOCK(self, state, op):
     state, _ = state.pop_block()
     return state
 
@@ -1605,7 +1608,7 @@ class VirtualMachine(object):
     else:
       return self.byte_RAISE_VARARGS_PY3(state, op)
 
-  def byte_POP_EXCEPT(self, state):  # Python 3 only
+  def byte_POP_EXCEPT(self, state, op):  # Python 3 only
     # We don't push the special except-handler block, so we don't need to
     # pop it, either.
     return state
@@ -1613,18 +1616,19 @@ class VirtualMachine(object):
   def byte_SETUP_WITH(self, state, op):
     """Starts a 'with' statement. Will push a block."""
     state, ctxmgr = state.pop()
+    level = len(state.data_stack)
     state, exit_method = self.load_attr(state, ctxmgr, "__exit__")
     state = state.push(exit_method)
     state, enter = self.load_attr(state, ctxmgr, "__enter__")
     state, ctxmgr_obj = self.call_function_with_state(state, enter, ())
     if self.python_version[0] == 2:
-      state = self.push_block(state, "with", op.target)
+      state = self.push_block(state, "with", op, op.target, level)
     else:
       assert self.python_version[0] == 3
-      state = self.push_block(state, "finally", op.target)
+      state = self.push_block(state, "finally", op, op.target, level)
     return state.push(ctxmgr_obj)
 
-  def byte_WITH_CLEANUP(self, state):
+  def byte_WITH_CLEANUP(self, state, op):
     """Called at the end of a with block. Calls the exit handlers etc."""
     # The code here does some weird stack manipulation: the exit function
     # is buried in the stack, and where depends on what's on top of it.
@@ -1653,7 +1657,7 @@ class VirtualMachine(object):
         state = state.push(w, v, u)
         state, block = state.pop_block()
         assert block.type == "except-handler"
-        state = state.push_block(block.type, block.handler, block.level - 1)
+        state = state.push_block(block.type, op, block.handler, block.level - 1)
     else:
       # This is the case when None just got pushed to the top of the stack,
       # to signal that we're at the end of the with block and no exception
@@ -1795,7 +1799,7 @@ class VirtualMachine(object):
     state, args = self.pop_varargs(state)
     return self.call_function_from_stack(state, op.arg, args, kwargs)
 
-  def byte_YIELD_VALUE(self, state):
+  def byte_YIELD_VALUE(self, state, op):
     state, ret = state.pop()
     self.frame.yield_variable.PasteVariable(ret, state.node)
     return state.set_why("yield")
@@ -1844,27 +1848,27 @@ class VirtualMachine(object):
       attr = self.convert.unsolvable.to_variable(state.node, name)
     return state.push(attr)
 
-  def byte_EXEC_STMT(self, state):
+  def byte_EXEC_STMT(self, state, op):
     state, (unused_stmt, unused_globs, unused_locs) = state.popn(3)
     log.warning("Encountered 'exec' statement. 'exec' is unsupported.")
     return state
 
-  def byte_BUILD_CLASS(self, state):
+  def byte_BUILD_CLASS(self, state, op):
     state, (name, _bases, members) = state.popn(3)
     bases = list(abstract.get_atomic_python_constant(_bases))
     return state.push(self.make_class(state.node, name, bases, members))
 
-  def byte_LOAD_BUILD_CLASS(self, state):
+  def byte_LOAD_BUILD_CLASS(self, state, op):
     # New in py3
     return state.push(abstract.BuildClass(self).to_variable(
         state.node, "__build_class__"))
 
-  def byte_STORE_LOCALS(self, state):
+  def byte_STORE_LOCALS(self, state, op):
     state, locals_dict = state.pop()
     self.frame.f_locals = abstract.get_atomic_value(locals_dict)
     return state
 
-  def byte_END_FINALLY(self, state):
+  def byte_END_FINALLY(self, state, op):
     state, exc = state.pop()
     if self.is_none(exc):
       return state
@@ -1877,14 +1881,14 @@ class VirtualMachine(object):
   def _check_return(self, node, actual, formal):
     pass  # overridden in infer.py
 
-  def byte_RETURN_VALUE(self, state):
+  def byte_RETURN_VALUE(self, state, op):
     state, var = state.pop()
     if self.frame.allowed_returns is not None:
       self._check_return(state.node, var, self.frame.allowed_returns)
     self.frame.return_variable.PasteVariable(var, state.node)
     return state.set_why("return")
 
-  def byte_IMPORT_STAR(self, state):
+  def byte_IMPORT_STAR(self, state, op):
     """Pops a module and stores all its contents in locals()."""
     # TODO(kramm): this doesn't use __all__ properly.
     state, mod_var = state.pop()
@@ -1900,38 +1904,38 @@ class VirtualMachine(object):
         state = self.store_local(state, name, var)
     return state
 
-  def byte_SLICE_0(self, state):
+  def byte_SLICE_0(self, state, op):
     return self.get_slice(state, 0)
 
-  def byte_SLICE_1(self, state):
+  def byte_SLICE_1(self, state, op):
     return self.get_slice(state, 1)
 
-  def byte_SLICE_2(self, state):
+  def byte_SLICE_2(self, state, op):
     return self.get_slice(state, 2)
 
-  def byte_SLICE_3(self, state):
+  def byte_SLICE_3(self, state, op):
     return self.get_slice(state, 3)
 
-  def byte_STORE_SLICE_0(self, state):
+  def byte_STORE_SLICE_0(self, state, op):
     return self.store_slice(state, 0)
 
-  def byte_STORE_SLICE_1(self, state):
+  def byte_STORE_SLICE_1(self, state, op):
     return self.store_slice(state, 1)
 
-  def byte_STORE_SLICE_2(self, state):
+  def byte_STORE_SLICE_2(self, state, op):
     return self.store_slice(state, 2)
 
-  def byte_STORE_SLICE_3(self, state):
+  def byte_STORE_SLICE_3(self, state, op):
     return self.store_slice(state, 3)
 
-  def byte_DELETE_SLICE_0(self, state):
+  def byte_DELETE_SLICE_0(self, state, op):
     return self.delete_slice(state, 0)
 
-  def byte_DELETE_SLICE_1(self, state):
+  def byte_DELETE_SLICE_1(self, state, op):
     return self.delete_slice(state, 1)
 
-  def byte_DELETE_SLICE_2(self, state):
+  def byte_DELETE_SLICE_2(self, state, op):
     return self.delete_slice(state, 2)
 
-  def byte_DELETE_SLICE_3(self, state):
+  def byte_DELETE_SLICE_3(self, state, op):
     return self.delete_slice(state, 3)

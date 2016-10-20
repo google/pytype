@@ -296,6 +296,31 @@ class FlowTest(test_inference.InferenceTest):
         def bar(self) -> NoneType: ...
     """)
 
+  def test_break(self):
+    ty = self.Infer("""
+      def _foo():
+        while True:
+          if __any_object__:
+            break
+        return 3j
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      def _foo() -> complex
+    """)
+
+  def test_continue(self):
+    ty = self.Infer("""
+      def bar():
+        while True:
+          if __any_object__:
+            return 3j
+          continue
+          return 3  # dead code
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      def bar() -> complex
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

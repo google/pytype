@@ -344,6 +344,65 @@ class BlockStackTest(test_inference.InferenceTest):
     self.assertEquals(bytecode[1], bytecode[3].target)
     self.assertEquals(bytecode[5], bytecode[4].block_target)
 
+  def test_break(self):
+    # Disassembled from:
+    # | while True:
+    # |  if []:
+    # |    break
+    co = self.make_code([
+        0x78, 20, 0,  # [0] 0 SETUP_LOOP, dest=23, [9],
+        0x74, 0, 0,   # [1] 3 LOAD_GLOBAL, arg=0,
+        0x72, 22, 0,  # [2] 6 POP_JUMP_IF_FALSE, dest=22 [8],
+        0x67, 0, 0,   # [3] 9 BUILD_LIST, arg=0,
+        0x72, 3, 0,   # [4] 12 POP_JUMP_IF_FALSE, dest=3 [1],
+        0x50,         # [5] 15 BREAK_LOOP,
+        0x71, 3, 0,   # [6] 16 JUMP_ABSOLUTE, dest=3 [1],
+        0x71, 3, 0,   # [7] 19 JUMP_ABSOLUTE, dest=3 [1],
+        0x57,         # [8] 22 POP_BLOCK,
+        0x64, 0, 0,   # [9] 23 LOAD_CONST, arg=0,
+        0x53,         # [10] 26 RETURN_VALUE
+    ])
+    bytecode = opcodes.dis(co.co_code, python_version=self.PYTHON_VERSION)
+    blocks.add_pop_block_targets(bytecode)
+    self.assertEquals(bytecode[9], bytecode[0].target)
+    self.assertEquals(bytecode[9], bytecode[5].block_target)
+    self.assertEquals(bytecode[1], bytecode[6].target)
+    self.assertEquals(bytecode[1], bytecode[7].target)
+
+  def test_continue(self):
+    # Disassembled from:
+    # | while True:
+    # |   try:
+    # |     continue
+    # |   except:
+    # |     pass
+    co = self.make_code([
+        0x78, 27, 0,  # [0] 0 SETUP_LOOP, dest=30 [14],
+        0x74, 0, 0,   # [1] 3 LOAD_GLOBAL, arg=0,
+        0x72, 29, 0,  # [2] 6 POP_JUMP_IF_FALSE, dest=29 [13],
+        0x79, 7, 0,   # [3] 9 SETUP_EXCEPT, dest=19 [7],
+        0x77, 3, 0,   # [4] 12 CONTINUE_LOOP, dest=3 [1],
+        0x57,         # [5] 15 POP_BLOCK,
+        0x71, 3, 0,   # [6] 16 JUMP_ABSOLUTE, dest=3 [1],
+        0x01,         # [7] 19 POP_TOP,
+        0x01,         # [8] 20 POP_TOP,
+        0x01,         # [9] 21 POP_TOP,
+        0x71, 3, 0,   # [10] 22 JUMP_ABSOLUTE, dest=3 [1],
+        0x58,         # [11] 25 END_FINALLY,
+        0x71, 3, 0,   # [12] 26 JUMP_ABSOLUTE, dest=3 [1],
+        0x57,         # [13] 29 POP_BLOCK,
+        0x64, 0, 0,   # [14] 30 LOAD_CONST, arg=0,
+        0x53,         # [15] 33 RETURN_VALUE
+    ])
+    bytecode = opcodes.dis(co.co_code, python_version=self.PYTHON_VERSION)
+    blocks.add_pop_block_targets(bytecode)
+    self.assertEquals(bytecode[14], bytecode[0].target)
+    self.assertEquals(bytecode[13], bytecode[2].target)
+    self.assertEquals(bytecode[7], bytecode[3].target)
+    self.assertEquals(bytecode[1], bytecode[4].target)
+    self.assertEquals(bytecode[1], bytecode[6].target)
+    self.assertEquals(bytecode[1], bytecode[10].target)
+    self.assertEquals(bytecode[1], bytecode[12].target)
 
 if __name__ == "__main__":
   unittest.main()

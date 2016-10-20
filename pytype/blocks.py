@@ -120,6 +120,12 @@ def add_pop_block_targets(bytecode):
         if isinstance(b, opcodes.SETUP_EXCEPT):
           op.block_target = b.target
           break
+    elif isinstance(op, opcodes.BREAK_LOOP):
+      # Breaks jump to after the loop
+      for b in reversed(block_stack):
+        if isinstance(b, opcodes.SETUP_LOOP):
+          op.block_target = b.target
+          break
     elif op.pushes_block():
       assert op.target, "%s without target" % op.name
       # We push the entire opcode onto the block stack, for better debugging.
