@@ -59,19 +59,21 @@ def _test_parse(pyi_file):
                      python_version=python_version)
 
 
+def _read_blacklist(typeshed_dir):
+  with open(os.path.join(typeshed_dir, "tests/pytype_blacklist.txt")) as fi:
+    for line in fi:
+      line = line[:line.find("#")].strip()
+      if line:
+        yield line
+
+
 class TestTypeshedParsing(parser_test_base.ParserTest):
   """Test that we can parse a given pyi file."""
   # Files that we currently can't parse
-  SKIPPED_FILES = """
-      2.7/__builtin__.pyi
-      2.7/builtins.pyi
-      2.7/types.pyi
-      2.7/typing.pyi
-      2and3/webbrowser.pyi
-  """
   WANTED = re.compile(r"stdlib/(2\.7|2and3)/.*\.pyi$")
-  SKIPPED = re.compile("(%s)$" % "|".join(SKIPPED_FILES.split()))
   TYPESHED_DIR = typeshed.Typeshed().typeshed_path
+  SKIPPED_FILES = list(_read_blacklist(TYPESHED_DIR))
+  SKIPPED = re.compile("(%s)$" % "|".join(SKIPPED_FILES))
 
   # Generate test methods
   # pylint: disable=no-self-argument,g-wrong-blank-lines,undefined-loop-variable
@@ -80,7 +82,7 @@ class TestTypeshedParsing(parser_test_base.ParserTest):
       def _bind(f):
         return lambda self: _test_parse(f)
       locals()[_filename_to_testname(f)] = _bind(f)
-  del _bind
+      del _bind
   del f
 
 
