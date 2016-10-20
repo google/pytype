@@ -218,25 +218,31 @@ def compute_predecessors(nodes):
   """
   # Our CFGs are reflexive: Every node can reach itself.
   predecessors = {n: {n} for n in nodes}
+  discovered = set()  # Nodes found below some start node.
 
-  # Start at the root and follow outgoing edges to update predecessors as
+  # Start at a possible root and follow outgoing edges to update predecessors as
   # needed. Since the maximum number of times a given edge is processed is |V|,
   # the worst-case runtime is |V|*|E|. However, these graphs are typically
   # trees, so the usual runtime is much closer to |E|. Compared to using
   # Floyd-Warshall (|V|^3), this brings down the execution time on
   # pyglib/flags/flags_strict_test.py and pyglib/flags/flags_test.py
   # from about 30s to less than 7s.
-  unprocessed = [(nodes[0], n) for n in nodes[0].outgoing]
-  while unprocessed:
-    from_node, node = unprocessed.pop(0)
-    node_predecessors = predecessors[node]
-    length_before = len(node_predecessors)
-    # Add the predecessors of from_node to this node's predecessors
-    node_predecessors |= predecessors[from_node]
-    if length_before != len(node_predecessors):
-      # All of the nodes directly reachable from this one need their
-      # predecessors updated
-      unprocessed.extend((node, n) for n in node.outgoing)
+  for start in nodes:
+    if start in discovered:
+      # We have already seen this node from a previous start, do nothing.
+      continue
+    unprocessed = [(start, n) for n in start.outgoing]
+    while unprocessed:
+      from_node, node = unprocessed.pop(0)
+      node_predecessors = predecessors[node]
+      length_before = len(node_predecessors)
+      # Add the predecessors of from_node to this node's predecessors
+      node_predecessors |= predecessors[from_node]
+      if length_before != len(node_predecessors):
+        # All of the nodes directly reachable from this one need their
+        # predecessors updated
+        unprocessed.extend((node, n) for n in node.outgoing)
+        discovered.add(node)
 
   return predecessors
 

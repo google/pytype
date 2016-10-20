@@ -216,7 +216,9 @@ class UtilsTest(unittest.TestCase):
     n4.ConnectTo(n5)
     n5.ConnectTo(n20)
 
-    nodes = [n1, n20, n3, n4, n5, n6, n7]
+    # Intentionally pick a non-root as nodes[0] to verify that the graph
+    # will still be fully explored.
+    nodes = [n7, n1, n20, n3, n4, n5, n6]
     r = utils.compute_predecessors(nodes)
     self.assertItemsEqual(r[n1], {n1})
     self.assertItemsEqual(r[n20], {n1, n20, n3, n4, n5})
