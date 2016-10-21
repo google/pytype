@@ -106,6 +106,14 @@ class StdlibTests(test_inference.InferenceTest):
       def f(fi: typing.IO) -> str: ...
     """)
 
+  def testPathConf(self):
+    self.assertNoErrors("""
+      import os
+      max_len = os.pathconf('directory', 'name')
+      filename = 'foobar.baz'
+      r = len(filename) >= max_len - 1
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()
