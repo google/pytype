@@ -1,14 +1,14 @@
 import os
 import textwrap
 
-from pytype.pyi import parse_ext
+from pytype.pyi import parser_ext
 from pytype.pytd.parse import parser
 from pytype.pytd.parse import parser_constants
 
 import unittest
 
 # Map from token code to name.
-TOKEN_NAMES = {code: name for name, code in parse_ext.TOKENS.items()}
+TOKEN_NAMES = {code: name for name, code in parser_ext.TOKENS.items()}
 
 # Map from legacy token types to new token types for any tokens
 # that have been renamed.
@@ -118,7 +118,7 @@ class LexerTest(unittest.TestCase):
 
   def check(self, expected, text, legacy=True, legacy_lines=True):
     text = textwrap.dedent(text)
-    actual = map(convert_token, parse_ext.tokenize(text))
+    actual = map(convert_token, parser_ext.tokenize(text))
     if expected is not None:
       self.assertEquals(map(convert_expected, expected), actual)
     if legacy:
