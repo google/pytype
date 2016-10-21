@@ -279,6 +279,9 @@ def _VisitNode(node, visitor, *args, **kwargs):
     return node.Visit(visitor, *args, **kwargs)
 
   node_class_name = node_class.__name__
+  if node_class_name not in visitor.visit_class_names:
+    return node
+
   if node_class_name in visitor.enter_functions:
     # The visitor wants to be informed that we're descending into this part
     # of the tree.
@@ -288,7 +291,7 @@ def _VisitNode(node, visitor, *args, **kwargs):
     if status is False:
       return node
     # Any other value returned from Enter is ignored, so check:
-    assert status is None, repr(node_class_name, status)
+    assert status is None, repr((node_class_name, status))
 
   changed = False
   new_children = []

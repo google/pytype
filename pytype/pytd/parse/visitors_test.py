@@ -505,5 +505,25 @@ class TestVisitors(parser_test_base.ParserTest):
     self.assertMultiLineEqual(expected.strip(),
                               pytd.Print(self.ToAST(src)).strip())
 
+
+class TestAncestorMap(unittest.TestCase):
+
+  def testGetAncestorMap(self):
+    ancestors = visitors._GetAncestorMap()
+    # TypeDeclUnit is the top of the food chain - no ancestors other than
+    # itself.
+    self.assertEquals({"TypeDeclUnit"}, ancestors["TypeDeclUnit"])
+    # NamedType can appear in quite a few places, spot check a few.
+    named_type = ancestors["NamedType"]
+    self.assertIn("TypeDeclUnit", named_type)
+    self.assertIn("Parameter", named_type)
+    self.assertIn("GenericType", named_type)
+    self.assertIn("NamedType", named_type)
+    # Check a few places where it NamedType cannot appear.
+    self.assertNotIn("TypeParameter", named_type)
+    self.assertNotIn("TemplateItem", named_type)
+    self.assertNotIn("AnythingType", named_type)
+
+
 if __name__ == "__main__":
   unittest.main()

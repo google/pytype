@@ -34,12 +34,14 @@ class PreconditionsTest(unittest.TestCase):
 
   def testClassNamePrecondition(self):
     c = preconditions._ClassNamePrecondition("str")
+    self.assertEquals({"str"}, c.allowed_types())
     c.check("abc")
     self.assertError("actual=int.*expected=str", c, 1)
 
   def testTuplePrecondition(self):
     c = preconditions._TuplePrecondition(
         preconditions._ClassNamePrecondition("int"))
+    self.assertEquals({"int"}, c.allowed_types())
     c.check(())
     c.check((1,))
     c.check((1, 2))
@@ -49,6 +51,7 @@ class PreconditionsTest(unittest.TestCase):
     c = preconditions._OrPrecondition([
         preconditions._ClassNamePrecondition("int"),
         preconditions._ClassNamePrecondition("str")])
+    self.assertEquals({"int", "str"}, c.allowed_types())
     c.check(1)
     c.check("abc")
     self.assertError(
@@ -57,6 +60,7 @@ class PreconditionsTest(unittest.TestCase):
 
   def testIsInstancePrecondition(self):
     c = preconditions._IsInstancePrecondition(BaseClass)
+    self.assertEquals({BaseClass}, c.allowed_types())
     c.check(BaseClass())
     c.check(SubClass())
     self.assertError("actual=str.*expected_superclass=BaseClass", c, "foo")
@@ -68,6 +72,9 @@ class CallCheckerTest(unittest.TestCase):
     self.checker = preconditions.CallChecker([
         ("x", preconditions._ClassNamePrecondition("int")),
         ("s", preconditions._ClassNamePrecondition("str"))])
+
+  def testAllowedTypes(self):
+    self.assertEquals({"int", "str"}, self.checker.allowed_types())
 
   def assertError(self, regex, *args, **kwargs):
     self.assertRaisesRegexp(

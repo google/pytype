@@ -29,6 +29,10 @@ class _Precondition(object):
     """Raise PreconditionError if value does not match condition."""
     raise NotImplementedError
 
+  def allowed_types(self):
+    """Returns a set of types or typenames that are allowed."""
+    raise NotImplementedError
+
 
 class _ClassNamePrecondition(_Precondition):
   """Precondition that expects an instance of a specific class."""
@@ -43,6 +47,9 @@ class _ClassNamePrecondition(_Precondition):
       raise PreconditionError(
           "actual=%s, expected=%s" % (actual, self._class_name))
 
+  def allowed_types(self):
+    return {self._class_name}
+
 
 class _IsInstancePrecondition(_Precondition):
   """Precondition that expects an instance of a class or subclass."""
@@ -56,6 +63,9 @@ class _IsInstancePrecondition(_Precondition):
       raise PreconditionError(
           "actual=%s, expected_superclass=%s" % (
               type(value).__name__, self._cls.__name__))
+
+  def allowed_types(self):
+    return {self._cls}
 
 
 _REGISTERED_CLASSES = {}
@@ -82,6 +92,9 @@ class _TuplePrecondition(_Precondition):
     for v in value:
       self._element_condition.check(v)
 
+  def allowed_types(self):
+    return self._element_condition.allowed_types()
+
 
 class _OrPrecondition(_Precondition):
   """Precondition that expects one of various choices to match."""
@@ -99,6 +112,12 @@ class _OrPrecondition(_Precondition):
       except PreconditionError as e:
         errors.append(e)
     raise PreconditionError(" or ".join("(%s)" % e.message for e in errors))
+
+  def allowed_types(self):
+    allowed = set()
+    for c in self._choices:
+      allowed |= c.allowed_types()
+    return allowed
 
 
 class CallChecker(object):
@@ -126,6 +145,18 @@ class CallChecker(object):
         condition.check(value)
       except PreconditionError as e:
         raise PreconditionError("argument=%s: %s." % (name, e.message))
+
+  def allowed_types(self):
+    """Determines the types and typenames allowed by calls to the checker.
+
+    Returns:
+      A set of types and/or typenames (strings).  A typename matches
+      only that one class while a type matches any subclass of the type.
+    """
+    allowed = set()
+    for _, c in self._arg_sequence:
+      allowed |= c.allowed_types()
+    return allowed
 
 
 # Lexer
