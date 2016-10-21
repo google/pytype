@@ -114,6 +114,17 @@ class StdlibTests(test_inference.InferenceTest):
       r = len(filename) >= max_len - 1
     """)
 
+  def testEnviron(self):
+    self.assertNoErrors("""
+      import os
+      os.getenv('foobar', 3j)
+      os.environ['hello'] = 'bar'
+      x = os.environ['hello']
+      y = os.environ.get(3.14, None)
+      z = os.environ.get(3.14, 3j)
+      del os.environ['hello']
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()
