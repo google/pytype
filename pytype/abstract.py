@@ -1462,27 +1462,18 @@ class PyTDFunction(Function):
     self._log_args(arg.bindings for arg in args.posargs)
     ret_map = {}
     retvar = self.vm.program.NewVariable("%s ret" % self.name)
-    error = None
-    variables = tuple(args.posargs) + tuple(args.namedargs.values())
-    all_calls_failed = True
     all_mutations = []
-    for combination in utils.deep_variable_product(variables):
-      view = {value.variable: value for value in combination}
-      if not node.CanHaveCombination(view.values()):
-        log.info("Skipping combination %r", view.values())
-        continue
-      try:
-        node, result, mutations = self._call_with_view(
-            node, func, args, view, ret_map)
-      except FailedFunctionCall as e:
-        # TODO(kramm): Does this ever happen?
-        error = error or e
+    # The following line may raise FailedFunctionCall
+    possible_calls = self.match_signatures(node, args)
+    for view, signatures in possible_calls:
+      if len(signatures) > 1:
+        ret = self._call_with_signatures(node, func, args, view, signatures)
       else:
-        retvar.PasteVariable(result, node)
-        all_mutations += mutations
-        all_calls_failed = False
-    if all_calls_failed and error:
-      raise error  # pylint: disable=raising-bad-type
+        (sig, arg_dict, subst), = signatures
+        ret = sig.call_with_args(node, func, arg_dict, subst, ret_map)
+      node, result, mutations = ret
+      retvar.PasteVariable(result, node)
+      all_mutations += mutations
 
     log.info("Applying %d mutations", len(all_mutations))
     for obj, name, value in all_mutations:
@@ -1508,41 +1499,50 @@ class PyTDFunction(Function):
             for v in values if isinstance(v, SimpleAbstractValue)
             for name in v.type_parameters]
 
-  def _call_with_view(self, node, func, args, view, ret_map):
-    """Call function using a specific Variable->Value view."""
-    log.debug("call_with_view function %r: %d signature(s)",
-              self.name, len(self.signatures))
-    log.debug("args in view: %r", [(a.bindings and view[a].data)
-                                   for a in args.posargs])
-
+  def match_signatures(self, node, args):
+    """Match signatures using specific Variable->Value views."""
     if not all(a.bindings for a in args.posargs):
       raise exceptions.ByteCodeTypeError(
           "Can't call function with <nothing> parameter")
-
-    # If we're calling an overloaded pytd function with an unknown as a
-    # parameter, we can't tell whether it matched or not. Hence, if multiple
-    # signatures are possible matches, we don't know which got called. Check
-    # if this is the case.
-    if (len(self.signatures) > 1 and
-        any(isinstance(view[arg].data, AMBIGUOUS_OR_EMPTY)
-            for arg in chain(args.posargs, args.namedargs.values()))):
-      signatures = tuple(self._yield_matching_signatures(node, args, view))
-      if len(signatures) > 1:
-        return self._call_with_signatures(node, func, args, view, signatures)
+    error = None
+    variables = tuple(args.posargs) + tuple(args.namedargs.values())
+    possible_calls = []
+    for combination in utils.deep_variable_product(variables):
+      view = {value.variable: value for value in combination}
+      if not node.CanHaveCombination(view.values()):
+        log.info("Skipping combination %r", view.values())
+        continue
+      log.debug("match_signatures function %r: %d signature(s)",
+                self.name, len(self.signatures))
+      log.debug("args in view: %r", [(a.bindings and view[a].data)
+                                     for a in args.posargs])
+      try:
+        # If we're calling an overloaded pytd function with an unknown as a
+        # parameter, we can't tell whether it matched or not. Hence, if multiple
+        # signatures are possible matches, we don't know which got called. Check
+        # if this is the case.
+        if (len(self.signatures) > 1 and
+            any(isinstance(view[arg].data, AMBIGUOUS_OR_EMPTY)
+                for arg in variables)):
+          signatures = tuple(self._yield_matching_signatures(node, args, view))
+        else:
+          # We take the first signature that matches, and ignore all after it.
+          # This is because in the pytds for the standard library, the last
+          # signature(s) is/are fallback(s) - e.g. list is defined by
+          # def __init__(self: x: list)
+          # def __init__(self, x: iterable)
+          # def __init__(self, x: generator)
+          # def __init__(self, x: object)
+          # with the last signature only being used if none of the others match.
+          sig = next(self._yield_matching_signatures(node, args, view))
+          signatures = (sig,)
+      except FailedFunctionCall as e:
+        error = error or e
       else:
-        (sig, arg_dict, subst), = signatures
-    else:
-      # We only take the first signature that matches, and ignore all after it.
-      # This is because in the pytds for the standard library, the last
-      # signature(s) is/are fallback(s) - e.g. list is defined by
-      # def __init__(self: x: list)
-      # def __init__(self, x: iterable)
-      # def __init__(self, x: generator)
-      # def __init__(self, x: object)
-      # with the last signature only being used if none of the others match.
-      sig, arg_dict, subst = next(self._yield_matching_signatures(
-          node, args, view))
-    return sig.call_with_args(node, func, arg_dict, subst, ret_map)
+        possible_calls.append((view, signatures))
+    if not possible_calls and error:
+      raise error  # pylint: disable=raising-bad-type
+    return possible_calls
 
   def _call_with_signatures(self, node, func, args, view, signatures):
     """Perform a function call that involves multiple signatures."""
