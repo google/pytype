@@ -345,5 +345,28 @@ class SplitTest(test_inference.InferenceTest):
         return result
     """)
 
+  def testInfiniteLoop(self):
+    self.assertNoErrors("""
+      class A(object):
+        def __init__(self):
+          self.members = []
+        def add(self):
+          self.members.append(42)
+
+      class B(object):
+        def __init__(self):
+          self._map = {}
+        def _foo(self):
+          self._map[0] = A()
+          while True:
+            pass
+        def add2(self):
+          self._map[0].add()
+
+      b = B()
+      b._foo()
+      b.add2()
+    """)
+
 if __name__ == "__main__":
   test_inference.main()

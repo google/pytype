@@ -738,12 +738,12 @@ class Dict(ValueWithSlots, WrapsDict("_entries")):
           except KeyError:
             self.vm.errorlog.key_error(self.vm.frame.current_opcode, name)
             unresolved = True
+    node, ret = self.call_pytd(node, "__getitem__", name_var)
     if unresolved or self.could_contain_anything:
       # We *do* know the overall type of the values through the "V" type
-      # parameter, even if we don't know the exact type of self[name]:
-      results.append(self.get_type_parameter(node, "V"))
-    # For call tracing only, we don't actually use the return value:
-    node, _ = self.call_pytd(node, "__getitem__", name_var)
+      # parameter, even if we don't know the exact type of self[name]. So let's
+      # just use the (less accurate) value from pytd.
+      results.append(ret)
     return node, self.vm.join_variables(
         node, "getitem[var%s]" % name_var.id, results)
 

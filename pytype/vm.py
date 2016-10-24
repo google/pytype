@@ -613,7 +613,6 @@ class VirtualMachine(object):
 
   def call_binary_operator(self, state, name, x, y, report_errors=False):
     """Map a binary operator to "magic methods" (__add__ etc.)."""
-    # TODO(pludemann): See TODO.txt for more on reverse operator subtleties.
     results = []
     log.debug("Calling binary operator %s", name)
     state, attr = self.load_attr_noerror(state, x, name)
@@ -633,7 +632,7 @@ class VirtualMachine(object):
                                                    fallback_to_unsolvable=False)
         results.append(ret)
     result = self.join_variables(state.node, name, results)
-    log.debug("Result: %r", result)
+    log.debug("Result: %r %r", result, result.data)
     if not result.bindings and report_errors:
       self.errorlog.unsupported_operands(self.frame.current_opcode, state.node,
                                          name, x, y)

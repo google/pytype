@@ -444,7 +444,7 @@ class ContainerTest(test_inference.InferenceTest):
       class Foo(object):
         next = ...  # type: NoneType
 
-      def f(key) -> Any
+      def f(key) -> Foo
     """)
 
   def testCascade(self):
