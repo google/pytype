@@ -702,6 +702,39 @@ class ErrorTest(test_inference.InferenceTest):
       """, pythonpath=[d.path], solve_unknowns=True)
       self.assertErrorLogIs(errors, [(5, "not-callable", r"A")])
 
+  def testBadTypeName(self):
+    _, errors = self.InferAndCheck("""\
+      X = type(3, (int, object), {"a": 1})
+    """, solve_unknowns=True)
+    self.assertErrorLogIs(errors, [(1, "wrong-arg-count",
+                                    r"Actually passed:.*int")])
+
+  def testBadTypeBases(self):
+    _, errors = self.InferAndCheck("""\
+      X = type("X", (42,), {"a": 1})
+    """, solve_unknowns=True)
+    # TODO(rechen): The error message says that the actual value of bases is
+    # "tuple"; it would be better to have "Tuple[int]".
+    self.assertErrorLogIs(errors, [(1, "wrong-arg-count",
+                                    r"Actually passed:.*tuple")])
+
+  @unittest.skip("Reports [base-class-error] instead of [wrong-arg-types]")
+  def testHalfBadTypeBases(self):
+    _, errors = self.InferAndCheck("""\
+      X = type("X", (42, object), {"a": 1})
+    """, solve_unknowns=True)
+    self.assertErrorLogIs(errors, [(1, "wrong-arg-count",
+                                    r"Actually passed:.*tuple")])
+
+  def testBadTypeMembers(self):
+    _, errors = self.InferAndCheck("""\
+      X = type("X", (int, object), {0: 1})
+    """, solve_unknowns=True)
+    # TODO(rechen): We currently print "dict()" (the name of an abstract.Dict)
+    # as the actual value of dict; "Dict[int, int]" would be more helpful.
+    self.assertErrorLogIs(errors, [(1, "wrong-arg-count",
+                                    r"Actually passed:.*dict")])
+
 
 if __name__ == "__main__":
   test_inference.main()

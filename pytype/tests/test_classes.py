@@ -680,12 +680,27 @@ class ClassesTest(test_inference.InferenceTest):
 
   def testTypeSubclass(self):
     ty = self.Infer("""
-      class A(type): pass
+      class A(type):
+        def __init__(self, name, bases, dict):
+          super(A, self).__init__(name, bases, dict)
+        def f(self):
+          return 3.14
       Int = A(0)
+      X = A("X", (int, object), {"a": 1})
+      x = X()
+      a = X.a
+      v = X.f()
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
-      class A(type): ...
+      class A(type):
+        def __init__(self, name, bases, dict) -> None
+        def f(self) -> float
       Int = ...  # type: Type[int]
+      class X(int, object):
+        a = ...  # type: int
+      x = ...  # type: X
+      a = ...  # type: int
+      v = ...  # type: float
     """)
 
   def testUnsolvableMetaclass(self):
@@ -717,6 +732,62 @@ class ClassesTest(test_inference.InferenceTest):
       class A(object):
         pass
       x = ...  # type: str
+    """)
+
+  def testMakeType(self):
+    ty = self.Infer("""
+      X = type("X", (int, object), {"a": 1})
+      x = X()
+      a = X.a
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      class X(int, object):
+        a = ...  # type: int
+      x = ...  # type: X
+      a = ...  # type: int
+    """)
+
+  def testMakeSimpleType(self):
+    ty = self.Infer("""
+      X = type("X", (), {})
+      x = X()
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      class X: ...
+      x = ...  # type: X
+    """)
+
+  def testMakeAmbiguousType(self):
+    ty = self.Infer("""
+      if __any_object__:
+        name = "A"
+      else:
+        name = "B"
+      X = type(name, (int, object), {"a": 1})
+      x = X()
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      name = ...  # type: str
+      X = ...  # type: Any
+      x = ...  # type: Any
+    """)
+
+  @unittest.skip("A.__init__ needs to be called")
+  def testTypeInit(self):
+    ty = self.Infer("""
+      class A(type):
+        def __init__(self, name, bases, members):
+          self.x = 42
+          super(A, self).__init__(name, bases, members)
+      B = A("B", (), {})
+      x = B.x
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      class A(type):
+        x = ...  # type: int
+        def __init__(self, name, bases, members) -> None
+      class B: ...
+      x = ...  # type: int
     """)
 
 

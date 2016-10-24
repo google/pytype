@@ -702,7 +702,7 @@ class ValueWithSlots(Instance):
       return self._slots[name]
 
 
-class Dict(ValueWithSlots, WrapsDict("_entries")):
+class Dict(ValueWithSlots, WrapsDict("members")):
   """Representation of Python 'dict' objects.
 
   It works like __builtins__.dict, except that, for string keys, it keeps track
@@ -716,7 +716,6 @@ class Dict(ValueWithSlots, WrapsDict("_entries")):
   def __init__(self, name, vm, node):
     super(Dict, self).__init__(vm.convert.dict_type, vm, node)
     self.name = name
-    self._entries = {}
     self.set_slot("__getitem__", self.getitem_slot)
     self.set_slot("__setitem__", self.setitem_slot)
     self.init_type_parameters(self.KEY_TYPE_PARAM, self.VALUE_TYPE_PARAM)
@@ -734,7 +733,7 @@ class Dict(ValueWithSlots, WrapsDict("_entries")):
           unresolved = True
         else:
           try:
-            results.append(self._entries[name])
+            results.append(self.members[name])
           except KeyError:
             self.vm.errorlog.key_error(self.vm.frame.current_opcode, name)
             unresolved = True
@@ -752,10 +751,10 @@ class Dict(ValueWithSlots, WrapsDict("_entries")):
         node, self.KEY_TYPE_PARAM, self.vm.convert.build_string(node, name))
     self.merge_type_parameter(
         node, self.VALUE_TYPE_PARAM, value_var)
-    if name in self._entries:
-      self._entries[name].PasteVariable(value_var, node)
+    if name in self.members:
+      self.members[name].PasteVariable(value_var, node)
     else:
-      self._entries[name] = value_var
+      self.members[name] = value_var
     return node
 
   def setitem(self, node, name_var, value_var):
@@ -770,10 +769,10 @@ class Dict(ValueWithSlots, WrapsDict("_entries")):
         # all branches.
         self.could_contain_anything = True
         continue
-      if name in self._entries:
-        self._entries[name].PasteVariable(value_var, node)
+      if name in self.members:
+        self.members[name].PasteVariable(value_var, node)
       else:
-        self._entries[name] = value_var
+        self.members[name] = value_var
 
   def setitem_slot(self, node, name_var, value_var):
     """Implements the __setitem__ slot."""
@@ -1464,7 +1463,7 @@ class PyTDFunction(Function):
     retvar = self.vm.program.NewVariable("%s ret" % self.name)
     all_mutations = []
     # The following line may raise FailedFunctionCall
-    possible_calls = self.match_signatures(node, args)
+    possible_calls = self._match_signatures(node, args)
     for view, signatures in possible_calls:
       if len(signatures) > 1:
         ret = self._call_with_signatures(node, func, args, view, signatures)
@@ -1499,7 +1498,7 @@ class PyTDFunction(Function):
             for v in values if isinstance(v, SimpleAbstractValue)
             for name in v.type_parameters]
 
-  def match_signatures(self, node, args):
+  def _match_signatures(self, node, args):
     """Match signatures using specific Variable->Value views."""
     if not all(a.bindings for a in args.posargs):
       raise exceptions.ByteCodeTypeError(
@@ -1512,7 +1511,7 @@ class PyTDFunction(Function):
       if not node.CanHaveCombination(view.values()):
         log.info("Skipping combination %r", view.values())
         continue
-      log.debug("match_signatures function %r: %d signature(s)",
+      log.debug("_match_signatures function %r: %d signature(s)",
                 self.name, len(self.signatures))
       log.debug("args in view: %r", [(a.bindings and view[a].data)
                                      for a in args.posargs])
@@ -1613,6 +1612,32 @@ class PyTDFunction(Function):
         name, tuple(sig.pytd_sig for sig in self.signatures), pytd.METHOD)
 
 
+class TypeNew(PyTDFunction):
+  """Implements type.__new__."""
+
+  def call(self, node, func, args, condition=None):
+    if len(args.posargs) == 4:
+      # Try to construct a more specific return type. If we can't, we'll fall
+      # back to the result of PyTDFunction.call.
+      try:
+        self._match_signatures(node, args)
+      except FailedFunctionCall:
+        pass
+      else:
+        cls, name_var, bases_var, class_dict_var = args.posargs
+        try:
+          bases = list(get_atomic_python_constant(bases_var))
+          variable = self.vm.make_class(node, name_var, bases, class_dict_var)
+        except ConversionError:
+          pass
+        else:
+          if any(v.data.full_name != "__builtin__.type" for v in cls.bindings):
+            for val in variable.bindings:
+              val.data.cls = cls
+          return node, variable
+    return super(TypeNew, self).call(node, func, args, condition)
+
+
 class Class(object):
   """Mix-in to mark all class-like values."""
 
@@ -1662,7 +1687,12 @@ class Class(object):
     node, variable = self.vm.call_function(node, new, new_args,
                                            condition=condition)
     for val in variable.bindings:
-      if val.data.cls and self in val.data.cls.data:
+      # TODO(rechen): If val.data is a class, _call_init mistakenly calls
+      # val.data's __init__ method rather than that of val.data.cls. See
+      # testClasses.testTypeInit for a case in which skipping this __init__
+      # call is problematic.
+      if (not isinstance(val.data, Class) and val.data.cls and
+          self in val.data.cls.data):
         node = self._call_init(node, val, args, condition)
     return node, variable
 

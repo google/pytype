@@ -416,8 +416,12 @@ class Converter(object):
     elif isinstance(pyval, pytd.Function):
       signatures = [abstract.PyTDSignature(pyval.name, sig, self.vm)
                     for sig in pyval.signatures]
-      f = abstract.PyTDFunction(
-          pyval.name, signatures, pyval.kind, self.vm, node)
+      type_new = self.vm.vmbuiltins.Lookup("__builtin__.type").Lookup("__new__")
+      if pyval is type_new:
+        f_cls = abstract.TypeNew
+      else:
+        f_cls = abstract.PyTDFunction
+      f = f_cls(pyval.name, signatures, pyval.kind, self.vm, node)
       return f
     elif isinstance(pyval, pytd.ClassType):
       assert pyval.cls

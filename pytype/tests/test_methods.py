@@ -855,6 +855,17 @@ class MethodsTest(test_inference.InferenceTest):
         def __new__(cls, string) -> str
     """)
 
+  @unittest.skip("The type of foo is incorrectly inferred as str")
+  def testInheritNew(self):
+    ty = self.Infer("""
+      class Foo(str): pass
+      foo = Foo()
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      class Foo(str): ...
+      foo = ...  # type: Foo
+    """)
+
   def testVariableProductComplexityLimit(self):
     ty = self.Infer("""
       class A(object):
