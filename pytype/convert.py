@@ -171,7 +171,7 @@ class Converter(object):
 
   def build_map(self, node):
     """Create an empty VM dict."""
-    return abstract.Dict("dict()", self.vm, node).to_variable(node, "dict()")
+    return abstract.Dict("dict", self.vm, node).to_variable(node, "dict")
 
   def build_tuple(self, node, content):
     """Create a VM tuple from the given sequence."""

@@ -283,9 +283,10 @@ class BuiltinTests2(test_inference.InferenceTest):
       x6 = ...  # type: reversed[nothing]
       x7 = ...  # type: reversed[nothing]
     """)
-    self.assertErrorLogIs(errors, [(5, "wrong-arg-types", r"set"),
-                                   (6, "wrong-arg-types", r"frozenset"),
-                                   (7, "wrong-arg-types", r"dict")])
+    self.assertErrorLogIs(errors, [(5, "wrong-arg-types", r"Set\[int\]"),
+                                   (6, "wrong-arg-types", r"FrozenSet\[int\]"),
+                                   (7, "wrong-arg-types",
+                                    r"Dict\[bool, int\]")])
 
   def testFilter(self):
     ty = self.Infer("""

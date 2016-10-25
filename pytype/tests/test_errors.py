@@ -515,11 +515,12 @@ class ErrorTest(test_inference.InferenceTest):
       hex()
     """)
     self.assertErrorLogIs(errors, [
-        (1, "wrong-arg-types", r"Actually passed:.*self: float, x: list"),
+        (1, "wrong-arg-types",
+         r"Actually passed:.*self: float, x: List\[nothing\]"),
         (2, "wrong-arg-count", r"Actually passed:.*self: float, x: int, "
-         r"_2: list, foobar: Type\[str\]"),
+         r"_2: List\[nothing\], foobar: Type\[str\]"),
         (3, "wrong-keyword-args",
-         r"Actually passed:.*self: float, x: int, foobar: list"),
+         r"Actually passed:.*self: float, x: int, foobar: List\[nothing\]"),
         (4, "duplicate-keyword-argument",
          r"Actually passed:.*self: float, x: int, x: str"),
         (5, "missing-parameter", r"Actually passed: \(\)")
@@ -713,10 +714,8 @@ class ErrorTest(test_inference.InferenceTest):
     _, errors = self.InferAndCheck("""\
       X = type("X", (42,), {"a": 1})
     """, solve_unknowns=True)
-    # TODO(rechen): The error message says that the actual value of bases is
-    # "tuple"; it would be better to have "Tuple[int]".
     self.assertErrorLogIs(errors, [(1, "wrong-arg-count",
-                                    r"Actually passed:.*tuple")])
+                                    r"Actually passed:.*Tuple\[int\]")])
 
   @unittest.skip("Reports [base-class-error] instead of [wrong-arg-types]")
   def testHalfBadTypeBases(self):
@@ -730,10 +729,8 @@ class ErrorTest(test_inference.InferenceTest):
     _, errors = self.InferAndCheck("""\
       X = type("X", (int, object), {0: 1})
     """, solve_unknowns=True)
-    # TODO(rechen): We currently print "dict()" (the name of an abstract.Dict)
-    # as the actual value of dict; "Dict[int, int]" would be more helpful.
     self.assertErrorLogIs(errors, [(1, "wrong-arg-count",
-                                    r"Actually passed:.*dict")])
+                                    r"Actually passed:.*Dict\[int, int\]")])
 
 
 if __name__ == "__main__":
