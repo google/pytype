@@ -58,6 +58,17 @@ class MatcherTest(unittest.TestCase):
     result = self._match_value(left, other_type)
     self.assertEquals(result, {})
 
+  def testMetaclass(self):
+    left = abstract.InterpreterClass("left", [], {}, self.vm)
+    meta1 = abstract.InterpreterClass("m1", [], {}, self.vm)
+    meta2 = abstract.InterpreterClass("m2", [], {}, self.vm)
+    left.cls = self.vm.program.NewVariable(
+        "cls", [meta1, meta2], [], self.root_cfg_node)
+    result1 = self._match_value(left, meta1)
+    result2 = self._match_value(left, meta2)
+    self.assertEquals(result1, {})
+    self.assertEquals(result2, {})
+
 
 if __name__ == "__main__":
   unittest.main()

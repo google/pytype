@@ -224,7 +224,14 @@ class Converter(object):
     """Create a new variable containing an unsolvable."""
     return self.unsolvable.to_variable(node, name)
 
-  def _merge_classes(self, instances):
+  def merge_classes(self, instances):
+    """Merge the classes of the given instances.
+
+    Args:
+      instances: An iterable of instances.
+    Returns:
+      An abstract.AtomicAbstractValue created by merging the instances' classes.
+    """
     classes = set()
     for v in instances:
       cls = v.get_class()
@@ -466,7 +473,7 @@ class Converter(object):
           if isinstance(c, pytd.TypeParameter):
             if not subst or c.name not in subst:
               raise self.TypeParameterError(c.name)
-            return self._merge_classes(subst[c.name].data)
+            return self.merge_classes(subst[c.name].data)
           else:
             return self.convert_constant_to_value(pytd.Print(c), c, subst, node)
         else:

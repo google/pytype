@@ -239,11 +239,10 @@ class AbstractMatcher(object):
     left_type = left.get_class()
     assert left_type
     for left_cls in left_type.data:
-      subst = self._match_class_and_instance_against_type(
+      new_subst = self._match_class_and_instance_against_type(
           left_cls, left, other_type, subst, node, view)
-      if subst is None:
-        return None
-    return subst
+      if new_subst is not None:
+        return new_subst
 
   def _match_instance(self, left, instance, other_type, subst, node, view):
     """Used by _match_class_and_instance_against_type. Matches one MRO entry.

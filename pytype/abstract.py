@@ -857,6 +857,10 @@ class Union(AtomicAbstractValue):
   def to_type(self, node, seen=None):
     return pytd.UnionType(tuple(t.to_type(node, seen) for t in self.options))
 
+  def get_instance_type(self, node, instance=None, seen=None):
+    return pytd.UnionType(tuple(t.get_instance_type(node, instance, seen)
+                                for t in self.options))
+
 
 class FunctionArgs(collections.namedtuple("_", ["posargs", "namedargs",
                                                 "starargs", "starstarargs"])):
@@ -1649,14 +1653,17 @@ class Class(object):
   def init_mixin(self, metaclass):
     """Mix-in equivalent of __init__."""
     if metaclass is None:
-      for base in self.mro[1:]:
-        if isinstance(base, Class) and base.cls is not None:
-          self.cls = base.cls
-          break
+      self.cls = self._get_inherited_metaclass()
     else:
       # TODO(rechen): Check that the metaclass is a (non-strict) subclass of the
       # metaclasses of the base classes.
       self.cls = metaclass
+
+  def _get_inherited_metaclass(self):
+    for base in self.mro[1:]:
+      if isinstance(base, Class) and base.cls is not None:
+        return base.cls
+    return None
 
   def to_type(self, node, seen=None):
     del node, seen
@@ -1958,9 +1965,12 @@ class InterpreterClass(SimpleAbstractValue, Class):
     constants = [pytd.Constant(name, builder.build())
                  for name, builder in constants.items()
                  if builder]
-    # TODO(rechen): Convert self.cls to a metaclass.
+    if self.cls and self.cls is not self._get_inherited_metaclass():
+      metaclass = self.vm.convert.merge_classes([self]).get_instance_type(node)
+    else:
+      metaclass = None
     return pytd.Class(name=class_name,
-                      metaclass=None,
+                      metaclass=metaclass,
                       parents=tuple(bases),
                       methods=tuple(methods.values()),
                       constants=tuple(constants),

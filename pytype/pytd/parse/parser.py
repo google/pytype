@@ -749,8 +749,6 @@ class _TypeDeclParser(object):
   def p_classdef(self, p):
     """classdef : CLASS class_name class_parents COLON maybe_class_funcs end_class"""
     _, _, class_name, (parents, metaclass), _, class_funcs, _ = p
-    if metaclass is not None:
-      metaclass = pytd.NamedType(metaclass)
     methoddefs = [x for x in class_funcs  if isinstance(x, NameAndSig)]
     constants = [x for x in class_funcs if isinstance(x, pytd.Constant)]
 
@@ -807,14 +805,14 @@ class _TypeDeclParser(object):
     p[0] = (parent_list, None)
 
   def p_parents_kwarg(self, p):
-    """parents : LPAREN parent_list COMMA NAME ASSIGN NAME RPAREN"""
+    """parents : LPAREN parent_list COMMA NAME ASSIGN type RPAREN"""
     parent_list, kwarg = p[2], p[4]
     if kwarg != "metaclass":
       make_syntax_error(self, "Only 'metaclass' allowed as classdef kwarg", p)
     p[0] = (parent_list, p[6])
 
   def p_parents_empty_kwarg(self, p):
-    """parents : LPAREN NAME ASSIGN NAME RPAREN"""
+    """parents : LPAREN NAME ASSIGN type RPAREN"""
     kwarg = p[2]
     if kwarg != "metaclass":
       make_syntax_error(self, "Only 'metaclass' allowed as classdef kwarg", p)

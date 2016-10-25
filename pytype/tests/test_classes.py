@@ -696,12 +696,28 @@ class ClassesTest(test_inference.InferenceTest):
         def __init__(self, name, bases, dict) -> None
         def f(self) -> float
       Int = ...  # type: Type[int]
-      class X(int, object):
+      class X(int, object, metaclass=A):
         a = ...  # type: int
       x = ...  # type: X
       a = ...  # type: int
       v = ...  # type: float
     """)
+
+  def testMetaclassPyi(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        class A(type):
+          def f(self) -> float
+        class X(metaclass=A): ...
+      """)
+      ty = self.Infer("""
+        import a
+        v = a.X.f()
+      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        v = ...  # type: float
+      """)
 
   def testUnsolvableMetaclass(self):
     with utils.Tempdir() as d:

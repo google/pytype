@@ -8,6 +8,7 @@ from pytype import config
 from pytype import errors
 from pytype import vm
 from pytype.pytd import cfg
+from pytype.pytd import pytd
 
 import unittest
 
@@ -288,6 +289,41 @@ class IsInstanceTest(AbstractTestBase):
     check(True, [self._str_class],
           new_tuple(self._str_class,
                     self.new_var("v", self._int_class, self._obj_class)))
+
+
+class PyTDTest(AbstractTestBase):
+  """Tests for abstract -> pytd type conversions."""
+
+  def testMetaclass(self):
+    cls = abstract.InterpreterClass("X", [], {}, self._vm)
+    meta = abstract.InterpreterClass("M", [], {}, self._vm)
+    meta.official_name = "M"
+    cls.cls = meta.to_variable(self._vm.root_cfg_node)
+    pytd_cls = cls.to_pytd_def(self._vm.root_cfg_node, "X")
+    self.assertEquals(pytd_cls.metaclass, pytd.NamedType("M"))
+
+  def testInheritedMetaclass(self):
+    parent = abstract.InterpreterClass("X", [], {}, self._vm)
+    meta = abstract.InterpreterClass("M", [], {}, self._vm)
+    meta.official_name = "M"
+    parent.cls = meta.to_variable(self._vm.root_cfg_node)
+    child = abstract.InterpreterClass(
+        "Y", [parent.to_variable(self._vm.root_cfg_node)], {}, self._vm)
+    self.assertIs(child.cls, parent.cls)
+    pytd_cls = child.to_pytd_def(self._vm.root_cfg_node, "Y")
+    self.assertIs(pytd_cls.metaclass, None)
+
+  def testMetaclassUnion(self):
+    cls = abstract.InterpreterClass("X", [], {}, self._vm)
+    meta1 = abstract.InterpreterClass("M1", [], {}, self._vm)
+    meta2 = abstract.InterpreterClass("M2", [], {}, self._vm)
+    meta1.official_name = "M1"
+    meta2.official_name = "M2"
+    cls.cls = abstract.Union(
+        [meta1, meta2], self._vm).to_variable(self._vm.root_cfg_node)
+    pytd_cls = cls.to_pytd_def(self._vm.root_cfg_node, "X")
+    self.assertEquals(pytd_cls.metaclass, pytd.UnionType(
+        (pytd.NamedType("M1"), pytd.NamedType("M2"))))
 
 
 if __name__ == "__main__":
