@@ -1,4 +1,3 @@
-
 """Tests for typing.py."""
 
 import os
@@ -42,6 +41,18 @@ class TypingTest(test_inference.InferenceTest):
                      "typing.NamedTuple")
     self._test_match("collections.namedtuple('foo', ('x', 'y'))()",
                      "typing.NamedTuple('foo', [('x', int), ('y', int)])")
+
+  def test_all(self):
+    ty = self.Infer("""
+      from __future__ import google_type_annotations
+      import typing
+      x = typing.__all__
+    """)
+    self.assertTypesMatchPytd(ty, """
+      google_type_annotations = ...  # type: __future__._Feature
+      typing = ...  # type: module
+      x = ...  # type: List[str]
+    """)
 
 
 if __name__ == "__main__":
