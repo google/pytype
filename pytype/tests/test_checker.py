@@ -1,5 +1,6 @@
 """Tests for --check."""
 
+import os
 import textwrap
 
 from pytype import config
@@ -11,12 +12,13 @@ from pytype.tests import test_inference
 class CheckerTest(test_inference.InferenceTest):
   """Tests for --check."""
 
+
   def get_checking_errors(self, python, pytd):
     options = config.Options.create(python_version=self.PYTHON_VERSION,
                                     python_exe=self.PYTHON_EXE)
     errorlog = errors.ErrorLog()
     infer.check_types(py_src=textwrap.dedent(python),
-                      pytd_src=textwrap.dedent(pytd),
+                      pytd_src=None if pytd is None else textwrap.dedent(pytd),
                       py_filename="<inline>",
                       pytd_filename="<inline>",
                       errorlog=errorlog,
@@ -24,7 +26,7 @@ class CheckerTest(test_inference.InferenceTest):
                       cache_unknowns=True)
     return errorlog
 
-  def check_against_pytd(self, python, pytd):
+  def check(self, python, pytd=None):
     errorlog = self.get_checking_errors(python, pytd)
     if errorlog.has_error():
       errorlog.print_to_stderr()
@@ -38,7 +40,7 @@ class CheckerTest(test_inference.InferenceTest):
       def f():
         return 3
     """
-    self.check_against_pytd(python, pytd)
+    self.check(python, pytd)
 
   def testError(self):
     pytd = """
@@ -60,7 +62,7 @@ class CheckerTest(test_inference.InferenceTest):
       def f(x):
         return x + 1
     """
-    self.check_against_pytd(python, pytd)
+    self.check(python, pytd)
 
   def testClass(self):
     pytd = """
@@ -72,7 +74,19 @@ class CheckerTest(test_inference.InferenceTest):
         def method(self, x):
           return x
     """
-    self.check_against_pytd(python, pytd)
+    self.check(python, pytd)
+
+  def testSet(self):
+    python = """
+      from __future__ import google_type_annotations
+      from typing import List, Set
+      def f(data: List[str]):
+        data = set(x for x in data)
+        g(data)
+      def g(data: Set[str]):
+        pass
+    """
+    self.check(python)
 
 
 if __name__ == "__main__":

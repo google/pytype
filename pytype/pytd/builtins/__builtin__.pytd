@@ -592,10 +592,8 @@ class tupleiterator(Iterator[T]):
 class set(Set[T]):
     def __init__(self) -> NoneType:
         self := set[nothing]
-    def __init__(self, iterable: list[N]) -> NoneType:
+    def __init__(self, iterable: Iterable[N]) -> NoneType:
         self := set[N]
-    def __init__(self, x) -> NoneType:
-        self := set[nothing]  # TODO(kramm): should be set[?]
     def __and__(self, y: Iterable[T]) -> set[T]
     def __contains__(self, y) -> bool
     def __iter__(self) -> setiterator[T]

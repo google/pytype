@@ -56,6 +56,14 @@ class BuiltinTests2(test_inference.InferenceTest):
       def h(y) -> set: ...
     """)
 
+  def testSetInit(self):
+    ty = self.Infer("""
+      data = set(x for x in [""])
+    """, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      data = ...  # type: Set[str]
+    """)
+
   def testFrozenSetInheritance(self):
     ty = self.Infer("""
       class Foo(frozenset):
