@@ -374,7 +374,7 @@ class VirtualMachine(object):
   def join_variables(self, node, name, variables):
     return self.program.MergeVariables(node, name, variables)
 
-  def make_class(self, node, name_var, bases, class_dict_var):
+  def make_class(self, node, name_var, bases, class_dict_var, cls_var):
     """Create a class with the name, bases and methods given.
 
     Args:
@@ -383,6 +383,7 @@ class VirtualMachine(object):
       bases: Base classes.
       class_dict_var: Members of the class, as a Variable containing an
           abstract.Dict value.
+      cls_var: The class's metaclass, if any.
 
     Returns:
       An instance of Class.
@@ -406,11 +407,17 @@ class VirtualMachine(object):
       # analyzing the class we're now building.
       var = self.convert.create_new_unsolvable(node, name)
     else:
+      if cls_var is None:
+        cls_var = class_dict.members.get("__metaclass__")
+      if cls_var and all(v.data.full_name == "__builtin__.type"
+                         for v in cls_var.bindings):
+        cls_var = None
       try:
         val = abstract.InterpreterClass(
             name,
             bases,
             class_dict.members,
+            cls_var,
             self)
       except pytd_utils.MROError as e:
         self.errorlog.mro_error(self.frame.current_opcode, name, e.mro_seqs)
@@ -1813,7 +1820,7 @@ class VirtualMachine(object):
   def byte_BUILD_CLASS(self, state, op):
     state, (name, _bases, members) = state.popn(3)
     bases = list(abstract.get_atomic_python_constant(_bases))
-    return state.push(self.make_class(state.node, name, bases, members))
+    return state.push(self.make_class(state.node, name, bases, members, None))
 
   def byte_LOAD_BUILD_CLASS(self, state, op):
     # New in py3

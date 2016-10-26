@@ -1631,13 +1631,13 @@ class TypeNew(PyTDFunction):
         cls, name_var, bases_var, class_dict_var = args.posargs
         try:
           bases = list(get_atomic_python_constant(bases_var))
-          variable = self.vm.make_class(node, name_var, bases, class_dict_var)
+          if not bases:
+            bases = [self.vm.convert.object_type]
+          variable = self.vm.make_class(
+              node, name_var, bases, class_dict_var, cls)
         except ConversionError:
           pass
         else:
-          if any(v.data.full_name != "__builtin__.type" for v in cls.bindings):
-            for val in variable.bindings:
-              val.data.cls = cls
           return node, variable
     return super(TypeNew, self).call(node, func, args, condition)
 
@@ -1885,14 +1885,14 @@ class InterpreterClass(SimpleAbstractValue, Class):
   program.
   """
 
-  def __init__(self, name, bases, members, vm):
+  def __init__(self, name, bases, members, cls, vm):
     assert isinstance(name, str)
     assert isinstance(bases, list)
     assert isinstance(members, dict)
     super(InterpreterClass, self).__init__(name, vm)
     self._bases = bases
     self.mro = mro.compute_mro(self)
-    Class.init_mixin(self, None)
+    Class.init_mixin(self, cls)
     self.members = utils.MonitorDict(members)
     self.instances = set()  # filled through register_instance
     self._instance_cache = {}
@@ -2681,7 +2681,7 @@ class BuildClass(AtomicAbstractValue):
                         new_locals=True)
     return node, self.vm.make_class(
         node, name, list(bases),
-        func.last_frame.f_locals.to_variable(node, "locals()"))
+        func.last_frame.f_locals.to_variable(node, "locals()"), None)
 
 
 class Unsolvable(AtomicAbstractValue):

@@ -39,8 +39,8 @@ class MatcherTest(unittest.TestCase):
     self.assertEquals(result, {})
 
   def testType(self):
-    left = abstract.InterpreterClass("dummy", [], {}, self.vm)
-    right = abstract.InterpreterClass("type", [], {}, self.vm)
+    left = abstract.InterpreterClass("dummy", [], {}, None, self.vm)
+    right = abstract.InterpreterClass("type", [], {}, None, self.vm)
     type_parameters = {"T": abstract.TypeParameter("T", self.vm)}
     other_type = abstract.ParameterizedClass(right, type_parameters, self.vm)
     other_type.module = "__builtin__"
@@ -50,18 +50,18 @@ class MatcherTest(unittest.TestCase):
     self.assertEquals(cls_binding.data, left)
 
   def testUnion(self):
-    left_option1 = abstract.InterpreterClass("o1", [], {}, self.vm)
-    left_option2 = abstract.InterpreterClass("o2", [], {}, self.vm)
+    left_option1 = abstract.InterpreterClass("o1", [], {}, None, self.vm)
+    left_option2 = abstract.InterpreterClass("o2", [], {}, None, self.vm)
     left = abstract.Union([left_option1, left_option2], self.vm)
-    other_type = abstract.InterpreterClass("type", [], {}, self.vm)
+    other_type = abstract.InterpreterClass("type", [], {}, None, self.vm)
     other_type.module = "__builtin__"
     result = self._match_value(left, other_type)
     self.assertEquals(result, {})
 
   def testMetaclass(self):
-    left = abstract.InterpreterClass("left", [], {}, self.vm)
-    meta1 = abstract.InterpreterClass("m1", [], {}, self.vm)
-    meta2 = abstract.InterpreterClass("m2", [], {}, self.vm)
+    left = abstract.InterpreterClass("left", [], {}, None, self.vm)
+    meta1 = abstract.InterpreterClass("m1", [], {}, None, self.vm)
+    meta2 = abstract.InterpreterClass("m2", [], {}, None, self.vm)
     left.cls = self.vm.program.NewVariable(
         "cls", [meta1, meta2], [], self.root_cfg_node)
     result1 = self._match_value(left, meta1)
