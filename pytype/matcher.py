@@ -313,10 +313,10 @@ class AbstractMatcher(object):
           return base
       elif isinstance(base_cls, abstract.AMBIGUOUS_OR_EMPTY):
         # See match_Function_against_Class in type_match.py. Even though it's
-        # possible that this Unknown is of type other_type, our class would
-        # then be a match for *everything*. Hence, return False, to keep
-        # the list of possible types from exploding.
-        return None
+        # possible that this ambiguous base is of type other_type, our class
+        # would then be a match for *everything*. Hence, assume this base is not
+        # a match, to keep the list of possible types from exploding.
+        continue
       else:
         raise AssertionError("Bad base class %r", base_cls)
 

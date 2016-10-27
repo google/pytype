@@ -1,5 +1,7 @@
 """Tests for super()."""
 
+
+from pytype import utils
 from pytype.tests import test_inference
 
 
@@ -104,6 +106,28 @@ class SuperTest(test_inference.InferenceTest):
         pass
       x = ...  # type: super
     """)
+
+  def testSuperWithAmbiguousBase(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        class Grandparent(object):
+          def f(self) -> int
+      """)
+      ty = self.Infer("""
+        import foo
+        class Parent(foo.Grandparent):
+          pass
+        OtherParent = __any_object__
+        class Child(OtherParent, Parent):
+          def f(self):
+            return super(Parent, self).f()
+      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        foo = ...  # type: module
+        class Parent(foo.Grandparent): ...
+        OtherParent = ...  # type: Any
+        class Child(Any, Parent): ...
+      """)
 
 
 if __name__ == "__main__":
