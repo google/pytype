@@ -1,3 +1,4 @@
+import re
 import textwrap
 
 from pytype.pyi import parser
@@ -37,13 +38,13 @@ class ParserTest(unittest.TestCase):
     self._check_legacy(src, actual)
     self.assertMultiLineEqual(expected, actual)
 
-  def check_error(self, src, expected_line, regex):
+  def check_error(self, src, expected_line, message):
     """Check that parsing the src raises the expected error."""
     try:
       pytd.Print(parser.parse_string(textwrap.dedent(src)))
       self.fail("ParseError expected")
     except parser.ParseError as e:
-      self.assertRegexpMatches(e.message, regex)
+      self.assertRegexpMatches(e.message, re.escape(message))
       self.assertEquals(expected_line, e.line)
 
   def test_syntax_error(self):
@@ -125,6 +126,130 @@ class ParserTest(unittest.TestCase):
 
     # Simple generic type.
     self.check("x = ...  # type: Foo[int, str]")
+
+  def test_function_params(self):
+    self.check("def foo() -> int: ...")
+    self.check("def foo(x) -> int: ...")
+    self.check("def foo(x: int) -> int: ...")
+    self.check("def foo(x: int, y: str) -> int: ...")
+    # Default values can add type information.
+    self.check("def foo(x = 123) -> int: ...",
+               "def foo(x: int = ...) -> int: ...")
+    self.check("def foo(x = 12.3) -> int: ...",
+               "def foo(x: float = ...) -> int: ...")
+    self.check("def foo(x = None) -> int: ...",
+               "def foo(x: None = ...) -> int: ...")
+    self.check("def foo(x = xyz) -> int: ...",
+               "def foo(x = ...) -> int: ...")
+    self.check("def foo(x = ...) -> int: ...",
+               "def foo(x = ...) -> int: ...")
+    # Default of None will turn declared type into a union.
+    self.check("def foo(x: str = None) -> int: ...",
+               "def foo(x: Union[str, None] = ...) -> int: ...",
+               prologue="from typing import Union")
+    # Other defaults are ignored if a declared type is present.
+    self.check("def foo(x: str = 123) -> int: ...",
+               "def foo(x: str = ...) -> int: ...")
+
+  def test_function_star_params(self):
+    self.check("def foo(*, x) -> str: ...")
+    self.check("def foo(x: int, *args) -> str: ...")
+    self.check("def foo(x: int, *args: float) -> str: ...",
+               prologue="from typing import Tuple")
+    self.check("def foo(x: int, **kwargs) -> str: ...")
+    self.check("def foo(x: int, **kwargs: float) -> str: ...",
+               prologue="from typing import Dict")
+    self.check("def foo(x: int, *args, **kwargs) -> str: ...")
+    # Various illegal uses of * args.
+    self.check_error("def foo(*) -> int: ...", 1,
+                     "Named arguments must follow bare *")
+    self.check_error("def foo(*x, *y) -> int: ...", 1,
+                     "Unexpected second *")
+    self.check_error("def foo(**x, *y) -> int: ...", 1,
+                     "**x must be last parameter")
+
+  def test_function_ellipsis_param(self):
+    self.check("def foo(...) -> int: ...",
+               "def foo(*args, **kwargs) -> int: ...")
+    self.check("def foo(x: int, ...) -> int: ...",
+               "def foo(x: int, *args, **kwargs) -> int: ...")
+    self.check_error("def foo(..., x) -> int: ...", 1,
+                     "ellipsis (...) must be last parameter")
+    self.check_error("def foo(*, ...) -> int: ...", 1,
+                     "ellipsis (...) not compatible with bare *")
+
+  def test_function_decorators(self):
+    self.check_error("@classmethod @staticmethod def foo() -> int: ...", 1,
+                     "Too many decorators for foo")
+
+  def test_function_empty_body(self):
+    self.check("def foo() -> int: ...")
+    self.check("def foo() -> int",
+               "def foo() -> int: ...")
+    self.check("def foo() -> int: pass",
+               "def foo() -> int: ...")
+    self.check("""\
+      def foo() -> int:
+        ...""",
+               """\
+      def foo() -> int: ...""")
+    self.check("""\
+      def foo() -> int:
+        pass""",
+               """\
+      def foo() -> int: ...""")
+    self.check("""\
+      def foo() -> int:
+        '''doc string'''""",
+               """\
+      def foo() -> int: ...""")
+
+  def test_function_body(self):
+    # Mutators.
+    self.check("""\
+      def foo(x) -> int:
+          x := int""")
+    self.check_error("""\
+      def foo(x) -> int:
+          y := int""", 1, "No parameter named y")
+    # Raise statements (currently ignored).
+    self.check("""\
+      def foo(x) -> int:
+          raise Error""",
+               """\
+      def foo(x) -> int: ...""")
+    self.check("""\
+      def foo(x) -> int:
+          raise Error()""",
+               """\
+      def foo(x) -> int: ...""")
+
+  def test_function_raises(self):
+    self.check("def foo() -> int raises RuntimeError: ...")
+    self.check("def foo() -> int raises RuntimeError, TypeError: ...")
+
+  def test_function_properties_not_allowed(self):
+    self.check_error("""\
+      @property
+      def foo(self) -> int""",
+                     None,
+                     "Module-level functions with property decorators: foo")
+
+  def test_duplicate_names(self):
+    self.check_error("""\
+      def foo() -> int: ...
+      foo = ... # type: int""",
+                     None,
+                     "Duplicate top-level identifier(s): foo")
+    self.check_error("""\
+      from x import foo
+      def foo() -> int: ...""",
+                     None,
+                     "Duplicate top-level identifier(s): foo")
+    # A function is allowed to appear multiple times.
+    self.check("""\
+      def foo(x: int) -> int: ...
+      def foo(x: str) -> str: ...""")
 
 
 if __name__ == "__main__":
