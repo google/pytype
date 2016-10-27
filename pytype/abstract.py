@@ -1037,7 +1037,7 @@ class Super(AtomicAbstractValue):
     elif len(args.posargs) == 2:
       for cls in args.posargs[0].bindings:
         for obj in args.posargs[1].bindings:
-          if not isinstance(cls.data, Class):
+          if not isinstance(cls.data, (Class, AMBIGUOUS_OR_EMPTY)):
             raise WrongArgTypes(
                 self._SIGNATURE, self._SIGNATURE.print_args(args))
           result.AddBinding(

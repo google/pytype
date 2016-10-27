@@ -129,6 +129,11 @@ class SuperTest(test_inference.InferenceTest):
         class Child(Any, Parent): ...
       """)
 
+  def testSuperWithAny(self):
+    self.assertNoErrors("""
+      super(__any_object__, __any_object__)
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()
