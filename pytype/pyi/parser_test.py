@@ -127,6 +127,17 @@ class ParserTest(unittest.TestCase):
     # Simple generic type.
     self.check("x = ...  # type: Foo[int, str]")
 
+    # Brackets without a typename imply a tuple.
+    self.check("x = ...  # type: []",
+               "x = ...  # type: Tuple[]",
+               prologue="from typing import Tuple")
+    self.check("x = ...  # type: [int]",
+               "x = ...  # type: Tuple[int]",
+               prologue="from typing import Tuple")
+    self.check("x = ...  # type: [int, str]",
+               "x = ...  # type: Tuple[int, str]",
+               prologue="from typing import Tuple")
+
   def test_function_params(self):
     self.check("def foo() -> int: ...")
     self.check("def foo(x) -> int: ...")
