@@ -190,7 +190,46 @@ class ParserTest(unittest.TestCase):
                      "ellipsis (...) not compatible with bare *")
 
   def test_function_decorators(self):
-    self.check_error("@classmethod @staticmethod def foo() -> int: ...", 1,
+    # sense for methods of classes.  But this at least gives us some coverage
+    # of the decorator logic.  More sensible tests can be created once classes
+    # are implemented.
+    self.check("""\
+      @overload
+      def foo() -> int: ...""",
+               """\
+      def foo() -> int: ...""")
+
+    self.check("""\
+      @abstractmethod
+      def foo() -> int: ...""",
+               """\
+      def foo() -> int: ...""")
+
+    self.check("""\
+      @staticmethod
+      def foo() -> int: ...""")
+
+    self.check("""\
+      @classmethod
+      def foo() -> int: ...""")
+
+    self.check_error("""\
+      @property
+      def foo(self) -> int""",
+                     None,
+                     "Module-level functions with property decorators: foo")
+
+    self.check_error("""\
+      @foo.setter
+      def foo(self, x) -> int: ...""",
+                     None,
+                     "Module-level functions with property decorators: foo")
+
+    self.check_error("""\
+      @classmethod
+      @staticmethod
+      def foo() -> int: ...""",
+                     3,
                      "Too many decorators for foo")
 
   def test_function_empty_body(self):
@@ -238,13 +277,6 @@ class ParserTest(unittest.TestCase):
   def test_function_raises(self):
     self.check("def foo() -> int raises RuntimeError: ...")
     self.check("def foo() -> int raises RuntimeError, TypeError: ...")
-
-  def test_function_properties_not_allowed(self):
-    self.check_error("""\
-      @property
-      def foo(self) -> int""",
-                     None,
-                     "Module-level functions with property decorators: foo")
 
   def test_duplicate_names(self):
     self.check_error("""\

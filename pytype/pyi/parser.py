@@ -362,6 +362,8 @@ class _Parser(object):
       if not mutator.successful:
         raise ParseError("No parameter named %s" % mutator.name)
 
+    # Remove ignored decorators, raise ParseError for invalid decorators.
+    decorators = [d for d in decorators if _keep_decorator(d)]
     # TODO(acaceres): if not inside a class, any decorator should be an error
     if len(decorators) > 1:
       raise ParseError("Too many decorators for %s" % name)
@@ -377,6 +379,20 @@ class _Parser(object):
 def parse_string(src, name=None, filename=None,
                  python_version=_DEFAULT_VERSION):
   return _Parser().parse(src, name, filename, version=python_version)
+
+
+def _keep_decorator(decorator):
+  """Return True iff the decorator requires processing."""
+  if decorator in ["overload", "abstractmethod"]:
+    # These are legal but ignored.
+    return False
+  elif (decorator in ["staticmethod", "classmethod", "property"] or
+        "." in decorator):
+    # Dotted name decorators need more context to be validated, done in
+    # TryParseSignatureAsProperty
+    return True
+  else:
+    raise ParseError("Decorator %s not supported" % decorator)
 
 
 def _validate_params(param_list):
