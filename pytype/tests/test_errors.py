@@ -1,5 +1,6 @@
 """Tests for displaying errors."""
 
+import os
 import StringIO
 import unittest
 
@@ -9,6 +10,7 @@ from pytype.tests import test_inference
 
 class ErrorTest(test_inference.InferenceTest):
   """Tests for errors."""
+
 
   def testDeduplicate(self):
     _, errors = self.InferAndCheck("""
@@ -731,6 +733,17 @@ class ErrorTest(test_inference.InferenceTest):
     """, solve_unknowns=True)
     self.assertErrorLogIs(errors, [(1, "wrong-arg-count",
                                     r"Actually passed:.*Dict\[int, int\]")])
+
+  def testUnion(self):
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      def f(x: int):
+        pass
+      x = (3.14, "")
+      f(x[0])
+    """)
+    self.assertErrorLogIs(errors, [(5, "wrong-arg-types",
+                                    r"Actually passed:.*Union\[float, str\]")])
 
 
 if __name__ == "__main__":

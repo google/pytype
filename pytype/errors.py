@@ -8,7 +8,6 @@ import sys
 
 from pytype import abstract
 from pytype import utils
-from pytype.pytd import pep484
 from pytype.pytd import pytd
 from pytype.pytd import utils as pytd_utils
 
@@ -259,18 +258,9 @@ class ErrorLog(ErrorLogBase):
   def _prettyprint_arg(self, arg):
     """Pretty-print a function argument."""
     if isinstance(arg, abstract.Class):
-      return "Type[%s]" % arg.name
-    elif isinstance(arg, abstract.Instance) and arg.cls:
-      cls = arg.cls.bindings[0].data
-      if isinstance(cls, abstract.PyTDClass) and cls.pytd_cls.template:
-        params = []
-        for t in cls.pytd_cls.template:
-          param = arg.type_parameters.get(t.name)
-          params.append("nothing" if param is None or not param.bindings
-                        else param.bindings[0].data.name)
-        name = pep484.PEP484_MaybeCapitalize(arg.name) or arg.name
-        return "%s[%s]" % (name, ", ".join(params))
-    return arg.name
+      return "Type[%s]" % arg
+    else:
+      return str(arg)
 
   def _invalid_parameters(self, opcode, message, (sig, passed_args)):
     details = "".join([

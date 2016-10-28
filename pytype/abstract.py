@@ -382,6 +382,9 @@ class TypeParameter(AtomicAbstractValue):
   def __repr__(self):
     return "TypeParameter(%r)" % self.name
 
+  def __str__(self):
+    return self.name
+
 
 class TypeParameterInstance(AtomicAbstractValue):
   """An instance of a type parameter."""
@@ -636,10 +639,16 @@ class Instance(SimpleAbstractValue):
 
   def __str__(self):
     if self.cls:
-      cls = self.cls.data[0]
-      return "<instance of %s>" % cls.name
-    else:
-      return "<instance>"
+      cls = self.cls.bindings[0].data
+      if isinstance(cls, PyTDClass) and cls.pytd_cls.template:
+        params = []
+        for t in cls.pytd_cls.template:
+          param = self.type_parameters.get(t.name)
+          params.append("nothing" if param is None or not param.bindings
+                        else str(param.bindings[0].data.name))
+        name = pep484.PEP484_MaybeCapitalize(self.name) or self.name
+        return "%s[%s]" % (name, ", ".join(params))
+    return self.name
 
   def make_template_unsolvable(self, template, node):
     for formal in template:
@@ -1853,6 +1862,9 @@ class PyTDClass(SimpleAbstractValue, Class):
         type_arguments)
 
   def __repr__(self):
+    return "PyTDClass(%s)" % self.name
+
+  def __str__(self):
     return self.name
 
   def to_pytd_def(self, node, name):
@@ -1985,6 +1997,9 @@ class InterpreterClass(SimpleAbstractValue, Class):
 
   def __repr__(self):
     return "InterpreterClass(%s)" % self.name
+
+  def __str__(self):
+    return self.name
 
 
 class NativeFunction(Function):
