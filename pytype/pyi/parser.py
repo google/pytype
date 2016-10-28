@@ -79,6 +79,7 @@ class _Parser(object):
     new_union_type()
     new_function()
     add_function()
+    new_named_tuple()
 
   Other methods:
     set_error_location()
@@ -113,6 +114,7 @@ class _Parser(object):
     self._constants = []
     self._aliases = []
     self._functions = []
+    self._generated_classes = collections.defaultdict(list)
 
   def parse(self, src, name, filename, version):
     """Parse a PYI file and return the corresponding AST.
@@ -146,12 +148,16 @@ class _Parser(object):
         raise ParseError(e.message, self._error_location[0])
       else:
         raise e
+    generated_classes = [x for class_list in self._generated_classes.values()
+                         for x in class_list]
+
+    classes = generated_classes
 
     all_names = (list(set(f.name for f in self._functions)) +
                  [c.name for c in self._constants] +
                  # TODO(dbaum): Add type_params and classes to the check.
                  # [c.name for c in type_params] +
-                 # [c.name for c in classes] +
+                 [c.name for c in classes] +
                  [c.name for c in self._aliases])
     duplicates = [name
                   for name, count in collections.Counter(all_names).items()
@@ -172,7 +178,7 @@ class _Parser(object):
                             constants=tuple(self._constants),
                             type_params=(),
                             functions=tuple(functions),
-                            classes=(),
+                            classes=tuple(classes),
                             aliases=tuple(self._aliases))
 
     # TODO(dbaum): Add various AST transformations used in the legacy parser.
@@ -374,6 +380,43 @@ class _Parser(object):
 
   def add_function(self, name_and_sig):
     self._functions.append(name_and_sig)
+
+  def new_named_tuple(self, base_name, fields):
+    """Return a type for a named tuple (implicitly generates a class).
+
+    Args:
+      base_name: The named tuple's name.
+      fields: A list of (name, type) tuples.
+
+    Returns:
+      A NamedType() for the generated class that describes the named tuple.
+    """
+    # Handle previously defined NamedTuples with the same name
+    prev_list = self._generated_classes[base_name]
+    name_dedup = "~%d" % len(prev_list) if prev_list else ""
+    class_name = "`%s%s`" % (base_name, name_dedup)
+
+    # Like for typing.Tuple, heterogeneous NamedTuples get converted to
+    # homogeneous ones:
+    # NamedTuple[("x", X), ("y", Y)] -> Tuple[X, Y] -> Tuple[Union[X, Y], ...]
+    types = tuple(t for _, t in fields)
+    container_param = (pytd.UnionType(type_list=types) if types
+                       else pytd.AnythingType())
+
+    class_parent = pytd.HomogeneousContainerType(
+        base_type=pytd.NamedType("tuple"),
+        parameters=(container_param,))
+
+    class_constants = tuple(pytd.Constant(n, t) for n, t in fields)
+    nt_class = pytd.Class(name=class_name,
+                          metaclass=None,
+                          parents=(class_parent,),
+                          methods=(),
+                          constants=class_constants,
+                          template=())
+
+    self._generated_classes[base_name].append(nt_class)
+    return pytd.NamedType(nt_class.name)
 
 
 def parse_string(src, name=None, filename=None,

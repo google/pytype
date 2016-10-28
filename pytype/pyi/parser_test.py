@@ -138,6 +138,51 @@ class ParserTest(unittest.TestCase):
                "x = ...  # type: Tuple[int, str]",
                prologue="from typing import Tuple")
 
+  def test_named_tuple(self):
+    # No fields.
+    self.check("x = ...  # type: NamedTuple(foo, [])", """\
+      from typing import Any, Tuple
+
+      x = ...  # type: `foo`
+
+      class `foo`(Tuple[Any, ...]):
+          pass
+      """)
+
+    # Multiple fields, various trailing commas.
+    expected = """\
+      from typing import Tuple, Union
+
+      x = ...  # type: `foo`
+
+      class `foo`(Tuple[Union[int, str], ...]):
+          a = ...  # type: int
+          b = ...  # type: str
+    """
+    self.check("x = ...  # type: NamedTuple(foo, [(a, int), (b, str)])",
+               expected)
+    self.check("x = ...  # type: NamedTuple(foo, [(a, int), (b, str),])",
+               expected)
+    self.check("x = ...  # type: NamedTuple(foo, [(a, int,), (b, str),])",
+               expected)
+
+    # Dedup basename.
+    self.check("""\
+      x = ...  # type: NamedTuple(foo, [(a, int,)])
+      y = ...  # type: NamedTuple(foo, [(b, str,)])""",
+               """\
+      from typing import Tuple
+
+      x = ...  # type: `foo`
+      y = ...  # type: `foo~1`
+
+      class `foo`(Tuple[int, ...]):
+          a = ...  # type: int
+
+      class `foo~1`(Tuple[str, ...]):
+          b = ...  # type: str
+        """)
+
   def test_function_params(self):
     self.check("def foo() -> int: ...")
     self.check("def foo(x) -> int: ...")
