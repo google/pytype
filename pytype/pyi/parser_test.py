@@ -323,6 +323,9 @@ class ParserTest(unittest.TestCase):
     self.check("def foo() -> int raises RuntimeError: ...")
     self.check("def foo() -> int raises RuntimeError, TypeError: ...")
 
+  def test_external_function(self):
+    self.check("def foo PYTHONCODE")
+
   def test_duplicate_names(self):
     self.check_error("""\
       def foo() -> int: ...

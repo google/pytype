@@ -79,6 +79,7 @@ class _Parser(object):
     new_union_type()
     new_function()
     add_function()
+    new_external_function()
     new_named_tuple()
 
   Other methods:
@@ -380,6 +381,20 @@ class _Parser(object):
 
   def add_function(self, name_and_sig):
     self._functions.append(name_and_sig)
+
+  def new_external_function(self, decorators, name):
+    """Return a _NameAndSig for an external code function."""
+    del decorators
+    return _NameAndSig(
+        name=name,
+        # signature is for completeness - it's ignored
+        signature=pytd.Signature(params=(),
+                                 starargs=None, starstarargs=None,
+                                 return_type=pytd.NothingType(),
+                                 exceptions=(),
+                                 template=()),
+        decorators=(),
+        external_code=True)
 
   def new_named_tuple(self, base_name, fields):
     """Return a type for a named tuple (implicitly generates a class).
