@@ -591,6 +591,20 @@ class AnnotationTest(test_inference.InferenceTest):
       def baz(x: int) -> None: ...
     """)
 
+  def testAnnotatedInit(self):
+    ty = self.Infer("""
+      from __future__ import google_type_annotations
+      class A(object):
+        def __init__(self, x: str):
+          self.x = x
+    """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      google_type_annotations = ...  # type: __future__._Feature
+      class A(object):
+        x = ...  # type: str
+        def __init__(self, x: str) -> None: ...
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()
