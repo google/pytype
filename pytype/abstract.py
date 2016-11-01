@@ -424,6 +424,7 @@ class SimpleAbstractValue(AtomicAbstractValue):
     super(SimpleAbstractValue, self).__init__(name, vm)
     self.members = utils.MonitorDict()
     self.type_parameters = utils.LazyAliasingMonitorDict()
+    self.maybe_missing_members = False
 
   def get_children_maps(self):
     return (self.type_parameters, self.members)
@@ -2281,6 +2282,9 @@ class InterpreterFunction(Function):
     args = args.simplify(node)
     if self.vm.is_at_maximum_depth() and self.name != "__init__":
       log.info("Maximum depth reached. Not analyzing %r", self.name)
+      if self.vm.callself_stack:
+        for callself in self.vm.callself_stack[-1].data:
+          callself.maybe_missing_members = True
       return (node,
               self.vm.convert.create_new_unsolvable(node, self.name + ":ret"))
     self._check_call(node, args, condition)
@@ -2487,6 +2491,8 @@ class BoundFunction(AtomicAbstractValue):
     return self.underlying.signature.drop_first_parameter()
 
   def call(self, node, func, args, condition=None):
+    if self.name == "__init__":
+      self.vm.callself_stack.append(self._callself)
     try:
       return self.underlying.call(
           node, func, args.replace(posargs=(self._callself,) + args.posargs),
@@ -2495,6 +2501,9 @@ class BoundFunction(AtomicAbstractValue):
       if self._callself and self._callself.bindings:
         e.name = "%s.%s" % (self._callself.data[0].name, e.name)
       raise
+    finally:
+      if self.name == "__init__":
+        self.vm.callself_stack.pop()
 
   def get_positional_names(self):
     return self.underlying.get_positional_names()

@@ -222,8 +222,12 @@ class AbstractAttributeHandler(object):
         candidates.extend(new_candidates)
       else:
         candidates.append(attr)
-    return node, self._filter_and_merge_candidates(
-        node, candidates, name, condition)
+    attr = self._filter_and_merge_candidates(node, candidates, name, condition)
+    if attr is None and obj.maybe_missing_members:
+      # The VM hit maximum depth while initializing this instance, so it may
+      # have attributes that we don't know about.
+      attr = self.vm.convert.unsolvable.to_variable(node)
+    return node, attr
 
   def _class_getter(self, node, cls, name, valself, valcls):
     """Retrieve an attribute by looking at the MRO of this class."""

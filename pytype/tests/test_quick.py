@@ -33,6 +33,26 @@ class QuickTest(test_inference.InferenceTest):
       def f() -> dict
     """)
 
+  def testInit(self):
+    ty = self.Infer("""
+      class A(object):
+        def __init__(self):
+          self.real_init()
+        def real_init(self):
+          self.x = 42
+        def f(self):
+          return self.x
+      def f():
+        return A().f()
+    """, deep=True, extract_locals=True, quick=True, maximum_depth=2)
+    self.assertTypesMatchPytd(ty, """
+      class A(object):
+        x = ...  # type: int
+        def real_init(self) -> None
+        def f(self) -> Any
+      def f() -> Any
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

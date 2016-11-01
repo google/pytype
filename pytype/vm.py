@@ -103,6 +103,7 @@ class VirtualMachine(object):
     self.matcher = matcher.AbstractMatcher()
     self.attribute_handler = attribute.AbstractAttributeHandler(self)
     self.has_unknown_wildcard_imports = False
+    self.callself_stack = []
 
     # Map from builtin names to canonical objects.
     self.special_builtins = {
