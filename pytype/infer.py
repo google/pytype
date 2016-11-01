@@ -616,6 +616,7 @@ def check_types(py_src, pytd_src, py_filename, pytd_filename, errorlog,
   elif deep:
     tracer.analyze(loc, defs, builtin_names,
                    maximum_depth=(2 if options.quick else None))
+  _maybe_output_debug(options, tracer.program)
 
 
 def infer_types(src,
@@ -688,12 +689,16 @@ def infer_types(src,
                             stdin=subprocess.PIPE)
     proc.stdin.write(dot)
     proc.stdin.close()
+
+  _maybe_output_debug(options, tracer.program)
+  return ast, builtins_pytd
+
+
+def _maybe_output_debug(options, program):
   if options.output_debug:
-    text = program_to_text(tracer.program)
+    text = program_to_text(program)
     if options.output_debug == "-":
       log.info("=========== Program Dump =============\n%s", text)
     else:
       with open(options.output_debug, "w") as fi:
         fi.write(text)
-
-  return ast, builtins_pytd
