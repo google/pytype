@@ -72,13 +72,12 @@ class _Parser(object):
     ANYTHING
 
   Methods used in AST construction:
-    add_constant()
+    new_constant()
     add_alias_or_constant()
     add_import()
     new_type()
     new_union_type()
     new_function()
-    add_function()
     new_external_function()
     new_named_tuple()
 
@@ -114,7 +113,6 @@ class _Parser(object):
     # final TypeDeclUnit.
     self._constants = []
     self._aliases = []
-    self._functions = []
     self._generated_classes = collections.defaultdict(list)
 
   def parse(self, src, name, filename, version):
@@ -143,19 +141,25 @@ class _Parser(object):
     del filename
     del version
     try:
-      parser_ext.parse(self, src)
+      defs = parser_ext.parse(self, src)
     except ParseError as e:
       if self._error_location:
         raise ParseError(e.message, self._error_location[0])
       else:
         raise e
+
+    # defs contains both constant and function definitions.
+    constants = (self._constants +
+                 [d for d in defs if isinstance(d, pytd.Constant)])
+    functions = [d for d in defs if isinstance(d, _NameAndSig)]
+
     generated_classes = [x for class_list in self._generated_classes.values()
                          for x in class_list]
 
     classes = generated_classes
 
-    all_names = (list(set(f.name for f in self._functions)) +
-                 [c.name for c in self._constants] +
+    all_names = (list(set(f.name for f in functions)) +
+                 [c.name for c in constants] +
                  # TODO(dbaum): Add type_params and classes to the check.
                  # [c.name for c in type_params] +
                  [c.name for c in classes] +
@@ -167,7 +171,7 @@ class _Parser(object):
       raise ParseError(
           "Duplicate top-level identifier(s): " + ", ".join(duplicates))
 
-    functions, properties = _LEGACY.MergeSignatures(self._functions)
+    functions, properties = _LEGACY.MergeSignatures(functions)
     if properties:
       prop_names = ", ".join(p.name for p in properties)
       raise ParseError(
@@ -176,7 +180,7 @@ class _Parser(object):
     # TODO(dbaum): Add support for type_params, classes.
     # TODO(dbaum): Use a real module name.
     ast = pytd.TypeDeclUnit("?",
-                            constants=tuple(self._constants),
+                            constants=tuple(constants),
                             type_params=(),
                             functions=tuple(functions),
                             classes=tuple(classes),
@@ -207,12 +211,15 @@ class _Parser(object):
     """
     self._error_location = location
 
-  def add_constant(self, name, value):
-    """Add a constant.
+  def new_constant(self, name, value):
+    """Return a Constant.
 
     Args:
       name: The name of the constant.
       value: None, 0, or a  pytd type.
+
+    Returns:
+      A Constant object.
 
     Raises:
       ParseError: if value is an int other than 0.
@@ -225,7 +232,7 @@ class _Parser(object):
       t = pytd.NamedType("int")
     else:
       t = value
-    self._constants.append(pytd.Constant(name, t))
+    return pytd.Constant(name, t)
 
   def add_alias_or_constant(self, name, value):
     """Add an alias or constant.
@@ -378,9 +385,6 @@ class _Parser(object):
     return _NameAndSig(name=name, signature=signature,
                        decorators=tuple(sorted(decorators)),
                        external_code=False)
-
-  def add_function(self, name_and_sig):
-    self._functions.append(name_and_sig)
 
   def new_external_function(self, decorators, name):
     """Return a _NameAndSig for an external code function."""
