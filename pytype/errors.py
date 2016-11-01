@@ -393,3 +393,7 @@ class ErrorLog(ErrorLogBase):
   def python_compiler_error(self, filename, lineno, message):
     self._add(Error(
         SEVERITY_ERROR, message, filename=filename, lineno=lineno))
+
+  @_error_name("recursion-error")
+  def recursion_error(self, opcode, name):
+    self.error(opcode, "Detected recursion in %s" % name)

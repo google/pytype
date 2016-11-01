@@ -745,6 +745,24 @@ class ErrorTest(test_inference.InferenceTest):
     self.assertErrorLogIs(errors, [(5, "wrong-arg-types",
                                     r"Actually passed:.*Union\[float, str\]")])
 
+  def testRecursion(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        class A(B): ...
+        class B(A): ...
+      """)
+      ty, errors = self.InferAndCheck("""\
+        import a
+        v = a.A()
+        x = v.x  # No error because there is an Unsolvable in the MRO of a.A
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        v = ...  # type: a.A
+        x = ...  # type: Any
+      """)
+      self.assertErrorLogIs(errors, [(2, "recursion-error", r"a\.A")])
+
 
 if __name__ == "__main__":
   test_inference.main()

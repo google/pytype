@@ -32,6 +32,9 @@ CallRecord = collections.namedtuple(
 INIT_MAXIMUM_DEPTH = 4
 
 
+_INITIALIZING = object()
+
+
 class AnalysisFrame(object):
   """Frame representing the "analysis function" that calls everything."""
 
@@ -54,6 +57,7 @@ class CallTracer(vm.VirtualMachine):
     self._unknowns = {}
     self._calls = set()
     self._method_calls = set()
+    self._instance_cache = {}
     self.exitpoint = None
 
   def create_argument(self, node, signature, name, method_name):
@@ -143,14 +147,22 @@ class CallTracer(vm.VirtualMachine):
 
   def init_class(self, node, cls):
     """Instantiate a class, and also call __init__."""
-    clsvar = cls.to_variable(node, "cls")
-    instance = self.instantiate(clsvar, node)
-    node, init = self.attribute_handler.get_attribute(
-        node, cls, "__init__", instance.bindings[0], clsvar.bindings[0])
-    if init:
-      bound_init = self.bind_method("__init__", init, instance, clsvar, node)
-      node = self.analyze_method_var("__init__", bound_init, node)
-    return node, clsvar, instance
+    key = (node, cls)
+    if key not in self._instance_cache:
+      self._instance_cache[key] = _INITIALIZING  # For recursion detection
+      clsvar = cls.to_variable(node, "cls")
+      instance = self.instantiate(clsvar, node)
+      node, init = self.attribute_handler.get_attribute(
+          node, cls, "__init__", instance.bindings[0], clsvar.bindings[0])
+      if init:
+        bound_init = self.bind_method("__init__", init, instance, clsvar, node)
+        node = self.analyze_method_var("__init__", bound_init, node)
+      self._instance_cache[key] = node, clsvar, instance
+    elif self._instance_cache[key] is _INITIALIZING:
+      self.errorlog.recursion_error(None, cls.full_name)
+      self._instance_cache[key] = (node, cls.to_variable(node),
+                                   self.convert.unsolvable.to_variable(node))
+    return self._instance_cache[key]
 
   def analyze_class(self, val, node):
     node, clsvar, instance = self.init_class(node, val.data)

@@ -19,11 +19,6 @@ log = logging.getLogger(__name__)
 MAX_IMPORT_DEPTH = 12
 
 
-class ConversionError(Exception):
-  """For when a type conversion failed."""
-  pass
-
-
 class Converter(object):
   """Functions for creating the classes in abstract.py."""
 
@@ -349,8 +344,6 @@ class Converter(object):
       node: The current CFG node. (For instances)
     Returns:
       The converted constant. (Instance of AtomicAbstractValue)
-    Raises:
-      ConversionError: E.g. for circular inheritance between pytd clases.
     """
     key = ("constant", pyval, type(pyval))
     if key not in self._convert_cache:
@@ -359,8 +352,8 @@ class Converter(object):
           name, pyval, subst, node)
     elif self._convert_cache[key] is None:
       # This error is triggered by, e.g., classes inheriting from each other
-      raise ConversionError(
-          "Detected recursion while converting %s to value" % name)
+      self.vm.errorlog.recursion_error(self.vm.frame.current_opcode, name)
+      self._convert_cache[key] = self.unsolvable
     return self._convert_cache[key]
 
   def construct_constant_from_value(self, name, pyval, subst, node):

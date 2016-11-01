@@ -13,7 +13,7 @@ class CheckerTest(test_inference.InferenceTest):
   """Tests for --check."""
 
 
-  def get_checking_errors(self, python, pytd):
+  def get_checking_errors(self, python, pytd=None):
     options = config.Options.create(python_version=self.PYTHON_VERSION,
                                     python_exe=self.PYTHON_EXE)
     errorlog = errors.ErrorLog()
@@ -87,6 +87,17 @@ class CheckerTest(test_inference.InferenceTest):
         pass
     """
     self.check(python)
+
+  def testRecursiveForwardReference(self):
+    python = """
+      from __future__ import google_type_annotations
+      class X(object):
+        def __init__(self, val: "X"):
+          pass
+      X(42)  # No error because we couldn't instantiate the type of val
+    """
+    errorlog = self.get_checking_errors(python)
+    self.assertErrorLogIs(errorlog, [(0, "recursion-error", r"X")])
 
 
 if __name__ == "__main__":
