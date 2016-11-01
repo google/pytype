@@ -1008,8 +1008,28 @@ class VirtualMachine(object):
     return result
 
   def byte_UNARY_NOT(self, state, op):
-    state = state.pop_and_discard()
-    state = state.push(self.convert.build_bool(state.node))
+    """Implement the UNARY_NOT bytecode."""
+    state, var = state.pop()
+    bindings = var.Bindings(state.node)
+    true_bindings = [b for b in bindings if b.data.compatible_with(True)]
+    false_bindings = [b for b in bindings if b.data.compatible_with(False)]
+    if len(true_bindings) == len(false_bindings) == len(bindings):
+      # No useful information from bindings, use a generic bool value.
+      # This is merely an optimization rather than building separate True/False
+      # values each with the same bindings as var.
+      result = self.convert.build_bool(state.node)
+    else:
+      # Build a result with True/False values, each bound to appropriate
+      # bindings.  Note that bindings that are True get attached to a result
+      # that is False and vice versa because this is a NOT operation.
+      result = self.program.NewVariable("unary_not")
+      for b in true_bindings:
+        result.AddBinding(self.convert.bool_values[False],
+                          source_set=(b,), where=state.node)
+      for b in false_bindings:
+        result.AddBinding(self.convert.bool_values[True],
+                          source_set=(b,), where=state.node)
+    state = state.push(result)
     return state
 
   def byte_UNARY_CONVERT(self, state, op):

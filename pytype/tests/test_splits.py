@@ -301,6 +301,37 @@ class SplitTest(test_inference.InferenceTest):
       def foo(x) -> None: ...
     """)
 
+  def testUnaryNot(self):
+    ty = self.Infer("""
+      def not_t(x):
+        x = None
+        if not x:
+          return 1
+        else:
+          x.foo()
+          return "a"
+
+      def not_f(x):
+        x = True
+        if not x:
+          x.foo()
+          return 1
+        else:
+          return "a"
+
+      def not_ambiguous(x):
+        if not x:
+          return 1
+        else:
+          return "a"
+
+    """, deep=True, extract_locals=True)
+    self.assertTypesMatchPytd(ty, """
+      def not_t(x) -> int: ...
+      def not_f(x) -> str: ...
+      def not_ambiguous(x) -> Union[int, str]: ...
+    """)
+
   def testIsInstanceObjectWithoutClass(self):
     ty = self.Infer("""
       def foo(x):
