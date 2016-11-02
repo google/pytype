@@ -8,7 +8,7 @@ from pytype.pytd.parse import parser as legacy_parser
 import unittest
 
 
-class ParserTest(unittest.TestCase):
+class _ParserTestBase(unittest.TestCase):
 
   def _check_legacy(self, src, actual):
     """Check that actual matches legacy parsing of src."""
@@ -47,6 +47,9 @@ class ParserTest(unittest.TestCase):
       self.assertRegexpMatches(e.message, re.escape(message))
       self.assertEquals(expected_line, e.line)
 
+
+class ParserTest(_ParserTestBase):
+
   def test_syntax_error(self):
     self.check_error("123", 1, "syntax error")
 
@@ -77,6 +80,22 @@ class ParserTest(unittest.TestCase):
     self.check("from foo import (a, b, )",
                "from foo import a\nfrom foo import b")
 
+  def test_duplicate_names(self):
+    self.check_error("""\
+      def foo() -> int: ...
+      foo = ... # type: int""",
+                     None,
+                     "Duplicate top-level identifier(s): foo")
+    self.check_error("""\
+      from x import foo
+      def foo() -> int: ...""",
+                     None,
+                     "Duplicate top-level identifier(s): foo")
+    # A function is allowed to appear multiple times.
+    self.check("""\
+      def foo(x: int) -> int: ...
+      def foo(x: str) -> str: ...""")
+
   def test_type(self):
     self.check("x = ...  # type: str")
     self.check("x = ...  # type: (str)", "x = ...  # type: str")
@@ -89,10 +108,14 @@ class ParserTest(unittest.TestCase):
                 
                 x = ...  # type: Union[int, str, float]""")
 
-  def test_homogeneous_type(self):
-    # Strip parameters from Callable.
+
+class HomogeneousTypeTest(_ParserTestBase):
+
+  def test_strip_callable_parameters(self):
     self.check("import typing\n\nx = ...  # type: typing.Callable[int]",
                "import typing\n\nx = ...  # type: typing.Callable")
+
+  def test_ellipsis(self):
     # B[T, ...] becomes B[T].
     self.check("x = ...  # type: List[int, ...]",
                "x = ...  # type: List[int]",
@@ -104,6 +127,7 @@ class ParserTest(unittest.TestCase):
     self.check("from typing import Tuple\n\nx = ...  # type: Tuple[int]",
                "from typing import Tuple\n\nx = ...  # type: Tuple[int, ...]")
 
+  def test_tuple(self):
     # Tuple[T, U] becomes Tuple[Union[T, U]
     self.check("""\
       from typing import Tuple, Union
@@ -124,10 +148,10 @@ class ParserTest(unittest.TestCase):
 
       x = ...  # type: Tuple[Union[int, str, Any], ...]""")
 
-    # Simple generic type.
+  def test_simple(self):
     self.check("x = ...  # type: Foo[int, str]")
 
-    # Brackets without a typename imply a tuple.
+  def test_implied_tuple(self):
     self.check("x = ...  # type: []",
                "x = ...  # type: Tuple[]",
                prologue="from typing import Tuple")
@@ -138,8 +162,10 @@ class ParserTest(unittest.TestCase):
                "x = ...  # type: Tuple[int, str]",
                prologue="from typing import Tuple")
 
-  def test_named_tuple(self):
-    # No fields.
+
+class NamedTupleTest(_ParserTestBase):
+
+  def test_no_fields(self):
     self.check("x = ...  # type: NamedTuple(foo, [])", """\
       from typing import Any, Tuple
 
@@ -149,7 +175,7 @@ class ParserTest(unittest.TestCase):
           pass
       """)
 
-    # Multiple fields, various trailing commas.
+  def test_multiple_fields(self):
     expected = """\
       from typing import Tuple, Union
 
@@ -166,7 +192,7 @@ class ParserTest(unittest.TestCase):
     self.check("x = ...  # type: NamedTuple(foo, [(a, int,), (b, str),])",
                expected)
 
-    # Dedup basename.
+  def test_dedup_basename(self):
     self.check("""\
       x = ...  # type: NamedTuple(foo, [(a, int,)])
       y = ...  # type: NamedTuple(foo, [(b, str,)])""",
@@ -183,7 +209,10 @@ class ParserTest(unittest.TestCase):
           b = ...  # type: str
         """)
 
-  def test_function_params(self):
+
+class FunctionTest(_ParserTestBase):
+
+  def test_params(self):
     self.check("def foo() -> int: ...")
     self.check("def foo(x) -> int: ...")
     self.check("def foo(x: int) -> int: ...")
@@ -207,7 +236,7 @@ class ParserTest(unittest.TestCase):
     self.check("def foo(x: str = 123) -> int: ...",
                "def foo(x: str = ...) -> int: ...")
 
-  def test_function_star_params(self):
+  def test_star_params(self):
     self.check("def foo(*, x) -> str: ...")
     self.check("def foo(x: int, *args) -> str: ...")
     self.check("def foo(x: int, *args: float) -> str: ...",
@@ -224,7 +253,7 @@ class ParserTest(unittest.TestCase):
     self.check_error("def foo(**x, *y) -> int: ...", 1,
                      "**x must be last parameter")
 
-  def test_function_ellipsis_param(self):
+  def test_ellipsis_param(self):
     self.check("def foo(...) -> int: ...",
                "def foo(*args, **kwargs) -> int: ...")
     self.check("def foo(x: int, ...) -> int: ...",
@@ -234,7 +263,7 @@ class ParserTest(unittest.TestCase):
     self.check_error("def foo(*, ...) -> int: ...", 1,
                      "ellipsis (...) not compatible with bare *")
 
-  def test_function_decorators(self):
+  def test_decorators(self):
     # sense for methods of classes.  But this at least gives us some coverage
     # of the decorator logic.  More sensible tests can be created once classes
     # are implemented.
@@ -277,7 +306,7 @@ class ParserTest(unittest.TestCase):
                      3,
                      "Too many decorators for foo")
 
-  def test_function_empty_body(self):
+  def test_empty_body(self):
     self.check("def foo() -> int: ...")
     self.check("def foo() -> int",
                "def foo() -> int: ...")
@@ -299,7 +328,7 @@ class ParserTest(unittest.TestCase):
                """\
       def foo() -> int: ...""")
 
-  def test_function_body(self):
+  def test_body(self):
     # Mutators.
     self.check("""\
       def foo(x) -> int:
@@ -319,28 +348,12 @@ class ParserTest(unittest.TestCase):
                """\
       def foo(x) -> int: ...""")
 
-  def test_function_raises(self):
+  def test_raises(self):
     self.check("def foo() -> int raises RuntimeError: ...")
     self.check("def foo() -> int raises RuntimeError, TypeError: ...")
 
   def test_external_function(self):
     self.check("def foo PYTHONCODE")
-
-  def test_duplicate_names(self):
-    self.check_error("""\
-      def foo() -> int: ...
-      foo = ... # type: int""",
-                     None,
-                     "Duplicate top-level identifier(s): foo")
-    self.check_error("""\
-      from x import foo
-      def foo() -> int: ...""",
-                     None,
-                     "Duplicate top-level identifier(s): foo")
-    # A function is allowed to appear multiple times.
-    self.check("""\
-      def foo(x: int) -> int: ...
-      def foo(x: str) -> str: ...""")
 
 
 if __name__ == "__main__":
