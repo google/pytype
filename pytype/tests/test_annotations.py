@@ -627,6 +627,26 @@ class AnnotationTest(test_inference.InferenceTest):
           return x.value2
     """, deep=True, analyze_annotated=True)
 
+  def testImpreciseAnnotation(self):
+    ty = self.Infer("""
+      from __future__ import google_type_annotations
+      from typing import Union
+      class A: pass
+      class B:
+        x = 42
+      def f(v: Union[A, B]):
+        return v.x
+      f(A())
+    """)
+    self.assertTypesMatchPytd(ty, """
+      Union = ...  # type: type
+      google_type_annotations = ...  # type: __future__._Feature
+      class A: ...
+      class B:
+        x = ...  # type: int
+      def f(v: Union[A, B]) -> int: ...
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

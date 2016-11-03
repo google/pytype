@@ -2289,6 +2289,11 @@ class InterpreterFunction(Function):
               self.vm.convert.create_new_unsolvable(node, self.name + ":ret"))
     self._check_call(node, args, condition)
     callargs = self._map_args(node, args)
+    if self.signature.annotations:
+      for name in callargs:
+        if name in self.signature.annotations:
+          node, _, callargs[name] = self.vm.init_class(
+              node, self.signature.annotations[name])
     # Might throw vm.RecursionException:
     frame = self.vm.make_frame(node, self.code, callargs,
                                self.f_globals, self.f_locals, self.closure,

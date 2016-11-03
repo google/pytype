@@ -103,7 +103,7 @@ class StdlibTests(test_inference.InferenceTest):
       os = ...  # type: module
       tempfile = ...  # type: module
       typing = ...  # type: module
-      def f(fi: typing.IO) -> str: ...
+      def f(fi: typing.IO) -> Any: ...
     """)
 
   def testPathConf(self):
