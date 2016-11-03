@@ -605,6 +605,28 @@ class AnnotationTest(test_inference.InferenceTest):
         def __init__(self, x: str) -> None: ...
     """)
 
+  def testUnionInstantiation(self):
+    # If unions are not instantiated properly, the call to x.value will
+    # cause an error and Infer will fail.
+    self.Infer("""
+      from __future__ import google_type_annotations
+      from typing import Union
+
+      class Container1(object):
+        def __init__(self, value):
+          self.value1 = value
+
+      class Container2(object):
+        def __init__(self, value):
+          self.value2 = value
+
+      def func(x: Union[Container1, Container2]):
+        if isinstance(x, Container1):
+          return x.value1
+        else:
+          return x.value2
+    """, deep=True, analyze_annotated=True)
+
 
 if __name__ == "__main__":
   test_inference.main()

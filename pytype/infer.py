@@ -152,11 +152,16 @@ class CallTracer(vm.VirtualMachine):
       self._instance_cache[key] = _INITIALIZING  # For recursion detection
       clsvar = cls.to_variable(node, "cls")
       instance = self.instantiate(clsvar, node)
-      node, init = self.attribute_handler.get_attribute(
-          node, cls, "__init__", instance.bindings[0], clsvar.bindings[0])
-      if init:
-        bound_init = self.bind_method("__init__", init, instance, clsvar, node)
-        node = self.analyze_method_var("__init__", bound_init, node)
+      # Call __init__ on each binding.
+      for b in instance.bindings:
+        b_clsvar = b.data.get_class()
+        b_clsbind = b_clsvar.bindings[0]
+        node, init = self.attribute_handler.get_attribute(
+            node, b_clsbind.data, "__init__", b, b_clsbind)
+        if init:
+          bound_init = self.bind_method(
+              "__init__", init, b.data, b_clsvar, node)
+          node = self.analyze_method_var("__init__", bound_init, node)
       self._instance_cache[key] = node, clsvar, instance
     elif self._instance_cache[key] is _INITIALIZING:
       self.errorlog.recursion_error(None, cls.full_name)
