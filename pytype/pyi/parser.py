@@ -47,6 +47,12 @@ class ParseError(Exception):
   def line(self):
     return self._line
 
+  def __str__(self):
+    s = self.message
+    if self._line is not None:
+      s += ", line %d" % self._line
+    return s
+
 
 class _Parser(object):
   """A class used to parse a single PYI file.
@@ -80,6 +86,7 @@ class _Parser(object):
     new_function()
     new_external_function()
     new_named_tuple()
+    add_class()
 
   Other methods:
     set_error_location()
@@ -113,6 +120,7 @@ class _Parser(object):
     # final TypeDeclUnit.
     self._constants = []
     self._aliases = []
+    self._classes = []
     self._generated_classes = collections.defaultdict(list)
 
   def parse(self, src, name, filename, version):
@@ -149,14 +157,13 @@ class _Parser(object):
         raise e
 
     # defs contains both constant and function definitions.
-    constants = (self._constants +
-                 [d for d in defs if isinstance(d, pytd.Constant)])
-    functions = [d for d in defs if isinstance(d, _NameAndSig)]
+    constants, functions = _split_definitions(defs)
+    constants.extend(self._constants)
 
     generated_classes = [x for class_list in self._generated_classes.values()
                          for x in class_list]
 
-    classes = generated_classes
+    classes = generated_classes + self._classes
 
     all_names = (list(set(f.name for f in functions)) +
                  [c.name for c in constants] +
@@ -437,6 +444,46 @@ class _Parser(object):
     self._generated_classes[base_name].append(nt_class)
     return pytd.NamedType(nt_class.name)
 
+  def add_class(self, class_name, parents_and_meta, defs):
+    """Add a class to the module.
+
+    Args:
+      class_name: The name of the class (a string).
+      parents_and_meta: A tuple (parents, meta) where parents is a list of
+          parent types and meta is either a meta class or None.
+      defs: A list of constant (pytd.Constant) and function (_NameAndSig)
+          definitions.
+
+    Raises:
+      ParseError: if defs contains duplicate names (excluding multiple
+          definitions of a function, which is allowed).
+    """
+    parents, metaclass = parents_and_meta
+    constants, methods = _split_definitions(defs)
+
+    all_names = (list(set(f.name for f in methods)) +
+                 [c.name for c in constants])
+    duplicates = [name
+                  for name, count in collections.Counter(all_names).items()
+                  if count >= 2]
+    if duplicates:
+      # TODO(kramm): raise a syntax error right when the identifier is defined.
+      raise ParseError("Duplicate identifier(s): " + ", ".join(duplicates))
+
+    # TODO(dbaum): Is NothingType even legal here?  The grammar accepts it but
+    # perhaps it should be a ParseError.
+    parents = [p for p in parents if not isinstance(p, pytd.NothingType)]
+    methods, properties = _LEGACY.MergeSignatures(methods)
+    # Ensure that old style classes inherit from classobj.
+    if not parents and class_name not in ["classobj", "object"]:
+      parents = (pytd.NamedType("classobj"),)
+    cls = pytd.Class(name=class_name, metaclass=metaclass,
+                     parents=tuple(parents),
+                     methods=tuple(methods),
+                     constants=tuple(constants + properties),
+                     template=())
+    self._classes.append(cls)
+
 
 def parse_string(src, name=None, filename=None,
                  python_version=_DEFAULT_VERSION):
@@ -588,3 +635,17 @@ def _type_for_default(default):
   else:
     # ELLIPSIS or NAMEs other than None are treated as object.
     return pytd.NamedType("object")
+
+
+def _split_definitions(defs):
+  """Return [constants], [functions] given a mixed list of definitions."""
+  constants = []
+  functions = []
+  for d in defs:
+    if isinstance(d, pytd.Constant):
+      constants.append(d)
+    elif isinstance(d, _NameAndSig):
+      functions.append(d)
+    else:
+      raise TypeError("Unexpected definition type %s", type(d))
+  return constants, functions

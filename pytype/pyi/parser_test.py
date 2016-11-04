@@ -348,12 +348,131 @@ class FunctionTest(_ParserTestBase):
                """\
       def foo(x) -> int: ...""")
 
+  def test_return(self):
+    self.check("def foo() -> int: ...")
+    self.check("def foo(): ...",
+               "def foo() -> Any: ...",
+               prologue="from typing import Any")
+
   def test_raises(self):
     self.check("def foo() -> int raises RuntimeError: ...")
     self.check("def foo() -> int raises RuntimeError, TypeError: ...")
 
   def test_external_function(self):
     self.check("def foo PYTHONCODE")
+
+
+class ClassTest(_ParserTestBase):
+
+  def test_no_parents(self):
+    canonical = """\
+      class Foo:
+          pass
+      """
+
+    self.check(canonical, canonical)
+    self.check("""\
+      class Foo():
+          pass
+      """, canonical)
+
+  def test_parents(self):
+    self.check("""\
+      class Foo(Bar):
+          pass
+    """)
+    self.check("""\
+      class Foo(Bar, Baz):
+          pass
+      """)
+
+  def test_parent_remove_nothingtype(self):
+    self.check("""\
+      class Foo(nothing):
+          pass
+      """, """\
+      class Foo:
+          pass
+      """)
+    self.check("""\
+      class Foo(Bar, nothing):
+          pass
+      """, """\
+      class Foo(Bar):
+          pass
+      """)
+
+  def test_no_body(self):
+    canonical = """\
+      class Foo:
+          pass
+      """
+    # There are numerous ways to indicate an empty body.
+    self.check(canonical, canonical)
+    self.check("""\
+      class Foo(): pass
+      """, canonical)
+    self.check("""\
+      class Foo(): ...
+      """, canonical)
+    self.check("""\
+      class Foo():
+          ...
+      """, canonical)
+    self.check("""\
+      class Foo():
+          ...
+      """, canonical)
+    # pylint: disable=g-inconsistent-quotes
+    self.check('''\
+      class Foo():
+          """docstring"""
+          ...
+      ''', canonical)
+    self.check('''\
+      class Foo():
+          """docstring"""
+      ''', canonical)
+
+  def test_attribute(self):
+    self.check("""\
+      class Foo:
+          a = ...  # type: int
+      """)
+
+  def test_method(self):
+    self.check("""\
+      class Foo:
+          def a(self, x: int) -> str: ...
+      """)
+
+  def test_property(self):
+    self.check("""\
+      class Foo:
+          @property
+          def a(self) -> int
+      """, """\
+      class Foo:
+          a = ...  # type: int
+      """)
+
+  def test_duplicate_name(self):
+    self.check_error("""\
+      class Foo:
+          bar = ...  # type: int
+          bar = ...  # type: str
+      """, 1, "Duplicate identifier(s): bar")
+    self.check_error("""\
+      class Foo:
+          def bar(self) -> int: ...
+          bar = ...  # type: str
+      """, 1, "Duplicate identifier(s): bar")
+    # Multiple method defs are ok (needed for variant signatures).
+    self.check("""\
+      class Foo:
+          def x(self) -> int: ...
+          def x(self) -> str: ...
+      """)
 
 
 if __name__ == "__main__":
