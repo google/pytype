@@ -108,6 +108,17 @@ class ParserTest(_ParserTestBase):
                 
                 x = ...  # type: Union[int, str, float]""")
 
+  def test_alias_lookup(self):
+    self.check("""\
+      from somewhere import Foo
+      x = ...  # type: Foo
+      """, """\
+      import somewhere
+      
+      from somewhere import Foo
+      
+      x = ...  # type: somewhere.Foo""")
+
 
 class HomogeneousTypeTest(_ParserTestBase):
 
@@ -400,6 +411,30 @@ class ClassTest(_ParserTestBase):
       """, """\
       class Foo(Bar):
           pass
+      """)
+
+  def test_metaclass(self):
+    self.check("""\
+      class Foo(metaclass=Meta):
+          pass
+      """)
+    self.check("""\
+      class Foo(Bar, metaclass=Meta):
+          pass
+      """)
+    self.check_error("""\
+      class Foo(badkeyword=Meta):
+          pass
+      """, 1, "Only 'metaclass' allowed as classdef kwarg")
+    self.check_error("""\
+      class Foo(metaclass=Meta, Bar):
+          pass
+      """, 1, "metaclass must be last argument")
+
+  def test_shadow_pep484(self):
+    self.check("""\
+      class List:
+          def bar(self) -> List: ...
       """)
 
   def test_no_body(self):

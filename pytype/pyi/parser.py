@@ -86,6 +86,7 @@ class _Parser(object):
     new_function()
     new_external_function()
     new_named_tuple()
+    regiser_class_name()
     add_class()
 
   Other methods:
@@ -444,13 +445,19 @@ class _Parser(object):
     self._generated_classes[base_name].append(nt_class)
     return pytd.NamedType(nt_class.name)
 
-  def add_class(self, class_name, parents_and_meta, defs):
+  def register_class_name(self, class_name):
+    """Register a class name so that it can shadow aliases."""
+    self._type_map[class_name] = pytd.NamedType(class_name)
+
+  def add_class(self, class_name, parent_args, defs):
     """Add a class to the module.
 
     Args:
       class_name: The name of the class (a string).
-      parents_and_meta: A tuple (parents, meta) where parents is a list of
-          parent types and meta is either a meta class or None.
+      parent_args: A list of parent types and (keyword, value) tuples.
+          Parent types must be instances of pytd.Type.  Keyword tuples must
+          appear at the end of the list.  Currently the only supported keyword
+          is 'metaclass'.
       defs: A list of constant (pytd.Constant) and function (_NameAndSig)
           definitions.
 
@@ -458,7 +465,20 @@ class _Parser(object):
       ParseError: if defs contains duplicate names (excluding multiple
           definitions of a function, which is allowed).
     """
-    parents, metaclass = parents_and_meta
+    # Process parent_args, extracting parents and possibly a metaclass.
+    parents = []
+    metaclass = None
+    for i, p in enumerate(parent_args):
+      if isinstance(p, pytd.Type):
+        parents.append(p)
+      else:
+        keyword, value = p
+        if i != len(parent_args) - 1:
+          raise ParseError("metaclass must be last argument")
+        if keyword != "metaclass":
+          raise ParseError("Only 'metaclass' allowed as classdef kwarg")
+        metaclass = value
+
     constants, methods = _split_definitions(defs)
 
     all_names = (list(set(f.name for f in methods)) +
