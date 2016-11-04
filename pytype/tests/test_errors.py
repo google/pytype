@@ -763,6 +763,17 @@ class ErrorTest(test_inference.InferenceTest):
       """)
       self.assertErrorLogIs(errors, [(2, "recursion-error", r"a\.A")])
 
+  def testImportTypeVar(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """T = TypeVar("T")""")
+      ty, errors = self.InferAndCheck("""\
+        from a import T
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        T = ...  # type: Any
+      """)
+      self.assertErrorLogIs(errors, [(1, "not-supported-yet", "T")])
+
 
 if __name__ == "__main__":
   test_inference.main()

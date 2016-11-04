@@ -397,7 +397,8 @@ class Converter(object):
         log.debug("Failed to find pytd", exc_info=True)
         raise
     elif isinstance(pyval, pytd.TypeDeclUnit):
-      data = pyval.constants + pyval.classes + pyval.functions + pyval.aliases
+      data = (pyval.constants + pyval.type_params + pyval.classes +
+              pyval.functions + pyval.aliases)
       members = {val.name.rsplit(".")[-1]: val
                  for val in data}
       return abstract.Module(self.vm, node, pyval.name, members)

@@ -86,6 +86,20 @@ def get_atomic_python_constant(variable):
   raise ConversionError("Only some types are supported: %r" % type(atomic))
 
 
+def get_unsupported(name, vm):
+  """Report an error and get a value for an unsupported feature.
+
+  Args:
+    name: The unsupported name, for use in the error message.
+    vm: The virtual machine.
+  Returns:
+    A dummy value.
+  """
+
+  vm.errorlog.not_supported_yet(vm.frame.current_opcode, name)
+  return vm.convert.unsolvable
+
+
 class AtomicAbstractValue(object):
   """A single abstract value such as a type or function signature.
 
@@ -2636,14 +2650,17 @@ class Module(Instance):
 
   def _convert_member(self, name, ty):
     """Called to convert the items in _member_map to cfg.Variable."""
-    var = self.vm.convert.convert_constant(name, ty)
-    for value in var.data:
-      # Only do this if this class isn't already part of a module.
-      # (This happens if e.g. foo.py does "from bar import x" and we then
-      #  do "from foo import x".)
-      if not value.module:
-        value.module = self.name
-    return var
+    if isinstance(ty, pytd.TypeParameter):
+      return get_unsupported(name, self.vm).to_variable(self.vm.root_cfg_node)
+    else:
+      var = self.vm.convert.convert_constant(name, ty)
+      for value in var.data:
+        # Only do this if this class isn't already part of a module.
+        # (This happens if e.g. foo.py does "from bar import x" and we then
+        #  do "from foo import x".)
+        if not value.module:
+          value.module = self.name
+      return var
 
   def has_getattr(self):
     """Does this module have a module-level __getattr__?
