@@ -226,8 +226,10 @@ class ErrorLog(ErrorLogBase):
 
   @_error_name("attribute-error")
   def attribute_error(self, opcode, obj, attr_name):
-    on = " on %s" % obj.data[0].name if len(obj.bindings) == 1 else ""
-    self.error(opcode, "No attribute %r%s" % (attr_name, on))
+    assert obj.bindings
+    obj_values = self._prettyprint_arg(
+        abstract.merge_values(obj.data, obj.bindings[0].data.vm))
+    self.error(opcode, "No attribute %r on %s" % (attr_name, obj_values))
 
   @_error_name("none-attr")
   def none_attr(self, opcode, attr_name):

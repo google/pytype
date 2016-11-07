@@ -232,12 +232,7 @@ class Converter(object):
       cls = v.get_class()
       if cls:
         classes.update(cls.data)
-    if not classes:
-      return self.empty
-    elif len(classes) == 1:
-      return classes.pop()
-    else:
-      return abstract.Union(classes, self.vm)
+    return abstract.merge_values(classes, self.vm)
 
   def convert_constant(self, name, pyval, subst=None, node=None,
                        source_sets=None, discard_concrete_values=False):

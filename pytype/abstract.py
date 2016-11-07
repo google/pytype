@@ -100,6 +100,16 @@ def get_unsupported(name, vm):
   return vm.convert.unsolvable
 
 
+def merge_values(values, vm):
+  """Merge a collection of values into a single one."""
+  if not values:
+    return vm.convert.empty
+  elif len(values) == 1:
+    return values.pop()
+  else:
+    return Union(values, vm)
+
+
 class AtomicAbstractValue(object):
   """A single abstract value such as a type or function signature.
 

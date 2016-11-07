@@ -239,10 +239,9 @@ class ErrorTest(test_inference.InferenceTest):
         return Foo().foo  # No error
     """)
     self.assertErrorLogIs(errors, [
-        # When there is one binding, include the object type in the error.
-        (5, "attribute-error", r"No attribute 'foo' on Foo"),
-        # With multiple bindings, there is no object type in the error.
-        (11, "attribute-error", "No attribute 'bar'")])
+        (5, "attribute-error", r"No attribute 'foo' on Type\[Foo\]"),
+        (11, "attribute-error",
+         r"No attribute 'bar' on Union\[NoneType, int\]")])
 
   def testAttributeErrorGetAttribute(self):
     _, errors = self.InferAndCheck("""\
