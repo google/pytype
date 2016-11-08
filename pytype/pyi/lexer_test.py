@@ -265,6 +265,10 @@ class LexerTest(unittest.TestCase):
       99
       """, legacy=False)
 
+  def test_lex_error(self):
+    self.check([1, ("LEXERROR", "Illegal character '%'"), 2],
+               "1 % 2", legacy=False)
+
   def test_column(self):
     # A blank line is part of the test because that is a special case
     # in the lex specification.
