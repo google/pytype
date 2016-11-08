@@ -48,13 +48,9 @@ class AbstractMatcher(object):
       else:
         right_side_options = [other_type]
       for right in right_side_options:
-        if isinstance(right, abstract.Class):
-          # If this type is empty, the only thing we can match it against is
-          # object (for pytd convenience).
-          if right.full_name == "__builtin__.object":
-            return subst
-        elif isinstance(right, abstract.Nothing):
-          # Matching nothing against nothing is fine.
+        if isinstance(right, (abstract.Class, abstract.Nothing)):
+          # If this type is empty, we can match it against any class. Matching
+          # nothing against nothing is also fine.
           return subst
         elif isinstance(right, abstract.TypeParameter):
           # If we have a union like "K or V" and we match both against

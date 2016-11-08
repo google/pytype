@@ -308,11 +308,10 @@ class AnnotationTest(test_inference.InferenceTest):
       def keys(d: Dict[str, int]):
         return
       keys({"foo": 3})
-      keys({})  # not allowed
+      keys({})  # ok
       keys({3: 3})  # not allowed
     """, deep=True, extract_locals=True)
     self.assertErrorLogIs(errors, [
-        (6, "wrong-arg-types"),
         (7, "wrong-arg-types"),
     ])
 
@@ -367,11 +366,10 @@ class AnnotationTest(test_inference.InferenceTest):
       def f(d: FrozenSet[str]):
         return
       f(frozenset(["foo"]))  # ok
-      f(frozenset())  # not allowed
+      f(frozenset())  # ok
       f(frozenset([3]))  # not allowed
     """, deep=True, extract_locals=True)
     self.assertErrorLogIs(errors, [
-        (6, "wrong-arg-types"),
         (7, "wrong-arg-types"),
     ])
 

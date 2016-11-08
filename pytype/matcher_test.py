@@ -69,6 +69,28 @@ class MatcherTest(unittest.TestCase):
     self.assertEquals(result1, {})
     self.assertEquals(result2, {})
 
+  def testEmptyAgainstClass(self):
+    var = self.vm.program.NewVariable("foo")
+    right = abstract.InterpreterClass("bar", [], {}, None, self.vm)
+    result = self.matcher.match_var_against_type(
+        var, right, {}, self.root_cfg_node, {})
+    self.assertEquals(result, {})
+
+  def testEmptyAgainstNothing(self):
+    var = self.vm.program.NewVariable("foo")
+    right = abstract.Nothing(self.vm)
+    result = self.matcher.match_var_against_type(
+        var, right, {}, self.root_cfg_node, {})
+    self.assertEquals(result, {})
+
+  def testEmptyAgainstTypeParameter(self):
+    var = self.vm.program.NewVariable("foo")
+    right = abstract.TypeParameter("T", self.vm)
+    result = self.matcher.match_var_against_type(
+        var, right, {}, self.root_cfg_node, ())
+    self.assertItemsEqual(result, ["T"])
+    self.assertFalse(result["T"].bindings)
+
 
 if __name__ == "__main__":
   unittest.main()
