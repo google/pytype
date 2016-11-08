@@ -14,45 +14,32 @@ log = logging.getLogger(__name__)
 class AbstractMatcher(object):
   """Matcher for abstract values."""
 
-  def match_var_against_type(self, var, other_type, subst, node, view):
-    if isinstance(other_type, typing.Union):
-      for element in other_type.elements:
-        new_subst = self.match_var_against_type(
-            var, element, subst, node, view)
-        if new_subst is not None:
-          return new_subst
-    elif isinstance(other_type, typing.Container):
-      new_subst = None
-      for cls in [c for clsv in other_type.concrete_classes
-                  for c in clsv.data]:
-        new_subst = self.match_var_against_type(var, cls, subst, node, view)
-        if new_subst is not None:
-          subst = new_subst
-          break
-      else:
+  def compute_subst(self, node, formal_args, arg_dict, view):
+    """Compute information about type parameters using one-way unification.
+
+    Given the arguments of a function call, try to find a substitution that
+    matches them against the specified formal parameters.
+
+    Args:
+      node: The current CFG node.
+      formal_args: An iterable of (name, value) pairs of formal arguments.
+      arg_dict: A map of strings to pytd.Bindings instances.
+      view: A mapping of Variable to Value.
+    Returns:
+      utils.HashableDict if we found a working substition, None otherwise.
+    """
+    if not arg_dict:
+      return utils.HashableDict()
+    subst = {}
+    for name, formal in formal_args:
+      actual = arg_dict[name]
+      subst = self.match_value_against_type(actual, formal, subst, node, view)
+      if subst is None:
         return None
-      if other_type.inner:
-        v = view[var].data
-        if (isinstance(v, abstract.SimpleAbstractValue) and
-            all(param in v.type_parameters
-                for param in other_type.type_param_names)):
-          for param_name, type_param in zip(other_type.type_param_names,
-                                            other_type.inner):
-            inner = v.type_parameters[param_name]
-            for formal in type_param.data:
-              new_subst = self.match_var_against_type(
-                  inner, formal, subst, node, view)
-              if new_subst is not None:
-                subst = new_subst
-                break
-            else:
-              return None
-            return new_subst
-        elif isinstance(v, abstract.AMBIGUOUS_OR_EMPTY):
-          return subst
-      else:
-        return subst
-    elif var.bindings:
+    return utils.HashableDict(subst)
+
+  def match_var_against_type(self, var, other_type, subst, node, view):
+    if var.bindings:
       return self.match_value_against_type(
           view[var], other_type, subst, node, view)
     else:  # Empty set of values. The "nothing" type.
@@ -95,7 +82,43 @@ class AbstractMatcher(object):
     assert not left.formal
 
     # TODO(kramm): Use view
-    if isinstance(other_type, abstract.Class):
+    if isinstance(other_type, typing.Union):
+      for element in other_type.elements:
+        new_subst = self.match_value_against_type(
+            value, element, subst, node, view)
+        if new_subst is not None:
+          return new_subst
+    elif isinstance(other_type, typing.Container):
+      new_subst = None
+      for cls in [c for clsv in other_type.concrete_classes
+                  for c in clsv.data]:
+        new_subst = self.match_value_against_type(value, cls, subst, node, view)
+        if new_subst is not None:
+          subst = new_subst
+          break
+      else:
+        return None
+      if other_type.inner:
+        if (isinstance(left, abstract.SimpleAbstractValue) and
+            all(param in left.type_parameters
+                for param in other_type.type_param_names)):
+          for param_name, type_param in zip(other_type.type_param_names,
+                                            other_type.inner):
+            inner = left.type_parameters[param_name]
+            for formal in type_param.data:
+              new_subst = self.match_var_against_type(
+                  inner, formal, subst, node, view)
+              if new_subst is not None:
+                subst = new_subst
+                break
+            else:
+              return None
+            return new_subst
+        elif isinstance(left, abstract.AMBIGUOUS_OR_EMPTY):
+          return subst
+      else:
+        return subst
+    elif isinstance(other_type, abstract.Class):
       # Accumulate substitutions in "subst", or break in case of error:
       return self._match_type_against_type(left, other_type, subst, node, view)
     elif isinstance(other_type, abstract.Union):

@@ -113,6 +113,3 @@ class Signature(object):
     if self.kwargs_name is not None and args.starstarargs is not None:
       yield (self.kwargs_name, args.starstarargs,
              self.annotations.get(self.kwargs_name))
-
-  def print_args(self, args):
-    return [(name, arg.data[0]) for name, arg, _ in self.iter_args(args)]

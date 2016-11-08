@@ -6,6 +6,7 @@ import unittest
 from pytype import abstract
 from pytype import config
 from pytype import errors
+from pytype import exceptions
 from pytype import vm
 from pytype.pytd import cfg
 from pytype.pytd import pytd
@@ -324,6 +325,73 @@ class PyTDTest(AbstractTestBase):
     pytd_cls = cls.to_pytd_def(self._vm.root_cfg_node, "X")
     self.assertEquals(pytd_cls.metaclass, pytd.UnionType(
         (pytd.NamedType("M1"), pytd.NamedType("M2"))))
+
+
+# TODO(rechen): Test InterpreterFunction.
+class FunctionTest(AbstractTestBase):
+
+  def _make_pytd_function(self, params):
+    pytd_params = []
+    for i, p in enumerate(params):
+      p_type = pytd.ClassType(p.name)
+      p_type.cls = p
+      pytd_params.append(
+          pytd.Parameter("_" + str(i), p_type, False, False, None))
+    pytd_sig = pytd.Signature(
+        tuple(pytd_params), None, None, pytd.AnythingType(), (), ())
+    sig = abstract.PyTDSignature("f", pytd_sig, self._vm)
+    return abstract.PyTDFunction(
+        "f", (sig,), pytd.METHOD, self._vm, self._vm.root_cfg_node)
+
+  def _call_pytd_function(self, f, args):
+    b = f.to_variable(self._vm.root_cfg_node).bindings[0]
+    return f.call(
+        self._vm.root_cfg_node, b, abstract.FunctionArgs(posargs=args))
+
+  def test_call_with_empty_arg(self):
+    self.assertRaises(exceptions.ByteCodeTypeError, self._call_pytd_function,
+                      self._make_pytd_function(params=()),
+                      (self._vm.program.NewVariable("empty"),))
+
+  def test_call_with_bad_arg(self):
+    f = self._make_pytd_function(
+        (self._vm.vmbuiltins.Lookup("__builtin__.str"),))
+    arg = self._vm.convert.primitive_class_instances[int].to_variable(
+        self._vm.root_cfg_node)
+    self.assertRaises(
+        abstract.WrongArgTypes, self._call_pytd_function, f, (arg,))
+
+  def test_simple_call(self):
+    f = self._make_pytd_function(
+        (self._vm.vmbuiltins.Lookup("__builtin__.str"),))
+    arg = self._vm.convert.primitive_class_instances[str].to_variable(
+        self._vm.root_cfg_node)
+    node, ret = self._call_pytd_function(f, (arg,))
+    self.assertIs(node, self._vm.root_cfg_node)
+    retval, = ret.bindings
+    self.assertIs(retval.data, self._vm.convert.unsolvable)
+
+  def test_call_with_multiple_arg_bindings(self):
+    f = self._make_pytd_function(
+        (self._vm.vmbuiltins.Lookup("__builtin__.str"),))
+    arg = self._vm.program.NewVariable("arg")
+    arg.AddBinding(self._vm.convert.primitive_class_instances[str], [],
+                   self._vm.root_cfg_node)
+    arg.AddBinding(self._vm.convert.primitive_class_instances[int], [],
+                   self._vm.root_cfg_node)
+    node, ret = self._call_pytd_function(f, (arg,))
+    self.assertIs(node, self._vm.root_cfg_node)
+    retval, = ret.bindings
+    self.assertIs(retval.data, self._vm.convert.unsolvable)
+
+  def test_call_with_skipped_combination(self):
+    f = self._make_pytd_function(
+        (self._vm.vmbuiltins.Lookup("__builtin__.str"),))
+    node = self._vm.root_cfg_node.ConnectNew()
+    arg = self._vm.convert.primitive_class_instances[str].to_variable(node)
+    node, ret = self._call_pytd_function(f, (arg,))
+    self.assertIs(node, self._vm.root_cfg_node)
+    self.assertFalse(ret.bindings)
 
 
 if __name__ == "__main__":

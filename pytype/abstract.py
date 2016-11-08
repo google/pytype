@@ -955,6 +955,9 @@ class FunctionArgs(collections.namedtuple("_", ["posargs", "namedargs",
       starstarargs = None
     return FunctionArgs(posargs, namedargs, starargs, starstarargs)
 
+  def get_variables(self):
+    return tuple(self.posargs) + tuple(self.namedargs.values())
+
 
 class FailedFunctionCall(Exception):
   """Exception for failed function calls."""
@@ -974,9 +977,11 @@ BadCall = collections.namedtuple("_", ["sig", "passed_args"])
 class InvalidParameters(FailedFunctionCall):
   """Exception for functions called with an incorrect parameter combination."""
 
-  def __init__(self, sig, passed_args):
+  def __init__(self, sig, passed_args, vm):
     super(InvalidParameters, self).__init__()
     self.name = sig.name
+    passed_args = [(name, merge_values(arg.data, vm))
+                   for name, arg, _ in sig.iter_args(passed_args)]
     self.bad_call = BadCall(sig=sig, passed_args=passed_args)
 
 
@@ -993,24 +998,24 @@ class WrongArgCount(InvalidParameters):
 class WrongKeywordArgs(InvalidParameters):
   """E.g. an arg "x" is passed to a function that doesn't have an "x" param."""
 
-  def __init__(self, sig, passed_args, extra_keywords):
-    super(WrongKeywordArgs, self).__init__(sig, passed_args)
+  def __init__(self, sig, passed_args, vm, extra_keywords):
+    super(WrongKeywordArgs, self).__init__(sig, passed_args, vm)
     self.extra_keywords = tuple(extra_keywords)
 
 
 class DuplicateKeyword(InvalidParameters):
   """E.g. an arg "x" is passed to a function as both a posarg and a kwarg."""
 
-  def __init__(self, sig, passed_args, duplicate):
-    super(DuplicateKeyword, self).__init__(sig, passed_args)
+  def __init__(self, sig, passed_args, vm, duplicate):
+    super(DuplicateKeyword, self).__init__(sig, passed_args, vm)
     self.duplicate = duplicate
 
 
 class MissingParameter(InvalidParameters):
   """E.g. a function requires parameter 'x' but 'x' isn't passed."""
 
-  def __init__(self, sig, passed_args, missing_parameter):
-    super(MissingParameter, self).__init__(sig, passed_args)
+  def __init__(self, sig, passed_args, vm, missing_parameter):
+    super(MissingParameter, self).__init__(sig, passed_args, vm)
     self.missing_parameter = missing_parameter
 
 
@@ -1072,8 +1077,7 @@ class Super(AtomicAbstractValue):
       for cls in args.posargs[0].bindings:
         for obj in args.posargs[1].bindings:
           if not isinstance(cls.data, (Class, AMBIGUOUS_OR_EMPTY)):
-            raise WrongArgTypes(
-                self._SIGNATURE, self._SIGNATURE.print_args(args))
+            raise WrongArgTypes(self._SIGNATURE, args, self.vm)
           result.AddBinding(
               SuperInstance(cls.data, obj.data, self.vm), [cls, obj], node)
     else:
@@ -1104,11 +1108,10 @@ class IsInstance(AtomicAbstractValue):
   def call(self, node, _, args, condition=None):
     try:
       if len(args.posargs) != 2:
-        raise WrongArgCount(self._SIGNATURE, self._SIGNATURE.print_args(args))
+        raise WrongArgCount(self._SIGNATURE, args, self.vm)
       elif args.namedargs.keys():
-        raise WrongKeywordArgs(self._SIGNATURE,
-                               self._SIGNATURE.print_args(args),
-                               args.namedargs.keys())
+        raise WrongKeywordArgs(
+            self._SIGNATURE, args, self.vm, args.namedargs.keys())
       else:
         result = self.vm.program.NewVariable("isinstance")
         for left in args.posargs[0].bindings:
@@ -1228,6 +1231,34 @@ class Function(Instance):
   def to_type(self, node, seen=None):
     return pytd.NamedType("__builtin__.function")
 
+  def _match_args(self, node, args, condition):
+    """Check whether the given arguments can match the function signature."""
+    if not all(a.bindings for a in args.posargs):
+      raise exceptions.ByteCodeTypeError(
+          "Can't call function with <nothing> parameter")
+    error = None
+    matched = []
+    for combination in utils.deep_variable_product(args.get_variables()):
+      view = {value.variable: value for value in combination}
+      combination = view.values() + ([condition.binding] if condition else [])
+      if not node.CanHaveCombination(combination):
+        log.info("Skipping combination %r", combination)
+        continue
+      log.debug("args in view: %r", [(a.bindings and view[a].data)
+                                     for a in args.posargs])
+      try:
+        match = self._match_view(node, args, view)
+      except FailedFunctionCall as e:
+        error = error or e
+      else:
+        matched.append(match)
+    if not matched and error:
+      raise error  # pylint: disable=raising-bad-type
+    return matched
+
+  def _match_view(self, node, args, view):
+    raise NotImplementedError(self.__class__.__name__)
+
   def __repr__(self):
     return self.name + "(...)"
 
@@ -1262,16 +1293,14 @@ class PyTDSignature(object):
                 for name, arg in zip(self.signature.param_names, args.posargs)}
     for name, arg in args.namedargs.items():
       if name in arg_dict:
-        raise DuplicateKeyword(
-            self.signature, self.signature.print_args(args), name)
+        raise DuplicateKeyword(self.signature, args, self.vm, name)
       arg_dict[name] = view[arg]
 
     for p in self.pytd_sig.params:
       if p.name not in arg_dict:
         if (not p.optional and args.starargs is None and
             args.starstarargs is None):
-          raise MissingParameter(
-              self.signature, self.signature.print_args(args), p.name)
+          raise MissingParameter(self.signature, args, self.vm, p.name)
         # Assume the missing parameter is filled in by *args or **kwargs.
         # Unfortunately, we can't easily use *args or **kwargs to fill in
         # something more precise, since we need a Value, not a Variable.
@@ -1280,20 +1309,21 @@ class PyTDSignature(object):
 
     for p in self.pytd_sig.params:
       if not (p.optional or p.name in arg_dict):
-        raise MissingParameter(
-            self.signature, self.signature.print_args(args), p.name)
+        raise MissingParameter(self.signature, args, self.vm, p.name)
     if not self.pytd_sig.has_optional:
       if len(args.posargs) > len(self.pytd_sig.params):
-        raise WrongArgCount(self.signature, self.signature.print_args(args))
+        raise WrongArgCount(self.signature, args, self.vm)
       invalid_names = set(args.namedargs) - {p.name
                                              for p in self.pytd_sig.params}
       if invalid_names:
-        raise WrongKeywordArgs(self.signature, self.signature.print_args(args),
-                               sorted(invalid_names))
+        raise WrongKeywordArgs(
+            self.signature, args, self.vm, sorted(invalid_names))
 
-    subst = self._compute_subst(node, arg_dict, view)
+    formal_args = [(p.name, self.signature.annotations[p.name])
+                   for p in self.pytd_sig.params]
+    subst = self.vm.matcher.compute_subst(node, formal_args, arg_dict, view)
     if subst is None:
-      raise WrongArgTypes(self.signature, self.signature.print_args(args))
+      raise WrongArgTypes(self.signature, args, self.vm)
     log.debug("Matched arguments against sig%s", pytd.Print(self.pytd_sig))
     for nr, p in enumerate(self.pytd_sig.params):
       log.info("param %d) %s: %s <=> %s", nr, p.name, p.type, arg_dict[p.name])
@@ -1330,35 +1360,6 @@ class PyTDSignature(object):
                        {},
                        ret_map[t])
     return node, ret_map[t], mutations
-
-  def _compute_subst(self, node, arg_dict, view):
-    """Compute information about type parameters using one-way unification.
-
-    Given the arguments of a function call, try to find a substitution that
-    matches them against the formal parameter of this PyTDSignature.
-
-    Args:
-      node: The current CFG node.
-      arg_dict: A map of strings to pytd.Bindings instances.
-      view: A mapping of Variable to Value.
-    Returns:
-      utils.HashableDict if we found a working substition, None otherwise.
-    Raises:
-      FailedFunctionCall: For incorrect parameter types.
-    """
-    if not arg_dict:
-      return utils.HashableDict()
-    subst = {}
-    for p in self.pytd_sig.params:
-      actual = arg_dict[p.name]
-      formal = self.signature.annotations[p.name]
-      subst = self.vm.matcher.match_value_against_type(
-          actual, formal, subst, node, view)
-      if subst is None:
-        # These parameters didn't match this signature. There might be other
-        # signatures that work, but figuring that out is up to the caller.
-        return None
-    return utils.HashableDict(subst)
 
   def _get_mutation(self, node, arg_dict, subst):
     """Mutation for changing the type parameters of mutable arguments.
@@ -1501,7 +1502,7 @@ class PyTDFunction(Function):
     retvar = self.vm.program.NewVariable("%s ret" % self.name)
     all_mutations = []
     # The following line may raise FailedFunctionCall
-    possible_calls = self._match_signatures(node, args)
+    possible_calls = self._match_args(node, args, condition)
     for view, signatures in possible_calls:
       if len(signatures) > 1:
         ret = self._call_with_signatures(node, func, args, view, signatures)
@@ -1536,50 +1537,27 @@ class PyTDFunction(Function):
             for v in values if isinstance(v, SimpleAbstractValue)
             for name in v.type_parameters]
 
-  def _match_signatures(self, node, args):
-    """Match signatures using specific Variable->Value views."""
-    if not all(a.bindings for a in args.posargs):
-      raise exceptions.ByteCodeTypeError(
-          "Can't call function with <nothing> parameter")
-    error = None
-    variables = tuple(args.posargs) + tuple(args.namedargs.values())
-    possible_calls = []
-    for combination in utils.deep_variable_product(variables):
-      view = {value.variable: value for value in combination}
-      if not node.CanHaveCombination(view.values()):
-        log.info("Skipping combination %r", view.values())
-        continue
-      log.debug("_match_signatures function %r: %d signature(s)",
-                self.name, len(self.signatures))
-      log.debug("args in view: %r", [(a.bindings and view[a].data)
-                                     for a in args.posargs])
-      try:
-        # If we're calling an overloaded pytd function with an unknown as a
-        # parameter, we can't tell whether it matched or not. Hence, if multiple
-        # signatures are possible matches, we don't know which got called. Check
-        # if this is the case.
-        if (len(self.signatures) > 1 and
-            any(isinstance(view[arg].data, AMBIGUOUS_OR_EMPTY)
-                for arg in variables)):
-          signatures = tuple(self._yield_matching_signatures(node, args, view))
-        else:
-          # We take the first signature that matches, and ignore all after it.
-          # This is because in the pytds for the standard library, the last
-          # signature(s) is/are fallback(s) - e.g. list is defined by
-          # def __init__(self: x: list)
-          # def __init__(self, x: iterable)
-          # def __init__(self, x: generator)
-          # def __init__(self, x: object)
-          # with the last signature only being used if none of the others match.
-          sig = next(self._yield_matching_signatures(node, args, view))
-          signatures = (sig,)
-      except FailedFunctionCall as e:
-        error = error or e
-      else:
-        possible_calls.append((view, signatures))
-    if not possible_calls and error:
-      raise error  # pylint: disable=raising-bad-type
-    return possible_calls
+  def _match_view(self, node, args, view):
+    # If we're calling an overloaded pytd function with an unknown as a
+    # parameter, we can't tell whether it matched or not. Hence, if multiple
+    # signatures are possible matches, we don't know which got called. Check
+    # if this is the case.
+    if (len(self.signatures) > 1 and
+        any(isinstance(view[arg].data, AMBIGUOUS_OR_EMPTY)
+            for arg in args.get_variables())):
+      signatures = tuple(self._yield_matching_signatures(node, args, view))
+    else:
+      # We take the first signature that matches, and ignore all after it.
+      # This is because in the pytds for the standard library, the last
+      # signature(s) is/are fallback(s) - e.g. list is defined by
+      # def __init__(self: x: list)
+      # def __init__(self, x: iterable)
+      # def __init__(self, x: generator)
+      # def __init__(self, x: object)
+      # with the last signature only being used if none of the others match.
+      sig = next(self._yield_matching_signatures(node, args, view))
+      signatures = (sig,)
+    return (view, signatures)
 
   def _call_with_signatures(self, node, func, args, view, signatures):
     """Perform a function call that involves multiple signatures."""
@@ -1658,7 +1636,7 @@ class TypeNew(PyTDFunction):
       # Try to construct a more specific return type. If we can't, we'll fall
       # back to the result of PyTDFunction.call.
       try:
-        self._match_signatures(node, args)
+        self._match_args(node, args, condition)
       except FailedFunctionCall:
         pass
       else:
@@ -2213,8 +2191,7 @@ class InterpreterFunction(Function):
     positional = dict(zip(param_names, posargs))
     for key in positional:
       if key in kws:
-        raise DuplicateKeyword(
-            self.signature, self.signature.print_args(args), key)
+        raise DuplicateKeyword(self.signature, args, self.vm, key)
     callargs.update(positional)
     callargs.update(kws)
     for key, kwonly in self.get_nondefault_params():
@@ -2224,8 +2201,7 @@ class InterpreterFunction(Function):
           # to fill in any parameters we might be missing.
           callargs[key] = self.vm.convert.create_new_unsolvable(node, key)
         else:
-          raise MissingParameter(
-              self.signature, self.signature.print_args(args), key)
+          raise MissingParameter(self.signature, args, self.vm, key)
     arg_pos = self.nonstararg_count
     if self.has_varargs():
       vararg_name = self.code.co_varnames[arg_pos]
@@ -2239,7 +2215,7 @@ class InterpreterFunction(Function):
         callargs[vararg_name] = self.vm.convert.build_tuple(node, extraneous)
       arg_pos += 1
     elif len(posargs) > self.code.co_argcount:
-      raise WrongArgCount(self.signature, self.signature.print_args(args))
+      raise WrongArgCount(self.signature, args, self.vm)
     if self.has_kwargs():
       kwvararg_name = self.code.co_varnames[arg_pos]
       # Build a **kwargs dictionary out of the extraneous parameters
@@ -2283,24 +2259,20 @@ class InterpreterFunction(Function):
     return hashlib.md5("".join(InterpreterFunction._hash(*args)
                                for args in hash_args)).digest()
 
-  def _check_call(self, node, args, condition):
+  def _match_args(self, node, args, condition):
     if not self.signature.has_param_annotations:
       return
-    args = list(self.signature.iter_args(args))
-    for i, (_, param_var, formal) in enumerate(args):
-      if formal is not None:
-        bad = self.vm.matcher.bad_matches(param_var, formal, node,
-                                          condition=condition)
-        if bad:
-          passed = [(name, param.data[0]) for name, param, _ in args]
-          if len(bad) == 1:
-            passed[i] = (passed[i][0], bad[0].data)
-          else:
-            passed[i] = (passed[i][0], Union([b.data for b in bad], self.vm))
-          # TODO(rechen): Is there a way to format the args in a non-printed
-          # form so that we can use function.Signature.print_args here (which
-          # would allow us move the call to print_args into errors.py)?
-          raise WrongArgTypes(self.signature, passed)
+    super(InterpreterFunction, self)._match_args(node, args, condition)
+
+  def _match_view(self, node, args, view):
+    arg_dict = {name: view[arg]
+                for name, arg in zip(self.signature.param_names, args.posargs)}
+    formal_args = [(name, formal)
+                   for name, _, formal in self.signature.iter_args(args)
+                   if formal is not None]
+    subst = self.vm.matcher.compute_subst(node, formal_args, arg_dict, view)
+    if subst is None:
+      raise WrongArgTypes(self.signature, args, self.vm)
 
   def call(self, node, _, args, condition=None, new_locals=None):
     args = args.simplify(node)
@@ -2311,7 +2283,7 @@ class InterpreterFunction(Function):
           callself.maybe_missing_members = True
       return (node,
               self.vm.convert.create_new_unsolvable(node, self.name + ":ret"))
-    self._check_call(node, args, condition)
+    self._match_args(node, args, condition)
     callargs = self._map_args(node, args)
     if self.signature.annotations:
       for name in callargs:

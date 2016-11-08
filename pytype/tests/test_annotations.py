@@ -74,8 +74,8 @@ class AnnotationTest(test_inference.InferenceTest):
     #   Actually passed: (x: float)
     self.assertErrorLogContains(errors, r"line 5.*wrong arguments")
 
-  def testErrorOnAmbiguousArg(self):
-    _, errors = self.InferAndCheck("""\
+  def testAmbiguousArg(self):
+    self.assertNoErrors("""\
       from __future__ import google_type_annotations
       def f(x: int):
         return x
@@ -88,8 +88,6 @@ class AnnotationTest(test_inference.InferenceTest):
           x = "foo"
         f(x)
     """)
-    self.assertErrorLogIs(errors,
-                          [(11, "wrong-arg-types", "Union.*complex.*str")])
 
   def testInnerError(self):
     _, errors = self.InferAndCheck("""\
@@ -645,6 +643,22 @@ class AnnotationTest(test_inference.InferenceTest):
       class B:
         x = ...  # type: int
       def f(v: Union[A, B]) -> int: ...
+    """)
+
+  def testTuple(self):
+    ty = self.Infer("""
+      from __future__ import google_type_annotations
+      def f():
+        return (0, "")
+      def g(x: str):
+        return x
+      x = g(f()[1])
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      google_type_annotations = ...  # type: __future__._Feature
+      def f() -> Tuple[Union[int, str], ...]: ...
+      def g(x: str) -> str: ...
+      x = ...  # type: str
     """)
 
 
