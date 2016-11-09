@@ -2265,8 +2265,14 @@ class InterpreterFunction(Function):
     super(InterpreterFunction, self)._match_args(node, args, condition)
 
   def _match_view(self, node, args, view):
-    arg_dict = {name: view[arg]
-                for name, arg in zip(self.signature.param_names, args.posargs)}
+    arg_dict = {}
+    for i, name in enumerate(self.signature.param_names):
+      if i < len(args.posargs):
+        arg_dict[name] = view[args.posargs[i]]
+      elif name in args.namedargs:
+        # We don't need to worry about catching, e.g., missing parameters here
+        # because _map_args will check for those types of errors.
+        arg_dict[name] = view[args.namedargs[name]]
     formal_args = [(name, formal)
                    for name, _, formal in self.signature.iter_args(args)
                    if formal is not None]

@@ -659,6 +659,14 @@ class AnnotationTest(test_inference.InferenceTest):
       x = ...  # type: str
     """)
 
+  def testOptionalArg(self):
+    self.assertNoErrors("""
+      from __future__ import google_type_annotations
+      def f(x: str, y: bool=False):
+        pass
+      f("", y=True)
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()
