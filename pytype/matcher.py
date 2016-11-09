@@ -48,17 +48,14 @@ class AbstractMatcher(object):
       else:
         right_side_options = [other_type]
       for right in right_side_options:
-        if isinstance(right, (abstract.Class, abstract.Nothing)):
-          # If this type is empty, we can match it against any class. Matching
-          # nothing against nothing is also fine.
-          return subst
-        elif isinstance(right, abstract.TypeParameter):
+        if isinstance(right, abstract.TypeParameter):
           # If we have a union like "K or V" and we match both against
           # nothing, that will fill in both K and V.
           if right.name not in subst:
             subst = subst.copy()
             subst[right.name] = var.program.NewVariable("empty")
-          return subst
+      # If this type is empty, we can match it against anything.
+      return subst
 
   def match_value_against_type(self, value, other_type, subst, node, view):
     """One-way unify value into pytd type given a substitution.

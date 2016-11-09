@@ -87,9 +87,16 @@ class MatcherTest(unittest.TestCase):
     var = self.vm.program.NewVariable("foo")
     right = abstract.TypeParameter("T", self.vm)
     result = self.matcher.match_var_against_type(
-        var, right, {}, self.root_cfg_node, ())
+        var, right, {}, self.root_cfg_node, {})
     self.assertItemsEqual(result, ["T"])
     self.assertFalse(result["T"].bindings)
+
+  def testEmptyAgainstUnsolvable(self):
+    var = self.vm.program.NewVariable("foo")
+    right = abstract.Empty(self.vm)
+    result = self.matcher.match_var_against_type(
+        var, right, {}, self.root_cfg_node, {})
+    self.assertEquals(result, {})
 
 
 if __name__ == "__main__":

@@ -667,6 +667,15 @@ class AnnotationTest(test_inference.InferenceTest):
       f("", y=True)
     """)
 
+  def testEmpty(self):
+    self.assertNoErrors("""
+      from __future__ import google_type_annotations
+      from typing import List, Any
+      def f(x: List[Any]):
+        pass
+      f([])
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()
