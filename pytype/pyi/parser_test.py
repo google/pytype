@@ -15,7 +15,7 @@ class _ParserTestBase(unittest.TestCase):
     old_tree = legacy_parser.parse_string(src)
     self.assertMultiLineEqual(pytd.Print(old_tree), actual)
 
-  def check(self, src, expected=None, prologue=None):
+  def check(self, src, expected=None, prologue=None, legacy=True):
     """Check the parsing of src.
 
     This checks that parsing the source and then printing the resulting
@@ -29,13 +29,15 @@ class _ParserTestBase(unittest.TestCase):
       prologue: An optional prologue to be prepended to the expected text
         before comparisson.  Useful for imports that are introduced during
         printing the AST.
+      legacy: If true, comapre results to legacy parser.
     """
     src = textwrap.dedent(src)
     expected = src if expected is None else textwrap.dedent(expected)
     if prologue:
       expected = "%s\n\n%s" % (textwrap.dedent(prologue), expected)
     actual = pytd.Print(parser.parse_string(src))
-    self._check_legacy(src, actual)
+    if legacy:
+      self._check_legacy(src, actual)
     self.assertMultiLineEqual(expected, actual)
 
   def check_error(self, src, expected_line, message):
@@ -508,6 +510,227 @@ class ClassTest(_ParserTestBase):
           def x(self) -> int: ...
           def x(self) -> str: ...
       """)
+
+
+class IfTest(_ParserTestBase):
+
+  def test_if_true(self):
+    self.check("""\
+      if sys.version_info == (2, 7, 6):
+        x = ...  # type: int
+      """, """\
+      x = ...  # type: int""")
+
+  def test_if_false(self):
+    self.check("""\
+      if sys.version_info == (1, 2, 3):
+        x = ...  # type: int
+      """, "")
+
+  def test_else_used(self):
+    self.check("""\
+      if sys.version_info == (1, 2, 3):
+        x = ...  # type: int
+      else:
+        y = ...  # type: str
+      """, """\
+      y = ...  # type: str""")
+
+  def test_else_ignored(self):
+    self.check("""\
+      if sys.version_info == (2, 7, 6):
+        x = ...  # type: int
+      else:
+        y = ...  # type: str
+      """, """\
+      x = ...  # type: int""")
+
+  def test_elif_used(self):
+    self.check("""\
+      if sys.version_info == (1, 2, 3):
+        x = ...  # type: int
+      elif sys.version_info == (2, 7, 6):
+        y = ...  # type: float
+      else:
+        z = ...  # type: str
+      """, """\
+      y = ...  # type: float""")
+
+  def test_elif_preempted(self):
+    self.check("""\
+      if sys.version_info > (1, 2, 3):
+        x = ...  # type: int
+      elif sys.version_info == (2, 7, 6):
+        y = ...  # type: float
+      else:
+        z = ...  # type: str
+      """, """\
+      x = ...  # type: int""")
+
+  def test_elif_ignored(self):
+    self.check("""\
+      if sys.version_info == (1, 2, 3):
+        x = ...  # type: int
+      elif sys.version_info == (4, 5, 6):
+        y = ...  # type: float
+      else:
+        z = ...  # type: str
+      """, """\
+      z = ...  # type: str""")
+
+  def test_nested_if(self):
+    self.check("""\
+      if sys.version_info >= (2, 0):
+        if sys.platform == "linux":
+          a = ...  # type: int
+        else:
+          b = ...  # type: int
+      else:
+        if sys.platform == "linux":
+          c = ...  # type: int
+        else:
+          d = ...  # type: int
+      """, "a = ...  # type: int")
+
+  # The remaining tests verify that actions with side effects only take affect
+  # within a true block.
+
+  def test_conditional_import(self):
+    self.check("""\
+      if sys.version_info == (2, 7, 6):
+        from foo import Processed
+      else:
+        from foo import Ignored
+      """, "from foo import Processed")
+
+  def test_conditional_alias_or_constant(self):
+    self.check("""\
+      if sys.version_info == (2, 7, 6):
+        x = Processed
+      else:
+        y = Ignored
+      """, "x = Processed")
+
+  def test_conditional_class(self):
+    self.check("""\
+      if sys.version_info == (2, 7, 6):
+        class Processed: pass
+      else:
+        class Ignored: pass
+      """, """\
+      class Processed:
+          pass
+      """)
+
+  def test_conditional_class_registration(self):
+    # There is a bug in legacy, so this cannot be checked against the legacy
+    # parser.
+    #
+    # Class registration allows a local class name to shadow a PEP 484 name.
+    # The only time this is noticeable is when the PEP 484 name is one of the
+    # capitalized names that gets converted to lower case (i.e. List -> list).
+    # In these cases a non-shadowed name would be converted to lower case, and
+    # a properly shadowed name would remain capitalized.  In the test below,
+    # Dict should be registered, List should not be registered.  Thus after
+    # the "if" statement Dict refers to the local Dict class and List refers
+    # to the PEP 484 list class.
+    self.check("""\
+      if sys.version_info == (2, 7, 6):
+        class Dict: pass
+      else:
+        class List: pass
+
+      x = ...  # type: Dict
+      y = ...  # type: List
+      """, """\
+      x = ...  # type: Dict
+      y = ...  # type: list
+
+      class Dict:
+          pass
+      """, legacy=False)
+
+
+class ConditionTest(_ParserTestBase):
+
+  def check_cond(self, condition, expected):
+    out = "x = ...  # type: int" if expected else ""
+    self.check("""\
+      if %s:
+        x = ...  # type: int
+      """ % condition, out)
+
+  def check_cond_error(self, condition, message):
+    self.check_error("""\
+      if %s:
+        x = ...  # type: int
+      """ % condition, 1, message)
+
+  def test_version_eq(self):
+    self.check_cond("sys.version_info == (2, 7, 5)", False)
+    self.check_cond("sys.version_info == (2, 7, 6)", True)
+    self.check_cond("sys.version_info == (2, 7, 7)", False)
+
+  def test_version_ne(self):
+    self.check_cond("sys.version_info != (2, 7, 5)", True)
+    self.check_cond("sys.version_info != (2, 7, 6)", False)
+    self.check_cond("sys.version_info != (2, 7, 7)", True)
+
+  def test_version_lt(self):
+    self.check_cond("sys.version_info < (2, 7, 5)", False)
+    self.check_cond("sys.version_info < (2, 7, 6)", False)
+    self.check_cond("sys.version_info < (2, 7, 7)", True)
+    self.check_cond("sys.version_info < (2, 8, 0)", True)
+
+  def test_version_le(self):
+    self.check_cond("sys.version_info <= (2, 7, 5)", False)
+    self.check_cond("sys.version_info <= (2, 7, 6)", True)
+    self.check_cond("sys.version_info <= (2, 7, 7)", True)
+    self.check_cond("sys.version_info <= (2, 8, 0)", True)
+
+  def test_version_gt(self):
+    self.check_cond("sys.version_info > (2, 6, 0)", True)
+    self.check_cond("sys.version_info > (2, 7, 5)", True)
+    self.check_cond("sys.version_info > (2, 7, 6)", False)
+    self.check_cond("sys.version_info > (2, 7, 7)", False)
+
+  def test_version_ge(self):
+    self.check_cond("sys.version_info >= (2, 6, 0)", True)
+    self.check_cond("sys.version_info >= (2, 7, 5)", True)
+    self.check_cond("sys.version_info >= (2, 7, 6)", True)
+    self.check_cond("sys.version_info >= (2, 7, 7)", False)
+
+  def test_version_shorter_tuples(self):
+    self.check_cond("sys.version_info >= (2,)", True)
+    self.check_cond("sys.version_info >= (3,)", False)
+    self.check_cond("sys.version_info >= (2, 7)", True)
+    self.check_cond("sys.version_info >= (2, 8)", False)
+
+  def test_version_error(self):
+    self.check_cond_error('sys.version_info == "foo"',
+                          "sys.version_info must be compared to a tuple")
+    self.check_cond_error("sys.version_info == (1.2, 3)",
+                          "only integers are allowed in version tuples")
+
+  def test_platform_eq(self):
+    self.check_cond('sys.platform == "linux"', True)
+    self.check_cond('sys.platform == "win32"', False)
+
+  def test_platform_error(self):
+    self.check_cond_error("sys.platform == (1, 2, 3)",
+                          "sys.platform must be compared to a string")
+    self.check_cond_error('sys.platform < "linux"',
+                          "sys.platform must be compared using == or !=")
+    self.check_cond_error('sys.platform <= "linux"',
+                          "sys.platform must be compared using == or !=")
+    self.check_cond_error('sys.platform > "linux"',
+                          "sys.platform must be compared using == or !=")
+    self.check_cond_error('sys.platform >= "linux"',
+                          "sys.platform must be compared using == or !=")
+
+  def test_unsupported_condition(self):
+    self.check_cond_error("foo.bar == (1, 2, 3)",
+                          "Unsupported condition: 'foo.bar'")
 
 
 if __name__ == "__main__":

@@ -37,6 +37,58 @@ _NameAndSig = collections.namedtuple("_", ["name", "signature",
 _LEGACY = legacy_parser._TypeDeclParser()  # pylint: disable=protected-access
 
 
+_COMPARES = {
+    "==": lambda x, y: x == y,
+    "!=": lambda x, y: x != y,
+    "<": lambda x, y: x < y,
+    "<=": lambda x, y: x <= y,
+    ">": lambda x, y: x > y,
+    ">=": lambda x, y: x >= y,
+}
+
+
+class _ConditionScope(object):
+  """State associated with a condition if/elif/else block."""
+
+  def __init__(self, parent):
+    self._parent = parent
+    if parent is None:
+      self._active = True
+      # The value of _can_trigger doesn't really matter since apply_condition
+      # shouldn't be called on the top scope.
+      self._can_trigger = False
+    else:
+      # By default new scopes are inactive and can be triggered iff the
+      # parent is active.
+      self._active = False
+      self._can_trigger = parent.active
+
+  def apply_condition(self, value):
+    """Apply the value to this scope.
+
+    If the scope can be triggered and value is true, then the scope
+    becomes active, otherwise the scope is not active.  Note that a scope
+    can trigger at most once since triggering also clears _can_trigger.
+
+    Args:
+      value: a bool.
+    """
+    assert self._parent is not None
+    if self._can_trigger and value:
+      self._active = True
+      self._can_trigger = False
+    else:
+      self._active = False
+
+  @property
+  def active(self):
+    return self._active
+
+  @property
+  def parent(self):
+    return self._parent
+
+
 class ParseError(Exception):
 
   def __init__(self, msg, line=None):
@@ -88,6 +140,10 @@ class _Parser(object):
     new_named_tuple()
     regiser_class_name()
     add_class()
+    if_begin()
+    if_elif()
+    if_else()
+    if_end()
 
   Other methods:
     set_error_location()
@@ -103,6 +159,39 @@ class _Parser(object):
   the peer in the first place).  The high level parser can thus save location
   information from set_error_location(), catch the exception raised by
   parse_ext.parse(), and raise a new exception that includes a location.
+
+  Conditional pyi code (under an "if" statement) is handled similar to a
+  preprocessor, discarding any statements under False conditions rather than
+  representing the entire "if" tree in the AST.  This approach allows methods
+  such as add_alias_or_constant() to have side effects provided that they
+  first check to see if the enclosing scope is active.  There are four
+  peer calls used to support conditions:
+
+  if_begin(self, condition): This should be invoked after parsing the initial
+      condition but before processing any enclosed definitions.  It establishes
+      a new _ConditionScope based on the evaluation of condition.  It returns
+      a bool indicating if the scope will now be active.
+
+  if_elif(self, condition): This should be invoked after parsing the condition
+      following an "elif", but before any subsequent definitions.  It evaluates
+      the condition and changes the scope's state appropriately.  It returns
+      a bool indicating if the scope will now be active.
+
+  if_else(self): This should be invoked after parsing "else" but before any
+      subsequent definitions.  The scope will become active if it hasn't
+      triggered on any previous conditions.  It returns a bool indicating
+      if the scope will now be active.
+
+  if_end(self, clauses): This should be called at the end of the entire if
+      statement where clauses is a list of (active, defs) pairs.  Active is
+      the return value of the corresponding if_begin/if_elif/if_else call, and
+      defs is a list of definitions within that block.  The function returns
+      the list of defs that should be processed (i.e. the defs in the tuple
+      where active was True, or [] if no such tuple is present).
+
+  Conditions are represented by tuples (name, op, value), where name is a
+  dotted name string, op is one of six comparisson strings ("==", "!=", "<",
+  "<=", ">", ">="), and value is either a string or a tuple of three integers.
   """
 
   # Values for the parsing context.
@@ -111,12 +200,21 @@ class _Parser(object):
   NOTHING = pytd.NothingType()
   ANYTHING = pytd.AnythingType()
 
-  def __init__(self):
+  def __init__(self, version):
+    """Initialize the parser.
+
+    Args:
+      version: A version tuple.
+    """
     # TODO(dbaum): add PEP484_TRANSLATIONS
     self._type_map = {
         name: pytd.NamedType("typing." + name) for name in pep484.PEP484_NAMES}
     self._used = False
     self._error_location = None
+    self._version = version
+    # The condition stack, start with a default scope that will always be
+    # active.
+    self._current_condition = _ConditionScope(None)
     # These fields accumulate definitions that are used to build the
     # final TypeDeclUnit.
     self._constants = []
@@ -124,7 +222,7 @@ class _Parser(object):
     self._classes = []
     self._generated_classes = collections.defaultdict(list)
 
-  def parse(self, src, name, filename, version):
+  def parse(self, src, name, filename):
     """Parse a PYI file and return the corresponding AST.
 
     Note that parse() should be called exactly once per _Parser instance.  It
@@ -134,7 +232,6 @@ class _Parser(object):
       src: The source text to parse.
       name: The name of the module to be created.
       filename: The name of the source file.
-      version: A version tuple.
 
     Returns:
       A pytd.TypeDeclUnit() representing the parsed pyi.
@@ -146,9 +243,8 @@ class _Parser(object):
     assert not self._used
     self._used = True
 
-    # TODO(dbaum): What should we do with filename and version?
+    # TODO(dbaum): What should we do with filename?
     del filename
-    del version
     try:
       defs = parser_ext.parse(self, src)
     except ParseError as e:
@@ -219,6 +315,50 @@ class _Parser(object):
     """
     self._error_location = location
 
+  def _eval_condition(self, condition):
+    """Evaluate a condition tuple (name, op value) and return a bool."""
+    name, op, value = condition
+    if name == "sys.version_info":
+      if not isinstance(value, tuple):
+        raise ParseError("sys.version_info must be compared to a tuple")
+      if not all(isinstance(v, int) for v in value):
+        raise ParseError("only integers are allowed in version tuples")
+      # Append zeros and slice to normalize the tuple to a three-tuple.
+      actual = (self._version + (0, 0))[:3]
+    elif name == "sys.platform":
+      if not isinstance(value, str):
+        raise ParseError("sys.platform must be compared to a string")
+      if op not in ["==", "!="]:
+        raise ParseError("sys.platform must be compared using == or !=")
+      actual = "linux"
+    else:
+      raise ParseError("Unsupported condition: '%s'." % name)
+    return _COMPARES[op](actual, value)
+
+  def if_begin(self, condition):
+    """Begin an "if" statement using the specified condition."""
+    self._current_condition = _ConditionScope(self._current_condition)
+    self._current_condition.apply_condition(self._eval_condition(condition))
+    return self._current_condition.active
+
+  def if_elif(self, condition):
+    """Start an "elif" clause using the specified condition."""
+    self._current_condition.apply_condition(self._eval_condition(condition))
+    return self._current_condition.active
+
+  def if_else(self):
+    """Start an "else" clause using the specified condition."""
+    self._current_condition.apply_condition(True)
+    return self._current_condition.active
+
+  def if_end(self, clauses):
+    """Finish an "if" statement given a list of (active, defs) clauses."""
+    self._current_condition = self._current_condition.parent
+    for cond_value, stmts in clauses:
+      if cond_value:
+        return stmts
+    return []
+
   def new_constant(self, name, value):
     """Return a Constant.
 
@@ -251,6 +391,8 @@ class _Parser(object):
           NamedType("False") the name becomes a constant of type bool,
           otherwise it becomes an alias.
     """
+    if not self._current_condition.active:
+      return
     # TODO(dbaum): Consider merging this with new_constant().
     if value in [pytd.NamedType("True"), pytd.NamedType("False")]:
       self._constants.append(pytd.Constant(name, pytd.NamedType("bool")))
@@ -272,6 +414,8 @@ class _Parser(object):
       ParseError: If an import statement uses a rename.
     """
     if from_package:
+      if not self._current_condition.active:
+        return
       # from a.b.c import d, ...
       for item in import_list:
         if isinstance(item, tuple):
@@ -286,6 +430,7 @@ class _Parser(object):
         else:
           pass  # TODO(kramm): Handle '*' imports in pyi
     else:
+      # No need to check _current_condition since there are no side effects.
       # import a, b as c, ...
       for item in import_list:
         # simple import, no impact on pyi, but check for unsupported rename.
@@ -447,6 +592,8 @@ class _Parser(object):
 
   def register_class_name(self, class_name):
     """Register a class name so that it can shadow aliases."""
+    if not self._current_condition.active:
+      return
     self._type_map[class_name] = pytd.NamedType(class_name)
 
   def add_class(self, class_name, parent_args, defs):
@@ -490,6 +637,11 @@ class _Parser(object):
       # TODO(kramm): raise a syntax error right when the identifier is defined.
       raise ParseError("Duplicate identifier(s): " + ", ".join(duplicates))
 
+    # This check is performed after the above error checking so that errors
+    # will be spotted even in non-active conditional code.
+    if not self._current_condition.active:
+      return
+
     # TODO(dbaum): Is NothingType even legal here?  The grammar accepts it but
     # perhaps it should be a ParseError.
     parents = [p for p in parents if not isinstance(p, pytd.NothingType)]
@@ -507,7 +659,7 @@ class _Parser(object):
 
 def parse_string(src, name=None, filename=None,
                  python_version=_DEFAULT_VERSION):
-  return _Parser().parse(src, name, filename, version=python_version)
+  return _Parser(version=python_version).parse(src, name, filename)
 
 
 def _keep_decorator(decorator):
