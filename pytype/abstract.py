@@ -1767,7 +1767,7 @@ class ParameterizedClass(AtomicAbstractValue, Class):
           self.type_parameters[type_param.name].get_instance_type(
               node, None, seen))
     return pytd_utils.MakeClassOrContainerType(
-        pytd_utils.NamedTypeWithModule(self.base_cls.pytd_cls.name,
+        pytd_utils.NamedTypeWithModule(self.base_cls.name,
                                        self.base_cls.module),
         type_arguments)
 

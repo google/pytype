@@ -358,14 +358,12 @@ class CallTracer(vm.VirtualMachine):
       return self.convert.convert_constant(
           name, abstract.AsInstance(t), subst={}, node=self.root_cfg_node)
 
-  def _check_return(self, node, actual, formal):
+  def _check_return(self, opcode, node, actual, formal):
     bad = self.matcher.bad_matches(actual, formal, node)
     if bad:
       combined = pytd_utils.JoinTypes([t.data.to_type(node) for t in bad])
       self.errorlog.bad_return_type(
-          self.frame.current_opcode, self,
-          combined, formal.get_instance_type(node)
-      )
+          opcode, combined, formal.get_instance_type(node))
 
   def _check_function(self, pytd_function, f, node, skip_self=False):
     """Check that a function or method is compatible with its PYTD."""
@@ -379,17 +377,12 @@ class CallTracer(vm.VirtualMachine):
         _, retvar = self.call_function_in_frame(
             node, fvar, args, {}, None, None)
         if retvar.bindings:
-          bad = self.matcher.bad_matches(retvar, nominal_return, node)
-          if bad:
-            if isinstance(val.data, (abstract.InterpreterFunction,
-                                     abstract.BoundInterpreterFunction)):
-              combined = pytd_utils.JoinTypes([t.data.to_type(node)
-                                               for t in bad])
-              self.errorlog.bad_return_type(
-                  val.data.get_first_opcode(), pytd_function,
-                  combined, sig.return_type)
-            else:
-              log.error("%s is not a function?", val.data.name)
+          if isinstance(val.data, (abstract.InterpreterFunction,
+                                   abstract.BoundInterpreterFunction)):
+            self._check_return(
+                val.data.get_first_opcode(), node, retvar, nominal_return)
+          else:
+            log.error("%s is not a function?", val.data.name)
         else:
           log.error("Couldn't call %s", pytd_function.name)
 

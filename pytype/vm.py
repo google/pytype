@@ -1863,13 +1863,14 @@ class VirtualMachine(object):
       state = state.pop_and_discard()
     return state
 
-  def _check_return(self, node, actual, formal):
+  def _check_return(self, opcode, node, actual, formal):
     pass  # overridden in infer.py
 
   def byte_RETURN_VALUE(self, state, op):
     state, var = state.pop()
     if self.frame.allowed_returns is not None:
-      self._check_return(state.node, var, self.frame.allowed_returns)
+      self._check_return(self.frame.current_opcode, state.node, var,
+                         self.frame.allowed_returns)
       retvar = self.frame.allowed_returns.instantiate(state.node)
     else:
       retvar = var

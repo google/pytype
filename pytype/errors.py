@@ -351,8 +351,7 @@ class ErrorLog(ErrorLogBase):
         type(item).__name__, item.name, pytd_filename, py_filename))
 
   @_error_name("bad-return-type")
-  def bad_return_type(self, opcode, unused_function,
-                      actual_pytd, expected_pytd):
+  def bad_return_type(self, opcode, actual_pytd, expected_pytd):
     self.error(opcode, "return type is %s, should be %s" % (
         pytd.Print(actual_pytd),
         pytd.Print(expected_pytd)))
