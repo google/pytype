@@ -99,6 +99,30 @@ class CheckerTest(test_inference.InferenceTest):
     errorlog = self.get_checking_errors(python)
     self.assertErrorLogIs(errorlog, [(0, "recursion-error", r"X")])
 
+  def testBadReturnTypeInline(self):
+    python = """\
+      from __future__ import google_type_annotations
+      from typing import List
+      def f() -> List[int]:
+        return [object()]
+      f()[0] += 1
+    """
+    errorlog = self.get_checking_errors(python)
+    self.assertErrorLogIs(errorlog, [(4, "bad-return-type",
+                                      r"List\[object\].*List\[int\]")])
+
+  def testBadReturnTypePytd(self):
+    python = """\
+      def f():
+        return [object()]
+    """
+    pytd = """
+      def f() -> List[int]
+    """
+    errorlog = self.get_checking_errors(python, pytd)
+    self.assertErrorLogIs(errorlog, [(2, "bad-return-type",
+                                      r"List\[object\].*List\[int\]")])
+
 
 if __name__ == "__main__":
   test_inference.main()

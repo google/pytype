@@ -1870,7 +1870,10 @@ class VirtualMachine(object):
     state, var = state.pop()
     if self.frame.allowed_returns is not None:
       self._check_return(state.node, var, self.frame.allowed_returns)
-    self.frame.return_variable.PasteVariable(var, state.node)
+      retvar = self.frame.allowed_returns.instantiate(state.node)
+    else:
+      retvar = var
+    self.frame.return_variable.PasteVariable(retvar, state.node)
     return state.set_why("return")
 
   def byte_IMPORT_STAR(self, state, op):
