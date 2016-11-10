@@ -1541,22 +1541,33 @@ class TestASTGeneration(parser_test_base.ParserTest):
         __dict__ = ...  # type: Dict[str, Any]
 
       class list(List): ...
+      class itemiterator(Iterator): ...
     """)
     typing_src = textwrap.dedent("""
       class Pattern(object):
         def split(self) -> List
+      class IO(Iterator): ...
     """)
     builtins = parser.parse_string(builtins_src, name="__builtin__")
     typing = parser.parse_string(typing_src, name="typing")
 
+    # Things like constants and method returns should always be converted.
     constant = builtins.Lookup("__builtin__.object").Lookup("__dict__")
     self.assertEquals(pytd.NamedType("dict"), constant.type.base_type)
 
+    method, = typing.Lookup("typing.Pattern").Lookup("split").signatures
+    self.assertEquals(pytd.NamedType("list"), method.return_type)
+
+    # Most parents should be converted for abstract matching to work.
+    parent, = builtins.Lookup("__builtin__.itemiterator").parents
+    self.assertEquals(pytd.NamedType("iterator"), parent)
+
+    # Some parents should not be, to avoid circular class hierarchies.
     parent, = builtins.Lookup("__builtin__.list").parents
     self.assertEquals(pytd.NamedType("typing.List"), parent)
 
-    method, = typing.Lookup("typing.Pattern").Lookup("split").signatures
-    self.assertEquals(pytd.NamedType("list"), method.return_type)
+    parent, = typing.Lookup("typing.IO").parents
+    self.assertEquals(pytd.NamedType("Iterator"), parent)
 
 
 class TestDecorate(unittest.TestCase):

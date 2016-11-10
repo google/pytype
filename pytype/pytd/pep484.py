@@ -178,12 +178,11 @@ class ConvertTypingToNative(visitors.Visitor):
   def __init__(self, module):
     super(ConvertTypingToNative, self).__init__()
     self.module = module
-    # We do not want to touch the class hierarchy in builtins, as something
-    # like class list(List) should not be changed to class list(list)
-    self.convert_parents = module != "__builtin__" and module != "typing"
 
   def _GetModuleAndName(self, t):
-    if isinstance(t, (pytd.ClassType, pytd.NamedType)) and "." in t.name:
+    if isinstance(t, pytd.GenericType):
+      return self._GetModuleAndName(t.base_type)
+    elif isinstance(t, (pytd.ClassType, pytd.NamedType)) and "." in t.name:
       return t.name.rsplit(".", 1)
     else:
       return None, t.name
@@ -208,7 +207,7 @@ class ConvertTypingToNative(visitors.Visitor):
     return self._Convert(t)
 
   def VisitGenericType(self, t):
-    module, name = self._GetModuleAndName(t.base_type)
+    module, name = self._GetModuleAndName(t)
     if module == "typing":
       if name == "Optional":
         return pytd.UnionType(t.parameters + (pytd.NamedType("NoneType"),))
@@ -220,7 +219,18 @@ class ConvertTypingToNative(visitors.Visitor):
     return self.VisitGenericType(t)
 
   def VisitClass(self, node):
-    if self.convert_parents:
-      return node
-    else:
+    if self.module == "typing":
       return node.Replace(parents=self.old_node.parents)
+    elif self.module == "__builtin__":
+      parents = []
+      for old_parent, new_parent in zip(self.old_node.parents, node.parents):
+        if (isinstance(new_parent, (pytd.GenericType, pytd.ClassType,
+                                    pytd.NamedType)) and
+            self._GetModuleAndName(new_parent)[1] == node.name):
+          # Don't do conversions like class list(List) -> class list(list)
+          parents.append(old_parent)
+        else:
+          parents.append(new_parent)
+      return node.Replace(parents=tuple(parents))
+    else:
+      return node
