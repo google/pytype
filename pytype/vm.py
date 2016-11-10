@@ -1680,12 +1680,12 @@ class VirtualMachine(object):
     state, pos_defaults = state.popn(num_pos_defaults)
     return state, pos_defaults, kw_defaults, raw_annotations
 
-  def _process_one_annotation(self, annotation, name):
+  def _process_one_annotation(self, annotation, name, top_level=True):
     """Change annotation / record errors where required."""
     if (isinstance(annotation, abstract.Instance) and
         annotation.cls.data == self.convert.str_type.data):
       # String annotations : Late evaluation
-      if isinstance(annotation, abstract.PythonConstant):
+      if isinstance(annotation, abstract.PythonConstant) and top_level:
         return function.LateAnnotation(
             name=name,
             opcode=self.frame.current_opcode,
@@ -1696,6 +1696,12 @@ class VirtualMachine(object):
     elif annotation.cls and annotation.cls.data == self.convert.none_type.data:
       # PEP 484 allows to write "NoneType" as "None"
       return self.convert.none_type.data[0]
+    elif isinstance(annotation, typing.Container) and annotation.inner:
+      for inner_annot in annotation.inner:
+        for b in inner_annot.bindings:
+          if self._process_one_annotation(b.data, name, False) is None:
+            return None
+      return annotation
     else:
       return annotation
 

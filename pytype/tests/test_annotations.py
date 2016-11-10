@@ -676,6 +676,15 @@ class AnnotationTest(test_inference.InferenceTest):
       f([])
     """)
 
+  def testInnerString(self):
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      from typing import List
+      def f(x: List["str"]):
+        pass
+    """)
+    self.assertErrorLogIs(errors, [(3, "invalid-annotation", r"x")])
+
 
 if __name__ == "__main__":
   test_inference.main()
