@@ -1521,14 +1521,26 @@ def MergeSequences(seqs):
 class InsertClassTemplates(Visitor):
   """Visitor for inserting class templates."""
 
+  def _GetTemplateItems(self, param):
+    """Get a list of template items from a parameter."""
+    items = []
+    if isinstance(param, pytd.GenericType):
+      for p in param.parameters:
+        items.extend(self._GetTemplateItems(p))
+    elif isinstance(param, pytd.UnionType):
+      for p in param.type_list:
+        items.extend(self._GetTemplateItems(p))
+    elif isinstance(param, pytd.TypeParameter):
+      items.append(pytd.TemplateItem(param))
+    return items
+
   def VisitClass(self, node):
     """Builds a template for the class from its GenericType parents."""
     templates = []
     for parent in node.parents:
       if isinstance(parent, pytd.GenericType):
-        templates.append([pytd.TemplateItem(param)
-                          for param in parent.parameters
-                          if isinstance(param, pytd.TypeParameter)])
+        templates.append(sum((self._GetTemplateItems(param)
+                              for param in parent.parameters), []))
     try:
       template = MergeSequences(templates)
     except ValueError:

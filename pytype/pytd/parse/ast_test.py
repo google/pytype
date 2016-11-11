@@ -1332,6 +1332,19 @@ class TestASTGeneration(parser_test_base.ParserTest):
     self.assertEquals(len(f2.exceptions), 1)
     self.assertEquals(len(f2.template), 1)
 
+  def testNestedTemplate(self):
+    """Test nested template parsing."""
+
+    data = textwrap.dedent("""
+        K = TypeVar('K')
+        V = TypeVar('V')
+        class MyClass(typing.List[typing.Tuple[K or V]]): ...
+        """)
+
+    result = self.Parse(data)
+    myclass = result.Lookup("MyClass")
+    self.assertEquals({t.name for t in myclass.template}, {"K", "V"})
+
   def testSelf(self):
     """Test handling of self."""
 
