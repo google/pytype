@@ -140,6 +140,7 @@ class _Parser(object):
     new_named_tuple()
     regiser_class_name()
     add_class()
+    add_type_var()
     if_begin()
     if_elif()
     if_else()
@@ -220,6 +221,7 @@ class _Parser(object):
     self._constants = []
     self._aliases = []
     self._classes = []
+    self._type_params = []
     self._generated_classes = collections.defaultdict(list)
 
   def parse(self, src, name, filename):
@@ -264,8 +266,7 @@ class _Parser(object):
 
     all_names = (list(set(f.name for f in functions)) +
                  [c.name for c in constants] +
-                 # TODO(dbaum): Add type_params and classes to the check.
-                 # [c.name for c in type_params] +
+                 [c.name for c in self._type_params] +
                  [c.name for c in classes] +
                  [c.name for c in self._aliases])
     duplicates = [name
@@ -281,11 +282,10 @@ class _Parser(object):
       raise ParseError(
           "Module-level functions with property decorators: " + prop_names)
 
-    # TODO(dbaum): Add support for type_params, classes.
     # TODO(dbaum): Use a real module name.
     ast = pytd.TypeDeclUnit("?",
                             constants=tuple(constants),
-                            type_params=(),
+                            type_params=tuple(self._type_params),
                             functions=tuple(functions),
                             classes=tuple(classes),
                             aliases=tuple(self._aliases))
@@ -294,8 +294,7 @@ class _Parser(object):
     # The code below was copied from the legacy parser, but sections that are
     # not currently tested are commented out.
 
-    # ast = ast.Visit(InsertTypeParameters())
-
+    ast = ast.Visit(legacy_parser.InsertTypeParameters())
     ast = ast.Visit(pep484.ConvertTypingToNative(name))
 
     # if name:
@@ -656,6 +655,24 @@ class _Parser(object):
                      template=())
     self._classes.append(cls)
 
+  def add_type_var(self, name, param_list):
+    """Add a type variable with the given name and parameter list."""
+    params = _validate_params(param_list)
+    if (not params.required or
+        not isinstance(params.required[0], pytd.Parameter)):
+      raise ParseError("TypeVar's first arg should be a string")
+
+    # Allow and ignore any other arguments (types, covariant=..., etc)
+    name_param = params.required[0].name
+    if name != name_param:
+      raise ParseError("TypeVar name needs to be %r (not %r)" % (
+          name_param, name))
+
+    if not self._current_condition.active:
+      return
+
+    self._type_params.append(pytd.TypeParameter(name, scope=None))
+
 
 def parse_string(src, name=None, filename=None,
                  python_version=_DEFAULT_VERSION):
@@ -750,7 +767,7 @@ def _validate_params(param_list):
       else:
         stararg = _star_param(name[1:], param_type)
     else:
-      kwonly = stararg or has_bare_star
+      kwonly = bool(stararg or has_bare_star)
       params.append(_normal_param(name, param_type, default, kwonly))
 
   return _Params(params,

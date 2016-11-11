@@ -1,3 +1,4 @@
+import os
 import re
 import textwrap
 
@@ -6,6 +7,8 @@ from pytype.pytd import pytd
 from pytype.pytd.parse import parser as legacy_parser
 
 import unittest
+
+IGNORE = object()
 
 
 class _ParserTestBase(unittest.TestCase):
@@ -25,20 +28,27 @@ class _ParserTestBase(unittest.TestCase):
     Args:
       src: A source string.
       expected: Optional expected result string.  If not provided, src is
-        used instead.
+        used instead.  The special value IGNORE can be used to skip
+        checking the parsed results against expected text.
       prologue: An optional prologue to be prepended to the expected text
         before comparisson.  Useful for imports that are introduced during
         printing the AST.
       legacy: If true, comapre results to legacy parser.
+
+    Returns:
+      The parsed pytd.TypeDeclUnit.
     """
     src = textwrap.dedent(src)
-    expected = src if expected is None else textwrap.dedent(expected)
-    if prologue:
-      expected = "%s\n\n%s" % (textwrap.dedent(prologue), expected)
-    actual = pytd.Print(parser.parse_string(src))
+    ast = parser.parse_string(src)
+    actual = pytd.Print(ast)
     if legacy:
       self._check_legacy(src, actual)
-    self.assertMultiLineEqual(expected, actual)
+    if expected != IGNORE:
+      expected = src if expected is None else textwrap.dedent(expected)
+      if prologue:
+        expected = "%s\n\n%s" % (textwrap.dedent(prologue), expected)
+      self.assertMultiLineEqual(expected, actual)
+    return ast
 
   def check_error(self, src, expected_line, message):
     """Check that parsing the src raises the expected error."""
@@ -93,6 +103,16 @@ class ParserTest(_ParserTestBase):
       def foo() -> int: ...""",
                      None,
                      "Duplicate top-level identifier(s): foo")
+    self.check_error("""\
+      X = ... # type: int
+      class X: ...""",
+                     None,
+                     "Duplicate top-level identifier(s): X")
+    self.check_error("""\
+      X = ... # type: int
+      X = TypeVar('X')""",
+                     None,
+                     "Duplicate top-level identifier(s): X")
     # A function is allowed to appear multiple times.
     self.check("""\
       def foo(x: int) -> int: ...
@@ -120,6 +140,30 @@ class ParserTest(_ParserTestBase):
       from somewhere import Foo
       
       x = ...  # type: somewhere.Foo""")
+
+  def test_type_params(self):
+    ast = self.check("""\
+      from typing import TypeVar
+
+      T = TypeVar('T')
+
+      def func(x: T) -> T: ...""")
+    # During parsing references to type paraemters are instances of NamedType.
+    # They should be replaced by TypeParameter objects during post-processing.
+    sig = ast.functions[0].signatures[0]
+    self.assertIsInstance(sig.params[0].type, pytd.TypeParameter)
+    self.assertIsInstance(sig.return_type, pytd.TypeParameter)
+
+    # Check various illegal TypeVar arguments that are caught by semantic
+    # checking rather than the grammar.
+    self.check_error("T = TypeVar()", 1,
+                     "TypeVar's first arg should be a string")
+    self.check_error("T = TypeVar(*args)", 1,
+                     "TypeVar's first arg should be a string")
+    self.check_error("T = TypeVar(...)", 1,
+                     "TypeVar's first arg should be a string")
+    self.check_error("T = TypeVar('Q')", 1,
+                     "TypeVar name needs to be 'Q' (not 'T')")
 
 
 class HomogeneousTypeTest(_ParserTestBase):
@@ -252,6 +296,7 @@ class FunctionTest(_ParserTestBase):
   def test_star_params(self):
     self.check("def foo(*, x) -> str: ...")
     self.check("def foo(x: int, *args) -> str: ...")
+    self.check("def foo(x: int, *args, key: int = ...) -> str: ...")
     self.check("def foo(x: int, *args: float) -> str: ...",
                prologue="from typing import Tuple")
     self.check("def foo(x: int, **kwargs) -> str: ...")
@@ -650,6 +695,19 @@ class IfTest(_ParserTestBase):
           pass
       """, legacy=False)
 
+  def test_conditional_typevar(self):
+    # The legacy parser does not handle this correctly - typevars are added
+    # regardless of any conditions.
+    self.check("""\
+      if sys.version_info == (2, 7, 6):
+        T = TypeVar('T')
+      else:
+        F = TypeVar('F')
+      """, """\
+        from typing import TypeVar
+
+        T = TypeVar('T')""", legacy=False)
+
 
 class ConditionTest(_ParserTestBase):
 
@@ -731,6 +789,15 @@ class ConditionTest(_ParserTestBase):
   def test_unsupported_condition(self):
     self.check_cond_error("foo.bar == (1, 2, 3)",
                           "Unsupported condition: 'foo.bar'")
+
+
+class EntireFileTest(_ParserTestBase):
+
+  def test_builtins(self):
+    pytd_dir = os.path.dirname(os.path.dirname(legacy_parser.__file__))
+    with open(os.path.join(pytd_dir, "builtins/__builtin__.pytd")) as f:
+      src = f.read()
+    self.check(src, expected=IGNORE)
 
 
 if __name__ == "__main__":
