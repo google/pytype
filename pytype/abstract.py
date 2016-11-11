@@ -956,7 +956,12 @@ class FunctionArgs(collections.namedtuple("_", ["posargs", "namedargs",
     return FunctionArgs(posargs, namedargs, starargs, starstarargs)
 
   def get_variables(self):
-    return tuple(self.posargs) + tuple(self.namedargs.values())
+    variables = list(self.posargs) + self.namedargs.values()
+    if self.starargs is not None:
+      variables.append(self.starargs)
+    if self.starstarargs is not None:
+      variables.append(self.starstarargs)
+    return variables
 
 
 class FailedFunctionCall(Exception):
@@ -2266,16 +2271,16 @@ class InterpreterFunction(Function):
 
   def _match_view(self, node, args, view):
     arg_dict = {}
-    for i, name in enumerate(self.signature.param_names):
-      if i < len(args.posargs):
-        arg_dict[name] = view[args.posargs[i]]
-      elif name in args.namedargs:
-        # We don't need to worry about catching, e.g., missing parameters here
-        # because _map_args will check for those types of errors.
-        arg_dict[name] = view[args.namedargs[name]]
-    formal_args = [(name, formal)
-                   for name, _, formal in self.signature.iter_args(args)
-                   if formal is not None]
+    formal_args = []
+    for name, arg, formal in self.signature.iter_args(args):
+      arg_dict[name] = view[arg]
+      if formal is not None:
+        if (name == self.signature.varargs_name or
+            name == self.signature.kwargs_name):
+          # TODO(rechen): We can be more precise here. For varargs, the formal
+          # type should be Iterable[formal]; for kwargs, Mapping[str, formal].
+          formal = self.vm.convert.unsolvable
+        formal_args.append((name, formal))
     subst = self.vm.matcher.compute_subst(node, formal_args, arg_dict, view)
     if subst is None:
       raise WrongArgTypes(self.signature, args, self.vm)

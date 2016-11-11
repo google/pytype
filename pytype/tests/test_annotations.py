@@ -685,6 +685,26 @@ class AnnotationTest(test_inference.InferenceTest):
     """)
     self.assertErrorLogIs(errors, [(3, "invalid-annotation", r"x")])
 
+  def testVarargs(self):
+    self.assertNoErrors("""
+      from __future__ import google_type_annotations
+      def f(x, *args: str):
+        pass
+      f(42, "")
+      f(42, *[])
+      f(42, *[""])
+    """)
+
+  def testKwargs(self):
+    self.assertNoErrors("""
+      from __future__ import google_type_annotations
+      def f(x, **kwargs: str):
+        pass
+      f(42, y="")
+      f(42, *{})
+      f(42, *{"y": ""})
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()
