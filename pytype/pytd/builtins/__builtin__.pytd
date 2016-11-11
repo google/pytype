@@ -385,7 +385,7 @@ class `dictionary-valueiterator`(Iterator[T]):
     def __iter__(self) -> `dictionary-valueiterator`[T]
     def next(self) -> T
 
-class `dictionary-itemiterator`(Generic[K, V], object):
+class `dictionary-itemiterator`(Generic[K, V], Iterator[tuple[K or V]]):
     def __iter__(self) -> `dictionary-itemiterator`[K, V]
     def next(self) -> tuple[K or V]  # tuple[K, V]  # TODO(pludemann): a pair
 

@@ -141,6 +141,29 @@ class BuiltinTests2(test_inference.InferenceTest):
       x = ...  # type: dict
     """)
 
+  def testDictIterators(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        def need_iterator(x: Iterator[Any]) -> None: ...
+      """)
+      ty = self.Infer("""\
+        import foo
+        d = {"a": 1}
+        foo.need_iterator(d.iterkeys())
+        key = d.iterkeys().next()
+        foo.need_iterator(d.itervalues())
+        value = d.itervalues().next()
+        foo.need_iterator(d.iteritems())
+        item = d.iteritems().next()
+      """, pythonpath=[d.path], solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        foo = ...  # type: module
+        d = ...  # type: dict[str, int]
+        key = ...  # type: str
+        value = ...  # type: int
+        item = ...  # type: Tuple[Union[int, str], ...]
+      """)
+
   def testMax(self):
     ty = self.Infer("""
       x = dict(u=3, v=4, w=5)
