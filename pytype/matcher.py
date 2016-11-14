@@ -218,6 +218,10 @@ class AbstractMatcher(object):
       elif left.cls:
         return self._match_instance_against_type(
             left, other_type, subst, node, view)
+    elif isinstance(left, abstract.Module):
+      if other_type.full_name in [
+          "__builtin__.module", "__builtin__.object", "types.ModuleType"]:
+        return subst
     elif isinstance(left, abstract.SimpleAbstractValue):
       return self._match_instance_against_type(
           left, other_type, subst, node, view)
@@ -238,9 +242,6 @@ class AbstractMatcher(object):
         return subst
     elif isinstance(left, abstract.Nothing):
       if isinstance(other_type, abstract.Nothing):
-        return subst
-    elif isinstance(left, abstract.Module):
-      if other_type.full_name in ["__builtin__.module", "__builtin__.object"]:
         return subst
     elif isinstance(left, abstract.Union):
       for o in left.options:

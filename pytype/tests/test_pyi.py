@@ -8,6 +8,20 @@ from pytype.tests import test_inference
 class PYITest(test_inference.InferenceTest):
   """Tests for PYI."""
 
+  def testModuleParameter(self):
+    """This test that types.ModuleType works."""
+    with utils.Tempdir() as d:
+      d.create_file("mod.pyi", """
+        import types
+        def f(x: types.ModuleType = ...) -> None
+      """)
+      self.assertNoErrors("""
+        import os
+        import mod
+
+        mod.f(os)
+        """, pythonpath=[d.path])
+
   def testOptional(self):
     with utils.Tempdir() as d:
       d.create_file("mod.pyi", """
