@@ -773,6 +773,15 @@ class ErrorTest(test_inference.InferenceTest):
       """)
       self.assertErrorLogIs(errors, [(1, "not-supported-yet", "T")])
 
+  @unittest.skip("Bug in byte_BINARY_SUBSCR")
+  def testBadGetitem(self):
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      def f(x: int):
+        return x[0]
+    """)
+    self.assertErrorLogIs(errors, [(2, "unsupported-operands", r"int.*int")])
+
 
 if __name__ == "__main__":
   test_inference.main()
