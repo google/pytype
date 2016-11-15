@@ -60,19 +60,21 @@ class Signature(object):
 
   @classmethod
   def from_pytd(cls, vm, name, sig):
+    """Construct an abstract signature from a pytd signature."""
     # TODO(kramm): templates
     return cls(
         name=name,
         param_names=tuple(p.name for p in sig.params if not p.kwonly),
-        varargs_name="args" if sig.has_optional else None,
+        varargs_name=None if sig.starargs is None else sig.starargs.name,
         kwonly_params=set(p.name for p in sig.params if p.kwonly),
-        kwargs_name="kwargs" if sig.has_optional else None,
+        kwargs_name=None if sig.starstarargs is None else sig.starstarargs.name,
         defaults=[p.name
                   for p in sig.params
                   if p.optional],
         annotations={p.name: vm.convert.convert_constant_to_value(
             p.name, p.type, subst={}, node=vm.root_cfg_node)
-                     for p in sig.params},
+                     for p in sig.params + (sig.starargs, sig.starstarargs)
+                     if p is not None},
         late_annotations={}
     )
 

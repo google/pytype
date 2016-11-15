@@ -7,6 +7,7 @@ from pytype import abstract
 from pytype import config
 from pytype import errors
 from pytype import exceptions
+from pytype import function
 from pytype import vm
 from pytype.pytd import cfg
 from pytype.pytd import pytd
@@ -392,6 +393,40 @@ class FunctionTest(AbstractTestBase):
     node, ret = self._call_pytd_function(f, (arg,))
     self.assertIs(node, self._vm.root_cfg_node)
     self.assertFalse(ret.bindings)
+
+  def test_signature_from_pytd(self):
+    # def f(self: Any, *args: Any)
+    self_param = pytd.Parameter("self", pytd.AnythingType(), False, False, None)
+    args_param = pytd.Parameter("args", pytd.AnythingType(), False, True, None)
+    sig = function.Signature.from_pytd(
+        self._vm, "f", pytd.Signature(
+            (self_param,), args_param, None, pytd.AnythingType(), (), ()))
+    self.assertEquals(sig.name, "f")
+    self.assertSequenceEqual(sig.param_names, ("self",))
+    self.assertEquals(sig.varargs_name, "args")
+    self.assertFalse(sig.kwonly_params)
+    self.assertIs(sig.kwargs_name, None)
+    self.assertSetEqual(set(sig.annotations), {"self", "args"})
+    self.assertFalse(sig.late_annotations)
+    self.assertFalse(sig.has_return_annotation)
+    self.assertTrue(sig.has_param_annotations)
+
+  @unittest.skip("*args type is filled in incorrectly")
+  def test_signature_annotations(self):
+    # def f(self: Any, *args: Any)
+    self_param = pytd.Parameter("self", pytd.AnythingType(), False, False, None)
+    args_param = pytd.Parameter("args", pytd.AnythingType(), False, True, None)
+    sig = function.Signature.from_pytd(
+        self._vm, "f", pytd.Signature(
+            (self_param,), args_param, None, pytd.AnythingType(), (), ()))
+    self.assertIs(sig.annotations["self"], self._vm.convert.unsolvable)
+    args_type = sig.annotations["args"]  # Should be Tuple[Any]
+    self.assertIsInstance(args_type, abstract.ParameterizedClass)
+    self.assertIs(args_type.base_cls,
+                  abstract.get_atomic_value(self._vm.convert.tuple_type))
+    self.assertSetEqual(set(args_type.type_parameters), {"T"})
+    self.assertIs(args_type.type_parameters["T"], self._vm.convert.unsolvable)
+    self.assertIs(sig.drop_first_parameter().annotations["args"], args_type)
 
 
 if __name__ == "__main__":
