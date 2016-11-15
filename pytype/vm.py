@@ -1697,10 +1697,32 @@ class VirtualMachine(object):
       # PEP 484 allows to write "NoneType" as "None"
       return self.convert.none_type.data[0]
     elif isinstance(annotation, typing.Container) and annotation.inner:
+      inner = []
       for inner_annot in annotation.inner:
+        data = []
+        changed = False
         for b in inner_annot.bindings:
-          if self._process_one_annotation(b.data, name, False) is None:
+          processed = self._process_one_annotation(b.data, name, False)
+          if processed is None:
             return None
+          elif processed is not b.data:
+            changed = True
+          data.append(processed)
+        if changed:
+          inner.append(self.program.NewVariable(
+              inner_annot.name, data, [], self.root_cfg_node))
+        else:
+          inner.append(inner_annot)
+      annotation.inner = tuple(inner)
+      return annotation
+    elif isinstance(annotation, typing.Union) and annotation.elements:
+      elements = []
+      for element in annotation.elements:
+        processed = self._process_one_annotation(element, name, False)
+        if processed is None:
+          return None
+        elements.append(processed)
+      annotation.elements = tuple(elements)
       return annotation
     else:
       return annotation

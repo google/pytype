@@ -679,11 +679,14 @@ class AnnotationTest(test_inference.InferenceTest):
   def testInnerString(self):
     _, errors = self.InferAndCheck("""\
       from __future__ import google_type_annotations
-      from typing import List
+      from typing import List, Union
       def f(x: List["str"]):
         pass
+      def g(x: Union["str"]):
+        pass
     """)
-    self.assertErrorLogIs(errors, [(3, "invalid-annotation", r"x")])
+    self.assertErrorLogIs(errors, [(3, "invalid-annotation", r"x"),
+                                   (5, "invalid-annotation", r"x")])
 
   def testVarargs(self):
     self.assertNoErrors("""
@@ -738,6 +741,31 @@ class AnnotationTest(test_inference.InferenceTest):
             pass
       def Bar():
         Foo().f()
+    """)
+
+  def testNestedNoneType(self):
+    ty = self.Infer("""
+      from __future__ import google_type_annotations
+      from typing import List, Union
+      class A:
+        x = 42
+      def f() -> Union[A, None]:
+        pass
+      def g() -> List[None]:
+        return [None]
+      v1 = f().x
+      v2 = g()[0]
+    """)
+    self.assertTypesMatchPytd(ty, """
+      google_type_annotations = ...  # type: __future__._Feature
+      List = ...  # type: type
+      Union = ...  # type: type
+      class A:
+        x = ...  # type: int
+      def f() -> Union[A, None]: ...
+      def g() -> List[None]: ...
+      v1 = ...  # type: int
+      v2 = ...  # type: None
     """)
 
 

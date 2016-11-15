@@ -136,6 +136,21 @@ class CheckerTest(test_inference.InferenceTest):
     """
     self.check(python)
 
+  def testNestedNoneType(self):
+    python = """\
+      from __future__ import google_type_annotations
+      from typing import List, Union
+      def f1() -> Union[None]:
+        pass
+      def f2() -> List[None]:
+        return [None]
+      def g1(x: Union[None]):
+        pass
+      def g2(x: List[None]):
+        pass
+    """
+    self.check(python)
+
 
 if __name__ == "__main__":
   test_inference.main()
