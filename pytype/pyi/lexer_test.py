@@ -213,9 +213,11 @@ class LexerTest(unittest.TestCase):
       #    type: 4""")
 
   def test_comments_are_ignored(self):
-    self.check([1, 2], """\
+    self.check([("NUMBER", 1, 1), ("NUMBER", 2, 5)], """\
       1 # comment until end of line
       # type not quite a type comment, no colon!
+      #
+      # The preceding line had a # followed immediately by newline.
       2""")
 
   def test_indent(self):
@@ -250,6 +252,14 @@ class LexerTest(unittest.TestCase):
         [1, "[", 2, "[", "]", 3, "]", 4, "INDENT", 5, "DEDENT"], """\
       1 [2 [ ]
          3]
+      4
+        5""")
+
+  def test_indent_not_inside_parens(self):
+    self.check(
+        [1, "(", 2, "(", ")", 3, ")", 4, "INDENT", 5, "DEDENT"], """\
+      1 (2 ( )
+         3)
       4
         5""")
 
