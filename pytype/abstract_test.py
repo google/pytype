@@ -411,7 +411,6 @@ class FunctionTest(AbstractTestBase):
     self.assertFalse(sig.has_return_annotation)
     self.assertTrue(sig.has_param_annotations)
 
-  @unittest.skip("*args type is filled in incorrectly")
   def test_signature_annotations(self):
     # def f(self: Any, *args: Any)
     self_param = pytd.Parameter("self", pytd.AnythingType(), False, False, None)
@@ -424,8 +423,8 @@ class FunctionTest(AbstractTestBase):
     self.assertIsInstance(args_type, abstract.ParameterizedClass)
     self.assertIs(args_type.base_cls,
                   abstract.get_atomic_value(self._vm.convert.tuple_type))
-    self.assertSetEqual(set(args_type.type_parameters), {"T"})
-    self.assertIs(args_type.type_parameters["T"], self._vm.convert.unsolvable)
+    self.assertDictEqual(args_type.type_parameters,
+                         {"T": self._vm.convert.unsolvable})
     self.assertIs(sig.drop_first_parameter().annotations["args"], args_type)
 
 

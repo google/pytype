@@ -123,6 +123,19 @@ class CheckerTest(test_inference.InferenceTest):
     self.assertErrorLogIs(errorlog, [(2, "bad-return-type",
                                       r"List\[object\].*List\[int\]")])
 
+  def testUseVarargsAndKwargs(self):
+    python = """\
+      from __future__ import google_type_annotations
+      class A(object):
+        pass
+      def f(*args: A, **kwargs: A):
+        for arg in args:
+          pass
+        for kwarg in kwargs:
+          pass
+    """
+    self.check(python)
+
 
 if __name__ == "__main__":
   test_inference.main()

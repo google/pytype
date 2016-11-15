@@ -705,6 +705,41 @@ class AnnotationTest(test_inference.InferenceTest):
       f(42, *{"y": ""})
     """)
 
+  def testUseVarargsAndKwargs(self):
+    ty = self.Infer("""
+      from __future__ import google_type_annotations
+      class A(object):
+        pass
+      def f(*args: A):
+        return args[0]
+      def g(**kwargs: A):
+        return kwargs["x"]
+      v1 = f()
+      v2 = g()
+    """)
+    # TODO(rechen): Why are the varargs and kwargs annotations dropped below?
+    self.assertTypesMatchPytd(ty, """
+      google_type_annotations = ...  # type: __future__._Feature
+      class A(object): ...
+      def f(*args) -> A: ...
+      def g(**kwargs) -> A: ...
+      v1 = ...  # type: A
+      v2 = ...  # type: A
+    """)
+
+  def testUseVarargsAndKwargsInForwardReferences(self):
+    self.assertNoErrors("""
+      from __future__ import google_type_annotations
+      class Foo(object):
+        def f(self, *args: "Foo", **kwargs: "Foo"):
+          for a in args:
+            pass
+          for a in kwargs:
+            pass
+      def Bar():
+        Foo().f()
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

@@ -590,7 +590,7 @@ class VirtualMachine(object):
 
   def _eval_late_annotations(self, node, func, f_globals):
     """Resolves an instance of abstract.LateClass's expression."""
-    for name, annot in func.late_annotations.iteritems():
+    for name, annot in func.signature.late_annotations.iteritems():
       # We don't chain node and f_globals as we want to remain in the context
       # where we've just finished evaluating the module. This would prevent
       # nasty things like:
@@ -617,7 +617,7 @@ class VirtualMachine(object):
       else:
         self.errorlog.invalid_annotation(annot.opcode, annot.name)
         resolved = self.convert.unsolvable
-      func.annotations[name] = resolved
+      func.signature.set_annotation(name, resolved)
 
   def call_binary_operator(self, state, name, x, y, report_errors=False):
     """Map a binary operator to "magic methods" (__add__ etc.)."""

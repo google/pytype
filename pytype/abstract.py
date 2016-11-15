@@ -1066,7 +1066,7 @@ class Super(AtomicAbstractValue):
 
   # Minimal signature, only used for constructing exceptions.
   _SIGNATURE = function.Signature(
-      "super", ("cls", "self"), None, set(), None, {}, {"return": None}, {})
+      "super", ("cls", "self"), None, set(), None, {}, {}, {})
 
   def __init__(self, vm):
     super(Super, self).__init__("super", vm)
@@ -1097,8 +1097,7 @@ class IsInstance(AtomicAbstractValue):
 
   # Minimal signature, only used for constructing exceptions.
   _SIGNATURE = function.Signature(
-      "isinstance", ("obj", "type_or_types"), None, set(), None, {},
-      {"return": None}, {})
+      "isinstance", ("obj", "type_or_types"), None, set(), None, {}, {}, {})
 
   def __init__(self, vm):
     super(IsInstance, self).__init__("isinstance", vm)
@@ -2110,17 +2109,15 @@ class InterpreterFunction(Function):
     self.defaults = tuple(defaults)
     self.kw_defaults = kw_defaults
     self.closure = closure
-    self.annotations = annotations
-    self.late_annotations = late_annotations
     self.cls = self.vm.convert.function_type
     self._call_records = {}
     self.nonstararg_count = self.code.co_argcount
     if self.code.co_kwonlyargcount >= 0:  # This is usually -1 or 0 (fast call)
       self.nonstararg_count += self.code.co_kwonlyargcount
-    self.signature = self._build_signature()
+    self.signature = self._build_signature(annotations, late_annotations)
     self.last_frame = None  # for BuildClass
 
-  def _build_signature(self):
+  def _build_signature(self, annotations, late_annotations):
     """Build a function.Signature object representing this function."""
     vararg_name = None
     kwarg_name = None
@@ -2143,8 +2140,8 @@ class InterpreterFunction(Function):
         kwonly,
         kwarg_name,
         defaults,
-        self.annotations,
-        self.late_annotations)
+        annotations,
+        late_annotations)
 
   # TODO(kramm): support retrieving the following attributes:
   # 'func_{code, name, defaults, globals, locals, dict, closure},
@@ -2381,7 +2378,7 @@ class InterpreterFunction(Function):
     """Insert type annotations into parameter list."""
     params = list(params)
     varnames = self.code.co_varnames[0:self.nonstararg_count]
-    for name, formal_type in self.annotations.items():
+    for name, formal_type in self.signature.annotations.items():
       try:
         i = varnames.index(name)
       except ValueError:
@@ -2391,8 +2388,8 @@ class InterpreterFunction(Function):
     return tuple(params)
 
   def _get_annotation_return(self, node, default):
-    if "return" in self.annotations:
-      return self.annotations["return"].get_instance_type(node)
+    if "return" in self.signature.annotations:
+      return self.signature.annotations["return"].get_instance_type(node)
     else:
       return default
 
@@ -2539,10 +2536,6 @@ class BoundFunction(AtomicAbstractValue):
 
 class BoundInterpreterFunction(BoundFunction):
   """The method flavor of InterpreterFunction."""
-
-  @property
-  def annotations(self):
-    return self.underlying.annotations
 
   def get_first_opcode(self):
     return self.underlying.code.co_code[0]

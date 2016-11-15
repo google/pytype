@@ -101,7 +101,7 @@ class CallTracer(vm.VirtualMachine):
     fname = val.data.name
     if isinstance(method, (abstract.InterpreterFunction,
                            abstract.BoundInterpreterFunction)):
-      if (not self.analyze_annotated and val.data.annotations and
+      if (not self.analyze_annotated and val.data.signature.annotations and
           fname not in ["__new__", "__init__"]):
         log.info("%r has type annotations, not analyzing futher.", fname)
       else:

@@ -219,6 +219,17 @@ class Converter(object):
     """Create a new variable containing an unsolvable."""
     return self.unsolvable.to_variable(node, name)
 
+  def create_varargs(self, arg_type):
+    """Create a varargs argument given its element type."""
+    return abstract.ParameterizedClass(
+        abstract.get_atomic_value(self.tuple_type), {"T": arg_type}, self.vm)
+
+  def create_kwargs(self, arg_type):
+    """Create a kwargs argument given its element type."""
+    params = {"K": abstract.get_atomic_value(self.str_type), "V": arg_type}
+    return abstract.ParameterizedClass(
+        abstract.get_atomic_value(self.dict_type), params, self.vm)
+
   def merge_classes(self, instances):
     """Merge the classes of the given instances.
 

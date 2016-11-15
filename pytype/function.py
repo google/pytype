@@ -26,7 +26,8 @@ class Signature(object):
   """
 
   def __init__(self, name, param_names, varargs_name, kwonly_params,
-               kwargs_name, defaults, annotations, late_annotations):
+               kwargs_name, defaults, annotations, late_annotations,
+               postprocess_annotations=True):
     self.name = name
     self.param_names = param_names
     self.varargs_name = varargs_name
@@ -38,6 +39,21 @@ class Signature(object):
     self.has_return_annotation = (("return" in annotations) or
                                   ("return" in late_annotations))
     self.has_param_annotations = bool(annotations.viewkeys() - {"return"})
+    if postprocess_annotations:
+      for name, annot in self.annotations.iteritems():
+        self.annotations[name] = self._postprocess_annotation(name, annot)
+
+  def _postprocess_annotation(self, name, annotation):
+    convert = annotation.vm.convert
+    if name == self.varargs_name:
+      return convert.create_varargs(annotation)
+    elif name == self.kwargs_name:
+      return convert.create_kwargs(annotation)
+    else:
+      return annotation
+
+  def set_annotation(self, name, annotation):
+    self.annotations[name] = self._postprocess_annotation(name, annotation)
 
   def drop_first_parameter(self):
     return self.__class__(
@@ -49,6 +65,7 @@ class Signature(object):
         self.defaults,
         self.annotations,
         self.late_annotations,
+        postprocess_annotations=False,
     )
 
   def mandatory_param_count(self):
