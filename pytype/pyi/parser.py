@@ -255,6 +255,26 @@ class _Parser(object):
       else:
         raise e
 
+    ast = self._build_type_decl_unit(defs)
+
+    # TODO(dbaum): Add various AST transformations used in the legacy parser.
+    # The code below was copied from the legacy parser, but sections that are
+    # not currently tested are commented out.
+
+    ast = ast.Visit(legacy_parser.InsertTypeParameters())
+    ast = ast.Visit(pep484.ConvertTypingToNative(name))
+
+    # if name:
+    #   ast = ast.Replace(name=name)
+    #   return ast.Visit(visitors.AddNamePrefix())
+    # else:
+    #   # If there's no unique name, hash the sourcecode.
+    #   return ast.Replace(name=hashlib.md5(src).hexdigest())
+
+    return ast
+
+  def _build_type_decl_unit(self, defs):
+    """Return a pytd.TypeDeclUnit for the given defs (plus parser state)."""
     # defs contains both constant and function definitions.
     constants, functions = _split_definitions(defs)
     constants.extend(self._constants)
@@ -283,28 +303,12 @@ class _Parser(object):
           "Module-level functions with property decorators: " + prop_names)
 
     # TODO(dbaum): Use a real module name.
-    ast = pytd.TypeDeclUnit("?",
-                            constants=tuple(constants),
-                            type_params=tuple(self._type_params),
-                            functions=tuple(functions),
-                            classes=tuple(classes),
-                            aliases=tuple(self._aliases))
-
-    # TODO(dbaum): Add various AST transformations used in the legacy parser.
-    # The code below was copied from the legacy parser, but sections that are
-    # not currently tested are commented out.
-
-    ast = ast.Visit(legacy_parser.InsertTypeParameters())
-    ast = ast.Visit(pep484.ConvertTypingToNative(name))
-
-    # if name:
-    #   ast = ast.Replace(name=name)
-    #   return ast.Visit(visitors.AddNamePrefix())
-    # else:
-    #   # If there's no unique name, hash the sourcecode.
-    #   return ast.Replace(name=hashlib.md5(src).hexdigest())
-
-    return ast
+    return pytd.TypeDeclUnit("?",
+                             constants=tuple(constants),
+                             type_params=tuple(self._type_params),
+                             functions=tuple(functions),
+                             classes=tuple(classes),
+                             aliases=tuple(self._aliases))
 
   def set_error_location(self, location):
     """Record the location of the current error.
