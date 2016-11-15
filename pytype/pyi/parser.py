@@ -91,19 +91,32 @@ class _ConditionScope(object):
 
 class ParseError(Exception):
 
-  def __init__(self, msg, line=None):
+  """Exceptions raised by the parser."""
+
+  def __init__(self, msg, line=None, filename=None, column=None, text=None):
     super(ParseError, self).__init__(msg)
     self._line = line
+    self._filename = filename
+    self._column = column
+    self._text = text
 
   @property
   def line(self):
     return self._line
 
   def __str__(self):
-    s = self.message
-    if self._line is not None:
-      s += ", line %d" % self._line
-    return s
+    lines = []
+    if self._filename or self._line is not None:
+      lines.append('  File: "%s", line %s' % (self._filename, self._line))
+    if self._column and self._text:
+      indent = 4
+      stripped = self._text.lstrip()
+      lines.append("%*s%s" % (indent, "", stripped))
+      # Output a pointer below the error column, adjusting for stripped spaces.
+      pos = indent + (self._column - 1) - (len(self._text) - len(stripped))
+      lines.append("%*s^" % (pos, ""))
+    lines.append("%s: %s" % (type(self).__name__, self.message))
+    return "\n".join(lines)
 
 
 class _Parser(object):
@@ -213,6 +226,7 @@ class _Parser(object):
     self._used = False
     self._error_location = None
     self._version = version
+    self._filename = None
     # The condition stack, start with a default scope that will always be
     # active.
     self._current_condition = _ConditionScope(None)
@@ -245,13 +259,18 @@ class _Parser(object):
     assert not self._used
     self._used = True
 
-    # TODO(dbaum): What should we do with filename?
-    del filename
+    self._filename = filename
     try:
       defs = parser_ext.parse(self, src)
     except ParseError as e:
       if self._error_location:
-        raise ParseError(e.message, self._error_location[0])
+        line = self._error_location[0]
+        try:
+          text = src.splitlines()[line-1]
+        except IndexError:
+          text = None
+        raise ParseError(e.message, line=line, filename=self._filename,
+                         column=self._error_location[1], text=text)
       else:
         raise e
 

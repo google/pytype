@@ -53,11 +53,56 @@ class _ParserTestBase(unittest.TestCase):
   def check_error(self, src, expected_line, message):
     """Check that parsing the src raises the expected error."""
     try:
-      pytd.Print(parser.parse_string(textwrap.dedent(src)))
+      parser.parse_string(textwrap.dedent(src))
       self.fail("ParseError expected")
     except parser.ParseError as e:
       self.assertRegexpMatches(e.message, re.escape(message))
       self.assertEquals(expected_line, e.line)
+
+
+class ParseErrorTest(unittest.TestCase):
+
+  def check(self, expected, *args, **kwargs):
+    e = parser.ParseError(*args, **kwargs)
+    self.assertMultiLineEqual(textwrap.dedent(expected), str(e))
+
+  def test_plain_error(self):
+    self.check("""\
+        ParseError: my message""", "my message")
+
+  def test_full_error(self):
+    self.check("""\
+          File: "foo.py", line 123
+            this is a test
+                 ^
+        ParseError: my message""", "my message", line=123, filename="foo.py",
+               text="this is a test", column=6)
+
+  def test_indented_text(self):
+    self.check("""\
+          File: "foo.py", line 123
+            this is a test
+                 ^
+        ParseError: my message""", "my message", line=123, filename="foo.py",
+               text="          this is a test", column=16)
+
+  def test_line_without_filename(self):
+    self.check("""\
+          File: "None", line 1
+        ParseError: my message""", "my message", line=1)
+
+  def test_filename_without_line(self):
+    self.check("""\
+          File: "foo.py", line None
+        ParseError: my message""", "my message", filename="foo.py")
+
+  def test_text_without_column(self):
+    self.check("""\
+        ParseError: my message""", "my message", text="this is  a test")
+
+  def test_column_without_text(self):
+    self.check("""\
+        ParseError: my message""", "my message", column=5)
 
 
 class ParserTest(_ParserTestBase):
@@ -164,6 +209,20 @@ class ParserTest(_ParserTestBase):
                      "TypeVar's first arg should be a string")
     self.check_error("T = TypeVar('Q')", 1,
                      "TypeVar name needs to be 'Q' (not 'T')")
+
+  def test_error_formatting(self):
+    src = """\
+      class Foo:
+        this is not valid"""
+    try:
+      parser.parse_string(textwrap.dedent(src), filename="foo.py")
+      self.fail("ParseError expected")
+    except parser.ParseError as e:
+      self.assertMultiLineEqual(textwrap.dedent("""\
+          File: "foo.py", line 2
+            this is not valid
+                 ^
+        ParseError: syntax error"""), str(e))
 
 
 class HomogeneousTypeTest(_ParserTestBase):
