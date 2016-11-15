@@ -709,6 +709,82 @@ class IfTest(_ParserTestBase):
         T = TypeVar('T')""", legacy=False)
 
 
+class ClassIfTest(_ParserTestBase):
+
+  # These tests assume that IfTest has already covered the inner workings of
+  # peer's functions.  Instead, they focus on verifying that if statements
+  # under a class allow things that normally appear in a class (constants,
+  # functions), and disallow statements that aren't allowed in a class (import,
+  # etc).
+
+  def test_conditional_constant(self):
+    self.check("""\
+      class Foo:
+        if sys.version_info == (2, 7, 0):
+          x = ...  # type: int
+        elif sys.version_info == (2, 7, 6):
+          y = ...  # type: str
+        else:
+          z = ...  # type: float
+      """, """\
+      class Foo:
+          y = ...  # type: str
+      """)
+
+  def test_conditional_method(self):
+    self.check("""\
+      class Foo:
+        if sys.version_info == (2, 7, 0):
+          def a(self, x: int) -> str: ...
+        elif sys.version_info == (2, 7, 6):
+          def b(self, x: int) -> str: ...
+        else:
+          def c(self, x: int) -> str: ...
+      """, """\
+      class Foo:
+          def b(self, x: int) -> str: ...
+      """)
+
+  def test_nested(self):
+    self.check("""\
+      class Foo:
+        if sys.version_info > (2, 7, 0):
+          if sys.version_info == (2, 7, 6):
+            def b(self, x: int) -> str: ...
+      """, """\
+      class Foo:
+          def b(self, x: int) -> str: ...
+      """)
+
+  def test_no_import(self):
+    self.check_error("""\
+      class Foo:
+        if sys.version_info > (2, 7, 0):
+          import foo
+    """, 3, "syntax error")
+
+  def test_no_alias(self):
+    self.check_error("""\
+      class Foo:
+        if sys.version_info > (2, 7, 0):
+          a = b
+    """, 3, "syntax error")
+
+  def test_no_class(self):
+    self.check_error("""\
+      class Foo:
+        if sys.version_info > (2, 7, 0):
+          class Bar: ...
+    """, 3, "syntax error")
+
+  def test_no_typevar(self):
+    self.check_error("""\
+      class Foo:
+        if sys.version_info > (2, 7, 0):
+          T = TypeVar('T')
+    """, 3, "syntax error")
+
+
 class ConditionTest(_ParserTestBase):
 
   def check_cond(self, condition, expected):
