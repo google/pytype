@@ -121,7 +121,7 @@ def unichr(i: int) -> unicode
 def vars(...) -> dict[str, ?]
 def zip(seq1, ...) -> list[tuple]  # TODO(pludemann): zip(seq1: iterator[...], ...) -> list[tuple[...]]
 def zip() -> list[nothing]
-def exit() -> NoneType raises SystemExit
+def exit(code: Any = ...) -> NoneType raises SystemExit
 def quit() -> NoneType raises SystemExit
 def input() -> ?
 def raw_input(prompt: str or unicode = ...) -> str raises EOFError
