@@ -1,3 +1,4 @@
+import hashlib
 import os
 import re
 import textwrap
@@ -13,12 +14,12 @@ IGNORE = object()
 
 class _ParserTestBase(unittest.TestCase):
 
-  def _check_legacy(self, src, actual):
+  def _check_legacy(self, src, name, actual):
     """Check that actual matches legacy parsing of src."""
-    old_tree = legacy_parser.parse_string(src)
+    old_tree = legacy_parser.parse_string(src, name=name)
     self.assertMultiLineEqual(pytd.Print(old_tree), actual)
 
-  def check(self, src, expected=None, prologue=None, legacy=True):
+  def check(self, src, expected=None, prologue=None, legacy=True, name=None):
     """Check the parsing of src.
 
     This checks that parsing the source and then printing the resulting
@@ -34,15 +35,16 @@ class _ParserTestBase(unittest.TestCase):
         before comparisson.  Useful for imports that are introduced during
         printing the AST.
       legacy: If true, comapre results to legacy parser.
+      name: The name of the module.
 
     Returns:
       The parsed pytd.TypeDeclUnit.
     """
     src = textwrap.dedent(src)
-    ast = parser.parse_string(src)
+    ast = parser.parse_string(src, name=name)
     actual = pytd.Print(ast)
     if legacy:
-      self._check_legacy(src, actual)
+      self._check_legacy(src, name, actual)
     if expected != IGNORE:
       expected = src if expected is None else textwrap.dedent(expected)
       if prologue:
@@ -223,6 +225,42 @@ class ParserTest(_ParserTestBase):
             this is not valid
                  ^
         ParseError: syntax error"""), str(e))
+
+  def test_pep484_translations(self):
+    ast = self.check("""\
+      x = ...  # type: None
+      y = ...  # type: Any""", prologue="from typing import Any")
+    self.assertEquals(pytd.NamedType("NoneType"), ast.constants[0].type)
+    self.assertEquals(pytd.AnythingType(), ast.constants[1].type)
+
+  def test_module_name(self):
+    ast = self.check("x = ...  # type: int",
+                     "foo.x = ...  # type: int",
+                     name="foo")
+    self.assertEquals("foo", ast.name)
+
+  def test_no_module_name(self):
+    # If the name is not specified, it is a digest of the source.
+    src = ""
+    ast = self.check(src)
+    self.assertEquals(hashlib.md5(src).hexdigest(), ast.name)
+    src = "x = ...  # type: int"
+    ast = self.check(src)
+    self.assertEquals(hashlib.md5(src).hexdigest(), ast.name)
+
+  def test_pep84_aliasing(self):
+    # Normally a pep484 name will be converted to typing.X.  Note that this
+    # test cannot use type with an upper/lower case conversion (i.e. List)
+    # because those appear to be replaced regardless of the contents of the
+    # parser's _type_map.
+    self.check("x = ... # type: Hashable",
+               "foo.x = ...  # type: typing.Hashable",
+               prologue="import typing",
+               name="foo")
+    # This should not be done for the typing module itself.
+    self.check("x = ... # type: Hashable",
+               "typing.x = ...  # type: Hashable",
+               name="typing")
 
 
 class HomogeneousTypeTest(_ParserTestBase):

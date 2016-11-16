@@ -1,6 +1,7 @@
 """Fast PYI parser."""
 
 import collections
+import hashlib
 
 from pytype.pyi import parser_ext
 from pytype.pytd import pep484
@@ -220,9 +221,8 @@ class _Parser(object):
     Args:
       version: A version tuple.
     """
-    # TODO(dbaum): add PEP484_TRANSLATIONS
-    self._type_map = {
-        name: pytd.NamedType("typing." + name) for name in pep484.PEP484_NAMES}
+    self._type_map = {}
+
     self._used = False
     self._error_location = None
     self._version = version
@@ -260,6 +260,16 @@ class _Parser(object):
     self._used = True
 
     self._filename = filename
+
+    if name != "typing":
+      self._type_map = {name: pytd.NamedType("typing." + name)
+                        for name in pep484.PEP484_NAMES}
+    # If a translation overwrites a shortcut, the definition in the typing
+    # module is ignored. We disallow this confusing behavior.
+    intersection = set(pep484.PEP484_NAMES) & set(pep484.PEP484_TRANSLATIONS)
+    assert not intersection, "Multiple definitions: " + str(intersection)
+    self._type_map.update(pep484.PEP484_TRANSLATIONS)
+
     try:
       defs = parser_ext.parse(self, src)
     except ParseError as e:
@@ -276,19 +286,15 @@ class _Parser(object):
 
     ast = self._build_type_decl_unit(defs)
 
-    # TODO(dbaum): Add various AST transformations used in the legacy parser.
-    # The code below was copied from the legacy parser, but sections that are
-    # not currently tested are commented out.
-
     ast = ast.Visit(legacy_parser.InsertTypeParameters())
     ast = ast.Visit(pep484.ConvertTypingToNative(name))
 
-    # if name:
-    #   ast = ast.Replace(name=name)
-    #   return ast.Visit(visitors.AddNamePrefix())
-    # else:
-    #   # If there's no unique name, hash the sourcecode.
-    #   return ast.Replace(name=hashlib.md5(src).hexdigest())
+    if name:
+      ast = ast.Replace(name=name)
+      ast = ast.Visit(visitors.AddNamePrefix())
+    else:
+      # If there's no unique name, hash the sourcecode.
+      ast = ast.Replace(name=hashlib.md5(src).hexdigest())
 
     return ast
 
@@ -321,8 +327,7 @@ class _Parser(object):
       raise ParseError(
           "Module-level functions with property decorators: " + prop_names)
 
-    # TODO(dbaum): Use a real module name.
-    return pytd.TypeDeclUnit("?",
+    return pytd.TypeDeclUnit(name=None,
                              constants=tuple(constants),
                              type_params=tuple(self._type_params),
                              functions=tuple(functions),
