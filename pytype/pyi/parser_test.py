@@ -120,6 +120,15 @@ class ParserTest(_ParserTestBase):
   def test_syntax_error(self):
     self.check_error("123", 1, "syntax error")
 
+  def test_illegal_character(self):
+    self.check_error("^", 1, "Illegal character '^'")
+
+  def test_invalid_indentation(self):
+    self.check_error("""\
+      class Foo:
+        x = ... # type: int
+       y""", 3, "Invalid indentation")
+
   def test_constant(self):
     self.check("x = ...", "x = ...  # type: Any", "from typing import Any")
     self.check("x = ...  # type: str")
@@ -232,7 +241,7 @@ class ParserTest(_ParserTestBase):
           File: "foo.py", line 2
             this is not valid
                  ^
-        ParseError: syntax error"""), str(e))
+        ParseError: syntax error, unexpected NAME, expecting '='"""), str(e))
 
   def test_pep484_translations(self):
     ast = self.check("""\

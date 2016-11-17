@@ -275,6 +275,13 @@ class LexerTest(unittest.TestCase):
       99
       """, legacy=False)
 
+  def test_indent_mismatch(self):
+    self.check([1, "INDENT", 2, ("LEXERROR", "Invalid indentation"), 3,
+                "DEDENT"], """\
+      1
+        2
+       3""", legacy=False)
+
   def test_lex_error(self):
     self.check([1, ("LEXERROR", "Illegal character '%'"), 2],
                "1 % 2", legacy=False)
