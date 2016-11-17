@@ -430,17 +430,19 @@ def _pretty_variable(var):
   """Return a pretty printed string for a Variable."""
   lines = []
   single_value = len(var.bindings) == 1
+  var_desc = "$%d %s" % (var.id, var.name)
   if not single_value:
     # Write a description of the variable (for single value variables this
     # will be written along with the value later on).
-    lines.append("$%d %s" % (var.id, var.name))
+    lines.append(var_desc)
+    var_prefix = "  "
+  else:
+    var_prefix = var_desc + " = "
 
   for value in var.bindings:
+    i = 0 if value.data is None else value.data.id
     data = utils.maybe_truncate(value.data)
-    if single_value:
-      binding = "%s, %s = %s" % (value, var.name, data)
-    else:
-      binding = "  #%d %s" % (value.data.id, data)
+    binding = "%s#%d %s" % (var_prefix, i, data)
 
     if len(value.origins) == 1:
       # Single origin.  Use the binding as a prefix when writing the orign.
