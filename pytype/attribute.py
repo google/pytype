@@ -15,13 +15,16 @@ class AbstractAttributeHandler(object):
   def __init__(self, vm):
     self.vm = vm
 
-  def get_attribute_generic(self, node, obj, name, val):
+  def get_attribute_generic(self, node, obj, name, val, condition=None):
     if isinstance(obj, abstract.ParameterizedClass):
-      return self.get_attribute_generic(node, obj.base_cls, name, val)
+      return self.get_attribute_generic(node, obj.base_cls, name, val,
+                                        condition=condition)
     elif isinstance(obj, abstract.Class):
-      return self.get_attribute(node, obj, name, valcls=val)
+      return self.get_attribute(node, obj, name, valcls=val,
+                                condition=condition)
     else:
-      return self.get_attribute(node, obj, name, valself=val)
+      return self.get_attribute(node, obj, name, valself=val,
+                                condition=condition)
 
   def get_attribute(self, node, obj, name, valself=None, valcls=None,
                     condition=None):

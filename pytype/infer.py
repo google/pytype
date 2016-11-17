@@ -413,13 +413,14 @@ class CallTracer(vm.VirtualMachine):
     for pytd_function in ast.functions:
       self._check_function(pytd_function, defs[pytd_function.name], node)
 
+    state = frame_state.FrameState.init(node)
     for pytd_cls in ast.classes:
       cls = defs[pytd_cls.name]
       for val in cls.bindings:
         # TODO(kramm): The call to the constructor of this should use the pytd.
         node2, _, instance = self.init_class(node, val.data)
         for pytd_method in pytd_cls.methods:
-          _, method = self._retrieve_attr(node, instance, pytd_method.name)
+          _, method = self._retrieve_attr(state, instance, pytd_method.name)
           if method is None:
             raise NotImplementedError("getattr(%s) failed!" % pytd_method.name)
           # TODO(kramm): Should this be the node returned from _retrieve_attr?

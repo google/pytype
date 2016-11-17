@@ -399,5 +399,24 @@ class SplitTest(test_inference.InferenceTest):
       b.add2()
     """)
 
+  def testLoadAttr(self):
+    self.assertNoErrors("""
+      from __future__ import google_type_annotations
+      
+      class A(object):
+        def __init__(self):
+          self.initialized = False
+          self.data = None
+        def f1(self, x: int):
+          self.initialized = True
+          self.data = x
+        def f2(self) -> int:
+          if self.initialized:
+            return self.data
+          else:
+            return 0
+    """)
+
+
 if __name__ == "__main__":
   test_inference.main()

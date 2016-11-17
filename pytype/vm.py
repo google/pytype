@@ -836,17 +836,18 @@ class VirtualMachine(object):
     log.warning("Global variable removal does not actually do "
                 "anything in the abstract interpreter")
 
-  def _retrieve_attr(self, node, obj, attr):
+  def _retrieve_attr(self, state, obj, attr):
     """Load an attribute from an object."""
     assert isinstance(obj, typegraph.Variable), obj
     # Resolve the value independently for each value of obj
     result = self.program.NewVariable(str(attr))
     log.debug("getting attr %s from %r", attr, obj)
+    node = state.node
     nodes = []
     for val in obj.Bindings(node):
       try:
         node2, attr_var = self.attribute_handler.get_attribute_generic(
-            node, val.data, attr, val)
+            node, val.data, attr, val, condition=state.condition)
       except self.convert.TypeParameterError as e:
         self.errorlog.type_param_error(
             self.frame.current_opcode, obj, attr, e.type_param_name)
@@ -881,7 +882,7 @@ class VirtualMachine(object):
     return state
 
   def load_attr(self, state, obj, attr):
-    node, result = self._retrieve_attr(state.node, obj, attr)
+    node, result = self._retrieve_attr(state, obj, attr)
     if result is None:
       if obj.bindings:
         if self._is_only_none(state.node, obj):
@@ -892,7 +893,7 @@ class VirtualMachine(object):
     return state.change_cfg_node(node), result
 
   def load_attr_noerror(self, state, obj, attr):
-    node, result = self._retrieve_attr(state.node, obj, attr)
+    node, result = self._retrieve_attr(state, obj, attr)
     return state.change_cfg_node(node), result
 
   def store_attr(self, state, obj, attr, value):
