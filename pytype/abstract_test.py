@@ -427,6 +427,30 @@ class FunctionTest(AbstractTestBase):
                          {"T": self._vm.convert.unsolvable})
     self.assertIs(sig.drop_first_parameter().annotations["args"], args_type)
 
+  def test_signature_annotations_existence(self):
+    # def f(v: "X") -> "Y"
+    sig = function.Signature(
+        name="f",
+        param_names=("v",),
+        varargs_name=None,
+        kwonly_params=(),
+        kwargs_name=None,
+        defaults={},
+        annotations={},
+        late_annotations={
+            "v": function.LateAnnotation("X", "v", None),
+            "return": function.LateAnnotation("Y", "return", None)
+        }
+    )
+    self.assertFalse(sig.has_param_annotations)
+    self.assertFalse(sig.has_return_annotation)
+    sig.set_annotation("v", self._vm.convert.unsolvable)
+    self.assertTrue(sig.has_param_annotations)
+    self.assertFalse(sig.has_return_annotation)
+    sig.set_annotation("return", self._vm.convert.unsolvable)
+    self.assertTrue(sig.has_param_annotations)
+    self.assertTrue(sig.has_return_annotation)
+
 
 if __name__ == "__main__":
   unittest.main()

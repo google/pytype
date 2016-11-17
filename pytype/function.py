@@ -36,8 +36,7 @@ class Signature(object):
     self.defaults = defaults
     self.annotations = annotations
     self.late_annotations = late_annotations
-    self.has_return_annotation = (("return" in annotations) or
-                                  ("return" in late_annotations))
+    self.has_return_annotation = "return" in annotations
     self.has_param_annotations = bool(annotations.viewkeys() - {"return"})
     if postprocess_annotations:
       for name, annot in self.annotations.iteritems():
@@ -54,6 +53,10 @@ class Signature(object):
 
   def set_annotation(self, name, annotation):
     self.annotations[name] = self._postprocess_annotation(name, annotation)
+    if name == "return":
+      self.has_return_annotation = True
+    else:
+      self.has_param_annotations = True
 
   def drop_first_parameter(self):
     return self.__class__(

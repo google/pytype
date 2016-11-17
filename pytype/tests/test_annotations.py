@@ -768,6 +768,17 @@ class AnnotationTest(test_inference.InferenceTest):
       v2 = ...  # type: None
     """)
 
+  def testMatchLateAnnotation(self):
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      class A(object):
+        def f(self, x: "A"):
+          pass
+      def f():
+        A().f(42)
+    """)
+    self.assertErrorLogIs(errors, [(6, "wrong-arg-types", r"A.*int")])
+
 
 if __name__ == "__main__":
   test_inference.main()
