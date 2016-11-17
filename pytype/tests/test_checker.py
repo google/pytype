@@ -89,15 +89,16 @@ class CheckerTest(test_inference.InferenceTest):
     self.check(python)
 
   def testRecursiveForwardReference(self):
-    python = """
+    python = """\
       from __future__ import google_type_annotations
       class X(object):
         def __init__(self, val: "X"):
           pass
-      X(42)  # No error because we couldn't instantiate the type of val
+      def f():
+        X(42)
     """
     errorlog = self.get_checking_errors(python)
-    self.assertErrorLogIs(errorlog, [(0, "recursion-error", r"X")])
+    self.assertErrorLogIs(errorlog, [(6, "wrong-arg-types", r"X.*int")])
 
   def testBadReturnTypeInline(self):
     python = """\

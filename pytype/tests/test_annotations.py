@@ -779,6 +779,23 @@ class AnnotationTest(test_inference.InferenceTest):
     """)
     self.assertErrorLogIs(errors, [(6, "wrong-arg-types", r"A.*int")])
 
+  def testRecursiveForwardReference(self):
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      class A(object):
+        def __init__(self, x: "A"):
+          self.foo = x.foo
+          f(x)
+        def method1(self):
+          self.foo
+        def method2(self):
+          self.bar
+      def f(x: int):
+        pass
+    """)
+    self.assertErrorLogIs(errors, [(5, "wrong-arg-types", r"int.*A"),
+                                   (9, "attribute-error", r"bar")])
+
 
 if __name__ == "__main__":
   test_inference.main()

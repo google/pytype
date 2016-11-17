@@ -148,25 +148,35 @@ class CallTracer(vm.VirtualMachine):
   def init_class(self, node, cls):
     """Instantiate a class, and also call __init__."""
     key = (node, cls)
-    if key not in self._instance_cache:
-      self._instance_cache[key] = _INITIALIZING  # For recursion detection
+    if (key not in self._instance_cache or
+        self._instance_cache[key] is _INITIALIZING):
       clsvar = cls.to_variable(node, "cls")
       instance = self.instantiate(clsvar, node)
-      # Call __init__ on each binding.
-      for b in instance.bindings:
-        b_clsvar = b.data.get_class()
-        b_clsbind = b_clsvar.bindings[0]
-        node, init = self.attribute_handler.get_attribute(
-            node, b_clsbind.data, "__init__", b, b_clsbind)
-        if init:
-          bound_init = self.bind_method(
-              "__init__", init, b.data, b_clsvar, node)
-          node = self.analyze_method_var("__init__", bound_init, node)
+      if key in self._instance_cache:
+        # We've encountered a recursive pattern such as
+        # class A:
+        #   def __init__(self, x: "A"): ...
+        # Calling __init__ again would lead to an infinite loop, so
+        # we instead create an incomplete instance that will be
+        # overwritten later. Note that we have to create a new
+        # instance rather than using the one that we're already in
+        # the process of initializing - otherwise, setting
+        # maybe_missing_members to True would cause pytype to ignore
+        # all attribute errors on self in __init__.
+        abstract.variable_set(instance, "maybe_missing_members", True)
+      else:
+        self._instance_cache[key] = _INITIALIZING
+        # Call __init__ on each binding.
+        for b in instance.bindings:
+          b_clsvar = b.data.get_class()
+          b_clsbind = b_clsvar.bindings[0]
+          node, init = self.attribute_handler.get_attribute(
+              node, b_clsbind.data, "__init__", b, b_clsbind)
+          if init:
+            bound_init = self.bind_method(
+                "__init__", init, b.data, b_clsvar, node)
+            node = self.analyze_method_var("__init__", bound_init, node)
       self._instance_cache[key] = node, clsvar, instance
-    elif self._instance_cache[key] is _INITIALIZING:
-      self.errorlog.recursion_error(None, cls.full_name)
-      self._instance_cache[key] = (node, cls.to_variable(node),
-                                   self.convert.unsolvable.to_variable(node))
     return self._instance_cache[key]
 
   def analyze_class(self, val, node):

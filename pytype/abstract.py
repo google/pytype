@@ -43,17 +43,16 @@ class AsInstance(object):
     self.cls = cls
 
 
-def variable_set_official_name(variable, name):
-  """Set official_name on each value in the variable.
-
-  Called for each entry in the top-level locals().
+def variable_set(variable, attr, value):
+  """Set an attribute on each value in the variable.
 
   Args:
-    variable: A typegraph.Variable to name.
-    name: The name to give.
+    variable: A typegraph.Variable.
+    attr: The attribute to set.
+    value: The desired attribute value.
   """
   for v in variable.bindings:
-    v.data.official_name = name
+    setattr(v.data, attr, value)
 
 
 def get_atomic_value(variable):
@@ -2287,8 +2286,7 @@ class InterpreterFunction(Function):
     if self.vm.is_at_maximum_depth() and self.name != "__init__":
       log.info("Maximum depth reached. Not analyzing %r", self.name)
       if self.vm.callself_stack:
-        for callself in self.vm.callself_stack[-1].data:
-          callself.maybe_missing_members = True
+        variable_set(self.vm.callself_stack[-1], "maybe_missing_members", True)
       return (node,
               self.vm.convert.create_new_unsolvable(node, self.name + ":ret"))
     self._match_args(node, args, condition)
