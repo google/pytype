@@ -796,6 +796,45 @@ class AnnotationTest(test_inference.InferenceTest):
     self.assertErrorLogIs(errors, [(5, "wrong-arg-types", r"int.*A"),
                                    (9, "attribute-error", r"bar")])
 
+  def testReturnAnnotation1(self):
+    ty = self.Infer("""
+      from __future__ import google_type_annotations
+      class A(object):
+        def __init__(self):
+          self.x = 42
+        @staticmethod
+        def New() -> "A":
+          return A()
+      x = A.New().x
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      google_type_annotations = ...  # type: __future__._Feature
+      class A(object):
+        x = ...  # type: int
+        New = ...  # type: staticmethod
+      x = ...  # type: int
+    """)
+
+  def testReturnAnnotation2(self):
+    ty = self.Infer("""
+      from __future__ import google_type_annotations
+      class A(object):
+        def __init__(self):
+          self.x = 42
+        @staticmethod
+        def New() -> "A":
+          return A()
+      def f():
+        return A.New().x
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      google_type_annotations = ...  # type: __future__._Feature
+      class A(object):
+        x = ...  # type: int
+        New = ...  # type: staticmethod
+      def f() -> int: ...
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

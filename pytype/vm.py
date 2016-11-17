@@ -1900,7 +1900,7 @@ class VirtualMachine(object):
     if self.frame.allowed_returns is not None:
       self._check_return(self.frame.current_opcode, state.node, var,
                          self.frame.allowed_returns)
-      retvar = self.frame.allowed_returns.instantiate(state.node)
+      _, _, retvar = self.init_class(state.node, self.frame.allowed_returns)
     else:
       retvar = var
     self.frame.return_variable.PasteVariable(retvar, state.node)

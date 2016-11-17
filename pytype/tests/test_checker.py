@@ -152,6 +152,22 @@ class CheckerTest(test_inference.InferenceTest):
     """
     self.check(python)
 
+  def testInnerClassInit(self):
+    python = """\
+      from __future__ import google_type_annotations
+      from typing import List
+      class A:
+        def __init__(self):
+          self.x = 42
+      def f(v: List[A]):
+        return v[0].x
+      def g() -> List[A]:
+        return [A()]
+      def h():
+        return g()[0].x
+    """
+    self.check(python)
+
 
 if __name__ == "__main__":
   test_inference.main()

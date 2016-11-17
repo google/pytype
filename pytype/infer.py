@@ -166,18 +166,30 @@ class CallTracer(vm.VirtualMachine):
         abstract.variable_set(instance, "maybe_missing_members", True)
       else:
         self._instance_cache[key] = _INITIALIZING
-        # Call __init__ on each binding.
-        for b in instance.bindings:
-          b_clsvar = b.data.get_class()
-          b_clsbind = b_clsvar.bindings[0]
-          node, init = self.attribute_handler.get_attribute(
-              node, b_clsbind.data, "__init__", b, b_clsbind)
-          if init:
-            bound_init = self.bind_method(
-                "__init__", init, b.data, b_clsvar, node)
-            node = self.analyze_method_var("__init__", bound_init, node)
+        self.call_init(instance, node)
       self._instance_cache[key] = node, clsvar, instance
     return self._instance_cache[key]
+
+  def call_init(self, instance, node, seen=None):
+    if seen is None:
+      seen = set()
+    # Call __init__ on each binding.
+    for b in instance.bindings:
+      if b.data in seen:
+        continue
+      seen.add(b.data)
+      if isinstance(b.data, abstract.SimpleAbstractValue):
+        for param in b.data.type_parameters.values():
+          node = self.call_init(param, node, seen)
+      b_clsvar = b.data.get_class()
+      b_clsbind = b_clsvar.bindings[0]
+      node, init = self.attribute_handler.get_attribute(
+          node, b_clsbind.data, "__init__", b, b_clsbind)
+      if init:
+        bound_init = self.bind_method(
+            "__init__", init, b.data, b_clsvar, node)
+        node = self.analyze_method_var("__init__", bound_init, node)
+    return node
 
   def analyze_class(self, val, node):
     node, clsvar, instance = self.init_class(node, val.data)
