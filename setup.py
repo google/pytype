@@ -2,7 +2,7 @@
 
 # pylint: disable=bad-indentation
 
-from distutils.core import setup
+from distutils.core import setup, Extension
 
 import glob
 import os
@@ -20,6 +20,15 @@ def scan_package_data(path, pattern):
 
 typeshed = scan_package_data('typeshed', '*.pyi')
 assert 'typeshed/stdlib/2.7/*.pyi' in typeshed
+
+parser_ext = Extension(
+    'pytype.pyi.parser_ext',
+    sources = [
+        'pytype/pyi/parser_ext.cc',
+        'pytype/pyi/lexer.lex.cc',
+        'pytype/pyi/parser.tab.cc',
+        ],
+)
 
 
 setup(
@@ -42,4 +51,5 @@ setup(
     requires=['ply (>=3.4)', 'pyyaml (>=3.11)'],
     install_requires=['ply>=3.4', 'pyyaml>=3.11'],
     classifier=["Programming Language :: Python :: 2.7"],
+    ext_modules = [parser_ext],
 )
