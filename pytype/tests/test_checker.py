@@ -168,6 +168,19 @@ class CheckerTest(test_inference.InferenceTest):
     """
     self.check(python)
 
+  def testRecursion(self):
+    python = """\
+      from __future__ import google_type_annotations
+      class A:
+        def __init__(self, x: "B"):
+          pass
+      class B:
+        def __init__(self):
+          self.x = 42
+          self.y = A(self)
+    """
+    self.check(python)
+
 
 if __name__ == "__main__":
   test_inference.main()

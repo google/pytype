@@ -91,9 +91,13 @@ class CallTracer(vm.VirtualMachine):
     self.push_frame(frame)
     log.info("Analyzing %r", [v.name for v in var.data])
     state = frame_state.FrameState.init(node)
-    state, ret = self.call_function_with_state(
-        state, var, args, kwargs, starargs, starstarargs)
-    self.pop_frame(frame)
+    try:
+      # May raise, e.g., RecursionError (see CheckerTest.testRecursion). Any
+      # error is handled in run_instruction.
+      state, ret = self.call_function_with_state(
+          state, var, args, kwargs, starargs, starstarargs)
+    finally:
+      self.pop_frame(frame)
     return state.node, ret
 
   def maybe_analyze_method(self, val, node):
