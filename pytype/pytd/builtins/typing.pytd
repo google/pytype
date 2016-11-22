@@ -3,6 +3,7 @@ __all__ = ...  # type: List[str]
 AnyStr = TypeVar('AnyStr', str, unicode)
 ARGS = TypeVar('ARGS')
 RET = TypeVar('RET')
+# "T", "K", and "V" are hardcoded in abstract.py
 T = TypeVar('T')
 K = TypeVar('K')
 V = TypeVar('V')

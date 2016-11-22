@@ -117,7 +117,7 @@ class Converter(object):
     content = tuple(content)  # content might be a generator
     value = abstract.AbstractOrConcreteValue(
         content, self.tuple_type, self.vm, node)
-    value.initialize_type_parameter(node, "T",
+    value.initialize_type_parameter(node, abstract.T,
                                     self.build_content(node, content))
     return value
 
@@ -158,7 +158,7 @@ class Converter(object):
     # TODO(rechen): set T to empty if there is nothing in content
     content = list(content)  # content might be a generator
     value = abstract.Instance(self.list_type, self.vm, node)
-    value.initialize_type_parameter(node, "T",
+    value.initialize_type_parameter(node, abstract.T,
                                     self.build_content(node, content))
     return value.to_variable(node, name="list(...)")
 
@@ -166,7 +166,7 @@ class Converter(object):
     """Create a VM set from the given sequence."""
     content = list(content)  # content might be a generator
     value = abstract.Instance(self.set_type, self.vm, node)
-    value.initialize_type_parameter(node, "T",
+    value.initialize_type_parameter(node, abstract.T,
                                     self.build_content(node, content))
     return value.to_variable(node, name="set(...)")
 
@@ -227,12 +227,14 @@ class Converter(object):
 
   def create_varargs(self, arg_type):
     """Create a varargs argument given its element type."""
+    params = {abstract.T: arg_type}
     return abstract.ParameterizedClass(
-        abstract.get_atomic_value(self.tuple_type), {"T": arg_type}, self.vm)
+        abstract.get_atomic_value(self.tuple_type), params, self.vm)
 
   def create_kwargs(self, arg_type):
     """Create a kwargs argument given its element type."""
-    params = {"K": abstract.get_atomic_value(self.str_type), "V": arg_type}
+    params = {abstract.K: abstract.get_atomic_value(self.str_type),
+              abstract.V: arg_type}
     return abstract.ParameterizedClass(
         abstract.get_atomic_value(self.dict_type), params, self.vm)
 

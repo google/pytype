@@ -201,7 +201,7 @@ class AbstractMatcher(object):
     elif isinstance(left, abstract.Class):
       if (other_type.full_name == "__builtin__.type" and
           isinstance(other_type, abstract.ParameterizedClass)):
-        other_type = other_type.type_parameters["T"]
+        other_type = other_type.type_parameters[abstract.T]
         if other_type.formal:
           value = left.instantiate(node).bindings[0]
           return self.match_value_against_type(

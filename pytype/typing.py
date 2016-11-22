@@ -137,7 +137,7 @@ class Container(TypingClass):
 
 class List(Container):
   pytd_name = "__builtin__.list"
-  type_param_names = ("T",)
+  type_param_names = (abstract.T,)
 
   def __init__(self, name, vm, node, inner=None):
     super(List, self).__init__("List", vm, node, inner)
@@ -155,7 +155,7 @@ class List(Container):
 
 class Dict(Container):
   pytd_name = "__builtin__.dict"
-  type_param_names = ("K", "V")
+  type_param_names = (abstract.K, abstract.V)
 
   def __init__(self, name, vm, node, inner=None):
     super(Dict, self).__init__("Dict", vm, node, inner)
@@ -164,7 +164,7 @@ class Dict(Container):
 
 class Set(Container):
   pytd_name = "__builtin__.set"
-  type_param_names = ("T",)
+  type_param_names = (abstract.T,)
 
   def __init__(self, name, vm, node, inner=None):
     super(Set, self).__init__("Set", vm, node, inner)
@@ -173,7 +173,7 @@ class Set(Container):
 
 class FrozenSet(Container):
   pytd_name = "__builtin__.frozenset"
-  type_param_names = ("T",)
+  type_param_names = (abstract.T,)
 
   def __init__(self, name, vm, node, inner=None):
     super(FrozenSet, self).__init__("FrozenSet", vm, node, inner)
@@ -182,7 +182,7 @@ class FrozenSet(Container):
 
 class Sequence(Container):
   pytd_name = "typing.Sequence"
-  type_param_names = ("T",)
+  type_param_names = (abstract.T,)
 
   def __init__(self, name, vm, node, inner=None):
     super(Sequence, self).__init__("Sequence", vm, node, inner)

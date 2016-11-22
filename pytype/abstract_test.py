@@ -66,24 +66,24 @@ class InstanceTest(AbstractTestBase):
   def test_compatible_with_list(self):
     i = abstract.Instance(
         self._vm.convert.list_type, self._vm, self._node)
-    i.init_type_parameters("T")
+    i.init_type_parameters(abstract.T)
     # Empty list is not compatible with True.
     self.assertIs(False, i.compatible_with(True))
     self.assertIs(True, i.compatible_with(False))
     # Once a type parameter is set, list is compatible with True and False.
-    i.merge_type_parameter(self._node, "T", self._vm.convert.object_type)
+    i.merge_type_parameter(self._node, abstract.T, self._vm.convert.object_type)
     self.assertIs(True, i.compatible_with(True))
     self.assertIs(True, i.compatible_with(False))
 
   def test_compatible_with_set(self):
     i = abstract.Instance(
         self._vm.convert.set_type, self._vm, self._node)
-    i.init_type_parameters("T")
+    i.init_type_parameters(abstract.T)
     # Empty list is not compatible with True.
     self.assertIs(False, i.compatible_with(True))
     self.assertIs(True, i.compatible_with(False))
     # Once a type parameter is set, list is compatible with True and False.
-    i.merge_type_parameter(self._node, "T", self._vm.convert.object_type)
+    i.merge_type_parameter(self._node, abstract.T, self._vm.convert.object_type)
     self.assertIs(True, i.compatible_with(True))
     self.assertIs(True, i.compatible_with(False))
 
@@ -424,7 +424,7 @@ class FunctionTest(AbstractTestBase):
     self.assertIs(args_type.base_cls,
                   abstract.get_atomic_value(self._vm.convert.tuple_type))
     self.assertDictEqual(args_type.type_parameters,
-                         {"T": self._vm.convert.unsolvable})
+                         {abstract.T: self._vm.convert.unsolvable})
     self.assertIs(sig.drop_first_parameter().annotations["args"], args_type)
 
   def test_signature_annotations_existence(self):

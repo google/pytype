@@ -32,6 +32,12 @@ chain = itertools.chain  # pylint: disable=invalid-name
 WrapsDict = pytd_utils.WrapsDict  # pylint: disable=invalid-name
 
 
+# Type parameter names matching the ones in __builtin__.pytd and typing.pytd.
+T = "T"
+K = "K"
+V = "V"
+
+
 class ConversionError(ValueError):
   pass
 
@@ -669,7 +675,7 @@ class Instance(SimpleAbstractValue):
     # Containers with unset parameters and NoneType instances cannot match True.
     name = self._get_full_name()
     if logical_value and name in Instance._CONTAINER_NAMES:
-      return bool(self.type_parameters["T"].bindings)
+      return bool(self.type_parameters[T].bindings)
     elif name == "__builtin__.NoneType":
       return not logical_value
     return True
@@ -727,15 +733,11 @@ class Dict(ValueWithSlots, WrapsDict("members")):
   of what got stored.
   """
 
-  # These match __builtins__.pytd:
-  KEY_TYPE_PARAM = "K"
-  VALUE_TYPE_PARAM = "V"
-
   def __init__(self, vm, node):
     super(Dict, self).__init__(vm.convert.dict_type, vm, node)
     self.set_slot("__getitem__", self.getitem_slot)
     self.set_slot("__setitem__", self.setitem_slot)
-    self.init_type_parameters(self.KEY_TYPE_PARAM, self.VALUE_TYPE_PARAM)
+    self.init_type_parameters(K, V)
     self.could_contain_anything = False
 
   def getitem_slot(self, node, name_var):
@@ -764,10 +766,8 @@ class Dict(ValueWithSlots, WrapsDict("members")):
         node, "getitem[var%s]" % name_var.id, results)
 
   def set_str_item(self, node, name, value_var):
-    self.merge_type_parameter(
-        node, self.KEY_TYPE_PARAM, self.vm.convert.build_string(node, name))
-    self.merge_type_parameter(
-        node, self.VALUE_TYPE_PARAM, value_var)
+    self.merge_type_parameter(node, K, self.vm.convert.build_string(node, name))
+    self.merge_type_parameter(node, V, value_var)
     if name in self.members:
       self.members[name].PasteVariable(value_var, node)
     else:
@@ -804,10 +804,10 @@ class Dict(ValueWithSlots, WrapsDict("members")):
         if key not in omit:
           self.set_str_item(node, key, value)
       if isinstance(other_dict, Dict):
-        k = other_dict.get_type_parameter(node, self.KEY_TYPE_PARAM)
-        v = other_dict.get_type_parameter(node, self.VALUE_TYPE_PARAM)
-        self.merge_type_parameter(node, self.KEY_TYPE_PARAM, k)
-        self.merge_type_parameter(node, self.VALUE_TYPE_PARAM, v)
+        k = other_dict.get_type_parameter(node, K)
+        v = other_dict.get_type_parameter(node, V)
+        self.merge_type_parameter(node, K, k)
+        self.merge_type_parameter(node, V, v)
       return True
     else:
       assert isinstance(other_dict, AtomicAbstractValue)
@@ -817,8 +817,7 @@ class Dict(ValueWithSlots, WrapsDict("members")):
     # Always compatible with False.  Compatible with True only if type
     # parameters have been established (meaning that the dict can be
     # non-empty).
-    return (not logical_value or
-            bool(self.type_parameters[self.KEY_TYPE_PARAM].bindings))
+    return not logical_value or bool(self.type_parameters[K].bindings)
 
 
 class AbstractOrConcreteValue(Instance, PythonConstant):
@@ -2534,8 +2533,6 @@ class Generator(Instance):
   (I.e., the return type of coroutines).
   """
 
-  TYPE_PARAM = "T"  # See class generator in pytd/builtins/__builtin__.pytd
-
   def __init__(self, generator_frame, vm, node):
     super(Generator, self).__init__(vm.convert.generator_type, vm, node)
     self.generator_frame = generator_frame
@@ -2560,9 +2557,9 @@ class Generator(Instance):
     if self.runs == 0:  # Optimization: We only run the coroutine once.
       node, _ = self.vm.resume_frame(node, self.generator_frame)
       contained_type = self.generator_frame.yield_variable
-      self.type_parameters[self.TYPE_PARAM] = contained_type
+      self.type_parameters[T] = contained_type
       self.runs += 1
-    return node, self.type_parameters[self.TYPE_PARAM]
+    return node, self.type_parameters[T]
 
   def call(self, node, func, args, condition=None):
     """Call this generator or (more common) its "next" attribute."""
@@ -2573,12 +2570,10 @@ class Generator(Instance):
 class Iterator(ValueWithSlots):
   """A representation of instances of iterators."""
 
-  TYPE_PARAM = "T"
-
   def __init__(self, vm, return_var, node):
     super(Iterator, self).__init__(vm.convert.iterator_type, vm, node)
     self.set_slot("next", self.next_slot)
-    self.init_type_parameters(self.TYPE_PARAM)
+    self.init_type_parameters(T)
     # TODO(dbaum): Should we set type_parameters[self.TYPE_PARAM] to something
     # based on return_var?
     self._return_var = return_var

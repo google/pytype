@@ -71,7 +71,8 @@ class CallTracer(vm.VirtualMachine):
   def create_varargs(self, node):
     value = abstract.Instance(self.convert.tuple_type, self, node)
     value.initialize_type_parameter(
-        node, "T", self.convert.create_new_unknown(node, "varargs_value"))
+        node, abstract.T,
+        self.convert.create_new_unknown(node, "varargs_value"))
     return value.to_variable(node, "*args")
 
   def create_kwargs(self, node):
@@ -79,10 +80,8 @@ class CallTracer(vm.VirtualMachine):
         node, "str")
     value_type = self.convert.create_new_unknown(node, "kwargs_value")
     kwargs = abstract.Instance(self.convert.dict_type, self, node)
-    kwargs.initialize_type_parameter(
-        node, abstract.Dict.KEY_TYPE_PARAM, key_type)
-    kwargs.initialize_type_parameter(
-        node, abstract.Dict.VALUE_TYPE_PARAM, value_type)
+    kwargs.initialize_type_parameter(node, abstract.K, key_type)
+    kwargs.initialize_type_parameter(node, abstract.V, value_type)
     return kwargs.to_variable(node, "**kwargs")
 
   def call_function_in_frame(self, node, var, args, kwargs,

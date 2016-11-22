@@ -18,6 +18,7 @@
 #                       def Method PYTHONCODE Foo_Method
 #                  If not useful, remove.
 
+# "T", "K", and "V" are hardcoded in abstract.py
 T = TypeVar('T')
 T2 = TypeVar('T2')
 K = TypeVar('K')
@@ -418,7 +419,6 @@ class dict_items(Generic[K, V], object):
     def __iter__(self) -> `dictionary-itemiterator`[K,V]
     def __len__(self) -> int
 
-# "K" and "V" are hardcoded in other places (e.g. atomic_abstract_value.Dict)
 class dict(Dict[K, V]):
     def __init__(self) -> NoneType:
         self := dict[nothing, nothing]
@@ -487,7 +487,6 @@ class listreverseiterator(Iterator[T]):
     def __iter__(self) -> listreverseiterator[T]
     def next(self) -> T
 
-# "T" is hardcoded in typing.py
 class list(List[T]):
     def __init__(self) -> NoneType:
         self := list[nothing]
@@ -564,7 +563,6 @@ class reversed(Iterator[T]):
     def __iter__(self) -> reversed
     def next(self) -> T
 
-# "T" is hardcoded in typing.py
 class tuple(Tuple[T]):
     def __init__(self, p0) -> NoneType
     def __init__(self) -> NoneType
@@ -941,7 +939,7 @@ class file(BinaryIO):
 class function(Callable):
     def __get__(self, obj, ...) -> instancemethod
 
-class generator(Generator[T]):  # "T" is also hardcoded in abstract.py:Generator
+class generator(Generator[T]):
     def __iter__(self) -> generator[T]
     def send(self, arg) -> ?  # TODO(pludemann): or should be "-> T" ?  or needs 2 parameter types for generator?
     def close(self) -> NoneType

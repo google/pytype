@@ -41,11 +41,11 @@ class MatcherTest(unittest.TestCase):
   def testType(self):
     left = abstract.InterpreterClass("dummy", [], {}, None, self.vm)
     right = abstract.InterpreterClass("type", [], {}, None, self.vm)
-    type_parameters = {"T": abstract.TypeParameter("T", self.vm)}
+    type_parameters = {abstract.T: abstract.TypeParameter(abstract.T, self.vm)}
     other_type = abstract.ParameterizedClass(right, type_parameters, self.vm)
     other_type.module = "__builtin__"
     result = self._match_value(left, other_type)
-    instance_binding, = result["T"].bindings
+    instance_binding, = result[abstract.T].bindings
     cls_binding, = instance_binding.data.cls.bindings
     self.assertEquals(cls_binding.data, left)
 
