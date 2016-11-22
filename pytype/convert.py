@@ -172,7 +172,7 @@ class Converter(object):
 
   def build_map(self, node):
     """Create an empty VM dict."""
-    return abstract.Dict("dict", self.vm, node).to_variable(node, "dict")
+    return abstract.Dict(self.vm, node).to_variable(node, "dict")
 
   def build_tuple(self, node, content):
     """Create a VM tuple from the given sequence."""
@@ -403,7 +403,7 @@ class Converter(object):
                               types.GeneratorType,
                               type] or pyval is type):
       try:
-        pyclass = self.vm.vmbuiltins.Lookup("__builtin__." + pyval.__name__)
+        pyclass = self.vm.lookup_builtin("__builtin__." + pyval.__name__)
         return self.convert_constant_to_value(name, pyclass, subst, node)
       except (KeyError, AttributeError):
         log.debug("Failed to find pytd", exc_info=True)
@@ -429,7 +429,7 @@ class Converter(object):
     elif isinstance(pyval, pytd.Function):
       signatures = [abstract.PyTDSignature(pyval.name, sig, self.vm)
                     for sig in pyval.signatures]
-      type_new = self.vm.vmbuiltins.Lookup("__builtin__.type").Lookup("__new__")
+      type_new = self.vm.lookup_builtin("__builtin__.type").Lookup("__new__")
       if pyval is type_new:
         f_cls = abstract.TypeNew
       else:

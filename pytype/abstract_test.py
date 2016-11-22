@@ -43,7 +43,7 @@ class AbstractTestBase(unittest.TestCase):
 
   def new_dict(self, **kwargs):
     """Create a Dict from keywords mapping names to Variable objects."""
-    d = abstract.Dict("dict", self._vm, self._node)
+    d = abstract.Dict(self._vm, self._node)
     for name, var in kwargs.items():
       d.set_str_item(self._node, name, var)
     return d
@@ -100,7 +100,7 @@ class DictTest(AbstractTestBase):
 
   def setUp(self):
     super(DictTest, self).setUp()
-    self._d = abstract.Dict("test_dict", self._vm, self._node)
+    self._d = abstract.Dict(self._vm, self._node)
     self._var = self._program.NewVariable("test_var")
     self._var.AddBinding(abstract.Unknown(self._vm))
 
@@ -356,7 +356,7 @@ class FunctionTest(AbstractTestBase):
 
   def test_call_with_bad_arg(self):
     f = self._make_pytd_function(
-        (self._vm.vmbuiltins.Lookup("__builtin__.str"),))
+        (self._vm.lookup_builtin("__builtin__.str"),))
     arg = self._vm.convert.primitive_class_instances[int].to_variable(
         self._vm.root_cfg_node)
     self.assertRaises(
@@ -364,7 +364,7 @@ class FunctionTest(AbstractTestBase):
 
   def test_simple_call(self):
     f = self._make_pytd_function(
-        (self._vm.vmbuiltins.Lookup("__builtin__.str"),))
+        (self._vm.lookup_builtin("__builtin__.str"),))
     arg = self._vm.convert.primitive_class_instances[str].to_variable(
         self._vm.root_cfg_node)
     node, ret = self._call_pytd_function(f, (arg,))
@@ -374,7 +374,7 @@ class FunctionTest(AbstractTestBase):
 
   def test_call_with_multiple_arg_bindings(self):
     f = self._make_pytd_function(
-        (self._vm.vmbuiltins.Lookup("__builtin__.str"),))
+        (self._vm.lookup_builtin("__builtin__.str"),))
     arg = self._vm.program.NewVariable("arg")
     arg.AddBinding(self._vm.convert.primitive_class_instances[str], [],
                    self._vm.root_cfg_node)
@@ -387,7 +387,7 @@ class FunctionTest(AbstractTestBase):
 
   def test_call_with_skipped_combination(self):
     f = self._make_pytd_function(
-        (self._vm.vmbuiltins.Lookup("__builtin__.str"),))
+        (self._vm.lookup_builtin("__builtin__.str"),))
     node = self._vm.root_cfg_node.ConnectNew()
     arg = self._vm.convert.primitive_class_instances[str].to_variable(node)
     node, ret = self._call_pytd_function(f, (arg,))

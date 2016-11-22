@@ -70,7 +70,7 @@ class CallTracer(vm.VirtualMachine):
 
   def create_varargs(self, node):
     value = abstract.Instance(self.convert.tuple_type, self, node)
-    value.overwrite_type_parameter(
+    value.initialize_type_parameter(
         node, "T", self.convert.create_new_unknown(node, "varargs_value"))
     return value.to_variable(node, "*args")
 
@@ -79,9 +79,9 @@ class CallTracer(vm.VirtualMachine):
         node, "str")
     value_type = self.convert.create_new_unknown(node, "kwargs_value")
     kwargs = abstract.Instance(self.convert.dict_type, self, node)
-    kwargs.overwrite_type_parameter(
+    kwargs.initialize_type_parameter(
         node, abstract.Dict.KEY_TYPE_PARAM, key_type)
-    kwargs.overwrite_type_parameter(
+    kwargs.initialize_type_parameter(
         node, abstract.Dict.VALUE_TYPE_PARAM, value_type)
     return kwargs.to_variable(node, "**kwargs")
 

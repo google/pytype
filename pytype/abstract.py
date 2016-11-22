@@ -490,24 +490,9 @@ class SimpleAbstractValue(AtomicAbstractValue):
     else:
       self.type_parameters[name] = value
 
-  # TODO(kramm): remove
-  def overwrite_type_parameter(self, node, name, value):
-    """Overwrite the value of a type parameter.
-
-    Unlike merge_type_parameter, this will purge the previous value and set
-    the type parameter only to the new value.
-
-    Args:
-      node: The current CFG node.
-      name: The name of the type parameter.
-      value: The new type parameter as a Variable.
-    """
-    log.info("Overwriting type param %s", name)
-    self.type_parameters[name] = self.vm.program.NewVariable(
-        name, value.data, [], node)
-
   def initialize_type_parameter(self, node, name, value):
     assert isinstance(name, str)
+    assert name not in self.type_parameters
     log.info("Initializing type param %s: %r", name, value.data)
     self.type_parameters[name] = self.vm.program.NewVariable(
         name, value.data, [], node)
@@ -746,9 +731,8 @@ class Dict(ValueWithSlots, WrapsDict("members")):
   KEY_TYPE_PARAM = "K"
   VALUE_TYPE_PARAM = "V"
 
-  def __init__(self, name, vm, node):
+  def __init__(self, vm, node):
     super(Dict, self).__init__(vm.convert.dict_type, vm, node)
-    self.name = name
     self.set_slot("__getitem__", self.getitem_slot)
     self.set_slot("__setitem__", self.setitem_slot)
     self.init_type_parameters(self.KEY_TYPE_PARAM, self.VALUE_TYPE_PARAM)
@@ -876,6 +860,7 @@ class Union(AtomicAbstractValue):
 
   def __init__(self, options, vm):
     super(Union, self).__init__("Union", vm)
+    assert options
     self.name = "Union[%s]" % ", ".join(sorted([str(t) for t in options]))
     self.options = options
     # TODO(rechen): Don't allow a mix of formal and non-formal types
@@ -2225,7 +2210,7 @@ class InterpreterFunction(Function):
         callargs[kwvararg_name] = args.starstarargs.AssignToNewVariable(
             "**kwargs", node)
       else:
-        k = Dict("kwargs", self.vm, node)
+        k = Dict(self.vm, node)
         k.update(node, args.namedargs, omit=param_names)
         callargs[kwvararg_name] = k.to_variable(node, kwvararg_name)
       arg_pos += 1

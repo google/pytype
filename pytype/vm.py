@@ -97,7 +97,6 @@ class VirtualMachine(object):
     self.program = typegraph.Program()
     self.root_cfg_node = self.program.NewCFGNode("root")
     self.program.entrypoint = self.root_cfg_node
-    self.vmbuiltins = self.loader.builtins
     self.convert = convert.Converter(self)
     self.program.default_data = self.convert.unsolvable
     self.matcher = matcher.AbstractMatcher()
@@ -116,6 +115,12 @@ class VirtualMachine(object):
         "False": self.convert.false,
         "isinstance": abstract.IsInstance(self),
     }
+
+  def lookup_builtin(self, name):
+    try:
+      return self.loader.builtins.Lookup(name)
+    except KeyError:
+      return self.loader.typing.Lookup(name)
 
   def remaining_depth(self):
     return self.maximum_depth - len(self.frames)
@@ -472,7 +477,7 @@ class VirtualMachine(object):
       assert f_locals is None
       # TODO(ampere): __name__, __doc__, __package__ below are not correct
       f_globals = f_locals = self.convert_locals_or_globals({
-          "__builtins__": self.vmbuiltins,
+          "__builtins__": self.loader.builtins,
           "__name__": "__main__",
           "__doc__": None,
           "__package__": None,
@@ -747,7 +752,7 @@ class VirtualMachine(object):
     num_kw, num_pos = divmod(num, 256)
 
     # TODO(kramm): Can we omit creating this Dict if num_kw=0?
-    namedargs = abstract.Dict("kwargs", self, state.node)
+    namedargs = abstract.Dict(self, state.node)
     for _ in range(num_kw):
       state, (key, val) = state.popn(2)
       namedargs.setitem(state.node, key, val)

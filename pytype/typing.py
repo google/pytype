@@ -113,7 +113,7 @@ class Container(TypingClass):
         param = self.inner[i]
       else:
         param = self.vm.convert.create_new_unsolvable(node, name)
-      d.overwrite_type_parameter(node, name, self.vm.instantiate(param, node))
+      d.initialize_type_parameter(node, name, self.vm.instantiate(param, node))
     return d.to_variable(node, self.pytd_name)
 
   def get_instance_type(self, node, instance=None, seen=None):
