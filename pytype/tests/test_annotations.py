@@ -11,6 +11,28 @@ class AnnotationTest(test_inference.InferenceTest):
   """Tests for PEP 484 style inline annotations."""
 
 
+  def testNoneUnpackingIs(self):
+    """Tests that is works with None."""
+    self.assertNoErrors("""
+      from __future__ import google_type_annotations
+      from typing import Optional
+      def f(x: Optional[str]) -> str:
+        if x is None:
+          return ""
+        return x
+      """)
+
+  def testNoneUnpackingIsNot(self):
+    """Tests that is not works with None."""
+    self.assertNoErrors("""
+      from __future__ import google_type_annotations
+      from typing import Optional
+      def f(x: Optional[str]) -> str:
+        if x is not None:
+          return x
+        return ""
+      """)
+
   def testSimple(self):
     ty = self.Infer("""
       from __future__ import google_type_annotations
