@@ -106,7 +106,7 @@ class AbstractMatcher(object):
                 break
             else:
               return None
-            return new_subst
+          return new_subst
         elif isinstance(left, abstract.AMBIGUOUS_OR_EMPTY):
           return subst
       else:

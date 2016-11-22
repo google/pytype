@@ -181,6 +181,16 @@ class CheckerTest(test_inference.InferenceTest):
     """
     self.check(python)
 
+  def testBadDictValue(self):
+    python = """\
+      from __future__ import google_type_annotations
+      from typing import Dict
+      def f() -> Dict[str, int]:
+        return {"x": 42.0}
+    """
+    errorlog = self.get_checking_errors(python)
+    self.assertErrorLogIs(errorlog, [(4, "bad-return-type", r"float.*int")])
+
 
 if __name__ == "__main__":
   test_inference.main()
