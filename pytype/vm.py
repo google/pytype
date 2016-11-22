@@ -615,7 +615,8 @@ class VirtualMachine(object):
         else:
           resolved = x
       else:
-        self.errorlog.invalid_annotation(annot.opcode, annot.name)
+        self.errorlog.invalid_annotation(annot.opcode, annot.name,
+                                         "Must be constant")
         resolved = self.convert.unsolvable
       func.signature.set_annotation(name, resolved)
 
@@ -1692,7 +1693,13 @@ class VirtualMachine(object):
             opcode=self.frame.current_opcode,
             expr=annotation.pyval)
       else:
-        self.errorlog.invalid_annotation(self.frame.current_opcode, name)
+        if isinstance(annotation, abstract.PythonConstant):
+          # Inner string, e.g., def f(x: List["Foo"])
+          error = "Must quote entire annotation"
+        else:
+          # Not a constant, e.g., def f(x: str())
+          error = "Must be constant"
+        self.errorlog.invalid_annotation(self.frame.current_opcode, name, error)
         return None
     elif annotation.cls and annotation.cls.data == self.convert.none_type.data:
       # PEP 484 allows to write "NoneType" as "None"
@@ -1700,20 +1707,18 @@ class VirtualMachine(object):
     elif isinstance(annotation, typing.Container) and annotation.inner:
       inner = []
       for inner_annot in annotation.inner:
-        data = []
-        changed = False
-        for b in inner_annot.bindings:
-          processed = self._process_one_annotation(b.data, name, False)
-          if processed is None:
-            return None
-          elif processed is not b.data:
-            changed = True
-          data.append(processed)
-        if changed:
-          inner.append(self.program.NewVariable(
-              inner_annot.name, data, [], self.root_cfg_node))
-        else:
+        if len(inner_annot.bindings) > 1:
+          self.errorlog.invalid_annotation(self.frame.current_opcode, name,
+                                           "Must be constant")
+          return None
+        processed = self._process_one_annotation(
+            inner_annot.bindings[0].data, name, False)
+        if processed is None:
+          return None
+        elif processed is inner_annot.bindings[0].data:
           inner.append(inner_annot)
+        else:
+          inner.append(processed.to_variable(self.root_cfg_node))
       annotation.inner = tuple(inner)
       return annotation
     elif isinstance(annotation, typing.Union) and annotation.elements:
@@ -1739,7 +1744,8 @@ class VirtualMachine(object):
         name = abstract.get_atomic_python_constant(name)
         visible = t.Data(node)
         if len(visible) > 1:
-          self.errorlog.invalid_annotation(self.frame.current_opcode, name)
+          self.errorlog.invalid_annotation(self.frame.current_opcode, name,
+                                           "Must be constant")
         else:
           annot = self._process_one_annotation(visible[0], name)
           if isinstance(annot, function.LateAnnotation):

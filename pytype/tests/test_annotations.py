@@ -196,8 +196,8 @@ class AnnotationTest(test_inference.InferenceTest):
         return x
     """)
     self.assertErrorLogIs(errors, {
-        (2, "invalid-annotation"),
-        (4, "invalid-annotation")})
+        (2, "invalid-annotation", r"x.*constant"),
+        (4, "invalid-annotation", r"x.*constant")})
 
   def testBadStringAnnotation(self):
     _, errors = self.InferAndCheck("""\
@@ -206,7 +206,7 @@ class AnnotationTest(test_inference.InferenceTest):
         return x
     """)
     self.assertErrorLogIs(errors, {
-        (2, "invalid-annotation")})
+        (2, "invalid-annotation", r"x.*constant")})
 
   def testBadReturn(self):
     _, errors = self.InferAndCheck("""\
@@ -707,8 +707,23 @@ class AnnotationTest(test_inference.InferenceTest):
       def g(x: Union["str"]):
         pass
     """)
-    self.assertErrorLogIs(errors, [(3, "invalid-annotation", r"x"),
-                                   (5, "invalid-annotation", r"x")])
+    self.assertErrorLogIs(errors, [(3, "invalid-annotation", r"x.*quote"),
+                                   (5, "invalid-annotation", r"x.*quote")])
+
+  def testAmbiguousInnerAnnotation(self):
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      from typing import List, Union
+      def f(x: List[int or str]):
+        pass
+      def g(x: Union[int or str]):
+        pass
+      def h(x: List[Union[int, str]]):  # okay
+        pass
+    """)
+    self.assertErrorLogIs(errors, [
+        (3, "invalid-annotation", r"x.*constant"),
+        (5, "invalid-annotation", r"Union.*constant")])
 
   def testVarargs(self):
     self.assertNoErrors("""

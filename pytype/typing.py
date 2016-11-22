@@ -63,8 +63,17 @@ class Union(TypingClass):
 
   def getitem_slot(self, node, slice_var):
     slice_tuple = _maybe_extract_tuple(self.vm.convert, node, slice_var)
-    values = tuple(s.Data(node)[0] for s in slice_tuple)
-    new_union = Union(self.name, self.vm, node, self.elements + values)
+    values = []
+    for s in slice_tuple:
+      if len(s.bindings) > 1:
+        # We don't have access to the name that we're annotating, so we'll use
+        # the name of the type with which it's being annotated instead.
+        self.vm.errorlog.invalid_annotation(self.vm.frame.current_opcode,
+                                            self.name, "Must be constant")
+        values.append(self.vm.convert.unsolvable)
+      else:
+        values.append(s.bindings[0].data)
+    new_union = Union(self.name, self.vm, node, self.elements + tuple(values))
     return node, new_union.to_variable(node, "Union")
 
   def instantiate(self, node):

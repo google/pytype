@@ -365,9 +365,8 @@ class ErrorLog(ErrorLogBase):
         operation, pytd.Print(left), pytd.Print(right)))
 
   @_error_name("invalid-annotation")
-  def invalid_annotation(self, opcode, name):
-    self.error(opcode, "Invalid type annotation for %s. Must be constant" %
-               name)
+  def invalid_annotation(self, opcode, name, details):
+    self.error(opcode, "Invalid type annotation for %s. %s" % (name, details))
 
   @_error_name("mro-error")
   def mro_error(self, opcode, name, mro_seqs):
