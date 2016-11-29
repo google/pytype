@@ -10,6 +10,7 @@ import sys
 
 from pytype import abstract
 from pytype import convert_structural
+from pytype import exceptions
 from pytype import output
 from pytype import state as frame_state
 from pytype import utils
@@ -91,11 +92,17 @@ class CallTracer(vm.VirtualMachine):
     log.info("Analyzing %r", [v.name for v in var.data])
     state = frame_state.FrameState.init(node)
     try:
-      # May raise, e.g., RecursionError (see CheckerTest.testRecursion). Any
-      # error is handled in run_instruction.
       state, ret = self.call_function_with_state(
           state, var, args, kwargs, starargs, starstarargs)
-    finally:
+    except (vm.RecursionException, exceptions.ByteCodeException):
+      # A legitimate exception, which will be handled in run_instruction. (See,
+      # e.g., CheckerTest.testRecursion.) Note that we don't want to pop the
+      # frame in the case of a crash (any exception besides the ones we catch
+      # here), since the crash might have left us in a bad state that will
+      # cause pop_frame to raise an error, masking the actual problem.
+      self.pop_frame(frame)
+      raise
+    else:
       self.pop_frame(frame)
     return state.node, ret
 
