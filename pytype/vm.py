@@ -1732,8 +1732,12 @@ class VirtualMachine(object):
         options.append(processed)
       annotation.options = tuple(options)
       return annotation
-    else:
+    elif isinstance(annotation, (abstract.Class, abstract.AMBIGUOUS_OR_EMPTY)):
       return annotation
+    else:
+      error = str(annotation) + " is not a type"
+      self.errorlog.invalid_annotation(self.frame.current_opcode, name, error)
+      return None
 
   def _convert_function_annotations(self, node, raw_annotations):
     if raw_annotations:
