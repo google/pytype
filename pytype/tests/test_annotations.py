@@ -1,6 +1,7 @@
 """Tests for inline annotations."""
 
 import os
+import unittest
 
 
 from pytype import utils
@@ -726,24 +727,66 @@ class AnnotationTest(test_inference.InferenceTest):
         (5, "invalid-annotation", r"Union.*constant")])
 
   def testVarargs(self):
-    self.assertNoErrors("""
+    ty, errors = self.InferAndCheck("""\
       from __future__ import google_type_annotations
-      def f(x, *args: str):
-        pass
-      f(42, "")
-      f(42, *[])
-      f(42, *[""])
+      def f(x, *args: int):
+        return args
+      f("", 42)
+      f("", *[])
+      f("", *[42])
+      f("", *[42.0])
     """)
+    self.assertTypesMatchPytd(ty, """
+      google_type_annotations = ...  # type: __future__._Feature
+      def f(x, *args) -> Tuple[int]
+    """)
+    error = r"Expected.*Tuple\[int\].*Actually passed.*List\[float\]"
+    self.assertErrorLogIs(errors, [(7, "wrong-arg-types", error)])
 
   def testKwargs(self):
-    self.assertNoErrors("""
+    ty, errors = self.InferAndCheck("""\
       from __future__ import google_type_annotations
-      def f(x, **kwargs: str):
-        pass
-      f(42, y="")
-      f(42, *{})
-      f(42, *{"y": ""})
+      from typing import Dict
+      def f(x, **kwargs: int):
+        return kwargs
+      def g() -> Dict[str, float]:
+        return __any_object__
+      def h() -> Dict[float, int]:
+        return __any_object__
+      f("", y=42)
+      f("", **{})
+      f("", **{"y": 42})
+      f("", **g())
+      f("", **h())
     """)
+    self.assertTypesMatchPytd(ty, """
+      google_type_annotations = ...  # type: __future__._Feature
+      Dict = ...  # type: type
+      def f(x, **kwargs) -> Dict[str, int]
+      def g() -> Dict[str, float]
+      def h() -> Dict[float, int]
+    """)
+    error1 = r"Expected.*Dict\[str, int\].*Actually passed.*Dict\[str, float\]"
+    error2 = r"Expected.*Dict\[str, int\].*Actually passed.*Dict\[float, int\]"
+    self.assertErrorLogIs(errors, [(12, "wrong-arg-types", error1),
+                                   (13, "wrong-arg-types", error2)])
+
+  @unittest.skip("Types not checked due to abstract.FunctionArgs.simplify")
+  def testSimplifiedVarargsAndKwargs(self):
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      def f(x, *args: int):
+        pass
+      def g(x, **kwargs: int):
+        pass
+      f("", 42.0)
+      g("", y=42.0)
+      g("", **{"y": 42.0})
+    """)
+    error = r"Expected.*int.*Actually passed.*float"
+    self.assertErrorLogIs(errors, [(6, "wrong-arg-types", error),
+                                   (7, "wrong-arg-types", error),
+                                   (8, "wrong-arg-types", error)])
 
   def testUseVarargsAndKwargs(self):
     ty = self.Infer("""

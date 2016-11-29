@@ -225,6 +225,12 @@ class Converter(object):
     """Create a new variable containing an unsolvable."""
     return self.unsolvable.to_variable(node, name)
 
+  def create_parameterized_class(self, base_name, params):
+    pytd_base = self.vm.lookup_builtin(base_name)
+    base = self.convert_constant_to_value(
+        pytd_base.name, pytd_base, {}, self.vm.root_cfg_node)
+    return abstract.ParameterizedClass(base, params, self.vm)
+
   def create_varargs(self, arg_type):
     """Create a varargs argument given its element type."""
     params = {abstract.T: arg_type}

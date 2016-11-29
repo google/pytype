@@ -139,10 +139,12 @@ class InferenceTest(unittest.TestCase):
     self.options.tweak(pythonpath=pythonpath)
     code = textwrap.dedent(code)
     errorlog = self._InitErrorLog(code)
-    unit, _ = infer.infer_types(
+    unit, builtins_pytd = infer.infer_types(
         code, errorlog, self.options, deep=deep, analyze_annotated=True,
         cache_unknowns=True, **kwargs)
     unit.Visit(visitors.VerifyVisitor())
+    unit = optimize.Optimize(unit, builtins_pytd, lossy=False, use_abcs=False,
+                             max_union=7, remove_mutable=False)
     return pytd_utils.CanonicalOrdering(unit), errorlog
 
   def InferFromFile(self, filename, pythonpath):

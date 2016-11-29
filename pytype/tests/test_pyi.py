@@ -463,7 +463,7 @@ def process_function(func: Callable[..., Any]) -> None: ...
       """, solve_unknowns=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         foo = ...  # type: module
-        a = ...  # type: Dict[Any, Any]
+        a = ...  # type: dict
         b = ...  # type: Dict[int, complex]
         c = ...  # type: Any
         d = ...  # type: Any

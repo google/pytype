@@ -921,6 +921,8 @@ class FunctionArgs(collections.namedtuple("_", ["posargs", "namedargs",
 
   def simplify(self, node):
     """Try to insert part of *args, **kwargs into posargs / namedargs."""
+    # TODO(rechen): When we have type information about *args/**kwargs,
+    # we need to check it before doing this simplification.
     posargs = self.posargs
     namedargs = self.namedargs
     starargs = self.starargs
@@ -2255,11 +2257,16 @@ class InterpreterFunction(Function):
     for name, arg, formal in self.signature.iter_args(args):
       arg_dict[name] = view[arg]
       if formal is not None:
-        if (name == self.signature.varargs_name or
-            name == self.signature.kwargs_name):
-          # TODO(rechen): We can be more precise here. For varargs, the formal
-          # type should be Iterable[formal]; for kwargs, Mapping[str, formal].
-          formal = self.vm.convert.unsolvable
+        if name == self.signature.varargs_name:
+          # The annotation is Tuple[<varargs type>], but the passed arg can be
+          # any iterable of <varargs type>.
+          formal = self.vm.convert.create_parameterized_class(
+              "typing.Iterable", formal.type_parameters)
+        elif name == self.signature.kwargs_name:
+          # The annotation is Dict[str, <kwargs type>], but the passed arg can
+          # be any mapping from str to <kwargs type>.
+          formal = self.vm.convert.create_parameterized_class(
+              "typing.Mapping", formal.type_parameters)
         formal_args.append((name, formal))
     subst = self.vm.matcher.compute_subst(node, formal_args, arg_dict, view)
     if subst is None:
