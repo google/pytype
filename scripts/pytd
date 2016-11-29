@@ -70,9 +70,8 @@ def main():
 
   with open(filename_in) as fi:
     sourcecode = fi.read()
-    p = parser.TypeDeclParser()
     try:
-      parsed = p.Parse(sourcecode, filename=filename_in)
+      parsed = parser.parse_string(sourcecode, filename=filename_in)
     except parser.ParseError as e:
       sys.stderr.write(str(e))
       sys.exit(1)

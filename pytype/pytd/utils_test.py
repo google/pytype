@@ -20,6 +20,7 @@ import unittest
 from pytype.pytd import pytd
 from pytype.pytd import utils
 from pytype.pytd.parse import builtins
+from pytype.pytd.parse import parser
 from pytype.pytd.parse import parser_test_base
 from pytype.pytd.parse import visitors
 
@@ -301,7 +302,7 @@ class TestUtils(parser_test_base.ParserTest):
     self.assertEquals([1, 2, 3], utils.MROMerge([[1, 2, 1], [2, 3, 2]]))
 
   def testGetBasesInMRO(self):
-    ast = self.parser.Parse(textwrap.dedent("""
+    ast = parser.parse_string(textwrap.dedent("""
       T = TypeVar("T")
       class Foo(Generic[T]): pass
       class Bar(Foo[int]): pass
@@ -316,7 +317,7 @@ class TestUtils(parser_test_base.ParserTest):
 
   def testBuiltinAlias(self):
     src = "Number = int"
-    ast = self.parser.Parse(src)
+    ast = parser.parse_string(src)
     self.assertMultiLineEqual(utils.Print(ast), src)
 
   def testTypingNameConflict1(self):
@@ -327,11 +328,11 @@ class TestUtils(parser_test_base.ParserTest):
 
       def List() -> None: ...
     """)
-    ast = self.parser.Parse(src)
+    ast = parser.parse_string(src)
     self.assertMultiLineEqual(utils.Print(ast).strip("\n"), src.strip("\n"))
 
   def testTypingNameConflict2(self):
-    ast = self.parser.Parse(textwrap.dedent("""
+    ast = parser.parse_string(textwrap.dedent("""
       import typing
 
       x = ...  # type: typing.List[str]

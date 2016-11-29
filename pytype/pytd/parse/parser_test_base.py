@@ -28,13 +28,11 @@ import unittest
 class ParserTest(unittest.TestCase):
   """Test utility class. Knows how to parse PYTD and compare source code."""
 
-  def setUp(self):
-    self.parser = parser.TypeDeclParser()
-
   def Parse(self, src, name=None, version=None, platform=None):
     # TODO(kramm): Using self.parser here breaks tests. Why?
-    tree = parser.TypeDeclParser().Parse(
-        textwrap.dedent(src), name=name, version=version, platform=platform)
+    tree = parser.parse_string(
+        textwrap.dedent(src), name=name, python_version=version,
+        platform=platform)
     tree = tree.Visit(visitors.NamedTypeToClassType())
     tree = visitors.AdjustTypeParameters(tree)
     # Convert back to named types for easier testing
@@ -43,7 +41,7 @@ class ParserTest(unittest.TestCase):
     return tree
 
   def ParseWithBuiltins(self, src):
-    ast = parser.TypeDeclParser().Parse(textwrap.dedent(src))
+    ast = parser.parse_string(textwrap.dedent(src))
     b, t = builtins.GetBuiltinsAndTyping()
     ast = ast.Visit(visitors.LookupExternalTypes(
         {"__builtin__": b, "typing": t}, full_names=True))

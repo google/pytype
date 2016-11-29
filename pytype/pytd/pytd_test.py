@@ -68,8 +68,8 @@ class TestPytd(unittest.TestCase):
             def bar(x: T) -> NoneType
         def foo(a: str or int) -> C
         """)
-    tree1 = parser.TypeDeclParser().Parse(src1)
-    tree2 = parser.TypeDeclParser().Parse(src2)
+    tree1 = parser.parse_string(src1)
+    tree2 = parser.parse_string(src2)
     tree1.Visit(visitors.VerifyVisitor())
     tree2.Visit(visitors.VerifyVisitor())
     self.assertTrue(tree1.constants)

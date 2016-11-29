@@ -41,9 +41,9 @@ def GetBuiltinsAndTyping():
   """Get __builtin__.pytd and typing.pytd."""
   global _cached_builtins_pytd
   if not _cached_builtins_pytd:
-    t = parser.TypeDeclParser().Parse(_FindBuiltinFile("typing"), name="typing")
-    b = parser.TypeDeclParser().Parse(_FindBuiltinFile("__builtin__"),
-                                      name="__builtin__")
+    t = parser.parse_string(_FindBuiltinFile("typing"), name="typing")
+    b = parser.parse_string(_FindBuiltinFile("__builtin__"),
+                            name="__builtin__")
     b = b.Visit(visitors.NamedTypeToClassType())
     b = b.Visit(visitors.LookupExternalTypes({"typing": t}, full_names=True,
                                              self_name="__builtin__"))

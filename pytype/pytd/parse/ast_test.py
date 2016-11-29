@@ -24,7 +24,7 @@ import unittest
 class TestASTGeneration(parser_test_base.ParserTest):
 
   def TestThrowsSyntaxError(self, src):
-    self.assertRaises(parser.ParseError, self.parser.Parse, src)
+    self.assertRaises(parser.ParseError, parser.parse_string, src)
 
   def TestRoundTrip(self, src, canonical_src=None, check_the_sourcecode=True):
     """Compile a string, and convert the result back to a string. Compare."""
@@ -932,7 +932,7 @@ class TestASTGeneration(parser_test_base.ParserTest):
           pass
     """)
     try:
-      self.parser.Parse(src)
+      parser.parse_string(src)
     except parser.ParseError as e:
       self.assertNotIn("foobar", str(e))
       self.assertNotIn("^", str(e))
@@ -1518,7 +1518,7 @@ class TestASTGeneration(parser_test_base.ParserTest):
         def a(self, x: T2) -> None:
           self := A[T or T2]
     """)
-    tree = parser.TypeDeclParser().Parse(src)
+    tree = parser.parse_string(src)
 
     param1 = tree.Lookup("T")
     param2 = tree.Lookup("T2")

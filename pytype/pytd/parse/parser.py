@@ -1593,5 +1593,6 @@ def make_syntax_error(parser_or_tokenizer, msg, p):
 
 
 def parse_string(string, name=None, filename=None,
-                 python_version=DEFAULT_VERSION):
-  return TypeDeclParser().Parse(string, name, filename, version=python_version)
+                 python_version=DEFAULT_VERSION, platform="linux"):
+  return TypeDeclParser().Parse(string, name, filename, version=python_version,
+                                platform=platform)

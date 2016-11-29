@@ -517,7 +517,7 @@ def GetBasesInMRO(cls, lookup_ast=None):
 
 
 def canonical_pyi(pyi):
-  ast = parser.TypeDeclParser().Parse(pyi)
+  ast = parser.parse_string(pyi)
   ast = ast.Visit(visitors.ClassTypeToNamedType())
   ast = ast.Visit(visitors.CanonicalOrderingVisitor(sort_signatures=True))
   ast.Visit(visitors.VerifyVisitor())
