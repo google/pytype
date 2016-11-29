@@ -655,6 +655,8 @@ class Instance(SimpleAbstractValue):
   def __str__(self):
     if self.cls:
       cls = self.cls.bindings[0].data
+      if isinstance(cls, ParameterizedClass):
+        cls = cls.base_cls
       if isinstance(cls, PyTDClass) and cls.pytd_cls.template:
         params = []
         for t in cls.pytd_cls.template:
@@ -675,7 +677,8 @@ class Instance(SimpleAbstractValue):
     # Containers with unset parameters and NoneType instances cannot match True.
     name = self._get_full_name()
     if logical_value and name in Instance._CONTAINER_NAMES:
-      return bool(self.type_parameters[T].bindings)
+      return (T in self.type_parameters and
+              bool(self.type_parameters[T].bindings))
     elif name == "__builtin__.NoneType":
       return not logical_value
     return True
@@ -849,7 +852,6 @@ class LazyAbstractOrConcreteValue(SimpleAbstractValue, PythonConstant):
     return bool(self.pyval) == logical_value
 
 
-# TODO(rechen): Merge this class with pytype.typing.Union.
 class Union(AtomicAbstractValue):
   """A list of types. Used for parameter matching.
 
@@ -1732,6 +1734,7 @@ class ParameterizedClass(AtomicAbstractValue, Class):
     assert isinstance(base_cls, Class)
     super(ParameterizedClass, self).__init__(base_cls.name, vm)
     self.base_cls = base_cls
+    self.module = base_cls.module
     self.type_parameters = type_parameters
     self.mro = (self,) + self.base_cls.mro[1:]
     Class.init_mixin(self, base_cls.cls)

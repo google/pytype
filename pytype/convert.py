@@ -511,7 +511,6 @@ class Converter(object):
       base_cls = self.convert_constant_to_value(
           pytd.Print(pyval.base_type), pyval.base_type.cls, subst, node)
       cls = abstract.ParameterizedClass(base_cls, type_parameters, self.vm)
-      cls.module = base_cls.module
       return cls
     elif pyval.__class__ is tuple:  # only match raw tuple, not namedtuple/Node
       return self.tuple_to_value(self.vm.root_cfg_node,

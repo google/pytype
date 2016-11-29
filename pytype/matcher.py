@@ -3,7 +3,6 @@ import logging
 
 
 from pytype import abstract
-from pytype import typing
 from pytype import utils
 from pytype.pytd import pep484
 
@@ -72,46 +71,8 @@ class AbstractMatcher(object):
     """
     left = value.data
     assert isinstance(left, abstract.AtomicAbstractValue), left
-    assert not left.formal
 
-    # TODO(kramm): Use view
-    if isinstance(other_type, typing.Union):
-      for element in other_type.elements:
-        new_subst = self.match_value_against_type(
-            value, element, subst, node, view)
-        if new_subst is not None:
-          return new_subst
-    elif isinstance(other_type, typing.Container):
-      new_subst = None
-      for cls in [c for clsv in other_type.concrete_classes
-                  for c in clsv.data]:
-        new_subst = self.match_value_against_type(value, cls, subst, node, view)
-        if new_subst is not None:
-          subst = new_subst
-          break
-      else:
-        return None
-      if other_type.inner:
-        if (isinstance(left, abstract.SimpleAbstractValue) and
-            all(param in left.type_parameters
-                for param in other_type.type_param_names)):
-          for param_name, type_param in zip(other_type.type_param_names,
-                                            other_type.inner):
-            inner = left.type_parameters[param_name]
-            for formal in type_param.data:
-              new_subst = self.match_var_against_type(
-                  inner, formal, subst, node, view)
-              if new_subst is not None:
-                subst = new_subst
-                break
-            else:
-              return None
-          return new_subst
-        elif isinstance(left, abstract.AMBIGUOUS_OR_EMPTY):
-          return subst
-      else:
-        return subst
-    elif isinstance(other_type, abstract.Class):
+    if left.formal or isinstance(other_type, abstract.Class):
       # Accumulate substitutions in "subst", or break in case of error:
       return self._match_type_against_type(left, other_type, subst, node, view)
     elif isinstance(other_type, abstract.Union):

@@ -5,8 +5,7 @@
 
 
 from pytype import abstract
-from pytype.pytd import pytd
-from pytype.pytd import utils as pytd_utils
+from pytype.pytd import pep484
 
 
 class TypingOverlay(abstract.Module):
@@ -50,146 +49,63 @@ class TypingClass(abstract.ValueWithSlots):
     self.name = name
     self.set_slot("__getitem__", self.getitem_slot)
 
-
-class Union(TypingClass):
-  """Implementation of typing.Union[...]."""
-
-  def __init__(self, name, vm, node, elements=()):
-    super(Union, self).__init__(name, vm, node)
-    self.elements = elements
-
-  def __str__(self):
-    return "Union[" + ", ".join(str(n) for n in self.elements) + "]"
-
   def getitem_slot(self, node, slice_var):
-    slice_tuple = _maybe_extract_tuple(self.vm.convert, node, slice_var)
-    values = []
-    for s in slice_tuple:
-      if len(s.bindings) > 1:
+    inner = []
+    for var in _maybe_extract_tuple(self.vm.convert, node, slice_var):
+      if len(var.bindings) > 1:
         # We don't have access to the name that we're annotating, so we'll use
         # the name of the type with which it's being annotated instead.
         self.vm.errorlog.invalid_annotation(self.vm.frame.current_opcode,
                                             self.name, "Must be constant")
-        values.append(self.vm.convert.unsolvable)
+        inner.append(self.vm.convert.unsolvable)
       else:
-        values.append(s.bindings[0].data)
-    new_union = Union(self.name, self.vm, node, self.elements + tuple(values))
-    return node, new_union.to_variable(node, "Union")
+        inner.append(var.bindings[0].data)
+    value = self._build_value(node, tuple(inner))
+    return node, value.to_variable(node)
 
-  def instantiate(self, node):
-    n = self.vm.program.NewVariable(self.name)
-    for e in self.elements:
-      instance = e.instantiate(node)
-      n.PasteVariable(instance, node)
-    return n
+  def _build_value(self, node, inner):
+    raise NotImplementedError(self.__class__.__name__)
 
-  def get_instance_type(self, node, instance=None, seen=None):
-    return pytd.UnionType(tuple(
-        e.get_instance_type(node, seen=seen)
-        for e in self.elements))
+
+class Union(TypingClass):
+  """Implementation of typing.Union[...]."""
+
+  def __init__(self, name, vm, node, options=()):
+    super(Union, self).__init__(name, vm, node)
+    self.options = options
+
+  def _build_value(self, node, inner):
+    return abstract.Union(self.options + inner, self.vm)
 
 
 class Container(TypingClass):
   """Implementation of typing.X[...]."""
 
-  TYPE_PARAM_NAMES = ()
-
-  def __init__(self, name, vm, node, inner=None):
-    # TODO(kramm): type_type is wrong. Correct would be "typing.GenericMeta".
-    # But in the output, we'd want this to become an alias.
+  def __init__(self, name, vm, node, base_type):
     super(Container, self).__init__(name, vm, node)
-    self.inner = inner
+    self.base_type = base_type
+    self.type_param_names = tuple(t.name for t in base_type.pytd_cls.template)
 
-  def getitem_slot(self, node, inner):
-    inner = _maybe_extract_tuple(self.vm.convert, node, inner)
-    new_list = self.__class__(self.name, self.vm, node, inner)
-    return node, new_list.to_variable(node, self.name)
-
-  def instantiate(self, node):
-    concrete_class = self.concrete_classes[0]
-    d = abstract.Instance(concrete_class, self.vm, node)
-    for i, name in enumerate(self.type_param_names):
-      if self.inner is not None:
-        param = self.inner[i]
-      else:
-        param = self.vm.convert.create_new_unsolvable(node, name)
-      d.initialize_type_parameter(node, name, self.vm.instantiate(param, node))
-    return d.to_variable(node, self.pytd_name)
-
-  def get_instance_type(self, node, instance=None, seen=None):
-    if self.inner:
-      type_params = [pytd_utils.JoinTypes([i.get_instance_type(node, seen=seen)
-                                           for i in inner.data])
-                     for inner in self.inner
-                    ]
-      return pytd.GenericType(pytd.NamedType(self.pytd_name),
-                              tuple(type_params))
-    else:
-      return pytd.NamedType(self.pytd_name)
-
-  def __str__(self):
-    if self.inner:
-      list_entries = ", ".join(str(i.data[0]) for i in self.inner)
-      return self.name + "[" + list_entries + "]"
-    else:
-      return self.name
+  def _build_value(self, node, inner):
+    if len(inner) != len(self.type_param_names):
+      error = "Expected %d parameter(s), got %d" % (
+          len(self.type_param_names), len(inner))
+      self.vm.errorlog.invalid_annotation(
+          self.vm.frame.current_opcode, self.name, error)
+    params = {name: inner[i] if i < len(inner) else self.vm.convert.unsolvable
+              for i, name in enumerate(self.type_param_names)}
+    return abstract.ParameterizedClass(self.base_type, params, self.vm)
 
 
-class List(Container):
-  pytd_name = "__builtin__.list"
-  type_param_names = (abstract.T,)
-
-  def __init__(self, name, vm, node, inner=None):
-    super(List, self).__init__("List", vm, node, inner)
-    self.concrete_classes = [self.vm.convert.list_type]
-
-  def instantiate(self, node):
-    if self.inner is not None:
-      contained_type, = self.inner
-      list_items = [self.vm.instantiate(contained_type, node)]
-      return self.vm.convert.build_list(node, list_items)
-    else:
-      return self.vm.convert.build_list(node, [
-          self.vm.convert.create_new_unsolvable(node, "inner")])
-
-
-class Dict(Container):
-  pytd_name = "__builtin__.dict"
-  type_param_names = (abstract.K, abstract.V)
-
-  def __init__(self, name, vm, node, inner=None):
-    super(Dict, self).__init__("Dict", vm, node, inner)
-    self.concrete_classes = [self.vm.convert.dict_type]
-
-
-class Set(Container):
-  pytd_name = "__builtin__.set"
-  type_param_names = (abstract.T,)
-
-  def __init__(self, name, vm, node, inner=None):
-    super(Set, self).__init__("Set", vm, node, inner)
-    self.concrete_classes = [self.vm.convert.set_type]
-
-
-class FrozenSet(Container):
-  pytd_name = "__builtin__.frozenset"
-  type_param_names = (abstract.T,)
-
-  def __init__(self, name, vm, node, inner=None):
-    super(FrozenSet, self).__init__("FrozenSet", vm, node, inner)
-    self.concrete_classes = [self.vm.convert.frozenset_type]
-
-
-class Sequence(Container):
-  pytd_name = "typing.Sequence"
-  type_param_names = (abstract.T,)
-
-  def __init__(self, name, vm, node, inner=None):
-    super(Sequence, self).__init__("Sequence", vm, node, inner)
-    # TODO(kramm): These are incomplete:
-    self.concrete_classes = [self.vm.convert.list_type,
-                             self.vm.convert.tuple_type,
-                             self.vm.convert.set_type]
+def build_container(name, vm, node):
+  if name in pep484.PEP484_CAPITALIZED:
+    pytd_name = "__builtin__." + name.lower()
+  else:
+    pytd_name = "typing." + name
+  pytd_base = vm.lookup_builtin(pytd_name)
+  base = vm.convert.convert_constant_to_value(
+      pytd_base.name, pytd_base, {}, vm.root_cfg_node)
+  return Container(name, vm, node, base)
 
 
 def build_any(name, vm, node):
@@ -215,16 +131,20 @@ def build_typevar(name, vm, node):
   return abstract.Unknown(vm)
 
 
+# TODO(rechen): There are a lot of other generics in typing.pytd; do they all
+# need to be added here?
 typing_overload = {
-    "Union": Union,
-    "List": List,
-    "Dict": Dict,
-    "Set": Set,
-    "FrozenSet": FrozenSet,
-    "Sequence": Sequence,
+    # Containers
+    "Dict": build_container,
+    "FrozenSet": build_container,
+    "List": build_container,
+    "Sequence": build_container,
+    "Set": build_container,
+    # Others
+    "Any": build_any,
+    "Generic": lambda name, vm, _: abstract.get_unsupported(name, vm),
+    "NamedTuple": build_namedtuple,
     "Optional": build_optional,
     "TypeVar": build_typevar,
-    "NamedTuple": build_namedtuple,
-    "Generic": lambda name, vm, _: abstract.get_unsupported(name, vm),
-    "Any": build_any,
+    "Union": Union,
 }

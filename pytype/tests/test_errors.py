@@ -782,6 +782,23 @@ class ErrorTest(test_inference.InferenceTest):
     """)
     self.assertErrorLogIs(errors, [(2, "unsupported-operands", r"int.*int")])
 
+  def testInvalidAnnotations(self):
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      from typing import Dict, List, Union
+      def f1(x: Dict):  # okay
+        pass
+      def f2(x: Dict[str]):
+        pass
+      def f3(x: List[int, str]):
+        pass
+      def f4(x: Union):
+        pass
+    """)
+    self.assertErrorLogIs(errors, [(5, "invalid-annotation", r"2.*1"),
+                                   (7, "invalid-annotation", r"1.*2"),
+                                   (9, "invalid-annotation", r"x.*union")])
+
 
 if __name__ == "__main__":
   test_inference.main()

@@ -1689,8 +1689,15 @@ class VirtualMachine(object):
 
   def _process_one_annotation(self, annotation, name, top_level=True):
     """Change annotation / record errors where required."""
-    if (isinstance(annotation, abstract.Instance) and
-        annotation.cls.data == self.convert.str_type.data):
+    if isinstance(annotation, typing.Container):
+      annotation = annotation.base_type
+
+    if isinstance(annotation, typing.Union):
+      self.errorlog.invalid_annotation(self.frame.current_opcode, name,
+                                       "Missing union options")
+      return None
+    elif (isinstance(annotation, abstract.Instance) and
+          annotation.cls.data == self.convert.str_type.data):
       # String annotations : Late evaluation
       if isinstance(annotation, abstract.PythonConstant) and top_level:
         return function.LateAnnotation(
@@ -1709,31 +1716,21 @@ class VirtualMachine(object):
     elif annotation.cls and annotation.cls.data == self.convert.none_type.data:
       # PEP 484 allows to write "NoneType" as "None"
       return self.convert.none_type.data[0]
-    elif isinstance(annotation, typing.Container) and annotation.inner:
-      inner = []
-      for inner_annot in annotation.inner:
-        if len(inner_annot.bindings) > 1:
-          self.errorlog.invalid_annotation(self.frame.current_opcode, name,
-                                           "Must be constant")
-          return None
-        processed = self._process_one_annotation(
-            inner_annot.bindings[0].data, name, False)
+    elif isinstance(annotation, abstract.ParameterizedClass):
+      for param_name, param in annotation.type_parameters.items():
+        processed = self._process_one_annotation(param, name, False)
         if processed is None:
           return None
-        elif processed is inner_annot.bindings[0].data:
-          inner.append(inner_annot)
-        else:
-          inner.append(processed.to_variable(self.root_cfg_node))
-      annotation.inner = tuple(inner)
+        annotation.type_parameters[param_name] = processed
       return annotation
-    elif isinstance(annotation, typing.Union) and annotation.elements:
-      elements = []
-      for element in annotation.elements:
-        processed = self._process_one_annotation(element, name, False)
+    elif isinstance(annotation, abstract.Union):
+      options = []
+      for option in annotation.options:
+        processed = self._process_one_annotation(option, name, False)
         if processed is None:
           return None
-        elements.append(processed)
-      annotation.elements = tuple(elements)
+        options.append(processed)
+      annotation.options = tuple(options)
       return annotation
     else:
       return annotation

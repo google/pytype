@@ -54,6 +54,19 @@ class TypingTest(test_inference.InferenceTest):
       x = ...  # type: List[str]
     """)
 
+  def test_cast(self):
+    ty = self.Infer("""
+      from __future__ import google_type_annotations
+      import typing
+      def f():
+        return typing.cast(typing.List[int], [])
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      google_type_annotations = ...  # type: __future__._Feature
+      typing = ...  # type: module
+      def f() -> Any
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

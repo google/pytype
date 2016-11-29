@@ -350,6 +350,7 @@ class AnnotationTest(test_inference.InferenceTest):
       f(1)
     """, deep=True, extract_locals=True)
     self.assertErrorLogIs(errors, [
+        (7, "wrong-arg-types"),
         (8, "wrong-arg-types"),
     ])
 
@@ -723,7 +724,7 @@ class AnnotationTest(test_inference.InferenceTest):
         pass
     """)
     self.assertErrorLogIs(errors, [
-        (3, "invalid-annotation", r"x.*constant"),
+        (3, "invalid-annotation", r"List.*constant"),
         (5, "invalid-annotation", r"Union.*constant")])
 
   def testVarargs(self):
@@ -913,6 +914,17 @@ class AnnotationTest(test_inference.InferenceTest):
         x = ...  # type: int
         New = ...  # type: staticmethod
       def f() -> int: ...
+    """)
+
+  def testDeeplyNestedAnnotation(self):
+    self.assertNoErrors("""\
+      from __future__ import google_type_annotations
+      from typing import Any, Dict, List, Optional
+      def G(x: Optional[List[Dict[str, Any]]]):
+        if x:
+          pass
+      def F(x: Optional[List[Dict[str, Any]]]):
+        G(x)
     """)
 
 
