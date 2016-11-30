@@ -67,6 +67,15 @@ class TypingTest(test_inference.InferenceTest):
       def f() -> Any
     """)
 
+  def test_generator(self):
+    self.assertNoErrors("""\
+      from __future__ import google_type_annotations
+      from typing import Generator
+      def f() -> Generator[int]:
+        for i in range(3):
+          yield i
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

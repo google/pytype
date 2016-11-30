@@ -137,6 +137,7 @@ typing_overload = {
     # Containers
     "Dict": build_container,
     "FrozenSet": build_container,
+    "Generator": build_container,
     "List": build_container,
     "Sequence": build_container,
     "Set": build_container,

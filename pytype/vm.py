@@ -10,6 +10,9 @@ trace of the program execution.
 # Bytecodes don't always use all their arguments:
 # pylint: disable=unused-argument
 
+# VirtualMachine uses late initialization for its "frame" attribute:
+# pytype: disable=none-attr
+
 import collections
 import logging
 import os
@@ -1908,10 +1911,29 @@ class VirtualMachine(object):
     pass  # overridden in infer.py
 
   def byte_RETURN_VALUE(self, state, op):
+    """Get and check the return value."""
     state, var = state.pop()
     if self.frame.allowed_returns is not None:
-      self._check_return(self.frame.current_opcode, state.node, var,
-                         self.frame.allowed_returns)
+      if self.frame.yield_variable.bindings:  # Generator
+        # A generator shouldn't return anything, so the expected return type
+        # is None.
+        self._check_return(self.frame.current_opcode, state.node, var,
+                           abstract.get_atomic_value(self.convert.none_type))
+        # Since we manually run the generator to completion in
+        # InterpreterFunction.call, the yield variable data may be bound to a
+        # node beyond this one; copy the data over.
+        yield_variable = self.program.NewVariable(
+            "yield", self.frame.yield_variable.data, [], state.node)
+        # Create a dummy generator instance for checking that
+        # Generator[<yield_variable>] matches the annotated return type.
+        generator = abstract.Generator(self.frame, self, state.node)
+        generator.type_parameters[abstract.T] = yield_variable
+        self._check_return(self.frame.current_opcode, state.node,
+                           generator.to_variable(state.node),
+                           self.frame.allowed_returns)
+      else:
+        self._check_return(self.frame.current_opcode, state.node, var,
+                           self.frame.allowed_returns)
       _, _, retvar = self.init_class(state.node, self.frame.allowed_returns)
     else:
       retvar = var

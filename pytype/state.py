@@ -242,7 +242,6 @@ class Frame(object):
       self.f_builtins = builtins_pu.data
     self.f_lineno = f_code.co_firstlineno
     self.cells = {}
-    self.generator = None
 
     self.allowed_returns = None
     self.return_variable = self.vm.program.NewVariable(
