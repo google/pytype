@@ -1582,6 +1582,10 @@ class TestASTGeneration(parser_test_base.ParserTest):
     parent, = typing.Lookup("typing.IO").parents
     self.assertEquals(pytd.NamedType("Iterator"), parent)
 
+  def testEmptyUnionOrOptional(self):
+    self.TestThrowsSyntaxError("def f(x: Union): ...")
+    self.TestThrowsSyntaxError("def f(x: Optional): ...")
+
 
 class TestDecorate(unittest.TestCase):
   """Test adding additional methods to nodes in a tree using decorate.py."""

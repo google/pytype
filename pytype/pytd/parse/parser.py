@@ -1309,6 +1309,9 @@ class _TypeDeclParser(object):
 
   def p_type_name(self, p):
     """type : named_or_external_type"""
+    if isinstance(p[1], pytd.NamedType) and (p[1].name == "typing.Union" or
+                                             p[1].name == "typing.Optional"):
+      make_syntax_error(self, "Missing options to %s" % p[1].name, p)
     p[0] = p[1]
 
   def p_named_or_external_type(self, p):

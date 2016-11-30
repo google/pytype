@@ -187,9 +187,12 @@ class ConvertTypingToNative(visitors.Visitor):
     else:
       return None, t.name
 
+  def _IsTyping(self, module):
+    return module == "typing" or (module is None and self.module == "typing")
+
   def _Convert(self, t):
     module, name = self._GetModuleAndName(t)
-    if module == "typing" or (module is None and self.module == "typing"):
+    if self._IsTyping(module):
       if name in PEP484_CAPITALIZED:
         return pytd.NamedType(name.lower())  # "typing.List" -> "list" etc.
       elif name in PEP484_TRANSLATIONS:
@@ -208,7 +211,7 @@ class ConvertTypingToNative(visitors.Visitor):
 
   def VisitGenericType(self, t):
     module, name = self._GetModuleAndName(t)
-    if module == "typing":
+    if self._IsTyping(module):
       if name == "Optional":
         return pytd.UnionType(t.parameters + (pytd.NamedType("NoneType"),))
       elif name == "Union":

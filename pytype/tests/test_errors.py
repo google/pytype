@@ -799,6 +799,21 @@ class ErrorTest(test_inference.InferenceTest):
                                    (7, "invalid-annotation", r"1.*2"),
                                    (9, "invalid-annotation", r"x.*union")])
 
+  def testEmptyUnionOrOptional(self):
+    with utils.Tempdir() as d:
+      d.create_file("f1.pyi", """\
+        def f(x: Union): ...
+      """)
+      d.create_file("f2.pyi", """\
+        def f(x: Optional): ...
+      """)
+      _, errors = self.InferAndCheck("""\
+        import f1
+        import f2
+      """, pythonpath=[d.path])
+      self.assertErrorLogIs(errors, [(1, "pyi-error", r"f1.*Union"),
+                                     (2, "pyi-error", r"f2.*Optional")])
+
 
 if __name__ == "__main__":
   test_inference.main()
