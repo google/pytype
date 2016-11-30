@@ -19,6 +19,7 @@ from pytype.pytd.parse import visitors
 # TODO(dbaum): Remove the preceding comment once the parser is complete.
 
 _DEFAULT_VERSION = (2, 7, 6)
+_DEFAULT_PLATFORM = "linux"
 
 
 _Params = collections.namedtuple("_", ["required",
@@ -215,17 +216,19 @@ class _Parser(object):
   NOTHING = pytd.NothingType()
   ANYTHING = pytd.AnythingType()
 
-  def __init__(self, version):
+  def __init__(self, version, platform):
     """Initialize the parser.
 
     Args:
       version: A version tuple.
+      platform: A platform string.
     """
     self._type_map = {}
 
     self._used = False
     self._error_location = None
-    self._version = version
+    self._version = _three_tuple(version or _DEFAULT_VERSION)
+    self._platform = platform or _DEFAULT_PLATFORM
     self._filename = None
     # The condition stack, start with a default scope that will always be
     # active.
@@ -350,14 +353,14 @@ class _Parser(object):
         raise ParseError("sys.version_info must be compared to a tuple")
       if not all(isinstance(v, int) for v in value):
         raise ParseError("only integers are allowed in version tuples")
-      # Append zeros and slice to normalize the tuple to a three-tuple.
-      actual = (self._version + (0, 0))[:3]
+      actual = self._version
+      value = _three_tuple(value)
     elif name == "sys.platform":
       if not isinstance(value, str):
         raise ParseError("sys.platform must be compared to a string")
       if op not in ["==", "!="]:
         raise ParseError("sys.platform must be compared using == or !=")
-      actual = "linux"
+      actual = self._platform
     else:
       raise ParseError("Unsupported condition: '%s'." % name)
     return _COMPARES[op](actual, value)
@@ -702,9 +705,10 @@ class _Parser(object):
     self._type_params.append(pytd.TypeParameter(name, scope=None))
 
 
-def parse_string(src, name=None, filename=None,
-                 python_version=_DEFAULT_VERSION):
-  return _Parser(version=python_version).parse(src, name, filename)
+def parse_string(src, name=None, filename=None, python_version=None,
+                 platform=None):
+  return _Parser(version=python_version, platform=platform).parse(
+      src, name, filename)
 
 
 def _keep_decorator(decorator):
@@ -866,3 +870,8 @@ def _split_definitions(defs):
     else:
       raise TypeError("Unexpected definition type %s", type(d))
   return constants, functions
+
+
+def _three_tuple(value):
+  """Append zeros and slice to normalize the tuple to a three-tuple."""
+  return (value + (0, 0))[:3]

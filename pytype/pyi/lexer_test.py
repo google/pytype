@@ -302,6 +302,13 @@ class LexerTest(unittest.TestCase):
         goodbye
       """)
 
+  def test_ignore_comment_indentation(self):
+    self.check([1, "TYPECOMMENT", 2, 3], """\
+      1
+        # comment 0
+        # type: 2
+      3""")
+
   def test_builtins(self):
     pytd_dir = os.path.dirname(os.path.dirname(parser.__file__))
     with open(os.path.join(pytd_dir, "builtins/__builtin__.pytd")) as f:

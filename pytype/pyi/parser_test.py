@@ -22,12 +22,16 @@ def get_builtins_source():
 
 class _ParserTestBase(unittest.TestCase):
 
-  def _check_legacy(self, src, name, actual):
+  def _check_legacy(self, src, name, actual, version, platform):
     """Check that actual matches legacy parsing of src."""
-    old_tree = legacy_parser.parse_string(src, name=name)
+    old_tree = legacy_parser.parse_string(
+        src, name=name,
+        python_version=version or parser._DEFAULT_VERSION,
+        platform=platform or parser._DEFAULT_PLATFORM)
     self.assertMultiLineEqual(pytd.Print(old_tree), actual)
 
-  def check(self, src, expected=None, prologue=None, legacy=True, name=None):
+  def check(self, src, expected=None, prologue=None, legacy=True, name=None,
+            version=None, platform=None):
     """Check the parsing of src.
 
     This checks that parsing the source and then printing the resulting
@@ -44,15 +48,18 @@ class _ParserTestBase(unittest.TestCase):
         printing the AST.
       legacy: If true, comapre results to legacy parser.
       name: The name of the module.
+      version: A python version tuple (None for default value).
+      platform: A platform string (None for default value).
 
     Returns:
       The parsed pytd.TypeDeclUnit.
     """
     src = textwrap.dedent(src)
-    ast = parser.parse_string(src, name=name)
+    ast = parser.parse_string(src, name=name, python_version=version,
+                              platform=platform)
     actual = pytd.Print(ast)
     if legacy:
-      self._check_legacy(src, name, actual)
+      self._check_legacy(src, name, actual, version, platform)
     if expected != IGNORE:
       expected = src if expected is None else textwrap.dedent(expected)
       if prologue:
@@ -128,6 +135,16 @@ class ParserTest(_ParserTestBase):
       class Foo:
         x = ... # type: int
        y""", 3, "Invalid indentation")
+
+  def test_type_on_next_line(self):
+    # TODO(dbaum): This probably should be an error.  Current behavior matches
+    # legacy parser, consider changing to an error once the legacy parser is
+    # removed.
+    self.check("""\
+      a = ...
+      # type: int""",
+               """\
+      a = ...  # type: int""")
 
   def test_constant(self):
     self.check("x = ...", "x = ...  # type: Any", "from typing import Any")
@@ -901,12 +918,12 @@ class ClassIfTest(_ParserTestBase):
 
 class ConditionTest(_ParserTestBase):
 
-  def check_cond(self, condition, expected):
+  def check_cond(self, condition, expected, **kwargs):
     out = "x = ...  # type: int" if expected else ""
     self.check("""\
       if %s:
         x = ...  # type: int
-      """ % condition, out)
+      """ % condition, out, **kwargs)
 
   def check_cond_error(self, condition, message):
     self.check_error("""\
@@ -949,10 +966,17 @@ class ConditionTest(_ParserTestBase):
     self.check_cond("sys.version_info >= (2, 7, 7)", False)
 
   def test_version_shorter_tuples(self):
-    self.check_cond("sys.version_info >= (2,)", True)
-    self.check_cond("sys.version_info >= (3,)", False)
-    self.check_cond("sys.version_info >= (2, 7)", True)
-    self.check_cond("sys.version_info >= (2, 8)", False)
+    self.check_cond("sys.version_info == (3,)", True, version=(3, 0, 0))
+    self.check_cond("sys.version_info == (3, 0)", True, version=(3, 0, 0))
+    self.check_cond("sys.version_info == (3, 0, 0)", True, version=(3, 0, 0))
+    self.check_cond("sys.version_info == (3,)", False, version=(3, 0, 1))
+    self.check_cond("sys.version_info == (3, 0)", False, version=(3, 0, 1))
+    self.check_cond("sys.version_info > (3,)", True, version=(3, 0, 1))
+    self.check_cond("sys.version_info > (3, 0)", True, version=(3, 0, 1))
+    self.check_cond("sys.version_info == (3, 0, 0)", True, version=(3,),
+                    legacy=False)
+    self.check_cond("sys.version_info == (3, 0, 0)", True, version=(3, 0),
+                    legacy=False)
 
   def test_version_error(self):
     self.check_cond_error('sys.version_info == "foo"',
@@ -963,6 +987,7 @@ class ConditionTest(_ParserTestBase):
   def test_platform_eq(self):
     self.check_cond('sys.platform == "linux"', True)
     self.check_cond('sys.platform == "win32"', False)
+    self.check_cond('sys.platform == "foo"', True, platform="foo")
 
   def test_platform_error(self):
     self.check_cond_error("sys.platform == (1, 2, 3)",

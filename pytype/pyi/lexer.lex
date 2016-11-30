@@ -147,6 +147,9 @@
  /* Ignore empty lines. */
 <NEWLINE>[ ]*\n { yycolumn = 1; }
 
+ /* Ignore comment indentation. */
+<NEWLINE>[ ]+/# { BEGIN(INITIAL); }
+
  /* White space at start of line. */
 <NEWLINE>[ ]+ {
   if (yyextra->bracket_count_) {

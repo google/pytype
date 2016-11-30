@@ -171,7 +171,13 @@ static PyObject* parse(PyObject* self, PyObject* args) {
   pytype::Lexer lexer(bytes, length);
   int err = pytype::pytypeparse(lexer.scanner(), &ctx);
   if (err) {
-    // TODO(dbaum): Deal with err==2, which is memory exhaustion.
+    if (err != 1) {
+      // This wasn't a syntax error (which has already constructed an error
+      // message).  In theory the only other error code is #2 for memory
+      // exhaustion, but just in case there are other codes, build a generic
+      // error messsage.
+      PyErr_Format(PyExc_RuntimeError, "Parse error #%d.", err);
+    }
     return NULL;
   } else {
     PyObject* result = ctx.GetResult();
