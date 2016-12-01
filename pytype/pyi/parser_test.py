@@ -153,6 +153,9 @@ class ParserTest(_ParserTestBase):
     self.check_error("\nx = 123", 2,
                      "Only '0' allowed as int literal")
 
+  def test_constant_pep526(self):
+    self.check("x : str", "x = ...  # type: str")
+
   def test_alias_or_constant(self):
     self.check("x = True", "x = ...  # type: bool")
     self.check("x = False", "x = ...  # type: bool")
@@ -258,7 +261,8 @@ class ParserTest(_ParserTestBase):
           File: "foo.py", line 2
             this is not valid
                  ^
-        ParseError: syntax error, unexpected NAME, expecting '='"""), str(e))
+        ParseError: syntax error, unexpected NAME, expecting ':' or '='"""
+                                               ), str(e))
 
   def test_pep484_translations(self):
     ast = self.check("""\

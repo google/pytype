@@ -311,6 +311,10 @@ constantdef
       $$ = ctx->Call(kNewConstant, "(NN)", $1, $5);
       CHECK($$, @$);
     }
+  | NAME ':' type {
+      $$ = ctx->Call(kNewConstant, "(NN)", $1, $3);
+      CHECK($$, @$);
+    }
   ;
 
 importdef
