@@ -191,16 +191,21 @@ class CheckerTest(test_inference.InferenceTest):
     errorlog = self.get_checking_errors(python)
     self.assertErrorLogIs(errorlog, [(4, "bad-return-type", r"float.*int")])
 
-  def testFunctionAsAnnotation(self):
+  def testInstanceAsAnnotation(self):
     python = """\
       from __future__ import google_type_annotations
       def f():
         pass
       def g(x: f):
         pass
+      def h(x: 3):
+        pass
     """
     errorlog = self.get_checking_errors(python)
-    self.assertErrorLogIs(errorlog, [(4, "invalid-annotation", r"f")])
+    self.assertErrorLogIs(errorlog, [(4, "invalid-annotation",
+                                      r"x.*instance of function"),
+                                     (6, "invalid-annotation",
+                                      r"x.*instance of int")])
 
   def testBadGenerator(self):
     python = """\

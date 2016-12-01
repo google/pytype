@@ -1738,8 +1738,12 @@ class VirtualMachine(object):
     elif isinstance(annotation, (abstract.Class, abstract.AMBIGUOUS_OR_EMPTY)):
       return annotation
     else:
-      error = str(annotation) + " is not a type"
-      self.errorlog.invalid_annotation(self.frame.current_opcode, name, error)
+      if annotation.cls:
+        desc = "An instance of %s" % annotation.cls.bindings[0].data
+      else:
+        desc = str(annotation)
+      self.errorlog.invalid_annotation(
+          self.frame.current_opcode, name, desc + " is not a type")
       return None
 
   def _convert_function_annotations(self, node, raw_annotations):
