@@ -40,6 +40,7 @@ setup(
     url='http://github.com/google/pytype',
     packages=['pytype',
               'pytype/pyc',
+              'pytype/pyi',
               'pytype/pytd',
               'pytype/pytd/parse',
              ],
