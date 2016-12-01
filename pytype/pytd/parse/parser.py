@@ -856,6 +856,10 @@ class _TypeDeclParser(object):
     """constantdef : NAME COLON type"""
     p[0] = pytd.Constant(p[1], p[3])
 
+  def p_constantdef_pep526_ellipsis(self, p):
+    """constantdef : NAME COLON type ASSIGN ELLIPSIS"""
+    p[0] = pytd.Constant(p[1], p[3])
+
   def p_constantdef_ellipsis(self, p):
     """constantdef : NAME ASSIGN ELLIPSIS"""
     p[0] = pytd.Constant(p[1], pytd.AnythingType())

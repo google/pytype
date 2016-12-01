@@ -315,6 +315,10 @@ constantdef
       $$ = ctx->Call(kNewConstant, "(NN)", $1, $3);
       CHECK($$, @$);
     }
+  | NAME ':' type '=' ELLIPSIS {
+      $$ = ctx->Call(kNewConstant, "(NN)", $1, $3);
+      CHECK($$, @$);
+    }
   ;
 
 importdef

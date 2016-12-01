@@ -155,6 +155,7 @@ class ParserTest(_ParserTestBase):
 
   def test_constant_pep526(self):
     self.check("x : str", "x = ...  # type: str")
+    self.check("x : str = ...", "x = ...  # type: str")
 
   def test_alias_or_constant(self):
     self.check("x = True", "x = ...  # type: bool")
