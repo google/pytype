@@ -217,7 +217,8 @@ class CheckerTest(test_inference.InferenceTest):
     """
     errorlog = self.get_checking_errors(python)
     self.assertErrorLogIs(errorlog, [(5, "bad-return-type",
-                                      r"Generator\[int\].*Generator\[str\]")])
+                                      r"Generator\[int, Any, Any\].*"
+                                      r"Generator\[str, Any, Any\]")])
 
 
 if __name__ == "__main__":

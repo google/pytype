@@ -504,10 +504,15 @@ class Converter(object):
     elif isinstance(pyval, pytd.GenericType):
       assert isinstance(pyval.base_type, pytd.ClassType)
       type_parameters = utils.LazyDict()
-      for param, value in zip(pyval.base_type.cls.template, pyval.parameters):
-        type_parameters.add_lazy_item(
-            param.name, self.convert_constant_to_value,
-            param.name, value, subst, node)
+      # TODO(rechen): Report an error when there are more parameters than
+      # template items. The check should probably happen during import.
+      for i, param in enumerate(pyval.base_type.cls.template):
+        if i < len(pyval.parameters):
+          type_parameters.add_lazy_item(
+              param.name, self.convert_constant_to_value,
+              param.name, pyval.parameters[i], subst, node)
+        else:
+          type_parameters[param.name] = self.unsolvable.to_variable(node)
       base_cls = self.convert_constant_to_value(
           pytd.Print(pyval.base_type), pyval.base_type.cls, subst, node)
       cls = abstract.ParameterizedClass(base_cls, type_parameters, self.vm)

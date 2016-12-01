@@ -87,7 +87,7 @@ class Container(TypingClass):
     self.type_param_names = tuple(t.name for t in base_type.pytd_cls.template)
 
   def _build_value(self, node, inner):
-    if len(inner) != len(self.type_param_names):
+    if len(inner) > len(self.type_param_names):
       error = "Expected %d parameter(s), got %d" % (
           len(self.type_param_names), len(inner))
       self.vm.errorlog.invalid_annotation(

@@ -788,15 +788,14 @@ class ErrorTest(test_inference.InferenceTest):
       from typing import Dict, List, Union
       def f1(x: Dict):  # okay
         pass
-      def f2(x: Dict[str]):
+      def f2(x: Dict[str]):  # okay, "Any" is automatically filled in for V
         pass
       def f3(x: List[int, str]):
         pass
       def f4(x: Union):
         pass
     """)
-    self.assertErrorLogIs(errors, [(5, "invalid-annotation", r"2.*1"),
-                                   (7, "invalid-annotation", r"1.*2"),
+    self.assertErrorLogIs(errors, [(7, "invalid-annotation", r"1.*2"),
                                    (9, "invalid-annotation", r"x.*union")])
 
   def testEmptyUnionOrOptional(self):

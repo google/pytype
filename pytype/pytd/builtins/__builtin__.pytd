@@ -939,9 +939,9 @@ class file(BinaryIO):
 class function(Callable):
     def __get__(self, obj, ...) -> instancemethod
 
-class generator(Generator[T]):
-    def __iter__(self) -> generator[T]
-    def send(self, arg) -> ?  # TODO(pludemann): or should be "-> T" ?  or needs 2 parameter types for generator?
+class generator(Generator[T, T2, V]):
+    def __iter__(self) -> generator[T, T2, V]
+    def send(self, value: T2) -> T
     def close(self) -> NoneType
     def next(self) -> T
 

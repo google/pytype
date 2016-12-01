@@ -54,7 +54,7 @@ class GeneratorTest(test_inference.InferenceTest):
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
         def bar(self) -> ?
-        def __iter__(self) -> Generator[nothing, ...]
+        def __iter__(self) -> Generator[nothing, nothing, nothing]
     """)
 
   def testCoroutineType(self):
@@ -63,7 +63,7 @@ class GeneratorTest(test_inference.InferenceTest):
         yield 3
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
-      def foo(self) -> Generator[int, ...]
+      def foo(self) -> Generator[int, Any, Any]
     """)
 
   def testIterationOfGetItem(self):

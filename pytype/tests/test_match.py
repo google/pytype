@@ -18,7 +18,7 @@ class MatchTest(test_inference.InferenceTest):
     self.assertTypesMatchPytd(ty, """
       tokenize = ...  # type: module
       def f() -> NoneType
-      x = ...  # type: Generator[Tuple[Union[Tuple[int, ...], int, str], ...]]
+      x = ...  # type: Generator[Tuple[Union[Tuple[int, ...], int, str], ...], None, None]
     """)
 
   def testBoundAgainstCallable(self):
@@ -30,7 +30,7 @@ class MatchTest(test_inference.InferenceTest):
     self.assertTypesMatchPytd(ty, """
       tokenize = ...  # type: module
       StringIO = ...  # type: module
-      x = ...  # type: Generator[Tuple[Union[Tuple[int, ...], int, str], ...]]
+      x = ...  # type: Generator[Tuple[Union[Tuple[int, ...], int, str], ...], None, None]
     """)
 
   def testTypeAgainstCallable(self):
