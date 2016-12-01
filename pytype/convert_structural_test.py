@@ -4,9 +4,9 @@ import textwrap
 import unittest
 
 from pytype import convert_structural
+from pytype.pyi import parser
 from pytype.pytd import pytd
 from pytype.pytd.parse import builtins
-from pytype.pytd.parse import parser
 from pytype.pytd.parse import visitors
 from pytype.tests import test_inference
 import unittest

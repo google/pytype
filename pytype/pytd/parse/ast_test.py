@@ -14,9 +14,9 @@
 # limitations under the License.
 
 import textwrap
+from pytype.pyi import parser
 from pytype.pytd import pytd
 from pytype.pytd.parse import decorate
-from pytype.pytd.parse import parser
 from pytype.pytd.parse import parser_test_base
 import unittest
 

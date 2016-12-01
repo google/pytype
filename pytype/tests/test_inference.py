@@ -11,11 +11,11 @@ from pytype import directors
 from pytype import errors
 from pytype import infer
 from pytype.pyc import loadmarshal
+from pytype.pyi import parser
 from pytype.pytd import optimize
 from pytype.pytd import pytd
 from pytype.pytd import utils as pytd_utils
 from pytype.pytd.parse import builtins
-from pytype.pytd.parse import parser
 from pytype.pytd.parse import visitors
 
 import unittest

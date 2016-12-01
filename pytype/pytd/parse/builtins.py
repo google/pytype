@@ -20,8 +20,8 @@
 import os
 
 
+from pytype.pyi import parser
 from pytype.pytd import utils
-from pytype.pytd.parse import parser
 from pytype.pytd.parse import visitors
 
 

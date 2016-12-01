@@ -14,11 +14,11 @@ import optparse
 import sys
 
 
+from pytype.pyi import parser
 from pytype.pytd import optimize
 from pytype.pytd import pytd
 from pytype.pytd import utils
 from pytype.pytd.parse import builtins
-from pytype.pytd.parse import parser
 
 
 def parse_options(args):

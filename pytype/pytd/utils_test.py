@@ -17,10 +17,10 @@
 import os
 import textwrap
 import unittest
+from pytype.pyi import parser
 from pytype.pytd import pytd
 from pytype.pytd import utils
 from pytype.pytd.parse import builtins
-from pytype.pytd.parse import parser
 from pytype.pytd.parse import parser_test_base
 from pytype.pytd.parse import visitors
 

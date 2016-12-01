@@ -35,11 +35,11 @@ from pytype import typing
 from pytype import utils
 from pytype.pyc import loadmarshal
 from pytype.pyc import pyc
+from pytype.pyi import parser
 from pytype.pytd import cfg as typegraph
 from pytype.pytd import slots
 from pytype.pytd import utils as pytd_utils
 from pytype.pytd.parse import builtins
-from pytype.pytd.parse import parser
 from pytype.pytd.parse import visitors
 
 log = logging.getLogger(__name__)

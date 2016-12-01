@@ -263,6 +263,8 @@ class _Parser(object):
     self._used = True
 
     self._filename = filename
+    # TODO(dbaum): Remove this when legacy code is no longer required.
+    _LEGACY.filename = "?"
 
     if name != "typing":
       self._type_map = {name: pytd.NamedType("typing." + name)
@@ -275,6 +277,7 @@ class _Parser(object):
 
     try:
       defs = parser_ext.parse(self, src)
+      ast = self._build_type_decl_unit(defs)
     except ParseError as e:
       if self._error_location:
         line = self._error_location[0]
@@ -286,8 +289,9 @@ class _Parser(object):
                          column=self._error_location[1], text=text)
       else:
         raise e
-
-    ast = self._build_type_decl_unit(defs)
+    except legacy_parser.ParseError as e:
+      # TODO(dbaum): Remove this when legacy code is no longer required.
+      raise ParseError(e.message)
 
     ast = ast.Visit(legacy_parser.InsertTypeParameters())
     ast = ast.Visit(pep484.ConvertTypingToNative(name))
@@ -477,6 +481,10 @@ class _Parser(object):
 
     Returns:
       A pytd type node.
+
+    Raises:
+      ParseError: if parameters are not supplied for a base_type that requires
+          parameters, such as Union.
     """
     base_type = self._type_map.get(name)
     if base_type is None:
@@ -484,6 +492,9 @@ class _Parser(object):
     if parameters is not None:
       return self._parameterized_type(base_type, parameters)
     else:
+      if (isinstance(base_type, pytd.NamedType) and
+          base_type.name in ["typing.Union", "typing.Optional"]):
+        raise ParseError("Missing options to %s" % base_type.name)
       return base_type
 
   def _parameterized_type(self, base_type, parameters):

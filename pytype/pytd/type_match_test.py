@@ -19,11 +19,11 @@ import textwrap
 import unittest
 
 
+from pytype.pyi import parser
 from pytype.pytd import booleq
 from pytype.pytd import pytd
 from pytype.pytd import type_match
 from pytype.pytd import utils as pytd_utils
-from pytype.pytd.parse import parser
 from pytype.pytd.parse import visitors
 
 

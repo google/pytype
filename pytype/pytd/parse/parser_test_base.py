@@ -18,9 +18,9 @@
 import os
 import sys
 import textwrap
+from pytype.pyi import parser
 from pytype.pytd import pytd
 from pytype.pytd.parse import builtins
-from pytype.pytd.parse import parser
 from pytype.pytd.parse import visitors
 import unittest
 

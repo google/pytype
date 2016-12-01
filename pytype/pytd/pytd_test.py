@@ -3,8 +3,8 @@
 import itertools
 import textwrap
 import unittest
+from pytype.pyi import parser
 from pytype.pytd import pytd
-from pytype.pytd.parse import parser
 from pytype.pytd.parse import visitors
 
 

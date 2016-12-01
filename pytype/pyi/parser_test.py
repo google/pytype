@@ -214,6 +214,12 @@ class ParserTest(_ParserTestBase):
                 
                 x = ...  # type: Union[int, str, float]""")
 
+  def test_empty_union_or_optional(self):
+    self.check_error("def f(x: Union): ...", 1,
+                     "Missing options to typing.Union")
+    self.check_error("def f(x: Optional): ...", 1,
+                     "Missing options to typing.Optional")
+
   def test_alias_lookup(self):
     self.check("""\
       from somewhere import Foo

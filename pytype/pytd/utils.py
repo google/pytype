@@ -24,10 +24,10 @@ locally or within a larger repository.
 import collections
 import os
 
+from pytype.pyi import parser
 from pytype.pytd import abc_hierarchy
 from pytype.pytd import pep484
 from pytype.pytd import pytd
-from pytype.pytd.parse import parser
 from pytype.pytd.parse import visitors
 import pytype.utils
 
