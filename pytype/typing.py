@@ -53,10 +53,8 @@ class TypingClass(abstract.ValueWithSlots):
     inner = []
     for var in _maybe_extract_tuple(self.vm.convert, node, slice_var):
       if len(var.bindings) > 1:
-        # We don't have access to the name that we're annotating, so we'll use
-        # the name of the type with which it's being annotated instead.
-        self.vm.errorlog.invalid_annotation(self.vm.frame.current_opcode,
-                                            self.name, "Must be constant")
+        self.vm.errorlog.invalid_annotation(self.vm.frame.current_opcode, self,
+                                            "Must be constant")
         inner.append(self.vm.convert.unsolvable)
       else:
         inner.append(var.bindings[0].data)
@@ -91,7 +89,7 @@ class Container(TypingClass):
       error = "Expected %d parameter(s), got %d" % (
           len(self.type_param_names), len(inner))
       self.vm.errorlog.invalid_annotation(
-          self.vm.frame.current_opcode, self.name, error)
+          self.vm.frame.current_opcode, self, error)
     params = {name: inner[i] if i < len(inner) else self.vm.convert.unsolvable
               for i, name in enumerate(self.type_param_names)}
     return abstract.ParameterizedClass(self.base_type, params, self.vm)

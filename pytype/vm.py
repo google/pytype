@@ -623,8 +623,10 @@ class VirtualMachine(object):
         else:
           resolved = x
       else:
-        self.errorlog.invalid_annotation(annot.opcode, annot.name,
-                                         "Must be constant")
+        self.errorlog.invalid_annotation(annot.opcode,
+                                         abstract.merge_values(ret.data, self),
+                                         "Must be constant",
+                                         annot.name)
         resolved = self.convert.unsolvable
       func.signature.set_annotation(name, resolved)
 
@@ -1696,8 +1698,8 @@ class VirtualMachine(object):
       annotation = annotation.base_type
 
     if isinstance(annotation, typing.Union):
-      self.errorlog.invalid_annotation(self.frame.current_opcode, name,
-                                       "Missing union options")
+      self.errorlog.invalid_annotation(
+          self.frame.current_opcode, annotation, "Needs options", name)
       return None
     elif (isinstance(annotation, abstract.Instance) and
           annotation.cls.data == self.convert.str_type.data):
@@ -1714,7 +1716,8 @@ class VirtualMachine(object):
         else:
           # Not a constant, e.g., def f(x: str())
           error = "Must be constant"
-        self.errorlog.invalid_annotation(self.frame.current_opcode, name, error)
+        self.errorlog.invalid_annotation(
+            self.frame.current_opcode, annotation, error, name)
         return None
     elif annotation.cls and annotation.cls.data == self.convert.none_type.data:
       # PEP 484 allows to write "NoneType" as "None"
@@ -1738,12 +1741,8 @@ class VirtualMachine(object):
     elif isinstance(annotation, (abstract.Class, abstract.AMBIGUOUS_OR_EMPTY)):
       return annotation
     else:
-      if annotation.cls:
-        desc = "An instance of %s" % annotation.cls.bindings[0].data
-      else:
-        desc = str(annotation)
       self.errorlog.invalid_annotation(
-          self.frame.current_opcode, name, desc + " is not a type")
+          self.frame.current_opcode, annotation, "Not a type", name)
       return None
 
   def _convert_function_annotations(self, node, raw_annotations):
@@ -1757,8 +1756,10 @@ class VirtualMachine(object):
         name = abstract.get_atomic_python_constant(name)
         visible = t.Data(node)
         if len(visible) > 1:
-          self.errorlog.invalid_annotation(self.frame.current_opcode, name,
-                                           "Must be constant")
+          self.errorlog.invalid_annotation(self.frame.current_opcode,
+                                           abstract.merge_values(visible, self),
+                                           "Must be constant",
+                                           name)
         else:
           annot = self._process_one_annotation(visible[0], name)
           if isinstance(annot, function.LateAnnotation):

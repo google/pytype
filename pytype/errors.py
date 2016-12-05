@@ -1,13 +1,14 @@
 """Code and data structures for storing and displaying errors."""
 
 import os
-import re
 import StringIO
 import sys
 
 
 from pytype import abstract
+from pytype import typing
 from pytype import utils
+from pytype.pytd import pep484
 from pytype.pytd import pytd
 from pytype.pytd import utils as pytd_utils
 
@@ -220,6 +221,78 @@ class ErrorLogBase(object):
 class ErrorLog(ErrorLogBase):
   """ErrorLog with convenience functions."""
 
+  def _print_as_expected_type(self, t):
+    if isinstance(t, (abstract.Unknown, abstract.Unsolvable)):
+      return "Any"
+    elif isinstance(t, abstract.ParameterizedClass):
+      params = [t.type_parameters[type_param.name]
+                for type_param in t.base_cls.pytd_cls.template]
+      base = self._print_as_expected_type(t.base_cls)
+      base = pep484.PEP484_MaybeCapitalize(base) or base
+      return "%s[%s]" % (base, ", ".join(self._print_as_expected_type(p)
+                                         for p in params))
+    elif isinstance(t, abstract.Union):
+      options = sorted(self._print_as_expected_type(o) for o in t.options)
+      return "%s[%s]" % (t.name, ", ".join(options))
+    elif isinstance(t, typing.TypingClass) or not t.cls:
+      return t.name
+    else:
+      return "<instance of %s>" % self._print_as_expected_type(t.cls.data[0])
+
+  def _print_as_actual_type(self, t):
+    if isinstance(t, abstract.Instance):
+      if t.cls:
+        cls = t.cls.bindings[0].data
+        if isinstance(cls, abstract.ParameterizedClass):
+          cls = cls.base_cls
+        if isinstance(cls, abstract.PyTDClass) and cls.pytd_cls.template:
+          params = []
+          for template_item in cls.pytd_cls.template:
+            param_var = t.type_parameters.get(template_item.name)
+            if param_var is None or not param_var.bindings:
+              param = "nothing"
+            else:
+              param_values = abstract.merge_values(
+                  param_var.data, param_var.bindings[0].data.vm)
+              param = self._print_as_actual_type(param_values)
+            params.append(param)
+          name = pep484.PEP484_MaybeCapitalize(t.name) or t.name
+          return "%s[%s]" % (name, ", ".join(params))
+      return t.name
+    elif isinstance(t, (abstract.Unknown, abstract.Unsolvable)):
+      return "Any"
+    elif isinstance(t, abstract.Class):
+      return "Type[%s]" % self._print_as_expected_type(t)
+    elif isinstance(t, abstract.Union):
+      options = sorted(self._print_as_actual_type(o) for o in t.options)
+      return "%s[%s]" % (t.name, ", ".join(options))
+    else:
+      return t.name
+
+  def _print_sig(self, sig):
+    """Pretty-print a function.Signature object."""
+    def default_suffix(name):
+      return " = ..." if name in sig.defaults else ""
+    def annotate(name):
+      if name in sig.annotations:
+        return (name + ": " +
+                self._print_as_expected_type(sig.annotations[name]) +
+                default_suffix(name))
+      else:
+        return name + default_suffix(name)
+    s = []
+    for name in sig.param_names:
+      s.append(annotate(name))
+    if sig.varargs_name is not None:
+      s.append("*" + annotate(sig.varargs_name))
+    elif sig.kwonly_params:
+      s.append("*")
+    for name in sig.kwonly_params:
+      s.append(annotate(name))
+    if sig.kwargs_name is not None:
+      s.append("**" + annotate(sig.kwargs_name))
+    return ", ".join(s)
+
   @_error_name("pyi-error")
   def pyi_error(self, opcode, name, error):
     self.error(opcode, "Couldn't import pyi for %r" % name, str(error))
@@ -227,7 +300,7 @@ class ErrorLog(ErrorLogBase):
   @_error_name("attribute-error")
   def attribute_error(self, opcode, obj, attr_name):
     assert obj.bindings
-    obj_values = self._prettyprint_arg(
+    obj_values = self._print_as_actual_type(
         abstract.merge_values(obj.data, obj.bindings[0].data.vm))
     self.error(opcode, "No attribute %r on %s" % (attr_name, obj_values))
 
@@ -254,22 +327,12 @@ class ErrorLog(ErrorLogBase):
     module_name = module.data[0].name
     self.error(opcode, "Can't find %s.%s" % (module_name, name))
 
-  def _prettyprint_sig(self, sig):
-    return re.sub(r"~unknown\d*", "Any", sig)
-
-  def _prettyprint_arg(self, arg):
-    """Pretty-print a function argument."""
-    if isinstance(arg, abstract.Class):
-      return "Type[%s]" % arg
-    else:
-      return str(arg)
-
   def _invalid_parameters(self, opcode, message, (sig, passed_args)):
     details = "".join([
-        "Expected: (", self._prettyprint_sig(str(sig)), ")\n",
-        "Actually passed: (", self._prettyprint_sig(
-            ", ".join("%s: %s" % (name, self._prettyprint_arg(arg))
-                      for name, arg in passed_args)),
+        "Expected: (", self._print_sig(sig), ")\n",
+        "Actually passed: (",
+        ", ".join("%s: %s" % (name, self._print_as_actual_type(arg))
+                  for name, arg in passed_args),
         ")"])
     self.error(opcode, message, details)
 
@@ -365,8 +428,13 @@ class ErrorLog(ErrorLogBase):
         operation, pytd.Print(left), pytd.Print(right)))
 
   @_error_name("invalid-annotation")
-  def invalid_annotation(self, opcode, name, details):
-    self.error(opcode, "Invalid type annotation for %s. %s" % (name, details))
+  def invalid_annotation(self, opcode, annot, details, name=None):
+    if name is None:
+      suffix = ""
+    else:
+      suffix = " for " + name
+    self.error(opcode, "Invalid type annotation %s%s. %s" % (
+        self._print_as_expected_type(annot), suffix, details))
 
   @_error_name("mro-error")
   def mro_error(self, opcode, name, mro_seqs):

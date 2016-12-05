@@ -22,7 +22,6 @@ from pytype import output
 from pytype import utils
 from pytype.pyc import loadmarshal
 from pytype.pytd import cfg as typegraph
-from pytype.pytd import pep484
 from pytype.pytd import pytd
 from pytype.pytd import utils as pytd_utils
 from pytype.pytd.parse import visitors
@@ -411,9 +410,6 @@ class TypeParameter(AtomicAbstractValue):
   def __repr__(self):
     return "TypeParameter(%r)" % self.name
 
-  def __str__(self):
-    return self.name
-
 
 class TypeParameterInstance(AtomicAbstractValue):
   """An instance of a type parameter."""
@@ -652,21 +648,6 @@ class Instance(SimpleAbstractValue):
               #  class Foo(List[U]): pass
               self.type_parameters.add_alias(name, param.name)
 
-  def __str__(self):
-    if self.cls:
-      cls = self.cls.bindings[0].data
-      if isinstance(cls, ParameterizedClass):
-        cls = cls.base_cls
-      if isinstance(cls, PyTDClass) and cls.pytd_cls.template:
-        params = []
-        for t in cls.pytd_cls.template:
-          param = self.type_parameters.get(t.name)
-          params.append("nothing" if param is None or not param.bindings
-                        else str(param.bindings[0].data.name))
-        name = pep484.PEP484_MaybeCapitalize(self.name) or self.name
-        return "%s[%s]" % (name, ", ".join(params))
-    return self.name
-
   def make_template_unsolvable(self, template, node):
     for formal in template:
       self.initialize_type_parameter(
@@ -862,7 +843,6 @@ class Union(AtomicAbstractValue):
   def __init__(self, options, vm):
     super(Union, self).__init__("Union", vm)
     assert options
-    self.name = "Union[%s]" % ", ".join(sorted([str(t) for t in options]))
     self.options = options
     # TODO(rechen): Don't allow a mix of formal and non-formal types
     self.formal = any(t.formal for t in options)
@@ -1252,9 +1232,6 @@ class Function(Instance):
 
   def __repr__(self):
     return self.name + "(...)"
-
-  # We want to use __repr__ above rather than Instance.__str__
-  __str__ = __repr__
 
 
 class Mutation(collections.namedtuple("_", ["instance", "name", "value"])):
@@ -1743,12 +1720,6 @@ class ParameterizedClass(AtomicAbstractValue, Class):
     return "ParameterizedClass(cls=%r params=%s)" % (self.base_cls,
                                                      self.type_parameters)
 
-  def __str__(self):
-    params = [self.type_parameters[type_param.name]
-              for type_param in self.base_cls.pytd_cls.template]
-    base = pep484.PEP484_MaybeCapitalize(str(self.base_cls)) or self.base_cls
-    return "%s[%s]" % (base, ", ".join(str(p) for p in params))
-
   def to_type(self, node, seen=None):
     return Class.to_type(self, node, seen)
 
@@ -1858,9 +1829,6 @@ class PyTDClass(SimpleAbstractValue, Class):
 
   def __repr__(self):
     return "PyTDClass(%s)" % self.name
-
-  def __str__(self):
-    return self.name
 
   def to_pytd_def(self, node, name):
     # This happens if a module does e.g. "from x import y as z", i.e., copies
@@ -1992,9 +1960,6 @@ class InterpreterClass(SimpleAbstractValue, Class):
 
   def __repr__(self):
     return "InterpreterClass(%s)" % self.name
-
-  def __str__(self):
-    return self.name
 
 
 class NativeFunction(Function):

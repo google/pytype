@@ -708,8 +708,8 @@ class ErrorTest(test_inference.InferenceTest):
     _, errors = self.InferAndCheck("""\
       X = type(3, (int, object), {"a": 1})
     """, solve_unknowns=True)
-    self.assertErrorLogIs(errors, [(1, "wrong-arg-count",
-                                    r"Actually passed:.*int")])
+    error = r"Actual.*int.*Tuple\[Union\[Type\[int\], Type\[object\]\]\]"
+    self.assertErrorLogIs(errors, [(1, "wrong-arg-count", error)])
 
   def testBadTypeBases(self):
     _, errors = self.InferAndCheck("""\
@@ -796,7 +796,7 @@ class ErrorTest(test_inference.InferenceTest):
         pass
     """)
     self.assertErrorLogIs(errors, [(7, "invalid-annotation", r"1.*2"),
-                                   (9, "invalid-annotation", r"x.*union")])
+                                   (9, "invalid-annotation", r"Union.*x")])
 
   def testEmptyUnionOrOptional(self):
     with utils.Tempdir() as d:
@@ -812,6 +812,32 @@ class ErrorTest(test_inference.InferenceTest):
       """, pythonpath=[d.path])
       self.assertErrorLogIs(errors, [(1, "pyi-error", r"f1.*Union"),
                                      (2, "pyi-error", r"f2.*Optional")])
+
+  def testPrintUnsolvable(self):
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      def f(x: nonsense, y: str, z: float):
+        pass
+      f("", 42, nonsense)
+    """)
+    self.assertErrorLogIs(errors, [(2, "name-error", r"nonsense"),
+                                   (4, "name-error", r"nonsense"),
+                                   (4, "wrong-arg-types",
+                                    r"Expected:.*x: Any.*Actual.*z: Any")])
+
+  def testPrintUnionOfContainers(self):
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      def f():
+        pass
+      if __any_object__:
+        x = dict
+      else:
+        x = [float]
+      f(x)
+    """)
+    error = r"Actual.*Union\[List\[Type\[float\]\], Type\[dict\]\]"
+    self.assertErrorLogIs(errors, [(8, "wrong-arg-count", error)])
 
 
 if __name__ == "__main__":

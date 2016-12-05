@@ -98,27 +98,6 @@ class Signature(object):
         late_annotations={}
     )
 
-  def __str__(self):
-    def default_suffix(name):
-      return " = ..." if name in self.defaults else ""
-    def annotate(name):
-      if name in self.annotations:
-        return name + ": " + str(self.annotations[name]) + default_suffix(name)
-      else:
-        return name + default_suffix(name)
-    s = []
-    for name in self.param_names:
-      s.append(annotate(name))
-    if self.varargs_name is not None:
-      s.append("*" + annotate(self.varargs_name))
-    elif self.kwonly_params:
-      s.append("*")
-    for name in self.kwonly_params:
-      s.append(annotate(name))
-    if self.kwargs_name is not None:
-      s.append("**" + annotate(self.kwargs_name))
-    return ", ".join(s)
-
   def iter_args(self, args):
     """Iterates through the given args, attaching names and expected types."""
     for i, posarg in enumerate(args.posargs):
