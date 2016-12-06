@@ -139,6 +139,7 @@ typing_overload = {
     "List": build_container,
     "Sequence": build_container,
     "Set": build_container,
+    "Type": build_container,
     # Others
     "Any": build_any,
     "Generic": lambda name, vm, _: abstract.get_unsupported(name, vm),

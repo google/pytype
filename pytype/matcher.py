@@ -163,16 +163,9 @@ class AbstractMatcher(object):
       if (other_type.full_name == "__builtin__.type" and
           isinstance(other_type, abstract.ParameterizedClass)):
         other_type = other_type.type_parameters[abstract.T]
-        if other_type.formal:
-          value = left.instantiate(node).bindings[0]
-          return self.match_value_against_type(
-              value, other_type, subst, node, view)
-        else:
-          base = self._match_from_mro(left, other_type)
-          if base is not None:
-            # TODO(rechen): We should match type parameters when base and
-            # other_type are both parameterized classes.
-            return subst
+        value = left.instantiate(node).bindings[0]
+        return self.match_value_against_type(
+            value, other_type, subst, node, view)
       elif other_type.full_name in [
           "__builtin__.type", "__builtin__.object", "typing.Callable"]:
         return subst

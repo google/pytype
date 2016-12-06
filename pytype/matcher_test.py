@@ -98,6 +98,15 @@ class MatcherTest(unittest.TestCase):
         var, right, {}, self.root_cfg_node, {})
     self.assertEquals(result, {})
 
+  def testClassAgainstTypeUnion(self):
+    left = abstract.InterpreterClass("foo", [], {}, None, self.vm)
+    right = abstract.InterpreterClass("type", [], {}, None, self.vm)
+    right.module = "__builtin__"
+    union = abstract.Union((left,), self.vm)
+    right = abstract.ParameterizedClass(right, {"T": union}, self.vm)
+    result = self._match_value(left, right)
+    self.assertEquals(result, {})
+
 
 if __name__ == "__main__":
   unittest.main()

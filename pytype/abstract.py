@@ -847,6 +847,9 @@ class Union(AtomicAbstractValue):
     # TODO(rechen): Don't allow a mix of formal and non-formal types
     self.formal = any(t.formal for t in options)
 
+  def __repr__(self):
+    return "%s[%s]" % (self.name, ", ".join(repr(o) for o in self.options))
+
   def instantiate(self, node):
     var = self.vm.program.NewVariable(self.name)
     for option in self.options:
@@ -859,6 +862,12 @@ class Union(AtomicAbstractValue):
   def get_instance_type(self, node, instance=None, seen=None):
     return pytd.UnionType(tuple(t.get_instance_type(node, instance, seen)
                                 for t in self.options))
+
+  def get_class(self):
+    var = self.vm.program.NewVariable("cls")
+    for o in self.options:
+      var.PasteVariable(o.get_class(), self.vm.root_cfg_node)
+    return var
 
 
 class FunctionArgs(collections.namedtuple("_", ["posargs", "namedargs",
@@ -1733,6 +1742,12 @@ class ParameterizedClass(AtomicAbstractValue, Class):
         pytd_utils.NamedTypeWithModule(self.base_cls.name,
                                        self.base_cls.module),
         type_arguments)
+
+  def instantiate(self, node):
+    if self.full_name == "__builtin__.type":
+      return self.type_parameters[T].to_variable(node)
+    else:
+      return super(ParameterizedClass, self).instantiate(node)
 
 
 class PyTDClass(SimpleAbstractValue, Class):
