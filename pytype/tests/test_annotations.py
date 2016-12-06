@@ -704,13 +704,13 @@ class AnnotationTest(test_inference.InferenceTest):
     _, errors = self.InferAndCheck("""\
       from __future__ import google_type_annotations
       from typing import List, Union
-      def f(x: List["str"]):
+      def f(x: List["int"]):
         pass
-      def g(x: Union["str"]):
+      def g(x: Union["int"]):
         pass
     """)
-    self.assertErrorLogIs(errors, [(3, "invalid-annotation", r"x.*quote"),
-                                   (5, "invalid-annotation", r"x.*quote")])
+    self.assertErrorLogIs(errors, [(3, "invalid-annotation", r"int.*x.*quote"),
+                                   (5, "invalid-annotation", r"int.*x.*quote")])
 
   def testAmbiguousInnerAnnotation(self):
     _, errors = self.InferAndCheck("""\

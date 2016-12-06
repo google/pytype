@@ -234,6 +234,8 @@ class ErrorLog(ErrorLogBase):
     elif isinstance(t, abstract.Union):
       options = sorted(self._print_as_expected_type(o) for o in t.options)
       return "%s[%s]" % (t.name, ", ".join(options))
+    elif isinstance(t, abstract.PythonConstant):
+      return repr(t.pyval)
     elif isinstance(t, typing.TypingClass) or not t.cls:
       return t.name
     else:

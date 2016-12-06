@@ -205,7 +205,7 @@ class CheckerTest(test_inference.InferenceTest):
     self.assertErrorLogIs(errorlog, [(4, "invalid-annotation",
                                       r"instance of function.*x"),
                                      (6, "invalid-annotation",
-                                      r"instance of int.*x")])
+                                      r"3.*x")])
 
   def testBadGenerator(self):
     python = """\
