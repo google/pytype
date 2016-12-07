@@ -512,7 +512,7 @@ class Converter(object):
               param.name, self.convert_constant_to_value,
               param.name, pyval.parameters[i], subst, node)
         else:
-          type_parameters[param.name] = self.unsolvable.to_variable(node)
+          type_parameters[param.name] = self.unsolvable
       base_cls = self.convert_constant_to_value(
           pytd.Print(pyval.base_type), pyval.base_type.cls, subst, node)
       cls = abstract.ParameterizedClass(base_cls, type_parameters, self.vm)

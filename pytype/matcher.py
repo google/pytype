@@ -71,6 +71,7 @@ class AbstractMatcher(object):
     """
     left = value.data
     assert isinstance(left, abstract.AtomicAbstractValue), left
+    assert isinstance(other_type, abstract.AtomicAbstractValue), other_type
 
     if left.formal or isinstance(other_type, abstract.Class):
       # Accumulate substitutions in "subst", or break in case of error:

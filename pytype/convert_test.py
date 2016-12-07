@@ -1,6 +1,7 @@
 """Tests for convert.py."""
 
 
+from pytype import abstract
 from pytype import config
 from pytype import errors
 from pytype import utils
@@ -55,6 +56,16 @@ class ConvertTest(unittest.TestCase):
     subcls_meta, = self._convert_class("a.C", ast).cls.data
     self.assertEqual(meta, cls_meta)
     self.assertEqual(meta, subcls_meta)
+
+  def test_generic_with_any_param(self):
+    ast = self._load_ast("a", """
+      x = ...  # type: Dict[str]
+    """)
+    val = self._vm.convert.convert_constant_to_value(
+        "x", ast.Lookup("a.x").type, {}, self._vm.root_cfg_node)
+    self.assertIs(val.type_parameters["K"],
+                  abstract.get_atomic_value(self._vm.convert.str_type))
+    self.assertIs(val.type_parameters["V"], self._vm.convert.unsolvable)
 
 
 if __name__ == "__main__":
