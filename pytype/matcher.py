@@ -32,14 +32,40 @@ class AbstractMatcher(object):
     subst = {}
     for name, formal in formal_args:
       actual = arg_dict[name]
-      subst = self.match_value_against_type(actual, formal, subst, node, view)
+      subst = self._match_value_against_type(actual, formal, subst, node, view)
       if subst is None:
         return None
     return utils.HashableDict(subst)
 
+  def bad_matches(self, var, other_type, node, subst=None, condition=None):
+    """Match a Variable against a type. Return bindings that don't match.
+
+    Args:
+      var: A cfg.Variable, containing instances.
+      other_type: An instance of AtomicAbstractValue.
+      node: A cfg.CFGNode. The position in the CFG from which we "observe" the
+        match.
+      subst: Type parameter substitutions.
+      condition: The currently active if condition.
+    Returns:
+      A list of all the bindings of var that didn't match.
+    """
+    subst = subst or {}
+    bad = []
+    for combination in utils.deep_variable_product([var]):
+      view = {value.variable: value for value in combination}
+      combination = view.values() + ([condition.binding] if condition else [])
+      if not node.HasCombination(combination):
+        log.info("No such combination %r", combination)
+        continue
+      if self.match_var_against_type(var, other_type, subst,
+                                     node, view) is None:
+        bad.append(view[var])
+    return bad
+
   def match_var_against_type(self, var, other_type, subst, node, view):
     if var.bindings:
-      return self.match_value_against_type(
+      return self._match_value_against_type(
           view[var], other_type, subst, node, view)
     else:  # Empty set of values. The "nothing" type.
       if isinstance(other_type, abstract.Union):
@@ -56,7 +82,7 @@ class AbstractMatcher(object):
       # If this type is empty, we can match it against anything.
       return subst
 
-  def match_value_against_type(self, value, other_type, subst, node, view):
+  def _match_value_against_type(self, value, other_type, subst, node, view):
     """One-way unify value into pytd type given a substitution.
 
     Args:
@@ -71,14 +97,15 @@ class AbstractMatcher(object):
     """
     left = value.data
     assert isinstance(left, abstract.AtomicAbstractValue), left
+    assert not left.formal, left
     assert isinstance(other_type, abstract.AtomicAbstractValue), other_type
 
-    if left.formal or isinstance(other_type, abstract.Class):
+    if isinstance(other_type, abstract.Class):
       # Accumulate substitutions in "subst", or break in case of error:
       return self._match_type_against_type(left, other_type, subst, node, view)
     elif isinstance(other_type, abstract.Union):
       for t in other_type.options:
-        new_subst = self.match_value_against_type(value, t, subst, node, view)
+        new_subst = self._match_value_against_type(value, t, subst, node, view)
         if new_subst is not None:
           # TODO(kramm): What if more than one type matches?
           return new_subst
@@ -116,32 +143,6 @@ class AbstractMatcher(object):
       log.error("Invalid type: %s", type(other_type))
       return None
 
-  def bad_matches(self, var, other_type, node, subst=None, condition=None):
-    """Match a Variable against a type. Return bindings that don't match.
-
-    Args:
-      var: A cfg.Variable, containing instances.
-      other_type: An instance of AtomicAbstractValue.
-      node: A cfg.CFGNode. The position in the CFG from which we "observe" the
-        match.
-      subst: Type parameter substitutions.
-      condition: The currently active if condition.
-    Returns:
-      A list of all the bindings of var that didn't match.
-    """
-    subst = subst or {}
-    bad = []
-    for combination in utils.deep_variable_product([var]):
-      view = {value.variable: value for value in combination}
-      combination = view.values() + ([condition.binding] if condition else [])
-      if not node.HasCombination(combination):
-        log.info("No such combination %r", combination)
-        continue
-      if self.match_var_against_type(var, other_type, subst,
-                                     node, view) is None:
-        bad.append(view[var])
-    return bad
-
   def _match_type_against_type(self, left, other_type, subst, node, view):
     """Checks whether a type is compatible with a (formal) type.
 
@@ -165,7 +166,7 @@ class AbstractMatcher(object):
           isinstance(other_type, abstract.ParameterizedClass)):
         other_type = other_type.type_parameters[abstract.T]
         value = left.instantiate(node).bindings[0]
-        return self.match_value_against_type(
+        return self._match_value_against_type(
             value, other_type, subst, node, view)
       elif other_type.full_name in [
           "__builtin__.type", "__builtin__.object", "typing.Callable"]:

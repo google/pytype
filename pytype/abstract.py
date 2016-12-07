@@ -1712,8 +1712,6 @@ class ParameterizedClass(AtomicAbstractValue, Class):
         parameter.
   """
 
-  formal = True
-
   def __init__(self, base_cls, type_parameters, vm):
     # A ParameterizedClass is created by converting a pytd.GenericType, whose
     # base type is restricted to NamedType and ClassType.
@@ -1728,6 +1726,13 @@ class ParameterizedClass(AtomicAbstractValue, Class):
   def __repr__(self):
     return "ParameterizedClass(cls=%r params=%s)" % (self.base_cls,
                                                      self.type_parameters)
+
+  @property
+  def formal(self):
+    # We can't compute self.formal in __init__ because doing so would force
+    # evaluation of our type parameters during initialization, possibly
+    # leading to an infinite loop.
+    return any(t.formal for t in self.type_parameters.values())
 
   def to_type(self, node, seen=None):
     return Class.to_type(self, node, seen)
