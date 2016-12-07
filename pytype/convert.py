@@ -67,7 +67,6 @@ class Converter(object):
       self.primitive_class_instances[name] = instance
       clsval, = clsvar.bindings
       self._convert_cache[(abstract.Instance, clsval.data.pytd_cls)] = instance
-    self.primitive_class_instances[types.NoneType] = self.none
 
     self.none_type = self.primitive_classes[types.NoneType]
     self.object_type = self.primitive_classes[object]
