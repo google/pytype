@@ -220,6 +220,17 @@ class CheckerTest(test_inference.InferenceTest):
                                       r"Generator\[str, Any, Any\].*"
                                       r"Generator\[int, Any, Any\]")])
 
+  def testMultipleParameterBindings(self):
+    python = """\
+      from __future__ import google_type_annotations
+      from typing import List
+      def f(x) -> List[int]:
+        return ["", x]
+    """
+    errorlog = self.get_checking_errors(python)
+    self.assertErrorLogIs(errorlog, [(4, "bad-return-type",
+                                      r"List\[int\].*List\[str\]")])
+
 
 if __name__ == "__main__":
   test_inference.main()

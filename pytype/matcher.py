@@ -38,7 +38,7 @@ class AbstractMatcher(object):
     return utils.HashableDict(subst)
 
   def bad_matches(self, var, other_type, node, subst=None, condition=None):
-    """Match a Variable against a type. Return bindings that don't match.
+    """Match a Variable against a type. Return views that don't match.
 
     Args:
       var: A cfg.Variable, containing instances.
@@ -48,7 +48,7 @@ class AbstractMatcher(object):
       subst: Type parameter substitutions.
       condition: The currently active if condition.
     Returns:
-      A list of all the bindings of var that didn't match.
+      A list of all the views of var that didn't match.
     """
     subst = subst or {}
     bad = []
@@ -60,7 +60,7 @@ class AbstractMatcher(object):
         continue
       if self.match_var_against_type(var, other_type, subst,
                                      node, view) is None:
-        bad.append(view[var])
+        bad.append(view)
     return bad
 
   def match_var_against_type(self, var, other_type, subst, node, view):

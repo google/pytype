@@ -327,6 +327,34 @@ class PyTDTest(AbstractTestBase):
     self.assertEquals(pytd_cls.metaclass, pytd.UnionType(
         (pytd.NamedType("M1"), pytd.NamedType("M2"))))
 
+  def testToTypeWithView1(self):
+    # to_type(<instance of List[int or unsolvable]>, view={T: int})
+    instance = abstract.Instance(
+        self._vm.convert.list_type, self._vm, self._vm.root_cfg_node)
+    instance.type_parameters["T"] = self._vm.program.NewVariable(
+        "T", [self._vm.convert.unsolvable], [], self._vm.root_cfg_node)
+    param_binding = instance.type_parameters["T"].AddBinding(
+        self._vm.convert.primitive_class_instances[int], [],
+        self._vm.root_cfg_node)
+    view = {instance.cls: instance.cls.bindings[0],
+            instance.type_parameters["T"]: param_binding,
+            param_binding.data.cls: param_binding.data.cls.bindings[0]}
+    pytd_type = instance.to_type(self._vm.root_cfg_node, seen=None, view=view)
+    self.assertEquals("__builtin__.list", pytd_type.base_type.name)
+    self.assertSetEqual({"__builtin__.int"},
+                        {t.name for t in pytd_type.parameters})
+
+  def testToTypeWithView2(self):
+    # to_type(<instance of <str or unsolvable>>, view={__class__: str})
+    cls = self._vm.program.NewVariable(
+        "cls", [self._vm.convert.unsolvable], [], self._vm.root_cfg_node)
+    cls_binding = cls.AddBinding(
+        self._vm.convert.str_type.data[0], [], self._vm.root_cfg_node)
+    instance = abstract.Instance(cls, self._vm, self._vm.root_cfg_node)
+    view = {cls: cls_binding}
+    pytd_type = instance.to_type(self._vm.root_cfg_node, seen=None, view=view)
+    self.assertEquals("__builtin__.str", pytd_type.name)
+
 
 # TODO(rechen): Test InterpreterFunction.
 class FunctionTest(AbstractTestBase):

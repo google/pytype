@@ -393,7 +393,8 @@ class CallTracer(vm.VirtualMachine):
   def _check_return(self, opcode, node, actual, formal):
     bad = self.matcher.bad_matches(actual, formal, node)
     if bad:
-      combined = pytd_utils.JoinTypes([t.data.to_type(node) for t in bad])
+      combined = pytd_utils.JoinTypes(
+          [view[actual].data.to_type(node, view=view) for view in bad])
       self.errorlog.bad_return_type(
           opcode, combined, formal.get_instance_type(node))
 
