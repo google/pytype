@@ -231,6 +231,17 @@ class CheckerTest(test_inference.InferenceTest):
     self.assertErrorLogIs(errorlog, [(4, "bad-return-type",
                                       r"List\[int\].*List\[str\]")])
 
+  def testNoParamBinding(self):
+    python = """\
+      from __future__ import google_type_annotations
+      def f() -> None:
+        x = []
+        return x
+    """
+    errorlog = self.get_checking_errors(python)
+    self.assertErrorLogIs(errorlog, [(4, "bad-return-type",
+                                      r"None.*List\[nothing\]")])
+
 
 if __name__ == "__main__":
   test_inference.main()

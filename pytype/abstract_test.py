@@ -355,6 +355,15 @@ class PyTDTest(AbstractTestBase):
     pytd_type = instance.to_type(self._vm.root_cfg_node, seen=None, view=view)
     self.assertEquals("__builtin__.str", pytd_type.name)
 
+  def testToTypeWithViewAndEmptyParam(self):
+    instance = abstract.Instance(
+        self._vm.convert.list_type, self._vm, self._vm.root_cfg_node)
+    instance.type_parameters["T"] = self._vm.program.NewVariable("T")
+    view = {instance.cls: instance.cls.bindings[0]}
+    pytd_type = instance.to_type(self._vm.root_cfg_node, seen=None, view=view)
+    self.assertEquals("__builtin__.list", pytd_type.base_type.name)
+    self.assertSequenceEqual((pytd.NothingType(),), pytd_type.parameters)
+
 
 # TODO(rechen): Test InterpreterFunction.
 class FunctionTest(AbstractTestBase):

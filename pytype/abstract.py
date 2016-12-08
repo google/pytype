@@ -115,7 +115,7 @@ def merge_values(values, vm):
 
 
 def _get_values(node, var, view):
-  if view:
+  if var.bindings and view is not None:
     return [view[var].data]
   else:
     return var.Data(node)
