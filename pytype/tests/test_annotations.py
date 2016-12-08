@@ -228,8 +228,8 @@ class AnnotationTest(test_inference.InferenceTest):
           return 3j
     """)
     self.assertErrorLogIs(errors, {
-        (4, "bad-return-type", r"is str.*should be int"),
-        (6, "bad-return-type", r"is complex.*should be int")
+        (4, "bad-return-type", r"Expected.*int.*Actual.*str"),
+        (6, "bad-return-type", r"Expected.*int.*Actual.*complex")
     })
 
   def testAmbiguousReturn(self):
@@ -243,7 +243,8 @@ class AnnotationTest(test_inference.InferenceTest):
         return y
     """)
     self.assertErrorLogIs(errors, {
-        (7, "bad-return-type", r"is Union(?=.*complex).*str.*should be int"),
+        (7, "bad-return-type",
+         r"Expected.*int.*Actual.*Union(?=.*complex).*str"),
     })
 
   def testDefaultReturn(self):
@@ -517,7 +518,7 @@ class AnnotationTest(test_inference.InferenceTest):
         return 3
     """, deep=True)
     self.assertErrorLogIs(errors, [(
-        4, "bad-return-type", r"should be FooBar")])
+        4, "bad-return-type", r"Expected: FooBar")])
 
   def testUnknownArgument(self):
     with utils.Tempdir() as d:

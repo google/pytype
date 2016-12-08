@@ -418,9 +418,11 @@ class ErrorLog(ErrorLogBase):
 
   @_error_name("bad-return-type")
   def bad_return_type(self, opcode, actual_pytd, expected_pytd):
-    self.error(opcode, "return type is %s, should be %s" % (
-        pytd.Print(actual_pytd),
-        pytd.Print(expected_pytd)))
+    details = "".join([
+        "Expected: ", pytd.Print(expected_pytd), "\n",
+        "Actually returned: ", pytd.Print(actual_pytd),
+    ])
+    self.error(opcode, "bad option in return type", details)
 
   @_error_name("unsupported-operands")
   def unsupported_operands(self, opcode, node, operation, var1, var2):

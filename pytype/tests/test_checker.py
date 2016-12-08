@@ -52,7 +52,7 @@ class CheckerTest(test_inference.InferenceTest):
     """
     errorlog = self.get_checking_errors(python, pytd)
     self.assertErrorLogContains(
-        errorlog, r"line 3, in f.*return type is float, should be int")
+        errorlog, r"line 3, in f.*Expected.*int.*Actual.*float")
 
   def testUnion(self):
     pytd = """
@@ -110,7 +110,7 @@ class CheckerTest(test_inference.InferenceTest):
     """
     errorlog = self.get_checking_errors(python)
     self.assertErrorLogIs(errorlog, [(4, "bad-return-type",
-                                      r"List\[object\].*List\[int\]")])
+                                      r"List\[int\].*List\[object\]")])
 
   def testBadReturnTypePytd(self):
     python = """\
@@ -122,7 +122,7 @@ class CheckerTest(test_inference.InferenceTest):
     """
     errorlog = self.get_checking_errors(python, pytd)
     self.assertErrorLogIs(errorlog, [(2, "bad-return-type",
-                                      r"List\[object\].*List\[int\]")])
+                                      r"List\[int\].*List\[object\]")])
 
   def testUseVarargsAndKwargs(self):
     python = """\
@@ -189,7 +189,7 @@ class CheckerTest(test_inference.InferenceTest):
         return {"x": 42.0}
     """
     errorlog = self.get_checking_errors(python)
-    self.assertErrorLogIs(errorlog, [(4, "bad-return-type", r"float.*int")])
+    self.assertErrorLogIs(errorlog, [(4, "bad-return-type", r"int.*float")])
 
   def testInstanceAsAnnotation(self):
     python = """\
@@ -217,8 +217,8 @@ class CheckerTest(test_inference.InferenceTest):
     """
     errorlog = self.get_checking_errors(python)
     self.assertErrorLogIs(errorlog, [(5, "bad-return-type",
-                                      r"Generator\[int, Any, Any\].*"
-                                      r"Generator\[str, Any, Any\]")])
+                                      r"Generator\[str, Any, Any\].*"
+                                      r"Generator\[int, Any, Any\]")])
 
 
 if __name__ == "__main__":
