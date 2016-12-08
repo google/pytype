@@ -617,18 +617,16 @@ class VirtualMachine(object):
       _, _, _, ret = self.run_bytecode(
           node, code, f_globals, new_locals)
       if len(ret.data) == 1:
-        x = ret.data[0]
-        if x.cls and x.cls.data == self.convert.none_type.data:
-          resolved = self.convert.none_type.data[0]
-        else:
-          resolved = x
+        resolved = self._process_one_annotation(
+            ret.data[0], annot.name, annot.opcode)
       else:
         self.errorlog.invalid_annotation(annot.opcode,
                                          abstract.merge_values(ret.data, self),
                                          "Must be constant",
                                          annot.name)
         resolved = self.convert.unsolvable
-      func.signature.set_annotation(name, resolved)
+      if resolved is not None:
+        func.signature.set_annotation(name, resolved)
 
   def call_binary_operator(self, state, name, x, y, report_errors=False):
     """Map a binary operator to "magic methods" (__add__ etc.)."""
@@ -1692,14 +1690,14 @@ class VirtualMachine(object):
     state, pos_defaults = state.popn(num_pos_defaults)
     return state, pos_defaults, kw_defaults, raw_annotations
 
-  def _process_one_annotation(self, annotation, name, top_level=True):
+  def _process_one_annotation(self, annotation, name, opcode, top_level=True):
     """Change annotation / record errors where required."""
     if isinstance(annotation, typing.Container):
       annotation = annotation.base_type
 
     if isinstance(annotation, typing.Union):
       self.errorlog.invalid_annotation(
-          self.frame.current_opcode, annotation, "Needs options", name)
+          opcode, annotation, "Needs options", name)
       return None
     elif (isinstance(annotation, abstract.Instance) and
           annotation.cls.data == self.convert.str_type.data):
@@ -1716,15 +1714,14 @@ class VirtualMachine(object):
         else:
           # Not a constant, e.g., def f(x: str())
           error = "Must be constant"
-        self.errorlog.invalid_annotation(
-            self.frame.current_opcode, annotation, error, name)
+        self.errorlog.invalid_annotation(opcode, annotation, error, name)
         return None
     elif annotation.cls and annotation.cls.data == self.convert.none_type.data:
       # PEP 484 allows to write "NoneType" as "None"
       return self.convert.none_type.data[0]
     elif isinstance(annotation, abstract.ParameterizedClass):
       for param_name, param in annotation.type_parameters.items():
-        processed = self._process_one_annotation(param, name, False)
+        processed = self._process_one_annotation(param, name, opcode, False)
         if processed is None:
           return None
         annotation.type_parameters[param_name] = processed
@@ -1732,7 +1729,7 @@ class VirtualMachine(object):
     elif isinstance(annotation, abstract.Union):
       options = []
       for option in annotation.options:
-        processed = self._process_one_annotation(option, name, False)
+        processed = self._process_one_annotation(option, name, opcode, False)
         if processed is None:
           return None
         options.append(processed)
@@ -1741,8 +1738,7 @@ class VirtualMachine(object):
     elif isinstance(annotation, (abstract.Class, abstract.AMBIGUOUS_OR_EMPTY)):
       return annotation
     else:
-      self.errorlog.invalid_annotation(
-          self.frame.current_opcode, annotation, "Not a type", name)
+      self.errorlog.invalid_annotation(opcode, annotation, "Not a type", name)
       return None
 
   def _convert_function_annotations(self, node, raw_annotations):
@@ -1761,7 +1757,8 @@ class VirtualMachine(object):
                                            "Must be constant",
                                            name)
         else:
-          annot = self._process_one_annotation(visible[0], name)
+          annot = self._process_one_annotation(
+              visible[0], name, self.frame.current_opcode)
           if isinstance(annot, function.LateAnnotation):
             late_annotations[name] = annot
           elif annot is not None:

@@ -928,6 +928,16 @@ class AnnotationTest(test_inference.InferenceTest):
         G(x)
     """)
 
+  def testInvalidLateAnnotation(self):
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      from typing import List
+      Type = "int"
+      def f(x: "List[Type]"):
+        pass
+    """)
+    self.assertErrorLogIs(errors, [(4, "invalid-annotation", r"int.*x.*quote")])
+
 
 if __name__ == "__main__":
   test_inference.main()
