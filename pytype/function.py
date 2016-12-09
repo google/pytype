@@ -8,6 +8,11 @@ LateAnnotation = collections.namedtuple(
     "LateAnnotation", ["expr", "name", "opcode"])
 
 
+# Used as a key in Signature.late_annotations to indicate an annotation
+# for multiple arguments.  This is used for function type comments
+MULTI_ARG_ANNOTATION = "$multi$"
+
+
 # TODO(kramm): This class is deprecated and should be folded into
 # abstract.InterpreterFunction and/or pytd.Signature.
 class Signature(object):

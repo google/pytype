@@ -5,7 +5,7 @@ import collections
 import re
 import sys
 
-_DIRECTIVE_RE = re.compile(r"#\s*(pytype|type)\s*:\s([^#]*)")
+_DIRECTIVE_RE = re.compile(r"^[^#]*#\s*(pytype|type)\s*:\s([^#]*)")
 _COMMENT_ONLY_RE = re.compile(r"^\s*#")
 _ALL_ERRORS = "*"  # Wildcard for disabling all errors.
 
@@ -95,6 +95,7 @@ class Director(object):
     """
     self._filename = filename
     self._errorlog = errorlog
+    self._type_comments = {}  # Map from line number to type comment text.
     # Lines that have "type: ignore".  These will disable all errors, and in
     # the future may have other impact (such as not attempting an import).
     self._ignore = _LineSet()
@@ -107,10 +108,16 @@ class Director(object):
     # Parse the source code for directives.
     self._parse_source(src)
 
+  @property
+  def type_comments(self):
+    return self._type_comments
+
   def _parse_source(self, src):
     """Parse a source file, extracting directives from comments."""
     for lineno, line in enumerate(src.splitlines(), 1):
-      for tool, data in _DIRECTIVE_RE.findall(line):
+      m = _DIRECTIVE_RE.match(line)
+      if m:
+        tool, data = m.groups()
         open_ended = bool(_COMMENT_ONLY_RE.match(line))
         data = data.strip()
         if tool == "type":
@@ -130,6 +137,8 @@ class Director(object):
         self._ignore.start_range(lineno, True)
       else:
         self._ignore.set_line(lineno, True)
+    else:
+      self._type_comments[lineno] = data.strip()
 
   def _process_pytype(self, lineno, data, open_ended):
     """Process a pytype: comment."""

@@ -7,7 +7,6 @@ import textwrap
 
 
 from pytype import config
-from pytype import directors
 from pytype import errors
 from pytype import infer
 from pytype.pyc import loadmarshal
@@ -106,12 +105,6 @@ class InferenceTest(unittest.TestCase):
     self.nothing_nothing_dict = pytd.GenericType(self.dict,
                                                  (self.nothing, self.nothing))
 
-  def _InitErrorLog(self, src, filename=None):
-    errorlog = errors.ErrorLog()
-    director = directors.Director(src, errorlog, filename, ())
-    errorlog.set_error_filter(director.should_report_error)
-    return errorlog
-
   # For historical reasons (byterun), this method name is snakecase:
   # TODO(kramm): Rename this function.
   # pylint: disable=invalid-name
@@ -123,7 +116,7 @@ class InferenceTest(unittest.TestCase):
       # TODO(kramm): support this
       log.warning("Ignoring 'raises' parameter to assertNoErrors")
     self.options.tweak(pythonpath=pythonpath)
-    errorlog = self._InitErrorLog(code)
+    errorlog = errors.ErrorLog()
     infer.check_types(
         textwrap.dedent(code), None, None, None,
         errorlog=errorlog, options=self.options,
@@ -138,7 +131,7 @@ class InferenceTest(unittest.TestCase):
   def InferAndCheck(self, code, deep=True, pythonpath=(), **kwargs):
     self.options.tweak(pythonpath=pythonpath)
     code = textwrap.dedent(code)
-    errorlog = self._InitErrorLog(code)
+    errorlog = errors.ErrorLog()
     unit, builtins_pytd = infer.infer_types(
         code, errorlog, self.options, deep=deep, analyze_annotated=True,
         cache_unknowns=True, **kwargs)
@@ -151,7 +144,7 @@ class InferenceTest(unittest.TestCase):
     self.options.tweak(pythonpath=pythonpath)
     with open(filename, "rb") as fi:
       code = fi.read()
-      errorlog = self._InitErrorLog(code, filename)
+      errorlog = errors.ErrorLog()
       unit, _ = infer.infer_types(code, errorlog, self.options,
                                   filename=filename, cache_unknowns=True)
       unit.Visit(visitors.VerifyVisitor())
@@ -328,7 +321,7 @@ class InferenceTest(unittest.TestCase):
                        module_name=module_name,
                        imports_map=imports_map,
                        quick=quick)
-    errorlog = self._InitErrorLog(src)
+    errorlog = errors.ErrorLog()
     unit, builtins_pytd = infer.infer_types(
         src, errorlog, self.options, **kwargs)
     unit = pytd_utils.CanonicalOrdering(unit.Visit(visitors.VerifyVisitor()))

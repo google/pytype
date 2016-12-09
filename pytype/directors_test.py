@@ -132,6 +132,16 @@ class DirectorTest(unittest.TestCase):
     self._should_report(False, 3)
     self._should_report(True, 4)
 
+  def test_commented_out_ignore(self):
+    self._create("""
+    # line 2
+    x = 123  # # type: ignore
+    # line 4
+    """)
+    self._should_report(True, 2)
+    self._should_report(True, 3)
+    self._should_report(True, 4)
+
   def test_ignore_until_end(self):
     self._create("""
     # line 2
@@ -160,6 +170,16 @@ class DirectorTest(unittest.TestCase):
     """)
     self._should_report(True, 2)
     self._should_report(False, 3)
+    self._should_report(True, 4)
+
+  def test_commented_out_disable(self):
+    self._create("""
+    # line 2
+    x = 123  # # pytype: disable=test-error
+    # line 4
+    """)
+    self._should_report(True, 2)
+    self._should_report(True, 3)
     self._should_report(True, 4)
 
   def test_disable_until_end(self):
@@ -266,6 +286,18 @@ class DirectorTest(unittest.TestCase):
     # warning.
     check_warning("Invalid error name",
                   "# pytype: disable=test-error, test-other-error")
+
+  def test_type_comments(self):
+    self._create("""
+    x = None  # type: int
+    y = None  # # type: ignore this
+    # # type: and ignore this
+    # type: (int, float) -> str
+    """)
+    self.assertEquals({
+        2: "int",
+        5: "(int, float) -> str",
+    }, self._director.type_comments)
 
 
 if __name__ == "__main__":

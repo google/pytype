@@ -16,7 +16,6 @@ import sys
 import traceback
 
 from pytype import config
-from pytype import directors
 from pytype import errors
 from pytype import infer
 from pytype import metrics
@@ -127,10 +126,6 @@ def process_one_file(input_filename,
 
   """
   errorlog = errors.ErrorLog()
-  with open(input_filename, "rb") as fi:
-    director = directors.Director(fi.read(), errorlog, input_filename,
-                                  options.disable)
-  errorlog.set_error_filter(director.should_report_error)
   try:
     if options.check:
       check_pyi(input_filename=input_filename,

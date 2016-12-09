@@ -2090,6 +2090,16 @@ class InterpreterFunction(Function):
           closure, annotations, late_annotations, vm, vm.root_cfg_node)
     return InterpreterFunction._function_cache[key]
 
+  @staticmethod
+  def get_arg_count(code):
+    """Return the arg count given a code object."""
+    count = code.co_argcount + max(code.co_kwonlyargcount, 0)
+    if code.co_flags & loadmarshal.CodeType.CO_VARARGS:
+      count += 1
+    if code.co_flags & loadmarshal.CodeType.CO_VARKEYWORDS:
+      count += 1
+    return count
+
   def __init__(self, name, code, f_locals, f_globals, defaults, kw_defaults,
                closure, annotations, late_annotations, vm, node):
     super(InterpreterFunction, self).__init__(name, vm, node)

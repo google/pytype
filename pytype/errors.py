@@ -470,3 +470,15 @@ class ErrorLog(ErrorLogBase):
   @_error_name("recursion-error")
   def recursion_error(self, opcode, name):
     self.error(opcode, "Detected recursion in %s" % name)
+
+  @_error_name("redundant-function-type-comment")
+  def redundant_function_type_comment(self, filename, lineno):
+    self._add(Error(
+        SEVERITY_ERROR,
+        "Function type comments cannot be used with annotations",
+        filename=filename, lineno=lineno))
+
+  @_error_name("invalid-function-type-comment")
+  def invalid_function_type_comment(self, opcode, comment, details=None):
+    self.error(opcode, "Invalid function type comment: %s" % comment,
+               details=details)

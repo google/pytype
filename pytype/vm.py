@@ -25,6 +25,7 @@ from pytype import abstract
 from pytype import attribute
 from pytype import blocks
 from pytype import convert
+from pytype import directors
 from pytype import exceptions
 from pytype import function
 from pytype import load_pytd
@@ -44,6 +45,7 @@ from pytype.pytd.parse import visitors
 
 log = logging.getLogger(__name__)
 
+_FUNCTION_TYPE_COMMENT_RE = re.compile(r"^\((.*)\)\s*->\s*(\S+)\s*$")
 
 # Create a repr that won't overflow.
 _TRUNCATE = 120
@@ -106,6 +108,7 @@ class VirtualMachine(object):
     self.attribute_handler = attribute.AbstractAttributeHandler(self)
     self.has_unknown_wildcard_imports = False
     self.callself_stack = []
+    self.type_comments = {}
 
     # Map from builtin names to canonical objects.
     self.special_builtins = {
@@ -570,6 +573,13 @@ class VirtualMachine(object):
       A tuple (CFGNode, set) containing the last CFGNode of the program as
         well as all the top-level names defined by it.
     """
+    director = directors.Director(
+        src, self.errorlog, filename, self.options.disable)
+    # This modifies the errorlog passed to the constructor.  Kind of ugly,
+    # but there isn't a better way to wire both pieces together.
+    self.errorlog.set_error_filter(director.should_report_error)
+    self.type_comments = director.type_comments
+
     self.maximum_depth = sys.maxint if maximum_depth is None else maximum_depth
     node = self.root_cfg_node.ConnectNew("builtins")
     if run_builtins:
@@ -596,37 +606,87 @@ class VirtualMachine(object):
     log.info("Final node: <%d>%s", node.id, node.name)
     return node, f_globals.members, builtin_names
 
+  def _eval_expr(self, node, f_globals, expr):
+    # We don't chain node and f_globals as we want to remain in the context
+    # where we've just finished evaluating the module. This would prevent
+    # nasty things like:
+    #
+    # def f(a: "A = 1"):
+    #   pass
+    #
+    # def g(b: "A"):
+    #   pass
+    #
+    # Which should simply complain at both annotations that 'A' is not defined
+    # in both function annotations. Chaining would cause 'b' in 'g' to yield a
+    # different error message.
+    code = self.compile_src(expr, mode="eval")
+    new_locals = self.convert_locals_or_globals({}, "locals")
+    _, _, _, ret = self.run_bytecode(node, code, f_globals, new_locals)
+    return ret
+
+  def _eval_expr_as_tuple(self, node, f_globals, expr):
+    if not expr:
+      return ()
+
+    result = abstract.get_atomic_value(self._eval_expr(node, f_globals, expr))
+    # If the result is a tuple, expand it.
+    if (isinstance(result, abstract.PythonConstant) and
+        isinstance(result.pyval, tuple)):
+      return tuple(abstract.get_atomic_value(x) for x in result.pyval)
+    else:
+      return (result,)
+
+  def _eval_multi_arg_annotation(self, node, func, f_globals, annot):
+    """Evaluate annotation for multiple arguments (from a type comment)."""
+    args = self._eval_expr_as_tuple(node, f_globals, annot.expr)
+    code = func.code
+    expected = abstract.InterpreterFunction.get_arg_count(code)
+    names = code.co_varnames
+
+    # This is a hack.  Specifying the type of the first arg is optional in
+    # class and instance methods.  There is no way to tell at this time
+    # how the function will be used, so if the first arg is self or cls we
+    # make it optional.  The logic is somewhat convoluted because we don't
+    # want to count the skipped argument in an error message.
+    if len(args) != expected:
+      if expected and names[0] in ["self", "cls"]:
+        expected -= 1
+        names = names[1:]
+
+    if len(args) != expected:
+      self.errorlog.invalid_function_type_comment(
+          annot.opcode, annot.expr,
+          details="Expected %d args, %d given" % (expected, len(args)))
+      return
+    for name, arg in zip(names, args):
+      resolved = self._process_one_annotation(arg, name, annot.opcode)
+      if resolved is not None:
+        func.signature.set_annotation(name, resolved)
+
   def _eval_late_annotations(self, node, func, f_globals):
     """Resolves an instance of abstract.LateClass's expression."""
     for name, annot in func.signature.late_annotations.iteritems():
-      # We don't chain node and f_globals as we want to remain in the context
-      # where we've just finished evaluating the module. This would prevent
-      # nasty things like:
-      #
-      # def f(a: "A = 1"):
-      #   pass
-      #
-      # def g(b: "A"):
-      #   pass
-      #
-      # Which should simply complain at both annotations that 'A' is not defined
-      # in both function annotations. Chaining would cause 'b' in 'g' to yield a
-      # different error message.
-      code = self.compile_src(annot.expr, mode="eval")
-      new_locals = self.convert_locals_or_globals({}, "locals")
-      _, _, _, ret = self.run_bytecode(
-          node, code, f_globals, new_locals)
-      if len(ret.data) == 1:
-        resolved = self._process_one_annotation(
-            ret.data[0], annot.name, annot.opcode)
+
+      if name == function.MULTI_ARG_ANNOTATION:
+        try:
+          self._eval_multi_arg_annotation(node, func, f_globals, annot)
+        except (pyc.CompileError, abstract.ConversionError) as e:
+          self.errorlog.invalid_function_type_comment(
+              annot.opcode, annot.expr, details=e.message)
       else:
-        self.errorlog.invalid_annotation(annot.opcode,
-                                         abstract.merge_values(ret.data, self),
-                                         "Must be constant",
-                                         annot.name)
-        resolved = self.convert.unsolvable
-      if resolved is not None:
-        func.signature.set_annotation(name, resolved)
+        v = self._eval_expr(node, f_globals, annot.expr)
+        try:
+          resolved = self._process_one_annotation(
+              abstract.get_atomic_value(v), annot.name, annot.opcode)
+        except abstract.ConversionError as e:
+          self.errorlog.invalid_annotation(annot.opcode,
+                                           abstract.merge_values(v.data, self),
+                                           "Must be constant",
+                                           annot.name)
+          resolved = self.convert.unsolvable
+        if resolved is not None:
+          func.signature.set_annotation(name, resolved)
 
   def call_binary_operator(self, state, name, x, y, report_errors=False):
     """Map a binary operator to "magic methods" (__add__ etc.)."""
@@ -1767,6 +1827,54 @@ class VirtualMachine(object):
     else:
       return {}, {}
 
+  def _process_function_type_comment(self, op, code_var, annotations,
+                                     late_annotations):
+    """Modifies annotations/late_annotations from a function type comment.
+
+    Checks if a type comment is present for the function.  If so, the type
+    comment is used to populate late_annotations.  It is an error to have
+    a type comment when annotations or late_annotations is not empty.
+
+    Args:
+      op: An opcode (used to determine filename and line number).
+      code_var: A variable for functions's code object.
+      annotations: A dict of annotations.
+      late_annotations: A dict of late annotations.
+    """
+    # Find type comment (if any).  It should appear on the line immediately
+    # following the opcode.
+    filename = op.code.co_filename
+    if not filename or op.line is None:
+      return
+    lineno = op.line + 1
+    comment = self.type_comments.get(lineno)
+    if not comment:
+      return
+
+    # It is an error to use a type comment on an annotated function.
+    if annotations or late_annotations:
+      self.errorlog.redundant_function_type_comment(filename, lineno)
+      return
+
+    # Parse the comment, use a fake Opcode that is similar to the original
+    # opcode except that it is set to the line number of the type comment.
+    # This ensures that errors are printed with an accurate line number.
+    fake_op = op.at_line(lineno)
+    m = _FUNCTION_TYPE_COMMENT_RE.match(comment)
+    if not m:
+      self.errorlog.invalid_function_type_comment(fake_op, comment)
+      return
+    args, return_type = m.groups()
+
+    # Add type info to late_annotations.
+    if args != "...":
+      annot = function.LateAnnotation(
+          args.strip(), function.MULTI_ARG_ANNOTATION, fake_op)
+      late_annotations[function.MULTI_ARG_ANNOTATION] = annot
+
+    late_annotations["return"] = function.LateAnnotation(
+        return_type, "return", fake_op)
+
   def _convert_kw_defaults(self, values):
     kw_defaults = {}
     for i in range(0, len(values), 2):
@@ -1790,6 +1898,9 @@ class VirtualMachine(object):
     kw_defaults = self._convert_kw_defaults(kw_defaults)
     annotations, late_annotations = self._convert_function_annotations(
         state.node, annot)
+    self._process_function_type_comment(op, code, annotations, late_annotations)
+    # TODO(dbaum): Add support for per-arg type comments.
+    # TODO(dbaum): Add support for variable type comments.
     globs = self.get_globals_dict()
     fn = self._make_function(name, code, globs, defaults, kw_defaults,
                              annotations=annotations,

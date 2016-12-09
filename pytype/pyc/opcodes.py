@@ -31,6 +31,14 @@ class Opcode(object):
     self.target = None
     self.code = None  # If we have a CodeType or OrderedCode parent
 
+  def at_line(self, line):
+    """Return a new opcode simliar to this one but with a different line."""
+    # Ignore the optional slots (prev, next, block_target).
+    op = Opcode(self.index, line)
+    op.target = self.target
+    op.code = self.code
+    return op
+
   def __str__(self):
     return "%4d: %s" % (self.index, self.__class__.__name__)
 
