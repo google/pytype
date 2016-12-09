@@ -48,16 +48,26 @@ class AsInstance(object):
     self.cls = cls
 
 
-def variable_set(variable, attr, value):
+def variable_set(variable, attr, value, deep=False):
   """Set an attribute on each value in the variable.
 
   Args:
     variable: A typegraph.Variable.
     attr: The attribute to set.
     value: The desired attribute value.
+    deep: Whether to recursively set the attribute on type parameters of the
+        variable.
   """
-  for v in variable.bindings:
-    setattr(v.data, attr, value)
+  values = variable.data
+  seen = set()
+  while values:
+    v = values.pop(0)
+    if v not in seen:
+      seen.add(v)
+      setattr(v, attr, value)
+      if deep and isinstance(v, SimpleAbstractValue):
+        for child in v.type_parameters.values():
+          values.extend(child.data)
 
 
 def get_atomic_value(variable):

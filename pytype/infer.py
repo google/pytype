@@ -173,7 +173,7 @@ class CallTracer(vm.VirtualMachine):
         # the process of initializing - otherwise, setting
         # maybe_missing_members to True would cause pytype to ignore
         # all attribute errors on self in __init__.
-        abstract.variable_set(instance, "maybe_missing_members", True)
+        abstract.variable_set(instance, "maybe_missing_members", True, True)
       else:
         self._instance_cache[key] = _INITIALIZING
         self.call_init(instance, node)

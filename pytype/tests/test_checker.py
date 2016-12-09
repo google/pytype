@@ -242,6 +242,20 @@ class CheckerTest(test_inference.InferenceTest):
     self.assertErrorLogIs(errorlog, [(4, "bad-return-type",
                                       r"None.*List\[nothing\]")])
 
+  def testAttributeInIncompleteInstance(self):
+    python = """\
+      from __future__ import google_type_annotations
+      from typing import List
+      class Foo(object):
+        def __init__(self, other: "List[Foo]"):
+          self.x = other[0].x  # okay
+          self.y = other.y  # No "y" on List[Foo]
+          self.z = Foo.z  # No "z" on Type[Foo]
+    """
+    errorlog = self.get_checking_errors(python)
+    self.assertErrorLogIs(errorlog, [(6, "attribute-error", r"y.*List\[Foo\]"),
+                                     (7, "attribute-error", r"z.*Type\[Foo\]")])
+
 
 if __name__ == "__main__":
   test_inference.main()
