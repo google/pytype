@@ -1,6 +1,9 @@
 """Tests for typing.py."""
 
 import os
+
+
+from pytype import utils
 from pytype.tests import test_inference
 
 
@@ -126,6 +129,29 @@ class TypingTest(test_inference.InferenceTest):
         f1(x)
         f2(x)
     """)
+
+  def test_generate_type_alias(self):
+    ty = self.Infer("""
+      from __future__ import google_type_annotations
+      from typing import List
+      MyType = List[str]
+    """)
+    self.assertTypesMatchPytd(ty, """
+      google_type_annotations = ...  # type: __future__._Feature
+      List = ...  # type: type
+      MyType = List[str]
+    """)
+
+  def test_use_type_alias(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", "MyType = List[str]")
+      self.assertNoErrors("""
+        from __future__ import google_type_annotations
+        import foo
+        def f(x: foo.MyType):
+          pass
+        f([""])
+      """, pythonpath=[d.path])
 
 
 if __name__ == "__main__":

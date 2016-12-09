@@ -1757,6 +1757,9 @@ class ParameterizedClass(AtomicAbstractValue, Class):
   def to_type(self, node, seen=None, view=None):
     return Class.to_type(self, node, seen, view)
 
+  def to_pytd_def(self, node, name):
+    return pytd.Alias(name, self.get_instance_type(node))
+
   def get_instance_type(self, node, instance=None, seen=None, view=None):
     type_arguments = []
     for type_param in self.base_cls.pytd_cls.template:
