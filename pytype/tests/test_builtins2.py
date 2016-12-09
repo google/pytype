@@ -387,6 +387,22 @@ class BuiltinTests2(test_inference.InferenceTest):
       reduce(lambda x, y: "s", [1,2,3], 0).upper()
     """)
 
+  def testDictKeys(self):
+    ty = self.Infer("""
+      m = {"x": None}
+      a = m.viewkeys() & {1, 2, 3}
+      b = m.viewkeys() - {1, 2, 3}
+      c = m.viewkeys() | {1, 2, 3}
+      d = m.viewkeys() ^ {1, 2, 3}
+    """)
+    self.assertTypesMatchPytd(ty, """
+      m = ...  # type: Dict[str, None]
+      a = ...  # type: Set[str]
+      b = ...  # type: Set[str]
+      c = ...  # type: Set[int or str]
+      d = ...  # type: Set[int or str]
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()
