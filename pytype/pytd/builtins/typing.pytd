@@ -124,5 +124,5 @@ def no_type_check(arg) -> Any
 def no_type_check_decorator(decorator) -> Any
 def overload(func) -> Any
 
-Text = str
+Text = unicode
 TYPE_CHECKING = ...  # type: bool
