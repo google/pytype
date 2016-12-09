@@ -104,8 +104,9 @@ def pow(x: int or float, y: float, ...) -> float
 def pow(x: float, y: int, ...) -> float
 def pow(x: complex, y: int or float, ...) -> complex
 def range(stop: int, ...) -> list[int]
-def reduce(function, sequence: str, ...) -> str
-def reduce(function, sequence: set, ...) -> ?
+def reduce(function: Callable[..., T], iterable: Iterable[T2]) -> T or T2
+def reduce(function: Callable, iterable: Iterable[nothing], initial: T) -> T
+def reduce(function: Callable[..., T], iterable: Iterable, initial) -> T
 # No reload() in Python3
 def reload(mod: module) -> module
 def repr PYTHONCODE

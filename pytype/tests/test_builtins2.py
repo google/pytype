@@ -378,6 +378,15 @@ class BuiltinTests2(test_inference.InferenceTest):
       x3 = ...  # type: bytearray
     """)
 
+  def testReduce(self):
+    self.assertNoErrors("""
+      reduce(lambda x, y: x+y, [1,2,3]).real
+      reduce(lambda x, y: x+y, ["foo"]).upper()
+      reduce(lambda x, y: 4, "foo").real
+      reduce(lambda x, y: 4, [], "foo").upper()
+      reduce(lambda x, y: "s", [1,2,3], 0).upper()
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()
