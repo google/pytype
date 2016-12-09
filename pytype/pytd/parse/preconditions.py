@@ -14,8 +14,7 @@
 
 """Preconditions for automatic argument checking."""
 
-from ply import lex
-from ply import yacc
+import re
 
 
 class PreconditionError(ValueError):
@@ -159,102 +158,106 @@ class CallChecker(object):
     return allowed
 
 
-# Lexer
-# pylint: disable=g-docstring-quotes, g-short-docstring-punctuation
+# RE to match a single token.  Leading whitepace is ignored.
+_TOKEN_RE = re.compile(
+    r"\s*(?:(?P<literal>[[\]{}])|(?P<word>[a-zA-Z_]\w*))")
 
-tokens = ("NAME", "OR", "TUPLE", "NONE")
-literals = ["[", "]", "{", "}"]
-
-t_ignore = " \t\n"
+# Token codes (aside from literal characters)
+_TOKEN_NAME = 1
+_TOKEN_TUPLE = 2
+_TOKEN_OR = 3
 
 _RESERVED = {
-    "or": "OR",
-    "tuple": "TUPLE",
-    "None": "NONE",
-    }
+    "tuple": _TOKEN_TUPLE,
+    "or": _TOKEN_OR,
+}
 
 
-def t_NAME(t):  # pylint: disable=invalid-name
-  r"[a-zA-Z_]\w*"
-  t.type = _RESERVED.get(t.value, "NAME")
-  return t
+class _Parser(object):
+  """A parser for precondition specifications."""
 
+  def __init__(self, spec):
+    self._spec = spec.strip()  # Must strip trailing whitespace.
+    self._pos = 0
+    self._pending_token = None
 
-def t_error(t):
-  raise ValueError("Invalid character: %s" % t.value[0])
+  def parse(self):
+    """Parse the spec and return a precondition."""
+    cond = self._parse_or()
+    self._expect(None)
+    return cond
 
+  def _peek_token(self):
+    """Return the token code of the next token (do not consume token)."""
+    if self._pending_token is None:
+      self._pending_token = self._pop_token()
+    return self._pending_token[0]
 
-_lexer = lex.lex()
+  def _pop_token(self):
+    """Consume the next token and return (token_code, token_val)."""
+    if self._pending_token is not None:
+      result = self._pending_token
+      self._pending_token = None
+      return result
 
+    if self._pos >= len(self._spec):
+      return None, None
+    m = _TOKEN_RE.match(self._spec, self._pos)
+    if not m:
+      raise ValueError("Syntax Error")
+    self._pos = m.end()
+    literal = m.group("literal")
+    if literal:
+      return literal, None
+    word = m.group("word")
+    t = _RESERVED.get(word)
+    if t:
+      return t, None
+    else:
+      return _TOKEN_NAME, word
 
-# Parser
+  def _expect(self, expected_code):
+    """Pop the next token, raise a ValueError if the code does not match."""
+    t, val = self._pop_token()  # pylint: disable=unpacking-non-sequence
+    if t != expected_code:
+      raise ValueError("Syntax Error")
+    return val
 
-# It is better to have OR(a, b, c) than OR(OR(a, b), c), thus we use the
-# following non-terminals:
-#
-# cond: A precondition.
-# cond_list: A list of preconditions (the clauses of an OR)
-# cond2: The cond productions other than an OR.
+  def _parse_or(self):
+    """Parse one or more conditions separated by "or"."""
+    choices = [self._parse_one()]
+    while self._peek_token() == _TOKEN_OR:
+      self._pop_token()
+      choices.append(self._parse_one())
+    if len(choices) == 1:
+      return choices[0]
+    else:
+      return _OrPrecondition(choices)
 
-
-def p_cond(p):
-  "cond : cond_list"
-  cond_list = p[1]
-  if len(cond_list) == 1:
-    p[0] = cond_list[0]
-  else:
-    p[0] = _OrPrecondition(cond_list)
-
-
-def p_cond_list_first(p):
-  "cond_list : cond2"
-  p[0] = [p[1]]
-
-
-def p_cond_list_or(p):
-  "cond_list : cond_list OR cond2"
-  _, cond_list, _, cond2 = p
-  p[0] = cond_list + [cond2]
-
-
-def p_cond2_name(p):
-  "cond2 : NAME"
-  p[0] = _ClassNamePrecondition(p[1])
-
-
-def p_cond2_none(p):
-  "cond2 : NONE"
-  p[0] = _ClassNamePrecondition("NoneType")
-
-
-def p_cond2_tuple(p):
-  "cond2 : TUPLE '[' cond ']'"
-  p[0] = _TuplePrecondition(p[3])
-
-
-def p_cond2_isinstance(p):
-  "cond2 : '{' NAME '}'"
-  name = p[2]
-  cond = _REGISTERED_CLASSES.get(name)
-  if cond is None:
-    raise ValueError("Class '%s' is not registered for preconditions." % name)
-  p[0] = cond
-
-
-def p_error(p):
-  del p
-  raise ValueError("Syntax Error")
-
-
-_parser = yacc.yacc(write_tables=False, debug=False)
-
-
-# pylint: enable=g-docstring-quotes, g-short-docstring-punctuation
+  def _parse_one(self):
+    """Parse a single condition (not including "or")."""
+    t, val = self._pop_token()  # pylint: disable=unpacking-non-sequence
+    if t == _TOKEN_NAME:
+      return _ClassNamePrecondition(val if val != "None" else "NoneType")
+    elif t == "{":
+      name = self._expect(_TOKEN_NAME)
+      self._expect("}")
+      cond = _REGISTERED_CLASSES.get(name)
+      if cond is None:
+        raise ValueError(
+            "Class '%s' is not registered for preconditions." % name)
+      return cond
+    elif t == _TOKEN_TUPLE:
+      self._expect("[")
+      element = self._parse_or()
+      self._expect("]")
+      return _TuplePrecondition(element)
+    raise ValueError("Syntax Error")
 
 
 def parse(spec):
   """Return a _Precondition for the given string."""
-  return _parser.parse(spec, lexer=_lexer)
+  return _Parser(spec).parse()
 
 
 def parse_arg(arg_spec):
