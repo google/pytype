@@ -6,6 +6,7 @@
 
 from pytype import abstract
 from pytype.pytd import pep484
+from pytype.pytd import pytd
 
 
 class TypingOverlay(abstract.Module):
@@ -13,16 +14,23 @@ class TypingOverlay(abstract.Module):
 
   is_lazy = True  # uses _convert_member
 
-  def __init__(self, vm, node, real_module):
-    super(TypingOverlay, self).__init__(vm, node, "typing", typing_overload)
-    self.real_module = real_module
+  def __init__(self, vm, node):
+    member_map = typing_overload.copy()
+    ast = vm.loader.typing
+    for cls in ast.classes:
+      _, name = cls.name.rsplit(".", 1)
+      if name not in member_map and pytd.IsContainer(cls) and cls.template:
+        member_map[name] = build_container
+    super(TypingOverlay, self).__init__(vm, node, "typing", member_map)
+    self.real_module = vm.convert.construct_constant_from_value(
+        ast.name, ast, subst={}, node=vm.root_cfg_node)
 
   def _convert_member(self, name, m):
     return m(name, self.vm, self.vm.root_cfg_node).to_variable(
         self.vm.root_cfg_node, name)
 
   def get_module(self, name):
-    if name in typing_overload:
+    if name in self._member_map:
       return self
     else:
       return self.real_module
@@ -95,14 +103,37 @@ class Container(TypingClass):
     return abstract.ParameterizedClass(self.base_type, params, self.vm)
 
 
+class Callable(Container):
+
+  def __init__(self, name, vm, node):
+    # Note that we cannot use vm.convert.function_type here, since our matcher
+    # doesn't know that __builtin__.function and typing.Callable are the same.
+    base = vm.convert.convert_name_to_value("typing.Callable")
+    super(Callable, self).__init__(name, vm, node, base)
+
+  def _build_value(self, node, inner):
+    # We don't do anything with Callable parameters yet.
+    return self.base_type
+
+
+class Tuple(Container):
+
+  def __init__(self, name, vm, node):
+    base = abstract.get_atomic_value(vm.convert.tuple_type)
+    super(Tuple, self).__init__(name, vm, node, base)
+
+  def _build_value(self, node, inner):
+    # Our tuples are homogeneous (for now).
+    inner = (abstract.Union(inner, self.vm),)
+    return super(Tuple, self)._build_value(node, inner)
+
+
 def build_container(name, vm, node):
   if name in pep484.PEP484_CAPITALIZED:
     pytd_name = "__builtin__." + name.lower()
   else:
     pytd_name = "typing." + name
-  pytd_base = vm.lookup_builtin(pytd_name)
-  base = vm.convert.convert_constant_to_value(
-      pytd_base.name, pytd_base, {}, vm.root_cfg_node)
+  base = vm.convert.convert_name_to_value(pytd_name)
   return Container(name, vm, node, base)
 
 
@@ -132,19 +163,12 @@ def build_typevar(name, vm, node):
 # TODO(rechen): There are a lot of other generics in typing.pytd; do they all
 # need to be added here?
 typing_overload = {
-    # Containers
-    "Dict": build_container,
-    "FrozenSet": build_container,
-    "Generator": build_container,
-    "List": build_container,
-    "Sequence": build_container,
-    "Set": build_container,
-    "Type": build_container,
-    # Others
     "Any": build_any,
+    "Callable": Callable,
     "Generic": lambda name, vm, _: abstract.get_unsupported(name, vm),
     "NamedTuple": build_namedtuple,
     "Optional": build_optional,
+    "Tuple": Tuple,
     "TypeVar": build_typevar,
     "Union": Union,
 }

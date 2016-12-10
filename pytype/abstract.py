@@ -2282,13 +2282,13 @@ class InterpreterFunction(Function):
         if name == self.signature.varargs_name:
           # The annotation is Tuple[<varargs type>], but the passed arg can be
           # any iterable of <varargs type>.
-          formal = self.vm.convert.create_parameterized_class(
-              "typing.Iterable", formal.type_parameters)
+          formal = ParameterizedClass(self.vm.convert.convert_name_to_value(
+              "typing.Iterable"), formal.type_parameters, self.vm)
         elif name == self.signature.kwargs_name:
           # The annotation is Dict[str, <kwargs type>], but the passed arg can
           # be any mapping from str to <kwargs type>.
-          formal = self.vm.convert.create_parameterized_class(
-              "typing.Mapping", formal.type_parameters)
+          formal = ParameterizedClass(self.vm.convert.convert_name_to_value(
+              "typing.Mapping"), formal.type_parameters, self.vm)
         formal_args.append((name, formal))
     subst = self.vm.matcher.compute_subst(node, formal_args, arg_dict, view)
     if subst is None:

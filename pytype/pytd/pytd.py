@@ -436,3 +436,15 @@ def Print(n, print_format=None):
   # TODO(kramm): fix circular import
   from pytype.pytd import utils  # pylint: disable=g-import-not-at-top
   return utils.Print(n, print_format)
+
+
+def IsContainer(t):
+  assert isinstance(t, Class)
+  if t.name == 'typing.Generic':
+    return True
+  for p in t.parents:
+    if isinstance(p, GenericType):
+      base = p.base_type
+      if isinstance(base, ClassType) and IsContainer(base.cls):
+        return True
+  return False

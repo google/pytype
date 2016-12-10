@@ -1665,18 +1665,8 @@ class VerifyContainers(Visitor):
     ContainerError: If a problematic container definition is encountered.
   """
 
-  def _IsContainer(self, t):
-    if t.name == "typing.Generic":
-      return True
-    for p in t.parents:
-      if isinstance(p, pytd.GenericType):
-        base = p.base_type
-        if isinstance(base, pytd.ClassType) and self._IsContainer(base.cls):
-          return True
-    return False
-
   def EnterGenericType(self, node):
-    if not self._IsContainer(node.base_type.cls):
+    if not pytd.IsContainer(node.base_type.cls):
       raise ContainerError("Class %s is not a container" % node.base_type.name)
     elif node.base_type.name == "typing.Generic":
       for t in node.parameters:

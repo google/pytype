@@ -153,6 +153,58 @@ class TypingTest(test_inference.InferenceTest):
         f([""])
       """, pythonpath=[d.path])
 
+  def test_callable(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        def f() -> Callable
+      """)
+      self.assertNoErrors("""\
+        from __future__ import google_type_annotations
+        from typing import Callable
+        import foo
+        def f() -> Callable:
+          return foo.f()
+        def g() -> Callable:
+          return int
+      """, pythonpath=[d.path])
+
+  def test_generics(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        K = TypeVar("K")
+        V = TypeVar("V")
+        class CustomDict(Dict[K, V]): ...
+      """)
+      self.assertNoErrors("""\
+        from __future__ import google_type_annotations
+        import typing
+        import foo
+        def f(x: typing.Callable[..., int]): pass
+        def f(x: typing.Iterator[int]): pass
+        def f(x: typing.Iterable[int]): pass
+        def f(x: typing.Container[int]): pass
+        def f(x: typing.Sequence[int]): pass
+        def f(x: typing.Tuple[int, str]): pass
+        def f(x: typing.MutableSequence[int]): pass
+        def f(x: typing.List[int]): pass
+        def f(x: typing.IO[str]): pass
+        def f(x: typing.Mapping[int, str]): pass
+        def f(x: typing.MutableMapping[int, str]): pass
+        def f(x: typing.Dict[int, str]): pass
+        def f(x: typing.AbstractSet[int]): pass
+        def f(x: typing.FrozenSet[int]): pass
+        def f(x: typing.MutableSet[int]): pass
+        def f(x: typing.Set[int]): pass
+        def f(x: typing.Reversible[int]): pass
+        def f(x: typing.SupportsAbs[int]): pass
+        def f(x: typing.Optional[int]): pass
+        def f(x: typing.Generator[int]): pass
+        def f(x: typing.Type[int]): pass
+        def f(x: typing.Pattern[str]): pass
+        def f(x: typing.Match[str]): pass
+        def f(x: foo.CustomDict[int, str]): pass
+      """, pythonpath=[d.path])
+
 
 if __name__ == "__main__":
   test_inference.main()

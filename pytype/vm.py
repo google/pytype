@@ -1026,6 +1026,9 @@ class VirtualMachine(object):
     if name:
       if level <= 0:
         assert level in [-1, 0]
+        if name == "typing":
+          # use a special overlay for stdlib/typing.pytd
+          return self.convert.typing_overlay
         if level == -1 and self.loader.base_module:
           # Python 2 tries relative imports first.
           ast = (self.loader.import_relative_name(name) or
@@ -1042,13 +1045,8 @@ class VirtualMachine(object):
       assert level > 0
       ast = self.loader.import_relative(level)
     if ast:
-      module = self.convert.construct_constant_from_value(
+      return self.convert.construct_constant_from_value(
           ast.name, ast, subst={}, node=self.root_cfg_node)
-      if level <= 0 and name == "typing":
-        # use a special overlay for stdlib/typing.pytd
-        return typing.TypingOverlay(self, self.root_cfg_node, module)
-      else:
-        return module
     else:
       return None
 
@@ -1155,12 +1153,12 @@ class VirtualMachine(object):
     return self.binary_operator(state, "__pow__")
 
   def byte_BINARY_SUBSCR(self, state, op):
+    # TODO(rechen): This entire method should just be
+    #   return self.binary_operator(state, "__getitem__")
     state = self.binary_operator(state, "__getitem__", report_errors=False)
     if state.top().bindings:
       return state
     else:
-      # This typically happens if a dictionary is being filled by code we just
-      # haven't analyzed yet. So don't report an error.
       state.top().AddBinding(self.convert.unsolvable,
                              source_set=[], where=state.node)
       return state

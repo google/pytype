@@ -2,6 +2,7 @@
 
 import os
 import textwrap
+import unittest
 
 from pytype import config
 from pytype import errors
@@ -255,6 +256,16 @@ class CheckerTest(test_inference.InferenceTest):
     errorlog = self.get_checking_errors(python)
     self.assertErrorLogIs(errorlog, [(6, "attribute-error", r"y.*List\[Foo\]"),
                                      (7, "attribute-error", r"z.*Type\[Foo\]")])
+
+  @unittest.skip("Bug in byte_BINARY_SUBSCR")
+  def testBadGetitem(self):
+    python = """\
+      from __future__ import google_type_annotations
+      def f(x: int):
+        return x[0]
+    """
+    errorlog = self.get_checking_errors(python)
+    self.assertErrorLogIs(errorlog, [(3, "unsupported-operands", r"int.*int")])
 
 
 if __name__ == "__main__":

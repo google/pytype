@@ -6,6 +6,7 @@ import types
 
 from pytype import abstract
 from pytype import blocks
+from pytype import typing
 from pytype import utils
 from pytype.pyc import loadmarshal
 from pytype.pytd import cfg
@@ -105,11 +106,17 @@ class Converter(object):
     object_val, = self.object_type.data
     object_val.load_lazy_attribute("__new__")
     self.object_new, = object_val.members["__new__"].data
+    self.typing_overlay = typing.TypingOverlay(self.vm, self.vm.root_cfg_node)
 
   def convert_value_to_string(self, val):
     if isinstance(val, abstract.PythonConstant) and isinstance(val.pyval, str):
       return val.pyval
     raise abstract.ConversionError("%s is not a string" % val)
+
+  def convert_name_to_value(self, name):
+    pytd_cls = self.vm.lookup_builtin(name)
+    return self.convert_constant_to_value(
+        pytd_cls.name, pytd_cls, {}, self.vm.root_cfg_node)
 
   def tuple_to_value(self, node, content):
     """Create a VM tuple from the given sequence."""
@@ -223,12 +230,6 @@ class Converter(object):
   def create_new_unsolvable(self, node, name):
     """Create a new variable containing an unsolvable."""
     return self.unsolvable.to_variable(node, name)
-
-  def create_parameterized_class(self, base_name, params):
-    pytd_base = self.vm.lookup_builtin(base_name)
-    base = self.convert_constant_to_value(
-        pytd_base.name, pytd_base, {}, self.vm.root_cfg_node)
-    return abstract.ParameterizedClass(base, params, self.vm)
 
   def create_varargs(self, arg_type):
     """Create a varargs argument given its element type."""
