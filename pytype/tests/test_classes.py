@@ -601,13 +601,13 @@ class ClassesTest(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
       class A(object):
-        x = ...  # type: str or int or long or float or complex
+        x = ...  # type: str or int or float or complex
         y = ...  # type: bool
         def __new__(cls, a, b) -> Any
         def __init__(self, a: str, b: str) -> None
-        def __init__(self, a: float or long or complex, b: float or long or complex) -> None
+        def __init__(self, a: float or int or complex, b: float or int or complex) -> None
       class B(object):
-        def __new__(cls, x: float or long or complex) -> A
+        def __new__(cls, x: float or int or complex) -> A
         def __init__(self, x) -> None
       x1 = ...  # type: A
       x2 = ...  # type: str

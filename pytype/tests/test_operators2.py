@@ -22,7 +22,7 @@ class OperatorsWithAnyTests(test_inference.InferenceTest):
     # TODO(pludemann): Currently this matches:
     #         def t_testAdd1(x: float) -> float
     self.assertTypesMatchPytd(ty, """
-      def t_testAdd1(x: int or float or complex or long or bool) -> float or complex
+      def t_testAdd1(x: int or float or complex or bool) -> float or complex
     """)
 
   @unittest.skip("Needs __radd__ on all builtins")
@@ -33,7 +33,7 @@ class OperatorsWithAnyTests(test_inference.InferenceTest):
         return 2.0 + x
     """, deep=True, solve_unknowns=True, extract_locals=True)
     self.assertTypesMatchPytd(ty, """
-      def t_testAdd2(x: int or float or complex or long or bool) -> float or complex
+      def t_testAdd2(x: int or float or complex or bool) -> float or complex
     """)
 
   def testAdd3(self):
@@ -81,7 +81,7 @@ class OperatorsWithAnyTests(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=True, extract_locals=True)
     self.assertTypesMatchPytd(ty, """
       # TODO(pludemann): bool should be removed (by either solver (if __builtin__ changes or optimizer)
-      def t_testPow1(x: complex or float or int or long, y: complex or float or int or long) -> complex or float or int or long
+      def t_testPow1(x: complex or float or int, y: complex or float or int) -> complex or float or int
     """)
 
   def testIsinstance1(self):

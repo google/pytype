@@ -43,7 +43,7 @@ class Pdb(?, ?):
     commands_silent = ...  # type: dict[NoneType or int, bool]
     curframe = ...  # type: ?
     curframe_locals = ...  # type: ?
-    curindex = ...  # type: complex or float or int or long or dict[dict[?, ?], bytearray or xrange or dict[?, ?] or list[?] or tuple[?]]
+    curindex = ...  # type: complex or float or int or dict[dict[?, ?], bytearray or xrange or dict[?, ?] or list[?] or tuple[?]]
     currentbp = ...  # type: int
     do_h = ...  # type: ?
     lastcmd = ...  # type: ?
@@ -84,8 +84,8 @@ class Pdb(?, ?):
     def do_enable(self, arg: ?) -> NoneType
     def do_exit(self, arg) -> int
     def do_ignore(self, arg: bytearray or str or unicode) -> NoneType
-    def do_j(self, arg: bool or complex or float or int or long or dict_keys[?]) -> NoneType
-    def do_jump(self, arg: bool or complex or float or int or long or dict_keys[?]) -> NoneType
+    def do_j(self, arg: bool or complex or float or int or dict_keys[?]) -> NoneType
+    def do_jump(self, arg: bool or complex or float or int or dict_keys[?]) -> NoneType
     def do_l(self, arg) -> NoneType
     def do_list(self, arg) -> NoneType
     def do_n(self, arg) -> int

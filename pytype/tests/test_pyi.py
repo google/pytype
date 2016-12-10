@@ -492,7 +492,7 @@ def process_function(func: Callable[..., Any]) -> None: ...
       """, pythonpath=[d.path], deep=True, solve_unknowns=True)
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
-        def f(x: complex or float or long) -> a.A1
+        def f(x: complex or float or int) -> a.A1
       """)
 
   def testBuiltinsModule(self):

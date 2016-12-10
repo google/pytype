@@ -493,8 +493,8 @@ class MatchTest(unittest.TestCase):
       class `~unknown12`():
           pass
     """)
-    self.assertItemsEqual(["int", "bool", "long",
-                           "float", "complex"], mapping["~unknown4"])
+    self.assertItemsEqual(["int", "bool", "float", "complex"],
+                          mapping["~unknown4"])
 
   def test_add(self):
     mapping = self.parse_and_solve("""
@@ -509,7 +509,7 @@ class MatchTest(unittest.TestCase):
     # TODO(pludemann): remove "bool" from list when we do the
     # more strict definition of return (that is, not allowing
     # "bool" just because it's a subclass of "int" in __builtin__.pytd
-    numbers = ["int", "complex", "float", "long", "bool"]
+    numbers = ["int", "complex", "float", "bool"]
     self.assertItemsEqual(numbers, mapping["~unknown4"])
     self.assertItemsEqual(numbers, mapping["~unknown6"])
 

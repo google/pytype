@@ -39,7 +39,7 @@ class Converter(object):
     self.primitive_classes = ()
     # Now fill primitive_classes with the real values using convert_constant
     self.primitive_classes = {v: self.convert_constant(v.__name__, v)
-                              for v in [int, long, float, str, unicode, object,
+                              for v in [int, float, str, unicode, object,
                                         types.NoneType, complex, bool, slice,
                                         types.CodeType, types.EllipsisType,
                                         types.ClassType, super]}

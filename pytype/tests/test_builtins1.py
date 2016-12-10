@@ -77,25 +77,23 @@ class BuiltinTests(test_inference.InferenceTest):
   def testPow1(self):
     ty = self.Infer("""
       def t_testPow1():
-        # pow(int, int) returns int, or float if the exponent is negative, or
-        # long if the result is larger than an int. Hence, it's a handy function
-        # for testing UnionType returns.
+        # pow(int, int) returns int, or float if the exponent is negative.
+        # Hence, it's a handy function for testing UnionType returns.
         return pow(1, -2)
     """, deep=True, solve_unknowns=True, extract_locals=True)
     self.assertTypesMatchPytd(ty, """
-      def t_testPow1() -> float or int or long
+      def t_testPow1() -> float or int
     """)
 
   def testPow2(self):
     ty = self.Infer("""
       def t_testPow2(x, y):
-        # pow(int, int) returns int, or float if the exponent is negative, or
-        # long if the result is larger than an int. Hence, it's a handy function
-        # for testing UnionType returns.
+        # pow(int, int) returns int, or float if the exponent is negative.
+        # Hence, it's a handy function for testing UnionType returns.
         return pow(x, y)
     """, deep=True, solve_unknowns=True, extract_locals=True)
     self.assertTypesMatchPytd(ty, """
-      def t_testPow2(x: complex or float or int or long, y: complex or float or int or long) -> complex or float or int or long
+      def t_testPow2(x: complex or float or int, y: complex or float or int) -> complex or float or int
     """)
 
   def testMax1(self):
@@ -211,9 +209,9 @@ class BuiltinTests(test_inference.InferenceTest):
     print z + 1
     """, deep=False, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
-      z = ...  # type: complex or float or int or long
+      z = ...  # type: complex or float or int
 
-      def t_testListInit2(x: object, i: complex or float or int or long) -> ?
+      def t_testListInit2(x: object, i: complex or float or int) -> ?
     """)
 
   def testListInit3(self):
@@ -261,7 +259,7 @@ class BuiltinTests(test_inference.InferenceTest):
       t_testAbs(__any_object__)
     """, deep=False, solve_unknowns=True, extract_locals=True)
     self.assertTypesMatchPytd(ty, """
-      def t_testAbs(x: complex or float or int or long) -> float or int or long
+      def t_testAbs(x: complex or float or int) -> float or int
     """)
 
   def testCmp(self):
@@ -488,7 +486,7 @@ class BuiltinTests(test_inference.InferenceTest):
         return divmod(a, 30268)
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
-      def seed(self, a: Union[complex, float, int, long] = ...) -> Tuple[int or long or float or complex, ...]
+      def seed(self, a: Union[complex, float, int] = ...) -> Tuple[int or float or complex, ...]
     """)
 
   def testDivMod3(self):
@@ -499,7 +497,7 @@ class BuiltinTests(test_inference.InferenceTest):
         return divmod(a, 30268)
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
-      def seed(self, a: Union[complex, float, int, long] = ...) -> Tuple[int or long or float or complex, ...]
+      def seed(self, a: Union[complex, float, int] = ...) -> Tuple[int or float or complex, ...]
     """)
 
   def testOsOpen(self):

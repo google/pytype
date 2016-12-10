@@ -42,8 +42,6 @@ class InferenceTest(unittest.TestCase):
     self.float = t("float")
     self.complex = t("complex")
     self.int = t("int")
-    if self.PYTHON_VERSION[0] == 2:
-      self.long = t("long")
     self.list = t("list")
     self.none_type = t("NoneType")
     self.object = t("object")
@@ -66,14 +64,8 @@ class InferenceTest(unittest.TestCase):
     self.intorfloat = pytd.UnionType((self.float, self.int))
     self.intorfloatorstr = pytd.UnionType((self.float, self.int, self.str))
     self.complexorstr = pytd.UnionType((self.complex, self.str))
-    if self.PYTHON_VERSION[0] == 3:
-      self.intorfloatorlong = self.intorfloat
-      self.intorfloatorlongorcomplex = pytd.UnionType(
-          (self.int, self.float, self.complex))
-    else:
-      self.intorfloatorlong = pytd.UnionType((self.int, self.float, self.long))
-      self.intorfloatorlongorcomplex = pytd.UnionType(
-          (self.int, self.float, self.long, self.complex))
+    self.intorfloatorcomplex = pytd.UnionType(
+        (self.int, self.float, self.complex))
     self.int_tuple = pytd.HomogeneousContainerType(self.tuple, (self.int,))
     self.nothing_tuple = pytd.HomogeneousContainerType(self.tuple,
                                                        (self.nothing,))

@@ -92,7 +92,6 @@ SUPERCLASSES = {
 
     # Types that exist in Python 2, but not in Python 3:
     "buffer": ["Sequence"],
-    "long": ["Integral"],
     "xrange": ["Sequence"],
     "unicode": ["Sequence"],
 

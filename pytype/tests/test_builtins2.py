@@ -18,8 +18,8 @@ class BuiltinTests2(test_inference.InferenceTest):
         return divmod(3, y)
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
-      def f(x: int or float or complex or long,
-            y: int or float or complex or long) -> Tuple[int or float or complex or long, ...]
+      def f(x: int or float or complex,
+            y: int or float or complex) -> Tuple[int or float or complex, ...]
     """)
 
   def testDefaultDict(self):
@@ -290,7 +290,7 @@ class BuiltinTests2(test_inference.InferenceTest):
     self.assertTypesMatchPytd(ty, """
       x1 = ...  # type: int
       x2 = ...  # type: int
-      x3 = ...  # type: long or float or complex
+      x3 = ...  # type: int or float or complex
       x4 = ...  # type: int or float or complex
       x5 = ...  # type: List[int or str]
     """)
@@ -402,6 +402,16 @@ class BuiltinTests2(test_inference.InferenceTest):
       c = ...  # type: Set[int or str]
       d = ...  # type: Set[int or str]
     """)
+
+  def testLong(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        def f(x: long): ...
+      """)
+      self.assertNoErrors("""
+        import foo
+        foo.f(42)
+      """, pythonpath=[d.path])
 
 
 if __name__ == "__main__":

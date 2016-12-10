@@ -43,7 +43,7 @@ class SolverTests(test_inference.InferenceTest):
         return [a - 42.0 for a in A.values()]
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
-        def f(A: dict[?, float or complex or int or long]) -> List[float or complex, ...]
+        def f(A: dict[?, float or complex or int]) -> List[float or complex, ...]
     """)
 
   def testAnythingTypeParameters(self):

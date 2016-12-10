@@ -4,7 +4,7 @@ class array(object):
     def __copy__() -> ?
     def __deepcopy__(...) -> ?
     def __reduce__() -> tuple raises AttributeError
-    def __sizeof__() -> long
+    def __sizeof__() -> int
     def append(...) -> NoneType
     def buffer_info() -> tuple
     def byteswap() -> NoneType raises RuntimeError

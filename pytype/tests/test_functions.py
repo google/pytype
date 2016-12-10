@@ -497,7 +497,7 @@ class TestGenerators(test_inference.InferenceTest):
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def f(x: str) -> float
-        def f(x: int, y: bool) -> long
+        def f(x: int, y: bool) -> int
       """)
       ty = self.Infer("""
         import foo
@@ -505,14 +505,14 @@ class TestGenerators(test_inference.InferenceTest):
       """, pythonpath=[d.path], deep=True, solve_unknowns=True)
       self.assertTypesMatchPytd(ty, """
         foo = ...  # type: module
-        x = ...  # type: long
+        x = ...  # type: int
       """)
 
   def test_multiple_signatures_with_unknown(self):
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def f(arg1: str) -> float
-        def f(arg2: int) -> long
+        def f(arg2: int) -> bool
       """)
       ty = self.Infer("""
         import foo
@@ -521,7 +521,7 @@ class TestGenerators(test_inference.InferenceTest):
       """, pythonpath=[d.path], deep=True, solve_unknowns=True)
       self.assertTypesMatchPytd(ty, """
         foo = ...  # type: module
-        def f(x: int or str) -> float or long
+        def f(x: int or str) -> float or bool
       """)
 
   def test_multiple_signatures_with_optional_arg(self):
@@ -544,7 +544,7 @@ class TestGenerators(test_inference.InferenceTest):
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def f(*, y: int) -> bool
-        def f(y: str) -> long
+        def f(y: str) -> float
       """)
       ty = self.Infer("""
         import foo
@@ -553,7 +553,7 @@ class TestGenerators(test_inference.InferenceTest):
       """, pythonpath=[d.path], deep=True, solve_unknowns=True)
       self.assertTypesMatchPytd(ty, """
         foo = ...  # type: module
-        def f(x: int or str) -> bool or long
+        def f(x: int or str) -> bool or float
       """)
 
   def test_isinstance(self):
