@@ -227,8 +227,8 @@ class Frame(object):
     Raises:
       NameError: If we can't resolve any references into the outer frame.
     """
-    assert isinstance(f_globals, abstract.LazyAbstractOrConcreteValue)
-    assert isinstance(f_locals, abstract.LazyAbstractOrConcreteValue)
+    assert isinstance(f_globals, abstract.LazyConcreteDict)
+    assert isinstance(f_locals, abstract.LazyConcreteDict)
     self.vm = vm
     self.f_code = f_code
     self.states = {}

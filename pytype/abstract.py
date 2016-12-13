@@ -729,7 +729,7 @@ class ValueWithSlots(Instance):
       return self._slots[name]
 
 
-class Dict(ValueWithSlots, WrapsDict("members")):
+class Dict(ValueWithSlots, PythonConstant, WrapsDict("pyval")):
   """Representation of Python 'dict' objects.
 
   It works like __builtins__.dict, except that, for string keys, it keeps track
@@ -742,6 +742,7 @@ class Dict(ValueWithSlots, WrapsDict("members")):
     self.set_slot("__setitem__", self.setitem_slot)
     self.init_type_parameters(K, V)
     self.could_contain_anything = False
+    PythonConstant.init_mixin(self, {})
 
   def getitem_slot(self, node, name_var):
     """Implements the __getitem__ slot."""
@@ -755,7 +756,7 @@ class Dict(ValueWithSlots, WrapsDict("members")):
           unresolved = True
         else:
           try:
-            results.append(self.members[name])
+            results.append(self.pyval[name])
           except KeyError:
             self.vm.errorlog.key_error(self.vm.frame.current_opcode, name)
             unresolved = True
@@ -771,10 +772,10 @@ class Dict(ValueWithSlots, WrapsDict("members")):
   def set_str_item(self, node, name, value_var):
     self.merge_type_parameter(node, K, self.vm.convert.build_string(node, name))
     self.merge_type_parameter(node, V, value_var)
-    if name in self.members:
-      self.members[name].PasteVariable(value_var, node)
+    if name in self.pyval:
+      self.pyval[name].PasteVariable(value_var, node)
     else:
-      self.members[name] = value_var
+      self.pyval[name] = value_var
     return node
 
   def setitem(self, node, name_var, value_var):
@@ -789,10 +790,10 @@ class Dict(ValueWithSlots, WrapsDict("members")):
         # all branches.
         self.could_contain_anything = True
         continue
-      if name in self.members:
-        self.members[name].PasteVariable(value_var, node)
+      if name in self.pyval:
+        self.pyval[name].PasteVariable(value_var, node)
       else:
-        self.members[name] = value_var
+        self.pyval[name] = value_var
 
   def setitem_slot(self, node, name_var, value_var):
     """Implements the __setitem__ slot."""
@@ -834,22 +835,21 @@ class AbstractOrConcreteValue(Instance, PythonConstant):
     return bool(self.pyval) == logical_value
 
 
-class LazyAbstractOrConcreteValue(SimpleAbstractValue, PythonConstant):
-  """Lazy abstract value with a concrete fallback."""
+class LazyConcreteDict(SimpleAbstractValue, PythonConstant):
+  """Dictionary with lazy values."""
 
   is_lazy = True  # uses _convert_member
 
-  def __init__(self, name, pyval, member_map, resolver, vm):
+  def __init__(self, name, member_map, vm):
     SimpleAbstractValue.__init__(self, name, vm)
     self._member_map = member_map
-    self._resolver = resolver
-    PythonConstant.init_mixin(self, pyval)
+    PythonConstant.init_mixin(self, self.members)
 
   def _convert_member(self, name, pyval):
-    return self._resolver(name, pyval)
+    return self.vm.convert.convert_constant(name, pyval)
 
   def compatible_with(self, logical_value):
-    return bool(self.pyval) == logical_value
+    return bool(self._member_map) == logical_value
 
 
 class Union(AtomicAbstractValue):

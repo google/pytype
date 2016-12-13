@@ -843,6 +843,14 @@ class ErrorTest(test_inference.InferenceTest):
     self.assertErrorLogIs(errors, [(6, "invalid-annotation",
                                     r"Union\[ int, str \]")])
 
+  def testBadDictAttribute(self):
+    _, errors = self.InferAndCheck("""\
+      x = {"a": 1}
+      y = x.a
+    """)
+    self.assertErrorLogIs(errors, [(2, "attribute-error",
+                                    r"a.*Dict\[str, int\]")])
+
 
 if __name__ == "__main__":
   test_inference.main()

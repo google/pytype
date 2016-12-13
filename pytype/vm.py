@@ -428,7 +428,7 @@ class VirtualMachine(object):
         val = abstract.InterpreterClass(
             name,
             bases,
-            class_dict.members,
+            class_dict.pyval,
             cls_var,
             self)
       except pytd_utils.MROError as e:
@@ -1005,8 +1005,7 @@ class VirtualMachine(object):
     return state.pop()
 
   def convert_locals_or_globals(self, d, name="globals"):
-    return abstract.LazyAbstractOrConcreteValue(
-        name, d, d, self.convert.convert_constant, self)
+    return abstract.LazyConcreteDict(name, d, self)
 
   # TODO(kramm): memoize
   def import_module(self, name, level):
