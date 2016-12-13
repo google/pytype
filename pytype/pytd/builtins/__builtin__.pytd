@@ -1,23 +1,3 @@
-# -*- mode:Python; coding:utf-8; python-indent:4; indent-tabs-mode:nil -*-
-
-# Currently the type annotations are just enough to make the tests
-# work. These should be extended.
-# TODO(kramm): Add type parameters to many more types. Among them:
-#              iterators
-#              iterables
-# TODO(kramm): Add type parameters to many more methods.
-# TODO(kramm): Add mutatable parameter information to all the mutable collections.
-# TODO(pludemann): see TODO.txt about reverse operators
-# TODO(pludemann): see TODO.txt about whether `bool` should be subclass of `int`
-# TODO(pludemann): PYTHONCODE is a no-op right now, but might be useful as
-#                  documentation, or needed for class methods (that is, we might
-#                  want PYTHONCODE to allow definition of a single method via
-#                  __builtin__.pytd, and would need a way of specifying the
-#                  name in __builtin__.py, e.g.:
-#                     class Foo:
-#                       def Method PYTHONCODE Foo_Method
-#                  If not useful, remove.
-
 # "T", "K", and "V" are hardcoded in abstract.py
 T = TypeVar('T')
 T2 = TypeVar('T2')
@@ -421,10 +401,8 @@ class dict(Dict[K, V]):
         self := dict[N, N]
     def __init__(self, ...) -> NoneType:
         self := dict[?, ?]
-    def __contains__(self, k: K) -> bool
     def __delitem__(self, y: K) -> NoneType
     def __eq__(self, y: dict) -> bool
-    def __getitem__(self, index: K) -> V
     def __iter__(self) -> `dictionary-keyiterator`[K]
     def __len__(self) -> int
     def __ne__(self, y: dict) -> bool
@@ -436,14 +414,10 @@ class dict(Dict[K, V]):
     def fromkeys(keys: Iterable[K]) -> Dict[K, NoneType]
     @staticmethod
     def fromkeys(keys: Iterable[K], value: V) -> Dict[K, V]
-    def get(self, k: K) -> V or NoneType
-    def get(self, k: K, d: V2) -> V or V2
     def has_key(self, k: K) -> bool
-    def items(self) -> list[tuple[K or V]]  # list[tuple[K, V]]
     def iteritems(self) -> `dictionary-itemiterator`[K,V]
     def iterkeys(self) -> `dictionary-keyiterator`[K]
     def itervalues(self) -> `dictionary-valueiterator`[V]
-    def keys(self) -> list[K]
     def pop(self, k) -> V
     def pop(self, k, d: V2) -> V or V2
     def popitem(self) -> tuple[K or V]  # tuple[K, V]
@@ -455,10 +429,9 @@ class dict(Dict[K, V]):
         self := dict[K or K2, V or V2]
     def update(self, E, ...) -> NoneType
     def update(self) -> NoneType
-    def values(self) -> list[V]
     def viewitems(self) -> dict_items[K,V]
     def viewkeys(self) -> dict_keys[K]
-    def viewvalues(self) -> dict_values
+    def viewvalues(self) -> dict_values[V]
 
 class listiterator(Iterator[T]):
     def __iter__(self) -> listiterator[T]

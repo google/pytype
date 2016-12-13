@@ -40,7 +40,7 @@ class SolverTests(test_inference.InferenceTest):
   def testTypeParameters(self):
     ty = self.Infer("""
       def f(A):
-        return [a - 42.0 for a in A.values()]
+        return [a - 42.0 for a in A.viewvalues()]
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
         def f(A: dict[?, float or complex or int]) -> List[float or complex, ...]
@@ -52,7 +52,7 @@ class SolverTests(test_inference.InferenceTest):
         return x.keys()
     """, deep=True, solve_unknowns=True, extract_locals=True)
     self.assertTypesMatchPytd(ty, """
-      def f(x: dict) -> list
+      def f(x: Mapping) -> list
     """)
 
   @unittest.skip("Infers x as Any because dict params are nothing")
@@ -307,15 +307,12 @@ class SolverTests(test_inference.InferenceTest):
   def testExternalName(self):
     ty = self.Infer("""\
       import collections
-      def bar(d):
-          d[""] = collections.defaultdict(int, [(0, 0)])
+      def bar(l):
+          l.append(collections.defaultdict(int, [(0, 0)]))
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
       collections = ...  # type: module
-      def bar(d: Dict[str, collections.defaultdict] or
-                 collections.OrderedDict[str, collections.defaultdict] or
-                 collections.defaultdict[str, collections.defaultdict]
-              ) -> NoneType
+      def bar(l: List[collections.defaultdict]) -> NoneType
     """)
 
   def testNameConflictWithBuiltin(self):

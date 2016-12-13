@@ -205,6 +205,68 @@ class TypingTest(test_inference.InferenceTest):
         def f(x: foo.CustomDict[int, str]): pass
       """, pythonpath=[d.path])
 
+  def test_mapping(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        K = TypeVar("K")
+        V = TypeVar("V")
+        class MyDict(Mapping[K, V]): ...
+        def f() -> MyDict[str, int]
+      """)
+      ty = self.Infer("""\
+        import foo
+        m = foo.f()
+        a = m.copy()
+        b = "foo" in m
+        c = m["foo"]
+        d = m.get("foo", 3)
+        e = [x for x in m.items()]
+        f = [x for x in m.keys()]
+        g = [x for x in m.values()]
+      """, pythonpath=[d.path], extract_locals=True)
+      self.assertTypesMatchPytd(ty, """
+        import foo
+        foo = ...  # type: module
+        m = ...  # type: foo.MyDict[str, int]
+        a = ...  # type: typing.Mapping[str, int]
+        b = ...  # type: bool
+        c = ...  # type: int
+        d = ...  # type: int
+        e = ...  # type: List[Tuple[int or str, ...]]
+        f = ...  # type: List[str]
+        g = ...  # type: List[int]
+        x = ...  # type: int
+      """)
+
+  def test_mutablemapping(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        K = TypeVar("K")
+        V = TypeVar("V")
+        class MyDict(MutableMapping[K, V]): ...
+        def f() -> MyDict[str, int]
+      """)
+      ty = self.Infer("""\
+        import foo
+        m = foo.f()
+        m.clear()
+        m[3j] = 3.14
+        del m["foo"]
+        a = m.pop("bar", 3j)
+        b = m.popitem()
+        c = m.setdefault("baz", 3j)
+        m.update({4j: 2.1})
+        m.update([(1, 2), (3, 4)])
+      """, pythonpath=[d.path], extract_locals=True)
+      self.assertTypesMatchPytd(ty, """
+        import foo
+        foo = ...  # type: module
+        m = ...  # type: foo.MyDict[Union[complex, int, str], Union[complex, float, int]]
+        a = ...  # type: Union[complex, float, int]
+        b = ...  # type: Tuple[Union[complex, str], ...]
+        c = ...  # type: Union[complex, float, int]
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()

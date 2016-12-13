@@ -206,7 +206,7 @@ class MatchTest(unittest.TestCase):
     mapping = self.parse_and_solve("""
       def f(A: `~unknown0`) -> list[`~unknown8`]
       class `~unknown0`():
-        def values(self) -> `~unknown2`
+        def viewvalues(self) -> `~unknown2`
       class `~unknown2`():
         def __iter__(self) -> `~unknown4`
       class `~unknown4`():
@@ -219,8 +219,8 @@ class MatchTest(unittest.TestCase):
     self.assertItemsEqual(["dict"], mapping["~unknown0"])
     self.assertContainsSubset(["complex", "float"],
                               mapping["~unknown0.__builtin__.dict.V"])
-    self.assertItemsEqual(["list"], mapping["~unknown2"])
-    self.assertItemsEqual(["listiterator"], mapping["~unknown4"])
+    self.assertItemsEqual(["dict_values"], mapping["~unknown2"])
+    self.assertItemsEqual(["dictionary-valueiterator"], mapping["~unknown4"])
     self.assertContainsSubset(["complex", "float"], mapping["~unknown6"])
     self.assertContainsSubset(["complex", "float"], mapping["~unknown8"])
 
