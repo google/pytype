@@ -525,24 +525,3 @@ class Converter(object):
     else:
       raise NotImplementedError("Can't convert constant %s %r" %
                                 (type(pyval), pyval))
-
-  def maybe_convert_constant(self, name, pyval):
-    """Create a variable that represents a python constant if needed.
-
-    Call self.convert_constant if pyval is not an AtomicAbstractValue, otherwise
-    store said value in a variable. This also handles dict values by
-    constructing a new abstract value representing it. Dict values are not
-    cached.
-
-    Args:
-      name: The name to give to the variable.
-      pyval: The python value or PyTD value to convert or pass
-        through.
-    Returns:
-      A Variable.
-    """
-    assert not isinstance(pyval, cfg.Variable)
-    if isinstance(pyval, abstract.AtomicAbstractValue):
-      return pyval.to_variable(self.vm.root_cfg_node, name)
-    else:
-      return self.convert_constant(name, pyval)

@@ -1006,7 +1006,7 @@ class VirtualMachine(object):
 
   def convert_locals_or_globals(self, d, name="globals"):
     return abstract.LazyAbstractOrConcreteValue(
-        name, d, d, self.convert.maybe_convert_constant, self)
+        name, d, d, self.convert.convert_constant, self)
 
   # TODO(kramm): memoize
   def import_module(self, name, level):
@@ -1339,8 +1339,7 @@ class VirtualMachine(object):
 
   def byte_LOAD_LOCALS(self, state, op):
     log.debug("Returning locals: %r", self.frame.f_locals)
-    locals_dict = self.convert.maybe_convert_constant(
-        "locals", self.frame.f_locals)
+    locals_dict = self.frame.f_locals.to_variable(self.root_cfg_node, "locals")
     return state.push(locals_dict)
 
   def byte_COMPARE_OP(self, state, op):
