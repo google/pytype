@@ -691,7 +691,7 @@ def infer_types(src,
                       generate_unknowns=not options.quick)
   loc, defs, builtin_names = tracer.run_program(
       src, filename, init_maximum_depth, run_builtins)
-  log.info("===Done run_program===")
+  log.info("===Done running definitions and module-level code===")
   if deep:
     tracer.exitpoint = tracer.analyze(loc, defs, builtin_names, maximum_depth)
   else:

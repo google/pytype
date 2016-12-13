@@ -2015,7 +2015,9 @@ class VirtualMachine(object):
       log.info("Popping exception %r", exc)
       state = state.pop_and_discard()
       state = state.pop_and_discard()
-    return state
+      # If a pending exception makes it all the way out of an "except" block,
+      # no handler matched, hence Python re-raises the exception.
+      return state.set_why("reraise")
 
   def _check_return(self, opcode, node, actual, formal):
     pass  # overridden in infer.py

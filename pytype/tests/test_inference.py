@@ -277,11 +277,13 @@ class InferenceTest(unittest.TestCase):
       raise AssertionError("Unexpected error:\n%s" % any_error)
 
   def Infer(self, srccode, pythonpath=(), deep=False, solve_unknowns=False,
-            extract_locals=False, report_errors=True, **kwargs):
+            extract_locals=False, report_errors=True, analyze_annotated=True,
+            **kwargs):
     types, builtins_pytd = self._InferAndVerify(
         textwrap.dedent(srccode), pythonpath=pythonpath, deep=deep,
-        cache_unknowns=True, solve_unknowns=solve_unknowns,
-        extract_locals=extract_locals, report_errors=report_errors, **kwargs)
+        cache_unknowns=True, analyze_annotated=analyze_annotated,
+        solve_unknowns=solve_unknowns, extract_locals=extract_locals,
+        report_errors=report_errors, **kwargs)
     types = optimize.Optimize(types, builtins_pytd, lossy=False, use_abcs=False,
                               max_union=7, remove_mutable=False)
     types = pytd_utils.CanonicalOrdering(types)

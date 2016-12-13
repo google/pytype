@@ -220,6 +220,46 @@ class TestExceptions(test_inference.InferenceTest):
         def warn() -> None
       """)
 
+  def test_end_finally(self):
+    ty = self.Infer("""
+      def foo():
+        try:
+          assert True
+          return 42
+        except Exception:
+          return 42
+    """, deep=True, extract_locals=True)
+    self.assertTypesMatchPytd(ty, """
+      def foo() -> int
+    """)
+
+  def test_dead_except_block(self):
+    ty = self.Infer("""
+      def foo():
+        try:
+          return 42
+        except Exception:
+          return 1+3j
+    """, deep=True, extract_locals=True)
+    self.assertTypesMatchPytd(ty, """
+      def foo() -> int
+    """)
+
+  def test_assert(self):
+    ty = self.Infer("""
+      def foo():
+        try:
+          assert True
+          return 42
+        except:
+          return 1+3j
+    """, deep=True, extract_locals=True)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Union
+
+      def foo() -> Union[complex, int]
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

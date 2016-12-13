@@ -76,7 +76,7 @@ class AnnotationTest(test_inference.InferenceTest):
       import typing
       def foo(x: typing.Union[int, float], y: int):
         return x + y
-    """, deep=True, extract_locals=True, analyze_annotated=True)
+    """, deep=True, extract_locals=True)
     self.assertTypesMatchPytd(ty, """
       google_type_annotations = ...  # type: __future__._Feature
       typing = ...  # type: module
@@ -136,7 +136,7 @@ class AnnotationTest(test_inference.InferenceTest):
           x = l2
           y = "foo"
         x.append(y)
-    """, deep=True, extract_locals=True, analyze_annotated=True)
+    """, deep=True, extract_locals=True)
     self.assertTypesMatchPytd(ty, """
         List = ...  # type: type
         google_type_annotations = ...  # type: __future__._Feature
@@ -151,7 +151,7 @@ class AnnotationTest(test_inference.InferenceTest):
       class Foo:
         def f(self, x: List[int]):
           pass
-    """, deep=True, extract_locals=True, analyze_annotated=True)
+    """, deep=True, extract_locals=True)
     self.assertTypesMatchPytd(ty, """
       google_type_annotations = ...  # type: __future__._Feature
       List = ...  # type: type
@@ -531,8 +531,7 @@ class AnnotationTest(test_inference.InferenceTest):
         A = a.factory()
         def f(x: A):
           return x.name
-      """, deep=True, solve_unknowns=True, pythonpath=[d.path],
-                      analyze_annotated=True)
+      """, deep=True, solve_unknowns=True, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         google_type_annotations = ...  # type: __future__._Feature
         a = ...  # type: module
@@ -600,7 +599,7 @@ class AnnotationTest(test_inference.InferenceTest):
       def baz(x: int) -> None:
         global _analyzed_baz
         _analyzed_baz = 3
-    """, deep=True, extract_locals=True)
+    """, deep=True, extract_locals=True, analyze_annotated=False)
     self.assertTypesMatchPytd(ty, """
       google_type_annotations = ...  # type: __future__._Feature
       _analyzed_baz = ... # type: None
@@ -646,7 +645,7 @@ class AnnotationTest(test_inference.InferenceTest):
           return x.value1
         else:
           return x.value2
-    """, deep=True, analyze_annotated=True)
+    """, deep=True)
 
   def testImpreciseAnnotation(self):
     ty = self.Infer("""
