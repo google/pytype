@@ -1017,6 +1017,234 @@ class ConditionTest(_ParserTestBase):
                           "Unsupported condition: 'foo.bar'")
 
 
+class VerifyPythonCodeTest(_ParserTestBase):
+
+  def test_pythoncode(self):
+    self.check("""\
+      def foo PYTHONCODE""")
+
+  def test_pytd(self):
+    self.check("""\
+      def foo(int) -> None: ...
+      def foo(str) -> None: ...""")
+
+  def test_duplicate(self):
+    self.check_error("""\
+      def foo PYTHONCODE
+      def foo PYTHONCODE""", None, "Multiple PYTHONCODEs for foo")
+
+  def test_mixed(self):
+    self.check_error("""\
+      def foo() -> None: ...
+      def foo PYTHONCODE""", None, "Mixed pytd and PYTHONCODEs for foo")
+
+
+class PropertyDecoratorTest(_ParserTestBase):
+  """Tests that cover _try_parse_signature_as_property()."""
+
+  def test_property_with_type(self):
+    expected = """\
+      class A(object):
+          name = ...  # type: str
+    """
+
+    # There are several different ways to define a property...
+    self.check("""
+      class A(object):
+          @property
+          def name(self) -> str:...
+      """, expected)
+
+    self.check("""
+      class A(object):
+          @name.setter
+          def name(self, value: str) -> None: ...
+      """, expected)
+
+    self.check("""
+      class A(object):
+          @property
+          def name(self) -> str:...
+
+          @name.setter
+          def name(self, value: str) -> None: ...
+      """, expected)
+
+    self.check("""
+      class A(object):
+          @property
+          def name(self) -> str:...
+
+          @name.setter
+          def name(self, value) -> None: ...
+      """, expected)
+
+    self.check("""
+      class A(object):
+          @property
+          def name(self) -> int:...
+
+          # Last type gets used (should improve).
+          @name.setter
+          def name(self, value: str) -> None: ...
+      """, expected)
+
+  def test_property_decorator_any_type(self):
+    expected = """\
+          from typing import Any
+
+          class A(object):
+              name = ...  # type: Any
+              """
+
+    self.check("""
+      class A(object):
+          @property
+          def name(self): ...
+      """, expected)
+
+    self.check("""
+      class A(object):
+          @name.setter
+          def name(self, value): ...
+      """, expected)
+
+    self.check("""
+      class A(object):
+          @name.deleter
+          def name(self): ...
+      """, expected)
+
+  def test_property_decorator_bad_syntax(self):
+    self.check_error("""
+      class A(object):
+          @property
+          def name(self, bad_arg): ...
+    """, 2, "Unhandled decorator: property")
+
+    self.check_error("""
+      class A(object):
+          @name.setter
+          def name(self): ...
+      """, 2, "Unhandled decorator: name.setter")
+
+    self.check_error("""
+      class A(object):
+          @name.foo
+          def name(self): ...
+      """, 2, "Unhandled decorator: name.foo")
+
+    self.check_error("""
+      class A(object):
+          @notname.deleter
+          def name(self): ...
+      """, 2, "Unhandled decorator: notname.deleter")
+
+    self.check_error("""
+      class A(object):
+          @property
+          @staticmethod
+          def name(self): ...
+      """, 5, "Too many decorators for name")
+
+    self.check_error("""
+      @property
+      def name(self): ...
+      """, None, "Module-level functions with property decorators: name")
+
+
+class MergeSignaturesTest(_ParserTestBase):
+
+  def test_property(self):
+    self.check("""
+      class A(object):
+          @property
+          def name(self) -> str: ...
+      """, """\
+      class A(object):
+          name = ...  # type: str
+      """)
+
+  def test_merge_property_types(self):
+    self.check("""
+      class A(object):
+          @property
+          def name(self): ...
+
+          @name.setter
+          def name(self, value: str): ...
+
+          @name.deleter
+          def name(self): ...
+      """, """\
+      class A(object):
+          name = ...  # type: str
+      """)
+
+  def test_method(self):
+    self.check("""\
+      class A(object):
+          def name(self) -> str: ...
+      """)
+
+  def test_merged_method(self):
+    ast = self.check("""\
+      def foo(x: int) -> str: ...
+      def foo(x: str) -> str: ...""")
+    self.assertEquals(1, len(ast.functions))
+    foo = ast.functions[0]
+    self.assertEquals(2, len(foo.signatures))
+
+  def test_method_and_property_error(self):
+    self.check_error("""
+      class A(object):
+          @property
+          def name(self): ...
+
+          def name(self): ...
+      """, 2, "Incompatible signatures for name")
+
+  def test_overloaded_signatures_disagree(self):
+    self.check_error("""
+      class A(object):
+          @staticmethod
+          def foo(x: int): ...
+          @classmethod
+          def foo(x: str): ...
+      """, 2, "Overloaded signatures for foo disagree on decorators")
+
+  def test_classmethod(self):
+    ast = self.check("""\
+      class A(object):
+          @classmethod
+          def foo(x: int) -> str: ...
+      """)
+    self.assertEquals("classmethod", ast.classes[0].methods[0].kind)
+
+  def test_staticmethod(self):
+    ast = self.check("""\
+      class A(object):
+          @staticmethod
+          def foo(x: int) -> str: ...
+      """)
+    self.assertEquals("staticmethod", ast.classes[0].methods[0].kind)
+
+  def test_new(self):
+    ast = self.check("""\
+      class A(object):
+          def __new__(self) -> A: ...
+      """)
+    self.assertEquals("staticmethod", ast.classes[0].methods[0].kind)
+
+  def test_external(self):
+    ast = self.check("""\
+      def foo PYTHONCODE""")
+    foo = ast.functions[0]
+    self.assertEquals("foo", foo.name)
+    self.assertEmpty(foo.signatures)
+    self.assertEquals("method", foo.kind)
+
+
 class EntireFileTest(_ParserTestBase):
 
   def test_builtins(self):

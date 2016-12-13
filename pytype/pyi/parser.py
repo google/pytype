@@ -6,7 +6,6 @@ import hashlib
 from pytype.pyi import parser_ext
 from pytype.pytd import pep484
 from pytype.pytd import pytd
-from pytype.pytd.parse import parser as legacy_parser
 from pytype.pytd.parse import visitors
 
 # This module will eventually replace pytype/pytd/parse/parser.py.  In general
@@ -28,15 +27,6 @@ _Params = collections.namedtuple("_", ["required",
 
 _NameAndSig = collections.namedtuple("_", ["name", "signature",
                                            "decorators", "external_code"])
-
-
-# We are currently re-using a handful of helper methods from the legacy parser.
-# Once the grammar is complete the methods can be cleaned up and ported to
-# this module.  The methods are instance methods on _TypeDeclParser but do
-# not require any state from actual parsing (they could have just as easily
-# been written as @staticmethods or module functions).
-# TODO(dbaum): Get rid of this.
-_LEGACY = legacy_parser._TypeDeclParser()  # pylint: disable=protected-access
 
 
 _COMPARES = {
@@ -119,6 +109,51 @@ class ParseError(Exception):
       lines.append("%*s^" % (pos, ""))
     lines.append("%s: %s" % (type(self).__name__, self.message))
     return "\n".join(lines)
+
+
+class _Mutator(visitors.Visitor):
+  """Visitor for changing parameters to BeforeAfterType instances.
+
+  We model
+    def f(x: old_type):
+      x := new_type
+  as
+    def f(x: BeforeAfterType(old_type, new_type))
+  .
+  This visitor applies the body "x := new_type" to the function signature.
+  """
+
+  def __init__(self, name, new_type):
+    super(_Mutator, self).__init__()
+    self.name = name
+    self.new_type = new_type
+    self.successful = False
+
+  def VisitParameter(self, p):
+    if p.name == self.name:
+      self.successful = True
+      if p.optional:
+        raise NotImplementedError(
+            "Argument %s can not be both mutable and optional" % p.name)
+      return p.Replace(mutated_type=self.new_type)
+    else:
+      return p
+
+
+class _InsertTypeParameters(visitors.Visitor):
+  """Visitor for inserting TypeParameter instances."""
+
+  def EnterTypeDeclUnit(self, node):
+    self.type_params = {p.name: p for p in node.type_params}
+
+  def LeaveTypeDeclUnit(self, node):
+    self.type_params = None
+
+  def VisitNamedType(self, node):
+    if node.name in self.type_params:
+      return self.type_params[node.name]
+    else:
+      return node
 
 
 class _Parser(object):
@@ -263,8 +298,6 @@ class _Parser(object):
     self._used = True
 
     self._filename = filename
-    # TODO(dbaum): Remove this when legacy code is no longer required.
-    _LEGACY.filename = "?"
 
     if name != "typing":
       self._type_map = {name: pytd.NamedType("typing." + name)
@@ -289,11 +322,8 @@ class _Parser(object):
                          column=self._error_location[1], text=text)
       else:
         raise e
-    except legacy_parser.ParseError as e:
-      # TODO(dbaum): Remove this when legacy code is no longer required.
-      raise ParseError(e.message)
 
-    ast = ast.Visit(legacy_parser.InsertTypeParameters())
+    ast = ast.Visit(_InsertTypeParameters())
     ast = ast.Visit(pep484.ConvertTypingToNative(name))
 
     if name:
@@ -328,7 +358,7 @@ class _Parser(object):
       raise ParseError(
           "Duplicate top-level identifier(s): " + ", ".join(duplicates))
 
-    functions, properties = _LEGACY.MergeSignatures(functions)
+    functions, properties = _merge_signatures(functions)
     if properties:
       prop_names = ", ".join(p.name for p in properties)
       raise ParseError(
@@ -562,7 +592,7 @@ class _Parser(object):
       if stmt is None:
         # TODO(kramm) : process raise statement
         continue  # raise stmt
-      mutator = legacy_parser.Mutator(stmt[0], stmt[1])
+      mutator = _Mutator(stmt[0], stmt[1])
       try:
         signature = signature.Visit(mutator)
       except NotImplementedError as e:
@@ -686,7 +716,7 @@ class _Parser(object):
     # TODO(dbaum): Is NothingType even legal here?  The grammar accepts it but
     # perhaps it should be a ParseError.
     parents = [p for p in parents if not isinstance(p, pytd.NothingType)]
-    methods, properties = _LEGACY.MergeSignatures(methods)
+    methods, properties = _merge_signatures(methods)
     # Ensure that old style classes inherit from classobj.
     if not parents and class_name not in ["classobj", "object"]:
       parents = (pytd.NamedType("classobj"),)
@@ -886,3 +916,152 @@ def _split_definitions(defs):
 def _three_tuple(value):
   """Append zeros and slice to normalize the tuple to a three-tuple."""
   return (value + (0, 0))[:3]
+
+
+def _verify_python_code(name_external):
+  """Raise ParseError if any entry in name_external violated python code use.
+
+  Args:
+    name_external: A dict of name -> {False: int, True: int}.
+
+  Raises:
+    ParseError: if any name has a True count of more than 1, or has nonzero
+      True and False counts.
+  """
+  for name, counts in name_external.items():
+    if counts[True] > 1:
+      raise ParseError("Multiple PYTHONCODEs for %s" % name)
+    if counts[True] and counts[False]:
+      raise ParseError("Mixed pytd and PYTHONCODEs for %s" % name)
+
+
+def _try_parse_signature_as_property(full_signature):
+  """Given a signature, see if it corresponds to a @property.
+
+  Return whether it's compatible with a @property, and the properties' type
+  if specified in the signature's return value (for @property methods) or
+  argument (for @foo.setter methods).
+
+  Arguments:
+    full_signature: _NameAndSig
+
+  Returns:
+    (is_property: bool, property_type: Union[None, NamedType, ...?)].
+
+  Raises:
+    ParseError: if multiple decorators are present or a decorator could not
+      be processed.
+  """
+  name, signature, decorators, _ = full_signature
+  # TODO(acaceres): validate full_signature.external_code?
+
+  def maybe_property_decorator(dec_string):
+    return "." in dec_string or "property" == dec_string
+
+  if all(not maybe_property_decorator(d) for d in decorators):
+    return False, None
+
+  if 1 != len(decorators):
+    raise ParseError("Can't handle more than one decorator for %s" % name)
+
+  decorator = decorators[0]
+  num_params = len(signature.params)
+  property_type = None
+  is_valid = False
+
+  if "property" == decorator:
+    is_valid = (1 == num_params)
+    property_type = signature.return_type
+  elif 1 == decorator.count("."):
+    dec_name, dec_type = decorator.split(".")
+    if "setter" == dec_type and 2 == num_params:
+      is_valid = True
+      property_type = signature.params[1].type
+      if property_type == pytd.NamedType("object"):
+        # default, different from signature.return_type
+        property_type = None
+    elif "deleter" == dec_type:
+      is_valid = (1 == num_params)
+
+    is_valid &= (dec_name == name)
+
+  # Property decorators are the only decorators where we accept dotted-names,
+  # so any other dotted-name uses will throw an error here.
+  if not is_valid:
+    raise ParseError("Unhandled decorator: %s" % decorator)
+
+  return True, property_type
+
+
+def _merge_signatures(signatures):
+  """Given a list of pytd function signature declarations, group them by name.
+
+  Converts a list of NameAndSig items to a list of Functions and a list of
+  Constants (grouping signatures by name). Constants are derived from
+  functions with @property decorators.
+
+  Arguments:
+    signatures: List[NameAndSig].
+
+  Returns:
+    Tuple[List[pytd.Function], List[pytd.Constant]].
+
+  Raises:
+    ParseError: if an error is encountered while trying to merge signatures.
+  """
+  name_to_property_type = collections.OrderedDict()
+  method_signatures = []
+  for signature in signatures:
+    is_property, property_type = _try_parse_signature_as_property(signature)
+    if is_property:
+      # Any methods with a decorator that looks like one of {@property,
+      # @foo.setter, @foo.deleter) will get merged into a Constant.
+      name = signature.name
+      if property_type or name not in name_to_property_type:
+        name_to_property_type[name] = property_type
+        # TODO(acaceres): warn if incompatible types? Or only take type
+        # from @property, not @foo.setter? Take last non-None for now.
+    else:
+      method_signatures.append(signature)
+
+  name_to_signatures = collections.OrderedDict()
+  # map name to (# external_code is {False,True}):
+  name_external = collections.defaultdict(lambda: {False: 0, True: 0})
+
+  name_to_decorators = {}
+  for name, signature, decorators, external_code in method_signatures:
+    if name in name_to_property_type:
+      raise ParseError("Incompatible signatures for %s" % name)
+
+    if name not in name_to_signatures:
+      name_to_signatures[name] = []
+      name_to_decorators[name] = decorators
+
+    if name_to_decorators[name] != decorators:
+      raise ParseError(
+          "Overloaded signatures for %s disagree on decorators" % name)
+
+    name_to_signatures[name].append(signature)
+    name_external[name][external_code] += 1
+
+  _verify_python_code(name_external)
+  methods = []
+  for name, signatures in name_to_signatures.items():
+    kind = pytd.METHOD
+    decorators = name_to_decorators[name]
+    if "classmethod" in decorators:
+      kind = pytd.CLASSMETHOD
+    if name == "__new__" or "staticmethod" in decorators:
+      kind = pytd.STATICMETHOD
+    if name_external[name][True]:
+      methods.append(pytd.ExternalFunction(name, (), kind))
+    else:
+      methods.append(pytd.Function(name, tuple(signatures), kind))
+
+  constants = []
+  for name, property_type in name_to_property_type.items():
+    if not property_type:
+      property_type = pytd.AnythingType()
+    constants.append(pytd.Constant(name, property_type))
+
+  return methods, constants
