@@ -1,5 +1,6 @@
 """Test comparison operators."""
 
+import os
 import unittest
 
 from pytype.tests import test_inference
@@ -287,6 +288,22 @@ class NeTest(test_inference.InferenceTest):
         return Foo() != 3
     """, deep=True, solve_unknowns=False, extract_locals=False)
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.complex)
+
+
+class InstanceUnequalityTest(test_inference.InferenceTest):
+
+
+  def test_is(self):
+    """SomeType is not be the same as AnotherType."""
+    self.assertNoErrors("""
+      from __future__ import google_type_annotations
+      from typing import Optional
+      def f(x: Optional[str]) -> NoneType:
+        if x is None:
+          return x
+        else:
+          return None
+      """)
 
 
 if __name__ == "__main__":

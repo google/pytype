@@ -389,15 +389,48 @@ def _common_condition(cond1, cond2):
   return cond1
 
 
-def _is_or_is_not_cmp(left, right, is_not=False):
-  if (not isinstance(left, abstract.PythonConstant) or
-      not isinstance(right, abstract.PythonConstant)):
-    return None
+def _return_class_as_data(instance):
+  """Returns the class of an instance.
 
-  if left.cls != right.cls:
+  Args:
+    instance: An abstract.Instance for which the cls should be returned.
+
+  Returns:
+    If instance is an abstract.Instance and can only have one possible type the
+    class representing that type is returned. In all other cases
+    None is returned.
+  """
+  if isinstance(instance, abstract.Instance):
+    if len(instance.cls.data) == 1:
+      return instance.cls.data[0]
+    else:
+      # If multiple classes are possible we can not be sure what happens.
+      # Therefore returning None is fine.
+      return None
+  return None
+
+
+def _is_or_is_not_cmp(left, right, is_not=False):
+  """Implementation of 'left is right' amd 'left is not right'."""
+  if (isinstance(left, abstract.PythonConstant) and
+      isinstance(right, abstract.PythonConstant)):
+    if left.cls != right.cls:
+      return is_not
+
+    return is_not ^ (left.pyval == right.pyval)
+
+  left_class = _return_class_as_data(left)
+  right_class = _return_class_as_data(right)
+  if left_class is None or right_class is None:
+    # One of the things has no type information we can handle.
+    # Explicit test as some types evaluate to False.
+    return None
+  if left_class != right_class:
+    # If those were the same they could be the same but we can't be sure from
+    # comparing types.
     return is_not
 
-  return is_not ^ (left.pyval == right.pyval)
+  return None
 
 
 def is_cmp(left, right):
