@@ -2,7 +2,6 @@
 
 import unittest
 
-from pytype.pytd import pytd
 from pytype.tests import test_inference
 
 
@@ -228,18 +227,6 @@ class StructuralTest(test_inference.InferenceTest):
     self.assertTypesMatchPytd(ty, """
       _unicode = ...  # type: type
     """)
-
-  def testSlice(self):
-    ty = self.Infer("""
-      def foo(a):
-        return a[:10].lower()
-    """, deep=True, solve_unknowns=True)
-    foo = ty.Lookup("foo")
-    # A lot of types match this signature. Just do a sanity check for "slice":
-    assert any(
-        isinstance(p, pytd.GenericType) and
-        getattr(p.parameters[0], "name", None) == "__builtin__.slice"
-        for p in foo.signatures[0].params[0].type.type_list)
 
 
 if __name__ == "__main__":

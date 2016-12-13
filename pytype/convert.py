@@ -143,6 +143,10 @@ class Converter(object):
       raise ValueError("Invalid bool value: %r", value)
     return val.to_variable(node, name)
 
+  def build_int(self, node):
+    i = self.primitive_class_instances[int]
+    return i.to_variable(node, "int")
+
   def build_string(self, node, s):
     del node
     return self.convert_constant(repr(s), s)

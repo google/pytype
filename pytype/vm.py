@@ -312,40 +312,48 @@ class VirtualMachine(object):
 
   def pop_slice_and_obj(self, state, count):
     """Pop a slice from the data stack. Used by slice opcodes (SLICE_0 etc.)."""
-    start = 0
-    end = None      # we will take this to mean end
-    if count == 1:
+    if count == 0:  # x[:]
+      start = None
+      end = None
+    elif count == 1:  # x[i:]
       state, start = state.pop()
-    elif count == 2:
+      end = None
+    elif count == 2:  # x[:j]
+      start = None
       state, end = state.pop()
-    elif count == 3:
+    elif count == 3:  # x[i:j]
       state, end = state.pop()
       state, start = state.pop()
+    else:
+      raise AssertionError("invalid slice code")
     state, obj = state.pop()
-    if end is None:
-      # Note that Python only calls __len__ if we have a negative index, not if
-      # we omit the index. Since we can't tell whether an index is negative
-      # (it might be an abstract integer, or a union type), we just always
-      # call __len__.
-      state, f = self.load_attr(state, obj, "__len__")
-      state, end = self.call_function_with_state(state, f, ())
-    return state, self.convert.build_slice(state.node, start, end, 1), obj
+    return state, (start, end), obj
 
   def store_slice(self, state, count):
-    state, slice_obj, obj = self.pop_slice_and_obj(state, count)
+    state, slice_args, obj = self.pop_slice_and_obj(state, count)
+    slice_obj = self.convert.build_slice(state.node, *slice_args)
     state, new_value = state.pop()
     state, f = self.load_attr(state, obj, "__setitem__")
     state, _ = self.call_function_with_state(state, f, (slice_obj, new_value))
     return state
 
   def delete_slice(self, state, count):
-    state, slice_obj, obj = self.pop_slice_and_obj(state, count)
+    state, slice_args, obj = self.pop_slice_and_obj(state, count)
+    slice_obj = self.convert.build_slice(state.node, *slice_args)
     return self._delete_item(state, obj, slice_obj)
 
   def get_slice(self, state, count):
-    state, slice_obj, obj = self.pop_slice_and_obj(state, count)
-    state, f = self.load_attr(state, obj, "__getitem__")
-    state, ret = self.call_function_with_state(state, f, (slice_obj,))
+    """Common implementation of all GETSLICE+<n> opcodes."""
+    state, (start, end), obj = self.pop_slice_and_obj(state, count)
+    state, f = self.load_attr(state, obj, "__getslice__")
+    if f and f.bindings:
+      start = start or self.convert.build_int(state.node)
+      end = end or self.convert.build_int(state.node)
+      state, ret = self.call_function_with_state(state, f, (start, end))
+    else:
+      slice_obj = self.convert.build_slice(state.node, start, end)
+      state, f = self.load_attr(state, obj, "__getitem__")
+      state, ret = self.call_function_with_state(state, f, (slice_obj,))
     return state.push(ret)
 
   def do_raise(self, state, exc, cause):
