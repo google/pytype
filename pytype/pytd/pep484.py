@@ -222,9 +222,7 @@ class ConvertTypingToNative(visitors.Visitor):
     return self.VisitGenericType(t)
 
   def VisitClass(self, node):
-    if self.module == "typing":
-      return node.Replace(parents=self.old_node.parents)
-    elif self.module == "__builtin__":
+    if self.module == "__builtin__":
       parents = []
       for old_parent, new_parent in zip(self.old_node.parents, node.parents):
         if (isinstance(new_parent, (pytd.GenericType, pytd.ClassType,

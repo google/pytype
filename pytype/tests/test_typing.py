@@ -267,6 +267,15 @@ class TypingTest(test_inference.InferenceTest):
         c = ...  # type: Union[complex, float, int]
       """)
 
+  def test_generator_iterator_match(self):
+    self.assertNoErrors("""
+      from __future__ import google_type_annotations
+      from typing import Iterator
+      def f(x: Iterator[int]):
+        pass
+      f(x for x in [42])
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

@@ -1575,12 +1575,12 @@ class TestASTGeneration(parser_test_base.ParserTest):
     parent, = builtins.Lookup("__builtin__.itemiterator").parents
     self.assertEquals(pytd.NamedType("iterator"), parent)
 
+    parent, = typing.Lookup("typing.IO").parents
+    self.assertEquals(pytd.NamedType("iterator"), parent)
+
     # Some parents should not be, to avoid circular class hierarchies.
     parent, = builtins.Lookup("__builtin__.list").parents
     self.assertEquals(pytd.NamedType("typing.List"), parent)
-
-    parent, = typing.Lookup("typing.IO").parents
-    self.assertEquals(pytd.NamedType("Iterator"), parent)
 
   def testEmptyUnionOrOptional(self):
     self.TestThrowsSyntaxError("def f(x: Union): ...")
