@@ -411,6 +411,9 @@ class PythonConstant(object):
     """Mix-in equivalent of __init__."""
     self.pyval = pyval
 
+  def compatible_with(self, logical_value):
+    return bool(self.pyval) == logical_value
+
 
 class TypeParameter(AtomicAbstractValue):
   """Parameter of a type.
@@ -752,7 +755,7 @@ class Dict(ValueWithSlots, PythonConstant, WrapsDict("pyval")):
       for val in name_var.bindings:
         try:
           name = self.vm.convert.convert_value_to_string(val.data)
-        except ValueError:  # ConversionError
+        except ConversionError:
           unresolved = True
         else:
           try:
@@ -784,7 +787,7 @@ class Dict(ValueWithSlots, PythonConstant, WrapsDict("pyval")):
     for val in name_var.bindings:
       try:
         name = self.vm.convert.convert_value_to_string(val.data)
-      except ValueError:  # ConversionError
+      except ConversionError:
         # Now the dictionary is abstract: We don't know what it contains
         # anymore. Note that the below is not a variable, so it'll affect
         # all branches.
@@ -818,10 +821,13 @@ class Dict(ValueWithSlots, PythonConstant, WrapsDict("pyval")):
       return False
 
   def compatible_with(self, logical_value):
-    # Always compatible with False.  Compatible with True only if type
-    # parameters have been established (meaning that the dict can be
-    # non-empty).
-    return not logical_value or bool(self.type_parameters[K].bindings)
+    if self.could_contain_anything:
+      # Always compatible with False.  Compatible with True only if type
+      # parameters have been established (meaning that the dict can be
+      # non-empty).
+      return not logical_value or bool(self.type_parameters[K].bindings)
+    else:
+      return PythonConstant.compatible_with(self, logical_value)
 
 
 class AbstractOrConcreteValue(Instance, PythonConstant):
@@ -832,7 +838,7 @@ class AbstractOrConcreteValue(Instance, PythonConstant):
     PythonConstant.init_mixin(self, pyval)
 
   def compatible_with(self, logical_value):
-    return bool(self.pyval) == logical_value
+    return PythonConstant.compatible_with(self, logical_value)
 
 
 class LazyConcreteDict(SimpleAbstractValue, PythonConstant):

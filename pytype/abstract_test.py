@@ -32,7 +32,7 @@ class AbstractTestBase(unittest.TestCase):
   def setUp(self):
     self._vm = vm.VirtualMachine(errors.ErrorLog(), config.Options([""]))
     self._program = cfg.Program()
-    self._node = self._program.NewCFGNode("test_node")
+    self._node = self._vm.root_cfg_node.ConnectNew("test_node")
 
   def new_var(self, name, *values):
     """Create a Variable bound to the given values."""
@@ -102,24 +102,22 @@ class DictTest(AbstractTestBase):
     super(DictTest, self).setUp()
     self._d = abstract.Dict(self._vm, self._node)
     self._var = self._program.NewVariable("test_var")
-    self._var.AddBinding(abstract.Unknown(self._vm))
+    self._var.AddBinding(abstract.Unknown(self._vm), [], self._node)
 
   def test_compatible_with__when_empty(self):
     self.assertIs(False, self._d.compatible_with(True))
     self.assertIs(True, self._d.compatible_with(False))
 
-  @unittest.skip("setitem() does not update the parameters")
   def test_compatible_with__after_setitem(self):
     # Once a slot is added, dict is ambiguous.
-    self._d.setitem(self._node, self._var, self._var)
+    self._d.setitem_slot(self._node, self._var, self._var)
     self.assertIs(True, self._d.compatible_with(True))
     self.assertIs(True, self._d.compatible_with(False))
 
   def test_compatible_with__after_set_str_item(self):
-    # set_str_item() will make the dict ambiguous.
     self._d.set_str_item(self._node, "key", self._var)
     self.assertIs(True, self._d.compatible_with(True))
-    self.assertIs(True, self._d.compatible_with(False))
+    self.assertIs(False, self._d.compatible_with(False))
 
   @unittest.skip("update() does not update the parameters")
   def test_compatible_with__after_update(self):
