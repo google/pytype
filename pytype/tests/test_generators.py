@@ -82,6 +82,24 @@ class GeneratorTest(test_inference.InferenceTest):
       def foo(self) -> Union[None, str]
     """)
 
+  def testUnpackingOfGetItem(self):
+    ty = self.Infer("""
+      class Foo(object):
+        def __getitem__(self, pos):
+          if pos < 3:
+            return pos
+          else:
+            raise StopIteration
+      x, y, z = Foo()
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      class Foo(object):
+        def __getitem__(self, pos) -> Any
+      x = ...  # type: int
+      y = ...  # type: int
+      z = ...  # type: int
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

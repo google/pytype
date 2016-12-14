@@ -1083,6 +1083,33 @@ class VirtualMachine(object):
 
     return result
 
+  def _get_iter(self, state, seq):
+    """Get an iterator from a sequence."""
+    state, func = self.load_attr_noerror(state, seq, "__iter__")
+    if func:
+      # Call __iter__()
+      state, itr = self.call_function_with_state(state, func, ())
+    else:
+      state, func = self.load_attr_noerror(state, seq, "__getitem__")
+      if func:
+        # TODO(dbaum): Consider delaying the call to __getitem__ until
+        # the iterator's next() is called.  That would more closely match
+        # actual execution at the cost of making the code and Iterator class
+        # a little more complicated.
+
+        # Call __getitem__(int).
+        state, item = self.call_function_with_state(
+            state, func, (self.convert.build_int(state.node),))
+        # Create a new iterator from the returned value.
+        itr = abstract.Iterator(self, item, state.node).to_variable(state.node)
+      else:
+        # Cannot iterate this object.
+        if seq.bindings:
+          self.errorlog.attribute_error(
+              self.frame.current_opcode, seq, "__iter__")
+        itr = self.convert.create_new_unsolvable(state.node, "bad attr")
+    return state, itr
+
   def byte_UNARY_NOT(self, state, op):
     """Implement the UNARY_NOT bytecode."""
     state, var = state.pop()
@@ -1449,8 +1476,7 @@ class VirtualMachine(object):
   def byte_UNPACK_SEQUENCE(self, state, op):
     """Pops a tuple (or other iterable) and pushes it onto the VM's stack."""
     state, seq = state.pop()
-    state, f = self.load_attr(state, seq, "__iter__")
-    state, itr = self.call_function_with_state(state, f, ())
+    state, itr = self._get_iter(state, seq)
     values = []
     for _ in range(op.arg):
       # TODO(ampere): Fix for python 3
@@ -1588,34 +1614,10 @@ class VirtualMachine(object):
 
   def byte_GET_ITER(self, state, op):
     """Get the iterator for an object."""
-    pre_state, seq = state.pop()
-    state, func = self.load_attr_noerror(pre_state, seq, "__iter__")
-    if func:
-      # Call __iter__().
-      state, it = self.call_function_with_state(state, func, ())
-    else:
-      state, func = self.load_attr_noerror(pre_state, seq, "__getitem__")
-      if func:
-        # TODO(dbaum): Consider delaying the call to __getitem__ until
-        # the iterator's next() is called.  That would more closely match
-        # actual execution at the cost of making the code and Iterator class
-        # a little more complicated.
-
-        # Call __getitem__(int).
-        key = abstract.Instance(self.convert.int_type, self, state.node)
-        state, item = self.call_function_with_state(state, func, (
-            key.to_variable(state.node, "key"),))
-        # Create a new iterator from the returned value.
-        it = abstract.Iterator(self, item, state.node).to_variable(
-            state.node, "it")
-      else:
-        # Cannot iterate this object.
-        if seq.bindings:
-          self.errorlog.attribute_error(
-              self.frame.current_opcode, seq, "__iter__")
-        it = self.convert.create_new_unsolvable(state.node, "bad attr")
+    state, seq = state.pop()
+    state, itr = self._get_iter(state, seq)
     # Push the iterator onto the stack and return.
-    return state.push(it)
+    return state.push(itr)
 
   def store_jump(self, target, state):
     self.frame.states[target] = state.merge_into(self.frame.states.get(target))
