@@ -405,6 +405,9 @@ class Converter(object):
       # level in IMPORT_NAME).
       return abstract.AbstractOrConcreteValue(
           pyval, self.int_type, self.vm, node)
+    elif isinstance(pyval, long):
+      # long is aliased to int
+      return self.primitive_class_instances[int]
     elif pyval.__class__ in self.primitive_classes:
       return self.primitive_class_instances[pyval.__class__]
     elif isinstance(pyval, (loadmarshal.CodeType, blocks.OrderedCode)):

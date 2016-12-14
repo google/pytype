@@ -413,6 +413,14 @@ class BuiltinTests2(test_inference.InferenceTest):
         foo.f(42)
       """, pythonpath=[d.path])
 
+  def testLongConstant(self):
+    ty = self.Infer("""
+      MAX_VALUE = 2**64
+    """)
+    self.assertTypesMatchPytd(ty, """
+      MAX_VALUE = ...  # type: int
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

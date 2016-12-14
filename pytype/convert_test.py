@@ -67,6 +67,11 @@ class ConvertTest(unittest.TestCase):
                   abstract.get_atomic_value(self._vm.convert.str_type))
     self.assertIs(val.type_parameters["V"], self._vm.convert.unsolvable)
 
+  def test_construct_long(self):
+    val = self._vm.convert.construct_constant_from_value(
+        "x", 2**64, {}, self._vm.root_cfg_node)
+    self.assertIs(val, self._vm.convert.primitive_class_instances[int])
+
 
 if __name__ == "__main__":
   unittest.main()
