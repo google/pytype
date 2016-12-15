@@ -53,15 +53,14 @@ def isinstance(object, class_or_type_or_tuple: tuple[type] or type) -> bool
 def isinstance(object, class_or_type_or_tuple: tuple[nothing]) -> bool  # Python 2 & 3 allow this
 def issubclass(C, B: tuple[type] or type) -> bool
 def issubclass(C, B: tuple[nothing]) -> bool
-def iter(collection: str) -> iterator[str]
-def iter(collection: unicode) -> iterator[unicode]
 def iter(collection: bytearray) -> bytearray_iterator
-def iter(collection: iterator[T]) -> iterator[T]
 def iter(collection: list[T]) -> listiterator[T]
 def iter(collection: tuple[T]) -> tupleiterator[T]
 def iter(collection: set[T]) -> setiterator[T]
 def iter(collection: dict[T, T2]) -> `dictionary-keyiterator`[T]
-def iter(func: typing.Callable[[], Union[T, T2]], sentinel: T) -> iterator[T2]
+def iter(collection: Generator[T]) -> Generator[T]
+def iter(collection: Iterable[T]) -> Iterator[T]
+def iter(func: typing.Callable[[], Union[T, T2]], sentinel: T) -> `callable-iterator`[T2]
 def len(obj) -> int  # TODO(pludemann): leave this out and call obj.__len__() ?
 def locals() -> dict[str, object]
 def map(function, sequence: list[nothing], ...) -> list[nothing]
@@ -353,7 +352,7 @@ class bytearray(Sequence[int]):
     def upper(self) -> bytearray
     def zfill(self, width: int) -> bytearray
 
-class bytearray_iterator(Iterator):  # TODO(kramm): Iterator[int]
+class bytearray_iterator(Iterator[int]):
     def __iter__(self) -> bytearray_iterator
     def next(self) -> int
 
@@ -456,27 +455,8 @@ class listreverseiterator(Iterator[T]):
 class list(List[T]):
     def __init__(self) -> NoneType:
         self := list[nothing]
-    def __init__(self, iterable: list[N] or `dictionary-keyiterator`[N] or `dictionary-valueiterator`[N] or listiterator[N] or listreverseiterator[N] or tupleiterator[N] or setiterator[N] or iterator[N] or `callable-iterator`[N]) -> NoneType:
+    def __init__(self, iterable: Iterable[N]) -> NoneType:
         self := list[N]
-    def __init__(self, iterable: `dictionary-itemiterator`[T,V]) -> NoneType:
-        self := list[T]
-    def __init__(self, iterable: str) -> NoneType:  # TODO(pludemann): lint warning if programmer does this?
-        self := list[str]
-    def __init__(self, iterable: bytearray_iterator) -> NoneType:
-        self := list[int]
-    def __init__(self, iterable: rangeiterator) -> NoneType:
-        self := list[int]
-    def __init__(self, generator: generator[N]) -> NoneType:
-        # TODO(kramm): We should be able to just write "T := N"
-        # TODO(pludemann): see comment above -- why does self:=list[int] do the
-        #                  the wrong thing for some tests?
-        self := list[N]
-    def __init__(self, iterable: list[N]) -> NoneType:
-        self := list[N]
-    def __init__(self, x) -> NoneType:
-        # TODO(pludemann): this is a fall-through ... what happens if called
-        #                  with __any_object__?
-        self := list[?]  # "?" should be x.type.element_type or abc.Iterator
     def __add__(self, y: list[T2]) -> list[T or T2]
     def __contains__(self, y: T) -> bool
     def __delitem__(self, y: int or slice) -> NoneType
@@ -529,8 +509,10 @@ class reversed(Iterator[T]):
     def next(self) -> T
 
 class tuple(Tuple[T]):
-    def __init__(self, p0) -> NoneType
-    def __init__(self) -> NoneType
+    def __init__(self) -> NoneType:
+      self := tuple[nothing]
+    def __init__(self, p0: Iterable[N]) -> NoneType:
+      self := tuple[N]
     def __add__(self, y: tuple[T2]) -> tuple[T or T2]
     def __contains__(self, y: T) -> bool
     def __eq__(self, y: tuple) -> bool
@@ -891,7 +873,7 @@ class iterator(Iterator[T]):
     def __iter__(self) -> iterator[T]
     def next(self) -> T
 
-class `callable-iterator`(Generic[T], object):  # TODO(pludemann): is this correct?
+class `callable-iterator`(Iterator[T]):
     def __iter__(self) -> `callable-iterator`[T]
     def next(self) -> T
 
@@ -910,7 +892,7 @@ class xrange(Sized, Iterable[int], Reversible[int]):
     def __len__(self) -> int
     def __reversed__(self, ...) -> rangeiterator
 
-class rangeiterator(object):
+class rangeiterator(Iterator[int]):
     def __iter__(self) -> rangeiterator
     def next(self) -> int
 

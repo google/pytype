@@ -421,6 +421,98 @@ class BuiltinTests2(test_inference.InferenceTest):
       MAX_VALUE = ...  # type: int
     """)
 
+  def testIter(self):
+    ty = self.Infer("""
+      x1 = iter("hello")
+      x2 = iter(u"hello")
+      x3 = iter(bytearray(42))
+      x4 = iter(x for x in [42])
+      x5 = iter([42])
+      x6 = iter((42,))
+      x7 = iter({42})
+      x8 = iter({"a": 1})
+      x9 = iter(int, 42)
+    """, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      x1 = ...  # type: Iterator[str]
+      x2 = ...  # type: Iterator[unicode]
+      x3 = ...  # type: bytearray_iterator
+      x4 = ...  # type: Generator[int, Any, Any]
+      x5 = ...  # type: listiterator[int]
+      x6 = ...  # type: tupleiterator[int]
+      x7 = ...  # type: setiterator[int]
+      x8 = ...  # type: `dictionary-keyiterator`[str]
+      x9 = ...  # type: `callable-iterator`
+    """)
+
+  def testListInit(self):
+    ty = self.Infer("""
+      l1 = list()
+      l2 = list([42])
+      l3 = list({"a": 1}.iterkeys())
+      l4 = list({"a": 1}.itervalues())
+      l5 = list(iter([42]))
+      l6 = list(reversed([42]))
+      l7 = list(iter((42,)))
+      l8 = list(iter({42}))
+      l9 = list((42,))
+      l10 = list({42})
+      l11 = list("hello")
+      l12 = list(iter(bytearray(42)))
+      l13 = list(iter(xrange(42)))
+      l14 = list(x for x in [42])
+    """, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      l1 = ...  # type: List[nothing]
+      l2 = ...  # type: List[int]
+      l3 = ...  # type: List[str]
+      l4 = ...  # type: List[int]
+      l5 = ...  # type: List[int]
+      l6 = ...  # type: List[int]
+      l7 = ...  # type: List[int]
+      l8 = ...  # type: List[int]
+      l9 = ...  # type: List[int]
+      l10 = ...  # type: List[int]
+      l11 = ...  # type: List[str]
+      l12 = ...  # type: List[int]
+      l13 = ...  # type: List[int]
+      l14 = ...  # type: List[int]
+    """)
+
+  def testTupleInit(self):
+    ty = self.Infer("""
+      t1 = tuple()
+      t2 = tuple([42])
+      t3 = tuple({"a": 1}.iterkeys())
+      t4 = tuple({"a": 1}.itervalues())
+      t5 = tuple(iter([42]))
+      t6 = tuple(reversed([42]))
+      t7 = tuple(iter((42,)))
+      t8 = tuple(iter({42}))
+      t9 = tuple((42,))
+      t10 = tuple({42})
+      t11 = tuple("hello")
+      t12 = tuple(iter(bytearray(42)))
+      t13 = tuple(iter(xrange(42)))
+      t14 = tuple(x for x in [42])
+    """, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      t1 = ...  # type: Tuple[nothing]
+      t2 = ...  # type: Tuple[int]
+      t3 = ...  # type: Tuple[str]
+      t4 = ...  # type: Tuple[int]
+      t5 = ...  # type: Tuple[int]
+      t6 = ...  # type: Tuple[int]
+      t7 = ...  # type: Tuple[int]
+      t8 = ...  # type: Tuple[int]
+      t9 = ...  # type: Tuple[int]
+      t10 = ...  # type: Tuple[int]
+      t11 = ...  # type: Tuple[str]
+      t12 = ...  # type: Tuple[int]
+      t13 = ...  # type: Tuple[int]
+      t14 = ...  # type: Tuple[int]
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

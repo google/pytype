@@ -188,7 +188,7 @@ class BuiltinTests(test_inference.InferenceTest):
       return list(x)
     """, deep=True, solve_unknowns=True, extract_locals=True)
     self.assertTypesMatchPytd(ty, """
-      def t_testListInit0(x: object) -> list
+      def t_testListInit0(x: Iterable) -> list
     """)
 
   def testListInit1(self):
@@ -233,13 +233,9 @@ class BuiltinTests(test_inference.InferenceTest):
       return x
     t_testListInit4(__any_object__)
     """, deep=False, solve_unknowns=True, extract_locals=True)
-    # TODO(kramm): "object" below is only correct as long as return types and
-    #              type params are covariant. If they'd be invariant, the
-    #              below would be wrong.
     self.assertTypesMatchPytd(ty, """
-      def t_testListInit4(x) -> ?
-      # _i_ captures the more precise definition of the list
-      def _i_(x: List[object, ...]) -> list
+      def t_testListInit4(x: Iterable) -> ?
+      def _i_(x: list) -> list
     """)
 
   def testAbsInt(self):

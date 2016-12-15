@@ -699,7 +699,7 @@ class MethodsTest(test_inference.InferenceTest):
 
   def testDefaultReturnType(self):
     ty = self.Infer("""
-      def f(x=None):
+      def f(x=""):
           x = list(x)
       f()
     """, deep=False, solve_unknowns=False, extract_locals=False)
