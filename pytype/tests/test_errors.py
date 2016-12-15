@@ -738,10 +738,14 @@ class ErrorTest(test_inference.InferenceTest):
       from __future__ import google_type_annotations
       def f(x: int):
         pass
+      if __any_object__:
+        i = 0
+      else:
+        i = 1
       x = (3.14, "")
-      f(x[0])
+      f(x[i])
     """)
-    self.assertErrorLogIs(errors, [(5, "wrong-arg-types",
+    self.assertErrorLogIs(errors, [(9, "wrong-arg-types",
                                     r"Actually passed:.*Union\[float, str\]")])
 
   def testRecursion(self):

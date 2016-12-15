@@ -1476,13 +1476,20 @@ class VirtualMachine(object):
   def byte_UNPACK_SEQUENCE(self, state, op):
     """Pops a tuple (or other iterable) and pushes it onto the VM's stack."""
     state, seq = state.pop()
-    state, itr = self._get_iter(state, seq)
-    values = []
-    for _ in range(op.arg):
-      # TODO(ampere): Fix for python 3
-      state, f = self.load_attr(state, itr, "next")
-      state, result = self.call_function_with_state(state, f, ())
-      values.append(result)
+    values = None
+    try:
+      values = self.convert.convert_value_to_constant(
+          abstract.get_atomic_value(seq), tuple)
+    except abstract.ConversionError:
+      pass
+    if values is None or len(values) != op.arg:  # TODO(rechen): pytype error?
+      state, itr = self._get_iter(state, seq)
+      values = []
+      for _ in range(op.arg):
+        # TODO(ampere): Fix for python 3
+        state, f = self.load_attr(state, itr, "next")
+        state, result = self.call_function_with_state(state, f, ())
+        values.append(result)
     for value in reversed(values):
       state = state.push(value)
     return state

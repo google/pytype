@@ -108,10 +108,12 @@ class Converter(object):
     self.object_new, = object_val.members["__new__"].data
     self.typing_overlay = typing.TypingOverlay(self.vm, self.vm.root_cfg_node)
 
-  def convert_value_to_string(self, val):
-    if isinstance(val, abstract.PythonConstant) and isinstance(val.pyval, str):
+  def convert_value_to_constant(self, val, constant_type):
+    if (isinstance(val, abstract.PythonConstant) and
+        isinstance(val.pyval, constant_type)):
       return val.pyval
-    raise abstract.ConversionError("%s is not a string" % val)
+    raise abstract.ConversionError(
+        "%s is not a(n) %s" % (val, constant_type.__name__))
 
   def convert_name_to_value(self, name):
     pytd_cls = self.vm.lookup_builtin(name)
@@ -121,10 +123,7 @@ class Converter(object):
   def tuple_to_value(self, node, content):
     """Create a VM tuple from the given sequence."""
     content = tuple(content)  # content might be a generator
-    value = abstract.AbstractOrConcreteValue(
-        content, self.tuple_type, self.vm, node)
-    value.initialize_type_parameter(node, abstract.T,
-                                    self.build_content(node, content))
+    value = abstract.Tuple(content, self.vm, node)
     return value
 
   def build_none(self, node):
@@ -202,7 +201,7 @@ class Converter(object):
     Returns:
       An instance of the same type as the data, abstract if possible.
     """
-    if isinstance(data, abstract.AbstractOrConcreteValue):
+    if isinstance(data, abstract.PythonConstant):
       data_type = type(data.pyval)
       if data_type in self.primitive_class_instances:
         return self.primitive_class_instances[data_type]

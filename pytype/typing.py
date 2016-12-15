@@ -44,7 +44,7 @@ def _maybe_extract_tuple(convert, node, t):
   v, = values
   if not (v.cls and v.cls.data == convert.tuple_type.data):
     return (t,)
-  if not isinstance(v, abstract.AbstractOrConcreteValue):
+  if not isinstance(v, abstract.PythonConstant):
     return (t,)
   return v.pyval
 

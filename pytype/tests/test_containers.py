@@ -28,7 +28,7 @@ class ContainerTest(test_inference.InferenceTest):
     self.assertHasOnlySignatures(
         ty.Lookup("f"),
         ((pytd.HomogeneousContainerType(self.tuple, (self.intorstr,)),),
-         self.intorstr))
+         self.int))
 
   def testTupleSwap(self):
     ty = self.Infer("""

@@ -96,6 +96,39 @@ class InstanceTest(AbstractTestBase):
     self.assertIs(True, i.compatible_with(False))
 
 
+class TupleTest(AbstractTestBase):
+
+  def setUp(self):
+    super(TupleTest, self).setUp()
+    self._var = self._program.NewVariable("test_var")
+    self._var.AddBinding(abstract.Unknown(self._vm), [], self._node)
+
+  def test_compatible_with__not_empty(self):
+    t = abstract.Tuple((self._var,), self._vm, self._node)
+    self.assertIs(True, t.compatible_with(True))
+    self.assertIs(False, t.compatible_with(False))
+
+  def test_compatible_with__empty(self):
+    t = abstract.Tuple((), self._vm, self._node)
+    self.assertIs(False, t.compatible_with(True))
+    self.assertIs(True, t.compatible_with(False))
+
+  def test_getitem__concrete_index(self):
+    t = abstract.Tuple((self._var,), self._vm, self._node)
+    index = self._vm.convert.convert_constant("index", 0)
+    node, var = t.getitem_slot(self._node, index)
+    self.assertIs(node, self._node)
+    self.assertIs(var, self._var)
+
+  def test_getitem__abstract_index(self):
+    t = abstract.Tuple((self._var,), self._vm, self._node)
+    index = self._vm.convert.build_int(self._node)
+    node, var = t.getitem_slot(self._node, index)
+    self.assertIs(node, self._node)
+    self.assertIs(abstract.get_atomic_value(var),
+                  abstract.get_atomic_value(self._var))
+
+
 class DictTest(AbstractTestBase):
 
   def setUp(self):

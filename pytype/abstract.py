@@ -732,6 +732,33 @@ class ValueWithSlots(Instance):
       return self._slots[name]
 
 
+class Tuple(ValueWithSlots, PythonConstant):
+  """Representation of Python 'tuple' objects."""
+
+  def __init__(self, content, vm, node):
+    super(Tuple, self).__init__(vm.convert.tuple_type, vm, node)
+    self.set_slot("__getitem__", self.getitem_slot)
+    self.initialize_type_parameter(
+        node, T, self.vm.convert.build_content(node, content))
+    PythonConstant.init_mixin(self, content)
+
+  def getitem_slot(self, node, index_var):
+    """Implementation of tuple.__getitem__."""
+    try:
+      index = self.vm.convert.convert_value_to_constant(
+          get_atomic_value(index_var), int)
+    except ConversionError:
+      pass
+    else:
+      if index < len(self.pyval):
+        # TODO(rechen): Should index >= len(self.pyval) be a pytype error?
+        return node, self.pyval[index]
+    return self.call_pytd(node, "__getitem__", index_var)
+
+  def compatible_with(self, logical_value):
+    return PythonConstant.compatible_with(self, logical_value)
+
+
 class Dict(ValueWithSlots, PythonConstant, WrapsDict("pyval")):
   """Representation of Python 'dict' objects.
 
@@ -754,7 +781,7 @@ class Dict(ValueWithSlots, PythonConstant, WrapsDict("pyval")):
     if not self.could_contain_anything:
       for val in name_var.bindings:
         try:
-          name = self.vm.convert.convert_value_to_string(val.data)
+          name = self.vm.convert.convert_value_to_constant(val.data, str)
         except ConversionError:
           unresolved = True
         else:
@@ -786,7 +813,7 @@ class Dict(ValueWithSlots, PythonConstant, WrapsDict("pyval")):
     assert isinstance(value_var, typegraph.Variable)
     for val in name_var.bindings:
       try:
-        name = self.vm.convert.convert_value_to_string(val.data)
+        name = self.vm.convert.convert_value_to_constant(val.data, str)
       except ConversionError:
         # Now the dictionary is abstract: We don't know what it contains
         # anymore. Note that the below is not a variable, so it'll affect
