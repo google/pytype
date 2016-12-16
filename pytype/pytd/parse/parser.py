@@ -1255,7 +1255,7 @@ class _TypeDeclParser(object):
   def p_type_tuple(self, p):
     # Used for function types, e.g.  # Callable[[args...], return]
     """type : LBRACKET maybe_type_list RBRACKET"""
-    p[0] = pytd.GenericType(pytd.NamedType("tuple"), tuple(p[2]))
+    p[0] = self.MakeHomogeneousContainer(pytd.NamedType("tuple"), tuple(p[2]))
 
   def p_type_list_1(self, p):
     """type_list : type """
@@ -1299,15 +1299,8 @@ class _TypeDeclParser(object):
     else:
       parameters = tuple(pytd.AnythingType() if p is Ellipsis else p
                          for p in parameters)
-      if p[1] == pytd.NamedType("typing.Tuple"):
-        # Since we only support homogeneous tuples, convert heterogeneous
-        # tuples to tuples of a union.
-        if len(parameters) > 1:
-          element_type = pytd.UnionType(parameters)
-        else:
-          element_type, = parameters
-        p[0] = pytd.HomogeneousContainerType(base_type=base_type,
-                                             parameters=(element_type,))
+      if p[1] in (pytd.NamedType("tuple"), pytd.NamedType("typing.Tuple")):
+        p[0] = self.MakeHomogeneousContainer(base_type, parameters)
       else:
         p[0] = pytd.GenericType(base_type=base_type, parameters=parameters)
 
@@ -1465,6 +1458,17 @@ class _TypeDeclParser(object):
           self, "Unhandled decorator: %s" % decorator, None)
 
     return True, property_type
+
+  def MakeHomogeneousContainer(self, base_type, parameters):
+    if parameters:
+      if len(parameters) > 1:
+        element_type = pytd.UnionType(parameters)
+      else:
+        element_type, = parameters
+      return pytd.HomogeneousContainerType(base_type=base_type,
+                                           parameters=(element_type,))
+    else:
+      return base_type
 
   def MergeSignatures(self, signatures):
     """Given a list of pytd function signature declarations, group them by name.

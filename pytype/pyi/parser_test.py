@@ -352,14 +352,13 @@ class HomogeneousTypeTest(_ParserTestBase):
 
   def test_implied_tuple(self):
     self.check("x = ...  # type: []",
-               "x = ...  # type: Tuple[]",
-               prologue="from typing import Tuple")
+               "x = ...  # type: tuple")
     self.check("x = ...  # type: [int]",
-               "x = ...  # type: Tuple[int]",
+               "x = ...  # type: Tuple[int, ...]",
                prologue="from typing import Tuple")
     self.check("x = ...  # type: [int, str]",
-               "x = ...  # type: Tuple[int, str]",
-               prologue="from typing import Tuple")
+               "x = ...  # type: Tuple[Union[int, str], ...]",
+               prologue="from typing import Tuple, Union")
 
 
 class NamedTupleTest(_ParserTestBase):

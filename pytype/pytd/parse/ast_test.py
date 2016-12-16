@@ -1586,6 +1586,31 @@ class TestASTGeneration(parser_test_base.ParserTest):
     self.TestThrowsSyntaxError("def f(x: Union): ...")
     self.TestThrowsSyntaxError("def f(x: Optional): ...")
 
+  def testHomogenizeTuple(self):
+    src = textwrap.dedent("""
+      def f1() -> Tuple[int, str]
+      def f2() -> tuple[int, str]
+    """)
+    tree = self.Parse(src)
+    expected_tuple = pytd.HomogeneousContainerType(pytd.NamedType("tuple"), (
+        pytd.UnionType((pytd.NamedType("int"), pytd.NamedType("str"))),))
+    self.assertEquals(
+        expected_tuple, tree.Lookup("f1").signatures[0].return_type)
+    self.assertEquals(
+        expected_tuple, tree.Lookup("f2").signatures[0].return_type)
+
+  def testBareTuple(self):
+    src = textwrap.dedent("""
+      def f1() -> Tuple
+      def f2() -> tuple
+    """)
+    tree = self.Parse(src)
+    expected_tuple = pytd.NamedType("tuple")
+    self.assertEquals(
+        expected_tuple, tree.Lookup("f1").signatures[0].return_type)
+    self.assertEquals(
+        expected_tuple, tree.Lookup("f2").signatures[0].return_type)
+
 
 class TestDecorate(unittest.TestCase):
   """Test adding additional methods to nodes in a tree using decorate.py."""

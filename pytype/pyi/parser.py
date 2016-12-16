@@ -541,15 +541,18 @@ class _Parser(object):
     else:
       parameters = tuple(pytd.AnythingType() if p is self.ELLIPSIS else p
                          for p in parameters)
-      if base_type == pytd.NamedType("typing.Tuple"):
-        # Since we only support homogeneous tuples, convert heterogeneous
-        # tuples to tuples of a union.
-        if len(parameters) > 1:
-          element_type = pytd.UnionType(parameters)
+      if base_type in (pytd.NamedType("tuple"), pytd.NamedType("typing.Tuple")):
+        if parameters:
+          # Since we only support homogeneous tuples, convert heterogeneous
+          # tuples to tuples of a union.
+          if len(parameters) > 1:
+            element_type = pytd.UnionType(parameters)
+          else:
+            element_type, = parameters
+          return pytd.HomogeneousContainerType(base_type=base_type,
+                                               parameters=(element_type,))
         else:
-          element_type, = parameters
-        return pytd.HomogeneousContainerType(base_type=base_type,
-                                             parameters=(element_type,))
+          return base_type
       else:
         return pytd.GenericType(base_type=base_type, parameters=parameters)
 

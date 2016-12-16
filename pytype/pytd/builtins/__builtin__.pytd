@@ -366,7 +366,7 @@ class `dictionary-valueiterator`(Iterator[T]):
 
 class `dictionary-itemiterator`(Iterator[tuple[K or V]]):
     def __iter__(self) -> `dictionary-itemiterator`[K, V]
-    def next(self) -> tuple[K or V]  # tuple[K, V]  # TODO(pludemann): a pair
+    def next(self) -> tuple[K, V]
 
 class dict_keys(Iterator[T]):
     def __contains__(self, y) -> bool
