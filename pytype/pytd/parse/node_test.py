@@ -64,9 +64,9 @@ class XY(node.Node("x", "y")):
 
 
 class NodeWithVisit(node.Node("x", "y")):
-  """A node with its own Visit function."""
+  """A node with its own VisitNode function."""
 
-  def Visit(self, visitor):
+  def VisitNode(self, visitor):
     """Allow a visitor to modify our children. Returns modified node."""
     # only visit x, not y
     x = self.x.Visit(visitor)

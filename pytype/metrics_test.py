@@ -77,6 +77,12 @@ class MetricsTest(unittest.TestCase):
     self.assertRaises(TypeError, metrics.merge_from_file,
                       cStringIO.StringIO(dump))
 
+  def test_get_metric(self):
+    c1 = metrics.get_metric("foo", metrics.Counter)
+    self.assertIsInstance(c1, metrics.Counter)
+    c2 = metrics.get_metric("foo", metrics.Counter)
+    self.assertIs(c1, c2)
+
 
 class StopWatchTest(unittest.TestCase):
   """Tests for StopWatch."""

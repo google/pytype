@@ -41,6 +41,26 @@ def _prepare_for_test(enabled=True):
   _enabled = enabled
 
 
+def get_metric(name, constructor, *args, **kwargs):
+  """Return an existing metric or create a new one for the given name.
+
+  Args:
+    name: The name of the metric.
+    constructor: A class to instantiate if a new metric is required.
+    *args: Additional positional args to pass to the constructor.
+    **kwargs: Keyword args for the constructor.
+
+  Returns:
+    The current metric registered to name, or a new one created by
+    invoking constructor(name, *args, **kwargs).
+  """
+  metric = _registered_metrics.get(name)
+  if metric is not None:
+    return metric
+  else:
+    return constructor(name, *args, **kwargs)
+
+
 def get_report():
   """Return a string listing all metrics, one per line."""
   lines = [str(_registered_metrics[n]) + "\n"
