@@ -563,6 +563,7 @@ class _Parser(object):
         else:
           return base_type
       else:
+        assert parameters
         return pytd.GenericType(base_type=base_type, parameters=parameters)
 
   def new_union_type(self, types):

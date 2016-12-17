@@ -439,12 +439,17 @@ class TestVisitors(parser_test_base.ParserTest):
     ast3 = self.ParseWithBuiltins("""
       class Foo(Generic[int]): pass
     """)
+    ast4 = self.ParseWithBuiltins("""
+      class Foo(List[int, str]): pass
+    """)
     self.assertRaises(visitors.ContainerError,
                       lambda: ast1.Visit(visitors.VerifyContainers()))
     self.assertRaises(visitors.ContainerError,
                       lambda: ast2.Visit(visitors.VerifyContainers()))
     self.assertRaises(visitors.ContainerError,
                       lambda: ast3.Visit(visitors.VerifyContainers()))
+    self.assertRaises(visitors.ContainerError,
+                      lambda: ast4.Visit(visitors.VerifyContainers()))
 
   def testExpandCompatibleBuiltins(self):
     b, _ = parser_builtins.GetBuiltinsAndTyping()

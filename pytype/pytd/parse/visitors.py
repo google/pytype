@@ -1659,7 +1659,8 @@ class VerifyContainers(Visitor):
 
   Every container (except typing.Generic) must inherit from typing.Generic and
   have an explicitly parameterized parent that is also a container. The
-  parameters on typing.Generic must all be TypeVar instances.
+  parameters on typing.Generic must all be TypeVar instances. A container must
+  have at most as many parameters as specified in its template.
 
   Raises:
     ContainerError: If a problematic container definition is encountered.
@@ -1672,6 +1673,13 @@ class VerifyContainers(Visitor):
       for t in node.parameters:
         if not isinstance(t, pytd.TypeParameter):
           raise ContainerError("Name %s must be defined as a TypeVar" % t.name)
+    else:
+      max_param_count = len(node.base_type.cls.template)
+      actual_param_count = len(node.parameters)
+      if actual_param_count > max_param_count:
+        raise ContainerError(
+            "Too many parameters on %s: expected %s, got %s" % (
+                node.base_type.name, max_param_count, actual_param_count))
 
   def EnterHomogeneousContainerType(self, node):
     self.EnterGenericType(node)

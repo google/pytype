@@ -487,8 +487,7 @@ class Converter(object):
       elif isinstance(cls, pytd.GenericType):
         assert isinstance(cls.base_type, pytd.ClassType)
         base_cls = cls.base_type.cls
-        if base_cls.name == "__builtin__.type" and len(cls.parameters) == 1:
-          # TODO(rechen): pytype should warn when the parameter length is wrong.
+        if base_cls.name == "__builtin__.type":
           c, = cls.parameters
           if isinstance(c, pytd.TypeParameter):
             if not subst or c.name not in subst:
@@ -509,9 +508,9 @@ class Converter(object):
         return self.convert_constant_to_value(name, cls, subst, node)
     elif isinstance(pyval, pytd.GenericType):
       assert isinstance(pyval.base_type, pytd.ClassType)
+      assert (pyval.base_type.name == "typing.Generic" or
+              len(pyval.parameters) <= len(pyval.base_type.cls.template))
       type_parameters = utils.LazyDict()
-      # TODO(rechen): Report an error when there are more parameters than
-      # template items. The check should probably happen during import.
       for i, param in enumerate(pyval.base_type.cls.template):
         if i < len(pyval.parameters):
           type_parameters.add_lazy_item(

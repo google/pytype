@@ -855,6 +855,16 @@ class ErrorTest(test_inference.InferenceTest):
     self.assertErrorLogIs(errors, [(2, "attribute-error",
                                     r"a.*Dict\[str, int\]")])
 
+  def testBadPyiDict(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        x = ...  # type: Dict[str, int, float]
+      """)
+      _, errors = self.InferAndCheck("""\
+        import a
+      """, pythonpath=[d.path])
+      self.assertErrorLogIs(errors, [(1, "pyi-error", r"2.*3")])
+
 
 if __name__ == "__main__":
   test_inference.main()

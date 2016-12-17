@@ -47,7 +47,7 @@ class ParserTest(unittest.TestCase):
         {"__builtin__": b, "typing": t}, full_names=True))
     ast = ast.Visit(visitors.NamedTypeToClassType())
     ast = visitors.AdjustTypeParameters(ast)
-    ast.Visit(visitors.FillInModuleClasses({"": ast}))
+    ast.Visit(visitors.FillInModuleClasses({"": ast, "__builtin__": b}))
     ast.Visit(visitors.VerifyVisitor())
     return ast
 
