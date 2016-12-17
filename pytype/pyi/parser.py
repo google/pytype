@@ -265,6 +265,7 @@ class _Parser(object):
     self._version = _three_tuple(version or _DEFAULT_VERSION)
     self._platform = platform or _DEFAULT_PLATFORM
     self._filename = None
+    self._ast_name = None
     # The condition stack, start with a default scope that will always be
     # active.
     self._current_condition = _ConditionScope(None)
@@ -298,6 +299,7 @@ class _Parser(object):
     self._used = True
 
     self._filename = filename
+    self._ast_name = name
 
     if name != "typing":
       self._type_map = {name: pytd.NamedType("typing." + name)
@@ -527,6 +529,13 @@ class _Parser(object):
         raise ParseError("Missing options to %s" % base_type.name)
       return base_type
 
+  def _is_tuple_base_type(self, t):
+    return isinstance(t, pytd.NamedType) and (
+        t.name == "tuple" or
+        (self._ast_name != "__builtin__" and t.name == "__builtin__.tuple") or
+        (self._ast_name == "typing" and t.name == "Tuple") or
+        (self._ast_name != "typing" and t.name == "typing.Tuple"))
+
   def _parameterized_type(self, base_type, parameters):
     """Return a parameterized type."""
     if base_type == pytd.NamedType("typing.Callable"):
@@ -541,7 +550,7 @@ class _Parser(object):
     else:
       parameters = tuple(pytd.AnythingType() if p is self.ELLIPSIS else p
                          for p in parameters)
-      if base_type in (pytd.NamedType("tuple"), pytd.NamedType("typing.Tuple")):
+      if self._is_tuple_base_type(base_type):
         if parameters:
           # Since we only support homogeneous tuples, convert heterogeneous
           # tuples to tuples of a union.

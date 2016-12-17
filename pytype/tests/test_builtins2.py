@@ -403,6 +403,14 @@ class BuiltinTests2(test_inference.InferenceTest):
       d = ...  # type: Set[int or str]
     """)
 
+  def testDictPopItem(self):
+    ty = self.Infer("""
+      v = {"a": 1}.popitem()
+    """)
+    self.assertTypesMatchPytd(ty, """
+      v = ...  # type: Tuple[str, int]
+    """)
+
   def testLong(self):
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", """

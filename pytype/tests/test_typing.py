@@ -263,7 +263,7 @@ class TypingTest(test_inference.InferenceTest):
         foo = ...  # type: module
         m = ...  # type: foo.MyDict[Union[complex, int, str], Union[complex, float, int]]
         a = ...  # type: Union[complex, float, int]
-        b = ...  # type: Tuple[Union[complex, str], ...]
+        b = ...  # type: Tuple[Union[complex, float, int, str], ...]
         c = ...  # type: Union[complex, float, int]
       """)
 

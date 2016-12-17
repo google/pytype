@@ -419,7 +419,6 @@ class dict(Dict[K, V]):
     def itervalues(self) -> `dictionary-valueiterator`[V]
     def pop(self, k) -> V
     def pop(self, k, d: V2) -> V or V2
-    def popitem(self) -> tuple[K or V]  # tuple[K, V]
     def setdefault(self, k: K2) -> V or NoneType:
         self := dict[K or K2, V or NoneType]
     def setdefault(self, k: K2, v: V2) -> V or V2:
