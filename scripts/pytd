@@ -17,7 +17,6 @@ import sys
 from pytype.pyi import parser
 from pytype.pytd import optimize
 from pytype.pytd import pytd
-from pytype.pytd import utils
 from pytype.pytd.parse import builtins
 
 
@@ -44,10 +43,6 @@ def parse_options(args):
       "--remove-mutable", action="store_true",
       dest="remove_mutable", default=False,
       help="Remove mutable parameters.")
-  o.add_option(
-      "-F", "--output-format", type="string", action="store",
-      dest="output_format", default="pytd",
-      help="Specify output format. Formats: " + ", ".join(utils.OUTPUT_FORMATS))
   options, filenames = o.parse_args(args)
   return options, filenames
 
@@ -61,11 +56,6 @@ def main():
     filename_in, filename_out = filenames
   else:
     print >>sys.stderr, "Need one or two filenames"
-    sys.exit(1)
-
-  if options.output_format not in utils.OUTPUT_FORMATS:
-    print >>sys.stderr, "Invalid output format:", options.output_format
-    print >>sys.stderr, "Supported formats:", ", ".join(utils.OUTPUT_FORMATS)
     sys.exit(1)
 
   with open(filename_in) as fi:
@@ -86,7 +76,7 @@ def main():
                                can_do_lookup=False)
 
   if filename_out is not None:
-    out_text = pytd.Print(parsed, print_format=options.output_format)
+    out_text = pytd.Print(parsed)
     if filename_out == "-":
       sys.stdout.write(out_text)
     else:

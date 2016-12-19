@@ -157,7 +157,7 @@ class TestUtils(parser_test_base.ParserTest):
         mykeyword="foobar"))
 
   def testPrint(self):
-    """Smoketests for printing pytd."""
+    """Smoketest for printing pytd."""
     ast = self.Parse("""
       c1 = ...  # type: int
       T = TypeVar('T')
@@ -169,8 +169,7 @@ class TestUtils(parser_test_base.ParserTest):
       def bar(x: X or Y) -> ?
     """)
     # TODO(kramm): Do more extensive testing.
-    utils.Print(ast, print_format="pytd")
-    utils.Print(ast, print_format="pep484stub")
+    utils.Print(ast)
 
   def testNamedTypeWithModule(self):
     """Test NamedTypeWithModule()."""
