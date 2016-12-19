@@ -46,7 +46,7 @@ def namedtuple(typename: str,
         verbose: bool = ..., rename: bool = ...) -> type
 
 class OrderedDict(Dict[K, V]):
-  def popitem(self, last: bool = ...) -> Tuple[K or V]
+  def popitem(self, last: bool = ...) -> Tuple[K, V]
 
 class defaultdict(Dict[K, V]):
   default_factory = ...  # type: Callable[[], Any]
@@ -56,7 +56,7 @@ class defaultdict(Dict[K, V]):
     self := defaultdict[nothing, nothing]
   def __init__(self, default_factory: Callable[[], Any], list: List[nothing]) -> None:
     self := defaultdict[nothing, nothing]
-  def __init__(self, default_factory: Callable[[], Any], list: List[Tuple[N]]) -> None:
+  def __init__(self, default_factory: Callable[[], Any], list: List[Tuple[N, ...]]) -> None:
     self := defaultdict[N, N]
   def __init__(self, default_factory: Callable[[], Any], ...) -> None:
     self := defaultdict[Any, Any]
@@ -72,12 +72,12 @@ class Counter(dict[?, int]):
     __doc__ = ...  # type: str
     fromkeys = ...  # type: classmethod
     def __add__(self, other: dict[object, object]) -> Counter or NotImplementedType
-    def __and__(self, other: bytearray or xrange or dict[?, object] or list[object] or tuple[object]) -> Counter or NotImplementedType
+    def __and__(self, other: bytearray or xrange or dict[?, object] or list[object] or tuple) -> Counter or NotImplementedType
     def __delitem__(self, elem) -> NoneType
     def __init__(self, ...) -> NoneType
     def __missing__(self, key) -> int
     def __or__(self, other: dict[object, object]) -> Counter or NotImplementedType
-    def __reduce__(self) -> tuple[?]
+    def __reduce__(self) -> tuple
     def __repr__(self) -> str
     def __sub__(self, other: dict[object, object]) -> Counter or NotImplementedType
     def copy(self) -> ?

@@ -5,19 +5,19 @@ __all__ = ...  # type: list[str]
 os = ...  # type: module
 sys = ...  # type: module
 
-def do_longs(opts: list[tuple[?]], opt: str or unicode, longopts: ?, args: ?) -> tuple[?]
-def do_longs(opts: list[tuple[object]], opt: str or unicode, longopts: list[?], args: ?) -> tuple[?]
-def do_longs(opts: list[tuple[str or tuple[str]]], opt: str, longopts: list[str or list[str]], args: list[str or tuple[str or tuple[str]]]) -> tuple[list[str or tuple[str or tuple[str]]]]
-def do_shorts(opts: ?, optstring: str or unicode or tuple[str or unicode], shortopts: str, args: dict[int or slice, object] or list[object]) -> tuple[?]
-def do_shorts(opts: list[tuple[?]], optstring: str or unicode, shortopts: str, args: dict[int or slice, object] or list[object]) -> tuple[dict[int or slice, ?] or list[?]]
-def do_shorts(opts: list[tuple[str or tuple[str]]], optstring: str, shortopts: str, args: list[str]) -> tuple[list[str or tuple[str or tuple[str]]]]
-def do_shorts(opts: list[str or tuple[str or tuple[str]]], optstring: tuple[str], shortopts: str, args: list[tuple[str]]) -> tuple[list[str or tuple[str or tuple[str]]]]
-def getopt(args: ?, shortopts: str, ...) -> tuple[?]
-def getopt(args: list[str], shortopts: str, ...) -> tuple[list[str or tuple[str or tuple[str]]]]
-def gnu_getopt(args: ?, shortopts: str, ...) -> tuple[?]
-def long_has_args(opt: str, longopts: list[str or list[str]]) -> tuple[bool or str or list[str]]
-def long_has_args(opt: buffer or str or unicode, longopts: ?) -> tuple[?]
-def long_has_args(opt: str or unicode, longopts: ?) -> tuple[?]
+def do_longs(opts: list[tuple], opt: str or unicode, longopts: ?, args: ?) -> tuple
+def do_longs(opts: list[tuple], opt: str or unicode, longopts: list[?], args: ?) -> tuple
+def do_longs(opts: list[tuple[str or tuple[str, ...], ...]], opt: str, longopts: list[str or list[str]], args: list[str or tuple[str or tuple[str, ...], ...]]) -> tuple[list[str or tuple[str or tuple[str, ...], ...]], ...]
+def do_shorts(opts: ?, optstring: str or unicode or tuple[str or unicode, ...], shortopts: str, args: dict[int or slice, object] or list[object]) -> tuple
+def do_shorts(opts: list[tuple], optstring: str or unicode, shortopts: str, args: dict[int or slice, object] or list[object]) -> tuple[dict[int or slice, ?] or list, ...]
+def do_shorts(opts: list[tuple[str or tuple[str, ...], ...]], optstring: str, shortopts: str, args: list[str]) -> tuple[list[str or tuple[str or tuple[str, ...], ...]], ...]
+def do_shorts(opts: list[str or tuple[str or tuple[str, ...], ...]], optstring: tuple[str, ...], shortopts: str, args: list[tuple[str, ...]]) -> tuple[list[str or tuple[str or tuple[str, ...], ...]], ...]
+def getopt(args: ?, shortopts: str, ...) -> tuple
+def getopt(args: list[str], shortopts: str, ...) -> tuple[list[str or tuple[str or tuple[str, ...], ...]], ...]
+def gnu_getopt(args: ?, shortopts: str, ...) -> tuple
+def long_has_args(opt: str, longopts: list[str or list[str]]) -> tuple[bool or str or list[str], ...]
+def long_has_args(opt: buffer or str or unicode, longopts: ?) -> tuple
+def long_has_args(opt: str or unicode, longopts: ?) -> tuple
 def short_has_arg(opt, shortopts: str) -> bool
 
 class GetoptError(Exception):

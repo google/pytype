@@ -16,29 +16,29 @@ def bin(number: int or float) -> str
 def callable(obj) -> bool
 def chr(i: int) -> str
 def cmp PYTHONCODE
-def coerce(x: int, y: int) -> tuple[int]  # tuple[int, int]
-def coerce(x: int or float, y: float) -> tuple[float]  # tuple[float, float]
-def coerce(x: int or float or complex, y: complex) -> tuple[complex]  # tuple[complex, complex]
-def coerce(x: float, y: int) -> tuple[float]  # tuple[float, float]
-def coerce(x, y) -> tuple[object]  # tuple[object, object]
-def coerce(x: list[T], y: list[T]) -> tuple[list[T]]  # tuple[list, list]
-def coerce(x: tuple[T], y: tuple[T]) -> tuple[tuple[T]]  # tuple[tuple, tuple]
-def coerce(x: complex, y: int or float) -> tuple[complex]  # tuple[complex, complex]
-def coerce(x: function, y: function) -> tuple[function]  # tuple[function, function]
-def coerce(x: type, y: type) -> tuple[type]  # tuple[type, type]
-def coerce(x: iterator, y: iterator) -> tuple[iterator]  # tuple[iterator, iterator]  # TODO(pludemann): iterator[T] ?
+def coerce(x: int, y: int) -> tuple[int, int]
+def coerce(x: int or float, y: float) -> tuple[float, float]
+def coerce(x: int or float or complex, y: complex) -> tuple[complex, complex]
+def coerce(x: float, y: int) -> tuple[float, float]
+def coerce(x, y) -> tuple[object, object]
+def coerce(x: list[T], y: list[T]) -> tuple[list[T], list[T]]
+def coerce(x: tuple[T, ...], y: tuple[T, ...]) -> tuple[tuple[T, ...], tuple[T, ...]]
+def coerce(x: complex, y: int or float) -> tuple[complex, complex]
+def coerce(x: function, y: function) -> tuple[function, function]
+def coerce(x: type, y: type) -> tuple[type, type]
+def coerce(x: iterator, y: iterator) -> tuple[iterator, iterator]  # TODO(pludemann): iterator[T] ?
 def delattr(object, name: str or unicode or bytearray) -> None
 def dir(...) -> list[str]
-def divmod(x: int, y: int) -> tuple[int]  # tuple[int, int]
-def divmod(x: int or float, y: int or float) -> tuple[float]  # tuple[float, float]
-def divmod(x: int or float or complex, y: int or float or complex) -> tuple[complex]  # tuple[complex, complex]
+def divmod(x: int, y: int) -> tuple[int, int]
+def divmod(x: int or float, y: int or float) -> tuple[float, float]
+def divmod(x: int or float or complex, y: int or float or complex) -> tuple[complex, complex]
 def eval(src, ...) -> ?  # Can't say *anything* about the result -- different from "-> object"
 def execfile(filename: str, ...) -> NoneType
 # TODO(rechen): Replace the first two definitions with one using AnyStr once
 # pytype is smarter about constraints on TypeVar.
 def filter(function: Optional[Callable[[str], Any]], iterable: str) -> str
 def filter(function: Optional[Callable[[unicode], Any]], iterable: unicode) -> unicode
-def filter(function: Optional[Callable[[T], Any]], iterable: Tuple[T]) -> Tuple[T]
+def filter(function: Optional[Callable[[T], Any]], iterable: Tuple[T, ...]) -> Tuple[T, ...]
 def filter(function: Optional[Callable[[T], Any]], iterable: Iterable[T]) -> List[T]
 def format(value, ...) -> str
 def format(value: unicode, ...) -> unicode
@@ -49,13 +49,11 @@ def hash(obj) -> int
 def hex(number: int) -> str
 def id(obj) -> int
 def intern(string: str or bytearray) -> str
-def isinstance(object, class_or_type_or_tuple: tuple[type] or type) -> bool
-def isinstance(object, class_or_type_or_tuple: tuple[nothing]) -> bool  # Python 2 & 3 allow this
-def issubclass(C, B: tuple[type] or type) -> bool
-def issubclass(C, B: tuple[nothing]) -> bool
+def isinstance(object, class_or_type_or_tuple: tuple[type, ...] or type) -> bool
+def issubclass(C, B: tuple[type, ...] or type) -> bool
 def iter(collection: bytearray) -> bytearray_iterator
 def iter(collection: list[T]) -> listiterator[T]
-def iter(collection: tuple[T]) -> tupleiterator[T]
+def iter(collection: tuple[T, ...]) -> tupleiterator[T]
 def iter(collection: set[T]) -> setiterator[T]
 def iter(collection: dict[T, T2]) -> `dictionary-keyiterator`[T]
 def iter(collection: Generator[T]) -> Generator[T]
@@ -89,10 +87,7 @@ def reload(mod: module) -> module
 def repr PYTHONCODE
 def round(number: int or float, ...) -> float
 def setattr(object, name: str or unicode or bytearray, value) -> NoneType
-def sorted(iterable: str or bytearray, ...) -> list[str]
-def sorted(iterable: unicode, ...) -> list[unicode]
-def sorted(iterable: list[T] or tuple[T] or set[T] or iterator[T], ...) -> list[T]
-def sorted(...) -> list[?]
+def sorted(iterable: Iterable[T], ...) -> list[T]
 def sum(iterable: Iterable[int]) -> int
 def sum(iterable: Iterable[int or float or complex]) -> int or float or complex
 def sum(iterable: Iterable[T], start: T) -> T
@@ -202,7 +197,7 @@ class str(basestring, Sequence[str]):
     def count(self, sub: basestring or bytearray, ...) -> int
     def decode(self, ...) -> unicode
     def encode(self, ...) -> str
-    def endswith(self, suffix: basestring or bytearray or tuple[basestring or bytearray], ...) -> bool
+    def endswith(self, suffix: basestring or bytearray or tuple[basestring or bytearray, ...], ...) -> bool
     def expandtabs(self, ...) -> str
     def find(self, sub: basestring or bytearray, ...) -> int
     def format(self, ...) -> str
@@ -220,15 +215,15 @@ class str(basestring, Sequence[str]):
     def ljust(self, width: int, ...) -> str
     def lower(self) -> str
     def lstrip(self, ...) -> str
-    def partition(self, sep: str or bytearray) -> tuple[str]  # tuple[str, str, str]
-    def partition(self, sep: unicode) -> tuple[unicode]  # tuple[unicode, unicode, unicode]
+    def partition(self, sep: str or bytearray) -> tuple[str, str, str]
+    def partition(self, sep: unicode) -> tuple[unicode, unicode, unicode]
     def replace(self, old: str or bytearray, new: str or bytearray, ...) -> str
     def replace(self, old: basestring or bytearray, new: basestring or bytearray, ...) -> unicode
     def rfind(self, sub: basestring or bytearray, ...) -> int
     def rindex(self, sub: basestring or bytearray, ...) -> int
     def rjust(self, width: int, ...) -> str
-    def rpartition(self, sep: str or bytearray) -> tuple[str]  # tuple[str, str, str]
-    def rpartition(self, sep: unicode) -> tuple[unicode]  # tuple[unicode, unicode, unicode]
+    def rpartition(self, sep: str or bytearray) -> tuple[str, str, str]
+    def rpartition(self, sep: unicode) -> tuple[unicode, unicode, unicode]
     def rsplit(self, ...) -> list[str]
     def rstrip(self, ...) -> str
     def split(self, ...) -> list[str]
@@ -261,7 +256,7 @@ class unicode(basestring, Sequence[unicode]):
     def count(self, sub: str or unicode or bytearray, ...) -> int
     def decode(self, ...) -> unicode
     def encode(self, ...) -> str
-    def endswith(self, suffix: str or unicode or bytearray or tuple[str or unicode or bytearray], ...) -> bool
+    def endswith(self, suffix: str or unicode or bytearray or tuple[str or unicode or bytearray, ...], ...) -> bool
     def expandtabs(self, ...) -> unicode
     def find(self, sub: str or unicode or bytearray, ...) -> int
     def format(self, ...) -> unicode
@@ -279,17 +274,17 @@ class unicode(basestring, Sequence[unicode]):
     def ljust(self, width: int, ...) -> unicode
     def lower(self) -> unicode
     def lstrip(self, ...) -> unicode
-    def partition(self, sep: str or unicode or bytearray) -> tuple[unicode]  # tuple[unicode, unicode, unicode]
+    def partition(self, sep: str or unicode or bytearray) -> tuple[unicode, unicode, unicode]
     def replace(self, old: str or unicode or bytearray, new: str or unicode or bytearray, ...) -> unicode
     def rfind(self, sub: str or unicode or bytearray, ...) -> int
     def rindex(self, sub: str or unicode or bytearray, ...) -> int
     def rjust(self, width: int, ...) -> unicode
-    def rpartition(self, sep: str or unicode or bytearray) -> tuple[unicode]  # tuple[unicode, unicode, unicode]
+    def rpartition(self, sep: str or unicode or bytearray) -> tuple[unicode, unicode, unicode]
     def rsplit(self, ...) -> list[unicode]
     def rstrip(self, ...) -> unicode
     def split(self, ...) -> list[unicode]
     def splitlines(self, ...) -> list[unicode]
-    def startswith(self, prefix: str or unicode or bytearray or tuple[str or unicode or bytearray], ...) -> bool
+    def startswith(self, prefix: str or unicode or bytearray or tuple[str or unicode or bytearray, ...], ...) -> bool
     def strip(self, ...) -> unicode
     def swapcase(self) -> unicode
     def title(self) -> unicode
@@ -313,7 +308,7 @@ class bytearray(Sequence[int]):
     def center(self, width: int, ...) -> bytearray
     def count(self, sub: str or bytearray, ...) -> int
     def decode(self, ...) -> unicode
-    def endswith(self, suffix: str or unicode or bytearray or tuple[str or unicode or bytearray], ...) -> bool
+    def endswith(self, suffix: str or unicode or bytearray or tuple[str or unicode or bytearray, ...], ...) -> bool
     def expandtabs(self, ...) -> bytearray
     def extend(self, iterable_int) -> NoneType
     def find(self, sub: str or bytearray, ...) -> int
@@ -331,7 +326,7 @@ class bytearray(Sequence[int]):
     def ljust(self, width: int, ...) -> bytearray
     def lower(self) -> bytearray
     def lstrip(self, ...) -> bytearray
-    def partition(self, sep: str or int or bytearray or iterator) -> tuple[bytearray]  # tuple[bytearray, bytearray, bytearray]
+    def partition(self, sep: str or int or bytearray or iterator) -> tuple[bytearray, bytearray, bytearray]
     def pop(self, ...) -> int
     def remove(self, int: str or int) -> NoneType
     def replace(self, old: str or bytearray, new: str or bytearray, ...) -> bytearray
@@ -339,13 +334,13 @@ class bytearray(Sequence[int]):
     def rfind(self, sub: str or bytearray, ...) -> int
     def rindex(self, sub: str or bytearray, ...) -> int
     def rjust(self, width: int, ...) -> bytearray
-    def rpartition(self, sep: str or int or bytearray or iterator) -> tuple[bytearray]  # tuple[bytearray, bytearray, bytearray]
+    def rpartition(self, sep: str or int or bytearray or iterator) -> tuple[bytearray, bytearray, bytearray]
     def rsplit(self, sep: str or bytearray, ...) -> list[bytearray]
     def rsplit(self) -> list[bytearray]
     def rstrip(self, ...) -> bytearray
     def split(self, ...) -> list[bytearray]
     def splitlines(self, ...) -> list[bytearray]
-    def startswith(self, prefix: str or unicode or bytearray or tuple[str or unicode or bytearray], ...) -> bool
+    def startswith(self, prefix: str or unicode or bytearray or tuple[str or unicode or bytearray, ...], ...) -> bool
     def strip(self, ...) -> bytearray
     def swapcase(self) -> bytearray
     def title(self) -> bytearray
@@ -383,10 +378,10 @@ class dict_values(Iterator[T]):
 
 class dict_items(Generic[K, V], object):
     # TODO(pludemann): set[pair[K,V]] etc.
-    def __and__(self, y: set or dict_items) -> set[tuple[K or V]]
-    def __or__(self, y: set or dict_items[K2, V2]) -> set[tuple[K or V or K2 or V2]]
-    def __xor__(self, y: set or dict_items[K2, V2]) -> set[tuple[K or V or K2 or V2]]
-    def __sub__(self, y: set or dict_items[K2, V2]) -> set[tuple[K or V]]
+    def __and__(self, y: set or dict_items) -> set[tuple[K, V]]
+    def __or__(self, y: set or dict_items[K2, V2]) -> set[tuple[K or K2, V or V2]]
+    def __xor__(self, y: set or dict_items[K2, V2]) -> set[tuple[K or K2, V or V2]]
+    def __sub__(self, y: set or dict_items[K2, V2]) -> set[tuple[K, V]]
     def __contains__(self, y) -> bool
     def __iter__(self) -> `dictionary-itemiterator`[K,V]
     def __len__(self) -> int
@@ -396,7 +391,7 @@ class dict(Dict[K, V]):
         self := dict[nothing, nothing]
     def __init__(self, list: list[nothing]) -> NoneType:
         self := dict[nothing, nothing]
-    def __init__(self, list: list[tuple[N]]) -> NoneType:
+    def __init__(self, list: list[tuple[N, ...]]) -> NoneType:
         self := dict[N, N]
     def __init__(self, ...) -> NoneType:
         self := dict[?, ?]
@@ -436,16 +431,10 @@ class listiterator(Iterator[T]):
     def next(self) -> T
 
 class enumerate(Iterator[T]):
-    def __init__(self, iterable: list[T2], ...) -> NoneType:
-        self := enumerate[T2]
-    def __init__(self, iterable: tuple[T2], ...) -> NoneType:
-        self := enumerate[T2]
-    def __init__(self, iterable: generator[T2], ...) -> NoneType:
-        self := enumerate[T2]
-    def __init__(self, ...) -> NoneType:
-        self := enumerate[?]
+    def __init__(self, iterable: Iterable[T2], start: int = ...) -> NoneType:
+      self := enumerate[T2]
     def __iter__(self) -> enumerate[T]  # enumerate.__iter__() returns itself
-    def next(self) -> tuple[int or T]  # tuple[int, T]
+    def next(self) -> tuple[int, T]
 
 class listreverseiterator(Iterator[T]):
     def __iter__(self) -> listreverseiterator[T]
@@ -486,7 +475,7 @@ class list(List[T]):
     def __setslice__(self, i: int, j: int, y) -> NoneType
     def append(self, object: T2) -> NoneType:
       self := list[T or T2]
-    def extend(self, i: list[T2] or tuple[T2] or set[T2] or frozenset[T2]) -> NoneType:
+    def extend(self, i: Iterable[T2]) -> NoneType:
       self := list[T or T2]
     def extend(self, i: ?) -> NoneType:
       self := list[?]
@@ -509,22 +498,22 @@ class reversed(Iterator[T]):
 
 class tuple(Tuple[T]):
     def __init__(self) -> NoneType:
-      self := tuple[nothing]
+      self := tuple[nothing, ...]
     def __init__(self, p0: Iterable[N]) -> NoneType:
-      self := tuple[N]
-    def __add__(self, y: tuple[T2]) -> tuple[T or T2]
+      self := tuple[N, ...]
+    def __add__(self, y: tuple[T2, ...]) -> tuple[T or T2, ...]
     def __contains__(self, y: T) -> bool
     def __eq__(self, y: tuple) -> bool
     def __ge__(self, y: tuple) -> bool
     def __getitem__(self, index: int) -> T
-    def __getitem__(self, index: slice) -> tuple[T]
-    def __getslice__(self, i: int, j: int) -> tuple[T]
+    def __getitem__(self, index: slice) -> tuple[T, ...]
+    def __getslice__(self, i: int, j: int) -> tuple[T, ...]
     def __gt__(self, y: tuple) -> bool
     def __iter__(self) -> tupleiterator[T]
     def __le__(self, y: tuple) -> bool
     def __len__(self) -> int
     def __lt__(self, y: tuple) -> bool
-    def __mul__(self, n: int) -> tuple[T]
+    def __mul__(self, n: int) -> tuple[T, ...]
     def __ne__(self, y: tuple) -> bool
     def count(self, value: T) -> int
     def index(self, value, ...) -> int
@@ -582,10 +571,8 @@ class set(Set[T]):
 class frozenset(FrozenSet[T]):
     def __init__(self) -> NoneType:
         self := frozenset[nothing]
-    def __init__(self, x: list[N]) -> NoneType:
+    def __init__(self, x: Iterable[N]) -> NoneType:
         self := frozenset[N]
-    def __init__(self, x: Any) -> NoneType:
-        self := frozenset[?]
     def __and__(self, y: AbstractSet[T2]) -> frozenset[T]
     def __contains__(self, y) -> bool
     def __eq__(self, y) -> bool
@@ -679,7 +666,7 @@ class int(object):  # TODO(kramm): SupportsInt, SupportsFloat, SupportsAbs)
     def __mul__(self, y: complex) -> complex
     def __mul__(self, n: str) -> str
     def __mul__(self, n: list[T]) -> list[T]
-    def __mul__(self, n: tuple[T]) -> tuple[T]
+    def __mul__(self, n: tuple[T, ...]) -> tuple[T, ...]
     def __mul__(self, n: buffer) -> str
     def __mul__(self, n: bytearray) -> bytearray
     def __pow__(self, y: int, modulo: int) -> int
@@ -761,7 +748,7 @@ class float(SupportsInt, SupportsFloat, SupportsAbs):
     def __le__(self, y: int or float) -> bool
     def __lt__(self, y: int or float) -> bool
     def __ne__(self, y: int or float) -> bool
-    def as_integer_ratio(self) -> tuple[int]  # tuple[int, int]
+    def as_integer_ratio(self) -> tuple[int, int]
     def fromhex(self, string: str or unicode or bytearray) -> float
     def hex(self) -> str
     def is_integer(self, ...) -> bool
@@ -838,7 +825,7 @@ class module(object):
 
 class slice(object):
     def __init__(self, stop, ...) -> NoneType
-    def indices(self, len: int) -> tuple[int]  # tuple[int, int, int]
+    def indices(self, len: int) -> tuple[int, int, int]
 
 class memoryview(object):
     def __init__(self, object: str or bytearray or memoryview) -> NoneType
@@ -859,8 +846,7 @@ class type(Callable, Type[T]):
     def __new__(cls: Type[type], object: T) -> Type[T]
     # The return type in the below two definitions is used only when abstract.py
     # isn't able to build a class from the arguments.
-    def __new__(cls: Type[type], name: str, bases: tuple[type or nothing], dict: Dict[str, Any]) -> type
-    def __new__(cls: Type[type], name: str, bases: tuple[type or nothing], dict: Dict[nothing, nothing]) -> type
+    def __new__(cls: Type[type], name: str, bases: tuple[type, ...], dict: Dict[str, Any]) -> type
     def __init__(self, object) -> None: ...
     def __init__(self, name, bases, dict) -> None: ...
     def __subclasses__(self) -> List[type]: ...

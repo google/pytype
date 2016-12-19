@@ -23,7 +23,7 @@ class _Feature():
     mandatory = ...  # type: ?
     optional = ...  # type: ?
     def __init__(self, optionalRelease, mandatoryRelease, compiler_flag) -> NoneType
-    def __init__(self, optionalRelease: tuple[int or str], mandatoryRelease: tuple[int or str], compiler_flag: int) -> NoneType
+    def __init__(self, optionalRelease: tuple[int or str, ...], mandatoryRelease: tuple[int or str, ...], compiler_flag: int) -> NoneType
     def __repr__(self) -> str
     def getMandatoryRelease(self) -> ?
     def getOptionalRelease(self) -> ?

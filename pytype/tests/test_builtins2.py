@@ -521,6 +521,72 @@ class BuiltinTests2(test_inference.InferenceTest):
       t14 = ...  # type: Tuple[int]
     """)
 
+  def testEmptyTuple(self):
+    self.assertNoErrors("""\
+      isinstance(42, ())
+      issubclass(int, ())
+      type("X", (), {"foo": 42})
+      type("X", (), {})
+    """)
+
+  def testListExtend(self):
+    ty = self.Infer("""\
+      x1 = [42]
+      x1.extend([""])
+      x2 = [42]
+      x2.extend(("",))
+      x3 = [42]
+      x3.extend({""})
+      x4 = [42]
+      x4.extend(frozenset({""}))
+    """)
+    self.assertTypesMatchPytd(ty, """
+      x1 = ...  # type: List[int or str]
+      x2 = ...  # type: List[int or str]
+      x3 = ...  # type: List[int or str]
+      x4 = ...  # type: List[int or str]
+    """)
+
+  def testSorted(self):
+    ty = self.Infer("""
+      x1 = sorted("hello")
+      x2 = sorted(u"hello")
+      x3 = sorted(bytearray("hello"))
+      x4 = sorted([])
+      x5 = sorted([42], reversed=True)
+    """, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      x1 = ...  # type: List[str]
+      x2 = ...  # type: List[unicode]
+      x3 = ...  # type: List[int]
+      x4 = ...  # type: List[nothing]
+      x5 = ...  # type: List[int]
+    """)
+
+  def testEnumerate(self):
+    ty = self.Infer("""
+      x1 = enumerate([42])
+      x2 = enumerate((42,))
+      x3 = enumerate(x for x in range(5))
+    """, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      x1 = ...  # type: enumerate[int]
+      x2 = ...  # type: enumerate[int]
+      x3 = ...  # type: enumerate[int]
+    """)
+
+  def testFrozenSetInit(self):
+    ty = self.Infer("""
+      x1 = frozenset([42])
+      x2 = frozenset({42})
+      x3 = frozenset("hello")
+    """, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      x1 = ...  # type: frozenset[int]
+      x2 = ...  # type: frozenset[int]
+      x3 = ...  # type: frozenset[str]
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

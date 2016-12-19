@@ -49,7 +49,7 @@ stdin = ...  # type: file
 stdout = ...  # type: file
 subversion = ...  # type: tuple
 version = ...  # type: str
-version_info = ...  # type: tuple[int]
+version_info = ...  # type: tuple[int, ...]
 warnoptions = ...  # type: object
 
 def _clear_type_cache() -> NoneType
@@ -58,7 +58,7 @@ def _getframe(...) -> ? raises ValueError  # TODO(pludemann): fix return type
 def call_tracing(a, b) -> ?  # TODO(pludemann): fix return type
 def displayhook(...) -> NoneType raises RuntimeError
 def exc_clear() -> NoneType raises DeprecationWarning
-def exc_info() -> tuple[?]
+def exc_info() -> tuple[None, None, None] or tuple[Type[BaseException], BaseException, Any]
 def excepthook(...) -> NoneType
 def exit(...) -> NoneType raises SystemExit
 def getcheckinterval() -> int

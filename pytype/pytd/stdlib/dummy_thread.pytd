@@ -24,4 +24,4 @@ class LockType(object):
 
 class error(Exception):
     __doc__ = ...  # type: str
-    args = ...  # type: tuple[?]
+    args = ...  # type: tuple

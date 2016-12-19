@@ -43,7 +43,7 @@ class Pdb(?, ?):
     commands_silent = ...  # type: dict[NoneType or int, bool]
     curframe = ...  # type: ?
     curframe_locals = ...  # type: ?
-    curindex = ...  # type: complex or float or int or dict[dict[?, ?], bytearray or xrange or dict[?, ?] or list[?] or tuple[?]]
+    curindex = ...  # type: complex or float or int or dict[dict[?, ?], bytearray or xrange or dict[?, ?] or list[?] or tuple]
     currentbp = ...  # type: int
     do_h = ...  # type: ?
     lastcmd = ...  # type: ?
@@ -51,7 +51,7 @@ class Pdb(?, ?):
     mainpyfile = ...  # type: ?
     prompt = ...  # type: str
     rcLines = ...  # type: list[str]
-    stack = ...  # type: dict[dict[?, ?], bytearray or xrange or dict[?, ?] or list[?] or tuple[?]] or list[nothing]
+    stack = ...  # type: dict[dict[?, ?], bytearray or xrange or dict[?, ?] or list[?] or tuple] or list[nothing]
     use_rawinput = ...  # type: int
     def __init__(self, ...) -> NoneType
     def _getval(self, arg) -> ?
@@ -166,7 +166,7 @@ class Pdb(?, ?):
     def help_where(self) -> NoneType
     def interaction(self, frame: NoneType, traceback: ?) -> NoneType
     def interaction(self, frame, traceback) -> NoneType
-    def lineinfo(self, identifier: str or unicode) -> tuple[NoneType]
+    def lineinfo(self, identifier: str or unicode) -> tuple[NoneType, ...]
     def lookupmodule(self, filename: buffer or str or unicode) -> ?
     def onecmd(self, line: str) -> ?
     def precmd(self, line: str or unicode) -> str or unicode
