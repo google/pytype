@@ -7,7 +7,6 @@ import textwrap
 
 from pytype.pyi import parser
 from pytype.pytd import pytd
-from pytype.pytd.parse import parser as legacy_parser
 
 import unittest
 
@@ -15,28 +14,19 @@ IGNORE = object()
 
 
 def get_builtins_source():
-  pytd_dir = os.path.dirname(os.path.dirname(legacy_parser.__file__))
+  pytd_dir = os.path.dirname(pytd.__file__)
   with open(os.path.join(pytd_dir, "builtins/__builtin__.pytd")) as f:
     return f.read()
 
 
 class _ParserTestBase(unittest.TestCase):
 
-  def _check_legacy(self, src, name, actual, version, platform):
-    """Check that actual matches legacy parsing of src."""
-    old_tree = legacy_parser.parse_string(
-        src, name=name,
-        python_version=version or parser._DEFAULT_VERSION,
-        platform=platform or parser._DEFAULT_PLATFORM)
-    self.assertMultiLineEqual(pytd.Print(old_tree), actual)
-
-  def check(self, src, expected=None, prologue=None, legacy=True, name=None,
+  def check(self, src, expected=None, prologue=None, name=None,
             version=None, platform=None):
     """Check the parsing of src.
 
     This checks that parsing the source and then printing the resulting
-    AST results in the expected text.  It also compares this to doing the
-    same with the legacy parser.
+    AST results in the expected text.
 
     Args:
       src: A source string.
@@ -46,7 +36,6 @@ class _ParserTestBase(unittest.TestCase):
       prologue: An optional prologue to be prepended to the expected text
         before comparisson.  Useful for imports that are introduced during
         printing the AST.
-      legacy: If true, comapre results to legacy parser.
       name: The name of the module.
       version: A python version tuple (None for default value).
       platform: A platform string (None for default value).
@@ -58,8 +47,6 @@ class _ParserTestBase(unittest.TestCase):
     ast = parser.parse_string(src, name=name, python_version=version,
                               platform=platform)
     actual = pytd.Print(ast)
-    if legacy:
-      self._check_legacy(src, name, actual, version, platform)
     if expected != IGNORE:
       expected = src if expected is None else textwrap.dedent(expected)
       if prologue:
@@ -138,8 +125,7 @@ class ParserTest(_ParserTestBase):
 
   def test_type_on_next_line(self):
     # TODO(dbaum): This probably should be an error.  Current behavior matches
-    # legacy parser, consider changing to an error once the legacy parser is
-    # removed.
+    # legacy parser. Consider changing to an error.
     self.check("""\
       a = ...
       # type: int""",
@@ -809,9 +795,6 @@ class IfTest(_ParserTestBase):
       """)
 
   def test_conditional_class_registration(self):
-    # There is a bug in legacy, so this cannot be checked against the legacy
-    # parser.
-    #
     # Class registration allows a local class name to shadow a PEP 484 name.
     # The only time this is noticeable is when the PEP 484 name is one of the
     # capitalized names that gets converted to lower case (i.e. List -> list).
@@ -834,10 +817,10 @@ class IfTest(_ParserTestBase):
 
       class Dict:
           pass
-      """, legacy=False)
+      """)
 
   def test_conditional_typevar(self):
-    # The legacy parser does not handle this correctly - typevars are added
+    # The legacy parser did not handle this correctly - typevars are added
     # regardless of any conditions.
     self.check("""\
       if sys.version_info == (2, 7, 6):
@@ -847,7 +830,7 @@ class IfTest(_ParserTestBase):
       """, """\
         from typing import TypeVar
 
-        T = TypeVar('T')""", legacy=False)
+        T = TypeVar('T')""")
 
 
 class ClassIfTest(_ParserTestBase):
@@ -983,10 +966,8 @@ class ConditionTest(_ParserTestBase):
     self.check_cond("sys.version_info == (3, 0)", False, version=(3, 0, 1))
     self.check_cond("sys.version_info > (3,)", True, version=(3, 0, 1))
     self.check_cond("sys.version_info > (3, 0)", True, version=(3, 0, 1))
-    self.check_cond("sys.version_info == (3, 0, 0)", True, version=(3,),
-                    legacy=False)
-    self.check_cond("sys.version_info == (3, 0, 0)", True, version=(3, 0),
-                    legacy=False)
+    self.check_cond("sys.version_info == (3, 0, 0)", True, version=(3,))
+    self.check_cond("sys.version_info == (3, 0, 0)", True, version=(3, 0))
 
   def test_version_error(self):
     self.check_cond_error('sys.version_info == "foo"',

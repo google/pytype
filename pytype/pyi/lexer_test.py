@@ -2,31 +2,12 @@ import os
 import textwrap
 
 from pytype.pyi import parser_ext
-from pytype.pytd.parse import parser
 from pytype.pytd.parse import parser_constants
 
 import unittest
 
 # Map from token code to name.
 TOKEN_NAMES = {code: name for name, code in parser_ext.TOKENS.items()}
-
-# Map from legacy token types to new token types for any tokens
-# that have been renamed.
-RENAMED = {
-    "LBRACKET": "[",
-    "RBRACKET": "]",
-    "ASSIGN": "=",
-    "LPAREN": "(",
-    "RPAREN": ")",
-    "COLON": ":",
-    "COMMA": ",",
-    "QUESTIONMARK": "?",
-    "ASTERISK": "*",
-    "DOT": ".",
-    "AT": "@",
-    "LT": "<",
-    "GT": ">",
-}
 
 
 class ExpectedToken(object):
@@ -90,39 +71,13 @@ def convert_token(t):
   return tuple(pieces)
 
 
-def legacy_tokenize(text, legacy_lines):
-  """Return a list of ExpectedToken objects derived from the legacy lexer."""
-  # TODO(dbaum): Consider re-using the lexer since it takes about 4ms to create
-  # one.
-  lexer = parser.PyLexer()
-  lexer.set_parse_info(text, "FILENAME")
-  lexer.lexer.input(text)
-  tokens = []
-  while True:
-    t = lexer.lexer.token()
-    if t is None:
-      return tokens
-    if t.type == "NUMBER":
-      value = t.value.AsFloatOrInt()
-    else:
-      value = t.value if t.type in ["NAME"] else None
-    # INDENT/DEDENT/TRIPLEQUOTED lined numbers are different in legacy parser.
-    if legacy_lines and t.type not in ["INDENT", "DEDENT"]:
-      line = t.lineno
-    else:
-      line = None
-    tokens.append(ExpectedToken(RENAMED.get(t.type, t.type), value, line, None))
-
-
 class LexerTest(unittest.TestCase):
 
-  def check(self, expected, text, legacy=True, legacy_lines=True):
+  def check(self, expected, text):
     text = textwrap.dedent(text)
     actual = map(convert_token, parser_ext.tokenize(text))
     if expected is not None:
       self.assertEquals(map(convert_expected, expected), actual)
-    if legacy:
-      self.assertEquals(legacy_tokenize(text, legacy_lines), actual)
 
   def test_punctuation(self):
     punctuation = "@*:,.=?<>().[]"
@@ -169,17 +124,14 @@ class LexerTest(unittest.TestCase):
     self.check([42.0], "42.")
     self.check([42.0], "+42.")
     self.check([-42.0], "-42.")
-    self.check([0.5], ".5", legacy=False)
-    self.check([0.5], "+.5", legacy=False)
-    self.check([-0.5], "-.5", legacy=False)
+    self.check([0.5], ".5")
+    self.check([0.5], "+.5")
+    self.check([-0.5], "-.5")
 
   def test_line_numbers(self):
     self.check([("NAME", "a", 1), ("NAME", "b", 2)], "a\nb")
 
   def test_triplequoted(self):
-    # The legacy lexer messes up line numbers after a triplequoted token.  Thus
-    # line numbers are explicitly provided in the expected tokens and
-    # legacy_lines=False.
     # Single quotes.
     self.check([
         ("NUMBER", 1, 1),
@@ -191,7 +143,7 @@ class LexerTest(unittest.TestCase):
             newlines and two quotes are allowed '', end on next line
         '''
       2 '''this shoulnd't be swallowed by the previous string'''
-      3""", legacy_lines=False)
+      3""")
     # Double quotes.
     # pylint: disable=g-inconsistent-quotes
     self.check([
@@ -204,7 +156,7 @@ class LexerTest(unittest.TestCase):
             newlines and two quotes are allowed "", end on next line
         """
       2 """this shoulnd't be swallowed by the previous string"""
-      3''', legacy_lines=False)
+      3''')
 
   def test_typecomment(self):
     self.check([1, "TYPECOMMENT", 2, "TYPECOMMENT", 3, "TYPECOMMENT", 4], """\
@@ -264,8 +216,7 @@ class LexerTest(unittest.TestCase):
         5""")
 
   def test_indent_legacy_bug(self):
-    # The legacy lexer does not properly handle 3 dedents in a row, thus
-    # this test can only be checked against expectations and not legacy.
+    # The legacy lexer was not properly handling 3 dedents in a row.
     self.check([1, "INDENT", 2, "INDENT", 3, "INDENT", 4, "DEDENT", "DEDENT",
                 "DEDENT", 99], """\
       1
@@ -273,18 +224,18 @@ class LexerTest(unittest.TestCase):
           3
             4
       99
-      """, legacy=False)
+      """)
 
   def test_indent_mismatch(self):
     self.check([1, "INDENT", 2, ("LEXERROR", "Invalid indentation"), 3,
                 "DEDENT"], """\
       1
         2
-       3""", legacy=False)
+       3""")
 
   def test_lex_error(self):
     self.check([1, ("LEXERROR", "Illegal character '%'"), 2],
-               "1 % 2", legacy=False)
+               "1 % 2")
 
   def test_column(self):
     # A blank line is part of the test because that is a special case
@@ -310,7 +261,7 @@ class LexerTest(unittest.TestCase):
       3""")
 
   def test_builtins(self):
-    pytd_dir = os.path.dirname(os.path.dirname(parser.__file__))
+    pytd_dir = os.path.dirname(os.path.dirname(parser_constants.__file__))
     with open(os.path.join(pytd_dir, "builtins/__builtin__.pytd")) as f:
       text = f.read()
     self.check(None, text)

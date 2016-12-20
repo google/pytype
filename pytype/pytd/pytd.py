@@ -183,7 +183,7 @@ class Function(node.Node('name: str',
 
 
 class ExternalFunction(Function):
-  """A function or a method, defined by PYTHONCODE (see parse/parser.py).
+  """A function or a method, defined by PYTHONCODE (see pyi/parser.py).
 
   Attributes:
     name: The name of this function.
