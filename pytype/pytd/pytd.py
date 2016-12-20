@@ -398,8 +398,6 @@ class GenericType(node.Node('base_type: NamedType or ClassType',
                             'parameters: tuple[{Type}]'), Type):
   """Generic type. Takes a base type and type paramters.
 
-  This corresponds to the syntax: type<type1,>, type<type1, type2> (etc.).
-
   Attributes:
     base_type: The base type. Instance of Type.
     parameters: Type parameters. Tuple of instances of Type.
@@ -411,13 +409,22 @@ class HomogeneousContainerType(GenericType):
   """Special generic type for homogeneous containers. Only has one type param.
 
   This differs from GenericType in that it assumes *all* items in a container
-  will be the same type. The syntax is type<t>. (Vs type<t,> for GenericType.)
+  will be the same type.
   """
   __slots__ = ()
 
   @property
   def element_type(self):
     return self.parameters[0]
+
+
+class TupleType(GenericType):
+  """Special generic type for heterogeneous tuples.
+
+  A tuple with length len(self.parameters), whose item type is specified at
+  each index.
+  """
+  __slots__ = ()
 
 
 # TODO(dbaum): Remove TYPE since Type serves a very similar role.  At present

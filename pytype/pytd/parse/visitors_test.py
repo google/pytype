@@ -510,6 +510,32 @@ class TestVisitors(parser_test_base.ParserTest):
     self.assertMultiLineEqual(expected.strip(),
                               pytd.Print(self.ToAST(src)).strip())
 
+  def testPrintHeterogeneousTuple(self):
+    t = pytd.TupleType(pytd.NamedType("tuple"),
+                       (pytd.NamedType("str"), pytd.NamedType("float")))
+    self.assertEquals("Tuple[str, float]", pytd.Print(t))
+
+  def testVerifyHeterogeneousTuple(self):
+    # Error: does not inherit from Generic
+    base = pytd.ClassType("tuple")
+    base.cls = pytd.Class("tuple", None, (), (), (), ())
+    t1 = pytd.TupleType(base, (pytd.NamedType("str"), pytd.NamedType("float")))
+    self.assertRaises(visitors.ContainerError,
+                      lambda: t1.Visit(visitors.VerifyContainers()))
+    # Error: Generic[str, float]
+    gen = pytd.ClassType("typing.Generic")
+    gen.cls = pytd.Class("typing.Generic", None, (), (), (), ())
+    t2 = pytd.TupleType(gen, (pytd.NamedType("str"), pytd.NamedType("float")))
+    self.assertRaises(visitors.ContainerError,
+                      lambda: t2.Visit(visitors.VerifyContainers()))
+    # Okay
+    param = pytd.TypeParameter("T", None)
+    parent = pytd.GenericType(gen, (param,))
+    base.cls = pytd.Class(
+        "tuple", None, (parent,), (), (), (pytd.TemplateItem(param),))
+    t3 = pytd.TupleType(base, (pytd.NamedType("str"), pytd.NamedType("float")))
+    t3.Visit(visitors.VerifyContainers())
+
 
 class TestAncestorMap(unittest.TestCase):
 

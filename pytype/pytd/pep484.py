@@ -98,6 +98,9 @@ class ConvertTypingToNative(visitors.Visitor):
   def VisitHomogeneousContainerType(self, t):
     return self.VisitGenericType(t)
 
+  def VisitTupleType(self, t):
+    return self.VisitGenericType(t)
+
   def VisitClass(self, node):
     if self.module == "__builtin__":
       parents = []

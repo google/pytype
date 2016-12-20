@@ -915,6 +915,9 @@ class SimplifyContainers(visitors.Visitor):
   def VisitHomogeneousContainerType(self, t):
     return self._Simplify(t)
 
+  def VisitTupleType(self, t):
+    return self._Simplify(t)
+
   def VisitGenericType(self, t):
     return self._Simplify(t)
 

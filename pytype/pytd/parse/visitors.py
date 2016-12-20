@@ -540,6 +540,9 @@ class PrintVisitor(Visitor):
     return (self.MaybeCapitalize(node.base_type) +
             "[" + node.element_type + ellipsis + "]")
 
+  def VisitTupleType(self, node):
+    return self.VisitGenericType(node)
+
   def VisitGenericType(self, node):
     """Convert a generic type (E.g. list[int]) to a string."""
     param_str = ", ".join(node.parameters)
@@ -727,10 +730,10 @@ class DefaceUnresolved(Visitor):
       return pytd.AnythingType()
 
   def VisitHomogeneousContainerType(self, node):
-    if isinstance(node.base_type, pytd.AnythingType):
-      return node.base_type
-    else:
-      return node
+    return self.VisitGenericType(node)
+
+  def VisitTupleType(self, node):
+    return self.VisitGenericType(node)
 
   def VisitGenericType(self, node):
     if isinstance(node.base_type, pytd.AnythingType):
@@ -1262,6 +1265,12 @@ class VerifyVisitor(Visitor):
   def EnterHomogeneousContainerType(self, node):
     assert len(node.parameters) == 1, node
 
+  def EnterTupleType(self, node):
+    self.EnterGenericType(node)
+
+  def EnterGenericType(self, node):
+    assert node.parameters, node
+
 
 class CanonicalOrderingVisitor(Visitor):
   """Visitor for converting ASTs back to canonical (sorted) ordering.
@@ -1664,7 +1673,7 @@ class VerifyContainers(Visitor):
       for t in node.parameters:
         if not isinstance(t, pytd.TypeParameter):
           raise ContainerError("Name %s must be defined as a TypeVar" % t.name)
-    else:
+    elif not isinstance(node, pytd.TupleType):
       max_param_count = len(node.base_type.cls.template)
       actual_param_count = len(node.parameters)
       if actual_param_count > max_param_count:
@@ -1673,6 +1682,9 @@ class VerifyContainers(Visitor):
                 node.base_type.name, max_param_count, actual_param_count))
 
   def EnterHomogeneousContainerType(self, node):
+    self.EnterGenericType(node)
+
+  def EnterTupleType(self, node):
     self.EnterGenericType(node)
 
 
