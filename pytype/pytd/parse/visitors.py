@@ -1518,8 +1518,23 @@ def MergeSequences(seqs):
     res.append(cand)
 
 
-class InsertClassTemplates(Visitor):
-  """Visitor for inserting class templates."""
+class AdjustTypeParameters(Visitor):
+  """Visitor for adjusting type parameters.
+
+  * Inserts class templates.
+  * Inserts signature templates.
+  * Adds scopes to type parameters.
+  """
+
+  def __init__(self):
+    super(AdjustTypeParameters, self).__init__()
+    self.bound_typeparams = set()
+    self.template_typeparams = None
+    self.class_template = None
+    self.class_name = None
+    self.function_name = None
+    self.constant_name = None
+    self.bound_by_class = ()
 
   def _GetTemplateItems(self, param):
     """Get a list of template items from a parameter."""
@@ -1534,8 +1549,8 @@ class InsertClassTemplates(Visitor):
       items.append(pytd.TemplateItem(param))
     return items
 
-  def VisitClass(self, node):
-    """Builds a template for the class from its GenericType parents."""
+  def EnterClass(self, node):
+    """Establish the template for the class."""
     templates = []
     for parent in node.parents:
       if isinstance(parent, pytd.GenericType):
@@ -1546,37 +1561,38 @@ class InsertClassTemplates(Visitor):
     except ValueError:
       raise ContainerError(
           "Illegal type parameter order in class %s" % node.name)
-    # This point is the earliest at which AdjustSelf can be called, since self
-    # needs the template for mutations
-    return node.Replace(template=tuple(template)).Visit(AdjustSelf()).Visit(
-        NamedTypeToClassType())
 
-  def VisitNamedType(self, unused_node):
-    # Type parameter adjustment should happen after all external types have
-    # been resolved, since TypeVar instances can be imported.
-    raise ValueError(
-        "Tried to adjust type parameters before converting to class types")
+    assert self.class_template is None
+    self.class_template = template
 
-
-class InsertSignatureTemplates(Visitor):
-  """Visitor for inserting function templates."""
-
-  def __init__(self):
-    super(InsertSignatureTemplates, self).__init__()
-    self.bound_typeparams = set()
-    self.template_typeparams = None
-
-  def EnterClass(self, node):
-    for t in node.template:
+    for t in template:
       assert isinstance(t.type_param, pytd.TypeParameter)
       if t.name in self.bound_typeparams:
         raise ContainerError(
             "Duplicate type parameter %s in class %s" % (t.name, node.name))
       self.bound_typeparams.add(t.name)
 
+    self.class_name = node.name
+    self.bound_by_class = {n.type_param.name for n in template}
+
   def LeaveClass(self, node):
-    for t in node.template:
+    del node
+    for t in self.class_template:
       self.bound_typeparams.remove(t.name)
+    self.class_name = None
+    self.bound_by_class = ()
+    self.class_template = None
+
+  def VisitClass(self, node):
+    """Builds a template for the class from its GenericType parents."""
+    # The template items will not have been properly scoped because they were
+    # stored outside of the ast and not visited while processing the class
+    # subtree.  They now need to be scoped similar to VisitTypeParameter,
+    # except we happen to know they are all bound by the class.
+    template = [pytd.TemplateItem(t.type_param.Replace(scope=node.name))
+                for t in self.class_template]
+    node = node.Replace(template=tuple(template))
+    return node.Visit(AdjustSelf()).Visit(NamedTypeToClassType())
 
   def EnterSignature(self, unused_node):
     assert self.template_typeparams is None
@@ -1585,33 +1601,8 @@ class InsertSignatureTemplates(Visitor):
   def LeaveSignature(self, unused_node):
     self.template_typeparams = None
 
-  def VisitTypeParameter(self, node):
-    if (self.template_typeparams is not None and
-        node.name not in self.bound_typeparams):
-      self.template_typeparams.add(pytd.TemplateItem(node))
-    return node
-
   def VisitSignature(self, node):
     return node.Replace(template=tuple(self.template_typeparams))
-
-
-class AddTypeParameterScopes(Visitor):
-  """Visitor for scoping type parameters."""
-
-  def __init__(self):
-    super(AddTypeParameterScopes, self).__init__()
-    self.class_name = None
-    self.function_name = None
-    self.constant_name = None
-    self.bound_by_class = ()
-
-  def EnterClass(self, node):
-    self.class_name = node.name
-    self.bound_by_class = {n.type_param.name for n in node.template}
-
-  def LeaveClass(self, unused_node):
-    self.class_name = None
-    self.bound_by_class = ()
 
   def EnterFunction(self, node):
     self.function_name = node.name
@@ -1634,24 +1625,24 @@ class AddTypeParameterScopes(Visitor):
     return self._GetFullName(self.function_name)
 
   def VisitTypeParameter(self, node):
+    """Add scopes to type parameters, track unbound params."""
     if self.constant_name and (not self.class_name or
                                node.name not in self.bound_by_class):
       raise ContainerError("Unbound type parameter %s in %s" % (
           node.name, self._GetFullName(self.constant_name)))
     scope = self._GetScope(node.name)
     if scope:
-      return node.Replace(scope=scope)
+      node = node.Replace(scope=scope)
     else:
       # This is a top-level type parameter (TypeDeclUnit.type_params).
       # AddNamePrefix gave it the right scope, so leave it alone.
-      return node
+      pass
 
+    if (self.template_typeparams is not None and
+        node.name not in self.bound_typeparams):
+      self.template_typeparams.add(pytd.TemplateItem(node))
 
-def AdjustTypeParameters(ast):
-  ast = ast.Visit(InsertClassTemplates())
-  ast = ast.Visit(InsertSignatureTemplates())
-  ast = ast.Visit(AddTypeParameterScopes())
-  return ast
+    return node
 
 
 class VerifyContainers(Visitor):

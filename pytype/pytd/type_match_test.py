@@ -44,7 +44,7 @@ class TestTypeMatch(unittest.TestCase):
 
   def LinkAgainstSimpleBuiltins(self, ast):
     ast = ast.Visit(visitors.NamedTypeToClassType())
-    ast = visitors.AdjustTypeParameters(ast)
+    ast = ast.Visit(visitors.AdjustTypeParameters())
     ast.Visit(visitors.FillInModuleClasses({"": ast}))
     ast = ast.Visit(visitors.LookupFullNames([self.mini_builtins]))
     ast.Visit(visitors.VerifyLookup())

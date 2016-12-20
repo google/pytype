@@ -106,7 +106,7 @@ class Loader(object):
                                                            module_name)
       # Now that any imported TypeVar instances have been resolved, adjust type
       # parameters in classes and functions.
-      module.ast = visitors.AdjustTypeParameters(module.ast)
+      module.ast = module.ast.Visit(visitors.AdjustTypeParameters())
       # Now we can fill in internal cls pointers to ClassType nodes in the
       # module. This code executes when the module is first loaded, which
       # happens before any others use it to resolve dependencies, so there are

@@ -34,7 +34,7 @@ class ParserTest(unittest.TestCase):
         textwrap.dedent(src), name=name, python_version=version,
         platform=platform)
     tree = tree.Visit(visitors.NamedTypeToClassType())
-    tree = visitors.AdjustTypeParameters(tree)
+    tree = tree.Visit(visitors.AdjustTypeParameters())
     # Convert back to named types for easier testing
     tree = tree.Visit(visitors.ClassTypeToNamedType())
     tree.Visit(visitors.VerifyVisitor())
@@ -46,7 +46,7 @@ class ParserTest(unittest.TestCase):
     ast = ast.Visit(visitors.LookupExternalTypes(
         {"__builtin__": b, "typing": t}, full_names=True))
     ast = ast.Visit(visitors.NamedTypeToClassType())
-    ast = visitors.AdjustTypeParameters(ast)
+    ast = ast.Visit(visitors.AdjustTypeParameters())
     ast.Visit(visitors.FillInModuleClasses({"": ast, "__builtin__": b}))
     ast.Visit(visitors.VerifyVisitor())
     return ast
