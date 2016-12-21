@@ -1354,7 +1354,8 @@ class PyTDSignature(object):
     subst = self.vm.matcher.compute_subst(node, formal_args, arg_dict, view)
     if subst is None:
       raise WrongArgTypes(self.signature, args, self.vm)
-    log.debug("Matched arguments against sig%s", pytd.Print(self.pytd_sig))
+    if log.isEnabledFor(logging.DEBUG):
+      log.debug("Matched arguments against sig%s", pytd.Print(self.pytd_sig))
     for nr, p in enumerate(self.pytd_sig.params):
       log.info("param %d) %s: %s <=> %s", nr, p.name, p.type, arg_dict[p.name])
     for name, var in sorted(subst.items()):
