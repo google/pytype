@@ -471,6 +471,10 @@ class SimpleAbstractValue(AtomicAbstractValue):
     self.members = utils.MonitorDict()
     self.type_parameters = utils.LazyAliasingMonitorDict()
     self.maybe_missing_members = False
+    # The latter caches the result of get_type_key. This is a recursive function
+    # that has the potential to generate too many calls for large definitions.
+    self._cached_type_key = (
+        (self.members.changestamp, self.type_parameters.changestamp), None)
 
   def get_children_maps(self):
     return (self.type_parameters, self.members)
@@ -604,6 +608,10 @@ class SimpleAbstractValue(AtomicAbstractValue):
       return pytd.AnythingType()
 
   def get_type_key(self, seen=None):
+    cached_changestamps, saved_key = self._cached_type_key
+    if saved_key and cached_changestamps == (self.members.changestamp,
+                                             self.type_parameters.changestamp):
+      return saved_key
     if not seen:
       seen = set()
     seen.add(self)
@@ -616,9 +624,12 @@ class SimpleAbstractValue(AtomicAbstractValue):
                          for value in var.bindings)
       key.add((name, subkey))
     if key:
-      return frozenset(key)
+      type_key = frozenset(key)
     else:
-      return super(SimpleAbstractValue, self).get_type_key()
+      type_key = super(SimpleAbstractValue, self).get_type_key()
+    self._cached_type_key = (
+        (self.members.changestamp, self.type_parameters.changestamp), type_key)
+    return type_key
 
   def unique_parameter_values(self):
     """Get unique parameter subtypes as Values.
