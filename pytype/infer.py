@@ -364,7 +364,6 @@ class CallTracer(vm.VirtualMachine):
     return ()  # TODO(kramm): Compute these.
 
   def compute_types(self, defs, ignore):
-    self.program.Freeze()
     ty = pytd_utils.Concat(
         self.pytd_for_types(defs, ignore),
         pytd.TypeDeclUnit(

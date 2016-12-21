@@ -38,7 +38,6 @@ class ExplainTest(unittest.TestCase):
     self.zab.AddOrigin(source_set=[self.xa, self.yb], where=self.n4)
     self.zab.AddOrigin(source_set=[self.xb, self.ya], where=self.n4)
     self.p.entrypoint = self.n1
-    self.p.Freeze()
 
   def testValid(self):
     self.assertTrue(explain.Explain([self.xa, self.ya], self.n4))
@@ -66,7 +65,6 @@ class ExplainTest(unittest.TestCase):
     y1 = y.AddBinding(1, [x1], n1)
     y2 = y.AddBinding(2, [x2], n1)
     p.entrypoint = n0
-    p.Freeze()
     self.assertTrue(explain.Explain([x0], n0))
     self.assertTrue(explain.Explain([x1], n0))
     self.assertTrue(explain.Explain([x2], n0))

@@ -10,15 +10,10 @@ import logging
 
 
 from pytype import metrics
-from pytype.pytd import utils
 import pytype.utils
 
 
 log = logging.getLogger(__name__)
-
-
-_solved_find_queries = {}
-_supernode_reachable = {}
 
 
 _variable_size_metric = metrics.Distribution("variable_size")
@@ -52,8 +47,16 @@ class Program(object):
     self.solver = None
     self.default_data = None
 
+  def CreateSolver(self):
+    if self.solver is None:
+      self.solver = Solver(self)
+
+  def InvalidateSolver(self):
+    self.solver = None
+
   def NewCFGNode(self, name=None):
     """Start a new CFG node."""
+    self.InvalidateSolver()
     cfg_node = CFGNode(self, name, len(self.cfg_nodes))
     self.cfg_nodes.append(cfg_node)
     return cfg_node
@@ -91,19 +94,6 @@ class Program(object):
         binding.AddOrigin(where, source_set)
     return variable
 
-  def Freeze(self):
-    """'Freeze' the program in preparation for solving.
-
-    At this point, the graph must have an entrypoint in order for _CompressGraph
-    to work.
-    We disable NewCFGNode to prevent the addition of more nodes, but existing
-    nodes also should not be changed.
-    """
-    assert self.entrypoint
-    self._CompressGraph()
-    self.solver = Solver(self)
-    self.NewCFGNode = utils.disabled_function  # pylint: disable=invalid-name
-
   def MergeVariables(self, node, name, variables):
     """Create a combined Variable for a list of variables.
 
@@ -131,38 +121,6 @@ class Program(object):
         v.PasteVariable(r, node)
       return v
 
-  def _CompressGraph(self):
-    """Compress the graph for faster traversal.
-
-    This partitions the graph into lists of nodes called "supernodes," turning,
-    for instance,
-      n0 -> n1 -> n2 -> n3 -> n4
-            |                  |
-            -> n5 -> n6 -> n7 <-
-    into
-      [n0] -> [n1] -> [n2, n3, n4]-
-               |                  |
-               -> [n5, n6, n7] <---
-    (It is also possible for n7 to be in the [n2, n3, n4] supernode.)  Every
-    node stores a pointer to and its position in its supernode.
-    """
-    assert self.entrypoint
-    seen = set()
-    stack = [self.entrypoint]
-    while stack:
-      node = stack.pop()
-      if node in seen:
-        continue
-      seen.add(node)
-      if len(node.incoming) == 1:
-        node_in, = node.incoming
-        if len(node_in.outgoing) == 1:
-          node.supernode = node_in.supernode
-          node.position = len(node.supernode)
-          node.supernode.append(node)
-      stack.extend(node.outgoing)
-    assert len(seen) == len(self.cfg_nodes)
-
 
 class CFGNode(object):
   """A node in the CFG.
@@ -180,12 +138,9 @@ class CFGNode(object):
     bindings: Bindings that are being assigned to Variables at this CFGNode.
     reachable_subset: A subset of the nodes reachable (going backwards) from
       this one.
-    supernode: A list of nodes comprising a "supernode" to which this one
-      belongs. See Program._CompressGraph.
-    position: This node's position in the supernode.
   """
   __slots__ = ("program", "id", "name", "incoming", "outgoing", "bindings",
-               "reachable_subset", "supernode", "position")
+               "reachable_subset")
 
   def __init__(self, program, name, cfgnode_id):
     """Initialize a new CFG node. Called from Program.NewCFGNode."""
@@ -196,8 +151,6 @@ class CFGNode(object):
     self.outgoing = set()
     self.bindings = set()  # filled through RegisterBinding()
     self.reachable_subset = {self}
-    self.supernode = [self]
-    self.position = 0
 
   def ConnectNew(self, name=None):
     """Add a new node connected to this node."""
@@ -239,15 +192,11 @@ class CFGNode(object):
     Returns:
       True if the combination is possible, False otherwise.
     """
-    if self.program.solver:
-      # Program already frozen. Use the fast solver.
-      # Optimization: check the entire combination only if all of the bindings
-      # are possible separately.
-      return (all(self.program.solver.Solve({b}, self) for b in bindings)
-              and self.program.solver.Solve(bindings, self))
-    else:
-      # Use the slower solving for the occasional solver call in between.
-      return Solver(self).Solve(bindings, self)
+    self.program.CreateSolver()
+    # Optimization: check the entire combination only if all of the bindings
+    # are possible separately.
+    return (all(self.program.solver.Solve({b}, self) for b in bindings)
+            and self.program.solver.Solve(bindings, self))
 
   def RegisterBinding(self, binding):
     self.bindings.add(binding)
@@ -346,6 +295,7 @@ class Binding(object):
       all the bindings it depends on were assigned (and not overwritten) before
       that, etc.
     """
+    self.program.CreateSolver()
     return self.program.solver.Solve({self}, viewpoint)
 
   def _FindOrAddOrigin(self, cfg_node):
@@ -365,6 +315,7 @@ class Binding(object):
 
   def AddOrigin(self, where, source_set):
     """Add another possible origin to this binding."""
+    self.program.InvalidateSolver()
     origin = self._FindOrAddOrigin(where)
     origin.AddSourceSet(source_set)
 
@@ -495,6 +446,7 @@ class Variable(object):
     try:
       binding = self._data_id_to_binding[id(data)]
     except KeyError:
+      self.program.InvalidateSolver()
       binding = Binding(self.program, self, data)
       self.bindings.append(binding)
       self._data_id_to_binding[id(data)] = binding
@@ -700,77 +652,6 @@ class State(object):
     return not self == other
 
 
-def _FindNodeBackwards(start, finish, blocked):
-  """Determine whether we can reach a CFG node, going backwards.
-
-  Traverse the CFG from a starting point to find a given node, but avoid any
-  nodes marked as "blocked".
-
-  Arguments:
-    start: Start node.
-    finish: Node we're looking for.
-    blocked: A set of blocked nodes. We do not consider start or finish to be
-      blocked even if they apppear in this set.
-
-  Returns:
-    True if we can find this node, False otherwise.
-  """
-  query = (start, finish, blocked)
-  if query in _solved_find_queries:
-    return _solved_find_queries[query]
-  if start.supernode is finish.supernode and start.position >= finish.position:
-    # There is exactly one path from start to finish. Check whether any node in
-    # it is blocked.
-    if blocked.intersection(start.supernode[finish.position+1:start.position]):
-      found = False
-    else:
-      found = True
-  elif blocked.intersection(
-      start.supernode[:start.position] + finish.supernode[finish.position+1:]):
-    # A node that must be passed through to get from start to finish is blocked.
-    found = False
-  else:
-    found = _FindSupernodeBackwards(start.supernode[0], finish.supernode[0],
-                                    frozenset(node.supernode[0]
-                                              for node in blocked))
-  _solved_find_queries[query] = found
-  return found
-
-
-def _FindSupernodeBackwards(start, finish, blocked_supernodes):
-  """Determine whether we can reach a supernode, going backwards.
-
-  Arguments:
-    start: The first node in the supernode we're starting from.
-    finish: The first node in the supernode we're looking for.
-    blocked_supernodes: A set of the first node in every blocked supernode.
-
-  Returns:
-    True if we can find finish from any of start's *incoming nodes*, False
-    otherwise. This means that if start and finish are in the same supernode,
-    we must find a path from the supernode back to itself.
-  """
-  query = (start, blocked_supernodes)
-  if query in _supernode_reachable:
-    return finish in _supernode_reachable[query]
-  stack = list(start.incoming)
-  seen = set()
-  while stack:
-    node = stack.pop().supernode[0]
-    if node is finish:
-      return True
-    if node in seen:
-      continue
-    seen.add(node)
-    if node in blocked_supernodes:
-      continue
-    stack.extend(node.incoming)
-  # If we haven't found finish, then the seen set contains all of the nodes
-  # reachable from start.
-  _supernode_reachable[query] = seen
-  return False
-
-
 class Solver(object):
   """The solver class is instantiated for a given "problem" instance.
 
@@ -789,6 +670,40 @@ class Solver(object):
     """
     self.program = program
     self._solved_states = {}
+    self._solved_find_queries = {}
+
+  def _FindNodeBackwards(self, start, finish, blocked):
+    """Determine whether we can reach a CFG node, going backwards.
+
+    Traverse the CFG from a starting point to find a given node, but avoid any
+    nodes marked as "blocked".
+
+    Arguments:
+      start: Start node.
+      finish: Node we're looking for.
+      blocked: A set of blocked nodes. We do not consider start or finish to be
+        blocked even if they apppear in this set.
+
+    Returns:
+      True if we can find this node, False otherwise.
+    """
+    query = (start, finish, blocked)
+    if query in self._solved_find_queries:
+      return self._solved_find_queries[query]
+    stack = [start]
+    seen = set()
+    found = False
+    while stack:
+      node = stack.pop()
+      if node is finish:
+        found = True
+        break
+      if node in seen or node in blocked:
+        continue
+      seen.add(node)
+      stack.extend(node.incoming)
+    self._solved_find_queries[query] = found
+    return found
 
   def Solve(self, start_attrs, start_node):
     """Try to solve the given problem.
@@ -844,7 +759,7 @@ class Solver(object):
     for goal in state.goals:
       # "goal" is the assignment we're trying to find.
       for origin in goal.origins:
-        if _FindNodeBackwards(state.pos, origin.where, blocked):
+        if self._FindNodeBackwards(state.pos, origin.where, blocked):
           # This loop over multiple different combinations of origins is why
           # we need memoization of states.
           for source_set in origin.source_sets:

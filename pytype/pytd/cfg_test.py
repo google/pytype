@@ -75,10 +75,6 @@ class CFGTest(unittest.TestCase):
     u.name = "bar"
     self.assertEquals(u.name, "bar")
 
-  def _Freeze(self, program, entrypoint):
-    program.entrypoint = entrypoint
-    program.Freeze()
-
   def testVariableSet(self):
     p = cfg.Program()
     node1 = p.NewCFGNode()
@@ -171,7 +167,7 @@ class CFGTest(unittest.TestCase):
     a = ab.AddBinding("A", source_set=[], where=n3)
     b = ab.AddBinding("B", source_set=[], where=n4)
 
-    self._Freeze(p, entrypoint=n1)
+    p.entrypoint = n1
     self.assertFalse(a.IsVisible(n1) or b.IsVisible(n1))
     self.assertFalse(a.IsVisible(n2) or b.IsVisible(n2))
     self.assertTrue(a.IsVisible(n3))
@@ -225,7 +221,7 @@ class CFGTest(unittest.TestCase):
     ya = y.AddBinding("a", source_set=[], where=n2)
     xb = x.AddBinding("b", source_set=[], where=n3)
     yb = y.AddBinding("b", source_set=[], where=n3)
-    self._Freeze(p, entrypoint=n1)
+    p.entrypoint = n1
     self.assertTrue(n4.HasCombination([xa, ya]))
     self.assertTrue(n4.HasCombination([xb, yb]))
     self.assertFalse(n4.HasCombination([xa, yb]))
@@ -237,7 +233,7 @@ class CFGTest(unittest.TestCase):
     x = p.NewVariable("x")
     a = x.AddBinding("a", source_set=[], where=n1)
     b = x.AddBinding("b", source_set=[], where=n1)
-    self._Freeze(p, entrypoint=n1)
+    p.entrypoint = n1
     # At n1, x can either be a or b, but not both.
     self.assertTrue(n1.HasCombination([a]))
     self.assertTrue(n1.HasCombination([b]))
@@ -261,7 +257,7 @@ class CFGTest(unittest.TestCase):
     yb = y.AddBinding("yb", source_set=[b], where=n2)
     za = z.AddBinding("za", source_set=[a], where=n2)
     zb = z.AddBinding("zb", source_set=[b], where=n2)
-    self._Freeze(p, entrypoint=n1)
+    p.entrypoint = n1
     self.assertTrue(n2.HasCombination([ya, za]))
     self.assertTrue(n2.HasCombination([yb, zb]))
     self.assertFalse(n2.HasCombination([ya, zb]))
@@ -274,7 +270,7 @@ class CFGTest(unittest.TestCase):
     x = p.NewVariable("x")
     x_a = x.AddBinding("a", source_set=[], where=n1)
     x_b = x.AddBinding("b", source_set=[], where=n1)
-    self._Freeze(p, entrypoint=n1)
+    p.entrypoint = n1
     self.assertTrue(n1.HasCombination([x_a]))
     self.assertTrue(n1.HasCombination([x_b]))
     self.assertFalse(n1.HasCombination([x_a, x_b]))
@@ -290,7 +286,7 @@ class CFGTest(unittest.TestCase):
     xb = x.AddBinding("xb", source_set=[], where=n1)
     ya = y.AddBinding("ya", source_set=[xa], where=n1)
     yb = y.AddBinding("yb", source_set=[xb], where=n1)
-    self._Freeze(p, entrypoint=n1)
+    p.entrypoint = n1
     self.assertTrue(n1.HasCombination([xa]))
     self.assertTrue(n1.HasCombination([xb]))
     self.assertTrue(n1.HasCombination([xa, ya]))
@@ -344,13 +340,6 @@ class CFGTest(unittest.TestCase):
     self.assertSameElements([a11, a21], n1.bindings)
     self.assertSameElements([a12, a22], n2.bindings)
 
-  def testDisconnected(self):
-    p = cfg.Program()
-    n1 = p.NewCFGNode("n1")
-    n2 = p.NewCFGNode("n2")
-    self.assertRaises(AssertionError, self._Freeze, p, entrypoint=n1)
-    self.assertRaises(AssertionError, self._Freeze, p, entrypoint=n2)
-
   def testEntryPoint(self):
     p = cfg.Program()
     n1 = p.NewCFGNode("n1")
@@ -358,7 +347,7 @@ class CFGTest(unittest.TestCase):
     x = p.NewVariable("x")
     a = x.AddBinding("a", source_set=[], where=n1)
     a = x.AddBinding("b", source_set=[], where=n2)
-    self._Freeze(p, entrypoint=n1)
+    p.entrypoint = n1
     self.assertTrue(n2.HasCombination([a]))
 
   def testNonFrozenSolving(self):
@@ -378,7 +367,7 @@ class CFGTest(unittest.TestCase):
     n1.ConnectTo(n2)
     x = p.NewVariable("x")
     a = x.AddBinding("a", source_set=[], where=n2)
-    self._Freeze(p, entrypoint=n1)
+    p.entrypoint = n1
     self.assertEquals(x.Filter(n1), [])
     self.assertEquals(x.Filter(n2), [a])
 
@@ -398,7 +387,7 @@ class CFGTest(unittest.TestCase):
     z_ab2 = z.AddBinding("ab2", source_set=[y_a, x_b], where=n3)
     z_ab3 = z.AddBinding("ab3", source_set=[y_b, x_a], where=n3)
     z_ab4 = z.AddBinding("ab4", source_set=[y_a, y_b], where=n3)
-    self._Freeze(p, entrypoint=n1)
+    p.entrypoint = n1
     self.assertFalse(n2.HasCombination([y_a, x_b]))
     self.assertFalse(n2.HasCombination([y_b, x_a]))
     self.assertFalse(n3.HasCombination([z_ab1]))
@@ -415,7 +404,7 @@ class CFGTest(unittest.TestCase):
     x_a = x.AddBinding("a", source_set=[], where=n1)
     x_b = x.AddBinding("b", source_set=[], where=n1)
     y_b = y.AddBinding("b", source_set=[x_b], where=n1)
-    self._Freeze(p, entrypoint=n1)
+    p.entrypoint = n1
     self.assertFalse(n2.HasCombination([y_b, x_a]))
 
   def testEmptyBinding(self):
@@ -424,15 +413,15 @@ class CFGTest(unittest.TestCase):
     n2 = n1.ConnectNew()
     x = p.NewVariable("x")
     a = x.AddBinding("a")
-    self._Freeze(p, entrypoint=n1)
+    p.entrypoint = n1
     self.assertEquals(x.Filter(n1), [])
     self.assertEquals(x.Filter(n2), [])
     a.AddOrigin(n2, [])
-    self._Freeze(p, entrypoint=n1)
+    p.entrypoint = n1
     self.assertEquals(x.Filter(n1), [])
     self.assertEquals(x.Filter(n2), [a])
     a.AddOrigin(n1, [a])
-    self._Freeze(p, entrypoint=n1)
+    p.entrypoint = n1
     self.assertEquals(x.Filter(n1), [a])
     self.assertEquals(x.Filter(n2), [a])
 
@@ -449,7 +438,7 @@ class CFGTest(unittest.TestCase):
     az, = z.bindings
     self.assertEquals([v.data for v in y.bindings], ["a"])
     self.assertEquals([v.data for v in z.bindings], ["a"])
-    self._Freeze(p, entrypoint=n1)
+    p.entrypoint = n1
     self.assertTrue(n1.HasCombination([ax]))
     self.assertTrue(n2.HasCombination([ax, ay]))
     self.assertTrue(n3.HasCombination([ax, ay, az]))
@@ -468,7 +457,7 @@ class CFGTest(unittest.TestCase):
     ay, by = y.bindings
     self.assertEquals([v.data for v in x.bindings], ["a", "b"])
     self.assertEquals([v.data for v in y.bindings], ["a", "b"])
-    self._Freeze(p, entrypoint=n1)
+    p.entrypoint = n1
     self.assertTrue(n1.HasCombination([ax]))
     self.assertTrue(n1.HasCombination([bx]))
     self.assertFalse(n1.HasCombination([ay]))
@@ -525,14 +514,6 @@ class CFGTest(unittest.TestCase):
     self.assertSameElements([3], x.Data(n3))
     self.assertSameElements([1, 3], x.Data(n4))
 
-  def testProgramFreeze(self):
-    p = cfg.Program()
-    n = p.NewCFGNode("n")
-    self._Freeze(p, entrypoint=n)
-    self.assertRaises(AssertionError, p.NewCFGNode)
-    self.assertRaises(AssertionError, p.NewCFGNode, "named")
-    self.assertRaises(AssertionError, p.NewCFGNode, name="named")
-
   def testVariableCallback(self):
     counters = [0, 0]
     def callback1():
@@ -552,6 +533,28 @@ class CFGTest(unittest.TestCase):
     x.UnregisterChangeListener(callback1)
     x.AddBinding("c")
     self.assertListEqual(counters, [2, 2])
+
+  def testInvalidateSolver(self):
+    p = cfg.Program()
+    x = p.NewVariable("x")
+    n1 = p.NewCFGNode("n1")
+    self.assertIsNone(p.solver)
+    n1.HasCombination([])
+    self.assertIsNotNone(p.solver)
+    n2 = p.NewCFGNode("n2")
+    self.assertIsNone(p.solver)
+    n2.HasCombination([])
+    self.assertIsNotNone(p.solver)
+    x = p.NewVariable("x")  # a new variable by itself doesn't change the CFG
+    self.assertIsNotNone(p.solver)
+    a = x.AddBinding("a")
+    a.AddOrigin(n1, {})
+    self.assertIsNone(p.solver)
+    n2.HasCombination([a])
+    self.assertIsNotNone(p.solver)
+    x = p.NewVariable("x", ["b"], [a], n2)
+    self.assertIsNone(p.solver)
+
 
 if __name__ == "__main__":
   unittest.main()
