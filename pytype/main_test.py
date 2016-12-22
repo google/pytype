@@ -4,6 +4,7 @@ import os
 import subprocess
 
 from pytype.pyi import parser
+from pytype.pytd.parse import builtins
 
 from google.apputils import basetest
 import unittest
@@ -13,7 +14,7 @@ class PytypeTest(unittest.TestCase):
   """Integration test for pytype."""
 
 
-  DEFAULT_PYI = "def __getattr__(name) -> Any"
+  DEFAULT_PYI = builtins.DEFAULT_SRC
   INCLUDE = object()
 
   @classmethod

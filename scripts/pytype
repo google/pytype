@@ -23,6 +23,7 @@ from pytype.pyc import pyc
 from pytype.pytd import optimize
 from pytype.pytd import pytd
 from pytype.pytd import utils as pytd_utils
+from pytype.pytd.parse import builtins as pytd_builtins
 from pytype.pytd.parse import node
 from pytype.pytd.parse import visitors
 
@@ -126,6 +127,7 @@ def process_one_file(input_filename,
 
   """
   errorlog = errors.ErrorLog()
+  result = pytd_builtins.DEFAULT_SRC
   try:
     if options.check:
       check_pyi(input_filename=input_filename,
@@ -133,8 +135,6 @@ def process_one_file(input_filename,
                 errorlog=errorlog,
                 options=options)
     else:
-      # The default pyi that is used in the event that generate_pyi fails
-      result = "def __getattr__(name) -> Any: ...\n"
       result = generate_pyi(input_filename=input_filename,
                             errorlog=errorlog,
                             options=options)
