@@ -20,6 +20,19 @@ class UnionTest(test_inference.InferenceTest):
       def f(b, x, y) -> int or float
     """)
 
+  def testCall(self):
+    ty = self.Infer("""
+      def f():
+        x = 42
+        if __any_object__:
+          x.__class__ = float  # Should not appear in output
+          x.__class__ = str
+        return type(x)()
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      def f() -> int or str
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

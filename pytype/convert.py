@@ -247,10 +247,11 @@ class Converter(object):
     return abstract.ParameterizedClass(
         abstract.get_atomic_value(self.dict_type), params, self.vm)
 
-  def merge_classes(self, instances):
+  def merge_classes(self, node, instances):
     """Merge the classes of the given instances.
 
     Args:
+      node: The current node.
       instances: An iterable of instances.
     Returns:
       An abstract.AtomicAbstractValue created by merging the instances' classes.
@@ -259,7 +260,7 @@ class Converter(object):
     for v in instances:
       cls = v.get_class()
       if cls:
-        classes.update(cls.data)
+        classes.update(cls.Data(node))
     return abstract.merge_values(classes, self.vm)
 
   def convert_constant(self, name, pyval, subst=None, node=None,
@@ -492,7 +493,7 @@ class Converter(object):
           if isinstance(c, pytd.TypeParameter):
             if not subst or c.name not in subst:
               raise self.TypeParameterError(c.name)
-            return self.merge_classes(subst[c.name].data)
+            return self.merge_classes(node, subst[c.name].data)
           else:
             return self.convert_constant_to_value(pytd.Print(c), c, subst, node)
         else:

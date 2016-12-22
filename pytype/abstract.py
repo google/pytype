@@ -238,7 +238,7 @@ class AtomicAbstractValue(object):
     sure to annotate the results correctly with the origins (val and also other
     values appearing in the arguments).
     """
-    raise NotImplementedError
+    raise NotImplementedError(self.__class__.__name__)
 
   def is_closure(self):
     """Return whether this is a closure. Overridden by subclasses.
@@ -932,6 +932,10 @@ class Union(AtomicAbstractValue):
     for o in self.options:
       var.PasteVariable(o.get_class(), self.vm.root_cfg_node)
     return var
+
+  def call(self, node, func, args, condition=None):
+    var = self.vm.program.NewVariable("func", self.options, [], node)
+    return self.vm.call_function(node, var, args, condition=condition)
 
 
 class FunctionArgs(collections.namedtuple("_", ["posargs", "namedargs",
@@ -2030,7 +2034,8 @@ class InterpreterClass(SimpleAbstractValue, Class):
                  for name, builder in constants.items()
                  if builder]
     if self.cls and self.cls is not self._get_inherited_metaclass():
-      metaclass = self.vm.convert.merge_classes([self]).get_instance_type(node)
+      metaclass = self.vm.convert.merge_classes(
+          node, [self]).get_instance_type(node)
     else:
       metaclass = None
     return pytd.Class(name=class_name,
