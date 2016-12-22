@@ -17,6 +17,7 @@ class QuickTest(test_inference.InferenceTest):
           return self.elements
     """, deep=True, extract_locals=True, quick=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import Any
       class Foo(object):
         elements = ...  # type: Any
         def __init__(self, elements: Any) -> None: ...
@@ -46,6 +47,7 @@ class QuickTest(test_inference.InferenceTest):
         return A().f()
     """, deep=True, extract_locals=True, quick=True, maximum_depth=2)
     self.assertTypesMatchPytd(ty, """
+      from typing import Any
       class A(object):
         x = ...  # type: int
         def real_init(self) -> None

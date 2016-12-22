@@ -565,6 +565,7 @@ class MethodsTest(test_inference.InferenceTest):
   def testBuiltinStarArgs(self):
     with utils.Tempdir() as d:
       d.create_file("myjson.pyi", """
+        from typing import Any
         def loads(s: str, encoding: Any = ...) -> Any: ...
       """)
       ty = self.Infer("""
@@ -582,6 +583,7 @@ class MethodsTest(test_inference.InferenceTest):
   def testBuiltinStarStarArgs(self):
     with utils.Tempdir() as d:
       d.create_file("myjson.pyi", """
+        from typing import Any
         def loads(s: str, encoding: Any = ...) -> Any: ...
       """)
       ty = self.Infer("""
@@ -599,6 +601,7 @@ class MethodsTest(test_inference.InferenceTest):
   def testBuiltinKeyword(self):
     with utils.Tempdir() as d:
       d.create_file("myjson.pyi", """
+        from typing import Any
         def loads(s: str, encoding: Any = ...) -> Any: ...
       """)
       ty = self.Infer("""
@@ -891,6 +894,7 @@ class MethodsTest(test_inference.InferenceTest):
         D(w, x, y, z)
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import Any
       class A(object):
         def __new__(cls, w, x, y, z) -> Any: ...
       class B(A): ...

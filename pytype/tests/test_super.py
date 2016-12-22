@@ -123,6 +123,7 @@ class SuperTest(test_inference.InferenceTest):
             return super(Parent, self).f()
       """, pythonpath=[d.path], deep=True, solve_unknowns=True)
       self.assertTypesMatchPytd(ty, """
+        from typing import Any
         foo = ...  # type: module
         class Parent(foo.Grandparent): ...
         OtherParent = ...  # type: Any

@@ -97,6 +97,7 @@ class StdlibTests(test_inference.InferenceTest):
       f(tempfile.SpooledTemporaryFile(1048576, "wb", suffix=".foo"))
     """, deep=False, extract_locals=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import Any
       import __future__
       import typing
       google_type_annotations = ...  # type: __future__._Feature

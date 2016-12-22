@@ -459,6 +459,7 @@ class ErrorTest(test_inference.InferenceTest):
     self.assertErrorLogIs(errors, [(2, "name-error", r"foo")])
     # Make sure we recovered from the error and got the right return type
     self.assertTypesMatchPytd(ty, """
+      from typing import Any
       def main() -> Any
     """)
 
@@ -592,6 +593,7 @@ class ErrorTest(test_inference.InferenceTest):
       self.assertErrorLogIs(errors, [(
           4, "wrong-arg-types", r"Expected.*Type\[A\].*Actual.*Type\[C\]")])
       self.assertTypesMatchPytd(ty, """
+        from typing import Any
         a = ...  # type: module
         x = ...  # type: bool
         y = ...  # type: bool
@@ -644,6 +646,7 @@ class ErrorTest(test_inference.InferenceTest):
   def testUnsolvableAsMetaclass(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
+        from typing import Any
         def __getattr__(name) -> Any
       """)
       d.create_file("b.pyi", """
@@ -673,6 +676,7 @@ class ErrorTest(test_inference.InferenceTest):
       x = x + x
     """, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import Any
       x = ...  # type: Any
     """)
 
@@ -760,6 +764,7 @@ class ErrorTest(test_inference.InferenceTest):
         x = v.x  # No error because there is an Unsolvable in the MRO of a.A
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        from typing import Any
         a = ...  # type: module
         v = ...  # type: a.A
         x = ...  # type: Any
@@ -773,6 +778,7 @@ class ErrorTest(test_inference.InferenceTest):
         from a import T
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        from typing import Any
         T = ...  # type: Any
       """)
       self.assertErrorLogIs(errors, [(1, "not-supported-yet", "T")])

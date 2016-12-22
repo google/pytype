@@ -1,3 +1,5 @@
+from typing import Any
+
 class _flags(object):  # TODO(pludemann): allow calling this `flags`
   debug = ...  # type: int
   py3k_warning = ...  # type: int

@@ -319,6 +319,7 @@ class BuiltinTests(test_inference.InferenceTest):
       g()
     """, deep=True, solve_unknowns=False, extract_locals=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import Any
       def f(x, y) -> Any: ...
       def g() -> int: ...
     """)

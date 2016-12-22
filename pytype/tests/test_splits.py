@@ -285,6 +285,7 @@ class SplitTest(test_inference.InferenceTest):
           return None
     """, deep=True, extract_locals=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import Any
       def f2(x) -> Any: ...
       def f1(x) -> Union[complex, int]: ...
     """)

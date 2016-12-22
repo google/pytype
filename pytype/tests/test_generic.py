@@ -496,6 +496,7 @@ class GenericTest(test_inference.InferenceTest):
           return a.A([42]).x
       """, pythonpath=[d.path], deep=True, solve_unknowns=True)
       self.assertTypesMatchPytd(ty, """
+        from typing import Any
         a = ...  # type: module
         def f() -> Any
         def g() -> int
@@ -580,6 +581,7 @@ class GenericTest(test_inference.InferenceTest):
           return B([42]).x
       """, pythonpath=[d.path], deep=True, solve_unknowns=True)
       self.assertTypesMatchPytd(ty, """
+        from typing import Any
         a = ...  # type: module
         class B(a.A):
           x = ...  # type: Any
@@ -602,6 +604,7 @@ class GenericTest(test_inference.InferenceTest):
           return inst.x
       """, pythonpath=[d.path], deep=True, solve_unknowns=True)
       self.assertTypesMatchPytd(ty, """
+        from typing import Any
         a = ...  # type: module
         def f() -> Any
       """)
@@ -654,6 +657,7 @@ class GenericTest(test_inference.InferenceTest):
   def testUnknown(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
+        from typing import Any
         T = TypeVar("T")
         class A1(Generic[T]):
           def f(self, x: T) -> T
@@ -665,6 +669,7 @@ class GenericTest(test_inference.InferenceTest):
           return x.f("")
       """, pythonpath=[d.path], deep=True, solve_unknowns=True)
       self.assertTypesMatchPytd(ty, """
+        from typing import Any
         a = ...  # type: module
         def f(x: a.A1[str] or a.A2) -> Any
       """)
@@ -683,6 +688,7 @@ class GenericTest(test_inference.InferenceTest):
           return x.f()
       """, pythonpath=[d.path], deep=True, solve_unknowns=True)
       self.assertTypesMatchPytd(ty, """
+        from typing import Any
         a = ...  # type: module
         def f(x: a.A1[object] or a.A2) -> Any
       """)
@@ -691,6 +697,7 @@ class GenericTest(test_inference.InferenceTest):
     """Test that we can access an attribute on "Any"."""
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
+        from typing import Any
         class A(List[Any]): pass
       """)
       ty = self.Infer("""
@@ -699,6 +706,7 @@ class GenericTest(test_inference.InferenceTest):
           return a.A()[0].someproperty
       """, pythonpath=[d.path], deep=True, solve_unknowns=True)
       self.assertTypesMatchPytd(ty, """
+        from typing import Any
         a = ...  # type: module
         def f() -> Any
       """)
@@ -707,6 +715,7 @@ class GenericTest(test_inference.InferenceTest):
     """Test that we can match "Any" against a formal function argument."""
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
+        from typing import Any
         class A(List[Any]): pass
       """)
       ty = self.Infer("""

@@ -252,6 +252,7 @@ class FlowTest(test_inference.InferenceTest):
         return 42
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import Any
       def f() -> Any
       def g() -> Any
     """)

@@ -36,14 +36,14 @@ def eval(src, ...) -> ?  # Can't say *anything* about the result -- different fr
 def execfile(filename: str, ...) -> NoneType
 # TODO(rechen): Replace the first two definitions with one using AnyStr once
 # pytype is smarter about constraints on TypeVar.
-def filter(function: Optional[Callable[[str], Any]], iterable: str) -> str
-def filter(function: Optional[Callable[[unicode], Any]], iterable: unicode) -> unicode
-def filter(function: Optional[Callable[[T], Any]], iterable: Tuple[T, ...]) -> Tuple[T, ...]
-def filter(function: Optional[Callable[[T], Any]], iterable: Iterable[T]) -> List[T]
+def filter(function: Optional[Callable[[str], ?]], iterable: str) -> str
+def filter(function: Optional[Callable[[unicode], ?]], iterable: unicode) -> unicode
+def filter(function: Optional[Callable[[T], ?]], iterable: Tuple[T, ...]) -> Tuple[T, ...]
+def filter(function: Optional[Callable[[T], ?]], iterable: Iterable[T]) -> List[T]
 def format(value, ...) -> str
 def format(value: unicode, ...) -> unicode
 def getattr(value: object, attr: str or unicode, ...) -> ?
-def globals() -> dict[str, Any]
+def globals() -> dict[str, ?]
 def hasattr(object, name: str or unicode or bytearray) -> bool
 def hash(obj) -> int
 def hex(number: int) -> str
@@ -95,7 +95,7 @@ def unichr(i: int) -> unicode
 def vars(...) -> dict[str, ?]
 def zip(seq1, ...) -> list[tuple]  # TODO(pludemann): zip(seq1: iterator[...], ...) -> list[tuple[...]]
 def zip() -> list[nothing]
-def exit(code: Any = ...) -> NoneType raises SystemExit
+def exit(code: ? = ...) -> NoneType raises SystemExit
 def quit() -> NoneType raises SystemExit
 def input() -> ?
 def raw_input(prompt: str or unicode = ...) -> str raises EOFError
@@ -109,13 +109,13 @@ Ellipsis = ...  # type: ellipsis
 __debug__ = ...  # type: bool
 
 class object():
-    __bases__ = ...  # type: Tuple[Any, ...]
-    __dict__ = ...  # type: Dict[str, Any]
+    __bases__ = ...  # type: Tuple[?, ...]
+    __dict__ = ...  # type: Dict[str, ?]
     __doc__ = ...  # type: str
-    __mro__ = ...  # type: list[Any]
+    __mro__ = ...  # type: list[?]
     __name__ = ...  # type: str
-    __subclasses__ = ...  # type: Any
-    __subclasshook__ = ...  # type: Any
+    __subclasses__ = ...  # type: ?
+    __subclasshook__ = ...  # type: ?
     # InterpreterClass will contain this, too:
     __module__ = ...  # type: str
     def __init__(self) -> NoneType
@@ -131,14 +131,14 @@ class object():
     def __lt__(self, other) -> bool
     def __hash__(self) -> int
     def __setattr__(self, name, value) -> None
-    def __getattr__(self, name) -> Any
-    def __getattribute__(self, name) -> Any
+    def __getattr__(self, name) -> ?
+    def __getattribute__(self, name) -> ?
     def __new__(cls: Type[T], ...) -> T
 
 # old style class. classobj is in fact a subclass of object in Python.
 class classobj(object):
-    __bases__ = ...  # type: Tuple[Any, ...]
-    __dict__ = ...  # type: Dict[str, Any]
+    __bases__ = ...  # type: Tuple[?, ...]
+    __dict__ = ...  # type: Dict[str, ?]
     __doc__ = ...  # type: str
     __name__ = ...  # type: str
     def __init__(self) -> NoneType
@@ -821,7 +821,7 @@ class module(object):
     __doc__ = ...  # type: str or unicode
     __package__ = ...  # type: Optional[str]
     def __init__(self, name: str or bytearray, doc = ...) -> NoneType
-    def __getattr__(self, name) -> Any  # modules can contain anything
+    def __getattr__(self, name) -> ?  # modules can contain anything
 
 class slice(object):
     def __init__(self, stop, ...) -> NoneType
@@ -846,7 +846,7 @@ class type(Callable, Type[T]):
     def __new__(cls: Type[type], object: T) -> Type[T]
     # The return type in the below two definitions is used only when abstract.py
     # isn't able to build a class from the arguments.
-    def __new__(cls: Type[type], name: str, bases: tuple[type, ...], dict: Dict[str, Any]) -> type
+    def __new__(cls: Type[type], name: str, bases: tuple[type, ...], dict: Dict[str, ?]) -> type
     def __init__(self, object) -> None: ...
     def __init__(self, name, bases, dict) -> None: ...
     def __subclasses__(self) -> List[type]: ...

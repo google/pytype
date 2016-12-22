@@ -136,23 +136,29 @@ class TestFunctions(test_inference.InferenceTest):
       """)
 
   def test_wraps(self):
-    self.assertNoErrors("""\
-      from functools import wraps
-      def my_decorator(f):
-        dec = wraps(f)
-        def wrapper(*args, **kwds):
-          print('Calling decorated function')
-          return f(*args, **kwds)
-        wrapper = dec(wrapper)
-        return wrapper
-
-      @my_decorator
-      def example():
-        '''Docstring'''
-        return 17
-
-      assert example() == 17
+    with utils.Tempdir() as d:
+      d.create_file("myfunctools.pyi", """
+        from typing import Any
+        _AnyCallable = Callable[..., Any]
+        def wraps(wrapped: _AnyCallable, assigned: Sequence[str] = ..., updated: Sequence[str] = ...) -> Callable[[_AnyCallable], _AnyCallable]: ...
       """)
+      self.assertNoErrors("""\
+        from myfunctools import wraps
+        def my_decorator(f):
+          dec = wraps(f)
+          def wrapper(*args, **kwds):
+            print('Calling decorated function')
+            return f(*args, **kwds)
+          wrapper = dec(wrapper)
+          return wrapper
+
+        @my_decorator
+        def example():
+          '''Docstring'''
+          return 17
+
+        assert example() == 17
+        """, pythonpath=[d.path])
 
 
 class TestClosures(test_inference.InferenceTest):
@@ -463,6 +469,7 @@ class TestGenerators(test_inference.InferenceTest):
           return ret
       """, pythonpath=[d.path], deep=True, solve_unknowns=True)
       self.assertTypesMatchPytd(ty, """
+        from typing import Any
         foo = ...  # type: module
         # TODO(rechen): def f(unicode or List[unicode]) -> bool
         def f(x) -> Any

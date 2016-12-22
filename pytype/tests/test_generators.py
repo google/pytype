@@ -63,6 +63,7 @@ class GeneratorTest(test_inference.InferenceTest):
         yield 3
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import Any
       def foo(self) -> Generator[int, Any, Any]
     """)
 
@@ -93,6 +94,7 @@ class GeneratorTest(test_inference.InferenceTest):
       x, y, z = Foo()
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import Any
       class Foo(object):
         def __getitem__(self, pos) -> Any
       x = ...  # type: int

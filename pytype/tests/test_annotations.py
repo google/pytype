@@ -319,6 +319,7 @@ class AnnotationTest(test_inference.InferenceTest):
       x = f(3)
     """, extract_locals=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import Any
       google_type_annotations = ...  # type: __future__._Feature
       Any = ...  # type: Any
       def f(x: Any) -> None: ...
@@ -534,6 +535,7 @@ class AnnotationTest(test_inference.InferenceTest):
       """, deep=True, solve_unknowns=True, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         google_type_annotations = ...  # type: __future__._Feature
+        from typing import Any
         a = ...  # type: module
         A = ...  # type: type
         def f(x) -> Any

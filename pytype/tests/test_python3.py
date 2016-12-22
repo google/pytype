@@ -82,6 +82,7 @@ class TestPython3(test_inference.InferenceTest):
     """, deep=True, extract_locals=True)
 
     self.assertTypesMatchPytd(ty, """
+    from typing import Any
     class Thing(tuple):
       x = ...  # type: Any
       y = ...  # type: int

@@ -78,6 +78,7 @@ class DecoratorsTest(test_inference.InferenceTest):
       del foo.x
     """, deep=True, extract_locals=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import Any
       class Foo(object):
         f = ...  # type: property
         x = ...  # type: Any

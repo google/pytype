@@ -12,7 +12,7 @@ V2 = TypeVar('V2')
 T2 = TypeVar('T2')
 
 class Callable(Generic[ARGS, RET]):
-  def __call__(self, ...) -> Any
+  def __call__(self, ...) -> ?
 
 class Generic(object): ...
 class Iterator(Iterable[T]): ...
@@ -102,7 +102,7 @@ class Pattern(Generic[AnyStr]):
   def search(self, string: AnyStr, pos: int = ..., endpos: int = ...) -> Match[AnyStr]: ...
   def match(self, string: AnyStr, pos: int = ..., endpos: int = ...) -> Match[AnyStr]: ...
   def split(self, string: AnyStr, maxsplit: int = ...) -> List[AnyStr]
-  def findall(self, string: AnyStr, pos: int = ..., endpos: int = ...) -> List[Any]: ...
+  def findall(self, string: AnyStr, pos: int = ..., endpos: int = ...) -> List[?]: ...
   def finditer(self, string: AnyStr, pos: int = ..., endpos: int = ...) -> Iterator[Match[AnyStr]]
   def sub(self, repl: AnyStr, string: AnyStr, count: int = ...) -> AnyStr: ...
   def subn(self, repl: AnyStr, string: AnyStr, count: int = ...) -> Tuple[AnyStr, int]
@@ -143,12 +143,12 @@ class SupportsComplex(object): ...
 class SupportsRound(object): ...
 class ValuesView(object): ...
 
-def cast(typ, val) -> Any
-def get_type_hints(obj, ...) -> Any
-def NewType(name, tp) -> Any
-def no_type_check(arg) -> Any
-def no_type_check_decorator(decorator) -> Any
-def overload(func) -> Any
+def cast(typ, val) -> ?
+def get_type_hints(obj, ...) -> ?
+def NewType(name, tp) -> ?
+def no_type_check(arg) -> ?
+def no_type_check_decorator(decorator) -> ?
+def overload(func) -> ?
 
 Text = unicode
 TYPE_CHECKING = ...  # type: bool

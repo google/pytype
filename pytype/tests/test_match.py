@@ -93,6 +93,7 @@ class MatchTest(test_inference.InferenceTest):
       b = ["%d" % i for i in a]
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import Any
       a = ...  # type: List[nothing]
       b = ...  # type: List[str]
       i = ...  # type: Any

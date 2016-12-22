@@ -92,6 +92,7 @@ class BuiltinTests2(test_inference.InferenceTest):
           return self.__bases__
     """, deep=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import Any
       class Foo:
         def get_dict(self) -> Dict[str, Any]
         def get_name(self) -> str
@@ -122,6 +123,7 @@ class BuiltinTests2(test_inference.InferenceTest):
           return self.__mro__
     """, deep=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import Any
       class Foo(object):
         def get_dict(self) -> Dict[str, Any]
         def get_name(self) -> str
@@ -144,6 +146,7 @@ class BuiltinTests2(test_inference.InferenceTest):
   def testDictIterators(self):
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", """
+        from typing import Any
         def need_iterator(x: Iterator[Any]) -> None: ...
       """)
       ty = self.Infer("""\
@@ -184,6 +187,7 @@ class BuiltinTests2(test_inference.InferenceTest):
         y = foo.x.baz
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        from typing import Any
         foo = ...  # type: module
         x = ...  # type: str
         y = ...  # type: Any
@@ -201,6 +205,7 @@ class BuiltinTests2(test_inference.InferenceTest):
         z = A().x()
       """, pythonpath=[d.path], extract_locals=True)
       self.assertTypesMatchPytd(ty, """
+        from typing import Any
         A = ...  # type: Type[foo.A]
         y = ...  # type: Any
         z = ...  # type: Any
@@ -218,6 +223,7 @@ class BuiltinTests2(test_inference.InferenceTest):
         z = A().x()
       """, pythonpath=[d.path], extract_locals=True)
       self.assertTypesMatchPytd(ty, """
+        from typing import Any
         A = ...  # type: Type[foo.A]
         y = ...  # type: Any
         z = ...  # type: Any
@@ -240,6 +246,7 @@ class BuiltinTests2(test_inference.InferenceTest):
       lst3 = map(str, lst2)
     """, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import Any
       lst1 = ...  # type: List[nothing]
       lst2 = ...  # type: List[nothing]
       x = ...  # type: Any
@@ -442,6 +449,7 @@ class BuiltinTests2(test_inference.InferenceTest):
       x9 = iter(int, 42)
     """, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import Any
       x1 = ...  # type: Iterator[str]
       x2 = ...  # type: Iterator[unicode]
       x3 = ...  # type: bytearray_iterator

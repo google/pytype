@@ -17,15 +17,6 @@ PEP484_NAMES = ["AbstractSet", "AnyStr", "BinaryIO", "ByteString", "Callable",
                 "Union"]
 
 
-PEP484_TRANSLATIONS = {
-    # PEP 484 allows "None" as an abbreviation of "NoneType".
-    "None": pytd.NamedType("NoneType"),
-    # PEP 484 definitions of special purpose types:
-    "Any": pytd.AnythingType(),
-    # TODO(kramm): "typing.NamedTuple"
-}
-
-
 # Maps a type to a more generalized type.
 COMPAT_MAP = {
     "NoneType": "bool",
@@ -69,11 +60,14 @@ class ConvertTypingToNative(visitors.Visitor):
 
   def _Convert(self, t):
     module, name = self._GetModuleAndName(t)
-    if self._IsTyping(module):
+    if not module and name == "None":
+      # PEP 484 allows "None" as an abbreviation of "NoneType".
+      return pytd.NamedType("NoneType")
+    elif self._IsTyping(module):
       if name in PEP484_CAPITALIZED:
         return pytd.NamedType(name.lower())  # "typing.List" -> "list" etc.
-      elif name in PEP484_TRANSLATIONS:
-        return PEP484_TRANSLATIONS[name]
+      elif name == "Any":
+        return pytd.AnythingType()
       else:
         # IO, Callable, etc. (I.e., names in typing we leave alone)
         return t

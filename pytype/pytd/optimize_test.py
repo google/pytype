@@ -114,11 +114,11 @@ class TestOptimize(parser_test_base.ParserTest):
 
   def testRemoveRedundantSignatureWithAny1(self):
     src = textwrap.dedent("""
-        def foo(a: Any) -> Any
+        def foo(a: ?) -> ?
         def foo(a: int) -> int
     """)
     new_src = textwrap.dedent("""
-        def foo(a) -> Any
+        def foo(a) -> ?
     """)
     ast = self.ParseAndResolve(src)
     self.AssertOptimizeEquals(ast, new_src)
@@ -126,10 +126,10 @@ class TestOptimize(parser_test_base.ParserTest):
   def testRemoveRedundantSignatureWithAny2(self):
     src = textwrap.dedent("""
         def foo(a: int) -> int
-        def foo(a: Any) -> Any
+        def foo(a: ?) -> ?
     """)
     new_src = textwrap.dedent("""
-        def foo(a) -> Any
+        def foo(a) -> ?
     """)
     ast = self.ParseAndResolve(src)
     self.AssertOptimizeEquals(ast, new_src)
@@ -137,7 +137,7 @@ class TestOptimize(parser_test_base.ParserTest):
   def testRemoveRedundantSignatureWithOptional1(self):
     src = textwrap.dedent("""
         def foo(a: int = ...) -> int
-        def foo(a: Any = ...) -> int
+        def foo(a: ? = ...) -> int
     """)
     new_src = textwrap.dedent("""
         def foo(a = ...) -> int
@@ -147,7 +147,7 @@ class TestOptimize(parser_test_base.ParserTest):
 
   def testRemoveRedundantSignatureWithOptional2(self):
     src = textwrap.dedent("""
-        def foo(a: Any = ...) -> int
+        def foo(a: ? = ...) -> int
         def foo(a: int = ...) -> int
     """)
     new_src = textwrap.dedent("""
@@ -258,11 +258,11 @@ class TestOptimize(parser_test_base.ParserTest):
     src = textwrap.dedent("""
         X = TypeVar("X")
         def foo(a: X, b: int) -> X
-        def foo(a: X, b: Any) -> X
+        def foo(a: X, b: ?) -> X
     """)
     expected = textwrap.dedent("""
         X = TypeVar("X")
-        def foo(a: X, b: Any) -> X
+        def foo(a: X, b: ?) -> X
     """)
     ast = self.Parse(src)
     ast = ast.Visit(optimize.RemoveRedundantSignatures(
@@ -593,12 +593,12 @@ class TestOptimize(parser_test_base.ParserTest):
         def k(x: dict[int, bool] or list[int] or dict[bool, int] or list[bool]) -> ?
     """)
     expected = textwrap.dedent("""
-        def f(x: list[float]) -> Any: ...
-        def g(x: list[float] or str or set[int] or long) -> Any: ...
-        def h(x: list[int or str] or set[float]) -> Any: ...
-        def i(x: list[int]) -> Any: ...
-        def j(x: dict[float, float]) -> Any: ...
-        def k(x: dict[int or bool, bool or int] or list[int or bool]) -> Any: ...
+        def f(x: list[float]) -> ?: ...
+        def g(x: list[float] or str or set[int] or long) -> ?: ...
+        def h(x: list[int or str] or set[float]) -> ?: ...
+        def i(x: list[int]) -> ?: ...
+        def j(x: dict[float, float]) -> ?: ...
+        def k(x: dict[int or bool, bool or int] or list[int or bool]) -> ?: ...
     """)
     new_src = self.ApplyVisitorToString(src, optimize.CombineContainers())
     self.AssertSourceEquals(new_src, expected)
@@ -731,23 +731,23 @@ class TestOptimize(parser_test_base.ParserTest):
   def testRemoveInheritedMethodsWithOverride(self):
     src = textwrap.dedent("""
         class A(object):
-            def f(self, x) -> Any
+            def f(self, x) -> ?
         class B(A):
-            def f(self) -> Any
+            def f(self) -> ?
         class C(B):
-            def f(self) -> Any
+            def f(self) -> ?
         class D(B):
-            def f(self, x) -> Any
+            def f(self, x) -> ?
     """)
     expected = textwrap.dedent("""
         class A(object):
-            def f(self, x) -> Any
+            def f(self, x) -> ?
         class B(A):
-            def f(self) -> Any
+            def f(self) -> ?
         class C(B):
             pass
         class D(B):
-            def f(self, x) -> Any
+            def f(self, x) -> ?
     """)
     ast = self.Parse(src)
     ast = visitors.LookupClasses(ast, builtins.GetBuiltinsPyTD())
@@ -757,13 +757,13 @@ class TestOptimize(parser_test_base.ParserTest):
   def testRemoveInheritedMethodsWithDiamond(self):
     src = textwrap.dedent("""
         class A(object):
-            def f(self, x) -> Any
+            def f(self, x) -> ?
         class B(A):
             pass
         class C(A):
-            def f(self, x, y) -> Any
+            def f(self, x, y) -> ?
         class D(B, C):
-            def f(self, x) -> Any
+            def f(self, x) -> ?
     """)
     ast = self.Parse(src)
     ast = visitors.LookupClasses(ast, builtins.GetBuiltinsPyTD())
@@ -773,9 +773,9 @@ class TestOptimize(parser_test_base.ParserTest):
   def testRemoveInheritedMethodsWithCircle(self):
     src = textwrap.dedent("""
         class A(B):
-            def f(self) -> Any
+            def f(self) -> ?
         class B(A):
-            def f(self) -> Any
+            def f(self) -> ?
     """)
     ast = self.Parse(src)
     ast = visitors.LookupClasses(ast, builtins.GetBuiltinsPyTD())

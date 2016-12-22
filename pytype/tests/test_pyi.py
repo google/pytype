@@ -93,6 +93,7 @@ class PYITest(test_inference.InferenceTest):
   def testEmptyModule(self):
     with utils.Tempdir() as d:
       d.create_file("vague.pyi", """
+        from typing import Any
         def __getattr__(name) -> Any
       """)
       ty = self.Infer("""\
@@ -100,6 +101,7 @@ class PYITest(test_inference.InferenceTest):
         x = vague.foo + vague.bar
       """, deep=False, solve_unknowns=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        from typing import Any
         vague = ...  # type: module
         x = ...  # type: Any
       """)
@@ -220,8 +222,9 @@ class PYITest(test_inference.InferenceTest):
   def testCallable(self):
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", """
-from typing import Callable
-def process_function(func: Callable[..., Any]) -> None: ...
+        from typing import Any
+        from typing import Callable
+        def process_function(func: Callable[..., Any]) -> None: ...
       """)
       ty = self.Infer("""\
         import foo
@@ -291,6 +294,7 @@ def process_function(func: Callable[..., Any]) -> None: ...
   def testOldStyleClassObjectMatch(self):
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", """
+        from typing import Any
         def f(x) -> Any
         class Foo: pass
       """)
@@ -300,6 +304,7 @@ def process_function(func: Callable[..., Any]) -> None: ...
           return foo.f(foo.Foo())
       """, deep=True, pythonpath=[d.path], solve_unknowns=True)
       self.assertTypesMatchPytd(ty, """
+        from typing import Any
         foo = ...  # type: module
         def g() -> Any
       """)
@@ -358,6 +363,7 @@ def process_function(func: Callable[..., Any]) -> None: ...
   def testMultipleGetAttr(self):
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", """
+        from typing import Any
         def __getattr__(name) -> Any
       """)
       ty, errors = self.InferAndCheck("""
@@ -365,6 +371,7 @@ def process_function(func: Callable[..., Any]) -> None: ...
         from bar import *  # Nonsense import generates a top-level __getattr__
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        from typing import Any
         def __getattr__(name) -> Any
       """)
       self.assertErrorLogIs(errors, [(3, "import-error", r"bar")])
@@ -403,6 +410,7 @@ def process_function(func: Callable[..., Any]) -> None: ...
   def testKeywordOnlyArgs(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
+        from typing import Any
         def foo(x: str, *y: Any, z: complex = ...) -> int: ...
       """)
       ty = self.Infer("""\
@@ -433,6 +441,7 @@ def process_function(func: Callable[..., Any]) -> None: ...
         p = a.get_kwargs(1, 2, 3, z=5, u=3j)
       """, deep=True, extract_locals=True, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        from typing import Any
         a = ...  # type: module
         k = ...  # type: str
         l = ...  # type: complex
@@ -462,6 +471,7 @@ def process_function(func: Callable[..., Any]) -> None: ...
         d = foo.foo(*(), **{"d": 3j})
       """, solve_unknowns=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        from typing import Any
         foo = ...  # type: module
         a = ...  # type: dict
         b = ...  # type: Dict[int, complex]
@@ -513,6 +523,7 @@ def process_function(func: Callable[..., Any]) -> None: ...
   def testFrozenSet(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
+        from typing import Any
         x = ...  # type: FrozenSet[str]
         y = ...  # type: Set[Any]
       """)

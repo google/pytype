@@ -333,6 +333,7 @@ class TestUtils(parser_test_base.ParserTest):
   def testTypingNameConflict2(self):
     ast = parser.parse_string(textwrap.dedent("""
       import typing
+      from typing import Any
 
       x = ...  # type: typing.List[str]
 

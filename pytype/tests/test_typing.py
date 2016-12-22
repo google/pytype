@@ -65,6 +65,7 @@ class TypingTest(test_inference.InferenceTest):
         return typing.cast(typing.List[int], [])
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import Any
       google_type_annotations = ...  # type: __future__._Feature
       typing = ...  # type: module
       def f() -> Any
@@ -100,6 +101,7 @@ class TypingTest(test_inference.InferenceTest):
     """)
     self.assertErrorLogIs(errors, [(8, "attribute-error", r"y.*Foo")])
     self.assertTypesMatchPytd(ty, """
+      from typing import Any
       google_type_annotations = ...  # type: __future__._Feature
       Type = ...  # type: type
       class Foo:
@@ -274,6 +276,27 @@ class TypingTest(test_inference.InferenceTest):
       def f(x: Iterator[int]):
         pass
       f(x for x in [42])
+    """)
+
+  def testNameConflict(self):
+    ty = self.Infer("""
+      from __future__ import google_type_annotations
+      import typing
+      def f() -> typing.Any:
+        pass
+      class Any(object):
+        pass
+      def g() -> Any:
+        pass
+    """)
+    self.assertTypesMatchPytd(ty, """
+      import __future__
+      google_type_annotations = ...  # type: __future__._Feature
+      typing = ...  # type: module
+      def f() -> typing.Any: ...
+      def g() -> Any: ...
+      class Any(object):
+          pass
     """)
 
 

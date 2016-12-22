@@ -508,8 +508,12 @@ class PrintVisitor(Visitor):
 
   def VisitAnythingType(self, unused_node):
     """Convert an anything type to a string."""
-    self._RequireTypingImport("Any")
-    return "Any"
+    if "Any" in self._class_members or "Any" in self._local_names:
+      self._RequireTypingImport(None)
+      return "typing.Any"
+    else:
+      self._RequireTypingImport("Any")
+      return "Any"
 
   def VisitNothingType(self, unused_node):
     """Convert the nothing type to a string."""

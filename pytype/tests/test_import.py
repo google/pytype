@@ -77,12 +77,14 @@ class ImportTest(test_inference.InferenceTest):
   def testStarImportAny(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
+        from typing import Any
         def __getattr__(name) -> Any
       """)
       ty = self.Infer("""
         from a import *
       """, deep=True, solve_unknowns=True, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        from typing import Any
         def __getattr__(name) -> Any
       """)
 
@@ -93,6 +95,7 @@ class ImportTest(test_inference.InferenceTest):
       x = foo.bar()
     """)
     self.assertTypesMatchPytd(ty, """
+      from typing import Any
       def __getattr__(name) -> Any
       x = ...  # type: Any
     """)
@@ -505,6 +508,7 @@ class ImportTest(test_inference.InferenceTest):
     # Also, the optimizer should be smart enough to collapse the Union into just
     # typing.IO[AnyStr].
     self.assertTypesMatchPytd(ty, """
+      from typing import Any
       StringIO = ...  # type: module
       def my_foo(x:StringIO.StringIO[object] or typing.IO[object] or
                    typing.BinaryIO or typing.TextIO) -> Any
@@ -701,6 +705,7 @@ class ImportTest(test_inference.InferenceTest):
   def testImportResolveOnDummy(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
+          from typing import Any
           def __getattr__(name) -> Any: ...
       """)
       d.create_file("b.pyi", """
@@ -713,6 +718,7 @@ class ImportTest(test_inference.InferenceTest):
         bar = b.f(foo)
       """, deep=False, solve_unknowns=True, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        from typing import Any
         b = ...  # type: module
         foo = ...  # type: Any
         bar = ...  # type: Any
@@ -750,6 +756,7 @@ class ImportTest(test_inference.InferenceTest):
   def testRedefinedBuiltin(self):
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", """
+        from typing import Any
         object = ...  # type: Any
         def f(x) -> Any
       """)
@@ -758,6 +765,7 @@ class ImportTest(test_inference.InferenceTest):
         x = foo.f("")
       """, pythonpath=[d.path], extract_locals=True)
       self.assertTypesMatchPytd(ty, """
+        from typing import Any
         foo = ...  # type: module
         x = ...  # type: Any
       """)

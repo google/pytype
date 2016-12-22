@@ -259,10 +259,8 @@ class ParserTest(_ParserTestBase):
 
   def test_pep484_translations(self):
     ast = self.check("""\
-      x = ...  # type: None
-      y = ...  # type: Any""", prologue="from typing import Any")
+      x = ...  # type: None""")
     self.assertEquals(pytd.NamedType("NoneType"), ast.constants[0].type)
-    self.assertEquals(pytd.AnythingType(), ast.constants[1].type)
 
   def test_module_name(self):
     ast = self.check("x = ...  # type: int",

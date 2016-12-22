@@ -324,22 +324,20 @@ class TestVisitors(parser_test_base.ParserTest):
         new_src)
 
   def testPrintImports(self):
-    no_import_src = textwrap.dedent("""
-      def f(x: Union[int, slice]) -> List[Any]: ...
+    src = textwrap.dedent("""
+      def f(x: Union[int, slice]) -> List[?]: ...
       def g(x: foo.C.C2) -> None: ...
     """)
-    imports = textwrap.dedent("""
+    expected = textwrap.dedent("""\
       import foo.C
       from typing import Any, List, Union
-    """)
-    expected_src = (imports + no_import_src).strip()  # Extra newlines
 
-    tree = self.Parse(no_import_src)
+      def f(x: Union[int, slice]) -> List[Any]: ...
+      def g(x: foo.C.C2) -> None: ...""")
+    tree = self.Parse(src)
     res = pytd.Print(tree)
-
-    # AssertSourceEquals strips imports
-    self.AssertSourceEquals(res, no_import_src)
-    self.assertMultiLineEqual(res, expected_src)
+    self.AssertSourceEquals(res, src)
+    self.assertMultiLineEqual(res, expected)
 
   def testPrintImportsNamedType(self):
     # Can't get tree by parsing so build explicitly

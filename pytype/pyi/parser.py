@@ -304,11 +304,6 @@ class _Parser(object):
     if name != "typing":
       self._type_map = {name: pytd.NamedType("typing." + name)
                         for name in pep484.PEP484_NAMES}
-    # If a translation overwrites a shortcut, the definition in the typing
-    # module is ignored. We disallow this confusing behavior.
-    intersection = set(pep484.PEP484_NAMES) & set(pep484.PEP484_TRANSLATIONS)
-    assert not intersection, "Multiple definitions: " + str(intersection)
-    self._type_map.update(pep484.PEP484_TRANSLATIONS)
 
     try:
       defs = parser_ext.parse(self, src)

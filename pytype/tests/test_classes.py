@@ -84,6 +84,7 @@ class ClassesTest(test_inference.InferenceTest):
       x = Bar(duration=0)
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import Any
       class Foo(object):
         pass
       class Bar(Foo, Any):
@@ -94,6 +95,7 @@ class ClassesTest(test_inference.InferenceTest):
   def testInheritFromUnsolvable(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
+        from typing import Any
         def __getattr__(name) -> Any
       """)
       ty = self.Infer("""
@@ -105,6 +107,7 @@ class ClassesTest(test_inference.InferenceTest):
         x = Bar(duration=0)
       """, pythonpath=[d.path], deep=True, solve_unknowns=True)
       self.assertTypesMatchPytd(ty, """
+        from typing import Any
         a = ...  # type: module
         class Foo(object):
           pass
@@ -363,6 +366,7 @@ class ClassesTest(test_inference.InferenceTest):
         foo = Foo()
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import Any
       class Foo(object):
         def __get__(self, obj, objtype) -> Any: ...
       class Bar(object):
@@ -383,6 +387,7 @@ class ClassesTest(test_inference.InferenceTest):
         foo = Foo()
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import Any
       class Foo(object):
         def __get__(self, obj, objtype) -> Any: ...
       class Bar(object):
@@ -471,6 +476,7 @@ class ClassesTest(test_inference.InferenceTest):
   def testMetaclassGetAttribute(self):
     with utils.Tempdir() as d:
       d.create_file("enum.pyi", """
+        from typing import Any
         class EnumMeta(type):
           def __getattribute__(self, name) -> Any
         class Enum(metaclass=EnumMeta): ...
@@ -488,6 +494,7 @@ class ClassesTest(test_inference.InferenceTest):
         name2 = B.x.name
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        from typing import Any
         enum = ...  # type: module
         class A(enum.Enum):
           x = ...  # type: int
@@ -600,6 +607,7 @@ class ClassesTest(test_inference.InferenceTest):
       x5 = x3.y
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import Any
       class A(object):
         x = ...  # type: str or int or float or complex
         y = ...  # type: bool
@@ -722,6 +730,7 @@ class ClassesTest(test_inference.InferenceTest):
   def testUnsolvableMetaclass(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
+        from typing import Any
         def __getattr__(name) -> Any
       """)
       d.create_file("b.pyi", """
@@ -733,6 +742,7 @@ class ClassesTest(test_inference.InferenceTest):
         x = b.B.x
       """, pythonpath=[d.path], deep=True, solve_unknowns=True)
       self.assertTypesMatchPytd(ty, """
+        from typing import Any
         b = ...  # type: module
         x = ...  # type: Any
       """)
@@ -783,6 +793,7 @@ class ClassesTest(test_inference.InferenceTest):
       x = X()
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import Any
       name = ...  # type: str
       X = ...  # type: Any
       x = ...  # type: Any
@@ -880,6 +891,7 @@ class ClassesTest(test_inference.InferenceTest):
         __metaclass__ = MyMeta
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import Any
       def MyMeta(names, bases, members) -> Any
       class X(object, metaclass=MyMeta):
         def __metaclass__(names, bases, members) -> Any
