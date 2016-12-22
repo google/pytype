@@ -567,12 +567,50 @@ class DictTemplate(dict):
   def items(self):
     return super(DictTemplate, self).items()
 
-  def __getattribute__(self, name):
-    if (name not in type(self).__dict__ and name not in DictTemplate.__dict__
-        and name in dict.__dict__):
-      raise NotImplementedError
-    else:
-      return super(DictTemplate, self).__getattribute__(name)
+  def clear(self):
+    raise NotImplementedError()
+
+  def copy(self):
+    raise NotImplementedError()
+
+  def fromkeys(self):
+    raise NotImplementedError()
+
+  def has_key(self):
+    raise NotImplementedError()
+
+  def iteritems(self):
+    raise NotImplementedError()
+
+  def iterkeys(self):
+    raise NotImplementedError()
+
+  def itervalues(self):
+    raise NotImplementedError()
+
+  def keys(self):
+    raise NotImplementedError()
+
+  def pop(self):
+    raise NotImplementedError()
+
+  def popitem(self):
+    raise NotImplementedError()
+
+  def setdefault(self):
+    raise NotImplementedError()
+
+  def update(self):
+    raise NotImplementedError()
+
+  def viewitems(self):
+    raise NotImplementedError()
+
+  def viewkeys(self):
+    raise NotImplementedError()
+
+  def viewvalues(self):
+    raise NotImplementedError()
 
 
 class AliasingDict(DictTemplate):

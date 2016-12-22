@@ -506,7 +506,8 @@ class UtilsTest(unittest.TestCase):
     d = utils.AliasingDict()
     # To avoid surprising behavior, we require desired dict functionality to be
     # explicitly overridden
-    self.assertRaises(NotImplementedError, lambda: d.viewitems)
+    with self.assertRaises(NotImplementedError):
+      d.viewitems()
     d.add_alias("alias", "name")
     self.assertNotIn("alias", d)
     self.assertNotIn("name", d)
@@ -556,7 +557,8 @@ class UtilsTest(unittest.TestCase):
     d = utils.LazyDict()
     # To avoid surprising behavior, we require desired dict functionality to be
     # explicitly overridden
-    self.assertRaises(NotImplementedError, lambda: d.viewitems)
+    with self.assertRaises(NotImplementedError):
+      d.viewitems()
     x = []
     def f(y):
       # Change the state of x so that we can check whether f is evaluated at the
