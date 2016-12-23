@@ -607,7 +607,9 @@ class VirtualMachine(object):
         f_globals.members.items(),
         key=lambda (name, var): (sum(name == v.name for v in var.data), name))
     for name, var in global_members:
-      abstract.variable_set(var, "official_name", name)
+      for b in var.bindings:
+        if isinstance(b.data, abstract.InterpreterClass):
+          b.data.official_name = name
     for func in self.functions_with_late_annotations:
       self._eval_late_annotations(node, func, f_globals)
     assert not self.frames, "Frames left over!"

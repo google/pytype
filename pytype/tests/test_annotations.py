@@ -939,6 +939,22 @@ class AnnotationTest(test_inference.InferenceTest):
     """)
     self.assertErrorLogIs(errors, [(4, "invalid-annotation", r"int.*x.*quote")])
 
+  def testChangeAnnotatedArg(self):
+    ty = self.Infer("""\
+      from __future__ import google_type_annotations
+      from typing import Dict
+      def f(x: Dict[str, str]):
+        x[True] = 42
+        return x
+      v = f({"a": "b"})
+    """)
+    self.assertTypesMatchPytd(ty, """
+      google_type_annotations = ...  # type: __future__._Feature
+      Dict = ...  # type: type
+      def f(x: Dict[str, str]) -> Dict[str or bool, str or int]: ...
+      v = ...  # type: Dict[str or bool, str or int]
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

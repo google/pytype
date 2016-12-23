@@ -48,28 +48,6 @@ class AsInstance(object):
     self.cls = cls
 
 
-def variable_set(variable, attr, value, deep=False):
-  """Set an attribute on each value in the variable.
-
-  Args:
-    variable: A typegraph.Variable.
-    attr: The attribute to set.
-    value: The desired attribute value.
-    deep: Whether to recursively set the attribute on type parameters of the
-        variable.
-  """
-  values = variable.data
-  seen = set()
-  while values:
-    v = values.pop(0)
-    if v not in seen:
-      seen.add(v)
-      setattr(v, attr, value)
-      if deep and isinstance(v, SimpleAbstractValue):
-        for child in v.type_parameters.values():
-          values.extend(child.data)
-
-
 def get_atomic_value(variable):
   if len(variable.bindings) == 1:
     return variable.bindings[0].data
@@ -157,6 +135,7 @@ class AtomicAbstractValue(object):
     self.name = name
     self.module = None
     self.official_name = None
+    self.template = ()
 
   @property
   def full_name(self):
@@ -274,6 +253,15 @@ class AtomicAbstractValue(object):
     # We don't know whether we even *are* a type, so the default is anything.
     del node, instance, seen, view
     return pytd.AnythingType()
+
+  def get_parameter_types(self, node, template, seen, view):
+    """Return the types of the parameters in the given template."""
+    del node, seen, view
+    return [pytd.AnythingType() for _ in template]
+
+  def get_instance_parameter_types(self, node, template, seen, view):
+    """Return the parameter types for an instance of us."""
+    return self.get_parameter_types(node, template, seen, view)
 
   def to_type(self, node, seen=None, view=None):
     """Get a PyTD type representing this object, as seen at a node."""
@@ -606,6 +594,17 @@ class SimpleAbstractValue(AtomicAbstractValue):
       # in class declarations.
       log.info("Using ? for %s", self.name)
       return pytd.AnythingType()
+
+  def get_parameter_types(self, node, template, seen, view):
+    type_arguments = []
+    for t in template:
+      if t.name in self.type_parameters:
+        param_values = _get_values(node, self.type_parameters[t.name], view)
+        type_arguments.append(pytd_utils.JoinTypes(
+            v.to_type(node, seen, view) for v in param_values))
+      else:
+        type_arguments.append(pytd.AnythingType())
+    return type_arguments
 
   def get_type_key(self, seen=None):
     cached_changestamps, saved_key = self._cached_type_key
@@ -1728,6 +1727,28 @@ class Class(object):
     return pytd.GenericType(base_type=pytd.NamedType("__builtin__.type"),
                             parameters=(pytd.NamedType(self.full_name),))
 
+  def get_instance_type(self, node, instance=None, seen=None, view=None):
+    """Convert instances of this class to their PyTD type."""
+    if self.official_name is None:
+      return pytd.AnythingType()
+    if seen is None:
+      seen = set()
+    type_params = self.template
+    if instance in seen:
+      # We have a circular dependency in our types (e.g., lst[0] == lst). Stop
+      # descending into the type parameters.
+      type_params = ()
+    if instance is None:
+      type_arguments = self.get_instance_parameter_types(
+          node, type_params, seen, view)
+    else:
+      seen.add(instance)
+      type_arguments = instance.get_parameter_types(
+          node, type_params, seen, view)
+    return pytd_utils.MakeClassOrContainerType(
+        pytd_utils.NamedTypeWithModule(self.official_name, self.module),
+        type_arguments)
+
   def to_pytd_def(self, node, name):
     # Default method. Generate an empty pytd. Subclasses override this.
     del node
@@ -1790,6 +1811,8 @@ class ParameterizedClass(AtomicAbstractValue, Class):
     self.module = base_cls.module
     self.type_parameters = type_parameters
     self.mro = (self,) + self.base_cls.mro[1:]
+    self.official_name = self.base_cls.official_name
+    self.template = self.base_cls.template
     Class.init_mixin(self, base_cls.cls)
 
   def __repr__(self):
@@ -1809,16 +1832,12 @@ class ParameterizedClass(AtomicAbstractValue, Class):
   def to_pytd_def(self, node, name):
     return pytd.Alias(name, self.get_instance_type(node))
 
+  def get_instance_parameter_types(self, node, template, seen, view):
+    return [self.type_parameters[t.name].get_instance_type(
+        node, None, seen, view) for t in template]
+
   def get_instance_type(self, node, instance=None, seen=None, view=None):
-    type_arguments = []
-    for type_param in self.base_cls.pytd_cls.template:
-      type_arguments.append(
-          self.type_parameters[type_param.name].get_instance_type(
-              node, None, seen, view))
-    return pytd_utils.MakeClassOrContainerType(
-        pytd_utils.NamedTypeWithModule(self.base_cls.name,
-                                       self.base_cls.module),
-        type_arguments)
+    return Class.get_instance_type(self, node, instance, seen, view)
 
   def instantiate(self, node):
     if self.full_name == "__builtin__.type":
@@ -1852,6 +1871,8 @@ class PyTDClass(SimpleAbstractValue, Class):
           node=self.vm.root_cfg_node)
     self.pytd_cls = pytd_cls
     self.mro = mro.compute_mro(self)
+    self.official_name = self.name
+    self.template = self.pytd_cls.template
     Class.init_mixin(self, metaclass)
 
   def bases(self):
@@ -1880,7 +1901,7 @@ class PyTDClass(SimpleAbstractValue, Class):
     if results is None:
       value = Instance(self.vm.convert.convert_constant(
           self.name, self.pytd_cls), self.vm, node)
-      for type_param in self.pytd_cls.template:
+      for type_param in self.template:
         if type_param.name not in value.type_parameters:
           value.type_parameters[type_param.name] = self.vm.program.NewVariable(
               type_param.name)
@@ -1897,28 +1918,7 @@ class PyTDClass(SimpleAbstractValue, Class):
     return Class.to_type(self, node, seen, view)
 
   def get_instance_type(self, node, instance=None, seen=None, view=None):
-    """Convert instances of this class to their PYTD type."""
-    if seen is None:
-      seen = set()
-    type_params = self.pytd_cls.template
-    if instance in seen:
-      # We have a circular dependency in our types (e.g., lst[0] == lst). Stop
-      # descending into the type parameters.
-      type_params = ()
-    if instance is not None:
-      seen.add(instance)
-    type_arguments = []
-    for type_param in type_params:
-      if instance is not None and type_param.name in instance.type_parameters:
-        param = instance.type_parameters[type_param.name]
-        param_values = _get_values(node, param, view)
-        type_arguments.append(pytd_utils.JoinTypes(
-            data.to_type(node, seen, view) for data in param_values))
-      else:
-        type_arguments.append(pytd.AnythingType())
-    return pytd_utils.MakeClassOrContainerType(
-        pytd_utils.NamedTypeWithModule(self.name, self.module),
-        type_arguments)
+    return Class.get_instance_type(self, node, instance, seen, view)
 
   def __repr__(self):
     return "PyTDClass(%s)" % self.name
@@ -1942,7 +1942,7 @@ class PyTDClass(SimpleAbstractValue, Class):
         # so it must be an instance attribute.
         subst = {itm.name: TypeParameterInstance(
             itm.name, instance, self.vm).to_variable(node, name)
-                 for itm in self.pytd_cls.template}
+                 for itm in self.template}
         return self._convert_member(name, c, subst, node)
 
 
@@ -2046,11 +2046,7 @@ class InterpreterClass(SimpleAbstractValue, Class):
                       template=())
 
   def get_instance_type(self, node, instance=None, seen=None, view=None):
-    del node, instance
-    if self.official_name:
-      return pytd_utils.NamedTypeWithModule(self.official_name, self.module)
-    else:
-      return pytd.AnythingType()
+    return Class.get_instance_type(self, node, instance, seen, view)
 
   def __repr__(self):
     return "InterpreterClass(%s)" % self.name
@@ -2349,7 +2345,8 @@ class InterpreterFunction(Function):
     if self.vm.is_at_maximum_depth() and self.name != "__init__":
       log.info("Maximum depth reached. Not analyzing %r", self.name)
       if self.vm.callself_stack:
-        variable_set(self.vm.callself_stack[-1], "maybe_missing_members", True)
+        for b in self.vm.callself_stack[-1].bindings:
+          b.data.maybe_missing_members = True
       return (node,
               self.vm.convert.create_new_unsolvable(node, self.name + ":ret"))
     self._match_args(node, args, condition)

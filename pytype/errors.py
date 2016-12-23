@@ -226,8 +226,7 @@ class ErrorLog(ErrorLogBase):
     if isinstance(t, (abstract.Unknown, abstract.Unsolvable)):
       return "Any"
     elif isinstance(t, abstract.ParameterizedClass):
-      params = [t.type_parameters[type_param.name]
-                for type_param in t.base_cls.pytd_cls.template]
+      params = [t.type_parameters[type_param.name] for type_param in t.template]
       base = self._print_as_expected_type(t.base_cls)
       base = pep484.PEP484_MaybeCapitalize(base) or base
       return "%s[%s]" % (base, ", ".join(self._print_as_expected_type(p)
@@ -248,9 +247,9 @@ class ErrorLog(ErrorLogBase):
         cls = t.cls.bindings[0].data
         if isinstance(cls, abstract.ParameterizedClass):
           cls = cls.base_cls
-        if isinstance(cls, abstract.PyTDClass) and cls.pytd_cls.template:
+        if isinstance(cls, abstract.PyTDClass) and cls.template:
           params = []
-          for template_item in cls.pytd_cls.template:
+          for template_item in cls.template:
             param_var = t.type_parameters.get(template_item.name)
             if param_var is None or not param_var.bindings:
               param = "nothing"

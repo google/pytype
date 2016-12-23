@@ -243,7 +243,7 @@ class AbstractMatcher(object):
         # parameterized, then it is safe to use the param names in other_type.
         assert left is other_type.base_cls
         left = other_type
-      for type_param in left.base_cls.pytd_cls.template:
+      for type_param in left.template:
         class_param = other_type.type_parameters[type_param.name]
         instance_param = instance.get_type_parameter(node, type_param.name)
         instance_type_param = left.type_parameters[type_param.name]
