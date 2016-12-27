@@ -666,7 +666,7 @@ def infer_types(src,
                 errorlog, options,
                 filename=None, run_builtins=True,
                 deep=True, solve_unknowns=True,
-                cache_unknowns=False, extract_locals=True,
+                cache_unknowns=False, show_library_calls=False,
                 analyze_annotated=False,
                 init_maximum_depth=INIT_MAXIMUM_DEPTH, maximum_depth=None):
   """Given Python source return its types.
@@ -683,8 +683,7 @@ def infer_types(src,
     solve_unknowns: If yes, try to replace structural types ("~unknowns") with
       nominal types.
     cache_unknowns: If True, do a faster approximation of unknown types.
-    extract_locals: If not optimizing, should we at least remove the call
-      traces?
+    show_library_calls: If True, call traces are kept in the output.
     analyze_annotated: If True, analyze methods with type annotations, too.
     init_maximum_depth: Depth of analysis during module loading.
     maximum_depth: Depth of the analysis. Default: unlimited.
@@ -718,7 +717,7 @@ def infer_types(src,
   if solve_unknowns:
     log.info("=========== PyTD to solve =============\n%s", pytd.Print(ast))
     ast = convert_structural.convert_pytd(ast, builtins_pytd)
-  elif extract_locals:
+  elif not show_library_calls:
     log.info("Solving is turned off. Discarding call traces.")
     # Rename "~unknown" to "?"
     ast = ast.Visit(visitors.RemoveUnknownClasses())

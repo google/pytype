@@ -16,7 +16,7 @@ class InheritanceTest(test_inference.InferenceTest):
           return self.lineno
       class Leaf(Base):
         lineno = 0
-    """, deep=True, solve_unknowns=False, extract_locals=False)
+    """, deep=True, solve_unknowns=False, show_library_calls=True)
     self.assertTypesMatchPytd(ty, """
       class Base:
         pass
@@ -42,7 +42,7 @@ class InheritanceTest(test_inference.InferenceTest):
         return A.y
       def by():
         return A.y
-    """, deep=True, solve_unknowns=False, extract_locals=False)
+    """, deep=True, solve_unknowns=False, show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("ax"), self.int)
     self.assertOnlyHasReturnType(ty.Lookup("bx"), self.str)
     self.assertOnlyHasReturnType(ty.Lookup("ay"), self.int)
@@ -65,7 +65,7 @@ class InheritanceTest(test_inference.InferenceTest):
         return D.y
       def z():
         return D.z
-    """, deep=True, solve_unknowns=False, extract_locals=False)
+    """, deep=True, solve_unknowns=False, show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("x"), self.int)
     self.assertOnlyHasReturnType(ty.Lookup("y"), self.int)
     self.assertOnlyHasReturnType(ty.Lookup("z"), self.complex)
@@ -79,7 +79,7 @@ class InheritanceTest(test_inference.InferenceTest):
 
       def f():
         return NoCaseKeysDict()
-    """, deep=False, solve_unknowns=False, extract_locals=False)
+    """, deep=False, solve_unknowns=False, show_library_calls=True)
     mydict = ty.Lookup("MyDict")
     self.assertOnlyHasReturnType(ty.Lookup("f"),
                                  pytd.ClassType("MyDict", mydict))
@@ -99,7 +99,7 @@ class InheritanceTest(test_inference.InferenceTest):
       def h():
         return "bla".__sizeof__()
       f(); g(); h()
-    """, deep=False, solve_unknowns=False, extract_locals=False)
+    """, deep=False, solve_unknowns=False, show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.int)
     self.assertOnlyHasReturnType(ty.Lookup("g"), self.int)
     self.assertOnlyHasReturnType(ty.Lookup("h"), self.int)
@@ -126,7 +126,7 @@ class InheritanceTest(test_inference.InferenceTest):
         return C().b()
       def i():
         return D().b()
-    """, deep=True, solve_unknowns=False, extract_locals=False)
+    """, deep=True, solve_unknowns=False, show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.int)
     self.assertOnlyHasReturnType(ty.Lookup("g"), self.float)
     self.assertOnlyHasReturnType(ty.Lookup("h"), self.str)

@@ -228,7 +228,7 @@ class TestExceptions(test_inference.InferenceTest):
           return 42
         except Exception:
           return 42
-    """, deep=True, extract_locals=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       def foo() -> int
     """)
@@ -240,7 +240,7 @@ class TestExceptions(test_inference.InferenceTest):
           return 42
         except Exception:
           return 1+3j
-    """, deep=True, extract_locals=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       def foo() -> int
     """)
@@ -253,7 +253,7 @@ class TestExceptions(test_inference.InferenceTest):
           return 42
         except:
           return 1+3j
-    """, deep=True, extract_locals=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       from typing import Union
 

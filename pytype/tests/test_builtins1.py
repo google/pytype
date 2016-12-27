@@ -15,7 +15,7 @@ class BuiltinTests(test_inference.InferenceTest):
       def t_testRepr1(x):
         return repr(x)
       t_testRepr1(4)
-    """, deep=False, solve_unknowns=True, extract_locals=True)
+    """, deep=False, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
       def t_testRepr1(x: int) -> str
     """)
@@ -27,7 +27,7 @@ class BuiltinTests(test_inference.InferenceTest):
       t_testRepr2(4)
       t_testRepr2(1.234)
       t_testRepr2('abc')
-    """, deep=False, solve_unknowns=True, extract_locals=True)
+    """, deep=False, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
       def t_testRepr2(x: float or int or str) -> str
     """)
@@ -37,7 +37,7 @@ class BuiltinTests(test_inference.InferenceTest):
       def t_testRepr3(x):
         return repr(x)
       t_testRepr3(__any_object__())
-    """, deep=False, solve_unknowns=True, extract_locals=True)
+    """, deep=False, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
       def t_testRepr3(x) -> str
     """)
@@ -58,7 +58,7 @@ class BuiltinTests(test_inference.InferenceTest):
       def t_testIsinstance1(x):
         # TODO: if isinstance(x, int): return "abc" else: return None
         return isinstance(x, int)
-    """, deep=True, solve_unknowns=True, extract_locals=True)
+    """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
       def t_testIsinstance1(x: object) -> bool
     """)
@@ -68,7 +68,7 @@ class BuiltinTests(test_inference.InferenceTest):
     ty = self.Infer("""
       def t_testIsinstance2(x):
         assert isinstance(x, int)
-    """, deep=True, solve_unknowns=True, extract_locals=True)
+    """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
       # TODO(pludemann): currently does (x: object)
       def t_testIsinstance2(x: int) -> NoneType
@@ -80,7 +80,7 @@ class BuiltinTests(test_inference.InferenceTest):
         # pow(int, int) returns int, or float if the exponent is negative.
         # Hence, it's a handy function for testing UnionType returns.
         return pow(1, -2)
-    """, deep=True, solve_unknowns=True, extract_locals=True)
+    """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
       def t_testPow1() -> float or int
     """)
@@ -91,7 +91,7 @@ class BuiltinTests(test_inference.InferenceTest):
         # pow(int, int) returns int, or float if the exponent is negative.
         # Hence, it's a handy function for testing UnionType returns.
         return pow(x, y)
-    """, deep=True, solve_unknowns=True, extract_locals=True)
+    """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
       def t_testPow2(x: complex or float or int, y: complex or float or int) -> complex or float or int
     """)
@@ -101,7 +101,7 @@ class BuiltinTests(test_inference.InferenceTest):
       def t_testMax1():
         # max is a parameterized function
         return max(1, 2)
-    """, deep=True, solve_unknowns=True, extract_locals=True)
+    """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
       def t_testMax1() -> int
       """)
@@ -111,7 +111,7 @@ class BuiltinTests(test_inference.InferenceTest):
       def t_testMax2(x, y):
         # max is a parameterized function
         return max(x, y)
-    """, deep=True, solve_unknowns=True, extract_locals=True)
+    """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
       def t_testMax2(x: object, y: object) -> ?
       """)
@@ -128,7 +128,7 @@ class BuiltinTests(test_inference.InferenceTest):
       def _i2_(x):
         return x
       t_testDict()
-    """, deep=False, solve_unknowns=True, extract_locals=True)
+    """, deep=False, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
       def t_testDict() -> float or int
       # _i1_, _i2_ capture the more precise definitions of the ~dict, ~list
@@ -150,7 +150,7 @@ class BuiltinTests(test_inference.InferenceTest):
     def _i_(x):
       return x
     t_testDictDefaults(3)
-    """, deep=False, solve_unknowns=True, extract_locals=True)
+    """, deep=False, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
       def t_testDictDefaults(x: int) -> str
       # _i_ captures the more precise definition of the dict
@@ -167,7 +167,7 @@ class BuiltinTests(test_inference.InferenceTest):
       def f():
         mydict = {"42": 42}
         return mydict.get("42")
-    """, deep=True, solve_unknowns=True, extract_locals=True)
+    """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
       def f() -> int or NoneType
     """)
@@ -177,7 +177,7 @@ class BuiltinTests(test_inference.InferenceTest):
       def f():
         mydict = {"42": 42}
         return mydict.get("42", False)
-    """, deep=True, solve_unknowns=True, extract_locals=True)
+    """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
       def f() -> int
     """)
@@ -186,7 +186,7 @@ class BuiltinTests(test_inference.InferenceTest):
     ty = self.Infer("""
     def t_testListInit0(x):
       return list(x)
-    """, deep=True, solve_unknowns=True, extract_locals=True)
+    """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
       def t_testListInit0(x: Iterable) -> list
     """)
@@ -195,7 +195,7 @@ class BuiltinTests(test_inference.InferenceTest):
     ty = self.Infer("""
     def t_testListInit1(x, y):
       return x + [y]
-    """, deep=True, solve_unknowns=True, extract_locals=False)
+    """, deep=True, solve_unknowns=True, show_library_calls=True)
     self.assertTypesMatchPytd(ty, """
       def t_testListInit1(x: List[object, ...], y) -> list
     """)
@@ -219,7 +219,7 @@ class BuiltinTests(test_inference.InferenceTest):
     def t_testListInit3(x, i):
       return x[i]
     t_testListInit3([1,2,3,'abc'], 0)
-    """, deep=False, solve_unknowns=True, extract_locals=True)
+    """, deep=False, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
       def t_testListInit3(x: List[int or str, ...], i: int) -> int or str
     """)
@@ -232,7 +232,7 @@ class BuiltinTests(test_inference.InferenceTest):
     def _i_(x):
       return x
     t_testListInit4(__any_object__)
-    """, deep=False, solve_unknowns=True, extract_locals=True)
+    """, deep=False, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
       def t_testListInit4(x: Iterable) -> ?
       def _i_(x: list) -> list
@@ -243,7 +243,7 @@ class BuiltinTests(test_inference.InferenceTest):
       def t_testAbsInt(x):
         return abs(x)
       t_testAbsInt(1)
-    """, deep=False, solve_unknowns=True, extract_locals=True)
+    """, deep=False, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
       def t_testAbsInt(x: int) -> int
   """)
@@ -253,7 +253,7 @@ class BuiltinTests(test_inference.InferenceTest):
       def t_testAbs(x):
         return abs(x)
       t_testAbs(__any_object__)
-    """, deep=False, solve_unknowns=True, extract_locals=True)
+    """, deep=False, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
       def t_testAbs(x: complex or float or int) -> float or int
     """)
@@ -262,7 +262,7 @@ class BuiltinTests(test_inference.InferenceTest):
     ty = self.Infer("""
       def t_testCmp(x, y):
         return cmp(x, y)
-    """, deep=True, solve_unknowns=True, extract_locals=True)
+    """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
     def t_testCmp(x, y) -> bool
     """)
@@ -275,7 +275,7 @@ class BuiltinTests(test_inference.InferenceTest):
       t_testCmpMulti(1, 2.0)
       t_testCmpMulti(1.0, 2)
       # TODO(pludemann): add more tests
-    """, deep=False, solve_unknowns=True, extract_locals=True)
+    """, deep=False, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
       def t_testCmpMulti(x: float or int, y: int) -> bool
       def t_testCmpMulti(x: int, y: float) -> bool
@@ -286,7 +286,7 @@ class BuiltinTests(test_inference.InferenceTest):
       def t_testCmpStr(x, y):
         return cmp(x, y)
       t_testCmpStr("abc", "def")
-    """, deep=False, solve_unknowns=True, extract_locals=True)
+    """, deep=False, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
       def t_testCmpStr(x: str, y: str) -> bool
     """)
@@ -296,7 +296,7 @@ class BuiltinTests(test_inference.InferenceTest):
       def t_testCmpStr2(x, y):
         return cmp(x, y)
       t_testCmpStr2("abc", __any_object__)
-    """, deep=False, solve_unknowns=True, extract_locals=True)
+    """, deep=False, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
       def t_testCmpStr2(x: str, y) -> bool
     """)
@@ -307,7 +307,7 @@ class BuiltinTests(test_inference.InferenceTest):
         return x
       def g(args):
         f(*tuple(args))
-    """, deep=True, solve_unknowns=False, extract_locals=False)
+    """, deep=True, solve_unknowns=False, show_library_calls=True)
 
   def testTuple2(self):
     ty = self.Infer("""
@@ -317,7 +317,7 @@ class BuiltinTests(test_inference.InferenceTest):
         args = (4, )
         return f(3, *args)
       g()
-    """, deep=True, solve_unknowns=False, extract_locals=True)
+    """, deep=True, solve_unknowns=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       def f(x, y) -> Any: ...
@@ -329,7 +329,7 @@ class BuiltinTests(test_inference.InferenceTest):
       def f(x):
         with open(x, "r") as fi:
           return fi.read()
-      """, deep=True, solve_unknowns=True, extract_locals=False)
+      """, deep=True, solve_unknowns=True, show_library_calls=True)
     self.assertTypesMatchPytd(ty, """
       def f(x: str or buffer or unicode) -> str
     """)
@@ -339,7 +339,7 @@ class BuiltinTests(test_inference.InferenceTest):
       import signal
       def f():
         signal.signal(signal.SIGALRM, 0)
-    """, deep=True, solve_unknowns=True, extract_locals=False)
+    """, deep=True, solve_unknowns=True, show_library_calls=True)
     self.assertTypesMatchPytd(ty, """
       signal = ...  # type: module
 
@@ -352,7 +352,7 @@ class BuiltinTests(test_inference.InferenceTest):
       def args():
         return ' '.join(sys.argv)
       args()
-    """, deep=False, solve_unknowns=False, extract_locals=False)
+    """, deep=False, solve_unknowns=False, show_library_calls=True)
     self.assertTypesMatchPytd(ty, """
       sys = ...  # type: module
       def args() -> str
@@ -364,7 +364,7 @@ class BuiltinTests(test_inference.InferenceTest):
         def __init__(self, x):
           for attr in x.__dict__:
             setattr(self, attr, getattr(x, attr))
-    """, deep=True, solve_unknowns=False, extract_locals=True)
+    """, deep=True, solve_unknowns=False)
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
         def __init__(self, x) -> NoneType
@@ -458,7 +458,7 @@ class BuiltinTests(test_inference.InferenceTest):
           return time.mktime(time.struct_time((1, 2, 3, 4, 5, 6, 7, 8, 9)))
         else:
           return 3j
-    """, deep=True, solve_unknowns=False, extract_locals=True)
+    """, deep=True, solve_unknowns=False)
     self.assertTypesMatchPytd(ty, """
       time = ...  # type: module
 

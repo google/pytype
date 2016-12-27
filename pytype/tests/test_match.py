@@ -14,7 +14,7 @@ class MatchTest(test_inference.InferenceTest):
       def f():
         pass
       x = tokenize.generate_tokens(f)
-    """, deep=True, solve_unknowns=False, extract_locals=True)
+    """, deep=True, solve_unknowns=False)
     self.assertTypesMatchPytd(ty, """
       tokenize = ...  # type: module
       def f() -> NoneType
@@ -26,7 +26,7 @@ class MatchTest(test_inference.InferenceTest):
       import tokenize
       import StringIO
       x = tokenize.generate_tokens(StringIO.StringIO("").readline)
-    """, deep=True, solve_unknowns=False, extract_locals=True)
+    """, deep=True, solve_unknowns=False)
     self.assertTypesMatchPytd(ty, """
       tokenize = ...  # type: module
       StringIO = ...  # type: module

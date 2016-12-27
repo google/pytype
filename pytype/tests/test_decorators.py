@@ -17,7 +17,7 @@ class DecoratorsTest(test_inference.InferenceTest):
             pass
           # python-dateutil uses the old way of using @staticmethod:
           list = staticmethod(list)
-    """, deep=True, solve_unknowns=False, extract_locals=False)
+    """, deep=True, solve_unknowns=False, show_library_calls=True)
 
   @unittest.skip("TODO(kramm): list appears twice")
   def testStaticMethod(self):
@@ -27,7 +27,7 @@ class DecoratorsTest(test_inference.InferenceTest):
           def list():
             pass
           list = staticmethod(list)
-    """, deep=True, solve_unknowns=False, extract_locals=False)
+    """, deep=True, solve_unknowns=False, show_library_calls=True)
     self.assertTypesMatchPytd(ty, """
       class tzwinbase(object):
         def list() -> NoneType
@@ -76,7 +76,7 @@ class DecoratorsTest(test_inference.InferenceTest):
       foo.x = 3
       x = foo.x
       del foo.x
-    """, deep=True, extract_locals=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       class Foo(object):

@@ -16,7 +16,7 @@ class SliceTest(test_inference.InferenceTest):
       e = x[:2:3]
       f = x[1::3]
       g = x[1:2:]
-    """, extract_locals=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       x = ...  # type: List[int]
       a = ...  # type: List[int]
@@ -43,7 +43,7 @@ class SliceTest(test_inference.InferenceTest):
       e = x[:2:3]
       f = x[1::3]
       g = x[1:2:]
-    """, extract_locals=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
         def __getslice__(self, i:int, j:int) -> Tuple[int, ...]: ...

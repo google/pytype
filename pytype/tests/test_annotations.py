@@ -64,7 +64,7 @@ class AnnotationTest(test_inference.InferenceTest):
       from __future__ import google_type_annotations
       def bar(p1: str, p2: complex) -> None:
          pass
-    """, deep=True, extract_locals=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       google_type_annotations = ...  # type: __future__._Feature
       def bar(p1: str, p2: complex) -> None
@@ -76,7 +76,7 @@ class AnnotationTest(test_inference.InferenceTest):
       import typing
       def foo(x: typing.Union[int, float], y: int):
         return x + y
-    """, deep=True, extract_locals=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       google_type_annotations = ...  # type: __future__._Feature
       typing = ...  # type: module
@@ -136,7 +136,7 @@ class AnnotationTest(test_inference.InferenceTest):
           x = l2
           y = "foo"
         x.append(y)
-    """, deep=True, extract_locals=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
         List = ...  # type: type
         google_type_annotations = ...  # type: __future__._Feature
@@ -151,7 +151,7 @@ class AnnotationTest(test_inference.InferenceTest):
       class Foo:
         def f(self, x: List[int]):
           pass
-    """, deep=True, extract_locals=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       google_type_annotations = ...  # type: __future__._Feature
       List = ...  # type: type
@@ -165,7 +165,7 @@ class AnnotationTest(test_inference.InferenceTest):
       def f(c: "int") -> "None":
         c += 1
         return
-    """, deep=True, extract_locals=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       google_type_annotations = ...  # type: __future__._Feature
       def f(c: int) -> None: ...
@@ -180,7 +180,7 @@ class AnnotationTest(test_inference.InferenceTest):
       # TODO(kramm): should use quotes
       def f(c: "calendar.Calendar") -> int:
         return c.getfirstweekday()
-    """, deep=True, extract_locals=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       google_type_annotations = ...  # type: __future__._Feature
       typing = ...  # type: module
@@ -317,7 +317,7 @@ class AnnotationTest(test_inference.InferenceTest):
       def f(x: Any):
         pass
       x = f(3)
-    """, extract_locals=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       google_type_annotations = ...  # type: __future__._Feature
@@ -335,7 +335,7 @@ class AnnotationTest(test_inference.InferenceTest):
       keys({"foo": 3})
       keys({})  # ok
       keys({3: 3})  # not allowed
-    """, deep=True, extract_locals=True)
+    """, deep=True)
     self.assertErrorLogIs(errors, [
         (7, "wrong-arg-types"),
     ])
@@ -350,7 +350,7 @@ class AnnotationTest(test_inference.InferenceTest):
       f((1,2,3))
       f({1,2,3})
       f(1)
-    """, deep=True, extract_locals=True)
+    """, deep=True)
     self.assertErrorLogIs(errors, [
         (7, "wrong-arg-types"),
         (8, "wrong-arg-types"),
@@ -379,7 +379,7 @@ class AnnotationTest(test_inference.InferenceTest):
       f({"foo"})  # ok
       f({})  # not allowed
       f({3})  # not allowed
-    """, deep=True, extract_locals=True)
+    """, deep=True)
     self.assertErrorLogIs(errors, [
         (6, "wrong-arg-types"),
         (7, "wrong-arg-types"),
@@ -394,7 +394,7 @@ class AnnotationTest(test_inference.InferenceTest):
       f(frozenset(["foo"]))  # ok
       f(frozenset())  # ok
       f(frozenset([3]))  # not allowed
-    """, deep=True, extract_locals=True)
+    """, deep=True)
     self.assertErrorLogIs(errors, [
         (7, "wrong-arg-types"),
     ])
@@ -601,7 +601,7 @@ class AnnotationTest(test_inference.InferenceTest):
       def baz(x: int) -> None:
         global _analyzed_baz
         _analyzed_baz = 3
-    """, deep=True, extract_locals=True, analyze_annotated=False)
+    """, deep=True, analyze_annotated=False)
     self.assertTypesMatchPytd(ty, """
       google_type_annotations = ...  # type: __future__._Feature
       _analyzed_baz = ... # type: None

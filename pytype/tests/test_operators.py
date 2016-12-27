@@ -23,8 +23,7 @@ class ConcreteTest(test_inference.InferenceTest):
         return {expr}
       f()
     """.format(expr=expr, assignments=assignments)
-    ty = self.Infer(src, deep=False, solve_unknowns=False,
-                    extract_locals=True)
+    ty = self.Infer(src, deep=False, solve_unknowns=False)
     self.assertOnlyHasReturnType(ty.Lookup("f"), expected_return)
 
   def test_add(self):
@@ -198,7 +197,7 @@ class OverloadTest(test_inference.InferenceTest):
       f()
     """.format(function_name=function_name, op=op),
                     deep=False, solve_unknowns=False,
-                    extract_locals=False)
+                    show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.complex)
 
   def check_unary(self, function_name, op, ret=None):
@@ -211,7 +210,7 @@ class OverloadTest(test_inference.InferenceTest):
       f()
     """.format(function_name=function_name, op=op),
                     deep=False, solve_unknowns=False,
-                    extract_locals=False)
+                    show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("f"), ret or self.complex)
 
   def test_add(self):
@@ -285,7 +284,7 @@ class ReverseTest(test_inference.InferenceTest):
       f(); g(); h(); i()
     """.format(op=op, function_name=function_name),
                     deep=False, solve_unknowns=False,
-                    extract_locals=False)
+                    show_library_calls=True)
     self.assertHasReturnType(ty.Lookup("f"), self.complex)
     self.assertHasReturnType(ty.Lookup("g"), self.str)
     self.assertHasReturnType(ty.Lookup("h"), self.str)
@@ -340,7 +339,7 @@ class InplaceTest(test_inference.InferenceTest):
       f()
     """.format(op=op, function_name=function_name),
                     deep=False, solve_unknowns=False,
-                    extract_locals=False)
+                    show_library_calls=True)
     self.assertHasReturnType(ty.Lookup("f"), self.complex)
 
   def test_add(self):

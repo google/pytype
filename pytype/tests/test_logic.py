@@ -21,7 +21,7 @@ class LogicTest(test_inference.InferenceTest):
             args[k] = "foo"
           else:
             assert isinstance(args[k], str)
-    """, deep=True, solve_unknowns=False, extract_locals=True)
+    """, deep=True, solve_unknowns=False)
     self.assertTypesMatchPytd(ty, """
       def f(args_list) -> NoneType
     """)

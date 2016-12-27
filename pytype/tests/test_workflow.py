@@ -20,7 +20,7 @@ class WorkflowTest(test_inference.InferenceTest):
 
       cp = ConfigParser(__any_object__())
       cp.read()
-      """, deep=False, solve_unknowns=True, extract_locals=False)
+      """, deep=False, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
       cp = ...  # type: ConfigParser
 

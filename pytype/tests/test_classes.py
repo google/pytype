@@ -17,7 +17,7 @@ class ClassesTest(test_inference.InferenceTest):
           pass
       def f():
         return MyClass()
-    """, deep=True, solve_unknowns=True, extract_locals=False)
+    """, deep=True, solve_unknowns=True, show_library_calls=True)
     self.assertTypesMatchPytd(ty, """
       # "function" because it gets called in f()
       MyClass = ...  # type: function
@@ -33,7 +33,7 @@ class ClassesTest(test_inference.InferenceTest):
         factory = MyClass
         return factory("name")
       f()
-    """, deep=False, solve_unknowns=False, extract_locals=False)
+    """, deep=False, solve_unknowns=False, show_library_calls=True)
     self.assertTypesMatchPytd(ty, """
     class MyClass(object):
       def __init__(self, name: str) -> NoneType
@@ -45,7 +45,7 @@ class ClassesTest(test_inference.InferenceTest):
     ty = self.Infer("""
       class A(__any_object__):
         pass
-    """, deep=False, solve_unknowns=False, extract_locals=True)
+    """, deep=False, solve_unknowns=False)
     self.assertTypesMatchPytd(ty, """
     class A(?):
       pass
@@ -155,7 +155,7 @@ class ClassesTest(test_inference.InferenceTest):
           x = 3
         l = Foo()
         return l.x
-    """, deep=True, solve_unknowns=False, extract_locals=False)
+    """, deep=True, solve_unknowns=False, show_library_calls=True)
     self.assertTypesMatchPytd(ty, """
       def f() -> int
     """)
@@ -199,7 +199,7 @@ class ClassesTest(test_inference.InferenceTest):
 
         def get_x(self):
           return self.x
-    """, deep=True, solve_unknowns=False, extract_locals=False)
+    """, deep=True, solve_unknowns=False, show_library_calls=True)
     self.assertTypesMatchPytd(ty, """
         class A(object):
           x = ...  # type: int
@@ -226,7 +226,7 @@ class ClassesTest(test_inference.InferenceTest):
           return super(D, self).y
         def get_z(self):
           return super(D, self).z
-    """, deep=True, solve_unknowns=False, extract_locals=True)
+    """, deep=True, solve_unknowns=False)
     self.assertTypesMatchPytd(ty, """
       class A(object):
           x = ...  # type: int

@@ -69,7 +69,7 @@ class BuiltinTests2(test_inference.InferenceTest):
       class Foo(frozenset):
         pass
       Foo([])
-    """, deep=False, extract_locals=True)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       class Foo(frozenset):
         pass
@@ -203,7 +203,7 @@ class BuiltinTests2(test_inference.InferenceTest):
         from foo import A
         y = A.x()
         z = A().x()
-      """, pythonpath=[d.path], extract_locals=True)
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         A = ...  # type: Type[foo.A]
@@ -221,7 +221,7 @@ class BuiltinTests2(test_inference.InferenceTest):
         from foo import A
         y = A.x()
         z = A().x()
-      """, pythonpath=[d.path], extract_locals=True)
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         A = ...  # type: Type[foo.A]
@@ -233,7 +233,7 @@ class BuiltinTests2(test_inference.InferenceTest):
     ty = self.Infer("""
       x = min(x for x in range(3))
       y = max(x for x in range(3))
-    """, extract_locals=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       x = ...  # type: int
       y = ...  # type: int

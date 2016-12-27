@@ -37,13 +37,13 @@ class TestPython3(test_inference.InferenceTest):
     self.assertTypesMatchPytd(
         self.Infer(src, deep=False), output)
     self.assertTypesMatchPytd(
-        self.Infer(src, deep=True, extract_locals=True), output)
+        self.Infer(src, deep=True), output)
 
   def test_make_function2(self):
     ty = self.Infer("""
       def f(x, *myargs, y):
         return __any_object__
-    """, deep=True, extract_locals=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       def f(x, *myargs, y) -> ?
     """)
@@ -79,7 +79,7 @@ class TestPython3(test_inference.InferenceTest):
         x = Thing(1)
         x.y = 3
         return x
-    """, deep=True, extract_locals=True)
+    """, deep=True)
 
     self.assertTypesMatchPytd(ty, """
     from typing import Any
@@ -94,7 +94,7 @@ class TestPython3(test_inference.InferenceTest):
     ty = self.Infer("""
       # x, y are passed to type() or the metaclass. We currently ignore them.
       class Thing(x=True, y="foo"): pass
-    """, deep=True, extract_locals=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
     class Thing: ...
     """)
@@ -109,7 +109,7 @@ class TestPython3(test_inference.InferenceTest):
         finally:  # exercise byte_POP_EXCEPT
           x = 3
         return x
-    """, deep=True, extract_locals=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       def f() -> int
     """)

@@ -13,7 +13,7 @@ class ContainerTest(test_inference.InferenceTest):
       def f(x):
         return x
       f((3, "str"))
-    """, deep=False, solve_unknowns=False, extract_locals=False)
+    """, deep=False, solve_unknowns=False, show_library_calls=True)
     self.assertHasOnlySignatures(
         ty.Lookup("f"),
         ((pytd.HomogeneousContainerType(self.tuple, (self.intorstr,)),),
@@ -24,7 +24,7 @@ class ContainerTest(test_inference.InferenceTest):
       def f(x):
         return x[0]
       f((3, "str"))
-    """, deep=False, solve_unknowns=False, extract_locals=False)
+    """, deep=False, solve_unknowns=False, show_library_calls=True)
     self.assertHasOnlySignatures(
         ty.Lookup("f"),
         ((pytd.HomogeneousContainerType(self.tuple, (self.intorstr,)),),
@@ -35,7 +35,7 @@ class ContainerTest(test_inference.InferenceTest):
       def f(x):
         return (x[1], x[0])
       f((3, "str"))
-    """, deep=False, solve_unknowns=False, extract_locals=False)
+    """, deep=False, solve_unknowns=False, show_library_calls=True)
     self.assertHasOnlySignatures(
         ty.Lookup("f"),
         ((pytd.HomogeneousContainerType(self.tuple, (self.intorstr,)),),
@@ -46,7 +46,7 @@ class ContainerTest(test_inference.InferenceTest):
       def f():
         return ()
       f()
-    """, deep=False, solve_unknowns=False, extract_locals=False)
+    """, deep=False, solve_unknowns=False, show_library_calls=True)
     self.assertHasOnlySignatures(
         ty.Lookup("f"),
         ((), pytd.HomogeneousContainerType(self.tuple, (pytd.NothingType(),))))
@@ -58,7 +58,7 @@ class ContainerTest(test_inference.InferenceTest):
         x.add(10)
         return x
       f()
-    """, deep=False, solve_unknowns=False, extract_locals=False)
+    """, deep=False, solve_unknowns=False, show_library_calls=True)
     self.assertHasOnlySignatures(
         ty.Lookup("f"),
         ((), pytd.HomogeneousContainerType(self.set, (self.int,))))
@@ -71,7 +71,7 @@ class ContainerTest(test_inference.InferenceTest):
         x.add(10)
         return x
       f()
-    """, deep=False, solve_unknowns=False, extract_locals=False)
+    """, deep=False, solve_unknowns=False, show_library_calls=True)
     self.assertHasOnlySignatures(
         ty.Lookup("f"),
         ((), pytd.HomogeneousContainerType(self.set, (self.int,))))
@@ -88,7 +88,7 @@ class ContainerTest(test_inference.InferenceTest):
           x.add(10)
           return x
       f()
-    """, deep=False, solve_unknowns=False, extract_locals=False)
+    """, deep=False, solve_unknowns=False, show_library_calls=True)
     self.assertHasOnlySignatures(
         ty.Lookup("f"),
         ((), pytd.HomogeneousContainerType(self.set, (self.int,))))
@@ -98,7 +98,7 @@ class ContainerTest(test_inference.InferenceTest):
       def f():
         return [1, 2, 3]
       f()
-    """, deep=False, solve_unknowns=False, extract_locals=False)
+    """, deep=False, solve_unknowns=False, show_library_calls=True)
     self.assertHasOnlySignatures(
         ty.Lookup("f"),
         ((), pytd.HomogeneousContainerType(self.list, (self.int,))))
@@ -112,7 +112,7 @@ class ContainerTest(test_inference.InferenceTest):
         x.append(3)
         return x
       f()
-    """, deep=False, solve_unknowns=False, extract_locals=False)
+    """, deep=False, solve_unknowns=False, show_library_calls=True)
     self.assertHasOnlySignatures(
         ty.Lookup("f"),
         ((), pytd.HomogeneousContainerType(self.list, (self.int,))))
@@ -126,7 +126,7 @@ class ContainerTest(test_inference.InferenceTest):
         x.append(3)
         return [0] + x
       f()
-    """, deep=False, solve_unknowns=False, extract_locals=False)
+    """, deep=False, solve_unknowns=False, show_library_calls=True)
     self.assertHasOnlySignatures(
         ty.Lookup("f"),
         ((), pytd.HomogeneousContainerType(self.list, (self.int,))))
@@ -139,7 +139,7 @@ class ContainerTest(test_inference.InferenceTest):
         x.append("str")
         return x + [1.3] + x
       f()
-    """, deep=False, solve_unknowns=False, extract_locals=False)
+    """, deep=False, solve_unknowns=False, show_library_calls=True)
     self.assertHasOnlySignatures(
         ty.Lookup("f"),
         ((),
@@ -156,7 +156,7 @@ class ContainerTest(test_inference.InferenceTest):
         x = 3.1
       l = []
       l.append(x)
-    """, deep=False, solve_unknowns=False, extract_locals=True)
+    """, deep=False, solve_unknowns=False)
     self.assertTypesMatchPytd(ty, """
       x = ...  # type: int or float
       y = ...  # type: ?
@@ -172,7 +172,7 @@ class ContainerTest(test_inference.InferenceTest):
         x.append(3)
         return ["str"] + x
       f()
-    """, deep=False, solve_unknowns=False, extract_locals=False)
+    """, deep=False, solve_unknowns=False, show_library_calls=True)
     self.assertHasOnlySignatures(
         ty.Lookup("f"),
         ((), pytd.HomogeneousContainerType(self.list, (self.intorstr,))))
@@ -186,7 +186,7 @@ class ContainerTest(test_inference.InferenceTest):
       def h():
         return __any_object__("name")
       f(); g(); h()
-    """, deep=False, solve_unknowns=False, extract_locals=True)
+    """, deep=False, solve_unknowns=False)
     self.assertHasOnlySignatures(ty.Lookup("f"), ((), self.anything))
     self.assertHasOnlySignatures(ty.Lookup("g"), ((), self.anything))
     self.assertHasOnlySignatures(ty.Lookup("h"), ((), self.anything))
@@ -196,7 +196,7 @@ class ContainerTest(test_inference.InferenceTest):
       def f():
         return {"test": 1, "arg": 42}
       f()
-    """, deep=False, solve_unknowns=False, extract_locals=False)
+    """, deep=False, solve_unknowns=False, show_library_calls=True)
     self.assertHasOnlySignatures(
         ty.Lookup("f"),
         ((), self.str_int_dict))
@@ -206,7 +206,7 @@ class ContainerTest(test_inference.InferenceTest):
       def f():
         return dict()
       f()
-    """, deep=False, solve_unknowns=False, extract_locals=False)
+    """, deep=False, solve_unknowns=False, show_library_calls=True)
     self.assertHasOnlySignatures(
         ty.Lookup("f"),
         ((), self.nothing_nothing_dict))
@@ -216,7 +216,7 @@ class ContainerTest(test_inference.InferenceTest):
       def f():
         return dict([(1, 2), (3, 4)])
       f()
-    """, deep=False, solve_unknowns=False, extract_locals=False)
+    """, deep=False, solve_unknowns=False, show_library_calls=True)
     self.assertHasOnlySignatures(
         ty.Lookup("f"),
         ((), self.int_int_dict))
@@ -227,7 +227,7 @@ class ContainerTest(test_inference.InferenceTest):
       def f():
         return dict([(1, "bar"), (2, "foo")])
       f()
-    """, deep=False, solve_unknowns=False, extract_locals=False)
+    """, deep=False, solve_unknowns=False, show_library_calls=True)
     self.assertHasOnlySignatures(
         ty.Lookup("f"),
         ((), self.int_str_dict))
@@ -240,7 +240,7 @@ class ContainerTest(test_inference.InferenceTest):
         d["arg"] = 42
         return d
       f()
-    """, deep=False, solve_unknowns=False, extract_locals=False)
+    """, deep=False, solve_unknowns=False, show_library_calls=True)
     self.assertHasOnlySignatures(
         ty.Lookup("f"),
         ((), self.str_int_dict))
@@ -262,7 +262,7 @@ class ContainerTest(test_inference.InferenceTest):
         return a.parent
 
       f()
-    """, deep=False, solve_unknowns=False, extract_locals=False)
+    """, deep=False, solve_unknowns=False, show_library_calls=True)
     self.assertHasOnlySignatures(ty.Lookup("f"),
                                  ((),
                                   self.intorstr))
@@ -294,7 +294,7 @@ class ContainerTest(test_inference.InferenceTest):
         return l2.foobar
 
       f()
-    """, deep=False, solve_unknowns=False, extract_locals=False)
+    """, deep=False, solve_unknowns=False, show_library_calls=True)
     self.assertHasOnlySignatures(ty.Lookup("f"),
                                  ((),
                                   self.int))
@@ -312,7 +312,7 @@ class ContainerTest(test_inference.InferenceTest):
         return n1.foobar
 
       f()
-    """, deep=False, solve_unknowns=False, extract_locals=False)
+    """, deep=False, solve_unknowns=False, show_library_calls=True)
     self.assertHasOnlySignatures(ty.Lookup("f"),
                                  ((),
                                   self.int))
@@ -325,7 +325,7 @@ class ContainerTest(test_inference.InferenceTest):
         x.append("str")
         return x[0]
       f()
-    """, deep=False, solve_unknowns=False, extract_locals=False)
+    """, deep=False, solve_unknowns=False, show_library_calls=True)
     self.assertHasOnlySignatures(ty.Lookup("f"),
                                  ((),
                                   self.intorstr))
@@ -336,7 +336,7 @@ class ContainerTest(test_inference.InferenceTest):
       def f():
         return [i for i in (1,2,3)]
       f()
-    """, deep=False, solve_unknowns=False, extract_locals=False)
+    """, deep=False, solve_unknowns=False, show_library_calls=True)
     self.assertHasOnlySignatures(ty.Lookup("f"),
                                  ((),
                                   self.int_list))
@@ -347,7 +347,7 @@ class ContainerTest(test_inference.InferenceTest):
       def f():
         return {i for i in [1,2,3]}
       f()
-    """, deep=False, solve_unknowns=False, extract_locals=False)
+    """, deep=False, solve_unknowns=False, show_library_calls=True)
     self.assertHasOnlySignatures(ty.Lookup("f"),
                                  ((),
                                   self.int_set))
@@ -358,7 +358,7 @@ class ContainerTest(test_inference.InferenceTest):
       def f():
         return {i: i for i in xrange(3)}
       f()
-    """, deep=False, solve_unknowns=False, extract_locals=False)
+    """, deep=False, solve_unknowns=False, show_library_calls=True)
     self.assertHasOnlySignatures(ty.Lookup("f"),
                                  ((),
                                   self.int_int_dict))
@@ -367,7 +367,7 @@ class ContainerTest(test_inference.InferenceTest):
     ty = self.Infer("""
       import sys
       a = [str(ty) for ty in (float, int, bool)[:len(sys.argv)]]
-    """, deep=True, solve_unknowns=False, extract_locals=True)
+    """, deep=True, solve_unknowns=False)
     self.assertTypesMatchPytd(ty, """
       sys = ...  # type: module
       a = ...  # type: List[str, ...]
@@ -380,7 +380,7 @@ class ContainerTest(test_inference.InferenceTest):
       d["a"] = "queen"
       entry = d["a"]
       open('%s' % entry, 'w')
-    """, deep=False, solve_unknowns=False, extract_locals=True)
+    """, deep=False, solve_unknowns=False)
     self.assertTypesMatchPytd(ty, """
       d = ...  # type: Dict[str, str]
       entry = ...  # type: str
@@ -390,7 +390,7 @@ class ContainerTest(test_inference.InferenceTest):
     ty = self.Infer("""
       def f():
         return dict([])
-    """, deep=True, solve_unknowns=False, extract_locals=True)
+    """, deep=True, solve_unknowns=False)
     self.assertTypesMatchPytd(ty, """
       def f() -> Dict[nothing, nothing]
     """)
@@ -399,7 +399,7 @@ class ContainerTest(test_inference.InferenceTest):
     ty = self.Infer("""
       def f():
         return dict([("foo", "foo")])
-    """, deep=True, solve_unknowns=False, extract_locals=True)
+    """, deep=True, solve_unknowns=False)
     self.assertTypesMatchPytd(ty, """
       def f() -> Dict[str, str]
     """)
@@ -411,7 +411,7 @@ class ContainerTest(test_inference.InferenceTest):
           return isinstance(1, ())
         else:
           return 3j
-    """, deep=True, solve_unknowns=False, extract_locals=True)
+    """, deep=True, solve_unknowns=False)
     self.assertTypesMatchPytd(ty, """
       def f(x) -> bool or complex
     """)
@@ -420,7 +420,7 @@ class ContainerTest(test_inference.InferenceTest):
     ty = self.Infer("""
       def f():
         return u"".join(map(unicode, ()))
-    """, deep=True, solve_unknowns=False, extract_locals=True)
+    """, deep=True, solve_unknowns=False)
     self.assertTypesMatchPytd(ty, """
       def f() -> unicode
     """)
@@ -438,8 +438,7 @@ class ContainerTest(test_inference.InferenceTest):
           e = d[key]
         e.next = None
         return e
-    """, deep=True, solve_unknowns=False, extract_locals=True,
-                    report_errors=False)
+    """, deep=True, solve_unknowns=False, report_errors=False)
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
         next = ...  # type: NoneType
@@ -454,7 +453,7 @@ class ContainerTest(test_inference.InferenceTest):
       else:
         x = 3.14
       y = divmod(x, x)
-    """, deep=True, solve_unknowns=False, extract_locals=True)
+    """, deep=True, solve_unknowns=False)
     self.assertTypesMatchPytd(ty, """
       x = ...  # type: float or int
       y = ...  # type: Tuple[float or int, ...]

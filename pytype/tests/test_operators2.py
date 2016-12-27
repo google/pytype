@@ -18,7 +18,7 @@ class OperatorsWithAnyTests(test_inference.InferenceTest):
     ty = self.Infer("""
       def t_testAdd1(x):
         return x + 2.0
-    """, deep=True, solve_unknowns=True, extract_locals=True)
+    """, deep=True, solve_unknowns=True)
     # TODO(pludemann): Currently this matches:
     #         def t_testAdd1(x: float) -> float
     self.assertTypesMatchPytd(ty, """
@@ -31,7 +31,7 @@ class OperatorsWithAnyTests(test_inference.InferenceTest):
     ty = self.Infer("""
       def t_testAdd2(x):
         return 2.0 + x
-    """, deep=True, solve_unknowns=True, extract_locals=True)
+    """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
       def t_testAdd2(x: int or float or complex or bool) -> float or complex
     """)
@@ -41,7 +41,7 @@ class OperatorsWithAnyTests(test_inference.InferenceTest):
     ty = self.Infer("""
       def t_testAdd3(x):
         return x + "abc"
-    """, deep=True, solve_unknowns=True, extract_locals=True)
+    """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
       def t_testAdd3(x: buffer or bytearray or str or unicode) -> bytearray or str or unicode
     """)
@@ -52,7 +52,7 @@ class OperatorsWithAnyTests(test_inference.InferenceTest):
     ty = self.Infer("""
       def t_testAdd4(x):
         return "abc" + x
-    """, deep=True, solve_unknowns=True, extract_locals=True)
+    """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
       # TODO(pludemann): generates this, which is wrong:
       def t_testAdd4(x: nothing) -> object
@@ -67,7 +67,7 @@ class OperatorsWithAnyTests(test_inference.InferenceTest):
       def t_testAdd5(x):
         x += "42"
         return x
-    """, deep=True, solve_unknowns=True, extract_locals=True)
+    """, deep=True, solve_unknowns=True)
     # Currently missing str and unicode
     self.assertTypesMatchPytd(ty, """
       def t_testAdd5(x: str or unicode or bytearray or list[?]) -> str or unicode or bytearray or list[?]
@@ -78,7 +78,7 @@ class OperatorsWithAnyTests(test_inference.InferenceTest):
     ty = self.Infer("""
       def t_testPow1(x, y):
         return x ** y
-    """, deep=True, solve_unknowns=True, extract_locals=True)
+    """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
       # TODO(pludemann): bool should be removed (by either solver (if __builtin__ changes or optimizer)
       def t_testPow1(x: complex or float or int, y: complex or float or int) -> complex or float or int
@@ -89,7 +89,7 @@ class OperatorsWithAnyTests(test_inference.InferenceTest):
       def t_testIsinstance1(x):
         # TODO: if isinstance(x, int): return "abc" else: return None
         return isinstance(x, int)
-    """, deep=True, solve_unknowns=False, extract_locals=True)
+    """, deep=True, solve_unknowns=False)
     self.assertTypesMatchPytd(ty, """
       def t_testIsinstance1(x) -> bool
     """)
@@ -108,7 +108,7 @@ class CallErrorTests(test_inference.InferenceTest):
     ty = self.Infer("""
       t_testCallAny = __any_object__
       t_testCallAny()  # error because there's no "def f()..."
-    """, deep=False, solve_unknowns=False, extract_locals=True)
+    """, deep=False, solve_unknowns=False)
     self.assertTypesMatchPytd(ty, """
       t_testCallAny = ...  # type: ?
     """)
@@ -122,7 +122,7 @@ class CallErrorTests(test_inference.InferenceTest):
       def t_testUndefinedCallDoesntExist():
         return 1
       t_testUndefinedCall()  # Doesn't exist -- should give an error
-    """, deep=False, solve_unknowns=False, extract_locals=True)
+    """, deep=False, solve_unknowns=False)
     self.assertTypesMatchPytd(ty, """
       # TODO(pludemann): verify that it generates an error
     """)
@@ -133,7 +133,7 @@ class CallErrorTests(test_inference.InferenceTest):
       def t_testSys():
         return sys
       t_testSys()
-      """, deep=False, solve_unknowns=False, extract_locals=True)
+      """, deep=False, solve_unknowns=False)
     self.assertEquals(ty.Lookup("t_testSys").signatures[0].exceptions,
                       self.nameerror)
 

@@ -83,7 +83,7 @@ class RecoveryTests(test_inference.InferenceTest):
       object.bar(int)
       class C:
         pass
-    """, deep=True, extract_locals=True, report_errors=False)
+    """, deep=True, report_errors=False)
     self.assertTypesMatchPytd(ty, """
       class A:
         pass

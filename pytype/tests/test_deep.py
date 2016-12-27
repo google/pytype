@@ -12,7 +12,7 @@ class StructuralTest(test_inference.InferenceTest):
     ty = self.Infer("""
       def f(x):
         return 1
-    """, deep=True, solve_unknowns=False, extract_locals=False)
+    """, deep=True, solve_unknowns=False, show_library_calls=True)
     self.assertHasReturnType(ty.Lookup("f"), self.int)
 
   @unittest.skip("Flawed test: i could be a slice")
@@ -21,7 +21,7 @@ class StructuralTest(test_inference.InferenceTest):
       def f(x, i):
         l = list([1, x])
         return l[i]
-    """, deep=True, solve_unknowns=False, extract_locals=False)
+    """, deep=True, solve_unknowns=False, show_library_calls=True)
     self.assertHasReturnType(ty.Lookup("f"), self.int)
     # TODO(pludemann): verify the types of x, i
 
@@ -31,7 +31,7 @@ class StructuralTest(test_inference.InferenceTest):
       def f(i):
         l = list([1, "str"])
         return l[i]
-    """, deep=True, solve_unknowns=False, extract_locals=False)
+    """, deep=True, solve_unknowns=False, show_library_calls=True)
     self.assertHasAllReturnTypes(ty.Lookup("f"), [self.int, self.str])
 
   def testIter(self):
@@ -39,21 +39,21 @@ class StructuralTest(test_inference.InferenceTest):
       def f(x, y):
         for v in [x, y, 1]:
           return v
-    """, deep=True, solve_unknowns=False, extract_locals=False)
+    """, deep=True, solve_unknowns=False, show_library_calls=True)
     self.assertHasReturnType(ty.Lookup("f"), self.int)
 
   def testCallUnknown(self):
     ty = self.Infer("""
       def f(x):
         return x() or 1
-    """, deep=True, solve_unknowns=False, extract_locals=False)
+    """, deep=True, solve_unknowns=False, show_library_calls=True)
     self.assertHasReturnType(ty.Lookup("f"), self.int)
 
   def testCallBuiltin(self):
     ty = self.Infer("""
       def f(x):
         return repr(x)
-    """, deep=True, solve_unknowns=False, extract_locals=False)
+    """, deep=True, solve_unknowns=False, show_library_calls=True)
     self.assertHasReturnType(ty.Lookup("f"), self.str)
 
   def testAdd(self):
@@ -62,7 +62,7 @@ class StructuralTest(test_inference.InferenceTest):
       def f(x):
         x += 1
         return x
-    """, deep=True, solve_unknowns=False, extract_locals=False)
+    """, deep=True, solve_unknowns=False, show_library_calls=True)
     self.assertTrue(ty.Lookup("f"))
 
   def testAddInt(self):
@@ -76,7 +76,7 @@ class StructuralTest(test_inference.InferenceTest):
     ty = self.Infer("""
       def f(x):
         return x
-    """, deep=True, solve_unknowns=False, extract_locals=False)
+    """, deep=True, solve_unknowns=False, show_library_calls=True)
     self.assertIsIdentity(ty.Lookup("f"))
 
   def testClassAttribute(self):
@@ -87,7 +87,7 @@ class StructuralTest(test_inference.InferenceTest):
       def f(x):
         a = A(x)
         return a.x
-    """, deep=True, solve_unknowns=False, extract_locals=False)
+    """, deep=True, solve_unknowns=False, show_library_calls=True)
     self.assertIsIdentity(ty.Lookup("f"))
 
   @unittest.skip("Flawed test: x could be a slice")
@@ -100,7 +100,7 @@ class StructuralTest(test_inference.InferenceTest):
       def f(x):
         l = [return_first, return_second]
         return l[x](x, x)
-    """, deep=True, solve_unknowns=False, extract_locals=False)
+    """, deep=True, solve_unknowns=False, show_library_calls=True)
     self.assertIsIdentity(ty.Lookup("f"))
 
   def testListOfLists(self):
@@ -108,7 +108,7 @@ class StructuralTest(test_inference.InferenceTest):
       def f(x):
         l = [[[x]], 0]
         return l[0][0][0]
-    """, deep=True, solve_unknowns=False, extract_locals=False)
+    """, deep=True, solve_unknowns=False, show_library_calls=True)
     self.assertIsIdentity(ty.Lookup("f"))
 
   def testDictionaryKeys(self):
@@ -116,7 +116,7 @@ class StructuralTest(test_inference.InferenceTest):
       def f(x):
         d = {x: 1}
         return d.keys()[0]
-    """, deep=True, solve_unknowns=False, extract_locals=False)
+    """, deep=True, solve_unknowns=False, show_library_calls=True)
     self.assertIsIdentity(ty.Lookup("f"))
 
   def testDictionaryValues(self):
@@ -124,7 +124,7 @@ class StructuralTest(test_inference.InferenceTest):
       def f(x):
         d = {1: x}
         return d.values()[0]
-    """, deep=True, solve_unknowns=False, extract_locals=False)
+    """, deep=True, solve_unknowns=False, show_library_calls=True)
     self.assertIsIdentity(ty.Lookup("f"))
 
   def testDictionaryLookup(self):
@@ -132,7 +132,7 @@ class StructuralTest(test_inference.InferenceTest):
       def f(x):
         d = {0: x}
         return d[0]
-    """, deep=True, solve_unknowns=False, extract_locals=False)
+    """, deep=True, solve_unknowns=False, show_library_calls=True)
     self.assertIsIdentity(ty.Lookup("f"))
 
   def testClosure(self):
@@ -140,7 +140,7 @@ class StructuralTest(test_inference.InferenceTest):
       def f(x):
         y = lambda: x
         return y()
-    """, deep=True, solve_unknowns=False, extract_locals=False)
+    """, deep=True, solve_unknowns=False, show_library_calls=True)
     self.assertIsIdentity(ty.Lookup("f"))
 
   def testUnknownBaseClass(self):
@@ -151,7 +151,7 @@ class StructuralTest(test_inference.InferenceTest):
         a = A()
         a.x = 3
         return a.x
-    """, deep=True, solve_unknowns=False, extract_locals=False)
+    """, deep=True, solve_unknowns=False, show_library_calls=True)
     self.assertHasReturnType(ty.Lookup("f"), self.int)
 
   def testConstructorReturn(self):
@@ -163,7 +163,7 @@ class StructuralTest(test_inference.InferenceTest):
 
       def f(self):
         return Foo(3)
-    """, deep=True, solve_unknowns=False, extract_locals=False)
+    """, deep=True, solve_unknowns=False, show_library_calls=True)
     constructor = ty.Lookup("Foo").Lookup("__init__")
     self.assertOnlyHasReturnType(constructor, self.none_type)
 
@@ -176,7 +176,7 @@ class StructuralTest(test_inference.InferenceTest):
         return inner
       class MyClass(object):
         attr = f()
-    """, deep=True, solve_unknowns=False, extract_locals=False)
+    """, deep=True, solve_unknowns=False, show_library_calls=True)
     cls = ty.Lookup("MyClass")
     method = cls.Lookup("attr")
     self.assertOnlyHasReturnType(method, self.int)
@@ -190,7 +190,7 @@ class StructuralTest(test_inference.InferenceTest):
         @staticmethod
         def static_method(value):
           return None
-    """, deep=True, solve_unknowns=False, extract_locals=False)
+    """, deep=True, solve_unknowns=False, show_library_calls=True)
     # Only do a smoke test. We don't have support for static methods in pytd.
     unused_cls = ty.Lookup("MyClass")
 
@@ -198,7 +198,7 @@ class StructuralTest(test_inference.InferenceTest):
     ty = self.Infer("""
       def f(x, y):
         return issubclass(x, y)
-    """, deep=True, solve_unknowns=False, extract_locals=True)
+    """, deep=True, solve_unknowns=False)
     self.assertTypesMatchPytd(ty, """
       def f(x, y) -> bool
     """)
@@ -223,7 +223,7 @@ class StructuralTest(test_inference.InferenceTest):
       except NameError:
           class _unicode(object):
               pass
-    """, deep=True, solve_unknowns=False, extract_locals=True)
+    """, deep=True, solve_unknowns=False)
     self.assertTypesMatchPytd(ty, """
       _unicode = ...  # type: type
     """)

@@ -44,7 +44,7 @@ class StdlibTests(test_inference.InferenceTest):
     ty = self.Infer("""
       import os
       x = list(os.walk("/tmp"))
-    """, deep=False, extract_locals=True)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       os = ...  # type: module
       x = ...  # type: List[Tuple[Union[str, List[str]], ...]]
@@ -95,7 +95,7 @@ class StdlibTests(test_inference.InferenceTest):
       f(tempfile.TemporaryFile("wb", suffix=".foo"))
       f(tempfile.NamedTemporaryFile("wb", suffix=".foo"))
       f(tempfile.SpooledTemporaryFile(1048576, "wb", suffix=".foo"))
-    """, deep=False, extract_locals=True)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       import __future__

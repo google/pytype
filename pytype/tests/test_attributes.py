@@ -15,7 +15,7 @@ class TestAttributes(test_inference.InferenceTest):
           self.a = 3
         def method2(self):
           self.a = 3j
-    """, deep=True, solve_unknowns=False, extract_locals=True)
+    """, deep=True, solve_unknowns=False)
     self.assertTypesMatchPytd(ty, """
       class A(object):
         a = ...  # type: complex or int
@@ -31,7 +31,7 @@ class TestAttributes(test_inference.InferenceTest):
         A().a = 3
       def f2():
         A().a = 3j
-    """, deep=True, solve_unknowns=False, extract_locals=True)
+    """, deep=True, solve_unknowns=False)
     self.assertTypesMatchPytd(ty, """
       class A(object):
         a = ...  # type: complex or int
@@ -46,7 +46,7 @@ class TestAttributes(test_inference.InferenceTest):
           self._x = 3
         def foo(self):
           return self._x
-    """, deep=True, solve_unknowns=False, extract_locals=True)
+    """, deep=True, solve_unknowns=False)
     self.assertTypesMatchPytd(ty, """
       class C(object):
         _x = ...  # type: int
@@ -60,7 +60,7 @@ class TestAttributes(test_inference.InferenceTest):
           self.x = 3
         def foo(self):
           return self.x
-    """, deep=True, solve_unknowns=False, extract_locals=True)
+    """, deep=True, solve_unknowns=False)
     self.assertTypesMatchPytd(ty, """
       class C(object):
         x = ...  # type: int
@@ -81,7 +81,7 @@ class TestAttributes(test_inference.InferenceTest):
             self.a = A()
         def set_on_a(self):
           self.a.x = 3j
-    """, deep=True, solve_unknowns=False, extract_locals=True)
+    """, deep=True, solve_unknowns=False)
     self.assertTypesMatchPytd(ty, """
       class A(object):
         b = ...  # type: B

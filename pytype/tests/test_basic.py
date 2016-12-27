@@ -86,7 +86,7 @@ class TestIt(test_inference.InferenceTest):
         return s[::-1]
       def f6():
         return s[3:8:2]
-      """, deep=True, solve_unknowns=False, extract_locals=False)
+      """, deep=True, solve_unknowns=False, show_library_calls=True)
     self.assertTypesMatchPytd(ty, """
     s = ...  # type: str
     def f1() -> str

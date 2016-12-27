@@ -18,7 +18,7 @@ class SolverTests(test_inference.InferenceTest):
               self.children = []
               for ch in self.children:
                   pass
-    """, deep=True, solve_unknowns=True, extract_locals=True)
+    """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
     class Node(object):
       children = ...  # type: List[nothing, ...] or Tuple[nothing, ...]
@@ -32,7 +32,7 @@ class SolverTests(test_inference.InferenceTest):
         z = y()
         eval(y)
         return z
-    """, deep=True, solve_unknowns=True, extract_locals=True)
+    """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
       def f() -> ?
     """)
@@ -50,7 +50,7 @@ class SolverTests(test_inference.InferenceTest):
     ty = self.Infer("""
       def f(x):
         return x.keys()
-    """, deep=True, solve_unknowns=True, extract_locals=True)
+    """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
       def f(x: Mapping) -> list
     """)
@@ -60,7 +60,7 @@ class SolverTests(test_inference.InferenceTest):
     ty = self.Infer("""
       def f(x):
         x[""] = dict()
-    """, deep=True, solve_unknowns=True, extract_locals=True)
+    """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
       def f(x: Dict[str, dict]) -> None
     """)

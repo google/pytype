@@ -225,7 +225,7 @@ class TypingTest(test_inference.InferenceTest):
         e = [x for x in m.items()]
         f = [x for x in m.keys()]
         g = [x for x in m.values()]
-      """, pythonpath=[d.path], extract_locals=True)
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         import foo
         foo = ...  # type: module
@@ -259,7 +259,7 @@ class TypingTest(test_inference.InferenceTest):
         c = m.setdefault("baz", 3j)
         m.update({4j: 2.1})
         m.update([(1, 2), (3, 4)])
-      """, pythonpath=[d.path], extract_locals=True)
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         import foo
         foo = ...  # type: module

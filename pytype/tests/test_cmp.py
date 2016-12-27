@@ -19,14 +19,14 @@ class InTest(test_inference.InferenceTest):
           f("y", "x")
           f("y", (1,))
           f("y", object())
-      """, deep=False, solve_unknowns=False, extract_locals=False)
+      """, deep=False, solve_unknowns=False, show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.bool)
 
   def test_deep(self):
     ty = self.Infer("""
       def f(x, y):
         return x in y
-    """, deep=True, solve_unknowns=True, extract_locals=False)
+    """, deep=True, solve_unknowns=True, show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.bool)
 
   @unittest.skip("typegraphvm.cmp_in needs overloading support.")
@@ -39,7 +39,7 @@ class InTest(test_inference.InferenceTest):
         return Foo() in []
       def g():
         return 3 in Foo()
-    """, deep=True, solve_unknowns=False, extract_locals=False)
+    """, deep=True, solve_unknowns=False, show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.bool)
     self.assertOnlyHasReturnType(ty.Lookup("g"), self.complex)
 
@@ -57,7 +57,7 @@ class NotInTest(test_inference.InferenceTest):
       f("y", "x")
       f("y", (1,))
       f("y", object())
-    """, deep=False, solve_unknowns=False, extract_locals=False)
+    """, deep=False, solve_unknowns=False, show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.bool)
 
 # "not in" maps to the inverse of __contains__
@@ -71,7 +71,7 @@ class NotInTest(test_inference.InferenceTest):
         return Foo() not in []
       def g():
         return 3 not in Foo()
-    """, deep=True, solve_unknowns=False, extract_locals=False)
+    """, deep=True, solve_unknowns=False, show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.bool)
     self.assertOnlyHasReturnType(ty.Lookup("g"), self.complex)
 
@@ -84,14 +84,14 @@ class IsTest(test_inference.InferenceTest):
       def f(x, y):
         return x is y
       f(1, 2)
-    """, deep=False, solve_unknowns=False, extract_locals=False)
+    """, deep=False, solve_unknowns=False, show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.bool)
 
   def test_deep(self):
     ty = self.Infer("""
       def f(x, y):
         return x is y
-    """, deep=True, solve_unknowns=False, extract_locals=False)
+    """, deep=True, solve_unknowns=False, show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.bool)
 
 
@@ -103,14 +103,14 @@ class IsNotTest(test_inference.InferenceTest):
       def f(x, y):
         return x is not y
       f(1, 2)
-    """, deep=False, solve_unknowns=False, extract_locals=False)
+    """, deep=False, solve_unknowns=False, show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.bool)
 
   def test_deep(self):
     ty = self.Infer("""
       def f(x, y):
         return x is y
-    """, deep=True, solve_unknowns=False, extract_locals=False)
+    """, deep=True, solve_unknowns=False, show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.bool)
 
 
@@ -124,7 +124,7 @@ class LtTest(test_inference.InferenceTest):
       f(1, 2)
       f(1, "a")
       f(object(), "x")
-    """, deep=False, solve_unknowns=False, extract_locals=False)
+    """, deep=False, solve_unknowns=False, show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.bool)
 
   def test_overloaded(self):
@@ -134,7 +134,7 @@ class LtTest(test_inference.InferenceTest):
           return 3j
       def f():
         return Foo() < 3
-    """, deep=True, solve_unknowns=False, extract_locals=False)
+    """, deep=True, solve_unknowns=False, show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.complex)
 
   @unittest.skip("Needs full emulation of Objects/object.c:try_rich_compare""")
@@ -154,7 +154,7 @@ class LtTest(test_inference.InferenceTest):
         return Foo() < Foo()
       def f3():
         return Foo() < Bar()
-    """, deep=True, solve_unknowns=False, extract_locals=False)
+    """, deep=True, solve_unknowns=False, show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("f1"), self.complex)
     self.assertOnlyHasReturnType(ty.Lookup("f2"), self.complex)
     self.assertOnlyHasReturnType(ty.Lookup("f3"), self.tuple)
@@ -170,7 +170,7 @@ class LeTest(test_inference.InferenceTest):
       f(1, 2)
       f(1, "a")
       f(object(), "x")
-    """, deep=False, solve_unknowns=False, extract_locals=False)
+    """, deep=False, solve_unknowns=False, show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.bool)
 
   def test_overloaded(self):
@@ -180,7 +180,7 @@ class LeTest(test_inference.InferenceTest):
           return 3j
       def f():
         return Foo() <= 3
-    """, deep=True, solve_unknowns=False, extract_locals=False)
+    """, deep=True, solve_unknowns=False, show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.complex)
 
 
@@ -194,7 +194,7 @@ class GtTest(test_inference.InferenceTest):
       f(1, 2)
       f(1, "a")
       f(object(), "x")
-    """, deep=False, solve_unknowns=False, extract_locals=False)
+    """, deep=False, solve_unknowns=False, show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.bool)
 
   def test_overloaded(self):
@@ -204,7 +204,7 @@ class GtTest(test_inference.InferenceTest):
           return 3j
       def f():
         return Foo() > 3
-    """, deep=True, solve_unknowns=False, extract_locals=False)
+    """, deep=True, solve_unknowns=False, show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.complex)
 
 
@@ -218,7 +218,7 @@ class GeTest(test_inference.InferenceTest):
       f(1, 2)
       f(1, "a")
       f(object(), "x")
-    """, deep=False, solve_unknowns=False, extract_locals=False)
+    """, deep=False, solve_unknowns=False, show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.bool)
 
   def test_overloaded(self):
@@ -228,7 +228,7 @@ class GeTest(test_inference.InferenceTest):
           return 3j
       def f():
         return Foo() >= 3
-    """, deep=True, solve_unknowns=False, extract_locals=False)
+    """, deep=True, solve_unknowns=False, show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.complex)
 
 
@@ -242,7 +242,7 @@ class EqTest(test_inference.InferenceTest):
       f(1, 2)
       f(1, "a")
       f(object(), "x")
-    """, deep=False, solve_unknowns=False, extract_locals=False)
+    """, deep=False, solve_unknowns=False, show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.bool)
 
   def test_overloaded(self):
@@ -252,7 +252,7 @@ class EqTest(test_inference.InferenceTest):
           return 3j
       def f():
         return Foo() == 3
-    """, deep=True, solve_unknowns=False, extract_locals=False)
+    """, deep=True, solve_unknowns=False, show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.complex)
 
   def test_class(self):
@@ -276,7 +276,7 @@ class NeTest(test_inference.InferenceTest):
       f(1, 2)
       f(1, "a")
       f(object(), "x")
-    """, deep=False, solve_unknowns=False, extract_locals=False)
+    """, deep=False, solve_unknowns=False, show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.bool)
 
   def test_overloaded(self):
@@ -286,7 +286,7 @@ class NeTest(test_inference.InferenceTest):
           return 3j
       def f():
         return Foo() != 3
-    """, deep=True, solve_unknowns=False, extract_locals=False)
+    """, deep=True, solve_unknowns=False, show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.complex)
 
 

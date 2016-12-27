@@ -16,7 +16,7 @@ class ClosuresTest(test_inference.InferenceTest):
       def caller():
         return f()()
       caller()
-    """, deep=False, solve_unknowns=False, extract_locals=True)
+    """, deep=False, solve_unknowns=False)
     self.assertTypesMatchPytd(ty, """
       def f() -> function
       def caller() -> int
@@ -31,7 +31,7 @@ class ClosuresTest(test_inference.InferenceTest):
       def caller():
         return f(3)()
       caller()
-    """, deep=False, solve_unknowns=False, extract_locals=True)
+    """, deep=False, solve_unknowns=False)
     self.assertTypesMatchPytd(ty, """
       def f(x: int) -> function
       def caller() -> int
@@ -46,7 +46,7 @@ class ClosuresTest(test_inference.InferenceTest):
       def caller():
         return f([1.0])(0)
       caller()
-    """, deep=False, solve_unknowns=False, extract_locals=True)
+    """, deep=False, solve_unknowns=False)
     self.assertTypesMatchPytd(ty, """
       def f(x: List[float, ...]) -> function
       def caller() -> float
@@ -67,7 +67,7 @@ class ClosuresTest(test_inference.InferenceTest):
       def caller():
         return f()()()
       caller()
-    """, deep=False, solve_unknowns=False, extract_locals=True)
+    """, deep=False, solve_unknowns=False)
     self.assertTypesMatchPytd(ty, """
       def f() -> function
       def caller() -> str
@@ -83,7 +83,7 @@ class ClosuresTest(test_inference.InferenceTest):
       def caller():
         return f(1)(2)
       caller()
-    """, deep=False, solve_unknowns=False, extract_locals=True)
+    """, deep=False, solve_unknowns=False)
     self.assertTypesMatchPytd(ty, """
       def caller() -> int
       def f(x: int) -> function
@@ -104,7 +104,7 @@ class ClosuresTest(test_inference.InferenceTest):
       t1()
       t2()
       t3()
-    """, deep=False, solve_unknowns=False, extract_locals=True)
+    """, deep=False, solve_unknowns=False)
     self.assertTypesMatchPytd(ty, """
       def f(x: int, y: int=..., z: int=...) -> function
       def t1() -> int
@@ -129,7 +129,7 @@ class ClosuresTest(test_inference.InferenceTest):
       def caller():
         return g(f())
       caller()
-    """, deep=False, solve_unknowns=False, extract_locals=True)
+    """, deep=False, solve_unknowns=False)
     self.assertTypesMatchPytd(ty, """
       def caller() -> List[str, ...]
       def f() -> function
@@ -153,7 +153,7 @@ class ClosuresTest(test_inference.InferenceTest):
       def caller():
         return f1(3)(4)(5)(6)
       caller()
-    """, deep=False, solve_unknowns=False, extract_locals=True)
+    """, deep=False, solve_unknowns=False)
     self.assertTypesMatchPytd(ty, """
       def f1(a: int) -> function
       def caller() -> int

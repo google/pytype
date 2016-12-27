@@ -317,7 +317,7 @@ class TestGenerators(test_inference.InferenceTest):
       def g(*args, **kwargs):
         return f(*args, **kwargs)
       g(1, 2)
-    """, deep=False, solve_unknowns=False, extract_locals=False)
+    """, deep=False, solve_unknowns=False, show_library_calls=True)
     self.assertHasReturnType(ty.Lookup("g"), self.int)
 
   def test_pass_through_kwargs(self):
@@ -327,7 +327,7 @@ class TestGenerators(test_inference.InferenceTest):
       def g(*args, **kwargs):
         return f(*args, **kwargs)
       g(a=1, b=2)
-    """, deep=False, solve_unknowns=False, extract_locals=False)
+    """, deep=False, solve_unknowns=False, show_library_calls=True)
     self.assertHasReturnType(ty.Lookup("g"), self.int)
 
   def test_closure(self):
@@ -393,7 +393,7 @@ class TestGenerators(test_inference.InferenceTest):
     _, errors = self.InferAndCheck("""
       def f(x):
         return max(foo=repr(__any_object__))
-    """, deep=True, solve_unknowns=False, maximum_depth=1, extract_locals=True)
+    """, deep=True, solve_unknowns=False, maximum_depth=1)
     self.assertEquals(1, len(errors))
     self.assertErrorLogContains(errors, r"max.*\[missing-parameter\]")
 

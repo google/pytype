@@ -33,9 +33,7 @@ class PYITest(test_inference.InferenceTest):
           return mod.f()
         def g():
           return mod.f(3)
-      """, deep=True, solve_unknowns=False,
-                      extract_locals=True,  # TODO(kramm): Shouldn't need this.
-                      pythonpath=[d.path])
+      """, deep=True, solve_unknowns=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         mod = ...  # type: module
         def f() -> NoneType
@@ -124,8 +122,7 @@ class PYITest(test_inference.InferenceTest):
         x = a.u(1, 2)
         y = a.v(1, 2)
         z = a.w(1, 2)
-      """, deep=False, solve_unknowns=False, extract_locals=True,
-                      pythonpath=[d.path])
+      """, deep=False, solve_unknowns=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         decorated = ...  # type: module
         a = ...  # type: decorated.A
@@ -147,8 +144,7 @@ class PYITest(test_inference.InferenceTest):
       ty = self.Infer("""\
         import a
         u = a.A().w(a.A.v)
-      """, deep=False, solve_unknowns=False, extract_locals=True,
-                      pythonpath=[d.path])
+      """, deep=False, solve_unknowns=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
         u = ...  # type: int
@@ -195,7 +191,7 @@ class PYITest(test_inference.InferenceTest):
       ty = self.Infer("""\
         import a
         u = a.f([1, 2, 3])
-      """, deep=False, pythonpath=[d.path], extract_locals=True)
+      """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
         u = ...  # type: int
@@ -416,7 +412,7 @@ class PYITest(test_inference.InferenceTest):
       ty = self.Infer("""\
         import a
         x = a.foo("foo %d %d", 3, 3)
-      """, deep=True, extract_locals=True, pythonpath=[d.path])
+      """, deep=True, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
         x = ...  # type: int
@@ -439,7 +435,7 @@ class PYITest(test_inference.InferenceTest):
         n = a.get_kwargs(1, **dict())
         o = a.get_varargs(1, 2j, "foo", z=5)
         p = a.get_kwargs(1, 2, 3, z=5, u=3j)
-      """, deep=True, extract_locals=True, pythonpath=[d.path])
+      """, deep=True, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         a = ...  # type: module

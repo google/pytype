@@ -20,7 +20,7 @@ class SplitTest(test_inference.InferenceTest):
           return y
         else:
           return 123
-    """, deep=True, extract_locals=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       def foo(x) -> Union[int, str]: ...
     """)
@@ -34,7 +34,7 @@ class SplitTest(test_inference.InferenceTest):
           return 123
         else:
           return y
-    """, deep=True, extract_locals=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       def foo(x) -> Union[int, str]: ...
     """)
@@ -56,7 +56,7 @@ class SplitTest(test_inference.InferenceTest):
           return z
 
         return 123
-    """, deep=True, extract_locals=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       def foo(x) -> Union[float, int]: ...
     """)
@@ -71,7 +71,7 @@ class SplitTest(test_inference.InferenceTest):
             return y1  # The y1 condition is still active here.
 
         return "abc"
-    """, deep=True, extract_locals=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       def foo(x1, x2) -> str: ...
     """)
@@ -86,7 +86,7 @@ class SplitTest(test_inference.InferenceTest):
           z = 123
         # But y can be None here.
         return y
-    """, deep=True, extract_locals=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       def foo(x) -> Union[None, str]: ...
     """)
@@ -131,7 +131,7 @@ class SplitTest(test_inference.InferenceTest):
           return 123
         else:
           return "hello"
-    """, deep=True, extract_locals=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       def f1(x) -> str: ...
       def f2(x) -> int: ...
@@ -158,7 +158,7 @@ class SplitTest(test_inference.InferenceTest):
         if isinstance(obj, Foo):
           return obj.method()
         return None
-    """, deep=True, extract_locals=True)
+    """, deep=True)
     # TODO(dbaum): This test could be more focused if assertTypesMatchPytd
     # accepted some sort of filter that would be applied to both pytd trees
     # before matching.
@@ -189,7 +189,7 @@ class SplitTest(test_inference.InferenceTest):
       def list_f(x): return [] and x
       def set_f(x): return set() and x
       def frozenset_f(x): return frozenset() and x
-    """, deep=True, extract_locals=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       def int_t(x) -> int: ...
       def int_f(x) -> int: ...
@@ -218,7 +218,7 @@ class SplitTest(test_inference.InferenceTest):
         d = {}
         d[x] = x
         return 123 if d else "hello"
-    """, deep=True, extract_locals=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       def f1() -> str: ...
       def f2(x) -> Union[int, str]: ...
@@ -237,7 +237,7 @@ class SplitTest(test_inference.InferenceTest):
         d.update({"a": 1})
         return 123 if d else "hello"
 
-    """, deep=True, extract_locals=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       def f1() -> Union[int, str]: ...
       def f2() -> Union[int, str]: ...
@@ -256,7 +256,7 @@ class SplitTest(test_inference.InferenceTest):
       # Cases where isinstance() is ambiguous.
       def a1(x): return "y" if isinstance(x, str) else 0
       def a2(x): return "y" if isinstance("a", 123) else 0
-    """, deep=True, extract_locals=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       def sig(x) -> bool: ...
       def d1() -> str: ...
@@ -283,7 +283,7 @@ class SplitTest(test_inference.InferenceTest):
           return f2(y)
         else:
           return None
-    """, deep=True, extract_locals=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       def f2(x) -> Any: ...
@@ -297,7 +297,7 @@ class SplitTest(test_inference.InferenceTest):
         if x is not None:
           x.foo()
         return x
-    """, deep=True, extract_locals=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       def foo(x) -> None: ...
     """)
@@ -326,7 +326,7 @@ class SplitTest(test_inference.InferenceTest):
         else:
           return "a"
 
-    """, deep=True, extract_locals=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       def not_t(x) -> int: ...
       def not_f(x) -> str: ...
@@ -337,7 +337,7 @@ class SplitTest(test_inference.InferenceTest):
     ty = self.Infer("""
       def foo(x):
         return 1 if isinstance(dict, type) else "x"
-    """, deep=True, extract_locals=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       def foo(x) -> int: ...
     """)

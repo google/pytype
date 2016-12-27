@@ -763,7 +763,7 @@ class ImportTest(test_inference.InferenceTest):
       ty = self.Infer("""\
         import foo
         x = foo.f("")
-      """, pythonpath=[d.path], extract_locals=True)
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         foo = ...  # type: module
@@ -784,7 +784,7 @@ class ImportTest(test_inference.InferenceTest):
         y = foo.f(foo.object())
         foo.f(object())  # error
         foo.f(object())  # error
-      """, pythonpath=[d.path], extract_locals=True)
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         foo = ...  # type: module
         x = ...  # type: foo.object
@@ -813,7 +813,7 @@ class ImportTest(test_inference.InferenceTest):
       ty = self.Infer("""\
         import a
         A = a.factory()
-      """, deep=False, extract_locals=True, pythonpath=[d.path])
+      """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
         A = ...  # type: type
