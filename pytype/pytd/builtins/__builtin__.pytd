@@ -420,6 +420,11 @@ class dict(Dict[K, V]):
         self := dict[K or K2, V or V2]
     def update(self, other: dict[K2, V2]):
         self := dict[K or K2, V or V2]
+    # TODO(kramm): Better definition:
+    # def update(self, **kwargs: V2):
+    #     self := dict[K or str, V or V2]
+    def update(self, **kwargs):
+        self := dict[K or str, ?]
     def update(self, E, ...) -> NoneType
     def update(self) -> NoneType
     def viewitems(self) -> dict_items[K,V]

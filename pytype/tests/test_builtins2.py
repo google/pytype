@@ -33,6 +33,16 @@ class BuiltinTests2(test_inference.InferenceTest):
       r = ...  # type: collections.defaultdict[int, int]
     """)
 
+  def testDictUpdate(self):
+    ty = self.Infer("""
+      x = {}
+      x.update(a=3, b=4)
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      x = ...  # type: Dict[str, Any]
+    """)
+
   def testImportLib(self):
     ty = self.Infer("""
       import importlib
