@@ -228,6 +228,17 @@ class StructuralTest(test_inference.InferenceTest):
       _unicode = ...  # type: type
     """)
 
+  def testCachingOfUnknowns(self):
+    ty = self.Infer("""
+      def f(a, b):
+        a + b
+
+      f(__any_object__, 1)
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      def f(a, b) -> None
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

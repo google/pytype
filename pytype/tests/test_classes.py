@@ -609,10 +609,10 @@ class ClassesTest(test_inference.InferenceTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       class A(object):
-        x = ...  # type: str or int or float or complex
+        x = ...  # type: Any
         y = ...  # type: bool
         def __new__(cls, a, b) -> Any
-        def __init__(self, a: float or int or complex, b: float or int or complex) -> None
+        def __init__(self, a, b) -> None
       class B(object):
         def __new__(cls, x: float or int or complex) -> A
         def __init__(self, x) -> None

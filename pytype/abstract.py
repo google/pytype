@@ -2899,9 +2899,10 @@ class Unknown(AtomicAbstractValue):
       return None
     if name in self.members:
       return self.members[name]
-    new = self.vm.convert.create_new_unknown(self.vm.root_cfg_node,
-                                             self.name + "." + name,
-                                             action="getattr:" + name)
+    new = self.vm.convert.create_new_unknown(
+        self.vm.root_cfg_node,
+        self.name + "." + name,
+        action="getattr_" + self.name + ":" + name)
     # We store this at the root node, even though we only just created this.
     # From the analyzing point of view, we don't know when the "real" version
     # of this attribute (the one that's not an unknown) gets created, hence

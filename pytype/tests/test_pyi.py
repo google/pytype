@@ -178,8 +178,9 @@ class PYITest(test_inference.InferenceTest):
         out = out.split()
       """, deep=True, solve_unknowns=True, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        from typing import Any
         a = ...  # type: module
-        def f(foo, bar) -> Union[bytearray, str, unicode]: ...
+        def f(foo, bar) -> Any
         def g() -> NoneType: ...
       """)
 
