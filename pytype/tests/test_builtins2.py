@@ -595,6 +595,16 @@ class BuiltinTests2(test_inference.InferenceTest):
       x3 = ...  # type: frozenset[str]
     """)
 
+  def testFuncTools(self):
+    self.assertNoErrors("""
+      import functools
+    """)
+
+  def testABC(self):
+    self.assertNoErrors("""
+      import abc
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()
