@@ -10,6 +10,7 @@ combined using typegraph and that is what we compute over.
 # pytype: disable=attribute-error
 
 import collections
+import contextlib
 import hashlib
 import itertools
 import logging
@@ -2163,12 +2164,22 @@ class InterpreterFunction(Function):
     self.kw_defaults = kw_defaults
     self.closure = closure
     self.cls = self.vm.convert.function_type
-    self._call_records = {}
+    self._call_cache = {}
+    self._call_records = []
     self.nonstararg_count = self.code.co_argcount
     if self.code.co_kwonlyargcount >= 0:  # This is usually -1 or 0 (fast call)
       self.nonstararg_count += self.code.co_kwonlyargcount
     self.signature = self._build_signature(annotations, late_annotations)
     self.last_frame = None  # for BuildClass
+    self._store_call_records = False
+
+  @contextlib.contextmanager
+  def record_calls(self):
+    """Turn on recording of function calls. Used by infer.py."""
+    old = self._store_call_records
+    self._store_call_records = True
+    yield
+    self._store_call_records = old
 
   def _build_signature(self, annotations, late_annotations):
     """Build a function.Signature object representing this function."""
@@ -2370,9 +2381,9 @@ class InterpreterFunction(Function):
     else:
       # Make the callkey the number of times this function has been called so
       # that no call has the same key as a previous one.
-      callkey = len(self._call_records)
-    if callkey in self._call_records:
-      _, old_ret, _, old_remaining_depth = self._call_records[callkey]
+      callkey = len(self._call_cache)
+    if callkey in self._call_cache:
+      _, old_ret, old_remaining_depth = self._call_cache[callkey]
       # Optimization: This function has already been called, with the same
       # environment and arguments, so recycle the old return value and don't
       # record this call. We pretend that this return value originated at the
@@ -2388,8 +2399,10 @@ class InterpreterFunction(Function):
                  self.name, self.vm.remaining_depth(), old_remaining_depth)
       else:
         ret = self.vm.program.NewVariable(old_ret.name, old_ret.data, [], node)
+        if self._store_call_records:
+          # Even if the call is cached, we might not have been recording it.
+          self._call_records.append((callargs, ret, node))
         return node, ret
-
     if self.code.co_flags & loadmarshal.CodeType.CO_GENERATOR:
       generator = Generator(frame, self.vm, node)
       # Run the generator right now, even though the program didn't call it,
@@ -2398,16 +2411,15 @@ class InterpreterFunction(Function):
       node_after_call, ret = node2, generator.to_variable(node2, self.name)
     else:
       node_after_call, ret = self.vm.run_frame(frame, node)
-    self._call_records[callkey] = (callargs,
-                                   ret,
-                                   node_after_call,
-                                   self.vm.remaining_depth())
+    self._call_cache[callkey] = (callargs, ret, self.vm.remaining_depth())
+    if self._store_call_records or self.vm.store_all_calls:
+      self._call_records.append((callargs, ret, node_after_call))
     self.last_frame = frame
     return node_after_call, ret
 
   def _get_call_combinations(self):
     signature_data = set()
-    for callargs, ret, node_after_call, _ in self._call_records.values():
+    for callargs, ret, node_after_call in self._call_records:
       try:
         combinations = utils.variable_product_dict(callargs)
       except utils.TooComplexError:
@@ -2594,6 +2606,11 @@ class BoundFunction(AtomicAbstractValue):
 
 class BoundInterpreterFunction(BoundFunction):
   """The method flavor of InterpreterFunction."""
+
+  @contextlib.contextmanager
+  def record_calls(self):
+    with self.underlying.record_calls():
+      yield
 
   def get_first_opcode(self):
     return self.underlying.code.co_code[0]

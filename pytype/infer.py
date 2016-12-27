@@ -111,7 +111,7 @@ class CallTracer(vm.VirtualMachine):
     fname = val.data.name
     if isinstance(method, (abstract.InterpreterFunction,
                            abstract.BoundInterpreterFunction)):
-      if (not self.analyze_annotated and val.data.signature.annotations and
+      if (not self.analyze_annotated and method.signature.annotations and
           fname not in ["__new__", "__init__"]):
         log.info("%r has type annotations, not analyzing futher.", fname)
       else:
@@ -128,8 +128,9 @@ class CallTracer(vm.VirtualMachine):
         starargs = self.create_varargs(node) if method.has_varargs() else None
         starstarargs = self.create_kwargs(node) if method.has_kwargs() else None
         fvar = val.AssignToNewVariable("f", node)
-        new_node, _ = self.call_function_in_frame(
-            node, fvar, tuple(args), kws, starargs, starstarargs)
+        with method.record_calls():
+          new_node, _ = self.call_function_in_frame(
+              node, fvar, tuple(args), kws, starargs, starstarargs)
         new_node.ConnectTo(node)
         node = new_node
     return node
@@ -696,7 +697,8 @@ def infer_types(src,
                       module_name=_get_module_name(filename, options),
                       cache_unknowns=cache_unknowns,
                       analyze_annotated=analyze_annotated,
-                      generate_unknowns=not options.quick)
+                      generate_unknowns=not options.quick,
+                      store_all_calls=not deep)
   loc, defs, builtin_names = tracer.run_program(
       src, filename, init_maximum_depth, run_builtins)
   log.info("===Done running definitions and module-level code===")

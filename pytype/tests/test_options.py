@@ -62,7 +62,7 @@ class OptionsTest(test_inference.InferenceTest):
     """, deep=True, extract_locals=True, maximum_depth=2)
     self.assertTypesMatchPytd(ty, """
       def f1(x) -> ?
-      def f2(x) -> ?
+      def f2(x) -> int
       def f3(x) -> int
     """)
 

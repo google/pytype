@@ -51,7 +51,7 @@ class QuickTest(test_inference.InferenceTest):
       class A(object):
         x = ...  # type: int
         def real_init(self) -> None
-        def f(self) -> Any
+        def f(self) -> int
       def f() -> Any
     """)
 

@@ -612,7 +612,6 @@ class ClassesTest(test_inference.InferenceTest):
         x = ...  # type: str or int or float or complex
         y = ...  # type: bool
         def __new__(cls, a, b) -> Any
-        def __init__(self, a: str, b: str) -> None
         def __init__(self, a: float or int or complex, b: float or int or complex) -> None
       class B(object):
         def __new__(cls, x: float or int or complex) -> A
