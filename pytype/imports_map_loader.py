@@ -81,6 +81,7 @@ def _validate_map(imports_map, src_out):
       fi.write(textwrap.dedent("""\
           # If you see this comment, it means pytype hasn't properly
           # processed %r to %r.
+          from typing import Any
           def __getattr__(name) -> Any: ...
       """ % (src, output)))
 

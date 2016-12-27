@@ -134,7 +134,7 @@ def ParsePredefinedPyTD(pytd_subdir, module, python_version):
 # pyi for a catch-all module
 DEFAULT_SRC = """
 from typing import Any
-def __getattr__(name) -> Any
+def __getattr__(name) -> Any: ...
 """
 
 
