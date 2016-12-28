@@ -531,6 +531,12 @@ class _Parser(object):
         (self._ast_name == "typing" and t.name == "Tuple") or
         (self._ast_name != "typing" and t.name == "typing.Tuple"))
 
+  def _heterogeneous_tuple(self, base_type, parameters):
+    if parameters:
+      return pytd.TupleType(base_type=base_type, parameters=parameters)
+    else:
+      return base_type
+
   def _parameterized_type(self, base_type, parameters):
     """Return a parameterized type."""
     if base_type == pytd.NamedType("typing.Callable"):
@@ -546,17 +552,7 @@ class _Parser(object):
       parameters = tuple(pytd.AnythingType() if p is self.ELLIPSIS else p
                          for p in parameters)
       if self._is_tuple_base_type(base_type):
-        if parameters:
-          # Since we only support homogeneous tuples, convert heterogeneous
-          # tuples to tuples of a union.
-          if len(parameters) > 1:
-            element_type = pytd.UnionType(parameters)
-          else:
-            element_type, = parameters
-          return pytd.HomogeneousContainerType(base_type=base_type,
-                                               parameters=(element_type,))
-        else:
-          return base_type
+        return self._heterogeneous_tuple(base_type, parameters)
       else:
         assert parameters
         return pytd.GenericType(base_type=base_type, parameters=parameters)
@@ -646,18 +642,8 @@ class _Parser(object):
     prev_list = self._generated_classes[base_name]
     name_dedup = "~%d" % len(prev_list) if prev_list else ""
     class_name = "`%s%s`" % (base_name, name_dedup)
-
-    # Like for typing.Tuple, heterogeneous NamedTuples get converted to
-    # homogeneous ones:
-    # NamedTuple[("x", X), ("y", Y)] -> Tuple[X, Y] -> Tuple[Union[X, Y], ...]
-    types = tuple(t for _, t in fields)
-    container_param = (pytd.UnionType(type_list=types) if types
-                       else pytd.AnythingType())
-
-    class_parent = pytd.HomogeneousContainerType(
-        base_type=pytd.NamedType("tuple"),
-        parameters=(container_param,))
-
+    class_parent = self._heterogeneous_tuple(pytd.NamedType("tuple"),
+                                             tuple(t for _, t in fields))
     class_constants = tuple(pytd.Constant(n, t) for n, t in fields)
     nt_class = pytd.Class(name=class_name,
                           metaclass=None,

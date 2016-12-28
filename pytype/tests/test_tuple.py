@@ -16,8 +16,9 @@ class TupleTest(test_inference.InferenceTest):
       v2 = t[1]
       v3 = t[2]
     """, deep=True)
+    # TODO(rechen): t should be Tuple[str, int]
     self.assertTypesMatchPytd(ty, """
-      t = ...   # type: Tuple[str, int]
+      t = ...   # type: Tuple[str or int, ...]
       v1 = ...  # type: str
       v2 = ...  # type: int
       v3 = ...  # type: str or int
@@ -71,9 +72,10 @@ class TupleTest(test_inference.InferenceTest):
           return Foo.mytuple.__getitem__(pos)
       r = [x for x in Foo()]
     """)
+    # TODO(rechen): mytuple should be Tuple[int, str, complex]
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
-        mytuple = ...  # type: Tuple[int, str, complex]
+        mytuple = ...  # type: Tuple[int or str or complex, ...]
         def __getitem__(self, pos: int) -> int or str or complex
       x = ...  # type: int or str or complex
       r = ...  # type: List[int or str or complex]

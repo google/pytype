@@ -24,6 +24,7 @@ from pytype.pytd import booleq
 from pytype.pytd import pytd
 from pytype.pytd import type_match
 from pytype.pytd import utils as pytd_utils
+from pytype.pytd.parse import parser_test_base
 from pytype.pytd.parse import visitors
 
 
@@ -33,7 +34,7 @@ _BUILTINS = """
 """
 
 
-class TestTypeMatch(unittest.TestCase):
+class TestTypeMatch(parser_test_base.ParserTest):
   """Test algorithms and datastructures of booleq.py."""
 
   def setUp(self):
@@ -243,6 +244,56 @@ class TestTypeMatch(unittest.TestCase):
     m = type_match.TypeMatch(type_match.get_all_subclasses([ast]))
     eq = m.match_Class_against_Class(ast.Lookup("Match"), ast.Lookup("Foo"), {})
     self.assertEquals(eq, booleq.TRUE)
+
+  def testHomogeneousTuple(self):
+    ast = self.ParseWithBuiltins("""
+      x1 = ...  # type: Tuple[bool, ...]
+      x2 = ...  # type: Tuple[int, ...]
+    """)
+    m = type_match.TypeMatch(type_match.get_all_subclasses([ast]))
+    x1 = ast.Lookup("x1").type
+    x2 = ast.Lookup("x2").type
+    self.assertEquals(m.match_Generic_against_Generic(x1, x1, {}), booleq.TRUE)
+    self.assertEquals(m.match_Generic_against_Generic(x1, x2, {}), booleq.TRUE)
+    self.assertEquals(m.match_Generic_against_Generic(x2, x1, {}), booleq.FALSE)
+    self.assertEquals(m.match_Generic_against_Generic(x2, x2, {}), booleq.TRUE)
+
+  def testHeterogeneousTuple(self):
+    ast = self.ParseWithBuiltins("""
+      x1 = ...  # type: Tuple[int]
+      x2 = ...  # type: Tuple[bool, str]
+      x3 = ...  # type: Tuple[int, str]
+    """)
+    m = type_match.TypeMatch(type_match.get_all_subclasses([ast]))
+    x1 = ast.Lookup("x1").type
+    x2 = ast.Lookup("x2").type
+    x3 = ast.Lookup("x3").type
+    self.assertEquals(m.match_Generic_against_Generic(x1, x1, {}), booleq.TRUE)
+    self.assertEquals(m.match_Generic_against_Generic(x1, x2, {}), booleq.FALSE)
+    self.assertEquals(m.match_Generic_against_Generic(x1, x3, {}), booleq.FALSE)
+    self.assertEquals(m.match_Generic_against_Generic(x2, x1, {}), booleq.FALSE)
+    self.assertEquals(m.match_Generic_against_Generic(x2, x2, {}), booleq.TRUE)
+    self.assertEquals(m.match_Generic_against_Generic(x2, x3, {}), booleq.TRUE)
+    self.assertEquals(m.match_Generic_against_Generic(x3, x1, {}), booleq.FALSE)
+    self.assertEquals(m.match_Generic_against_Generic(x3, x2, {}), booleq.FALSE)
+    self.assertEquals(m.match_Generic_against_Generic(x3, x3, {}), booleq.TRUE)
+
+  def testTuple(self):
+    ast = self.ParseWithBuiltins("""
+      x1 = ...  # type: Tuple[bool, ...]
+      x2 = ...  # type: Tuple[int, ...]
+      y1 = ...  # type: Tuple[bool, int]
+    """)
+    m = type_match.TypeMatch(type_match.get_all_subclasses([ast]))
+    x1 = ast.Lookup("x1").type
+    x2 = ast.Lookup("x2").type
+    y1 = ast.Lookup("y1").type
+    # Tuple[T, ...] matches Tuple[U, V] when T matches both U and V.
+    self.assertEquals(m.match_Generic_against_Generic(x1, y1, {}), booleq.TRUE)
+    self.assertEquals(m.match_Generic_against_Generic(x2, y1, {}), booleq.FALSE)
+    # Tuple[U, V] matches Tuple[T, ...] when Union[U, V] matches T.
+    self.assertEquals(m.match_Generic_against_Generic(y1, x1, {}), booleq.FALSE)
+    self.assertEquals(m.match_Generic_against_Generic(y1, x2, {}), booleq.TRUE)
 
 
 if __name__ == "__main__":

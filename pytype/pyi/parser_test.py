@@ -306,30 +306,29 @@ class HomogeneousTypeTest(_ParserTestBase):
     # Double ellipsis is not allowed.
     self.check_error("x = ...  # type: List[..., ...]", 1,
                      "not supported")
-    # Tuple[T] becomes Tuple[T, ...].
+    # Tuple[T] and Tuple[T, ...] are distinct.
     self.check("from typing import Tuple\n\nx = ...  # type: Tuple[int]",
+               "from typing import Tuple\n\nx = ...  # type: Tuple[int]")
+    self.check("from typing import Tuple\n\nx = ...  # type: Tuple[int, ...]",
                "from typing import Tuple\n\nx = ...  # type: Tuple[int, ...]")
 
   def test_tuple(self):
-    # Tuple[T, U] becomes Tuple[Union[T, U]
     self.check("""\
-      from typing import Tuple, Union
+      from typing import Tuple
 
       x = ...  # type: Tuple[int, str]""",
                """\
-      from typing import Tuple, Union
+      from typing import Tuple
 
-      x = ...  # type: Tuple[Union[int, str], ...]""")
-
-    # Tuple[T, U] becomes Tuple[Union[T, U]
+      x = ...  # type: Tuple[int, str]""")
     self.check("""\
-      from typing import Tuple, Union
+      from typing import Tuple
 
       x = ...  # type: Tuple[int, str, ...]""",
                """\
-      from typing import Any, Tuple, Union
+      from typing import Any, Tuple
 
-      x = ...  # type: Tuple[Union[int, str, Any], ...]""")
+      x = ...  # type: Tuple[int, str, Any]""")
 
   def test_simple(self):
     self.check("x = ...  # type: Foo[int, str]")
@@ -338,32 +337,30 @@ class HomogeneousTypeTest(_ParserTestBase):
     self.check("x = ...  # type: []",
                "x = ...  # type: tuple")
     self.check("x = ...  # type: [int]",
-               "x = ...  # type: Tuple[int, ...]",
+               "x = ...  # type: Tuple[int]",
                prologue="from typing import Tuple")
     self.check("x = ...  # type: [int, str]",
-               "x = ...  # type: Tuple[Union[int, str], ...]",
-               prologue="from typing import Tuple, Union")
+               "x = ...  # type: Tuple[int, str]",
+               prologue="from typing import Tuple")
 
 
 class NamedTupleTest(_ParserTestBase):
 
   def test_no_fields(self):
     self.check("x = ...  # type: NamedTuple(foo, [])", """\
-      from typing import Any, Tuple
-
       x = ...  # type: `foo`
 
-      class `foo`(Tuple[Any, ...]):
+      class `foo`(tuple):
           pass
       """)
 
   def test_multiple_fields(self):
     expected = """\
-      from typing import Tuple, Union
+      from typing import Tuple
 
       x = ...  # type: `foo`
 
-      class `foo`(Tuple[Union[int, str], ...]):
+      class `foo`(Tuple[int, str]):
           a = ...  # type: int
           b = ...  # type: str
     """
@@ -384,10 +381,10 @@ class NamedTupleTest(_ParserTestBase):
       x = ...  # type: `foo`
       y = ...  # type: `foo~1`
 
-      class `foo`(Tuple[int, ...]):
+      class `foo`(Tuple[int]):
           a = ...  # type: int
 
-      class `foo~1`(Tuple[str, ...]):
+      class `foo~1`(Tuple[str]):
           b = ...  # type: str
         """)
 

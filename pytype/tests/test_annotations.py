@@ -721,8 +721,9 @@ class AnnotationTest(test_inference.InferenceTest):
       f("", *[42.0])
     """)
     self.assertTypesMatchPytd(ty, """
-      def f(x, *args) -> Tuple[int]
+      def f(x, *args) -> Tuple[int, ...]
     """)
+    # TODO(rechen): Should be Tuple[int, ...] in the error message
     error = r"Expected.*Tuple\[int\].*Actually passed.*List\[float\]"
     self.assertErrorLogIs(errors, [(7, "wrong-arg-types", error)])
 

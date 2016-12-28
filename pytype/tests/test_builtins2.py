@@ -355,7 +355,7 @@ class BuiltinTests2(test_inference.InferenceTest):
       x3 = ...  # type: str
       x4 = ...  # type: unicode
       x5 = ...  # type: List[int]
-      x6 = ...  # type: Tuple[bool]
+      x6 = ...  # type: Tuple[bool, ...]
       x7 = ...  # type: List[bool]
     """)
 
@@ -424,8 +424,9 @@ class BuiltinTests2(test_inference.InferenceTest):
     ty = self.Infer("""
       v = {"a": 1}.popitem()
     """)
+    # TODO(rechen): Should be Tuple[str, int]
     self.assertTypesMatchPytd(ty, """
-      v = ...  # type: Tuple[str, int]
+      v = ...  # type: Tuple[str or int, ...]
     """)
 
   def testLong(self):
@@ -523,20 +524,20 @@ class BuiltinTests2(test_inference.InferenceTest):
       t14 = tuple(x for x in [42])
     """, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
-      t1 = ...  # type: Tuple[nothing]
-      t2 = ...  # type: Tuple[int]
-      t3 = ...  # type: Tuple[str]
-      t4 = ...  # type: Tuple[int]
-      t5 = ...  # type: Tuple[int]
-      t6 = ...  # type: Tuple[int]
-      t7 = ...  # type: Tuple[int]
-      t8 = ...  # type: Tuple[int]
-      t9 = ...  # type: Tuple[int]
-      t10 = ...  # type: Tuple[int]
-      t11 = ...  # type: Tuple[str]
-      t12 = ...  # type: Tuple[int]
-      t13 = ...  # type: Tuple[int]
-      t14 = ...  # type: Tuple[int]
+      t1 = ...  # type: Tuple[nothing, ...]
+      t2 = ...  # type: Tuple[int, ...]
+      t3 = ...  # type: Tuple[str, ...]
+      t4 = ...  # type: Tuple[int, ...]
+      t5 = ...  # type: Tuple[int, ...]
+      t6 = ...  # type: Tuple[int, ...]
+      t7 = ...  # type: Tuple[int, ...]
+      t8 = ...  # type: Tuple[int, ...]
+      t9 = ...  # type: Tuple[int, ...]
+      t10 = ...  # type: Tuple[int, ...]
+      t11 = ...  # type: Tuple[str, ...]
+      t12 = ...  # type: Tuple[int, ...]
+      t13 = ...  # type: Tuple[int, ...]
+      t14 = ...  # type: Tuple[int, ...]
     """)
 
   def testEmptyTuple(self):

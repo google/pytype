@@ -438,7 +438,7 @@ class MatchTest(unittest.TestCase):
         pass
       class `~__builtin__~listiterator`(object):
           def next(self) -> `~unknown1`
-          def next(self) -> tuple[nothing]
+          def next(self) -> tuple[nothing, ...]
     """)
 
   def test_enumerate(self):
@@ -447,7 +447,7 @@ class MatchTest(unittest.TestCase):
         pass
       class `~__builtin__~enumerate`(object):
           def __init__(self, iterable: list[`~unknown1`]) -> NoneType
-          def next(self) -> tuple[?]
+          def next(self) -> tuple[?, ...]
     """)
 
   def test_call_builtin(self):
@@ -638,7 +638,7 @@ class MatchTest(unittest.TestCase):
   def test_isinstance(self):
     ast = self.parse("""
       x = ...  # type: `~unknown1`
-      def `~__builtin__~isinstance`(object: int, class_or_type_or_tuple: tuple[nothing]) -> `~unknown1`
+      def `~__builtin__~isinstance`(object: int, class_or_type_or_tuple: tuple[nothing, ...]) -> `~unknown1`
       class `~unknown1`(object):
         pass
     """)

@@ -500,7 +500,12 @@ class Converter(object):
           instance = abstract.Instance(
               self.convert_constant(base_cls.name, base_cls, subst, node),
               self.vm, node)
-          for formal, actual in zip(base_cls.template, cls.parameters):
+          if isinstance(cls, pytd.TupleType):
+            # TODO(rechen): Create an abstract.Tuple.
+            parameters = (pytd.UnionType(type_list=cls.parameters),)
+          else:
+            parameters = cls.parameters
+          for formal, actual in zip(base_cls.template, parameters):
             p = self.convert_constant(
                 repr(formal), abstract.AsInstance(actual), subst, node)
             instance.initialize_type_parameter(node, formal.name, p)
@@ -509,14 +514,19 @@ class Converter(object):
         return self.convert_constant_to_value(name, cls, subst, node)
     elif isinstance(pyval, pytd.GenericType):
       assert isinstance(pyval.base_type, pytd.ClassType)
+      if isinstance(pyval, pytd.TupleType):
+        # TODO(rechen): How can we preserve the heterogeneous tuple information?
+        parameters = (pytd.UnionType(type_list=pyval.parameters),)
+      else:
+        parameters = pyval.parameters
       assert (pyval.base_type.name == "typing.Generic" or
-              len(pyval.parameters) <= len(pyval.base_type.cls.template))
+              len(parameters) <= len(pyval.base_type.cls.template))
       type_parameters = utils.LazyDict()
       for i, param in enumerate(pyval.base_type.cls.template):
-        if i < len(pyval.parameters):
+        if i < len(parameters):
           type_parameters.add_lazy_item(
               param.name, self.convert_constant_to_value,
-              param.name, pyval.parameters[i], subst, node)
+              param.name, parameters[i], subst, node)
         else:
           type_parameters[param.name] = self.unsolvable
       base_cls = self.convert_constant_to_value(

@@ -211,12 +211,24 @@ class TypeMatch(utils.TypeMatcher):
     base_type_cmp = self.match_type_against_type(base1, base2, subst)
     if base_type_cmp is booleq.FALSE:
       return booleq.FALSE
-    # Matching, e.g., Dict[str, int] against Iterable[K] is legitimate.
-    assert len(t1.parameters) >= len(t2.parameters), t1.base_type.cls.name
-    # Type parameters are covariant:
-    # E.g. passing list[int] as argument for list[object] succeeds.
-    param_cmp = [self.match_type_against_type(p1, p2, subst)
-                 for p1, p2 in zip(t1.parameters, t2.parameters)]
+    if not isinstance(t1, pytd.TupleType) and isinstance(t2, pytd.TupleType):
+      p1, = t1.parameters
+      param_cmp = [self.match_type_against_type(p1, p2, subst)
+                   for p2 in t2.parameters]
+    else:
+      t1_parameters = t1.parameters
+      if isinstance(t1, pytd.TupleType):
+        if isinstance(t2, pytd.TupleType):
+          if len(t1_parameters) != len(t2.parameters):
+            return booleq.FALSE
+        else:
+          t1_parameters = (pytd.UnionType(type_list=t1_parameters),)
+      # Matching, e.g., Dict[str, int] against Iterable[K] is legitimate.
+      assert len(t1_parameters) >= len(t2.parameters), t1.base_type.cls.name
+      # Type parameters are covariant:
+      # E.g. passing list[int] as argument for list[object] succeeds.
+      param_cmp = [self.match_type_against_type(p1, p2, subst)
+                   for p1, p2 in zip(t1_parameters, t2.parameters)]
     return booleq.And([base_type_cmp] + param_cmp)
 
   def match_Unknown_against_Generic(self, t1, t2, subst):  # pylint: disable=invalid-name
@@ -252,7 +264,9 @@ class TypeMatch(utils.TypeMatcher):
   def unclass(self, t):
     """Prevent further subclass or superclass expansion for this type."""
     if isinstance(t, pytd.ClassType):
-      return pytd.NamedType(t.name)
+      # When t.name and t.cls.name differ (e.g., int vs. __builtin__.int), the
+      # latter is the complete name.
+      return pytd.NamedType(t.cls.name)
     else:
       return t
 

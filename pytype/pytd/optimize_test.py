@@ -605,10 +605,32 @@ class TestOptimize(parser_test_base.ParserTest):
 
   def testCombineContainersMultiLevel(self):
     src = textwrap.dedent("""
-      v = ...  # type: list[tuple[long or int]] or list[tuple[float or bool]]
+      v = ...  # type: list[tuple[long or int, ...]] or list[tuple[float or bool, ...]]
     """)
     expected = textwrap.dedent("""
       v = ...  # type: list[tuple[long or int or float or bool, ...]]
+    """)
+    new_src = self.ApplyVisitorToString(src, optimize.CombineContainers())
+    self.AssertSourceEquals(new_src, expected)
+
+  def testCombineSameLengthTuples(self):
+    src = textwrap.dedent("""
+      x = ...  # type: tuple[int] or tuple[str]
+    """)
+    expected = textwrap.dedent("""
+      x = ...  # type: tuple[int or str]
+    """)
+    new_src = self.ApplyVisitorToString(src, optimize.CombineContainers())
+    self.AssertSourceEquals(new_src, expected)
+
+  @unittest.skip("Incorrectly combined into tuple[int]")
+  def testCombineDifferentLengthTuples(self):
+    src = textwrap.dedent("""
+      x = ...  # type: tuple[int] or tuple[int, str]
+    """)
+    expected = textwrap.dedent("""
+      # Not combining at all is also okay
+      x = ...  # type: tuple[int or str, ...]
     """)
     new_src = self.ApplyVisitorToString(src, optimize.CombineContainers())
     self.AssertSourceEquals(new_src, expected)
