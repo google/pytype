@@ -93,7 +93,6 @@ class TestAttributes(test_inference.InferenceTest):
         def set_on_a(self) -> NoneType
     """)
 
-  @unittest.skip("flaky?")
   def testAttrWithBadGetAttr(self):
     self.assertNoErrors("""
       class AttrA(object):

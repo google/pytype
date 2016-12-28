@@ -276,7 +276,6 @@ class TestIt(test_inference.InferenceTest):
       f()
       """, raises=NameError)
 
-  @unittest.skip("Breaks on import * now that math.pytd is defined")
   def test_import(self):
     self.assertNoErrors("""\
       from __future__ import print_function
@@ -301,7 +300,6 @@ class TestIt(test_inference.InferenceTest):
       print(thing1.meth(4), thing2.meth(5))
       """)
 
-  @unittest.skip("Needs support for the __mro__ attribute itself")
   def test_class_mros(self):
     self.assertNoErrors("""\
       class A(object): pass

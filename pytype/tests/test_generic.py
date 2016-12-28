@@ -252,7 +252,6 @@ class GenericTest(test_inference.InferenceTest):
         x = ...  # type: a.Custom[nothing, nothing]
       """)
 
-  @unittest.skip("Needs better GenericType support")
   def testTypeParameterAmbiguous(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
@@ -267,7 +266,6 @@ class GenericTest(test_inference.InferenceTest):
           x = a.C()
           return x
       """, pythonpath=[d.path], deep=True, solve_unknowns=True)
-      # Currently conflates the Ts, gives a.C[int]
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
         def f() -> a.C[nothing]
