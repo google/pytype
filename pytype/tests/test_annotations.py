@@ -703,7 +703,7 @@ class AnnotationTest(test_inference.InferenceTest):
     """)
 
   def testInnerString(self):
-    _, errors = self.InferAndCheck("""\
+    self.assertNoErrors("""\
       from __future__ import google_type_annotations
       from typing import List, Union
       def f(x: List["int"]):
@@ -711,8 +711,6 @@ class AnnotationTest(test_inference.InferenceTest):
       def g(x: Union["int"]):
         pass
     """)
-    self.assertErrorLogIs(errors, [(3, "invalid-annotation", r"int.*x.*quote"),
-                                   (5, "invalid-annotation", r"int.*x.*quote")])
 
   def testAmbiguousInnerAnnotation(self):
     _, errors = self.InferAndCheck("""\
@@ -929,15 +927,14 @@ class AnnotationTest(test_inference.InferenceTest):
         G(x)
     """)
 
-  def testInvalidLateAnnotation(self):
-    _, errors = self.InferAndCheck("""\
+  def testNestedLateAnnotation(self):
+    self.assertNoErrors("""\
       from __future__ import google_type_annotations
       from typing import List
       Type = "int"
       def f(x: "List[Type]"):
         pass
     """)
-    self.assertErrorLogIs(errors, [(4, "invalid-annotation", r"int.*x.*quote")])
 
   def testChangeAnnotatedArg(self):
     ty = self.Infer("""\
@@ -953,6 +950,82 @@ class AnnotationTest(test_inference.InferenceTest):
       Dict = ...  # type: type
       def f(x: Dict[str, str]) -> Dict[str or bool, str or int]: ...
       v = ...  # type: Dict[str or bool, str or int]
+    """)
+
+  def testInnerStringAnnotation(self):
+    ty = self.Infer("""\
+      from __future__ import google_type_annotations
+      from typing import List
+      def f(x: List["A"]) -> int:
+        pass
+      class A(object):
+        pass
+    """)
+    self.assertTypesMatchPytd(ty, """
+      import __future__
+      import typing
+
+      List = ...  # type: type
+      google_type_annotations = ...  # type: __future__._Feature
+
+      def f(x: typing.List[A]) -> int: ...
+
+      class A(object): ...
+    """)
+
+  def testTypeAliasAnnotation(self):
+    ty = self.Infer("""\
+      from __future__ import google_type_annotations
+      from typing import List
+      TypeA = "A"
+      ListA = "List[A]"
+      def f(x: "ListA") -> int:
+        pass
+      class A(object):
+        pass
+    """)
+    self.assertTypesMatchPytd(ty, """
+      import __future__
+      import typing
+      List = ...  # type: type
+      ListA = ...  # type: str
+      TypeA = ...  # type: str
+      google_type_annotations = ...  # type: __future__._Feature
+      def f(x: typing.List[A]) -> int: ...
+      class A(object):
+          pass
+    """)
+
+  def testDoubleString(self):
+    ty = self.Infer("""\
+      from __future__ import google_type_annotations
+      from typing import List
+      def f(x: "List[\\"int\\"]") -> int:
+        pass
+    """)
+    self.assertTypesMatchPytd(ty, """
+      import __future__
+      import typing
+      List = ...  # type: type
+      google_type_annotations = ...  # type: __future__._Feature
+      def f(x: List[int]) -> int: ...
+    """)
+
+  def testDuplicateIdentifier(self):
+    ty = self.Infer("""\
+      from __future__ import google_type_annotations
+      t = int
+      def f(x: t) -> int: pass
+      def g(x: "t") -> int: pass
+      t = float
+    """)
+    self.assertTypesMatchPytd(ty, """
+      import __future__
+      google_type_annotations = ...  # type: __future__._Feature
+      from typing import Type
+      t = ...  # type: Type[float]
+      def f(x: int) -> int: ...
+      def g(x: float) -> int: ...
     """)
 
 

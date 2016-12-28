@@ -9,7 +9,7 @@ LateAnnotation = collections.namedtuple(
 
 
 # Used as a key in Signature.late_annotations to indicate an annotation
-# for multiple arguments.  This is used for function type comments
+# for multiple arguments.  This is used for function type comments.
 MULTI_ARG_ANNOTATION = "$multi$"
 
 

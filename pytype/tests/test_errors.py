@@ -840,19 +840,6 @@ class ErrorTest(test_inference.InferenceTest):
     error = r"Actual.*Union\[List\[Type\[float\]\], Type\[dict\]\]"
     self.assertErrorLogIs(errors, [(8, "wrong-arg-count", error)])
 
-  def testReformatAnnotation(self):
-    _, errors = self.InferAndCheck("""\
-      from __future__ import google_type_annotations
-      from typing import List, Union
-      def f(x: List['''Union[
-                             int,
-                             str
-                            ]''']):
-        pass
-    """)
-    self.assertErrorLogIs(errors, [(6, "invalid-annotation",
-                                    r"Union\[ int, str \]")])
-
   def testBadDictAttribute(self):
     _, errors = self.InferAndCheck("""\
       x = {"a": 1}

@@ -70,6 +70,11 @@ class VirtualMachineError(Exception):
   pass
 
 
+class LateAnnotationError(Exception):
+  """Used to break out of annotation evaluation if we discover a string."""
+  pass
+
+
 class VirtualMachine(object):
   """A bytecode VM that generates a typegraph as it executes.
 
@@ -687,16 +692,8 @@ class VirtualMachine(object):
           self.errorlog.invalid_function_type_comment(
               annot.opcode, annot.expr, details=e.message)
       else:
-        v = self._eval_expr(node, f_globals, annot.expr)
-        try:
-          resolved = self._process_one_annotation(
-              abstract.get_atomic_value(v), annot.name, annot.opcode)
-        except abstract.ConversionError as e:
-          self.errorlog.invalid_annotation(annot.opcode,
-                                           abstract.merge_values(v.data, self),
-                                           "Must be constant",
-                                           annot.name)
-          resolved = self.convert.unsolvable
+        resolved = self._process_one_annotation(annot.expr, annot.name,
+                                                annot.opcode, node, f_globals)
         if resolved is not None:
           func.signature.set_annotation(name, resolved)
 
@@ -1767,7 +1764,8 @@ class VirtualMachine(object):
     state, pos_defaults = state.popn(num_pos_defaults)
     return state, pos_defaults, kw_defaults, raw_annotations
 
-  def _process_one_annotation(self, annotation, name, opcode, top_level=True):
+  def _process_one_annotation(self, annotation, name, opcode,
+                              node=None, f_globals=None):
     """Change annotation / record errors where required."""
     if isinstance(annotation, typing.Container):
       annotation = annotation.base_type
@@ -1779,26 +1777,24 @@ class VirtualMachine(object):
     elif (isinstance(annotation, abstract.Instance) and
           annotation.cls.data == self.convert.str_type.data):
       # String annotations : Late evaluation
-      if isinstance(annotation, abstract.PythonConstant) and top_level:
-        return function.LateAnnotation(
-            name=name,
-            opcode=self.frame.current_opcode,
-            expr=annotation.pyval)
-      else:
-        if isinstance(annotation, abstract.PythonConstant):
-          # Inner string, e.g., def f(x: List["Foo"])
-          error = "Must quote entire annotation"
+      if isinstance(annotation, abstract.PythonConstant):
+        if f_globals is None:
+          raise LateAnnotationError()
         else:
-          # Not a constant, e.g., def f(x: str())
-          error = "Must be constant"
-        self.errorlog.invalid_annotation(opcode, annotation, error, name)
-        return None
+          v = self._eval_expr(node, f_globals, annotation.pyval)
+          if len(v.data) == 1:
+            return self._process_one_annotation(
+                v.data[0], name, opcode, node, f_globals)
+      self.errorlog.invalid_annotation(opcode, annotation,
+                                       "Must be constant", name)
+      return None
     elif annotation.cls and annotation.cls.data == self.convert.none_type.data:
       # PEP 484 allows to write "NoneType" as "None"
       return self.convert.none_type.data[0]
     elif isinstance(annotation, abstract.ParameterizedClass):
       for param_name, param in annotation.type_parameters.items():
-        processed = self._process_one_annotation(param, name, opcode, False)
+        processed = self._process_one_annotation(param, name, opcode,
+                                                 node, f_globals)
         if processed is None:
           return None
         annotation.type_parameters[param_name] = processed
@@ -1806,7 +1802,8 @@ class VirtualMachine(object):
     elif isinstance(annotation, abstract.Union):
       options = []
       for option in annotation.options:
-        processed = self._process_one_annotation(option, name, opcode, False)
+        processed = self._process_one_annotation(option, name, opcode,
+                                                 node, f_globals)
         if processed is None:
           return None
         options.append(processed)
@@ -1820,7 +1817,7 @@ class VirtualMachine(object):
 
   def _convert_function_annotations(self, node, raw_annotations):
     if raw_annotations:
-      # {"i": int, "return": str} is stored as (int, str, ("i, "return"))
+      # {"i": int, "return": str} is stored as (int, str, ("i", "return"))
       names = abstract.get_atomic_python_constant(raw_annotations[-1])
       type_list = raw_annotations[:-1]
       annotations = {}
@@ -1834,12 +1831,15 @@ class VirtualMachine(object):
                                            "Must be constant",
                                            name)
         else:
-          annot = self._process_one_annotation(
-              visible[0], name, self.frame.current_opcode)
-          if isinstance(annot, function.LateAnnotation):
-            late_annotations[name] = annot
-          elif annot is not None:
-            annotations[name] = annot
+          try:
+            annot = self._process_one_annotation(
+                visible[0], name, self.frame.current_opcode)
+          except LateAnnotationError:
+            late_annotations[name] = function.LateAnnotation(
+                visible[0], name, self.frame.current_opcode)
+          else:
+            if annot is not None:
+              annotations[name] = annot
       return annotations, late_annotations
     else:
       return {}, {}
@@ -1890,7 +1890,7 @@ class VirtualMachine(object):
       late_annotations[function.MULTI_ARG_ANNOTATION] = annot
 
     late_annotations["return"] = function.LateAnnotation(
-        return_type, "return", fake_op)
+        self.convert.build_string(None, return_type).data[0], "return", fake_op)
 
   def _convert_kw_defaults(self, values):
     kw_defaults = {}
