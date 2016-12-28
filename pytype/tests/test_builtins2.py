@@ -615,6 +615,32 @@ class BuiltinTests2(test_inference.InferenceTest):
       import abc
     """)
 
+  def testSetDefault(self):
+    ty = self.Infer("""
+      x = {}
+      x['bar'] = 3
+      y = x.setdefault('foo', 3.14)
+      z = x['foo']
+    """)
+    self.assertTypesMatchPytd(ty, """
+      x = ...  # type: Dict[str, float or int]
+      y = ...  # type: float or int
+      z = ...  # type: float
+    """)
+
+  def testSetDefaultOneArg(self):
+    ty = self.Infer("""
+      x = {}
+      x['bar'] = 3
+      y = x.setdefault('foo')
+      z = x['foo']
+    """)
+    self.assertTypesMatchPytd(ty, """
+      x = ...  # type: Dict[str, Optional[int]]
+      y = ...  # type: Optional[int]
+      z = ...  # type: None
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

@@ -781,6 +781,7 @@ class Dict(ValueWithSlots, PythonConstant, WrapsDict("pyval")):
     super(Dict, self).__init__(vm.convert.dict_type, vm, node)
     self.set_slot("__getitem__", self.getitem_slot)
     self.set_slot("__setitem__", self.setitem_slot)
+    self.set_slot("setdefault", self.setdefault_slot)
     self.init_type_parameters(K, V)
     self.could_contain_anything = False
     PythonConstant.init_mixin(self, {})
@@ -840,6 +841,16 @@ class Dict(ValueWithSlots, PythonConstant, WrapsDict("pyval")):
     """Implements the __setitem__ slot."""
     self.setitem(node, name_var, value_var)
     return self.call_pytd(node, "__setitem__", name_var, value_var)
+
+  def setdefault_slot(self, node, name_var, value_var=None):
+    if value_var is None:
+      value_var = self.vm.convert.build_none(node)
+    # We don't have a good way of modelling the exact setdefault behavior -
+    # whether the key already exists might depend on a code path, so setting it
+    # again should depend on an if-splitting condition, but we don't support
+    # negative conditions.
+    self.setitem(node, name_var, value_var)
+    return self.call_pytd(node, "setdefault", name_var, value_var)
 
   def update(self, node, other_dict, omit=()):
     self.could_contain_anything = True
@@ -2072,6 +2083,8 @@ class NativeFunction(Function):
     return self.func.func_code.co_argcount
 
   def call(self, node, _, args, condition=None):
+    # TODO(kramm): If the signature doesn't match, this crashes. It should
+    # generate an error instead.
     # Originate a new variable for each argument and call.
     return self.func(
         node,
