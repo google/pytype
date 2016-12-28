@@ -98,9 +98,7 @@ class StdlibTests(test_inference.InferenceTest):
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
-      import __future__
       import typing
-      google_type_annotations = ...  # type: __future__._Feature
       os = ...  # type: module
       tempfile = ...  # type: module
       typing = ...  # type: module

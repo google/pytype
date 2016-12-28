@@ -1,8 +1,16 @@
 """Constants for output generation."""
 
-TOP_LEVEL_IGNORE = {"__module__", "__builtins__", "__name__"}
+TOP_LEVEL_IGNORE = {
+    "__module__",
+    "__builtins__",
+    "__name__",
+    "__future__",
+}
 
-CLASS_LEVEL_IGNORE = {"__module__", "__class__", "__builtins__", "__name__",
-                      "__qualname__"}
-
-
+CLASS_LEVEL_IGNORE = {
+    "__module__",
+    "__class__",
+    "__builtins__",
+    "__name__",
+    "__qualname__",
+}
