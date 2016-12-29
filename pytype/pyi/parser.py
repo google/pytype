@@ -304,6 +304,7 @@ class _Parser(object):
     if name != "typing":
       self._type_map = {name: pytd.NamedType("typing." + name)
                         for name in pep484.PEP484_NAMES}
+      del self._type_map["AnyStr"]
 
     try:
       defs = parser_ext.parse(self, src)
@@ -321,6 +322,8 @@ class _Parser(object):
         raise e
 
     ast = ast.Visit(_InsertTypeParameters())
+    # TODO(kramm): This is in the wrong place- it should happen after resolving
+    # local names, in load_pytd.
     ast = ast.Visit(pep484.ConvertTypingToNative(name))
 
     if name:

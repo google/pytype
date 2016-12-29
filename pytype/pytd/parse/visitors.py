@@ -1250,6 +1250,14 @@ class VerifyVisitor(Visitor):
   def EnterTypeDeclUnit(self, node):
     self._AssertNoDuplicates(node, ["constants", "type_params", "classes",
                                     "functions", "aliases"])
+    self._all_templates = set()
+
+  def LeaveTypeDeclUnit(self, node):
+    declared_type_params = {n.name for n in node.type_params}
+    for t in self._all_templates:
+      if t.name not in declared_type_params:
+        raise AssertionError("Type parameter %r used, but not declared. "
+                             "Did you call AdjustTypeParameters?" % t.name)
 
   def EnterClass(self, node):
     self._AssertNoDuplicates(node, ["methods", "constants"])
@@ -1262,6 +1270,9 @@ class VerifyVisitor(Visitor):
 
   def EnterSignature(self, node):
     assert isinstance(node.has_optional, bool), node
+
+  def EnterTemplateItem(self, node):
+    self._all_templates.add(node)
 
   def EnterParameter(self, node):
     assert self._valid_param_name.match(node.name), node.name
@@ -1548,6 +1559,7 @@ class AdjustTypeParameters(Visitor):
     self.function_name = None
     self.constant_name = None
     self.bound_by_class = ()
+    self.all_typeparams = set()
 
   def _GetTemplateItems(self, param):
     """Get a list of template items from a parameter."""
@@ -1561,6 +1573,16 @@ class AdjustTypeParameters(Visitor):
     elif isinstance(param, pytd.TypeParameter):
       items.append(pytd.TemplateItem(param))
     return items
+
+  def VisitTypeDeclUnit(self, node):
+    type_params_to_add = set()
+    declared_type_params = {n.name for n in node.type_params}
+    for t in self.all_typeparams:
+      if t.name not in declared_type_params:
+        logging.debug("Adding definition for type parameter %r", t.name)
+        type_params_to_add.add(pytd.TypeParameter(t.name, None))
+    new_type_params = node.type_params + tuple(type_params_to_add)
+    return node.Replace(type_params=new_type_params)
 
   def EnterClass(self, node):
     """Establish the template for the class."""
@@ -1654,6 +1676,7 @@ class AdjustTypeParameters(Visitor):
     if (self.template_typeparams is not None and
         node.name not in self.bound_typeparams):
       self.template_typeparams.add(pytd.TemplateItem(node))
+    self.all_typeparams.add(node)
 
     return node
 

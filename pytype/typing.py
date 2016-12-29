@@ -190,12 +190,18 @@ def build_typevar(name, vm, node):
   return abstract.NativeFunction("TypeVar", f.call, vm, node)
 
 
+def build_generic(name, vm, node):
+  del node
+  vm.errorlog.not_supported_yet(vm.frame.current_opcode, name)
+  return vm.convert.unsolvable
+
+
 # TODO(rechen): There are a lot of other generics in typing.pytd; do they all
 # need to be added here?
 typing_overload = {
     "Any": build_any,
     "Callable": Callable,
-    "Generic": lambda name, vm, _: abstract.get_unsupported(name, vm),
+    "Generic": build_generic,
     "NamedTuple": build_namedtuple,
     "Optional": build_optional,
     "Tuple": Tuple,

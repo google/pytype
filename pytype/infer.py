@@ -321,8 +321,7 @@ class CallTracer(vm.VirtualMachine):
               data.append(pytd.Constant(name, d))
           else:
             data.append(d)
-    ty = pytd_utils.WrapTypeDeclUnit("inferred", data)
-    return ty.Visit(visitors.AdjustTypeParameters())
+    return pytd_utils.WrapTypeDeclUnit("inferred", data)
 
   @staticmethod
   def _call_traces_to_function(call_traces, name_transform=lambda x: x):
@@ -404,7 +403,7 @@ class CallTracer(vm.VirtualMachine):
     ty = ty.Visit(optimize.PullInMethodClasses())
     ty = ty.Visit(visitors.DefaceUnresolved(
         [ty, self.loader.concat_all()], "~unknown"))
-    return ty
+    return ty.Visit(visitors.AdjustTypeParameters())
 
   def _create_call_arg(self, name, t, node):
     if t == pytd.ClassType("__builtin__.object"):

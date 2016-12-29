@@ -6,6 +6,7 @@ TOP_LEVEL_IGNORE = {
     "__name__",
     "__future__",
     "TypeVar",
+    "AnyStr",
 }
 
 CLASS_LEVEL_IGNORE = {

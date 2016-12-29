@@ -1,8 +1,9 @@
 """Tests for TypeVar."""
 
 import os
-import unittest
 
+
+from pytype import utils
 from pytype.tests import test_inference
 
 
@@ -40,18 +41,32 @@ class TypeVarTest(test_inference.InferenceTest):
     """)
     self.assertTrue(ty.Lookup("f").signatures[0].template)
 
-  @unittest.skip("Module._convert_member needs to learn about type parameters.")
   def testAnyStr(self):
     ty = self.Infer("""
       from __future__ import google_type_annotations
-      from typing import AnyStr
+      from typing import AnyStr  # pytype: disable=not-supported-yet
       def f(x: AnyStr) -> AnyStr: ...
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
-      from typing import AnyStr
+      AnyStr = TypeVar("AnyStr")
       def f(x: AnyStr) -> AnyStr: ...
     """)
     self.assertTrue(ty.Lookup("f").signatures[0].template)
+
+  def testAnyStrFunctionImport(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        from typing import AnyStr
+        def f(x: AnyStr) -> AnyStr
+      """)
+      ty = self.Infer("""
+        from a import f
+      """, deep=True, solve_unknowns=True, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        import typing
+        AnyStr = TypeVar('AnyStr')
+        def f(x: AnyStr) -> AnyStr
+      """)
 
 
 if __name__ == "__main__":

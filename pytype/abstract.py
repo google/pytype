@@ -79,20 +79,6 @@ def get_atomic_python_constant(variable):
   raise ConversionError("Only some types are supported: %r" % type(atomic))
 
 
-def get_unsupported(name, vm):
-  """Report an error and get a value for an unsupported feature.
-
-  Args:
-    name: The unsupported name, for use in the error message.
-    vm: The virtual machine.
-  Returns:
-    A dummy value.
-  """
-
-  vm.errorlog.not_supported_yet(vm.frame.current_opcode, name)
-  return vm.convert.unsolvable
-
-
 def merge_values(values, vm):
   """Merge a collection of values into a single one."""
   if not values:
@@ -2733,7 +2719,15 @@ class Module(Instance):
   def _convert_member(self, name, ty):
     """Called to convert the items in _member_map to cfg.Variable."""
     if isinstance(ty, pytd.TypeParameter):
-      return get_unsupported(name, self.vm).to_variable(self.vm.root_cfg_node)
+      self.vm.errorlog.not_supported_yet(self.vm.frame.current_opcode,
+                                         "importing TypeVar")
+      typevar = TypeVariable(name, self.vm)
+      # We assume that "name" is the name under which this type variable is
+      # stored in globals(), since it's considered illegal to do
+      # X = TypeVar("Y").
+      self.vm.trace_typevar(name, typevar)
+      return typevar.to_variable(
+          self.vm.root_cfg_node, name)
     else:
       var = self.vm.convert.convert_constant(name, ty)
       for value in var.data:

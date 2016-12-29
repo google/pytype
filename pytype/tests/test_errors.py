@@ -778,10 +778,11 @@ class ErrorTest(test_inference.InferenceTest):
         from a import T
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        from typing import Any
-        T = ...  # type: Any
+        T = TypeVar("T")
       """)
-      self.assertErrorLogIs(errors, [(1, "not-supported-yet", "T")])
+      self.assertErrorLogIs(errors, [
+          (1, "not-supported-yet", "importing TypeVar")
+      ])
 
   def testInvalidAnnotations(self):
     _, errors = self.InferAndCheck("""\
@@ -873,6 +874,23 @@ class ErrorTest(test_inference.InferenceTest):
         (3, "invalid-typevar"),
         (5, "invalid-typevar", "string"),
         (7, "invalid-typevar", "already defined"),
+    ])
+
+  @unittest.skip("Needs better error message.")
+  def testImportTypeVarNameChange(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        from typing import TypeVar
+        T = TypeVar("T")
+      """)
+      _, errors = self.InferAndCheck("""
+        from __future__ import google_type_annotations
+        # This is illegal: A TypeVar("T") needs to be stored under the name "T".
+        from a import T as T2
+        def f(x: T2) -> T2: ...
+      """, pythonpath=[d.path])
+    self.assertErrorLogIs(errors, [
+        (3, "invalid-typevar"),
     ])
 
 
