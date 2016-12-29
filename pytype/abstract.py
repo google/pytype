@@ -766,6 +766,14 @@ class Tuple(ValueWithSlots, PythonConstant):
         return node, self.pyval[index]
     return self.call_pytd(node, "__getitem__", index_var)
 
+  def get_parameter_types(self, node, template, seen, view):
+    assert len(template) == 1 and template[0].name == T, template
+    # Since we didn't include the pyval variables when computing the view,
+    # we can't use it here, so just pass in None for the view instead.
+    return [pytd_utils.JoinTypes(v.to_type(node, seen, None)
+                                 for v in param.Data(node))
+            for param in self.pyval]
+
   def compatible_with(self, logical_value):
     return PythonConstant.compatible_with(self, logical_value)
 
@@ -1757,9 +1765,13 @@ class Class(object):
       seen.add(instance)
       type_arguments = instance.get_parameter_types(
           node, type_params, seen, view)
-    return pytd_utils.MakeClassOrContainerType(
-        pytd_utils.NamedTypeWithModule(self.official_name, self.module),
-        type_arguments)
+    base = pytd_utils.NamedTypeWithModule(self.official_name, self.module)
+    if isinstance(instance, Tuple):
+      if type_arguments:
+        return pytd.TupleType(base, tuple(type_arguments))
+      else:
+        type_arguments = [pytd.NothingType()]
+    return pytd_utils.MakeClassOrContainerType(base, type_arguments)
 
   def to_pytd_def(self, node, name):
     # Default method. Generate an empty pytd. Subclasses override this.

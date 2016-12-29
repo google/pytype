@@ -174,7 +174,7 @@ class BuiltinTests2(test_inference.InferenceTest):
         d = ...  # type: dict[str, int]
         key = ...  # type: str
         value = ...  # type: int
-        item = ...  # type: Tuple[Union[int, str], ...]
+        item = ...  # type: Tuple[str, int]
       """)
 
   def testMax(self):
@@ -424,9 +424,8 @@ class BuiltinTests2(test_inference.InferenceTest):
     ty = self.Infer("""
       v = {"a": 1}.popitem()
     """)
-    # TODO(rechen): Should be Tuple[str, int]
     self.assertTypesMatchPytd(ty, """
-      v = ...  # type: Tuple[str or int, ...]
+      v = ...  # type: Tuple[str, int]
     """)
 
   def testLong(self):

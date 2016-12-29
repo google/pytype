@@ -141,8 +141,8 @@ class CallErrorTests(test_inference.InferenceTest):
     with utils.Tempdir() as d:
       d.create_file("test.pyi", """
         class Test():
-          def __or__(self, other: Tuple[int]) -> bool
-          def __ror__(self, other: Tuple[int]) -> bool
+          def __or__(self, other: Tuple[int, ...]) -> bool
+          def __ror__(self, other: Tuple[int, ...]) -> bool
       """)
       ty = self.Infer("""
         import test

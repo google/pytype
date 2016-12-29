@@ -137,7 +137,8 @@ class MethodsTest(test_inference.InferenceTest):
         return (a, b)
       f((1, 2))
     """, deep=False, solve_unknowns=False, show_library_calls=True)
-    self.assertHasSignature(ty.Lookup("f"), (self.int_tuple,), self.int_tuple)
+    t = pytd.TupleType(self.tuple, (self.int, self.int))
+    self.assertHasSignature(ty.Lookup("f"), (t,), t)
 
   def testConvert(self):
     ty = self.Infer("""
@@ -474,7 +475,8 @@ class MethodsTest(test_inference.InferenceTest):
         return args
       f(3)
     """, deep=False, solve_unknowns=False, show_library_calls=True)
-    self.assertHasReturnType(ty.Lookup("f"), self.int_tuple)
+    self.assertHasReturnType(ty.Lookup("f"),
+                             pytd.TupleType(self.tuple, (self.int,)))
 
   def testStarArgsType2(self):
     ty = self.Infer("""
@@ -482,7 +484,8 @@ class MethodsTest(test_inference.InferenceTest):
         return args
       f("foo", 4)
     """, deep=False, solve_unknowns=False, show_library_calls=True)
-    self.assertHasReturnType(ty.Lookup("f"), self.int_tuple)
+    self.assertHasReturnType(ty.Lookup("f"),
+                             pytd.TupleType(self.tuple, (self.int,)))
 
   def testStarArgsDeep(self):
     ty = self.Infer("""
@@ -901,7 +904,7 @@ class MethodsTest(test_inference.InferenceTest):
       class B(A): ...
       class C(A): ...
       class D(A): ...
-      options = ...  # type: List[Tuple[int, ...]]
+      options = ...  # type: List[Tuple[int, int, int, int]]
       w = ...  # type: int
       x = ...  # type: int
       y = ...  # type: int

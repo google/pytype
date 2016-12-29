@@ -192,7 +192,7 @@ class PytypeTest(unittest.TestCase):
     self.pytype_args["--quick"] = self.INCLUDE
     self._InferTypesAndCheckErrors("pytree.py", [
         "import-error", "import-error", "attribute-error",
-        "attribute-error", "attribute-error", "name-error"])
+        "attribute-error", "name-error"])
     ast = parser.parse_string(self.stdout)
     self.assertListEqual(["convert", "generate_matches", "type_repr"],
                          [f.name for f in ast.functions])

@@ -47,7 +47,7 @@ class StdlibTests(test_inference.InferenceTest):
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
       os = ...  # type: module
-      x = ...  # type: List[Tuple[Union[str, List[str]], ...]]
+      x = ...  # type: List[Tuple[str, List[str], List[str]]]
     """)
 
   def testStruct(self):

@@ -16,8 +16,8 @@ class ContainerTest(test_inference.InferenceTest):
     """, deep=False, solve_unknowns=False, show_library_calls=True)
     self.assertHasOnlySignatures(
         ty.Lookup("f"),
-        ((pytd.HomogeneousContainerType(self.tuple, (self.intorstr,)),),
-         pytd.HomogeneousContainerType(self.tuple, (self.intorstr,))))
+        ((pytd.TupleType(self.tuple, (self.int, self.str)),),
+         pytd.TupleType(self.tuple, (self.int, self.str))))
 
   def testTuple(self):
     ty = self.Infer("""
@@ -27,7 +27,7 @@ class ContainerTest(test_inference.InferenceTest):
     """, deep=False, solve_unknowns=False, show_library_calls=True)
     self.assertHasOnlySignatures(
         ty.Lookup("f"),
-        ((pytd.HomogeneousContainerType(self.tuple, (self.intorstr,)),),
+        ((pytd.TupleType(self.tuple, (self.int, self.str)),),
          self.int))
 
   def testTupleSwap(self):
@@ -38,8 +38,8 @@ class ContainerTest(test_inference.InferenceTest):
     """, deep=False, solve_unknowns=False, show_library_calls=True)
     self.assertHasOnlySignatures(
         ty.Lookup("f"),
-        ((pytd.HomogeneousContainerType(self.tuple, (self.intorstr,)),),
-         pytd.HomogeneousContainerType(self.tuple, (self.intorstr,))))
+        ((pytd.TupleType(self.tuple, (self.int, self.str)),),
+         pytd.TupleType(self.tuple, (self.str, self.int))))
 
   def testEmptyTuple(self):
     ty = self.Infer("""
@@ -456,7 +456,7 @@ class ContainerTest(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=False)
     self.assertTypesMatchPytd(ty, """
       x = ...  # type: float or int
-      y = ...  # type: Tuple[float or int, ...]
+      y = ...  # type: Tuple[float or int, float or int]
     """)
 
   def testMaybeAny(self):

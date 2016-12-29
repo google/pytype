@@ -230,7 +230,7 @@ class TypingTest(test_inference.InferenceTest):
         b = ...  # type: bool
         c = ...  # type: int
         d = ...  # type: int
-        e = ...  # type: List[Tuple[int or str, ...]]
+        e = ...  # type: List[Tuple[str, int]]
         f = ...  # type: List[str]
         g = ...  # type: List[int]
         x = ...  # type: int
@@ -261,7 +261,7 @@ class TypingTest(test_inference.InferenceTest):
         foo = ...  # type: module
         m = ...  # type: foo.MyDict[Union[complex, int, str], Union[complex, float, int]]
         a = ...  # type: Union[complex, float, int]
-        b = ...  # type: Tuple[Union[complex, float, int, str], ...]
+        b = ...  # type: Tuple[Union[complex, str], Union[float, int]]
         c = ...  # type: Union[complex, float, int]
       """)
 

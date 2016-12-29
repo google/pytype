@@ -46,12 +46,12 @@ class SliceTest(test_inference.InferenceTest):
     """)
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
-        def __getslice__(self, i:int, j:int) -> Tuple[int, ...]: ...
+        def __getslice__(self, i:int, j:int) -> Tuple[int, int]: ...
         def __getitem__(self, index: slice) -> slice: ...
       x = ...  # type: Foo
-      a = ...  # type: Tuple[int, ...]
-      b = ...  # type: Tuple[int, ...]
-      c = ...  # type: Tuple[int, ...]
+      a = ...  # type: Tuple[int, int]
+      b = ...  # type: Tuple[int, int]
+      c = ...  # type: Tuple[int, int]
       d = ...  # type: slice
       e = ...  # type: slice
       f = ...  # type: slice

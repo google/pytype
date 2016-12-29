@@ -109,13 +109,12 @@ class GenericTest(test_inference.InferenceTest):
         def qux():
           return baz().items()
       """, pythonpath=[d.path], deep=True, solve_unknowns=True)
-      # TODO(rechen): qux should return a List[Tuple[str, int]]
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
         def foo() -> a.A[nothing]
         def bar() -> List[str]
         def baz() -> a.B
-        def qux() -> List[Tuple[str or int, ...]]
+        def qux() -> List[Tuple[str, int]]
       """)
 
   def testTypeParameter(self):

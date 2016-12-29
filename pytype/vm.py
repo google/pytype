@@ -1496,6 +1496,13 @@ class VirtualMachine(object):
         state, result = self.call_function_with_state(state, f, ())
         values.append(result)
     for value in reversed(values):
+      if not value.bindings:
+        # For something like
+        #   for i, j in enumerate(()):
+        #     print j
+        # there are no bindings for j, so we have to add an empty binding
+        # to avoid a name error on the print statement.
+        value = self.convert.empty.to_variable(state.node)
       state = state.push(value)
     return state
 

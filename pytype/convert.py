@@ -496,16 +496,18 @@ class Converter(object):
             return self.merge_classes(node, subst[c.name].data)
           else:
             return self.convert_constant_to_value(pytd.Print(c), c, subst, node)
+        elif isinstance(cls, pytd.TupleType):
+          content = tuple(self.convert_constant(pytd.Print(p),
+                                                abstract.AsInstance(p),
+                                                subst, node)
+                          for p in cls.parameters)
+          return abstract.Tuple(content, self.vm, node)
         else:
           instance = abstract.Instance(
               self.convert_constant(base_cls.name, base_cls, subst, node),
               self.vm, node)
-          if isinstance(cls, pytd.TupleType):
-            # TODO(rechen): Create an abstract.Tuple.
-            parameters = (pytd.UnionType(type_list=cls.parameters),)
-          else:
-            parameters = cls.parameters
-          for formal, actual in zip(base_cls.template, parameters):
+          assert len(cls.parameters) <= len(base_cls.template)
+          for formal, actual in zip(base_cls.template, cls.parameters):
             p = self.convert_constant(
                 repr(formal), abstract.AsInstance(actual), subst, node)
             instance.initialize_type_parameter(node, formal.name, p)
