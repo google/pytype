@@ -751,6 +751,10 @@ class VirtualMachine(object):
     state, ret = self.call_inplace_operator(state, name, x, y)
     return state.push(ret)
 
+  def trace_typevar(self, *args):
+    """Fired whenever we create a new TypeVar."""
+    return NotImplemented
+
   def trace_unknown(self, *args):
     """Fired whenever we create a variable containing 'Unknown'."""
     return NotImplemented

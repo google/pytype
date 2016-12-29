@@ -128,6 +128,36 @@ class Tuple(Container):
     return super(Tuple, self)._build_value(node, inner)
 
 
+class TypeVarFunction(object):
+  """Representation of typing.TypeVar, as a function."""
+
+  def __init__(self, name, vm):
+    self.name = name
+    self.vm = vm
+
+  def call(self, node, *args, **kwargs):
+    """Call typing.TypeVar()."""
+    if len(args) < 1:
+      self.vm.errorlog.invalid_typevar(self.vm.frame.current_opcode,
+                                       "Need name as first parameter")
+      return node, self.vm.convert.unsolvable.to_variable(node, self.name)
+    try:
+      typevar_name = abstract.get_atomic_python_constant(args[0])
+    except abstract.ConversionError:
+      self.vm.errorlog.invalid_typevar(self.vm.frame.current_opcode,
+                                       "Name must be a constant string")
+      return node, self.vm.convert.unsolvable.to_variable(node, self.name)
+    constraints = args[1:]
+    bound = kwargs.get("bound")
+    # TODO(kramm): These are variables. We should convert them to booleans.
+    covariant = kwargs.get("covariant")
+    contravariant = kwargs.get("contravariant")
+    typevar = abstract.TypeVariable(typevar_name, self.vm, constraints,
+                                    bound, covariant, contravariant)
+    self.vm.trace_typevar(typevar_name, typevar)
+    return node, typevar.to_variable(node, self.name)
+
+
 def build_container(name, vm, node):
   if name in pep484.PEP484_CAPITALIZED:
     pytd_name = "__builtin__." + name.lower()
@@ -155,9 +185,9 @@ def build_optional(name, vm, node):
 
 
 def build_typevar(name, vm, node):
-  del node
   vm.errorlog.not_supported_yet(vm.frame.current_opcode, name)
-  return abstract.Unknown(vm)
+  f = TypeVarFunction(name, vm)
+  return abstract.NativeFunction("TypeVar", f.call, vm, node)
 
 
 # TODO(rechen): There are a lot of other generics in typing.pytd; do they all

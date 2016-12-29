@@ -92,11 +92,18 @@ class MethodsTest(test_inference.InferenceTest):
       x1 = a.get_x()
       a.set_x(1.2)
       x2 = a.get_x()
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
-    self.assertHasSignature(ty.Lookup("A").Lookup("set_x"),
-                            (pytd.ClassType("A"), self.float), self.none_type)
-    self.assertHasSignature(ty.Lookup("A").Lookup("get_x"),
-                            (pytd.ClassType("A"),), self.intorfloat)
+    """, deep=False)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Union
+      a = ...  # type: A
+      x1 = ...  # type: int
+      x2 = ...  # type: float
+      y = ...  # type: int
+      class A(object):
+        x = ...  # type: float
+        def get_x(self) -> Union[float, int]
+        def set_x(self, x: float) -> None
+    """)
 
   def testBooleanOp(self):
     ty = self.Infer("""

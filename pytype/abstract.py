@@ -2856,6 +2856,41 @@ class Unsolvable(AtomicAbstractValue):
     return self.to_variable(node, self.name)
 
 
+# TODO(kramm): Merge this with TypeParameter
+class TypeVariable(Unsolvable):
+  """An instance of typing.TypeVar."""
+
+  def __init__(self, name, vm, constraints=(), bound=None,
+               covariant=False, contravariant=False):
+    super(TypeVariable, self).__init__(vm)
+    self.name = name
+    self.constraints = constraints
+    self.bound = bound
+    self.covariant = covariant
+    self.contravariant = contravariant
+
+  def __eq__(self, other):
+    return (self.name == other.name and
+            self.constraints == other.constraints and
+            self.bound == other.bound and
+            self.covariant == other.covariant and
+            self.contravariant == other.contravariant)
+
+  def __ne__(self, other):
+    return not self == other
+
+  def __hash__(self):
+    return hash((self.name, self.constraints, self.bound, self.covariant,
+                 self.contravariant))
+
+  def get_instance_type(self, node, instance=None, seen=None, view=None):
+    return pytd.TypeParameter(self.name, None)
+
+  def to_pytd_def(self, node, name):
+    del node
+    return pytd.TypeParameter(name, None)
+
+
 class Unknown(AtomicAbstractValue):
   """Representation of unknown values.
 

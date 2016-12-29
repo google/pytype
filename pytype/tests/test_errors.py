@@ -858,6 +858,23 @@ class ErrorTest(test_inference.InferenceTest):
       """, pythonpath=[d.path])
       self.assertErrorLogIs(errors, [(1, "pyi-error", r"2.*3")])
 
+  def testInvalidTypeVar(self):
+    _, errors = self.InferAndCheck("""\
+      from typing import TypeVar
+      typevar = TypeVar
+      T = typevar()
+      T = typevar("T")  # ok
+      T = typevar(str())
+      S = typevar("S", covariant=False)  # ok
+      T = typevar("T", covariant=False)
+    """)
+    self.assertErrorLogIs(errors, [
+        (1, "not-supported-yet"),
+        (3, "invalid-typevar"),
+        (5, "invalid-typevar", "string"),
+        (7, "invalid-typevar", "already defined"),
+    ])
+
 
 if __name__ == "__main__":
   test_inference.main()

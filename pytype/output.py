@@ -5,6 +5,7 @@ TOP_LEVEL_IGNORE = {
     "__builtins__",
     "__name__",
     "__future__",
+    "TypeVar",
 }
 
 CLASS_LEVEL_IGNORE = {

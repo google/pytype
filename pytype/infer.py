@@ -56,6 +56,7 @@ class CallTracer(vm.VirtualMachine):
   def __init__(self, *args, **kwargs):
     super(CallTracer, self).__init__(*args, **kwargs)
     self._unknowns = {}
+    self._typevars = {}
     self._calls = set()
     self._method_calls = set()
     self._instance_cache = {}
@@ -251,6 +252,13 @@ class CallTracer(vm.VirtualMachine):
     self.analyze_toplevel(node, defs, ignore)
     return node
 
+  def trace_typevar(self, name, typevar):
+    if name in self._typevars and self._typevars[name] != typevar:
+      self.errorlog.invalid_typevar(
+          self.frame.current_opcode,
+          "%r is already defined with different arguments" % name)
+    self._typevars[name] = typevar
+
   def trace_unknown(self, name, unknown):
     self._unknowns[name] = unknown
 
@@ -306,10 +314,15 @@ class CallTracer(vm.VirtualMachine):
               assert isinstance(option, abstract.Empty)
               d = pytd.AnythingType()
           if isinstance(d, pytd.TYPE):
-            data.append(pytd.Constant(name, d))
+            if name in self._typevars:
+              # TODO(kramm): Check that this constant is, in fact, the TypeVar.
+              pass
+            else:
+              data.append(pytd.Constant(name, d))
           else:
             data.append(d)
-    return pytd_utils.WrapTypeDeclUnit("inferred", data)
+    ty = pytd_utils.WrapTypeDeclUnit("inferred", data)
+    return ty.Visit(visitors.AdjustTypeParameters())
 
   @staticmethod
   def _call_traces_to_function(call_traces, name_transform=lambda x: x):
@@ -373,13 +386,17 @@ class CallTracer(vm.VirtualMachine):
   def pytd_aliases(self):
     return ()  # TODO(kramm): Compute these.
 
+  def pytd_typevars(self):
+    return [t.to_pytd_def(self.exitpoint, name)
+            for name, t in self._typevars.items()]
+
   def compute_types(self, defs, ignore):
     ty = pytd_utils.Concat(
         self.pytd_for_types(defs, ignore),
         pytd.TypeDeclUnit(
             "unknowns",
             constants=tuple(),
-            type_params=tuple(),
+            type_params=tuple(self.pytd_typevars()),
             classes=tuple(self.pytd_classes_for_unknowns()) +
             tuple(self.pytd_classes_for_call_traces()),
             functions=tuple(self.pytd_functions_for_call_traces()),
