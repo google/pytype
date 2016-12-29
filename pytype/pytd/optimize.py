@@ -231,6 +231,12 @@ class CombineContainers(visitors.Visitor):
   .
   """
 
+  def _key(self, t):
+    if isinstance(t, pytd.TupleType):
+      return (t.base_type, len(t.parameters))
+    else:
+      return t.base_type
+
   def VisitUnionType(self, union):
     """Push unions down into containers.
 
@@ -250,29 +256,54 @@ class CombineContainers(visitors.Visitor):
     union = utils.JoinTypes(union.type_list)  # flatten
     if not isinstance(union, pytd.UnionType):
       union = pytd.UnionType((union,))
+    merge_tuples = True
+    tuple_length = None
+    for t in union.type_list:
+      if isinstance(t, pytd.TupleType):
+        if tuple_length is None:
+          tuple_length = len(t.parameters)
+        elif tuple_length != len(t.parameters):
+          break
+      elif (isinstance(t, pytd.HomogeneousContainerType) and
+            t.base_type.name in ("__builtin__.tuple", "typing.Tuple")):
+        break
+    else:
+      merge_tuples = False
+    if merge_tuples:
+      # If our union contains homogeneous tuples, or heterogeneous tuples of
+      # differing lengths, we want to turn all of the tuples into homogeneous
+      # ones so that they can be merged into a single container.
+      type_list = tuple(
+          pytd.HomogeneousContainerType(
+              base_type=t.base_type,
+              parameters=(pytd.UnionType(t.parameters),))
+          if isinstance(t, pytd.TupleType) else t for t in union.type_list)
+      union = union.Replace(type_list=type_list)
     collect = {}
     has_redundant_base_types = False
     for t in union.type_list:
       if isinstance(t, pytd.GenericType):
-        if t.base_type in collect:
+        key = self._key(t)
+        if key in collect:
           has_redundant_base_types = True
-          collect[t.base_type] = tuple(
+          collect[key] = tuple(
               utils.JoinTypes([p1, p2])
-              for p1, p2 in zip(collect[t.base_type], t.parameters))
+              for p1, p2 in zip(collect[key], t.parameters))
         else:
-          collect[t.base_type] = t.parameters
+          collect[key] = t.parameters
     if not has_redundant_base_types:
       return union
     result = pytd.NothingType()
     done = set()
     for t in union.type_list:
       if isinstance(t, pytd.GenericType):
-        if t.base_type in done:
+        key = self._key(t)
+        if key in done:
           continue  # already added
-        parameters = collect[t.base_type]
+        parameters = collect[key]
         add = t.Replace(parameters=tuple(p.Visit(CombineContainers())
                                          for p in parameters))
-        done.add(t.base_type)
+        done.add(key)
       else:
         add = t
       result = utils.JoinTypes([result, add])

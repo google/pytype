@@ -475,7 +475,6 @@ class BuiltinTests(test_inference.InferenceTest):
       def seed(self, a=...) -> NoneType
     """)
 
-  @unittest.skip("flaky")
   def testDivMod2(self):
     ty = self.Infer("""
       def seed(self, a=None):
@@ -483,13 +482,10 @@ class BuiltinTests(test_inference.InferenceTest):
           a = int(16)
         return divmod(a, 30268)
     """, deep=True, solve_unknowns=True)
-    # We sometimes infer an incorrect return type of
-    # Tuple[int or float or complex]
     self.assertTypesMatchPytd(ty, """
       def seed(self, a: Union[complex, float, int] = ...) -> Tuple[int or float or complex, ...]
     """)
 
-  @unittest.skip("flaky")
   def testDivMod3(self):
     ty = self.Infer("""
       def seed(self, a=None):
@@ -497,8 +493,6 @@ class BuiltinTests(test_inference.InferenceTest):
           a = long(16)
         return divmod(a, 30268)
     """, deep=True, solve_unknowns=True)
-    # We sometimes infer an incorrect return type of
-    # Tuple[int or float or complex]
     self.assertTypesMatchPytd(ty, """
       def seed(self, a: Union[complex, float, int] = ...) -> Tuple[int or float or complex, ...]
     """)

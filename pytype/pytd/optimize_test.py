@@ -623,13 +623,11 @@ class TestOptimize(parser_test_base.ParserTest):
     new_src = self.ApplyVisitorToString(src, optimize.CombineContainers())
     self.AssertSourceEquals(new_src, expected)
 
-  @unittest.skip("Incorrectly combined into tuple[int]")
   def testCombineDifferentLengthTuples(self):
     src = textwrap.dedent("""
       x = ...  # type: tuple[int] or tuple[int, str]
     """)
     expected = textwrap.dedent("""
-      # Not combining at all is also okay
       x = ...  # type: tuple[int or str, ...]
     """)
     new_src = self.ApplyVisitorToString(src, optimize.CombineContainers())
