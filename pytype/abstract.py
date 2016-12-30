@@ -2874,6 +2874,7 @@ class TypeVariable(Unsolvable):
     self.bound = bound
     self.covariant = covariant
     self.contravariant = contravariant
+    self.opcode = self.vm.frame.current_opcode  # opcode of definition or import
 
   def __eq__(self, other):
     return (self.name == other.name and

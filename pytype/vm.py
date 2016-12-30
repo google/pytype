@@ -614,9 +614,14 @@ class VirtualMachine(object):
         f_globals.members.items(),
         key=lambda (name, var): (sum(name == v.name for v in var.data), name))
     for name, var in global_members:
-      for b in var.bindings:
-        if isinstance(b.data, abstract.InterpreterClass):
-          b.data.official_name = name
+      for b in var.data:
+        if isinstance(b, abstract.InterpreterClass):
+          b.official_name = name
+        elif isinstance(b, abstract.TypeVariable):
+          if b.name != name:
+            message = "TypeVar(%r) must be stored as %r, not %r" % (
+                b.name, b.name, name)
+            self.errorlog.invalid_typevar(b.opcode, message)
     for func in self.functions_with_late_annotations:
       self._eval_late_annotations(node, func, f_globals)
     assert not self.frames, "Frames left over!"

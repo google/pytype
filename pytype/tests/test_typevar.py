@@ -68,6 +68,16 @@ class TypeVarTest(test_inference.InferenceTest):
         def f(x: AnyStr) -> AnyStr
       """)
 
+  def testUnusedTypeVar(self):
+    ty = self.Infer("""
+      from typing import TypeVar  # pytype: disable=not-supported-yet
+      T = TypeVar("T")
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import TypeVar
+      T = TypeVar("T")
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

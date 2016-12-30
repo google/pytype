@@ -313,12 +313,10 @@ class CallTracer(vm.VirtualMachine):
             if isinstance(d, pytd.NothingType):
               assert isinstance(option, abstract.Empty)
               d = pytd.AnythingType()
-          if isinstance(d, pytd.TYPE):
-            if name in self._typevars:
-              # TODO(kramm): Check that this constant is, in fact, the TypeVar.
-              pass
-            else:
-              data.append(pytd.Constant(name, d))
+          if isinstance(d, pytd.TypeParameter):
+            pass  # We ignore these. They're stored by pytd_typevars.
+          elif isinstance(d, pytd.TYPE):
+            data.append(pytd.Constant(name, d))
           else:
             data.append(d)
     return pytd_utils.WrapTypeDeclUnit("inferred", data)
