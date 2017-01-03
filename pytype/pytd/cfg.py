@@ -390,8 +390,10 @@ class Variable(object):
       A filtered list of bindings for this variable.
     """
     num_bindings = len(self.bindings)
-    if (len(self._cfgnode_to_bindings) == 1 or num_bindings == 1) and any(
-        n in viewpoint.reachable_subset for n in self._cfgnode_to_bindings):
+    if (viewpoint is None or
+        ((len(self._cfgnode_to_bindings) == 1 or num_bindings == 1) and
+         any(n in viewpoint.reachable_subset
+             for n in self._cfgnode_to_bindings))):
       return self.bindings
     result = set()
     seen = set()

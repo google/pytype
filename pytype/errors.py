@@ -9,7 +9,6 @@ import sys
 from pytype import abstract
 from pytype import typing
 from pytype import utils
-from pytype.pytd import pep484
 from pytype.pytd import pytd
 from pytype.pytd import utils as pytd_utils
 
@@ -222,18 +221,13 @@ class ErrorLogBase(object):
 class ErrorLog(ErrorLogBase):
   """ErrorLog with convenience functions."""
 
+  def _pytd_print(self, pytd_type):
+    return pytd.Print(pytd_utils.CanonicalOrdering(pytd_type))
+
   def _print_as_expected_type(self, t):
-    if isinstance(t, (abstract.Unknown, abstract.Unsolvable)):
-      return "Any"
-    elif isinstance(t, abstract.ParameterizedClass):
-      params = [t.type_parameters[type_param.name] for type_param in t.template]
-      base = self._print_as_expected_type(t.base_cls)
-      base = pep484.PEP484_MaybeCapitalize(base) or base
-      return "%s[%s]" % (base, ", ".join(self._print_as_expected_type(p)
-                                         for p in params))
-    elif isinstance(t, abstract.Union):
-      options = sorted(self._print_as_expected_type(o) for o in t.options)
-      return "%s[%s]" % (t.name, ", ".join(options))
+    if isinstance(t, (abstract.Unknown, abstract.Unsolvable, abstract.Class,
+                      abstract.Union)):
+      return self._pytd_print(t.get_instance_type())
     elif isinstance(t, abstract.PythonConstant):
       return re.sub(r"(\\n|\s)+", " ", repr(t.pyval))
     elif isinstance(t, typing.TypingClass) or not t.cls:
@@ -242,34 +236,7 @@ class ErrorLog(ErrorLogBase):
       return "<instance of %s>" % self._print_as_expected_type(t.cls.data[0])
 
   def _print_as_actual_type(self, t):
-    if isinstance(t, abstract.Instance):
-      if t.cls:
-        cls = t.cls.bindings[0].data
-        if isinstance(cls, abstract.ParameterizedClass):
-          cls = cls.base_cls
-        if isinstance(cls, abstract.PyTDClass) and cls.template:
-          params = []
-          for template_item in cls.template:
-            param_var = t.type_parameters.get(template_item.name)
-            if param_var is None or not param_var.bindings:
-              param = "nothing"
-            else:
-              param_values = abstract.merge_values(
-                  param_var.data, param_var.bindings[0].data.vm)
-              param = self._print_as_actual_type(param_values)
-            params.append(param)
-          name = pep484.PEP484_MaybeCapitalize(t.name) or t.name
-          return "%s[%s]" % (name, ", ".join(params))
-      return t.name
-    elif isinstance(t, (abstract.Unknown, abstract.Unsolvable)):
-      return "Any"
-    elif isinstance(t, abstract.Class):
-      return "Type[%s]" % self._print_as_expected_type(t)
-    elif isinstance(t, abstract.Union):
-      options = sorted(self._print_as_actual_type(o) for o in t.options)
-      return "%s[%s]" % (t.name, ", ".join(options))
-    else:
-      return t.name
+    return self._pytd_print(t.to_type())
 
   def _print_sig(self, sig):
     """Pretty-print a function.Signature object."""

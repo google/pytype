@@ -126,11 +126,8 @@ class ErrorTest(test_inference.InferenceTest):
           for row in mod.Codec():
             pass
       """, pythonpath=[d.path])
-      # "Line 4, in f: No attribute '__iter__' on Codec"
-      self.assertErrorLogContains(
-          errors, r"line 4.*No attribute.*__iter__.*on Codec")
-      self.assertErrorLogDoesNotContain(
-          errors, "__class__")
+      error = r"No attribute.*__iter__.*on mod\.Codec"
+      self.assertErrorLogIs(errors, [(4, "attribute-error", error)])
 
   def testInvalidIteratorFromClass(self):
     _, errors = self.InferAndCheck("""
@@ -241,7 +238,7 @@ class ErrorTest(test_inference.InferenceTest):
     self.assertErrorLogIs(errors, [
         (5, "attribute-error", r"No attribute 'foo' on Type\[Foo\]"),
         (11, "attribute-error",
-         r"No attribute 'bar' on Union\[NoneType, int\]")])
+         r"No attribute 'bar' on Union\[None, int\]")])
 
   def testAttributeErrorGetAttribute(self):
     _, errors = self.InferAndCheck("""\
@@ -590,8 +587,8 @@ class ErrorTest(test_inference.InferenceTest):
         y = a.f(a.B)
         z = a.f(a.C)
       """, pythonpath=[d.path], deep=True)
-      self.assertErrorLogIs(errors, [(
-          4, "wrong-arg-types", r"Expected.*Type\[A\].*Actual.*Type\[C\]")])
+      error = r"Expected.*Type\[a\.A\].*Actual.*Type\[a\.C\]"
+      self.assertErrorLogIs(errors, [(4, "wrong-arg-types", error)])
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         a = ...  # type: module
@@ -712,7 +709,7 @@ class ErrorTest(test_inference.InferenceTest):
     _, errors = self.InferAndCheck("""\
       X = type(3, (int, object), {"a": 1})
     """, solve_unknowns=True)
-    error = r"Actual.*int.*Tuple\[Union\[Type\[int\], Type\[object\]\]\]"
+    error = r"Actual.*int.*Tuple\[Type\[int\], Type\[object\]\]"
     self.assertErrorLogIs(errors, [(1, "wrong-arg-count", error)])
 
   def testBadTypeBases(self):
@@ -838,7 +835,7 @@ class ErrorTest(test_inference.InferenceTest):
         x = [float]
       f(x)
     """)
-    error = r"Actual.*Union\[List\[Type\[float\]\], Type\[dict\]\]"
+    error = r"Actual.*Union\[Type\[dict\], List\[Type\[float\]\]\]"
     self.assertErrorLogIs(errors, [(8, "wrong-arg-count", error)])
 
   def testBadDictAttribute(self):
@@ -897,6 +894,22 @@ class ErrorTest(test_inference.InferenceTest):
         (4, "not-supported-yet"),
         (4, "invalid-typevar", "X.*Y"),
     ])
+
+  def testTuplePrinting(self):
+    # TODO(rechen): The type of argument x should be Tuple[str, ...]
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      from typing import Tuple
+      def f(x: Tuple[str]):
+        pass
+      f((42,))
+      f(tuple([42]))
+    """)
+    x_type = r"Tuple\[str, \.\.\.\]"
+    self.assertErrorLogIs(errors, [(5, "wrong-arg-types",
+                                    r"%s.*Tuple\[int\]" % x_type),
+                                   (6, "wrong-arg-types",
+                                    r"%s.*Tuple\[int, \.\.\.\]" % x_type)])
 
 
 if __name__ == "__main__":

@@ -550,7 +550,7 @@ class AnnotationTest(test_inference.InferenceTest):
       def foo() -> None
       def bar(path: str, **kwargs) -> str
     """)
-    error = r"Actually passed:.*path: NoneType"
+    error = r"Actually passed:.*path: None"
     self.assertErrorLogIs(errors, [(9, "wrong-arg-types", error)])
 
   def testBadCallWithKwarg(self):
@@ -573,7 +573,7 @@ class AnnotationTest(test_inference.InferenceTest):
       def foo() -> None
       def bar(path: str, **kwargs) -> str
     """)
-    error = r"Actually passed:.*path: NoneType, x: int"
+    error = r"Actually passed:.*path: None, x: int"
     self.assertErrorLogIs(errors, [(9, "wrong-arg-types", error)])
 
   def testSkipFunctionsWithAnnotations(self):
@@ -723,8 +723,7 @@ class AnnotationTest(test_inference.InferenceTest):
     self.assertTypesMatchPytd(ty, """
       def f(x, *args) -> Tuple[int, ...]
     """)
-    # TODO(rechen): Should be Tuple[int, ...] in the error message
-    error = r"Expected.*Tuple\[int\].*Actually passed.*List\[float\]"
+    error = r"Expected.*Tuple\[int, \.\.\.\].*Actually passed.*List\[float\]"
     self.assertErrorLogIs(errors, [(7, "wrong-arg-types", error)])
 
   def testKwargs(self):

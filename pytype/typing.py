@@ -124,7 +124,8 @@ class Tuple(Container):
 
   def _build_value(self, node, inner):
     # Our tuples are homogeneous (for now).
-    inner = (abstract.Union(inner, self.vm),)
+    if len(inner) > 1:
+      inner = (abstract.Union(inner, self.vm),)
     return super(Tuple, self)._build_value(node, inner)
 
 
