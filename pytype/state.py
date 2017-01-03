@@ -161,7 +161,7 @@ class FrameState(object):
       data_stack = self.data_stack
     else:
       data_stack = tuple(
-          self.node.program.MergeVariables(node, "stack%d" % i, [v1, v2])
+          self.node.program.MergeVariables(node, [v1, v2])
           for i, (v1, v2) in enumerate(both))
     if self.node is not other.node:
       self.node.ConnectTo(other.node)
@@ -246,9 +246,8 @@ class Frame(object):
     self.cells = {}
 
     self.allowed_returns = None
-    self.return_variable = self.vm.program.NewVariable(
-        "return(frame:" + f_code.co_name + ")")
-    self.yield_variable = self.vm.program.NewVariable("yield")
+    self.return_variable = self.vm.program.NewVariable()
+    self.yield_variable = self.vm.program.NewVariable()
 
     # A closure g communicates with its outer function f through two
     # fields in CodeType (both of which are tuples of strings):
@@ -260,8 +259,8 @@ class Frame(object):
     # always the parameters), but won't otherwise.
     # Cells 0 .. num(cellvars)-1 : cellvar; num(cellvars) .. end : freevar
     assert len(f_code.co_freevars) == len(closure or [])
-    self.cells = [self.vm.program.NewVariable(name)
-                  for name in f_code.co_cellvars]
+    self.cells = [self.vm.program.NewVariable()
+                  for _ in f_code.co_cellvars]
     self.cells.extend(closure or [])
 
     if callargs:
@@ -292,7 +291,7 @@ class Condition(object):
     # The condition is represented by a dummy variable with a single binding
     # to None.  The origins for this binding are the dnf clauses with the
     # addition of the parent's binding.
-    self._var = node.program.NewVariable("__split")
+    self._var = node.program.NewVariable()
     self._binding = self._var.AddBinding(None)
     for clause in dnf:
       sources = set(clause)

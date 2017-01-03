@@ -65,7 +65,7 @@ class Program(object):
   def variables(self):
     return {b.variable for node in self.cfg_nodes for b in node.bindings}
 
-  def NewVariable(self, name, bindings=None, source_set=None, where=None):
+  def NewVariable(self, bindings=None, source_set=None, where=None):
     """Create a new Variable.
 
     A Variable typically models a "union type", i.e., a disjunction of different
@@ -75,7 +75,6 @@ class Program(object):
     the different bindings.
 
     Arguments:
-      name: Name of the variable. For logging. Doesn't need to be unique.
       bindings: Optionally, a sequence of possible bindings this variable can
         have.
       source_set: If we have bindings, the source_set they all depend on. An
@@ -85,7 +84,7 @@ class Program(object):
     Returns:
       A Variable instance.
     """
-    variable = Variable(self, name, self.next_variable_id)
+    variable = Variable(self, self.next_variable_id)
     self.next_variable_id += 1
     if bindings is not None:
       assert source_set is not None and where is not None
@@ -94,7 +93,7 @@ class Program(object):
         binding.AddOrigin(where, source_set)
     return variable
 
-  def MergeVariables(self, node, name, variables):
+  def MergeVariables(self, node, variables):
     """Create a combined Variable for a list of variables.
 
     The purpose of this function is to create a final result variable for
@@ -103,20 +102,19 @@ class Program(object):
 
     Args:
       node: The current CFG node.
-      name: Name of the new variable.
       variables: List of variables.
     Returns:
       A typegraph.Variable.
     """
     if not variables:
-      return self.NewVariable(name)  # return empty var
+      return self.NewVariable()  # return empty var
     elif len(variables) == 1:
       v, = variables
       return v
     elif all(v is variables[0] for v in variables):
       return variables[0]
     else:
-      v = self.NewVariable(name)
+      v = self.NewVariable()
       for r in variables:
         v.PasteVariable(r, node)
       return v
@@ -319,9 +317,9 @@ class Binding(object):
     origin = self._FindOrAddOrigin(where)
     origin.AddSourceSet(source_set)
 
-  def AssignToNewVariable(self, name, where):
+  def AssignToNewVariable(self, where):
     """Assign this binding to a new variable."""
-    variable = self.program.NewVariable(name)
+    variable = self.program.NewVariable()
     binding = variable.AddBinding(self.data)
     binding.AddOrigin(where, {self})
     return variable
@@ -359,13 +357,12 @@ class Variable(object):
   binding to the OrderedDict takes 2-3x as long as adding it to both the list
   and the dict.
   """
-  __slots__ = ("program", "name", "id", "bindings", "_data_id_to_binding",
+  __slots__ = ("program", "id", "bindings", "_data_id_to_binding",
                "_cfgnode_to_bindings", "_callbacks")
 
-  def __init__(self, program, name, variable_id):
+  def __init__(self, program, variable_id):
     """Initialize a new Variable. Called through Program.NewVariable."""
     self.program = program
-    self.name = name
     self.id = variable_id
     self.bindings = []
     self._data_id_to_binding = {}
@@ -373,8 +370,8 @@ class Variable(object):
     self._callbacks = []
 
   def __repr__(self):
-    return "<Variable %d \"%s\": %d choices>" % (
-        self.id, self.name, len(self.bindings))
+    return "<Variable %d: %d choices>" % (
+        self.id, len(self.bindings))
 
   __str__ = __repr__
 
@@ -492,7 +489,7 @@ class Variable(object):
       else:
         copy.AddOrigin(where, {binding})
 
-  def AssignToNewVariable(self, name, where):
+  def AssignToNewVariable(self, where):
     """Assign this variable to a new variable.
 
     This is essentially a copy: All entries in the Union will be copied to
@@ -500,13 +497,12 @@ class Variable(object):
     as an origin.
 
     Arguments:
-      name: Name of the new variable.
       where: CFG node where the assignment happens.
 
     Returns:
       A new variable.
     """
-    new_variable = self.program.NewVariable(name)
+    new_variable = self.program.NewVariable()
     for binding in self.bindings:
       new_binding = new_variable.AddBinding(binding.data)
       new_binding.AddOrigin(where, {binding})

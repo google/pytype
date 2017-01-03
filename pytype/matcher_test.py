@@ -20,7 +20,7 @@ class MatcherTest(unittest.TestCase):
     return abstract.InterpreterClass(name, [], {}, None, self.vm)
 
   def _match_var(self, left, right):
-    var = self.vm.program.NewVariable("foo")
+    var = self.vm.program.NewVariable()
     left_binding = var.AddBinding(left)
     return self.vm.matcher.match_var_against_type(
         var, right, {}, self.vm.root_cfg_node, {var: left_binding})
@@ -51,28 +51,28 @@ class MatcherTest(unittest.TestCase):
     meta1 = self._make_class("m1")
     meta2 = self._make_class("m2")
     left.cls = self.vm.program.NewVariable(
-        "cls", [meta1, meta2], [], self.vm.root_cfg_node)
+        [meta1, meta2], [], self.vm.root_cfg_node)
     result1 = self._match_var(left, meta1)
     result2 = self._match_var(left, meta2)
     self.assertEquals(result1, {})
     self.assertEquals(result2, {})
 
   def testEmptyAgainstClass(self):
-    var = self.vm.program.NewVariable("foo")
+    var = self.vm.program.NewVariable()
     right = self._make_class("bar")
     result = self.vm.matcher.match_var_against_type(
         var, right, {}, self.vm.root_cfg_node, {})
     self.assertEquals(result, {})
 
   def testEmptyAgainstNothing(self):
-    var = self.vm.program.NewVariable("foo")
+    var = self.vm.program.NewVariable()
     right = abstract.Nothing(self.vm)
     result = self.vm.matcher.match_var_against_type(
         var, right, {}, self.vm.root_cfg_node, {})
     self.assertEquals(result, {})
 
   def testEmptyAgainstTypeParameter(self):
-    var = self.vm.program.NewVariable("foo")
+    var = self.vm.program.NewVariable()
     right = abstract.TypeParameter("T", self.vm)
     result = self.vm.matcher.match_var_against_type(
         var, right, {}, self.vm.root_cfg_node, {})
@@ -80,7 +80,7 @@ class MatcherTest(unittest.TestCase):
     self.assertFalse(result["T"].bindings)
 
   def testEmptyAgainstUnsolvable(self):
-    var = self.vm.program.NewVariable("foo")
+    var = self.vm.program.NewVariable()
     right = abstract.Empty(self.vm)
     result = self.vm.matcher.match_var_against_type(
         var, right, {}, self.vm.root_cfg_node, {})

@@ -78,7 +78,7 @@ class AbstractAttributeHandler(object):
           node, obj, name, valself, valcls, condition)
     elif isinstance(obj, abstract.Union):
       nodes = []
-      ret = self.vm.program.NewVariable(name)
+      ret = self.vm.program.NewVariable()
       for o in obj.options:
         node2, attr = self.get_attribute(
             node, o, name, valself, valcls, condition)
@@ -91,8 +91,8 @@ class AbstractAttributeHandler(object):
         return node, None
     elif isinstance(obj, abstract.SuperInstance):
       if obj.super_obj:
-        valself = obj.super_obj.to_variable(node, "self").bindings[0]
-      valcls = obj.super_cls.to_variable(node, "cls").bindings[0]
+        valself = obj.super_obj.to_variable(node).bindings[0]
+      valcls = obj.super_cls.to_variable(node).bindings[0]
       return node, self._lookup_from_mro(
           node, obj.super_cls, name, valself, valcls, skip=obj.super_cls)
     elif isinstance(obj, abstract.Super):
@@ -182,8 +182,7 @@ class AbstractAttributeHandler(object):
       if name in obj.members:
         obj.members[name].PasteVariable(value, node)
       else:
-        obj.members[name] = value.AssignToNewVariable(
-            obj.name + "." + name, node)
+        obj.members[name] = value.AssignToNewVariable(node)
       return node
     else:
       raise NotImplementedError(obj.__class__.__name__)
@@ -225,7 +224,7 @@ class AbstractAttributeHandler(object):
         candidates.extend(new_candidates)
       else:
         candidates.append(attr)
-    attr = self._filter_and_merge_candidates(node, candidates, name, condition)
+    attr = self._filter_and_merge_candidates(node, candidates, condition)
     if attr is None and obj.maybe_missing_members:
       # The VM hit maximum depth while initializing this instance, so it may
       # have attributes that we don't know about.
@@ -238,7 +237,7 @@ class AbstractAttributeHandler(object):
     if not attr.bindings:
       return node, None
     if isinstance(cls, abstract.InterpreterClass):
-      result = self.vm.program.NewVariable(name)
+      result = self.vm.program.NewVariable()
       nodes = []
       # Deal with descriptors as a potential additional level of indirection.
       for v in attr.Bindings(node):
@@ -250,7 +249,7 @@ class AbstractAttributeHandler(object):
             posargs.append(valself.variable)
           if valcls:
             if not valself:
-              posargs.append(self.vm.convert.none.to_variable(node, "None"))
+              posargs.append(self.vm.convert.none.to_variable(node))
             posargs.append(valcls.variable)
           node2, get_result = self.vm.call_function(
               node2, getter, abstract.FunctionArgs(tuple(posargs)))
@@ -291,23 +290,23 @@ class AbstractAttributeHandler(object):
       if attr_var and attr_var.bindings:
         vm = self.vm  # pytype: disable=attribute-error
         name_var = abstract.AbstractOrConcreteValue(
-            name, vm.convert.str_type, vm, node).to_variable(node, name)
+            name, vm.convert.str_type, vm, node).to_variable(node)
         return vm.call_function(
             node, attr_var, abstract.FunctionArgs((name_var,)), condition)
     return node, None
 
   def _lookup_from_mro(self, node, obj, name, valself, valcls, skip=None):
     """Find an identifier in the MRO of the class."""
-    ret = self.vm.program.NewVariable(name)
+    ret = self.vm.program.NewVariable()
     add_origins = []
     variableself = variablecls = None
     if valself:
       assert isinstance(valself, typegraph.Binding)
-      variableself = valself.AssignToNewVariable(valself.variable.name, node)
+      variableself = valself.AssignToNewVariable(node)
       add_origins.append(valself)
     if valcls:
       assert isinstance(valcls, typegraph.Binding)
-      variablecls = valcls.AssignToNewVariable(valcls.variable.name, node)
+      variablecls = valcls.AssignToNewVariable(node)
       add_origins.append(valcls)
 
     for base in obj.mro:
@@ -331,7 +330,7 @@ class AbstractAttributeHandler(object):
     elif isinstance(obj, abstract.Class):
       node, attr = self._get_member(node, obj, name)
       if attr is not None:
-        attr = self._filter_and_merge_candidates(node, [attr], name)
+        attr = self._filter_and_merge_candidates(node, [attr])
       return node, attr
     elif isinstance(obj, (abstract.Unknown, abstract.Unsolvable)):
       # The object doesn't have an MRO, so this is the same as get_attribute
@@ -367,10 +366,10 @@ class AbstractAttributeHandler(object):
         return node, obj.members[name]
     return node, None
 
-  def _filter_and_merge_candidates(self, node, candidates, name,
+  def _filter_and_merge_candidates(self, node, candidates,
                                    condition=None):
     """Merge the given candidates into one variable, filtered by the node."""
-    ret = self.vm.program.NewVariable(name)
+    ret = self.vm.program.NewVariable()
     for candidate in candidates:
       for binding in candidate.Bindings(node):
         val = binding.data
@@ -441,7 +440,6 @@ class AbstractAttributeHandler(object):
       #              (variable = self.members[name] = var)?
       log.debug("Setting %s to the %d values in %r",
                 name, len(var.bindings), var)
-      long_name = obj.name + "." + name
-      variable = var.AssignToNewVariable(long_name, node)
+      variable = var.AssignToNewVariable(node)
       obj.members[name] = variable
     return node

@@ -160,7 +160,8 @@ class AtomicAbstractValue(object):
     return ()
 
   def get_type_parameter(self, node, name):
-    return self.vm.convert.create_new_unsolvable(node, name)
+    del name
+    return self.vm.convert.create_new_unsolvable(node)
 
   def property_get(self, callself, callcls):  # pylint: disable=unused-argument
     """Bind this value to the given self and class.
@@ -275,22 +276,21 @@ class AtomicAbstractValue(object):
     return self.get_default_type_key()
 
   def instantiate(self, node):
-    return Instance(self.to_variable(node, self.name),
-                    self.vm, node).to_variable(node, self.name)
+    return Instance(self.to_variable(node),
+                    self.vm, node).to_variable(node)
 
-  def to_variable(self, node, name=None):
+  def to_variable(self, node):
     """Build a variable out of this abstract value.
 
     Args:
       node: The current CFG node.
-      name: The name to give the new variable.
     Returns:
       A typegraph.Variable.
     Raises:
       ValueError: If origins is an empty sequence. This is to prevent you from
         creating variables that have no origin and hence can never be used.
     """
-    v = self.vm.program.NewVariable(name or self.name)
+    v = self.vm.program.NewVariable()
     v.AddBinding(self, source_set=[], where=node)
     return v
 
@@ -362,15 +362,15 @@ class Empty(AtomicAbstractValue):
     return pytd.AnythingType()
 
   def get_special_attribute(self, node, name):
-    return self.vm.convert.unsolvable.to_variable(node, name)
+    del name
+    return self.vm.convert.unsolvable.to_variable(node)
 
   def call(self, node, func, args, condition=None):
     del func, args
-    return node, self.vm.convert.unsolvable.to_variable(node, self.name)
+    return node, self.vm.convert.unsolvable.to_variable(node)
 
   def get_class(self):
-    return self.vm.convert.unsolvable.to_variable(
-        self.vm.root_cfg_node, self.name)
+    return self.vm.convert.unsolvable.to_variable(self.vm.root_cfg_node)
 
 
 class PythonConstant(object):
@@ -469,7 +469,7 @@ class SimpleAbstractValue(AtomicAbstractValue):
     param = self.type_parameters.get(name)
     if not param:
       log.info("Creating new empty type param %s", name)
-      param = self.vm.program.NewVariable(name, [], [], node)
+      param = self.vm.program.NewVariable([], [], node)
       self.type_parameters[name] = param
     return param
 
@@ -497,12 +497,12 @@ class SimpleAbstractValue(AtomicAbstractValue):
     assert name not in self.type_parameters
     log.info("Initializing type param %s: %r", name, value.data)
     self.type_parameters[name] = self.vm.program.NewVariable(
-        name, value.data, [], node)
+        value.data, [], node)
 
   def init_type_parameters(self, *names):
     """Initialize the named type parameters to nothing (empty)."""
     self.type_parameters = utils.LazyAliasingMonitorDict(
-        (name, self.vm.program.NewVariable("empty")) for name in names)
+        (name, self.vm.program.NewVariable()) for name in names)
 
   def load_lazy_attribute(self, name):
     """Load the named attribute into self.members."""
@@ -518,7 +518,7 @@ class SimpleAbstractValue(AtomicAbstractValue):
       return node, None
 
   def call(self, node, _, args, condition=None):
-    self_var = self.to_variable(node, self.name)
+    self_var = self.to_variable(node)
     node, var = self.vm.attribute_handler.get_attribute(
         node, self, "__call__", self_var.bindings[0])
     if var is not None and var.bindings:
@@ -533,8 +533,8 @@ class SimpleAbstractValue(AtomicAbstractValue):
     else:
       return "<v%d %s>" % (self.id, self.name)
 
-  def to_variable(self, node, name=None):
-    return super(SimpleAbstractValue, self).to_variable(node, name or self.name)
+  def to_variable(self, node):
+    return super(SimpleAbstractValue, self).to_variable(node)
 
   def get_class(self):
     # See Py_TYPE() in Include/object.h
@@ -670,8 +670,7 @@ class Instance(SimpleAbstractValue):
   def make_template_unsolvable(self, template, node):
     for formal in template:
       self.initialize_type_parameter(
-          node, formal.name, self.vm.convert.unsolvable.to_variable(
-              node, formal.name))
+          node, formal.name, self.vm.convert.unsolvable.to_variable(node))
 
   def compatible_with(self, logical_value):  # pylint: disable=unused-argument
     # Containers with unset parameters and NoneType instances cannot match True.
@@ -714,7 +713,7 @@ class ValueWithSlots(Instance):
     """Add a new slot to this value."""
     assert name not in self._slots, "slot %s already occupied" % name
     f = self.make_native_function(name, method)
-    self._slots[name] = f.to_variable(self.vm.root_cfg_node, name)
+    self._slots[name] = f.to_variable(self.vm.root_cfg_node)
     _, attr = self.vm.attribute_handler.get_instance_attribute(
         self.vm.root_cfg_node, self, name,
         self.to_variable(self.vm.root_cfg_node).bindings[0])
@@ -802,8 +801,7 @@ class Dict(ValueWithSlots, PythonConstant, WrapsDict("pyval")):
       # parameter, even if we don't know the exact type of self[name]. So let's
       # just use the (less accurate) value from pytd.
       results.append(ret)
-    return node, self.vm.join_variables(
-        node, "getitem[var%s]" % name_var.id, results)
+    return node, self.vm.join_variables(node, results)
 
   def set_str_item(self, node, name, value_var):
     self.merge_type_parameter(node, K, self.vm.convert.build_string(node, name))
@@ -919,7 +917,7 @@ class Union(AtomicAbstractValue):
     return "%s[%s]" % (self.name, ", ".join(repr(o) for o in self.options))
 
   def instantiate(self, node):
-    var = self.vm.program.NewVariable(self.name)
+    var = self.vm.program.NewVariable()
     for option in self.options:
       var.PasteVariable(option.instantiate(node), node)
     return var
@@ -933,13 +931,13 @@ class Union(AtomicAbstractValue):
                                 for t in self.options))
 
   def get_class(self):
-    var = self.vm.program.NewVariable("cls")
+    var = self.vm.program.NewVariable()
     for o in self.options:
       var.PasteVariable(o.get_class(), self.vm.root_cfg_node)
     return var
 
   def call(self, node, func, args, condition=None):
-    var = self.vm.program.NewVariable("func", self.options, [], node)
+    var = self.vm.program.NewVariable(self.options, [], node)
     return self.vm.call_function(node, var, args, condition=condition)
 
 
@@ -1087,16 +1085,16 @@ class SuperInstance(AtomicAbstractValue):
         "__set__", self.set, self.vm, self.vm.root_cfg_node)
 
   def get(self, node, *unused_args, **unused_kwargs):
-    return node, self.to_variable(node, "get")
+    return node, self.to_variable(node)
 
   def set(self, node, *unused_args, **unused_kwargs):
-    return node, self.to_variable(node, "set")
+    return node, self.to_variable(node)
 
   def get_special_attribute(self, node, name):
     if name == "__get__":
-      return self.get.to_variable(node, name)
+      return self.get.to_variable(node)
     elif name == "__set__":
-      return self.set.to_variable(node, name)
+      return self.set.to_variable(node)
 
   def to_type(self, node, seen=None, view=None):
     return pytd.NamedType("__builtin__.super")
@@ -1121,7 +1119,7 @@ class Super(AtomicAbstractValue):
     super(Super, self).__init__("super", vm)
 
   def call(self, node, _, args, condition=None):
-    result = self.vm.program.NewVariable("super")
+    result = self.vm.program.NewVariable()
     if len(args.posargs) == 1:
       # TODO(kramm): Add a test for this
       for cls in args.posargs[0].bindings:
@@ -1137,7 +1135,7 @@ class Super(AtomicAbstractValue):
     else:
       self.vm.errorlog.super_error(
           self.vm.frame.current_opcode, len(args.posargs))
-      result = self.vm.convert.create_new_unsolvable(node, "super()")
+      result = self.vm.convert.create_new_unsolvable(node)
     return node, result
 
 
@@ -1166,7 +1164,7 @@ class IsInstance(AtomicAbstractValue):
         raise WrongKeywordArgs(
             self._SIGNATURE, args, self.vm, args.namedargs.keys())
       else:
-        result = self.vm.program.NewVariable("isinstance")
+        result = self.vm.program.NewVariable()
         for left in args.posargs[0].bindings:
           for right in args.posargs[1].bindings:
             pyval = self._is_instance(left.data, right.data)
@@ -1174,7 +1172,7 @@ class IsInstance(AtomicAbstractValue):
                               source_set=(left, right), where=node)
     except InvalidParameters as ex:
       self.vm.errorlog.invalid_function_call(self.vm.frame.current_opcode, ex)
-      result = self.vm.convert.create_new_unsolvable(node, "isinstance()")
+      result = self.vm.convert.create_new_unsolvable(node)
 
     return node, result
 
@@ -1354,7 +1352,7 @@ class PyTDSignature(object):
         # Assume the missing parameter is filled in by *args or **kwargs.
         # Unfortunately, we can't easily use *args or **kwargs to fill in
         # something more precise, since we need a Value, not a Variable.
-        var = self.vm.convert.create_new_unsolvable(node, p.name)
+        var = self.vm.convert.create_new_unsolvable(node)
         arg_dict[p.name] = var.bindings[0]
 
     for p in self.pytd_sig.params:
@@ -1396,7 +1394,7 @@ class PyTDSignature(object):
         # The return type contains a type parameter without a substitution. See
         # test_functions.test_type_parameter_in_return for an example of a
         # return type being set to Unknown here and solved later.
-        ret_map[t] = Unknown(self.vm).to_variable(node, "ret")
+        ret_map[t] = Unknown(self.vm).to_variable(node)
       else:
         if (not ret_map[t].bindings and
             isinstance(return_type, pytd.TypeParameter)):
@@ -1481,7 +1479,7 @@ class ClassMethod(AtomicAbstractValue):
     # Since this only used in pyi, we don't need to verify the type of the "cls"
     # arg a second time. So just pass an unsolveable. (All we care about is the
     # return type, anyway.)
-    cls = self.vm.convert.create_new_unsolvable(node, "cls")
+    cls = self.vm.convert.create_new_unsolvable(node)
     return self.method.call(
         node, func, args.replace(posargs=(cls,) + args.posargs), condition)
 
@@ -1550,7 +1548,7 @@ class PyTDFunction(Function):
     args = args.simplify(node)
     self._log_args(arg.bindings for arg in args.posargs)
     ret_map = {}
-    retvar = self.vm.program.NewVariable("%s ret" % self.name)
+    retvar = self.vm.program.NewVariable()
     all_mutations = []
     # The following line may raise FailedFunctionCall
     possible_calls = self._match_args(node, args, condition)
@@ -1584,7 +1582,7 @@ class PyTDFunction(Function):
       A list of Mutation instances.
     """
     return [Mutation(v, name, self.vm.convert.create_new_unknown(
-        node, name, action="type_param_" + name))
+        node, action="type_param_" + name))
             for v in values if isinstance(v, SimpleAbstractValue)
             for name in v.type_parameters]
 
@@ -1629,7 +1627,7 @@ class PyTDFunction(Function):
     if result is None:
       log.debug("Creating unknown return")
       result = self.vm.convert.create_new_unknown(
-          node, "<unknown return of " + self.name + ">", action="pytd_call")
+          node, action="pytd_call")
     for i, arg in enumerate(args.posargs):
       if isinstance(view[arg].data, Unknown):
         for sig, _, _ in signatures:
@@ -1778,7 +1776,7 @@ class Class(object):
         # Instead of calling object.__new__, our abstract classes directly
         # create instances of themselves.
         return node, None
-    cls = value.AssignToNewVariable(value.data.name, node)
+    cls = value.AssignToNewVariable(node)
     new_args = args.replace(posargs=(cls,) + args.posargs)
     node, variable = self.vm.call_function(node, new, new_args,
                                            condition=condition)
@@ -1902,7 +1900,7 @@ class PyTDClass(SimpleAbstractValue, Class):
       c = self.vm.convert.convert_constant_to_value(
           repr(pyval), pyval, subst=subst, node=node)
       c.parent = self
-      return c.to_variable(self.vm.root_cfg_node, name)
+      return c.to_variable(self.vm.root_cfg_node)
     else:
       raise AssertionError("Invalid class member %s", pytd.Print(pyval))
 
@@ -1913,9 +1911,8 @@ class PyTDClass(SimpleAbstractValue, Class):
           self.name, self.pytd_cls), self.vm, node)
       for type_param in self.template:
         if type_param.name not in value.type_parameters:
-          value.type_parameters[type_param.name] = self.vm.program.NewVariable(
-              type_param.name)
-      results = self.vm.program.NewVariable(self.name)
+          value.type_parameters[type_param.name] = self.vm.program.NewVariable()
+      results = self.vm.program.NewVariable()
       retval = results.AddBinding(value, [func], node)
       node = self._call_init(node, retval, args, condition)
     return node, results
@@ -1951,7 +1948,7 @@ class PyTDClass(SimpleAbstractValue, Class):
         # Constant c cannot be converted without type parameter substitutions,
         # so it must be an instance attribute.
         subst = {itm.name: TypeParameterInstance(
-            itm.name, instance, self.vm).to_variable(node, name)
+            itm.name, instance, self.vm).to_variable(node)
                  for itm in self.template}
         return self._convert_member(name, c, subst, node)
 
@@ -1986,7 +1983,7 @@ class InterpreterClass(SimpleAbstractValue, Class):
     # We allow only one "instance" per code location, regardless of call stack.
     key = self.vm.frame.current_opcode
     if key not in self._instance_cache:
-      cls = self.vm.program.NewVariable(self.name)
+      cls = self.vm.program.NewVariable()
       cls.AddBinding(self, [], self.vm.root_cfg_node)
       self._instance_cache[key] = Instance(cls, self.vm, self.vm.root_cfg_node)
     return self._instance_cache[key]
@@ -1995,7 +1992,7 @@ class InterpreterClass(SimpleAbstractValue, Class):
     node, variable = self._call_new_and_init(node, value, args, condition)
     if variable is None:
       value = self._new_instance()
-      variable = self.vm.program.NewVariable(self.name + " instance")
+      variable = self.vm.program.NewVariable()
       val = variable.AddBinding(value, [], node)
       node = self._call_init(node, val, args, condition)
     return node, variable
@@ -2086,9 +2083,9 @@ class NativeFunction(Function):
     # Originate a new variable for each argument and call.
     return self.func(
         node,
-        *[u.AssignToNewVariable(u.name, node)
+        *[u.AssignToNewVariable(node)
           for u in args.posargs],
-        **{k: u.AssignToNewVariable(u.name, node)
+        **{k: u.AssignToNewVariable(node)
            for k, u in args.namedargs.items()})
 
   def get_positional_names(self):
@@ -2140,8 +2137,7 @@ class InterpreterFunction(Function):
            InterpreterFunction._hash_all(
                (f_globals.members, set(code.co_names)),
                (f_locals.members, set(code.co_varnames)),
-               ({key: vm.program.NewVariable(key, [value], [],
-                                             vm.root_cfg_node)
+               ({key: vm.program.NewVariable([value], [], vm.root_cfg_node)
                  for key, value in annotations.items()}, None),
                (dict(enumerate(defaults)), None),
                (dict(enumerate(closure or ())), None)))
@@ -2248,9 +2244,9 @@ class InterpreterFunction(Function):
       FailedFunctionCall: If the caller supplied incorrect arguments.
     """
     # Originate a new variable for each argument and call.
-    posargs = [u.AssignToNewVariable(u.name, node)
+    posargs = [u.AssignToNewVariable(node)
                for u in args.posargs]
-    kws = {k: u.AssignToNewVariable(u.name, node)
+    kws = {k: u.AssignToNewVariable(node)
            for k, u in args.namedargs.items()}
     if (self.vm.python_version[0] == 2 and
         self.code.co_name in ["<setcomp>", "<dictcomp>", "<genexpr>"]):
@@ -2276,7 +2272,7 @@ class InterpreterFunction(Function):
         if args.starstarargs or (args.starargs and not kwonly):
           # We assume that because we have *args or **kwargs, we can use these
           # to fill in any parameters we might be missing.
-          callargs[key] = self.vm.convert.create_new_unsolvable(node, key)
+          callargs[key] = self.vm.convert.create_new_unsolvable(node)
         else:
           raise MissingParameter(self.signature, args, self.vm, key)
     arg_pos = self.nonstararg_count
@@ -2286,8 +2282,7 @@ class InterpreterFunction(Function):
       if args.starargs:
         if extraneous:
           log.warning("Not adding extra params to *%s", vararg_name)
-        callargs[vararg_name] = args.starargs.AssignToNewVariable(
-            "*args", node)
+        callargs[vararg_name] = args.starargs.AssignToNewVariable(node)
       else:
         callargs[vararg_name] = self.vm.convert.build_tuple(node, extraneous)
       arg_pos += 1
@@ -2298,12 +2293,11 @@ class InterpreterFunction(Function):
       # Build a **kwargs dictionary out of the extraneous parameters
       if args.starstarargs:
         # TODO(kramm): modify type parameters to account for namedargs
-        callargs[kwvararg_name] = args.starstarargs.AssignToNewVariable(
-            "**kwargs", node)
+        callargs[kwvararg_name] = args.starstarargs.AssignToNewVariable(node)
       else:
         k = Dict(self.vm, node)
         k.update(node, args.namedargs, omit=param_names)
-        callargs[kwvararg_name] = k.to_variable(node, kwvararg_name)
+        callargs[kwvararg_name] = k.to_variable(node)
       arg_pos += 1
     return callargs
 
@@ -2370,7 +2364,7 @@ class InterpreterFunction(Function):
         for b in self.vm.callself_stack[-1].bindings:
           b.data.maybe_missing_members = True
       return (node,
-              self.vm.convert.create_new_unsolvable(node, self.name + ":ret"))
+              self.vm.convert.create_new_unsolvable(node))
     self._match_args(node, args, condition)
     callargs = self._map_args(node, args)
     if self.signature.annotations:
@@ -2409,7 +2403,7 @@ class InterpreterFunction(Function):
                  "record remaining_depth = %d",
                  self.name, self.vm.remaining_depth(), old_remaining_depth)
       else:
-        ret = self.vm.program.NewVariable(old_ret.name, old_ret.data, [], node)
+        ret = self.vm.program.NewVariable(old_ret.data, [], node)
         if self._store_call_records:
           # Even if the call is cached, we might not have been recording it.
           self._call_records.append((callargs, ret, node))
@@ -2419,7 +2413,7 @@ class InterpreterFunction(Function):
       # Run the generator right now, even though the program didn't call it,
       # because we need to know the contained type for futher matching.
       node2, _ = generator.run_until_yield(node)
-      node_after_call, ret = node2, generator.to_variable(node2, self.name)
+      node_after_call, ret = node2, generator.to_variable(node2)
     else:
       node_after_call, ret = self.vm.run_frame(frame, node)
     self._call_cache[callkey] = (callargs, ret, self.vm.remaining_depth())
@@ -2645,17 +2639,17 @@ class Generator(Instance):
   def get_special_attribute(self, node, name):
     if name == "__iter__":
       f = NativeFunction(name, self.__iter__, self.vm, node)
-      return f.to_variable(node, name)
+      return f.to_variable(node)
     elif name in ["next", "__next__"]:
-      return self.to_variable(node, name)
+      return self.to_variable(node)
     elif name == "throw":
       # We don't model exceptions in a way that would allow us to induce one
       # inside a coroutine. So just return ourself, mapping the call of
       # throw() to a next() (which won't be executed).
-      return self.to_variable(node, name)
+      return self.to_variable(node)
 
   def __iter__(self, node):  # pylint: disable=non-iterator-returned,unexpected-special-method-signature
-    return node, self.to_variable(node, "__iter__")
+    return node, self.to_variable(node)
 
   def run_until_yield(self, node):
     if self.runs == 0:  # Optimization: We only run the coroutine once.
@@ -2726,8 +2720,7 @@ class Module(Instance):
       # stored in globals(), since it's considered illegal to do
       # X = TypeVar("Y").
       self.vm.trace_typevar(name, typevar)
-      return typevar.to_variable(
-          self.vm.root_cfg_node, name)
+      return typevar.to_variable(self.vm.root_cfg_node)
     else:
       var = self.vm.convert.convert_constant(name, ty)
       for value in var.data:
@@ -2769,9 +2762,9 @@ class Module(Instance):
     # we'll always be called from vm.byte_IMPORT_FROM which catches it.
     mod = self.vm.import_module(full_name, 0)  # 0: absolute import
     if mod is not None:
-      return mod.to_variable(node, name)
+      return mod.to_variable(node)
     elif self.has_getattr():
-      return self.vm.convert.create_new_unsolvable(node, full_name)
+      return self.vm.convert.create_new_unsolvable(node)
     else:
       log.warning("Couldn't find attribute / module %r", full_name)
       return None
@@ -2803,7 +2796,7 @@ class BuildClass(AtomicAbstractValue):
                         new_locals=True)
     return node, self.vm.make_class(
         node, name, list(bases),
-        func.last_frame.f_locals.to_variable(node, "locals()"), None)
+        func.last_frame.f_locals.to_variable(node), None)
 
 
 class Unsolvable(AtomicAbstractValue):
@@ -2831,20 +2824,19 @@ class Unsolvable(AtomicAbstractValue):
     if name in self.IGNORED_ATTRIBUTES:
       return None
     else:
-      return self.to_variable(node, self.name)
+      return self.to_variable(node)
 
   def call(self, node, func, args, condition=None):
     del func, args
     # return ourself.
-    return node, self.to_variable(node, self.name)
+    return node, self.to_variable(node)
 
-  def to_variable(self, node, name=None):
-    return self.vm.program.NewVariable(
-        name or self.name, [self], source_set=[], where=node)
+  def to_variable(self, node):
+    return self.vm.program.NewVariable([self], source_set=[], where=node)
 
   def get_class(self):
     # return ourself.
-    return self.to_variable(self.vm.root_cfg_node, self.name)
+    return self.to_variable(self.vm.root_cfg_node)
 
   def to_pytd_def(self, node, name):
     """Convert this Unknown to a pytd.Class."""
@@ -2859,7 +2851,7 @@ class Unsolvable(AtomicAbstractValue):
 
   def instantiate(self, node):
     # return ourself.
-    return self.to_variable(node, self.name)
+    return self.to_variable(node)
 
 
 # TODO(kramm): Merge this with TypeParameter
@@ -2956,7 +2948,6 @@ class Unknown(AtomicAbstractValue):
       return self.members[name]
     new = self.vm.convert.create_new_unknown(
         self.vm.root_cfg_node,
-        self.name + "." + name,
         action="getattr_" + self.name + ":" + name)
     # We store this at the root node, even though we only just created this.
     # From the analyzing point of view, we don't know when the "real" version
@@ -2970,12 +2961,12 @@ class Unknown(AtomicAbstractValue):
 
   def call(self, node, _, args, condition=None):
     ret = self.vm.convert.create_new_unknown(
-        node, self.name + "()", source=self.owner, action="call:" + self.name)
+        node, source=self.owner, action="call:" + self.name)
     self._calls.append((args.posargs, args.namedargs, ret))
     return node, ret
 
-  def to_variable(self, node, name=None):
-    v = self.vm.program.NewVariable(name or self.name)
+  def to_variable(self, node):
+    v = self.vm.program.NewVariable()
     val = v.AddBinding(self, source_set=[], where=node)
     self.owner = val
     self.vm.trace_unknown(self.class_name, v)
@@ -3012,10 +3003,10 @@ class Unknown(AtomicAbstractValue):
 
   def get_class(self):
     # We treat instances of an Unknown as the same as the class.
-    return self.to_variable(self.vm.root_cfg_node, "class of " + self.name)
+    return self.to_variable(self.vm.root_cfg_node)
 
   def instantiate(self, node):
-    return self.to_variable(node, "instance of " + self.name)
+    return self.to_variable(node)
 
   def to_type(self, node, seen=None, view=None):
     return pytd.NamedType(self.class_name)

@@ -398,8 +398,8 @@ class VirtualMachine(object):
 
   # Importing
 
-  def join_variables(self, node, name, variables):
-    return self.program.MergeVariables(node, name, variables)
+  def join_variables(self, node, variables):
+    return self.program.MergeVariables(node, variables)
 
   def make_class(self, node, name_var, bases, class_dict_var, cls_var):
     """Create a class with the name, bases and methods given.
@@ -421,7 +421,7 @@ class VirtualMachine(object):
       class_dict = abstract.get_atomic_value(class_dict_var)
     except abstract.ConversionError:
       log.error("Error initializing class %r", name)
-      return self.convert.create_new_unknown(node, name)
+      return self.convert.create_new_unknown(node)
     for base in bases:
       if not any(isinstance(t, (abstract.Class, abstract.AMBIGUOUS_OR_EMPTY))
                  for t in base.data):
@@ -432,7 +432,7 @@ class VirtualMachine(object):
     if isinstance(class_dict, abstract.Unsolvable):
       # An unsolvable appears here if the vm hit maximum depth and gave up on
       # analyzing the class we're now building.
-      var = self.convert.create_new_unsolvable(node, name)
+      var = self.convert.create_new_unsolvable(node)
     else:
       if cls_var is None:
         cls_var = class_dict.members.get("__metaclass__")
@@ -448,9 +448,9 @@ class VirtualMachine(object):
             self)
       except pytd_utils.MROError as e:
         self.errorlog.mro_error(self.frame.current_opcode, name, e.mro_seqs)
-        var = self.convert.create_new_unsolvable(node, "mro_error")
+        var = self.convert.create_new_unsolvable(node)
       else:
-        var = self.program.NewVariable(name)
+        var = self.program.NewVariable()
         var.AddBinding(val, class_dict_var.bindings, node)
     return var
 
@@ -473,7 +473,7 @@ class VirtualMachine(object):
         late_annotations=late_annotations, vm=self)
     # TODO(ampere): What else needs to be an origin in this case? Probably stuff
     # in closure.
-    var = self.program.NewVariable(name)
+    var = self.program.NewVariable()
     var.AddBinding(val, code.bindings, self.root_cfg_node)
     if late_annotations:
       self.functions_with_late_annotations.append(val)
@@ -531,8 +531,8 @@ class VirtualMachine(object):
 
   def push_abstract_exception(self, state):
     tb = self.convert.build_list(state.node, [])
-    value = self.convert.create_new_unknown(state.node, "value")
-    exctype = self.convert.create_new_unknown(state.node, "exctype")
+    value = self.convert.create_new_unknown(state.node)
+    exctype = self.convert.create_new_unknown(state.node)
     return state.push(tb, value, exctype)
 
   def resume_frame(self, node, frame):
@@ -722,7 +722,7 @@ class VirtualMachine(object):
         state, ret = self.call_function_with_state(state, attr, (x,),
                                                    fallback_to_unsolvable=False)
         results.append(ret)
-    result = self.join_variables(state.node, name, results)
+    result = self.join_variables(state.node, results)
     log.debug("Result: %r %r", result, result.data)
     if not result.bindings and report_errors:
       self.errorlog.unsupported_operands(self.frame.current_opcode, state.node,
@@ -792,7 +792,7 @@ class VirtualMachine(object):
       A tuple (CFGNode, Variable). The Variable is the return value.
     """
     assert funcu.bindings
-    result = self.program.NewVariable("<return:%s>" % funcu.name)
+    result = self.program.NewVariable()
     nodes = []
     error = None
     for funcv in funcu.bindings:
@@ -822,7 +822,7 @@ class VirtualMachine(object):
         else:
           # This error isn't useful to a user, so we don't log it.
           assert isinstance(error, utils.TooComplexError)
-        return node, self.convert.create_new_unsolvable(node, "failed call")
+        return node, self.convert.create_new_unsolvable(node)
       else:
         # We were called by something that ignores errors, so don't report
         # the failed call.
@@ -894,7 +894,7 @@ class VirtualMachine(object):
       return state, self.convert.empty_type
     special = self.load_special_builtin(name)
     if special:
-      return state, special.to_variable(state.node, name)
+      return state, special.to_variable(state.node)
     else:
       return self.load_from(state, self.frame.f_builtins, name)
 
@@ -927,7 +927,7 @@ class VirtualMachine(object):
     """Load an attribute from an object."""
     assert isinstance(obj, typegraph.Variable), obj
     # Resolve the value independently for each value of obj
-    result = self.program.NewVariable(str(attr))
+    result = self.program.NewVariable()
     log.debug("getting attr %s from %r", attr, obj)
     node = state.node
     nodes = []
@@ -938,7 +938,7 @@ class VirtualMachine(object):
       except self.convert.TypeParameterError as e:
         self.errorlog.type_param_error(
             self.frame.current_opcode, obj, attr, e.type_param_name)
-        node2, attr_var = node, self.convert.unsolvable.to_variable(node, attr)
+        node2, attr_var = node, self.convert.unsolvable.to_variable(node)
       if attr_var is None or not attr_var.bindings:
         log.debug("No %s on %s", attr, val.data.__class__)
         continue
@@ -976,7 +976,7 @@ class VirtualMachine(object):
           self.errorlog.none_attr(self.frame.current_opcode, attr)
         else:
           self.errorlog.attribute_error(self.frame.current_opcode, obj, attr)
-      result = self.convert.create_new_unsolvable(node, "bad attr")
+      result = self.convert.create_new_unsolvable(node)
     return state.change_cfg_node(node), result
 
   def load_attr_noerror(self, state, obj, attr):
@@ -1084,7 +1084,7 @@ class VirtualMachine(object):
     return state
 
   def expand_bool_result(self, node, left, right, name, maybe_predicate):
-    result = self.program.NewVariable(name)
+    result = self.program.NewVariable()
     for x in left.Bindings(node):
       for y in right.Bindings(node):
         pyval = maybe_predicate(x.data, y.data)
@@ -1117,7 +1117,7 @@ class VirtualMachine(object):
         if seq.bindings:
           self.errorlog.attribute_error(
               self.frame.current_opcode, seq, "__iter__")
-        itr = self.convert.create_new_unsolvable(state.node, "bad attr")
+        itr = self.convert.create_new_unsolvable(state.node)
     return state, itr
 
   def byte_UNARY_NOT(self, state, op):
@@ -1135,7 +1135,7 @@ class VirtualMachine(object):
       # Build a result with True/False values, each bound to appropriate
       # bindings.  Note that bindings that are True get attached to a result
       # that is False and vice versa because this is a NOT operation.
-      result = self.program.NewVariable("unary_not")
+      result = self.program.NewVariable()
       for b in true_bindings:
         result.AddBinding(self.convert.bool_values[False],
                           source_set=(b,), where=state.node)
@@ -1294,7 +1294,7 @@ class VirtualMachine(object):
           if not self.has_unknown_wildcard_imports:
             self.errorlog.name_error(self.frame.current_opcode, name)
           return state.push(
-              self.convert.create_new_unsolvable(state.node, name))
+              self.convert.create_new_unsolvable(state.node))
     return state.push(val)
 
   def byte_STORE_NAME(self, state, op):
@@ -1315,7 +1315,7 @@ class VirtualMachine(object):
       state, val = self.load_local(state, name)
     except KeyError:
       self.errorlog.name_error(self.frame.current_opcode, name)
-      val = self.convert.create_new_unsolvable(state.node, name)
+      val = self.convert.create_new_unsolvable(state.node)
     return state.push(val)
 
   def byte_STORE_FAST(self, state, op):
@@ -1340,7 +1340,7 @@ class VirtualMachine(object):
         state, val = self.load_builtin(state, name)
       except KeyError:
         self.errorlog.name_error(self.frame.current_opcode, name)
-        return state.push(self.convert.create_new_unsolvable(state.node, name))
+        return state.push(self.convert.create_new_unsolvable(state.node))
     return state.push(val)
 
   def byte_STORE_GLOBAL(self, state, op):
@@ -1383,7 +1383,7 @@ class VirtualMachine(object):
 
   def byte_LOAD_LOCALS(self, state, op):
     log.debug("Returning locals: %r", self.frame.f_locals)
-    locals_dict = self.frame.f_locals.to_variable(self.root_cfg_node, "locals")
+    locals_dict = self.frame.f_locals.to_variable(self.root_cfg_node)
     return state.push(locals_dict)
 
   def byte_COMPARE_OP(self, state, op):
@@ -2003,7 +2003,7 @@ class VirtualMachine(object):
         log.warning("Couldn't find module %r", name)
         self.errorlog.import_error(self.frame.current_opcode, name)
         module = self.convert.unsolvable
-    return state.push(module.to_variable(state.node, name))
+    return state.push(module.to_variable(state.node))
 
   def byte_IMPORT_FROM(self, state, op):
     """IMPORT_FROM is mostly like LOAD_ATTR but doesn't pop the container."""
@@ -2020,7 +2020,7 @@ class VirtualMachine(object):
       if attr is None:
         self.errorlog.import_from_error(self.frame.current_opcode, module, name)
     if attr is None:
-      attr = self.convert.unsolvable.to_variable(state.node, name)
+      attr = self.convert.unsolvable.to_variable(state.node)
     return state.push(attr)
 
   def byte_EXEC_STMT(self, state, op):
@@ -2035,8 +2035,7 @@ class VirtualMachine(object):
 
   def byte_LOAD_BUILD_CLASS(self, state, op):
     # New in py3
-    return state.push(abstract.BuildClass(self).to_variable(
-        state.node, "__build_class__"))
+    return state.push(abstract.BuildClass(self).to_variable(state.node))
 
   def byte_STORE_LOCALS(self, state, op):
     state, locals_dict = state.pop()
@@ -2071,7 +2070,7 @@ class VirtualMachine(object):
         # InterpreterFunction.call, the yield variable data may be bound to a
         # node beyond this one; copy the data over.
         yield_variable = self.program.NewVariable(
-            "yield", self.frame.yield_variable.data, [], state.node)
+            self.frame.yield_variable.data, [], state.node)
         # Create a dummy generator instance for checking that
         # Generator[<yield_variable>] matches the annotated return type.
         generator = abstract.Generator(self.frame, self, state.node)

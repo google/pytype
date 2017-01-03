@@ -102,7 +102,7 @@ class Converter(object):
         False: self.false,
         None: self.primitive_class_instances[bool],
     }
-    self.empty_type = self.empty.to_variable(self.vm.root_cfg_node, "empty")
+    self.empty_type = self.empty.to_variable(self.vm.root_cfg_node)
     object_val, = self.object_type.data
     object_val.load_lazy_attribute("__new__")
     self.object_new, = object_val.members["__new__"].data
@@ -127,31 +127,30 @@ class Converter(object):
     return value
 
   def build_none(self, node):
-    none = self.none.to_variable(node, "None")
+    none = self.none.to_variable(node)
     assert self.vm.is_none(none)
     return none
 
   def build_bool(self, node, value=None):
     if value is None:
-      name, val = "bool", self.primitive_class_instances[bool]
+      return self.primitive_class_instances[bool].to_variable(node)
     elif value is True:
-      name, val = "True", self.true_value
+      return self.true_value.to_variable(node)
     elif value is False:
-      name, val = "False", self.false_value
+      return self.false_value.to_variable(node)
     else:
       raise ValueError("Invalid bool value: %r", value)
-    return val.to_variable(node, name)
 
   def build_int(self, node):
     i = self.primitive_class_instances[int]
-    return i.to_variable(node, "int")
+    return i.to_variable(node)
 
   def build_string(self, node, s):
     del node
     return self.convert_constant(repr(s), s)
 
   def build_content(self, node, elements):
-    var = self.vm.program.NewVariable("<elements>")
+    var = self.vm.program.NewVariable()
     for v in elements:
       var.PasteVariable(v, node)
     return var
@@ -160,7 +159,7 @@ class Converter(object):
     del start
     del stop
     del step
-    return self.primitive_class_instances[slice].to_variable(node, "slice")
+    return self.primitive_class_instances[slice].to_variable(node)
 
   def build_list(self, node, content):
     """Create a VM list from the given sequence."""
@@ -169,7 +168,7 @@ class Converter(object):
     value = abstract.Instance(self.list_type, self.vm, node)
     value.initialize_type_parameter(node, abstract.T,
                                     self.build_content(node, content))
-    return value.to_variable(node, name="list(...)")
+    return value.to_variable(node)
 
   def build_set(self, node, content):
     """Create a VM set from the given sequence."""
@@ -177,15 +176,15 @@ class Converter(object):
     value = abstract.Instance(self.set_type, self.vm, node)
     value.initialize_type_parameter(node, abstract.T,
                                     self.build_content(node, content))
-    return value.to_variable(node, name="set(...)")
+    return value.to_variable(node)
 
   def build_map(self, node):
     """Create an empty VM dict."""
-    return abstract.Dict(self.vm, node).to_variable(node, "dict")
+    return abstract.Dict(self.vm, node).to_variable(node)
 
   def build_tuple(self, node, content):
     """Create a VM tuple from the given sequence."""
-    return self.tuple_to_value(node, content).to_variable(node, name="tuple")
+    return self.tuple_to_value(node, content).to_variable(node)
 
   def _get_maybe_abstract_instance(self, data):
     """Get an instance of the same type as the given data, abstract if possible.
@@ -217,22 +216,22 @@ class Converter(object):
       self._convert_cache[key] = abstract.Unknown(self.vm)
     return self._convert_cache[key]
 
-  def create_new_unknown(self, node, name, source=None, action=None):
+  def create_new_unknown(self, node, source=None, action=None):
     """Create a new variable containing unknown."""
     if not self.vm.generate_unknowns:
       # unsolvable instances are cheaper than unknown, so use those for --quick.
-      return self.unsolvable.to_variable(node, name)
+      return self.unsolvable.to_variable(node)
     unknown = self._create_new_unknown_value(action)
-    v = self.vm.program.NewVariable(name)
+    v = self.vm.program.NewVariable()
     val = v.AddBinding(
         unknown, source_set=[source] if source else [], where=node)
     unknown.owner = val
     self.vm.trace_unknown(unknown.class_name, v)
     return v
 
-  def create_new_unsolvable(self, node, name):
+  def create_new_unsolvable(self, node):
     """Create a new variable containing an unsolvable."""
-    return self.unsolvable.to_variable(node, name)
+    return self.unsolvable.to_variable(node)
 
   def create_varargs(self, arg_type):
     """Create a varargs argument given its element type."""
@@ -293,22 +292,21 @@ class Converter(object):
     if isinstance(pyval, pytd.UnionType):
       options = [self.convert_constant_to_value(pytd.Print(t), t, subst, node)
                  for t in pyval.type_list]
-      return self.vm.program.NewVariable(name, options, [],
-                                         self.vm.root_cfg_node)
+      return self.vm.program.NewVariable(options, [], self.vm.root_cfg_node)
     elif isinstance(pyval, pytd.NothingType):
-      return self.vm.program.NewVariable(name, [], [], self.vm.root_cfg_node)
+      return self.vm.program.NewVariable([], [], self.vm.root_cfg_node)
     elif isinstance(pyval, pytd.Alias):
       return self.convert_constant(pytd.Print(pyval), pyval.type, subst,
                                    node, source_sets, discard_concrete_values)
     elif isinstance(pyval, abstract.AsInstance):
       cls = pyval.cls
       if isinstance(cls, pytd.AnythingType):
-        return self.create_new_unsolvable(node, "?")
+        return self.create_new_unsolvable(node)
       if hasattr(cls, "name"):
         name = cls.name
       else:
         name = cls.__class__.__name__
-      var = self.vm.program.NewVariable(name)
+      var = self.vm.program.NewVariable()
       for t in pytd_utils.UnpackUnion(cls):
         if isinstance(t, pytd.TypeParameter):
           if not subst or t.name not in subst:
@@ -333,7 +331,7 @@ class Converter(object):
           discard_concrete_values)
     result = self.convert_constant_to_value(name, pyval, subst, node)
     if result is not None:
-      return result.to_variable(self.vm.root_cfg_node, name)
+      return result.to_variable(self.vm.root_cfg_node)
     # There might still be bugs on the abstract intepreter when it returns,
     # e.g. a list of values instead of a list of types:
     assert pyval.__class__ != cfg.Variable, pyval

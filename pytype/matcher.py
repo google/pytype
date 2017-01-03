@@ -78,7 +78,7 @@ class AbstractMatcher(object):
           # nothing, that will fill in both K and V.
           if right.name not in subst:
             subst = subst.copy()
-            subst[right.name] = var.program.NewVariable("empty")
+            subst[right.name] = var.program.NewVariable()
       # If this type is empty, we can match it against anything.
       return subst
 
@@ -113,14 +113,12 @@ class AbstractMatcher(object):
       if other_type.name in subst:
         # Merge the two variables.
         subst = subst.copy()
-        new_var = subst[other_type.name].AssignToNewVariable(other_type.name,
-                                                             node)
+        new_var = subst[other_type.name].AssignToNewVariable(node)
         new_var.AddBinding(left, [], node)
         subst[other_type.name] = new_var
       else:
         subst = subst.copy()
-        subst[other_type.name] = new_var = value.AssignToNewVariable(
-            other_type.name, node)
+        subst[other_type.name] = new_var = value.AssignToNewVariable(node)
       type_key = left.get_type_key()
       # Every value with this type key produces the same result when matched
       # against other_type, so they can all be added to this substitution rather

@@ -27,7 +27,7 @@ class TypingOverlay(abstract.Module):
 
   def _convert_member(self, name, m):
     return m(name, self.vm, self.vm.root_cfg_node).to_variable(
-        self.vm.root_cfg_node, name)
+        self.vm.root_cfg_node)
 
   def get_module(self, name):
     if name in self._member_map:
@@ -140,13 +140,13 @@ class TypeVarFunction(object):
     if len(args) < 1:
       self.vm.errorlog.invalid_typevar(self.vm.frame.current_opcode,
                                        "Need name as first parameter")
-      return node, self.vm.convert.unsolvable.to_variable(node, self.name)
+      return node, self.vm.convert.unsolvable.to_variable(node)
     try:
       typevar_name = abstract.get_atomic_python_constant(args[0])
     except abstract.ConversionError:
       self.vm.errorlog.invalid_typevar(self.vm.frame.current_opcode,
                                        "Name must be a constant string")
-      return node, self.vm.convert.unsolvable.to_variable(node, self.name)
+      return node, self.vm.convert.unsolvable.to_variable(node)
     constraints = args[1:]
     bound = kwargs.get("bound")
     # TODO(kramm): These are variables. We should convert them to booleans.
@@ -155,7 +155,7 @@ class TypeVarFunction(object):
     typevar = abstract.TypeVariable(typevar_name, self.vm, constraints,
                                     bound, covariant, contravariant)
     self.vm.trace_typevar(typevar_name, typevar)
-    return node, typevar.to_variable(node, self.name)
+    return node, typevar.to_variable(node)
 
 
 def build_container(name, vm, node):

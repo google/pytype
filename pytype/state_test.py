@@ -6,12 +6,13 @@ from pytype.pytd import cfg
 import unittest
 
 
-def source_summary(binding):
+def source_summary(binding, **varnames):
   """A simple deterministic listing of source variables."""
   clauses = []
+  name_map = {b.variable: name for name, b in varnames.items()}
   for origin in binding.origins:
     for sources in origin.source_sets:
-      bindings = ["%s=%s" % (b.variable.name, b.data) for b in sources]
+      bindings = ["%s=%s" % (name_map[b.variable], b.data) for b in sources]
       clauses.append(" ".join(sorted(bindings)))
   return " | ".join(sorted(clauses))
 
@@ -42,35 +43,37 @@ class ConditionTestBase(unittest.TestCase):
     self._program = cfg.Program()
     self._node = self._program.NewCFGNode("test")
 
-  def new_binding(self, name, value=AMBIGUOUS):
-    var = self._program.NewVariable(name)
+  def new_binding(self, value=AMBIGUOUS):
+    var = self._program.NewVariable()
     return var.AddBinding(value)
 
-  def check_binding(self, expected, binding):
+  def check_binding(self, expected, binding, **varnames):
     self.assertEquals(1, len(binding.origins))
     self.assertEquals(self._node, binding.origins[0].where)
-    self.assertEquals(expected, source_summary(binding))
+    self.assertEquals(expected, source_summary(binding, **varnames))
 
 
 class ConditionTest(ConditionTestBase):
 
   def test_no_parent(self):
-    x = self.new_binding("x")
-    y = self.new_binding("y")
-    z = self.new_binding("z")
+    x = self.new_binding()
+    y = self.new_binding()
+    z = self.new_binding()
     c = state.Condition(self._node, None, [[x, y], [z]])
     self.assertIsNone(c.parent)
-    self.check_binding("x=? y=? | z=?", c.binding)
+    self.check_binding("x=? y=? | z=?", c.binding, x=x, y=y, z=z)
 
   def test_parent_combination(self):
-    p = self.new_binding("p")
+    p = self.new_binding()
     parent = state.Condition(self._node, None, [[p]])
-    x = self.new_binding("x")
-    y = self.new_binding("y")
-    z = self.new_binding("z")
+    x = self.new_binding()
+    y = self.new_binding()
+    z = self.new_binding()
     c = state.Condition(self._node, parent, [[x, y], [z]])
     self.assertIs(parent, c.parent)
-    self.check_binding("__split=None x=? y=? | __split=None z=?", c.binding)
+    self.check_binding("__split=None x=? y=? | __split=None z=?", c.binding,
+                       p=p, x=x, y=y, z=z,
+                       __split=parent._var.bindings[0])
 
 
 class SplitConditionTest(ConditionTestBase):
@@ -79,25 +82,29 @@ class SplitConditionTest(ConditionTestBase):
     # Test that we split both sides and that everything gets passed through
     # correctly.  Don't worry about special cases within _restrict_condition
     # since those are tested separately.
-    p = self.new_binding("x")
-    parent = state.Condition(self._node, None, [[p]])
-    var = self._program.NewVariable("v")
+    x = self.new_binding()
+    parent = state.Condition(self._node, None, [[x]])
+    var = self._program.NewVariable()
     var.AddBinding(ONLY_TRUE)
     var.AddBinding(ONLY_FALSE)
     var.AddBinding(AMBIGUOUS)
     true_cond, false_cond = state.split_conditions(self._node, parent, var)
     self.assertIs(parent, true_cond.parent)
-    self.check_binding("__split=None v=? | __split=None v=T", true_cond.binding)
+    self.check_binding("__split=None v=? | __split=None v=T", true_cond.binding,
+                       __split=parent._var.bindings[0],
+                       v=var.bindings[0])
     self.assertIs(parent, false_cond.parent)
     self.check_binding("__split=None v=? | __split=None v=F",
-                       false_cond.binding)
+                       false_cond.binding,
+                       __split=parent._var.bindings[0],
+                       v=var.bindings[0])
 
 
 class RestrictConditionTest(ConditionTestBase):
 
   def setUp(self):
     super(RestrictConditionTest, self).setUp()
-    p = self.new_binding("p")
+    p = self.new_binding()
     self._parent = state.Condition(self._node, None, [[p]])
 
   def test_no_bindings(self):
@@ -107,44 +114,49 @@ class RestrictConditionTest(ConditionTestBase):
     self.assertIs(state.UNSATISFIABLE, c)
 
   def test_none_restricted(self):
-    x = self.new_binding("x")
-    y = self.new_binding("y")
+    x = self.new_binding()
+    y = self.new_binding()
     c = state._restrict_condition(self._node, self._parent, [x, y], False)
     self.assertIs(self._parent, c)
     c = state._restrict_condition(self._node, self._parent, [x, y], True)
     self.assertIs(self._parent, c)
 
   def test_all_restricted(self):
-    x = self.new_binding("x", ONLY_FALSE)
-    y = self.new_binding("y", ONLY_FALSE)
+    x = self.new_binding(ONLY_FALSE)
+    y = self.new_binding(ONLY_FALSE)
     c = state._restrict_condition(self._node, self._parent, [x, y], True)
     self.assertIs(state.UNSATISFIABLE, c)
 
   def test_some_restricted_no_parent(self):
-    x = self.new_binding("x")  # Can be true or false.
-    y = self.new_binding("y", ONLY_FALSE)
-    z = self.new_binding("z")  # Can be true or false.
+    x = self.new_binding()  # Can be true or false.
+    y = self.new_binding(ONLY_FALSE)
+    z = self.new_binding()  # Can be true or false.
     c = state._restrict_condition(self._node, None, [x, y, z], True)
     self.assertIsNone(c.parent)
-    self.check_binding("x=? | z=?", c.binding)
+    self.check_binding("x=? | z=?", c.binding, x=x, y=y, z=z)
 
   def test_some_restricted_with_parent(self):
-    x = self.new_binding("x")  # Can be true or false.
-    y = self.new_binding("y", ONLY_FALSE)
-    z = self.new_binding("z")  # Can be true or false.
+    x = self.new_binding()  # Can be true or false.
+    y = self.new_binding(ONLY_FALSE)
+    z = self.new_binding()  # Can be true or false.
     c = state._restrict_condition(self._node, self._parent, [x, y, z], True)
     self.assertIs(self._parent, c.parent)
-    self.check_binding("__split=None x=? | __split=None z=?", c.binding)
+    self.check_binding("parent=None x=? | parent=None z=?", c.binding,
+                       x=x, y=y, z=z, parent=self._parent._var.bindings[0])
 
   def test_restricted_to_dnf(self):
     # DNF for a | (b & c)
-    dnf = [[self.new_binding("a")],
-           [self.new_binding("b"), self.new_binding("c")]]
-    x = self.new_binding("x")  # Compatible with everything
-    y = self.new_binding("z", FakeValue("DNF", dnf, False))  # Reduce to dnf
-    c = state._restrict_condition(self._node, None, [x, y], True)
-    self.assertIsNone(c.parent)
-    self.check_binding("a=? | b=? c=? | x=?", c.binding)
+    a = self.new_binding()
+    b = self.new_binding()
+    c = self.new_binding()
+    dnf = [[a],
+           [b, c]]
+    x = self.new_binding()  # Compatible with everything
+    y = self.new_binding(FakeValue("DNF", dnf, False))  # Reduce to dnf
+    cond = state._restrict_condition(self._node, None, [x, y], True)
+    self.assertIsNone(cond.parent)
+    self.check_binding("a=? | b=? c=? | x=?", cond.binding,
+                       a=a, b=b, c=c, x=x, y=y)
 
 
 class CommonConditionTest(ConditionTestBase):
@@ -158,8 +170,8 @@ class CommonConditionTest(ConditionTestBase):
     #
     # 7 - 8
     conds = [None]  # index 0 is the condition of None
-    for number, parent in enumerate([0, 1, 2, 3, 2, 5, 0, 7], 1):
-      binding = self.new_binding("v%d" % number)
+    for parent in [0, 1, 2, 3, 2, 5, 0, 7]:
+      binding = self.new_binding()
       conds.append(state.Condition(self._node, conds[parent], [[binding]]))
 
     def check(expected, left, right):

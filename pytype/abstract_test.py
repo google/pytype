@@ -15,12 +15,6 @@ from pytype.pytd import pytd
 import unittest
 
 
-def binding_name(binding):
-  """Return a name based on the variable name and binding position."""
-  var = binding.variable
-  return "%s:%d" % (var.name, var.bindings.index(binding))
-
-
 class FakeFrame(object):
 
   def __init__(self):
@@ -34,9 +28,9 @@ class AbstractTestBase(unittest.TestCase):
     self._program = cfg.Program()
     self._node = self._vm.root_cfg_node.ConnectNew("test_node")
 
-  def new_var(self, name, *values):
+  def new_var(self, *values):
     """Create a Variable bound to the given values."""
-    var = self._program.NewVariable(name)
+    var = self._program.NewVariable()
     for value in values:
       var.AddBinding(value, source_set=(), where=self._node)
     return var
@@ -100,7 +94,7 @@ class TupleTest(AbstractTestBase):
 
   def setUp(self):
     super(TupleTest, self).setUp()
-    self._var = self._program.NewVariable("test_var")
+    self._var = self._program.NewVariable()
     self._var.AddBinding(abstract.Unknown(self._vm), [], self._node)
 
   def test_compatible_with__not_empty(self):
@@ -134,7 +128,7 @@ class DictTest(AbstractTestBase):
   def setUp(self):
     super(DictTest, self).setUp()
     self._d = abstract.Dict(self._vm, self._node)
-    self._var = self._program.NewVariable("test_var")
+    self._var = self._program.NewVariable()
     self._var.AddBinding(abstract.Unknown(self._vm), [], self._node)
 
   def test_compatible_with__when_empty(self):
@@ -188,6 +182,7 @@ class IsInstanceTest(AbstractTestBase):
       left: A Variable to use as the first arg to call().
       right: A Variable to use as the second arg to call().
     """
+    name_map = {left: "left", right: "right"}
     node, result = self._is_instance.call(
         self._node, None, abstract.FunctionArgs((left, right), self.new_dict(),
                                                 None, None))
@@ -200,34 +195,35 @@ class IsInstanceTest(AbstractTestBase):
       for o in b.origins:
         self.assertEquals(self._node, o.where)
         for sources in o.source_sets:
-          terms.add(" ".join(sorted(binding_name(b) for b in sources)))
+          terms.add(" ".join(sorted(
+              "%s:%d" % (name_map[b.variable], b.variable.bindings.index(b))
+              for b in sources)))
       result_map[b.data] = terms
     self.assertEquals(expected, result_map)
 
   def test_call_single_bindings(self):
-    right = self.new_var("right", self._str_class)
+    right = self.new_var(self._str_class)
+    left = self.new_var(self._str)
     self.assert_call(
         {self._vm.convert.true: {"left:0 right:0"}},
-        self.new_var("left", self._str),
-        right)
+        left, right)
+    left = self.new_var(self._int)
     self.assert_call(
         {self._vm.convert.false: {"left:0 right:0"}},
-        self.new_var("left", self._int),
-        right)
+        left, right)
+    left = self.new_var(abstract.Unknown(self._vm))
     self.assert_call(
         {self._bool: {"left:0 right:0"}},
-        self.new_var("left", abstract.Unknown(self._vm)),
-        right)
+        left, right)
 
   def test_call_multiple_bindings(self):
+    left = self.new_var(self._int, self._str)
+    right = self.new_var(self._int_class, self._str_class)
     self.assert_call(
         {
             self._vm.convert.true: {"left:0 right:0", "left:1 right:1"},
             self._vm.convert.false: {"left:0 right:1", "left:1 right:0"},
-        },
-        self.new_var("left", self._int, self._str),
-        self.new_var("right", self._int_class, self._str_class)
-    )
+        }, left, right)
 
   def test_call_wrong_argcount(self):
     self._vm.push_frame(FakeFrame())
@@ -243,7 +239,7 @@ class IsInstanceTest(AbstractTestBase):
 
   def test_call_wrong_keywords(self):
     self._vm.push_frame(FakeFrame())
-    x = self.new_var("x", abstract.Unknown(self._vm))
+    x = self.new_var(abstract.Unknown(self._vm))
     node, result = self._is_instance.call(
         self._node, None, abstract.FunctionArgs((x, x), self.new_dict(foo=x),
                                                 None, None))
@@ -268,7 +264,7 @@ class IsInstanceTest(AbstractTestBase):
     obj = abstract.SimpleAbstractValue("foo", self._vm)
     check(None, obj, obj_class)
     obj.set_class(self._node, self.new_var(
-        "foo_class", self._str_class, self._int_class))
+        self._str_class, self._int_class))
     check(None, obj, self._str_class)
 
     # If the class_spec is not a class, result is ambiguous.
@@ -281,7 +277,7 @@ class IsInstanceTest(AbstractTestBase):
 
   def test_flatten(self):
     def maybe_var(v):
-      return v if isinstance(v, cfg.Variable) else self.new_var("v", v)
+      return v if isinstance(v, cfg.Variable) else self.new_var(v)
 
     def new_tuple(*args):
       pyval = tuple(maybe_var(a) for a in args)
@@ -321,7 +317,7 @@ class IsInstanceTest(AbstractTestBase):
     # (str, int | object)
     check(True, [self._str_class],
           new_tuple(self._str_class,
-                    self.new_var("v", self._int_class, self._obj_class)))
+                    self.new_var(self._int_class, self._obj_class)))
 
 
 class PyTDTest(AbstractTestBase):
@@ -363,7 +359,7 @@ class PyTDTest(AbstractTestBase):
     instance = abstract.Instance(
         self._vm.convert.list_type, self._vm, self._vm.root_cfg_node)
     instance.type_parameters["T"] = self._vm.program.NewVariable(
-        "T", [self._vm.convert.unsolvable], [], self._vm.root_cfg_node)
+        [self._vm.convert.unsolvable], [], self._vm.root_cfg_node)
     param_binding = instance.type_parameters["T"].AddBinding(
         self._vm.convert.primitive_class_instances[int], [],
         self._vm.root_cfg_node)
@@ -378,7 +374,7 @@ class PyTDTest(AbstractTestBase):
   def testToTypeWithView2(self):
     # to_type(<instance of <str or unsolvable>>, view={__class__: str})
     cls = self._vm.program.NewVariable(
-        "cls", [self._vm.convert.unsolvable], [], self._vm.root_cfg_node)
+        [self._vm.convert.unsolvable], [], self._vm.root_cfg_node)
     cls_binding = cls.AddBinding(
         self._vm.convert.str_type.data[0], [], self._vm.root_cfg_node)
     instance = abstract.Instance(cls, self._vm, self._vm.root_cfg_node)
@@ -389,7 +385,7 @@ class PyTDTest(AbstractTestBase):
   def testToTypeWithViewAndEmptyParam(self):
     instance = abstract.Instance(
         self._vm.convert.list_type, self._vm, self._vm.root_cfg_node)
-    instance.type_parameters["T"] = self._vm.program.NewVariable("T")
+    instance.type_parameters["T"] = self._vm.program.NewVariable()
     view = {instance.cls: instance.cls.bindings[0]}
     pytd_type = instance.to_type(self._vm.root_cfg_node, seen=None, view=view)
     self.assertEquals("__builtin__.list", pytd_type.base_type.name)
@@ -420,7 +416,7 @@ class FunctionTest(AbstractTestBase):
   def test_call_with_empty_arg(self):
     self.assertRaises(exceptions.ByteCodeTypeError, self._call_pytd_function,
                       self._make_pytd_function(params=()),
-                      (self._vm.program.NewVariable("empty"),))
+                      (self._vm.program.NewVariable(),))
 
   def test_call_with_bad_arg(self):
     f = self._make_pytd_function(
@@ -443,7 +439,7 @@ class FunctionTest(AbstractTestBase):
   def test_call_with_multiple_arg_bindings(self):
     f = self._make_pytd_function(
         (self._vm.lookup_builtin("__builtin__.str"),))
-    arg = self._vm.program.NewVariable("arg")
+    arg = self._vm.program.NewVariable()
     arg.AddBinding(self._vm.convert.primitive_class_instances[str], [],
                    self._vm.root_cfg_node)
     arg.AddBinding(self._vm.convert.primitive_class_instances[int], [],

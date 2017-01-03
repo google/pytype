@@ -46,7 +46,7 @@ class Explainer(object):
     """Display a possible combination, together with program locations."""
     path = self.GetPath(combination, cfg_node)
     for v in combination:
-      self.out.write("  %s = %s" % (v.variable.name, repr(v.data)))
+      self.out.write("  v%d = %s" % (v.variable.id, repr(v.data)))
       self.out.write("  # Set at %s\n" % (
           self.GetLastAssignment(path, v).name))
 
@@ -69,7 +69,7 @@ class Explainer(object):
     if len(combination) == 1:
       v, = combination
       self.out.write("At %s, the assignment\n" % cfg_node)
-      self.out.write("  %s = %s\n" % (v.variable.name, repr(v.data)))
+      self.out.write("  v%d = %s\n" % (v.variable.id, repr(v.data)))
       self.out.write("is impossible for the following reason(s):\n")
       self.PrintBadSources(v, cfg_node)
       return
@@ -82,8 +82,8 @@ class Explainer(object):
       if cfg_node.HasCombination(shortened):
         bad_apple = combination[i]
         self.out.write("At %s, it's impossible that\n" % cfg_node)
-        self.out.write("  %s = %s\n" %
-                       (bad_apple.variable.name, repr(bad_apple.data)))
+        self.out.write("  v%d = %s\n" %
+                       (bad_apple.variable.id, repr(bad_apple.data)))
         self.out.write("if we want this to be valid at the same time:\n")
         self.DisplayPossible(shortened, cfg_node)
         return
@@ -102,11 +102,11 @@ class Explainer(object):
               break
           else:
             assert False, "Discrepancy between FindPathBackwards and CanReach"
-          self.out.write("%s from %s is overwritten at %s:\n" %
-                         (value.variable.name, new_cfg_node, n))
+          self.out.write("v%d from %s is overwritten at %s:\n" %
+                         (value.variable.id, new_cfg_node, n))
           for v in value.variable.bindings:
             if v is not value and any(n == o.where for o in v.origins):
-              self.out.write("%s = %s\n" % (v.variable.name, v.data))
+              self.out.write("v%d = %s\n" % (v.variable.id, v.data))
         else:
           self.out.write("The assignment at %s isn't reachable from %s.\n" %
                          (new_cfg_node, cfg_node))
@@ -116,7 +116,7 @@ class Explainer(object):
           continue
         self.out.write("At %s, this:\n" % new_cfg_node)
         for v in source_set:
-          self.out.write("  %s = %s\n" % (v.variable.name, repr(v.data)))
+          self.out.write("  v%d = %s\n" % (v.variable.id, repr(v.data)))
         self.out.write("isn't possible because:\n")
         self.ExplainWhyNot(list(source_set), new_cfg_node)
 
@@ -129,7 +129,7 @@ class Explainer(object):
         value1 = value
         value2 = variables[variable]
         return "\n".join([
-            "Variable %s can't be both" % variable.name,
+            "Variable v%d can't be both" % variable.id,
             "  %s" % repr(value1.data),
             "and",
             "  %s" % repr(value2.data),
@@ -202,7 +202,7 @@ class Explainer(object):
     if isinstance(thing, list):
       return "\n".join(self.Str(v) for v in thing) + "\n"
     elif isinstance(thing, typegraph.Value):
-      return "%s = %s" % (thing.variable.name, repr(thing.data))
+      return "v%d = %s" % (thing.variable.id, repr(thing.data))
 
   def GetPath(self, combination, cfg_node):
     """Given a combination, find the corresponding path through the program."""

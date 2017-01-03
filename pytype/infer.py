@@ -68,23 +68,22 @@ class CallTracer(vm.VirtualMachine):
       node, _, instance = self.init_class(node, t)
       return node, instance
     else:
-      return node, self.convert.create_new_unknown(node, name)
+      return node, self.convert.create_new_unknown(node)
 
   def create_varargs(self, node):
     value = abstract.Instance(self.convert.tuple_type, self, node)
     value.initialize_type_parameter(
         node, abstract.T,
-        self.convert.create_new_unknown(node, "varargs_value"))
-    return value.to_variable(node, "*args")
+        self.convert.create_new_unknown(node))
+    return value.to_variable(node)
 
   def create_kwargs(self, node):
-    key_type = self.convert.primitive_class_instances[str].to_variable(
-        node, "str")
-    value_type = self.convert.create_new_unknown(node, "kwargs_value")
+    key_type = self.convert.primitive_class_instances[str].to_variable(node)
+    value_type = self.convert.create_new_unknown(node)
     kwargs = abstract.Instance(self.convert.dict_type, self, node)
     kwargs.initialize_type_parameter(node, abstract.K, key_type)
     kwargs.initialize_type_parameter(node, abstract.V, value_type)
-    return kwargs.to_variable(node, "**kwargs")
+    return kwargs.to_variable(node)
 
   def call_function_in_frame(self, node, var, args, kwargs,
                              starargs, starstarargs):
@@ -128,7 +127,7 @@ class CallTracer(vm.VirtualMachine):
           kws[key] = arg
         starargs = self.create_varargs(node) if method.has_varargs() else None
         starstarargs = self.create_kwargs(node) if method.has_kwargs() else None
-        fvar = val.AssignToNewVariable("f", node)
+        fvar = val.AssignToNewVariable(node)
         with method.record_calls():
           new_node, _ = self.call_function_in_frame(
               node, fvar, tuple(args), kws, starargs, starstarargs)
@@ -144,14 +143,14 @@ class CallTracer(vm.VirtualMachine):
     return node
 
   def bind_method(self, name, methodvar, instance, clsvar, node):
-    bound = self.program.NewVariable(name)
+    bound = self.program.NewVariable()
     for m in methodvar.Data(node):
       bound.AddBinding(m.property_get(instance, clsvar), [], node)
     return bound
 
   def instantiate(self, clsv, node):
     """Build an (dummy) instance from a class, for analyzing it."""
-    n = self.program.NewVariable(clsv.name)
+    n = self.program.NewVariable()
     for cls in clsv.Data(node):
       instance = cls.instantiate(node)
       n.PasteVariable(instance, node)
@@ -162,7 +161,7 @@ class CallTracer(vm.VirtualMachine):
     key = (node, cls)
     if (key not in self._instance_cache or
         self._instance_cache[key] is _INITIALIZING):
-      clsvar = cls.to_variable(node, "cls")
+      clsvar = cls.to_variable(node)
       instance = self.instantiate(clsvar, node)
       if key in self._instance_cache:
         # We've encountered a recursive pattern such as
@@ -408,7 +407,7 @@ class CallTracer(vm.VirtualMachine):
       # As an arg, "object" means: we can use anything for this argument,
       # because everything inherits from object.
       # TODO(kramm): Maybe we should use AnythingType for params without type.
-      return self.convert.create_new_unsolvable(node, name)
+      return self.convert.create_new_unsolvable(node)
     else:
       return self.convert.convert_constant(
           name, abstract.AsInstance(t), subst={}, node=self.root_cfg_node)
@@ -429,7 +428,7 @@ class CallTracer(vm.VirtualMachine):
       nominal_return = self.convert.convert_constant_to_value(
           "ret", sig.return_type, subst={}, node=self.root_cfg_node)
       for val in f.bindings:
-        fvar = val.AssignToNewVariable("f", node)
+        fvar = val.AssignToNewVariable(node)
         _, retvar = self.call_function_in_frame(
             node, fvar, args, {}, None, None)
         if retvar.bindings:

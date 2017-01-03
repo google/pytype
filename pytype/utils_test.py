@@ -70,8 +70,8 @@ class UtilsTest(unittest.TestCase):
     self.assertRaises(utils.TooComplexError, limit.inc)
 
   def testVariableProduct(self):
-    u1 = self.prog.NewVariable("u1", [1, 2], [], self.current_location)
-    u2 = self.prog.NewVariable("u2", [3, 4], [], self.current_location)
+    u1 = self.prog.NewVariable([1, 2], [], self.current_location)
+    u2 = self.prog.NewVariable([3, 4], [], self.current_location)
     product = utils.variable_product([u1, u2])
     pairs = [[a.data for a in d]
              for d in product]
@@ -84,24 +84,24 @@ class UtilsTest(unittest.TestCase):
 
   def testDeepVariableProductRaises(self):
     x1, x2 = [DummyValue(i + 1) for i in range(2)]
-    v1 = self.prog.NewVariable("v1", [x1, x2], [], self.current_location)
-    v2 = self.prog.NewVariable("v2", [x1, x2], [], self.current_location)
-    v3 = self.prog.NewVariable("v3", [x1, x2], [], self.current_location)
-    v4 = self.prog.NewVariable("v4", [x1, x2], [], self.current_location)
-    v5 = self.prog.NewVariable("v5", [x1, x2], [], self.current_location)
-    v6 = self.prog.NewVariable("v6", [x1, x2], [], self.current_location)
-    v7 = self.prog.NewVariable("v7", [x1, x2], [], self.current_location)
-    v8 = self.prog.NewVariable("v8", [x1, x2], [], self.current_location)
+    v1 = self.prog.NewVariable([x1, x2], [], self.current_location)
+    v2 = self.prog.NewVariable([x1, x2], [], self.current_location)
+    v3 = self.prog.NewVariable([x1, x2], [], self.current_location)
+    v4 = self.prog.NewVariable([x1, x2], [], self.current_location)
+    v5 = self.prog.NewVariable([x1, x2], [], self.current_location)
+    v6 = self.prog.NewVariable([x1, x2], [], self.current_location)
+    v7 = self.prog.NewVariable([x1, x2], [], self.current_location)
+    v8 = self.prog.NewVariable([x1, x2], [], self.current_location)
     self.assertRaises(utils.TooComplexError,
                       utils.deep_variable_product, [v1, v2, v3, v4,
                                                     v5, v6, v7, v8], 256)
 
   def testDeepVariableProductRaises2(self):
     x1, x2, x3, x4 = [DummyValue(i + 1) for i in range(4)]
-    v1 = self.prog.NewVariable("v1", [x1, x2], [], self.current_location)
-    v2 = self.prog.NewVariable("v2", [x1, x2], [], self.current_location)
-    v3 = self.prog.NewVariable("v3", [x3, x4], [], self.current_location)
-    v4 = self.prog.NewVariable("v4", [x3, x4], [], self.current_location)
+    v1 = self.prog.NewVariable([x1, x2], [], self.current_location)
+    v2 = self.prog.NewVariable([x1, x2], [], self.current_location)
+    v3 = self.prog.NewVariable([x3, x4], [], self.current_location)
+    v4 = self.prog.NewVariable([x3, x4], [], self.current_location)
     x1.set_parameters([v3])
     x2.set_parameters([v4])
     self.assertRaises(utils.TooComplexError,
@@ -109,20 +109,20 @@ class UtilsTest(unittest.TestCase):
 
   def testVariableProductDictRaises(self):
     values = [DummyValue(i + 1) for i in range(4)]
-    v1 = self.prog.NewVariable("v1", values, [], self.current_location)
-    v2 = self.prog.NewVariable("v2", values, [], self.current_location)
-    v3 = self.prog.NewVariable("v3", values, [], self.current_location)
-    v4 = self.prog.NewVariable("v4", values, [], self.current_location)
+    v1 = self.prog.NewVariable(values, [], self.current_location)
+    v2 = self.prog.NewVariable(values, [], self.current_location)
+    v3 = self.prog.NewVariable(values, [], self.current_location)
+    v4 = self.prog.NewVariable(values, [], self.current_location)
     variabledict = {"v1": v1, "v2": v2, "v3": v3, "v4": v4}
     self.assertRaises(utils.TooComplexError,
                       utils.variable_product_dict, variabledict, 4)
 
   def testDeepVariableProduct(self):
     x1, x2, x3, x4, x5, x6 = [DummyValue(i + 1) for i in range(6)]
-    v1 = self.prog.NewVariable("v1", [x1, x2], [], self.current_location)
-    v2 = self.prog.NewVariable("v2", [x3], [], self.current_location)
-    v3 = self.prog.NewVariable("v3", [x4, x5], [], self.current_location)
-    v4 = self.prog.NewVariable("v4", [x6], [], self.current_location)
+    v1 = self.prog.NewVariable([x1, x2], [], self.current_location)
+    v2 = self.prog.NewVariable([x3], [], self.current_location)
+    v3 = self.prog.NewVariable([x4, x5], [], self.current_location)
+    v4 = self.prog.NewVariable([x6], [], self.current_location)
     x1.set_parameters([v2, v3])
     product = utils.deep_variable_product([v1, v4])
     rows = [{a.data for a in row}
@@ -135,8 +135,8 @@ class UtilsTest(unittest.TestCase):
 
   def testDeepVariableProductWithEmptyVariables(self):
     x1 = DummyValue(1)
-    v1 = self.prog.NewVariable("v1", [x1], [], self.current_location)
-    v2 = self.prog.NewVariable("v2", [], [], self.current_location)
+    v1 = self.prog.NewVariable([x1], [], self.current_location)
+    v2 = self.prog.NewVariable([], [], self.current_location)
     x1.set_parameters([v2])
     product = utils.deep_variable_product([v1])
     rows = [{a.data for a in row}
@@ -145,8 +145,8 @@ class UtilsTest(unittest.TestCase):
 
   def testDeepVariableProductWithEmptyTopLayer(self):
     x1 = DummyValue(1)
-    v1 = self.prog.NewVariable("v1", [x1], [], self.current_location)
-    v2 = self.prog.NewVariable("v2", [], [], self.current_location)
+    v1 = self.prog.NewVariable([x1], [], self.current_location)
+    v2 = self.prog.NewVariable([], [], self.current_location)
     product = utils.deep_variable_product([v1, v2])
     rows = [{a.data for a in row}
             for row in product]
@@ -154,10 +154,10 @@ class UtilsTest(unittest.TestCase):
 
   def testDeepVariableProductWithCycle(self):
     x1, x2, x3, x4, x5, x6 = [DummyValue(i + 1) for i in range(6)]
-    v1 = self.prog.NewVariable("v1", [x1, x2], [], self.current_location)
-    v2 = self.prog.NewVariable("v2", [x3], [], self.current_location)
-    v3 = self.prog.NewVariable("v3", [x4, x5], [], self.current_location)
-    v4 = self.prog.NewVariable("v4", [x6], [], self.current_location)
+    v1 = self.prog.NewVariable([x1, x2], [], self.current_location)
+    v2 = self.prog.NewVariable([x3], [], self.current_location)
+    v3 = self.prog.NewVariable([x4, x5], [], self.current_location)
+    v4 = self.prog.NewVariable([x6], [], self.current_location)
     x1.set_parameters([v2, v3])
     x5.set_parameters([v1])
     product = utils.deep_variable_product([v1, v4])
@@ -171,8 +171,8 @@ class UtilsTest(unittest.TestCase):
     ])
 
   def testVariableProductDict(self):
-    u1 = self.prog.NewVariable("u1", [1, 2], [], self.current_location)
-    u2 = self.prog.NewVariable("u2", [3, 4], [], self.current_location)
+    u1 = self.prog.NewVariable([1, 2], [], self.current_location)
+    u2 = self.prog.NewVariable([3, 4], [], self.current_location)
     product = utils.variable_product_dict({"a": u1, "b": u2})
     pairs = [{k: a.data for k, a in d.iteritems()}
              for d in product]
@@ -491,7 +491,7 @@ class UtilsTest(unittest.TestCase):
   def testMonitorDict(self):
     d = utils.MonitorDict()
     changestamp = d.changestamp
-    var = self.prog.NewVariable("var")
+    var = self.prog.NewVariable()
     d["key"] = var
     self.assertGreater(d.changestamp, changestamp)
     changestamp = d.changestamp
@@ -511,7 +511,7 @@ class UtilsTest(unittest.TestCase):
     d.add_alias("alias", "name")
     self.assertNotIn("alias", d)
     self.assertNotIn("name", d)
-    var1 = self.prog.NewVariable("var1")
+    var1 = self.prog.NewVariable()
     d["alias"] = var1
     self.assertIn("name", d)
     self.assertIn("alias", d)
@@ -520,7 +520,7 @@ class UtilsTest(unittest.TestCase):
     self.assertEquals(d["alias"], d.get("alias"))
     self.assertEquals(d["name"], d.get("name"))
     self.assertEquals(None, d.get("other_name"))
-    var2 = self.prog.NewVariable("var2")
+    var2 = self.prog.NewVariable()
     d["name"] = var2
     self.assertEquals(var2, d["name"])
     self.assertEquals(d["name"], d["alias"])
@@ -537,7 +537,7 @@ class UtilsTest(unittest.TestCase):
     d.add_alias("alias2", "alias1")
     d.add_alias("alias1", "alias2")
     # Check that the name, alias1, and alias2 still all refer to the same key
-    var = self.prog.NewVariable("var")
+    var = self.prog.NewVariable()
     d["alias1"] = var
     self.assertEquals(1, len(d))
     self.assertEquals(var, d["name"])
@@ -548,7 +548,7 @@ class UtilsTest(unittest.TestCase):
     d = utils.AliasingDict()
     d.add_alias("alias1", "name")
     d.add_alias("alias2", "alias1")
-    d["name"] = self.prog.NewVariable("var")
+    d["name"] = self.prog.NewVariable()
     self.assertEquals(1, len(d))
     self.assertEquals(d["name"], d["alias1"])
     self.assertEquals(d["alias1"], d["alias2"])
