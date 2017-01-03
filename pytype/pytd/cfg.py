@@ -75,16 +75,17 @@ class Program(object):
     the different bindings.
 
     Arguments:
-      bindings: Optionally, a sequence of possible bindings this variable can
+      bindings: Optionally, a sequence of possible data items this variable can
         have.
-      source_set: If we have bindings, the source_set they all depend on. An
+      source_set: If we have bindings, the source_set they *all* depend on. An
         instance of SourceSet.
-      where: Where in the CFG this node is assigned.
+      where: If we have bindings, where in the CFG they're assigned.
 
     Returns:
       A Variable instance.
     """
     variable = Variable(self, self.next_variable_id)
+    log.trace("New variable v%d" % self.next_variable_id)
     self.next_variable_id += 1
     if bindings is not None:
       assert source_set is not None and where is not None
@@ -370,7 +371,7 @@ class Variable(object):
     self._callbacks = []
 
   def __repr__(self):
-    return "<Variable %d: %d choices>" % (
+    return "<Variable v%d: %d choices>" % (
         self.id, len(self.bindings))
 
   __str__ = __repr__
