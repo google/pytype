@@ -4,6 +4,7 @@ import collections
 import contextlib
 import errno
 import itertools
+import logging
 import os
 import re
 import shutil
@@ -777,3 +778,18 @@ def ascii_tree(node, get_children):
   io = StringIO.StringIO()
   _ascii_tree(io, node, "", "", set(), get_children)
   return io.getvalue()
+
+
+def patch_logging():
+  """Add one extra log level, "TRACE", to logging."""
+  # pylint: disable=protected-access
+  def trace(self, msg, *args, **kwargs):
+    if self.isEnabledFor(logging.DEBUG - 1):
+      self._log(logging.DEBUG - 1, msg, args, **kwargs)
+  logging.TRACE = logging.DEBUG - 1
+  logging.Logger.trace = trace
+  logging._levelNames[logging.DEBUG - 1] = "TRACE"
+  # pylint: enable=protected-access
+
+
+patch_logging()

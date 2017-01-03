@@ -15,7 +15,7 @@ from pytype import utils
 
 
 LOG_LEVELS = [logging.CRITICAL, logging.ERROR, logging.WARNING,
-              logging.INFO, logging.DEBUG]
+              logging.INFO, logging.DEBUG, logging.DEBUG - 1]
 
 
 OptParseError = optparse.OptParseError  # used by main.py

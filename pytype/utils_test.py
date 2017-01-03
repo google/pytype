@@ -1,6 +1,7 @@
 """Tests for utils.py."""
 
 import itertools
+import logging
 import os
 import textwrap
 
@@ -12,6 +13,9 @@ from pytype.tests import test_inference
 import unittest
 
 # pylint: disable=invalid-name
+
+
+log = logging.getLogger(__name__)
 
 
 class DummyValue(object):
@@ -639,6 +643,10 @@ class UtilsTest(unittest.TestCase):
           |
           +-[Node(n1)]
     """), s)
+
+  def testTraceLogLevel(self):
+    log.trace("hello world")
+
 
 if __name__ == "__main__":
   test_inference.main()
