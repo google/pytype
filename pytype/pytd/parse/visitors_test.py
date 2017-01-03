@@ -360,6 +360,15 @@ class TestVisitors(parser_test_base.ParserTest):
     res = pytd.Print(tree)
     self.assertMultiLineEqual(res, src)
 
+  def testPrintUnionNameConflict(self):
+    src = textwrap.dedent("""
+      class Union: ...
+      def g(x: Union) -> int or float: ...
+    """)
+    tree = self.Parse(src)
+    res = pytd.Print(tree)
+    self.AssertSourceEquals(res, src)
+
   def testAdjustTypeParameters(self):
     ast = self.Parse("""
       T = TypeVar("T")

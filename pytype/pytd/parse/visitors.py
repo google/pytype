@@ -290,6 +290,9 @@ class PrintVisitor(Visitor):
   def _FormatTypeParams(self, type_params):
     return ["%s = TypeVar('%s')" % (t, t) for t in type_params]
 
+  def _NameCollision(self, name):
+    return name in self._class_members or name in self._local_names
+
   def EnterTypeDeclUnit(self, unit):
     definitions = (unit.classes + unit.functions + unit.constants +
                    unit.type_params + unit.aliases)
@@ -303,8 +306,8 @@ class PrintVisitor(Visitor):
     if node.type_params:
       self._RequireTypingImport("TypeVar")
     sections = [self._GenerateImportStrings(), node.aliases, node.constants,
-                self._FormatTypeParams(node.type_params), node.functions,
-                node.classes]
+                self._FormatTypeParams(node.type_params), node.classes,
+                node.functions]
 
     sections_as_string = ("\n".join(section_suite)
                           for section_suite in sections
@@ -508,7 +511,7 @@ class PrintVisitor(Visitor):
 
   def VisitAnythingType(self, unused_node):
     """Convert an anything type to a string."""
-    if "Any" in self._class_members or "Any" in self._local_names:
+    if self._NameCollision("Any"):
       self._RequireTypingImport(None)
       return "typing.Any"
     else:
@@ -571,6 +574,9 @@ class PrintVisitor(Visitor):
 
     if len(type_list) == 1:
       return type_list[0]
+    elif self._NameCollision("Union"):
+      self._RequireTypingImport(None)
+      return "typing.Union[" + ", ".join(type_list) + "]"
     else:
       self._RequireTypingImport("Union")
       return "Union[" + ", ".join(type_list) + "]"
