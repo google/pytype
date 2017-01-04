@@ -35,6 +35,13 @@ class TypingOverlay(abstract.Module):
     else:
       return self.real_module
 
+  def items(self):
+    items = super(TypingOverlay, self).items()
+    for name, item in self.real_module.items():
+      if name not in self._member_map:
+        items.append((name, item))
+    return items
+
 
 def _maybe_extract_tuple(convert, node, t):
   """Returns a tuple of Variables."""
@@ -197,8 +204,6 @@ def build_generic(name, vm, node):
   return vm.convert.unsolvable
 
 
-# TODO(rechen): There are a lot of other generics in typing.pytd; do they all
-# need to be added here?
 typing_overload = {
     "Any": build_any,
     "Callable": Callable,

@@ -4,6 +4,7 @@ import os
 
 
 from pytype import utils
+from pytype.pytd import pep484
 from pytype.tests import test_inference
 
 
@@ -293,6 +294,13 @@ class TypingTest(test_inference.InferenceTest):
       class Any(object):
           pass
     """)
+
+  def testImportAll(self):
+    python = [
+        "from __future__ import google_type_annotations",
+        "from typing import *  # pytype: disable=not-supported-yet",
+    ] + pep484.PEP484_NAMES
+    self.assertNoErrors("\n".join(python))
 
 
 if __name__ == "__main__":
