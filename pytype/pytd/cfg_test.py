@@ -10,9 +10,9 @@ class CFGTest(unittest.TestCase):
   def testSimpleGraph(self):
     p = cfg.Program()
     n1 = p.NewCFGNode("foo")
-    n2 = n1.ConnectNew()
-    n3 = n1.ConnectNew()
-    n4 = n3.ConnectNew()
+    n2 = n1.ConnectNew("n2")
+    n3 = n1.ConnectNew("n3")
+    n4 = n3.ConnectNew("n4")
     self.assertEquals("<0>foo", n1.Label())
     self.assertEquals(len(n1.outgoing), 2)
     self.assertEquals(len(n2.outgoing), 0)
@@ -69,8 +69,8 @@ class CFGTest(unittest.TestCase):
 
   def testVariableSet(self):
     p = cfg.Program()
-    node1 = p.NewCFGNode()
-    node2 = node1.ConnectNew()
+    node1 = p.NewCFGNode("n1")
+    node2 = node1.ConnectNew("n2")
     d = p.NewVariable()
     d.AddBinding("v1", source_set=[], where=node1)
     d.AddBinding("v2", source_set=[], where=node2)
@@ -78,9 +78,9 @@ class CFGTest(unittest.TestCase):
 
   def testAsciiTree(self):
     p = cfg.Program()
-    node1 = p.NewCFGNode()
-    node2 = node1.ConnectNew()
-    node3 = node2.ConnectNew()
+    node1 = p.NewCFGNode("n1")
+    node2 = node1.ConnectNew("n2")
+    node3 = node2.ConnectNew("n3")
     _ = node3.ConnectNew()
     # Just check sanity. Actual verification of the drawing algorithm is
     # done in utils_test.py.
@@ -143,13 +143,13 @@ class CFGTest(unittest.TestCase):
     #  +------------+---+------------+------------+
     #  n1           n2  n4           n5           n6
     p = cfg.Program()
-    n1 = p.NewCFGNode()
-    n2 = n1.ConnectNew()
-    n3 = n2.ConnectNew()
-    n4 = n2.ConnectNew()
-    n5 = n3.ConnectNew()
+    n1 = p.NewCFGNode("n1")
+    n2 = n1.ConnectNew("n2")
+    n3 = n2.ConnectNew("n3")
+    n4 = n2.ConnectNew("n4")
+    n5 = n3.ConnectNew("n5")
     n4.ConnectTo(n5)
-    n6 = n5.ConnectNew()
+    n6 = n5.ConnectNew("n6")
     n5.ConnectTo(n6)
 
     all_x = p.NewVariable()
@@ -173,10 +173,10 @@ class CFGTest(unittest.TestCase):
 
   def testCanHaveCombination(self):
     p = cfg.Program()
-    n1 = p.NewCFGNode()
-    n2 = n1.ConnectNew()
-    n3 = n1.ConnectNew()
-    n4 = p.NewCFGNode()
+    n1 = p.NewCFGNode("n1")
+    n2 = n1.ConnectNew("n2")
+    n3 = n1.ConnectNew("n3")
+    n4 = p.NewCFGNode("n4")
     n2.ConnectTo(n4)
     n3.ConnectTo(n4)
     x = p.NewVariable()
@@ -291,8 +291,8 @@ class CFGTest(unittest.TestCase):
 
   def testNewVariable(self):
     p = cfg.Program()
-    n1 = p.NewCFGNode()
-    n2 = p.NewCFGNode()
+    n1 = p.NewCFGNode("n1")
+    n2 = p.NewCFGNode("n2")
     x, y, z = "x", "y", "z"
     variable = p.NewVariable(bindings=[x, y],
                              source_set=[],
@@ -316,8 +316,8 @@ class CFGTest(unittest.TestCase):
 
   def testProgram(self):
     p = cfg.Program()
-    n1 = p.NewCFGNode()
-    n2 = n1.ConnectNew()
+    n1 = p.NewCFGNode("n1")
+    n2 = n1.ConnectNew("n2")
     u1 = p.NewVariable()
     u2 = p.NewVariable()
     a11 = u1.AddBinding(11, source_set=[], where=n1)
@@ -399,7 +399,7 @@ class CFGTest(unittest.TestCase):
   def testEmptyBinding(self):
     p = cfg.Program()
     n1 = p.NewCFGNode("n1")
-    n2 = n1.ConnectNew()
+    n2 = n1.ConnectNew("n2")
     x = p.NewVariable()
     a = x.AddBinding("a")
     p.entrypoint = n1
@@ -417,8 +417,8 @@ class CFGTest(unittest.TestCase):
   def testAssignToNew(self):
     p = cfg.Program()
     n1 = p.NewCFGNode("n1")
-    n2 = n1.ConnectNew()
-    n3 = n2.ConnectNew()
+    n2 = n1.ConnectNew("n2")
+    n3 = n2.ConnectNew("n3")
     x = p.NewVariable()
     ax = x.AddBinding("a", source_set=[], where=n1)
     y = ax.AssignToNewVariable(n2)
@@ -437,7 +437,7 @@ class CFGTest(unittest.TestCase):
   def testPasteVariable(self):
     p = cfg.Program()
     n1 = p.NewCFGNode("n1")
-    n2 = n1.ConnectNew()
+    n2 = n1.ConnectNew("n2")
     x = p.NewVariable()
     ax = x.AddBinding("a", source_set=[], where=n1)
     bx = x.AddBinding("b", source_set=[], where=n1)
