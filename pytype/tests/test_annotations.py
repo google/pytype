@@ -134,8 +134,6 @@ class AnnotationTest(test_inference.InferenceTest):
         x.append(y)
     """, deep=True)
     self.assertTypesMatchPytd(ty, """
-        List = ...  # type: type
-
         def foo(l1: List[int], l2: List[str], b) -> None: ...
     """)
 
@@ -148,7 +146,6 @@ class AnnotationTest(test_inference.InferenceTest):
           pass
     """, deep=True)
     self.assertTypesMatchPytd(ty, """
-      List = ...  # type: type
       class Foo:
         def f(self, x: List[int]) -> None: ...
     """)
@@ -310,9 +307,7 @@ class AnnotationTest(test_inference.InferenceTest):
       x = f(3)
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any
-      Any = ...  # type: Any
-      def f(x: Any) -> None: ...
+      def f(x) -> None: ...
       x = ...  # type: None
     """)
 
@@ -646,7 +641,6 @@ class AnnotationTest(test_inference.InferenceTest):
       f(A())
     """)
     self.assertTypesMatchPytd(ty, """
-      Union = ...  # type: type
       class A: ...
       class B:
         x = ...  # type: int
@@ -743,7 +737,6 @@ class AnnotationTest(test_inference.InferenceTest):
       f("", **h())
     """)
     self.assertTypesMatchPytd(ty, """
-      Dict = ...  # type: type
       def f(x, **kwargs) -> Dict[str, int]
       def g() -> Dict[str, float]
       def h() -> Dict[float, int]
@@ -818,8 +811,6 @@ class AnnotationTest(test_inference.InferenceTest):
       v2 = g()[0]
     """)
     self.assertTypesMatchPytd(ty, """
-      List = ...  # type: type
-      Union = ...  # type: type
       class A:
         x = ...  # type: int
       def f() -> Union[A, None]: ...
@@ -923,7 +914,6 @@ class AnnotationTest(test_inference.InferenceTest):
       v = f({"a": "b"})
     """)
     self.assertTypesMatchPytd(ty, """
-      Dict = ...  # type: type
       def f(x: Dict[str, str]) -> Dict[str or bool, str or int]: ...
       v = ...  # type: Dict[str or bool, str or int]
     """)
@@ -939,8 +929,6 @@ class AnnotationTest(test_inference.InferenceTest):
     """)
     self.assertTypesMatchPytd(ty, """
       import typing
-
-      List = ...  # type: type
 
       def f(x: typing.List[A]) -> int: ...
 
@@ -960,7 +948,6 @@ class AnnotationTest(test_inference.InferenceTest):
     """)
     self.assertTypesMatchPytd(ty, """
       import typing
-      List = ...  # type: type
       ListA = ...  # type: str
       TypeA = ...  # type: str
       def f(x: typing.List[A]) -> int: ...
@@ -976,8 +963,6 @@ class AnnotationTest(test_inference.InferenceTest):
         pass
     """)
     self.assertTypesMatchPytd(ty, """
-      import typing
-      List = ...  # type: type
       def f(x: List[int]) -> int: ...
     """)
 

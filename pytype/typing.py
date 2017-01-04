@@ -26,8 +26,10 @@ class TypingOverlay(abstract.Module):
         ast.name, ast, subst={}, node=vm.root_cfg_node)
 
   def _convert_member(self, name, m):
-    return m(name, self.vm, self.vm.root_cfg_node).to_variable(
+    var = m(name, self.vm, self.vm.root_cfg_node).to_variable(
         self.vm.root_cfg_node)
+    self.vm.trace_module_member(self, name, var)
+    return var
 
   def get_module(self, name):
     if name in self._member_map:

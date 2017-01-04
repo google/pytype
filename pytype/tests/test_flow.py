@@ -271,7 +271,6 @@ class FlowTest(test_inference.InferenceTest):
           stack.append(_Item(stack))
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any
       class _Item(object):
         name = ...  # type: str
         name_list = ...  # type: list

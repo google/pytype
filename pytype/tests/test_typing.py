@@ -101,7 +101,6 @@ class TypingTest(test_inference.InferenceTest):
     self.assertErrorLogIs(errors, [(8, "attribute-error", r"y.*Foo")])
     self.assertTypesMatchPytd(ty, """
       from typing import Any
-      Type = ...  # type: type
       class Foo:
         x = ...  # type: int
       def f1(foo: Type[Foo]) -> int
@@ -137,7 +136,6 @@ class TypingTest(test_inference.InferenceTest):
       MyType = List[str]
     """)
     self.assertTypesMatchPytd(ty, """
-      List = ...  # type: type
       MyType = List[str]
     """)
 
@@ -300,7 +298,8 @@ class TypingTest(test_inference.InferenceTest):
         "from __future__ import google_type_annotations",
         "from typing import *  # pytype: disable=not-supported-yet",
     ] + pep484.PEP484_NAMES
-    self.assertNoErrors("\n".join(python))
+    ty = self.Infer("\n".join(python))
+    self.assertTypesMatchPytd(ty, "")
 
 
 if __name__ == "__main__":

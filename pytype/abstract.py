@@ -2720,7 +2720,7 @@ class Module(Instance):
       # stored in globals(), since it's considered illegal to do
       # X = TypeVar("Y").
       self.vm.trace_typevar(name, typevar)
-      return typevar.to_variable(self.vm.root_cfg_node)
+      var = typevar.to_variable(self.vm.root_cfg_node)
     else:
       var = self.vm.convert.convert_constant(name, ty)
       for value in var.data:
@@ -2729,7 +2729,8 @@ class Module(Instance):
         #  do "from foo import x".)
         if not value.module:
           value.module = self.name
-      return var
+    self.vm.trace_module_member(self, name, var)
+    return var
 
   def has_getattr(self):
     """Does this module have a module-level __getattr__?

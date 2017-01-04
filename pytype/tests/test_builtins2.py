@@ -641,6 +641,14 @@ class BuiltinTests2(test_inference.InferenceTest):
       z = ...  # type: None
     """)
 
+  def testRedefineNext(self):
+    ty = self.Infer("""
+      next = 42
+    """)
+    self.assertTypesMatchPytd(ty, """
+      next = ...  # type: int
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

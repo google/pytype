@@ -56,6 +56,7 @@ class CallTracer(vm.VirtualMachine):
   def __init__(self, *args, **kwargs):
     super(CallTracer, self).__init__(*args, **kwargs)
     self._unknowns = {}
+    self._builtin_map = {}
     self._typevars = {}
     self._calls = set()
     self._method_calls = set()
@@ -233,9 +234,9 @@ class CallTracer(vm.VirtualMachine):
       node2.ConnectTo(node)
     return node
 
-  def analyze_toplevel(self, node, defs, ignore):
+  def analyze_toplevel(self, node, defs):
     for name, var in sorted(defs.items()):  # sort, for determinicity
-      if name not in ignore:
+      if name not in self._builtin_map:
         for value in var.bindings:
           if isinstance(value.data, abstract.InterpreterClass):
             node2 = self.analyze_class(value, node)
@@ -245,11 +246,21 @@ class CallTracer(vm.VirtualMachine):
             node2 = self.analyze_function(value, node)
             node2.ConnectTo(node)
 
-  def analyze(self, node, defs, ignore, maximum_depth):
+  def analyze(self, node, defs, maximum_depth):
     assert not self.frame
     self.maximum_depth = sys.maxint if maximum_depth is None else maximum_depth
-    self.analyze_toplevel(node, defs, ignore)
+    self.analyze_toplevel(node, defs)
     return node
+
+  def trace_module_member(self, module, name, member):
+    if module is None or module is self.convert.typing_overlay:
+      # TypingOverlay takes precedence over typing.pytd.
+      trace = True
+    else:
+      trace = (module is self.convert.typing_overlay.real_module and
+               name not in self._builtin_map)
+    if trace:
+      self._builtin_map[name] = member.data
 
   def trace_typevar(self, name, typevar):
     if name in self._typevars and self._typevars[name] != typevar:
@@ -289,10 +300,10 @@ class CallTracer(vm.VirtualMachine):
         classes.append(value.to_structural_def(self.exitpoint, name))
     return classes
 
-  def pytd_for_types(self, defs, ignore):
+  def pytd_for_types(self, defs):
     data = []
     for name, var in defs.items():
-      if name in output.TOP_LEVEL_IGNORE or name in ignore:
+      if name in output.TOP_LEVEL_IGNORE or self._is_builtin(name, var.data):
         continue
       options = var.FilteredData(self.exitpoint)
       if (len(options) > 1 and not
@@ -347,6 +358,9 @@ class CallTracer(vm.VirtualMachine):
                                      pytd.METHOD))
     return functions
 
+  def _is_builtin(self, name, data):
+    return self._builtin_map.get(name) == data
+
   def _pack_name(self, name):
     """Pack a name, for unpacking with type_match.unpack_name_of_partial()."""
     return "~" + name.replace(".", "~")
@@ -384,11 +398,12 @@ class CallTracer(vm.VirtualMachine):
 
   def pytd_typevars(self):
     return [t.to_pytd_def(self.exitpoint, name)
-            for name, t in self._typevars.items()]
+            for name, t in self._typevars.items()
+            if not self._is_builtin(name, [t])]
 
-  def compute_types(self, defs, ignore):
+  def compute_types(self, defs):
     ty = pytd_utils.Concat(
-        self.pytd_for_types(defs, ignore),
+        self.pytd_for_types(defs),
         pytd.TypeDeclUnit(
             "unknowns",
             constants=tuple(),
@@ -659,7 +674,7 @@ def check_types(py_src, pytd_src, py_filename, pytd_filename, errorlog,
                       cache_unknowns=cache_unknowns,
                       analyze_annotated=True,
                       generate_unknowns=False)
-  loc, defs, builtin_names = tracer.run_program(
+  loc, defs = tracer.run_program(
       py_src, py_filename, init_maximum_depth, run_builtins)
   if pytd_src is not None:
     del deep  # ignored
@@ -670,8 +685,7 @@ def check_types(py_src, pytd_src, py_filename, pytd_filename, errorlog,
                        os.path.basename(py_filename),
                        os.path.basename(pytd_filename))
   elif deep:
-    tracer.analyze(loc, defs, builtin_names,
-                   maximum_depth=(2 if options.quick else None))
+    tracer.analyze(loc, defs, maximum_depth=(2 if options.quick else None))
   _maybe_output_debug(options, tracer.program)
 
 
@@ -711,14 +725,14 @@ def infer_types(src,
                       analyze_annotated=analyze_annotated,
                       generate_unknowns=not options.quick,
                       store_all_calls=not deep)
-  loc, defs, builtin_names = tracer.run_program(
+  loc, defs = tracer.run_program(
       src, filename, init_maximum_depth, run_builtins)
   log.info("===Done running definitions and module-level code===")
   if deep:
-    tracer.exitpoint = tracer.analyze(loc, defs, builtin_names, maximum_depth)
+    tracer.exitpoint = tracer.analyze(loc, defs, maximum_depth)
   else:
     tracer.exitpoint = loc
-  ast = tracer.compute_types(defs, builtin_names)
+  ast = tracer.compute_types(defs)
   ast = tracer.loader.resolve_ast(ast)
   if tracer.has_unknown_wildcard_imports:
     try:

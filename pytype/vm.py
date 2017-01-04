@@ -566,12 +566,11 @@ class VirtualMachine(object):
     assert not self.frames
     # TODO(kramm): pytype doesn't support namespacing of the currently parsed
     # module, so add the module name manually.
-    for definition in f_globals.members.values():
+    for name, definition in f_globals.members.items():
       for d in definition.data:
         d.module = "__builtin__"
-    # at the outer layer, locals are the same as globals
-    builtin_names = frozenset(f_globals.members)
-    return node, f_globals, f_locals, builtin_names
+      self.trace_module_member(None, name, definition)
+    return node, f_globals, f_locals
 
   def run_program(self, src, filename, maximum_depth, run_builtins):
     """Run the code and return the CFG nodes.
@@ -598,9 +597,9 @@ class VirtualMachine(object):
     self.maximum_depth = sys.maxint if maximum_depth is None else maximum_depth
     node = self.root_cfg_node.ConnectNew("builtins")
     if run_builtins:
-      node, f_globals, f_locals, builtin_names = self.preload_builtins(node)
+      node, f_globals, f_locals = self.preload_builtins(node)
     else:
-      node, f_globals, f_locals, builtin_names = node, None, None, frozenset()
+      node, f_globals, f_locals = node, None, None
 
     code = self.compile_src(src, filename=filename)
 
@@ -626,7 +625,7 @@ class VirtualMachine(object):
       self._eval_late_annotations(node, func, f_globals)
     assert not self.frames, "Frames left over!"
     log.info("Final node: <%d>%s", node.id, node.name)
-    return node, f_globals.members, builtin_names
+    return node, f_globals.members
 
   def _eval_expr(self, node, f_globals, expr):
     # We don't chain node and f_globals as we want to remain in the context
@@ -755,6 +754,10 @@ class VirtualMachine(object):
     state, (x, y) = state.popn(2)
     state, ret = self.call_inplace_operator(state, name, x, y)
     return state.push(ret)
+
+  def trace_module_member(self, *args):
+    """Fired whenever a member of a module is converted."""
+    return NotImplemented
 
   def trace_typevar(self, *args):
     """Fired whenever we create a new TypeVar."""

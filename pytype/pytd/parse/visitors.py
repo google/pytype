@@ -218,6 +218,7 @@ class PrintVisitor(Visitor):
     self.in_parameter = False
     self._local_names = set()
     self._class_members = set()
+    self._any_count = 0
 
   def _EscapedName(self, name):
     """Name, possibly escaped with backticks.
@@ -274,6 +275,8 @@ class PrintVisitor(Visitor):
     ret = []
     for module in sorted(self.imports):
       names = set(self.imports[module])
+      if module == "typing" and not self._any_count:
+        names.discard("Any")
       if None in names:
         ret.append("import %s" % module)
         names.remove(None)
@@ -463,6 +466,8 @@ class PrintVisitor(Visitor):
     suffix = " = ..." if node.optional else ""
     if node.type == "object" or node.type == "Any":
       # Abbreviated form. "object" or "Any" is the default.
+      if node.type == "Any":
+        self._any_count -= 1
       return node.name + suffix
     elif node.name == "self" and self.class_names and (
         node.type == self.class_names[-1]):
@@ -511,6 +516,7 @@ class PrintVisitor(Visitor):
 
   def VisitAnythingType(self, unused_node):
     """Convert an anything type to a string."""
+    self._any_count += 1
     if self._NameCollision("Any"):
       self._RequireTypingImport(None)
       return "typing.Any"

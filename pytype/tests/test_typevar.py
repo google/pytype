@@ -34,7 +34,6 @@ class TypeVarTest(test_inference.InferenceTest):
       def f(x: List[T]) -> T: ...
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
-      List = ...  # type: type
       S = TypeVar("S")
       T = TypeVar("T")
       def f(x: typing.List[T]) -> T: ...
@@ -63,7 +62,6 @@ class TypeVarTest(test_inference.InferenceTest):
         from a import f
       """, deep=True, solve_unknowns=True, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        import typing
         AnyStr = TypeVar('AnyStr')
         def f(x: AnyStr) -> AnyStr
       """)
