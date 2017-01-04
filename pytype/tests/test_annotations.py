@@ -981,6 +981,22 @@ class AnnotationTest(test_inference.InferenceTest):
       def g(x: float) -> int: ...
     """)
 
+  def testEllipsis(self):
+    ty, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      from typing import Dict, Tuple
+      def f(x: ...): pass
+      def g(x: Tuple[str, ...]): pass
+      def h(x: Dict[..., int]): pass
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      def f(x) -> None: ...
+      def g(x: Tuple[str, ...]) -> None: ...
+      def h(x: Dict[Any, int]) -> None: ...
+    """)
+    self.assertErrorLogIs(errors, [(3, "invalid-annotation", r"Ellipsis.*x")])
+
 
 if __name__ == "__main__":
   test_inference.main()

@@ -68,13 +68,23 @@ class TypingClass(abstract.ValueWithSlots):
 
   def getitem_slot(self, node, slice_var):
     inner = []
-    for var in _maybe_extract_tuple(self.vm.convert, node, slice_var):
+    slice_content = _maybe_extract_tuple(self.vm.convert, node, slice_var)
+    for var in slice_content:
       if len(var.bindings) > 1:
         self.vm.errorlog.invalid_annotation(self.vm.frame.current_opcode, self,
                                             "Must be constant")
         inner.append(self.vm.convert.unsolvable)
       else:
-        inner.append(var.bindings[0].data)
+        val = var.bindings[0].data
+        if val is self.vm.convert.ellipsis:
+          if len(inner) == 1 and len(slice_content) == 2:
+            # TODO(rechen): We should use this information to distinguish
+            # between, e.g., Tuple[int] and Tuple[int, ...].
+            continue
+          else:
+            inner.append(self.vm.convert.unsolvable)
+        else:
+          inner.append(val)
     value = self._build_value(node, tuple(inner))
     return node, value.to_variable(node)
 

@@ -63,6 +63,8 @@ class Converter(object):
         # Without it pytype could not reason that "x is None" is always true, if
         # x is indeed None.
         instance = self.none
+      elif name == types.EllipsisType:
+        instance = self.ellipsis
       else:
         instance = abstract.Instance(clsvar, self.vm, self.vm.root_cfg_node)
       self.primitive_class_instances[name] = instance
