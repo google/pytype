@@ -92,7 +92,8 @@ class VirtualMachine(object):
                generate_unknowns=False,
                analyze_annotated=False,
                cache_unknowns=True,
-               store_all_calls=False):
+               store_all_calls=False,
+               loader=None):
     """Construct a TypegraphVirtualMachine."""
     self.maximum_depth = sys.maxint
     self.errorlog = errorlog
@@ -102,7 +103,8 @@ class VirtualMachine(object):
     self.analyze_annotated = analyze_annotated
     self.cache_unknowns = cache_unknowns
     self.store_all_calls = store_all_calls
-    self.loader = load_pytd.Loader(base_module=module_name, options=options)
+    self.loader = loader or (
+        load_pytd.Loader(base_module=module_name, options=options))
     self.frames = []  # The call stack of frames.
     self.functions_with_late_annotations = []
     self.frame = None  # The current frame.
