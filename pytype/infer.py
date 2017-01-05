@@ -501,7 +501,7 @@ def _pretty_variable(var):
   """Return a pretty printed string for a Variable."""
   lines = []
   single_value = len(var.bindings) == 1
-  var_desc = "$%d %s" % (var.id, var.name)
+  var_desc = "v%d" % var.id
   if not single_value:
     # Write a description of the variable (for single value variables this
     # will be written along with the value later on).
@@ -578,9 +578,6 @@ def program_to_dot(program, ignored, only_cfg=False):
   def objname(n):
     return n.__class__.__name__ + str(id(n))
 
-  def escape(s):
-    return repr(s)[1:-1].replace('"', '\\"')
-
   print("cfg nodes=%d, vals=%d, variables=%d" % (
       len(program.cfg_nodes),
       sum(len(v.bindings) for v in program.variables),
@@ -601,15 +598,15 @@ def program_to_dot(program, ignored, only_cfg=False):
     return sb.getvalue()
 
   for variable in program.variables:
-    if variable.name in ignored:
+    if variable.id in ignored:
       continue
     if all(origin.where == program.entrypoint
            for value in variable.bindings
            for origin in value.origins):
       # Ignore "boring" values (a.k.a. constants)
       continue
-    sb.write('%s[label="%s",shape=polygon,sides=4,distortion=.1];\n'
-             % (objname(variable), escape(variable.name)))
+    sb.write('%s[label="%d",shape=polygon,sides=4,distortion=.1];\n'
+             % (objname(variable), variable.id))
     for val in variable.bindings:
       sb.write("%s -> %s [arrowhead=none];\n" %
                (objname(variable), objname(val)))
