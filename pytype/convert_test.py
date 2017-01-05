@@ -22,7 +22,7 @@ class ConvertTest(unittest.TestCase):
       return self._vm.loader.import_name(name)
 
   def _convert_class(self, name, ast):
-    return self._vm.convert.convert_constant_to_value(
+    return self._vm.convert.constant_to_value(
         name, ast.Lookup(name), {}, self._vm.root_cfg_node)
 
   def test_convert_metaclass(self):
@@ -61,14 +61,14 @@ class ConvertTest(unittest.TestCase):
     ast = self._load_ast("a", """
       x = ...  # type: Dict[str]
     """)
-    val = self._vm.convert.convert_constant_to_value(
+    val = self._vm.convert.constant_to_value(
         "x", ast.Lookup("a.x").type, {}, self._vm.root_cfg_node)
     self.assertIs(val.type_parameters["K"],
                   abstract.get_atomic_value(self._vm.convert.str_type))
     self.assertIs(val.type_parameters["V"], self._vm.convert.unsolvable)
 
-  def test_construct_long(self):
-    val = self._vm.convert.construct_constant_from_value(
+  def test_convert_long(self):
+    val = self._vm.convert.constant_to_value(
         "x", 2**64, {}, self._vm.root_cfg_node)
     self.assertIs(val, self._vm.convert.primitive_class_instances[int])
 

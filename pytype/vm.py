@@ -850,7 +850,7 @@ class VirtualMachine(object):
 
   def load_constant(self, value):
     """Converts a Python value to an abstract value."""
-    return self.convert.convert_constant(type(value).__name__, value)
+    return self.convert.constant_to_var(type(value).__name__, value)
 
   def get_globals_dict(self):
     """Get a real python dict of the globals."""
@@ -1065,7 +1065,7 @@ class VirtualMachine(object):
       assert level > 0
       ast = self.loader.import_relative(level)
     if ast:
-      return self.convert.construct_constant_from_value(
+      return self.convert.constant_to_value(
           ast.name, ast, subst={}, node=self.root_cfg_node)
     else:
       return None
@@ -1491,7 +1491,7 @@ class VirtualMachine(object):
     state, seq = state.pop()
     values = None
     try:
-      values = self.convert.convert_value_to_constant(
+      values = self.convert.value_to_constant(
           abstract.get_atomic_value(seq), tuple)
     except abstract.ConversionError:
       pass

@@ -741,7 +741,7 @@ class Tuple(ValueWithSlots, PythonConstant):
   def getitem_slot(self, node, index_var):
     """Implementation of tuple.__getitem__."""
     try:
-      index = self.vm.convert.convert_value_to_constant(
+      index = self.vm.convert.value_to_constant(
           get_atomic_value(index_var), int)
     except ConversionError:
       pass
@@ -786,7 +786,7 @@ class Dict(ValueWithSlots, PythonConstant, WrapsDict("pyval")):
     if not self.could_contain_anything:
       for val in name_var.bindings:
         try:
-          name = self.vm.convert.convert_value_to_constant(val.data, str)
+          name = self.vm.convert.value_to_constant(val.data, str)
         except ConversionError:
           unresolved = True
         else:
@@ -817,7 +817,7 @@ class Dict(ValueWithSlots, PythonConstant, WrapsDict("pyval")):
     assert isinstance(value_var, typegraph.Variable)
     for val in name_var.bindings:
       try:
-        name = self.vm.convert.convert_value_to_constant(val.data, str)
+        name = self.vm.convert.value_to_constant(val.data, str)
       except ConversionError:
         # Now the dictionary is abstract: We don't know what it contains
         # anymore. Note that the below is not a variable, so it'll affect
@@ -893,7 +893,7 @@ class LazyConcreteDict(SimpleAbstractValue, PythonConstant):
     PythonConstant.init_mixin(self, self.members)
 
   def _convert_member(self, name, pyval):
-    return self.vm.convert.convert_constant(name, pyval)
+    return self.vm.convert.constant_to_var(name, pyval)
 
   def compatible_with(self, logical_value):
     return bool(self._member_map) == logical_value
@@ -1330,7 +1330,7 @@ class PyTDSignature(object):
     self.name = name
     self.pytd_sig = pytd_sig
     self.param_types = [
-        self.vm.convert.convert_constant_to_value(
+        self.vm.convert.constant_to_value(
             pytd.Print(p), p.type, subst={}, node=self.vm.root_cfg_node)
         for p in self.pytd_sig.params]
     self.signature = function.Signature.from_pytd(vm, name, pytd_sig)
@@ -1388,7 +1388,7 @@ class PyTDSignature(object):
     sources = [func] + arg_dict.values()
     if t not in ret_map:
       try:
-        ret_map[t] = self.vm.convert.convert_constant(
+        ret_map[t] = self.vm.convert.constant_to_var(
             "ret", AsInstance(return_type), subst, node, source_sets=[sources])
       except self.vm.convert.TypeParameterError:
         # The return type contains a type parameter without a substitution. See
@@ -1445,7 +1445,7 @@ class PyTDSignature(object):
             log.info("Mutating %s to %s",
                      tparam.name,
                      pytd.Print(type_actual))
-            type_actual_val = self.vm.convert.convert_constant(
+            type_actual_val = self.vm.convert.constant_to_var(
                 tparam.name, AsInstance(type_actual), subst, node,
                 discard_concrete_values=True)
             mutations.append(Mutation(arg, tparam.name, type_actual_val))
@@ -1615,7 +1615,7 @@ class PyTDFunction(Function):
       try:
         # Even though we don't know which signature got picked, if the return
         # type is unique and does not contain any type parameter, we can use it.
-        result = self.vm.convert.convert_constant(
+        result = self.vm.convert.constant_to_var(
             "ret", AsInstance(ret_type), {}, node)
       except self.vm.convert.TypeParameterError:
         # The return type contains a type parameter
@@ -1874,7 +1874,7 @@ class PyTDClass(SimpleAbstractValue, Class):
     if pytd_cls.metaclass is None:
       metaclass = None
     else:
-      metaclass = self.vm.convert.convert_constant(
+      metaclass = self.vm.convert.constant_to_var(
           pytd.Print(pytd_cls.metaclass), pytd_cls.metaclass, subst={},
           node=self.vm.root_cfg_node)
     self.pytd_cls = pytd_cls
@@ -1885,7 +1885,7 @@ class PyTDClass(SimpleAbstractValue, Class):
 
   def bases(self):
     convert = self.vm.convert
-    return [convert.convert_constant_to_value(
+    return [convert.constant_to_value(
         pytd.Print(parent), parent, subst={}, node=self.vm.root_cfg_node)
             for parent in self.pytd_cls.parents]
 
@@ -1894,10 +1894,10 @@ class PyTDClass(SimpleAbstractValue, Class):
     subst = subst or {}
     node = node or self.vm.root_cfg_node
     if isinstance(pyval, pytd.Constant):
-      return self.vm.convert.convert_constant(
+      return self.vm.convert.constant_to_var(
           name, AsInstance(pyval.type), subst, node)
     elif isinstance(pyval, pytd.Function):
-      c = self.vm.convert.convert_constant_to_value(
+      c = self.vm.convert.constant_to_value(
           repr(pyval), pyval, subst=subst, node=node)
       c.parent = self
       return c.to_variable(self.vm.root_cfg_node)
@@ -1907,7 +1907,7 @@ class PyTDClass(SimpleAbstractValue, Class):
   def call(self, node, func, args, condition=None):
     node, results = self._call_new_and_init(node, func, args, condition)
     if results is None:
-      value = Instance(self.vm.convert.convert_constant(
+      value = Instance(self.vm.convert.constant_to_var(
           self.name, self.pytd_cls), self.vm, node)
       for type_param in self.template:
         if type_param.name not in value.type_parameters:
@@ -1918,7 +1918,7 @@ class PyTDClass(SimpleAbstractValue, Class):
     return node, results
 
   def instantiate(self, node):
-    return self.vm.convert.convert_constant(
+    return self.vm.convert.constant_to_var(
         self.name, AsInstance(self.pytd_cls), {}, node)
 
   def to_type(self, node=None, seen=None, view=None):
@@ -2344,12 +2344,12 @@ class InterpreterFunction(Function):
         if name == self.signature.varargs_name:
           # The annotation is Tuple[<varargs type>], but the passed arg can be
           # any iterable of <varargs type>.
-          formal = ParameterizedClass(self.vm.convert.convert_name_to_value(
+          formal = ParameterizedClass(self.vm.convert.name_to_value(
               "typing.Iterable"), formal.type_parameters, self.vm)
         elif name == self.signature.kwargs_name:
           # The annotation is Dict[str, <kwargs type>], but the passed arg can
           # be any mapping from str to <kwargs type>.
-          formal = ParameterizedClass(self.vm.convert.convert_name_to_value(
+          formal = ParameterizedClass(self.vm.convert.name_to_value(
               "typing.Mapping"), formal.type_parameters, self.vm)
         formal_args.append((name, formal))
     subst = self.vm.matcher.compute_subst(node, formal_args, arg_dict, view)
@@ -2722,7 +2722,7 @@ class Module(Instance):
       self.vm.trace_typevar(name, typevar)
       var = typevar.to_variable(self.vm.root_cfg_node)
     else:
-      var = self.vm.convert.convert_constant(name, ty)
+      var = self.vm.convert.constant_to_var(name, ty)
       for value in var.data:
         # Only do this if this class isn't already part of a module.
         # (This happens if e.g. foo.py does "from bar import x" and we then

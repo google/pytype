@@ -22,7 +22,7 @@ class TypingOverlay(abstract.Module):
       if name not in member_map and pytd.IsContainer(cls) and cls.template:
         member_map[name] = build_container
     super(TypingOverlay, self).__init__(vm, node, "typing", member_map)
-    self.real_module = vm.convert.construct_constant_from_value(
+    self.real_module = vm.convert.constant_to_value(
         ast.name, ast, subst={}, node=vm.root_cfg_node)
 
   def _convert_member(self, name, m):
@@ -127,7 +127,7 @@ class Callable(Container):
   def __init__(self, name, vm, node):
     # Note that we cannot use vm.convert.function_type here, since our matcher
     # doesn't know that __builtin__.function and typing.Callable are the same.
-    base = vm.convert.convert_name_to_value("typing.Callable")
+    base = vm.convert.name_to_value("typing.Callable")
     super(Callable, self).__init__(name, vm, node, base)
 
   def _build_value(self, node, inner):
@@ -183,7 +183,7 @@ def build_container(name, vm, node):
     pytd_name = "__builtin__." + name.lower()
   else:
     pytd_name = "typing." + name
-  base = vm.convert.convert_name_to_value(pytd_name)
+  base = vm.convert.name_to_value(pytd_name)
   return Container(name, vm, node, base)
 
 

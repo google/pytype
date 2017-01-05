@@ -32,14 +32,14 @@ class Converter(object):
 
   def __init__(self, vm):
     self.vm = vm
-    self.vm.convert = self  # to make convert_constant calls below work
+    self.vm.convert = self  # to make constant_to_var calls below work
 
     self._convert_cache = {}
 
-    # Initialize primitive_classes to empty to allow convert_constant to run
+    # Initialize primitive_classes to empty to allow constant_to_var to run
     self.primitive_classes = ()
-    # Now fill primitive_classes with the real values using convert_constant
-    self.primitive_classes = {v: self.convert_constant(v.__name__, v)
+    # Now fill primitive_classes with the real values using constant_to_var
+    self.primitive_classes = {v: self.constant_to_var(v.__name__, v)
                               for v in [int, float, str, unicode, object,
                                         types.NoneType, complex, bool, slice,
                                         types.CodeType, types.EllipsisType,
@@ -82,23 +82,20 @@ class Converter(object):
     self.unsolvable = abstract.Unsolvable(self.vm)
     self.empty = abstract.Empty(self.vm)
 
-    self.tuple_type = self.convert_constant("tuple", tuple)
-    self.list_type = self.convert_constant("list", list)
-    self.set_type = self.convert_constant("set", set)
-    self.frozenset_type = self.convert_constant("frozenset", frozenset)
-    self.dict_type = self.convert_constant("dict", dict)
-    self.type_type = self.convert_constant("type", type)
-    self.module_type = self.convert_constant("module", types.ModuleType)
-    self.function_type = self.convert_constant(
-        "function", types.FunctionType)
-    self.generator_type = self.convert_constant(
-        "generator", types.GeneratorType)
+    self.tuple_type = self.constant_to_var("tuple", tuple)
+    self.list_type = self.constant_to_var("list", list)
+    self.set_type = self.constant_to_var("set", set)
+    self.frozenset_type = self.constant_to_var("frozenset", frozenset)
+    self.dict_type = self.constant_to_var("dict", dict)
+    self.type_type = self.constant_to_var("type", type)
+    self.module_type = self.constant_to_var("module", types.ModuleType)
+    self.function_type = self.constant_to_var("function", types.FunctionType)
+    self.generator_type = self.constant_to_var("generator", types.GeneratorType)
     # TODO(dbaum): There isn't a types.IteratorType.  This can probably be
     # based on typing.Iterator, but that will also require changes to
     # convert.py since that assumes all types can be looked up in
     # __builtin__.
-    self.iterator_type = self.convert_constant(
-        "iterator", types.ObjectType)
+    self.iterator_type = self.constant_to_var("iterator", types.ObjectType)
     self.bool_values = {
         True: self.true,
         False: self.false,
@@ -110,16 +107,16 @@ class Converter(object):
     self.object_new, = object_val.members["__new__"].data
     self.typing_overlay = typing.TypingOverlay(self.vm, self.vm.root_cfg_node)
 
-  def convert_value_to_constant(self, val, constant_type):
+  def value_to_constant(self, val, constant_type):
     if (isinstance(val, abstract.PythonConstant) and
         isinstance(val.pyval, constant_type)):
       return val.pyval
     raise abstract.ConversionError(
         "%s is not a(n) %s" % (val, constant_type.__name__))
 
-  def convert_name_to_value(self, name):
+  def name_to_value(self, name):
     pytd_cls = self.vm.lookup_builtin(name)
-    return self.convert_constant_to_value(
+    return self.constant_to_value(
         pytd_cls.name, pytd_cls, {}, self.vm.root_cfg_node)
 
   def tuple_to_value(self, node, content):
@@ -149,7 +146,7 @@ class Converter(object):
 
   def build_string(self, node, s):
     del node
-    return self.convert_constant(repr(s), s)
+    return self.constant_to_var(repr(s), s)
 
   def build_content(self, node, elements):
     var = self.vm.program.NewVariable()
@@ -193,7 +190,7 @@ class Converter(object):
 
     Get an abstract instance of primitive data stored as an
     AbstractOrConcreteValue. Return any other data as-is. This is used by
-    convert_constant to discard concrete values that have been kept
+    constant_to_var to discard concrete values that have been kept
     around for InterpreterFunction.
 
     Arguments:
@@ -235,13 +232,13 @@ class Converter(object):
     """Create a new variable containing an unsolvable."""
     return self.unsolvable.to_variable(node)
 
-  def create_varargs(self, arg_type):
+  def create_new_varargs_value(self, arg_type):
     """Create a varargs argument given its element type."""
     params = {abstract.T: arg_type}
     return abstract.ParameterizedClass(
         abstract.get_atomic_value(self.tuple_type), params, self.vm)
 
-  def create_kwargs(self, arg_type):
+  def create_new_kwargs_value(self, arg_type):
     """Create a kwargs argument given its element type."""
     params = {abstract.K: abstract.get_atomic_value(self.str_type),
               abstract.V: arg_type}
@@ -264,14 +261,13 @@ class Converter(object):
         classes.update(cls.Data(node))
     return abstract.merge_values(classes, self.vm)
 
-  def convert_constant(self, name, pyval, subst=None, node=None,
-                       source_sets=None, discard_concrete_values=False):
+  def constant_to_var(self, name, pyval, subst=None, node=None,
+                      source_sets=None, discard_concrete_values=False):
     """Convert a constant to a Variable.
 
-    This converts a constant to a cfg.Variable. Unlike
-    convert_constant_to_value, it can handle things that need to be represented
-    as a Variable with multiple possible values (i.e., a union type), like
-    pytd.Function.
+    This converts a constant to a cfg.Variable. Unlike constant_to_value, it
+    can handle things that need to be represented as a Variable with multiple
+    possible values (i.e., a union type), like pytd.Function.
 
     Args:
       name: The name to give the new variable.
@@ -292,14 +288,14 @@ class Converter(object):
     source_sets = source_sets or [[]]
     node = node or self.vm.root_cfg_node
     if isinstance(pyval, pytd.UnionType):
-      options = [self.convert_constant_to_value(pytd.Print(t), t, subst, node)
+      options = [self.constant_to_value(pytd.Print(t), t, subst, node)
                  for t in pyval.type_list]
       return self.vm.program.NewVariable(options, [], self.vm.root_cfg_node)
     elif isinstance(pyval, pytd.NothingType):
       return self.vm.program.NewVariable([], [], self.vm.root_cfg_node)
     elif isinstance(pyval, pytd.Alias):
-      return self.convert_constant(pytd.Print(pyval), pyval.type, subst,
-                                   node, source_sets, discard_concrete_values)
+      return self.constant_to_var(pytd.Print(pyval), pyval.type, subst,
+                                  node, source_sets, discard_concrete_values)
     elif isinstance(pyval, abstract.AsInstance):
       cls = pyval.cls
       if isinstance(cls, pytd.AnythingType):
@@ -322,16 +318,15 @@ class Converter(object):
         elif isinstance(t, pytd.NothingType):
           pass
         else:
-          value = self.convert_constant_to_value(
+          value = self.constant_to_value(
               name, abstract.AsInstance(t), subst, node)
           for source_set in source_sets:
             var.AddBinding(value, source_set, node)
       return var
     elif isinstance(pyval, pytd.Constant):
-      return self.convert_constant(
-          name, abstract.AsInstance(pyval.type), subst, node, source_sets,
-          discard_concrete_values)
-    result = self.convert_constant_to_value(name, pyval, subst, node)
+      return self.constant_to_var(name, abstract.AsInstance(pyval.type), subst,
+                                  node, source_sets, discard_concrete_values)
+    result = self.constant_to_value(name, pyval, subst, node)
     if result is not None:
       return result.to_variable(self.vm.root_cfg_node)
     # There might still be bugs on the abstract intepreter when it returns,
@@ -344,14 +339,14 @@ class Converter(object):
       # tuples.
       return self.build_tuple(
           self.vm.root_cfg_node,
-          (self.convert_constant("tuple[%d]" % i, v, subst, node, source_sets,
-                                 discard_concrete_values)
+          (self.constant_to_var("tuple[%d]" % i, v, subst, node, source_sets,
+                                discard_concrete_values)
            for i, v in enumerate(pyval)))
     raise ValueError(
         "Cannot convert {} to an abstract value".format(pyval.__class__))
 
-  def convert_constant_to_value(self, name, pyval, subst, node):
-    """Like convert_constant, but convert to an abstract.AtomicAbstractValue.
+  def constant_to_value(self, name, pyval, subst, node):
+    """Like constant_to_var, but convert to an abstract.AtomicAbstractValue.
 
     This also memoizes the results.  We don't memoize on name, as builtin types
     like str or list might be reinitialized under different names (e.g. "param
@@ -372,7 +367,7 @@ class Converter(object):
     key = ("constant", pyval, type(pyval))
     if key not in self._convert_cache:
       self._convert_cache[key] = None  # for recursion detection
-      self._convert_cache[key] = self.construct_constant_from_value(
+      self._convert_cache[key] = self._constant_to_value(
           name, pyval, subst, node)
     elif self._convert_cache[key] is None:
       # This error is triggered by, e.g., classes inheriting from each other
@@ -380,7 +375,7 @@ class Converter(object):
       self._convert_cache[key] = self.unsolvable
     return self._convert_cache[key]
 
-  def construct_constant_from_value(self, name, pyval, subst, node):
+  def _constant_to_value(self, name, pyval, subst, node):
     """Create a AtomicAbstractValue that represents a python constant.
 
     This supports both constant from code constant pools and PyTD constants such
@@ -419,7 +414,7 @@ class Converter(object):
                               type] or pyval is type):
       try:
         pyclass = self.vm.lookup_builtin("__builtin__." + pyval.__name__)
-        return self.convert_constant_to_value(name, pyclass, subst, node)
+        return self.constant_to_value(name, pyclass, subst, node)
       except (KeyError, AttributeError):
         log.debug("Failed to find pytd", exc_info=True)
         raise
@@ -453,17 +448,16 @@ class Converter(object):
       return f
     elif isinstance(pyval, pytd.ClassType):
       assert pyval.cls
-      return self.convert_constant_to_value(pyval.name, pyval.cls, subst, node)
+      return self.constant_to_value(pyval.name, pyval.cls, subst, node)
     elif isinstance(pyval, pytd.NothingType):
       return self.nothing
     elif isinstance(pyval, pytd.AnythingType):
       return self.unsolvable
     elif isinstance(pyval, pytd.FunctionType):
-      return self.construct_constant_from_value(
-          name, pyval.function, subst, node)
+      return self._constant_to_value(name, pyval.function, subst, node)
     elif isinstance(pyval, pytd.UnionType):
       return abstract.Union([
-          self.convert_constant_to_value(pytd.Print(t), t, subst, node)
+          self.constant_to_value(pytd.Print(t), t, subst, node)
           for t in pyval.type_list], self.vm)
     elif isinstance(pyval, pytd.TypeParameter):
       return abstract.TypeParameter(pyval.name, self.vm)
@@ -479,7 +473,7 @@ class Converter(object):
             # An instance of "type" or of an anonymous property can be anything.
             instance = self._create_new_unknown_value("type")
           else:
-            mycls = self.convert_constant(cls.name, cls, subst, node)
+            mycls = self.constant_to_var(cls.name, cls, subst, node)
             instance = abstract.Instance(mycls, self.vm, node)
             instance.make_template_unsolvable(cls.template, node)
           log.info("New pytd instance for %s: %r", cls.name, instance)
@@ -495,25 +489,25 @@ class Converter(object):
               raise self.TypeParameterError(c.name)
             return self.merge_classes(node, subst[c.name].data)
           else:
-            return self.convert_constant_to_value(pytd.Print(c), c, subst, node)
+            return self.constant_to_value(pytd.Print(c), c, subst, node)
         elif isinstance(cls, pytd.TupleType):
-          content = tuple(self.convert_constant(pytd.Print(p),
-                                                abstract.AsInstance(p),
-                                                subst, node)
+          content = tuple(self.constant_to_var(pytd.Print(p),
+                                               abstract.AsInstance(p),
+                                               subst, node)
                           for p in cls.parameters)
           return abstract.Tuple(content, self.vm, node)
         else:
           instance = abstract.Instance(
-              self.convert_constant(base_cls.name, base_cls, subst, node),
+              self.constant_to_var(base_cls.name, base_cls, subst, node),
               self.vm, node)
           assert len(cls.parameters) <= len(base_cls.template)
           for formal, actual in zip(base_cls.template, cls.parameters):
-            p = self.convert_constant(
+            p = self.constant_to_var(
                 repr(formal), abstract.AsInstance(actual), subst, node)
             instance.initialize_type_parameter(node, formal.name, p)
           return instance
       else:
-        return self.convert_constant_to_value(name, cls, subst, node)
+        return self.constant_to_value(name, cls, subst, node)
     elif isinstance(pyval, pytd.GenericType):
       assert isinstance(pyval.base_type, pytd.ClassType)
       if isinstance(pyval, pytd.TupleType):
@@ -527,18 +521,18 @@ class Converter(object):
       for i, param in enumerate(pyval.base_type.cls.template):
         if i < len(parameters):
           type_parameters.add_lazy_item(
-              param.name, self.convert_constant_to_value,
+              param.name, self.constant_to_value,
               param.name, parameters[i], subst, node)
         else:
           type_parameters[param.name] = self.unsolvable
-      base_cls = self.convert_constant_to_value(
+      base_cls = self.constant_to_value(
           pytd.Print(pyval.base_type), pyval.base_type.cls, subst, node)
       cls = abstract.ParameterizedClass(base_cls, type_parameters, self.vm)
       return cls
     elif pyval.__class__ is tuple:  # only match raw tuple, not namedtuple/Node
       return self.tuple_to_value(self.vm.root_cfg_node,
-                                 [self.convert_constant("tuple[%d]" % i, item,
-                                                        subst, node)
+                                 [self.constant_to_var("tuple[%d]" % i, item,
+                                                       subst, node)
                                   for i, item in enumerate(pyval)])
     else:
       raise NotImplementedError("Can't convert constant %s %r" %

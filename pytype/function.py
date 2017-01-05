@@ -50,9 +50,9 @@ class Signature(object):
   def _postprocess_annotation(self, name, annotation):
     convert = annotation.vm.convert
     if name == self.varargs_name:
-      return convert.create_varargs(annotation)
+      return convert.create_new_varargs_value(annotation)
     elif name == self.kwargs_name:
-      return convert.create_kwargs(annotation)
+      return convert.create_new_kwargs_value(annotation)
     else:
       return annotation
 
@@ -96,7 +96,7 @@ class Signature(object):
         defaults=[p.name
                   for p in sig.params
                   if p.optional],
-        annotations={p.name: vm.convert.convert_constant_to_value(
+        annotations={p.name: vm.convert.constant_to_value(
             p.name, p.type, subst={}, node=vm.root_cfg_node)
                      for p in sig.params + (sig.starargs, sig.starstarargs)
                      if p is not None},
