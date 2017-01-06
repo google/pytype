@@ -724,28 +724,29 @@ class ErrorTest(test_inference.InferenceTest):
     _, errors = self.InferAndCheck("""\
       X = type(3, (int, object), {"a": 1})
     """, solve_unknowns=True)
-    error = r"Actual.*cls, object, _, _"
-    self.assertErrorLogIs(errors, [(1, "wrong-arg-count", error)])
+    self.assertErrorLogIs(errors, [(1, "wrong-arg-types", r"Actual.*int")])
 
   def testBadTypeBases(self):
     _, errors = self.InferAndCheck("""\
       X = type("X", (42,), {"a": 1})
     """, solve_unknowns=True)
-    self.assertErrorLogIs(errors, [(1, "wrong-arg-count", "cls, object, _, _")])
+    self.assertErrorLogIs(errors, [(1, "wrong-arg-types",
+                                    r"Actual.*Tuple\[int\]")])
 
   @unittest.skip("Reports [base-class-error] instead of [wrong-arg-types]")
   def testHalfBadTypeBases(self):
     _, errors = self.InferAndCheck("""\
       X = type("X", (42, object), {"a": 1})
     """, solve_unknowns=True)
-    self.assertErrorLogIs(errors, [(1, "wrong-arg-count",
-                                    r"Actually passed:.*tuple")])
+    self.assertErrorLogIs(errors, [(1, "wrong-arg-types",
+                                    r"Actual.*Tuple\[int, Type\[object\]\]")])
 
   def testBadTypeMembers(self):
     _, errors = self.InferAndCheck("""\
       X = type("X", (int, object), {0: 1})
     """, solve_unknowns=True)
-    self.assertErrorLogIs(errors, [(1, "wrong-arg-count", r"Actually passed:")])
+    self.assertErrorLogIs(errors, [(1, "wrong-arg-types",
+                                    r"Actual.*Dict\[int, int\]")])
 
   def testUnion(self):
     _, errors = self.InferAndCheck("""\

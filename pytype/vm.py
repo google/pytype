@@ -805,8 +805,11 @@ class VirtualMachine(object):
       assert isinstance(func, abstract.AtomicAbstractValue), type(func)
       try:
         new_node, one_result = func.call(node, funcv, args, condition)
-      except (abstract.FailedFunctionCall, utils.TooComplexError) as e:
-        error = error or e
+      except utils.TooComplexError as e:
+        error = e
+      except abstract.FailedFunctionCall as e:
+        if e > error:
+          error = e
       else:
         # This is similar to PasteVariable() except that it adds funcv as
         # an additional source.  If this is a common occurence then perhaps

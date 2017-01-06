@@ -1014,6 +1014,9 @@ class FunctionArgs(collections.namedtuple("_", ["posargs", "namedargs",
 class FailedFunctionCall(Exception):
   """Exception for failed function calls."""
 
+  def __gt__(self, other):
+    return other is None
+
 
 class NotCallable(FailedFunctionCall):
   """For objects that don't have __call__."""
@@ -1044,6 +1047,10 @@ class WrongArgTypes(InvalidParameters):
     super(WrongArgTypes, self).__init__(sig, passed_args, vm)
     self.bad_param = bad_param
     self.details = details
+
+  def __gt__(self, other):
+    return other is None or (isinstance(other, FailedFunctionCall) and
+                             not isinstance(other, WrongArgTypes))
 
 
 class WrongArgCount(InvalidParameters):
@@ -1305,7 +1312,8 @@ class Function(Instance):
       try:
         match = self._match_view(node, args, view)
       except FailedFunctionCall as e:
-        error = error or e
+        if e > error:
+          error = e
       else:
         matched.append(match)
     if not matched and error:
@@ -1670,7 +1678,8 @@ class PyTDFunction(Function):
       try:
         arg_dict, subst = sig.match_args(node, args, view)
       except FailedFunctionCall as e:
-        error = error or e
+        if e > error:
+          error = e
       else:
         matched = True
         yield sig, arg_dict, subst
