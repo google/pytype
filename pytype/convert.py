@@ -6,6 +6,7 @@ import types
 
 from pytype import abstract
 from pytype import blocks
+from pytype import output
 from pytype import typing
 from pytype import utils
 from pytype.pyc import loadmarshal
@@ -33,6 +34,7 @@ class Converter(object):
   def __init__(self, vm):
     self.vm = vm
     self.vm.convert = self  # to make constant_to_var calls below work
+    self.pytd_convert = output.Converter()
 
     self._convert_cache = {}
 
@@ -352,7 +354,7 @@ class Converter(object):
     like str or list might be reinitialized under different names (e.g. "param
     1"), but we want the canonical name and type.  We *do* memoize on the type
     as well, to make sure that e.g. "1.0" and "1" get converted to different
-    constants.  Memoization is an optimization, but an important one- mapping
+    constants.  Memoization is an optimization, but an important one - mapping
     constants like "None" to the same AbstractValue greatly simplifies the
     cfg structures we're building.
 

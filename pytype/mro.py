@@ -1,6 +1,7 @@
 """Generic functions with non-stdlib dependencies."""
 
 
+from pytype import utils
 from pytype.pytd import pytd
 from pytype.pytd import utils as pytd_utils
 
@@ -33,8 +34,7 @@ def compute_mro(c):
   Returns:
     A list of Class objects in Method Resolution Order.
   """
+  bases = utils.concat_lists(b.data for b in c.bases())
   return tuple(pytd_utils.MROMerge([[c]] +
-                                   [list(base.mro) for base in c.bases()] +
-                                   [list(c.bases())]))
-
-
+                                   [list(base.mro) for base in bases] +
+                                   [list(bases)]))

@@ -316,9 +316,9 @@ class CallTracer(vm.VirtualMachine):
         data.append(pytd.Constant(name, combined_types))
       else:
         for option in options:
-          if hasattr(option, "to_pytd_def"):
+          try:
             d = option.to_pytd_def(self.exitpoint, name)  # Deep definition
-          else:
+          except NotImplementedError:
             d = option.to_type(self.exitpoint)  # Type only
             if isinstance(d, pytd.NothingType):
               assert isinstance(option, abstract.Empty)
@@ -431,7 +431,7 @@ class CallTracer(vm.VirtualMachine):
     bad = self.matcher.bad_matches(actual, formal, node)
     if bad:
       combined = pytd_utils.JoinTypes(
-          [view[actual].data.to_type(node, view=view) for view in bad])
+          view[actual].data.to_type(node, view=view) for view in bad)
       self.errorlog.bad_return_type(
           opcode, combined, formal.get_instance_type(node))
 

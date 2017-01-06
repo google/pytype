@@ -133,8 +133,8 @@ class BuiltinTests(test_inference.InferenceTest):
       def t_testDict() -> float or int
       # _i1_, _i2_ capture the more precise definitions of the ~dict, ~list
       # TODO(kramm): The float/int split happens because
-      # InterpreterFunction.to_pytd_def uses deep_product_dict(). Do we want
-      # the output in this form?
+      # InterpreterFunction.get_call_combinations uses deep_product_dict(). Do
+      # we want the output in this form?
       def _i1_(x: List[float]) -> List[float]
       def _i1_(x: List[int]) -> List[int]
       def _i2_(x: dict[complex or str, float or int]) -> Dict[complex or str, float or int]
