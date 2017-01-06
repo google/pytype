@@ -1,5 +1,6 @@
 """Integration test for pytype."""
 
+import csv
 import os
 import subprocess
 
@@ -81,7 +82,7 @@ class PytypeTest(unittest.TestCase):
 
   def assertHasErrors(self, *expected_errors):
     with open(self.errors_csv, "r") as f:
-      errors = f.readlines()
+      errors = list(csv.reader(f, delimiter=","))
     self.assertEquals(len(errors), len(expected_errors))
     for error, expected_error in zip(errors, expected_errors):
       self.assertIn(expected_error, error)

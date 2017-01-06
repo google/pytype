@@ -1,9 +1,11 @@
 """Test errors.py."""
 
 import collections
+import csv
 import textwrap
 
 from pytype import errors
+from pytype import utils
 
 import unittest
 
@@ -78,12 +80,33 @@ class ErrorTest(unittest.TestCase):
         str(e))
 
   def test_from_csv_row(self):
-    row = ["a.py", "123", "index-error", "This is an error"]
+    row = ["a.py", "123", "index-error", "This is an error",
+           "with\nsome\ndetails: 1, 2, 3"]
     error = errors.Error.from_csv_row(row)
     self.assertEquals(error.filename, row[0])
     self.assertEquals(error.lineno, int(row[1]))
     self.assertEquals(error.name, row[2])
-    self.assertEquals(error.message, row[3])
+    self.assertEquals(error.message, row[3] + "\n" + row[4])
+
+  @errors._error_name(_TEST_ERROR)
+  def test_write_to_csv(self):
+    errorlog = errors.ErrorLog()
+    op = FakeOpcode("foo.py", 123, "foo")
+    message, details = "This is an error", "with\nsome\ndetails: \"1\", 2, 3"
+    errorlog.error(op, message, details + "0")
+    errorlog.error(op, message, details + "1")
+    with utils.Tempdir() as d:
+      filename = d.create_file("errors.csv")
+      error = errorlog.print_to_csv_file(filename)
+      with open(filename, "rb") as fi:
+        rows = list(csv.reader(fi, delimiter=","))
+        self.assertEquals(2, len(rows))
+        for i, row in enumerate(rows):
+          error = errors.Error.from_csv_row(row)
+          self.assertEquals(error.filename, "foo.py")
+          self.assertEquals(error.lineno, 123)
+          self.assertEquals(error.name, _TEST_ERROR)
+          self.assertEquals(error.message, message + "\n" + details + str(i))
 
 
 class ErrorLogBaseTest(unittest.TestCase):

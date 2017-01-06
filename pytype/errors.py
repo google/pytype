@@ -1,5 +1,6 @@
 """Code and data structures for storing and displaying errors."""
 
+import csv
 import os
 import re
 import StringIO
@@ -69,12 +70,13 @@ class Error(object):
   def from_csv_row(cls, row):
     """Translate a CSV row back into an Error object."""
 
-    filename, lineno, name, message = row
+    filename, lineno, name, message, details = row
 
     with _CURRENT_ERROR_NAME.bind(name):
       return cls(SEVERITY_ERROR, message,
                  lineno=int(lineno),
-                 filename=filename)
+                 filename=filename,
+                 details=details)
 
   @classmethod
   def at_opcode(cls, opcode, severity, message, details=None):
@@ -186,11 +188,18 @@ class ErrorLogBase(object):
     assert checkpoint.log is self
     self._errors = self._errors[:checkpoint.position]
 
-  def print_to_csv_file(self, csv_file):
-    for error in self.unique_sorted_errors():
-      # pylint: disable=protected-access
-      csv_file.writerow(
-          [error._filename, error._lineno, error._name, error._message])
+  def print_to_csv_file(self, filename):
+    with open(filename, "wb") as f:
+      csv_file = csv.writer(f, delimiter=",")
+      for error in self.unique_sorted_errors():
+        # pylint: disable=protected-access
+        # TODO(kramm): Add _methodname
+        csv_file.writerow(
+            [error._filename,
+             error._lineno,
+             error._name,
+             error._message,
+             error._details])
 
   def print_to_file(self, fi):
     for error in self.unique_sorted_errors():

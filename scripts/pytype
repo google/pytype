@@ -7,9 +7,7 @@ Usage:
   pytype [flags] file.py
 """
 
-import atexit
 import cProfile
-import csv
 import logging
 import os
 import sys
@@ -105,8 +103,7 @@ def generate_pyi(input_filename, errorlog, options):
 def process_one_file(input_filename,
                      output_filename,
                      options,
-                     print_errors=True,
-                     errors_csv_file=None):
+                     print_errors=True):
   """Check or generate a .pyi, according to options.
 
   Args:
@@ -119,8 +116,6 @@ def process_one_file(input_filename,
                   errors (e.g., syntax errors) but is intended to suppress
                   possibly spurious messages during the first pass if pytype is
                   doing two passes.
-    errors_csv_file: a csv writer object to write errors into. If None,
-                     errors are not written into a csv file.
 
   Returns:
     An error code (0 means no error).
@@ -158,8 +153,8 @@ def process_one_file(input_filename,
         fi.write(result)
   if options.report_errors:
     if print_errors:
-      if errors_csv_file:
-        errorlog.print_to_csv_file(errors_csv_file)
+      if options.output_errors_csv:
+        errorlog.print_to_csv_file(options.output_errors_csv)
         return 0  # Command is successful regardless of errors.
       else:
         errorlog.print_to_stderr()
@@ -229,21 +224,13 @@ def _run_pytype(options):
       _ = process_one_file(input_filename, output_filename, options,
                            print_errors=False)
 
-  if options.output_errors_csv:
-    f = open(options.output_errors_csv, "wb")
-    errors_csv_file = csv.writer(f, delimiter=",")
-    atexit.register(f.close)
-  else:
-    errors_csv_file = None
-
   exit_status = 0
   for input_filename, output_filename in options.src_out:
     log.info("Process %s => %s", input_filename, output_filename)
     ret = process_one_file(input_filename,
                            output_filename,
                            options,
-                           print_errors=True,
-                           errors_csv_file=errors_csv_file)
+                           print_errors=True)
     exit_status = ret or exit_status
 
   # Touch output file upon success.
