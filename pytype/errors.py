@@ -238,29 +238,47 @@ class ErrorLog(ErrorLogBase):
   def _print_as_actual_type(self, t):
     return self._pytd_print(t.to_type())
 
-  def _print_sig(self, sig):
-    """Pretty-print a function.Signature object."""
-    def default_suffix(name):
-      return " = ..." if name in sig.defaults else ""
+  def _iter_sig(self, sig):
+    """Iterate through a function.Signature object."""
     def annotate(name):
+      suffix = " = ..." if name in sig.defaults else ""
       if name in sig.annotations:
-        return (name + ": " +
-                self._print_as_expected_type(sig.annotations[name]) +
-                default_suffix(name))
+        type_str = self._print_as_expected_type(sig.annotations[name])
+        return ": " + type_str + suffix
       else:
-        return name + default_suffix(name)
-    s = []
+        return suffix
     for name in sig.param_names:
-      s.append(annotate(name))
+      yield "", name, annotate(name)
     if sig.varargs_name is not None:
-      s.append("*" + annotate(sig.varargs_name))
+      yield "*", sig.varargs_name, annotate(sig.varargs_name)
     elif sig.kwonly_params:
-      s.append("*")
+      yield ("*", "", "")
     for name in sig.kwonly_params:
-      s.append(annotate(name))
+      yield "", name, annotate(name)
     if sig.kwargs_name is not None:
-      s.append("**" + annotate(sig.kwargs_name))
-    return ", ".join(s)
+      yield "**", sig.kwargs_name, annotate(sig.kwargs_name)
+
+  def _iter_actual(self, passed_args):
+    for name, arg in passed_args:
+      yield "", name, ": " + self._print_as_actual_type(arg)
+
+  def _print_args(self, arg_iter, bad_param=None):
+    """Pretty-print a list of arguments. Focus on a bad parameter."""
+    # (foo, bar, broken : type, ...)
+    printed_params = []
+    found = False
+    for prefix, name, suffix in arg_iter:
+      if name == bad_param:
+        printed_params.append(prefix + name + suffix)
+        found = True
+      elif found:
+        printed_params.append("...")
+        break
+      elif re.match(r"_[0-9]", name):
+        printed_params.append(prefix + "_")
+      else:
+        printed_params.append(prefix + name)
+    return ", ".join(printed_params)
 
   @_error_name("pyi-error")
   def pyi_error(self, opcode, name, error):
@@ -296,14 +314,17 @@ class ErrorLog(ErrorLogBase):
     module_name = module.data[0].name
     self.error(opcode, "Can't find %s.%s" % (module_name, name))
 
-  def _invalid_parameters(self, opcode, message, (sig, passed_args)):
-    details = "".join([
-        "Expected: (", self._print_sig(sig), ")\n",
-        "Actually passed: (",
-        ", ".join("%s: %s" % (name, self._print_as_actual_type(arg))
-                  for name, arg in passed_args),
-        ")"])
-    self.error(opcode, message, details)
+  def _invalid_parameters(self, opcode, message, (sig, passed_args),
+                          bad_param=None, extra_details=None):
+    expected = self._print_args(self._iter_sig(sig), bad_param)
+    actual = self._print_args(self._iter_actual(passed_args), bad_param)
+    details = [
+        "Expected: (", expected, ")\n",
+        "Actually passed: (", actual,
+        ")"]
+    if extra_details:
+      details += ["\n", extra_details]
+    self.error(opcode, message, "".join(details))
 
   @_error_name("wrong-arg-count")
   def wrong_arg_count(self, opcode, name, bad_call):
@@ -312,10 +333,10 @@ class ErrorLog(ErrorLogBase):
     self._invalid_parameters(opcode, message, bad_call)
 
   @_error_name("wrong-arg-types")
-  def wrong_arg_types(self, opcode, name, bad_call):
+  def wrong_arg_types(self, opcode, name, bad_call, bad_param, details=None):
     """A function was called with the wrong parameter types."""
     message = "Function %s was called with the wrong arguments" % name
-    self._invalid_parameters(opcode, message, bad_call)
+    self._invalid_parameters(opcode, message, bad_call, bad_param, details)
 
   @_error_name("wrong-keyword-args")
   def wrong_keyword_args(self, opcode, name, bad_call, extra_keywords):
@@ -351,7 +372,8 @@ class ErrorLog(ErrorLogBase):
     if isinstance(error, abstract.WrongArgCount):
       self.wrong_arg_count(opcode, error.name, error.bad_call)
     elif isinstance(error, abstract.WrongArgTypes):
-      self.wrong_arg_types(opcode, error.name, error.bad_call)
+      self.wrong_arg_types(
+          opcode, error.name, error.bad_call, error.bad_param, error.details)
     elif isinstance(error, abstract.WrongKeywordArgs):
       self.wrong_keyword_args(
           opcode, error.name, error.bad_call, error.extra_keywords)

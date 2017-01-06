@@ -1039,7 +1039,11 @@ class InvalidParameters(FailedFunctionCall):
 
 class WrongArgTypes(InvalidParameters):
   """For functions that were called with the wrong types."""
-  pass
+
+  def __init__(self, sig, passed_args, bad_param, vm, details=None):
+    super(WrongArgTypes, self).__init__(sig, passed_args, vm)
+    self.bad_param = bad_param
+    self.details = details
 
 
 class WrongArgCount(InvalidParameters):
@@ -1127,9 +1131,10 @@ class Super(AtomicAbstractValue):
             SuperInstance(cls.data, None, self.vm), [cls], node)
     elif len(args.posargs) == 2:
       for cls in args.posargs[0].bindings:
+        if not isinstance(cls.data, (Class, AMBIGUOUS_OR_EMPTY)):
+          raise WrongArgTypes(self._SIGNATURE, args, "cls", self.vm,
+                              details="cls parameter must be a type")
         for obj in args.posargs[1].bindings:
-          if not isinstance(cls.data, (Class, AMBIGUOUS_OR_EMPTY)):
-            raise WrongArgTypes(self._SIGNATURE, args, self.vm)
           result.AddBinding(
               SuperInstance(cls.data, obj.data, self.vm), [cls, obj], node)
     else:
@@ -1369,9 +1374,10 @@ class PyTDSignature(object):
 
     formal_args = [(p.name, self.signature.annotations[p.name])
                    for p in self.pytd_sig.params]
-    subst = self.vm.matcher.compute_subst(node, formal_args, arg_dict, view)
+    subst, bad_arg = self.vm.matcher.compute_subst(
+        node, formal_args, arg_dict, view)
     if subst is None:
-      raise WrongArgTypes(self.signature, args, self.vm)
+      raise WrongArgTypes(self.signature, args, bad_arg, self.vm)
     if log.isEnabledFor(logging.DEBUG):
       log.debug("Matched arguments against sig%s", pytd.Print(self.pytd_sig))
     for nr, p in enumerate(self.pytd_sig.params):
@@ -2352,9 +2358,10 @@ class InterpreterFunction(Function):
           formal = ParameterizedClass(self.vm.convert.name_to_value(
               "typing.Mapping"), formal.type_parameters, self.vm)
         formal_args.append((name, formal))
-    subst = self.vm.matcher.compute_subst(node, formal_args, arg_dict, view)
+    subst, bad_arg = self.vm.matcher.compute_subst(
+        node, formal_args, arg_dict, view)
     if subst is None:
-      raise WrongArgTypes(self.signature, args, self.vm)
+      raise WrongArgTypes(self.signature, args, bad_arg, self.vm)
 
   def call(self, node, _, args, condition=None, new_locals=None):
     args = args.simplify(node)

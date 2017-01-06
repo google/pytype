@@ -106,6 +106,19 @@ class ErrorTest(test_inference.InferenceTest):
                  r"[^\n]+\[wrong-arg-types\]\n.*"
                  r"expected:.*int.*passed:.*complex"))
 
+  def testPrettyPrintWrongArgs(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        def f(a: int, b: int, c: int, d: int, e: int): ...
+      """)
+      _, errors = self.InferAndCheck("""\
+        import foo
+        foo.f(1, 2, 3, "four", 5)
+      """, pythonpath=[d.path])
+    self.assertErrorLogIs(errors, [
+        (2, "wrong-arg-types", ("a, b, c, d: int, [.][.][.].*"
+                                "a, b, c, d: str, [.][.][.]"))])
+
   def testInvalidBaseClass(self):
     _, errors = self.InferAndCheck("""
       class Foo(3):
@@ -199,11 +212,12 @@ class ErrorTest(test_inference.InferenceTest):
       d.create_file("other.pyi", """
         def foo(x: int, y: str) -> str: ...
       """)
-      _, errors = self.InferAndCheck("""
+      _, errors = self.InferAndCheck("""\
         import other
         other.foo(1.2, [])
       """, pythonpath=[d.path])
-      self.assertErrorLogContains(errors, r"(x: float, y: list)")
+      self.assertErrorLogIs(errors, [
+          (2, "wrong-arg-types", r"\(x: int")])
 
   def testCallUncallable(self):
     _, errors = self.InferAndCheck("""
@@ -515,13 +529,13 @@ class ErrorTest(test_inference.InferenceTest):
     """)
     self.assertErrorLogIs(errors, [
         (1, "wrong-arg-types",
-         r"Actually passed:.*self: float, x: List\[nothing\]"),
-        (2, "wrong-arg-count", r"Actually passed:.*self: float, x: int, "
-         r"_2: List\[nothing\], foobar: Type\[str\]"),
+         r"Actually passed:.*self, x: List\[nothing\]"),
+        (2, "wrong-arg-count", r"Actually passed:.*self, x, "
+         r"_, foobar"),
         (3, "wrong-keyword-args",
-         r"Actually passed:.*self: float, x: int, foobar: List\[nothing\]"),
+         r"Actually passed:.*self, x, foobar"),
         (4, "duplicate-keyword-argument",
-         r"Actually passed:.*self: float, x: int, x: str"),
+         r"Actually passed:.*self, x, x"),
         (5, "missing-parameter", r"Actually passed: \(\)")
     ])
 
@@ -535,7 +549,8 @@ class ErrorTest(test_inference.InferenceTest):
         def f(self):
           return super(self, B).f()  # should be super(B, self)
     """, deep=True)
-    self.assertErrorLogIs(errors, [(7, "wrong-arg-types", r"B.*Type\[B\]")])
+    self.assertErrorLogIs(errors, [
+        (7, "wrong-arg-types", r"B.*must be a type")])
 
   @unittest.skip("Need to type-check second argument to super")
   def testBadSuperInstance(self):
@@ -709,15 +724,14 @@ class ErrorTest(test_inference.InferenceTest):
     _, errors = self.InferAndCheck("""\
       X = type(3, (int, object), {"a": 1})
     """, solve_unknowns=True)
-    error = r"Actual.*int.*Tuple\[Type\[int\], Type\[object\]\]"
+    error = r"Actual.*cls, object, _, _"
     self.assertErrorLogIs(errors, [(1, "wrong-arg-count", error)])
 
   def testBadTypeBases(self):
     _, errors = self.InferAndCheck("""\
       X = type("X", (42,), {"a": 1})
     """, solve_unknowns=True)
-    self.assertErrorLogIs(errors, [(1, "wrong-arg-count",
-                                    r"Actually passed:.*Tuple\[int\]")])
+    self.assertErrorLogIs(errors, [(1, "wrong-arg-count", "cls, object, _, _")])
 
   @unittest.skip("Reports [base-class-error] instead of [wrong-arg-types]")
   def testHalfBadTypeBases(self):
@@ -731,8 +745,7 @@ class ErrorTest(test_inference.InferenceTest):
     _, errors = self.InferAndCheck("""\
       X = type("X", (int, object), {0: 1})
     """, solve_unknowns=True)
-    self.assertErrorLogIs(errors, [(1, "wrong-arg-count",
-                                    r"Actually passed:.*Dict\[int, int\]")])
+    self.assertErrorLogIs(errors, [(1, "wrong-arg-count", r"Actually passed:")])
 
   def testUnion(self):
     _, errors = self.InferAndCheck("""\
@@ -815,19 +828,21 @@ class ErrorTest(test_inference.InferenceTest):
   def testPrintUnsolvable(self):
     _, errors = self.InferAndCheck("""\
       from __future__ import google_type_annotations
-      def f(x: nonsense, y: str, z: float):
+      from typing import List
+      def f(x: List[nonsense], y: str, z: float):
         pass
-      f("", 42, nonsense)
+      f({nonsense}, "", "")
     """)
-    self.assertErrorLogIs(errors, [(2, "name-error", r"nonsense"),
-                                   (4, "name-error", r"nonsense"),
-                                   (4, "wrong-arg-types",
-                                    r"Expected:.*x: Any.*Actual.*z: Any")])
+    self.assertErrorLogIs(errors, [
+        (3, "name-error", r"nonsense"),
+        (5, "name-error", r"nonsense"),
+        (5, "wrong-arg-types",
+         r"Expected:.*x: List\[Any\].*Actual.*x: Set\[Any\]")])
 
   def testPrintUnionOfContainers(self):
     _, errors = self.InferAndCheck("""\
       from __future__ import google_type_annotations
-      def f():
+      def f(x: str):
         pass
       if __any_object__:
         x = dict
@@ -836,7 +851,7 @@ class ErrorTest(test_inference.InferenceTest):
       f(x)
     """)
     error = r"Actual.*Union\[Type\[dict\], List\[Type\[float\]\]\]"
-    self.assertErrorLogIs(errors, [(8, "wrong-arg-count", error)])
+    self.assertErrorLogIs(errors, [(8, "wrong-arg-types", error)])
 
   def testBadDictAttribute(self):
     _, errors = self.InferAndCheck("""\

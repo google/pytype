@@ -25,17 +25,21 @@ class AbstractMatcher(object):
       arg_dict: A map of strings to pytd.Bindings instances.
       view: A mapping of Variable to Value.
     Returns:
-      utils.HashableDict if we found a working substition, None otherwise.
+      A tuple (subst, name), with "subst" the utils.HashableDict if we found a
+      working substition, None otherwise, and "name" the bad parameter in case
+      subst=None.
     """
     if not arg_dict:
-      return utils.HashableDict()
+      # A call with no arguments always succeeds.
+      assert not formal_args
+      return utils.HashableDict(), None
     subst = {}
     for name, formal in formal_args:
       actual = arg_dict[name]
       subst = self._match_value_against_type(actual, formal, subst, node, view)
       if subst is None:
-        return None
-    return utils.HashableDict(subst)
+        return None, name
+    return utils.HashableDict(subst), None
 
   def bad_matches(self, var, other_type, node, subst=None, condition=None):
     """Match a Variable against a type. Return views that don't match.

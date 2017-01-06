@@ -568,7 +568,7 @@ class AnnotationTest(test_inference.InferenceTest):
       def foo() -> None
       def bar(path: str, **kwargs) -> str
     """)
-    error = r"Actually passed:.*path: None, x: int"
+    error = r"Actually passed:.*path: None"
     self.assertErrorLogIs(errors, [(9, "wrong-arg-types", error)])
 
   def testSkipFunctionsWithAnnotations(self):
