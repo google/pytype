@@ -2443,91 +2443,56 @@ class InterpreterFunction(Function):
             signature_data.add(data)
             yield node_after_call, combination, return_value
 
-  def _fix_param_name(self, name):
-    """Sanitize a parameter name; remove Python intrinstics."""
-    # Python uses ".0" etc. for parameters that are tuples, like e.g. in:
-    # "def f((x, y), z)".
-    return name.replace(".", "_")
-
-  def _with_replaced_annotations(self, node, params):
-    """Insert type annotations into parameter list."""
-    params = list(params)
-    varnames = self.code.co_varnames[0:self.nonstararg_count]
-    for name, formal_type in self.signature.annotations.items():
-      try:
-        i = varnames.index(name)
-      except ValueError:
-        pass
-      else:
-        params[i] = params[i].Replace(type=formal_type.get_instance_type(node))
-    return tuple(params)
-
-  def _get_annotation_return(self, node, default):
-    if "return" in self.signature.annotations:
-      return self.signature.annotations["return"].get_instance_type(node)
-    else:
-      return default
-
-  def _get_star_params(self):
-    """Returns pytd nodes for *args, **kwargs."""
-    if self.has_varargs():
-      starargs = pytd.Parameter(self.signature.varargs_name,
-                                pytd.NamedType("__builtin__.tuple"),
-                                False, True, None)
-    else:
-      starargs = None
-    if self.has_kwargs():
-      starstarargs = pytd.Parameter(self.signature.kwargs_name,
-                                    pytd.NamedType("__builtin__.dict"),
-                                    False, True, None)
-    else:
-      starstarargs = None
-    return starargs, starstarargs
-
   def to_pytd_def(self, node, function_name):
     """Generate a pytd.Function definition."""
     signatures = []
     combinations = tuple(self._get_call_combinations())
+    if not combinations:
+      # Fallback: Generate a PyTD signature only from the definition of the
+      # method, not the way it's being  used.
+      convert = self.vm.convert
+      param = convert.primitive_class_instances[object].to_variable(node)
+      ret = convert.create_new_unsolvable(node)
+      combinations = ((node, collections.defaultdict(lambda: param.bindings[0]),
+                       ret.bindings[0]),)
     for node_after, combination, return_value in combinations:
-      params = tuple(pytd.Parameter(self._fix_param_name(name),
-                                    combination[name].data.to_type(node),
-                                    kwonly, optional, None)
-                     for name, kwonly, optional in self.get_parameters())
-      params = self._with_replaced_annotations(node_after, params)
-      ret = self._get_annotation_return(
-          node, default=return_value.data.to_type(node_after))
+      params = []
+      for i, (name, kwonly, optional) in enumerate(self.get_parameters()):
+        if i < self.nonstararg_count and name in self.signature.annotations:
+          t = self.signature.annotations[name].get_instance_type(node_after)
+        else:
+          t = combination[name].data.to_type(node_after)
+        # Python uses ".0" etc. for the names of parameters that are tuples,
+        # like e.g. in: "def f((x,  y), z)".
+        params.append(
+            pytd.Parameter(name.replace(".", "_"), t, kwonly, optional, None))
+      if "return" in self.signature.annotations:
+        ret = self.signature.annotations["return"].get_instance_type(node_after)
+      else:
+        ret = return_value.data.to_type(node_after)
       if isinstance(ret, pytd.NothingType) and len(combinations) == 1:
         assert isinstance(return_value.data, Empty)
         ret = pytd.AnythingType()
-      starargs, starstarargs = self._get_star_params()
+      if self.has_varargs():
+        starargs = pytd.Parameter(self.signature.varargs_name,
+                                  pytd.NamedType("__builtin__.tuple"),
+                                  False, True, None)
+      else:
+        starargs = None
+      if self.has_kwargs():
+        starstarargs = pytd.Parameter(self.signature.kwargs_name,
+                                      pytd.NamedType("__builtin__.dict"),
+                                      False, True, None)
+      else:
+        starstarargs = None
       signatures.append(pytd.Signature(
-          params=params,
+          params=tuple(params),
           starargs=starargs,
           starstarargs=starstarargs,
           return_type=ret,
           exceptions=(),  # TODO(kramm): record exceptions
           template=()))
-    if signatures:
-      return pytd.Function(function_name, tuple(signatures), pytd.METHOD)
-    else:
-      # Fallback: Generate a pytd signature only from the definition of the
-      # method, not the way it's being used.
-      return pytd.Function(function_name, (self._simple_pytd_signature(node),),
-                           pytd.METHOD)
-
-  def _simple_pytd_signature(self, node):
-    params = self._with_replaced_annotations(
-        node, [pytd.Parameter(name, pytd.NamedType("__builtin__.object"),
-                              kwonly, optional, None)
-               for name, kwonly, optional in self.get_parameters()])
-    starargs, starstarargs = self._get_star_params()
-    ret = self._get_annotation_return(node, default=pytd.AnythingType())
-    return pytd.Signature(
-        params=params,
-        starargs=starargs,
-        starstarargs=starstarargs,
-        return_type=ret,
-        exceptions=(), template=())
+    return pytd.Function(function_name, tuple(signatures), pytd.METHOD)
 
   def get_positional_names(self):
     return list(self.code.co_varnames[:self.code.co_argcount])
