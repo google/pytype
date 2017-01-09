@@ -1792,7 +1792,7 @@ class VirtualMachine(object):
                               node=None, f_globals=None):
     """Change annotation / record errors where required."""
     if isinstance(annotation, typing.Container):
-      annotation = annotation.base_type
+      annotation = annotation.base_cls
 
     if isinstance(annotation, typing.Union):
       self.errorlog.invalid_annotation(

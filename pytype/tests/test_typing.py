@@ -301,6 +301,16 @@ class TypingTest(test_inference.InferenceTest):
     ty = self.Infer("\n".join(python))
     self.assertTypesMatchPytd(ty, "")
 
+  def testRecursiveTuple(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        class Foo(Tuple[Foo]): ...
+      """)
+      self.assertNoErrors("""\
+        import foo
+        foo.Foo()
+      """, pythonpath=[d.path])
+
 
 if __name__ == "__main__":
   test_inference.main()

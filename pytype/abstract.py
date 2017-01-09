@@ -82,7 +82,7 @@ def merge_values(values, vm):
   if not values:
     return vm.convert.empty
   elif len(values) == 1:
-    return values.pop()
+    return next(iter(values))
   else:
     return Union(values, vm)
 
@@ -837,6 +837,12 @@ class Union(AtomicAbstractValue):
 
   def __repr__(self):
     return "%s[%s]" % (self.name, ", ".join(repr(o) for o in self.options))
+
+  def __eq__(self, other):
+    return type(self) == type(other) and self.options == other.options  # pylint: disable=unidiomatic-typecheck
+
+  def __ne__(self, other):
+    return not self == other
 
   def instantiate(self, node):
     var = self.vm.program.NewVariable()
@@ -1718,6 +1724,27 @@ class ParameterizedClass(AtomicAbstractValue, Class):
       return self.type_parameters[T].to_variable(node)
     else:
       return super(ParameterizedClass, self).instantiate(node)
+
+
+class TupleClass(ParameterizedClass):
+  """The class of a heterogeneous tuple.
+
+  The type_parameters attribute stores the types of the individual tuple
+  elements under their indices and the overall element type under "T". So for
+    Tuple[str, int]
+  type_parameters is
+    {0: <instance of str>, 1: <instance of int>, T: <instance of str or int>}.
+  Note that we can't store the individual types as a PythonConstant as we do
+  for Tuple, since we can't evaluate type parameters during initialization.
+  """
+
+  def __repr__(self):
+    return "TupleType(%s)" % self.type_parameters
+
+  def instantiate(self, node):
+    content = tuple(self.type_parameters[i].instantiate(node)
+                    for i in range(len(self.type_parameters) - 1))
+    return Tuple(content, self.vm, node).to_variable(node)
 
 
 class PyTDClass(SimpleAbstractValue, Class):

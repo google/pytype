@@ -37,28 +37,36 @@ class Converter(object):
     else:
       return var.Data(node)
 
+  def _is_tuple(self, v, instance):
+    return (isinstance(v, abstract.TupleClass) or
+            isinstance(instance, abstract.Tuple))
+
   def _value_to_parameter_types(self, node, v, instance, template, seen, view):
+    """Get PyTD types for the parameters of an instance of an abstract value."""
+    if self._is_tuple(v, instance):
+      assert len(template) == 1 and template[0] == abstract.T, template
+      if isinstance(v, abstract.TupleClass):
+        template = range(len(v.type_parameters) - 1)
+      else:
+        template = range(len(instance.pyval))
+        # Since we didn't include the pyval variables when computing the view,
+        # we can't use it here, so just overwrite view with None.
+        view = None
     if instance is None and isinstance(v, abstract.ParameterizedClass):
       return [self.value_instance_to_pytd_type(
-          node, v.type_parameters[t.name], None, seen, view) for t in template]
-    elif isinstance(instance, abstract.Tuple):
-      assert len(template) == 1 and template[0].name == abstract.T, template
-      # Since we didn't include the pyval variables when computing the view,
-      # we can't use it here, so just pass in None for the view instead.
-      return [pytd_utils.JoinTypes(self.value_to_pytd_type(node, p, seen, None)
-                                   for p in param.Data(node))
-              for param in instance.pyval]
+          node, v.type_parameters[t], None, seen, view) for t in template]
     elif isinstance(instance, abstract.SimpleAbstractValue):
       type_arguments = []
       for t in template:
-        if t.name in instance.type_parameters:
+        if isinstance(instance, abstract.Tuple):
+          param_values = instance.pyval[t].Data(node)
+        elif t in instance.type_parameters:
           param_values = self._get_values(
-              node, instance.type_parameters[t.name], view)
-          type_arguments.append(pytd_utils.JoinTypes(
-              self.value_to_pytd_type(node, p, seen, view)
-              for p in param_values))
+              node, instance.type_parameters[t], view)
         else:
-          type_arguments.append(pytd.AnythingType())
+          param_values = [v.vm.convert.unsolvable]
+        type_arguments.append(pytd_utils.JoinTypes(
+            self.value_to_pytd_type(node, p, seen, view) for p in param_values))
       return type_arguments
     else:
       return [pytd.AnythingType() for _ in template]
@@ -85,22 +93,27 @@ class Converter(object):
         return pytd.AnythingType()
       if seen is None:
         seen = set()
-      type_params = v.template
       if instance in seen:
         # We have a circular dependency in our types (e.g., lst[0] == lst). Stop
         # descending into the type parameters.
         type_params = ()
+      else:
+        type_params = tuple(t.name for t in v.template)
       if instance is not None:
         seen.add(instance)
       type_arguments = self._value_to_parameter_types(
           node, v, instance, type_params, seen, view)
       base = pytd_utils.NamedTypeWithModule(v.official_name, v.module)
-      if isinstance(instance, abstract.Tuple):
+      if self._is_tuple(v, instance):
         if type_arguments:
-          return pytd.TupleType(base, tuple(type_arguments))
+          homogeneous = False
         else:
+          homogeneous = True
           type_arguments = [pytd.NothingType()]
-      return pytd_utils.MakeClassOrContainerType(base, type_arguments)
+      else:
+        homogeneous = len(type_arguments) == 1
+      return pytd_utils.MakeClassOrContainerType(
+          base, type_arguments, homogeneous)
     elif isinstance(v, abstract.TypeVariable):
       return pytd.TypeParameter(v.name, None)
     else:

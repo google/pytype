@@ -76,13 +76,9 @@ class TypingClass(abstract.ValueWithSlots):
         inner.append(self.vm.convert.unsolvable)
       else:
         val = var.bindings[0].data
-        if val is self.vm.convert.ellipsis:
-          if len(inner) == 1 and len(slice_content) == 2:
-            # TODO(rechen): We should use this information to distinguish
-            # between, e.g., Tuple[int] and Tuple[int, ...].
-            continue
-          else:
-            inner.append(self.vm.convert.unsolvable)
+        if val is self.vm.convert.ellipsis and (len(inner) != 1 or
+                                                len(slice_content) != 2):
+          inner.append(self.vm.convert.unsolvable)
         else:
           inner.append(val)
     value = self._build_value(node, tuple(inner))
@@ -106,20 +102,28 @@ class Union(TypingClass):
 class Container(TypingClass):
   """Implementation of typing.X[...]."""
 
-  def __init__(self, name, vm, node, base_type):
+  def __init__(self, name, vm, node, base_cls):
     super(Container, self).__init__(name, vm, node)
-    self.base_type = base_type
-    self.type_param_names = tuple(t.name for t in base_type.pytd_cls.template)
+    self.base_cls = base_cls
 
   def _build_value(self, node, inner):
-    if len(inner) > len(self.type_param_names):
-      error = "Expected %d parameter(s), got %d" % (
-          len(self.type_param_names), len(inner))
+    if (inner[-1] is not self.vm.convert.ellipsis and
+        [self.base_cls] == self.vm.convert.tuple_type.data):
+      template = range(len(inner)) + [abstract.T]
+      inner += (abstract.merge_values(inner, self.vm),)
+      abstract_class = abstract.TupleClass
+    else:
+      template = tuple(t.name for t in self.base_cls.pytd_cls.template)
+      if inner[-1] is self.vm.convert.ellipsis:
+        inner = inner[:-1]
+      abstract_class = abstract.ParameterizedClass
+    if len(inner) > len(template):
+      error = "Expected %d parameter(s), got %d" % (len(template), len(inner))
       self.vm.errorlog.invalid_annotation(
           self.vm.frame.current_opcode, self, error)
     params = {name: inner[i] if i < len(inner) else self.vm.convert.unsolvable
-              for i, name in enumerate(self.type_param_names)}
-    return abstract.ParameterizedClass(self.base_type, params, self.vm)
+              for i, name in enumerate(template)}
+    return abstract_class(self.base_cls, params, self.vm)
 
 
 class Callable(Container):
@@ -132,20 +136,7 @@ class Callable(Container):
 
   def _build_value(self, node, inner):
     # We don't do anything with Callable parameters yet.
-    return self.base_type
-
-
-class Tuple(Container):
-
-  def __init__(self, name, vm, node):
-    base = abstract.get_atomic_value(vm.convert.tuple_type)
-    super(Tuple, self).__init__(name, vm, node, base)
-
-  def _build_value(self, node, inner):
-    # Our tuples are homogeneous (for now).
-    if len(inner) > 1:
-      inner = (abstract.Union(inner, self.vm),)
-    return super(Tuple, self)._build_value(node, inner)
+    return self.base_cls
 
 
 class TypeVarFunction(object):
@@ -222,7 +213,6 @@ typing_overload = {
     "Generic": build_generic,
     "NamedTuple": build_namedtuple,
     "Optional": build_optional,
-    "Tuple": Tuple,
     "TypeVar": build_typevar,
     "Union": Union,
 }

@@ -72,6 +72,31 @@ class ConvertTest(unittest.TestCase):
         "x", 2**64, {}, self._vm.root_cfg_node)
     self.assertIs(val, self._vm.convert.primitive_class_instances[int])
 
+  def test_heterogeneous_tuple(self):
+    ast = self._load_ast("a", """
+      x = ...  # type: Tuple[str, int]
+    """)
+    x = ast.Lookup("a.x").type
+    cls = self._vm.convert.constant_to_value(
+        "x", x, {}, self._vm.root_cfg_node)
+    instance = self._vm.convert.constant_to_value(
+        "x", abstract.AsInstance(x), {}, self._vm.root_cfg_node)
+    self.assertIsInstance(cls, abstract.TupleClass)
+    self.assertListEqual(sorted(cls.type_parameters.items()),
+                         [(0, self._vm.convert.str_type.data[0]),
+                          (1, self._vm.convert.int_type.data[0]),
+                          (abstract.T, abstract.Union([
+                              cls.type_parameters[0],
+                              cls.type_parameters[1],
+                          ], self._vm))])
+    self.assertIsInstance(instance, abstract.Tuple)
+    self.assertListEqual([v.data for v in instance.pyval],
+                         [[self._vm.convert.primitive_class_instances[str]],
+                          [self._vm.convert.primitive_class_instances[int]]])
+    self.assertListEqual(instance.type_parameters[abstract.T].data,
+                         [self._vm.convert.primitive_class_instances[str],
+                          self._vm.convert.primitive_class_instances[int]])
+
 
 if __name__ == "__main__":
   unittest.main()

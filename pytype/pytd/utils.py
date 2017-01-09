@@ -39,12 +39,15 @@ def UnpackUnion(t):
     return [t]
 
 
-def MakeClassOrContainerType(base_type, type_arguments):
+def MakeClassOrContainerType(base_type, type_arguments, homogeneous):
   """If we have type params, build a generic type, a normal type otherwise."""
-  if len(type_arguments) == 0:
-    return base_type
-  elif len(type_arguments) == 1:
+  if homogeneous:
+    assert len(type_arguments) == 1
     return pytd.HomogeneousContainerType(base_type, tuple(type_arguments))
+  elif base_type.name in ("__builtin__.tuple", "typing.Tuple"):
+    return pytd.TupleType(base_type, tuple(type_arguments))
+  elif not type_arguments:
+    return base_type
   else:
     return pytd.GenericType(base_type, tuple(type_arguments))
 

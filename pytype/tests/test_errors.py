@@ -912,20 +912,36 @@ class ErrorTest(test_inference.InferenceTest):
     ])
 
   def testTuplePrinting(self):
-    # TODO(rechen): The type of argument x should be Tuple[str, ...]
     _, errors = self.InferAndCheck("""\
       from __future__ import google_type_annotations
       from typing import Tuple
-      def f(x: Tuple[str]):
+      def f(x: Tuple[str, ...]):
+        pass
+      def g(y: Tuple[str]):
         pass
       f((42,))
       f(tuple([42]))
+      f(("", ""))  # okay
+      g((42,))
+      # g(("", ""))
+      g(("",))  # okay
+      g(tuple([""]))  # okay
     """)
-    x_type = r"Tuple\[str, \.\.\.\]"
-    self.assertErrorLogIs(errors, [(5, "wrong-arg-types",
-                                    r"%s.*Tuple\[int\]" % x_type),
-                                   (6, "wrong-arg-types",
-                                    r"%s.*Tuple\[int, \.\.\.\]" % x_type)])
+    x = r"Tuple\[str, \.\.\.\]"
+    y = r"Tuple\[str\]"
+    tuple_int = r"Tuple\[int\]"
+    tuple_ints = r"Tuple\[int, \.\.\.\]"
+    # tuple_str_str = r"Tuple\[str, str\]"
+    # TODO(rechen): Fix matcher.py so that line 11 is an error.
+    self.assertErrorLogIs(errors, [(7, "wrong-arg-types",
+                                    r"%s.*%s" % (x, tuple_int)),
+                                   (8, "wrong-arg-types",
+                                    r"%s.*%s" % (x, tuple_ints)),
+                                   (10, "wrong-arg-types",
+                                    r"%s.*%s" % (y, tuple_int)),
+                                   # (11, "wrong-arg-types",
+                                   #  r"%s.*%s" % (y, tuple_str_str))
+                                  ])
 
 
 if __name__ == "__main__":

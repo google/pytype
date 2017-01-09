@@ -458,9 +458,12 @@ class Converter(object):
     elif isinstance(pyval, pytd.FunctionType):
       return self._constant_to_value(name, pyval.function, subst, node)
     elif isinstance(pyval, pytd.UnionType):
-      return abstract.Union([
-          self.constant_to_value(pytd.Print(t), t, subst, node)
-          for t in pyval.type_list], self.vm)
+      options = [self.constant_to_value(pytd.Print(t), t, subst, node)
+                 for t in pyval.type_list]
+      if len(options) > 1:
+        return abstract.Union(options, self.vm)
+      else:
+        return options[0]
     elif isinstance(pyval, pytd.TypeParameter):
       return abstract.TypeParameter(pyval.name, self.vm)
     elif isinstance(pyval, abstract.AsInstance):
@@ -513,23 +516,25 @@ class Converter(object):
     elif isinstance(pyval, pytd.GenericType):
       assert isinstance(pyval.base_type, pytd.ClassType)
       if isinstance(pyval, pytd.TupleType):
-        # TODO(rechen): How can we preserve the heterogeneous tuple information?
-        parameters = (pytd.UnionType(type_list=pyval.parameters),)
+        abstract_class = abstract.TupleClass
+        template = range(len(pyval.parameters)) + [abstract.T]
+        parameters = pyval.parameters + (pytd.UnionType(pyval.parameters),)
       else:
+        abstract_class = abstract.ParameterizedClass
+        template = tuple(t.name for t in pyval.base_type.cls.template)
         parameters = pyval.parameters
       assert (pyval.base_type.name == "typing.Generic" or
-              len(parameters) <= len(pyval.base_type.cls.template))
+              len(parameters) <= len(template))
       type_parameters = utils.LazyDict()
-      for i, param in enumerate(pyval.base_type.cls.template):
+      for i, name in enumerate(template):
         if i < len(parameters):
-          type_parameters.add_lazy_item(
-              param.name, self.constant_to_value,
-              param.name, parameters[i], subst, node)
+          type_parameters.add_lazy_item(name, self.constant_to_value, name,
+                                        parameters[i], subst, node)
         else:
-          type_parameters[param.name] = self.unsolvable
+          type_parameters[name] = self.unsolvable
       base_cls = self.constant_to_value(
           pytd.Print(pyval.base_type), pyval.base_type.cls, subst, node)
-      cls = abstract.ParameterizedClass(base_cls, type_parameters, self.vm)
+      cls = abstract_class(base_cls, type_parameters, self.vm)
       return cls
     elif pyval.__class__ is tuple:  # only match raw tuple, not namedtuple/Node
       return self.tuple_to_value(self.vm.root_cfg_node,
