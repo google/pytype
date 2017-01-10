@@ -2082,7 +2082,7 @@ class VirtualMachine(object):
     """Get and check the return value."""
     state, var = state.pop()
     if self.frame.allowed_returns is not None:
-      if self.frame.yield_variable.bindings:  # Generator
+      if self.frame.f_code.co_flags & loadmarshal.CodeType.CO_GENERATOR:
         # A generator shouldn't return anything, so the expected return type
         # is None.
         self._check_return(self.frame.current_opcode, state.node, var,

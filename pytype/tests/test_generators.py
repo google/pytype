@@ -1,10 +1,12 @@
 """Tests for generators."""
 
+import os
 from pytype.tests import test_inference
 
 
 class GeneratorTest(test_inference.InferenceTest):
   """Tests for iterators, generators, coroutines, and yield."""
+
 
   def testNext(self):
     ty = self.Infer("""
@@ -100,6 +102,16 @@ class GeneratorTest(test_inference.InferenceTest):
       x = ...  # type: int
       y = ...  # type: int
       z = ...  # type: int
+    """)
+
+  def testReturnBeforeYield(self):
+    self.assertNoErrors("""
+      from __future__ import google_type_annotations
+      from typing import Generator
+      def f() -> generator:
+        if __any_object__:
+          return
+        yield 5
     """)
 
 

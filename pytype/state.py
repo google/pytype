@@ -204,7 +204,6 @@ class Frame(object):
     block_stack: A stack of blocks used to manage exceptions, loops, and
     "with"s.
     data_stack: The value stack that is used for instruction operands.
-    generator: None or a Generator object if this frame is a generator frame.
     allowed_returns: The return annotation of this function.
     return_variable: The return value of this function, as a Variable.
     yield_variable: The yield value of this function, as a Variable.
