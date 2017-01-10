@@ -480,6 +480,11 @@ class ErrorLog(ErrorLogBase):
     self.error(opcode, "Invalid function type comment: %s" % comment,
                details=details)
 
+  @_error_name("invalid-type-comment")
+  def invalid_type_comment(self, opcode, comment, details=None):
+    self.error(opcode, "Invalid type comment: %s" % comment,
+               details=details)
+
   @_error_name("invalid-typevar")
   def invalid_typevar(self, opcode, comment):
     self.error(opcode, "Invalid TypeVar: %s" % comment)

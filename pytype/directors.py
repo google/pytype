@@ -5,8 +5,7 @@ import collections
 import re
 import sys
 
-_DIRECTIVE_RE = re.compile(r"^[^#]*#\s*(pytype|type)\s*:\s([^#]*)")
-_COMMENT_ONLY_RE = re.compile(r"^\s*#")
+_DIRECTIVE_RE = re.compile(r"^([^#]*)#\s*(pytype|type)\s*:\s([^#]*)")
 _ALL_ERRORS = "*"  # Wildcard for disabling all errors.
 
 
@@ -95,7 +94,7 @@ class Director(object):
     """
     self._filename = filename
     self._errorlog = errorlog
-    self._type_comments = {}  # Map from line number to type comment text.
+    self._type_comments = {}  # Map from line number to (code, comment).
     # Lines that have "type: ignore".  These will disable all errors, and in
     # the future may have other impact (such as not attempting an import).
     self._ignore = _LineSet()
@@ -117,11 +116,12 @@ class Director(object):
     for lineno, line in enumerate(src.splitlines(), 1):
       m = _DIRECTIVE_RE.match(line)
       if m:
-        tool, data = m.groups()
-        open_ended = bool(_COMMENT_ONLY_RE.match(line))
+        code, tool, data = m.groups()
+        code = code.strip()
+        open_ended = not code
         data = data.strip()
         if tool == "type":
-          self._process_type(lineno, data, open_ended)
+          self._process_type(lineno, code, data)
         elif tool == "pytype":
           try:
             self._process_pytype(lineno, data, open_ended)
@@ -130,15 +130,15 @@ class Director(object):
         else:
           pass  # ignore comments for other tools
 
-  def _process_type(self, lineno, data, open_ended):
+  def _process_type(self, lineno, code, data):
     """Process a type: comment."""
     if data == "ignore":
-      if open_ended:
+      if not code:
         self._ignore.start_range(lineno, True)
       else:
         self._ignore.set_line(lineno, True)
     else:
-      self._type_comments[lineno] = data.strip()
+      self._type_comments[lineno] = (code, data)
 
   def _process_pytype(self, lineno, data, open_ended):
     """Process a pytype: comment."""

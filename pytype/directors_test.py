@@ -295,8 +295,8 @@ class DirectorTest(unittest.TestCase):
     # type: (int, float) -> str
     """)
     self.assertEquals({
-        2: "int",
-        5: "(int, float) -> str",
+        2: ("x = None", "int"),
+        5: ("", "(int, float) -> str"),
     }, self._director.type_comments)
 
 

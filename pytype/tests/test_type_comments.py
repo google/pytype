@@ -6,7 +6,7 @@ import os
 from pytype.tests import test_inference
 
 
-class TypeCommentTest(test_inference.InferenceTest):
+class FunctionCommentTest(test_inference.InferenceTest):
   """Tests for type comments."""
 
   def testCommentOutTypeComment(self):
@@ -201,7 +201,7 @@ class TypeCommentTest(test_inference.InferenceTest):
          r".*unexpected EOF"))
 
 
-class TypeCommentWithAnnotationsTest(test_inference.InferenceTest):
+class FunctionCommentWithAnnotationsTest(test_inference.InferenceTest):
   """Tests for type comments that require annotations."""
 
 
@@ -214,6 +214,58 @@ class TypeCommentWithAnnotationsTest(test_inference.InferenceTest):
     """, filename="test.py")
     self.assertErrorLogContains(
         errors, r"test\.py.*line 4.*redundant-function-type-comment")
+
+
+class AssignmentCommentTest(test_inference.InferenceTest):
+  """Tests for type comments applied to assignments."""
+
+  def testAttributeComment(self):
+    ty = self.Infer("""
+      class Foo(object):
+        s = None  # type: str
+    """, deep=True, filename="test.py")
+    self.assertTypesMatchPytd(ty, """
+      class Foo(object):
+        s = ...  # type: str
+    """)
+
+  def testGlobalComment(self):
+    ty = self.Infer("""
+      X = None  # type: str
+    """, deep=True, filename="test.py")
+    self.assertTypesMatchPytd(ty, """
+      X = ...  # type: str
+    """)
+
+  def testLocalComment(self):
+    ty = self.Infer("""
+      X = None
+
+      def foo():
+        x = X  # type: str
+        return x
+    """, deep=True, filename="test.py")
+    self.assertTypesMatchPytd(ty, """
+      X = ...  # type: None
+      def foo() -> str: ...
+    """)
+
+  def testBadComment(self):
+    _, errors = self.InferAndCheck("""
+      X = None  # type: abc def
+    """, deep=True, filename="test.py")
+    self.assertErrorLogContains(
+        errors,
+        (r"test\.py.*line 2.*abc def.*invalid-type-comment"
+         r".*unexpected EOF"))
+
+  def testConversionError(self):
+    _, errors = self.InferAndCheck("""
+      X = None  # type: 1 if x else 2
+    """, deep=True, filename="test.py")
+    self.assertErrorLogContains(
+        errors,
+        r"test\.py.*line 2.*1 if x else 2.*invalid-type-comment")
 
 
 if __name__ == "__main__":

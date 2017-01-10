@@ -1305,9 +1305,21 @@ class VirtualMachine(object):
               self.convert.create_new_unsolvable(state.node))
     return state.push(val)
 
+  def _apply_type_comment(self, state, op, value):
+    """If there is a type comment for the op, return its value."""
+    code, comment = self.type_comments.get(op.line, (None, None))
+    if code:
+      try:
+        var = self._eval_expr(state.node, self.frame.f_globals, comment)
+        value = abstract.get_atomic_value(var).instantiate(state.node)
+      except (pyc.CompileError, abstract.ConversionError) as e:
+        self.errorlog.invalid_type_comment(op, comment, details=e.message)
+    return value
+
   def byte_STORE_NAME(self, state, op):
     name = self.frame.f_code.co_names[op.arg]
     state, value = state.pop()
+    value = self._apply_type_comment(state, op, value)
     state = self.store_local(state, name, value)
     return state.forward_cfg_node()
 
@@ -1329,6 +1341,7 @@ class VirtualMachine(object):
   def byte_STORE_FAST(self, state, op):
     name = self.frame.f_code.co_varnames[op.arg]
     state, value = state.pop()
+    value = self._apply_type_comment(state, op, value)
     state = state.forward_cfg_node()
     state = self.store_local(state, name, value)
     return state
@@ -1888,8 +1901,8 @@ class VirtualMachine(object):
     if not filename or op.line is None:
       return
     lineno = op.line + 1
-    comment = self.type_comments.get(lineno)
-    if not comment:
+    code, comment = self.type_comments.get(lineno, (None, None))
+    if code or not comment:
       return
 
     # It is an error to use a type comment on an annotated function.
