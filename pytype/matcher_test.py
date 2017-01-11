@@ -47,9 +47,8 @@ class MatcherTest(unittest.TestCase):
 
   def _match_var(self, left, right):
     var = self.vm.program.NewVariable()
-    var.AddBinding(left)
-    for combination in utils.deep_variable_product([var]):
-      view = {val.variable: val for val in combination}
+    var.AddBinding(left, [], self.vm.root_cfg_node)
+    for view in abstract.get_views([var], self.vm.root_cfg_node):
       yield self.vm.matcher.match_var_against_type(
           var, right, {}, self.vm.root_cfg_node, view)
 
@@ -154,6 +153,41 @@ class MatcherTest(unittest.TestCase):
     left2 = self._convert("Tuple[int, ...]", as_instance=True)
     left3 = self._convert("tuple", as_instance=True)
     right = self._convert("Tuple[bool, int]", as_instance=False)
+    self.assertMatch(left1, right)
+    self.assertNoMatch(left2, right)
+    self.assertMatch(left3, right)
+
+  def testTupleType(self):
+    # homogeneous against homogeneous
+    left = self._convert("Type[Tuple[float, ...]]", as_instance=True)
+    right1 = self._convert("Type[Tuple[float, ...]]", as_instance=False)
+    right2 = self._convert("Type[Tuple[str, ...]]", as_instance=False)
+    self.assertMatch(left, right1)
+    self.assertNoMatch(left, right2)
+
+    # heterogeneous against heterogeneous
+    left1 = self._convert("Type[Tuple[int or str]]", as_instance=True)
+    left2 = self._convert("Type[Tuple[int, str]]", as_instance=True)
+    left3 = self._convert("Type[Tuple[str, int]]", as_instance=True)
+    right = self._convert("Type[Tuple[int, str]]", as_instance=False)
+    self.assertNoMatch(left1, right)
+    self.assertMatch(left2, right)
+    self.assertNoMatch(left3, right)
+
+    # heterogeneous against homogeneous
+    left = self._convert("Type[Tuple[bool, int]]", as_instance=True)
+    right1 = self._convert("Type[Tuple[bool, ...]]", as_instance=False)
+    right2 = self._convert("Type[Tuple[int, ...]]", as_instance=False)
+    right3 = self._convert("Type[tuple]", as_instance=False)
+    self.assertNoMatch(left, right1)
+    self.assertMatch(left, right2)
+    self.assertMatch(left, right3)
+
+    # homogeneous against heterogeneous
+    left1 = self._convert("Type[Tuple[bool, ...]]", as_instance=True)
+    left2 = self._convert("Type[Tuple[int, ...]]", as_instance=True)
+    left3 = self._convert("Type[tuple]", as_instance=True)
+    right = self._convert("Type[Tuple[bool, int]]", as_instance=False)
     self.assertMatch(left1, right)
     self.assertNoMatch(left2, right)
     self.assertMatch(left3, right)

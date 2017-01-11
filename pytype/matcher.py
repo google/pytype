@@ -56,12 +56,7 @@ class AbstractMatcher(object):
     """
     subst = subst or {}
     bad = []
-    for combination in utils.deep_variable_product([var]):
-      view = {value.variable: value for value in combination}
-      combination = view.values() + ([condition.binding] if condition else [])
-      if not node.HasCombination(combination):
-        log.info("No such combination %r", combination)
-        continue
+    for view in abstract.get_views([var], node, condition, filter_strict=True):
       if self.match_var_against_type(var, other_type, subst,
                                      node, view) is None:
         bad.append(view)
@@ -167,9 +162,16 @@ class AbstractMatcher(object):
       if (other_type.full_name == "__builtin__.type" and
           isinstance(other_type, abstract.ParameterizedClass)):
         other_type = other_type.type_parameters[abstract.T]
-        value = left.instantiate(node).bindings[0]
-        return self._match_value_against_type(
-            value, other_type, subst, node, view)
+        left = left.instantiate(node)
+        for new_view in abstract.get_views([left], node):
+          # When new_view and view have entries in common, we want to use the
+          # entries from the old view.
+          new_view.update(view)
+          new_subst = self.match_var_against_type(
+              left, other_type, subst, node, new_view)
+          if new_subst is not None:
+            return new_subst
+        return None
       elif other_type.full_name in [
           "__builtin__.type", "__builtin__.object", "typing.Callable"]:
         return subst

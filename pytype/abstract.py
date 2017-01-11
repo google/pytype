@@ -87,6 +87,29 @@ def merge_values(values, vm):
     return Union(values, vm)
 
 
+def get_views(variables, node, condition=None, filter_strict=False):
+  """Get all possible views of the given variables at a particular node.
+
+  Args:
+    variables: The variables.
+    node: The node.
+    condition: Optionally, a condition that must be satisfied.
+    filter_strict: If True, emit a view only when node.HasCombination is
+      satisfied; else, use the faster node.CanHaveCombination.
+
+  Yields:
+    A variable->binding dictionary.
+  """
+  for combination in utils.deep_variable_product(variables):
+    view = {value.variable: value for value in combination}
+    combination = view.values() + ([condition.binding] if condition else [])
+    check = node.HasCombination if filter_strict else node.CanHaveCombination
+    if not check(combination):
+      log.info("Skipping combination %r", combination)
+      continue
+    yield view
+
+
 class AtomicAbstractValue(object):
   """A single abstract value such as a type or function signature.
 
@@ -1232,12 +1255,7 @@ class Function(Instance):
           "Can't call function with <nothing> parameter")
     error = None
     matched = []
-    for combination in utils.deep_variable_product(args.get_variables()):
-      view = {value.variable: value for value in combination}
-      combination = view.values() + ([condition.binding] if condition else [])
-      if not node.CanHaveCombination(combination):
-        log.info("Skipping combination %r", combination)
-        continue
+    for view in get_views(args.get_variables(), node, condition):
       log.debug("args in view: %r", [(a.bindings and view[a].data)
                                      for a in args.posargs])
       try:
