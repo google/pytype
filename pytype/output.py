@@ -49,9 +49,6 @@ class Converter(object):
         template = range(len(v.type_parameters) - 1)
       else:
         template = range(len(instance.pyval))
-        # Since we didn't include the pyval variables when computing the view,
-        # we can't use it here, so just overwrite view with None.
-        view = None
     if instance is None and isinstance(v, abstract.ParameterizedClass):
       return [self.value_instance_to_pytd_type(
           node, v.type_parameters[t], None, seen, view) for t in template]
@@ -59,7 +56,7 @@ class Converter(object):
       type_arguments = []
       for t in template:
         if isinstance(instance, abstract.Tuple):
-          param_values = instance.pyval[t].Data(node)
+          param_values = self._get_values(node, instance.pyval[t], view)
         elif t in instance.type_parameters:
           param_values = self._get_values(
               node, instance.type_parameters[t], view)

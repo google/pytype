@@ -382,6 +382,19 @@ class PyTDTest(AbstractTestBase):
     pytd_type = instance.to_type(self._vm.root_cfg_node, seen=None, view=view)
     self.assertEquals("__builtin__.str", pytd_type.name)
 
+  def testToTypeWithView3(self):
+    # to_type(<tuple (int or str,)>, view={0: str})
+    param1 = self._vm.convert.primitive_class_instances[int]
+    param2 = self._vm.convert.primitive_class_instances[str]
+    param_var = param1.to_variable(self._vm.root_cfg_node)
+    str_binding = param_var.AddBinding(param2, [], self._vm.root_cfg_node)
+    instance = abstract.Tuple((param_var,), self._vm, self._vm.root_cfg_node)
+    view = {param_var: str_binding, instance.cls: instance.cls.bindings[0],
+            str_binding.data.cls: str_binding.data.cls.bindings[0]}
+    pytd_type = instance.to_type(self._vm.root_cfg_node, seen=None, view=view)
+    self.assertEquals(pytd_type.parameters[0],
+                      pytd.NamedType("__builtin__.str"))
+
   def testToTypeWithViewAndEmptyParam(self):
     instance = abstract.Instance(
         self._vm.convert.list_type, self._vm, self._vm.root_cfg_node)

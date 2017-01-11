@@ -288,8 +288,32 @@ class AtomicAbstractValue(object):
     """Return True if this is a function and has a **kwargs parameter."""
     return False
 
+  def _unique_parameters(self):
+    """Get unique parameter subtypes as variables.
+
+    This will retrieve 'children' of this value that contribute to the
+    type of it. So it will retrieve type parameters, but not attributes. To
+    keep the number of possible combinations reasonable, when we encounter
+    multiple instances of the same type, we include only one.
+
+    Returns:
+      A list of variables.
+    """
+    return [self.cls] if self.cls else []
+
   def unique_parameter_values(self):
-    return []
+    """Get unique parameter subtypes as bindings.
+
+    Like _unique_parameters, but returns bindings instead of variables.
+
+    Returns:
+      A list of list of bindings.
+    """
+    # TODO(rechen): Remember which values were merged under which type keys so
+    # we don't have to recompute this information in match_value_against_type.
+    return [{value.data.get_type_key(): value
+             for value in parameter.bindings}.values()
+            for parameter in self._unique_parameters()]
 
   def compatible_with(self, logical_value):  # pylint: disable=unused-argument
     """Returns the conditions under which the value could be True or False.
@@ -547,26 +571,10 @@ class SimpleAbstractValue(AtomicAbstractValue):
         (self.members.changestamp, self.type_parameters.changestamp), type_key)
     return type_key
 
-  def unique_parameter_values(self):
-    """Get unique parameter subtypes as Values.
-
-    This will retrieve 'children' of this value that contribute to the
-    type of it. So it will retrieve type parameters, but not attributes. To
-    keep the number of possible combinations reasonable, when we encounter
-    multiple instances of the same type, we include only one.
-
-    Returns:
-      A list of list of Values.
-    """
-    parameters = self.type_parameters.values()
-    clsvar = self.get_class()
-    if clsvar:
-      parameters.append(clsvar)
-    # TODO(rechen): Remember which values were merged under which type keys so
-    # we don't have to recompute this information in match_value_against_type.
-    return [{value.data.get_type_key(): value
-             for value in parameter.bindings}.values()
-            for parameter in parameters]
+  def _unique_parameters(self):
+    parameters = super(SimpleAbstractValue, self)._unique_parameters()
+    parameters.extend(self.type_parameters.values())
+    return parameters
 
 
 class Instance(SimpleAbstractValue):
@@ -668,6 +676,13 @@ class Tuple(ValueWithSlots, PythonConstant):
         node, T, self.vm.convert.build_content(node, content))
     PythonConstant.init_mixin(self, content)
 
+  def __repr__(self):
+    content = ", ".join(" or ".join(str(v) for v in val.data)
+                        for val in self.pyval)
+    if len(self.pyval) == 1:
+      content += ","
+    return "<v%d %s (%s)>" % (self.id, self.name, content)
+
   def getitem_slot(self, node, index_var):
     """Implementation of tuple.__getitem__."""
     try:
@@ -680,6 +695,11 @@ class Tuple(ValueWithSlots, PythonConstant):
         # TODO(rechen): Should index >= len(self.pyval) be a pytype error?
         return node, self.pyval[index]
     return self.call_pytd(node, "__getitem__", index_var)
+
+  def _unique_parameters(self):
+    parameters = super(Tuple, self)._unique_parameters()
+    parameters.extend(self.pyval)
+    return parameters
 
   def compatible_with(self, logical_value):
     return PythonConstant.compatible_with(self, logical_value)
