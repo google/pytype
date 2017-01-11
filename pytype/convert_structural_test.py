@@ -206,6 +206,7 @@ class MatchTest(unittest.TestCase):
     mapping = self.parse_and_solve("""
       def f(A: `~unknown0`) -> list[`~unknown8`]
       class `~unknown0`():
+        def has_key(self, _1: ?) -> ?
         def viewvalues(self) -> `~unknown2`
       class `~unknown2`():
         def __iter__(self) -> `~unknown4`

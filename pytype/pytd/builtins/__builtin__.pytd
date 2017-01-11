@@ -408,7 +408,7 @@ class dict(Dict[K, V]):
     def fromkeys(keys: Iterable[K]) -> Dict[K, NoneType]
     @staticmethod
     def fromkeys(keys: Iterable[K], value: V) -> Dict[K, V]
-    def has_key(self, k: K) -> bool
+    def has_key(self, k) -> bool
     def iteritems(self) -> `dictionary-itemiterator`[K,V]
     def iterkeys(self) -> `dictionary-keyiterator`[K]
     def itervalues(self) -> `dictionary-valueiterator`[V]

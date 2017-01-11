@@ -40,6 +40,7 @@ class SolverTests(test_inference.InferenceTest):
   def testTypeParameters(self):
     ty = self.Infer("""
       def f(A):
+        A.has_key("foo")
         return [a - 42.0 for a in A.viewvalues()]
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """

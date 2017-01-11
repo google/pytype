@@ -220,6 +220,12 @@ class TypingTest(test_inference.InferenceTest):
         e = [x for x in m.items()]
         f = [x for x in m.keys()]
         g = [x for x in m.values()]
+        h = [x for x in m.iteritems()]
+        i = [x for x in m.iterkeys()]
+        j = [x for x in m.itervalues()]
+        k = [x for x in m.viewitems()]
+        l = [x for x in m.viewkeys()]
+        n = [x for x in m.viewvalues()]
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         import foo
@@ -232,6 +238,12 @@ class TypingTest(test_inference.InferenceTest):
         e = ...  # type: List[Tuple[str, int]]
         f = ...  # type: List[str]
         g = ...  # type: List[int]
+        h = ...  # type: List[Tuple[str, int]]
+        i = ...  # type: List[str]
+        j = ...  # type: List[int]
+        k = ...  # type: List[Tuple[str, int]]
+        l = ...  # type: List[str]
+        n = ...  # type: List[int]
         x = ...  # type: int
       """)
 
