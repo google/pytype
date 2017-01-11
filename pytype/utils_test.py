@@ -572,10 +572,12 @@ class UtilsTest(unittest.TestCase):
     d.add_lazy_item("f", f, "foo")
     self.assertNotIn("f", d)
     self.assertEquals(0, len(x))
+    self.assertEquals(1, len(d))
     # Evaluate the item
     self.assertEquals("foo", d["f"])
     self.assertIn("f", d)
     self.assertEquals(1, len(x))
+    self.assertEquals(1, len(d))
 
   def testDynamicVar(self):
     var = utils.DynamicVar()

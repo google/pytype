@@ -236,6 +236,17 @@ class AbstractMatcher(object):
     Returns:
       A new type parameter assignment if the matching succeeded, None otherwise.
     """
+    if (isinstance(left, abstract.TupleClass) or
+        isinstance(instance, abstract.Tuple) or
+        isinstance(other_type, abstract.TupleClass)):
+      subst = self._match_heterogeneous_tuple_instance(
+          left, instance, other_type, subst, node, view)
+    return self._match_maybe_parameterized_instance(
+        left, instance, other_type, subst, node, view)
+
+  def _match_maybe_parameterized_instance(self, left, instance, other_type,
+                                          subst, node, view):
+    """Used by _match_instance."""
     if isinstance(other_type, abstract.ParameterizedClass):
       if isinstance(left, abstract.ParameterizedClass):
         assert left.base_cls is other_type.base_cls
@@ -264,6 +275,44 @@ class AbstractMatcher(object):
                                             subst, node, view)
         if subst is None:
           return None
+    return subst
+
+  def _match_heterogeneous_tuple_instance(self, left, instance, other_type,
+                                          subst, node, view):
+    """Used by _match_instance."""
+    if isinstance(instance, abstract.Tuple):
+      if isinstance(other_type, abstract.TupleClass):
+        if len(instance.pyval) == len(other_type.type_parameters) - 1:
+          for i in range(len(instance.pyval)):
+            instance_param = instance.pyval[i]
+            class_param = other_type.type_parameters[i]
+            subst = self.match_var_against_type(
+                instance_param, class_param, subst, node, view)
+            if subst is None:
+              return None
+        else:
+          return None
+      elif isinstance(other_type, abstract.ParameterizedClass):
+        class_param = other_type.type_parameters[abstract.T]
+        for instance_param in instance.pyval:
+          subst = self.match_var_against_type(
+              instance_param, class_param, subst, node, view)
+          if subst is None:
+            return None
+    elif isinstance(other_type, abstract.TupleClass):
+      assert isinstance(other_type, abstract.TupleClass)
+      if isinstance(instance, abstract.SimpleAbstractValue):
+        instance_param = instance.type_parameters[abstract.T]
+        for i in range(len(other_type.type_parameters) - 1):
+          class_param = other_type.type_parameters[i]
+          subst = self.match_var_against_type(
+              instance_param, class_param, subst, node, view)
+          if subst is None:
+            return None
+    else:
+      # We have an instance of a subclass of tuple.
+      # TODO(rechen): Match left against other_type.
+      assert isinstance(left, abstract.TupleClass)
     return subst
 
   def _match_from_mro(self, left, other_type):

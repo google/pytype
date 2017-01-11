@@ -672,6 +672,9 @@ class LazyDict(DictTemplate):
       del self._lazy_map[name]
     return super(LazyDict, self).__getitem__(name)
 
+  def __len__(self):
+    return super(LazyDict, self).__len__() + len(self._lazy_map)
+
   def __repr__(self):
     lazy_items = ("%r: %r(%r)" %
                   (name, func.func_name, ", ".join(repr(a) for a in args))

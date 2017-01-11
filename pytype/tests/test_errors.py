@@ -923,7 +923,7 @@ class ErrorTest(test_inference.InferenceTest):
       f(tuple([42]))
       f(("", ""))  # okay
       g((42,))
-      # g(("", ""))
+      g(("", ""))
       g(("",))  # okay
       g(tuple([""]))  # okay
     """)
@@ -931,16 +931,15 @@ class ErrorTest(test_inference.InferenceTest):
     y = r"Tuple\[str\]"
     tuple_int = r"Tuple\[int\]"
     tuple_ints = r"Tuple\[int, \.\.\.\]"
-    # tuple_str_str = r"Tuple\[str, str\]"
-    # TODO(rechen): Fix matcher.py so that line 11 is an error.
+    tuple_str_str = r"Tuple\[str, str\]"
     self.assertErrorLogIs(errors, [(7, "wrong-arg-types",
                                     r"%s.*%s" % (x, tuple_int)),
                                    (8, "wrong-arg-types",
                                     r"%s.*%s" % (x, tuple_ints)),
                                    (10, "wrong-arg-types",
                                     r"%s.*%s" % (y, tuple_int)),
-                                   # (11, "wrong-arg-types",
-                                   #  r"%s.*%s" % (y, tuple_str_str))
+                                   (11, "wrong-arg-types",
+                                    r"%s.*%s" % (y, tuple_str_str))
                                   ])
 
 
