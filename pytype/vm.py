@@ -117,6 +117,7 @@ class VirtualMachine(object):
     self.attribute_handler = attribute.AbstractAttributeHandler(self)
     self.has_unknown_wildcard_imports = False
     self.callself_stack = []
+    self.filename = None
     self.type_comments = {}
 
     # Map from builtin names to canonical objects.
@@ -595,6 +596,7 @@ class VirtualMachine(object):
     # but there isn't a better way to wire both pieces together.
     self.errorlog.set_error_filter(director.should_report_error)
     self.type_comments = director.type_comments
+    self.filename = filename
 
     self.maximum_depth = sys.maxint if maximum_depth is None else maximum_depth
     node = self.root_cfg_node.ConnectNew("builtins")
@@ -1307,6 +1309,8 @@ class VirtualMachine(object):
 
   def _apply_type_comment(self, state, op, value):
     """If there is a type comment for the op, return its value."""
+    if op.code.co_filename != self.filename:
+      return value
     code, comment = self.type_comments.get(op.line, (None, None))
     if code:
       try:
@@ -1898,7 +1902,7 @@ class VirtualMachine(object):
     # Find type comment (if any).  It should appear on the line immediately
     # following the opcode.
     filename = op.code.co_filename
-    if not filename or op.line is None:
+    if filename != self.filename or op.line is None:
       return
     lineno = op.line + 1
     code, comment = self.type_comments.get(lineno, (None, None))

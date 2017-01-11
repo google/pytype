@@ -267,6 +267,26 @@ class AssignmentCommentTest(test_inference.InferenceTest):
         errors,
         r"test\.py.*line 2.*1 if x else 2.*invalid-type-comment")
 
+  def testTypeCommentUsesFilename(self):
+    # TODO(dbaum): This test will likely become unnecessary once we warn on
+    # unhandled type comments and test those warnings.
+
+    # This is a fragile test.  It depends on the fact that builtins has an
+    # assignment on line 4, thus would process the tzinfo type comment and
+    # trigger a name-error if filename was ignored.
+    ty = self.Infer("""
+      from datetime import tzinfo
+      def foo():
+        x = None  # type: tzinfo
+        return x
+    """, deep=True, filename="test.py")
+    self.assertTypesMatchPytd(ty, """
+      import datetime
+      from typing import Type
+      tzinfo = ...  # type: Type[datetime.tzinfo]
+      def foo() -> datetime.tzinfo: ...
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()
