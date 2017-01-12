@@ -235,7 +235,7 @@ class IsInstanceTest(AbstractTestBase):
                           abstract.Unsolvable)
     self.assertRegexpMatches(
         str(self._vm.errorlog),
-        r"isinstance .* 0 args .* expected 2.*\[wrong-arg-count\]")
+        r"isinstance.*expects 2.*got 0.*\[wrong-arg-count\]")
 
   def test_call_wrong_keywords(self):
     self._vm.push_frame(FakeFrame())

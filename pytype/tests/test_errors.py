@@ -91,11 +91,10 @@ class ErrorTest(test_inference.InferenceTest):
                                 r"line 5.*Unsupported.*__add__.*str.*int")
 
   def testWrongArgCount(self):
-    _, errors = self.InferAndCheck("""
+    _, errors = self.InferAndCheck("""\
       hex(1, 2, 3, 4)
     """)
-    self.assertErrorLogContains(
-        errors, r"line 2.*hex was called with 4 args instead of expected 1")
+    self.assertErrorLogIs(errors, [(1, "wrong-arg-count", r"expects 1.*got 4")])
 
   def testWrongArgTypes(self):
     _, errors = self.InferAndCheck("""
@@ -290,7 +289,7 @@ class ErrorTest(test_inference.InferenceTest):
         pass
       f(3)
     """, deep=True)
-    self.assertErrorLogContains(errors, r"Line 3.*wrong-arg-count")
+    self.assertErrorLogIs(errors, [(3, "wrong-arg-count", "0.*1")])
 
   def testTooFewArgs(self):
     _, errors = self.InferAndCheck("""\

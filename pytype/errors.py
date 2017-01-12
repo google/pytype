@@ -337,8 +337,8 @@ class ErrorLog(ErrorLogBase):
 
   @_error_name("wrong-arg-count")
   def wrong_arg_count(self, opcode, name, bad_call):
-    message = "Function %s was called with %d args instead of expected %d" % (
-        name, len(bad_call.passed_args), bad_call.sig.mandatory_param_count())
+    message = "Function %s expects %d arg(s), got %d" % (
+        name, bad_call.sig.mandatory_param_count(), len(bad_call.passed_args))
     self._invalid_parameters(opcode, message, bad_call)
 
   @_error_name("wrong-arg-types")
