@@ -641,6 +641,39 @@ class BuiltinTests2(test_inference.InferenceTest):
       z = ...  # type: None
     """)
 
+  def testSetDefaultVarargs(self):
+    ty = self.Infer("""\
+      x1 = {}
+      y1 = x1.setdefault(*("foo", 42))
+
+      x2 = {}
+      y2 = x2.setdefault(*["foo", 42])
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+
+      x1 = ...  # type: Dict[str, int]
+      y1 = ...  # type: int
+
+      x2 = ...  # type: dict
+      y2 = ...  # type: Any
+    """)
+
+  def testSetDefaultError(self):
+    ty, errors = self.InferAndCheck("""\
+      x = {}
+      y = x.setdefault()
+      z = x.setdefault(1, 2, 3, *[])
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      x = ...  # type: Dict[nothing, nothing]
+      y = ...  # type: Any
+      z = ...  # type: Any
+    """)
+    self.assertErrorLogIs(errors, [(2, "wrong-arg-count", "2.*0"),
+                                   (3, "wrong-arg-count", "2.*3")])
+
   def testRedefineNext(self):
     ty = self.Infer("""
       next = 42

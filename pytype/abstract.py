@@ -12,6 +12,7 @@ combined using typegraph and that is what we compute over.
 import collections
 import contextlib
 import hashlib
+import inspect
 import itertools
 import logging
 
@@ -1945,15 +1946,52 @@ class NativeFunction(Function):
     return self.func.func_code.co_argcount
 
   def call(self, node, _, args, condition=None):
-    # TODO(kramm): If the signature doesn't match, this crashes. It should
-    # generate an error instead.
-    # Originate a new variable for each argument and call.
-    return self.func(
-        node,
-        *[u.AssignToNewVariable(node)
-          for u in args.posargs],
-        **{k: u.AssignToNewVariable(node)
-           for k, u in args.namedargs.items()})
+    args = args.simplify(node)
+    posargs = [u.AssignToNewVariable(node) for u in args.posargs]
+    namedargs = {k: u.AssignToNewVariable(node)
+                 for k, u in args.namedargs.items()}
+    try:
+      inspect.getcallargs(self.func, node, *posargs, **namedargs)
+    except ValueError:
+      # Happens for, e.g.,
+      #   def f((x, y)): pass
+      #   f((42,))
+      raise NotImplementedError("Wrong number of values to unpack")
+    except TypeError as e:
+      # The possible errors here are:
+      #   (1) wrong arg count
+      #   (2) duplicate keyword
+      #   (3) unexpected keyword
+      # The way we constructed namedargs rules out (2).
+      if "keyword" in e.message:
+        # Happens for, e.g.,
+        #   def f(*args): pass
+        #   f(x=42)
+        raise NotImplementedError("Unexpected keyword")
+      # The function was passed the wrong number of arguments. The signature is
+      # ([self, ]node, ...). The length of "..." tells us how many variables
+      # are expected.
+      expected_argcount = len(inspect.getargspec(self.func).args) - 1
+      if inspect.ismethod(self.func) and self.func.__self__ is not None:
+        expected_argcount -= 1
+      actual_argcount = len(posargs) + len(namedargs)
+      if (actual_argcount > expected_argcount or
+          (not args.starargs and not args.starstarargs)):
+        # If we have too many arguments, or starargs and starstarargs are both
+        # empty, then we can be certain of a WrongArgCount error.
+        argnames = tuple("_" + str(i) for i in range(expected_argcount))
+        sig = function.Signature(
+            self.name, argnames, None, set(), None, {}, {}, {})
+        raise WrongArgCount(sig, args, self.vm)
+      assert actual_argcount < expected_argcount
+      # Assume that starargs or starstarargs fills in the missing arguments.
+      # Instead of guessing where these arguments should go, overwrite all of
+      # the arguments with a list of unsolvables of the correct length, which
+      # is guaranteed to give us a correct (but imprecise) analysis.
+      posargs = [self.vm.convert.create_new_unsolvable(node)
+                 for _ in range(expected_argcount)]
+      namedargs = {}
+    return self.func(node, *posargs, **namedargs)
 
   def get_positional_names(self):
     code = self.func.func_code
