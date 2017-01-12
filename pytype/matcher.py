@@ -162,16 +162,7 @@ class AbstractMatcher(object):
       if (other_type.full_name == "__builtin__.type" and
           isinstance(other_type, abstract.ParameterizedClass)):
         other_type = other_type.type_parameters[abstract.T]
-        left = left.instantiate(node)
-        for new_view in abstract.get_views([left], node):
-          # When new_view and view have entries in common, we want to use the
-          # entries from the old view.
-          new_view.update(view)
-          new_subst = self.match_var_against_type(
-              left, other_type, subst, node, new_view)
-          if new_subst is not None:
-            return new_subst
-        return None
+        return self._instantiate_and_match(left, other_type, subst, node, view)
       elif other_type.full_name in [
           "__builtin__.type", "__builtin__.object", "typing.Callable"]:
         return subst
@@ -211,6 +202,19 @@ class AbstractMatcher(object):
           return new_subst
     else:
       raise NotImplementedError("Matching not implemented for %s", type(left))
+
+  def _instantiate_and_match(self, left, other_type, subst, node, view):
+    """Instantiate and match an abstract value."""
+    instance = left.instantiate(node)
+    for new_view in abstract.get_views([instance], node):
+      # When new_view and view have entries in common, we want to use the
+      # entries from the old view.
+      new_view.update(view)
+      new_subst = self.match_var_against_type(
+          instance, other_type, subst, node, new_view)
+      if new_subst is not None:
+        return new_subst
+    return None
 
   def _match_instance_against_type(self, left, other_type, subst, node, view):
     left_type = left.get_class()
@@ -301,7 +305,10 @@ class AbstractMatcher(object):
               instance_param, class_param, subst, node, view)
           if subst is None:
             return None
-    elif isinstance(other_type, abstract.TupleClass):
+    elif isinstance(left, abstract.TupleClass):
+      # We have an instance of a subclass of tuple.
+      return self._instantiate_and_match(left, other_type, subst, node, view)
+    else:
       assert isinstance(other_type, abstract.TupleClass)
       if isinstance(instance, abstract.SimpleAbstractValue):
         instance_param = instance.type_parameters[abstract.T]
@@ -311,10 +318,6 @@ class AbstractMatcher(object):
               instance_param, class_param, subst, node, view)
           if subst is None:
             return None
-    else:
-      # We have an instance of a subclass of tuple.
-      # TODO(rechen): Match left against other_type.
-      assert isinstance(left, abstract.TupleClass)
     return subst
 
   def _match_from_mro(self, left, other_type):

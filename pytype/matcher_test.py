@@ -20,6 +20,15 @@ class MatcherTest(unittest.TestCase):
   def _make_class(self, name):
     return abstract.InterpreterClass(name, [], {}, None, self.vm)
 
+  def _parse_and_lookup(self, src, objname, filename=None):
+    if filename is None:
+      filename = str(hash(src))
+    with utils.Tempdir() as d:
+      d.create_file(filename + ".pyi", src)
+      self.vm.options.tweak(pythonpath=[d.path])
+      ast = self.vm.loader.import_name(filename)
+      return ast.Lookup(filename + "." + objname)
+
   def _convert(self, t, as_instance):
     """Convenience function for turning a string into an abstract value.
 
@@ -35,15 +44,11 @@ class MatcherTest(unittest.TestCase):
       An AtomicAbstractValue.
     """
     src = "x = ...  # type: " + t
-    name = str(hash((t, as_instance)))
-    with utils.Tempdir() as d:
-      d.create_file(name + ".pyi", src)
-      self.vm.options.tweak(pythonpath=[d.path])
-      ast = self.vm.loader.import_name(name)
-      x = ast.Lookup(name + ".x").type
-      if as_instance:
-        x = abstract.AsInstance(x)
-      return self.vm.convert.constant_to_value("", x, {}, self.vm.root_cfg_node)
+    filename = str(hash((t, as_instance)))
+    x = self._parse_and_lookup(src, "x", filename).type
+    if as_instance:
+      x = abstract.AsInstance(x)
+    return self.vm.convert.constant_to_value("", x, {}, self.vm.root_cfg_node)
 
   def _match_var(self, left, right):
     var = self.vm.program.NewVariable()
@@ -191,6 +196,25 @@ class MatcherTest(unittest.TestCase):
     self.assertMatch(left1, right)
     self.assertNoMatch(left2, right)
     self.assertMatch(left3, right)
+
+  def testTupleSubclass(self):
+    subclass = self._parse_and_lookup("class A(Tuple[bool, int]): ...", "A")
+    left = self.vm.convert.constant_to_value(
+        "", abstract.AsInstance(subclass), {}, self.vm.root_cfg_node)
+    right1 = self._convert("Tuple[bool, int]", as_instance=False)
+    right2 = self._convert("Tuple[int, bool]", as_instance=False)
+    right3 = self._convert("Tuple[int, int]", as_instance=False)
+    right4 = self._convert("Tuple[int]", as_instance=False)
+    right5 = self._convert("tuple", as_instance=False)
+    right6 = self._convert("Tuple[bool, ...]", as_instance=False)
+    right7 = self._convert("Tuple[int, ...]", as_instance=False)
+    self.assertMatch(left, right1)
+    self.assertNoMatch(left, right2)
+    self.assertMatch(left, right3)
+    self.assertNoMatch(left, right4)
+    self.assertMatch(left, right5)
+    self.assertNoMatch(left, right6)
+    self.assertMatch(left, right7)
 
 
 if __name__ == "__main__":
