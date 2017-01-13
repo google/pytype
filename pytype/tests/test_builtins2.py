@@ -682,6 +682,12 @@ class BuiltinTests2(test_inference.InferenceTest):
       next = ...  # type: int
     """)
 
+  def testOsEnvironCopy(self):
+    self.assertNoErrors("""
+      import os
+      os.environ.copy()["foo"] = "bar"
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()
