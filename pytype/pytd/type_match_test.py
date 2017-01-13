@@ -295,6 +295,33 @@ class TestTypeMatch(parser_test_base.ParserTest):
     self.assertEquals(m.match_Generic_against_Generic(y1, x1, {}), booleq.FALSE)
     self.assertEquals(m.match_Generic_against_Generic(y1, x2, {}), booleq.TRUE)
 
+  def testUnknownAgainstTuple(self):
+    ast = self.ParseWithBuiltins("""
+      class `~unknown0`():
+        pass
+      x = ...  # type: Tuple[int, str]
+    """)
+    unk = ast.Lookup("~unknown0")
+    tup = ast.Lookup("x").type
+    m = type_match.TypeMatch(type_match.get_all_subclasses([ast]))
+    match = m.match_Unknown_against_Generic(unk, tup, {})
+    self.assertListEqual(sorted(match.extract_equalities()),
+                         [("~unknown0", "__builtin__.tuple"),
+                          ("~unknown0.__builtin__.tuple.T", "int"),
+                          ("~unknown0.__builtin__.tuple.T", "str")])
+
+  def testFunctionAgainstTupleSubclass(self):
+    ast = self.ParseWithBuiltins("""
+      class A(Tuple[int, str]): ...
+      def f(x): ...
+    """)
+    a = ast.Lookup("A")
+    f = ast.Lookup("f")
+    m = type_match.TypeMatch(type_match.get_all_subclasses([ast]))
+    # Smoke test for the TupleType logic in match_Function_against_Class
+    self.assertEquals(m.match_Function_against_Class(f, a, {}, {}),
+                      booleq.FALSE)
+
 
 if __name__ == "__main__":
   unittest.main()

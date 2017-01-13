@@ -240,8 +240,12 @@ class TypeMatch(utils.TypeMatcher):
                    for item in t2.base_type.cls.template]
     for type_param in type_params:
       self.solver.register_variable(type_param.name)
+    if isinstance(t2, pytd.TupleType):
+      t2_parameters = (pytd.UnionType(type_list=t2.parameters),)
+    else:
+      t2_parameters = t2.parameters
     params = [self.match_type_against_type(p1, p2, subst)
-              for p1, p2 in zip(type_params, t2.parameters)]
+              for p1, p2 in zip(type_params, t2_parameters)]
     return booleq.And([base_match] + params)
 
   def match_Generic_against_Unknown(self, t1, t2, subst):  # pylint: disable=invalid-name
@@ -452,6 +456,9 @@ class TypeMatch(utils.TypeMatcher):
           if isinstance(base, pytd.ClassType):
             cls = base.cls
             values = tuple(pytd.AnythingType() for _ in cls.template)
+          elif isinstance(base, pytd.TupleType):
+            cls = base.base_type.cls
+            values = (pytd.UnionType(type_list=base.parameters),)
           else:
             cls = base.base_type.cls
             values = base.parameters
