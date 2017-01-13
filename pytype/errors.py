@@ -151,6 +151,9 @@ class ErrorLogBase(object):
   def __iter__(self):
     return iter(self._errors)
 
+  def __getitem__(self, index):
+    return self._errors[index]
+
   def is_valid_error_name(self, name):
     """Return True iff name was defined in an @error_name() decorator."""
     return name in _ERROR_NAMES

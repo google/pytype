@@ -458,7 +458,7 @@ class AnnotationTest(test_inference.InferenceTest):
         pass
     """)
     self.assertErrorLogIs(
-        errorlog, [(1, "name-error", r"Foo")])
+        errorlog, [(3, "invalid-annotation", r"Foo")])
 
   def testForwardDeclBadReturn(self):
     _, errorlog = self.InferAndCheck("""\

@@ -75,6 +75,11 @@ class LateAnnotationError(Exception):
   pass
 
 
+class EvaluationError(Exception):
+  """Used to signal an errorlog error during type comment evaluation."""
+  pass
+
+
 class VirtualMachine(object):
   """A bytecode VM that generates a typegraph as it executes.
 
@@ -118,7 +123,7 @@ class VirtualMachine(object):
     self.has_unknown_wildcard_imports = False
     self.callself_stack = []
     self.filename = None
-    self.type_comments = {}
+    self.type_comments = {}  # map from line number to (code, comment)
 
     # Map from builtin names to canonical objects.
     self.special_builtins = {
@@ -632,6 +637,7 @@ class VirtualMachine(object):
     return node, f_globals.members
 
   def _eval_expr(self, node, f_globals, expr):
+    """Evaluate and expression with the given node and globals."""
     # We don't chain node and f_globals as we want to remain in the context
     # where we've just finished evaluating the module. This would prevent
     # nasty things like:
@@ -645,9 +651,24 @@ class VirtualMachine(object):
     # Which should simply complain at both annotations that 'A' is not defined
     # in both function annotations. Chaining would cause 'b' in 'g' to yield a
     # different error message.
-    code = self.compile_src(expr, mode="eval")
+
+    # Any errors logged here will have a filename of None and a linenumber of 1
+    # when what we really want is to allow the caller to handle/log the error
+    # themselves.  Thus we checkpoint the errorlog and then restore and raise
+    # an exception if anything was logged.
+    checkpoint = self.errorlog.save()
+    prior_errors = len(self.errorlog)
+    try:
+      code = self.compile_src(expr, mode="eval")
+    except pyc.CompileError as e:
+      raise EvaluationError(e.message)
     new_locals = self.convert_locals_or_globals({}, "locals")
     _, _, _, ret = self.run_bytecode(node, code, f_globals, new_locals)
+    if len(self.errorlog) > prior_errors:
+      new_messages = [self.errorlog[i].message
+                      for i in range(prior_errors, len(self.errorlog))]
+      self.errorlog.revert_to(checkpoint)
+      raise EvaluationError("\n".join(new_messages))
     return ret
 
   def _eval_expr_as_tuple(self, node, f_globals, expr):
@@ -696,7 +717,7 @@ class VirtualMachine(object):
       if name == function.MULTI_ARG_ANNOTATION:
         try:
           self._eval_multi_arg_annotation(node, func, f_globals, annot)
-        except (pyc.CompileError, abstract.ConversionError) as e:
+        except (EvaluationError, abstract.ConversionError) as e:
           self.errorlog.invalid_function_type_comment(
               annot.opcode, annot.expr, details=e.message)
       else:
@@ -1316,7 +1337,7 @@ class VirtualMachine(object):
       try:
         var = self._eval_expr(state.node, self.frame.f_globals, comment)
         value = abstract.get_atomic_value(var).instantiate(state.node)
-      except (pyc.CompileError, abstract.ConversionError) as e:
+      except (EvaluationError, abstract.ConversionError) as e:
         self.errorlog.invalid_type_comment(op, comment, details=e.message)
     return value
 
@@ -1822,7 +1843,11 @@ class VirtualMachine(object):
         if f_globals is None:
           raise LateAnnotationError()
         else:
-          v = self._eval_expr(node, f_globals, annotation.pyval)
+          try:
+            v = self._eval_expr(node, f_globals, annotation.pyval)
+          except EvaluationError as e:
+            self.errorlog.invalid_annotation(opcode, annotation, e.message)
+            return None
           if len(v.data) == 1:
             return self._process_one_annotation(
                 v.data[0], name, opcode, node, f_globals)

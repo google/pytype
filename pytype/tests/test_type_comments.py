@@ -267,6 +267,14 @@ class AssignmentCommentTest(test_inference.InferenceTest):
         errors,
         r"test\.py.*line 2.*1 if x else 2.*invalid-type-comment")
 
+  def testNameErrorInsideComment(self):
+    _, errors = self.InferAndCheck("""
+      X = None  # type: Foo
+    """, deep=True, filename="test.py")
+    self.assertErrorLogContains(
+        errors,
+        r"test\.py.*line 2.*Foo.*invalid-type-comment")
+
   def testTypeCommentUsesFilename(self):
     # TODO(dbaum): This test will likely become unnecessary once we warn on
     # unhandled type comments and test those warnings.
