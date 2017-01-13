@@ -322,6 +322,18 @@ class ClassType(node.Node('name: str'), Type):
 
   __slots__ = ()
 
+  def __getnewargs__(self):
+    # Due to a peculiarity of cPickle, the new args cannot have references back
+    # into the tree, so we only set name (a string) as a newarg, and set
+    # cls to its actual value through getstate/setstate.
+    return self.name, None
+
+  def __getstate__(self):
+    return (self.cls,)
+
+  def __setstate__(self, state):
+    self.cls = state[0]
+
   def __new__(pycls, name, cls=None):  # pylint: disable=bad-classmethod-argument
     self = super(ClassType, pycls).__new__(pycls, name)
     # self.cls potentially filled in later (by visitors.InPlaceFillInClasses)

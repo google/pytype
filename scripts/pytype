@@ -203,9 +203,21 @@ def main(argv):
 
 def _run_pytype(options):
   """Run pytype with the given configuration options."""
+  if options.generate_builtins:
+    if options.src_out:
+      print >>sys.stderr, "Cannot specify files while precompiling builtins."
+      sys.exit(1)
+    with open(options.generate_builtins, "wb") as f:
+      pytd_builtins.Precompile(f)
+    return
+
   if not options.src_out:
     print >>sys.stderr, "Need at least one filename."
     sys.exit(1)
+
+  if options.precompiled_builtins:
+    with open(options.precompiled_builtins, "rb") as f:
+      pytd_builtins.LoadPrecompiled(f)
 
   # TODO(dbaum): Consider changing flag default and/or polarity.  This will
   # need to be coordinated with a change to pytype.bzl.

@@ -83,6 +83,10 @@ class Options(object):
         dest="disable", default=None,
         help=("Comma separated list of error names to ignore."))
     o.add_option(
+        "--generate-builtins", action="store",
+        dest="generate_builtins", default=None,
+        help="Precompile builtins pytd and write to the given file.")
+    o.add_option(
         "--imports_info", type="string", action="store",
         dest="imports_info", default=None,
         help=("Information for mapping import .pytd to files. "
@@ -140,6 +144,10 @@ class Options(object):
         "--profile", type="string", action="store",
         dest="profile", default=None,
         help="Profile pytype and output the stats to the specified file.")
+    o.add_option(
+        "--precompiled-builtins", action="store",
+        dest="precompiled_builtins", default=None,
+        help="Use the supplied file as precompiled builtins pytd.")
     o.add_option(
         "--python_exe", type="string", action="store",
         dest="python_exe", default=None,

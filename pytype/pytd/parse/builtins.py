@@ -17,7 +17,9 @@
 
 """Utilities for parsing pytd files for builtins."""
 
+import cPickle
 import os
+import sys
 
 
 from pytype.pyi import parser
@@ -35,6 +37,25 @@ def _FindStdlibFile(name, extension=".pytd"):
 
 # Keyed by the parameter(s) passed to GetBuiltinsPyTD:
 _cached_builtins_pytd = None  # ... => pytype.pytd.pytd.TypeDeclUnit
+
+
+def Precompile(f):
+  """Write precompiled builtins to the specified file."""
+  data = GetBuiltinsAndTyping()
+  # Pickling builtins tends to bump up against the recursion limit.  Increase
+  # it temporarily here.  If "RuntimeError: maximum recursion depth exceeded"
+  # is seen during pickling, this limit may need to be increased further.
+  old_limit = sys.getrecursionlimit()
+  sys.setrecursionlimit(20000)
+  cPickle.dump(data, f, protocol=2)
+  sys.setrecursionlimit(old_limit)
+
+
+def LoadPrecompiled(f):
+  """Load precompiled builtins from the specified f."""
+  global _cached_builtins_pytd
+  assert _cached_builtins_pytd is None
+  _cached_builtins_pytd = cPickle.load(f)
 
 
 def GetBuiltinsAndTyping():

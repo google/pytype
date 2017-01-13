@@ -1,5 +1,7 @@
 
 
+import cStringIO
+
 from pytype.pytd import pytd
 from pytype.pytd.parse import builtins
 from pytype.pytd.parse import visitors
@@ -47,6 +49,21 @@ class UtilsTest(unittest.TestCase):
     ast = builtins.ParsePredefinedPyTD(
         "builtins", "sys", python_version=(2, 7, 6))
     self.assertIsNotNone(ast.Lookup("sys.stderr"))
+
+  def testPrecompilation(self):
+    # Get original (non-precompiled) values.
+    b1, t1 = builtins.GetBuiltinsAndTyping()
+    # Write precompiled data.
+    precompiled = cStringIO.StringIO()
+    builtins.Precompile(precompiled)
+    # Clear the cache
+    builtins._cached_builtins_pytd = None
+    # Load precompiled data.
+    builtins.LoadPrecompiled(cStringIO.StringIO(precompiled.getvalue()))
+    self.assertIsNotNone(builtins._cached_builtins_pytd)
+    b2, t2 = builtins.GetBuiltinsAndTyping()
+    self.assertEquals(pytd.Print(b1), pytd.Print(b2))
+    self.assertEquals(pytd.Print(t1), pytd.Print(t2))
 
 
 if __name__ == "__main__":
