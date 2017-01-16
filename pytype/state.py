@@ -143,8 +143,18 @@ class FrameState(object):
     self.node.ConnectTo(node)
     return self.change_cfg_node(node)
 
-  def forward_cfg_node(self):
-    new_node = self.node.ConnectNew(self.node.name)
+  def forward_cfg_node(self, condition=None):
+    """Create a new CFG Node connected to the current cfg node.
+
+    Args:
+      condition: A cfg.Binding representing the condition that needs to be true
+        for this node to be reached.
+
+    Returns:
+      A new state which is the same as this state except for the node, which is
+      the new one.
+    """
+    new_node = self.node.ConnectNew(self.node.name, condition)
     return self.change_cfg_node(new_node)
 
   def merge_into(self, other):

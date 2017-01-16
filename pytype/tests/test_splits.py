@@ -403,7 +403,7 @@ class SplitTest(test_inference.InferenceTest):
   def testLoadAttr(self):
     self.assertNoErrors("""
       from __future__ import google_type_annotations
-      
+
       class A(object):
         def __init__(self):
           self.initialized = False
@@ -417,6 +417,54 @@ class SplitTest(test_inference.InferenceTest):
           else:
             return 0
     """)
+
+  def testGuardingIs(self):
+    """Assert that conditions are remembered for is."""
+    self.assertNoErrors("""
+      from __future__ import google_type_annotations
+      from typing import Optional
+      def f(x: Optional[str]) -> str:
+        if x is None:
+          x = ''
+        return x
+      """)
+
+  def testConditionsAreOrdered(self):
+    """Assert that multiple conditions on a path work."""
+    self.assertNoErrors("""
+      from __future__ import google_type_annotations
+      from typing import Optional
+      def f(x: Optional[NoneType]) -> int:
+        if x is not None:
+          x = None
+        if x is None:
+          x = 1
+        return x
+      """)
+
+  def testGuardingIsNot(self):
+    """Assert that conditions are remembered for is not."""
+    self.assertNoErrors("""
+      from __future__ import google_type_annotations
+      from typing import Optional
+      def f(x: Optional[str]) -> NoneType:
+        if x is not None:
+          x = None
+        return x
+      """)
+
+  def testGuardingIsNotElse(self):
+    """Assert that conditions are remembered for else if."""
+    self.assertNoErrors("""
+      from __future__ import google_type_annotations
+      from typing import Optional
+      def f(x: Optional[str]) -> int:
+        if x is None:
+          x = 1
+        else:
+          x = 1
+        return x
+      """)
 
 
 if __name__ == "__main__":

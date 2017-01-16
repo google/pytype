@@ -194,6 +194,116 @@ class CFGTest(unittest.TestCase):
     self.assertFalse(n2.CanHaveCombination([x1, y2]))
     self.assertFalse(n3.CanHaveCombination([x1, y2]))
 
+  def testConditionOnStartNode(self):
+    # Test that a condition on the initial node is tests.
+    # At the time of writing this can not happen in pytype. The test guards
+    # against future additions.
+    p = cfg.Program()
+    n1 = p.NewCFGNode("n1")
+    x = p.NewVariable()
+    x_a = x.AddBinding("a", source_set=[], where=n1)
+    x_b = x.AddBinding("x", source_set=[], where=n1)
+    self.assertTrue(n1.HasCombination([x_a]))
+    n1.condition = x_b
+    p.InvalidateSolver()
+    self.assertFalse(n1.HasCombination([x_a]))
+
+  def testConflictingBindingsFromCondition(self):
+    p = cfg.Program()
+    n1 = p.NewCFGNode("n1")
+    n2 = n1.ConnectNew("n2")
+    n3 = n2.ConnectNew("n3")
+    x = p.NewVariable()
+    x_a = x.AddBinding("a", source_set=[], where=n1)
+    x_b = x.AddBinding("b", source_set=[], where=n1)
+    p.entrypoint = n1
+    n2.condition = x_a
+    self.assertFalse(n3.HasCombination([x_b]))
+
+  def testConditionsBlock(self):
+    p = cfg.Program()
+    unreachable_node = p.NewCFGNode("unreachable_node")
+    y = p.NewVariable()
+    unsatisfiable_binding = y.AddBinding("2", source_set=[],
+                                         where=unreachable_node)
+    n1 = p.NewCFGNode("n1")
+    n2 = n1.ConnectNew("n2", condition=unsatisfiable_binding)
+    n3 = n2.ConnectNew("n3")
+    x = p.NewVariable()
+    b1 = x.AddBinding("1", source_set=[], where=n1)
+    self.assertFalse(n3.HasCombination([b1]))
+    n1.ConnectTo(n3)
+    self.assertTrue(n3.HasCombination([b1]))
+    self.assertFalse(n2.HasCombination([b1]))
+
+  def testConditionsMultiplePaths(self):
+    p = cfg.Program()
+    unreachable_node = p.NewCFGNode("unreachable_node")
+    y = p.NewVariable()
+    unsatisfiable_binding = y.AddBinding("2", source_set=[],
+                                         where=unreachable_node)
+    n1 = p.NewCFGNode("n1")
+    n2 = n1.ConnectNew("n2", condition=unsatisfiable_binding)
+    n3 = n2.ConnectNew("n3")
+    n4 = n2.ConnectNew("n4")
+    n4.ConnectTo(n3)
+    x = p.NewVariable()
+    b1 = x.AddBinding("1", source_set=[], where=n1)
+    self.assertFalse(n3.HasCombination([b1]))
+    self.assertFalse(n2.HasCombination([b1]))
+
+  def testConditionsNotUsedIfAlternativeExist(self):
+    p = cfg.Program()
+    unreachable_node = p.NewCFGNode("unreachable_node")
+    y = p.NewVariable()
+    unsatisfiable_binding = y.AddBinding("2", source_set=[],
+                                         where=unreachable_node)
+    n1 = p.NewCFGNode("n1")
+    n2 = n1.ConnectNew("n2", condition=unsatisfiable_binding)
+    n3 = n2.ConnectNew("n3")
+    x = p.NewVariable()
+    b1 = x.AddBinding("1", source_set=[], where=n1)
+    self.assertFalse(n3.HasCombination([b1]))
+
+  def testSatisfiableCondition(self):
+    p = cfg.Program()
+    n1 = p.NewCFGNode("n1")
+    x = p.NewVariable()
+    x1 = x.AddBinding("1", source_set=[], where=n1)
+    n2 = n1.ConnectNew("n2")
+    y = p.NewVariable()
+    y2 = y.AddBinding("2", source_set=[], where=n2)
+    n3 = n2.ConnectNew("n3", condition=y2)
+    n4 = n3.ConnectNew("n4")
+    self.assertTrue(n4.HasCombination([x1]))
+
+  def testUnsatisfiableCondition(self):
+    p = cfg.Program()
+    n1 = p.NewCFGNode("n1")
+    x = p.NewVariable()
+    x1 = x.AddBinding("1", source_set=[], where=n1)
+    n2 = n1.ConnectNew("n2")
+    x2 = x.AddBinding("2", source_set=[], where=n2)
+    n3 = n2.ConnectNew("n3", condition=x2)
+    n4 = n3.ConnectNew("n4")
+    self.assertFalse(n4.HasCombination([x1]))
+
+  def testNoNodeOnAllPaths(self):
+    p = cfg.Program()
+    n1 = p.NewCFGNode("n1")
+    n2 = n1.ConnectNew("n2")
+    y = p.NewVariable()
+    y1 = y.AddBinding("y", source_set=[], where=n1)
+    n3 = n2.ConnectNew("n3")
+    n4 = n1.ConnectNew("n4")
+    n5 = n4.ConnectNew("n5")
+    n3.ConnectTo(n5)
+    x = p.NewVariable()
+    x1 = x.AddBinding("x", source_set=[], where=n3)
+    n2.condition = x1
+    n4.condition = x1
+    self.assertTrue(n5.HasCombination([y1]))
+
   def testCombinations(self):
     # n1------->n2
     #  |        |
@@ -267,6 +377,40 @@ class CFGTest(unittest.TestCase):
     self.assertTrue(n1.HasCombination([x_b]))
     self.assertFalse(n1.HasCombination([x_a, x_b]))
     self.assertFalse(n2.HasCombination([x_a, x_b]))
+
+  def testMidPoint(self):
+    p = cfg.Program()
+    x = p.NewVariable()
+    y = p.NewVariable()
+    p = cfg.Program()
+    n1 = p.NewCFGNode("n1")
+    x1 = x.AddBinding("1", source_set=[], where=n1)
+    y1 = y.AddBinding("1", source_set=[x1], where=n1)
+    n2 = n1.ConnectNew("n2")
+    x2 = x.AddBinding("2", source_set=[], where=n2)
+    n3 = n2.ConnectNew("n3")
+    self.assertTrue(n3.HasCombination([y1, x2]))
+    self.assertTrue(n3.HasCombination([x2, y1]))
+
+  def testConditionsAreOrdered(self):
+    # The error case in this test is non-deterministic. The test tries to verify
+    # that the list returned by _PathFinder.FindNodeBackwards is ordered from
+    # child to parent.
+    # The error case would be a random order or the reverse order.
+    # To guarantee that this test is working go to FindNodeBackwards and reverse
+    # the order of self._on_path before generating the returned list.
+    p = cfg.Program()
+    n1 = p.NewCFGNode("n1")
+    x1 = p.NewVariable().AddBinding("1", source_set=[], where=n1)
+    n2 = n1.ConnectNew("n2", condition=p.NewVariable().AddBinding(
+        "1", source_set=[], where=n1))
+    n3 = n2.ConnectNew("n3", condition=p.NewVariable().AddBinding(
+        "1", source_set=[], where=n2))
+    n4 = n3.ConnectNew("n3", condition=p.NewVariable().AddBinding(
+        "1", source_set=[], where=n3))
+    # Strictly speaking n1, n2 and n3 would be enough to expose errors. n4 is
+    # added to increase the chance of a failure if the order is random.
+    self.assertTrue(n4.HasCombination([x1]))
 
   def testSameNodeOrigin(self):
     # [n1] x = a or b; y = x

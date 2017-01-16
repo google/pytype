@@ -54,10 +54,10 @@ class Program(object):
   def InvalidateSolver(self):
     self.solver = None
 
-  def NewCFGNode(self, name=None):
+  def NewCFGNode(self, name=None, condition=None):
     """Start a new CFG node."""
     self.InvalidateSolver()
-    cfg_node = CFGNode(self, name, len(self.cfg_nodes))
+    cfg_node = CFGNode(self, name, len(self.cfg_nodes), condition)
     self.cfg_nodes.append(cfg_node)
     return cfg_node
 
@@ -137,11 +137,14 @@ class CFGNode(object):
     bindings: Bindings that are being assigned to Variables at this CFGNode.
     reachable_subset: A subset of the nodes reachable (going backwards) from
       this one.
+    condition: None if no condition is set at this node;
+               The binding representing the condition which needs to be
+                 fulfilled to take the branch represented by this node.
   """
   __slots__ = ("program", "id", "name", "incoming", "outgoing", "bindings",
-               "reachable_subset")
+               "reachable_subset", "condition")
 
-  def __init__(self, program, name, cfgnode_id):
+  def __init__(self, program, name, cfgnode_id, condition):
     """Initialize a new CFG node. Called from Program.NewCFGNode."""
     self.program = program
     self.id = cfgnode_id
@@ -150,15 +153,17 @@ class CFGNode(object):
     self.outgoing = set()
     self.bindings = set()  # filled through RegisterBinding()
     self.reachable_subset = {self}
+    self.condition = condition
 
-  def ConnectNew(self, name=None):
+  def ConnectNew(self, name=None, condition=None):
     """Add a new node connected to this node."""
-    cfg_node = self.program.NewCFGNode(name)
+    cfg_node = self.program.NewCFGNode(name, condition)
     self.ConnectTo(cfg_node)
     return cfg_node
 
   def ConnectTo(self, cfg_node):
     """Connect this node to an existing node."""
+    self.program.InvalidateSolver()
     self.outgoing.add(cfg_node)
     cfg_node.incoming.add(self)
     cfg_node.reachable_subset |= self.reachable_subset
@@ -651,6 +656,172 @@ class State(object):
     return not self == other
 
 
+class _PathFinder(object):
+  """Finds a path between two nodes and collects nodes with conditions."""
+
+  def __init__(self):
+    # Cache
+    self._solved_find_queries = {}
+
+  def _ResetState(self, finish, blocked):
+    """Prepare the state for a new search."""
+
+    ### Search definition ###
+    self._finish = finish
+    self._blocked = blocked
+
+    ### Working state ###
+    # A set of the nodes which have been on all paths so far.
+    # In the end this will contain the intersection of all paths between
+    # start and finish.
+    self._solution_set = None
+    # One path from start to finish. The nodes need to be returned ordered.
+    # As otherwise we might set the destination behind the definition point of
+    # some binding.
+    self._one_path = None
+    # A map from nodes to a set of nodes, which are on all paths between the
+    # node and the finish.
+    # If this is None it means that no path to finish exist from the node.
+    self._node_to_finish_set = {}
+
+  def FindNodeBackwards(self, start, finish, blocked):
+    """Determine whether we can reach a CFG node, going backwards.
+
+    Traverse the CFG from a starting point to find a given node, but avoid any
+    nodes marked as "blocked".
+
+    Arguments:
+      start: Start node.
+      finish: Node we're looking for.
+      blocked: A set of blocked nodes. We do not consider start or finish to be
+        blocked even if they apppear in this set.
+
+    Returns:
+      A tuple of Boolean and List[Binding]. The boolean is true iff a path exist
+      from start to finish. The list contains all the nodes on a way between
+      start and finish that contain a condition and are on all paths. The list
+      is ordered by reachability from start. The list will be None if no path
+      exist.
+    """
+    # Cache
+    query = (start, finish, blocked)
+    if query in self._solved_find_queries:
+      return self._solved_find_queries[query]
+
+    # Special case start.
+    if start is finish:
+      return (True, [start] if start.condition else [])
+
+    self._ResetState(finish, blocked)
+
+    self._FindNodeBackwardsImpl(start)
+    if self._solution_set is not None:
+      # self._one_path is a path from start to finish and self._solution_set is
+      # the intersection of all those paths.
+      # Order is important here, as the solver sets the first element of the
+      # list to be the new destination and could jump over a destination if the
+      # return value was unordered.
+      result = True, [node for node in self._one_path
+                      if node.condition and node in self._solution_set]
+    else:
+      result = False, None
+    self._solved_find_queries[query] = result
+    return result
+
+  def _FindNodeBackwardsImpl(self, start):
+    """Find a path from start to finish and return nodes on all such paths.
+
+    If a node is on all paths between start and finish it's condition must be
+    fullfiled for finish to be reachable.
+
+    Args:
+      start: The CFGNode from which to search.
+
+    Return:
+      None, the result is saved in self._solution_set (nodes on all paths) and
+      self._one_path (order of the nodes).
+    """
+    # Representation of the recursion state.
+    path = [start]
+    # Maps a node to the index of the last incoming node which has been
+    # looked at.
+    node_to_current_child = collections.defaultdict(int)
+
+    # Nodes which have already been added to a path.
+    seen_set = set()
+    while path:
+      head = path[-1]
+      current_index = node_to_current_child[head]
+      node_to_current_child[head] += 1
+
+      if len(head.incoming) > current_index:
+        # As the recursion is transformed to iteration via an index this depends
+        # on the incoming list to be ordered. Typically these are small
+        # therefore the result is not cached.
+        next_node = sorted(head.incoming)[current_index]
+        if next_node is self._finish:
+          self._HandleNode(next_node, path)
+          continue
+        if next_node in self._blocked:
+          # The finish node is always blocked, therefore this needs to be below
+          # the finish test.
+          continue
+        if next_node in seen_set:
+          continue
+        seen_set.add(next_node)
+
+        path.append(next_node)
+      else:
+        path.pop()
+        self._HandleNode(head, path)
+
+  def _HandleNode(self, node, path):
+    """Update the state with the results from one node.
+
+    Args:
+      node: The node to be analyzed.
+      path: The path to this node, as a list of nodes.
+    """
+    if node is self._finish:
+      this_path = list(path)
+      this_path.append(node)
+      if not self._one_path:
+        self._one_path = this_path
+      self._UpdateSolutionSet(this_path)
+      # This is finish so the parent does not need to care about others
+      self._node_to_finish_set[node] = {node}
+      return
+    else:
+      self._UpdateNodeToFinishSet(node, path)
+
+  def _UpdateNodeToFinishSet(self, node, path):
+    """Update the _node_to_finish_set for one node."""
+    to_finish_set = None
+    for incoming in node.incoming:
+      # The whole algorithm uses DFS therfore we know that either incoming is
+      # in self._node_to_finish_set or no path from incoming to finish exists.
+      incoming_to_finish_set = self._node_to_finish_set.get(incoming)
+      if incoming_to_finish_set is not None:
+        if to_finish_set is None:
+          to_finish_set = incoming_to_finish_set
+        else:
+          to_finish_set = to_finish_set.intersection(incoming_to_finish_set)
+
+    if to_finish_set is not None:
+      to_finish_set.add(node)
+      nodes_on_path = list(path)
+      nodes_on_path.extend(to_finish_set)
+      self._UpdateSolutionSet(nodes_on_path)
+    # Notice that if to_finish_set is not None, node has been added to this set.
+    self._node_to_finish_set[node] = to_finish_set
+
+  def _UpdateSolutionSet(self, new_path):
+    if self._solution_set is None:
+      self._solution_set = set(new_path)
+    else:
+      self._solution_set = self._solution_set.intersection(new_path)
+
+
 class Solver(object):
   """The solver class is instantiated for a given "problem" instance.
 
@@ -669,40 +840,7 @@ class Solver(object):
     """
     self.program = program
     self._solved_states = {}
-    self._solved_find_queries = {}
-
-  def _FindNodeBackwards(self, start, finish, blocked):
-    """Determine whether we can reach a CFG node, going backwards.
-
-    Traverse the CFG from a starting point to find a given node, but avoid any
-    nodes marked as "blocked".
-
-    Arguments:
-      start: Start node.
-      finish: Node we're looking for.
-      blocked: A set of blocked nodes. We do not consider start or finish to be
-        blocked even if they apppear in this set.
-
-    Returns:
-      True if we can find this node, False otherwise.
-    """
-    query = (start, finish, blocked)
-    if query in self._solved_find_queries:
-      return self._solved_find_queries[query]
-    stack = [start]
-    seen = set()
-    found = False
-    while stack:
-      node = stack.pop()
-      if node is finish:
-        found = True
-        break
-      if node in seen or node in blocked:
-        continue
-      seen.add(node)
-      stack.extend(node.incoming)
-    self._solved_find_queries[query] = found
-    return found
+    self._path_finder = _PathFinder()
 
   def Solve(self, start_attrs, start_node):
     """Try to solve the given problem.
@@ -758,12 +896,31 @@ class Solver(object):
     for goal in state.goals:
       # "goal" is the assignment we're trying to find.
       for origin in goal.origins:
-        if self._FindNodeBackwards(state.pos, origin.where, blocked):
+        path_exist, path = self._path_finder.FindNodeBackwards(
+            state.pos, origin.where, blocked)
+        if path_exist:
           # This loop over multiple different combinations of origins is why
           # we need memoization of states.
           for source_set in origin.source_sets:
-            new_state = State(origin.where, state.goals)
-            new_state.Replace(goal, source_set)
+            new_goals = set(state.goals)
+            for node in path:
+              new_goals.add(node.condition)
+            if path and len(new_goals) > len(state.goals):
+              # If a goal was added, the binding for it might not yet exist at
+              # origin.where, as it might have only been created after that
+              # point in the CFG. Therefore the new destination needs to be the
+              # point where the condition was defined. This must be before
+              # origin.where as _FindNodeBackwards was able to find
+              # origin.where going backwards from it.
+              where = path[0]
+            else:
+              where = origin.where
+            new_state = State(where, new_goals)
+            if origin.where == new_state.pos:
+              # The goal can only be replaced if origin.where was actually
+              # reached.
+              new_state.Replace(goal, source_set)
+
             # Also remove all goals that are trivially fulfilled at the
             # new CFG node.
             removed = new_state.RemoveFinishedGoals()

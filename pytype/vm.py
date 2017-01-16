@@ -1644,14 +1644,19 @@ class VirtualMachine(object):
       jump, normal = normal, jump
     # Jump.
     if jump is not frame_state.UNSATISFIABLE:
-      self.store_jump(op.target, state.forward_cfg_node().set_condition(jump))
+      else_state = state.forward_cfg_node(
+          jump.binding if jump else None).set_condition(jump)
+      forwarded_state = else_state.forward_cfg_node()
+      self.store_jump(op.target, forwarded_state)
+
     # Don't jump.
     if or_pop:
       state = state.pop_and_discard()
     if normal is frame_state.UNSATISFIABLE:
       return state.set_why("unsatisfiable")
     else:
-      return state.forward_cfg_node().set_condition(normal)
+      return state.forward_cfg_node(
+          normal.binding if normal else None).set_condition(normal)
 
   def byte_JUMP_IF_TRUE_OR_POP(self, state, op):
     return self._jump_if(state, op, jump_if=True, or_pop=True)
