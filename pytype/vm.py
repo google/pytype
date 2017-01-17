@@ -828,8 +828,6 @@ class VirtualMachine(object):
       assert isinstance(func, abstract.AtomicAbstractValue), type(func)
       try:
         new_node, one_result = func.call(node, funcv, args, condition)
-      except utils.TooComplexError as e:
-        error = e
       except abstract.FailedFunctionCall as e:
         if e > error:
           error = e
@@ -848,11 +846,7 @@ class VirtualMachine(object):
       return node, result
     else:
       if fallback_to_unsolvable:
-        if isinstance(error, abstract.FailedFunctionCall):
-          self.errorlog.invalid_function_call(self.frame.current_opcode, error)
-        else:
-          # This error isn't useful to a user, so we don't log it.
-          assert isinstance(error, utils.TooComplexError)
+        self.errorlog.invalid_function_call(self.frame.current_opcode, error)
         return node, self.convert.create_new_unsolvable(node)
       else:
         # We were called by something that ignores errors, so don't report

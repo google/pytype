@@ -101,7 +101,12 @@ def get_views(variables, node, condition=None, filter_strict=False):
   Yields:
     A variable->binding dictionary.
   """
-  for combination in utils.deep_variable_product(variables):
+  try:
+    combinations = utils.deep_variable_product(variables)
+  except utils.TooComplexError:
+    combinations = ((var.AddBinding(node.program.default_data, [], node)
+                     for var in variables),)
+  for combination in combinations:
     view = {value.variable: value for value in combination}
     combination = view.values() + ([condition.binding] if condition else [])
     check = node.HasCombination if filter_strict else node.CanHaveCombination
@@ -1396,13 +1401,14 @@ class PyTDSignature(object):
     mutations = []
     for formal in self.pytd_sig.params:
       actual = arg_dict[formal.name]
-      if formal.mutated_type is not None:
+      arg = actual.data
+      if (formal.mutated_type is not None and
+          isinstance(arg, SimpleAbstractValue)):
         if (isinstance(formal.type, pytd.GenericType) and
             isinstance(formal.mutated_type, pytd.GenericType) and
             formal.type.base_type == formal.mutated_type.base_type and
             isinstance(formal.type.base_type, pytd.ClassType) and
             formal.type.base_type.cls):
-          arg = actual.data
           names_actuals = zip(formal.mutated_type.base_type.cls.template,
                               formal.mutated_type.parameters)
           for tparam, type_actual in names_actuals:
