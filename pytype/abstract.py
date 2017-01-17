@@ -620,14 +620,23 @@ class Instance(SimpleAbstractValue):
       cls.register_instance(self)
       for base in cls.mro:
         if isinstance(base, ParameterizedClass):
-          for name, param in base.type_parameters.items():
+          if isinstance(base, TupleClass):
+            params = [(T, base.type_parameters[T])]
+          else:
+            params = base.type_parameters.items()
+          for name, param in params:
             if not param.formal:
               # We inherit from a ParameterizedClass with a non-formal
               # parameter, e.g., class Foo(List[int]). Initialize the
               # corresponding instance parameter appropriately.
-              assert name not in self.type_parameters
-              self.type_parameters.add_lazy_item(
-                  name, param.instantiate, node)
+              if name not in self.type_parameters:
+                # TODO(rechen): We should be able to assert that either the
+                # param name is not in type_parameters or the new param is equal
+                # to the one that was previously added, but we first need to
+                # change the parser to not accept things like
+                #   class A(List[str], Sequence[int]): ...
+                self.type_parameters.add_lazy_item(
+                    name, param.instantiate, node)
             elif name != param.name:
               # We have type parameter renaming, e.g.,
               #  class List(Generic[T]): pass

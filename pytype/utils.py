@@ -535,7 +535,7 @@ class MonitorDict(dict):
     raise NotImplementedError
 
   def __setitem__(self, name, var):
-    assert name not in self
+    assert not dict.__contains__(self, name)
     super(MonitorDict, self).__setitem__(name, var)
     var.RegisterChangeListener(self._changed)
     self._changed()
@@ -666,7 +666,7 @@ class LazyDict(DictTemplate):
     self._lazy_map[name] = (func, args)
 
   def __getitem__(self, name):
-    if name not in self:
+    if not super(LazyDict, self).__contains__(name):
       func, args = self._lazy_map[name]
       self[name] = func(*args)
       del self._lazy_map[name]
@@ -674,6 +674,9 @@ class LazyDict(DictTemplate):
 
   def __len__(self):
     return super(LazyDict, self).__len__() + len(self._lazy_map)
+
+  def __contains__(self, key):
+    return super(LazyDict, self).__contains__(key) or key in self._lazy_map
 
   def __repr__(self):
     lazy_items = ("%r: %r(%r)" %

@@ -268,7 +268,7 @@ class GenericTest(test_inference.InferenceTest):
       """, pythonpath=[d.path], deep=True, solve_unknowns=True)
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
-        def f() -> a.C[nothing]
+        def f() -> a.C[int]
       """)
 
   def testUnion(self):
