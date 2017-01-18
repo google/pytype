@@ -2,10 +2,12 @@
 
 import bisect
 import collections
+import cStringIO
 import re
 import sys
+import tokenize
 
-_DIRECTIVE_RE = re.compile(r"^([^#]*)#\s*(pytype|type)\s*:\s([^#]*)")
+_DIRECTIVE_RE = re.compile(r"^#\s*(pytype|type)\s*:\s([^#]*)")
 _ALL_ERRORS = "*"  # Wildcard for disabling all errors.
 
 
@@ -113,22 +115,26 @@ class Director(object):
 
   def _parse_source(self, src):
     """Parse a source file, extracting directives from comments."""
-    for lineno, line in enumerate(src.splitlines(), 1):
-      m = _DIRECTIVE_RE.match(line)
-      if m:
-        code, tool, data = m.groups()
-        code = code.strip()
-        open_ended = not code
-        data = data.strip()
-        if tool == "type":
-          self._process_type(lineno, code, data)
-        elif tool == "pytype":
-          try:
-            self._process_pytype(lineno, data, open_ended)
-          except _DirectiveError as e:
-            self._errorlog.invalid_directive(self._filename, lineno, e.message)
-        else:
-          pass  # ignore comments for other tools
+    f = cStringIO.StringIO(src)
+    for tok, _, start, _, line in tokenize.generate_tokens(f.readline):
+      if tok == tokenize.COMMENT:
+        lineno, col = start
+        m = _DIRECTIVE_RE.match(line[col:])
+        if m:
+          code = line[:col].strip()
+          tool, data = m.groups()
+          open_ended = not code
+          data = data.strip()
+          if tool == "type":
+            self._process_type(lineno, code, data)
+          elif tool == "pytype":
+            try:
+              self._process_pytype(lineno, data, open_ended)
+            except _DirectiveError as e:
+              self._errorlog.invalid_directive(
+                  self._filename, lineno, e.message)
+          else:
+            pass  # ignore comments for other tools
 
   def _process_type(self, lineno, code, data):
     """Process a type: comment."""

@@ -299,6 +299,19 @@ class DirectorTest(unittest.TestCase):
         5: ("", "(int, float) -> str"),
     }, self._director.type_comments)
 
+  def test_strings_that_look_like_directives(self):
+    # Line 2 is a string, not a type comment.
+    # Line 4 has a string and a comment.
+    self._create("""
+    s = "# type: int"
+    x = None  # type: float
+    y = "# type: int"  # type: str
+    """)
+    self.assertEquals({
+        3: ("x = None", "float"),
+        4: ('y = "# type: int"', "str"),
+    }, self._director.type_comments)
+
 
 if __name__ == "__main__":
   unittest.main()
