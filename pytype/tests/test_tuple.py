@@ -1,13 +1,16 @@
 """Tests of __builtin__.tuple."""
 
+import os
 import unittest
 
 
+from pytype import utils
 from pytype.tests import test_inference
 
 
 class TupleTest(test_inference.InferenceTest):
   """Tests for __builtin__.tuple."""
+
 
   def testGetItemInt(self):
     ty = self.Infer("""\
@@ -63,6 +66,20 @@ class TupleTest(test_inference.InferenceTest):
       z = ...  # type: bool
     """)
 
+  def testUnpackInlineTuple(self):
+    ty = self.Infer("""\
+      from __future__ import google_type_annotations
+      from typing import Tuple
+      def f(x: Tuple[str, int]):
+        return x
+      v1, v2 = f(__any_object__)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      def f(x: Tuple[str, int]) -> Tuple[str, int]: ...
+      v1 = ...  # type: str
+      v2 = ...  # type: int
+    """)
+
   def testIteration(self):
     ty = self.Infer("""\
       class Foo(object):
@@ -77,6 +94,89 @@ class TupleTest(test_inference.InferenceTest):
         def __getitem__(self, pos: int) -> int or str or complex
       x = ...  # type: int or str or complex
       r = ...  # type: List[int or str or complex]
+    """)
+
+  def testTuplePrinting(self):
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      from typing import Tuple
+      def f(x: Tuple[str, ...]):
+        pass
+      def g(y: Tuple[str]):
+        pass
+      f((42,))
+      f(tuple([42]))
+      f(("", ""))  # okay
+      g((42,))
+      g(("", ""))
+      g(("",))  # okay
+      g(tuple([""]))  # okay
+    """)
+    x = r"Tuple\[str, \.\.\.\]"
+    y = r"Tuple\[str\]"
+    tuple_int = r"Tuple\[int\]"
+    tuple_ints = r"Tuple\[int, \.\.\.\]"
+    tuple_str_str = r"Tuple\[str, str\]"
+    self.assertErrorLogIs(errors, [(7, "wrong-arg-types",
+                                    r"%s.*%s" % (x, tuple_int)),
+                                   (8, "wrong-arg-types",
+                                    r"%s.*%s" % (x, tuple_ints)),
+                                   (10, "wrong-arg-types",
+                                    r"%s.*%s" % (y, tuple_int)),
+                                   (11, "wrong-arg-types",
+                                    r"%s.*%s" % (y, tuple_str_str))
+                                  ])
+
+  def testInlineTuple(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        class A(Tuple[int, str]): ...
+      """)
+      self.assertNoErrors("""
+        from __future__ import google_type_annotations
+        from typing import Tuple, Type
+        import foo
+        def f(x: Type[Tuple[int, str]]):
+          pass
+        def g(x: Tuple[int, str]):
+          pass
+        f(type((1, "")))
+        g((1, ""))
+        g(foo.A())
+      """, pythonpath=[d.path])
+
+  def testInlineTupleError(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        class A(Tuple[str, int]): ...
+      """)
+      _, errors = self.InferAndCheck("""\
+        from __future__ import google_type_annotations
+        from typing import Tuple, Type
+        import foo
+        def f(x: Type[Tuple[int, str]]):
+          pass
+        def g(x: Tuple[int, str]):
+          pass
+        f(type(("", 1)))
+        g(("", 1))
+        g(foo.A())
+      """, pythonpath=[d.path])
+      expected = r"Tuple\[int, str\]"
+      actual = r"Tuple\[str, int\]"
+      self.assertErrorLogIs(errors, [
+          (8, "wrong-arg-types",
+           r"Type\[%s\].*Type\[%s\]" % (expected, actual)),
+          (9, "wrong-arg-types", r"%s.*%s" % (expected, actual)),
+          (10, "wrong-arg-types", r"%s.*foo\.A" % expected)])
+
+  def testTupleCombinationExplosion(self):
+    self.assertNoErrors("""
+      from __future__ import google_type_annotations
+      from typing import Any, Dict, List, Tuple, Union
+      AnyStr = Union[str, unicode]
+      def f(x: Dict[AnyStr, Any]) -> List[Tuple]:
+        return sorted((k, v) for k, v in x.iteritems() if k in {})
     """)
 
 

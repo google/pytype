@@ -45,15 +45,13 @@ class TypingOverlay(abstract.Module):
     return items
 
 
-def _maybe_extract_tuple(convert, node, t):
+def _maybe_extract_tuple(node, t):
   """Returns a tuple of Variables."""
   values = t.Data(node)
   if len(values) > 1:
     return (t,)
   v, = values
-  if not (v.cls and v.cls.data == convert.tuple_type.data):
-    return (t,)
-  if not isinstance(v, abstract.PythonConstant):
+  if not isinstance(v, abstract.Tuple):
     return (t,)
   return v.pyval
 
@@ -68,7 +66,7 @@ class TypingClass(abstract.ValueWithSlots):
 
   def getitem_slot(self, node, slice_var):
     inner = []
-    slice_content = _maybe_extract_tuple(self.vm.convert, node, slice_var)
+    slice_content = _maybe_extract_tuple(node, slice_var)
     for var in slice_content:
       if len(var.bindings) > 1:
         self.vm.errorlog.invalid_annotation(self.vm.frame.current_opcode, self,

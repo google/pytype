@@ -997,20 +997,6 @@ class AnnotationTest(test_inference.InferenceTest):
     """)
     self.assertErrorLogIs(errors, [(3, "invalid-annotation", r"Ellipsis.*x")])
 
-  def testUnpackTuple(self):
-    ty = self.Infer("""\
-      from __future__ import google_type_annotations
-      from typing import Tuple
-      def f(x: Tuple[str, int]):
-        return x
-      v1, v2 = f(__any_object__)
-    """)
-    self.assertTypesMatchPytd(ty, """
-      def f(x: Tuple[str, int]) -> Tuple[str, int]: ...
-      v1 = ...  # type: str
-      v2 = ...  # type: int
-    """)
-
 
 if __name__ == "__main__":
   test_inference.main()

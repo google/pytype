@@ -850,7 +850,7 @@ class ErrorTest(test_inference.InferenceTest):
         x = [float]
       f(x)
     """)
-    error = r"Actual.*Union\[Type\[dict\], List\[Type\[float\]\]\]"
+    error = r"Actual.*Union\[Type\[Dict\[Any, Any\]\], List\[Type\[float\]\]\]"
     self.assertErrorLogIs(errors, [(8, "wrong-arg-types", error)])
 
   def testBadDictAttribute(self):
@@ -909,37 +909,6 @@ class ErrorTest(test_inference.InferenceTest):
         (4, "not-supported-yet"),
         (4, "invalid-typevar", "X.*Y"),
     ])
-
-  def testTuplePrinting(self):
-    _, errors = self.InferAndCheck("""\
-      from __future__ import google_type_annotations
-      from typing import Tuple
-      def f(x: Tuple[str, ...]):
-        pass
-      def g(y: Tuple[str]):
-        pass
-      f((42,))
-      f(tuple([42]))
-      f(("", ""))  # okay
-      g((42,))
-      g(("", ""))
-      g(("",))  # okay
-      g(tuple([""]))  # okay
-    """)
-    x = r"Tuple\[str, \.\.\.\]"
-    y = r"Tuple\[str\]"
-    tuple_int = r"Tuple\[int\]"
-    tuple_ints = r"Tuple\[int, \.\.\.\]"
-    tuple_str_str = r"Tuple\[str, str\]"
-    self.assertErrorLogIs(errors, [(7, "wrong-arg-types",
-                                    r"%s.*%s" % (x, tuple_int)),
-                                   (8, "wrong-arg-types",
-                                    r"%s.*%s" % (x, tuple_ints)),
-                                   (10, "wrong-arg-types",
-                                    r"%s.*%s" % (y, tuple_int)),
-                                   (11, "wrong-arg-types",
-                                    r"%s.*%s" % (y, tuple_str_str))
-                                  ])
 
 
 if __name__ == "__main__":

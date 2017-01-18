@@ -144,8 +144,9 @@ class Converter(object):
                         abstract.BoundFunction)):
       return pytd.NamedType("__builtin__.function")
     elif isinstance(v, abstract.Class):
+      param = self.value_instance_to_pytd_type(node, v, None, seen, view)
       return pytd.GenericType(base_type=pytd.NamedType("__builtin__.type"),
-                              parameters=(pytd.NamedType(v.full_name),))
+                              parameters=(param,))
     elif isinstance(v, abstract.Module):
       return pytd.NamedType("__builtin__.module")
     elif isinstance(v, abstract.SimpleAbstractValue):

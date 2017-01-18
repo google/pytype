@@ -281,8 +281,7 @@ class IsInstanceTest(AbstractTestBase):
 
     def new_tuple(*args):
       pyval = tuple(maybe_var(a) for a in args)
-      return abstract.AbstractOrConcreteValue(
-          pyval, self._vm.convert.tuple_type, self._vm, self._node)
+      return self._vm.convert.tuple_to_value(self._node, pyval)
 
     def check(expected_ambiguous, expected_classes, value):
       classes = []

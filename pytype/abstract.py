@@ -621,7 +621,11 @@ class Instance(SimpleAbstractValue):
       for base in cls.mro:
         if isinstance(base, ParameterizedClass):
           if isinstance(base, TupleClass):
-            params = [(T, base.type_parameters[T])]
+            if isinstance(self, Tuple):
+              # Tuple.__init__ initializes T.
+              params = []
+            else:
+              params = [(T, base.type_parameters[T])]
           else:
             params = base.type_parameters.items()
           for name, param in params:
@@ -708,10 +712,14 @@ class Tuple(ValueWithSlots, PythonConstant):
   """Representation of Python 'tuple' objects."""
 
   def __init__(self, content, vm, node):
-    super(Tuple, self).__init__(vm.convert.tuple_type, vm, node)
+    combined_content = vm.convert.build_content(node, content)
+    class_params = {name: vm.convert.merge_classes(node, instance_param.data)
+                    for name, instance_param in
+                    tuple(enumerate(content)) + ((T, combined_content),)}
+    cls = TupleClass(vm.convert.tuple_type.bindings[0].data, class_params, vm)
+    super(Tuple, self).__init__(cls.to_variable(node), vm, node)
     self.set_slot("__getitem__", self.getitem_slot)
-    self.initialize_type_parameter(
-        node, T, self.vm.convert.build_content(node, content))
+    self.initialize_type_parameter(node, T, combined_content)
     PythonConstant.init_mixin(self, content)
 
   def __repr__(self):
@@ -1219,9 +1227,7 @@ class IsInstance(AtomicAbstractValue):
       # A single class, no ambiguity.
       classes.append(value)
       return False
-    elif (isinstance(value, PythonConstant) and
-          value.get_class() is self.vm.convert.tuple_type and
-          isinstance(value.pyval, tuple)):
+    elif isinstance(value, Tuple):
       # A tuple, need to process each element.
       ambiguous = False
       for var in value.pyval:
@@ -1778,6 +1784,9 @@ class ParameterizedClass(AtomicAbstractValue, Class):
       return self.type_parameters[T].to_variable(node)
     else:
       return super(ParameterizedClass, self).instantiate(node)
+
+  def get_class(self):
+    return self.base_cls.get_class()
 
 
 class TupleClass(ParameterizedClass):
@@ -2432,6 +2441,9 @@ class BoundFunction(AtomicAbstractValue):
 
   def has_kwargs(self):
     return self.underlying.has_kwargs()
+
+  def get_class(self):
+    return self.underlying.get_class()
 
   def __repr__(self):
     if self._callself and self._callself.bindings:
