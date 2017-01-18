@@ -409,6 +409,22 @@ class VirtualMachine(object):
   def join_variables(self, node, variables):
     return self.program.MergeVariables(node, variables)
 
+  def _process_base_class(self, node, base):
+    """Process a base class for InterpreterClass creation."""
+    if any(isinstance(t, typing.Container) for t in base.data):
+      new_base = self.program.NewVariable()
+      for b in base.bindings:
+        if isinstance(b.data, typing.Container):
+          val = b.data.base_cls
+        else:
+          val = b.data
+        new_base.AddBinding(val, {b}, node)
+      base = new_base
+    if not any(isinstance(t, (abstract.Class, abstract.AMBIGUOUS_OR_EMPTY))
+               for t in base.data):
+      self.errorlog.base_class_error(self.frame.current_opcode, node, base)
+    return base
+
   def make_class(self, node, name_var, bases, class_dict_var, cls_var):
     """Create a class with the name, bases and methods given.
 
@@ -430,10 +446,7 @@ class VirtualMachine(object):
     except abstract.ConversionError:
       log.error("Error initializing class %r", name)
       return self.convert.create_new_unknown(node)
-    for base in bases:
-      if not any(isinstance(t, (abstract.Class, abstract.AMBIGUOUS_OR_EMPTY))
-                 for t in base.data):
-        self.errorlog.base_class_error(self.frame.current_opcode, node, base)
+    bases = [self._process_base_class(node, base) for base in bases]
     if not bases:
       # Old style class.
       bases = [self.convert.oldstyleclass_type]

@@ -323,6 +323,17 @@ class TypingTest(test_inference.InferenceTest):
         foo.Foo()
       """, pythonpath=[d.path])
 
+  def testBaseClass(self):
+    ty = self.Infer("""\
+      from __future__ import google_type_annotations
+      from typing import Iterable
+      class Foo(Iterable):
+        pass
+    """)
+    self.assertTypesMatchPytd(ty, """
+      class Foo(Iterable): ...
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()
