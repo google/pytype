@@ -8,6 +8,7 @@ from pytype import config
 from pytype import errors
 from pytype import exceptions
 from pytype import function
+from pytype import typing
 from pytype import vm
 from pytype.pytd import cfg
 from pytype.pytd import pytd
@@ -402,6 +403,14 @@ class PyTDTest(AbstractTestBase):
     pytd_type = instance.to_type(self._vm.root_cfg_node, seen=None, view=view)
     self.assertEquals("__builtin__.list", pytd_type.base_type.name)
     self.assertSequenceEqual((pytd.NothingType(),), pytd_type.parameters)
+
+  def testTypingContainer(self):
+    cls = self._vm.convert.list_type.bindings[0].data
+    container = typing.Container("List", self._vm, self._vm.root_cfg_node, cls)
+    expected = pytd.HomogeneousContainerType(pytd.NamedType("__builtin__.list"),
+                                             (pytd.AnythingType(),))
+    actual = container.get_instance_type(self._vm.root_cfg_node)
+    self.assertEquals(expected, actual)
 
 
 # TODO(rechen): Test InterpreterFunction.
