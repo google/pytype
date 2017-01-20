@@ -151,6 +151,8 @@ class Converter(object):
     return self.constant_to_var(repr(s), s)
 
   def build_content(self, node, elements):
+    if len(elements) == 1:
+      return next(iter(elements))
     var = self.vm.program.NewVariable()
     for v in elements:
       var.PasteVariable(v, node)

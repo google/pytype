@@ -80,6 +80,32 @@ class TupleTest(test_inference.InferenceTest):
       v2 = ...  # type: int
     """)
 
+  def testUnpackTupleOrTuple(self):
+    self.assertNoErrors("""
+      from __future__ import google_type_annotations
+      def f():
+        if __any_object__:
+          return (False, 'foo')
+        else:
+          return (False, 'foo')
+      def g() -> str:
+        a, b = f()
+        return b
+    """)
+
+  def testUnpackTupleOrList(self):
+    self.assertNoErrors("""
+      from __future__ import google_type_annotations
+      def f():
+        if __any_object__:
+          return (False, 'foo')
+        else:
+          return ['foo', 'bar']
+      def g() -> str:
+        a, b = f()
+        return b
+    """)
+
   def testIteration(self):
     ty = self.Infer("""\
       class Foo(object):
