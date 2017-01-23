@@ -99,6 +99,9 @@ def _GetAncestorMap():
 class Visitor(object):
   """Base class for visitors.
 
+  Each class inheriting from visitor SHOULD have a fixed set of methods,
+  otherwise it might break the caching in this class.
+
   Attributes:
     visits_all_node_types: Whether the visitor can visit every node type.
     unchecked_node_names: Contains the names of node classes that are unchecked
@@ -124,6 +127,8 @@ class Visitor(object):
   def __init__(self):
     cls = self.__class__
 
+    # The set of method names for each visitor implementation is assumed to
+    # be fixed. Therefore this introspection can be cached.
     if cls in Visitor._visitor_functions_cache:
       enter_fns, visit_fns, leave_fns, visit_class_names = (
           Visitor._visitor_functions_cache[cls])
