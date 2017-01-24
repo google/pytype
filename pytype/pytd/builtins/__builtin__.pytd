@@ -27,6 +27,7 @@ def coerce(x: complex, y: int or float) -> tuple[complex, complex]
 def coerce(x: function, y: function) -> tuple[function, function]
 def coerce(x: type, y: type) -> tuple[type, type]
 def coerce(x: iterator, y: iterator) -> tuple[iterator, iterator]  # TODO(pludemann): iterator[T] ?
+def compile(source, filename: unicode, mode: str, flags: int = ..., dont_inherit: int = ...) -> code: ...
 def delattr(object, name: str or unicode or bytearray) -> None
 def dir(...) -> list[str]
 def divmod(x: int, y: int) -> tuple[int, int]

@@ -695,6 +695,11 @@ class BuiltinTests2(test_inference.InferenceTest):
       print(file=sys.stderr)
     """)
 
+  def testCompile(self):
+    self.assertNoErrors("""
+      code = compile("1 + 2", "foo.py", "single")
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()
