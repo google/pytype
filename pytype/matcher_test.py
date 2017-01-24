@@ -128,6 +128,12 @@ class MatcherTest(unittest.TestCase):
     right = abstract.ParameterizedClass(self.type_type, {"T": union}, self.vm)
     self.assertMatch(left, right)
 
+  def testNoneAgainstBool(self):
+    # See pep484.COMPAT_MAP.
+    left = self._convert("None", as_instance=True)
+    right = self._convert("bool", as_instance=False)
+    self.assertMatch(left, right)
+
   def testHomogeneousTuple(self):
     left = self._convert("Tuple[int, ...]", as_instance=True)
     right1 = self._convert("Tuple[int, ...]", as_instance=False)
