@@ -99,7 +99,7 @@ def exit(code: ? = ...) -> NoneType raises SystemExit
 def quit() -> NoneType raises SystemExit
 def input() -> ?
 def raw_input(prompt: str or unicode = ...) -> str raises EOFError
-def print(value, ...) -> NoneType
+def print(...) -> NoneType
 
 False = ...  # type: bool
 True = ...  # type: bool

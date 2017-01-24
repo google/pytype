@@ -688,6 +688,13 @@ class BuiltinTests2(test_inference.InferenceTest):
       os.environ.copy()["foo"] = "bar"
     """)
 
+  def testPrintFunction(self):
+    self.assertNoErrors("""
+      from __future__ import print_function
+      import sys
+      print(file=sys.stderr)
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()
