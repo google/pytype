@@ -660,8 +660,7 @@ class _PathFinder(object):
   """Finds a path between two nodes and collects nodes with conditions."""
 
   def __init__(self):
-    # Cache
-    self._solved_find_queries = {}
+    self._solved_find_queries = {} # Cached queries
 
   def _ResetState(self, finish, blocked):
     """Prepare the state for a new search."""
@@ -671,6 +670,8 @@ class _PathFinder(object):
     self._blocked = blocked
 
     ### Working state ###
+    # A dict mapping nodes to the iterator over their incoming links.
+    self._node_to_iter = {}
     # A set of the nodes which have been on all paths so far.
     # In the end this will contain the intersection of all paths between
     # start and finish.
@@ -743,37 +744,34 @@ class _PathFinder(object):
     """
     # Representation of the recursion state.
     path = [start]
-    # Maps a node to the index of the last incoming node which has been
-    # looked at.
-    node_to_current_child = collections.defaultdict(int)
 
     # Nodes which have already been added to a path.
     seen_set = set()
     while path:
       head = path[-1]
-      current_index = node_to_current_child[head]
-      node_to_current_child[head] += 1
-
-      if len(head.incoming) > current_index:
-        # As the recursion is transformed to iteration via an index this depends
-        # on the incoming list to be ordered. Typically these are small
-        # therefore the result is not cached.
-        next_node = sorted(head.incoming)[current_index]
-        if next_node is self._finish:
-          self._HandleNode(next_node, path)
-          continue
-        if next_node in self._blocked:
-          # The finish node is always blocked, therefore this needs to be below
-          # the finish test.
-          continue
-        if next_node in seen_set:
-          continue
-        seen_set.add(next_node)
-
-        path.append(next_node)
-      else:
+      if head not in self._node_to_iter:
+        self._node_to_iter[head] = iter(head.incoming)
+      it = self._node_to_iter[head]
+      try:
+        next_node = it.next()
+      except StopIteration:
         path.pop()
         self._HandleNode(head, path)
+        continue
+      if next_node is self._finish:
+        if self._solution_set is not None and not self._solution_set:
+          # Solution set can never grow and is already empty.
+          return
+        self._HandleNode(next_node, path)
+        continue
+      if next_node in self._blocked:
+        # The finish node is always blocked, therefore this needs to be below
+        # the finish test.
+        continue
+      if next_node in seen_set:
+        continue
+      seen_set.add(next_node)
+      path.append(next_node)
 
   def _HandleNode(self, node, path):
     """Update the state with the results from one node.
@@ -817,7 +815,7 @@ class _PathFinder(object):
 
   def _UpdateSolutionSet(self, new_path):
     if self._solution_set is None:
-      self._solution_set = set(new_path)
+      self._solution_set = set(node for node in new_path if node.condition)
     else:
       self._solution_set = self._solution_set.intersection(new_path)
 
