@@ -17,21 +17,18 @@ UNSATISFIABLE = object()
 class FrameState(object):
   """Immutable state object, for attaching to opcodes."""
 
-  __slots__ = ["block_stack", "data_stack", "node", "exception", "why",
-               "condition"]
+  __slots__ = ["block_stack", "data_stack", "node", "exception", "why"]
 
-  def __init__(self, data_stack, block_stack, node, exception, why,
-               condition=None):
+  def __init__(self, data_stack, block_stack, node, exception, why):
     self.data_stack = data_stack
     self.block_stack = block_stack
     self.node = node
     self.exception = exception
     self.why = why
-    self.condition = condition
 
   @classmethod
   def init(cls, node):
-    return FrameState((), (), node, None, None, None)
+    return FrameState((), (), node, None, None)
 
   def __setattribute__(self):
     raise AttributeError("States are immutable.")
@@ -41,16 +38,7 @@ class FrameState(object):
                       self.block_stack,
                       self.node,
                       self.exception,
-                      why,
-                      self.condition)
-
-  def set_condition(self, condition):
-    return FrameState(self.data_stack,
-                      self.block_stack,
-                      self.node,
-                      self.exception,
-                      self.why,
-                      condition)
+                      why)
 
   def push(self, *values):
     """Push value(s) onto the value stack."""
@@ -58,8 +46,7 @@ class FrameState(object):
                       self.block_stack,
                       self.node,
                       self.exception,
-                      self.why,
-                      self.condition)
+                      self.why)
 
   def peek(self, n):
     """Get a value `n` entries down in the stack, without changing the stack."""
@@ -81,8 +68,7 @@ class FrameState(object):
                       self.block_stack,
                       self.node,
                       self.exception,
-                      self.why,
-                      self.condition), value
+                      self.why), value
 
   def pop_and_discard(self):
     """Pop a value from the value stack and discard it."""
@@ -90,8 +76,7 @@ class FrameState(object):
                       self.block_stack,
                       self.node,
                       self.exception,
-                      self.why,
-                      self.condition)
+                      self.why)
 
   def popn(self, n):
     """Return n values, ordered oldest-to-newest."""
@@ -106,8 +91,7 @@ class FrameState(object):
                       self.block_stack,
                       self.node,
                       self.exception,
-                      self.why,
-                      self.condition), values
+                      self.why), values
 
   def push_block(self, block):
     """Push a block on to the block stack."""
@@ -115,8 +99,7 @@ class FrameState(object):
                       self.block_stack + (block,),
                       self.node,
                       self.exception,
-                      self.why,
-                      self.condition)
+                      self.why)
 
   def pop_block(self):
     """Pop a block from the block stack."""
@@ -125,8 +108,7 @@ class FrameState(object):
                       self.block_stack[:-1],
                       self.node,
                       self.exception,
-                      self.why,
-                      self.condition), block
+                      self.why), block
 
   def change_cfg_node(self, node):
     assert isinstance(node, cfg.CFGNode)
@@ -136,8 +118,7 @@ class FrameState(object):
                       self.block_stack,
                       node,
                       self.exception,
-                      self.why,
-                      self.condition)
+                      self.why)
 
   def connect_to_cfg_node(self, node):
     self.node.ConnectTo(node)
@@ -179,8 +160,7 @@ class FrameState(object):
                         self.block_stack,
                         other.node,
                         self.exception,
-                        self.why,
-                        _common_condition(self.condition, other.condition))
+                        self.why)
     return self
 
   def set_exception(self, exc_type, value, tb):
@@ -188,8 +168,7 @@ class FrameState(object):
                       self.block_stack,
                       self.node.ConnectNew(self.node.name),
                       (exc_type, value, tb),
-                      self.why,
-                      self.condition)
+                      self.why)
 
 
 class Frame(object):
@@ -291,26 +270,17 @@ class Condition(object):
 
   Properties:
     node: A CFGNode.
-    parent: The parent Condition (or None).
     binding: A Binding for the condition's constraints.
   """
 
-  def __init__(self, node, parent, dnf):
-    self._parent = parent
+  def __init__(self, node, dnf):
     # The condition is represented by a dummy variable with a single binding
-    # to None.  The origins for this binding are the dnf clauses with the
-    # addition of the parent's binding.
+    # to None.  The origins for this binding are the dnf clauses.
     self._var = node.program.NewVariable()
     self._binding = self._var.AddBinding(None)
     for clause in dnf:
       sources = set(clause)
-      if parent:
-        sources.add(parent.binding)
       self._binding.AddOrigin(node, sources)
-
-  @property
-  def parent(self):
-    return self._parent
 
   @property
   def binding(self):
@@ -320,26 +290,25 @@ class Condition(object):
 _restrict_counter = metrics.MapCounter("state_restrict")
 
 
-def split_conditions(node, parent, var):
+def split_conditions(node, var):
   """Return a pair of conditions for the value being true and false."""
-  return (_restrict_condition(node, parent, var.bindings, True),
-          _restrict_condition(node, parent, var.bindings, False))
+  return (_restrict_condition(node, var.bindings, True),
+          _restrict_condition(node, var.bindings, False))
 
 
-def _restrict_condition(node, parent, bindings, logical_value):
-  """Return a restricted condition based on a parent and filtered bindings.
+def _restrict_condition(node, bindings, logical_value):
+  """Return a restricted condition based on filtered bindings.
 
   Args:
     node: The CFGNode.
-    parent: A parent Condition or None.
     bindings: A sequence of bindings.
     logical_value: Either True or False.
 
   Returns:
     A Condition or None.  Each binding is checked for compatability with
     logical_value.  If either no bindings match, or all bindings match, then
-    parent is returned.  Otherwise a new Condition is built from the specified
-    parent and the compatible bindings.
+    None is returned.  Otherwise a new Condition is built from the specified,
+    compatible, bindings.
   """
   dnf = []
   restricted = False
@@ -361,40 +330,10 @@ def _restrict_condition(node, parent, bindings, logical_value):
     return UNSATISFIABLE
   elif restricted:
     _restrict_counter.inc("restricted")
-    return Condition(node, parent, dnf)
+    return Condition(node, dnf)
   else:
     _restrict_counter.inc("unrestricted")
-    return parent
-
-
-def _transitive_conditions(condition):
-  """Return the transitive closure of a condition and its ancestors."""
-  transitive = set()
-  while condition:
-    transitive.add(condition)
-    condition = condition.parent
-  return transitive
-
-
-def _common_condition(cond1, cond2):
-  """Return the closest common ancestor of two conditions."""
-  # If either condition is None, then return None.
-  if cond1 is None or cond2 is None:
     return None
-
-  # Determine the transitive closures of the two conditions.
-  common = (_transitive_conditions(cond1) &
-            _transitive_conditions(cond2))
-
-  # Walk up each tree until reaching a condition that is common.
-  while cond1 and cond1 not in common:
-    cond1 = cond1.parent
-  while cond2 and cond2 not in common:
-    cond2 = cond2.parent
-
-  # We should get the same answer from both sides.
-  assert cond1 == cond2
-  return cond1
 
 
 def _return_class_as_data(instance):

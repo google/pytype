@@ -59,21 +59,17 @@ class ConditionTest(ConditionTestBase):
     x = self.new_binding()
     y = self.new_binding()
     z = self.new_binding()
-    c = state.Condition(self._node, None, [[x, y], [z]])
-    self.assertIsNone(c.parent)
+    c = state.Condition(self._node, [[x, y], [z]])
     self.check_binding("x=? y=? | z=?", c.binding, x=x, y=y, z=z)
 
   def test_parent_combination(self):
     p = self.new_binding()
-    parent = state.Condition(self._node, None, [[p]])
     x = self.new_binding()
     y = self.new_binding()
     z = self.new_binding()
-    c = state.Condition(self._node, parent, [[x, y], [z]])
-    self.assertIs(parent, c.parent)
-    self.check_binding("__split=None x=? y=? | __split=None z=?", c.binding,
-                       p=p, x=x, y=y, z=z,
-                       __split=parent._var.bindings[0])
+    c = state.Condition(self._node, [[x, y], [z]])
+    self.check_binding("x=? y=? | z=?", c.binding,
+                       p=p, x=x, y=y, z=z)
 
 
 class SplitConditionTest(ConditionTestBase):
@@ -82,21 +78,16 @@ class SplitConditionTest(ConditionTestBase):
     # Test that we split both sides and that everything gets passed through
     # correctly.  Don't worry about special cases within _restrict_condition
     # since those are tested separately.
-    x = self.new_binding()
-    parent = state.Condition(self._node, None, [[x]])
+    self.new_binding()
     var = self._program.NewVariable()
     var.AddBinding(ONLY_TRUE)
     var.AddBinding(ONLY_FALSE)
     var.AddBinding(AMBIGUOUS)
-    true_cond, false_cond = state.split_conditions(self._node, parent, var)
-    self.assertIs(parent, true_cond.parent)
-    self.check_binding("__split=None v=? | __split=None v=T", true_cond.binding,
-                       __split=parent._var.bindings[0],
+    true_cond, false_cond = state.split_conditions(self._node, var)
+    self.check_binding("v=? | v=T", true_cond.binding,
                        v=var.bindings[0])
-    self.assertIs(parent, false_cond.parent)
-    self.check_binding("__split=None v=? | __split=None v=F",
+    self.check_binding("v=? | v=F",
                        false_cond.binding,
-                       __split=parent._var.bindings[0],
                        v=var.bindings[0])
 
 
@@ -105,44 +96,40 @@ class RestrictConditionTest(ConditionTestBase):
   def setUp(self):
     super(RestrictConditionTest, self).setUp()
     p = self.new_binding()
-    self._parent = state.Condition(self._node, None, [[p]])
+    self._parent = state.Condition(self._node, [[p]])
 
   def test_no_bindings(self):
-    c = state._restrict_condition(self._node, self._parent, [], False)
+    c = state._restrict_condition(self._node, [], False)
     self.assertIs(state.UNSATISFIABLE, c)
-    c = state._restrict_condition(self._node, self._parent, [], True)
+    c = state._restrict_condition(self._node, [], True)
     self.assertIs(state.UNSATISFIABLE, c)
 
   def test_none_restricted(self):
     x = self.new_binding()
     y = self.new_binding()
-    c = state._restrict_condition(self._node, self._parent, [x, y], False)
-    self.assertIs(self._parent, c)
-    c = state._restrict_condition(self._node, self._parent, [x, y], True)
-    self.assertIs(self._parent, c)
+    state._restrict_condition(self._node, [x, y], False)
+    state._restrict_condition(self._node, [x, y], True)
 
   def test_all_restricted(self):
     x = self.new_binding(ONLY_FALSE)
     y = self.new_binding(ONLY_FALSE)
-    c = state._restrict_condition(self._node, self._parent, [x, y], True)
+    c = state._restrict_condition(self._node, [x, y], True)
     self.assertIs(state.UNSATISFIABLE, c)
 
   def test_some_restricted_no_parent(self):
     x = self.new_binding()  # Can be true or false.
     y = self.new_binding(ONLY_FALSE)
     z = self.new_binding()  # Can be true or false.
-    c = state._restrict_condition(self._node, None, [x, y, z], True)
-    self.assertIsNone(c.parent)
+    c = state._restrict_condition(self._node, [x, y, z], True)
     self.check_binding("x=? | z=?", c.binding, x=x, y=y, z=z)
 
   def test_some_restricted_with_parent(self):
     x = self.new_binding()  # Can be true or false.
     y = self.new_binding(ONLY_FALSE)
     z = self.new_binding()  # Can be true or false.
-    c = state._restrict_condition(self._node, self._parent, [x, y, z], True)
-    self.assertIs(self._parent, c.parent)
-    self.check_binding("parent=None x=? | parent=None z=?", c.binding,
-                       x=x, y=y, z=z, parent=self._parent._var.bindings[0])
+    c = state._restrict_condition(self._node, [x, y, z], True)
+    self.check_binding("x=? | z=?", c.binding,
+                       x=x, y=y, z=z)
 
   def test_restricted_to_dnf(self):
     # DNF for a | (b & c)
@@ -153,43 +140,9 @@ class RestrictConditionTest(ConditionTestBase):
            [b, c]]
     x = self.new_binding()  # Compatible with everything
     y = self.new_binding(FakeValue("DNF", dnf, False))  # Reduce to dnf
-    cond = state._restrict_condition(self._node, None, [x, y], True)
-    self.assertIsNone(cond.parent)
+    cond = state._restrict_condition(self._node, [x, y], True)
     self.check_binding("a=? | b=? c=? | x=?", cond.binding,
                        a=a, b=b, c=c, x=x, y=y)
-
-
-class CommonConditionTest(ConditionTestBase):
-
-  def test(self):
-    # Create the following trees (parents are to the left)
-    #
-    # 1 - 2 - 3 - 4
-    #      \
-    #       5 - 6
-    #
-    # 7 - 8
-    conds = [None]  # index 0 is the condition of None
-    for parent in [0, 1, 2, 3, 2, 5, 0, 7]:
-      binding = self.new_binding()
-      conds.append(state.Condition(self._node, conds[parent], [[binding]]))
-
-    def check(expected, left, right):
-      self.assertEquals(conds[expected],
-                        state._common_condition(conds[left], conds[right]))
-
-    # Check that None (conds[0]) is handled correctly.
-    check(0, 0, 0)
-    check(0, 0, 4)
-    check(0, 4, 0)
-    # One condition a descendant of the other.
-    check(2, 2, 4)
-    check(2, 4, 2)
-    # Common ancestor.
-    check(2, 3, 6)
-    check(2, 4, 6)
-    # Unrelated.
-    check(0, 4, 8)
 
 
 if __name__ == "__main__":

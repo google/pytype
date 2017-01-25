@@ -886,11 +886,10 @@ class VirtualMachine(object):
     assert starstarargs is None or isinstance(starstarargs, typegraph.Variable)
     node, ret = self.call_function(state.node, funcu, abstract.FunctionArgs(
         posargs=posargs, namedargs=namedargs, starargs=starargs,
-        starstarargs=starstarargs), fallback_to_unsolvable, state.condition)
+        starstarargs=starstarargs), fallback_to_unsolvable)
     return state.change_cfg_node(node), ret
 
-  def call_function(self, node, funcu, args, fallback_to_unsolvable=True,
-                    condition=None):
+  def call_function(self, node, funcu, args, fallback_to_unsolvable=True):
     """Call a function.
 
     Args:
@@ -898,7 +897,6 @@ class VirtualMachine(object):
       funcu: A variable of the possible functions to call.
       args: The arguments to pass. See abstract.FunctionArgs.
       fallback_to_unsolvable: If the function call fails, create an unknown.
-      condition: The currently active if condition.
     Returns:
       A tuple (CFGNode, Variable). The Variable is the return value.
     """
@@ -910,7 +908,7 @@ class VirtualMachine(object):
       func = funcv.data
       assert isinstance(func, abstract.AtomicAbstractValue), type(func)
       try:
-        new_node, one_result = func.call(node, funcv, args, condition)
+        new_node, one_result = func.call(node, funcv, args)
       except abstract.FailedFunctionCall as e:
         if e > error:
           error = e
@@ -964,7 +962,7 @@ class VirtualMachine(object):
   def load_from(self, state, store, name):
     node = state.node
     node, attr = self.attribute_handler.get_attribute(
-        node, store, name, condition=state.condition)
+        node, store, name)
     assert isinstance(node, typegraph.CFGNode)
     if not attr:
       raise KeyError(name)
@@ -1042,7 +1040,7 @@ class VirtualMachine(object):
     for val in obj.Bindings(node):
       try:
         node2, attr_var = self.attribute_handler.get_attribute_generic(
-            node, val.data, attr, val, condition=state.condition)
+            node, val.data, attr, val)
       except self.convert.TypeParameterError as e:
         self.errorlog.type_param_error(
             self.frame.current_opcode, obj, attr, e.type_param_name)
@@ -1725,13 +1723,13 @@ class VirtualMachine(object):
     else:
       value = state.top()
     jump, normal = frame_state.split_conditions(
-        state.node, state.condition, value)
+        state.node, value)
     if not jump_if:
       jump, normal = normal, jump
     # Jump.
     if jump is not frame_state.UNSATISFIABLE:
       else_state = state.forward_cfg_node(
-          jump.binding if jump else None).set_condition(jump)
+          jump.binding if jump else None)
       forwarded_state = else_state.forward_cfg_node()
       self.store_jump(op.target, forwarded_state)
 
@@ -1742,7 +1740,7 @@ class VirtualMachine(object):
       return state.set_why("unsatisfiable")
     else:
       return state.forward_cfg_node(
-          normal.binding if normal else None).set_condition(normal)
+          normal.binding if normal else None)
 
   def byte_JUMP_IF_TRUE_OR_POP(self, state, op):
     return self._jump_if(state, op, jump_if=True, or_pop=True)
