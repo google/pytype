@@ -176,11 +176,11 @@ class CFGNode(object):
     # TODO(kramm): Take blocked nodes into account, like in Bindings()?
     while stack and goals:
       node = stack.pop()
+      if node in seen:
+        continue
       seen.add(node)
-      hits = goals & node.bindings
-      for hit in hits:
-        goals.remove(hit)
-      stack.extend(set(node.incoming) - seen)
+      goals -= goals & node.bindings
+      stack.extend(node.incoming)
     return not goals
 
   def HasCombination(self, bindings):
