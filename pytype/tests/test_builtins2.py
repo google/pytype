@@ -695,6 +695,14 @@ class BuiltinTests2(test_inference.InferenceTest):
       print(file=sys.stderr)
     """)
 
+  def testBytearrayInit(self):
+    self.assertNoErrors("""
+      bytearray(42)
+      bytearray([42])
+      bytearray(u"hello", "utf-8")
+      bytearray(u"hello", "utf-8", "")
+    """)
+
   def testCompile(self):
     self.assertNoErrors("""
       code = compile("1 + 2", "foo.py", "single")

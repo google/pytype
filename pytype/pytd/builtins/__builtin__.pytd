@@ -296,6 +296,7 @@ class unicode(basestring, Sequence[unicode]):
 class bytearray(Sequence[int]):
     def __init__(self, iterable_of_ints) -> NoneType
     def __init__(self) -> NoneType
+    def __init__(self, source: unicode, encoding: str or unicode, errors: str or unicode = ...) -> NoneType
     def __add__(self, y: str or bytearray) -> bytearray
     def __alloc__(self) -> int
     def __contains__(self, y: str or int or bytearray) -> bool
