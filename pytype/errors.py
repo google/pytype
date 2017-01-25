@@ -488,6 +488,12 @@ class ErrorLog(ErrorLogBase):
     self.error(opcode, "Invalid type comment: %s" % comment,
                details=details)
 
+  @_error_name("ignored-type-comment")
+  def ignored_type_comment(self, filename, lineno, comment):
+    self._add(Error(
+        SEVERITY_WARNING, "Stray type comment: %s" % comment,
+        filename=filename, lineno=lineno))
+
   @_error_name("invalid-typevar")
   def invalid_typevar(self, opcode, comment):
     self.error(opcode, "Invalid TypeVar: %s" % comment)

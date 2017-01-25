@@ -61,6 +61,18 @@ class FunctionCommentTest(test_inference.InferenceTest):
       def foo(x: int, y: str, z: float) -> None
     """)
 
+  def testFunctionSeveralLines(self):
+    ty = self.Infer("""
+      def foo(x,
+              y,
+              z):
+        # type: (int, str, float) -> None
+        return x
+    """, filename="test.py")
+    self.assertTypesMatchPytd(ty, """
+      def foo(x: int, y: str, z: float) -> None
+    """)
+
   def testFunctionNoneInArgs(self):
     ty = self.Infer("""
       def foo(x, y, z):
@@ -294,6 +306,19 @@ class AssignmentCommentTest(test_inference.InferenceTest):
       tzinfo = ...  # type: Type[datetime.tzinfo]
       def foo() -> datetime.tzinfo: ...
     """)
+
+  def testWarnOnIgnoredTypeComment(self):
+    _, errors = self.InferAndCheck("""
+      X = []
+      X[0] = None  # type: str
+      # type: int
+    """, deep=True, filename="test.py")
+    self.assertErrorLogContains(
+        errors,
+        r"test\.py.*line 3.*str.*ignored-type-comment")
+    self.assertErrorLogContains(
+        errors,
+        r"test\.py.*line 4.*int.*ignored-type-comment")
 
 
 if __name__ == "__main__":

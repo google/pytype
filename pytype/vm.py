@@ -35,6 +35,7 @@ from pytype import state as frame_state
 from pytype import typing
 from pytype import utils
 from pytype.pyc import loadmarshal
+from pytype.pyc import opcodes
 from pytype.pyc import pyc
 from pytype.pyi import parser
 from pytype.pytd import cfg as typegraph
@@ -78,6 +79,70 @@ class LateAnnotationError(Exception):
 class EvaluationError(Exception):
   """Used to signal an errorlog error during type comment evaluation."""
   pass
+
+
+class _FindIgnoredTypeComments(object):
+  """A visitor that finds type comments that will be ignored."""
+
+  def __init__(self, type_comments):
+    # Build sets of all lines with the associated style of type comment.
+    # Lines will be removed from these sets during visiting.  Any lines
+    # that remain at the end are type comments that will be ignored.
+    self._ignored_function_lines = set()
+    self._ignored_type_lines = set()
+    for line, comment in type_comments.items():
+      if comment[0]:
+        self._ignored_type_lines.add(line)
+      else:
+        self._ignored_function_lines.add(line)
+    # Keep a copy of the lines that have function comments.  This is necessary
+    # because the function comment check involves finding the first line
+    # within a range that contains a comment.  If the same code object is
+    # referenced by multiple MAKE_FUNCTION ops, then simply using the ignored
+    # set when checking for existence of a comment would be incorrect.
+    self._function_lines = set(self._ignored_function_lines)
+
+  def visit_code(self, code):
+    """Interface for pyc.visit."""
+    for i, op in enumerate(code.co_code):
+      if isinstance(op, (opcodes.STORE_NAME, opcodes.STORE_FAST)):
+        self._ignored_type_lines.discard(op.line)
+      elif isinstance(op, opcodes.MAKE_FUNCTION):
+        code_line = self._find_code_line(code, i)
+        if code_line is not None:
+          # Discard the first function type comment line.
+          for line in range(op.line + 1, code_line):
+            if line in self._function_lines:
+              self._ignored_function_lines.discard(line)
+              break
+    return code
+
+  def _find_code_line(self, code, index):
+    """Return the line number for the first opcode (or None).
+
+    Args:
+      code: An OrderedCode object.
+      index: The index of the MAKE_FUNCTION op within code.co_code.
+
+    Returns:
+      The line number of the first opcode in the body of the function, or
+      None if this cannot be determined.
+    """
+    if index < 1:
+      return
+    op = code.co_code[index-1]
+    if op.name != "LOAD_CONST":
+      return
+    target_code = code.co_consts[op.arg]
+    # If the object doesn't have a co_code attribute, or the co_code
+    # attribute is an empty list, we can't determine the line.
+    if not getattr(target_code, "co_code", None):
+      return
+    return target_code.co_code[0].line
+
+  def ignored_lines(self):
+    """Returns a set of lines that contain ignored type comments."""
+    return self._ignored_function_lines | self._ignored_type_lines
 
 
 class VirtualMachine(object):
@@ -624,6 +689,11 @@ class VirtualMachine(object):
       node, f_globals, f_locals = node, None, None
 
     code = self.compile_src(src, filename=filename)
+    visitor = _FindIgnoredTypeComments(self.type_comments)
+    pyc.visit(code, visitor)
+    for line in visitor.ignored_lines():
+      self.errorlog.ignored_type_comment(
+          self.filename, line, self.type_comments[line][1])
 
     node = node.ConnectNew("init")
     node, f_globals, _, _ = self.run_bytecode(node, code, f_globals, f_locals)
@@ -1950,9 +2020,21 @@ class VirtualMachine(object):
     filename = op.code.co_filename
     if filename != self.filename or op.line is None:
       return
-    lineno = op.line + 1
-    code, comment = self.type_comments.get(lineno, (None, None))
-    if code or not comment:
+
+    co_code = code_var.data[0].pyval.co_code
+    if not co_code:
+      return
+    comment = None
+    # Look for a type comment on a bare line after the opcode but before the
+    # first actual function code.
+    lineno = None
+    for lineno in range(op.line + 1, co_code[0].line):
+      entry = self.type_comments.get(lineno)
+      # entry is either None, or (src, comment).
+      if entry and not entry[0]:
+        comment = entry[1]
+        break
+    if not comment:
       return
 
     # It is an error to use a type comment on an annotated function.

@@ -210,7 +210,7 @@ class TestWithStatement(test_inference.InferenceTest):
               raise RuntimeError("generator didn't stop")
           else:
             if value is None:
-              value = type()  # pytype: disable=not-callable (needs if-split)
+              value = type()  # pytype: disable=not-callable # (needs if-split)
             try:
               self.gen.throw(type, value, traceback)
               raise RuntimeError(
