@@ -708,6 +708,15 @@ class BuiltinTests2(test_inference.InferenceTest):
       code = compile("1 + 2", "foo.py", "single")
     """)
 
+  def testIntInit(self):
+    self.assertNoErrors("""
+      int(42)
+      int(42.0)
+      int("42")
+      int(u"42")
+      int()
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

@@ -279,7 +279,7 @@ class ClassesTest(test_inference.InferenceTest):
     self.assertTypesMatchPytd(ty, """
       class Flag(object):
         convert_method = ...  # type: Type[int]
-        def convert(self, value: float or str) -> int
+        def convert(self, value: float or str or unicode) -> int
     """)
 
   def testBoundMethod(self):

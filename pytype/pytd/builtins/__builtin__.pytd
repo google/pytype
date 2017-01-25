@@ -648,7 +648,7 @@ class bool(int, SupportsInt, SupportsFloat):
     def conjugate(self, ...) -> int
 
 class int(object):  # TODO(kramm): SupportsInt, SupportsFloat, SupportsAbs)
-    def __init__(self, x: int or float or str, ...) -> NoneType
+    def __init__(self, x: int or float or str or unicode, ...) -> NoneType
     def __init__(self) -> NoneType
     def __add__(self, y: int) -> int
     def __add__(self, y: float) -> float
