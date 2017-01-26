@@ -717,6 +717,14 @@ class BuiltinTests2(test_inference.InferenceTest):
       int()
     """)
 
+  def testSuperAttribute(self):
+    ty = self.Infer("""
+      x = super.__name__
+    """)
+    self.assertTypesMatchPytd(ty, """
+      x = ...  # type: str
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

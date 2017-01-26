@@ -91,8 +91,8 @@ class AbstractAttributeHandler(object):
       return node, self._lookup_from_mro(
           node, obj.super_cls, name, valself, valcls, skip=obj.super_cls)
     elif isinstance(obj, abstract.Super):
-      # In Python 3, you can do "super.__init__".
-      raise NotImplementedError("Python 3 super not implemented yet")
+      return self.get_attribute(
+          node, self.vm.convert.super_type.data[0], name, valself, valcls)
     elif isinstance(obj, abstract.BoundFunction):
       return self.get_attribute(
           node, obj.underlying, name, valself, valcls)
