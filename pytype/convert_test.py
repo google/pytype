@@ -97,6 +97,15 @@ class ConvertTest(unittest.TestCase):
                          [self._vm.convert.primitive_class_instances[str],
                           self._vm.convert.primitive_class_instances[int]])
 
+  def test_build_bool(self):
+    any_bool = self._vm.convert.build_bool(self._vm.root_cfg_node, None)
+    t_bool = self._vm.convert.build_bool(self._vm.root_cfg_node, True)
+    f_bool = self._vm.convert.build_bool(self._vm.root_cfg_node, False)
+    self.assertEqual(any_bool.data,
+                     [self._vm.convert.primitive_class_instances[bool]])
+    self.assertEqual(t_bool.data, [self._vm.convert.true])
+    self.assertEqual(f_bool.data, [self._vm.convert.false])
+
 
 if __name__ == "__main__":
   unittest.main()

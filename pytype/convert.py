@@ -136,9 +136,9 @@ class Converter(object):
     if value is None:
       return self.primitive_class_instances[bool].to_variable(node)
     elif value is True:
-      return self.true_value.to_variable(node)
+      return self.true.to_variable(node)
     elif value is False:
-      return self.false_value.to_variable(node)
+      return self.false.to_variable(node)
     else:
       raise ValueError("Invalid bool value: %r", value)
 
