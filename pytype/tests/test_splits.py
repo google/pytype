@@ -466,6 +466,48 @@ class SplitTest(test_inference.InferenceTest):
         return x
       """)
 
+  def testDictContains(self):
+    """Assert that we can determine whether a dict contains a key."""
+    self.assertNoErrors("""
+      d1 = {"x": 42}
+      if "x" in d1:
+        print d1["x"]
+      else:
+        print d1["nonsense"]  # Dead code
+
+      d2 = {}
+      if "x" in d2:
+        print d2["nonsense"]  # Dead code
+
+      d3 = {__any_object__: __any_object__}
+      if "x" in d3:
+        print d3["x"]
+      else:
+        print d3["y"]
+    """)
+
+  def testDictDoesNotContain(self):
+    """Assert that we can determine whether a dict does not contain a key."""
+    self.assertNoErrors("""
+      d1 = {"x": 42}
+      if "x" not in d1:
+        print d1["nonsense"]  # Dead code
+      else:
+        print d1["x"]
+
+      d2 = {}
+      if "x" not in d2:
+        pass
+      else:
+        print d2["nonsense"]  # Dead code
+
+      d3 = {__any_object__: __any_object__}
+      if "x" not in d3:
+        print d3["y"]
+      else:
+        print d3["x"]
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

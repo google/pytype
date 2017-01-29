@@ -857,6 +857,18 @@ class Dict(ValueWithSlots, PythonConstant, WrapsDict("pyval")):
     else:
       return PythonConstant.compatible_with(self, logical_value)
 
+  def cmp_in(self, key):
+    """Gets whether the given key is in the dictionary.
+
+    Args:
+      key: The key.
+
+    Returns:
+      None if we don't have enough information, True if the key is
+      present, False otherwise.
+    """
+    return None if self.could_contain_anything else key in self.pyval
+
 
 class AbstractOrConcreteValue(Instance, PythonConstant):
   """Abstract value with a concrete fallback."""
