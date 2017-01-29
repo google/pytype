@@ -111,10 +111,10 @@ class Converter(object):
 
   def value_to_constant(self, val, constant_type):
     if (isinstance(val, abstract.PythonConstant) and
-        isinstance(val.pyval, constant_type)):
+        isinstance(val.pyval, constant_type or object)):
       return val.pyval
-    raise abstract.ConversionError(
-        "%s is not a(n) %s" % (val, constant_type.__name__))
+    name = "constant" if constant_type is None else constant_type.__name__
+    raise abstract.ConversionError("%s is not a(n) %s" % (val, name))
 
   def name_to_value(self, name):
     pytd_cls = self.vm.lookup_builtin(name)

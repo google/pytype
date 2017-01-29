@@ -48,16 +48,18 @@ class AsInstance(object):
     self.cls = cls
 
 
-def get_atomic_value(variable):
+def get_atomic_value(variable, constant_type=None):
   if len(variable.bindings) == 1:
-    return variable.bindings[0].data
-  else:
-    raise ConversionError(
-        "Variable with too many options when trying to get atomic value. %s %s"
-        % (variable, [a.data for a in variable.bindings]))
+    v, = variable.bindings
+    if isinstance(v.data, constant_type or object):
+      return v.data
+  name = "<any>" if constant_type is None else constant_type.__name__
+  raise ConversionError(
+      "Cannot get atomic value %s from variable. %s %s"
+      % (name, variable, [a.data for a in variable.bindings]))
 
 
-def get_atomic_python_constant(variable):
+def get_atomic_python_constant(variable, constant_type=None):
   """Get the concrete atomic Python value stored in this variable.
 
   This is used for things that are stored in typegraph.Variable, but we
@@ -65,6 +67,7 @@ def get_atomic_python_constant(variable):
 
   Args:
     variable: A typegraph.Variable. It can only have one possible value.
+    constant_type: Optionally, the required type of the constant.
   Returns:
     A Python constant. (Typically, a string, a tuple, or a code object.)
   Raises:
@@ -73,9 +76,7 @@ def get_atomic_python_constant(variable):
     IndexError: If there is more than one possibility for this value.
   """
   atomic = get_atomic_value(variable)
-  if isinstance(atomic, PythonConstant):
-    return atomic.pyval
-  raise ConversionError("Only some types are supported: %r" % type(atomic))
+  return atomic.vm.convert.value_to_constant(atomic, constant_type)
 
 
 def merge_values(values, vm):
@@ -949,21 +950,17 @@ class FunctionArgs(collections.namedtuple("_", ["posargs", "namedargs",
 
   def starargs_as_tuple(self):
     try:
-      args = self.starargs and get_atomic_python_constant(self.starargs)
-      if isinstance(args, tuple):
-        return args
+      args = self.starargs and get_atomic_python_constant(self.starargs, tuple)
     except ConversionError:
-      pass
-    return None
+      args = None
+    return args
 
   def starstarargs_as_dict(self):
     try:
-      kws = self.starstarargs and get_atomic_value(self.starstarargs)
-      if isinstance(kws, Dict):
-        return kws
+      kws = self.starstarargs and get_atomic_value(self.starstarargs, Dict)
     except ConversionError:
-      pass
-    return None
+      kws = None
+    return kws
 
   def simplify(self, node):
     """Try to insert part of *args, **kwargs into posargs / namedargs."""
