@@ -138,6 +138,7 @@ class TestFunctions(test_inference.InferenceTest):
   def test_wraps(self):
     with utils.Tempdir() as d:
       d.create_file("myfunctools.pyi", """
+        from typing import Any, Callable, Sequence
         from typing import Any
         _AnyCallable = Callable[..., Any]
         def wraps(wrapped: _AnyCallable, assigned: Sequence[str] = ..., updated: Sequence[str] = ...) -> Callable[[_AnyCallable], _AnyCallable]: ...
@@ -378,6 +379,7 @@ class TestGenerators(test_inference.InferenceTest):
           pass
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import List
       def f() -> int
       class Foo(object):
         def match_method(self) -> List[nothing, ...]
@@ -400,6 +402,7 @@ class TestGenerators(test_inference.InferenceTest):
   def test_multiple_signatures_with_type_parameter(self):
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", """
+        from typing import List, TypeVar
         T = TypeVar("T")
         def f(x: T, y: int) -> List[T]
         def f(x: List[T], y: str) -> List[T]
@@ -418,6 +421,7 @@ class TestGenerators(test_inference.InferenceTest):
     # Test that the right signature is picked in the presence of an unknown
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", """
+        from typing import List, TypeVar
         T = TypeVar("T")
         def f(x: T, y: int) -> List[T]
         def f(x: List[T], y: str) -> List[T]
@@ -428,6 +432,7 @@ class TestGenerators(test_inference.InferenceTest):
           return foo.f("", y)
       """, pythonpath=[d.path], deep=True, solve_unknowns=True)
       self.assertTypesMatchPytd(ty, """
+        from typing import List
         foo = ...  # type: module
         def f(y: int) -> List[str]
       """)
@@ -435,6 +440,7 @@ class TestGenerators(test_inference.InferenceTest):
   def test_unknown_with_solved_type_parameter(self):
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", """
+        from typing import List, TypeVar
         T = TypeVar("T")
         def f(x: T, y: T) -> List[T]
         def f(x: List[T], y: T) -> List[T]
@@ -445,6 +451,7 @@ class TestGenerators(test_inference.InferenceTest):
           return foo.f(x, "")
       """, pythonpath=[d.path], deep=True, solve_unknowns=True)
       self.assertTypesMatchPytd(ty, """
+        from typing import List
         foo = ...  # type: module
         # TODO(rechen): def f(x: str or List[str]) -> List[str]
         def f(x) -> list
@@ -453,6 +460,7 @@ class TestGenerators(test_inference.InferenceTest):
   def test_unknown_with_extra_information(self):
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", """
+        from typing import List, TypeVar
         T = TypeVar("T")
         def f(x: T) -> List[T]
         def f(x: List[T]) -> List[T]
@@ -482,6 +490,7 @@ class TestGenerators(test_inference.InferenceTest):
   def test_type_parameter_in_return(self):
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", """
+        from typing import Generic, TypeVar
         T = TypeVar("T")
         class MyPattern(Generic[T]):
           def match(self, string: T) -> MyMatch[T]
@@ -573,6 +582,7 @@ class TestGenerators(test_inference.InferenceTest):
         return isinstance
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import Callable
       def f(isinstance = ...) -> None
       def g() -> None
       def h() -> Callable

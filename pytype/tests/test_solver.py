@@ -20,6 +20,7 @@ class SolverTests(test_inference.InferenceTest):
                   pass
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+    from typing import List, Tuple
     class Node(object):
       children = ...  # type: List[nothing, ...] or Tuple[nothing, ...]
     """)
@@ -44,6 +45,7 @@ class SolverTests(test_inference.InferenceTest):
         return [a - 42.0 for a in A.viewvalues()]
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+        from typing import List
         def f(A: dict[?, float or complex or int]) -> List[float or complex, ...]
     """)
 
@@ -53,6 +55,7 @@ class SolverTests(test_inference.InferenceTest):
         return x.keys()
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import Mapping
       def f(x: Mapping) -> list
     """)
 
@@ -81,6 +84,7 @@ class SolverTests(test_inference.InferenceTest):
     # TODO(rechen): Both StringIO[str] and BinaryIO are subclasses of IO[str],
     # which therefore should be optimized away.
     self.assertTypesMatchPytd(ty, """
+      from typing import BinaryIO, IO
       StringIO = ...  # type: module
 
       class Foobar(object):
@@ -125,6 +129,7 @@ class SolverTests(test_inference.InferenceTest):
           return issubclass(val, self.types)
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+    from typing import Tuple
     class Foo(object):
       def __init__(self, *types) -> NoneType
       types = ...  # type: Tuple[type, ...]
@@ -180,6 +185,7 @@ class SolverTests(test_inference.InferenceTest):
       f(**d)
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import Dict, List
       def f(x) -> ?
 
       d = ...  # type: Dict[str, int]
@@ -231,6 +237,7 @@ class SolverTests(test_inference.InferenceTest):
         f()
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import List
       foo = ...  # type: List[list[int, ...], ...]
       bar = ...  # type: List[int, ...]
 
@@ -253,6 +260,7 @@ class SolverTests(test_inference.InferenceTest):
         f()
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import List
       foo = ...  # type: List[List[List[int, ...], ...], ...]
       bar = ...  # type: List[int, ...]
 
@@ -279,6 +287,7 @@ class SolverTests(test_inference.InferenceTest):
         f()
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import List
       class Container(object):
         foo = ...  # type: List[List[int, ...], ...]
         bar = ...  # type: List[int, ...]
@@ -312,6 +321,7 @@ class SolverTests(test_inference.InferenceTest):
           l.append(collections.defaultdict(int, [(0, 0)]))
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import List
       collections = ...  # type: module
       def bar(l: List[collections.defaultdict]) -> NoneType
     """)
@@ -331,6 +341,7 @@ class SolverTests(test_inference.InferenceTest):
   def testMutatingTypeParameters(self):
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", """
+        from typing import List
         def f() -> List[int]
       """)
       ty = self.Infer("""
@@ -341,6 +352,7 @@ class SolverTests(test_inference.InferenceTest):
           return x
       """, deep=True, pythonpath=[d.path], solve_unknowns=True)
       self.assertTypesMatchPytd(ty, """
+        from typing import List
         foo = ...  # type: module
         def f() -> List[int or str]
       """)

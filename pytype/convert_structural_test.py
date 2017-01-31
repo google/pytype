@@ -127,6 +127,7 @@ class MatchTest(unittest.TestCase):
 
   def test_or(self):
     mapping = self.parse_and_solve("""
+      from typing import Iterator
       class `~unknown1`(object):
         def join(self, _1: unicode) -> unicode
         def join(self, _1: Iterator[str]) -> str
@@ -175,6 +176,7 @@ class MatchTest(unittest.TestCase):
 
   def test_type_parameters(self):
     mapping = self.parse_and_solve("""
+      from typing import Generic
       T = TypeVar('T')
       class A(typing.Generic[T], object):
         def foo(self) -> ?
@@ -617,6 +619,7 @@ class MatchTest(unittest.TestCase):
 
   def test_convert_with_type_params(self):
     ast = self.parse("""
+      from typing import Dict
       class A(object):
           def foo(self, x: `~unknown1`) -> bool
 

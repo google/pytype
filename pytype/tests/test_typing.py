@@ -53,6 +53,7 @@ class TypingTest(test_inference.InferenceTest):
       x = typing.__all__
     """)
     self.assertTypesMatchPytd(ty, """
+      from typing import List
       typing = ...  # type: module
       x = ...  # type: List[str]
     """)
@@ -100,7 +101,7 @@ class TypingTest(test_inference.InferenceTest):
     """)
     self.assertErrorLogIs(errors, [(8, "attribute-error", r"y.*Foo")])
     self.assertTypesMatchPytd(ty, """
-      from typing import Any
+      from typing import Any, Type
       class Foo:
         x = ...  # type: int
       def f1(foo: Type[Foo]) -> int
@@ -136,12 +137,16 @@ class TypingTest(test_inference.InferenceTest):
       MyType = List[str]
     """)
     self.assertTypesMatchPytd(ty, """
+      from typing import List
       MyType = List[str]
     """)
 
   def test_use_type_alias(self):
     with utils.Tempdir() as d:
-      d.create_file("foo.pyi", "MyType = List[str]")
+      d.create_file("foo.pyi", """
+        from typing import List
+        MyType = List[str]
+      """)
       self.assertNoErrors("""
         from __future__ import google_type_annotations
         import foo
@@ -153,6 +158,7 @@ class TypingTest(test_inference.InferenceTest):
   def test_callable(self):
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", """
+        from typing import Callable
         def f() -> Callable
       """)
       self.assertNoErrors("""\
@@ -168,6 +174,7 @@ class TypingTest(test_inference.InferenceTest):
   def test_generics(self):
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", """
+        from typing import Dict
         K = TypeVar("K")
         V = TypeVar("V")
         class CustomDict(Dict[K, V]): ...
@@ -205,6 +212,7 @@ class TypingTest(test_inference.InferenceTest):
   def test_mapping(self):
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", """
+        from typing import Mapping
         K = TypeVar("K")
         V = TypeVar("V")
         class MyDict(Mapping[K, V]): ...
@@ -228,6 +236,7 @@ class TypingTest(test_inference.InferenceTest):
         n = [x for x in m.viewvalues()]
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        from typing import List, Tuple
         import foo
         foo = ...  # type: module
         m = ...  # type: foo.MyDict[str, int]
@@ -250,6 +259,7 @@ class TypingTest(test_inference.InferenceTest):
   def test_mutablemapping(self):
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", """
+        from typing import MutableMapping, TypeVar
         K = TypeVar("K")
         V = TypeVar("V")
         class MyDict(MutableMapping[K, V]): ...
@@ -268,6 +278,7 @@ class TypingTest(test_inference.InferenceTest):
         m.update([(1, 2), (3, 4)])
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        from typing import Tuple, Union
         import foo
         foo = ...  # type: module
         m = ...  # type: foo.MyDict[Union[complex, int, str], Union[complex, float, int]]
@@ -316,6 +327,7 @@ class TypingTest(test_inference.InferenceTest):
   def testRecursiveTuple(self):
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", """
+        from typing import Tuple
         class Foo(Tuple[Foo]): ...
       """)
       self.assertNoErrors("""\
@@ -331,6 +343,7 @@ class TypingTest(test_inference.InferenceTest):
         pass
     """)
     self.assertTypesMatchPytd(ty, """
+      from typing import Iterable
       class Foo(Iterable): ...
     """)
 

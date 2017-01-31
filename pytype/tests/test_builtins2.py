@@ -18,6 +18,7 @@ class BuiltinTests2(test_inference.InferenceTest):
         return divmod(3, y)
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import Tuple
       def f(x: int or float or complex,
             y: int or float or complex) -> Tuple[int or float or complex, ...]
     """)
@@ -39,7 +40,7 @@ class BuiltinTests2(test_inference.InferenceTest):
       x.update(a=3, b=4)
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any
+      from typing import Any, Dict
       x = ...  # type: Dict[str, Any]
     """)
 
@@ -71,6 +72,7 @@ class BuiltinTests2(test_inference.InferenceTest):
       data = set(x for x in [""])
     """, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import Set
       data = ...  # type: Set[str]
     """)
 
@@ -102,7 +104,7 @@ class BuiltinTests2(test_inference.InferenceTest):
           return self.__bases__
     """, deep=True)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any
+      from typing import Any, Dict, Type
       class Foo:
         def get_dict(self) -> Dict[str, Any]
         def get_name(self) -> str
@@ -133,7 +135,7 @@ class BuiltinTests2(test_inference.InferenceTest):
           return self.__mro__
     """, deep=True)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any
+      from typing import Any, Dict, Type
       class Foo(object):
         def get_dict(self) -> Dict[str, Any]
         def get_name(self) -> str
@@ -156,7 +158,7 @@ class BuiltinTests2(test_inference.InferenceTest):
   def testDictIterators(self):
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", """
-        from typing import Any
+        from typing import Any, Iterator
         def need_iterator(x: Iterator[Any]) -> None: ...
       """)
       ty = self.Infer("""\
@@ -170,8 +172,9 @@ class BuiltinTests2(test_inference.InferenceTest):
         item = d.iteritems().next()
       """, pythonpath=[d.path], solve_unknowns=True)
       self.assertTypesMatchPytd(ty, """
+        from typing import Dict, Tuple
         foo = ...  # type: module
-        d = ...  # type: dict[str, int]
+        d = ...  # type: Dict[str, int]
         key = ...  # type: str
         value = ...  # type: int
         item = ...  # type: Tuple[str, int]
@@ -215,7 +218,7 @@ class BuiltinTests2(test_inference.InferenceTest):
         z = A().x()
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        from typing import Any
+        from typing import Any, Type
         A = ...  # type: Type[foo.A]
         y = ...  # type: Any
         z = ...  # type: Any
@@ -233,7 +236,7 @@ class BuiltinTests2(test_inference.InferenceTest):
         z = A().x()
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        from typing import Any
+        from typing import Any, Type
         A = ...  # type: Type[foo.A]
         y = ...  # type: Any
         z = ...  # type: Any
@@ -256,7 +259,7 @@ class BuiltinTests2(test_inference.InferenceTest):
       lst3 = map(str, lst2)
     """, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any
+      from typing import Any, List
       lst1 = ...  # type: List[nothing]
       lst2 = ...  # type: List[nothing]
       x = ...  # type: Any
@@ -274,6 +277,7 @@ class BuiltinTests2(test_inference.InferenceTest):
       d7 = dict.fromkeys({True: False})
     """, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import Dict
       d1 = ...  # type: Dict[int, None]
       d2 = ...  # type: Dict[int, int]
       d3 = ...  # type: Dict[str, None]
@@ -305,6 +309,7 @@ class BuiltinTests2(test_inference.InferenceTest):
       x5 = sum([[1], ["2"]], [])
     """, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import List
       x1 = ...  # type: int
       x2 = ...  # type: int
       x3 = ...  # type: int or float or complex
@@ -349,6 +354,7 @@ class BuiltinTests2(test_inference.InferenceTest):
       x7 = filter(None, {True, False})
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import List, Tuple
       def f(x) -> None
       x1 = ...  # type: List[int]
       x2 = ...  # type: List[int]
@@ -413,6 +419,7 @@ class BuiltinTests2(test_inference.InferenceTest):
       d = m.viewkeys() ^ {1, 2, 3}
     """)
     self.assertTypesMatchPytd(ty, """
+      from typing import Dict, Set
       m = ...  # type: Dict[str, None]
       a = ...  # type: Set[str]
       b = ...  # type: Set[str]
@@ -425,6 +432,7 @@ class BuiltinTests2(test_inference.InferenceTest):
       v = {"a": 1}.popitem()
     """)
     self.assertTypesMatchPytd(ty, """
+      from typing import Tuple
       v = ...  # type: Tuple[str, int]
     """)
 
@@ -459,7 +467,7 @@ class BuiltinTests2(test_inference.InferenceTest):
       x9 = iter(int, 42)
     """, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any
+      from typing import Any, Generator, Iterator
       x1 = ...  # type: Iterator[str]
       x2 = ...  # type: Iterator[unicode]
       x3 = ...  # type: bytearray_iterator
@@ -489,6 +497,7 @@ class BuiltinTests2(test_inference.InferenceTest):
       l14 = list(x for x in [42])
     """, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import List
       l1 = ...  # type: List[nothing]
       l2 = ...  # type: List[int]
       l3 = ...  # type: List[str]
@@ -523,6 +532,7 @@ class BuiltinTests2(test_inference.InferenceTest):
       t14 = tuple(x for x in [42])
     """, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import Tuple
       t1 = ...  # type: Tuple[nothing, ...]
       t2 = ...  # type: Tuple[int, ...]
       t3 = ...  # type: Tuple[str, ...]
@@ -559,6 +569,7 @@ class BuiltinTests2(test_inference.InferenceTest):
       x4.extend(frozenset({""}))
     """)
     self.assertTypesMatchPytd(ty, """
+      from typing import List
       x1 = ...  # type: List[int or str]
       x2 = ...  # type: List[int or str]
       x3 = ...  # type: List[int or str]
@@ -574,6 +585,7 @@ class BuiltinTests2(test_inference.InferenceTest):
       x5 = sorted([42], reversed=True)
     """, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import List
       x1 = ...  # type: List[str]
       x2 = ...  # type: List[unicode]
       x3 = ...  # type: List[int]
@@ -623,6 +635,7 @@ class BuiltinTests2(test_inference.InferenceTest):
       z = x['foo']
     """)
     self.assertTypesMatchPytd(ty, """
+      from typing import Dict
       x = ...  # type: Dict[str, float or int]
       y = ...  # type: float or int
       z = ...  # type: float
@@ -636,6 +649,7 @@ class BuiltinTests2(test_inference.InferenceTest):
       z = x['foo']
     """)
     self.assertTypesMatchPytd(ty, """
+      from typing import Dict, Optional
       x = ...  # type: Dict[str, Optional[int]]
       y = ...  # type: Optional[int]
       z = ...  # type: None
@@ -650,7 +664,7 @@ class BuiltinTests2(test_inference.InferenceTest):
       y2 = x2.setdefault(*["foo", 42])
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any
+      from typing import Any, Dict
 
       x1 = ...  # type: Dict[str, int]
       y1 = ...  # type: int
@@ -666,7 +680,7 @@ class BuiltinTests2(test_inference.InferenceTest):
       z = x.setdefault(1, 2, 3, *[])
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any
+      from typing import Any, Dict
       x = ...  # type: Dict[nothing, nothing]
       y = ...  # type: Any
       z = ...  # type: Any

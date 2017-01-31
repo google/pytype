@@ -58,7 +58,7 @@ class PYITest(test_inference.InferenceTest):
   def testTyping(self):
     with utils.Tempdir() as d:
       d.create_file("mod.pyi", """
-        from typing import Optional, List, Any, IO
+        from typing import Any, IO, List, Optional
         def split(s: Optional[int]) -> List[str, ...]: ...
       """)
       ty = self.Infer("""\
@@ -67,6 +67,7 @@ class PYITest(test_inference.InferenceTest):
           return mod.split(x)
       """, deep=True, solve_unknowns=True, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        from typing import List
         mod = ...  # type: module
         def g(x: NoneType or int) -> List[str, ...]
       """)
@@ -187,6 +188,7 @@ class PYITest(test_inference.InferenceTest):
   def testIterable(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
+        from typing import Iterable
         def f(l: Iterable[int]) -> int: ...
       """)
       ty = self.Infer("""\
@@ -247,6 +249,7 @@ class PYITest(test_inference.InferenceTest):
   def testBaseClass(self):
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", """
+        from typing import Generic, TypeVar
         S = TypeVar('S')
         T = TypeVar('T')
         class A(Generic[S]):
@@ -266,6 +269,7 @@ class PYITest(test_inference.InferenceTest):
           return x.baz()
       """, deep=True, pythonpath=[d.path], solve_unknowns=True)
       self.assertTypesMatchPytd(ty, """
+        from typing import Union
         foo = ...  # type: module
         def f(x: Union[foo.A[str], foo.B[str]]) -> str
         def g(x: Union[foo.A[int], foo.B[int], foo.C]) -> int
@@ -456,6 +460,7 @@ class PYITest(test_inference.InferenceTest):
   def testStarArgs(self):
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", """
+        from typing import Dict, TypeVar
         K = TypeVar("K")
         V = TypeVar("V")
         def foo(a: K, *b, c: V, **d) -> Dict[K, V]: ...
@@ -468,7 +473,7 @@ class PYITest(test_inference.InferenceTest):
         d = foo.foo(*(), **{"d": 3j})
       """, solve_unknowns=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        from typing import Any
+        from typing import Any, Dict
         foo = ...  # type: module
         a = ...  # type: dict
         b = ...  # type: Dict[int, complex]
@@ -520,7 +525,7 @@ class PYITest(test_inference.InferenceTest):
   def testFrozenSet(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
-        from typing import Any
+        from typing import Any, FrozenSet, Set
         x = ...  # type: FrozenSet[str]
         y = ...  # type: Set[Any]
       """)
@@ -530,6 +535,7 @@ class PYITest(test_inference.InferenceTest):
         y = a.x - a.y
       """, pythonpath=[d.path], solve_unknowns=True)
       self.assertTypesMatchPytd(ty, """
+        from typing import FrozenSet
         a = ...  # type: module
         x = ...  # type: FrozenSet[str]
         y = ...  # type: FrozenSet[str]

@@ -22,6 +22,7 @@ class GeneratorTest(test_inference.InferenceTest):
       y = list(x for x in [1, 2, 3])
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import List
       y = ...  # type: List[int, ...]
     """)
 
@@ -31,6 +32,7 @@ class GeneratorTest(test_inference.InferenceTest):
       z = list(x for x in [1, 2, 3])
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import List
       y = ...  # type: List[int, ...]
       z = ...  # type: List[int, ...]
     """)
@@ -54,6 +56,7 @@ class GeneratorTest(test_inference.InferenceTest):
           return generator()
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import Generator
       class Foo(object):
         def bar(self) -> ?
         def __iter__(self) -> Generator[nothing, nothing, nothing]
@@ -65,7 +68,7 @@ class GeneratorTest(test_inference.InferenceTest):
         yield 3
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any
+      from typing import Any, Generator
       def foo(self) -> Generator[int, Any, Any]
     """)
 
@@ -80,6 +83,7 @@ class GeneratorTest(test_inference.InferenceTest):
           return x
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import Union
       class Foo(object):
         def __getitem__(self, key) -> str
       def foo(self) -> Union[None, str]

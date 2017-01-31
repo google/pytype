@@ -46,6 +46,7 @@ class ConvertTest(unittest.TestCase):
 
   def test_convert_metaclass_with_generic(self):
     ast = self._load_ast("a", """
+      from typing import Generic, TypeVar
       T = TypeVar("T")
       class A(type): ...
       class B(Generic[T], metaclass=A): ...
@@ -59,6 +60,7 @@ class ConvertTest(unittest.TestCase):
 
   def test_generic_with_any_param(self):
     ast = self._load_ast("a", """
+      from typing import Dict
       x = ...  # type: Dict[str]
     """)
     val = self._vm.convert.constant_to_value(
@@ -74,6 +76,7 @@ class ConvertTest(unittest.TestCase):
 
   def test_heterogeneous_tuple(self):
     ast = self._load_ast("a", """
+      from typing import Tuple
       x = ...  # type: Tuple[str, int]
     """)
     x = ast.Lookup("a.x").type

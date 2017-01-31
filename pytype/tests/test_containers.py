@@ -158,6 +158,7 @@ class ContainerTest(test_inference.InferenceTest):
       l.append(x)
     """, deep=False, solve_unknowns=False)
     self.assertTypesMatchPytd(ty, """
+      from typing import List
       x = ...  # type: int or float
       y = ...  # type: ?
       l = ...  # type: List[int or float, ...]
@@ -369,6 +370,7 @@ class ContainerTest(test_inference.InferenceTest):
       a = [str(ty) for ty in (float, int, bool)[:len(sys.argv)]]
     """, deep=True, solve_unknowns=False)
     self.assertTypesMatchPytd(ty, """
+      from typing import List, Type
       sys = ...  # type: module
       a = ...  # type: List[str, ...]
       ty = ...  # type: Type[float or int]
@@ -382,6 +384,7 @@ class ContainerTest(test_inference.InferenceTest):
       open('%s' % entry, 'w')
     """, deep=False, solve_unknowns=False)
     self.assertTypesMatchPytd(ty, """
+      from typing import Dict
       d = ...  # type: Dict[str, str]
       entry = ...  # type: str
     """)
@@ -392,6 +395,7 @@ class ContainerTest(test_inference.InferenceTest):
         return dict([])
     """, deep=True, solve_unknowns=False)
     self.assertTypesMatchPytd(ty, """
+      from typing import Dict
       def f() -> Dict[nothing, nothing]
     """)
 
@@ -401,6 +405,7 @@ class ContainerTest(test_inference.InferenceTest):
         return dict([("foo", "foo")])
     """, deep=True, solve_unknowns=False)
     self.assertTypesMatchPytd(ty, """
+      from typing import Dict
       def f() -> Dict[str, str]
     """)
 
@@ -455,6 +460,7 @@ class ContainerTest(test_inference.InferenceTest):
       y = divmod(x, x)
     """, deep=True, solve_unknowns=False)
     self.assertTypesMatchPytd(ty, """
+      from typing import Tuple
       x = ...  # type: float or int
       y = ...  # type: Tuple[float or int, float or int]
     """)
@@ -468,6 +474,7 @@ class ContainerTest(test_inference.InferenceTest):
       y = divmod(x, 3.14)
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import Tuple
       x = ...  # type: float or int
       y = ...  # type: Tuple[complex or float, ...]
     """)
@@ -497,6 +504,7 @@ class ContainerTest(test_inference.InferenceTest):
         return lst
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import List
       def f() -> List[list]: ...
     """)
 
@@ -514,6 +522,7 @@ class ContainerTest(test_inference.InferenceTest):
         return s1
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import Dict, Union
       def f() -> Dict[str, Union[None, dict]]: ...
     """)
 
@@ -531,7 +540,7 @@ class ContainerTest(test_inference.InferenceTest):
       y = x.some_attribute
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any
+      from typing import Any, List
       lst1 = ...  # type: List[nothing]
       lst2 = ...  # type: List[nothing]
       x = ...  # type: Any
@@ -560,7 +569,7 @@ class ContainerTest(test_inference.InferenceTest):
   def testIteratePyiListAny(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
-        from typing import Any
+        from typing import Any, List
         lst1 = ...  # type: List[Any]
       """)
       ty = self.Infer("""
@@ -580,6 +589,7 @@ class ContainerTest(test_inference.InferenceTest):
   def testIteratePyiListInt(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
+        from typing import List
         lst1 = ...  # type: List[int]
       """)
       ty = self.Infer("""
@@ -587,6 +597,7 @@ class ContainerTest(test_inference.InferenceTest):
         lst2 = [x for x in a.lst1]
       """, pythonpath=[d.path], deep=True, solve_unknowns=True)
       self.assertTypesMatchPytd(ty, """
+        from typing import List
         a = ...  # type: module
         lst2 = ...  # type: List[int]
         x = ...  # type: int
@@ -595,6 +606,7 @@ class ContainerTest(test_inference.InferenceTest):
   def testIteratePyiListNothing(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
+        from typing import List
         lst1 = ...  # type: List[nothing]
       """)
       ty = self.Infer("""
@@ -604,7 +616,7 @@ class ContainerTest(test_inference.InferenceTest):
         y = x.some_attribute
       """, pythonpath=[d.path], deep=True, solve_unknowns=True)
       self.assertTypesMatchPytd(ty, """
-        from typing import Any
+        from typing import Any, List
         a = ...  # type: module
         lst2 = ...  # type: List[nothing]
         x = ...  # type: Any
@@ -621,6 +633,7 @@ class ContainerTest(test_inference.InferenceTest):
       b2 = mymap['b']
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import Dict, Union
       mymap = ...  # type: Dict[str, Union[int, float, complex]]
       a = ...  # type: float
       b1 = ...  # type: int
@@ -634,6 +647,7 @@ class ContainerTest(test_inference.InferenceTest):
   def testIteratePyiListUnion(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
+        from typing import List, Set
         lst1 = ...  # type: List[nothing] or Set[int]
       """)
       ty = self.Infer("""
@@ -641,6 +655,7 @@ class ContainerTest(test_inference.InferenceTest):
         lst2 = [x for x in a.lst1]
       """, pythonpath=[d.path], deep=True, solve_unknowns=True)
       self.assertTypesMatchPytd(ty, """
+        from typing import List
         a = ...  # type: module
         lst2 = ...  # type: List[int]
         x = ...  # type: int
@@ -652,7 +667,7 @@ class ContainerTest(test_inference.InferenceTest):
       y = [x() for x in empty]
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any
+      from typing import Any, List
       empty = ...  # type: List[nothing]
       y = ...  # type: list
       x = ...  # type: Any
@@ -669,7 +684,7 @@ class ContainerTest(test_inference.InferenceTest):
       y = [f(x) for x in empty]
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any
+      from typing import Any, List
       empty = ...  # type: List[nothing]
       def f(x) -> int or str
       y = ...  # type: List[int or str]
@@ -682,7 +697,7 @@ class ContainerTest(test_inference.InferenceTest):
       y = [list(x) for x in empty]
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any
+      from typing import Any, List
       empty = ...  # type: List[nothing]
       y = ...  # type: List[list]
       x = ...  # type: Any
@@ -694,7 +709,7 @@ class ContainerTest(test_inference.InferenceTest):
       y = [isinstance(x, int) for x in empty]
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any
+      from typing import Any, List
       empty = ...  # type: List[nothing]
       y = ...  # type: List[bool]
       x = ...  # type: Any
@@ -710,7 +725,7 @@ class ContainerTest(test_inference.InferenceTest):
       y = [f(x) for x in empty]
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any
+      from typing import Any, Dict, List
       empty = ...  # type: List[nothing]
       def f(x) -> Dict[type, Any]
       y = ...  # type: List[Dict[type, Any]]
@@ -731,7 +746,7 @@ class ContainerTest(test_inference.InferenceTest):
           return oldest
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any
+      from typing import Any, Dict
       cache = ...  # type: Dict[str, Dict[nothing, nothing] or list]
       def read(path) -> Any
     """)

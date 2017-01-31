@@ -43,7 +43,8 @@ class MatcherTest(unittest.TestCase):
     Returns:
       An AtomicAbstractValue.
     """
-    src = "x = ...  # type: " + t
+    src = "from typing import Tuple, Type\n"
+    src += "x = ...  # type: " + t
     filename = str(hash((t, as_instance)))
     x = self._parse_and_lookup(src, "x", filename).type
     if as_instance:
@@ -204,7 +205,9 @@ class MatcherTest(unittest.TestCase):
     self.assertMatch(left3, right)
 
   def testTupleSubclass(self):
-    subclass = self._parse_and_lookup("class A(Tuple[bool, int]): ...", "A")
+    subclass = self._parse_and_lookup("""
+      from typing import Tuple
+      class A(Tuple[bool, int]): ...""", "A")
     left = self.vm.convert.constant_to_value(
         "", abstract.AsInstance(subclass), {}, self.vm.root_cfg_node)
     right1 = self._convert("Tuple[bool, int]", as_instance=False)

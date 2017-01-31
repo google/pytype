@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Type
 
 class _flags(object):  # TODO(pludemann): allow calling this `flags`
   debug = ...  # type: int

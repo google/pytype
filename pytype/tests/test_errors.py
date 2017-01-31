@@ -157,6 +157,7 @@ class ErrorTest(test_inference.InferenceTest):
   def testInheritFromGeneric(self):
     with utils.Tempdir() as d:
       d.create_file("mod.pyi", """
+        from typing import Generic, TypeVar
         T = TypeVar("T")
         class Foo(Generic[T]): ...
         class Bar(Foo[int]): ...
@@ -378,6 +379,7 @@ class ErrorTest(test_inference.InferenceTest):
   def testDuplicateTypeParameter(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
+        from typing import Generic, TypeVar
         T = TypeVar("T")
         class A(Generic[T, T]): pass
       """)
@@ -389,6 +391,7 @@ class ErrorTest(test_inference.InferenceTest):
   def testTypeParameterInModuleConstant(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
+        from typing import TypeVar
         T = TypeVar("T")
         x = ...  # type: T
       """)
@@ -400,6 +403,7 @@ class ErrorTest(test_inference.InferenceTest):
   def testTypeParameterInClassAttribute(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
+        from typing import Generic, TypeVar
         T = TypeVar("T")
         class A(Generic[T]):
           x = ...  # type: T
@@ -414,6 +418,7 @@ class ErrorTest(test_inference.InferenceTest):
   def testUnboundTypeParameterInInstanceAttribute(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
+        from typing import TypeVar
         T = TypeVar("T")
         class A(object):
           x = ...  # type: T
@@ -590,6 +595,7 @@ class ErrorTest(test_inference.InferenceTest):
   def testMatchType(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
+        from typing import Type
         class A(object): ...
         class B(A): ...
         class C(object): ...
@@ -615,6 +621,7 @@ class ErrorTest(test_inference.InferenceTest):
   def testMatchParameterizedType(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
+        from typing import Generic, Type, TypeVar
         T = TypeVar("T")
         class A(Generic[T]): ...
         class B(A[str]): ...
@@ -864,6 +871,7 @@ class ErrorTest(test_inference.InferenceTest):
   def testBadPyiDict(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
+        from typing import Dict
         x = ...  # type: Dict[str, int, float]
       """)
       _, errors = self.InferAndCheck("""\

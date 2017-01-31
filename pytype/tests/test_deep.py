@@ -212,6 +212,7 @@ class StructuralTest(test_inference.InferenceTest):
         return lines
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import List
       def trim(docstring: bytearray or str or unicode) -> List[bytearray or str or unicode, ...]
     """)
 

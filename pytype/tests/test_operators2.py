@@ -140,6 +140,7 @@ class CallErrorTests(test_inference.InferenceTest):
   def testCustomReverseOperator(self):
     with utils.Tempdir() as d:
       d.create_file("test.pyi", """
+        from typing import Tuple
         class Test():
           def __or__(self, other: Tuple[int, ...]) -> bool
           def __ror__(self, other: Tuple[int, ...]) -> bool
@@ -154,6 +155,7 @@ class CallErrorTests(test_inference.InferenceTest):
           return (1, 2) | t
       """, pythonpath=[d.path], deep=True, solve_unknowns=True)
       self.assertTypesMatchPytd(ty, """
+        from typing import Set
         test = ...  # type: module
         x = ...  # type: bool
         y = ...  # type: bool

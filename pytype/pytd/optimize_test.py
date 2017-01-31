@@ -158,6 +158,7 @@ class TestOptimize(parser_test_base.ParserTest):
 
   def testRemoveRedundantSignaturesWithLongUnion(self):
     src = textwrap.dedent("""
+        from typing import Union
         def foo(x: None = ...) -> None: ...
         def foo(x: Union[int, complex, float, long, set, list, unicode,
                          dict, tuple, str, module, OSError, bytearray,

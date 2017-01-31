@@ -302,6 +302,7 @@ class TestUtils(parser_test_base.ParserTest):
 
   def testGetBasesInMRO(self):
     ast = parser.parse_string(textwrap.dedent("""
+      from typing import Generic, TypeVar
       T = TypeVar("T")
       class Foo(Generic[T]): pass
       class Bar(Foo[int]): pass

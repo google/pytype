@@ -16,6 +16,7 @@ class MatchTest(test_inference.InferenceTest):
       x = tokenize.generate_tokens(f)
     """, deep=True, solve_unknowns=False)
     self.assertTypesMatchPytd(ty, """
+      from typing import Generator, Tuple
       tokenize = ...  # type: module
       def f() -> NoneType
       x = ...  # type: Generator[Tuple[int, str, Tuple[int, int], Tuple[int, int], str], None, None]
@@ -28,6 +29,7 @@ class MatchTest(test_inference.InferenceTest):
       x = tokenize.generate_tokens(StringIO.StringIO("").readline)
     """, deep=True, solve_unknowns=False)
     self.assertTypesMatchPytd(ty, """
+      from typing import Generator, Tuple
       tokenize = ...  # type: module
       StringIO = ...  # type: module
       x = ...  # type: Generator[Tuple[int, str, Tuple[int, int], Tuple[int, int], str], None, None]
@@ -36,6 +38,7 @@ class MatchTest(test_inference.InferenceTest):
   def testTypeAgainstCallable(self):
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", """
+        from typing import Callable
         def f(x: Callable) -> str
       """)
       ty = self.Infer("""
@@ -55,6 +58,7 @@ class MatchTest(test_inference.InferenceTest):
         return a & x
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import Iterable, Set
       a = ...  # type: Set[int]
 
       def f(x: Iterable) -> set: ...
@@ -68,6 +72,7 @@ class MatchTest(test_inference.InferenceTest):
         return s.intersection(x)
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import Set
       s = ...  # type: Set[int]
 
       def f(x) -> set: ...
@@ -76,6 +81,7 @@ class MatchTest(test_inference.InferenceTest):
   def testGenericHierarchy(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
+        from typing import Iterable
         def f(x: Iterable[str]) -> str
       """)
       ty = self.Infer("""
@@ -93,7 +99,7 @@ class MatchTest(test_inference.InferenceTest):
       b = ["%d" % i for i in a]
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any
+      from typing import Any, List
       a = ...  # type: List[nothing]
       b = ...  # type: List[str]
       i = ...  # type: Any
@@ -102,6 +108,7 @@ class MatchTest(test_inference.InferenceTest):
   def testGeneric(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
+        from typing import Generic, Iterable
         K = TypeVar("K")
         V = TypeVar("V")
         Q = TypeVar("Q")

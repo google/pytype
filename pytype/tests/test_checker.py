@@ -119,6 +119,7 @@ class CheckerTest(test_inference.InferenceTest):
         return [object()]
     """
     pytd = """
+      from typing import List
       def f() -> List[int]
     """
     errorlog = self.get_checking_errors(python, pytd)

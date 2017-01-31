@@ -258,8 +258,6 @@ class _Parser(object):
       version: A version tuple.
       platform: A platform string.
     """
-    self._type_map = {}
-
     self._used = False
     self._error_location = None
     self._version = _three_tuple(version or _DEFAULT_VERSION)
@@ -300,11 +298,7 @@ class _Parser(object):
 
     self._filename = filename
     self._ast_name = name
-
-    if name != "typing":
-      self._type_map = {name: pytd.NamedType("typing." + name)
-                        for name in pep484.PEP484_NAMES}
-      del self._type_map["AnyStr"]
+    self._type_map = {}
 
     try:
       defs = parser_ext.parse(self, src)

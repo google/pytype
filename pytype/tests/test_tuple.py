@@ -20,6 +20,7 @@ class TupleTest(test_inference.InferenceTest):
       v3 = t[2]
     """, deep=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import Tuple
       t = ...   # type: Tuple[str, int]
       v1 = ...  # type: str
       v2 = ...  # type: int
@@ -38,6 +39,7 @@ class TupleTest(test_inference.InferenceTest):
       v6 = t[:][0]
     """)
     self.assertTypesMatchPytd(ty, """
+      from typing import Tuple
       t = ...  # type: Tuple[str, int]
       v1 = ...  # type: Tuple[str, int]
       v2 = ...  # type: Tuple[str]
@@ -75,6 +77,7 @@ class TupleTest(test_inference.InferenceTest):
       v1, v2 = f(__any_object__)
     """)
     self.assertTypesMatchPytd(ty, """
+      from typing import Tuple
       def f(x: Tuple[str, int]) -> Tuple[str, int]: ...
       v1 = ...  # type: str
       v2 = ...  # type: int
@@ -115,6 +118,7 @@ class TupleTest(test_inference.InferenceTest):
       r = [x for x in Foo()]
     """)
     self.assertTypesMatchPytd(ty, """
+      from typing import List, Tuple
       class Foo(object):
         mytuple = ...  # type: Tuple[int, str, complex]
         def __getitem__(self, pos: int) -> int or str or complex
@@ -156,6 +160,7 @@ class TupleTest(test_inference.InferenceTest):
   def testInlineTuple(self):
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", """
+        from typing import Tuple
         class A(Tuple[int, str]): ...
       """)
       self.assertNoErrors("""
@@ -174,6 +179,7 @@ class TupleTest(test_inference.InferenceTest):
   def testInlineTupleError(self):
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", """
+        from typing import Tuple
         class A(Tuple[str, int]): ...
       """)
       _, errors = self.InferAndCheck("""\

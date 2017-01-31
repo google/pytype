@@ -13,6 +13,7 @@ class GenericTest(test_inference.InferenceTest):
   def testBasic(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
+        from typing import List, TypeVar
         T = TypeVar("T")
         class A(List[T]): pass
         def f() -> A[int]
@@ -30,6 +31,7 @@ class GenericTest(test_inference.InferenceTest):
   def testBinop(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
+        from typing import List, TypeVar
         T = TypeVar("T")
         class A(List[T]): pass
       """)
@@ -39,6 +41,7 @@ class GenericTest(test_inference.InferenceTest):
           return A() + [42]
       """, pythonpath=[d.path], deep=True, solve_unknowns=True)
       self.assertTypesMatchPytd(ty, """
+        from typing import List, Type
         A = ...  # type: Type[a.A]
         def f() -> List[int]
       """)
@@ -46,6 +49,7 @@ class GenericTest(test_inference.InferenceTest):
   def testSpecialized(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
+        from typing import Dict, TypeVar
         K = TypeVar("K")
         V = TypeVar("V")
         class A(Dict[K, V]): pass
@@ -69,6 +73,7 @@ class GenericTest(test_inference.InferenceTest):
     with utils.Tempdir() as d1:
       with utils.Tempdir() as d2:
         d1.create_file("a.pyi", """
+          from typing import List, TypeVar
           T = TypeVar("T")
           class A(List[T]): pass
         """)
@@ -94,6 +99,7 @@ class GenericTest(test_inference.InferenceTest):
   def testSpecializedPartial(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
+        from typing import Dict, TypeVar
         V = TypeVar("V")
         class A(Dict[str, V]): pass
         class B(A[int]): pass
@@ -110,6 +116,7 @@ class GenericTest(test_inference.InferenceTest):
           return baz().items()
       """, pythonpath=[d.path], deep=True, solve_unknowns=True)
       self.assertTypesMatchPytd(ty, """
+        from typing import List, Tuple
         a = ...  # type: module
         def foo() -> a.A[nothing]
         def bar() -> List[str]
@@ -120,6 +127,7 @@ class GenericTest(test_inference.InferenceTest):
   def testTypeParameter(self):
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", """
+        from typing import Generic, TypeVar
         T = TypeVar("T")
         class A(Generic[T]):
           def bar(self) -> T: ...
@@ -138,6 +146,7 @@ class GenericTest(test_inference.InferenceTest):
   def testTypeParameterRenaming(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
+        from typing import List, TypeVar
         U = TypeVar("U")
         class A(List[U]): pass
         class B(A[int]): pass
@@ -163,6 +172,7 @@ class GenericTest(test_inference.InferenceTest):
   def testTypeParameterRenamingChain(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
+        from typing import List, Set, TypeVar
         A = TypeVar("A")
         B = TypeVar("B")
         class Foo(List[A]):
@@ -188,6 +198,7 @@ class GenericTest(test_inference.InferenceTest):
   def testTypeParameterDeep(self):
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", """
+        from typing import Generic, TypeVar
         U = TypeVar("U")
         V = TypeVar("V")
         class A(Generic[U]):
@@ -212,6 +223,7 @@ class GenericTest(test_inference.InferenceTest):
       """)
       with utils.Tempdir() as d2:
         d2.create_file("b.pyi", """
+          from typing import Generic
           from a import T
           class A(Generic[T]):
             def __init__(self, x: T) -> None:
@@ -235,6 +247,7 @@ class GenericTest(test_inference.InferenceTest):
   def testTypeParameterConflict(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
+        from typing import Generic, TypeVar
         T = TypeVar("T")
         K = TypeVar("K")
         V = TypeVar("V")
@@ -255,6 +268,7 @@ class GenericTest(test_inference.InferenceTest):
   def testTypeParameterAmbiguous(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
+        from typing import Generic, List
         T = TypeVar("T")
         class A(Generic[T]): pass
         class B(A[int]): pass
@@ -274,6 +288,7 @@ class GenericTest(test_inference.InferenceTest):
   def testUnion(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
+        from typing import List
         class A(List[int or str]): pass
       """)
       ty = self.Infer("""
@@ -292,6 +307,7 @@ class GenericTest(test_inference.InferenceTest):
   def testMultipleTemplates(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
+        from typing import Generic, List, TypeVar
         K = TypeVar("K")
         V = TypeVar("V")
         class A(Generic[K, V], List[V]): pass
@@ -311,6 +327,7 @@ class GenericTest(test_inference.InferenceTest):
   def testMultipleTemplatesFlipped(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
+        from typing import Dict, Generic, TypeVar
         K = TypeVar("K")
         V = TypeVar("V")
         class MyList(Generic[V]):
@@ -339,6 +356,7 @@ class GenericTest(test_inference.InferenceTest):
   def testTypeParameterEmpty(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
+        from typing import Generic, List, TypeVar
         T = TypeVar("T")
         class A(Generic[T]):
           def f(self) -> List[T]
@@ -349,6 +367,7 @@ class GenericTest(test_inference.InferenceTest):
           return a.A().f()
       """, pythonpath=[d.path], deep=True, solve_unknowns=True)
       self.assertTypesMatchPytd(ty, """
+        from typing import List
         a = ...  # type: module
         def f() -> List[nothing]
       """)
@@ -357,6 +376,7 @@ class GenericTest(test_inference.InferenceTest):
   def testTypeParameterLimits(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
+        from typing import AnyStr, Generic
         class A(Generic[AnyStr]):
           def f(self) -> AnyStr
       """)
@@ -373,6 +393,7 @@ class GenericTest(test_inference.InferenceTest):
   def testPreventInfiniteLoopOnTypeParamCollision(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
+        from typing import List, TypeVar
         T = TypeVar("T")
         class Foo(List[T]): pass
       """)
@@ -388,6 +409,7 @@ class GenericTest(test_inference.InferenceTest):
   def testTemplateConstruction(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
+        from typing import Dict, Generic, List, TypeVar
         T = TypeVar("T")
         U = TypeVar("U")
         class A(Dict[int, U], List[T], Generic[T, U]):
@@ -417,6 +439,7 @@ class GenericTest(test_inference.InferenceTest):
   def testRecursiveContainer(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
+        from typing import List
         class A(List[A]): pass
       """)
       ty = self.Infer("""
@@ -435,6 +458,7 @@ class GenericTest(test_inference.InferenceTest):
   def testPyTDSubclass(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
+        from typing import List, TypeVar
         T = TypeVar("T")
         class A(List[T]):
           def __init__(self) -> None:
@@ -458,6 +482,7 @@ class GenericTest(test_inference.InferenceTest):
   def testInterpreterSubclass(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
+        from typing import List, TypeVar
         T = TypeVar("T")
         class A(List[T]):
           def __init__(self) -> None:
@@ -482,6 +507,7 @@ class GenericTest(test_inference.InferenceTest):
   def testInstanceAttribute(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
+        from typing import List, TypeVar
         T = TypeVar("T")
         class A(List[T]):
           x = ...  # type: T
@@ -503,6 +529,7 @@ class GenericTest(test_inference.InferenceTest):
   def testInstanceAttributeVisible(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
+        from typing import Generic, TypeVar
         T = TypeVar("T")
         class MyPattern(Generic[T]):
           pattern = ...  # type: T
@@ -528,6 +555,7 @@ class GenericTest(test_inference.InferenceTest):
   def testInstanceAttributeChange(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
+        from typing import Generic, TypeVar
         T = TypeVar("T")
         N = TypeVar("N")
         class A(Generic[T]):
@@ -566,6 +594,7 @@ class GenericTest(test_inference.InferenceTest):
   def testInstanceAttributeInherited(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
+        from typing import List, TypeVar
         T = TypeVar("T")
         class A(List[T]):
           x = ...  # type: T
@@ -590,6 +619,7 @@ class GenericTest(test_inference.InferenceTest):
   def testInstanceAttributeSet(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
+        from typing import Generic, TypeVar
         T = TypeVar("T")
         class A(Generic[T]):
           def f(self) -> T
@@ -610,6 +640,7 @@ class GenericTest(test_inference.InferenceTest):
   def testInstanceAttributeConditional(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
+        from typing import List, TypeVar
         T = TypeVar("T")
         class A(List[T]):
           x = ...  # type: T
@@ -637,6 +668,7 @@ class GenericTest(test_inference.InferenceTest):
   def testInstanceAttributeMethod(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
+        from typing import List, TypeVar
         T = TypeVar("T")
         class A(List[T]):
           x = ...  # type: T
@@ -655,7 +687,7 @@ class GenericTest(test_inference.InferenceTest):
   def testUnknown(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
-        from typing import Any
+        from typing import Any, Generic, TypeVar
         T = TypeVar("T")
         class A1(Generic[T]):
           def f(self, x: T) -> T
@@ -675,6 +707,7 @@ class GenericTest(test_inference.InferenceTest):
   def testInheritedTypeParameter(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
+        from typing import Generic, TypeVar
         T = TypeVar("T")
         class A1(Generic[T]):
           def f(self) -> T
@@ -695,7 +728,7 @@ class GenericTest(test_inference.InferenceTest):
     """Test that we can access an attribute on "Any"."""
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
-        from typing import Any
+        from typing import Any, List
         class A(List[Any]): pass
       """)
       ty = self.Infer("""
@@ -713,7 +746,7 @@ class GenericTest(test_inference.InferenceTest):
     """Test that we can match "Any" against a formal function argument."""
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
-        from typing import Any
+        from typing import Any, List
         class A(List[Any]): pass
       """)
       ty = self.Infer("""
@@ -728,6 +761,7 @@ class GenericTest(test_inference.InferenceTest):
   def testRenamedTypeParameterMatch(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
+        from typing import Iterable, TypeVar
         Q = TypeVar("Q")
         def f(x: Iterable[Q]) -> Q
       """)

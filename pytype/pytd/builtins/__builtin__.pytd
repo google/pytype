@@ -1,3 +1,8 @@
+from typing import (
+    AbstractSet, BinaryIO, Callable, Dict, FrozenSet, Generator, Generic,
+    Iterable, Iterator, List, Optional, Reversible, Sequence, Set, Sized,
+    SupportsAbs, SupportsFloat, SupportsInt, Tuple, Type, Union)
+
 # "T", "K", and "V" are hardcoded in abstract.py
 T = TypeVar('T')
 T2 = TypeVar('T2')

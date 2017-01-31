@@ -69,6 +69,7 @@ class ImportTest(test_inference.InferenceTest):
       from my_module import *
       """, deep=True, solve_unknowns=True, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        from typing import Type
         A = ...  # type: Type[my_module.A]
         a = ...  # type: my_module.A
         def f() -> str
@@ -180,6 +181,7 @@ class ImportTest(test_inference.InferenceTest):
         return sys.path
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import List
       sys = ...  # type: module
       def f() -> List[str, ...]
     """)
@@ -191,6 +193,7 @@ class ImportTest(test_inference.InferenceTest):
         return path
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import List
       path = ...  # type: List[str, ...]
       def f() -> List[str, ...]
     """)
@@ -633,6 +636,7 @@ class ImportTest(test_inference.InferenceTest):
       p = os.__package__
       """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+       from typing import Optional
        os = ...  # type: module
        f = ...  # type: str
        n = ...  # type: str
@@ -664,6 +668,7 @@ class ImportTest(test_inference.InferenceTest):
         d = foo.mypow
       """, deep=False, solve_unknowns=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        from typing import Union
         foo = ...  # type: module
         def d(x: Union[float, int]) -> float
       """)

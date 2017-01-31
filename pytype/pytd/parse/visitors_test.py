@@ -92,6 +92,7 @@ class TestVisitors(parser_test_base.ParserTest):
 
   def testDefaceUnresolved2(self):
     builtins = self.Parse(textwrap.dedent("""
+      from typing import Generic, TypeVar
       class int(object):
         pass
       T = TypeVar("T")
@@ -99,11 +100,13 @@ class TestVisitors(parser_test_base.ParserTest):
         pass
     """))
     src = textwrap.dedent("""
+        from typing import Union
         class A(X):
             def a(self, a: A, b: X, c: int) -> X raises X
             def c(self) -> Union[list[X], int]
     """)
     expected = textwrap.dedent("""
+        from typing import Union
         class A(?):
             def a(self, a: A, b: ?, c: int) -> ? raises ?
             def c(self) -> Union[list[?], int]
@@ -325,6 +328,7 @@ class TestVisitors(parser_test_base.ParserTest):
 
   def testPrintImports(self):
     src = textwrap.dedent("""
+      from typing import List, Tuple, Union
       def f(x: Union[int, slice]) -> List[?]: ...
       def g(x: foo.C.C2) -> None: ...
     """)
@@ -437,16 +441,20 @@ class TestVisitors(parser_test_base.ParserTest):
 
   def testVerifyContainers(self):
     ast1 = self.ParseWithBuiltins("""
+      from typing import SupportsInt, TypeVar
       T = TypeVar("T")
       class Foo(SupportsInt[T]): pass
     """)
     ast2 = self.ParseWithBuiltins("""
+      from typing import SupportsInt
       class Foo(SupportsInt[int]): pass
     """)
     ast3 = self.ParseWithBuiltins("""
+      from typing import Generic
       class Foo(Generic[int]): pass
     """)
     ast4 = self.ParseWithBuiltins("""
+      from typing import List
       class Foo(List[int, str]): pass
     """)
     self.assertRaises(visitors.ContainerError,
@@ -462,6 +470,7 @@ class TestVisitors(parser_test_base.ParserTest):
     b, _ = parser_builtins.GetBuiltinsAndTyping()
 
     src = textwrap.dedent("""
+        from typing import Tuple, Union
         def f1(a: float) -> None: ...
         def f2() -> float: ...
 
@@ -475,6 +484,7 @@ class TestVisitors(parser_test_base.ParserTest):
         def f8(a: Tuple[unicode, int]) -> None: ...
     """)
     expected = textwrap.dedent("""
+        from typing import Tuple, Union
         def f1(a: Union[float, int]) -> None: ...
         def f2() -> float: ...
 
@@ -497,6 +507,7 @@ class TestVisitors(parser_test_base.ParserTest):
 
   def testPrintMergeTypes(self):
     src = textwrap.dedent("""
+      from typing import Union
       def a(a: float) -> int: ...
       def b(a: Union[int, float, str, unicode]) -> int: ...
       def c(a: Union[unicode, bytes, str, float, int]) -> int: ...

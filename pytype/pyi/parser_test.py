@@ -202,9 +202,9 @@ class ParserTest(_ParserTestBase):
                 x = ...  # type: Union[int, str, float]""")
 
   def test_empty_union_or_optional(self):
-    self.check_error("def f(x: Union): ...", 1,
+    self.check_error("def f(x: typing.Union): ...", 1,
                      "Missing options to typing.Union")
-    self.check_error("def f(x: Optional): ...", 1,
+    self.check_error("def f(x: typing.Optional): ...", 1,
                      "Missing options to typing.Optional")
 
   def test_alias_lookup(self):
@@ -278,14 +278,6 @@ class ParserTest(_ParserTestBase):
     self.assertEquals(hashlib.md5(src).hexdigest(), ast.name)
 
   def test_pep84_aliasing(self):
-    # Normally a pep484 name will be converted to typing.X.  Note that this
-    # test cannot use type with an upper/lower case conversion (i.e. List)
-    # because those appear to be replaced regardless of the contents of the
-    # parser's _type_map.
-    self.check("x = ... # type: Hashable",
-               "foo.x = ...  # type: typing.Hashable",
-               prologue="import typing",
-               name="foo")
     # This should not be done for the typing module itself.
     self.check("x = ... # type: Hashable",
                "typing.x = ...  # type: Hashable",
@@ -300,9 +292,8 @@ class HomogeneousTypeTest(_ParserTestBase):
 
   def test_ellipsis(self):
     # B[T, ...] becomes B[T].
-    self.check("x = ...  # type: List[int, ...]",
-               "x = ...  # type: List[int]",
-               prologue="from typing import List")
+    self.check("from typing import List\n\nx = ...  # type: List[int, ...]",
+               "from typing import List\n\nx = ...  # type: List[int]")
     # Double ellipsis is not allowed.
     self.check_error("x = ...  # type: List[..., ...]", 1,
                      "not supported")
@@ -799,6 +790,7 @@ class IfTest(_ParserTestBase):
     # the "if" statement Dict refers to the local Dict class and List refers
     # to the PEP 484 list class.
     self.check("""\
+      from typing import List
       if sys.version_info == (2, 7, 6):
         class Dict: pass
       else:

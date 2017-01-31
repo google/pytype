@@ -130,6 +130,7 @@ class BuiltinTests(test_inference.InferenceTest):
       t_testDict()
     """, deep=False, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import Dict, List
       def t_testDict() -> float or int
       # _i1_, _i2_ capture the more precise definitions of the ~dict, ~list
       # TODO(kramm): The float/int split happens because
@@ -188,6 +189,7 @@ class BuiltinTests(test_inference.InferenceTest):
       return list(x)
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import Iterable
       def t_testListInit0(x: Iterable) -> list
     """)
 
@@ -197,6 +199,7 @@ class BuiltinTests(test_inference.InferenceTest):
       return x + [y]
     """, deep=True, solve_unknowns=True, show_library_calls=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import List
       def t_testListInit1(x: List[object, ...], y) -> list
     """)
 
@@ -221,6 +224,7 @@ class BuiltinTests(test_inference.InferenceTest):
     t_testListInit3([1,2,3,'abc'], 0)
     """, deep=False, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import List
       def t_testListInit3(x: List[int or str, ...], i: int) -> int or str
     """)
 
@@ -234,6 +238,7 @@ class BuiltinTests(test_inference.InferenceTest):
     t_testListInit4(__any_object__)
     """, deep=False, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import Iterable
       def t_testListInit4(x: Iterable) -> ?
       def _i_(x: list) -> list
     """)
@@ -483,6 +488,7 @@ class BuiltinTests(test_inference.InferenceTest):
         return divmod(a, 30268)
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import Tuple, Union
       def seed(self, a: Union[complex, float, int] = ...) -> Tuple[int or float or complex, ...]
     """)
 
@@ -494,6 +500,7 @@ class BuiltinTests(test_inference.InferenceTest):
         return divmod(a, 30268)
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import Tuple, Union
       def seed(self, a: Union[complex, float, int] = ...) -> Tuple[int or float or complex, ...]
     """)
 

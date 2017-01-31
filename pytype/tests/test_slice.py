@@ -18,6 +18,7 @@ class SliceTest(test_inference.InferenceTest):
       g = x[1:2:]
     """)
     self.assertTypesMatchPytd(ty, """
+      from typing import List
       x = ...  # type: List[int]
       a = ...  # type: List[int]
       b = ...  # type: List[int]
@@ -45,6 +46,7 @@ class SliceTest(test_inference.InferenceTest):
       g = x[1:2:]
     """)
     self.assertTypesMatchPytd(ty, """
+      from typing import Tuple
       class Foo(object):
         def __getslice__(self, i:int, j:int) -> Tuple[int, int]: ...
         def __getitem__(self, index: slice) -> slice: ...

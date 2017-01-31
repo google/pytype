@@ -183,6 +183,7 @@ class TestTypeMatch(parser_test_base.ParserTest):
 
   def _TestTypeParameters(self, reverse=False):
     ast = parser.parse_string(textwrap.dedent("""
+      import typing
       class `~unknown0`():
         def next(self) -> ?
       T = TypeVar('T')
@@ -209,6 +210,7 @@ class TestTypeMatch(parser_test_base.ParserTest):
 
   def testStrict(self):
     ast = parser.parse_string(textwrap.dedent("""
+      import typing
 
       T = TypeVar('T')
       class list(typing.Generic[T], object):
@@ -247,6 +249,7 @@ class TestTypeMatch(parser_test_base.ParserTest):
 
   def testHomogeneousTuple(self):
     ast = self.ParseWithBuiltins("""
+      from typing import Tuple
       x1 = ...  # type: Tuple[bool, ...]
       x2 = ...  # type: Tuple[int, ...]
     """)
@@ -260,6 +263,7 @@ class TestTypeMatch(parser_test_base.ParserTest):
 
   def testHeterogeneousTuple(self):
     ast = self.ParseWithBuiltins("""
+      from typing import Tuple
       x1 = ...  # type: Tuple[int]
       x2 = ...  # type: Tuple[bool, str]
       x3 = ...  # type: Tuple[int, str]
@@ -280,6 +284,7 @@ class TestTypeMatch(parser_test_base.ParserTest):
 
   def testTuple(self):
     ast = self.ParseWithBuiltins("""
+      from typing import Tuple
       x1 = ...  # type: Tuple[bool, ...]
       x2 = ...  # type: Tuple[int, ...]
       y1 = ...  # type: Tuple[bool, int]
@@ -297,6 +302,7 @@ class TestTypeMatch(parser_test_base.ParserTest):
 
   def testUnknownAgainstTuple(self):
     ast = self.ParseWithBuiltins("""
+      from typing import Tuple
       class `~unknown0`():
         pass
       x = ...  # type: Tuple[int, str]
@@ -312,6 +318,7 @@ class TestTypeMatch(parser_test_base.ParserTest):
 
   def testFunctionAgainstTupleSubclass(self):
     ast = self.ParseWithBuiltins("""
+      from typing import Tuple
       class A(Tuple[int, str]): ...
       def f(x): ...
     """)

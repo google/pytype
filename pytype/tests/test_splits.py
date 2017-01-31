@@ -22,6 +22,7 @@ class SplitTest(test_inference.InferenceTest):
           return 123
     """, deep=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import Union
       def foo(x) -> Union[int, str]: ...
     """)
 
@@ -36,6 +37,7 @@ class SplitTest(test_inference.InferenceTest):
           return y
     """, deep=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import Union
       def foo(x) -> Union[int, str]: ...
     """)
 
@@ -58,6 +60,7 @@ class SplitTest(test_inference.InferenceTest):
         return 123
     """, deep=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import Union
       def foo(x) -> Union[float, int]: ...
     """)
 
@@ -88,6 +91,7 @@ class SplitTest(test_inference.InferenceTest):
         return y
     """, deep=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import Union
       def foo(x) -> Union[None, str]: ...
     """)
 
@@ -163,6 +167,7 @@ class SplitTest(test_inference.InferenceTest):
     # accepted some sort of filter that would be applied to both pytd trees
     # before matching.
     self.assertTypesMatchPytd(ty, """
+      from typing import Union
       class Foo(object):
         def method(self) -> int: ...
 
@@ -191,6 +196,7 @@ class SplitTest(test_inference.InferenceTest):
       def frozenset_f(x): return frozenset() and x
     """, deep=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import Dict, List, Tuple
       def int_t(x) -> int: ...
       def int_f(x) -> int: ...
       def str_t(x) -> str: ...
@@ -220,6 +226,7 @@ class SplitTest(test_inference.InferenceTest):
         return 123 if d else "hello"
     """, deep=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import Union
       def f1() -> str: ...
       def f2(x) -> Union[int, str]: ...
     """)
@@ -239,6 +246,7 @@ class SplitTest(test_inference.InferenceTest):
 
     """, deep=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import Union
       def f1() -> Union[int, str]: ...
       def f2() -> Union[int, str]: ...
     """)
@@ -258,6 +266,7 @@ class SplitTest(test_inference.InferenceTest):
       def a2(x): return "y" if isinstance("a", 123) else 0
     """, deep=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import Union
       def sig(x) -> bool: ...
       def d1() -> str: ...
       def d2() -> str: ...
@@ -285,7 +294,7 @@ class SplitTest(test_inference.InferenceTest):
           return None
     """, deep=True)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any
+      from typing import Any, Union
       def f2(x) -> Any: ...
       def f1(x) -> Union[complex, int]: ...
     """)
@@ -328,6 +337,7 @@ class SplitTest(test_inference.InferenceTest):
 
     """, deep=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import Union
       def not_t(x) -> int: ...
       def not_f(x) -> str: ...
       def not_ambiguous(x) -> Union[int, str]: ...

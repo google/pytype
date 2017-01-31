@@ -204,6 +204,7 @@ class TestExceptions(test_inference.InferenceTest):
   def test_match_exception_type(self):
     with utils.Tempdir() as d:
       d.create_file("warnings.pyi", """
+        from typing import Optional, Type, Union
         def warn(message: Union[str, Warning],
                  category: Optional[Type[Warning]] = ...,
                  stacklevel: int = ...) -> None: ...

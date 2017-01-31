@@ -898,6 +898,7 @@ class MethodsTest(test_inference.InferenceTest):
         D(w, x, y, z)
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import List, Tuple
       class A(object):
         def __new__(cls, w, x, y, z) -> None: ...
       class B(A): ...
