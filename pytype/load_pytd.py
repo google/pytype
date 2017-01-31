@@ -330,7 +330,9 @@ class Loader(object):
     # False for those. However, we *do* want to load them. Hence exists / isdir.
     if os.path.exists(full_path) and not os.path.isdir(full_path):
       m = self._load_file(filename=full_path, module_name=module_name)
-      self._path_to_module[full_path] = m
+      # Only add actual files to the path cache, do not add /dev/null.
+      if os.path.isfile(full_path):
+        self._path_to_module[full_path] = m
       return m
     else:
       return None

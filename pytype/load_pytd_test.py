@@ -147,6 +147,8 @@ class ImportPathsTest(unittest.TestCase):
       imports_map = {
           "foo": foo_path,
           "another/foo": foo_path,
+          "empty1": "/dev/null",
+          "empty2": "/dev/null",
       }
       # We cannot use tweak(imports_info=...) because that doesn't trigger
       # post-processing and we need an imports_map for the loader.
@@ -156,6 +158,13 @@ class ImportPathsTest(unittest.TestCase):
       self.assertEquals("foo", normal.name)
       another = loader.import_name("another.foo")
       self.assertIs(normal, another)
+      # Make sure that multiple modules using /dev/null are not treated as
+      # congruent.
+      empty1 = loader.import_name("empty1")
+      empty2 = loader.import_name("empty2")
+      self.assertIsNot(empty1, empty2)
+      self.assertEquals("empty1", empty1.name)
+      self.assertEquals("empty2", empty2.name)
 
 
 if __name__ == "__main__":
