@@ -139,6 +139,24 @@ class ImportPathsTest(unittest.TestCase):
       f, = module2.Lookup("module2.f").signatures
       self.assertEquals("List[int]", pytd.Print(f.return_type))
 
+  def testImportMapCongruence(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", "X = ...  # type: int")
+      foo_path = d.path + "/foo.pyi"
+      # Map the same pyi file under two module paths.
+      imports_map = {
+          "foo": foo_path,
+          "another/foo": foo_path,
+      }
+      # We cannot use tweak(imports_info=...) because that doesn't trigger
+      # post-processing and we need an imports_map for the loader.
+      self.options.imports_map = imports_map
+      loader = load_pytd.Loader("base", self.options)
+      normal = loader.import_name("foo")
+      self.assertEquals("foo", normal.name)
+      another = loader.import_name("another.foo")
+      self.assertIs(normal, another)
+
 
 if __name__ == "__main__":
   unittest.main()

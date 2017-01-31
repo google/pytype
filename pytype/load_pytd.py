@@ -69,6 +69,10 @@ class Loader(object):
         "typing":
         Module("typing", self.PREFIX + "typing", self.typing)
     }
+    # Map from file paths to loaded modules in order to detect congruent
+    # modules via an imports_map.
+    self._path_to_module = {
+    }
     self._concatenated = None
     # Paranoid verification that pytype.main properly checked the flags:
     if self.options.imports_map is not None:
@@ -315,10 +319,19 @@ class Loader(object):
         return None
     else:
       full_path = path + ".pyi"
+
+    # Check if the path has already been loaded.  This can happen when the
+    # same pyi file is listed under multiple modules names in imports_map.
+    aliased = self._path_to_module.get(full_path)
+    if aliased is not None:
+      return aliased
+
     # We have /dev/null entries in the import_map - os.path.isfile() returns
     # False for those. However, we *do* want to load them. Hence exists / isdir.
     if os.path.exists(full_path) and not os.path.isdir(full_path):
-      return self._load_file(filename=full_path, module_name=module_name)
+      m = self._load_file(filename=full_path, module_name=module_name)
+      self._path_to_module[full_path] = m
+      return m
     else:
       return None
 
