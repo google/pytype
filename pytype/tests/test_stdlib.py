@@ -19,7 +19,7 @@ class StdlibTests(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
       ast = ...  # type: module
-      def f() -> _ast.AST
+      def f() -> _ast.Module
     """)
 
   def testUrllib(self):
