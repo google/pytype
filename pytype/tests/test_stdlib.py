@@ -1,7 +1,6 @@
 """Tests of selected stdlib functions."""
 
 import os
-import unittest
 
 
 from pytype.tests import test_inference
@@ -72,7 +71,6 @@ class StdlibTests(test_inference.InferenceTest):
     """)
 
 
-  @unittest.skip("typeshed has broken posix.pyi")
   def testPosix(self):
     ty = self.Infer("""
       import posix

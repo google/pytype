@@ -739,7 +739,6 @@ class ErrorTest(test_inference.InferenceTest):
     self.assertErrorLogIs(errors, [(1, "wrong-arg-types",
                                     r"Actual.*Tuple\[int\]")])
 
-  @unittest.skip("Reports [base-class-error] instead of [wrong-arg-types]")
   def testHalfBadTypeBases(self):
     _, errors = self.InferAndCheck("""\
       X = type("X", (42, object), {"a": 1})
