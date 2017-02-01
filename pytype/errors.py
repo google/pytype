@@ -358,7 +358,7 @@ class ErrorLog(ErrorLogBase):
           extra_keywords[0], name)
     else:
       message = "Invalid keyword arguments %s to function %s" % (
-          "(" + ", ".join(extra_keywords) + ")", name)
+          "(" + ", ".join(sorted(extra_keywords)) + ")", name)
     self._invalid_parameters(opcode, message, bad_call)
 
   @_error_name("missing-parameter")

@@ -588,6 +588,14 @@ class TestGenerators(test_inference.InferenceTest):
       def h() -> Callable
     """)
 
+  def test_wrong_keyword(self):
+    _, errors = self.InferAndCheck("""\
+      def f(x):
+        pass
+      f("", y=42)
+    """)
+    self.assertErrorLogIs(errors, [(3, "wrong-keyword-args", r"y")])
+
 
 if __name__ == "__main__":
   test_inference.main()

@@ -1354,8 +1354,7 @@ class PyTDSignature(object):
       invalid_names = set(args.namedargs) - {p.name
                                              for p in self.pytd_sig.params}
       if invalid_names:
-        raise WrongKeywordArgs(
-            self.signature, args, self.vm, sorted(invalid_names))
+        raise WrongKeywordArgs(self.signature, args, self.vm, invalid_names)
 
     formal_args = [(p.name, self.signature.annotations[p.name])
                    for p in self.pytd_sig.params]
@@ -2200,6 +2199,9 @@ class InterpreterFunction(Function):
     for key in positional:
       if key in kws:
         raise DuplicateKeyword(self.signature, args, self.vm, key)
+    extra_kws = set(kws).difference(param_names + self.get_kwonly_names())
+    if extra_kws and not self.has_kwargs():
+      raise WrongKeywordArgs(self.signature, args, self.vm, extra_kws)
     callargs.update(positional)
     callargs.update(kws)
     for key, kwonly in self.get_nondefault_params():
