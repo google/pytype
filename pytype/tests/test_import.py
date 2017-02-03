@@ -824,6 +824,15 @@ class ImportTest(test_inference.InferenceTest):
         A = ...  # type: type
       """)
 
+  def testGetBadSubmoduleAsAttribute(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo/__init__.pyi", "")
+      d.create_file("foo/bar.pyi", "nonsense")
+      self.assertNoCrash("""
+        import foo
+        x = foo.bar
+      """, pythonpath=[d.path])
+
 
 if __name__ == "__main__":
   test_inference.main()

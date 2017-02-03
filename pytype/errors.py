@@ -321,11 +321,6 @@ class ErrorLog(ErrorLogBase):
   def import_error(self, opcode, module_name):
     self.error(opcode, "Can't find module %r." % module_name)
 
-  @_error_name("import-error")
-  def import_from_error(self, opcode, module, name):
-    module_name = module.data[0].name
-    self.error(opcode, "Can't find %s.%s" % (module_name, name))
-
   def _invalid_parameters(self, opcode, message, (sig, passed_args),
                           bad_param=None, extra_details=None):
     expected = self._print_args(self._iter_sig(sig), bad_param)

@@ -2607,9 +2607,7 @@ class Module(Instance):
 
   def get_submodule(self, node, name):
     full_name = self.name + "." + name
-    # The line below can raise load_pytd.BadDependencyError. This is OK since
-    # we'll always be called from vm.byte_IMPORT_FROM which catches it.
-    mod = self.vm.import_module(full_name, 0)  # 0: absolute import
+    mod = self.vm.import_module(full_name, full_name, 0)  # 0: absolute import
     if mod is not None:
       return mod.to_variable(node)
     elif self.has_getattr():

@@ -1139,8 +1139,17 @@ class VirtualMachine(object):
   def convert_locals_or_globals(self, d, name="globals"):
     return abstract.LazyConcreteDict(name, d, self)
 
+  def import_module(self, name, full_name, level):
+    try:
+      module = self._import_module(name, level)
+    except (parser.ParseError, load_pytd.BadDependencyError,
+            visitors.ContainerError, visitors.SymbolLookupError) as e:
+      self.errorlog.pyi_error(self.frame.current_opcode, full_name, e)
+      module = self.convert.unsolvable
+    return module
+
   # TODO(kramm): memoize
-  def import_module(self, name, level):
+  def _import_module(self, name, level):
     """Import the module and return the module object.
 
     Args:
@@ -2154,34 +2163,21 @@ class VirtualMachine(object):
     else:
       name = full_name
     level = abstract.get_atomic_python_constant(level_var)
-    try:
-      module = self.import_module(name, level)
-    except (parser.ParseError, load_pytd.BadDependencyError,
-            visitors.ContainerError, visitors.SymbolLookupError) as e:
-      self.errorlog.pyi_error(op, full_name, e)
+    module = self.import_module(name, full_name, level)
+    if module is None:
+      log.warning("Couldn't find module %r", name)
+      self.errorlog.import_error(self.frame.current_opcode, name)
       module = self.convert.unsolvable
-    else:
-      if module is None:
-        log.warning("Couldn't find module %r", name)
-        self.errorlog.import_error(self.frame.current_opcode, name)
-        module = self.convert.unsolvable
     return state.push(module.to_variable(state.node))
 
   def byte_IMPORT_FROM(self, state, op):
     """IMPORT_FROM is mostly like LOAD_ATTR but doesn't pop the container."""
     name = self.frame.f_code.co_names[op.arg]
     module = state.top()
-    try:
-      state, attr = self.load_attr_noerror(state, module, name)
-    except (parser.ParseError, load_pytd.BadDependencyError,
-            visitors.ContainerError) as e:
-      full_name = module.data[0].name + "." + name
-      self.errorlog.pyi_error(self.frame.current_opcode, full_name, e)
-      attr = None
-    else:
-      if attr is None:
-        self.errorlog.import_from_error(self.frame.current_opcode, module, name)
+    state, attr = self.load_attr_noerror(state, module, name)
     if attr is None:
+      full_name = module.data[0].name + "." + name
+      self.errorlog.import_error(self.frame.current_opcode, full_name)
       attr = self.convert.unsolvable.to_variable(state.node)
     return state.push(attr)
 
