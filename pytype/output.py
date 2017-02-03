@@ -146,7 +146,7 @@ class Converter(object):
         return pytd.AnythingType()
     elif isinstance(v, (abstract.Function, abstract.IsInstance,
                         abstract.BoundFunction)):
-      return pytd.NamedType("__builtin__.function")
+      return pytd.NamedType("typing.Callable")
     elif isinstance(v, abstract.Class):
       param = self.value_instance_to_pytd_type(node, v, None, seen, view)
       return pytd.GenericType(base_type=pytd.NamedType("__builtin__.type"),

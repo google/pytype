@@ -814,6 +814,7 @@ class file(BinaryIO):
     def writelines(self, sequence_of_strings) -> NoneType
     def xreadlines(self) -> file
 
+# Deprecated. Use typing.Callable.
 class function(Callable):
     def __get__(self, obj, ...) -> instancemethod
 

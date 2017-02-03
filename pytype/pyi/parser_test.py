@@ -288,7 +288,7 @@ class HomogeneousTypeTest(_ParserTestBase):
 
   def test_strip_callable_parameters(self):
     self.check("import typing\n\nx = ...  # type: typing.Callable[int]",
-               "import typing\n\nx = ...  # type: typing.Callable")
+               "from typing import Callable\n\nx = ...  # type: Callable")
 
   def test_ellipsis(self):
     # B[T, ...] becomes B[T].

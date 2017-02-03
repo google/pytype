@@ -180,7 +180,7 @@ class AbstractMatcher(object):
           left.super_cls, left.super_obj, other_type, subst, node, view)
     elif isinstance(left, (abstract.Function, abstract.BoundFunction)):
       if other_type.full_name in [
-          "__builtin__.function", "__builtin__.object", "typing.Callable"]:
+          "__builtin__.object", "typing.Callable"]:
         return subst
     elif isinstance(left, abstract.ClassMethod):
       if other_type.full_name in [

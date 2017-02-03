@@ -292,8 +292,8 @@ class PrintVisitor(Visitor):
 
     return ret
 
-  def _IsBuiltin(self, module, name):
-    return module == "__builtin__" and name not in self._local_names
+  def _IsBuiltin(self, module):
+    return module == "__builtin__"
 
   def _FormatTypeParams(self, type_params):
     return ["%s = TypeVar('%s')" % (t, t) for t in type_params]
@@ -302,6 +302,8 @@ class PrintVisitor(Visitor):
     return name in self._class_members or name in self._local_names
 
   def _FromTyping(self, name):
+    if name == "Any":
+      self._any_count += 1
     if self._NameCollision(name):
       self._RequireTypingImport(None)
       return "typing." + name
@@ -497,22 +499,21 @@ class PrintVisitor(Visitor):
 
   def VisitNamedType(self, node):
     """Convert a type to a string."""
-    module, _, suffix = node.name.partition(".")
-    if self._IsBuiltin(module, suffix):
+    module, _, suffix = node.name.rpartition(".")
+    if self._IsBuiltin(module) and not self._NameCollision(suffix):
       node_name = suffix
-      if node_name == "function":
-        node_name = "typing.Callable"
+    elif module == "typing":
+      node_name = self._FromTyping(suffix)
+    elif module:
+      self._RequireImport(module)
+      node_name = node.name
     else:
       node_name = node.name
     if node_name == "NoneType":
       # PEP 484 allows this special abbreviation.
       return "None"
     else:
-      name = self._SafeName(node_name)
-      if "." in name:
-        module = name[:name.rfind(".")]
-        self._RequireImport(module)
-      return name
+      return self._SafeName(node_name)
 
   def VisitClassType(self, node):
     return self.VisitNamedType(node)
@@ -528,7 +529,6 @@ class PrintVisitor(Visitor):
 
   def VisitAnythingType(self, unused_node):
     """Convert an anything type to a string."""
-    self._any_count += 1
     return self._FromTyping("Any")
 
   def VisitNothingType(self, unused_node):

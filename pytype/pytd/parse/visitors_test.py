@@ -350,9 +350,9 @@ class TestVisitors(parser_test_base.ParserTest):
                              functions=(), classes=(), aliases=(), name=None)
 
     expected_src = textwrap.dedent("""
-      import typing
+      from typing import List
 
-      x = ...  # type: typing.List
+      x = ...  # type: List
     """).strip()
     res = pytd.Print(tree)
     self.assertMultiLineEqual(res, expected_src)

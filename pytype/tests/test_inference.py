@@ -52,7 +52,7 @@ class InferenceTest(unittest.TestCase):
     self.tuple = t("tuple")
     self.unicode = t("unicode")
     self.generator = t("generator")
-    self.function = t("function")
+    self.function = pytd.ClassType("typing.Callable")
     self.anything = pytd.AnythingType()
     self.nothing = pytd.NothingType()
     self.module = t("module")

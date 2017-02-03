@@ -19,8 +19,9 @@ class ClassesTest(test_inference.InferenceTest):
         return MyClass()
     """, deep=True, solve_unknowns=True, show_library_calls=True)
     self.assertTypesMatchPytd(ty, """
-      # "function" because it gets called in f()
-      MyClass = ...  # type: function
+      from typing import Callable
+      # "Callable" because it gets called in f()
+      MyClass = ...  # type: Callable
       def f() -> ?
     """)
 
@@ -294,11 +295,12 @@ class ClassesTest(test_inference.InferenceTest):
       seed = _inst.seed
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+    from typing import Callable
     class Random(object):
        def seed(self) -> None: ...
 
     _inst = ...  # type: Random
-    seed = ...  # type: function
+    seed = ...  # type: Callable
     """)
 
   def testMROWithUnsolvables(self):
