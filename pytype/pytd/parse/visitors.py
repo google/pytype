@@ -301,6 +301,14 @@ class PrintVisitor(Visitor):
   def _NameCollision(self, name):
     return name in self._class_members or name in self._local_names
 
+  def _FromTyping(self, name):
+    if self._NameCollision(name):
+      self._RequireTypingImport(None)
+      return "typing." + name
+    else:
+      self._RequireTypingImport(name)
+      return name
+
   def EnterTypeDeclUnit(self, unit):
     definitions = (unit.classes + unit.functions + unit.constants +
                    unit.type_params + unit.aliases)
@@ -516,18 +524,12 @@ class PrintVisitor(Visitor):
 
   def VisitFunctionType(self, unused_node):
     """Convert a function type to a string."""
-    self._RequireTypingImport("Callable")
-    return "Callable"
+    return self._FromTyping("Callable")
 
   def VisitAnythingType(self, unused_node):
     """Convert an anything type to a string."""
     self._any_count += 1
-    if self._NameCollision("Any"):
-      self._RequireTypingImport(None)
-      return "typing.Any"
-    else:
-      self._RequireTypingImport("Any")
-      return "Any"
+    return self._FromTyping("Any")
 
   def VisitNothingType(self, unused_node):
     """Convert the nothing type to a string."""
@@ -542,13 +544,7 @@ class PrintVisitor(Visitor):
     from pytype.pytd import pep484  # pylint: disable=g-import-not-at-top
     capitalized = pep484.PEP484_MaybeCapitalize(name)
     if capitalized:
-      if (capitalized in self._local_names or
-          capitalized in self._class_members):
-        self._RequireTypingImport()
-        return "typing." + capitalized
-      else:
-        self._RequireTypingImport(capitalized)
-        return capitalized
+      return self._FromTyping(capitalized)
     else:
       return name
 
@@ -569,28 +565,22 @@ class PrintVisitor(Visitor):
 
   def VisitUnionType(self, node):
     """Convert a union type ("x or y") to a string."""
+    type_list = collections.OrderedDict.fromkeys(node.type_list)
     if self.in_parameter:
       # Parameter's union types are merged after as a follow up to the
       # ExpandCompatibleBuiltins visitor.
       # Import here due to circular import.
       from pytype.pytd import pep484  # pylint: disable=g-import-not-at-top
-      type_list = collections.OrderedDict.fromkeys(node.type_list)
       for compat, name in pep484.COMPAT_MAP.iteritems():
         # name can replace compat.
         if compat in type_list and name in type_list:
           del type_list[compat]
-      type_list = tuple(type_list)
-    else:
-      type_list = node.type_list
+    type_list = tuple(type_list)
 
     if len(type_list) == 1:
       return type_list[0]
-    elif self._NameCollision("Union"):
-      self._RequireTypingImport(None)
-      return "typing.Union[" + ", ".join(type_list) + "]"
     else:
-      self._RequireTypingImport("Union")
-      return "Union[" + ", ".join(type_list) + "]"
+      return self._FromTyping("Union") + "[" + ", ".join(type_list) + "]"
 
 
 class StripSelf(Visitor):
