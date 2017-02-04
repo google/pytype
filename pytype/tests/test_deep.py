@@ -237,7 +237,7 @@ class StructuralTest(test_inference.InferenceTest):
       f(__any_object__, 1)
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
-      def f(a, b) -> None
+      def f(a, b: basestring or complex or float or typing.Iterable) -> None
     """)
 
 

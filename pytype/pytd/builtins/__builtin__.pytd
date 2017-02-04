@@ -91,7 +91,7 @@ def reduce(function: Callable[..., T], iterable: Iterable, initial) -> T
 # No reload() in Python3
 def reload(mod: module) -> module
 def repr PYTHONCODE
-def round(number: int or float, ...) -> float
+def round(number: int or float or typing.SupportsRound, ...) -> float
 def setattr(object, name: str or unicode or bytearray, value) -> NoneType
 def sorted(iterable: Iterable[T], ...) -> list[T]
 def sum(iterable: Iterable[int]) -> int
@@ -653,7 +653,7 @@ class bool(int, SupportsInt, SupportsFloat):
     def conjugate(self, ...) -> int
 
 class int(object):  # TODO(kramm): SupportsInt, SupportsFloat, SupportsAbs)
-    def __init__(self, x: int or float or str or unicode, ...) -> NoneType
+    def __init__(self, x: int or float or str or unicode or SupportsInt, ...) -> NoneType
     def __init__(self) -> NoneType
     def __add__(self, y: int) -> int
     def __add__(self, y: float) -> float
@@ -719,7 +719,7 @@ class int(object):  # TODO(kramm): SupportsInt, SupportsFloat, SupportsAbs)
 long = int
 
 class float(SupportsInt, SupportsFloat, SupportsAbs):
-    def __init__(self, x: int or float or str) -> NoneType
+    def __init__(self, x: int or float or str or SupportsFloat) -> NoneType
     def __init__(self) -> NoneType
     def __abs__(self) -> float
     def __add__(self, y: int or float) -> float
@@ -766,7 +766,7 @@ class float(SupportsInt, SupportsFloat, SupportsAbs):
     def is_integer(self, ...) -> bool
 
 class complex(SupportsAbs):
-    def __init__(self, real: int or float or complex or str, ...) -> NoneType
+    def __init__(self, real: int or float or complex or str or typing.SupportsComplex, ...) -> NoneType
     def __init__(self) -> NoneType
     def __abs__(self) -> float
     def __add__(self, y: int or float or complex) -> complex
@@ -786,7 +786,7 @@ class complex(SupportsAbs):
     def __truediv__(self, y: int or float or complex) -> complex
     def conjugate(self) -> complex
 
-class buffer(Sized):
+class buffer(Sized, Iterable[int]):
     def __init__(self, object: str or unicode or bytearray or buffer, ...) -> NoneType
     def __add__(self, y: str or unicode or bytearray or buffer) -> str
     def __getitem__(self, index: int) -> str

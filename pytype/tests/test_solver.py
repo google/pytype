@@ -198,7 +198,8 @@ class SolverTests(test_inference.InferenceTest):
         return int(x, 16)
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
-      def f(x: int or float or str or unicode) -> int
+      from typing import SupportsInt
+      def f(x: int or SupportsInt or str or unicode) -> int
     """)
 
   def testCallMethod(self):
@@ -321,9 +322,11 @@ class SolverTests(test_inference.InferenceTest):
           l.append(collections.defaultdict(int, [(0, 0)]))
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
-      from typing import List
+      import typing
       collections = ...  # type: module
-      def bar(l: List[collections.defaultdict]) -> NoneType
+      # TODO(kramm): The optimizer should collapse these two.
+      def bar(l: typing.List[collections.defaultdict] or
+                 typing.MutableSequence[collections.defaultdict]) -> NoneType
     """)
 
   def testNameConflictWithBuiltin(self):

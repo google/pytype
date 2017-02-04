@@ -28,19 +28,19 @@ class TypingTest(test_inference.InferenceTest):
     _, errors = self.InferAndCheck(self._TEMPLATE % locals())
     self.assertNotEqual(0, len(errors))
 
-  def test_list(self):
+  def test_list_match(self):
     self._test_match("[1, 2, 3]", "typing.List")
     self._test_match("[1, 2, 3]", "typing.List[int]")
     self._test_match("[1, 2, 3.1]", "typing.List[typing.Union[int, float]]")
     self._test_no_match("[1.1, 2.1, 3.1]", "typing.List[int]")
 
-  def test_sequence(self):
+  def test_sequence_match(self):
     self._test_match("[1, 2, 3]", "typing.Sequence")
     self._test_match("[1, 2, 3]", "typing.Sequence[int]")
     self._test_match("(1, 2, 3.1)", "typing.Sequence[typing.Union[int, float]]")
     self._test_no_match("[1.1, 2.1, 3.1]", "typing.Sequence[int]")
 
-  def test_namedtuple(self):
+  def test_namedtuple_match(self):
     self._test_match("collections.namedtuple('foo', [])()",
                      "typing.NamedTuple")
     self._test_match("collections.namedtuple('foo', ('x', 'y'))()",
@@ -208,84 +208,6 @@ class TypingTest(test_inference.InferenceTest):
         def f(x: typing.Match[str]): pass
         def f(x: foo.CustomDict[int, str]): pass
       """, pythonpath=[d.path])
-
-  def test_mapping(self):
-    with utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
-        from typing import Mapping
-        K = TypeVar("K")
-        V = TypeVar("V")
-        class MyDict(Mapping[K, V]): ...
-        def f() -> MyDict[str, int]
-      """)
-      ty = self.Infer("""\
-        import foo
-        m = foo.f()
-        a = m.copy()
-        b = "foo" in m
-        c = m["foo"]
-        d = m.get("foo", 3)
-        e = [x for x in m.items()]
-        f = [x for x in m.keys()]
-        g = [x for x in m.values()]
-        h = [x for x in m.iteritems()]
-        i = [x for x in m.iterkeys()]
-        j = [x for x in m.itervalues()]
-        k = [x for x in m.viewitems()]
-        l = [x for x in m.viewkeys()]
-        n = [x for x in m.viewvalues()]
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
-        from typing import List, Tuple
-        import foo
-        foo = ...  # type: module
-        m = ...  # type: foo.MyDict[str, int]
-        a = ...  # type: typing.Mapping[str, int]
-        b = ...  # type: bool
-        c = ...  # type: int
-        d = ...  # type: int
-        e = ...  # type: List[Tuple[str, int]]
-        f = ...  # type: List[str]
-        g = ...  # type: List[int]
-        h = ...  # type: List[Tuple[str, int]]
-        i = ...  # type: List[str]
-        j = ...  # type: List[int]
-        k = ...  # type: List[Tuple[str, int]]
-        l = ...  # type: List[str]
-        n = ...  # type: List[int]
-        x = ...  # type: int
-      """)
-
-  def test_mutablemapping(self):
-    with utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
-        from typing import MutableMapping, TypeVar
-        K = TypeVar("K")
-        V = TypeVar("V")
-        class MyDict(MutableMapping[K, V]): ...
-        def f() -> MyDict[str, int]
-      """)
-      ty = self.Infer("""\
-        import foo
-        m = foo.f()
-        m.clear()
-        m[3j] = 3.14
-        del m["foo"]
-        a = m.pop("bar", 3j)
-        b = m.popitem()
-        c = m.setdefault("baz", 3j)
-        m.update({4j: 2.1})
-        m.update([(1, 2), (3, 4)])
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
-        from typing import Tuple, Union
-        import foo
-        foo = ...  # type: module
-        m = ...  # type: foo.MyDict[Union[complex, int, str], Union[complex, float, int]]
-        a = ...  # type: Union[complex, float, int]
-        b = ...  # type: Tuple[Union[complex, str], Union[float, int]]
-        c = ...  # type: Union[complex, float, int]
-      """)
 
   def test_generator_iterator_match(self):
     self.assertNoErrors("""

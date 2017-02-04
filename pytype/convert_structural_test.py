@@ -69,7 +69,9 @@ class MatchTest(unittest.TestCase):
       class `~unknown1`(object):
         def append(self, _1: int) -> NoneType
     """)
-    self.assertItemsEqual(["list", "bytearray"], mapping["~unknown1"])
+    self.assertItemsEqual(["list", "bytearray",
+                           "typing.List", "typing.MutableSequence"],
+                          mapping["~unknown1"])
 
   def test_single_list(self):
     # Differs from test_append in that append(float) doesn't match bytearray
@@ -78,7 +80,8 @@ class MatchTest(unittest.TestCase):
         def append(self, _1: float) -> NoneType
     """)
     convert_structural.log_info_mapping(mapping)
-    self.assertItemsEqual(["list"], mapping["~unknown1"])
+    self.assertItemsEqual(["list", "typing.MutableSequence", "typing.List"],
+                          mapping["~unknown1"])
     self.assertItemsEqual(["float"], mapping["~unknown1.__builtin__.list.T"])
 
   def test_list(self):
@@ -93,7 +96,8 @@ class MatchTest(unittest.TestCase):
       """)
     convert_structural.log_info_mapping(mapping)
     self.assertItemsEqual(["float"], mapping["~unknown1"])
-    self.assertItemsEqual(["list"], mapping["~unknown2"])
+    self.assertItemsEqual(["list", "typing.List", "typing.MutableSequence"],
+                          mapping["~unknown2"])
     self.assertItemsEqual(["float"], mapping["~unknown2.__builtin__.list.T"])
 
   def test_float_list(self):
@@ -103,7 +107,8 @@ class MatchTest(unittest.TestCase):
         def __getitem__(self, _1: int) -> float
       """)
     convert_structural.log_info_mapping(mapping)
-    self.assertItemsEqual(["list"], mapping["~unknown1"])
+    self.assertItemsEqual(["list", "typing.List", "typing.MutableSequence"],
+                          mapping["~unknown1"])
     self.assertItemsEqual(["float"], mapping["~unknown1.__builtin__.list.T"])
 
   def test_two_lists(self):
@@ -113,8 +118,10 @@ class MatchTest(unittest.TestCase):
       class `~unknown2`(object):
         def insert(self: list, _1: int, _2: float) -> NoneType
       """)
-    self.assertItemsEqual(["list"], mapping["~unknown1"])
-    self.assertItemsEqual(["list"], mapping["~unknown2"])
+    self.assertItemsEqual(["list", "typing.List", "typing.MutableSequence"],
+                          mapping["~unknown1"])
+    self.assertItemsEqual(["list", "typing.List", "typing.MutableSequence"],
+                          mapping["~unknown2"])
     self.assertItemsEqual(["NoneType"], mapping["~unknown1.__builtin__.list.T"])
     self.assertItemsEqual(["float"], mapping["~unknown2.__builtin__.list.T"])
 
@@ -152,7 +159,8 @@ class MatchTest(unittest.TestCase):
     self.assertItemsEqual(["float"], mapping["~unknown1"])
     self.assertItemsEqual(["bytearray"], mapping["~unknown2"])
     self.assertItemsEqual(["str"], mapping["~unknown3"])
-    self.assertItemsEqual(["list"], mapping["~unknown4"])
+    self.assertItemsEqual(["list", "typing.MutableSequence", "typing.List"],
+                          mapping["~unknown4"])
     self.assertItemsEqual(["NoneType"], mapping["~unknown4.__builtin__.list.T"])
 
   def test_union(self):
@@ -630,14 +638,9 @@ class MatchTest(unittest.TestCase):
       class `~unknown2`():
           def append(self, _1:NoneType) -> NoneType
     """)
-    expected = textwrap.dedent("""
-      from typing import Any, Dict, List
-
-      class A(object):
-          def foo(self, x: Dict[str, List[Any]]) -> bool: ...
-    """).lstrip()
     ast = convert_structural.convert_pytd(ast, self.builtins_pytd)
-    self.assertMultiLineEqual(pytd.Print(ast), expected)
+    x = ast.Lookup("A").Lookup("foo").signatures[0].params[1].type
+    self.assertIn("MutableSequence", pytd.Print(x))
 
   def test_isinstance(self):
     ast = self.parse("""

@@ -199,8 +199,8 @@ class BuiltinTests(test_inference.InferenceTest):
       return x + [y]
     """, deep=True, solve_unknowns=True, show_library_calls=True)
     self.assertTypesMatchPytd(ty, """
-      from typing import List
-      def t_testListInit1(x: List[object, ...], y) -> list
+      from typing import List, MutableSequence, Union
+      def t_testListInit1(x: List[object] or MutableSequence[object], y) -> list or MutableSequence
     """)
 
   def testListInit2(self):
@@ -260,7 +260,10 @@ class BuiltinTests(test_inference.InferenceTest):
       t_testAbs(__any_object__)
     """, deep=False, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
-      def t_testAbs(x: complex or float or int) -> float or int
+      from typing import SupportsAbs
+      # Since SupportsAbs.__abs__ returns a type parameter, the return type
+      # of abs(...) can be anything.
+      def t_testAbs(x: SupportsAbs[object] or complex or float or int) -> ?
     """)
 
   def testCmp(self):

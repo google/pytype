@@ -6,15 +6,13 @@ from pytype.pytd.parse import visitors
 
 
 PEP484_NAMES = ["AbstractSet", "AnyStr", "BinaryIO", "ByteString", "Callable",
-                "Container", "Dict", "Final", "FrozenSet", "Generator",
+                "Container", "Dict", "FrozenSet", "Generator",
                 "Generic", "Hashable", "IO", "ItemsView", "Iterable",
                 "Iterator", "KeysView", "List", "Mapping", "MappingView",
                 "Match", "MutableMapping", "MutableSequence", "MutableSet",
                 "NamedTuple", "Optional", "Pattern", "Reversible", "Sequence",
-                "Set", "Sized", "SupportsAbs", "SupportsBytes",
-                "SupportsComplex", "SupportsFloat", "SupportsInt",
-                "SupportsRound", "TextIO", "Tuple", "Type", "TypeVar",
-                "Union"]
+                "Set", "Sized", "SupportsAbs", "SupportsFloat", "SupportsInt",
+                "SupportsRound", "TextIO", "Tuple", "Type", "TypeVar", "Union"]
 
 
 # Maps a type to a more generalized type.

@@ -279,10 +279,10 @@ class ClassesTest(test_inference.InferenceTest):
           return self.convert_method(value)
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
-      from typing import Type
+      from typing import SupportsInt, Type
       class Flag(object):
         convert_method = ...  # type: Type[int]
-        def convert(self, value: float or str or unicode) -> int
+        def convert(self, value: int or unicode or SupportsInt) -> int
     """)
 
   def testBoundMethod(self):
@@ -613,12 +613,12 @@ class ClassesTest(test_inference.InferenceTest):
       x5 = x3.y
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any
+      from typing import Any, Union
       class A(object):
         x = ...  # type: Any
         y = ...  # type: bool
         def __new__(cls, a, b) -> Any
-        def __init__(self, a, b) -> None
+        def __init__(self, a, b: Union[basestring, complex, float, typing.Iterable]) -> None
       class B(object):
         def __new__(cls, x: float or int or complex) -> A
         def __init__(self, x) -> None
