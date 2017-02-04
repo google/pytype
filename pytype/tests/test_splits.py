@@ -1,6 +1,5 @@
 """Tests for union types."""
 
-import os
 import unittest
 
 from pytype.tests import test_inference
@@ -8,7 +7,6 @@ from pytype.tests import test_inference
 
 class SplitTest(test_inference.InferenceTest):
   """Tests for union types."""
-
 
   def testRestrictNone(self):
     ty = self.Infer("""

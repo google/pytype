@@ -1,7 +1,5 @@
 """Tests for TypeVar."""
 
-import os
-
 
 from pytype import utils
 from pytype.tests import test_inference
@@ -9,7 +7,6 @@ from pytype.tests import test_inference
 
 class TypeVarTest(test_inference.InferenceTest):
   """Tests for TypeVar."""
-
 
   def testId(self):
     ty = self.Infer("""

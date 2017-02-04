@@ -1,6 +1,5 @@
 """Tests for the methods in typing.pyi."""
 
-import os
 import textwrap
 
 
@@ -10,7 +9,6 @@ from pytype.tests import test_inference
 
 class TypingMethodsTest(test_inference.InferenceTest):
   """Tests for typing.py."""
-
 
   def _check_call(self, t, expr):
     with utils.Tempdir() as d:

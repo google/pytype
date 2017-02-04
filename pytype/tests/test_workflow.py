@@ -1,13 +1,11 @@
 """Test cases that match the examples in our documentation."""
 
-import os
 from pytype import utils
 from pytype.tests import test_inference
 
 
 class WorkflowTest(test_inference.InferenceTest):
   """Tests for examples extracted from our documentation."""
-
 
   def testWorkflow1(self):
     ty = self.Infer("""

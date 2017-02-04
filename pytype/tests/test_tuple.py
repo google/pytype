@@ -1,6 +1,5 @@
 """Tests of __builtin__.tuple."""
 
-import os
 import unittest
 
 
@@ -10,7 +9,6 @@ from pytype.tests import test_inference
 
 class TupleTest(test_inference.InferenceTest):
   """Tests for __builtin__.tuple."""
-
 
   def testGetItemInt(self):
     ty = self.Infer("""\

@@ -1,6 +1,7 @@
 """Common methods for tests of infer.py."""
 
 import logging
+import os
 import re
 import sys
 import textwrap
@@ -30,7 +31,9 @@ class InferenceTest(unittest.TestCase):
   """Base class for implementing tests that check PyTD output."""
 
   PYTHON_VERSION = (2, 7)  # can be overwritten by subclasses
-  PYTHON_EXE = None  # can be overwritten by subclasses
+
+  # Can be overwritten by subclasses
+  PYTHON_EXE = None
 
   def setUp(self):
     self.options = config.Options.create(python_version=self.PYTHON_VERSION,

@@ -1,6 +1,5 @@
 """Tests for --check."""
 
-import os
 import textwrap
 import unittest
 
@@ -12,7 +11,6 @@ from pytype.tests import test_inference
 
 class CheckerTest(test_inference.InferenceTest):
   """Tests for --check."""
-
 
   def get_checking_errors(self, python, pytd=None):
     options = config.Options.create(python_version=self.PYTHON_VERSION,

@@ -1,6 +1,5 @@
 """Tests for inline annotations."""
 
-import os
 import unittest
 
 
@@ -10,7 +9,6 @@ from pytype.tests import test_inference
 
 class AnnotationTest(test_inference.InferenceTest):
   """Tests for PEP 484 style inline annotations."""
-
 
   def testNoneUnpackingIs(self):
     """Tests that is works with None."""

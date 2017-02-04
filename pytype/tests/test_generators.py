@@ -1,12 +1,10 @@
 """Tests for generators."""
 
-import os
 from pytype.tests import test_inference
 
 
 class GeneratorTest(test_inference.InferenceTest):
   """Tests for iterators, generators, coroutines, and yield."""
-
 
   def testNext(self):
     ty = self.Infer("""

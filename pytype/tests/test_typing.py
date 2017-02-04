@@ -1,7 +1,5 @@
 """Tests for typing.py."""
 
-import os
-
 
 from pytype import utils
 from pytype.pytd import pep484
@@ -10,7 +8,6 @@ from pytype.tests import test_inference
 
 class TypingTest(test_inference.InferenceTest):
   """Tests for typing.py."""
-
 
   _TEMPLATE = """
     from __future__ import google_type_annotations

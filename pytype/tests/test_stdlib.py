@@ -1,14 +1,11 @@
 """Tests of selected stdlib functions."""
 
-import os
-
 
 from pytype.tests import test_inference
 
 
 class StdlibTests(test_inference.InferenceTest):
   """Tests for files in typeshed/stdlib."""
-
 
   def testAST(self):
     ty = self.Infer("""

@@ -1,6 +1,5 @@
 """Tests for displaying errors."""
 
-import os
 import StringIO
 import unittest
 
@@ -10,7 +9,6 @@ from pytype.tests import test_inference
 
 class ErrorTest(test_inference.InferenceTest):
   """Tests for errors."""
-
 
   def testDeduplicate(self):
     _, errors = self.InferAndCheck("""

@@ -1,6 +1,5 @@
 """Test comparison operators."""
 
-import os
 import unittest
 
 from pytype.tests import test_inference
@@ -291,7 +290,6 @@ class NeTest(test_inference.InferenceTest):
 
 
 class InstanceUnequalityTest(test_inference.InferenceTest):
-
 
   def test_is(self):
     """SomeType is not be the same as AnotherType."""

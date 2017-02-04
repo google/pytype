@@ -1,7 +1,5 @@
 """Tests for type comments."""
 
-import os
-
 
 from pytype.tests import test_inference
 
@@ -215,7 +213,6 @@ class FunctionCommentTest(test_inference.InferenceTest):
 
 class FunctionCommentWithAnnotationsTest(test_inference.InferenceTest):
   """Tests for type comments that require annotations."""
-
 
   def testFunctionTypeCommentPlusAnnotations(self):
     _, errors = self.InferAndCheck("""
