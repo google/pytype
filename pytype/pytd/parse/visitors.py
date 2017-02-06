@@ -956,7 +956,10 @@ class LookupExternalTypes(Visitor):
       # Nothing to do here. This visitor will only look up nodes in other
       # modules.
       return t
-    module = self._module_map[module_name]
+    try:
+      module = self._module_map[module_name]
+    except KeyError:
+      raise KeyError("Unknown module %s" % module_name)
     try:
       if self.full_names:
         item = module.Lookup(module_name + "." + name)
