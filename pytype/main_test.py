@@ -1,8 +1,10 @@
 """Integration test for pytype."""
 
 import csv
+import hashlib
 import os
 import subprocess
+import textwrap
 
 from pytype.pyi import parser
 from pytype.pytd.parse import builtins
@@ -21,8 +23,8 @@ class PytypeTest(unittest.TestCase):
   @classmethod
   def setUpClass(cls):
     cls.pytype_dir = os.path.dirname(os.path.dirname(parser.__file__))
-    cls.errors_csv = os.path.join(
-        basetest._GetDefaultTestTmpdir(), "errors.csv")
+    cls.tmp_dir = basetest._GetDefaultTestTmpdir()
+    cls.errors_csv = os.path.join(cls.tmp_dir, "errors.csv")
 
   def setUp(self):
     self.pytype_args = {"--python_exe": self.PYTHON_EXE,
@@ -31,9 +33,29 @@ class PytypeTest(unittest.TestCase):
     # fails if pytype hasn't been executed with --output-errors-csv.
     if os.path.exists(self.errors_csv):
       os.remove(self.errors_csv)
+    self.tmp_files = set()
+
+  def tearDown(self):
+    for f in self.tmp_files:
+      os.remove(f)
 
   def _DataPath(self, filename):
+    if os.path.dirname(filename) == self.tmp_dir:
+      return filename
     return os.path.join(self.pytype_dir, "test_data/", filename)
+
+  def _TmpPath(self, filename):
+    path = os.path.join(self.tmp_dir, filename)
+    self.tmp_files.add(path)
+    return path
+
+  def _MakeFile(self, contents):
+    contents = textwrap.dedent(contents)
+    path = self._TmpPath(hashlib.md5(contents).hexdigest() + ".py")
+    with open(path, "w") as f:
+      print >>f, contents
+    self.tmp_files.add(path)
+    return path
 
   def _RunPytype(self, pytype_args_dict):
     """A single command-line call to the pytype binary.
@@ -149,7 +171,11 @@ class PytypeTest(unittest.TestCase):
     self._CheckTypesAndErrors("simple.py", [])
 
   def testReturnType(self):
-    self._CheckTypesAndErrors("bad_return_type.py", ["bad-return-type"])
+    self._CheckTypesAndErrors(self._MakeFile("""\
+      from __future__ import google_type_annotations
+      def f() -> int:
+        return "foo"
+    """), ["bad-return-type"])
 
   def testInfer(self):
     self._InferTypesAndCheckErrors("simple.py", [])
@@ -169,7 +195,13 @@ class PytypeTest(unittest.TestCase):
     self.assertInferredPyiEquals(filename="complex.pyi")
 
   def testCheckMain(self):
-    self._SetUpChecking("deep_errors.py")
+    self._SetUpChecking(self._MakeFile("""\
+      def f():
+        name_error
+      def g():
+        "".foobar
+      g()
+    """))
     self.pytype_args["--main"] = self.INCLUDE
     self.pytype_args["--output-errors-csv"] = self.errors_csv
     self._RunPytype(self.pytype_args)
@@ -177,7 +209,7 @@ class PytypeTest(unittest.TestCase):
 
   def testInferToFile(self):
     self.pytype_args[self._DataPath("simple.py")] = self.INCLUDE
-    pyi_file = os.path.join(basetest._GetDefaultTestTmpdir(), "simple.pyi")
+    pyi_file = self._TmpPath("simple.pyi")
     self.pytype_args["--output"] = pyi_file
     self._RunPytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=False, returncode=False)
