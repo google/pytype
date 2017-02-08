@@ -194,9 +194,10 @@ def build_optional(name, vm, node):
 
 
 def build_typevar(name, vm, node):
+  del node
   vm.errorlog.not_supported_yet(vm.frame.current_opcode, name)
   f = TypeVarFunction(name, vm)
-  return abstract.NativeFunction("TypeVar", f.call, vm, node)
+  return abstract.NativeFunction("TypeVar", f.call, vm)
 
 
 def build_generic(name, vm, node):

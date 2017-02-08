@@ -426,8 +426,7 @@ class FunctionTest(AbstractTestBase):
     pytd_sig = pytd.Signature(
         tuple(pytd_params), None, None, pytd.AnythingType(), (), ())
     sig = abstract.PyTDSignature("f", pytd_sig, self._vm)
-    return abstract.PyTDFunction(
-        "f", (sig,), pytd.METHOD, self._vm, self._vm.root_cfg_node)
+    return abstract.PyTDFunction("f", (sig,), pytd.METHOD, self._vm)
 
   def _call_pytd_function(self, f, args):
     b = f.to_variable(self._vm.root_cfg_node).bindings[0]

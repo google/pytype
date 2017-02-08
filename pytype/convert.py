@@ -448,7 +448,7 @@ class Converter(object):
         f_cls = abstract.TypeNew
       else:
         f_cls = abstract.PyTDFunction
-      f = f_cls(pyval.name, signatures, pyval.kind, self.vm, node)
+      f = f_cls(pyval.name, signatures, pyval.kind, self.vm)
       return f
     elif isinstance(pyval, pytd.ClassType):
       assert pyval.cls

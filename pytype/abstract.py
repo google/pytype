@@ -684,8 +684,7 @@ class ValueWithSlots(Instance):
   def make_native_function(self, name, method):
     key = (name, method)
     if key not in self._function_cache:
-      self._function_cache[key] = NativeFunction(name, method, self.vm,
-                                                 self.vm.root_cfg_node)
+      self._function_cache[key] = NativeFunction(name, method, self.vm)
     return self._function_cache[key]
 
   def set_slot(self, name, method):
@@ -1083,10 +1082,8 @@ class SuperInstance(AtomicAbstractValue):
     self.cls = self.vm.convert.super_type
     self.super_cls = cls
     self.super_obj = obj
-    self.get = NativeFunction(
-        "__get__", self.get, self.vm, self.vm.root_cfg_node)
-    self.set = NativeFunction(
-        "__set__", self.set, self.vm, self.vm.root_cfg_node)
+    self.get = NativeFunction("__get__", self.get, self.vm)
+    self.set = NativeFunction("__set__", self.set, self.vm)
 
   def get(self, node, *unused_args, **unused_kwargs):
     return node, self.to_variable(node)
@@ -1248,7 +1245,7 @@ class IsInstance(AtomicAbstractValue):
       return True
 
 
-class Function(Instance):
+class Function(SimpleAbstractValue):
   """Base class for function objects (NativeFunction, InterpreterFunction).
 
   Attributes:
@@ -1256,9 +1253,8 @@ class Function(Instance):
     vm: TypegraphVirtualMachine instance.
   """
 
-  def __init__(self, name, vm, node):
-    super(Function, self).__init__(vm.convert.function_type, vm, node)
-    self.name = name
+  def __init__(self, name, vm):
+    super(Function, self).__init__(name, vm)
     self.is_attribute_of_class = False
     self.members["func_name"] = self.vm.convert.build_string(
         self.vm.root_cfg_node, name)
@@ -1495,8 +1491,8 @@ class PyTDFunction(Function):
   This represents (potentially overloaded) functions.
   """
 
-  def __init__(self, name, signatures, kind, vm, node):
-    super(PyTDFunction, self).__init__(name, vm, node)
+  def __init__(self, name, signatures, kind, vm):
+    super(PyTDFunction, self).__init__(name, vm)
     assert signatures
     self.kind = kind
     self.bound_class = BoundPyTDFunction
@@ -1965,9 +1961,8 @@ class NativeFunction(Function):
     vm: TypegraphVirtualMachine instance.
   """
 
-  def __init__(self, name, func, vm, node):
-    super(NativeFunction, self).__init__(name, vm, node)
-    self.name = name
+  def __init__(self, name, func, vm):
+    super(NativeFunction, self).__init__(name, vm)
     self.func = func
     self.cls = self.vm.convert.function_type
 
@@ -2078,7 +2073,7 @@ class InterpreterFunction(Function):
     if key not in InterpreterFunction._function_cache:
       InterpreterFunction._function_cache[key] = InterpreterFunction(
           name, code, f_locals, f_globals, defaults, kw_defaults,
-          closure, annotations, late_annotations, vm, vm.root_cfg_node)
+          closure, annotations, late_annotations, vm)
     return InterpreterFunction._function_cache[key]
 
   @staticmethod
@@ -2092,12 +2087,11 @@ class InterpreterFunction(Function):
     return count
 
   def __init__(self, name, code, f_locals, f_globals, defaults, kw_defaults,
-               closure, annotations, late_annotations, vm, node):
-    super(InterpreterFunction, self).__init__(name, vm, node)
+               closure, annotations, late_annotations, vm):
+    super(InterpreterFunction, self).__init__(name, vm)
     log.debug("Creating InterpreterFunction %r for %r", name, code.co_name)
     self.bound_class = BoundInterpreterFunction
     self.doc = code.co_consts[0] if code.co_consts else None
-    self.name = name
     self.code = code
     self.f_globals = f_globals
     self.f_locals = f_locals
@@ -2489,7 +2483,7 @@ class Generator(Instance):
 
   def get_special_attribute(self, node, name):
     if name == "__iter__":
-      f = NativeFunction(name, self.__iter__, self.vm, node)
+      f = NativeFunction(name, self.__iter__, self.vm)
       return f.to_variable(node)
     elif name in ["next", "__next__"]:
       return self.to_variable(node)

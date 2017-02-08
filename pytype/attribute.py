@@ -340,8 +340,7 @@ class AbstractAttributeHandler(object):
 
     # If we are looking up a member that we can determine is an instance
     # rather than a class attribute, add it to the instance's members.
-    if valself:
-      assert isinstance(obj, abstract.Instance)
+    if valself and isinstance(obj, abstract.Instance):
       if name not in obj.members or not obj.members[name].Bindings(node):
         # See test_generic.testInstanceAttributeVisible for an example of an
         # attribute in self.members needing to be reloaded.
