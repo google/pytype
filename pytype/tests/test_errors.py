@@ -915,6 +915,15 @@ class ErrorTest(test_inference.InferenceTest):
         (4, "invalid-typevar", "X.*Y"),
     ])
 
+  def testWrongBrackets(self):
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      from typing import List
+      def f(x: List(str)):
+        pass
+    """)
+    self.assertErrorLogIs(errors, [(3, "not-callable", r"List")])
+
 
 if __name__ == "__main__":
   test_inference.main()

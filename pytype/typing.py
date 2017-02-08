@@ -26,8 +26,7 @@ class TypingOverlay(abstract.Module):
         ast.name, ast, subst={}, node=vm.root_cfg_node)
 
   def _convert_member(self, name, m):
-    var = m(name, self.vm, self.vm.root_cfg_node).to_variable(
-        self.vm.root_cfg_node)
+    var = m(name, self.vm).to_variable(self.vm.root_cfg_node)
     self.vm.trace_module_member(self, name, var)
     return var
 
@@ -56,12 +55,12 @@ def _maybe_extract_tuple(node, t):
   return v.pyval
 
 
-class TypingClass(abstract.ValueWithSlots):
+class TypingClass(abstract.SimpleAbstractValue, abstract.HasSlots):
   """Base class of all classes in typing.py."""
 
-  def __init__(self, name, vm, node):
-    super(TypingClass, self).__init__(vm.convert.type_type, vm, node)
-    self.name = name
+  def __init__(self, name, vm):
+    super(TypingClass, self).__init__(name, vm)
+    abstract.HasSlots.init_mixin(self)
     self.set_slot("__getitem__", self.getitem_slot)
 
   def getitem_slot(self, node, slice_var):
@@ -89,8 +88,8 @@ class TypingClass(abstract.ValueWithSlots):
 class Union(TypingClass):
   """Implementation of typing.Union[...]."""
 
-  def __init__(self, name, vm, node, options=()):
-    super(Union, self).__init__(name, vm, node)
+  def __init__(self, name, vm, options=()):
+    super(Union, self).__init__(name, vm)
     self.options = options
 
   def _build_value(self, node, inner):
@@ -100,8 +99,8 @@ class Union(TypingClass):
 class Container(TypingClass):
   """Implementation of typing.X[...]."""
 
-  def __init__(self, name, vm, node, base_cls):
-    super(Container, self).__init__(name, vm, node)
+  def __init__(self, name, vm, base_cls):
+    super(Container, self).__init__(name, vm)
     self.base_cls = base_cls
 
   def _build_value(self, node, inner):
@@ -126,11 +125,11 @@ class Container(TypingClass):
 
 class Callable(Container):
 
-  def __init__(self, name, vm, node):
+  def __init__(self, name, vm):
     # Note that we cannot use vm.convert.function_type here, since our matcher
     # doesn't know that __builtin__.function and typing.Callable are the same.
     base = vm.convert.name_to_value("typing.Callable")
-    super(Callable, self).__init__(name, vm, node, base)
+    super(Callable, self).__init__(name, vm, base)
 
   def _build_value(self, node, inner):
     # We don't do anything with Callable parameters yet.
@@ -167,41 +166,37 @@ class TypeVarFunction(object):
     return node, typevar.to_variable(node)
 
 
-def build_container(name, vm, node):
+def build_container(name, vm):
   if name in pep484.PEP484_CAPITALIZED:
     pytd_name = "__builtin__." + name.lower()
   else:
     pytd_name = "typing." + name
   base = vm.convert.name_to_value(pytd_name)
-  return Container(name, vm, node, base)
+  return Container(name, vm, base)
 
 
-def build_any(name, vm, node):
+def build_any(name, vm):
   del name
-  del node
   return abstract.Unsolvable(vm)
 
 
 # TODO(kramm): Do a full implementation of this.
-def build_namedtuple(name, vm, node):
+def build_namedtuple(name, vm):
   del name
-  del node
   return abstract.Unsolvable(vm)
 
 
-def build_optional(name, vm, node):
-  return Union(name, vm, node, (vm.convert.none_type.data[0],))
+def build_optional(name, vm):
+  return Union(name, vm, (vm.convert.none_type.data[0],))
 
 
-def build_typevar(name, vm, node):
-  del node
+def build_typevar(name, vm):
   vm.errorlog.not_supported_yet(vm.frame.current_opcode, name)
   f = TypeVarFunction(name, vm)
   return abstract.NativeFunction("TypeVar", f.call, vm)
 
 
-def build_generic(name, vm, node):
-  del node
+def build_generic(name, vm):
   vm.errorlog.not_supported_yet(vm.frame.current_opcode, name)
   return vm.convert.unsolvable
 

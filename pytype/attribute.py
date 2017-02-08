@@ -45,10 +45,7 @@ class AbstractAttributeHandler(object):
     special_attribute = obj.get_special_attribute(node, name)
     if special_attribute is not None:
       return node, special_attribute
-    if isinstance(obj, abstract.ValueWithSlots):
-      return self.get_instance_attribute(
-          node, obj, name, valself, valcls)
-    elif isinstance(obj, abstract.Function):
+    if isinstance(obj, abstract.Function):
       if name == "__get__":
         # The pytd for "function" has a __get__ attribute, but if we already
         # have a function we don't want to be treated as a descriptor.

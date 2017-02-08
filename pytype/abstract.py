@@ -405,6 +405,18 @@ class Empty(AtomicAbstractValue):
     return self.vm.convert.unsolvable.to_variable(self.vm.root_cfg_node)
 
 
+class MixinMeta(type):
+  """Metaclass for mix-ins."""
+
+  def __init__(cls, name, superclasses, *args, **kwargs):
+    super(MixinMeta, cls).__init__(name, superclasses, *args, **kwargs)
+    for sup in superclasses:
+      if hasattr(sup, "overloads"):
+        for method in sup.overloads:
+          if method not in cls.__dict__:
+            setattr(cls, method, getattr(sup, method))
+
+
 class PythonConstant(object):
   """A mix-in for storing actual Python constants, not just their types.
 
@@ -413,6 +425,9 @@ class PythonConstant(object):
   definitions, tuples. Also, potentially: Small integers, strings (E.g. "w",
   "r" etc.).
   """
+
+  __metaclass__ = MixinMeta
+  overloads = ("compatible_with",)
 
   def init_mixin(self, pyval):
     """Mix-in equivalent of __init__."""
@@ -668,15 +683,19 @@ class Instance(SimpleAbstractValue):
       return None
 
 
-class ValueWithSlots(Instance):
-  """Convenience class for overriding slots with custom methods.
+class HasSlots(object):
+  """Mix-in for overriding slots with custom methods.
 
   This makes it easier to emulate built-in classes like dict which need special
   handling of some magic methods (__setitem__ etc.)
   """
 
-  def __init__(self, clsvar, vm, node):
-    super(ValueWithSlots, self).__init__(clsvar, vm, node)
+  __metaclass__ = MixinMeta
+  overloads = ("get_special_attribute",)
+
+  def init_mixin(self):
+    # set_slot uses get_instance_attribute, which takes a SimpleAbstractValue.
+    assert SimpleAbstractValue in self.__class__.mro()
     self._slots = {}
     self._super = {}
     self._function_cache = {}
@@ -706,7 +725,7 @@ class ValueWithSlots(Instance):
       return self._slots[name]
 
 
-class Tuple(ValueWithSlots, PythonConstant):
+class Tuple(Instance, HasSlots, PythonConstant):
   """Representation of Python 'tuple' objects."""
 
   def __init__(self, content, vm, node):
@@ -716,6 +735,7 @@ class Tuple(ValueWithSlots, PythonConstant):
                     tuple(enumerate(content)) + ((T, combined_content),)}
     cls = TupleClass(vm.convert.tuple_type.bindings[0].data, class_params, vm)
     super(Tuple, self).__init__(cls.to_variable(node), vm, node)
+    HasSlots.init_mixin(self)
     self.set_slot("__getitem__", self.getitem_slot)
     self.initialize_type_parameter(node, T, combined_content)
     PythonConstant.init_mixin(self, content)
@@ -745,11 +765,8 @@ class Tuple(ValueWithSlots, PythonConstant):
     parameters.extend(self.pyval)
     return parameters
 
-  def compatible_with(self, logical_value):
-    return PythonConstant.compatible_with(self, logical_value)
 
-
-class Dict(ValueWithSlots, PythonConstant, WrapsDict("pyval")):
+class Dict(Instance, HasSlots, PythonConstant, WrapsDict("pyval")):
   """Representation of Python 'dict' objects.
 
   It works like __builtins__.dict, except that, for string keys, it keeps track
@@ -758,6 +775,7 @@ class Dict(ValueWithSlots, PythonConstant, WrapsDict("pyval")):
 
   def __init__(self, vm, node):
     super(Dict, self).__init__(vm.convert.dict_type, vm, node)
+    HasSlots.init_mixin(self)
     self.set_slot("__getitem__", self.getitem_slot)
     self.set_slot("__setitem__", self.setitem_slot)
     self.set_slot("setdefault", self.setdefault_slot)
@@ -875,9 +893,6 @@ class AbstractOrConcreteValue(Instance, PythonConstant):
   def __init__(self, pyval, clsvar, vm, node):
     super(AbstractOrConcreteValue, self).__init__(clsvar, vm, node)
     PythonConstant.init_mixin(self, pyval)
-
-  def compatible_with(self, logical_value):
-    return PythonConstant.compatible_with(self, logical_value)
 
 
 class LazyConcreteDict(SimpleAbstractValue, PythonConstant):
@@ -2510,11 +2525,12 @@ class Generator(Instance):
     return self.run_until_yield(node)
 
 
-class Iterator(ValueWithSlots):
+class Iterator(Instance, HasSlots):
   """A representation of instances of iterators."""
 
   def __init__(self, vm, return_var, node):
     super(Iterator, self).__init__(vm.convert.iterator_type, vm, node)
+    HasSlots.init_mixin(self)
     self.set_slot("next", self.next_slot)
     self.init_type_parameters(T)
     # TODO(dbaum): Should we set type_parameters[self.TYPE_PARAM] to something
