@@ -44,48 +44,7 @@ class TypingOverlay(abstract.Module):
     return items
 
 
-def _maybe_extract_tuple(node, t):
-  """Returns a tuple of Variables."""
-  values = t.Data(node)
-  if len(values) > 1:
-    return (t,)
-  v, = values
-  if not isinstance(v, abstract.Tuple):
-    return (t,)
-  return v.pyval
-
-
-class TypingClass(abstract.SimpleAbstractValue, abstract.HasSlots):
-  """Base class of all classes in typing.py."""
-
-  def __init__(self, name, vm):
-    super(TypingClass, self).__init__(name, vm)
-    abstract.HasSlots.init_mixin(self)
-    self.set_slot("__getitem__", self.getitem_slot)
-
-  def getitem_slot(self, node, slice_var):
-    inner = []
-    slice_content = _maybe_extract_tuple(node, slice_var)
-    for var in slice_content:
-      if len(var.bindings) > 1:
-        self.vm.errorlog.invalid_annotation(self.vm.frame.current_opcode, self,
-                                            "Must be constant")
-        inner.append(self.vm.convert.unsolvable)
-      else:
-        val = var.bindings[0].data
-        if val is self.vm.convert.ellipsis and (len(inner) != 1 or
-                                                len(slice_content) != 2):
-          inner.append(self.vm.convert.unsolvable)
-        else:
-          inner.append(val)
-    value = self._build_value(node, tuple(inner))
-    return node, value.to_variable(node)
-
-  def _build_value(self, node, inner):
-    raise NotImplementedError(self.__class__.__name__)
-
-
-class Union(TypingClass):
+class Union(abstract.AnnotationClass):
   """Implementation of typing.Union[...]."""
 
   def __init__(self, name, vm, options=()):
@@ -96,34 +55,7 @@ class Union(TypingClass):
     return abstract.Union(self.options + inner, self.vm)
 
 
-class Container(TypingClass):
-  """Implementation of typing.X[...]."""
-
-  def __init__(self, name, vm, base_cls):
-    super(Container, self).__init__(name, vm)
-    self.base_cls = base_cls
-
-  def _build_value(self, node, inner):
-    if (inner[-1] is not self.vm.convert.ellipsis and
-        [self.base_cls] == self.vm.convert.tuple_type.data):
-      template = range(len(inner)) + [abstract.T]
-      inner += (abstract.merge_values(inner, self.vm),)
-      abstract_class = abstract.TupleClass
-    else:
-      template = tuple(t.name for t in self.base_cls.pytd_cls.template)
-      if inner[-1] is self.vm.convert.ellipsis:
-        inner = inner[:-1]
-      abstract_class = abstract.ParameterizedClass
-    if len(inner) > len(template):
-      error = "Expected %d parameter(s), got %d" % (len(template), len(inner))
-      self.vm.errorlog.invalid_annotation(
-          self.vm.frame.current_opcode, self, error)
-    params = {name: inner[i] if i < len(inner) else self.vm.convert.unsolvable
-              for i, name in enumerate(template)}
-    return abstract_class(self.base_cls, params, self.vm)
-
-
-class Callable(Container):
+class Callable(abstract.AnnotationContainer):
 
   def __init__(self, name, vm):
     # Note that we cannot use vm.convert.function_type here, since our matcher
@@ -172,7 +104,7 @@ def build_container(name, vm):
   else:
     pytd_name = "typing." + name
   base = vm.convert.name_to_value(pytd_name)
-  return Container(name, vm, base)
+  return abstract.AnnotationContainer(name, vm, base)
 
 
 def build_any(name, vm):

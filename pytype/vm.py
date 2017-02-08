@@ -476,10 +476,10 @@ class VirtualMachine(object):
 
   def _process_base_class(self, node, base):
     """Process a base class for InterpreterClass creation."""
-    if any(isinstance(t, typing.Container) for t in base.data):
+    if any(isinstance(t, abstract.AnnotationContainer) for t in base.data):
       new_base = self.program.NewVariable()
       for b in base.bindings:
-        if isinstance(b.data, typing.Container):
+        if isinstance(b.data, abstract.AnnotationContainer):
           val = b.data.base_cls
         else:
           val = b.data
@@ -1320,15 +1320,7 @@ class VirtualMachine(object):
     return self.binary_operator(state, "__pow__")
 
   def byte_BINARY_SUBSCR(self, state, op):
-    # TODO(rechen): This entire method should just be
-    #   return self.binary_operator(state, "__getitem__")
-    state = self.binary_operator(state, "__getitem__", report_errors=False)
-    if state.top().bindings:
-      return state
-    else:
-      state.top().AddBinding(self.convert.unsolvable,
-                             source_set=[], where=state.node)
-      return state
+    return self.binary_operator(state, "__getitem__")
 
   def byte_INPLACE_ADD(self, state, op):
     return self.inplace_operator(state, "__iadd__")
@@ -1938,7 +1930,7 @@ class VirtualMachine(object):
   def _process_one_annotation(self, annotation, name, opcode,
                               node=None, f_globals=None):
     """Change annotation / record errors where required."""
-    if isinstance(annotation, typing.Container):
+    if isinstance(annotation, abstract.AnnotationContainer):
       annotation = annotation.base_cls
 
     if isinstance(annotation, typing.Union):

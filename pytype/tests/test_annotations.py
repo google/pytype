@@ -1007,6 +1007,27 @@ class AnnotationTest(test_inference.InferenceTest):
     """)
     self.assertErrorLogIs(errors, [(3, "invalid-annotation", r"Ellipsis.*x")])
 
+  def testCustomContainer(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import Generic
+        T = TypeVar("T")
+        T2 = TypeVar("T2")
+        class Foo(Generic[T]):
+          def __init__(self, x: T2):
+            self := Foo[T2]
+      """)
+      _, errors = self.InferAndCheck("""\
+        from __future__ import google_type_annotations
+        import foo
+        def f(x: foo.Foo[int]):
+          pass
+        f(foo.Foo(42))
+        f(foo.Foo(""))
+      """, pythonpath=[d.path])
+      self.assertErrorLogIs(errors, [(6, "wrong-arg-types",
+                                      r"Foo\[int\].*Foo\[str\]")])
+
 
 if __name__ == "__main__":
   test_inference.main()

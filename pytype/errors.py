@@ -8,7 +8,6 @@ import sys
 
 
 from pytype import abstract
-from pytype import typing
 from pytype import utils
 from pytype.pytd import pytd
 from pytype.pytd import utils as pytd_utils
@@ -242,7 +241,7 @@ class ErrorLog(ErrorLogBase):
       return self._pytd_print(t.get_instance_type())
     elif isinstance(t, abstract.PythonConstant):
       return re.sub(r"(\\n|\s)+", " ", repr(t.pyval))
-    elif isinstance(t, typing.TypingClass) or not t.cls:
+    elif isinstance(t, abstract.AnnotationClass) or not t.cls:
       return t.name
     else:
       return "<instance of %s>" % self._print_as_expected_type(t.cls.data[0])

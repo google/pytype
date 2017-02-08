@@ -42,7 +42,7 @@ class AbstractAttributeHandler(object):
       the Variable will be None.
     """
     # Some objects have special attributes, like "__get__" or "__iter__"
-    special_attribute = obj.get_special_attribute(node, name)
+    special_attribute = obj.get_special_attribute(node, name, valself)
     if special_attribute is not None:
       return node, special_attribute
     if isinstance(obj, abstract.Function):

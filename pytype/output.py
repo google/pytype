@@ -5,7 +5,6 @@ import logging
 
 
 from pytype import abstract
-from pytype import typing
 from pytype.pytd import pytd
 from pytype.pytd import utils as pytd_utils
 from pytype.pytd.parse import visitors
@@ -86,7 +85,7 @@ class Converter(object):
       return pytd.UnionType(tuple(
           self.value_instance_to_pytd_type(node, t, instance, seen, view)
           for t in v.options))
-    elif isinstance(v, typing.Container):
+    elif isinstance(v, abstract.AnnotationContainer):
       return self.value_instance_to_pytd_type(
           node, v.base_cls, instance, seen, view)
     elif isinstance(v, abstract.Class):

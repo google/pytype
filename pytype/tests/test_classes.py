@@ -909,6 +909,22 @@ class ClassesTest(test_inference.InferenceTest):
         def __metaclass__(names, bases, members) -> Any
     """)
 
+  def testClassGetItem(self):
+    ty = self.Infer("""
+      from __future__ import google_type_annotations
+      class A(type):
+        def __getitem__(self, i):
+          return 42
+      X = A("X", (object,), {})
+      v = X[0]
+    """)
+    self.assertTypesMatchPytd(ty, """
+      class A(type):
+        def __getitem__(self, i: int) -> int
+      class X(object, metaclass=A): ...
+      v = ...  # type: int
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

@@ -116,6 +116,17 @@ def get_views(variables, node, filter_strict=False):
     yield view
 
 
+def _maybe_extract_tuple(node, t):
+  """Returns a tuple of Variables."""
+  values = t.Data(node)
+  if len(values) > 1:
+    return (t,)
+  v, = values
+  if not isinstance(v, Tuple):
+    return (t,)
+  return v.pyval
+
+
 class AtomicAbstractValue(object):
   """A single abstract value such as a type or function signature.
 
@@ -201,7 +212,7 @@ class AtomicAbstractValue(object):
     """
     return self
 
-  def get_special_attribute(self, unused_node, unused_name):
+  def get_special_attribute(self, unused_node, unused_name, unused_valself):
     """Fetch a special attribute (e.g., __get__, __iter__)."""
     return None
 
@@ -393,8 +404,8 @@ class Empty(AtomicAbstractValue):
   def __init__(self, vm):
     super(Empty, self).__init__("empty", vm)
 
-  def get_special_attribute(self, node, name):
-    del name
+  def get_special_attribute(self, node, name, valself):
+    del name, valself
     return self.vm.convert.unsolvable.to_variable(node)
 
   def call(self, node, func, args):
@@ -720,7 +731,8 @@ class HasSlots(object):
     """Call the (original) pytd version of a method we overwrote."""
     return self.vm.call_function(node, self._super[name], FunctionArgs(args))
 
-  def get_special_attribute(self, _, name):
+  def get_special_attribute(self, node, name, valself):
+    del node, valself
     if name in self._slots:
       return self._slots[name]
 
@@ -885,6 +897,67 @@ class Dict(Instance, HasSlots, PythonConstant, WrapsDict("pyval")):
       present, False otherwise.
     """
     return None if self.could_contain_anything else key in self.pyval
+
+
+class AnnotationClass(SimpleAbstractValue, HasSlots):
+  """Base class of annotations that can be parameterized."""
+
+  def __init__(self, name, vm):
+    super(AnnotationClass, self).__init__(name, vm)
+    HasSlots.init_mixin(self)
+    self.set_slot("__getitem__", self.getitem_slot)
+
+  def getitem_slot(self, node, slice_var):
+    """Custom __getitem__ implementation."""
+    inner = []
+    slice_content = _maybe_extract_tuple(node, slice_var)
+    for var in slice_content:
+      if len(var.bindings) > 1:
+        self.vm.errorlog.invalid_annotation(self.vm.frame.current_opcode, self,
+                                            "Must be constant")
+        inner.append(self.vm.convert.unsolvable)
+      else:
+        val = var.bindings[0].data
+        if val is self.vm.convert.ellipsis and (len(inner) != 1 or
+                                                len(slice_content) != 2):
+          inner.append(self.vm.convert.unsolvable)
+        else:
+          inner.append(val)
+    value = self._build_value(node, tuple(inner))
+    return node, value.to_variable(node)
+
+  def _build_value(self, node, inner):
+    raise NotImplementedError(self.__class__.__name__)
+
+  def __repr__(self):
+    return "AnnotationClass(%s)" % self.name
+
+
+class AnnotationContainer(AnnotationClass):
+  """Implementation of X[...] for annotations."""
+
+  def __init__(self, name, vm, base_cls):
+    super(AnnotationContainer, self).__init__(name, vm)
+    self.base_cls = base_cls
+
+  def _build_value(self, node, inner):
+    if (inner[-1] is not self.vm.convert.ellipsis and
+        [self.base_cls] == self.vm.convert.tuple_type.data):
+      template = range(len(inner)) + [T]
+      inner += (merge_values(inner, self.vm),)
+      abstract_class = TupleClass
+    else:
+      template = tuple(t.name for t in self.base_cls.template)
+      if inner[-1] is self.vm.convert.ellipsis:
+        inner = inner[:-1]
+      abstract_class = ParameterizedClass
+    if len(inner) > len(template):
+      error = "Expected %d parameter(s), got %d" % (len(template), len(inner))
+      self.vm.errorlog.invalid_annotation(
+          self.vm.frame.current_opcode, self, error)
+    params = {name: inner[i] if i < len(inner) else self.vm.convert.unsolvable
+              for i, name in enumerate(template)}
+    return abstract_class(self.base_cls, params, self.vm)
 
 
 class AbstractOrConcreteValue(Instance, PythonConstant):
@@ -1106,7 +1179,7 @@ class SuperInstance(AtomicAbstractValue):
   def set(self, node, *unused_args, **unused_kwargs):
     return node, self.to_variable(node)
 
-  def get_special_attribute(self, node, name):
+  def get_special_attribute(self, node, name, _):
     if name == "__get__":
       return self.get.to_variable(node)
     elif name == "__set__":
@@ -1704,6 +1777,9 @@ class TypeNew(PyTDFunction):
 class Class(object):
   """Mix-in to mark all class-like values."""
 
+  __metaclass__ = MixinMeta
+  overloads = ("get_special_attribute",)
+
   def __new__(cls, *args, **kwds):
     """Prevent direct instantiation."""
     assert cls is not Class, "Cannot instantiate Class"
@@ -1760,6 +1836,20 @@ class Class(object):
       node, ret = self.vm.call_function(node, init, args)
       log.debug("%s.__init__(...) returned %r", self.name, ret)
     return node
+
+  def get_special_attribute(self, node, name, valself):
+    if name == "__getitem__" and valself is None:
+      if self.cls:
+        # This class has a custom metaclass; check if it defines __getitem__.
+        _, attr = self.vm.attribute_handler.get_instance_attribute(
+            node, self, name, self.to_variable(node).bindings[0])
+        if attr:
+          return attr
+      # Treat this class as a parameterized container in an annotation. We do
+      # not need to worry about the class not being a container: in that case,
+      # AnnotationContainer's param length check reports an appropriate error.
+      container = AnnotationContainer(self.name, self.vm, self)
+      return container.get_special_attribute(node, name, valself)
 
 
 class ParameterizedClass(AtomicAbstractValue, Class):
@@ -2496,7 +2586,7 @@ class Generator(Instance):
     self.generator_frame = generator_frame
     self.runs = 0
 
-  def get_special_attribute(self, node, name):
+  def get_special_attribute(self, node, name, _):
     if name == "__iter__":
       f = NativeFunction(name, self.__iter__, self.vm)
       return f.to_variable(node)
@@ -2674,7 +2764,7 @@ class Unsolvable(AtomicAbstractValue):
     super(Unsolvable, self).__init__("unsolveable", vm)
     self.mro = self.default_mro()
 
-  def get_special_attribute(self, node, name):
+  def get_special_attribute(self, node, name, _):
     if name in self.IGNORED_ATTRIBUTES:
       return None
     else:
@@ -2777,7 +2867,8 @@ class Unknown(AtomicAbstractValue):
                                 mutated_type=None)
                  for i, p in enumerate(args))
 
-  def get_special_attribute(self, _, name):
+  def get_special_attribute(self, node, name, valself):
+    del node, valself
     if name in self.IGNORED_ATTRIBUTES:
       return None
     if name in self.members:

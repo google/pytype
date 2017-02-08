@@ -1,7 +1,6 @@
 """Tests for --check."""
 
 import textwrap
-import unittest
 
 from pytype import config
 from pytype import errors
@@ -256,8 +255,7 @@ class CheckerTest(test_inference.InferenceTest):
     self.assertErrorLogIs(errorlog, [(6, "attribute-error", r"y.*List\[Foo\]"),
                                      (7, "attribute-error", r"z.*Type\[Foo\]")])
 
-  @unittest.skip("Bug in byte_BINARY_SUBSCR")
-  def testBadGetitem(self):
+  def testBadGetItem(self):
     python = """\
       from __future__ import google_type_annotations
       def f(x: int):
@@ -265,6 +263,20 @@ class CheckerTest(test_inference.InferenceTest):
     """
     errorlog = self.get_checking_errors(python)
     self.assertErrorLogIs(errorlog, [(3, "unsupported-operands", r"int.*int")])
+
+  def testBadAnnotationContainer(self):
+    python = """\
+      from __future__ import google_type_annotations
+      class A(object):
+        pass
+      def f(x: int[str]):
+        pass
+      def g(x: A[str]):
+        pass
+    """
+    errorlog = self.get_checking_errors(python)
+    self.assertErrorLogIs(errorlog, [(4, "invalid-annotation", r"0.*1"),
+                                     (6, "invalid-annotation", r"0.*1")])
 
 
 if __name__ == "__main__":
