@@ -662,16 +662,8 @@ class _PathFinder(object):
   def __init__(self):
     self._solved_find_queries = {} # Cached queries
 
-  def _ResetState(self, finish, blocked):
-    """Prepare the state for a new search."""
-
-    ### Search definition ###
-    self._finish = finish
-    self._blocked = blocked
-
-    ### Working state ###
-    # A dict mapping nodes to the iterator over their incoming links.
-    self._node_to_iter = {}
+  def _ResetState(self):
+    """Prepare the working state for a new search."""
     # A set of the nodes which have been on all paths so far.
     # In the end this will contain the intersection of all paths between
     # start and finish.
@@ -732,23 +724,12 @@ class _PathFinder(object):
       self._solved_find_queries[query] = True, []
       return self._solved_find_queries[query]
 
-    self._ResetState(finish, blocked)
-
-    self._FindNodeBackwardsImpl(start)
-    if self._solution_set is not None:
-      # self._one_path is a path from start to finish and self._solution_set is
-      # the intersection of all those paths.
-      # Order is important here, as the solver sets the first element of the
-      # list to be the new destination and could jump over a destination if the
-      # return value was unordered.
-      result = True, [node for node in self._one_path
-                      if node.condition and node in self._solution_set]
-    else:
-      result = False, None
+    self._ResetState()
+    result = self._FindNodeBackwardsImpl(start, finish, blocked)
     self._solved_find_queries[query] = result
     return result
 
-  def _FindNodeBackwardsImpl(self, start):
+  def _FindNodeBackwardsImpl(self, start, finish, blocked):
     """Find a path from start to finish and return nodes on all such paths.
 
     If a node is on all paths between start and finish it's condition must be
@@ -756,8 +737,10 @@ class _PathFinder(object):
 
     Args:
       start: The CFGNode from which to search.
+      finish: The CFGNode we try to reach.
+      blocked: A list of nodes we're not allowed to use.
 
-    Return:
+    Returns:
       None, the result is saved in self._solution_set (nodes on all paths) and
       self._one_path (order of the nodes).
     """
@@ -766,24 +749,28 @@ class _PathFinder(object):
 
     # Nodes which have already been added to a path.
     seen_set = set()
+    node_to_iter = {}  # maps nodes to the iterator over their incoming links.
     while path:
       head = path[-1]
-      if head not in self._node_to_iter:
-        self._node_to_iter[head] = iter(head.incoming)
-      it = self._node_to_iter[head]
+      if head not in node_to_iter:
+        node_to_iter[head] = iter(head.incoming)
+      it = node_to_iter[head]
       try:
         next_node = it.next()
       except StopIteration:
         path.pop()
-        self._HandleNode(head, path)
+        if head is finish:
+          self._FinishNode(head, path)
+        else:
+          self._UpdateNodeToFinishSet(head, path)
         continue
-      if next_node is self._finish:
+      if next_node is finish:
         if self._solution_set is not None and not self._solution_set:
           # Solution set can never grow and is already empty.
           return
-        self._HandleNode(next_node, path)
+        self._FinishNode(next_node, path)
         continue
-      if next_node in self._blocked:
+      if next_node in blocked:
         # The finish node is always blocked, therefore this needs to be below
         # the finish test.
         continue
@@ -792,24 +779,31 @@ class _PathFinder(object):
       seen_set.add(next_node)
       path.append(next_node)
 
-  def _HandleNode(self, node, path):
+    if self._solution_set is not None:
+      # self._one_path is a path from start to finish and self._solution_set is
+      # the intersection of all those paths.
+      # Order is important here, as the solver sets the first element of the
+      # list to be the new destination and could jump over a destination if the
+      # return value was unordered.
+      return True, [node for node in self._one_path
+                    if node.condition and node in self._solution_set]
+    else:
+      return False, None
+
+  def _FinishNode(self, node, path):
     """Update the state with the results from one node.
 
     Args:
       node: The node to be analyzed.
       path: The path to this node, as a list of nodes.
     """
-    if node is self._finish:
-      this_path = list(path)
-      this_path.append(node)
-      if not self._one_path:
-        self._one_path = this_path
-      self._UpdateSolutionSet(this_path)
-      # This is finish so the parent does not need to care about others
-      self._node_to_finish_set[node] = {node}
-      return
-    else:
-      self._UpdateNodeToFinishSet(node, path)
+    this_path = list(path)
+    this_path.append(node)
+    if not self._one_path:
+      self._one_path = this_path
+    self._UpdateSolutionSet(this_path)
+    # This is finish so the parent does not need to care about others
+    self._node_to_finish_set[node] = {node}
 
   def _UpdateNodeToFinishSet(self, node, path):
     """Update the _node_to_finish_set for one node."""
