@@ -677,7 +677,7 @@ class _PathFinder(object):
     # If this is None it means that no path to finish exist from the node.
     self._node_to_finish_set = {}
 
-  def _FindPathToNodeWithoutConditions(self, start, finish, blocked):
+  def _FindPathToNode(self, start, finish, blocked):
     """Determine whether we can reach a node without traversing conditions."""
     stack = [start]
     seen = set()
@@ -685,7 +685,7 @@ class _PathFinder(object):
       node = stack.pop()
       if node is finish:
         return True
-      if node in seen or node in blocked or node.condition:
+      if node in seen or node in blocked:
         continue
       seen.add(node)
       stack.extend(node.incoming)
@@ -720,8 +720,8 @@ class _PathFinder(object):
       return (True, [start] if start.condition else [])
 
     # Run a quick DFS first, maybe we find a path that doesn't need a condition.
-    if self._FindPathToNodeWithoutConditions(start, finish, blocked):
-      self._solved_find_queries[query] = True, []
+    if not self._FindPathToNode(start, finish, blocked):
+      self._solved_find_queries[query] = False, None
       return self._solved_find_queries[query]
 
     self._ResetState()
@@ -767,7 +767,7 @@ class _PathFinder(object):
       if next_node is finish:
         if self._solution_set is not None and not self._solution_set:
           # Solution set can never grow and is already empty.
-          return
+          break
         self._FinishNode(next_node, path)
         continue
       if next_node in blocked:
