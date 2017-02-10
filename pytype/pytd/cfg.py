@@ -685,6 +685,20 @@ class _PathFinder(object):
     # If this is None it means that no path to finish exist from the node.
     self._node_to_finish_set = {}
 
+  def _FindPathToNodeWithoutConditions(self, start, finish, blocked):
+    """Determine whether we can reach a node without traversing conditions."""
+    stack = [start]
+    seen = set()
+    while stack:
+      node = stack.pop()
+      if node is finish:
+        return True
+      if node in seen or node in blocked or node.condition:
+        continue
+      seen.add(node)
+      stack.extend(node.incoming)
+    return False
+
   def FindNodeBackwards(self, start, finish, blocked):
     """Determine whether we can reach a CFG node, going backwards.
 
@@ -712,6 +726,11 @@ class _PathFinder(object):
     # Special case start.
     if start is finish:
       return (True, [start] if start.condition else [])
+
+    # Run a quick DFS first, maybe we find a path that doesn't need a condition.
+    if self._FindPathToNodeWithoutConditions(start, finish, blocked):
+      self._solved_find_queries[query] = True, []
+      return self._solved_find_queries[query]
 
     self._ResetState(finish, blocked)
 
