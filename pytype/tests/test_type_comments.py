@@ -228,10 +228,21 @@ class FunctionCommentWithAnnotationsTest(test_inference.InferenceTest):
 class AssignmentCommentTest(test_inference.InferenceTest):
   """Tests for type comments applied to assignments."""
 
-  def testAttributeComment(self):
+  def testClassAttributeComment(self):
     ty = self.Infer("""
       class Foo(object):
         s = None  # type: str
+    """, deep=True, filename="test.py")
+    self.assertTypesMatchPytd(ty, """
+      class Foo(object):
+        s = ...  # type: str
+    """)
+
+  def testInstanceAttributeComment(self):
+    ty = self.Infer("""
+      class Foo(object):
+        def __init__(self):
+          self.s = None  # type: str
     """, deep=True, filename="test.py")
     self.assertTypesMatchPytd(ty, """
       class Foo(object):

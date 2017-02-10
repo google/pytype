@@ -105,7 +105,9 @@ class _FindIgnoredTypeComments(object):
   def visit_code(self, code):
     """Interface for pyc.visit."""
     for i, op in enumerate(code.co_code):
-      if isinstance(op, (opcodes.STORE_NAME, opcodes.STORE_FAST)):
+      if isinstance(op, (opcodes.STORE_NAME,
+                         opcodes.STORE_FAST,
+                         opcodes.STORE_ATTR)):
         self._ignored_type_lines.discard(op.line)
       elif isinstance(op, opcodes.MAKE_FUNCTION):
         code_line = self._find_code_line(code, i)
@@ -1568,6 +1570,7 @@ class VirtualMachine(object):
   def byte_STORE_ATTR(self, state, op):
     name = self.frame.f_code.co_names[op.arg]
     state, (val, obj) = state.popn(2)
+    val = self._apply_type_comment(state, op, val)
     state = state.forward_cfg_node()
     state = self.store_attr(state, obj, name, val)
     return state
@@ -1913,7 +1916,7 @@ class VirtualMachine(object):
     state = state.push(self.convert.build_none(state.node))
     v = self.convert.build_none(state.node)
     w = self.convert.build_none(state.node)
-    state, suppress_exception = self.call_function_with_state(
+    state, unused_suppress_exception = self.call_function_with_state(
         state, exit_func, (u, v, w))
     return state
 
