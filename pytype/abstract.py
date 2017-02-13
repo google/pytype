@@ -588,7 +588,7 @@ class SimpleAbstractValue(AtomicAbstractValue):
     # See Py_TYPE() in Include/object.h
     if self.cls:
       return self.cls
-    elif isinstance(self, Class):
+    elif isinstance(self, (AnnotationClass, Class)):
       return self.vm.convert.type_type
 
   def set_class(self, node, var):

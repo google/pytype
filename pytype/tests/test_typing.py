@@ -55,7 +55,7 @@ class TypingTest(test_inference.InferenceTest):
       x = ...  # type: List[str]
     """)
 
-  def test_cast(self):
+  def test_cast1(self):
     ty = self.Infer("""
       from __future__ import google_type_annotations
       import typing
@@ -66,6 +66,13 @@ class TypingTest(test_inference.InferenceTest):
       from typing import Any
       typing = ...  # type: module
       def f() -> Any
+    """)
+
+  def test_cast2(self):
+    self.assertNoErrors("""
+      from __future__ import google_type_annotations
+      import typing
+      foo = typing.cast(typing.Dict, {})
     """)
 
   def test_generator(self):

@@ -225,6 +225,11 @@ class MatcherTest(unittest.TestCase):
     self.assertNoMatch(left, right6)
     self.assertMatch(left, right7)
 
+  def testAnnotationClass(self):
+    left = abstract.AnnotationClass("Dict", self.vm)
+    right = self.vm.convert.object_type.data[0]
+    self.assertMatch(left, right)
+
 
 if __name__ == "__main__":
   unittest.main()
