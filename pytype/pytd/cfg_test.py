@@ -1,5 +1,6 @@
 """Test for the cfg Python extension module."""
 
+import unittest
 from pytype.pytd import cfg
 import unittest
 
@@ -125,11 +126,11 @@ class CFGTest(unittest.TestCase):
     u = p.NewVariable()
     u1 = u.AddBinding(0, source_set=[], where=n0)
     v = p.NewVariable()
-    v1 = v.AddBinding(1, source_set=[], where=n1)
-    v2 = v.AddBinding(2, source_set=[], where=n1)
+    v.AddBinding(1, source_set=[], where=n1)
+    v.AddBinding(2, source_set=[], where=n1)
     w = p.NewVariable()
-    w1 = w.AddBinding(1, source_set=[u1], where=n1)
-    w2 = w.AddBinding(3, source_set=[], where=n1)
+    w.AddBinding(1, source_set=[u1], where=n1)
+    w.AddBinding(3, source_set=[], where=n1)
     vw = p.MergeVariables(n2, [v, w])
     self.assertItemsEqual(vw.data, [1, 2, 3])
     val1, = [v for v in vw.bindings if v.data == 1]
@@ -219,6 +220,58 @@ class CFGTest(unittest.TestCase):
     p.entrypoint = n1
     n2.condition = x_a
     self.assertFalse(n3.HasCombination([x_b]))
+
+  def testConditionOrder(self):
+    p = cfg.Program()
+    x, y = p.NewVariable(), p.NewVariable()
+    n1 = p.NewCFGNode("n1")
+    n2 = n1.ConnectNew("n2")
+    n3 = n2.ConnectNew("n3")
+    n4 = n3.ConnectNew("n4")
+    n5 = n4.ConnectNew("n5")
+    n6 = n5.ConnectNew("n6")
+    p.entrypoint = n1
+    y_a = y.AddBinding("a", source_set=[], where=n1)
+    n3.condition = x.AddBinding("b", source_set=[], where=n2)
+    n5.condition = x.AddBinding("c", source_set=[], where=n4)
+    self.assertTrue(n6.HasCombination([y_a]))
+
+  def testContainedIfConflict(self):
+    p = cfg.Program()
+    x = p.NewVariable()
+    n1 = p.NewCFGNode("n1")
+    n2 = n1.ConnectNew("n2")
+    n3 = n1.ConnectNew("n3")
+    n4 = p.NewCFGNode("n4")
+    n2.ConnectTo(n4)
+    n3.ConnectTo(n4)
+    n5 = n4.ConnectNew("n5")
+    p.entrypoint = n1
+    x_a = x.AddBinding("a", source_set=[], where=n1)
+    n4.condition = x.AddBinding("b", source_set=[], where=n2)
+    # This is impossible since we have a condition on the way, enforcing x=b.
+    self.assertFalse(n5.HasCombination([x_a]))
+
+  @unittest.skip("Fails due to _IsSolvedBefore only being an approximation.")
+  def testConflictingConditionsOnPath(self):
+    # This test case is rather academic - there's no obvious way to construct
+    # a Python program that actually creates the CFG below.
+    p = cfg.Program()
+    x, y, z = p.NewVariable(), p.NewVariable(), p.NewVariable()
+    n1 = p.NewCFGNode("n1")
+    n2 = n1.ConnectNew("n2")
+    n3 = n1.ConnectNew("n3")
+    n4 = p.NewCFGNode("n4")
+    n2.ConnectTo(n4)
+    n3.ConnectTo(n4)
+    n5 = n4.ConnectNew("n5")
+    n6 = n5.ConnectNew("n6")
+    p.entrypoint = n1
+    n4.condition = x.AddBinding("a", source_set=[], where=n2)
+    n5.condition = y.AddBinding("a", source_set=[], where=n3)
+    z_a = z.AddBinding("a", source_set=[], where=n1)
+    # Impossible since we can only pass either n2 or n3.
+    self.assertFalse(n6.HasCombination([z_a]))
 
   def testConditionsBlock(self):
     p = cfg.Program()

@@ -516,6 +516,24 @@ class SplitTest(test_inference.InferenceTest):
         print d3["x"]
     """)
 
+  def testSkipOverMidwayIf(self):
+    ty = self.Infer("""
+      def f(r):
+        y = "foo"
+        if __any_object__:
+          x = True
+        else:
+          x = False
+        if x:
+          return y
+        else:
+          return None
+    """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Optional
+      def f(r) -> Optional[str]
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

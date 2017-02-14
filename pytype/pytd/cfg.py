@@ -660,7 +660,7 @@ class _PathFinder(object):
   """Finds a path between two nodes and collects nodes with conditions."""
 
   def __init__(self):
-    self._solved_find_queries = {} # Cached queries
+    self._solved_find_queries = {}
 
   def _ResetState(self):
     """Prepare the working state for a new search."""
@@ -677,8 +677,8 @@ class _PathFinder(object):
     # If this is None it means that no path to finish exist from the node.
     self._node_to_finish_set = {}
 
-  def _FindPathToNode(self, start, finish, blocked):
-    """Determine whether we can reach a node without traversing conditions."""
+  def FindPathToNode(self, start, finish, blocked):
+    """Determine whether we can reach a node at all."""
     stack = [start]
     seen = set()
     while stack:
@@ -720,7 +720,7 @@ class _PathFinder(object):
       return (True, [start] if start.condition else [])
 
     # Run a quick DFS first, maybe we find a path that doesn't need a condition.
-    if not self._FindPathToNode(start, finish, blocked):
+    if not self.FindPathToNode(start, finish, blocked):
       self._solved_find_queries[query] = False, None
       return self._solved_find_queries[query]
 
@@ -888,6 +888,34 @@ class Solver(object):
     result = self._solved_states[state] = self._FindSolution(state)
     return result
 
+  def _IsSolvedBefore(self, where, goal, entrypoint, blocked):
+    """Determine if a goal is possibly solved in subsection of the CFG.
+
+    If a condition introduces a new goal, but we can solve that goal *before*
+    the goal we were trying to solve originally, assume that goal doesn't
+    have anything to do with us.
+    This currently does a quick CFG check as an approximation. An alternative
+    implementation would be to call _FindSolution while blocking the new
+    entrypoint.
+
+    Args:
+      where: Current CFG node. We search backwards from this node.
+      goal: The goal to find a solution for.
+      entrypoint: The "new" entry point of the graph. This typically reduces
+        the CFG to a subgraph.
+      blocked: A list of nodes.
+    Returns:
+      True if we think this goal can be solved without traversing beyond
+      "entrypoint", False if it can't.
+    """
+    blocked = frozenset(blocked | {entrypoint})
+    for origin in goal.origins:
+      # TODO(kramm): We don't cache this. Should we?
+      if origin.where not in blocked and self._path_finder.FindPathToNode(
+          where, origin.where, blocked):
+        return True
+    return False
+
   def _FindSolution(self, state):
     """Find a sequence of assignments that would solve the given state."""
     if state.Done():
@@ -914,20 +942,18 @@ class Solver(object):
           # we need memoization of states.
           for source_set in origin.source_sets:
             new_goals = set(state.goals)
+            where = origin.where
+            # If we found conditions on the way, see whether we need to add
+            # any of them to our goals.
             for node in path:
-              new_goals.add(node.condition)
-            if path and len(new_goals) > len(state.goals):
-              # If a goal was added, the binding for it might not yet exist at
-              # origin.where, as it might have only been created after that
-              # point in the CFG. Therefore the new destination needs to be the
-              # point where the condition was defined. This must be before
-              # origin.where as _FindNodeBackwards was able to find
-              # origin.where going backwards from it.
-              where = path[0]
-            else:
-              where = origin.where
+              if node.condition not in state.goals and not self._IsSolvedBefore(
+                  node, node.condition, origin.where, blocked):
+                # TODO(kramm): what if node == state.pos?
+                new_goals.add(node.condition)
+                where = node
+                break
             new_state = State(where, new_goals)
-            if origin.where == new_state.pos:
+            if origin.where is new_state.pos:
               # The goal can only be replaced if origin.where was actually
               # reached.
               new_state.Replace(goal, source_set)
