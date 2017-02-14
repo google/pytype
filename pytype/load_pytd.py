@@ -243,6 +243,7 @@ class Loader(object):
     log.debug("Trying to import %r", module_name)
     # Builtin modules (but not standard library modules!) take precedence
     # over modules in PYTHONPATH.
+    # XXX typeshed no longer has a builtins subdir.
     mod = self._load_builtin("builtins", module_name)
     if mod:
       return mod
@@ -250,6 +251,11 @@ class Loader(object):
     file_ast = self._import_file(module_name, module_name.split("."))
     if file_ast:
       return file_ast
+
+    # Try a third party module (typically site-packages).
+    mod = self._load_builtin("third_party", module_name)
+    if mod:
+      return mod
 
     # The standard library is (typically) at the end of PYTHONPATH.
     mod = self._load_builtin("stdlib", module_name)

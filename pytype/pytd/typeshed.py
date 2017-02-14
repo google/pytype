@@ -37,8 +37,9 @@ class Typeshed(object):
         return filename, f.read()
     else:
       # Use typeshed bundled with pytype
-      data = utils.load_pytype_file(os.path.join("typeshed", path))
-      return os.path.join(self._typeshed_path, path), data
+      filename = os.path.join(self._typeshed_path, path)
+      data = utils.load_pytype_file(filename)
+      return filename, data
 
   def _load_missing(self):
     return set()
