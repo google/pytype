@@ -264,8 +264,7 @@ class PrintVisitor(Visitor):
       name: if None, means we want 'import module'. Otherwise string identifier
        that we want to import.
     """
-    if not self.in_alias:
-      self.imports[module].add(name)
+    self.imports[module].add(name)
 
   def _RequireTypingImport(self, name=None):
     """Convenience function, wrapper for _RequireImport("typing", name)."""
@@ -336,6 +335,9 @@ class PrintVisitor(Visitor):
     """Convert a class-level or module-level constant to a string."""
     return self._SafeName(node.name) + " = ...  # type: " + node.type
 
+  def EnterAlias(self, _):
+    self.old_imports = self.imports.copy()
+
   def VisitAlias(self, node):
     """Convert an import or alias to a string."""
     if isinstance(self.old_node.type, pytd.NamedType):
@@ -345,6 +347,7 @@ class PrintVisitor(Visitor):
       if module:
         if name != self.old_node.name:
           suffix += " as " + self.old_node.name
+        self.imports = self.old_imports  # undo unnecessary imports change
         return "from " + module + " import " + name + suffix
     return self._SafeName(node.name) + " = " + node.type
 
@@ -361,14 +364,6 @@ class PrintVisitor(Visitor):
   def LeaveClass(self, unused_node):
     self._class_members.clear()
     self.class_names.pop()
-
-  def EnterAlias(self, unused_node):
-    assert not self.in_alias
-    self.in_alias = True
-
-  def LeaveAlias(self, unused_node):
-    assert self.in_alias
-    self.in_alias = False
 
   def VisitClass(self, node):
     """Visit a class, producing a multi-line, properly indented string."""

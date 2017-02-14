@@ -554,6 +554,22 @@ class TestVisitors(parser_test_base.ParserTest):
     t3 = pytd.TupleType(base, (pytd.NamedType("str"), pytd.NamedType("float")))
     t3.Visit(visitors.VerifyContainers())
 
+  def testAliasPrinting(self):
+    a = pytd.Alias("MyList", pytd.GenericType(
+        pytd.NamedType("typing.List"), (pytd.AnythingType(),)))
+    ty = pytd.TypeDeclUnit(
+        name="test",
+        constants=(),
+        type_params=(),
+        classes=(),
+        functions=(),
+        aliases=(a,))
+    expected = textwrap.dedent("""
+      from typing import Any, List
+
+      MyList = List[Any]""")
+    self.assertMultiLineEqual(expected.strip(), pytd.Print(ty).strip())
+
 
 class TestAncestorMap(unittest.TestCase):
 
