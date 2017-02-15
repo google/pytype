@@ -243,6 +243,8 @@ class Loader(object):
     log.debug("Trying to import %r", module_name)
     # Builtin modules (but not standard library modules!) take precedence
     # over modules in PYTHONPATH.
+    # Note: while typeshed no longer has a builtins subdir, the pytd
+    # tree still does, and order is important here.
     mod = self._load_builtin("builtins", module_name)
     if mod:
       return mod
@@ -251,8 +253,13 @@ class Loader(object):
     if file_ast:
       return file_ast
 
-    # The standard library is (typically) at the end of PYTHONPATH.
+    # The standard library is (typically) towards the end of PYTHONPATH.
     mod = self._load_builtin("stdlib", module_name)
+    if mod:
+      return mod
+
+    # Third party modules (typically site-packages) come last.
+    mod = self._load_builtin("third_party", module_name)
     if mod:
       return mod
 
