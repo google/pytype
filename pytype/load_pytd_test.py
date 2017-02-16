@@ -141,12 +141,13 @@ class ImportPathsTest(unittest.TestCase):
 
   def testImportMapCongruence(self):
     with utils.Tempdir() as d:
-      d.create_file("foo.pyi", "X = ...  # type: int")
-      foo_path = d.path + "/foo.pyi"
+      foo_path = d.create_file("foo.pyi", "class X: ...")
+      bar_path = d.create_file("bar.pyi", "X = ...  # type: another.foo.X")
       # Map the same pyi file under two module paths.
       imports_map = {
           "foo": foo_path,
           "another/foo": foo_path,
+          "bar": bar_path,
           "empty1": "/dev/null",
           "empty2": "/dev/null",
       }
@@ -156,8 +157,15 @@ class ImportPathsTest(unittest.TestCase):
       loader = load_pytd.Loader("base", self.options)
       normal = loader.import_name("foo")
       self.assertEquals("foo", normal.name)
+      loader.import_name("bar")  # check that we can resolve against another.foo
       another = loader.import_name("another.foo")
-      self.assertIs(normal, another)
+      # We do *not* treat foo.X and another.foo.X the same, because Python
+      # doesn't, either:
+      self.assertIsNot(normal, another)
+      self.assertTrue([c.name.startswith("foo")
+                       for c in normal.classes])
+      self.assertTrue([c.name.startswith("another.foo")
+                       for c in another.classes])
       # Make sure that multiple modules using /dev/null are not treated as
       # congruent.
       empty1 = loader.import_name("empty1")
