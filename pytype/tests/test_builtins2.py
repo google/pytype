@@ -149,10 +149,17 @@ class BuiltinTests2(test_inference.InferenceTest):
 
   def testDictInit(self):
     ty = self.Infer("""
-      x = dict(u=3, v=4, w=5)
+      x1 = dict(u=3, v=4, w=5)
+      x2 = dict([(3, "")])
+      x3 = dict(((3, ""),))
+      x4 = dict({(3, "")})
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
-      x = ...  # type: dict
+      from typing import Dict
+      x1 = ...  # type: dict
+      x2 = ...  # type: Dict[int, str]
+      x3 = ...  # type: Dict[int, str]
+      x4 = ...  # type: Dict[int, str]
     """)
 
   def testDictIterators(self):

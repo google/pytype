@@ -244,7 +244,7 @@ class AbstractMatcher(object):
     if (isinstance(left, abstract.TupleClass) or
         isinstance(instance, abstract.Tuple) or
         isinstance(other_type, abstract.TupleClass)):
-      subst = self._match_heterogeneous_tuple_instance(
+      return self._match_heterogeneous_tuple_instance(
           left, instance, other_type, subst, node, view)
     return self._match_maybe_parameterized_instance(
         left, instance, other_type, subst, node, view)
@@ -304,6 +304,10 @@ class AbstractMatcher(object):
               instance_param, class_param, subst, node, view)
           if subst is None:
             return None
+      if not instance.pyval:
+        # This call puts the right param names (with empty values) into subst.
+        subst = self._match_maybe_parameterized_instance(
+            left, instance, other_type, subst, node, view)
     elif isinstance(left, abstract.TupleClass):
       # We have an instance of a subclass of tuple.
       return self._instantiate_and_match(left, other_type, subst, node, view)

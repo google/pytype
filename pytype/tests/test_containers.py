@@ -1,12 +1,12 @@
 """Test list, dict, etc."""
 
-import unittest
 from pytype import utils
 from pytype.pytd import pytd
 from pytype.tests import test_inference
 
 
 class ContainerTest(test_inference.InferenceTest):
+  """Tests for containers."""
 
   def testTuplePassThrough(self):
     ty = self.Infer("""
@@ -222,7 +222,6 @@ class ContainerTest(test_inference.InferenceTest):
         ty.Lookup("f"),
         ((), self.int_int_dict))
 
-  @unittest.skip("Needs more precise support for tuples")
   def testDictConstructor2(self):
     ty = self.Infer("""
       def f():

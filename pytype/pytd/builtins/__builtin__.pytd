@@ -398,8 +398,8 @@ class dict(Dict[K, V]):
         self := dict[nothing, nothing]
     def __init__(self, list: list[nothing]) -> NoneType:
         self := dict[nothing, nothing]
-    def __init__(self, list: list[tuple[N, ...]]) -> NoneType:
-        self := dict[N, N]
+    def __init__(self, iterable: Iterable[tuple[K2, V2]]) -> NoneType:
+        self := dict[K2, V2]
     def __init__(self, ...) -> NoneType:
         self := dict[?, ?]
     def __delitem__(self, y: K) -> NoneType
