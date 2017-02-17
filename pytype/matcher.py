@@ -66,6 +66,8 @@ class AbstractMatcher(object):
       return self._match_value_against_type(
           view[var], other_type, subst, node, view)
     else:  # Empty set of values. The "nothing" type.
+      if isinstance(other_type, abstract.TupleClass):
+        other_type = other_type.type_parameters[abstract.T]
       if isinstance(other_type, abstract.Union):
         right_side_options = other_type.options
       else:

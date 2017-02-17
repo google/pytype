@@ -153,6 +153,7 @@ class BuiltinTests2(test_inference.InferenceTest):
       x2 = dict([(3, "")])
       x3 = dict(((3, ""),))
       x4 = dict({(3, "")})
+      x5 = dict({})
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
       from typing import Dict
@@ -160,6 +161,7 @@ class BuiltinTests2(test_inference.InferenceTest):
       x2 = ...  # type: Dict[int, str]
       x3 = ...  # type: Dict[int, str]
       x4 = ...  # type: Dict[int, str]
+      x5 = ...  # type: Dict[nothing, nothing]
     """)
 
   def testDictIterators(self):
