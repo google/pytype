@@ -36,7 +36,8 @@ class Typeshed(object):
       with open(filename, "rb") as f:
         return filename, f.read()
     else:
-      # Use typeshed bundled with pytype
+      # Use typeshed bundled with pytype. Note we don't use self._typeshed_path
+      # to load the file, since load_pytype_file has its own path logic.
       data = utils.load_pytype_file(os.path.join("typeshed", path))
       return os.path.join(self._typeshed_path, path), data
 

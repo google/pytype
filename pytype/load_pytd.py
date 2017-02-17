@@ -210,11 +210,14 @@ class Loader(object):
     self._lookup_all_classes()
     return ast
 
-  def _load_builtin(self, subdir, module_name):
+  def _load_builtin(self, subdir, module_name, typeshed_only=False):
     """Load a pytd/pyi that ships with pytype or typeshed."""
     version = self.options.python_version
     # Try our own type definitions first.
-    mod = builtins.ParsePredefinedPyTD(subdir, module_name, version)
+    if typeshed_only:
+      mod = None
+    else:
+      mod = builtins.ParsePredefinedPyTD(subdir, module_name, version)
     if not mod and self.options.typeshed:
       # Fall back to typeshed.
       mod = typeshed.parse_type_definition(subdir, module_name, version)
@@ -239,6 +242,8 @@ class Loader(object):
     log.debug("Trying to import %r", module_name)
     # Builtin modules (but not standard library modules!) take precedence
     # over modules in PYTHONPATH.
+    # Note: while typeshed no longer has a builtins subdir, the pytd
+    # tree still does, and order is important here.
     mod = self._load_builtin("builtins", module_name)
     if mod:
       return mod
@@ -247,10 +252,16 @@ class Loader(object):
     if file_ast:
       return file_ast
 
-    # The standard library is (typically) at the end of PYTHONPATH.
+    # The standard library is (typically) towards the end of PYTHONPATH.
     mod = self._load_builtin("stdlib", module_name)
     if mod:
       return mod
+
+    # Third party modules from typeshed (typically site-packages) come last.
+    if not self.options.imports_map:
+      mod = self._load_builtin("third_party", module_name, typeshed_only=True)
+      if mod:
+        return mod
 
     log.warning("Couldn't import module %s %r in (path=%r) imports_map: %s",
                 module_name, module_name, self.options.pythonpath,
