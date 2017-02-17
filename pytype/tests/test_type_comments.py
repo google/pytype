@@ -27,6 +27,18 @@ class FunctionCommentTest(test_inference.InferenceTest):
       def foo(x) -> int
     """)
 
+  def testFunctionReturnSpace(self):
+    ty = self.Infer("""
+      from typing import Dict
+      def foo(x):
+        # type: (...) -> Dict[int, int]
+        return x
+    """, filename="test.py")
+    self.assertTypesMatchPytd(ty, """
+      from typing import Dict
+      def foo(x) -> Dict[int, int]
+    """)
+
   def testFunctionZeroArgs(self):
     # Include some stray whitespace.
     ty = self.Infer("""
@@ -146,6 +158,15 @@ class FunctionCommentTest(test_inference.InferenceTest):
         value = ...  # type: int
         def __init__(self, **kwargs) -> None: ...
     """)
+
+  def testFunctionNoReturn(self):
+    _, errors = self.InferAndCheck("""
+      def foo():
+        # type: () ->
+        pass
+    """, filename="test.py")
+    self.assertErrorLogContains(
+        errors, r"test\.py.*line 3.*invalid-function-type-comment")
 
   def testFunctionTooManyArgs(self):
     _, errors = self.InferAndCheck("""

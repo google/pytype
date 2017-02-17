@@ -46,7 +46,7 @@ from pytype.pytd.parse import visitors
 
 log = logging.getLogger(__name__)
 
-_FUNCTION_TYPE_COMMENT_RE = re.compile(r"^\((.*)\)\s*->\s*(.+?)\s*$")
+_FUNCTION_TYPE_COMMENT_RE = re.compile(r"^\((.*)\)\s*->\s*(\S.*?)\s*$")
 
 # Create a repr that won't overflow.
 _TRUNCATE = 120
