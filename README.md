@@ -23,6 +23,5 @@ git submodule init
 git submodule update
 python setup.py install
 pip install pyyaml
-pip install ply
 pytype your_python_code.py
 ```
