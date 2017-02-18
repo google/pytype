@@ -241,6 +241,18 @@ class MatcherTest(unittest.TestCase):
         var, right, {}, self.vm.root_cfg_node, {})
     self.assertSetEqual(set(match), {abstract.K, abstract.V})
 
+  def testUnsolvableAgainstTupleClass(self):
+    left = self.vm.convert.unsolvable
+    params = {0: abstract.TypeParameter(abstract.K, self.vm),
+              1: abstract.TypeParameter(abstract.V, self.vm)}
+    params[abstract.T] = abstract.Union((params[0], params[1]), self.vm)
+    right = abstract.TupleClass(
+        self.vm.convert.tuple_type.data[0], params, self.vm)
+    for match in self._match_var(left, right):
+      self.assertSetEqual(set(match), {abstract.K, abstract.V})
+      self.assertEquals(match[abstract.K].data, [self.vm.convert.unsolvable])
+      self.assertEquals(match[abstract.V].data, [self.vm.convert.unsolvable])
+
 
 if __name__ == "__main__":
   unittest.main()

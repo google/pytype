@@ -463,6 +463,9 @@ class TypeParameter(AtomicAbstractValue):
   def __repr__(self):
     return "TypeParameter(%r)" % self.name
 
+  def instantiate(self, node):
+    return self.vm.convert.unsolvable.to_variable(node)
+
 
 class TypeParameterInstance(AtomicAbstractValue):
   """An instance of a type parameter."""
@@ -1908,7 +1911,7 @@ class TupleClass(ParameterizedClass):
   """
 
   def __repr__(self):
-    return "TupleType(%s)" % self.type_parameters
+    return "TupleClass(%s)" % self.type_parameters
 
   def instantiate(self, node):
     content = tuple(self.type_parameters[i].instantiate(node)
