@@ -298,9 +298,12 @@ class ErrorLog(ErrorLogBase):
   @_error_name("attribute-error")
   def attribute_error(self, opcode, obj, attr_name):
     assert obj.bindings
-    obj_values = self._print_as_actual_type(
-        abstract.merge_values(obj.data, obj.bindings[0].data.vm))
-    self.error(opcode, "No attribute %r on %s" % (attr_name, obj_values))
+    obj_values = abstract.merge_values(obj.data, obj.bindings[0].data.vm)
+    if isinstance(obj_values, abstract.Module):
+      obj_repr = "module %r" % obj_values.name
+    else:
+      obj_repr = self._print_as_actual_type(obj_values)
+    self.error(opcode, "No attribute %r on %s" % (attr_name, obj_repr))
 
   @_error_name("none-attr")
   def none_attr(self, opcode, attr_name):

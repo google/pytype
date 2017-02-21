@@ -232,25 +232,31 @@ class ErrorTest(test_inference.InferenceTest):
     self.assertErrorLogContains(errors, r"\[super-error\]")
 
   def testAttributeError(self):
-    _, errors = self.InferAndCheck("""\
-      class Foo(object):
-        def __getattr__(self, name):
-          return "attr"
-      def f():
-        return Foo.foo
-      def g(x):
-        if x:
-          y = None
-        else:
-          y = 1
-        return y.bar
-      def h():
-        return Foo().foo  # No error
-    """)
-    self.assertErrorLogIs(errors, [
-        (5, "attribute-error", r"No attribute 'foo' on Type\[Foo\]"),
-        (11, "attribute-error",
-         r"No attribute 'bar' on Union\[None, int\]")])
+    with utils.Tempdir() as d:
+      d.create_file("modfoo.pyi", "")
+      _, errors = self.InferAndCheck("""\
+        class Foo(object):
+          def __getattr__(self, name):
+            return "attr"
+        def f():
+          return Foo.foo
+        def g(x):
+          if x:
+            y = None
+          else:
+            y = 1
+          return y.bar
+        def h():
+          return Foo().foo  # No error
+        import modfoo
+        modfoo.baz
+      """, pythonpath=[d.path])
+      self.assertErrorLogIs(errors, [
+          (5, "attribute-error", r"No attribute 'foo' on Type\[Foo\]"),
+          (11, "attribute-error",
+           r"No attribute 'bar' on Union\[None, int\]"),
+          (15, "attribute-error",
+           "No attribute 'baz' on module 'modfoo'")])
 
   def testAttributeErrorGetAttribute(self):
     _, errors = self.InferAndCheck("""\
