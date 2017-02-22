@@ -844,10 +844,11 @@ def _normal_param(name, param_type, default, kwonly):
   """Return a pytd.Parameter object for a normal argument."""
   if default is not None:
     default_type = _type_for_default(default)
-    if param_type is None:
+    if default_type == pytd.NamedType("NoneType"):
+      if param_type is not None:
+        param_type = pytd.UnionType((param_type, default_type))
+    elif param_type is None:
       param_type = default_type
-    elif default_type == pytd.NamedType("NoneType"):
-      param_type = pytd.UnionType((param_type, default_type))
   if param_type is None:
     # TODO(kramm): We should use __builtin__.object. (And other places)
     param_type = pytd.NamedType("object")

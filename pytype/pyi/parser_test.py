@@ -393,7 +393,7 @@ class FunctionTest(_ParserTestBase):
     self.check("def foo(x = 12.3) -> int: ...",
                "def foo(x: float = ...) -> int: ...")
     self.check("def foo(x = None) -> int: ...",
-               "def foo(x: None = ...) -> int: ...")
+               "def foo(x = ...) -> int: ...")
     self.check("def foo(x = xyz) -> int: ...",
                "def foo(x = ...) -> int: ...")
     self.check("def foo(x = ...) -> int: ...",
