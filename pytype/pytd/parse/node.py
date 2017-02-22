@@ -52,6 +52,10 @@ The Node "class" differs from namedtuple in the following ways:
 3.) Subclassed __str__ function that uses the current class name instead of
     the name of the tuple this class is based on.
 
+If a subclass chooses to use a __dict__ the default equality will only apply
+to the class attributes defined as Node args. Therefore
+pytd.ClassType("foo", 1) == pytd.ClassType("foo", 2) will compare true.
+
 See http://bugs.python.org/issue16279 for why it is unlikely for any these
 functionalities to be made part of collections.namedtuple.
 """
