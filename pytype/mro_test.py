@@ -17,3 +17,7 @@ class MroTest(unittest.TestCase):
     cls_e = pytd.Class("E", None, (cls_d, cls_b), (), (), ())
     self.assertItemsEqual(mro.flattened_superclasses(cls_e),
                           [cls_a, cls_b, cls_c, cls_d, cls_e])
+
+
+if __name__ == '__main__':
+  unittest.main()
