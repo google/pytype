@@ -811,14 +811,6 @@ class VirtualMachine(object):
         if resolved is not None:
           func.signature.set_annotation(name, resolved)
 
-  def _cmp_in(self, node, key_var, container_var):
-    try:
-      key = abstract.get_atomic_python_constant(key_var, str)
-      container = abstract.get_atomic_value(container_var, abstract.Dict)
-    except abstract.ConversionError:
-      return None
-    return container.cmp_in(key)
-
   def call_binary_operator(self, state, name, x, y, report_errors=False):
     """Map a binary operator to "magic methods" (__add__ etc.)."""
     results = []
@@ -1542,12 +1534,21 @@ class VirtualMachine(object):
       ret = self.expand_bool_result(state.node, x, y,
                                     "is_not_cmp", frame_state.is_not_cmp)
     elif op.arg == slots.CMP_NOT_IN:
-      value = self._cmp_in(state.node, x, y)
-      if value is not None:
-        value = not value
+      state, ret = self.call_binary_operator(state, "__contains__", y, x,
+                                             report_errors=True)
+      try:
+        value = not abstract.get_atomic_python_constant(ret, bool)
+      except abstract.ConversionError:
+        value = None
       ret = self.convert.build_bool(state.node, value)
     elif op.arg == slots.CMP_IN:
-      ret = self.convert.build_bool(state.node, self._cmp_in(state.node, x, y))
+      state, ret = self.call_binary_operator(state, "__contains__", y, x,
+                                             report_errors=True)
+      try:
+        abstract.get_atomic_python_constant(ret, bool)
+      except abstract.ConversionError:
+        # The return type of __contains__ is always bool.
+        ret = self.convert.build_bool(state.node)
     elif op.arg == slots.CMP_EXC_MATCH:
       ret = self.convert.build_bool(state.node)
     else:

@@ -9,17 +9,19 @@ class InTest(test_inference.InferenceTest):
   """Test for "x in y". Also test overloading of this operator."""
 
   def test_concrete(self):
-    ty = self.Infer("""
-          def f(x, y):
-            return x in y
-          f(1, [1])
-          f(1, [2])
-          f("x", "x")
-          f("y", "x")
-          f("y", (1,))
-          f("y", object())
-      """, deep=False, solve_unknowns=False, show_library_calls=True)
+    ty, errors = self.InferAndCheck("""\
+      def f(x, y):
+        return x in y
+      f(1, [1])
+      f(1, [2])
+      f("x", "x")
+      f("y", "x")
+      f("y", (1,))
+      f("y", object())
+    """, deep=False, solve_unknowns=False, show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.bool)
+    self.assertErrorLogIs(errors, [(2, "unsupported-operands",
+                                    r"__contains__.*object")])
 
   def test_deep(self):
     ty = self.Infer("""
@@ -42,12 +44,22 @@ class InTest(test_inference.InferenceTest):
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.bool)
     self.assertOnlyHasReturnType(ty.Lookup("g"), self.complex)
 
+  def test_none(self):
+    _, errors = self.InferAndCheck("""\
+      x = None
+      if "" in x:
+        del x[""]
+    """)
+    self.assertErrorLogIs(errors, [(2, "unsupported-operands",
+                                    r"__contains__.*None"),
+                                   (3, "none-attr", r"__delitem__.*None")])
+
 
 class NotInTest(test_inference.InferenceTest):
   """Test for "x not in y". Also test overloading of this operator."""
 
   def test_concrete(self):
-    ty = self.Infer(srccode="""
+    ty, errors = self.InferAndCheck("""\
       def f(x, y):
         return x not in y
       f(1, [1])
@@ -58,6 +70,8 @@ class NotInTest(test_inference.InferenceTest):
       f("y", object())
     """, deep=False, solve_unknowns=False, show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.bool)
+    self.assertErrorLogIs(errors, [(2, "unsupported-operands",
+                                    r"__contains__.*object")])
 
 # "not in" maps to the inverse of __contains__
   @unittest.skip("typegraphvm.cmp_not_in needs overloading support.")
@@ -73,6 +87,16 @@ class NotInTest(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=False, show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.bool)
     self.assertOnlyHasReturnType(ty.Lookup("g"), self.complex)
+
+  def test_none(self):
+    _, errors = self.InferAndCheck("""\
+      x = None
+      if "" not in x:
+        x[""] = 42
+    """)
+    self.assertErrorLogIs(errors, [(2, "unsupported-operands",
+                                    r"__contains__.*None"),
+                                   (3, "none-attr", r"__setitem__.*None")])
 
 
 class IsTest(test_inference.InferenceTest):

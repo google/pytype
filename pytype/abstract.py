@@ -794,6 +794,7 @@ class Dict(Instance, HasSlots, PythonConstant, WrapsDict("pyval")):
     self.set_slot("__getitem__", self.getitem_slot)
     self.set_slot("__setitem__", self.setitem_slot)
     self.set_slot("setdefault", self.setdefault_slot)
+    self.set_slot("__contains__", self.contains_slot)
     self.init_type_parameters(K, V)
     self.could_contain_anything = False
     PythonConstant.init_mixin(self, {})
@@ -863,6 +864,18 @@ class Dict(Instance, HasSlots, PythonConstant, WrapsDict("pyval")):
     self.setitem(node, name_var, value_var)
     return self.call_pytd(node, "setdefault", name_var, value_var)
 
+  def contains_slot(self, node, key_var):
+    if self.could_contain_anything:
+      value = None
+    else:
+      try:
+        str_key = get_atomic_python_constant(key_var, str)
+      except ConversionError:
+        value = None
+      else:
+        value = str_key in self.pyval
+    return node, self.vm.convert.build_bool(node, value)
+
   def update(self, node, other_dict, omit=()):
     self.could_contain_anything = True
     if isinstance(other_dict, (Dict, dict)):
@@ -888,18 +901,6 @@ class Dict(Instance, HasSlots, PythonConstant, WrapsDict("pyval")):
       return not logical_value or bool(self.type_parameters[K].bindings)
     else:
       return PythonConstant.compatible_with(self, logical_value)
-
-  def cmp_in(self, key):
-    """Gets whether the given key is in the dictionary.
-
-    Args:
-      key: The key.
-
-    Returns:
-      None if we don't have enough information, True if the key is
-      present, False otherwise.
-    """
-    return None if self.could_contain_anything else key in self.pyval
 
 
 class AnnotationClass(SimpleAbstractValue, HasSlots):
