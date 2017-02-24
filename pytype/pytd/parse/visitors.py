@@ -570,10 +570,24 @@ class PrintVisitor(Visitor):
         # name can replace compat.
         if compat in type_list and name in type_list:
           del type_list[compat]
-    type_list = tuple(type_list)
+    return self._BuildUnion(type_list)
 
+  def _BuildUnion(self, type_list):
+    """Builds a union of the types in type_list.
+
+    Args:
+      type_list: A list of strings representing types.
+
+    Returns:
+      A string representing the union of the types in type_list. Simplifies
+      Union[X] to X and Union[X, None] to Optional[X].
+    """
+    type_list = tuple(type_list)
     if len(type_list) == 1:
       return type_list[0]
+    elif "None" in type_list:
+      return (self._FromTyping("Optional") + "[" +
+              self._BuildUnion(t for t in type_list if t != "None") + "]")
     else:
       return self._FromTyping("Union") + "[" + ", ".join(type_list) + "]"
 

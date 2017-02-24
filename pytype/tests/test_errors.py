@@ -254,7 +254,7 @@ class ErrorTest(test_inference.InferenceTest):
       self.assertErrorLogIs(errors, [
           (5, "attribute-error", r"No attribute 'foo' on Type\[Foo\]"),
           (11, "attribute-error",
-           r"No attribute 'bar' on Union\[None, int\]"),
+           r"No attribute 'bar' on Optional\[int\]"),
           (15, "attribute-error",
            "No attribute 'baz' on module 'modfoo'")])
 

@@ -400,8 +400,8 @@ class FunctionTest(_ParserTestBase):
                "def foo(x = ...) -> int: ...")
     # Default of None will turn declared type into a union.
     self.check("def foo(x: str = None) -> int: ...",
-               "def foo(x: Union[str, None] = ...) -> int: ...",
-               prologue="from typing import Union")
+               "def foo(x: Optional[str] = ...) -> int: ...",
+               prologue="from typing import Optional")
     # Other defaults are ignored if a declared type is present.
     self.check("def foo(x: str = 123) -> int: ...",
                "def foo(x: str = ...) -> int: ...")
