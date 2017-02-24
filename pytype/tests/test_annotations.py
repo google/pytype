@@ -1028,6 +1028,31 @@ class AnnotationTest(test_inference.InferenceTest):
       self.assertErrorLogIs(errors, [(6, "wrong-arg-types",
                                       r"Foo\[int\].*Foo\[str\]")])
 
+  def testImplicitOptional(self):
+    ty = self.Infer("""\
+      from __future__ import google_type_annotations
+      from typing import Optional, Union
+      def f1(x: str = None):
+        pass
+      def f2(x: Optional[str] = None):
+        pass
+      def f3(x: Union[str, None] = None):
+        pass
+      def f4(x: Union[str, int] = None):
+        pass
+      f1(None)
+      f2(None)
+      f3(None)
+      f4(None)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Optional, Union
+      def f1(x: Optional[str] = ...) -> None: ...
+      def f2(x: Optional[str] = ...) -> None: ...
+      def f3(x: Optional[str] = ...) -> None: ...
+      def f4(x: Optional[Union[str, int]] = ...) -> None: ...
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

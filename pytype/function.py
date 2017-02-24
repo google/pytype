@@ -48,11 +48,13 @@ class Signature(object):
         self.annotations[name] = self._postprocess_annotation(name, annot)
 
   def _postprocess_annotation(self, name, annotation):
-    convert = annotation.vm.convert
+    if (name in self.defaults and
+        self.defaults[name].data == [annotation.vm.convert.none]):
+      annotation = annotation.vm.convert.optionalize(annotation)
     if name == self.varargs_name:
-      return convert.create_new_varargs_value(annotation)
+      return annotation.vm.convert.create_new_varargs_value(annotation)
     elif name == self.kwargs_name:
-      return convert.create_new_kwargs_value(annotation)
+      return annotation.vm.convert.create_new_kwargs_value(annotation)
     else:
       return annotation
 
@@ -93,9 +95,10 @@ class Signature(object):
         varargs_name=None if sig.starargs is None else sig.starargs.name,
         kwonly_params=set(p.name for p in sig.params if p.kwonly),
         kwargs_name=None if sig.starstarargs is None else sig.starstarargs.name,
-        defaults=[p.name
+        defaults={p.name: vm.convert.constant_to_var(
+            p.name, p.type, subst={}, node=vm.root_cfg_node)
                   for p in sig.params
-                  if p.optional],
+                  if p.optional},
         annotations={p.name: vm.convert.constant_to_value(
             p.name, p.type, subst={}, node=vm.root_cfg_node)
                      for p in sig.params + (sig.starargs, sig.starstarargs)

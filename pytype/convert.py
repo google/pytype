@@ -249,6 +249,14 @@ class Converter(object):
     return abstract.ParameterizedClass(
         abstract.get_atomic_value(self.dict_type), params, self.vm)
 
+  def optionalize(self, value):
+    """Optionalize the value, if necessary."""
+    assert isinstance(value, abstract.AtomicAbstractValue)
+    none_type = self.vm.convert.none_type.bindings[0].data
+    if isinstance(value, abstract.Union) and none_type in value.options:
+      return value
+    return abstract.Union((value, none_type), self.vm)
+
   def merge_classes(self, node, instances):
     """Merge the classes of the given instances.
 
