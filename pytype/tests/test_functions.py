@@ -600,6 +600,40 @@ class TestFunctions(test_inference.InferenceTest):
     """)
     self.assertErrorLogIs(errors, [(3, "wrong-keyword-args", r"y")])
 
+  def test_staticmethod_class(self):
+    ty = self.Infer("""\
+      v1, = (__new__,)
+      v2 = type(__new__)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Callable, Type
+      v1 = ...  # type: Callable
+      v2 = ...  # type: Type[Callable]
+    """)
+
+  def test_function_class(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        def f() -> None: ...
+      """)
+      ty = self.Infer("""
+        import foo
+        def f(): pass
+        v1 = (foo.f,)
+        v2 = type(foo.f)
+        w1 = (f,)
+        w2 = type(f)
+      """, pythonpath=[d.path], deep=True)
+      self.assertTypesMatchPytd(ty, """
+        from typing import Callable, Tuple, Type
+        foo = ...  # type: module
+        def f() -> None: ...
+        v1 = ...  # type: Tuple[Callable]
+        v2 = ...  # type: Type[Callable]
+        w1 = ...  # type: Tuple[Callable]
+        w2 = ...  # type: Type[Callable]
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()

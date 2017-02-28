@@ -425,8 +425,12 @@ class Converter(object):
                               types.ModuleType,
                               types.GeneratorType,
                               type] or pyval is type):
+      if pyval is types.FunctionType:
+        classname = "typing.Callable"
+      else:
+        classname = "__builtin__." + pyval.__name__
       try:
-        return self.name_to_value("__builtin__." + pyval.__name__, subst, node)
+        return self.name_to_value(classname, subst, node)
       except (KeyError, AttributeError):
         log.debug("Failed to find pytd", exc_info=True)
         raise

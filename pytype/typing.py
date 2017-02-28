@@ -58,9 +58,7 @@ class Union(abstract.AnnotationClass):
 class Callable(abstract.AnnotationContainer):
 
   def __init__(self, name, vm):
-    # Note that we cannot use vm.convert.function_type here, since our matcher
-    # doesn't know that __builtin__.function and typing.Callable are the same.
-    base = vm.convert.name_to_value("typing.Callable")
+    base = abstract.get_atomic_value(vm.convert.function_type)
     super(Callable, self).__init__(name, vm, base)
 
   def _build_value(self, node, inner):

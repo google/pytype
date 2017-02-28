@@ -202,7 +202,7 @@ class CheckerTest(test_inference.InferenceTest):
     """
     errorlog = self.get_checking_errors(python)
     self.assertErrorLogIs(errorlog, [(4, "invalid-annotation",
-                                      r"instance of function.*x"),
+                                      r"instance of Callable.*x"),
                                      (6, "invalid-annotation",
                                       r"3.*x")])
 

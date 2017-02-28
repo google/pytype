@@ -1560,6 +1560,9 @@ class ClassMethod(AtomicAbstractValue):
     return self.method.call(
         node, func, args.replace(posargs=(cls,) + args.posargs))
 
+  def get_class(self):
+    return self.vm.convert.function_type
+
 
 class StaticMethod(AtomicAbstractValue):
   """Implements @staticmethod methods in pyi."""
@@ -1573,6 +1576,9 @@ class StaticMethod(AtomicAbstractValue):
 
   def call(self, *args, **kwargs):
     return self.method.call(*args, **kwargs)
+
+  def get_class(self):
+    return self.vm.convert.function_type
 
 
 class PyTDFunction(Function):
