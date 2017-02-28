@@ -750,7 +750,26 @@ class IfTest(_ParserTestBase):
           d = ...  # type: int
       """, "a = ...  # type: int")
 
-  # The remaining tests verify that actions with side effects only take affect
+  def test_if_or(self):
+    self.check("""\
+      if sys.version_info >= (2, 0) or sys.version_info < (0, 0, 0):
+        a = ...  # type: int
+      if sys.version_info < (0, 0, 0) or sys.version_info >= (2, 0):
+        b = ...  # type: int
+      if sys.version_info < (0, 0, 0) or sys.version_info > (3,):
+        c = ...  # type: int
+      if sys.version_info >= (2, 0) or sys.version_info >= (2, 7):
+        d = ...  # type: int
+      if (sys.platform == "windows" or sys.version_info < (0,) or
+          sys.version_info >= (2, 7)):
+        e = ...  # type: int
+    """, """\
+      a = ...  # type: int
+      b = ...  # type: int
+      d = ...  # type: int
+      e = ...  # type: int""")
+
+  # The remaining tests verify that actions with side effects only take effect
   # within a true block.
 
   def test_conditional_import(self):

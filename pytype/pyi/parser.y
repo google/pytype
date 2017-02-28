@@ -278,6 +278,8 @@ condition
   | dotted_name condition_op version_tuple {
       $$ = Py_BuildValue("(NsN)", $1, $2, $3);
     }
+  | condition OR condition { $$ = Py_BuildValue("(NsN)", $1, "or", $3); }
+  | '(' condition ')' { $$ = $2; }
   ;
 
 /* TODO(dbaum): Consider more general rules for tuple parsing. */

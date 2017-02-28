@@ -240,9 +240,7 @@ class _Parser(object):
       the list of defs that should be processed (i.e. the defs in the tuple
       where active was True, or [] if no such tuple is present).
 
-  Conditions are represented by tuples (name, op, value), where name is a
-  dotted name string, op is one of six comparisson strings ("==", "!=", "<",
-  "<=", ">", ">="), and value is either a string or a tuple of three integers.
+  See _eval_condition for a description of conditions.
   """
 
   # Values for the parsing context.
@@ -374,8 +372,39 @@ class _Parser(object):
     self._error_location = location
 
   def _eval_condition(self, condition):
-    """Evaluate a condition tuple (name, op value) and return a bool."""
-    name, op, value = condition
+    """Evaluate a condition and return a bool.
+
+    Args:
+      condition: A condition tuple of (left, op, right). If op is "or", then
+      left and right are conditions. Otherwise, left is a name, op is one of
+      the comparison strings in _COMPARES, and right is the expected value.
+
+    Returns:
+      The boolean result of evaluating the condition.
+
+    Raises:
+      ParseError: If the condition cannot be evaluated.
+    """
+    left, op, right = condition
+    if op == "or":
+      return self._eval_condition(left) or self._eval_condition(right)
+    else:
+      return self._eval_comparison(left, op, right)
+
+  def _eval_comparison(self, name, op, value):
+    """Evaluate a comparison and return a bool.
+
+    Args:
+      name: A dotted string name.
+      op: One of the comparison operator strings in _COMPARES.
+      value: Either a string or a tuple of three integers.
+
+    Returns:
+      The boolean result of the comparison.
+
+    Raises:
+      ParseError: If the comparison cannot be evaluted.
+    """
     if name == "sys.version_info":
       if not isinstance(value, tuple):
         raise ParseError("sys.version_info must be compared to a tuple")
