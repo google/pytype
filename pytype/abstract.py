@@ -1347,6 +1347,7 @@ class Function(SimpleAbstractValue):
 
   def __init__(self, name, vm):
     super(Function, self).__init__(name, vm)
+    self.cls = self.vm.convert.function_type
     self.is_attribute_of_class = False
     self.members["func_name"] = self.vm.convert.build_string(
         self.vm.root_cfg_node, name)
@@ -1360,9 +1361,6 @@ class Function(SimpleAbstractValue):
     # Variables aren't necessarily visible from other parts of the CFG binding
     # this function. See test_duplicate_getproperty() in tests/test_flow.py.
     return self.bound_class(callself, callcls, self)
-
-  def get_class(self):
-    return self.vm.convert.function_type
 
   def _match_args(self, node, args):
     """Check whether the given arguments can match the function signature."""
@@ -2073,7 +2071,6 @@ class NativeFunction(Function):
   def __init__(self, name, func, vm):
     super(NativeFunction, self).__init__(name, vm)
     self.func = func
-    self.cls = self.vm.convert.function_type
 
   def argcount(self):
     return self.func.func_code.co_argcount
@@ -2207,7 +2204,6 @@ class InterpreterFunction(Function):
     self.defaults = tuple(defaults)
     self.kw_defaults = kw_defaults
     self.closure = closure
-    self.cls = self.vm.convert.function_type
     self._call_cache = {}
     self._call_records = []
     self.nonstararg_count = self.code.co_argcount

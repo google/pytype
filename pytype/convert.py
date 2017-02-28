@@ -116,10 +116,11 @@ class Converter(object):
     name = "constant" if constant_type is None else constant_type.__name__
     raise abstract.ConversionError("%s is not a(n) %s" % (val, name))
 
-  def name_to_value(self, name):
+  def name_to_value(self, name, subst=None, node=None):
     pytd_cls = self.vm.lookup_builtin(name)
-    return self.constant_to_value(
-        pytd_cls.name, pytd_cls, {}, self.vm.root_cfg_node)
+    subst = subst or {}
+    node = node or self.vm.root_cfg_node
+    return self.constant_to_value(pytd_cls.name, pytd_cls, subst, node)
 
   def tuple_to_value(self, node, content):
     """Create a VM tuple from the given sequence."""
@@ -425,8 +426,7 @@ class Converter(object):
                               types.GeneratorType,
                               type] or pyval is type):
       try:
-        pyclass = self.vm.lookup_builtin("__builtin__." + pyval.__name__)
-        return self.constant_to_value(name, pyclass, subst, node)
+        return self.name_to_value("__builtin__." + pyval.__name__, subst, node)
       except (KeyError, AttributeError):
         log.debug("Failed to find pytd", exc_info=True)
         raise

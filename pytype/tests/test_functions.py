@@ -6,7 +6,175 @@ from pytype import utils
 from pytype.tests import test_inference
 
 
+class TestClosures(test_inference.InferenceTest):
+  """Tests for closures."""
+
+  def test_closures(self):
+    self.assertNoErrors("""\
+      def make_adder(x):
+        def add(y):
+          return x+y
+        return add
+      a = make_adder(10)
+      print(a(7))
+      assert a(7) == 17
+      """)
+
+  def test_closures_store_deref(self):
+    self.assertNoErrors("""\
+      def make_adder(x):
+        z = x+1
+        def add(y):
+          return x+y+z
+        return add
+      a = make_adder(10)
+      print(a(7))
+      assert a(7) == 28
+      """)
+
+  def test_closures_in_loop(self):
+    self.assertNoErrors("""\
+      def make_fns(x):
+        fns = []
+        for i in range(x):
+          fns.append(lambda i=i: i)
+        return fns
+      fns = make_fns(3)
+      for f in fns:
+        print(f())
+      assert (fns[0](), fns[1](), fns[2]()) == (0, 1, 2)
+      """)
+
+  def test_closures_with_defaults(self):
+    self.assertNoErrors("""\
+      def make_adder(x, y=13, z=43):
+        def add(q, r=11):
+          return x+y+z+q+r
+        return add
+      a = make_adder(10, 17)
+      print(a(7))
+      assert a(7) == 88
+      """)
+
+  def test_deep_closures(self):
+    self.assertNoErrors("""\
+      def f1(a):
+        b = 2*a
+        def f2(c):
+          d = 2*c
+          def f3(e):
+            f = 2*e
+            def f4(g):
+              h = 2*g
+              return a+b+c+d+e+f+g+h
+            return f4
+          return f3
+        return f2
+      answer = f1(3)(4)(5)(6)
+      print(answer)
+      assert answer == 54
+      """)
+
+  def test_closure(self):
+    ty = self.Infer("""
+      import ctypes
+      f = 0
+      def e():
+        global f
+        s = 0
+        f = (lambda: ctypes.foo(s))  # ctypes.foo doesn't exist
+        return f()
+      e()
+    """, deep=True, solve_unknowns=True, report_errors=False)
+    self.assertHasReturnType(ty.Lookup("e"), self.anything)
+    self.assertTrue(ty.Lookup("f"))
+
+
+class TestGenerators(test_inference.InferenceTest):
+  """Tests for generators."""
+
+  def test_first(self):
+    self.assertNoErrors("""\
+      def two():
+        yield 1
+        yield 2
+      for i in two():
+        print(i)
+      """)
+
+  def test_partial_generator(self):
+    self.assertNoErrors("""\
+      from _functools import partial
+
+      def f(a,b):
+        num = a+b
+        while num:
+          yield num
+          num -= 1
+
+      f2 = partial(f, 2)
+      three = f2(1)
+      assert list(three) == [3,2,1]
+      """)
+
+  def test_unsolvable(self):
+    self.assertNoCrash("""\
+      assert list(three) == [3,2,1]
+      """)
+
+  def test_yield_multiple_values(self):
+    # TODO(kramm): The generator doesn't have __iter__?
+    self.assertNoCrash("""\
+      def triples():
+        yield 1, 2, 3
+        yield 4, 5, 6
+
+      for a, b, c in triples():
+        print(a, b, c)
+      """)
+
+  def test_generator_reuse(self):
+    self.assertNoErrors("""\
+      g = (x*x for x in range(5))
+      print(list(g))
+      print(list(g))
+      """)
+
+  def test_generator_from_generator2(self):
+    self.assertNoErrors("""\
+      g = (x*x for x in range(3))
+      print(list(g))
+
+      g = (x*x for x in range(5))
+      g = (y+1 for y in g)
+      print(list(g))
+      """)
+
+  def test_generator_from_generator(self):
+    # TODO(kramm): The generator doesn't have __iter__?
+    self.assertNoCrash("""\
+      class Thing(object):
+        RESOURCES = ('abc', 'def')
+        def get_abc(self):
+          return "ABC"
+        def get_def(self):
+          return "DEF"
+        def resource_info(self):
+          for name in self.RESOURCES:
+            get_name = 'get_' + name
+            yield name, getattr(self, get_name)
+
+        def boom(self):
+          #d = list((name, get()) for name, get in self.resource_info())
+          d = [(name, get()) for name, get in self.resource_info()]
+          return d
+
+      print(Thing().boom())
+      """)
+
+
 class TestFunctions(test_inference.InferenceTest):
+  """Tests for functions."""
 
   def test_functions(self):
     self.assertNoErrors("""\
@@ -161,156 +329,6 @@ class TestFunctions(test_inference.InferenceTest):
         assert example() == 17
         """, pythonpath=[d.path])
 
-
-class TestClosures(test_inference.InferenceTest):
-
-  def test_closures(self):
-    self.assertNoErrors("""\
-      def make_adder(x):
-        def add(y):
-          return x+y
-        return add
-      a = make_adder(10)
-      print(a(7))
-      assert a(7) == 17
-      """)
-
-  def test_closures_store_deref(self):
-    self.assertNoErrors("""\
-      def make_adder(x):
-        z = x+1
-        def add(y):
-          return x+y+z
-        return add
-      a = make_adder(10)
-      print(a(7))
-      assert a(7) == 28
-      """)
-
-  def test_closures_in_loop(self):
-    self.assertNoErrors("""\
-      def make_fns(x):
-        fns = []
-        for i in range(x):
-          fns.append(lambda i=i: i)
-        return fns
-      fns = make_fns(3)
-      for f in fns:
-        print(f())
-      assert (fns[0](), fns[1](), fns[2]()) == (0, 1, 2)
-      """)
-
-  def test_closures_with_defaults(self):
-    self.assertNoErrors("""\
-      def make_adder(x, y=13, z=43):
-        def add(q, r=11):
-          return x+y+z+q+r
-        return add
-      a = make_adder(10, 17)
-      print(a(7))
-      assert a(7) == 88
-      """)
-
-  def test_deep_closures(self):
-    self.assertNoErrors("""\
-      def f1(a):
-        b = 2*a
-        def f2(c):
-          d = 2*c
-          def f3(e):
-            f = 2*e
-            def f4(g):
-              h = 2*g
-              return a+b+c+d+e+f+g+h
-            return f4
-          return f3
-        return f2
-      answer = f1(3)(4)(5)(6)
-      print(answer)
-      assert answer == 54
-      """)
-
-class TestGenerators(test_inference.InferenceTest):
-
-  def test_first(self):
-    self.assertNoErrors("""\
-      def two():
-        yield 1
-        yield 2
-      for i in two():
-        print(i)
-      """)
-
-  def test_partial_generator(self):
-    self.assertNoErrors("""\
-      from _functools import partial
-
-      def f(a,b):
-        num = a+b
-        while num:
-          yield num
-          num -= 1
-
-      f2 = partial(f, 2)
-      three = f2(1)
-      assert list(three) == [3,2,1]
-      """)
-
-  def test_unsolvable(self):
-    self.assertNoCrash("""\
-      assert list(three) == [3,2,1]
-      """)
-
-  def test_yield_multiple_values(self):
-    # TODO(kramm): The generator doesn't have __iter__?
-    self.assertNoCrash("""\
-      def triples():
-        yield 1, 2, 3
-        yield 4, 5, 6
-
-      for a, b, c in triples():
-        print(a, b, c)
-      """)
-
-  def test_generator_reuse(self):
-    self.assertNoErrors("""\
-      g = (x*x for x in range(5))
-      print(list(g))
-      print(list(g))
-      """)
-
-  def test_generator_from_generator2(self):
-    self.assertNoErrors("""\
-      g = (x*x for x in range(3))
-      print(list(g))
-
-      g = (x*x for x in range(5))
-      g = (y+1 for y in g)
-      print(list(g))
-      """)
-
-  def test_generator_from_generator(self):
-    # TODO(kramm): The generator doesn't have __iter__?
-    self.assertNoCrash("""\
-      class Thing(object):
-        RESOURCES = ('abc', 'def')
-        def get_abc(self):
-          return "ABC"
-        def get_def(self):
-          return "DEF"
-        def resource_info(self):
-          for name in self.RESOURCES:
-            get_name = 'get_' + name
-            yield name, getattr(self, get_name)
-
-        def boom(self):
-          #d = list((name, get()) for name, get in self.resource_info())
-          d = [(name, get()) for name, get in self.resource_info()]
-          return d
-
-      print(Thing().boom())
-      """)
-
   def test_pass_through_args(self):
     ty = self.Infer("""
       def f(a, b):
@@ -330,20 +348,6 @@ class TestGenerators(test_inference.InferenceTest):
       g(a=1, b=2)
     """, deep=False, solve_unknowns=False, show_library_calls=True)
     self.assertHasReturnType(ty.Lookup("g"), self.int)
-
-  def test_closure(self):
-    ty = self.Infer("""
-      import ctypes
-      f = 0
-      def e():
-        global f
-        s = 0
-        f = (lambda: ctypes.foo(s))  # ctypes.foo doesn't exist
-        return f()
-      e()
-    """, deep=True, solve_unknowns=True, report_errors=False)
-    self.assertHasReturnType(ty.Lookup("e"), self.anything)
-    self.assertTrue(ty.Lookup("f"))
 
   def test_list_comprehension(self):
     ty = self.Infer("""
