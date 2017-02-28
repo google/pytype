@@ -198,7 +198,7 @@ class ParserTest(_ParserTestBase):
     self.check("x = ...  # type: nothing")
     self.check("x = ...  # type: int or str or float", """\
                 from typing import Union
-                
+
                 x = ...  # type: Union[int, str, float]""")
 
   def test_empty_union_or_optional(self):
@@ -213,9 +213,9 @@ class ParserTest(_ParserTestBase):
       x = ...  # type: Foo
       """, """\
       import somewhere
-      
+
       from somewhere import Foo
-      
+
       x = ...  # type: somewhere.Foo""")
 
   def test_type_params(self):
@@ -964,6 +964,23 @@ class ConditionTest(_ParserTestBase):
     self.check_cond("sys.version_info >= (2, 7, 6)", True)
     self.check_cond("sys.version_info >= (2, 7, 7)", False)
 
+  def test_version_item(self):
+    self.check_cond("sys.version_info[0] == 2", True)
+
+  def test_version_slice(self):
+    self.check_cond("sys.version_info[:] == (2, 7, 6)", True)
+    self.check_cond("sys.version_info[:2] == (2, 7)", True)
+    self.check_cond("sys.version_info[2:] == (6,)", True)
+    self.check_cond("sys.version_info[0:1] == (2,)", True)
+    self.check_cond("sys.version_info[::] == (2, 7, 6)", True)
+    self.check_cond("sys.version_info[1::] == (7, 6)", True)
+    self.check_cond("sys.version_info[:2:] == (2, 7)", True)
+    self.check_cond("sys.version_info[::-2] == (6, 2)", True)
+    self.check_cond("sys.version_info[1:3:] == (7, 6)", True)
+    self.check_cond("sys.version_info[1::2] == (7,)", True)
+    self.check_cond("sys.version_info[:2:2] == (2,)", True)
+    self.check_cond("sys.version_info[3:1:-1] == (6,)", True)
+
   def test_version_shorter_tuples(self):
     self.check_cond("sys.version_info == (3,)", True, version=(3, 0, 0))
     self.check_cond("sys.version_info == (3, 0)", True, version=(3, 0, 0))
@@ -975,11 +992,41 @@ class ConditionTest(_ParserTestBase):
     self.check_cond("sys.version_info == (3, 0, 0)", True, version=(3,))
     self.check_cond("sys.version_info == (3, 0, 0)", True, version=(3, 0))
 
+  def test_version_slice_shorter_tuples(self):
+    self.check_cond("sys.version_info[:2] == (3,)", True, version=(3, 0, 1))
+    self.check_cond("sys.version_info[:2] == (3, 0)", True, version=(3, 0, 1))
+    self.check_cond(
+        "sys.version_info[:2] == (3, 0, 0)", True, version=(3, 0, 1))
+    self.check_cond("sys.version_info[:2] == (3,)", False, version=(3, 1, 0))
+    self.check_cond("sys.version_info[:2] == (3, 0)", False, version=(3, 1, 0))
+    self.check_cond("sys.version_info[:2] > (3,)", True, version=(3, 1, 0))
+    self.check_cond("sys.version_info[:2] > (3, 0)", True, version=(3, 1, 0))
+    self.check_cond(
+        "sys.version_info[:2] == (3, 0, 0)", True, version=(3,))
+    self.check_cond(
+        "sys.version_info[:2] == (3, 0, 0)", True, version=(3, 0))
+
   def test_version_error(self):
     self.check_cond_error('sys.version_info == "foo"',
-                          "sys.version_info must be compared to a tuple")
+                          "sys.version_info must be compared to a tuple of "
+                          "integers")
     self.check_cond_error("sys.version_info == (1.2, 3)",
-                          "only integers are allowed in version tuples")
+                          "sys.version_info must be compared to a tuple of "
+                          "integers")
+    self.check_cond_error("sys.version_info[0] == 2.0",
+                          "an element of sys.version_info must be compared to "
+                          "an integer")
+    self.check_cond_error("sys.version_info[0] == (2,)",
+                          "an element of sys.version_info must be compared to "
+                          "an integer")
+    self.check_cond_error("sys.version_info[:2] == (2.0, 7)",
+                          "sys.version_info must be compared to a tuple of "
+                          "integers")
+    self.check_cond_error("sys.version_info[:2] == 2",
+                          "sys.version_info must be compared to a tuple of "
+                          "integers")
+    self.check_cond_error("sys.version_info[42] == 42",
+                          "tuple index out of range")
 
   def test_platform_eq(self):
     self.check_cond('sys.platform == "linux"', True)

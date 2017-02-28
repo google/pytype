@@ -89,6 +89,8 @@ PyObject* ExtendList(PyObject* dst, PyObject* src);
 %type <obj> named_tuple_fields named_tuple_field_list named_tuple_field
 %type <obj> maybe_type_list type_list
 %type <obj> dotted_name
+%type <obj> getitem_key
+%type <obj> maybe_number
 
 /* Decrement ref counts of any non-null lvals. */
 %destructor { Py_CLEAR($$); } <*>
@@ -273,10 +275,16 @@ else_cond
 
 condition
   : dotted_name condition_op NAME {
-      $$ = Py_BuildValue("(NsN)", $1, $2, $3);
+      $$ = Py_BuildValue("((NO)sN)", $1, Py_None, $2, $3);
     }
   | dotted_name condition_op version_tuple {
-      $$ = Py_BuildValue("(NsN)", $1, $2, $3);
+      $$ = Py_BuildValue("((NO)sN)", $1, Py_None, $2, $3);
+    }
+  | dotted_name '[' getitem_key ']' condition_op NUMBER {
+      $$ = Py_BuildValue("((NN)sN)", $1, $3, $5, $6);
+    }
+  | dotted_name '[' getitem_key ']' condition_op version_tuple {
+      $$ = Py_BuildValue("((NN)sN)", $1, $3, $5, $6);
     }
   | condition OR condition { $$ = Py_BuildValue("(NsN)", $1, "or", $3); }
   | '(' condition ')' { $$ = $2; }
@@ -560,6 +568,25 @@ dotted_name
       PyString_ConcatAndDel(&$1, $3);
       $$ = $1;
     }
+  ;
+
+getitem_key
+  : NUMBER { $$ = $1; }
+  | maybe_number ':' maybe_number {
+      PyObject* slice = PySlice_New($1, $3, NULL);
+      CHECK(slice, @$);
+      $$ = slice;
+    }
+  | maybe_number ':' maybe_number ':' maybe_number {
+      PyObject* slice = PySlice_New($1, $3, $5);
+      CHECK(slice, @$);
+      $$ = slice;
+    }
+  ;
+
+maybe_number
+  : NUMBER { $$ = $1; }
+  | /* EMPTY */ { $$ = NULL; }
   ;
 
 pass_or_ellipsis

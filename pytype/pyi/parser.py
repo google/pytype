@@ -391,13 +391,14 @@ class _Parser(object):
     else:
       return self._eval_comparison(left, op, right)
 
-  def _eval_comparison(self, name, op, value):
+  def _eval_comparison(self, ident, op, value):
     """Evaluate a comparison and return a bool.
 
     Args:
-      name: A dotted string name.
+      ident: A tuple of a dotted name string and an optional __getitem__ key
+        (int or slice).
       op: One of the comparison operator strings in _COMPARES.
-      value: Either a string or a tuple of three integers.
+      value: Either a string, an integer, or a tuple of integers.
 
     Returns:
       The boolean result of the comparison.
@@ -405,13 +406,24 @@ class _Parser(object):
     Raises:
       ParseError: If the comparison cannot be evaluted.
     """
+    name, key = ident
     if name == "sys.version_info":
-      if not isinstance(value, tuple):
-        raise ParseError("sys.version_info must be compared to a tuple")
-      if not all(isinstance(v, int) for v in value):
-        raise ParseError("only integers are allowed in version tuples")
-      actual = self._version
-      value = _three_tuple(value)
+      if key is None:
+        key = slice(None, None, None)
+      assert isinstance(key, (int, slice))
+      if isinstance(key, int) and not isinstance(value, int):
+        raise ParseError(
+            "an element of sys.version_info must be compared to an integer")
+      if isinstance(key, slice) and not _is_int_tuple(value):
+        raise ParseError(
+            "sys.version_info must be compared to a tuple of integers")
+      try:
+        actual = self._version[key]
+      except IndexError as e:
+        raise ParseError(e.message)
+      if isinstance(key, slice):
+        actual = _three_tuple(actual)
+        value = _three_tuple(value)
     elif name == "sys.platform":
       if not isinstance(value, str):
         raise ParseError("sys.platform must be compared to a string")
@@ -932,6 +944,11 @@ def _split_definitions(defs):
     else:
       raise TypeError("Unexpected definition type %s", type(d))
   return constants, functions
+
+
+def _is_int_tuple(value):
+  """Return whether the value is a tuple of integers."""
+  return isinstance(value, tuple) and all(isinstance(v, int) for v in value)
 
 
 def _three_tuple(value):
