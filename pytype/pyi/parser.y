@@ -68,7 +68,7 @@ PyObject* ExtendList(PyObject* dst, PyObject* src);
 
 /* Reserved words. */
 %token CLASS DEF ELSE ELIF IF OR PASS IMPORT FROM AS RAISE PYTHONCODE
-%token NOTHING RAISES NAMEDTUPLE TYPEVAR
+%token NOTHING NAMEDTUPLE TYPEVAR
 /* Punctuation. */
 %token ARROW COLONEQUALS ELLIPSIS EQ NE LE GE
 /* Other. */
@@ -83,7 +83,7 @@ PyObject* ExtendList(PyObject* dst, PyObject* src);
 %type <obj> class_funcs funcdefs
 %type <obj> importdef import_items import_item from_list from_items from_item
 %type <obj> funcdef decorators decorator params param_list param param_type
-%type <obj> param_default param_star_name return raises exceptions maybe_body
+%type <obj> param_default param_star_name return maybe_body
 %type <obj> body body_stmt
 %type <obj> type type_parameters type_parameter
 %type <obj> named_tuple_fields named_tuple_field_list named_tuple_field
@@ -385,8 +385,8 @@ typevardef
   ;
 
 funcdef
-  : decorators DEF NAME '(' params ')' return raises maybe_body {
-      $$ = ctx->Call(kNewFunction, "(NNNNNN)", $1, $3, $5, $7, $8, $9);
+  : decorators DEF NAME '(' params ')' return maybe_body {
+      $$ = ctx->Call(kNewFunction, "(NNNNN)", $1, $3, $5, $7, $8);
       // Decorators is nullable and messes up the location tracking by
       // using the previous symbol as the start location for this production,
       // which is very misleading.  It is better to ignore decorators and
@@ -459,16 +459,6 @@ return
   | /* EMPTY */ { $$ = ctx->Value(kAnything); }
   ;
 
-raises
-  : RAISES exceptions { $$ = $2; }
-  | /* EMPTY */ { $$ = PyList_New(0); }
-  ;
-
-exceptions
-  : exceptions ',' type { $$ = AppendList($1, $3); }
-  | type { $$ = StartList($1); }
-  ;
-
 maybe_body
   : ':' INDENT body DEDENT { $$ = $3; }
   | empty_body { $$ = PyList_New(0); }
@@ -488,8 +478,8 @@ body
 
 body_stmt
   : NAME COLONEQUALS type { $$ = Py_BuildValue("(NN)", $1, $3); }
-  | RAISE NAME { Py_DECREF($2); Py_INCREF(Py_None); $$ = Py_None; }
-  | RAISE NAME '(' ')' { Py_DECREF($2); Py_INCREF(Py_None); $$ = Py_None; }
+  | RAISE type { $$ = $2; }
+  | RAISE type '(' ')' { $$ = $2; }
   ;
 
 type_parameters

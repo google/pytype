@@ -26,16 +26,20 @@ def erfc(x: float or int) -> float
 def exp(x: float or int) -> float
 def expm1(x: float or int) -> float
 def fabs(x: float or int) -> float
-def factorial(x: float or int) -> float raises ValueError
+def factorial(x: float or int) -> float:
+    raise ValueError()
 def floor(x: float or int) -> float
 def fmod(x: float or int) -> float
 def frexp(x: float or int) -> tuple[float or int, float or int]
-def fsum(x: float or int) -> float raises OverflowError, ValueError
+def fsum(x: float or int) -> float:
+    raise OverflowError()
+    raise ValueError()
 def gamma(x: float or int) -> float
 def hypot(x: float or int) -> float
 def isinf(x: float or int) -> bool
 def isnan(x: float or int) -> bool
-def ldexp(x: float or int) -> float raises TypeError
+def ldexp(x: float or int) -> float:
+    raise TypeError()
 def lgamma(x: float or int) -> float
 def log(x: float or int) -> float
 def log10(x: float or int) -> float

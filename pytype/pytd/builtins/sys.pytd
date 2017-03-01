@@ -56,13 +56,17 @@ warnoptions = ...  # type: object
 
 def _clear_type_cache() -> NoneType
 def _current_frames() -> ?  # TODO(pludemann): fix return type
-def _getframe(...) -> ? raises ValueError  # TODO(pludemann): fix return type
+def _getframe(...) -> ?:  # TODO(pludemann): fix return type
+    raise ValueError()
 def call_tracing(a, b) -> ?  # TODO(pludemann): fix return type
-def displayhook(...) -> NoneType raises RuntimeError
-def exc_clear() -> NoneType raises DeprecationWarning
+def displayhook(...) -> NoneType:
+    raise RuntimeError()
+def exc_clear() -> NoneType:
+    raise DeprecationWarning()
 def exc_info() -> tuple[None, None, None] or tuple[Type[BaseException], BaseException, Any]
 def excepthook(...) -> NoneType
-def exit(...) -> NoneType raises SystemExit
+def exit(...) -> NoneType:
+    raise SystemExit()
 def getcheckinterval() -> int
 def getdefaultencoding() -> str
 def getdlopenflags() -> int
@@ -70,11 +74,13 @@ def getfilesystemencoding() -> str or NoneType
 def getprofile() -> NoneType
 def getrecursionlimit() -> int
 def getrefcount(...) -> int
-def getsizeof(object, ...) -> int raises TypeError
+def getsizeof(object, ...) -> int:
+    raise TypeError()
 def gettrace() -> NoneType
 def setcheckinterval(a: int) -> NoneType
 def setdefaultencoding(a: str) -> NoneType
 def setdlopenflags(a: int) -> NoneType
 def setprofile(...) -> NoneType
-def setrecursionlimit(a: int) -> NoneType raises ValueError
+def setrecursionlimit(a: int) -> NoneType:
+    raise ValueError()
 def settrace(...) -> NoneType

@@ -70,7 +70,6 @@
 "raise" { return RAISE; }
 "PYTHONCODE" { return PYTHONCODE; }
 "nothing" { return NOTHING; }
-"raises" { return RAISES; }
 "NamedTuple" { return NAMEDTUPLE; }
 "TypeVar" { return TYPEVAR; }
 

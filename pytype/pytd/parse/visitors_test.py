@@ -47,10 +47,14 @@ class TestVisitors(parser_test_base.ParserTest):
             pass
 
         class A(object):
-            def a(self, a: A, b: B) -> A or B raises A, B
+            def a(self, a: A, b: B) -> A or B:
+                raise A()
+                raise B()
 
         class B(object):
-            def b(self, a: A, b: B) -> A or B raises A, B
+            def b(self, a: A, b: B) -> A or B:
+                raise A()
+                raise B()
     """)
     tree = self.Parse(src)
     new_tree = visitors.LookupClasses(tree)
@@ -60,7 +64,9 @@ class TestVisitors(parser_test_base.ParserTest):
   def testMaybeInPlaceFillInClasses(self):
     src = textwrap.dedent("""
         class A(object):
-            def a(self, a: A, b: B) -> A or B raises A, B
+            def a(self, a: A, b: B) -> A or B:
+                raise A()
+                raise B()
     """)
     tree = self.Parse(src)
     ty_a = pytd.ClassType("A")
@@ -77,12 +83,14 @@ class TestVisitors(parser_test_base.ParserTest):
     """))
     src = textwrap.dedent("""
         class A(X):
-            def a(self, a: A, b: X, c: int) -> X raises X
+            def a(self, a: A, b: X, c: int) -> X:
+                raise X()
             def b(self) -> X[int]
     """)
     expected = textwrap.dedent("""
         class A(?):
-            def a(self, a: A, b: ?, c: int) -> ? raises ?
+            def a(self, a: A, b: ?, c: int) -> ?:
+                raise ?
             def b(self) -> ?
     """)
     tree = self.Parse(src)
@@ -102,13 +110,15 @@ class TestVisitors(parser_test_base.ParserTest):
     src = textwrap.dedent("""
         from typing import Union
         class A(X):
-            def a(self, a: A, b: X, c: int) -> X raises X
+            def a(self, a: A, b: X, c: int) -> X:
+                raise X()
             def c(self) -> Union[list[X], int]
     """)
     expected = textwrap.dedent("""
         from typing import Union
         class A(?):
-            def a(self, a: A, b: ?, c: int) -> ? raises ?
+            def a(self, a: A, b: ?, c: int) -> ?:
+                raise ?
             def c(self) -> Union[list[?], int]
     """)
     tree = self.Parse(src)
@@ -119,11 +129,15 @@ class TestVisitors(parser_test_base.ParserTest):
   def testReplaceTypes(self):
     src = textwrap.dedent("""
         class A(object):
-            def a(self, a: A or B) -> A or B raises A, B
+            def a(self, a: A or B) -> A or B:
+                raise A()
+                raise B()
     """)
     expected = textwrap.dedent("""
         class A(object):
-            def a(self: A2, a: A2 or B) -> A2 or B raises A2, B
+            def a(self: A2, a: A2 or B) -> A2 or B:
+                raise A2()
+                raise B()
     """)
     tree = self.Parse(src)
     new_tree = tree.Visit(visitors.ReplaceTypes({"A": pytd.NamedType("A2")}))
@@ -241,13 +255,17 @@ class TestVisitors(parser_test_base.ParserTest):
 
   def testCanonicalOrderingVisitor(self):
     src1 = textwrap.dedent("""
-    def f() -> ? raises MemoryError, IOError
+    def f() -> ?:
+      raise MemoryError()
+      raise IOError()
     def f(x: list[a]) -> ?
     def f(x: list[b or c]) -> ?
     def f(x: list[tuple[d]]) -> ?
     """)
     src2 = textwrap.dedent("""
-    def f() -> ? raises IOError, MemoryError
+    def f() -> ?:
+      raise IOError()
+      raise MemoryError()
     def f(x: list[tuple[d]]) -> ?
     def f(x: list[a]) -> ?
     def f(x: list[b or c]) -> ?

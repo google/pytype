@@ -600,8 +600,7 @@ class _Parser(object):
     # UnionType flattens any contained UnionType's.
     return pytd.UnionType(tuple(types))
 
-  def new_function(self, decorators, name, param_list, return_type, raises,
-                   body):
+  def new_function(self, decorators, name, param_list, return_type, body):
     """Return a _NameAndSig object for the function.
 
     Args:
@@ -611,7 +610,6 @@ class _Parser(object):
         (name, type, default) or the ELLIPSIS special object.  See
         _validate_params for a more detailed description of allowed parameters.
       return_type: A pytd type object.
-      raises: ?
       body: ?
 
     Returns:
@@ -625,16 +623,21 @@ class _Parser(object):
     else:
       ret = return_type
     params = _validate_params(param_list)
+
+    exceptions = []
+    mutators = []
+    for stmt in body:
+      if isinstance(stmt, pytd.Type):
+        exceptions.append(stmt)  # raise stmt
+        continue
+      assert isinstance(stmt, tuple) and len(stmt) == 2, stmt
+      mutators.append(_Mutator(stmt[0], stmt[1]))
+
     signature = pytd.Signature(params=tuple(params.required), return_type=ret,
                                starargs=params.starargs,
                                starstarargs=params.starstarargs,
-                               exceptions=tuple(raises), template=())
-
-    for stmt in body:
-      if stmt is None:
-        # TODO(kramm) : process raise statement
-        continue  # raise stmt
-      mutator = _Mutator(stmt[0], stmt[1])
+                               exceptions=tuple(exceptions), template=())
+    for mutator in mutators:
       try:
         signature = signature.Visit(mutator)
       except NotImplementedError as e:

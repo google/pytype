@@ -422,8 +422,6 @@ class PrintVisitor(Visitor):
     # we now require all function signatures to have a return type.
     ret = " -> " + node.return_type
 
-    exc = " raises " + ", ".join(node.exceptions) if node.exceptions else ""
-
     # Put parameters in the right order:
     # (arg1, arg2, *args, kwonly1, kwonly2, **kwargs)
     if self.old_node.starargs is not None:
@@ -445,23 +443,24 @@ class PrintVisitor(Visitor):
       starstarargs = self._FormatContainerContents(self.old_node.starstarargs)
       params += ("**" + starstarargs,)
 
+    body = []
     # Handle Mutable parameters
     # pylint: disable=no-member
     # (old_node is set in parse/node.py)
     mutable_params = [(p.name, p.mutated_type) for p in self.old_node.params
                       if p.mutated_type is not None]
     # pylint: enable=no-member
-    if mutable_params:
-      body = ":\n" + "\n".join("{indent}{name} := {new_type}".format(
+    for name, new_type in mutable_params:
+      body.append("\n{indent}{name} := {new_type}".format(
           indent=self.INDENT, name=name,
-          new_type=new_type.Visit(PrintVisitor()))
-                               for name, new_type in mutable_params)
-    else:
-      body = ": ..."
+          new_type=new_type.Visit(PrintVisitor())))
+    for exc in node.exceptions:
+      body.append("\n{indent}raise {exc}()".format(indent=self.INDENT, exc=exc))
+    if not body:
+      body.append(" ...")
 
-    return "({params}){ret}{exc}{body}".format(
-        params=", ".join(params),
-        ret=ret, exc=exc, body=body)
+    return "({params}){ret}:{body}".format(
+        params=", ".join(params), ret=ret, body="".join(body))
 
   def EnterParameter(self, unused_node):
     assert not self.in_parameter

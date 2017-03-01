@@ -45,32 +45,46 @@ class TestOptimize(parser_test_base.ParserTest):
 
   def testOneFunction(self):
     src = textwrap.dedent("""
-        def foo(a: int, c: bool) -> int raises AssertionError, ValueError
+        def foo(a: int, c: bool) -> int:
+          raise AssertionError()
+          raise ValueError()
     """)
     self.AssertOptimizeEquals(src, src)
 
   def testFunctionDuplicate(self):
     src = textwrap.dedent("""
-        def foo(a: int, c: bool) -> int raises AssertionError, ValueError
-        def foo(a: int, c: bool) -> int raises AssertionError, ValueError
+        def foo(a: int, c: bool) -> int:
+          raise AssertionError()
+          raise ValueError()
+        def foo(a: int, c: bool) -> int:
+          raise AssertionError()
+          raise ValueError()
     """)
     new_src = textwrap.dedent("""
-        def foo(a: int, c: bool) -> int raises AssertionError, ValueError
+        def foo(a: int, c: bool) -> int:
+          raise AssertionError()
+          raise ValueError()
     """)
     self.AssertOptimizeEquals(src, new_src)
 
   def testComplexFunctionDuplicate(self):
     src = textwrap.dedent("""
-        def foo(a: int or float, c: bool) -> list[int] raises IndexError
+        def foo(a: int or float, c: bool) -> list[int]:
+          raise IndexError()
         def foo(a: str, c: str) -> str
-        def foo(a: int, ...) -> int or float raises list[str]
-        def foo(a: int or float, c: bool) -> list[int] raises IndexError
-        def foo(a: int, ...) -> int or float raises list[str]
+        def foo(a: int, ...) -> int or float:
+          raise list[str]()
+        def foo(a: int or float, c: bool) -> list[int]:
+          raise IndexError()
+        def foo(a: int, ...) -> int or float:
+          raise list[str]()
     """)
     new_src = textwrap.dedent("""
-        def foo(a: float, c: bool) -> list[int] raises IndexError
+        def foo(a: float, c: bool) -> list[int]:
+          raise IndexError()
         def foo(a: str, c: str) -> str
-        def foo(a: int, ...) -> int or float raises list[str]
+        def foo(a: int, ...) -> int or float:
+          raise list[str]()
     """)
     self.AssertOptimizeEquals(src, new_src)
 
@@ -89,11 +103,13 @@ class TestOptimize(parser_test_base.ParserTest):
 
   def testRemoveRedundantSignatureWithExceptions(self):
     src = textwrap.dedent("""
-        def foo(a: int) -> int raises IOError
+        def foo(a: int) -> int:
+          raise IOError()
         def foo(a: int or bool) -> int
     """)
     expected = textwrap.dedent("""
-        def foo(a: int) -> int raises IOError
+        def foo(a: int) -> int:
+          raise IOError()
         def foo(a: int or bool) -> int
     """)
     ast = self.Parse(src)
@@ -320,25 +336,38 @@ class TestOptimize(parser_test_base.ParserTest):
 
   def testCombineExceptions(self):
     src = textwrap.dedent("""
-        def foo(a: int) -> int raises ValueError
-        def foo(a: int) -> int raises IndexError
-        def foo(a: float) -> int raises IndexError
-        def foo(a: int) -> int raises AttributeError
+        def foo(a: int) -> int:
+          raise ValueError()
+        def foo(a: int) -> int:
+          raise IndexError()
+        def foo(a: float) -> int:
+          raise IndexError()
+        def foo(a: int) -> int:
+          raise AttributeError()
     """)
     new_src = textwrap.dedent("""
-        def foo(a: int) -> int raises ValueError, IndexError, AttributeError
-        def foo(a: float) -> int raises IndexError
+        def foo(a: int) -> int:
+          raise ValueError()
+          raise IndexError()
+          raise AttributeError()
+        def foo(a: float) -> int:
+          raise IndexError()
     """)
     self.AssertOptimizeEquals(src, new_src)
 
   def testMixedCombine(self):
     src = textwrap.dedent("""
-        def foo(a: int) -> int raises ValueError
-        def foo(a: int) -> float raises ValueError
-        def foo(a: int) -> int raises IndexError
+        def foo(a: int) -> int:
+          raise ValueError()
+        def foo(a: int) -> float:
+          raise ValueError()
+        def foo(a: int) -> int:
+          raise IndexError()
     """)
     new_src = textwrap.dedent("""
-        def foo(a: int) -> int or float raises ValueError, IndexError
+        def foo(a: int) -> int or float:
+          raise ValueError()
+          raise IndexError()
     """)
     self.AssertOptimizeEquals(src, new_src)
 
@@ -347,8 +376,10 @@ class TestOptimize(parser_test_base.ParserTest):
     # "compressible" items will be compressed. This test only checks that
     # non-compressible things stay the same.
     src = textwrap.dedent("""
-        def foo(a: int) -> float raises IndexError
-        def foo(a: str) -> complex raises AssertionError
+        def foo(a: int) -> float:
+          raise IndexError()
+        def foo(a: str) -> complex:
+          raise AssertionError()
     """)
     optimized = self.Optimize(self.Parse(src), lossy=True, use_abcs=False)
     self.AssertSourceEquals(optimized, src)

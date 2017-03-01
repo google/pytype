@@ -274,7 +274,6 @@ static void add_tokens_dict(PyObject* module) {
   ADD_TOKEN(tokens, RAISE);
   ADD_TOKEN(tokens, PYTHONCODE);
   ADD_TOKEN(tokens, NOTHING);
-  ADD_TOKEN(tokens, RAISES);
   ADD_TOKEN(tokens, NAMEDTUPLE);
   ADD_TOKEN(tokens, TYPEVAR);
 

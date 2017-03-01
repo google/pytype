@@ -163,7 +163,8 @@ class TestUtils(parser_test_base.ParserTest):
       T = TypeVar('T')
       class A(typing.Generic[T], object):
         bar = ...  # type: T
-        def foo(self, x: list[int], y: T) -> list[T] or float raises ValueError
+        def foo(self, x: list[int], y: T) -> list[T] or float:
+          raise ValueError()
       X = TypeVar('X')
       Y = TypeVar('Y')
       def bar(x: X or Y) -> ?

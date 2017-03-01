@@ -541,6 +541,13 @@ class PYITest(test_inference.InferenceTest):
         y = ...  # type: FrozenSet[str]
       """)
 
+  def testRaises(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        def f(raises): ...
+      """)
+      self.assertNoErrors("import foo", pythonpath=[d.path])
+
 
 if __name__ == "__main__":
   test_inference.main()

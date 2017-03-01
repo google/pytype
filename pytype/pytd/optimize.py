@@ -167,10 +167,14 @@ class CombineReturnsAndExceptions(visitors.Visitor):
   """Group function signatures that only differ in exceptions or return values.
 
   For example, this transforms
-    def f(x: int) -> float raises OverflowError
-    def f(x: int) -> int raises IndexError
+    def f(x: int) -> float:
+      raise OverflowError()
+    def f(x: int) -> int:
+      raise IndexError()
   to
-    def f(x: int) -> float or int raises IndexError, OverflowError
+    def f(x: int) -> float or int:
+      raise IndexError()
+      raise OverflowError()
   """
 
   def _GroupByArguments(self, signatures):

@@ -499,7 +499,7 @@ class FunctionTest(_ParserTestBase):
                """\
       def foo() -> int: ...""")
 
-  def test_body(self):
+  def test_mutators(self):
     # Mutators.
     self.check("""\
       def foo(x) -> int:
@@ -507,27 +507,30 @@ class FunctionTest(_ParserTestBase):
     self.check_error("""\
       def foo(x) -> int:
           y := int""", 1, "No parameter named y")
-    # Raise statements (currently ignored).
+
+  def test_exceptions(self):
     self.check("""\
       def foo(x) -> int:
           raise Error""",
                """\
-      def foo(x) -> int: ...""")
+      def foo(x) -> int:
+          raise Error()""")
     self.check("""\
       def foo(x) -> int:
-          raise Error()""",
-               """\
-      def foo(x) -> int: ...""")
+          raise Error()""")
+    self.check("""\
+      def foo() -> int:
+          raise RuntimeError()
+          raise TypeError()""")
+    self.check("""\
+      def foo() -> int:
+          raise Bar.Error()""", prologue="import Bar")
 
   def test_return(self):
     self.check("def foo() -> int: ...")
     self.check("def foo(): ...",
                "def foo() -> Any: ...",
                prologue="from typing import Any")
-
-  def test_raises(self):
-    self.check("def foo() -> int raises RuntimeError: ...")
-    self.check("def foo() -> int raises RuntimeError, TypeError: ...")
 
   def test_external_function(self):
     self.check("def foo PYTHONCODE")
