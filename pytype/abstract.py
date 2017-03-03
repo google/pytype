@@ -1110,27 +1110,24 @@ class NotCallable(FailedFunctionCall):
     self.obj = obj
 
 
-BadCall = collections.namedtuple("_", ["sig", "passed_args"])
+BadCall = collections.namedtuple(
+    "_", ["sig", "passed_args", "bad_param", "details"])
 
 
 class InvalidParameters(FailedFunctionCall):
   """Exception for functions called with an incorrect parameter combination."""
 
-  def __init__(self, sig, passed_args, vm):
+  def __init__(self, sig, passed_args, vm, bad_param=None, details=None):
     super(InvalidParameters, self).__init__()
     self.name = sig.name
     passed_args = [(name, merge_values(arg.data, vm))
                    for name, arg, _ in sig.iter_args(passed_args)]
-    self.bad_call = BadCall(sig=sig, passed_args=passed_args)
+    self.bad_call = BadCall(sig=sig, passed_args=passed_args,
+                            bad_param=bad_param, details=details)
 
 
 class WrongArgTypes(InvalidParameters):
   """For functions that were called with the wrong types."""
-
-  def __init__(self, sig, passed_args, bad_param, vm, details=None):
-    super(WrongArgTypes, self).__init__(sig, passed_args, vm)
-    self.bad_param = bad_param
-    self.details = details
 
   def __gt__(self, other):
     return other is None or (isinstance(other, FailedFunctionCall) and
@@ -1218,7 +1215,7 @@ class Super(AtomicAbstractValue):
     elif len(args.posargs) == 2:
       for cls in args.posargs[0].bindings:
         if not isinstance(cls.data, (Class, AMBIGUOUS_OR_EMPTY)):
-          raise WrongArgTypes(self._SIGNATURE, args, "cls", self.vm,
+          raise WrongArgTypes(self._SIGNATURE, args, self.vm, bad_param="cls",
                               details="cls parameter must be a type")
         for obj in args.posargs[1].bindings:
           result.AddBinding(
@@ -1447,7 +1444,7 @@ class PyTDSignature(object):
     subst, bad_arg = self.vm.matcher.compute_subst(
         node, formal_args, arg_dict, view)
     if subst is None:
-      raise WrongArgTypes(self.signature, args, bad_arg, self.vm)
+      raise WrongArgTypes(self.signature, args, self.vm, bad_param=bad_arg)
     if log.isEnabledFor(logging.DEBUG):
       log.debug("Matched arguments against sig%s", pytd.Print(self.pytd_sig))
     for nr, p in enumerate(self.pytd_sig.params):
@@ -2397,7 +2394,7 @@ class InterpreterFunction(Function):
     subst, bad_arg = self.vm.matcher.compute_subst(
         node, formal_args, arg_dict, view)
     if subst is None:
-      raise WrongArgTypes(self.signature, args, bad_arg, self.vm)
+      raise WrongArgTypes(self.signature, args, self.vm, bad_param=bad_arg)
 
   def call(self, node, _, args, new_locals=None):
     args = args.simplify(node)

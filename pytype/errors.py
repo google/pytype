@@ -323,8 +323,9 @@ class ErrorLog(ErrorLogBase):
   def import_error(self, opcode, module_name):
     self.error(opcode, "Can't find module %r." % module_name)
 
-  def _invalid_parameters(self, opcode, message, (sig, passed_args),
-                          bad_param=None, extra_details=None):
+  def _invalid_parameters(self, opcode, message, bad_call):
+    """Log an invalid parameters error."""
+    sig, passed_args, bad_param, extra_details = bad_call
     expected = self._print_args(self._iter_sig(sig), bad_param)
     actual = self._print_args(self._iter_actual(passed_args), bad_param)
     details = [
@@ -342,10 +343,10 @@ class ErrorLog(ErrorLogBase):
     self._invalid_parameters(opcode, message, bad_call)
 
   @_error_name("wrong-arg-types")
-  def wrong_arg_types(self, opcode, name, bad_call, bad_param, details=None):
+  def wrong_arg_types(self, opcode, name, bad_call):
     """A function was called with the wrong parameter types."""
     message = "Function %s was called with the wrong arguments" % name
-    self._invalid_parameters(opcode, message, bad_call, bad_param, details)
+    self._invalid_parameters(opcode, message, bad_call)
 
   @_error_name("wrong-keyword-args")
   def wrong_keyword_args(self, opcode, name, bad_call, extra_keywords):
@@ -381,8 +382,7 @@ class ErrorLog(ErrorLogBase):
     if isinstance(error, abstract.WrongArgCount):
       self.wrong_arg_count(opcode, error.name, error.bad_call)
     elif isinstance(error, abstract.WrongArgTypes):
-      self.wrong_arg_types(
-          opcode, error.name, error.bad_call, error.bad_param, error.details)
+      self.wrong_arg_types(opcode, error.name, error.bad_call)
     elif isinstance(error, abstract.WrongKeywordArgs):
       self.wrong_keyword_args(
           opcode, error.name, error.bad_call, error.extra_keywords)
