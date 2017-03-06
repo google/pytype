@@ -32,7 +32,9 @@ from pytype.pytd.parse import preconditions
 
 
 class Type(object):
-  pass
+
+  __slots__ = ()
+
 
 preconditions.register(Type)
 
@@ -53,7 +55,6 @@ class TypeDeclUnit(node.Node('name: str or None',
     classes: Iterable of classes defined in this type decl unit.
     aliases: Iterable of aliases (or imports) for types in other modules.
   """
-  __slots__ = ()
 
   def Lookup(self, name):
     """Convenience function: Look up a given name in the global namespace.
@@ -139,8 +140,6 @@ class Class(node.Node('name: str',
   """
   # TODO(kramm): Rename "parents" to "bases". "Parents" is confusing since we're
   #              in a tree.
-
-  __slots__ = ()
 
   def Lookup(self, name):
     """Convenience function: Look up a given name in the class namespace.
@@ -319,8 +318,6 @@ class ClassType(node.Node('name: str'), Type):
   # (c) Visitors will not process the "children" of this node. Since we point
   #     to classes that are back at the top of the tree, that would generate
   #     cycles.
-
-  __slots__ = ()
 
   def __getnewargs__(self):
     # Due to a peculiarity of cPickle, the new args cannot have references back

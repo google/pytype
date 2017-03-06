@@ -98,6 +98,8 @@ def Node(*child_names):
   class NamedTupleNode(namedtuple_type):
     """A Node class based on namedtuple."""
 
+    __slots__ = ()
+
     _CHECKER = preconditions.CallChecker(precondition_pairs)
 
     def __init__(self, *args, **kwargs):
