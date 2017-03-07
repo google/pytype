@@ -49,7 +49,7 @@ class MatcherTest(unittest.TestCase):
     x = self._parse_and_lookup(src, "x", filename).type
     if as_instance:
       x = abstract.AsInstance(x)
-    return self.vm.convert.constant_to_value("", x, {}, self.vm.root_cfg_node)
+    return self.vm.convert.constant_to_value(x, {}, self.vm.root_cfg_node)
 
   def _match_var(self, left, right):
     var = self.vm.program.NewVariable()
@@ -209,7 +209,7 @@ class MatcherTest(unittest.TestCase):
       from typing import Tuple
       class A(Tuple[bool, int]): ...""", "A")
     left = self.vm.convert.constant_to_value(
-        "", abstract.AsInstance(subclass), {}, self.vm.root_cfg_node)
+        abstract.AsInstance(subclass), {}, self.vm.root_cfg_node)
     right1 = self._convert("Tuple[bool, int]", as_instance=False)
     right2 = self._convert("Tuple[int, bool]", as_instance=False)
     right3 = self._convert("Tuple[int, int]", as_instance=False)

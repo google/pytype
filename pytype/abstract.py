@@ -982,8 +982,8 @@ class LazyConcreteDict(SimpleAbstractValue, PythonConstant):
     self._member_map = member_map
     PythonConstant.init_mixin(self, self.members)
 
-  def _convert_member(self, name, pyval):
-    return self.vm.convert.constant_to_var(name, pyval)
+  def _convert_member(self, _, pyval):
+    return self.vm.convert.constant_to_var(pyval)
 
   def compatible_with(self, logical_value):
     return bool(self._member_map) == logical_value
@@ -1404,7 +1404,7 @@ class PyTDSignature(object):
     self.pytd_sig = pytd_sig
     self.param_types = [
         self.vm.convert.constant_to_value(
-            pytd.Print(p), p.type, subst={}, node=self.vm.root_cfg_node)
+            p.type, subst={}, node=self.vm.root_cfg_node)
         for p in self.pytd_sig.params]
     self.signature = function.Signature.from_pytd(vm, name, pytd_sig)
 
@@ -1462,7 +1462,7 @@ class PyTDSignature(object):
     if t not in ret_map:
       try:
         ret_map[t] = self.vm.convert.constant_to_var(
-            "ret", AsInstance(return_type), subst, node, source_sets=[sources])
+            AsInstance(return_type), subst, node, source_sets=[sources])
       except self.vm.convert.TypeParameterError:
         # The return type contains a type parameter without a substitution. See
         # test_functions.test_type_parameter_in_return for an example of a
@@ -1520,7 +1520,7 @@ class PyTDSignature(object):
                      tparam.name,
                      pytd.Print(type_actual))
             type_actual_val = self.vm.convert.constant_to_var(
-                tparam.name, AsInstance(type_actual), subst, node,
+                AsInstance(type_actual), subst, node,
                 discard_concrete_values=True)
             mutations.append(Mutation(arg, tparam.name, type_actual_val))
         else:
@@ -1695,8 +1695,7 @@ class PyTDFunction(Function):
       try:
         # Even though we don't know which signature got picked, if the return
         # type is unique and does not contain any type parameter, we can use it.
-        result = self.vm.convert.constant_to_var(
-            "ret", AsInstance(ret_type), {}, node)
+        result = self.vm.convert.constant_to_var(AsInstance(ret_type), {}, node)
       except self.vm.convert.TypeParameterError:
         # The return type contains a type parameter
         result = None
@@ -1942,8 +1941,7 @@ class PyTDClass(SimpleAbstractValue, Class):
       metaclass = None
     else:
       metaclass = self.vm.convert.constant_to_var(
-          pytd.Print(pytd_cls.metaclass), pytd_cls.metaclass, subst={},
-          node=self.vm.root_cfg_node)
+          pytd_cls.metaclass, subst={}, node=self.vm.root_cfg_node)
     self.pytd_cls = pytd_cls
     self.mro = mro.compute_mro(self)
     self.official_name = self.name
@@ -1952,20 +1950,19 @@ class PyTDClass(SimpleAbstractValue, Class):
 
   def bases(self):
     convert = self.vm.convert
-    return [convert.constant_to_var(
-        pytd.Print(parent), parent, subst={}, node=self.vm.root_cfg_node)
+    return [convert.constant_to_var(parent, subst={},
+                                    node=self.vm.root_cfg_node)
             for parent in self.pytd_cls.parents]
 
-  def _convert_member(self, name, pyval, subst=None, node=None):
+  def _convert_member(self, _, pyval, subst=None, node=None):
     """Convert a member as a variable. For lazy lookup."""
     subst = subst or {}
     node = node or self.vm.root_cfg_node
     if isinstance(pyval, pytd.Constant):
       return self.vm.convert.constant_to_var(
-          name, AsInstance(pyval.type), subst, node)
+          AsInstance(pyval.type), subst, node)
     elif isinstance(pyval, pytd.Function):
-      c = self.vm.convert.constant_to_value(
-          repr(pyval), pyval, subst=subst, node=node)
+      c = self.vm.convert.constant_to_value(pyval, subst=subst, node=node)
       c.parent = self
       return c.to_variable(self.vm.root_cfg_node)
     else:
@@ -1974,8 +1971,8 @@ class PyTDClass(SimpleAbstractValue, Class):
   def call(self, node, func, args):
     node, results = self._call_new_and_init(node, func, args)
     if results is None:
-      value = Instance(self.vm.convert.constant_to_var(
-          self.name, self.pytd_cls), self.vm, node)
+      value = Instance(
+          self.vm.convert.constant_to_var(self.pytd_cls), self.vm, node)
       for type_param in self.template:
         if type_param.name not in value.type_parameters:
           value.type_parameters[type_param.name] = self.vm.program.NewVariable()
@@ -1985,8 +1982,7 @@ class PyTDClass(SimpleAbstractValue, Class):
     return node, results
 
   def instantiate(self, node):
-    return self.vm.convert.constant_to_var(
-        self.name, AsInstance(self.pytd_cls), {}, node)
+    return self.vm.convert.constant_to_var(AsInstance(self.pytd_cls), {}, node)
 
   def __repr__(self):
     return "PyTDClass(%s)" % self.name
@@ -2673,7 +2669,7 @@ class Module(Instance):
       self.vm.trace_typevar(name, typevar)
       var = typevar.to_variable(self.vm.root_cfg_node)
     else:
-      var = self.vm.convert.constant_to_var(name, ty)
+      var = self.vm.convert.constant_to_var(ty)
       for value in var.data:
         # Only do this if this class isn't already part of a module.
         # (This happens if e.g. foo.py does "from bar import x" and we then

@@ -425,7 +425,7 @@ class CallTracer(vm.VirtualMachine):
       return self.convert.create_new_unsolvable(node)
     else:
       return self.convert.constant_to_var(
-          name, abstract.AsInstance(t), subst={}, node=self.root_cfg_node)
+          abstract.AsInstance(t), subst={}, node=self.root_cfg_node)
 
   def _check_return(self, opcode, node, actual, formal):
     bad = self.matcher.bad_matches(actual, formal, node)
@@ -441,7 +441,7 @@ class CallTracer(vm.VirtualMachine):
       args = tuple(self._create_call_arg(p.name, p.type, node)
                    for p in sig.params[(1 if skip_self else 0):])
       nominal_return = self.convert.constant_to_value(
-          "ret", sig.return_type, subst={}, node=self.root_cfg_node)
+          sig.return_type, subst={}, node=self.root_cfg_node)
       for val in f.bindings:
         fvar = val.AssignToNewVariable(node)
         _, retvar = self.call_function_in_frame(

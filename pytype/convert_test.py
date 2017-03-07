@@ -23,7 +23,7 @@ class ConvertTest(unittest.TestCase):
 
   def _convert_class(self, name, ast):
     return self._vm.convert.constant_to_value(
-        name, ast.Lookup(name), {}, self._vm.root_cfg_node)
+        ast.Lookup(name), {}, self._vm.root_cfg_node)
 
   def test_convert_metaclass(self):
     ast = self._load_ast("a", """
@@ -64,14 +64,13 @@ class ConvertTest(unittest.TestCase):
       x = ...  # type: Dict[str]
     """)
     val = self._vm.convert.constant_to_value(
-        "x", ast.Lookup("a.x").type, {}, self._vm.root_cfg_node)
+        ast.Lookup("a.x").type, {}, self._vm.root_cfg_node)
     self.assertIs(val.type_parameters["K"],
                   abstract.get_atomic_value(self._vm.convert.str_type))
     self.assertIs(val.type_parameters["V"], self._vm.convert.unsolvable)
 
   def test_convert_long(self):
-    val = self._vm.convert.constant_to_value(
-        "x", 2**64, {}, self._vm.root_cfg_node)
+    val = self._vm.convert.constant_to_value(2**64, {}, self._vm.root_cfg_node)
     self.assertIs(val, self._vm.convert.primitive_class_instances[int])
 
   def test_heterogeneous_tuple(self):
@@ -80,10 +79,9 @@ class ConvertTest(unittest.TestCase):
       x = ...  # type: Tuple[str, int]
     """)
     x = ast.Lookup("a.x").type
-    cls = self._vm.convert.constant_to_value(
-        "x", x, {}, self._vm.root_cfg_node)
+    cls = self._vm.convert.constant_to_value(x, {}, self._vm.root_cfg_node)
     instance = self._vm.convert.constant_to_value(
-        "x", abstract.AsInstance(x), {}, self._vm.root_cfg_node)
+        abstract.AsInstance(x), {}, self._vm.root_cfg_node)
     self.assertIsInstance(cls, abstract.TupleClass)
     self.assertListEqual(sorted(cls.type_parameters.items()),
                          [(0, self._vm.convert.str_type.data[0]),

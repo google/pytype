@@ -23,7 +23,7 @@ class TypingOverlay(abstract.Module):
         member_map[name] = build_container
     super(TypingOverlay, self).__init__(vm, node, "typing", member_map)
     self.real_module = vm.convert.constant_to_value(
-        ast.name, ast, subst={}, node=vm.root_cfg_node)
+        ast, subst={}, node=vm.root_cfg_node)
 
   def _convert_member(self, name, m):
     var = m(name, self.vm).to_variable(self.vm.root_cfg_node)

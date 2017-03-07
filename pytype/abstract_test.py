@@ -109,7 +109,7 @@ class TupleTest(AbstractTestBase):
 
   def test_getitem__concrete_index(self):
     t = abstract.Tuple((self._var,), self._vm, self._node)
-    index = self._vm.convert.constant_to_var("index", 0)
+    index = self._vm.convert.constant_to_var(0)
     node, var = t.getitem_slot(self._node, index)
     self.assertIs(node, self._node)
     self.assertIs(var, self._var)

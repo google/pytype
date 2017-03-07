@@ -96,11 +96,11 @@ class Signature(object):
         kwonly_params=set(p.name for p in sig.params if p.kwonly),
         kwargs_name=None if sig.starstarargs is None else sig.starstarargs.name,
         defaults={p.name: vm.convert.constant_to_var(
-            p.name, p.type, subst={}, node=vm.root_cfg_node)
+            p.type, subst={}, node=vm.root_cfg_node)
                   for p in sig.params
                   if p.optional},
         annotations={p.name: vm.convert.constant_to_value(
-            p.name, p.type, subst={}, node=vm.root_cfg_node)
+            p.type, subst={}, node=vm.root_cfg_node)
                      for p in sig.params + (sig.starargs, sig.starstarargs)
                      if p is not None},
         late_annotations={}

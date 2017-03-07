@@ -955,7 +955,7 @@ class VirtualMachine(object):
 
   def load_constant(self, value):
     """Converts a Python value to an abstract value."""
-    return self.convert.constant_to_var(type(value).__name__, value)
+    return self.convert.constant_to_var(value)
 
   def get_globals_dict(self):
     """Get a real python dict of the globals."""
@@ -1180,7 +1180,7 @@ class VirtualMachine(object):
       ast = self.loader.import_relative(level)
     if ast:
       return self.convert.constant_to_value(
-          ast.name, ast, subst={}, node=self.root_cfg_node)
+          ast, subst={}, node=self.root_cfg_node)
     else:
       return None
 
