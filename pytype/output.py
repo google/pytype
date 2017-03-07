@@ -115,7 +115,7 @@ class Converter(object):
         homogeneous = len(type_arguments) == 1
       return pytd_utils.MakeClassOrContainerType(
           base, type_arguments, homogeneous)
-    elif isinstance(v, abstract.TypeVariable):
+    elif isinstance(v, abstract.TypeParameter):
       return pytd.TypeParameter(v.name, None)
     else:
       log.info("Using ? for instance of %s", v.name)
@@ -211,7 +211,7 @@ class Converter(object):
       return v.to_type(node)
     elif isinstance(v, abstract.InterpreterClass):
       return self._class_to_def(node, v, name)
-    elif isinstance(v, abstract.TypeVariable):
+    elif isinstance(v, abstract.TypeParameter):
       return pytd.TypeParameter(name, None)
     elif isinstance(v, abstract.Unsolvable):
       return pytd.Constant(name, v.to_type(node))

@@ -710,7 +710,7 @@ class VirtualMachine(object):
       for v in var.data:
         if isinstance(v, abstract.InterpreterClass):
           v.official_name = name
-        elif isinstance(v, abstract.TypeVariable):
+        elif isinstance(v, abstract.TypeParameter):
           if v.name != name:
             message = "TypeVar(%r) must be stored as %r, not %r" % (
                 v.name, v.name, name)
@@ -1980,7 +1980,9 @@ class VirtualMachine(object):
         options.append(processed)
       annotation.options = tuple(options)
       return annotation
-    elif isinstance(annotation, (abstract.Class, abstract.AMBIGUOUS_OR_EMPTY)):
+    elif isinstance(annotation, (abstract.Class,
+                                 abstract.AMBIGUOUS_OR_EMPTY,
+                                 abstract.TypeParameter)):
       return annotation
     else:
       self.errorlog.invalid_annotation(opcode, annotation, "Not a type", name)

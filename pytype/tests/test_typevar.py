@@ -14,11 +14,15 @@ class TypeVarTest(test_inference.InferenceTest):
       import typing
       T = typing.TypeVar("T")  # pytype: disable=not-supported-yet
       def f(x: T) -> T: ...
+      v = f(42)
     """, deep=True, solve_unknowns=True)
+    # TODO(rechen): The type of v should be int.
     self.assertTypesMatchPytd(ty, """
+      from typing import Any
       typing = ...  # type: module
       T = TypeVar("T")
       def f(x: T) -> T: ...
+      v = ...  # type: Any
     """)
     self.assertTrue(ty.Lookup("f").signatures[0].template)
 

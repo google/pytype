@@ -453,8 +453,29 @@ class TypeParameter(AtomicAbstractValue):
 
   formal = True
 
-  def __init__(self, name, vm):
+  def __init__(self, name, vm, constraints=(), bound=None,
+               covariant=False, contravariant=False):
     super(TypeParameter, self).__init__(name, vm)
+    self.constraints = constraints
+    self.bound = bound
+    self.covariant = covariant
+    self.contravariant = contravariant
+    # opcode of definition or import
+    self.opcode = vm.frame.current_opcode if vm.frame else None
+
+  def __eq__(self, other):
+    return (self.name == other.name and
+            self.constraints == other.constraints and
+            self.bound == other.bound and
+            self.covariant == other.covariant and
+            self.contravariant == other.contravariant)
+
+  def __ne__(self, other):
+    return not self == other
+
+  def __hash__(self):
+    return hash((self.name, self.constraints, self.bound, self.covariant,
+                 self.contravariant))
 
   def __repr__(self):
     return "TypeParameter(%r)" % self.name
@@ -2658,7 +2679,7 @@ class Module(Instance):
     if isinstance(ty, pytd.TypeParameter):
       self.vm.errorlog.not_supported_yet(self.vm.frame.current_opcode,
                                          "importing TypeVar")
-      typevar = TypeVariable(name, self.vm)
+      typevar = TypeParameter(name, self.vm)
       var = typevar.to_variable(self.vm.root_cfg_node)
     else:
       var = self.vm.convert.constant_to_var(ty)
@@ -2776,35 +2797,6 @@ class Unsolvable(AtomicAbstractValue):
   def instantiate(self, node):
     # return ourself.
     return self.to_variable(node)
-
-
-# TODO(kramm): Merge this with TypeParameter
-class TypeVariable(Unsolvable):
-  """An instance of typing.TypeVar."""
-
-  def __init__(self, name, vm, constraints=(), bound=None,
-               covariant=False, contravariant=False):
-    super(TypeVariable, self).__init__(vm)
-    self.name = name
-    self.constraints = constraints
-    self.bound = bound
-    self.covariant = covariant
-    self.contravariant = contravariant
-    self.opcode = self.vm.frame.current_opcode  # opcode of definition or import
-
-  def __eq__(self, other):
-    return (self.name == other.name and
-            self.constraints == other.constraints and
-            self.bound == other.bound and
-            self.covariant == other.covariant and
-            self.contravariant == other.contravariant)
-
-  def __ne__(self, other):
-    return not self == other
-
-  def __hash__(self):
-    return hash((self.name, self.constraints, self.bound, self.covariant,
-                 self.contravariant))
 
 
 class Unknown(AtomicAbstractValue):

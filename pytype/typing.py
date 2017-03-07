@@ -107,7 +107,7 @@ class TypeVar(abstract.PyTDFunction):
       self.vm.errorlog.invalid_typevar(
           self.vm.frame.current_opcode, e.message, e.bad_call)
       return node, self.vm.convert.unsolvable.to_variable(node)
-    return node, abstract.TypeVariable(name, self.vm).to_variable(node)
+    return node, abstract.TypeParameter(name, self.vm).to_variable(node)
 
 
 def build_container(name, vm):
