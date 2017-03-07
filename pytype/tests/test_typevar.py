@@ -90,19 +90,27 @@ class TypeVarTest(test_inference.InferenceTest):
       ])
 
   def testInvalidTypeVar(self):
-    _, errors = self.InferAndCheck("""\
+    ty, errors = self.InferAndCheck("""\
       from typing import TypeVar
       typevar = TypeVar
       T = typevar()
       T = typevar("T")  # ok
+      T = typevar(42)
       T = typevar(str())
       S = typevar("S", covariant=False)  # ok
       T = typevar("T", covariant=False)  # duplicate ok
     """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import TypeVar
+      typevar = ...  # type: type
+      S = TypeVar("S")
+      T = TypeVar("T")
+    """)
     self.assertErrorLogIs(errors, [
         (1, "not-supported-yet"),
-        (3, "invalid-typevar"),
-        (5, "invalid-typevar", "string"),
+        (3, "invalid-typevar", r"wrong arguments"),
+        (5, "invalid-typevar", r"Expected.*str.*Actual.*int"),
+        (6, "invalid-typevar", r"constant string"),
     ])
 
   def testImportTypeVarNameChange(self):

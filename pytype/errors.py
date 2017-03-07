@@ -492,5 +492,8 @@ class ErrorLog(ErrorLogBase):
         filename=filename, lineno=lineno))
 
   @_error_name("invalid-typevar")
-  def invalid_typevar(self, opcode, comment):
-    self.error(opcode, "Invalid TypeVar: %s" % comment)
+  def invalid_typevar(self, opcode, comment, bad_call=None):
+    if bad_call:
+      self._invalid_parameters(opcode, comment, bad_call)
+    else:
+      self.error(opcode, "Invalid TypeVar: %s" % comment)

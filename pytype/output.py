@@ -5,6 +5,7 @@ import logging
 
 
 from pytype import abstract
+from pytype import typing
 from pytype.pytd import pytd
 from pytype.pytd import utils as pytd_utils
 from pytype.pytd.parse import visitors
@@ -143,6 +144,8 @@ class Converter(object):
       else:
         # The type parameter was never initialized
         return pytd.AnythingType()
+    elif isinstance(v, typing.TypeVar):
+      return pytd.NamedType("__builtin__.type")
     elif isinstance(v, (abstract.Function, abstract.IsInstance,
                         abstract.BoundFunction, abstract.ClassMethod,
                         abstract.StaticMethod)):
@@ -193,7 +196,8 @@ class Converter(object):
     Returns:
       A PyTD definition.
     """
-    if isinstance(v, abstract.PyTDFunction):
+    if (isinstance(v, abstract.PyTDFunction) and
+        not isinstance(v, typing.TypeVar)):
       return pytd.Function(
           name, tuple(sig.pytd_sig for sig in v.signatures), pytd.METHOD)
     elif isinstance(v, abstract.InterpreterFunction):

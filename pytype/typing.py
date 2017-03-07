@@ -66,33 +66,48 @@ class Callable(abstract.AnnotationContainer):
     return self.base_cls
 
 
-class TypeVarFunction(object):
+class TypeVarError(Exception):
+  """Raised if an error is encountered while initializing a TypeVar."""
+
+  def __init__(self, message, bad_call=None):
+    super(TypeVarError, self).__init__(message)
+    self.bad_call = bad_call
+
+
+class TypeVar(abstract.PyTDFunction):
   """Representation of typing.TypeVar, as a function."""
 
   def __init__(self, name, vm):
-    self.name = name
-    self.vm = vm
+    pyval = vm.loader.typing.Lookup("typing._typevar_new")
+    f = vm.convert.constant_to_value(pyval, {}, vm.root_cfg_node)
+    super(TypeVar, self).__init__(name, f.signatures, pytd.METHOD, vm)
+    vm.errorlog.not_supported_yet(vm.frame.current_opcode, name)
 
-  def call(self, node, *args, **kwargs):
-    """Call typing.TypeVar()."""
-    if len(args) < 1:
-      self.vm.errorlog.invalid_typevar(self.vm.frame.current_opcode,
-                                       "Need name as first parameter")
-      return node, self.vm.convert.unsolvable.to_variable(node)
+  def _get_args(self, node, args):
     try:
-      typevar_name = abstract.get_atomic_python_constant(args[0])
+      self._match_args(node, args)
+    except abstract.InvalidParameters as e:
+      raise TypeVarError("wrong arguments", e.bad_call)
+    except abstract.FailedFunctionCall:
+      # It is currently impossible to get here, since the only
+      # FailedFunctionCall that is not an InvalidParameters is NotCallable.
+      raise TypeVarError("initialization failed")
+    try:
+      name = abstract.get_atomic_python_constant(args.posargs[0], str)
     except abstract.ConversionError:
-      self.vm.errorlog.invalid_typevar(self.vm.frame.current_opcode,
-                                       "Name must be a constant string")
+      raise TypeVarError("name must be a constant string")
+    # TODO(rechen): Get constraints, bound, covariant, and contravariant.
+    return (name,)
+
+  def call(self, node, _, args):
+    """Call typing.TypeVar()."""
+    try:
+      name, = self._get_args(node, args)
+    except TypeVarError as e:
+      self.vm.errorlog.invalid_typevar(
+          self.vm.frame.current_opcode, e.message, e.bad_call)
       return node, self.vm.convert.unsolvable.to_variable(node)
-    constraints = args[1:]
-    bound = kwargs.get("bound")
-    # TODO(kramm): These are variables. We should convert them to booleans.
-    covariant = kwargs.get("covariant")
-    contravariant = kwargs.get("contravariant")
-    typevar = abstract.TypeVariable(typevar_name, self.vm, constraints,
-                                    bound, covariant, contravariant)
-    return node, typevar.to_variable(node)
+    return node, abstract.TypeVariable(name, self.vm).to_variable(node)
 
 
 def build_container(name, vm):
@@ -119,12 +134,6 @@ def build_optional(name, vm):
   return Union(name, vm, (vm.convert.none_type.data[0],))
 
 
-def build_typevar(name, vm):
-  vm.errorlog.not_supported_yet(vm.frame.current_opcode, name)
-  f = TypeVarFunction(name, vm)
-  return abstract.NativeFunction("TypeVar", f.call, vm)
-
-
 def build_generic(name, vm):
   vm.errorlog.not_supported_yet(vm.frame.current_opcode, name)
   return vm.convert.unsolvable
@@ -136,6 +145,6 @@ typing_overload = {
     "Generic": build_generic,
     "NamedTuple": build_namedtuple,
     "Optional": build_optional,
-    "TypeVar": build_typevar,
+    "TypeVar": TypeVar,
     "Union": Union,
 }

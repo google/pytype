@@ -12,6 +12,11 @@ V2 = TypeVar('V2')
 T2 = TypeVar('T2')
 
 
+# This function does not exist in typing.py. It is here for documentation
+# purposes and to make it easier for pytype to type-check arguments to TypeVar.
+def _typevar_new(name: str, *constraints: type, bound: type=None, covariant: bool=False, contravariant: bool=False): ...
+
+
 class Callable(Generic[ARGS, RET]):
   def __call__(self, ...) -> ?
 
