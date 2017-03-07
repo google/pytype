@@ -869,10 +869,6 @@ class VirtualMachine(object):
     """Fired whenever a member of a module is converted."""
     return NotImplemented
 
-  def trace_typevar(self, *args):
-    """Fired whenever we create a new TypeVar."""
-    return NotImplemented
-
   def trace_unknown(self, *args):
     """Fired whenever we create a variable containing 'Unknown'."""
     return NotImplemented

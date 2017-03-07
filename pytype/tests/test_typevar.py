@@ -97,13 +97,12 @@ class TypeVarTest(test_inference.InferenceTest):
       T = typevar("T")  # ok
       T = typevar(str())
       S = typevar("S", covariant=False)  # ok
-      T = typevar("T", covariant=False)
+      T = typevar("T", covariant=False)  # duplicate ok
     """)
     self.assertErrorLogIs(errors, [
         (1, "not-supported-yet"),
         (3, "invalid-typevar"),
         (5, "invalid-typevar", "string"),
-        (7, "invalid-typevar", "already defined"),
     ])
 
   def testImportTypeVarNameChange(self):

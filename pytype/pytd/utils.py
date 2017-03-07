@@ -225,6 +225,7 @@ def WrapTypeDeclUnit(name, items):
   classes = collections.OrderedDict()
   constants = collections.defaultdict(TypeBuilder)
   aliases = collections.OrderedDict()
+  typevars = collections.OrderedDict()
   for item in items:
     if isinstance(item, pytd.Function):
       if item.name in functions:
@@ -246,11 +247,15 @@ def WrapTypeDeclUnit(name, items):
       if item.name in aliases:
         raise NameError("Duplicate top level alias or import: %r", item.name)
       aliases[item.name] = item
+    elif isinstance(item, pytd.TypeParameter):
+      if item.name in typevars:
+        raise NameError("Duplicate top level type parameter: %r", item.name)
+      typevars[item.name] = item
     else:
       raise ValueError("Invalid top level pytd item: %r" % type(item))
 
   categories = {"function": functions, "class": classes, "constant": constants,
-                "alias": aliases}
+                "alias": aliases, "typevar": typevars}
   for c1, c2 in itertools.combinations(categories, 2):
     _check_intersection(categories[c1], categories[c2], c1, c2)
 
@@ -259,7 +264,7 @@ def WrapTypeDeclUnit(name, items):
       constants=tuple(
           pytd.Constant(name, t.build())
           for name, t in sorted(constants.items())),
-      type_params=tuple(),
+      type_params=tuple(typevars.values()),
       classes=tuple(classes.values()),
       functions=tuple(functions.values()),
       aliases=tuple(aliases.values()))

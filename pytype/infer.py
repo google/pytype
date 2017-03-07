@@ -57,7 +57,6 @@ class CallTracer(vm.VirtualMachine):
     super(CallTracer, self).__init__(*args, **kwargs)
     self._unknowns = {}
     self._builtin_map = {}
-    self._typevars = {}
     self._calls = set()
     self._method_calls = set()
     self._instance_cache = {}
@@ -262,13 +261,6 @@ class CallTracer(vm.VirtualMachine):
     if trace:
       self._builtin_map[name] = member.data
 
-  def trace_typevar(self, name, typevar):
-    if name in self._typevars and self._typevars[name] != typevar:
-      self.errorlog.invalid_typevar(
-          self.frame.current_opcode,
-          "%r is already defined with different arguments" % name)
-    self._typevars[name] = typevar
-
   def trace_unknown(self, name, unknown):
     self._unknowns[name] = unknown
 
@@ -323,9 +315,7 @@ class CallTracer(vm.VirtualMachine):
             if isinstance(d, pytd.NothingType):
               assert isinstance(option, abstract.Empty)
               d = pytd.AnythingType()
-          if isinstance(d, pytd.TypeParameter):
-            pass  # We ignore these. They're stored by pytd_typevars.
-          elif isinstance(d, pytd.TYPE):
+          if isinstance(d, pytd.TYPE) and not isinstance(d, pytd.TypeParameter):
             data.append(pytd.Constant(name, d))
           else:
             data.append(d)
@@ -396,18 +386,13 @@ class CallTracer(vm.VirtualMachine):
   def pytd_aliases(self):
     return ()  # TODO(kramm): Compute these.
 
-  def pytd_typevars(self):
-    return [t.to_pytd_def(self.exitpoint, name)
-            for name, t in self._typevars.items()
-            if not self._is_builtin(name, [t])]
-
   def compute_types(self, defs):
     ty = pytd_utils.Concat(
         self.pytd_for_types(defs),
         pytd.TypeDeclUnit(
             "unknowns",
             constants=tuple(),
-            type_params=tuple(self.pytd_typevars()),
+            type_params=tuple(),
             classes=tuple(self.pytd_classes_for_unknowns()) +
             tuple(self.pytd_classes_for_call_traces()),
             functions=tuple(self.pytd_functions_for_call_traces()),

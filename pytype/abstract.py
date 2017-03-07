@@ -2659,10 +2659,6 @@ class Module(Instance):
       self.vm.errorlog.not_supported_yet(self.vm.frame.current_opcode,
                                          "importing TypeVar")
       typevar = TypeVariable(name, self.vm)
-      # We assume that "name" is the name under which this type variable is
-      # stored in globals(), since it's considered illegal to do
-      # X = TypeVar("Y").
-      self.vm.trace_typevar(name, typevar)
       var = typevar.to_variable(self.vm.root_cfg_node)
     else:
       var = self.vm.convert.constant_to_var(ty)

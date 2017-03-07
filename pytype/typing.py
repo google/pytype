@@ -92,7 +92,6 @@ class TypeVarFunction(object):
     contravariant = kwargs.get("contravariant")
     typevar = abstract.TypeVariable(typevar_name, self.vm, constraints,
                                     bound, covariant, contravariant)
-    self.vm.trace_typevar(typevar_name, typevar)
     return node, typevar.to_variable(node)
 
 
