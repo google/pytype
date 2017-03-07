@@ -22,6 +22,7 @@ locally or within a larger repository.
 # pylint: disable=g-explicit-length-test
 
 import collections
+import itertools
 import os
 
 from pytype.pyi import parser
@@ -248,12 +249,10 @@ def WrapTypeDeclUnit(name, items):
     else:
       raise ValueError("Invalid top level pytd item: %r" % type(item))
 
-  _check_intersection(functions, classes, "function", "class")
-  _check_intersection(functions, constants, "functions", "constant")
-  _check_intersection(functions, aliases, "functions", "aliases")
-  _check_intersection(classes, constants, "class", "constant")
-  _check_intersection(classes, aliases, "class", "alias")
-  _check_intersection(constants, aliases, "constant", "alias")
+  categories = {"function": functions, "class": classes, "constant": constants,
+                "alias": aliases}
+  for c1, c2 in itertools.combinations(categories, 2):
+    _check_intersection(categories[c1], categories[c2], c1, c2)
 
   return pytd.TypeDeclUnit(
       name=name,

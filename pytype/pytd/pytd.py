@@ -243,7 +243,7 @@ class TypeParameter(node.Node('name: str', 'scope: str or None'), Type):
   A type parameter is a bound variable in the context of a function or class
   definition. It specifies an equivalence between types.
   For example, this defines an identity function:
-    def f<T>(x: T) -> T
+    def f(x: T) -> T
 
   Attributes:
     name: Name of the parameter. E.g. "T".

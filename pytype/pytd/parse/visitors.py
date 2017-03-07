@@ -1407,10 +1407,10 @@ class AddNamePrefix(Visitor):
 
   def VisitTypeParameter(self, node):
     if node.scope is not None:
-      raise ValueError("AddNamePrefix called after AddTypeParameterScopes")
+      raise ValueError("AddNamePrefix called after AdjustTypeParameters")
     # Give the type parameter the name of the module it is in as its scope.
     # Module-level type parameters will keep this scope, but others will get a
-    # more specific one in AddTypeParameterScopes. The last character in the
+    # more specific one in AdjustTypeParameters. The last character in the
     # prefix is the dot appended by EnterTypeDeclUnit, so omit that.
     return node.Replace(scope=self.prefix[:-1])
 

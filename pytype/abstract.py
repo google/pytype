@@ -449,11 +449,7 @@ class PythonConstant(object):
 
 
 class TypeParameter(AtomicAbstractValue):
-  """Parameter of a type.
-
-  Attributes:
-    name: Type parameter name
-  """
+  """Parameter of a type."""
 
   formal = True
 
