@@ -374,6 +374,10 @@ class AtomicAbstractValue(object):
     # logical_value.
     return True
 
+  def update_official_name(self, _):
+    """Update the official name."""
+    pass
+
 
 class Empty(AtomicAbstractValue):
   """An empty value.
@@ -460,8 +464,6 @@ class TypeParameter(AtomicAbstractValue):
     self.bound = bound
     self.covariant = covariant
     self.contravariant = contravariant
-    # opcode of definition or import
-    self.opcode = vm.frame.current_opcode if vm.frame else None
 
   def __eq__(self, other):
     return (self.name == other.name and
@@ -482,6 +484,12 @@ class TypeParameter(AtomicAbstractValue):
 
   def instantiate(self, node):
     return self.vm.convert.unsolvable.to_variable(node)
+
+  def update_official_name(self, name):
+    if self.name != name:
+      message = "TypeVar(%r) must be stored as %r, not %r" % (
+          self.name, self.name, name)
+      self.vm.errorlog.invalid_typevar(self.vm.frame.current_opcode, message)
 
 
 class TypeParameterInstance(AtomicAbstractValue):
@@ -2073,6 +2081,15 @@ class InterpreterClass(SimpleAbstractValue, Class):
 
   def __repr__(self):
     return "InterpreterClass(%s)" % self.name
+
+  def update_official_name(self, name):
+    assert isinstance(name, str)
+    if (self.official_name is None or
+        name == self.name or
+        (self.official_name != self.name and name < self.official_name)):
+      # The lexical comparison is to ensure that, in the case of multiple calls
+      # to this method, the official name does not depend on the call order.
+      self.official_name = name
 
 
 class NativeFunction(Function):

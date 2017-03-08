@@ -152,6 +152,9 @@ class AbstractAttributeHandler(object):
       AttributeError: If the attribute cannot be set.
       NotImplementedError: If attribute setting is not implemented for obj.
     """
+    if self.vm.frame is not None and obj is self.vm.frame.f_globals:
+      for v in value.data:
+        v.update_official_name(name)
     if isinstance(obj, abstract.Empty):
       return node
     elif isinstance(obj, abstract.Module):

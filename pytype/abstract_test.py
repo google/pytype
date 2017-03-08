@@ -8,6 +8,7 @@ from pytype import config
 from pytype import errors
 from pytype import exceptions
 from pytype import function
+from pytype import infer
 from pytype import vm
 from pytype.pytd import cfg
 from pytype.pytd import pytd
@@ -533,6 +534,30 @@ class FunctionTest(AbstractTestBase):
     sig.set_annotation("return", self._vm.convert.unsolvable)
     self.assertTrue(sig.has_param_annotations)
     self.assertTrue(sig.has_return_annotation)
+
+
+class AbstractTest(AbstractTestBase):
+
+  def testInterpreterClassOfficialName(self):
+    cls = abstract.InterpreterClass("X", [], {}, None, self._vm)
+    cls.update_official_name("Z")
+    self.assertEquals(cls.official_name, "Z")
+    cls.update_official_name("A")  # takes effect because A < Z
+    self.assertEquals(cls.official_name, "A")
+    cls.update_official_name("Z")  # no effect
+    self.assertEquals(cls.official_name, "A")
+    cls.update_official_name("X")  # takes effect because X == cls.name
+    self.assertEquals(cls.official_name, "X")
+    cls.update_official_name("A")  # no effect
+    self.assertEquals(cls.official_name, "X")
+
+  def testTypeParameterOfficialName(self):
+    param = abstract.TypeParameter("T", self._vm)
+    self._vm.frame = infer.AnalysisFrame()  # for error logging
+    param.update_official_name("T")
+    self.assertFalse(self._vm.errorlog.has_error())
+    param.update_official_name("Q")
+    self.assertTrue(self._vm.errorlog.has_error())
 
 
 if __name__ == "__main__":

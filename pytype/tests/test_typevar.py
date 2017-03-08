@@ -136,7 +136,7 @@ class TypeVarTest(test_inference.InferenceTest):
         (3, "not-supported-yet"),
         (3, "invalid-typevar", "T.*T2"),
         (4, "not-supported-yet"),
-        (4, "invalid-typevar", "X.*Y"),
+        (5, "invalid-typevar", "X.*Y"),
     ])
 
 

@@ -878,6 +878,15 @@ class ErrorTest(test_inference.InferenceTest):
     """)
     self.assertErrorLogIs(errors, [(3, "not-callable", r"List")])
 
+  def testInterpreterClassPrinting(self):
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      class Foo(object): pass
+      def f(x: str): pass
+      f(Foo())
+    """)
+    self.assertErrorLogIs(errors, [(4, "wrong-arg-types", r"str.*Foo")])
+
 
 if __name__ == "__main__":
   test_inference.main()
