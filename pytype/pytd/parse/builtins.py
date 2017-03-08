@@ -35,7 +35,6 @@ def _FindStdlibFile(name, extension=".pytd"):
   return utils.GetPredefinedFile("stdlib", name, extension)
 
 
-# Keyed by the parameter(s) passed to GetBuiltinsPyTD:
 _cached_builtins_pytd = None  # ... => pytype.pytd.pytd.TypeDeclUnit
 
 

@@ -312,7 +312,7 @@ class ClassType(node.Node('name: str'), Type):
 
   # This type is different from normal nodes:
   # (a) It's mutable, and there are functions
-  #     (parse/visitors.py:InPlaceFillInClasses) that modify a tree in place.
+  #     (parse/visitors.py:FillInModuleClasses) that modify a tree in place.
   # (b) Because it's mutable, it's not actually using the tuple/Node interface
   #     to store things (in particular, the pointer to the existing class).
   # (c) Visitors will not process the "children" of this node. Since we point
@@ -333,7 +333,7 @@ class ClassType(node.Node('name: str'), Type):
 
   def __new__(pycls, name, cls=None):  # pylint: disable=bad-classmethod-argument
     self = super(ClassType, pycls).__new__(pycls, name)
-    # self.cls potentially filled in later (by visitors.InPlaceFillInClasses)
+    # self.cls potentially filled in later (by visitors.FillInModuleClasses)
     self.cls = cls
     return self
 

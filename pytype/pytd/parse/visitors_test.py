@@ -61,7 +61,7 @@ class TestVisitors(parser_test_base.ParserTest):
     self.AssertSourceEquals(new_tree, src)
     new_tree.Visit(visitors.VerifyLookup())
 
-  def testMaybeInPlaceFillInClasses(self):
+  def testMaybeFillInModuleClasses(self):
     src = textwrap.dedent("""
         class A(object):
             def a(self, a: A, b: B) -> A or B:
@@ -70,10 +70,10 @@ class TestVisitors(parser_test_base.ParserTest):
     """)
     tree = self.Parse(src)
     ty_a = pytd.ClassType("A")
-    visitors.InPlaceFillInClasses(ty_a, tree)
+    ty_a.Visit(visitors.FillInModuleClasses({"": tree}))
     self.assertIsNotNone(ty_a.cls)
     ty_b = pytd.ClassType("B")
-    visitors.InPlaceFillInClasses(ty_b, tree)
+    ty_b.Visit(visitors.FillInModuleClasses({"": tree}))
     self.assertIsNone(ty_b.cls)
 
   def testDefaceUnresolved(self):
@@ -604,6 +604,11 @@ class TestVisitors(parser_test_base.ParserTest):
     """)
     self.assertMultiLineEqual(expected.strip(),
                               pytd.Print(self.ToAST(src)).strip())
+
+  def testLookupTypingClass(self):
+    node = visitors.LookupClasses(pytd.NamedType("typing.Sequence"),
+                                  parser_builtins.GetBuiltinsPyTD())
+    assert node.cls
 
 
 class TestAncestorMap(unittest.TestCase):

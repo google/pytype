@@ -17,7 +17,7 @@ class UtilsTest(unittest.TestCase):
   def testGetBuiltinsPyTD(self):
     self.assertIsNotNone(self.builtins)
     # Will throw an error for unresolved identifiers:
-    visitors.LookupClasses(self.builtins)
+    self.builtins.Visit(visitors.VerifyLookup())
 
   def testHasMutableParameters(self):
     append = self.builtins.Lookup("__builtin__.list").Lookup("append")

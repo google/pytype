@@ -44,11 +44,8 @@ class TestTypeMatch(parser_test_base.ParserTest):
     self.mini_builtins = pytd_utils.Concat(builtins, typing)
 
   def LinkAgainstSimpleBuiltins(self, ast):
-    ast = ast.Visit(visitors.NamedTypeToClassType())
     ast = ast.Visit(visitors.AdjustTypeParameters())
-    ast.Visit(visitors.FillInModuleClasses({"": ast}))
-    ast = ast.Visit(visitors.LookupFullNames([self.mini_builtins]))
-    ast.Visit(visitors.VerifyLookup())
+    ast = visitors.LookupClasses(ast, self.mini_builtins)
     return ast
 
   def assertMatch(self, m, t1, t2):

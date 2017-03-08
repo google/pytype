@@ -613,22 +613,25 @@ class StripSelf(Visitor):
 
 
 class FillInModuleClasses(Visitor):
-  """Fill in ClassType pointers using a symbol table.
+  """Fill in ClassType pointers using symbol tables.
 
   This is an in-place visitor! It modifies the original tree. This is
   necessary because we introduce loops.
   """
 
-  def __init__(self, lookup_map):
+  def __init__(self, lookup_map, fallback=None):
     """Create this visitor.
 
     You're expected to then pass this instance to node.Visit().
 
     Args:
-      lookup_map: An iterable of symbol tables (i.e., objects that have a
-        "Lookup" function)
+      lookup_map: A map from names to symbol tables (i.e., objects that have a
+        "Lookup" function).
+      fallback: A symbol table to be tried if lookup otherwise fails.
     """
     super(FillInModuleClasses, self).__init__()
+    if fallback is not None:
+      lookup_map["*"] = fallback
     self._lookup_map = lookup_map
 
   def EnterClassType(self, node):
@@ -638,10 +641,9 @@ class FillInModuleClasses(Visitor):
       node: A ClassType. This node will have a name, which we use for lookup.
 
     Returns:
-      The same ClassType. We will have filled in its "cls" attribute.
-
-    Raises:
-      KeyError: If we can't find a given class.
+      The same ClassType. We will have done our best to fill in its "cls"
+      attribute. Call VerifyLookup() on your tree if you want to be sure that
+      all of the cls pointers have been filled in.
     """
     module, _, _ = node.name.rpartition(".")
     if module:
@@ -650,6 +652,7 @@ class FillInModuleClasses(Visitor):
       modules_to_try = [("", ""),
                         ("", "__builtin__"),
                         ("__builtin__.", "__builtin__")]
+    modules_to_try += [("", "*"), ("__builtin__.", "*")]
     for prefix, module in modules_to_try:
       mod_ast = self._lookup_map.get(module)
       if mod_ast:
@@ -664,28 +667,6 @@ class FillInModuleClasses(Visitor):
           else:
             logging.warning("Couldn't resolve %s: Not a class: %s",
                             prefix + node.name, type(cls))
-
-
-class LookupFullNames(Visitor):
-  """Fill in ClassType pointers using a symbol table, using the full names."""
-
-  def __init__(self, lookup_list):
-    super(LookupFullNames, self).__init__()
-    self._lookup_list = lookup_list
-
-  def EnterClassType(self, node):
-    for lookup in self._lookup_list:
-      try:
-        cls = lookup.Lookup(node.name)
-      except KeyError:
-        try:
-          cls = lookup.Lookup("__builtin__." + node.name)
-        except KeyError:
-          continue
-      if not isinstance(cls, pytd.Class):
-        raise KeyError("%s is not a class: %s" % (node.name, type(cls)))
-      node.cls = cls
-      return
 
 
 def _ToType(item, allow_constants=True):
@@ -764,13 +745,6 @@ class DefaceUnresolved(Visitor):
     return self.VisitNamedType(node)
 
 
-class ClearClassTypePointers(Visitor):
-  """For ClassType nodes: Set their cls pointer to None."""
-
-  def EnterClassType(self, node):
-    node.cls = None
-
-
 class NamedTypeToClassType(Visitor):
   """Change all NamedType objects to ClassType objects.
   """
@@ -806,60 +780,31 @@ class DropBuiltinPrefix(Visitor):
     return self.VisitClassType(node)
 
 
-def InPlaceFillInClasses(target, global_module=None):
-  """Fill in class pointers in ClassType nodes for a PyTD object.
-
-  This will adjust the "cls" pointer for existing ClassType nodes so that they
-  point to their named class. It will only do this for cls pointers that are
-  None, otherwise it will keep the old value.  Use the NamedTypeToClassType
-  visitor to create the ClassType nodes in the first place. Use the
-  ClearClassTypePointers visitor to set the "cls" pointers for already existing
-  ClassType nodes back to None.
+def LookupClasses(target, global_module=None):
+  """Converts a PyTD object from one using NamedType to ClassType.
 
   Args:
-    target: The PyTD object to operate on. Changes will happen in-place. If this
-      is a TypeDeclUnit it will also be used for lookups.
-    global_module: Global symbols. Tried if a name doesn't exist locally. This
-      is required if target is not a TypeDeclUnit.
-  """
-  if global_module is None:
-    global_module = target
-
-  # Fill in classes for this module, bottom up.
-  # TODO(kramm): Node.Visit() should support blacklisting of attributes so
-  # we don't recurse into submodules multiple times.
-  if isinstance(target, pytd.TypeDeclUnit):
-    # "" is the module itself (local lookup)
-    target.Visit(FillInModuleClasses({"": target,
-                                      "__builtin__": global_module}))
-  else:
-    target.Visit(FillInModuleClasses({"__builtin__": global_module}))
-
-
-def LookupClasses(module, global_module=None, overwrite=False):
-  """Converts a module from one using NamedType to ClassType.
-
-  Args:
-    module: The module to process.
-    global_module: The global (builtins) module for name lookup. Can be None.
-    overwrite: If we should overwrite the "cls" pointer of existing ClassType
-      nodes. Otherwise, "cls" pointers of existing ClassType nodes will only
-      be written if they are None.
+    target: The PyTD object to process. If this is a TypeDeclUnit it will also
+      be used for lookups.
+    global_module: Global symbols. Required if target is not a TypeDeclUnit.
 
   Returns:
-    A new module that only uses ClassType. All ClassType instances will point
-    to concrete classes.
+    A new PyTD object that only uses ClassType. All ClassType instances will
+    point to concrete classes.
 
-  Throws:
-    KeyError: If we can't find a class.
+  Raises:
+    ValueError: If we can't find a class.
   """
-  module = module.Visit(NamedTypeToClassType())
-  if overwrite:
-    # Set cls pointers to None so that InPlaceFillInClasses can set them.
-    module = module.Visit(ClearClassTypePointers())
-  InPlaceFillInClasses(module, global_module)
-  module.Visit(VerifyLookup())
-  return module
+  target = target.Visit(NamedTypeToClassType())
+  module_map = {}
+  if global_module is None:
+    assert isinstance(target, pytd.TypeDeclUnit)
+    global_module = target
+  elif isinstance(target, pytd.TypeDeclUnit):
+    module_map[""] = target
+  target.Visit(FillInModuleClasses(module_map, fallback=global_module))
+  target.Visit(VerifyLookup())
+  return target
 
 
 class VerifyLookup(Visitor):

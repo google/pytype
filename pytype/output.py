@@ -164,7 +164,8 @@ class Converter(object):
           cls_types.append(self.value_instance_to_pytd_type(
               node, cls, v, seen=seen, view=view))
         ret = pytd_utils.JoinTypes(cls_types)
-        visitors.InPlaceFillInClasses(ret, v.vm.loader.builtins)
+        ret.Visit(visitors.FillInModuleClasses(
+            {"__builtin__": v.vm.loader.builtins}))
         return ret
       else:
         # We don't know this type's __class__, so return AnythingType to

@@ -15,8 +15,7 @@ class TestTransforms(parser_test_base.ParserTest):
 
   def ParseWithLookup(self, src):
     tree = self.Parse(src)
-    return visitors.LookupClasses(
-        tree, visitors.LookupClasses(builtins.GetBuiltinsPyTD()))
+    return visitors.LookupClasses(tree, builtins.GetBuiltinsPyTD())
 
   def testPreprocessReverseOperatorsVisitor(self):
     src1 = textwrap.dedent("""
