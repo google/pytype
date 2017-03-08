@@ -559,6 +559,22 @@ class AbstractTest(AbstractTestBase):
     param.update_official_name("Q")
     self.assertTrue(self._vm.errorlog.has_error())
 
+  def testTypeParameterEquality(self):
+    param1 = abstract.TypeParameter("S", self._vm)
+    param2 = abstract.TypeParameter("T", self._vm)
+    cls = abstract.InterpreterClass("S", [], {}, None, self._vm)
+    self.assertEquals(param1, param1)
+    self.assertNotEquals(param1, param2)
+    self.assertNotEquals(param1, cls)
+
+  def testUnionEquality(self):
+    union1 = abstract.Union((self._vm.convert.unsolvable,), self._vm)
+    union2 = abstract.Union((self._vm.convert.none,), self._vm)
+    cls = abstract.InterpreterClass("Union", [], {}, None, self._vm)
+    self.assertEquals(union1, union1)
+    self.assertNotEquals(union1, union2)
+    self.assertNotEquals(union1, cls)
+
 
 if __name__ == "__main__":
   unittest.main()

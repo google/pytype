@@ -466,11 +466,13 @@ class TypeParameter(AtomicAbstractValue):
     self.contravariant = contravariant
 
   def __eq__(self, other):
-    return (self.name == other.name and
-            self.constraints == other.constraints and
-            self.bound == other.bound and
-            self.covariant == other.covariant and
-            self.contravariant == other.contravariant)
+    if isinstance(other, type(self)):
+      return (self.name == other.name and
+              self.constraints == other.constraints and
+              self.bound == other.bound and
+              self.covariant == other.covariant and
+              self.contravariant == other.contravariant)
+    return NotImplemented
 
   def __ne__(self, other):
     return not self == other
@@ -1032,7 +1034,9 @@ class Union(AtomicAbstractValue):
     return "%s[%s]" % (self.name, ", ".join(repr(o) for o in self.options))
 
   def __eq__(self, other):
-    return type(self) == type(other) and self.options == other.options  # pylint: disable=unidiomatic-typecheck
+    if isinstance(other, type(self)):
+      return self.options == other.options
+    return NotImplemented
 
   def __ne__(self, other):
     return not self == other
