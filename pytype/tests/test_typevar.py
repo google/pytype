@@ -13,16 +13,18 @@ class TypeVarTest(test_inference.InferenceTest):
       from __future__ import google_type_annotations
       import typing
       T = typing.TypeVar("T")  # pytype: disable=not-supported-yet
-      def f(x: T) -> T: ...
+      def f(x: T) -> T:
+        return __any_object__
       v = f(42)
+      w = f("")
     """, deep=True, solve_unknowns=True)
-    # TODO(rechen): The type of v should be int.
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       typing = ...  # type: module
       T = TypeVar("T")
       def f(x: T) -> T: ...
-      v = ...  # type: Any
+      v = ...  # type: int
+      w = ...  # type: str
     """)
     self.assertTrue(ty.Lookup("f").signatures[0].template)
 
@@ -32,14 +34,36 @@ class TypeVarTest(test_inference.InferenceTest):
       from typing import List, TypeVar  # pytype: disable=not-supported-yet
       S = TypeVar("S")  # unused
       T = TypeVar("T")
-      def f(x: List[T]) -> T: ...
+      def f(x: List[T]) -> T:
+        return __any_object__
+      v = f(["hello world"])
+      w = f([True])
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
       S = TypeVar("S")
       T = TypeVar("T")
       def f(x: typing.List[T]) -> T: ...
+      v = ...  # type: str
+      w = ...  # type: bool
     """)
     self.assertTrue(ty.Lookup("f").signatures[0].template)
+
+  def testWrapItem(self):
+    ty = self.Infer("""
+      from __future__ import google_type_annotations
+      from typing import List, TypeVar  # pytype: disable=not-supported-yet
+      T = TypeVar("T")
+      def f(x: T) -> List[T]:
+        return __any_object__
+      v = f(True)
+      w = f(3.14)
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      T = TypeVar("T")
+      def f(x: T) -> typing.List[T]: ...
+      v = ...  # type: typing.List[bool]
+      w = ...  # type: typing.List[float]
+    """)
 
   def testAnyStr(self):
     ty = self.Infer("""
@@ -138,6 +162,74 @@ class TypeVarTest(test_inference.InferenceTest):
         (4, "not-supported-yet"),
         (5, "invalid-typevar", "X.*Y"),
     ])
+
+  def testMultipleSubstitution(self):
+    ty = self.Infer("""\
+      from __future__ import google_type_annotations
+      from typing import Dict, Tuple, TypeVar  # pytype: disable=not-supported-yet
+      K = TypeVar("K")
+      V = TypeVar("V")
+      def f(x: Dict[K, V]) -> Tuple[V, K]:
+        return __any_object__
+      v = f({})
+      w = f({"test": 42})
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Dict, Tuple, TypeVar
+      K = TypeVar("K")
+      V = TypeVar("V")
+      def f(x: Dict[K, V]) -> Tuple[V, K]: ...
+      v = ...  # type: tuple
+      w = ...  # type: Tuple[int, str]
+    """)
+
+  def testUnion(self):
+    ty = self.Infer("""\
+      from __future__ import google_type_annotations
+      from typing import TypeVar, Union  # pytype: disable=not-supported-yet
+      S = TypeVar("S")
+      T = TypeVar("T")
+      def f(x: S, y: T) -> Union[S, T]:
+        return __any_object__
+      v = f("", 42)
+      w = f(3.14, False)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import TypeVar, Union
+      S = TypeVar("S")
+      T = TypeVar("T")
+      def f(x: S, y: T) -> Union[S, T]: ...
+      v = ...  # type: Union[str, int]
+      w = ...  # type: Union[float, bool]
+    """)
+
+  def testBadSubstitution(self):
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      from typing import List, TypeVar  # pytype: disable=not-supported-yet
+      S = TypeVar("S")
+      T = TypeVar("T")
+      def f1(x: S) -> List[S]:
+        return {x}
+      def f2(x: S) -> S:
+        return 42  # no error because never called
+      def f3(x: S) -> S:
+        return 42
+      def f4(x: S, y: T) -> List[S]:
+        return [y]
+      f3("")
+      f3(16)  # ok
+      f3(False)
+      f4(True, 3.14)
+      f4("hello", "world")  # ok
+    """)
+    self.assertErrorLogIs(errors, [
+        (6, "bad-return-type", r"List\[Any\].*Set\[Any\]"),
+        (10, "bad-return-type"),
+        (12, "bad-return-type", r"List\[bool\].*List\[float\]")])
+    # Make sure that the log contains both of the errors at line 10.
+    self.assertErrorLogContains(errors, r"10.*bad-return-type.*str.*int")
+    self.assertErrorLogContains(errors, r"10.*bad-return-type.*bool.*int")
 
 
 if __name__ == "__main__":

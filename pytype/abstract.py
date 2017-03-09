@@ -493,6 +493,9 @@ class TypeParameter(AtomicAbstractValue):
           self.name, self.name, name)
       self.vm.errorlog.invalid_typevar(self.vm.frame.current_opcode, message)
 
+  def get_class(self):
+    return self.to_variable(self.vm.root_cfg_node)
+
 
 class TypeParameterInstance(AtomicAbstractValue):
   """An instance of a type parameter."""
@@ -2406,7 +2409,7 @@ class InterpreterFunction(Function):
   def _match_args(self, node, args):
     if not self.signature.has_param_annotations:
       return
-    super(InterpreterFunction, self)._match_args(node, args)
+    return super(InterpreterFunction, self)._match_args(node, args)
 
   def _match_view(self, node, args, view):
     arg_dict = {}
@@ -2429,6 +2432,40 @@ class InterpreterFunction(Function):
         node, formal_args, arg_dict, view)
     if subst is None:
       raise WrongArgTypes(self.signature, args, self.vm, bad_param=bad_arg)
+    return subst
+
+  def _sub_one_annotation(self, node, annot, substs):
+    """Apply type parameter substitutions to an annotation."""
+    if isinstance(annot, TypeParameter):
+      if all(annot.name in subst and subst[annot.name].bindings
+             for subst in substs):
+        return self.vm.convert.merge_classes(
+            node, sum((subst[annot.name].data for subst in substs), []))
+    elif isinstance(annot, ParameterizedClass):
+      type_parameters = {}
+      # We have to be careful to not change the ParameterizedClass instance
+      # unless necessary because ParameterizedClass is used for recursion
+      # detection (see, e.g., init_class in infer.py and
+      # testAttributeInIncompleteInstance in test_checker.py) and currently
+      # doesn't compare or hash properly.
+      changed = False
+      for name, param in annot.type_parameters.items():
+        type_parameters[name] = self._sub_one_annotation(node, param, substs)
+        changed |= type_parameters[name] is not param
+      if changed:
+        # annot may be a subtype of ParameterizedClass, such as TupleClass.
+        return type(annot)(annot.base_cls, type_parameters, self.vm)
+    elif isinstance(annot, Union):
+      options = tuple(self._sub_one_annotation(node, o, substs)
+                      for o in annot.options)
+      return type(annot)(options, self.vm)
+    return annot
+
+  def _sub_annotations(self, node, substs):
+    if substs and all(substs):
+      return {name: self._sub_one_annotation(node, annot, substs)
+              for name, annot in self.signature.annotations.items()}
+    return self.signature.annotations
 
   def call(self, node, _, args, new_locals=None):
     args = args.simplify(node)
@@ -2439,19 +2476,20 @@ class InterpreterFunction(Function):
           b.data.maybe_missing_members = True
       return (node,
               self.vm.convert.create_new_unsolvable(node))
-    self._match_args(node, args)
+    substs = self._match_args(node, args)
     callargs = self._map_args(node, args)
-    if self.signature.annotations:
+    annotations = self._sub_annotations(node, substs)
+    if annotations:
       for name in callargs:
-        if name in self.signature.annotations:
+        if name in annotations:
           node, _, callargs[name] = self.vm.init_class(
-              node, self.signature.annotations[name])
+              node, annotations[name])
     # Might throw vm.RecursionException:
     frame = self.vm.make_frame(node, self.code, callargs,
                                self.f_globals, self.f_locals, self.closure,
                                new_locals=new_locals)
     if self.signature.has_return_annotation:
-      frame.allowed_returns = self.signature.annotations["return"]
+      frame.allowed_returns = annotations["return"]
     if self.vm.options.skip_repeat_calls:
       callkey = self._hash_all(
           (callargs, None),
@@ -2938,5 +2976,6 @@ class Unknown(AtomicAbstractValue):
 
   def instantiate(self, node):
     return self.to_variable(node)
+
 
 AMBIGUOUS_OR_EMPTY = (Unknown, Unsolvable, Empty)
