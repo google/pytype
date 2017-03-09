@@ -231,16 +231,36 @@ class ParserTest(_ParserTestBase):
     self.assertIsInstance(sig.params[0].type, pytd.TypeParameter)
     self.assertIsInstance(sig.return_type, pytd.TypeParameter)
 
-    # Check various illegal TypeVar arguments that are caught by semantic
-    # checking rather than the grammar.
-    self.check_error("T = TypeVar()", 1,
-                     "TypeVar's first arg should be a string")
-    self.check_error("T = TypeVar(*args)", 1,
-                     "TypeVar's first arg should be a string")
-    self.check_error("T = TypeVar(...)", 1,
-                     "TypeVar's first arg should be a string")
+    # Check various illegal TypeVar arguments.
+    self.check_error("T = TypeVar()", 1, "syntax error")
+    self.check_error("T = TypeVar(*args)", 1, "syntax error")
+    self.check_error("T = TypeVar(...)", 1, "syntax error")
     self.check_error("T = TypeVar('Q')", 1,
                      "TypeVar name needs to be 'Q' (not 'T')")
+    self.check_error("T = TypeVar('T', covariant=True, int, float)", 1,
+                     "syntax error")
+
+  def test_type_param_arguments(self):
+    simple_typevar = """\
+      from typing import TypeVar
+
+      T = TypeVar('T')"""
+    self.check("""\
+      from typing import List, TypeVar
+
+      T = TypeVar('T', List[int], List[str])""", simple_typevar)
+    self.check("""\
+      from typing import List, TypeVar
+
+      T = TypeVar('T', bound=List[str])""", simple_typevar)
+    self.check("""\
+      from typing import TypeVar
+
+      T = TypeVar('T', str, unicode, covariant=True)""", simple_typevar)
+    self.check("""\
+      from typing import TypeVar
+
+      T = TypeVar('T', other_mod.A, other_mod.B)""", simple_typevar)
 
   def test_error_formatting(self):
     src = """\

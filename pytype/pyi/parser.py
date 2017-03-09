@@ -8,15 +8,6 @@ from pytype.pytd import pep484
 from pytype.pytd import pytd
 from pytype.pytd.parse import visitors
 
-# This module will eventually replace pytype/pytd/parse/parser.py.  In general
-# the action code in _Parser mimics that of similar methods in _TypeDeclParser,
-# including odd corner cases and TODOs.  Maintaining a similar structure
-# reduces the chance of introducing new errors.  Once the migration is complete
-# and the legacy parser is removed we can consider other cleanups.  For now
-# any such potential fixes should be marked as TODOs.
-#
-# TODO(dbaum): Remove the preceding comment once the parser is complete.
-
 _DEFAULT_VERSION = (2, 7, 6)
 _DEFAULT_PLATFORM = "linux"
 
@@ -762,22 +753,14 @@ class _Parser(object):
                      template=())
     self._classes.append(cls)
 
-  def add_type_var(self, name, param_list):
-    """Add a type variable with the given name and parameter list."""
-    params = _validate_params(param_list)
-    if (not params.required or
-        not isinstance(params.required[0], pytd.Parameter)):
-      raise ParseError("TypeVar's first arg should be a string")
-
-    # Allow and ignore any other arguments (types, covariant=..., etc)
-    name_param = params.required[0].name
-    if name != name_param:
+  def add_type_var(self, name, name_arg, unused_args):
+    """Add a type variable, <name> = TypeVar(<name_arg>, <args>)."""
+    if name != name_arg:
       raise ParseError("TypeVar name needs to be %r (not %r)" % (
-          name_param, name))
-
+          name_arg, name))
+    # Allow and ignore any other arguments (constraints, covariant=..., etc)
     if not self._current_condition.active:
       return
-
     self._type_params.append(pytd.TypeParameter(name, scope=None))
 
 

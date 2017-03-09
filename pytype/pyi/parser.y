@@ -78,7 +78,8 @@ PyObject* ExtendList(PyObject* dst, PyObject* src);
 %type <obj> start unit alldefs if_stmt if_and_elifs
 %type <obj> class_if_stmt class_if_and_elifs
 %type <obj> if_cond elif_cond else_cond condition version_tuple
-%type <obj> constantdef alias_or_constant typevardef
+%type <obj> constantdef alias_or_constant
+%type <obj> typevardef typevar_args typevar_kwargs typevar_kwarg
 %type <obj> classdef class_name parents parent_list parent maybe_class_funcs
 %type <obj> class_funcs funcdefs
 %type <obj> importdef import_items import_item from_list from_items from_item
@@ -378,10 +379,26 @@ alias_or_constant
   ;
 
 typevardef
-  : NAME '=' TYPEVAR '(' params ')' {
-      $$ = ctx->Call(kAddTypeVar, "(NN)", $1, $5);
+  : NAME '=' TYPEVAR '(' NAME typevar_args ')' {
+      $$ = ctx->Call(kAddTypeVar, "(NNN)", $1, $5, $6);
       CHECK($$, @$);
     }
+  ;
+
+typevar_args
+  : /* EMPTY */ { $$ = Py_BuildValue("(OO)", Py_None, Py_None); }
+  | ',' type_list { $$ = Py_BuildValue("(NO)", $2, Py_None); }
+  | ',' typevar_kwargs { $$ = Py_BuildValue("(ON)", Py_None, $2); }
+  | ',' type_list ',' typevar_kwargs { $$ = Py_BuildValue("(NN)", $2, $4); }
+  ;
+
+typevar_kwargs
+  : typevar_kwargs ',' typevar_kwarg { $$ = AppendList($1, $3); }
+  | typevar_kwarg { $$ = StartList($1); }
+  ;
+
+typevar_kwarg
+  : NAME '=' type { $$ = Py_BuildValue("(NN)", $1, $3); }
   ;
 
 funcdef
