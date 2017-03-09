@@ -442,10 +442,12 @@ class TestVisitors(parser_test_base.ParserTest):
     #  Class(Qux, parent=GenericType(Baz, parameters=(str, int)), template=())
     self.assertEquals((pytd.ClassType("int"),), foo_parent.parameters)
     self.assertEquals((), foo.template)
-    self.assertEquals((pytd.TypeParameter("T", "Bar"), pytd.ClassType("int")),
-                      bar_parent.parameters)
-    self.assertEquals((pytd.TemplateItem(pytd.TypeParameter("T", "Bar")),),
-                      bar.template)
+    self.assertEquals(
+        (pytd.TypeParameter("T", scope="Bar"), pytd.ClassType("int")),
+        bar_parent.parameters)
+    self.assertEquals(
+        (pytd.TemplateItem(pytd.TypeParameter("T", scope="Bar")),),
+        bar.template)
     self.assertEquals((pytd.ClassType("str"), pytd.ClassType("int")),
                       qux_parent.parameters)
     self.assertEquals((), qux.template)
@@ -565,7 +567,7 @@ class TestVisitors(parser_test_base.ParserTest):
     self.assertRaises(visitors.ContainerError,
                       lambda: t2.Visit(visitors.VerifyContainers()))
     # Okay
-    param = pytd.TypeParameter("T", None)
+    param = pytd.TypeParameter("T")
     parent = pytd.GenericType(gen, (param,))
     base.cls = pytd.Class(
         "tuple", None, (parent,), (), (), (pytd.TemplateItem(param),))
@@ -625,8 +627,8 @@ class TestAncestorMap(unittest.TestCase):
     self.assertIn("GenericType", named_type)
     self.assertIn("NamedType", named_type)
     # Check a few places where it NamedType cannot appear.
-    self.assertNotIn("TypeParameter", named_type)
-    self.assertNotIn("TemplateItem", named_type)
+    self.assertNotIn("ClassType", named_type)
+    self.assertNotIn("NothingType", named_type)
     self.assertNotIn("AnythingType", named_type)
 
 

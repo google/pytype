@@ -241,26 +241,30 @@ class ParserTest(_ParserTestBase):
                      "syntax error")
 
   def test_type_param_arguments(self):
-    simple_typevar = """\
-      from typing import TypeVar
-
-      T = TypeVar('T')"""
+    # Keyword arguments are ignored for now.
     self.check("""\
       from typing import List, TypeVar
 
-      T = TypeVar('T', List[int], List[str])""", simple_typevar)
+      T = TypeVar('T', List[int], List[str])""")
     self.check("""\
       from typing import List, TypeVar
 
-      T = TypeVar('T', bound=List[str])""", simple_typevar)
+      T = TypeVar('T', bound=List[str])""", """\
+      from typing import TypeVar
+
+      T = TypeVar('T')""")
     self.check("""\
       from typing import TypeVar
 
-      T = TypeVar('T', str, unicode, covariant=True)""", simple_typevar)
-    self.check("""\
+      T = TypeVar('T', str, unicode, covariant=True)""", """\
       from typing import TypeVar
 
-      T = TypeVar('T', other_mod.A, other_mod.B)""", simple_typevar)
+      T = TypeVar('T', str, unicode)""")
+    self.check("""\
+      import other_mod
+      from typing import TypeVar
+
+      T = TypeVar('T', other_mod.A, other_mod.B)""")
 
   def test_error_formatting(self):
     src = """\

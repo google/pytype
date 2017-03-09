@@ -73,7 +73,7 @@ class TypeVarTest(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
       from typing import TypeVar
-      AnyStr = TypeVar("AnyStr")
+      AnyStr = TypeVar("AnyStr", str, unicode)
       def f(x: AnyStr) -> AnyStr: ...
     """)
     self.assertTrue(ty.Lookup("f").signatures[0].template)
@@ -89,7 +89,7 @@ class TypeVarTest(test_inference.InferenceTest):
       """, deep=True, solve_unknowns=True, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import TypesVar
-        AnyStr = TypeVar("AnyStr")
+        AnyStr = TypeVar("AnyStr", str, unicode)
         def f(x: AnyStr) -> AnyStr
       """)
 
@@ -125,6 +125,9 @@ class TypeVarTest(test_inference.InferenceTest):
       T = typevar("T")  # ok
       T = typevar(42)
       T = typevar(str())
+      T = typevar("T", int, str if __any_object__ else unicode)
+      T = typevar("T", 0, float)
+      T = typevar("T", str)
       S = typevar("S", covariant=False)  # ok
       T = typevar("T", covariant=False)  # duplicate ok
     """)
@@ -139,6 +142,9 @@ class TypeVarTest(test_inference.InferenceTest):
         (3, "invalid-typevar", r"wrong arguments"),
         (5, "invalid-typevar", r"Expected.*str.*Actual.*int"),
         (6, "invalid-typevar", r"constant string"),
+        (7, "invalid-typevar", r"unambiguous types"),
+        (8, "invalid-typevar", r"unambiguous types"),
+        (9, "invalid-typevar", r"0 or more than 1"),
     ])
 
   def testImportTypeVarNameChange(self):
@@ -230,6 +236,22 @@ class TypeVarTest(test_inference.InferenceTest):
     # Make sure that the log contains both of the errors at line 10.
     self.assertErrorLogContains(errors, r"10.*bad-return-type.*str.*int")
     self.assertErrorLogContains(errors, r"10.*bad-return-type.*bool.*int")
+
+  def testConstraints(self):
+    ty = self.Infer("""
+      from __future__ import google_type_annotations
+      from typing import List, TypeVar  # pytype: disable=not-supported-yet
+      S = TypeVar("S", str, unicode, covariant=True)
+      T = TypeVar("T", str, unicode)
+      U = TypeVar("U", List[str], List[unicode])
+    """)
+    # The "covariant" keyword is ignored for now.
+    self.assertTypesMatchPytd(ty, """
+      from typing import List, TypeVar
+      S = TypeVar("S", str, unicode)
+      T = TypeVar("T", str, unicode)
+      U = TypeVar("U", List[str], List[unicode])
+    """)
 
 
 if __name__ == "__main__":

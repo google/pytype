@@ -83,7 +83,7 @@ class TypeVar(abstract.PyTDFunction):
     super(TypeVar, self).__init__(name, f.signatures, pytd.METHOD, vm)
     vm.errorlog.not_supported_yet(vm.frame.current_opcode, name)
 
-  def _get_args(self, node, args):
+  def _get_typeparam(self, node, args):
     try:
       self._match_args(node, args)
     except abstract.InvalidParameters as e:
@@ -96,18 +96,25 @@ class TypeVar(abstract.PyTDFunction):
       name = abstract.get_atomic_python_constant(args.posargs[0], str)
     except abstract.ConversionError:
       raise TypeVarError("name must be a constant string")
-    # TODO(rechen): Get constraints, bound, covariant, and contravariant.
-    return (name,)
+    try:
+      constraints = tuple(abstract.get_atomic_value(c, abstract.Class)
+                          for c in args.posargs[1:])
+    except abstract.ConversionError:
+      raise TypeVarError("constraints must be unambiguous types")
+    if len(constraints) == 1:
+      raise TypeVarError("the number of constraints must be 0 or more than 1")
+    # TODO(rechen): Get bound, covariant, and contravariant.
+    return abstract.TypeParameter(name, self.vm, constraints=constraints)
 
   def call(self, node, _, args):
     """Call typing.TypeVar()."""
     try:
-      name, = self._get_args(node, args)
+      param = self._get_typeparam(node, args)
     except TypeVarError as e:
       self.vm.errorlog.invalid_typevar(
           self.vm.frame.current_opcode, e.message, e.bad_call)
       return node, self.vm.convert.unsolvable.to_variable(node)
-    return node, abstract.TypeParameter(name, self.vm).to_variable(node)
+    return node, param.to_variable(node)
 
 
 def build_container(name, vm):

@@ -237,7 +237,9 @@ class Parameter(node.Node('name: str',
   __slots__ = ()
 
 
-class TypeParameter(node.Node('name: str', 'scope: str or None'), Type):
+class TypeParameter(node.Node('name: str',
+                              'constraints: tuple[{Type}]',
+                              'scope: str or None'), Type):
   """Represents a type parameter.
 
   A type parameter is a bound variable in the context of a function or class
@@ -251,6 +253,9 @@ class TypeParameter(node.Node('name: str', 'scope: str or None'), Type):
       bound to. E.g. "mymodule.MyClass.mymethod", or None.
   """
   __slots__ = ()
+
+  def __new__(cls, name, constraints=(), scope=None):
+    return super(TypeParameter, cls).__new__(cls, name, constraints, scope)
 
   @property
   def full_name(self):

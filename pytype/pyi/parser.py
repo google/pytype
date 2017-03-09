@@ -753,15 +753,20 @@ class _Parser(object):
                      template=())
     self._classes.append(cls)
 
-  def add_type_var(self, name, name_arg, unused_args):
+  def add_type_var(self, name, name_arg, args):
     """Add a type variable, <name> = TypeVar(<name_arg>, <args>)."""
     if name != name_arg:
       raise ParseError("TypeVar name needs to be %r (not %r)" % (
           name_arg, name))
-    # Allow and ignore any other arguments (constraints, covariant=..., etc)
+    # Allow and ignore any keyword arguments (covariant=..., etc.).
+    # TODO(rechen): We should enforce the PEP 484 guideline that
+    # len(constraints) != 1. However, this guideline is currently violated
+    # in typeshed (see https://github.com/python/typeshed/pull/806).
+    constraints, _ = args
     if not self._current_condition.active:
       return
-    self._type_params.append(pytd.TypeParameter(name, scope=None))
+    self._type_params.append(pytd.TypeParameter(
+        name, constraints=() if constraints is None else tuple(constraints)))
 
 
 def parse_string(src, name=None, filename=None, python_version=None,

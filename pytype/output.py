@@ -116,7 +116,9 @@ class Converter(object):
       return pytd_utils.MakeClassOrContainerType(
           base, type_arguments, homogeneous)
     elif isinstance(v, abstract.TypeParameter):
-      return pytd.TypeParameter(v.name, None)
+      # We generate the full definition because, if this type parameter is
+      # imported, we will need the definition in order to declare it later.
+      return self._typeparam_to_def(node, v, v.name)
     else:
       log.info("Using ? for instance of %s", v.name)
       return pytd.AnythingType()
@@ -213,7 +215,7 @@ class Converter(object):
     elif isinstance(v, abstract.InterpreterClass):
       return self._class_to_def(node, v, name)
     elif isinstance(v, abstract.TypeParameter):
-      return pytd.TypeParameter(name, None)
+      return self._typeparam_to_def(node, v, name)
     elif isinstance(v, abstract.Unsolvable):
       return pytd.Constant(name, v.to_type(node))
     else:
@@ -318,3 +320,7 @@ class Converter(object):
                       methods=tuple(methods.values()),
                       constants=tuple(constants),
                       template=())
+
+  def _typeparam_to_def(self, node, v, name):
+    constraints = tuple(c.get_instance_type(node) for c in v.constraints)
+    return pytd.TypeParameter(name, constraints=constraints)

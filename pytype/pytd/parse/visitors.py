@@ -295,7 +295,13 @@ class PrintVisitor(Visitor):
     return module == "__builtin__"
 
   def _FormatTypeParams(self, type_params):
-    return ["%s = TypeVar('%s')" % (t, t) for t in type_params]
+    formatted_type_params = []
+    for t in type_params:
+      args = ["'%s'" % t.name]
+      args += [c.Visit(PrintVisitor()) for c in t.constraints]
+      formatted_type_params.append(
+          "%s = TypeVar(%s)" % (t.name, ", ".join(args)))
+    return formatted_type_params
 
   def _NameCollision(self, name):
     return name in self._class_members or name in self._local_names
@@ -323,7 +329,7 @@ class PrintVisitor(Visitor):
     if node.type_params:
       self._RequireTypingImport("TypeVar")
     sections = [self._GenerateImportStrings(), node.aliases, node.constants,
-                self._FormatTypeParams(node.type_params), node.classes,
+                self._FormatTypeParams(self.old_node.type_params), node.classes,
                 node.functions]
 
     sections_as_string = ("\n".join(section_suite)
@@ -1543,7 +1549,7 @@ class AdjustTypeParameters(Visitor):
     for t in self.all_typeparams:
       if t.name not in declared_type_params:
         logging.debug("Adding definition for type parameter %r", t.name)
-        type_params_to_add.add(pytd.TypeParameter(t.name, None))
+        type_params_to_add.add(t.Replace(scope=None))
     new_type_params = node.type_params + tuple(type_params_to_add)
     return node.Replace(type_params=new_type_params)
 

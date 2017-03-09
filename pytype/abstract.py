@@ -2738,7 +2738,10 @@ class Module(Instance):
     if isinstance(ty, pytd.TypeParameter):
       self.vm.errorlog.not_supported_yet(self.vm.frame.current_opcode,
                                          "importing TypeVar")
-      typevar = TypeParameter(name, self.vm)
+      constraints = tuple(
+          self.vm.convert.constant_to_value(c, {}, self.vm.root_cfg_node)
+          for c in ty.constraints)
+      typevar = TypeParameter(name, self.vm, constraints=constraints)
       var = typevar.to_variable(self.vm.root_cfg_node)
     else:
       var = self.vm.convert.constant_to_var(ty)
