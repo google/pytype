@@ -575,6 +575,13 @@ class AbstractTest(AbstractTestBase):
     self.assertNotEquals(union1, union2)
     self.assertNotEquals(union1, cls)
 
+  def testInstantiateTypeParameterType(self):
+    params = {abstract.T: abstract.TypeParameter(abstract.T, self._vm)}
+    cls = abstract.ParameterizedClass(
+        self._vm.convert.type_type.data[0], params, self._vm)
+    self.assertListEqual(cls.instantiate(self._node).data,
+                         [self._vm.convert.unsolvable])
+
 
 if __name__ == "__main__":
   unittest.main()

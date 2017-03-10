@@ -253,6 +253,22 @@ class TypeVarTest(test_inference.InferenceTest):
       U = TypeVar("U", List[str], List[unicode])
     """)
 
+  def testTypeParameterType(self):
+    ty = self.Infer("""\
+      from __future__ import google_type_annotations
+      from typing import Type, TypeVar  # pytype: disable=not-supported-yet
+      T = TypeVar("T")
+      def f(x: Type[T]) -> T:
+        return __any_object__
+      v = f(int)
+    """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Type, TypeVar
+      T = TypeVar("T")
+      def f(x: Type[T]) -> T: ...
+      v = ...  # type: int
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

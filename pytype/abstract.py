@@ -1923,7 +1923,12 @@ class ParameterizedClass(AtomicAbstractValue, Class):
 
   def instantiate(self, node):
     if self.full_name == "__builtin__.type":
-      return self.type_parameters[T].to_variable(node)
+      instance = self.type_parameters[T]
+      if instance.formal:
+        # This can happen for, say, Type[T], where T is a type parameter. See
+        # test_typevar's testTypeParameterType for an example.
+        instance = self.vm.convert.unsolvable
+      return instance.to_variable(node)
     else:
       return super(ParameterizedClass, self).instantiate(node)
 
