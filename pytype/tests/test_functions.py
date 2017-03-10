@@ -477,18 +477,18 @@ class TestFunctions(test_inference.InferenceTest):
           return foo.f(x) + [""]
         def h(x):
           ret = foo.f(x)
-          x += ""
+          x + ""
           return ret
       """, pythonpath=[d.path], deep=True, solve_unknowns=True)
       self.assertTypesMatchPytd(ty, """
-        from typing import Any
+        from typing import List, MutableSequence
         foo = ...  # type: module
-        # TODO(rechen): def f(unicode or List[unicode]) -> bool
-        def f(x) -> Any
+        # TODO(rechen): def f(x: unicode or List[unicode]) -> bool
+        def f(x) -> bool
         # TODO(rechen): def g(x) -> list
-        def g(x) -> Any
-        # TODO(rechen): def h(x: bytearray or str or unicode) -> List[bytearray or str or unicode]
-        def h(x: Any) -> list
+        def g(x) -> List[str]
+        # TODO(rechen): def h(x: buffer or bytearray or unicode) -> List[buffer or bytearray or unicode]
+        def h(x: buffer or bytearray or unicode or MutableSequence) -> list
       """)
 
   def test_type_parameter_in_return(self):

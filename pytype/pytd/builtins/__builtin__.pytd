@@ -478,6 +478,7 @@ class list(List[T]):
     def __getitem__(self, index: slice) -> list[T]
     def __getslice__(self, i: int, j: int) -> list[T]
     def __gt__(self, y: list) -> bool
+    def __iadd__(self, y: Iterable[T2]) -> list[T or T2]
     def __iter__(self) -> listiterator[T]
     def __le__(self, y: list) -> bool
     def __len__(self) -> int

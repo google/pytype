@@ -25,6 +25,9 @@ class InplaceTest(test_inference.InferenceTest):
     self._check_inplace("+", ["x=[1]", "y=[2]"], self.int_list)
     self._check_inplace("+", ["x=[]", "y=[]"], self.nothing_list)
     self._check_inplace("+", ["x=[1]", "y=['abc']"], self.intorstr_list)
+    self._check_inplace("+", ["x=['']", "y=xrange(2)"], self.intorstr_list)
+    self._check_inplace("+", ["x=[1]", "y=iter(xrange(2))"], self.int_list)
+    self._check_inplace("+", ["x=[1]", "y=(v for v in [2])"], self.int_list)
     self._check_inplace("+", ["x=(1,)", "y=(2,)"], self.int_tuple)
     self._check_inplace("+", ["x=(1,)", "y=(2.0,)"], self.intorfloat_tuple)
 
