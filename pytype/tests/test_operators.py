@@ -59,7 +59,7 @@ class ConcreteTest(test_inference.InferenceTest):
   def test_and(self):
     self.check_expr("x & y", ["x=3", "y=5"], self.int)
     self.check_expr("x & y", ["x={1}", "y={1, 2}"], self.int_set)
-    self.check_expr("x & y", ["x={1}", "y={1.2}"], self.intorfloat_set)
+    self.check_expr("x & y", ["x={1}", "y={1.2}"], self.int_set)
     self.check_expr("x & y", ["x={1, 2}", "y=set([1])"], self.int_set)
     self.check_expr("x & y", ["x=1", "y=2"], self.int)
 

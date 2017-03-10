@@ -31,7 +31,7 @@ class InplaceTest(test_inference.InferenceTest):
   def test_iand(self):
     self._check_inplace("&", ["x=3", "y=5"], self.int)
     self._check_inplace("&", ["x={1}", "y={1, 2}"], self.int_set)
-    self._check_inplace("&", ["x={1}", "y={1.2}"], self.intorfloat_set)
+    self._check_inplace("&", ["x={1}", "y={1.2}"], self.int_set)
     self._check_inplace("&", ["x={1, 2}", "y=set([1])"], self.int_set)
     self._check_inplace("&", ["x=1", "y=2"], self.int)
 

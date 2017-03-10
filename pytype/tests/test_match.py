@@ -61,7 +61,7 @@ class MatchTest(test_inference.InferenceTest):
       from typing import Iterable, Set
       a = ...  # type: Set[int]
 
-      def f(x: Iterable) -> set: ...
+      def f(x: Iterable) -> Set[int]: ...
     """)
 
   def testMatchStatic(self):
