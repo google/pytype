@@ -2743,19 +2743,13 @@ class Module(Instance):
     if isinstance(ty, pytd.TypeParameter):
       self.vm.errorlog.not_supported_yet(self.vm.frame.current_opcode,
                                          "importing TypeVar")
-      constraints = tuple(
-          self.vm.convert.constant_to_value(c, {}, self.vm.root_cfg_node)
-          for c in ty.constraints)
-      typevar = TypeParameter(name, self.vm, constraints=constraints)
-      var = typevar.to_variable(self.vm.root_cfg_node)
-    else:
-      var = self.vm.convert.constant_to_var(ty)
-      for value in var.data:
-        # Only do this if this class isn't already part of a module.
-        # (This happens if e.g. foo.py does "from bar import x" and we then
-        #  do "from foo import x".)
-        if not value.module:
-          value.module = self.name
+    var = self.vm.convert.constant_to_var(ty)
+    for value in var.data:
+      # Only do this if this class isn't already part of a module.
+      # (This happens if e.g. foo.py does "from bar import x" and we then
+      #  do "from foo import x".)
+      if not value.module:
+        value.module = self.name
     self.vm.trace_module_member(self, name, var)
     return var
 

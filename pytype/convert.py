@@ -471,7 +471,10 @@ class Converter(object):
       else:
         return options[0]
     elif isinstance(pyval, pytd.TypeParameter):
-      return abstract.TypeParameter(pyval.name, self.vm)
+      constraints = tuple(self.constant_to_value(c, {}, self.vm.root_cfg_node)
+                          for c in pyval.constraints)
+      return abstract.TypeParameter(
+          pyval.name, self.vm, constraints=constraints)
     elif isinstance(pyval, abstract.AsInstance):
       cls = pyval.cls
       if isinstance(cls, pytd.ClassType):

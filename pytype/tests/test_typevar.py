@@ -237,7 +237,7 @@ class TypeVarTest(test_inference.InferenceTest):
     self.assertErrorLogContains(errors, r"10.*bad-return-type.*str.*int")
     self.assertErrorLogContains(errors, r"10.*bad-return-type.*bool.*int")
 
-  def testConstraints(self):
+  def testPrintConstraints(self):
     ty = self.Infer("""
       from __future__ import google_type_annotations
       from typing import List, TypeVar  # pytype: disable=not-supported-yet
@@ -252,6 +252,65 @@ class TypeVarTest(test_inference.InferenceTest):
       T = TypeVar("T", str, unicode)
       U = TypeVar("U", List[str], List[unicode])
     """)
+
+  def testUseConstraints(self):
+    ty, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      from typing import TypeVar  # pytype: disable=not-supported-yet
+      T = TypeVar("T", int, float)
+      def f(x: T) -> T:
+        return __any_object__
+      v = f("")
+      w = f(True)  # ok
+      u = f(__any_object__)  # ok
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any, TypeVar
+      T = TypeVar("T", int, float)
+      def f(x: T) -> T: ...
+      v = ...  # type: Any
+      w = ...  # type: bool
+      u = ...  # type: Any
+    """)
+    self.assertErrorLogIs(errors, [(6, "wrong-arg-types",
+                                    r"Union\[float, int\].*str")])
+
+  def testUseConstraintsFromPyi(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """\
+        from typing import AnyStr, TypeVar
+        T = TypeVar("T", int, float)
+        def f(x: T) -> T: ...
+        def g(x: AnyStr) -> AnyStr: ...
+      """)
+      _, errors = self.InferAndCheck("""\
+        import foo
+        foo.f("")
+        foo.g(0)
+      """, pythonpath=[d.path])
+      self.assertErrorLogIs(errors, [
+          (2, "wrong-arg-types", r"Union\[float, int\].*str"),
+          (3, "wrong-arg-types", r"Union\[str, unicode\].*int")])
+
+  def testUseAnyStrConstraints(self):
+    ty, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      from typing import AnyStr, TypeVar  # pytype: disable=not-supported-yet
+      def f(x: AnyStr, y: AnyStr) -> AnyStr:
+        return __any_object__
+      v1 = f(__any_object__, u"")  # ok
+      v2 = f(__any_object__, 42)
+    """)
+    # TODO(rechen): We should be able to infer that v1 can only be unicode.
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any, TypeVar
+      AnyStr = TypeVar("AnyStr", str, unicode)
+      def f(x: AnyStr, y: AnyStr) -> AnyStr: ...
+      v1 = ...  # type: Any
+      v2 = ...  # type: Any
+    """)
+    self.assertErrorLogIs(errors, [(6, "wrong-arg-types",
+                                    r"Union\[str, unicode\].*int")])
 
   def testTypeParameterType(self):
     ty = self.Infer("""\

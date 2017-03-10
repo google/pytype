@@ -110,6 +110,12 @@ class AbstractMatcher(object):
           # TODO(kramm): What if more than one type matches?
           return new_subst
     elif isinstance(other_type, abstract.TypeParameter):
+      for c in other_type.constraints:
+        new_subst = self._match_value_against_type(value, c, subst, node, view)
+        if new_subst is not None:
+          break
+        if c is other_type.constraints[-1]:
+          return None
       if other_type.name in subst:
         # Merge the two variables.
         subst = subst.copy()
