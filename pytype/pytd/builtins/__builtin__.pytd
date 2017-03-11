@@ -16,7 +16,7 @@ def __import__(name: str or unicode or bytearray, ...) -> module
 def abs PYTHONCODE
 def all(iterable) -> bool
 def any(iterable) -> bool
-def apply(object: function or type, ...) -> NoneType
+def apply(object: Callable, ...) -> NoneType
 def bin(number: int or float) -> str
 def callable(obj) -> bool
 def chr(i: int) -> str
@@ -29,7 +29,7 @@ def coerce(x, y) -> tuple[object, object]
 def coerce(x: list[T], y: list[T]) -> tuple[list[T], list[T]]
 def coerce(x: tuple[T, ...], y: tuple[T, ...]) -> tuple[tuple[T, ...], tuple[T, ...]]
 def coerce(x: complex, y: int or float) -> tuple[complex, complex]
-def coerce(x: function, y: function) -> tuple[function, function]
+def coerce(x: Callable, y: Callable) -> tuple[Callable, Callable]
 def coerce(x: type, y: type) -> tuple[type, type]
 def coerce(x: iterator, y: iterator) -> tuple[iterator, iterator]  # TODO(pludemann): iterator[T] ?
 def compile(source, filename: unicode, mode: str, flags: int = ..., dont_inherit: int = ...) -> code: ...
@@ -69,10 +69,10 @@ def len(obj) -> int  # TODO(pludemann): leave this out and call obj.__len__() ?
 def locals() -> dict[str, object]
 def map(function, sequence: list[nothing], ...) -> list[nothing]
 def map(function, sequence, ...) -> list
-def max(arg1: T, arg2: T, *args: T, key: function = ...) -> T
-def max(iterable: Iterable[T], key: function = ...) -> T
-def min(arg1: T, arg2: T, *args: T, key: function = ...) -> T
-def min(iterable: Iterable[T], key: function = ...) -> T
+def max(arg1: T, arg2: T, *args: T, key: Callable = ...) -> T
+def max(iterable: Iterable[T], key: Callable = ...) -> T
+def min(arg1: T, arg2: T, *args: T, key: Callable = ...) -> T
+def min(iterable: Iterable[T], key: Callable = ...) -> T
 def next PYTHONCODE
 def oct(number: int) -> str
 # TODO(pludemann): Python3 allows open(int or str or bytes or memoryview, ...)
@@ -820,10 +820,6 @@ class file(BinaryIO):
     def writelines(self, sequence_of_strings) -> NoneType
     def xreadlines(self) -> file
 
-# Deprecated. Use typing.Callable.
-class function(Callable):
-    def __get__(self, obj, ...) -> instancemethod
-
 class generator(Generator[T, T2, V]):
     def __iter__(self) -> generator[T, T2, V]
     def send(self, value: T2) -> T
@@ -831,7 +827,7 @@ class generator(Generator[T, T2, V]):
     def next(self) -> T
 
 class instancemethod(object):
-    def __init__(self, function: function or type or instancemethod, instance, cls) -> NoneType
+    def __init__(self, function: Callable or instancemethod, instance, cls) -> NoneType
     def __get__(self, obj, ...) -> instancemethod
 
 class module(object):

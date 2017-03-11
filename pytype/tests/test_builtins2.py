@@ -255,12 +255,20 @@ class BuiltinTests2(test_inference.InferenceTest):
 
   def testMinMax(self):
     ty = self.Infer("""
-      x = min(x for x in range(3))
-      y = max(x for x in range(3))
+      x1 = min(x for x in range(3))
+      x2 = min([3.1, 4.1], key=lambda n: n)
+      x3 = min((1, 2, 3), key=int)
+      y1 = max(x for x in range(3))
+      y2 = max([3.1, 4.1], key=lambda n: n)
+      y3 = max((1, 2, 3), key=int)
     """)
     self.assertTypesMatchPytd(ty, """
-      x = ...  # type: int
-      y = ...  # type: int
+      x1 = ...  # type: int
+      x2 = ...  # type: float
+      x3 = ...  # type: int
+      y1 = ...  # type: int
+      y2 = ...  # type: float
+      y3 = ...  # type: int
     """)
 
   def testMap(self):

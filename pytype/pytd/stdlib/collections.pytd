@@ -14,14 +14,14 @@ _get_ident = ...  # type: ?
 _heapq = ...  # type: ?
 _imap = ...  # type: type
 _iskeyword = ...  # type: ?
-_itemgetter = ...  # type: function
+_itemgetter = ...  # type: Callable
 _repeat = ...  # type: type
 _repr_template = ...  # type: str
 _starmap = ...  # type: type
 _sys = ...  # type: module
 deque = ...  # type: ?
-dumps = ...  # type: function
-loads = ...  # type: function
+dumps = ...  # type: Callable
+loads = ...  # type: Callable
 
 Container = ... # type: ?
 Hashable = ... # type: ?
