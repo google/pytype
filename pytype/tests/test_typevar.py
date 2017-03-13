@@ -69,7 +69,8 @@ class TypeVarTest(test_inference.InferenceTest):
     ty = self.Infer("""
       from __future__ import google_type_annotations
       from typing import AnyStr  # pytype: disable=not-supported-yet
-      def f(x: AnyStr) -> AnyStr: ...
+      def f(x: AnyStr) -> AnyStr:
+        return __any_object__
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
       from typing import TypeVar

@@ -140,11 +140,13 @@ class Converter(object):
     elif isinstance(v, abstract.TypeParameterInstance):
       if (v.name in v.instance.type_parameters and
           v.instance.type_parameters[v.name].bindings):
+        # The type parameter was initialized.
         return pytd_utils.JoinTypes(
             self.value_to_pytd_type(node, p, seen, view)
             for p in v.instance.type_parameters[v.name].data)
+      elif v.pytd_param.constraints:
+        return pytd_utils.JoinTypes(v.pytd_param.constraints)
       else:
-        # The type parameter was never initialized
         return pytd.AnythingType()
     elif isinstance(v, typing.TypeVar):
       return pytd.NamedType("__builtin__.type")

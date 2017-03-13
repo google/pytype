@@ -482,10 +482,15 @@ class TypeParameter(AtomicAbstractValue):
                  self.contravariant))
 
   def __repr__(self):
-    return "TypeParameter(%r)" % self.name
+    return "TypeParameter(%r, constraints=%r)" % (self.name, self.constraints)
 
   def instantiate(self, node):
-    return self.vm.convert.unsolvable.to_variable(node)
+    var = self.vm.program.NewVariable()
+    for c in self.constraints:
+      var.PasteVariable(c.instantiate(node), node)
+    if not var.bindings:
+      var.AddBinding(self.vm.convert.unsolvable, [], node)
+    return var
 
   def update_official_name(self, name):
     if self.name != name:
@@ -500,8 +505,9 @@ class TypeParameter(AtomicAbstractValue):
 class TypeParameterInstance(AtomicAbstractValue):
   """An instance of a type parameter."""
 
-  def __init__(self, name, instance, vm):
-    super(TypeParameterInstance, self).__init__(name, vm)
+  def __init__(self, pytd_param, instance, vm):
+    super(TypeParameterInstance, self).__init__(pytd_param.name, vm)
+    self.pytd_param = pytd_param
     self.instance = instance
 
 
@@ -2036,7 +2042,7 @@ class PyTDClass(SimpleAbstractValue, Class):
         # Constant c cannot be converted without type parameter substitutions,
         # so it must be an instance attribute.
         subst = {itm.name: TypeParameterInstance(
-            itm.name, instance, self.vm).to_variable(node)
+            itm.type_param, instance, self.vm).to_variable(node)
                  for itm in self.template}
         return self._convert_member(name, c, subst, node)
 

@@ -508,7 +508,7 @@ class GenericTest(test_inference.InferenceTest):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import List, TypeVar
-        T = TypeVar("T")
+        T = TypeVar("T", int, float)
         class A(List[T]):
           x = ...  # type: T
       """)
@@ -522,7 +522,7 @@ class GenericTest(test_inference.InferenceTest):
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         a = ...  # type: module
-        def f() -> Any
+        def f() -> int or float
         def g() -> int
       """)
 
@@ -595,7 +595,7 @@ class GenericTest(test_inference.InferenceTest):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import List, TypeVar
-        T = TypeVar("T")
+        T = TypeVar("T", int, float)
         class A(List[T]):
           x = ...  # type: T
       """)
@@ -611,8 +611,8 @@ class GenericTest(test_inference.InferenceTest):
         from typing import Any
         a = ...  # type: module
         class B(a.A):
-          x = ...  # type: Any
-        def f() -> Any
+          x = ...  # type: int or float
+        def f() -> int or float
         def g() -> int
       """)
 

@@ -5,6 +5,7 @@ import logging
 from pytype import abstract
 from pytype import typing
 from pytype.pytd import cfg as typegraph
+from pytype.pytd import pytd
 
 log = logging.getLogger(__name__)
 
@@ -365,10 +366,16 @@ class AbstractAttributeHandler(object):
         if isinstance(val, abstract.TypeParameterInstance):
           var = val.instance.type_parameters[val.name]
           # If this type parameter has visible values, we add those to the
-          # return value. Otherwise, we add an empty value as a placeholder
-          # that can be passed around and converted to Any after analysis.
+          # return value. Otherwise, if it has constraints, we add those as an
+          # upper bound on the values. When all else fails, we add an empty
+          # value as a placeholder that can be passed around and converted to
+          # Any after analysis.
           if var.Bindings(node):
             candidates.append(var)
+          elif val.pytd_param.constraints:
+            pyval = pytd.UnionType(val.pytd_param.constraints)
+            ret.PasteVariable(self.vm.convert.constant_to_var(
+                abstract.AsInstance(pyval)), node)
           else:
             ret.AddBinding(self.vm.convert.empty, [], node)
         else:
