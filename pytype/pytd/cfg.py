@@ -4,7 +4,6 @@ It can be used to run reaching-definition queries on a nested CFG graph
 and to model path-specific visibility of nested data structures.
 """
 
-
 import collections
 import logging
 
@@ -135,14 +134,14 @@ class CFGNode(object):
     incoming: Other CFGNodes that are connected to this node.
     outgoing: CFGNodes we connect to.
     bindings: Bindings that are being assigned to Variables at this CFGNode.
-    reachable_subset: A subset of the nodes reachable (going backwards) from
+    reachable_backwards: The subset of nodes reachable (going backwards) from
       this one.
     condition: None if no condition is set at this node;
                The binding representing the condition which needs to be
                  fulfilled to take the branch represented by this node.
   """
   __slots__ = ("program", "id", "name", "incoming", "outgoing", "bindings",
-               "reachable_subset", "condition")
+               "reachable_backwards", "condition")
 
   def __init__(self, program, name, cfgnode_id, condition):
     """Initialize a new CFG node. Called from Program.NewCFGNode."""
@@ -152,7 +151,7 @@ class CFGNode(object):
     self.incoming = set()
     self.outgoing = set()
     self.bindings = set()  # filled through RegisterBinding()
-    self.reachable_subset = {self}
+    self.reachable_backwards = {self}
     self.condition = condition
 
   def ConnectNew(self, name=None, condition=None):
@@ -166,22 +165,24 @@ class CFGNode(object):
     self.program.InvalidateSolver()
     self.outgoing.add(cfg_node)
     cfg_node.incoming.add(self)
-    cfg_node.reachable_subset |= self.reachable_subset
+    cfg_node.UpdateReachableBackwards(self.reachable_backwards)
+
+  def UpdateReachableBackwards(self, parent_reachable_backwards):
+    len_before = len(self.reachable_backwards)
+    self.reachable_backwards |= parent_reachable_backwards
+    if len(self.reachable_backwards) != len_before:
+      for node in self.outgoing:
+        node.UpdateReachableBackwards(self.reachable_backwards)
 
   def CanHaveCombination(self, bindings):
     """Quick version of HasCombination below."""
     goals = set(bindings)
-    seen = set()
-    stack = [self]
     # TODO(kramm): Take blocked nodes into account, like in Bindings()?
-    while stack and goals:
-      node = stack.pop()
-      if node in seen:
-        continue
-      seen.add(node)
-      goals -= goals & node.bindings
-      stack.extend(node.incoming)
-    return not goals
+    for goal in goals:
+      if not any(origin.where in self.reachable_backwards
+                 for origin in goal.origins):
+        return False
+    return True
 
   def HasCombination(self, bindings):
     """Query whether a combination is possible.
@@ -398,7 +399,7 @@ class Variable(object):
     num_bindings = len(self.bindings)
     if (viewpoint is None or
         ((len(self._cfgnode_to_bindings) == 1 or num_bindings == 1) and
-         any(n in viewpoint.reachable_subset
+         any(n in viewpoint.reachable_backwards
              for n in self._cfgnode_to_bindings))):
       return self.bindings
     result = set()
@@ -679,6 +680,10 @@ class _PathFinder(object):
 
   def FindPathToNode(self, start, finish, blocked):
     """Determine whether we can reach a node at all."""
+    # Performance optimization
+    if finish not in start.reachable_backwards:
+      return False
+
     stack = [start]
     seen = set()
     while stack:
