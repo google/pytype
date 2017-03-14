@@ -197,7 +197,7 @@ class str(basestring, Sequence[str]):
     def __add__(self, y: basestring) -> unicode
     def __contains__(self, y: basestring or bytearray) -> bool
     def __getitem__(self, index: int or slice) -> str
-    def __getslice__(self, i: int, j: int) -> str
+    def __getslice__(self, i: Optional[int], j: Optional[int]) -> str
     def __len__(self) -> int
     def __mod__(self, y) -> str
     def __mul__(self, n: int) -> str
@@ -256,7 +256,7 @@ class unicode(basestring, Sequence[unicode]):
     def __add__(self, y: str or unicode or bytearray) -> unicode
     def __contains__(self, y: str or unicode or bytearray) -> bool
     def __getitem__(self, index: int or slice) -> unicode
-    def __getslice__(self, i: int, j: int) -> unicode
+    def __getslice__(self, i: Optional[int], j: Optional[int]) -> unicode
     def __len__(self) -> int
     def __mod__(self, y) -> unicode
     def __mul__(self, n: int) -> unicode
@@ -476,7 +476,7 @@ class list(List[T]):
     def __ge__(self, y: list) -> bool
     def __getitem__(self, index: int) -> T
     def __getitem__(self, index: slice) -> list[T]
-    def __getslice__(self, i: int, j: int) -> list[T]
+    def __getslice__(self, i: Optional[int], j: Optional[int]) -> list[T]
     def __gt__(self, y: list) -> bool
     def __iadd__(self, y: Iterable[T2]) -> list[T or T2]
     def __iter__(self) -> listiterator[T]
@@ -525,7 +525,7 @@ class tuple(Tuple[T]):
     def __ge__(self, y: tuple) -> bool
     def __getitem__(self, index: int) -> T
     def __getitem__(self, index: slice) -> tuple[T, ...]
-    def __getslice__(self, i: int, j: int) -> tuple[T, ...]
+    def __getslice__(self, i: Optional[int], j: Optional[int]) -> tuple[T, ...]
     def __gt__(self, y: tuple) -> bool
     def __iter__(self) -> tupleiterator[T]
     def __le__(self, y: tuple) -> bool
@@ -796,7 +796,7 @@ class buffer(Sized, Iterable[int]):
     def __init__(self, object: str or unicode or bytearray or buffer, ...) -> NoneType
     def __add__(self, y: str or unicode or bytearray or buffer) -> str
     def __getitem__(self, index: int) -> str
-    def __getslice__(self, i: int, j: int) -> str
+    def __getslice__(self, i: Optional[int], j: Optional[int]) -> str
     def __len__(self) -> int
     def __mul__(self, n: int) -> str
 

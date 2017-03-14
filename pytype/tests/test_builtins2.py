@@ -758,6 +758,21 @@ class BuiltinTests2(test_inference.InferenceTest):
       x = ...  # type: str
     """)
 
+  def testSlice(self):
+    ty = self.Infer("""
+      x1 = [1,2,3][1:None]
+      x2 = [1,2,3][None:2]
+      x3 = [1,2,3][None:None]
+      x4 = [1,2,3][1:3:None]
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import List
+      x1 = ...  # type: List[int]
+      x2 = ...  # type: List[int]
+      x3 = ...  # type: List[int]
+      x4 = ...  # type: List[int]
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()
