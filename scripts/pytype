@@ -204,14 +204,14 @@ def main(argv):
 def _run_pytype(options):
   """Run pytype with the given configuration options."""
   if options.generate_builtins:
-    if options.src_out:
+    if options.input:
       print >>sys.stderr, "Cannot specify files while precompiling builtins."
       sys.exit(1)
     with open(options.generate_builtins, "wb") as f:
       pytd_builtins.Precompile(f)
     return
 
-  if not options.src_out:
+  if not options.input:
     print >>sys.stderr, "Need at least one filename."
     sys.exit(1)
 
@@ -224,27 +224,11 @@ def _run_pytype(options):
   if not options.check_preconditions:
     node.DisablePreconditions()
 
-  # Do *not* apply os.path.abspath here because we could be in a symlink tree
-  # and bad things happen if you go to relative directories.
-
-  # If we're processing more than one file, we need to do two passes (if we
-  # don't know what the dependencies are). To speed things up, separate out the
-  # biggest file and only process it once.  So, sort by size of the input files:
-  if len(options.src_out) > 1:
-    options.src_out.sort(reverse=True, key=lambda s: os.path.getsize(s[0]))
-    for input_filename, output_filename in options.src_out[1:]:
-      log.info("Process [pre-pass] %s => %s", input_filename, output_filename)
-      _ = process_one_file(input_filename, output_filename, options,
-                           print_errors=False)
-
-  exit_status = 0
-  for input_filename, output_filename in options.src_out:
-    log.info("Process %s => %s", input_filename, output_filename)
-    ret = process_one_file(input_filename,
-                           output_filename,
-                           options,
-                           print_errors=True)
-    exit_status = ret or exit_status
+  log.info("Process %s => %s", options.input, options.output)
+  exit_status = process_one_file(options.input,
+                                 options.output,
+                                 options,
+                                 print_errors=True)
 
   # Touch output file upon success.
   if options.touch and not exit_status:

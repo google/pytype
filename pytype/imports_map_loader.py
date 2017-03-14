@@ -53,7 +53,7 @@ def _read_imports_map(options_info_path):
           for short_path, paths in imports_multimap.items()}
 
 
-def _validate_map(imports_map, src_out):
+def _validate_map(imports_map, output):
   """Validate the imports map against the command line arguments.
 
   Validate the map. Note that main.py has ensured that all output files also
@@ -62,28 +62,24 @@ def _validate_map(imports_map, src_out):
 
   Args:
     imports_map: The map returned by _read_imports_map.
-    src_out: The command line arguments - pairs of file, as specified on the
-      command line as "src:out".
+    output: The pyi file pytype is building right now.
   Raises:
     AssertionError: If we found an error in the imports map.
   """
   # If pytype is processing multiple files that import each other, during the
   # first pass, we don't have a .pyi for them yet, even though they might be
   # mentioned in the imports_map. So fill them with temporary contents.
-  for src, output in src_out:
-    if output is None:
-      continue
+  if output is not None:
     if os.path.exists(output):
-      log.error("output file %r (from processing %r) already exists; "
-                "will be overwritten",
-                os.path.abspath(output), src)
+      log.error("output file %r already exists; will be overwritten",
+                os.path.abspath(output))
     with open(output, "w") as fi:
       fi.write(textwrap.dedent("""\
           # If you see this comment, it means pytype hasn't properly
-          # processed %r to %r.
+          # processed %r.
           from typing import Any
           def __getattr__(name) -> Any: ...
-      """ % (src, output)))
+      """ % output))
 
   # Now, validate the imports_map.
   for short_path, paths in imports_map.items():
@@ -98,7 +94,7 @@ def _validate_map(imports_map, src_out):
         raise AssertionError("bad import map")
 
 
-def build_imports_map(options_info_path, src_out=None):
+def build_imports_map(options_info_path, output=None):
   """Create a file mapping from a .imports_info file.
 
   Builds a dict of short_path to full name
@@ -106,10 +102,8 @@ def build_imports_map(options_info_path, src_out=None):
            "$GENDIR/rulename~~pytype-gen/path_to_file.py~~pytype"
   Args:
     options_info_path: The file with the info (may be None, for do-nothing)
-    src_out: The src/output files from the command line. When validating the
-             imports_info, these outputs should *not* exist. (The check is only
-             done if options_Info_path is not None, because other build systems
-             might not ensure that output files are deleted before processing).
+    output: The output file from the command line. When validating
+             imports_info, this output should *not* exist.
   Returns:
     Dict of .py short_path to list of .pytd path or None if no options_info_path
   """
@@ -124,8 +118,7 @@ def build_imports_map(options_info_path, src_out=None):
   imports_map = {short_path: os.path.abspath(paths[0])
                  for short_path, paths in imports_multimap.items()}
 
-  if src_out is not None:
-    _validate_map(imports_multimap, src_out)
+  _validate_map(imports_multimap, output)
 
   # Add the potential directory nodes for adding "__init__", because some build
   # systems automatically create __init__.py in empty directories. These are

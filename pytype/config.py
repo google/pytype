@@ -308,8 +308,8 @@ class Options(object):
         raise optparse.OptionConflictError(
             "Not allowed with --pythonpath", "imports_info")
 
-      self.imports_map = imports_map_loader.build_imports_map(imports_info,
-                                                              self.src_out)
+      self.imports_map = imports_map_loader.build_imports_map(
+          imports_info, self.output)
     else:
       self.imports_map = None
 
@@ -321,21 +321,19 @@ class Options(object):
   @uses(["output", "check"])
   def _store_arguments(self, input_filenames):
     if len(input_filenames) > 1:
-      if self.output:
-        raise optparse.OptionValueError("-o only allowed for single input")
-    self.src_out = []
-    for item in input_filenames:
+      raise optparse.OptionValueError("Can only process one file at a time.")
+    if not input_filenames:
+      self.input = None
+    else:
+      item, = input_filenames
       split = tuple(item.split(os.pathsep))
       if len(split) == 1:
-        if len(input_filenames) == 1 and self.output:
-          # special case: For single input, you're allowed to use
-          #   pytype myfile.py -o myfile.pyi
-          self.src_out.append((item, self.output))
-        else:
-          self.src_out.append((item, None))
-          self.check = True
+        self.input = item
+        self.check = not self.output
       elif len(split) == 2:
-        self.src_out.append(split)
+        if self.output:
+          raise optparse.OptionValueError("x:y notation not allowed with -o")
+        self.input, self.output = split
       else:
         raise optparse.OptionValueError("Argument %r is not a pair of non-"
                                         "empty file names separated by %r" %
