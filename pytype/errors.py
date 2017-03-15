@@ -313,9 +313,9 @@ class ErrorLog(ErrorLogBase):
 
   @_error_name("unbound-type-param")
   def type_param_error(self, opcode, obj, attr_name, type_param_name):
-    on = " on %s" % obj.data[0].name if len(obj.bindings) == 1 else ""
-    self.error(opcode, "Can't access attribute %r%s" % (attr_name, on),
-               "No binding for type parameter %s" % type_param_name)
+    self.error(
+        opcode, "Can't access attribute %r on %s" % (attr_name, obj.name),
+        "No binding for type parameter %s" % type_param_name)
 
   @_error_name("name-error")
   def name_error(self, opcode, name):

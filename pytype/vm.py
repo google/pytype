@@ -1021,13 +1021,8 @@ class VirtualMachine(object):
     node = state.node
     nodes = []
     for val in obj.Bindings(node):
-      try:
-        node2, attr_var = self.attribute_handler.get_attribute_generic(
-            node, val.data, attr, val)
-      except self.convert.TypeParameterError as e:
-        self.errorlog.type_param_error(
-            self.frame.current_opcode, obj, attr, e.type_param_name)
-        node2, attr_var = node, self.convert.unsolvable.to_variable(node)
+      node2, attr_var = self.attribute_handler.get_attribute_generic(
+          node, val.data, attr, val)
       if attr_var is None or not attr_var.bindings:
         log.debug("No %s on %s", attr, val.data.__class__)
         continue

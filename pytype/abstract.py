@@ -1997,6 +1997,15 @@ class PyTDClass(SimpleAbstractValue, Class):
                                     node=self.vm.root_cfg_node)
             for parent in self.pytd_cls.parents]
 
+  def load_lazy_attribute(self, name):
+    try:
+      super(PyTDClass, self).load_lazy_attribute(name)
+    except self.vm.convert.TypeParameterError as e:
+      self.vm.errorlog.type_param_error(
+          self.vm.frame.current_opcode, self, name, e.type_param_name)
+      self.members[name] = self.vm.convert.unsolvable.to_variable(
+          self.vm.root_cfg_node)
+
   def _convert_member(self, _, pyval, subst=None, node=None):
     """Convert a member as a variable. For lazy lookup."""
     subst = subst or {}
