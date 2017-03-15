@@ -253,6 +253,11 @@ class MatcherTest(unittest.TestCase):
       self.assertEquals(match[abstract.K].data, [self.vm.convert.unsolvable])
       self.assertEquals(match[abstract.V].data, [self.vm.convert.unsolvable])
 
+  def testBoolAgainstFloat(self):
+    left = self.vm.convert.true
+    right = self.vm.convert.primitive_classes[float].data[0]
+    self.assertMatch(left, right)
+
 
 if __name__ == "__main__":
   unittest.main()

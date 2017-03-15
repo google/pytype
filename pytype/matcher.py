@@ -10,6 +10,12 @@ from pytype.pytd import pep484
 log = logging.getLogger(__name__)
 
 
+_COMPATIBLE_BUILTINS = {
+    "__builtin__." + k: "__builtin__." + v
+    for k, v in pep484.COMPAT_MAP.iteritems()
+}
+
+
 class AbstractMatcher(object):
   """Matcher for abstract values."""
 
@@ -349,7 +355,9 @@ class AbstractMatcher(object):
       if isinstance(base_cls, abstract.Class):
         if other_type is base_cls or (
             isinstance(other_type, abstract.ParameterizedClass) and
-            other_type.base_cls is base_cls):
+            other_type.base_cls is base_cls) or (
+                _COMPATIBLE_BUILTINS.get(base_cls.full_name) ==
+                other_type.full_name):
           return base
       elif isinstance(base_cls, abstract.AMBIGUOUS_OR_EMPTY):
         # See match_Function_against_Class in type_match.py. Even though it's
@@ -375,13 +383,6 @@ class AbstractMatcher(object):
       A new type parameter assignment if the matching succeeded, None otherwise.
     """
     if other_type.full_name == "__builtin__.object":
-      return subst
-
-    compatible_builtins = {
-        "__builtin__." + k: "__builtin__." + v
-        for k, v in pep484.COMPAT_MAP.iteritems()
-    }
-    if compatible_builtins.get(left.full_name) == other_type.full_name:
       return subst
 
     if isinstance(other_type, abstract.Class):
