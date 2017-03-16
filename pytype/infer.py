@@ -69,7 +69,7 @@ class CallTracer(vm.VirtualMachine):
       node, _, instance = self.init_class(node, t)
       return node, instance
     else:
-      return node, self.convert.create_new_unknown(node)
+      return node, self.convert.create_new_unknown(node, force=True)
 
   def create_varargs(self, node):
     value = abstract.Instance(self.convert.tuple_type, self, node)

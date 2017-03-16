@@ -220,9 +220,9 @@ class Converter(object):
       self._convert_cache[key] = abstract.Unknown(self.vm)
     return self._convert_cache[key]
 
-  def create_new_unknown(self, node, source=None, action=None):
+  def create_new_unknown(self, node, source=None, action=None, force=False):
     """Create a new variable containing unknown."""
-    if not self.vm.generate_unknowns:
+    if not force and not self.vm.generate_unknowns:
       # unsolvable instances are cheaper than unknown, so use those for --quick.
       return self.unsolvable.to_variable(node)
     unknown = self._create_new_unknown_value(action)
