@@ -2454,39 +2454,6 @@ class InterpreterFunction(Function):
       raise WrongArgTypes(self.signature, args, self.vm, bad_param=bad_arg)
     return subst
 
-  def _sub_one_annotation(self, node, annot, substs):
-    """Apply type parameter substitutions to an annotation."""
-    if isinstance(annot, TypeParameter):
-      if all(annot.name in subst and subst[annot.name].bindings
-             for subst in substs):
-        return self.vm.convert.merge_classes(
-            node, sum((subst[annot.name].data for subst in substs), []))
-    elif isinstance(annot, ParameterizedClass):
-      type_parameters = {}
-      # We have to be careful to not change the ParameterizedClass instance
-      # unless necessary because ParameterizedClass is used for recursion
-      # detection (see, e.g., init_class in infer.py and
-      # testAttributeInIncompleteInstance in test_checker.py) and currently
-      # doesn't compare or hash properly.
-      changed = False
-      for name, param in annot.type_parameters.items():
-        type_parameters[name] = self._sub_one_annotation(node, param, substs)
-        changed |= type_parameters[name] is not param
-      if changed:
-        # annot may be a subtype of ParameterizedClass, such as TupleClass.
-        return type(annot)(annot.base_cls, type_parameters, self.vm)
-    elif isinstance(annot, Union):
-      options = tuple(self._sub_one_annotation(node, o, substs)
-                      for o in annot.options)
-      return type(annot)(options, self.vm)
-    return annot
-
-  def _sub_annotations(self, node, substs):
-    if substs and all(substs):
-      return {name: self._sub_one_annotation(node, annot, substs)
-              for name, annot in self.signature.annotations.items()}
-    return self.signature.annotations
-
   def call(self, node, _, args, new_locals=None):
     args = args.simplify(node)
     if self.vm.is_at_maximum_depth() and self.name != "__init__":
@@ -2498,7 +2465,8 @@ class InterpreterFunction(Function):
               self.vm.convert.create_new_unsolvable(node))
     substs = self._match_args(node, args)
     callargs = self._map_args(node, args)
-    annotations = self._sub_annotations(node, substs)
+    annotations = self.vm.annotations_util.sub_annotations(
+        node, self.signature.annotations, substs)
     if annotations:
       for name in callargs:
         if name in annotations:

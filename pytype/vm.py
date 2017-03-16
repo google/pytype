@@ -22,6 +22,7 @@ import sys
 
 
 from pytype import abstract
+from pytype import annotations_util
 from pytype import attribute
 from pytype import blocks
 from pytype import convert
@@ -32,7 +33,6 @@ from pytype import load_pytd
 from pytype import matcher
 from pytype import metrics
 from pytype import state as frame_state
-from pytype import typing
 from pytype import utils
 from pytype.pyc import loadmarshal
 from pytype.pyc import opcodes
@@ -68,16 +68,6 @@ class RecursionException(Exception):
 
 class VirtualMachineError(Exception):
   """For raising errors in the operation of the VM."""
-  pass
-
-
-class LateAnnotationError(Exception):
-  """Used to break out of annotation evaluation if we discover a string."""
-  pass
-
-
-class EvaluationError(Exception):
-  """Used to signal an errorlog error during type comment evaluation."""
   pass
 
 
@@ -187,6 +177,7 @@ class VirtualMachine(object):
     self.program.default_data = self.convert.unsolvable
     self.matcher = matcher.AbstractMatcher()
     self.attribute_handler = attribute.AbstractAttributeHandler(self)
+    self.annotations_util = annotations_util.AnnotationsUtil(self)
     self.has_unknown_wildcard_imports = False
     self.callself_stack = []
     self.filename = None
@@ -701,100 +692,10 @@ class VirtualMachine(object):
     node, f_globals, _, _ = self.run_bytecode(node, code, f_globals, f_locals)
     logging.info("Done running bytecode, postprocessing globals")
     for func in self.functions_with_late_annotations:
-      self._eval_late_annotations(node, func, f_globals)
+      self.annotations_util.eval_late_annotations(node, func, f_globals)
     assert not self.frames, "Frames left over!"
     log.info("Final node: <%d>%s", node.id, node.name)
     return node, f_globals.members
-
-  def _eval_expr(self, node, f_globals, expr):
-    """Evaluate and expression with the given node and globals."""
-    # We don't chain node and f_globals as we want to remain in the context
-    # where we've just finished evaluating the module. This would prevent
-    # nasty things like:
-    #
-    # def f(a: "A = 1"):
-    #   pass
-    #
-    # def g(b: "A"):
-    #   pass
-    #
-    # Which should simply complain at both annotations that 'A' is not defined
-    # in both function annotations. Chaining would cause 'b' in 'g' to yield a
-    # different error message.
-
-    # Any errors logged here will have a filename of None and a linenumber of 1
-    # when what we really want is to allow the caller to handle/log the error
-    # themselves.  Thus we checkpoint the errorlog and then restore and raise
-    # an exception if anything was logged.
-    checkpoint = self.errorlog.save()
-    prior_errors = len(self.errorlog)
-    try:
-      code = self.compile_src(expr, mode="eval")
-    except pyc.CompileError as e:
-      raise EvaluationError(e.message)
-    new_locals = self.convert_locals_or_globals({}, "locals")
-    _, _, _, ret = self.run_bytecode(node, code, f_globals, new_locals)
-    if len(self.errorlog) > prior_errors:
-      new_messages = [self.errorlog[i].message
-                      for i in range(prior_errors, len(self.errorlog))]
-      self.errorlog.revert_to(checkpoint)
-      raise EvaluationError("\n".join(new_messages))
-    return ret
-
-  def _eval_expr_as_tuple(self, node, f_globals, expr):
-    if not expr:
-      return ()
-
-    result = abstract.get_atomic_value(self._eval_expr(node, f_globals, expr))
-    # If the result is a tuple, expand it.
-    if (isinstance(result, abstract.PythonConstant) and
-        isinstance(result.pyval, tuple)):
-      return tuple(abstract.get_atomic_value(x) for x in result.pyval)
-    else:
-      return (result,)
-
-  def _eval_multi_arg_annotation(self, node, func, f_globals, annot):
-    """Evaluate annotation for multiple arguments (from a type comment)."""
-    args = self._eval_expr_as_tuple(node, f_globals, annot.expr)
-    code = func.code
-    expected = abstract.InterpreterFunction.get_arg_count(code)
-    names = code.co_varnames
-
-    # This is a hack.  Specifying the type of the first arg is optional in
-    # class and instance methods.  There is no way to tell at this time
-    # how the function will be used, so if the first arg is self or cls we
-    # make it optional.  The logic is somewhat convoluted because we don't
-    # want to count the skipped argument in an error message.
-    if len(args) != expected:
-      if expected and names[0] in ["self", "cls"]:
-        expected -= 1
-        names = names[1:]
-
-    if len(args) != expected:
-      self.errorlog.invalid_function_type_comment(
-          annot.opcode, annot.expr,
-          details="Expected %d args, %d given" % (expected, len(args)))
-      return
-    for name, arg in zip(names, args):
-      resolved = self._process_one_annotation(arg, name, annot.opcode)
-      if resolved is not None:
-        func.signature.set_annotation(name, resolved)
-
-  def _eval_late_annotations(self, node, func, f_globals):
-    """Resolves an instance of abstract.LateClass's expression."""
-    for name, annot in func.signature.late_annotations.iteritems():
-
-      if name == function.MULTI_ARG_ANNOTATION:
-        try:
-          self._eval_multi_arg_annotation(node, func, f_globals, annot)
-        except (EvaluationError, abstract.ConversionError) as e:
-          self.errorlog.invalid_function_type_comment(
-              annot.opcode, annot.expr, details=e.message)
-      else:
-        resolved = self._process_one_annotation(annot.expr, annot.name,
-                                                annot.opcode, node, f_globals)
-        if resolved is not None:
-          func.signature.set_annotation(name, resolved)
 
   def call_binary_operator(self, state, name, x, y, report_errors=False):
     """Map a binary operator to "magic methods" (__add__ etc.)."""
@@ -1382,23 +1283,10 @@ class VirtualMachine(object):
               self.convert.create_new_unsolvable(state.node))
     return state.push(val)
 
-  def _apply_type_comment(self, state, op, value):
-    """If there is a type comment for the op, return its value."""
-    if op.code.co_filename != self.filename:
-      return value
-    code, comment = self.type_comments.get(op.line, (None, None))
-    if code:
-      try:
-        var = self._eval_expr(state.node, self.frame.f_globals, comment)
-        value = abstract.get_atomic_value(var).instantiate(state.node)
-      except (EvaluationError, abstract.ConversionError) as e:
-        self.errorlog.invalid_type_comment(op, comment, details=e.message)
-    return value
-
   def byte_STORE_NAME(self, state, op):
     name = self.frame.f_code.co_names[op.arg]
     state, value = state.pop()
-    value = self._apply_type_comment(state, op, value)
+    value = self.annotations_util.apply_type_comment(state, op, value)
     state = self.store_local(state, name, value)
     return state.forward_cfg_node()
 
@@ -1420,7 +1308,7 @@ class VirtualMachine(object):
   def byte_STORE_FAST(self, state, op):
     name = self.frame.f_code.co_varnames[op.arg]
     state, value = state.pop()
-    value = self._apply_type_comment(state, op, value)
+    value = self.annotations_util.apply_type_comment(state, op, value)
     state = state.forward_cfg_node()
     state = self.store_local(state, name, value)
     return state
@@ -1547,7 +1435,7 @@ class VirtualMachine(object):
   def byte_STORE_ATTR(self, state, op):
     name = self.frame.f_code.co_names[op.arg]
     state, (val, obj) = state.popn(2)
-    val = self._apply_type_comment(state, op, val)
+    val = self.annotations_util.apply_type_comment(state, op, val)
     state = state.forward_cfg_node()
     state = self.store_attr(state, obj, name, val)
     return state
@@ -1911,92 +1799,6 @@ class VirtualMachine(object):
     state, pos_defaults = state.popn(num_pos_defaults)
     return state, pos_defaults, kw_defaults, raw_annotations
 
-  def _process_one_annotation(self, annotation, name, opcode,
-                              node=None, f_globals=None):
-    """Change annotation / record errors where required."""
-    if isinstance(annotation, abstract.AnnotationContainer):
-      annotation = annotation.base_cls
-
-    if isinstance(annotation, typing.Union):
-      self.errorlog.invalid_annotation(
-          opcode, annotation, "Needs options", name)
-      return None
-    elif (isinstance(annotation, abstract.Instance) and
-          annotation.cls.data == self.convert.str_type.data):
-      # String annotations : Late evaluation
-      if isinstance(annotation, abstract.PythonConstant):
-        if f_globals is None:
-          raise LateAnnotationError()
-        else:
-          try:
-            v = self._eval_expr(node, f_globals, annotation.pyval)
-          except EvaluationError as e:
-            self.errorlog.invalid_annotation(opcode, annotation, e.message)
-            return None
-          if len(v.data) == 1:
-            return self._process_one_annotation(
-                v.data[0], name, opcode, node, f_globals)
-      self.errorlog.invalid_annotation(opcode, annotation,
-                                       "Must be constant", name)
-      return None
-    elif annotation.cls and annotation.cls.data == self.convert.none_type.data:
-      # PEP 484 allows to write "NoneType" as "None"
-      return self.convert.none_type.data[0]
-    elif isinstance(annotation, abstract.ParameterizedClass):
-      for param_name, param in annotation.type_parameters.items():
-        processed = self._process_one_annotation(param, name, opcode,
-                                                 node, f_globals)
-        if processed is None:
-          return None
-        annotation.type_parameters[param_name] = processed
-      return annotation
-    elif isinstance(annotation, abstract.Union):
-      options = []
-      for option in annotation.options:
-        processed = self._process_one_annotation(option, name, opcode,
-                                                 node, f_globals)
-        if processed is None:
-          return None
-        options.append(processed)
-      annotation.options = tuple(options)
-      return annotation
-    elif isinstance(annotation, (abstract.Class,
-                                 abstract.AMBIGUOUS_OR_EMPTY,
-                                 abstract.TypeParameter)):
-      return annotation
-    else:
-      self.errorlog.invalid_annotation(opcode, annotation, "Not a type", name)
-      return None
-
-  def _convert_function_annotations(self, node, raw_annotations):
-    if raw_annotations:
-      # {"i": int, "return": str} is stored as (int, str, ("i", "return"))
-      names = abstract.get_atomic_python_constant(raw_annotations[-1])
-      type_list = raw_annotations[:-1]
-      annotations = {}
-      late_annotations = {}
-      for name, t in zip(names, type_list):
-        name = abstract.get_atomic_python_constant(name)
-        visible = t.Data(node)
-        if len(visible) > 1:
-          self.errorlog.invalid_annotation(self.frame.current_opcode,
-                                           abstract.merge_values(visible, self),
-                                           "Must be constant",
-                                           name)
-        else:
-          try:
-            annot = self._process_one_annotation(
-                visible[0], name, self.frame.current_opcode)
-          except LateAnnotationError:
-            late_annotations[name] = function.LateAnnotation(
-                visible[0], name, self.frame.current_opcode)
-          else:
-            if annot is not None:
-              annotations[name] = annot
-      return annotations, late_annotations
-    else:
-      return {}, {}
-
   def _process_function_type_comment(self, op, code_var, annotations,
                                      late_annotations):
     """Modifies annotations/late_annotations from a function type comment.
@@ -2078,8 +1880,8 @@ class VirtualMachine(object):
     state, defaults, kw_defaults, annot = self._pop_extra_function_args(
         state, op.arg)
     kw_defaults = self._convert_kw_defaults(kw_defaults)
-    annotations, late_annotations = self._convert_function_annotations(
-        state.node, annot)
+    annotations, late_annotations = (
+        self.annotations_util.convert_function_annotations(state.node, annot))
     self._process_function_type_comment(op, code, annotations, late_annotations)
     # TODO(dbaum): Add support for per-arg type comments.
     # TODO(dbaum): Add support for variable type comments.
