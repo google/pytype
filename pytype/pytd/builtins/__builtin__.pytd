@@ -140,7 +140,6 @@ class object():
     def __lt__(self, other) -> bool
     def __hash__(self) -> int
     def __setattr__(self, name, value) -> None
-    def __getattr__(self, name) -> ?
     def __getattribute__(self, name) -> ?
     def __new__(cls: Type[T], ...) -> T
 
