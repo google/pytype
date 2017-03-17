@@ -721,7 +721,7 @@ class AnnotationTest(test_inference.InferenceTest):
       from typing import Tuple
       def f(x, *args) -> Tuple[int, ...]
     """)
-    error = r"Expected.*Tuple\[int, \.\.\.\].*Actually passed.*List\[float\]"
+    error = r"Expected.*Iterable\[int\].*Actually passed.*List\[float\]"
     self.assertErrorLogIs(errors, [(7, "wrong-arg-types", error)])
 
   def testKwargs(self):
@@ -746,8 +746,10 @@ class AnnotationTest(test_inference.InferenceTest):
       def g() -> Dict[str, float]
       def h() -> Dict[float, int]
     """)
-    error1 = r"Expected.*Dict\[str, int\].*Actually passed.*Dict\[str, float\]"
-    error2 = r"Expected.*Dict\[str, int\].*Actually passed.*Dict\[float, int\]"
+    error1 = (r"Expected.*Mapping\[str, int\].*"
+              r"Actually passed.*Dict\[str, float\]")
+    error2 = (r"Expected.*Mapping\[str, int\].*"
+              r"Actually passed.*Dict\[float, int\]")
     self.assertErrorLogIs(errors, [(12, "wrong-arg-types", error1),
                                    (13, "wrong-arg-types", error2)])
 

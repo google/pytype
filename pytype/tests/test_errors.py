@@ -558,7 +558,7 @@ class ErrorTest(test_inference.InferenceTest):
           return super(self, B).f()  # should be super(B, self)
     """, deep=True)
     self.assertErrorLogIs(errors, [
-        (7, "wrong-arg-types", r"B.*must be a type")])
+        (7, "wrong-arg-types", r"cls: Type\[Any\].*cls: B")])
 
   @unittest.skip("Need to type-check second argument to super")
   def testBadSuperInstance(self):

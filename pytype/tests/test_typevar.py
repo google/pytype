@@ -329,6 +329,17 @@ class TypeVarTest(test_inference.InferenceTest):
       v = ...  # type: int
     """)
 
+  def testPrintNestedTypeParameter(self):
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      from typing import List, TypeVar  # pytype: disable=not-supported-yet
+      T = TypeVar("T", int, float)
+      def f(x: List[T]): ...
+      f([""])
+    """)
+    self.assertErrorLogIs(errors, [
+        (5, "wrong-arg-types", r"List\[Union\[float, int\]\].*List\[str\]")])
+
 
 if __name__ == "__main__":
   test_inference.main()

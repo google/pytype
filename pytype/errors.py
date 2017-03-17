@@ -241,8 +241,6 @@ class ErrorLog(ErrorLogBase):
       return self._pytd_print(t.get_instance_type())
     elif isinstance(t, abstract.PythonConstant):
       return re.sub(r"(\\n|\s)+", " ", repr(t.pyval))
-    elif isinstance(t, abstract.TypeParameter) and t.constraints:
-      return self._print_as_expected_type(abstract.Union(t.constraints, t.vm))
     elif isinstance(t, abstract.AnnotationClass) or not t.cls:
       return t.name
     else:
@@ -251,12 +249,12 @@ class ErrorLog(ErrorLogBase):
   def _print_as_actual_type(self, t):
     return self._pytd_print(t.to_type())
 
-  def _iter_sig(self, sig):
-    """Iterate through a function.Signature object."""
+  def _iter_sig(self, sig, bad_param):
+    """Iterate through a function.Signature object. Focus on a bad parameter."""
     def annotate(name):
       suffix = " = ..." if name in sig.defaults else ""
-      if name in sig.annotations:
-        type_str = self._print_as_expected_type(sig.annotations[name])
+      if bad_param and name == bad_param.name:
+        type_str = self._print_as_expected_type(bad_param.expected)
         return ": " + type_str + suffix
       else:
         return suffix
@@ -271,17 +269,21 @@ class ErrorLog(ErrorLogBase):
     if sig.kwargs_name is not None:
       yield "**", sig.kwargs_name, annotate(sig.kwargs_name)
 
-  def _iter_actual(self, passed_args):
+  def _iter_actual(self, passed_args, bad_param):
     for name, arg in passed_args:
-      yield "", name, ": " + self._print_as_actual_type(arg)
+      if bad_param and name == bad_param.name:
+        suffix = ": " + self._print_as_actual_type(arg)
+      else:
+        suffix = ""
+      yield "", name, suffix
 
-  def _print_args(self, arg_iter, bad_param=None):
+  def _print_args(self, arg_iter, bad_param):
     """Pretty-print a list of arguments. Focus on a bad parameter."""
     # (foo, bar, broken : type, ...)
     printed_params = []
     found = False
     for prefix, name, suffix in arg_iter:
-      if name == bad_param:
+      if bad_param and name == bad_param.name:
         printed_params.append(prefix + name + suffix)
         found = True
       elif found:
@@ -327,15 +329,14 @@ class ErrorLog(ErrorLogBase):
 
   def _invalid_parameters(self, opcode, message, bad_call):
     """Log an invalid parameters error."""
-    sig, passed_args, bad_param, extra_details = bad_call
-    expected = self._print_args(self._iter_sig(sig), bad_param)
-    actual = self._print_args(self._iter_actual(passed_args), bad_param)
+    sig, passed_args, bad_param = bad_call
+    expected = self._print_args(self._iter_sig(sig, bad_param), bad_param)
+    actual = self._print_args(
+        self._iter_actual(passed_args, bad_param), bad_param)
     details = [
         "Expected: (", expected, ")\n",
         "Actually passed: (", actual,
         ")"]
-    if extra_details:
-      details += ["\n", extra_details]
     self.error(opcode, message, "".join(details))
 
   @_error_name("wrong-arg-count")

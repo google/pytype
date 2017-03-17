@@ -1148,20 +1148,22 @@ class NotCallable(FailedFunctionCall):
     self.obj = obj
 
 
-BadCall = collections.namedtuple(
-    "_", ["sig", "passed_args", "bad_param", "details"])
+BadCall = collections.namedtuple("_", ["sig", "passed_args", "bad_param"])
+
+
+BadParam = collections.namedtuple("_", ["name", "expected"])
 
 
 class InvalidParameters(FailedFunctionCall):
   """Exception for functions called with an incorrect parameter combination."""
 
-  def __init__(self, sig, passed_args, vm, bad_param=None, details=None):
+  def __init__(self, sig, passed_args, vm, bad_param=None):
     super(InvalidParameters, self).__init__()
     self.name = sig.name
     passed_args = [(name, merge_values(arg.data, vm))
                    for name, arg, _ in sig.iter_args(passed_args)]
     self.bad_call = BadCall(sig=sig, passed_args=passed_args,
-                            bad_param=bad_param, details=details)
+                            bad_param=bad_param)
 
 
 class WrongArgTypes(InvalidParameters):
@@ -1253,8 +1255,8 @@ class Super(AtomicAbstractValue):
     elif len(args.posargs) == 2:
       for cls in args.posargs[0].bindings:
         if not isinstance(cls.data, (Class, AMBIGUOUS_OR_EMPTY)):
-          raise WrongArgTypes(self._SIGNATURE, args, self.vm, bad_param="cls",
-                              details="cls parameter must be a type")
+          bad = BadParam(name="cls", expected=self.vm.convert.type_type.data[0])
+          raise WrongArgTypes(self._SIGNATURE, args, self.vm, bad_param=bad)
         for obj in args.posargs[1].bindings:
           result.AddBinding(
               SuperInstance(cls.data, obj.data, self.vm), [cls, obj], node)

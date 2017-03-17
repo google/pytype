@@ -26,33 +26,26 @@ class AnnotationsUtil(object):
   def sub_annotations(self, node, annotations, substs):
     """Apply type parameter substitutions to a dictionary of annotations."""
     if substs and all(substs):
-      return {name: self._sub_one_annotation(node, annot, substs)
+      return {name: self.sub_one_annotation(node, annot, substs)
               for name, annot in annotations.items()}
     return annotations
 
-  def _sub_one_annotation(self, node, annot, substs):
+  def sub_one_annotation(self, node, annot, substs):
     """Apply type parameter substitutions to an annotation."""
     if isinstance(annot, abstract.TypeParameter):
       if all(annot.name in subst and subst[annot.name].bindings
              for subst in substs):
-        return self.vm.convert.merge_classes(
-            node, sum((subst[annot.name].data for subst in substs), []))
+        vals = sum((subst[annot.name].data for subst in substs), [])
+      else:
+        vals = annot.instantiate(node).data
+      return self.vm.convert.merge_classes(node, vals)
     elif isinstance(annot, abstract.ParameterizedClass):
-      type_parameters = {}
-      # We have to be careful to not change the ParameterizedClass instance
-      # unless necessary because ParameterizedClass is used for recursion
-      # detection (see, e.g., init_class in infer.py and
-      # testAttributeInIncompleteInstance in test_checker.py) and currently
-      # doesn't compare or hash properly.
-      changed = False
-      for name, param in annot.type_parameters.items():
-        type_parameters[name] = self._sub_one_annotation(node, param, substs)
-        changed |= type_parameters[name] is not param
-      if changed:
-        # annot may be a subtype of ParameterizedClass, such as TupleClass.
-        return type(annot)(annot.base_cls, type_parameters, self.vm)
+      type_parameters = {name: self.sub_one_annotation(node, param, substs)
+                         for name, param in annot.type_parameters.items()}
+      # annot may be a subtype of ParameterizedClass, such as TupleClass.
+      return type(annot)(annot.base_cls, type_parameters, self.vm)
     elif isinstance(annot, abstract.Union):
-      options = tuple(self._sub_one_annotation(node, o, substs)
+      options = tuple(self.sub_one_annotation(node, o, substs)
                       for o in annot.options)
       return type(annot)(options, self.vm)
     return annot
