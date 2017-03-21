@@ -82,10 +82,10 @@ class Loader(object):
     return ast
 
   def _create_empty(self, module_name, filename):
-    return self._load_file(module_name, filename,
-                           pytd_utils.EmptyModule(module_name))
+    return self.load_file(module_name, filename,
+                          pytd_utils.EmptyModule(module_name))
 
-  def _load_file(self, module_name, filename, ast=None):
+  def load_file(self, module_name, filename, ast=None):
     """Load (or retrieve from cache) a module and resolve its dependencies."""
     self._concatenated = None  # invalidate
     existing = self._modules.get(module_name)
@@ -98,6 +98,19 @@ class Loader(object):
       ast = builtins.ParsePyTD(filename=filename,
                                module=module_name,
                                python_version=self.options.python_version)
+    return self._process_module(module_name, filename, ast)
+
+  def _process_module(self, module_name, filename, ast):
+    """Create a module from a loaded ast and save it to the loader cache.
+
+    Args:
+      module_name: The fully qualified name of the module being imported.
+      filename: The file the ast was generated from.
+      ast: The pytd.TypeDeclUnit representing the module.
+
+    Returns:
+      The ast (pytd.TypeDeclUnit) as represented in this loader.
+    """
     ast = self._postprocess_pyi(ast)
     module = Module(module_name, filename, ast)
     self._modules[module_name] = module
@@ -223,9 +236,9 @@ class Loader(object):
       mod = typeshed.parse_type_definition(subdir, module_name, version)
     if mod:
       log.debug("Found %s entry for %r", subdir, module_name)
-      return self._load_file(filename=self.PREFIX + module_name,
-                             module_name=module_name,
-                             ast=mod)
+      return self.load_file(filename=self.PREFIX + module_name,
+                            module_name=module_name,
+                            ast=mod)
     return None
 
   def _import_name(self, module_name):
@@ -330,7 +343,7 @@ class Loader(object):
     # We have /dev/null entries in the import_map - os.path.isfile() returns
     # False for those. However, we *do* want to load them. Hence exists / isdir.
     if os.path.exists(full_path) and not os.path.isdir(full_path):
-      return self._load_file(filename=full_path, module_name=module_name)
+      return self.load_file(filename=full_path, module_name=module_name)
     else:
       return None
 

@@ -1,7 +1,7 @@
 
 
-import cStringIO
-
+import os
+from pytype import utils
 from pytype.pytd import pytd
 from pytype.pytd.parse import builtins
 from pytype.pytd.parse import visitors
@@ -54,12 +54,13 @@ class UtilsTest(unittest.TestCase):
     # Get original (non-precompiled) values.
     b1, t1 = builtins.GetBuiltinsAndTyping()
     # Write precompiled data.
-    precompiled = cStringIO.StringIO()
-    builtins.Precompile(precompiled)
-    # Clear the cache
-    builtins._cached_builtins_pytd = None
-    # Load precompiled data.
-    builtins.LoadPrecompiled(cStringIO.StringIO(precompiled.getvalue()))
+    with utils.Tempdir() as d:
+      precompiled = os.path.join(d.path, "precompiled.pickle")
+      builtins.Precompile(precompiled)
+      # Clear the cache
+      builtins._cached_builtins_pytd = None
+      # Load precompiled data.
+      builtins.LoadPrecompiled(precompiled)
     self.assertIsNotNone(builtins._cached_builtins_pytd)
     b2, t2 = builtins.GetBuiltinsAndTyping()
     self.assertEquals(pytd.Print(b1), pytd.Print(b2))

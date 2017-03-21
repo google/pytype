@@ -16,10 +16,12 @@ import traceback
 from pytype import config
 from pytype import errors
 from pytype import infer
+from pytype import load_pytd
 from pytype import metrics
 from pytype.pyc import pyc
 from pytype.pytd import optimize
 from pytype.pytd import pytd
+from pytype.pytd import serialize_ast
 from pytype.pytd import utils as pytd_utils
 from pytype.pytd.parse import builtins as pytd_builtins
 from pytype.pytd.parse import node
@@ -188,6 +190,24 @@ class _ProfileContext(object):
       self._profile.dump_stats(self._output_path)
 
 
+def _save_serialized_ast(options):
+  """Generates a fast pyi file from a pyi and saved it to disk.
+
+  Args:
+    options: A config.Options object.
+
+  Returns:
+    True on sucess or False if the file could not be generated, serialized or
+    saved for any reason.
+  """
+  loader = load_pytd.Loader(base_module=None, options=options)
+  ast = loader.load_file(options.module_name, options.input)
+  if serialize_ast.StoreAst(ast, options.read_pyi_save_pickle):
+    return 0
+  else:
+    return 1
+
+
 def main(argv):
   try:
     options = config.Options(argv)
@@ -198,7 +218,10 @@ def main(argv):
   with _ProfileContext(options.profile):
     with metrics.MetricsContext(options.metrics):
       with metrics.StopWatch("total_time"):
-        return _run_pytype(options)
+        if options.read_pyi_save_pickle:
+          return _save_serialized_ast(options)
+        else:
+          return _run_pytype(options)
 
 
 def _run_pytype(options):
@@ -207,8 +230,7 @@ def _run_pytype(options):
     if options.input:
       print >>sys.stderr, "Cannot specify files while precompiling builtins."
       sys.exit(1)
-    with open(options.generate_builtins, "wb") as f:
-      pytd_builtins.Precompile(f)
+    pytd_builtins.Precompile(options.generate_builtins)
     return
 
   if not options.input:
@@ -216,8 +238,7 @@ def _run_pytype(options):
     sys.exit(1)
 
   if options.precompiled_builtins:
-    with open(options.precompiled_builtins, "rb") as f:
-      pytd_builtins.LoadPrecompiled(f)
+    pytd_builtins.LoadPrecompiled(options.precompiled_builtins)
 
   # TODO(dbaum): Consider changing flag default and/or polarity.  This will
   # need to be coordinated with a change to pytype.bzl.

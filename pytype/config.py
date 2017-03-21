@@ -87,6 +87,11 @@ class Options(object):
         dest="generate_builtins", default=None,
         help="Precompile builtins pytd and write to the given file.")
     o.add_option(
+        "--read-pyi-save-pickle", type="string", action="store",
+        dest="read_pyi_save_pickle",
+        help=("Loads a PYI file and saves the contained abstract syntax tree "
+              "as pickled information, to the provided filename."))
+    o.add_option(
         "--imports_info", type="string", action="store",
         dest="imports_info", default=None,
         help=("Information for mapping import .pytd to files. "

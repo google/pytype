@@ -6,6 +6,7 @@ import os
 import subprocess
 import textwrap
 
+from pytype import utils
 from pytype.pyi import parser
 from pytype.pytd.parse import builtins
 
@@ -135,6 +136,15 @@ class PytypeTest(unittest.TestCase):
         expected_pyi = f.read()
     self.assertTrue(parser.parse_string(self.stdout).ASTeq(
         parser.parse_string(expected_pyi)))
+
+  def testPickledAstLocation(self):
+    self.pytype_args[self._DataPath("simple.pyi")] = self.INCLUDE
+    with utils.Tempdir() as d:
+      pickled_location = os.path.join(d.path, "some.pyi.pickled")
+      self.pytype_args["--read-pyi-save-pickle"] = pickled_location
+      self._RunPytype(self.pytype_args)
+      self.assertTrue(os.path.exists(pickled_location))
+    self.assertOutputStateMatches(stdout=False, stderr=False, returncode=0)
 
   def testBadOption(self):
     self.pytype_args["--rumpelstiltskin"] = self.INCLUDE
