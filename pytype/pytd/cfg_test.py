@@ -195,6 +195,80 @@ class CFGTest(unittest.TestCase):
     self.assertFalse(n2.CanHaveCombination([x1, y2]))
     self.assertFalse(n3.CanHaveCombination([x1, y2]))
 
+  def testPathFinder(self):
+    # +-->n2--.       +--+
+    # |       v       |  |
+    # n1      n4 --> n5<-+
+    # |       ^
+    # +-->n3--'
+    p = cfg.Program()
+    n1 = p.NewCFGNode("n1")
+    n2 = n1.ConnectNew("n2")
+    n3 = n1.ConnectNew("n3")
+    n4 = p.NewCFGNode("n4")
+    n2.ConnectTo(n4)
+    n3.ConnectTo(n4)
+    n5 = n4.ConnectNew("n5")
+    n5.ConnectTo(n5)
+    p.CreateSolver()
+    f = p.solver._path_finder
+    self.assertTrue(f.FindAnyPathToNode(n1, n1, []))
+    self.assertTrue(f.FindAnyPathToNode(n1, n1, [n1]))
+    self.assertTrue(f.FindAnyPathToNode(n4, n1, [n1]))
+    self.assertTrue(f.FindAnyPathToNode(n4, n1, [n2]))
+    self.assertTrue(f.FindAnyPathToNode(n4, n1, [n3]))
+    self.assertFalse(f.FindAnyPathToNode(n4, n1, [n4]))
+    self.assertFalse(f.FindAnyPathToNode(n4, n1, [n2, n3]))
+    self.assertEquals([n1], list(f.FindShortestPathToNode(n1, n1, [])))
+    self.assertEquals([n1], list(f.FindShortestPathToNode(n1, n1, [n1])))
+    self.assertIsNotNone(f.FindShortestPathToNode(n4, n1, [n1]))
+    self.assertEquals([n4, n3, n1],
+                      list(f.FindShortestPathToNode(n4, n1, [n2])))
+    self.assertEquals([n4, n2, n1],
+                      list(f.FindShortestPathToNode(n4, n1, [n3])))
+    self.assertIsNone(f.FindShortestPathToNode(n4, n1, [n4]))
+    self.assertIsNone(f.FindShortestPathToNode(n4, n1, [n2, n3]))
+    weights = {n5: 0, n4: 1, n2: 2, n1: 3}
+    self.assertIs(n1, f.FindHighestReachableWeight(n5, set(), weights))
+    self.assertIs(n1, f.FindHighestReachableWeight(n5, {n3}, weights))
+    self.assertIs(n4, f.FindHighestReachableWeight(n5, {n4}, weights))
+    self.assertIs(n2, f.FindHighestReachableWeight(n5, {n2, n3}, weights))
+    self.assertIsNone(f.FindHighestReachableWeight(n1, set(), weights))
+    self.assertIsNone(f.FindHighestReachableWeight(n5, {n4}, {n5: 1}))
+    self.assertIs(n4,
+                  f.FindHighestReachableWeight(n5, {n2, n3}, {n4: 1, n5: 2}))
+
+  def testFindNodeBackwards(self):
+    # +-->n2--.       +--->n6--.
+    # |   c3  v       |    c3  v
+    # n1      n4 --> n5<---+   n8
+    # |       ^c1   c2|    |   ^
+    # +-->n3--'       +--->n7--'
+    p = cfg.Program()
+    n1 = p.NewCFGNode("n1")
+    c1 = p.NewVariable().AddBinding("1", source_set=[], where=n1)
+    c2 = p.NewVariable().AddBinding("2", source_set=[], where=n1)
+    c3 = p.NewVariable().AddBinding("3", source_set=[], where=n1)
+    n2 = n1.ConnectNew("n2", c3)
+    n3 = n1.ConnectNew("n3")
+    n4 = p.NewCFGNode("n4", c1)
+    n2.ConnectTo(n4)
+    n3.ConnectTo(n4)
+    n5 = n4.ConnectNew("n5", c2)
+    n6 = n5.ConnectNew("n6", c3)
+    n7 = n5.ConnectNew("n7")
+    n7.ConnectTo(n5)
+    n8 = p.NewCFGNode("n8")
+    n6.ConnectTo(n8)
+    n7.ConnectTo(n8)
+    f = p.CreateSolver()._path_finder
+    self.assertEquals((True, [n5, n4]), f.FindNodeBackwards(n8, n1, ()))
+    self.assertFalse(f.FindNodeBackwards(n8, n1, (n4,))[0])
+    self.assertEquals((True, [n5]), f.FindNodeBackwards(n8, n5, ()))
+    self.assertEquals((True, [n5, n4]), f.FindNodeBackwards(n5, n4, ()))
+    self.assertEquals((True, [n5, n4, n2]), f.FindNodeBackwards(n5, n2, ()))
+    self.assertEquals((True, [n5, n4]), f.FindNodeBackwards(n5, n3, ()))
+
   def testConditionOnStartNode(self):
     # Test that a condition on the initial node is tests.
     # At the time of writing this can not happen in pytype. The test guards

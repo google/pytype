@@ -49,6 +49,7 @@ class Program(object):
   def CreateSolver(self):
     if self.solver is None:
       self.solver = Solver(self)
+    return self.solver
 
   def InvalidateSolver(self):
     self.solver = None
@@ -663,27 +664,21 @@ class _PathFinder(object):
   def __init__(self):
     self._solved_find_queries = {}
 
-  def _ResetState(self):
-    """Prepare the working state for a new search."""
-    # A set of the nodes which have been on all paths so far.
-    # In the end this will contain the intersection of all paths between
-    # start and finish.
-    self._solution_set = None
-    # One path from start to finish. The nodes need to be returned ordered.
-    # As otherwise we might set the destination behind the definition point of
-    # some binding.
-    self._one_path = None
-    # A map from nodes to a set of nodes, which are on all paths between the
-    # node and the finish.
-    # If this is None it means that no path to finish exist from the node.
-    self._node_to_finish_set = {}
+  def FindAnyPathToNode(self, start, finish, blocked):
+    """Determine whether we can reach a node at all.
 
-  def FindPathToNode(self, start, finish, blocked):
-    """Determine whether we can reach a node at all."""
-    # Performance optimization
+    Args:
+      start: The node to start at. If this node appears in blocked, we can't
+        reach finish (unless start==finish).
+      finish: The node we're trying to reach. This node is always considered
+        traversable, even if it appears in blocked.
+      blocked: A set of nodes we're not allowed to traverse.
+
+    Returns:
+      True if we can reach finish from start, False otherwise.
+    """
     if finish not in start.reachable_backwards:
       return False
-
     stack = [start]
     seen = set()
     while stack:
@@ -696,146 +691,128 @@ class _PathFinder(object):
       stack.extend(node.incoming)
     return False
 
+  def FindShortestPathToNode(self, start, finish, blocked):
+    """Find a shortest path from start to finish, going backwards.
+
+    Args:
+      start: The node to start at. If this node appears in blocked, we can't
+        reach finish (unless start==finish).
+      finish: The node we're trying to reach. This node is always considered
+        reachable, even if it appears in blocked.
+      blocked: A set of nodes we're not allowed to traverse.
+
+    Returns:
+      An iterable over nodes, representing the the shortest path (as
+      [start, ..., finish]), or None if no path exists.
+    """
+    if finish not in start.reachable_backwards:
+      return None
+    queue = collections.deque([start])
+    previous = {start: None}
+    seen = set()
+    while queue:
+      node = queue.popleft()
+      if node is finish:
+        break
+      if node in seen or node in blocked:
+        continue
+      seen.add(node)
+      for n in node.incoming:
+        if n not in previous:
+          previous[n] = node
+      queue.extend(node.incoming)
+    else:
+      return None
+    node = finish
+    path = collections.deque()
+    while node:
+      path.appendleft(node)
+      node = previous[node]
+    return path
+
+  def FindHighestReachableWeight(self, start, seen, weight_map):
+    """Determine the highest weighted node we can reach, going backwards.
+
+    Args:
+      start: The node to start at. This node is always expanded, even if
+        it appears in seen. The start node's weight is never considered, even
+        if it's the only node with a weight.
+      seen: Modified by this function. A set of nodes we're not allowed to
+        traverse. This doesn't apply to the node with the highest weight, as
+        long as we can reach it without traversing any other nodes in "seen".
+      weight_map: A mapping from node to integer, specifying the weights, for
+        nodes that have one.
+
+    Returns:
+      The node with the highest weight, or None if we didn't find any nodes
+      with weights (or if the start node is the only node that has a weight).
+    """
+    stack = list(start.incoming)
+    best_weight = -1
+    best_node = None
+    while stack:
+      node = stack.pop()
+      if node is start:
+        continue  # don't allow loops back to start
+      weight = weight_map.get(node, -1)
+      if weight > best_weight:
+        best_weight = weight
+        best_node = node
+      if node in seen:
+        continue
+      seen.add(node)
+      stack.extend(node.incoming)
+    return best_node
+
   def FindNodeBackwards(self, start, finish, blocked):
     """Determine whether we can reach a CFG node, going backwards.
 
-    Traverse the CFG from a starting point to find a given node, but avoid any
-    nodes marked as "blocked".
+    This also determines the "articulation points" of the graph, between the
+    start and the finish node. In other words, it finds the nodes
+    (only considering nodes with conditions) that are on *all* possible paths
+    from start to finish.
 
     Arguments:
-      start: Start node.
-      finish: Node we're looking for.
-      blocked: A set of blocked nodes. We do not consider start or finish to be
-        blocked even if they apppear in this set.
+      start: The node to start at. If this node appears in blocked, we can't
+        reach finish (unless start==finish).
+      finish: The node we're trying to reach. This node is always considered
+        traversable, even if it appears in blocked.
+      blocked: A set of nodes we're not allowed to traverse.
 
     Returns:
-      A tuple of Boolean and List[Binding]. The boolean is true iff a path exist
-      from start to finish. The list contains all the nodes on a way between
-      start and finish that contain a condition and are on all paths. The list
-      is ordered by reachability from start. The list will be None if no path
-      exist.
+      A tuple (Boolean, Iterable[CFGNode]). The boolean is true iff a path
+      exists from start to finish. The Iterable contains all nodes with a
+      condition, that are on *all* paths from start to finish, ordered by when
+      they occur on said path(s).
     """
-    # Cache
     query = (start, finish, blocked)
     if query in self._solved_find_queries:
       return self._solved_find_queries[query]
-
-    # Special case start.
-    if start is finish:
-      return (True, [start] if start.condition else [])
-
-    # Run a quick DFS first, maybe we find a path that doesn't need a condition.
-    if not self.FindPathToNode(start, finish, blocked):
-      self._solved_find_queries[query] = False, None
-      return self._solved_find_queries[query]
-
-    self._ResetState()
-    result = self._FindNodeBackwardsImpl(start, finish, blocked)
+    shortest_path = self.FindShortestPathToNode(start, finish, blocked)
+    if shortest_path is None:
+      result = False, ()
+    else:
+      # We now have the shortest path to finish. All articulation points are
+      # guaranteed to be on that path (since they're on *all* possible paths).
+      # Now "block" the path we found, and check how far we can go
+      # without using any nodes on it. The furthest node we can reach (described
+      # below by the "weight", which is the position on our shortest path) is
+      # our first articulation point. Set that as new start and continue.
+      blocked = set(blocked)
+      blocked.update(shortest_path)
+      weights = {node: i for i, node in enumerate(shortest_path)}
+      path = []
+      node = start
+      while True:
+        if node.condition:
+          path.append(node)
+        if node is finish:
+          break
+        node = self.FindHighestReachableWeight(node, blocked, weights)
+      result = True, path
+    # TODO(kramm): This dict can grow pretty big. Use a MRU cache?
     self._solved_find_queries[query] = result
     return result
-
-  def _FindNodeBackwardsImpl(self, start, finish, blocked):
-    """Find a path from start to finish and return nodes on all such paths.
-
-    If a node is on all paths between start and finish it's condition must be
-    fullfiled for finish to be reachable.
-
-    Args:
-      start: The CFGNode from which to search.
-      finish: The CFGNode we try to reach.
-      blocked: A list of nodes we're not allowed to use.
-
-    Returns:
-      None, the result is saved in self._solution_set (nodes on all paths) and
-      self._one_path (order of the nodes).
-    """
-    # Representation of the recursion state.
-    path = [start]
-
-    # Nodes which have already been added to a path.
-    seen_set = set()
-    node_to_iter = {}  # maps nodes to the iterator over their incoming links.
-    while path:
-      head = path[-1]
-      if head not in node_to_iter:
-        node_to_iter[head] = iter(head.incoming)
-      it = node_to_iter[head]
-      try:
-        next_node = it.next()
-      except StopIteration:
-        path.pop()
-        if head is finish:
-          self._FinishNode(head, path)
-        else:
-          self._UpdateNodeToFinishSet(head, path)
-        continue
-      if next_node is finish:
-        if self._solution_set is not None and not self._solution_set:
-          # Solution set can never grow and is already empty.
-          break
-        self._FinishNode(next_node, path)
-        continue
-      if next_node in blocked:
-        # The finish node is always blocked, therefore this needs to be below
-        # the finish test.
-        continue
-      if next_node in seen_set:
-        continue
-      seen_set.add(next_node)
-      path.append(next_node)
-
-    if self._solution_set is not None:
-      # self._one_path is a path from start to finish and self._solution_set is
-      # the intersection of all those paths.
-      # Order is important here, as the solver sets the first element of the
-      # list to be the new destination and could jump over a destination if the
-      # return value was unordered.
-      return True, [node for node in self._one_path
-                    if node.condition and node in self._solution_set]
-    else:
-      return False, None
-
-  def _FinishNode(self, node, path):
-    """Update the state with the results from one node.
-
-    Args:
-      node: The node to be analyzed.
-      path: The path to this node, as a list of nodes.
-    """
-    this_path = list(path)
-    this_path.append(node)
-    if not self._one_path:
-      self._one_path = this_path
-    self._UpdateSolutionSet(this_path)
-    # This is finish so the parent does not need to care about others
-    self._node_to_finish_set[node] = {node}
-
-  def _UpdateNodeToFinishSet(self, node, path):
-    """Update the _node_to_finish_set for one node."""
-    to_finish_set = None
-    for incoming in node.incoming:
-      # The whole algorithm uses DFS therfore we know that either incoming is
-      # in self._node_to_finish_set or no path from incoming to finish exists.
-      incoming_to_finish_set = self._node_to_finish_set.get(incoming)
-      if incoming_to_finish_set is not None:
-        if to_finish_set is None:
-          to_finish_set = incoming_to_finish_set
-        else:
-          to_finish_set = to_finish_set.intersection(incoming_to_finish_set)
-
-    if to_finish_set is not None:
-      to_finish_set.add(node)
-      nodes_on_path = list(path)
-      nodes_on_path.extend(to_finish_set)
-      self._UpdateSolutionSet(nodes_on_path)
-    # Notice that if to_finish_set is not None, node has been added to this set.
-    self._node_to_finish_set[node] = to_finish_set
-
-  def _UpdateSolutionSet(self, new_path):
-    if self._solution_set is None:
-      self._solution_set = set(node for node in new_path if node.condition)
-    else:
-      self._solution_set = self._solution_set.intersection(new_path)
 
 
 class Solver(object):
@@ -916,7 +893,7 @@ class Solver(object):
     blocked = frozenset(blocked | {entrypoint})
     for origin in goal.origins:
       # TODO(kramm): We don't cache this. Should we?
-      if origin.where not in blocked and self._path_finder.FindPathToNode(
+      if origin.where not in blocked and self._path_finder.FindAnyPathToNode(
           where, origin.where, blocked):
         return True
     return False
