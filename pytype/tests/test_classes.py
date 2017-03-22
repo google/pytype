@@ -264,11 +264,10 @@ class ClassesTest(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
-        # TODO(kramm): should be just "str". Also below.
-        x = ...  # type: int or str
+        x = ...  # type: str
       # TODO(kramm): Should this be an alias?
       class OtherFoo(object):
-        x = ...  # type: int or str
+        x = ...  # type: str
     """)
 
   def testCallClassAttr(self):

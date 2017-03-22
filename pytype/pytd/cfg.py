@@ -212,7 +212,11 @@ class CFGNode(object):
     return "<%d>%s" % (self.id, self.name)
 
   def __repr__(self):
-    return "<cfgnode %d %s>" % (self.id, self.name)
+    if self.condition:
+      return "<cfgnode %d %s condition:%s>" % (self.id, self.name,
+                                               self.condition.variable.id)
+    else:
+      return "<cfgnode %d %s>" % (self.id, self.name)
 
   def AsciiTree(self, forward=False):
     """Draws an ascii tree, starting at this node.

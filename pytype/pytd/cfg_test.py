@@ -629,6 +629,28 @@ class CFGTest(unittest.TestCase):
     p.entrypoint = n1
     self.assertTrue(n2.HasCombination([a]))
 
+  @unittest.skip("Broken. Needs fixing.")
+  def testConflict(self):
+    # This tests that we can't "bypass" a blocked CFG node, by landing on it
+    # while solving an unrelated goal.
+    # TODO(kramm): This is currently broken, since our solver considers both
+    # the start and finish node to never be "blocked", hence allowing itself
+    # to step through a conflicting binding. Fixing this will allow us to get
+    # rid of a few extraneous CFG nodes, like the one after STORE_ATTR.
+    p = cfg.Program()
+    n1 = p.NewCFGNode("n1")
+    n2 = n1.ConnectNew("n2")
+    n3 = n2.ConnectNew("n3")
+    x = p.NewVariable()
+    xa = x.AddBinding("a", source_set=[], where=n1)
+    _ = x.AddBinding("b", source_set=[], where=n2)
+    y = p.NewVariable()
+    ya = y.AddBinding("a", source_set=[], where=n2)
+    p.entrypoint = n1
+    solver = p.CreateSolver()
+    self.assertFalse(solver.Solve([ya, xa], n3))
+    self.assertFalse(solver.Solve([xa, ya], n3))
+
   def testFilter2(self):
     p = cfg.Program()
     n1 = p.NewCFGNode("n1")

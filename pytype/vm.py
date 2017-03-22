@@ -533,7 +533,7 @@ class VirtualMachine(object):
         var.AddBinding(val, class_dict_var.bindings, node)
     return var
 
-  def _make_function(self, name, code, globs, defaults, kw_defaults,
+  def _make_function(self, name, node, code, globs, defaults, kw_defaults,
                      closure=None, annotations=None, late_annotations=None):
     """Create a function or closure given the arguments."""
     if closure:
@@ -553,7 +553,7 @@ class VirtualMachine(object):
     # TODO(ampere): What else needs to be an origin in this case? Probably stuff
     # in closure.
     var = self.program.NewVariable()
-    var.AddBinding(val, code.bindings, self.root_cfg_node)
+    var.AddBinding(val, code.bindings, node)
     if late_annotations:
       self.functions_with_late_annotations.append(val)
     return var
@@ -834,10 +834,6 @@ class VirtualMachine(object):
         state, func, posargs, namedargs, starargs, starstarargs)
     state = state.push(ret)
     return state
-
-  def load_constant(self, value):
-    """Converts a Python value to an abstract value."""
-    return self.convert.constant_to_var(value)
 
   def get_globals_dict(self):
     """Get a real python dict of the globals."""
@@ -1233,8 +1229,9 @@ class VirtualMachine(object):
     return self.inplace_operator(state, "__itruediv__")
 
   def byte_LOAD_CONST(self, state, op):
-    const = self.frame.f_code.co_consts[op.arg]
-    return state.push(self.load_constant(const))
+    raw_const = self.frame.f_code.co_consts[op.arg]
+    const = self.convert.constant_to_var(raw_const, node=state.node)
+    return state.push(const)
 
   def byte_POP_TOP(self, state, op):
     return state.pop_and_discard()
@@ -1438,6 +1435,7 @@ class VirtualMachine(object):
     val = self.annotations_util.apply_type_comment(state, op, val)
     state = state.forward_cfg_node()
     state = self.store_attr(state, obj, name, val)
+    state = state.forward_cfg_node()
     return state
 
   def byte_DELETE_ATTR(self, state, op):
@@ -1886,8 +1884,8 @@ class VirtualMachine(object):
     # TODO(dbaum): Add support for per-arg type comments.
     # TODO(dbaum): Add support for variable type comments.
     globs = self.get_globals_dict()
-    fn = self._make_function(name, code, globs, defaults, kw_defaults,
-                             annotations=annotations,
+    fn = self._make_function(name, state.node, code, globs, defaults,
+                             kw_defaults, annotations=annotations,
                              late_annotations=late_annotations)
     return state.push(fn)
 
@@ -1905,8 +1903,8 @@ class VirtualMachine(object):
     state, defaults, kw_defaults, _ = self._pop_extra_function_args(state,
                                                                     op.arg)
     globs = self.get_globals_dict()
-    fn = self._make_function(name, code, globs, defaults, kw_defaults,
-                             closure=closure)
+    fn = self._make_function(name, state.node, code, globs, defaults,
+                             kw_defaults, closure=closure)
     return state.push(fn)
 
   def byte_CALL_FUNCTION(self, state, op):

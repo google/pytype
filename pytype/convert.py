@@ -335,7 +335,7 @@ class Converter(object):
                                   node, source_sets, discard_concrete_values)
     result = self.constant_to_value(pyval, subst, node)
     if result is not None:
-      return result.to_variable(self.vm.root_cfg_node)
+      return result.to_variable(node)
     # There might still be bugs on the abstract intepreter when it returns,
     # e.g. a list of values instead of a list of types:
     assert pyval.__class__ != cfg.Variable, pyval
