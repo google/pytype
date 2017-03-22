@@ -148,15 +148,12 @@ class FrameState(object):
     if self.node is not node:
       self.node.ConnectTo(node)
     both = zip(self.data_stack, other.data_stack)
-    if all(v1 is v2 for v1, v2 in both):
-      data_stack = self.data_stack
-    else:
-      data_stack = tuple(
-          self.node.program.MergeVariables(node, [v1, v2])
-          for i, (v1, v2) in enumerate(both))
+    if any(v1 is not v2 for v1, v2 in both):
+      for v, o in both:
+        o.PasteVariable(v, None)
     if self.node is not other.node:
       self.node.ConnectTo(other.node)
-      return FrameState(data_stack,
+      return FrameState(other.data_stack,
                         self.block_stack,
                         other.node,
                         self.exception,

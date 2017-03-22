@@ -534,6 +534,32 @@ class SplitTest(test_inference.InferenceTest):
       def f(r) -> Optional[str]
     """)
 
+  def testSimpleOr(self):
+    self.assertNoErrors("""
+      from __future__ import google_type_annotations
+      def f(self, x:str=None) -> str:
+        return x or "foo"
+    """)
+
+  def testOr(self):
+    self.assertNoErrors("""
+      from __future__ import google_type_annotations
+      from typing import Optional
+      def f(foo: Optional[int]=None) -> int:
+        if foo is None:
+          return 1
+        return foo
+      def g(foo: Optional[int]=None) -> int:
+        return foo or 1
+      def h(foo: Optional[int]=None) -> int:
+        foo = foo or 1
+        return foo
+      def j(foo: Optional[int]=None) -> int:
+        if foo is None:
+          foo = 1
+        return foo
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

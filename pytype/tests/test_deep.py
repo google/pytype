@@ -46,8 +46,11 @@ class StructuralTest(test_inference.InferenceTest):
     ty = self.Infer("""
       def f(x):
         return x() or 1
-    """, deep=True, solve_unknowns=False, show_library_calls=True)
-    self.assertHasReturnType(ty.Lookup("f"), self.int)
+    """, deep=True, solve_unknowns=False)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      def f(x) -> Any
+    """)
 
   def testCallBuiltin(self):
     ty = self.Infer("""

@@ -498,15 +498,16 @@ class Variable(object):
       binding.AddOrigin(where, source_set)
     return binding
 
-  def PasteVariable(self, variable, where):
+  def PasteVariable(self, variable, where=None):
     """Adds all the bindings from another variable to this one."""
     for binding in variable.bindings:
       copy = self.AddBinding(binding.data)
-      if all(origin.where == where for origin in binding.origins):
+      if where is None or all(
+          origin.where is where for origin in binding.origins):
         # Optimization: If all the bindings of the old variable happen at the
-        # same CFG node as the one we're assigning now, we can copy the old
-        # source_set instead of linking to it. That way, the solver has to
-        # consider fewer levels.
+        # same CFG node as the one we're assigning now (or if none is supplied),
+        # we can copy the old source_set instead of linking to it. That way, the
+        # solver has to consider fewer levels.
         for origin in binding.origins:
           for source_set in origin.source_sets:
             copy.AddOrigin(origin.where, source_set)
