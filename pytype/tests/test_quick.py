@@ -28,12 +28,12 @@ class QuickTest(test_inference.InferenceTest):
     # test that even with --quick, we still generate ~unknowns for parameters.
     ty = self.Infer("""
       def f(x):
-        return x
+        return 42
     """, deep=True, quick=True, show_library_calls=True)
     self.assertTypesMatchPytd(ty, """
       class `~unknown0`(object):
         pass
-      def f(x: `~unknown0`) -> `~unknown0`
+      def f(x: `~unknown0`) -> int
     """)
 
   def testClosure(self):

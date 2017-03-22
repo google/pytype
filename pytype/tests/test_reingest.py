@@ -1,5 +1,7 @@
 """Tests for reloading generated pyi."""
 
+import unittest
+
 
 from pytype import utils
 from pytype.pytd import pytd
@@ -36,6 +38,49 @@ class ReingestTest(test_inference.InferenceTest):
       self.assertNoErrors("""
         from foo import Union
       """, pythonpath=[d.path])
+
+  def testIdentityDecorators(self):
+    foo = self.Infer("""
+      def decorate(f):
+        return f
+    """, deep=True)
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", pytd.Print(foo))
+      ty = self.Infer("""
+        import foo
+        @foo.decorate
+        def f():
+          return 3
+        def g():
+          return f()
+      """, deep=True, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        foo = ...  # type: module
+        def f() -> int
+        def g() -> int
+      """)
+
+  @unittest.skip("Needs better handling of Union[Callable, f] in output.py.""")
+  def testMaybeIdentityDecorators(self):
+    foo = self.Infer("""
+      def maybe_decorate(f):
+        return f or (lambda *args: 42)
+    """, deep=True)
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", pytd.Print(foo))
+      ty = self.Infer("""
+        import foo
+        @foo.maybe_decorate
+        def f():
+          return 3
+        def g():
+          return f()
+      """, deep=True, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        foo = ...  # type: module
+        def f() -> int
+        def g() -> int
+      """)
 
 
 if __name__ == "__main__":

@@ -1164,6 +1164,83 @@ class RemoveUnknownClasses(Visitor):
         cls for cls in u.classes if not cls.name.startswith("~unknown")))
 
 
+class _CountUnknowns(Visitor):
+  """Visitor for counting how often given unknowns occur in a type."""
+
+  def __init__(self):
+    super(_CountUnknowns, self).__init__()
+    self.counter = collections.Counter()
+    self.position = {}
+
+  def EnterNamedType(self, t):
+    _, is_unknown, suffix = t.name.partition("~unknown")
+    if is_unknown:
+      if suffix not in self.counter:
+        # Also record the order in which we see the ~unknowns
+        self.position[suffix] = len(self.position)
+      self.counter[suffix] += 1
+
+  def EnterClassType(self, t):
+    return self.EnterNamedType(t)
+
+
+class CreateTypeParametersFromUnknowns(Visitor):
+  """Visitor for replacing re-occuring ~unknowns with type parameters.
+
+  For example, this will change
+    class ~unknown1:
+      ...
+    def f(x: ~unknown1) -> ~unknown1
+  to
+    _T1 = TypeVar("_T1")
+    def f(x: _T1) -> _T1
+  """
+
+  PREFIX = "_T"  # Prefix for new type params
+
+  def __init__(self):
+    super(CreateTypeParametersFromUnknowns, self).__init__()
+    self.parameter = None
+    self.class_name = None
+
+  def EnterClass(self, f):
+    self.class_name = f.name
+
+  def LeaveClass(self, _):
+    self.class_name = None
+
+  def VisitSignature(self, sig):
+    """Potentially replace ~unknowns with type parameters, in a signature."""
+    if self.class_name and self.class_name.startswith("~"):
+      # Leave unknown classes and call traces as-is, they'll never be part of
+      # the output.
+      # TODO(kramm): We shouldn't run on call traces in the first place.
+      return sig
+    counter = _CountUnknowns()
+    sig.Visit(counter)
+    replacements = {}
+    for suffix, count in counter.counter.items():
+      if count > 1:
+        # We don't care whether it actually occurs in different parameters. That
+        # way, e.g. "def f(Dict[T, T])" works, too.
+        type_param = pytd.TypeParameter(
+            self.PREFIX + str(counter.position[suffix]))
+        replacements["~unknown"+suffix] = type_param
+    if replacements:
+      self.added_new_type_params = True
+      sig = sig.Visit(ReplaceTypes(replacements))
+    return sig
+
+  def EnterTypeDeclUnit(self, _):
+    self.added_new_type_params = False
+
+  def VisitTypeDeclUnit(self, unit):
+    if self.added_new_type_params:
+      return unit.Visit(AdjustTypeParameters())
+    else:
+      return unit
+
+
 # TODO(kramm): The `~unknown` functionality is becoming more important. Should
 #              we have support for this on the pytd level? (That would mean
 #              changing Class.name to a TYPE). Also, should we just use ~X

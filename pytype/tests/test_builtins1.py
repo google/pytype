@@ -327,8 +327,9 @@ class BuiltinTests(test_inference.InferenceTest):
       g()
     """, deep=True, solve_unknowns=False)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any
-      def f(x, y) -> Any: ...
+      from typing import Any, TypeVar
+      _T1 = TypeVar("_T1")
+      def f(x, y: _T1) -> _T1: ...
       def g() -> int: ...
     """)
 

@@ -612,6 +612,28 @@ class TestVisitors(parser_test_base.ParserTest):
                                   parser_builtins.GetBuiltinsPyTD())
     assert node.cls
 
+  def testCreateTypeParametersFromUnknowns(self):
+    src = textwrap.dedent("""
+      from typing import Dict
+      def f(x: `~unknown1`) -> `~unknown1`: ...
+      def g(x: `~unknown2`, y: `~unknown2`) -> None: ...
+      def h(x: `~unknown3`) -> None: ...
+      def i(x: Dict[`~unknown4`, `~unknown4`]) -> None: ...
+    """)
+    expected = textwrap.dedent("""
+      from typing import Dict
+
+      _T0 = TypeVar('_T0')
+
+      def f(x: _T0) -> _T0: ...
+      def g(x: _T0, y: _T0) -> None: ...
+      def h(x: `~unknown3`) -> None: ...
+      def i(x: Dict[_T0, _T0]) -> None: ...
+    """)
+    ast1 = self.Parse(src)
+    ast1 = ast1.Visit(visitors.CreateTypeParametersFromUnknowns())
+    self.AssertSourceEquals(ast1, expected)
+
 
 class TestAncestorMap(unittest.TestCase):
 

@@ -14,9 +14,11 @@ class UnionTest(test_inference.InferenceTest):
       def f(b, x, y):
         return id(1 if b else 1.0)
     """, deep=True)
+
     self.assertTypesMatchPytd(ty, """
-      from typing import Any
-      def id(x) -> Any
+      from typing import Any, TypeVar
+      _T0 = TypeVar("_T0")
+      def id(x: _T0) ->_T0
 
       def f(b, x, y) -> int or float
     """)

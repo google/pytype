@@ -340,6 +340,45 @@ class TypeVarTest(test_inference.InferenceTest):
     self.assertErrorLogIs(errors, [
         (5, "wrong-arg-types", r"List\[Union\[float, int\]\].*List\[str\]")])
 
+  def testInferTypeVars(self):
+    ty = self.Infer("""
+      def id(x):
+        return x
+      def wrap_tuple(x, y):
+        return (x, y)
+      def wrap_list(x, y):
+        return [x, y]
+      def wrap_dict(x, y):
+        return {x: y}
+      def return_second(x, y):
+        return y
+    """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Dict, List, Tuple, Union
+      _T0 = TypeVar("_T0")
+      _T1 = TypeVar("_T1")
+      def id(x: _T0) -> _T0
+      def wrap_tuple(x: _T0, y: _T1) -> Tuple[_T0, _T1]
+      def wrap_list(x: _T0, y: _T1) -> List[Union[_T0, _T1]]
+      def wrap_dict(x: _T0, y: _T1) -> Dict[_T0, _T1]
+      def return_second(x, y: _T1) -> _T1
+    """)
+
+  def testInferUnion(self):
+    ty = self.Infer("""
+      def return_either(x, y):
+        return x or y
+      def return_arg_or_42(x):
+        return x or 42
+    """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Union
+      _T0 = TypeVar("_T0")
+      _T1 = TypeVar("_T1")
+      def return_either(x: _T0, y: _T1) -> Union[_T0, _T1]
+      def return_arg_or_42(x: _T0) -> Union[_T0, int]
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

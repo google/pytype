@@ -98,9 +98,10 @@ class GeneratorTest(test_inference.InferenceTest):
       x, y, z = Foo()
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any
+      from typing import Any, TypeVar
+      _T0 = TypeVar("_T0")
       class Foo(object):
-        def __getitem__(self, pos) -> Any
+        def __getitem__(self, pos: _T0) -> _T0
       x = ...  # type: int
       y = ...  # type: int
       z = ...  # type: int

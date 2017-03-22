@@ -398,6 +398,7 @@ class CallTracer(vm.VirtualMachine):
             tuple(self.pytd_classes_for_call_traces()),
             functions=tuple(self.pytd_functions_for_call_traces()),
             aliases=tuple(self.pytd_aliases())))
+    ty = ty.Visit(optimize.CombineReturnsAndExceptions())
     ty = ty.Visit(optimize.PullInMethodClasses())
     ty = ty.Visit(visitors.DefaceUnresolved(
         [ty, self.loader.concat_all()], "~unknown"))
@@ -724,12 +725,14 @@ def infer_types(src,
       ast = pytd_utils.Concat(
           ast, builtins.GetDefaultAst(options.python_version))
   builtins_pytd = tracer.loader.concat_all()
+  # Insert type parameters, where appropriate
+  ast = ast.Visit(visitors.CreateTypeParametersFromUnknowns())
   if solve_unknowns:
     log.info("=========== PyTD to solve =============\n%s", pytd.Print(ast))
     ast = convert_structural.convert_pytd(ast, builtins_pytd)
   elif not show_library_calls:
     log.info("Solving is turned off. Discarding call traces.")
-    # Rename "~unknown" to "?"
+    # Rename remaining "~unknown" to "?"
     ast = ast.Visit(visitors.RemoveUnknownClasses())
     # Remove "~list" etc.:
     ast = convert_structural.extract_local(ast)

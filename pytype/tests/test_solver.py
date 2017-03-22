@@ -185,8 +185,9 @@ class SolverTests(test_inference.InferenceTest):
       f(**d)
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
-      from typing import Dict, List
-      def f(x) -> ?
+      from typing import Dict, List, TypeVar
+      _T0 = TypeVar("_T0")
+      def f(x: _T0) -> _T0
 
       d = ...  # type: Dict[str, int]
       l = ...  # type: List[str, ...]
