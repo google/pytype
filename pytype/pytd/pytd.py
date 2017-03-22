@@ -324,6 +324,11 @@ class ClassType(node.Node('name: str'), Type):
   #     to classes that are back at the top of the tree, that would generate
   #     cycles.
 
+  def Replace(self, *kwargs):
+    raise NotImplementedError(
+        "Instances of this class need to be created with __init__(), "
+        "otherwise __new__ is not executed.")
+
   def __getnewargs__(self):
     # Due to a peculiarity of cPickle, the new args cannot have references back
     # into the tree, so we only set name (a string) as a newarg, and set
