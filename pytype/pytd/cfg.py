@@ -343,11 +343,21 @@ class Binding(object):
             return True
     return False
 
-  def __str__(self):
+  def PrettyPrint(self, indent_level=0):
+    """Return a string representation of the (nested) binding contents."""
+    indent = " " * indent_level
+    s = "%s%s %s\n" % (indent, self, self.data)
+    for origin in self.origins:
+      s += " %s %s\n" % (indent, origin)
+      for source_set in origin.source_sets:
+        s += "  %s %s\n" % (indent, source_set)
+        for source in source_set:
+          s += source.PrettyPrint(indent_level + 4)
+    return s
+
+  def __repr__(self):
     data_id = getattr(self.data, "id", id(self.data))
     return "<binding of variable %d to data %d>" % (self.variable.id, data_id)
-
-  __repr__ = __str__
 
 
 class Variable(object):

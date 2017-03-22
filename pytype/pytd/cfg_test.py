@@ -88,6 +88,15 @@ class CFGTest(unittest.TestCase):
     self.assertIsInstance(node1.AsciiTree(), str)
     self.assertIsInstance(node1.AsciiTree(forward=True), str)
 
+  def testBindingPrettyPrint(self):
+    p = cfg.Program()
+    node = p.NewCFGNode()
+    u = p.NewVariable()
+    v1 = u.AddBinding(1, source_set=[], where=node)
+    v2 = u.AddBinding(2, source_set=[v1], where=node)
+    v3 = u.AddBinding(3, source_set=[v2], where=node)
+    v3.PrettyPrint()  # smoke test
+
   def testHasSource(self):
     p = cfg.Program()
     n0, n1, n2 = p.NewCFGNode("n0"), p.NewCFGNode("n1"), p.NewCFGNode("n2")
