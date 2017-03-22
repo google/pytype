@@ -670,7 +670,7 @@ class ImportTest(test_inference.InferenceTest):
       self.assertTypesMatchPytd(ty, """
         from typing import Union
         foo = ...  # type: module
-        def d(x: Union[float, int]) -> float
+        def d(x: float, y: float) -> float
       """)
 
   def testImportConstant(self):
