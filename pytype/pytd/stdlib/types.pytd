@@ -1,3 +1,4 @@
+# TODO(rechen): Remove once we can parse typeshed's version.
 __builtins__ = ...  # type: dict
 __doc__ = ...  # type: str
 __file__ = ...  # type: str

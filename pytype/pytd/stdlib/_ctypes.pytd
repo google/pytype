@@ -1,4 +1,5 @@
 # TODO(pludemann): needs more contents here
+# This module does not exist in typeshed.
 
 class PyCArrayType(object):
   pass

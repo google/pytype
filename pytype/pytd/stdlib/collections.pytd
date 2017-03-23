@@ -1,3 +1,5 @@
+# We maintain our own collections.pytd, rather than using collections.pyi from
+# typeshed, because this file makes use of mutable type parameters.
 from typing import Any, Callable, Dict, Iterable, List, Tuple
 
 K = TypeVar("K")

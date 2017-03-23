@@ -416,12 +416,12 @@ class BuiltinTests(test_inference.InferenceTest):
       import array
       class Foo(object):
         def __init__(self):
-          self.bar = array.array('i')
+          self.bar = array.array('i', [1, 2, 3])
     """, deep=True, solve_unknowns=False)
     self.assertTypesMatchPytd(ty, """
       array = ...  # type: module
       class Foo(object):
-        bar = ...  # type: array.array
+        bar = ...  # type: array.array[int]
     """)
 
   def testInheritFromBuiltin(self):
