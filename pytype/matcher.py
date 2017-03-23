@@ -42,11 +42,15 @@ class AbstractMatcher(object):
     subst = {}
     for name, formal in formal_args:
       actual = arg_dict[name]
-      subst = self._match_value_against_type(actual, formal, subst, node, view)
-      if subst is None:
+      new_subst = self._match_value_against_type(
+          actual, formal, subst, node, view)
+      if new_subst is None:
+        # We use the previous substitution in order to report the correct
+        # expected types for type parameters.
         formal = formal.vm.annotations_util.sub_one_annotation(
-            node, formal, [{}])
+            node, formal, [subst])
         return None, abstract.BadParam(name=name, expected=formal)
+      subst = new_subst
     return utils.HashableDict(subst), None
 
   def bad_matches(self, var, other_type, node, subst=None):
@@ -126,13 +130,10 @@ class AbstractMatcher(object):
           return None
       if other_type.name in subst:
         # Merge the two variables.
-        subst = subst.copy()
         new_var = subst[other_type.name].AssignToNewVariable(node)
         new_var.AddBinding(left, [], node)
-        subst[other_type.name] = new_var
       else:
-        subst = subst.copy()
-        subst[other_type.name] = new_var = value.AssignToNewVariable(node)
+        new_var = value.AssignToNewVariable(node)
       type_key = left.get_type_key()
       # Every value with this type key produces the same result when matched
       # against other_type, so they can all be added to this substitution rather
@@ -141,6 +142,12 @@ class AbstractMatcher(object):
         if (other_value is not value and
             other_value.data.get_type_key() == type_key):
           new_var.AddBinding(other_value.data, {other_value}, node)
+      if other_type.constraints:
+        new_var = self._enforce_single_type(new_var, node)
+        if new_var is None:
+          return None
+      subst = subst.copy()
+      subst[other_type.name] = new_var
       return subst
     elif (isinstance(other_type, (abstract.Unknown, abstract.Unsolvable)) or
           isinstance(left, (abstract.Unknown, abstract.Unsolvable))):
@@ -399,3 +406,17 @@ class AbstractMatcher(object):
     else:
       raise NotImplementedError(
           "Can't match instance %r against %r", left, other_type)
+
+  def _enforce_single_type(self, var, node):
+    """Enforce that the variable contains only one concrete type."""
+    concrete_values = [v for v in var.data
+                       if not isinstance(v, abstract.AMBIGUOUS_OR_EMPTY)]
+    classes = sum((v.get_class().Data(node) for v in concrete_values), [])
+    if len(set(classes)) > 1:
+      # We require all occurrences to be of the same type, no subtyping allowed.
+      return None
+    if concrete_values and len(concrete_values) < len(var.data):
+      # We can filter out ambiguous values because we've already found the
+      # single concrete type allowed for this variable.
+      return node.program.NewVariable(concrete_values, [], node)
+    return var

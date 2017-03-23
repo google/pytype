@@ -271,7 +271,7 @@ class TypeVarTest(test_inference.InferenceTest):
       def f(x: T) -> T: ...
       v = ...  # type: Any
       w = ...  # type: bool
-      u = ...  # type: Any
+      u = ...  # type: int or float
     """)
     self.assertErrorLogIs(errors, [(6, "wrong-arg-types",
                                     r"Union\[float, int\].*str")])
@@ -302,12 +302,11 @@ class TypeVarTest(test_inference.InferenceTest):
       v1 = f(__any_object__, u"")  # ok
       v2 = f(__any_object__, 42)
     """)
-    # TODO(rechen): We should be able to infer that v1 can only be unicode.
     self.assertTypesMatchPytd(ty, """
       from typing import Any, TypeVar
       AnyStr = TypeVar("AnyStr", str, unicode)
       def f(x: AnyStr, y: AnyStr) -> AnyStr: ...
-      v1 = ...  # type: Any
+      v1 = ...  # type: unicode
       v2 = ...  # type: Any
     """)
     self.assertErrorLogIs(errors, [(6, "wrong-arg-types",
@@ -377,6 +376,84 @@ class TypeVarTest(test_inference.InferenceTest):
       _T1 = TypeVar("_T1")
       def return_either(x: _T0, y: _T1) -> Union[_T0, _T1]
       def return_arg_or_42(x: _T0) -> Union[_T0, int]
+    """)
+
+  def testConstraintMismatch(self):
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      from typing import AnyStr  # pytype: disable=not-supported-yet
+      def f(x: AnyStr, y: AnyStr): ...
+      f("", "")  # ok
+      f("", u"")
+      f(u"", u"")  # ok
+    """)
+    self.assertErrorLogIs(errors, [(5, "wrong-arg-types",
+                                    r"Expected.*y: str.*Actual.*y: unicode")])
+
+  def testConstraintSubtyping(self):
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      from typing import TypeVar  # pytype: disable=not-supported-yet
+      T = TypeVar("T", int, float)
+      def f(x: T, y: T): ...
+      f(True, False)  # ok
+      f(True, 42)
+    """)
+    self.assertErrorLogIs(errors, [(6, "wrong-arg-types",
+                                    r"Expected.*y: bool.*Actual.*y: int")])
+
+  def testFilterValue(self):
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      from typing import TypeVar  # pytype: disable=not-supported-yet
+      T = TypeVar("T", int, float)
+      def f(x: T, y: T): ...
+      x = 3
+      x = 42.0
+      f(x, 3)
+      f(x, 42.0)  # ok
+    """)
+    self.assertErrorLogIs(errors, [(7, "wrong-arg-types",
+                                    r"Expected.*y: float.*Actual.*y: int")])
+
+  def testFilterClass(self):
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      from typing import TypeVar  # pytype: disable=not-supported-yet
+      class A(object): pass
+      class B(object): pass
+      T = TypeVar("T", A, B)
+      def f(x: T, y: T): ...
+      x = A()
+      x.__class__ = B
+      f(x, A())
+      f(x, B())  # ok
+    """)
+    self.assertErrorLogIs(errors, [(9, "wrong-arg-types",
+                                    r"Expected.*y: B.*Actual.*y: A")])
+
+  def testSplit(self):
+    ty = self.Infer("""\
+      from __future__ import google_type_annotations
+      import types
+      from typing import TypeVar  # pytype: disable=not-supported-yet
+      T = TypeVar("T", int, types.NoneType)
+      def f(x: T) -> T:
+        return __any_object__
+      if __any_object__:
+        x = None
+      else:
+        x = 3
+      v = id(x) if x else 42
+    """)
+    self.assertTypesMatchPytd(ty, """
+      import types
+      from typing import Optional, TypeVar
+      types = ...  # type: module
+      v = ...  # type: int
+      x = ...  # type: Optional[int]
+      T = TypeVar("T", int, types.NoneType)
+      def f(x: T) -> T: ...
     """)
 
 

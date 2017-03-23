@@ -33,7 +33,9 @@ class AnnotationsUtil(object):
   def sub_one_annotation(self, node, annot, substs):
     """Apply type parameter substitutions to an annotation."""
     if isinstance(annot, abstract.TypeParameter):
-      if all(annot.name in subst and subst[annot.name].bindings
+      if all(annot.name in subst and subst[annot.name].bindings and
+             not any(isinstance(v, abstract.AMBIGUOUS_OR_EMPTY)
+                     for v in subst[annot.name].data)
              for subst in substs):
         vals = sum((subst[annot.name].data for subst in substs), [])
       else:
