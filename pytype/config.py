@@ -61,6 +61,10 @@ class Options(object):
                "file1.py[:file1.pyi] [file2.py:file2.pyi [...]]"),
         description="Infer/check types in a Python module")
     o.add_option(
+        "--abort-on-complex", action="store_true",
+        dest="abort_on_complex", default=False,
+        help=("Ignored."))
+    o.add_option(
         "-B", "--builtins", type="string", action="store",
         dest="pybuiltins_filename", default=None,
         help=("Use user-supplied custom definition of __builtin__.py "
@@ -87,11 +91,6 @@ class Options(object):
         dest="generate_builtins", default=None,
         help="Precompile builtins pytd and write to the given file.")
     o.add_option(
-        "--read-pyi-save-pickle", type="string", action="store",
-        dest="read_pyi_save_pickle",
-        help=("Loads a PYI file and saves the contained abstract syntax tree "
-              "as pickled information, to the provided filename."))
-    o.add_option(
         "--imports_info", type="string", action="store",
         dest="imports_info", default=None,
         help=("Information for mapping import .pytd to files. "
@@ -109,17 +108,26 @@ class Options(object):
         dest="metrics", default=None,
         help="Write a metrics report to the specified file.")
     o.add_option(
-        "--no-native-builtins", action="store_false",
-        dest="run_builtins", default=True,
-        help=("Run the program without the native Python builtins preloaded."))
-    o.add_option(
         "-N", "--no-cache-unknowns", action="store_false",
         dest="cache_unknowns", default=True,
         help="Do slower and more precise processing of unknown types.")
     o.add_option(
+        "--no-native-builtins", action="store_false",
+        dest="run_builtins", default=True,
+        help=("Run the program without the native Python builtins preloaded."))
+    o.add_option(
+        "--no-report-errors", action="store_false",
+        dest="report_errors", default=True,
+        help=("Don't report errors. Only generate a .pyi."))
+    o.add_option(
         "--no-skip-calls", action="store_false",
         dest="skip_repeat_calls", default=True,
         help=("Don't reuse the results of previous function calls."))
+    o.add_option(
+        "-T", "--no-typeshed", action="store_false",
+        dest="typeshed", default=True,
+        help=("Do not use typeshed to look up types in the Python stdlib. "
+              "For testing."))
     o.add_option(
         "--nofail", action="store_true",
         dest="nofail", default=False,
@@ -161,14 +169,6 @@ class Options(object):
               "that is running pytype. If not specified, --python_version is "
               "used to create the name of an interpreter."))
     o.add_option(
-        "--touch", type="string", action="store",
-        dest="touch", default=None,
-        help="Output file to touch when exit status is ok.")
-    o.add_option(
-        "-V", "--python_version", type="string", action="store",
-        dest="python_version", default="2.7",
-        help=("Python version to emulate (\"major.minor\", e.g. \"2.7\")"))
-    o.add_option(
         "-P", "--pythonpath", type="string", action="store",
         dest="pythonpath", default="",
         help=("Directories for reading dependencies - a list of paths "
@@ -182,28 +182,28 @@ class Options(object):
               "--pythonpath. This option is incompatible with "
               "--imports_info.") % os.pathsep)
     o.add_option(
-        "-Z", "--quick", action="store_true",
-        dest="quick",
-        help=("Only do an approximation."))
+        "--read-pyi-save-pickle", type="string", action="store",
+        dest="read_pyi_save_pickle",
+        help=("Loads a PYI file and saves the contained abstract syntax tree "
+              "as pickled information, to the provided filename."))
     o.add_option(
-        "-T", "--no-typeshed", action="store_false",
-        dest="typeshed", default=True,
-        help=("Do not use typeshed to look up types in the Python stdlib. "
-              "For testing."))
+        "--touch", type="string", action="store",
+        dest="touch", default=None,
+        help="Output file to touch when exit status is ok.")
     o.add_option(
-        "--no-report-errors", action="store_false",
-        dest="report_errors", default=True,
-        help=("Don't report errors. Only generate a .pyi."))
-    o.add_option(
-        "--abort-on-complex", action="store_true",
-        dest="abort_on_complex", default=False,
-        help=("Ignored."))
+        "-V", "--python_version", type="string", action="store",
+        dest="python_version", default="2.7",
+        help=("Python version to emulate (\"major.minor\", e.g. \"2.7\")"))
     o.add_option(
         # Not stored, just used to configure logging.
         "-v", "--verbosity", type="int", action="store",
         dest="verbosity", default=1,
         help=("Set logging verbosity: "
               "-1=quiet, 0=fatal, 1=error (default), 2=warn, 3=info, 4=debug"))
+    o.add_option(
+        "-Z", "--quick", action="store_true",
+        dest="quick",
+        help=("Only do an approximation."))
     return o
 
   def _postprocess_options(self, option_list, arguments):
