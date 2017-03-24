@@ -227,8 +227,8 @@ class Pattern(Generic[AnyStr]):
   def split(self, string: AnyStr, maxsplit: int = ...) -> List[AnyStr]
   def findall(self, string: AnyStr, pos: int = ..., endpos: int = ...) -> List[?]: ...
   def finditer(self, string: AnyStr, pos: int = ..., endpos: int = ...) -> Iterator[Match[AnyStr]]
-  def sub(self, repl: AnyStr, string: AnyStr, count: int = ...) -> AnyStr: ...
-  def subn(self, repl: AnyStr, string: AnyStr, count: int = ...) -> Tuple[AnyStr, int]
+  def sub(self, repl: AnyStr or Callable, string: AnyStr, count: int = ...) -> AnyStr: ...
+  def subn(self, repl: AnyStr or Callable, string: AnyStr, count: int = ...) -> Tuple[AnyStr, int]
 
 
 class Match(Generic[AnyStr]):

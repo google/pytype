@@ -123,6 +123,14 @@ class StdlibTests(test_inference.InferenceTest):
       del os.environ['hello']
     """)
 
+  def testStdlib(self):
+    self.assertNoErrors("""
+      import re
+      s = "the quick brown fox jumps over the lazy dog"
+      word = re.compile(r"\\w*")
+      print word.sub(lambda x: '<'+x.group(0)+'>', s)
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()
