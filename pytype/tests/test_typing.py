@@ -273,6 +273,24 @@ class TypingTest(test_inference.InferenceTest):
       class Foo(Iterable): ...
     """)
 
+  def testTypeChecking(self):
+    self.assertNoErrors("""\
+      import typing
+      if typing.TYPE_CHECKING:
+          pass
+      else:
+          name_error
+    """)
+
+  def testNotTypeChecking(self):
+    self.assertNoErrors("""\
+      import typing
+      if not typing.TYPE_CHECKING:
+          name_error
+      else:
+          pass
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

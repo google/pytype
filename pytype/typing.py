@@ -146,6 +146,11 @@ def build_generic(name, vm):
   return vm.convert.unsolvable
 
 
+def build_typechecking(name, vm):
+  del name
+  return vm.convert.true
+
+
 typing_overload = {
     "Any": build_any,
     "Callable": Callable,
@@ -154,4 +159,5 @@ typing_overload = {
     "Optional": build_optional,
     "TypeVar": TypeVar,
     "Union": Union,
+    "TYPE_CHECKING": build_typechecking,
 }
