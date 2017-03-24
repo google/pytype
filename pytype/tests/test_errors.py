@@ -887,6 +887,12 @@ class ErrorTest(test_inference.InferenceTest):
     """)
     self.assertErrorLogIs(errors, [(4, "wrong-arg-types", r"str.*Foo")])
 
+  def testCallNone(self):
+    _, errors = self.InferAndCheck("""\
+      None()
+    """)
+    self.assertErrorLogIs(errors, [(1, "none-attr")])
+
 
 if __name__ == "__main__":
   test_inference.main()

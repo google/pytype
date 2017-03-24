@@ -375,6 +375,12 @@ class ErrorLog(ErrorLogBase):
     message = "%r object is not callable" % (function.name)
     self.error(opcode, message)
 
+  @_error_name("none-attr")  # None doesn't have attribute '__call__'
+  def none_not_callable(self, opcode, function):
+    """Calling None."""
+    message = "%r object isn't callable" % (function.name)
+    self.error(opcode, message)
+
   @_error_name("duplicate-keyword-argument")
   def duplicate_keyword(self, opcode, name, bad_call, duplicate):
     message = ("function %s got multiple values for keyword argument %r" %
@@ -392,6 +398,8 @@ class ErrorLog(ErrorLogBase):
     elif isinstance(error, abstract.MissingParameter):
       self.missing_parameter(
           opcode, error.name, error.bad_call, error.missing_parameter)
+    elif isinstance(error, abstract.NoneNotCallable):
+      self.none_not_callable(opcode, error.obj)
     elif isinstance(error, abstract.NotCallable):
       self.not_callable(opcode, error.obj)
     elif isinstance(error, abstract.DuplicateKeyword):

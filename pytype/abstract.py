@@ -610,6 +610,8 @@ class SimpleAbstractValue(AtomicAbstractValue):
         node, self, "__call__", self_var.bindings[0])
     if var is not None and var.bindings:
       return self.vm.call_function(node, var, args)
+    elif self.cls and self.cls.data == self.vm.convert.none_type.data:
+      raise NoneNotCallable(self)
     else:
       raise NotCallable(self)
 
@@ -1146,6 +1148,10 @@ class NotCallable(FailedFunctionCall):
   def __init__(self, obj):
     super(NotCallable, self).__init__()
     self.obj = obj
+
+
+class NoneNotCallable(NotCallable):
+  """When trying to call None."""
 
 
 BadCall = collections.namedtuple("_", ["sig", "passed_args", "bad_param"])
