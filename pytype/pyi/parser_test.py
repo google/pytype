@@ -458,6 +458,16 @@ class FunctionTest(_ParserTestBase):
     self.check_error("def foo(*, ...) -> int: ...", 1,
                      "ellipsis (...) not compatible with bare *")
 
+  def test_typeignore(self):
+    self.check("def foo() -> int:  # type: ignore\n  ...",
+               "def foo() -> int: ...")
+    self.check("def foo() -> int: ...  # type: ignore",
+               "def foo() -> int: ...")
+    self.check("def foo() -> int: pass  # type: ignore",
+               "def foo() -> int: ...")
+    self.check("def foo(x) -> int: # type: ignore\n  x:=List[int]",
+               "def foo(x) -> int:\n    x := List[int]")
+
   def test_decorators(self):
     # sense for methods of classes.  But this at least gives us some coverage
     # of the decorator logic.  More sensible tests can be created once classes

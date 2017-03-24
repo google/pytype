@@ -476,13 +476,21 @@ return
   | /* EMPTY */ { $$ = ctx->Value(kAnything); }
   ;
 
+typeignore
+  : TYPECOMMENT NAME { Py_DecRef($2); }
+  ;
+
 maybe_body
-  : ':' INDENT body DEDENT { $$ = $3; }
+  : ':' typeignore INDENT body DEDENT { $$ = $4; }
+  | ':' INDENT body DEDENT { $$ = $3; }
   | empty_body { $$ = PyList_New(0); }
   ;
 
 empty_body
   : ':' pass_or_ellipsis
+  | ':' pass_or_ellipsis typeignore
+  | ':' typeignore pass_or_ellipsis
+  | ':' typeignore INDENT pass_or_ellipsis DEDENT
   | ':' INDENT pass_or_ellipsis DEDENT
   | ':' INDENT TRIPLEQUOTED DEDENT
   | /* EMPTY */
