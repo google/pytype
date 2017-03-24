@@ -368,6 +368,9 @@ class AnythingType(node.Node(), Type):
   """A type we know nothing about yet ('?' in pytd)."""
   __slots__ = ()
 
+  def __nonzero__(self):
+    return True
+
 
 class NothingType(node.Node(), Type):
   """An "impossible" type, with no instances ('nothing' in pytd).
@@ -376,6 +379,9 @@ class NothingType(node.Node(), Type):
   For representing empty lists, and functions that never return.
   """
   __slots__ = ()
+
+  def __nonzero__(self):
+    return True
 
 
 class UnionType(node.Node('type_list: tuple[{Type}]'), Type):

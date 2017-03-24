@@ -97,5 +97,10 @@ class TestPytd(unittest.TestCase):
     self.assertTrue(tree2.ASTeq(tree1))
     self.assertTrue(tree2.ASTeq(tree2))
 
+  def testEmptyNodesAreTrue(self):
+    self.assertTrue(pytd.AnythingType())
+    self.assertTrue(pytd.NothingType())
+
+
 if __name__ == "__main__":
   unittest.main()
