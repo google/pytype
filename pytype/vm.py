@@ -1371,6 +1371,37 @@ class VirtualMachine(object):
     locals_dict = self.frame.f_locals.to_variable(self.root_cfg_node)
     return state.push(locals_dict)
 
+  def _cmp_eq(self, state, x, y, eq=True):
+    """Implementation of CMP_EQ/CMP_NE.
+
+    Args:
+      state: Initial FrameState.
+      x: A variable of the lhs value.
+      y: A variable of the rhs value.
+      eq: True or False (indicates which value to return when x == y).
+
+    Returns:
+      A tuple of the new FrameState and the return variable.
+    """
+    ret = self.program.NewVariable()
+    # A variable of the values without a special cmp_eq implementation. Needed
+    # because overloaded __eq__ implementations do not necessarily return a
+    # bool; see, e.g., test_overloaded in test_cmp.
+    leftover = self.program.NewVariable()
+    for b1 in x.bindings:
+      for b2 in y.bindings:
+        val = b1.data.cmp_eq(b2.data)
+        if val is None:
+          leftover.AddBinding(b1.data, {b1}, state.node)
+        else:
+          ret.AddBinding(
+              self.convert.bool_values[val is eq], {b1, b2}, state.node)
+    if leftover.bindings:
+      op = "__eq__" if eq else "__ne__"
+      state, leftover_ret = self.call_binary_operator(state, op, leftover, y)
+      ret.PasteVariable(leftover_ret, state.node)
+    return state, ret
+
   def byte_COMPARE_OP(self, state, op):
     """Pops and compares the top two stack values and pushes a boolean."""
     state, (x, y) = state.popn(2)
@@ -1381,9 +1412,9 @@ class VirtualMachine(object):
     elif op.arg == slots.CMP_LE:
       state, ret = self.call_binary_operator(state, "__le__", x, y)
     elif op.arg == slots.CMP_EQ:
-      state, ret = self.call_binary_operator(state, "__eq__", x, y)
+      state, ret = self._cmp_eq(state, x, y)
     elif op.arg == slots.CMP_NE:
-      state, ret = self.call_binary_operator(state, "__ne__", x, y)
+      state, ret = self._cmp_eq(state, x, y, eq=False)
     elif op.arg == slots.CMP_GT:
       state, ret = self.call_binary_operator(state, "__gt__", x, y)
     elif op.arg == slots.CMP_GE:

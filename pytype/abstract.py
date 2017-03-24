@@ -378,6 +378,10 @@ class AtomicAbstractValue(object):
     """Update the official name."""
     pass
 
+  def cmp_eq(self, _):
+    """Do special handling of the equality operator."""
+    return None
+
 
 class Empty(AtomicAbstractValue):
   """An empty value.
@@ -442,11 +446,18 @@ class PythonConstant(object):
   """
 
   __metaclass__ = MixinMeta
-  overloads = ("compatible_with",)
+  overloads = ("cmp_eq", "compatible_with",)
 
   def init_mixin(self, pyval):
     """Mix-in equivalent of __init__."""
     self.pyval = pyval
+
+  def cmp_eq(self, other):
+    if (self.pyval.__class__ in self.vm.convert.primitive_classes and
+        isinstance(other, PythonConstant) and
+        other.pyval.__class__ in self.vm.convert.primitive_classes):
+      return self.pyval == other.pyval
+    return None
 
   def compatible_with(self, logical_value):
     return bool(self.pyval) == logical_value
@@ -813,6 +824,11 @@ class Tuple(Instance, HasSlots, PythonConstant):
         return node, self.pyval[index]
     return self.call_pytd(node, "__getitem__", index_var)
 
+  def cmp_eq(self, other):
+    if isinstance(other, Tuple) and len(self.pyval) != len(other.pyval):
+      return False
+    return None
+
   def _unique_parameters(self):
     parameters = super(Tuple, self)._unique_parameters()
     parameters.extend(self.pyval)
@@ -930,6 +946,13 @@ class Dict(Instance, HasSlots, PythonConstant, WrapsDict("pyval")):
     else:
       assert isinstance(other_dict, AtomicAbstractValue)
       return False
+
+  def cmp_eq(self, other):
+    if (not self.could_contain_anything and isinstance(other, Dict) and
+        not other.could_contain_anything and
+        set(self.pyval) != set(other.pyval)):
+      return False
+    return None
 
   def compatible_with(self, logical_value):
     if self.could_contain_anything:

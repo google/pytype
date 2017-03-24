@@ -560,6 +560,74 @@ class SplitTest(test_inference.InferenceTest):
         return foo
     """)
 
+  def testDictEq(self):
+    ty = self.Infer("""
+      if __any_object__:
+        x = {"a": 1}
+        z = 42
+      else:
+        x = {"b": 1}
+        z = 42j
+      y = {"b": 1}
+      if x == y:
+        v1 = z
+      if x != y:
+        v2 = z
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Dict
+      x = ...  # type: Dict[str, int]
+      y = ...  # type: Dict[str, int]
+      z = ...  # type: int or complex
+      v1 = ...  # type: complex
+      v2 = ...  # type: int or complex
+    """)
+
+  def testTupleEq(self):
+    ty = self.Infer("""
+      if __any_object__:
+        x = (1,)
+        z = ""
+      else:
+        x = (1, 2)
+        z = 3.14
+      y = (1, 2)
+      if x == y:
+        v1 = z
+      if x != y:
+        v2 = z
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Tuple
+      x = ...  # type: Tuple[int, ...]
+      y = ...  # type: Tuple[int, int]
+      z = ...  # type: str or float
+      v1 = ...  # type: float
+      v2 = ...  # type: str or float
+    """)
+
+  def testPrimitiveEq(self):
+    ty = self.Infer("""
+      if __any_object__:
+        x = "a"
+        z = 42
+      else:
+        x = "b"
+        z = 3.14
+      y = "a"
+      if x == y:
+        v1 = z
+      if x != y:
+        v2 = z
+    """)
+    self.assertTypesMatchPytd(ty, """
+      x = ...  # type: str
+      y = ...  # type: str
+      z = ...  # type: int or float
+      v1 = ...  # type: int
+      v2 = ...  # type: float
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()
