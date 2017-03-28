@@ -9,6 +9,7 @@ from pytype import errors
 from pytype import exceptions
 from pytype import function
 from pytype import infer
+from pytype import load_pytd
 from pytype import vm
 from pytype.pytd import cfg
 from pytype.pytd import pytd
@@ -25,7 +26,9 @@ class FakeFrame(object):
 class AbstractTestBase(unittest.TestCase):
 
   def setUp(self):
-    self._vm = vm.VirtualMachine(errors.ErrorLog(), config.Options([""]))
+    options = config.Options([""])
+    self._vm = vm.VirtualMachine(
+        errors.ErrorLog(), options, load_pytd.Loader(None, options))
     self._program = cfg.Program()
     self._node = self._vm.root_cfg_node.ConnectNew("test_node")
 

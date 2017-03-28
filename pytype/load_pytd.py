@@ -4,6 +4,7 @@ import logging
 import os
 
 
+from pytype.pytd import serialize_ast
 from pytype.pytd import typeshed
 from pytype.pytd import utils as pytd_utils
 from pytype.pytd.parse import builtins
@@ -115,8 +116,11 @@ class Loader(object):
     module = Module(module_name, filename, ast)
     self._modules[module_name] = module
     try:
-      module.ast = self._load_and_resolve_ast_dependencies(module.ast,
-                                                           module_name)
+      dependencies = self._collect_ast_dependencies(ast)
+      if dependencies:
+        self._load_ast_dependencies(dependencies, ast)
+        module.ast = self._resolve_external_types(ast)
+
       # Now that any imported TypeVar instances have been resolved, adjust type
       # parameters in classes and functions.
       module.ast = module.ast.Visit(visitors.AdjustTypeParameters())
@@ -133,29 +137,32 @@ class Loader(object):
       raise
     return module.ast
 
-  def _load_and_resolve_ast_dependencies(self, ast, ast_name=None):
-    """Fill in all ClassType.cls pointers."""
+  def _collect_ast_dependencies(self, ast):
+    """Goes over an ast and returns all references module names."""
     deps = visitors.CollectDependencies()
     ast.Visit(deps)
-    if deps.modules:
-      for name in deps.modules:
+    return deps.modules
+
+  def _load_ast_dependencies(self, dependencies, ast, ast_name=None):
+    """Fill in all ClassType.cls pointers."""
+    if dependencies:
+      for name in dependencies:
         if name not in self._modules:
           other_ast = self._import_name(name)
           if other_ast is None:
             error = "Can't find pyi for %r" % name
             raise BadDependencyError(error, ast_name or ast.name)
-      module_map = {name: module.ast
-                    for name, module in self._modules.items()}
-      try:
-        ast = ast.Visit(visitors.LookupExternalTypes(
-            module_map, full_names=True, self_name=ast_name))
-      except KeyError as e:
-        raise BadDependencyError(e.message, ast_name or ast.name)
+
+  def _resolve_external_types(self, ast):
+    try:
+      ast = ast.Visit(visitors.LookupExternalTypes(
+          self._get_module_map(), full_names=True, self_name=ast.name))
+    except KeyError as e:
+      raise BadDependencyError(e.message, ast.name)
     return ast
 
   def _finish_ast(self, ast):
-    module_map = {name: module.ast
-                  for name, module in self._modules.items()}
+    module_map = self._get_module_map()
     module_map[""] = ast  # The module itself (local lookup)
     ast.Visit(visitors.FillInModuleClasses(module_map))
 
@@ -169,7 +176,10 @@ class Loader(object):
   def resolve_ast(self, ast):
     """Resolve the dependencies of an AST, without adding it to our modules."""
     ast = self._postprocess_pyi(ast)
-    ast = self._load_and_resolve_ast_dependencies(ast)
+    dependencies = self._collect_ast_dependencies(ast)
+    if dependencies:
+      self._load_ast_dependencies(dependencies, ast)
+      ast = self._resolve_external_types(ast)
     self._lookup_all_classes()
     self._finish_ast(ast)
     self._verify_ast(ast)
@@ -352,3 +362,32 @@ class Loader(object):
           *(module.ast for module in self._modules.values()),
           name="<all>")
     return self._concatenated
+
+  def _get_module_map(self):
+    return {name: module.ast for name, module in self._modules.items()}
+
+
+class PickledPyiLoader(Loader):
+  """A Loader which always loads pickle instead of PYI, for speed."""
+
+  def __init__(self, *args, **kwargs):
+    super(PickledPyiLoader, self).__init__(*args, **kwargs)
+
+  def load_file(self, module_name, filename, ast=None):
+    """Load (or retrieve from cache) a module and resolve its dependencies."""
+    if ast:
+      return super(PickledPyiLoader, self).load_file(module_name, filename, ast)
+    filename += ".pickled"
+    loaded_ast = serialize_ast.LoadPickle(filename)
+    # At this point ast.name and module_name could be different.
+    # They are later synced in ProcessAst.
+    dependencies = [d for d in loaded_ast.dependencies
+                    if d != loaded_ast.ast.name]
+    self._load_ast_dependencies(dependencies, ast, module_name)
+    try:
+      ast = serialize_ast.ProcessAst(
+          loaded_ast, self._get_module_map(), module_name)
+    except serialize_ast.UnrestorableDependencyError as e:
+      raise BadDependencyError(e.message, ast.name)
+    self._modules[module_name] = Module(module_name, filename, ast)
+    return ast

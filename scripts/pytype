@@ -39,9 +39,11 @@ def check_pyi(input_filename, output_filename, errorlog, options):
       pyi_src = fi.read()
   else:
     pyi_src = None
+
   infer.check_types(
-      py_src,
-      pyi_src,
+      py_src=py_src,
+      pytd_src=pyi_src,
+      loader=_create_loader(input_filename, options),
       py_filename=input_filename,
       pytd_filename=output_filename,
       errorlog=errorlog,
@@ -49,6 +51,16 @@ def check_pyi(input_filename, output_filename, errorlog, options):
       run_builtins=options.run_builtins,
       deep=not options.main_only,
       cache_unknowns=options.cache_unknowns)
+
+
+def _create_loader(input_filename, options):
+  module_name = infer.get_module_name(input_filename, options)
+  if options.use_pickled_files:
+    return load_pytd.PickledPyiLoader(
+        base_module=module_name, options=options)
+  else:
+    return load_pytd.Loader(
+        base_module=module_name, options=options)
 
 
 def generate_pyi(input_filename, errorlog, options):
@@ -69,9 +81,10 @@ def generate_pyi(input_filename, errorlog, options):
     src = fi.read()
 
   mod, builtins = infer.infer_types(
-      src,
+      src=src,
       errorlog=errorlog,
       options=options,
+      loader=_create_loader(input_filename, options),
       filename=input_filename,
       run_builtins=options.run_builtins,
       deep=not options.main_only,
@@ -199,6 +212,9 @@ def _save_serialized_ast(options):
   Returns:
     True on sucess or False if the file could not be generated, serialized or
     saved for any reason.
+
+  Raises:
+    ValueError: If options.module_name is not set.
   """
   loader = load_pytd.Loader(base_module=None, options=options)
   ast = loader.load_file(options.module_name, options.input)

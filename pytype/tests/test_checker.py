@@ -5,6 +5,7 @@ import textwrap
 from pytype import config
 from pytype import errors
 from pytype import infer
+from pytype import load_pytd
 from pytype.tests import test_inference
 
 
@@ -15,8 +16,10 @@ class CheckerTest(test_inference.InferenceTest):
     options = config.Options.create(python_version=self.PYTHON_VERSION,
                                     python_exe=self.PYTHON_EXE)
     errorlog = errors.ErrorLog()
+    loader = load_pytd.Loader(self.options.module_name, self.options)
     infer.check_types(py_src=textwrap.dedent(python),
                       pytd_src=None if pytd is None else textwrap.dedent(pytd),
+                      loader=loader,
                       py_filename="<inline>",
                       pytd_filename="<inline>",
                       errorlog=errorlog,

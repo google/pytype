@@ -10,6 +10,7 @@ import textwrap
 from pytype import config
 from pytype import errors
 from pytype import infer
+from pytype import load_pytd
 from pytype.pyc import loadmarshal
 from pytype.pyi import parser
 from pytype.pytd import optimize
@@ -38,6 +39,7 @@ class InferenceTest(unittest.TestCase):
   def setUp(self):
     self.options = config.Options.create(python_version=self.PYTHON_VERSION,
                                          python_exe=self.PYTHON_EXE)
+
     def t(name):  # pylint: disable=invalid-name
       return pytd.ClassType("__builtin__." + name)
     self.bool = t("bool")
@@ -112,8 +114,9 @@ class InferenceTest(unittest.TestCase):
       log.warning("Ignoring 'raises' parameter to assertNoErrors")
     self.options.tweak(pythonpath=pythonpath)
     errorlog = errors.ErrorLog()
+    loader = load_pytd.Loader(self.options.module_name, self.options)
     infer.check_types(
-        textwrap.dedent(code), None, None, None,
+        textwrap.dedent(code), None, None, None, loader=loader,
         errorlog=errorlog, options=self.options,
         cache_unknowns=True)
     if report_errors and len(errorlog):
@@ -127,9 +130,10 @@ class InferenceTest(unittest.TestCase):
     self.options.tweak(pythonpath=pythonpath)
     code = textwrap.dedent(code)
     errorlog = errors.ErrorLog()
+    loader = load_pytd.Loader(self.options.module_name, self.options)
     unit, builtins_pytd = infer.infer_types(
-        code, errorlog, self.options, deep=deep, analyze_annotated=True,
-        cache_unknowns=True, **kwargs)
+        code, errorlog, self.options, loader=loader, deep=deep,
+        analyze_annotated=True, cache_unknowns=True, **kwargs)
     unit.Visit(visitors.VerifyVisitor())
     unit = optimize.Optimize(unit, builtins_pytd, lossy=False, use_abcs=False,
                              max_union=7, remove_mutable=False)
@@ -140,7 +144,9 @@ class InferenceTest(unittest.TestCase):
     with open(filename, "rb") as fi:
       code = fi.read()
       errorlog = errors.ErrorLog()
-      unit, _ = infer.infer_types(code, errorlog, self.options,
+      loader = load_pytd.Loader(
+          infer.get_module_name(filename, self.options), self.options)
+      unit, _ = infer.infer_types(code, errorlog, self.options, loader=loader,
                                   filename=filename, cache_unknowns=True)
       unit.Visit(visitors.VerifyVisitor())
       return pytd_utils.CanonicalOrdering(unit)
@@ -317,8 +323,9 @@ class InferenceTest(unittest.TestCase):
                        imports_map=imports_map,
                        quick=quick)
     errorlog = errors.ErrorLog()
+    loader = load_pytd.Loader(self.options.module_name, self.options)
     unit, builtins_pytd = infer.infer_types(
-        src, errorlog, self.options, **kwargs)
+        src, errorlog, self.options, loader=loader, **kwargs)
     unit.Visit(visitors.VerifyVisitor())
     unit = pytd_utils.CanonicalOrdering(unit)
     if report_errors and len(errorlog):

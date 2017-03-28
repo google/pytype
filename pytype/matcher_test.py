@@ -4,6 +4,7 @@
 from pytype import abstract
 from pytype import config
 from pytype import errors
+from pytype import load_pytd
 from pytype import utils
 from pytype import vm
 
@@ -14,7 +15,9 @@ class MatcherTest(unittest.TestCase):
   """Test matcher.AbstractMatcher."""
 
   def setUp(self):
-    self.vm = vm.VirtualMachine(errors.ErrorLog(), config.Options([""]))
+    options = config.Options([""])
+    self.vm = vm.VirtualMachine(
+        errors.ErrorLog(), options, load_pytd.Loader(None, options))
     self.type_type = abstract.get_atomic_value(self.vm.convert.type_type)
 
   def _make_class(self, name):

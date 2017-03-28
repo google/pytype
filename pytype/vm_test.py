@@ -7,6 +7,7 @@ import textwrap
 from pytype import blocks
 from pytype import config
 from pytype import errors
+from pytype import load_pytd
 from pytype import vm
 from pytype.pyc import pyc
 from pytype.pytd import cfg
@@ -16,8 +17,8 @@ from pytype.tests import test_inference
 class TraceVM(vm.VirtualMachine):
   """Special VM that remembers which instructions it executed."""
 
-  def __init__(self, options):
-    super(TraceVM, self).__init__(errors.ErrorLog(), options)
+  def __init__(self, options, loader):
+    super(TraceVM, self).__init__(errors.ErrorLog(), options, loader=loader)
     # There are multiple possible orderings of the basic blocks of the code, so
     # we collect the instructions in an order-independent way:
     self.instructions_executed = set()
@@ -43,7 +44,8 @@ class BytecodeTest(test_inference.InferenceTest):
     self.options = config.Options.create(python_version=self.PYTHON_VERSION,
                                          python_exe=self.PYTHON_EXE)
     self.errorlog = errors.ErrorLog()
-    self.trace_vm = TraceVM(self.options)
+    self.loader = load_pytd.Loader(None, self.options)
+    self.trace_vm = TraceVM(self.options, self.loader)
 
   def test_simple(self):
     program = cfg.Program()
@@ -54,7 +56,7 @@ class BytecodeTest(test_inference.InferenceTest):
         0x53,  # 3 RETURN_VALUE
     ], name="simple")
     code = blocks.process_code(code)
-    v = vm.VirtualMachine(self.errorlog, self.options)
+    v = vm.VirtualMachine(self.errorlog, self.options, loader=self.loader)
     v.run_bytecode(program.NewCFGNode(), code)
 
   def test_diamond(self):
@@ -87,7 +89,7 @@ class BytecodeTest(test_inference.InferenceTest):
         0x53,         # 48 RETURN_VALUE
     ])
     code = blocks.process_code(code)
-    v = vm.VirtualMachine(self.errorlog, self.options)
+    v = vm.VirtualMachine(self.errorlog, self.options, loader=self.loader)
     v.run_bytecode(program.NewCFGNode(), code)
 
   src_nested_loop = textwrap.dedent("""

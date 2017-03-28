@@ -617,7 +617,7 @@ def program_to_dot(program, ignored, only_cfg=False):
   return sb.getvalue()
 
 
-def _get_module_name(filename, options):
+def get_module_name(filename, options):
   """Return, or try to reverse-engineer, the name of the module we're analyzing.
 
   If a module was passed using --module-name, that name will be returned.
@@ -647,17 +647,18 @@ def _get_module_name(filename, options):
 
 
 def check_types(py_src, pytd_src, py_filename, pytd_filename, errorlog,
-                options,
+                options, loader,
                 run_builtins=True,
                 deep=True,
                 cache_unknowns=False,
                 init_maximum_depth=INIT_MAXIMUM_DEPTH):
   """Verify a PyTD against the Python code."""
   tracer = CallTracer(errorlog=errorlog, options=options,
-                      module_name=_get_module_name(py_filename, options),
+                      module_name=get_module_name(py_filename, options),
                       cache_unknowns=cache_unknowns,
                       analyze_annotated=True,
-                      generate_unknowns=False)
+                      generate_unknowns=False,
+                      loader=loader)
   loc, defs = tracer.run_program(
       py_src, py_filename, init_maximum_depth, run_builtins)
   if pytd_src is not None:
@@ -673,8 +674,7 @@ def check_types(py_src, pytd_src, py_filename, pytd_filename, errorlog,
   _maybe_output_debug(options, tracer.program)
 
 
-def infer_types(src,
-                errorlog, options,
+def infer_types(src, errorlog, options, loader,
                 filename=None, run_builtins=True,
                 deep=True, solve_unknowns=True,
                 cache_unknowns=False, show_library_calls=False,
@@ -686,6 +686,7 @@ def infer_types(src,
     src: A string containing Python source code.
     errorlog: Where error messages go. Instance of errors.ErrorLog.
     options: config.Options object
+    loader: A load_pytd.Loader instance to load PYI information.
     filename: Filename of the program we're parsing.
     run_builtins: Whether to preload the native Python builtins when running
       the program.
@@ -704,11 +705,11 @@ def infer_types(src,
     AssertionError: In case of a bad parameter combination.
   """
   tracer = CallTracer(errorlog=errorlog, options=options,
-                      module_name=_get_module_name(filename, options),
+                      module_name=get_module_name(filename, options),
                       cache_unknowns=cache_unknowns,
                       analyze_annotated=analyze_annotated,
                       generate_unknowns=not options.quick,
-                      store_all_calls=not deep)
+                      store_all_calls=not deep, loader=loader)
   loc, defs = tracer.run_program(
       src, filename, init_maximum_depth, run_builtins)
   log.info("===Done running definitions and module-level code===")

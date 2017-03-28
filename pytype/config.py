@@ -169,6 +169,10 @@ class Options(object):
               "that is running pytype. If not specified, --python_version is "
               "used to create the name of an interpreter."))
     o.add_option(
+        "--use-pickled-files", action="store_true", default=False,
+        dest="use_pickled_files",
+        help=("Use pickled pyi files instead of pyi files."))
+    o.add_option(
         "-P", "--pythonpath", type="string", action="store",
         dest="pythonpath", default="",
         help=("Directories for reading dependencies - a list of paths "
@@ -251,6 +255,13 @@ class Options(object):
         value = node.processor(value)
       else:
         setattr(self, node.name, value)
+
+  @uses(["module_name"])
+  def _store_read_pyi_save_pickle(self, read_pyi_save_pickle):
+    if read_pyi_save_pickle and not self.module_name:
+      raise OptParseError(
+          "--module-name must be set, for pickling and saving an AST.")
+    self.read_pyi_save_pickle = read_pyi_save_pickle
 
   def _store_verbosity(self, verbosity):
     """Configure logging."""

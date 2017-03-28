@@ -326,8 +326,8 @@ class ClassType(node.Node('name: str'), Type):
 
   def Replace(self, *kwargs):
     raise NotImplementedError(
-        "Instances of this class need to be created with __init__(), "
-        "otherwise __new__ is not executed.")
+        'Instances of this class need to be created with __init__(), '
+        'otherwise __new__ is not executed.')
 
   def __getnewargs__(self):
     # Due to a peculiarity of cPickle, the new args cannot have references back

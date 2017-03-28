@@ -4,6 +4,7 @@
 from pytype import abstract
 from pytype import config
 from pytype import errors
+from pytype import load_pytd
 from pytype import utils
 from pytype import vm
 
@@ -13,7 +14,9 @@ import unittest
 class ConvertTest(unittest.TestCase):
 
   def setUp(self):
-    self._vm = vm.VirtualMachine(errors.ErrorLog(), config.Options([""]))
+    options = config.Options([""])
+    self._vm = vm.VirtualMachine(
+        errors.ErrorLog(), options, load_pytd.Loader(None, options))
 
   def _load_ast(self, name, src):
     with utils.Tempdir() as d:
