@@ -1,6 +1,6 @@
 """Tests for load_pytd.py."""
 
-import unittest
+import os
 
 from pytype import config
 from pytype import load_pytd
@@ -59,13 +59,20 @@ class ImportPathsTest(unittest.TestCase):
       self.assertEquals("__builtin__.int", mod.Lookup("foo.x").type.cls.name)
       self.assertEquals("__builtin__.int", mod.Lookup("foo.x").type.name)
 
-  @unittest.skip("automatic creation of __init__ only works with imports_map")
   def testNoInit(self):
     with utils.Tempdir() as d:
       d.create_directory("baz")
       self.options.tweak(pythonpath=[d.path])
       loader = load_pytd.Loader("base", self.options)
       self.assertTrue(loader.import_name("baz"))
+
+  def testNoInitImportsMap(self):
+    with utils.Tempdir() as d:
+      d.create_directory("baz")
+      self.options.imports_map = {}
+      os.chdir(d.path)
+      loader = load_pytd.Loader("base", self.options)
+      self.assertFalse(loader.import_name("baz"))
 
   def testStdlib(self):
     loader = load_pytd.Loader("base", self.options)

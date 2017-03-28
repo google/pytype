@@ -307,10 +307,9 @@ class Loader(object):
       if init_ast is not None:
         log.debug("Found module %r with path %r", module_name, init_path)
         return init_ast
-      elif os.path.isdir(path):
+      elif self.options.imports_map is None and os.path.isdir(path):
         # We allow directories to not have an __init__ file.
         # The module's empty, but you can still load submodules.
-        # TODO(pludemann): remove this? - it's not standard Python.
         log.debug("Created empty module %r with path %r",
                   module_name, init_path)
         return self._create_empty(filename=os.path.join(path, "__init__.pyi"),
