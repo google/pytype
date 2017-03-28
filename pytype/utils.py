@@ -417,6 +417,27 @@ class Tempdir(object):
     return os.path.join(self.path, filename)
 
 
+@contextlib.contextmanager
+def cd(path):
+  """Context manager. Change the directory, and restore it afterwards.
+
+  Example usage:
+    with cd("/path"):
+      ...
+
+  Arguments:
+    path: The directory to change to.
+  Yields:
+    Executes your code, in a changed directory.
+  """
+  curdir = os.getcwd()
+  os.chdir(path)
+  try:
+    yield
+  finally:
+    os.chdir(curdir)
+
+
 def load_pytype_file(filename):
   """Get the contents of a data file from the pytype installation.
 

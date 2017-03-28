@@ -391,6 +391,15 @@ class UtilsTest(unittest.TestCase):
     self.assertFalse(os.path.isdir(os.path.join(d.path, "d1", "d2")))
     self.assertFalse(os.path.isdir(filename5))
 
+  def testCd(self):
+    with utils.Tempdir() as d:
+      d.create_directory("foo")
+      d1 = os.getcwd()
+      with utils.cd(d.path):
+        self.assertTrue(os.path.isdir("foo"))
+      d2 = os.getcwd()
+      self.assertEquals(d1, d2)
+
   def testListStripPrefix(self):
     self.assertEqual([1, 2, 3], utils.list_strip_prefix([1, 2, 3], []))
     self.assertEqual([2, 3], utils.list_strip_prefix([1, 2, 3], [1]))
