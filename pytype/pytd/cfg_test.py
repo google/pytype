@@ -772,6 +772,35 @@ class CFGTest(unittest.TestCase):
     o, = ay.origins
     self.assertItemsEqual([cfg.SourceSet([])], o.source_sets)
 
+  def testPasteWithAdditionalSources(self):
+    p = cfg.Program()
+    n1 = p.NewCFGNode("n1")
+    n2 = n1.ConnectNew("n2")
+    x = p.NewVariable()
+    y = p.NewVariable()
+    z = p.NewVariable()
+    ax = x.AddBinding("a", source_set=[], where=n1)
+    by = y.AddBinding("b", source_set=[], where=n1)
+    z.PasteVariable(x, n2, {by})
+    az, = z.bindings
+    origin, = az.origins
+    source_set, = origin.source_sets
+    self.assertSetEqual(source_set, {ax, by})
+
+  def testPasteAtSameNodeWithAdditionalSources(self):
+    p = cfg.Program()
+    n1 = p.NewCFGNode("n1")
+    x = p.NewVariable()
+    y = p.NewVariable()
+    z = p.NewVariable()
+    _ = x.AddBinding("a", source_set=[], where=n1)
+    by = y.AddBinding("b", source_set=[], where=n1)
+    z.PasteVariable(x, n1, {by})
+    az, = z.bindings
+    origin, = az.origins
+    source_set, = origin.source_sets
+    self.assertSetEqual(source_set, {by})
+
   def testId(self):
     p = cfg.Program()
     n1 = p.NewCFGNode("n1")

@@ -498,8 +498,9 @@ class Variable(object):
       binding.AddOrigin(where, source_set)
     return binding
 
-  def PasteVariable(self, variable, where=None):
+  def PasteVariable(self, variable, where=None, additional_sources=None):
     """Adds all the bindings from another variable to this one."""
+    additional_sources = additional_sources or set()
     for binding in variable.bindings:
       copy = self.AddBinding(binding.data)
       if where is None or all(
@@ -510,9 +511,9 @@ class Variable(object):
         # solver has to consider fewer levels.
         for origin in binding.origins:
           for source_set in origin.source_sets:
-            copy.AddOrigin(origin.where, source_set)
+            copy.AddOrigin(origin.where, source_set | additional_sources)
       else:
-        copy.AddOrigin(where, {binding})
+        copy.AddOrigin(where, {binding} | additional_sources)
 
   def AssignToNewVariable(self, where):
     """Assign this variable to a new variable.

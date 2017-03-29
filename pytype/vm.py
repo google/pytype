@@ -796,12 +796,7 @@ class VirtualMachine(object):
         if e > error:
           error = e
       else:
-        # This is similar to PasteVariable() except that it adds funcv as
-        # an additional source.  If this is a common occurence then perhaps
-        # we should add an optional arg to PasteVariable().
-        for binding in one_result.bindings:
-          copy = result.AddBinding(binding.data)
-          copy.AddOrigin(new_node, {binding, funcv})
+        result.PasteVariable(one_result, new_node, {funcv})
         nodes.append(new_node)
     if nodes:
       node = self.join_cfg_nodes(nodes)
@@ -1401,6 +1396,22 @@ class VirtualMachine(object):
       ret.PasteVariable(leftover_ret, state.node)
     return state, ret
 
+  def _coerce_to_bool(self, node, var, true_val=True):
+    """Coerce the values in a variable to bools."""
+    bool_var = self.program.NewVariable()
+    for b in var.bindings:
+      v = b.data
+      if isinstance(v, abstract.PythonConstant) and isinstance(v.pyval, bool):
+        const = v.pyval is true_val
+      elif not v.compatible_with(True):
+        const = False is true_val
+      elif not v.compatible_with(False):
+        const = True is true_val
+      else:
+        const = None
+      bool_var.AddBinding(self.convert.bool_values[const], {b}, node)
+    return bool_var
+
   def byte_COMPARE_OP(self, state, op):
     """Pops and compares the top two stack values and pushes a boolean."""
     state, (x, y) = state.popn(2)
@@ -1427,19 +1438,11 @@ class VirtualMachine(object):
     elif op.arg == slots.CMP_NOT_IN:
       state, ret = self.call_binary_operator(state, "__contains__", y, x,
                                              report_errors=True)
-      try:
-        value = not abstract.get_atomic_python_constant(ret, bool)
-      except abstract.ConversionError:
-        value = None
-      ret = self.convert.build_bool(state.node, value)
+      ret = self._coerce_to_bool(state.node, ret, true_val=False)
     elif op.arg == slots.CMP_IN:
       state, ret = self.call_binary_operator(state, "__contains__", y, x,
                                              report_errors=True)
-      try:
-        abstract.get_atomic_python_constant(ret, bool)
-      except abstract.ConversionError:
-        # The return type of __contains__ is always bool.
-        ret = self.convert.build_bool(state.node)
+      ret = self._coerce_to_bool(state.node, ret)
     elif op.arg == slots.CMP_EXC_MATCH:
       ret = self.convert.build_bool(state.node)
     else:

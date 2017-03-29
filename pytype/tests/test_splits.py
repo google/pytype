@@ -516,6 +516,49 @@ class SplitTest(test_inference.InferenceTest):
         print d3["x"]
     """)
 
+  def testDictMaybeContains(self):
+    """Test that we can handle more complex cases involving dict membership."""
+    ty = self.Infer("""\
+      if __any_object__:
+        x = {"a": 1, "b": 2}
+      else:
+        x = {"b": 42j}
+      if "a" in x:
+        v1 = x["b"]
+      if "a" not in x:
+        v2 = x["b"]
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Dict
+      x = ...  # type: Dict[str, int]
+      v1 = ...  # type: int
+      v2 = ...  # type: complex
+    """)
+
+  def testContainsCoerceToBool(self):
+    ty = self.Infer("""\
+      class A(object):
+        def __contains__(self, x):
+          return 1
+      class B(object):
+        def __contains__(self, x):
+          return 0
+      x1 = "" if "a" in A() else u""
+      x2 = 3 if "a" not in A() else 42j
+      y1 = 3.14 if "b" in B() else 16j
+      y2 = True if "b" not in B() else 4.2
+    """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      class A(object):
+        def __contains__(self, x) -> int
+      class B(object):
+        def __contains__(self, x) -> int
+      x1 = ...  # type: str
+      x2 = ...  # type: complex
+      y1 = ...  # type: complex
+      y2 = ...  # type: bool
+    """)
+
   def testSkipOverMidwayIf(self):
     ty = self.Infer("""
       def f(r):

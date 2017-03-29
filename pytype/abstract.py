@@ -784,9 +784,10 @@ class HasSlots(object):
     return self.vm.call_function(node, self._super[name], FunctionArgs(args))
 
   def get_special_attribute(self, node, name, valself):
-    del node, valself
     if name in self._slots:
-      return self._slots[name]
+      attr = self.vm.program.NewVariable()
+      attr.PasteVariable(self._slots[name], node, {valself})
+      return attr
 
 
 class Tuple(Instance, HasSlots, PythonConstant):
