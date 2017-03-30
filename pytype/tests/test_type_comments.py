@@ -359,6 +359,21 @@ class AssignmentCommentTest(test_inference.InferenceTest):
         errors,
         r"test\.py.*line 4.*int.*ignored-type-comment")
 
+  def testAttributeInitialization(self):
+    ty = self.Infer("""
+      class A(object):
+        def __init__(self):
+          self.x = 42
+      a = None  # type: A
+      x = a.x
+    """)
+    self.assertTypesMatchPytd(ty, """
+      class A(object):
+        x = ...  # type: int
+      a = ...  # type: A
+      x = ...  # type: int
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

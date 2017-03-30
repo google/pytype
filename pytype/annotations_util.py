@@ -103,7 +103,8 @@ class AnnotationsUtil(object):
     if code:
       try:
         var = self._eval_expr(state.node, self.vm.frame.f_globals, comment)
-        value = abstract.get_atomic_value(var).instantiate(state.node)
+        _, _, value = self.vm.init_class(state.node,
+                                         abstract.get_atomic_value(var))
       except (EvaluationError, abstract.ConversionError) as e:
         self.vm.errorlog.invalid_type_comment(op, comment, details=e.message)
     return value
