@@ -693,6 +693,11 @@ class VirtualMachine(object):
     logging.info("Done running bytecode, postprocessing globals")
     for func in self.functions_with_late_annotations:
       self.annotations_util.eval_late_annotations(node, func, f_globals)
+    for name, annot in f_globals.late_annotations.items():
+      attr = self.annotations_util.init_annotation(
+          annot.expr, annot.name, annot.opcode, node, f_globals)
+      self.attribute_handler.set_attribute(node, f_globals, name, attr)
+      del f_globals.late_annotations[name]
     assert not self.frames, "Frames left over!"
     log.info("Final node: <%d>%s", node.id, node.name)
     return node, f_globals.members
@@ -881,14 +886,12 @@ class VirtualMachine(object):
 
   def store_local(self, state, name, value):
     """Called when a local is written."""
-    assert isinstance(value, typegraph.Variable), (name, repr(value))
     node = self.attribute_handler.set_attribute(
         state.node, self.frame.f_locals, name, value)
     return state.change_cfg_node(node)
 
   def store_global(self, state, name, value):
     """Same as store_local except for globals."""
-    assert isinstance(value, typegraph.Variable)
     node = self.attribute_handler.set_attribute(
         state.node, self.frame.f_globals, name, value)
     return state.change_cfg_node(node)
@@ -963,7 +966,6 @@ class VirtualMachine(object):
     """Set an attribute on an object."""
     assert isinstance(obj, typegraph.Variable)
     assert isinstance(attr, str)
-    assert isinstance(value, typegraph.Variable)
     if not obj.bindings:
       log.info("Ignoring setattr on %r", obj)
       return state
@@ -1278,7 +1280,7 @@ class VirtualMachine(object):
   def byte_STORE_NAME(self, state, op):
     name = self.frame.f_code.co_names[op.arg]
     state, value = state.pop()
-    value = self.annotations_util.apply_type_comment(state, op, value)
+    value = self.annotations_util.apply_type_comment(state, op, name, value)
     state = self.store_local(state, name, value)
     return state.forward_cfg_node()
 
@@ -1300,7 +1302,7 @@ class VirtualMachine(object):
   def byte_STORE_FAST(self, state, op):
     name = self.frame.f_code.co_varnames[op.arg]
     state, value = state.pop()
-    value = self.annotations_util.apply_type_comment(state, op, value)
+    value = self.annotations_util.apply_type_comment(state, op, name, value)
     state = state.forward_cfg_node()
     state = self.store_local(state, name, value)
     return state
@@ -1326,7 +1328,7 @@ class VirtualMachine(object):
   def byte_STORE_GLOBAL(self, state, op):
     name = self.frame.f_code.co_names[op.arg]
     state, value = state.pop()
-    value = self.annotations_util.apply_type_comment(state, op, value)
+    value = self.annotations_util.apply_type_comment(state, op, name, value)
     state = self.store_global(state, name, value)
     return state
 
@@ -1467,7 +1469,7 @@ class VirtualMachine(object):
   def byte_STORE_ATTR(self, state, op):
     name = self.frame.f_code.co_names[op.arg]
     state, (val, obj) = state.popn(2)
-    val = self.annotations_util.apply_type_comment(state, op, val)
+    val = self.annotations_util.apply_type_comment(state, op, name, val)
     state = state.forward_cfg_node()
     state = self.store_attr(state, obj, name, val)
     state = state.forward_cfg_node()
@@ -1885,11 +1887,11 @@ class VirtualMachine(object):
 
     # Add type info to late_annotations.
     if args != "...":
-      annot = function.LateAnnotation(
+      annot = annotations_util.LateAnnotation(
           args.strip(), function.MULTI_ARG_ANNOTATION, fake_op)
       late_annotations[function.MULTI_ARG_ANNOTATION] = annot
 
-    late_annotations["return"] = function.LateAnnotation(
+    late_annotations["return"] = annotations_util.LateAnnotation(
         self.convert.build_string(None, return_type).data[0], "return", fake_op)
 
   def _convert_kw_defaults(self, values):

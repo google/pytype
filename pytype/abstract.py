@@ -154,6 +154,7 @@ class AtomicAbstractValue(object):
     self.module = None
     self.official_name = None
     self.template = ()
+    self.late_annotations = {}
 
   @property
   def full_name(self):

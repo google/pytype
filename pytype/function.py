@@ -1,11 +1,5 @@
 """Representation of Python function headers and calls."""
 
-import collections
-
-
-
-LateAnnotation = collections.namedtuple(
-    "LateAnnotation", ["expr", "name", "opcode"])
 
 
 # Used as a key in Signature.late_annotations to indicate an annotation

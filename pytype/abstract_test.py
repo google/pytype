@@ -4,6 +4,7 @@ import unittest
 
 
 from pytype import abstract
+from pytype import annotations_util
 from pytype import config
 from pytype import errors
 from pytype import exceptions
@@ -525,8 +526,8 @@ class FunctionTest(AbstractTestBase):
         defaults={},
         annotations={},
         late_annotations={
-            "v": function.LateAnnotation("X", "v", None),
-            "return": function.LateAnnotation("Y", "return", None)
+            "v": annotations_util.LateAnnotation("X", "v", None),
+            "return": annotations_util.LateAnnotation("Y", "return", None)
         }
     )
     self.assertFalse(sig.has_param_annotations)

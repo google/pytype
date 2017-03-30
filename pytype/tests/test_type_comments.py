@@ -374,6 +374,58 @@ class AssignmentCommentTest(test_inference.InferenceTest):
       x = ...  # type: int
     """)
 
+  def testNoneToNoneType(self):
+    ty = self.Infer("""
+      x = 0  # type: None
+    """)
+    self.assertTypesMatchPytd(ty, """
+      x = ...  # type: None
+    """)
+
+  def testModuleInstanceAsBadTypeComment(self):
+    _, errors = self.InferAndCheck("""\
+      import sys
+      x = None  # type: sys
+    """)
+    self.assertErrorLogIs(errors, [(2, "invalid-annotation",
+                                    r"instance of module.*x")])
+
+  def testForwardReference(self):
+    ty, errors = self.InferAndCheck("""\
+      a = None  # type: "A"
+      b = None  # type: "Nonexistent"
+      class A(object):
+        def __init__(self):
+          self.x = 42
+        def f(self):
+          return a.x
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      class A(object):
+        x = ...  # type: int
+        def f(self) -> int
+      a = ...  # type: A
+      b = ...  # type: Any
+    """)
+    self.assertErrorLogIs(errors, [(2, "invalid-annotation", r"Nonexistent")])
+
+  def testUseForwardReference(self):
+    ty = self.Infer("""\
+      a = None  # type: "A"
+      x = a.x
+      class A(object):
+        def __init__(self):
+          self.x = 42
+    """)
+    self.assertTypesMatchPytd(ty, """\
+      from typing import Any
+      class A(object):
+        x = ...  # type: int
+      a = ...  # type: A
+      x = ...  # type: Any
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

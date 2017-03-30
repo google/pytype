@@ -3,6 +3,7 @@ import logging
 
 
 from pytype import abstract
+from pytype import annotations_util
 from pytype import typing
 from pytype.pytd import cfg as typegraph
 from pytype.pytd import pytd
@@ -42,6 +43,12 @@ class AbstractAttributeHandler(object):
       A tuple (CFGNode, typegraph.Variable). If this attribute doesn't exist,
       the Variable will be None.
     """
+    if name in obj.late_annotations:
+      # We're using a late annotation before it's been evaluated. We could call
+      # _process_one_annotation with the current (incomplete) globals, but
+      # whether the call succeeds would depend on the order in which the globals
+      # are analyzed. It's simpler (although less precise) to just return Any.
+      return node, self.vm.convert.unsolvable.to_variable(node)
     # Some objects have special attributes, like "__get__" or "__iter__"
     special_attribute = obj.get_special_attribute(node, name, valself)
     if special_attribute is not None:
@@ -153,6 +160,10 @@ class AbstractAttributeHandler(object):
       AttributeError: If the attribute cannot be set.
       NotImplementedError: If attribute setting is not implemented for obj.
     """
+    if isinstance(value, annotations_util.LateAnnotation):
+      obj.late_annotations[name] = value
+      return node
+    assert isinstance(value, typegraph.Variable)
     if self.vm.frame is not None and obj is self.vm.frame.f_globals:
       for v in value.data:
         v.update_official_name(name)

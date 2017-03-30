@@ -1,5 +1,7 @@
 """Utilities for inline type annotations."""
 
+import collections
+
 
 from pytype import abstract
 from pytype import function
@@ -15,6 +17,10 @@ class EvaluationError(Exception):
 class LateAnnotationError(Exception):
   """Used to break out of annotation evaluation if we discover a string."""
   pass
+
+
+LateAnnotation = collections.namedtuple(
+    "LateAnnotation", ["expr", "name", "opcode"])
 
 
 class AnnotationsUtil(object):
@@ -71,7 +77,7 @@ class AnnotationsUtil(object):
             annot = self._process_one_annotation(
                 visible[0], name, self.vm.frame.current_opcode)
           except LateAnnotationError:
-            late_annotations[name] = function.LateAnnotation(
+            late_annotations[name] = LateAnnotation(
                 visible[0], name, self.vm.frame.current_opcode)
           else:
             if annot is not None:
@@ -95,7 +101,7 @@ class AnnotationsUtil(object):
         if resolved is not None:
           func.signature.set_annotation(name, resolved)
 
-  def apply_type_comment(self, state, op, value):
+  def apply_type_comment(self, state, op, name, value):
     """If there is a type comment for the op, return its value."""
     if op.code.co_filename != self.vm.filename:
       return value
@@ -103,10 +109,22 @@ class AnnotationsUtil(object):
     if code:
       try:
         var = self._eval_expr(state.node, self.vm.frame.f_globals, comment)
-        _, _, value = self.vm.init_class(state.node,
-                                         abstract.get_atomic_value(var))
+        typ = abstract.get_atomic_value(var)
       except (EvaluationError, abstract.ConversionError) as e:
         self.vm.errorlog.invalid_type_comment(op, comment, details=e.message)
+      else:
+        try:
+          value = self.init_annotation(typ, name, op, state.node)
+        except LateAnnotationError:
+          value = LateAnnotation(typ, name, op)
+    return value
+
+  def init_annotation(self, annot, name, op, node, f_globals=None):
+    processed = self._process_one_annotation(annot, name, op, node, f_globals)
+    if processed is None:
+      value = self.vm.convert.unsolvable.to_variable(node)
+    else:
+      _, _, value = self.vm.init_class(node, processed)
     return value
 
   def _eval_multi_arg_annotation(self, node, func, f_globals, annot):
