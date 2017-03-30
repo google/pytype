@@ -456,6 +456,21 @@ class TypeVarTest(test_inference.InferenceTest):
       def f(x: T) -> T: ...
     """)
 
+  def testEnforceNonConstrainedTypeVar(self):
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      from typing import TypeVar  # pytype: disable=not-supported-yet
+      T = TypeVar("T")
+      def f(x: T, y: T): ...
+      f(42, True)  # ok
+      f(42, "")
+      f(42, 16j)  # ok
+      f(object(), 42)  # ok
+      f(42, object())  # ok
+    """)
+    self.assertErrorLogIs(errors, [(6, "wrong-arg-types",
+                                    r"Expected.*y: int.*Actual.*y: str")])
+
 
 if __name__ == "__main__":
   test_inference.main()

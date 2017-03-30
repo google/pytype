@@ -144,8 +144,10 @@ class AbstractMatcher(object):
           new_var.AddBinding(other_value.data, {other_value}, node)
       if other_type.constraints:
         new_var = self._enforce_single_type(new_var, node)
-        if new_var is None:
-          return None
+      else:
+        new_var = self._enforce_common_superclass(new_var)
+      if new_var is None:
+        return None
       subst = subst.copy()
       subst[other_type.name] = new_var
       return subst
@@ -322,11 +324,23 @@ class AbstractMatcher(object):
           return None
       elif isinstance(other_type, abstract.ParameterizedClass):
         class_param = other_type.type_parameters[abstract.T]
+        # If we merge in the new substitution results prematurely, then we'll
+        # accidentally trigger _enforce_common_superclass.
+        new_substs = []
         for instance_param in instance.pyval:
-          subst = self.match_var_against_type(
+          new_subst = self.match_var_against_type(
               instance_param, class_param, subst, node, view)
-          if subst is None:
+          if new_subst is None:
             return None
+          new_substs.append(new_subst)
+        if new_substs:
+          subst = subst.copy()
+          for new_subst in new_substs:
+            for name, var in new_subst.items():
+              if name not in subst:
+                subst[name] = var
+              elif subst[name] is not var:
+                subst[name].PasteVariable(var, node)
       if not instance.pyval:
         # This call puts the right param names (with empty values) into subst.
         subst = self._match_maybe_parameterized_instance(
@@ -407,10 +421,13 @@ class AbstractMatcher(object):
       raise NotImplementedError(
           "Can't match instance %r against %r", left, other_type)
 
+  def _get_concrete_values(self, var):
+    return [v for v in var.data
+            if not isinstance(v, abstract.AMBIGUOUS_OR_EMPTY)]
+
   def _enforce_single_type(self, var, node):
     """Enforce that the variable contains only one concrete type."""
-    concrete_values = [v for v in var.data
-                       if not isinstance(v, abstract.AMBIGUOUS_OR_EMPTY)]
+    concrete_values = self._get_concrete_values(var)
     classes = sum((v.get_class().Data(node) for v in concrete_values), [])
     if len(set(classes)) > 1:
       # We require all occurrences to be of the same type, no subtyping allowed.
@@ -419,4 +436,29 @@ class AbstractMatcher(object):
       # We can filter out ambiguous values because we've already found the
       # single concrete type allowed for this variable.
       return node.program.NewVariable(concrete_values, [], node)
+    return var
+
+  def _enforce_common_superclass(self, var):
+    """Enforce that the variable's values share a superclass below object."""
+    concrete_values = self._get_concrete_values(var)
+    common_classes = None
+    object_in_values = False
+    for v in concrete_values:
+      classes = []
+      for cls in v.get_class().data:
+        if [cls] == cls.vm.convert.object_type.data:
+          object_in_values = True
+        classes.extend(cls.mro)
+      classes = set(c.full_name for c in classes)
+      for compat, name in _COMPATIBLE_BUILTINS:
+        if compat in classes:
+          classes.add(name)
+      if common_classes is None:
+        common_classes = classes
+      else:
+        common_classes = common_classes.intersection(classes)
+    if (concrete_values and
+        (not common_classes or
+         (not object_in_values and common_classes == {"__builtin__.object"}))):
+      return None
     return var
