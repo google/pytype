@@ -278,6 +278,16 @@ class AssignmentCommentTest(test_inference.InferenceTest):
       X = ...  # type: str
     """)
 
+  def testGlobalComment2(self):
+    ty = self.Infer("""
+      X = None  # type: str
+      def f(): global X
+    """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      X = ...  # type: str
+      def f() -> None
+    """)
+
   def testLocalComment(self):
     ty = self.Infer("""
       X = None

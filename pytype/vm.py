@@ -97,7 +97,8 @@ class _FindIgnoredTypeComments(object):
     for i, op in enumerate(code.co_code):
       if isinstance(op, (opcodes.STORE_NAME,
                          opcodes.STORE_FAST,
-                         opcodes.STORE_ATTR)):
+                         opcodes.STORE_ATTR,
+                         opcodes.STORE_GLOBAL)):
         self._ignored_type_lines.discard(op.line)
       elif isinstance(op, opcodes.MAKE_FUNCTION):
         code_line = self._find_code_line(code, i)
@@ -1325,6 +1326,7 @@ class VirtualMachine(object):
   def byte_STORE_GLOBAL(self, state, op):
     name = self.frame.f_code.co_names[op.arg]
     state, value = state.pop()
+    value = self.annotations_util.apply_type_comment(state, op, value)
     state = self.store_global(state, name, value)
     return state
 
