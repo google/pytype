@@ -640,7 +640,8 @@ class VirtualMachine(object):
         src = fi.read()
     else:
       src = builtins.GetBuiltinsCode(self.python_version)
-    builtins_code = self.compile_src(src)
+    builtins_code = self.compile_src(
+        src, filename=self.options.pybuiltins_filename or "__builtin__.py")
     node, f_globals, f_locals, _ = self.run_bytecode(node, builtins_code)
     assert not self.frames
     # TODO(kramm): pytype doesn't support namespacing of the currently parsed

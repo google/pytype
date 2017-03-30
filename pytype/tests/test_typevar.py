@@ -471,6 +471,14 @@ class TypeVarTest(test_inference.InferenceTest):
     self.assertErrorLogIs(errors, [(6, "wrong-arg-types",
                                     r"Expected.*y: int.*Actual.*y: str")])
 
+  def testTypeVarInTypeComment(self):
+    self.assertNoErrors("""\
+      from typing import List, TypeVar  # pytype: disable=not-supported-yet
+      T = TypeVar("T")
+      x = None  # type: T
+      y = None  # type: List[T]
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()
