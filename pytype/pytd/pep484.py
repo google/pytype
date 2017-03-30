@@ -15,14 +15,16 @@ PEP484_NAMES = ["AbstractSet", "AnyStr", "BinaryIO", "ByteString", "Callable",
                 "SupportsRound", "TextIO", "Tuple", "Type", "TypeVar", "Union"]
 
 
-# Maps a type to a more generalized type.
-COMPAT_MAP = {
-    "NoneType": "bool",
+# Pairs of a type and a more generalized type.
+COMPAT_ITEMS = [
+    ("NoneType", "bool"),
     # pep484 allows None as an alias for NoneType in type annotations.
-    "None": "bool",
-    "str": "unicode",
-    "bytes": "unicode",
-    "int": "float"}
+    ("None", "bool"),
+    ("str", "unicode"),
+    ("bytes", "unicode"),
+    ("int", "float"),
+    ("int", "complex"),
+    ("float", "complex")]
 
 
 PEP484_CAPITALIZED = {

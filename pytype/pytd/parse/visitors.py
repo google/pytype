@@ -571,7 +571,7 @@ class PrintVisitor(Visitor):
       # ExpandCompatibleBuiltins visitor.
       # Import here due to circular import.
       from pytype.pytd import pep484  # pylint: disable=g-import-not-at-top
-      for compat, name in pep484.COMPAT_MAP.iteritems():
+      for compat, name in pep484.COMPAT_ITEMS:
         # name can replace compat.
         if compat in type_list and name in type_list:
           del type_list[compat]
@@ -1794,8 +1794,7 @@ class ExpandCompatibleBuiltins(Visitor):
     # type and compat is the less generalized one. (eg: name = float, compat =
     # int)
     compat_list = itertools.chain(
-        ((v, v) for v in set(pep484.COMPAT_MAP.values())),
-        pep484.COMPAT_MAP.iteritems())
+        set((v, v) for _, v in pep484.COMPAT_ITEMS), pep484.COMPAT_ITEMS)
 
     for compat, name in compat_list:
       prefix = builtins.name + "."

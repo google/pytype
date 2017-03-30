@@ -133,7 +133,7 @@ class MatcherTest(unittest.TestCase):
     self.assertMatch(left, right)
 
   def testNoneAgainstBool(self):
-    # See pep484.COMPAT_MAP.
+    # See pep484.COMPAT_ITEMS.
     left = self._convert("None", as_instance=True)
     right = self._convert("bool", as_instance=False)
     self.assertMatch(left, right)

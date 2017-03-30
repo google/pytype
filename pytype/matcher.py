@@ -10,10 +10,10 @@ from pytype.pytd import pep484
 log = logging.getLogger(__name__)
 
 
-_COMPATIBLE_BUILTINS = {
-    "__builtin__." + k: "__builtin__." + v
-    for k, v in pep484.COMPAT_MAP.iteritems()
-}
+_COMPATIBLE_BUILTINS = [
+    ("__builtin__." + compatible_builtin, "__builtin__." + builtin)
+    for compatible_builtin, builtin in pep484.COMPAT_ITEMS
+]
 
 
 class AbstractMatcher(object):
@@ -365,8 +365,8 @@ class AbstractMatcher(object):
         if other_type is base_cls or (
             isinstance(other_type, abstract.ParameterizedClass) and
             other_type.base_cls is base_cls) or (
-                _COMPATIBLE_BUILTINS.get(base_cls.full_name) ==
-                other_type.full_name):
+                (base_cls.full_name,
+                 other_type.full_name) in _COMPATIBLE_BUILTINS):
           return base
       elif isinstance(base_cls, abstract.AMBIGUOUS_OR_EMPTY):
         # See match_Function_against_Class in type_match.py. Even though it's
