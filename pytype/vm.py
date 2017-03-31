@@ -508,6 +508,10 @@ class VirtualMachine(object):
     if not bases:
       # Old style class.
       bases = [self.convert.oldstyleclass_type]
+    for b in sum((b.data for b in bases), []):
+      if isinstance(b, abstract.ParameterizedClass):
+        self.errorlog.not_supported_yet(self.frame.current_opcode,
+                                        "creating generic classes")
     if isinstance(class_dict, abstract.Unsolvable):
       # An unsolvable appears here if the vm hit maximum depth and gave up on
       # analyzing the class we're now building.

@@ -479,6 +479,28 @@ class TypeVarTest(test_inference.InferenceTest):
       y = None  # type: List[T]
     """)
 
+  def testBaseClassWithTypeVar(self):
+    ty, errors = self.InferAndCheck("""\
+      from typing import List, TypeVar  # pytype: disable=not-supported-yet
+      T = TypeVar("T")
+      class A(List[T]): pass
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import List, TypeVar
+      T = TypeVar("T")
+      class A(List[T]): ...
+    """)
+    self.assertErrorLogIs(errors, [(3, "not-supported-yet")])
+
+  def testOverwriteBaseClassWithTypeVar(self):
+    self.assertNoErrors("""
+      from typing import List, TypeVar  # pytype: disable=not-supported-yet
+      T = TypeVar("T")
+      l = List[T]
+      l = list
+      class X(l): pass
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()
