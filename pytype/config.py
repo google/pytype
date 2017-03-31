@@ -171,7 +171,11 @@ class Options(object):
     o.add_option(
         "--use-pickled-files", action="store_true", default=False,
         dest="use_pickled_files",
-        help=("Use pickled pyi files instead of pyi files."))
+        help=("Use pickled pyi files instead of pyi files. This will check "
+              "if a file 'foo.bar.pyi.pickled' is present next to "
+              "'foo.bar.pyi' and load it instead. This will load the pickled "
+              "file without further verification. Allowing untrusted pickled "
+              "files into the code tree can lead to arbitrary code execution!"))
     o.add_option(
         "-P", "--pythonpath", type="string", action="store",
         dest="pythonpath", default="",
