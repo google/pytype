@@ -293,7 +293,7 @@ class AbstractAttributeHandler(object):
       if attr_var and attr_var.bindings:
         vm = self.vm  # pytype: disable=attribute-error
         name_var = abstract.AbstractOrConcreteValue(
-            name, vm.convert.str_type, vm, node).to_variable(node)
+            name, vm.convert.str_type, vm).to_variable(node)
         return vm.call_function(
             node, attr_var, abstract.FunctionArgs((name_var,)))
     return node, None

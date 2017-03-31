@@ -42,7 +42,7 @@ class AbstractTestBase(unittest.TestCase):
 
   def new_dict(self, **kwargs):
     """Create a Dict from keywords mapping names to Variable objects."""
-    d = abstract.Dict(self._vm, self._node)
+    d = abstract.Dict(self._vm)
     for name, var in kwargs.items():
       d.set_str_item(self._node, name, var)
     return d
@@ -57,14 +57,12 @@ class InstanceTest(AbstractTestBase):
 
   def test_compatible_with_non_container(self):
     # Compatible with either True or False.
-    i = abstract.Instance(
-        self._vm.convert.object_type, self._vm, self._node)
+    i = abstract.Instance(self._vm.convert.object_type, self._vm)
     self.assertIs(True, i.compatible_with(True))
     self.assertIs(True, i.compatible_with(False))
 
   def test_compatible_with_list(self):
-    i = abstract.Instance(
-        self._vm.convert.list_type, self._vm, self._node)
+    i = abstract.Instance(self._vm.convert.list_type, self._vm)
     i.init_type_parameters(abstract.T)
     # Empty list is not compatible with True.
     self.assertIs(False, i.compatible_with(True))
@@ -75,8 +73,7 @@ class InstanceTest(AbstractTestBase):
     self.assertIs(True, i.compatible_with(False))
 
   def test_compatible_with_set(self):
-    i = abstract.Instance(
-        self._vm.convert.set_type, self._vm, self._node)
+    i = abstract.Instance(self._vm.convert.set_type, self._vm)
     i.init_type_parameters(abstract.T)
     # Empty list is not compatible with True.
     self.assertIs(False, i.compatible_with(True))
@@ -89,8 +86,7 @@ class InstanceTest(AbstractTestBase):
   def test_compatible_with_none(self):
     # This test is specifically for abstract.Instance, so we don't use
     # self._vm.convert.none, which is an AbstractOrConcreteValue.
-    i = abstract.Instance(
-        self._vm.convert.none_type, self._vm, self._node)
+    i = abstract.Instance(self._vm.convert.none_type, self._vm)
     self.assertIs(False, i.compatible_with(True))
     self.assertIs(True, i.compatible_with(False))
 
@@ -103,24 +99,24 @@ class TupleTest(AbstractTestBase):
     self._var.AddBinding(abstract.Unknown(self._vm), [], self._node)
 
   def test_compatible_with__not_empty(self):
-    t = abstract.Tuple((self._var,), self._vm, self._node)
+    t = abstract.Tuple((self._var,), self._vm)
     self.assertIs(True, t.compatible_with(True))
     self.assertIs(False, t.compatible_with(False))
 
   def test_compatible_with__empty(self):
-    t = abstract.Tuple((), self._vm, self._node)
+    t = abstract.Tuple((), self._vm)
     self.assertIs(False, t.compatible_with(True))
     self.assertIs(True, t.compatible_with(False))
 
   def test_getitem__concrete_index(self):
-    t = abstract.Tuple((self._var,), self._vm, self._node)
+    t = abstract.Tuple((self._var,), self._vm)
     index = self._vm.convert.constant_to_var(0)
     node, var = t.getitem_slot(self._node, index)
     self.assertIs(node, self._node)
     self.assertIs(var, self._var)
 
   def test_getitem__abstract_index(self):
-    t = abstract.Tuple((self._var,), self._vm, self._node)
+    t = abstract.Tuple((self._var,), self._vm)
     index = self._vm.convert.build_int(self._node)
     node, var = t.getitem_slot(self._node, index)
     self.assertIs(node, self._node)
@@ -132,7 +128,7 @@ class DictTest(AbstractTestBase):
 
   def setUp(self):
     super(DictTest, self).setUp()
-    self._d = abstract.Dict(self._vm, self._node)
+    self._d = abstract.Dict(self._vm)
     self._var = self._program.NewVariable()
     self._var.AddBinding(abstract.Unknown(self._vm), [], self._node)
 
@@ -286,7 +282,7 @@ class IsInstanceTest(AbstractTestBase):
 
     def new_tuple(*args):
       pyval = tuple(maybe_var(a) for a in args)
-      return self._vm.convert.tuple_to_value(self._node, pyval)
+      return self._vm.convert.tuple_to_value(pyval)
 
     def check(expected_ambiguous, expected_classes, value):
       classes = []
@@ -360,8 +356,7 @@ class PyTDTest(AbstractTestBase):
 
   def testToTypeWithView1(self):
     # to_type(<instance of List[int or unsolvable]>, view={T: int})
-    instance = abstract.Instance(
-        self._vm.convert.list_type, self._vm, self._vm.root_cfg_node)
+    instance = abstract.Instance(self._vm.convert.list_type, self._vm)
     instance.type_parameters["T"] = self._vm.program.NewVariable(
         [self._vm.convert.unsolvable], [], self._vm.root_cfg_node)
     param_binding = instance.type_parameters["T"].AddBinding(
@@ -381,7 +376,7 @@ class PyTDTest(AbstractTestBase):
         [self._vm.convert.unsolvable], [], self._vm.root_cfg_node)
     cls_binding = cls.AddBinding(
         self._vm.convert.str_type.data[0], [], self._vm.root_cfg_node)
-    instance = abstract.Instance(cls, self._vm, self._vm.root_cfg_node)
+    instance = abstract.Instance(cls, self._vm)
     view = {cls: cls_binding}
     pytd_type = instance.to_type(self._vm.root_cfg_node, seen=None, view=view)
     self.assertEquals("__builtin__.str", pytd_type.name)
@@ -392,7 +387,7 @@ class PyTDTest(AbstractTestBase):
     param2 = self._vm.convert.primitive_class_instances[str]
     param_var = param1.to_variable(self._vm.root_cfg_node)
     str_binding = param_var.AddBinding(param2, [], self._vm.root_cfg_node)
-    instance = abstract.Tuple((param_var,), self._vm, self._vm.root_cfg_node)
+    instance = abstract.Tuple((param_var,), self._vm)
     view = {param_var: str_binding, instance.cls: instance.cls.bindings[0],
             str_binding.data.cls: str_binding.data.cls.bindings[0]}
     pytd_type = instance.to_type(self._vm.root_cfg_node, seen=None, view=view)
@@ -400,8 +395,7 @@ class PyTDTest(AbstractTestBase):
                       pytd.NamedType("__builtin__.str"))
 
   def testToTypeWithViewAndEmptyParam(self):
-    instance = abstract.Instance(
-        self._vm.convert.list_type, self._vm, self._vm.root_cfg_node)
+    instance = abstract.Instance(self._vm.convert.list_type, self._vm)
     instance.type_parameters["T"] = self._vm.program.NewVariable()
     view = {instance.cls: instance.cls.bindings[0]}
     pytd_type = instance.to_type(self._vm.root_cfg_node, seen=None, view=view)

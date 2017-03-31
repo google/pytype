@@ -828,7 +828,7 @@ class VirtualMachine(object):
     num_kw, num_pos = divmod(num, 256)
 
     # TODO(kramm): Can we omit creating this Dict if num_kw=0?
-    namedargs = abstract.Dict(self, state.node)
+    namedargs = abstract.Dict(self)
     for _ in range(num_kw):
       state, (key, val) = state.popn(2)
       namedargs.setitem(state.node, key, val)
@@ -1103,7 +1103,7 @@ class VirtualMachine(object):
         state, item = self.call_function_with_state(
             state, func, (self.convert.build_int(state.node),))
         # Create a new iterator from the returned value.
-        itr = abstract.Iterator(self, item, state.node).to_variable(state.node)
+        itr = abstract.Iterator(self, item).to_variable(state.node)
       else:
         # Cannot iterate this object.
         if seq.bindings:
@@ -2051,7 +2051,7 @@ class VirtualMachine(object):
             self.frame.yield_variable.data, [], state.node)
         # Create a dummy generator instance for checking that
         # Generator[<yield_variable>] matches the annotated return type.
-        generator = abstract.Generator(self.frame, self, state.node)
+        generator = abstract.Generator(self.frame, self)
         generator.type_parameters[abstract.T] = yield_variable
         self._check_return(self.frame.current_opcode, state.node,
                            generator.to_variable(state.node),

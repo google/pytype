@@ -530,7 +530,7 @@ class SplitTest(test_inference.InferenceTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Dict
-      x = ...  # type: Dict[str, int]
+      x = ...  # type: Dict[str, int or complex]
       v1 = ...  # type: int
       v2 = ...  # type: complex
     """)

@@ -72,7 +72,7 @@ class CallTracer(vm.VirtualMachine):
       return node, self.convert.create_new_unknown(node, force=True)
 
   def create_varargs(self, node):
-    value = abstract.Instance(self.convert.tuple_type, self, node)
+    value = abstract.Instance(self.convert.tuple_type, self)
     value.initialize_type_parameter(
         node, abstract.T,
         self.convert.create_new_unknown(node))
@@ -81,7 +81,7 @@ class CallTracer(vm.VirtualMachine):
   def create_kwargs(self, node):
     key_type = self.convert.primitive_class_instances[str].to_variable(node)
     value_type = self.convert.create_new_unknown(node)
-    kwargs = abstract.Instance(self.convert.dict_type, self, node)
+    kwargs = abstract.Instance(self.convert.dict_type, self)
     kwargs.initialize_type_parameter(node, abstract.K, key_type)
     kwargs.initialize_type_parameter(node, abstract.V, value_type)
     return kwargs.to_variable(node)

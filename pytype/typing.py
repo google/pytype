@@ -14,14 +14,14 @@ class TypingOverlay(abstract.Module):
 
   is_lazy = True  # uses _convert_member
 
-  def __init__(self, vm, node):
+  def __init__(self, vm):
     member_map = typing_overload.copy()
     ast = vm.loader.typing
     for cls in ast.classes:
       _, name = cls.name.rsplit(".", 1)
       if name not in member_map and pytd.IsContainer(cls) and cls.template:
         member_map[name] = build_container
-    super(TypingOverlay, self).__init__(vm, node, "typing", member_map)
+    super(TypingOverlay, self).__init__(vm, "typing", member_map)
     self.real_module = vm.convert.constant_to_value(
         ast, subst={}, node=vm.root_cfg_node)
 

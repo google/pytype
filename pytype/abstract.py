@@ -302,8 +302,7 @@ class AtomicAbstractValue(object):
     return self.get_default_type_key()
 
   def instantiate(self, node):
-    return Instance(self.to_variable(node),
-                    self.vm, node).to_variable(node)
+    return Instance(self.to_variable(node), self.vm).to_variable(node)
 
   def to_variable(self, node):
     """Build a variable out of this abstract value.
@@ -691,7 +690,7 @@ class Instance(SimpleAbstractValue):
   _CONTAINER_NAMES = set([
       "__builtin__.list", "__builtin__.set", "__builtin__.frozenset"])
 
-  def __init__(self, clsvar, vm, node):
+  def __init__(self, clsvar, vm):
     super(Instance, self).__init__(clsvar.data[0].name, vm)
     self.cls = clsvar
     for cls in clsvar.data:
@@ -718,7 +717,7 @@ class Instance(SimpleAbstractValue):
                 # change the parser to not accept things like
                 #   class A(List[str], Sequence[int]): ...
                 self.type_parameters.add_lazy_item(
-                    name, param.instantiate, node)
+                    name, param.instantiate, self.vm.root_cfg_node)
             elif name != param.name:
               # We have type parameter renaming, e.g.,
               #  class List(Generic[T]): pass
@@ -794,16 +793,17 @@ class HasSlots(object):
 class Tuple(Instance, HasSlots, PythonConstant):
   """Representation of Python 'tuple' objects."""
 
-  def __init__(self, content, vm, node):
-    combined_content = vm.convert.build_content(node, content)
-    class_params = {name: vm.convert.merge_classes(node, instance_param.data)
+  def __init__(self, content, vm):
+    combined_content = vm.convert.build_content(vm.root_cfg_node, content)
+    class_params = {name: vm.convert.merge_classes(vm.root_cfg_node,
+                                                   instance_param.data)
                     for name, instance_param in
                     tuple(enumerate(content)) + ((T, combined_content),)}
     cls = TupleClass(vm.convert.tuple_type.bindings[0].data, class_params, vm)
-    super(Tuple, self).__init__(cls.to_variable(node), vm, node)
+    super(Tuple, self).__init__(cls.to_variable(vm.root_cfg_node), vm)
     HasSlots.init_mixin(self)
     self.set_slot("__getitem__", self.getitem_slot)
-    self.initialize_type_parameter(node, T, combined_content)
+    self.initialize_type_parameter(vm.root_cfg_node, T, combined_content)
     PythonConstant.init_mixin(self, content)
 
   def __repr__(self):
@@ -844,8 +844,8 @@ class Dict(Instance, HasSlots, PythonConstant, WrapsDict("pyval")):
   of what got stored.
   """
 
-  def __init__(self, vm, node):
-    super(Dict, self).__init__(vm.convert.dict_type, vm, node)
+  def __init__(self, vm):
+    super(Dict, self).__init__(vm.convert.dict_type, vm)
     HasSlots.init_mixin(self)
     self.set_slot("__getitem__", self.getitem_slot)
     self.set_slot("__setitem__", self.setitem_slot)
@@ -1030,8 +1030,8 @@ class AnnotationContainer(AnnotationClass):
 class AbstractOrConcreteValue(Instance, PythonConstant):
   """Abstract value with a concrete fallback."""
 
-  def __init__(self, pyval, clsvar, vm, node):
-    super(AbstractOrConcreteValue, self).__init__(clsvar, vm, node)
+  def __init__(self, pyval, clsvar, vm):
+    super(AbstractOrConcreteValue, self).__init__(clsvar, vm)
     PythonConstant.init_mixin(self, pyval)
 
 
@@ -1993,7 +1993,7 @@ class TupleClass(ParameterizedClass):
   def instantiate(self, node):
     content = tuple(self.type_parameters[i].instantiate(node)
                     for i in range(len(self.type_parameters) - 1))
-    return Tuple(content, self.vm, node).to_variable(node)
+    return Tuple(content, self.vm).to_variable(node)
 
 
 class PyTDClass(SimpleAbstractValue, Class):
@@ -2056,8 +2056,7 @@ class PyTDClass(SimpleAbstractValue, Class):
   def call(self, node, func, args):
     node, results = self._call_new_and_init(node, func, args)
     if results is None:
-      value = Instance(
-          self.vm.convert.constant_to_var(self.pytd_cls), self.vm, node)
+      value = Instance(self.vm.convert.constant_to_var(self.pytd_cls), self.vm)
       for type_param in self.template:
         if type_param.name not in value.type_parameters:
           value.type_parameters[type_param.name] = self.vm.program.NewVariable()
@@ -2127,7 +2126,7 @@ class InterpreterClass(SimpleAbstractValue, Class):
     if key not in self._instance_cache:
       cls = self.vm.program.NewVariable()
       cls.AddBinding(self, [], self.vm.root_cfg_node)
-      self._instance_cache[key] = Instance(cls, self.vm, self.vm.root_cfg_node)
+      self._instance_cache[key] = Instance(cls, self.vm)
     return self._instance_cache[key]
 
   def call(self, node, value, args):
@@ -2424,7 +2423,7 @@ class InterpreterFunction(Function):
         # TODO(kramm): modify type parameters to account for namedargs
         callargs[kwvararg_name] = args.starstarargs.AssignToNewVariable(node)
       else:
-        k = Dict(self.vm, node)
+        k = Dict(self.vm)
         k.update(node, args.namedargs, omit=param_names)
         callargs[kwvararg_name] = k.to_variable(node)
       arg_pos += 1
@@ -2542,7 +2541,7 @@ class InterpreterFunction(Function):
           self._call_records.append((callargs, ret, node))
         return node, ret
     if self.code.co_flags & loadmarshal.CodeType.CO_GENERATOR:
-      generator = Generator(frame, self.vm, node)
+      generator = Generator(frame, self.vm)
       # Run the generator right now, even though the program didn't call it,
       # because we need to know the contained type for futher matching.
       node2, _ = generator.run_until_yield(node)
@@ -2677,8 +2676,8 @@ class Generator(Instance):
   (I.e., the return type of coroutines).
   """
 
-  def __init__(self, generator_frame, vm, node):
-    super(Generator, self).__init__(vm.convert.generator_type, vm, node)
+  def __init__(self, generator_frame, vm):
+    super(Generator, self).__init__(vm.convert.generator_type, vm)
     self.generator_frame = generator_frame
     self.runs = 0
 
@@ -2714,8 +2713,8 @@ class Generator(Instance):
 class Iterator(Instance, HasSlots):
   """A representation of instances of iterators."""
 
-  def __init__(self, vm, return_var, node):
-    super(Iterator, self).__init__(vm.convert.iterator_type, vm, node)
+  def __init__(self, vm, return_var):
+    super(Iterator, self).__init__(vm.convert.iterator_type, vm)
     HasSlots.init_mixin(self)
     self.set_slot("next", self.next_slot)
     self.init_type_parameters(T)
@@ -2749,8 +2748,8 @@ class Module(Instance):
 
   is_lazy = True  # uses _convert_member
 
-  def __init__(self, vm, node, name, member_map):
-    super(Module, self).__init__(vm.convert.module_type, vm=vm, node=node)
+  def __init__(self, vm, name, member_map):
+    super(Module, self).__init__(vm.convert.module_type, vm)
     self.name = name
     self._member_map = member_map
 
