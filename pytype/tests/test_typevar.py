@@ -12,7 +12,7 @@ class TypeVarTest(test_inference.InferenceTest):
     ty = self.Infer("""
       from __future__ import google_type_annotations
       import typing
-      T = typing.TypeVar("T")  # pytype: disable=not-supported-yet
+      T = typing.TypeVar("T")
       def f(x: T) -> T:
         return __any_object__
       v = f(42)
@@ -31,7 +31,7 @@ class TypeVarTest(test_inference.InferenceTest):
   def testExtractItem(self):
     ty = self.Infer("""
       from __future__ import google_type_annotations
-      from typing import List, TypeVar  # pytype: disable=not-supported-yet
+      from typing import List, TypeVar
       S = TypeVar("S")  # unused
       T = TypeVar("T")
       def f(x: List[T]) -> T:
@@ -51,7 +51,7 @@ class TypeVarTest(test_inference.InferenceTest):
   def testWrapItem(self):
     ty = self.Infer("""
       from __future__ import google_type_annotations
-      from typing import List, TypeVar  # pytype: disable=not-supported-yet
+      from typing import List, TypeVar
       T = TypeVar("T")
       def f(x: T) -> List[T]:
         return __any_object__
@@ -68,7 +68,7 @@ class TypeVarTest(test_inference.InferenceTest):
   def testAnyStr(self):
     ty = self.Infer("""
       from __future__ import google_type_annotations
-      from typing import AnyStr  # pytype: disable=not-supported-yet
+      from typing import AnyStr
       def f(x: AnyStr) -> AnyStr:
         return __any_object__
     """, deep=True, solve_unknowns=True)
@@ -96,7 +96,7 @@ class TypeVarTest(test_inference.InferenceTest):
 
   def testUnusedTypeVar(self):
     ty = self.Infer("""
-      from typing import TypeVar  # pytype: disable=not-supported-yet
+      from typing import TypeVar
       T = TypeVar("T")
     """)
     self.assertTypesMatchPytd(ty, """
@@ -107,16 +107,13 @@ class TypeVarTest(test_inference.InferenceTest):
   def testImportTypeVar(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """T = TypeVar("T")""")
-      ty, errors = self.InferAndCheck("""\
+      ty = self.Infer("""\
         from a import T
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import TypeVar
         T = TypeVar("T")
       """)
-      self.assertErrorLogIs(errors, [
-          (1, "not-supported-yet", "importing TypeVar")
-      ])
 
   def testInvalidTypeVar(self):
     ty, errors = self.InferAndCheck("""\
@@ -140,7 +137,6 @@ class TypeVarTest(test_inference.InferenceTest):
       T = TypeVar("T")
     """)
     self.assertErrorLogIs(errors, [
-        (1, "not-supported-yet"),
         (3, "invalid-typevar", r"wrong arguments"),
         (5, "invalid-typevar", r"Expected.*str.*Actual.*int"),
         (6, "invalid-typevar", r"constant str"),
@@ -165,16 +161,14 @@ class TypeVarTest(test_inference.InferenceTest):
         def f(x: T2) -> T2: ...
       """, pythonpath=[d.path])
     self.assertErrorLogIs(errors, [
-        (3, "not-supported-yet"),
         (3, "invalid-typevar", "T.*T2"),
-        (4, "not-supported-yet"),
         (5, "invalid-typevar", "X.*Y"),
     ])
 
   def testMultipleSubstitution(self):
     ty = self.Infer("""\
       from __future__ import google_type_annotations
-      from typing import Dict, Tuple, TypeVar  # pytype: disable=not-supported-yet
+      from typing import Dict, Tuple, TypeVar
       K = TypeVar("K")
       V = TypeVar("V")
       def f(x: Dict[K, V]) -> Tuple[V, K]:
@@ -194,7 +188,7 @@ class TypeVarTest(test_inference.InferenceTest):
   def testUnion(self):
     ty = self.Infer("""\
       from __future__ import google_type_annotations
-      from typing import TypeVar, Union  # pytype: disable=not-supported-yet
+      from typing import TypeVar, Union
       S = TypeVar("S")
       T = TypeVar("T")
       def f(x: S, y: T) -> Union[S, T]:
@@ -214,7 +208,7 @@ class TypeVarTest(test_inference.InferenceTest):
   def testBadSubstitution(self):
     _, errors = self.InferAndCheck("""\
       from __future__ import google_type_annotations
-      from typing import List, TypeVar  # pytype: disable=not-supported-yet
+      from typing import List, TypeVar
       S = TypeVar("S")
       T = TypeVar("T")
       def f1(x: S) -> List[S]:
@@ -241,8 +235,7 @@ class TypeVarTest(test_inference.InferenceTest):
 
   def testPrintConstraints(self):
     ty = self.Infer("""
-      from __future__ import google_type_annotations
-      from typing import List, TypeVar  # pytype: disable=not-supported-yet
+      from typing import List, TypeVar
       S = TypeVar("S", str, unicode, covariant=True)  # pytype: disable=not-supported-yet
       T = TypeVar("T", str, unicode)
       U = TypeVar("U", List[str], List[unicode])
@@ -258,7 +251,7 @@ class TypeVarTest(test_inference.InferenceTest):
   def testUseConstraints(self):
     ty, errors = self.InferAndCheck("""\
       from __future__ import google_type_annotations
-      from typing import TypeVar  # pytype: disable=not-supported-yet
+      from typing import TypeVar
       T = TypeVar("T", int, float)
       def f(x: T) -> T:
         return __any_object__
@@ -297,7 +290,7 @@ class TypeVarTest(test_inference.InferenceTest):
   def testUseAnyStrConstraints(self):
     ty, errors = self.InferAndCheck("""\
       from __future__ import google_type_annotations
-      from typing import AnyStr, TypeVar  # pytype: disable=not-supported-yet
+      from typing import AnyStr, TypeVar
       def f(x: AnyStr, y: AnyStr) -> AnyStr:
         return __any_object__
       v1 = f(__any_object__, u"")  # ok
@@ -316,7 +309,7 @@ class TypeVarTest(test_inference.InferenceTest):
   def testTypeParameterType(self):
     ty = self.Infer("""\
       from __future__ import google_type_annotations
-      from typing import Type, TypeVar  # pytype: disable=not-supported-yet
+      from typing import Type, TypeVar
       T = TypeVar("T")
       def f(x: Type[T]) -> T:
         return __any_object__
@@ -332,7 +325,7 @@ class TypeVarTest(test_inference.InferenceTest):
   def testPrintNestedTypeParameter(self):
     _, errors = self.InferAndCheck("""\
       from __future__ import google_type_annotations
-      from typing import List, TypeVar  # pytype: disable=not-supported-yet
+      from typing import List, TypeVar
       T = TypeVar("T", int, float)
       def f(x: List[T]): ...
       f([""])
@@ -382,7 +375,7 @@ class TypeVarTest(test_inference.InferenceTest):
   def testConstraintMismatch(self):
     _, errors = self.InferAndCheck("""\
       from __future__ import google_type_annotations
-      from typing import AnyStr  # pytype: disable=not-supported-yet
+      from typing import AnyStr
       def f(x: AnyStr, y: AnyStr): ...
       f("", "")  # ok
       f("", u"")
@@ -394,7 +387,7 @@ class TypeVarTest(test_inference.InferenceTest):
   def testConstraintSubtyping(self):
     _, errors = self.InferAndCheck("""\
       from __future__ import google_type_annotations
-      from typing import TypeVar  # pytype: disable=not-supported-yet
+      from typing import TypeVar
       T = TypeVar("T", int, float)
       def f(x: T, y: T): ...
       f(True, False)  # ok
@@ -406,7 +399,7 @@ class TypeVarTest(test_inference.InferenceTest):
   def testFilterValue(self):
     _, errors = self.InferAndCheck("""\
       from __future__ import google_type_annotations
-      from typing import TypeVar  # pytype: disable=not-supported-yet
+      from typing import TypeVar
       T = TypeVar("T", int, float)
       def f(x: T, y: T): ...
       x = 3
@@ -420,7 +413,7 @@ class TypeVarTest(test_inference.InferenceTest):
   def testFilterClass(self):
     _, errors = self.InferAndCheck("""\
       from __future__ import google_type_annotations
-      from typing import TypeVar  # pytype: disable=not-supported-yet
+      from typing import TypeVar
       class A(object): pass
       class B(object): pass
       T = TypeVar("T", A, B)
@@ -437,7 +430,7 @@ class TypeVarTest(test_inference.InferenceTest):
     ty = self.Infer("""\
       from __future__ import google_type_annotations
       import types
-      from typing import TypeVar  # pytype: disable=not-supported-yet
+      from typing import TypeVar
       T = TypeVar("T", int, types.NoneType)
       def f(x: T) -> T:
         return __any_object__
@@ -460,7 +453,7 @@ class TypeVarTest(test_inference.InferenceTest):
   def testEnforceNonConstrainedTypeVar(self):
     _, errors = self.InferAndCheck("""\
       from __future__ import google_type_annotations
-      from typing import TypeVar  # pytype: disable=not-supported-yet
+      from typing import TypeVar
       T = TypeVar("T")
       def f(x: T, y: T): ...
       f(42, True)  # ok
@@ -474,7 +467,7 @@ class TypeVarTest(test_inference.InferenceTest):
 
   def testTypeVarInTypeComment(self):
     _, errors = self.InferAndCheck("""\
-      from typing import List, TypeVar  # pytype: disable=not-supported-yet
+      from typing import List, TypeVar
       T = TypeVar("T")
       x = None  # type: T
       y = None  # type: List[T]
@@ -485,7 +478,7 @@ class TypeVarTest(test_inference.InferenceTest):
   def testUselessTypeVar(self):
     _, errors = self.InferAndCheck("""\
       from __future__ import google_type_annotations
-      from typing import Tuple, TypeVar  # pytype: disable=not-supported-yet
+      from typing import Tuple, TypeVar
       T = TypeVar("T")
       S = TypeVar("S", int, float)
       def f1(x: T): ...
@@ -505,7 +498,7 @@ class TypeVarTest(test_inference.InferenceTest):
 
   def testBaseClassWithTypeVar(self):
     ty, errors = self.InferAndCheck("""\
-      from typing import List, TypeVar  # pytype: disable=not-supported-yet
+      from typing import List, TypeVar
       T = TypeVar("T")
       class A(List[T]): pass
     """)
@@ -518,7 +511,7 @@ class TypeVarTest(test_inference.InferenceTest):
 
   def testOverwriteBaseClassWithTypeVar(self):
     self.assertNoErrors("""
-      from typing import List, TypeVar  # pytype: disable=not-supported-yet
+      from typing import List, TypeVar
       T = TypeVar("T")
       l = List[T]
       l = list
@@ -527,7 +520,7 @@ class TypeVarTest(test_inference.InferenceTest):
 
   def testBound(self):
     _, errors = self.InferAndCheck("""\
-      from typing import TypeVar  # pytype: disable=not-supported-yet
+      from typing import TypeVar
       T = TypeVar("T", int, float, bound=str)  # pytype: disable=not-supported-yet
       S = TypeVar("S", bound="")
       U = TypeVar("U", bound=str)
@@ -541,7 +534,7 @@ class TypeVarTest(test_inference.InferenceTest):
 
   def testCovariant(self):
     _, errors = self.InferAndCheck("""\
-      from typing import TypeVar  # pytype: disable=not-supported-yet
+      from typing import TypeVar
       T = TypeVar("T", covariant=True)
       S = TypeVar("S", covariant=42)
       U = TypeVar("U", covariant=True if __any_object__ else False)
@@ -553,7 +546,7 @@ class TypeVarTest(test_inference.InferenceTest):
 
   def testContravariant(self):
     _, errors = self.InferAndCheck("""\
-      from typing import TypeVar  # pytype: disable=not-supported-yet
+      from typing import TypeVar
       T = TypeVar("T", contravariant=True)
       S = TypeVar("S", contravariant=42)
       U = TypeVar("U", contravariant=True if __any_object__ else False)
@@ -565,7 +558,7 @@ class TypeVarTest(test_inference.InferenceTest):
 
   def testExtraArguments(self):
     _, errors = self.InferAndCheck("""\
-      from typing import TypeVar  # pytype: disable=not-supported-yet
+      from typing import TypeVar
       T = TypeVar("T", extra_arg=42)
       S = TypeVar("S", *__any_object__)
       U = TypeVar("U", **__any_object__)
@@ -577,7 +570,7 @@ class TypeVarTest(test_inference.InferenceTest):
 
   def testSimplifyArgsAndKwargs(self):
     ty = self.Infer("""
-      from typing import TypeVar  # pytype: disable=not-supported-yet
+      from typing import TypeVar
       constraints = (int, str)
       kwargs = {"covariant": True}
       T = TypeVar("T", *constraints, **kwargs)  # pytype: disable=not-supported-yet

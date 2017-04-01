@@ -2755,9 +2755,6 @@ class Module(Instance):
 
   def _convert_member(self, name, ty):
     """Called to convert the items in _member_map to cfg.Variable."""
-    if isinstance(ty, pytd.TypeParameter):
-      self.vm.errorlog.not_supported_yet(self.vm.frame.current_opcode,
-                                         "importing TypeVar")
     var = self.vm.convert.constant_to_var(ty)
     for value in var.data:
       # Only do this if this class isn't already part of a module.

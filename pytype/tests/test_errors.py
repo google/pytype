@@ -453,12 +453,9 @@ class ErrorTest(test_inference.InferenceTest):
 
   def testNotSupported(self):
     _, errors = self.InferAndCheck("""\
-      from typing import TypeVar
       from typing import Generic
     """)
-    self.assertErrorLogIs(
-        errors, [(1, "not-supported-yet"),
-                 (2, "not-supported-yet")])
+    self.assertErrorLogIs(errors, [(1, "not-supported-yet")])
 
   def testDeleteFromSet(self):
     _, errors = self.InferAndCheck("""\

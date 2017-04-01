@@ -81,7 +81,6 @@ class TypeVar(abstract.PyTDFunction):
     pyval = vm.loader.typing.Lookup("typing._typevar_new")
     f = vm.convert.constant_to_value(pyval, {}, vm.root_cfg_node)
     super(TypeVar, self).__init__(name, f.signatures, pytd.METHOD, vm)
-    vm.errorlog.not_supported_yet(vm.frame.current_opcode, name)
 
   def _get_class_or_constant(self, var, name, arg_type):
     if arg_type is abstract.Class:
