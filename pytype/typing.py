@@ -83,7 +83,28 @@ class TypeVar(abstract.PyTDFunction):
     super(TypeVar, self).__init__(name, f.signatures, pytd.METHOD, vm)
     vm.errorlog.not_supported_yet(vm.frame.current_opcode, name)
 
+  def _get_class_or_constant(self, var, name, arg_type):
+    if arg_type is abstract.Class:
+      convert_func = abstract.get_atomic_value
+      type_desc = "an unambiguous type"
+    else:
+      convert_func = abstract.get_atomic_python_constant
+      type_desc = "a constant " + arg_type.__name__
+    try:
+      return convert_func(var, arg_type)
+    except abstract.ConversionError:
+      raise TypeVarError("%s must be %s" % (name, type_desc))
+
+  def _get_namedarg(self, args, name, arg_type, default_value):
+    if name in args.namedargs:
+      value = self._get_class_or_constant(args.namedargs[name], name, arg_type)
+      self.vm.errorlog.not_supported_yet(
+          self.vm.frame.current_opcode, "argument \"%s\" to TypeVar" % name)
+      return value
+    return default_value
+
   def _get_typeparam(self, node, args):
+    args = args.simplify(node)
     try:
       self._match_args(node, args)
     except abstract.InvalidParameters as e:
@@ -92,19 +113,26 @@ class TypeVar(abstract.PyTDFunction):
       # It is currently impossible to get here, since the only
       # FailedFunctionCall that is not an InvalidParameters is NotCallable.
       raise TypeVarError("initialization failed")
-    try:
-      name = abstract.get_atomic_python_constant(args.posargs[0], str)
-    except abstract.ConversionError:
-      raise TypeVarError("name must be a constant string")
-    try:
-      constraints = tuple(abstract.get_atomic_value(c, abstract.Class)
-                          for c in args.posargs[1:])
-    except abstract.ConversionError:
-      raise TypeVarError("constraints must be unambiguous types")
+    name = self._get_class_or_constant(args.posargs[0], "name", str)
+    constraints = tuple(self._get_class_or_constant(
+        c, "constraint", abstract.Class) for c in args.posargs[1:])
     if len(constraints) == 1:
       raise TypeVarError("the number of constraints must be 0 or more than 1")
-    # TODO(rechen): Get bound, covariant, and contravariant.
-    return abstract.TypeParameter(name, self.vm, constraints=constraints)
+    bound = self._get_namedarg(args, "bound", abstract.Class, None)
+    covariant = self._get_namedarg(args, "covariant", bool, False)
+    contravariant = self._get_namedarg(args, "contravariant", bool, False)
+    if constraints and bound:
+      raise TypeVarError("constraints and a bound are mutually exclusive")
+    extra_kwargs = set(args.namedargs) - {"bound", "covariant", "contravariant"}
+    if extra_kwargs:
+      raise TypeVarError("extra keyword arguments: " + ", ".join(extra_kwargs))
+    if args.starargs:
+      raise TypeVarError("*args must be a constant tuple")
+    if args.starstarargs:
+      raise TypeVarError("ambiguous **kwargs not allowed")
+    return abstract.TypeParameter(name, self.vm, constraints=constraints,
+                                  bound=bound, covariant=covariant,
+                                  contravariant=contravariant)
 
   def call(self, node, _, args):
     """Call typing.TypeVar()."""

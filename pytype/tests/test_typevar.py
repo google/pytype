@@ -129,6 +129,7 @@ class TypeVarTest(test_inference.InferenceTest):
       T = typevar("T", int, str if __any_object__ else unicode)
       T = typevar("T", 0, float)
       T = typevar("T", str)
+      # pytype: disable=not-supported-yet
       S = typevar("S", covariant=False)  # ok
       T = typevar("T", covariant=False)  # duplicate ok
     """)
@@ -142,9 +143,9 @@ class TypeVarTest(test_inference.InferenceTest):
         (1, "not-supported-yet"),
         (3, "invalid-typevar", r"wrong arguments"),
         (5, "invalid-typevar", r"Expected.*str.*Actual.*int"),
-        (6, "invalid-typevar", r"constant string"),
-        (7, "invalid-typevar", r"unambiguous types"),
-        (8, "invalid-typevar", r"unambiguous types"),
+        (6, "invalid-typevar", r"constant str"),
+        (7, "invalid-typevar", r"unambiguous type"),
+        (8, "invalid-typevar", r"unambiguous type"),
         (9, "invalid-typevar", r"0 or more than 1"),
     ])
 
@@ -242,7 +243,7 @@ class TypeVarTest(test_inference.InferenceTest):
     ty = self.Infer("""
       from __future__ import google_type_annotations
       from typing import List, TypeVar  # pytype: disable=not-supported-yet
-      S = TypeVar("S", str, unicode, covariant=True)
+      S = TypeVar("S", str, unicode, covariant=True)  # pytype: disable=not-supported-yet
       T = TypeVar("T", str, unicode)
       U = TypeVar("U", List[str], List[unicode])
     """)
@@ -499,6 +500,70 @@ class TypeVarTest(test_inference.InferenceTest):
       l = List[T]
       l = list
       class X(l): pass
+    """)
+
+  def testBound(self):
+    _, errors = self.InferAndCheck("""\
+      from typing import TypeVar  # pytype: disable=not-supported-yet
+      T = TypeVar("T", int, float, bound=str)  # pytype: disable=not-supported-yet
+      S = TypeVar("S", bound="")
+      U = TypeVar("U", bound=str)
+      V = TypeVar("V", bound=int if __any_object__ else float)
+    """)
+    self.assertErrorLogIs(errors, [
+        (2, "invalid-typevar", r"mutually exclusive"),
+        (3, "invalid-typevar", r"Expected.*Type.*Actual.*str"),
+        (4, "not-supported-yet"),
+        (5, "invalid-typevar", r"unambiguous")])
+
+  def testCovariant(self):
+    _, errors = self.InferAndCheck("""\
+      from typing import TypeVar  # pytype: disable=not-supported-yet
+      T = TypeVar("T", covariant=True)
+      S = TypeVar("S", covariant=42)
+      U = TypeVar("U", covariant=True if __any_object__ else False)
+    """)
+    self.assertErrorLogIs(errors, [
+        (2, "not-supported-yet"),
+        (3, "invalid-typevar", r"Expected.*bool.*Actual.*int"),
+        (4, "invalid-typevar", r"constant")])
+
+  def testContravariant(self):
+    _, errors = self.InferAndCheck("""\
+      from typing import TypeVar  # pytype: disable=not-supported-yet
+      T = TypeVar("T", contravariant=True)
+      S = TypeVar("S", contravariant=42)
+      U = TypeVar("U", contravariant=True if __any_object__ else False)
+    """)
+    self.assertErrorLogIs(errors, [
+        (2, "not-supported-yet"),
+        (3, "invalid-typevar", r"Expected.*bool.*Actual.*int"),
+        (4, "invalid-typevar", r"constant")])
+
+  def testExtraArguments(self):
+    _, errors = self.InferAndCheck("""\
+      from typing import TypeVar  # pytype: disable=not-supported-yet
+      T = TypeVar("T", extra_arg=42)
+      S = TypeVar("S", *__any_object__)
+      U = TypeVar("U", **__any_object__)
+    """)
+    self.assertErrorLogIs(errors, [
+        (2, "invalid-typevar", r"extra_arg"),
+        (3, "invalid-typevar", r"\*args"),
+        (4, "invalid-typevar", r"\*\*kwargs")])
+
+  def testSimplifyArgsAndKwargs(self):
+    ty = self.Infer("""
+      from typing import TypeVar  # pytype: disable=not-supported-yet
+      constraints = (int, str)
+      kwargs = {"covariant": True}
+      T = TypeVar("T", *constraints, **kwargs)  # pytype: disable=not-supported-yet
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Dict, Tuple, Type, TypeVar
+      T = TypeVar("T", int, str)
+      constraints = ...  # type: Tuple[Type[int], Type[str]]
+      kwargs = ...  # type: Dict[str, bool]
     """)
 
 
