@@ -1,5 +1,7 @@
 """Representation of Python function headers and calls."""
 
+import collections
+
 
 
 # Used as a key in Signature.late_annotations to indicate an annotation
@@ -58,6 +60,16 @@ class Signature(object):
       self.has_return_annotation = True
     else:
       self.has_param_annotations = True
+
+  def check_type_parameter_count(self, opcode):
+    c = collections.Counter()
+    for annot in self.annotations.values():
+      c.update(annot.vm.annotations_util.get_type_parameters(annot))
+    for param, count in c.iteritems():
+      if count == 1 and not (param.constraints or param.bound or
+                             param.covariant or param.contravariant):
+        param.vm.errorlog.invalid_annotation(
+            opcode, param, "Appears only once in the signature")
 
   def drop_first_parameter(self):
     return self.__class__(

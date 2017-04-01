@@ -223,13 +223,13 @@ class TypeVarTest(test_inference.InferenceTest):
         return 42  # no error because never called
       def f3(x: S) -> S:
         return 42
-      def f4(x: S, y: T) -> List[S]:
+      def f4(x: S, y: T, z: T) -> List[S]:
         return [y]
       f3("")
       f3(16)  # ok
       f3(False)
-      f4(True, 3.14)
-      f4("hello", "world")  # ok
+      f4(True, 3.14, 0)
+      f4("hello", "world", "domination")  # ok
     """)
     self.assertErrorLogIs(errors, [
         (6, "bad-return-type", r"List\[Any\].*Set\[Any\]"),
@@ -473,12 +473,35 @@ class TypeVarTest(test_inference.InferenceTest):
                                     r"Expected.*y: int.*Actual.*y: str")])
 
   def testTypeVarInTypeComment(self):
-    self.assertNoErrors("""\
+    _, errors = self.InferAndCheck("""\
       from typing import List, TypeVar  # pytype: disable=not-supported-yet
       T = TypeVar("T")
       x = None  # type: T
       y = None  # type: List[T]
     """)
+    self.assertErrorLogIs(errors, [(3, "not-supported-yet"),
+                                   (4, "not-supported-yet")])
+
+  def testUselessTypeVar(self):
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      from typing import Tuple, TypeVar  # pytype: disable=not-supported-yet
+      T = TypeVar("T")
+      S = TypeVar("S", int, float)
+      def f1(x: T): ...
+      def f2() -> T: ...
+      def f3(x: Tuple[T]): ...
+      def f4(x: Tuple[T, T]): ...  # ok
+      def f5(x: S): ...  # ok
+      def f6(x: "U"): ...
+      def f7(x: T, y: "T"): ...  # ok
+      def f8(x: "U") -> "U": ...  # ok
+      U = TypeVar("U")
+    """)
+    self.assertErrorLogIs(errors, [(5, "invalid-annotation"),
+                                   (6, "invalid-annotation"),
+                                   (7, "invalid-annotation"),
+                                   (10, "invalid-annotation")])
 
   def testBaseClassWithTypeVar(self):
     ty, errors = self.InferAndCheck("""\

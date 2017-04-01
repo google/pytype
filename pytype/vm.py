@@ -173,11 +173,11 @@ class VirtualMachine(object):
     self.program = typegraph.Program()
     self.root_cfg_node = self.program.NewCFGNode("root")
     self.program.entrypoint = self.root_cfg_node
+    self.annotations_util = annotations_util.AnnotationsUtil(self)
     self.convert = convert.Converter(self)
     self.program.default_data = self.convert.unsolvable
     self.matcher = matcher.AbstractMatcher()
     self.attribute_handler = attribute.AbstractAttributeHandler(self)
-    self.annotations_util = annotations_util.AnnotationsUtil(self)
     self.has_unknown_wildcard_imports = False
     self.callself_stack = []
     self.filename = None
@@ -560,6 +560,8 @@ class VirtualMachine(object):
     var.AddBinding(val, code.bindings, node)
     if late_annotations:
       self.functions_with_late_annotations.append(val)
+    else:
+      val.signature.check_type_parameter_count(self.frame.current_opcode)
     return var
 
   def make_frame(self, node, code, callargs=None,

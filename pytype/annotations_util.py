@@ -58,6 +58,19 @@ class AnnotationsUtil(object):
       return type(annot)(options, self.vm)
     return annot
 
+  def get_type_parameters(self, annot):
+    """Get all the TypeParameter instances that appear in the annotation."""
+    if isinstance(annot, abstract.TypeParameter):
+      return [annot]
+    elif isinstance(annot, abstract.TupleClass):
+      return self.get_type_parameters(annot.type_parameters[abstract.T])
+    elif isinstance(annot, abstract.ParameterizedClass):
+      return sum((self.get_type_parameters(p)
+                  for p in annot.type_parameters.values()), [])
+    elif isinstance(annot, abstract.Union):
+      return sum((self.get_type_parameters(o) for o in annot.options), [])
+    return []
+
   def convert_function_annotations(self, node, raw_annotations):
     if raw_annotations:
       # {"i": int, "return": str} is stored as (int, str, ("i", "return"))
@@ -87,7 +100,7 @@ class AnnotationsUtil(object):
       return {}, {}
 
   def eval_late_annotations(self, node, func, f_globals):
-    """Resolves an instance of abstract.LateClass's expression."""
+    """Resolves an instance of LateAnnotation's expression."""
     for name, annot in func.signature.late_annotations.iteritems():
       if name == function.MULTI_ARG_ANNOTATION:
         try:
@@ -100,6 +113,7 @@ class AnnotationsUtil(object):
             annot.expr, annot.name, annot.opcode, node, f_globals)
         if resolved is not None:
           func.signature.set_annotation(name, resolved)
+    func.signature.check_type_parameter_count(func.get_first_opcode())
 
   def apply_type_comment(self, state, op, name, value):
     """If there is a type comment for the op, return its value."""
@@ -113,6 +127,9 @@ class AnnotationsUtil(object):
       except (EvaluationError, abstract.ConversionError) as e:
         self.vm.errorlog.invalid_type_comment(op, comment, details=e.message)
       else:
+        if self.get_type_parameters(typ):
+          self.vm.errorlog.not_supported_yet(
+              op, "using type parameter in type comment")
         try:
           value = self.init_annotation(typ, name, op, state.node)
         except LateAnnotationError:
