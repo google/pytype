@@ -19,6 +19,7 @@ You currently need Python 2.7 to *run* pytype. (It can *analyze* Python 3, thoug
 
 ```
 git clone https://github.com/google/pytype.git
+cd pytype
 git submodule init
 git submodule update
 python setup.py install
