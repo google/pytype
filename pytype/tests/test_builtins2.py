@@ -773,6 +773,15 @@ class BuiltinTests2(test_inference.InferenceTest):
       x4 = ...  # type: List[int]
     """)
 
+  def testImportExternalFunction(self):
+    ty = self.Infer("""
+      from __builtin__ import next
+      v = next(iter([1, 2, 3]))
+    """)
+    self.assertTypesMatchPytd(ty, """
+      v = ...  # type: int
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

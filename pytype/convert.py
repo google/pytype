@@ -457,6 +457,11 @@ class Converter(object):
         if dot:
           cls.module = module
       return cls
+    elif isinstance(pyval, pytd.ExternalFunction):
+      module, _, name = pyval.name.partition(".")
+      assert module == "__builtin__", "PYTHONCODE allowed only in __builtin__"
+      return abstract.merge_values(
+          self.vm.frame.f_globals.members[name].data, self.vm)
     elif isinstance(pyval, pytd.Function):
       signatures = [abstract.PyTDSignature(pyval.name, sig, self.vm)
                     for sig in pyval.signatures]
