@@ -278,7 +278,7 @@ class CFGTest(unittest.TestCase):
     self.assertEquals((True, [n5, n4, n2]), f.FindNodeBackwards(n5, n2, ()))
     self.assertEquals((True, [n5, n4]), f.FindNodeBackwards(n5, n3, ()))
 
-  def testConditionOnStartNode(self):
+  def testConditionOnStartNode2(self):
     # Test that a condition on the initial node is tests.
     # At the time of writing this can not happen in pytype. The test guards
     # against future additions.
@@ -440,6 +440,31 @@ class CFGTest(unittest.TestCase):
     n4.condition = x1
     self.assertTrue(n5.HasCombination([y1]))
 
+  def testConditionOnStartNode(self):
+    p = cfg.Program()
+    n1 = p.NewCFGNode("n1")
+    n2 = n1.ConnectNew("n2")
+    n3 = p.NewCFGNode("n3")
+    a = p.NewVariable().AddBinding("a", source_set=[], where=n3)
+    b = p.NewVariable().AddBinding("b", source_set=[], where=n1)
+    n2.condition = a
+    self.assertFalse(n2.HasCombination([b]))
+    self.assertTrue(n1.HasCombination([b]))
+
+  def testConditionLoop(self):
+    # Triggers if _IsSolvedBefore() returns False
+    p = cfg.Program()
+    n1 = p.NewCFGNode("n1")
+    n2 = n1.ConnectNew("n2")
+    n3 = p.NewCFGNode("n3")
+    a = p.NewVariable().AddBinding("a")
+    u1 = p.NewVariable().AddBinding("1", source_set=[], where=n3)
+    p.NewVariable().AddBinding("2", source_set=[], where=n3)
+    c = p.NewVariable().AddBinding("c", source_set=[u1], where=n1)
+    a.AddOrigin(n2, [c])
+    n2.condition = a
+    self.assertFalse(n2.HasCombination([c]))
+
   def testCombinations(self):
     # n1------->n2
     #  |        |
@@ -476,6 +501,18 @@ class CFGTest(unittest.TestCase):
     self.assertTrue(n1.HasCombination([a]))
     self.assertTrue(n1.HasCombination([b]))
     self.assertFalse(n1.HasCombination([a, b]))
+
+  def testLoop(self):
+    p = cfg.Program()
+    n1 = p.NewCFGNode("n1")
+    n2 = n1.ConnectNew("n2")
+    n2.ConnectTo(n1)
+    x = p.NewVariable()
+    a = x.AddBinding("a")
+    b = x.AddBinding("b")
+    a.AddOrigin(n1, [b])
+    b.AddOrigin(n2, [a])
+    self.assertTrue(n2.HasCombination([b]))
 
   def testOneStepSimultaneous(self):
     # Like testSimultaneous, but woven through an additional node

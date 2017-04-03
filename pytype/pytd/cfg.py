@@ -868,9 +868,9 @@ class Solver(object):
       back all the way to the entry point of the program).
     """
     state = State(start_node, start_attrs)
-    return self._RecallOrFindSolution(state)
+    return self._RecallOrFindSolution(state, frozenset(start_attrs))
 
-  def _RecallOrFindSolution(self, state):
+  def _RecallOrFindSolution(self, state, seen_goals):
     """Memoized version of FindSolution()."""
     if state in self._solved_states:
       Solver._cache_metric.inc("hit")
@@ -883,7 +883,7 @@ class Solver(object):
     self._solved_states[state] = True
 
     Solver._cache_metric.inc("miss")
-    result = self._solved_states[state] = self._FindSolution(state)
+    result = self._solved_states[state] = self._FindSolution(state, seen_goals)
     return result
 
   def _IsSolvedBefore(self, where, goal, entrypoint, blocked):
@@ -914,7 +914,7 @@ class Solver(object):
         return True
     return False
 
-  def _FindSolution(self, state):
+  def _FindSolution(self, state, seen_goals):
     """Find a sequence of assignments that would solve the given state."""
     if state.Done():
       return True
@@ -944,9 +944,11 @@ class Solver(object):
             # If we found conditions on the way, see whether we need to add
             # any of them to our goals.
             for node in path:
-              if node.condition not in state.goals and not self._IsSolvedBefore(
+              if node.condition not in seen_goals and not self._IsSolvedBefore(
                   node, node.condition, origin.where, blocked):
-                # TODO(kramm): what if node == state.pos?
+                # It can happen that node == state.pos, typically if the node
+                # we're calling HasCombination on has a condition. If so, we'll
+                # treat it like any other condition and add it to our goals.
                 new_goals.add(node.condition)
                 where = node
                 break
@@ -963,6 +965,6 @@ class Solver(object):
             if _GoalsConflict(removed):
               # Sometimes, we bulk-remove goals that are internally conflicting.
               return False
-            if self._RecallOrFindSolution(new_state):
+            if self._RecallOrFindSolution(new_state, seen_goals | new_goals):
               return True
     return False
