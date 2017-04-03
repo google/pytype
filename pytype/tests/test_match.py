@@ -127,6 +127,23 @@ class MatchTest(test_inference.InferenceTest):
         x = ...  # type: str
       """)
 
+  def testMatchIdentityFunction(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import TypeVar
+        T = TypeVar("T")
+        def f(x: T) -> T: ...
+      """)
+      ty = self.Infer("""
+        import foo
+        v = foo.f(__any_object__)
+      """, deep=True, solve_unknowns=True, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        from typing import Any
+        foo = ...  # type: module
+        v = ...  # type: Any
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()

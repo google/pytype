@@ -1202,16 +1202,27 @@ class CreateTypeParametersFromUnknowns(Visitor):
     super(CreateTypeParametersFromUnknowns, self).__init__()
     self.parameter = None
     self.class_name = None
+    self.function_name = None
 
-  def EnterClass(self, f):
-    self.class_name = f.name
+  def _IsIncomplete(self, name):
+    return name and name.startswith("~")
+
+  def EnterClass(self, node):
+    self.class_name = node.name
 
   def LeaveClass(self, _):
     self.class_name = None
 
+  def EnterFunction(self, node):
+    self.function_name = node.name
+
+  def LeaveFunction(self, _):
+    self.function_name = None
+
   def VisitSignature(self, sig):
     """Potentially replace ~unknowns with type parameters, in a signature."""
-    if self.class_name and self.class_name.startswith("~"):
+    if (self._IsIncomplete(self.class_name) or
+        self._IsIncomplete(self.function_name)):
       # Leave unknown classes and call traces as-is, they'll never be part of
       # the output.
       # TODO(kramm): We shouldn't run on call traces in the first place.
