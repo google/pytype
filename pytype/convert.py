@@ -114,11 +114,10 @@ class Converter(object):
     name = "constant" if constant_type is None else constant_type.__name__
     raise abstract.ConversionError("%s is not a(n) %s" % (val, name))
 
-  def name_to_value(self, name, subst=None, node=None):
+  def name_to_value(self, name, subst=None):
     pytd_cls = self.vm.lookup_builtin(name)
     subst = subst or {}
-    node = node or self.vm.root_cfg_node
-    return self.constant_to_value(pytd_cls, subst, node)
+    return self.constant_to_value(pytd_cls, subst, self.vm.root_cfg_node)
 
   def tuple_to_value(self, content):
     """Create a VM tuple from the given sequence."""
@@ -369,17 +368,35 @@ class Converter(object):
       The converted constant. (Instance of AtomicAbstractValue)
     """
     key = ("constant", pyval, type(pyval))
-    if key not in self._convert_cache:
+    if key in self._convert_cache:
+      if self._convert_cache[key] is None:
+        # This error is triggered by, e.g., classes inheriting from each other.
+        name = (pyval.name if hasattr(pyval, "name")
+                else pyval.__class__.__name__)
+        self.vm.errorlog.recursion_error(self.vm.frame.current_opcode, name)
+        self._convert_cache[key] = self.unsolvable
+      return self._convert_cache[key]
+    else:
       self._convert_cache[key] = None  # for recursion detection
-      self._convert_cache[key] = self._constant_to_value(pyval, subst, node)
-    elif self._convert_cache[key] is None:
-      # This error is triggered by, e.g., classes inheriting from each other
-      name = pyval.name if hasattr(pyval, "name") else pyval.__class__.__name__
-      self.vm.errorlog.recursion_error(self.vm.frame.current_opcode, name)
-      self._convert_cache[key] = self.unsolvable
-    return self._convert_cache[key]
+      need_node = [False]  # mutable value that can be modified by get_node
+      def get_node():
+        need_node[0] = True
+        return node
+      value = self._constant_to_value(pyval, subst, get_node)
+      if not need_node[0] or node is self.vm.root_cfg_node:
+        # Values that contain a non-root node cannot be cached. Otherwise,
+        # we'd introduce bugs such as the following:
+        #   if <condition>:
+        #     d = {"a": 1}  # "a" is cached here
+        #   else:
+        #     # the cached value of "a", which contains a node that is only
+        #     # visible inside the "if", is used, which will eventually lead
+        #     # pytype to think that the V->complex binding isn't visible.
+        #     d = {"a": 1j}
+        self._convert_cache[key] = value
+      return value
 
-  def _constant_to_value(self, pyval, subst, node):
+  def _constant_to_value(self, pyval, subst, get_node):
     """Create a AtomicAbstractValue that represents a python constant.
 
     This supports both constant from code constant pools and PyTD constants such
@@ -388,7 +405,7 @@ class Converter(object):
     Args:
       pyval: The python or PyTD value to convert.
       subst: The current type parameters.
-      node: The current CFG node.
+      get_node: A getter function for the current node.
     Returns:
       A Value that represents the constant, or None if we couldn't convert.
     Raises:
@@ -418,7 +435,7 @@ class Converter(object):
       else:
         classname = "__builtin__." + pyval.__name__
       try:
-        return self.name_to_value(classname, subst, node)
+        return self.name_to_value(classname, subst)
       except (KeyError, AttributeError):
         log.debug("Failed to find pytd", exc_info=True)
         raise
@@ -452,15 +469,16 @@ class Converter(object):
       return f
     elif isinstance(pyval, pytd.ClassType):
       assert pyval.cls
-      return self.constant_to_value(pyval.cls, subst, node)
+      return self.constant_to_value(pyval.cls, subst, self.vm.root_cfg_node)
     elif isinstance(pyval, pytd.NothingType):
       return self.nothing
     elif isinstance(pyval, pytd.AnythingType):
       return self.unsolvable
     elif isinstance(pyval, pytd.FunctionType):
-      return self._constant_to_value(pyval.function, subst, node)
+      return self.constant_to_value(
+          pyval.function, subst, self.vm.root_cfg_node)
     elif isinstance(pyval, pytd.UnionType):
-      options = [self.constant_to_value(t, subst, node)
+      options = [self.constant_to_value(t, subst, self.vm.root_cfg_node)
                  for t in pyval.type_list]
       if len(options) > 1:
         return abstract.Union(options, self.vm)
@@ -483,9 +501,10 @@ class Converter(object):
             # An instance of "type" or of an anonymous property can be anything.
             instance = self._create_new_unknown_value("type")
           else:
-            mycls = self.constant_to_var(cls, subst, node)
+            mycls = self.constant_to_var(cls, subst, self.vm.root_cfg_node)
             instance = abstract.Instance(mycls, self.vm)
-            instance.make_template_unsolvable(cls.template, node)
+            instance.make_template_unsolvable(cls.template,
+                                              self.vm.root_cfg_node)
           log.info("New pytd instance for %s: %r", cls.name, instance)
           self._convert_cache[key] = instance
         return self._convert_cache[key]
@@ -497,25 +516,25 @@ class Converter(object):
           if isinstance(c, pytd.TypeParameter):
             if not subst or c.name not in subst:
               raise self.TypeParameterError(c.name)
-            return self.merge_classes(node, subst[c.name].data)
+            return self.merge_classes(get_node(), subst[c.name].data)
           else:
-            return self.constant_to_value(c, subst, node)
+            return self.constant_to_value(c, subst, self.vm.root_cfg_node)
         elif isinstance(cls, pytd.TupleType):
           content = tuple(self.constant_to_var(abstract.AsInstance(p),
-                                               subst, node)
+                                               subst, get_node())
                           for p in cls.parameters)
           return abstract.Tuple(content, self.vm)
         else:
-          instance = abstract.Instance(
-              self.constant_to_var(base_cls, subst, node), self.vm)
+          clsvar = self.constant_to_var(base_cls, subst, self.vm.root_cfg_node)
+          instance = abstract.Instance(clsvar, self.vm)
           assert len(cls.parameters) <= len(base_cls.template)
           for formal, actual in zip(base_cls.template, cls.parameters):
             p = self.constant_to_var(
-                abstract.AsInstance(actual), subst, node)
-            instance.initialize_type_parameter(node, formal.name, p)
+                abstract.AsInstance(actual), subst, self.vm.root_cfg_node)
+            instance.initialize_type_parameter(get_node(), formal.name, p)
           return instance
       else:
-        return self.constant_to_value(cls, subst, node)
+        return self.constant_to_value(cls, subst, self.vm.root_cfg_node)
     elif isinstance(pyval, pytd.GenericType):
       assert isinstance(pyval.base_type, pytd.ClassType)
       if isinstance(pyval, pytd.TupleType):
@@ -532,14 +551,17 @@ class Converter(object):
       for i, name in enumerate(template):
         if i < len(parameters):
           type_parameters.add_lazy_item(name, self.constant_to_value,
-                                        parameters[i], subst, node)
+                                        parameters[i], subst,
+                                        self.vm.root_cfg_node)
         else:
           type_parameters[name] = self.unsolvable
-      base_cls = self.constant_to_value(pyval.base_type.cls, subst, node)
+      base_cls = self.constant_to_value(
+          pyval.base_type.cls, subst, self.vm.root_cfg_node)
       cls = abstract_class(base_cls, type_parameters, self.vm)
       return cls
     elif pyval.__class__ is tuple:  # only match raw tuple, not namedtuple/Node
-      return self.tuple_to_value([self.constant_to_var(item, subst, node)
+      return self.tuple_to_value([self.constant_to_var(item, subst,
+                                                       self.vm.root_cfg_node)
                                   for i, item in enumerate(pyval)])
     else:
       raise NotImplementedError("Can't convert constant %s %r" %

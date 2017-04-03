@@ -634,6 +634,23 @@ class TestFunctions(test_inference.InferenceTest):
         w2 = ...  # type: Type[Callable]
       """)
 
+  def testTypeParameterVisibility(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import Tuple, TypeVar, Union
+        T = TypeVar("T")
+        def f(x: T) -> Tuple[Union[T, str], int]
+      """)
+      ty = self.Infer("""
+        import foo
+        v1, v2 = foo.f(42j)
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        foo = ...  # type: module
+        v1 = ...  # type: str or complex
+        v2 = ...  # type: int
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()

@@ -307,7 +307,7 @@ class CallTracer(vm.VirtualMachine):
         combined_types = pytd_utils.JoinTypes(t.to_type(self.exitpoint)
                                               for t in options)
         data.append(pytd.Constant(name, combined_types))
-      else:
+      elif options:
         for option in options:
           try:
             d = option.to_pytd_def(self.exitpoint, name)  # Deep definition
@@ -320,6 +320,9 @@ class CallTracer(vm.VirtualMachine):
             data.append(pytd.Constant(name, d))
           else:
             data.append(d)
+      else:
+        log.error("No visible options for " + name)
+        data.append(pytd.Constant(name, pytd.AnythingType()))
     return pytd_utils.WrapTypeDeclUnit("inferred", data)
 
   @staticmethod

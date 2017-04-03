@@ -671,6 +671,18 @@ class SplitTest(test_inference.InferenceTest):
       v2 = ...  # type: float
     """)
 
+  def testTypeParameterInBranch(self):
+    ty = self.Infer("""
+      if __any_object__:
+        x = {"a": 1, "b": 42}
+      else:
+        x = {"b": 42j}
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Dict
+      x = ...  # type: Dict[str, int or complex]
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()
