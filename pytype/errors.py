@@ -446,7 +446,7 @@ class ErrorLog(ErrorLogBase):
       suffix = ""
     else:
       suffix = " for " + name
-    self.error(opcode, "Invalid type annotation %s%s. %s" % (
+    self.error(opcode, "Invalid type annotation %r%s. %s" % (
         self._print_as_expected_type(annot), suffix, details))
 
   @_error_name("mro-error")
