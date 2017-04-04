@@ -635,6 +635,10 @@ class DictTemplate(dict):
     raise NotImplementedError()
 
 
+class AliasingDictConflictError(Exception):
+  pass
+
+
 class AliasingDict(DictTemplate):
   """A dictionary that supports key aliasing.
 
@@ -650,9 +654,11 @@ class AliasingDict(DictTemplate):
   def add_alias(self, alias, name):
     assert alias not in self
     assert alias not in self._alias_map.values()
-    assert (alias not in self._alias_map or
-            self._alias_map.get(name, name) == self._alias_map[alias])
-    self._alias_map[alias] = self._alias_map.get(name, name)
+    new_name = self._alias_map.get(name, name)
+    existing_name = self._alias_map.get(alias, new_name)
+    if new_name != existing_name:
+      raise AliasingDictConflictError()
+    self._alias_map[alias] = new_name
 
   def __contains__(self, name):
     return super(AliasingDict, self).__contains__(

@@ -544,7 +544,7 @@ class UtilsTest(unittest.TestCase):
     d.add_alias("alias2", "name")
     self.assertRaises(AssertionError,
                       lambda: d.add_alias("name", "other_name"))
-    self.assertRaises(AssertionError,
+    self.assertRaises(utils.AliasingDictConflictError,
                       lambda: d.add_alias("alias1", "other_name"))
     d.add_alias("alias1", "name")
     d.add_alias("alias2", "alias1")

@@ -195,6 +195,88 @@ class GenericTest(test_inference.InferenceTest):
         def f() -> int or float or complex or str
       """)
 
+  def testTypeParameterRenamingConflict1(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        from typing import Generic, Tuple, TypeVar
+        T1 = TypeVar("T1")
+        T2 = TypeVar("T2")
+        T3 = TypeVar("T3")
+        class A(Generic[T1]):
+          def f(self) -> T1: ...
+        class B(Generic[T1]):
+          def g(self) -> T1: ...
+        class C(A[T2], B[T3]):
+          def __init__(self):
+            self := C[int, str]
+          def h(self) -> Tuple[T2, T3]
+      """)
+      ty = self.Infer("""
+        import a
+        v1 = a.C().f()
+        v2 = a.C().g()
+        v3 = a.C().h()
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        from typing import Any
+        a = ...  # type: module
+        v1 = ...  # type: Any
+        v2 = ...  # type: Any
+        v3 = ...  # type: tuple
+      """)
+
+  def testTypeParameterRenamingConflict2(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        from typing import Generic, TypeVar
+        T1 = TypeVar("T1")
+        T2 = TypeVar("T2")
+        T3 = TypeVar("T3")
+        class A(Generic[T1]):
+          def f(self) -> T1: ...
+        class B(Generic[T2]):
+          def g(self) -> T2: ...
+        class C(A[T3], B[T3]):
+          def __init__(self):
+            self := C[str]
+      """)
+      ty = self.Infer("""
+        import a
+        v = a.C().f()
+        w = a.C().g()
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        v = ...  # type: str
+        w = ...  # type: str
+      """)
+
+  def testChangeMultiplyRenamedTypeParameter(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        from typing import Generic, TypeVar
+        T1 = TypeVar("T1")
+        T2 = TypeVar("T2")
+        T3 = TypeVar("T3")
+        class A(Generic[T1]):
+          def f(self):
+            self := A[str]
+        class B(Generic[T1]): ...
+        class C(A[T2], B[T3]):
+          def g(self):
+            self:= C[int, float]
+      """)
+      ty = self.Infer("""
+        import a
+        v = a.C()
+        v.f()
+        v.g()
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        v = ...  # type: a.C[int or str, int or float]
+      """)
+
   def testTypeParameterDeep(self):
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", """

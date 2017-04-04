@@ -695,6 +695,7 @@ class Instance(SimpleAbstractValue):
     self.cls = clsvar
     for cls in clsvar.data:
       cls.register_instance(self)
+      bad_names = set()
       for base in cls.mro:
         if isinstance(base, ParameterizedClass):
           if isinstance(base, TupleClass):
@@ -722,7 +723,16 @@ class Instance(SimpleAbstractValue):
               # We have type parameter renaming, e.g.,
               #  class List(Generic[T]): pass
               #  class Foo(List[U]): pass
-              self.type_parameters.add_alias(name, param.name)
+              try:
+                self.type_parameters.add_alias(name, param.name)
+              except utils.AliasingDictConflictError:
+                bad_names |= {name, param.name}
+      # We can't reliably track changes to type parameters involved in naming
+      # conflicts, so we'll set all of them to unsolvable.
+      node = self.vm.root_cfg_node
+      for name in bad_names:
+        self.merge_type_parameter(
+            node, name, self.vm.convert.create_new_unsolvable(node))
 
   def make_template_unsolvable(self, template, node):
     for formal in template:
