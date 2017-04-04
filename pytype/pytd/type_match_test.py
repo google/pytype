@@ -310,8 +310,8 @@ class TestTypeMatch(parser_test_base.ParserTest):
     match = m.match_Unknown_against_Generic(unk, tup, {})
     self.assertListEqual(sorted(match.extract_equalities()),
                          [("~unknown0", "__builtin__.tuple"),
-                          ("~unknown0.__builtin__.tuple.T", "int"),
-                          ("~unknown0.__builtin__.tuple.T", "str")])
+                          ("~unknown0.__builtin__.tuple._T", "int"),
+                          ("~unknown0.__builtin__.tuple._T", "str")])
 
   def testFunctionAgainstTupleSubclass(self):
     ast = self.ParseWithBuiltins("""

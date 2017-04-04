@@ -68,9 +68,9 @@ class ConvertTest(unittest.TestCase):
     """)
     val = self._vm.convert.constant_to_value(
         ast.Lookup("a.x").type, {}, self._vm.root_cfg_node)
-    self.assertIs(val.type_parameters["K"],
+    self.assertIs(val.type_parameters[abstract.K],
                   abstract.get_atomic_value(self._vm.convert.str_type))
-    self.assertIs(val.type_parameters["V"], self._vm.convert.unsolvable)
+    self.assertIs(val.type_parameters[abstract.V], self._vm.convert.unsolvable)
 
   def test_convert_long(self):
     val = self._vm.convert.constant_to_value(2**64, {}, self._vm.root_cfg_node)

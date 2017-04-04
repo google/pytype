@@ -82,7 +82,7 @@ class MatchTest(unittest.TestCase):
     convert_structural.log_info_mapping(mapping)
     self.assertItemsEqual(["list", "typing.MutableSequence", "typing.List"],
                           mapping["~unknown1"])
-    self.assertItemsEqual(["float"], mapping["~unknown1.__builtin__.list.T"])
+    self.assertItemsEqual(["float"], mapping["~unknown1.__builtin__.list._T"])
 
   def test_list(self):
     mapping = self.parse_and_solve("""
@@ -98,7 +98,7 @@ class MatchTest(unittest.TestCase):
     self.assertItemsEqual(["float"], mapping["~unknown1"])
     self.assertItemsEqual(["list", "typing.List", "typing.MutableSequence"],
                           mapping["~unknown2"])
-    self.assertItemsEqual(["float"], mapping["~unknown2.__builtin__.list.T"])
+    self.assertItemsEqual(["float"], mapping["~unknown2.__builtin__.list._T"])
 
   def test_float_list(self):
     mapping = self.parse_and_solve("""
@@ -109,7 +109,7 @@ class MatchTest(unittest.TestCase):
     convert_structural.log_info_mapping(mapping)
     self.assertItemsEqual(["list", "typing.List", "typing.MutableSequence"],
                           mapping["~unknown1"])
-    self.assertItemsEqual(["float"], mapping["~unknown1.__builtin__.list.T"])
+    self.assertItemsEqual(["float"], mapping["~unknown1.__builtin__.list._T"])
 
   def test_two_lists(self):
     mapping = self.parse_and_solve("""
@@ -122,8 +122,9 @@ class MatchTest(unittest.TestCase):
                           mapping["~unknown1"])
     self.assertItemsEqual(["list", "typing.List", "typing.MutableSequence"],
                           mapping["~unknown2"])
-    self.assertItemsEqual(["NoneType"], mapping["~unknown1.__builtin__.list.T"])
-    self.assertItemsEqual(["float"], mapping["~unknown2.__builtin__.list.T"])
+    self.assertItemsEqual(["NoneType"],
+                          mapping["~unknown1.__builtin__.list._T"])
+    self.assertItemsEqual(["float"], mapping["~unknown2.__builtin__.list._T"])
 
   def test_float(self):
     mapping = self.parse_and_solve("""
@@ -161,7 +162,8 @@ class MatchTest(unittest.TestCase):
     self.assertItemsEqual(["str"], mapping["~unknown3"])
     self.assertItemsEqual(["list", "typing.MutableSequence", "typing.List"],
                           mapping["~unknown4"])
-    self.assertItemsEqual(["NoneType"], mapping["~unknown4.__builtin__.list.T"])
+    self.assertItemsEqual(["NoneType"],
+                          mapping["~unknown4.__builtin__.list._T"])
 
   def test_union(self):
     mapping = self.parse_and_solve("""
@@ -229,7 +231,7 @@ class MatchTest(unittest.TestCase):
     """)
     self.assertItemsEqual(["dict"], mapping["~unknown0"])
     self.assertContainsSubset(["complex", "float"],
-                              mapping["~unknown0.__builtin__.dict.V"])
+                              mapping["~unknown0.__builtin__.dict._V"])
     self.assertItemsEqual(["dict_values"], mapping["~unknown2"])
     self.assertItemsEqual(["dictionary-valueiterator"], mapping["~unknown4"])
     self.assertContainsSubset(["complex", "float"], mapping["~unknown6"])

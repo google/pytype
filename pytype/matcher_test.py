@@ -129,7 +129,8 @@ class MatcherTest(unittest.TestCase):
   def testClassAgainstTypeUnion(self):
     left = self._make_class("foo")
     union = abstract.Union((left,), self.vm)
-    right = abstract.ParameterizedClass(self.type_type, {"T": union}, self.vm)
+    right = abstract.ParameterizedClass(
+        self.type_type, {abstract.T: union}, self.vm)
     self.assertMatch(left, right)
 
   def testNoneAgainstBool(self):

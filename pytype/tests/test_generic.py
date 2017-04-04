@@ -512,9 +512,10 @@ class GenericTest(test_inference.InferenceTest):
           return f().h()
       """, pythonpath=[d.path], deep=True, solve_unknowns=True)
       self.assertTypesMatchPytd(ty, """
+        from typing import Any
         a = ...  # type: module
         def f() -> a.A[int, str]
-        def g() -> int
+        def g() -> Any  # T was made unsolvable by an AliasingDictConflictError
         def h() -> str
       """)
 

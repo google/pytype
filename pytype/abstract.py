@@ -32,9 +32,9 @@ WrapsDict = pytd_utils.WrapsDict  # pylint: disable=invalid-name
 
 
 # Type parameter names matching the ones in __builtin__.pytd and typing.pytd.
-T = "T"
-K = "K"
-V = "V"
+T = "_T"
+K = "_K"
+V = "_V"
 
 
 class ConversionError(ValueError):
