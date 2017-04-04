@@ -4,6 +4,7 @@ File 2/2. Split into two parts to enable better test parallelism.
 """
 
 
+from pytype import abstract
 from pytype import utils
 from pytype.tests import test_inference
 
@@ -788,6 +789,20 @@ class BuiltinTests2(test_inference.InferenceTest):
     """)
     self.assertTypesMatchPytd(ty, """
       v = ...  # type: bytearray
+    """)
+
+  def testImplicitTypeVarImport(self):
+    ty, errors = self.InferAndCheck("v = " + abstract.T)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      v = ...  # type: Any
+    """)
+    self.assertErrorLogIs(errors, [(1, "name-error")])
+
+  def testExplicitTypeVarImport(self):
+    self.assertNoErrors("""
+      from __builtin__ import _T
+      _T
     """)
 
 

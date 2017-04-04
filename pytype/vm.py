@@ -1264,6 +1264,9 @@ class VirtualMachine(object):
     state, (a, b, c, d) = state.popn(4)
     return state.push(d, a, b, c)
 
+  def _is_private(self, name):
+    return name.startswith("_") and not name.startswith("__")
+
   def byte_LOAD_NAME(self, state, op):
     """Load a name. Can be a local, global, or builtin."""
     name = self.frame.f_code.co_names[op.arg]
@@ -1274,9 +1277,12 @@ class VirtualMachine(object):
         state, val = self.load_global(state, name)
       except KeyError:
         try:
+          if self._is_private(name):
+            # Private names must be explicitly imported.
+            raise KeyError()
           state, val = self.load_builtin(state, name)
         except KeyError:
-          if not self.has_unknown_wildcard_imports:
+          if self._is_private(name) or not self.has_unknown_wildcard_imports:
             self.errorlog.name_error(self.frame.current_opcode, name)
           return state.push(
               self.convert.create_new_unsolvable(state.node))
