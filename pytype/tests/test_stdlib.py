@@ -131,6 +131,14 @@ class StdlibTests(test_inference.InferenceTest):
       print word.sub(lambda x: '<'+x.group(0)+'>', s)
     """)
 
+  def testNamedtuple(self):
+    self.assertNoErrors("""\
+      import collections
+      collections.namedtuple(u"_", "")
+      collections.namedtuple("_", u"")
+      collections.namedtuple("_", [u"a", "b"])
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()
