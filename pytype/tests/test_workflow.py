@@ -23,7 +23,6 @@ class WorkflowTest(test_inference.InferenceTest):
       cp = ...  # type: ConfigParser
 
       class ConfigParser(object):
-        # TODO(pludemann): remove '-> NoneType'
         def __init__(self, filename: str or buffer or unicode) -> NoneType
         def read(self) -> str
         filename = ...  # type: str or buffer or unicode

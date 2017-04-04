@@ -519,9 +519,6 @@ class MatchTest(unittest.TestCase):
       class `~unknown6`():
           pass
     """)
-    # TODO(pludemann): remove "bool" from list when we do the
-    # more strict definition of return (that is, not allowing
-    # "bool" just because it's a subclass of "int" in __builtin__.pytd
     numbers = ["int", "complex", "float", "bool"]
     self.assertItemsEqual(numbers, mapping["~unknown4"])
     self.assertItemsEqual(numbers, mapping["~unknown6"])

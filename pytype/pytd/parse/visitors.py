@@ -422,10 +422,6 @@ class PrintVisitor(Visitor):
 
   def VisitSignature(self, node):
     """Visit a signature, producing a string."""
-    # TODO(pludemann): might want special handling for __init__(...) -> NoneType
-    # Design decision: we used to allow the return type to default to "?"  (see
-    # comments in parser.py for the "return" rule) but that led to confusion, so
-    # we now require all function signatures to have a return type.
     ret = " -> " + node.return_type
 
     # Put parameters in the right order:
@@ -820,10 +816,6 @@ class VerifyLookup(Visitor):
     raise ValueError("Unreplaced NamedType: %r" % node.name)
 
   def EnterClassType(self, node):
-    # TODO(pludemann): Can we give more context for this error? It's not very
-    #                  useful when it says that "T" is unresolved (e.g., from
-    #                  "def foo(x: list[T]))" ... it would be nice to know what
-    #                  it's inside.
     if node.cls is None:
       raise ValueError("Unresolved class: %r" % node.name)
 
@@ -1351,10 +1343,6 @@ class CanonicalOrderingVisitor(Visitor):
   def __init__(self, sort_signatures=False):
     super(CanonicalOrderingVisitor, self).__init__()
     self.sort_signatures = sort_signatures
-
-  # TODO(pludemann): might want to add __new__ defns to the various types here
-  #                  to ensure the args are tuple, and can then remove the
-  #                  tuple(...) wrappers here ...
 
   def VisitTypeDeclUnit(self, node):
     return pytd.TypeDeclUnit(name=node.name,

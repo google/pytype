@@ -23,7 +23,6 @@ class StructuralTest(test_inference.InferenceTest):
         return l[i]
     """, deep=True, solve_unknowns=False, show_library_calls=True)
     self.assertHasReturnType(ty.Lookup("f"), self.int)
-    # TODO(pludemann): verify the types of x, i
 
   @unittest.skip("Flawed test: i could be a slice")
   def testListUnknownIndexBothTypes(self):

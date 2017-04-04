@@ -105,7 +105,7 @@ def generate_pyi(input_filename, errorlog, options):
   log.info("========================================")
 
   result = pytd.Print(mod)
-  if not result.endswith("\n"):  # TODO(pludemann): fix this hack
+  if not result.endswith("\n"):
     result += "\n"
   result_prefix = ""
   if options.quick:

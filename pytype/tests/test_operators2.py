@@ -5,11 +5,6 @@ from pytype import utils
 from pytype.tests import test_inference
 
 
-# TODO(pludemann): duplicate the tests in test_operators.py, but
-#                  with __any_object__() ... that is: copy check_expr
-#                  to here and then simplify test_operators.check_expr
-
-
 class OperatorsWithAnyTests(test_inference.InferenceTest):
 
   @unittest.skip("Needs __radd__ on all builtins")
@@ -19,8 +14,6 @@ class OperatorsWithAnyTests(test_inference.InferenceTest):
       def t_testAdd1(x):
         return x + 2.0
     """, deep=True, solve_unknowns=True)
-    # TODO(pludemann): Currently this matches:
-    #         def t_testAdd1(x: float) -> float
     self.assertTypesMatchPytd(ty, """
       def t_testAdd1(x: int or float or complex or bool) -> float or complex
     """)
@@ -47,7 +40,6 @@ class OperatorsWithAnyTests(test_inference.InferenceTest):
       def t_testAdd3(x: buffer or bytearray or str or unicode or MutableSequence) -> bytearray or str or unicode or MutableSequence
     """)
 
-  @unittest.skip("Broken: Needs full __radd__ in all builtins")
   def testAdd4(self):
     """Test that __add__, __radd__ are working."""
     ty = self.Infer("""
@@ -55,10 +47,8 @@ class OperatorsWithAnyTests(test_inference.InferenceTest):
         return "abc" + x
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
-      # TODO(pludemann): generates this, which is wrong:
-      def t_testAdd4(x: nothing) -> object
-      # Should generate:
-      def t_testAdd4(x: str) -> str
+      from typing import Union
+      def t_testAdd4(x: Union[basestring, bytearray]) -> Union[str, unicode]: ...
     """)
 
   @unittest.skip("Needs handling of immutable types for += on an unknown")
@@ -75,13 +65,11 @@ class OperatorsWithAnyTests(test_inference.InferenceTest):
     """)
 
   def testPow1(self):
-    # TODO(pludemann): add tests for 3-arg pow, etc.
     ty = self.Infer("""
       def t_testPow1(x, y):
         return x ** y
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
-      # TODO(pludemann): bool should be removed (by either solver (if __builtin__ changes or optimizer)
       def t_testPow1(x: complex or float or int, y: complex or float or int) -> complex or float or int
     """)
 
@@ -99,33 +87,12 @@ class OperatorsWithAnyTests(test_inference.InferenceTest):
 class CallErrorTests(test_inference.InferenceTest):
 
   def testCallAny(self):
-    # TODO(pludemann): verify that this generates
-    # class `~unknown1`(nothing):
-    #   def __call__(self) -> `~unknown2`
-    # class `~unknown2`(nothing):
-    #   pass
-    # ... ~unknown1 = function
-    # ... ~unknown2 = ?
     ty = self.Infer("""
       t_testCallAny = __any_object__
       t_testCallAny()  # error because there's no "def f()..."
     """, deep=False, solve_unknowns=False)
     self.assertTypesMatchPytd(ty, """
       t_testCallAny = ...  # type: ?
-    """)
-
-  @unittest.skip("Need to handle undefined function call")
-  def testUndefinedCall(self):
-    # Raises VirtualMachineError("Frame has no return") because
-    # LOAD_NAME '_testBar' raises ByteCodeException:
-    # <type # 'exceptions.NameError'> "name '_testBar' is not defined"
-    ty = self.Infer("""
-      def t_testUndefinedCallDoesntExist():
-        return 1
-      t_testUndefinedCall()  # Doesn't exist -- should give an error
-    """, deep=False, solve_unknowns=False)
-    self.assertTypesMatchPytd(ty, """
-      # TODO(pludemann): verify that it generates an error
     """)
 
   @unittest.skip("Needs NameError support")

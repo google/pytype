@@ -52,10 +52,6 @@ class ParserTest(unittest.TestCase):
     return ast
 
   def ToAST(self, src_or_tree):
-    # TODO(pludemann): The callers are not consistent in how they use this
-    #                  and in most (all?) cases they know whether they're
-    #                  passing in a source string or parse tree. It would
-    #                  be better if all the calles were consistent.
     if isinstance(src_or_tree, basestring):
       # Put into a canonical form (removes comments, standard indents):
       return self.Parse(src_or_tree + "\n")
@@ -70,9 +66,6 @@ class ParserTest(unittest.TestCase):
     src1 = pytd.Print(ast1).strip() + "\n"
     src2 = pytd.Print(ast2).strip() + "\n"
     # Verify printed versions are the same and ASTs are the same.
-    # TODO(pludemann): Find out why some tests leave confuse NamedType and
-    #                  ClassType and fix the tests so that this conversion isn't
-    #                  needed.
     ast1 = ast1.Visit(visitors.ClassTypeToNamedType())
     ast2 = ast2.Visit(visitors.ClassTypeToNamedType())
     if src1 != src2 or not ast1.ASTeq(ast2):

@@ -238,8 +238,6 @@ class VirtualMachine(object):
       e = sys.exc_info()[1]
       state = state.set_exception(
           e.exception_type, e.create_instance(), None)
-      # TODO(pludemann): capture exceptions that are indicative of
-      #                  a bug (AttributeError?)
       log.info("Exception in program: %s: %r",
                e.exception_type.__name__, e.message)
       state = state.set_why("exception")

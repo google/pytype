@@ -4,9 +4,6 @@ from pytype import utils
 from pytype.pytd import pytd
 from pytype.tests import test_inference
 
-# TODO(pludemann): add some tests for methods with 1st arg named something
-#                  other than "self".
-
 
 class MethodsTest(test_inference.InferenceTest):
 

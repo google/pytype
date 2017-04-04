@@ -49,7 +49,6 @@ class BuiltinTests(test_inference.InferenceTest):
       t_testEval(4)
     """, deep=False, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
-      # TODO(pludemann): should this return `?` instead of `object`?
       def t_testEval(x: int) -> ?
     """)
 
@@ -70,7 +69,7 @@ class BuiltinTests(test_inference.InferenceTest):
         assert isinstance(x, int)
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
-      # TODO(pludemann): currently does (x: object)
+      # currently does (x: object)
       def t_testIsinstance2(x: int) -> NoneType
     """)
 
@@ -156,11 +155,6 @@ class BuiltinTests(test_inference.InferenceTest):
       def t_testDictDefaults(x: int) -> str
       # _i_ captures the more precise definition of the dict
       def _i_(x: dict[int, str]) -> dict[int, str]
-      # TODO(pludemann): solve_unknowns=True removes this:
-      # class `~dict`:
-      #  def setdefault(self, k: int) -> str
-      # class `~str`:
-      #   def __init__(self, object: int) -> NoneType
     """)
 
   def testDictGet(self):
@@ -282,7 +276,6 @@ class BuiltinTests(test_inference.InferenceTest):
       t_testCmpMulti(1, 2)
       t_testCmpMulti(1, 2.0)
       t_testCmpMulti(1.0, 2)
-      # TODO(pludemann): add more tests
     """, deep=False, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
       def t_testCmpMulti(x: float or int, y: int) -> bool

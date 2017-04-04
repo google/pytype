@@ -39,8 +39,6 @@ class InplaceTest(test_inference.InferenceTest):
     self._check_inplace("&", ["x=1", "y=2"], self.int)
 
   def test_frozenset_ops(self):
-    # TODO(pludemann): when these work, put them into the appropriate
-    #                  test_<op> tests
     self._check_inplace("&", ["x=frozenset()", "y=frozenset()"],
                         self.empty_frozenset)
     self._check_inplace("-", ["x=frozenset()", "y=frozenset()"],

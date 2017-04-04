@@ -14,12 +14,10 @@ def abs(number):
   return number.__abs__()
 
 
-# TODO(pludemann): Use the proper definition of cmp (similar to repr)
 def cmp(x, y):
   return True
 
 
-# TODO(pludemann): Use the proper definition of repr (see TODO.txt)
 def repr(x):
   return ''
 

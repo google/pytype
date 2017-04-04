@@ -64,8 +64,6 @@ class ConcreteTest(test_inference.InferenceTest):
     self.check_expr("x & y", ["x=1", "y=2"], self.int)
 
   def test_frozenset_ops(self):
-    # TODO(pludemann): when these work, put them into the appropriate
-    #                  test_<op> tests
     self.check_expr("x & y", ["x=frozenset()", "y=frozenset()"],
                     self.empty_frozenset)
     self.check_expr("x - y", ["x=frozenset()", "y=frozenset()"],
@@ -94,7 +92,6 @@ class ConcreteTest(test_inference.InferenceTest):
     self.check_expr("x / y", ["x=3+2j", "y=1.0"], self.complex)
 
   def test_floordiv(self):
-    # TODO(pludemann): Python 3 is different:
     self.check_expr("x // y", ["x=1", "y=2"], self.int)
     self.check_expr("x // y", ["x=1.0", "y=2"], self.float)
     self.check_expr("x // y", ["x=1", "y=2.0"], self.float)

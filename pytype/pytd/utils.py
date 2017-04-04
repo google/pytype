@@ -176,8 +176,6 @@ class TypeMatcher(object):
 
 def CanonicalOrdering(n, sort_signatures=False):
   """Convert a PYTD node to a canonical (sorted) ordering."""
-  # TODO(pludemann): use the original .py to decide the ordering rather
-  #                  than an arbitrary sort order
   return n.Visit(
       visitors.CanonicalOrderingVisitor(sort_signatures=sort_signatures))
 

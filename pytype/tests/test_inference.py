@@ -79,7 +79,6 @@ class InferenceTest(unittest.TestCase):
     self.int_set = pytd.HomogeneousContainerType(self.set, (self.int,))
     self.intorfloat_set = pytd.HomogeneousContainerType(self.set,
                                                         (self.intorfloat,))
-    # TODO(pludemann): simplify this (test_and2)
     self.unknown_frozenset = pytd.HomogeneousContainerType(
         self.frozenset, (self.anything,))
     self.float_frozenset = pytd.HomogeneousContainerType(self.frozenset,
@@ -198,13 +197,11 @@ class InferenceTest(unittest.TestCase):
 
   def assertHasSignature(self, func, parameter_types, return_type):
     if not self.HasSignature(func, parameter_types, return_type):
-      # TODO(pludemann): don't assume function is 'f'
       self.fail("Could not find signature: f{} in {}".format(
           self.PrintSignature(parameter_types, return_type), pytd.Print(func)))
 
   def assertNotHasSignature(self, func, parameter_types, return_type):
     if self.HasSignature(func, parameter_types, return_type):
-      # TODO(pludemann): don't assume function is 'f'
       self.fail("Found signature: f{} in {}".format(
           self.PrintSignature(parameter_types, return_type), pytd.Print(func)))
 
@@ -335,10 +332,6 @@ class InferenceTest(unittest.TestCase):
 
   def assertTypesMatchPytd(self, ty, pytd_src, version=None):
     """Parses pytd_src and compares with ty."""
-    # TODO(pludemann): This is a copy of pytd.parse.parser_test_base.Parse()
-    # TODO(pludemann): Consider using the pytd_tree to call
-    #                  assertHasOnlySignatures (or similar) to guard against the
-    #                  inferencer adding additional but harmless calls.
     pytd_tree = parser.parse_string(
         textwrap.dedent(pytd_src), python_version=version)
     pytd_tree = pytd_tree.Visit(visitors.LookupBuiltins(

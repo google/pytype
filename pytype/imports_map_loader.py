@@ -1,31 +1,5 @@
 """Import and set up the imports_map."""
 
-
-# The imports_map is special for some build systems, such as Bazel.  Each entry
-# consists of a short name and a full name; this allows handling build targets
-# in a uniform way, with freedom to put the actual file in a different place
-# (e.g., if the source tree is read-only and there are generated source files
-# that must reside elsewhere).
-
-# Each invocation of pytype is given an imports_info file by the build
-# system. The complete mapping of imports name to actual file can be generated
-# by recursively starting with the current invocations.
-
-
-# The keys are the module paths *without* the trailing .py
-# TODO(pludemann): revisit this decision and reinstate the .py, because: (a)
-#                  that's the only thing that should appear (.pytd inputs are
-#                  handled outside of pytype); (b) the src_out_pairs_py data
-#                  already has .py for src; and (c) it removes one hard-coding
-#                  of ".py".
-
-# It is possible to have a 1:many mapping from a short name to multiple full
-# names (e.g., if two separate build actions process the same file, but output
-# to different places). For handling this, we depend on the build system
-# employing a convention to create full names that sort first.
-
-
-
 import collections
 import logging
 import os

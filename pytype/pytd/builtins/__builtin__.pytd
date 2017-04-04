@@ -64,7 +64,7 @@ def iter(collection: dict[_T, _T2]) -> `dictionary-keyiterator`[_T]
 def iter(collection: Generator[_T]) -> Generator[_T]
 def iter(collection: Iterable[_T]) -> Iterator[_T]
 def iter(func: typing.Callable[[], Union[_T, _T2]], sentinel: _T) -> `callable-iterator`[_T2]
-def len(obj) -> int  # TODO(pludemann): leave this out and call obj.__len__() ?
+def len(obj) -> int
 def locals() -> dict[str, object]
 def map(function, sequence: list[nothing], ...) -> list[nothing]
 def map(function, sequence, ...) -> list
@@ -74,8 +74,6 @@ def min(arg1: _T, arg2: _T, *args: _T, key: Callable = ...) -> _T
 def min(iterable: Iterable[_T], key: Callable = ...) -> _T
 def next PYTHONCODE
 def oct(number: int) -> str
-# TODO(pludemann): Python3 allows open(int or str or bytes or memoryview, ...)
-# TODO(pludemann): Python3: encapsulate details of file (str, bytes) based on mode
 def open(name: str or buffer or unicode, ...) -> file
 def ord(c: str or unicode) -> int
 def pow(x: int, y: int, ...) -> float or int
@@ -385,7 +383,6 @@ class dict_values(Iterator[_T]):
     def __len__(self) -> int
 
 class dict_items(Generic[_K, _V], object):
-    # TODO(pludemann): set[pair[_K,_V]] etc.
     def __and__(self, y: set or dict_items) -> set[tuple[_K, _V]]
     def __or__(self, y: set or dict_items[_K2, _V2]) -> set[tuple[_K or _K2, _V or _V2]]
     def __xor__(self, y: set or dict_items[_K2, _V2]) -> set[tuple[_K or _K2, _V or _V2]]
@@ -904,203 +901,203 @@ class code(object):
 
 class ArithmeticError(StandardError):
     def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
+    def __getslice__(self, i: int, j: int) -> tuple
     def __unicode__(self, ...) -> unicode
 
 class AssertionError(StandardError):
     def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
+    def __getslice__(self, i: int, j: int) -> tuple
     def __unicode__(self, ...) -> unicode
 
 class AttributeError(StandardError):
     def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
+    def __getslice__(self, i: int, j: int) -> tuple
     def __unicode__(self, ...) -> unicode
 
 class BaseException(object):
     def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
+    def __getslice__(self, i: int, j: int) -> tuple
     def __unicode__(self, ...) -> unicode
 
 class BufferError(StandardError):
     def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
+    def __getslice__(self, i: int, j: int) -> tuple
     def __unicode__(self, ...) -> unicode
 
 class BytesWarning(Warning):
     def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
+    def __getslice__(self, i: int, j: int) -> tuple
     def __unicode__(self, ...) -> unicode
 
 class DeprecationWarning(Warning):
     def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
+    def __getslice__(self, i: int, j: int) -> tuple
     def __unicode__(self, ...) -> unicode
 
 class EOFError(StandardError):
     def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
+    def __getslice__(self, i: int, j: int) -> tuple
     def __unicode__(self, ...) -> unicode
 
 class EnvironmentError(StandardError):
     def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
+    def __getslice__(self, i: int, j: int) -> tuple
     def __unicode__(self, ...) -> unicode
 
 class Exception(BaseException):
     def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
+    def __getslice__(self, i: int, j: int) -> tuple
     def __unicode__(self, ...) -> unicode
 
 class FloatingPointError(ArithmeticError):
     def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
+    def __getslice__(self, i: int, j: int) -> tuple
     def __unicode__(self, ...) -> unicode
 
 class FutureWarning(Warning):
     def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
+    def __getslice__(self, i: int, j: int) -> tuple
     def __unicode__(self, ...) -> unicode
 
 class GeneratorExit(BaseException):
     def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
+    def __getslice__(self, i: int, j: int) -> tuple
     def __unicode__(self, ...) -> unicode
 
 class IOError(EnvironmentError):
     def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
+    def __getslice__(self, i: int, j: int) -> tuple
     def __unicode__(self, ...) -> unicode
 
 class ImportError(StandardError):
     def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
+    def __getslice__(self, i: int, j: int) -> tuple
     def __unicode__(self, ...) -> unicode
 
 class ImportWarning(Warning):
     def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
+    def __getslice__(self, i: int, j: int) -> tuple
     def __unicode__(self, ...) -> unicode
 
 class IndentationError(SyntaxError):
     def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
+    def __getslice__(self, i: int, j: int) -> tuple
     def __unicode__(self, ...) -> unicode
 
 class IndexError(LookupError):
     def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
+    def __getslice__(self, i: int, j: int) -> tuple
     def __unicode__(self, ...) -> unicode
 
 class KeyError(LookupError):
     def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
+    def __getslice__(self, i: int, j: int) -> tuple
     def __unicode__(self, ...) -> unicode
 
 class KeyboardInterrupt(BaseException):
     def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
+    def __getslice__(self, i: int, j: int) -> tuple
     def __unicode__(self, ...) -> unicode
 
 class LookupError(StandardError):
     def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
+    def __getslice__(self, i: int, j: int) -> tuple
     def __unicode__(self, ...) -> unicode
 
 class MemoryError(StandardError):
     def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
+    def __getslice__(self, i: int, j: int) -> tuple
     def __unicode__(self, ...) -> unicode
 
 class NameError(StandardError):
     def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
+    def __getslice__(self, i: int, j: int) -> tuple
     def __unicode__(self, ...) -> unicode
 
 class NotImplementedError(RuntimeError):
     def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
+    def __getslice__(self, i: int, j: int) -> tuple
     def __unicode__(self, ...) -> unicode
 
 class OSError(EnvironmentError):
     def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
+    def __getslice__(self, i: int, j: int) -> tuple
     def __unicode__(self, ...) -> unicode
 
 class OverflowError(ArithmeticError):
     def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
+    def __getslice__(self, i: int, j: int) -> tuple
     def __unicode__(self, ...) -> unicode
 
 class PendingDeprecationWarning(Warning):
     def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
+    def __getslice__(self, i: int, j: int) -> tuple
     def __unicode__(self, ...) -> unicode
 
 class ReferenceError(StandardError):
     def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
+    def __getslice__(self, i: int, j: int) -> tuple
     def __unicode__(self, ...) -> unicode
 
 class RuntimeError(StandardError):
     def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
+    def __getslice__(self, i: int, j: int) -> tuple
     def __unicode__(self, ...) -> unicode
 
 class RuntimeWarning(Warning):
     def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
+    def __getslice__(self, i: int, j: int) -> tuple
     def __unicode__(self, ...) -> unicode
 
 class StandardError(Exception):
     def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
+    def __getslice__(self, i: int, j: int) -> tuple
     def __unicode__(self, ...) -> unicode
 
 class StopIteration(Exception):
     def __init__(self, p0) -> NoneType
     def __init__(self) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
+    def __getslice__(self, i: int, j: int) -> tuple
     def __unicode__(self, ...) -> unicode
 
 class SyntaxError(StandardError):
     def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
+    def __getslice__(self, i: int, j: int) -> tuple
     def __unicode__(self, ...) -> unicode
 
 class SyntaxWarning(Warning):
     def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
+    def __getslice__(self, i: int, j: int) -> tuple
     def __unicode__(self, ...) -> unicode
 
 class SystemError(StandardError):
     def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
+    def __getslice__(self, i: int, j: int) -> tuple
     def __unicode__(self, ...) -> unicode
 
 class SystemExit(BaseException):
     def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
+    def __getslice__(self, i: int, j: int) -> tuple
     def __unicode__(self, ...) -> unicode
 
 class TabError(IndentationError):
     def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
+    def __getslice__(self, i: int, j: int) -> tuple
     def __unicode__(self, ...) -> unicode
 
 class TypeError(StandardError):
     def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
+    def __getslice__(self, i: int, j: int) -> tuple
     def __unicode__(self, ...) -> unicode
 
 class UnboundLocalError(NameError):
     def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
+    def __getslice__(self, i: int, j: int) -> tuple
     def __unicode__(self, ...) -> unicode
 
 class UnicodeError(ValueError):
     def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
+    def __getslice__(self, i: int, j: int) -> tuple
     def __unicode__(self, ...) -> unicode
 
 class UnicodeDecodeError(UnicodeError): ...
@@ -1111,25 +1108,25 @@ class UnicodeTranslateError(UnicodeError): ...
 
 class UnicodeWarning(Warning):
     def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
+    def __getslice__(self, i: int, j: int) -> tuple
     def __unicode__(self, ...) -> unicode
 
 class UserWarning(Warning):
     def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
+    def __getslice__(self, i: int, j: int) -> tuple
     def __unicode__(self, ...) -> unicode
 
 class ValueError(StandardError):
     def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
+    def __getslice__(self, i: int, j: int) -> tuple
     def __unicode__(self, ...) -> unicode
 
 class Warning(Exception):
     def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
+    def __getslice__(self, i: int, j: int) -> tuple
     def __unicode__(self, ...) -> unicode
 
 class ZeroDivisionError(ArithmeticError):
     def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple  # TODO(pludemann): tuple[???]
+    def __getslice__(self, i: int, j: int) -> tuple
     def __unicode__(self, ...) -> unicode

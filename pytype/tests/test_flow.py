@@ -142,23 +142,11 @@ class FlowTest(test_inference.InferenceTest):
     self.assertHasSignature(ty.Lookup("f"), (self.int,), self.int)
 
   def testNullFLow(self):
-    # This example comes from
-    # https://code.prod.facebook.com/posts/1505962329687926/flow-a-new-static-type-checker-for-javascript/
-    # although written a bit differently. We should try variants too. ;)
-    # Also try a version without the test for "x is None", - should get error.
-    # e.g.: return len(x) if x else 0
-    # TODO(pludemann): add other examples from
-    #                  http://flowtype.org/docs/five-simple-examples.html#_ and
-    #                  also from Python mailing list discussion of typing, e.g.:
-    #                  https://mail.python.org/pipermail/python-ideas/2014-December/thread.html#30430
     ty = self.Infer("""
       def f(x):
         if x is None:
           return 0
-        # else
-        # return x.__len__()  # TODO(pludemann): why doesn't this return int?
         return len(x)
-      # f(None)  # TODO(pludemann): reinstate this
       f(__any_object__)
     """, deep=False, solve_unknowns=False)
     self.assertTypesMatchPytd(ty, """
