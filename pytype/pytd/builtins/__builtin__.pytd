@@ -189,7 +189,8 @@ class classmethod(typing.Callable):  # Also defined in __builtin__.py
 class str(basestring, Sequence[str]):
     def __init__(self, object) -> NoneType
     def __init__(self) -> NoneType
-    def __add__(self, y: str or bytearray) -> str
+    def __add__(self, y: str) -> str
+    def __add__(self, y: bytearray) -> bytearray
     def __add__(self, y: basestring) -> unicode
     def __contains__(self, y: basestring or bytearray) -> bool
     def __getitem__(self, index: int or slice) -> str

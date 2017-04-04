@@ -782,6 +782,14 @@ class BuiltinTests2(test_inference.InferenceTest):
       v = ...  # type: int
     """)
 
+  def testAddStrAndBytearray(self):
+    ty = self.Infer("""
+      v = "abc" + bytearray()
+    """)
+    self.assertTypesMatchPytd(ty, """
+      v = ...  # type: bytearray
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

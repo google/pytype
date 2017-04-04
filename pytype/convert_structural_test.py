@@ -62,7 +62,7 @@ class MatchTest(unittest.TestCase):
         def __add__(self, _1: bytearray) -> bytearray
       """)
     self.assertItemsEqual(["float"], mapping["~unknown1"])
-    self.assertItemsEqual(["bytearray"], mapping["~unknown2"])
+    self.assertItemsEqual(["str", "bytearray"], mapping["~unknown2"])
 
   def test_append(self):
     mapping = self.parse_and_solve("""
@@ -173,7 +173,7 @@ class MatchTest(unittest.TestCase):
         def __add__(self, _1: bytearray) -> bytearray
     """)
     self.assertItemsEqual(["float"], mapping["~unknown1"])
-    self.assertItemsEqual(["bytearray"], mapping["~unknown2"])
+    self.assertItemsEqual(["str", "bytearray"], mapping["~unknown2"])
 
   def test_containers(self):
     mapping = self.parse_and_solve("""
