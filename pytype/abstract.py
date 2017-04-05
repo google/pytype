@@ -622,7 +622,7 @@ class SimpleAbstractValue(AtomicAbstractValue):
     if var is not None and var.bindings:
       return self.vm.call_function(node, var, args)
     elif self.cls and self.cls.data == self.vm.convert.none_type.data:
-      raise NoneNotCallable(self)
+      raise NoneNotCallable()
     else:
       raise NotCallable(self)
 
@@ -1185,7 +1185,7 @@ class NotCallable(FailedFunctionCall):
     self.obj = obj
 
 
-class NoneNotCallable(NotCallable):
+class NoneNotCallable(FailedFunctionCall):
   """When trying to call None."""
 
 

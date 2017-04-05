@@ -311,7 +311,10 @@ class ErrorLog(ErrorLogBase):
 
   @_error_name("none-attr")
   def none_attr(self, opcode, attr_name):
-    self.error(opcode, "Access of attribute %r on NoneType" % (attr_name))
+    self.error(
+        opcode,
+        "Access of attribute %r on a type that might be None" % attr_name,
+        details="Do you need a type comment?")
 
   @_error_name("unbound-type-param")
   def type_param_error(self, opcode, obj, attr_name, type_param_name):
@@ -376,10 +379,10 @@ class ErrorLog(ErrorLogBase):
     self.error(opcode, message)
 
   @_error_name("none-attr")  # None doesn't have attribute '__call__'
-  def none_not_callable(self, opcode, function):
+  def none_not_callable(self, opcode):
     """Calling None."""
-    message = "%r object isn't callable" % (function.name)
-    self.error(opcode, message)
+    self.error(opcode, "Calling a type that might be None",
+               details="Do you need a type comment?")
 
   @_error_name("duplicate-keyword-argument")
   def duplicate_keyword(self, opcode, name, bad_call, duplicate):
@@ -399,7 +402,7 @@ class ErrorLog(ErrorLogBase):
       self.missing_parameter(
           opcode, error.name, error.bad_call, error.missing_parameter)
     elif isinstance(error, abstract.NoneNotCallable):
-      self.none_not_callable(opcode, error.obj)
+      self.none_not_callable(opcode)
     elif isinstance(error, abstract.NotCallable):
       self.not_callable(opcode, error.obj)
     elif isinstance(error, abstract.DuplicateKeyword):
