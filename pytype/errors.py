@@ -131,8 +131,8 @@ class Error(object):
     if pos:
       pos += ": "
     text = "%s%s [%s]" % (pos, self._message.replace("\n", "\n  "), self._name)
-    if self._details:
-      text += "\n  " + self._details.replace("\n", "\n  ")
+    details = ("\n" + self._details) if self._details else ""
+    text += details.replace("\n", "\n  ")
     return text
 
 
