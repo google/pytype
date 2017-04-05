@@ -1,7 +1,7 @@
 from typing import (
-    AbstractSet, BinaryIO, Callable, Dict, FrozenSet, Generator, Generic,
-    Iterable, Iterator, List, Mapping, Optional, Reversible, Sequence, Set,
-    Sized, SupportsAbs, SupportsFloat, SupportsInt, Tuple, Type, Union)
+    AbstractSet, AnyStr, BinaryIO, Callable, Dict, FrozenSet, Generator,
+    Generic, Iterable, Iterator, List, Mapping, Optional, Reversible, Sequence,
+    Set, Sized, SupportsAbs, SupportsFloat, SupportsInt, Tuple, Type, Union)
 
 # "_T", "_K", and "_V" are hardcoded in abstract.py
 _T = TypeVar('_T')
@@ -39,10 +39,7 @@ def divmod(x: int or float, y: int or float) -> tuple[float, float]
 def divmod(x: int or float or complex, y: int or float or complex) -> tuple[complex, complex]
 def eval(src, ...) -> ?  # Can't say *anything* about the result -- different from "-> object"
 def execfile(filename: str, ...) -> NoneType
-# TODO(rechen): Replace the first two definitions with one using AnyStr once
-# pytype is smarter about constraints on TypeVar.
-def filter(function: Optional[Callable[[str], ?]], iterable: str) -> str
-def filter(function: Optional[Callable[[unicode], ?]], iterable: unicode) -> unicode
+def filter(function: Optional[Callable[[AnyStr], ?]], iterable: AnyStr) -> AnyStr
 def filter(function: Optional[Callable[[_T], ?]], iterable: Tuple[_T, ...]) -> Tuple[_T, ...]
 def filter(function: Optional[Callable[[_T], ?]], iterable: Iterable[_T]) -> List[_T]
 def format(value, ...) -> str
@@ -189,6 +186,8 @@ class classmethod(typing.Callable):  # Also defined in __builtin__.py
 class str(basestring, Sequence[str]):
     def __init__(self, object) -> NoneType
     def __init__(self) -> NoneType
+    # TODO(rechen): Look into using AnyStr for __add__ once our solving of
+    # unknowns takes TypeVar constraints into account.
     def __add__(self, y: str) -> str
     def __add__(self, y: bytearray) -> bytearray
     def __add__(self, y: basestring) -> unicode

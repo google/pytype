@@ -57,10 +57,10 @@ def GetBuiltinsAndTyping():
     t = parser.parse_string(_FindBuiltinFile("typing"), name="typing")
     b = parser.parse_string(_FindBuiltinFile("__builtin__"),
                             name="__builtin__")
-    b = b.Visit(visitors.NamedTypeToClassType())
     b = b.Visit(visitors.LookupExternalTypes({"typing": t}, full_names=True,
                                              self_name="__builtin__"))
     t = t.Visit(visitors.LookupBuiltins(b))
+    b = b.Visit(visitors.NamedTypeToClassType())
     t = t.Visit(visitors.NamedTypeToClassType())
     b = b.Visit(visitors.AdjustTypeParameters())
     t = t.Visit(visitors.AdjustTypeParameters())
