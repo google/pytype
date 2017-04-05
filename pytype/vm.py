@@ -730,8 +730,11 @@ class VirtualMachine(object):
     result = self.join_variables(state.node, results)
     log.debug("Result: %r %r", result, result.data)
     if not result.bindings and report_errors:
-      self.errorlog.unsupported_operands(self.frame.current_opcode, state.node,
-                                         name, x, y)
+      if self.is_none(x):
+        self.errorlog.none_attr(self.frame.current_opcode, name)
+      else:
+        self.errorlog.unsupported_operands(self.frame.current_opcode,
+                                           state.node, name, x, y)
       result.AddBinding(self.convert.unsolvable, [], state.node)
     return state, result
 

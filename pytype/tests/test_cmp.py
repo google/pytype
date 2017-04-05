@@ -50,7 +50,7 @@ class InTest(test_inference.InferenceTest):
       if "" in x:
         del x[""]
     """)
-    self.assertErrorLogIs(errors, [(2, "unsupported-operands",
+    self.assertErrorLogIs(errors, [(2, "none-attr",
                                     r"__contains__.*None"),
                                    (3, "none-attr", r"__delitem__.*None")])
 
@@ -94,7 +94,7 @@ class NotInTest(test_inference.InferenceTest):
       if "" not in x:
         x[""] = 42
     """)
-    self.assertErrorLogIs(errors, [(2, "unsupported-operands",
+    self.assertErrorLogIs(errors, [(2, "none-attr",
                                     r"__contains__.*None"),
                                    (3, "none-attr", r"__setitem__.*None")])
 

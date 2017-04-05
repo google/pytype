@@ -890,6 +890,12 @@ class ErrorTest(test_inference.InferenceTest):
     """)
     self.assertErrorLogIs(errors, [(1, "none-attr")])
 
+  def testInNone(self):
+    _, errors = self.InferAndCheck("""\
+      3 in None
+    """)
+    self.assertErrorLogIs(errors, [(1, "none-attr")])
+
 
 if __name__ == "__main__":
   test_inference.main()
