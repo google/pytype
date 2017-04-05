@@ -115,6 +115,26 @@ class BuiltinTests(test_inference.InferenceTest):
       def t_testMax2(x: object, y: object) -> ?
       """)
 
+  def testZip(self):
+    ty = self.Infer("""
+      a = zip("foo", u"bar")
+      b = zip(())
+      c = zip((1, 2j))
+      d = zip((1, 2, 3), ())
+      e = zip((), (1, 2, 3))
+      f = zip((1j, 2j), (1, 2))
+      assert zip([], [], [])
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+      from typing import List, Tuple, Union
+      a = ...  # type: List[Tuple[str, unicode]]
+      b = ...  # type: List[nothing]
+      c = ...  # type: List[Tuple[Union[int, complex]]]
+      d = ...  # type: List[nothing]
+      e = ...  # type: List[nothing]
+      f = ...  # type: List[Tuple[complex, int]]
+      """)
+
   def testDict(self):
     ty = self.Infer("""
       def t_testDict():

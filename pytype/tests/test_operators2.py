@@ -48,7 +48,7 @@ class OperatorsWithAnyTests(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
       from typing import Union
-      def t_testAdd4(x: Union[basestring, bytearray]) -> Union[str, unicode, bytearray]: ...
+      def t_testAdd4(x: Union[bytearray, unicode]) -> Union[str, unicode, bytearray]: ...
     """)
 
   @unittest.skip("Needs handling of immutable types for += on an unknown")

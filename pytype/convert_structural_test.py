@@ -481,7 +481,7 @@ class MatchTest(unittest.TestCase):
       def foo(x: `~unknown1`) -> `~unknown3` or int
 
       class `~__builtin__~int`(object):  # TODO(kramm): Make pytype add the ~
-          def __eq__(self, y: int) -> `~unknown10` or bool
+          def __xor__(self, y: int) -> `~unknown10`
 
       class `~unknown1`():
           def __add__(self, _1: int) -> `~unknown3`

@@ -30,7 +30,7 @@ def coerce(x: tuple[_T, ...], y: tuple[_T, ...]) -> tuple[tuple[_T, ...], tuple[
 def coerce(x: complex, y: int or float) -> tuple[complex, complex]
 def coerce(x: Callable, y: Callable) -> tuple[Callable, Callable]
 def coerce(x: type, y: type) -> tuple[type, type]
-def coerce(x: iterator, y: iterator) -> tuple[iterator, iterator]  # TODO(pludemann): iterator[_T] ?
+def coerce(x: _T, y: _T) -> tuple[_T, _T]  # E.g. coerce([], [1]) -> ([], [1])
 def compile(source, filename: unicode, mode: str, flags: int = ..., dont_inherit: int = ...) -> code: ...
 def delattr(object, name: str or unicode or bytearray) -> None
 def dir(...) -> list[str]
@@ -93,8 +93,13 @@ def sum(iterable: Iterable[int or float or complex]) -> int or float or complex
 def sum(iterable: Iterable[_T], start: _T) -> _T
 def unichr(i: int) -> unicode
 def vars(...) -> dict[str, ?]
-def zip(seq1, ...) -> list[tuple]  # TODO(pludemann): zip(seq1: iterator[...], ...) -> list[tuple[...]]
 def zip() -> list[nothing]
+def zip(seq1: Iterable[nothing]) -> List[nothing]
+def zip(seq1: Iterable[_T]) -> List[Tuple[_T]]
+def zip(seq1: Iterable[nothing], seq2: Iterable) -> List[nothing]
+def zip(seq1: Iterable, seq2: Iterable[nothing]) -> List[nothing]
+def zip(seq1: Iterable[_T], seq2: Iterable[_T2]) -> List[Tuple[_T, _T2]]
+def zip(seq1, seq2, seq3, ...) -> List[tuple]
 def exit(code: ? = ...) -> NoneType:
     raise SystemExit()
 def quit() -> NoneType:
@@ -146,12 +151,6 @@ class classobj(object):
     def __init__(self) -> NoneType
     def __repr__(self) -> str
     def __cmp__(self, y) -> bool
-    def __eq__(self, other) -> bool
-    def __ne__(self, other) -> bool
-    def __ge__(self, other) -> bool
-    def __gt__(self, other) -> bool
-    def __le__(self, other) -> bool
-    def __lt__(self, other) -> bool
 
 class NotImplementedType(object):
     pass
@@ -162,7 +161,6 @@ class NoneType(object):
 class ellipsis(object):
     pass
 
-# TODO(kramm): Only define this for Python 2
 class basestring(object):
     pass
 
@@ -190,8 +188,8 @@ class str(basestring, Sequence[str]):
     # unknowns takes TypeVar constraints into account.
     def __add__(self, y: str) -> str
     def __add__(self, y: bytearray) -> bytearray
-    def __add__(self, y: basestring) -> unicode
-    def __contains__(self, y: basestring or bytearray) -> bool
+    def __add__(self, y: unicode) -> unicode
+    def __contains__(self, y: basestring) -> bool
     def __getitem__(self, index: int or slice) -> str
     def __getslice__(self, i: Optional[int], j: Optional[int]) -> str
     def __len__(self) -> int
@@ -258,14 +256,14 @@ class unicode(basestring, Sequence[unicode]):
     def __mul__(self, n: int) -> unicode
     def capitalize(self) -> unicode
     def center(self, width: int, ...) -> unicode
-    def count(self, sub: str or unicode or bytearray, ...) -> int
+    def count(self, sub: str or unicode, ...) -> int
     def decode(self, ...) -> unicode
     def encode(self, ...) -> str
     def endswith(self, suffix: str or unicode or bytearray or tuple[str or unicode or bytearray, ...], ...) -> bool
     def expandtabs(self, ...) -> unicode
-    def find(self, sub: str or unicode or bytearray, ...) -> int
+    def find(self, sub: str or unicode, ...) -> int
     def format(self, ...) -> unicode
-    def index(self, sub: str or unicode or bytearray, ...) -> int
+    def index(self, sub: str or unicode, ...) -> int
     def isalnum(self) -> bool
     def isalpha(self) -> bool
     def isdecimal(self) -> bool
@@ -279,17 +277,17 @@ class unicode(basestring, Sequence[unicode]):
     def ljust(self, width: int, ...) -> unicode
     def lower(self) -> unicode
     def lstrip(self, ...) -> unicode
-    def partition(self, sep: str or unicode or bytearray) -> tuple[unicode, unicode, unicode]
-    def replace(self, old: str or unicode or bytearray, new: str or unicode or bytearray, ...) -> unicode
-    def rfind(self, sub: str or unicode or bytearray, ...) -> int
-    def rindex(self, sub: str or unicode or bytearray, ...) -> int
+    def partition(self, sep: str or unicode) -> tuple[unicode, unicode, unicode]
+    def replace(self, old: str or unicode, new: str or unicode, ...) -> unicode
+    def rfind(self, sub: str or unicode, ...) -> int
+    def rindex(self, sub: str or unicode, ...) -> int
     def rjust(self, width: int, ...) -> unicode
-    def rpartition(self, sep: str or unicode or bytearray) -> tuple[unicode, unicode, unicode]
+    def rpartition(self, sep: str or unicode) -> tuple[unicode, unicode, unicode]
     def rsplit(self, ...) -> list[unicode]
     def rstrip(self, ...) -> unicode
     def split(self, ...) -> list[unicode]
     def splitlines(self, ...) -> list[unicode]
-    def startswith(self, prefix: str or unicode or bytearray or tuple[str or unicode or bytearray, ...], ...) -> bool
+    def startswith(self, prefix: str or unicode or tuple[str or unicode, ...], ...) -> bool
     def strip(self, ...) -> unicode
     def swapcase(self) -> unicode
     def title(self) -> unicode
@@ -403,10 +401,8 @@ class dict(Dict[_K, _V]):
     def __init__(self, ...) -> NoneType:
         self := dict[?, ?]
     def __delitem__(self, y: _K) -> NoneType
-    def __eq__(self, y: dict) -> bool
     def __iter__(self) -> `dictionary-keyiterator`[_K]
     def __len__(self) -> int
-    def __ne__(self, y: dict) -> bool
     def __setitem__(self, i: _K2, y: _V2) -> NoneType:
       self := dict[_K or _K2, _V or _V2]
     def clear(self) -> NoneType
@@ -461,25 +457,13 @@ class list(List[_T]):
     def __contains__(self, y) -> bool
     def __delitem__(self, y: int or slice) -> NoneType
     def __delslice__(self, i: int, j: int) -> NoneType
-    # TODO(pludemann): for __eq__, the most likely interpretation is the types
-    #                  are the same (i.e.: def __eq__(self, y: list[_T]) -> bool)
-    #                  but the technically correct intepretation allows them to
-    #                  be of different types. We might want to have two flavours
-    #                  of type-checking, because better suggested types can be
-    #                  generated from the "most likely" inteprerations.
-    def __eq__(self, y: list) -> bool
-    def __ge__(self, y: list) -> bool
     def __getitem__(self, index: int) -> _T
     def __getitem__(self, index: slice) -> list[_T]
     def __getslice__(self, i: Optional[int], j: Optional[int]) -> list[_T]
-    def __gt__(self, y: list) -> bool
     def __iadd__(self, y: Iterable[_T2]) -> list[_T or _T2]
     def __iter__(self) -> listiterator[_T]
-    def __le__(self, y: list) -> bool
     def __len__(self) -> int
-    def __lt__(self, y: list) -> bool
     def __mul__(self, n: int) -> list[_T]
-    def __ne__(self, y: list) -> bool
     def __reversed__(self) -> listreverseiterator[_T]
     def __setitem__(self, i: int, y: _T2) -> NoneType:
       self := list[_T or _T2]
@@ -516,18 +500,12 @@ class tuple(Tuple[_T]):
       self := tuple[_T2, ...]
     def __add__(self, y: tuple[_T2, ...]) -> tuple[_T or _T2, ...]
     def __contains__(self, y) -> bool
-    def __eq__(self, y: tuple) -> bool
-    def __ge__(self, y: tuple) -> bool
     def __getitem__(self, index: int) -> _T
     def __getitem__(self, index: slice) -> tuple[_T, ...]
     def __getslice__(self, i: Optional[int], j: Optional[int]) -> tuple[_T, ...]
-    def __gt__(self, y: tuple) -> bool
     def __iter__(self) -> tupleiterator[_T]
-    def __le__(self, y: tuple) -> bool
     def __len__(self) -> int
-    def __lt__(self, y: tuple) -> bool
     def __mul__(self, n: int) -> tuple[_T, ...]
-    def __ne__(self, y: tuple) -> bool
     def count(self, value: _T) -> int
     def index(self, value, ...) -> int
 
@@ -573,13 +551,6 @@ class set(Set[_T]):
     def difference(...) -> set[?]
     @staticmethod
     def symmetric_difference(Iterable) -> set[?]
-    # TODO(kramm): These shouldn't be necessary:
-    def __eq__(self, other) -> bool
-    def __ne__(self, other) -> bool
-    def __ge__(self, other) -> bool
-    def __gt__(self, other) -> bool
-    def __le__(self, other) -> bool
-    def __lt__(self, other) -> bool
 
 class frozenset(FrozenSet[_T]):
     def __init__(self) -> NoneType:
@@ -588,14 +559,8 @@ class frozenset(FrozenSet[_T]):
         self := frozenset[_T2]
     def __and__(self, y: AbstractSet) -> frozenset[_T]
     def __contains__(self, y) -> bool
-    def __eq__(self, y) -> bool
-    def __ge__(self, y: AbstractSet[_T]) -> bool
-    def __gt__(self, y: AbstractSet[_T]) -> bool
     def __iter__(self) -> setiterator[_T]
-    def __le__(self, y: AbstractSet[_T]) -> bool
     def __len__(self) -> int
-    def __lt__(self, y: AbstractSet[_T]) -> bool
-    def __ne__(self, y) -> bool
     def __or__(self, y: AbstractSet[_T2]) -> frozenset[_T or _T2]
     def __sub__(self, y: AbstractSet[_T2]) -> frozenset[_T]
     def __xor__(self, y: AbstractSet[_T2]) -> frozenset[_T or _T2]
@@ -708,12 +673,6 @@ class int(object):  # TODO(kramm): SupportsInt, SupportsFloat, SupportsAbs)
     def __pos__(self) -> int
     def __trunc__(self, ...) -> int
     def __xor__(self, y: int) -> int
-    def __eq__(self, y) -> bool
-    def __ge__(self, y) -> bool
-    def __gt__(self, y) -> bool
-    def __le__(self, y) -> bool
-    def __lt__(self, y) -> bool
-    def __ne__(self, y) -> bool
     def bit_length(self) -> int
     def conjugate(self, ...) -> int
 
@@ -755,12 +714,6 @@ class float(SupportsInt, SupportsFloat, SupportsAbs):
     def __trunc__(self, ...) -> int
     def bit_length(self) -> int
     def conjugate(self, ...) -> float or int
-    def __eq__(self, y: int or float) -> bool
-    def __ge__(self, y: int or float) -> bool
-    def __gt__(self, y: int or float) -> bool
-    def __le__(self, y: int or float) -> bool
-    def __lt__(self, y: int or float) -> bool
-    def __ne__(self, y: int or float) -> bool
     def as_integer_ratio(self) -> tuple[int, int]
     def fromhex(self, string: str or unicode or bytearray) -> float
     def hex(self) -> str
@@ -774,11 +727,9 @@ class complex(SupportsAbs):
     def __coerce__(self, y: int or float or complex) -> Tuple[complex, complex]
     def __div__(self, y: int or float or complex) -> complex
     def __divmod__(self, y: int or float or complex) -> Tuple[complex, complex]
-    def __eq__(self, y: int or float or complex) -> bool
     def __floordiv__(self, y: int or float or complex) -> complex
     def __mod__(self, y: int or float or complex) -> complex
     def __mul__(self, y: int or float or complex) -> complex
-    def __ne__(self, y: int or float or complex) -> bool
     def __neg__(self) -> complex
     def __nonzero__(self) -> bool
     def __pos__(self) -> complex
@@ -839,10 +790,8 @@ class slice(object):
 
 class memoryview(object):
     def __init__(self, object: str or bytearray or memoryview) -> NoneType
-    def __eq__(self, y: str or bytearray or memoryview) -> bool
     def __getitem__(self, index: int) -> str
     def __len__(self) -> int
-    def __ne__(self, y: str or bytearray or memoryview) -> bool
     def tobytes(self, ...) -> str
     def tolist(self, ...) -> list[int]
 
