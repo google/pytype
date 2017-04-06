@@ -2,6 +2,7 @@
 
 import collections
 import csv
+import textwrap
 
 from pytype import errors
 from pytype import utils
@@ -74,8 +75,9 @@ class ErrorTest(unittest.TestCase):
   def test_str(self):
     e = errors.Error(errors.SEVERITY_ERROR, _MESSAGE, filename="foo.py",
                      lineno=123, column=2, linetext="hello", methodname="foo")
-    expected = 'File "foo.py", line 123, in foo: an error message [test-error]'
-    self.assertEquals(expected, str(e))
+    self.assertEquals(
+        'File "foo.py", line 123, in foo: an error message [test-error]',
+        str(e))
 
   def test_from_csv_row(self):
     row = ["a.py", "123", "index-error", "This is an error",
@@ -125,8 +127,11 @@ class ErrorLogBaseTest(unittest.TestCase):
   def test_error_with_details(self):
     errorlog = errors.ErrorLog()
     errorlog.error(None, "My message", "one\ntwo")
-    expected = "My message [test-error]\n  one\n  two\n"
-    self.assertEquals(expected, str(errorlog))
+    self.assertEquals(textwrap.dedent("""\
+        My message [test-error]
+          one
+          two
+        """), str(errorlog))
 
   @errors._error_name(_TEST_ERROR)
   def test_warn(self):
