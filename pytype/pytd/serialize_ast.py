@@ -64,32 +64,31 @@ class RenameModuleVisitor(visitors.Visitor):
     self._old = old_module_name
     self._new = new_module_name
 
-  def _MaybeNewName(self, node):
+  def _MaybeNewName(self, name):
     """Decides if a name should be replaced.
 
     Args:
-      node: Any AbstractNode.
+      name: A name for which a prefix should be changed.
 
     Returns:
-      If node.name is a name local to the module described by
-      old_module_name the old_module_part will be replaced by new_module_name
-      and returned, otherwise node.name will be returned.
+      If name is local to the module described by old_module_name the
+      old_module_part will be replaced by new_module_name and returned,
+      otherwise node.name will be returned.
     """
-    mod_name, _, local_name = node.name.rpartition(".")
-    if mod_name == self._old:
-      return "%s.%s" % (self._new, local_name)
+    if name.startswith(self._old):
+      return name.replace(self._old, self._new, 1)
     else:
-      return node.name
+      return name
 
   def _ReplaceModuleName(self, node):
-    new_name = self._MaybeNewName(node)
+    new_name = self._MaybeNewName(node.name)
     if new_name != node.name:
       return node.Replace(name=new_name)
     else:
       return node
 
   def VisitClassType(self, node):
-    new_name = self._MaybeNewName(node)
+    new_name = self._MaybeNewName(node.name)
     if new_name != node.name:
       return pytd.ClassType(new_name, node.cls)
     else:
@@ -98,13 +97,18 @@ class RenameModuleVisitor(visitors.Visitor):
   def VisitTypeDeclUnit(self, node):
     return node.Replace(name=self._new)
 
+  def VisitTypeParameter(self, node):
+    new_scope = self._MaybeNewName(node.scope)
+    if new_scope != node.scope:
+      return node.Replace(scope=new_scope)
+    return node
+
   VisitConstant = _ReplaceModuleName  # pylint: disable=invalid-name
   VisitAlias = _ReplaceModuleName  # pylint: disable=invalid-name
   VisitClass = _ReplaceModuleName  # pylint: disable=invalid-name
   VisitFunction = _ReplaceModuleName  # pylint: disable=invalid-name
   VisitExternalFunction = _ReplaceModuleName  # pylint: disable=invalid-name
   VisitStrictType = _ReplaceModuleName  # pylint: disable=invalid-name
-  VisitTypeParameter = _ReplaceModuleName  # pylint: disable=invalid-name
   VisitNamedType = _ReplaceModuleName  # pylint: disable=invalid-name
 
 
