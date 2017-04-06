@@ -117,8 +117,7 @@ def generate_pyi(input_filename, errorlog, options):
 
 def process_one_file(input_filename,
                      output_filename,
-                     options,
-                     print_errors=True):
+                     options):
   """Check or generate a .pyi, according to options.
 
   Args:
@@ -127,10 +126,6 @@ def process_one_file(input_filename,
                      then the options are used to determine where to write the
                      output.
     options: config.Options object.
-    print_errors: whether to print the error log. This does not suppress all
-                  errors (e.g., syntax errors) but is intended to suppress
-                  possibly spurious messages during the first pass if pytype is
-                  doing two passes.
 
   Returns:
     An error code (0 means no error).
@@ -168,13 +163,11 @@ def process_one_file(input_filename,
       with open(output_filename, "w") as fi:
         fi.write(result)
   if options.report_errors:
-    if print_errors:
-      if options.output_errors_csv:
-        errorlog.print_to_csv_file(options.output_errors_csv)
-        return 0  # Command is successful regardless of errors.
-      else:
-        errorlog.print_to_stderr()
-
+    if options.output_errors_csv:
+      errorlog.print_to_csv_file(options.output_errors_csv)
+      return 0  # Command is successful regardless of errors.
+    else:
+      errorlog.print_to_stderr()
     return 1 if errorlog.has_error() else 0  # exit code
   else:
     return 0
@@ -264,8 +257,7 @@ def _run_pytype(options):
   log.info("Process %s => %s", options.input, options.output)
   exit_status = process_one_file(options.input,
                                  options.output,
-                                 options,
-                                 print_errors=True)
+                                 options)
 
   # Touch output file upon success.
   if options.touch and not exit_status:
