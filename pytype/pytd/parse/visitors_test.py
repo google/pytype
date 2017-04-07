@@ -486,6 +486,12 @@ class TestVisitors(parser_test_base.ParserTest):
     self.assertRaises(visitors.ContainerError,
                       lambda: ast4.Visit(visitors.VerifyContainers()))
 
+  def testClearClassPointers(self):
+    cls = pytd.Class("foo", None, (), (), (), ())
+    t = pytd.ClassType("foo", cls)
+    t = t.Visit(visitors.ClearClassPointers())
+    self.assertIsNone(t.cls)
+
   def testExpandCompatibleBuiltins(self):
     b, _ = parser_builtins.GetBuiltinsAndTyping()
 

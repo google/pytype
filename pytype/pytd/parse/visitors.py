@@ -1820,3 +1820,11 @@ class ExpandCompatibleBuiltins(Visitor):
       return self.replacements.get(node.name, node)
     else:
       return node
+
+
+class ClearClassPointers(Visitor):
+  """Set .cls pointers to 'None'."""
+
+  def EnterClassType(self, node):
+    node.cls = None
+
