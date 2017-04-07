@@ -220,6 +220,9 @@ class ErrorLogBase(object):
     return sorted(self._errors,
                   key=lambda x: (x._filename, x._lineno))
 
+  def error_names(self):
+    return {e.name for e in self._errors}
+
   def print_to_stderr(self):
     self.print_to_file(sys.stderr)
 
