@@ -82,9 +82,8 @@ class AnnotationsUtil(object):
         name = abstract.get_atomic_python_constant(name)
         visible = t.Data(node)
         if len(visible) > 1:
-          self.vm.errorlog.invalid_annotation(
-              self.vm.frame.current_opcode,
-              abstract.merge_values(visible, self.vm), "Must be constant", name)
+          self.vm.errorlog.ambiguous_annotation(
+              self.vm.frame.current_opcode, visible, name)
         else:
           try:
             annot = self._process_one_annotation(
@@ -105,9 +104,12 @@ class AnnotationsUtil(object):
       if name == function.MULTI_ARG_ANNOTATION:
         try:
           self._eval_multi_arg_annotation(node, func, f_globals, annot)
-        except (EvaluationError, abstract.ConversionError) as e:
+        except EvaluationError as e:
           self.vm.errorlog.invalid_function_type_comment(
               annot.opcode, annot.expr, details=e.message)
+        except abstract.ConversionError:
+          self.vm.errorlog.invalid_function_type_comment(
+              annot.opcode, annot.expr, details="Must be constant.")
       else:
         resolved = self._process_one_annotation(
             annot.expr, annot.name, annot.opcode, node, f_globals)
@@ -123,17 +125,24 @@ class AnnotationsUtil(object):
     if code:
       try:
         var = self._eval_expr(state.node, self.vm.frame.f_globals, comment)
-        typ = abstract.get_atomic_value(var)
-      except (EvaluationError, abstract.ConversionError) as e:
+      except EvaluationError as e:
         self.vm.errorlog.invalid_type_comment(op, comment, details=e.message)
+        value = self.vm.convert.create_new_unsolvable(state.node)
       else:
-        if self.get_type_parameters(typ):
-          self.vm.errorlog.not_supported_yet(
-              op, "using type parameter in type comment")
         try:
-          value = self.init_annotation(typ, name, op, state.node)
-        except LateAnnotationError:
-          value = LateAnnotation(typ, name, op)
+          typ = abstract.get_atomic_value(var)
+        except abstract.ConversionError:
+          self.vm.errorlog.invalid_type_comment(
+              op, comment, details="Must be constant.")
+          value = self.vm.convert.create_new_unsolvable(state.node)
+        else:
+          if self.get_type_parameters(typ):
+            self.vm.errorlog.not_supported_yet(
+                op, "using type parameter in type comment")
+          try:
+            value = self.init_annotation(typ, name, op, state.node)
+          except LateAnnotationError:
+            value = LateAnnotation(typ, name, op)
     return value
 
   def init_annotation(self, annot, name, op, node, f_globals=None):

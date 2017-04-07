@@ -990,8 +990,8 @@ class AnnotationClass(SimpleAbstractValue, HasSlots):
     slice_content = _maybe_extract_tuple(node, slice_var)
     for var in slice_content:
       if len(var.bindings) > 1:
-        self.vm.errorlog.invalid_annotation(self.vm.frame.current_opcode, self,
-                                            "Must be constant")
+        self.vm.errorlog.ambiguous_annotation(
+            self.vm.frame.current_opcode, var.data)
         inner.append(self.vm.convert.unsolvable)
       else:
         val = var.bindings[0].data

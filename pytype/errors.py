@@ -446,14 +446,22 @@ class ErrorLog(ErrorLogBase):
     self.error(opcode, "unsupported operand type(s) for %s: %r and %r" % (
         operation, pytd.Print(left), pytd.Print(right)))
 
-  @_error_name("invalid-annotation")
   def invalid_annotation(self, opcode, annot, details, name=None):
+    self._invalid_annotation(opcode, self._print_as_expected_type(annot),
+                             details, name)
+
+  def ambiguous_annotation(self, opcode, options, name=None):
+    desc = " or ".join(self._print_as_expected_type(o) for o in options)
+    self._invalid_annotation(opcode, desc, "Must be constant", name)
+
+  @_error_name("invalid-annotation")
+  def _invalid_annotation(self, opcode, annot_string, details, name):
     if name is None:
       suffix = ""
     else:
       suffix = " for " + name
     self.error(opcode, "Invalid type annotation %r%s. %s" % (
-        self._print_as_expected_type(annot), suffix, details))
+        annot_string, suffix, details))
 
   @_error_name("mro-error")
   def mro_error(self, opcode, name, mro_seqs):

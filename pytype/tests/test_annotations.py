@@ -187,8 +187,8 @@ class AnnotationTest(test_inference.InferenceTest):
         return x
     """)
     self.assertErrorLogIs(errors, {
-        (2, "invalid-annotation", r"x.*constant"),
-        (4, "invalid-annotation", r"x.*constant")})
+        (2, "invalid-annotation", r"int or float.*x.*constant"),
+        (4, "invalid-annotation", r"int or float.*x.*constant")})
 
   def testBadStringAnnotation(self):
     _, errors = self.InferAndCheck("""\
@@ -704,8 +704,8 @@ class AnnotationTest(test_inference.InferenceTest):
         pass
     """)
     self.assertErrorLogIs(errors, [
-        (3, "invalid-annotation", r"List.*constant"),
-        (5, "invalid-annotation", r"Union.*constant")])
+        (3, "invalid-annotation", r"int or str.*constant"),
+        (5, "invalid-annotation", r"int or str.*constant")])
 
   def testVarargs(self):
     ty, errors = self.InferAndCheck("""\

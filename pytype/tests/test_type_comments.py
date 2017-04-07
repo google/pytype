@@ -231,6 +231,15 @@ class FunctionCommentTest(test_inference.InferenceTest):
         (r"test\.py.*line 3.*abc def.*invalid-function-type-comment"
          r".*unexpected EOF"))
 
+  def testAmbiguousAnnotation(self):
+    _, errors = self.InferAndCheck("""\
+      def foo(x):
+        # type: (int or str) -> None
+        pass
+    """)
+    self.assertErrorLogIs(errors, [(2, "invalid-function-type-comment",
+                                    r"int or str.*constant")])
+
 
 class FunctionCommentWithAnnotationsTest(test_inference.InferenceTest):
   """Tests for type comments that require annotations."""
@@ -302,21 +311,28 @@ class AssignmentCommentTest(test_inference.InferenceTest):
     """)
 
   def testBadComment(self):
-    _, errors = self.InferAndCheck("""
+    ty, errors = self.InferAndCheck("""
       X = None  # type: abc def
     """, deep=True, filename="test.py")
     self.assertErrorLogContains(
         errors,
         (r"test\.py.*line 2.*abc def.*invalid-type-comment"
          r".*unexpected EOF"))
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      X = ...  # type: Any
+    """)
 
   def testConversionError(self):
-    _, errors = self.InferAndCheck("""
-      X = None  # type: 1 if x else 2
+    ty, errors = self.InferAndCheck("""\
+      X = None  # type: 1 if __any_object__ else 2
     """, deep=True, filename="test.py")
-    self.assertErrorLogContains(
-        errors,
-        r"test\.py.*line 2.*1 if x else 2.*invalid-type-comment")
+    self.assertErrorLogIs(errors, [(1, "invalid-type-comment",
+                                    r"1 if __any_object__ else 2.*constant")])
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      X = ...  # type: Any
+    """)
 
   def testNameErrorInsideComment(self):
     _, errors = self.InferAndCheck("""
