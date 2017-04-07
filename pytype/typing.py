@@ -144,6 +144,25 @@ class TypeVar(abstract.PyTDFunction):
     return node, param.to_variable(node)
 
 
+class Cast(abstract.PyTDFunction):
+  """Implements typing.cast."""
+
+  def call(self, node, func, args):
+    if args.posargs:
+      try:
+        annot = self.vm.annotations_util.process_annotation_var(
+            args.posargs[0], "typing.cast", self.vm.frame.current_opcode, node)
+      except self.vm.annotations_util.LateAnnotationError:
+        self.vm.errorlog.invalid_annotation(
+            self.vm.frame.current_opcode,
+            abstract.merge_values(args.posargs[0].data, self.vm),
+            "Forward references not allowed in typing.cast.\n"
+            "Consider switching to a type comment.")
+        annot = self.vm.convert.create_new_unsolvable(node)
+      args = args.replace(posargs=(annot,) + args.posargs[1:])
+    return super(Cast, self).call(node, func, args)
+
+
 def build_container(name, vm):
   if name in pep484.PEP484_CAPITALIZED:
     pytd_name = "__builtin__." + name.lower()
@@ -178,6 +197,12 @@ def build_typechecking(name, vm):
   return vm.convert.true
 
 
+def build_cast(name, vm):
+  f = vm.lookup_builtin("typing.cast")
+  signatures = [abstract.PyTDSignature(name, sig, vm) for sig in f.signatures]
+  return Cast(name, signatures, f.kind, vm)
+
+
 typing_overload = {
     "Any": build_any,
     "Callable": Callable,
@@ -187,4 +212,5 @@ typing_overload = {
     "TypeVar": TypeVar,
     "Union": Union,
     "TYPE_CHECKING": build_typechecking,
+    "cast": build_cast,
 }

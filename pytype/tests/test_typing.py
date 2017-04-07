@@ -63,9 +63,9 @@ class TypingTest(test_inference.InferenceTest):
         return typing.cast(typing.List[int], [])
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any
+      from typing import Any, List
       typing = ...  # type: module
-      def f() -> Any
+      def f() -> List[int]
     """)
 
   def test_cast2(self):
@@ -74,6 +74,25 @@ class TypingTest(test_inference.InferenceTest):
       import typing
       foo = typing.cast(typing.Dict, {})
     """)
+
+  def test_process_annotation_for_cast(self):
+    ty, errors = self.InferAndCheck("""\
+      import typing
+      v1 = typing.cast(None, __any_object__)
+      v2 = typing.cast(typing.Union, __any_object__)
+      v3 = typing.cast("A", __any_object__)
+      class A(object):
+        pass
+    """)
+    self.assertTypesMatchPytd(ty, """
+      typing = ...  # type: module
+      v1 = ...  # type: None
+      v2 = ...  # type: typing.Any
+      v3 = ...  # type: typing.Any
+      class A(object): ...
+    """)
+    self.assertErrorLogIs(errors, [(3, "invalid-annotation"),
+                                   (4, "invalid-annotation")])
 
   def test_generator(self):
     self.assertNoErrors("""\

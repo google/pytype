@@ -14,17 +14,17 @@ class EvaluationError(Exception):
   pass
 
 
-class LateAnnotationError(Exception):
-  """Used to break out of annotation evaluation if we discover a string."""
-  pass
-
-
 LateAnnotation = collections.namedtuple(
     "LateAnnotation", ["expr", "name", "opcode"])
 
 
 class AnnotationsUtil(object):
   """Utility class for inline type annotations."""
+
+  # Define this error inside AnnotationsUtil so that it is exposed to typing.py.
+  class LateAnnotationError(Exception):
+    """Used to break out of annotation evaluation if we discover a string."""
+    pass
 
   def __init__(self, vm):
     self.vm = vm
@@ -88,7 +88,7 @@ class AnnotationsUtil(object):
           try:
             annot = self._process_one_annotation(
                 visible[0], name, self.vm.frame.current_opcode)
-          except LateAnnotationError:
+          except self.LateAnnotationError:
             late_annotations[name] = LateAnnotation(
                 visible[0], name, self.vm.frame.current_opcode)
           else:
@@ -141,7 +141,7 @@ class AnnotationsUtil(object):
                 op, "using type parameter in type comment")
           try:
             value = self.init_annotation(typ, name, op, state.node)
-          except LateAnnotationError:
+          except self.LateAnnotationError:
             value = LateAnnotation(typ, name, op)
     return value
 
@@ -152,6 +152,15 @@ class AnnotationsUtil(object):
     else:
       _, _, value = self.vm.init_class(node, processed)
     return value
+
+  def process_annotation_var(self, var, name, op, node):
+    new_var = self.vm.program.NewVariable()
+    for b in var.bindings:
+      annot = self._process_one_annotation(b.data, name, op)
+      if annot is None:
+        return self.vm.convert.create_new_unsolvable(node)
+      new_var.AddBinding(annot, {b}, node)
+    return new_var
 
   def _eval_multi_arg_annotation(self, node, func, f_globals, annot):
     """Evaluate annotation for multiple arguments (from a type comment)."""
@@ -195,7 +204,7 @@ class AnnotationsUtil(object):
       # String annotations : Late evaluation
       if isinstance(annotation, abstract.PythonConstant):
         if f_globals is None:
-          raise LateAnnotationError()
+          raise self.LateAnnotationError()
         else:
           try:
             v = self._eval_expr(node, f_globals, annotation.pyval)

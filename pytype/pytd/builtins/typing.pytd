@@ -267,8 +267,7 @@ def NewType(name, tp) -> type
 
 Text = unicode
 
-# TODO(kramm): def cast(typ: Type[_T], val) -> _T
-def cast(typ, val) -> ?
+def cast(typ: Type[_T], val) -> _T
 
 def overload(func: _T) -> _T
 def no_type_check(arg: _T) -> _T
