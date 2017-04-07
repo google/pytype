@@ -451,7 +451,7 @@ class ErrorLog(ErrorLogBase):
                              details, name)
 
   def ambiguous_annotation(self, opcode, options, name=None):
-    desc = " or ".join(self._print_as_expected_type(o) for o in options)
+    desc = " or ".join(sorted(self._print_as_expected_type(o) for o in options))
     self._invalid_annotation(opcode, desc, "Must be constant", name)
 
   @_error_name("invalid-annotation")

@@ -187,7 +187,9 @@ class AnnotationTest(test_inference.InferenceTest):
         return x
     """)
     self.assertErrorLogIs(errors, {
-        (2, "invalid-annotation", r"int or float.*x.*constant"),
+        (2, "invalid-annotation", r"float or int.*x.*constant"),
+        # For a late annotation, we print the string literal, which is why
+        # 'int or float' below is not in alphabetical order.
         (4, "invalid-annotation", r"int or float.*x.*constant")})
 
   def testBadStringAnnotation(self):
