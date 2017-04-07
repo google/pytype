@@ -1434,7 +1434,7 @@ class AddNamePrefix(Visitor):
 
   def VisitTypeParameter(self, node):
     if node.scope is not None:
-      raise ValueError("AddNamePrefix called after AdjustTypeParameters")
+      return node.Replace(scope=self.prefix + node.scope)
     # Give the type parameter the name of the module it is in as its scope.
     # Module-level type parameters will keep this scope, but others will get a
     # more specific one in AdjustTypeParameters. The last character in the

@@ -531,6 +531,40 @@ class TestVisitors(parser_test_base.ParserTest):
     new_tree = src_tree.Visit(visitors.ExpandCompatibleBuiltins(b))
     self.AssertSourceEquals(new_tree, expected_tree)
 
+  def testAddNamePrefix(self):
+    src = textwrap.dedent("""
+      from typing import TypeVar
+      def f(a: T) -> T: ...
+      T = TypeVar("T")
+      class X(Generic[T]):
+        pass
+    """)
+    tree = self.Parse(src)
+    self.assertIsNone(tree.Lookup("T").scope)
+    self.assertEquals("X",
+                      tree.Lookup("X").template[0].type_param.scope)
+    tree = tree.Replace(name="foo").Visit(visitors.AddNamePrefix())
+    self.assertIsNotNone(tree.Lookup("foo.f"))
+    self.assertIsNotNone(tree.Lookup("foo.X"))
+    self.assertEquals("foo", tree.Lookup("foo.T").scope)
+    self.assertEquals("foo.X",
+                      tree.Lookup("foo.X").template[0].type_param.scope)
+
+  def testAddNamePrefixTwice(self):
+    src = textwrap.dedent("""
+      from typing import TypeVar
+      x = ...  # type: ?
+      T = TypeVar("T")
+      class X(Generic[T]): ...
+    """)
+    tree = self.Parse(src)
+    tree = tree.Replace(name="foo").Visit(visitors.AddNamePrefix())
+    tree = tree.Replace(name="foo").Visit(visitors.AddNamePrefix())
+    self.assertIsNotNone(tree.Lookup("foo.foo.x"))
+    self.assertEquals("foo.foo", tree.Lookup("foo.foo.T").scope)
+    self.assertEquals("foo.foo.X",
+                      tree.Lookup("foo.foo.X").template[0].type_param.scope)
+
   def testPrintMergeTypes(self):
     src = textwrap.dedent("""
       from typing import Union
