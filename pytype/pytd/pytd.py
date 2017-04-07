@@ -423,24 +423,19 @@ class GenericType(node.Node('base_type: NamedType or ClassType',
                             'parameters: tuple[{Type}]'), Type):
   """Generic type. Takes a base type and type paramters.
 
+  This is used for homogeneous tuples, lists, dictionaries, user classes, etc.
+
   Attributes:
     base_type: The base type. Instance of Type.
     parameters: Type parameters. Tuple of instances of Type.
   """
   __slots__ = ()
 
-
-class HomogeneousContainerType(GenericType):
-  """Special generic type for homogeneous containers. Only has one type param.
-
-  This differs from GenericType in that it assumes *all* items in a container
-  will be the same type.
-  """
-  __slots__ = ()
-
   @property
   def element_type(self):
-    return self.parameters[0]
+    """Type of the contained type, assuming we only have one type parameter."""
+    element_type, = self.parameters
+    return element_type
 
 
 class TupleType(GenericType):

@@ -527,12 +527,7 @@ type
       CHECK($$, @$);
     }
   | '[' maybe_type_list ']' {
-      // TODO(dbaum): Is this rule necessary?  Seems like it may be old cruft.
-      //
-      // TODO(dbaum): This assumes kNewType will make this a GenericType and
-      // not try to convert it to HomogeneousContainerType (like it does with
-      // typing.Tuple).  This feels inconsistent and should be revisited once
-      // the parser is complete.
+      // This rule is needed for Callable[[...], ...]
       $$ = ctx->Call(kNewType, "(sN)", "tuple", $2);
       CHECK($$, @$);
     }

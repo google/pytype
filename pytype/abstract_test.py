@@ -405,8 +405,8 @@ class PyTDTest(AbstractTestBase):
   def testTypingContainer(self):
     cls = self._vm.convert.list_type.bindings[0].data
     container = abstract.AnnotationContainer("List", self._vm, cls)
-    expected = pytd.HomogeneousContainerType(pytd.NamedType("__builtin__.list"),
-                                             (pytd.AnythingType(),))
+    expected = pytd.GenericType(pytd.NamedType("__builtin__.list"),
+                                (pytd.AnythingType(),))
     actual = container.get_instance_type(self._vm.root_cfg_node)
     self.assertEquals(expected, actual)
 

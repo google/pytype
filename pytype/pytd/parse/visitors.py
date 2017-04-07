@@ -253,7 +253,9 @@ class PrintVisitor(Visitor):
 
   def _NeedsTupleEllipsis(self, t):
     """Do we need to use Tuple[x, ...] instead of Tuple[x]?"""
-    assert isinstance(t, pytd.HomogeneousContainerType)
+    assert isinstance(t, pytd.GenericType)
+    if isinstance(t, pytd.TupleType):
+      return False  # TupleType is always heterogeneous.
     return t.base_type == "tuple"
 
   def _RequireImport(self, module, name=None):
@@ -544,20 +546,15 @@ class PrintVisitor(Visitor):
     else:
       return name
 
-  def VisitHomogeneousContainerType(self, node):
-    """Convert a homogeneous container type to a string."""
+  def VisitGenericType(self, node):
+    """Convert a generic type to a string."""
     ellipsis = ", ..." if self._NeedsTupleEllipsis(node) else ""
+    param_str = ", ".join(node.parameters)
     return (self.MaybeCapitalize(node.base_type) +
-            "[" + node.element_type + ellipsis + "]")
+            "[" + param_str + ellipsis + "]")
 
   def VisitTupleType(self, node):
     return self.VisitGenericType(node)
-
-  def VisitGenericType(self, node):
-    """Convert a generic type (E.g. list[int]) to a string."""
-    param_str = ", ".join(node.parameters)
-    return (self.MaybeCapitalize(node.base_type) +
-            "[" + param_str + "]")
 
   def VisitUnionType(self, node):
     """Convert a union type ("x or y") to a string."""
@@ -730,9 +727,6 @@ class DefaceUnresolved(Visitor):
           not name.startswith(self._do_not_log_prefix)):
         logging.error("Setting %s to ?", name)
       return pytd.AnythingType()
-
-  def VisitHomogeneousContainerType(self, node):
-    return self.VisitGenericType(node)
 
   def VisitTupleType(self, node):
     return self.VisitGenericType(node)
@@ -1326,9 +1320,6 @@ class VerifyVisitor(Visitor):
   def EnterParameter(self, node):
     assert self._valid_param_name.match(node.name), node.name
 
-  def EnterHomogeneousContainerType(self, node):
-    assert len(node.parameters) == 1, node
-
   def EnterTupleType(self, node):
     self.EnterGenericType(node)
 
@@ -1752,9 +1743,6 @@ class VerifyContainers(Visitor):
         raise ContainerError(
             "Too many parameters on %s: expected %s, got %s" % (
                 node.base_type.name, max_param_count, actual_param_count))
-
-  def EnterHomogeneousContainerType(self, node):
-    self.EnterGenericType(node)
 
   def EnterTupleType(self, node):
     self.EnterGenericType(node)

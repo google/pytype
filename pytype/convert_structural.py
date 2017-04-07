@@ -204,10 +204,7 @@ def convert_string_type(string_type, unknown, mapping, global_lookup, depth=0):
             string_type_params, unknown, mapping, global_lookup, depth + 1))
       else:
         parameters.append(pytd.AnythingType())
-    if len(parameters) == 1:
-      return pytd.HomogeneousContainerType(base_type, tuple(parameters))
-    else:
-      return pytd.GenericType(base_type, tuple(parameters))
+    return pytd.GenericType(base_type, tuple(parameters))
   else:
     return base_type
 

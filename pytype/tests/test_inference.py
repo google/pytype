@@ -71,30 +71,20 @@ class InferenceTest(unittest.TestCase):
     self.complexorstr = pytd.UnionType((self.complex, self.str))
     self.intorfloatorcomplex = pytd.UnionType(
         (self.int, self.float, self.complex))
-    self.int_tuple = pytd.HomogeneousContainerType(self.tuple, (self.int,))
-    self.nothing_tuple = pytd.HomogeneousContainerType(self.tuple,
-                                                       (self.nothing,))
-    self.intorfloat_tuple = pytd.HomogeneousContainerType(self.tuple,
-                                                          (self.intorfloat,))
-    self.int_set = pytd.HomogeneousContainerType(self.set, (self.int,))
-    self.intorfloat_set = pytd.HomogeneousContainerType(self.set,
-                                                        (self.intorfloat,))
-    self.unknown_frozenset = pytd.HomogeneousContainerType(
-        self.frozenset, (self.anything,))
-    self.float_frozenset = pytd.HomogeneousContainerType(self.frozenset,
-                                                         (self.float,))
-    self.empty_frozenset = pytd.HomogeneousContainerType(self.frozenset,
-                                                         (self.nothing,))
-    self.int_list = pytd.HomogeneousContainerType(self.list, (self.int,))
-    self.str_list = pytd.HomogeneousContainerType(self.list, (self.str,))
-    self.intorfloat_list = pytd.HomogeneousContainerType(self.list,
-                                                         (self.intorfloat,))
-    self.intorstr_list = pytd.HomogeneousContainerType(self.list,
-                                                       (self.intorstr,))
-    self.anything_list = pytd.HomogeneousContainerType(self.list,
-                                                       (self.anything,))
-    self.nothing_list = pytd.HomogeneousContainerType(self.list,
-                                                      (self.nothing,))
+    self.int_tuple = pytd.GenericType(self.tuple, (self.int,))
+    self.nothing_tuple = pytd.GenericType(self.tuple, (self.nothing,))
+    self.intorfloat_tuple = pytd.GenericType(self.tuple, (self.intorfloat,))
+    self.int_set = pytd.GenericType(self.set, (self.int,))
+    self.intorfloat_set = pytd.GenericType(self.set, (self.intorfloat,))
+    self.unknown_frozenset = pytd.GenericType(self.frozenset, (self.anything,))
+    self.float_frozenset = pytd.GenericType(self.frozenset, (self.float,))
+    self.empty_frozenset = pytd.GenericType(self.frozenset, (self.nothing,))
+    self.int_list = pytd.GenericType(self.list, (self.int,))
+    self.str_list = pytd.GenericType(self.list, (self.str,))
+    self.intorfloat_list = pytd.GenericType(self.list, (self.intorfloat,))
+    self.intorstr_list = pytd.GenericType(self.list, (self.intorstr,))
+    self.anything_list = pytd.GenericType(self.list, (self.anything,))
+    self.nothing_list = pytd.GenericType(self.list, (self.nothing,))
     self.int_int_dict = pytd.GenericType(self.dict, (self.int, self.int))
     self.int_str_dict = pytd.GenericType(self.dict, (self.int, self.str))
     self.str_int_dict = pytd.GenericType(self.dict, (self.str, self.int))

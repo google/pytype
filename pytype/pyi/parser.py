@@ -575,8 +575,8 @@ class _Parser(object):
       element_type = parameters[0]
       if element_type is self.ELLIPSIS:
         raise ParseError("[..., ...] not supported")
-      return pytd.HomogeneousContainerType(base_type=base_type,
-                                           parameters=(element_type,))
+      return pytd.GenericType(base_type=base_type,
+                              parameters=(element_type,))
     else:
       parameters = tuple(pytd.AnythingType() if p is self.ELLIPSIS else p
                          for p in parameters)
@@ -894,7 +894,7 @@ def _star_param(name, param_type):
   if param_type is None:
     param_type = pytd.NamedType("tuple")
   else:
-    param_type = pytd.HomogeneousContainerType(
+    param_type = pytd.GenericType(
         pytd.NamedType("tuple"), (param_type,))
   return pytd.Parameter(name, param_type, False, True, None)
 

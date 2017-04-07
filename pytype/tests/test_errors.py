@@ -844,7 +844,7 @@ class ErrorTest(test_inference.InferenceTest):
         x = [float]
       f(x)
     """)
-    error = r"Actual.*Union\[Type\[Dict\[Any, Any\]\], List\[Type\[float\]\]\]"
+    error = r"Actual.*Union\[List\[Type\[float\]\], Type\[Dict\[Any, Any\]\]\]"
     self.assertErrorLogIs(errors, [(8, "wrong-arg-types", error)])
 
   def testBadDictAttribute(self):

@@ -587,9 +587,9 @@ static const yytype_uint16 yyrline[] =
      458,   459,   463,   464,   465,   466,   470,   471,   475,   476,
      480,   484,   485,   486,   490,   491,   492,   493,   494,   495,
      496,   500,   501,   505,   506,   507,   511,   512,   516,   517,
-     521,   525,   529,   539,   543,   544,   545,   546,   550,   551,
-     555,   556,   560,   564,   565,   569,   570,   574,   575,   580,
-     581,   589,   590,   595,   603,   604,   608,   609
+     521,   525,   529,   534,   538,   539,   540,   541,   545,   546,
+     550,   551,   555,   559,   560,   564,   565,   569,   570,   575,
+     576,   584,   585,   590,   598,   599,   603,   604
 };
 #endif
 
@@ -3206,12 +3206,7 @@ yyreduce:
 /* Line 1464 of yacc.c  */
 #line 529 "parser.y"
     {
-      // TODO(dbaum): Is this rule necessary?  Seems like it may be old cruft.
-      //
-      // TODO(dbaum): This assumes kNewType will make this a GenericType and
-      // not try to convert it to HomogeneousContainerType (like it does with
-      // typing.Tuple).  This feels inconsistent and should be revisited once
-      // the parser is complete.
+      // This rule is needed for Callable[[...], ...]
       (yyval.obj) = ctx->Call(kNewType, "(sN)", "tuple", (yyvsp[(2) - (3)].obj));
       CHECK((yyval.obj), (yyloc));
     ;}
@@ -3220,7 +3215,7 @@ yyreduce:
   case 133:
 
 /* Line 1464 of yacc.c  */
-#line 539 "parser.y"
+#line 534 "parser.y"
     {
       (yyval.obj) = ctx->Call(kNewNamedTuple, "(NN)", (yyvsp[(3) - (6)].obj), (yyvsp[(5) - (6)].obj));
       CHECK((yyval.obj), (yyloc));
@@ -3230,105 +3225,105 @@ yyreduce:
   case 134:
 
 /* Line 1464 of yacc.c  */
-#line 543 "parser.y"
+#line 538 "parser.y"
     { (yyval.obj) = (yyvsp[(2) - (3)].obj); ;}
     break;
 
   case 135:
 
 /* Line 1464 of yacc.c  */
-#line 544 "parser.y"
+#line 539 "parser.y"
     { (yyval.obj) = ctx->Call(kNewUnionType, "([NN])", (yyvsp[(1) - (3)].obj), (yyvsp[(3) - (3)].obj)); ;}
     break;
 
   case 136:
 
 /* Line 1464 of yacc.c  */
-#line 545 "parser.y"
+#line 540 "parser.y"
     { (yyval.obj) = ctx->Value(kAnything); ;}
     break;
 
   case 137:
 
 /* Line 1464 of yacc.c  */
-#line 546 "parser.y"
+#line 541 "parser.y"
     { (yyval.obj) = ctx->Value(kNothing); ;}
     break;
 
   case 138:
 
 /* Line 1464 of yacc.c  */
-#line 550 "parser.y"
+#line 545 "parser.y"
     { (yyval.obj) = (yyvsp[(2) - (4)].obj); ;}
     break;
 
   case 139:
 
 /* Line 1464 of yacc.c  */
-#line 551 "parser.y"
+#line 546 "parser.y"
     { (yyval.obj) = PyList_New(0); ;}
     break;
 
   case 140:
 
 /* Line 1464 of yacc.c  */
-#line 555 "parser.y"
+#line 550 "parser.y"
     { (yyval.obj) = AppendList((yyvsp[(1) - (3)].obj), (yyvsp[(3) - (3)].obj)); ;}
     break;
 
   case 141:
 
 /* Line 1464 of yacc.c  */
-#line 556 "parser.y"
+#line 551 "parser.y"
     { (yyval.obj) = StartList((yyvsp[(1) - (1)].obj)); ;}
     break;
 
   case 142:
 
 /* Line 1464 of yacc.c  */
-#line 560 "parser.y"
+#line 555 "parser.y"
     { (yyval.obj) = Py_BuildValue("(NN)", (yyvsp[(2) - (6)].obj), (yyvsp[(4) - (6)].obj)); ;}
     break;
 
   case 145:
 
 /* Line 1464 of yacc.c  */
-#line 569 "parser.y"
+#line 564 "parser.y"
     { (yyval.obj) = (yyvsp[(1) - (1)].obj); ;}
     break;
 
   case 146:
 
 /* Line 1464 of yacc.c  */
-#line 570 "parser.y"
+#line 565 "parser.y"
     { (yyval.obj) = PyList_New(0); ;}
     break;
 
   case 147:
 
 /* Line 1464 of yacc.c  */
-#line 574 "parser.y"
+#line 569 "parser.y"
     { (yyval.obj) = AppendList((yyvsp[(1) - (3)].obj), (yyvsp[(3) - (3)].obj)); ;}
     break;
 
   case 148:
 
 /* Line 1464 of yacc.c  */
-#line 575 "parser.y"
+#line 570 "parser.y"
     { (yyval.obj) = StartList((yyvsp[(1) - (1)].obj)); ;}
     break;
 
   case 149:
 
 /* Line 1464 of yacc.c  */
-#line 580 "parser.y"
+#line 575 "parser.y"
     { (yyval.obj) = (yyvsp[(1) - (1)].obj); ;}
     break;
 
   case 150:
 
 /* Line 1464 of yacc.c  */
-#line 581 "parser.y"
+#line 576 "parser.y"
     {
       PyString_Concat(&(yyvsp[(1) - (3)].obj), DOT_STRING);
       PyString_ConcatAndDel(&(yyvsp[(1) - (3)].obj), (yyvsp[(3) - (3)].obj));
@@ -3339,14 +3334,14 @@ yyreduce:
   case 151:
 
 /* Line 1464 of yacc.c  */
-#line 589 "parser.y"
+#line 584 "parser.y"
     { (yyval.obj) = (yyvsp[(1) - (1)].obj); ;}
     break;
 
   case 152:
 
 /* Line 1464 of yacc.c  */
-#line 590 "parser.y"
+#line 585 "parser.y"
     {
       PyObject* slice = PySlice_New((yyvsp[(1) - (3)].obj), (yyvsp[(3) - (3)].obj), NULL);
       CHECK(slice, (yyloc));
@@ -3357,7 +3352,7 @@ yyreduce:
   case 153:
 
 /* Line 1464 of yacc.c  */
-#line 595 "parser.y"
+#line 590 "parser.y"
     {
       PyObject* slice = PySlice_New((yyvsp[(1) - (5)].obj), (yyvsp[(3) - (5)].obj), (yyvsp[(5) - (5)].obj));
       CHECK(slice, (yyloc));
@@ -3368,21 +3363,21 @@ yyreduce:
   case 154:
 
 /* Line 1464 of yacc.c  */
-#line 603 "parser.y"
+#line 598 "parser.y"
     { (yyval.obj) = (yyvsp[(1) - (1)].obj); ;}
     break;
 
   case 155:
 
 /* Line 1464 of yacc.c  */
-#line 604 "parser.y"
+#line 599 "parser.y"
     { (yyval.obj) = NULL; ;}
     break;
 
 
 
 /* Line 1464 of yacc.c  */
-#line 3386 "pyi/parser.tab.cc"
+#line 3381 "pyi/parser.tab.cc"
       default: break;
     }
   YY_SYMBOL_PRINT ("-> $$ =", yyr1[yyn], &yyval, &yyloc);
@@ -3601,7 +3596,7 @@ yyreturn:
 
 
 /* Line 1684 of yacc.c  */
-#line 612 "parser.y"
+#line 607 "parser.y"
 
 
 namespace {

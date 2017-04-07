@@ -268,7 +268,7 @@ class CombineContainers(visitors.Visitor):
           tuple_length = len(t.parameters)
         elif tuple_length != len(t.parameters):
           break
-      elif (isinstance(t, pytd.HomogeneousContainerType) and
+      elif (isinstance(t, pytd.GenericType) and
             t.base_type.name in ("__builtin__.tuple", "typing.Tuple")):
         break
     else:
@@ -278,7 +278,7 @@ class CombineContainers(visitors.Visitor):
       # differing lengths, we want to turn all of the tuples into homogeneous
       # ones so that they can be merged into a single container.
       type_list = tuple(
-          pytd.HomogeneousContainerType(
+          pytd.GenericType(
               base_type=t.base_type,
               parameters=(pytd.UnionType(t.parameters),))
           if isinstance(t, pytd.TupleType) else t for t in union.type_list)
@@ -947,13 +947,10 @@ class SimplifyContainers(visitors.Visitor):
     else:
       return t
 
-  def VisitHomogeneousContainerType(self, t):
+  def VisitGenericType(self, t):
     return self._Simplify(t)
 
   def VisitTupleType(self, t):
-    return self._Simplify(t)
-
-  def VisitGenericType(self, t):
     return self._Simplify(t)
 
 

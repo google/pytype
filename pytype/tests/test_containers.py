@@ -49,7 +49,7 @@ class ContainerTest(test_inference.InferenceTest):
     """, deep=False, solve_unknowns=False, show_library_calls=True)
     self.assertHasOnlySignatures(
         ty.Lookup("f"),
-        ((), pytd.HomogeneousContainerType(self.tuple, (pytd.NothingType(),))))
+        ((), pytd.GenericType(self.tuple, (pytd.NothingType(),))))
 
   def testSetsSanity(self):
     ty = self.Infer("""
@@ -61,7 +61,7 @@ class ContainerTest(test_inference.InferenceTest):
     """, deep=False, solve_unknowns=False, show_library_calls=True)
     self.assertHasOnlySignatures(
         ty.Lookup("f"),
-        ((), pytd.HomogeneousContainerType(self.set, (self.int,))))
+        ((), pytd.GenericType(self.set, (self.int,))))
 
   def testSetsAdd(self):
     ty = self.Infer("""
@@ -74,7 +74,7 @@ class ContainerTest(test_inference.InferenceTest):
     """, deep=False, solve_unknowns=False, show_library_calls=True)
     self.assertHasOnlySignatures(
         ty.Lookup("f"),
-        ((), pytd.HomogeneousContainerType(self.set, (self.int,))))
+        ((), pytd.GenericType(self.set, (self.int,))))
 
   def testSets(self):
     ty = self.Infer("""
@@ -91,7 +91,7 @@ class ContainerTest(test_inference.InferenceTest):
     """, deep=False, solve_unknowns=False, show_library_calls=True)
     self.assertHasOnlySignatures(
         ty.Lookup("f"),
-        ((), pytd.HomogeneousContainerType(self.set, (self.int,))))
+        ((), pytd.GenericType(self.set, (self.int,))))
 
   def testListLiteral(self):
     ty = self.Infer("""
@@ -101,7 +101,7 @@ class ContainerTest(test_inference.InferenceTest):
     """, deep=False, solve_unknowns=False, show_library_calls=True)
     self.assertHasOnlySignatures(
         ty.Lookup("f"),
-        ((), pytd.HomogeneousContainerType(self.list, (self.int,))))
+        ((), pytd.GenericType(self.list, (self.int,))))
 
   def testListAppend(self):
     ty = self.Infer("""
@@ -115,7 +115,7 @@ class ContainerTest(test_inference.InferenceTest):
     """, deep=False, solve_unknowns=False, show_library_calls=True)
     self.assertHasOnlySignatures(
         ty.Lookup("f"),
-        ((), pytd.HomogeneousContainerType(self.list, (self.int,))))
+        ((), pytd.GenericType(self.list, (self.int,))))
 
   def testListConcat(self):
     ty = self.Infer("""
@@ -129,7 +129,7 @@ class ContainerTest(test_inference.InferenceTest):
     """, deep=False, solve_unknowns=False, show_library_calls=True)
     self.assertHasOnlySignatures(
         ty.Lookup("f"),
-        ((), pytd.HomogeneousContainerType(self.list, (self.int,))))
+        ((), pytd.GenericType(self.list, (self.int,))))
 
   def testListConcatMultiType(self):
     ty = self.Infer("""
@@ -143,7 +143,7 @@ class ContainerTest(test_inference.InferenceTest):
     self.assertHasOnlySignatures(
         ty.Lookup("f"),
         ((),
-         pytd.HomogeneousContainerType(
+         pytd.GenericType(
              self.list,
              (pytd.UnionType((self.int, self.float, self.str)),))))
 
@@ -176,7 +176,7 @@ class ContainerTest(test_inference.InferenceTest):
     """, deep=False, solve_unknowns=False, show_library_calls=True)
     self.assertHasOnlySignatures(
         ty.Lookup("f"),
-        ((), pytd.HomogeneousContainerType(self.list, (self.intorstr,))))
+        ((), pytd.GenericType(self.list, (self.intorstr,))))
 
   def testAnyObject(self):
     ty = self.Infer("""
