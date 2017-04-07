@@ -655,6 +655,22 @@ class UtilsTest(unittest.TestCase):
           +-[Node(n1)]
     """), s)
 
+  def testAsciiGraphWithCustomText(self):
+    n1 = Node("n1")
+    n2 = Node("n2", n1)
+    n3 = Node("n3", n2)
+    n3.connect_to(n1)
+    s = utils.ascii_tree(n1, lambda n: n.outgoing, lambda n: n.name.upper())
+    self.assertMultiLineEqual(textwrap.dedent("""\
+      N1
+      |
+      +-N2
+        |
+        +-N3
+          |
+          +-[N1]
+    """), s)
+
   def testTraceLogLevel(self):
     log.trace("hello world")
 

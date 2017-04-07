@@ -774,7 +774,7 @@ class AnnotatingDecorator(object):
     return decorate
 
 
-def _ascii_tree(io, node, p1, p2, seen, get_children):
+def _ascii_tree(io, node, p1, p2, seen, get_children, get_description=None):
   """Draw a graph, starting at a given position.
 
   Args:
@@ -784,32 +784,35 @@ def _ascii_tree(io, node, p1, p2, seen, get_children):
     p2: The upcoming prefix.
     seen: Nodes we have seen so far (as a set).
     get_children: The function to call to retrieve children.
+    get_description: Optional. A function to call to describe a node.
   """
   children = list(get_children(node))
+  text = get_description(node) if get_description else str(node)
   if node in seen:
-    io.write(p1 + "[" + str(node) + "]\n")
+    io.write(p1 + "[" + text + "]\n")
   else:
-    io.write(p1 + str(node) + "\n")
+    io.write(p1 + text + "\n")
     seen.add(node)
     for i, c in enumerate(children):
       last = (i == len(children) - 1)
       io.write(p2 + "|\n")
       _ascii_tree(io, c, p2 + "+-", p2 + ("  " if last else "| "),
-                  seen, get_children)
+                  seen, get_children, get_description)
 
 
-def ascii_tree(node, get_children):
+def ascii_tree(node, get_children, get_description=None):
   """Draw a graph, starting at a given position.
 
   Args:
     node: The node from where to draw.
     get_children: The function to call to retrieve children.
+    get_description: Optional. A function to call to describe a node.
 
   Returns:
     A string.
   """
   io = StringIO.StringIO()
-  _ascii_tree(io, node, "", "", set(), get_children)
+  _ascii_tree(io, node, "", "", set(), get_children, get_description)
   return io.getvalue()
 
 
