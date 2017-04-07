@@ -152,6 +152,32 @@ class StopWatch(Metric):
     self._total += other._total
 
 
+class ReentrantStopWatch(Metric):
+  """A watch that supports being called multiple times and recursively."""
+
+  def __init__(self, name):
+    super(ReentrantStopWatch, self).__init__(name)
+    self._time = 0
+    self._calls = 0
+
+  def __enter__(self):
+    if not self._calls:
+      self._start_time = time.clock()
+    self._calls += 1
+
+  def __exit__(self, exc_type, exc_value, traceback):
+    self._calls -= 1
+    if not self._calls:
+      self._time += time.clock() - self._start_time
+      del self._start_time
+
+  def _merge(self, other):
+    self._time += other._time  # pylint: disable=protected-access
+
+  def _summary(self):
+    return "time spend below this StopWatch: %s" % self._time
+
+
 class MapCounter(Metric):
   """A set of related counters keyed by an arbitrary string."""
 

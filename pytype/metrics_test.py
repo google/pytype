@@ -3,6 +3,7 @@
 import cStringIO
 import math
 import tempfile
+import time
 
 from pytype import metrics
 import yaml
@@ -82,6 +83,32 @@ class MetricsTest(unittest.TestCase):
     self.assertIsInstance(c1, metrics.Counter)
     c2 = metrics.get_metric("foo", metrics.Counter)
     self.assertIs(c1, c2)
+
+
+class ReentrantStopWatchTest(unittest.TestCase):
+
+  def test_ReentrantStopWatch(self):
+    c = metrics.ReentrantStopWatch("watch1")
+    with c:
+      with c:
+        time.sleep(0.01)
+    self.assertGreater(c._time, 0)
+
+  def test_ReentrantStopWatchMerge(self):
+    c = metrics.ReentrantStopWatch("watch2")
+    d = metrics.ReentrantStopWatch("watch3")
+    with c:
+      with c:
+        time.sleep(0.0025)
+
+    with d:
+      with d:
+        time.sleep(0.0001)
+
+    t1 = c._time
+    t2 = d._time
+    d._merge(c)
+    self.assertLess(abs(t1+t2-d._time), 0.000001)
 
 
 class StopWatchTest(unittest.TestCase):
