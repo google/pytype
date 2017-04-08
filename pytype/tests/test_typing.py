@@ -310,6 +310,31 @@ class TypingTest(test_inference.InferenceTest):
           pass
     """)
 
+  def testMatch(self):
+    ty = self.Infer("""
+      import re
+      match1 = re.search("(?P<foo>.*)", "bar")
+      v1 = match1.group(u"foo")
+      match2 = re.search("(?P<foo>.*)", u"bar")
+      v2 = match2.group("foo")
+      v3 = match1.group(u"foo", u"foo")
+      v4 = match1.start(u"foo")
+      v5 = match1.end(u"foo")
+      v6 = match1.span(u"foo")
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Match, Tuple
+      re = ...  # type: module
+      match1 = ...  # type: Match[str]
+      match2 = ...  # type: Match[unicode]
+      v1 = ...  # type: str
+      v2 = ...  # type: unicode
+      v3 = ...  # type: Tuple[str, ...]
+      v4 = ...  # type: int
+      v5 = ...  # type: int
+      v6 = ...  # type: Tuple[int, int]
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()
