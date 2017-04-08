@@ -712,29 +712,43 @@ class VirtualMachine(object):
     results = []
     log.debug("Calling binary operator %s", name)
     state, attr = self.load_attr_noerror(state, x, name)
+    error = None
     if attr is None:
       log.info("Failed to find %s on %r", name, x)
     else:
-      state, ret = self.call_function_with_state(state, attr, (y,),
-                                                 fallback_to_unsolvable=False)
-      results.append(ret)
+      try:
+        state, ret = self.call_function_with_state(state, attr, (y,),
+                                                   fallback_to_unsolvable=False)
+      except (abstract.DictKeyMissing, abstract.FailedFunctionCall) as e:
+        error = e
+      else:
+        results.append(ret)
     rname = self.reverse_operator_name(name)
     if self._try_reverse_operator(y, rname, results):
       state, attr = self.load_attr_noerror(state, y, rname)
       if attr is None:
         log.debug("No reverse operator %s on %r", rname, y)
       else:
-        state, ret = self.call_function_with_state(state, attr, (x,),
-                                                   fallback_to_unsolvable=False)
-        results.append(ret)
+        try:
+          state, ret = self.call_function_with_state(
+              state, attr, (x,), fallback_to_unsolvable=False)
+        except abstract.FailedFunctionCall as e:
+          if e > error:
+            error = e
+        else:
+          results.append(ret)
     result = self.join_variables(state.node, results)
     log.debug("Result: %r %r", result, result.data)
     if not result.bindings and report_errors:
       if self.is_none(x):
         self.errorlog.none_attr(self.frame.current_opcode, name)
-      else:
+      elif error is None:
         self.errorlog.unsupported_operands(self.frame.current_opcode,
                                            state.node, name, x, y)
+      elif isinstance(error, abstract.DictKeyMissing):
+        self.errorlog.key_error(self.frame.current_opcode, error.name)
+      else:
+        self.errorlog.invalid_function_call(self.frame.current_opcode, error)
       result.AddBinding(self.convert.unsolvable, [], state.node)
     return state, result
 
@@ -749,8 +763,12 @@ class VirtualMachine(object):
     else:
       # TODO(kramm): If x is a Variable with distinct types, both __add__
       # and __iadd__ might happen.
-      state, ret = self.call_function_with_state(state, attr, (y,),
-                                                 fallback_to_unsolvable=False)
+      try:
+        state, ret = self.call_function_with_state(state, attr, (y,),
+                                                   fallback_to_unsolvable=False)
+      except abstract.FailedFunctionCall:
+        # TODO(rechen): Don't we want to report this failure?
+        pass
     return state, ret
 
   def binary_operator(self, state, name, report_errors=True):
@@ -796,6 +814,10 @@ class VirtualMachine(object):
       fallback_to_unsolvable: If the function call fails, create an unknown.
     Returns:
       A tuple (CFGNode, Variable). The Variable is the return value.
+    Raises:
+      DictKeyMissing: if we retrieved a nonexistent key from a dict and
+        fallback_to_unsolvable is False.
+      FailedFunctionCall: if the call fails and fallback_to_unsolvable is False.
     """
     assert funcu.bindings
     result = self.program.NewVariable()
@@ -806,7 +828,7 @@ class VirtualMachine(object):
       assert isinstance(func, abstract.AtomicAbstractValue), type(func)
       try:
         new_node, one_result = func.call(node, funcv, args)
-      except abstract.FailedFunctionCall as e:
+      except (abstract.DictKeyMissing, abstract.FailedFunctionCall) as e:
         if e > error:
           error = e
       else:
@@ -822,9 +844,8 @@ class VirtualMachine(object):
         self.errorlog.invalid_function_call(self.frame.current_opcode, error)
         return node, self.convert.create_new_unsolvable(node)
       else:
-        # We were called by something that ignores errors, so don't report
-        # the failed call.
-        return node, result
+        # We were called by something that does its own error handling.
+        raise error  # pylint: disable=raising-bad-type
 
   def call_function_from_stack(self, state, num, starargs, starstarargs):
     """Pop arguments for a function and call it."""

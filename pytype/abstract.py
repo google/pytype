@@ -879,8 +879,8 @@ class Dict(Instance, HasSlots, PythonConstant, WrapsDict("pyval")):
           try:
             results.append(self.pyval[name])
           except KeyError:
-            self.vm.errorlog.key_error(self.vm.frame.current_opcode, name)
             unresolved = True
+            raise DictKeyMissing(name)
     node, ret = self.call_pytd(node, "__getitem__", name_var)
     if unresolved or self.could_contain_anything:
       # We *do* know the overall type of the values through the "V" type
@@ -1187,6 +1187,17 @@ class NotCallable(FailedFunctionCall):
 
 class NoneNotCallable(FailedFunctionCall):
   """When trying to call None."""
+
+
+class DictKeyMissing(Exception):
+  """When retrieving a key that does not exist in a dict."""
+
+  def __init__(self, name):
+    super(DictKeyMissing, self).__init__()
+    self.name = name
+
+  def __gt__(self, other):
+    return other is None
 
 
 BadCall = collections.namedtuple("_", ["sig", "passed_args", "bad_param"])

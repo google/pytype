@@ -84,9 +84,8 @@ class ErrorTest(test_inference.InferenceTest):
         y = 3
         return x + y
     """)
-    # "Line 2, in f: Unsupported operands for __add__: 'str' and 'int'
-    self.assertErrorLogContains(errors,
-                                r"line 5.*Unsupported.*__add__.*str.*int")
+    self.assertErrorLogIs(errors, [(5, "wrong-arg-types",
+                                    r"Expected.*y: str.*Actual.*y: int")])
 
   def testWrongArgCount(self):
     _, errors = self.InferAndCheck("""\

@@ -632,16 +632,26 @@ class ContainerTest(test_inference.InferenceTest):
       b2 = mymap['b']
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
-      from typing import Dict, Union
+      from typing import Any, Dict, Union
       mymap = ...  # type: Dict[str, Union[int, float, complex]]
       a = ...  # type: float
       b1 = ...  # type: int
-      c = ...  # type: Union[int, float]
+      c = ...  # type: Any
       b2 = ...  # type: Union[int, float, complex]
     """)
     self.assertErrorLogIs(errors, [
         (5, "key-error", "foobar")
     ])
+
+  def testDictOrAny(self):
+    self.assertNoErrors("""
+      if __any_object__:
+        results = __any_object__
+      else:
+        results = {}
+      if "foo" in results:
+        results["foo"]
+    """)
 
   def testIteratePyiListUnion(self):
     with utils.Tempdir() as d:
