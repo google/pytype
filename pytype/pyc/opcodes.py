@@ -40,7 +40,7 @@ class Opcode(object):
     return op
 
   def __str__(self):
-    return "%4d: %s" % (self.index, self.__class__.__name__)
+    return "%d: %d: %s" % (self.line, self.index, self.__class__.__name__)
 
   def __repr__(self):
     return self.__class__.__name__
@@ -123,13 +123,14 @@ class OpcodeWithArg(Opcode):
 
   __slots__ = ("arg", "pretty_arg")
 
-  def __init__(self, index, line, arg, pretty_arg=None):
+  def __init__(self, index, line, arg, pretty_arg):
     super(OpcodeWithArg, self).__init__(index, line)
     self.arg = arg
     self.pretty_arg = pretty_arg
 
   def __str__(self):
-    return "%4d: %s %s" % (self.index, self.__class__.__name__, self.arg)
+    return "%d: %d: %s %s" % (
+        self.line, self.index, self.__class__.__name__, self.pretty_arg)
 
   @classmethod
   def has_arg(cls):
@@ -1051,4 +1052,3 @@ def dis_code(code):
              co_freevars=code.co_freevars,
              co_lnotab=code.co_lnotab,
              co_firstlineno=code.co_firstlineno)
-

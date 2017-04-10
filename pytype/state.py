@@ -17,18 +17,19 @@ UNSATISFIABLE = object()
 class FrameState(object):
   """Immutable state object, for attaching to opcodes."""
 
-  __slots__ = ["block_stack", "data_stack", "node", "exception", "why"]
+  __slots__ = ["block_stack", "data_stack", "node", "vm", "exception", "why"]
 
-  def __init__(self, data_stack, block_stack, node, exception, why):
+  def __init__(self, data_stack, block_stack, node, vm, exception, why):
     self.data_stack = data_stack
     self.block_stack = block_stack
     self.node = node
+    self.vm = vm
     self.exception = exception
     self.why = why
 
   @classmethod
-  def init(cls, node):
-    return FrameState((), (), node, None, None)
+  def init(cls, node, vm):
+    return FrameState((), (), node, vm, None, None)
 
   def __setattribute__(self):
     raise AttributeError("States are immutable.")
@@ -37,6 +38,7 @@ class FrameState(object):
     return FrameState(self.data_stack,
                       self.block_stack,
                       self.node,
+                      self.vm,
                       self.exception,
                       why)
 
@@ -45,6 +47,7 @@ class FrameState(object):
     return FrameState(self.data_stack + tuple(values),
                       self.block_stack,
                       self.node,
+                      self.vm,
                       self.exception,
                       self.why)
 
@@ -67,6 +70,7 @@ class FrameState(object):
     return FrameState(self.data_stack[:-1],
                       self.block_stack,
                       self.node,
+                      self.vm,
                       self.exception,
                       self.why), value
 
@@ -75,6 +79,7 @@ class FrameState(object):
     return FrameState(self.data_stack[:-1],
                       self.block_stack,
                       self.node,
+                      self.vm,
                       self.exception,
                       self.why)
 
@@ -90,6 +95,7 @@ class FrameState(object):
     return FrameState(self.data_stack[:-n],
                       self.block_stack,
                       self.node,
+                      self.vm,
                       self.exception,
                       self.why), values
 
@@ -98,6 +104,7 @@ class FrameState(object):
     return FrameState(self.data_stack,
                       self.block_stack + (block,),
                       self.node,
+                      self.vm,
                       self.exception,
                       self.why)
 
@@ -107,6 +114,7 @@ class FrameState(object):
     return FrameState(self.data_stack,
                       self.block_stack[:-1],
                       self.node,
+                      self.vm,
                       self.exception,
                       self.why), block
 
@@ -117,6 +125,7 @@ class FrameState(object):
     return FrameState(self.data_stack,
                       self.block_stack,
                       node,
+                      self.vm,
                       self.exception,
                       self.why)
 
@@ -135,7 +144,8 @@ class FrameState(object):
       A new state which is the same as this state except for the node, which is
       the new one.
     """
-    new_node = self.node.ConnectNew(self.node.name, condition)
+    new_node = self.node.ConnectNew(self.vm.frame.current_opcode.line,
+                                    condition)
     return self.change_cfg_node(new_node)
 
   def merge_into(self, other):
@@ -156,6 +166,7 @@ class FrameState(object):
       return FrameState(other.data_stack,
                         self.block_stack,
                         other.node,
+                        self.vm,
                         self.exception,
                         self.why)
     return self
@@ -163,7 +174,8 @@ class FrameState(object):
   def set_exception(self, exc_type, value, tb):
     return FrameState(self.data_stack,
                       self.block_stack,
-                      self.node.ConnectNew(self.node.name),
+                      self.node.ConnectNew(self.vm.frame.current_opcode.line),
+                      self.vm,
                       (exc_type, value, tb),
                       self.why)
 

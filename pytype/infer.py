@@ -92,7 +92,7 @@ class CallTracer(vm.VirtualMachine):
     frame = AnalysisFrame()
     self.push_frame(frame)
     log.info("Analyzing %r", [v.name for v in var.data])
-    state = frame_state.FrameState.init(node)
+    state = frame_state.FrameState.init(node, self)
     try:
       state, ret = self.call_function_with_state(
           state, var, args, kwargs, starargs, starstarargs)
@@ -485,7 +485,7 @@ class CallTracer(vm.VirtualMachine):
     for pytd_function in ast.functions:
       self._check_function(pytd_function, defs[pytd_function.name], node)
 
-    state = frame_state.FrameState.init(node)
+    state = frame_state.FrameState.init(node, self)
     for pytd_cls in ast.classes:
       cls = defs[pytd_cls.name]
       for val in cls.bindings:

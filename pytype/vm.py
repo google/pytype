@@ -237,8 +237,7 @@ class VirtualMachine(object):
       state = state.set_why("recursion")
     except exceptions.ByteCodeException:
       e = sys.exc_info()[1]
-      state = state.set_exception(
-          e.exception_type, e.create_instance(), None)
+      state = state.set_exception(e.exception_type, e.create_instance(), None)
       log.info("Exception in program: %s: %r",
                e.exception_type.__name__, e.message)
       state = state.set_why("exception")
@@ -252,7 +251,8 @@ class VirtualMachine(object):
     if len(nodes) == 1:
       return nodes[0]
     else:
-      ret = self.program.NewCFGNode()
+      ret = self.program.NewCFGNode(self.frame.current_opcode and
+                                    self.frame.current_opcode.line)
       for node in nodes:
         node.ConnectTo(ret)
       return ret
@@ -260,7 +260,8 @@ class VirtualMachine(object):
   def run_frame(self, frame, node):
     """Run a frame (typically belonging to a method)."""
     self.push_frame(frame)
-    frame.states[frame.f_code.co_code[0]] = frame_state.FrameState.init(node)
+    frame.states[frame.f_code.co_code[0]] = frame_state.FrameState.init(node,
+                                                                        self)
     return_nodes = []
     for block in frame.f_code.order:
       state = frame.states.get(block[0])
@@ -372,10 +373,7 @@ class VirtualMachine(object):
     log.info("%s | data_stack: %s", indent, stack_rep)
     log.info("%s | block_stack: %s", indent, block_stack_rep)
     log.info("%s | node: <%d>%s", indent, state.node.id, state.node.name)
-    arg = op.pretty_arg if op.has_arg() else ""
-    op = "%d: %s %s" % (op.index, op.name,
-                        utils.maybe_truncate(arg, _TRUNCATE))
-    log.info("%s %s", indent, op)
+    log.info("%s %s", indent, utils.maybe_truncate(str(op), _TRUNCATE))
 
   def repper(self, s):
     return repr_obj.repr(s)
@@ -1012,8 +1010,7 @@ class VirtualMachine(object):
       # TODO(kramm): Check whether val.data is a descriptor (i.e. has "__set__")
       nodes.append(self.attribute_handler.set_attribute(
           state.node, val.data, attr, value))
-    return state.change_cfg_node(
-        self.join_cfg_nodes(nodes))
+    return state.change_cfg_node(self.join_cfg_nodes(nodes))
 
   def del_attr(self, state, obj, attr):
     """Delete an attribute."""
