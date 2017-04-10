@@ -580,6 +580,11 @@ class AbstractTest(AbstractTestBase):
     self.assertListEqual(cls.instantiate(self._node).data,
                          [self._vm.convert.unsolvable])
 
+  def testSuperType(self):
+    supercls = abstract.Super(self._vm)
+    self.assertListEqual(supercls.get_class().data,
+                         self._vm.convert.type_type.data)
+
 
 if __name__ == "__main__":
   unittest.main()

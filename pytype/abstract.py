@@ -610,8 +610,8 @@ class SimpleAbstractValue(AtomicAbstractValue):
       self.members[name] = variable
 
   def load_special_attribute(self, node, name):
-    if name == "__class__" and self.cls is not None:
-      return node, self.cls
+    if name == "__class__":
+      return node, self.get_class()
     else:
       return node, None
 
@@ -1317,6 +1317,9 @@ class Super(AtomicAbstractValue):
           self.vm.frame.current_opcode, len(args.posargs))
       result = self.vm.convert.create_new_unsolvable(node)
     return node, result
+
+  def get_class(self):
+    return self.vm.convert.type_type
 
 
 class IsInstance(AtomicAbstractValue):

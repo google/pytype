@@ -695,6 +695,23 @@ class TestVisitors(parser_test_base.ParserTest):
     ast1 = ast1.Visit(visitors.CreateTypeParametersFromUnknowns())
     self.AssertSourceEquals(ast1, expected)
 
+  def testRedefineTypeVar(self):
+    src = textwrap.dedent("""
+      def f(x: `~unknown1`) -> `~unknown1`: ...
+      class `TypeVar`(object): ...
+    """)
+    ast = self.Parse(src).Visit(visitors.CreateTypeParametersFromUnknowns())
+    self.assertMultiLineEqual(pytd.Print(ast), textwrap.dedent("""\
+      import typing
+
+      _T0 = TypeVar('_T0')
+
+      class `TypeVar`(object):
+          pass
+
+
+      def f(x: _T0) -> _T0: ..."""))
+
 
 class TestAncestorMap(unittest.TestCase):
 
@@ -709,7 +726,7 @@ class TestAncestorMap(unittest.TestCase):
     self.assertIn("Parameter", named_type)
     self.assertIn("GenericType", named_type)
     self.assertIn("NamedType", named_type)
-    # Check a few places where it NamedType cannot appear.
+    # Check a few places where NamedType cannot appear.
     self.assertNotIn("ClassType", named_type)
     self.assertNotIn("NothingType", named_type)
     self.assertNotIn("AnythingType", named_type)

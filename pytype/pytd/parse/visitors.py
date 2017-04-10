@@ -329,7 +329,7 @@ class PrintVisitor(Visitor):
   def VisitTypeDeclUnit(self, node):
     """Convert the AST for an entire module back to a string."""
     if node.type_params:
-      self._RequireTypingImport("TypeVar")
+      self._FromTyping("TypeVar")
     sections = [self._GenerateImportStrings(), node.aliases, node.constants,
                 self._FormatTypeParams(self.old_node.type_params), node.classes,
                 node.functions]
@@ -1817,4 +1817,3 @@ class ClearClassPointers(Visitor):
 
   def EnterClassType(self, node):
     node.cls = None
-

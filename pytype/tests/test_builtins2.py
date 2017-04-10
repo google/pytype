@@ -805,6 +805,26 @@ class BuiltinTests2(test_inference.InferenceTest):
       _T
     """)
 
+  def testClassOfType(self):
+    ty = self.Infer("""
+      v = int.__class__
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Type
+      v = ...  # type: Type[type]
+    """)
+
+  def testExceptionMessage(self):
+    ty = self.Infer("""
+      class MyException(Exception):
+        def get_message(self):
+          return self.message
+    """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      class MyException(Exception):
+        def get_message(self) -> str
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

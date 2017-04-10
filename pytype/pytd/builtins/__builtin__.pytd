@@ -864,6 +864,7 @@ class AttributeError(StandardError):
     def __unicode__(self, ...) -> unicode
 
 class BaseException(object):
+    message = ...  # type: str
     def __init__(self, ...) -> NoneType
     def __getslice__(self, i: int, j: int) -> tuple
     def __unicode__(self, ...) -> unicode

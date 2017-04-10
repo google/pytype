@@ -818,14 +818,13 @@ def ascii_tree(node, get_children, get_description=None):
 
 def patch_logging():
   """Add one extra log level, "TRACE", to logging."""
-  # pylint: disable=protected-access
   def trace(self, msg, *args, **kwargs):
     if self.isEnabledFor(logging.DEBUG - 1):
+      # pylint: disable=protected-access
       self._log(logging.DEBUG - 1, msg, args, **kwargs)
   logging.TRACE = logging.DEBUG - 1
   logging.Logger.trace = trace
-  logging._levelNames[logging.DEBUG - 1] = "TRACE"
-  # pylint: enable=protected-access
+  logging.addLevelName(logging.DEBUG - 1, "TRACE")
 
 
 patch_logging()
