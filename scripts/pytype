@@ -168,6 +168,9 @@ def process_one_file(input_filename,
       return 0  # Command is successful regardless of errors.
     else:
       errorlog.print_to_stderr()
+      if (options.target_name and
+          any(e.name == "import-error" for e in errorlog)):
+        print >>sys.stderr, "\nWhile building %r" % options.target_name
     return 1 if errorlog.has_error() else 0  # exit code
   else:
     return 0

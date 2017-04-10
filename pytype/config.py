@@ -104,6 +104,11 @@ class Options(object):
         dest="module_name", default=None,
         help=("Name of the module we're analyzing. E.g. 'foo.bar.mymodule'"))
     o.add_option(
+        "-t", "--target-name", action="store",
+        dest="target_name", default=None,
+        help=("Description of the module we're analyzing. "
+              "Displayed for import errors."))
+    o.add_option(
         "--metrics", type="string", action="store",
         dest="metrics", default=None,
         help="Write a metrics report to the specified file.")

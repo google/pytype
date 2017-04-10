@@ -191,6 +191,13 @@ class PytypeTest(unittest.TestCase):
     self._RunPytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=True, returncode=True)
 
+  def testImportErrorDescription(self):
+    self._SetUpChecking("import_error.py")
+    self.pytype_args["--target-name"] = "world"
+    self._RunPytype(self.pytype_args)
+    self.assertOutputStateMatches(stdout=False, stderr=True, returncode=True)
+    self.assertIn("world", self.stderr)
+
   def testPytypeErrors(self):
     self._SetUpChecking("bad.py")
     self._RunPytype(self.pytype_args)
