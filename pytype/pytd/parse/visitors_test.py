@@ -565,6 +565,18 @@ class TestVisitors(parser_test_base.ParserTest):
     self.assertEquals("foo.foo.X",
                       tree.Lookup("foo.foo.X").template[0].type_param.scope)
 
+  def testAddNamePrefixOnClassType(self):
+    src = textwrap.dedent("""
+        x = ...  # type: y
+        class Y: ...
+    """)
+    tree = self.Parse(src)
+    x = tree.Lookup("x")
+    x = x.Replace(type=pytd.ClassType("Y"))
+    tree = tree.Replace(constants=(x,), name="foo")
+    tree = tree.Visit(visitors.AddNamePrefix())
+    self.assertEquals("foo.Y", tree.Lookup("foo.x").type.name)
+
   def testPrintMergeTypes(self):
     src = textwrap.dedent("""
       from typing import Union

@@ -1411,8 +1411,10 @@ class AddNamePrefix(Visitor):
     assert self.cls is cls
     self.cls = None
 
-  def VisitClassType(self, _):
-    raise ValueError("AddNamePrefix visitor called after resolving")
+  def VisitClassType(self, node):
+    if node.cls is not None:
+      raise ValueError("AddNamePrefix visitor called after resolving")
+    return self.VisitNamedType(node)
 
   def VisitNamedType(self, node):
     if node.name in self.classes:
