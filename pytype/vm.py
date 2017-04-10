@@ -182,6 +182,7 @@ class VirtualMachine(object):
     self.callself_stack = []
     self.filename = None
     self.type_comments = {}  # map from line number to (code, comment)
+    self.reading_builtins = False
 
     # Map from builtin names to canonical objects.
     self.special_builtins = {
@@ -646,7 +647,12 @@ class VirtualMachine(object):
       src = builtins.GetBuiltinsCode(self.python_version)
     builtins_code = self.compile_src(
         src, filename=self.options.pybuiltins_filename or "__builtin__.py")
-    node, f_globals, f_locals, _ = self.run_bytecode(node, builtins_code)
+    old = self.reading_builtins
+    self.reading_builtins = True
+    try:
+      node, f_globals, f_locals, _ = self.run_bytecode(node, builtins_code)
+    finally:
+      self.reading_builtins = old
     assert not self.frames
     # TODO(kramm): pytype doesn't support namespacing of the currently parsed
     # module, so add the module name manually.
@@ -792,6 +798,9 @@ class VirtualMachine(object):
 
   def trace_call(self, *args):
     """Fired whenever we call a builtin using unknown parameters."""
+    return NotImplemented
+
+  def trace_functiondef(self, f):
     return NotImplemented
 
   def call_function_with_state(self, state, funcu, posargs, namedargs=None,
@@ -1959,6 +1968,7 @@ class VirtualMachine(object):
     fn = self._make_function(name, state.node, code, globs, defaults,
                              kw_defaults, annotations=annotations,
                              late_annotations=late_annotations)
+    self.trace_functiondef(fn)
     return state.push(fn)
 
   def byte_MAKE_CLOSURE(self, state, op):

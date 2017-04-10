@@ -132,6 +132,37 @@ class RecoveryTests(test_inference.InferenceTest):
         foo = ...  # type: Any
     """)
 
+  def testFunctionWithUnknownDecorator(self):
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      from nowhere import decorator
+      @decorator
+      def f():
+        name_error
+      @decorator
+      def g(x: int) -> None:
+        x.upper()
+    """, deep=True)
+    self.assertErrorLogIs(errors, [
+        (2, "import-error"),
+        (5, "name-error"),
+        (8, "attribute-error"),
+    ])
+
+  def testMethodWithUnknownDecorator(self):
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      from nowhere import decorator
+      class Foo(object):
+        @decorator
+        def f():
+          name_error
+    """, deep=True)
+    self.assertErrorLogIs(errors, [
+        (2, "import-error"),
+        (6, "name-error"),
+    ])
+
 
 if __name__ == "__main__":
   test_inference.main()

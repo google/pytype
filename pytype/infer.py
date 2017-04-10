@@ -61,6 +61,7 @@ class CallTracer(vm.VirtualMachine):
     self._calls = set()
     self._method_calls = set()
     self._instance_cache = {}
+    self._interpreter_functions = []
     self.exitpoint = None
 
   def create_argument(self, node, signature, name, method_name):
@@ -107,9 +108,10 @@ class CallTracer(vm.VirtualMachine):
       self.pop_frame(frame)
     return state.node, ret
 
-  def maybe_analyze_method(self, val, node):
+  def maybe_analyze_method(self, val, node, seen):
     method = val.data
     fname = val.data.name
+    seen.add(method)
     if isinstance(method, (abstract.InterpreterFunction,
                            abstract.BoundInterpreterFunction)):
       if (not self.analyze_annotated and method.signature.annotations and
@@ -136,10 +138,10 @@ class CallTracer(vm.VirtualMachine):
         node = new_node
     return node
 
-  def analyze_method_var(self, name, var, node):
+  def analyze_method_var(self, name, var, node, seen):
     log.info("Analyzing %s", name)
     for val in var.Bindings(node):
-      node2 = self.maybe_analyze_method(val, node)
+      node2 = self.maybe_analyze_method(val, node, seen)
       node2.ConnectTo(node)
     return node
 
@@ -157,8 +159,9 @@ class CallTracer(vm.VirtualMachine):
       n.PasteVariable(instance, node)
     return n
 
-  def init_class(self, node, cls):
+  def init_class(self, node, cls, seen=None):
     """Instantiate a class, and also call __init__."""
+    seen = seen or set()
     key = (node, cls)
     if (key not in self._instance_cache or
         self._instance_cache[key] is _INITIALIZING):
@@ -187,13 +190,11 @@ class CallTracer(vm.VirtualMachine):
                 values.extend(child.data)
       else:
         self._instance_cache[key] = _INITIALIZING
-        self.call_init(instance, node)
+        self.call_init(instance, node, seen)
       self._instance_cache[key] = node, clsvar, instance
     return self._instance_cache[key]
 
-  def call_init(self, instance, node, seen=None):
-    if seen is None:
-      seen = set()
+  def call_init(self, instance, node, seen):
     # Call __init__ on each binding.
     for b in instance.bindings:
       if b.data in seen:
@@ -209,20 +210,20 @@ class CallTracer(vm.VirtualMachine):
       if init:
         bound_init = self.bind_method(
             "__init__", init, b.data, b_clsvar, node)
-        node = self.analyze_method_var("__init__", bound_init, node)
+        node = self.analyze_method_var("__init__", bound_init, node, seen)
     return node
 
-  def analyze_class(self, val, node):
-    node, clsvar, instance = self.init_class(node, val.data)
+  def analyze_class(self, val, node, seen):
+    node, clsvar, instance = self.init_class(node, val.data, seen)
     for name, methodvar in sorted(val.data.members.items()):
       if name == "__init__":
         continue  # We already called __init__ in init_class
       b = self.bind_method(name, methodvar, instance, clsvar, node)
-      node2 = self.analyze_method_var(name, b, node)
+      node2 = self.analyze_method_var(name, b, node, seen)
       node2.ConnectTo(node)
     return node
 
-  def analyze_function(self, val, node):
+  def analyze_function(self, val, node, seen):
     if val.data.is_attribute_of_class:
       # We'll analyze this function as part of a class.
       log.info("Analyze functions: Skipping class method %s", val.data.name)
@@ -230,21 +231,28 @@ class CallTracer(vm.VirtualMachine):
       # We analyze closures as part of the function they're defined in.
       log.info("Analyze functions: Skipping closure %s", val.data.name)
     else:
-      node2 = self.maybe_analyze_method(val, node)
+      node2 = self.maybe_analyze_method(val, node, seen)
       node2.ConnectTo(node)
     return node
 
   def analyze_toplevel(self, node, defs):
+    seen = set()
     for name, var in sorted(defs.items()):  # sort, for determinicity
       if name not in self._builtin_map:
         for value in var.bindings:
           if isinstance(value.data, abstract.InterpreterClass):
-            node2 = self.analyze_class(value, node)
+            node2 = self.analyze_class(value, node, seen)
             node2.ConnectTo(node)
           elif isinstance(value.data, (abstract.InterpreterFunction,
                                        abstract.BoundInterpreterFunction)):
-            node2 = self.analyze_function(value, node)
+            node2 = self.analyze_function(value, node, seen)
             node2.ConnectTo(node)
+    # Now go through all top-level non-bound functions we haven't analyzed yet.
+    # These are typically hidden under a decorator.
+    for f in self._interpreter_functions:
+      for value in f.bindings:
+        if value.data not in seen:
+          self.analyze_function(value, node, seen)
 
   def analyze(self, node, defs, maximum_depth):
     assert not self.frame
@@ -285,6 +293,10 @@ class CallTracer(vm.VirtualMachine):
       self._method_calls.add(record)
     elif isinstance(func.data, abstract.PyTDFunction):
       self._calls.add(record)
+
+  def trace_functiondef(self, f):
+    if not self.reading_builtins:
+      self._interpreter_functions.append(f)
 
   def pytd_classes_for_unknowns(self):
     classes = []
