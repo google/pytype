@@ -117,6 +117,15 @@ class GeneratorTest(test_inference.InferenceTest):
         yield 5
     """)
 
+  def testNoReturn(self):
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      from typing import Generator
+      def f() -> Generator[str]:
+        yield 42
+    """)
+    self.assertErrorLogIs(errors, [(4, "bad-return-type", r"str.*int")])
+
 
 if __name__ == "__main__":
   test_inference.main()

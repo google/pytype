@@ -2003,8 +2003,17 @@ class VirtualMachine(object):
     return self.call_function_from_stack(state, op.arg, args, kwargs)
 
   def byte_YIELD_VALUE(self, state, op):
+    """Yield a value from a generator."""
     state, ret = state.pop()
     self.frame.yield_variable.PasteVariable(ret, state.node)
+    if self.frame.allowed_returns is not None:
+      # Create a dummy generator instance for checking that
+      # Generator[<yield_variable>] matches the annotated return type.
+      generator = abstract.Generator(self.frame, self)
+      generator.type_parameters[abstract.T] = self.frame.yield_variable
+      self._check_return(self.frame.current_opcode, state.node,
+                         generator.to_variable(state.node),
+                         self.frame.allowed_returns)
     return state.set_why("yield")
 
   def byte_IMPORT_NAME(self, state, op):
@@ -2081,18 +2090,6 @@ class VirtualMachine(object):
         # is None.
         self._check_return(self.frame.current_opcode, state.node, var,
                            abstract.get_atomic_value(self.convert.none_type))
-        # Since we manually run the generator to completion in
-        # InterpreterFunction.call, the yield variable data may be bound to a
-        # node beyond this one; copy the data over.
-        yield_variable = self.program.NewVariable(
-            self.frame.yield_variable.data, [], state.node)
-        # Create a dummy generator instance for checking that
-        # Generator[<yield_variable>] matches the annotated return type.
-        generator = abstract.Generator(self.frame, self)
-        generator.type_parameters[abstract.T] = yield_variable
-        self._check_return(self.frame.current_opcode, state.node,
-                           generator.to_variable(state.node),
-                           self.frame.allowed_returns)
       else:
         self._check_return(self.frame.current_opcode, state.node, var,
                            self.frame.allowed_returns)
