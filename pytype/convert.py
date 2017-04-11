@@ -426,6 +426,8 @@ class Converter(object):
     elif isinstance(pyval, (loadmarshal.CodeType, blocks.OrderedCode)):
       return abstract.AbstractOrConcreteValue(
           pyval, self.primitive_classes[types.CodeType], self.vm)
+    elif pyval is super:
+      return abstract.Super(self.vm)
     elif (pyval.__class__ in [types.FunctionType,
                               types.ModuleType,
                               types.GeneratorType,
@@ -445,6 +447,8 @@ class Converter(object):
       members = {val.name.rsplit(".")[-1]: val
                  for val in data}
       return abstract.Module(self.vm, pyval.name, members)
+    elif isinstance(pyval, pytd.Class) and pyval.name == "__builtin__.super":
+      return self.vm.special_builtins["super"]
     elif isinstance(pyval, pytd.Class):
       module, dot, base_name = pyval.name.rpartition(".")
       try:

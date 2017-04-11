@@ -187,7 +187,7 @@ class VirtualMachine(object):
     # Map from builtin names to canonical objects.
     self.special_builtins = {
         # The super() function.
-        "super": abstract.Super(self),
+        "super": abstract.merge_values(self.convert.super_type.data, self),
         # for more pretty branching tests.
         "__random__": self.convert.primitive_class_instances[bool],
         # boolean values.

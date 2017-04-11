@@ -834,6 +834,42 @@ class BuiltinTests2(test_inference.InferenceTest):
       lst = ...  # type: List[Tuple[str, int]]
     """)
 
+  def testSuper(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import Type
+        def f(x: type): ...
+        def g(x: Type[super]): ...
+      """)
+      ty = self.Infer("""
+        from __future__ import google_type_annotations
+        from typing import Any, Type
+        import foo
+        def f(x): ...
+        def g(x: object): ...
+        def h(x: Any): ...
+        def i(x: type): ...
+        def j(x: Type[super]): ...
+        f(super)
+        g(super)
+        h(super)
+        i(super)
+        j(super)
+        foo.f(super)
+        foo.g(super)
+        v = super
+      """, pythonpath=[d.path], deep=True)
+      self.assertTypesMatchPytd(ty, """
+        from typing import Any, Type
+        foo = ...  # type: module
+        def f(x) -> None: ...
+        def g(x: object) -> None: ...
+        def h(x: Any) -> None: ...
+        def i(x: type) -> None: ...
+        def j(x: Type[super]) -> None: ...
+        v = ...  # type: Type[super]
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()

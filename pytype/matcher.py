@@ -225,7 +225,8 @@ class AbstractMatcher(object):
         if new_subst is not None:
           return new_subst
     else:
-      raise NotImplementedError("Matching not implemented for %s", type(left))
+      raise NotImplementedError("Matching not implemented for %s against %s" %
+                                (type(left), type(other_type)))
 
   def _instantiate_and_match(self, left, other_type, subst, node, view):
     """Instantiate and match an abstract value."""
@@ -419,7 +420,7 @@ class AbstractMatcher(object):
       return None
     else:
       raise NotImplementedError(
-          "Can't match instance %r against %r", left, other_type)
+          "Can't match instance %r against %r" % (left, other_type))
 
   def _get_concrete_values(self, var):
     # TODO(rechen): For type parameter instances, we should extract the concrete

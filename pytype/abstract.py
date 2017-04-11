@@ -1302,41 +1302,6 @@ class SuperInstance(AtomicAbstractValue):
     return node, Unsolvable(self.vm).to_variable(node)
 
 
-class Super(AtomicAbstractValue):
-  """The super() function. Calling it will create a SuperInstance."""
-
-  # Minimal signature, only used for constructing exceptions.
-  _SIGNATURE = function.Signature(
-      "super", ("cls", "self"), None, set(), None, {}, {}, {})
-
-  def __init__(self, vm):
-    super(Super, self).__init__("super", vm)
-
-  def call(self, node, _, args):
-    result = self.vm.program.NewVariable()
-    if len(args.posargs) == 1:
-      # TODO(kramm): Add a test for this
-      for cls in args.posargs[0].bindings:
-        result.AddBinding(
-            SuperInstance(cls.data, None, self.vm), [cls], node)
-    elif len(args.posargs) == 2:
-      for cls in args.posargs[0].bindings:
-        if not isinstance(cls.data, (Class, AMBIGUOUS_OR_EMPTY)):
-          bad = BadParam(name="cls", expected=self.vm.convert.type_type.data[0])
-          raise WrongArgTypes(self._SIGNATURE, args, self.vm, bad_param=bad)
-        for obj in args.posargs[1].bindings:
-          result.AddBinding(
-              SuperInstance(cls.data, obj.data, self.vm), [cls, obj], node)
-    else:
-      self.vm.errorlog.super_error(
-          self.vm.frame.current_opcode, len(args.posargs))
-      result = self.vm.convert.create_new_unsolvable(node)
-    return node, result
-
-  def get_class(self):
-    return self.vm.convert.type_type
-
-
 class IsInstance(AtomicAbstractValue):
   """The isinstance() function."""
 
@@ -2125,6 +2090,40 @@ class PyTDClass(SimpleAbstractValue, Class):
             itm.type_param, instance, self.vm).to_variable(node)
                  for itm in self.template}
         return self._convert_member(name, c, subst, node)
+
+
+class Super(PyTDClass):
+  """The super() function. Calling it will create a SuperInstance."""
+
+  # Minimal signature, only used for constructing exceptions.
+  _SIGNATURE = function.Signature(
+      "super", ("cls", "self"), None, set(), None, {}, {}, {})
+
+  def __init__(self, vm):
+    super(Super, self).__init__(
+        "super", vm.lookup_builtin("__builtin__.super"), vm)
+    self.module = "__builtin__"
+
+  def call(self, node, _, args):
+    result = self.vm.program.NewVariable()
+    if len(args.posargs) == 1:
+      # TODO(kramm): Add a test for this
+      for cls in args.posargs[0].bindings:
+        result.AddBinding(
+            SuperInstance(cls.data, None, self.vm), [cls], node)
+    elif len(args.posargs) == 2:
+      for cls in args.posargs[0].bindings:
+        if not isinstance(cls.data, (Class, AMBIGUOUS_OR_EMPTY)):
+          bad = BadParam(name="cls", expected=self.vm.convert.type_type.data[0])
+          raise WrongArgTypes(self._SIGNATURE, args, self.vm, bad_param=bad)
+        for obj in args.posargs[1].bindings:
+          result.AddBinding(
+              SuperInstance(cls.data, obj.data, self.vm), [cls, obj], node)
+    else:
+      self.vm.errorlog.super_error(
+          self.vm.frame.current_opcode, len(args.posargs))
+      result = self.vm.convert.create_new_unsolvable(node)
+    return node, result
 
 
 class InterpreterClass(SimpleAbstractValue, Class):
