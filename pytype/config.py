@@ -61,10 +61,6 @@ class Options(object):
                "file1.py[:file1.pyi] [file2.py:file2.pyi [...]]"),
         description="Infer/check types in a Python module")
     o.add_option(
-        "--abort-on-complex", action="store_true",
-        dest="abort_on_complex", default=False,
-        help=("Ignored."))
-    o.add_option(
         "-B", "--builtins", type="string", action="store",
         dest="pybuiltins_filename", default=None,
         help=("Use user-supplied custom definition of __builtin__.py "
