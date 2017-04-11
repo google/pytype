@@ -301,7 +301,8 @@ class AtomicAbstractValue(object):
     """
     return self.get_default_type_key()
 
-  def instantiate(self, node):
+  def instantiate(self, node, container=None):
+    del container
     return Instance(self.to_variable(node), self.vm).to_variable(node)
 
   def to_variable(self, node):
@@ -495,10 +496,15 @@ class TypeParameter(AtomicAbstractValue):
   def __repr__(self):
     return "TypeParameter(%r, constraints=%r)" % (self.name, self.constraints)
 
-  def instantiate(self, node):
+  def instantiate(self, node, container=None):
     var = self.vm.program.NewVariable()
-    for c in self.constraints:
-      var.PasteVariable(c.instantiate(node), node)
+    if container:
+      instance = TypeParameterInstance(
+          self.to_pytd_def(node, self.name), container, self.vm)
+      return instance.to_variable(node)
+    else:
+      for c in self.constraints:
+        var.PasteVariable(c.instantiate(node, container), node)
     if not var.bindings:
       var.AddBinding(self.vm.convert.unsolvable, [], node)
     return var
@@ -520,6 +526,12 @@ class TypeParameterInstance(AtomicAbstractValue):
     super(TypeParameterInstance, self).__init__(pytd_param.name, vm)
     self.pytd_param = pytd_param
     self.instance = instance
+
+  def get_class(self):
+    return self.vm.convert.constant_to_var(self.pytd_param)
+
+  def __repr__(self):
+    return "TypeParameterInstance(%r)" % self.name
 
 
 class SimpleAbstractValue(AtomicAbstractValue):
@@ -707,19 +719,9 @@ class Instance(SimpleAbstractValue):
           else:
             params = base.type_parameters.items()
           for name, param in params:
-            if not param.formal:
-              # We inherit from a ParameterizedClass with a non-formal
-              # parameter, e.g., class Foo(List[int]). Initialize the
-              # corresponding instance parameter appropriately.
-              if name not in self.type_parameters:
-                # TODO(rechen): We should be able to assert that either the
-                # param name is not in type_parameters or the new param is equal
-                # to the one that was previously added, but we first need to
-                # change the parser to not accept things like
-                #   class A(List[str], Sequence[int]): ...
-                self.type_parameters.add_lazy_item(
-                    name, param.instantiate, self.vm.root_cfg_node)
-            elif name != param.name:
+            if isinstance(param, TypeParameter):
+              if name == param.name:
+                continue
               # We have type parameter renaming, e.g.,
               #  class List(Generic[T]): pass
               #  class Foo(List[U]): pass
@@ -727,6 +729,19 @@ class Instance(SimpleAbstractValue):
                 self.type_parameters.add_alias(name, param.name)
               except utils.AliasingDictConflictError:
                 bad_names |= {name, param.name}
+            else:
+              # We have either a non-formal parameter, e.g.,
+              # class Foo(List[int]), or a non-1:1 parameter mapping, e.g.,
+              # class Foo(List[K or V]). Initialize the corresponding instance
+              # parameter appropriately.
+              if name not in self.type_parameters:
+                # TODO(rechen): We should be able to assert that either the
+                # param name is not in type_parameters or the new param is equal
+                # to the one that was previously added, but we first need to
+                # change the parser to not accept things like
+                #   class A(List[str], Sequence[int]): ...
+                self.type_parameters.add_lazy_item(
+                    name, param.instantiate, self.vm.root_cfg_node, self)
       # We can't reliably track changes to type parameters involved in naming
       # conflicts, so we'll set all of them to unsolvable.
       node = self.vm.root_cfg_node
@@ -1087,10 +1102,10 @@ class Union(AtomicAbstractValue):
   def __ne__(self, other):
     return not self == other
 
-  def instantiate(self, node):
+  def instantiate(self, node, container=None):
     var = self.vm.program.NewVariable()
     for option in self.options:
-      var.PasteVariable(option.instantiate(node), node)
+      var.PasteVariable(option.instantiate(node, container), node)
     return var
 
   def get_class(self):
@@ -1984,7 +1999,7 @@ class ParameterizedClass(AtomicAbstractValue, Class):
     # leading to an infinite loop.
     return any(t.formal for t in self.type_parameters.values())
 
-  def instantiate(self, node):
+  def instantiate(self, node, container=None):
     if self.full_name == "__builtin__.type":
       instance = self.type_parameters[T]
       if instance.formal:
@@ -1993,7 +2008,7 @@ class ParameterizedClass(AtomicAbstractValue, Class):
         instance = self.vm.convert.unsolvable
       return instance.to_variable(node)
     else:
-      return super(ParameterizedClass, self).instantiate(node)
+      return super(ParameterizedClass, self).instantiate(node, container)
 
   def get_class(self):
     return self.base_cls.get_class()
@@ -2014,8 +2029,8 @@ class TupleClass(ParameterizedClass):
   def __repr__(self):
     return "TupleClass(%s)" % self.type_parameters
 
-  def instantiate(self, node):
-    content = tuple(self.type_parameters[i].instantiate(node)
+  def instantiate(self, node, container=None):
+    content = tuple(self.type_parameters[i].instantiate(node, container)
                     for i in range(len(self.type_parameters) - 1))
     return Tuple(content, self.vm).to_variable(node)
 
@@ -2089,7 +2104,7 @@ class PyTDClass(SimpleAbstractValue, Class):
       node = self._call_init(node, retval, args)
     return node, results
 
-  def instantiate(self, node):
+  def instantiate(self, node, container=None):
     return self.vm.convert.constant_to_var(AsInstance(self.pytd_cls), {}, node)
 
   def __repr__(self):
@@ -2891,7 +2906,7 @@ class Unsolvable(AtomicAbstractValue):
     # return ourself.
     return self.to_variable(self.vm.root_cfg_node)
 
-  def instantiate(self, node):
+  def instantiate(self, node, container=None):
     # return ourself.
     return self.to_variable(node)
 
@@ -3012,7 +3027,7 @@ class Unknown(AtomicAbstractValue):
     # We treat instances of an Unknown as the same as the class.
     return self.to_variable(self.vm.root_cfg_node)
 
-  def instantiate(self, node):
+  def instantiate(self, node, container=None):
     return self.to_variable(node)
 
 

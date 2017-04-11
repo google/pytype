@@ -857,6 +857,25 @@ class GenericTest(test_inference.InferenceTest):
         x = ...  # type: bool
       """)
 
+  def testTypeParameterUnion(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import List, TypeVar
+        K = TypeVar("K")
+        V = TypeVar("V")
+        class Foo(List[K or V]):
+          def __init__(self):
+            self := Foo[int, str]
+      """)
+      ty = self.Infer("""
+        import foo
+        v = list(foo.Foo())
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        foo = ...  # type: module
+        v = ...  # type: list[int or str]
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()

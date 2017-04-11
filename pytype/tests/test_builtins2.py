@@ -825,6 +825,15 @@ class BuiltinTests2(test_inference.InferenceTest):
         def get_message(self) -> str
     """)
 
+  def testIterItems(self):
+    ty = self.Infer("""
+      lst = list({"a": 1}.iteritems())
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import List, Tuple
+      lst = ...  # type: List[Tuple[str, int]]
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

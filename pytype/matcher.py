@@ -422,8 +422,12 @@ class AbstractMatcher(object):
           "Can't match instance %r against %r", left, other_type)
 
   def _get_concrete_values(self, var):
+    # TODO(rechen): For type parameter instances, we should extract the concrete
+    # value from v.instance so that we can check it, rather than ignoring the
+    # value altogether.
     return [v for v in var.data
-            if not isinstance(v, abstract.AMBIGUOUS_OR_EMPTY)]
+            if not isinstance(v, (abstract.AMBIGUOUS_OR_EMPTY,
+                                  abstract.TypeParameterInstance))]
 
   def _enforce_single_type(self, var, node):
     """Enforce that the variable contains only one concrete type."""

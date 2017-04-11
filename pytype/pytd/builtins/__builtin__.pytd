@@ -363,7 +363,7 @@ class `dictionary-valueiterator`(Iterator[_T]):
     def __iter__(self) -> `dictionary-valueiterator`[_T]
     def next(self) -> _T
 
-class `dictionary-itemiterator`(Iterator[tuple[_K or _V]]):
+class `dictionary-itemiterator`(Iterator[tuple[_K, _V]]):
     def __iter__(self) -> `dictionary-itemiterator`[_K, _V]
     def next(self) -> tuple[_K, _V]
 
