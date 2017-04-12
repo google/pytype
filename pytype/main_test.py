@@ -102,16 +102,23 @@ class PytypeTest(unittest.TestCase):
     for output_type in output_types:
       output_value = getattr(self, output_type)
       if has_output[output_type]:
-        self.assertTrue(output_value)
+        self.assertTrue(output_value, output_type + " unexpectedly empty")
       else:
-        self.assertFalse(output_value)
+        value = str(output_value)
+        if len(value) > 50:
+          value = value[:47] + "..."
+        self.assertFalse(
+            output_value, "Unexpected output to %s: %r" % (output_type, value))
 
   def assertHasErrors(self, *expected_errors):
     with open(self.errors_csv, "r") as f:
       errors = list(csv.reader(f, delimiter=","))
-    self.assertEquals(len(errors), len(expected_errors))
+    num, expected_num = len(errors), len(expected_errors)
+    self.assertEquals(num, expected_num,
+                      "Expected %d errors, got %d" % (expected_num, num))
     for error, expected_error in zip(errors, expected_errors):
-      self.assertIn(expected_error, error)
+      self.assertEqual(expected_error, error[2],
+                       "Expected %r, got %r" % (expected_error, error[2]))
 
   def _SetUpChecking(self, filename):
     self.pytype_args[self._DataPath(filename)] = self.INCLUDE
@@ -137,8 +144,10 @@ class PytypeTest(unittest.TestCase):
     if filename:
       with open(self._DataPath(filename), "r") as f:
         expected_pyi = f.read()
+    message = ("\n==Expected pyi==\n" + expected_pyi +
+               "\n==Actual pyi==\n" + self.stdout)
     self.assertTrue(parser.parse_string(self.stdout).ASTeq(
-        parser.parse_string(expected_pyi)))
+        parser.parse_string(expected_pyi)), message)
 
   def testPickledAstLocationWithoutModuleName(self):
     self.pytype_args[self._DataPath("simple.pyi")] = self.INCLUDE
