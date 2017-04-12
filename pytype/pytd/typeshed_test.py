@@ -76,9 +76,6 @@ class TestTypeshedParsing(test_inference.InferenceTest):
   def test_importlib(self):
     self.assertTrue(self.loader.import_name("importlib"))
 
-  def test_xxsubtype(self):
-    self.assertTrue(self.loader.import_name("xxsubtype"))
-
   @unittest.skip("broken")
   def test_SocketServer(self):
     self.assertTrue(self.loader.import_name("SocketServer"))
