@@ -27,6 +27,7 @@ enum CallSelector {
   kNewUnionType,
   kAddImport,
   kAddAliasOrConstant,
+  kNewAliasOrConstant,
   kNewConstant,
   kNewFunction,
   kNewExternalFunction,

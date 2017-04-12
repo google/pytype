@@ -321,7 +321,8 @@ class _Parser(object):
   def _build_type_decl_unit(self, defs):
     """Return a pytd.TypeDeclUnit for the given defs (plus parser state)."""
     # defs contains both constant and function definitions.
-    constants, functions = _split_definitions(defs)
+    constants, functions, aliases = _split_definitions(defs)
+    assert not aliases  # We handle top-level aliases in add_alias_or_constant.
     constants.extend(self._constants)
 
     generated_classes = [x for class_list in self._generated_classes.values()
@@ -472,23 +473,29 @@ class _Parser(object):
       t = value
     return pytd.Constant(name, t)
 
-  def add_alias_or_constant(self, name, value):
+  def new_alias_or_constant(self, name_and_value):
+    name, value = name_and_value
+    if value in [pytd.NamedType("True"), pytd.NamedType("False")]:
+      return pytd.Constant(name, pytd.NamedType("bool"))
+    else:
+      return pytd.Alias(name, value)
+
+  def add_alias_or_constant(self, name_and_value):
     """Add an alias or constant.
 
     Args:
-      name: The name of the alias or constant.
-      value: A pytd type.  If the type is NamedType("True") or
-          NamedType("False") the name becomes a constant of type bool,
-          otherwise it becomes an alias.
+      name_and_value: The name and value of the alias or constant.
     """
     if not self._current_condition.active:
       return
     # TODO(dbaum): Consider merging this with new_constant().
-    if value in [pytd.NamedType("True"), pytd.NamedType("False")]:
-      self._constants.append(pytd.Constant(name, pytd.NamedType("bool")))
+    alias_or_constant = self.new_alias_or_constant(name_and_value)
+    if isinstance(alias_or_constant, pytd.Constant):
+      self._constants.append(alias_or_constant)
     else:
+      name, value = name_and_value
       self._type_map[name] = value
-      self._aliases.append(pytd.Alias(name, value))
+      self._aliases.append(alias_or_constant)
 
   def add_import(self, from_package, import_list):
     """Add an import.
@@ -723,10 +730,11 @@ class _Parser(object):
           raise ParseError("Only 'metaclass' allowed as classdef kwarg")
         metaclass = value
 
-    constants, methods = _split_definitions(defs)
+    constants, methods, aliases = _split_definitions(defs)
 
     all_names = (list(set(f.name for f in methods)) +
-                 [c.name for c in constants])
+                 [c.name for c in constants] +
+                 [a.name for a in aliases])
     duplicates = [name
                   for name, count in collections.Counter(all_names).items()
                   if count >= 2]
@@ -738,6 +746,19 @@ class _Parser(object):
     # will be spotted even in non-active conditional code.
     if not self._current_condition.active:
       return
+
+    if aliases:
+      vals_dict = {val.name: val for val in constants + aliases}
+      for val in aliases:
+        name = val.name
+        while isinstance(val, pytd.Alias):
+          if (not isinstance(val.type, pytd.NamedType) or
+              val.type.name not in vals_dict):
+            raise ParseError(
+                "Illegal value for alias %r. "
+                "Value must be an attribute on the same class." % val.name)
+          val = vals_dict[val.type.name]
+        constants.append(pytd.Constant(name, val.type))
 
     # TODO(dbaum): Is NothingType even legal here?  The grammar accepts it but
     # perhaps it should be a ParseError.
@@ -927,14 +948,17 @@ def _split_definitions(defs):
   """Return [constants], [functions] given a mixed list of definitions."""
   constants = []
   functions = []
+  aliases = []
   for d in defs:
     if isinstance(d, pytd.Constant):
       constants.append(d)
     elif isinstance(d, _NameAndSig):
       functions.append(d)
+    elif isinstance(d, pytd.Alias):
+      aliases.append(d)
     else:
       raise TypeError("Unexpected definition type %s", type(d))
-  return constants, functions
+  return constants, functions, aliases
 
 
 def _is_int_tuple(value):

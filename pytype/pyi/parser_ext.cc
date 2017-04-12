@@ -30,6 +30,7 @@ static const SelectorEntry<CallSelector> call_attributes[] = {
   {kNewUnionType, "new_union_type"},
   {kAddImport, "add_import"},
   {kAddAliasOrConstant, "add_alias_or_constant"},
+  {kNewAliasOrConstant, "new_alias_or_constant"},
   {kNewConstant, "new_constant"},
   {kNewFunction, "new_function"},
   {kNewExternalFunction, "new_external_function"},

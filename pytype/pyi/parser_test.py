@@ -147,6 +147,22 @@ class ParserTest(_ParserTestBase):
     self.check("x = True", "x = ...  # type: bool")
     self.check("x = False", "x = ...  # type: bool")
     self.check("x = Foo")
+    self.check("""\
+      class A:
+          x = True""", """\
+      class A:
+          x = ...  # type: bool
+    """)
+    self.check("""\
+      class A:
+          x = ...  # type: int
+          y = x
+          z = y""", """\
+      class A:
+          x = ...  # type: int
+          y = ...  # type: int
+          z = ...  # type: int
+    """)
 
   def test_import(self):
     self.check("import foo.bar.baz", "")
@@ -930,12 +946,12 @@ class ClassIfTest(_ParserTestBase):
           import foo
     """, 3, "syntax error")
 
-  def test_no_alias(self):
+  def test_bad_alias(self):
     self.check_error("""\
       class Foo:
         if sys.version_info > (2, 7, 0):
           a = b
-    """, 3, "syntax error")
+    """, 1, "Illegal value for alias 'a'")
 
   def test_no_class(self):
     self.check_error("""\

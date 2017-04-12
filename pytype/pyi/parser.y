@@ -139,7 +139,12 @@ alldefs
   : alldefs constantdef { $$ = AppendList($1, $2); }
   | alldefs funcdef { $$ = AppendList($1, $2); }
   | alldefs importdef { $$ = $1; Py_DECREF($2); }
-  | alldefs alias_or_constant { $$ = $1; Py_DECREF($2); }
+  | alldefs alias_or_constant {
+      $$ = $1;
+      PyObject* tmp = ctx->Call(kAddAliasOrConstant, "(N)", $2);
+      CHECK(tmp, @$);
+      Py_DECREF(tmp);
+    }
   | alldefs classdef { $$ = $1; Py_DECREF($2); }
   | alldefs typevardef { $$ = $1; Py_DECREF($2); }
   | alldefs if_stmt {
@@ -197,6 +202,11 @@ class_funcs
 
 funcdefs
   : funcdefs constantdef { $$ = AppendList($1, $2); }
+  | funcdefs alias_or_constant {
+      PyObject* tmp = ctx->Call(kNewAliasOrConstant, "(N)", $2);
+      CHECK(tmp, @$);
+      $$ = AppendList($1, tmp);
+    }
   | funcdefs funcdef { $$ = AppendList($1, $2); }
   | funcdefs class_if_stmt {
       PyObject* tmp = ctx->Call(kIfEnd, "(N)", $2);
@@ -372,10 +382,7 @@ from_item
   ;
 
 alias_or_constant
-  : NAME '=' type {
-      $$ = ctx->Call(kAddAliasOrConstant, "(NN)", $1, $3);
-      CHECK($$, @$);
-    }
+  : NAME '=' type { $$ = Py_BuildValue("(NN)", $1, $3); }
   ;
 
 typevardef
