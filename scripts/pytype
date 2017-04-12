@@ -239,15 +239,8 @@ def main(argv):
 def _run_pytype(options):
   """Run pytype with the given configuration options."""
   if options.generate_builtins:
-    if options.input:
-      print >>sys.stderr, "Cannot specify files while precompiling builtins."
-      sys.exit(1)
     pytd_builtins.Precompile(options.generate_builtins)
     return
-
-  if not options.input:
-    print >>sys.stderr, "Need at least one filename."
-    sys.exit(1)
 
   if options.precompiled_builtins:
     pytd_builtins.LoadPrecompiled(options.precompiled_builtins)

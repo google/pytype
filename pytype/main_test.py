@@ -195,8 +195,53 @@ class PytypeTest(unittest.TestCase):
 
       self._InferTypesAndCheckErrors(imports_py_path, [])
 
-  def testBadOption(self):
+  def testNonexistentOption(self):
     self.pytype_args["--rumpelstiltskin"] = self.INCLUDE
+    self._RunPytype(self.pytype_args)
+    self.assertOutputStateMatches(stdout=False, stderr=True, returncode=True)
+
+  def testCheckInferConflict(self):
+    self.pytype_args["--check"] = self.INCLUDE
+    self.pytype_args["--output"] = "-"
+    self._RunPytype(self.pytype_args)
+    self.assertOutputStateMatches(stdout=False, stderr=True, returncode=True)
+
+  def testCheckInferConflict2(self):
+    self.pytype_args["--check"] = self.INCLUDE
+    self.pytype_args["input.py:output.pyi"] = self.INCLUDE
+    self._RunPytype(self.pytype_args)
+    self.assertOutputStateMatches(stdout=False, stderr=True, returncode=True)
+
+  def testInputOutputPair(self):
+    self.pytype_args[self._DataPath("simple.py") +":-"] = self.INCLUDE
+    self._RunPytype(self.pytype_args)
+    self.assertOutputStateMatches(stdout=True, stderr=False, returncode=False)
+    self.assertInferredPyiEquals(filename="simple.pyi")
+
+  def testMultipleOutput(self):
+    self.pytype_args["input.py:output1.pyi"] = self.INCLUDE
+    self.pytype_args["--output"] = "output2.pyi"
+    self._RunPytype(self.pytype_args)
+    self.assertOutputStateMatches(stdout=False, stderr=True, returncode=True)
+
+  def testGenerateBuiltinsInputConflict(self):
+    self.pytype_args["--generate-builtins"] = "builtins.py"
+    self.pytype_args["input.py"] = self.INCLUDE
+    self._RunPytype(self.pytype_args)
+    self.assertOutputStateMatches(stdout=False, stderr=True, returncode=True)
+
+  def testMissingInput(self):
+    self._RunPytype(self.pytype_args)
+    self.assertOutputStateMatches(stdout=False, stderr=True, returncode=True)
+
+  def testMultipleInput(self):
+    self.pytype_args["input1.py"] = self.INCLUDE
+    self.pytype_args["input2.py"] = self.INCLUDE
+    self._RunPytype(self.pytype_args)
+    self.assertOutputStateMatches(stdout=False, stderr=True, returncode=True)
+
+  def testBadInputFormat(self):
+    self.pytype_args["input.py:output.pyi:rumpelstiltskin"] = self.INCLUDE
     self._RunPytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=True, returncode=True)
 

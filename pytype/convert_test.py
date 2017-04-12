@@ -14,7 +14,7 @@ import unittest
 class ConvertTest(unittest.TestCase):
 
   def setUp(self):
-    options = config.Options([""])
+    options = config.Options.create()
     self._vm = vm.VirtualMachine(
         errors.ErrorLog(), options, load_pytd.Loader(None, options))
 

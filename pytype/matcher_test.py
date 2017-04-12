@@ -15,7 +15,7 @@ class MatcherTest(unittest.TestCase):
   """Test matcher.AbstractMatcher."""
 
   def setUp(self):
-    options = config.Options([""])
+    options = config.Options.create()
     self.vm = vm.VirtualMachine(
         errors.ErrorLog(), options, load_pytd.Loader(None, options))
     self.type_type = abstract.get_atomic_value(self.vm.convert.type_type)

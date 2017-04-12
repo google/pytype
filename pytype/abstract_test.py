@@ -27,7 +27,7 @@ class FakeFrame(object):
 class AbstractTestBase(unittest.TestCase):
 
   def setUp(self):
-    options = config.Options([""])
+    options = config.Options.create()
     self._vm = vm.VirtualMachine(
         errors.ErrorLog(), options, load_pytd.Loader(None, options))
     self._program = cfg.Program()

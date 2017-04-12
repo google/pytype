@@ -39,13 +39,20 @@ class Options(object):
       optarse.OptParseError: bad option or input filenames.
     """
     o = self._options()
-    argv = argv if argv is not None else [""]
     self._options, arguments = o.parse_args(argv)
-    self._postprocess_options(o.option_list, arguments[1:])
+    self._options.input, output = _parse_arguments(arguments[1:])
+    if output:
+      if self._options.output:
+        raise optparse.OptionValueError("x:y notation not allowed with -o")
+      self._options.output = output
+    names = {opt.dest for opt in o.option_list if opt.dest}
+    names.add("input")
+    self._postprocess_options(names)
 
   @classmethod
   def create(cls, **kwargs):
-    self = cls(None)
+    """Create dummy options for testing."""
+    self = cls(["", "dummy_input_file"])
     self.tweak(**kwargs)
     return self
 
@@ -88,7 +95,7 @@ class Options(object):
         help="Precompile builtins pytd and write to the given file.")
     o.add_option(
         "--imports_info", type="string", action="store",
-        dest="imports_info", default=None,
+        dest="imports_map", default=None,
         help=("Information for mapping import .pytd to files. "
               "This options is incompatible with --pythonpath."))
     o.add_option(
@@ -132,12 +139,11 @@ class Options(object):
     o.add_option(
         "--nofail", action="store_true",
         dest="nofail", default=False,
-        help=("Don't allow pytype to fail (for testing only)."))
+        help=("Don't allow pytype to fail."))
     o.add_option(
         "-o", "--output", type="string", action="store",
         dest="output", default=None,
-        help=("Output file (default: stdout). Only allowed if only one input."
-              "Use '-' or '' for stdout."))
+        help=("Output file. Use '-' or '' for stdout."))
     o.add_option(
         "--output-errors-csv", type="string", action="store",
         dest="output_errors_csv", default=None,
@@ -215,8 +221,8 @@ class Options(object):
         help=("Only do an approximation."))
     return o
 
-  def _postprocess_options(self, option_list, arguments):
-    """Store all options in self._option in self, possibly postprocessed.
+  def _postprocess_options(self, names):
+    """Store all options in self._options in self, possibly postprocessed.
 
     This will iterate through all options in self._options and make them
     attributes on our Options instance. If, for an option {name}, there is
@@ -225,23 +231,15 @@ class Options(object):
     command line arguments as "arguments" (or call _store_arguments).
 
     Args:
-      option_list: Same as optparse.OptionParser().option_list.
-      arguments: Other arguments on the command-line (i.e., things that don't
-        start with '-')
+      names: The names of the options.
     """
     # prepare function objects for topological sort:
     class Node(object):  # pylint: disable=g-wrong-blank-lines
       def __init__(self, name, processor):  # pylint: disable=g-wrong-blank-lines
         self.name = name
         self.processor = processor
-    nodes = {
-        opt.dest: Node(opt.dest, getattr(self, "_store_" + opt.dest, None))
-        for opt in option_list if opt.dest
-    }
-    # The "arguments" attribute is not an option, but we treat it as one,
-    # for dependency checking:
-    nodes["arguments"] = Node("arguments",
-                              getattr(self, "_store_arguments", None))
+    nodes = {name: Node(name, getattr(self, "_store_" + name, None))
+             for name in names}
     for f in nodes.values():
       if f.processor:
         # option has a _store_{name} method
@@ -252,14 +250,31 @@ class Options(object):
 
     # process the option list in the right order:
     for node in utils.topological_sort(nodes.values()):
-      if node.name == "arguments":
-        value = arguments
-      else:
-        value = getattr(self._options, node.name)
+      value = getattr(self._options, node.name)
       if node.processor is not None:
-        value = node.processor(value)
+        node.processor(value)
       else:
         setattr(self, node.name, value)
+
+  @uses(["output"])
+  def _store_check(self, check):
+    if check is None:
+      self.check = not self.output
+    elif self.output:
+      raise optparse.OptionConflictError("Not allowed with an output file",
+                                         "check")
+    else:
+      self.check = check
+
+  @uses(["input"])
+  def _store_generate_builtins(self, generate_builtins):
+    if generate_builtins:
+      if self.input:
+        raise optparse.OptionConflictError("Not allowed with an input file",
+                                           "generate-builtins")
+    elif not self.input:
+      raise optparse.OptParseError("Need a filename.")
+    self.generate_builtins = generate_builtins
 
   @uses(["module_name"])
   def _store_read_pyi_save_pickle(self, read_pyi_save_pickle):
@@ -272,8 +287,7 @@ class Options(object):
     """Configure logging."""
     if verbosity >= 0:
       if verbosity >= len(LOG_LEVELS):
-        raise optparse.OptParseError("invalid --verbosity: %s" %
-                                     self._options.verbosity)
+        raise optparse.OptParseError("invalid --verbosity: %s" % verbosity)
       basic_logging_level = LOG_LEVELS[verbosity]
     else:
       # "verbosity=-1" can be used to disable all logging, so configure
@@ -290,8 +304,7 @@ class Options(object):
     self.python_version = tuple(map(int, python_version.split(".")))
     if len(self.python_version) != 2:
       raise optparse.OptionValueError(
-          "--python_version must be <major>.<minor>: %r" % (
-              self._options.python_version))
+          "--python_version must be <major>.<minor>: %r" % python_version)
     if (3, 0) <= self.python_version <= (3, 3):
       # These have odd __build_class__ parameters, store co_code.co_name fields
       # as unicode, and don't yet have the extra qualname parameter to
@@ -321,44 +334,18 @@ class Options(object):
                                      python_exe)
     self.python_exe = python_exe
 
-  @uses(["pythonpath", "arguments", "verbosity"])
-  def _store_imports_info(self, imports_info):
+  @uses(["pythonpath", "output", "verbosity"])
+  def _store_imports_map(self, imports_map):
     """Postprocess --imports_info."""
-    if imports_info:
+    if imports_map:
       if self.pythonpath not in ([], [""]):
         raise optparse.OptionConflictError(
             "Not allowed with --pythonpath", "imports_info")
 
       self.imports_map = imports_map_loader.build_imports_map(
-          imports_info, self.output)
+          imports_map, self.output)
     else:
       self.imports_map = None
-
-    self.imports_info = imports_info
-
-  def _store_output(self, output):
-    self.output = output
-
-  @uses(["output", "check"])
-  def _store_arguments(self, input_filenames):
-    if len(input_filenames) > 1:
-      raise optparse.OptionValueError("Can only process one file at a time.")
-    if not input_filenames:
-      self.input = None
-    else:
-      item, = input_filenames
-      split = tuple(item.split(os.pathsep))
-      if len(split) == 1:
-        self.input = item
-        self.check = not self.output
-      elif len(split) == 2:
-        if self.output:
-          raise optparse.OptionValueError("x:y notation not allowed with -o")
-        self.input, self.output = split
-      else:
-        raise optparse.OptionValueError("Argument %r is not a pair of non-"
-                                        "empty file names separated by %r" %
-                                        (item, os.pathsep))
 
   @uses(["report_errors"])
   def _store_output_errors_csv(self, output_errors_csv):
@@ -366,3 +353,20 @@ class Options(object):
       raise optparse.OptionConflictError("Not allowed with --no-report-errors",
                                          "output-errors-csv")
     self.output_errors_csv = output_errors_csv
+
+
+def _parse_arguments(arguments):
+  if len(arguments) > 1:
+    raise optparse.OptionValueError("Can only process one file at a time.")
+  if not arguments:
+    return None, None
+  item, = arguments
+  split = tuple(item.split(os.pathsep))
+  if len(split) == 1:
+    return item, None
+  elif len(split) == 2:
+    return split
+  else:
+    raise optparse.OptionValueError("Argument %r is not a pair of non-"
+                                    "empty file names separated by %r" %
+                                    (item, os.pathsep))
