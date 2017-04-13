@@ -337,6 +337,14 @@ class BuiltinTests2(test_inference.InferenceTest):
       x5 = ...  # type: List[int or str]
     """)
 
+  def testSumReturn(self):
+    self.assertNoErrors("""
+      from __future__ import google_type_annotations
+      from typing import List
+      def f(x: List[float]) -> float:
+        return sum(x)
+    """)
+
   def testReversed(self):
     ty, errors = self.InferAndCheck("""\
       x1 = reversed(xrange(42))

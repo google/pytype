@@ -89,6 +89,7 @@ def round(number: int or float or typing.SupportsRound, ...) -> float
 def setattr(object, name: str or unicode or bytearray, value) -> NoneType
 def sorted(iterable: Iterable[_T], ...) -> list[_T]
 def sum(iterable: Iterable[int]) -> int
+def sum(iterable: Iterable[int or float]) -> int or float
 def sum(iterable: Iterable[int or float or complex]) -> int or float or complex
 def sum(iterable: Iterable[_T], start: _T) -> _T
 def unichr(i: int) -> unicode
