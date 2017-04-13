@@ -42,7 +42,9 @@ def compile_to_pyc(data_file, filename, output, mode="exec"):
 def main():
   if len(sys.argv) != 4:
     sys.exit(1)
+  # pytype: disable=attribute-error
   output = sys.stdout.buffer if hasattr(sys.stdout, "buffer") else sys.stdout
+  # pytype: enable=attribute-error
   compile_to_pyc(data_file=sys.argv[1], filename=sys.argv[2],
                  output=output, mode=sys.argv[3])
 
