@@ -293,7 +293,7 @@ class Options(object):
       # "verbosity=-1" can be used to disable all logging, so configure
       # logging accordingly.
       basic_logging_level = logging.CRITICAL + 1
-    logging.basicConfig(level=basic_logging_level)
+    utils.set_logging_level(basic_logging_level)
 
   def _store_pythonpath(self, pythonpath):
     # Note that the below gives [""] for "", and ["x", ""] for "x:"

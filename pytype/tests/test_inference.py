@@ -11,6 +11,7 @@ from pytype import config
 from pytype import errors
 from pytype import infer
 from pytype import load_pytd
+from pytype import utils
 from pytype.pyc import loadmarshal
 from pytype.pyi import parser
 from pytype.pytd import optimize
@@ -374,10 +375,8 @@ def _LogLines(log_cmd, lines):
 def main(debugging=False):
   # TODO(ampere): This is just a useful hack. Should be replaced with real
   #               argument handling.
-  if debugging or len(sys.argv) > 1:
-    logging.basicConfig(level=logging.DEBUG)
-  else:
-    logging.basicConfig(level=logging.WARNING)
+  level = logging.DEBUG if debugging or len(sys.argv) > 1 else logging.WARNING
+  utils.set_logging_level(level)
   unittest.main()
 
 if __name__ == "__main__":

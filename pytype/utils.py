@@ -827,4 +827,11 @@ def patch_logging():
   logging.addLevelName(logging.DEBUG - 1, "TRACE")
 
 
+def set_logging_level(level):
+  if logging.root.handlers:
+    logging.root.setLevel(level)
+  else:
+    logging.basicConfig(level=level)
+
+
 patch_logging()
