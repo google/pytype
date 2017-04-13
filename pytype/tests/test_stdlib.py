@@ -139,6 +139,22 @@ class StdlibTests(test_inference.InferenceTest):
       collections.namedtuple("_", [u"a", "b"])
     """)
 
+  def testStringTypes(self):
+    ty = self.Infer("""
+      import types
+      if isinstance("", types.StringTypes):
+        x = 42
+      if isinstance(False, types.StringTypes):
+        y = 42
+      if isinstance(u"", types.StringTypes):
+        z = 42
+    """)
+    self.assertTypesMatchPytd(ty, """
+      types = ...  # type: module
+      x = ...  # type: int
+      z = ...  # type: int
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()
