@@ -8,6 +8,8 @@ import sys
 import tokenize
 
 _DIRECTIVE_RE = re.compile(r"^#\s*(pytype|type)\s*:\s([^#]*)")
+_CLOSING_BRACKETS_RE = re.compile(r"^(\s*[]})]\s*)+(#.*)?$")
+_WHITESPACE_RE = re.compile(r"^\s*(#.*)?$")
 _ALL_ERRORS = "*"  # Wildcard for disabling all errors.
 
 
@@ -113,12 +115,53 @@ class Director(object):
   def type_comments(self):
     return self._type_comments
 
+  def _adjust_type_comments(self, closing_bracket_lines, whitespace_lines):
+    """Adjust any type comments affected by closing bracket lines.
+
+    Lines that contain nothing but closing brackets don't appear in the
+    bytecode, so for, e.g.,
+      v = [
+        "hello",
+        "world",
+      ]  # line 4
+    line 4 is where any type comment for 'v' should be put, but the
+    STORE_NAME opcode for 'v' is at line 3. If we find a type comment put
+    (wrongly) on line 3, we'll report an error, and if we find a type comment
+    on line 4, we'll move it to line 3.
+
+    Args:
+      closing_bracket_lines: A set of lines containing only closing brackets,
+        to be used for adjusting affected type comments.
+      whitespace_lines: A set of lines containing only whitespace. Its union
+        with closing_bracket_lines is a set of consecutive lines.
+    """
+    target = min(closing_bracket_lines | whitespace_lines) - 1
+    if target in self._type_comments:
+      self._errorlog.ignored_type_comment(
+          self._filename, target, self._type_comments[target][1])
+      del self._type_comments[target]
+    end = max(closing_bracket_lines)
+    if end in self._type_comments:
+      self._type_comments[target] = self._type_comments[end]
+      del self._type_comments[end]
+
   def _parse_source(self, src):
     """Parse a source file, extracting directives from comments."""
     f = cStringIO.StringIO(src)
+    closing_bracket_lines = set()
+    whitespace_lines = set()
     for tok, _, start, _, line in tokenize.generate_tokens(f.readline):
+      lineno, col = start
+      if _CLOSING_BRACKETS_RE.match(line):
+        closing_bracket_lines.add(lineno)
+      elif _WHITESPACE_RE.match(line):
+        whitespace_lines.add(lineno)
+      else:
+        if closing_bracket_lines:
+          self._adjust_type_comments(closing_bracket_lines, whitespace_lines)
+        closing_bracket_lines.clear()
+        whitespace_lines.clear()
       if tok == tokenize.COMMENT:
-        lineno, col = start
         m = _DIRECTIVE_RE.match(line[col:])
         if m:
           code = line[:col].strip()
@@ -135,6 +178,8 @@ class Director(object):
                   self._filename, lineno, e.message)
           else:
             pass  # ignore comments for other tools
+    if closing_bracket_lines:
+      self._adjust_type_comments(closing_bracket_lines, whitespace_lines)
 
   def _process_type(self, lineno, code, data):
     """Process a type: comment."""

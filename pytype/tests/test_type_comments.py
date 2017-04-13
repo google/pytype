@@ -442,6 +442,35 @@ class AssignmentCommentTest(test_inference.InferenceTest):
       x = ...  # type: Any
     """)
 
+  def testMultilineValue(self):
+    ty, errors = self.InferAndCheck("""\
+      v = [
+        {
+        "a": 1  # type: complex
+
+        }  # type: dict[str, int]
+      ]  # type: list[dict[unicode, float]]
+    """)
+    self.assertTypesMatchPytd(ty, """
+      v = ...  # type: list[dict[unicode, float]]
+    """)
+    self.assertErrorLogIs(errors, [(3, "ignored-type-comment",
+                                    r"Stray type comment: complex"),
+                                   (5, "ignored-type-comment",
+                                    r"Stray type comment: dict\[str, int\]")])
+
+  def testMultilineValueWithBlankLines(self):
+    ty = self.Infer("""\
+      a = [[
+
+      ]
+
+      ]  # type: list[list[int]]
+    """)
+    self.assertTypesMatchPytd(ty, """
+      a = ...  # type: list[list[int]]
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

@@ -312,6 +312,19 @@ class DirectorTest(unittest.TestCase):
         4: ('y = "# type: int"', "str"),
     }, self._director.type_comments)
 
+  def test_type_comment_on_multiline_value(self):
+    self._create("""\
+    v = [
+      ("hello",
+       "world",  # type: should_be_ignored
+
+      )
+    ]  # type: dict
+    """)
+    self.assertEquals({
+        3: ("]", "dict"),
+    }, self._director.type_comments)
+
 
 if __name__ == "__main__":
   unittest.main()
