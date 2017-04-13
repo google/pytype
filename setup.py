@@ -50,7 +50,6 @@ setup(
                              'pytd/stdlib/*/*.pytd',
                             ] + typeshed},
     requires=['pyyaml (>=3.11)'],
-    install_requires=['pyyaml>=3.11'],
     classifiers=['Programming Language :: Python :: 2.7'],
     ext_modules = [parser_ext],
 )
