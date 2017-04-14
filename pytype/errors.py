@@ -476,6 +476,14 @@ class ErrorLog(ErrorLogBase):
     self._add(Error(
         SEVERITY_WARNING, message, filename=filename, lineno=lineno))
 
+  @_error_name("late-directive")
+  def late_directive(self, filename, lineno, name):
+    message = "%s disabled from here to the end of the file" % name
+    details = ("Consider limiting this directive's scope or moving it to the "
+               "top of the file.")
+    self._add(Error(SEVERITY_WARNING, message, details=details,
+                    filename=filename, lineno=lineno))
+
   @_error_name("not-supported-yet")
   def not_supported_yet(self, opcode, feature):
     self.error(opcode, "%s not supported yet" % feature)

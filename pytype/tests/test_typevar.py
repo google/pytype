@@ -129,6 +129,7 @@ class TypeVarTest(test_inference.InferenceTest):
       # pytype: disable=not-supported-yet
       S = typevar("S", covariant=False)  # ok
       T = typevar("T", covariant=False)  # duplicate ok
+      # pytype: enable=not-supported-yet
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import TypeVar

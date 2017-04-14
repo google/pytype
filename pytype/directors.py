@@ -10,6 +10,7 @@ import tokenize
 _DIRECTIVE_RE = re.compile(r"^#\s*(pytype|type)\s*:\s([^#]*)")
 _CLOSING_BRACKETS_RE = re.compile(r"^(\s*[]})]\s*)+(#.*)?$")
 _WHITESPACE_RE = re.compile(r"^\s*(#.*)?$")
+_CLASS_OR_FUNC_RE = re.compile(r"^(def|class)\s")
 _ALL_ERRORS = "*"  # Wildcard for disabling all errors.
 
 
@@ -82,6 +83,12 @@ class _LineSet(object):
     pos = bisect.bisect(self._transitions, line)
     return (pos % 2) == 1
 
+  def get_disable_after(self, lineno):
+    """Get an unclosed disable, if any, that starts after lineno."""
+    if len(self._transitions) % 2 == 1 and self._transitions[-1] >= lineno:
+      return self._transitions[-1]
+    return None
+
 
 class Director(object):
   """Holds all of the directive information for a source file."""
@@ -148,10 +155,13 @@ class Director(object):
   def _parse_source(self, src):
     """Parse a source file, extracting directives from comments."""
     f = cStringIO.StringIO(src)
+    defs_start = None
     closing_bracket_lines = set()
     whitespace_lines = set()
     for tok, _, start, _, line in tokenize.generate_tokens(f.readline):
       lineno, col = start
+      if defs_start is None and _CLASS_OR_FUNC_RE.match(line):
+        defs_start = lineno
       if _CLOSING_BRACKETS_RE.match(line):
         closing_bracket_lines.add(lineno)
       elif _WHITESPACE_RE.match(line):
@@ -180,6 +190,14 @@ class Director(object):
             pass  # ignore comments for other tools
     if closing_bracket_lines:
       self._adjust_type_comments(closing_bracket_lines, whitespace_lines)
+    if defs_start is not None:
+      disables = self._disables.items()
+      # Add "# type: ignore" to the list of disables that we check.
+      disables.append(("Type checking", self._ignore))
+      for name, lineset in disables:
+        lineno = lineset.get_disable_after(defs_start)
+        if lineno is not None:
+          self._errorlog.late_directive(self._filename, lineno, name)
 
   def _process_type(self, lineno, code, data):
     """Process a type: comment."""
