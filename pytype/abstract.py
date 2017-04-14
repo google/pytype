@@ -447,11 +447,17 @@ class PythonConstant(object):
   """
 
   __metaclass__ = MixinMeta
-  overloads = ("cmp_eq", "compatible_with",)
+  overloads = ("__repr__", "cmp_eq", "compatible_with",)
 
   def init_mixin(self, pyval):
     """Mix-in equivalent of __init__."""
     self.pyval = pyval
+
+  def str_of_constant(self):
+    return repr(self.pyval)
+
+  def __repr__(self):
+    return "<v%d %s %s>" % (self.id, self.name, self.str_of_constant())
 
   def cmp_eq(self, other):
     if (self.pyval.__class__ in self.vm.convert.primitive_classes and
@@ -825,6 +831,16 @@ class List(Instance, PythonConstant):
     self.initialize_type_parameter(vm.root_cfg_node, T, combined_content)
     self.could_contain_anything = False
 
+  def str_of_constant(self):
+    return "[%s]" % ", ".join(" or ".join(str(v) for v in val.data)
+                              for val in self.pyval)
+
+  def __repr__(self):
+    if self.could_contain_anything:
+      return Instance.__repr__(self)
+    else:
+      return PythonConstant.__repr__(self)
+
   def merge_type_parameter(self, node, name, value):
     self.could_contain_anything = True
     super(List, self).merge_type_parameter(node, name, value)
@@ -850,12 +866,12 @@ class Tuple(Instance, HasSlots, PythonConstant):
     self.initialize_type_parameter(vm.root_cfg_node, T, combined_content)
     PythonConstant.init_mixin(self, content)
 
-  def __repr__(self):
+  def str_of_constant(self):
     content = ", ".join(" or ".join(str(v) for v in val.data)
                         for val in self.pyval)
     if len(self.pyval) == 1:
       content += ","
-    return "<v%d %s (%s)>" % (self.id, self.name, content)
+    return "(%s)" % content
 
   def getitem_slot(self, node, index_var):
     """Implementation of tuple.__getitem__."""
@@ -898,6 +914,16 @@ class Dict(Instance, HasSlots, PythonConstant, WrapsDict("pyval")):
     self.init_type_parameters(K, V)
     self.could_contain_anything = False
     PythonConstant.init_mixin(self, {})
+
+  def str_of_constant(self):
+    return str({name: " or ".join(str(v) for v in value.data)
+                for name, value in self.pyval.items()})
+
+  def __repr__(self):
+    if self.could_contain_anything:
+      return Instance.__repr__(self)
+    else:
+      return PythonConstant.__repr__(self)
 
   def getitem_slot(self, node, name_var):
     """Implements the __getitem__ slot."""
