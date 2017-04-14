@@ -148,12 +148,12 @@ class Converter(object):
     del node
     return self.constant_to_var(s)
 
-  def build_content(self, node, elements):
+  def build_content(self, elements):
     if len(elements) == 1:
       return next(iter(elements))
     var = self.vm.program.NewVariable()
     for v in elements:
-      var.PasteVariable(v, node)
+      var.PasteVariable(v)
     return var
 
   def build_slice(self, node, start, stop, step=None):
@@ -166,17 +166,14 @@ class Converter(object):
     """Create a VM list from the given sequence."""
     # TODO(rechen): set T to empty if there is nothing in content
     content = list(content)  # content might be a generator
-    value = abstract.Instance(self.list_type, self.vm)
-    value.initialize_type_parameter(node, abstract.T,
-                                    self.build_content(node, content))
-    return value.to_variable(node)
+    return abstract.List(content, self.vm).to_variable(node)
 
   def build_set(self, node, content):
     """Create a VM set from the given sequence."""
     content = list(content)  # content might be a generator
     value = abstract.Instance(self.set_type, self.vm)
     value.initialize_type_parameter(node, abstract.T,
-                                    self.build_content(node, content))
+                                    self.build_content(content))
     return value.to_variable(node)
 
   def build_map(self, node):

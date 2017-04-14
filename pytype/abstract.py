@@ -815,11 +815,30 @@ class HasSlots(object):
       return attr
 
 
+class List(Instance, PythonConstant):
+  """Representation of Python 'list' objects."""
+
+  def __init__(self, content, vm):
+    super(List, self).__init__(vm.convert.list_type, vm)
+    PythonConstant.init_mixin(self, content)
+    combined_content = vm.convert.build_content(content)
+    self.initialize_type_parameter(vm.root_cfg_node, T, combined_content)
+    self.could_contain_anything = False
+
+  def merge_type_parameter(self, node, name, value):
+    self.could_contain_anything = True
+    super(List, self).merge_type_parameter(node, name, value)
+
+  def compatible_with(self, logical_value):
+    return (self.could_contain_anything or
+            PythonConstant.compatible_with(self, logical_value))
+
+
 class Tuple(Instance, HasSlots, PythonConstant):
   """Representation of Python 'tuple' objects."""
 
   def __init__(self, content, vm):
-    combined_content = vm.convert.build_content(vm.root_cfg_node, content)
+    combined_content = vm.convert.build_content(content)
     class_params = {name: vm.convert.merge_classes(vm.root_cfg_node,
                                                    instance_param.data)
                     for name, instance_param in

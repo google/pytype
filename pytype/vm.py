@@ -1584,8 +1584,7 @@ class VirtualMachine(object):
         state, f = self.load_attr(state, itr, "next")
         state, result = self.call_function_with_state(state, f, ())
         options[-1].append(result)
-    values = tuple(self.convert.build_content(state.node, value)
-                   for value in zip(*options))
+    values = tuple(self.convert.build_content(value) for value in zip(*options))
     for value in reversed(values):
       if not value.bindings:
         # For something like

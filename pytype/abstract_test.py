@@ -62,8 +62,7 @@ class InstanceTest(AbstractTestBase):
     self.assertIs(True, i.compatible_with(False))
 
   def test_compatible_with_list(self):
-    i = abstract.Instance(self._vm.convert.list_type, self._vm)
-    i.init_type_parameters(abstract.T)
+    i = abstract.List([], self._vm)
     # Empty list is not compatible with True.
     self.assertIs(False, i.compatible_with(True))
     self.assertIs(True, i.compatible_with(False))
@@ -356,9 +355,10 @@ class PyTDTest(AbstractTestBase):
 
   def testToTypeWithView1(self):
     # to_type(<instance of List[int or unsolvable]>, view={T: int})
-    instance = abstract.Instance(self._vm.convert.list_type, self._vm)
-    instance.type_parameters[abstract.T] = self._vm.program.NewVariable(
-        [self._vm.convert.unsolvable], [], self._vm.root_cfg_node)
+    instance = abstract.List([], self._vm)
+    instance.merge_type_parameter(
+        self._vm.root_cfg_node, abstract.T, self._vm.program.NewVariable(
+            [self._vm.convert.unsolvable], [], self._vm.root_cfg_node))
     param_binding = instance.type_parameters[abstract.T].AddBinding(
         self._vm.convert.primitive_class_instances[int], [],
         self._vm.root_cfg_node)
@@ -395,8 +395,7 @@ class PyTDTest(AbstractTestBase):
                       pytd.NamedType("__builtin__.str"))
 
   def testToTypeWithViewAndEmptyParam(self):
-    instance = abstract.Instance(self._vm.convert.list_type, self._vm)
-    instance.type_parameters[abstract.T] = self._vm.program.NewVariable()
+    instance = abstract.List([], self._vm)
     view = {instance.cls: instance.cls.bindings[0]}
     pytd_type = instance.to_type(self._vm.root_cfg_node, seen=None, view=view)
     self.assertEquals("__builtin__.list", pytd_type.base_type.name)
