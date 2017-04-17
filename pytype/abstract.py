@@ -442,11 +442,21 @@ class PythonConstant(object):
     """Mix-in equivalent of __init__."""
     self.pyval = pyval
 
-  def str_of_constant(self):
+  def str_of_constant(self, printer):
+    """Get a string representation of this constant.
+
+    Args:
+      printer: An AtomicAbstractValue -> str function that will be used to
+        print abstract values.
+
+    Returns:
+      A string of self.pyval.
+    """
+    del printer
     return repr(self.pyval)
 
   def __repr__(self):
-    return "<v%d %s %s>" % (self.id, self.name, self.str_of_constant())
+    return "<v%d %s %s>" % (self.id, self.name, self.str_of_constant(str))
 
   def cmp_eq(self, other):
     if (self.pyval.__class__ in self.vm.convert.primitive_classes and
@@ -820,8 +830,8 @@ class List(Instance, PythonConstant):
     self.initialize_type_parameter(vm.root_cfg_node, T, combined_content)
     self.could_contain_anything = False
 
-  def str_of_constant(self):
-    return "[%s]" % ", ".join(" or ".join(str(v) for v in val.data)
+  def str_of_constant(self, printer):
+    return "[%s]" % ", ".join(" or ".join(printer(v) for v in val.data)
                               for val in self.pyval)
 
   def __repr__(self):
@@ -855,8 +865,8 @@ class Tuple(Instance, HasSlots, PythonConstant):
     self.initialize_type_parameter(vm.root_cfg_node, T, combined_content)
     PythonConstant.init_mixin(self, content)
 
-  def str_of_constant(self):
-    content = ", ".join(" or ".join(str(v) for v in val.data)
+  def str_of_constant(self, printer):
+    content = ", ".join(" or ".join(printer(v) for v in val.data)
                         for val in self.pyval)
     if len(self.pyval) == 1:
       content += ","
@@ -904,8 +914,8 @@ class Dict(Instance, HasSlots, PythonConstant, WrapsDict("pyval")):
     self.could_contain_anything = False
     PythonConstant.init_mixin(self, {})
 
-  def str_of_constant(self):
-    return str({name: " or ".join(str(v) for v in value.data)
+  def str_of_constant(self, printer):
+    return str({name: " or ".join(printer(v) for v in value.data)
                 for name, value in self.pyval.items()})
 
   def __repr__(self):

@@ -895,6 +895,28 @@ class ErrorTest(test_inference.InferenceTest):
     """)
     self.assertErrorLogIs(errors, [(1, "none-attr")])
 
+  def testPrintDictAndTuple(self):
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      tup = None  # type: tuple[int, ...]
+      dct = None  # type: dict[str, int]
+      def f1(x: (int, str)):
+        pass
+      def f2(x: tup):
+        pass
+      def g1(x: {"a": 1}):
+        pass
+      def g2(x: dct):
+        pass
+    """)
+    self.assertErrorLogIs(errors, [
+        (4, "invalid-annotation", r"(int, str).*Not a type"),
+        (6, "invalid-annotation",
+         r"instance of Tuple\[int, \.\.\.\].*Not a type"),
+        (8, "invalid-annotation", r"{'a': '1'}.*Not a type"),
+        (10, "invalid-annotation", r"instance of Dict\[str, int\].*Not a type")
+    ])
+
 
 if __name__ == "__main__":
   test_inference.main()

@@ -243,7 +243,8 @@ class ErrorLog(ErrorLogBase):
                       abstract.Union)):
       return self._pytd_print(t.get_instance_type())
     elif isinstance(t, abstract.PythonConstant):
-      return re.sub(r"(\\n|\s)+", " ", repr(t.pyval))
+      return re.sub(r"(\\n|\s)+", " ",
+                    t.str_of_constant(self._print_as_expected_type))
     elif isinstance(t, abstract.AnnotationClass) or not t.cls:
       return t.name
     else:

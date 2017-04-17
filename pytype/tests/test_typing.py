@@ -217,7 +217,7 @@ class TypingTest(test_inference.InferenceTest):
       def g4(x: Callable[[int or str], bool]): ...  # bad: _ARGS[0] ambiguous
       lst = None  # type: list[int]
       def g5(x: Callable[lst, bool]): ...  # bad: _ARGS not a constant
-      lst = []
+      lst = [str]
       lst[0] = int
       def g6(x: Callable[lst, bool]): ...  # bad: _ARGS not a constant
       def g7(x: Callable[[42], bool]): ...  # bad: _ARGS[0] not a type
@@ -226,7 +226,7 @@ class TypingTest(test_inference.InferenceTest):
     self.assertTypesMatchPytd(ty, """
        from typing import Callable, List, Type
 
-       lst = ...  # type: List[Type[int]]
+       lst = ...  # type: List[Type[str or int]]
 
        def f1(x: Callable) -> None: ...
        def f2(x: Callable) -> None: ...
@@ -246,14 +246,16 @@ class TypingTest(test_inference.InferenceTest):
        def g8(x: Callable) -> None: ...
     """)
     # TODO(rechen): Make sure the error messages are reasonable.
-    self.assertErrorLogIs(errors, [(15, "invalid-annotation"),
-                                   (17, "invalid-annotation"),
-                                   (18, "invalid-annotation"),
-                                   (19, "invalid-annotation"),
-                                   (21, "invalid-annotation"),
-                                   (24, "invalid-annotation"),
-                                   (25, "invalid-annotation"),
-                                   (26, "invalid-annotation"),])
+    self.assertErrorLogIs(errors, [
+        (15, "invalid-annotation", r"'int'.*must be a list of argument types"),
+        (17, "invalid-annotation", r"\[int\] or \[str\].*Must be constant"),
+        (18, "invalid-annotation", r"bool or str.*Must be constant"),
+        (19, "invalid-annotation", r"int or str.*Must be constant"),
+        (21, "invalid-annotation",
+         r"instance of List\[int\].*Must be constant"),
+        (24, "invalid-annotation", r"\[str\].*Must be constant"),
+        (25, "invalid-annotation", r"instance of int.*Not a type"),
+        (26, "invalid-annotation", r"Callable.*Expected 2.*got 3"),])
 
   def test_generics(self):
     with utils.Tempdir() as d:
