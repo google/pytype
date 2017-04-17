@@ -20,7 +20,7 @@ class TypingOverlay(abstract.Module):
     for cls in ast.classes:
       _, name = cls.name.rsplit(".", 1)
       if name not in member_map and pytd.IsContainer(cls) and cls.template:
-        member_map[name] = build_container
+        member_map[name] = TypingContainer
     super(TypingOverlay, self).__init__(vm, "typing", member_map)
     self.real_module = vm.convert.constant_to_value(
         ast, subst={}, node=vm.root_cfg_node)
@@ -51,17 +51,35 @@ class Union(abstract.AnnotationClass):
     super(Union, self).__init__(name, vm)
     self.options = options
 
-  def _build_value(self, node, inner):
+  def _build_value(self, node, inner, _):
     return abstract.Union(self.options + inner, self.vm)
 
 
-class Callable(abstract.AnnotationContainer):
+class TypingContainer(abstract.AnnotationContainer):
 
   def __init__(self, name, vm):
-    base = abstract.get_atomic_value(vm.convert.function_type)
-    super(Callable, self).__init__(name, vm, base)
+    if name in pep484.PEP484_CAPITALIZED:
+      pytd_name = "__builtin__." + name.lower()
+    else:
+      pytd_name = "typing." + name
+    base = vm.convert.name_to_value(pytd_name)
+    super(TypingContainer, self).__init__(name, vm, base)
 
-  def _build_value(self, node, inner):
+
+class Tuple(TypingContainer):
+
+  def _get_value_info(self, inner, ends_with_ellipsis):
+    if not ends_with_ellipsis:
+      template = range(len(inner)) + [abstract.T]
+      inner += (abstract.merge_values(inner, self.vm),)
+      return template, inner, abstract.TupleClass
+    else:
+      return super(Tuple, self)._get_value_info(inner, ends_with_ellipsis)
+
+
+class Callable(TypingContainer):
+
+  def _build_value(self, node, inner, ends_with_ellipsis):
     # We don't do anything with Callable parameters yet.
     return self.base_cls
 
@@ -163,15 +181,6 @@ class Cast(abstract.PyTDFunction):
     return super(Cast, self).call(node, func, args)
 
 
-def build_container(name, vm):
-  if name in pep484.PEP484_CAPITALIZED:
-    pytd_name = "__builtin__." + name.lower()
-  else:
-    pytd_name = "typing." + name
-  base = vm.convert.name_to_value(pytd_name)
-  return abstract.AnnotationContainer(name, vm, base)
-
-
 def build_any(name, vm):
   del name
   return abstract.Unsolvable(vm)
@@ -209,6 +218,7 @@ typing_overload = {
     "Generic": build_generic,
     "NamedTuple": build_namedtuple,
     "Optional": build_optional,
+    "Tuple": Tuple,
     "TypeVar": TypeVar,
     "Union": Union,
     "TYPE_CHECKING": build_typechecking,

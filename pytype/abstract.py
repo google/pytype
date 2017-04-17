@@ -116,17 +116,6 @@ def get_views(variables, node, filter_strict=False):
     yield view
 
 
-def _maybe_extract_tuple(node, t):
-  """Returns a tuple of Variables."""
-  values = t.Data(node)
-  if len(values) > 1:
-    return (t,)
-  v, = values
-  if not isinstance(v, Tuple):
-    return (t,)
-  return v.pyval
-
-
 class AtomicAbstractValue(object):
   """A single abstract value such as a type or function signature.
 
@@ -1044,10 +1033,22 @@ class AnnotationClass(SimpleAbstractValue, HasSlots):
     HasSlots.init_mixin(self)
     self.set_slot("__getitem__", self.getitem_slot)
 
+  @staticmethod
+  def _maybe_extract_tuple(node, t):
+    """Returns a tuple of Variables."""
+    values = t.Data(node)
+    if len(values) > 1:
+      return (t,)
+    v, = values
+    if not isinstance(v, Tuple):
+      return (t,)
+    return v.pyval
+
   def getitem_slot(self, node, slice_var):
     """Custom __getitem__ implementation."""
     inner = []
-    slice_content = _maybe_extract_tuple(node, slice_var)
+    slice_content = self._maybe_extract_tuple(node, slice_var)
+    ends_with_ellipsis = False
     for var in slice_content:
       if len(var.bindings) > 1:
         self.vm.errorlog.ambiguous_annotation(
@@ -1055,15 +1056,20 @@ class AnnotationClass(SimpleAbstractValue, HasSlots):
         inner.append(self.vm.convert.unsolvable)
       else:
         val = var.bindings[0].data
-        if val is self.vm.convert.ellipsis and (len(inner) != 1 or
-                                                len(slice_content) != 2):
+        if val is self.vm.convert.ellipsis:
+          # An ellipsis is usually a shorthand for "Any", so we turn it into an
+          # unsolvable. However, we also need to know if an ellipsis was at the
+          # end of the parameters list, since in that case it can instead
+          # indicate a homogeneous container.
+          if len(inner) == len(slice_content) - 1:
+            ends_with_ellipsis = True
           inner.append(self.vm.convert.unsolvable)
         else:
           inner.append(val)
-    value = self._build_value(node, tuple(inner))
+    value = self._build_value(node, tuple(inner), ends_with_ellipsis)
     return node, value.to_variable(node)
 
-  def _build_value(self, node, inner):
+  def _build_value(self, node, inner, ends_with_ellipsis):
     raise NotImplementedError(self.__class__.__name__)
 
   def __repr__(self):
@@ -1077,17 +1083,15 @@ class AnnotationContainer(AnnotationClass):
     super(AnnotationContainer, self).__init__(name, vm)
     self.base_cls = base_cls
 
-  def _build_value(self, node, inner):
-    if (inner[-1] is not self.vm.convert.ellipsis and
-        [self.base_cls] == self.vm.convert.tuple_type.data):
-      template = range(len(inner)) + [T]
-      inner += (merge_values(inner, self.vm),)
-      abstract_class = TupleClass
-    else:
-      template = tuple(t.name for t in self.base_cls.template)
-      if inner[-1] is self.vm.convert.ellipsis:
-        inner = inner[:-1]
-      abstract_class = ParameterizedClass
+  def _get_value_info(self, inner, ends_with_ellipsis):
+    template = tuple(t.name for t in self.base_cls.template)
+    if ends_with_ellipsis:
+      inner = inner[:-1]
+    return template, inner, ParameterizedClass
+
+  def _build_value(self, node, inner, ends_with_ellipsis):
+    template, inner, abstract_class = self._get_value_info(
+        inner, ends_with_ellipsis)
     if len(inner) > len(template):
       error = "Expected %d parameter(s), got %d" % (len(template), len(inner))
       self.vm.errorlog.invalid_annotation(
