@@ -366,7 +366,8 @@ class HomogeneousTypeTest(_ParserTestBase):
 
   def test_implied_tuple(self):
     self.check("x = ...  # type: []",
-               "x = ...  # type: tuple")
+               "x = ...  # type: Tuple[nothing, ...]",
+               prologue="from typing import Tuple")
     self.check("x = ...  # type: [int]",
                "x = ...  # type: Tuple[int]",
                prologue="from typing import Tuple")
@@ -379,9 +380,11 @@ class NamedTupleTest(_ParserTestBase):
 
   def test_no_fields(self):
     self.check("x = ...  # type: NamedTuple(foo, [])", """\
+      from typing import Tuple
+
       x = ...  # type: `foo`
 
-      class `foo`(tuple):
+      class `foo`(Tuple[nothing, ...]):
           pass
       """)
 

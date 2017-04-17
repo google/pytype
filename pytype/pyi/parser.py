@@ -571,7 +571,8 @@ class _Parser(object):
     if parameters:
       return pytd.TupleType(base_type=base_type, parameters=parameters)
     else:
-      return base_type
+      return pytd.GenericType(base_type=base_type,
+                              parameters=(pytd.NothingType(),))
 
   def _parameterized_type(self, base_type, parameters):
     """Return a parameterized type."""
