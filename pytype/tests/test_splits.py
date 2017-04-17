@@ -683,6 +683,16 @@ class SplitTest(test_inference.InferenceTest):
       x = ...  # type: Dict[str, int or complex]
     """)
 
+  def testNoneOrTuple(self):
+    # This sets the attribute retrieval code in vm.py:_get_iter
+    self.assertNoErrors("""
+      foo = (0, 0)
+      if __any_object__:
+        foo = None
+      if foo:
+        a, b = foo
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

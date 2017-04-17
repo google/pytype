@@ -951,22 +951,22 @@ class VirtualMachine(object):
     log.debug("getting attr %s from %r", attr, obj)
     node = state.node
     nodes = []
+    values_without_attribute = []
     for val in obj.Bindings(node):
       node2, attr_var = self.attribute_handler.get_attribute_generic(
           node, val.data, attr, val)
       if attr_var is None or not attr_var.bindings:
         log.debug("No %s on %s", attr, val.data.__class__)
+        values_without_attribute.append(val)
         continue
       log.debug("got choice for attr %s from %r of %r (0x%x): %r", attr, obj,
                 val.data, id(val.data), attr_var)
-      if not attr_var:
-        continue
       result.PasteVariable(attr_var, node2)
       nodes.append(node2)
     if nodes:
-      return self.join_cfg_nodes(nodes), result
+      return self.join_cfg_nodes(nodes), result, values_without_attribute
     else:
-      return node, None
+      return node, None, values_without_attribute
 
   def _is_only_none(self, node, obj):
     # TODO(kramm): Report an error for *any* None, as opposed to *all* None?
@@ -984,7 +984,7 @@ class VirtualMachine(object):
     return state
 
   def load_attr(self, state, obj, attr):
-    node, result = self._retrieve_attr(state, obj, attr)
+    node, result, _ = self._retrieve_attr(state, obj, attr)
     if result is None:
       if obj.bindings:
         if self._is_only_none(state.node, obj):
@@ -995,7 +995,7 @@ class VirtualMachine(object):
     return state.change_cfg_node(node), result
 
   def load_attr_noerror(self, state, obj, attr):
-    node, result = self._retrieve_attr(state, obj, attr)
+    node, result, _ = self._retrieve_attr(state, obj, attr)
     return state.change_cfg_node(node), result
 
   def store_attr(self, state, obj, attr, value):
@@ -1122,7 +1122,8 @@ class VirtualMachine(object):
       # Call __iter__()
       state, itr = self.call_function_with_state(state, func, ())
     else:
-      state, func = self.load_attr_noerror(state, seq, "__getitem__")
+      node, func, missing = self._retrieve_attr(state, seq, "__getitem__")
+      state = state.change_cfg_node(node)
       if func:
         # TODO(dbaum): Consider delaying the call to __getitem__ until
         # the iterator's next() is called.  That would more closely match
@@ -1136,9 +1137,10 @@ class VirtualMachine(object):
         itr = abstract.Iterator(self, item).to_variable(state.node)
       else:
         # Cannot iterate this object.
-        if seq.bindings:
-          self.errorlog.attribute_error(
-              self.frame.current_opcode, seq, "__iter__")
+        for m in missing:
+          if state.node.HasCombination([m]):
+            self.errorlog.attribute_error(
+                self.frame.current_opcode, seq, "__iter__")
         itr = self.convert.create_new_unsolvable(state.node)
     return state, itr
 
