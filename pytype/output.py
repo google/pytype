@@ -44,6 +44,9 @@ class Converter(object):
 
   def _value_to_parameter_types(self, node, v, instance, template, seen, view):
     """Get PyTD types for the parameters of an instance of an abstract value."""
+    if v.full_name == "typing.Callable":
+      # TODO(rechen): Handle Callable parameters.
+      return []
     if self._is_tuple(v, instance):
       assert len(template) == 1 and template[0] == abstract.T, template
       if isinstance(v, abstract.TupleClass):

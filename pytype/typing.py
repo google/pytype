@@ -102,13 +102,10 @@ class Callable(TypingContainer):
 
   def _get_value_info(self, inner, ends_with_ellipsis):
     if isinstance(inner[0], list):
-      # TODO(rechen): We'll want to use a similar approach to what we did
-      # with Tuple, defining an abstract.Callable that uses template names
-      # 0, ..., n-1 for the n types in _ARGS.
-      template = tuple(t.name for t in self.base_cls.template)
+      template = range(len(inner[0])) + [t.name for t in self.base_cls.template]
       combined_args = abstract.merge_values(inner[0], self.vm, formal=True)
-      inner = (combined_args,) + inner[1:]
-      return template, inner, abstract.ParameterizedClass
+      inner = tuple(inner[0]) + (combined_args,) + inner[1:]
+      return template, inner, abstract.Callable
     else:
       return super(Callable, self)._get_value_info(inner, ends_with_ellipsis)
 

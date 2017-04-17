@@ -1,11 +1,8 @@
 """Tests for typing.py."""
 
-import textwrap
-
 
 from pytype import utils
 from pytype.pytd import pep484
-from pytype.pytd import pytd
 from pytype.tests import test_inference
 
 
@@ -226,10 +223,8 @@ class TypingTest(test_inference.InferenceTest):
       def g7(x: Callable[[42], bool]): ...  # bad: _ARGS[0] not a type
       def g8(x: Callable[[], bool, int]): ...  # bad: Too many params
     """)
-    # TODO(rechen): Use assertTypesMatchPytd once Callable is printed properly.
-    result = pytd.Print(ty)
-    self.assertMultiLineEqual(result, textwrap.dedent("""\
-       from typing import Any, Callable, List, Type, Union
+    self.assertTypesMatchPytd(ty, """
+       from typing import Callable, List, Type
 
        lst = ...  # type: List[Type[int]]
 
@@ -248,7 +243,8 @@ class TypingTest(test_inference.InferenceTest):
        def g5(x: Callable) -> None: ...
        def g6(x: Callable) -> None: ...
        def g7(x) -> None: ...
-       def g8(x: Callable) -> None: ..."""))
+       def g8(x: Callable) -> None: ...
+    """)
     # TODO(rechen): Make sure the error messages are reasonable.
     self.assertErrorLogIs(errors, [(15, "invalid-annotation"),
                                    (17, "invalid-annotation"),

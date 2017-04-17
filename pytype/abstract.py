@@ -2054,6 +2054,10 @@ class TupleClass(ParameterizedClass):
     return Tuple(content, self.vm).to_variable(node)
 
 
+class Callable(ParameterizedClass):
+  """A Callable with a list of argument types."""
+
+
 class PyTDClass(SimpleAbstractValue, Class):
   """An abstract wrapper for PyTD class objects.
 

@@ -548,9 +548,6 @@ class PrintVisitor(Visitor):
 
   def VisitGenericType(self, node):
     """Convert a generic type to a string."""
-    if self.old_node.base_type.name == "typing.Callable":
-      # TODO(rechen): Print Callable properly.
-      return node.base_type
     ellipsis = ", ..." if self._NeedsTupleEllipsis(node) else ""
     param_str = ", ".join(node.parameters)
     return (self.MaybeCapitalize(node.base_type) +
