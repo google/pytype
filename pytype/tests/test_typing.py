@@ -1,8 +1,11 @@
 """Tests for typing.py."""
 
+import textwrap
+
 
 from pytype import utils
 from pytype.pytd import pep484
+from pytype.pytd import pytd
 from pytype.tests import test_inference
 
 
@@ -193,6 +196,68 @@ class TypingTest(test_inference.InferenceTest):
         def g() -> Callable:
           return int
       """, pythonpath=[d.path])
+
+  def test_callable_parameters(self):
+    ty, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      from typing import Any, Callable
+
+      # The below are all valid. We treat "..." and Any as synonymous, and if
+      # _RET is omitted, its value defaults to Any.
+      def f1(x: Callable[[int, str], bool]): ...
+      def f2(x: Callable[..., bool]): ...
+      def f3(x: Callable[[int, ...], bool]): ...
+      def f4(x: Callable[[..., bool], bool]): ...
+      def f5(x: Callable[Any, bool]): ...
+      def f6(x: Callable[[int, str], ...]): ...
+      def f7(x: Callable[[], bool]): ...
+      def f8(x: Callable[[int, str]]): ...
+
+      def g1(x: Callable[int, bool]): ...  # bad: _ARGS not a list
+      lst = [int] if __any_object__ else [str]
+      def g2(x: Callable[lst, bool]): ...  # bad: _ARGS ambiguous
+      def g3(x: Callable[[], bool or str]): ...  # bad: _RET ambiguous
+      def g4(x: Callable[[int or str], bool]): ...  # bad: _ARGS[0] ambiguous
+      lst = None  # type: list[int]
+      def g5(x: Callable[lst, bool]): ...  # bad: _ARGS not a constant
+      lst = []
+      lst[0] = int
+      def g6(x: Callable[lst, bool]): ...  # bad: _ARGS not a constant
+      def g7(x: Callable[[42], bool]): ...  # bad: _ARGS[0] not a type
+      def g8(x: Callable[[], bool, int]): ...  # bad: Too many params
+    """)
+    # TODO(rechen): Use assertTypesMatchPytd once Callable is printed properly.
+    result = pytd.Print(ty)
+    self.assertMultiLineEqual(result, textwrap.dedent("""\
+       from typing import Any, Callable, List, Type, Union
+
+       lst = ...  # type: List[Type[int]]
+
+       def f1(x: Callable) -> None: ...
+       def f2(x: Callable) -> None: ...
+       def f3(x: Callable) -> None: ...
+       def f4(x: Callable) -> None: ...
+       def f5(x: Callable) -> None: ...
+       def f6(x: Callable) -> None: ...
+       def f7(x: Callable) -> None: ...
+       def f8(x: Callable) -> None: ...
+       def g1(x: Callable) -> None: ...
+       def g2(x: Callable) -> None: ...
+       def g3(x: Callable) -> None: ...
+       def g4(x: Callable) -> None: ...
+       def g5(x: Callable) -> None: ...
+       def g6(x: Callable) -> None: ...
+       def g7(x) -> None: ...
+       def g8(x: Callable) -> None: ..."""))
+    # TODO(rechen): Make sure the error messages are reasonable.
+    self.assertErrorLogIs(errors, [(15, "invalid-annotation"),
+                                   (17, "invalid-annotation"),
+                                   (18, "invalid-annotation"),
+                                   (19, "invalid-annotation"),
+                                   (21, "invalid-annotation"),
+                                   (24, "invalid-annotation"),
+                                   (25, "invalid-annotation"),
+                                   (26, "invalid-annotation"),])
 
   def test_generics(self):
     with utils.Tempdir() as d:

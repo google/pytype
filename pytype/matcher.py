@@ -198,6 +198,11 @@ class AbstractMatcher(object):
           "__builtin__.module", "__builtin__.object", "types.ModuleType"]:
         return subst
     elif isinstance(left, abstract.SimpleAbstractValue):
+      if (left.cls and
+          any(v.full_name == "typing.Callable" for v in left.cls.data) and
+          other_type.full_name == "typing.Callable"):
+        # TODO(rechen): Implement proper matching for Callable.
+        return subst
       return self._match_instance_against_type(
           left, other_type, subst, node, view)
     elif isinstance(left, abstract.SuperInstance):

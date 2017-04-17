@@ -78,10 +78,39 @@ class Tuple(TypingContainer):
 
 
 class Callable(TypingContainer):
+  """Implementation of typing.Callable[...]."""
 
-  def _build_value(self, node, inner, ends_with_ellipsis):
-    # We don't do anything with Callable parameters yet.
-    return self.base_cls
+  def getitem_slot(self, node, slice_var):
+    content = self._maybe_extract_tuple(node, slice_var)
+    inner, ends_with_ellipsis = self._build_inner(content)
+    args = inner[0]
+    if isinstance(args, abstract.List) and not args.could_contain_anything:
+      inner[0], _ = self._build_inner(args.pyval)
+    else:
+      if args.cls and any(v.full_name == "__builtin__.list"
+                          for v in args.cls.data):
+        self.vm.errorlog.invalid_annotation(
+            self.vm.frame.current_opcode, args, "Must be constant")
+      elif (args is not self.vm.convert.ellipsis and
+            not isinstance(args, abstract.Unsolvable)):
+        self.vm.errorlog.invalid_annotation(
+            self.vm.frame.current_opcode, args,
+            "First argument to Callable must be a list of argument types.")
+      inner[0] = self.vm.convert.unsolvable
+    value = self._build_value(node, tuple(inner), ends_with_ellipsis)
+    return node, value.to_variable(node)
+
+  def _get_value_info(self, inner, ends_with_ellipsis):
+    if isinstance(inner[0], list):
+      # TODO(rechen): We'll want to use a similar approach to what we did
+      # with Tuple, defining an abstract.Callable that uses template names
+      # 0, ..., n-1 for the n types in _ARGS.
+      template = tuple(t.name for t in self.base_cls.template)
+      combined_args = abstract.merge_values(inner[0], self.vm, formal=True)
+      inner = (combined_args,) + inner[1:]
+      return template, inner, abstract.ParameterizedClass
+    else:
+      return super(Callable, self)._get_value_info(inner, ends_with_ellipsis)
 
 
 class TypeVarError(Exception):

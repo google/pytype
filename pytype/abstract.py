@@ -79,10 +79,10 @@ def get_atomic_python_constant(variable, constant_type=None):
   return atomic.vm.convert.value_to_constant(atomic, constant_type)
 
 
-def merge_values(values, vm):
+def merge_values(values, vm, formal=False):
   """Merge a collection of values into a single one."""
   if not values:
-    return vm.convert.empty
+    return vm.convert.nothing if formal else vm.convert.empty
   elif len(values) == 1:
     return next(iter(values))
   else:
@@ -1046,8 +1046,14 @@ class AnnotationClass(SimpleAbstractValue, HasSlots):
 
   def getitem_slot(self, node, slice_var):
     """Custom __getitem__ implementation."""
-    inner = []
     slice_content = self._maybe_extract_tuple(node, slice_var)
+    inner, ends_with_ellipsis = self._build_inner(slice_content)
+    value = self._build_value(node, tuple(inner), ends_with_ellipsis)
+    return node, value.to_variable(node)
+
+  def _build_inner(self, slice_content):
+    """Build the list of parameters."""
+    inner = []
     ends_with_ellipsis = False
     for var in slice_content:
       if len(var.bindings) > 1:
@@ -1066,8 +1072,7 @@ class AnnotationClass(SimpleAbstractValue, HasSlots):
           inner.append(self.vm.convert.unsolvable)
         else:
           inner.append(val)
-    value = self._build_value(node, tuple(inner), ends_with_ellipsis)
-    return node, value.to_variable(node)
+    return inner, ends_with_ellipsis
 
   def _build_value(self, node, inner, ends_with_ellipsis):
     raise NotImplementedError(self.__class__.__name__)
