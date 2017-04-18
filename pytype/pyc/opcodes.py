@@ -1020,7 +1020,8 @@ def _dis(data, mapping,
         oparg += pos
       pretty = _prettyprint_arg(cls, oparg, co_consts, co_names, co_varnames,
                                 cellvars_freevars)
-      code.append(cls(index, line, oparg, pretty))
+      code.append(
+          cls(index, line, oparg, pretty))  # pytype: disable=wrong-arg-count
     else:
       assert not extended_arg, "EXTENDED_ARG in front of opcode without arg"
       code.append(cls(index, line))
