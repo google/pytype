@@ -213,6 +213,14 @@ class TestAttributes(test_inference.InferenceTest):
       x = ...  # type: int
     """)
 
+  def testAttrOnOptional(self):
+    self.assertNoErrors("""
+      from __future__ import google_type_annotations
+      from typing import Optional
+      def f(x: Optional[str]):
+        return x.upper()
+    """, strict_attr_checking=True)
+
 
 if __name__ == "__main__":
   test_inference.main()

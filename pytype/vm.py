@@ -968,11 +968,16 @@ class VirtualMachine(object):
     else:
       return node, None, values_without_attribute
 
+  def _is_none(self, x):
+    assert isinstance(x, abstract.AtomicAbstractValue)
+    return (getattr(x, "cls", False) and
+            x.cls.data == self.convert.none_type.data)
+
   def _is_only_none(self, node, obj):
     # TODO(kramm): Report an error for *any* None, as opposed to *all* None?
     has_none = True
     for x in obj.Data(node):
-      if getattr(x, "cls", False) and x.cls.data == self.convert.none_type.data:
+      if self._is_none(x):
         has_none = True
       else:
         return False
@@ -984,17 +989,23 @@ class VirtualMachine(object):
     return state
 
   def load_attr(self, state, obj, attr):
-    node, result, _ = self._retrieve_attr(state, obj, attr)
+    """Try loading an attribute, and report errors."""
+    node, result, errors = self._retrieve_attr(state, obj, attr)
+    if errors and obj.bindings and self._is_only_none(state.node, obj):
+      self.errorlog.none_attr(self.frame.current_opcode, attr)
+    elif self.options.strict_attr_checking or (not result and obj.bindings):
+      for error in errors:
+        if not self._is_none(error.data) and state.node.HasCombination([error]):
+          self.errorlog.attribute_error(
+              self.frame.current_opcode,
+              error.AssignToNewVariable(self.root_cfg_node),
+              attr)
     if result is None:
-      if obj.bindings:
-        if self._is_only_none(state.node, obj):
-          self.errorlog.none_attr(self.frame.current_opcode, attr)
-        else:
-          self.errorlog.attribute_error(self.frame.current_opcode, obj, attr)
       result = self.convert.create_new_unsolvable(node)
     return state.change_cfg_node(node), result
 
   def load_attr_noerror(self, state, obj, attr):
+    """Try loading an attribute, ignore errors."""
     node, result, _ = self._retrieve_attr(state, obj, attr)
     return state.change_cfg_node(node), result
 

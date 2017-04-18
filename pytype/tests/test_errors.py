@@ -253,7 +253,7 @@ class ErrorTest(test_inference.InferenceTest):
       self.assertErrorLogIs(errors, [
           (5, "attribute-error", r"No attribute 'foo' on Type\[Foo\]"),
           (11, "attribute-error",
-           r"No attribute 'bar' on Optional\[int\]"),
+           r"No attribute 'bar' on int"),
           (15, "attribute-error",
            "No attribute 'baz' on module 'modfoo'")])
 
@@ -894,6 +894,25 @@ class ErrorTest(test_inference.InferenceTest):
       3 in None
     """)
     self.assertErrorLogIs(errors, [(1, "none-attr")])
+
+  def testNoAttrError(self):
+    self.assertNoErrors("""\
+      if __any_object__:
+        y = 42
+      else:
+        y = "foo"
+      y.upper
+    """, strict_attr_checking=False)
+
+  def testAttrError(self):
+    _, errors = self.InferAndCheck("""\
+      if __any_object__:
+        y = 42
+      else:
+        y = "foo"
+      y.upper
+    """, strict_attr_checking=True)
+    self.assertErrorLogIs(errors, [(5, "attribute-error", "upper.*int")])
 
   def testPrintDictAndTuple(self):
     _, errors = self.InferAndCheck("""\

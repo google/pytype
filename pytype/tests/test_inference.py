@@ -96,13 +96,14 @@ class InferenceTest(unittest.TestCase):
   # TODO(kramm): Rename this function.
   # pylint: disable=invalid-name
   def assertNoErrors(self, code, raises=None,
-                     pythonpath=(),
+                     pythonpath=(), strict_attr_checking=False,
                      report_errors=True):
     """Run an inference smoke test for the given code."""
     if raises is not None:
       # TODO(kramm): support this
       log.warning("Ignoring 'raises' parameter to assertNoErrors")
     self.options.tweak(pythonpath=pythonpath)
+    self.options.tweak(strict_attr_checking=strict_attr_checking)
     errorlog = errors.ErrorLog()
     loader = load_pytd.Loader(self.options.module_name, self.options)
     infer.check_types(
@@ -116,8 +117,10 @@ class InferenceTest(unittest.TestCase):
   def assertNoCrash(self, code, **kwargs):
     self.assertNoErrors(code, report_errors=False, **kwargs)
 
-  def InferAndCheck(self, code, deep=True, pythonpath=(), **kwargs):
+  def InferAndCheck(self, code, deep=True, pythonpath=(),
+                    strict_attr_checking=False, **kwargs):
     self.options.tweak(pythonpath=pythonpath)
+    self.options.tweak(strict_attr_checking=strict_attr_checking)
     code = textwrap.dedent(code)
     errorlog = errors.ErrorLog()
     loader = load_pytd.Loader(self.options.module_name, self.options)

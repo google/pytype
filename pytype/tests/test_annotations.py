@@ -633,7 +633,7 @@ class AnnotationTest(test_inference.InferenceTest):
     """, deep=True)
 
   def testImpreciseAnnotation(self):
-    ty = self.Infer("""
+    ty, errors = self.InferAndCheck("""
       from __future__ import google_type_annotations
       from typing import Union
       class A: pass
@@ -642,7 +642,7 @@ class AnnotationTest(test_inference.InferenceTest):
       def f(v: Union[A, B]):
         return v.x
       f(A())
-    """)
+    """, strict_attr_checking=True)
     self.assertTypesMatchPytd(ty, """
       from typing import Union
       class A: ...
@@ -650,6 +650,7 @@ class AnnotationTest(test_inference.InferenceTest):
         x = ...  # type: int
       def f(v: Union[A, B]) -> int: ...
     """)
+    self.assertErrorLogIs(errors, [(8, "attribute-error", "x.*A")])
 
   def testTuple(self):
     ty = self.Infer("""

@@ -138,12 +138,14 @@ class TypingTest(test_inference.InferenceTest):
     """)
 
   def test_type_union(self):
-    self.assertNoErrors("""\
+    _, errors = self.InferAndCheck("""\
       from __future__ import google_type_annotations
       from typing import Type, Union
       class Foo:
         bar = ...  # type: int
       def f1(x: Type[Union[int, Foo]]):
+        # Currently not an error, since attributes on Unions are retrieved
+        # differently.  See get_attribute() in attribute.py.
         x.bar
       def f2(x: Union[Type[int], Type[Foo]]):
         x.bar
@@ -151,7 +153,8 @@ class TypingTest(test_inference.InferenceTest):
       def f3(x: Type[Union[int, Foo]]):
         f1(x)
         f2(x)
-    """)
+    """, strict_attr_checking=True)
+    self.assertErrorLogIs(errors, [(10, "attribute-error", "bar.*int")])
 
   def test_generate_type_alias(self):
     ty = self.Infer("""

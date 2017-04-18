@@ -137,6 +137,11 @@ class Options(object):
         help=("Do not use typeshed to look up types in the Python stdlib. "
               "For testing."))
     o.add_option(
+        "--strict-attr-checking", action="store_true",
+        dest="strict_attr_checking", default=False,
+        help=("Complain about attribute errors even if only some of the"
+              "options of a variable don't have the attribute."))
+    o.add_option(
         "--nofail", action="store_true",
         dest="nofail", default=False,
         help=("Don't allow pytype to fail."))
