@@ -1605,10 +1605,13 @@ class PyTDSignature(object):
         ret_map[t] = self.vm.convert.constant_to_var(
             AsInstance(return_type), subst, node, source_sets=[sources])
       except self.vm.convert.TypeParameterError:
-        # The return type contains a type parameter without a substitution. See
-        # test_functions.test_type_parameter_in_return for an example of a
-        # return type being set to Unknown here and solved later.
-        ret_map[t] = Unknown(self.vm).to_variable(node)
+        # The return type contains a type parameter without a substitution.
+        subst = subst.copy()
+        for t in self.pytd_sig.template:
+          if t.name not in subst:
+            subst[t.name] = self.vm.convert.empty.to_variable(node)
+        ret_map[t] = self.vm.convert.constant_to_var(
+            AsInstance(return_type), subst, node, source_sets=[sources])
       else:
         if (not ret_map[t].bindings and
             isinstance(return_type, pytd.TypeParameter)):

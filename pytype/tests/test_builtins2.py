@@ -504,7 +504,9 @@ class BuiltinTests2(test_inference.InferenceTest):
       x6 = ...  # type: tupleiterator[int]
       x7 = ...  # type: setiterator[int]
       x8 = ...  # type: `dictionary-keyiterator`[str]
-      x9 = ...  # type: `callable-iterator`
+      # The "nothing" is due to pytype ignoring Callable parameters and
+      # therefore not seeing the type parameter value tucked away in _RET.
+      x9 = ...  # type: `callable-iterator`[nothing]
     """)
 
   def testListInit(self):

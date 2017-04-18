@@ -3,6 +3,7 @@
 import unittest
 
 
+from pytype import utils
 from pytype.tests import test_inference
 
 
@@ -86,6 +87,30 @@ class DecoratorsTest(test_inference.InferenceTest):
       foo = ...  # type: Foo
       x = ...  # type: int
     """)
+
+  def testInferCalledDecoratedMethod(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import Any, Callable, List, TypeVar
+        T = TypeVar("T")
+        def decorator(x: Callable[Any, T]) -> Callable[Any, T]: ...
+      """)
+      ty = self.Infer("""
+        import foo
+        class A(object):
+          @foo.decorator
+          def f(self, x=None):
+            pass
+        A().f(42)
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        from typing import Any, Callable
+        foo = ...  # type: module
+        class A(object):
+          # "nothing" is present because pytype does not see type parameter
+          # values in Callable parameters.
+          f = ...  # type: Callable[Any, nothing]
+      """)
 
 
 if __name__ == "__main__":
