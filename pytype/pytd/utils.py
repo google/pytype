@@ -42,15 +42,17 @@ def UnpackUnion(t):
 
 def MakeClassOrContainerType(base_type, type_arguments, homogeneous):
   """If we have type params, build a generic type, a normal type otherwise."""
-  if homogeneous:
-    assert len(type_arguments) == 1
-    return pytd.GenericType(base_type, tuple(type_arguments))
-  elif base_type.name in ("__builtin__.tuple", "typing.Tuple"):
-    return pytd.TupleType(base_type, tuple(type_arguments))
-  elif not type_arguments:
+  if not type_arguments:
     return base_type
+  if homogeneous:
+    container_type = pytd.GenericType
+  elif base_type.name == "typing.Callable":
+    container_type = pytd.CallableType
+  elif base_type.name in ("__builtin__.tuple", "typing.Tuple"):
+    container_type = pytd.TupleType
   else:
-    return pytd.GenericType(base_type, tuple(type_arguments))
+    container_type = pytd.GenericType
+  return container_type(base_type, tuple(type_arguments))
 
 
 def Concat(*args, **kwargs):

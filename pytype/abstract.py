@@ -35,6 +35,8 @@ WrapsDict = pytd_utils.WrapsDict  # pylint: disable=invalid-name
 T = "_T"
 K = "_K"
 V = "_V"
+ARGS = "_ARGS"
+RET = "_RET"
 
 
 class ConversionError(ValueError):

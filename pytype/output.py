@@ -44,9 +44,9 @@ class Converter(object):
 
   def _value_to_parameter_types(self, node, v, instance, template, seen, view):
     """Get PyTD types for the parameters of an instance of an abstract value."""
-    if v.full_name == "typing.Callable":
-      # TODO(rechen): Handle Callable parameters.
-      return []
+    if isinstance(v, abstract.Callable):
+      assert template == (abstract.ARGS, abstract.RET), template
+      template = range(len(v.type_parameters) - 2) + [template[1]]
     if self._is_tuple(v, instance):
       assert len(template) == 1 and template[0] == abstract.T, template
       if isinstance(v, abstract.TupleClass):
@@ -114,6 +114,8 @@ class Converter(object):
         else:
           homogeneous = True
           type_arguments = [pytd.NothingType()]
+      elif v.full_name == "typing.Callable":
+        homogeneous = not isinstance(v, abstract.Callable)
       else:
         homogeneous = len(type_arguments) == 1
       return pytd_utils.MakeClassOrContainerType(
