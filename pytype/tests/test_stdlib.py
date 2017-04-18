@@ -155,6 +155,12 @@ class StdlibTests(test_inference.InferenceTest):
       z = ...  # type: int
     """)
 
+  def testXRange(self):
+    self.assertNoErrors("""
+      import random
+      random.sample(xrange(10), 5)
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

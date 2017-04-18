@@ -830,16 +830,12 @@ class super(nothing):
     def __set__(self, obj, value) -> super
     def __new__(cls: Type[super], ...) -> super
 
-class xrange(Sized, Iterable[int], Reversible[int]):
+class xrange(Sequence[int]):
     def __init__(self, stop: int, ...) -> NoneType
     def __getitem__(self, index: int) -> int
-    def __iter__(self) -> rangeiterator
+    def __iter__(self) -> Iterator[int]
     def __len__(self) -> int
-    def __reversed__(self, ...) -> rangeiterator
-
-class rangeiterator(Iterator[int]):
-    def __iter__(self) -> rangeiterator
-    def next(self) -> int
+    def __reversed__(self, ...) -> Iterator[int]
 
 # From Python/objects/capsule.c. Used e.g. by datetime.datetime_CAPI
 class PyCapsule(object):
