@@ -9,6 +9,7 @@ import sys
 
 from pytype import abstract
 from pytype import utils
+from pytype.pytd import optimize
 from pytype.pytd import pytd
 from pytype.pytd import utils as pytd_utils
 
@@ -236,7 +237,8 @@ class ErrorLog(ErrorLogBase):
   """ErrorLog with convenience functions."""
 
   def _pytd_print(self, pytd_type):
-    return pytd.Print(pytd_utils.CanonicalOrdering(pytd_type))
+    return pytd.Print(
+        pytd_utils.CanonicalOrdering(optimize.Optimize(pytd_type)))
 
   def _print_as_expected_type(self, t):
     if isinstance(t, (abstract.Unknown, abstract.Unsolvable, abstract.Class,
@@ -424,7 +426,7 @@ class ErrorLog(ErrorLogBase):
   def base_class_error(self, opcode, node, base_var):
     pytd_type = pytd_utils.JoinTypes(t.get_instance_type(node)
                                      for t in base_var.data)
-    self.error(opcode, "Invalid base class: %s" % pytd.Print(pytd_type))
+    self.error(opcode, "Invalid base class: %s" % self._pytd_print(pytd_type))
 
   @_error_name("missing-definition")
   def missing_definition(self, item, pytd_filename, py_filename):
@@ -434,8 +436,8 @@ class ErrorLog(ErrorLogBase):
   @_error_name("bad-return-type")
   def bad_return_type(self, opcode, actual_pytd, expected_pytd):
     details = "".join([
-        "Expected: ", pytd.Print(expected_pytd), "\n",
-        "Actually returned: ", pytd.Print(actual_pytd),
+        "Expected: ", self._pytd_print(expected_pytd), "\n",
+        "Actually returned: ", self._pytd_print(actual_pytd),
     ])
     self.error(opcode, "bad option in return type", details)
 
@@ -445,7 +447,7 @@ class ErrorLog(ErrorLogBase):
     right = pytd_utils.JoinTypes(t.to_type(node) for t in var2.data)
     # TODO(kramm): Display things like '__add__' as '+'
     self.error(opcode, "unsupported operand type(s) for %s: %r and %r" % (
-        operation, pytd.Print(left), pytd.Print(right)))
+        operation, self._pytd_print(left), self._pytd_print(right)))
 
   def invalid_annotation(self, opcode, annot, details, name=None):
     self._invalid_annotation(opcode, self._print_as_expected_type(annot),

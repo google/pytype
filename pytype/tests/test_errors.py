@@ -554,7 +554,7 @@ class ErrorTest(test_inference.InferenceTest):
           return super(self, B).f()  # should be super(B, self)
     """, deep=True)
     self.assertErrorLogIs(errors, [
-        (7, "wrong-arg-types", r"cls: Type\[Any\].*cls: B")])
+        (7, "wrong-arg-types", r"cls: type.*cls: B")])
 
   @unittest.skip("Need to type-check second argument to super")
   def testBadSuperInstance(self):
@@ -829,8 +829,7 @@ class ErrorTest(test_inference.InferenceTest):
     self.assertErrorLogIs(errors, [
         (3, "name-error", r"nonsense"),
         (5, "name-error", r"nonsense"),
-        (5, "wrong-arg-types",
-         r"Expected:.*x: List\[Any\].*Actual.*x: Set\[Any\]")])
+        (5, "wrong-arg-types", r"Expected:.*x: list.*Actual.*x: set")])
 
   def testPrintUnionOfContainers(self):
     _, errors = self.InferAndCheck("""\
@@ -843,7 +842,7 @@ class ErrorTest(test_inference.InferenceTest):
         x = [float]
       f(x)
     """)
-    error = r"Actual.*Union\[List\[Type\[float\]\], Type\[Dict\[Any, Any\]\]\]"
+    error = r"Actual.*Union\[List\[Type\[float\]\], Type\[dict\]\]"
     self.assertErrorLogIs(errors, [(8, "wrong-arg-types", error)])
 
   def testBadDictAttribute(self):
@@ -935,6 +934,16 @@ class ErrorTest(test_inference.InferenceTest):
         (8, "invalid-annotation", r"{'a': '1'}.*Not a type"),
         (10, "invalid-annotation", r"instance of Dict\[str, int\].*Not a type")
     ])
+
+  def testMoveUnionInward(self):
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      def f() -> str:
+        y = "hello" if __any_object__ else u"hello"
+        yield y
+    """)
+    self.assertErrorLogIs(errors, [(
+        4, "bad-return-type", r"Generator\[Union\[str, unicode\], Any, Any\]")])
 
 
 if __name__ == "__main__":

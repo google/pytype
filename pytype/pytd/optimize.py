@@ -1089,7 +1089,7 @@ class MergeTypeParameters(TypeParameterScope):
 
 
 def Optimize(node,
-             builtins,
+             builtins=None,
              lossy=False,
              use_abcs=False,
              max_union=7,
@@ -1124,17 +1124,15 @@ def Optimize(node,
   node = node.Visit(ApplyOptionalArguments())
   node = node.Visit(CombineContainers())
   node = node.Visit(SimplifyContainers())
-  superclasses = builtins.Visit(visitors.ExtractSuperClassesByName())
-  superclasses.update(node.Visit(
-      visitors.ExtractSuperClassesByName()))
-  if use_abcs:
-    superclasses.update(abc_hierarchy.GetSuperClasses())
-  hierarchy = SuperClassHierarchy(superclasses)
-  node = node.Visit(SimplifyUnionsWithSuperclasses(hierarchy))
-  if lossy:
-    node = node.Visit(
-        FindCommonSuperClasses(hierarchy)
-    )
+  if builtins:
+    superclasses = builtins.Visit(visitors.ExtractSuperClassesByName())
+    superclasses.update(node.Visit(visitors.ExtractSuperClassesByName()))
+    if use_abcs:
+      superclasses.update(abc_hierarchy.GetSuperClasses())
+    hierarchy = SuperClassHierarchy(superclasses)
+    node = node.Visit(SimplifyUnionsWithSuperclasses(hierarchy))
+    if lossy:
+      node = node.Visit(FindCommonSuperClasses(hierarchy))
   if max_union:
     node = node.Visit(CollapseLongUnions(max_union))
   node = node.Visit(AdjustReturnAndConstantGenericType())
@@ -1144,7 +1142,7 @@ def Optimize(node,
     node = node.Visit(MergeTypeParameters())
     node = node.Visit(visitors.AdjustSelf(force=True))
   node = node.Visit(SimplifyContainers())
-  if can_do_lookup:
+  if builtins and can_do_lookup:
     node = visitors.LookupClasses(node, builtins)
     node = node.Visit(RemoveInheritedMethods())
     node = node.Visit(RemoveRedundantSignatures(hierarchy))

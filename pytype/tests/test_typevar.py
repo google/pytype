@@ -227,9 +227,9 @@ class TypeVarTest(test_inference.InferenceTest):
       f4("hello", "world", "domination")  # ok
     """)
     self.assertErrorLogIs(errors, [
-        (6, "bad-return-type", r"List\[Any\].*Set\[Any\]"),
+        (6, "bad-return-type", r"list.*set"),
         (10, "bad-return-type"),
-        (12, "bad-return-type", r"List\[bool\].*List\[float\]")])
+        (12, "bad-return-type", r"List\[bool\].*List\[Union\[float, int\]\]")])
     # Make sure that the log contains both of the errors at line 10.
     self.assertErrorLogContains(errors, r"10.*bad-return-type.*str.*int")
     self.assertErrorLogContains(errors, r"10.*bad-return-type.*bool.*int")
@@ -529,7 +529,7 @@ class TypeVarTest(test_inference.InferenceTest):
     """)
     self.assertErrorLogIs(errors, [
         (2, "invalid-typevar", r"mutually exclusive"),
-        (3, "invalid-typevar", r"Expected.*Type.*Actual.*str"),
+        (3, "invalid-typevar", r"Expected.*type.*Actual.*str"),
         (4, "not-supported-yet"),
         (5, "invalid-typevar", r"unambiguous")])
 
