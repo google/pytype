@@ -326,9 +326,50 @@ class ParserTest(_ParserTestBase):
 
 class HomogeneousTypeTest(_ParserTestBase):
 
-  def test_strip_callable_parameters(self):
-    self.check("import typing\n\nx = ...  # type: typing.Callable[int]",
-               "from typing import Callable\n\nx = ...  # type: Callable")
+  def test_callable_parameters(self):
+    self.check("""\
+      from typing import Callable
+
+      x = ...  # type: Callable[[int, str], bool]""")
+    self.check("""\
+      from typing import Callable
+
+      x = ...  # type: Callable[..., bool]""", """\
+      from typing import Any, Callable
+
+      x = ...  # type: Callable[Any, bool]""")
+    self.check("""\
+      from typing import Any, Callable
+
+      x = ...  # type: Callable[Any, bool]""")
+    self.check("""\
+      from typing import Any, Callable
+
+      x = ...  # type: Callable[[Any], bool]""")
+    self.check("""\
+      from typing import Callable
+
+      x = ...  # type: Callable[[], bool]""")
+    self.check("""\
+      from typing import Callable
+
+      x = ...  # type: Callable[[nothing], bool]""", """\
+      from typing import Callable
+
+      x = ...  # type: Callable[[], bool]""")
+    self.check("""\
+      from typing import Callable
+
+      x = ...  # type: Callable[[int]]""", """\
+      from typing import Any, Callable
+
+      x = ...  # type: Callable[[int], Any]""")
+    self.check_error(
+        "import typing\n\nx = ...  # type: typing.Callable[int]", 3,
+        "First argument to Callable must be a list of argument types")
+    self.check_error(
+        "import typing\n\nx = ...  # type: typing.Callable[[], bool, bool]", 3,
+        "Expected 2 parameters to Callable, got 3")
 
   def test_ellipsis(self):
     # B[T, ...] becomes B[T].

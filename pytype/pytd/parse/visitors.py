@@ -553,6 +553,14 @@ class PrintVisitor(Visitor):
     return (self.MaybeCapitalize(node.base_type) +
             "[" + param_str + ellipsis + "]")
 
+  def VisitCallableType(self, node):
+    if len(node.parameters) == 2 and node.parameters[0] == "nothing":
+      arguments_str = "[]"
+    else:
+      arguments_str = "[%s]" % ", ".join(node.parameters[:-1])
+    return "%s[%s, %s]" % (self.MaybeCapitalize(node.base_type),
+                           arguments_str, node.parameters[-1])
+
   def VisitTupleType(self, node):
     return self.VisitGenericType(node)
 
@@ -727,6 +735,9 @@ class DefaceUnresolved(Visitor):
           not name.startswith(self._do_not_log_prefix)):
         logging.error("Setting %s to ?", name)
       return pytd.AnythingType()
+
+  def VisitCallableType(self, node):
+    return self.VisitGenericType(node)
 
   def VisitTupleType(self, node):
     return self.VisitGenericType(node)
@@ -1320,6 +1331,9 @@ class VerifyVisitor(Visitor):
   def EnterParameter(self, node):
     assert self._valid_param_name.match(node.name), node.name
 
+  def EnterCallableType(self, node):
+    self.EnterGenericType(node)
+
   def EnterTupleType(self, node):
     self.EnterGenericType(node)
 
@@ -1738,13 +1752,16 @@ class VerifyContainers(Visitor):
       for t in node.parameters:
         if not isinstance(t, pytd.TypeParameter):
           raise ContainerError("Name %s must be defined as a TypeVar" % t.name)
-    elif not isinstance(node, pytd.TupleType):
+    elif not isinstance(node, (pytd.CallableType, pytd.TupleType)):
       max_param_count = len(node.base_type.cls.template)
       actual_param_count = len(node.parameters)
       if actual_param_count > max_param_count:
         raise ContainerError(
             "Too many parameters on %s: expected %s, got %s" % (
                 node.base_type.name, max_param_count, actual_param_count))
+
+  def EnterCallableType(self, node):
+    self.EnterGenericType(node)
 
   def EnterTupleType(self, node):
     self.EnterGenericType(node)

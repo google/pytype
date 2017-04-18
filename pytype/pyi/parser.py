@@ -567,6 +567,11 @@ class _Parser(object):
         (self._ast_name == "typing" and t.name == "Tuple") or
         (self._ast_name != "typing" and t.name == "typing.Tuple"))
 
+  def _is_callable_base_type(self, t):
+    return isinstance(t, pytd.NamedType) and (
+        (self._ast_name == "typing" and t.name == "Callable") or
+        (self._ast_name != "typing" and t.name == "typing.Callable"))
+
   def _heterogeneous_tuple(self, base_type, parameters):
     if parameters:
       return pytd.TupleType(base_type=base_type, parameters=parameters)
@@ -574,12 +579,23 @@ class _Parser(object):
       return pytd.GenericType(base_type=base_type,
                               parameters=(pytd.NothingType(),))
 
+  def _is_empty_tuple(self, t):
+    return (isinstance(t, pytd.GenericType) and
+            self._is_tuple_base_type(t.base_type) and
+            t.parameters == (pytd.NothingType(),))
+
+  def _is_heterogeneous_tuple(self, t):
+    # An empty tuple is represented as a GenericType rather than a TupleType,
+    # but we still consider it heterogeneous because we know exactly what the
+    # parameters are (there are none).
+    return isinstance(t, pytd.TupleType) or self._is_empty_tuple(t)
+
+  def _is_any(self, t):
+    return isinstance(t, pytd.AnythingType) or t == pytd.NamedType("typing.Any")
+
   def _parameterized_type(self, base_type, parameters):
     """Return a parameterized type."""
-    if base_type == pytd.NamedType("typing.Callable"):
-      # TODO(kramm): Support Callable[[params], ret].
-      return base_type
-    elif len(parameters) == 2 and parameters[-1] is self.ELLIPSIS:
+    if len(parameters) == 2 and parameters[-1] is self.ELLIPSIS:
       element_type = parameters[0]
       if element_type is self.ELLIPSIS:
         raise ParseError("[..., ...] not supported")
@@ -590,8 +606,24 @@ class _Parser(object):
                          for p in parameters)
       if self._is_tuple_base_type(base_type):
         return self._heterogeneous_tuple(base_type, parameters)
+      elif (self._is_callable_base_type(base_type) and
+            self._is_heterogeneous_tuple(parameters[0])):
+        if len(parameters) > 2:
+          raise ParseError(
+              "Expected 2 parameters to Callable, got %d" % len(parameters))
+        if len(parameters) == 1:
+          # We're usually happy to treat omitted parameters as "Any", but we
+          # need a return type for CallableType, or we wouldn't know whether the
+          # last parameter is an argument or return type.
+          parameters += (pytd.AnythingType(),)
+        parameters = parameters[0].parameters + parameters[1:]
+        return pytd.CallableType(base_type=base_type, parameters=parameters)
       else:
         assert parameters
+        if (self._is_callable_base_type(base_type) and
+            not self._is_any(parameters[0])):
+          raise ParseError(
+              "First argument to Callable must be a list of argument types")
         return pytd.GenericType(base_type=base_type, parameters=parameters)
 
   def new_union_type(self, types):

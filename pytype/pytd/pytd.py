@@ -442,6 +442,16 @@ class TupleType(GenericType):
   __slots__ = ()
 
 
+class CallableType(GenericType):
+  """Special generic type for a Callable that specifies its argument types.
+
+  A Callable with N arguments has N+1 parameters. The first N parameters are
+  the individual argument types, in the order of the arguments, and the last
+  parameter is the return type.
+  """
+  __slots__ = ()
+
+
 # TODO(dbaum): Remove TYPE since Type serves a very similar role.  At present
 # the only difference is that FunctionType is a Type, but not in TYPE.
 

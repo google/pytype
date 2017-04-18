@@ -223,6 +223,12 @@ class TypeMatch(utils.TypeMatcher):
             return booleq.FALSE
         else:
           t1_parameters = (pytd.UnionType(type_list=t1_parameters),)
+      if ((isinstance(t1, pytd.CallableType) or
+           t1.base_type.cls.name == "__builtin__.type") and
+          (isinstance(t2, pytd.CallableType) or
+           t2.base_type.cls.name == "__builtin__.type")):
+        # TODO(rechen): Do parameter matching.
+        return booleq.TRUE
       # Matching, e.g., Dict[str, int] against Iterable[K] is legitimate.
       assert len(t1_parameters) >= len(t2.parameters), t1.base_type.cls.name
       # Type parameters are covariant:

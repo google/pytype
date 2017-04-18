@@ -263,6 +263,7 @@ class CombineContainers(visitors.Visitor):
     merge_tuples = True
     tuple_length = None
     for t in union.type_list:
+      # TODO(rechen): Do we need to special-case CallableType as well?
       if isinstance(t, pytd.TupleType):
         if tuple_length is None:
           tuple_length = len(t.parameters)
@@ -948,6 +949,9 @@ class SimplifyContainers(visitors.Visitor):
       return t
 
   def VisitGenericType(self, t):
+    return self._Simplify(t)
+
+  def VisitCallableType(self, t):
     return self._Simplify(t)
 
   def VisitTupleType(self, t):

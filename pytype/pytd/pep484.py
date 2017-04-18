@@ -89,6 +89,9 @@ class ConvertTypingToNative(visitors.Visitor):
         return pytd.UnionType(t.parameters)
     return t
 
+  def VisitCallableType(self, t):
+    return self.VisitGenericType(t)
+
   def VisitTupleType(self, t):
     return self.VisitGenericType(t)
 
