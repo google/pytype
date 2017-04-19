@@ -789,8 +789,6 @@ class HasSlots(object):
   overloads = ("get_special_attribute",)
 
   def init_mixin(self):
-    # set_slot uses get_instance_attribute, which takes a SimpleAbstractValue.
-    assert SimpleAbstractValue in self.__class__.mro()
     self._slots = {}
     self._super = {}
     self._function_cache = {}
@@ -804,12 +802,12 @@ class HasSlots(object):
   def set_slot(self, name, method):
     """Add a new slot to this value."""
     assert name not in self._slots, "slot %s already occupied" % name
-    f = self.make_native_function(name, method)
-    self._slots[name] = f.to_variable(self.vm.root_cfg_node)
-    _, attr = self.vm.attribute_handler.get_instance_attribute(
+    _, attr = self.vm.attribute_handler.get_attribute(
         self.vm.root_cfg_node, self, name,
         self.to_variable(self.vm.root_cfg_node).bindings[0])
     self._super[name] = attr
+    f = self.make_native_function(name, method)
+    self._slots[name] = f.to_variable(self.vm.root_cfg_node)
 
   def call_pytd(self, node, name, *args):
     """Call the (original) pytd version of a method we overwrote."""
