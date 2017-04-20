@@ -281,6 +281,21 @@ class CheckerTest(test_inference.InferenceTest):
     self.assertErrorLogIs(errorlog, [(4, "invalid-annotation", r"0.*1"),
                                      (6, "invalid-annotation", r"0.*1")])
 
+  def testAttr(self):
+    pytd = """
+      class A(object):
+        def f(self) -> int
+    """
+    python = """
+      class A(object):
+        def __init__(self):
+          self.x = 42
+          self.f = self.m
+        def m(self):
+          return self.x
+    """
+    self.check(python, pytd)
+
 
 if __name__ == "__main__":
   test_inference.main()
