@@ -943,13 +943,12 @@ class VirtualMachine(object):
     log.warning("Global variable removal does not actually do "
                 "anything in the abstract interpreter")
 
-  def _retrieve_attr(self, state, obj, attr):
+  def _retrieve_attr(self, node, obj, attr):
     """Load an attribute from an object."""
     assert isinstance(obj, typegraph.Variable), obj
     # Resolve the value independently for each value of obj
     result = self.program.NewVariable()
     log.debug("getting attr %s from %r", attr, obj)
-    node = state.node
     nodes = []
     values_without_attribute = []
     for val in obj.Bindings(node):
@@ -990,7 +989,7 @@ class VirtualMachine(object):
 
   def load_attr(self, state, obj, attr):
     """Try loading an attribute, and report errors."""
-    node, result, errors = self._retrieve_attr(state, obj, attr)
+    node, result, errors = self._retrieve_attr(state.node, obj, attr)
     if errors and obj.bindings and self._is_only_none(state.node, obj):
       self.errorlog.none_attr(self.frame.current_opcode, attr)
     elif self.options.strict_attr_checking or (not result and obj.bindings):
@@ -1006,7 +1005,7 @@ class VirtualMachine(object):
 
   def load_attr_noerror(self, state, obj, attr):
     """Try loading an attribute, ignore errors."""
-    node, result, _ = self._retrieve_attr(state, obj, attr)
+    node, result, _ = self._retrieve_attr(state.node, obj, attr)
     return state.change_cfg_node(node), result
 
   def store_attr(self, state, obj, attr, value):
@@ -1133,7 +1132,7 @@ class VirtualMachine(object):
       # Call __iter__()
       state, itr = self.call_function_with_state(state, func, ())
     else:
-      node, func, missing = self._retrieve_attr(state, seq, "__getitem__")
+      node, func, missing = self._retrieve_attr(state.node, seq, "__getitem__")
       state = state.change_cfg_node(node)
       if func:
         # TODO(dbaum): Consider delaying the call to __getitem__ until
