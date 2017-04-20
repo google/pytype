@@ -202,6 +202,42 @@ class TypeMatch(utils.TypeMatcher):
     # not for matching of "known" types against each other.
     return StrictType(name)
 
+  def _get_parameters(self, t1, t2):
+    if isinstance(t1, pytd.TupleType) and isinstance(t2, pytd.TupleType):
+      # No change needed; the parameters will be compared element-wise.
+      return t1.parameters, t2.parameters
+    elif isinstance(t2, pytd.TupleType):
+      # Since we call _get_parameters after confirming that t1 and t2 have
+      # compatible base types, t1 is a homogeneous tuple here.
+      return (t1.element_type,) * len(t2.parameters), t2.parameters
+    elif isinstance(t1, pytd.TupleType):
+      return (pytd.UnionType(type_list=t1.parameters),), t2.parameters
+    elif (isinstance(t1, pytd.CallableType) and
+          isinstance(t2, pytd.CallableType)):
+      # Flip the arguments, since argument types are contravariant.
+      return t2.args + (t1.ret,), t1.args + (t2.ret,)
+    elif (t1.base_type.cls.name == "__builtin__.type" and
+          t2.base_type.cls.name == "typing.Callable"):
+      # We'll only check the return type, since getting the argument types for
+      # initializing a class is tricky.
+      return t1.parameters, (t2.parameters[-1],)
+    elif (t1.base_type.cls.name == "typing.Callable" and
+          t2.base_type.cls.name == "__builtin__.type"):
+      return (t1.parameters[-1],), t2.parameters
+    elif isinstance(t1, pytd.CallableType):
+      # We're matching against GenericType(Callable, (Any, _RET)), so we don't
+      # need the argument types.
+      return (pytd.AnythingType(), t1.ret), t2.parameters
+    elif isinstance(t2, pytd.CallableType):
+      return t1.parameters, (pytd.AnythingType(), t2.ret)
+    else:
+      num_extra_params = len(t1.parameters) - len(t2.parameters)
+      # Matching, e.g., Dict[str, int] against Iterable[K] is legitimate.
+      assert num_extra_params >= 0, (t1.base_type.cls.name,
+                                     t2.base_type.cls.name)
+      t2_parameters = t2.parameters + (pytd.AnythingType(),) * num_extra_params
+      return t1.parameters, t2_parameters
+
   def match_Generic_against_Generic(self, t1, t2, subst):  # pylint: disable=invalid-name
     """Match a pytd.GenericType against another pytd.GenericType."""
     assert isinstance(t1.base_type, pytd.ClassType), type(t1.base_type)
@@ -211,28 +247,13 @@ class TypeMatch(utils.TypeMatcher):
     base_type_cmp = self.match_type_against_type(base1, base2, subst)
     if base_type_cmp is booleq.FALSE:
       return booleq.FALSE
-    if not isinstance(t1, pytd.TupleType) and isinstance(t2, pytd.TupleType):
-      p1, = t1.parameters
-      param_cmp = [self.match_type_against_type(p1, p2, subst)
-                   for p2 in t2.parameters]
-    else:
-      t1_parameters = t1.parameters
-      if isinstance(t1, pytd.TupleType):
-        if isinstance(t2, pytd.TupleType):
-          if len(t1_parameters) != len(t2.parameters):
-            return booleq.FALSE
-        else:
-          t1_parameters = (pytd.UnionType(type_list=t1_parameters),)
-      if (t1.base_type.cls.name in ("typing.Callable", "__builtin__.type") and
-          t2.base_type.cls.name in ("typing.Callable", "__builtin__.type")):
-        # TODO(rechen): Do parameter matching.
-        return booleq.TRUE
-      # Matching, e.g., Dict[str, int] against Iterable[K] is legitimate.
-      assert len(t1_parameters) >= len(t2.parameters), t1.base_type.cls.name
-      # Type parameters are covariant:
-      # E.g. passing list[int] as argument for list[object] succeeds.
-      param_cmp = [self.match_type_against_type(p1, p2, subst)
-                   for p1, p2 in zip(t1_parameters, t2.parameters)]
+    t1_parameters, t2_parameters = self._get_parameters(t1, t2)
+    if len(t1_parameters) != len(t2_parameters):
+      return booleq.FALSE
+    # Type parameters are covariant:
+    # E.g. passing list[int] as argument for list[object] succeeds.
+    param_cmp = [self.match_type_against_type(p1, p2, subst)
+                 for p1, p2 in zip(t1_parameters, t2_parameters)]
     return booleq.And([base_type_cmp] + param_cmp)
 
   def match_Unknown_against_Generic(self, t1, t2, subst):  # pylint: disable=invalid-name
@@ -331,6 +352,10 @@ class TypeMatch(utils.TypeMatcher):
       return booleq.Eq(self._full_name(t1), self._full_name(t2))
     elif (isinstance(t1, pytd.ClassType) and hasattr(t2, "name") and
           t2.name == "__builtin__.object"):
+      return booleq.TRUE
+    elif (hasattr(t1, "name") and hasattr(t2, "name") and
+          t1.name in ("__builtin__.type", "typing.Callable") and
+          t2.name in ("__builtin__.type", "typing.Callable")):
       return booleq.TRUE
     elif isinstance(t1, pytd.ClassType):
       # ClassTypes are similar to Unions, except they're disjunctions: We can

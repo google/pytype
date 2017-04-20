@@ -16,7 +16,6 @@
 """Tests for type_match.py."""
 
 import textwrap
-import unittest
 
 
 from pytype.pyi import parser
@@ -26,6 +25,7 @@ from pytype.pytd import type_match
 from pytype.pytd import utils as pytd_utils
 from pytype.pytd.parse import parser_test_base
 from pytype.pytd.parse import visitors
+import unittest
 
 
 _BUILTINS = """
@@ -325,6 +325,102 @@ class TestTypeMatch(parser_test_base.ParserTest):
     # Smoke test for the TupleType logic in match_Function_against_Class
     self.assertEquals(m.match_Function_against_Class(f, a, {}, {}),
                       booleq.FALSE)
+
+  def testCallableNoArguments(self):
+    ast = self.ParseWithBuiltins("""
+      from typing import Callable
+      v1 = ...  # type: Callable[..., int]
+      v2 = ...  # type: Callable[..., bool]
+    """)
+    v1 = ast.Lookup("v1").type
+    v2 = ast.Lookup("v2").type
+    m = type_match.TypeMatch(type_match.get_all_subclasses([ast]))
+    # Return type is covariant.
+    self.assertEquals(m.match_Generic_against_Generic(v1, v2, {}), booleq.FALSE)
+    self.assertEquals(m.match_Generic_against_Generic(v2, v1, {}), booleq.TRUE)
+
+  def testCallableWithArguments(self):
+    ast = self.ParseWithBuiltins("""
+      from typing import Callable
+      v1 = ...  # type: Callable[[int], int]
+      v2 = ...  # type: Callable[[bool], int]
+      v3 = ...  # type: Callable[[int], bool]
+      v4 = ...  # type: Callable[[int, str], int]
+      v5 = ...  # type: Callable[[bool, str], int]
+      v6 = ...  # type: Callable[[], int]
+    """)
+    v1 = ast.Lookup("v1").type
+    v2 = ast.Lookup("v2").type
+    v3 = ast.Lookup("v3").type
+    v4 = ast.Lookup("v4").type
+    v5 = ast.Lookup("v5").type
+    v6 = ast.Lookup("v6").type
+    m = type_match.TypeMatch(type_match.get_all_subclasses([ast]))
+    # Argument types are contravariant.
+    self.assertEquals(m.match_Generic_against_Generic(v1, v2, {}), booleq.TRUE)
+    self.assertEquals(m.match_Generic_against_Generic(v2, v1, {}), booleq.FALSE)
+    self.assertEquals(m.match_Generic_against_Generic(v1, v4, {}), booleq.FALSE)
+    self.assertEquals(m.match_Generic_against_Generic(v4, v1, {}), booleq.FALSE)
+    self.assertEquals(m.match_Generic_against_Generic(v4, v5, {}), booleq.TRUE)
+    self.assertEquals(m.match_Generic_against_Generic(v5, v4, {}), booleq.FALSE)
+    self.assertEquals(m.match_Generic_against_Generic(v1, v6, {}), booleq.FALSE)
+    self.assertEquals(m.match_Generic_against_Generic(v6, v1, {}), booleq.FALSE)
+    self.assertEquals(m.match_Generic_against_Generic(v6, v6, {}), booleq.TRUE)
+    # Return type is covariant.
+    self.assertEquals(m.match_Generic_against_Generic(v1, v3, {}), booleq.FALSE)
+    self.assertEquals(m.match_Generic_against_Generic(v3, v1, {}), booleq.TRUE)
+
+  def testCallable(self):
+    ast = self.ParseWithBuiltins("""
+      from typing import Callable
+      v1 = ...  # type: Callable[..., int]
+      v2 = ...  # type: Callable[..., bool]
+      v3 = ...  # type: Callable[[int, str], int]
+      v4 = ...  # type: Callable[[int, str], bool]
+      v5 = ...  # type: Callable[[], int]
+      v6 = ...  # type: Callable[[], bool]
+    """)
+    v1 = ast.Lookup("v1").type
+    v2 = ast.Lookup("v2").type
+    v3 = ast.Lookup("v3").type
+    v4 = ast.Lookup("v4").type
+    v5 = ast.Lookup("v5").type
+    v6 = ast.Lookup("v6").type
+    m = type_match.TypeMatch(type_match.get_all_subclasses([ast]))
+    self.assertEquals(m.match_Generic_against_Generic(v1, v4, {}), booleq.FALSE)
+    self.assertEquals(m.match_Generic_against_Generic(v4, v1, {}), booleq.TRUE)
+    self.assertEquals(m.match_Generic_against_Generic(v2, v3, {}), booleq.TRUE)
+    self.assertEquals(m.match_Generic_against_Generic(v3, v2, {}), booleq.FALSE)
+    self.assertEquals(m.match_Generic_against_Generic(v2, v5, {}), booleq.TRUE)
+    self.assertEquals(m.match_Generic_against_Generic(v5, v2, {}), booleq.FALSE)
+    self.assertEquals(m.match_Generic_against_Generic(v1, v6, {}), booleq.FALSE)
+    self.assertEquals(m.match_Generic_against_Generic(v6, v1, {}), booleq.TRUE)
+
+  def testCallableAndType(self):
+    ast = self.ParseWithBuiltins("""
+      from typing import Callable, Type
+      v1 = ...  # type: Callable[..., int]
+      v2 = ...  # type: Callable[..., bool]
+      v3 = ...  # type: Callable[[], int]
+      v4 = ...  # type: Callable[[], bool]
+      v5 = ...  # type: Type[int]
+      v6 = ...  # type: Type[bool]
+    """)
+    v1 = ast.Lookup("v1").type
+    v2 = ast.Lookup("v2").type
+    v3 = ast.Lookup("v3").type
+    v4 = ast.Lookup("v4").type
+    v5 = ast.Lookup("v5").type
+    v6 = ast.Lookup("v6").type
+    m = type_match.TypeMatch(type_match.get_all_subclasses([ast]))
+    self.assertEquals(m.match_Generic_against_Generic(v1, v6, {}), booleq.FALSE)
+    self.assertEquals(m.match_Generic_against_Generic(v6, v1, {}), booleq.TRUE)
+    self.assertEquals(m.match_Generic_against_Generic(v2, v5, {}), booleq.TRUE)
+    self.assertEquals(m.match_Generic_against_Generic(v5, v2, {}), booleq.FALSE)
+    self.assertEquals(m.match_Generic_against_Generic(v3, v6, {}), booleq.FALSE)
+    self.assertEquals(m.match_Generic_against_Generic(v6, v3, {}), booleq.TRUE)
+    self.assertEquals(m.match_Generic_against_Generic(v4, v5, {}), booleq.TRUE)
+    self.assertEquals(m.match_Generic_against_Generic(v5, v4, {}), booleq.FALSE)
 
 
 if __name__ == "__main__":

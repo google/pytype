@@ -451,6 +451,17 @@ class CallableType(GenericType):
   """
   __slots__ = ()
 
+  @property
+  def args(self):
+    args = self.parameters[:-1]
+    if args == (NothingType(),):
+      args = ()
+    return args
+
+  @property
+  def ret(self):
+    return self.parameters[-1]
+
 
 # TODO(dbaum): Remove TYPE since Type serves a very similar role.  At present
 # the only difference is that FunctionType is a Type, but not in TYPE.
