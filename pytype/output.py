@@ -50,9 +50,9 @@ class Converter(object):
     if self._is_tuple(v, instance):
       assert len(template) == 1 and template[0] == abstract.T, template
       if isinstance(v, abstract.TupleClass):
-        template = range(len(v.type_parameters) - 1)
+        template = range(v.tuple_length)
       else:
-        template = range(len(instance.pyval))
+        template = range(instance.tuple_length)
     if instance is None and isinstance(v, abstract.ParameterizedClass):
       return [self.value_instance_to_pytd_type(
           node, v.type_parameters[t], None, seen, view) for t in template]

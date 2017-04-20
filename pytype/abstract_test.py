@@ -110,14 +110,15 @@ class TupleTest(AbstractTestBase):
   def test_getitem__concrete_index(self):
     t = abstract.Tuple((self._var,), self._vm)
     index = self._vm.convert.constant_to_var(0)
-    node, var = t.getitem_slot(self._node, index)
+    node, var = t.cls.data[0].getitem_slot(self._node, index)
     self.assertIs(node, self._node)
-    self.assertIs(var, self._var)
+    self.assertIs(abstract.get_atomic_value(var),
+                  abstract.get_atomic_value(self._var))
 
   def test_getitem__abstract_index(self):
     t = abstract.Tuple((self._var,), self._vm)
     index = self._vm.convert.build_int(self._node)
-    node, var = t.getitem_slot(self._node, index)
+    node, var = t.cls.data[0].getitem_slot(self._node, index)
     self.assertIs(node, self._node)
     self.assertIs(abstract.get_atomic_value(var),
                   abstract.get_atomic_value(self._var))

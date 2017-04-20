@@ -82,7 +82,6 @@ class Converter(object):
     self.unsolvable = abstract.Unsolvable(self.vm)
     self.empty = abstract.Empty(self.vm)
 
-    self.tuple_type = self.constant_to_var(tuple)
     self.list_type = self.constant_to_var(list)
     self.set_type = self.constant_to_var(set)
     self.frozenset_type = self.constant_to_var(frozenset)
@@ -90,6 +89,7 @@ class Converter(object):
     self.type_type = self.constant_to_var(type)
     self.module_type = self.constant_to_var(types.ModuleType)
     self.function_type = self.constant_to_var(types.FunctionType)
+    self.tuple_type = self.constant_to_var(tuple)
     self.generator_type = self.constant_to_var(types.GeneratorType)
     # TODO(dbaum): There isn't a types.IteratorType.  This can probably be
     # based on typing.Iterator, but that will also require changes to

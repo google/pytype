@@ -16,6 +16,7 @@ class TupleTest(test_inference.InferenceTest):
       v1 = t[0]
       v2 = t[1]
       v3 = t[2]
+      v4 = t[-1]
     """, deep=True)
     self.assertTypesMatchPytd(ty, """
       from typing import Tuple
@@ -23,6 +24,7 @@ class TupleTest(test_inference.InferenceTest):
       v1 = ...  # type: str
       v2 = ...  # type: int
       v3 = ...  # type: str or int
+      v4 = ...  # type: int
     """)
 
   @unittest.skip("Needs better slice support in abstract.Tuple, convert.py.")
@@ -207,6 +209,19 @@ class TupleTest(test_inference.InferenceTest):
       AnyStr = Union[str, unicode]
       def f(x: Dict[AnyStr, Any]) -> List[Tuple]:
         return sorted((k, v) for k, v in x.iteritems() if k in {})
+    """)
+
+  def testMutableItem(self):
+    ty = self.Infer("""
+      v = {}
+      w = v.setdefault("", ([], []))
+      w[1].append(42)
+      u = w[2]
+    """)
+    self.assertTypesMatchPytd(ty, """
+      v = ...  # type: dict[str, tuple[list[nothing], list[int]]]
+      w = ...  # type: tuple[list[nothing], list[int]]
+      u = ...  # type: list[int]
     """)
 
 

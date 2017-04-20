@@ -43,6 +43,27 @@ class TypingTest(test_inference.InferenceTest):
     self._test_match("collections.namedtuple('foo', ('x', 'y'))()",
                      "typing.NamedTuple('foo', [('x', int), ('y', int)])")
 
+  def test_namedtuple_item(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import NamedTuple
+        def f() -> NamedTuple("ret", [("x", int), ("y", unicode)])
+      """)
+      ty = self.Infer("""
+        import foo
+        w = foo.f()[-1]
+        x = foo.f()[0]
+        y = foo.f()[1]
+        z = foo.f()[2]  # out of bounds, fall back to the combined element type
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        foo = ...  # type: module
+        w = ...  # type: unicode
+        x = ...  # type: int
+        y = ...  # type: unicode
+        z = ...  # type: int or unicode
+      """)
+
   def test_all(self):
     ty = self.Infer("""
       from __future__ import google_type_annotations

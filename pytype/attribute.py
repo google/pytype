@@ -316,7 +316,12 @@ class AbstractAttributeHandler(object):
       # Potentially skip start of MRO, for super()
       if base is skip:
         continue
-      node, var = self._get_attribute_flat(node, base, name)
+      # When a special attribute is defined on a class buried in the MRO,
+      # get_attribute (which calls get_special_attribute) is never called on
+      # that class, so we have to call get_special_attribute here as well.
+      var = base.get_special_attribute(node, name, valself)
+      if var is None:
+        node, var = self._get_attribute_flat(node, base, name)
       if var is None or not var.bindings:
         continue
       for varval in var.bindings:

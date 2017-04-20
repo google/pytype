@@ -254,7 +254,7 @@ class AtomicAbstractValue(object):
     Args:
       instance: An instance of this class (as an AtomicAbstractValue)
     """
-    pass  # Only InterpreterClass needs this, others can ignore it.
+    pass  # overridden by InterpreterClass and TupleClass
 
   def get_class(self):
     """Return the class of this object. Equivalent of x.__class__ in Python."""
@@ -450,7 +450,7 @@ class MixinMeta(type):
       # to consider methods defined on supercls itself (not on a parent).
       m = supercls.__dict__.get(method.__name__)
       # m.im_class differs from supercls if m was set by MixinMeta.__init__.
-      if m and m.im_class is cls:
+      if getattr(m, "im_class", None) is cls:
         method_cls = supercls
         break
     return getattr(super(method_cls, method.__self__), method.__name__)
@@ -872,7 +872,7 @@ class List(Instance, PythonConstant):
             PythonConstant.compatible_with(self, logical_value))
 
 
-class Tuple(Instance, HasSlots, PythonConstant):
+class Tuple(Instance, PythonConstant):
   """Representation of Python 'tuple' objects."""
 
   def __init__(self, content, vm):
@@ -883,33 +883,19 @@ class Tuple(Instance, HasSlots, PythonConstant):
                     tuple(enumerate(content)) + ((T, combined_content),)}
     cls = TupleClass(vm.convert.tuple_type.bindings[0].data, class_params, vm)
     super(Tuple, self).__init__(cls.to_variable(vm.root_cfg_node), vm)
-    HasSlots.init_mixin(self)
-    self.set_slot("__getitem__", self.getitem_slot)
     self.initialize_type_parameter(vm.root_cfg_node, T, combined_content)
     PythonConstant.init_mixin(self, content)
+    self.tuple_length = len(self.pyval)
 
   def str_of_constant(self, printer):
     content = ", ".join(" or ".join(printer(v) for v in val.data)
                         for val in self.pyval)
-    if len(self.pyval) == 1:
+    if self.tuple_length == 1:
       content += ","
     return "(%s)" % content
 
-  def getitem_slot(self, node, index_var):
-    """Implementation of tuple.__getitem__."""
-    try:
-      index = self.vm.convert.value_to_constant(
-          get_atomic_value(index_var), int)
-    except ConversionError:
-      pass
-    else:
-      if index < len(self.pyval):
-        # TODO(rechen): Should index >= len(self.pyval) be a pytype error?
-        return node, self.pyval[index]
-    return self.call_pytd(node, "__getitem__", index_var)
-
   def cmp_eq(self, other):
-    if isinstance(other, Tuple) and len(self.pyval) != len(other.pyval):
+    if isinstance(other, Tuple) and self.tuple_length != other.tuple_length:
       return False
     return None
 
@@ -2074,7 +2060,7 @@ class ParameterizedClass(AtomicAbstractValue, Class):
     return self.base_cls.get_class()
 
 
-class TupleClass(ParameterizedClass):
+class TupleClass(ParameterizedClass, HasSlots):
   """The class of a heterogeneous tuple.
 
   The type_parameters attribute stores the types of the individual tuple
@@ -2086,13 +2072,58 @@ class TupleClass(ParameterizedClass):
   for Tuple, since we can't evaluate type parameters during initialization.
   """
 
+  def __init__(self, base_cls, type_parameters, vm):
+    super(TupleClass, self).__init__(base_cls, type_parameters, vm)
+    HasSlots.init_mixin(self)
+    self.set_slot("__getitem__", self.getitem_slot)
+    # We subtract one to account for "T".
+    self.tuple_length = len(self.type_parameters) - 1
+    self._instance = None
+
   def __repr__(self):
     return "TupleClass(%s)" % self.type_parameters
 
   def instantiate(self, node, container=None):
-    content = tuple(self.type_parameters[i].instantiate(node, container)
-                    for i in range(len(self.type_parameters) - 1))
+    if self._instance:
+      return self._instance.to_variable(node)
+    content = tuple(
+        self.type_parameters[i].instantiate(self.vm.root_cfg_node, container)
+        for i in range(self.tuple_length))
     return Tuple(content, self.vm).to_variable(node)
+
+  def _instantiate_index(self, node, index):
+    if self._instance:
+      return self._instance.pyval[index]
+    else:
+      index %= self.tuple_length  # fixes negative indices
+      return self.type_parameters[index].instantiate(node)
+
+  def register_instance(self, instance):
+    # A TupleClass can never have more than one registered instance because the
+    # only direct instances of TupleClass are Tuple objects, which create their
+    # own class upon instantiation. We store the instance in order to track
+    # changes in the types of the elements (see TupleTest.testMutableItem).
+    assert not self._instance
+    self._instance = instance
+
+  def getitem_slot(self, node, index_var):
+    """Implementation of tuple.__getitem__."""
+    try:
+      index = self.vm.convert.value_to_constant(
+          get_atomic_value(index_var), int)
+    except ConversionError:
+      pass
+    else:
+      if -self.tuple_length <= index and index < self.tuple_length:
+        # TODO(rechen): Should index out of bounds be a pytype error?
+        return node, self._instantiate_index(node, index)
+    return self.call_pytd(
+        node, "__getitem__", self.instantiate(node), index_var)
+
+  def get_special_attribute(self, node, name, valself):
+    if valself and name in self._slots:
+      return HasSlots.get_special_attribute(self, node, name, valself)
+    return super(TupleClass, self).get_special_attribute(node, name, valself)
 
 
 class Callable(ParameterizedClass):
@@ -2300,6 +2331,7 @@ class NativeFunction(Function):
   def __init__(self, name, func, vm):
     super(NativeFunction, self).__init__(name, vm)
     self.func = func
+    self.bound_class = lambda callself, callcls, underlying: self
 
   def argcount(self):
     return self.func.func_code.co_argcount

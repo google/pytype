@@ -318,8 +318,8 @@ class AbstractMatcher(object):
     """Used by _match_instance."""
     if isinstance(instance, abstract.Tuple):
       if isinstance(other_type, abstract.TupleClass):
-        if len(instance.pyval) == len(other_type.type_parameters) - 1:
-          for i in range(len(instance.pyval)):
+        if instance.tuple_length == other_type.tuple_length:
+          for i in range(instance.tuple_length):
             instance_param = instance.pyval[i]
             class_param = other_type.type_parameters[i]
             subst = self.match_var_against_type(
@@ -358,7 +358,7 @@ class AbstractMatcher(object):
       assert isinstance(other_type, abstract.TupleClass)
       if isinstance(instance, abstract.SimpleAbstractValue):
         instance_param = instance.type_parameters[abstract.T]
-        for i in range(len(other_type.type_parameters) - 1):
+        for i in range(other_type.tuple_length):
           class_param = other_type.type_parameters[i]
           subst = self.match_var_against_type(
               instance_param, class_param, subst, node, view)
