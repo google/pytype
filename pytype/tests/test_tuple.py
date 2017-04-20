@@ -224,6 +224,13 @@ class TupleTest(test_inference.InferenceTest):
       u = ...  # type: list[int]
     """)
 
+  def testBadTupleClassGetItem(self):
+    _, errors = self.InferAndCheck("""
+      v = type((3, ""))
+      w = v[0]
+    """)
+    del errors
+
 
 if __name__ == "__main__":
   test_inference.main()

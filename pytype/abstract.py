@@ -841,7 +841,8 @@ class HasSlots(object):
   def get_special_attribute(self, node, name, valself):
     if name in self._slots:
       attr = self.vm.program.NewVariable()
-      attr.PasteVariable(self._slots[name], node, {valself})
+      additional_sources = {valself} if valself else None
+      attr.PasteVariable(self._slots[name], node, additional_sources)
       return attr
     return HasSlots.super(self.get_special_attribute)(node, name, valself)
 
