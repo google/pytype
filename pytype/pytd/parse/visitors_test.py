@@ -732,5 +732,28 @@ class TestAncestorMap(unittest.TestCase):
     self.assertNotIn("AnythingType", named_type)
 
 
+class ReplaceWithAnyReferenceVisitorTest(unittest.TestCase):
+
+  def testAnyReplacement(self):
+    class_type_match = pytd.ClassType("match.foo")
+    named_type_match = pytd.NamedType("match.bar")
+    class_type_no_match = pytd.ClassType("no.match.foo")
+    named_type_no_match = pytd.NamedType("no.match.bar")
+    generic_type_match = pytd.GenericType(class_type_match, ())
+    generic_type_no_match = pytd.GenericType(class_type_no_match, ())
+
+    visitor = visitors.ReplaceWithAnyReferenceVisitor("match.")
+    self.assertEquals(class_type_no_match, class_type_no_match.Visit(visitor))
+    self.assertEquals(named_type_no_match, named_type_no_match.Visit(visitor))
+    self.assertEquals(generic_type_no_match,
+                      generic_type_no_match.Visit(visitor))
+    self.assertEquals(pytd.AnythingType,
+                      class_type_match.Visit(visitor).__class__)
+    self.assertEquals(pytd.AnythingType,
+                      named_type_match.Visit(visitor).__class__)
+    self.assertEquals(pytd.AnythingType,
+                      generic_type_match.Visit(visitor).__class__)
+
+
 if __name__ == "__main__":
   unittest.main()

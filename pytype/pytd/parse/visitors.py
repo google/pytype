@@ -1834,3 +1834,26 @@ class ClearClassPointers(Visitor):
 
   def EnterClassType(self, node):
     node.cls = None
+
+
+class ReplaceWithAnyReferenceVisitor(Visitor):
+  """Replace all references to modules in a list with AnythingType."""
+
+  unchecked_node_names = ("GenericType",)
+
+  def __init__(self, module_list):
+    super(ReplaceWithAnyReferenceVisitor, self).__init__()
+    self._any_modules = module_list
+
+  def VisitNamedType(self, n):
+    if any(n.name.startswith(module) for module in self._any_modules):
+      return pytd.AnythingType()
+    return n
+
+  def VisitGenericType(self, n):
+    if isinstance(n.base_type, pytd.AnythingType):
+      return pytd.AnythingType()
+    return n
+
+  def VisitClassType(self, n):
+    return self.VisitNamedType(n)
