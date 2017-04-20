@@ -343,10 +343,6 @@ class AbstractAttributeHandler(object):
 
   def _get_member(self, node, obj, name, valself=None):
     """Get a member of an object."""
-    node, attr = obj.load_special_attribute(node, name)
-    if attr is not None:
-      return node, attr
-
     if obj.is_lazy:
       obj.load_lazy_attribute(name)
 

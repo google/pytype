@@ -204,8 +204,10 @@ class AtomicAbstractValue(object):
     """
     return self
 
-  def get_special_attribute(self, unused_node, unused_name, unused_valself):
+  def get_special_attribute(self, unused_node, name, unused_valself):
     """Fetch a special attribute (e.g., __get__, __iter__)."""
+    if name == "__class__":
+      return self.get_class()
     return None
 
   def call(self, node, func, args):
@@ -427,6 +429,32 @@ class MixinMeta(type):
           if method not in cls.__dict__:
             setattr(cls, method, getattr(sup, method))
 
+  def super(cls, method):
+    """Imitate super() in a mix-in.
+
+    This method is a substitute for
+      super(MixinClass, self).overloaded_method(arg),
+    which we can't use because mix-ins appear at the end of the MRO. It should
+    be called as
+      MixinClass.super(self.overloaded_method)(arg)
+    . It works by finding the class on which MixinMeta.__init__ set
+    MixinClass.overloaded_method and calling super() on that class.
+
+    Args:
+      method: The method in the mix-in.
+    Returns:
+      The method overloaded by 'method'.
+    """
+    for supercls in type(method.__self__).__mro__:
+      # Fetch from __dict__ rather than using getattr() because we only want
+      # to consider methods defined on supercls itself (not on a parent).
+      m = supercls.__dict__.get(method.__name__)
+      # m.im_class differs from supercls if m was set by MixinMeta.__init__.
+      if m and m.im_class is cls:
+        method_cls = supercls
+        break
+    return getattr(super(method_cls, method.__self__), method.__name__)
+
 
 class PythonConstant(object):
   """A mix-in for storing actual Python constants, not just their types.
@@ -628,12 +656,6 @@ class SimpleAbstractValue(AtomicAbstractValue):
       assert isinstance(variable, typegraph.Variable)
       self.members[name] = variable
 
-  def load_special_attribute(self, node, name):
-    if name == "__class__":
-      return node, self.get_class()
-    else:
-      return node, None
-
   def call(self, node, _, args):
     self_var = self.to_variable(node)
     node, var = self.vm.attribute_handler.get_attribute(
@@ -818,6 +840,7 @@ class HasSlots(object):
       attr = self.vm.program.NewVariable()
       attr.PasteVariable(self._slots[name], node, {valself})
       return attr
+    return HasSlots.super(self.get_special_attribute)(node, name, valself)
 
 
 class List(Instance, PythonConstant):
@@ -1351,11 +1374,14 @@ class SuperInstance(AtomicAbstractValue):
   def set(self, node, *unused_args, **unused_kwargs):
     return node, self.to_variable(node)
 
-  def get_special_attribute(self, node, name, _):
+  def get_special_attribute(self, node, name, valself):
     if name == "__get__":
       return self.get.to_variable(node)
     elif name == "__set__":
       return self.set.to_variable(node)
+    else:
+      return super(SuperInstance, self).get_special_attribute(
+          node, name, valself)
 
   def get_class(self):
     return self.cls
@@ -1984,6 +2010,7 @@ class Class(object):
     return node
 
   def get_special_attribute(self, node, name, valself):
+    """Fetch a special attribute."""
     if name == "__getitem__" and valself is None:
       if self.cls:
         # This class has a custom metaclass; check if it defines __getitem__.
@@ -1996,6 +2023,7 @@ class Class(object):
       # AnnotationContainer's param length check reports an appropriate error.
       container = AnnotationContainer(self.name, self.vm, self)
       return container.get_special_attribute(node, name, valself)
+    return Class.super(self.get_special_attribute)(node, name, valself)
 
 
 class ParameterizedClass(AtomicAbstractValue, Class):
@@ -2790,7 +2818,7 @@ class Generator(Instance):
     self.generator_frame = generator_frame
     self.runs = 0
 
-  def get_special_attribute(self, node, name, _):
+  def get_special_attribute(self, node, name, valself):
     if name == "__iter__":
       f = NativeFunction(name, self.__iter__, self.vm)
       return f.to_variable(node)
@@ -2801,6 +2829,8 @@ class Generator(Instance):
       # inside a coroutine. So just return ourself, mapping the call of
       # throw() to a next() (which won't be executed).
       return self.to_variable(node)
+    else:
+      return super(Generator, self).get_special_attribute(node, name, valself)
 
   def __iter__(self, node):  # pylint: disable=non-iterator-returned,unexpected-special-method-signature
     return node, self.to_variable(node)
