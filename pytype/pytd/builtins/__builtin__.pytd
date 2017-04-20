@@ -406,7 +406,8 @@ class dict(Dict[_K, _V]):
     def __len__(self) -> int
     def __setitem__(self, i: _K2, y: _V2) -> NoneType:
       self := dict[_K or _K2, _V or _V2]
-    def clear(self) -> NoneType
+    def clear(self) -> NoneType:
+        self := dict[nothing, nothing]
     def copy(self) -> dict[_K, _V]
     @staticmethod
     def fromkeys(keys: Iterable[_K]) -> Dict[_K, NoneType]
@@ -526,7 +527,8 @@ class set(Set[_T]):
     def __or__(self, y: Iterable[_T2]) -> set[_T or _T2]
     def __sub__(self, y: Iterable) -> set[_T]
     def __xor__(self, y: Iterable[_T2]) -> set[_T or _T2]
-    def clear(self) -> NoneType
+    def clear(self) -> NoneType:
+        self := set[nothing]
     def copy(self) -> set[_T]
     def discard(self, y) -> NoneType
     def difference_update(self, ...) -> NoneType

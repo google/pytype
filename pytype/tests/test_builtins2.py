@@ -3,6 +3,8 @@
 File 2/2. Split into two parts to enable better test parallelism.
 """
 
+import unittest
+
 
 from pytype import abstract
 from pytype import utils
@@ -879,6 +881,20 @@ class BuiltinTests2(test_inference.InferenceTest):
         def j(x: Type[super]) -> None: ...
         v = ...  # type: Type[super]
       """)
+
+  @unittest.skip("broken")
+  def testClear(self):
+    ty = self.Infer("""\
+      x = {1, 2}
+      x.clear()
+      y = {"foo": 1}
+      y.clear()
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Dict, Set
+      x = ...  # type: Set[nothing]
+      y = ...  # type: Dict[nothing, nothing]
+    """)
 
 
 if __name__ == "__main__":
