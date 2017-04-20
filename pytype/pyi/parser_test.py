@@ -364,6 +364,13 @@ class HomogeneousTypeTest(_ParserTestBase):
       from typing import Any, Callable
 
       x = ...  # type: Callable[[int], Any]""")
+    self.check("""\
+      from typing import Callable
+
+      x = ...  # type: Callable[[], ...]""", """\
+      from typing import Any, Callable
+
+      x = ...  # type: Callable[[], Any]""")
     self.check_error(
         "import typing\n\nx = ...  # type: typing.Callable[int]", 3,
         "First argument to Callable must be a list of argument types")

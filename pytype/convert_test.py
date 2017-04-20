@@ -86,13 +86,13 @@ class ConvertTest(unittest.TestCase):
     instance = self._vm.convert.constant_to_value(
         abstract.AsInstance(x), {}, self._vm.root_cfg_node)
     self.assertIsInstance(cls, abstract.TupleClass)
-    self.assertListEqual(sorted(cls.type_parameters.items()),
-                         [(0, self._vm.convert.str_type.data[0]),
-                          (1, self._vm.convert.int_type.data[0]),
-                          (abstract.T, abstract.Union([
-                              cls.type_parameters[0],
-                              cls.type_parameters[1],
-                          ], self._vm))])
+    self.assertItemsEqual(cls.type_parameters.items(),
+                          [(0, self._vm.convert.str_type.data[0]),
+                           (1, self._vm.convert.int_type.data[0]),
+                           (abstract.T, abstract.Union([
+                               cls.type_parameters[0],
+                               cls.type_parameters[1],
+                           ], self._vm))])
     self.assertIsInstance(instance, abstract.Tuple)
     self.assertListEqual([v.data for v in instance.pyval],
                          [[self._vm.convert.primitive_class_instances[str]],
@@ -109,6 +109,66 @@ class ConvertTest(unittest.TestCase):
                      [self._vm.convert.primitive_class_instances[bool]])
     self.assertEqual(t_bool.data, [self._vm.convert.true])
     self.assertEqual(f_bool.data, [self._vm.convert.false])
+
+  def test_callable_with_args(self):
+    ast = self._load_ast("a", """
+      from typing import Callable
+      x = ...  # type: Callable[[int, bool], str]
+    """)
+    x = ast.Lookup("a.x").type
+    cls = self._vm.convert.constant_to_value(x, {}, self._vm.root_cfg_node)
+    instance = self._vm.convert.constant_to_value(
+        abstract.AsInstance(x), {}, self._vm.root_cfg_node)
+    self.assertIsInstance(cls, abstract.Callable)
+    self.assertItemsEqual(
+        cls.type_parameters.items(),
+        [(0, self._vm.convert.int_type.data[0]),
+         (1, self._vm.convert.primitive_classes[bool].data[0]),
+         (abstract.ARGS, abstract.Union(
+             [cls.type_parameters[0], cls.type_parameters[1]], self._vm)),
+         (abstract.RET, self._vm.convert.str_type.data[0])])
+    self.assertIsInstance(instance, abstract.Instance)
+    self.assertEquals(abstract.get_atomic_value(instance.cls), cls)
+    self.assertItemsEqual(
+        [(name, set(var.data))
+         for name, var in instance.type_parameters.items()],
+        [(abstract.ARGS, {self._vm.convert.primitive_class_instances[int],
+                          self._vm.convert.primitive_class_instances[bool]}),
+         (abstract.RET, {self._vm.convert.primitive_class_instances[str]})])
+
+  def test_callable_no_args(self):
+    ast = self._load_ast("a", """
+      from typing import Callable
+      x = ... # type: Callable[[], ...]
+    """)
+    x = ast.Lookup("a.x").type
+    cls = self._vm.convert.constant_to_value(x, {}, self._vm.root_cfg_node)
+    instance = self._vm.convert.constant_to_value(
+        abstract.AsInstance(x), {}, self._vm.root_cfg_node)
+    self.assertIsInstance(cls.type_parameters[abstract.ARGS], abstract.Nothing)
+    self.assertEquals(
+        abstract.get_atomic_value(instance.type_parameters[abstract.ARGS]),
+        self._vm.convert.empty)
+
+  def test_plain_callable(self):
+    ast = self._load_ast("a", """
+      from typing import Callable
+      x = ...  # type: Callable[..., int]
+    """)
+    x = ast.Lookup("a.x").type
+    cls = self._vm.convert.constant_to_value(x, {}, self._vm.root_cfg_node)
+    instance = self._vm.convert.constant_to_value(
+        abstract.AsInstance(x), {}, self._vm.root_cfg_node)
+    self.assertIsInstance(cls, abstract.ParameterizedClass)
+    self.assertItemsEqual(cls.type_parameters.items(),
+                          [(abstract.ARGS, self._vm.convert.unsolvable),
+                           (abstract.RET, self._vm.convert.int_type.data[0])])
+    self.assertIsInstance(instance, abstract.Instance)
+    self.assertEquals(abstract.get_atomic_value(instance.cls), cls.base_cls)
+    self.assertItemsEqual(
+        [(name, var.data) for name, var in instance.type_parameters.items()],
+        [(abstract.ARGS, [self._vm.convert.unsolvable]),
+         (abstract.RET, [self._vm.convert.primitive_class_instances[int]])])
 
 
 if __name__ == "__main__":

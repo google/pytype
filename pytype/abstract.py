@@ -745,6 +745,9 @@ class Instance(SimpleAbstractValue):
               params = []
             else:
               params = [(T, base.type_parameters[T])]
+          elif isinstance(base, Callable):
+            params = [(ARGS, base.type_parameters[ARGS]),
+                      (RET, base.type_parameters[RET])]
           else:
             params = base.type_parameters.items()
           for name, param in params:
@@ -1160,7 +1163,7 @@ class Union(AtomicAbstractValue):
   def __init__(self, options, vm):
     super(Union, self).__init__("Union", vm)
     assert options
-    self.options = options
+    self.options = tuple(options)
     # TODO(rechen): Don't allow a mix of formal and non-formal types
     self.formal = any(t.formal for t in options)
 
@@ -1174,6 +1177,9 @@ class Union(AtomicAbstractValue):
 
   def __ne__(self, other):
     return not self == other
+
+  def __hash__(self):
+    return hash(self.options)
 
   def instantiate(self, node, container=None):
     var = self.vm.program.NewVariable()
@@ -2067,7 +2073,7 @@ class TupleClass(ParameterizedClass, HasSlots):
   elements under their indices and the overall element type under "T". So for
     Tuple[str, int]
   type_parameters is
-    {0: <instance of str>, 1: <instance of int>, T: <instance of str or int>}.
+    {0: str, 1: int, T: str or int}.
   Note that we can't store the individual types as a PythonConstant as we do
   for Tuple, since we can't evaluate type parameters during initialization.
   """
@@ -2127,7 +2133,24 @@ class TupleClass(ParameterizedClass, HasSlots):
 
 
 class Callable(ParameterizedClass):
-  """A Callable with a list of argument types."""
+  """A Callable with a list of argument types.
+
+  The type_parameters attribute stores the types of the individual arguments
+  under their indices, the overall argument type under "ARGS", and the return
+  type under "RET". So for
+    Callable[[int, bool], str]
+  type_parameters is
+    {0: int, 1: bool, ARGS: int or bool, RET: str}
+  When there are no args (Callable[[], ...]), ARGS contains abstract.Nothing.
+  """
+
+  def __init__(self, base_cls, type_parameters, vm):
+    super(Callable, self).__init__(base_cls, type_parameters, vm)
+    # We subtract two to account for "ARGS" and "RET".
+    self.num_args = len(self.type_parameters) - 2
+
+  def __repr__(self):
+    return "Callable(%s)" % self.type_parameters
 
 
 class PyTDClass(SimpleAbstractValue, Class):
@@ -2912,6 +2935,9 @@ class Nothing(AtomicAbstractValue):
 
   def call(self, node, func, args):
     raise AssertionError("Can't call empty object ('nothing')")
+
+  def instantiate(self, node, container=None):
+    return self.vm.convert.empty.to_variable(node)
 
 
 class Module(Instance):

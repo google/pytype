@@ -46,7 +46,7 @@ class Converter(object):
     """Get PyTD types for the parameters of an instance of an abstract value."""
     if isinstance(v, abstract.Callable):
       assert template == (abstract.ARGS, abstract.RET), template
-      template = range(len(v.type_parameters) - 2) + [template[1]]
+      template = range(v.num_args) + [template[1]]
     if self._is_tuple(v, instance):
       assert len(template) == 1 and template[0] == abstract.T, template
       if isinstance(v, abstract.TupleClass):

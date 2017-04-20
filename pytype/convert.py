@@ -531,8 +531,8 @@ class Converter(object):
                           for p in cls.parameters)
           return abstract.Tuple(content, self.vm)
         elif isinstance(cls, pytd.CallableType):
-          # TODO(rechen): Use cls.parameters.
-          return abstract.Instance(self.function_type, self.vm)
+          clsvar = self.constant_to_var(cls, subst, self.vm.root_cfg_node)
+          return abstract.Instance(clsvar, self.vm)
         else:
           clsvar = self.constant_to_var(base_cls, subst, self.vm.root_cfg_node)
           instance = abstract.Instance(clsvar, self.vm)
@@ -551,8 +551,10 @@ class Converter(object):
         template = range(len(pyval.parameters)) + [abstract.T]
         parameters = pyval.parameters + (pytd.UnionType(pyval.parameters),)
       elif isinstance(pyval, pytd.CallableType):
-        # TODO(rechen): Use pyval.parameters.
-        return self.function_type.data[0]
+        abstract_class = abstract.Callable
+        template = range(len(pyval.args)) + [abstract.ARGS, abstract.RET]
+        parameters = pyval.args + (pytd.UnionType(pyval.parameters[:-1]),
+                                   pyval.ret)
       else:
         abstract_class = abstract.ParameterizedClass
         template = tuple(t.name for t in pyval.base_type.cls.template)
