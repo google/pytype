@@ -19,6 +19,7 @@ from pytype import infer
 from pytype import load_pytd
 from pytype import metrics
 from pytype.pyc import pyc
+from pytype.pyi import parser
 from pytype.pytd import optimize
 from pytype.pytd import pytd
 from pytype.pytd import serialize_ast
@@ -63,16 +64,17 @@ def _create_loader(input_filename, options):
         base_module=module_name, options=options)
 
 
-def generate_pyi(input_filename, errorlog, options):
+def generate_pyi(input_filename, errorlog, options, loader):
   """Run the inferencer on one file, producing output.
 
   Args:
     input_filename: name of the file to process
     errorlog: Where error messages go. Instance of errors.ErrorLog.
     options: config.Options object.
+    loader: A load_pytd.Loader instance.
 
   Returns:
-    The pyi AST.
+    A tuple, (PYI Ast as string, TypeDeclUnit).
 
   Raises:
     CompileError: If we couldn't parse the input file.
@@ -84,7 +86,7 @@ def generate_pyi(input_filename, errorlog, options):
       src=src,
       errorlog=errorlog,
       options=options,
-      loader=_create_loader(input_filename, options),
+      loader=loader,
       filename=input_filename,
       run_builtins=options.run_builtins,
       deep=not options.main_only,
@@ -112,7 +114,7 @@ def generate_pyi(input_filename, errorlog, options):
     result_prefix += "# (generated with --quick)\n"
   if result_prefix:
     result = result_prefix + "\n" + result
-  return result
+  return result, mod
 
 
 def process_one_file(input_filename,
@@ -133,6 +135,7 @@ def process_one_file(input_filename,
   """
   errorlog = errors.ErrorLog()
   result = pytd_builtins.DEFAULT_SRC
+  ast = pytd_builtins.GetDefaultAst(options.python_version)
   try:
     if options.check:
       check_pyi(input_filename=input_filename,
@@ -140,9 +143,11 @@ def process_one_file(input_filename,
                 errorlog=errorlog,
                 options=options)
     else:
-      result = generate_pyi(input_filename=input_filename,
-                            errorlog=errorlog,
-                            options=options)
+      loader = _create_loader(input_filename, options)
+      result, ast = generate_pyi(input_filename=input_filename,
+                                 errorlog=errorlog,
+                                 options=options,
+                                 loader=loader)
   except pyc.CompileError as e:
     errorlog.python_compiler_error(input_filename, e.lineno, e.error)
   except Exception as e:  # pylint: disable=broad-except
@@ -162,6 +167,23 @@ def process_one_file(input_filename,
       log.info("write pyi %r => %r", input_filename, output_filename)
       with open(output_filename, "w") as fi:
         fi.write(result)
+      if options.output_pickled:
+        try:
+          ast = serialize_ast.PrepareForExport(
+              options.module_name, options.python_version, ast)
+        except parser.ParseError as e:
+          if options.nofail:
+            ast = serialize_ast.PrepareForExport(
+                options.module_name, options.python_version,
+                pytd_builtins.GetDefaultAst(options.python_version))
+            log.warn("***Caught exception: %s", str(e), exc_info=True)
+          else:
+            raise
+        if options.verify_pickle:
+          reloaded_ast = loader.load_file(options.module_name, output_filename)
+          if not reloaded_ast.ASTeq(ast):
+            raise AssertionError()
+        serialize_ast.StoreAst(ast, options.output_pickled)
   if options.report_errors:
     if options.output_errors_csv:
       errorlog.print_to_csv_file(options.output_errors_csv)
@@ -199,27 +221,6 @@ class _ProfileContext(object):
       self._profile.dump_stats(self._output_path)
 
 
-def _save_serialized_ast(options):
-  """Generates a fast pyi file from a pyi and saved it to disk.
-
-  Args:
-    options: A config.Options object.
-
-  Returns:
-    True on sucess or False if the file could not be generated, serialized or
-    saved for any reason.
-
-  Raises:
-    ValueError: If options.module_name is not set.
-  """
-  loader = load_pytd.Loader(base_module=None, options=options)
-  ast = loader.load_file(options.module_name, options.input)
-  if serialize_ast.StoreAst(ast, options.read_pyi_save_pickle):
-    return 0
-  else:
-    return 1
-
-
 def main(argv):
   try:
     options = config.Options(argv)
@@ -230,10 +231,7 @@ def main(argv):
   with _ProfileContext(options.profile):
     with metrics.MetricsContext(options.metrics):
       with metrics.StopWatch("total_time"):
-        if options.read_pyi_save_pickle:
-          return _save_serialized_ast(options)
-        else:
-          return _run_pytype(options)
+        return _run_pytype(options)
 
 
 def _run_pytype(options):

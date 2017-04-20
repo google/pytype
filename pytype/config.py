@@ -94,6 +94,12 @@ class Options(object):
         dest="generate_builtins", default=None,
         help="Precompile builtins pytd and write to the given file.")
     o.add_option(
+        "--output-pickled", action="store",
+        dest="output_pickled",
+        help=("Saves the ast representation of the inferred pyi as a pickled "
+              "file. The value of this parameter is the destination filename "
+              "for the pickled data."))
+    o.add_option(
         "--imports_info", type="string", action="store",
         dest="imports_map", default=None,
         help=("Information for mapping import .pytd to files. "
@@ -202,11 +208,6 @@ class Options(object):
               "--pythonpath. This option is incompatible with "
               "--imports_info.") % os.pathsep)
     o.add_option(
-        "--read-pyi-save-pickle", type="string", action="store",
-        dest="read_pyi_save_pickle",
-        help=("Loads a PYI file and saves the contained abstract syntax tree "
-              "as pickled information, to the provided filename."))
-    o.add_option(
         "--touch", type="string", action="store",
         dest="touch", default=None,
         help="Output file to touch when exit status is ok.")
@@ -220,6 +221,13 @@ class Options(object):
         dest="verbosity", default=1,
         help=("Set logging verbosity: "
               "-1=quiet, 0=fatal, 1=error (default), 2=warn, 3=info, 4=debug"))
+    o.add_option(
+        "--verify-pickle", action="store_true", default=False,
+        dest="verify_pickle",
+        help=("Loads the generated PYI file and compares it with the abstract "
+              "syntax tree written as pickled output. This will raise an "
+              "uncaught AssertionError if the two ASTs are not the same. The "
+              "option is intended for debugging."))
     o.add_option(
         "-Z", "--quick", action="store_true",
         dest="quick",

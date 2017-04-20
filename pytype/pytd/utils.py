@@ -22,14 +22,20 @@ locally or within a larger repository.
 # pylint: disable=g-explicit-length-test
 
 import collections
+import cPickle
 import itertools
 import os
+import sys
 
 from pytype.pyi import parser
 from pytype.pytd import abc_hierarchy
 from pytype.pytd import pytd
 from pytype.pytd.parse import visitors
 import pytype.utils
+
+
+_PICKLE_PROTOCOL = cPickle.HIGHEST_PROTOCOL
+_PICKLE_RECURSION_LIMIT_AST = 40000
 
 
 def UnpackUnion(t):
@@ -536,3 +542,18 @@ def GetPredefinedFile(pytd_subdir, module, extension=".pytd"):
   path = os.path.join("pytd", pytd_subdir,
                       os.path.join(*module.split(".")) + extension)
   return pytype.utils.load_pytype_file(path)
+
+
+def LoadPickle(filename):
+  with open(filename, "rb") as fi:
+    return cPickle.load(fi)
+
+
+def SavePickle(data, filename):
+  with open(filename, "wb") as fi:
+    recursion_limit = sys.getrecursionlimit()
+    sys.setrecursionlimit(_PICKLE_RECURSION_LIMIT_AST)
+    try:
+      cPickle.dump(data, fi, _PICKLE_PROTOCOL)
+    finally:
+      sys.setrecursionlimit(recursion_limit)

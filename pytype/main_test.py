@@ -3,7 +3,6 @@
 import csv
 import hashlib
 import os
-import shutil
 import subprocess
 import textwrap
 
@@ -149,51 +148,18 @@ class PytypeTest(unittest.TestCase):
     self.assertTrue(parser.parse_string(self.stdout).ASTeq(
         parser.parse_string(expected_pyi)), message)
 
-  def testPickledAstLocationWithoutModuleName(self):
-    self.pytype_args[self._DataPath("simple.pyi")] = self.INCLUDE
-    pickled_location = "/unused location as this tests an error."
-    self.pytype_args["--read-pyi-save-pickle"] = pickled_location
-    self._RunPytype(self.pytype_args)
-    self.assertOutputStateMatches(stdout=False, stderr=True, returncode=1)
-
-  def testPickledAstLocation(self):
+  def testGeneratePickledAst(self):
     with utils.Tempdir() as d:
-      simple_pyi_path = os.path.join(d.path, "simple.pyi")
-      shutil.copyfile(self._DataPath("simple.pyi"), simple_pyi_path)
-
-      pickled_location = os.path.join(d.path, "simple.pyi.pickled")
-      self.pytype_args[simple_pyi_path] = self.INCLUDE
+      pickled_location = os.path.join(d.path, "simple.pickled")
       self.pytype_args["--pythonpath"] = d.path
-      self.pytype_args["--read-pyi-save-pickle"] = pickled_location
+      self.pytype_args["--output-pickled"] = pickled_location
       self.pytype_args["--module-name"] = "simple"
+      self.pytype_args["--verify-pickle"] = self.INCLUDE
+      self.pytype_args["--output"] = os.path.join(d.path, "unused_pyi")
+      self.pytype_args[self._DataPath("simple.py")] = self.INCLUDE
       self._RunPytype(self.pytype_args)
-      self.assertTrue(os.path.exists(pickled_location))
       self.assertOutputStateMatches(stdout=False, stderr=False, returncode=0)
-
-  def testUsePickledFiles(self):
-    with utils.Tempdir() as d:
-      # Create the pickled dependency
-      simple_pyi_path = os.path.join(d.path, "simple.pyi")
-      shutil.copyfile(self._DataPath("simple.pyi"), simple_pyi_path)
-
-      pickled_location = os.path.join(d.path, "simple.pyi.pickled")
-      self.pytype_args[simple_pyi_path] = self.INCLUDE
-      self.pytype_args["--pythonpath"] = d.path
-      self.pytype_args["--read-pyi-save-pickle"] = pickled_location
-      self.pytype_args["--module-name"] = "simple"
-      self._RunPytype(self.pytype_args)
       self.assertTrue(os.path.exists(pickled_location))
-      self.assertOutputStateMatches(stdout=False, stderr=False, returncode=0)
-      self._ResetPytypeArgs()
-
-      # Get the importing file to pythonpath.
-      imports_py_path = os.path.join(d.path, "imports.py")
-      shutil.copyfile(self._DataPath("imports.py"), imports_py_path)
-
-      self.pytype_args["--use-pickled-files"] = self.INCLUDE
-      self.pytype_args["--pythonpath"] = d.path
-
-      self._InferTypesAndCheckErrors(imports_py_path, [])
 
   def testNonexistentOption(self):
     self.pytype_args["--rumpelstiltskin"] = self.INCLUDE

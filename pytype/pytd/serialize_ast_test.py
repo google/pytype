@@ -6,6 +6,7 @@ from pytype import load_pytd
 from pytype import utils
 from pytype.pytd import pytd
 from pytype.pytd import serialize_ast
+from pytype.pytd import utils as pytd_utils
 from pytype.pytd.parse import visitors
 
 import unittest
@@ -146,9 +147,8 @@ class ImportPathsTest(unittest.TestCase):
       original_ast = module_map[module_name]
       del module_map[module_name]
       loaded_ast = serialize_ast.ProcessAst(
-          serialize_ast.LoadPickle(pickled_ast_filename),
-          module_map,
-          module_name)
+          pytd_utils.LoadPickle(pickled_ast_filename),
+          module_map)
 
       self.assertTrue(loaded_ast)
       self.assertTrue(loaded_ast is not original_ast)
@@ -170,9 +170,8 @@ class ImportPathsTest(unittest.TestCase):
       del module_map[module_name]
 
       loaded_ast = serialize_ast.ProcessAst(
-          serialize_ast.LoadPickle(pickled_ast_filename),
-          module_map,
-          module_name)
+          pytd_utils.LoadPickle(pickled_ast_filename),
+          module_map)
 
       self.assertTrue(loaded_ast)
       self.assertTrue(loaded_ast is not original_ast)
@@ -189,9 +188,8 @@ class ImportPathsTest(unittest.TestCase):
 
       with self.assertRaises(serialize_ast.UnrestorableDependencyError):
         serialize_ast.ProcessAst(
-            serialize_ast.LoadPickle(pickled_ast_filename),
-            module_map,
-            module_name)
+            pytd_utils.LoadPickle(pickled_ast_filename),
+            module_map)
 
   def testUnrestorableDependencyErrorWithoutModuleIndex(self):
     with utils.Tempdir() as d:
@@ -200,10 +198,10 @@ class ImportPathsTest(unittest.TestCase):
       module_map = self._StoreAst(d, module_name, pickled_ast_filename)
       module_map = {}  # Remove module2
 
-      loaded_ast = serialize_ast.LoadPickle(pickled_ast_filename)
+      loaded_ast = pytd_utils.LoadPickle(pickled_ast_filename)
       loaded_ast.modified_class_types = None  # Remove the index
       with self.assertRaises(serialize_ast.UnrestorableDependencyError):
-        serialize_ast.ProcessAst(loaded_ast, module_map, module_name)
+        serialize_ast.ProcessAst(loaded_ast, module_map)
 
   def testLoadWithDifferentModuleName(self):
     with utils.Tempdir() as d:
@@ -214,10 +212,9 @@ class ImportPathsTest(unittest.TestCase):
       del module_map[original_module_name]
 
       new_module_name = "wurstbrot.module2"
-      loaded_ast = serialize_ast.ProcessAst(
-          serialize_ast.LoadPickle(pickled_ast_filename),
-          module_map,
-          new_module_name)
+      serializable_ast = pytd_utils.LoadPickle(pickled_ast_filename)
+      serialize_ast.EnsureAstName(serializable_ast, new_module_name)
+      loaded_ast = serialize_ast.ProcessAst(serializable_ast, module_map)
 
       self.assertTrue(loaded_ast)
       self.assertTrue(loaded_ast is not original_ast)

@@ -86,15 +86,21 @@ class Loader(object):
     return self.load_file(module_name, filename,
                           pytd_utils.EmptyModule(module_name))
 
-  def load_file(self, module_name, filename, ast=None):
-    """Load (or retrieve from cache) a module and resolve its dependencies."""
-    self._concatenated = None  # invalidate
+  def _get_existing_ast(self, module_name, filename):
     existing = self._modules.get(module_name)
     if existing:
       if existing.filename != filename:
         raise AssertionError("%s exists as both %s and %s" %
                              (module_name, filename, existing.filename))
       return existing.ast
+    return None
+
+  def load_file(self, module_name, filename, ast=None):
+    """Load (or retrieve from cache) a module and resolve its dependencies."""
+    self._concatenated = None  # invalidate
+    existing = self._get_existing_ast(module_name, filename)
+    if existing:
+      return existing
     if not ast:
       ast = builtins.ParsePyTD(filename=filename,
                                module=module_name,
@@ -375,19 +381,26 @@ class PickledPyiLoader(Loader):
 
   def load_file(self, module_name, filename, ast=None):
     """Load (or retrieve from cache) a module and resolve its dependencies."""
-    if ast:
+    if not filename.endswith(".pickled"):
       return super(PickledPyiLoader, self).load_file(module_name, filename, ast)
-    filename += ".pickled"
-    loaded_ast = serialize_ast.LoadPickle(filename)
+    existing = self._get_existing_ast(module_name, filename)
+    if existing:
+      return existing
+    loaded_ast = pytd_utils.LoadPickle(filename)
+
     # At this point ast.name and module_name could be different.
     # They are later synced in ProcessAst.
     dependencies = [d for d in loaded_ast.dependencies
                     if d != loaded_ast.ast.name]
+
+    serialize_ast.EnsureAstName(loaded_ast, module_name)
+    self._modules[module_name] = Module(module_name, filename, loaded_ast.ast)
     self._load_ast_dependencies(dependencies, ast, module_name)
+
     try:
-      ast = serialize_ast.ProcessAst(
-          loaded_ast, self._get_module_map(), module_name)
+      ast = serialize_ast.ProcessAst(loaded_ast, self._get_module_map())
     except serialize_ast.UnrestorableDependencyError as e:
-      raise BadDependencyError(e.message, ast.name)
-    self._modules[module_name] = Module(module_name, filename, ast)
+      del self._modules[module_name]
+      raise BadDependencyError(e.message, module_name)
+    self._modules[module_name].ast = ast
     return ast

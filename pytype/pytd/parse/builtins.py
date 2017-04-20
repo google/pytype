@@ -21,7 +21,6 @@ import os
 
 
 from pytype.pyi import parser
-from pytype.pytd import serialize_ast
 from pytype.pytd import utils
 from pytype.pytd.parse import visitors
 
@@ -40,14 +39,14 @@ _cached_builtins_pytd = None  # ... => pytype.pytd.pytd.TypeDeclUnit
 def Precompile(filename):
   """Write precompiled builtins to the specified file."""
   data = GetBuiltinsAndTyping()
-  serialize_ast.DumpData(data, filename)
+  utils.SavePickle(data, filename)
 
 
 def LoadPrecompiled(filename):
   """Load precompiled builtins from the specified file."""
   global _cached_builtins_pytd
   assert _cached_builtins_pytd is None
-  _cached_builtins_pytd = serialize_ast.LoadPickle(filename)
+  _cached_builtins_pytd = utils.LoadPickle(filename)
 
 
 def GetBuiltinsAndTyping():
