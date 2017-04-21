@@ -2274,9 +2274,7 @@ class Super(PyTDClass):
           result.AddBinding(
               SuperInstance(cls.data, obj.data, self.vm), [cls, obj], node)
     else:
-      self.vm.errorlog.super_error(
-          self.vm.frame.current_opcode, len(args.posargs))
-      result = self.vm.convert.create_new_unsolvable(node)
+      raise WrongArgCount(self._SIGNATURE, args, self.vm)
     return node, result
 
 

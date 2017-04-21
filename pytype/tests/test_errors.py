@@ -223,12 +223,12 @@ class ErrorTest(test_inference.InferenceTest):
     self.assertErrorLogContains(errors, r"int.*\[not-callable\]")
 
   def testSuperError(self):
-    _, errors = self.InferAndCheck("""
+    _, errors = self.InferAndCheck("""\
       class A(object):
         def __init__(self):
           super(A, self, "foo").__init__()
     """)
-    self.assertErrorLogContains(errors, r"\[super-error\]")
+    self.assertErrorLogIs(errors, [(3, "wrong-arg-count", "2.*3")])
 
   def testAttributeError(self):
     with utils.Tempdir() as d:

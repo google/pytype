@@ -417,11 +417,6 @@ class ErrorLog(ErrorLogBase):
     else:
       raise AssertionError(error)
 
-  @_error_name("super-error")
-  def super_error(self, opcode, arg_count):
-    self.error(opcode, "super() takes one or two arguments. %d given." %
-               arg_count)
-
   @_error_name("base-class-error")
   def base_class_error(self, opcode, node, base_var):
     pytd_type = pytd_utils.JoinTypes(t.get_instance_type(node)
