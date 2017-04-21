@@ -197,6 +197,38 @@ class AbstractMatcher(object):
       if other_type.full_name in [
           "__builtin__.module", "__builtin__.object", "types.ModuleType"]:
         return subst
+    elif isinstance(left, (abstract.Function, abstract.BoundFunction)):
+      if other_type.full_name == "__builtin__.object":
+        return subst
+      elif other_type.full_name == "typing.Callable":
+        if not isinstance(other_type, abstract.ParameterizedClass):
+          # The callable has no parameters, so any function matches it.
+          return subst
+        if isinstance(left, abstract.BoundFunction):
+          # TODO(rechen): What do we do with 'self'?
+          left = left.underlying
+        if isinstance(left, abstract.NativeFunction):
+          # If we could get the class on which 'left' is defined (perhaps by
+          # using bound_class?), we could get the argument and return types
+          # from the underlying PyTDFunction, but we wouldn't get much value
+          # out of that additional matching, since most NativeFunction objects
+          # are magic methods like __getitem__ which aren't likely to be passed
+          # as function arguments.
+          return subst
+        elif isinstance(left, abstract.PyTDFunction):
+          signatures = [sig.signature for sig in left.signatures]
+          for sig in signatures:
+            new_subst = self._match_signature_against_callable(
+                sig, other_type, subst, node, view)
+            if new_subst is not None:
+              return new_subst
+          return None
+        elif isinstance(left, abstract.InterpreterFunction):
+          # TODO(rechen): Implement matching here.
+          return subst
+        else:
+          raise NotImplementedError(
+              "Matching not implemented for %s against Callable" % type(left))
     elif isinstance(left, abstract.SimpleAbstractValue):
       if (left.cls and
           any(v.full_name == "typing.Callable" for v in left.cls.data) and
@@ -208,10 +240,6 @@ class AbstractMatcher(object):
     elif isinstance(left, abstract.SuperInstance):
       return self._match_class_and_instance_against_type(
           left.super_cls, left.super_obj, other_type, subst, node, view)
-    elif isinstance(left, (abstract.Function, abstract.BoundFunction)):
-      if other_type.full_name in [
-          "__builtin__.object", "typing.Callable"]:
-        return subst
     elif isinstance(left, abstract.ClassMethod):
       if other_type.full_name in [
           "__builtin__.classmethod", "__builtin__.object"]:
@@ -232,6 +260,17 @@ class AbstractMatcher(object):
     else:
       raise NotImplementedError("Matching not implemented for %s against %s" %
                                 (type(left), type(other_type)))
+
+  def _match_signature_against_callable(
+      self, sig, other_type, subst, node, view):
+    if sig.has_return_annotation:
+      subst = self._instantiate_and_match(
+          sig.annotations["return"], other_type.type_parameters[abstract.RET],
+          subst, node, view)
+      if subst is None:
+        return subst
+    # TODO(rechen): Match arguments.
+    return subst
 
   def _instantiate_and_match(self, left, other_type, subst, node, view):
     """Instantiate and match an abstract value."""

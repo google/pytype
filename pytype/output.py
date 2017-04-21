@@ -158,6 +158,7 @@ class Converter(object):
     elif isinstance(v, (abstract.Function, abstract.IsInstance,
                         abstract.BoundFunction, abstract.ClassMethod,
                         abstract.StaticMethod)):
+      # TODO(rechen): Construct a pytd.CallableType when appropriate.
       return pytd.NamedType("typing.Callable")
     elif isinstance(v, abstract.Class):
       param = self.value_instance_to_pytd_type(node, v, None, seen, view)

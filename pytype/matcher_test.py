@@ -46,7 +46,7 @@ class MatcherTest(unittest.TestCase):
     Returns:
       An AtomicAbstractValue.
     """
-    src = "from typing import Tuple, Type\n"
+    src = "from typing import Callable, Tuple, Type\n"
     src += "x = ...  # type: " + t
     filename = str(hash((t, as_instance)))
     x = self._parse_and_lookup(src, "x", filename).type
@@ -261,6 +261,24 @@ class MatcherTest(unittest.TestCase):
     left = self.vm.convert.true
     right = self.vm.convert.primitive_classes[float].data[0]
     self.assertMatch(left, right)
+
+  def testPyTDFunctionAgainstCallable(self):
+    f_pytd = self._parse_and_lookup("def f(x: int) -> bool: ...", "f")
+    f = self.vm.convert.constant_to_value(f_pytd, {}, self.vm.root_cfg_node)
+    plain_callable = self._convert("Callable", as_instance=False)
+    good_callable = self._convert("Callable[[int], int]", as_instance=False)
+    callable_bad_ret = self._convert("Callable[[int], str]", as_instance=False)
+    self.assertMatch(f, plain_callable)
+    self.assertMatch(f, good_callable)
+    self.assertMatch(f.bound_class(None, None, f), good_callable)
+    self.assertNoMatch(f, callable_bad_ret)
+
+  def testNativeFunctionAgainstCallable(self):
+    # Matching a native function against a callable always succeeds, regardless
+    # of argument and return types.
+    f = abstract.NativeFunction("f", lambda x: x, self.vm)
+    callable_type = self._convert("Callable[[int], int]", as_instance=False)
+    self.assertMatch(f, callable_type)
 
 
 if __name__ == "__main__":

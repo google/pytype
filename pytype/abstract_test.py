@@ -488,9 +488,9 @@ class FunctionTest(AbstractTestBase):
     self.assertEquals(sig.varargs_name, "args")
     self.assertFalse(sig.kwonly_params)
     self.assertIs(sig.kwargs_name, None)
-    self.assertSetEqual(set(sig.annotations), {"self", "args"})
+    self.assertSetEqual(set(sig.annotations), {"self", "args", "return"})
     self.assertFalse(sig.late_annotations)
-    self.assertFalse(sig.has_return_annotation)
+    self.assertTrue(sig.has_return_annotation)
     self.assertTrue(sig.has_param_annotations)
 
   def test_signature_annotations(self):

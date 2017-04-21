@@ -144,6 +144,26 @@ class MatchTest(test_inference.InferenceTest):
         v = ...  # type: Any
       """)
 
+  def testNoArgumentPyTDFunctionAgainstCallable(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        def bar() -> bool
+      """)
+      _, errors = self.InferAndCheck("""\
+        from __future__ import google_type_annotations
+        from typing import Callable
+        import foo
+
+        def f(x: Callable[[], int]): ...
+        def g(x: Callable[[], str]): ...
+
+        f(foo.bar)  # ok
+        g(foo.bar)
+      """, pythonpath=[d.path])
+      self.assertErrorLogIs(errors, [(9, "wrong-arg-types",
+                                      r"\(x: Callable\[\[\], str\]\).*"
+                                      r"\(x: Callable\)")])
+
 
 if __name__ == "__main__":
   test_inference.main()

@@ -95,6 +95,10 @@ class Signature(object):
   def from_pytd(cls, vm, name, sig):
     """Construct an abstract signature from a pytd signature."""
     # TODO(kramm): templates
+    pytd_annotations = [(p.name, p.type)
+                        for p in sig.params + (sig.starargs, sig.starstarargs)
+                        if p is not None]
+    pytd_annotations.append(("return", sig.return_type))
     return cls(
         name=name,
         param_names=tuple(p.name for p in sig.params if not p.kwonly),
@@ -105,10 +109,9 @@ class Signature(object):
             p.type, subst={}, node=vm.root_cfg_node)
                   for p in sig.params
                   if p.optional},
-        annotations={p.name: vm.convert.constant_to_value(
-            p.type, subst={}, node=vm.root_cfg_node)
-                     for p in sig.params + (sig.starargs, sig.starstarargs)
-                     if p is not None},
+        annotations={name: vm.convert.constant_to_value(
+            typ, subst={}, node=vm.root_cfg_node)
+                     for name, typ in pytd_annotations},
         late_annotations={}
     )
 
