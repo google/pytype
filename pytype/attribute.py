@@ -327,7 +327,12 @@ class AbstractAttributeHandler(object):
       for varval in var.bindings:
         value = varval.data
         if variableself or variablecls:
-          value = value.property_get(variableself, variablecls)
+          # Check if we got a PyTDFunction from an InterpreterClass. If so,
+          # then we must have aliased an imported function inside a class, so
+          # we shouldn't bind the function to the class.
+          if (not isinstance(value, abstract.PyTDFunction) or
+              not isinstance(base, abstract.InterpreterClass)):
+            value = value.property_get(variableself, variablecls)
         ret.AddBinding(value, [varval] + add_origins, node)
       break  # we found a class which has this attribute
     return ret

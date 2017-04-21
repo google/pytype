@@ -651,6 +651,28 @@ class TestFunctions(test_inference.InferenceTest):
         v2 = ...  # type: int
       """)
 
+  def testPyTDFunctionInClass(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        def bar(): ...
+      """)
+      self.assertNoErrors("""
+        import foo
+        class A(object):
+          bar = foo.bar
+          def f(self):
+           self.bar()
+      """, pythonpath=[d.path])
+
+  def testInterpreterFunctionInClass(self):
+    _, errors = self.InferAndCheck("""\
+      class A(object):
+        bar = lambda x: x
+        def f(self):
+          self.bar(42)
+    """)
+    self.assertErrorLogIs(errors, [(4, "wrong-arg-count", "1.*2")])
+
 
 if __name__ == "__main__":
   test_inference.main()
