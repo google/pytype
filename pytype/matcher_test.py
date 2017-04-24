@@ -46,7 +46,7 @@ class MatcherTest(unittest.TestCase):
     Returns:
       An AtomicAbstractValue.
     """
-    src = "from typing import Callable, Tuple, Type\n"
+    src = "from typing import Any, Callable, Tuple, Type\n"
     src += "x = ...  # type: " + t
     filename = str(hash((t, as_instance)))
     x = self._parse_and_lookup(src, "x", filename).type
@@ -266,12 +266,42 @@ class MatcherTest(unittest.TestCase):
     f_pytd = self._parse_and_lookup("def f(x: int) -> bool: ...", "f")
     f = self.vm.convert.constant_to_value(f_pytd, {}, self.vm.root_cfg_node)
     plain_callable = self._convert("Callable", as_instance=False)
-    good_callable = self._convert("Callable[[int], int]", as_instance=False)
-    callable_bad_ret = self._convert("Callable[[int], str]", as_instance=False)
+    good_callable1 = self._convert("Callable[[int], int]", as_instance=False)
+    good_callable2 = self._convert("Callable[..., int]", as_instance=False)
     self.assertMatch(f, plain_callable)
-    self.assertMatch(f, good_callable)
-    self.assertMatch(f.bound_class(None, None, f), good_callable)
+    self.assertMatch(f, good_callable1)
+    self.assertMatch(f, good_callable2)
+
+  def testPyTDFunctionAgainstCallableBadReturn(self):
+    f_pytd = self._parse_and_lookup("def f(x: int) -> bool: ...", "f")
+    f = self.vm.convert.constant_to_value(f_pytd, {}, self.vm.root_cfg_node)
+    callable_bad_ret = self._convert("Callable[[int], str]", as_instance=False)
     self.assertNoMatch(f, callable_bad_ret)
+
+  def testPyTDFunctionAgainstCallableBadArgCount(self):
+    f_pytd = self._parse_and_lookup("def f(x: int) -> bool: ...", "f")
+    f = self.vm.convert.constant_to_value(f_pytd, {}, self.vm.root_cfg_node)
+    callable_bad_count1 = self._convert("Callable[[], bool]", as_instance=False)
+    callable_bad_count2 = self._convert("Callable[[int, str], bool]",
+                                        as_instance=False)
+    self.assertNoMatch(f, callable_bad_count1)
+    self.assertNoMatch(f, callable_bad_count2)
+
+  def testBoundPyTDFunctionAgainstCallable(self):
+    cls = self._parse_and_lookup("""\
+      class A(object):
+        def f(self, x: int) -> bool: ...
+    """, "A")
+    instance = self.vm.convert.constant_to_value(
+        abstract.AsInstance(cls), {}, self.vm.root_cfg_node)
+    binding = instance.to_variable(self.vm.root_cfg_node).bindings[0]
+    _, method_var = self.vm.attribute_handler.get_attribute(
+        self.vm.root_cfg_node, instance, "f", binding)
+    m = method_var.data[0]
+    good_callable1 = self._convert("Callable[[int]]", as_instance=False)
+    good_callable2 = self._convert("Callable[[Any, int]]", as_instance=False)
+    self.assertMatch(m, good_callable1)
+    self.assertMatch(m, good_callable2)
 
   def testNativeFunctionAgainstCallable(self):
     # Matching a native function against a callable always succeeds, regardless

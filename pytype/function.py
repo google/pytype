@@ -91,6 +91,11 @@ class Signature(object):
                 for name in self.kwonly_params if name not in self.defaults])
     return num
 
+  def maximum_param_count(self):
+    if self.varargs_name or self.kwargs_name:
+      return None
+    return len(self.param_names) + len(self.kwonly_params)
+
   @classmethod
   def from_pytd(cls, vm, name, sig):
     """Construct an abstract signature from a pytd signature."""

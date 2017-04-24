@@ -204,9 +204,6 @@ class AbstractMatcher(object):
         if not isinstance(other_type, abstract.ParameterizedClass):
           # The callable has no parameters, so any function matches it.
           return subst
-        if isinstance(left, abstract.BoundFunction):
-          # TODO(rechen): What do we do with 'self'?
-          left = left.underlying
         if isinstance(left, abstract.NativeFunction):
           # If we could get the class on which 'left' is defined (perhaps by
           # using bound_class?), we could get the argument and return types
@@ -215,20 +212,17 @@ class AbstractMatcher(object):
           # are magic methods like __getitem__ which aren't likely to be passed
           # as function arguments.
           return subst
-        elif isinstance(left, abstract.PyTDFunction):
-          signatures = [sig.signature for sig in left.signatures]
-          for sig in signatures:
-            new_subst = self._match_signature_against_callable(
-                sig, other_type, subst, node, view)
-            if new_subst is not None:
-              return new_subst
-          return None
-        elif isinstance(left, abstract.InterpreterFunction):
-          # TODO(rechen): Implement matching here.
+        if isinstance(left, (abstract.InterpreterFunction,
+                             abstract.BoundInterpreterFunction)):
+          # TODO(rechen): Implement matching.
           return subst
-        else:
-          raise NotImplementedError(
-              "Matching not implemented for %s against Callable" % type(left))
+        signatures = self._get_signatures(left)
+        for sig in signatures:
+          new_subst = self._match_signature_against_callable(
+              sig, other_type, subst, node, view)
+          if new_subst is not None:
+            return new_subst
+        return None
     elif isinstance(left, abstract.SimpleAbstractValue):
       if (left.cls and
           any(v.full_name == "typing.Callable" for v in left.cls.data) and
@@ -261,14 +255,33 @@ class AbstractMatcher(object):
       raise NotImplementedError("Matching not implemented for %s against %s" %
                                 (type(left), type(other_type)))
 
+  def _get_signatures(self, func):
+    if isinstance(func, abstract.PyTDFunction):
+      return [sig.signature for sig in func.signatures]
+    elif isinstance(func, abstract.BoundPyTDFunction):
+      # Specifying the type of "self" is optional.
+      sigs = self._get_signatures(func.underlying)
+      return sigs + [sig.drop_first_parameter() for sig in sigs]
+    else:
+      raise NotImplementedError(func.__class__.__name__)
+
   def _match_signature_against_callable(
       self, sig, other_type, subst, node, view):
+    """Match a function.Signature against a parameterized callable."""
     if sig.has_return_annotation:
       subst = self._instantiate_and_match(
           sig.annotations["return"], other_type.type_parameters[abstract.RET],
           subst, node, view)
       if subst is None:
         return subst
+    if not isinstance(other_type, abstract.Callable):
+      # other_type does not specify argument types, so any arguments are fine.
+      return subst
+    if sig.mandatory_param_count() > other_type.num_args:
+      return None
+    max_argcount = sig.maximum_param_count()
+    if max_argcount is not None and max_argcount < other_type.num_args:
+      return None
     # TODO(rechen): Match arguments.
     return subst
 

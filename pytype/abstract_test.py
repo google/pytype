@@ -533,6 +533,81 @@ class FunctionTest(AbstractTestBase):
     self.assertTrue(sig.has_param_annotations)
     self.assertTrue(sig.has_return_annotation)
 
+  def test_signature_posarg_only_param_count(self):
+    # def f(x): ...
+    sig = function.Signature(
+        name="f",
+        param_names=("x",),
+        varargs_name=None,
+        kwonly_params=(),
+        kwargs_name=None,
+        defaults={},
+        annotations={},
+        late_annotations={},
+    )
+    self.assertEquals(sig.mandatory_param_count(), 1)
+    self.assertEquals(sig.maximum_param_count(), 1)
+
+  def test_signature_posarg_and_kwarg_param_count(self):
+    # def f(x, y=None): ...
+    sig = function.Signature(
+        name="f",
+        param_names=("x", "y",),
+        varargs_name=None,
+        kwonly_params=(),
+        kwargs_name=None,
+        defaults={"y": self._vm.convert.unsolvable.to_variable(self._node)},
+        annotations={},
+        late_annotations={},
+    )
+    self.assertEquals(sig.mandatory_param_count(), 1)
+    self.assertEquals(sig.maximum_param_count(), 2)
+
+  def test_signature_varargs_param_count(self):
+    # def f(*args): ...
+    sig = function.Signature(
+        name="f",
+        param_names=(),
+        varargs_name="args",
+        kwonly_params=(),
+        kwargs_name=None,
+        defaults={},
+        annotations={},
+        late_annotations={},
+    )
+    self.assertEquals(sig.mandatory_param_count(), 0)
+    self.assertIsNone(sig.maximum_param_count())
+
+  def test_signature_kwargs_param_count(self):
+    # def f(**kwargs): ...
+    sig = function.Signature(
+        name="f",
+        param_names=(),
+        varargs_name=None,
+        kwonly_params=(),
+        kwargs_name="kwargs",
+        defaults={},
+        annotations={},
+        late_annotations={},
+    )
+    self.assertEquals(sig.mandatory_param_count(), 0)
+    self.assertIsNone(sig.maximum_param_count())
+
+  def test_signature_kwonly_param_count(self):
+    # def f(*, y=None): ...
+    sig = function.Signature(
+        name="f",
+        param_names=(),
+        varargs_name=None,
+        kwonly_params=("y",),
+        kwargs_name=None,
+        defaults={"y": self._vm.convert.unsolvable.to_variable(self._node)},
+        annotations={},
+        late_annotations={},
+    )
+    self.assertEquals(sig.mandatory_param_count(), 0)
+    self.assertEquals(sig.maximum_param_count(), 1)
+
 
 class AbstractTest(AbstractTestBase):
 
