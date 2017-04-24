@@ -6,7 +6,6 @@ from pytype import abstract
 from pytype import annotations_util
 from pytype import typing
 from pytype.pytd import cfg as typegraph
-from pytype.pytd import pytd
 
 log = logging.getLogger(__name__)
 
@@ -389,10 +388,9 @@ class AbstractAttributeHandler(object):
           # Any after analysis.
           if var.Bindings(node):
             candidates.append(var)
-          elif val.pytd_param.constraints:
-            pyval = pytd.UnionType(val.pytd_param.constraints)
-            ret.PasteVariable(self.vm.convert.constant_to_var(
-                abstract.AsInstance(pyval)), node)
+          elif val.param.constraints:
+            constraints = abstract.merge_values(val.param.constraints, self.vm)
+            ret.PasteVariable(constraints.instantiate(node))
           else:
             ret.AddBinding(self.vm.convert.empty, [], node)
         else:

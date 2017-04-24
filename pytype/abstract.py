@@ -534,8 +534,7 @@ class TypeParameter(AtomicAbstractValue):
   def instantiate(self, node, container=None):
     var = self.vm.program.NewVariable()
     if container:
-      instance = TypeParameterInstance(
-          self.to_pytd_def(node, self.name), container, self.vm)
+      instance = TypeParameterInstance(self, container, self.vm)
       return instance.to_variable(node)
     else:
       for c in self.constraints:
@@ -557,13 +556,13 @@ class TypeParameter(AtomicAbstractValue):
 class TypeParameterInstance(AtomicAbstractValue):
   """An instance of a type parameter."""
 
-  def __init__(self, pytd_param, instance, vm):
-    super(TypeParameterInstance, self).__init__(pytd_param.name, vm)
-    self.pytd_param = pytd_param
+  def __init__(self, param, instance, vm):
+    super(TypeParameterInstance, self).__init__(param.name, vm)
+    self.param = param
     self.instance = instance
 
   def get_class(self):
-    return self.vm.convert.constant_to_var(self.pytd_param)
+    return self.param.to_variable(self.vm.root_cfg_node)
 
   def __repr__(self):
     return "TypeParameterInstance(%r)" % self.name
@@ -2240,9 +2239,11 @@ class PyTDClass(SimpleAbstractValue, Class):
       except self.vm.convert.TypeParameterError:
         # Constant c cannot be converted without type parameter substitutions,
         # so it must be an instance attribute.
-        subst = {itm.name: TypeParameterInstance(
-            itm.type_param, instance, self.vm).to_variable(node)
-                 for itm in self.template}
+        subst = {
+            itm.name: TypeParameterInstance(
+                self.vm.convert.constant_to_value(itm.type_param, {}, node),
+                instance, self.vm).to_variable(node)
+            for itm in self.template}
         return self._convert_member(name, c, subst, node)
 
 
