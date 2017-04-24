@@ -32,7 +32,13 @@ class MatcherTest(unittest.TestCase):
       ast = self.vm.loader.import_name(filename)
       return ast.Lookup(filename + "." + objname)
 
-  def _convert(self, t, as_instance):
+  def _convert(self, x, name, as_instance=False):
+    pyval = self._parse_and_lookup(x, name)
+    if as_instance:
+      pyval = abstract.AsInstance(pyval)
+    return self.vm.convert.constant_to_value(pyval, {}, self.vm.root_cfg_node)
+
+  def _convert_type(self, t, as_instance=False):
     """Convenience function for turning a string into an abstract value.
 
     Note that this function cannot be called more than once per test with
@@ -135,92 +141,90 @@ class MatcherTest(unittest.TestCase):
 
   def testNoneAgainstBool(self):
     # See pep484.COMPAT_ITEMS.
-    left = self._convert("None", as_instance=True)
-    right = self._convert("bool", as_instance=False)
+    left = self._convert_type("None", as_instance=True)
+    right = self._convert_type("bool")
     self.assertMatch(left, right)
 
   def testHomogeneousTuple(self):
-    left = self._convert("Tuple[int, ...]", as_instance=True)
-    right1 = self._convert("Tuple[int, ...]", as_instance=False)
-    right2 = self._convert("Tuple[str, ...]", as_instance=False)
+    left = self._convert_type("Tuple[int, ...]", as_instance=True)
+    right1 = self._convert_type("Tuple[int, ...]")
+    right2 = self._convert_type("Tuple[str, ...]")
     self.assertMatch(left, right1)
     self.assertNoMatch(left, right2)
 
   def testHeterogeneousTuple(self):
-    left1 = self._convert("Tuple[int or str]", as_instance=True)
-    left2 = self._convert("Tuple[int, str]", as_instance=True)
-    left3 = self._convert("Tuple[str, int]", as_instance=True)
-    right = self._convert("Tuple[int, str]", as_instance=False)
+    left1 = self._convert_type("Tuple[int or str]", as_instance=True)
+    left2 = self._convert_type("Tuple[int, str]", as_instance=True)
+    left3 = self._convert_type("Tuple[str, int]", as_instance=True)
+    right = self._convert_type("Tuple[int, str]")
     self.assertNoMatch(left1, right)
     self.assertMatch(left2, right)
     self.assertNoMatch(left3, right)
 
   def testHeterogeneousTupleAgainstHomogeneousTuple(self):
-    left = self._convert("Tuple[bool, int]", as_instance=True)
-    right1 = self._convert("Tuple[bool, ...]", as_instance=False)
-    right2 = self._convert("Tuple[int, ...]", as_instance=False)
-    right3 = self._convert("tuple", as_instance=False)
+    left = self._convert_type("Tuple[bool, int]", as_instance=True)
+    right1 = self._convert_type("Tuple[bool, ...]")
+    right2 = self._convert_type("Tuple[int, ...]")
+    right3 = self._convert_type("tuple")
     self.assertNoMatch(left, right1)
     self.assertMatch(left, right2)
     self.assertMatch(left, right3)
 
   def testHomogeneousTupleAgainstHeterogeneousTuple(self):
-    left1 = self._convert("Tuple[bool, ...]", as_instance=True)
-    left2 = self._convert("Tuple[int, ...]", as_instance=True)
-    left3 = self._convert("tuple", as_instance=True)
-    right = self._convert("Tuple[bool, int]", as_instance=False)
+    left1 = self._convert_type("Tuple[bool, ...]", as_instance=True)
+    left2 = self._convert_type("Tuple[int, ...]", as_instance=True)
+    left3 = self._convert_type("tuple", as_instance=True)
+    right = self._convert_type("Tuple[bool, int]")
     self.assertMatch(left1, right)
     self.assertNoMatch(left2, right)
     self.assertMatch(left3, right)
 
   def testTupleType(self):
     # homogeneous against homogeneous
-    left = self._convert("Type[Tuple[float, ...]]", as_instance=True)
-    right1 = self._convert("Type[Tuple[float, ...]]", as_instance=False)
-    right2 = self._convert("Type[Tuple[str, ...]]", as_instance=False)
+    left = self._convert_type("Type[Tuple[float, ...]]", as_instance=True)
+    right1 = self._convert_type("Type[Tuple[float, ...]]")
+    right2 = self._convert_type("Type[Tuple[str, ...]]")
     self.assertMatch(left, right1)
     self.assertNoMatch(left, right2)
 
     # heterogeneous against heterogeneous
-    left1 = self._convert("Type[Tuple[int or str]]", as_instance=True)
-    left2 = self._convert("Type[Tuple[int, str]]", as_instance=True)
-    left3 = self._convert("Type[Tuple[str, int]]", as_instance=True)
-    right = self._convert("Type[Tuple[int, str]]", as_instance=False)
+    left1 = self._convert_type("Type[Tuple[int or str]]", as_instance=True)
+    left2 = self._convert_type("Type[Tuple[int, str]]", as_instance=True)
+    left3 = self._convert_type("Type[Tuple[str, int]]", as_instance=True)
+    right = self._convert_type("Type[Tuple[int, str]]")
     self.assertNoMatch(left1, right)
     self.assertMatch(left2, right)
     self.assertNoMatch(left3, right)
 
     # heterogeneous against homogeneous
-    left = self._convert("Type[Tuple[bool, int]]", as_instance=True)
-    right1 = self._convert("Type[Tuple[bool, ...]]", as_instance=False)
-    right2 = self._convert("Type[Tuple[int, ...]]", as_instance=False)
-    right3 = self._convert("Type[tuple]", as_instance=False)
+    left = self._convert_type("Type[Tuple[bool, int]]", as_instance=True)
+    right1 = self._convert_type("Type[Tuple[bool, ...]]")
+    right2 = self._convert_type("Type[Tuple[int, ...]]")
+    right3 = self._convert_type("Type[tuple]")
     self.assertNoMatch(left, right1)
     self.assertMatch(left, right2)
     self.assertMatch(left, right3)
 
     # homogeneous against heterogeneous
-    left1 = self._convert("Type[Tuple[bool, ...]]", as_instance=True)
-    left2 = self._convert("Type[Tuple[int, ...]]", as_instance=True)
-    left3 = self._convert("Type[tuple]", as_instance=True)
-    right = self._convert("Type[Tuple[bool, int]]", as_instance=False)
+    left1 = self._convert_type("Type[Tuple[bool, ...]]", as_instance=True)
+    left2 = self._convert_type("Type[Tuple[int, ...]]", as_instance=True)
+    left3 = self._convert_type("Type[tuple]", as_instance=True)
+    right = self._convert_type("Type[Tuple[bool, int]]")
     self.assertMatch(left1, right)
     self.assertNoMatch(left2, right)
     self.assertMatch(left3, right)
 
   def testTupleSubclass(self):
-    subclass = self._parse_and_lookup("""
+    left = self._convert("""
       from typing import Tuple
-      class A(Tuple[bool, int]): ...""", "A")
-    left = self.vm.convert.constant_to_value(
-        abstract.AsInstance(subclass), {}, self.vm.root_cfg_node)
-    right1 = self._convert("Tuple[bool, int]", as_instance=False)
-    right2 = self._convert("Tuple[int, bool]", as_instance=False)
-    right3 = self._convert("Tuple[int, int]", as_instance=False)
-    right4 = self._convert("Tuple[int]", as_instance=False)
-    right5 = self._convert("tuple", as_instance=False)
-    right6 = self._convert("Tuple[bool, ...]", as_instance=False)
-    right7 = self._convert("Tuple[int, ...]", as_instance=False)
+      class A(Tuple[bool, int]): ...""", "A", as_instance=True)
+    right1 = self._convert_type("Tuple[bool, int]")
+    right2 = self._convert_type("Tuple[int, bool]")
+    right3 = self._convert_type("Tuple[int, int]")
+    right4 = self._convert_type("Tuple[int]")
+    right5 = self._convert_type("tuple")
+    right6 = self._convert_type("Tuple[bool, ...]")
+    right7 = self._convert_type("Tuple[int, ...]")
     self.assertMatch(left, right1)
     self.assertNoMatch(left, right2)
     self.assertMatch(left, right3)
@@ -263,43 +267,37 @@ class MatcherTest(unittest.TestCase):
     self.assertMatch(left, right)
 
   def testPyTDFunctionAgainstCallable(self):
-    f_pytd = self._parse_and_lookup("def f(x: int) -> bool: ...", "f")
-    f = self.vm.convert.constant_to_value(f_pytd, {}, self.vm.root_cfg_node)
-    plain_callable = self._convert("Callable", as_instance=False)
-    good_callable1 = self._convert("Callable[[int], int]", as_instance=False)
-    good_callable2 = self._convert("Callable[..., int]", as_instance=False)
+    f = self._convert("def f(x: int) -> bool: ...", "f")
+    plain_callable = self._convert_type("Callable")
+    good_callable1 = self._convert_type("Callable[[int], int]")
+    good_callable2 = self._convert_type("Callable[..., int]")
     self.assertMatch(f, plain_callable)
     self.assertMatch(f, good_callable1)
     self.assertMatch(f, good_callable2)
 
   def testPyTDFunctionAgainstCallableBadReturn(self):
-    f_pytd = self._parse_and_lookup("def f(x: int) -> bool: ...", "f")
-    f = self.vm.convert.constant_to_value(f_pytd, {}, self.vm.root_cfg_node)
-    callable_bad_ret = self._convert("Callable[[int], str]", as_instance=False)
+    f = self._convert("def f(x: int) -> bool: ...", "f")
+    callable_bad_ret = self._convert_type("Callable[[int], str]")
     self.assertNoMatch(f, callable_bad_ret)
 
   def testPyTDFunctionAgainstCallableBadArgCount(self):
-    f_pytd = self._parse_and_lookup("def f(x: int) -> bool: ...", "f")
-    f = self.vm.convert.constant_to_value(f_pytd, {}, self.vm.root_cfg_node)
-    callable_bad_count1 = self._convert("Callable[[], bool]", as_instance=False)
-    callable_bad_count2 = self._convert("Callable[[int, str], bool]",
-                                        as_instance=False)
+    f = self._convert("def f(x: int) -> bool: ...", "f")
+    callable_bad_count1 = self._convert_type("Callable[[], bool]")
+    callable_bad_count2 = self._convert_type("Callable[[int, str], bool]")
     self.assertNoMatch(f, callable_bad_count1)
     self.assertNoMatch(f, callable_bad_count2)
 
   def testBoundPyTDFunctionAgainstCallable(self):
-    cls = self._parse_and_lookup("""\
+    instance = self._convert("""\
       class A(object):
         def f(self, x: int) -> bool: ...
-    """, "A")
-    instance = self.vm.convert.constant_to_value(
-        abstract.AsInstance(cls), {}, self.vm.root_cfg_node)
+    """, "A", as_instance=True)
     binding = instance.to_variable(self.vm.root_cfg_node).bindings[0]
     _, method_var = self.vm.attribute_handler.get_attribute(
         self.vm.root_cfg_node, instance, "f", binding)
     m = method_var.data[0]
-    good_callable1 = self._convert("Callable[[int]]", as_instance=False)
-    good_callable2 = self._convert("Callable[[Any, int]]", as_instance=False)
+    good_callable1 = self._convert_type("Callable[[int]]")
+    good_callable2 = self._convert_type("Callable[[Any, int]]")
     self.assertMatch(m, good_callable1)
     self.assertMatch(m, good_callable2)
 
@@ -307,7 +305,7 @@ class MatcherTest(unittest.TestCase):
     # Matching a native function against a callable always succeeds, regardless
     # of argument and return types.
     f = abstract.NativeFunction("f", lambda x: x, self.vm)
-    callable_type = self._convert("Callable[[int], int]", as_instance=False)
+    callable_type = self._convert_type("Callable[[int], int]")
     self.assertMatch(f, callable_type)
 
 
