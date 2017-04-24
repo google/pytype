@@ -164,6 +164,36 @@ class MatchTest(test_inference.InferenceTest):
                                       r"\(x: Callable\[\[\], str\]\).*"
                                       r"\(x: Callable\)")])
 
+  def testPyTDFunctionAgainstCallableWithTypeParameters(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        def f1(x: int) -> int: ...
+        def f2(x: int) -> bool: ...
+        def f3(x: int) -> str: ...
+      """)
+      _, errors = self.InferAndCheck("""\
+        from __future__ import google_type_annotations
+        from typing import Callable, TypeVar
+        import foo
+
+        T_plain = TypeVar("T_plain")
+        T_constrained = TypeVar("T_constrained", int, bool)
+        def f1(x: Callable[[T_plain], T_plain]): ...
+        def f2(x: Callable[[T_constrained], T_constrained]): ...
+
+        f1(foo.f1)  # ok
+        f1(foo.f2)  # ok
+        f1(foo.f3)
+        f2(foo.f1)  # ok
+        f2(foo.f2)
+        f2(foo.f3)
+      """, pythonpath=[d.path])
+      expected = r"Callable\[\[Union\[bool, int\]\], Union\[bool, int\]\]"
+      self.assertErrorLogIs(errors, [
+          (12, "wrong-arg-types", r"Expected.*Callable\[\[str\], str\]"),
+          (14, "wrong-arg-types", r"Expected.*Callable\[\[bool\], bool\]"),
+          (15, "wrong-arg-types", r"Expected.*" + expected)])
+
 
 if __name__ == "__main__":
   test_inference.main()

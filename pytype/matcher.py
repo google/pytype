@@ -3,6 +3,7 @@ import logging
 
 
 from pytype import abstract
+from pytype import function
 from pytype import utils
 from pytype.pytd import pep484
 
@@ -14,6 +15,13 @@ _COMPATIBLE_BUILTINS = [
     ("__builtin__." + compatible_builtin, "__builtin__." + builtin)
     for compatible_builtin, builtin in pep484.COMPAT_ITEMS
 ]
+
+
+class BadTypeParameterSubstitution(Exception):
+
+  def __init__(self, subst):
+    super(BadTypeParameterSubstitution, self).__init__()
+    self.subst = subst
 
 
 class AbstractMatcher(object):
@@ -42,15 +50,23 @@ class AbstractMatcher(object):
     subst = {}
     for name, formal in formal_args:
       actual = arg_dict[name]
-      new_subst = self._match_value_against_type(
-          actual, formal, subst, node, view)
-      if new_subst is None:
-        # We use the previous substitution in order to report the correct
-        # expected types for type parameters.
+      try:
+        subst = self._match_value_against_type(
+            actual, formal, subst, node, view)
+      except BadTypeParameterSubstitution as e:
+        # e contains the previous substitution, which we use in order to report
+        # the correct expected type for the bad parameter.
+        subst = None
+        bad_subst = e.subst
+      else:
+        if subst is None:
+          # An empty substitution will replace type parameters with their
+          # constraints (or Any).
+          bad_subst = {}
+      if subst is None:
         formal = formal.vm.annotations_util.sub_one_annotation(
-            node, formal, [subst])
+            node, formal, [bad_subst])
         return None, abstract.BadParam(name=name, expected=formal)
-      subst = new_subst
     return utils.HashableDict(subst), None
 
   def bad_matches(self, var, other_type, node, subst=None):
@@ -106,13 +122,23 @@ class AbstractMatcher(object):
     Returns:
       A new (or unmodified original) substitution dict if the matching succeded,
       None otherwise.
+    Raises:
+      BadTypeParameterSubstitution: if we found incompatible values for a type
+        parameter (e.g., if we match x=int, y=str against def f(x: T, y: T)).
     """
     left = value.data
     assert isinstance(left, abstract.AtomicAbstractValue), left
     assert not left.formal, left
     assert isinstance(other_type, abstract.AtomicAbstractValue), other_type
 
-    if isinstance(other_type, abstract.Class):
+    if (isinstance(left, abstract.TypeParameterInstance) and
+        isinstance(left.instance, function.Signature)):
+      # We're doing argument-matching for a function against a callable. We
+      # flipped the argument types to enforce contravariance, but if the
+      # expected type is a type parameter, we need the normal order.
+      return self._instantiate_and_match(
+          other_type, left.param, subst, node, view)
+    elif isinstance(other_type, abstract.Class):
       # Accumulate substitutions in "subst", or break in case of error:
       return self._match_type_against_type(left, other_type, subst, node, view)
     elif isinstance(other_type, abstract.Union):
@@ -147,7 +173,7 @@ class AbstractMatcher(object):
       else:
         new_var = self._enforce_common_superclass(new_var)
       if new_var is None:
-        return None
+        raise BadTypeParameterSubstitution(subst)
       subst = subst.copy()
       subst[other_type.name] = new_var
       return subst
@@ -282,12 +308,19 @@ class AbstractMatcher(object):
     max_argcount = sig.maximum_param_count()
     if max_argcount is not None and max_argcount < other_type.num_args:
       return None
-    # TODO(rechen): Match arguments.
+    for name, expected_arg in zip(sig.param_names,
+                                  (other_type.type_parameters[i]
+                                   for i in range(other_type.num_args))):
+      if name in sig.annotations:
+        # Flip actual and expected, since argument types are contravariant.
+        subst = self._instantiate_and_match(expected_arg, sig.annotations[name],
+                                            subst, node, view, container=sig)
     return subst
 
-  def _instantiate_and_match(self, left, other_type, subst, node, view):
+  def _instantiate_and_match(self, left, other_type, subst, node, view,
+                             container=None):
     """Instantiate and match an abstract value."""
-    instance = left.instantiate(node)
+    instance = left.instantiate(node, container=container)
     for new_view in abstract.get_views([instance], node):
       # When new_view and view have entries in common, we want to use the
       # entries from the old view.

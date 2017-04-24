@@ -269,7 +269,7 @@ class MatcherTest(unittest.TestCase):
   def testPyTDFunctionAgainstCallable(self):
     f = self._convert("def f(x: int) -> bool: ...", "f")
     plain_callable = self._convert_type("Callable")
-    good_callable1 = self._convert_type("Callable[[int], int]")
+    good_callable1 = self._convert_type("Callable[[bool], int]")
     good_callable2 = self._convert_type("Callable[..., int]")
     self.assertMatch(f, plain_callable)
     self.assertMatch(f, good_callable1)
@@ -286,6 +286,13 @@ class MatcherTest(unittest.TestCase):
     callable_bad_count2 = self._convert_type("Callable[[int, str], bool]")
     self.assertNoMatch(f, callable_bad_count1)
     self.assertNoMatch(f, callable_bad_count2)
+
+  def testPyTDFunctionAgainstCallableBadArgType(self):
+    f = self._convert("def f(x: bool) -> bool: ...", "f")
+    callable_bad_arg1 = self._convert_type("Callable[[int], bool]")
+    callable_bad_arg2 = self._convert_type("Callable[[str], bool]")
+    self.assertNoMatch(f, callable_bad_arg1)
+    self.assertNoMatch(f, callable_bad_arg2)
 
   def testBoundPyTDFunctionAgainstCallable(self):
     instance = self._convert("""\
