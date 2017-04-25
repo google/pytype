@@ -554,12 +554,8 @@ class PrintVisitor(Visitor):
             "[" + param_str + ellipsis + "]")
 
   def VisitCallableType(self, node):
-    if len(node.parameters) == 2 and node.parameters[0] == "nothing":
-      arguments_str = "[]"
-    else:
-      arguments_str = "[%s]" % ", ".join(node.parameters[:-1])
-    return "%s[%s, %s]" % (self.MaybeCapitalize(node.base_type),
-                           arguments_str, node.parameters[-1])
+    return "%s[[%s], %s]" % (self.MaybeCapitalize(node.base_type),
+                             ", ".join(node.args), node.ret)
 
   def VisitTupleType(self, node):
     return self.VisitGenericType(node)

@@ -218,11 +218,11 @@ class GenericTest(test_inference.InferenceTest):
         v3 = a.C().h()
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        from typing import Any
+        from typing import Any, Tuple
         a = ...  # type: module
         v1 = ...  # type: Any
         v2 = ...  # type: Any
-        v3 = ...  # type: tuple
+        v3 = ...  # type: Tuple[Any, Any]
       """)
 
   def testTypeParameterRenamingConflict2(self):

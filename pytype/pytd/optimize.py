@@ -940,6 +940,9 @@ class SimplifyContainers(visitors.Visitor):
     def f() -> List[any]
   to
     def f() -> list
+  Note that we don't simplify TupleType or CallableType, since they have
+  variable-length parameters, and the parameter length is meaningful even when
+  the parameters are all Any.
   """
 
   def _Simplify(self, t):
@@ -949,12 +952,6 @@ class SimplifyContainers(visitors.Visitor):
       return t
 
   def VisitGenericType(self, t):
-    return self._Simplify(t)
-
-  def VisitCallableType(self, t):
-    return self._Simplify(t)
-
-  def VisitTupleType(self, t):
     return self._Simplify(t)
 
 

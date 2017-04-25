@@ -553,8 +553,7 @@ class Converter(object):
       elif isinstance(pyval, pytd.CallableType):
         abstract_class = abstract.Callable
         template = range(len(pyval.args)) + [abstract.ARGS, abstract.RET]
-        parameters = pyval.args + (pytd.UnionType(pyval.parameters[:-1]),
-                                   pyval.ret)
+        parameters = pyval.args + (pytd_utils.JoinTypes(pyval.args), pyval.ret)
       else:
         abstract_class = abstract.ParameterizedClass
         template = tuple(t.name for t in pyval.base_type.cls.template)

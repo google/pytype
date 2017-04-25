@@ -178,11 +178,11 @@ class TypeVarTest(test_inference.InferenceTest):
       w = f({"test": 42})
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import Dict, Tuple, TypeVar
+      from typing import Any, Dict, Tuple, TypeVar
       K = TypeVar("K")
       V = TypeVar("V")
       def f(x: Dict[K, V]) -> Tuple[V, K]: ...
-      v = ...  # type: tuple
+      v = ...  # type: Tuple[Any, Any]
       w = ...  # type: Tuple[int, str]
     """)
 

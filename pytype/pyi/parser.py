@@ -617,7 +617,10 @@ class _Parser(object):
           # need a return type for CallableType, or we wouldn't know whether the
           # last parameter is an argument or return type.
           parameters += (pytd.AnythingType(),)
-        parameters = parameters[0].parameters + parameters[1:]
+        if self._is_empty_tuple(parameters[0]):
+          parameters = parameters[1:]
+        else:
+          parameters = parameters[0].parameters + parameters[1:]
         return pytd.CallableType(base_type=base_type, parameters=parameters)
       else:
         assert parameters

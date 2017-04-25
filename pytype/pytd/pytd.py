@@ -453,10 +453,7 @@ class CallableType(GenericType):
 
   @property
   def args(self):
-    args = self.parameters[:-1]
-    if args == (NothingType(),):
-      args = ()
-    return args
+    return self.parameters[:-1]
 
   @property
   def ret(self):
