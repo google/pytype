@@ -172,6 +172,14 @@ SLOTS = [
     Slot("__itruediv__", "nb_inplace_true_divide", "binary",
          opcode="INPLACE_TRUE_DIVIDE"),
 
+    # matrix methods:
+    # Added in 3.5
+    Slot("__matmul__", "nb_matrix_multiply", "binary_nb", index=0,
+         opcode="BINARY_MATRIX_MULTIPLY"),
+    Slot("__rmatmul__", "nb_matrix_multiply", "binary_nb", index=1),
+    Slot("__imatmul__", "nb_inplace_matrix_multiply", "binary",
+         opcode="INPLACE_MATRIX_MULTIPLY"),
+
     # Added in 2.5. Used whenever i acts as a sequence index (a[i])
     Slot("__index__", "nb_index", "unary"),  # needs int/long return
 

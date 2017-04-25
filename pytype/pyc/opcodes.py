@@ -190,6 +190,14 @@ class UNARY_INVERT(Opcode):
   __slots__ = ()
 
 
+class BINARY_MATRIX_MULTIPLY(Opcode):
+  __slots__ = ()
+
+
+class INPLACE_MATRIX_MULTIPLY(Opcode):
+  __slots__ = ()
+
+
 class BINARY_POWER(Opcode):
   __slots__ = ()
 
@@ -840,6 +848,8 @@ python3_mapping = {
     11: UNARY_NEGATIVE,
     12: UNARY_NOT,
     15: UNARY_INVERT,
+    16: BINARY_MATRIX_MULTIPLY,
+    17: INPLACE_MATRIX_MULTIPLY,
     19: BINARY_POWER,
     20: BINARY_MULTIPLY,
     22: BINARY_MODULO,

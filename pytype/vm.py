@@ -295,7 +295,8 @@ class VirtualMachine(object):
       "__add__", "__sub__", "__mul__",
       "__div__", "__truediv__", "__floordiv__",
       "__mod__", "__divmod__", "__pow__",
-      "__lshift__", "__rshift__", "__and__", "__or__", "__xor__"
+      "__lshift__", "__rshift__", "__and__", "__or__", "__xor__",
+      "__matmul__"
   ])
 
   @staticmethod
@@ -1191,6 +1192,9 @@ class VirtualMachine(object):
   def byte_UNARY_INVERT(self, state, op):
     return self.unary_operator(state, "__invert__")
 
+  def byte_BINARY_MATRIX_MULTIPLY(self, state, op):
+    return self.binary_operator(state, "__matmul__")
+
   def byte_BINARY_ADD(self, state, op):
     return self.binary_operator(state, "__add__")
 
@@ -1232,6 +1236,9 @@ class VirtualMachine(object):
 
   def byte_BINARY_SUBSCR(self, state, op):
     return self.binary_operator(state, "__getitem__")
+
+  def byte_INPLACE_MATRIX_MULTIPLY(self, state, op):
+    return self.inplace_operator(state, "__imatmul__")
 
   def byte_INPLACE_ADD(self, state, op):
     return self.inplace_operator(state, "__iadd__")
