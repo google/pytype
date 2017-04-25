@@ -300,13 +300,18 @@ class MatcherTest(unittest.TestCase):
         def f(self, x: int) -> bool: ...
     """, "A", as_instance=True)
     binding = instance.to_variable(self.vm.root_cfg_node).bindings[0]
-    _, method_var = self.vm.attribute_handler.get_attribute(
+    _, var = self.vm.attribute_handler.get_attribute(
         self.vm.root_cfg_node, instance, "f", binding)
-    m = method_var.data[0]
-    good_callable1 = self._convert_type("Callable[[int]]")
-    good_callable2 = self._convert_type("Callable[[Any, int]]")
-    self.assertMatch(m, good_callable1)
-    self.assertMatch(m, good_callable2)
+    bound = var.data[0]
+    _, var = self.vm.attribute_handler.get_attribute(
+        self.vm.root_cfg_node, instance.cls.data[0], "f")
+    unbound = var.data[0]
+    callable_no_self = self._convert_type("Callable[[int]]")
+    callable_self = self._convert_type("Callable[[Any, int]]")
+    self.assertMatch(bound, callable_no_self)
+    self.assertNoMatch(unbound, callable_no_self)
+    self.assertNoMatch(bound, callable_self)
+    self.assertMatch(unbound, callable_self)
 
   def testNativeFunctionAgainstCallable(self):
     # Matching a native function against a callable always succeeds, regardless

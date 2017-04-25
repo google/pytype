@@ -373,7 +373,8 @@ class BuiltinTests2(test_inference.InferenceTest):
 
   def testFilter(self):
     ty = self.Infer("""
-      def f(x):
+      from __future__ import google_type_annotations
+      def f(x: int):
         pass
       x1 = filter(f, {1: None}.iterkeys())
       x2 = filter(None, {1: None}.iterkeys())
@@ -385,7 +386,7 @@ class BuiltinTests2(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
       from typing import List, Tuple
-      def f(x) -> None
+      def f(x: int) -> None
       x1 = ...  # type: List[int]
       x2 = ...  # type: List[int]
       x3 = ...  # type: str

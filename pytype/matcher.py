@@ -238,10 +238,6 @@ class AbstractMatcher(object):
           # are magic methods like __getitem__ which aren't likely to be passed
           # as function arguments.
           return subst
-        if isinstance(left, (abstract.InterpreterFunction,
-                             abstract.BoundInterpreterFunction)):
-          # TODO(rechen): Implement matching.
-          return subst
         signatures = self._get_signatures(left)
         for sig in signatures:
           new_subst = self._match_signature_against_callable(
@@ -284,22 +280,22 @@ class AbstractMatcher(object):
   def _get_signatures(self, func):
     if isinstance(func, abstract.PyTDFunction):
       return [sig.signature for sig in func.signatures]
-    elif isinstance(func, abstract.BoundPyTDFunction):
-      # Specifying the type of "self" is optional.
+    elif isinstance(func, abstract.InterpreterFunction):
+      return [func.signature]
+    elif isinstance(func, abstract.BoundFunction):
       sigs = self._get_signatures(func.underlying)
-      return sigs + [sig.drop_first_parameter() for sig in sigs]
+      return [sig.drop_first_parameter() for sig in sigs]  # drop "self"
     else:
       raise NotImplementedError(func.__class__.__name__)
 
   def _match_signature_against_callable(
       self, sig, other_type, subst, node, view):
     """Match a function.Signature against a parameterized callable."""
-    if sig.has_return_annotation:
-      subst = self._instantiate_and_match(
-          sig.annotations["return"], other_type.type_parameters[abstract.RET],
-          subst, node, view)
-      if subst is None:
-        return subst
+    ret_type = sig.annotations.get("return", other_type.vm.convert.unsolvable)
+    subst = self._instantiate_and_match(
+        ret_type, other_type.type_parameters[abstract.RET], subst, node, view)
+    if subst is None:
+      return subst
     if not isinstance(other_type, abstract.Callable):
       # other_type does not specify argument types, so any arguments are fine.
       return subst
@@ -311,10 +307,10 @@ class AbstractMatcher(object):
     for name, expected_arg in zip(sig.param_names,
                                   (other_type.type_parameters[i]
                                    for i in range(other_type.num_args))):
-      if name in sig.annotations:
-        # Flip actual and expected, since argument types are contravariant.
-        subst = self._instantiate_and_match(expected_arg, sig.annotations[name],
-                                            subst, node, view, container=sig)
+      actual_arg = sig.annotations.get(name, other_type.vm.convert.unsolvable)
+      # Flip actual and expected, since argument types are contravariant.
+      subst = self._instantiate_and_match(expected_arg, actual_arg,
+                                          subst, node, view, container=sig)
     return subst
 
   def _instantiate_and_match(self, left, other_type, subst, node, view,

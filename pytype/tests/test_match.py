@@ -194,6 +194,86 @@ class MatchTest(test_inference.InferenceTest):
           (14, "wrong-arg-types", r"Expected.*Callable\[\[bool\], bool\]"),
           (15, "wrong-arg-types", r"Expected.*" + expected)])
 
+  def testInterpreterFunctionAgainstCallable(self):
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      from typing import Callable
+      def f(x: Callable[[bool], int]): ...
+      def g1(x: int) -> bool:
+        return __any_object__
+      def g2(x: str) -> int:
+        return __any_object__
+      f(g1)  # ok
+      f(g2)
+    """)
+    self.assertErrorLogIs(errors, [(9, "wrong-arg-types",
+                                    r"Expected.*Callable\[\[bool\], int\]")])
+
+  def testBoundInterpreterFunctionAgainstCallable(self):
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      from typing import Callable
+
+      class A(object):
+        def f(self, x: int) -> bool:
+          return __any_object__
+      unbound = A.f
+      bound = A().f
+
+      def f1(x: Callable[[bool], int]): ...
+      def f2(x: Callable[[A, bool], int]): ...
+      def f3(x: Callable[[bool], str]): ...
+
+      f1(bound)  # ok
+      f2(bound)
+      f3(bound)
+      f1(unbound)
+      f2(unbound)  # ok
+    """)
+    self.assertErrorLogIs(errors, [(15, "wrong-arg-types",
+                                    r"Expected.*Callable\[\[A, bool\], int\]"),
+                                   (16, "wrong-arg-types",
+                                    r"Expected.*Callable\[\[bool\], str\]"),
+                                   (17, "wrong-arg-types",
+                                    r"Expected.*Callable\[\[bool\], int\]")])
+
+  def testCallableParameters(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import Any, Callable, List, TypeVar
+        T = TypeVar("T")
+        def f1(x: Callable[..., T]) -> List[T]: ...
+        def f2(x: Callable[[T], Any]) -> List[T]: ...
+      """)
+      ty = self.Infer("""\
+        from __future__ import google_type_annotations
+        from typing import Any, Callable
+        import foo
+
+        def g1(): pass
+        def g2() -> int: pass
+        v1 = foo.f1(g1)
+        v2 = foo.f1(g2)
+
+        def g3(x): pass
+        def g4(x: int): pass
+        w1 = foo.f2(g3)
+        w2 = foo.f2(g4)
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        from typing import Any, List
+        foo = ...  # type: module
+        def g1() -> Any: ...
+        def g2() -> int: ...
+        def g3(x) -> Any: ...
+        def g4(x: int) -> Any: ...
+
+        v1 = ...  # type: list
+        v2 = ...  # type: List[int]
+        w1 = ...  # type: list
+        w2 = ...  # type: List[int]
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()

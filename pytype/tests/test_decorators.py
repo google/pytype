@@ -107,9 +107,7 @@ class DecoratorsTest(test_inference.InferenceTest):
         from typing import Any, Callable
         foo = ...  # type: module
         class A(object):
-          # "nothing" is present because pytype does not see type parameter
-          # values in Callable parameters.
-          f = ...  # type: Callable[Any, nothing]
+          f = ...  # type: Callable
       """)
 
 
