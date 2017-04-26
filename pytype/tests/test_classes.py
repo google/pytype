@@ -294,12 +294,12 @@ class ClassesTest(test_inference.InferenceTest):
       seed = _inst.seed
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
-    from typing import Callable
+    from typing import Any, Callable
     class Random(object):
        def seed(self) -> None: ...
 
     _inst = ...  # type: Random
-    seed = ...  # type: Callable
+    seed = ...  # type: Callable[[], Any]
     """)
 
   def testMROWithUnsolvables(self):

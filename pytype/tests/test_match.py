@@ -162,7 +162,7 @@ class MatchTest(test_inference.InferenceTest):
       """, pythonpath=[d.path])
       self.assertErrorLogIs(errors, [(9, "wrong-arg-types",
                                       r"\(x: Callable\[\[\], str\]\).*"
-                                      r"\(x: Callable\)")])
+                                      r"\(x: Callable\[\[\], bool\]\)")])
 
   def testPyTDFunctionAgainstCallableWithTypeParameters(self):
     with utils.Tempdir() as d:
@@ -190,9 +190,15 @@ class MatchTest(test_inference.InferenceTest):
       """, pythonpath=[d.path])
       expected = r"Callable\[\[Union\[bool, int\]\], Union\[bool, int\]\]"
       self.assertErrorLogIs(errors, [
-          (12, "wrong-arg-types", r"Expected.*Callable\[\[str\], str\]"),
-          (14, "wrong-arg-types", r"Expected.*Callable\[\[bool\], bool\]"),
-          (15, "wrong-arg-types", r"Expected.*" + expected)])
+          (12, "wrong-arg-types",
+           r"Expected.*Callable\[\[str\], str\].*"
+           r"Actual.*Callable\[\[int\], str\]"),
+          (14, "wrong-arg-types",
+           r"Expected.*Callable\[\[bool\], bool\].*"
+           r"Actual.*Callable\[\[int\], bool\]"),
+          (15, "wrong-arg-types",
+           r"Expected.*" + expected + ".*"
+           r"Actual.*Callable\[\[int\], str\]")])
 
   def testInterpreterFunctionAgainstCallable(self):
     _, errors = self.InferAndCheck("""\
@@ -232,11 +238,14 @@ class MatchTest(test_inference.InferenceTest):
       f2(unbound)  # ok
     """)
     self.assertErrorLogIs(errors, [(15, "wrong-arg-types",
-                                    r"Expected.*Callable\[\[A, bool\], int\]"),
+                                    r"Expected.*Callable\[\[A, bool\], int\].*"
+                                    r"Actual.*Callable\[\[int\], bool\]"),
                                    (16, "wrong-arg-types",
-                                    r"Expected.*Callable\[\[bool\], str\]"),
+                                    r"Expected.*Callable\[\[bool\], str\].*"
+                                    r"Actual.*Callable\[\[int\], bool\]"),
                                    (17, "wrong-arg-types",
-                                    r"Expected.*Callable\[\[bool\], int\]")])
+                                    r"Expected.*Callable\[\[bool\], int\].*"
+                                    r"Actual.*Callable\[\[Any, int\], bool\]")])
 
   def testCallableParameters(self):
     with utils.Tempdir() as d:

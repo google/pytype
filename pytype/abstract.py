@@ -118,6 +118,18 @@ def get_views(variables, node, filter_strict=False):
     yield view
 
 
+def get_signatures(func):
+  if isinstance(func, PyTDFunction):
+    return [sig.signature for sig in func.signatures]
+  elif isinstance(func, InterpreterFunction):
+    return [func.signature]
+  elif isinstance(func, BoundFunction):
+    sigs = get_signatures(func.underlying)
+    return [sig.drop_first_parameter() for sig in sigs]  # drop "self"
+  else:
+    raise NotImplementedError(func.__class__.__name__)
+
+
 class AtomicAbstractValue(object):
   """A single abstract value such as a type or function signature.
 

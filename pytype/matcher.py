@@ -238,7 +238,7 @@ class AbstractMatcher(object):
           # are magic methods like __getitem__ which aren't likely to be passed
           # as function arguments.
           return subst
-        signatures = self._get_signatures(left)
+        signatures = abstract.get_signatures(left)
         for sig in signatures:
           new_subst = self._match_signature_against_callable(
               sig, other_type, subst, node, view)
@@ -276,17 +276,6 @@ class AbstractMatcher(object):
     else:
       raise NotImplementedError("Matching not implemented for %s against %s" %
                                 (type(left), type(other_type)))
-
-  def _get_signatures(self, func):
-    if isinstance(func, abstract.PyTDFunction):
-      return [sig.signature for sig in func.signatures]
-    elif isinstance(func, abstract.InterpreterFunction):
-      return [func.signature]
-    elif isinstance(func, abstract.BoundFunction):
-      sigs = self._get_signatures(func.underlying)
-      return [sig.drop_first_parameter() for sig in sigs]  # drop "self"
-    else:
-      raise NotImplementedError(func.__class__.__name__)
 
   def _match_signature_against_callable(
       self, sig, other_type, subst, node, view):

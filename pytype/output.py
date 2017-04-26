@@ -157,13 +157,22 @@ class Converter(object):
         return pytd.AnythingType()
     elif isinstance(v, typing.TypeVar):
       return pytd.NamedType("__builtin__.type")
-    elif isinstance(v, abstract.InterpreterFunction):
-      val = self.signature_to_callable(v.signature, v.vm)
-      return self.value_instance_to_pytd_type(node, val, None, seen, view)
-    elif isinstance(v, (abstract.Function, abstract.IsInstance,
-                        abstract.BoundFunction, abstract.ClassMethod,
+    elif isinstance(v, (abstract.InterpreterFunction,
+                        abstract.BoundInterpreterFunction)):
+      sig, = abstract.get_signatures(v)
+      return self.value_instance_to_pytd_type(
+          node, self.signature_to_callable(sig, v.vm), None, seen, view)
+    elif isinstance(v, (abstract.PyTDFunction, abstract.BoundPyTDFunction)):
+      signatures = abstract.get_signatures(v)
+      if len(signatures) == 1:
+        val = self.signature_to_callable(signatures[0], v.vm)
+        if not v.vm.annotations_util.get_type_parameters(val):
+          # This is a workaround to make sure we don't put unexpected type
+          # parameters in call traces.
+          return self.value_instance_to_pytd_type(node, val, None, seen, view)
+      return pytd.NamedType("typing.Callable")
+    elif isinstance(v, (abstract.IsInstance, abstract.ClassMethod,
                         abstract.StaticMethod)):
-      # TODO(rechen): Construct a pytd.CallableType when appropriate.
       return pytd.NamedType("typing.Callable")
     elif isinstance(v, abstract.Class):
       param = self.value_instance_to_pytd_type(node, v, None, seen, view)
@@ -202,12 +211,12 @@ class Converter(object):
       raise NotImplementedError(v.__class__.__name__)
 
   def value_to_detailed_pytd_type(self, node, v, seen, view):
-    if isinstance(v, abstract.InterpreterFunction):
+    if isinstance(v, (abstract.Function, abstract.BoundFunction)):
+      sig = abstract.get_signatures(v)[0]
       # Without "always_convert_arguments", we throw away the argument types if
       # the function takes a variable number of arguments, which is correct for
       # pyi generation but undesirable for, say, error message printing.
-      val = self.signature_to_callable(
-          v.signature, v.vm, always_convert_arguments=True)
+      val = self.signature_to_callable(sig, v.vm, always_convert_arguments=True)
       return self.value_instance_to_pytd_type(node, val, None, seen, view)
     else:
       return self.value_to_pytd_type(node, v, seen, view)

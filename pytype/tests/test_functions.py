@@ -628,7 +628,7 @@ class TestFunctions(test_inference.InferenceTest):
         from typing import Any, Callable, Tuple, Type
         foo = ...  # type: module
         def f() -> None: ...
-        v1 = ...  # type: Tuple[Callable]
+        v1 = ...  # type: Tuple[Callable[[], None]]
         v2 = ...  # type: Type[Callable]
         w1 = ...  # type: Tuple[Callable[[], Any]]
         w2 = ...  # type: Type[Callable]
