@@ -625,12 +625,12 @@ class TestFunctions(test_inference.InferenceTest):
         w2 = type(f)
       """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
-        from typing import Callable, Tuple, Type
+        from typing import Any, Callable, Tuple, Type
         foo = ...  # type: module
         def f() -> None: ...
         v1 = ...  # type: Tuple[Callable]
         v2 = ...  # type: Type[Callable]
-        w1 = ...  # type: Tuple[Callable]
+        w1 = ...  # type: Tuple[Callable[[], Any]]
         w2 = ...  # type: Type[Callable]
       """)
 
@@ -672,6 +672,36 @@ class TestFunctions(test_inference.InferenceTest):
           self.bar(42)
     """)
     self.assertErrorLogIs(errors, [(4, "wrong-arg-count", "1.*2")])
+
+  def testFunctionToCallable(self):
+    ty = self.Infer("""\
+      from __future__ import google_type_annotations
+      def f():
+        def g1(x: int, y: bool) -> str:
+          return "hello world"
+        def g2() -> int:
+          return 42
+        return g1, g2
+    """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Callable, Tuple
+      def f() -> Tuple[Callable[[int, bool], str], Callable[[], int]]
+    """)
+
+  def testFunctionToCallableReturnOnly(self):
+    ty = self.Infer("""\
+      from __future__ import google_type_annotations
+      def f():
+        def g1(x=None) -> int:
+          return 42
+        def g2(*args) -> str:
+          return "hello world"
+        return g1, g2
+    """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Callable, Tuple
+      def f() -> Tuple[Callable[..., int], Callable[..., str]]
+    """)
 
 
 if __name__ == "__main__":

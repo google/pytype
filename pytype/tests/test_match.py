@@ -207,7 +207,8 @@ class MatchTest(test_inference.InferenceTest):
       f(g2)
     """)
     self.assertErrorLogIs(errors, [(9, "wrong-arg-types",
-                                    r"Expected.*Callable\[\[bool\], int\]")])
+                                    r"Expected.*Callable\[\[bool\], int\].*"
+                                    r"Actual.*Callable\[\[str\], int\]")])
 
   def testBoundInterpreterFunctionAgainstCallable(self):
     _, errors = self.InferAndCheck("""\
@@ -273,6 +274,20 @@ class MatchTest(test_inference.InferenceTest):
         w1 = ...  # type: list
         w2 = ...  # type: List[int]
       """)
+
+  def testVariableLengthFunctionAgainstCallable(self):
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      from typing import Any, Callable
+      def f(x: Callable[[int], Any]): pass
+      def g1(x: int=0): pass
+      def g2(x: str=""): pass
+      f(g1)  # ok
+      f(g2)
+    """)
+    self.assertErrorLogIs(errors, [(7, "wrong-arg-types",
+                                    r"Expected.*Callable\[\[int\], Any\].*"
+                                    r"Actual.*Callable\[\[str\], Any\]")])
 
 
 if __name__ == "__main__":

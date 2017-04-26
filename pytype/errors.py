@@ -253,7 +253,7 @@ class ErrorLog(ErrorLogBase):
       return "<instance of %s>" % self._print_as_expected_type(t.cls.data[0])
 
   def _print_as_actual_type(self, t):
-    return self._pytd_print(t.to_type())
+    return self._pytd_print(t.to_detailed_type())
 
   def _iter_sig(self, sig, bad_param):
     """Iterate through a function.Signature object. Focus on a bad parameter."""

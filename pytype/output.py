@@ -157,6 +157,9 @@ class Converter(object):
         return pytd.AnythingType()
     elif isinstance(v, typing.TypeVar):
       return pytd.NamedType("__builtin__.type")
+    elif isinstance(v, abstract.InterpreterFunction):
+      val = self.signature_to_callable(v.signature, v.vm)
+      return self.value_instance_to_pytd_type(node, val, None, seen, view)
     elif isinstance(v, (abstract.Function, abstract.IsInstance,
                         abstract.BoundFunction, abstract.ClassMethod,
                         abstract.StaticMethod)):
@@ -197,6 +200,34 @@ class Converter(object):
       return pytd.NamedType(v.class_name)
     else:
       raise NotImplementedError(v.__class__.__name__)
+
+  def value_to_detailed_pytd_type(self, node, v, seen, view):
+    if isinstance(v, abstract.InterpreterFunction):
+      # Without "always_convert_arguments", we throw away the argument types if
+      # the function takes a variable number of arguments, which is correct for
+      # pyi generation but undesirable for, say, error message printing.
+      val = self.signature_to_callable(
+          v.signature, v.vm, always_convert_arguments=True)
+      return self.value_instance_to_pytd_type(node, val, None, seen, view)
+    else:
+      return self.value_to_pytd_type(node, v, seen, view)
+
+  def signature_to_callable(self, sig, vm, always_convert_arguments=False):
+    base_cls = vm.convert.function_type.data[0]
+    ret = sig.annotations.get("return", vm.convert.unsolvable)
+    if always_convert_arguments or (
+        sig.mandatory_param_count() == sig.maximum_param_count()):
+      args = [sig.annotations.get(name, vm.convert.unsolvable)
+              for name in sig.param_names]
+      params = {abstract.ARGS: abstract.merge_values(args, vm, formal=True),
+                abstract.RET: ret}
+      params.update(enumerate(args))
+      return abstract.Callable(base_cls, params, vm)
+    else:
+      # The only way to indicate a variable number of arguments in a Callable
+      # is to not specify argument types at all.
+      params = {abstract.ARGS: vm.convert.unsolvable, abstract.RET: ret}
+      return abstract.ParameterizedClass(base_cls, params, vm)
 
   def value_to_pytd_def(self, node, v, name):
     """Get a PyTD definition for this object.
