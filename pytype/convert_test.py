@@ -132,7 +132,9 @@ class ConvertTest(unittest.TestCase):
     self.assertItemsEqual(
         [(name, set(var.data))
          for name, var in instance.type_parameters.items()],
-        [(abstract.ARGS, {self._vm.convert.primitive_class_instances[int],
+        [(0, {self._vm.convert.primitive_class_instances[int]}),
+         (1, {self._vm.convert.primitive_class_instances[bool]}),
+         (abstract.ARGS, {self._vm.convert.primitive_class_instances[int],
                           self._vm.convert.primitive_class_instances[bool]}),
          (abstract.RET, {self._vm.convert.primitive_class_instances[str]})])
 

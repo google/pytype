@@ -945,6 +945,15 @@ class ErrorTest(test_inference.InferenceTest):
     self.assertErrorLogIs(errors, [(
         4, "bad-return-type", r"Generator\[Union\[str, unicode\], Any, Any\]")])
 
+  def testPrintCallableInstance(self):
+    _, errors = self.InferAndCheck("""\
+      from typing import Callable
+      v = None  # type: Callable[[int], str]
+      hex(v)
+    """)
+    self.assertErrorLogIs(errors, [(3, "wrong-arg-types",
+                                    r"Actual.*Callable\[\[int\], str\]")])
+
 
 if __name__ == "__main__":
   test_inference.main()

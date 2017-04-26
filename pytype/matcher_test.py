@@ -320,6 +320,16 @@ class MatcherTest(unittest.TestCase):
     callable_type = self._convert_type("Callable[[int], int]")
     self.assertMatch(f, callable_type)
 
+  def testCallableInstance(self):
+    left_good = self._convert_type("Callable[[int], bool]", as_instance=True)
+    left_bad_ret1 = self._convert_type("Callable[[int], float]",
+                                       as_instance=True)
+    left_bad_ret2 = self._convert_type("Callable[..., float]", as_instance=True)
+    right = self._convert_type("Callable[[bool], int]")
+    self.assertMatch(left_good, right)
+    self.assertNoMatch(left_bad_ret1, right)
+    self.assertNoMatch(left_bad_ret2, right)
+
 
 if __name__ == "__main__":
   unittest.main()
