@@ -235,11 +235,44 @@ class CombineContainers(visitors.Visitor):
   .
   """
 
+  _CONTAINER_NAMES = {
+      pytd.TupleType: ("__builtin__.tuple", "typing.Tuple"),
+      pytd.CallableType: ("typing.Callable",),
+  }
+
   def _key(self, t):
-    if isinstance(t, pytd.TupleType):
+    if isinstance(t, (pytd.CallableType, pytd.TupleType)):
       return (t.base_type, len(t.parameters))
     else:
       return t.base_type
+
+  def _should_merge(self, pytd_type, union):
+    """Determine whether pytd_type values in the union should be merged.
+
+    If the union contains the homogeneous flavor of pytd_type (e.g.,
+    GenericType(base_type=tuple) when pytd_type is TupleType), or pytd_type
+    values of different lengths, we want to turn all of the pytd_type values
+    into homogeneous ones so that they can be merged into a single container.
+
+    Args:
+      pytd_type: The pytd type, either TupleType or CallableType.
+      union: a pytd.UnionType
+
+    Returns:
+      True if the pytd_type values should be merged, False otherwise.
+    """
+    names = self._CONTAINER_NAMES[pytd_type]
+    length = None
+    for t in union.type_list:
+      if isinstance(t, pytd_type):
+        if length is None:
+          length = len(t.parameters)
+        elif length != len(t.parameters):
+          return True
+      elif (isinstance(t, pytd.GenericType) and
+            t.base_type.name in names):
+        return True
+    return False
 
   def VisitUnionType(self, union):
     """Push unions down into containers.
@@ -260,30 +293,19 @@ class CombineContainers(visitors.Visitor):
     union = utils.JoinTypes(union.type_list)  # flatten
     if not isinstance(union, pytd.UnionType):
       union = pytd.UnionType((union,))
-    merge_tuples = True
-    tuple_length = None
-    for t in union.type_list:
-      # TODO(rechen): Do we need to special-case CallableType as well?
-      if isinstance(t, pytd.TupleType):
-        if tuple_length is None:
-          tuple_length = len(t.parameters)
-        elif tuple_length != len(t.parameters):
-          break
-      elif (isinstance(t, pytd.GenericType) and
-            t.base_type.name in ("__builtin__.tuple", "typing.Tuple")):
-        break
-    else:
-      merge_tuples = False
-    if merge_tuples:
-      # If our union contains homogeneous tuples, or heterogeneous tuples of
-      # differing lengths, we want to turn all of the tuples into homogeneous
-      # ones so that they can be merged into a single container.
-      type_list = tuple(
-          pytd.GenericType(
-              base_type=t.base_type,
-              parameters=(pytd.UnionType(t.parameters),))
-          if isinstance(t, pytd.TupleType) else t for t in union.type_list)
-      union = union.Replace(type_list=type_list)
+    merge_tuples = self._should_merge(pytd.TupleType, union)
+    merge_callables = self._should_merge(pytd.CallableType, union)
+    if merge_tuples or merge_callables:
+      type_list = []
+      for t in union.type_list:
+        if merge_tuples and isinstance(t, pytd.TupleType):
+          t = pytd.GenericType(base_type=t.base_type,
+                               parameters=(pytd.UnionType(t.parameters),))
+        elif merge_callables and isinstance(t, pytd.CallableType):
+          t = pytd.GenericType(base_type=t.base_type,
+                               parameters=(pytd.AnythingType(), t.ret))
+        type_list.append(t)
+      union = union.Replace(type_list=tuple(type_list))
     collect = {}
     has_redundant_base_types = False
     for t in union.type_list:

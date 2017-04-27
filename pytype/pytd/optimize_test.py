@@ -665,6 +665,18 @@ class TestOptimize(parser_test_base.ParserTest):
     new_src = self.ApplyVisitorToString(src, optimize.CombineContainers())
     self.AssertSourceEquals(new_src, expected)
 
+  def testCombineDifferentLengthCallables(self):
+    src = textwrap.dedent("""
+      from typing import Callable
+      x = ...  # type: Callable[[int], str] or Callable[[int, int], str]
+    """)
+    expected = textwrap.dedent("""
+      from typing import Callable
+      x = ...  # type: Callable[..., str]
+    """)
+    new_src = self.ApplyVisitorToString(src, optimize.CombineContainers())
+    self.AssertSourceEquals(new_src, expected)
+
   def testPullInMethodClasses(self):
     src = textwrap.dedent("""
         class A(object):
