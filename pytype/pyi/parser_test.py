@@ -430,9 +430,9 @@ class NamedTupleTest(_ParserTestBase):
     self.check("x = ...  # type: NamedTuple(foo, [])", """\
       from typing import Tuple
 
-      x = ...  # type: `foo`
+      x = ...  # type: `~foo_0`
 
-      class `foo`(Tuple[nothing, ...]):
+      class `~foo_0`(Tuple[nothing, ...]):
           pass
       """)
 
@@ -440,9 +440,9 @@ class NamedTupleTest(_ParserTestBase):
     expected = """\
       from typing import Tuple
 
-      x = ...  # type: `foo`
+      x = ...  # type: `~foo_0`
 
-      class `foo`(Tuple[int, str]):
+      class `~foo_0`(Tuple[int, str]):
           a = ...  # type: int
           b = ...  # type: str
     """
@@ -460,13 +460,13 @@ class NamedTupleTest(_ParserTestBase):
                """\
       from typing import Tuple
 
-      x = ...  # type: `foo`
-      y = ...  # type: `foo~1`
+      x = ...  # type: `~foo_0`
+      y = ...  # type: `~foo_1`
 
-      class `foo`(Tuple[int]):
+      class `~foo_0`(Tuple[int]):
           a = ...  # type: int
 
-      class `foo~1`(Tuple[str]):
+      class `~foo_1`(Tuple[str]):
           b = ...  # type: str
         """)
 
