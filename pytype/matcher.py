@@ -3,6 +3,7 @@ import logging
 
 
 from pytype import abstract
+from pytype import function
 from pytype import utils
 from pytype.pytd import pep484
 
@@ -130,13 +131,26 @@ class AbstractMatcher(object):
     assert not left.formal, left
     assert isinstance(other_type, abstract.AtomicAbstractValue), other_type
 
-    if (isinstance(left, abstract.TypeParameterInstance) and
-        isinstance(left.instance, abstract.Callable)):
-      # We're doing argument-matching against a callable. We flipped the
-      # argument types to enforce contravariance, but if the expected type is a
-      # type parameter, we need the normal order.
-      return self._instantiate_and_match(
-          other_type, left.param, subst, node, view)
+    if isinstance(left, abstract.TypeParameterInstance) and (
+        isinstance(left.instance, (abstract.Callable, function.Signature))):
+      if isinstance(other_type, abstract.TypeParameter):
+        # We require type parameters to match exactly.
+        if sorted(left.param.constraints) == sorted(other_type.constraints):
+          return subst
+        else:
+          return None
+      elif isinstance(left.instance, abstract.Callable):
+        # We're doing argument-matching against a callable. We flipped the
+        # argument types to enforce contravariance, but if the expected type is
+        # a type parameter, we need it on the right in order to fill in subst.
+        return self._instantiate_and_match(
+            other_type, left.param, subst, node, view)
+      else:
+        # We're doing return type matching against a callable. The type on the
+        # right isn't a type parameter, so we instantiate the parameter on the
+        # left to its upper bound.
+        return self._instantiate_and_match(
+            left.param, other_type, subst, node, view)
     elif isinstance(other_type, abstract.Class):
       # Accumulate substitutions in "subst", or break in case of error:
       return self._match_type_against_type(left, other_type, subst, node, view)
@@ -283,7 +297,8 @@ class AbstractMatcher(object):
     """Match a function.Signature against a parameterized callable."""
     ret_type = sig.annotations.get("return", other_type.vm.convert.unsolvable)
     subst = self._instantiate_and_match(
-        ret_type, other_type.type_parameters[abstract.RET], subst, node, view)
+        ret_type, other_type.type_parameters[abstract.RET], subst, node, view,
+        container=sig)
     if subst is None:
       return subst
     if not isinstance(other_type, abstract.Callable):

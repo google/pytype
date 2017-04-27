@@ -28,7 +28,7 @@ class Converter(object):
   class TypeParameterError(Exception):
 
     def __init__(self, type_param_name):
-      super(Converter.TypeParameterError, self).__init__()
+      super(Converter.TypeParameterError, self).__init__(type_param_name)
       self.type_param_name = type_param_name
 
   def __init__(self, vm):

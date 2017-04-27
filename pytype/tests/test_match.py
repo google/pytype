@@ -311,6 +311,37 @@ class MatchTest(test_inference.InferenceTest):
                                     r"Expected.*Callable\[\[str\], str\].*"
                                     r"Actual.*Callable\[\[int\], str\]")])
 
+  def testFunctionWithTypeParameterArgAgainstCallable(self):
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      from typing import Any, AnyStr, Callable, TypeVar
+      T = TypeVar("T")
+      MyAnyStr = TypeVar("MyAnyStr", unicode, str)
+      def f(x: Callable[[AnyStr], Any]): ...
+      def g1(x: AnyStr) -> AnyStr: return x
+      def g2(x: T) -> T: return x
+      def g3(x: MyAnyStr) -> MyAnyStr: return x
+
+      f(g1)  # ok: same parameter
+      f(g2)
+      f(g3)  # ok: constraints match
+    """)
+    self.assertErrorLogIs(errors, [(11, "wrong-arg-types")])
+
+  def testFunctionWithTypeParameterReturnAgainstCallable(self):
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      from typing import Callable, AnyStr, TypeVar
+      T = TypeVar("T")
+      def f(x: Callable[..., AnyStr]): ...
+      def g1(x: AnyStr) -> AnyStr: return x
+      def g2(x: T) -> T: return x
+
+      f(g1)  # ok
+      f(g2)
+    """)
+    self.assertErrorLogIs(errors, [(9, "wrong-arg-types")])
+
   def testUnionInTypeParameter(self):
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", """
