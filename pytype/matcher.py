@@ -303,10 +303,21 @@ class AbstractMatcher(object):
           expected_arg, actual_arg, subst, node, view, container=other_type)
     return subst
 
+  def _merge_substs(self, subst, new_substs):
+    subst = subst.copy()
+    for new_subst in new_substs:
+      for name, var in new_subst.items():
+        if name not in subst:
+          subst[name] = var
+        elif subst[name] is not var:
+          subst[name].PasteVariable(var)
+    return subst
+
   def _instantiate_and_match(self, left, other_type, subst, node, view,
                              container=None):
     """Instantiate and match an abstract value."""
     instance = left.instantiate(node, container=container)
+    new_substs = []
     for new_view in abstract.get_views([instance], node):
       # When new_view and view have entries in common, we want to use the
       # entries from the old view.
@@ -314,8 +325,11 @@ class AbstractMatcher(object):
       new_subst = self.match_var_against_type(
           instance, other_type, subst, node, new_view)
       if new_subst is not None:
-        return new_subst
-    return None
+        new_substs.append(new_subst)
+    if new_substs:
+      return self._merge_substs(subst, new_substs)
+    else:
+      return None
 
   def _match_instance_against_type(self, left, other_type, subst, node, view):
     left_type = left.get_class()
@@ -415,13 +429,7 @@ class AbstractMatcher(object):
             return None
           new_substs.append(new_subst)
         if new_substs:
-          subst = subst.copy()
-          for new_subst in new_substs:
-            for name, var in new_subst.items():
-              if name not in subst:
-                subst[name] = var
-              elif subst[name] is not var:
-                subst[name].PasteVariable(var, node)
+          subst = self._merge_substs(subst, new_substs)
       if not instance.pyval:
         # This call puts the right param names (with empty values) into subst.
         subst = self._match_maybe_parameterized_instance(

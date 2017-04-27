@@ -311,6 +311,27 @@ class MatchTest(test_inference.InferenceTest):
                                     r"Expected.*Callable\[\[str\], str\].*"
                                     r"Actual.*Callable\[\[int\], str\]")])
 
+  def testUnionInTypeParameter(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import Callable, Iterator, List, TypeVar
+        T = TypeVar("T")
+        def decorate(func: Callable[..., Iterator[T]]) -> List[T]
+      """)
+      ty = self.Infer("""
+        from __future__ import google_type_annotations
+        from typing import Generator, Optional
+        import foo
+        @foo.decorate
+        def f() -> Generator[Optional[str]]:
+          yield "hello world"
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        from typing import List, Optional
+        foo = ...  # type: module
+        f = ...  # type: List[Optional[str]]
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()
