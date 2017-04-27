@@ -321,14 +321,45 @@ class MatcherTest(unittest.TestCase):
     self.assertMatch(f, callable_type)
 
   def testCallableInstance(self):
-    left_good = self._convert_type("Callable[[int], bool]", as_instance=True)
-    left_bad_ret1 = self._convert_type("Callable[[int], float]",
-                                       as_instance=True)
-    left_bad_ret2 = self._convert_type("Callable[..., float]", as_instance=True)
-    right = self._convert_type("Callable[[bool], int]")
-    self.assertMatch(left_good, right)
-    self.assertNoMatch(left_bad_ret1, right)
-    self.assertNoMatch(left_bad_ret2, right)
+    left1 = self._convert_type("Callable[[int], bool]", as_instance=True)
+    left2 = self._convert_type("Callable", as_instance=True)
+    left3 = self._convert_type("Callable[..., int]", as_instance=True)
+    right1 = self._convert_type("Callable[[bool], int]")
+    right2 = self._convert_type("Callable[..., int]")
+    right3 = self._convert_type("Callable")
+    self.assertMatch(left1, right1)
+    self.assertMatch(left2, right1)
+    self.assertMatch(left3, right1)
+    self.assertMatch(left1, right2)
+    self.assertMatch(left2, right2)
+    self.assertMatch(left3, right2)
+    self.assertMatch(left1, right3)
+    self.assertMatch(left2, right3)
+    self.assertMatch(left3, right3)
+
+  def testCallableInstanceBadReturn(self):
+    left1 = self._convert_type("Callable[[int], float]", as_instance=True)
+    left2 = self._convert_type("Callable[..., float]", as_instance=True)
+    right1 = self._convert_type("Callable[[bool], int]")
+    right2 = self._convert_type("Callable[..., int]")
+    self.assertNoMatch(left1, right1)
+    self.assertNoMatch(left2, right1)
+    self.assertNoMatch(left1, right2)
+    self.assertNoMatch(left2, right2)
+
+  def testCallableInstanceBadArgCount(self):
+    left1 = self._convert_type("Callable[[], int]", as_instance=True)
+    left2 = self._convert_type("Callable[[str, str], int]", as_instance=True)
+    right = self._convert_type("Callable[[str], int]")
+    self.assertNoMatch(left1, right)
+    self.assertNoMatch(left2, right)
+
+  def testCallableInstanceBadArgType(self):
+    left1 = self._convert_type("Callable[[bool], Any]", as_instance=True)
+    left2 = self._convert_type("Callable[[str], Any]", as_instance=True)
+    right = self._convert_type("Callable[[int], Any]")
+    self.assertNoMatch(left1, right)
+    self.assertNoMatch(left2, right)
 
 
 if __name__ == "__main__":

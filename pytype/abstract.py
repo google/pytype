@@ -760,6 +760,9 @@ class Instance(SimpleAbstractValue):
               params = []
             else:
               params = [(T, base.type_parameters[T])]
+          elif isinstance(base, Callable):
+            params = [(ARGS, base.type_parameters[ARGS]),
+                      (RET, base.type_parameters[RET])]
           else:
             params = base.type_parameters.items()
           for name, param in params:

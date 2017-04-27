@@ -64,6 +64,8 @@ class Converter(object):
         elif t in instance.type_parameters:
           param_values = self._get_values(
               node, instance.type_parameters[t], view)
+        elif isinstance(v, abstract.Callable):
+          param_values = v.type_parameters[t].instantiate(node).data
         else:
           param_values = [v.vm.convert.unsolvable]
         type_arguments.append(pytd_utils.JoinTypes(

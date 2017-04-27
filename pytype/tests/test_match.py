@@ -298,6 +298,19 @@ class MatchTest(test_inference.InferenceTest):
                                     r"Expected.*Callable\[\[int\], Any\].*"
                                     r"Actual.*Callable\[\[str\], Any\]")])
 
+  def testCallableInstanceAgainstCallableWithTypeParameters(self):
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      from typing import Callable, TypeVar
+      T = TypeVar("T")
+      def f(x: Callable[[T], T]): ...
+      def g() -> Callable[[int], str]: return __any_object__
+      f(g())
+    """)
+    self.assertErrorLogIs(errors, [(6, "wrong-arg-types",
+                                    r"Expected.*Callable\[\[str\], str\].*"
+                                    r"Actual.*Callable\[\[int\], str\]")])
+
 
 if __name__ == "__main__":
   test_inference.main()

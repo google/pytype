@@ -3,7 +3,6 @@ import logging
 
 
 from pytype import abstract
-from pytype import function
 from pytype import utils
 from pytype.pytd import pep484
 
@@ -132,10 +131,10 @@ class AbstractMatcher(object):
     assert isinstance(other_type, abstract.AtomicAbstractValue), other_type
 
     if (isinstance(left, abstract.TypeParameterInstance) and
-        isinstance(left.instance, function.Signature)):
-      # We're doing argument-matching for a function against a callable. We
-      # flipped the argument types to enforce contravariance, but if the
-      # expected type is a type parameter, we need the normal order.
+        isinstance(left.instance, abstract.Callable)):
+      # We're doing argument-matching against a callable. We flipped the
+      # argument types to enforce contravariance, but if the expected type is a
+      # type parameter, we need the normal order.
       return self._instantiate_and_match(
           other_type, left.param, subst, node, view)
     elif isinstance(other_type, abstract.Class):
@@ -293,8 +292,8 @@ class AbstractMatcher(object):
                                    for i in range(other_type.num_args))):
       actual_arg = sig.annotations.get(name, other_type.vm.convert.unsolvable)
       # Flip actual and expected, since argument types are contravariant.
-      subst = self._instantiate_and_match(expected_arg, actual_arg,
-                                          subst, node, view, container=sig)
+      subst = self._instantiate_and_match(
+          expected_arg, actual_arg, subst, node, view, container=other_type)
     return subst
 
   def _instantiate_and_match(self, left, other_type, subst, node, view,
@@ -438,15 +437,27 @@ class AbstractMatcher(object):
   def _match_callable_instance(
       self, left, instance, other_type, subst, node, view):
     """Used by _match_instance."""
-    if (isinstance(instance, abstract.SimpleAbstractValue) and
-        isinstance(other_type, abstract.ParameterizedClass)):
-      subst = self.match_var_against_type(
-          instance.get_type_parameter(node, abstract.RET),
-          other_type.type_parameters[abstract.RET], subst, node, view)
+    if (not isinstance(instance, abstract.SimpleAbstractValue) or
+        not isinstance(other_type, abstract.ParameterizedClass)):
+      return subst
+    subst = self.match_var_against_type(
+        instance.get_type_parameter(node, abstract.RET),
+        other_type.type_parameters[abstract.RET], subst, node, view)
+    if subst is None:
+      return None
+    if (not isinstance(left, abstract.Callable) or
+        not isinstance(other_type, abstract.Callable)):
+      # One of the types doesn't specify arg types, so no need to check them.
+      return subst
+    if left.num_args != other_type.num_args:
+      return None
+    for i in range(left.num_args):
+      # Flip actual and expected to enforce contravariance of argument types.
+      subst = self._instantiate_and_match(
+          other_type.type_parameters[i], left.type_parameters[i],
+          subst, node, view, container=other_type)
       if subst is None:
         return None
-    # TODO(rechen): more matching
-    del left
     return subst
 
   def _match_from_mro(self, left, other_type):
