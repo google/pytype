@@ -25,6 +25,11 @@ _variable_size_metric = metrics.Distribution("variable_size")
 MAX_VAR_SIZE = 64
 
 
+# Should we approximate the behavior of condition objects?
+# Potentially set to 'False' by config.py.
+APPROXIMATE = True
+
+
 class Program(object):
   """Program instances describe program entities.
 
@@ -906,12 +911,13 @@ class Solver(object):
       True if we think this goal can be solved without traversing beyond
       "entrypoint", False if it can't.
     """
-    blocked = frozenset(blocked | {entrypoint})
-    for origin in goal.origins:
-      # TODO(kramm): We don't cache this. Should we?
-      if origin.where not in blocked and self._path_finder.FindAnyPathToNode(
-          where, origin.where, blocked):
-        return True
+    if APPROXIMATE:
+      blocked = frozenset(blocked | {entrypoint})
+      for origin in goal.origins:
+        # TODO(kramm): We don't cache this. Should we?
+        if origin.where not in blocked and self._path_finder.FindAnyPathToNode(
+            where, origin.where, blocked):
+          return True
     return False
 
   def _FindSolution(self, state, seen_goals):
