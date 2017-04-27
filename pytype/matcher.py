@@ -141,17 +141,20 @@ class AbstractMatcher(object):
       # Accumulate substitutions in "subst", or break in case of error:
       return self._match_type_against_type(left, other_type, subst, node, view)
     elif isinstance(other_type, abstract.Union):
+      matched = False
       for t in other_type.options:
         new_subst = self._match_value_against_type(value, t, subst, node, view)
         if new_subst is not None:
-          # TODO(kramm): What if more than one type matches?
-          return new_subst
+          matched = True
+          subst = new_subst
+      return subst if matched else None
     elif isinstance(other_type, abstract.TypeParameter):
       for c in other_type.constraints:
         new_subst = self._match_value_against_type(value, c, subst, node, view)
         if new_subst is not None:
           break
-        if c is other_type.constraints[-1]:
+      else:
+        if other_type.constraints:
           return None
       if other_type.name in subst:
         # Merge the two variables.
@@ -211,6 +214,10 @@ class AbstractMatcher(object):
       if (other_type.full_name == "__builtin__.type" and
           isinstance(other_type, abstract.ParameterizedClass)):
         other_type = other_type.type_parameters[abstract.T]
+        return self._instantiate_and_match(left, other_type, subst, node, view)
+      elif (other_type.full_name == "typing.Callable" and
+            isinstance(other_type, abstract.ParameterizedClass)):
+        other_type = other_type.type_parameters[abstract.RET]
         return self._instantiate_and_match(left, other_type, subst, node, view)
       elif other_type.full_name in [
           "__builtin__.type", "__builtin__.object", "typing.Callable"]:

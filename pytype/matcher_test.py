@@ -361,6 +361,16 @@ class MatcherTest(unittest.TestCase):
     self.assertNoMatch(left1, right)
     self.assertNoMatch(left2, right)
 
+  def testTypeAgainstCallable(self):
+    left1 = self._convert_type("Type[int]", as_instance=True)
+    left2 = self._convert_type("Type[str]", as_instance=True)
+    right1 = self._convert_type("Callable[..., float]")
+    right2 = self._convert_type("Callable[[], float]")
+    self.assertMatch(left1, right1)
+    self.assertMatch(left1, right2)
+    self.assertNoMatch(left2, right1)
+    self.assertNoMatch(left2, right2)
+
 
 if __name__ == "__main__":
   unittest.main()
