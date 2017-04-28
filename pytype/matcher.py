@@ -69,7 +69,7 @@ class AbstractMatcher(object):
         return None, abstract.BadParam(name=name, expected=formal)
     return utils.HashableDict(subst), None
 
-  def bad_matches(self, var, other_type, node, subst=None):
+  def bad_matches(self, var, other_type, node):
     """Match a Variable against a type. Return views that don't match.
 
     Args:
@@ -77,15 +77,13 @@ class AbstractMatcher(object):
       other_type: An instance of AtomicAbstractValue.
       node: A cfg.CFGNode. The position in the CFG from which we "observe" the
         match.
-      subst: Type parameter substitutions.
     Returns:
       A list of all the views of var that didn't match.
     """
-    subst = subst or {}
     bad = []
     for view in abstract.get_views([var], node, filter_strict=True):
       try:
-        subst = self.match_var_against_type(var, other_type, subst, node, view)
+        subst = self.match_var_against_type(var, other_type, {}, node, view)
       except BadTypeParameterSubstitution:
         subst = None
       if subst is None:
