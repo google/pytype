@@ -21,7 +21,7 @@ class ClassesTest(test_inference.InferenceTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Callable
       # "Callable" because it gets called in f()
-      MyClass = ...  # type: Callable
+      MyClass = ...  # type: classmethod or staticmethod or type or Callable
       def f() -> ?
     """)
 

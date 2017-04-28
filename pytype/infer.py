@@ -11,6 +11,7 @@ import sys
 from pytype import abstract
 from pytype import convert_structural
 from pytype import exceptions
+from pytype import function
 from pytype import output
 from pytype import state as frame_state
 from pytype import utils
@@ -345,7 +346,7 @@ class CallTracer(vm.VirtualMachine):
       arg_names = max((sig.get_positional_names() for sig in sigs), key=len)
       for i in range(len(arg_names)):
         if not isinstance(func.data, abstract.BoundFunction) or i > 0:
-          arg_names[i] = "_" + str(i)
+          arg_names[i] = function.argname(i)
       arg_types = (a.data.to_type(node) for a in args)
       ret = pytd_utils.JoinTypes(t.to_type(node) for t in retvar.data)
       # TODO(kramm): Record these:

@@ -2148,7 +2148,7 @@ class TupleClass(ParameterizedClass, HasSlots):
     return super(TupleClass, self).get_special_attribute(node, name, valself)
 
 
-class Callable(ParameterizedClass):
+class Callable(ParameterizedClass, HasSlots):
   """A Callable with a list of argument types.
 
   The type_parameters attribute stores the types of the individual arguments
@@ -2162,11 +2162,48 @@ class Callable(ParameterizedClass):
 
   def __init__(self, base_cls, type_parameters, vm):
     super(Callable, self).__init__(base_cls, type_parameters, vm)
+    HasSlots.init_mixin(self)
+    self.set_slot("__call__", self.call_slot)
     # We subtract two to account for "ARGS" and "RET".
     self.num_args = len(self.type_parameters) - 2
 
   def __repr__(self):
     return "Callable(%s)" % self.type_parameters
+
+  def call_slot(self, node, *args, **kwargs):
+    """Implementation of Callable.__call__."""
+    if kwargs:
+      raise WrongKeywordArgs(function.Signature.from_callable(self),
+                             FunctionArgs(posargs=args, namedargs=kwargs),
+                             self.vm, kwargs.keys())
+    if len(args) != self.num_args:
+      raise WrongArgCount(function.Signature.from_callable(self),
+                          FunctionArgs(posargs=args), self.vm)
+    formal_args = [(function.argname(i), self.type_parameters[i])
+                   for i in range(self.num_args)]
+    substs = [{}]
+    bad_param = None
+    for view in get_views(args, node):
+      arg_dict = {function.argname(i): view[args[i]]
+                  for i in range(self.num_args)}
+      subst, bad_param = self.vm.matcher.compute_subst(
+          node, formal_args, arg_dict, view)
+      if subst is not None:
+        substs = [subst]
+        break
+    else:
+      if bad_param:
+        raise WrongArgTypes(
+            function.Signature.from_callable(self), FunctionArgs(posargs=args),
+            self.vm, bad_param=bad_param)
+    ret = self.vm.annotations_util.sub_one_annotation(
+        node, self.type_parameters[RET], substs)
+    return node, ret.instantiate(node)
+
+  def get_special_attribute(self, node, name, valself):
+    if valself and name in self._slots:
+      return HasSlots.get_special_attribute(self, node, name, valself)
+    return super(Callable, self).get_special_attribute(node, name, valself)
 
 
 class PyTDClass(SimpleAbstractValue, Class):

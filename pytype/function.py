@@ -9,6 +9,11 @@ import collections
 MULTI_ARG_ANNOTATION = "$multi$"
 
 
+def argname(i):
+  """Get a name for an unnamed positional argument, given its position."""
+  return "_" + str(i)
+
+
 # TODO(kramm): This class is deprecated and should be folded into
 # abstract.InterpreterFunction and/or pytd.Signature.
 class Signature(object):
@@ -120,6 +125,21 @@ class Signature(object):
         late_annotations={}
     )
 
+  @classmethod
+  def from_callable(cls, val):
+    annotations = {argname(i): val.type_parameters[i]
+                   for i in range(val.num_args)}
+    return cls(
+        name=val.name,
+        param_names=tuple(sorted(annotations)),
+        varargs_name=None,
+        kwonly_params=set(),
+        kwargs_name=None,
+        defaults={},
+        annotations=annotations,
+        late_annotations={}
+    )
+
   def iter_args(self, args):
     """Iterates through the given args, attaching names and expected types."""
     for i, posarg in enumerate(args.posargs):
@@ -127,7 +147,7 @@ class Signature(object):
         name = self.param_names[i]
         yield (name, posarg, self.annotations.get(name))
       else:
-        yield ("_" + str(i), posarg, None)
+        yield (argname(i), posarg, None)
     for name, namedarg in args.namedargs.items():
       yield (name, namedarg, self.annotations.get(name))
     if self.varargs_name is not None and args.starargs is not None:

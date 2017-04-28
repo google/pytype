@@ -421,6 +421,75 @@ class TypingTest(test_inference.InferenceTest):
       v6 = ...  # type: Tuple[int, int]
     """)
 
+  def testCallableCall(self):
+    ty, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      from typing import Callable
+      f = ...  # type: Callable[[int], str]
+      v1 = f()
+      v2 = f(True)  # ok
+      v3 = f(42.0)
+      v4 = f(1, 2)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any, Callable
+      f = ...  # type: Callable[[int], str]
+      v1 = ...  # type: Any
+      v2 = ...  # type: str
+      v3 = ...  # type: Any
+      v4 = ...  # type: Any
+    """)
+    self.assertErrorLogIs(errors, [(4, "wrong-arg-count", "1.*0"),
+                                   (6, "wrong-arg-types", "int.*float"),
+                                   (7, "wrong-arg-count", "1.*2")])
+
+  def testCallableCallWithTypeParameters(self):
+    ty, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      from typing import Callable, TypeVar
+      T = TypeVar("T")
+      def f(g: Callable[[T, T], T], y, z):
+        return g(y, z)
+      v1 = f(__any_object__, 42, 3.14)  # ok
+      v2 = f(__any_object__, 42, "hello world")
+    """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any, Callable, TypeVar
+      T = TypeVar("T")
+      def f(g: Callable[[T, T], T], y, z): ...
+      v1 = ...  # type: int or float
+      v2 = ...  # type: Any
+    """)
+    self.assertErrorLogIs(errors, [(5, "wrong-arg-types", r"int.*str")])
+
+  def testCallableCallWithReturnOnly(self):
+    ty = self.Infer("""
+      from __future__ import google_type_annotations
+      from typing import Callable
+      f = ...  # type: Callable[..., int]
+      v = f()
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Callable
+      f = ...  # type: Callable[..., int]
+      v = ...  # type: int
+    """)
+
+  def testCallableCallWithVarargsAndKwargs(self):
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      from typing import Callable
+      f = ...  # type: Callable[[], int]
+      f(x=3)
+      f(*(42,))
+      f(**{"x": "hello", "y": "world"})
+      f(*(42,), **{"hello": "world"})
+    """)
+    self.assertErrorLogIs(errors, [(4, "wrong-keyword-args", r"x"),
+                                   (5, "wrong-arg-count", r"0.*1"),
+                                   (6, "wrong-keyword-args", r"x, y"),
+                                   (7, "wrong-keyword-args", r"hello")])
+
 
 if __name__ == "__main__":
   test_inference.main()

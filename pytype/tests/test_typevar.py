@@ -462,9 +462,12 @@ class TypeVarTest(test_inference.InferenceTest):
       f(42, 16j)  # ok
       f(object(), 42)  # ok
       f(42, object())  # ok
+      f(42.0, "")
     """)
     self.assertErrorLogIs(errors, [(6, "wrong-arg-types",
-                                    r"Expected.*y: int.*Actual.*y: str")])
+                                    r"Expected.*y: int.*Actual.*y: str"),
+                                   (10, "wrong-arg-types",
+                                    r"Expected.*y: float.*Actual.*y: str")])
 
   def testTypeVarInTypeComment(self):
     _, errors = self.InferAndCheck("""\

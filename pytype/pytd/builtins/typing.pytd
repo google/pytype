@@ -18,7 +18,7 @@ def _typevar_new(name: str, *constraints: type, bound: type=None, covariant: boo
 
 
 class Callable(Generic[_ARGS, _RET]):
-  def __call__(self, ...) -> ?
+  def __call__(self, ...) -> _RET
 
 
 class Generic(object): ...

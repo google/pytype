@@ -420,7 +420,7 @@ class FunctionTest(AbstractTestBase):
       p_type = pytd.ClassType(p.name)
       p_type.cls = p
       pytd_params.append(
-          pytd.Parameter("_" + str(i), p_type, False, False, None))
+          pytd.Parameter(function.argname(i), p_type, False, False, None))
     pytd_sig = pytd.Signature(
         tuple(pytd_params), None, None, pytd.AnythingType(), (), ())
     sig = abstract.PyTDSignature("f", pytd_sig, self._vm)
@@ -486,11 +486,30 @@ class FunctionTest(AbstractTestBase):
     self.assertEquals(sig.name, "f")
     self.assertSequenceEqual(sig.param_names, ("self",))
     self.assertEquals(sig.varargs_name, "args")
-    self.assertFalse(sig.kwonly_params)
+    self.assertEmpty(sig.kwonly_params)
     self.assertIs(sig.kwargs_name, None)
     self.assertSetEqual(set(sig.annotations), {"self", "args", "return"})
-    self.assertFalse(sig.late_annotations)
+    self.assertEmpty(sig.late_annotations)
     self.assertTrue(sig.has_return_annotation)
+    self.assertTrue(sig.has_param_annotations)
+
+  def test_signature_from_callable(self):
+    # Callable[[int, str], Any]
+    params = {0: self._vm.convert.int_type.data[0],
+              1: self._vm.convert.str_type.data[0]}
+    params[abstract.ARGS] = abstract.Union((params[0], params[1]), self._vm)
+    params[abstract.RET] = self._vm.convert.unsolvable
+    callable_val = abstract.Callable(
+        self._vm.convert.function_type.data[0], params, self._vm)
+    sig = function.Signature.from_callable(callable_val)
+    self.assertEquals(sig.name, callable_val.name)
+    self.assertSequenceEqual(sig.param_names, ("_0", "_1"))
+    self.assertIs(sig.varargs_name, None)
+    self.assertEmpty(sig.kwonly_params)
+    self.assertIs(sig.kwargs_name, None)
+    self.assertItemsEqual(sig.annotations, sig.param_names)
+    self.assertEmpty(sig.late_annotations)
+    self.assertFalse(sig.has_return_annotation)
     self.assertTrue(sig.has_param_annotations)
 
   def test_signature_annotations(self):
