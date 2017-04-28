@@ -586,6 +586,17 @@ class TypeVarTest(test_inference.InferenceTest):
       kwargs = ...  # type: Dict[str, bool]
     """)
 
+  def testBadReturn(self):
+    self.assertNoCrash("""\
+      from __future__ import google_type_annotations
+      from typing import AnyStr, Dict
+
+      class Foo(object):
+        def f(self) -> AnyStr: return __any_object__
+        def g(self) -> Dict[AnyStr, Dict[AnyStr, AnyStr]]:
+          return {'foo': {'bar': self.f()}}
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

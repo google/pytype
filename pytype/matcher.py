@@ -84,8 +84,11 @@ class AbstractMatcher(object):
     subst = subst or {}
     bad = []
     for view in abstract.get_views([var], node, filter_strict=True):
-      if self.match_var_against_type(var, other_type, subst,
-                                     node, view) is None:
+      try:
+        subst = self.match_var_against_type(var, other_type, subst, node, view)
+      except BadTypeParameterSubstitution:
+        subst = None
+      if subst is None:
         bad.append(view)
     return bad
 
