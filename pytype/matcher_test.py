@@ -371,6 +371,14 @@ class MatcherTest(unittest.TestCase):
     self.assertNoMatch(left2, right1)
     self.assertNoMatch(left2, right2)
 
+  def testAnyStrInstanceAgainstAnyStr(self):
+    right = self.vm.convert.name_to_value("typing.AnyStr")
+    dummy_instance = abstract.Instance(self.vm.convert.tuple_type, self.vm)
+    left = abstract.TypeParameterInstance(right, dummy_instance, self.vm)
+    for result in self._match_var(left, right):
+      self.assertItemsEqual([(name, var.data) for name, var in result.items()],
+                            [("AnyStr", [left])])
+
 
 if __name__ == "__main__":
   unittest.main()

@@ -363,6 +363,14 @@ class MatchTest(test_inference.InferenceTest):
         f = ...  # type: List[Optional[str]]
       """)
 
+  def testAnyStr(self):
+    self.assertNoErrors("""
+      from __future__ import google_type_annotations
+      from typing import AnyStr, Dict, Tuple
+      class Foo(object):
+        def bar(self, x: Dict[Tuple[AnyStr], AnyStr]): ...
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

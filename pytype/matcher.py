@@ -289,6 +289,9 @@ class AbstractMatcher(object):
             o, other_type, subst, node, view)
         if new_subst is not None:
           return new_subst
+    elif isinstance(left, abstract.TypeParameterInstance):
+      return self._instantiate_and_match(
+          left.param, other_type, subst, node, view)
     else:
       raise NotImplementedError("Matching not implemented for %s against %s" %
                                 (type(left), type(other_type)))
