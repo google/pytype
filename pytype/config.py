@@ -233,6 +233,11 @@ class Options(object):
         "-Z", "--quick", action="store_true",
         dest="quick",
         help=("Only do an approximation."))
+    o.add_option(
+        "--memory-snapshots", action="store_true", default=False,
+        dest="memory_snapshots",
+        help=("Enable tracemalloc snapshot metrics. Currently requires "
+              "a version of Python with tracemalloc patched in."))
     return o
 
   def _postprocess_options(self, names):

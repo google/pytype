@@ -231,7 +231,8 @@ def main(argv):
   with _ProfileContext(options.profile):
     with metrics.MetricsContext(options.metrics):
       with metrics.StopWatch("total_time"):
-        return _run_pytype(options)
+        with metrics.Snapshot("memory", enabled=options.memory_snapshots):
+          return _run_pytype(options)
 
 
 def _run_pytype(options):

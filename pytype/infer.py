@@ -12,6 +12,7 @@ from pytype import abstract
 from pytype import convert_structural
 from pytype import exceptions
 from pytype import function
+from pytype import metrics
 from pytype import output
 from pytype import state as frame_state
 from pytype import utils
@@ -676,6 +677,8 @@ def check_types(py_src, pytd_src, py_filename, pytd_filename, errorlog,
                       loader=loader)
   loc, defs = tracer.run_program(
       py_src, py_filename, init_maximum_depth, run_builtins)
+  snapshotter = metrics.get_metric("memory", metrics.Snapshot)
+  snapshotter.take_snapshot("infer:check_types:tracer")
   if pytd_src is not None:
     del deep  # ignored
     ast = builtins.ParsePyTD(pytd_src, pytd_filename, options.python_version,
@@ -686,6 +689,7 @@ def check_types(py_src, pytd_src, py_filename, pytd_filename, errorlog,
                        os.path.basename(pytd_filename))
   elif deep:
     tracer.analyze(loc, defs, maximum_depth=(2 if options.quick else None))
+  snapshotter.take_snapshot("infer:check_types:post")
   _maybe_output_debug(options, tracer.program)
 
 
@@ -728,10 +732,13 @@ def infer_types(src, errorlog, options, loader,
   loc, defs = tracer.run_program(
       src, filename, init_maximum_depth, run_builtins)
   log.info("===Done running definitions and module-level code===")
+  snapshotter = metrics.get_metric("memory", metrics.Snapshot)
+  snapshotter.take_snapshot("infer:infer_types:tracer")
   if deep:
     tracer.exitpoint = tracer.analyze(loc, defs, maximum_depth)
   else:
     tracer.exitpoint = loc
+  snapshotter.take_snapshot("infer:infer_types:post")
   ast = tracer.compute_types(defs)
   ast = tracer.loader.resolve_ast(ast)
   if tracer.has_unknown_wildcard_imports:

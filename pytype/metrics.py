@@ -24,6 +24,11 @@ import time
 
 import yaml
 
+# TODO(tsudol): Not needed once tracemalloc is added to main branch.
+try:
+  import tracemalloc  # pylint: disable=g-import-not-at-top
+except ImportError:
+  tracemalloc = None
 
 # TODO(dbaum): Investigate mechanisms to ensure that counter variable names
 # match metric names.
@@ -273,6 +278,68 @@ class Distribution(Metric):
     else:
       self._min = min(self._min, other._min)
       self._max = max(self._max, other._max)
+
+
+class Snapshot(Metric):
+  """A metric to track memory usage via tracemalloc snapshots."""
+
+  def __init__(self, name, enabled, groupby="lineno", nframes=1, count=10):
+    super(Snapshot, self).__init__(name)
+    self.snapshots = []
+    # The metric to group memory blocks by. Default is "lineno", which groups by
+    # which file and line allocated the block. The other useful value is
+    # "traceback", which groups by the stack frames leading to each allocation.
+    self.groupby = groupby
+    # The number of stack frames to store per memory block. Values greater than
+    # 1 are only useful if groupby = "traceback".
+    self.nframes = nframes
+    # The number of memory block statistics to save.
+    self.count = count
+    self.running = False
+    # Three conditions must be met for memory snapshots to be taken:
+    # 1. tracemalloc was imported successfully (tracemalloc)
+    # 2. Metrics have been enabled (global _enabled)
+    # 3. Explicitly enabled by the arg to the constructor (which should be the
+    # options.memory_snapshot flag set by the --memory-snapshots option)
+    self.enabled = tracemalloc and _enabled and enabled
+
+  def _start_tracemalloc(self):
+    tracemalloc.start(self.nframes)
+    self.running = True
+
+  def _stop_tracemalloc(self):
+    tracemalloc.stop()
+    self.running = False
+
+  def take_snapshot(self, where=""):
+    """Stores a tracemalloc snapshot."""
+    if not self.enabled:
+      return
+    if not self.running:
+      self._start_tracemalloc()
+    snap = tracemalloc.take_snapshot()
+    # Store the top self.count memory consumers by self.groupby
+    # We can't just store the list of statistics though! Statistic.__eq__
+    # doesn't take None into account during comparisons, and yaml will compare
+    # it to None when trying to process it, causing an error. So, store it as a
+    # string instead.
+    self.snapshots.append("%s:\n%s" % (where, "\n".join(
+        map(str, snap.statistics(self.groupby)[:self.count]))))
+
+  def __enter__(self):
+    if not self.enabled:
+      return
+    self._start_tracemalloc()
+    self.take_snapshot("__enter__")
+
+  def __exit__(self, exc_type, exc_value, traceback):
+    if not self.running:
+      return
+    self.take_snapshot("__exit__")
+    self._stop_tracemalloc()
+
+  def _summary(self):
+    return "\n\n".join(self.snapshots)
 
 
 class MetricsContext(object):
