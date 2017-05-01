@@ -834,6 +834,27 @@ class ImportTest(test_inference.InferenceTest):
         x = foo.bar
       """, pythonpath=[d.path])
 
+  def testIgnoredImport(self):
+    ty = self.Infer("""\
+      import sys  # type: ignore
+      import foobar  # type: ignore
+      from os import path  # type: ignore
+      a = sys.rumplestiltskin
+      b = sys.stderr
+      c = foobar.rumplestiltskin
+      d = path.curdir
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      sys = ...  # type: Any
+      foobar = ...  # type: Any
+      path = ...  # type: Any
+      a = ...  # type: Any
+      b = ...  # type: Any
+      c = ...  # type: Any
+      d = ...  # type: Any
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

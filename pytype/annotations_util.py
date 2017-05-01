@@ -121,7 +121,7 @@ class AnnotationsUtil(object):
     """If there is a type comment for the op, return its value."""
     if op.code.co_filename != self.vm.filename:
       return value
-    code, comment = self.vm.type_comments.get(op.line, (None, None))
+    code, comment = self.vm.director.type_comments.get(op.line, (None, None))
     if code:
       try:
         var = self._eval_expr(state.node, self.vm.frame.f_globals, comment)

@@ -181,7 +181,7 @@ class VirtualMachine(object):
     self.has_unknown_wildcard_imports = False
     self.callself_stack = []
     self.filename = None
-    self.type_comments = {}  # map from line number to (code, comment)
+    self.director = None
     self.reading_builtins = False
 
     # Map from builtin names to canonical objects.
@@ -681,7 +681,7 @@ class VirtualMachine(object):
     # This modifies the errorlog passed to the constructor.  Kind of ugly,
     # but there isn't a better way to wire both pieces together.
     self.errorlog.set_error_filter(director.should_report_error)
-    self.type_comments = director.type_comments
+    self.director = director
     self.filename = filename
 
     self.maximum_depth = sys.maxint if maximum_depth is None else maximum_depth
@@ -692,11 +692,11 @@ class VirtualMachine(object):
       node, f_globals, f_locals = node, None, None
 
     code = self.compile_src(src, filename=filename)
-    visitor = _FindIgnoredTypeComments(self.type_comments)
+    visitor = _FindIgnoredTypeComments(self.director.type_comments)
     pyc.visit(code, visitor)
     for line in visitor.ignored_lines():
       self.errorlog.ignored_type_comment(
-          self.filename, line, self.type_comments[line][1])
+          self.filename, line, self.director.type_comments[line][1])
 
     node = node.ConnectNew("init")
     node, f_globals, _, _ = self.run_bytecode(node, code, f_globals, f_locals)
@@ -1921,7 +1921,7 @@ class VirtualMachine(object):
     # first actual function code.
     lineno = None
     for lineno in range(op.line + 1, co_code[0].line):
-      entry = self.type_comments.get(lineno)
+      entry = self.director.type_comments.get(lineno)
       # entry is either None, or (src, comment).
       if entry and not entry[0]:
         comment = entry[1]
@@ -2039,6 +2039,9 @@ class VirtualMachine(object):
     full_name = self.frame.f_code.co_names[op.arg]
     # The identifiers in the (unused) fromlist are repeated in IMPORT_FROM.
     state, (level_var, fromlist) = state.popn(2)
+    if op.line in self.director.ignore:
+      # "import name  # type: ignore"
+      return state.push(self.convert.create_new_unsolvable(state.node))
     # The IMPORT_NAME for an "import a.b.c" will push the module "a".
     # However, for "from a.b.c import Foo" it'll push the module "a.b.c". Those
     # two cases are distinguished by whether fromlist is None or not.
@@ -2056,6 +2059,9 @@ class VirtualMachine(object):
 
   def byte_IMPORT_FROM(self, state, op):
     """IMPORT_FROM is mostly like LOAD_ATTR but doesn't pop the container."""
+    if op.line in self.director.ignore:
+      # "from x import y  # type: ignore"
+      return state.push(self.convert.create_new_unsolvable(state.node))
     name = self.frame.f_code.co_names[op.arg]
     module = state.top()
     state, attr = self.load_attr_noerror(state, module, name)

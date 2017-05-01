@@ -122,6 +122,10 @@ class Director(object):
   def type_comments(self):
     return self._type_comments
 
+  @property
+  def ignore(self):
+    return self._ignore
+
   def _adjust_type_comments(self, closing_bracket_lines, whitespace_lines):
     """Adjust any type comments affected by closing bracket lines.
 
