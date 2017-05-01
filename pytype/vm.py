@@ -222,9 +222,9 @@ class VirtualMachine(object):
       subsequent instruction.
     """
     _opcode_counter.inc(op.name)
+    self.frame.current_opcode = op
     if log.isEnabledFor(logging.INFO):
       self.log_opcode(op, state)
-    self.frame.current_opcode = op
     try:
       # dispatch
       bytecode_fn = getattr(self, "byte_%s" % op.name, None)
@@ -374,6 +374,11 @@ class VirtualMachine(object):
     log.info("%s | data_stack: %s", indent, stack_rep)
     log.info("%s | block_stack: %s", indent, block_stack_rep)
     log.info("%s | node: <%d>%s", indent, state.node.id, state.node.name)
+    if log.isEnabledFor(logging.TRACE):
+      log.trace("%s | backtrace: %s", indent,
+                " ".join(str(f.current_opcode.line)
+                         for f in self.frames
+                         if isinstance(f, frame_state.Frame)))
     log.info("%s %s", indent, utils.maybe_truncate(str(op), _TRUNCATE))
 
   def repper(self, s):
