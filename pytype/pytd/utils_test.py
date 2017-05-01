@@ -375,9 +375,9 @@ class TestDataFiles(parser_test_base.ParserTest):
 
   def testPytdBuiltin(self):
     """Verify 'import sys'."""
-    import_contents = utils.GetPredefinedFile("builtins", "sys")
+    import_contents = utils.GetPredefinedFile("builtins", "__builtin__")
     with open(os.path.join(os.path.dirname(pytd.__file__),
-                           "builtins", "sys.pytd"), "rb") as fi:
+                           "builtins", "__builtin__.pytd"), "rb") as fi:
       file_contents = fi.read()
     self.assertMultiLineEqual(import_contents, file_contents)
 

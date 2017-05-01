@@ -47,8 +47,8 @@ class UtilsTest(unittest.TestCase):
   def testParsePredefinedPyTD(self):
     """Test ParsePredefinedPyTD()."""
     ast = builtins.ParsePredefinedPyTD(
-        "builtins", "sys", python_version=(2, 7, 6))
-    self.assertIsNotNone(ast.Lookup("sys.stderr"))
+        "builtins", "__builtin__", python_version=(2, 7, 6))
+    self.assertIsNotNone(ast.Lookup("__builtin__.int"))
 
   def testPrecompilation(self):
     # Get original (non-precompiled) values.

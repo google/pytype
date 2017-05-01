@@ -210,9 +210,10 @@ class ImportTest(test_inference.InferenceTest):
         return sys.getrecursionlimit()
     """, deep=True, solve_unknowns=True, report_errors=False)
     self.assertTypesMatchPytd(ty, """
+      from typing import IO
       bad_import = ...  # type: ?
       sys = ...  # type: module
-      def f() -> file
+      def f() -> IO[str]
       def g() -> int
       def h() -> int
     """)
