@@ -283,7 +283,8 @@ class Distribution(Metric):
 class Snapshot(Metric):
   """A metric to track memory usage via tracemalloc snapshots."""
 
-  def __init__(self, name, enabled, groupby="lineno", nframes=1, count=10):
+  def __init__(self, name, enabled=False, groupby="lineno",
+               nframes=1, count=10):
     super(Snapshot, self).__init__(name)
     self.snapshots = []
     # The metric to group memory blocks by. Default is "lineno", which groups by
