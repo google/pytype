@@ -126,9 +126,7 @@ class Converter(object):
     return value
 
   def build_none(self, node):
-    none = self.none.to_variable(node)
-    assert self.vm.is_none(none)
-    return none
+    return self.none.to_variable(node)
 
   def build_bool(self, node, value=None):
     if value is None:

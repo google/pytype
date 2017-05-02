@@ -601,22 +601,6 @@ class VirtualMachine(object):
     return frame_state.Frame(node, self, code, f_globals, f_locals,
                              self.frame, callargs or {}, closure)
 
-  def is_none(self, value):
-    """Checks whether a value is considered to be "None".
-
-    Important for stack values, which might be a symbolic None.
-
-    Arguments:
-      value: A typegraph.Variable.
-
-    Returns:
-      Whether the value is None. False if it isn't or if we don't know.
-    """
-    try:
-      return value is None or abstract.get_atomic_python_constant(value) is None
-    except abstract.ConversionError:
-      return False
-
   def push_abstract_exception(self, state):
     tb = self.convert.build_list(state.node, [])
     value = self.convert.create_new_unknown(state.node)
@@ -750,7 +734,7 @@ class VirtualMachine(object):
     result = self.join_variables(state.node, results)
     log.debug("Result: %r %r", result, result.data)
     if not result.bindings and report_errors:
-      if self.is_none(x):
+      if self._is_only_none(state.node, x):
         self.errorlog.none_attr(self.frame.current_opcode, name)
       elif error is None:
         self.errorlog.unsupported_operands(self.frame.current_opcode,
@@ -979,7 +963,6 @@ class VirtualMachine(object):
             x.cls.data == self.convert.none_type.data)
 
   def _is_only_none(self, node, obj):
-    # TODO(kramm): Report an error for *any* None, as opposed to *all* None?
     has_none = True
     for x in obj.Data(node):
       if self._is_none(x):
@@ -2050,7 +2033,7 @@ class VirtualMachine(object):
     # The IMPORT_NAME for an "import a.b.c" will push the module "a".
     # However, for "from a.b.c import Foo" it'll push the module "a.b.c". Those
     # two cases are distinguished by whether fromlist is None or not.
-    if self.is_none(fromlist):
+    if self._is_only_none(state.node, fromlist):
       name = full_name.split(".", 1)[0]  # "a.b.c" -> "a"
     else:
       name = full_name
@@ -2097,7 +2080,7 @@ class VirtualMachine(object):
 
   def byte_END_FINALLY(self, state, op):
     state, exc = state.pop()
-    if self.is_none(exc):
+    if self._is_only_none(state.node, exc):
       return state
     else:
       log.info("Popping exception %r", exc)
