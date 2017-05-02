@@ -90,7 +90,7 @@ class Program(object):
       A Variable instance.
     """
     variable = Variable(self, self.next_variable_id)
-    log.trace("New variable v%d" % self.next_variable_id)
+    log.trace("New variable v%d", self.next_variable_id)
     self.next_variable_id += 1
     if bindings is not None:
       assert source_set is not None and where is not None
@@ -387,7 +387,7 @@ class Variable(object):
     self.id = variable_id
     self.bindings = []
     self._data_id_to_binding = {}
-    self._cfgnode_to_bindings = collections.defaultdict(set)
+    self._cfgnode_to_bindings = {}
     self._callbacks = []
 
   def __repr__(self):
@@ -422,9 +422,8 @@ class Variable(object):
         break
       node = stack.pop()
       seen.add(node)
-      # _cfgnode_to_bindings is a defaultdict, so don't use "get"
-      if node in self._cfgnode_to_bindings:
-        bindings = self._cfgnode_to_bindings[node]
+      bindings = self._cfgnode_to_bindings.get(node)
+      if bindings is not None:
         assert bindings, "empty binding list"
         result.update(bindings)
         # Don't expand this node - previous assignments to this variable will
@@ -532,7 +531,10 @@ class Variable(object):
     return new_variable
 
   def RegisterBindingAtNode(self, binding, node):
-    self._cfgnode_to_bindings[node].add(binding)
+    if node not in self._cfgnode_to_bindings:
+      self._cfgnode_to_bindings[node] = {binding}
+    else:
+      self._cfgnode_to_bindings[node].add(binding)
 
   def RegisterChangeListener(self, callback):
     self._callbacks.append(callback)
