@@ -1114,7 +1114,7 @@ class VirtualMachine(object):
 
     return result
 
-  def _get_iter(self, state, seq):
+  def _get_iter(self, state, seq, report_errors=True):
     """Get an iterator from a sequence."""
     state, func = self.load_attr_noerror(state, seq, "__iter__")
     if func:
@@ -1136,11 +1136,14 @@ class VirtualMachine(object):
         itr = abstract.Iterator(self, item).to_variable(state.node)
       else:
         # Cannot iterate this object.
-        for m in missing:
-          if state.node.HasCombination([m]):
-            self.errorlog.attribute_error(
-                self.frame.current_opcode, seq, "__iter__")
-        itr = self.convert.create_new_unsolvable(state.node)
+        if report_errors:
+          for m in missing:
+            if state.node.HasCombination([m]):
+              self.errorlog.attribute_error(
+                  self.frame.current_opcode, seq, "__iter__")
+          itr = self.convert.create_new_unsolvable(state.node)
+        else:
+          itr = None
     return state, itr
 
   def byte_UNARY_NOT(self, state, op):
@@ -1464,6 +1467,26 @@ class VirtualMachine(object):
       bool_var.AddBinding(self.convert.bool_values[const], {b}, node)
     return bool_var
 
+  def _cmp_in(self, state, x, y, true_val=True):
+    """Implementation of CMP_IN/CMP_NOT_IN."""
+    state, ret = self.call_binary_operator(state, "__contains__", y, x)
+    if ret.bindings:
+      ret = self._coerce_to_bool(state.node, ret, true_val=true_val)
+    else:
+      # For an object without a __contains__ method, cmp_in falls back to
+      # checking x against the items produced by y's iterator.
+      state, itr = self._get_iter(state, y, report_errors=False)
+      if not itr:
+        # y does not have any of __contains__, __iter__, and __getitem__.
+        # (The last two are checked by _get_iter.)
+        if self._is_only_none(state.node, y):
+          self.errorlog.none_attr(self.frame.current_opcode, "__contains__")
+        else:
+          self.errorlog.unsupported_operands(self.frame.current_opcode,
+                                             state.node, "__contains__", y, x)
+      ret = self.convert.build_bool(state.node)
+    return state, ret
+
   def byte_COMPARE_OP(self, state, op):
     """Pops and compares the top two stack values and pushes a boolean."""
     state, (x, y) = state.popn(2)
@@ -1488,13 +1511,9 @@ class VirtualMachine(object):
       ret = self.expand_bool_result(state.node, x, y,
                                     "is_not_cmp", frame_state.is_not_cmp)
     elif op.arg == slots.CMP_NOT_IN:
-      state, ret = self.call_binary_operator(state, "__contains__", y, x,
-                                             report_errors=True)
-      ret = self._coerce_to_bool(state.node, ret, true_val=False)
+      state, ret = self._cmp_in(state, x, y, true_val=False)
     elif op.arg == slots.CMP_IN:
-      state, ret = self.call_binary_operator(state, "__contains__", y, x,
-                                             report_errors=True)
-      ret = self._coerce_to_bool(state.node, ret)
+      state, ret = self._cmp_in(state, x, y)
     elif op.arg == slots.CMP_EXC_MATCH:
       ret = self.convert.build_bool(state.node)
     else:

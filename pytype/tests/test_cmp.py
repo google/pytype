@@ -327,6 +327,12 @@ class InstanceUnequalityTest(test_inference.InferenceTest):
           return None
       """)
 
+  def testIteratorContains(self):
+    self.assertNoErrors("""
+      1 in iter((1, 2))
+      1 not in iter((1, 2))
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()
