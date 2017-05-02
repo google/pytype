@@ -924,12 +924,7 @@ class LookupExternalTypes(Visitor):
     return _ToType(item)
 
   def VisitClassType(self, t):
-    new_type = self.VisitNamedType(t)
-    if isinstance(new_type, pytd.ClassType):
-      t.cls = new_type.cls
-      return t
-    else:
-      return new_type
+    return self.VisitNamedType(t)
 
 
 class LookupLocalTypes(Visitor):

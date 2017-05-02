@@ -28,11 +28,15 @@ class SerializableAst(object):
       Therefore it might be different from the set found by
       visitors.CollectDependencies in
       load_pytd._load_and_resolve_ast_dependencies.
+    modified_class_types: A list of ClassType nodes which had their cls
+      attribute replaced. This is used as an index into the tree so that a
+      reader does not need to iterate over the tree.
   """
 
-  def __init__(self, ast, dependencies):
+  def __init__(self, ast, dependencies, modified_class_types):
     self.ast = ast
     self.dependencies = dependencies
+    self.modified_class_types = modified_class_types
 
 
 class RenameModuleVisitor(visitors.Visitor):
@@ -104,6 +108,36 @@ class RenameModuleVisitor(visitors.Visitor):
   VisitNamedType = _ReplaceModuleName  # pylint: disable=invalid-name
 
 
+class RemoveClassTypeReferencesVisitor(visitors.Visitor):
+  """Removes all references outside of the local module.
+
+  Before pickling references outside the ast need to be replaced.
+  This is done to avoid creating instances of the foreign modules during loading
+  of the pickled modules.
+  It is a performance optimization, from a correctness point of view it would be
+  fine to replace the loaded modules with the local versions in the process
+  reading the pickled file. This would however serialize a lot of data, which is
+  discarded later.
+
+  This visitor modifies the AST in place as replacing the ClassTypes with
+  NamedTypes would mean that the parent needs to be rebuilt.
+  """
+
+  def __init__(self):
+    super(RemoveClassTypeReferencesVisitor, self).__init__()
+    # A dictionary which is used to remember which nodes have already been
+    # replaced. It maps the id() of a node to the node. This is needed as the
+    # class_type equals is only comparing a subset of fields.
+    self._all_class_types = []
+
+  def EnterClassType(self, class_type):
+    class_type.cls = None
+    self._all_class_types.append(class_type)
+
+  def GetAllClassTypes(self):
+    return self._all_class_types
+
+
 def StoreAst(ast, filename):
   """Loads and stores an ast to disk.
 
@@ -120,9 +154,11 @@ def StoreAst(ast, filename):
   dependencies = deps.modules or set()
 
   # Clean external references
-  ast.Visit(visitors.ClearClassPointers())
+  visitor = RemoveClassTypeReferencesVisitor()
+  ast.Visit(visitor)
+  modified_class_types = visitor.GetAllClassTypes()
 
-  serializable_ast = SerializableAst(ast, dependencies)
+  serializable_ast = SerializableAst(ast, dependencies, modified_class_types)
 
   utils.SavePickle(serializable_ast, filename)
   return True
@@ -146,6 +182,9 @@ def EnsureAstName(ast, module_name):
   # when the ast has been pickled.
   if module_name != raw_ast.name:
     ast.ast = raw_ast.Visit(RenameModuleVisitor(raw_ast.name, module_name))
+    # The ast.modified_class_types index is no longer valid, as
+    # RenameModuleVisitor will have created a new AST.
+    ast.modified_class_types = None
 
 
 def ProcessAst(serializable_ast, module_map):
@@ -173,15 +212,26 @@ def ProcessAst(serializable_ast, module_map):
       one of the references from the pickled ast.
   """
   raw_ast = serializable_ast.ast
+  class_types = serializable_ast.modified_class_types
 
   module_map[raw_ast.name] = raw_ast
-  # Notice that this is also resolving local ClassType references.
-  class_lookup = visitors.LookupExternalTypes(module_map, full_names=True,
-                                              self_name=None)
-  try:
-    raw_ast = raw_ast.Visit(class_lookup)
-  except KeyError as e:
-    raise UnrestorableDependencyError("Unresolved class: %r." % e.message)
+  module_class_filler = visitors.FillInModuleClasses(module_map)
+
+  if class_types is not None:
+    # We know all the class_types and can directly iterate over them, saving one
+    # AST iteration.
+    for modified_class_type in class_types:
+      module_class_filler.EnterClassType(modified_class_type)
+      if not modified_class_type.cls:
+        raise UnrestorableDependencyError(
+            "Unresolved class: %r." % modified_class_type.name)
+  else:
+    raw_ast = raw_ast.Visit(module_class_filler)
+    try:
+      raw_ast.Visit(visitors.VerifyLookup())
+    except ValueError as e:
+      raise UnrestorableDependencyError(e.message)
+
   return raw_ast
 
 
