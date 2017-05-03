@@ -231,6 +231,17 @@ class MethodsTest(test_inference.InferenceTest):
     """, deep=False, solve_unknowns=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("test"), (), self.int)
 
+  def testInheritedProperty(self):
+    self.assertNoErrors("""
+      class A(object):
+        @property
+        def bar(self):
+          return 42
+      class B(A):
+        def foo(self):
+          return super(B, self).bar + 42
+    """)
+
   def testGenerators(self):
     ty = self.Infer("""
       def f():
@@ -676,7 +687,23 @@ class MethodsTest(test_inference.InferenceTest):
         return A().myclassmethod()
       f()
     """, deep=False, solve_unknowns=False, show_library_calls=True)
-    self.assertHasSignature(ty.Lookup("f"), (), self.int)
+    self.assertTypesMatchPytd(ty, """
+      class A(object):
+        myclassmethod = ...  # type: classmethod
+      def f() -> int: ...
+    """)
+
+  def testInheritedClassMethod(self):
+    self.assertNoErrors("""
+      class A(object):
+        @classmethod
+        def myclassmethod(cls):
+          return 3
+      class B(A):
+        @classmethod
+        def myclassmethod(cls):
+          return super(B, cls).myclassmethod()
+    """)
 
   def testStaticMethod(self):
     ty = self.Infer("""

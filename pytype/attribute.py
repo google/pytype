@@ -92,7 +92,7 @@ class AbstractAttributeHandler(object):
       if obj.super_obj:
         valself = obj.super_obj.to_variable(node).bindings[0]
       valcls = obj.super_cls.to_variable(node).bindings[0]
-      return node, self._lookup_from_mro(
+      return self._class_getter(
           node, obj.super_cls, name, valself, valcls, skip=obj.super_cls)
     elif isinstance(obj, abstract.Super):
       return self.get_attribute(
@@ -233,9 +233,9 @@ class AbstractAttributeHandler(object):
       attr = self.vm.convert.unsolvable.to_variable(node)
     return node, attr
 
-  def _class_getter(self, node, cls, name, valself, valcls):
+  def _class_getter(self, node, cls, name, valself, valcls, skip=None):
     """Retrieve an attribute by looking at the MRO of this class."""
-    attr = self._lookup_from_mro(node, cls, name, valself, valcls)
+    attr = self._lookup_from_mro(node, cls, name, valself, valcls, skip)
     if not attr.bindings:
       return node, None
     if isinstance(cls, abstract.InterpreterClass):
