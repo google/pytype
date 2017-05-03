@@ -4,24 +4,11 @@ import pickle
 from pytype import config
 from pytype import load_pytd
 from pytype import utils
-from pytype.pytd import pytd
 from pytype.pytd import serialize_ast
 from pytype.pytd import utils as pytd_utils
 from pytype.pytd.parse import visitors
 
 import unittest
-
-
-class RemoveClassTypeReferencesVisitorTest(unittest.TestCase):
-
-  def testClsRemoval(self):
-    ty_a = pytd.ClassType("A")
-    cls = pytd.ClassType("B")
-    ty_a.cls = cls
-    visitor = serialize_ast.RemoveClassTypeReferencesVisitor()
-    ty_a.Visit(visitor)
-    self.assertIsNone(ty_a.cls)
-    self.assertEquals([ty_a], visitor.GetAllClassTypes())
 
 
 class ImportPathsTest(unittest.TestCase):
@@ -99,7 +86,6 @@ class ImportPathsTest(unittest.TestCase):
     """
     with utils.Tempdir() as d:
       ast, _ = self._GetAst(temp_dir=d, module_name=module_name, src=src)
-
     new_ast = ast.Visit(serialize_ast.RenameModuleVisitor(module_name,
                                                           "other.name"))
 
@@ -125,18 +111,6 @@ class ImportPathsTest(unittest.TestCase):
       self.assertTrue(serialized_ast.ast)
       self.assertEquals(serialized_ast.dependencies,
                         {"__builtin__", "module2", "foo.bar.module1"})
-      self.assertEquals(len(serialized_ast.modified_class_types), 9)
-      self.assertEquals(set(serialized_ast.modified_class_types), {
-          pytd.ClassType("foo.bar.module1.SomeClass"),  # class SomeClass(...)
-          pytd.ClassType("__builtin__.object"),  # class SomeClass(Object)
-          pytd.ClassType("__builtin__.bool"),  # constant = True
-          pytd.ClassType("__builtin__.list"),  # x = List[]
-          pytd.ClassType("__builtin__.list"),  # b = List[]
-          pytd.ClassType("__builtin__.int"),  # x = List[int]
-          pytd.ClassType("module2.ObjectMod2"),  # a: module2.ObjectMod2
-          pytd.ClassType("__builtin__.int"),  # b = List[int]
-          pytd.ClassType("__builtin__.NoneType")}  # def __init__ return
-                       )
 
   def testLoadTopLevel(self):
     """Tests that a pickled file can be read."""
