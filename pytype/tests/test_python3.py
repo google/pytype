@@ -114,6 +114,44 @@ class TestPython3(test_inference.InferenceTest):
       def f() -> int
     """)
 
+  def test_byte_unpack_ex(self):
+    ty = self.Infer("""
+      from typing import List
+      a, *b, c, d = 1, 2, 3, 4, 5, 6, 7
+      e, f, *g, h = "hello world"
+      i, *j = 1, 2, 3, "4"
+      *k, l = 4, 5, 6
+      m, *n, o = [4, 5, "6", None, 7, 8]
+      p, *q, r = 4, 5, "6", None, 7, 8
+      vars = None # type : List[int]
+      s, *t, u = vars
+    """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      from typing import List, Optional, Union
+      a = ... # type: int
+      b = ... # type: List[int]
+      c = ... # type: int
+      d = ... # type: int
+      e = ... # type: str
+      f = ... # type: str
+      g = ... # type: List[str]
+      h = ... # type: str
+      i = ... # type: int
+      j = ... # type: List[Union[int, str]]
+      k = ... # type: List[int]
+      l = ... # type: int
+      m = ... # type: int
+      n = ... # type: List[Optional[Union[int, str]]]
+      o = ... # type: int
+      p = ... # type: int
+      q = ... # type: List[Optional[Union[int, str]]]
+      r = ... # type: int
+      s = ...  # type: int
+      t = ...  # type: List[int]
+      u = ...  # type: int
+      vars = ...  # type: List[int]
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

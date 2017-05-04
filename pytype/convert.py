@@ -166,6 +166,12 @@ class Converter(object):
     content = list(content)  # content might be a generator
     return abstract.List(content, self.vm).to_variable(node)
 
+  def build_list_of_type(self, node, var):
+    """Create a VM list with element type derived from the given variable."""
+    ret = abstract.Instance(self.list_type, self.vm)
+    ret.initialize_type_parameter(node, abstract.T, var)
+    return ret.to_variable(node)
+
   def build_set(self, node, content):
     """Create a VM set from the given sequence."""
     content = list(content)  # content might be a generator

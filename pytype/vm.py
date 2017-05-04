@@ -1415,6 +1415,11 @@ class VirtualMachine(object):
     self.frame.cells[op.arg].PasteVariable(value, state.node)
     return state
 
+  def byte_DELETE_DEREF(self, state, op):
+    # TODO(mdemello): Figure out what to do here.
+    log.warning("DELETE_DEREF does not do anything.")
+    return state
+
   def byte_LOAD_LOCALS(self, state, op):
     log.debug("Returning locals: %r", self.frame.f_locals)
     locals_dict = self.frame.f_locals.to_variable(self.root_cfg_node)
@@ -1586,30 +1591,72 @@ class VirtualMachine(object):
     state = self.store_subscr(state, the_map, key, val)
     return state.push(the_map)
 
-  def byte_UNPACK_SEQUENCE(self, state, op):
-    """Pops a tuple (or other iterable) and pushes it onto the VM's stack."""
+  def _get_literal_sequence(self, data):
+    """Helper function for _unpack_sequence."""
+    try:
+      return self.convert.value_to_constant(data, tuple)
+    except abstract.ConversionError:
+      # Fall back to looking for a literal list and converting to a tuple
+      try:
+        return tuple(self.convert.value_to_constant(data, list))
+      except abstract.ConversionError:
+        return None
+
+  def _restructure_tuple(self, state, tup, pre, post):
+    """Collapse the middle part of a tuple into a List variable."""
+    before = tup[0:pre]
+    if post > 0:
+      after = tup[-post:]
+      rest = tup[pre:-post]
+    else:
+      after = ()
+      rest = tup[pre:]
+    rest = self.convert.build_list(state.node, rest)
+    return before + (rest,) + after
+
+  def _unpack_sequence(self, state, n_before, n_after=-1):
+    """Pops a tuple (or other iterable) and pushes it onto the VM's stack.
+
+    Supports destructuring assignment with potentially a single list variable
+    that slurps up the remaining elements:
+    1. a, b, c = ...  # UNPACK_SEQUENCE
+    2. a, *b, c = ... # UNPACK_EX
+
+    Args:
+      state: The current VM state
+      n_before: Number of elements before the list (n_elements for case 1)
+      n_after: Number of elements after the list (-1 for case 1)
+    Returns:
+      The new state.
+    """
+    assert n_after >= -1
     state, seq = state.pop()
     options = []
     nontuple_seq = self.program.NewVariable()
+    has_slurp = n_after > -1
+    count = n_before + n_after + 1
     for b in seq.bindings:
-      try:
-        tup = self.convert.value_to_constant(b.data, tuple)
-      except abstract.ConversionError:
-        pass
-      else:
+      tup = self._get_literal_sequence(b.data)
+      if tup:
         # TODO(rechen): pytype error if the length is wrong?
-        if len(tup) == op.arg:
+        if has_slurp and len(tup) >= count:
+          options.append(self._restructure_tuple(state, tup, n_before, n_after))
+          continue
+        elif len(tup) == count:
           options.append(tup)
           continue
       nontuple_seq.AddBinding(b.data, {b}, state.node)
     if nontuple_seq.bindings:
       state, itr = self._get_iter(state, nontuple_seq)
-      options.append([])
-      for _ in range(op.arg):
-        # TODO(ampere): Fix for python 3
-        state, f = self.load_attr(state, itr, "next")
-        state, result = self.call_function_with_state(state, f, ())
-        options[-1].append(result)
+      state, f = self.load_attr(state, itr, "next")
+      state, result = self.call_function_with_state(state, f, ())
+      # For a non-literal iterable, next() should always return the same type T,
+      # so we can iterate `count` times in both UNPACK_SEQUENCE and UNPACK_EX,
+      # and assign the slurp variable type List[T].
+      option = [result for _ in range(count)]
+      if has_slurp:
+        option[n_before] = self.convert.build_list_of_type(state.node, result)
+      options.append(option)
     values = tuple(self.convert.build_content(value) for value in zip(*options))
     for value in reversed(values):
       if not value.bindings:
@@ -1621,6 +1668,14 @@ class VirtualMachine(object):
         value = self.convert.empty.to_variable(state.node)
       state = state.push(value)
     return state
+
+  def byte_UNPACK_SEQUENCE(self, state, op):
+    return self._unpack_sequence(state, op.arg)
+
+  def byte_UNPACK_EX(self, state, op):
+    n_before = op.arg & 0xff
+    n_after = op.arg >> 8
+    return self._unpack_sequence(state, n_before, n_after)
 
   def byte_BUILD_SLICE(self, state, op):
     if op.arg == 2:
@@ -2027,6 +2082,14 @@ class VirtualMachine(object):
     state, args = self.pop_varargs(state)
     return self.call_function_from_stack(state, op.arg, args, kwargs)
 
+  def byte_CALL_FUNCTION_EX(self, state, op):
+    if op.arg & loadmarshal.CALL_FUNCTION_EX_HAS_KWARGS:
+      state, kwargs = self.pop_kwargs(state)
+    state, args = self.pop_varargs(state)
+    state, func = state.pop()
+    state, ret = self.call_function_with_state(state, func, args, kwargs)
+    return state.push(ret)
+
   def byte_YIELD_VALUE(self, state, op):
     """Yield a value from a generator."""
     state, ret = state.pop()
@@ -2179,3 +2242,123 @@ class VirtualMachine(object):
 
   def byte_DELETE_SLICE_3(self, state, op):
     return self.delete_slice(state, 3)
+
+  def byte_WITH_CLEANUP_START(self, state, op):
+    """Called at the end of a with block. Calls the exit handlers etc."""
+    # From the following commit: https://goo.gl/WxS2vJ
+    # WITH_CLEANUP_START in ceval.c is just WITH_CLEANUP with a name change.
+    return self.byte_WITH_CLEANUP(state, op)
+
+  def byte_WITH_CLEANUP_FINISH(self, state, op):
+    """Called when an async exit function returns."""
+    # TODO(mdemello): Should we do something with the result here?
+    state, unused_result = state.pop()
+    # We don't pop the exception because we never pushed it in
+    # WITH_CLEANUP_START.
+    # Set WHY_SILENCED to prevent END_FINALLY from trying to reraise the
+    # nonexistent exception
+    state = state.set_why("silenced")
+    return state
+
+  def byte_SETUP_ANNOTATIONS(self, state, op):
+    """Sets up variable annotations in locals()."""
+    annotations = self.convert.build_map(state.node)
+    return self.store_local(state, "__annotations__", annotations)
+
+  def byte_STORE_ANNOTATION(self, state, op):
+    annotations = self.load_local(state, "__annotations__")
+    name = self.frame.f_code.co_names[op.arg]
+    state, value = state.pop()
+    annotations.set_str_item(state.node, name, value)
+    return state
+
+  def byte_GET_YIELD_FROM_ITER(self, state, op):
+    # TODO(mdemello): We should check if TOS is a generator iterator or
+    # coroutine first, and do nothing if it is, else call GET_ITER
+    return self.byte_GET_ITER(state, op)
+
+  def _pop_and_unpack_list(self, state, count):
+    """Pop count iterables off the stack and concatenate."""
+    state, elements = state.popn(count)
+    # TODO(mdemello): We need to expand the iterables here.
+    return state, elements
+
+  def byte_BUILD_LIST_UNPACK(self, state, op):
+    state, ret = self._pop_and_unpack_list(state, op.arg)
+    ret = self.convert.build_list(state.node, ret)
+    return state.push(ret)
+
+  def byte_BUILD_MAP_UNPACK(self, state, op):
+    # TODO(mdemello): BUILD_MAP currently ignores the element count - for
+    # Python3.5+ it needs to pop off elements too. Also, we should actually
+    # populate the map both here and in BUILD_MAP.
+    state, _ = self._pop_and_unpack_list(state, op.arg)
+    return state.push(self.convert.build_map(state.node))
+
+  def byte_BUILD_MAP_UNPACK_WITH_CALL(self, state, op):
+    # TODO(mdemello): The handling of op.arg changed in 3.6
+    state, _ = self._pop_and_unpack_list(state, op.arg & 0xff)
+    return state.push(self.convert.build_map(state.node))
+
+  def byte_BUILD_TUPLE_UNPACK(self, state, op):
+    state, ret = self._pop_and_unpack_list(state, op.arg)
+    return state.push(self.convert.build_tuple(state.node, ret))
+
+  def byte_BUILD_TUPLE_UNPACK_WITH_CALL(self, state, op):
+    return self.byte_BUILD_TUPLE_UNPACK(state, op.arg)
+
+  def byte_BUILD_SET_UNPACK(self, state, op):
+    state, ret = self._pop_and_unpack_list(state, op.arg)
+    return state.push(self.convert.build_set(state.node, ret))
+
+  def byte_SETUP_ASYNC_WITH(self, state, op):
+    state, res = state.pop()
+    level = len(state.data_stack)
+    state = self.push_block(state, "finally", op, op.target, level)
+    return state.push(res)
+
+  def byte_FORMAT_VALUE(self, state, op):
+    if op.arg & loadmarshal.FVS_MASK:
+      state = state.pop_and_discard()
+    # FORMAT_VALUE pops, formats and pushes back a string, so we just need to
+    # push a new string onto the stack.
+    state = state.pop_and_discard()
+    ret = abstract.Instance(self.convert.str_type, self)
+    return state.push(ret.to_variable(state.node))
+
+  def byte_BUILD_CONST_KEY_MAP(self, state, op):
+    state, unused_keys = state.pop()
+    # TODO(mdemello): keys.length should == count
+    state, unused_args = state.popn(op.arg)
+    return state.push(self.convert.build_map(state.node))
+
+  def byte_BUILD_STRING(self, state, op):
+    state, _ = state.popn(op.arg)
+    ret = abstract.Instance(self.convert.str_type, self)
+    return state.push(ret.to_variable(state.node))
+
+  def byte_GET_AITER(self, state, op):
+    # We don't support this feature yet; simply don't crash.
+    return state
+
+  def byte_GET_ANEXT(self, state, op):
+    # We don't support this feature yet; simply don't crash.
+    ret = abstract.Instance(self.convert.function_type, self)
+    return state.push(ret.to_variable(state.node))
+
+  def byte_BEFORE_ASYNC_WITH(self, state, op):
+    # We don't support this feature yet; simply don't crash.
+    # Pop a context manager and push its enter and exit methods.
+    state, _ = state.pop()
+    meth = abstract.Instance(self.convert.function_type, self)
+    state = state.push(meth.to_variable(state.node))
+    state = state.push(meth.to_variable(state.node))
+    return state
+
+  def byte_GET_AWAITABLE(self, state, op):
+    # We don't support this feature yet; simply don't crash.
+    return state
+
+  def byte_YIELD_FROM(self, state, op):
+    # We don't support this feature yet; simply don't crash.
+    return state.pop_and_discard()

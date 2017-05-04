@@ -337,6 +337,10 @@ class Options(object):
       raise optparse.OptParseError(
           "Python versions 3.0 - 3.3 are not supported. "
           "Use 3.4 and higher.")
+    if self.python_version > (3, 6):
+      # We have an explicit per-minor-version mapping in opcodes.py
+      raise optparse.OptParseError(
+          "Python versions > 3.6 are not yet supported.")
 
   def _store_disable(self, disable):
     if disable:

@@ -43,6 +43,17 @@ TYPE_SMALL_TUPLE = 0x29  # ')'
 TYPE_SHORT_ASCII = 0x7a  # 'z'
 TYPE_SHORT_ASCII_INTERNED = 0x5a  # 'Z'
 
+# Masks and values used by FORMAT_VALUE opcode.
+FVC_MASK = 0x3
+FVC_NONE = 0x0
+FVC_STR = 0x1
+FVC_REPR = 0x2
+FVC_ASCII = 0x3
+FVS_MASK = 0x4
+FVS_HAVE_SPEC = 0x4
+
+# Flag used by CALL_FUNCTION_EX
+CALL_FUNCTION_EX_HAS_KWARGS = 0x1
 
 # Or-ing this flag to one of the codes above will cause the decoded value to
 # be stored in a reference table for later lookup. This feature was added in

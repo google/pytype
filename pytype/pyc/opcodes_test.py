@@ -561,9 +561,9 @@ class CommonTest(_TestBase):
 
 
 class CommonUnder3Test(CommonTest):
-  """Test the common bytecodes using Python 3."""
+  """Test the common bytecodes using Python 3.4."""
 
-  PYTHON_VERSION = (3, 3, 0)
+  PYTHON_VERSION = (3, 4, 0)
 
 
 class Python2Test(_TestBase):
@@ -757,10 +757,10 @@ class Python2Test(_TestBase):
     self.assertEquals(ops[1].name, 'RETURN_VALUE')
 
 
-class Python3Test(_TestBase):
-  """Test bytecodes specific to Python 3."""
+class Python34Test(_TestBase):
+  """Test bytecodes specific to Python 3.4."""
 
-  PYTHON_VERSION = (3, 3, 0)
+  PYTHON_VERSION = (3, 4, 0)
 
   def test_dup_top_two(self):
     self.assertSimple(5, 'DUP_TOP_TWO')
@@ -931,6 +931,69 @@ class Python3Test(_TestBase):
     self.assertEquals(ops[0].name, 'LOAD_CONST')
     self.assertEquals(ops[0].arg, 0x10002)
     self.assertEquals(ops[1].name, 'RETURN_VALUE')
+
+
+class Python35Test(_TestBase):
+  """Test bytecodes specific to Python 3.5."""
+
+  PYTHON_VERSION = (3, 5, 2)
+
+  def test_binary_matrix_multiply(self):
+    self.assertSimple(16, 'BINARY_MATRIX_MULTIPLY')
+
+  def test_inplace_matrix_multiply(self):
+    self.assertSimple(17, 'INPLACE_MATRIX_MULTIPLY')
+
+  def test_get_yield_from_iter(self):
+    self.assertSimple(69, 'GET_YIELD_FROM_ITER')
+
+  def test_with_cleanup_start(self):
+    self.assertSimple(81, 'WITH_CLEANUP_START')
+
+  def test_with_cleanup_finish(self):
+    self.assertSimple(82, 'WITH_CLEANUP_FINISH')
+
+  def test_build_list_unpack(self):
+    self.assertName([149, 0, 0], 'BUILD_LIST_UNPACK')
+
+  def test_build_map_unpack(self):
+    self.assertName([150, 0, 0], 'BUILD_MAP_UNPACK')
+
+  def test_build_map_unpack_with_call(self):
+    self.assertName([151, 0, 0], 'BUILD_MAP_UNPACK_WITH_CALL')
+
+  def test_build_tuple_unpack(self):
+    self.assertName([152, 0, 0], 'BUILD_TUPLE_UNPACK')
+
+  def test_build_set_unpack(self):
+    self.assertName([153, 0, 0], 'BUILD_SET_UNPACK')
+
+
+class Python36Test(_TestBase):
+  """Test bytecodes specific to Python 3.6."""
+
+  PYTHON_VERSION = (3, 6, 0)
+
+  def test_setup_annotations(self):
+    self.assertSimple(85, 'SETUP_ANNOTATIONS')
+
+  def test_store_annotation(self):
+    self.assertName([127, 0, 0], 'STORE_ANNOTATION')
+
+  def test_call_function_ex(self):
+    self.assertName([142, 0, 0], 'CALL_FUNCTION_EX')
+
+  def test_format_value(self):
+    self.assertName([155, 0, 0], 'FORMAT_VALUE')
+
+  def test_build_const_key_map(self):
+    self.assertName([156, 0, 0], 'BUILD_CONST_KEY_MAP')
+
+  def test_build_string(self):
+    self.assertName([157, 0, 0], 'BUILD_STRING')
+
+  def test_build_tuple_unpack_with_call(self):
+    self.assertName([158, 0, 0], 'BUILD_TUPLE_UNPACK_WITH_CALL')
 
 
 if __name__ == '__main__':

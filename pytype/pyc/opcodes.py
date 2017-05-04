@@ -290,6 +290,18 @@ class DELETE_SLICE_3(Opcode):
   __slots__ = ()
 
 
+class GET_AITER(Opcode):
+  __slots__ = ()
+
+
+class GET_ANEXT(Opcode):
+  __slots__ = ()
+
+
+class BEFORE_ASYNC_WITH(Opcode):
+  __slots__ = ()
+
+
 class STORE_MAP(Opcode):
   __slots__ = ()
 
@@ -350,6 +362,10 @@ class GET_ITER(Opcode):
   __slots__ = ()
 
 
+class GET_YIELD_FROM_ITER(Opcode):
+  __slots__ = ()
+
+
 class STORE_LOCALS(Opcode):
   __slots__ = ()
 
@@ -380,6 +396,10 @@ class LOAD_BUILD_CLASS(Opcode):
 
 class YIELD_FROM(Opcode):
   FLAGS = HAS_JUNKNOWN
+  __slots__ = ()
+
+
+class GET_AWAITABLE(Opcode):
   __slots__ = ()
 
 
@@ -414,6 +434,15 @@ class WITH_CLEANUP(Opcode):
   __slots__ = ()
 
 
+class WITH_CLEANUP_START(Opcode):
+  FLAGS = HAS_JUNKNOWN  # might call __exit__
+  __slots__ = ()
+
+
+class WITH_CLEANUP_FINISH(Opcode):
+  __slots__ = ()
+
+
 class LOAD_LOCALS(Opcode):
   __slots__ = ()
 
@@ -424,6 +453,10 @@ class RETURN_VALUE(Opcode):
 
 
 class IMPORT_STAR(Opcode):
+  __slots__ = ()
+
+
+class SETUP_ANNOTATIONS(Opcode):
   __slots__ = ()
 
 
@@ -630,6 +663,11 @@ class DELETE_FAST(OpcodeWithArg):  # Deletes local variable number
   __slots__ = ()
 
 
+class STORE_ANNOTATION(OpcodeWithArg):
+  FLAGS = HAS_NAME|HAS_ARGUMENT
+  __slots__ = ()
+
+
 class RAISE_VARARGS(OpcodeWithArg):  # Arg: Number of raise args (1, 2, or 3)
   FLAGS = HAS_ARGUMENT|HAS_JUNKNOWN|NO_NEXT
   __slots__ = ()
@@ -690,6 +728,11 @@ class CALL_FUNCTION_VAR_KW(OpcodeWithArg):  # Arg: #args + (#kwargs << 8)
   __slots__ = ()
 
 
+class CALL_FUNCTION_EX(OpcodeWithArg):  # Arg: flags
+  FLAGS = HAS_ARGUMENT
+  __slots__ = ()
+
+
 class SETUP_WITH(OpcodeWithArg):
   FLAGS = HAS_JREL|HAS_ARGUMENT|STORE_JUMP|PUSHES_BLOCK
   __slots__ = ()
@@ -712,6 +755,66 @@ class MAP_ADD(OpcodeWithArg):
 
 class LOAD_CLASSDEREF(OpcodeWithArg):
   FLAGS = HAS_FREE|HAS_ARGUMENT
+  __slots__ = ()
+
+
+class BUILD_LIST_UNPACK(OpcodeWithArg):  # Arg: Number of items
+  FLAGS = HAS_ARGUMENT
+  __slots__ = ()
+
+
+class BUILD_MAP_UNPACK(OpcodeWithArg):  # Arg: Number of items
+  FLAGS = HAS_ARGUMENT
+  __slots__ = ()
+
+
+class BUILD_MAP_UNPACK_WITH_CALL(OpcodeWithArg):  # Arg: Number of items
+  FLAGS = HAS_ARGUMENT
+  __slots__ = ()
+
+
+class BUILD_TUPLE_UNPACK(OpcodeWithArg):  # Arg: Number of items
+  FLAGS = HAS_ARGUMENT
+  __slots__ = ()
+
+
+class BUILD_SET_UNPACK(OpcodeWithArg):  # Arg: Number of items
+  FLAGS = HAS_ARGUMENT
+  __slots__ = ()
+
+
+class SETUP_ASYNC_WITH(OpcodeWithArg):
+  FLAGS = HAS_JREL|HAS_ARGUMENT|STORE_JUMP|PUSHES_BLOCK
+  __slots__ = ()
+
+
+class FORMAT_VALUE(OpcodeWithArg):  # Arg: Flags
+  FLAGS = HAS_ARGUMENT
+  __slots__ = ()
+
+
+class BUILD_CONST_KEY_MAP(OpcodeWithArg):  # Arg: Number of items
+  FLAGS = HAS_ARGUMENT
+  __slots__ = ()
+
+
+class BUILD_STRING(OpcodeWithArg):  # Arg: Number of items
+  FLAGS = HAS_ARGUMENT
+  __slots__ = ()
+
+
+class BUILD_TUPLE_UNPACK_WITH_CALL(OpcodeWithArg):  # Arg: Number of items
+  FLAGS = HAS_ARGUMENT
+  __slots__ = ()
+
+
+class LOAD_METHOD(OpcodeWithArg):  # Arg: Index in name list
+  FLAGS = HAS_NAME|HAS_ARGUMENT
+  __slots__ = ()
+
+
+class CALL_METHOD(OpcodeWithArg):  # Arg: #args
+  FLAGS = HAS_ARGUMENT
   __slots__ = ()
 
 
@@ -848,8 +951,6 @@ python3_mapping = {
     11: UNARY_NEGATIVE,
     12: UNARY_NOT,
     15: UNARY_INVERT,
-    16: BINARY_MATRIX_MULTIPLY,
-    17: INPLACE_MATRIX_MULTIPLY,
     19: BINARY_POWER,
     20: BINARY_MULTIPLY,
     22: BINARY_MODULO,
@@ -860,7 +961,10 @@ python3_mapping = {
     27: BINARY_TRUE_DIVIDE,
     28: INPLACE_FLOOR_DIVIDE,
     29: INPLACE_TRUE_DIVIDE,
-    54: STORE_MAP,
+    50: GET_AITER,
+    51: GET_ANEXT,
+    52: BEFORE_ASYNC_WITH,
+    54: STORE_MAP,  # removed in Python 3.5.2
     55: INPLACE_ADD,
     56: INPLACE_SUBTRACT,
     57: INPLACE_MULTIPLY,
@@ -874,10 +978,11 @@ python3_mapping = {
     66: BINARY_OR,
     67: INPLACE_POWER,
     68: GET_ITER,
-    69: STORE_LOCALS,  # removed again in Python 3.4
+    69: STORE_LOCALS,  # removed in Python 3.4
     70: PRINT_EXPR,
     71: LOAD_BUILD_CLASS,  # PRINT_ITEM in Python 2
     72: YIELD_FROM,  # PRINT_NEWLINE in Python 2
+    73: GET_AWAITABLE,
     75: INPLACE_LSHIFT,
     76: INPLACE_RSHIFT,
     77: INPLACE_AND,
@@ -933,7 +1038,7 @@ python3_mapping = {
     136: LOAD_DEREF,
     137: STORE_DEREF,
     138: DELETE_DEREF,
-    140: CALL_FUNCTION_VAR,
+    140: CALL_FUNCTION_VAR,  # removed in Python 3.6
     141: CALL_FUNCTION_KW,
     142: CALL_FUNCTION_VAR_KW,
     143: SETUP_WITH,
@@ -942,7 +1047,39 @@ python3_mapping = {
     146: SET_ADD,
     147: MAP_ADD,
     148: LOAD_CLASSDEREF,  # not in Python 2
+    154: SETUP_ASYNC_WITH,
 }
+
+
+def _overlay_mapping(mapping, new_entries):
+  ret = mapping.copy()
+  ret.update(new_entries)
+  return dict((k, v) for k, v in ret.iteritems() if v is not None)
+
+python_3_5_mapping = _overlay_mapping(python3_mapping, {
+    16: BINARY_MATRIX_MULTIPLY,
+    17: INPLACE_MATRIX_MULTIPLY,
+    54: None,
+    69: GET_YIELD_FROM_ITER,  # STORE_LOCALS in Python 3.3
+    81: WITH_CLEANUP_START,  # WITH_CLEANUP in Python 3.4
+    82: WITH_CLEANUP_FINISH,
+    149: BUILD_LIST_UNPACK,
+    150: BUILD_MAP_UNPACK,
+    151: BUILD_MAP_UNPACK_WITH_CALL,
+    152: BUILD_TUPLE_UNPACK,
+    153: BUILD_SET_UNPACK,
+})
+
+python_3_6_mapping = _overlay_mapping(python_3_5_mapping, {
+    85: SETUP_ANNOTATIONS,
+    127: STORE_ANNOTATION,
+    140: None,
+    142: CALL_FUNCTION_EX,  # CALL_FUNCTION_VAR_KW in Python 3.5
+    155: FORMAT_VALUE,
+    156: BUILD_CONST_KEY_MAP,
+    157: BUILD_STRING,
+    158: BUILD_TUPLE_UNPACK_WITH_CALL,
+})
 
 
 class _LineNumberTableParser(object):
@@ -1048,8 +1185,14 @@ def _dis(data, mapping,
 
 
 def dis(data, python_version, *args, **kwargs):
-  assert python_version[0] in (2, 3)
-  mapping = python2_mapping if python_version[0] == 2 else python3_mapping
+  major, minor = python_version[0], python_version[1]
+  assert major in (2, 3)
+  mapping = {
+      (2, 7): python2_mapping,
+      (3, 4): python3_mapping,
+      (3, 5): python_3_5_mapping,
+      (3, 6): python_3_6_mapping,
+  }[(major, minor)]
   return _dis(data, mapping, *args, **kwargs)
 
 
