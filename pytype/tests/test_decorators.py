@@ -1,7 +1,5 @@
 """Test for function and class decorators."""
 
-import unittest
-
 
 from pytype import utils
 from pytype.tests import test_inference
@@ -20,7 +18,6 @@ class DecoratorsTest(test_inference.InferenceTest):
           list = staticmethod(list)
     """, deep=True, solve_unknowns=False, show_library_calls=True)
 
-  @unittest.skip("TODO(kramm): list appears twice")
   def testStaticMethod(self):
     ty = self.Infer("""
       # from python-dateutil
@@ -31,22 +28,19 @@ class DecoratorsTest(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=False, show_library_calls=True)
     self.assertTypesMatchPytd(ty, """
       class tzwinbase(object):
-        def list() -> NoneType
+        list = ...  # type: staticmethod
     """)
 
-  @unittest.skip("This should fail for some reason it doesn't. Therefore "
-                 "testFgetIsOptional is probably a nop test")
-  def testFgetIsOptionalFail(self):
-    #
-    # is probably a nop test.
-    self.assertNoErrors("""
+  def testBadKeyword(self):
+    _, errors = self.InferAndCheck("""\
       class Foo(object):
         def __init__(self):
           self._bar = 1
         def _SetBar(self, value):
           self._bar = value
         bar = property(should_fail=_SetBar)
-        """)
+    """)
+    self.assertErrorLogIs(errors, [(6, "wrong-keyword-args", r"should_fail")])
 
   def testFgetIsOptional(self):
     self.assertNoErrors("""
