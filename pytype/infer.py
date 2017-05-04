@@ -431,13 +431,13 @@ class CallTracer(vm.VirtualMachine):
       return self.convert.constant_to_var(
           abstract.AsInstance(t), subst={}, node=self.root_cfg_node)
 
-  def _check_return(self, opcode, node, actual, formal):
+  def _check_return(self, node, actual, formal):
     bad = self.matcher.bad_matches(actual, formal, node)
     if bad:
       combined = pytd_utils.JoinTypes(
           view[actual].data.to_type(node, view=view) for view in bad)
       self.errorlog.bad_return_type(
-          opcode, combined, formal.get_instance_type(node))
+          self.frame.current_opcode, combined, formal.get_instance_type(node))
 
 
 def _pretty_variable(var):

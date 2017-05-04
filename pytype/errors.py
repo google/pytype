@@ -423,11 +423,6 @@ class ErrorLog(ErrorLogBase):
                                      for t in base_var.data)
     self.error(opcode, "Invalid base class: %s" % self._pytd_print(pytd_type))
 
-  @_error_name("missing-definition")
-  def missing_definition(self, item, pytd_filename, py_filename):
-    self.error(None, "%s %s declared in pytd %s, but not defined in %s" % (
-        type(item).__name__, item.name, pytd_filename, py_filename))
-
   @_error_name("bad-return-type")
   def bad_return_type(self, opcode, actual_pytd, expected_pytd):
     details = "".join([

@@ -2036,8 +2036,7 @@ class VirtualMachine(object):
       # Generator[<yield_variable>] matches the annotated return type.
       generator = abstract.Generator(self.frame, self)
       generator.type_parameters[abstract.T] = self.frame.yield_variable
-      self._check_return(self.frame.current_opcode, state.node,
-                         generator.to_variable(state.node),
+      self._check_return(state.node, generator.to_variable(state.node),
                          self.frame.allowed_returns)
     return state.set_why("yield")
 
@@ -2109,7 +2108,7 @@ class VirtualMachine(object):
       # no handler matched, hence Python re-raises the exception.
       return state.set_why("reraise")
 
-  def _check_return(self, opcode, node, actual, formal):
+  def _check_return(self, node, actual, formal):
     pass  # overridden in infer.py
 
   def byte_RETURN_VALUE(self, state, op):
@@ -2119,11 +2118,10 @@ class VirtualMachine(object):
       if self.frame.f_code.co_flags & loadmarshal.CodeType.CO_GENERATOR:
         # A generator shouldn't return anything, so the expected return type
         # is None.
-        self._check_return(self.frame.current_opcode, state.node, var,
+        self._check_return(state.node, var,
                            abstract.get_atomic_value(self.convert.none_type))
       else:
-        self._check_return(self.frame.current_opcode, state.node, var,
-                           self.frame.allowed_returns)
+        self._check_return(state.node, var, self.frame.allowed_returns)
       _, _, retvar = self.init_class(state.node, self.frame.allowed_returns)
     else:
       retvar = var
