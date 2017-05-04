@@ -107,9 +107,8 @@ class InferenceTest(unittest.TestCase):
     errorlog = errors.ErrorLog()
     loader = load_pytd.Loader(self.options.module_name, self.options)
     infer.check_types(
-        textwrap.dedent(code), None, None, None, loader=loader,
-        errorlog=errorlog, options=self.options,
-        cache_unknowns=True)
+        textwrap.dedent(code), None, loader=loader, errorlog=errorlog,
+        options=self.options, cache_unknowns=True)
     if report_errors and len(errorlog):
       errorlog.print_to_stderr()
       self.fail("Inferencer found %d errors" % len(errorlog))

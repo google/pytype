@@ -32,21 +32,14 @@ from pytype.pytd.parse import visitors
 log = logging.getLogger(__name__)
 
 
-def check_pyi(input_filename, output_filename, errorlog, options):
+def check_pyi(input_filename, errorlog, options):
   with open(input_filename, "r") as fi:
     py_src = fi.read()
-  if output_filename is not None:
-    with open(output_filename, "r") as fi:
-      pyi_src = fi.read()
-  else:
-    pyi_src = None
 
   infer.check_types(
       py_src=py_src,
-      pytd_src=pyi_src,
       loader=_create_loader(input_filename, options),
       py_filename=input_filename,
-      pytd_filename=output_filename,
       errorlog=errorlog,
       options=options,
       run_builtins=options.run_builtins,
@@ -139,7 +132,6 @@ def process_one_file(input_filename,
   try:
     if options.check:
       check_pyi(input_filename=input_filename,
-                output_filename=output_filename,
                 errorlog=errorlog,
                 options=options)
     else:

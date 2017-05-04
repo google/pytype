@@ -439,66 +439,6 @@ class CallTracer(vm.VirtualMachine):
       self.errorlog.bad_return_type(
           opcode, combined, formal.get_instance_type(node))
 
-  def _check_function(self, pytd_function, f, node, skip_self=False):
-    """Check that a function or method is compatible with its PYTD."""
-    for sig in pytd_function.signatures:
-      args = tuple(self._create_call_arg(p.name, p.type, node)
-                   for p in sig.params[(1 if skip_self else 0):])
-      nominal_return = self.convert.constant_to_value(
-          sig.return_type, subst={}, node=self.root_cfg_node)
-      for val in f.bindings:
-        fvar = val.AssignToNewVariable(node)
-        _, retvar = self.call_function_in_frame(
-            node, fvar, args, {}, None, None)
-        if retvar.bindings:
-          if isinstance(val.data, (abstract.InterpreterFunction,
-                                   abstract.BoundInterpreterFunction)):
-            self._check_return(
-                val.data.get_first_opcode(), node, retvar, nominal_return)
-          else:
-            log.error("%s is not a function?", val.data.name)
-        else:
-          log.error("Couldn't call %s", pytd_function.name)
-
-  def check_types(self, node, defs, ast, py_filename, pytd_filename):
-    """Verify that the types declared in PyTD work with the Python code.
-
-    E.g. if there's a PyTD signature
-      def abs(x: int) -> int
-    then we'll call the abs() function with an integer and verify that we get
-    an integer back.
-    Any error we encounter will be logged.
-
-    Args:
-      node: The CFG node at the end of the program.
-      defs: All top-level identifiers declared by the program.
-      ast: The PyTD AST.
-      py_filename: Filename of the Python file.
-      pytd_filename: Filename of the PyTD file.
-    """
-    # TODO(kramm): Do much more checking here.
-    for item in ast.functions + ast.classes + ast.constants:
-      if item.name not in defs:
-        self.errorlog.missing_definition(item, pytd_filename, py_filename)
-
-    if self.errorlog.has_error():
-      return
-
-    for pytd_function in ast.functions:
-      self._check_function(pytd_function, defs[pytd_function.name], node)
-
-    for pytd_cls in ast.classes:
-      cls = defs[pytd_cls.name]
-      for val in cls.bindings:
-        # TODO(kramm): The call to the constructor of this should use the pytd.
-        node2, _, instance = self.init_class(node, val.data)
-        for pytd_method in pytd_cls.methods:
-          _, method, _ = self._retrieve_attr(node2, instance, pytd_method.name)
-          if method is None:
-            raise NotImplementedError("getattr(%s) failed!" % pytd_method.name)
-          # TODO(kramm): Should this be the node returned from _retrieve_attr?
-          self._check_function(pytd_method, method, node2, skip_self=True)
-
 
 def _pretty_variable(var):
   """Return a pretty printed string for a Variable."""
@@ -662,8 +602,7 @@ def get_module_name(filename, options):
         return subdir.replace(os.sep, ".")
 
 
-def check_types(py_src, pytd_src, py_filename, pytd_filename, errorlog,
-                options, loader,
+def check_types(py_src, py_filename, errorlog, options, loader,
                 run_builtins=True,
                 deep=True,
                 cache_unknowns=False,
@@ -679,15 +618,7 @@ def check_types(py_src, pytd_src, py_filename, pytd_filename, errorlog,
       py_src, py_filename, init_maximum_depth, run_builtins)
   snapshotter = metrics.get_metric("memory", metrics.Snapshot)
   snapshotter.take_snapshot("infer:check_types:tracer")
-  if pytd_src is not None:
-    del deep  # ignored
-    ast = builtins.ParsePyTD(pytd_src, pytd_filename, options.python_version,
-                             lookup_classes=True)
-    ast = tracer.loader.resolve_ast(ast)
-    tracer.check_types(loc, defs, ast,
-                       os.path.basename(py_filename),
-                       os.path.basename(pytd_filename))
-  elif deep:
+  if deep:
     tracer.analyze(loc, defs, maximum_depth=(2 if options.quick else None))
   snapshotter.take_snapshot("infer:check_types:post")
   _maybe_output_debug(options, tracer.program)
