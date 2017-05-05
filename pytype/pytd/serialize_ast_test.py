@@ -25,7 +25,7 @@ class ImportPathsTest(unittest.TestCase):
                   for name, module in loader._modules.items()}
 
     return module_map
-
+ 
   def _GetAst(self, temp_dir, module_name, src=None):
     src = src or ("""
         import module2
@@ -197,6 +197,22 @@ class ImportPathsTest(unittest.TestCase):
       self.assertFalse(original_ast.ASTeq(loaded_ast))
       ast_new_module, _ = self._GetAst(temp_dir=d, module_name=new_module_name)
       self.assertTrue(ast_new_module.ASTeq(loaded_ast))
+
+  def testStoreRemovesInit(self):
+    with utils.Tempdir() as d:
+      original_module_name = "module1.__init__"
+      pickled_ast_filename = os.path.join(d.path, "module1.pyi.pickled")
+
+      module_map = self._StoreAst(d, original_module_name, pickled_ast_filename)
+      serializable_ast = pytd_utils.LoadPickle(pickled_ast_filename)
+
+      expected_name = "module1"
+      # Check that the module had the expected name before.
+      self.assertTrue(original_module_name in module_map)
+      # Check that module1 wasn't created before storing.
+      self.assertTrue(expected_name not in module_map)
+      # Check that the saved ast had its name changed.
+      self.assertEquals(serializable_ast.ast.name, expected_name)
 
 
 if __name__ == "__main__":

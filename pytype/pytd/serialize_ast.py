@@ -114,6 +114,9 @@ def StoreAst(ast, filename):
   Returns:
     True iff the save operation was successful.
   """
+  if ast.name.endswith(".__init__"):
+    ast = ast.Visit(RenameModuleVisitor(
+        ast.name, ast.name.rsplit(".__init__", 1)[0]))
   # Collect dependencies
   deps = visitors.CollectDependencies()
   ast.Visit(deps)
