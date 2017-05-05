@@ -381,7 +381,7 @@ class PickledPyiLoader(Loader):
 
   def load_file(self, module_name, filename, ast=None):
     """Load (or retrieve from cache) a module and resolve its dependencies."""
-    if not filename.endswith(".pickled"):
+    if not os.path.splitext(filename)[1].startswith(".pickled"):
       return super(PickledPyiLoader, self).load_file(module_name, filename, ast)
     existing = self._get_existing_ast(module_name, filename)
     if existing:
