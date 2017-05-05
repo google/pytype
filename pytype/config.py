@@ -112,7 +112,9 @@ class Options(object):
     o.add_option(
         "-M", "--module-name", action="store",
         dest="module_name", default=None,
-        help=("Name of the module we're analyzing. E.g. 'foo.bar.mymodule'"))
+        help=("Name of the module we're analyzing. For __init__.py files the "
+              "package should be suffixed with '.__init__'. "
+              "E.g. 'foo.bar.mymodule' and 'foo.bar.__init__'"))
     o.add_option(
         "-t", "--target-name", action="store",
         dest="target_name", default=None,
