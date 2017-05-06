@@ -132,7 +132,7 @@ class CallTracer(vm.VirtualMachine):
           kws[key] = arg
         starargs = self.create_varargs(node) if method.has_varargs() else None
         starstarargs = self.create_kwargs(node) if method.has_kwargs() else None
-        fvar = val.AssignToNewVariable(node)
+        fvar = val.AssignToNewVariable()
         with method.record_calls():
           new_node, _ = self.call_function_in_frame(
               node, fvar, tuple(args), kws, starargs, starstarargs)
@@ -158,7 +158,7 @@ class CallTracer(vm.VirtualMachine):
     n = self.program.NewVariable()
     for cls in clsv.Data(node):
       instance = cls.instantiate(node)
-      n.PasteVariable(instance, node)
+      n.PasteVariable(instance)
     return n
 
   def init_class(self, node, cls, seen=None):
