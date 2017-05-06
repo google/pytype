@@ -328,11 +328,26 @@ class Binding(object):
     origin = self._FindOrAddOrigin(where)
     origin.AddSourceSet(source_set)
 
-  def AssignToNewVariable(self, where):
+  def CopyOrigins(self, other_binding, where, additional_sources=None):
+    """Copy the origins from another binding."""
+    additional_sources = additional_sources or frozenset()
+    if not where or all(origin.where is where
+                        for origin in other_binding.origins):
+      # Optimization: If all the bindings of the old variable happen at the
+      # same CFG node as the one we're assigning now (or if none is supplied),
+      # we can copy the old source_set instead of linking to it. That way, the
+      # solver has to consider fewer levels.
+      for origin in other_binding.origins:
+        for source_set in origin.source_sets:
+          self.AddOrigin(origin.where, source_set | additional_sources)
+    else:
+      self.AddOrigin(where, {other_binding} | additional_sources)
+
+  def AssignToNewVariable(self, where=None):
     """Assign this binding to a new variable."""
     variable = self.program.NewVariable()
-    binding = variable.AddBinding(self.data)
-    binding.AddOrigin(where, {self})
+    new_binding = variable.AddBinding(self.data)
+    new_binding.CopyOrigins(self, where)
     return variable
 
   def HasSource(self, binding):
@@ -496,22 +511,11 @@ class Variable(object):
 
   def PasteVariable(self, variable, where=None, additional_sources=None):
     """Adds all the bindings from another variable to this one."""
-    additional_sources = additional_sources or set()
     for binding in variable.bindings:
-      copy = self.AddBinding(binding.data)
-      if where is None or all(
-          origin.where is where for origin in binding.origins):
-        # Optimization: If all the bindings of the old variable happen at the
-        # same CFG node as the one we're assigning now (or if none is supplied),
-        # we can copy the old source_set instead of linking to it. That way, the
-        # solver has to consider fewer levels.
-        for origin in binding.origins:
-          for source_set in origin.source_sets:
-            copy.AddOrigin(origin.where, source_set | additional_sources)
-      else:
-        copy.AddOrigin(where, {binding} | additional_sources)
+      new_binding = self.AddBinding(binding.data)
+      new_binding.CopyOrigins(binding, where, additional_sources)
 
-  def AssignToNewVariable(self, where):
+  def AssignToNewVariable(self, where=None):
     """Assign this variable to a new variable.
 
     This is essentially a copy: All entries in the Union will be copied to
@@ -527,7 +531,7 @@ class Variable(object):
     new_variable = self.program.NewVariable()
     for binding in self.bindings:
       new_binding = new_variable.AddBinding(binding.data)
-      new_binding.AddOrigin(where, {binding})
+      new_binding.CopyOrigins(binding, where)
     return new_variable
 
   def RegisterBindingAtNode(self, binding, node):
