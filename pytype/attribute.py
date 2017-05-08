@@ -183,9 +183,9 @@ class AbstractAttributeHandler(object):
       return node
     elif isinstance(obj, abstract.Unknown):
       if name in obj.members:
-        obj.members[name].PasteVariable(value)
+        obj.members[name].PasteVariable(value, node)
       else:
-        obj.members[name] = value.AssignToNewVariable()
+        obj.members[name] = value.AssignToNewVariable(node)
       return node
     else:
       raise NotImplementedError(obj.__class__.__name__)
@@ -304,11 +304,11 @@ class AbstractAttributeHandler(object):
     variableself = variablecls = None
     if valself:
       assert isinstance(valself, typegraph.Binding)
-      variableself = valself.AssignToNewVariable()
+      variableself = valself.AssignToNewVariable(node)
       add_origins.append(valself)
     if valcls:
       assert isinstance(valcls, typegraph.Binding)
-      variablecls = valcls.AssignToNewVariable()
+      variablecls = valcls.AssignToNewVariable(node)
       add_origins.append(valcls)
 
     for base in obj.mro:
@@ -408,7 +408,7 @@ class AbstractAttributeHandler(object):
         var = self._get_as_instance_attribute(node, cls, name, obj)
         if var is not None:
           if name in obj.members:
-            obj.members[name].PasteVariable(var)
+            obj.members[name].PasteVariable(var, node)
           else:
             obj.members[name] = var
 

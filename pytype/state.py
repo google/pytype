@@ -160,7 +160,7 @@ class FrameState(object):
     both = zip(self.data_stack, other.data_stack)
     if any(v1 is not v2 for v1, v2 in both):
       for v, o in both:
-        o.PasteVariable(v)
+        o.PasteVariable(v, None)
     if self.node is not other.node:
       self.node.ConnectTo(other.node)
       return FrameState(other.data_stack,
@@ -264,7 +264,7 @@ class Frame(object):
       for name, value in sorted(callargs.items()):
         if name in f_code.co_cellvars:
           i = f_code.co_cellvars.index(name)
-          self.cells[i].PasteVariable(value)
+          self.cells[i].PasteVariable(value, node)
         else:
           self.vm.attribute_handler.set_attribute(node, f_locals, name, value)
 

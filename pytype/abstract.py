@@ -554,7 +554,7 @@ class TypeParameter(AtomicAbstractValue):
       return instance.to_variable(node)
     else:
       for c in self.constraints:
-        var.PasteVariable(c.instantiate(node, container))
+        var.PasteVariable(c.instantiate(node, container), node)
     if not var.bindings:
       var.AddBinding(self.vm.convert.unsolvable, [], node)
     return var
@@ -1200,13 +1200,13 @@ class Union(AtomicAbstractValue):
   def instantiate(self, node, container=None):
     var = self.vm.program.NewVariable()
     for option in self.options:
-      var.PasteVariable(option.instantiate(node, container))
+      var.PasteVariable(option.instantiate(node, container), node)
     return var
 
   def get_class(self):
     var = self.vm.program.NewVariable()
     for o in self.options:
-      var.PasteVariable(o.get_class())
+      var.PasteVariable(o.get_class(), self.vm.root_cfg_node)
     return var
 
   def call(self, node, func, args):
@@ -1994,7 +1994,7 @@ class Class(object):
         # Instead of calling object.__new__, our abstract classes directly
         # create instances of themselves.
         return node, None
-    cls = value.AssignToNewVariable()
+    cls = value.AssignToNewVariable(node)
     new_args = args.replace(posargs=(cls,) + args.posargs)
     node, variable = self.vm.call_function(node, new, new_args)
     for val in variable.bindings:
@@ -2414,8 +2414,8 @@ class NativeFunction(Function):
 
   def call(self, node, _, args):
     args = args.simplify(node)
-    posargs = [u.AssignToNewVariable() for u in args.posargs]
-    namedargs = {k: u.AssignToNewVariable()
+    posargs = [u.AssignToNewVariable(node) for u in args.posargs]
+    namedargs = {k: u.AssignToNewVariable(node)
                  for k, u in args.namedargs.items()}
     try:
       inspect.getcallargs(self.func, node, *posargs, **namedargs)
@@ -2614,9 +2614,9 @@ class InterpreterFunction(Function):
       FailedFunctionCall: If the caller supplied incorrect arguments.
     """
     # Originate a new variable for each argument and call.
-    posargs = [u.AssignToNewVariable()
+    posargs = [u.AssignToNewVariable(node)
                for u in args.posargs]
-    kws = {k: u.AssignToNewVariable()
+    kws = {k: u.AssignToNewVariable(node)
            for k, u in args.namedargs.items()}
     if (self.vm.python_version[0] == 2 and
         self.code.co_name in ["<setcomp>", "<dictcomp>", "<genexpr>"]):
@@ -2655,7 +2655,7 @@ class InterpreterFunction(Function):
       if args.starargs:
         if extraneous:
           log.warning("Not adding extra params to *%s", vararg_name)
-        callargs[vararg_name] = args.starargs.AssignToNewVariable()
+        callargs[vararg_name] = args.starargs.AssignToNewVariable(node)
       else:
         callargs[vararg_name] = self.vm.convert.build_tuple(node, extraneous)
       arg_pos += 1
@@ -2666,7 +2666,7 @@ class InterpreterFunction(Function):
       # Build a **kwargs dictionary out of the extraneous parameters
       if args.starstarargs:
         # TODO(kramm): modify type parameters to account for namedargs
-        callargs[kwvararg_name] = args.starstarargs.AssignToNewVariable()
+        callargs[kwvararg_name] = args.starstarargs.AssignToNewVariable(node)
       else:
         k = Dict(self.vm)
         k.update(node, args.namedargs, omit=param_names)

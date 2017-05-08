@@ -950,7 +950,7 @@ class VirtualMachine(object):
         continue
       log.debug("got choice for attr %s from %r of %r (0x%x): %r", attr, obj,
                 val.data, id(val.data), attr_var)
-      result.PasteVariable(attr_var)
+      result.PasteVariable(attr_var, node2)
       nodes.append(node2)
     if nodes:
       return self.join_cfg_nodes(nodes), result, values_without_attribute
@@ -986,7 +986,7 @@ class VirtualMachine(object):
         if not self._is_none(error.data) and state.node.HasCombination([error]):
           self.errorlog.attribute_error(
               self.frame.current_opcode,
-              error.AssignToNewVariable(),
+              error.AssignToNewVariable(self.root_cfg_node),
               attr)
     if result is None:
       result = self.convert.create_new_unsolvable(node)
@@ -1412,7 +1412,7 @@ class VirtualMachine(object):
     """Stores a value in a closure cell."""
     state, value = state.pop()
     assert isinstance(value, typegraph.Variable)
-    self.frame.cells[op.arg].PasteVariable(value)
+    self.frame.cells[op.arg].PasteVariable(value, state.node)
     return state
 
   def byte_DELETE_DEREF(self, state, op):
@@ -1453,7 +1453,7 @@ class VirtualMachine(object):
     if leftover.bindings:
       op = "__eq__" if eq else "__ne__"
       state, leftover_ret = self.call_binary_operator(state, op, leftover, y)
-      ret.PasteVariable(leftover_ret)
+      ret.PasteVariable(leftover_ret, state.node)
     return state, ret
 
   def _coerce_to_bool(self, node, var, true_val=True):
@@ -2093,7 +2093,7 @@ class VirtualMachine(object):
   def byte_YIELD_VALUE(self, state, op):
     """Yield a value from a generator."""
     state, ret = state.pop()
-    self.frame.yield_variable.PasteVariable(ret)
+    self.frame.yield_variable.PasteVariable(ret, state.node)
     if self.frame.allowed_returns is not None:
       # Create a dummy generator instance for checking that
       # Generator[<yield_variable>] matches the annotated return type.
@@ -2188,7 +2188,7 @@ class VirtualMachine(object):
       _, _, retvar = self.init_class(state.node, self.frame.allowed_returns)
     else:
       retvar = var
-    self.frame.return_variable.PasteVariable(retvar)
+    self.frame.return_variable.PasteVariable(retvar, state.node)
     return state.set_why("return")
 
   def byte_IMPORT_STAR(self, state, op):
