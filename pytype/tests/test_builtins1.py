@@ -1,6 +1,6 @@
 """Tests of builtins (in pytd/builtins/__builtins__.pytd).
 
-File 1/2. Split into two parts to enable better test parallelism.
+File 1/3. Split into parts to enable better test parallelism.
 """
 
 import unittest
