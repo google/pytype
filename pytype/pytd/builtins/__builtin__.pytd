@@ -19,7 +19,7 @@ def apply(object: Callable, ...) -> NoneType
 def bin(number: int or float) -> str
 def callable(obj) -> bool
 def chr(i: int) -> str
-def cmp PYTHONCODE
+def cmp(x, y) -> int
 def coerce(x: int, y: int) -> tuple[int, int]
 def coerce(x: int or float, y: float) -> tuple[float, float]
 def coerce(x: int or float or complex, y: complex) -> tuple[complex, complex]
@@ -84,7 +84,7 @@ def reduce(function: Callable, iterable: Iterable[nothing], initial: _T) -> _T
 def reduce(function: Callable[..., _T], iterable: Iterable, initial) -> _T
 # No reload() in Python3
 def reload(mod: module) -> module
-def repr PYTHONCODE
+def repr(x) -> str
 def round(number: int or float or typing.SupportsRound, ...) -> float
 def setattr(object, name: str or unicode or bytearray, value) -> NoneType
 def sorted(iterable: Iterable[_T], ...) -> list[_T]

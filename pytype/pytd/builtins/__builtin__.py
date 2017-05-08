@@ -14,14 +14,6 @@ def abs(number):
   return number.__abs__()
 
 
-def cmp(x, y):
-  return True
-
-
-def repr(x):
-  return ''
-
-
 def next(iterator, default=__undefined__):
   if __random__:
     return iterator.next()

@@ -147,6 +147,24 @@ class BuiltinTests2(test_inference.InferenceTest):
       y = ...  # type: Dict[nothing, nothing]
     """)
 
+  def testCmp(self):
+    ty = self.Infer("""
+      if not cmp(4, 4):
+        x = 42
+    """)
+    self.assertTypesMatchPytd(ty, """
+      x = ...  # type: int
+    """)
+
+  def testRepr(self):
+    ty = self.Infer("""
+      if repr("hello world"):
+        x = 42
+    """)
+    self.assertTypesMatchPytd(ty, """
+      x = ...  # type: int
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

@@ -282,7 +282,7 @@ class BuiltinTests(test_inference.InferenceTest):
         return cmp(x, y)
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
-    def t_testCmp(x, y) -> bool
+    def t_testCmp(x, y) -> int
     """)
 
   def testCmpMulti(self):
@@ -294,8 +294,8 @@ class BuiltinTests(test_inference.InferenceTest):
       t_testCmpMulti(1.0, 2)
     """, deep=False, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
-      def t_testCmpMulti(x: float or int, y: int) -> bool
-      def t_testCmpMulti(x: int, y: float) -> bool
+      def t_testCmpMulti(x: float or int, y: int) -> int
+      def t_testCmpMulti(x: int, y: float) -> int
     """)
 
   def testCmpStr(self):
@@ -305,7 +305,7 @@ class BuiltinTests(test_inference.InferenceTest):
       t_testCmpStr("abc", "def")
     """, deep=False, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
-      def t_testCmpStr(x: str, y: str) -> bool
+      def t_testCmpStr(x: str, y: str) -> int
     """)
 
   def testCmpStr2(self):
@@ -315,7 +315,7 @@ class BuiltinTests(test_inference.InferenceTest):
       t_testCmpStr2("abc", __any_object__)
     """, deep=False, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
-      def t_testCmpStr2(x: str, y) -> bool
+      def t_testCmpStr2(x: str, y) -> int
     """)
 
   def testTuple(self):
