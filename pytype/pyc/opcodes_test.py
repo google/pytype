@@ -978,22 +978,22 @@ class Python36Test(_TestBase):
     self.assertSimple(85, 'SETUP_ANNOTATIONS')
 
   def test_store_annotation(self):
-    self.assertName([127, 0, 0], 'STORE_ANNOTATION')
+    self.assertName([127, 0], 'STORE_ANNOTATION')
 
   def test_call_function_ex(self):
-    self.assertName([142, 0, 0], 'CALL_FUNCTION_EX')
+    self.assertName([142, 0], 'CALL_FUNCTION_EX')
 
   def test_format_value(self):
-    self.assertName([155, 0, 0], 'FORMAT_VALUE')
+    self.assertName([155, 0], 'FORMAT_VALUE')
 
   def test_build_const_key_map(self):
-    self.assertName([156, 0, 0], 'BUILD_CONST_KEY_MAP')
+    self.assertName([156, 0], 'BUILD_CONST_KEY_MAP')
 
   def test_build_string(self):
-    self.assertName([157, 0, 0], 'BUILD_STRING')
+    self.assertName([157, 0], 'BUILD_STRING')
 
   def test_build_tuple_unpack_with_call(self):
-    self.assertName([158, 0, 0], 'BUILD_TUPLE_UNPACK_WITH_CALL')
+    self.assertName([158, 0], 'BUILD_TUPLE_UNPACK_WITH_CALL')
 
 
 if __name__ == '__main__':

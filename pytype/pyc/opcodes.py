@@ -1128,22 +1128,84 @@ def _prettyprint_arg(cls, oparg, co_consts, co_names,
     return oparg
 
 
-def _dis(data, mapping,
+def _bytecode_reader(data, mapping):
+  """Reads binary data from pyc files as bytecode.
+
+  Works with Python3.5 and below.
+
+  Arguments:
+    data: The block of binary pyc code
+    mapping: {opcode : class}
+  Returns:
+    (start position, end position, opcode class, oparg)
+  """
+  pos = 0
+  extended_arg = 0
+  size = len(data)
+  while pos < size:
+    opcode = ord(data[pos])
+    cls = mapping[opcode]
+    done = True
+    oparg = None
+    if cls is EXTENDED_ARG:
+      # EXTENDED_ARG modifies the opcode after it, setting bits 16..31 of
+      # its argument.
+      assert not extended_arg, "two EXTENDED_ARGs in a row"
+      extended_arg = ord(data[pos+1]) << 16 | ord(data[pos+2]) << 24
+      bytes_read = 3
+      done = False
+    elif cls.FLAGS & HAS_ARGUMENT:
+      oparg = ord(data[pos+1]) | ord(data[pos+2]) << 8 | extended_arg
+      extended_arg = 0
+      bytes_read = 3
+    else:
+      assert not extended_arg, "EXTENDED_ARG in front of opcode without arg"
+      extended_arg = 0
+      bytes_read = 1
+    if done:
+      yield (pos, pos + bytes_read, cls, oparg)
+    pos += bytes_read
+
+
+def _wordcode_reader(data, mapping):
+  """Reads binary data from pyc files as wordcode.
+
+  Works with Python3.6 and above.
+
+  Arguments:
+    data: The block of binary pyc code
+    mapping: {opcode : class}
+  Returns:
+    (start position, end position, opcode class, oparg)
+  """
+  extended_arg = 0
+  for pos in xrange(0, len(data), 2):
+    opcode = ord(data[pos])
+    cls = mapping[opcode]
+    if cls is EXTENDED_ARG:
+      oparg = ord(data[pos+1]) | extended_arg
+      extended_arg = oparg << 8
+    elif cls.FLAGS & HAS_ARGUMENT:
+      oparg = ord(data[pos+1]) | extended_arg
+      extended_arg = 0
+    else:
+      oparg = None
+      extended_arg = 0
+    yield (pos, pos + 2, cls, oparg)
+
+
+def _dis(data, mapping, reader,
          co_varnames=None, co_names=None, co_consts=None, co_cellvars=None,
          co_freevars=None, co_lnotab=None, co_firstlineno=None):
   """Disassemble a string into a list of Opcode instances."""
   code = []
-  size = len(data)
-  pos = 0
   lp = _LineNumberTableParser(co_lnotab, co_firstlineno) if co_lnotab else None
   offset_to_index = {}
-  extended_arg = 0
   if co_cellvars is not None and co_freevars is not None:
     cellvars_freevars = co_cellvars + co_freevars
   else:
     cellvars_freevars = None
-  while pos < size:
-    opcode = ord(data[pos])
+  for pos, end_pos, cls, oparg in reader(data, mapping):
     index = len(code)
     offset_to_index[pos] = index
     if lp:
@@ -1151,26 +1213,14 @@ def _dis(data, mapping,
     else:
       # single line programs don't have co_lnotab
       line = co_firstlineno
-    pos += 1
-    cls = mapping[opcode]
-    if cls is EXTENDED_ARG:
-      # EXTENDED_ARG modifies the opcode after it, setting bits 16..31 of
-      # its argument.
-      assert not extended_arg, "two EXTENDED_ARGs in a row"
-      extended_arg = ord(data[pos]) << 16 | ord(data[pos+1]) << 24
-      pos += 2
-    elif cls.FLAGS & HAS_ARGUMENT:
-      oparg = ord(data[pos]) | ord(data[pos+1]) << 8 | extended_arg
-      extended_arg = 0
-      pos += 2
+    if oparg is not None:
       if cls.has_jrel():
-        oparg += pos
+        oparg += end_pos
       pretty = _prettyprint_arg(cls, oparg, co_consts, co_names, co_varnames,
                                 cellvars_freevars)
       code.append(
           cls(index, line, oparg, pretty))  # pytype: disable=wrong-arg-count
     else:
-      assert not extended_arg, "EXTENDED_ARG in front of opcode without arg"
       code.append(cls(index, line))
 
   # Map the target of jump instructions to the opcode they jump to, and fill
@@ -1193,7 +1243,8 @@ def dis(data, python_version, *args, **kwargs):
       (3, 5): python_3_5_mapping,
       (3, 6): python_3_6_mapping,
   }[(major, minor)]
-  return _dis(data, mapping, *args, **kwargs)
+  reader = _wordcode_reader if (major, minor) > (3, 5) else _bytecode_reader
+  return _dis(data, mapping, reader, *args, **kwargs)
 
 
 def dis_code(code):
