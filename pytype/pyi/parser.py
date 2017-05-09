@@ -833,6 +833,43 @@ def parse_string(src, name=None, filename=None, python_version=None,
       src, name, filename)
 
 
+def join_types(types):
+  """Combine a list of types into a union type, if needed.
+
+  Leaves singular return values alone, or wraps a UnionType around them if there
+  are multiple ones, or if there are no elements in the list (or only
+  NothingType) return NothingType.
+
+  Arguments:
+    types: A list of types. This list might contain other UnionTypes. If
+    so, they are flattened.
+
+  Returns:
+    A type that represents the union of the types passed in. Order is preserved.
+  """
+  queue = collections.deque(types)
+  seen = set()
+  new_types = []
+  while queue:
+    t = queue.popleft()
+    if isinstance(t, pytd.UnionType):
+      queue.extendleft(reversed(t.type_list))
+    elif isinstance(t, pytd.NothingType):
+      pass
+    elif t not in seen:
+      new_types.append(t)
+      seen.add(t)
+
+  if len(new_types) == 1:
+    return new_types.pop()
+  elif any(isinstance(t, pytd.AnythingType) for t in new_types):
+    return pytd.AnythingType()
+  elif new_types:
+    return pytd.UnionType(tuple(new_types))  # tuple() to make unions hashable
+  else:
+    return pytd.NothingType()
+
+
 def _is_property_decorator(decorator):
   # Property decorators are the only ones where dotted names are accepted.
   return decorator == "property" or "." in decorator
@@ -1025,7 +1062,7 @@ def _split_methods_and_properties(signatures):
 def _parse_signature_as_property(full_signature):
   """Parse a signature as a property getter, setter, or deleter.
 
-  Checks that the signature matches one of {@property, @foo.setter,
+  Checks that the signature matches one of {@property, @foo.getter, @foo.setter,
   @foo.deleter} and gets the property type if specified in the signature.
 
   Args:
@@ -1040,33 +1077,27 @@ def _parse_signature_as_property(full_signature):
   name, signature, decorator, _ = full_signature
   # TODO(acaceres): validate full_signature.external_code?
   num_params = len(signature.params)
-  if decorator == "property" and num_params == 1:
-    # TODO(rechen): Add support for @foo.getter.
+  if decorator in ("property", name + ".getter") and num_params == 1:
     return signature.return_type
-  elif decorator == name + ".setter" and num_params == 2:
-    property_type = signature.params[1].type
-    if property_type == pytd.NamedType("object"):  # default
-      return None
-    return property_type
-  elif decorator == name + ".deleter" and num_params == 1:
-    # Deleters contain no information about the property type.
+  elif decorator == name + ".setter" and num_params == 2 or (
+      decorator == name + ".deleter" and num_params == 1):
+    # Setters and deleters contain no information about the property type.
     return None
   raise ParseError("Unhandled decorator: %s" % decorator)
 
 
 def _merge_property_signatures(signatures):
-  name_to_property_type = collections.OrderedDict()
+  name_to_property_types = collections.OrderedDict()
   for signature in signatures:
+    if signature.name not in name_to_property_types:
+      name_to_property_types[signature.name] = []
     property_type = _parse_signature_as_property(signature)
-    if property_type or signature.name not in name_to_property_type:
-      # TODO(acaceres): warn if incompatible types? Or only take type
-      # from @property, not @foo.setter? Take last non-None for now.
-      name_to_property_type[signature.name] = property_type
+    if property_type:
+      name_to_property_types[signature.name].append(property_type)
   return [
       pytd.Constant(
-          name=name,
-          type=property_type if property_type else pytd.AnythingType())
-      for name, property_type in name_to_property_type.items()]
+          name=name, type=join_types(types) if types else pytd.AnythingType())
+      for name, types in name_to_property_types.items()]
 
 
 def _merge_method_signatures(signatures):

@@ -1177,7 +1177,7 @@ class VerifyPythonCodeTest(_ParserTestBase):
 
 
 class PropertyDecoratorTest(_ParserTestBase):
-  """Tests that cover _try_parse_signature_as_property()."""
+  """Tests that cover _parse_signature_as_property()."""
 
   def test_property_with_type(self):
     expected = """\
@@ -1185,7 +1185,7 @@ class PropertyDecoratorTest(_ParserTestBase):
           name = ...  # type: str
     """
 
-    # There are several different ways to define a property...
+    # The return type of @property is used for the property type.
     self.check("""
       class A(object):
           @property
@@ -1196,7 +1196,12 @@ class PropertyDecoratorTest(_ParserTestBase):
       class A(object):
           @name.setter
           def name(self, value: str) -> None: ...
-      """, expected)
+      """, """\
+      from typing import Any
+
+      class A(object):
+          name = ...  # type: Any
+      """)
 
     self.check("""
       class A(object):
@@ -1219,11 +1224,10 @@ class PropertyDecoratorTest(_ParserTestBase):
     self.check("""
       class A(object):
           @property
-          def name(self) -> int:...
+          def name(self) -> str:...
 
-          # Last type gets used (should improve).
           @name.setter
-          def name(self, value: str) -> None: ...
+          def name(self, value: int) -> None: ...
       """, expected)
 
   def test_property_decorator_any_type(self):
@@ -1289,6 +1293,21 @@ class PropertyDecoratorTest(_ParserTestBase):
       def name(self): ...
       """, None, "Module-level functions with property decorators: name")
 
+  def test_property_getter(self):
+    self.check("""
+      class A(object):
+        @property
+        def name(self) -> str: ...
+
+        @name.getter
+        def name(self) -> int: ...
+    """, """\
+    from typing import Union
+
+    class A(object):
+        name = ...  # type: Union[str, int]
+    """)
+
 
 class MergeSignaturesTest(_ParserTestBase):
 
@@ -1306,17 +1325,30 @@ class MergeSignaturesTest(_ParserTestBase):
     self.check("""
       class A(object):
           @property
-          def name(self): ...
+          def name(self) -> str: ...
 
-          @name.setter
-          def name(self, value: str): ...
-
-          @name.deleter
-          def name(self): ...
+          @property
+          def name(self) -> int: ...
       """, """\
+      from typing import Union
+
       class A(object):
-          name = ...  # type: str
+          name = ...  # type: Union[str, int]
       """)
+
+    self.check("""
+      class A(object):
+          @property
+          def name(self) -> str: ...
+
+          @property
+          def name(self): ...
+    """, """\
+      from typing import Any
+
+      class A(object):
+          name = ...  # type: Any
+    """)
 
   def test_method(self):
     self.check("""\
