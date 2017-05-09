@@ -17,7 +17,7 @@ _Params = collections.namedtuple("_", ["required",
                                        "has_bare_star"])
 
 _NameAndSig = collections.namedtuple("_", ["name", "signature",
-                                           "decorators", "external_code"])
+                                           "decorator", "external_code"])
 
 
 _COMPARES = {
@@ -685,9 +685,10 @@ class _Parser(object):
     # TODO(acaceres): if not inside a class, any decorator should be an error
     if len(decorators) > 1:
       raise ParseError("Too many decorators for %s" % name)
+    decorator, = decorators if decorators else (None,)
 
     return _NameAndSig(name=name, signature=signature,
-                       decorators=tuple(sorted(decorators)),
+                       decorator=decorator,
                        external_code=False)
 
   def new_external_function(self, decorators, name):
@@ -701,7 +702,7 @@ class _Parser(object):
                                  return_type=pytd.NothingType(),
                                  exceptions=(),
                                  template=()),
-        decorators=(),
+        decorator=None,
         external_code=True)
 
   def new_named_tuple(self, base_name, fields):
@@ -832,15 +833,18 @@ def parse_string(src, name=None, filename=None, python_version=None,
       src, name, filename)
 
 
+def _is_property_decorator(decorator):
+  # Property decorators are the only ones where dotted names are accepted.
+  return decorator == "property" or "." in decorator
+
+
 def _keep_decorator(decorator):
   """Return True iff the decorator requires processing."""
   if decorator in ["overload", "abstractmethod"]:
     # These are legal but ignored.
     return False
-  elif (decorator in ["staticmethod", "classmethod", "property"] or
-        "." in decorator):
-    # Dotted name decorators need more context to be validated, done in
-    # TryParseSignatureAsProperty
+  elif (decorator in ["staticmethod", "classmethod"] or
+        _is_property_decorator(decorator)):
     return True
   else:
     raise ParseError("Decorator %s not supported" % decorator)
@@ -1007,150 +1011,107 @@ def _three_tuple(value):
   return (value + (0, 0))[:3]
 
 
-def _verify_python_code(name_external):
-  """Raise ParseError if any entry in name_external violated python code use.
+def _split_methods_and_properties(signatures):
+  methods = []
+  properties = []
+  for signature in signatures:
+    if signature.decorator and _is_property_decorator(signature.decorator):
+      properties.append(signature)
+    else:
+      methods.append(signature)
+  return methods, properties
+
+
+def _parse_signature_as_property(full_signature):
+  """Parse a signature as a property getter, setter, or deleter.
+
+  Checks that the signature matches one of {@property, @foo.setter,
+  @foo.deleter} and gets the property type if specified in the signature.
 
   Args:
-    name_external: A dict of name -> {False: int, True: int}.
-
-  Raises:
-    ParseError: if any name has a True count of more than 1, or has nonzero
-      True and False counts.
-  """
-  for name, counts in name_external.items():
-    if counts[True] > 1:
-      raise ParseError("Multiple PYTHONCODEs for %s" % name)
-    if counts[True] and counts[False]:
-      raise ParseError("Mixed pytd and PYTHONCODEs for %s" % name)
-
-
-def _try_parse_signature_as_property(full_signature):
-  """Given a signature, see if it corresponds to a @property.
-
-  Return whether it's compatible with a @property, and the properties' type
-  if specified in the signature's return value (for @property methods) or
-  argument (for @foo.setter methods).
-
-  Arguments:
     full_signature: _NameAndSig
 
   Returns:
-    (is_property: bool, property_type: Union[None, NamedType, ...?)].
+    property_type: The property type, or None.
 
   Raises:
-    ParseError: if multiple decorators are present or a decorator could not
-      be processed.
+    ParseError: If the signature cannot be parsed as a property.
   """
-  name, signature, decorators, _ = full_signature
+  name, signature, decorator, _ = full_signature
   # TODO(acaceres): validate full_signature.external_code?
-
-  def maybe_property_decorator(dec_string):
-    return "." in dec_string or "property" == dec_string
-
-  if all(not maybe_property_decorator(d) for d in decorators):
-    return False, None
-
-  if 1 != len(decorators):
-    raise ParseError("Can't handle more than one decorator for %s" % name)
-
-  decorator = decorators[0]
   num_params = len(signature.params)
-  property_type = None
-  is_valid = False
-
-  if "property" == decorator:
-    is_valid = (1 == num_params)
-    property_type = signature.return_type
-  elif 1 == decorator.count("."):
-    dec_name, dec_type = decorator.split(".")
-    if "setter" == dec_type and 2 == num_params:
-      is_valid = True
-      property_type = signature.params[1].type
-      if property_type == pytd.NamedType("object"):
-        # default, different from signature.return_type
-        property_type = None
-    elif "deleter" == dec_type:
-      is_valid = (1 == num_params)
-
-    is_valid &= (dec_name == name)
-
-  # Property decorators are the only decorators where we accept dotted-names,
-  # so any other dotted-name uses will throw an error here.
-  if not is_valid:
-    raise ParseError("Unhandled decorator: %s" % decorator)
-
-  return True, property_type
+  if decorator == "property" and num_params == 1:
+    # TODO(rechen): Add support for @foo.getter.
+    return signature.return_type
+  elif decorator == name + ".setter" and num_params == 2:
+    property_type = signature.params[1].type
+    if property_type == pytd.NamedType("object"):  # default
+      return None
+    return property_type
+  elif decorator == name + ".deleter" and num_params == 1:
+    # Deleters contain no information about the property type.
+    return None
+  raise ParseError("Unhandled decorator: %s" % decorator)
 
 
-def _merge_signatures(signatures):
-  """Given a list of pytd function signature declarations, group them by name.
-
-  Converts a list of NameAndSig items to a list of Functions and a list of
-  Constants (grouping signatures by name). Constants are derived from
-  functions with @property decorators.
-
-  Arguments:
-    signatures: List[NameAndSig].
-
-  Returns:
-    Tuple[List[pytd.Function], List[pytd.Constant]].
-
-  Raises:
-    ParseError: if an error is encountered while trying to merge signatures.
-  """
+def _merge_property_signatures(signatures):
   name_to_property_type = collections.OrderedDict()
-  method_signatures = []
   for signature in signatures:
-    is_property, property_type = _try_parse_signature_as_property(signature)
-    if is_property:
-      # Any methods with a decorator that looks like one of {@property,
-      # @foo.setter, @foo.deleter) will get merged into a Constant.
-      name = signature.name
-      if property_type or name not in name_to_property_type:
-        name_to_property_type[name] = property_type
-        # TODO(acaceres): warn if incompatible types? Or only take type
-        # from @property, not @foo.setter? Take last non-None for now.
-    else:
-      method_signatures.append(signature)
+    property_type = _parse_signature_as_property(signature)
+    if property_type or signature.name not in name_to_property_type:
+      # TODO(acaceres): warn if incompatible types? Or only take type
+      # from @property, not @foo.setter? Take last non-None for now.
+      name_to_property_type[signature.name] = property_type
+  return [
+      pytd.Constant(
+          name=name,
+          type=property_type if property_type else pytd.AnythingType())
+      for name, property_type in name_to_property_type.items()]
 
+
+def _merge_method_signatures(signatures):
+  """Group the signatures by name, turning each group into a function."""
   name_to_signatures = collections.OrderedDict()
-  # map name to (# external_code is {False,True}):
-  name_external = collections.defaultdict(lambda: {False: 0, True: 0})
-
-  name_to_decorators = {}
-  for name, signature, decorators, external_code in method_signatures:
-    if name in name_to_property_type:
-      raise ParseError("Incompatible signatures for %s" % name)
-
+  name_to_decorator = {}
+  # map from function name to a bool indicating whether the function has an
+  # external definition
+  name_to_external_code = {}
+  for name, signature, decorator, external_code in signatures:
     if name not in name_to_signatures:
       name_to_signatures[name] = []
-      name_to_decorators[name] = decorators
-
-    if name_to_decorators[name] != decorators:
+      name_to_decorator[name] = decorator
+    if name_to_decorator[name] != decorator:
       raise ParseError(
           "Overloaded signatures for %s disagree on decorators" % name)
-
+    if name in name_to_external_code:
+      if external_code and name_to_external_code[name]:
+        raise ParseError("Multiple PYTHONCODEs for %s" % name)
+      elif external_code != name_to_external_code[name]:
+        raise ParseError("Mixed pytd and PYTHONCODEs for %s" % name)
+    else:
+      name_to_external_code[name] = external_code
     name_to_signatures[name].append(signature)
-    name_external[name][external_code] += 1
-
-  _verify_python_code(name_external)
   methods = []
   for name, signatures in name_to_signatures.items():
-    kind = pytd.METHOD
-    decorators = name_to_decorators[name]
-    if "classmethod" in decorators:
-      kind = pytd.CLASSMETHOD
-    if name == "__new__" or "staticmethod" in decorators:
+    decorator = name_to_decorator[name]
+    if name == "__new__" or decorator == "staticmethod":
       kind = pytd.STATICMETHOD
-    if name_external[name][True]:
+    elif decorator == "classmethod":
+      kind = pytd.CLASSMETHOD
+    else:
+      kind = pytd.METHOD
+    if name_to_external_code[name]:
       methods.append(pytd.ExternalFunction(name, (), kind))
     else:
       methods.append(pytd.Function(name, tuple(signatures), kind))
+  return methods
 
-  constants = []
-  for name, property_type in name_to_property_type.items():
-    if not property_type:
-      property_type = pytd.AnythingType()
-    constants.append(pytd.Constant(name, property_type))
 
+def _merge_signatures(signatures):
+  method_sigs, property_sigs = _split_methods_and_properties(signatures)
+  methods = _merge_method_signatures(method_sigs)
+  constants = _merge_property_signatures(property_sigs)
+  bad_names = {m.name for m in methods} & {c.name for c in constants}
+  if bad_names:
+    raise ParseError("Incompatible signatures for %s" % ", ".join(bad_names))
   return methods, constants
