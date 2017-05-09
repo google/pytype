@@ -33,7 +33,10 @@ def compile_to_pyc(data_file, filename, output, mode="exec"):
     codeobject = compile(src, filename, mode)
   except Exception as err:  # pylint: disable=broad-except
     output.write(b"\1")
-    output.write(str(err))
+    if sys.version_info[0] == 3:
+      output.write(str(err).encode("utf-8"))
+    else:
+      output.write(str(err))
   else:
     output.write(b"\0")
     write_pyc(output, codeobject)
