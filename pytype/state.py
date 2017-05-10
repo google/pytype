@@ -180,6 +180,21 @@ class FrameState(object):
                       self.why)
 
 
+class SimpleFrame(object):
+  """A lightweight placeholder frame.
+
+  A frame used when we need a placeholder on the stack, e.g., to imitate a
+  function call in order to analyze a function, or to create a dummy stack for
+  error logging.
+  """
+
+  def __init__(self, opcode=None):
+    self.f_code = None  # for recursion detection
+    self.f_builtins = None
+    self.f_globals = None
+    self.current_opcode = opcode  # for memoization of unknowns
+
+
 class Frame(object):
   """An interpreter frame.
 

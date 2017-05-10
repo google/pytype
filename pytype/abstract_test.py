@@ -9,8 +9,8 @@ from pytype import config
 from pytype import errors
 from pytype import exceptions
 from pytype import function
-from pytype import infer
 from pytype import load_pytd
+from pytype import state as frame_state
 from pytype import vm
 from pytype.pytd import cfg
 from pytype.pytd import pytd
@@ -645,7 +645,7 @@ class AbstractTest(AbstractTestBase):
 
   def testTypeParameterOfficialName(self):
     param = abstract.TypeParameter("T", self._vm)
-    self._vm.frame = infer.AnalysisFrame()  # for error logging
+    self._vm.frame = frame_state.SimpleFrame()  # for error logging
     param.update_official_name("T")
     self.assertFalse(self._vm.errorlog.has_error())
     param.update_official_name("Q")

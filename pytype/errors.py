@@ -79,8 +79,10 @@ class Error(object):
                  details=details)
 
   @classmethod
-  def at_opcode(cls, opcode, severity, message, details=None):
-    """Return an error using an opcode for position information."""
+  def with_stack(cls, stack, severity, message, details=None):
+    """Return an error using a stack for position information."""
+    # TODO(rechen): Use the stack to generate a backtrace.
+    opcode = stack[-1].current_opcode if stack else None
     if opcode is None:
       return cls(severity, message, details=details)
     else:
@@ -177,11 +179,11 @@ class ErrorLogBase(object):
     if self._filter is None or self._filter(error):
       self._errors.append(error)
 
-  def warn(self, opcode, message, *args):
-    self._add(Error.at_opcode(opcode, SEVERITY_WARNING, message % args))
+  def warn(self, stack, message, *args):
+    self._add(Error.with_stack(stack, SEVERITY_WARNING, message % args))
 
-  def error(self, opcode, message, details=None):
-    self._add(Error.at_opcode(opcode, SEVERITY_ERROR, message, details=details))
+  def error(self, stack, message, details=None):
+    self._add(Error.with_stack(stack, SEVERITY_ERROR, message, details=details))
 
   def save(self):
     """Returns a checkpoint that represents the log messages up to now."""
@@ -302,41 +304,41 @@ class ErrorLog(ErrorLogBase):
     return ", ".join(printed_params)
 
   @_error_name("pyi-error")
-  def pyi_error(self, opcode, name, error):
-    self.error(opcode, "Couldn't import pyi for %r" % name, str(error))
+  def pyi_error(self, stack, name, error):
+    self.error(stack, "Couldn't import pyi for %r" % name, str(error))
 
   @_error_name("attribute-error")
-  def attribute_error(self, opcode, obj, attr_name):
+  def attribute_error(self, stack, obj, attr_name):
     assert obj.bindings
     obj_values = abstract.merge_values(obj.data, obj.bindings[0].data.vm)
     if isinstance(obj_values, abstract.Module):
       obj_repr = "module %r" % obj_values.name
     else:
       obj_repr = self._print_as_actual_type(obj_values)
-    self.error(opcode, "No attribute %r on %s" % (attr_name, obj_repr))
+    self.error(stack, "No attribute %r on %s" % (attr_name, obj_repr))
 
   @_error_name("none-attr")
-  def none_attr(self, opcode, attr_name):
+  def none_attr(self, stack, attr_name):
     self.error(
-        opcode,
+        stack,
         "Access of attribute %r on a type that might be None" % attr_name,
         details="Do you need a type comment?")
 
   @_error_name("unbound-type-param")
-  def type_param_error(self, opcode, obj, attr_name, type_param_name):
+  def type_param_error(self, stack, obj, attr_name, type_param_name):
     self.error(
-        opcode, "Can't access attribute %r on %s" % (attr_name, obj.name),
+        stack, "Can't access attribute %r on %s" % (attr_name, obj.name),
         "No binding for type parameter %s" % type_param_name)
 
   @_error_name("name-error")
-  def name_error(self, opcode, name):
-    self.error(opcode, "Name %r is not defined" % name)
+  def name_error(self, stack, name):
+    self.error(stack, "Name %r is not defined" % name)
 
   @_error_name("import-error")
-  def import_error(self, opcode, module_name):
-    self.error(opcode, "Can't find module %r." % module_name)
+  def import_error(self, stack, module_name):
+    self.error(stack, "Can't find module %r." % module_name)
 
-  def _invalid_parameters(self, opcode, message, bad_call):
+  def _invalid_parameters(self, stack, message, bad_call):
     """Log an invalid parameters error."""
     sig, passed_args, bad_param = bad_call
     expected = self._print_args(self._iter_sig(sig, bad_param), bad_param)
@@ -346,22 +348,22 @@ class ErrorLog(ErrorLogBase):
         "Expected: (", expected, ")\n",
         "Actually passed: (", actual,
         ")"]
-    self.error(opcode, message, "".join(details))
+    self.error(stack, message, "".join(details))
 
   @_error_name("wrong-arg-count")
-  def wrong_arg_count(self, opcode, name, bad_call):
+  def wrong_arg_count(self, stack, name, bad_call):
     message = "Function %s expects %d arg(s), got %d" % (
         name, bad_call.sig.mandatory_param_count(), len(bad_call.passed_args))
-    self._invalid_parameters(opcode, message, bad_call)
+    self._invalid_parameters(stack, message, bad_call)
 
   @_error_name("wrong-arg-types")
-  def wrong_arg_types(self, opcode, name, bad_call):
+  def wrong_arg_types(self, stack, name, bad_call):
     """A function was called with the wrong parameter types."""
     message = "Function %s was called with the wrong arguments" % name
-    self._invalid_parameters(opcode, message, bad_call)
+    self._invalid_parameters(stack, message, bad_call)
 
   @_error_name("wrong-keyword-args")
-  def wrong_keyword_args(self, opcode, name, bad_call, extra_keywords):
+  def wrong_keyword_args(self, stack, name, bad_call, extra_keywords):
     """A function was called with extra keywords."""
     if len(extra_keywords) == 1:
       message = "Invalid keyword argument %s to function %s" % (
@@ -369,99 +371,99 @@ class ErrorLog(ErrorLogBase):
     else:
       message = "Invalid keyword arguments %s to function %s" % (
           "(" + ", ".join(sorted(extra_keywords)) + ")", name)
-    self._invalid_parameters(opcode, message, bad_call)
+    self._invalid_parameters(stack, message, bad_call)
 
   @_error_name("missing-parameter")
-  def missing_parameter(self, opcode, name, bad_call, missing_parameter):
+  def missing_parameter(self, stack, name, bad_call, missing_parameter):
     """A function call is missing parameters."""
     message = "Missing parameter %r in call to function %s" % (
         missing_parameter, name)
-    self._invalid_parameters(opcode, message, bad_call)
+    self._invalid_parameters(stack, message, bad_call)
 
   @_error_name("not-callable")
-  def not_callable(self, opcode, function):
+  def not_callable(self, stack, function):
     """Calling an object that isn't callable."""
     message = "%r object is not callable" % (function.name)
-    self.error(opcode, message)
+    self.error(stack, message)
 
   @_error_name("none-attr")  # None doesn't have attribute '__call__'
-  def none_not_callable(self, opcode):
+  def none_not_callable(self, stack):
     """Calling None."""
-    self.error(opcode, "Calling a type that might be None",
+    self.error(stack, "Calling a type that might be None",
                details="Do you need a type comment?")
 
   @_error_name("duplicate-keyword-argument")
-  def duplicate_keyword(self, opcode, name, bad_call, duplicate):
+  def duplicate_keyword(self, stack, name, bad_call, duplicate):
     message = ("function %s got multiple values for keyword argument %r" %
                (name, duplicate))
-    self._invalid_parameters(opcode, message, bad_call)
+    self._invalid_parameters(stack, message, bad_call)
 
-  def invalid_function_call(self, opcode, error):
+  def invalid_function_call(self, stack, error):
     if isinstance(error, abstract.WrongArgCount):
-      self.wrong_arg_count(opcode, error.name, error.bad_call)
+      self.wrong_arg_count(stack, error.name, error.bad_call)
     elif isinstance(error, abstract.WrongArgTypes):
-      self.wrong_arg_types(opcode, error.name, error.bad_call)
+      self.wrong_arg_types(stack, error.name, error.bad_call)
     elif isinstance(error, abstract.WrongKeywordArgs):
       self.wrong_keyword_args(
-          opcode, error.name, error.bad_call, error.extra_keywords)
+          stack, error.name, error.bad_call, error.extra_keywords)
     elif isinstance(error, abstract.MissingParameter):
       self.missing_parameter(
-          opcode, error.name, error.bad_call, error.missing_parameter)
+          stack, error.name, error.bad_call, error.missing_parameter)
     elif isinstance(error, abstract.NoneNotCallable):
-      self.none_not_callable(opcode)
+      self.none_not_callable(stack)
     elif isinstance(error, abstract.NotCallable):
-      self.not_callable(opcode, error.obj)
+      self.not_callable(stack, error.obj)
     elif isinstance(error, abstract.DuplicateKeyword):
       self.duplicate_keyword(
-          opcode, error.name, error.bad_call, error.duplicate)
+          stack, error.name, error.bad_call, error.duplicate)
     else:
       raise AssertionError(error)
 
   @_error_name("base-class-error")
-  def base_class_error(self, opcode, node, base_var):
+  def base_class_error(self, stack, node, base_var):
     pytd_type = pytd_utils.JoinTypes(t.get_instance_type(node)
                                      for t in base_var.data)
-    self.error(opcode, "Invalid base class: %s" % self._pytd_print(pytd_type))
+    self.error(stack, "Invalid base class: %s" % self._pytd_print(pytd_type))
 
   @_error_name("bad-return-type")
-  def bad_return_type(self, opcode, actual_pytd, expected_pytd):
+  def bad_return_type(self, stack, actual_pytd, expected_pytd):
     details = "".join([
         "Expected: ", self._pytd_print(expected_pytd), "\n",
         "Actually returned: ", self._pytd_print(actual_pytd),
     ])
-    self.error(opcode, "bad option in return type", details)
+    self.error(stack, "bad option in return type", details)
 
   @_error_name("unsupported-operands")
-  def unsupported_operands(self, opcode, node, operation, var1, var2):
+  def unsupported_operands(self, stack, node, operation, var1, var2):
     left = pytd_utils.JoinTypes(t.to_type(node) for t in var1.data)
     right = pytd_utils.JoinTypes(t.to_type(node) for t in var2.data)
     # TODO(kramm): Display things like '__add__' as '+'
-    self.error(opcode, "unsupported operand type(s) for %s: %r and %r" % (
+    self.error(stack, "unsupported operand type(s) for %s: %r and %r" % (
         operation, self._pytd_print(left), self._pytd_print(right)))
 
-  def invalid_annotation(self, opcode, annot, details, name=None):
-    self._invalid_annotation(opcode, self._print_as_expected_type(annot),
+  def invalid_annotation(self, stack, annot, details, name=None):
+    self._invalid_annotation(stack, self._print_as_expected_type(annot),
                              details, name)
 
-  def ambiguous_annotation(self, opcode, options, name=None):
+  def ambiguous_annotation(self, stack, options, name=None):
     desc = " or ".join(sorted(self._print_as_expected_type(o) for o in options))
-    self._invalid_annotation(opcode, desc, "Must be constant", name)
+    self._invalid_annotation(stack, desc, "Must be constant", name)
 
   @_error_name("invalid-annotation")
-  def _invalid_annotation(self, opcode, annot_string, details, name):
+  def _invalid_annotation(self, stack, annot_string, details, name):
     if name is None:
       suffix = ""
     else:
       suffix = " for " + name
-    self.error(opcode, "Invalid type annotation %r%s" % (annot_string, suffix),
+    self.error(stack, "Invalid type annotation %r%s" % (annot_string, suffix),
                details=details)
 
   @_error_name("mro-error")
-  def mro_error(self, opcode, name, mro_seqs):
+  def mro_error(self, stack, name, mro_seqs):
     seqs = []
     for seq in mro_seqs:
       seqs.append("[%s]" % ", ".join(cls.name for cls in seq))
-    self.error(opcode, "Class %s has invalid (cyclic?) inheritance: %s." % (
+    self.error(stack, "Class %s has invalid (cyclic?) inheritance: %s." % (
         name, ", ".join(seqs)))
 
   @_error_name("invalid-directive")
@@ -478,12 +480,12 @@ class ErrorLog(ErrorLogBase):
                     filename=filename, lineno=lineno))
 
   @_error_name("not-supported-yet")
-  def not_supported_yet(self, opcode, feature):
-    self.error(opcode, "%s not supported yet" % feature)
+  def not_supported_yet(self, stack, feature):
+    self.error(stack, "%s not supported yet" % feature)
 
   @_error_name("key-error")
-  def key_error(self, opcode, key):
-    self.error(opcode, "Key %r possibly not in dictionary (yet)" % key)
+  def key_error(self, stack, key):
+    self.error(stack, "Key %r possibly not in dictionary (yet)" % key)
 
   @_error_name("python-compiler-error")
   def python_compiler_error(self, filename, lineno, message):
@@ -491,8 +493,8 @@ class ErrorLog(ErrorLogBase):
         SEVERITY_ERROR, message, filename=filename, lineno=lineno))
 
   @_error_name("recursion-error")
-  def recursion_error(self, opcode, name):
-    self.error(opcode, "Detected recursion in %s" % name)
+  def recursion_error(self, stack, name):
+    self.error(stack, "Detected recursion in %s" % name)
 
   @_error_name("redundant-function-type-comment")
   def redundant_function_type_comment(self, filename, lineno):
@@ -502,13 +504,13 @@ class ErrorLog(ErrorLogBase):
         filename=filename, lineno=lineno))
 
   @_error_name("invalid-function-type-comment")
-  def invalid_function_type_comment(self, opcode, comment, details=None):
-    self.error(opcode, "Invalid function type comment: %s" % comment,
+  def invalid_function_type_comment(self, stack, comment, details=None):
+    self.error(stack, "Invalid function type comment: %s" % comment,
                details=details)
 
   @_error_name("invalid-type-comment")
-  def invalid_type_comment(self, opcode, comment, details=None):
-    self.error(opcode, "Invalid type comment: %s" % comment,
+  def invalid_type_comment(self, stack, comment, details=None):
+    self.error(stack, "Invalid type comment: %s" % comment,
                details=details)
 
   @_error_name("ignored-type-comment")
@@ -518,8 +520,8 @@ class ErrorLog(ErrorLogBase):
         filename=filename, lineno=lineno))
 
   @_error_name("invalid-typevar")
-  def invalid_typevar(self, opcode, comment, bad_call=None):
+  def invalid_typevar(self, stack, comment, bad_call=None):
     if bad_call:
-      self._invalid_parameters(opcode, comment, bad_call)
+      self._invalid_parameters(stack, comment, bad_call)
     else:
-      self.error(opcode, "Invalid TypeVar: %s" % comment)
+      self.error(stack, "Invalid TypeVar: %s" % comment)

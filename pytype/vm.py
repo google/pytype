@@ -483,7 +483,7 @@ class VirtualMachine(object):
       base = new_base
     if not any(isinstance(t, (abstract.Class, abstract.AMBIGUOUS_OR_EMPTY))
                for t in base.data):
-      self.errorlog.base_class_error(self.frame.current_opcode, node, base)
+      self.errorlog.base_class_error(self.frames, node, base)
     return base
 
   def make_class(self, node, name_var, bases, class_dict_var, cls_var):
@@ -513,8 +513,7 @@ class VirtualMachine(object):
       bases = [self.convert.oldstyleclass_type]
     for b in sum((b.data for b in bases), []):
       if isinstance(b, abstract.ParameterizedClass):
-        self.errorlog.not_supported_yet(self.frame.current_opcode,
-                                        "creating generic classes")
+        self.errorlog.not_supported_yet(self.frames, "creating generic classes")
     if isinstance(class_dict, abstract.Unsolvable):
       # An unsolvable appears here if the vm hit maximum depth and gave up on
       # analyzing the class we're now building.
@@ -533,7 +532,7 @@ class VirtualMachine(object):
             cls_var,
             self)
       except pytd_utils.MROError as e:
-        self.errorlog.mro_error(self.frame.current_opcode, name, e.mro_seqs)
+        self.errorlog.mro_error(self.frames, name, e.mro_seqs)
         var = self.convert.create_new_unsolvable(node)
       else:
         var = self.program.NewVariable()
@@ -564,7 +563,7 @@ class VirtualMachine(object):
     if late_annotations:
       self.functions_with_late_annotations.append(val)
     else:
-      val.signature.check_type_parameter_count(self.frame.current_opcode)
+      val.signature.check_type_parameter_count(self.frames)
     return var
 
   def make_frame(self, node, code, callargs=None,
@@ -600,6 +599,22 @@ class VirtualMachine(object):
 
     return frame_state.Frame(node, self, code, f_globals, f_locals,
                              self.frame, callargs or {}, closure)
+
+  def simple_stack(self, opcode=None):
+    """Get a stack of simple frames.
+
+    Args:
+      opcode: Optionally, an opcode to create a stack for.
+
+    Returns:
+      If an opcode is provided, a stack with a single frame at that opcode.
+      Otherwise, the VM's current stack converted to simple frames.
+    """
+    if opcode is not None:
+      return [frame_state.SimpleFrame(opcode)]
+    else:
+      return [frame_state.SimpleFrame(frame.current_opcode)
+              for frame in self.frames]
 
   def push_abstract_exception(self, state):
     tb = self.convert.build_list(state.node, [])
@@ -694,7 +709,7 @@ class VirtualMachine(object):
       self.annotations_util.eval_late_annotations(node, func, f_globals)
     for name, annot in f_globals.late_annotations.items():
       attr = self.annotations_util.init_annotation(
-          annot.expr, annot.name, annot.opcode, node, f_globals)
+          annot.expr, annot.name, annot.stack, node, f_globals)
       self.attribute_handler.set_attribute(node, f_globals, name, attr)
       del f_globals.late_annotations[name]
     assert not self.frames, "Frames left over!"
@@ -735,14 +750,13 @@ class VirtualMachine(object):
     log.debug("Result: %r %r", result, result.data)
     if not result.bindings and report_errors:
       if self._is_only_none(state.node, x):
-        self.errorlog.none_attr(self.frame.current_opcode, name)
+        self.errorlog.none_attr(self.frames, name)
       elif error is None:
-        self.errorlog.unsupported_operands(self.frame.current_opcode,
-                                           state.node, name, x, y)
+        self.errorlog.unsupported_operands(self.frames, state.node, name, x, y)
       elif isinstance(error, abstract.DictKeyMissing):
-        self.errorlog.key_error(self.frame.current_opcode, error.name)
+        self.errorlog.key_error(self.frames, error.name)
       else:
-        self.errorlog.invalid_function_call(self.frame.current_opcode, error)
+        self.errorlog.invalid_function_call(self.frames, error)
       result.AddBinding(self.convert.unsolvable, [], state.node)
     return state, result
 
@@ -838,7 +852,7 @@ class VirtualMachine(object):
       return node, result
     else:
       if fallback_to_unsolvable:
-        self.errorlog.invalid_function_call(self.frame.current_opcode, error)
+        self.errorlog.invalid_function_call(self.frames, error)
         return node, self.convert.create_new_unsolvable(node)
       else:
         # We were called by something that does its own error handling.
@@ -980,14 +994,12 @@ class VirtualMachine(object):
     """Try loading an attribute, and report errors."""
     node, result, errors = self._retrieve_attr(state.node, obj, attr)
     if errors and obj.bindings and self._is_only_none(state.node, obj):
-      self.errorlog.none_attr(self.frame.current_opcode, attr)
+      self.errorlog.none_attr(self.frames, attr)
     elif self.options.strict_attr_checking or (not result and obj.bindings):
       for error in errors:
         if not self._is_none(error.data) and state.node.HasCombination([error]):
           self.errorlog.attribute_error(
-              self.frame.current_opcode,
-              error.AssignToNewVariable(self.root_cfg_node),
-              attr)
+              self.frames, error.AssignToNewVariable(self.root_cfg_node), attr)
     if result is None:
       result = self.convert.create_new_unsolvable(node)
     return state.change_cfg_node(node), result
@@ -1042,7 +1054,7 @@ class VirtualMachine(object):
       module = self._import_module(name, level)
     except (parser.ParseError, load_pytd.BadDependencyError,
             visitors.ContainerError, visitors.SymbolLookupError) as e:
-      self.errorlog.pyi_error(self.frame.current_opcode, full_name, e)
+      self.errorlog.pyi_error(self.frames, full_name, e)
       module = self.convert.unsolvable
     return module
 
@@ -1139,8 +1151,7 @@ class VirtualMachine(object):
         if report_errors:
           for m in missing:
             if state.node.HasCombination([m]):
-              self.errorlog.attribute_error(
-                  self.frame.current_opcode, seq, "__iter__")
+              self.errorlog.attribute_error(self.frames, seq, "__iter__")
           itr = self.convert.create_new_unsolvable(state.node)
         else:
           itr = None
@@ -1323,7 +1334,7 @@ class VirtualMachine(object):
           state, val = self.load_builtin(state, name)
         except KeyError:
           if self._is_private(name) or not self.has_unknown_wildcard_imports:
-            self.errorlog.name_error(self.frame.current_opcode, name)
+            self.errorlog.name_error(self.frames, name)
           return state.push(
               self.convert.create_new_unsolvable(state.node))
     return state.push(val)
@@ -1346,7 +1357,7 @@ class VirtualMachine(object):
     try:
       state, val = self.load_local(state, name)
     except KeyError:
-      self.errorlog.name_error(self.frame.current_opcode, name)
+      self.errorlog.name_error(self.frames, name)
       val = self.convert.create_new_unsolvable(state.node)
     return state.push(val)
 
@@ -1372,7 +1383,7 @@ class VirtualMachine(object):
       try:
         state, val = self.load_builtin(state, name)
       except KeyError:
-        self.errorlog.name_error(self.frame.current_opcode, name)
+        self.errorlog.name_error(self.frames, name)
         return state.push(self.convert.create_new_unsolvable(state.node))
     return state.push(val)
 
@@ -1485,10 +1496,10 @@ class VirtualMachine(object):
         # y does not have any of __contains__, __iter__, and __getitem__.
         # (The last two are checked by _get_iter.)
         if self._is_only_none(state.node, y):
-          self.errorlog.none_attr(self.frame.current_opcode, "__contains__")
+          self.errorlog.none_attr(self.frames, "__contains__")
         else:
-          self.errorlog.unsupported_operands(self.frame.current_opcode,
-                                             state.node, "__contains__", y, x)
+          self.errorlog.unsupported_operands(
+              self.frames, state.node, "__contains__", y, x)
       ret = self.convert.build_bool(state.node)
     return state, ret
 
@@ -1999,21 +2010,22 @@ class VirtualMachine(object):
     # Parse the comment, use a fake Opcode that is similar to the original
     # opcode except that it is set to the line number of the type comment.
     # This ensures that errors are printed with an accurate line number.
-    fake_op = op.at_line(lineno)
+    fake_stack = self.simple_stack(op.at_line(lineno))
     m = _FUNCTION_TYPE_COMMENT_RE.match(comment)
     if not m:
-      self.errorlog.invalid_function_type_comment(fake_op, comment)
+      self.errorlog.invalid_function_type_comment(fake_stack, comment)
       return
     args, return_type = m.groups()
 
     # Add type info to late_annotations.
     if args != "...":
       annot = annotations_util.LateAnnotation(
-          args.strip(), function.MULTI_ARG_ANNOTATION, fake_op)
+          args.strip(), function.MULTI_ARG_ANNOTATION, fake_stack)
       late_annotations[function.MULTI_ARG_ANNOTATION] = annot
 
+    ret = self.convert.build_string(None, return_type).data[0]
     late_annotations["return"] = annotations_util.LateAnnotation(
-        self.convert.build_string(None, return_type).data[0], "return", fake_op)
+        ret, "return", fake_stack)
 
   def _convert_kw_defaults(self, values):
     kw_defaults = {}
@@ -2122,7 +2134,7 @@ class VirtualMachine(object):
     module = self.import_module(name, full_name, level)
     if module is None:
       log.warning("Couldn't find module %r", name)
-      self.errorlog.import_error(self.frame.current_opcode, name)
+      self.errorlog.import_error(self.frames, name)
       module = self.convert.unsolvable
     return state.push(module.to_variable(state.node))
 
@@ -2136,7 +2148,7 @@ class VirtualMachine(object):
     state, attr = self.load_attr_noerror(state, module, name)
     if attr is None:
       full_name = module.data[0].name + "." + name
-      self.errorlog.import_error(self.frame.current_opcode, full_name)
+      self.errorlog.import_error(self.frames, full_name)
       attr = self.convert.unsolvable.to_variable(state.node)
     return state.push(attr)
 

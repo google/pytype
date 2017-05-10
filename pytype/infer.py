@@ -38,16 +38,6 @@ INIT_MAXIMUM_DEPTH = 4
 _INITIALIZING = object()
 
 
-class AnalysisFrame(object):
-  """Frame representing the "analysis function" that calls everything."""
-
-  def __init__(self):
-    self.f_code = None  # for recursion detection
-    self.f_builtins = None
-    self.f_globals = None
-    self.current_opcode = None  # for memoizations of unknowns
-
-
 class CallTracer(vm.VirtualMachine):
   """Virtual machine that records all function calls.
 
@@ -91,7 +81,7 @@ class CallTracer(vm.VirtualMachine):
 
   def call_function_in_frame(self, node, var, args, kwargs,
                              starargs, starstarargs):
-    frame = AnalysisFrame()
+    frame = frame_state.SimpleFrame()
     self.push_frame(frame)
     log.info("Analyzing %r", [v.name for v in var.data])
     state = frame_state.FrameState.init(node, self)
@@ -437,7 +427,7 @@ class CallTracer(vm.VirtualMachine):
       combined = pytd_utils.JoinTypes(
           view[actual].data.to_type(node, view=view) for view in bad)
       self.errorlog.bad_return_type(
-          self.frame.current_opcode, combined, formal.get_instance_type(node))
+          self.frames, combined, formal.get_instance_type(node))
 
 
 def _pretty_variable(var):

@@ -15,7 +15,7 @@ class EvaluationError(Exception):
 
 
 LateAnnotation = collections.namedtuple(
-    "LateAnnotation", ["expr", "name", "opcode"])
+    "LateAnnotation", ["expr", "name", "stack"])
 
 
 class AnnotationsUtil(object):
@@ -82,15 +82,14 @@ class AnnotationsUtil(object):
         name = abstract.get_atomic_python_constant(name)
         visible = t.Data(node)
         if len(visible) > 1:
-          self.vm.errorlog.ambiguous_annotation(
-              self.vm.frame.current_opcode, visible, name)
+          self.vm.errorlog.ambiguous_annotation(self.vm.frames, visible, name)
         else:
           try:
             annot = self._process_one_annotation(
-                visible[0], name, self.vm.frame.current_opcode)
+                visible[0], name, self.vm.frames)
           except self.LateAnnotationError:
             late_annotations[name] = LateAnnotation(
-                visible[0], name, self.vm.frame.current_opcode)
+                visible[0], name, self.vm.simple_stack())
           else:
             if annot is not None:
               annotations[name] = annot
@@ -106,19 +105,21 @@ class AnnotationsUtil(object):
           self._eval_multi_arg_annotation(node, func, f_globals, annot)
         except EvaluationError as e:
           self.vm.errorlog.invalid_function_type_comment(
-              annot.opcode, annot.expr, details=e.message)
+              annot.stack, annot.expr, details=e.message)
         except abstract.ConversionError:
           self.vm.errorlog.invalid_function_type_comment(
-              annot.opcode, annot.expr, details="Must be constant.")
+              annot.stack, annot.expr, details="Must be constant.")
       else:
         resolved = self._process_one_annotation(
-            annot.expr, annot.name, annot.opcode, node, f_globals)
+            annot.expr, annot.name, annot.stack, node, f_globals)
         if resolved is not None:
           func.signature.set_annotation(name, resolved)
-    func.signature.check_type_parameter_count(func.get_first_opcode())
+    func.signature.check_type_parameter_count(
+        self.vm.simple_stack(func.get_first_opcode()))
 
   def apply_type_comment(self, state, op, name, value):
     """If there is a type comment for the op, return its value."""
+    assert op is self.vm.frame.current_opcode
     if op.code.co_filename != self.vm.filename:
       return value
     code, comment = self.vm.director.type_comments.get(op.line, (None, None))
@@ -126,37 +127,39 @@ class AnnotationsUtil(object):
       try:
         var = self._eval_expr(state.node, self.vm.frame.f_globals, comment)
       except EvaluationError as e:
-        self.vm.errorlog.invalid_type_comment(op, comment, details=e.message)
+        self.vm.errorlog.invalid_type_comment(
+            self.vm.frames, comment, details=e.message)
         value = self.vm.convert.create_new_unsolvable(state.node)
       else:
         try:
           typ = abstract.get_atomic_value(var)
         except abstract.ConversionError:
           self.vm.errorlog.invalid_type_comment(
-              op, comment, details="Must be constant.")
+              self.vm.frames, comment, details="Must be constant.")
           value = self.vm.convert.create_new_unsolvable(state.node)
         else:
           if self.get_type_parameters(typ):
             self.vm.errorlog.not_supported_yet(
-                op, "using type parameter in type comment")
+                self.vm.frames, "using type parameter in type comment")
           try:
-            value = self.init_annotation(typ, name, op, state.node)
+            value = self.init_annotation(typ, name, self.vm.frames, state.node)
           except self.LateAnnotationError:
-            value = LateAnnotation(typ, name, op)
+            value = LateAnnotation(typ, name, self.vm.simple_stack())
     return value
 
-  def init_annotation(self, annot, name, op, node, f_globals=None):
-    processed = self._process_one_annotation(annot, name, op, node, f_globals)
+  def init_annotation(self, annot, name, stack, node, f_globals=None):
+    processed = self._process_one_annotation(
+        annot, name, stack, node, f_globals)
     if processed is None:
       value = self.vm.convert.unsolvable.to_variable(node)
     else:
       _, _, value = self.vm.init_class(node, processed)
     return value
 
-  def process_annotation_var(self, var, name, op, node):
+  def process_annotation_var(self, var, name, stack, node):
     new_var = self.vm.program.NewVariable()
     for b in var.bindings:
-      annot = self._process_one_annotation(b.data, name, op)
+      annot = self._process_one_annotation(b.data, name, stack)
       if annot is None:
         return self.vm.convert.create_new_unsolvable(node)
       new_var.AddBinding(annot, {b}, node)
@@ -181,15 +184,15 @@ class AnnotationsUtil(object):
 
     if len(args) != expected:
       self.vm.errorlog.invalid_function_type_comment(
-          annot.opcode, annot.expr,
+          annot.stack, annot.expr,
           details="Expected %d args, %d given" % (expected, len(args)))
       return
     for name, arg in zip(names, args):
-      resolved = self._process_one_annotation(arg, name, annot.opcode)
+      resolved = self._process_one_annotation(arg, name, annot.stack)
       if resolved is not None:
         func.signature.set_annotation(name, resolved)
 
-  def _process_one_annotation(self, annotation, name, opcode,
+  def _process_one_annotation(self, annotation, name, stack,
                               node=None, f_globals=None):
     """Change annotation / record errors where required."""
     if isinstance(annotation, abstract.AnnotationContainer):
@@ -197,7 +200,7 @@ class AnnotationsUtil(object):
 
     if isinstance(annotation, typing.Union):
       self.vm.errorlog.invalid_annotation(
-          opcode, annotation, "Needs options", name)
+          stack, annotation, "Needs options", name)
       return None
     elif (isinstance(annotation, abstract.Instance) and
           annotation.cls.data == self.vm.convert.str_type.data):
@@ -209,13 +212,13 @@ class AnnotationsUtil(object):
           try:
             v = self._eval_expr(node, f_globals, annotation.pyval)
           except EvaluationError as e:
-            self.vm.errorlog.invalid_annotation(opcode, annotation, e.message)
+            self.vm.errorlog.invalid_annotation(stack, annotation, e.message)
             return None
           if len(v.data) == 1:
             return self._process_one_annotation(
-                v.data[0], name, opcode, node, f_globals)
+                v.data[0], name, stack, node, f_globals)
       self.vm.errorlog.invalid_annotation(
-          opcode, annotation, "Must be constant", name)
+          stack, annotation, "Must be constant", name)
       return None
     elif (annotation.cls and
           annotation.cls.data == self.vm.convert.none_type.data):
@@ -223,8 +226,8 @@ class AnnotationsUtil(object):
       return self.vm.convert.none_type.data[0]
     elif isinstance(annotation, abstract.ParameterizedClass):
       for param_name, param in annotation.type_parameters.items():
-        processed = self._process_one_annotation(param, name, opcode,
-                                                 node, f_globals)
+        processed = self._process_one_annotation(
+            param, name, stack, node, f_globals)
         if processed is None:
           return None
         annotation.type_parameters[param_name] = processed
@@ -232,8 +235,8 @@ class AnnotationsUtil(object):
     elif isinstance(annotation, abstract.Union):
       options = []
       for option in annotation.options:
-        processed = self._process_one_annotation(option, name, opcode,
-                                                 node, f_globals)
+        processed = self._process_one_annotation(
+            option, name, stack, node, f_globals)
         if processed is None:
           return None
         options.append(processed)
@@ -245,8 +248,7 @@ class AnnotationsUtil(object):
                                  abstract.Nothing)):
       return annotation
     else:
-      self.vm.errorlog.invalid_annotation(
-          opcode, annotation, "Not a type", name)
+      self.vm.errorlog.invalid_annotation(stack, annotation, "Not a type", name)
       return None
 
   def _eval_expr(self, node, f_globals, expr):

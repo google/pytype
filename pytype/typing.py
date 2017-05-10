@@ -90,11 +90,11 @@ class Callable(TypingContainer):
       if args.cls and any(v.full_name == "__builtin__.list"
                           for v in args.cls.data):
         self.vm.errorlog.invalid_annotation(
-            self.vm.frame.current_opcode, args, "Must be constant")
+            self.vm.frames, args, "Must be constant")
       elif (args is not self.vm.convert.ellipsis and
             not isinstance(args, abstract.Unsolvable)):
         self.vm.errorlog.invalid_annotation(
-            self.vm.frame.current_opcode, args,
+            self.vm.frames, args,
             "First argument to Callable must be a list of argument types.")
       inner[0] = self.vm.convert.unsolvable
     value = self._build_value(node, tuple(inner), ends_with_ellipsis)
@@ -142,7 +142,7 @@ class TypeVar(abstract.PyTDFunction):
     if name in args.namedargs:
       value = self._get_class_or_constant(args.namedargs[name], name, arg_type)
       self.vm.errorlog.not_supported_yet(
-          self.vm.frame.current_opcode, "argument \"%s\" to TypeVar" % name)
+          self.vm.frames, "argument \"%s\" to TypeVar" % name)
       return value
     return default_value
 
@@ -182,8 +182,7 @@ class TypeVar(abstract.PyTDFunction):
     try:
       param = self._get_typeparam(node, args)
     except TypeVarError as e:
-      self.vm.errorlog.invalid_typevar(
-          self.vm.frame.current_opcode, e.message, e.bad_call)
+      self.vm.errorlog.invalid_typevar(self.vm.frames, e.message, e.bad_call)
       return node, self.vm.convert.unsolvable.to_variable(node)
     return node, param.to_variable(node)
 
@@ -195,10 +194,10 @@ class Cast(abstract.PyTDFunction):
     if args.posargs:
       try:
         annot = self.vm.annotations_util.process_annotation_var(
-            args.posargs[0], "typing.cast", self.vm.frame.current_opcode, node)
+            args.posargs[0], "typing.cast", self.vm.frames, node)
       except self.vm.annotations_util.LateAnnotationError:
         self.vm.errorlog.invalid_annotation(
-            self.vm.frame.current_opcode,
+            self.vm.frames,
             abstract.merge_values(args.posargs[0].data, self.vm),
             "Forward references not allowed in typing.cast.\n"
             "Consider switching to a type comment.")
@@ -223,7 +222,7 @@ def build_optional(name, vm):
 
 
 def build_generic(name, vm):
-  vm.errorlog.not_supported_yet(vm.frame.current_opcode, name)
+  vm.errorlog.not_supported_yet(vm.frames, name)
   return vm.convert.unsolvable
 
 

@@ -5,6 +5,7 @@ import csv
 import textwrap
 
 from pytype import errors
+from pytype import state as frame_state
 from pytype import utils
 
 import unittest
@@ -20,6 +21,9 @@ class FakeOpcode(object):
   def __init__(self, filename, line, methodname):
     self.code = FakeCode(filename, methodname)
     self.line = line
+
+  def to_stack(self):
+    return [frame_state.SimpleFrame(self)]
 
 
 class ErrorTest(unittest.TestCase):
@@ -38,9 +42,9 @@ class ErrorTest(unittest.TestCase):
     self.assertEquals("foo", e._methodname)
 
   @errors._error_name(_TEST_ERROR)
-  def test_at_opcode(self):
+  def test_with_stack(self):
     # Opcode of None.
-    e = errors.Error.at_opcode(None, errors.SEVERITY_ERROR, _MESSAGE)
+    e = errors.Error.with_stack(None, errors.SEVERITY_ERROR, _MESSAGE)
     self.assertEquals(errors.SEVERITY_ERROR, e._severity)
     self.assertEquals(_MESSAGE, e._message)
     self.assertEquals(e._name, _TEST_ERROR)
@@ -51,7 +55,7 @@ class ErrorTest(unittest.TestCase):
     self.assertEquals(None, e._methodname)
     # Opcode of None.
     op = FakeOpcode("foo.py", 123, "foo")
-    e = errors.Error.at_opcode(op, errors.SEVERITY_ERROR, _MESSAGE)
+    e = errors.Error.with_stack(op.to_stack(), errors.SEVERITY_ERROR, _MESSAGE)
     self.assertEquals(errors.SEVERITY_ERROR, e._severity)
     self.assertEquals(_MESSAGE, e._message)
     self.assertEquals(e._name, _TEST_ERROR)
@@ -93,8 +97,8 @@ class ErrorTest(unittest.TestCase):
     errorlog = errors.ErrorLog()
     op = FakeOpcode("foo.py", 123, "foo")
     message, details = "This is an error", "with\nsome\ndetails: \"1\", 2, 3"
-    errorlog.error(op, message, details + "0")
-    errorlog.error(op, message, details + "1")
+    errorlog.error(op.to_stack(), message, details + "0")
+    errorlog.error(op.to_stack(), message, details + "1")
     with utils.Tempdir() as d:
       filename = d.create_file("errors.csv")
       error = errorlog.print_to_csv_file(filename)
@@ -115,7 +119,7 @@ class ErrorLogBaseTest(unittest.TestCase):
   def test_error(self):
     errorlog = errors.ErrorLog()
     op = FakeOpcode("foo.py", 123, "foo")
-    errorlog.error(op, "unknown attribute %s" % "xyz")
+    errorlog.error(op.to_stack(), "unknown attribute %s" % "xyz")
     self.assertEquals(1, len(errorlog))
     e = list(errorlog)[0]  # iterate the log and save the first error.
     self.assertEquals(errors.SEVERITY_ERROR, e._severity)
@@ -137,7 +141,7 @@ class ErrorLogBaseTest(unittest.TestCase):
   def test_warn(self):
     errorlog = errors.ErrorLog()
     op = FakeOpcode("foo.py", 123, "foo")
-    errorlog.warn(op, "unknown attribute %s", "xyz")
+    errorlog.warn(op.to_stack(), "unknown attribute %s", "xyz")
     self.assertEquals(1, len(errorlog))
     e = list(errorlog)[0]  # iterate the log and save the first error.
     self.assertEquals(errors.SEVERITY_WARNING, e._severity)

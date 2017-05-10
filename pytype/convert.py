@@ -374,7 +374,7 @@ class Converter(object):
         # This error is triggered by, e.g., classes inheriting from each other.
         name = (pyval.name if hasattr(pyval, "name")
                 else pyval.__class__.__name__)
-        self.vm.errorlog.recursion_error(self.vm.frame.current_opcode, name)
+        self.vm.errorlog.recursion_error(self.vm.frames, name)
         self._convert_cache[key] = self.unsolvable
       return self._convert_cache[key]
     else:
@@ -455,8 +455,7 @@ class Converter(object):
       try:
         cls = abstract.PyTDClass(base_name, pyval, self.vm)
       except pytd_utils.MROError as e:
-        self.vm.errorlog.mro_error(
-            self.vm.frame.current_opcode, base_name, e.mro_seqs)
+        self.vm.errorlog.mro_error(self.vm.frames, base_name, e.mro_seqs)
         cls = self.unsolvable
       else:
         if dot:

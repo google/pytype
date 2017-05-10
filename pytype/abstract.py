@@ -563,7 +563,7 @@ class TypeParameter(AtomicAbstractValue):
     if self.name != name:
       message = "TypeVar(%r) must be stored as %r, not %r" % (
           self.name, self.name, name)
-      self.vm.errorlog.invalid_typevar(self.vm.frame.current_opcode, message)
+      self.vm.errorlog.invalid_typevar(self.vm.frames, message)
 
   def get_class(self):
     return self.to_variable(self.vm.root_cfg_node)
@@ -1095,8 +1095,7 @@ class AnnotationClass(SimpleAbstractValue, HasSlots):
     ends_with_ellipsis = False
     for var in slice_content:
       if len(var.bindings) > 1:
-        self.vm.errorlog.ambiguous_annotation(
-            self.vm.frame.current_opcode, var.data)
+        self.vm.errorlog.ambiguous_annotation(self.vm.frames, var.data)
         inner.append(self.vm.convert.unsolvable)
       else:
         val = var.bindings[0].data
@@ -1137,8 +1136,7 @@ class AnnotationContainer(AnnotationClass):
         inner, ends_with_ellipsis)
     if len(inner) > len(template):
       error = "Expected %d parameter(s), got %d" % (len(template), len(inner))
-      self.vm.errorlog.invalid_annotation(
-          self.vm.frame.current_opcode, self, error)
+      self.vm.errorlog.invalid_annotation(self.vm.frames, self, error)
     params = {name: inner[i] if i < len(inner) else self.vm.convert.unsolvable
               for i, name in enumerate(template)}
     return abstract_class(self.base_cls, params, self.vm)
@@ -1395,8 +1393,7 @@ class SuperInstance(AtomicAbstractValue):
     return self.cls
 
   def call(self, node, _, args):
-    self.vm.errorlog.not_callable(
-        self.vm.frame.current_opcode, self)
+    self.vm.errorlog.not_callable(self.vm.frames, self)
     return node, Unsolvable(self.vm).to_variable(node)
 
 
@@ -1432,7 +1429,7 @@ class IsInstance(AtomicAbstractValue):
             result.AddBinding(self._vm_values[pyval],
                               source_set=(left, right), where=node)
     except InvalidParameters as ex:
-      self.vm.errorlog.invalid_function_call(self.vm.frame.current_opcode, ex)
+      self.vm.errorlog.invalid_function_call(self.vm.frames, ex)
       result = self.vm.convert.create_new_unsolvable(node)
 
     return node, result
@@ -2245,7 +2242,7 @@ class PyTDClass(SimpleAbstractValue, Class):
       super(PyTDClass, self).load_lazy_attribute(name)
     except self.vm.convert.TypeParameterError as e:
       self.vm.errorlog.type_param_error(
-          self.vm.frame.current_opcode, self, name, e.type_param_name)
+          self.vm.frames, self, name, e.type_param_name)
       self.members[name] = self.vm.convert.unsolvable.to_variable(
           self.vm.root_cfg_node)
 
