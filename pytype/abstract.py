@@ -2799,7 +2799,9 @@ class InterpreterFunction(Function):
     self.last_frame = frame
     return node_after_call, ret
 
-  def get_call_combinations(self):
+  def get_call_combinations(self, node):
+    """Get this function's call records."""
+    all_combinations = []
     signature_data = set()
     for callargs, ret, node_after_call in self._call_records:
       try:
@@ -2818,7 +2820,17 @@ class InterpreterFunction(Function):
             continue
           if node_after_call.HasCombination(values):
             signature_data.add(data)
-            yield node_after_call, combination, return_value
+            all_combinations.append(
+                (node_after_call, combination, return_value))
+    if not all_combinations:
+      # Fallback: Generate a PyTD signature only from the definition of the
+      # method, not the way it's being used.
+      param = (
+          self.vm.convert.primitive_class_instances[object].to_variable(node))
+      params = collections.defaultdict(lambda: param.bindings[0])
+      ret = self.vm.convert.create_new_unsolvable(node).bindings[0]
+      all_combinations.append((node, params, ret))
+    return all_combinations
 
   def get_positional_names(self):
     return list(self.code.co_varnames[:self.code.co_argcount])

@@ -273,17 +273,20 @@ class Converter(object):
     else:
       raise NotImplementedError(v.__class__.__name__)
 
+  def _function_call_to_return_type(self, node, v, seen_return, num_returns):
+    if v.signature.has_return_annotation:
+      ret = v.signature.annotations["return"].get_instance_type(node)
+    else:
+      ret = seen_return.data.to_type(node)
+    if isinstance(ret, pytd.NothingType) and num_returns == 1:
+      assert isinstance(seen_return.data, abstract.Empty)
+      ret = pytd.AnythingType()
+    return ret
+
   def _function_to_def(self, node, v, function_name):
     """Convert an InterpreterFunction to a PyTD definition."""
     signatures = []
-    combinations = tuple(v.get_call_combinations())
-    if not combinations:
-      # Fallback: Generate a PyTD signature only from the definition of the
-      # method, not the way it's being  used.
-      param = v.vm.convert.primitive_class_instances[object].to_variable(node)
-      ret = v.vm.convert.create_new_unsolvable(node)
-      combinations = ((node, collections.defaultdict(lambda: param.bindings[0]),
-                       ret.bindings[0]),)
+    combinations = v.get_call_combinations(node)
     for node_after, combination, return_value in combinations:
       params = []
       for i, (name, kwonly, optional) in enumerate(v.get_parameters()):
@@ -295,13 +298,8 @@ class Converter(object):
         # like e.g. in: "def f((x,  y), z)".
         params.append(
             pytd.Parameter(name.replace(".", "_"), t, kwonly, optional, None))
-      if "return" in v.signature.annotations:
-        ret = v.signature.annotations["return"].get_instance_type(node_after)
-      else:
-        ret = return_value.data.to_type(node_after)
-      if isinstance(ret, pytd.NothingType) and len(combinations) == 1:
-        assert isinstance(return_value.data, abstract.Empty)
-        ret = pytd.AnythingType()
+      ret = self._function_call_to_return_type(
+          node_after, v, return_value, len(combinations))
       if v.has_varargs():
         starargs = pytd.Parameter(v.signature.varargs_name,
                                   pytd.NamedType("__builtin__.tuple"),
@@ -323,6 +321,21 @@ class Converter(object):
           template=()))
     return pytd.Function(function_name, tuple(signatures), pytd.METHOD)
 
+  def _property_to_types(self, node, v):
+    """Convert a property to a list of PyTD types."""
+    if "fget" not in v.members:
+      return [pytd.AnythingType()]
+    getter_options = v.members["fget"].FilteredData(v.vm.exitpoint)
+    if not all(isinstance(o, abstract.Function) for o in getter_options):
+      return [pytd.AnythingType()]
+    types = []
+    for val in getter_options:
+      combinations = val.get_call_combinations(node)
+      for node_after, _, return_value in combinations:
+        types.append(self._function_call_to_return_type(
+            node_after, val, return_value, len(combinations)))
+    return types
+
   def _class_to_def(self, node, v, class_name):
     """Convert an InterpreterClass to a PyTD definition."""
     methods = {}
@@ -330,18 +343,20 @@ class Converter(object):
 
     # class-level attributes
     for name, member in v.members.items():
-      if name not in CLASS_LEVEL_IGNORE:
-        for value in member.FilteredData(v.vm.exitpoint):
-          if isinstance(value, abstract.Function):
-            val = self.value_to_pytd_def(node, value, name)
-            if isinstance(val, pytd.Function):
-              methods[name] = val
-            elif isinstance(v, pytd.TYPE):
-              constants[name].add_type(val)
-            else:
-              raise AssertionError(str(type(val)))
-          else:
-            constants[name].add_type(value.to_type(node))
+      if name in CLASS_LEVEL_IGNORE:
+        continue
+      for value in member.FilteredData(v.vm.exitpoint):
+        if (isinstance(value, abstract.Instance) and
+            all(cls.full_name == "__builtin__.property"
+                for cls in value.cls.data)):
+          # For simplicity, output properties as constants, since our parser
+          # turns them into constants anyway.
+          for typ in self._property_to_types(node, value):
+            constants[name].add_type(typ)
+        elif isinstance(value, abstract.Function):
+          methods[name] = self.value_to_pytd_def(node, value, name)
+        else:
+          constants[name].add_type(value.to_type(node))
 
     # instance-level attributes
     for instance in v.instances:

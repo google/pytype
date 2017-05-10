@@ -75,11 +75,69 @@ class DecoratorsTest(test_inference.InferenceTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       class Foo(object):
-        f = ...  # type: property
+        f = ...  # type: Any
         x = ...  # type: Any
         def __init__(self, x) -> None
       foo = ...  # type: Foo
       x = ...  # type: int
+    """)
+
+  def testPropertyType(self):
+    ty = self.Infer("""
+      class Foo(object):
+        if __any_object__:
+          @property
+          def name(self):
+            return "Foo"
+        else:
+          @property
+          def name(self):
+            return u"Bar"
+    """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      class Foo(object):
+        name = ...  # type: str or unicode
+    """)
+
+  def testOverwritePropertyType(self):
+    ty = self.Infer("""
+      class Foo(object):
+        @property
+        def name(self):
+          return "Foo"
+        @name.getter
+        def name(self):
+          return u"Bar"
+    """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      class Foo(object):
+        name = ...  # type: unicode
+    """)
+
+  def testUnknownPropertyType(self):
+    ty = self.Infer("""
+      class Foo(object):
+        def name(self, x):
+          self._x = x
+        name = property(fset=name)
+    """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      class Foo(object):
+        name = ...  # type: Any
+    """)
+
+  def testBadFget(self):
+    ty = self.Infer("""
+      class Foo(object):
+        v = "hello"
+        name = property(v)
+    """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      class Foo(object):
+        v = ...  # type: str
+        name = ...  # type: Any
     """)
 
   def testInferCalledDecoratedMethod(self):

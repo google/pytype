@@ -329,9 +329,10 @@ class ClassesTest(test_inference.InferenceTest):
         name = property(fget=lambda self: self._name)
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import Any
       class Foo(object):
         _name = ...  # type: str
-        name = ...  # type: property
+        name = ...  # type: Any
         def test(self) -> str: ...
     """)
 
