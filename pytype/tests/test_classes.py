@@ -131,8 +131,8 @@ class ClassesTest(test_inference.InferenceTest):
     module = ...  # type: ?
     def f() -> NoneType
     class Foo(object):
-      # TODO(kramm): pytd needs better syntax for classmethods
-      bar = ...  # type: classmethod
+      @classmethod
+      def bar(cls) -> None: ...
     """)
 
   def testInheritFromUnknownAttributes(self):

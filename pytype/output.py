@@ -336,6 +336,16 @@ class Converter(object):
             node_after, val, return_value, len(combinations)))
     return types
 
+  def _special_method_to_def(self, node, v, name, kind):
+    """Convert a staticmethod or classmethod to a PyTD definition."""
+    # This line may raise abstract.ConversionError
+    func = abstract.get_atomic_value(v.members["__func__"], abstract.Function)
+    return self.value_to_pytd_def(node, func, name).Replace(kind=kind)
+
+  def _is_instance(self, value, cls_name):
+    return (isinstance(value, abstract.Instance) and
+            all(cls.full_name == cls_name for cls in value.cls.data))
+
   def _class_to_def(self, node, v, class_name):
     """Convert an InterpreterClass to a PyTD definition."""
     methods = {}
@@ -346,13 +356,23 @@ class Converter(object):
       if name in CLASS_LEVEL_IGNORE:
         continue
       for value in member.FilteredData(v.vm.exitpoint):
-        if (isinstance(value, abstract.Instance) and
-            all(cls.full_name == "__builtin__.property"
-                for cls in value.cls.data)):
+        if self._is_instance(value, "__builtin__.property"):
           # For simplicity, output properties as constants, since our parser
           # turns them into constants anyway.
           for typ in self._property_to_types(node, value):
             constants[name].add_type(typ)
+        elif self._is_instance(value, "__builtin__.staticmethod"):
+          try:
+            methods[name] = self._special_method_to_def(
+                node, value, name, pytd.STATICMETHOD)
+          except abstract.ConversionError:
+            constants[name].add_type(pytd.AnythingType())
+        elif self._is_instance(value, "__builtin__.classmethod"):
+          try:
+            methods[name] = self._special_method_to_def(
+                node, value, name, pytd.CLASSMETHOD)
+          except abstract.ConversionError:
+            constants[name].add_type(pytd.AnythingType())
         elif isinstance(value, abstract.Function):
           methods[name] = self.value_to_pytd_def(node, value, name)
         else:

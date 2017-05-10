@@ -872,7 +872,8 @@ class AnnotationTest(test_inference.InferenceTest):
     self.assertTypesMatchPytd(ty, """
       class A(object):
         x = ...  # type: int
-        New = ...  # type: staticmethod
+        @staticmethod
+        def New() -> A: ...
       x = ...  # type: int
     """)
 
@@ -891,7 +892,8 @@ class AnnotationTest(test_inference.InferenceTest):
     self.assertTypesMatchPytd(ty, """
       class A(object):
         x = ...  # type: int
-        New = ...  # type: staticmethod
+        @staticmethod
+        def New() -> "A": ...
       def f() -> int: ...
     """)
 

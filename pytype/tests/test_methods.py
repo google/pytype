@@ -688,8 +688,10 @@ class MethodsTest(test_inference.InferenceTest):
       f()
     """, deep=False, solve_unknowns=False, show_library_calls=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import Type
       class A(object):
-        myclassmethod = ...  # type: classmethod
+        @classmethod
+        def myclassmethod(cls: Type[A]) -> int: ...
       def f() -> int: ...
     """)
 

@@ -125,8 +125,10 @@ class FunctionCommentTest(test_inference.InferenceTest):
     """, filename="test.py")
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
-        f = ... # type: classmethod
-        g = ... # type: classmethod
+        @classmethod
+        def f(cls, x: int) -> None: ...
+        @classmethod
+        def g(cls: Foo, x: int) -> None: ...
     """)
 
   def testFunctionStarArg(self):

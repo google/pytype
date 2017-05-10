@@ -28,7 +28,58 @@ class DecoratorsTest(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=False, show_library_calls=True)
     self.assertTypesMatchPytd(ty, """
       class tzwinbase(object):
-        list = ...  # type: staticmethod
+        @staticmethod
+        def list() -> None: ...
+    """)
+
+  def testStaticMethodReturnType(self):
+    ty = self.Infer("""
+      class Foo(object):
+        @staticmethod
+        def bar():
+          return "hello world"
+    """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      class Foo(object):
+        @staticmethod
+        def bar() -> str: ...
+    """)
+
+  def testBadStaticMethod(self):
+    ty = self.Infer("""
+      class Foo(object):
+        bar = 42
+        bar = staticmethod(bar)
+    """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      class Foo(object):
+        bar = ...  # type: Any
+    """)
+
+  def testClassMethod(self):
+    ty = self.Infer("""
+      class Foo(object):
+        @classmethod
+        def f(cls):
+          return "hello world"
+    """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      class Foo(object):
+        @classmethod
+        def f(cls) -> str: ...
+    """)
+
+  def testBadClassMethod(self):
+    ty = self.Infer("""
+      class Foo(object):
+        bar = 42
+        bar = classmethod(bar)
+    """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      class Foo(object):
+        bar = ...  # type: Any
     """)
 
   def testBadKeyword(self):
