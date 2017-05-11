@@ -325,7 +325,6 @@ class GenericTest(test_inference.InferenceTest):
           def g() -> int or float
         """)
 
-  @unittest.skip("Needs better GenericType support")
   def testTypeParameterConflict(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
@@ -344,7 +343,7 @@ class GenericTest(test_inference.InferenceTest):
       """, pythonpath=[d.path], solve_unknowns=True, deep=True)
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
-        x = ...  # type: a.Custom[nothing, nothing]
+        x = ...  # type: a.Custom
       """)
 
   def testTypeParameterAmbiguous(self):

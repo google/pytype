@@ -1,7 +1,5 @@
 """Tests for --deep."""
 
-import unittest
-
 from pytype.tests import test_inference
 
 
@@ -15,19 +13,19 @@ class StructuralTest(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=False, show_library_calls=True)
     self.assertHasReturnType(ty.Lookup("f"), self.int)
 
-  @unittest.skip("Flawed test: i could be a slice")
   def testListUnknownIndex(self):
     ty = self.Infer("""
-      def f(x, i):
+      from __future__ import google_type_annotations
+      def f(x, i: int):
         l = list([1, x])
         return l[i]
     """, deep=True, solve_unknowns=False, show_library_calls=True)
     self.assertHasReturnType(ty.Lookup("f"), self.int)
 
-  @unittest.skip("Flawed test: i could be a slice")
   def testListUnknownIndexBothTypes(self):
     ty = self.Infer("""
-      def f(i):
+      from __future__ import google_type_annotations
+      def f(i: int):
         l = list([1, "str"])
         return l[i]
     """, deep=True, solve_unknowns=False, show_library_calls=True)
@@ -92,14 +90,14 @@ class StructuralTest(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=False, show_library_calls=True)
     self.assertIsIdentity(ty.Lookup("f"))
 
-  @unittest.skip("Flawed test: x could be a slice")
   def testFunctionPointer(self):
     ty = self.Infer("""
+      from __future__ import google_type_annotations
       def return_first(x, y):
         return x
       def return_second(x, y):
         return y
-      def f(x):
+      def f(x: int):
         l = [return_first, return_second]
         return l[x](x, x)
     """, deep=True, solve_unknowns=False, show_library_calls=True)

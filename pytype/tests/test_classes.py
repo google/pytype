@@ -178,16 +178,16 @@ class ClassesTest(test_inference.InferenceTest):
       def __init__(self, x) -> NoneType
     """)
 
-  @unittest.skip("Fails, needs 'raises' support.")
   def testSuperError(self):
-    self.assertNoErrors("""
+    _, errors = self.InferAndCheck("""\
       class Base(object):
         def __init__(self, x, y, z):
           pass
       class Foo(Base):
         def __init__(self, x):
           super(Foo, self).__init__()
-    """, raises=ValueError)
+    """)
+    self.assertErrorLogIs(errors, [(6, "missing-parameter", r"x")])
 
   def testSuperInInit(self):
     ty = self.Infer("""

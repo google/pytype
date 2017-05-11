@@ -1,4 +1,4 @@
-"""Tests for union types."""
+"""Tests for if-splitting."""
 
 import unittest
 
@@ -6,7 +6,7 @@ from pytype.tests import test_inference
 
 
 class SplitTest(test_inference.InferenceTest):
-  """Tests for union types."""
+  """Tests for if-splitting."""
 
   def testRestrictNone(self):
     ty = self.Infer("""
@@ -274,9 +274,7 @@ class SplitTest(test_inference.InferenceTest):
       def a2(x) -> Union[int, str]: ...
     """)
 
-  @unittest.skip("If-splitting isn't smart enough for this.")
-  def testBroken(self):
-    # TODO(dbaum): I don't think this test can work.
+  def testSplit(self):
     ty = self.Infer("""
       def f2(x):
         if x:
@@ -292,9 +290,10 @@ class SplitTest(test_inference.InferenceTest):
           return None
     """, deep=True)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any, Union
-      def f2(x) -> Any: ...
-      def f1(x) -> Union[complex, int]: ...
+      from typing import Any, Optional, TypeVar, Union
+      _T0 = TypeVar("_T0")
+      def f2(x: _T0) -> Union[_T0, complex]: ...
+      def f1(x) -> Optional[int]
     """)
 
   def testDeadIf(self):

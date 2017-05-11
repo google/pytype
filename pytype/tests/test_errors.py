@@ -617,7 +617,6 @@ class ErrorTest(test_inference.InferenceTest):
         z = ...  # type: Any
       """)
 
-  @unittest.skip("Need to match type parameters.")
   def testMatchParameterizedType(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
@@ -631,8 +630,8 @@ class ErrorTest(test_inference.InferenceTest):
         import a
         x = a.f(a.B)
       """, pythonpath=[d.path], deep=True)
-      expected_error = r"Expected.*Type\[A\[int\]\].*Actual.*Type\[B\]"
-      self.assertErrorLogIs(errors, [(4, "wrong-arg-types", expected_error)])
+      expected_error = r"Expected.*Type\[a\.A\[int\]\].*Actual.*Type\[a\.B\]"
+      self.assertErrorLogIs(errors, [(2, "wrong-arg-types", expected_error)])
 
   def testMROError(self):
     with utils.Tempdir() as d:

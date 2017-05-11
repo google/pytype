@@ -322,9 +322,8 @@ class TestIt(test_inference.InferenceTest):
       print(D().f())
       """)
 
-  @unittest.skip("TypeError. assertNoErrors needs support for that.")
   def test_calling_methods_wrong(self):
-    self.assertNoErrors("""\
+    _, errors = self.InferAndCheck("""\
       class Thing(object):
         def __init__(self, x):
           self.x = x
@@ -332,7 +331,8 @@ class TestIt(test_inference.InferenceTest):
           return self.x * y
       thing1 = Thing(2)
       print(Thing.meth(14))
-      """, raises=TypeError)
+    """)
+    self.assertErrorLogIs(errors, [(7, "missing-parameter", r"self")])
 
   def test_calling_subclass_methods(self):
     self.assertNoErrors("""\
@@ -347,9 +347,8 @@ class TestIt(test_inference.InferenceTest):
       print(st.foo())
       """)
 
-  @unittest.skip("Raises AttributeError, like it should. Fix assertNoErrors.")
   def test_other_class_methods(self):
-    self.assertNoErrors("""\
+    _, errors = self.InferAndCheck("""\
       class Thing(object):
         def foo(self):
           return 17
@@ -360,7 +359,8 @@ class TestIt(test_inference.InferenceTest):
 
       st = SubThing()
       print(st.foo())
-      """, raises=AttributeError)
+    """)
+    self.assertErrorLogIs(errors, [(10, "attribute-error", r"foo.*SubThing")])
 
   def test_attribute_access(self):
     self.assertNoErrors("""\
