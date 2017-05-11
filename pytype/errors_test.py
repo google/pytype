@@ -83,15 +83,6 @@ class ErrorTest(unittest.TestCase):
         'File "foo.py", line 123, in foo: an error message [test-error]',
         str(e))
 
-  def test_from_csv_row(self):
-    row = ["a.py", "123", "index-error", "This is an error",
-           "with\nsome\ndetails: 1, 2, 3"]
-    error = errors.Error.from_csv_row(row)
-    self.assertEquals(error.filename, row[0])
-    self.assertEquals(error.lineno, int(row[1]))
-    self.assertEquals(error.name, row[2])
-    self.assertEquals(error.message, row[3] + "\n" + row[4])
-
   @errors._error_name(_TEST_ERROR)
   def test_write_to_csv(self):
     errorlog = errors.ErrorLog()
@@ -101,16 +92,17 @@ class ErrorTest(unittest.TestCase):
     errorlog.error(op.to_stack(), message, details + "1")
     with utils.Tempdir() as d:
       filename = d.create_file("errors.csv")
-      error = errorlog.print_to_csv_file(filename)
+      errorlog.print_to_csv_file(filename)
       with open(filename, "rb") as fi:
         rows = list(csv.reader(fi, delimiter=","))
         self.assertEquals(2, len(rows))
         for i, row in enumerate(rows):
-          error = errors.Error.from_csv_row(row)
-          self.assertEquals(error.filename, "foo.py")
-          self.assertEquals(error.lineno, 123)
-          self.assertEquals(error.name, _TEST_ERROR)
-          self.assertEquals(error.message, message + "\n" + details + str(i))
+          filename, lineno, name, actual_message, actual_details = row
+          self.assertEquals(filename, "foo.py")
+          self.assertEquals(lineno, "123")
+          self.assertEquals(name, _TEST_ERROR)
+          self.assertEquals(actual_message, message)
+          self.assertEquals(actual_details, details + str(i))
 
 
 class ErrorLogBaseTest(unittest.TestCase):

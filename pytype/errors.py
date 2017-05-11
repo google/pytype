@@ -67,18 +67,6 @@ class Error(object):
     self._methodname = methodname
 
   @classmethod
-  def from_csv_row(cls, row):
-    """Translate a CSV row back into an Error object."""
-
-    filename, lineno, name, message, details = row
-
-    with _CURRENT_ERROR_NAME.bind(name):
-      return cls(SEVERITY_ERROR, message,
-                 lineno=int(lineno),
-                 filename=filename,
-                 details=details)
-
-  @classmethod
   def with_stack(cls, stack, severity, message, details=None):
     """Return an error using a stack for position information."""
     # TODO(rechen): Use the stack to generate a backtrace.
