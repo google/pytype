@@ -65,6 +65,43 @@ class ErrorTest(unittest.TestCase):
     self.assertEquals(None, e._linetext)
     self.assertEquals("foo", e._methodname)
 
+  @errors._error_name(_TEST_ERROR)
+  def test_no_traceback_stack_len_1(self):
+    # Stack of length 1
+    op = FakeOpcode("foo.py", 123, "foo")
+    error = errors.Error.with_stack(op.to_stack(), errors.SEVERITY_ERROR, "")
+    self.assertIsNone(error._traceback)
+
+  @errors._error_name(_TEST_ERROR)
+  def test_no_traceback_no_opcode(self):
+    # Frame without opcode
+    op = FakeOpcode("foo.py", 123, "foo")
+    stack = [frame_state.SimpleFrame(), frame_state.SimpleFrame(op)]
+    error = errors.Error.with_stack(stack, errors.SEVERITY_ERROR, "")
+    self.assertIsNone(error._traceback)
+
+  @errors._error_name(_TEST_ERROR)
+  def test_traceback(self):
+    stack = sum((FakeOpcode("foo.py", i, "function%d" % i).to_stack()
+                 for i in range(errors.MAX_TRACEBACK_LENGTH + 1)), [])
+    error = errors.Error.with_stack(stack, errors.SEVERITY_ERROR, "")
+    self.assertMultiLineEqual(error._traceback, textwrap.dedent("""\
+      Traceback:
+        line 0, in function0
+        line 1, in function1
+        line 2, in function2"""))
+
+  @errors._error_name(_TEST_ERROR)
+  def test_truncated_traceback(self):
+    stack = sum((FakeOpcode("foo.py", i, "function%d" % i).to_stack()
+                 for i in range(errors.MAX_TRACEBACK_LENGTH + 2)), [])
+    error = errors.Error.with_stack(stack, errors.SEVERITY_ERROR, "")
+    self.assertMultiLineEqual(error._traceback, textwrap.dedent("""\
+      Traceback:
+        line 0, in function0
+        ...
+        line 3, in function3"""))
+
   def test__error_name(self):
     # This should be true as long as at least one method is annotated with
     # _error_name(_TEST_ERROR).

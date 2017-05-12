@@ -24,6 +24,12 @@ _ERROR_NAMES = set()
 # The current error name, managed by the error_name decorator.
 _CURRENT_ERROR_NAME = utils.DynamicVar()
 
+# Max number of calls in the traceback string.
+MAX_TRACEBACK_LENGTH = 3
+
+# Symbol representing an elided portion of the stack.
+_ELLIPSIS = object()
+
 
 def _error_name(name):
   """Decorate a function so that it binds the current error name."""
@@ -34,6 +40,43 @@ def _error_name(name):
         return func(*args, **kwargs)
     return invoke
   return wrap
+
+
+def _maybe_truncate_traceback(traceback):
+  """Truncate the traceback if it is too long.
+
+  Args:
+    traceback: A list representing an error's traceback. There should be one
+      list item per entry in the traceback (in the right order); beyond that,
+      this function does not care about the item types.
+
+  Returns:
+    The traceback, possibly with some items removed and an _ELLIPSIS inserted.
+    Guaranteed to be no longer than MAX_TRACEBACK_LENGTH.
+  """
+  if len(traceback) > MAX_TRACEBACK_LENGTH:
+    return traceback[:MAX_TRACEBACK_LENGTH-2] + [_ELLIPSIS, traceback[-1]]
+  else:
+    return traceback
+
+
+def _make_traceback_str(stack):
+  """Turn a stack of frames into a traceback string.
+
+  Args:
+    stack: A list of state.Frame or state.SimpleFrame objects.
+
+  Returns:
+    A traceback string representing the stack.
+  """
+  ops = [frame.current_opcode for frame in stack[:-1] if frame.current_opcode]
+  if ops:
+    ops = _maybe_truncate_traceback(ops)
+    op_to_str = lambda op: "line %d, in %s" % (op.line, op.code.co_name)
+    traceback = ["..." if op is _ELLIPSIS else op_to_str(op) for op in ops]
+    return "Traceback:\n  " + "\n  ".join(traceback)
+  else:
+    return None
 
 
 class CheckPoint(object):
@@ -48,7 +91,7 @@ class Error(object):
   """Representation of an error in the error log."""
 
   def __init__(self, severity, message, filename=None, lineno=0, column=None,
-               linetext=None, methodname=None, details=None):
+               linetext=None, methodname=None, details=None, traceback=None):
     name = _CURRENT_ERROR_NAME.get()
     assert name, ("Errors must be created from a caller annotated "
                   "with @error_name.")
@@ -65,18 +108,28 @@ class Error(object):
     self._column = column
     self._linetext = linetext
     self._methodname = methodname
+    self._traceback = traceback
 
   @classmethod
   def with_stack(cls, stack, severity, message, details=None):
-    """Return an error using a stack for position information."""
-    # TODO(rechen): Use the stack to generate a backtrace.
+    """Return an error using a stack for position information.
+
+    Args:
+      stack: A list of state.Frame or state.SimpleFrame objects.
+      severity: The error level (error or warning), an integer.
+      message: The error message string.
+      details: Optionally, a string of message details.
+
+    Returns:
+      An Error object.
+    """
     opcode = stack[-1].current_opcode if stack else None
     if opcode is None:
       return cls(severity, message, details=details)
     else:
       return cls(severity, message, filename=opcode.code.co_filename,
                  lineno=opcode.line, methodname=opcode.code.co_name,
-                 details=details)
+                 details=details, traceback=_make_traceback_str(stack))
 
   @classmethod
   def for_test(cls, severity, message, name, **kwargs):
