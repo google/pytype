@@ -2773,14 +2773,11 @@ class InterpreterFunction(Function):
     if self.signature.has_return_annotation:
       frame.allowed_returns = annotations["return"]
     if self.vm.options.skip_repeat_calls:
-      # TODO(tsudol): Hashing frame.f_locals.members should be the same as in
-      # make_function above, but doing so causes infer to pollute the output
-      # with type declarations from __builtin__. See test_python3.py:95 and
-      # :104. Investigate why and change the hashing here if possible.
       callkey = self._hash_all(
           (callargs, None),
           (frame.f_globals.members, set(self.code.co_names)),
-          (frame.f_locals.members, set(self.code.co_varnames)))
+          (frame.f_locals.members,
+           set(frame.f_locals.members) - set(self.code.co_varnames)))
     else:
       # Make the callkey the number of times this function has been called so
       # that no call has the same key as a previous one.
@@ -3106,9 +3103,9 @@ class BuildClass(AtomicAbstractValue):
     node, _ = func.call(node, funcvar.bindings[0],
                         args.replace(posargs=(), namedargs={}),
                         new_locals=True)
+    func.f_locals = func.last_frame.f_locals
     return node, self.vm.make_class(
-        node, name, list(bases),
-        func.last_frame.f_locals.to_variable(node), None)
+        node, name, list(bases), func.f_locals.to_variable(node), None)
 
 
 class Unsolvable(AtomicAbstractValue):
