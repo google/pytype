@@ -878,6 +878,7 @@ class LookupExternalTypes(Visitor):
     self._module_map = module_map
     self.full_names = full_names
     self.name = self_name
+    self._in_constant = False
 
   def _ResolveUsingGetattr(self, module_name, module):
     """Try to resolve an identifier using the top level __getattr__ function."""
@@ -891,6 +892,14 @@ class LookupExternalTypes(Visitor):
     # TODO(kramm): Make parser.py actually enforce this:
     assert len(g.signatures) == 1
     return g.signatures[0].return_type
+
+  def EnterConstant(self, _):
+    assert not self._in_constant
+    self._in_constant = True
+
+  def LeaveConstant(self, _):
+    assert self._in_constant
+    self._in_constant = False
 
   def VisitNamedType(self, t):
     """Try to look up a NamedType.
@@ -921,7 +930,7 @@ class LookupExternalTypes(Visitor):
       item = self._ResolveUsingGetattr(module_name, module)
       if item is None:
         raise KeyError("No %s in module %s" % (name, module_name))
-    return _ToType(item)
+    return _ToType(item, allow_constants=not self._in_constant)
 
   def VisitClassType(self, t):
     new_type = self.VisitNamedType(t)

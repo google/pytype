@@ -318,6 +318,20 @@ class TestVisitors(parser_test_base.ParserTest):
     self.assertIs(ast2.Lookup("bar.Bar"), f1.return_type.cls)
     self.assertIs(ast1.Lookup("foo.Foo"), f2.return_type.cls)
 
+  def testLookupConstant(self):
+    src1 = textwrap.dedent("""
+      Foo = ...  # type: type
+    """)
+    src2 = textwrap.dedent("""
+      class Bar(object):
+        bar = ...  # type: foo.Foo
+    """)
+    ast1 = self.Parse(src1)
+    ast2 = self.Parse(src2)
+    ast2 = ast2.Visit(visitors.LookupExternalTypes({"foo": ast1, "bar": ast2}))
+    self.assertEquals(ast2.Lookup("Bar").constants[0],
+                      pytd.Constant(name="bar", type=pytd.AnythingType()))
+
   def testCollectDependencies(self):
     src = textwrap.dedent("""
       l = ... # type: list[int or baz.BigInt]

@@ -1,7 +1,6 @@
 """Tests for typeshed.py."""
 
 import os
-import unittest
 
 
 from pytype import load_pytd
@@ -76,7 +75,6 @@ class TestTypeshedParsing(test_inference.InferenceTest):
   def test_importlib(self):
     self.assertTrue(self.loader.import_name("importlib"))
 
-  @unittest.skip("broken")
   def test_SocketServer(self):
     self.assertTrue(self.loader.import_name("SocketServer"))
 
