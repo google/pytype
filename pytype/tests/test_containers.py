@@ -653,6 +653,13 @@ class ContainerTest(test_inference.InferenceTest):
         results["foo"]
     """)
 
+  def testDictGetItem(self):
+    _, errors = self.InferAndCheck("""\
+      v = {}
+      v.__getitem__("a")
+    """)
+    self.assertErrorLogIs(errors, [(2, "key-error", r"'a'")])
+
   def testIteratePyiListUnion(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """

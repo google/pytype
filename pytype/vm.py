@@ -852,7 +852,10 @@ class VirtualMachine(object):
       return node, result
     else:
       if fallback_to_unsolvable:
-        self.errorlog.invalid_function_call(self.frames, error)
+        if isinstance(error, abstract.DictKeyMissing):
+          self.errorlog.key_error(self.frames, error.name)
+        else:
+          self.errorlog.invalid_function_call(self.frames, error)
         return node, self.convert.create_new_unsolvable(node)
       else:
         # We were called by something that does its own error handling.
