@@ -232,7 +232,7 @@ class ContainerTest(test_inference.InferenceTest):
         ty.Lookup("f"),
         ((), self.int_str_dict))
 
-  def testDictUpdate(self):
+  def testDictSetItem(self):
     ty = self.Infer("""
       def f():
         d = {}
@@ -244,6 +244,26 @@ class ContainerTest(test_inference.InferenceTest):
     self.assertHasOnlySignatures(
         ty.Lookup("f"),
         ((), self.str_int_dict))
+
+  def testDictUpdate(self):
+    ty = self.Infer("""
+      d = {}
+      d.update({"a": 1}, b=2j)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Dict
+      d = ...  # type: Dict[str, int or complex]
+    """)
+
+  def testAmbiguousDictUpdate(self):
+    ty = self.Infer("""
+      d = {}
+      d.update({"a": 1} if __any_object__ else {"b": 2j}, c=3.0)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any, Dict
+      d = ...  # type: Dict[str, int or float or complex]
+    """)
 
   def testForIter(self):
     ty = self.Infer("""

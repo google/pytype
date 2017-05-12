@@ -1,7 +1,5 @@
 """Tests for abstract.py."""
 
-import unittest
-
 
 from pytype import abstract
 from pytype import annotations_util
@@ -147,12 +145,44 @@ class DictTest(AbstractTestBase):
     self.assertIs(True, self._d.compatible_with(True))
     self.assertIs(False, self._d.compatible_with(False))
 
-  @unittest.skip("update() does not update the parameters")
-  def test_compatible_with__after_update(self):
-    # Updating an empty dict also makes it ambiguous.
+  def test_compatible_with__after_unknown_update(self):
+    # Updating an empty dict with an unknown value makes the former ambiguous.
     self._d.update(self._node, abstract.Unknown(self._vm))
     self.assertIs(True, self._d.compatible_with(True))
     self.assertIs(True, self._d.compatible_with(False))
+
+  def test_compatible_with__after_empty_update(self):
+    empty_dict = abstract.Dict(self._vm)
+    self._d.update(self._node, empty_dict)
+    self.assertIs(False, self._d.compatible_with(True))
+    self.assertIs(True, self._d.compatible_with(False))
+
+  def test_compatible_with__after_unambiguous_update(self):
+    unambiguous_dict = abstract.Dict(self._vm)
+    unambiguous_dict.set_str_item(
+        self._node, "a", self._vm.convert.create_new_unsolvable(self._node))
+    self._d.update(self._node, unambiguous_dict)
+    self.assertIs(True, self._d.compatible_with(True))
+    self.assertIs(False, self._d.compatible_with(False))
+
+  def test_compatible_with__after_ambiguous_update(self):
+    ambiguous_dict = abstract.Dict(self._vm)
+    ambiguous_dict.merge_type_parameter(
+        self._node, abstract.K,
+        self._vm.convert.create_new_unsolvable(self._node))
+    ambiguous_dict.could_contain_anything = True
+    self._d.update(self._node, ambiguous_dict)
+    self.assertIs(True, self._d.compatible_with(True))
+    self.assertIs(True, self._d.compatible_with(False))
+
+  def test_compatible_with__after_concrete_update(self):
+    self._d.update(self._node, {})
+    self.assertIs(False, self._d.compatible_with(True))
+    self.assertIs(True, self._d.compatible_with(False))
+    self._d.update(
+        self._node, {"a": self._vm.convert.create_new_unsolvable(self._node)})
+    self.assertIs(True, self._d.compatible_with(True))
+    self.assertIs(False, self._d.compatible_with(False))
 
 
 class IsInstanceTest(AbstractTestBase):

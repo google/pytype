@@ -1,7 +1,5 @@
 """Tests for if-splitting."""
 
-import unittest
-
 from pytype.tests import test_inference
 
 
@@ -229,8 +227,7 @@ class SplitTest(test_inference.InferenceTest):
       def f2(x) -> Union[int, str]: ...
     """)
 
-  @unittest.skip("Dict.update() doesn't establish a key parameter.")
-  def testDictBroken(self):
+  def testDictUpdate(self):
     ty = self.Infer("""
       def f1():
         d = {}
@@ -245,8 +242,42 @@ class SplitTest(test_inference.InferenceTest):
     """, deep=True)
     self.assertTypesMatchPytd(ty, """
       from typing import Union
-      def f1() -> Union[int, str]: ...
-      def f2() -> Union[int, str]: ...
+      def f1() -> str: ...
+      def f2() -> int: ...
+    """)
+
+  def testDictUpdateFromKwargs(self):
+    ty = self.Infer("""
+      def f1():
+        d = {}
+        d.update()
+        return 123 if d else "hello"
+
+      def f2():
+        d = {}
+        d.update(a=1)
+        return 123 if d else "hello"
+    """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      def f1() -> str: ...
+      def f2() -> int: ...
+    """)
+
+  def testBadDictUpdate(self):
+    ty = self.Infer("""
+      def f1():
+        d = {}
+        d.update({"a": 1}, {"b": 2})
+        return 123 if d else "hello"
+
+      def f2():
+        d = {}
+        d.update({"a": 1}, {"b": 2}, c=3)
+        return 123 if d else "hello"
+    """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      def f1() -> str or int
+      def f2() -> str or int
     """)
 
   def testIsInstance(self):

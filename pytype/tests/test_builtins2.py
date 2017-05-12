@@ -41,7 +41,7 @@ class BuiltinTests2(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Dict
-      x = ...  # type: Dict[str, Any]
+      x = ...  # type: Dict[str, int]
     """)
 
   def testImportLib(self):

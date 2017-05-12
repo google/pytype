@@ -934,10 +934,11 @@ class Dict(Instance, HasSlots, PythonConstant, WrapsDict("pyval")):
   def __init__(self, vm):
     super(Dict, self).__init__(vm.convert.dict_type, vm)
     HasSlots.init_mixin(self)
+    self.set_slot("__contains__", self.contains_slot)
     self.set_slot("__getitem__", self.getitem_slot)
     self.set_slot("__setitem__", self.setitem_slot)
     self.set_slot("setdefault", self.setdefault_slot)
-    self.set_slot("__contains__", self.contains_slot)
+    self.set_slot("update", self.update_slot)
     self.init_type_parameters(K, V)
     self.could_contain_anything = False
     PythonConstant.init_mixin(self, {})
@@ -1029,8 +1030,23 @@ class Dict(Instance, HasSlots, PythonConstant, WrapsDict("pyval")):
         value = str_key in self.pyval
     return node, self.vm.convert.build_bool(node, value)
 
+  def update_slot(self, node, *args, **kwargs):
+    posargs_handled = False
+    if len(args) == 1:
+      arg_data = args[0].Data(node)
+      if len(arg_data) == 1:
+        self.update(node, arg_data[0])
+        posargs_handled = True
+    elif not args:
+      posargs_handled = True
+    self.update(node, kwargs)
+    if not posargs_handled:
+      self.could_contain_anything = True
+      return self.call_pytd(node, "update", *args)
+    else:
+      return node, self.vm.convert.none.to_variable(node)
+
   def update(self, node, other_dict, omit=()):
-    self.could_contain_anything = True
     if isinstance(other_dict, (Dict, dict)):
       for key, value in other_dict.items():
         # TODO(kramm): sources
@@ -1041,10 +1057,13 @@ class Dict(Instance, HasSlots, PythonConstant, WrapsDict("pyval")):
         v = other_dict.get_type_parameter(node, V)
         self.merge_type_parameter(node, K, k)
         self.merge_type_parameter(node, V, v)
-      return True
+        self.could_contain_anything |= other_dict.could_contain_anything
     else:
       assert isinstance(other_dict, AtomicAbstractValue)
-      return False
+      unsolvable = self.vm.convert.create_new_unsolvable(node)
+      self.merge_type_parameter(node, K, unsolvable)
+      self.merge_type_parameter(node, V, unsolvable)
+      self.could_contain_anything = True
 
   def cmp_eq(self, other):
     if (not self.could_contain_anything and isinstance(other, Dict) and
