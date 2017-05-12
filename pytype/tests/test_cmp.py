@@ -30,7 +30,6 @@ class InTest(test_inference.InferenceTest):
     """, deep=True, solve_unknowns=True, show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.bool)
 
-  @unittest.skip("typegraphvm.cmp_in needs overloading support.")
   def test_overloaded(self):
     ty = self.Infer("""
       class Foo(object):
@@ -39,10 +38,15 @@ class InTest(test_inference.InferenceTest):
       def f():
         return Foo() in []
       def g():
+        # The result of __contains__ is coerced to a bool.
         return 3 in Foo()
-    """, deep=True, solve_unknowns=False, show_library_calls=True)
-    self.assertOnlyHasReturnType(ty.Lookup("f"), self.bool)
-    self.assertOnlyHasReturnType(ty.Lookup("g"), self.complex)
+    """, deep=True, solve_unknowns=False)
+    self.assertTypesMatchPytd(ty, """
+      class Foo(object):
+        def __contains__(self, x) -> complex
+      def f() -> bool
+      def g() -> bool
+    """)
 
   def test_none(self):
     _, errors = self.InferAndCheck("""\
@@ -73,8 +77,7 @@ class NotInTest(test_inference.InferenceTest):
     self.assertErrorLogIs(errors, [(2, "unsupported-operands",
                                     r"__contains__.*object")])
 
-# "not in" maps to the inverse of __contains__
-  @unittest.skip("typegraphvm.cmp_not_in needs overloading support.")
+  # "not in" maps to the inverse of __contains__
   def test_overloaded(self):
     ty = self.Infer("""
       class Foo(object):
@@ -83,10 +86,15 @@ class NotInTest(test_inference.InferenceTest):
       def f():
         return Foo() not in []
       def g():
+        # The result of __contains__ is coerced to a bool.
         return 3 not in Foo()
-    """, deep=True, solve_unknowns=False, show_library_calls=True)
-    self.assertOnlyHasReturnType(ty.Lookup("f"), self.bool)
-    self.assertOnlyHasReturnType(ty.Lookup("g"), self.complex)
+    """, deep=True, solve_unknowns=False)
+    self.assertTypesMatchPytd(ty, """
+      class Foo(object):
+        def __contains__(self, x) -> complex
+      def f() -> bool
+      def g() -> bool
+    """)
 
   def test_none(self):
     _, errors = self.InferAndCheck("""\
