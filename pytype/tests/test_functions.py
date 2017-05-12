@@ -715,6 +715,12 @@ class TestFunctions(test_inference.InferenceTest):
         return lambda c: f(c)
     """)
 
+  def testNestedLambda3(self):
+    self.assertNoErrors("""
+      def f(t):
+        lambda u=[t,1]: f(u)
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()
