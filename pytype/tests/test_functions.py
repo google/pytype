@@ -703,6 +703,18 @@ class TestFunctions(test_inference.InferenceTest):
       def f() -> Tuple[Callable[..., int], Callable[..., str]]
     """)
 
+  def testNestedLambda(self):
+    self.assertNoErrors("""\
+      def f(c):
+        return lambda c: f(c)
+    """)
+
+  def testNestedLambda2(self):
+    self.assertNoErrors("""\
+      def f(d):
+        return lambda c: f(c)
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

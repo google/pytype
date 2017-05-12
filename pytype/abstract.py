@@ -2505,7 +2505,8 @@ class InterpreterFunction(Function):
     key = (name, code,
            InterpreterFunction._hash_all(
                (f_globals.members, set(code.co_names)),
-               (f_locals.members, set(code.co_varnames)),
+               (f_locals.members,
+                set(f_locals.members) - set(code.co_varnames)),
                ({key: vm.program.NewVariable([value], [], vm.root_cfg_node)
                  for key, value in annotations.items()}, None),
                (dict(enumerate(defaults)), None),
@@ -2753,6 +2754,10 @@ class InterpreterFunction(Function):
     if self.signature.has_return_annotation:
       frame.allowed_returns = annotations["return"]
     if self.vm.options.skip_repeat_calls:
+      # TODO(tsudol): Hashing frame.f_locals.members should be the same as in
+      # make_function above, but doing so causes infer to pollute the output
+      # with type declarations from __builtin__. See test_python3.py:95 and
+      # :104. Investigate why and change the hashing here if possible.
       callkey = self._hash_all(
           (callargs, None),
           (frame.f_globals.members, set(self.code.co_names)),
@@ -3159,6 +3164,15 @@ class Unknown(AtomicAbstractValue):
     self._calls = []
     self.mro = self.default_mro()
     log.info("Creating %s", self.class_name)
+
+  def get_fullhash(self):
+    # Unknown needs its own implementation of get_fullhash to ensure equivalent
+    # Unknowns produce the same hash. "Equivalent" in this case means "has the
+    # same members," so member names are used in the hash instead of id().
+    m = hashlib.md5()
+    for name in self.members:
+      m.update(name)
+    return m.digest()
 
   def get_children_maps(self):
     return (self.members,)
