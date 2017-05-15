@@ -953,6 +953,16 @@ class ErrorTest(test_inference.InferenceTest):
     self.assertErrorLogIs(errors, [(3, "wrong-arg-types",
                                     r"Actual.*Callable\[\[int\], str\]")])
 
+  def testSameNameAndLine(self):
+    _, errors = self.InferAndCheck("""\
+      def f(x):
+        return x + 42
+      f("hello")
+      f(u"world")
+    """)
+    self.assertErrorLogIs(errors, [(2, "wrong-arg-types", r"str.*int"),
+                                   (2, "wrong-arg-types", r"unicode.*int")])
+
 
 if __name__ == "__main__":
   test_inference.main()

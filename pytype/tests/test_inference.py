@@ -1,5 +1,6 @@
 """Common methods for tests of infer.py."""
 
+import collections
 import logging
 import os
 import re
@@ -253,27 +254,42 @@ class InferenceTest(unittest.TestCase):
         errorlog.print_to_stderr()
         raise AssertionError("Found regexp %r in errors" % regexp)
 
-  def assertErrorLogIs(self, errorlog, expected_lines_and_errors):
-    actual_errors = {(error.lineno, error.name): error
-                     for error in errorlog}
-    for pattern in expected_lines_and_errors:
-      line = pattern[0]
-      name = pattern[1]
-      regexp = pattern[2] if len(pattern) > 2 else None
-      error = actual_errors.get((line, name))
-      if error is None:
+  def _parse_expected_error(self, pattern):
+    line = pattern[0]
+    name = pattern[1]
+    regexp = pattern[2] if len(pattern) > 2 else ""
+    return line, name, regexp
+
+  def assertErrorLogIs(self, errorlog, expected_errors):
+    expected_errors = collections.Counter(expected_errors)
+    # This is O(|errorlog| * |expected_errors|), which is okay because error
+    # lists in tests are short.
+    for error in errorlog.unique_sorted_errors():
+      almost_matches = set()
+      for (pattern, count) in expected_errors.items():
+        line, name, regexp = self._parse_expected_error(pattern)
+        if line == error.lineno and name == error.name:
+          if not regexp or re.search(regexp, error.message, flags=re.DOTALL):
+            if count == 1:
+              del expected_errors[pattern]
+            else:
+              expected_errors[pattern] -= 1
+            break
+          else:
+            almost_matches.add(regexp)
+      else:
         errorlog.print_to_stderr()
-        raise AssertionError("Error %s not found on line %d %r" % (
-            name, line, " " + repr(regexp) if regexp else ""))
-      if regexp and not re.search(regexp, error.message, flags=re.DOTALL):
-        errorlog.print_to_stderr()
-        raise AssertionError("Bad error message: %r doesn't match %r" % (
-            error.message, regexp))
-      del actual_errors[(line, name)]
-    if actual_errors:
-      any_error = next(iter(actual_errors.values()))
+        if almost_matches:
+          raise AssertionError("Bad error message: expected %r, got %r" % (
+              almost_matches.pop(), error.message))
+        else:
+          raise AssertionError("Unexpected error:\n%s" % error)
+    if expected_errors:
       errorlog.print_to_stderr()
-      raise AssertionError("Unexpected error:\n%s" % any_error)
+      leftover_errors = [
+          self._parse_expected_error(pattern) for pattern in expected_errors]
+      raise AssertionError("Errors not found:\n" + "\n".join(
+          "Line %d: %r [%s]" % (e[0], e[2], e[1]) for e in leftover_errors))
 
   def Infer(self, srccode, pythonpath=(), deep=False, solve_unknowns=False,
             report_errors=True, analyze_annotated=True, **kwargs):
