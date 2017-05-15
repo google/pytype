@@ -251,19 +251,14 @@ class ErrorLogBase(object):
 
   def unique_sorted_errors(self):
     seen = set()
-    for error in self.sorted_errors():
+    for error in self._sorted_errors():
       text = str(error)
       if text not in seen:
         seen.add(text)
         yield error
 
-  def sorted_errors(self):
-    # pylint: disable=protected-access
-    return sorted(self._errors,
-                  key=lambda x: (x._filename, x._lineno))
-
-  def error_names(self):
-    return {e.name for e in self._errors}
+  def _sorted_errors(self):
+    return sorted(self._errors, key=lambda x: (x.filename, x.lineno))
 
   def print_to_stderr(self):
     self.print_to_file(sys.stderr)
