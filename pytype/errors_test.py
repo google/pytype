@@ -31,14 +31,12 @@ class ErrorTest(unittest.TestCase):
   @errors._error_name(_TEST_ERROR)
   def test_init(self):
     e = errors.Error(errors.SEVERITY_ERROR, _MESSAGE, filename="foo.py",
-                     lineno=123, column=2, linetext="hello", methodname="foo")
+                     lineno=123, methodname="foo")
     self.assertEquals(errors.SEVERITY_ERROR, e._severity)
     self.assertEquals(_MESSAGE, e._message)
     self.assertEquals(e._name, _TEST_ERROR)
     self.assertEquals("foo.py", e._filename)
     self.assertEquals(123, e._lineno)
-    self.assertEquals(2, e._column)
-    self.assertEquals("hello", e._linetext)
     self.assertEquals("foo", e._methodname)
 
   @errors._error_name(_TEST_ERROR)
@@ -50,8 +48,6 @@ class ErrorTest(unittest.TestCase):
     self.assertEquals(e._name, _TEST_ERROR)
     self.assertEquals(None, e._filename)
     self.assertEquals(0, e._lineno)
-    self.assertEquals(None, e._column)
-    self.assertEquals(None, e._linetext)
     self.assertEquals(None, e._methodname)
     # Opcode of None.
     op = FakeOpcode("foo.py", 123, "foo")
@@ -61,8 +57,6 @@ class ErrorTest(unittest.TestCase):
     self.assertEquals(e._name, _TEST_ERROR)
     self.assertEquals("foo.py", e._filename)
     self.assertEquals(123, e._lineno)
-    self.assertEquals(None, e._column)
-    self.assertEquals(None, e._linetext)
     self.assertEquals("foo", e._methodname)
 
   @errors._error_name(_TEST_ERROR)
@@ -115,7 +109,7 @@ class ErrorTest(unittest.TestCase):
   @errors._error_name(_TEST_ERROR)
   def test_str(self):
     e = errors.Error(errors.SEVERITY_ERROR, _MESSAGE, filename="foo.py",
-                     lineno=123, column=2, linetext="hello", methodname="foo")
+                     lineno=123, methodname="foo")
     self.assertEquals(
         'File "foo.py", line 123, in foo: an error message [test-error]',
         str(e))
