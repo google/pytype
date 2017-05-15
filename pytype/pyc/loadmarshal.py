@@ -55,6 +55,12 @@ FVS_HAVE_SPEC = 0x4
 # Flag used by CALL_FUNCTION_EX
 CALL_FUNCTION_EX_HAS_KWARGS = 0x1
 
+# Flags used by MAKE_FUNCTION
+MAKE_FUNCTION_HAS_POS_DEFAULTS = 0x1
+MAKE_FUNCTION_HAS_KW_DEFAULTS = 0x2
+MAKE_FUNCTION_HAS_ANNOTATIONS = 0x4
+MAKE_FUNCTION_HAS_FREE_VARS = 0x8
+
 # Or-ing this flag to one of the codes above will cause the decoded value to
 # be stored in a reference table for later lookup. This feature was added in
 # Python 3.4.

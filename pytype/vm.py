@@ -1597,8 +1597,16 @@ class VirtualMachine(object):
     return state.push(self.convert.build_set(state.node, elts))
 
   def byte_BUILD_MAP(self, state, op):
-    # op.arg (size) is ignored.
-    return state.push(self.convert.build_map(state.node))
+    the_map = self.convert.build_map(state.node)
+    if self.python_version >= (3, 5):
+      state, args = state.popn(2 * op.arg)
+      for i in xrange(op.arg):
+        key, val = args[2*i], args[2*i+1]
+        state = self.store_subscr(state, the_map, key, val)
+    else:
+      # For python < 3.5 we build the map in STORE_MAP
+      pass
+    return state.push(the_map)
 
   def byte_STORE_MAP(self, state, op):
     state, (the_map, val, key) = state.popn(3)
@@ -1955,8 +1963,16 @@ class VirtualMachine(object):
         state, exit_func, (u, v, w))
     return state
 
-  def _pop_extra_function_args(self, state, arg):
-    """Pop function annotations and defaults from the stack."""
+  def _convert_kw_defaults(self, values):
+    kw_defaults = {}
+    for i in range(0, len(values), 2):
+      key_var, value = values[i:i + 2]
+      key = abstract.get_atomic_python_constant(key_var)
+      kw_defaults[key] = value
+    return kw_defaults
+
+  def _get_extra_function_args(self, state, arg):
+    """Get function annotations and defaults from the stack. (Python3.5-)"""
     if self.python_version[0] == 2:
       num_pos_defaults = arg & 0xffff
       num_kw_defaults = 0
@@ -1967,7 +1983,36 @@ class VirtualMachine(object):
     state, raw_annotations = state.popn((arg >> 16) & 0x7fff)
     state, kw_defaults = state.popn(2 * num_kw_defaults)
     state, pos_defaults = state.popn(num_pos_defaults)
-    return state, pos_defaults, kw_defaults, raw_annotations
+    free_vars = None  # Python < 3.6 does not handle closure vars here.
+    kw_defaults = self._convert_kw_defaults(kw_defaults)
+    annot, late_annot = (
+        self.annotations_util.convert_function_annotations(state.node,
+                                                           raw_annotations))
+    return state, pos_defaults, kw_defaults, annot, late_annot, free_vars
+
+  def _get_extra_function_args_3_6(self, state, arg):
+    """Get function annotations and defaults from the stack (Python3.6+)."""
+    free_vars = None
+    pos_defaults = ()
+    kw_defaults = {}
+    annot = {}
+    # TODO(mdemello): Does the 3.6 calling scheme need late annotations?
+    late_annot = {}
+    if arg & loadmarshal.MAKE_FUNCTION_HAS_FREE_VARS:
+      state, free_vars = state.pop()
+    if arg & loadmarshal.MAKE_FUNCTION_HAS_ANNOTATIONS:
+      state, packed_annot = state.pop()
+      annot = abstract.get_atomic_python_constant(packed_annot, dict)
+      for k in annot.keys():
+        annot[k] = abstract.get_atomic_value(annot[k])
+    if arg & loadmarshal.MAKE_FUNCTION_HAS_KW_DEFAULTS:
+      state, packed_kw_def = state.pop()
+      kw_defaults = abstract.get_atomic_python_constant(packed_kw_def, dict)
+    if arg & loadmarshal.MAKE_FUNCTION_HAS_POS_DEFAULTS:
+      state, packed_pos_def = state.pop()
+      pos_defaults = abstract.get_atomic_python_constant(packed_pos_def, tuple)
+    return state, pos_defaults, kw_defaults, annot, late_annot, free_vars
+
 
   def _process_function_type_comment(self, op, code_var, annotations,
                                      late_annotations):
@@ -2030,14 +2075,6 @@ class VirtualMachine(object):
     late_annotations["return"] = annotations_util.LateAnnotation(
         ret, "return", fake_stack)
 
-  def _convert_kw_defaults(self, values):
-    kw_defaults = {}
-    for i in range(0, len(values), 2):
-      key_var, value = values[i:i + 2]
-      key = abstract.get_atomic_python_constant(key_var)
-      kw_defaults[key] = value
-    return kw_defaults
-
   def byte_MAKE_FUNCTION(self, state, op):
     """Create a function and push it onto the stack."""
     if self.python_version[0] == 2:
@@ -2047,19 +2084,20 @@ class VirtualMachine(object):
       state, name_var = state.pop()
       name = abstract.get_atomic_python_constant(name_var)
     state, code = state.pop()
-    # TODO(dbaum): Handle kw_defaults and annotations (Python 3).
-    state, defaults, kw_defaults, annot = self._pop_extra_function_args(
-        state, op.arg)
-    kw_defaults = self._convert_kw_defaults(kw_defaults)
-    annotations, late_annotations = (
-        self.annotations_util.convert_function_annotations(state.node, annot))
-    self._process_function_type_comment(op, code, annotations, late_annotations)
+    if self.python_version >= (3, 6):
+      get_args = self._get_extra_function_args_3_6
+    else:
+      get_args = self._get_extra_function_args
+    state, defaults, kw_defaults, annot, late_annot, free_vars = (
+        get_args(state, op.arg))
+    self._process_function_type_comment(op, code, annot, late_annot)
     # TODO(dbaum): Add support for per-arg type comments.
     # TODO(dbaum): Add support for variable type comments.
     globs = self.get_globals_dict()
     fn = self._make_function(name, state.node, code, globs, defaults,
-                             kw_defaults, annotations=annotations,
-                             late_annotations=late_annotations)
+                             kw_defaults, annotations=annot,
+                             late_annotations=late_annot,
+                             closure=free_vars)
     self.trace_functiondef(fn)
     return state.push(fn)
 
@@ -2073,9 +2111,9 @@ class VirtualMachine(object):
       state, name_var = state.pop()
       name = abstract.get_atomic_python_constant(name_var)
     state, (closure, code) = state.popn(2)
-    # TODO(dbaum): Handle kw_defaults and annotations (Python 3).
-    state, defaults, kw_defaults, _ = self._pop_extra_function_args(state,
-                                                                    op.arg)
+    # TODO(mdemello): Handle kw_defaults and annotations (Python 3.5).
+    state, defaults, kw_defaults, _, _, _ = (
+        self._get_extra_function_args(state, op.arg))
     globs = self.get_globals_dict()
     fn = self._make_function(name, state.node, code, globs, defaults,
                              kw_defaults, closure=closure)
@@ -2099,10 +2137,17 @@ class VirtualMachine(object):
 
   def byte_CALL_FUNCTION_EX(self, state, op):
     if op.arg & loadmarshal.CALL_FUNCTION_EX_HAS_KWARGS:
-      state, kwargs = self.pop_kwargs(state)
-    state, args = self.pop_varargs(state)
-    state, func = state.pop()
-    state, ret = self.call_function_with_state(state, func, args, kwargs)
+      state, starstarargs = state.pop()
+    else:
+      starstarargs = None
+    state, starargs = state.pop()
+    state, fn = state.pop()
+    # TODO(mdemello): fix abstract.FunctionArgs() to properly init namedargs,
+    # and remove this.
+    namedargs = abstract.Dict(self)
+    state, ret = self.call_function_with_state(
+        state, fn, (), namedargs=namedargs, starargs=starargs,
+        starstarargs=starstarargs)
     return state.push(ret)
 
   def byte_YIELD_VALUE(self, state, op):
@@ -2281,11 +2326,12 @@ class VirtualMachine(object):
     return self.store_local(state, "__annotations__", annotations)
 
   def byte_STORE_ANNOTATION(self, state, op):
-    annotations = self.load_local(state, "__annotations__")
+    state, annotations_var = self.load_local(state, "__annotations__")
+    annotations = abstract.get_atomic_value(annotations_var)
     name = self.frame.f_code.co_names[op.arg]
     state, value = state.pop()
     annotations.set_str_item(state.node, name, value)
-    return state
+    return self.store_local(state, "__annotations__", annotations_var)
 
   def byte_GET_YIELD_FROM_ITER(self, state, op):
     # TODO(mdemello): We should check if TOS is a generator iterator or
@@ -2304,15 +2350,15 @@ class VirtualMachine(object):
     return state.push(ret)
 
   def byte_BUILD_MAP_UNPACK(self, state, op):
-    # TODO(mdemello): BUILD_MAP currently ignores the element count - for
-    # Python3.5+ it needs to pop off elements too. Also, we should actually
-    # populate the map both here and in BUILD_MAP.
+    # TODO(mdemello): We should actually populate the map.
     state, _ = self._pop_and_unpack_list(state, op.arg)
     return state.push(self.convert.build_map(state.node))
 
   def byte_BUILD_MAP_UNPACK_WITH_CALL(self, state, op):
-    # TODO(mdemello): The handling of op.arg changed in 3.6
-    state, _ = self._pop_and_unpack_list(state, op.arg & 0xff)
+    if self.python_version >= (3, 6):
+      state, _ = self._pop_and_unpack_list(state, op.arg)
+    else:
+      state, _ = self._pop_and_unpack_list(state, op.arg & 0xff)
     return state.push(self.convert.build_map(state.node))
 
   def byte_BUILD_TUPLE_UNPACK(self, state, op):
@@ -2320,7 +2366,7 @@ class VirtualMachine(object):
     return state.push(self.convert.build_tuple(state.node, ret))
 
   def byte_BUILD_TUPLE_UNPACK_WITH_CALL(self, state, op):
-    return self.byte_BUILD_TUPLE_UNPACK(state, op.arg)
+    return self.byte_BUILD_TUPLE_UNPACK(state, op)
 
   def byte_BUILD_SET_UNPACK(self, state, op):
     state, ret = self._pop_and_unpack_list(state, op.arg)
@@ -2342,12 +2388,17 @@ class VirtualMachine(object):
     return state.push(ret.to_variable(state.node))
 
   def byte_BUILD_CONST_KEY_MAP(self, state, op):
-    state, unused_keys = state.pop()
-    # TODO(mdemello): keys.length should == count
-    state, unused_args = state.popn(op.arg)
-    return state.push(self.convert.build_map(state.node))
+    state, keys = state.pop()
+    keys = abstract.get_atomic_python_constant(keys, tuple)
+    the_map = self.convert.build_map(state.node)
+    assert len(keys) == op.arg
+    for key in reversed(keys):
+      state, val = state.pop()
+      state = self.store_subscr(state, the_map, key, val)
+    return state.push(the_map)
 
   def byte_BUILD_STRING(self, state, op):
+    # TODO(mdemello): Test this.
     state, _ = state.popn(op.arg)
     ret = abstract.Instance(self.convert.str_type, self)
     return state.push(ret.to_variable(state.node))
