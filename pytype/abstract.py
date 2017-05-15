@@ -19,7 +19,6 @@ import logging
 
 from pytype import exceptions
 from pytype import function
-from pytype import mro
 from pytype import utils
 from pytype.pyc import loadmarshal
 from pytype.pytd import cfg as typegraph
@@ -168,6 +167,13 @@ class AtomicAbstractValue(object):
 
   def default_mro(self):
     return [self, self.vm.convert.object_type.data[0]]
+
+  def compute_mro(self):
+    """Compute the class precedence list (mro) according to C3."""
+    bases = utils.concat_lists(b.data for b in self.bases())
+    return tuple(pytd_utils.MROMerge([[self]] +
+                                     [list(base.mro) for base in bases] +
+                                     [list(bases)]))
 
   def get_fullhash(self):
     """Hash this value and all of its children."""
@@ -2245,7 +2251,7 @@ class PyTDClass(SimpleAbstractValue, Class):
       metaclass = self.vm.convert.constant_to_var(
           pytd_cls.metaclass, subst={}, node=self.vm.root_cfg_node)
     self.pytd_cls = pytd_cls
-    self.mro = mro.compute_mro(self)
+    self.mro = self.compute_mro()
     self.official_name = self.name
     self.template = self.pytd_cls.template
     Class.init_mixin(self, metaclass)
@@ -2361,7 +2367,7 @@ class InterpreterClass(SimpleAbstractValue, Class):
     assert isinstance(members, dict)
     super(InterpreterClass, self).__init__(name, vm)
     self._bases = bases
-    self.mro = mro.compute_mro(self)
+    self.mro = self.compute_mro()
     Class.init_mixin(self, cls)
     self.members = utils.MonitorDict(members)
     self.instances = set()  # filled through register_instance
