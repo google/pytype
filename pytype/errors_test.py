@@ -185,6 +185,45 @@ class ErrorLogBaseTest(unittest.TestCase):
     self.assertEquals(2, len(errorlog))
     self.assertTrue(errorlog.has_error())
 
+  @errors._error_name(_TEST_ERROR)
+  def test_duplicate_error_no_traceback(self):
+    errorlog = errors.ErrorLog()
+    stack = [frame_state.SimpleFrame(FakeOpcode("foo.py", i, "function%d" % i))
+             for i in range(2)]
+    errorlog.error(stack, "error")  # traceback
+    errorlog.error(stack[-1:], "error")  # no traceback
+    # Keep the error with no traceback.
+    unique_errors = errorlog.unique_sorted_errors()
+    self.assertEquals(1, len(unique_errors))
+    self.assertIsNone(unique_errors[0]._traceback)
+
+  @errors._error_name(_TEST_ERROR)
+  def test_duplicate_error_shorter_traceback(self):
+    errorlog = errors.ErrorLog()
+    stack = [frame_state.SimpleFrame(FakeOpcode("foo.py", i, "function%d" % i))
+             for i in range(3)]
+    errorlog.error(stack, "error")  # longer traceback
+    errorlog.error(stack[-2:], "error")  # shorter traceback
+    # Keep the error with a shorter traceback.
+    unique_errors = errorlog.unique_sorted_errors()
+    self.assertEquals(1, len(unique_errors))
+    self.assertMultiLineEqual(unique_errors[0]._traceback, textwrap.dedent("""\
+      Traceback:
+        line 1, in function1"""))
+
+  @errors._error_name(_TEST_ERROR)
+  def test_unique_errors(self):
+    errorlog = errors.ErrorLog()
+    current_frame = frame_state.SimpleFrame(FakeOpcode("foo.py", 123, "foo"))
+    backframe1 = frame_state.SimpleFrame(FakeOpcode("foo.py", 1, "bar"))
+    backframe2 = frame_state.SimpleFrame(FakeOpcode("foo.py", 2, "baz"))
+    errorlog.error([backframe1, current_frame], "error")
+    errorlog.error([backframe2, current_frame], "error")
+    # Keep both errors, since the tracebacks are different.
+    unique_errors = errorlog.unique_sorted_errors()
+    self.assertEquals(2, len(unique_errors))
+    self.assertSetEqual(set(errorlog), set(unique_errors))
+
 
 if __name__ == "__main__":
   unittest.main()

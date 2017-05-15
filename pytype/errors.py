@@ -1,5 +1,6 @@
 """Code and data structures for storing and displaying errors."""
 
+import collections
 import csv
 import os
 import re
@@ -26,6 +27,9 @@ _CURRENT_ERROR_NAME = utils.DynamicVar()
 
 # Max number of calls in the traceback string.
 MAX_TRACEBACK_LENGTH = 3
+
+# Marker indicating the start of a traceback.
+TRACEBACK_MARKER = "Traceback:"
 
 # Symbol representing an elided portion of the stack.
 _ELLIPSIS = object()
@@ -74,7 +78,38 @@ def _make_traceback_str(stack):
     ops = _maybe_truncate_traceback(ops)
     op_to_str = lambda op: "line %d, in %s" % (op.line, op.code.co_name)
     traceback = ["..." if op is _ELLIPSIS else op_to_str(op) for op in ops]
-    return "Traceback:\n  " + "\n  ".join(traceback)
+    return TRACEBACK_MARKER + "\n  " + "\n  ".join(traceback)
+  else:
+    return None
+
+
+def _compare_traceback_strings(left, right):
+  """Try to compare two traceback strings.
+
+  Two traceback strings are comparable if they are equal, or if one ends with
+  the other. For example, these two tracebacks are comparable:
+    Traceback:
+      line 1, in <module>
+      line 2, in foo
+    Traceback:
+      line 2, in foo
+  and the first is greater than the second.
+
+  Args:
+    left: A string or None.
+    right: A string or None.
+
+  Returns:
+    None if the inputs aren't comparable, else an integer.
+  """
+  if left == right:
+    return 0
+  left = left[len(TRACEBACK_MARKER):] if left else ""
+  right = right[len(TRACEBACK_MARKER):] if right else ""
+  if left.endswith(right):
+    return 1
+  elif right.endswith(left):
+    return -1
   else:
     return None
 
@@ -149,10 +184,16 @@ class Error(object):
 
   @property
   def message(self):
-    if self._details is None:
-      return self._message
-    else:
-      return self._message + "\n" + self._details
+    message = self._message
+    if self._details:
+      message += "\n" + self._details
+    if self._traceback:
+      message += "\n" + self._traceback
+    return message
+
+  @property
+  def traceback(self):
+    return self._traceback
 
   def _position(self):
     """Return human-readable filename + line number."""
@@ -175,7 +216,20 @@ class Error(object):
     text = "%s%s [%s]" % (pos, self._message.replace("\n", "\n  "), self._name)
     if self._details:
       text += "\n  " + self._details.replace("\n", "\n  ")
+    if self._traceback:
+      text += "\n" + self._traceback
     return text
+
+  def drop_traceback(self):
+    with _CURRENT_ERROR_NAME.bind(self._name):
+      return self.__class__(
+          severity=self._severity,
+          message=self._message,
+          filename=self._filename,
+          lineno=self._lineno,
+          methodname=self._methodname,
+          details=self._details,
+          traceback=None)
 
 
 class ErrorLogBase(object):
@@ -250,12 +304,35 @@ class ErrorLogBase(object):
       print >> fi, error
 
   def unique_sorted_errors(self):
-    seen = set()
+    """Gets the unique errors in this log, sorted on filename and lineno."""
+    unique_errors = collections.OrderedDict()
     for error in self._sorted_errors():
-      text = str(error)
-      if text not in seen:
-        seen.add(text)
-        yield error
+      error_without_traceback = str(error.drop_traceback())
+      if error_without_traceback not in unique_errors:
+        unique_errors[error_without_traceback] = [error]
+        continue
+      errors = unique_errors[error_without_traceback]
+      for previous_error in list(errors):  # make a copy, since we modify errors
+        traceback_cmp = _compare_traceback_strings(error.traceback,
+                                                   previous_error.traceback)
+        if traceback_cmp is None:
+          # We have multiple bad call sites, e.g.,
+          #   def f(x):  x + 42
+          #   f("hello")  # error
+          #   f("world")  # same error, different backtrace
+          # so we'll report this error multiple times with different backtraces.
+          continue
+        elif traceback_cmp < 0:
+          # If the current traceback is shorter, use the current error instead
+          # of the previous one.
+          errors.remove(previous_error)
+        else:
+          # One of the previous errors has a shorter traceback than the current
+          # one, so the latter can be discarded.
+          break
+      else:
+        errors.append(error)
+    return sum(unique_errors.values(), [])
 
   def _sorted_errors(self):
     return sorted(self._errors, key=lambda x: (x.filename, x.lineno))

@@ -1,6 +1,5 @@
 """Tests for displaying errors."""
 
-import StringIO
 import unittest
 
 from pytype import utils
@@ -11,16 +10,14 @@ class ErrorTest(test_inference.InferenceTest):
   """Tests for errors."""
 
   def testDeduplicate(self):
-    _, errors = self.InferAndCheck("""
+    _, errors = self.InferAndCheck("""\
       def f(x):
-        x.foobar
+        y = 42
+        y.foobar
       f(3)
       f(4)
     """)
-    s = StringIO.StringIO()
-    errors.print_to_file(s)
-    self.assertEquals(1, len([line for line in s.getvalue().splitlines()
-                              if "foobar" in line]))
+    self.assertErrorLogIs(errors, [(3, "attribute-error", r"foobar.*int")])
 
   def testUnknownGlobal(self):
     _, errors = self.InferAndCheck("""
