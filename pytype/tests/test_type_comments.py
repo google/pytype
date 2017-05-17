@@ -12,7 +12,7 @@ class FunctionCommentTest(test_inference.InferenceTest):
       def foo():
         # # type: () -> not a legal type spec
         return 1
-    """, deep=True, filename="test.py")
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       def foo() -> int
     """)
@@ -22,7 +22,7 @@ class FunctionCommentTest(test_inference.InferenceTest):
       def foo(x):
         # type: (...) -> int
         return x
-    """, filename="test.py")
+    """)
     self.assertTypesMatchPytd(ty, """
       def foo(x) -> int
     """)
@@ -33,7 +33,7 @@ class FunctionCommentTest(test_inference.InferenceTest):
       def foo(x):
         # type: (...) -> Dict[int, int]
         return x
-    """, filename="test.py")
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Dict
       def foo(x) -> Dict[int, int]
@@ -45,7 +45,7 @@ class FunctionCommentTest(test_inference.InferenceTest):
       def foo():
         # type: (  ) -> int
         return x
-    """, filename="test.py")
+    """)
     self.assertTypesMatchPytd(ty, """
       def foo() -> int
     """)
@@ -56,7 +56,7 @@ class FunctionCommentTest(test_inference.InferenceTest):
       def foo(x):
         # type: ( int ) -> int
         return x
-    """, filename="test.py")
+    """)
     self.assertTypesMatchPytd(ty, """
       def foo(x: int) -> int
     """)
@@ -66,7 +66,7 @@ class FunctionCommentTest(test_inference.InferenceTest):
       def foo(x, y, z):
         # type: (int, str, float) -> None
         return x
-    """, filename="test.py")
+    """)
     self.assertTypesMatchPytd(ty, """
       def foo(x: int, y: str, z: float) -> None
     """)
@@ -78,7 +78,7 @@ class FunctionCommentTest(test_inference.InferenceTest):
               z):
         # type: (int, str, float) -> None
         return x
-    """, filename="test.py")
+    """)
     self.assertTypesMatchPytd(ty, """
       def foo(x: int, y: str, z: float) -> None
     """)
@@ -88,7 +88,7 @@ class FunctionCommentTest(test_inference.InferenceTest):
       def foo(x, y, z):
         # type: (int, str, None) -> None
         return x
-    """, filename="test.py")
+    """)
     self.assertTypesMatchPytd(ty, """
       def foo(x: int, y: str, z: None) -> None
     """)
@@ -103,7 +103,7 @@ class FunctionCommentTest(test_inference.InferenceTest):
         def g(self, x):
           # type: (Foo, int) -> None
           pass
-    """, filename="test.py")
+    """)
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
         def f(self, x: int) -> None: ...
@@ -122,7 +122,7 @@ class FunctionCommentTest(test_inference.InferenceTest):
         def g(cls, x):
           # type: (Foo, int) -> None
           pass
-    """, filename="test.py")
+    """)
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
         @classmethod
@@ -139,7 +139,7 @@ class FunctionCommentTest(test_inference.InferenceTest):
         def __init__(self, *args):
           # type: (int) -> None
           self.value = args[0]
-    """, filename="test.py", deep=True, solve_unknowns=True)
+    """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
         value = ...  # type: int
@@ -154,7 +154,7 @@ class FunctionCommentTest(test_inference.InferenceTest):
         def __init__(self, **kwargs):
           # type: (int) -> None
           self.value = kwargs['x']
-    """, filename="test.py", deep=True, solve_unknowns=True)
+    """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
         value = ...  # type: int
@@ -166,7 +166,7 @@ class FunctionCommentTest(test_inference.InferenceTest):
       def foo():
         # type: () ->
         pass
-    """, filename="test.py")
+    """)
     self.assertErrorLogIs(errors, [(2, "invalid-function-type-comment")])
 
   def testFunctionTooManyArgs(self):
@@ -175,7 +175,7 @@ class FunctionCommentTest(test_inference.InferenceTest):
         # type: (int, str) -> None
         y = x
         return x
-    """, filename="test.py")
+    """)
     self.assertErrorLogIs(errors, [(2, "invalid-function-type-comment",
                                     r"Expected 1 args, 2 given")])
 
@@ -185,7 +185,7 @@ class FunctionCommentTest(test_inference.InferenceTest):
         # type: (int, str) -> None
         y = x
         return x
-    """, filename="test.py")
+    """)
     self.assertErrorLogIs(errors, [(2, "invalid-function-type-comment",
                                     r"Expected 3 args, 2 given")])
 
@@ -195,7 +195,7 @@ class FunctionCommentTest(test_inference.InferenceTest):
         # type: (int, str) -> None
         y = x
         return x
-    """, filename="test.py")
+    """)
     self.assertErrorLogIs(errors, [(2, "invalid-function-type-comment",
                                     r"Expected 3 args, 2 given")])
 
@@ -204,7 +204,7 @@ class FunctionCommentTest(test_inference.InferenceTest):
       def foo(x):
         # type: () -> int
         return x
-    """, filename="test.py")
+    """)
     self.assertErrorLogIs(errors, [(2, "invalid-function-type-comment")])
 
   def testInvalidFunctionTypeComment(self):
@@ -212,7 +212,7 @@ class FunctionCommentTest(test_inference.InferenceTest):
       def foo(x):
         # type: blah blah blah
         return x
-    """, filename="test.py")
+    """)
     self.assertErrorLogIs(errors, [(2, "invalid-function-type-comment",
                                     r"blah blah blah")])
 
@@ -221,7 +221,7 @@ class FunctionCommentTest(test_inference.InferenceTest):
       def foo(x):
         # type: (abc def) -> int
         return x
-    """, filename="test.py")
+    """)
     self.assertErrorLogIs(errors, [(2, "invalid-function-type-comment",
                                     r"abc def.*unexpected EOF")])
 
@@ -244,7 +244,7 @@ class FunctionCommentWithAnnotationsTest(test_inference.InferenceTest):
       def foo(x: int) -> float:
         # type: (int) -> float
         return x
-    """, filename="test.py")
+    """)
     self.assertErrorLogIs(errors, [(3, "redundant-function-type-comment")])
 
 
@@ -255,7 +255,7 @@ class AssignmentCommentTest(test_inference.InferenceTest):
     ty = self.Infer("""
       class Foo(object):
         s = None  # type: str
-    """, deep=True, filename="test.py")
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
         s = ...  # type: str
@@ -266,7 +266,7 @@ class AssignmentCommentTest(test_inference.InferenceTest):
       class Foo(object):
         def __init__(self):
           self.s = None  # type: str
-    """, deep=True, filename="test.py")
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
         s = ...  # type: str
@@ -275,7 +275,7 @@ class AssignmentCommentTest(test_inference.InferenceTest):
   def testGlobalComment(self):
     ty = self.Infer("""
       X = None  # type: str
-    """, deep=True, filename="test.py")
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       X = ...  # type: str
     """)
@@ -297,7 +297,7 @@ class AssignmentCommentTest(test_inference.InferenceTest):
       def foo():
         x = X  # type: str
         return x
-    """, deep=True, filename="test.py")
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       X = ...  # type: None
       def foo() -> str: ...
@@ -306,7 +306,7 @@ class AssignmentCommentTest(test_inference.InferenceTest):
   def testBadComment(self):
     ty, errors = self.InferAndCheck("""\
       X = None  # type: abc def
-    """, deep=True, filename="test.py")
+    """, deep=True)
     self.assertErrorLogIs(errors, [(1, "invalid-type-comment",
                                     r"abc def.*unexpected EOF")])
     self.assertTypesMatchPytd(ty, """
@@ -317,7 +317,7 @@ class AssignmentCommentTest(test_inference.InferenceTest):
   def testConversionError(self):
     ty, errors = self.InferAndCheck("""\
       X = None  # type: 1 if __any_object__ else 2
-    """, deep=True, filename="test.py")
+    """, deep=True)
     self.assertErrorLogIs(errors, [(1, "invalid-type-comment",
                                     r"1 if __any_object__ else 2.*constant")])
     self.assertTypesMatchPytd(ty, """
@@ -328,35 +328,15 @@ class AssignmentCommentTest(test_inference.InferenceTest):
   def testNameErrorInsideComment(self):
     _, errors = self.InferAndCheck("""\
       X = None  # type: Foo
-    """, deep=True, filename="test.py")
+    """, deep=True)
     self.assertErrorLogIs(errors, [(1, "invalid-type-comment", r"Foo")])
-
-  def testTypeCommentUsesFilename(self):
-    # TODO(dbaum): This test will likely become unnecessary once we warn on
-    # unhandled type comments and test those warnings.
-
-    # This is a fragile test.  It depends on the fact that builtins has an
-    # assignment on line 4, thus would process the tzinfo type comment and
-    # trigger a name-error if filename was ignored.
-    ty = self.Infer("""
-      from datetime import tzinfo
-      def foo():
-        x = None  # type: tzinfo
-        return x
-    """, deep=True, filename="test.py")
-    self.assertTypesMatchPytd(ty, """
-      import datetime
-      from typing import Type
-      tzinfo = ...  # type: Type[datetime.tzinfo]
-      def foo() -> datetime.tzinfo: ...
-    """)
 
   def testWarnOnIgnoredTypeComment(self):
     _, errors = self.InferAndCheck("""\
       X = []
       X[0] = None  # type: str
       # type: int
-    """, deep=True, filename="test.py")
+    """, deep=True)
     self.assertErrorLogIs(errors, [(2, "ignored-type-comment", r"str"),
                                    (3, "ignored-type-comment", r"int")])
 
