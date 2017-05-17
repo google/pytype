@@ -301,15 +301,23 @@ class Converter(object):
       ret = self._function_call_to_return_type(
           node_after, v, return_value, len(combinations))
       if v.has_varargs():
-        starargs = pytd.Parameter(v.signature.varargs_name,
-                                  pytd.NamedType("__builtin__.tuple"),
-                                  False, True, None)
+        if v.signature.varargs_name in v.signature.annotations:
+          annot = v.signature.annotations[v.signature.varargs_name]
+          typ = annot.get_instance_type(node_after)
+        else:
+          typ = pytd.NamedType("__builtin__.tuple")
+        starargs = pytd.Parameter(
+            v.signature.varargs_name, typ, False, True, None)
       else:
         starargs = None
       if v.has_kwargs():
-        starstarargs = pytd.Parameter(v.signature.kwargs_name,
-                                      pytd.NamedType("__builtin__.dict"),
-                                      False, True, None)
+        if v.signature.kwargs_name in v.signature.annotations:
+          annot = v.signature.annotations[v.signature.kwargs_name]
+          typ = annot.get_instance_type(node_after)
+        else:
+          typ = pytd.NamedType("__builtin__.dict")
+        starstarargs = pytd.Parameter(
+            v.signature.kwargs_name, typ, False, True, None)
       else:
         starstarargs = None
       signatures.append(pytd.Signature(

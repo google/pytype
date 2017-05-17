@@ -716,7 +716,7 @@ class AnnotationTest(test_inference.InferenceTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Tuple
-      def f(x, *args) -> Tuple[int, ...]
+      def f(x, *args: int) -> Tuple[int, ...]
     """)
     error = r"Expected.*Iterable\[int\].*Actually passed.*List\[float\]"
     self.assertErrorLogIs(errors, [(7, "wrong-arg-types", error)])
@@ -739,7 +739,7 @@ class AnnotationTest(test_inference.InferenceTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Dict
-      def f(x, **kwargs) -> Dict[str, int]
+      def f(x, **kwargs: int) -> Dict[str, int]
       def g() -> Dict[str, float]
       def h() -> Dict[float, int]
     """)
@@ -779,11 +779,10 @@ class AnnotationTest(test_inference.InferenceTest):
       v1 = f()
       v2 = g()
     """)
-    # TODO(rechen): Why are the varargs and kwargs annotations dropped below?
     self.assertTypesMatchPytd(ty, """
       class A(object): ...
-      def f(*args) -> A: ...
-      def g(**kwargs) -> A: ...
+      def f(*args: A) -> A: ...
+      def g(**kwargs: A) -> A: ...
       v1 = ...  # type: A
       v2 = ...  # type: A
     """)

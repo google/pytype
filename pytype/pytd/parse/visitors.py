@@ -223,7 +223,7 @@ class PrintVisitor(Visitor):
     self.in_parameter = False
     self._local_names = set()
     self._class_members = set()
-    self._any_count = 0
+    self._typing_import_counts = collections.defaultdict(int)
 
   def _EscapedName(self, name):
     """Name, possibly escaped with backticks.
@@ -281,8 +281,10 @@ class PrintVisitor(Visitor):
     ret = []
     for module in sorted(self.imports):
       names = set(self.imports[module])
-      if module == "typing" and not self._any_count:
-        names.discard("Any")
+      if module == "typing":
+        for (name, count) in self._typing_import_counts.items():
+          if not count:
+            names.discard(name)
       if None in names:
         ret.append("import %s" % module)
         names.remove(None)
@@ -309,8 +311,7 @@ class PrintVisitor(Visitor):
     return name in self._class_members or name in self._local_names
 
   def _FromTyping(self, name):
-    if name == "Any":
-      self._any_count += 1
+    self._typing_import_counts[name] += 1
     if self._NameCollision(name):
       self._RequireTypingImport(None)
       return "typing." + name
@@ -416,6 +417,9 @@ class PrintVisitor(Visitor):
     """Print out the last type parameter of a container. Used for *args/**kw."""
     assert isinstance(node, pytd.Parameter)
     if isinstance(node.type, pytd.GenericType):
+      container_name = node.type.base_type.name.rpartition(".")[2]
+      assert container_name in ("tuple", "dict")
+      self._typing_import_counts[container_name.capitalize()] -= 1
       return node.Replace(type=node.type.parameters[-1], optional=False).Visit(
           PrintVisitor())
     else:
@@ -480,7 +484,7 @@ class PrintVisitor(Visitor):
     if node.type == "object" or node.type == "Any":
       # Abbreviated form. "object" or "Any" is the default.
       if node.type == "Any":
-        self._any_count -= 1
+        self._typing_import_counts["Any"] -= 1
       return node.name + suffix
     elif node.name == "self" and self.class_names and (
         node.type == self.class_names[-1]):

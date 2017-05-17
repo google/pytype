@@ -501,11 +501,9 @@ class FunctionTest(_ParserTestBase):
     self.check("def foo(*, x) -> str: ...")
     self.check("def foo(x: int, *args) -> str: ...")
     self.check("def foo(x: int, *args, key: int = ...) -> str: ...")
-    self.check("def foo(x: int, *args: float) -> str: ...",
-               prologue="from typing import Tuple")
+    self.check("def foo(x: int, *args: float) -> str: ...")
     self.check("def foo(x: int, **kwargs) -> str: ...")
-    self.check("def foo(x: int, **kwargs: float) -> str: ...",
-               prologue="from typing import Dict")
+    self.check("def foo(x: int, **kwargs: float) -> str: ...")
     self.check("def foo(x: int, *args, **kwargs) -> str: ...")
     # Various illegal uses of * args.
     self.check_error("def foo(*) -> int: ...", 1,

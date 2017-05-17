@@ -132,8 +132,6 @@ class FunctionCommentTest(test_inference.InferenceTest):
     """)
 
   def testFunctionStarArg(self):
-    # TODO(dbaum): This test can be simplified once *args types appear in
-    # the resulting pytd.
     ty = self.Infer("""
       class Foo(object):
         def __init__(self, *args):
@@ -143,12 +141,10 @@ class FunctionCommentTest(test_inference.InferenceTest):
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
         value = ...  # type: int
-        def __init__(self, *args) -> None: ...
+        def __init__(self, *args: int) -> None: ...
     """)
 
   def testFunctionStarStarArg(self):
-    # TODO(dbaum): This test can be simplified once **kwargs types appear in
-    # the resulting pytd.
     ty = self.Infer("""
       class Foo(object):
         def __init__(self, **kwargs):
@@ -158,7 +154,7 @@ class FunctionCommentTest(test_inference.InferenceTest):
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
         value = ...  # type: int
-        def __init__(self, **kwargs) -> None: ...
+        def __init__(self, **kwargs: int) -> None: ...
     """)
 
   def testFunctionNoReturn(self):
