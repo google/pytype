@@ -7,6 +7,7 @@ from pytype import errors
 from pytype import load_pytd
 from pytype import utils
 from pytype import vm
+from pytype.pytd import pytd
 
 import unittest
 
@@ -169,6 +170,26 @@ class ConvertTest(unittest.TestCase):
         [(name, var.data) for name, var in instance.type_parameters.items()],
         [(abstract.ARGS, [self._vm.convert.unsolvable]),
          (abstract.RET, [self._vm.convert.primitive_class_instances[int]])])
+
+  def test_function_with_starargs(self):
+    ast = self._load_ast("a", """
+      def f(*args: int): ...
+    """)
+    f = self._vm.convert.constant_to_value(
+        ast.Lookup("a.f"), {}, self._vm.root_cfg_node)
+    sig, = f.signatures
+    annot = sig.signature.annotations["args"]
+    self.assertEquals(pytd.Print(annot.get_instance_type()), "Tuple[int, ...]")
+
+  def test_function_with_starstarargs(self):
+    ast = self._load_ast("a", """
+      def f(**kwargs: int): ...
+    """)
+    f = self._vm.convert.constant_to_value(
+        ast.Lookup("a.f"), {}, self._vm.root_cfg_node)
+    sig, = f.signatures
+    annot = sig.signature.annotations["kwargs"]
+    self.assertEquals(pytd.Print(annot.get_instance_type()), "Dict[str, int]")
 
 
 if __name__ == "__main__":

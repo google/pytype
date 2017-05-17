@@ -545,17 +545,21 @@ class FunctionTest(AbstractTestBase):
   def test_signature_annotations(self):
     # def f(self: Any, *args: Any)
     self_param = pytd.Parameter("self", pytd.AnythingType(), False, False, None)
-    args_param = pytd.Parameter("args", pytd.AnythingType(), False, True, None)
+    # Imitate the parser's conversion of '*args: Any' to '*args: Tuple[Any]'.
+    tup = pytd.ClassType("__builtin__.tuple")
+    tup.cls = self._vm.convert.tuple_type.data[0].pytd_cls
+    any_tuple = pytd.GenericType(tup, (pytd.AnythingType(),))
+    args_param = pytd.Parameter("args", any_tuple, False, True, None)
     sig = function.Signature.from_pytd(
         self._vm, "f", pytd.Signature(
             (self_param,), args_param, None, pytd.AnythingType(), (), ()))
     self.assertIs(sig.annotations["self"], self._vm.convert.unsolvable)
-    args_type = sig.annotations["args"]  # Should be Tuple[Any]
+    args_type = sig.annotations["args"]
     self.assertIsInstance(args_type, abstract.ParameterizedClass)
     self.assertIs(args_type.base_cls,
                   abstract.get_atomic_value(self._vm.convert.tuple_type))
-    self.assertDictEqual(args_type.type_parameters,
-                         {abstract.T: self._vm.convert.unsolvable})
+    self.assertListEqual(args_type.type_parameters.items(),
+                         [(abstract.T, self._vm.convert.unsolvable)])
     self.assertIs(sig.drop_first_parameter().annotations["args"], args_type)
 
   def test_signature_annotations_existence(self):

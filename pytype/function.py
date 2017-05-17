@@ -122,7 +122,8 @@ class Signature(object):
         annotations={name: vm.convert.constant_to_value(
             typ, subst={}, node=vm.root_cfg_node)
                      for name, typ in pytd_annotations},
-        late_annotations={}
+        late_annotations={},
+        postprocess_annotations=False,
     )
 
   @classmethod
