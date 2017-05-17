@@ -26,6 +26,11 @@ class FakeOpcode(object):
     return [frame_state.SimpleFrame(self)]
 
 
+def _fake_stack(length):
+  return [frame_state.SimpleFrame(FakeOpcode("foo.py", i, "function%d" % i))
+          for i in range(length)]
+
+
 class ErrorTest(unittest.TestCase):
 
   @errors._error_name(_TEST_ERROR)
@@ -76,8 +81,7 @@ class ErrorTest(unittest.TestCase):
 
   @errors._error_name(_TEST_ERROR)
   def test_traceback(self):
-    stack = sum((FakeOpcode("foo.py", i, "function%d" % i).to_stack()
-                 for i in range(errors.MAX_TRACEBACK_LENGTH + 1)), [])
+    stack = _fake_stack(errors.MAX_TRACEBACK_LENGTH + 1)
     error = errors.Error.with_stack(stack, errors.SEVERITY_ERROR, "")
     self.assertMultiLineEqual(error._traceback, textwrap.dedent("""\
       Traceback:
@@ -87,8 +91,7 @@ class ErrorTest(unittest.TestCase):
 
   @errors._error_name(_TEST_ERROR)
   def test_truncated_traceback(self):
-    stack = sum((FakeOpcode("foo.py", i, "function%d" % i).to_stack()
-                 for i in range(errors.MAX_TRACEBACK_LENGTH + 2)), [])
+    stack = _fake_stack(errors.MAX_TRACEBACK_LENGTH + 2)
     error = errors.Error.with_stack(stack, errors.SEVERITY_ERROR, "")
     self.assertMultiLineEqual(error._traceback, textwrap.dedent("""\
       Traceback:
@@ -134,6 +137,23 @@ class ErrorTest(unittest.TestCase):
           self.assertEquals(name, _TEST_ERROR)
           self.assertEquals(actual_message, message)
           self.assertEquals(actual_details, details + str(i))
+
+  @errors._error_name(_TEST_ERROR)
+  def test_write_to_csv_with_traceback(self):
+    errorlog = errors.ErrorLog()
+    stack = _fake_stack(2)
+    errorlog.error(stack, "", "some\ndetails")
+    with utils.Tempdir() as d:
+      filename = d.create_file("errors.csv")
+      errorlog.print_to_csv_file(filename)
+      with open(filename, "rb") as fi:
+        (_, _, _, _, actual_details), = list(csv.reader(fi, delimiter=","))
+        self.assertMultiLineEqual(actual_details, textwrap.dedent("""\
+          some
+          details
+
+          Traceback:
+            line 0, in function0"""))
 
 
 class ErrorLogBaseTest(unittest.TestCase):
@@ -188,8 +208,7 @@ class ErrorLogBaseTest(unittest.TestCase):
   @errors._error_name(_TEST_ERROR)
   def test_duplicate_error_no_traceback(self):
     errorlog = errors.ErrorLog()
-    stack = [frame_state.SimpleFrame(FakeOpcode("foo.py", i, "function%d" % i))
-             for i in range(2)]
+    stack = _fake_stack(2)
     errorlog.error(stack, "error")  # traceback
     errorlog.error(stack[-1:], "error")  # no traceback
     # Keep the error with no traceback.
@@ -200,8 +219,7 @@ class ErrorLogBaseTest(unittest.TestCase):
   @errors._error_name(_TEST_ERROR)
   def test_duplicate_error_shorter_traceback(self):
     errorlog = errors.ErrorLog()
-    stack = [frame_state.SimpleFrame(FakeOpcode("foo.py", i, "function%d" % i))
-             for i in range(3)]
+    stack = _fake_stack(3)
     errorlog.error(stack, "error")  # longer traceback
     errorlog.error(stack[-2:], "error")  # shorter traceback
     # Keep the error with a shorter traceback.
