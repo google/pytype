@@ -84,7 +84,7 @@ class SuperTest(test_inference.InferenceTest):
     """)
 
   def testCallSuper(self):
-    _, errorlog = self.InferAndCheck("""
+    _, errorlog = self.InferAndCheck("""\
       class Y(object):
         pass
 
@@ -92,8 +92,7 @@ class SuperTest(test_inference.InferenceTest):
         def hello(self):
           return super(Foo, self)()
     """)
-    self.assertEquals(1, len(errorlog))
-    self.assertErrorLogContains(errorlog, r"super.*\[not\-callable\]")
+    self.assertErrorLogIs(errorlog, [(6, "not-callable", r"super")])
 
   def testSuperType(self):
     ty = self.Infer("""

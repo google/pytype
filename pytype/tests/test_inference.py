@@ -239,21 +239,6 @@ class InferenceTest(unittest.TestCase):
       self.assertEquals(param1.type, sig.return_type,
                         "Not identity: %r" % pytd.Print(func))
 
-  def assertErrorLogContains(self, errorlog, regexp):
-    for error in errorlog:
-      if re.compile(regexp, re.I | re.S).search(str(error)):
-        return
-    print >>sys.stderr, "Couldn't find regexp %r in errors:" % regexp
-    errorlog.print_to_stderr()
-    raise AssertionError("Couldn't find regexp %r in errors" % regexp)
-
-  def assertErrorLogDoesNotContain(self, errorlog, regexp):
-    for error in errorlog:
-      if re.compile(regexp, re.I | re.S).search(str(error)):
-        print >>sys.stderr, "Found regexp %r in errors:" % regexp
-        errorlog.print_to_stderr()
-        raise AssertionError("Found regexp %r in errors" % regexp)
-
   def _parse_expected_error(self, pattern):
     line = pattern[0]
     name = pattern[1]

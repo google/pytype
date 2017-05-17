@@ -744,7 +744,7 @@ class ImportTest(test_inference.InferenceTest):
         import b
         x = b.B()
       """, pythonpath=[d.path])
-    self.assertErrorLogContains(errors, "a.pyi")
+    self.assertErrorLogIs(errors, [(1, "pyi-error", r"a\.pyi")])
 
   def testRelativePriority(self):
     with utils.Tempdir() as d:

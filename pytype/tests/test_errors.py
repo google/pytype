@@ -24,10 +24,10 @@ class ErrorTest(test_inference.InferenceTest):
       def f():
         return foobar()
     """)
-    self.assertErrorLogContains(errors, r"line 3.*foobar")
+    self.assertErrorLogIs(errors, [(3, "name-error", r"foobar")])
 
   def testInvalidAttribute(self):
-    ty, errors = self.InferAndCheck("""
+    ty, errors = self.InferAndCheck("""\
       class A(object):
         pass
       def f():
@@ -40,39 +40,35 @@ class ErrorTest(test_inference.InferenceTest):
 
       def f() -> str
     """)
-    self.assertErrorLogContains(errors, r"line 5.*attribute.*parrot.*int")
+    self.assertErrorLogIs(errors, [(4, "attribute-error", r"parrot.*int")])
 
   def testImportError(self):
-    _, errors = self.InferAndCheck("""
+    _, errors = self.InferAndCheck("""\
       import rumplestiltskin
     """)
-    self.assertErrorLogContains(
-        errors, r".*line 2.*module.*rumplestiltskin[^\n]+\[import-error\]")
+    self.assertErrorLogIs(errors, [(1, "import-error", r"rumplestiltskin")])
 
   def testImportFromError(self):
-    _, errors = self.InferAndCheck("""
+    _, errors = self.InferAndCheck("""\
       from sys import foobar
     """)
-    self.assertErrorLogContains(
-        errors, r"sys.foobar.*\[import-error\]")
+    self.assertErrorLogIs(errors, [(1, "import-error", r"sys\.foobar")])
 
   def testNameError(self):
-    _, errors = self.InferAndCheck("""
+    _, errors = self.InferAndCheck("""\
       foobar
     """)
-    # "Line 2, in <module>: Name 'foobar' is not defined"
-    self.assertErrorLogContains(errors, r"line 2.*name.*foobar.*not.defined")
+    self.assertErrorLogIs(errors, [(1, "name-error", r"foobar")])
 
   def testUnsupportedOperands(self):
-    _, errors = self.InferAndCheck("""
+    _, errors = self.InferAndCheck("""\
       def f():
         x = "foo"
         y = "bar"
         return x ^ y
     """)
-    # "Line 2, in f: Unsupported operands for __xor__: 'str' and 'str'
-    self.assertErrorLogContains(errors,
-                                r"line 5.*Unsupported.*__xor__.*str.*str")
+    self.assertErrorLogIs(errors, [(4, "unsupported-operands",
+                                    r"__xor__.*str.*str")])
 
   def testUnsupportedOperands2(self):
     _, errors = self.InferAndCheck("""
@@ -91,13 +87,10 @@ class ErrorTest(test_inference.InferenceTest):
     self.assertErrorLogIs(errors, [(1, "wrong-arg-count", r"expects 1.*got 4")])
 
   def testWrongArgTypes(self):
-    _, errors = self.InferAndCheck("""
+    _, errors = self.InferAndCheck("""\
       hex(3j)
     """)
-    self.assertErrorLogContains(
-        errors, (r"line 2.*hex was called with the wrong arguments"
-                 r"[^\n]+\[wrong-arg-types\]\n.*"
-                 r"expected:.*int.*passed:.*complex"))
+    self.assertErrorLogIs(errors, [(1, "wrong-arg-types", r"int.*complex")])
 
   def testPrettyPrintWrongArgs(self):
     with utils.Tempdir() as d:
@@ -113,12 +106,11 @@ class ErrorTest(test_inference.InferenceTest):
                                 "a, b, c, d: str, [.][.][.]"))])
 
   def testInvalidBaseClass(self):
-    _, errors = self.InferAndCheck("""
+    _, errors = self.InferAndCheck("""\
       class Foo(3):
         pass
     """)
-    # "Line 2, in <module>: Invalid base class: `~unknown0`"
-    self.assertErrorLogContains(errors, r"Invalid base class")
+    self.assertErrorLogIs(errors, [(1, "base-class-error")])
 
   def testInvalidIteratorFromImport(self):
     with utils.Tempdir() as d:
@@ -136,17 +128,14 @@ class ErrorTest(test_inference.InferenceTest):
       self.assertErrorLogIs(errors, [(4, "attribute-error", error)])
 
   def testInvalidIteratorFromClass(self):
-    _, errors = self.InferAndCheck("""
+    _, errors = self.InferAndCheck("""\
       class A(object):
         pass
       def f():
         for row in A():
           pass
     """)
-    self.assertErrorLogContains(
-        errors, r"line 5.*No attribute.*__iter__.*on A")
-    self.assertErrorLogDoesNotContain(
-        errors, "__class__")
+    self.assertErrorLogIs(errors, [(4, "attribute-error", r"__iter__.*A")])
 
   def testInheritFromGeneric(self):
     with utils.Tempdir() as d:
@@ -156,41 +145,40 @@ class ErrorTest(test_inference.InferenceTest):
         class Foo(Generic[T]): ...
         class Bar(Foo[int]): ...
       """)
-      _, errors = self.InferAndCheck("""
+      _, errors = self.InferAndCheck("""\
         import mod
         chr(mod.Bar())
       """, pythonpath=[d.path])
       # "Line 3, in f: Can't retrieve item out of dict. Empty?"
-      self.assertErrorLogContains(errors, r"chr.*wrong arguments")
+      self.assertErrorLogIs(errors, [(2, "wrong-arg-types", r"int.*mod\.Bar")])
 
   def testWrongKeywordArg(self):
     with utils.Tempdir() as d:
       d.create_file("mycgi.pyi", """
         def escape(x: str or unicode) -> str or unicode
       """)
-      _, errors = self.InferAndCheck("""
+      _, errors = self.InferAndCheck("""\
         import mycgi
         def foo(s):
           return mycgi.escape(s, quote=1)
       """, pythonpath=[d.path])
-      # "Line 4, in foo: Function mycgi.escape was called with extra argument
-      #                  "quote"."
-      self.assertErrorLogContains(errors, r"(?=.*quote).*mycgi.escape")
+      self.assertErrorLogIs(errors, [(3, "wrong-keyword-args",
+                                      r"quote.*mycgi\.escape")])
 
   def testMissingParameter(self):
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def bar(xray, yankee, zulu) -> str
       """)
-      _, errors = self.InferAndCheck("""
+      _, errors = self.InferAndCheck("""\
         import foo
         foo.bar(1, 2)
       """, pythonpath=[d.path])
-      # "Line 3, in foo: Missing parameter 'zulu' in call to function foo.bar."
-      self.assertErrorLogContains(errors, r"(?=.*foo.bar).*zulu")
+      self.assertErrorLogIs(errors, [(2, "missing-parameter",
+                                      r"zulu.*foo\.bar")])
 
   def testBadInheritance(self):
-    _, errors = self.InferAndCheck("""
+    _, errors = self.InferAndCheck("""\
       class X:
           pass
       class Bar(X):
@@ -198,8 +186,7 @@ class ErrorTest(test_inference.InferenceTest):
       class Baz(X, Bar):
           pass
     """)
-    # "Line 6: Bad inheritance."
-    self.assertErrorLogContains(errors, r"line 6.*inheritance")
+    self.assertErrorLogIs(errors, [(5, "mro-error")])
 
   def testBadCall(self):
     with utils.Tempdir() as d:
@@ -214,10 +201,10 @@ class ErrorTest(test_inference.InferenceTest):
           (2, "wrong-arg-types", r"\(x: int")])
 
   def testCallUncallable(self):
-    _, errors = self.InferAndCheck("""
+    _, errors = self.InferAndCheck("""\
       0()
     """)
-    self.assertErrorLogContains(errors, r"int.*\[not-callable\]")
+    self.assertErrorLogIs(errors, [(1, "not-callable", r"int")])
 
   def testSuperError(self):
     _, errors = self.InferAndCheck("""\
@@ -282,7 +269,8 @@ class ErrorTest(test_inference.InferenceTest):
         import foo
         foo.f([""])
       """, deep=True, pythonpath=[d.path])
-      self.assertErrorLogContains(errors, r"List\[int\]")
+      self.assertErrorLogIs(errors, [(2, "wrong-arg-types",
+                                      r"List\[int\].*List\[str\]")])
 
   def testTooManyArgs(self):
     _, errors = self.InferAndCheck("""\
@@ -290,7 +278,7 @@ class ErrorTest(test_inference.InferenceTest):
         pass
       f(3)
     """, deep=True)
-    self.assertErrorLogIs(errors, [(3, "wrong-arg-count", "0.*1")])
+    self.assertErrorLogIs(errors, [(3, "wrong-arg-count", r"0.*1")])
 
   def testTooFewArgs(self):
     _, errors = self.InferAndCheck("""\
@@ -298,7 +286,7 @@ class ErrorTest(test_inference.InferenceTest):
         pass
       f()
     """, deep=True)
-    self.assertErrorLogContains(errors, r"Line 3.*missing-parameter")
+    self.assertErrorLogIs(errors, [(3, "missing-parameter", r"x.*f")])
 
   def testDuplicateKeyword(self):
     _, errors = self.InferAndCheck("""\
@@ -306,7 +294,7 @@ class ErrorTest(test_inference.InferenceTest):
         pass
       f(3, x=3)
     """, deep=True)
-    self.assertErrorLogContains(errors, r"Line 3.*duplicate-keyword")
+    self.assertErrorLogIs(errors, [(3, "duplicate-keyword-argument", r"f.*x")])
 
   def testBadImport(self):
     with utils.Tempdir() as d:
@@ -314,10 +302,10 @@ class ErrorTest(test_inference.InferenceTest):
         def f() -> int: ...
         class f: ...
       """)
-      _, errors = self.InferAndCheck("""
+      _, errors = self.InferAndCheck("""\
         import a
       """, pythonpath=[d.path])
-      self.assertErrorLogContains(errors, r"a.*pyi-error")
+      self.assertErrorLogIs(errors, [(1, "pyi-error")])
 
   def testBadImportDependency(self):
     with utils.Tempdir() as d:
@@ -325,10 +313,10 @@ class ErrorTest(test_inference.InferenceTest):
         from b import X
         class Y(X): ...
       """)
-      _, errors = self.InferAndCheck("""
+      _, errors = self.InferAndCheck("""\
         import a
       """, pythonpath=[d.path])
-      self.assertErrorLogContains(errors, r"a.*pyi-error")
+      self.assertErrorLogIs(errors, [(1, "pyi-error")])
 
   def testBadImportFrom(self):
     with utils.Tempdir() as d:
@@ -337,10 +325,10 @@ class ErrorTest(test_inference.InferenceTest):
         class f: ...
       """)
       d.create_file("foo/__init__.pyi", "")
-      _, errors = self.InferAndCheck("""
+      _, errors = self.InferAndCheck("""\
         from foo import a
       """, pythonpath=[d.path])
-      self.assertErrorLogContains(errors, r"foo[.]a.*pyi-error")
+      self.assertErrorLogIs(errors, [(1, "pyi-error", r"foo\.a")])
 
   def testBadImportFromDependency(self):
     with utils.Tempdir() as d:
@@ -349,32 +337,35 @@ class ErrorTest(test_inference.InferenceTest):
           class Y(X): ...
       """)
       d.create_file("foo/__init__.pyi", "")
-      _, errors = self.InferAndCheck("""
+      _, errors = self.InferAndCheck("""\
         from foo import a
       """, pythonpath=[d.path])
-      self.assertErrorLogContains(errors, r"foo[.]a.*pyi-error")
+      self.assertErrorLogIs(errors, [(1, "pyi-error", r"foo\.a")])
 
   def testBadContainer(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
+        from typing import SupportsInt
         class A(SupportsInt[int]): pass
       """)
-      _, errors = self.InferAndCheck("""
+      _, errors = self.InferAndCheck("""\
         import a
       """, deep=True, pythonpath=[d.path])
-      self.assertErrorLogContains(errors, r"a.*pyi-error.*SupportsInt")
+      self.assertErrorLogIs(errors, [(1, "pyi-error",
+                                      r"SupportsInt is not a container")])
 
   def testBadTypeParameterOrder(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
+        from typing import Generic, TypeVar
         K = TypeVar("K")
         V = TypeVar("V")
         class A(Generic[K, V], Generic[V, K]): pass
       """)
-      _, errors = self.InferAndCheck("""
+      _, errors = self.InferAndCheck("""\
         import a
       """, deep=True, pythonpath=[d.path])
-      self.assertErrorLogContains(errors, r"a.*pyi-error.*A")
+      self.assertErrorLogIs(errors, [(1, "pyi-error", r"Illegal.*order.*a\.A")])
 
   def testDuplicateTypeParameter(self):
     with utils.Tempdir() as d:

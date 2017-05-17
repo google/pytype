@@ -86,11 +86,7 @@ class AnnotationTest(test_inference.InferenceTest):
         s.intersection(x)
       foo(3.0)
     """)
-    # File "t.py", line 8, in <module>:
-    #   Function "foo" was called with the wrong arguments
-    #   Expected: (x: int)
-    #   Actually passed: (x: float)
-    self.assertErrorLogContains(errors, r"line 5.*wrong arguments")
+    self.assertErrorLogIs(errors, [(5, "wrong-arg-types", r"x: int.*x: float")])
 
   def testAmbiguousArg(self):
     self.assertNoErrors("""\
@@ -113,9 +109,7 @@ class AnnotationTest(test_inference.InferenceTest):
       def foo(x: int):
         return x.upper()
     """)
-    # Line 3, in foo:
-    #   No attribute 'upper' on int
-    self.assertErrorLogContains(errors, r"line 3.*no attribute.*upper")
+    self.assertErrorLogIs(errors, [(3, "attribute-error", r"upper.*int")])
 
   def testList(self):
     ty = self.Infer("""

@@ -162,76 +162,68 @@ class FunctionCommentTest(test_inference.InferenceTest):
     """)
 
   def testFunctionNoReturn(self):
-    _, errors = self.InferAndCheck("""
+    _, errors = self.InferAndCheck("""\
       def foo():
         # type: () ->
         pass
     """, filename="test.py")
-    self.assertErrorLogContains(
-        errors, r"test\.py.*line 3.*invalid-function-type-comment")
+    self.assertErrorLogIs(errors, [(2, "invalid-function-type-comment")])
 
   def testFunctionTooManyArgs(self):
-    _, errors = self.InferAndCheck("""
+    _, errors = self.InferAndCheck("""\
       def foo(x):
         # type: (int, str) -> None
         y = x
         return x
     """, filename="test.py")
-    self.assertErrorLogContains(
-        errors, (r"test\.py.*line 3.*invalid-function-type-comment"
-                 r".*Expected 1 args, 2 given"))
+    self.assertErrorLogIs(errors, [(2, "invalid-function-type-comment",
+                                    r"Expected 1 args, 2 given")])
 
   def testFunctionTooFewArgs(self):
-    _, errors = self.InferAndCheck("""
+    _, errors = self.InferAndCheck("""\
       def foo(x, y, z):
         # type: (int, str) -> None
         y = x
         return x
     """, filename="test.py")
-    self.assertErrorLogContains(
-        errors, (r"test\.py.*line 3.*invalid-function-type-comment"
-                 r".*Expected 3 args, 2 given"))
+    self.assertErrorLogIs(errors, [(2, "invalid-function-type-comment",
+                                    r"Expected 3 args, 2 given")])
 
   def testFunctionTooFewArgsDoNotCountSelf(self):
-    _, errors = self.InferAndCheck("""
+    _, errors = self.InferAndCheck("""\
       def foo(self, x, y, z):
         # type: (int, str) -> None
         y = x
         return x
     """, filename="test.py")
-    self.assertErrorLogContains(
-        errors, (r"test\.py.*line 3.*invalid-function-type-comment"
-                 r".*Expected 3 args, 2 given"))
+    self.assertErrorLogIs(errors, [(2, "invalid-function-type-comment",
+                                    r"Expected 3 args, 2 given")])
 
   def testFunctionMissingArgs(self):
-    _, errors = self.InferAndCheck("""
+    _, errors = self.InferAndCheck("""\
       def foo(x):
         # type: () -> int
         return x
     """, filename="test.py")
-    self.assertErrorLogContains(
-        errors, r"test\.py.*line 3.*invalid-function-type-comment")
+    self.assertErrorLogIs(errors, [(2, "invalid-function-type-comment")])
 
   def testInvalidFunctionTypeComment(self):
-    _, errors = self.InferAndCheck("""
+    _, errors = self.InferAndCheck("""\
       def foo(x):
         # type: blah blah blah
         return x
     """, filename="test.py")
-    self.assertErrorLogContains(
-        errors,
-        r"test\.py.*line 3.*blah blah blah.*invalid-function-type-comment")
+    self.assertErrorLogIs(errors, [(2, "invalid-function-type-comment",
+                                    r"blah blah blah")])
 
   def testInvalidFunctionArgs(self):
-    _, errors = self.InferAndCheck("""
+    _, errors = self.InferAndCheck("""\
       def foo(x):
         # type: (abc def) -> int
         return x
     """, filename="test.py")
-    self.assertErrorLogContains(
-        errors,
-        (r"test\.py.*line 3.*abc def.*invalid-function-type-comment"
-         r".*unexpected EOF"))
+    self.assertErrorLogIs(errors, [(2, "invalid-function-type-comment",
+                                    r"abc def.*unexpected EOF")])
 
   def testAmbiguousAnnotation(self):
     _, errors = self.InferAndCheck("""\
@@ -247,14 +239,13 @@ class FunctionCommentWithAnnotationsTest(test_inference.InferenceTest):
   """Tests for type comments that require annotations."""
 
   def testFunctionTypeCommentPlusAnnotations(self):
-    _, errors = self.InferAndCheck("""
+    _, errors = self.InferAndCheck("""\
       from __future__ import google_type_annotations
       def foo(x: int) -> float:
         # type: (int) -> float
         return x
     """, filename="test.py")
-    self.assertErrorLogContains(
-        errors, r"test\.py.*line 4.*redundant-function-type-comment")
+    self.assertErrorLogIs(errors, [(3, "redundant-function-type-comment")])
 
 
 class AssignmentCommentTest(test_inference.InferenceTest):
@@ -313,13 +304,11 @@ class AssignmentCommentTest(test_inference.InferenceTest):
     """)
 
   def testBadComment(self):
-    ty, errors = self.InferAndCheck("""
+    ty, errors = self.InferAndCheck("""\
       X = None  # type: abc def
     """, deep=True, filename="test.py")
-    self.assertErrorLogContains(
-        errors,
-        (r"test\.py.*line 2.*abc def.*invalid-type-comment"
-         r".*unexpected EOF"))
+    self.assertErrorLogIs(errors, [(1, "invalid-type-comment",
+                                    r"abc def.*unexpected EOF")])
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       X = ...  # type: Any
@@ -337,12 +326,10 @@ class AssignmentCommentTest(test_inference.InferenceTest):
     """)
 
   def testNameErrorInsideComment(self):
-    _, errors = self.InferAndCheck("""
+    _, errors = self.InferAndCheck("""\
       X = None  # type: Foo
     """, deep=True, filename="test.py")
-    self.assertErrorLogContains(
-        errors,
-        r"test\.py.*line 2.*Foo.*invalid-type-comment")
+    self.assertErrorLogIs(errors, [(1, "invalid-type-comment", r"Foo")])
 
   def testTypeCommentUsesFilename(self):
     # TODO(dbaum): This test will likely become unnecessary once we warn on
@@ -365,17 +352,13 @@ class AssignmentCommentTest(test_inference.InferenceTest):
     """)
 
   def testWarnOnIgnoredTypeComment(self):
-    _, errors = self.InferAndCheck("""
+    _, errors = self.InferAndCheck("""\
       X = []
       X[0] = None  # type: str
       # type: int
     """, deep=True, filename="test.py")
-    self.assertErrorLogContains(
-        errors,
-        r"test\.py.*line 3.*str.*ignored-type-comment")
-    self.assertErrorLogContains(
-        errors,
-        r"test\.py.*line 4.*int.*ignored-type-comment")
+    self.assertErrorLogIs(errors, [(2, "ignored-type-comment", r"str"),
+                                   (3, "ignored-type-comment", r"int")])
 
   def testAttributeInitialization(self):
     ty = self.Infer("""
