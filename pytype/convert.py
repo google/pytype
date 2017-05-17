@@ -549,6 +549,11 @@ class Converter(object):
         return self.constant_to_value(cls, subst, self.vm.root_cfg_node)
     elif isinstance(pyval, pytd.GenericType):
       assert isinstance(pyval.base_type, pytd.ClassType)
+      base_cls = self.constant_to_value(
+          pyval.base_type.cls, subst, self.vm.root_cfg_node)
+      if not isinstance(base_cls, abstract.Class):
+        # base_cls can be, e.g., an unsolvable due to an mro error.
+        return self.unsolvable
       if isinstance(pyval, pytd.TupleType):
         abstract_class = abstract.TupleClass
         template = range(len(pyval.parameters)) + [abstract.T]
@@ -571,10 +576,7 @@ class Converter(object):
                                         self.vm.root_cfg_node)
         else:
           type_parameters[name] = self.unsolvable
-      base_cls = self.constant_to_value(
-          pyval.base_type.cls, subst, self.vm.root_cfg_node)
-      cls = abstract_class(base_cls, type_parameters, self.vm)
-      return cls
+      return abstract_class(base_cls, type_parameters, self.vm)
     elif pyval.__class__ is tuple:  # only match raw tuple, not namedtuple/Node
       return self.tuple_to_value([self.constant_to_var(item, subst,
                                                        self.vm.root_cfg_node)

@@ -285,7 +285,7 @@ class GenericTest(test_inference.InferenceTest):
         V = TypeVar("V")
         class A(Generic[U]):
           def bar(self) -> U: ...
-        class B(Generic[V], A[V]): ...
+        class B(A[V], Generic[V]): ...
         def baz() -> B[int]
       """)
       ty = self.Infer("""
@@ -391,7 +391,8 @@ class GenericTest(test_inference.InferenceTest):
         from typing import Generic, List, TypeVar
         K = TypeVar("K")
         V = TypeVar("V")
-        class A(Generic[K, V], List[V]): pass
+        class MyDict(Generic[K, V]): pass
+        class A(MyDict[K, V], List[V]): pass
       """)
       ty = self.Infer("""
         import a

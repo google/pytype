@@ -191,6 +191,16 @@ class ConvertTest(unittest.TestCase):
     annot = sig.signature.annotations["kwargs"]
     self.assertEquals(pytd.Print(annot.get_instance_type()), "Dict[str, int]")
 
+  def test_mro(self):
+    ast = self._load_ast("a", """
+      x = ...  # type: dict
+    """)
+    x = ast.Lookup("a.x").type
+    cls = self._vm.convert.constant_to_value(x, {}, self._vm.root_cfg_node)
+    self.assertListEqual([v.name for v in cls.mro],
+                         ["dict", "Dict", "MutableMapping", "Mapping", "Sized",
+                          "Iterable", "Container", "Generic", "object"])
+
 
 if __name__ == "__main__":
   unittest.main()

@@ -925,6 +925,22 @@ class ClassesTest(test_inference.InferenceTest):
       v = ...  # type: int
     """)
 
+  def testBadMroParameterizedClass(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import Generic, TypeVar
+        T = TypeVar("T")
+        class A(Generic[T]): ...
+        class B(A[T]): ...
+        class C(A[T], B[T]): ...
+        def f() -> C[int]: ...
+      """)
+      _, errors = self.InferAndCheck("""\
+        import foo
+        foo.f()
+      """, pythonpath=[d.path])
+      self.assertErrorLogIs(errors, [(2, "mro-error", r"Class C")])
+
 
 if __name__ == "__main__":
   test_inference.main()

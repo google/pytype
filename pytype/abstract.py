@@ -2082,6 +2082,22 @@ class ParameterizedClass(AtomicAbstractValue, Class):
     return "ParameterizedClass(cls=%r params=%s)" % (self.base_cls,
                                                      self.type_parameters)
 
+  def __eq__(self, other):
+    if isinstance(other, type(self)):
+      return self.base_cls == other.base_cls and (
+          self.type_parameters == other.type_parameters)
+    return NotImplemented
+
+  def __ne__(self, other):
+    return not self == other
+
+  def __hash__(self):
+    # This doesn't hash the lazy values when self.type_parameters is a LazyDict,
+    # which is probably wrong, but we can't evaluate those values here without
+    # causing recursion errors, since hash() is called by compute_mro() for
+    # definitions such as 'class str(Sequence[str]): ...'.
+    return hash((self.base_cls, tuple(dict.items(self.type_parameters))))
+
   @property
   def formal(self):
     # We can't compute self.formal in __init__ because doing so would force
