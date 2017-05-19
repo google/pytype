@@ -27,7 +27,6 @@ signatures against new inference results.
 """
 
 import logging
-import re
 
 
 from pytype.pytd import abc_hierarchy
@@ -38,9 +37,6 @@ from pytype.pytd.parse import node
 from pytype.pytd.parse import visitors
 
 log = logging.getLogger(__name__)
-
-
-ANON_PARAM = re.compile("_[0-9]+")
 
 
 # Might not be needed anymore once pytd has builtin support for ~unknown.
@@ -447,7 +443,7 @@ class TypeMatch(utils.TypeMatcher):
       else:
         p1 = params1[i]
         if p1.name != p2.name and not (
-            ANON_PARAM.match(p1.name) or ANON_PARAM.match(p2.name)):
+            utils.ANON_PARAM.match(p1.name) or utils.ANON_PARAM.match(p2.name)):
           return booleq.FALSE
         equalities.append(self.match_type_against_type(p1.type, p2.type, subst))
     equalities.append(

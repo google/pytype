@@ -414,7 +414,7 @@ class ErrorLog(ErrorLogBase):
       elif found:
         printed_params.append("...")
         break
-      elif re.match(r"_[0-9]", name):
+      elif pytd_utils.ANON_PARAM.match(name):
         printed_params.append(prefix + "_")
       else:
         printed_params.append(prefix + name)

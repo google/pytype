@@ -25,6 +25,7 @@ import collections
 import cPickle
 import itertools
 import os
+import re
 import sys
 
 from pytype.pyi import parser
@@ -36,6 +37,9 @@ import pytype.utils
 
 _PICKLE_PROTOCOL = cPickle.HIGHEST_PROTOCOL
 _PICKLE_RECURSION_LIMIT_AST = 40000
+
+
+ANON_PARAM = re.compile(r"_[0-9]+")
 
 
 def UnpackUnion(t):
