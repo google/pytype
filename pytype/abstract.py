@@ -1603,15 +1603,19 @@ class PyTDSignature(object):
         for p in self.pytd_sig.params]
     self.signature = function.Signature.from_pytd(vm, name, pytd_sig)
 
-  def match_args(self, node, args, view):
-    """Match arguments against this signature. Used by PyTDFunction."""
+  def _map_args(self, args, view):
+    """Map the passed arguments to a name->binding dictionary."""
+    # positional args
     arg_dict = {name: view[arg]
                 for name, arg in zip(self.signature.param_names, args.posargs)}
+    # named args
     for name, arg in args.namedargs.items():
       if name in arg_dict:
         raise DuplicateKeyword(self.signature, args, self.vm, name)
       arg_dict[name] = view[arg]
+    return arg_dict
 
+  def _fill_in_missing_parameters(self, node, args, arg_dict):
     for p in self.pytd_sig.params:
       if p.name not in arg_dict:
         if (not p.optional and args.starargs is None and
@@ -1623,9 +1627,10 @@ class PyTDSignature(object):
         var = self.vm.convert.create_new_unsolvable(node)
         arg_dict[p.name] = var.bindings[0]
 
-    for p in self.pytd_sig.params:
-      if not (p.optional or p.name in arg_dict):
-        raise MissingParameter(self.signature, args, self.vm, p.name)
+  def match_args(self, node, args, view):
+    """Match arguments against this signature. Used by PyTDFunction."""
+    arg_dict = self._map_args(args, view)
+    self._fill_in_missing_parameters(node, args, arg_dict)
     if not self.pytd_sig.has_optional:
       if len(args.posargs) > len(self.pytd_sig.params):
         raise WrongArgCount(self.signature, args, self.vm)

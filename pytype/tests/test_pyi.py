@@ -423,38 +423,102 @@ class PYITest(test_inference.InferenceTest):
         x = ...  # type: int
       """)
 
-  def testSignature(self):
+  def testPosArg(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        from typing import TypeVar
+        T = TypeVar("T")
+        def get_pos(x: T, *args: int, z: int, **kws: int) -> T: ...
+      """)
+      ty = self.Infer("""
+        import a
+        v = a.get_pos("foo", 3, 4, z=5)
+      """, deep=True, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        v = ...  # type: str
+      """)
+
+  def testKwonlyArg(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        from typing import TypeVar
+        T = TypeVar("T")
+        def get_kwonly(x: int, *args: int, z: T, **kwargs: int) -> T: ...
+      """)
+      ty = self.Infer("""
+        import a
+        v = a.get_kwonly(3, 4, z=5j)
+      """, deep=True, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        v = ...  # type: complex
+      """)
+
+  def testVarargs(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
         T = TypeVar("T")
-        def get_pos(x: T, *args: int, z: int, **kws: int) -> T: ...
-        def get_kwonly(x: int, *args: int, z: T, **kws: int) -> T: ...
         def get_varargs(x: int, *args: T, z: int, **kws: int) -> T: ...
-        def get_kwargs(x: int, *args: int, z: int, **kws: T) -> T: ...
       """)
-      ty = self.Infer("""\
+      # TODO(rechen): catch the errors on lines 8 and 9.
+      ty, _ = self.InferAndCheck("""\
+        from typing import Union
         import a
-        k = a.get_pos("foo", 3, 4, z=5)
-        l = a.get_kwonly(3, 4, z=5j)
-        m = a.get_varargs(1, *[1j, "foo"], z=3)
-        n = a.get_kwargs(1, **dict())
-        o = a.get_varargs(1, 2j, "foo", z=5)
-        p = a.get_kwargs(1, 2, 3, z=5, u=3j)
-      """, deep=True, pythonpath=[d.path])
+        l1 = None  # type: list[str]
+        l2 = None  # type: list[Union[str, complex]]
+        v1 = a.get_varargs(1, *l1)
+        v2 = a.get_varargs(1, *l2, z=5)
+        v3 = a.get_varargs(1, True, 2.0, z=5)
+        v4 = a.get_varargs(1, 2j, "foo", z=5)  # bad: conflicting args types
+        v5 = a.get_varargs(1, *None)  # bad: None not iterable
+      """, deep=True, solve_unknowns=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         a = ...  # type: module
-        k = ...  # type: str
-        l = ...  # type: complex
-        # TODO(kramm): Fix call_function_from_stack. The below should be:
-        # m = ...  # type: Union[complex, str]
-        # n = ...  # type: complex
-        # o = ...  # type: Union[complex, str]
-        # p = ...  # type: complex
-        m = ...  # type: Any
-        n = ...  # type: Any
-        o = ...  # type: Any
-        p = ...  # type: Any
+        l1 = ...  # type: list[str]
+        l2 = ...  # type: list[str or complex]
+        # TODO(rechen): Should be:
+        # v1 = ...  # type: str
+        # v2 = ...  # type: str or complex
+        # v3 = ...  # type: bool or float
+        v1 = ...  # type: Any
+        v2 = ...  # type: Any
+        v3 = ...  # type: Any
+        v4 = ...  # type: Any
+        v5 = ...  # type: Any
+      """)
+
+  def testKwargs(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        T = TypeVar("T")
+        def get_kwargs(x: int, *args: int, z: int, **kws: T) -> T: ...
+      """)
+      # TODO(rechen): Catch the errors on lines 5 and 9.
+      ty, _ = self.InferAndCheck("""\
+        from typing import Mapping, Union
+        import a
+        d1 = None  # type: dict[int, int]
+        d2 = None  # type: Mapping[str, Union[str, complex]]
+        v1 = a.get_kwargs(1, 2, 3, z=5, **d1)  # bad: K must be str
+        v2 = a.get_kwargs(1, 2, 3, z=5, **d2)
+        v3 = a.get_kwargs(1, 2, 3, z=5, v=0, u=3j)
+        # bad: conflicting kwargs types
+        v4 = a.get_kwargs(1, 2, 3, z=5, v="", u=3j)
+      """, deep=True, solve_unknowns=False, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        from typing import Any, Mapping
+        a = ...  # type: module
+        d1 = ...  # type: dict[int, int]
+        d2 = ...  # type: Mapping[str, str or complex]
+        v1 = ...  # type: Any
+        # TODO(rechen): Should be:
+        # v2 = ...  # type: str or complex
+        # v3 = ...  # type: int or complex
+        v2 = ...  # type: Any
+        v3 = ...  # type: Any
+        v4 = ...  # type: Any
       """)
 
   def testStarArgs(self):
