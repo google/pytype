@@ -389,7 +389,7 @@ class ErrorLog(ErrorLogBase):
       yield "*", sig.varargs_name, annotate(sig.varargs_name)
     elif sig.kwonly_params:
       yield ("*", "", "")
-    for name in sig.kwonly_params:
+    for name in sorted(sig.kwonly_params):
       yield "", name, annotate(name)
     if sig.kwargs_name is not None:
       yield "**", sig.kwargs_name, annotate(sig.kwargs_name)

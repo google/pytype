@@ -149,7 +149,7 @@ class Signature(object):
         yield (name, posarg, self.annotations.get(name))
       else:
         yield (argname(i), posarg, None)
-    for name, namedarg in args.namedargs.items():
+    for name, namedarg in sorted(args.namedargs.items()):
       yield (name, namedarg, self.annotations.get(name))
     if self.varargs_name is not None and args.starargs is not None:
       yield (self.varargs_name, args.starargs,

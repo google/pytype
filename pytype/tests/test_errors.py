@@ -951,6 +951,21 @@ class ErrorTest(test_inference.InferenceTest):
     self.assertErrorLogIs(errors, [(2, "wrong-arg-types", r"str.*int"),
                                    (2, "wrong-arg-types", r"unicode.*int")])
 
+  def testKwargOrder(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        def f(*args, y, x, z: int): ...
+        def g(x): ...
+      """)
+      _, errors = self.InferAndCheck("""\
+        import foo
+        foo.f(x=1, y=2, z="3")
+        foo.g(42, v4="the", v3="quick", v2="brown", v1="fox")
+      """, pythonpath=[d.path])
+      self.assertErrorLogIs(errors, [
+          (2, "wrong-arg-types", r"x, y, z.*x, y, z"),
+          (3, "wrong-keyword-args", r"v1, v2, v3, v4")])
+
 
 if __name__ == "__main__":
   test_inference.main()
