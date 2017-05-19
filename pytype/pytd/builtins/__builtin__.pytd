@@ -430,7 +430,8 @@ class dict(Dict[_K, _V]):
     #     self := dict[_K or str, _V or _V2]
     def update(self, **kwargs):
         self := dict[_K or str, ?]
-    def update(self, E, ...) -> NoneType
+    def update(self, E, ...) -> NoneType:
+        self := dict[?, ?]
     def update(self) -> NoneType
     def viewitems(self) -> dict_items[_K,_V]
     def viewkeys(self) -> dict_keys[_K]

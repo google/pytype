@@ -201,6 +201,22 @@ class ConvertTest(unittest.TestCase):
                          ["dict", "Dict", "MutableMapping", "Mapping", "Sized",
                           "Iterable", "Container", "Generic", "object"])
 
+  def test_widen_type(self):
+    ast = self._load_ast("a", """
+      x = ...  # type: tuple[int, ...]
+      y = ...  # type: dict[str, int]
+    """)
+    x = ast.Lookup("a.x").type
+    tup = self._vm.convert.constant_to_value(x, {}, self._vm.root_cfg_node)
+    widened_tup = self._vm.convert.widen_type(tup)
+    self.assertEquals(pytd.Print(widened_tup.get_instance_type()),
+                      "Iterable[int]")
+    y = ast.Lookup("a.y").type
+    dct = self._vm.convert.constant_to_value(y, {}, self._vm.root_cfg_node)
+    widened_dct = self._vm.convert.widen_type(dct)
+    self.assertEquals(pytd.Print(widened_dct.get_instance_type()),
+                      "Mapping[str, int]")
+
 
 if __name__ == "__main__":
   unittest.main()

@@ -248,6 +248,23 @@ class Converter(object):
     return abstract.ParameterizedClass(
         abstract.get_atomic_value(self.dict_type), params, self.vm)
 
+  def _copy_type_parameters(self, old_container, new_container_name):
+    new_container = self.name_to_value(new_container_name)
+    if isinstance(old_container, abstract.ParameterizedClass):
+      return abstract.ParameterizedClass(
+          new_container, old_container.type_parameters, self.vm)
+    else:
+      assert isinstance(old_container, abstract.Class)
+      return new_container
+
+  def widen_type(self, container):
+    """Widen a tuple to an iterable, or a dict to a mapping."""
+    if container.full_name == "__builtin__.tuple":
+      return self._copy_type_parameters(container, "typing.Iterable")
+    else:
+      assert container.full_name == "__builtin__.dict", container.full_name
+      return self._copy_type_parameters(container, "typing.Mapping")
+
   def optionalize(self, value):
     """Optionalize the value, if necessary."""
     assert isinstance(value, abstract.AtomicAbstractValue)

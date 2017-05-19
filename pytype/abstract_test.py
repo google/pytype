@@ -661,6 +661,48 @@ class FunctionTest(AbstractTestBase):
     self.assertEquals(sig.mandatory_param_count(), 0)
     self.assertEquals(sig.maximum_param_count(), 1)
 
+  def test_signature_has_param(self):
+    # def f(x, *args, y, **kwargs): ...
+    sig = function.Signature(
+        name="f",
+        param_names=("x",),
+        varargs_name="args",
+        kwonly_params={"y"},
+        kwargs_name="kwargs",
+        defaults={},
+        annotations={},
+        late_annotations={},
+    )
+    for param in ("x", "args", "y", "kwargs"):
+      self.assertTrue(sig.has_param(param))
+    self.assertFalse(sig.has_param("rumpelstiltskin"))
+
+  def test_signature_insert_varargs_and_kwargs(self):
+    # def f(x, *args, y, **kwargs): ...
+    sig = function.Signature(
+        name="f",
+        param_names=("x",),
+        varargs_name="args",
+        kwonly_params={"y"},
+        kwargs_name="kwargs",
+        defaults={},
+        annotations={},
+        late_annotations={},
+    )
+    # f(1, 2, y=3, z=4)
+    int_inst = self._vm.convert.primitive_class_instances[int]
+    int_binding = int_inst.to_variable(self._node).bindings[0]
+    arg_dict = {
+        "x": int_binding, "_1": int_binding, "y": int_binding, "z": int_binding}
+    sig = sig.insert_varargs_and_kwargs(arg_dict)
+    self.assertEquals(sig.name, "f")
+    self.assertSequenceEqual(sig.param_names, ("x", "_1", "z"))
+    self.assertEquals(sig.varargs_name, "args")
+    self.assertSetEqual(sig.kwonly_params, {"y"})
+    self.assertEquals(sig.kwargs_name, "kwargs")
+    self.assertFalse(sig.annotations)
+    self.assertFalse(sig.late_annotations)
+
 
 class AbstractTest(AbstractTestBase):
 

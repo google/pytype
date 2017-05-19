@@ -2,6 +2,7 @@
 
 import collections
 
+from pytype.pytd import utils as pytd_utils
 
 
 # Used as a key in Signature.late_annotations to indicate an annotation
@@ -77,17 +78,7 @@ class Signature(object):
             stack, param, "Appears only once in the signature")
 
   def drop_first_parameter(self):
-    return self.__class__(
-        self.name,
-        self.param_names[1:],
-        self.varargs_name,
-        self.kwonly_params,
-        self.kwargs_name,
-        self.defaults,
-        self.annotations,
-        self.late_annotations,
-        postprocess_annotations=False,
-    )
+    return self._replace(param_names=self.param_names[1:])
 
   def mandatory_param_count(self):
     num = len([name
@@ -140,6 +131,45 @@ class Signature(object):
         annotations=annotations,
         late_annotations={}
     )
+
+  def has_param(self, name):
+    return name in self.param_names or name in self.kwonly_params or (
+        name == self.varargs_name or name == self.kwargs_name)
+
+  def insert_varargs_and_kwargs(self, arg_dict):
+    """Insert varargs and kwargs from arg_dict into the signature.
+
+    Args:
+      arg_dict: A name->binding dictionary of passed args.
+
+    Returns:
+      A copy of this signature with the passed varargs and kwargs inserted.
+    """
+    varargs_names = []
+    kwargs_names = []
+    for name in arg_dict:
+      if self.has_param(name):
+        continue
+      if pytd_utils.ANON_PARAM.match(name):
+        varargs_names.append(name)
+      else:
+        kwargs_names.append(name)
+    new_param_names = (self.param_names + tuple(sorted(varargs_names)) +
+                       tuple(sorted(kwargs_names)))
+    return self._replace(param_names=new_param_names)
+
+  _ATTRIBUTES = (
+      set(__init__.__code__.co_varnames[:__init__.__code__.co_argcount]) -
+      {"self", "postprocess_annotations"})
+
+  def _replace(self, **kwargs):
+    """Returns a copy of the signature with the specified values replaced."""
+    assert not set(kwargs) - self._ATTRIBUTES
+    for attr in self._ATTRIBUTES:
+      if attr not in kwargs:
+        kwargs[attr] = getattr(self, attr)
+    kwargs["postprocess_annotations"] = False
+    return type(self)(**kwargs)  # pytype: disable=missing-parameter
 
   def iter_args(self, args):
     """Iterates through the given args, attaching names and expected types."""

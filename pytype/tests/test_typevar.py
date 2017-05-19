@@ -142,7 +142,7 @@ class TypeVarTest(test_inference.InferenceTest):
         (5, "invalid-typevar", r"Expected.*str.*Actual.*int"),
         (6, "invalid-typevar", r"constant str"),
         (7, "invalid-typevar", r"unambiguous type"),
-        (8, "invalid-typevar", r"unambiguous type"),
+        (8, "invalid-typevar", r"Expected.*_1: type.*Actual.*_1: int"),
         (9, "invalid-typevar", r"0 or more than 1"),
     ])
 

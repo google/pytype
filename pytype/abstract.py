@@ -1604,16 +1604,67 @@ class PyTDSignature(object):
     self.signature = function.Signature.from_pytd(vm, name, pytd_sig)
 
   def _map_args(self, args, view):
-    """Map the passed arguments to a name->binding dictionary."""
+    """Map the passed arguments to a name->binding dictionary.
+
+    Args:
+      args: The passed arguments.
+      view: A variable->binding dictionary.
+
+    Returns:
+      A tuple of:
+        a list of formal arguments, each a (name, abstract value) pair;
+        a name->binding dictionary of the passed arguments.
+
+    Raises:
+      InvalidParameters: If the passed arguments don't match this signature.
+    """
+    formal_args = [(p.name, self.signature.annotations[p.name])
+                   for p in self.pytd_sig.params]
+    arg_dict = {}
+
     # positional args
-    arg_dict = {name: view[arg]
-                for name, arg in zip(self.signature.param_names, args.posargs)}
+    for name, arg in zip(self.signature.param_names, args.posargs):
+      arg_dict[name] = view[arg]
+    num_expected_posargs = len(self.signature.param_names)
+    if len(args.posargs) > num_expected_posargs and not self.pytd_sig.starargs:
+      raise WrongArgCount(self.signature, args, self.vm)
+    # Extra positional args are passed via the *args argument.
+    varargs_type = self.signature.annotations.get(self.signature.varargs_name)
+    if isinstance(varargs_type, ParameterizedClass):
+      for (i, vararg) in enumerate(args.posargs[num_expected_posargs:]):
+        name = function.argname(num_expected_posargs + i)
+        arg_dict[name] = view[vararg]
+        formal_args.append((name, varargs_type.type_parameters[T]))
+
     # named args
     for name, arg in args.namedargs.items():
       if name in arg_dict:
         raise DuplicateKeyword(self.signature, args, self.vm, name)
       arg_dict[name] = view[arg]
-    return arg_dict
+    extra_kwargs = set(args.namedargs) - {p.name for p in self.pytd_sig.params}
+    if extra_kwargs and not self.pytd_sig.starstarargs:
+      raise WrongKeywordArgs(self.signature, args, self.vm, extra_kwargs)
+    # Extra keyword args are passed via the **kwargs argument.
+    kwargs_type = self.signature.annotations.get(self.signature.kwargs_name)
+    if isinstance(kwargs_type, ParameterizedClass):
+      # We sort the kwargs so that matching always happens in the same order.
+      for name in sorted(extra_kwargs):
+        formal_args.append((name, kwargs_type.type_parameters[V]))
+
+    # packed args
+    packed_args = [("starargs", self.signature.varargs_name),
+                   ("starstarargs", self.signature.kwargs_name)]
+    for arg_type, name in packed_args:
+      actual = getattr(args, arg_type)
+      pytd_val = getattr(self.pytd_sig, arg_type)
+      if actual and pytd_val:
+        arg_dict[name] = view[actual]
+        # The annotation is Tuple or Dict, but the passed arg only has to be
+        # Iterable or Mapping.
+        typ = self.vm.convert.widen_type(self.signature.annotations[name])
+        formal_args.append((name, typ))
+
+    return formal_args, arg_dict
 
   def _fill_in_missing_parameters(self, node, args, arg_dict):
     for p in self.pytd_sig.params:
@@ -1629,22 +1680,16 @@ class PyTDSignature(object):
 
   def match_args(self, node, args, view):
     """Match arguments against this signature. Used by PyTDFunction."""
-    arg_dict = self._map_args(args, view)
+    formal_args, arg_dict = self._map_args(args, view)
     self._fill_in_missing_parameters(node, args, arg_dict)
-    if not self.pytd_sig.has_optional:
-      if len(args.posargs) > len(self.pytd_sig.params):
-        raise WrongArgCount(self.signature, args, self.vm)
-      invalid_names = set(args.namedargs) - {p.name
-                                             for p in self.pytd_sig.params}
-      if invalid_names:
-        raise WrongKeywordArgs(self.signature, args, self.vm, invalid_names)
-
-    formal_args = [(p.name, self.signature.annotations[p.name])
-                   for p in self.pytd_sig.params]
     subst, bad_arg = self.vm.matcher.compute_subst(
         node, formal_args, arg_dict, view)
     if subst is None:
-      raise WrongArgTypes(self.signature, args, self.vm, bad_param=bad_arg)
+      if self.signature.has_param(bad_arg.name):
+        signature = self.signature
+      else:
+        signature = self.signature.insert_varargs_and_kwargs(arg_dict)
+      raise WrongArgTypes(signature, args, self.vm, bad_param=bad_arg)
     if log.isEnabledFor(logging.DEBUG):
       log.debug("Matched arguments against sig%s", pytd.Print(self.pytd_sig))
     for nr, p in enumerate(self.pytd_sig.params):
@@ -2758,16 +2803,10 @@ class InterpreterFunction(Function):
     for name, arg, formal in self.signature.iter_args(args):
       arg_dict[name] = view[arg]
       if formal is not None:
-        if name == self.signature.varargs_name:
-          # The annotation is Tuple[<varargs type>], but the passed arg can be
-          # any iterable of <varargs type>.
-          formal = ParameterizedClass(self.vm.convert.name_to_value(
-              "typing.Iterable"), formal.type_parameters, self.vm)
-        elif name == self.signature.kwargs_name:
-          # The annotation is Dict[str, <kwargs type>], but the passed arg can
-          # be any mapping from str to <kwargs type>.
-          formal = ParameterizedClass(self.vm.convert.name_to_value(
-              "typing.Mapping"), formal.type_parameters, self.vm)
+        if name in (self.signature.varargs_name, self.signature.kwargs_name):
+          # The annotation is Tuple or Dict, but the passed arg only has to be
+          # Iterable or Mapping.
+          formal = self.vm.convert.widen_type(formal)
         formal_args.append((name, formal))
     subst, bad_arg = self.vm.matcher.compute_subst(
         node, formal_args, arg_dict, view)

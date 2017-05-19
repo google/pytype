@@ -400,7 +400,7 @@ class TestFunctions(test_inference.InferenceTest):
       def f(x):
         return max(foo=repr(__any_object__))
     """, deep=True, solve_unknowns=False, maximum_depth=1)
-    self.assertErrorLogIs(errors, [(2, "missing-parameter", r"arg1.*max")])
+    self.assertErrorLogIs(errors, [(2, "wrong-keyword-args", r"foo.*max")])
 
   def test_multiple_signatures_with_type_parameter(self):
     with utils.Tempdir() as d:

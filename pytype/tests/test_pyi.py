@@ -461,8 +461,7 @@ class PYITest(test_inference.InferenceTest):
         T = TypeVar("T")
         def get_varargs(x: int, *args: T, z: int, **kws: int) -> T: ...
       """)
-      # TODO(rechen): catch the errors on lines 8 and 9.
-      ty, _ = self.InferAndCheck("""\
+      ty, errors = self.InferAndCheck("""\
         from typing import Union
         import a
         l1 = None  # type: list[str]
@@ -478,16 +477,18 @@ class PYITest(test_inference.InferenceTest):
         a = ...  # type: module
         l1 = ...  # type: list[str]
         l2 = ...  # type: list[str or complex]
-        # TODO(rechen): Should be:
-        # v1 = ...  # type: str
-        # v2 = ...  # type: str or complex
-        # v3 = ...  # type: bool or float
-        v1 = ...  # type: Any
-        v2 = ...  # type: Any
-        v3 = ...  # type: Any
+        v1 = ...  # type: str
+        v2 = ...  # type: str or complex
+        v3 = ...  # type: bool or float
         v4 = ...  # type: Any
         v5 = ...  # type: Any
       """)
+      msg1 = (r"Expected: \(x, _, _2: complex, \.\.\.\).*"
+              r"Actually passed: \(x, _, _2: str, \.\.\.\)")
+      msg2 = (r"Expected: \(x, \*args: Iterable, \.\.\.\).*"
+              r"Actually passed: \(x, args: None\)")
+      self.assertErrorLogIs(errors, [(8, "wrong-arg-types", msg1),
+                                     (9, "wrong-arg-types", msg2)])
 
   def testKwargs(self):
     with utils.Tempdir() as d:
@@ -495,8 +496,7 @@ class PYITest(test_inference.InferenceTest):
         T = TypeVar("T")
         def get_kwargs(x: int, *args: int, z: int, **kws: T) -> T: ...
       """)
-      # TODO(rechen): Catch the errors on lines 5 and 9.
-      ty, _ = self.InferAndCheck("""\
+      ty, errors = self.InferAndCheck("""\
         from typing import Mapping, Union
         import a
         d1 = None  # type: dict[int, int]
@@ -513,13 +513,16 @@ class PYITest(test_inference.InferenceTest):
         d1 = ...  # type: dict[int, int]
         d2 = ...  # type: Mapping[str, str or complex]
         v1 = ...  # type: Any
-        # TODO(rechen): Should be:
-        # v2 = ...  # type: str or complex
-        # v3 = ...  # type: int or complex
-        v2 = ...  # type: Any
-        v3 = ...  # type: Any
+        v2 = ...  # type: str or complex
+        v3 = ...  # type: int or complex
         v4 = ...  # type: Any
       """)
+      msg1 = (r"Expected: \(x, \*args, z, \*\*kws: Mapping\[str, Any\]\).*"
+              r"Actually passed: \(x, _, _, z, kws: Dict\[int, int\]\)")
+      msg2 = (r"Expected: \(x, _, _, u, v: complex, \.\.\.\).*"
+              r"Actually passed: \(x, _, _, u, v: str, \.\.\.\)")
+      self.assertErrorLogIs(errors, [(5, "wrong-arg-types", msg1),
+                                     (9, "wrong-arg-types", msg2)])
 
   def testStarArgs(self):
     with utils.Tempdir() as d:
