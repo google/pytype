@@ -29,14 +29,15 @@ class AnnotationsUtil(object):
   def __init__(self, vm):
     self.vm = vm
 
-  def sub_annotations(self, node, annotations, substs):
+  def sub_annotations(self, node, annotations, substs, instantiate_unbound):
     """Apply type parameter substitutions to a dictionary of annotations."""
     if substs and all(substs):
-      return {name: self.sub_one_annotation(node, annot, substs)
+      return {name: self.sub_one_annotation(node, annot, substs,
+                                            instantiate_unbound)
               for name, annot in annotations.items()}
     return annotations
 
-  def sub_one_annotation(self, node, annot, substs):
+  def sub_one_annotation(self, node, annot, substs, instantiate_unbound=True):
     """Apply type parameter substitutions to an annotation."""
     if isinstance(annot, abstract.TypeParameter):
       if all(annot.name in subst and subst[annot.name].bindings and
@@ -44,16 +45,20 @@ class AnnotationsUtil(object):
                      for v in subst[annot.name].data)
              for subst in substs):
         vals = sum((subst[annot.name].data for subst in substs), [])
-      else:
+      elif instantiate_unbound:
         vals = annot.instantiate(node).data
+      else:
+        vals = [annot]
       return self.vm.convert.merge_classes(node, vals)
     elif isinstance(annot, abstract.ParameterizedClass):
-      type_parameters = {name: self.sub_one_annotation(node, param, substs)
+      type_parameters = {name: self.sub_one_annotation(node, param, substs,
+                                                       instantiate_unbound)
                          for name, param in annot.type_parameters.items()}
       # annot may be a subtype of ParameterizedClass, such as TupleClass.
       return type(annot)(annot.base_cls, type_parameters, self.vm)
     elif isinstance(annot, abstract.Union):
-      options = tuple(self.sub_one_annotation(node, o, substs)
+      options = tuple(self.sub_one_annotation(node, o, substs,
+                                              instantiate_unbound)
                       for o in annot.options)
       return type(annot)(options, self.vm)
     return annot

@@ -1,18 +1,14 @@
 """Tests for inline annotations."""
 
-import unittest
 
-
-from pytype import utils
 from pytype.tests import test_inference
 
 
 class AnyStrTest(test_inference.InferenceTest):
-  """Tests for issues related to AnyStr"""
+  """Tests for issues related to AnyStr."""
 
-  @unittest.skip("This currently fails typechecking")
   def testCallable(self):
-    """Tests Callable + AnyStr"""
+    """Tests Callable + AnyStr."""
     self.assertNoErrors("""
       from __future__ import google_type_annotations
       from typing import AnyStr, Callable

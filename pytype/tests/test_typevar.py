@@ -227,7 +227,7 @@ class TypeVarTest(test_inference.InferenceTest):
       f4("hello", "world", "domination")  # ok
     """)
     self.assertErrorLogIs(errors, [
-        (6, "bad-return-type", r"list.*set"),
+        (6, "bad-return-type", r"List\[S\].*set"),
         (10, "bad-return-type", r"str.*int"),
         (10, "bad-return-type", r"bool.*int"),
         (12, "bad-return-type", r"List\[bool\].*List\[Union\[float, int\]\]")])

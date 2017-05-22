@@ -2825,8 +2825,10 @@ class InterpreterFunction(Function):
               self.vm.convert.create_new_unsolvable(node))
     substs = self._match_args(node, args)
     callargs = self._map_args(node, args)
+    # Keep type parameters without substitutions, as they may be needed for
+    # type-checking down the road.
     annotations = self.vm.annotations_util.sub_annotations(
-        node, self.signature.annotations, substs)
+        node, self.signature.annotations, substs, instantiate_unbound=False)
     if annotations:
       for name in callargs:
         if name in annotations:
