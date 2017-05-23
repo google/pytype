@@ -17,15 +17,12 @@ _COMPATIBLE_BUILTINS = [
 ]
 
 
-class BadTypeParameterSubstitution(Exception):
-
-  def __init__(self, subst):
-    super(BadTypeParameterSubstitution, self).__init__()
-    self.subst = subst
-
-
 class AbstractMatcher(object):
   """Matcher for abstract values."""
+
+  def _set_error_subst(self, subst):
+    """Set the substitution used by compute_subst in the event of an error."""
+    self._error_subst = subst
 
   def compute_subst(self, node, formal_args, arg_dict, view):
     """Compute information about type parameters using one-way unification.
@@ -48,24 +45,13 @@ class AbstractMatcher(object):
       assert not formal_args
       return utils.HashableDict(), None
     subst = {}
+    self._set_error_subst(None)
     for name, formal in formal_args:
       actual = arg_dict[name]
-      try:
-        subst = self._match_value_against_type(
-            actual, formal, subst, node, view)
-      except BadTypeParameterSubstitution as e:
-        # e contains the previous substitution, which we use in order to report
-        # the correct expected type for the bad parameter.
-        subst = None
-        bad_subst = e.subst
-      else:
-        if subst is None:
-          # An empty substitution will replace type parameters with their
-          # constraints (or Any).
-          bad_subst = {}
+      subst = self._match_value_against_type(actual, formal, subst, node, view)
       if subst is None:
         formal = formal.vm.annotations_util.sub_one_annotation(
-            node, formal, [bad_subst])
+            node, formal, [self._error_subst or {}])
         return None, abstract.BadParam(name=name, expected=formal)
     return utils.HashableDict(subst), None
 
@@ -82,11 +68,7 @@ class AbstractMatcher(object):
     """
     bad = []
     for view in abstract.get_views([var], node, filter_strict=True):
-      try:
-        subst = self.match_var_against_type(var, other_type, {}, node, view)
-      except BadTypeParameterSubstitution:
-        subst = None
-      if subst is None:
+      if self.match_var_against_type(var, other_type, {}, node, view) is None:
         bad.append(view)
     return bad
 
@@ -123,9 +105,6 @@ class AbstractMatcher(object):
     Returns:
       A new (or unmodified original) substitution dict if the matching succeded,
       None otherwise.
-    Raises:
-      BadTypeParameterSubstitution: if we found incompatible values for a type
-        parameter (e.g., if we match x=int, y=str against def f(x: T, y: T)).
     """
     left = value.data
     assert isinstance(left, abstract.AtomicAbstractValue), left
@@ -176,8 +155,8 @@ class AbstractMatcher(object):
             value, other_type.bound, subst, node, view)
         if new_subst is None:
           new_subst = {other_type.name: other_type.bound.instantiate(node)}
-          raise BadTypeParameterSubstitution(
-              self._merge_substs(subst, [new_subst]))
+          self._set_error_subst(self._merge_substs(subst, [new_subst]))
+          return None
       if other_type.name in subst:
         # Merge the two variables.
         new_var = subst[other_type.name].AssignToNewVariable(node)
@@ -197,7 +176,8 @@ class AbstractMatcher(object):
       else:
         new_var = self._enforce_common_superclass(new_var)
       if new_var is None:
-        raise BadTypeParameterSubstitution(subst)
+        self._set_error_subst(subst)
+        return None
       subst = subst.copy()
       subst[other_type.name] = new_var
       return subst

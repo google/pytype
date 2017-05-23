@@ -620,6 +620,17 @@ class TypeVarTest(test_inference.InferenceTest):
           return {'foo': {'bar': self.f()}}
     """)
 
+  def testOptionalTypeVar(self):
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      from typing import Optional, TypeVar
+      T = TypeVar("T", bound=str)
+      def f() -> Optional[T]:
+        return 42 if __any_object__ else None
+    """, deep=True)
+    self.assertErrorLogIs(
+        errors, [(5, "bad-return-type", r"Optional\[T\].*int")])
+
 
 if __name__ == "__main__":
   test_inference.main()
