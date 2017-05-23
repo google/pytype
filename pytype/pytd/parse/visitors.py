@@ -303,6 +303,8 @@ class PrintVisitor(Visitor):
     for t in type_params:
       args = ["'%s'" % t.name]
       args += [c.Visit(PrintVisitor()) for c in t.constraints]
+      if t.bound:
+        args.append("bound=" + t.bound.Visit(PrintVisitor()))
       formatted_type_params.append(
           "%s = TypeVar(%s)" % (t.name, ", ".join(args)))
     return formatted_type_params

@@ -523,16 +523,41 @@ class TypeVarTest(test_inference.InferenceTest):
   def testBound(self):
     _, errors = self.InferAndCheck("""\
       from typing import TypeVar
-      T = TypeVar("T", int, float, bound=str)  # pytype: disable=not-supported-yet
+      T = TypeVar("T", int, float, bound=str)
       S = TypeVar("S", bound="")
-      U = TypeVar("U", bound=str)
+      U = TypeVar("U", bound=str)  # ok
       V = TypeVar("V", bound=int if __any_object__ else float)
     """)
     self.assertErrorLogIs(errors, [
         (2, "invalid-typevar", r"mutually exclusive"),
         (3, "invalid-typevar", r"Expected.*type.*Actual.*str"),
-        (4, "not-supported-yet"),
         (5, "invalid-typevar", r"unambiguous")])
+
+  def testUseBound(self):
+    ty, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      from typing import TypeVar
+      T = TypeVar("T", bound=float)
+      def f(x: T) -> T:
+        return x
+      v1 = f(__any_object__)  # ok
+      v2 = f(True)  # ok
+      v3 = f(42)  # ok
+      v4 = f(3.14)  # ok
+      v5 = f("")
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any, TypeVar
+      T = TypeVar("T", bound=float)
+      def f(x: T) -> T
+      v1 = ...  # type: float
+      v2 = ...  # type: bool
+      v3 = ...  # type: int
+      v4 = ...  # type: float
+      v5 = ...  # type: Any
+    """)
+    self.assertErrorLogIs(
+        errors, [(10, "wrong-arg-types", r"x: float.*x: str")])
 
   def testCovariant(self):
     _, errors = self.InferAndCheck("""\

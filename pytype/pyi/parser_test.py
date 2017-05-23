@@ -255,9 +255,10 @@ class ParserTest(_ParserTestBase):
                      "TypeVar name needs to be 'Q' (not 'T')")
     self.check_error("T = TypeVar('T', covariant=True, int, float)", 1,
                      "syntax error")
+    self.check_error("T = TypeVar('T', rumpelstiltskin=True)", 1,
+                     "Unrecognized keyword")
 
   def test_type_param_arguments(self):
-    # Keyword arguments are ignored for now.
     self.check("""\
       from typing import List, TypeVar
 
@@ -265,10 +266,8 @@ class ParserTest(_ParserTestBase):
     self.check("""\
       from typing import List, TypeVar
 
-      T = TypeVar('T', bound=List[str])""", """\
-      from typing import TypeVar
-
-      T = TypeVar('T')""")
+      T = TypeVar('T', bound=List[str])""")
+    # 'covariant' and 'contravariant' are ignored for now.
     self.check("""\
       from typing import TypeVar
 

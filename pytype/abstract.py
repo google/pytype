@@ -560,7 +560,9 @@ class TypeParameter(AtomicAbstractValue):
       return instance.to_variable(node)
     else:
       for c in self.constraints:
-        var.PasteVariable(c.instantiate(node, container), node)
+        var.PasteVariable(c.instantiate(node, container))
+      if self.bound:
+        var.PasteVariable(self.bound.instantiate(node, container))
     if not var.bindings:
       var.AddBinding(self.vm.convert.unsolvable, [], node)
     return var

@@ -726,6 +726,16 @@ class TestVisitors(parser_test_base.ParserTest):
 
       def f(x: _T0) -> _T0: ..."""))
 
+  def testPrintTypeParameterBound(self):
+    src = textwrap.dedent("""
+      from typing import TypeVar
+      T = TypeVar("T", bound=str)
+    """)
+    self.assertMultiLineEqual(pytd.Print(self.Parse(src)), textwrap.dedent("""\
+      from typing import TypeVar
+
+      T = TypeVar('T', bound=str)"""))
+
 
 class TestAncestorMap(unittest.TestCase):
 

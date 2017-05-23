@@ -171,6 +171,13 @@ class AbstractMatcher(object):
       else:
         if other_type.constraints:
           return None
+      if other_type.bound:
+        new_subst = self._match_value_against_type(
+            value, other_type.bound, subst, node, view)
+        if new_subst is None:
+          new_subst = {other_type.name: other_type.bound.instantiate(node)}
+          raise BadTypeParameterSubstitution(
+              self._merge_substs(subst, [new_subst]))
       if other_type.name in subst:
         # Merge the two variables.
         new_var = subst[other_type.name].AssignToNewVariable(node)

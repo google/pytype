@@ -513,8 +513,10 @@ class Converter(object):
     elif isinstance(pyval, pytd.TypeParameter):
       constraints = tuple(self.constant_to_value(c, {}, self.vm.root_cfg_node)
                           for c in pyval.constraints)
+      bound = (pyval.bound and
+               self.constant_to_value(pyval.bound, {}, self.vm.root_cfg_node))
       return abstract.TypeParameter(
-          pyval.name, self.vm, constraints=constraints)
+          pyval.name, self.vm, constraints=constraints, bound=bound)
     elif isinstance(pyval, abstract.AsInstance):
       cls = pyval.cls
       if isinstance(cls, pytd.ClassType):

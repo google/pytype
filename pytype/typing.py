@@ -141,8 +141,9 @@ class TypeVar(abstract.PyTDFunction):
   def _get_namedarg(self, args, name, arg_type, default_value):
     if name in args.namedargs:
       value = self._get_class_or_constant(args.namedargs[name], name, arg_type)
-      self.vm.errorlog.not_supported_yet(
-          self.vm.frames, "argument \"%s\" to TypeVar" % name)
+      if name != "bound":
+        self.vm.errorlog.not_supported_yet(
+            self.vm.frames, "argument \"%s\" to TypeVar" % name)
       return value
     return default_value
 

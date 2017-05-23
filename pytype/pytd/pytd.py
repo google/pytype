@@ -239,6 +239,7 @@ class Parameter(node.Node('name: str',
 
 class TypeParameter(node.Node('name: str',
                               'constraints: tuple[{Type}]',
+                              'bound: {Type} or None',
                               'scope: str or None'), Type):
   """Represents a type parameter.
 
@@ -254,8 +255,9 @@ class TypeParameter(node.Node('name: str',
   """
   __slots__ = ()
 
-  def __new__(cls, name, constraints=(), scope=None):
-    return super(TypeParameter, cls).__new__(cls, name, constraints, scope)
+  def __new__(cls, name, constraints=(), bound=None, scope=None):
+    return super(TypeParameter, cls).__new__(
+        cls, name, constraints, bound, scope)
 
   @property
   def full_name(self):

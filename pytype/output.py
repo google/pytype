@@ -418,4 +418,5 @@ class Converter(object):
 
   def _typeparam_to_def(self, node, v, name):
     constraints = tuple(c.get_instance_type(node) for c in v.constraints)
-    return pytd.TypeParameter(name, constraints=constraints)
+    bound = v.bound and v.bound.get_instance_type(node)
+    return pytd.TypeParameter(name, constraints=constraints, bound=bound)

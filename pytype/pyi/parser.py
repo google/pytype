@@ -816,15 +816,21 @@ class _Parser(object):
     if name != name_arg:
       raise ParseError("TypeVar name needs to be %r (not %r)" % (
           name_arg, name))
-    # Allow and ignore any keyword arguments (covariant=..., etc.).
+    # 'bound' is the only keyword argument we currently use.
     # TODO(rechen): We should enforce the PEP 484 guideline that
     # len(constraints) != 1. However, this guideline is currently violated
     # in typeshed (see https://github.com/python/typeshed/pull/806).
-    constraints, _ = args
+    constraints, named_args = args
+    named_args = dict(named_args) if named_args else {}
+    extra = set(named_args) - {"bound", "covariant", "contravariant"}
+    if extra:
+      raise ParseError("Unrecognized keyword(s): %s" % ", ".join(extra))
     if not self._current_condition.active:
       return
     self._type_params.append(pytd.TypeParameter(
-        name, constraints=() if constraints is None else tuple(constraints)))
+        name=name,
+        constraints=() if constraints is None else tuple(constraints),
+        bound=named_args.get("bound")))
 
 
 def parse_string(src, name=None, filename=None, python_version=None,

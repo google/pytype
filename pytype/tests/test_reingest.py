@@ -82,6 +82,21 @@ class ReingestTest(test_inference.InferenceTest):
         def g() -> int
       """)
 
+  def testTypeParameterBound(self):
+    foo = self.Infer("""
+      from __future__ import google_type_annotations
+      from typing import TypeVar
+      T = TypeVar("T", bound=float)
+      def f(x: T) -> T: return x
+    """)
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", pytd.Print(foo))
+      _, errors = self.InferAndCheck("""\
+        import foo
+        foo.f("")
+      """, pythonpath=[d.path])
+      self.assertErrorLogIs(errors, [(2, "wrong-arg-types", r"float.*str")])
+
 
 if __name__ == "__main__":
   test_inference.main()
