@@ -331,7 +331,7 @@ class BuiltinTests2(test_inference.InferenceTest):
       from typing import List
       x1 = ...  # type: int
       x2 = ...  # type: int
-      x3 = ...  # type: int or float or complex
+      x3 = ...  # type: float or complex
       x4 = ...  # type: int or float or complex
       x5 = ...  # type: List[int or str]
     """)

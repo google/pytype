@@ -10,6 +10,7 @@ _K = TypeVar('_K')
 _V = TypeVar('_V')
 _K2 = TypeVar('_K2')
 _V2 = TypeVar('_V2')
+_NUMBER = TypeVar('_NUMBER', bound=complex)
 
 def __import__(name: str or unicode or bytearray, ...) -> module
 def abs PYTHONCODE
@@ -88,9 +89,7 @@ def repr(x) -> str
 def round(number: int or float or typing.SupportsRound, ...) -> float
 def setattr(object, name: str or unicode or bytearray, value) -> NoneType
 def sorted(iterable: Iterable[_T], ...) -> list[_T]
-def sum(iterable: Iterable[int]) -> int
-def sum(iterable: Iterable[int or float]) -> int or float
-def sum(iterable: Iterable[int or float or complex]) -> int or float or complex
+def sum(iterable: Iterable[_NUMBER]) -> _NUMBER
 def sum(iterable: Iterable[_T], start: _T) -> _T
 def unichr(i: int) -> unicode
 def vars(...) -> dict[str, ?]
@@ -182,6 +181,7 @@ class classmethod(typing.Callable):  # Also defined in __builtin__.py
     def __init__(self, func) -> NoneType
     def __get__(self, ...) -> ?
 
+_T_str = TypeVar('_T_str', bound=str)
 class str(basestring, Sequence[str]):
     def __init__(self, object) -> NoneType
     def __init__(self) -> NoneType
@@ -241,7 +241,7 @@ class str(basestring, Sequence[str]):
     def translate(self, table: str or NoneType, deletechars: str) -> str
     def upper(self) -> str
     def zfill(self, width: int) -> str
-    def __new__(cls: Type[str], y = ...) -> str
+    def __new__(cls: Type[_T_str], y = ...) -> _T_str
 
 bytes = str
 

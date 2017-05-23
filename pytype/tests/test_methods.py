@@ -878,17 +878,20 @@ class MethodsTest(test_inference.InferenceTest):
     """)
 
   def testOverrideNew(self):
+    # TODO(rechen): pytype should be able to infer the type of "cls" on its own.
     ty = self.Infer("""
+      from __future__ import google_type_annotations
+      from typing import Type
       class Foo(str):
-        def __new__(cls, string):
+        def __new__(cls: Type["Foo"], string):
           return str.__new__(cls, string)
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import Type
       class Foo(str):
-        def __new__(cls, string) -> str
+        def __new__(cls: Type[Foo], string) -> Foo
     """)
 
-  @unittest.skip("The type of foo is incorrectly inferred as str")
   def testInheritNew(self):
     ty = self.Infer("""
       class Foo(str): pass
