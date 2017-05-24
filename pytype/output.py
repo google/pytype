@@ -254,7 +254,7 @@ class Converter(object):
     if (isinstance(v, abstract.PyTDFunction) and
         not isinstance(v, typing.TypeVar)):
       return pytd.Function(
-          name, tuple(sig.pytd_sig for sig in v.signatures), pytd.METHOD)
+          name, tuple(sig.pytd_sig for sig in v.signatures), v.kind)
     elif isinstance(v, abstract.InterpreterFunction):
       return self._function_to_def(node, v, name)
     elif isinstance(v, abstract.ParameterizedClass):

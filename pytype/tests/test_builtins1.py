@@ -574,7 +574,7 @@ class BuiltinTests(test_inference.InferenceTest):
   def testStoreAndLoadFromNamedTuple(self):
     ty = self.Infer("""
       import collections
-      t = collections.namedtuple('', ['x', 'y', 'z'])
+      t = collections.namedtuple('t', ['x', 'y', 'z'])
       t.x = 3
       t.y = "foo"
       t.z = 1j
@@ -583,11 +583,26 @@ class BuiltinTests(test_inference.InferenceTest):
       z = t.z
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
+    from typing import Any, Callable, Iterable, Tuple
     collections = ...  # type: module
-    t = ...  # type: ?  # TODO(kramm): Should this be a class, with attribute x, y and z?
     x = ...  # type: int
     y = ...  # type: str
     z = ...  # type: complex
+
+    class t(tuple):
+        __dict__ = ...  # type: collections.OrderedDict[str, Any]
+        __slots__ = ...  # type: Tuple[nothing]
+        _fields = ...  # type: Tuple[str, str, str]
+        x = ...  # type: Any
+        y = ...  # type: Any
+        z = ...  # type: Any
+        def __getnewargs__(self) -> Tuple[Any, Any, Any]: ...
+        def __getstate__(self) -> None: ...
+        def __new__(cls, x, y, z) -> t: ...
+        def _asdict(self) -> collections.OrderedDict[str, Any]: ...
+        @classmethod
+        def _make(cls, iterable: Iterable, new = ..., len: Callable[[Iterable], int] = ...) -> t: ...
+        def _replace(self, **kwds) -> t: ...
     """)
 
   def testTypeEquals(self):

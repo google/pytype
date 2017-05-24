@@ -238,7 +238,7 @@ class ErrorTest(test_inference.InferenceTest):
           (5, "attribute-error", r"No attribute 'foo' on Type\[Foo\]"),
           (11, "attribute-error",
            r"No attribute 'bar' on int"),
-          (15, "attribute-error",
+          (15, "module-attr",
            "No attribute 'baz' on module 'modfoo'")])
 
   def testAttributeErrorGetAttribute(self):

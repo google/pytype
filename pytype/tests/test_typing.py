@@ -40,7 +40,7 @@ class TypingTest(test_inference.InferenceTest):
   def test_namedtuple_match(self):
     self._test_match("collections.namedtuple('foo', [])()",
                      "typing.NamedTuple")
-    self._test_match("collections.namedtuple('foo', ('x', 'y'))()",
+    self._test_match("collections.namedtuple('foo', ('x', 'y'))(1, 2)",
                      "typing.NamedTuple('foo', [('x', int), ('y', int)])")
 
   def test_namedtuple_item(self):

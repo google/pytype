@@ -25,6 +25,7 @@ from pytype import abstract
 from pytype import annotations_util
 from pytype import attribute
 from pytype import blocks
+from pytype import collections_overlay
 from pytype import convert
 from pytype import directors
 from pytype import exceptions
@@ -1001,7 +1002,7 @@ class VirtualMachine(object):
     elif self.options.strict_attr_checking or (not result and obj.bindings):
       for error in errors:
         if not self._is_none(error.data) and state.node.HasCombination([error]):
-          self.errorlog.attribute_error(
+          self.errorlog.attribute_or_module_error(
               self.frames, error.AssignToNewVariable(self.root_cfg_node), attr)
     if result is None:
       result = self.convert.create_new_unsolvable(node)
@@ -1082,7 +1083,9 @@ class VirtualMachine(object):
         if name == "typing":
           # use a special overlay for stdlib/typing.pytd
           return self.convert.typing_overlay
-        if level == -1 and self.loader.base_module:
+        elif name == "collections":
+          return collections_overlay.CollectionsOverlay(self)
+        elif level == -1 and self.loader.base_module:
           # Python 2 tries relative imports first.
           ast = (self.loader.import_relative_name(name) or
                  self.loader.import_name(name))

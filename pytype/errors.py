@@ -427,12 +427,22 @@ class ErrorLog(ErrorLogBase):
   @_error_name("attribute-error")
   def attribute_error(self, stack, obj, attr_name):
     assert obj.bindings
-    obj_values = abstract.merge_values(obj.data, obj.bindings[0].data.vm)
-    if isinstance(obj_values, abstract.Module):
-      obj_repr = "module %r" % obj_values.name
-    else:
-      obj_repr = self._print_as_actual_type(obj_values)
+    obj_values = abstract.merge_values(obj.data, obj.data[0].vm)
+    obj_repr = self._print_as_actual_type(obj_values)
     self.error(stack, "No attribute %r on %s" % (attr_name, obj_repr))
+
+  @_error_name("module-attr")
+  def module_attr(self, stack, obj, attr_name):
+    module_names = {m.name for m in obj.data if isinstance(m, abstract.Module)}
+    assert module_names
+    self.error(stack, "No attribute %r on module %r" % (
+        attr_name, min(module_names)))
+
+  def attribute_or_module_error(self, stack, obj, attr_name):
+    if any(isinstance(x, abstract.Module) for x in obj.data):
+      return self.module_attr(stack, obj, attr_name)
+    else:
+      return self.attribute_error(stack, obj, attr_name)
 
   @_error_name("none-attr")
   def none_attr(self, stack, attr_name):
@@ -642,3 +652,14 @@ class ErrorLog(ErrorLogBase):
       self._invalid_parameters(stack, comment, bad_call)
     else:
       self.error(stack, "Invalid TypeVar: %s" % comment)
+
+  @_error_name("invalid-namedtuple-name")
+  def invalid_namedtuple_name(self, stack, name, badname):
+    msg = "namedtuple(%(name)r) should be stored as %(name)r, not %(badname)r."
+    self.error(stack, msg % {"name": name, "badname": badname})
+
+  @_error_name("invalid-namedtuple-arg")
+  def invalid_namedtuple_arg(self, stack, badname):
+    msg = ("collections.namedtuple argument %r is not a valid typename or"
+           "field name.")
+    self.warn(stack, msg % badname)

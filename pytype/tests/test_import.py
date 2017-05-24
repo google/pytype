@@ -855,6 +855,21 @@ class ImportTest(test_inference.InferenceTest):
       d = ...  # type: Any
     """)
 
+  def testAttributeOnModule(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        foo = ...  # type: int
+      """)
+      _, errors = self.InferAndCheck("""\
+        from a import foo, bar
+        import a
+        a.baz
+      """, pythonpath=[d.path])
+    self.assertErrorLogIs(errors, [
+        (1, "import-error", r"bar"),
+        (3, "module-attr", r"baz"),
+    ])
+
 
 if __name__ == "__main__":
   test_inference.main()

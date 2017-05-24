@@ -4,6 +4,7 @@ import logging
 
 from pytype import abstract
 from pytype import annotations_util
+from pytype import collections_overlay
 from pytype import typing
 from pytype.pytd import cfg as typegraph
 
@@ -67,6 +68,9 @@ class AbstractAttributeHandler(object):
       return self.get_class_attribute(
           node, obj, name, valself, valcls)
     elif isinstance(obj, typing.TypingOverlay):
+      return self.get_module_attribute(
+          node, obj.get_module(name), name, valself, valcls)
+    elif isinstance(obj, collections_overlay.CollectionsOverlay):
       return self.get_module_attribute(
           node, obj.get_module(name), name, valself, valcls)
     elif isinstance(obj, abstract.Module):
