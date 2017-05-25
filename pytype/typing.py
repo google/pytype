@@ -214,7 +214,7 @@ def build_any(name, vm):
 
 # TODO(kramm): Do a full implementation of this.
 def build_namedtuple(name, vm):
-  del name
+  vm.errorlog.not_supported_yet(vm.frames, name)
   return abstract.Unsolvable(vm)
 
 

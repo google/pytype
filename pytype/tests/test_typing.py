@@ -13,15 +13,15 @@ class TypingTest(test_inference.InferenceTest):
     from __future__ import google_type_annotations
     import collections
     import typing
-    def f(s: %(annotation)s):
+    def f(s: %(annotation)s):%(disables)s
       return s
     f(%(arg)s)
   """
 
-  def _test_match(self, arg, annotation):
+  def _test_match(self, arg, annotation, disables=""):
     self.assertNoErrors(self._TEMPLATE % locals())
 
-  def _test_no_match(self, arg, annotation):
+  def _test_no_match(self, arg, annotation, disables=""):
     _, errors = self.InferAndCheck(self._TEMPLATE % locals())
     self.assertNotEqual(0, len(errors))
 
@@ -39,9 +39,13 @@ class TypingTest(test_inference.InferenceTest):
 
   def test_namedtuple_match(self):
     self._test_match("collections.namedtuple('foo', [])()",
-                     "typing.NamedTuple")
+                     "typing.NamedTuple",
+                     "# pytype: disable=not-supported-yet",
+                     )
     self._test_match("collections.namedtuple('foo', ('x', 'y'))(1, 2)",
-                     "typing.NamedTuple('foo', [('x', int), ('y', int)])")
+                     "typing.NamedTuple('foo', [('x', int), ('y', int)])",
+                     "# pytype: disable=not-supported-yet",
+                     )
 
   def test_namedtuple_item(self):
     with utils.Tempdir() as d:
