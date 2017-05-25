@@ -165,6 +165,21 @@ class BuiltinTests2(test_inference.InferenceTest):
       x = ...  # type: int
     """)
 
+  def testIntInit(self):
+    _, errors = self.InferAndCheck("""\
+      int()
+      int(0)
+      int("0")
+      int("0", 10)
+      int(u"0")
+      int(u"0", 10)
+      int(0, 1, 2)  # line 7: wrong argcount
+      int(0, 1)  # line 8: expected str or unicode, got int for first arg
+    """)
+    self.assertErrorLogIs(errors, [(7, "wrong-arg-count", r"1.*4"),
+                                   (8, "wrong-arg-types",
+                                    r"Union\[str, unicode\].*int")])
+
 
 if __name__ == "__main__":
   test_inference.main()

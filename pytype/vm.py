@@ -62,6 +62,10 @@ Block = collections.namedtuple("Block", ["type", "op", "handler", "level"])
 
 _opcode_counter = metrics.MapCounter("vm_opcode")
 
+overlays = {
+    "collections": collections_overlay.CollectionsOverlay
+}
+
 
 class RecursionException(Exception):
   pass
@@ -1083,8 +1087,8 @@ class VirtualMachine(object):
         if name == "typing":
           # use a special overlay for stdlib/typing.pytd
           return self.convert.typing_overlay
-        elif name == "collections":
-          return collections_overlay.CollectionsOverlay(self)
+        elif name in overlays:
+          return overlays[name](self)
         elif level == -1 and self.loader.base_module:
           # Python 2 tries relative imports first.
           ast = (self.loader.import_relative_name(name) or

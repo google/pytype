@@ -5,11 +5,12 @@
 
 
 from pytype import abstract
+from pytype import overlay
 from pytype.pytd import pep484
 from pytype.pytd import pytd
 
 
-class TypingOverlay(abstract.Module):
+class TypingOverlay(overlay.Overlay):
   """A representation of the 'typing' module that allows custom overlays."""
 
   is_lazy = True  # uses _convert_member
@@ -21,27 +22,9 @@ class TypingOverlay(abstract.Module):
       _, name = cls.name.rsplit(".", 1)
       if name not in member_map and pytd.IsContainer(cls) and cls.template:
         member_map[name] = TypingContainer
-    super(TypingOverlay, self).__init__(vm, "typing", member_map)
-    self.real_module = vm.convert.constant_to_value(
+    real_module = vm.convert.constant_to_value(
         ast, subst={}, node=vm.root_cfg_node)
-
-  def _convert_member(self, name, m):
-    var = m(name, self.vm).to_variable(self.vm.root_cfg_node)
-    self.vm.trace_module_member(self, name, var)
-    return var
-
-  def get_module(self, name):
-    if name in self._member_map:
-      return self
-    else:
-      return self.real_module
-
-  def items(self):
-    items = super(TypingOverlay, self).items()
-    for name, item in self.real_module.items():
-      if name not in self._member_map:
-        items.append((name, item))
-    return items
+    super(TypingOverlay, self).__init__(vm, "typing", member_map, real_module)
 
 
 class Union(abstract.AnnotationClass):

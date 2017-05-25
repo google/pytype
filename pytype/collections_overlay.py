@@ -5,10 +5,11 @@ import inspect
 from keyword import iskeyword
 
 from pytype import abstract
+from pytype import overlay
 from pytype.pytd import pytd
 
 
-class CollectionsOverlay(abstract.Module):
+class CollectionsOverlay(overlay.Overlay):
   """A custom overlay for the 'collections' module."""
 
   is_lazy = True  # uses our _convert_member method.
@@ -25,28 +26,11 @@ class CollectionsOverlay(abstract.Module):
     """
     # collections_overlay contains all the members that have special definitions
     member_map = collections_overlay.copy()
-    super(CollectionsOverlay, self).__init__(vm, "collections", member_map)
     ast = vm.loader.import_name("collections")
-    self.real_module = vm.convert.constant_to_value(
+    real_module = vm.convert.constant_to_value(
         ast, subst={}, node=vm.root_cfg_node)
-
-  def _convert_member(self, name, member):
-    var = member(name, self.vm).to_variable(self.vm.root_cfg_node)
-    self.vm.trace_module_member(self, name, var)
-    return var
-
-  def get_module(self, name):
-    """Returns the abstract.Module for the given name."""
-    if name in self._member_map:
-      return self
-    else:
-      return self.real_module
-
-  def items(self):
-    items = super(CollectionsOverlay, self).items()
-    items += [(name, item) for name, item in self.real_module.items()
-              if name not in self._member_map]
-    return items
+    super(CollectionsOverlay, self).__init__(vm, "collections", member_map,
+                                             real_module)
 
 
 class NamedTupleInstance(abstract.PyTDClass):

@@ -199,8 +199,7 @@ class SolverTests(test_inference.InferenceTest):
         return int(x, 16)
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
-      from typing import SupportsInt
-      def f(x: int or SupportsInt or str or unicode) -> int
+      def f(x: str or unicode) -> int
     """)
 
   def testCallMethod(self):
