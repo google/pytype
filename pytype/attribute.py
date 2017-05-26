@@ -5,6 +5,7 @@ import logging
 from pytype import abstract
 from pytype import annotations_util
 from pytype import overlay
+from pytype import special_builtins
 from pytype.pytd import cfg as typegraph
 
 log = logging.getLogger(__name__)
@@ -88,13 +89,13 @@ class AbstractAttributeHandler(object):
         return self.vm.join_cfg_nodes(nodes), ret
       else:
         return node, None
-    elif isinstance(obj, abstract.SuperInstance):
+    elif isinstance(obj, special_builtins.SuperInstance):
       if obj.super_obj:
         valself = obj.super_obj.to_variable(node).bindings[0]
       valcls = obj.super_cls.to_variable(node).bindings[0]
       return self._class_getter(
           node, obj.super_cls, name, valself, valcls, skip=obj.super_cls)
-    elif isinstance(obj, abstract.Super):
+    elif isinstance(obj, special_builtins.Super):
       return self.get_attribute(
           node, self.vm.convert.super_type.data[0], name, valself, valcls)
     elif isinstance(obj, abstract.BoundFunction):

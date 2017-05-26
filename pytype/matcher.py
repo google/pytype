@@ -4,6 +4,7 @@ import logging
 
 from pytype import abstract
 from pytype import function
+from pytype import special_builtins
 from pytype import utils
 from pytype.pytd import pep484
 
@@ -256,7 +257,7 @@ class AbstractMatcher(object):
     elif isinstance(left, abstract.SimpleAbstractValue):
       return self._match_instance_against_type(
           left, other_type, subst, node, view)
-    elif isinstance(left, abstract.SuperInstance):
+    elif isinstance(left, special_builtins.SuperInstance):
       return self._match_class_and_instance_against_type(
           left.super_cls, left.super_obj, other_type, subst, node, view)
     elif isinstance(left, abstract.ClassMethod):

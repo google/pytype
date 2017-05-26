@@ -33,6 +33,7 @@ from pytype import function
 from pytype import load_pytd
 from pytype import matcher
 from pytype import metrics
+from pytype import special_builtins
 from pytype import state as frame_state
 from pytype import typing
 from pytype import utils
@@ -202,7 +203,7 @@ class VirtualMachine(object):
         # boolean values.
         "True": self.convert.true,
         "False": self.convert.false,
-        "isinstance": abstract.IsInstance(self),
+        "isinstance": special_builtins.IsInstance(self),
     }
 
     # Memoize which overlays are loaded.
@@ -1610,6 +1611,7 @@ class VirtualMachine(object):
     return state.push(self.convert.build_set(state.node, elts))
 
   def byte_BUILD_MAP(self, state, op):
+    """Build a dictionary."""
     the_map = self.convert.build_map(state.node)
     if self.python_version >= (3, 5):
       state, args = state.popn(2 * op.arg)
@@ -1985,7 +1987,7 @@ class VirtualMachine(object):
     return kw_defaults
 
   def _get_extra_function_args(self, state, arg):
-    """Get function annotations and defaults from the stack. (Python3.5-)"""
+    """Get function annotations and defaults from the stack. (Python3.5-)."""
     if self.python_version[0] == 2:
       num_pos_defaults = arg & 0xffff
       num_kw_defaults = 0
@@ -2025,7 +2027,6 @@ class VirtualMachine(object):
       state, packed_pos_def = state.pop()
       pos_defaults = abstract.get_atomic_python_constant(packed_pos_def, tuple)
     return state, pos_defaults, kw_defaults, annot, late_annot, free_vars
-
 
   def _process_function_type_comment(self, op, code_var, annotations,
                                      late_annotations):
@@ -2149,6 +2150,7 @@ class VirtualMachine(object):
     return self.call_function_from_stack(state, op.arg, args, kwargs)
 
   def byte_CALL_FUNCTION_EX(self, state, op):
+    """Call a function."""
     if op.arg & loadmarshal.CALL_FUNCTION_EX_HAS_KWARGS:
       state, starstarargs = state.pop()
     else:

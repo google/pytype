@@ -5,6 +5,7 @@ import logging
 
 
 from pytype import abstract
+from pytype import special_builtins
 from pytype import typing
 from pytype.pytd import pytd
 from pytype.pytd import utils as pytd_utils
@@ -173,7 +174,7 @@ class Converter(object):
           # parameters in call traces.
           return self.value_instance_to_pytd_type(node, val, None, seen, view)
       return pytd.NamedType("typing.Callable")
-    elif isinstance(v, (abstract.IsInstance, abstract.ClassMethod,
+    elif isinstance(v, (special_builtins.IsInstance, abstract.ClassMethod,
                         abstract.StaticMethod)):
       return pytd.NamedType("typing.Callable")
     elif isinstance(v, abstract.Class):
@@ -203,7 +204,7 @@ class Converter(object):
     elif isinstance(v, abstract.Union):
       return pytd.UnionType(tuple(self.value_to_pytd_type(node, o, seen, view)
                                   for o in v.options))
-    elif isinstance(v, abstract.SuperInstance):
+    elif isinstance(v, special_builtins.SuperInstance):
       return pytd.NamedType("__builtin__.super")
     elif isinstance(v, abstract.Unsolvable):
       return pytd.AnythingType()

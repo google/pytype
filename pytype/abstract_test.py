@@ -8,6 +8,7 @@ from pytype import errors
 from pytype import exceptions
 from pytype import function
 from pytype import load_pytd
+from pytype import special_builtins
 from pytype import state as frame_state
 from pytype import vm
 from pytype.pytd import cfg
@@ -189,7 +190,7 @@ class IsInstanceTest(AbstractTestBase):
 
   def setUp(self):
     super(IsInstanceTest, self).setUp()
-    self._is_instance = abstract.IsInstance(self._vm)
+    self._is_instance = special_builtins.IsInstance(self._vm)
     # Easier access to some primitive instances.
     self._bool = self._vm.convert.primitive_class_instances[bool]
     self._int = self._vm.convert.primitive_class_instances[int]
@@ -751,7 +752,7 @@ class AbstractTest(AbstractTestBase):
                          [self._vm.convert.unsolvable])
 
   def testSuperType(self):
-    supercls = abstract.Super(self._vm)
+    supercls = special_builtins.Super(self._vm)
     self.assertListEqual(supercls.get_class().data,
                          self._vm.convert.type_type.data)
 

@@ -7,6 +7,7 @@ import types
 from pytype import abstract
 from pytype import blocks
 from pytype import output
+from pytype import special_builtins
 from pytype import utils
 from pytype.pyc import loadmarshal
 from pytype.pytd import cfg
@@ -443,7 +444,7 @@ class Converter(object):
       return abstract.AbstractOrConcreteValue(
           pyval, self.primitive_classes[types.CodeType], self.vm)
     elif pyval is super:
-      return abstract.Super(self.vm)
+      return special_builtins.Super(self.vm)
     elif (pyval.__class__ in [types.FunctionType,
                               types.ModuleType,
                               types.GeneratorType,
@@ -486,7 +487,7 @@ class Converter(object):
                     for sig in pyval.signatures]
       type_new = self.vm.lookup_builtin("__builtin__.type").Lookup("__new__")
       if pyval is type_new:
-        f_cls = abstract.TypeNew
+        f_cls = special_builtins.TypeNew
       else:
         f_cls = abstract.PyTDFunction
       f = f_cls(pyval.name, signatures, pyval.kind, self.vm)
