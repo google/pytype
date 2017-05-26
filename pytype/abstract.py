@@ -228,6 +228,11 @@ class AtomicAbstractValue(object):
       return self.get_class()
     return None
 
+  def get_own_new(self, node, value):
+    """Get this value's __new__ method, if it isn't object.__new__."""
+    del value  # Unused, only classes have methods.
+    return node, None
+
   def call(self, node, func, args):
     """Call this abstract value with the given arguments.
 
@@ -2032,7 +2037,7 @@ class Class(object):
   """Mix-in to mark all class-like values."""
 
   __metaclass__ = MixinMeta
-  overloads = ("get_special_attribute",)
+  overloads = ("get_special_attribute", "get_own_new")
 
   def __new__(cls, *args, **kwds):
     """Prevent direct instantiation."""
@@ -2054,8 +2059,17 @@ class Class(object):
         return base.cls
     return None
 
-  def _call_new_and_init(self, node, value, args):
-    """Call __new__ if it has been overridden on the given value."""
+  def get_own_new(self, node, value):
+    """Get this value's __new__ method, if it isn't object.__new__.
+
+    Args:
+      node: The current node.
+      value: A cfg.Binding containing this value.
+
+    Returns:
+      A tuple of (1) a node and (2) either a cfg.Variable of the special
+      __new__ method, or None.
+    """
     node, new = self.vm.attribute_handler.get_attribute(
         node, value.data, "__new__", value)
     if new is None:
@@ -2068,6 +2082,13 @@ class Class(object):
         # Instead of calling object.__new__, our abstract classes directly
         # create instances of themselves.
         return node, None
+    return node, new
+
+  def _call_new_and_init(self, node, value, args):
+    """Call __new__ if it has been overridden on the given value."""
+    node, new = self.get_own_new(node, value)
+    if new is None:
+      return node, None
     cls = value.AssignToNewVariable(node)
     new_args = args.replace(posargs=(cls,) + args.posargs)
     node, variable = self.vm.call_function(node, new, new_args)

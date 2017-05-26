@@ -491,6 +491,10 @@ class PrintVisitor(Visitor):
     elif node.name == "self" and self.class_names and (
         node.type == self.class_names[-1]):
       return self._SafeName(node.name) + suffix
+    elif node.name == "cls" and self.class_names and (
+        node.type == "Type[%s]" % self.class_names[-1]):
+      self._typing_import_counts["Type"] -= 1
+      return self._SafeName(node.name) + suffix
     elif node.type is None:
       logging.warning("node.type is None")
       return self._SafeName(node.name)

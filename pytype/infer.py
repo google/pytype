@@ -47,6 +47,8 @@ class CallTracer(vm.VirtualMachine):
       analyze_types.
   """
 
+  _CONSTRUCTORS = ("__new__", "__init__")
+
   def __init__(self, *args, **kwargs):
     super(CallTracer, self).__init__(*args, **kwargs)
     self._unknowns = {}
@@ -57,10 +59,10 @@ class CallTracer(vm.VirtualMachine):
     self._interpreter_functions = []
     self.exitpoint = None
 
-  def create_argument(self, node, signature, name):
+  def create_argument(self, node, signature, name, seen):
     t = signature.annotations.get(name)
     if t:
-      node, _, instance = self.init_class(node, t)
+      node, _, instance = self.init_class(node, t, seen)
       return node, instance
     else:
       return node, self.convert.create_new_unknown(node, force=True)
@@ -79,6 +81,50 @@ class CallTracer(vm.VirtualMachine):
     kwargs.initialize_type_parameter(node, abstract.K, key_type)
     kwargs.initialize_type_parameter(node, abstract.V, value_type)
     return kwargs.to_variable(node)
+
+  def create_method_arguments(self, node, method, seen):
+    """Create arguments for the given method.
+
+    Args:
+      node: The current node.
+      method: An abstract.InterpreterFunction.
+      seen: A set of already-analyzed abstract values.
+
+    Returns:
+      A tuple of a node and an abstract.FunctionArgs object.
+    """
+    args = []
+    for i in range(method.argcount()):
+      node, arg = self.create_argument(node, method.signature,
+                                       method.signature.param_names[i], seen)
+      args.append(arg)
+    kws = {}
+    for key in method.signature.kwonly_params:
+      node, arg = self.create_argument(node, method.signature, key, seen)
+      kws[key] = arg
+    starargs = self.create_varargs(node) if method.has_varargs() else None
+    starstarargs = self.create_kwargs(node) if method.has_kwargs() else None
+    return node, abstract.FunctionArgs(posargs=tuple(args),
+                                       namedargs=kws,
+                                       starargs=starargs,
+                                       starstarargs=starstarargs)
+
+  def call_function_with_args(self, node, val, args):
+    """Call a function.
+
+    Args:
+      node: The given node.
+      val: A cfg.Binding containing the function.
+      args: An abstract.FunctionArgs object.
+
+    Returns:
+      A tuple of (1) a node and (2) a cfg.Variable of the return value.
+    """
+    fvar = val.AssignToNewVariable(node)
+    with val.data.record_calls():
+      new_node, ret = self.call_function_in_frame(node, fvar, *args)
+    new_node.ConnectTo(node)
+    return new_node, ret
 
   def call_function_in_frame(self, node, var, args, kwargs,
                              starargs, starstarargs):
@@ -108,26 +154,11 @@ class CallTracer(vm.VirtualMachine):
     if isinstance(method, (abstract.InterpreterFunction,
                            abstract.BoundInterpreterFunction)):
       if (not self.analyze_annotated and method.signature.annotations and
-          fname not in ["__new__", "__init__"]):
+          fname not in self._CONSTRUCTORS):
         log.info("%r has type annotations, not analyzing futher.", fname)
       else:
-        args = []
-        for i in range(method.argcount()):
-          node, arg = self.create_argument(node, method.signature,
-                                           method.signature.param_names[i])
-          args.append(arg)
-        kws = {}
-        for key in method.signature.kwonly_params:
-          node, arg = self.create_argument(node, method.signature, key)
-          kws[key] = arg
-        starargs = self.create_varargs(node) if method.has_varargs() else None
-        starstarargs = self.create_kwargs(node) if method.has_kwargs() else None
-        fvar = val.AssignToNewVariable(node)
-        with method.record_calls():
-          new_node, _ = self.call_function_in_frame(
-              node, fvar, tuple(args), kws, starargs, starstarargs)
-        new_node.ConnectTo(node)
-        node = new_node
+        node, args = self.create_method_arguments(node, method, seen)
+        node, _ = self.call_function_with_args(node, val, args)
     return node
 
   def analyze_method_var(self, node, name, var, seen):
@@ -143,22 +174,42 @@ class CallTracer(vm.VirtualMachine):
       bound.AddBinding(m.property_get(instance, clsvar), [], node)
     return bound
 
-  def instantiate(self, node, clsv):
+  def _instantiate_binding(self, node, cls, seen):
+    """Instantiate a class binding."""
+    node, new = cls.data.get_own_new(node, cls)
+    if not new or (
+        any(not isinstance(f, abstract.InterpreterFunction) for f in new.data)):
+      # This assumes that any inherited __new__ method defined in a pyi file
+      # returns an instance of the current class.
+      return cls.data.instantiate(node)
+    instance = self.program.NewVariable()
+    for b in new.bindings:
+      seen.add(b.data)
+      node, args = self.create_method_arguments(node, b.data, seen)
+      if args.posargs and (
+          b.data.signature.param_names[0] not in b.data.signature.annotations):
+        args = args._replace(
+            posargs=(cls.AssignToNewVariable(node),) + args.posargs[1:])
+      _, ret = self.call_function_with_args(node, b, args)
+      instance.PasteVariable(ret)
+    return instance
+
+  def instantiate(self, node, clsv, seen):
     """Build an (dummy) instance from a class, for analyzing it."""
     n = self.program.NewVariable()
-    for cls in clsv.Data(node):
-      instance = cls.instantiate(node)
-      n.PasteVariable(instance, node)
+    for cls in clsv.Bindings(node):
+      n.PasteVariable(self._instantiate_binding(node, cls, seen))
     return n
 
   def init_class(self, node, cls, seen=None):
     """Instantiate a class, and also call __init__."""
-    seen = seen or set()
+    if seen is None:
+      seen = set()
     key = (node, cls)
     if (key not in self._instance_cache or
         self._instance_cache[key] is _INITIALIZING):
       clsvar = cls.to_variable(node)
-      instance = self.instantiate(node, clsvar)
+      instance = self.instantiate(node, clsvar, seen)
       if key in self._instance_cache:
         # We've encountered a recursive pattern such as
         # class A:
@@ -171,11 +222,11 @@ class CallTracer(vm.VirtualMachine):
         # maybe_missing_members to True would cause pytype to ignore
         # all attribute errors on self in __init__.
         values = instance.data
-        seen = set()
+        seen_instances = set()
         while values:
           v = values.pop(0)
-          if v not in seen:
-            seen.add(v)
+          if v not in seen_instances:
+            seen_instances.add(v)
             v.maybe_missing_members = True
             if isinstance(v, abstract.SimpleAbstractValue):
               for child in v.type_parameters.values():
@@ -208,8 +259,8 @@ class CallTracer(vm.VirtualMachine):
   def analyze_class(self, node, val, seen):
     node, clsvar, instance = self.init_class(node, val.data, seen)
     for name, methodvar in sorted(val.data.members.items()):
-      if name == "__init__":
-        continue  # We already called __init__ in init_class
+      if name in self._CONSTRUCTORS:
+        continue  # We already called this method in init_class.
       b = self.bind_method(node, name, methodvar, instance, clsvar)
       node2 = self.analyze_method_var(node, name, b, seen)
       node2.ConnectTo(node)

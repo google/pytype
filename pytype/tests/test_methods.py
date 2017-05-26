@@ -878,18 +878,17 @@ class MethodsTest(test_inference.InferenceTest):
     """)
 
   def testOverrideNew(self):
-    # TODO(rechen): pytype should be able to infer the type of "cls" on its own.
     ty = self.Infer("""
       from __future__ import google_type_annotations
       from typing import Type
       class Foo(str):
-        def __new__(cls: Type["Foo"], string):
+        def __new__(cls, string):
           return str.__new__(cls, string)
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
       from typing import Type
       class Foo(str):
-        def __new__(cls: Type[Foo], string) -> Foo
+        def __new__(cls, string) -> Foo
     """)
 
   def testInheritNew(self):
@@ -900,6 +899,59 @@ class MethodsTest(test_inference.InferenceTest):
     self.assertTypesMatchPytd(ty, """
       class Foo(str): ...
       foo = ...  # type: Foo
+    """)
+
+  def testAttributeInNew(self):
+    ty = self.Infer("""
+      class Foo(object):
+        def __new__(cls, name):
+          self = super(Foo, cls).__new__(cls)
+          self.name = name
+          return self
+    """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      class Foo(object):
+        name = ...  # type: Any
+        def __new__(cls, name) -> Foo
+    """)
+
+  def testAttributeInInheritedNew(self):
+    ty = self.Infer("""
+      class Foo(object):
+        def __new__(cls, name):
+          self = super(Foo, cls).__new__(cls)
+          self.name = name
+          return self
+      class Bar(Foo):
+        def __new__(cls):
+          return super(Bar, cls).__new__(cls, "")
+    """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      class Foo(object):
+        name = ...  # type: Any
+        def __new__(cls, name) -> Foo
+      class Bar(Foo):
+        name = ...  # type: str
+        def __new__(cls) -> Bar
+    """)
+
+  def testAttributesInNewAndInit(self):
+    ty = self.Infer("""
+      class Foo(object):
+        def __new__(cls):
+          self = super(Foo, cls).__new__(cls)
+          self.name = "Foo"
+          return self
+        def __init__(self):
+          self.nickname = 400
+    """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      class Foo(object):
+        name = ...  # type: str
+        nickname = ...  # type: int
+        def __new__(cls) -> Foo
     """)
 
   def testVariableProductComplexityLimit(self):
