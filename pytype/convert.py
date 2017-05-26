@@ -7,7 +7,6 @@ import types
 from pytype import abstract
 from pytype import blocks
 from pytype import output
-from pytype import typing
 from pytype import utils
 from pytype.pyc import loadmarshal
 from pytype.pytd import cfg
@@ -105,7 +104,6 @@ class Converter(object):
     object_val, = self.object_type.data
     object_val.load_lazy_attribute("__new__")
     self.object_new, = object_val.members["__new__"].data
-    self.typing_overlay = typing.TypingOverlay(self.vm)
 
   def value_to_constant(self, val, constant_type):
     if (isinstance(val, abstract.PythonConstant) and
@@ -464,7 +462,7 @@ class Converter(object):
               pyval.functions + pyval.aliases)
       members = {val.name.rsplit(".")[-1]: val
                  for val in data}
-      return abstract.Module(self.vm, pyval.name, members)
+      return abstract.Module(self.vm, pyval.name, members, pyval)
     elif isinstance(pyval, pytd.Class) and pyval.name == "__builtin__.super":
       return self.vm.special_builtins["super"]
     elif isinstance(pyval, pytd.Class):

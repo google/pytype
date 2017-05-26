@@ -403,4 +403,5 @@ class PickledPyiLoader(Loader):
       del self._modules[module_name]
       raise BadDependencyError(e.message, module_name)
     self._modules[module_name].ast = ast
+    self._modules[module_name].dirty = False
     return ast

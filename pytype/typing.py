@@ -22,9 +22,7 @@ class TypingOverlay(overlay.Overlay):
       _, name = cls.name.rsplit(".", 1)
       if name not in member_map and pytd.IsContainer(cls) and cls.template:
         member_map[name] = TypingContainer
-    real_module = vm.convert.constant_to_value(
-        ast, subst={}, node=vm.root_cfg_node)
-    super(TypingOverlay, self).__init__(vm, "typing", member_map, real_module)
+    super(TypingOverlay, self).__init__(vm, "typing", member_map, ast)
 
 
 class Union(abstract.AnnotationClass):

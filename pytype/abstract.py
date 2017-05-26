@@ -3098,10 +3098,11 @@ class Module(Instance):
 
   is_lazy = True  # uses _convert_member
 
-  def __init__(self, vm, name, member_map):
+  def __init__(self, vm, name, member_map, ast):
     super(Module, self).__init__(vm.convert.module_type, vm)
     self.name = name
     self._member_map = member_map
+    self.ast = ast
 
   def _convert_member(self, name, ty):
     """Called to convert the items in _member_map to cfg.Variable."""

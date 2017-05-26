@@ -34,6 +34,7 @@ from pytype import load_pytd
 from pytype import matcher
 from pytype import metrics
 from pytype import state as frame_state
+from pytype import typing
 from pytype import utils
 from pytype.pyc import loadmarshal
 from pytype.pyc import opcodes
@@ -62,8 +63,11 @@ Block = collections.namedtuple("Block", ["type", "op", "handler", "level"])
 
 _opcode_counter = metrics.MapCounter("vm_opcode")
 
+# Collection of module overlays, used in _import_module to fetch an overlay
+# instead of the module itself. Memoized in the vm itself.
 overlays = {
-    "collections": collections_overlay.CollectionsOverlay
+    "collections": collections_overlay.CollectionsOverlay,
+    "typing": typing.TypingOverlay,
 }
 
 
@@ -200,6 +204,9 @@ class VirtualMachine(object):
         "False": self.convert.false,
         "isinstance": abstract.IsInstance(self),
     }
+
+    # Memoize which overlays are loaded.
+    self.loaded_overlays = {}
 
   def lookup_builtin(self, name):
     try:
@@ -1084,11 +1091,10 @@ class VirtualMachine(object):
     if name:
       if level <= 0:
         assert level in [-1, 0]
-        if name == "typing":
-          # use a special overlay for stdlib/typing.pytd
-          return self.convert.typing_overlay
-        elif name in overlays:
-          return overlays[name](self)
+        if name in overlays:
+          if name not in self.loaded_overlays:
+            self.loaded_overlays[name] = overlays[name](self)
+          return self.loaded_overlays[name]
         elif level == -1 and self.loader.base_module:
           # Python 2 tries relative imports first.
           ast = (self.loader.import_relative_name(name) or

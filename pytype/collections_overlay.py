@@ -27,10 +27,7 @@ class CollectionsOverlay(overlay.Overlay):
     # collections_overlay contains all the members that have special definitions
     member_map = collections_overlay.copy()
     ast = vm.loader.import_name("collections")
-    real_module = vm.convert.constant_to_value(
-        ast, subst={}, node=vm.root_cfg_node)
-    super(CollectionsOverlay, self).__init__(vm, "collections", member_map,
-                                             real_module)
+    super(CollectionsOverlay, self).__init__(vm, "collections", member_map, ast)
 
 
 class NamedTupleInstance(abstract.PyTDClass):

@@ -20,7 +20,7 @@ class Overlay(abstract.Module):
     real_module: An abstract.Module wrapping the AST for the underlying module.
   """
 
-  def __init__(self, vm, name, member_map, real_module):
+  def __init__(self, vm, name, member_map, ast):
     """Initialize the overlay.
 
     Args:
@@ -28,12 +28,13 @@ class Overlay(abstract.Module):
       name: A string containing the name of the underlying module.
       member_map: Dict of str to abstract.AtomicAbstractValues that provide type
         information not available in the underlying module.
-      real_module: A cfg.Variable containing the AST for the underlying module.
+      ast: An pytd.TypeDeclUnit containing the AST for the underlying module.
         Used to access type information for members of the module that are not
         explicitly provided by the overlay.
     """
-    super(Overlay, self).__init__(vm, name, member_map)
-    self.real_module = real_module
+    super(Overlay, self).__init__(vm, name, member_map, ast)
+    self.real_module = vm.convert.constant_to_value(
+        ast, subst={}, node=vm.root_cfg_node)
 
   def _convert_member(self, name, member):
     var = member(name, self.vm).to_variable(self.vm.root_cfg_node)

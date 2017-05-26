@@ -15,6 +15,7 @@ from pytype import function
 from pytype import metrics
 from pytype import output
 from pytype import state as frame_state
+from pytype import typing
 from pytype import utils
 from pytype import vm
 from pytype.pytd import optimize
@@ -252,12 +253,12 @@ class CallTracer(vm.VirtualMachine):
     return node
 
   def trace_module_member(self, module, name, member):
-    if module is None or module is self.convert.typing_overlay:
+    if module is None or isinstance(module, typing.TypingOverlay):
       # TypingOverlay takes precedence over typing.pytd.
       trace = True
     else:
-      trace = (module is self.convert.typing_overlay.real_module and
-               name not in self._builtin_map)
+      trace = (module.ast is self.loader.typing
+               and name not in self._builtin_map)
     if trace:
       self._builtin_map[name] = member.data
 
