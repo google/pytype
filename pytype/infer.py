@@ -258,9 +258,13 @@ class CallTracer(vm.VirtualMachine):
 
   def analyze_class(self, node, val, seen):
     node, clsvar, instance = self.init_class(node, val.data, seen)
+    if not any(v.cls and val.data in v.cls.data for v in instance.data):
+      # __new__ returned something besides an instance of the current class.
+      instance = val.data.instantiate(node)
+      node = self.call_init(node, instance, seen)
     for name, methodvar in sorted(val.data.members.items()):
       if name in self._CONSTRUCTORS:
-        continue  # We already called this method in init_class.
+        continue  # We already called this method during initialization.
       b = self.bind_method(node, name, methodvar, instance, clsvar)
       node2 = self.analyze_method_var(node, name, b, seen)
       node2.ConnectTo(node)

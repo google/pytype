@@ -941,6 +941,65 @@ class ClassesTest(test_inference.InferenceTest):
       """, pythonpath=[d.path])
       self.assertErrorLogIs(errors, [(2, "mro-error", r"Class C")])
 
+  def testErrorfulConstructors(self):
+    ty, errors = self.InferAndCheck("""\
+      class Foo(object):
+        attr = 42
+        def __new__(cls):
+          return name_error
+        def __init__(self):
+          self.attribute_error
+          self.instance_attr = self.attr
+        def f(self):
+          return self.instance_attr
+    """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      class Foo(object):
+        attr = ...  # type: int
+        instance_attr = ...  # type: int
+        def __new__(cls) -> Any: ...
+        def f(self) -> int: ...
+    """)
+    self.assertErrorLogIs(errors, [(4, "name-error"), (6, "attribute-error")])
+
+  def testNewFalse(self):
+    ty = self.Infer("""\
+      class Foo(object):
+        def __new__(cls):
+          return False
+        def __init__(self):
+          self.instance_attr = ""
+        def f(self):
+          return self.instance_attr
+    """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      class Foo(object):
+        instance_attr = ...  # type: str
+        def __new__(cls) -> bool: ...
+        def f(self) -> str: ...
+    """)
+
+  def testNewAmbiguous(self):
+    ty = self.Infer("""
+      class Foo(object):
+        def __new__(cls):
+          if __random__:
+            return super(cls).__new__(cls)
+          else:
+            return "hello world"
+        def __init__(self):
+          self.instance_attr = ""
+        def f(self):
+          return self.instance_attr
+    """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      class Foo(object):
+        instance_attr = ...  # type: str
+        def __new__(cls) -> str or Foo
+        def f(self) -> str
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()
