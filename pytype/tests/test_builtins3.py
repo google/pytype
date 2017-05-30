@@ -180,6 +180,20 @@ class BuiltinTests2(test_inference.InferenceTest):
                                    (8, "wrong-arg-types",
                                     r"Union\[str, unicode\].*int")])
 
+  def testNewlines(self):
+    with utils.Tempdir() as d:
+      d.create_file("newlines.txt", """\
+          1
+          2
+          3
+          """)
+      self.assertNoErrors("""\
+          with open("newlines.txt", "rU") as f:
+            for line in f:
+              print line
+            print f.newlines
+          """)
+
 
 if __name__ == "__main__":
   test_inference.main()
