@@ -176,7 +176,7 @@ class Cast(abstract.PyTDFunction):
     # We forbid typing.TypeVars to be used as types in calls to typing.cast
     if args.posargs:
       typ_var = args.posargs[0]
-    else
+    else:
       typ_var = args.namedargs.get("typ")
 
     if (typ_var and
