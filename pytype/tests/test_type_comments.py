@@ -432,6 +432,22 @@ class AssignmentCommentTest(test_inference.InferenceTest):
       a = ...  # type: list[list[int]]
     """)
 
+  def testTypeCommentNameError(self):
+    _, errors = self.InferAndCheck("""\
+      def f():
+        x = None  # type: Any
+    """, deep=True)
+    self.assertErrorLogIs(
+        errors, [(2, "invalid-type-comment", r"not defined$")])
+
+  def testTypeCommentInvalidSyntax(self):
+    _, errors = self.InferAndCheck("""\
+      def f():
+        x = None  # type: y = 1
+    """, deep=True)
+    self.assertErrorLogIs(
+        errors, [(2, "invalid-type-comment", r"invalid syntax$")])
+
 
 if __name__ == "__main__":
   test_inference.main()

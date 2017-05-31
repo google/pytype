@@ -281,11 +281,14 @@ class AnnotationsUtil(object):
     try:
       code = self.vm.compile_src(expr, mode="eval")
     except pyc.CompileError as e:
-      raise EvaluationError(e.message)
+      # We only want the error, not the full message, which includes a
+      # temporary filename and line number.
+      raise EvaluationError(e.error)
     new_locals = self.vm.convert_locals_or_globals({}, "locals")
     _, _, _, ret = self.vm.run_bytecode(node, code, f_globals, new_locals)
     if len(self.vm.errorlog) > prior_errors:
-      new_messages = [self.vm.errorlog[i].message
+      # Annotations are constants, so tracebacks aren't needed.
+      new_messages = [self.vm.errorlog[i].drop_traceback().message
                       for i in range(prior_errors, len(self.vm.errorlog))]
       self.vm.errorlog.revert_to(checkpoint)
       raise EvaluationError("\n".join(new_messages))
