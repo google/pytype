@@ -126,8 +126,13 @@ class TypingTest(test_inference.InferenceTest):
         def f(x):
           return cast(AnyStr, x)
         f("hello")
+        def g(x):
+          return cast(AnyStr if __random__ else int, x)
+        g("quack")
         """)
-    self.assertErrorLogIs(errors, [(4, "invalid-typevar")])
+    self.assertErrorLogIs(errors,
+                          [(4, "invalid-typevar"),
+                           (7, "invalid-typevar")])
 
   def test_cast_args(self):
     self.assertNoCrash("""\
