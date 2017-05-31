@@ -231,6 +231,20 @@ class TupleTest(test_inference.InferenceTest):
     """)
     del errors
 
+  def testTupleInContainer(self):
+    ty = self.Infer("""
+      from __future__ import google_type_annotations
+      from typing import List, Tuple
+      def f(l: List[Tuple[int, AnyStr]]):
+        line, foo = l[0]
+        return foo
+    """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      from typing import List, Tuple, TypeVar, Union
+      AnyStr = TypeVar('AnyStr', str, unicode)
+      def f(l: List[Tuple[int, AnyStr]]) -> Union[str, unicode]: ...
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

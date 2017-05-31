@@ -2052,10 +2052,15 @@ class TupleClass(ParameterizedClass, HasSlots):
   def instantiate(self, node, container=None):
     if self._instance:
       return self._instance.to_variable(node)
-    content = tuple(
-        self.type_parameters[i].instantiate(self.vm.root_cfg_node, container)
-        for i in range(self.tuple_length))
-    return Tuple(content, self.vm).to_variable(node)
+    content = []
+    for i in range(self.tuple_length):
+      p = self.type_parameters[i]
+      if container and isinstance(p, TypeParameter) and (
+          p.name in container.type_parameters):
+        content.append(p.instantiate(self.vm.root_cfg_node, container))
+      else:
+        content.append(p.instantiate(self.vm.root_cfg_node))
+    return Tuple(tuple(content), self.vm).to_variable(node)
 
   def _instantiate_index(self, node, index):
     if self._instance:
