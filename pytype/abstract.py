@@ -1911,7 +1911,8 @@ class Class(object):
       f = new.bindings[0].data
       if isinstance(f, StaticMethod):
         f = f.method
-      if isinstance(f, AMBIGUOUS_OR_EMPTY) or f is self.vm.convert.object_new:
+      obj, = self.vm.convert.object_type.data
+      if isinstance(f, AMBIGUOUS_OR_EMPTY) or obj.is_object_new(f):
         # Instead of calling object.__new__, our abstract classes directly
         # create instances of themselves.
         return node, None

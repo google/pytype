@@ -38,9 +38,13 @@ class Converter(object):
 
     self._convert_cache = {}
 
-    # Initialize primitive_classes to empty to allow constant_to_var to run
+    # Initialize primitive_classes to empty to allow constant_to_var to run.
     self.primitive_classes = ()
-    # Now fill primitive_classes with the real values using constant_to_var
+
+    # object_type is needed to initialize the primitive class values.
+    self.object_type = self.constant_to_var(object)
+
+    # Now fill primitive_classes with the real values using constant_to_var.
     self.primitive_classes = {v: self.constant_to_var(v)
                               for v in [int, float, str, unicode, object,
                                         types.NoneType, complex, bool, slice,
@@ -72,7 +76,6 @@ class Converter(object):
       self._convert_cache[(abstract.Instance, clsval.data.pytd_cls)] = instance
 
     self.none_type = self.primitive_classes[types.NoneType]
-    self.object_type = self.primitive_classes[object]
     self.oldstyleclass_type = self.primitive_classes[types.ClassType]
     self.super_type = self.primitive_classes[super]
     self.str_type = self.primitive_classes[str]
@@ -102,9 +105,6 @@ class Converter(object):
         None: self.primitive_class_instances[bool],
     }
     self.empty_type = self.empty.to_variable(self.vm.root_cfg_node)
-    object_val, = self.object_type.data
-    object_val.load_lazy_attribute("__new__")
-    self.object_new, = object_val.members["__new__"].data
 
   def value_to_constant(self, val, constant_type):
     if (isinstance(val, abstract.PythonConstant) and
@@ -445,10 +445,12 @@ class Converter(object):
           pyval, self.primitive_classes[types.CodeType], self.vm)
     elif pyval is super:
       return special_builtins.Super(self.vm)
+    elif pyval is object:
+      return special_builtins.Object(self.vm)
     elif (pyval.__class__ in [types.FunctionType,
                               types.ModuleType,
                               types.GeneratorType,
-                              type] or pyval is type):
+                              type]):
       if pyval is types.FunctionType:
         classname = "typing.Callable"
       else:
@@ -466,6 +468,8 @@ class Converter(object):
       return abstract.Module(self.vm, pyval.name, members, pyval)
     elif isinstance(pyval, pytd.Class) and pyval.name == "__builtin__.super":
       return self.vm.special_builtins["super"]
+    elif isinstance(pyval, pytd.Class) and pyval.name == "__builtin__.object":
+      return abstract.merge_values(self.object_type.data, self.vm)
     elif isinstance(pyval, pytd.Class):
       module, dot, base_name = pyval.name.rpartition(".")
       try:

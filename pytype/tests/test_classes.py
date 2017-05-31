@@ -1000,6 +1000,75 @@ class ClassesTest(test_inference.InferenceTest):
         def f(self) -> str
     """)
 
+  def testNewExtraArg(self):
+    self.assertNoErrors("""
+      class Foo(object):
+        def __new__(cls, _):
+          return super(Foo, cls).__new__(cls)
+      Foo("Foo")
+    """)
+
+  def testSuperNewExtraArg(self):
+    self.assertNoErrors("""
+      class Foo(object):
+        def __init__(self, x):
+          pass
+        def __new__(cls, x):
+          # The extra arg is okay because __init__ is defined.
+          return super(Foo, cls).__new__(cls, x)
+    """)
+
+  def testSuperInitExtraArg(self):
+    self.assertNoErrors("""
+      class Foo(object):
+        def __init__(self, x):
+          # The extra arg is okay because __new__ is defined.
+          super(Foo, self).__init__(x)
+        def __new__(cls, x):
+          return super(Foo, cls).__new__(cls)
+    """)
+
+  def testSuperInitExtraArg2(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        class Foo(object):
+          def __new__(cls, a, b) -> Foo
+      """)
+      self.assertNoErrors("""
+        import foo
+        class Bar(foo.Foo):
+          def __init__(self, a, b):
+            # The extra args are okay because __new__ is defined on Foo.
+            super(Bar, self).__init__(a, b)
+      """, pythonpath=[d.path])
+
+  def testSuperNewWrongArgCount(self):
+    _, errors = self.InferAndCheck("""\
+      class Foo(object):
+        def __new__(cls, x):
+          return super(Foo, cls).__new__(cls, x)
+    """, deep=True)
+    self.assertErrorLogIs(errors, [(3, "wrong-arg-count", "1.*2")])
+
+  def testSuperInitWrongArgCount(self):
+    _, errors = self.InferAndCheck("""\
+      class Foo(object):
+        def __init__(self, x):
+          super(Foo, self).__init__(x)
+    """, deep=True)
+    self.assertErrorLogIs(errors, [(3, "wrong-arg-count", "1.*2")])
+
+  def testSuperNewMissingParameter(self):
+    _, errors = self.InferAndCheck("""\
+      class Foo(object):
+        def __new__(cls, x):
+          # Even when __init__ is defined, too few args is an error.
+          return super(Foo, cls).__new__()
+        def __init__(self, x):
+          pass
+    """, deep=True)
+    self.assertErrorLogIs(errors, [(4, "missing-parameter", r"cls.*__new__")])
+
 
 if __name__ == "__main__":
   test_inference.main()

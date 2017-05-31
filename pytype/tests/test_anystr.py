@@ -19,5 +19,15 @@ class AnyStrTest(test_inference.InferenceTest):
         pass
       """)
 
+  def testUnknownAgainstMultipleAnyStr(self):
+    self.assertNoErrors("""
+      from __future__ import google_type_annotations
+      from typing import Any, Dict, Tuple, AnyStr
+
+      def foo(x: Dict[Tuple[AnyStr], AnyStr]): ...
+      foo(__any_object__)
+    """)
+
+
 if __name__ == "__main__":
   test_inference.main()

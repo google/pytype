@@ -211,8 +211,9 @@ class AbstractMatcher(object):
         isinstance(other_type, abstract.Nothing)):
       return subst
     elif isinstance(left, abstract.AMBIGUOUS_OR_EMPTY):
-      return self._match_instance(
-          other_type, left, other_type, subst, node, view)
+      params = other_type.vm.annotations_util.get_type_parameters(other_type)
+      new_subst = {p.name: p.instantiate(node) for p in params}
+      return self._merge_substs(subst, [new_subst])
     elif isinstance(left, abstract.Class):
       if (other_type.full_name == "__builtin__.type" and
           isinstance(other_type, abstract.ParameterizedClass)):

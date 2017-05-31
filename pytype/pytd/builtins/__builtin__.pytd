@@ -127,6 +127,8 @@ class object():
     # InterpreterClass will contain this, too:
     __module__ = ...  # type: str
     def __init__(self) -> NoneType
+    # Used by special_builtins.Object to handle super.__init__.
+    def __init__extra_args(self, *args, **kwargs) -> NoneType
     def __sizeof__(self) -> int
     def __str__(self) -> str
     def __repr__(self) -> str
@@ -140,7 +142,10 @@ class object():
     def __hash__(self) -> int
     def __setattr__(self, name, value) -> None
     def __getattribute__(self, name) -> ?
-    def __new__(cls: Type[_T], ...) -> _T
+    def __new__(cls: Type[_T]) -> _T
+    # Used by special_builtins.Object to handler super.__new__.
+    @staticmethod
+    def __new__extra_args(cls: Type[_T], *args, **kwargs) -> _T
 
 # old style class. classobj is in fact a subclass of object in Python.
 class classobj(object):

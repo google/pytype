@@ -196,3 +196,64 @@ class Super(abstract.PyTDClass):
     else:
       raise abstract.WrongArgCount(self._SIGNATURE, args, self.vm)
     return node, result
+
+
+class Object(abstract.PyTDClass):
+  """Implementation of __builtin__.object."""
+
+  def __init__(self, vm):
+    super(Object, self).__init__(
+        "object", vm.lookup_builtin("__builtin__.object"), vm)
+    self.module = "__builtin__"
+
+  def is_object_new(self, func):
+    """Whether the given function is object.__new__.
+
+    Args:
+      func: A function.
+
+    Returns:
+      True if func equals either of the pytd definitions for object.__new__,
+      False otherwise.
+    """
+    self.load_lazy_attribute("__new__")
+    self.load_lazy_attribute("__new__extra_args")
+    return ([func] == self.members["__new__"].data or
+            [func] == self.members["__new__extra_args"].data)
+
+  def _has_own(self, node, cls, method):
+    """Whether a class has its own implementation of a particular method.
+
+    Args:
+      node: The current node.
+      cls: An abstract.Class.
+      method: The method name. So that we don't have to handle the cases when
+        the method doesn't exist, we only support "__new__" and "__init__".
+
+    Returns:
+      True if the class's definition of the method is different from the
+      definition in __builtin__.object, False otherwise.
+    """
+    assert method in ("__new__", "__init__")
+    self.load_lazy_attribute(method)
+    obj_method = self.members[method]
+    _, cls_method = self.vm.attribute_handler.get_class_attribute(
+        node, cls, method)
+    return obj_method.data != cls_method.data
+
+  def get_special_attribute(self, node, name, valself):
+    # Based on the definitions of object_init and object_new in
+    # cpython/Objects/typeobject.c (https://goo.gl/bTEBRt). It is legal to pass
+    # extra arguments to object.__new__ if the calling class overrides
+    # object.__init__, and vice versa.
+    if valself:
+      val = valself.data
+      if (name == "__new__" and isinstance(val, abstract.Class) and
+          self._has_own(node, val, "__init__")):
+        self.load_lazy_attribute("__new__extra_args")
+        return self.members["__new__extra_args"]
+      elif (name == "__init__" and isinstance(val, abstract.Instance) and
+            any(self._has_own(node, cls, "__new__") for cls in val.cls.data)):
+        self.load_lazy_attribute("__init__extra_args")
+        return self.members["__init__extra_args"]
+    return super(Object, self).get_special_attribute(node, name, valself)

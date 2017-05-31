@@ -198,6 +198,8 @@ class VirtualMachine(object):
     self.special_builtins = {
         # The super() function.
         "super": abstract.merge_values(self.convert.super_type.data, self),
+        # The object type.
+        "object": abstract.merge_values(self.convert.object_type.data, self),
         # for more pretty branching tests.
         "__random__": self.convert.primitive_class_instances[bool],
         # boolean values.
