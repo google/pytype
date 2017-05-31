@@ -42,6 +42,7 @@ setup(
               'pytype/pyc',
               'pytype/pyi',
               'pytype/pytd',
+              'pytype/pytd/builtins',
               'pytype/pytd/parse',
              ],
     scripts=['scripts/pytype', 'scripts/pytd'],
