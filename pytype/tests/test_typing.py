@@ -119,6 +119,28 @@ class TypingTest(test_inference.InferenceTest):
     self.assertErrorLogIs(errors, [(3, "invalid-annotation"),
                                    (4, "invalid-annotation")])
 
+  def test_no_typevars_for_cast(self):
+    _, errors = self.InferAndCheck("""\
+        from __future__ import google_type_annotations
+        from typing import cast, AnyStr, Type, TypeVar, _T
+        def f(x):
+          return cast(AnyStr, x)
+        f("hello")
+        """)
+    self.assertErrorLogIs(errors, [(4, "invalid-typevar")])
+
+  def test_cast_args(self):
+    self.assertNoCrash("""\
+      import typing
+      typing.cast(AnyStr)
+      typing.cast("str")
+      typing.cast()
+      typing.cast(typ=AnyStr, val=__any_object__)
+      typing.cast(typ=str, val=__any_object__)
+      typing.cast(typ="str", val=__any_object__)
+      typing.cast(val=__any_object__)
+      """)
+
   def test_generator(self):
     self.assertNoErrors("""\
       from __future__ import google_type_annotations
