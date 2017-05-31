@@ -11,7 +11,7 @@ from pytype.pytd.parse import visitors
 import unittest
 
 
-class ImportPathsTest(unittest.TestCase):
+class SerializeAstTest(unittest.TestCase):
 
   PYTHON_VERSION = (2, 7)
 
@@ -25,7 +25,7 @@ class ImportPathsTest(unittest.TestCase):
                   for name, module in loader._modules.items()}
 
     return module_map
- 
+
   def _GetAst(self, temp_dir, module_name, src=None):
     src = src or ("""
         import module2
@@ -56,6 +56,37 @@ class ImportPathsTest(unittest.TestCase):
     loader = load_pytd.Loader(base_module=None, options=self.options)
     ast = loader.load_file(self.options.module_name, self.options.input)
     return ast, loader
+
+  def testFindClassTypesVisitor(self):
+    module_name = "foo.bar"
+    with utils.Tempdir() as d:
+      ast, _ = self._GetAst(temp_dir=d, module_name=module_name)
+    indexer = serialize_ast.FindClassTypesVisitor()
+    ast.Visit(indexer)
+
+    self.assertEquals(len(indexer.class_type_nodes), 9)
+
+  def testNodeIndexVisitorUsage(self):
+    """Confirms that the node index is used.
+
+    This removes the first node from the class_type_nodes list and checks that
+    that node is not updated by ProcessAst.
+    """
+    with utils.Tempdir() as d:
+      module_name = "module1"
+      pickled_ast_filename = os.path.join(d.path, "module1.pyi.pickled")
+      module_map = self._StoreAst(d, module_name, pickled_ast_filename)
+      del module_map[module_name]
+      serialized_ast = pytd_utils.LoadPickle(pickled_ast_filename)
+
+      # The sorted makes the testcase more deterministic.
+      serialized_ast.class_type_nodes = sorted(
+          serialized_ast.class_type_nodes)[1:]
+      loaded_ast = serialize_ast.ProcessAst(serialized_ast, module_map)
+
+      with self.assertRaisesRegexp(
+          ValueError, "Unresolved class: '__builtin__.NoneType'"):
+        loaded_ast.Visit(visitors.VerifyLookup())
 
   def testRenameModule(self):
     module_name = "foo.bar"

@@ -17,6 +17,16 @@ class UnrestorableDependencyError(Exception):
     super(UnrestorableDependencyError, self).__init__(error_msg)
 
 
+class FindClassTypesVisitor(visitors.Visitor):
+
+  def __init__(self):
+    super(FindClassTypesVisitor, self).__init__()
+    self.class_type_nodes = []
+
+  def EnterClassType(self, n):
+    self.class_type_nodes.append(n)
+
+
 class SerializableAst(object):
   """The data pickled to disk to save an ast.
 
@@ -28,11 +38,17 @@ class SerializableAst(object):
       Therefore it might be different from the set found by
       visitors.CollectDependencies in
       load_pytd._load_and_resolve_ast_dependencies.
+    class_type_nodes: A list of all the ClassType instances in ast or None. If
+      this list is provided only the ClassType instances in the list will be
+      visited and have their .cls set. If this attribute is None the whole AST
+      will be visited and all found ClassType instances will have their .cls
+      set.
   """
 
-  def __init__(self, ast, dependencies):
+  def __init__(self, ast, dependencies, class_type_nodes):
     self.ast = ast
     self.dependencies = dependencies
+    self.class_type_nodes = class_type_nodes
 
 
 class RenameModuleVisitor(visitors.Visitor):
@@ -124,8 +140,10 @@ def StoreAst(ast, filename):
 
   # Clean external references
   ast.Visit(visitors.ClearClassPointers())
-
-  serializable_ast = SerializableAst(ast, dependencies)
+  indexer = FindClassTypesVisitor()
+  ast.Visit(indexer)
+  serializable_ast = SerializableAst(
+      ast, dependencies, indexer.class_type_nodes)
 
   utils.SavePickle(serializable_ast, filename)
   return True
@@ -148,6 +166,7 @@ def EnsureAstName(ast, module_name):
   # module_name is the name from this run, raw_ast.name is the guessed name from
   # when the ast has been pickled.
   if module_name != raw_ast.name:
+    ast.class_type_nodes = None
     ast.ast = raw_ast.Visit(RenameModuleVisitor(raw_ast.name, module_name))
 
 
@@ -181,10 +200,20 @@ def ProcessAst(serializable_ast, module_map):
   # Notice that this is also resolving local ClassType references.
   class_lookup = visitors.LookupExternalTypes(module_map, full_names=True,
                                               self_name=None)
-  try:
-    raw_ast = raw_ast.Visit(class_lookup)
-  except KeyError as e:
-    raise UnrestorableDependencyError("Unresolved class: %r." % e.message)
+
+  if serializable_ast.class_type_nodes:
+    for node in serializable_ast.class_type_nodes:
+      try:
+        if node is not class_lookup.VisitClassType(node):
+          serializable_ast.class_type_nodes = None
+          break
+      except KeyError as e:
+        raise UnrestorableDependencyError("Unresolved class: %r." % e.message)
+  if serializable_ast.class_type_nodes is None:
+    try:
+      raw_ast = raw_ast.Visit(class_lookup)
+    except KeyError as e:
+      raise UnrestorableDependencyError("Unresolved class: %r." % e.message)
   return raw_ast
 
 
