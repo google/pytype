@@ -487,15 +487,18 @@ class VirtualMachine(object):
 
   def _process_base_class(self, node, base):
     """Process a base class for InterpreterClass creation."""
-    if any(isinstance(t, abstract.AnnotationContainer) for t in base.data):
-      new_base = self.program.NewVariable()
-      for b in base.bindings:
-        if isinstance(b.data, abstract.AnnotationContainer):
-          val = b.data.base_cls
-        else:
-          val = b.data
-        new_base.AddBinding(val, {b}, node)
-      base = new_base
+    new_base = self.program.NewVariable()
+    for b in base.bindings:
+      if isinstance(b.data, abstract.AnnotationContainer):
+        new_base.AddBinding(b.data.base_cls, {b}, node)
+      elif isinstance(b.data, abstract.Union):
+        # Union[A,B,...] is a valid base class, but we need to flatten it into a
+        # single base variable.
+        for o in b.data.options:
+          new_base.AddBinding(o, {b}, node)
+      else:
+        new_base.AddBinding(b.data, {b}, node)
+    base = new_base
     if not any(isinstance(t, (abstract.Class, abstract.AMBIGUOUS_OR_EMPTY))
                for t in base.data):
       self.errorlog.base_class_error(self.frames, node, base)
@@ -522,6 +525,7 @@ class VirtualMachine(object):
     except abstract.ConversionError:
       log.error("Error initializing class %r", name)
       return self.convert.create_new_unknown(node)
+    # Flatten Unions in the bases
     bases = [self._process_base_class(node, base) for base in bases]
     if not bases:
       # Old style class.

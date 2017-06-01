@@ -427,23 +427,40 @@ class NamedTupleTest(_ParserTestBase):
 
   def test_no_fields(self):
     self.check("x = ...  # type: NamedTuple(foo, [])", """\
-      from typing import Tuple
+      from typing import Any, Tuple
 
       x = ...  # type: `~foo_0`
 
       class `~foo_0`(Tuple[nothing, ...]):
-          pass
+          _asdict = ...  # type: Any
+          __dict__ = ...  # type: Any
+          _fields = ...  # type: Any
+          __getnewargs__ = ...  # type: Any
+          __getstate__ = ...  # type: Any
+          _make = ...  # type: Any
+          _replace = ...  # type: Any
+          __slots__ = ...  # type: Any
+          def __init__(self) -> None: ...
       """)
 
   def test_multiple_fields(self):
     expected = """\
-      from typing import Tuple
+      from typing import Any, Tuple
 
       x = ...  # type: `~foo_0`
 
       class `~foo_0`(Tuple[int, str]):
           a = ...  # type: int
           b = ...  # type: str
+          _asdict = ...  # type: Any
+          __dict__ = ...  # type: Any
+          _fields = ...  # type: Any
+          __getnewargs__ = ...  # type: Any
+          __getstate__ = ...  # type: Any
+          _make = ...  # type: Any
+          _replace = ...  # type: Any
+          __slots__ = ...  # type: Any
+          def __init__(self, a: int, b: str) -> None: ...
     """
     self.check("x = ...  # type: NamedTuple(foo, [(a, int), (b, str)])",
                expected)
@@ -457,16 +474,34 @@ class NamedTupleTest(_ParserTestBase):
       x = ...  # type: NamedTuple(foo, [(a, int,)])
       y = ...  # type: NamedTuple(foo, [(b, str,)])""",
                """\
-      from typing import Tuple
+      from typing import Any, Tuple
 
       x = ...  # type: `~foo_0`
       y = ...  # type: `~foo_1`
 
       class `~foo_0`(Tuple[int]):
           a = ...  # type: int
+          _asdict = ...  # type: Any
+          __dict__ = ...  # type: Any
+          _fields = ...  # type: Any
+          __getnewargs__ = ...  # type: Any
+          __getstate__ = ...  # type: Any
+          _make = ...  # type: Any
+          _replace = ...  # type: Any
+          __slots__ = ...  # type: Any
+          def __init__(self, a: int) -> None: ...
 
       class `~foo_1`(Tuple[str]):
           b = ...  # type: str
+          _asdict = ...  # type: Any
+          __dict__ = ...  # type: Any
+          _fields = ...  # type: Any
+          __getnewargs__ = ...  # type: Any
+          __getstate__ = ...  # type: Any
+          _make = ...  # type: Any
+          _replace = ...  # type: Any
+          __slots__ = ...  # type: Any
+          def __init__(self, b: str) -> None: ...
         """)
 
 

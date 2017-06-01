@@ -719,6 +719,14 @@ class ClassesTest(test_inference.InferenceTest):
       v = ...  # type: float
     """)
 
+  def testUnionBaseClass(self):
+    self.assertNoErrors("""\
+      import typing
+      class A(tuple): pass
+      class B(tuple): pass
+      class Foo(typing.Union[A,B]): pass
+      """)
+
   def testMetaclassPyi(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """

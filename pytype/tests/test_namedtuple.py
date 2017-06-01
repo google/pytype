@@ -1,5 +1,6 @@
 """Tests for the namedtuple implementation in collections_overlay.py."""
 
+from pytype import utils
 from pytype.tests import test_inference
 
 
@@ -255,6 +256,36 @@ class NamedtupleTests(test_inference.InferenceTest):
         def GetRefillSeekerRanks() -> Dict[str, X]:
           return {"hello": X(__any_object__)}
         """)
+
+  def test_instantiate_pyi_namedtuple(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        class X(NamedTuple('X', [('y', str), ('z', int)])): ...
+      """)
+      _, errors = self.InferAndCheck("""\
+        import foo
+        foo.X()  # wrong arg count
+        foo.X(0, "")  # wrong types
+        foo.X(z="", y=0)  # wrong types
+        foo.X("", 0)
+        foo.X(y="", z=0)
+      """, pythonpath=[d.path])
+      self.assertErrorLogIs(errors, [(2, "missing-parameter", r"y"),
+                                     (3, "wrong-arg-types", r"str.*int"),
+                                     (4, "wrong-arg-types", r"str.*int")])
+
+  def test_use_pyi_namedtuple(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        class X(NamedTuple("X", [])): ...
+      """)
+      _, errors = self.InferAndCheck("""\
+        import foo
+        foo.X()._replace()
+        foo.X().nonsense
+      """, pythonpath=[d.path])
+      self.assertErrorLogIs(errors, [(3, "attribute-error", r"nonsense.*X")])
+
 
 if __name__ == "__main__":
   test_inference.main()

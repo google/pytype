@@ -240,6 +240,10 @@ class _Parser(object):
   NOTHING = pytd.NothingType()
   ANYTHING = pytd.AnythingType()
 
+  # Attributes that all namedtuple instances have.
+  _NAMEDTUPLE_MEMBERS = ("_asdict", "__dict__", "_fields", "__getnewargs__",
+                         "__getstate__", "_make", "_replace", "__slots__")
+
   def __init__(self, version, platform):
     """Initialize the parser.
 
@@ -705,6 +709,26 @@ class _Parser(object):
         decorator=None,
         external_code=True)
 
+  def _namedtuple_init(self, fields):
+    """Build an __init__ method for a namedtuple with the given fields.
+
+    For a namedtuple defined as NamedTuple("_", [("foo", int), ("bar", str)]),
+    generates the method
+      def __init__(self, foo: int, bar: str) -> None: ...
+    Note that we use __init__ instead of __new__ to keep parity with how
+    collections.namedtuple is defined in collections_overlay.
+
+    Args:
+      fields: A list of (name, type) pairs representing the namedtuple fields.
+
+    Returns:
+      A _NameAndSig object for an __init__ method.
+    """
+    self_arg = ("self", pytd.AnythingType(), None)
+    args = [self_arg] + [(n, t, None) for n, t in fields]
+    ret = pytd.NamedType("NoneType")
+    return self.new_function((), "__init__", args, ret, ())
+
   def new_named_tuple(self, base_name, fields):
     """Return a type for a named tuple (implicitly generates a class).
 
@@ -721,10 +745,15 @@ class _Parser(object):
     class_parent = self._heterogeneous_tuple(pytd.NamedType("tuple"),
                                              tuple(t for _, t in fields))
     class_constants = tuple(pytd.Constant(n, t) for n, t in fields)
+    # Since the user-defined fields are the only namedtuple attributes commonly
+    # used, we define all the other attributes as Any for simplicity.
+    class_constants += tuple(pytd.Constant(name, pytd.AnythingType())
+                             for name in self._NAMEDTUPLE_MEMBERS)
+    methods = _merge_method_signatures([self._namedtuple_init(fields)])
     nt_class = pytd.Class(name=class_name,
                           metaclass=None,
                           parents=(class_parent,),
-                          methods=(),
+                          methods=tuple(methods),
                           constants=class_constants,
                           template=())
 
