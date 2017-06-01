@@ -68,7 +68,9 @@ class NamedTupleBuilder(abstract.Function):
         "__getnewargs__": self._getnewargs,
         "__getstate__": self._getstate,
         "_make": self._make,
-        "__new__": self._new,
+        # namedtuple actually uses __new__ (as does __builtin__.tuple), but we
+        # use __init__ in both cases for simplicity.
+        "__init__": self._init,
         "_replace": self._replace,
         "__slots__": self._slots,
     }
@@ -353,16 +355,14 @@ class NamedTupleBuilder(abstract.Function):
     sig = self._build_sig(params, cls_type)
     return pytd.Function("_make", (sig,), pytd.CLASSMETHOD)
 
-  def _new(self, field_names, cls_type):
+  def _init(self, field_names, cls_type):
     fields = tuple([
         self._build_param(name, pytd.AnythingType())
         for name in field_names
     ])
-    params = (
-        self._build_param("cls", pytd.AnythingType()),
-    ) + fields
-    sig = self._build_sig(params, cls_type)
-    return pytd.Function("__new__", (sig,), pytd.STATICMETHOD)
+    params = (self._selfparam(cls_type),) + fields
+    sig = self._build_sig(params, self._get_builtin_classtype("NoneType"))
+    return pytd.Function("__init__", (sig,), pytd.METHOD)
 
 
 collections_overlay = {

@@ -97,7 +97,6 @@ class ReingestTest(test_inference.InferenceTest):
       """, pythonpath=[d.path])
       self.assertErrorLogIs(errors, [(2, "wrong-arg-types", r"float.*str")])
 
-  @unittest.skip("Need to fix or override tuple.__init__")
   def testNamedTuple(self):
     foo = self.Infer("""
       import collections
