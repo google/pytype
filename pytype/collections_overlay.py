@@ -45,6 +45,9 @@ class NamedTupleInstance(abstract.PyTDClass):
   def __init__(self, name, pytd_cls, vm):
     super(NamedTupleInstance, self).__init__(name, pytd_cls, vm)
 
+  def __repr__(self):
+    return "NamedTupleInstance(%s)" % self.name
+
   def to_pytd_def(self, unused_node, unused_name):
     return self.pytd_cls
 
@@ -276,7 +279,28 @@ class NamedTupleBuilder(abstract.Function):
     )
     cls_type.cls = cls
 
-    instance = NamedTupleInstance(name, cls, self.vm)
+    # We can't build the NamedTupleInstance directly, and instead must run in
+    # through convert.constant_to_value first.
+    # The cls AST contains cls_type, which refers back to cls. When cls_typ is
+    # run through convert.constant_to_value, cls_typ.cls is converted into an
+    # abstract.PyTDClass instance, which is cached. However, this will cause any
+    # attempts to match cls_typ against the NamedTupleInstance to fail. (e.g. in
+    # matcher.match_value_to_type, or more specifically,
+    # matcher._match_from_mro, which uses "is" to compare two types.) For
+    # example, this code would fail:
+    #   X = collections.namedtuple("X", "a")
+    #   def foo(s: str) -> Dict[str, X]:
+    #     return {s: X(__any_object__)}
+    # with an error message like "mismatched return type in foo", despite the
+    # fact that X is X!
+    #
+    # As a rather hacky workaround, we generate the PyTDClass using
+    # constant_to_value, then override its __class__ attribute so it _thinks_
+    # that it's a NamedTupleInstance.  This caches the correct PyTDClass
+    # instance in convert_to_value while still giving the benefits of
+    # NamedTupleInstance.
+    instance = self.vm.convert.constant_to_value(cls, {}, self.vm.root_cfg_node)
+    instance.__class__ = NamedTupleInstance
     return node, instance.to_variable(node)
 
   # The following functions are for making the members of namedtuples.

@@ -162,7 +162,7 @@ class NamedtupleTests(test_inference.InferenceTest):
         a = X(1)
         b = X(y = 2)
         c = X(w = 3)
-        d = X(y = "hello", z = 4j)
+        d = X(y = "hello", z = 4j)  # works
         """)
     self.assertErrorLogIs(errlog, [
         (4, "missing-parameter"),
@@ -244,6 +244,17 @@ class NamedtupleTests(test_inference.InferenceTest):
             def _replace(self, **kwds) -> X: ...
         """)
 
+  def test_namedtuple_match(self):
+    self.assertNoErrors("""\
+        from __future__ import google_type_annotations
+        import collections
+        from typing import Any, Dict
+
+        X = collections.namedtuple("X", ["a"])
+
+        def GetRefillSeekerRanks() -> Dict[str, X]:
+          return {"hello": X(__any_object__)}
+        """)
 
 if __name__ == "__main__":
   test_inference.main()
