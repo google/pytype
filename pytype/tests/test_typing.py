@@ -521,6 +521,22 @@ class TypingTest(test_inference.InferenceTest):
                                    (6, "wrong-keyword-args", r"x, y"),
                                    (7, "wrong-keyword-args", r"hello")])
 
+  def testCallableAttribute(self):
+    self.assertNoErrors("""\
+      from __future__ import google_type_annotations
+      from typing import Any, Callable
+      def foo(fn: Callable[[Any], Any]):
+        fn.foo # pytype: disable=attribute-error
+    """)
+
+  def testCallableFuncName(self):
+    self.assertNoErrors("""\
+      from __future__ import google_type_annotations
+      from typing import Any, Callable
+      def foo(fn: Callable[[Any], Any]) -> str:
+        return fn.func_name
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()
