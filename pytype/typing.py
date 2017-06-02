@@ -207,7 +207,7 @@ def build_any(name, vm):
 
 # TODO(kramm): Do a full implementation of this.
 def build_namedtuple(name, vm):
-  vm.errorlog.not_supported_yet(vm.frames, name)
+  vm.errorlog.not_supported_yet(vm.frames, "typing." + name)
   return abstract.Unsolvable(vm)
 
 
@@ -216,7 +216,7 @@ def build_optional(name, vm):
 
 
 def build_generic(name, vm):
-  vm.errorlog.not_supported_yet(vm.frames, name)
+  vm.errorlog.not_supported_yet(vm.frames, "typing." + name)
   return vm.convert.unsolvable
 
 
