@@ -194,6 +194,13 @@ class BuiltinTests2(test_inference.InferenceTest):
             print f.newlines
           """)
 
+  def testInitWithUnicode(self):
+    self.assertNoErrors("""
+        int(u"123.0")
+        float(u"123.0")
+        complex(u"123.0")
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()
