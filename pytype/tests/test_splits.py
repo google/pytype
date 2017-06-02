@@ -1,5 +1,6 @@
 """Tests for if-splitting."""
 
+from pytype import utils
 from pytype.tests import test_inference
 
 
@@ -722,6 +723,56 @@ class SplitTest(test_inference.InferenceTest):
       if foo:
         a, b = foo
     """)
+
+  def testCmpIsPyTDClass(self):
+    self.assertNoErrors("""
+      x = bool
+      if x is str:
+        name_error
+      if x is not bool:
+        name_error
+    """)
+
+  def testCmpIsTupleType(self):
+    self.assertNoErrors("""
+      x = (1,)
+      y = (1, 2)
+      z = None  # type: type[tuple]
+      if type(x) is not type(y):
+        name_error
+      if type(x) is not z:
+        name_error
+    """)
+
+  def testCmpIsFunctionType(self):
+    self.assertNoErrors("""
+      def f(): pass
+      def g(x): return x
+      if type(f) is not type(g):
+        name_error
+    """)
+
+  def testCmpIsInterpreterClass(self):
+    self.assertNoErrors("""
+      class X(object): pass
+      class Y(object): pass
+      if X is Y:
+        name_error
+      if X is not X:
+        name_error
+    """)
+
+  def testCmpIsClassNameCollision(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        class X(object): ...
+      """)
+      self.assertNoErrors("""
+        import foo
+        class X(object): pass
+        if foo.X is X:
+          name_error
+      """, pythonpath=[d.path])
 
 
 if __name__ == "__main__":
