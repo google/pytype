@@ -241,6 +241,12 @@ class PytypeTest(unittest.TestCase):
   def testCompilerError(self):
     self._CheckTypesAndErrors("syntax.py", ["python-compiler-error"])
 
+  def testMultiLineStringTokenError(self):
+    self._CheckTypesAndErrors("tokenerror1.py", ["python-compiler-error"])
+
+  def testMultiLineStatementTokenError(self):
+    self._CheckTypesAndErrors("tokenerror2.py", ["python-compiler-error"])
+
   def testComplex(self):
     self._CheckTypesAndErrors("complex.py", [])
 

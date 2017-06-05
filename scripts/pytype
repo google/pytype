@@ -11,6 +11,7 @@ import cProfile
 import logging
 import os
 import sys
+import tokenize
 import traceback
 
 from pytype import config
@@ -142,6 +143,11 @@ def process_one_file(input_filename,
                                  loader=loader)
   except pyc.CompileError as e:
     errorlog.python_compiler_error(input_filename, e.lineno, e.error)
+  except IndentationError as e:
+    errorlog.python_compiler_error(input_filename, e.lineno, e.msg)
+  except tokenize.TokenError as e:
+    msg, (lineno, unused_column) = e.args  # pylint: disable=unpacking-non-sequence
+    errorlog.python_compiler_error(input_filename, lineno, msg)
   except Exception as e:  # pylint: disable=broad-except
     if options.nofail:
       log.warn("***Caught exception: %s", str(e), exc_info=True)
