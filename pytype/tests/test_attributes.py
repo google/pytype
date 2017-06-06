@@ -221,6 +221,14 @@ class TestAttributes(test_inference.InferenceTest):
         return x.upper()
     """, strict_attr_checking=True)
 
+  def testAttrOnStaticMethod(self):
+    self.assertNoErrors("""\
+      import collections
+
+      X = collections.namedtuple("X", "a b")
+      X.__new__.__defaults__ = (1, 2)
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()

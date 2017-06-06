@@ -174,6 +174,8 @@ class AbstractAttributeHandler(object):
       # sys.path, sys.excepthook.
       log.warning("Ignoring overwrite of %s.%s", obj.name, name)
       return node
+    elif isinstance(obj, (abstract.StaticMethod, abstract.ClassMethod)):
+      return self.set_attribute(node, obj.method, name, value)
     elif isinstance(obj, abstract.SimpleAbstractValue):
       return self._set_member(node, obj, name, value)
     elif isinstance(obj, abstract.BoundFunction):
