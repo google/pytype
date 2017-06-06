@@ -2,6 +2,7 @@
 
 import unittest
 
+from pytype import utils
 from pytype.tests import test_inference
 
 
@@ -220,6 +221,35 @@ class TestAttributes(test_inference.InferenceTest):
       def f(x: Optional[str]):
         return x.upper()
     """, strict_attr_checking=True)
+
+  def testHasDynamicAttributes(self):
+    self.assertNoErrors("""\
+      class Foo(object):
+        has_dynamic_attributes = True
+      Foo().baz
+    """)
+
+  def testHasDynamicAttributesSubClass(self):
+    # has_dynamic_attributes doesn't apply to subclasses
+    _, errors = self.InferAndCheck("""\
+      class Foo(object):
+        has_dynamic_attributes = True
+      class Bar(Foo):
+        pass
+      Bar().baz
+    """)
+    self.assertErrorLogIs(errors, [(5, "attribute-error", "baz")])
+
+  def testHasDynamicAttributesPYI(self):
+    with utils.Tempdir() as d:
+      d.create_file("mod.pyi", """
+        class Foo(object):
+          has_dynamic_attributes = True
+      """)
+      self.assertNoErrors("""\
+        import mod
+        mod.Foo().baz
+      """, pythonpath=[d.path])
 
   def testAttrOnStaticMethod(self):
     self.assertNoErrors("""\

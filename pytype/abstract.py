@@ -763,6 +763,9 @@ class Instance(SimpleAbstractValue):
     super(Instance, self).__init__(clsvar.data[0].name, vm)
     self.cls = clsvar
     for cls in clsvar.data:
+      if (isinstance(cls, (InterpreterClass, PyTDClass)) and
+          "has_dynamic_attributes" in cls):
+        self.maybe_missing_members = True
       cls.register_instance(self)
       bad_names = set()
       for base in cls.mro:
@@ -2232,6 +2235,9 @@ class PyTDClass(SimpleAbstractValue, Class):
   def __repr__(self):
     return "PyTDClass(%s)" % self.name
 
+  def __contains__(self, name):
+    return name in self._member_map
+
   def convert_as_instance_attribute(self, node, name, instance):
     try:
       c = self.pytd_cls.Lookup(name)
@@ -2303,6 +2309,9 @@ class InterpreterClass(SimpleAbstractValue, Class):
 
   def __repr__(self):
     return "InterpreterClass(%s)" % self.name
+
+  def __contains__(self, name):
+    return name in self.members
 
   def update_official_name(self, name):
     assert isinstance(name, str)
