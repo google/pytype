@@ -16,11 +16,12 @@ class NamedtupleTests(test_inference.InferenceTest):
       """)
     self.assertTypesMatchPytd(ty, """
         import collections
-        from typing import Any, Callable, Iterable, Tuple
+        from typing import Any, Callable, Iterable, Tuple, Type, TypeVar
 
         a = ...  # type: X
         collections = ...  # type: module
 
+        _TX = TypeVar("_TX", bound=X)
         class X(tuple):
             __dict__ = ...  # type: collections.OrderedDict[str, Any]
             __slots__ = ...  # type: Tuple[nothing]
@@ -29,7 +30,8 @@ class NamedtupleTests(test_inference.InferenceTest):
             z = ...  # type: Any
             def __getnewargs__(self) -> Tuple[Any, Any]: ...
             def __getstate__(self) -> None: ...
-            def __init__(self, y, z) -> None: ...
+            def __init__(self, *args, **kwargs) -> None: ...
+            def __new__(cls: Type[_TX], y, z) -> _TX: ...
             def _asdict(self) -> collections.OrderedDict[str, Any]: ...
             @classmethod
             def _make(cls, iterable: Iterable, new = ..., len: Callable[[Iterable], int] = ...) -> X: ...
@@ -45,17 +47,20 @@ class NamedtupleTests(test_inference.InferenceTest):
         """)
     self.assertTypesMatchPytd(ty, """
         import collections
-        from typing import Any, Callable, Iterable, Tuple
+        from typing import Any, Callable, Iterable, Tuple, Type, TypeVar
 
         a = ...  # type: F
         collections = ...  # type: module
 
+        _TF = TypeVar("_TF", bound=F)
         class F(tuple):
             __dict__ = ...  # type: collections.OrderedDict[str, Any]
             __slots__ = ...  # type: Tuple[nothing]
             _fields = ...  # type: Tuple[nothing]
             def __getnewargs__(self) -> Tuple[nothing]: ...
             def __getstate__(self) -> None: ...
+            def __init__(self, *args, **kwargs) -> None: ...
+            def __new__(cls: Type[_TF]) -> _TF: ...
             def _asdict(self) -> collections.OrderedDict[str, Any]: ...
             @classmethod
             def _make(cls, iterable: Iterable, new = ..., len: Callable[[Iterable], int] = ...) -> F: ...
@@ -71,11 +76,12 @@ class NamedtupleTests(test_inference.InferenceTest):
         """)
     self.assertTypesMatchPytd(ty, """
         import collections
-        from typing import Any, Callable, Iterable, Tuple
+        from typing import Any, Callable, Iterable, Tuple, Type, TypeVar
 
         b = ...  # type: S
         collections = ...  # type: module
 
+        _TS = TypeVar("_TS", bound=S)
         class S(tuple):
             __dict__ = ...  # type: collections.OrderedDict[str, Any]
             __slots__ = ...  # type: Tuple[nothing]
@@ -85,7 +91,8 @@ class NamedtupleTests(test_inference.InferenceTest):
             c = ...  # type: Any
             def __getnewargs__(self) -> Tuple[Any, Any, Any]: ...
             def __getstate__(self) -> None: ...
-            def __init__(self, a, b, c) -> None: ...
+            def __init__(self, *args, **kwargs) -> None: ...
+            def __new__(cls: Type[_TS], a, b, c) -> _TS: ...
             def _asdict(self) -> collections.OrderedDict[str, Any]: ...
             @classmethod
             def _make(cls, iterable: Iterable, new = ..., len: Callable[[Iterable], int] = ...) -> S: ...
@@ -132,10 +139,11 @@ class NamedtupleTests(test_inference.InferenceTest):
         """)
     self.assertTypesMatchPytd(ty, """
         import collections
-        from typing import Any, Callable, Iterable, Tuple
+        from typing import Any, Callable, Iterable, Tuple, Type, TypeVar
 
         collections = ...  # type: module
 
+        _TS = TypeVar("_TS", bound=S)
         class S(tuple):
             __dict__ = ...  # type: collections.OrderedDict[str, Any]
             __slots__ = ...  # type: Tuple[nothing]
@@ -148,7 +156,8 @@ class NamedtupleTests(test_inference.InferenceTest):
 
             def __getnewargs__(self) -> Tuple[Any, Any, Any, Any]: ...
             def __getstate__(self) -> None: ...
-            def __init__(self, abc, _1, ghi, _3) -> None: ...
+            def __init__(self, *args, **kwargs) -> None: ...
+            def __new__(cls: Type[_TS], abc, _1, ghi, _3) -> _TS: ...
             def _asdict(self) -> collections.OrderedDict[str, Any]: ...
             @classmethod
             def _make(cls, iterable: Iterable, new = ..., len: Callable[[Iterable], int] = ...) -> S: ...
@@ -225,10 +234,11 @@ class NamedtupleTests(test_inference.InferenceTest):
         a = X._make((1, 2, 3))
         """)
     self.assertTypesMatchPytd(ty, """\
-        from typing import Any, Callable, Iterable, Tuple
+        from typing import Any, Callable, Iterable, Tuple, Type, TypeVar
         collections = ...  # type: module
         a = ...  # type: X
 
+        _TX = TypeVar("_TX", bound=X)
         class X(tuple):
             __dict__ = ...  # type: collections.OrderedDict[str, Any]
             __slots__ = ...  # type: Tuple[nothing]
@@ -238,7 +248,8 @@ class NamedtupleTests(test_inference.InferenceTest):
             c = ...  # type: Any
             def __getnewargs__(self) -> Tuple[Any, Any, Any]: ...
             def __getstate__(self) -> None: ...
-            def __init__(self, a, b, c) -> None: ...
+            def __init__(self, *args, **kwargs) -> None: ...
+            def __new__(cls: Type[_TX], a, b, c) -> _TX: ...
             def _asdict(self) -> collections.OrderedDict[str, Any]: ...
             @classmethod
             def _make(cls, iterable: Iterable, new = ..., len: Callable[[Iterable], int] = ...) -> X: ...
@@ -285,6 +296,19 @@ class NamedtupleTests(test_inference.InferenceTest):
         foo.X().nonsense
       """, pythonpath=[d.path])
       self.assertErrorLogIs(errors, [(3, "attribute-error", r"nonsense.*X")])
+
+  def test_subclass_pyi_namedtuple(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        class X(NamedTuple("X", [("y", int)])): ...
+      """)
+      self.assertNoErrors("""
+        import foo
+        class Y(foo.X):
+          def __new__(cls):
+            return super(Y, cls).__new__(cls, 0)
+        Y()
+      """, pythonpath=[d.path])
 
 
 if __name__ == "__main__":

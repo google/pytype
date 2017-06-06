@@ -71,8 +71,9 @@ class NamedTupleBuilder(abstract.Function):
         "__getnewargs__": self._getnewargs,
         "__getstate__": self._getstate,
         "_make": self._make,
-        # namedtuple actually uses __new__ (as does __builtin__.tuple), but we
-        # use __init__ in both cases for simplicity.
+        # Since our model of __builtin__.tuple uses __init__ but namedtuple
+        # subclasses often override __new__, we have to define both.
+        "__new__": self._new,
         "__init__": self._init,
         "_replace": self._replace,
         "__slots__": self._slots,
@@ -379,13 +380,23 @@ class NamedTupleBuilder(abstract.Function):
     sig = self._build_sig(params, cls_type)
     return pytd.Function("_make", (sig,), pytd.CLASSMETHOD)
 
-  def _init(self, field_names, cls_type):
-    fields = tuple([
+  def _new(self, field_names, cls_type):
+    fields = tuple(
         self._build_param(name, pytd.AnythingType())
         for name in field_names
-    ])
-    params = (self._selfparam(cls_type),) + fields
-    sig = self._build_sig(params, self._get_builtin_classtype("NoneType"))
+    )
+    cls = pytd.GenericType(base_type=self._get_builtin_classtype("type"),
+                           parameters=(cls_type,))
+    params = (self._build_param("cls", cls),) + fields
+    sig = self._build_sig(params, cls_type)
+    return pytd.Function("__new__", (sig,), pytd.STATICMETHOD)
+
+  def _init(self, field_names, cls_type):
+    params = (self._selfparam(cls_type),)
+    star = self._build_param("args", pytd.AnythingType(), optional=True)
+    starstar = self._build_param("kwargs", pytd.AnythingType(), optional=True)
+    sig = self._build_sig(params, self._get_builtin_classtype("NoneType"),
+                          star=star, starstar=starstar)
     return pytd.Function("__init__", (sig,), pytd.METHOD)
 
 

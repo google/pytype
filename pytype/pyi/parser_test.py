@@ -427,9 +427,11 @@ class NamedTupleTest(_ParserTestBase):
 
   def test_no_fields(self):
     self.check("x = ...  # type: NamedTuple(foo, [])", """\
-      from typing import Any, Tuple
+      from typing import Any, Tuple, Type, TypeVar
 
       x = ...  # type: `~foo_0`
+
+      _T~foo_0 = TypeVar('_T~foo_0', bound=`~foo_0`)
 
       class `~foo_0`(Tuple[nothing, ...]):
           _asdict = ...  # type: Any
@@ -440,14 +442,17 @@ class NamedTupleTest(_ParserTestBase):
           _make = ...  # type: Any
           _replace = ...  # type: Any
           __slots__ = ...  # type: Any
-          def __init__(self) -> None: ...
+          def __new__(cls: Type[_T~foo_0]) -> _T~foo_0: ...
+          def __init__(self, *args, **kwargs) -> None: ...
       """)
 
   def test_multiple_fields(self):
     expected = """\
-      from typing import Any, Tuple
+      from typing import Any, Tuple, Type, TypeVar
 
       x = ...  # type: `~foo_0`
+
+      _T~foo_0 = TypeVar('_T~foo_0', bound=`~foo_0`)
 
       class `~foo_0`(Tuple[int, str]):
           a = ...  # type: int
@@ -460,7 +465,8 @@ class NamedTupleTest(_ParserTestBase):
           _make = ...  # type: Any
           _replace = ...  # type: Any
           __slots__ = ...  # type: Any
-          def __init__(self, a: int, b: str) -> None: ...
+          def __new__(cls: Type[_T~foo_0], a: int, b: str) -> _T~foo_0: ...
+          def __init__(self, *args, **kwargs) -> None: ...
     """
     self.check("x = ...  # type: NamedTuple(foo, [(a, int), (b, str)])",
                expected)
@@ -474,10 +480,13 @@ class NamedTupleTest(_ParserTestBase):
       x = ...  # type: NamedTuple(foo, [(a, int,)])
       y = ...  # type: NamedTuple(foo, [(b, str,)])""",
                """\
-      from typing import Any, Tuple
+      from typing import Any, Tuple, Type, TypeVar
 
       x = ...  # type: `~foo_0`
       y = ...  # type: `~foo_1`
+
+      _T~foo_0 = TypeVar('_T~foo_0', bound=`~foo_0`)
+      _T~foo_1 = TypeVar('_T~foo_1', bound=`~foo_1`)
 
       class `~foo_0`(Tuple[int]):
           a = ...  # type: int
@@ -489,7 +498,8 @@ class NamedTupleTest(_ParserTestBase):
           _make = ...  # type: Any
           _replace = ...  # type: Any
           __slots__ = ...  # type: Any
-          def __init__(self, a: int) -> None: ...
+          def __new__(cls: Type[_T~foo_0], a: int) -> _T~foo_0: ...
+          def __init__(self, *args, **kwargs) -> None: ...
 
       class `~foo_1`(Tuple[str]):
           b = ...  # type: str
@@ -501,7 +511,8 @@ class NamedTupleTest(_ParserTestBase):
           _make = ...  # type: Any
           _replace = ...  # type: Any
           __slots__ = ...  # type: Any
-          def __init__(self, b: str) -> None: ...
+          def __new__(cls: Type[_T~foo_1], b: str) -> _T~foo_1: ...
+          def __init__(self, *args, **kwargs) -> None: ...
         """)
 
 

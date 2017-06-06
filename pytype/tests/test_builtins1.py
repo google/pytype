@@ -595,12 +595,13 @@ class BuiltinTests(test_inference.InferenceTest):
       z = t.z
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
-    from typing import Any, Callable, Iterable, Tuple
+    from typing import Any, Callable, Iterable, Tuple, Type, TypeVar
     collections = ...  # type: module
     x = ...  # type: int
     y = ...  # type: str
     z = ...  # type: complex
 
+    _Tt = TypeVar("_Tt", bound=t)
     class t(tuple):
         __dict__ = ...  # type: collections.OrderedDict[str, Any]
         __slots__ = ...  # type: Tuple[nothing]
@@ -610,7 +611,8 @@ class BuiltinTests(test_inference.InferenceTest):
         z = ...  # type: Any
         def __getnewargs__(self) -> Tuple[Any, Any, Any]: ...
         def __getstate__(self) -> None: ...
-        def __init__(self, x, y, z) -> None: ...
+        def __init__(self, *args, **kwargs) -> None: ...
+        def __new__(cls: Type[_Tt], x, y, z) -> _Tt: ...
         def _asdict(self) -> collections.OrderedDict[str, Any]: ...
         @classmethod
         def _make(cls, iterable: Iterable, new = ..., len: Callable[[Iterable], int] = ...) -> t: ...

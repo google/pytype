@@ -709,23 +709,39 @@ class _Parser(object):
         decorator=None,
         external_code=True)
 
-  def _namedtuple_init(self, fields):
-    """Build an __init__ method for a namedtuple with the given fields.
+  def _namedtuple_new(self, name, fields):
+    """Build a __new__ method for a namedtuple with the given fields.
 
     For a namedtuple defined as NamedTuple("_", [("foo", int), ("bar", str)]),
     generates the method
-      def __init__(self, foo: int, bar: str) -> None: ...
-    Note that we use __init__ instead of __new__ to keep parity with how
-    collections.namedtuple is defined in collections_overlay.
+      def __new__(cls: Type[_T], foo: int, bar: str) -> _T: ...
+    where _T is a TypeVar bounded by the class type.
 
     Args:
+      name: The class name.
       fields: A list of (name, type) pairs representing the namedtuple fields.
+
+    Returns:
+      A _NameAndSig object for a __new__ method.
+    """
+    type_param = pytd.TypeParameter("_T" + name, bound=pytd.NamedType(name))
+    self._type_params.append(type_param)
+    cls_arg = (
+        "cls", pytd.GenericType(pytd.NamedType("type"), (type_param,)), None)
+    args = [cls_arg] + [(n, t, None) for n, t in fields]
+    return self.new_function((), "__new__", args, type_param, ())
+
+  def _namedtuple_init(self):
+    """Build an __init__ method for a namedtuple.
+
+    Builds a dummy __init__ that accepts any arguments. Needed because our
+    model of __builtin__.tuple uses __init__.
 
     Returns:
       A _NameAndSig object for an __init__ method.
     """
-    self_arg = ("self", pytd.AnythingType(), None)
-    args = [self_arg] + [(n, t, None) for n, t in fields]
+    args = [(name, pytd.AnythingType(), None)
+            for name in ("self", "*args", "**kwargs")]
     ret = pytd.NamedType("NoneType")
     return self.new_function((), "__init__", args, ret, ())
 
@@ -749,7 +765,8 @@ class _Parser(object):
     # used, we define all the other attributes as Any for simplicity.
     class_constants += tuple(pytd.Constant(name, pytd.AnythingType())
                              for name in self._NAMEDTUPLE_MEMBERS)
-    methods = _merge_method_signatures([self._namedtuple_init(fields)])
+    methods = _merge_method_signatures(
+        [self._namedtuple_new(class_name, fields), self._namedtuple_init()])
     nt_class = pytd.Class(name=class_name,
                           metaclass=None,
                           parents=(class_parent,),
