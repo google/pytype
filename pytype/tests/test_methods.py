@@ -886,9 +886,10 @@ class MethodsTest(test_inference.InferenceTest):
           return str.__new__(cls, string)
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
-      from typing import Type
+      from typing import Type, TypeVar
+      _TFoo = TypeVar("_TFoo", bound=Foo)
       class Foo(str):
-        def __new__(cls, string) -> Foo
+        def __new__(cls: Type[_TFoo], string) -> _TFoo
     """)
 
   def testInheritNew(self):
@@ -910,10 +911,11 @@ class MethodsTest(test_inference.InferenceTest):
           return self
     """, deep=True)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any
+      from typing import Any, Type, TypeVar
+      _TFoo = TypeVar("_TFoo", bound=Foo)
       class Foo(object):
         name = ...  # type: Any
-        def __new__(cls, name) -> Foo
+        def __new__(cls: Type[_TFoo], name) -> _TFoo
     """)
 
   def testAttributeInInheritedNew(self):
@@ -928,13 +930,15 @@ class MethodsTest(test_inference.InferenceTest):
           return super(Bar, cls).__new__(cls, "")
     """, deep=True)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any
+      from typing import Any, Type, TypeVar
+      _TFoo = TypeVar("_TFoo", bound=Foo)
+      _TBar = TypeVar("_TBar", bound=Bar)
       class Foo(object):
         name = ...  # type: Any
-        def __new__(cls, name) -> Foo
+        def __new__(cls: Type[_TFoo], name) -> _TFoo
       class Bar(Foo):
         name = ...  # type: str
-        def __new__(cls) -> Bar
+        def __new__(cls: Type[_TBar]) -> _TBar
     """)
 
   def testAttributesInNewAndInit(self):
@@ -948,10 +952,12 @@ class MethodsTest(test_inference.InferenceTest):
           self.nickname = 400
     """, deep=True)
     self.assertTypesMatchPytd(ty, """
+      from typing import Type, TypeVar
+      _TFoo = TypeVar("_TFoo", bound=Foo)
       class Foo(object):
         name = ...  # type: str
         nickname = ...  # type: int
-        def __new__(cls) -> Foo
+        def __new__(cls: Type[_TFoo]) -> _TFoo
     """)
 
   def testVariableProductComplexityLimit(self):

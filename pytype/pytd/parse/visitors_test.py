@@ -706,7 +706,7 @@ class TestVisitors(parser_test_base.ParserTest):
       def `~f`(x: `~unknown7`) -> `~unknown7`: ...
     """)
     ast1 = self.Parse(src)
-    ast1 = ast1.Visit(visitors.CreateTypeParametersFromUnknowns())
+    ast1 = ast1.Visit(visitors.CreateTypeParametersForSignatures())
     self.AssertSourceEquals(ast1, expected)
 
   def testRedefineTypeVar(self):
@@ -714,7 +714,7 @@ class TestVisitors(parser_test_base.ParserTest):
       def f(x: `~unknown1`) -> `~unknown1`: ...
       class `TypeVar`(object): ...
     """)
-    ast = self.Parse(src).Visit(visitors.CreateTypeParametersFromUnknowns())
+    ast = self.Parse(src).Visit(visitors.CreateTypeParametersForSignatures())
     self.assertMultiLineEqual(pytd.Print(ast), textwrap.dedent("""\
       import typing
 
@@ -725,6 +725,38 @@ class TestVisitors(parser_test_base.ParserTest):
 
 
       def f(x: _T0) -> _T0: ..."""))
+
+  def testCreateTypeParametersForNew(self):
+    src = textwrap.dedent("""
+      class Foo:
+          def __new__(cls: Type[Foo]) -> Foo
+      class Bar:
+          def __new__(cls: Type[Bar], x, y, z) -> Bar
+    """)
+    ast = self.Parse(src).Visit(visitors.CreateTypeParametersForSignatures())
+    self.assertMultiLineEqual(pytd.Print(ast), textwrap.dedent("""\
+      from typing import TypeVar
+
+      _TBar = TypeVar('_TBar', bound=Bar)
+      _TFoo = TypeVar('_TFoo', bound=Foo)
+
+      class Foo:
+          def __new__(cls: Type[_TFoo]) -> _TFoo: ...
+
+      class Bar:
+          def __new__(cls: Type[_TBar], x, y, z) -> _TBar: ...
+    """))
+
+  def testKeepCustomNew(self):
+    src = textwrap.dedent("""\
+      class Foo:
+          def __new__(cls: Type[X]) -> X: ...
+
+      class Bar:
+          def __new__(cls, x: Type[Bar]) -> Bar: ...
+    """)
+    ast = self.Parse(src).Visit(visitors.CreateTypeParametersForSignatures())
+    self.assertMultiLineEqual(pytd.Print(ast), src)
 
   def testPrintTypeParameterBound(self):
     src = textwrap.dedent("""

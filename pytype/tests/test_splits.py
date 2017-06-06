@@ -306,6 +306,56 @@ class SplitTest(test_inference.InferenceTest):
       def a2(x) -> Union[int, str]: ...
     """)
 
+  def testHasAttrBuiltin(self):
+    ty = self.Infer("""
+      # Always returns a bool.
+      def sig(x): return hasattr(x, "upper")
+      # Cases where hasattr() can be determined, if-split will
+      # narrow the return to a single type.
+      def d1(): return "y" if hasattr("s", "upper") else 0
+      def d2(): return "y" if hasattr("s", "foo") else 0
+      # We should follow the chain of superclasses
+      def d3(): return "y" if hasattr("s", "__repr__") else 0
+      # Cases where hasattr() is ambiguous.
+      def a1(x): return "y" if hasattr(x, "upper") else 0
+    """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Union
+      def sig(x) -> bool: ...
+      def d1() -> str: ...
+      def d2() -> int: ...
+      def d3() -> str: ...
+      def a1(x) -> Union[int, str]: ...
+    """)
+
+  def testHasAttr(self):
+    ty = self.Infer("""
+      from __future__ import google_type_annotations
+      class Foo():
+        def bar(self):
+          pass
+      class Baz(Foo):
+        def quux(self):
+          pass
+      def d1(x: Foo): return "y" if hasattr(x, "bar") else 0
+      def d2(x: Foo): return "y" if hasattr(x, "unknown") else 0
+      def d3(x: Baz): return "y" if hasattr(x, "quux") else 0
+      def d4(x: Baz): return "y" if hasattr(x, "bar") else 0
+      def a1(x): return "y" if hasattr(x, "bar") else 0
+    """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Union
+      class Baz(Foo):
+        def quux(self) -> None: ...
+      class Foo:
+        def bar(self) -> None: ...
+      def d1(x: Foo) -> str: ...
+      def d2(x: Foo) -> int: ...
+      def d3(x: Baz) -> str: ...
+      def d4(x: Baz) -> str: ...
+      def a1(x) -> Union[int, str]: ...
+    """)
+
   def testSplit(self):
     ty = self.Infer("""
       def f2(x):

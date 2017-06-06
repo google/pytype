@@ -307,7 +307,7 @@ class PrintVisitor(Visitor):
         args.append("bound=" + t.bound.Visit(PrintVisitor()))
       formatted_type_params.append(
           "%s = TypeVar(%s)" % (t.name, ", ".join(args)))
-    return formatted_type_params
+    return sorted(formatted_type_params)
 
   def _NameCollision(self, name):
     return name in self._class_members or name in self._local_names
@@ -1201,8 +1201,11 @@ class _CountUnknowns(Visitor):
     return self.EnterNamedType(t)
 
 
-class CreateTypeParametersFromUnknowns(Visitor):
-  """Visitor for replacing re-occuring ~unknowns with type parameters.
+class CreateTypeParametersForSignatures(Visitor):
+  """Visitor for inserting type parameters into signatures.
+
+  This visitor replaces re-occurring ~unknowns and the class type in __new__
+  with type parameters.
 
   For example, this will change
     class ~unknown1:
@@ -1211,12 +1214,19 @@ class CreateTypeParametersFromUnknowns(Visitor):
   to
     _T1 = TypeVar("_T1")
     def f(x: _T1) -> _T1
+  and
+    class Foo:
+      def __new__(cls: Type[Foo]) -> Foo
+  to
+    _TFoo = TypeVar("_TFoo", bound=Foo)
+    class Foo:
+      def __new__(cls: Type[_TFoo]) -> _TFoo
   """
 
   PREFIX = "_T"  # Prefix for new type params
 
   def __init__(self):
-    super(CreateTypeParametersFromUnknowns, self).__init__()
+    super(CreateTypeParametersForSignatures, self).__init__()
     self.parameter = None
     self.class_name = None
     self.function_name = None
@@ -1236,6 +1246,33 @@ class CreateTypeParametersFromUnknowns(Visitor):
   def LeaveFunction(self, _):
     self.function_name = None
 
+  def _IsSimpleNew(self, sig):
+    """Whether the signature matches a simple __new__ method.
+
+    We're interested in whether X.__new__ has the signature
+    (cls: Type[X][, ...]) -> X, since if it does, it most likely calls
+    object.__new__ (via super()), so X in the signature should be replaced
+    with a bounded TypeVar. (There are weird corner cases like
+
+    class X(object):
+      def __new__(cls):
+        self = Y()
+        self.__class__ = X
+        return self
+
+    where the replacement is wrong, but code that does things like this
+    arguably shouldn't expect type-checking to work anyway.)
+
+    Args:
+      sig: A pytd.Signature.
+
+    Returns:
+      True if the signature matches a simple __new__ method, False otherwise.
+    """
+    return (self.class_name and self.function_name and
+            pytd.Print(sig.return_type) == self.class_name and sig.params and
+            pytd.Print(sig.params[0].type) == "Type[%s]" % self.class_name)
+
   def VisitSignature(self, sig):
     """Potentially replace ~unknowns with type parameters, in a signature."""
     if (self._IsIncomplete(self.class_name) or
@@ -1254,6 +1291,10 @@ class CreateTypeParametersFromUnknowns(Visitor):
         type_param = pytd.TypeParameter(
             self.PREFIX + str(counter.position[suffix]))
         replacements["~unknown"+suffix] = type_param
+    if self._IsSimpleNew(sig):
+      type_param = pytd.TypeParameter(
+          self.PREFIX + self.class_name, bound=pytd.NamedType(self.class_name))
+      replacements[self.class_name] = type_param
     if replacements:
       self.added_new_type_params = True
       sig = sig.Visit(ReplaceTypes(replacements))

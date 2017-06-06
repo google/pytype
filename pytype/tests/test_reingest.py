@@ -110,6 +110,24 @@ class ReingestTest(test_inference.InferenceTest):
         foo.X(a=0, b=0)
       """, pythonpath=[d.path])
 
+  def testNewChain(self):
+    foo = self.Infer("""
+      class X(object):
+        def __new__(cls, x):
+          return super(X, cls).__new__(cls)
+    """, deep=True)
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", pytd.Print(foo))
+      self.assertNoErrors("""
+        import foo
+        class Y(foo.X):
+          def __new__(cls, x):
+            return super(Y, cls).__new__(cls, x)
+          def __init__(self, x):
+            self.x = x
+        Y("x").x
+      """, pythonpath=[d.path])
+
 
 if __name__ == "__main__":
   test_inference.main()

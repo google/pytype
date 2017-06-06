@@ -23,16 +23,21 @@ class TypeNew(abstract.PyTDFunction):
         return node, variable
     return super(TypeNew, self).call(node, func, args)
 
+class ObjectPredicate(abstract.AtomicAbstractValue):
+  """The base class for builtin predicates of the form f(obj, value).
 
-class IsInstance(abstract.AtomicAbstractValue):
-  """The isinstance() function."""
+  Subclasses need to override the following:
 
-  # Minimal signature, only used for constructing exceptions.
-  _SIGNATURE = function.Signature(
-      "isinstance", ("obj", "type_or_types"), None, set(), None, {}, {}, {})
+  _SIGNATURE: A minimal function.Signature, used for constructing exceptions.
+  _call_predicate(self, node, left, right): The implementation of the predicate.
+  """
 
-  def __init__(self, vm):
-    super(IsInstance, self).__init__("isinstance", vm)
+  # Minimal signature, only used for constructing exceptions. Base classes
+  # should set this.
+  _SIGNATURE = None
+
+  def __init__(self, name, vm):
+    super(ObjectPredicate, self).__init__(name, vm)
     # Map of True/False/None (where None signals an ambiguous bool) to
     # vm values.
     self._vm_values = {
@@ -52,13 +57,63 @@ class IsInstance(abstract.AtomicAbstractValue):
         result = self.vm.program.NewVariable()
         for left in args.posargs[0].bindings:
           for right in args.posargs[1].bindings:
-            pyval = self._is_instance(left.data, right.data)
+            node, pyval = self._call_predicate(node, left.data, right.data)
             result.AddBinding(self._vm_values[pyval],
                               source_set=(left, right), where=node)
     except abstract.InvalidParameters as ex:
       self.vm.errorlog.invalid_function_call(self.vm.frames, ex)
       result = self.vm.convert.create_new_unsolvable(node)
     return node, result
+
+
+class HasAttr(ObjectPredicate):
+  """The hasattr() function."""
+
+  # Minimal signature, only used for constructing exceptions.
+  _SIGNATURE = function.Signature(
+      "hasattr", ("obj", "attr"), None, set(), None, {}, {}, {})
+
+  def __init__(self, vm):
+    super(HasAttr, self).__init__("hasattr", vm)
+
+  def _call_predicate(self, node, left, right):
+    return self._has_attr(node, left, right)
+
+  def _has_attr(self, node, obj, attr):
+    """Check if the object has attribute attr.
+
+    Args:
+      node: The given node.
+      obj: An AtomicAbstractValue, generally the left hand side of a
+          hasattr() call.
+      attr: An AtomicAbstractValue, generally the right hand side of a
+          hasattr() call.
+
+    Returns:
+      (node, result) where result = True if the object has attribute attr, False
+      if it does not, and None if it is ambiguous.
+    """
+    if isinstance(obj, abstract.AMBIGUOUS_OR_EMPTY):
+      return node, None
+    # If attr is not a literal constant, don't try to resolve it.
+    if not isinstance(attr, abstract.PythonConstant):
+      return node, None
+    node, ret = self.vm.attribute_handler.get_attribute(node, obj, attr.pyval)
+    return node, ret is not None
+
+
+class IsInstance(ObjectPredicate):
+  """The isinstance() function."""
+
+  # Minimal signature, only used for constructing exceptions.
+  _SIGNATURE = function.Signature(
+      "isinstance", ("obj", "type_or_types"), None, set(), None, {}, {}, {})
+
+  def __init__(self, vm):
+    super(IsInstance, self).__init__("isinstance", vm)
+
+  def _call_predicate(self, node, left, right):
+    return node, self._is_instance(left, right)
 
   def _is_instance(self, obj, class_spec):
     """Check if the object matches a class specification.

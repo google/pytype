@@ -155,7 +155,9 @@ class CallTracer(vm.VirtualMachine):
                            abstract.BoundInterpreterFunction)):
       if (not self.analyze_annotated and method.signature.annotations and
           fname not in self._CONSTRUCTORS):
-        log.info("%r has type annotations, not analyzing futher.", fname)
+        log.info("%r has type annotations, not analyzing further.", fname)
+      elif method.is_abstract:
+        log.info("%r is abstract, not analyzing further.", fname)
       else:
         node, args = self.create_method_arguments(node, method, seen)
         node, _ = self.call_function_with_args(node, val, args)
@@ -715,7 +717,7 @@ def infer_types(src, errorlog, options, loader,
           ast, builtins.GetDefaultAst(options.python_version))
   builtins_pytd = tracer.loader.concat_all()
   # Insert type parameters, where appropriate
-  ast = ast.Visit(visitors.CreateTypeParametersFromUnknowns())
+  ast = ast.Visit(visitors.CreateTypeParametersForSignatures())
   if solve_unknowns:
     log.info("=========== PyTD to solve =============\n%s", pytd.Print(ast))
     ast = convert_structural.convert_pytd(ast, builtins_pytd)

@@ -472,6 +472,18 @@ class BuiltinTests(test_inference.InferenceTest):
       pass
     """)
 
+  def testHasAttr(self):
+    ty = self.Infer("""
+      class Bar(object):
+        pass
+      a = hasattr(Bar, 'foo')
+    """, deep=True, solve_unknowns=True)
+    self.assertTypesMatchPytd(ty, """
+    class Bar(object):
+      pass
+    a : bool
+    """)
+
   def testTime(self):
     ty = self.Infer("""
       import time

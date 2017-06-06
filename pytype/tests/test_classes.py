@@ -613,11 +613,12 @@ class ClassesTest(test_inference.InferenceTest):
       x5 = x3.y
     """, deep=True, solve_unknowns=True)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any, Union
+      from typing import Any, Type, TypeVar, Union
+      _TA = TypeVar("_TA", bound=A)
       class A(object):
         x = ...  # type: Any
         y = ...  # type: bool
-        def __new__(cls, a, b) -> A
+        def __new__(cls: Type[_TA], a, b) -> _TA
         def __init__(self, a, b: Union[complex, typing.Iterable]) -> None
       class B(object):
         def __new__(cls, x: float or int or complex) -> A

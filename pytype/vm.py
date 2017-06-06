@@ -21,6 +21,7 @@ import repr as reprlib
 import sys
 
 
+from pytype import abc_overlay
 from pytype import abstract
 from pytype import annotations_util
 from pytype import attribute
@@ -67,6 +68,7 @@ _opcode_counter = metrics.MapCounter("vm_opcode")
 # Collection of module overlays, used in _import_module to fetch an overlay
 # instead of the module itself. Memoized in the vm itself.
 overlays = {
+    "abc": abc_overlay.ABCOverlay,
     "collections": collections_overlay.CollectionsOverlay,
     "typing": typing.TypingOverlay,
 }
@@ -206,6 +208,7 @@ class VirtualMachine(object):
         "True": self.convert.true,
         "False": self.convert.false,
         "isinstance": special_builtins.IsInstance(self),
+        "hasattr": special_builtins.HasAttr(self),
     }
 
     # Memoize which overlays are loaded.

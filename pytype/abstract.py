@@ -1407,6 +1407,7 @@ class Function(SimpleAbstractValue):
     super(Function, self).__init__(name, vm)
     self.cls = self.vm.convert.function_type
     self.is_attribute_of_class = False
+    self.is_abstract = False
     self.members["func_name"] = self.vm.convert.build_string(
         self.vm.root_cfg_node, name)
 
@@ -2818,6 +2819,14 @@ class BoundFunction(AtomicAbstractValue):
 
   def get_class(self):
     return self.underlying.get_class()
+
+  @property
+  def is_abstract(self):
+    return self.underlying.is_abstract
+
+  @is_abstract.setter
+  def is_abstract(self, value):
+    self.underlying.is_abstract = value
 
   def __repr__(self):
     if self._callself and self._callself.bindings:
