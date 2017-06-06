@@ -1,4 +1,6 @@
 """Tests for the namedtuple implementation in collections_overlay.py."""
+import textwrap
+
 
 from pytype import utils
 from pytype.tests import test_inference
@@ -7,6 +9,39 @@ from pytype.tests import test_inference
 class NamedtupleTests(test_inference.InferenceTest):
   """Tests for collections.namedtuple."""
 
+  def _repeat_type(self, type_str, n):
+    return ", ".join((type_str,) * n) if n else "nothing"
+
+  def _namedtuple_def(self, name, fields, suffix=""):
+    num_fields = len(fields)
+    field_defs = "\n  ".join(
+        "%s = ...  # type: Any" % field for field in fields)
+    field_names = "".join(", " + field for field in fields)
+    nt = textwrap.dedent("""\
+      import collections
+      from typing import Any, Callable, Iterable, Tuple, Type, TypeVar
+      collections = ...  # type: module
+      _T{name} = TypeVar("_T{name}", bound={name})
+      class {name}(tuple):
+        __dict__ = ...  # type: collections.OrderedDict[str, Any]
+        __slots__ = ...  # type: Tuple[nothing]
+        _fields = ...  # type: Tuple[{repeat_str}]
+        {field_defs}
+        def __getnewargs__(self) -> Tuple[{repeat_any}]: ...
+        def __getstate__(self) -> None: ...
+        def __init__(self, *args, **kwargs) -> None: ...
+        def __new__(cls: Type[_T{name}]{field_names}) -> _T{name}: ...
+        def _asdict(self) -> collections.OrderedDict[str, Any]: ...
+        @classmethod
+        def _make(cls, iterable: Iterable, new = ..., len: Callable[[Iterable], int] = ...) -> {name}: ...
+        def _replace(self, **kwds) -> {name}: ...
+    """).format(name=name,
+                repeat_str=self._repeat_type("str", num_fields),
+                field_defs=field_defs,
+                repeat_any=self._repeat_type("Any", num_fields),
+                field_names=field_names)
+    return nt + suffix
+
   def test_basic_namedtuple(self):
     ty = self.Infer("""
       import collections
@@ -14,29 +49,8 @@ class NamedtupleTests(test_inference.InferenceTest):
       X = collections.namedtuple("X", ["y", "z"])
       a = X(y=1, z=2)
       """)
-    self.assertTypesMatchPytd(ty, """
-        import collections
-        from typing import Any, Callable, Iterable, Tuple, Type, TypeVar
-
-        a = ...  # type: X
-        collections = ...  # type: module
-
-        _TX = TypeVar("_TX", bound=X)
-        class X(tuple):
-            __dict__ = ...  # type: collections.OrderedDict[str, Any]
-            __slots__ = ...  # type: Tuple[nothing]
-            _fields = ...  # type: Tuple[str, str]
-            y = ...  # type: Any
-            z = ...  # type: Any
-            def __getnewargs__(self) -> Tuple[Any, Any]: ...
-            def __getstate__(self) -> None: ...
-            def __init__(self, *args, **kwargs) -> None: ...
-            def __new__(cls: Type[_TX], y, z) -> _TX: ...
-            def _asdict(self) -> collections.OrderedDict[str, Any]: ...
-            @classmethod
-            def _make(cls, iterable: Iterable, new = ..., len: Callable[[Iterable], int] = ...) -> X: ...
-            def _replace(self, **kwds) -> X: ...
-        """)
+    self.assertTypesMatchPytd(
+        ty, self._namedtuple_def("X", ["y", "z"], "a = ...  # type: X"))
 
   def test_no_fields(self):
     ty = self.Infer("""
@@ -45,27 +59,8 @@ class NamedtupleTests(test_inference.InferenceTest):
         F = collections.namedtuple("F", [])
         a = F()
         """)
-    self.assertTypesMatchPytd(ty, """
-        import collections
-        from typing import Any, Callable, Iterable, Tuple, Type, TypeVar
-
-        a = ...  # type: F
-        collections = ...  # type: module
-
-        _TF = TypeVar("_TF", bound=F)
-        class F(tuple):
-            __dict__ = ...  # type: collections.OrderedDict[str, Any]
-            __slots__ = ...  # type: Tuple[nothing]
-            _fields = ...  # type: Tuple[nothing]
-            def __getnewargs__(self) -> Tuple[nothing]: ...
-            def __getstate__(self) -> None: ...
-            def __init__(self, *args, **kwargs) -> None: ...
-            def __new__(cls: Type[_TF]) -> _TF: ...
-            def _asdict(self) -> collections.OrderedDict[str, Any]: ...
-            @classmethod
-            def _make(cls, iterable: Iterable, new = ..., len: Callable[[Iterable], int] = ...) -> F: ...
-            def _replace(self, **kwds) -> F: ...
-        """)
+    self.assertTypesMatchPytd(
+        ty, self._namedtuple_def("F", [], "a = ...  # type: F"))
 
   def test_str_args(self):
     ty = self.Infer("""
@@ -73,31 +68,9 @@ class NamedtupleTests(test_inference.InferenceTest):
 
         S = collections.namedtuple("S", "a b c")
         b = S(1, 2, 3)
-        """)
-    self.assertTypesMatchPytd(ty, """
-        import collections
-        from typing import Any, Callable, Iterable, Tuple, Type, TypeVar
-
-        b = ...  # type: S
-        collections = ...  # type: module
-
-        _TS = TypeVar("_TS", bound=S)
-        class S(tuple):
-            __dict__ = ...  # type: collections.OrderedDict[str, Any]
-            __slots__ = ...  # type: Tuple[nothing]
-            _fields = ...  # type: Tuple[str, str, str]
-            a = ...  # type: Any
-            b = ...  # type: Any
-            c = ...  # type: Any
-            def __getnewargs__(self) -> Tuple[Any, Any, Any]: ...
-            def __getstate__(self) -> None: ...
-            def __init__(self, *args, **kwargs) -> None: ...
-            def __new__(cls: Type[_TS], a, b, c) -> _TS: ...
-            def _asdict(self) -> collections.OrderedDict[str, Any]: ...
-            @classmethod
-            def _make(cls, iterable: Iterable, new = ..., len: Callable[[Iterable], int] = ...) -> S: ...
-            def _replace(self, **kwds) -> S: ...
-        """)
+    """)
+    self.assertTypesMatchPytd(
+        ty, self._namedtuple_def("S", ["a", "b", "c"], "b = ...  # type: S"))
 
   def test_str_args2(self):
     self.assertNoErrors("""
@@ -137,32 +110,8 @@ class NamedtupleTests(test_inference.InferenceTest):
 
         S = collections.namedtuple("S", "abc def ghi abc", rename=True)
         """)
-    self.assertTypesMatchPytd(ty, """
-        import collections
-        from typing import Any, Callable, Iterable, Tuple, Type, TypeVar
-
-        collections = ...  # type: module
-
-        _TS = TypeVar("_TS", bound=S)
-        class S(tuple):
-            __dict__ = ...  # type: collections.OrderedDict[str, Any]
-            __slots__ = ...  # type: Tuple[nothing]
-            _fields = ...  # type: Tuple[str, str, str, str]
-
-            abc = ...  # type: Any
-            _1 = ...  # type: Any
-            ghi = ...  # type: Any
-            _3 = ...  # type: Any
-
-            def __getnewargs__(self) -> Tuple[Any, Any, Any, Any]: ...
-            def __getstate__(self) -> None: ...
-            def __init__(self, *args, **kwargs) -> None: ...
-            def __new__(cls: Type[_TS], abc, _1, ghi, _3) -> _TS: ...
-            def _asdict(self) -> collections.OrderedDict[str, Any]: ...
-            @classmethod
-            def _make(cls, iterable: Iterable, new = ..., len: Callable[[Iterable], int] = ...) -> S: ...
-            def _replace(self, **kwds) -> S: ...
-        """)
+    self.assertTypesMatchPytd(
+        ty, self._namedtuple_def("S", ["abc", "_1", "ghi", "_3"]))
 
   def test_bad_initialize(self):
     _, errlog = self.InferAndCheck("""\
@@ -233,28 +182,8 @@ class NamedtupleTests(test_inference.InferenceTest):
         X = collections.namedtuple("X", "a b c")
         a = X._make((1, 2, 3))
         """)
-    self.assertTypesMatchPytd(ty, """\
-        from typing import Any, Callable, Iterable, Tuple, Type, TypeVar
-        collections = ...  # type: module
-        a = ...  # type: X
-
-        _TX = TypeVar("_TX", bound=X)
-        class X(tuple):
-            __dict__ = ...  # type: collections.OrderedDict[str, Any]
-            __slots__ = ...  # type: Tuple[nothing]
-            _fields = ...  # type: Tuple[str, str, str]
-            a = ...  # type: Any
-            b = ...  # type: Any
-            c = ...  # type: Any
-            def __getnewargs__(self) -> Tuple[Any, Any, Any]: ...
-            def __getstate__(self) -> None: ...
-            def __init__(self, *args, **kwargs) -> None: ...
-            def __new__(cls: Type[_TX], a, b, c) -> _TX: ...
-            def _asdict(self) -> collections.OrderedDict[str, Any]: ...
-            @classmethod
-            def _make(cls, iterable: Iterable, new = ..., len: Callable[[Iterable], int] = ...) -> X: ...
-            def _replace(self, **kwds) -> X: ...
-        """)
+    self.assertTypesMatchPytd(
+        ty, self._namedtuple_def("X", ["a", "b", "c"], "a = ...  # type: X"))
 
   def test_namedtuple_match(self):
     self.assertNoErrors("""\
