@@ -7,8 +7,6 @@ from pytype import overlay
 class ABCOverlay(overlay.Overlay):
   """A custom overlay for the 'abc' module."""
 
-  is_lazy = True  # uses our _convert_member method.
-
   def __init__(self, vm):
     member_map = {"abstractmethod": AbstractMethod}
     ast = vm.loader.import_name("abc")

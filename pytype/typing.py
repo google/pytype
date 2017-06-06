@@ -13,8 +13,6 @@ from pytype.pytd import pytd
 class TypingOverlay(overlay.Overlay):
   """A representation of the 'typing' module that allows custom overlays."""
 
-  is_lazy = True  # uses _convert_member
-
   def __init__(self, vm):
     member_map = typing_overload.copy()
     ast = vm.loader.typing

@@ -12,8 +12,6 @@ from pytype.pytd import pytd
 class CollectionsOverlay(overlay.Overlay):
   """A custom overlay for the 'collections' module."""
 
-  is_lazy = True  # uses our _convert_member method.
-
   def __init__(self, vm):
     """Initializes the CollectionsOverlay.
 
