@@ -201,6 +201,12 @@ class BuiltinTests2(test_inference.InferenceTest):
         complex(u"123.0")
     """)
 
+  def testIOWrite(self):
+    self.assertNoErrors("""
+        import sys
+        sys.stdout.write(bytearray([1,2,3]))
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()
