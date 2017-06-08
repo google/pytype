@@ -660,6 +660,6 @@ class ErrorLog(ErrorLogBase):
 
   @_error_name("invalid-namedtuple-arg")
   def invalid_namedtuple_arg(self, stack, badname):
-    msg = ("collections.namedtuple argument %r is not a valid typename or"
+    msg = ("collections.namedtuple argument %r is not a valid typename or "
            "field name.")
     self.warn(stack, msg % badname)

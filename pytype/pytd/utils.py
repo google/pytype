@@ -215,7 +215,7 @@ def WrapTypeDeclUnit(name, items):
         functions[item.name] = item
     elif isinstance(item, pytd.Class):
       if item.name in classes:
-        raise NameError("Duplicate top level class: %r", item.name)
+        raise NameError("Duplicate top level class: %r" % item.name)
       classes[item.name] = item
     elif isinstance(item, pytd.Constant):
       constants[item.name].add_type(item.type)

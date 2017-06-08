@@ -515,6 +515,49 @@ class NamedTupleTest(_ParserTestBase):
           def __init__(self, *args, **kwargs) -> None: ...
         """)
 
+  def test_assign_namedtuple(self):
+    self.check("X = NamedTuple(X, [])", """\
+      from typing import Any, Tuple, Type, TypeVar
+
+      X = `~X_0`
+
+      _T~X_0 = TypeVar('_T~X_0', bound=`~X_0`)
+
+      class `~X_0`(Tuple[nothing, ...]):
+          _asdict = ...  # type: Any
+          __dict__ = ...  # type: Any
+          _fields = ...  # type: Any
+          __getnewargs__ = ...  # type: Any
+          __getstate__ = ...  # type: Any
+          _make = ...  # type: Any
+          _replace = ...  # type: Any
+          __slots__ = ...  # type: Any
+          def __new__(cls: Type[_T~X_0]) -> _T~X_0: ...
+          def __init__(self, *args, **kwargs) -> None: ...
+    """)
+
+  def test_subclass_namedtuple(self):
+    self.check("class X(NamedTuple(X, [])): ...", """\
+      from typing import Any, Tuple, Type, TypeVar
+
+      _T~X_0 = TypeVar('_T~X_0', bound=`~X_0`)
+
+      class `~X_0`(Tuple[nothing, ...]):
+          _asdict = ...  # type: Any
+          __dict__ = ...  # type: Any
+          _fields = ...  # type: Any
+          __getnewargs__ = ...  # type: Any
+          __getstate__ = ...  # type: Any
+          _make = ...  # type: Any
+          _replace = ...  # type: Any
+          __slots__ = ...  # type: Any
+          def __new__(cls: Type[_T~X_0]) -> _T~X_0: ...
+          def __init__(self, *args, **kwargs) -> None: ...
+
+      class X(`~X_0`):
+          pass
+    """)
+
 
 class FunctionTest(_ParserTestBase):
 
