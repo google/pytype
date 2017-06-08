@@ -85,32 +85,15 @@ class CollectionsOverlay(overlay.Overlay):
     super(CollectionsOverlay, self).__init__(vm, "collections", member_map, ast)
 
 
-class NamedTupleInstance(abstract.PyTDClass):
-  """Protects the underlying class from having its official name changed.
-
-  We consider it bad practice to store namedtuples in variables with
-  different names than the namedtuple itself, e.g.:
-  >>> Foo = collections.namedtuple("Bar", ...)
-
-  This ends up erasing type information. In order to enforce this rule, this
-  class overrides update_official_name to enforce the namedtuple's given
-  name, and then logs an error to alert the user.
-  """
-
-  def __init__(self, name, pytd_cls, vm):
-    super(NamedTupleInstance, self).__init__(name, pytd_cls, vm)
-
-  def __repr__(self):
-    return "NamedTupleInstance(%s)" % self.name
-
-
-class NamedTupleBuilder(abstract.Function):
+class NamedTupleBuilder(abstract.PyTDFunction):
   """Factory for creating collections.namedtuple typing information."""
 
   def __init__(self, name, vm):
-    super(NamedTupleBuilder, self).__init__(name, vm)
     # Loading the ast should be memoized after the import in CollectionsOverlay
     self.collections_ast = vm.loader.import_name("collections")
+    pyval = self.collections_ast.Lookup("collections.namedtuple")
+    f = vm.convert.constant_to_value(pyval, {}, vm.root_cfg_node)
+    super(NamedTupleBuilder, self).__init__(name, f.signatures, pytd.METHOD, vm)
 
   def _get_builtin_classtype(self, name):
     fullname = "__builtin__.%s" % name
@@ -156,9 +139,7 @@ class NamedTupleBuilder(abstract.Function):
     """
 
     # abstract.PyTDFunction._match_args checks the args for this call.
-    namedtuple_func = self.vm.convert.constant_to_value(
-        self.collections_ast.Lookup("collections.namedtuple"), (), node)
-    namedtuple_func._match_args(node, args)  # pylint: disable=protected-access
+    self._match_args(node, args)
 
     # inspect.callargs returns a dictionary mapping the argument names to
     # the values in args.posargs and args.namedargs (or False if there is no
@@ -236,8 +217,7 @@ class NamedTupleBuilder(abstract.Function):
     used for the typename or field names, and so on. Because the methods of the
     class have to be changed to match the number and names of the fields, we
     construct pytd.Function and pytd.Constant instances for each member of the
-    class. Finally, the pytd.Class is wrapped in a NamedTupleInstance, a
-    specialized subclass of abstract.PyTDClass.
+    class. Finally, the pytd.Class is wrapped in an abstract.PyTDClass.
 
     If incorrect arguments are passed, a subclass of abstract.FailedFunctionCall
     will be raised. Other cases may raise abstract.ConversionError exceptions,
@@ -252,11 +232,10 @@ class NamedTupleBuilder(abstract.Function):
       args: an abstract.FunctionArgs instance
 
     Returns:
-      a tuple of the given CFG node and a NamedTupleInstance instance (wrapped
+      a tuple of the given CFG node and an abstract.PyTDClass instance (wrapped
       in a Variable) representing the constructed namedtuple class.
       If a abstract.ConversionError occurs or if field names are invalid, this
-      function returns Unsolvable (in a Variable) instead of a
-      NamedTupleInstance
+      function returns Unsolvable (in a Variable) instead of a PyTDClass.
 
     Raises:
       abstract.FailedFunctionCall: Raised by _getargs if any of the arguments
@@ -302,28 +281,9 @@ class NamedTupleBuilder(abstract.Function):
     # filled cls pointers.
     cls.Visit(visitors.VerifyLookup())
 
-    # We can't build the NamedTupleInstance directly, and instead must run in
-    # through convert.constant_to_value first.
-    # The cls AST contains cls_type, which refers back to cls. When cls_typ is
-    # run through convert.constant_to_value, cls_typ.cls is converted into an
-    # abstract.PyTDClass instance, which is cached. However, this will cause any
-    # attempts to match cls_typ against the NamedTupleInstance to fail. (e.g. in
-    # matcher.match_value_to_type, or more specifically,
-    # matcher._match_from_mro, which uses "is" to compare two types.) For
-    # example, this code would fail:
-    #   X = collections.namedtuple("X", "a")
-    #   def foo(s: str) -> Dict[str, X]:
-    #     return {s: X(__any_object__)}
-    # with an error message like "mismatched return type in foo", despite the
-    # fact that X is X!
-    #
-    # As a rather hacky workaround, we generate the PyTDClass using
-    # constant_to_value, then override its __class__ attribute so it _thinks_
-    # that it's a NamedTupleInstance.  This caches the correct PyTDClass
-    # instance in convert_to_value while still giving the benefits of
-    # NamedTupleInstance.
+    # We can't build the PyTDClass directly, and instead must run it through
+    # convert.constant_to_value first, for caching.
     instance = self.vm.convert.constant_to_value(cls, {}, self.vm.root_cfg_node)
-    instance.__class__ = NamedTupleInstance
     self.vm.trace_namedtuple(instance)
     return node, instance.to_variable(node)
 

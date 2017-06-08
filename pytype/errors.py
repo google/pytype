@@ -653,11 +653,6 @@ class ErrorLog(ErrorLogBase):
     else:
       self.error(stack, "Invalid TypeVar: %s" % comment)
 
-  @_error_name("invalid-namedtuple-name")
-  def invalid_namedtuple_name(self, stack, name, badname):
-    msg = "namedtuple(%(name)r) should be stored as %(name)r, not %(badname)r."
-    self.error(stack, msg % {"name": name, "badname": badname})
-
   @_error_name("invalid-namedtuple-arg")
   def invalid_namedtuple_arg(self, stack, badname):
     msg = ("collections.namedtuple argument %r is not a valid typename or "
