@@ -579,12 +579,12 @@ class BuiltinTests(test_inference.InferenceTest):
           collections.namedtuple('_Foo', 'x y z')):
         pass
     """, deep=True, solve_unknowns=True)
-    self.assertTypesMatchPytd(ty, """
+    name = collections_overlay.namedtuple_name("_Foo", ["x", "y", "z"])
+    ast = collections_overlay.namedtuple_ast(name, ["x", "y", "z"])
+    expected = pytd.Print(ast) + textwrap.dedent("""\
       collections = ...  # type: module
-
-      class Foo(?):
-        pass
-    """)
+      class Foo({name}): ...""").format(name=name)
+    self.assertTypesMatchPytd(ty, expected)
 
   def testStoreAndLoadFromNamedTuple(self):
     ty = self.Infer("""
@@ -597,12 +597,14 @@ class BuiltinTests(test_inference.InferenceTest):
       y = t.y
       z = t.z
     """, deep=True, solve_unknowns=True)
-    ast = collections_overlay.namedtuple_ast("t", ["x", "y", "z"])
+    name = collections_overlay.namedtuple_name("t", ["x", "y", "z"])
+    ast = collections_overlay.namedtuple_ast(name, ["x", "y", "z"])
     expected = pytd.Print(ast) + textwrap.dedent("""\
       collections = ...  # type: module
+      t = {name}
       x = ...  # type: int
       y = ...  # type: str
-      z = ...  # type: complex""")
+      z = ...  # type: complex""").format(name=name)
     self.assertTypesMatchPytd(ty, expected)
 
   def testTypeEquals(self):

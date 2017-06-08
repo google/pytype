@@ -50,7 +50,8 @@ class Converter(object):
                                         types.NoneType, complex, bool, slice,
                                         types.CodeType, types.EllipsisType,
                                         types.ClassType, super]}
-
+    self.primitive_class_names = [
+        x.__module__ + "." + x.__name__ for x in self.primitive_classes]
     self.none = abstract.AbstractOrConcreteValue(
         None, self.primitive_classes[types.NoneType], self.vm)
     self.true = abstract.AbstractOrConcreteValue(

@@ -399,10 +399,6 @@ class AtomicAbstractValue(object):
     """Update the official name."""
     pass
 
-  def cmp_eq(self, _):
-    """Do special handling of the equality operator."""
-    return None
-
 
 class Empty(AtomicAbstractValue):
   """An empty value.
@@ -493,7 +489,7 @@ class PythonConstant(object):
   """
 
   __metaclass__ = MixinMeta
-  overloads = ("__repr__", "cmp_eq", "compatible_with",)
+  overloads = ("__repr__", "compatible_with",)
 
   def init_mixin(self, pyval):
     """Mix-in equivalent of __init__."""
@@ -514,13 +510,6 @@ class PythonConstant(object):
 
   def __repr__(self):
     return "<v%d %s %s>" % (self.id, self.name, self.str_of_constant(str))
-
-  def cmp_eq(self, other):
-    if (self.pyval.__class__ in self.vm.convert.primitive_classes and
-        isinstance(other, PythonConstant) and
-        other.pyval.__class__ in self.vm.convert.primitive_classes):
-      return self.pyval == other.pyval
-    return None
 
   def compatible_with(self, logical_value):
     return bool(self.pyval) == logical_value
@@ -819,7 +808,7 @@ class Instance(SimpleAbstractValue):
 
   def compatible_with(self, logical_value):  # pylint: disable=unused-argument
     # Containers with unset parameters and NoneType instances cannot match True.
-    name = self._get_full_name()
+    name = self.get_full_name()
     if logical_value and name in Instance._CONTAINER_NAMES:
       return (T in self.type_parameters and
               bool(self.type_parameters[T].bindings))
@@ -827,7 +816,7 @@ class Instance(SimpleAbstractValue):
       return not logical_value
     return True
 
-  def _get_full_name(self):
+  def get_full_name(self):
     try:
       return get_atomic_value(self.get_class()).full_name
     except ConversionError:
@@ -928,11 +917,6 @@ class Tuple(Instance, PythonConstant):
     if self.tuple_length == 1:
       content += ","
     return "(%s)" % content
-
-  def cmp_eq(self, other):
-    if isinstance(other, Tuple) and self.tuple_length != other.tuple_length:
-      return False
-    return None
 
   def _unique_parameters(self):
     parameters = super(Tuple, self)._unique_parameters()
@@ -1080,13 +1064,6 @@ class Dict(Instance, HasSlots, PythonConstant, WrapsDict("pyval")):
       self.merge_type_parameter(node, K, unsolvable)
       self.merge_type_parameter(node, V, unsolvable)
       self.could_contain_anything = True
-
-  def cmp_eq(self, other):
-    if (not self.could_contain_anything and isinstance(other, Dict) and
-        not other.could_contain_anything and
-        set(self.pyval) != set(other.pyval)):
-      return False
-    return None
 
   def compatible_with(self, logical_value):
     if self.could_contain_anything:

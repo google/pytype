@@ -43,6 +43,17 @@ class NamedTupleAstTest(unittest.TestCase):
     self.assertEqual("def __new__(cls: Type[_TX], y, z) -> _TX: ...",
                      pytd.Print(nt.Lookup("__new__")))
 
+  def test_name(self):
+    # The generated name has to be different from the official name, or we'll
+    # end up with nonsense like X = X.
+    self.assertNotEqual("X", collections_overlay.namedtuple_name("X", []))
+    # Two namedtuple instances should have the same name iff the instances are
+    # the same.
+    self.assertNotEqual(collections_overlay.namedtuple_name("X", []),
+                        collections_overlay.namedtuple_name("X", ["a"]))
+    self.assertNotEqual(collections_overlay.namedtuple_name("X", ["a"]),
+                        collections_overlay.namedtuple_name("X", ["b"]))
+
 
 if __name__ == "__main__":
   unittest.main()

@@ -1078,6 +1078,48 @@ class ClassesTest(test_inference.InferenceTest):
     """, deep=True)
     self.assertErrorLogIs(errors, [(4, "missing-parameter", r"cls.*__new__")])
 
+  def testNewAnnotatedCls(self):
+    ty = self.Infer("""
+      from __future__ import google_type_annotations
+      from typing import Type
+      class Foo(object):
+        def __new__(cls: Type[str]):
+          return super(Foo, cls).__new__(cls)
+    """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Type
+      class Foo(object):
+        def __new__(cls: Type[str]) -> str: ...
+    """)
+
+  def testNewKwarg(self):
+    _, errors = self.InferAndCheck("""\
+      class Foo(object):
+        def __new__(cls):
+          # ok because __init__ is defined.
+          return super(Foo, cls).__new__(cls, x=42)
+        def __init__(self):
+          pass
+      class Bar(object):
+        def __new__(cls):
+          return super(Bar, cls).__new__(cls, x=42)  # bad!
+    """, deep=True)
+    self.assertErrorLogIs(errors, [(9, "wrong-keyword-args", r"x.*__new__")])
+
+  def testInitKwarg(self):
+    _, errors = self.InferAndCheck("""\
+      class Foo(object):
+        def __init__(self):
+          # ok because __new__ is defined.
+          super(Foo, self).__init__(x=42)
+        def __new__(cls):
+          return super(Foo, cls).__new__(cls)
+      class Bar(object):
+        def __init__(self):
+          super(Bar, self).__init__(x=42)  # bad!
+    """, deep=True)
+    self.assertErrorLogIs(errors, [(9, "wrong-keyword-args", r"x.*__init__")])
+
 
 if __name__ == "__main__":
   test_inference.main()

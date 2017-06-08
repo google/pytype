@@ -5,6 +5,7 @@ import logging
 
 
 from pytype import abstract
+from pytype import collections_overlay
 from pytype import special_builtins
 from pytype import typing
 from pytype.pytd import pytd
@@ -261,6 +262,9 @@ class Converter(object):
       return self._function_to_def(node, v, name)
     elif isinstance(v, abstract.ParameterizedClass):
       return pytd.Alias(name, v.get_instance_type(node))
+    elif isinstance(v, collections_overlay.NamedTupleInstance):
+      assert name != v.name
+      return pytd.Alias(name, pytd.NamedType(v.name))
     elif isinstance(v, abstract.PyTDClass):
       # This happens if a module does e.g. "from x import y as z", i.e., copies
       # something from another module to the local namespace. We *could*

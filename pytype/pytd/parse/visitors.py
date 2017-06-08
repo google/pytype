@@ -1269,9 +1269,12 @@ class CreateTypeParametersForSignatures(Visitor):
     Returns:
       True if the signature matches a simple __new__ method, False otherwise.
     """
-    return (self.class_name and self.function_name and
-            pytd.Print(sig.return_type) == self.class_name and sig.params and
-            pytd.Print(sig.params[0].type) == "Type[%s]" % self.class_name)
+    if self.class_name and self.function_name and sig.params:
+      # Printing the class name escapes illegal characters.
+      safe_class_name = pytd.Print(pytd.NamedType(self.class_name))
+      return (pytd.Print(sig.return_type) == safe_class_name and
+              pytd.Print(sig.params[0].type) == "Type[%s]" % safe_class_name)
+    return False
 
   def VisitSignature(self, sig):
     """Potentially replace ~unknowns with type parameters, in a signature."""

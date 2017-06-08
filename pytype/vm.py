@@ -27,6 +27,7 @@ from pytype import annotations_util
 from pytype import attribute
 from pytype import blocks
 from pytype import collections_overlay
+from pytype import compare
 from pytype import convert
 from pytype import directors
 from pytype import exceptions
@@ -824,7 +825,10 @@ class VirtualMachine(object):
     """Fired whenever we call a builtin using unknown parameters."""
     return NotImplemented
 
-  def trace_functiondef(self, f):
+  def trace_functiondef(self, *args):
+    return NotImplemented
+
+  def trace_namedtuple(self, *args):
     return NotImplemented
 
   def call_function_with_state(self, state, funcu, posargs, namedargs=None,
@@ -1481,7 +1485,7 @@ class VirtualMachine(object):
     leftover = self.program.NewVariable()
     for b1 in x.bindings:
       for b2 in y.bindings:
-        val = b1.data.cmp_eq(b2.data)
+        val = compare.cmp_eq(self, b1.data, b2.data)
         if val is None:
           leftover.AddBinding(b1.data, {b1}, state.node)
         else:

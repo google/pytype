@@ -128,6 +128,23 @@ class ReingestTest(test_inference.InferenceTest):
         Y("x").x
       """, pythonpath=[d.path])
 
+  def testNamedTupleSubclass(self):
+    foo = self.Infer("""
+      import collections
+      class X(collections.namedtuple("X", ["a"])):
+        def __new__(cls, a, b):
+          print b
+          return super(X, cls).__new__(cls, a)
+    """, deep=True)
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", pytd.Print(foo))
+      _, errors = self.InferAndCheck("""\
+        import foo
+        foo.X("hello", "world")
+        foo.X(42)  # missing parameters
+      """, pythonpath=[d.path])
+      self.assertErrorLogIs(errors, [(3, "missing-parameter", "b.*__new__")])
+
 
 if __name__ == "__main__":
   test_inference.main()

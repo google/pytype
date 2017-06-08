@@ -57,6 +57,7 @@ class CallTracer(vm.VirtualMachine):
     self._method_calls = set()
     self._instance_cache = {}
     self._interpreter_functions = []
+    self._generated_classes = {}
     self.exitpoint = None
 
   def create_argument(self, node, signature, name, seen):
@@ -347,6 +348,11 @@ class CallTracer(vm.VirtualMachine):
     if not self.reading_builtins:
       self._interpreter_functions.append(f)
 
+  def trace_namedtuple(self, nt):
+    # All namedtuple instances with the same name are equal, so it's fine to
+    # overwrite previous instances.
+    self._generated_classes[nt.name] = nt
+
   def pytd_classes_for_unknowns(self):
     classes = []
     for name, var in self._unknowns.items():
@@ -451,6 +457,9 @@ class CallTracer(vm.VirtualMachine):
   def pytd_aliases(self):
     return ()  # TODO(kramm): Compute these.
 
+  def pytd_classes_for_namedtuple_instances(self):
+    return tuple(v.pytd_cls for v in self._generated_classes.values())
+
   def compute_types(self, defs):
     ty = pytd_utils.Concat(
         self.pytd_for_types(defs),
@@ -459,7 +468,8 @@ class CallTracer(vm.VirtualMachine):
             constants=tuple(),
             type_params=tuple(),
             classes=tuple(self.pytd_classes_for_unknowns()) +
-            tuple(self.pytd_classes_for_call_traces()),
+            tuple(self.pytd_classes_for_call_traces()) +
+            self.pytd_classes_for_namedtuple_instances(),
             functions=tuple(self.pytd_functions_for_call_traces()),
             aliases=tuple(self.pytd_aliases())))
     ty = ty.Visit(optimize.CombineReturnsAndExceptions())

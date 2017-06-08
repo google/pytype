@@ -60,6 +60,12 @@ def namedtuple_ast(name, fields, python_version=None):
   return parser.parse_string(nt, python_version=python_version)
 
 
+def namedtuple_name(name, fields):
+  # Use a character not allowed in Python variable names to avoid naming
+  # conflicts with user-defined objects.
+  return "%s-%s" % (name, "-".join(fields))
+
+
 class CollectionsOverlay(overlay.Overlay):
   """A custom overlay for the 'collections' module."""
 
@@ -96,14 +102,6 @@ class NamedTupleInstance(abstract.PyTDClass):
 
   def __repr__(self):
     return "NamedTupleInstance(%s)" % self.name
-
-  def to_pytd_def(self, unused_node, unused_name):
-    return self.pytd_cls
-
-  def update_official_name(self, new_name):
-    if new_name != self.name:
-      self.vm.errorlog.invalid_namedtuple_name(self.vm.frames, self.name,
-                                               new_name)
 
 
 class NamedTupleBuilder(abstract.Function):
@@ -285,6 +283,7 @@ class NamedTupleBuilder(abstract.Function):
       self.vm.errorlog.invalid_namedtuple_arg(self.vm.frames, e.message)
       return node, self.vm.convert.unsolvable.to_variable(node)
 
+    name = namedtuple_name(name, field_names)
     ast = namedtuple_ast(name, field_names,
                          python_version=self.vm.python_version)
     mapping = self._get_known_types_mapping()
@@ -325,6 +324,7 @@ class NamedTupleBuilder(abstract.Function):
     # NamedTupleInstance.
     instance = self.vm.convert.constant_to_value(cls, {}, self.vm.root_cfg_node)
     instance.__class__ = NamedTupleInstance
+    self.vm.trace_namedtuple(instance)
     return node, instance.to_variable(node)
 
 

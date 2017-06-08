@@ -1,16 +1,35 @@
 """Tests for the namedtuple implementation in collections_overlay.py."""
+import textwrap
+
 
 from pytype import collections_overlay
 from pytype import utils
 from pytype.pytd import pytd
+from pytype.pytd import utils as pytd_utils
 from pytype.tests import test_inference
 
 
 class NamedtupleTests(test_inference.InferenceTest):
   """Tests for collections.namedtuple."""
 
-  def _namedtuple_def(self, name, fields, suffix=""):
-    suffix += "\ncollections = ...  # type: module"
+  def _namedtuple_def(self, suffix="", **kws):
+    """Generate the expected pyi for a simple namedtuple definition.
+
+    Args:
+      suffix: Optionally, extra text to append to the pyi.
+      **kws: Must contain exactly one argument of the form
+        alias=(name, [<fields>]). For example, to generate a definition for
+        X = namedtuple("_X", "y z"), the method call should be
+        _namedtuple_def(X=("_X", ["y", "z"])).
+
+    Returns:
+      The expected pyi for the namedtuple instance.
+    """
+    (alias, (name, fields)), = kws.items()
+    name = collections_overlay.namedtuple_name(name, fields)
+    suffix += textwrap.dedent("""
+      collections = ...  # type: module
+      {alias} = {name}""").format(alias=alias, name=name)
     return pytd.Print(collections_overlay.namedtuple_ast(name, fields)) + suffix
 
   def test_basic_namedtuple(self):
@@ -20,8 +39,8 @@ class NamedtupleTests(test_inference.InferenceTest):
       X = collections.namedtuple("X", ["y", "z"])
       a = X(y=1, z=2)
       """)
-    self.assertTypesMatchPytd(
-        ty, self._namedtuple_def("X", ["y", "z"], "a = ...  # type: X"))
+    self.assertTypesMatchPytd(ty, self._namedtuple_def(
+        X=("X", ["y", "z"]), suffix="a = ...  # type: X"))
 
   def test_no_fields(self):
     ty = self.Infer("""
@@ -31,7 +50,7 @@ class NamedtupleTests(test_inference.InferenceTest):
         a = F()
         """)
     self.assertTypesMatchPytd(
-        ty, self._namedtuple_def("F", [], "a = ...  # type: F"))
+        ty, self._namedtuple_def(F=("F", []), suffix="a = ...  # type: F"))
 
   def test_str_args(self):
     ty = self.Infer("""
@@ -40,8 +59,8 @@ class NamedtupleTests(test_inference.InferenceTest):
         S = collections.namedtuple("S", "a b c")
         b = S(1, 2, 3)
     """)
-    self.assertTypesMatchPytd(
-        ty, self._namedtuple_def("S", ["a", "b", "c"], "b = ...  # type: S"))
+    self.assertTypesMatchPytd(ty, self._namedtuple_def(
+        S=("S", ["a", "b", "c"]), suffix="b = ...  # type: S"))
 
   def test_str_args2(self):
     self.assertNoErrors("""
@@ -82,7 +101,7 @@ class NamedtupleTests(test_inference.InferenceTest):
         S = collections.namedtuple("S", "abc def ghi abc", rename=True)
         """)
     self.assertTypesMatchPytd(
-        ty, self._namedtuple_def("S", ["abc", "_1", "ghi", "_3"]))
+        ty, self._namedtuple_def(S=("S", ["abc", "_1", "ghi", "_3"])))
 
   def test_bad_initialize(self):
     _, errlog = self.InferAndCheck("""\
@@ -100,12 +119,13 @@ class NamedtupleTests(test_inference.InferenceTest):
         (6, "wrong-keyword-args")])
 
   def test_class_name(self):
-    _, errorlog = self.InferAndCheck(
+    ty = self.Infer(
         """\
         import collections
         F = collections.namedtuple("S", ['a', 'b', 'c'])
         """)
-    self.assertErrorLogIs(errorlog, [(2, "invalid-namedtuple-name")])
+    self.assertTypesMatchPytd(
+        ty, self._namedtuple_def(F=("S", ["a", "b", "c"])))
 
   def test_calls(self):
     self.assertNoErrors("""
@@ -153,8 +173,8 @@ class NamedtupleTests(test_inference.InferenceTest):
         X = collections.namedtuple("X", "a b c")
         a = X._make((1, 2, 3))
         """)
-    self.assertTypesMatchPytd(
-        ty, self._namedtuple_def("X", ["a", "b", "c"], "a = ...  # type: X"))
+    self.assertTypesMatchPytd(ty, self._namedtuple_def(
+        X=("X", ["a", "b", "c"]), suffix="a = ...  # type: X"))
 
   def test_namedtuple_match(self):
     self.assertNoErrors("""\
@@ -217,6 +237,49 @@ class NamedtupleTests(test_inference.InferenceTest):
       args = None  # type: list
       X(*args)
     """)
+
+  def test_kwargs(self):
+    self.assertNoErrors("""
+      import collections
+      X = collections.namedtuple("X", [])
+      kwargs = None  # type: dict
+      X(**kwargs)
+    """)
+
+  def test_name_conflict(self):
+    ty = self.Infer("""
+      import collections
+      X = collections.namedtuple("_", [])
+      Y = collections.namedtuple("_", [])
+      Z = collections.namedtuple("_", "a")
+    """)
+    name_x = collections_overlay.namedtuple_name("_", [])
+    name_z = collections_overlay.namedtuple_name("_", ["a"])
+    ast_x = collections_overlay.namedtuple_ast(name_x, [])
+    ast_z = collections_overlay.namedtuple_ast(name_z, ["a"])
+    ast = pytd_utils.Concat(ast_x, ast_z)
+    expected = pytd.Print(ast) + textwrap.dedent("""\
+      collections = ...  # type: module
+      X = {name_x}
+      Y = {name_x}
+      Z = {name_z}""").format(name_x=name_x, name_z=name_z)
+    self.assertTypesMatchPytd(ty, expected)
+
+  def test_subclass(self):
+    ty = self.Infer("""
+      import collections
+      class X(collections.namedtuple("X", [])):
+        def __new__(cls, _):
+          return super(X, cls).__new__(cls)
+    """, deep=True)
+    name = collections_overlay.namedtuple_name("X", [])
+    ast = collections_overlay.namedtuple_ast(name, [])
+    expected = pytd.Print(ast) + textwrap.dedent("""\
+      collections = ...  # type: module
+      _TX = TypeVar("_TX", bound=X)
+      class X({name}):
+        def __new__(cls: Type[_TX], _) -> _TX: ...""").format(name=name)
+    self.assertTypesMatchPytd(ty, expected)
 
 
 if __name__ == "__main__":

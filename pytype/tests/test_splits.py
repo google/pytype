@@ -752,6 +752,24 @@ class SplitTest(test_inference.InferenceTest):
       v2 = ...  # type: float
     """)
 
+  def testPrimitiveNotEq(self):
+    self.assertNoErrors("""
+      x = "foo" if __any_object__ else 42
+      if x == "foo":
+        x.upper()
+    """, strict_attr_checking=True)
+
+  def testBuiltinFullNameCheck(self):
+    # Don't get confused by a class named int
+    _, errorlog = self.InferAndCheck("""
+      class int():
+        pass
+      x = "foo" if __any_object__ else int()
+      if x == "foo":
+        x.upper()
+    """, strict_attr_checking=True)
+    self.assertNotEqual(len(errorlog), 0)
+
   def testTypeParameterInBranch(self):
     ty = self.Infer("""
       if __any_object__:
