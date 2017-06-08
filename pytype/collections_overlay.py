@@ -3,10 +3,61 @@ import collections
 import inspect
 # TODO(tsudol): Python 2 and Python 3 have different keyword lists.
 from keyword import iskeyword
+import textwrap
 
 from pytype import abstract
 from pytype import overlay
+from pytype.pyi import parser
 from pytype.pytd import pytd
+from pytype.pytd.parse import visitors
+
+
+def _repeat_type(type_str, n):
+  return ", ".join((type_str,) * n) if n else "nothing, ..."
+
+
+def namedtuple_ast(name, fields, python_version=None):
+  """Make an AST with a namedtuple definition for the given name and fields.
+
+  Args:
+    name: The namedtuple name.
+    fields: The namedtuple fields.
+    python_version: Optionally, the python version of the code under analysis.
+
+  Returns:
+    A pytd.TypeDeclUnit with the namedtuple definition in its classes.
+  """
+  typevar = visitors.CreateTypeParametersForSignatures.PREFIX + name
+  num_fields = len(fields)
+  field_defs = "\n  ".join(
+      "%s = ...  # type: ?" % field for field in fields)
+  field_names = "".join(", " + field for field in fields)
+  nt = textwrap.dedent("""
+    {typevar} = TypeVar("{typevar}", bound={name})
+    class {name}(tuple):
+      __dict__ = ...  # type: collections.OrderedDict[str, ?]
+      __slots__ = ...  # type: typing.Tuple[nothing, ...]
+      _fields = ...  # type: typing.Tuple[{repeat_str}]
+      {field_defs}
+      def __getnewargs__(self) -> typing.Tuple[{repeat_any}]: ...
+      def __getstate__(self) -> None: ...
+      def __init__(self, *args, **kwargs) -> None: ...
+      def __new__(cls: typing.Type[{typevar}]{field_names}) -> {typevar}: ...
+      def _asdict(self) -> collections.OrderedDict[str, ?]: ...
+      @classmethod
+      def _make(cls,
+                iterable: typing.Iterable,
+                new = ...,
+                len: typing.Callable[[typing.Iterable], int] = ...
+      ) -> {name}: ...
+      def _replace(self, **kwds) -> {name}: ...
+  """).format(typevar=typevar,
+              name=name,
+              repeat_str=_repeat_type("str", num_fields),
+              field_defs=field_defs,
+              repeat_any=_repeat_type("?", num_fields),
+              field_names=field_names)
+  return parser.parse_string(nt, python_version=python_version)
 
 
 class CollectionsOverlay(overlay.Overlay):
@@ -62,20 +113,6 @@ class NamedTupleBuilder(abstract.Function):
     super(NamedTupleBuilder, self).__init__(name, vm)
     # Loading the ast should be memoized after the import in CollectionsOverlay
     self.collections_ast = vm.loader.import_name("collections")
-    self.namedtuple_members = {
-        "_asdict": self._asdict,
-        "__dict__": self._dict,
-        "_fields": self._fields,
-        "__getnewargs__": self._getnewargs,
-        "__getstate__": self._getstate,
-        "_make": self._make,
-        # Since our model of __builtin__.tuple uses __init__ but namedtuple
-        # subclasses often override __new__, we have to define both.
-        "__new__": self._new,
-        "__init__": self._init,
-        "_replace": self._replace,
-        "__slots__": self._slots,
-    }
 
   def _get_builtin_classtype(self, name):
     fullname = "__builtin__.%s" % name
@@ -85,21 +122,18 @@ class NamedTupleBuilder(abstract.Function):
     fullname = "typing.%s" % name
     return pytd.ClassType(fullname, self.vm.loader.typing.Lookup(fullname))
 
-  def _build_tupletype(self, *param_types):
-    if not param_types:
-      param_types = (pytd.NothingType(),)
-    inner = self._get_builtin_classtype("tuple")
-    return pytd.TupleType(inner, param_types)
-
-  def _build_param(self, name, typ, kwonly=False, optional=False, mutated=None):
-    return pytd.Parameter(name, typ, kwonly, optional, mutated)
-
-  def _build_sig(self, params, ret_type, star=None, starstar=None, exc=(),
-                 template=()):
-    return pytd.Signature(params, star, starstar, ret_type, exc, template)
-
-  def _selfparam(self, typ=None):
-    return self._build_param("self", typ or pytd.AnythingType())
+  def _get_known_types_mapping(self):
+    # The mapping includes only the types needed to define a namedtuple.
+    builtin_classes = (
+        "dict", "int", "NoneType", "object", "str", "tuple", "type")
+    typing_classes = ("Callable", "Iterable")
+    d = {c: self._get_builtin_classtype(c) for c in builtin_classes}
+    for c in typing_classes:
+      d["typing." + c] = self._get_typing_classtype(c)
+    d["collections.OrderedDict"] = pytd.ClassType(
+        "collections.OrderedDict",
+        self.collections_ast.Lookup("collections.OrderedDict"))
+    return d
 
   def _getargs(self, node, args):
     """Extracts the typename, field_names and rename arguments.
@@ -251,32 +285,23 @@ class NamedTupleBuilder(abstract.Function):
       self.vm.errorlog.invalid_namedtuple_arg(self.vm.frames, e.message)
       return node, self.vm.convert.unsolvable.to_variable(node)
 
+    ast = namedtuple_ast(name, field_names,
+                         python_version=self.vm.python_version)
+    mapping = self._get_known_types_mapping()
+
     # A truly well-formed pyi for the namedtuple will have references to the new
     # namedtuple class itself for all `self` params and as the return type for
     # methods like __new__, _replace and _make. In order to do that, we need a
     # ClassType.
     cls_type = pytd.ClassType(name)
+    mapping[name] = cls_type
 
-    # Use a dictionary to store all members, which are either pytd.Constant or
-    # pytd.Function. This makes it easy to build the pytd.Class
-    members = {mem: self.namedtuple_members[mem](field_names, cls_type)
-               for mem in self.namedtuple_members}
-    # Each namedtuple field should be a @property, but in pyi files those are
-    # just represented as Constants. We know nothing about their types.
-    for field in field_names:
-      members[field] = pytd.Constant(field, pytd.AnythingType())
-
-    cls = pytd.Class(
-        name=name,
-        metaclass=None,
-        parents=(self._get_builtin_classtype("tuple"),),
-        methods=tuple(members[mem] for mem in members
-                      if isinstance(members[mem], pytd.Function)),
-        constants=tuple(members[mem] for mem in members
-                        if isinstance(members[mem], pytd.Constant)),
-        template=(),
-    )
+    cls = ast.Lookup(name).Visit(visitors.ReplaceTypes(mapping))
     cls_type.cls = cls
+
+    # Make sure all NamedType nodes have been replaced by ClassType nodes with
+    # filled cls pointers.
+    cls.Visit(visitors.VerifyLookup())
 
     # We can't build the NamedTupleInstance directly, and instead must run in
     # through convert.constant_to_value first.
@@ -301,101 +326,6 @@ class NamedTupleBuilder(abstract.Function):
     instance = self.vm.convert.constant_to_value(cls, {}, self.vm.root_cfg_node)
     instance.__class__ = NamedTupleInstance
     return node, instance.to_variable(node)
-
-  # The following functions are for making the members of namedtuples.
-  # Each one returns the AST for a member (either a Constant or a Function)
-  # that's been customized for this particular namedtuple.
-  def _asdict(self, field_names, cls_type):
-    params = (self._selfparam(cls_type),)
-    ret_type = pytd.GenericType(
-        pytd.ClassType(
-            "collections.OrderedDict",
-            self.collections_ast.Lookup("collections.OrderedDict")),
-        (self._get_builtin_classtype("str"), pytd.AnythingType()))
-    sig = self._build_sig(params, ret_type)
-    return pytd.Function("_asdict", (sig,), pytd.METHOD)
-
-  def _dict(self, field_names, cls_type):
-    # Can't really do @property()s with pytd, unfortunately
-    dict_type = pytd.GenericType(
-        pytd.ClassType(
-            "collections.OrderedDict",
-            self.collections_ast.Lookup("collections.OrderedDict")),
-        (self._get_builtin_classtype("str"), pytd.AnythingType()))
-    return pytd.Constant("__dict__", dict_type)
-
-  def _slots(self, field_names, cls_type):
-    return pytd.Constant("__slots__", self._build_tupletype())
-
-  def _fields(self, field_names, cls_type):
-    str_type = self._get_builtin_classtype("str")
-    typ = self._build_tupletype(*([str_type] * len(field_names)))
-    return pytd.Constant("_fields", typ)
-
-  def _getnewargs(self, field_names, cls_type):
-    params = (self._selfparam(cls_type),)
-    # If there are no fields, the return type is Tuple[nothing]
-    if not field_names:
-      ret_type = self._build_tupletype()
-    else:
-      p = [pytd.AnythingType() for _ in field_names]
-      ret_type = self._build_tupletype(*p)
-    sig = self._build_sig(params, ret_type)
-    return pytd.Function("__getnewargs__", (sig,), pytd.METHOD)
-
-  def _getstate(self, field_names, cls_type):
-    params = (self._selfparam(cls_type),)
-    ret_type = self._get_builtin_classtype("NoneType")
-    sig = self._build_sig(params, ret_type)
-    return pytd.Function("__getstate__", (sig,), pytd.METHOD)
-
-  def _replace(self, field_names, cls_type):
-    params = (self._selfparam(cls_type),)
-    kwdparam = self._build_param("kwds", pytd.AnythingType(), optional=True)
-    sig = self._build_sig(params, cls_type, starstar=kwdparam)
-    return pytd.Function("_replace", (sig,), pytd.METHOD)
-
-  def _make(self, field_names, cls_type):
-    # "new" should be something like Callable[[type, Iterable], object] (where
-    # the result is an object of the type given in the first argument). But
-    # all that really matters is that it's Callable.
-    # TODO(tsudol): "new" should be a Callable (or Callable[[Any, Iterable],
-    # object])
-    new_param = self._build_param("new", pytd.AnythingType(), optional=True)
-    len_param = self._build_param(
-        "len",
-        pytd.CallableType(
-            self._get_typing_classtype("Callable"),
-            (self._get_typing_classtype("Iterable"),
-             self._get_builtin_classtype("int")),
-        ),
-        optional=True)
-    params = (
-        # This should be Type[cls_type]
-        self._build_param("cls", pytd.AnythingType()),
-        self._build_param("iterable", self._get_typing_classtype("Iterable")),
-        new_param, len_param)
-    sig = self._build_sig(params, cls_type)
-    return pytd.Function("_make", (sig,), pytd.CLASSMETHOD)
-
-  def _new(self, field_names, cls_type):
-    fields = tuple(
-        self._build_param(name, pytd.AnythingType())
-        for name in field_names
-    )
-    cls = pytd.GenericType(base_type=self._get_builtin_classtype("type"),
-                           parameters=(cls_type,))
-    params = (self._build_param("cls", cls),) + fields
-    sig = self._build_sig(params, cls_type)
-    return pytd.Function("__new__", (sig,), pytd.STATICMETHOD)
-
-  def _init(self, field_names, cls_type):
-    params = (self._selfparam(cls_type),)
-    star = self._build_param("args", pytd.AnythingType(), optional=True)
-    starstar = self._build_param("kwargs", pytd.AnythingType(), optional=True)
-    sig = self._build_sig(params, self._get_builtin_classtype("NoneType"),
-                          star=star, starstar=starstar)
-    return pytd.Function("__init__", (sig,), pytd.METHOD)
 
 
 collections_overlay = {

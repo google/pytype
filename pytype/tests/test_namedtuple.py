@@ -1,46 +1,17 @@
 """Tests for the namedtuple implementation in collections_overlay.py."""
-import textwrap
 
-
+from pytype import collections_overlay
 from pytype import utils
+from pytype.pytd import pytd
 from pytype.tests import test_inference
 
 
 class NamedtupleTests(test_inference.InferenceTest):
   """Tests for collections.namedtuple."""
 
-  def _repeat_type(self, type_str, n):
-    return ", ".join((type_str,) * n) if n else "nothing"
-
   def _namedtuple_def(self, name, fields, suffix=""):
-    num_fields = len(fields)
-    field_defs = "\n  ".join(
-        "%s = ...  # type: Any" % field for field in fields)
-    field_names = "".join(", " + field for field in fields)
-    nt = textwrap.dedent("""\
-      import collections
-      from typing import Any, Callable, Iterable, Tuple, Type, TypeVar
-      collections = ...  # type: module
-      _T{name} = TypeVar("_T{name}", bound={name})
-      class {name}(tuple):
-        __dict__ = ...  # type: collections.OrderedDict[str, Any]
-        __slots__ = ...  # type: Tuple[nothing]
-        _fields = ...  # type: Tuple[{repeat_str}]
-        {field_defs}
-        def __getnewargs__(self) -> Tuple[{repeat_any}]: ...
-        def __getstate__(self) -> None: ...
-        def __init__(self, *args, **kwargs) -> None: ...
-        def __new__(cls: Type[_T{name}]{field_names}) -> _T{name}: ...
-        def _asdict(self) -> collections.OrderedDict[str, Any]: ...
-        @classmethod
-        def _make(cls, iterable: Iterable, new = ..., len: Callable[[Iterable], int] = ...) -> {name}: ...
-        def _replace(self, **kwds) -> {name}: ...
-    """).format(name=name,
-                repeat_str=self._repeat_type("str", num_fields),
-                field_defs=field_defs,
-                repeat_any=self._repeat_type("Any", num_fields),
-                field_names=field_names)
-    return nt + suffix
+    suffix += "\ncollections = ...  # type: module"
+    return pytd.Print(collections_overlay.namedtuple_ast(name, fields)) + suffix
 
   def test_basic_namedtuple(self):
     ty = self.Infer("""
@@ -238,6 +209,14 @@ class NamedtupleTests(test_inference.InferenceTest):
             return super(Y, cls).__new__(cls, 0)
         Y()
       """, pythonpath=[d.path])
+
+  def test_varargs(self):
+    self.assertNoErrors("""
+      import collections
+      X = collections.namedtuple("X", [])
+      args = None  # type: list
+      X(*args)
+    """)
 
 
 if __name__ == "__main__":

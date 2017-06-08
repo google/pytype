@@ -3,7 +3,10 @@
 File 1/3. Split into parts to enable better test parallelism.
 """
 
+import textwrap
 import unittest
+from pytype import collections_overlay
+from pytype.pytd import pytd
 from pytype.tests import test_inference
 
 
@@ -594,30 +597,13 @@ class BuiltinTests(test_inference.InferenceTest):
       y = t.y
       z = t.z
     """, deep=True, solve_unknowns=True)
-    self.assertTypesMatchPytd(ty, """
-    from typing import Any, Callable, Iterable, Tuple, Type, TypeVar
-    collections = ...  # type: module
-    x = ...  # type: int
-    y = ...  # type: str
-    z = ...  # type: complex
-
-    _Tt = TypeVar("_Tt", bound=t)
-    class t(tuple):
-        __dict__ = ...  # type: collections.OrderedDict[str, Any]
-        __slots__ = ...  # type: Tuple[nothing]
-        _fields = ...  # type: Tuple[str, str, str]
-        x = ...  # type: Any
-        y = ...  # type: Any
-        z = ...  # type: Any
-        def __getnewargs__(self) -> Tuple[Any, Any, Any]: ...
-        def __getstate__(self) -> None: ...
-        def __init__(self, *args, **kwargs) -> None: ...
-        def __new__(cls: Type[_Tt], x, y, z) -> _Tt: ...
-        def _asdict(self) -> collections.OrderedDict[str, Any]: ...
-        @classmethod
-        def _make(cls, iterable: Iterable, new = ..., len: Callable[[Iterable], int] = ...) -> t: ...
-        def _replace(self, **kwds) -> t: ...
-    """)
+    ast = collections_overlay.namedtuple_ast("t", ["x", "y", "z"])
+    expected = pytd.Print(ast) + textwrap.dedent("""\
+      collections = ...  # type: module
+      x = ...  # type: int
+      y = ...  # type: str
+      z = ...  # type: complex""")
+    self.assertTypesMatchPytd(ty, expected)
 
   def testTypeEquals(self):
     ty = self.Infer("""

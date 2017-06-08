@@ -1,0 +1,48 @@
+"""Tests for collections_overlay.py."""
+
+
+from pytype import collections_overlay
+from pytype.pytd import pytd
+
+import unittest
+
+
+class NamedTupleAstTest(unittest.TestCase):
+  """Test collection_overlay's namedtuple AST generation."""
+
+  def test_basic(self):
+    ast = collections_overlay.namedtuple_ast("X", [])
+    typeparam, = ast.type_params
+    self.assertEqual("X", typeparam.bound.name)
+    nt = ast.Lookup("X")
+    self.assertEqual("def __init__(self, *args, **kwargs) -> None: ...",
+                     pytd.Print(nt.Lookup("__init__")))
+    make_sig, = nt.Lookup("_make").signatures
+    replace_sig, = nt.Lookup("_replace").signatures
+    self.assertEqual("X", make_sig.return_type.name)
+    self.assertEqual("X", replace_sig.return_type.name)
+
+  def test_no_fields(self):
+    nt = collections_overlay.namedtuple_ast("X", []).Lookup("X")
+    self.assertEqual("Tuple[nothing, ...]",
+                     pytd.Print(nt.Lookup("_fields").type))
+    getnewargs_sig, = nt.Lookup("__getnewargs__").signatures
+    self.assertEqual("Tuple[nothing, ...]",
+                     pytd.Print(getnewargs_sig.return_type))
+    self.assertEqual("def __new__(cls: Type[_TX]) -> _TX: ...",
+                     pytd.Print(nt.Lookup("__new__")))
+
+  def test_fields(self):
+    nt = collections_overlay.namedtuple_ast("X", ["y", "z"]).Lookup("X")
+    self.assertEqual("Tuple[str, str]", pytd.Print(nt.Lookup("_fields").type))
+    self.assertEqual(pytd.AnythingType(), nt.Lookup("y").type)
+    self.assertEqual(pytd.AnythingType(), nt.Lookup("z").type)
+    getnewargs_sig, = nt.Lookup("__getnewargs__").signatures
+    self.assertEqual("Tuple[Any, Any]",
+                     pytd.Print(getnewargs_sig.return_type))
+    self.assertEqual("def __new__(cls: Type[_TX], y, z) -> _TX: ...",
+                     pytd.Print(nt.Lookup("__new__")))
+
+
+if __name__ == "__main__":
+  unittest.main()
