@@ -207,6 +207,9 @@ class BuiltinTests2(test_inference.InferenceTest):
         sys.stdout.write(bytearray([1,2,3]))
     """)
 
+  def testHasAttrNone(self):
+    self.assertNoCrash("hasattr(int, None)")
+
 
 if __name__ == "__main__":
   test_inference.main()

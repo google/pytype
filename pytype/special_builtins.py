@@ -23,6 +23,7 @@ class TypeNew(abstract.PyTDFunction):
         return node, variable
     return super(TypeNew, self).call(node, func, args)
 
+
 class ObjectPredicate(abstract.AtomicAbstractValue):
   """The base class for builtin predicates of the form f(obj, value).
 
@@ -96,7 +97,11 @@ class HasAttr(ObjectPredicate):
     if isinstance(obj, abstract.AMBIGUOUS_OR_EMPTY):
       return node, None
     # If attr is not a literal constant, don't try to resolve it.
-    if not isinstance(attr, abstract.PythonConstant):
+    if (not isinstance(attr, abstract.PythonConstant) or
+        not isinstance(attr.pyval, str)):
+      # TODO(rechen): We should type-check the arguments
+      # (using __builtin__.pytd's definition of hasattr, perhaps), so that
+      # non-string things don't even get to this point.
       return node, None
     node, ret = self.vm.attribute_handler.get_attribute(node, obj, attr.pyval)
     return node, ret is not None

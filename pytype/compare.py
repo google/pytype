@@ -32,7 +32,8 @@ def _compare_primitive_value(vm, left, right):
 
 
 def _compare_primitive(left, right):
-  if _incompatible(left.get_full_name(), right.get_full_name()):
+  if (isinstance(right, abstract.Instance) and
+      _incompatible(left.get_full_name(), right.get_full_name())):
     return False
   return None
 

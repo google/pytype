@@ -296,6 +296,12 @@ class EqTest(test_inference.InferenceTest):
     """)
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.bool)
 
+  def test_primitive_against_unknown(self):
+    self.assertNoCrash("""
+      v = None  # type: int
+      v == __any_object__
+    """)
+
 
 class NeTest(test_inference.InferenceTest):
   """Test for "x != y". Also test overloading."""
