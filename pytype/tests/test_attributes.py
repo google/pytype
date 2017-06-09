@@ -259,6 +259,13 @@ class TestAttributes(test_inference.InferenceTest):
       X.__new__.__defaults__ = (1, 2)
       """)
 
+  def testModuleTypeAttribute(self):
+    self.assertNoErrors("""
+      import types
+      v = None  # type: types.ModuleType
+      v.some_attribute
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

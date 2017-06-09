@@ -448,10 +448,7 @@ class Converter(object):
       return special_builtins.Super(self.vm)
     elif pyval is object:
       return special_builtins.Object(self.vm)
-    elif (pyval.__class__ in [types.FunctionType,
-                              types.ModuleType,
-                              types.GeneratorType,
-                              type]):
+    elif pyval.__class__ is type:
       if pyval is types.FunctionType:
         classname = "typing.Callable"
       else:
@@ -471,6 +468,8 @@ class Converter(object):
       return self.vm.special_builtins["super"]
     elif isinstance(pyval, pytd.Class) and pyval.name == "__builtin__.object":
       return abstract.merge_values(self.object_type.data, self.vm)
+    elif isinstance(pyval, pytd.Class) and pyval.name == "types.ModuleType":
+      return abstract.merge_values(self.module_type.data, self.vm)
     elif isinstance(pyval, pytd.Class):
       module, dot, base_name = pyval.name.rpartition(".")
       try:
