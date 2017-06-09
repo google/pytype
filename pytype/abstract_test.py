@@ -17,12 +17,6 @@ from pytype.pytd import pytd
 import unittest
 
 
-class FakeFrame(object):
-
-  def __init__(self):
-    self.current_opcode = None
-
-
 class AbstractTestBase(unittest.TestCase):
 
   def setUp(self):
@@ -258,7 +252,7 @@ class IsInstanceTest(AbstractTestBase):
         }, left, right)
 
   def test_call_wrong_argcount(self):
-    self._vm.push_frame(FakeFrame())
+    self._vm.push_frame(frame_state.SimpleFrame())
     node, result = self._is_instance.call(
         self._node, None, abstract.FunctionArgs((), self.new_dict(),
                                                 None, None))
@@ -270,7 +264,7 @@ class IsInstanceTest(AbstractTestBase):
         r"isinstance.*expects 2.*got 0.*\[wrong-arg-count\]")
 
   def test_call_wrong_keywords(self):
-    self._vm.push_frame(FakeFrame())
+    self._vm.push_frame(frame_state.SimpleFrame())
     x = self.new_var(abstract.Unknown(self._vm))
     node, result = self._is_instance.call(
         self._node, None, abstract.FunctionArgs((x, x), self.new_dict(foo=x),
@@ -777,6 +771,21 @@ class AbstractTest(AbstractTestBase):
     v_a = b.f(1)
     self.assertEquals(v_mixin, "hello")
     self.assertEquals(v_a, 1)
+
+  def testInstantiateInterpreterClass(self):
+    cls = abstract.InterpreterClass("X", [], {}, None, self._vm)
+    # When there is no current frame, create a new instance every time.
+    v1 = abstract.get_atomic_value(cls.instantiate(self._node))
+    v2 = abstract.get_atomic_value(cls.instantiate(self._node))
+    self.assertIsNot(v1, v2)
+    # Create one instance per opcode.
+    fake_opcode = object()
+    self._vm.push_frame(frame_state.SimpleFrame(fake_opcode))
+    v3 = abstract.get_atomic_value(cls.instantiate(self._node))
+    v4 = abstract.get_atomic_value(cls.instantiate(self._node))
+    self.assertIsNot(v1, v3)
+    self.assertIsNot(v2, v3)
+    self.assertIs(v3, v4)
 
 
 if __name__ == "__main__":

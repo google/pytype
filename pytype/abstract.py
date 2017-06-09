@@ -323,7 +323,8 @@ class AtomicAbstractValue(object):
 
   def instantiate(self, node, container=None):
     del container
-    return Instance(self.to_variable(node), self.vm).to_variable(node)
+    cls = self.to_variable(self.vm.root_cfg_node)
+    return Instance(cls, self.vm).to_variable(node)
 
   def to_variable(self, node):
     """Build a variable out of this abstract value.
@@ -2266,9 +2267,19 @@ class InterpreterClass(SimpleAbstractValue, Class):
     else:
       return None
 
+  def instantiate(self, node, container=None):
+    if self.vm.frame and self.vm.frame.current_opcode:
+      return self._new_instance().to_variable(node)
+    else:
+      # When the analyze_x methods in CallTracer instantiate classes in
+      # preparation for analysis, often there is no frame on the stack yet, or
+      # the frame is a SimpleFrame with no opcode.
+      return super(InterpreterClass, self).instantiate(node)
+
   def _new_instance(self):
     # We allow only one "instance" per code location, regardless of call stack.
     key = self.vm.frame.current_opcode
+    assert key
     if key not in self._instance_cache:
       cls = self.vm.program.NewVariable()
       cls.AddBinding(self, [], self.vm.root_cfg_node)
