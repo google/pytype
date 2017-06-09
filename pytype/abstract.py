@@ -2274,7 +2274,7 @@ class InterpreterClass(SimpleAbstractValue, Class):
       # When the analyze_x methods in CallTracer instantiate classes in
       # preparation for analysis, often there is no frame on the stack yet, or
       # the frame is a SimpleFrame with no opcode.
-      return super(InterpreterClass, self).instantiate(node)
+      return super(InterpreterClass, self).instantiate(node, container)
 
   def _new_instance(self):
     # We allow only one "instance" per code location, regardless of call stack.
