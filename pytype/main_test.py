@@ -4,6 +4,7 @@ import csv
 import hashlib
 import os
 import subprocess
+import sys
 import textwrap
 
 from pytype import utils
@@ -113,11 +114,15 @@ class PytypeTest(unittest.TestCase):
     with open(self.errors_csv, "r") as f:
       errors = list(csv.reader(f, delimiter=","))
     num, expected_num = len(errors), len(expected_errors)
-    self.assertEquals(num, expected_num,
-                      "Expected %d errors, got %d" % (expected_num, num))
-    for error, expected_error in zip(errors, expected_errors):
-      self.assertEqual(expected_error, error[2],
-                       "Expected %r, got %r" % (expected_error, error[2]))
+    try:
+      self.assertEquals(num, expected_num,
+                        "Expected %d errors, got %d" % (expected_num, num))
+      for error, expected_error in zip(errors, expected_errors):
+        self.assertEqual(expected_error, error[2],
+                         "Expected %r, got %r" % (expected_error, error[2]))
+    except:
+      print >>sys.stderr, "\n".join(" | ".join(error) for error in errors)
+      raise
 
   def _SetUpChecking(self, filename):
     self.pytype_args[self._DataPath(filename)] = self.INCLUDE
@@ -307,7 +312,8 @@ class PytypeTest(unittest.TestCase):
     """Test pytype on a real-world program."""
     self.pytype_args["--quick"] = self.INCLUDE
     self._InferTypesAndCheckErrors("pytree.py", [
-        "attribute-error", "attribute-error", "name-error"])
+        "import-error", "import-error", "attribute-error", "attribute-error",
+        "name-error"])
     ast = parser.parse_string(self.stdout)
     self.assertListEqual(["convert", "generate_matches", "type_repr"],
                          [f.name for f in ast.functions])
