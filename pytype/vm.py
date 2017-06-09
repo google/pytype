@@ -841,6 +841,10 @@ class VirtualMachine(object):
         starstarargs=starstarargs), fallback_to_unsolvable)
     return state.change_cfg_node(node), ret
 
+  def _call_with_fake_args(self, node, funcu):
+    """Attempt to call the given function with made-up arguments."""
+    return node, self.convert.create_new_unsolvable(node)
+
   def call_function(self, node, funcu, args, fallback_to_unsolvable=True):
     """Call a function.
 
@@ -882,6 +886,14 @@ class VirtualMachine(object):
           self.errorlog.key_error(self.frames, error.name)
         else:
           self.errorlog.invalid_function_call(self.frames, error)
+          # If the function failed with a FailedFunctionCall exception, try
+          # calling it again with fake arguments. This allows for calls to
+          # __init__ to always succeed, ensuring pytype has a full view of the
+          # class and its attributes.
+          # If the call still fails, _call_with_fake_args will return
+          # abstract.Unsolvable.
+          if all(func.name == "__init__" for func in funcu.data):
+            return self._call_with_fake_args(node, funcu)
         return node, self.convert.create_new_unsolvable(node)
       else:
         # We were called by something that does its own error handling.

@@ -720,6 +720,18 @@ class TestFunctions(test_inference.InferenceTest):
         lambda u=[t,1]: f(u)
       """)
 
+  def testFakeArguments(self):
+    self.assertNoErrors("""\
+      from __future__ import google_type_annotations
+
+      class Foo(object):
+        def __init__(self, x: int):
+          self.y = __any_object__
+
+      foo = Foo("foo")  # pytype: disable=wrong-arg-types
+      foo.y  # if __init__ fails, this line throws an error
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()
