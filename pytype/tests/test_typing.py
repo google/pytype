@@ -349,6 +349,13 @@ class TypingTest(test_inference.InferenceTest):
         def f(x: foo.CustomDict[int, str]): pass
       """, pythonpath=[d.path])
 
+  def test_protocol(self):
+    self.assertNoErrors("""\
+      from __future__ import google_type_annotations
+      from typing import Protocol
+      class Foo(Protocol): pass
+    """)
+
   def test_generator_iterator_match(self):
     self.assertNoErrors("""
       from __future__ import google_type_annotations

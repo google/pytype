@@ -25,6 +25,11 @@ class Callable(Generic[_ARGS, _RET]):
 class Generic(object): ...
 
 
+# This class is the implementation of PEP 544
+# (https://www.python.org/dev/peps/pep-0544/)
+class Protocol(object): ...
+
+
 class SupportsInt(object):
   def __int__(self) -> int: ...
 
