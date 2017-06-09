@@ -763,6 +763,21 @@ class ClassTest(_ParserTestBase):
           pass
       """)
 
+  def test_class_type_ignore(self):
+    canonical = """\
+      class Foo:  # type: ignore
+          pass
+      class Bar(Foo):  # type: ignore
+          pass
+      """
+    self.check(canonical, """\
+      class Foo:
+          pass
+
+      class Bar(Foo):
+          pass
+    """)
+
   def test_metaclass(self):
     self.check("""\
       class Foo(metaclass=Meta):

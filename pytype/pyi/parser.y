@@ -155,9 +155,13 @@ alldefs
   | { $$ = PyList_New(0); }
   ;
 
+maybe_type_ignore
+  : typeignore
+  |
+
 classdef
-  : CLASS class_name parents ':' maybe_class_funcs {
-      $$ = ctx->Call(kAddClass, "(NNN)", $2, $3, $5);
+  : CLASS class_name parents ':' maybe_type_ignore maybe_class_funcs {
+      $$ = ctx->Call(kAddClass, "(NNN)", $2, $3, $6);
       CHECK($$, @$);
     }
   ;
