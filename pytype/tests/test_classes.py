@@ -1162,6 +1162,23 @@ class ClassesTest(test_inference.InferenceTest):
     """)
     self.assertErrorLogIs(errors, [(10, "attribute-error", r"y.*Foo")])
 
+  def testRecursiveConstructorSubclass(self):
+    self.assertNoErrors("""
+      from __future__ import google_type_annotations
+      from typing import List
+      MyType = List['Foo']
+      class Foo(object):
+        def __init__(self, x):
+          self.Create(x)
+        def Create(self, x):
+          self.x = x
+      class FooChild(Foo):
+        def Create(self, x: MyType):
+          super(FooChild, self).Create(x)
+        def Convert(self):
+          self.x
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

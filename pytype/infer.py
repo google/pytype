@@ -294,25 +294,9 @@ class CallTracer(vm.VirtualMachine):
   def call_init(self, node, instance):
     # Call __init__ on each binding.
     for b in instance.bindings:
-      if (node, b.data) in self._initialized_instances:
+      if b.data in self._initialized_instances:
         continue
-      if (b.data.cls and
-          any(node == instance_node and instance.cls and
-              b.data.cls.data == instance.cls.data
-              for instance_node, instance in self._initialized_instances) and
-          any(self._instance_cache.get((node, cls)) is _INITIALIZING
-              for cls in b.data.cls.data)):
-        # We have another incompletely initialized instance of the same class
-        # at the same node, which means that we've encountered recursion during
-        # an __init__ call. (See, e.g., testRecursiveConstructor in
-        # test_classes.ClassesTest.) If we call __init__ on this second
-        # instance, a vm.RecursionException will be raised, and initialization
-        # of the first instance will be aborted. Instead, mark this second
-        # instance as incomplete and skip __init__.
-        self._mark_maybe_missing_members([b.data])
-        self._initialized_instances.add((node, b.data))
-        continue
-      self._initialized_instances.add((node, b.data))
+      self._initialized_instances.add(b.data)
       if isinstance(b.data, abstract.SimpleAbstractValue):
         for param in b.data.type_parameters.values():
           node = self.call_init(node, param)
@@ -323,7 +307,17 @@ class CallTracer(vm.VirtualMachine):
       if init:
         bound_init = self.bind_method(
             node, "__init__", init, b.data, b_clsvar)
-        node = self.analyze_method_var(node, "__init__", bound_init)
+        try:
+          node = self.analyze_method_var(node, "__init__", bound_init)
+        except vm.RecursionException:
+          # We've encountered recursion during an __init__ call, which means
+          # we have another incompletely initialized instance of the same class
+          # (or a subclass) at the same node. (See, e.g.,
+          # testRecursiveConstructor and testRecursiveConstructorSubclass in
+          # test_classes.ClassesTest.) If we allow the RecursionException to be
+          # raised, initialization of that first instance will be aborted.
+          # Instead, mark this second instance as incomplete.
+          self._mark_maybe_missing_members([b.data])
     return node
 
   def analyze_class(self, node, val):
