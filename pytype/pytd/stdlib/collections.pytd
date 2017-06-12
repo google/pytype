@@ -1,6 +1,6 @@
 # We maintain our own collections.pytd, rather than using collections.pyi from
 # typeshed, because this file makes use of mutable type parameters.
-from typing import Any, Callable, Dict, Iterable, List, Tuple
+from typing import Any, Callable, Dict, Iterable, Optional, List, Tuple
 
 K = TypeVar("K")
 V = TypeVar("V")
@@ -50,16 +50,16 @@ class OrderedDict(Dict[K, V]):
   def popitem(self, last: bool = ...) -> Tuple[K, V]
 
 class defaultdict(Dict[K, V]):
-  default_factory = ...  # type: Callable[[], Any]
+  default_factory = ...  # type: [Callable[[], Any]]
   def __init__(self) -> None:
     self := defaultdict[nothing, nothing]
-  def __init__(self, default_factory: Callable[[], Any]) -> None:
+  def __init__(self, default_factory: Optional[Callable[[], Any]]) -> None:
     self := defaultdict[nothing, nothing]
-  def __init__(self, default_factory: Callable[[], Any], list: List[nothing]) -> None:
+  def __init__(self, default_factory: Optional[Callable[[], Any]], list: List[nothing]) -> None:
     self := defaultdict[nothing, nothing]
-  def __init__(self, default_factory: Callable[[], Any], list: List[Tuple[N, ...]]) -> None:
+  def __init__(self, default_factory: Optional[Callable[[], Any]], list: List[Tuple[N, ...]]) -> None:
     self := defaultdict[N, N]
-  def __init__(self, default_factory: Callable[[], Any], ...) -> None:
+  def __init__(self, default_factory: Optional[Callable[[], Any]], ...) -> None:
     self := defaultdict[Any, Any]
   def __init__(self, **kwargs) -> None:
     self := defaultdict[Any, Any]

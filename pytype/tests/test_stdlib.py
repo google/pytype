@@ -139,6 +139,25 @@ class StdlibTests(test_inference.InferenceTest):
       collections.namedtuple("_", [u"a", "b"])
     """)
 
+  def testDefaultdict(self):
+    self.assertNoErrors("""\
+      import collections
+      a = collections.defaultdict(int, one = 1, two = 2)
+      b = collections.defaultdict(int, {'one': 1, 'two': 2})
+      c = collections.defaultdict(int, [('one', 1), ('two', 2)])
+      """)
+
+  def testDefaultDictNoFactory(self):
+    self.assertNoErrors("""\
+      import collections
+      a = collections.defaultdict()
+      b = collections.defaultdict(None)
+      c = collections.defaultdict(lambda: __any_object__)
+      a = collections.defaultdict(None, one = 1, two = 2)
+      b = collections.defaultdict(None, {'one': 1, 'two': 2})
+      c = collections.defaultdict(None, [('one', 1), ('two', 2)])
+      """)
+
   def testStringTypes(self):
     ty = self.Infer("""
       import types
