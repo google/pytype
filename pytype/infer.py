@@ -247,6 +247,25 @@ class CallTracer(vm.VirtualMachine):
       n.PasteVariable(self._instantiate_binding(node, cls))
     return n
 
+  def _mark_maybe_missing_members(self, values):
+    """Set maybe_missing_members to True on these values and their type params.
+
+    Args:
+      values: A list of AtomicAbstractValue objects. On every instance among
+        the values, recursively set maybe_missing_members to True on the
+        instance and its type parameters.
+    """
+    values = list(values)
+    seen = set()
+    while values:
+      v = values.pop(0)
+      if v not in seen:
+        seen.add(v)
+        if isinstance(v, abstract.SimpleAbstractValue):
+          v.maybe_missing_members = True
+          for child in v.type_parameters.values():
+            values.extend(child.data)
+
   def init_class(self, node, cls):
     """Instantiate a class, and also call __init__."""
     key = (node, cls)
@@ -265,16 +284,7 @@ class CallTracer(vm.VirtualMachine):
         # the process of initializing - otherwise, setting
         # maybe_missing_members to True would cause pytype to ignore
         # all attribute errors on self in __init__.
-        values = instance.data
-        seen = set()
-        while values:
-          v = values.pop(0)
-          if v not in seen:
-            seen.add(v)
-            v.maybe_missing_members = True
-            if isinstance(v, abstract.SimpleAbstractValue):
-              for child in v.type_parameters.values():
-                values.extend(child.data)
+        self._mark_maybe_missing_members(instance.data)
       else:
         self._instance_cache[key] = _INITIALIZING
         node = self.call_init(node, instance)
@@ -284,9 +294,25 @@ class CallTracer(vm.VirtualMachine):
   def call_init(self, node, instance):
     # Call __init__ on each binding.
     for b in instance.bindings:
-      if b.data in self._initialized_instances:
+      if (node, b.data) in self._initialized_instances:
         continue
-      self._initialized_instances.add(b.data)
+      if (b.data.cls and
+          any(node == instance_node and instance.cls and
+              b.data.cls.data == instance.cls.data
+              for instance_node, instance in self._initialized_instances) and
+          any(self._instance_cache.get((node, cls)) is _INITIALIZING
+              for cls in b.data.cls.data)):
+        # We have another incompletely initialized instance of the same class
+        # at the same node, which means that we've encountered recursion during
+        # an __init__ call. (See, e.g., testRecursiveConstructor in
+        # test_classes.ClassesTest.) If we call __init__ on this second
+        # instance, a vm.RecursionException will be raised, and initialization
+        # of the first instance will be aborted. Instead, mark this second
+        # instance as incomplete and skip __init__.
+        self._mark_maybe_missing_members([b.data])
+        self._initialized_instances.add((node, b.data))
+        continue
+      self._initialized_instances.add((node, b.data))
       if isinstance(b.data, abstract.SimpleAbstractValue):
         for param in b.data.type_parameters.values():
           node = self.call_init(node, param)

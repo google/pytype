@@ -1120,6 +1120,48 @@ class ClassesTest(test_inference.InferenceTest):
     """, deep=True)
     self.assertErrorLogIs(errors, [(9, "wrong-keyword-args", r"x.*__init__")])
 
+  def testRecursiveConstructor(self):
+    self.assertNoErrors("""
+      from __future__ import google_type_annotations
+      from typing import List
+      MyType = List['Foo']
+      class Foo(object):
+        def __init__(self, x):
+          self.Create(x)
+        def Create(self, x: MyType):
+          self.x = x
+        def Convert(self):
+          self.x
+    """)
+
+  def testRecursiveConstructorAttribute(self):
+    self.assertNoErrors("""
+      from __future__ import google_type_annotations
+      from typing import List
+      MyType = List['Foo']
+      class Foo(object):
+        def __init__(self, x):
+          self.Create(x)
+        def Create(self, x: MyType):
+          self.x = x
+          self.x[0].x
+    """)
+
+  def testRecursiveConstructorBadAttribute(self):
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      from typing import List
+      MyType = List['Foo']
+      class Foo(object):
+        def __init__(self, x):
+          self.Create(x)
+        def Create(self, x: MyType):
+          self.x = x
+        def Convert(self):
+          self.y
+    """)
+    self.assertErrorLogIs(errors, [(10, "attribute-error", r"y.*Foo")])
+
 
 if __name__ == "__main__":
   test_inference.main()
