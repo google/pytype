@@ -70,7 +70,6 @@ class InheritanceTest(test_inference.InferenceTest):
     self.assertOnlyHasReturnType(ty.Lookup("y"), self.int)
     self.assertOnlyHasReturnType(ty.Lookup("z"), self.complex)
 
-  @unittest.skip("Needs type parameters on inherited classes.")
   def testInheritFromBuiltins(self):
     ty = self.Infer("""
       class MyDict(dict):
@@ -78,7 +77,8 @@ class InheritanceTest(test_inference.InferenceTest):
           dict.__setitem__(self, "abc", "foo")
 
       def f():
-        return NoCaseKeysDict()
+        return MyDict()
+      f()
     """, deep=False, solve_unknowns=False, show_library_calls=True)
     mydict = ty.Lookup("MyDict")
     self.assertOnlyHasReturnType(ty.Lookup("f"),
