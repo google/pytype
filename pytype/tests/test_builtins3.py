@@ -210,6 +210,34 @@ class BuiltinTests2(test_inference.InferenceTest):
   def testHasAttrNone(self):
     self.assertNoCrash("hasattr(int, None)")
 
+  def testNumberAttrs(self):
+    ty = self.Infer("""\
+      a = (42).denominator
+      b = (42).numerator
+      c = (42).real
+      d = (42).imag
+      e = (3.14).conjugate()
+      f = (3.14).is_integer()
+      g = (3.14).real
+      h = (3.14).imag
+      i = (2j).conjugate()
+      j = (2j).real
+      k = (2j).imag
+    """)
+    self.assertTypesMatchPytd(ty, """
+      a = ...  # type: int
+      b = ...  # type: int
+      c = ...  # type: int
+      d = ...  # type: int
+      e = ...  # type: float
+      f = ...  # type: bool
+      g = ...  # type: float
+      h = ...  # type: float
+      i = ...  # type: complex
+      j = ...  # type: float
+      k = ...  # type: float
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

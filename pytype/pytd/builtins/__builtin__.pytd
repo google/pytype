@@ -628,6 +628,10 @@ class bool(int, SupportsInt, SupportsFloat):
     def conjugate(self, ...) -> int
 
 class int(object):  # TODO(kramm): SupportsInt, SupportsFloat, SupportsAbs)
+    denominator = ...  # type: int
+    numerator = ... # type: int
+    real = ... # type: int
+    imag = ... # type: int
     def __init__(self) -> NoneType
     def __init__(self, x: int or float or str or unicode or SupportsInt) -> NoneType
     def __init__(self, x: str or unicode, base: int) -> NoneType
@@ -684,11 +688,13 @@ class int(object):  # TODO(kramm): SupportsInt, SupportsFloat, SupportsAbs)
     def __trunc__(self, ...) -> int
     def __xor__(self, y: int) -> int
     def bit_length(self) -> int
-    def conjugate(self, ...) -> int
+    def conjugate(self) -> int
 
 long = int
 
 class float(SupportsInt, SupportsFloat, SupportsAbs):
+    real = ... # type: float
+    imag = ... # type: float
     def __init__(self, x: int or float or str or unicode or SupportsFloat) -> NoneType
     def __init__(self) -> NoneType
     def __abs__(self) -> float
@@ -722,14 +728,15 @@ class float(SupportsInt, SupportsFloat, SupportsAbs):
     def __truediv__(self, y: int or float) -> float
     def __truediv__(self, y: complex) -> complex
     def __trunc__(self, ...) -> int
-    def bit_length(self) -> int
-    def conjugate(self, ...) -> float or int
+    def conjugate(self) -> float
     def as_integer_ratio(self) -> tuple[int, int]
     def fromhex(self, string: str or unicode or bytearray) -> float
     def hex(self) -> str
-    def is_integer(self, ...) -> bool
+    def is_integer(self) -> bool
 
 class complex(SupportsAbs):
+    real = ... # type: float
+    imag = ... # type: float
     def __init__(self, real: int or float or complex or str or unicode or typing.SupportsComplex, ...) -> NoneType
     def __init__(self) -> NoneType
     def __abs__(self) -> float
