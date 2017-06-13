@@ -1012,14 +1012,15 @@ class VirtualMachine(object):
     else:
       return node, None, values_without_attribute
 
+  def _data_is_none(self, x):
+    assert isinstance(x, abstract.AtomicAbstractValue)
+    return (getattr(x, "cls", False) and
+            x.cls.data == self.convert.none_type.data)
+
   def _is_none(self, node, binding):
     """Returns true if binding is None or unreachable."""
-    x = binding.data
-    assert isinstance(x, abstract.AtomicAbstractValue)
-    if (getattr(x, "cls", False) and
-        x.cls.data == self.convert.none_type.data):
-      return True
-    return not node.HasCombination([binding])
+    return (self._data_is_none(binding.data) or
+            not node.HasCombination([binding]))
 
   def _is_only_none(self, node, obj):
     return all(self._is_none(node, b) for b in obj.bindings)
@@ -1190,7 +1191,9 @@ class VirtualMachine(object):
         # Cannot iterate this object.
         if report_errors:
           for m in missing:
-            if state.node.HasCombination([m]):
+            if self._data_is_none(m.data):
+              self.errorlog.none_attr(self.frames, "__iter__")
+            elif state.node.HasCombination([m]):
               self.errorlog.attribute_error(self.frames, seq, "__iter__")
           itr = self.convert.create_new_unsolvable(state.node)
         else:

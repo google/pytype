@@ -784,13 +784,14 @@ class SplitTest(test_inference.InferenceTest):
 
   def testNoneOrTuple(self):
     # This sets the attribute retrieval code in vm.py:_get_iter
-    self.assertNoErrors("""
+    _, errors = self.InferAndCheck("""\
       foo = (0, 0)
       if __any_object__:
         foo = None
       if foo:
         a, b = foo
     """)
+    self.assertErrorLogIs(errors, [(5, "none-attr")])
 
   def testCmpIsPyTDClass(self):
     self.assertNoErrors("""

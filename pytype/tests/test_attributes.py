@@ -275,6 +275,13 @@ class TestAttributes(test_inference.InferenceTest):
     """, strict_attr_checking=True)
     self.assertErrorLogIs(errors, [(4, "none-attr")])
 
+  def testIteratorOnNone(self):
+    _, errors = self.InferAndCheck("""\
+      def f():
+        pass
+      a, b = f()
+    """, strict_attr_checking=True)
+    self.assertErrorLogIs(errors, [(3, "none-attr")])
 
 if __name__ == "__main__":
   test_inference.main()
