@@ -489,6 +489,9 @@ class VirtualMachine(object):
   def join_variables(self, node, variables):
     return self.program.MergeVariables(node, variables)
 
+  def join_bindings(self, node, bindings):
+    return self.program.MergeBindings(node, bindings)
+
   def _process_base_class(self, node, base):
     """Process a base class for InterpreterClass creation."""
     new_base = self.program.NewVariable()

@@ -125,6 +125,13 @@ class Program(object):
         v.PasteVariable(r, node)
       return v
 
+  def MergeBindings(self, node, bindings):
+    """Create a combined Variable for a list of bindings."""
+    v = self.NewVariable()
+    for b in bindings:
+      v.PasteBinding(b, node)
+    return v
+
 
 class CFGNode(object):
   """A node in the CFG.
@@ -507,15 +514,19 @@ class Variable(object):
   def PasteVariable(self, variable, where=None, additional_sources=None):
     """Adds all the bindings from another variable to this one."""
     for binding in variable.bindings:
-      new_binding = self.AddBinding(binding.data)
-      if all(origin.where is where for origin in binding.origins):
-        # Optimization: If all the bindings of the old variable happen at the
-        # same CFG node as the one we're assigning now, we can copy the old
-        # source_set instead of linking to it. That way, the solver has to
-        # consider fewer levels.
-        new_binding.CopyOrigins(binding, None, additional_sources)
-      else:
-        new_binding.CopyOrigins(binding, where, additional_sources)
+      self.PasteBinding(binding, where, additional_sources)
+
+  def PasteBinding(self, binding, where=None, additional_sources=None):
+    """Adds a binding from another variable to this one."""
+    new_binding = self.AddBinding(binding.data)
+    if all(origin.where is where for origin in binding.origins):
+      # Optimization: If all the bindings of the old variable happen at the
+      # same CFG node as the one we're assigning now, we can copy the old
+      # source_set instead of linking to it. That way, the solver has to
+      # consider fewer levels.
+      new_binding.CopyOrigins(binding, None, additional_sources)
+    else:
+      new_binding.CopyOrigins(binding, where, additional_sources)
 
   def AssignToNewVariable(self, where=None):
     """Assign this variable to a new variable.

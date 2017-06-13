@@ -1017,6 +1017,21 @@ class ClassesTest(test_inference.InferenceTest):
       Foo("Foo")
     """)
 
+  def testNewExtraNoneReturn(self):
+    ty = self.Infer("""
+      class Foo(object):
+        def __new__(cls):
+          if __random__:
+            return super(cls).__new__(cls)
+        def foo(self):
+          return self
+    """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      class Foo(object):
+        def __new__(cls) -> Foo or None
+        def foo(self) -> Foo
+    """)
+
   def testSuperNewExtraArg(self):
     self.assertNoErrors("""
       class Foo(object):

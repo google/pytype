@@ -322,10 +322,15 @@ class CallTracer(vm.VirtualMachine):
 
   def analyze_class(self, node, val):
     node, clsvar, instance = self.init_class(node, val.data)
-    if not any(v.cls and val.data in v.cls.data for v in instance.data):
-      # __new__ returned something besides an instance of the current class.
+    good_instances = [b for b in instance.bindings
+                      if b.data.cls and val.data in b.data.cls.data]
+    if not good_instances:
+      # __new__ returned something that's not an instance of our class.
       instance = val.data.instantiate(node)
       node = self.call_init(node, instance)
+    elif len(good_instances) != len(instance.bindings):
+      # __new__ returned some extra possibilities we don't need.
+      instance = self.join_bindings(node, good_instances)
     for name, methodvar in sorted(val.data.members.items()):
       if name in self._CONSTRUCTORS:
         continue  # We already called this method during initialization.

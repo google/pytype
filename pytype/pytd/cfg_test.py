@@ -145,6 +145,17 @@ class CFGTest(unittest.TestCase):
     val1, = [v for v in vw.bindings if v.data == 1]
     self.assertTrue(val1.HasSource(u1))
 
+  def testMergeBindings(self):
+    p = cfg.Program()
+    n0 = p.NewCFGNode("n0")
+    u = p.NewVariable()
+    u1 = u.AddBinding("1", source_set=[], where=n0)
+    v2 = u.AddBinding("2", source_set=[], where=n0)
+    w1 = p.MergeBindings(None, [u1, v2])
+    w2 = p.MergeBindings(n0, [u1, v2])
+    self.assertItemsEqual(w1.data, ["1", "2"])
+    self.assertItemsEqual(w2.data, ["1", "2"])
+
   def testFilter1(self):
     #                    x.ab = A()
     #               ,---+------------.
@@ -849,6 +860,15 @@ class CFGTest(unittest.TestCase):
     origin, = az.origins
     source_set, = origin.source_sets
     self.assertSetEqual(source_set, {by})
+
+  def testPasteBinding(self):
+    p = cfg.Program()
+    n1 = p.NewCFGNode("n1")
+    x = p.NewVariable()
+    ax = x.AddBinding("a", source_set=[], where=n1)
+    y = p.NewVariable()
+    y.PasteBinding(ax)
+    self.assertEquals(x.data, y.data)
 
   def testId(self):
     p = cfg.Program()
