@@ -797,9 +797,9 @@ class VirtualMachine(object):
       try:
         state, ret = self.call_function_with_state(state, attr, (y,),
                                                    fallback_to_unsolvable=False)
-      except abstract.FailedFunctionCall:
-        # TODO(rechen): Don't we want to report this failure?
-        pass
+      except abstract.FailedFunctionCall as e:
+        self.errorlog.invalid_function_call(self.frames, e)
+        ret = self.convert.create_new_unsolvable(state.node)
     return state, ret
 
   def binary_operator(self, state, name, report_errors=True):

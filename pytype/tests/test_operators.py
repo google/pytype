@@ -1,5 +1,6 @@
 """Test operators (basic tests)."""
 
+from pytype import utils
 from pytype.tests import test_inference
 
 
@@ -320,6 +321,32 @@ class ReverseTest(test_inference.InferenceTest):
   def test_sub(self):
     self.check_reverse("sub", "-")
 
+  def test_custom(self):
+    with utils.Tempdir() as d:
+      d.create_file("test.pyi", """
+        from typing import Tuple
+        class Test():
+          def __or__(self, other: Tuple[int, ...]) -> bool
+          def __ror__(self, other: Tuple[int, ...]) -> bool
+      """)
+      ty = self.Infer("""
+        import test
+        x = test.Test() | (1, 2)
+        y = (1, 2) | test.Test()
+        def f(t):
+          return t | (1, 2)
+        def g(t):
+          return (1, 2) | t
+      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      self.assertTypesMatchPytd(ty, """
+        from typing import Set
+        test = ...  # type: module
+        x = ...  # type: bool
+        y = ...  # type: bool
+        def f(t: dict_keys[int] or Set[int] or test.Test) -> Set[int] or bool
+        def g(t: test.Test) -> bool
+      """)
+
 
 class InplaceTest(test_inference.InferenceTest):
   """Tests for in-place operators."""
@@ -371,6 +398,15 @@ class InplaceTest(test_inference.InferenceTest):
 
   def test_sub(self):
     self.check_inplace("isub", "-=")
+
+  def test_list_add(self):
+    _, errors = self.InferAndCheck("""\
+      class A(object): pass
+      v = []
+      v += A()
+    """)
+    self.assertErrorLogIs(
+        errors, [(3, "wrong-arg-types", r"y: Iterable.*y: A")])
 
 
 if __name__ == "__main__":
