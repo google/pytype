@@ -266,6 +266,15 @@ class TestAttributes(test_inference.InferenceTest):
       v.some_attribute
     """)
 
+  def testAttrOnNone(self):
+    _, errors = self.InferAndCheck("""\
+      def f(arg):
+        x = "foo" if arg else None
+        if not x:
+          x.upper()
+    """, strict_attr_checking=True)
+    self.assertErrorLogIs(errors, [(4, "none-attr")])
+
 
 if __name__ == "__main__":
   test_inference.main()

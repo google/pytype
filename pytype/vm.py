@@ -1012,19 +1012,17 @@ class VirtualMachine(object):
     else:
       return node, None, values_without_attribute
 
-  def _is_none(self, x):
+  def _is_none(self, node, binding):
+    """Returns true if binding is None or unreachable."""
+    x = binding.data
     assert isinstance(x, abstract.AtomicAbstractValue)
-    return (getattr(x, "cls", False) and
-            x.cls.data == self.convert.none_type.data)
+    if (getattr(x, "cls", False) and
+        x.cls.data == self.convert.none_type.data):
+      return True
+    return not node.HasCombination([binding])
 
   def _is_only_none(self, node, obj):
-    has_none = True
-    for x in obj.Data(node):
-      if self._is_none(x):
-        has_none = True
-      else:
-        return False
-    return has_none
+    return all(self._is_none(node, b) for b in obj.bindings)
 
   def _delete_item(self, state, obj, arg):
     state, f = self.load_attr(state, obj, "__delitem__")
@@ -1038,7 +1036,7 @@ class VirtualMachine(object):
       self.errorlog.none_attr(self.frames, attr)
     elif self.options.strict_attr_checking or (not result and obj.bindings):
       for error in errors:
-        if not self._is_none(error.data) and state.node.HasCombination([error]):
+        if not self._is_none(state.node, error):
           self.errorlog.attribute_or_module_error(
               self.frames, error.AssignToNewVariable(self.root_cfg_node), attr)
     if result is None:
