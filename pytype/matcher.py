@@ -212,7 +212,10 @@ class AbstractMatcher(object):
       return subst
     elif isinstance(left, abstract.AMBIGUOUS_OR_EMPTY):
       params = other_type.vm.annotations_util.get_type_parameters(other_type)
-      new_subst = {p.name: p.instantiate(node) for p in params}
+      # We can't use p.instantiate() here because that would introduce
+      # conflicting values if p has constraints.
+      new_subst = {p.name: p.vm.convert.unsolvable.to_variable(node)
+                   for p in params}
       return self._merge_substs(subst, [new_subst])
     elif isinstance(left, abstract.Class):
       if (other_type.full_name == "__builtin__.type" and

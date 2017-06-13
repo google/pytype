@@ -28,6 +28,14 @@ class AnyStrTest(test_inference.InferenceTest):
       foo(__any_object__)
     """)
 
+  def testMultipleUnknownAgainstMultipleAnyStr(self):
+    self.assertNoErrors("""
+      from __future__ import google_type_annotations
+      from typing import AnyStr, List
+      def foo(x: List[AnyStr], y: List[AnyStr]): ...
+      foo(__any_object__, [__any_object__])
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()
