@@ -140,22 +140,68 @@ class StdlibTests(test_inference.InferenceTest):
     """)
 
   def testDefaultdict(self):
-    self.assertNoErrors("""\
+    ty, errors = self.InferAndCheck("""\
       import collections
       a = collections.defaultdict(int, one = 1, two = 2)
       b = collections.defaultdict(int, {'one': 1, 'two': 2})
       c = collections.defaultdict(int, [('one', 1), ('two', 2)])
+      d = collections.defaultdict(int, {})
+      e = collections.defaultdict(int)
+      f = collections.defaultdict(default_factory = int)
+      """)
+    self.assertErrorLogIs(errors, [])
+    self.assertTypesMatchPytd(ty, """\
+      collections = ...  # type: module
+      a = ...  # type: collections.defaultdict[str, int]
+      b = ...  # type: collections.defaultdict[str, int]
+      c = ...  # type: collections.defaultdict[str, int]
+      d = ...  # type: collections.defaultdict[nothing, int]
+      e = ...  # type: collections.defaultdict[nothing, int]
+      f = ...  # type: collections.defaultdict[nothing, int]
       """)
 
-  def testDefaultDictNoFactory(self):
-    self.assertNoErrors("""\
+  def testDefaultdictNoFactory(self):
+    ty, errors = self.InferAndCheck("""\
       import collections
       a = collections.defaultdict()
       b = collections.defaultdict(None)
       c = collections.defaultdict(lambda: __any_object__)
-      a = collections.defaultdict(None, one = 1, two = 2)
-      b = collections.defaultdict(None, {'one': 1, 'two': 2})
-      c = collections.defaultdict(None, [('one', 1), ('two', 2)])
+      d = collections.defaultdict(None, one = 1, two = 2)
+      e = collections.defaultdict(None, {'one': 1, 'two': 2})
+      f = collections.defaultdict(None, [('one', 1), ('two', 2)])
+      g = collections.defaultdict(one = 1, two = 2)
+      h = collections.defaultdict(default_factory = None)
+      """)
+    self.assertErrorLogIs(errors, [])
+    self.assertTypesMatchPytd(ty, """\
+      from typing import Any
+      collections = ...  # type: module
+      a = ...  # type: collections.defaultdict[nothing, nothing]
+      b = ...  # type: collections.defaultdict[nothing, nothing]
+      c = ...  # type: collections.defaultdict[nothing, Any]
+      d = ...  # type: collections.defaultdict[str, int]
+      e = ...  # type: collections.defaultdict[str, int]
+      f = ...  # type: collections.defaultdict[str, int]
+      g = ...  # type: collections.defaultdict[str, int]
+      h = ...  # type: collections.defaultdict[nothing, nothing]
+      """)
+
+  def testDefaultdictDiffDefaults(self):
+    ty, errors = self.InferAndCheck("""\
+      import collections
+      a = collections.defaultdict(int, one = '1')
+      b = collections.defaultdict(str, one = 1)
+      c = collections.defaultdict(None, one = 1)
+      d = collections.defaultdict(int, {1: 'one'})
+      """)
+    self.assertErrorLogIs(errors, [])
+    self.assertTypesMatchPytd(ty, """\
+      from typing import Union
+      collections = ...  # type: module
+      a = ...  # type: collections.defaultdict[str, Union[int, str]]
+      b = ...  # type: collections.defaultdict[str, Union[int, str]]
+      c = ...  # type: collections.defaultdict[str, int]
+      d = ...  # type: collections.defaultdict[int, Union[int, str]]
       """)
 
   def testStringTypes(self):

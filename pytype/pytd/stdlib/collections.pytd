@@ -1,10 +1,12 @@
 # We maintain our own collections.pytd, rather than using collections.pyi from
 # typeshed, because this file makes use of mutable type parameters.
-from typing import Any, Callable, Dict, Iterable, Optional, List, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Tuple
 
 K = TypeVar("K")
 V = TypeVar("V")
-N = TypeVar("N")
+K2 = TypeVar("K2")
+V2 = TypeVar("V2")
+DV = TypeVar("DV")
 
 __all__ = ...  # type: list[?]
 _abcoll = ...  # type: ?
@@ -50,22 +52,30 @@ class OrderedDict(Dict[K, V]):
   def popitem(self, last: bool = ...) -> Tuple[K, V]
 
 class defaultdict(Dict[K, V]):
-  default_factory = ...  # type: [Callable[[], Any]]
-  def __init__(self) -> None:
+  default_factory = ...  # type: Optional[Callable[[], V]]
+  def __init__(self):
     self := defaultdict[nothing, nothing]
-  def __init__(self, default_factory: Optional[Callable[[], Any]]) -> None:
+  def __init__(self, default_factory: None):
     self := defaultdict[nothing, nothing]
-  def __init__(self, default_factory: Optional[Callable[[], Any]], list: List[nothing]) -> None:
-    self := defaultdict[nothing, nothing]
-  def __init__(self, default_factory: Optional[Callable[[], Any]], list: List[Tuple[N, ...]]) -> None:
-    self := defaultdict[N, N]
-  def __init__(self, default_factory: Optional[Callable[[], Any]], ...) -> None:
-    self := defaultdict[Any, Any]
-  def __init__(self, **kwargs) -> None:
-    self := defaultdict[Any, Any]
+  def __init__(self, default_factory: Callable[[], DV]) -> None:
+    self := defaultdict[nothing, DV]
+  def __init__(self, **kwargs: V2):
+    self := defaultdict[str, V2]
+  def __init__(self, default_factory: None, **kwargs: V2) -> None:
+    self := defaultdict[str, V2]
+  def __init__(self, default_factory: None, iter: Iterable[Tuple[K2, V2]]) -> None:
+    self := defaultdict[K or K2, V2]
+  def __init__(self, default_factory: None, map: Mapping[K2, V2]) -> None:
+    self := defaultdict[K or K2, V2]
+  def __init__(self, default_factory: Callable[[], DV], **kwargs: V2) -> None:
+    self := defaultdict[str, DV or V2]
+  def __init__(self, default_factory: Callable[[], DV], iter: Iterable[Tuple[K2, V2]]) -> None:
+    self := defaultdict[K or K2, DV or V2]
+  def __init__(self, default_factory: Callable[[], DV], map: Mapping[K2, V2]) -> None:
+    self := defaultdict[K or K2, DV or V2]
   def __missing__(self, key: K) -> V
-  def __getitem__(self, key: N) -> Any:
-    self := defaultdict[K or N, Any]
+  def __getitem__(self, key: K2) -> Any:
+    self := defaultdict[K or K2, Any]
 
 # Strictly speaking, this should be dict[?, ?]. (E.g. it's legal to do
 # collections.Counter()[x] = 'foobar'.) But the counts are typically integers.
