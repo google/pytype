@@ -984,6 +984,26 @@ class ErrorTest(test_inference.InferenceTest):
                                     r"Callable\[\[Any, Any\], Any\].*"
                                     r"Callable\[\[Any, Any\], Any\]")])
 
+  def testInnerClassError(self):
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      def f(x: str): pass
+      def g():
+        class Foo(object): pass
+        f(Foo())
+    """)
+    self.assertErrorLogIs(errors, [(5, "wrong-arg-types", r"x: str.*x: Foo")])
+
+  def testInnerClassError2(self):
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      def f():
+        class Foo(object): pass
+        def g(x: Foo): pass
+        g("")
+    """)
+    self.assertErrorLogIs(errors, [(5, "wrong-arg-types", r"x: Foo.*x: str")])
+
 
 if __name__ == "__main__":
   test_inference.main()

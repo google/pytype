@@ -1,6 +1,7 @@
 """Tools for output generation."""
 
 import collections
+import contextlib
 import logging
 
 
@@ -32,6 +33,25 @@ CLASS_LEVEL_IGNORE = {
 
 class Converter(object):
   """Functions for converting abstract classes into PyTD."""
+
+  def __init__(self):
+    self._detailed = False
+
+  @contextlib.contextmanager
+  def produce_detailed_output(self):
+    """Produce more detailed pytd types, which may be unsafe for pyi files.
+
+    With this setting, the converter will do things like using the names of
+    inner classes rather than Any and including the known argument types for a
+    callable even if the argument count is unknown. Useful for error messages.
+
+    Yields:
+      None.
+    """
+    old = self._detailed
+    self._detailed = True
+    yield
+    self._detailed = old
 
   def _get_values(self, node, var, view):
     if var.bindings and view is not None:
@@ -97,7 +117,7 @@ class Converter(object):
       return self.value_instance_to_pytd_type(
           node, v.base_cls, instance, seen, view)
     elif isinstance(v, abstract.Class):
-      if v.official_name is None:
+      if not self._detailed and v.official_name is None:
         return pytd.AnythingType()
       if seen is None:
         seen = set()
@@ -111,7 +131,7 @@ class Converter(object):
         seen.add(instance)
       type_arguments = self._value_to_parameter_types(
           node, v, instance, type_params, seen, view)
-      base = pytd_utils.NamedTypeWithModule(v.official_name, v.module)
+      base = pytd_utils.NamedTypeWithModule(v.official_name or v.name, v.module)
       if self._is_tuple(v, instance):
         if type_arguments:
           homogeneous = False
@@ -165,11 +185,11 @@ class Converter(object):
                         abstract.BoundInterpreterFunction)):
       sig, = abstract.get_signatures(v)
       return self.value_instance_to_pytd_type(
-          node, self.signature_to_callable(sig, v.vm), None, seen, view)
+          node, self._signature_to_callable(sig, v.vm), None, seen, view)
     elif isinstance(v, (abstract.PyTDFunction, abstract.BoundPyTDFunction)):
       signatures = abstract.get_signatures(v)
       if len(signatures) == 1:
-        val = self.signature_to_callable(signatures[0], v.vm)
+        val = self._signature_to_callable(signatures[0], v.vm)
         if not v.vm.annotations_util.get_type_parameters(val):
           # This is a workaround to make sure we don't put unexpected type
           # parameters in call traces.
@@ -214,22 +234,14 @@ class Converter(object):
     else:
       raise NotImplementedError(v.__class__.__name__)
 
-  def value_to_detailed_pytd_type(self, node, v, seen, view):
-    if isinstance(v, (abstract.Function, abstract.BoundFunction)):
-      sig = abstract.get_signatures(v)[0]
-      # Without "always_convert_arguments", we throw away the argument types if
-      # the function takes a variable number of arguments, which is correct for
-      # pyi generation but undesirable for, say, error message printing.
-      val = self.signature_to_callable(sig, v.vm, always_convert_arguments=True)
-      return self.value_instance_to_pytd_type(node, val, None, seen, view)
-    else:
-      return self.value_to_pytd_type(node, v, seen, view)
-
-  def signature_to_callable(self, sig, vm, always_convert_arguments=False):
+  def _signature_to_callable(self, sig, vm):
     base_cls = vm.convert.function_type.data[0]
     ret = sig.annotations.get("return", vm.convert.unsolvable)
-    if always_convert_arguments or (
+    if self._detailed or (
         sig.mandatory_param_count() == sig.maximum_param_count()):
+      # If self._detailed is false, we throw away the argument types if the
+      # function takes a variable number of arguments, which is correct for pyi
+      # generation but undesirable for, say, error message printing.
       args = [sig.annotations.get(name, vm.convert.unsolvable)
               for name in sig.param_names]
       params = {abstract.ARGS: abstract.merge_values(args, vm, formal=True),

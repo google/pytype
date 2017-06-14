@@ -362,7 +362,8 @@ class ErrorLog(ErrorLogBase):
   def _print_as_expected_type(self, t):
     if isinstance(t, (abstract.Unknown, abstract.Unsolvable, abstract.Class,
                       abstract.Union)):
-      return self._pytd_print(t.get_instance_type())
+      with t.vm.convert.pytd_convert.produce_detailed_output():
+        return self._pytd_print(t.get_instance_type())
     elif isinstance(t, abstract.PythonConstant):
       return re.sub(r"(\\n|\s)+", " ",
                     t.str_of_constant(self._print_as_expected_type))
@@ -372,7 +373,8 @@ class ErrorLog(ErrorLogBase):
       return "<instance of %s>" % self._print_as_expected_type(t.cls.data[0])
 
   def _print_as_actual_type(self, t):
-    return self._pytd_print(t.to_detailed_type())
+    with t.vm.convert.pytd_convert.produce_detailed_output():
+      return self._pytd_print(t.to_type())
 
   def _join_printed_types(self, types):
     types = sorted(types)

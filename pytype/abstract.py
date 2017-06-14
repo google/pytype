@@ -293,10 +293,6 @@ class AtomicAbstractValue(object):
     return self.vm.convert.pytd_convert.value_to_pytd_type(
         node, self, seen, view)
 
-  def to_detailed_type(self, node=None, seen=None, view=None):
-    return self.vm.convert.pytd_convert.value_to_detailed_pytd_type(
-        node, self, seen, view)
-
   def to_pytd_def(self, node, name):
     """Get a PyTD definition for this object."""
     return self.vm.convert.pytd_convert.value_to_pytd_def(node, self, name)
