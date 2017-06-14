@@ -966,6 +966,24 @@ class ErrorTest(test_inference.InferenceTest):
           (2, "wrong-arg-types", r"x, y, z.*x, y, z"),
           (3, "wrong-keyword-args", r"v1, v2, v3, v4")])
 
+  def testBadBaseClass(self):
+    _, errors = self.InferAndCheck("""\
+      class Foo(None): pass
+      class Bar(None if __random__ else 42): pass
+    """)
+    self.assertErrorLogIs(errors, [
+        (1, "base-class-error", r"Invalid base class: None"),
+        (2, "base-class-error", r"Union\[<instance of int>, None\]")])
+
+  def testCallableInUnsupportedOperands(self):
+    _, errors = self.InferAndCheck("""\
+      def f(x, y=None): pass
+      f in f
+    """)
+    self.assertErrorLogIs(errors, [(2, "unsupported-operands",
+                                    r"Callable\[\[Any, Any\], Any\].*"
+                                    r"Callable\[\[Any, Any\], Any\]")])
+
 
 if __name__ == "__main__":
   test_inference.main()

@@ -374,6 +374,15 @@ class ErrorLog(ErrorLogBase):
   def _print_as_actual_type(self, t):
     return self._pytd_print(t.to_detailed_type())
 
+  def _join_printed_types(self, types):
+    types = sorted(types)
+    if len(types) == 1:
+      return next(iter(types))
+    elif types:
+      return "Union[%s]" % ", ".join(types)
+    else:
+      return "nothing"
+
   def _iter_sig(self, sig, bad_param):
     """Iterate through a function.Signature object. Focus on a bad parameter."""
     def annotate(name):
@@ -547,10 +556,10 @@ class ErrorLog(ErrorLogBase):
       raise AssertionError(error)
 
   @_error_name("base-class-error")
-  def base_class_error(self, stack, node, base_var):
-    pytd_type = pytd_utils.JoinTypes(t.get_instance_type(node)
-                                     for t in base_var.data)
-    self.error(stack, "Invalid base class: %s" % self._pytd_print(pytd_type))
+  def base_class_error(self, stack, base_var):
+    base_cls = self._join_printed_types(
+        self._print_as_expected_type(t) for t in base_var.data)
+    self.error(stack, "Invalid base class: %s" % base_cls)
 
   @_error_name("bad-return-type")
   def bad_return_type(self, stack, actual_pytd, expected_pytd):
@@ -561,12 +570,14 @@ class ErrorLog(ErrorLogBase):
     self.error(stack, "bad option in return type", details)
 
   @_error_name("unsupported-operands")
-  def unsupported_operands(self, stack, node, operation, var1, var2):
-    left = pytd_utils.JoinTypes(t.to_type(node) for t in var1.data)
-    right = pytd_utils.JoinTypes(t.to_type(node) for t in var2.data)
+  def unsupported_operands(self, stack, operation, var1, var2):
+    left = self._join_printed_types(
+        self._print_as_actual_type(t) for t in var1.data)
+    right = self._join_printed_types(
+        self._print_as_actual_type(t) for t in var2.data)
     # TODO(kramm): Display things like '__add__' as '+'
     self.error(stack, "unsupported operand type(s) for %s: %r and %r" % (
-        operation, self._pytd_print(left), self._pytd_print(right)))
+        operation, left, right))
 
   def invalid_annotation(self, stack, annot, details, name=None):
     self._invalid_annotation(stack, self._print_as_expected_type(annot),

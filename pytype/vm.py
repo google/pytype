@@ -508,7 +508,7 @@ class VirtualMachine(object):
     base = new_base
     if not any(isinstance(t, (abstract.Class, abstract.AMBIGUOUS_OR_EMPTY))
                for t in base.data):
-      self.errorlog.base_class_error(self.frames, node, base)
+      self.errorlog.base_class_error(self.frames, base)
     return base
 
   def make_class(self, node, name_var, bases, class_dict_var, cls_var):
@@ -778,7 +778,7 @@ class VirtualMachine(object):
       if self._is_only_none(state.node, x):
         self.errorlog.none_attr(self.frames, name)
       elif error is None:
-        self.errorlog.unsupported_operands(self.frames, state.node, name, x, y)
+        self.errorlog.unsupported_operands(self.frames, name, x, y)
       elif isinstance(error, abstract.DictKeyMissing):
         self.errorlog.key_error(self.frames, error.name)
       else:
@@ -1544,8 +1544,7 @@ class VirtualMachine(object):
         if self._is_only_none(state.node, y):
           self.errorlog.none_attr(self.frames, "__contains__")
         else:
-          self.errorlog.unsupported_operands(
-              self.frames, state.node, "__contains__", y, x)
+          self.errorlog.unsupported_operands(self.frames, "__contains__", y, x)
       ret = self.convert.build_bool(state.node)
     return state, ret
 
