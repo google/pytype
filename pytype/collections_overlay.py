@@ -63,7 +63,7 @@ def namedtuple_ast(name, fields, python_version=None):
 def namedtuple_name(name, fields):
   # Use a character not allowed in Python variable names to avoid naming
   # conflicts with user-defined objects.
-  return "%s-%s" % (name, "-".join(fields))
+  return "namedtuple-%s-%s" % (name, "-".join(fields))
 
 
 class CollectionsOverlay(overlay.Overlay):

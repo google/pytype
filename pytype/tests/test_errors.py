@@ -1004,6 +1004,35 @@ class ErrorTest(test_inference.InferenceTest):
     """)
     self.assertErrorLogIs(errors, [(5, "wrong-arg-types", r"x: Foo.*x: str")])
 
+  def testCleanNamedtupleNames(self):
+    # Make sure the namedtuple renaming in _pytd_print correctly extracts type
+    # names and doesn't erase other types accidentally.
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      import collections
+      X = collections.namedtuple("X", "a b c d")
+      Y = collections.namedtuple("Z", "")
+      W = collections.namedtuple("W", "abc def ghi abc", rename=True)
+      def bar(x: str):
+        return x
+      bar(X(1,2,3,4))  # 8
+      bar(Y())         # 9
+      bar(W(1,2,3,4))  # 10
+      bar({1: 2}.__iter__())  # 11
+      if __random__:
+        a = X(1,2,3,4)
+      else:
+        a = 1
+      bar(a)  # 16
+      """)
+    self.assertErrorLogIs(errors,
+                          [(8, "wrong-arg-types", r"`X`"),
+                           (9, "wrong-arg-types", r"`Z`"),
+                           (10, "wrong-arg-types", r"`W`"),
+                           (11, "wrong-arg-types", r"`dictionary-keyiterator`"),
+                           (16, "wrong-arg-types", r"Union\[int, `X`\]")
+                          ])
+
 
 if __name__ == "__main__":
   test_inference.main()
