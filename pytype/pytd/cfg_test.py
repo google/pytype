@@ -684,8 +684,7 @@ class CFGTest(unittest.TestCase):
     # TODO(kramm): This is currently broken, since our solver considers both
     # the start and finish node to never be "blocked", hence allowing itself
     # to step through a conflicting binding. Fixing this will allow us to get
-    # rid of a few extraneous CFG nodes, like the one after (at the end of)
-    # STORE_ATTR and STORE_FAST.
+    # rid of a few extraneous CFG nodes, like the one after STORE_ATTR.
     p = cfg.Program()
     n1 = p.NewCFGNode("n1")
     n2 = n1.ConnectNew("n2")

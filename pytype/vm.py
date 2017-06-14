@@ -1413,7 +1413,6 @@ class VirtualMachine(object):
     value = self.annotations_util.apply_type_comment(state, op, name, value)
     state = state.forward_cfg_node()
     state = self.store_local(state, name, value)
-    state = state.forward_cfg_node()
     return state
 
   def byte_DELETE_FAST(self, state, op):
