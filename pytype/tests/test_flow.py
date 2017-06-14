@@ -309,6 +309,22 @@ class FlowTest(test_inference.InferenceTest):
       def bar() -> complex
     """)
 
+  def test_loop_and_if(self):
+    self.assertNoErrors("""
+      from __future__ import google_type_annotations
+      import typing
+      def foo() -> unicode:
+        while True:
+          y = None
+          z = None
+          if __any_object__:
+            y = u"foo"
+            z = u"foo"
+          if y:
+            return z
+        return u"foo"
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

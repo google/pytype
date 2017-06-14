@@ -938,6 +938,7 @@ class Solver(object):
     # We don't treat our current CFG node as blocked: If one of the goal
     # variables is overwritten by an assignment at our current pos, we assume
     # that assignment can still see the previous bindings.
+    # TODO(kramm): Is there a better way? See testConflict in cfg_test.py.
     blocked.discard(state.pos)
     blocked = frozenset(blocked)
     # Find the goal cfg node that was assigned last.  Due to the fact that we
