@@ -92,9 +92,13 @@ class AbstractAttributeHandler(object):
     elif isinstance(obj, special_builtins.SuperInstance):
       if obj.super_obj:
         valself = obj.super_obj.to_variable(node).bindings[0]
-      valcls = obj.super_cls.to_variable(node).bindings[0]
+        valcls = obj.super_cls.to_variable(node).bindings[0]
+        skip = obj.super_cls
+      else:
+        valcls = self.vm.convert.super_type.bindings[0]
+        skip = None
       return self._class_getter(
-          node, obj.super_cls, name, valself, valcls, skip=obj.super_cls)
+          node, valcls.data, name, valself, valcls, skip=skip)
     elif isinstance(obj, special_builtins.Super):
       return self.get_attribute(
           node, self.vm.convert.super_type.data[0], name, valself, valcls)

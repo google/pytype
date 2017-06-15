@@ -238,11 +238,9 @@ class Super(abstract.PyTDClass):
 
   def call(self, node, _, args):
     result = self.vm.program.NewVariable()
-    if len(args.posargs) == 1:
-      # TODO(kramm): Add a test for this
-      for cls in args.posargs[0].bindings:
-        result.AddBinding(SuperInstance(cls.data, None, self.vm), [cls], node)
-    elif len(args.posargs) == 2:
+    num_args = len(args.posargs)
+    if 1 <= num_args and num_args <= 2:
+      super_objects = args.posargs[1].bindings if num_args == 2 else [None]
       for cls in args.posargs[0].bindings:
         if not isinstance(cls.data, (abstract.Class,
                                      abstract.AMBIGUOUS_OR_EMPTY)):
@@ -250,9 +248,13 @@ class Super(abstract.PyTDClass):
               name="cls", expected=self.vm.convert.type_type.data[0])
           raise abstract.WrongArgTypes(
               self._SIGNATURE, args, self.vm, bad_param=bad)
-        for obj in args.posargs[1].bindings:
-          result.AddBinding(
-              SuperInstance(cls.data, obj.data, self.vm), [cls, obj], node)
+        for obj in super_objects:
+          if obj:
+            result.AddBinding(
+                SuperInstance(cls.data, obj.data, self.vm), [cls, obj], node)
+          else:
+            result.AddBinding(
+                SuperInstance(cls.data, None, self.vm), [cls], node)
     else:
       raise abstract.WrongArgCount(self._SIGNATURE, args, self.vm)
     return node, result

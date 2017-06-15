@@ -994,7 +994,7 @@ class ClassesTest(test_inference.InferenceTest):
       class Foo(object):
         def __new__(cls):
           if __random__:
-            return super(cls).__new__(cls)
+            return super(Foo, cls).__new__(cls)
           else:
             return "hello world"
         def __init__(self):
@@ -1022,7 +1022,7 @@ class ClassesTest(test_inference.InferenceTest):
       class Foo(object):
         def __new__(cls):
           if __random__:
-            return super(cls).__new__(cls)
+            return super(Foo, cls).__new__(cls)
         def foo(self):
           return self
     """, deep=True)

@@ -134,6 +134,42 @@ class SuperTest(test_inference.InferenceTest):
       super(__any_object__, __any_object__)
     """)
 
+  def testSingleArgumentSuper(self):
+    _, errors = self.InferAndCheck("""\
+      super(object)
+      super(object())
+    """)
+    self.assertErrorLogIs(
+        errors, [(2, "wrong-arg-types", r"cls: type.*cls: object")])
+
+  def testMethodOnSingleArgumentSuper(self):
+    ty, errors = self.InferAndCheck("""\
+      sup = super(object)
+      sup.foo
+      sup.__new__(object)
+      v = sup.__new__(super)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      sup = ...  # type: super
+      v = ...  # type: super
+    """)
+    self.assertErrorLogIs(errors, [
+        (2, "attribute-error", r"'foo' on super"),
+        (3, "wrong-arg-types", r"Type\[super\].*Type\[object\]")])
+
+  def testSuperMissingArg(self):
+    _, errors = self.InferAndCheck("""\
+      class Foo(object):
+        def __new__(cls):
+          return super(cls).__new__(cls)
+      class Bar(object):
+        def __new__(cls):
+          return super().__new__(cls)
+    """)
+    self.assertErrorLogIs(errors, [
+        (3, "wrong-arg-types", r"Type\[super\].*Type\[Foo\]"),
+        (6, "wrong-arg-count", r"2.*0")])
+
 
 if __name__ == "__main__":
   test_inference.main()
