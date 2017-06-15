@@ -282,7 +282,10 @@ class Converter(object):
       assert name != v.name
       return pytd.Alias(name, pytd.NamedType(v.name))
     elif isinstance(v, abstract.InterpreterClass):
-      return self._class_to_def(node, v, name)
+      if v.official_name is None or name == v.official_name:
+        return self._class_to_def(node, v, name)
+      else:
+        return pytd.Alias(name, pytd.NamedType(v.official_name))
     elif isinstance(v, abstract.TypeParameter):
       return self._typeparam_to_def(node, v, name)
     elif isinstance(v, abstract.Unsolvable):

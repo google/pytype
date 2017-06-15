@@ -145,6 +145,20 @@ class ReingestTest(test_inference.InferenceTest):
       """, pythonpath=[d.path])
       self.assertErrorLogIs(errors, [(3, "missing-parameter", "b.*__new__")])
 
+  def testAlias(self):
+    foo = self.Infer("""
+      class _Foo(object):
+        def __new__(cls, _):
+          return super(_Foo, cls).__new__(cls)
+      Foo = _Foo
+    """, deep=True)
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", pytd.Print(foo))
+      self.assertNoErrors("""
+        import foo
+        foo.Foo("hello world")
+      """, pythonpath=[d.path])
+
 
 if __name__ == "__main__":
   test_inference.main()

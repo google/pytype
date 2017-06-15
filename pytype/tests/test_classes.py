@@ -265,9 +265,7 @@ class ClassesTest(test_inference.InferenceTest):
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
         x = ...  # type: str
-      # TODO(kramm): Should this be an alias?
-      class OtherFoo(object):
-        x = ...  # type: str
+      OtherFoo = Foo
     """)
 
   def testCallClassAttr(self):
@@ -562,7 +560,7 @@ class ClassesTest(test_inference.InferenceTest):
     # to always be the same.
     self.assertTypesMatchPytd(ty, """
       class A: ...
-      class B: ...
+      B = A
       x = ...  # type: A
     """)
 
@@ -671,8 +669,7 @@ class ClassesTest(test_inference.InferenceTest):
       class A:
         x = ...  # type: int
       def f() -> A or str
-      class B:
-        x = ...  # type: int
+      B = A
       C = ...  # type: Type[A or str]
       D = ...  # type: Type[type]
     """)
@@ -688,8 +685,7 @@ class ClassesTest(test_inference.InferenceTest):
     self.assertTypesMatchPytd(ty, """
       class A:
         x = ...  # type: int
-      class B:
-        x = ...  # type: int
+      B = A
       x = ...  # type: int
       mro = ...  # type: list
     """)
@@ -1192,6 +1188,23 @@ class ClassesTest(test_inference.InferenceTest):
           super(FooChild, self).Create(x)
         def Convert(self):
           self.x
+    """)
+
+  def testAliasInnerClass(self):
+    ty = self.Infer("""
+      def f():
+        class Bar(object):
+          def __new__(cls, _):
+            return super(Bar, cls).__new__(cls)
+        return Bar
+      Baz = f()
+    """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Type, TypeVar
+      def f() -> Type[Baz]
+      _TBaz = TypeVar("_TBaz", bound=Baz)
+      class Baz(object):
+        def __new__(cls: Type[_TBaz], _) -> _TBaz
     """)
 
 
