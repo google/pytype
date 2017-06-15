@@ -266,6 +266,7 @@ class _Parser(object):
     self._aliases = []
     self._classes = []
     self._type_params = []
+    self._module_path_map = {}
     self._generated_classes = collections.defaultdict(list)
 
   def parse(self, src, name, filename):
@@ -528,6 +529,7 @@ class _Parser(object):
           self._type_map[new_name] = t
           if from_package != "typing":
             self._aliases.append(pytd.Alias(new_name, t))
+            self._module_path_map[name] = "%s.%s" % (from_package, name)
         else:
           pass  # TODO(kramm): Handle '*' imports in pyi
     else:
@@ -555,7 +557,9 @@ class _Parser(object):
     """
     base_type = self._type_map.get(name)
     if base_type is None:
-      base_type = pytd.NamedType(name)
+      module, dot, tail = name.partition(".")
+      full_name = self._module_path_map.get(module, module) + dot + tail
+      base_type = pytd.NamedType(full_name)
     if parameters is not None:
       return self._parameterized_type(base_type, parameters)
     else:

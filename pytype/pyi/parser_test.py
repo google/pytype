@@ -179,6 +179,11 @@ class ParserTest(_ParserTestBase):
     self.check("from foo import (a, b, )",
                "from foo import a\nfrom foo import b")
 
+  def test_from_import(self):
+    ast = self.check("from foo import c\nclass Bar(c.X): ...", IGNORE)
+    parent, = ast.Lookup("Bar").parents
+    self.assertEquals(parent, pytd.NamedType("foo.c.X"))
+
   def test_duplicate_names(self):
     self.check_error("""\
       def foo() -> int: ...

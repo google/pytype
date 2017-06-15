@@ -870,6 +870,21 @@ class ImportTest(test_inference.InferenceTest):
         (3, "module-attr", r"baz"),
     ])
 
+  def testFromImport(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo/b.pyi", """
+        from foo import c
+        class bar(c.X): ...
+      """)
+      d.create_file("foo/c.pyi", """
+        class X(object): ...
+      """)
+      self.assertNoErrors("""\
+        from foo import b
+        class Foo(b.bar):
+          pass
+      """, pythonpath=[d.path])
+
 
 if __name__ == "__main__":
   test_inference.main()

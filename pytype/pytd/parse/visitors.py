@@ -922,6 +922,10 @@ class LookupExternalTypes(Visitor):
       KeyError: If we can't find a module, or an identifier in a module, or
         if an identifier in a module isn't a class.
     """
+    # Drop module aliases without trying to resolve them.
+    if t.name in self._module_map:
+      logging.warning("Mapping module %s to Any", t.name)
+      return pytd.AnythingType()
     module_name, dot, name = t.name.rpartition(".")
     if not dot or module_name == self.name:
       # Nothing to do here. This visitor will only look up nodes in other
