@@ -685,6 +685,14 @@ def program_to_dot(program, ignored, only_cfg=False):
   return sb.getvalue()
 
 
+def _filename_to_module_name(filename):
+  """Helper function for get_module_name."""
+  if os.path.dirname(filename).startswith(os.pardir):
+    # Don't try to infer a module name for filenames starting with ../
+    return None
+  return filename.replace(os.sep, ".")
+
+
 def get_module_name(filename, options):
   """Return, or try to reverse-engineer, the name of the module we're analyzing.
 
@@ -706,12 +714,17 @@ def get_module_name(filename, options):
   if options.module_name is not None:
     return options.module_name
   elif filename:
-    filename, _ = os.path.splitext(filename)
-    for path in options.pythonpath:
-      # TODO(kramm): What if filename starts with "../"?  (os.pardir)
+    filename, _ = os.path.splitext(os.path.normpath(filename))
+    # We want '' in our lookup path, but we don't want it for prefix tests.
+    for path in filter(bool, options.pythonpath):
+      path = os.path.normpath(path)
+      if not path.endswith(os.sep):
+        path += os.sep
       if filename.startswith(path):
-        subdir = filename[len(path):].lstrip(os.sep)
-        return subdir.replace(os.sep, ".")
+        rel_filename = filename[len(path):]
+        return _filename_to_module_name(rel_filename)
+    # Explicit pythonpath has failed, treat filename as relative to .
+    return _filename_to_module_name(filename)
 
 
 def check_types(py_src, py_filename, errorlog, options, loader,
