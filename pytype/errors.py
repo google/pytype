@@ -481,6 +481,10 @@ class ErrorLog(ErrorLogBase):
   def import_error(self, stack, module_name):
     self.error(stack, "Can't find module %r." % module_name)
 
+  @_error_name("missing-typing-dependency")
+  def missing_typing_dependency(self):
+    self.error(None, "Can't find module `typing`.")
+
   def _invalid_parameters(self, stack, message, bad_call):
     """Log an invalid parameters error."""
     sig, passed_args, bad_param = bad_call

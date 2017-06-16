@@ -14,6 +14,9 @@ class TypingOverlay(overlay.Overlay):
   """A representation of the 'typing' module that allows custom overlays."""
 
   def __init__(self, vm):
+    # Make sure we have typing available as a dependency
+    if not vm.loader.can_see("typing"):
+      vm.errorlog.missing_typing_dependency()
     member_map = typing_overload.copy()
     ast = vm.loader.typing
     for cls in ast.classes:

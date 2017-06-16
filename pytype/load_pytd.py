@@ -372,6 +372,14 @@ class Loader(object):
   def _get_module_map(self):
     return {name: module.ast for name, module in self._modules.items()}
 
+  def can_see(self, module):
+    """Reports whether the Loader can find the module."""
+    # Assume that if there is no imports_map that any module can be found.
+    if not self.options.imports_map:
+      return True
+    return (module in self.options.imports_map or
+            "%s/__init__" % module in self.options.imports_map)
+
 
 class PickledPyiLoader(Loader):
   """A Loader which always loads pickle instead of PYI, for speed."""
