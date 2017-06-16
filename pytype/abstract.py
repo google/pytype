@@ -1405,9 +1405,15 @@ class Function(SimpleAbstractValue):
           "Can't call function with <nothing> parameter")
     error = None
     matched = []
-    for view in get_views(args.get_variables(), node):
+    arg_variables = args.get_variables()
+    for view in get_views(arg_variables, node):
       log.debug("args in view: %r", [(a.bindings and view[a].data)
                                      for a in args.posargs])
+      for arg in arg_variables:
+        if view[arg].data.formal:
+          self.vm.errorlog.invalid_typevar(
+              self.vm.frames, "cannot pass a TypeVar to a function")
+          view[arg] = arg.AddBinding(self.vm.convert.unsolvable, [], node)
       try:
         match = self._match_view(node, args, view)
       except FailedFunctionCall as e:

@@ -910,7 +910,7 @@ class VirtualMachine(object):
     namedargs = abstract.Dict(self)
     for _ in range(num_kw):
       state, (key, val) = state.popn(2)
-      namedargs.setitem(state.node, key, val)
+      namedargs.setitem_slot(state.node, key, val)
     state, posargs = state.popn(num_pos)
 
     state, func = state.pop()

@@ -40,12 +40,10 @@ class TypingTest(test_inference.InferenceTest):
   def test_namedtuple_match(self):
     self._test_match("collections.namedtuple('foo', [])()",
                      "typing.NamedTuple",
-                     "# pytype: disable=not-supported-yet",
-                     )
+                     "# pytype: disable=not-supported-yet")
     self._test_match("collections.namedtuple('foo', ('x', 'y'))(1, 2)",
                      "typing.NamedTuple('foo', [('x', int), ('y', int)])",
-                     "# pytype: disable=not-supported-yet",
-                     )
+                     "# pytype: disable=not-supported-yet")
 
   def test_namedtuple_item(self):
     with utils.Tempdir() as d:
@@ -137,13 +135,14 @@ class TypingTest(test_inference.InferenceTest):
   def test_cast_args(self):
     self.assertNoCrash("""\
       import typing
-      typing.cast(AnyStr)
+      typing.cast(typing.AnyStr)
       typing.cast("str")
       typing.cast()
-      typing.cast(typ=AnyStr, val=__any_object__)
+      typing.cast(typ=typing.AnyStr, val=__any_object__)
       typing.cast(typ=str, val=__any_object__)
       typing.cast(typ="str", val=__any_object__)
       typing.cast(val=__any_object__)
+      typing.cast(typing.List[typing.AnyStr], [])
       """)
 
   def test_generator(self):

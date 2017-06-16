@@ -371,6 +371,16 @@ class MatchTest(test_inference.InferenceTest):
         def bar(self, x: Dict[Tuple[AnyStr], AnyStr]): ...
     """)
 
+  def testFormalType(self):
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      from typing import AnyStr
+      def f(x: str):
+        pass
+      f(AnyStr)
+    """)
+    self.assertErrorLogIs(errors, [(5, "invalid-typevar")])
+
 
 if __name__ == "__main__":
   test_inference.main()

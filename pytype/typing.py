@@ -171,18 +171,6 @@ class Cast(abstract.PyTDFunction):
   """Implements typing.cast."""
 
   def call(self, node, func, args):
-    # We forbid typing.TypeVars to be used as types in calls to typing.cast
-    if args.posargs:
-      typ_var = args.posargs[0]
-    else:
-      typ_var = args.namedargs.get("typ")
-
-    if (typ_var and
-        any(isinstance(t, abstract.TypeParameter) for t in typ_var.Data(node))):
-      msg = "Cannot use a TypeVar as the first argument to typing.cast"
-      self.vm.errorlog.invalid_typevar(self.vm.frames, msg)
-      return node, self.vm.convert.unsolvable.to_variable(node)
-
     if args.posargs:
       try:
         annot = self.vm.annotations_util.process_annotation_var(
