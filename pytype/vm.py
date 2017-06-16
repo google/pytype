@@ -289,6 +289,8 @@ class VirtualMachine(object):
                     " we don't have any non-erroneous code that goes here.",
                     block.id)
         continue
+      # TODO(kramm): We should create a new CFG node here, since this is
+      # potentially a point where multiple code paths merge.
       op = None
       for op in block:
         state = self.run_instruction(op, state)

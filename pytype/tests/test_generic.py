@@ -274,7 +274,7 @@ class GenericTest(test_inference.InferenceTest):
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
-        v = ...  # type: a.C[int or str, int or float]
+        v = ...  # type: a.C[int, int or float]
       """)
 
   def testTypeParameterDeep(self):
@@ -669,7 +669,7 @@ class GenericTest(test_inference.InferenceTest):
       """, pythonpath=[d.path], deep=True, solve_unknowns=True)
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
-        def f() -> int or str
+        def f() -> str
         def g() -> bool
         def h() -> int
       """)
@@ -874,6 +874,28 @@ class GenericTest(test_inference.InferenceTest):
       self.assertTypesMatchPytd(ty, """
         foo = ...  # type: module
         v = ...  # type: list[int or str]
+      """)
+
+  def test_mutate_call(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import Generic, TypeVar
+        _T = TypeVar("_T")
+        class A(Generic[_T]):
+          def to_str(self):
+            self := A[str]
+          def to_int(self):
+            self := A[int]
+      """)
+      ty = self.Infer("""
+        import foo
+        a = foo.A()
+        a.to_str()
+        a.to_int()
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        foo = ...  # type: module
+        a = ...  # type: foo.A[int]
       """)
 
 

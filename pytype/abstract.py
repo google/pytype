@@ -1741,6 +1741,9 @@ class PyTDFunction(Function):
       all_mutations += mutations
 
     log.info("Applying %d mutations", len(all_mutations))
+    if all_mutations:
+      # mutations warrant creating a new CFG node
+      node = node.ConnectNew(node.name)
     for obj, name, value in all_mutations:
       obj.merge_type_parameter(node, name, value)
 
