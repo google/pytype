@@ -882,13 +882,14 @@ class ErrorTest(test_inference.InferenceTest):
     self.assertErrorLogIs(errors, [(1, "none-attr")])
 
   def testNoAttrError(self):
-    self.assertNoErrors("""\
+    _, errors = self.InferAndCheck("""\
       if __any_object__:
         y = 42
       else:
         y = "foo"
       y.upper
-    """, strict_attr_checking=False)
+    """)
+    self.assertErrorLogIs(errors, [(5, "attribute-error")])
 
   def testAttrError(self):
     _, errors = self.InferAndCheck("""\
@@ -897,7 +898,7 @@ class ErrorTest(test_inference.InferenceTest):
       else:
         y = "foo"
       y.upper
-    """, strict_attr_checking=True)
+    """)
     self.assertErrorLogIs(errors, [(5, "attribute-error", "upper.*int")])
 
   def testPrintDictAndTuple(self):

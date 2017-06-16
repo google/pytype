@@ -986,7 +986,7 @@ class ClassesTest(test_inference.InferenceTest):
     """)
 
   def testNewAmbiguous(self):
-    ty = self.Infer("""
+    ty = self.Infer("""\
       class Foo(object):
         def __new__(cls):
           if __random__:

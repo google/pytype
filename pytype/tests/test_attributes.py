@@ -220,7 +220,7 @@ class TestAttributes(test_inference.InferenceTest):
       from typing import Optional
       def f(x: Optional[str]):
         return x.upper()
-    """, strict_attr_checking=True)
+    """)
 
   def testHasDynamicAttributes(self):
     self.assertNoErrors("""\
@@ -272,7 +272,7 @@ class TestAttributes(test_inference.InferenceTest):
         x = "foo" if arg else None
         if not x:
           x.upper()
-    """, strict_attr_checking=True)
+    """)
     self.assertErrorLogIs(errors, [(4, "none-attr")])
 
   def testIteratorOnNone(self):
@@ -280,7 +280,7 @@ class TestAttributes(test_inference.InferenceTest):
       def f():
         pass
       a, b = f()
-    """, strict_attr_checking=True)
+    """)
     self.assertErrorLogIs(errors, [(3, "none-attr")])
 
 if __name__ == "__main__":

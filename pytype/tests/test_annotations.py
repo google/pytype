@@ -636,7 +636,7 @@ class AnnotationTest(test_inference.InferenceTest):
       def f(v: Union[A, B]):
         return v.x
       f(A())
-    """, strict_attr_checking=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Union
       class A: ...

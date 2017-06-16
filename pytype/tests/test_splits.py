@@ -757,7 +757,7 @@ class SplitTest(test_inference.InferenceTest):
       x = "foo" if __any_object__ else 42
       if x == "foo":
         x.upper()
-    """, strict_attr_checking=True)
+    """)
 
   def testBuiltinFullNameCheck(self):
     # Don't get confused by a class named int
@@ -767,7 +767,7 @@ class SplitTest(test_inference.InferenceTest):
       x = "foo" if __any_object__ else int()
       if x == "foo":
         x.upper()
-    """, strict_attr_checking=True)
+    """)
     self.assertNotEqual(len(errorlog), 0)
 
   def testTypeParameterInBranch(self):

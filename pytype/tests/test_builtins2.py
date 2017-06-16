@@ -430,13 +430,16 @@ class BuiltinTests2(test_inference.InferenceTest):
     """)
 
   def testReduce(self):
-    self.assertNoErrors("""
+    _, errors = self.InferAndCheck("""\
       reduce(lambda x, y: x+y, [1,2,3]).real
       reduce(lambda x, y: x+y, ["foo"]).upper()
       reduce(lambda x, y: 4, "foo").real
       reduce(lambda x, y: 4, [], "foo").upper()
       reduce(lambda x, y: "s", [1,2,3], 0).upper()
     """)
+    self.assertErrorLogIs(errors, [
+        (3, "attribute-error", "real.*str")
+    ])
 
   def testDictKeys(self):
     ty = self.Infer("""

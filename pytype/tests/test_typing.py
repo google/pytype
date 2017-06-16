@@ -204,7 +204,7 @@ class TypingTest(test_inference.InferenceTest):
       def f3(x: Type[Union[int, Foo]]):
         f1(x)
         f2(x)
-    """, strict_attr_checking=True)
+    """)
     self.assertErrorLogIs(errors, [(10, "attribute-error", "bar.*int")])
 
   def test_generate_type_alias(self):

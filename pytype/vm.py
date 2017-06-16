@@ -1038,7 +1038,7 @@ class VirtualMachine(object):
     node, result, errors = self._retrieve_attr(state.node, obj, attr)
     if errors and obj.bindings and self._is_only_none(state.node, obj):
       self.errorlog.none_attr(self.frames, attr)
-    elif self.options.strict_attr_checking or (not result and obj.bindings):
+    else:
       for error in errors:
         if not self._is_none(state.node, error):
           self.errorlog.attribute_or_module_error(

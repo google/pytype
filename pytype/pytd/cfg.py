@@ -25,11 +25,6 @@ _variable_size_metric = metrics.Distribution("variable_size")
 MAX_VAR_SIZE = 64
 
 
-# Should we approximate the behavior of condition objects?
-# Potentially set to 'False' by config.py.
-APPROXIMATE = True
-
-
 class Program(object):
   """Program instances describe program entities.
 
@@ -898,35 +893,6 @@ class Solver(object):
     result = self._solved_states[state] = self._FindSolution(state, seen_goals)
     return result
 
-  def _IsSolvedBefore(self, where, goal, entrypoint, blocked):
-    """Determine if a goal is possibly solved in subsection of the CFG.
-
-    If a condition introduces a new goal, but we can solve that goal *before*
-    the goal we were trying to solve originally, assume that goal doesn't
-    have anything to do with us.
-    This currently does a quick CFG check as an approximation. An alternative
-    implementation would be to call _FindSolution while blocking the new
-    entrypoint.
-
-    Args:
-      where: Current CFG node. We search backwards from this node.
-      goal: The goal to find a solution for.
-      entrypoint: The "new" entry point of the graph. This typically reduces
-        the CFG to a subgraph.
-      blocked: A list of nodes.
-    Returns:
-      True if we think this goal can be solved without traversing beyond
-      "entrypoint", False if it can't.
-    """
-    if APPROXIMATE:
-      blocked = frozenset(blocked | {entrypoint})
-      for origin in goal.origins:
-        # TODO(kramm): We don't cache this. Should we?
-        if origin.where not in blocked and self._path_finder.FindAnyPathToNode(
-            where, origin.where, blocked):
-          return True
-    return False
-
   def _FindSolution(self, state, seen_goals):
     """Find a sequence of assignments that would solve the given state."""
     if state.Done():
@@ -957,8 +923,7 @@ class Solver(object):
             # If we found conditions on the way, see whether we need to add
             # any of them to our goals.
             for node in path:
-              if node.condition not in seen_goals and not self._IsSolvedBefore(
-                  node, node.condition, origin.where, blocked):
+              if node.condition not in seen_goals:
                 # It can happen that node == state.pos, typically if the node
                 # we're calling HasCombination on has a condition. If so, we'll
                 # treat it like any other condition and add it to our goals.

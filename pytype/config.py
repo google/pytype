@@ -12,7 +12,6 @@ import subprocess
 
 from pytype import imports_map_loader
 from pytype import utils
-from pytype.pytd import cfg
 
 
 LOG_LEVELS = [logging.CRITICAL, logging.ERROR, logging.WARNING,
@@ -145,11 +144,6 @@ class Options(object):
         dest="typeshed", default=True,
         help=("Do not use typeshed to look up types in the Python stdlib. "
               "For testing."))
-    o.add_option(
-        "--strict-attr-checking", action="store_true",
-        dest="strict_attr_checking", default=False,
-        help=("Complain about attribute errors even if only some of the"
-              "options of a variable don't have the attribute."))
     o.add_option(
         "--nofail", action="store_true",
         dest="nofail", default=False,
@@ -286,11 +280,6 @@ class Options(object):
                                          "check")
     else:
       self.check = check
-
-  def _store_strict_attr_checking(self, b):
-    if b:
-      cfg.APPROXIMATE = False
-    self.strict_attr_checking = b
 
   @uses(["input"])
   def _store_generate_builtins(self, generate_builtins):
