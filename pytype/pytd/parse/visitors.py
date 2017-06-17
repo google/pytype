@@ -739,7 +739,7 @@ class DefaceUnresolved(Visitor):
     else:
       if (self._do_not_log_prefix is None or
           not name.startswith(self._do_not_log_prefix)):
-        logging.error("Setting %s to ?", name)
+        logging.warning("Setting %s to ?", name)
       return pytd.AnythingType()
 
   def VisitCallableType(self, node):
