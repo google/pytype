@@ -926,14 +926,15 @@ class VirtualMachine(object):
     return self.frame.f_globals
 
   def load_from(self, state, store, name):
-    node = state.node
-    node, attr = self.attribute_handler.get_attribute(
-        node, store, name)
-    assert isinstance(node, typegraph.CFGNode)
-    if not attr:
-      raise KeyError(name)
-    state = state.change_cfg_node(node)
-    return state, attr
+    """Load an item out of locals, globals, or builtins."""
+    assert isinstance(store, abstract.SimpleAbstractValue)
+    assert store.is_lazy
+    if name in store.late_annotations:
+      # Unresolved late annotation. See attribute.py:get_attribute
+      return state, self.convert.unsolvable.to_variable(state.node)
+    store.load_lazy_attribute(name)
+    bindings = store.members[name].Bindings(state.node)
+    return state, self.join_bindings(state.node, bindings)
 
   def load_local(self, state, name):
     """Called when a local is loaded onto the stack.

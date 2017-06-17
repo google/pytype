@@ -605,8 +605,8 @@ class TestFunctions(test_inference.InferenceTest):
 
   def test_staticmethod_class(self):
     ty = self.Infer("""\
-      v1, = (__new__,)
-      v2 = type(__new__)
+      v1, = (object.__new__,)
+      v2 = type(object.__new__)
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Callable, Type
