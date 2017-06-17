@@ -751,7 +751,7 @@ def check_types(py_src, py_filename, errorlog, options, loader,
 
 def infer_types(src, errorlog, options, loader,
                 filename=None, run_builtins=True,
-                deep=True, solve_unknowns=True,
+                deep=True,
                 cache_unknowns=False, show_library_calls=False,
                 analyze_annotated=False,
                 init_maximum_depth=INIT_MAXIMUM_DEPTH, maximum_depth=None):
@@ -767,8 +767,6 @@ def infer_types(src, errorlog, options, loader,
       the program.
     deep: If True, analyze all functions, even the ones not called by the main
       execution flow.
-    solve_unknowns: If yes, try to replace structural types ("~unknowns") with
-      nominal types.
     cache_unknowns: If True, do a faster approximation of unknown types.
     show_library_calls: If True, call traces are kept in the output.
     analyze_annotated: If True, analyze methods with type annotations, too.
@@ -806,10 +804,7 @@ def infer_types(src, errorlog, options, loader,
   builtins_pytd = tracer.loader.concat_all()
   # Insert type parameters, where appropriate
   ast = ast.Visit(visitors.CreateTypeParametersForSignatures())
-  if solve_unknowns:
-    log.info("=========== PyTD to solve =============\n%s", pytd.Print(ast))
-    ast = convert_structural.convert_pytd(ast, builtins_pytd)
-  elif not show_library_calls:
+  if not show_library_calls:
     log.info("Solving is turned off. Discarding call traces.")
     # Rename remaining "~unknown" to "?"
     ast = ast.Visit(visitors.RemoveUnknownClasses())

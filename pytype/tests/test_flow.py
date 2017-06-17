@@ -17,7 +17,7 @@ class FlowTest(test_inference.InferenceTest):
         x = 3
       else:
         x = 3.1
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertTypesMatchPytd(ty, """
       x = ...  # type: int or float
     """)
@@ -30,7 +30,7 @@ class FlowTest(test_inference.InferenceTest):
         except Exception, error:
           return 3
       f()
-    """, deep=False, solve_unknowns=False, show_library_calls=True,
+    """, deep=False, show_library_calls=True,
                     report_errors=False)
     self.assertHasSignature(ty.Lookup("f"), (), self.int)
 
@@ -44,7 +44,7 @@ class FlowTest(test_inference.InferenceTest):
         except:
           return 3.5
       f()
-    """, deep=False, solve_unknowns=False, show_library_calls=True,
+    """, deep=False, show_library_calls=True,
                     report_errors=False)
     self.assertHasSignature(ty.Lookup("f"), (), self.intorfloat)
 
@@ -59,7 +59,7 @@ class FlowTest(test_inference.InferenceTest):
         except:
           return 3.5
       f()
-    """, deep=False, solve_unknowns=False, show_library_calls=True,
+    """, deep=False, show_library_calls=True,
                     report_errors=False)
     self.assertHasSignature(ty.Lookup("f"), (), self.int)
 
@@ -74,7 +74,7 @@ class FlowTest(test_inference.InferenceTest):
         except:
           return 3.5
       f()
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (), self.int)
 
   def testFinally(self):
@@ -85,7 +85,7 @@ class FlowTest(test_inference.InferenceTest):
         finally:
           return 3
       f()
-    """, deep=False, solve_unknowns=False, show_library_calls=True,
+    """, deep=False, show_library_calls=True,
                     report_errors=False)
     self.assertHasSignature(ty.Lookup("f"), (), self.int)
 
@@ -98,7 +98,7 @@ class FlowTest(test_inference.InferenceTest):
           x = 3
         return x
       f()
-    """, deep=False, solve_unknowns=False, show_library_calls=True,
+    """, deep=False, show_library_calls=True,
                     report_errors=False)
     self.assertHasSignature(ty.Lookup("f"), (), self.int)
 
@@ -114,7 +114,7 @@ class FlowTest(test_inference.InferenceTest):
           finally:
             return 3
       f()
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (), self.int)
 
   def testSimpleWith(self):
@@ -125,7 +125,7 @@ class FlowTest(test_inference.InferenceTest):
           y = 2
         return x
       f(1)
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (self.int,), self.int)
 
   def testNestedWith(self):
@@ -138,7 +138,7 @@ class FlowTest(test_inference.InferenceTest):
             pass
         return x
       f(1)
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (self.int,), self.int)
 
   def testNullFLow(self):
@@ -148,7 +148,7 @@ class FlowTest(test_inference.InferenceTest):
           return 0
         return len(x)
       f(__any_object__)
-    """, deep=False, solve_unknowns=False)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       def f(x) -> int
     """)
@@ -166,7 +166,7 @@ class FlowTest(test_inference.InferenceTest):
           l.append(i)
         return l
       f()
-    """, deep=False, solve_unknowns=False)
+    """, deep=False)
     self.assertHasSignature(ty.Lookup("f"), (), self.int_list)
 
   def testBreakInWith(self):
@@ -184,7 +184,7 @@ class FlowTest(test_inference.InferenceTest):
         s = ''.join(l)
         return s
       f()
-    """, deep=False, solve_unknowns=False)
+    """, deep=False)
     self.assertHasSignature(ty.Lookup("f"), (), self.str)
 
   def testRaiseInWith(self):
@@ -204,7 +204,7 @@ class FlowTest(test_inference.InferenceTest):
         s = ''.join(l)
         return s
       f()
-    """, deep=False, solve_unknowns=False)
+    """, deep=False)
     self.assertHasSignature(ty.Lookup("f"), (), self.str)
 
   def testReturnInWith(self):
@@ -213,7 +213,7 @@ class FlowTest(test_inference.InferenceTest):
         with __any_object__:
           return "foo"
       f()
-    """, deep=False, solve_unknowns=False)
+    """, deep=False)
     self.assertHasSignature(ty.Lookup("f"), (), self.str)
 
   def test_dead_if(self):
@@ -238,7 +238,7 @@ class FlowTest(test_inference.InferenceTest):
         while True:
           pass
         return 42
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       def f() -> Any
@@ -257,7 +257,7 @@ class FlowTest(test_inference.InferenceTest):
           stack.append(_Item(stack))
         else:
           stack.append(_Item(stack))
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       class _Item(object):
         name = ...  # type: str
@@ -276,7 +276,7 @@ class FlowTest(test_inference.InferenceTest):
             raise Exception(
             'No node with type %s could be extracted.' % self._node)
       Foo().bar()
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       class Foo(object):
@@ -291,7 +291,7 @@ class FlowTest(test_inference.InferenceTest):
           if __any_object__:
             break
         return 3j
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       def _foo() -> complex
     """)
@@ -304,7 +304,7 @@ class FlowTest(test_inference.InferenceTest):
             return 3j
           continue
           return 3  # dead code
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       def bar() -> complex
     """)

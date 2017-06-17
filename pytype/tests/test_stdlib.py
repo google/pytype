@@ -12,7 +12,7 @@ class StdlibTests(test_inference.InferenceTest):
       import ast
       def f():
         return ast.parse("True")
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       ast = ...  # type: module
       def f() -> _ast.Module
@@ -21,7 +21,7 @@ class StdlibTests(test_inference.InferenceTest):
   def testUrllib(self):
     ty = self.Infer("""
       import urllib
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       urllib = ...  # type: module
     """)
@@ -31,7 +31,7 @@ class StdlibTests(test_inference.InferenceTest):
       import traceback
       def f(exc):
         return traceback.format_exception(*exc)
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       from typing import List
       traceback = ...  # type: module
@@ -72,7 +72,7 @@ class StdlibTests(test_inference.InferenceTest):
     ty = self.Infer("""
       import posix
       x = posix.urandom(10)
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       posix = ...  # type: module
       x = ...  # type: str

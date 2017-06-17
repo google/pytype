@@ -272,12 +272,12 @@ class InferenceTest(unittest.TestCase):
       raise AssertionError("Errors not found:\n" + "\n".join(
           "Line %d: %r [%s]" % (e[0], e[2], e[1]) for e in leftover_errors))
 
-  def Infer(self, srccode, pythonpath=(), deep=False, solve_unknowns=False,
+  def Infer(self, srccode, pythonpath=(), deep=False,
             report_errors=True, analyze_annotated=True, **kwargs):
     types, builtins_pytd = self._InferAndVerify(
         textwrap.dedent(srccode), pythonpath=pythonpath, deep=deep,
         cache_unknowns=True, analyze_annotated=analyze_annotated,
-        solve_unknowns=solve_unknowns, report_errors=report_errors, **kwargs)
+        report_errors=report_errors, **kwargs)
     types = optimize.Optimize(types, builtins_pytd, lossy=False, use_abcs=False,
                               max_union=7, remove_mutable=False)
     types = pytd_utils.CanonicalOrdering(types)

@@ -40,7 +40,7 @@ class AnnotationTest(test_inference.InferenceTest):
         p1.read()
         p2.as_integer_ratio()
         return 1
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       def bar(p1: file, p2: float) -> int
     """)
@@ -240,7 +240,7 @@ class AnnotationTest(test_inference.InferenceTest):
         def bar(self, x: float, default="") -> str:
           default.upper
           return default
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
         def bar(self, x: float, default=...) -> str: ...
@@ -514,11 +514,11 @@ class AnnotationTest(test_inference.InferenceTest):
         A = a.factory()
         def f(x: A):
           return x.name
-      """, deep=True, solve_unknowns=True, pythonpath=[d.path])
+      """, deep=True, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         a = ...  # type: module
-        A = ...  # type: type
+        A = ...  # type: Any
         def f(x) -> Any
       """)
 
@@ -654,7 +654,7 @@ class AnnotationTest(test_inference.InferenceTest):
       def g(x: str):
         return x
       x = g(f()[1])
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       from typing import Tuple
       def f() -> Tuple[int, str]: ...
@@ -861,7 +861,7 @@ class AnnotationTest(test_inference.InferenceTest):
         def New() -> "A":
           return A()
       x = A.New().x
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       class A(object):
         x = ...  # type: int
@@ -881,7 +881,7 @@ class AnnotationTest(test_inference.InferenceTest):
           return A()
       def f():
         return A.New().x
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       class A(object):
         x = ...  # type: int

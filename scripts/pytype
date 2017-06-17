@@ -84,7 +84,6 @@ def generate_pyi(input_filename, errorlog, options, loader):
       filename=input_filename,
       run_builtins=options.run_builtins,
       deep=not options.main_only,
-      solve_unknowns=not options.quick,
       maximum_depth=1 if options.quick else 3,
       cache_unknowns=options.cache_unknowns)
   mod.Visit(visitors.VerifyVisitor())

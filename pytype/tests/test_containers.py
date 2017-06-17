@@ -13,7 +13,7 @@ class ContainerTest(test_inference.InferenceTest):
       def f(x):
         return x
       f((3, "str"))
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasOnlySignatures(
         ty.Lookup("f"),
         ((pytd.TupleType(self.tuple, (self.int, self.str)),),
@@ -24,7 +24,7 @@ class ContainerTest(test_inference.InferenceTest):
       def f(x):
         return x[0]
       f((3, "str"))
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasOnlySignatures(
         ty.Lookup("f"),
         ((pytd.TupleType(self.tuple, (self.int, self.str)),),
@@ -35,7 +35,7 @@ class ContainerTest(test_inference.InferenceTest):
       def f(x):
         return (x[1], x[0])
       f((3, "str"))
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasOnlySignatures(
         ty.Lookup("f"),
         ((pytd.TupleType(self.tuple, (self.int, self.str)),),
@@ -46,7 +46,7 @@ class ContainerTest(test_inference.InferenceTest):
       def f():
         return ()
       f()
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasOnlySignatures(
         ty.Lookup("f"),
         ((), pytd.GenericType(self.tuple, (pytd.NothingType(),))))
@@ -58,7 +58,7 @@ class ContainerTest(test_inference.InferenceTest):
         x.add(10)
         return x
       f()
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasOnlySignatures(
         ty.Lookup("f"),
         ((), pytd.GenericType(self.set, (self.int,))))
@@ -71,7 +71,7 @@ class ContainerTest(test_inference.InferenceTest):
         x.add(10)
         return x
       f()
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasOnlySignatures(
         ty.Lookup("f"),
         ((), pytd.GenericType(self.set, (self.int,))))
@@ -88,7 +88,7 @@ class ContainerTest(test_inference.InferenceTest):
           x.add(10)
           return x
       f()
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasOnlySignatures(
         ty.Lookup("f"),
         ((), pytd.GenericType(self.set, (self.int,))))
@@ -98,7 +98,7 @@ class ContainerTest(test_inference.InferenceTest):
       def f():
         return [1, 2, 3]
       f()
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasOnlySignatures(
         ty.Lookup("f"),
         ((), pytd.GenericType(self.list, (self.int,))))
@@ -112,7 +112,7 @@ class ContainerTest(test_inference.InferenceTest):
         x.append(3)
         return x
       f()
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasOnlySignatures(
         ty.Lookup("f"),
         ((), pytd.GenericType(self.list, (self.int,))))
@@ -126,7 +126,7 @@ class ContainerTest(test_inference.InferenceTest):
         x.append(3)
         return [0] + x
       f()
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasOnlySignatures(
         ty.Lookup("f"),
         ((), pytd.GenericType(self.list, (self.int,))))
@@ -139,7 +139,7 @@ class ContainerTest(test_inference.InferenceTest):
         x.append("str")
         return x + [1.3] + x
       f()
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasOnlySignatures(
         ty.Lookup("f"),
         ((),
@@ -156,7 +156,7 @@ class ContainerTest(test_inference.InferenceTest):
         x = 3.1
       l = []
       l.append(x)
-    """, deep=False, solve_unknowns=False)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import List
       x = ...  # type: int or float
@@ -173,7 +173,7 @@ class ContainerTest(test_inference.InferenceTest):
         x.append(3)
         return ["str"] + x
       f()
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasOnlySignatures(
         ty.Lookup("f"),
         ((), pytd.GenericType(self.list, (self.intorstr,))))
@@ -187,7 +187,7 @@ class ContainerTest(test_inference.InferenceTest):
       def h():
         return __any_object__("name")
       f(); g(); h()
-    """, deep=False, solve_unknowns=False)
+    """, deep=False)
     self.assertHasOnlySignatures(ty.Lookup("f"), ((), self.anything))
     self.assertHasOnlySignatures(ty.Lookup("g"), ((), self.anything))
     self.assertHasOnlySignatures(ty.Lookup("h"), ((), self.anything))
@@ -197,7 +197,7 @@ class ContainerTest(test_inference.InferenceTest):
       def f():
         return {"test": 1, "arg": 42}
       f()
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasOnlySignatures(
         ty.Lookup("f"),
         ((), self.str_int_dict))
@@ -207,7 +207,7 @@ class ContainerTest(test_inference.InferenceTest):
       def f():
         return dict()
       f()
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasOnlySignatures(
         ty.Lookup("f"),
         ((), self.nothing_nothing_dict))
@@ -217,7 +217,7 @@ class ContainerTest(test_inference.InferenceTest):
       def f():
         return dict([(1, 2), (3, 4)])
       f()
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasOnlySignatures(
         ty.Lookup("f"),
         ((), self.int_int_dict))
@@ -227,7 +227,7 @@ class ContainerTest(test_inference.InferenceTest):
       def f():
         return dict([(1, "bar"), (2, "foo")])
       f()
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasOnlySignatures(
         ty.Lookup("f"),
         ((), self.int_str_dict))
@@ -240,7 +240,7 @@ class ContainerTest(test_inference.InferenceTest):
         d["arg"] = 42
         return d
       f()
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasOnlySignatures(
         ty.Lookup("f"),
         ((), self.str_int_dict))
@@ -282,7 +282,7 @@ class ContainerTest(test_inference.InferenceTest):
         return a.parent
 
       f()
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasOnlySignatures(ty.Lookup("f"),
                                  ((),
                                   self.intorstr))
@@ -314,7 +314,7 @@ class ContainerTest(test_inference.InferenceTest):
         return l2.foobar
 
       f()
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasOnlySignatures(ty.Lookup("f"),
                                  ((),
                                   self.int))
@@ -332,7 +332,7 @@ class ContainerTest(test_inference.InferenceTest):
         return n1.foobar
 
       f()
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasOnlySignatures(ty.Lookup("f"),
                                  ((),
                                   self.int))
@@ -345,7 +345,7 @@ class ContainerTest(test_inference.InferenceTest):
         x.append("str")
         return x[0]
       f()
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasOnlySignatures(ty.Lookup("f"),
                                  ((),
                                   self.intorstr))
@@ -356,7 +356,7 @@ class ContainerTest(test_inference.InferenceTest):
       def f():
         return [i for i in (1,2,3)]
       f()
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasOnlySignatures(ty.Lookup("f"),
                                  ((),
                                   self.int_list))
@@ -367,7 +367,7 @@ class ContainerTest(test_inference.InferenceTest):
       def f():
         return {i for i in [1,2,3]}
       f()
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasOnlySignatures(ty.Lookup("f"),
                                  ((),
                                   self.int_set))
@@ -378,7 +378,7 @@ class ContainerTest(test_inference.InferenceTest):
       def f():
         return {i: i for i in xrange(3)}
       f()
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasOnlySignatures(ty.Lookup("f"),
                                  ((),
                                   self.int_int_dict))
@@ -387,7 +387,7 @@ class ContainerTest(test_inference.InferenceTest):
     ty = self.Infer("""
       import sys
       a = [str(ty) for ty in (float, int, bool)[:len(sys.argv)]]
-    """, deep=True, solve_unknowns=False)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       from typing import List, Type
       sys = ...  # type: module
@@ -401,7 +401,7 @@ class ContainerTest(test_inference.InferenceTest):
       d["a"] = "queen"
       entry = d["a"]
       open('%s' % entry, 'w')
-    """, deep=False, solve_unknowns=False)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Dict
       d = ...  # type: Dict[str, str]
@@ -412,7 +412,7 @@ class ContainerTest(test_inference.InferenceTest):
     ty = self.Infer("""
       def f():
         return dict([])
-    """, deep=True, solve_unknowns=False)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       from typing import Dict
       def f() -> Dict[nothing, nothing]
@@ -422,7 +422,7 @@ class ContainerTest(test_inference.InferenceTest):
     ty = self.Infer("""
       def f():
         return dict([("foo", "foo")])
-    """, deep=True, solve_unknowns=False)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       from typing import Dict
       def f() -> Dict[str, str]
@@ -435,7 +435,7 @@ class ContainerTest(test_inference.InferenceTest):
           return isinstance(1, ())
         else:
           return 3j
-    """, deep=True, solve_unknowns=False)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       def f(x) -> bool or complex
     """)
@@ -444,7 +444,7 @@ class ContainerTest(test_inference.InferenceTest):
     ty = self.Infer("""
       def f():
         return u"".join(map(unicode, ()))
-    """, deep=True, solve_unknowns=False)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       def f() -> unicode
     """)
@@ -462,7 +462,7 @@ class ContainerTest(test_inference.InferenceTest):
           e = d[key]
         e.next = None
         return e
-    """, deep=True, solve_unknowns=False, report_errors=False)
+    """, deep=True, report_errors=False)
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
         next = ...  # type: NoneType
@@ -477,7 +477,7 @@ class ContainerTest(test_inference.InferenceTest):
       else:
         x = 3.14
       y = divmod(x, x)
-    """, deep=True, solve_unknowns=False)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       from typing import Tuple
       x = ...  # type: float or int
@@ -491,11 +491,11 @@ class ContainerTest(test_inference.InferenceTest):
       if x:
         x = 1
       y = divmod(x, 3.14)
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
-      from typing import Tuple
-      x = ...  # type: float or int
-      y = ...  # type: Tuple[complex or float, ...]
+      from typing import Any
+      x = ...  # type: Any
+      y = ...  # type: Any
     """)
 
   def testIndex(self):
@@ -508,7 +508,7 @@ class ContainerTest(test_inference.InferenceTest):
           pos = 0
         l[pos] += 1
         return l
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       # The element types aren't more precise since the solver doesn't know
       # which element of the list gets modified.
@@ -521,7 +521,7 @@ class ContainerTest(test_inference.InferenceTest):
         lst = []
         lst.append(lst)
         return lst
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       from typing import List
       def f() -> List[list]: ...
@@ -539,7 +539,7 @@ class ContainerTest(test_inference.InferenceTest):
         g = s.get('$end', None)
         s['$end'] = g
         return s1
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       from typing import Dict, Union
       def f() -> Dict[str, Union[None, dict]]: ...
@@ -557,7 +557,7 @@ class ContainerTest(test_inference.InferenceTest):
       lst2 = [x for x in lst1]
       x.some_attribute = 42
       y = x.some_attribute
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, List
       lst1 = ...  # type: List[nothing]
@@ -576,7 +576,7 @@ class ContainerTest(test_inference.InferenceTest):
         lst2 = [x for x in a.lst1]
         x.some_attribute = 42
         y = x.some_attribute
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         a = ...  # type: module
@@ -596,7 +596,7 @@ class ContainerTest(test_inference.InferenceTest):
         lst2 = [x for x in a.lst1]
         x.some_attribute = 42
         y = x.some_attribute
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         a = ...  # type: module
@@ -614,7 +614,7 @@ class ContainerTest(test_inference.InferenceTest):
       ty = self.Infer("""
         import a
         lst2 = [x for x in a.lst1]
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
         from typing import List
         a = ...  # type: module
@@ -633,7 +633,7 @@ class ContainerTest(test_inference.InferenceTest):
         lst2 = [x for x in a.lst1]
         x.some_attribute = 42
         y = x.some_attribute
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
         from typing import Any, List
         a = ...  # type: module
@@ -650,7 +650,7 @@ class ContainerTest(test_inference.InferenceTest):
       c = mymap['foobar']
       mymap[str()] = 3j
       b2 = mymap['b']
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Dict, Union
       mymap = ...  # type: Dict[str, Union[int, float, complex]]
@@ -689,7 +689,7 @@ class ContainerTest(test_inference.InferenceTest):
       ty = self.Infer("""
         import a
         lst2 = [x for x in a.lst1]
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
         from typing import List
         a = ...  # type: module
@@ -701,7 +701,7 @@ class ContainerTest(test_inference.InferenceTest):
     ty = self.Infer("""
       empty = []
       y = [x() for x in empty]
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, List
       empty = ...  # type: List[nothing]
@@ -718,7 +718,7 @@ class ContainerTest(test_inference.InferenceTest):
         else:
           return "foo"
       y = [f(x) for x in empty]
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, List
       empty = ...  # type: List[nothing]
@@ -731,7 +731,7 @@ class ContainerTest(test_inference.InferenceTest):
     ty = self.Infer("""
       empty = []
       y = [list(x) for x in empty]
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, List
       empty = ...  # type: List[nothing]
@@ -743,7 +743,7 @@ class ContainerTest(test_inference.InferenceTest):
     ty = self.Infer("""
       empty = []
       y = [isinstance(x, int) for x in empty]
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, List
       empty = ...  # type: List[nothing]
@@ -759,7 +759,7 @@ class ContainerTest(test_inference.InferenceTest):
           pass
         return {X: X()}
       y = [f(x) for x in empty]
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Dict, List
       empty = ...  # type: List[nothing]
@@ -780,7 +780,7 @@ class ContainerTest(test_inference.InferenceTest):
         else:
           oldest = cache["lru"].pop(0)
           return oldest
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Dict
       cache = ...  # type: Dict[str, Dict[nothing, nothing] or list]

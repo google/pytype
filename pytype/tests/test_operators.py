@@ -24,7 +24,7 @@ class ConcreteTest(test_inference.InferenceTest):
         return {expr}
       f()
     """.format(expr=expr, assignments=assignments)
-    ty = self.Infer(src, deep=False, solve_unknowns=False)
+    ty = self.Infer(src, deep=False)
     self.assertOnlyHasReturnType(ty.Lookup("f"), expected_return)
 
   def test_add(self):
@@ -194,7 +194,7 @@ class OverloadTest(test_inference.InferenceTest):
         return Foo() {op} Bar()
       f()
     """.format(function_name=function_name, op=op),
-                    deep=False, solve_unknowns=False,
+                    deep=False,
                     show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.complex)
 
@@ -207,7 +207,7 @@ class OverloadTest(test_inference.InferenceTest):
         return {op} Foo()
       f()
     """.format(function_name=function_name, op=op),
-                    deep=False, solve_unknowns=False,
+                    deep=False,
                     show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("f"), ret or self.complex)
 
@@ -281,7 +281,7 @@ class ReverseTest(test_inference.InferenceTest):
         return Foo() {op} Foo()  # use Foo.__{function_name}__
       f(); g(); h(); i()
     """.format(op=op, function_name=function_name),
-                    deep=False, solve_unknowns=False,
+                    deep=False,
                     show_library_calls=True)
     self.assertHasReturnType(ty.Lookup("f"), self.complex)
     self.assertHasReturnType(ty.Lookup("g"), self.str)
@@ -337,14 +337,14 @@ class ReverseTest(test_inference.InferenceTest):
           return t | (1, 2)
         def g(t):
           return (1, 2) | t
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
-        from typing import Set
+        from typing import Any
         test = ...  # type: module
         x = ...  # type: bool
         y = ...  # type: bool
-        def f(t: dict_keys[int] or Set[int] or test.Test) -> Set[int] or bool
-        def g(t: test.Test) -> bool
+        def f(t) -> Any
+        def g(t) -> Any
       """)
 
 
@@ -362,7 +362,7 @@ class InplaceTest(test_inference.InferenceTest):
         return x
       f()
     """.format(op=op, function_name=function_name),
-                    deep=False, solve_unknowns=False,
+                    deep=False,
                     show_library_calls=True)
     self.assertHasReturnType(ty.Lookup("f"), self.complex)
 

@@ -17,7 +17,7 @@ class TypeVarTest(test_inference.InferenceTest):
         return __any_object__
       v = f(42)
       w = f("")
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       typing = ...  # type: module
@@ -38,7 +38,7 @@ class TypeVarTest(test_inference.InferenceTest):
         return __any_object__
       v = f(["hello world"])
       w = f([True])
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       S = TypeVar("S")
       T = TypeVar("T")
@@ -57,7 +57,7 @@ class TypeVarTest(test_inference.InferenceTest):
         return __any_object__
       v = f(True)
       w = f(3.14)
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       T = TypeVar("T")
       def f(x: T) -> typing.List[T]: ...
@@ -71,7 +71,7 @@ class TypeVarTest(test_inference.InferenceTest):
       from typing import AnyStr
       def f(x: AnyStr) -> AnyStr:
         return __any_object__
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       from typing import TypeVar
       AnyStr = TypeVar("AnyStr", str, unicode)
@@ -87,7 +87,7 @@ class TypeVarTest(test_inference.InferenceTest):
       """)
       ty = self.Infer("""
         from a import f
-      """, deep=True, solve_unknowns=True, pythonpath=[d.path])
+      """, deep=True, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import TypesVar
         AnyStr = TypeVar("AnyStr", str, unicode)

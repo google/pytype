@@ -137,7 +137,7 @@ class FunctionCommentTest(test_inference.InferenceTest):
         def __init__(self, *args):
           # type: (int) -> None
           self.value = args[0]
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
         value = ...  # type: int
@@ -150,7 +150,7 @@ class FunctionCommentTest(test_inference.InferenceTest):
         def __init__(self, **kwargs):
           # type: (int) -> None
           self.value = kwargs['x']
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
         value = ...  # type: int

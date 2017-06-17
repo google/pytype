@@ -448,7 +448,7 @@ class ErrorTest(test_inference.InferenceTest):
     _, errors = self.InferAndCheck("""\
       s = {1}
       del s[1]
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertErrorLogIs(errors, [(2, "attribute-error", r"__delitem__")])
 
   def testBadReference(self):
@@ -458,7 +458,7 @@ class ErrorTest(test_inference.InferenceTest):
         for foo in []:
           pass
         return x
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertErrorLogIs(errors, [(2, "name-error", r"foo")])
     # Make sure we recovered from the error and got the right return type
     self.assertTypesMatchPytd(ty, """
@@ -471,7 +471,7 @@ class ErrorTest(test_inference.InferenceTest):
     _, errors = self.InferAndCheck("""\
       x = 42
       x.y = 42
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertErrorLogIs(errors, [(2, "attribute-error", r"y")])
 
   def testInvalidParametersOnMethod(self):
@@ -506,7 +506,7 @@ class ErrorTest(test_inference.InferenceTest):
         foo.f(1, 2, y=3)
         foo.f(1, x=1)
         # foo.f(y=1, y=2)  # caught by compiler
-      """, deep=True, pythonpath=[d.path], solve_unknowns=False)
+      """, deep=True, pythonpath=[d.path])
       self.assertErrorLogIs(errors, [
           (4, "duplicate-keyword-argument"),
       ])
@@ -663,7 +663,7 @@ class ErrorTest(test_inference.InferenceTest):
         class C(b.B):
           def __init__(self):
             f = open(self.x, 'r')
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertErrorLogIs(errors, [(4, "attribute-error", r"x.*C")])
 
   def testAbortOnComplex(self):
@@ -679,7 +679,7 @@ class ErrorTest(test_inference.InferenceTest):
       x = x + x
       x = x + x
       x = x + x
-    """, solve_unknowns=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       x = ...  # type: Any
@@ -694,7 +694,7 @@ class ErrorTest(test_inference.InferenceTest):
       _, errors = self.InferAndCheck("""\
         import a
         x = a.f(0, "")
-      """, pythonpath=[d.path], solve_unknowns=True)
+      """, pythonpath=[d.path])
       # Tests that [wrong-arg-types] rather than [wrong-arg-count] is reported
       self.assertErrorLogIs(errors, [(2, "wrong-arg-types", r"")])
 
@@ -710,33 +710,33 @@ class ErrorTest(test_inference.InferenceTest):
           def __getattribute__(self, name):
             return a.copy(self)
         x = A()()
-      """, pythonpath=[d.path], solve_unknowns=True)
+      """, pythonpath=[d.path])
       self.assertErrorLogIs(errors, [(5, "not-callable", r"A")])
 
   def testBadTypeName(self):
     _, errors = self.InferAndCheck("""\
       X = type(3, (int, object), {"a": 1})
-    """, solve_unknowns=True)
+    """)
     self.assertErrorLogIs(errors, [(1, "wrong-arg-types", r"Actual.*int")])
 
   def testBadTypeBases(self):
     _, errors = self.InferAndCheck("""\
       X = type("X", (42,), {"a": 1})
-    """, solve_unknowns=True)
+    """)
     self.assertErrorLogIs(errors, [(1, "wrong-arg-types",
                                     r"Actual.*Tuple\[int\]")])
 
   def testHalfBadTypeBases(self):
     _, errors = self.InferAndCheck("""\
       X = type("X", (42, object), {"a": 1})
-    """, solve_unknowns=True)
+    """)
     self.assertErrorLogIs(errors, [(1, "wrong-arg-types",
                                     r"Actual.*Tuple\[int, Type\[object\]\]")])
 
   def testBadTypeMembers(self):
     _, errors = self.InferAndCheck("""\
       X = type("X", (int, object), {0: 1})
-    """, solve_unknowns=True)
+    """)
     self.assertErrorLogIs(errors, [(1, "wrong-arg-types",
                                     r"Actual.*Dict\[int, int\]")])
 

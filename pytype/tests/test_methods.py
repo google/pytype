@@ -16,7 +16,7 @@ class MethodsTest(test_inference.InferenceTest):
           x = 1
         return x + 4
       f(4)
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasOnlySignatures(ty.Lookup("f"),
                                  ((self.int,), self.int))
 
@@ -29,7 +29,7 @@ class MethodsTest(test_inference.InferenceTest):
           return 1.5
       f(0)
       f(1)
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasOnlySignatures(ty.Lookup("f"),
                                  ((self.int,), self.intorfloat))
 
@@ -43,7 +43,7 @@ class MethodsTest(test_inference.InferenceTest):
           y = i
         return x
       f()
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasOnlySignatures(ty.Lookup("f"), ((), self.int))
 
   def testAddInt(self):
@@ -52,7 +52,7 @@ class MethodsTest(test_inference.InferenceTest):
         return x + 1
       f(3.2)
       f(3)
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (self.int,), self.int)
     self.assertHasSignature(ty.Lookup("f"), (self.float,), self.float)
 
@@ -62,7 +62,7 @@ class MethodsTest(test_inference.InferenceTest):
         return x + 1.2
       f(3.2)
       f(3)
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (self.intorfloat,), self.float)
 
   def testConjugate(self):
@@ -70,7 +70,7 @@ class MethodsTest(test_inference.InferenceTest):
       def f(x, y):
         return x.conjugate()
       f(int(), int())
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (self.int, self.int), self.int)
 
   def testClassSanity(self):
@@ -108,7 +108,7 @@ class MethodsTest(test_inference.InferenceTest):
         return 1 < x < 10
         return 1 > x > 10
       f(1, 2)
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (self.int, self.int), self.bool)
 
   def testIs(self):
@@ -116,7 +116,7 @@ class MethodsTest(test_inference.InferenceTest):
       def f(a, b):
         return a is b
       f(1, 2)
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (self.int, self.int), self.bool)
 
   def testIsNot(self):
@@ -124,7 +124,7 @@ class MethodsTest(test_inference.InferenceTest):
       def f(a, b):
         return a is not b
       f(1, 2)
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (self.int, self.int), self.bool)
 
   def testSlice(self):
@@ -133,7 +133,7 @@ class MethodsTest(test_inference.InferenceTest):
         a, b = x
         return (a, b)
       f((1, 2))
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     t = pytd.TupleType(self.tuple, (self.int, self.int))
     self.assertHasSignature(ty.Lookup("f"), (t,), t)
 
@@ -142,7 +142,7 @@ class MethodsTest(test_inference.InferenceTest):
       def f(x):
         return repr(x)
       f(1)
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (self.int,), self.str)
 
   def testNot(self):
@@ -150,7 +150,7 @@ class MethodsTest(test_inference.InferenceTest):
       def f(x):
         return not x
       f(1)
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (self.int,), self.bool)
 
   def testPositive(self):
@@ -158,7 +158,7 @@ class MethodsTest(test_inference.InferenceTest):
       def f(x):
         return +x
       f(1)
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (self.int,), self.int)
 
   def testNegative(self):
@@ -166,7 +166,7 @@ class MethodsTest(test_inference.InferenceTest):
       def f(x):
         return -x
       f(1)
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (self.int,), self.int)
 
   def testInvert(self):
@@ -174,7 +174,7 @@ class MethodsTest(test_inference.InferenceTest):
       def f(x):
         return ~x
       f(1)
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (self.int,), self.int)
 
   def testInheritance(self):
@@ -193,7 +193,7 @@ class MethodsTest(test_inference.InferenceTest):
 
       if __name__ == "__main__":
         test()
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("test"), (), self.unicode)
 
   def testProperty(self):
@@ -211,7 +211,7 @@ class MethodsTest(test_inference.InferenceTest):
         return x.foo()
 
       test()
-    """, deep=False, solve_unknowns=False,
+    """, deep=False,
         show_library_calls=True, maximum_depth=4)
     self.assertHasSignature(ty.Lookup("test"), (), self.int)
 
@@ -228,7 +228,7 @@ class MethodsTest(test_inference.InferenceTest):
         b.my_property = 3
         return b.my_property
       test()
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("test"), (), self.int)
 
   def testInheritedProperty(self):
@@ -250,7 +250,7 @@ class MethodsTest(test_inference.InferenceTest):
         for x in f():
           return x
       g()
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (), self.generator)
 
   def testListGenerator(self):
@@ -261,7 +261,7 @@ class MethodsTest(test_inference.InferenceTest):
         for x in list(f()):
           return x
       g()
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (), self.generator)
 
   def testRecursion(self):
@@ -272,7 +272,7 @@ class MethodsTest(test_inference.InferenceTest):
         else:
           return 3
       f()
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (), self.int)
 
   def testInNotIn(self):
@@ -284,7 +284,7 @@ class MethodsTest(test_inference.InferenceTest):
           return x not in [x]
 
       f(3)
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (self.int,), self.bool)
 
   def testComplexCFG(self):
@@ -303,7 +303,7 @@ class MethodsTest(test_inference.InferenceTest):
         return g(h())
       if __name__ == "__main__":
         f(0)
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (self.int,), self.int)
 
   def testBranchAndLoopCFG(self):
@@ -317,7 +317,7 @@ class MethodsTest(test_inference.InferenceTest):
             return False
           g()
       f()
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (), self.bool)
 
   def testClosure(self):
@@ -326,7 +326,7 @@ class MethodsTest(test_inference.InferenceTest):
          closure = lambda: x + y
          return closure()
        f(1, 2)
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (self.int, self.int), self.int)
 
   def testDeepClosure(self):
@@ -339,7 +339,7 @@ class MethodsTest(test_inference.InferenceTest):
            return h
          return g()()
        f()
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (), self.int)
 
   def testTwoClosures(self):
@@ -351,7 +351,7 @@ class MethodsTest(test_inference.InferenceTest):
            return g
          return h()()
        f()
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (), self.int)
 
   def testClosureBindingArguments(self):
@@ -362,7 +362,7 @@ class MethodsTest(test_inference.InferenceTest):
            return x + y + z
          return g(1)
        f(1)
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (self.int,), self.int)
 
   def testClosureOnMultiType(self):
@@ -374,7 +374,7 @@ class MethodsTest(test_inference.InferenceTest):
           x = 3.5
         return (lambda: x)()
       f()
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (), self.intorfloat)
 
   def testCallKwArgs(self):
@@ -382,7 +382,7 @@ class MethodsTest(test_inference.InferenceTest):
       def f(x, y=3):
         return x + y
       f(40, **{"y": 2})
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasReturnType(ty.Lookup("f"), self.int)
 
   def testCallArgs(self):
@@ -391,7 +391,7 @@ class MethodsTest(test_inference.InferenceTest):
         return x
       args = (3,)
       f(*args)
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (self.int,), self.int)
 
   def testCallArgsKwArgs(self):
@@ -401,7 +401,7 @@ class MethodsTest(test_inference.InferenceTest):
       args = (3,)
       kwargs = {}
       f(*args, **kwargs)
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (self.int,), self.int)
 
   def testCallPositionalAsKeyword(self):
@@ -409,7 +409,7 @@ class MethodsTest(test_inference.InferenceTest):
       def f(named):
         return named
       f(named=3)
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (self.int,), self.int)
 
   def testTwoKeywords(self):
@@ -417,7 +417,7 @@ class MethodsTest(test_inference.InferenceTest):
       def f(x, y):
         return x if x else y
       f(x=3, y=4)
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (self.int, self.int), self.int)
 
   def testTwoDistinctKeywordParams(self):
@@ -428,12 +428,12 @@ class MethodsTest(test_inference.InferenceTest):
 
     ty = self.Infer(f + """
       f(x=3, y="foo")
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (self.int, self.str), self.int)
 
     ty = self.Infer(f + """
       f(y="foo", x=3)
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (self.int, self.str), self.int)
 
   def testStarStar(self):
@@ -441,7 +441,7 @@ class MethodsTest(test_inference.InferenceTest):
       def f(x):
         return x
       f(**{"x": 3})
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (self.int,), self.int)
 
   def testStarStar2(self):
@@ -451,7 +451,7 @@ class MethodsTest(test_inference.InferenceTest):
       kwargs = {}
       kwargs['x'] = 3
       f(**kwargs)
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (self.int,), self.int)
 
   @unittest.skip("Needs better pytd for 'dict'")
@@ -461,7 +461,7 @@ class MethodsTest(test_inference.InferenceTest):
         return x
       kwargs = dict(x=3)
       f(**kwargs)
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (self.int,), self.int)
 
   def testAmbiguousStarStar(self):
@@ -474,7 +474,7 @@ class MethodsTest(test_inference.InferenceTest):
       else:
         kwargs['x'] = 3.1
       f(**kwargs)
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (self.intorfloat,), self.int)
 
   def testStarArgsType(self):
@@ -482,7 +482,7 @@ class MethodsTest(test_inference.InferenceTest):
       def f(*args, **kwds):
         return args
       f(3)
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasReturnType(ty.Lookup("f"),
                              pytd.TupleType(self.tuple, (self.int,)))
 
@@ -491,7 +491,7 @@ class MethodsTest(test_inference.InferenceTest):
       def f(nr, *args):
         return args
       f("foo", 4)
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasReturnType(ty.Lookup("f"),
                              pytd.TupleType(self.tuple, (self.int,)))
 
@@ -503,7 +503,7 @@ class MethodsTest(test_inference.InferenceTest):
         return args
       def h(x, y, *args):
         return args
-    """, deep=True, solve_unknowns=False)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
     def f(*args) -> tuple
     def g(x, *args) -> tuple
@@ -515,7 +515,7 @@ class MethodsTest(test_inference.InferenceTest):
       class Foo(object):
         def __init__(self, *args, **kwargs):
           super(Foo, self).__init__(*args, **kwargs)
-    """, deep=True, solve_unknowns=False)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
     class Foo(object):
       def __init__(self, *args, **kwargs) -> NoneType
@@ -526,7 +526,7 @@ class MethodsTest(test_inference.InferenceTest):
       def f(nr, *args):
         return args
       f(3)
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasReturnType(ty.Lookup("f"), self.nothing_tuple)
 
   def testStarStarKwargsType(self):
@@ -534,7 +534,7 @@ class MethodsTest(test_inference.InferenceTest):
       def f(*args, **kwargs):
         return kwargs
       f(foo=3, bar=4)
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasReturnType(ty.Lookup("f"), self.str_int_dict)
 
   def testStarStarKwargsType2(self):
@@ -542,7 +542,7 @@ class MethodsTest(test_inference.InferenceTest):
       def f(x, y, **kwargs):
         return kwargs
       f("foo", "bar", z=3)
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasReturnType(ty.Lookup("f"), self.str_int_dict)
 
   def testEmptyStarStarKwargsType(self):
@@ -550,7 +550,7 @@ class MethodsTest(test_inference.InferenceTest):
       def f(nr, **kwargs):
         return kwargs
       f(3)
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasReturnType(ty.Lookup("f"), self.nothing_nothing_dict)
 
   def testStarStarDeep(self):
@@ -558,7 +558,7 @@ class MethodsTest(test_inference.InferenceTest):
       class Foo(object):
         def __init__(self, **kwargs):
           self.kwargs = kwargs
-    """, deep=True, solve_unknowns=False)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
     class Foo(object):
       def __init__(self, **kwargs) -> NoneType
@@ -573,7 +573,7 @@ class MethodsTest(test_inference.InferenceTest):
         return kwargs
       def h(x, y, **kwargs):
         return kwargs
-    """, deep=True, solve_unknowns=False)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
     def f(**kwargs) -> dict[str, ?]
     def g(x, **kwargs) -> dict[str, ?]
@@ -590,7 +590,7 @@ class MethodsTest(test_inference.InferenceTest):
         import myjson
         def f(*args):
           return myjson.loads(*args)
-      """, deep=True, pythonpath=[d.path], solve_unknowns=False)
+      """, deep=True, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
       myjson = ...  # type: module
       def f(*args) -> ?
@@ -606,7 +606,7 @@ class MethodsTest(test_inference.InferenceTest):
         import myjson
         def f(**args):
           return myjson.loads(**args)
-      """, deep=True, pythonpath=[d.path], solve_unknowns=False)
+      """, deep=True, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
       myjson = ...  # type: module
       def f(**args) -> ?
@@ -622,7 +622,7 @@ class MethodsTest(test_inference.InferenceTest):
         import myjson
         def f():
           return myjson.loads(s="{}")
-      """, deep=True, pythonpath=[d.path], solve_unknowns=False)
+      """, deep=True, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
       myjson = ...  # type: module
 
@@ -643,7 +643,7 @@ class MethodsTest(test_inference.InferenceTest):
         if __random__:
           return x()
       f()
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (), self.int)
 
   def testDefineClassMethod(self):
@@ -656,7 +656,7 @@ class MethodsTest(test_inference.InferenceTest):
         a = A()
         return a.myclassmethod
       f()
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (), self.function)
 
   def testClassMethodSmoke(self):
@@ -665,7 +665,7 @@ class MethodsTest(test_inference.InferenceTest):
         @classmethod
         def mystaticmethod(x, y):
           return x + y
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     ty.Lookup("A")
 
   def testStaticMethodSmoke(self):
@@ -674,7 +674,7 @@ class MethodsTest(test_inference.InferenceTest):
         @staticmethod
         def mystaticmethod(x, y):
           return x + y
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     ty.Lookup("A")
 
   def testClassMethod(self):
@@ -686,7 +686,7 @@ class MethodsTest(test_inference.InferenceTest):
       def f():
         return A().myclassmethod()
       f()
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertTypesMatchPytd(ty, """
       from typing import Type
       class A(object):
@@ -716,7 +716,7 @@ class MethodsTest(test_inference.InferenceTest):
       def f():
         return A.mystaticmethod(1, 2)
       f()
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (), self.int)
 
   def testSimpleStaticMethod(self):
@@ -726,7 +726,7 @@ class MethodsTest(test_inference.InferenceTest):
         def static_method():
           return None
       MyClass().static_method()
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     # Only check that the class is there. pytd doesn't yet support staticmethod.
     ty.Lookup("MyClass")
 
@@ -735,7 +735,7 @@ class MethodsTest(test_inference.InferenceTest):
       def f(x=""):
           x = list(x)
       f()
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.none_type)
 
   def testLookup(self):
@@ -747,7 +747,7 @@ class MethodsTest(test_inference.InferenceTest):
           def clone(self):
               return Cloneable()
       Cloneable().clone()
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     cls = ty.Lookup("Cloneable")
     method = cls.Lookup("clone")
     self.assertOnlyHasReturnType(method, pytd.ClassType("Cloneable", cls))
@@ -769,7 +769,7 @@ class MethodsTest(test_inference.InferenceTest):
         return A.mystaticmethod(1, 2)
 
       f()
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     f = ty.Lookup("f")
     self.assertOnlyHasReturnType(f, self.int)
 
@@ -779,7 +779,7 @@ class MethodsTest(test_inference.InferenceTest):
       def f():
         return 3j
       f()
-    """, deep=False, solve_unknowns=False)
+    """, deep=False)
     self.assertEquals(ty.Lookup("f").type, pytd.AnythingType())
 
   def testFuncName(self):
@@ -790,7 +790,7 @@ class MethodsTest(test_inference.InferenceTest):
       def g():
         return f.func_name
       g()
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("g"), (), self.float)
 
   def testRegister(self):
@@ -801,7 +801,7 @@ class MethodsTest(test_inference.InferenceTest):
         lookup = {}
         lookup[''] = Foo
         lookup.get('')()
-    """, deep=True, solve_unknowns=False, show_library_calls=True)
+    """, deep=True, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (), self.float)
 
   def testCopyMethod(self):
@@ -810,7 +810,7 @@ class MethodsTest(test_inference.InferenceTest):
         def mymethod(self, x, y):
           return 3
       myfunction = Foo.mymethod
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
         def mymethod(self, x, y) -> int
@@ -824,7 +824,7 @@ class MethodsTest(test_inference.InferenceTest):
       def myfunction(self, x, y):
         return 3
       Foo.mymethod = myfunction
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
         def mymethod(self, x, y) -> int
@@ -848,7 +848,7 @@ class MethodsTest(test_inference.InferenceTest):
       b = Foo.method.x
       c = foo.method.x
       d = os.chmod.x
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
     os = ...  # type: module
     def f() -> NoneType
@@ -884,7 +884,7 @@ class MethodsTest(test_inference.InferenceTest):
       class Foo(str):
         def __new__(cls, string):
           return str.__new__(cls, string)
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       from typing import Type, TypeVar
       _TFoo = TypeVar("_TFoo", bound=Foo)
@@ -896,7 +896,7 @@ class MethodsTest(test_inference.InferenceTest):
     ty = self.Infer("""
       class Foo(str): pass
       foo = Foo()
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       class Foo(str): ...
       foo = ...  # type: Foo
@@ -983,7 +983,7 @@ class MethodsTest(test_inference.InferenceTest):
         B(w, x, y, z)
         C(w, x, y, z)
         D(w, x, y, z)
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       from typing import List, Tuple
       class A(object):

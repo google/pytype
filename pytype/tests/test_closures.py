@@ -16,7 +16,7 @@ class ClosuresTest(test_inference.InferenceTest):
       def caller():
         return f()()
       caller()
-    """, deep=False, solve_unknowns=False)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Callable
       def f() -> Callable[[], Any]
@@ -32,7 +32,7 @@ class ClosuresTest(test_inference.InferenceTest):
       def caller():
         return f(3)()
       caller()
-    """, deep=False, solve_unknowns=False)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Callable
       def f(x: int) -> Callable[[], Any]
@@ -48,7 +48,7 @@ class ClosuresTest(test_inference.InferenceTest):
       def caller():
         return f([1.0])(0)
       caller()
-    """, deep=False, solve_unknowns=False)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, List, Callable
       def f(x: List[float, ...]) -> Callable[[Any], Any]
@@ -70,7 +70,7 @@ class ClosuresTest(test_inference.InferenceTest):
       def caller():
         return f()()()
       caller()
-    """, deep=False, solve_unknowns=False)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Callable
       def f() -> Callable[[], Any]
@@ -87,7 +87,7 @@ class ClosuresTest(test_inference.InferenceTest):
       def caller():
         return f(1)(2)
       caller()
-    """, deep=False, solve_unknowns=False)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Callable
       def caller() -> int
@@ -109,7 +109,7 @@ class ClosuresTest(test_inference.InferenceTest):
       t1()
       t2()
       t3()
-    """, deep=False, solve_unknowns=False)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Callable
       def f(x: int, y: int=..., z: int=...) -> Callable
@@ -135,7 +135,7 @@ class ClosuresTest(test_inference.InferenceTest):
       def caller():
         return g(f())
       caller()
-    """, deep=False, solve_unknowns=False)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Callable, List
       def caller() -> List[str, ...]
@@ -160,7 +160,7 @@ class ClosuresTest(test_inference.InferenceTest):
       def caller():
         return f1(3)(4)(5)(6)
       caller()
-    """, deep=False, solve_unknowns=False)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Callable
       def f1(a: int) -> Callable[[Any], Any]

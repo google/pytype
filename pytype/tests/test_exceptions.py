@@ -193,7 +193,7 @@ class TestExceptions(test_inference.InferenceTest):
 
       def bar(x):
         return Foo(x)
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       class Foo(Exception):
         pass
@@ -215,7 +215,7 @@ class TestExceptions(test_inference.InferenceTest):
           warnings.warn(
             "set_prefix() is deprecated; use the prefix property",
             DeprecationWarning, stacklevel=2)
-      """, pythonpath=[d.path], solve_unknowns=True, deep=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
         warnings = ...  # type: module
         def warn() -> None

@@ -33,7 +33,7 @@ class PYITest(test_inference.InferenceTest):
           return mod.f()
         def g():
           return mod.f(3)
-      """, deep=True, solve_unknowns=False, pythonpath=[d.path])
+      """, deep=True, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         mod = ...  # type: module
         def f() -> NoneType
@@ -49,10 +49,10 @@ class PYITest(test_inference.InferenceTest):
         import mod
         def g(x):
           return mod.f(x)
-      """, deep=True, solve_unknowns=True, pythonpath=[d.path])
+      """, deep=True, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         mod = ...  # type: module
-        def g(x: int) -> str
+        def g(x) -> str
       """)
 
   def testTyping(self):
@@ -65,11 +65,11 @@ class PYITest(test_inference.InferenceTest):
         import mod
         def g(x):
           return mod.split(x)
-      """, deep=True, solve_unknowns=True, pythonpath=[d.path])
+      """, deep=True, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import List
         mod = ...  # type: module
-        def g(x: NoneType or int) -> List[str, ...]
+        def g(x) -> List[str, ...]
       """)
 
   def testClasses(self):
@@ -83,7 +83,7 @@ class PYITest(test_inference.InferenceTest):
       ty = self.Infer("""\
         import classes
         x = classes.B().foo()
-      """, deep=False, solve_unknowns=False, pythonpath=[d.path])
+      """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         classes = ...  # type: module
         x = ...  # type: classes.A
@@ -98,7 +98,7 @@ class PYITest(test_inference.InferenceTest):
       ty = self.Infer("""\
         import vague
         x = vague.foo + vague.bar
-      """, deep=False, solve_unknowns=False, pythonpath=[d.path])
+      """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         vague = ...  # type: module
@@ -123,7 +123,7 @@ class PYITest(test_inference.InferenceTest):
         x = a.u(1, 2)
         y = a.v(1, 2)
         z = a.w(1, 2)
-      """, deep=False, solve_unknowns=False, pythonpath=[d.path])
+      """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         decorated = ...  # type: module
         a = ...  # type: decorated.A
@@ -145,7 +145,7 @@ class PYITest(test_inference.InferenceTest):
       ty = self.Infer("""\
         import a
         u = a.A().w(a.A.v)
-      """, deep=False, solve_unknowns=False, pythonpath=[d.path])
+      """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
         u = ...  # type: int
@@ -159,7 +159,7 @@ class PYITest(test_inference.InferenceTest):
       ty = self.Infer("""\
         import a
         u = a.parse("True")
-      """, deep=False, solve_unknowns=True, pythonpath=[d.path])
+      """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
         u = ...  # type: int
@@ -177,7 +177,7 @@ class PYITest(test_inference.InferenceTest):
       def g():
         out = f('foo', 'bar')
         out = out.split()
-      """, deep=True, solve_unknowns=True, pythonpath=[d.path])
+      """, deep=True, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         a = ...  # type: module
@@ -212,7 +212,7 @@ class PYITest(test_inference.InferenceTest):
           z = x - __any_object__  # type: ignore
           z + __any_object__
           return True
-      """, deep=True, pythonpath=[d.path], solve_unknowns=True)
+      """, deep=True, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
         def f(x=...) -> bool: ...
@@ -230,7 +230,7 @@ class PYITest(test_inference.InferenceTest):
         def bar():
           pass
         x = foo.process_function(bar)
-      """, deep=False, pythonpath=[d.path], solve_unknowns=True)
+      """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         foo = ...  # type: module
@@ -241,7 +241,7 @@ class PYITest(test_inference.InferenceTest):
   def testHex(self):
     ty = self.Infer("""\
       x = hex(4)
-    """, deep=False, solve_unknowns=True)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       x = ...  # type: str
     """)
@@ -267,13 +267,13 @@ class PYITest(test_inference.InferenceTest):
           return x.bar(3)
         def h(x):
           return x.baz()
-      """, deep=True, pythonpath=[d.path], solve_unknowns=True)
+      """, deep=True, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        from typing import Union
+        from typing import Any
         foo = ...  # type: module
-        def f(x: Union[foo.A[str], foo.B[str]]) -> str
-        def g(x: Union[foo.A[int], foo.B[int], foo.C]) -> int
-        def h(x: foo.D) -> int
+        def f(x) -> Any
+        def g(x) -> Any
+        def h(x) -> Any
       """)
 
   def testAnonymousProperty(self):
@@ -286,7 +286,7 @@ class PYITest(test_inference.InferenceTest):
         import foo
         x = foo.Foo().x
         x.bar()
-      """, deep=True, pythonpath=[d.path], solve_unknowns=True)
+      """, deep=True, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         foo = ...  # type: module
         x = ...  # type: ?
@@ -303,7 +303,7 @@ class PYITest(test_inference.InferenceTest):
         import foo
         def g():
           return foo.f(foo.Foo())
-      """, deep=True, pythonpath=[d.path], solve_unknowns=True)
+      """, deep=True, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         foo = ...  # type: module
@@ -318,7 +318,7 @@ class PYITest(test_inference.InferenceTest):
       ty = self.Infer("""
         import foo
         x = foo.f()
-      """, deep=True, pythonpath=[d.path], solve_unknowns=True)
+      """, deep=True, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         foo = ...  # type: module
         x = ...  # type: str
@@ -334,7 +334,7 @@ class PYITest(test_inference.InferenceTest):
       ty = self.Infer("""\
         import foo
         x = foo.f(3)
-      """, deep=True, pythonpath=[d.path], solve_unknowns=True)
+      """, deep=True, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         foo = ...  # type: module
         x = ...  # type: int
@@ -355,7 +355,7 @@ class PYITest(test_inference.InferenceTest):
         ty = self.Infer("""
           import bar
           x = bar.f("")
-        """, pythonpath=[d1.path, d2.path], deep=True, solve_unknowns=True)
+        """, pythonpath=[d1.path, d2.path], deep=True)
         self.assertTypesMatchPytd(ty, """
           bar = ...  # type: module
           x = ...  # type: str
@@ -386,7 +386,7 @@ class PYITest(test_inference.InferenceTest):
       ty = self.Infer("""
         import a
         x = a.f(a.lst[0])
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
         x = ...  # type: str
@@ -471,7 +471,7 @@ class PYITest(test_inference.InferenceTest):
         v3 = a.get_varargs(1, True, 2.0, z=5)
         v4 = a.get_varargs(1, 2j, "foo", z=5)  # bad: conflicting args types
         v5 = a.get_varargs(1, *None)  # bad: None not iterable
-      """, deep=True, solve_unknowns=False, pythonpath=[d.path])
+      """, deep=True, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         a = ...  # type: module
@@ -506,7 +506,7 @@ class PYITest(test_inference.InferenceTest):
         v3 = a.get_kwargs(1, 2, 3, z=5, v=0, u=3j)
         # bad: conflicting kwargs types
         v4 = a.get_kwargs(1, 2, 3, z=5, v="", u=3j)
-      """, deep=True, solve_unknowns=False, pythonpath=[d.path])
+      """, deep=True, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any, Mapping
         a = ...  # type: module
@@ -538,7 +538,7 @@ class PYITest(test_inference.InferenceTest):
         b = foo.foo(*(1,), **{"c": 3j})
         c = foo.foo(*(1,))
         d = foo.foo(*(), **{"d": 3j})
-      """, solve_unknowns=False, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any, Dict
         foo = ...  # type: module
@@ -568,10 +568,10 @@ class PYITest(test_inference.InferenceTest):
             return a.A1()
           else:
             return a.A3()
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
-        def f(x: complex or float or int) -> a.A1
+        def f(x) -> a.A1
       """)
 
   def testBuiltinsModule(self):
@@ -583,7 +583,7 @@ class PYITest(test_inference.InferenceTest):
       ty = self.Infer("""
         import a
         x = a.x
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
         x = ...  # type: int
@@ -600,7 +600,7 @@ class PYITest(test_inference.InferenceTest):
         import a
         x = a.x - a.x
         y = a.x - a.y
-      """, pythonpath=[d.path], solve_unknowns=True)
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import FrozenSet
         a = ...  # type: module

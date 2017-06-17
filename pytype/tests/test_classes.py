@@ -17,11 +17,10 @@ class ClassesTest(test_inference.InferenceTest):
           pass
       def f():
         return MyClass()
-    """, deep=True, solve_unknowns=True, show_library_calls=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
-      from typing import Callable
-      # "Callable" because it gets called in f()
-      MyClass = ...  # type: classmethod or staticmethod or type or Callable
+      from typing import Any
+      MyClass = ...  # type: Any
       def f() -> ?
     """)
 
@@ -34,7 +33,7 @@ class ClassesTest(test_inference.InferenceTest):
         factory = MyClass
         return factory("name")
       f()
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertTypesMatchPytd(ty, """
     class MyClass(object):
       def __init__(self, name: str) -> NoneType
@@ -46,7 +45,7 @@ class ClassesTest(test_inference.InferenceTest):
     ty = self.Infer("""
       class A(__any_object__):
         pass
-    """, deep=False, solve_unknowns=False)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
     class A(?):
       pass
@@ -58,7 +57,7 @@ class ClassesTest(test_inference.InferenceTest):
       class A(x):
         def __init__(self):
           x.__init__(self)
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
     x = ...  # type: ?
     class A(?):
@@ -70,7 +69,7 @@ class ClassesTest(test_inference.InferenceTest):
       class Foo(__any_object__):
         def __init__(self):
           setattr(self, "test", True)
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
     class Foo(?):
       def __init__(self) -> NoneType
@@ -83,7 +82,7 @@ class ClassesTest(test_inference.InferenceTest):
       class Bar(Foo, __any_object__):
         pass
       x = Bar(duration=0)
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       class Foo(object):
@@ -106,7 +105,7 @@ class ClassesTest(test_inference.InferenceTest):
         class Bar(Foo, a.A):
           pass
         x = Bar(duration=0)
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         a = ...  # type: module
@@ -126,7 +125,7 @@ class ClassesTest(test_inference.InferenceTest):
           module.bar("", '%Y-%m-%d')
       def f():
         return Foo.bar()
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
     module = ...  # type: ?
     def f() -> NoneType
@@ -141,7 +140,7 @@ class ClassesTest(test_inference.InferenceTest):
         def f(self):
           self.x = [1]
           self.y = list(self.x)
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
     from typing import List
     class Foo(?):
@@ -157,7 +156,7 @@ class ClassesTest(test_inference.InferenceTest):
           x = 3
         l = Foo()
         return l.x
-    """, deep=True, solve_unknowns=False, show_library_calls=True)
+    """, deep=True, show_library_calls=True)
     self.assertTypesMatchPytd(ty, """
       def f() -> int
     """)
@@ -170,7 +169,7 @@ class ClassesTest(test_inference.InferenceTest):
       class Foo(Base):
         def __init__(self, x):
           super(Foo, self).__init__(x, y='foo')
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
     class Base(object):
       def __init__(self, x, y) -> NoneType
@@ -201,7 +200,7 @@ class ClassesTest(test_inference.InferenceTest):
 
         def get_x(self):
           return self.x
-    """, deep=True, solve_unknowns=False, show_library_calls=True)
+    """, deep=True, show_library_calls=True)
     self.assertTypesMatchPytd(ty, """
         class A(object):
           x = ...  # type: int
@@ -228,7 +227,7 @@ class ClassesTest(test_inference.InferenceTest):
           return super(D, self).y
         def get_z(self):
           return super(D, self).z
-    """, deep=True, solve_unknowns=False)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       class A(object):
           x = ...  # type: int
@@ -248,7 +247,7 @@ class ClassesTest(test_inference.InferenceTest):
       class MyList(list):
         def foo(self):
           return getattr(self, '__str__')
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       class MyList(list):
         def foo(self) -> ?
@@ -261,7 +260,7 @@ class ClassesTest(test_inference.InferenceTest):
       OtherFoo = Foo().__class__
       Foo.x = 3
       OtherFoo.x = "bar"
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
         x = ...  # type: str
@@ -274,12 +273,12 @@ class ClassesTest(test_inference.InferenceTest):
         convert_method = int
         def convert(self, value):
           return self.convert_method(value)
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
-      from typing import SupportsInt, Type
+      from typing import Type
       class Flag(object):
         convert_method = ...  # type: Type[int]
-        def convert(self, value: int or unicode or SupportsInt) -> int
+        def convert(self, value) -> int
     """)
 
   def testBoundMethod(self):
@@ -290,7 +289,7 @@ class ClassesTest(test_inference.InferenceTest):
 
       _inst = Random()
       seed = _inst.seed
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
     from typing import Any, Callable
     class Random(object):
@@ -307,7 +306,7 @@ class ClassesTest(test_inference.InferenceTest):
         pass
       class Bar(X, Foo, Y):
         pass
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       X = ...  # type: ?
       Y = ...  # type: ?
@@ -325,7 +324,7 @@ class ClassesTest(test_inference.InferenceTest):
         def test(self):
           return self.name
         name = property(fget=lambda self: self._name)
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       class Foo(object):
@@ -345,7 +344,7 @@ class ClassesTest(test_inference.InferenceTest):
         def test(self):
           return self.foo
         foo = Foo()
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
         _name = ...  # type: str
@@ -366,7 +365,7 @@ class ClassesTest(test_inference.InferenceTest):
         def test(self):
           return self.foo
         foo = Foo()
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       class Foo(object):
@@ -387,7 +386,7 @@ class ClassesTest(test_inference.InferenceTest):
           return self.foo
         _name = "name"
         foo = Foo()
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       class Foo(object):
@@ -405,7 +404,7 @@ class ClassesTest(test_inference.InferenceTest):
           return "attr"
       def f():
         return Foo().foo
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
         def __getattr__(self, name) -> str: ...
@@ -422,7 +421,7 @@ class ClassesTest(test_inference.InferenceTest):
         import foo
         def f():
           return foo.Foo().foo
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
         foo = ...  # type: module
         def f() -> str
@@ -434,7 +433,7 @@ class ClassesTest(test_inference.InferenceTest):
         def __getattribute__(self, name):
           return 42
       x = A().x
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       class A(object):
         def __getattribute__(self, name) -> int
@@ -450,7 +449,7 @@ class ClassesTest(test_inference.InferenceTest):
       ty = self.Infer("""
         import a
         x = a.A().x
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
         x = ...  # type: int
@@ -467,7 +466,7 @@ class ClassesTest(test_inference.InferenceTest):
         class C(a.A):
           pass
         name = C.__name__
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
         a = ... # type: module
         class C(a.A):
@@ -525,7 +524,7 @@ class ClassesTest(test_inference.InferenceTest):
         x1 = a.f(a.A).x
         x2 = a.g().x
         x3 = a.h().x
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
         x1 = ...  # type: int
@@ -544,7 +543,7 @@ class ClassesTest(test_inference.InferenceTest):
       ty = self.Infer("""
         import a
         x = a.B.MyA()
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
         x = ...  # type: a.A
@@ -579,7 +578,7 @@ class ClassesTest(test_inference.InferenceTest):
         x1 = a.A(42)
         x2 = C()
         x3 = object.__new__(bool)
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
         class C(object):
@@ -609,17 +608,17 @@ class ClassesTest(test_inference.InferenceTest):
       x3 = B(3.14)
       x4 = x3.x
       x5 = x3.y
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any, Type, TypeVar, Union
+      from typing import Any, Type, TypeVar
       _TA = TypeVar("_TA", bound=A)
       class A(object):
         x = ...  # type: Any
         y = ...  # type: bool
         def __new__(cls: Type[_TA], a, b) -> _TA
-        def __init__(self, a, b: Union[complex, typing.Iterable]) -> None
+        def __init__(self, a, b) -> None
       class B(object):
-        def __new__(cls, x: float or int or complex) -> A
+        def __new__(cls, x) -> A
         def __init__(self, x) -> None
       x1 = ...  # type: A
       x2 = ...  # type: str
@@ -647,7 +646,7 @@ class ClassesTest(test_inference.InferenceTest):
         import a
         x1 = a.A(0)
         x2 = a.B()
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
         x1 = ...  # type: a.A[int]
@@ -663,7 +662,7 @@ class ClassesTest(test_inference.InferenceTest):
       B = type(A())
       C = type(f())
       D = type(int)
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       from typing import Type
       class A:
@@ -681,7 +680,7 @@ class ClassesTest(test_inference.InferenceTest):
       B = type(A())
       x = B.x
       mro = B.mro()
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       class A:
         x = ...  # type: int
@@ -702,7 +701,7 @@ class ClassesTest(test_inference.InferenceTest):
       x = X()
       a = X.a
       v = X.f()
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       from typing import Type
       class A(type):
@@ -734,7 +733,7 @@ class ClassesTest(test_inference.InferenceTest):
       ty = self.Infer("""
         import a
         v = a.X.f()
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
         v = ...  # type: float
@@ -753,7 +752,7 @@ class ClassesTest(test_inference.InferenceTest):
       ty = self.Infer("""
         import b
         x = b.B.x
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         b = ...  # type: module
@@ -766,7 +765,7 @@ class ClassesTest(test_inference.InferenceTest):
         def __init__(self):
           self.__class__ = int
       x = "" % type(A())
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       class A(object):
         pass
@@ -778,7 +777,7 @@ class ClassesTest(test_inference.InferenceTest):
       X = type("X", (int, object), {"a": 1})
       x = X()
       a = X.a
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       class X(int, object):
         a = ...  # type: int
@@ -790,7 +789,7 @@ class ClassesTest(test_inference.InferenceTest):
     ty = self.Infer("""
       X = type("X", (), {})
       x = X()
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       class X(object): ...
       x = ...  # type: X
@@ -804,7 +803,7 @@ class ClassesTest(test_inference.InferenceTest):
         name = "B"
       X = type(name, (int, object), {"a": 1})
       x = X()
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       name = ...  # type: str
@@ -824,7 +823,7 @@ class ClassesTest(test_inference.InferenceTest):
         __metaclass__ = A
       x1 = B.x
       x2 = C.x
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       from typing import Type
       class A(type):
@@ -845,7 +844,7 @@ class ClassesTest(test_inference.InferenceTest):
       class X(object):
         __metaclass__ = A
       v = X.f()
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       from typing import Type
       class A(type):
@@ -862,7 +861,7 @@ class ClassesTest(test_inference.InferenceTest):
       X1 = type("X1", (), {"__metaclass__": A})
       class X2(object):
         __metaclass__ = type
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       from typing import Type
       class A(type): ...
@@ -889,7 +888,7 @@ class ClassesTest(test_inference.InferenceTest):
             return 42
         X.register(tuple)
         v = X().f()
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
         from typing import Type
         foo = ...  # type: module
@@ -906,7 +905,7 @@ class ClassesTest(test_inference.InferenceTest):
         return type(name, bases, members)
       class X(object):
         __metaclass__ = MyMeta
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       def MyMeta(names, bases, members) -> Any

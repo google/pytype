@@ -31,7 +31,7 @@ class UnionTest(test_inference.InferenceTest):
           x.__class__ = float  # Should not appear in output
           x.__class__ = str
         return type(x)()
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       def f() -> int or str
     """)

@@ -32,6 +32,7 @@ class MatchTest(unittest.TestCase):
     return {k: {v.rpartition("__builtin__.")[2] for v in l}
             for k, l in types.items()}
 
+  @unittest.skip("Moving to protocols")
   def test_simple(self):
     mapping = self.parse_and_solve("""
       class `~unknown2`(object):
@@ -42,6 +43,7 @@ class MatchTest(unittest.TestCase):
     self.assertItemsEqual(["int", "bool"], mapping["~unknown1"])
     self.assertItemsEqual(["int", "bool"], mapping["~unknown2"])
 
+  @unittest.skip("Moving to protocols")
   def test_float_and_bytearray(self):
     mapping = self.parse_and_solve("""
       class `~unknown1`(object):
@@ -54,6 +56,7 @@ class MatchTest(unittest.TestCase):
     self.assertItemsEqual(["float"], mapping["~unknown1"])
     self.assertItemsEqual(["bytearray"], mapping["~unknown2"])
 
+  @unittest.skip("Moving to protocols")
   def test_float_and_bytearray2(self):
     mapping = self.parse_and_solve("""
       class `~unknown1`(object):
@@ -64,6 +67,7 @@ class MatchTest(unittest.TestCase):
     self.assertItemsEqual(["float"], mapping["~unknown1"])
     self.assertItemsEqual(["str", "bytearray"], mapping["~unknown2"])
 
+  @unittest.skip("Moving to protocols")
   def test_append(self):
     mapping = self.parse_and_solve("""
       class `~unknown1`(object):
@@ -73,6 +77,7 @@ class MatchTest(unittest.TestCase):
                            "typing.List", "typing.MutableSequence"],
                           mapping["~unknown1"])
 
+  @unittest.skip("Moving to protocols")
   def test_single_list(self):
     # Differs from test_append in that append(float) doesn't match bytearray
     mapping = self.parse_and_solve("""
@@ -84,6 +89,7 @@ class MatchTest(unittest.TestCase):
                           mapping["~unknown1"])
     self.assertItemsEqual(["float"], mapping["~unknown1.__builtin__.list._T"])
 
+  @unittest.skip("Moving to protocols")
   def test_list(self):
     mapping = self.parse_and_solve("""
       class `~unknown2`(object):
@@ -100,6 +106,7 @@ class MatchTest(unittest.TestCase):
                           mapping["~unknown2"])
     self.assertItemsEqual(["float"], mapping["~unknown2.__builtin__.list._T"])
 
+  @unittest.skip("Moving to protocols")
   def test_float_list(self):
     mapping = self.parse_and_solve("""
       class `~unknown1`(object):
@@ -111,6 +118,7 @@ class MatchTest(unittest.TestCase):
                           mapping["~unknown1"])
     self.assertItemsEqual(["float"], mapping["~unknown1.__builtin__.list._T"])
 
+  @unittest.skip("Moving to protocols")
   def test_two_lists(self):
     mapping = self.parse_and_solve("""
       class `~unknown1`(object):
@@ -126,6 +134,7 @@ class MatchTest(unittest.TestCase):
                           mapping["~unknown1.__builtin__.list._T"])
     self.assertItemsEqual(["float"], mapping["~unknown2.__builtin__.list._T"])
 
+  @unittest.skip("Moving to protocols")
   def test_float(self):
     mapping = self.parse_and_solve("""
       class `~unknown1`(object):
@@ -133,6 +142,7 @@ class MatchTest(unittest.TestCase):
     """)
     self.assertItemsEqual(["float"], mapping["~unknown1"])
 
+  @unittest.skip("Moving to protocols")
   def test_or(self):
     mapping = self.parse_and_solve("""
       from typing import Iterator
@@ -142,6 +152,7 @@ class MatchTest(unittest.TestCase):
     """)
     self.assertItemsEqual(["str"], mapping["~unknown1"])
 
+  @unittest.skip("Moving to protocols")
   def test_multiple(self):
     mapping = self.parse_and_solve("""
       class `~unknown1`(object):
@@ -165,6 +176,7 @@ class MatchTest(unittest.TestCase):
     self.assertItemsEqual(["NoneType"],
                           mapping["~unknown4.__builtin__.list._T"])
 
+  @unittest.skip("Moving to protocols")
   def test_union(self):
     mapping = self.parse_and_solve("""
       class `~unknown1`(object):
@@ -175,6 +187,7 @@ class MatchTest(unittest.TestCase):
     self.assertItemsEqual(["float"], mapping["~unknown1"])
     self.assertItemsEqual(["str", "bytearray"], mapping["~unknown2"])
 
+  @unittest.skip("Moving to protocols")
   def test_containers(self):
     mapping = self.parse_and_solve("""
       class `~unknown1`(object):
@@ -184,6 +197,7 @@ class MatchTest(unittest.TestCase):
     """)
     self.assertItemsEqual(["A"], mapping["~unknown1"])
 
+  @unittest.skip("Moving to protocols")
   def test_type_parameters(self):
     mapping = self.parse_and_solve("""
       from typing import Generic
@@ -198,6 +212,7 @@ class MatchTest(unittest.TestCase):
     self.assertItemsEqual(["A"], mapping["~unknown1"])
     self.assertItemsEqual(["int"], mapping["~unknown1.A.T"])
 
+  @unittest.skip("Moving to protocols")
   def test_generic_against_generic(self):
     mapping = self.parse_and_solve("""
       class A():
@@ -214,6 +229,7 @@ class MatchTest(unittest.TestCase):
     self.assertItemsEqual(["A"], mapping["~unknown1"])
     self.assertItemsEqual(["B"], mapping["~unknown2"])
 
+  @unittest.skip("Moving to protocols")
   def test_unknown_against_generic(self):
     mapping = self.parse_and_solve("""
       def f(A: `~unknown0`) -> list[`~unknown8`]
@@ -237,6 +253,7 @@ class MatchTest(unittest.TestCase):
     self.assertContainsSubset(["complex", "float"], mapping["~unknown6"])
     self.assertContainsSubset(["complex", "float"], mapping["~unknown8"])
 
+  @unittest.skip("Moving to protocols")
   def test_subclass_of_elements(self):
     mapping = self.parse_and_solve("""
       class A():
@@ -255,6 +272,7 @@ class MatchTest(unittest.TestCase):
     self.assertItemsEqual([], mapping["~unknown3"])
     self.assertItemsEqual(["A"], mapping["~unknown4"])
 
+  @unittest.skip("Moving to protocols")
   def test_subclass(self):
     mapping = self.parse_and_solve("""
       class A():
@@ -283,6 +301,7 @@ class MatchTest(unittest.TestCase):
     self.assertItemsEqual(["AA", "BA"], mapping["~unknown3"])
     self.assertItemsEqual(["AA", "AB", "BA", "BB"], mapping["~unknown4"])
 
+  @unittest.skip("Moving to protocols")
   def test_odd_superclass(self):
     mapping = self.parse_and_solve("""
       class A(nothing, nothing):
@@ -316,6 +335,7 @@ class MatchTest(unittest.TestCase):
     self.assertItemsEqual(["int", "bool"], mapping["~unknown1"])
     self.assertItemsEqual(["A"], mapping["~unknown2"])
 
+  @unittest.skip("Moving to protocols")
   def test_nothing(self):
     mapping = self.parse_and_solve("""
       class A():
@@ -340,6 +360,7 @@ class MatchTest(unittest.TestCase):
     self.assertItemsEqual(["C", "D"], mapping["~unknown3"])
     self.assertItemsEqual(["D"], mapping["~unknown4"])
 
+  @unittest.skip("Moving to protocols")
   def test_unknown(self):
     mapping = self.parse_and_solve("""
       class A(?):
@@ -359,6 +380,7 @@ class MatchTest(unittest.TestCase):
     convert_structural.log_info_mapping(mapping)
     self.assertItemsEqual(["A", "B", "C", "D"], mapping["~unknown1"])
 
+  @unittest.skip("Moving to protocols")
   def test_union_left_right(self):
     mapping = self.parse_and_solve("""
       class A(object):
@@ -380,6 +402,7 @@ class MatchTest(unittest.TestCase):
     self.assertItemsEqual(["C", "D"], mapping["~unknown2"])
     self.assertItemsEqual(["B", "D"], mapping["~unknown3"])
 
+  @unittest.skip("Moving to protocols")
   def test_different_lengths(self):
     mapping = self.parse_and_solve("""
       class A(object):
@@ -399,6 +422,7 @@ class MatchTest(unittest.TestCase):
     self.assertItemsEqual(["B"], mapping["~unknown2"])
     self.assertItemsEqual(["C"], mapping["~unknown3"])
 
+  @unittest.skip("Moving to protocols")
   def test_filter(self):
     mapping = self.parse_and_solve("""
       class A(object):
@@ -411,6 +435,7 @@ class MatchTest(unittest.TestCase):
     self.assertItemsEqual(["A"], mapping["~unknown1"])
     self.assertItemsEqual(["bytearray"], mapping["~unknown2"])
 
+  @unittest.skip("Moving to protocols")
   def test_partial(self):
     mapping = self.parse_and_solve("""
       class `~unknown1`(object):
@@ -424,6 +449,7 @@ class MatchTest(unittest.TestCase):
     self.assertItemsEqual(["bool", "int"], mapping["~unknown1"])
     self.assertItemsEqual(["bool", "int"], mapping["~unknown2"])
 
+  @unittest.skip("Moving to protocols")
   def test_optional_parameters(self):
     mapping = self.parse_and_solve("""
       class A(object):
@@ -445,6 +471,7 @@ class MatchTest(unittest.TestCase):
     self.assertItemsEqual(["A", "B"], mapping["~unknown2"])
     self.assertItemsEqual(["A", "B", "C"], mapping["~unknown3"])
 
+  @unittest.skip("Moving to protocols")
   def test_listiterator(self):
     self.parse_and_solve("""
       class `~unknown1`(object):
@@ -454,6 +481,7 @@ class MatchTest(unittest.TestCase):
           def next(self) -> tuple[nothing, ...]
     """)
 
+  @unittest.skip("Moving to protocols")
   def test_enumerate(self):
     self.parse_and_solve("""
       class `~unknown1`(object):
@@ -463,6 +491,7 @@ class MatchTest(unittest.TestCase):
           def next(self) -> tuple[?, ...]
     """)
 
+  @unittest.skip("Moving to protocols")
   def test_call_builtin(self):
     mapping = self.parse_and_solve("""
       class `~unknown1`(object):
@@ -474,6 +503,7 @@ class MatchTest(unittest.TestCase):
     self.assertIn("float", mapping["~unknown1"])
     self.assertNotIn("str", mapping["~unknown1"])
 
+  @unittest.skip("Moving to protocols")
   def test_fibonacci(self):
     mapping = self.parse_and_solve("""
       def fib(n: `~unknown4`) -> int or `~unknown12`
@@ -509,6 +539,7 @@ class MatchTest(unittest.TestCase):
     self.assertItemsEqual(["int", "bool", "float", "complex"],
                           mapping["~unknown4"])
 
+  @unittest.skip("Moving to protocols")
   def test_add(self):
     mapping = self.parse_and_solve("""
       def f(self, x: `~unknown4`) -> `~unknown6`
@@ -523,6 +554,7 @@ class MatchTest(unittest.TestCase):
     self.assertItemsEqual(numbers, mapping["~unknown4"])
     self.assertItemsEqual(numbers, mapping["~unknown6"])
 
+  @unittest.skip("Moving to protocols")
   def test_subclasses(self):
     mapping = self.parse_and_solve("""
       class Foo(object):
@@ -545,6 +577,7 @@ class MatchTest(unittest.TestCase):
     """)
     self.assertItemsEqual(["complex", "float"], mapping["~unknown3"])
 
+  @unittest.skip("Moving to protocols")
   def test_match_builtin_function(self):
     mapping = self.parse_and_solve("""
       def baz(int) -> float
@@ -559,6 +592,7 @@ class MatchTest(unittest.TestCase):
     """)
     self.assertItemsEqual(["complex", "float"], mapping["~unknown4"])
 
+  @unittest.skip("Moving to protocols")
   def test_match_builtin_class(self):
     mapping = self.parse_and_solve("""
       class `~unknown1`(object):
@@ -577,6 +611,7 @@ class MatchTest(unittest.TestCase):
     """)
     self.assertItemsEqual(["NoneType"], mapping["~unknown1"])
 
+  @unittest.skip("Moving to protocols")
   def test_subclasses2(self):
     mapping = self.parse_and_solve("""
       class Foo(object):
@@ -606,6 +641,7 @@ class MatchTest(unittest.TestCase):
     """)
     self.assertItemsEqual(["complex", "float"], mapping["~unknown4"])
 
+  @unittest.skip("Moving to protocols")
   def test_convert(self):
     ast = self.parse("""
       class A(object):
@@ -624,6 +660,7 @@ class MatchTest(unittest.TestCase):
     ast = convert_structural.convert_pytd(ast, self.builtins_pytd)
     self.assertMultiLineEqual(pytd.Print(ast), expected)
 
+  @unittest.skip("Moving to protocols")
   def test_convert_with_type_params(self):
     ast = self.parse("""
       from typing import Dict
@@ -641,6 +678,7 @@ class MatchTest(unittest.TestCase):
     x = ast.Lookup("A").Lookup("foo").signatures[0].params[1].type
     self.assertIn("MutableSequence", pytd.Print(x))
 
+  @unittest.skip("Moving to protocols")
   def test_isinstance(self):
     ast = self.parse("""
       x = ...  # type: `~unknown1`
@@ -654,6 +692,7 @@ class MatchTest(unittest.TestCase):
     ast = convert_structural.convert_pytd(ast, self.builtins_pytd)
     self.assertMultiLineEqual(pytd.Print(ast), expected)
 
+  @unittest.skip("Moving to protocols")
   def test_match_superclass(self):
     mapping = self.parse_and_solve("""
       class Base1():

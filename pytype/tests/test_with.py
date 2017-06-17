@@ -315,7 +315,7 @@ class TestWithStatement(test_inference.InferenceTest):
       def f():
         with tempfile.NamedTemporaryFile(dir="bla", delete=False) as fi:
           pass
-      """, deep=True, solve_unknowns=True)
+      """, deep=True)
 
 
 if __name__ == "__main__":

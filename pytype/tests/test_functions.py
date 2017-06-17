@@ -85,7 +85,7 @@ class TestClosures(test_inference.InferenceTest):
         f = (lambda: ctypes.foo(s))  # ctypes.foo doesn't exist
         return f()
       e()
-    """, deep=True, solve_unknowns=True, report_errors=False)
+    """, deep=True, report_errors=False)
     self.assertHasReturnType(ty.Lookup("e"), self.anything)
     self.assertTrue(ty.Lookup("f"))
 
@@ -336,7 +336,7 @@ class TestFunctions(test_inference.InferenceTest):
       def g(*args, **kwargs):
         return f(*args, **kwargs)
       g(1, 2)
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasReturnType(ty.Lookup("g"), self.int)
 
   def test_pass_through_kwargs(self):
@@ -346,14 +346,14 @@ class TestFunctions(test_inference.InferenceTest):
       def g(*args, **kwargs):
         return f(*args, **kwargs)
       g(a=1, b=2)
-    """, deep=False, solve_unknowns=False, show_library_calls=True)
+    """, deep=False, show_library_calls=True)
     self.assertHasReturnType(ty.Lookup("g"), self.int)
 
   def test_list_comprehension(self):
     ty = self.Infer("""
       def f(elements):
         return "%s" % ",".join(t for t in elements)
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       def f(elements) -> str
     """)
@@ -362,7 +362,7 @@ class TestFunctions(test_inference.InferenceTest):
     unused_ty = self.Infer("""
       def foo((x, y), z):
         pass
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     # Smoke test only. pytd doesn't support automatic tuple unpacking in args.
 
   def test_matching_functions(self):
@@ -381,7 +381,7 @@ class TestFunctions(test_inference.InferenceTest):
           return map({}.keys, [])
         def method(self):
           pass
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       from typing import List
       def f() -> int
@@ -399,7 +399,7 @@ class TestFunctions(test_inference.InferenceTest):
     _, errors = self.InferAndCheck("""\
       def f(x):
         return max(foo=repr(__any_object__))
-    """, deep=True, solve_unknowns=False, maximum_depth=1)
+    """, deep=True, maximum_depth=1)
     self.assertErrorLogIs(errors, [(2, "wrong-keyword-args", r"foo.*max")])
 
   def test_multiple_signatures_with_type_parameter(self):
@@ -414,10 +414,11 @@ class TestFunctions(test_inference.InferenceTest):
         import foo
         def f(x, y):
           return foo.f(x, y)
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
+        from typing import Any
         foo = ...  # type: module
-        def f(x, y: int or str) -> list
+        def f(x, y) -> Any
       """)
 
   def test_unknown_single_signature(self):
@@ -433,12 +434,12 @@ class TestFunctions(test_inference.InferenceTest):
         import foo
         def f(y):
           return foo.f("", y)
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
         from typing import List
         foo = ...  # type: module
-        def f(y: int) -> List[str]
-      """)
+        def f(y) -> List[str]
+    """)
 
   def test_unknown_with_solved_type_parameter(self):
     with utils.Tempdir() as d:
@@ -452,12 +453,12 @@ class TestFunctions(test_inference.InferenceTest):
         import foo
         def f(x):
           return foo.f(x, "")
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
-        from typing import List
+        from typing import Any
         foo = ...  # type: module
         # TODO(rechen): def f(x: str or List[str]) -> List[str]
-        def f(x) -> list
+        def f(x) -> Any
       """)
 
   def test_unknown_with_extra_information(self):
@@ -478,16 +479,16 @@ class TestFunctions(test_inference.InferenceTest):
           ret = foo.f(x)
           x + ""
           return ret
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
-        from typing import List, MutableSequence
+        from typing import Any, List, MutableSequence
         foo = ...  # type: module
         # TODO(rechen): def f(x: unicode or List[unicode]) -> bool
-        def f(x) -> bool
+        def f(x) -> Any
         # TODO(rechen): def g(x) -> list
-        def g(x) -> List[str]
+        def g(x) -> Any
         # TODO(rechen): def h(x: buffer or bytearray or unicode) -> List[buffer or bytearray or unicode]
-        def h(x: buffer or bytearray or unicode or MutableSequence) -> list
+        def h(x) -> Any
       """)
 
   def test_type_parameter_in_return(self):
@@ -504,7 +505,7 @@ class TestFunctions(test_inference.InferenceTest):
       ty = self.Infer("""\
         import foo
         x = foo.compile().match("")
-      """, deep=True, pythonpath=[d.path], solve_unknowns=True)
+      """, deep=True, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         import typing
 
@@ -521,7 +522,7 @@ class TestFunctions(test_inference.InferenceTest):
       ty = self.Infer("""
         import foo
         x = foo.f(0, True)
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
         foo = ...  # type: module
         x = ...  # type: int
@@ -537,10 +538,11 @@ class TestFunctions(test_inference.InferenceTest):
         import foo
         def f(x):
           return foo.f(x)
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
+        from typing import Any
         foo = ...  # type: module
-        def f(x: int or str) -> float or bool
+        def f(x) -> Any
       """)
 
   def test_multiple_signatures_with_optional_arg(self):
@@ -553,10 +555,11 @@ class TestFunctions(test_inference.InferenceTest):
         import foo
         def f(x):
           return foo.f(x)
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
+        from typing import Any
         foo = ...  # type: module
-        def f(x: str) -> int or float
+        def f(x) -> Any
       """)
 
   def test_multiple_signatures_with_kwarg(self):
@@ -569,10 +572,11 @@ class TestFunctions(test_inference.InferenceTest):
         import foo
         def f(x):
           return foo.f(y=x)
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
+        from typing import Any
         foo = ...  # type: module
-        def f(x: int or str) -> bool or float
+        def f(x) -> Any
       """)
 
   def test_isinstance(self):
@@ -583,7 +587,7 @@ class TestFunctions(test_inference.InferenceTest):
         f()
       def h():
         return isinstance
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       from typing import Callable
       def f(isinstance = ...) -> None

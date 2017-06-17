@@ -16,7 +16,7 @@ class RecoveryTests(test_inference.InferenceTest):
       def f():
         t = 0.0
         return t - ("bla" - t)
-    """, deep=True, solve_unknowns=True, report_errors=False)
+    """, deep=True, report_errors=False)
     self.assertTypesMatchPytd(ty, """
       def f() -> ?
     """)
@@ -25,7 +25,7 @@ class RecoveryTests(test_inference.InferenceTest):
     ty = self.Infer("""
       def f():
         return "%s" % chr("foo")
-    """, deep=True, solve_unknowns=True, report_errors=False)
+    """, deep=True, report_errors=False)
     self.assertTypesMatchPytd(ty, """
       def f() -> str
     """)
@@ -37,7 +37,7 @@ class RecoveryTests(test_inference.InferenceTest):
         return time.unknown_function(3)
       def g():
         return '%s' % f()
-    """, deep=True, solve_unknowns=True, report_errors=False)
+    """, deep=True, report_errors=False)
     self.assertTypesMatchPytd(ty, """
       time = ...  # type: module
       def f() -> ?
@@ -48,7 +48,7 @@ class RecoveryTests(test_inference.InferenceTest):
     ty = self.Infer("""
       class Foo(3):
         pass
-    """, deep=True, solve_unknowns=True, report_errors=False)
+    """, deep=True, report_errors=False)
     self.assertTypesMatchPytd(ty, """
       class Foo(?):
         pass
@@ -60,7 +60,7 @@ class RecoveryTests(test_inference.InferenceTest):
       class A(x):
         pass
       pow(A(), 2)
-    """, deep=True, solve_unknowns=True, report_errors=False)
+    """, deep=True, report_errors=False)
     self.assertTypesMatchPytd(ty, """
       x = ...  # type: ?
       class A(?):
@@ -100,7 +100,7 @@ class RecoveryTests(test_inference.InferenceTest):
       class Foo(object):
         def foo():
           pass
-    """, deep=True, solve_unknowns=True, report_errors=False)
+    """, deep=True, report_errors=False)
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
         def foo(): ...
@@ -112,7 +112,7 @@ class RecoveryTests(test_inference.InferenceTest):
         pass
       f("foo")
       x = 3
-    """, deep=True, solve_unknowns=True, report_errors=False)
+    """, deep=True, report_errors=False)
     self.assertTypesMatchPytd(ty, """
       def f() -> None: ...
       x = ...  # type: int

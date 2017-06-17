@@ -22,7 +22,7 @@ class GenericTest(test_inference.InferenceTest):
         import a
         def f():
           return a.f()
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
         def f() -> a.A[int]
@@ -39,7 +39,7 @@ class GenericTest(test_inference.InferenceTest):
         from a import A
         def f():
           return A() + [42]
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
         from typing import List, Type
         A = ...  # type: Type[a.A]
@@ -62,7 +62,7 @@ class GenericTest(test_inference.InferenceTest):
         def bar():
           x = foo()
           return {x.keys()[0]: x.values()[0]}
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
         def foo() -> a.B
@@ -89,7 +89,7 @@ class GenericTest(test_inference.InferenceTest):
             return x
           def bar():
             return foo()[0]
-        """, pythonpath=[d1.path, d2.path], deep=True, solve_unknowns=True)
+        """, pythonpath=[d1.path, d2.path], deep=True)
         self.assertTypesMatchPytd(ty, """
           b = ...  # type: module
           def foo() -> b.B
@@ -114,7 +114,7 @@ class GenericTest(test_inference.InferenceTest):
           return a.B()
         def qux():
           return baz().items()
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
         from typing import List, Tuple
         a = ...  # type: module
@@ -137,7 +137,7 @@ class GenericTest(test_inference.InferenceTest):
         import foo
         def f():
           return foo.B().bar()
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
         foo = ...  # type: module
         def f() -> int
@@ -161,7 +161,7 @@ class GenericTest(test_inference.InferenceTest):
           x = a.B()
           x.extend(["str"])
           return x[0]
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
         def foo() -> a.A[nothing]
@@ -189,7 +189,7 @@ class GenericTest(test_inference.InferenceTest):
           x.extend(["str"])
           x.add(float(3))
           return x.bar()
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
         def f() -> int or float or complex or str
@@ -292,7 +292,7 @@ class GenericTest(test_inference.InferenceTest):
         import foo
         def f():
           return foo.baz().bar()
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
         foo = ...  # type: module
         def f() -> int
@@ -318,7 +318,7 @@ class GenericTest(test_inference.InferenceTest):
             return b.A("hello world")
           def g():
             return b.A(3.14).a()
-        """, pythonpath=[d1.path, d2.path], deep=True, solve_unknowns=True)
+        """, pythonpath=[d1.path, d2.path], deep=True)
         self.assertTypesMatchPytd(ty, """
           b = ...  # type: module
           def f() -> b.A[int or str]
@@ -340,7 +340,7 @@ class GenericTest(test_inference.InferenceTest):
       ty = self.Infer("""
         import a
         x = a.Custom()
-      """, pythonpath=[d.path], solve_unknowns=True, deep=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
         x = ...  # type: a.Custom
@@ -360,7 +360,7 @@ class GenericTest(test_inference.InferenceTest):
         def f():
           x = a.C()
           return x
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
         def f() -> a.C[int]
@@ -378,7 +378,7 @@ class GenericTest(test_inference.InferenceTest):
           return a.A()
         def g():
           return f()[0]
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
         def f() -> a.A
@@ -400,7 +400,7 @@ class GenericTest(test_inference.InferenceTest):
           x = a.A()
           x.extend([42])
           return x
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
         def f() -> a.A[nothing, int]
@@ -427,7 +427,7 @@ class GenericTest(test_inference.InferenceTest):
           return f().a()
         def h():
           return f()[0]
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
         def f() -> a.A[str, int]
@@ -447,7 +447,7 @@ class GenericTest(test_inference.InferenceTest):
         import a
         def f():
           return a.A().f()
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
         from typing import List
         a = ...  # type: module
@@ -466,7 +466,7 @@ class GenericTest(test_inference.InferenceTest):
         import a
         def f():
           return a.A().f()
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
         def f() -> str or unicode
@@ -510,7 +510,7 @@ class GenericTest(test_inference.InferenceTest):
           return f().g()
         def h():
           return f().h()
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         a = ...  # type: module
@@ -531,7 +531,7 @@ class GenericTest(test_inference.InferenceTest):
           return a.A()[0]
         def g():
           return a.A()[0][0]
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
         def f() -> a.A
@@ -555,7 +555,7 @@ class GenericTest(test_inference.InferenceTest):
           return a.B().f()
         def bar():
           return a.B()[0]
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
         def foo() -> str
@@ -579,7 +579,7 @@ class GenericTest(test_inference.InferenceTest):
           return B().f()
         def bar():
           return B()[0]
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
         class B(a.A): pass
@@ -601,7 +601,7 @@ class GenericTest(test_inference.InferenceTest):
           return a.A().x
         def g():
           return a.A([42]).x
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         a = ...  # type: module
@@ -627,7 +627,7 @@ class GenericTest(test_inference.InferenceTest):
             raise ValueError(RE.pattern)
         def g():
           return RE.pattern
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
         RE = ...  # type: a.MyPattern[str]
@@ -666,7 +666,7 @@ class GenericTest(test_inference.InferenceTest):
           x = inst.x
           inst.f("")
           return x
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
         def f() -> str
@@ -689,7 +689,7 @@ class GenericTest(test_inference.InferenceTest):
           return B().x
         def g():
           return B([42]).x
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         a = ...  # type: module
@@ -713,7 +713,7 @@ class GenericTest(test_inference.InferenceTest):
           inst = a.A()
           inst.x = inst.f()
           return inst.x
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         a = ...  # type: module
@@ -741,7 +741,7 @@ class GenericTest(test_inference.InferenceTest):
             inst.x = 4.2
           else:
             return inst.x
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
         def f(x) -> int or float
@@ -760,7 +760,7 @@ class GenericTest(test_inference.InferenceTest):
         import a
         def f():
           return abs(a.A([42]).x)
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
         def f() -> int
@@ -780,7 +780,7 @@ class GenericTest(test_inference.InferenceTest):
         import a
         def f(x):
           return x.f("")
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         a = ...  # type: module
@@ -800,11 +800,11 @@ class GenericTest(test_inference.InferenceTest):
         import a
         def f(x):
           return x.f()
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         a = ...  # type: module
-        def f(x: a.A1[object] or a.A2) -> Any
+        def f(x) -> Any
       """)
 
   def testAttributeOnAnythingTypeParameter(self):
@@ -818,7 +818,7 @@ class GenericTest(test_inference.InferenceTest):
         import a
         def f():
           return a.A()[0].someproperty
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         a = ...  # type: module
@@ -835,7 +835,7 @@ class GenericTest(test_inference.InferenceTest):
       ty = self.Infer("""
         import a
         n = len(a.A()[0])
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
         n = ...  # type: int
@@ -851,7 +851,7 @@ class GenericTest(test_inference.InferenceTest):
       ty = self.Infer("""
         import a
         x = a.f({True: "false"})
-      """, pythonpath=[d.path], deep=True, solve_unknowns=True)
+      """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
         x = ...  # type: bool

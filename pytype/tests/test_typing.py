@@ -84,7 +84,7 @@ class TypingTest(test_inference.InferenceTest):
       import typing
       def f():
         return typing.cast(typing.List[int], [])
-    """, deep=True, solve_unknowns=True)
+    """, deep=True)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, List
       typing = ...  # type: module
