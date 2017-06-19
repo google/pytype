@@ -270,7 +270,8 @@ class VirtualMachine(object):
     if len(nodes) == 1:
       return nodes[0]
     else:
-      ret = self.program.NewCFGNode(self.frame.current_opcode and
+      ret = self.program.NewCFGNode(self.frame and
+                                    self.frame.current_opcode and
                                     self.frame.current_opcode.line)
       for node in nodes:
         node.ConnectTo(ret)
@@ -297,15 +298,14 @@ class VirtualMachine(object):
         if state.why:
           # we can't process this block any further
           break
-      if state.why in ["return", "yield"]:
+      if state.why:
+        # return, raise or yield. Leave the current frame.
         return_nodes.append(state.node)
-      if not state.why and op.carry_on_to_next():
+      elif op.carry_on_to_next():
         frame.states[op.next] = state.merge_into(frame.states.get(op.next))
     self.pop_frame(frame)
     if not return_nodes:
-      # Happens if all the function does is to throw an exception.
-      # (E.g. "def f(): raise NoImplemented")
-      # TODO(kramm): Return the exceptions, too.
+      # Happens if the function never returns. (E.g. an infinite loop)
       assert not frame.return_variable.bindings
       frame.return_variable.AddBinding(self.convert.unsolvable, [], node)
     else:

@@ -293,6 +293,7 @@ class CallTracer(vm.VirtualMachine):
 
   def call_init(self, node, instance):
     # Call __init__ on each binding.
+    # TODO(kramm): This should do join_cfg_nodes, instead of concatenating them.
     for b in instance.bindings:
       if b.data in self._initialized_instances:
         continue

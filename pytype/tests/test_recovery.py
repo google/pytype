@@ -1,5 +1,7 @@
 """Tests for recovering after errors."""
 
+import unittest
+
 
 from pytype.tests import test_inference
 
@@ -162,6 +164,29 @@ class RecoveryTests(test_inference.InferenceTest):
         (2, "import-error"),
         (6, "name-error"),
     ])
+
+  def testAssertInConstructor(self):
+    self.assertNoErrors("""\
+      from __future__ import google_type_annotations
+      class Foo(object):
+        def __init__(self):
+          self._bar = "foo"
+          assert False
+        def __str__(self):
+          return self._bar
+    """)
+
+  @unittest.skip("Constructor loops forever.")
+  def testConstructorInfiniteLoop(self):
+    self.assertNoErrors("""\
+      from __future__ import google_type_annotations
+      class Foo(object):
+        def __init__(self):
+          self._bar = "foo"
+          while True: pass
+        def __str__(self):
+          return self._bar
+    """)
 
 
 if __name__ == "__main__":
