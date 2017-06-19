@@ -64,7 +64,7 @@ PyObject* ExtendList(PyObject* dst, PyObject* src);
 %token END 0              "end of file"
 
 /* Tokens with PyObject values */
-%token <obj> NAME NUMBER LEXERROR
+%token <obj> NAME NUMBER BYTESTRING UNICODESTRING LEXERROR
 
 /* Reserved words. */
 %token CLASS DEF ELSE ELIF IF OR PASS IMPORT FROM AS RAISE PYTHONCODE
@@ -326,6 +326,14 @@ condition_op
 constantdef
   : NAME '=' NUMBER {
       $$ = ctx->Call(kNewConstant, "(NN)", $1, $3);
+      CHECK($$, @$);
+    }
+  | NAME '=' BYTESTRING {
+      $$ = ctx->Call(kNewConstant, "(NN)", $1, ctx->Value(kByteString));
+      CHECK($$, @$);
+    }
+  | NAME '=' UNICODESTRING {
+      $$ = ctx->Call(kNewConstant, "(NN)", $1, ctx->Value(kUnicodeString));
       CHECK($$, @$);
     }
   | NAME '=' ELLIPSIS {

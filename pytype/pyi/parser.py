@@ -169,6 +169,8 @@ class _Parser(object):
     PARSE_ERROR
     NOTHING
     ANYTHING
+    BYTESTRING
+    UNICODESTRING
 
   Methods used in AST construction:
     new_constant()
@@ -239,6 +241,8 @@ class _Parser(object):
   PARSE_ERROR = ParseError  # The class object (not an instance of it).
   NOTHING = pytd.NothingType()
   ANYTHING = pytd.AnythingType()
+  BYTESTRING = pytd.NamedType("bytes")
+  UNICODESTRING = pytd.NamedType("unicode")
 
   # Attributes that all namedtuple instances have.
   _NAMEDTUPLE_MEMBERS = ("_asdict", "__dict__", "_fields", "__getnewargs__",

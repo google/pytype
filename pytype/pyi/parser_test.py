@@ -139,6 +139,12 @@ class ParserTest(_ParserTestBase):
     self.check_error("\nx = 123", 2,
                      "Only '0' allowed as int literal")
 
+  def test_string_constant(self):
+    self.check("x = b''", "x = ...  # type: bytes")
+    self.check("x = u''", "x = ...  # type: unicode")
+    self.check('x = b""', "x = ...  # type: bytes")
+    self.check('x = u""', "x = ...  # type: unicode")
+
   def test_constant_pep526(self):
     self.check("x : str", "x = ...  # type: str")
     self.check("x : str = ...", "x = ...  # type: str")

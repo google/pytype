@@ -41,7 +41,12 @@
 \( { ++yyextra->bracket_count_; return yytext[0]; }
 \) { --yyextra->bracket_count_; return yytext[0]; }
 
- /* Ignore quotes. */
+b'' { return BYTESTRING; }
+b\"\" { return BYTESTRING; }
+u'' { return UNICODESTRING; }
+u\"\" { return UNICODESTRING; }
+
+ /* Ignore all other quotes, to simplify processing of forward references. */
 ['"] { }
 
  /* Multi-character punctuation. */

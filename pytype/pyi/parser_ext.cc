@@ -21,6 +21,8 @@ static const SelectorEntry<ValueSelector> value_attributes[] = {
   {kParseError, "PARSE_ERROR"},
   {kNothing, "NOTHING"},
   {kAnything, "ANYTHING"},
+  {kByteString, "BYTESTRING"},
+  {kUnicodeString, "UNICODESTRING"},
 };
 
 // Mapping from CallSelector to method name.
