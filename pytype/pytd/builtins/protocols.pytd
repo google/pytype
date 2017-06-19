@@ -1,0 +1,7 @@
+from typing import Any, Protocol
+
+class SupportsLower(Protocol):
+  def lower(self) -> Any: ...
+
+class SupportsContains(Protocol):
+  def __contains__(self, item: Any) -> bool: ...

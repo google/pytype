@@ -782,7 +782,7 @@ def infer_types(src, errorlog, options, loader,
                       module_name=get_module_name(filename, options),
                       cache_unknowns=cache_unknowns,
                       analyze_annotated=analyze_annotated,
-                      generate_unknowns=not options.quick,
+                      generate_unknowns=options.protocols,
                       store_all_calls=not deep, loader=loader)
   loc, defs = tracer.run_program(
       src, filename, init_maximum_depth, run_builtins)
@@ -802,10 +802,19 @@ def infer_types(src, errorlog, options, loader,
     except KeyError:
       ast = pytd_utils.Concat(
           ast, builtins.GetDefaultAst(options.python_version))
+  # If merged with other if statement, triggers a ValueError: Unresolved class
+  # when attempts to load from the protocols file
+  if options.protocols:
+    protocols_pytd = tracer.loader.import_name("protocols")
+  else:
+    protocols_pytd = None
   builtins_pytd = tracer.loader.concat_all()
   # Insert type parameters, where appropriate
   ast = ast.Visit(visitors.CreateTypeParametersForSignatures())
-  if not show_library_calls:
+  if options.protocols:
+    log.info("=========== PyTD to solve =============\n%s", pytd.Print(ast))
+    ast = convert_structural.convert_pytd(ast, builtins_pytd, protocols_pytd)
+  elif not show_library_calls:
     log.info("Solving is turned off. Discarding call traces.")
     # Rename remaining "~unknown" to "?"
     ast = ast.Visit(visitors.RemoveUnknownClasses())

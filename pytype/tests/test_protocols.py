@@ -165,5 +165,31 @@ class ProtocolTest(test_inference.InferenceTest):
         filename = ...  # type: str or buffer or unicode
     """)
 
+  def test_supports_lower(self):
+    self.options.tweak(protocols=True)
+    ty = self.Infer("""\
+          from __future__ import google_type_annotations
+          def f(x):
+            return x.lower()
+         """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      import protocols
+      from typing import Any
+      def f(x: protocols.SupportsLower) -> Any
+    """)
+
+  def test_supports_contains(self):
+    self.options.tweak(protocols=True)
+    ty = self.Infer("""\
+          from __future__ import google_type_annotations
+          def f(x, y):
+            return y in x
+         """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      import protocols
+      from typing import Any
+      def f(x: protocols.SupportsContains, y:Any) -> bool
+    """)
+
 if __name__ == "__main__":
   test_inference.main()

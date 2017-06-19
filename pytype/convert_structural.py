@@ -29,11 +29,12 @@ class FlawedQuery(Exception):
 class TypeSolver(object):
   """Class for solving ~unknowns in type inference results."""
 
-  def __init__(self, ast, builtins):
+  def __init__(self, ast, builtins, protocols):
     self.ast = ast
     self.builtins = builtins
+    self.protocols = protocols
 
-  def match_unknown_against_complete(self, matcher,
+  def match_unknown_against_protocol(self, matcher,
                                      solver, unknown, complete):
     """Given an ~unknown, match it against a class.
 
@@ -52,7 +53,7 @@ class TypeSolver(object):
     type_params = {p.type_param: matcher.type_parameter(unknown, complete, p)
                    for p in complete.template}
     subst = type_params.copy()
-    implication = matcher.match_Class_against_Class(unknown, complete, subst)
+    implication = matcher.match_Class_against_Class(complete, unknown, subst)
     if implication is not booleq.FALSE and type_params:
       # If we're matching against a templated class (E.g. list[T]), record the
       # fact that we'll also have to solve the type parameters.
@@ -130,13 +131,9 @@ class TypeSolver(object):
       else:
         complete_classes.add(cls)
 
-    for complete in complete_classes.union(self.builtins.classes):
+    for protocol in complete_classes.union(self.protocols.classes):
       for unknown in unknown_classes:
-        self.match_unknown_against_complete(factory, solver, unknown, complete)
-      for partial in partial_classes:
-        if type_match.unpack_name_of_partial(partial.name) == complete.name:
-          self.match_partial_against_complete(
-              factory, solver, partial, complete)
+        self.match_unknown_against_protocol(factory, solver, unknown, protocol)
 
     partial_functions = set()
     complete_functions = set()
@@ -155,12 +152,13 @@ class TypeSolver(object):
     return solver.solve()
 
 
-def solve(ast, builtins_pytd):
+def solve(ast, builtins_pytd, protocols_pytd):
   """Solve the unknowns in a pytd AST using the standard Python builtins.
 
   Args:
     ast: A pytd.TypeDeclUnit, containing classes named ~unknownXX.
     builtins_pytd: A pytd for builtins.
+    protocols_pytd: A pytd for protocols.
 
   Returns:
     A tuple of (1) a dictionary (str->str) mapping unknown class names to known
@@ -168,8 +166,10 @@ def solve(ast, builtins_pytd):
   """
   builtins_pytd = transforms.RemoveMutableParameters(builtins_pytd)
   builtins_pytd = visitors.LookupClasses(builtins_pytd)
+  protocols_pytd = visitors.LookupClasses(protocols_pytd)
   ast = visitors.LookupClasses(ast, builtins_pytd)
-  return TypeSolver(ast, builtins_pytd).solve(), extract_local(ast)
+  return TypeSolver(
+      ast, builtins_pytd, protocols_pytd).solve(), extract_local(ast)
 
 
 def extract_local(ast):
@@ -234,10 +234,10 @@ def insert_solution(result, mapping, global_lookup):
   return result.Visit(visitors.ReplaceTypes(subst))
 
 
-def convert_pytd(ast, builtins_pytd):
+def convert_pytd(ast, builtins_pytd, protocols_pytd):
   """Convert pytd with unknowns (structural types) to one with nominal types."""
   builtins_pytd = builtins_pytd.Visit(visitors.ClassTypeToNamedType())
-  mapping, result = solve(ast, builtins_pytd)
+  mapping, result = solve(ast, builtins_pytd, protocols_pytd)
   log_info_mapping(mapping)
   lookup = pytd_utils.Concat(builtins_pytd, result)
   result = insert_solution(result, mapping, lookup)

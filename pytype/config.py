@@ -205,6 +205,10 @@ class Options(object):
               "--pythonpath. This option is incompatible with "
               "--imports_info.") % os.pathsep)
     o.add_option(
+        "--protocols", action="store_true",
+        dest="protocols", default=False,
+        help=("Solve unknown types to label with structural types."))
+    o.add_option(
         "--touch", type="string", action="store",
         dest="touch", default=None,
         help="Output file to touch when exit status is ok.")
