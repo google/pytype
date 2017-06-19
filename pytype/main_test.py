@@ -10,7 +10,6 @@ import textwrap
 from pytype import utils
 from pytype.pyi import parser
 from pytype.pytd.parse import builtins
-from google.apputils import basetest
 import unittest
 
 
@@ -24,7 +23,7 @@ class PytypeTest(unittest.TestCase):
   @classmethod
   def setUpClass(cls):
     cls.pytype_dir = os.path.dirname(os.path.dirname(parser.__file__))
-    cls.tmp_dir = basetest._GetDefaultTestTmpdir()
+    cls.tmp_dir = unittest.GetDefaultTestTmpdir()
     cls.errors_csv = os.path.join(cls.tmp_dir, "errors.csv")
 
   def setUp(self):
