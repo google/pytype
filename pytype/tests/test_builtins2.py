@@ -270,6 +270,58 @@ class BuiltinTests2(test_inference.InferenceTest):
       y3 = ...  # type: int
     """)
 
+  def testMaxDifferentTypes(self):
+    ty, errors = self.InferAndCheck("""
+      a = max(1, None)
+      b = max(1, None, 3j)
+      c = max(1, None, 3j, "str")
+      d = max(1, 2, 3, 4, 5, 6, 7)
+      e = max(1, None, key=int)
+      f = max(1, None, 3j, key=int)
+      g = max(1, None, 3j, "str", key=int)
+      h = max(1, 2, 3, 4, 5, 6, 7, key=int)
+      i = max([1,2,3,4])
+      """)
+    self.assertErrorLogIs(errors, [])
+    self.assertTypesMatchPytd(ty, """
+      from typing import Optional, Union
+      a = ...  # type: Optional[int]
+      b = ...  # type: Optional[Union[complex, int]]
+      c = ...  # type: Optional[Union[complex, int, str]]
+      d = ...  # type: int
+      e = ...  # type: Optional[int]
+      f = ...  # type: Optional[Union[complex, int]]
+      g = ...  # type: Optional[Union[complex, int, str]]
+      h = ...  # type: int
+      i = ...  # type: int
+      """)
+
+  def testMinDifferentTypes(self):
+    ty, errors = self.InferAndCheck("""
+      a = min(1, None)
+      b = min(1, None, 3j)
+      c = min(1, None, 3j, "str")
+      d = min(1, 2, 3, 4, 5, 6, 7)
+      e = min(1, None, key=int)
+      f = min(1, None, 3j, key=int)
+      g = min(1, None, 3j, "str", key=int)
+      h = min(1, 2, 3, 4, 5, 6, 7, key=int)
+      i = min([1,2,3,4])
+      """)
+    self.assertErrorLogIs(errors, [])
+    self.assertTypesMatchPytd(ty, """
+      from typing import Optional, Union
+      a = ...  # type: Optional[int]
+      b = ...  # type: Optional[Union[complex, int]]
+      c = ...  # type: Optional[Union[complex, int, str]]
+      d = ...  # type: int
+      e = ...  # type: Optional[int]
+      f = ...  # type: Optional[Union[complex, int]]
+      g = ...  # type: Optional[Union[complex, int, str]]
+      h = ...  # type: int
+      i = ...  # type: int
+      """)
+
   def testMap(self):
     ty = self.Infer("""
       lst1 = []

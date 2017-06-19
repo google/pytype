@@ -6,6 +6,8 @@ from typing import (
 # "_T", "_K", and "_V" are hardcoded in abstract.py
 _T = TypeVar('_T')
 _T2 = TypeVar('_T2')
+_T3 = TypeVar('_T3')
+_T4 = TypeVar('_T4')
 _K = TypeVar('_K')
 _V = TypeVar('_V')
 _K2 = TypeVar('_K2')
@@ -66,10 +68,16 @@ def len(obj) -> int
 def locals() -> dict[str, object]
 def map(function, sequence: list[nothing], ...) -> list[nothing]
 def map(function, sequence, ...) -> list
-def max(arg1: _T, arg2: _T, *args: _T, key: Callable = ...) -> _T
 def max(iterable: Iterable[_T], key: Callable = ...) -> _T
-def min(arg1: _T, arg2: _T, *args: _T, key: Callable = ...) -> _T
+def max(arg1: _T, arg2: _T2, *, key: Callable = ...) -> _T or _T2
+def max(arg1: _T, arg2: _T2, arg3: _T3, *, key: Callable = ...) -> _T or _T2 or _T3
+def max(arg1: _T, arg2: _T2, arg3: _T3, arg4: _T4, *, key = Callable) -> _T or _T2 or _T3 or _T4
+def max(arg1: _T, arg2: _T, arg3: _T, arg4: _T, arg5: _T, *args: _T, key: Callable = ...) -> _T
 def min(iterable: Iterable[_T], key: Callable = ...) -> _T
+def min(arg1: _T, arg2: _T2, *, key: Callable = ...) -> _T or _T2
+def min(arg1: _T, arg2: _T2, arg3: _T3, *, key: Callable = ...) -> _T or _T2 or _T3
+def min(arg1: _T, arg2: _T2, arg3: _T3, arg4: _T4, *, key = Callable) -> _T or _T2 or _T3 or _T4
+def min(arg1: _T, arg2: _T, arg3: _T, arg4: _T, arg5: _T, *args: _T, key: Callable = ...) -> _T
 def next PYTHONCODE
 def oct(number: int) -> str
 def open(name: str or buffer or unicode, ...) -> file
