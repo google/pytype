@@ -325,6 +325,18 @@ class FlowTest(test_inference.InferenceTest):
         return u"foo"
     """)
 
+  def test_loop_over_list_of_lists(self):
+    ty = self.Infer("""
+      import os
+      for seq in [os.getgroups()]:  # os.getgroups() returns a List[int]
+        seq.append("foo")
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import List, Union
+      os = ...  # type: module
+      seq = ...  # type: List[Union[int, str]]
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

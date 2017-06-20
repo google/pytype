@@ -123,7 +123,8 @@ class AbstractAttributeHandler(object):
   def get_class_attribute(self, node, cls, name, valself=None, valcls=None):
     """Get an attribute from a class."""
     assert isinstance(cls, abstract.Class)
-    getter = lambda cls: self._class_getter(node, cls, name, valself, valcls)
+    def getter(node, cls):
+      return self._class_getter(node, cls, name, valself, valcls)
     if valself:
       meta = None
       variableself = valself
@@ -142,7 +143,8 @@ class AbstractAttributeHandler(object):
     """Get an attribute from an instance."""
     del valcls  # unused
     assert isinstance(obj, abstract.SimpleAbstractValue)
-    getter = lambda obj: self._get_member(node, obj, name, valself)
+    def getter(node, obj):
+      return self._get_member(node, obj, name, valself)
     return self._get_value_or_class_attribute(
         node, obj, name, valself, obj.cls, getter)
 
@@ -218,7 +220,7 @@ class AbstractAttributeHandler(object):
           compute_function="__getattribute__")
     node, candidates = self._get_candidates_from_var(node, clsvar, computer)
     if not candidates or len(candidates) < len(clsvar.bindings):
-      node, attr = get_from_value(obj)
+      node, attr = get_from_value(node, obj)
       if attr is None:
         def getter(clsval):
           new_node, new_attr = self.get_attribute(

@@ -262,7 +262,7 @@ class VirtualMachine(object):
       state = state.set_why("exception")
     if state.why == "reraise":
       state = state.set_why("exception")
-    del self.frame.current_opcode
+    self.frame.current_opcode = None
     return state
 
   def join_cfg_nodes(self, nodes):
@@ -290,8 +290,9 @@ class VirtualMachine(object):
                     " we don't have any non-erroneous code that goes here.",
                     block.id)
         continue
-      # TODO(kramm): We should create a new CFG node here, since this is
-      # potentially a point where multiple code paths merge.
+      # We're starting a new block, so start a new CFG node. We don't want
+      # nodes to overlap the boundary of blocks.
+      state = state.forward_cfg_node()
       op = None
       for op in block:
         state = self.run_instruction(op, state)

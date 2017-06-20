@@ -144,7 +144,9 @@ class FrameState(object):
       A new state which is the same as this state except for the node, which is
       the new one.
     """
-    new_node = self.node.ConnectNew(self.vm.frame.current_opcode.line,
+    new_node = self.node.ConnectNew(self.vm.frame and
+                                    self.vm.frame.current_opcode and
+                                    self.vm.frame.current_opcode.line,
                                     condition)
     return self.change_cfg_node(new_node)
 
@@ -242,6 +244,7 @@ class Frame(object):
     assert isinstance(f_globals, abstract.LazyConcreteDict)
     assert isinstance(f_locals, abstract.LazyConcreteDict)
     self.vm = vm
+    self.current_opcode = None
     self.f_code = f_code
     self.states = {}
     self.f_globals = f_globals

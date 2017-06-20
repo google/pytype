@@ -515,7 +515,7 @@ class GenericTest(test_inference.InferenceTest):
         from typing import Any
         a = ...  # type: module
         def f() -> a.A[int, str]
-        def g() -> Any  # T was made unsolvable by an AliasingDictConflictError
+        def g() -> int
         def h() -> str
       """)
 

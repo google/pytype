@@ -166,10 +166,10 @@ class TypingMethodsTest(test_inference.InferenceTest):
           b = seq.extend([1,2,3])
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        from typing import Iterator, List, Sequence
+        from typing import Iterator, List, Sequence, Union
         foo = ...  # type: module
-        # TODO(kramm): Should be "int or str"
-        seq = ...  # type: List[str] or typing.MutableSequence[str]
+        # TODO(kramm): Should be List[Union[int, str]]
+        seq = ...  # type: list or typing.MutableSequence[Union[int, str]]
         a = ...  # type: None
         b = ...  # type: None
         c = ...  # type: None
@@ -206,7 +206,7 @@ class TypingMethodsTest(test_inference.InferenceTest):
         n = [x for x in m.viewvalues()]
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        from typing import List, Tuple
+        from typing import List, Tuple, Union
         import foo
         foo = ...  # type: module
         m = ...  # type: foo.MyDict[str, int]
@@ -223,7 +223,7 @@ class TypingMethodsTest(test_inference.InferenceTest):
         k = ...  # type: List[Tuple[str, int]]
         l = ...  # type: List[str]
         n = ...  # type: List[int]
-        x = ...  # type: int
+        x = ...  # type: Union[int, str, Tuple[str, int]]
       """)
 
   def test_mutablemapping(self):
