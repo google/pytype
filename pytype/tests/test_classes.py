@@ -1206,6 +1206,20 @@ class ClassesTest(test_inference.InferenceTest):
         def __new__(cls: Type[_TBaz], _) -> _TBaz
     """)
 
+  def testModuleInClassDefinitionScope(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        class Bar: ...
+      """)
+      self.assertNoErrors("""
+        import foo
+        class ConstStr(unicode):
+          foo.Bar # testing that this does not affect inference.
+          def __new__(cls, x):
+            obj = super(ConstStr, cls).__new__(cls, x)
+            return obj
+      """, pythonpath=[d.path])
+
 
 if __name__ == "__main__":
   test_inference.main()
