@@ -357,11 +357,13 @@ class HashableDict(dict):
   def setdefault(self):
     raise TypeError()
 
+  # pylint: disable=unexpected-special-method-signature
   def __setitem__(self):
     raise TypeError()
 
   def __delitem__(self):
     raise TypeError()
+  # pylint: enable=unexpected-special-method-signature
 
   def __hash__(self):
     return self._hash
@@ -652,7 +654,7 @@ class AliasingDict(DictTemplate):
     super(AliasingDict, self).__init__(*args, **kwargs)
 
   def add_alias(self, alias, name):
-    assert alias not in self
+    assert alias in self._alias_map or alias not in self
     assert alias not in self._alias_map.values()
     new_name = self._alias_map.get(name, name)
     existing_name = self._alias_map.get(alias, new_name)
