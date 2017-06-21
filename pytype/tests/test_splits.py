@@ -783,15 +783,14 @@ class SplitTest(test_inference.InferenceTest):
     """)
 
   def testNoneOrTuple(self):
-    # This sets the attribute retrieval code in vm.py:_get_iter
-    _, errors = self.InferAndCheck("""\
+    # This tests the attribute retrieval code in vm.py:_get_iter
+    self.assertNoErrors("""\
       foo = (0, 0)
       if __any_object__:
         foo = None
       if foo:
         a, b = foo
     """)
-    self.assertErrorLogIs(errors, [(5, "none-attr")])
 
   def testCmpIsPyTDClass(self):
     self.assertNoErrors("""
@@ -842,6 +841,15 @@ class SplitTest(test_inference.InferenceTest):
         if foo.X is X:
           name_error
       """, pythonpath=[d.path])
+
+  def testGetIter(self):
+    self.assertNoErrors("""
+      def f():
+        z = (1,2) if __random__ else None
+        if not z:
+          return
+          x, y = z
+    """)
 
 
 if __name__ == "__main__":

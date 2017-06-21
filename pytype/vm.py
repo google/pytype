@@ -1198,10 +1198,11 @@ class VirtualMachine(object):
         # Cannot iterate this object.
         if report_errors:
           for m in missing:
-            if self._data_is_none(m.data):
-              self.errorlog.none_attr(self.frames, "__iter__")
-            elif state.node.HasCombination([m]):
-              self.errorlog.attribute_error(self.frames, seq, "__iter__")
+            if state.node.HasCombination([m]):
+              if self._data_is_none(m.data):
+                self.errorlog.none_attr(self.frames, "__iter__")
+              else:
+                self.errorlog.attribute_error(self.frames, seq, "__iter__")
           itr = self.convert.create_new_unsolvable(state.node)
         else:
           itr = None
