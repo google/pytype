@@ -2955,6 +2955,14 @@ class Module(Instance):
     self.vm.trace_module_member(self, name, var)
     return var
 
+  @property
+  def module(self):
+    return None
+
+  @module.setter
+  def module(self, m):
+    assert m is None or m == self.ast.name
+
   def has_getattr(self):
     """Does this module have a module-level __getattr__?
 

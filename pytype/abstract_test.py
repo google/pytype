@@ -787,6 +787,21 @@ class AbstractTest(AbstractTestBase):
     self.assertIsNot(v2, v3)
     self.assertIs(v3, v4)
 
+  def testSetModuleOnModule(self):
+    # A module's 'module' attribute should always remain None, and no one
+    # should attempt to set it to something besides the module's name or None.
+    ast = pytd.TypeDeclUnit("some_mod", (), (), (), (), ())
+    mod = abstract.Module(self._vm, ast.name, {}, ast)
+    mod.module = ast.name
+    self.assertIsNone(mod.module)
+    self.assertEquals(ast.name, mod.full_name)
+    mod.module = None
+    self.assertIsNone(mod.module)
+    self.assertEquals(ast.name, mod.full_name)
+    def set_module():
+      mod.module = "other_mod"
+    self.assertRaises(AssertionError, set_module)
+
 
 if __name__ == "__main__":
   unittest.main()
