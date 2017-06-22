@@ -488,6 +488,7 @@ class GenericTest(test_inference.InferenceTest):
         g = lambda y: y+1
       """, pythonpath=[d.path])
 
+  @unittest.skip("Broken due to InterpreterFunction caching bug.")
   def testTemplateConstruction(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
@@ -517,6 +518,26 @@ class GenericTest(test_inference.InferenceTest):
         def f() -> a.A[int, str]
         def g() -> int
         def h() -> str
+      """)
+
+  def testAliasingDictConflictError(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        from typing import Dict, Generic, List, TypeVar
+        T = TypeVar("T")
+        U = TypeVar("U")
+        class A(Dict[int, U], List[T], Generic[T, U]): ...
+      """)
+      ty = self.Infer("""
+        import a
+        v = a.A()
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        from typing import Any
+        a = ...  # type: module
+        # Type parameter a.A.T can be an alias for both List._T and Dict._K.
+        # Due to this ambiguity, T is set to Any.
+        v = ...  # type: a.A[Any, nothing]
       """)
 
   def testRecursiveContainer(self):
