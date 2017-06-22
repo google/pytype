@@ -1834,6 +1834,87 @@ class VerifyContainers(Visitor):
   def EnterTupleType(self, node):
     self.EnterGenericType(node)
 
+  def _GetGenericBasesLookupMap(self, node):
+    """Get a lookup map for the generic bases of a class.
+
+    Gets a map from a pytd.ClassType to the list of pytd.GenericType bases of
+    the node that have that class as their base. This method does depth-first
+    traversal of the bases, which ensures that the order of elements in each
+    list is consistent with the node's MRO.
+
+    Args:
+      node: A pytd.Class node.
+
+    Returns:
+      A pytd.ClassType -> List[pytd.GenericType] map.
+    """
+    mapping = collections.defaultdict(list)
+    seen_bases = set()
+    bases = list(reversed(node.parents))
+    while bases:
+      base = bases.pop()
+      if base in seen_bases:
+        continue
+      seen_bases.add(base)
+      if (isinstance(base, pytd.GenericType) and
+          isinstance(base.base_type, pytd.ClassType)):
+        mapping[base.base_type].append(base)
+        bases.extend(reversed(base.base_type.cls.parents))
+      elif isinstance(base, pytd.ClassType):
+        bases.extend(reversed(base.cls.parents))
+    return mapping
+
+  def _UpdateParamToValuesMapping(self, mapping, param, value):
+    param_name = param.type_param.full_name
+    if isinstance(value, pytd.TypeParameter):
+      assert param_name != value.full_name
+      # A TypeVar has been aliased, e.g.,
+      #   class MyList(List[U]): ...
+      #   class List(Sequence[T]): ...
+      # Register the alias. May raise AliasingDictConflictError.
+      mapping.add_alias(param_name, value.full_name)
+    else:
+      # A TypeVar has been given a concrete value, e.g.,
+      #   class MyList(List[str]): ...
+      # Register the value.
+      if param_name not in mapping:
+        mapping[param_name] = set()
+      mapping[param_name].add(value)
+
+  def EnterClass(self, node):
+    """Check for conflicting type parameter values in the class's bases."""
+    # Get the bases in MRO, since we need to know the order in which type
+    # parameters are aliased or assigned values.
+    # pylint: disable=g-import-not-at-top
+    from pytype.pytd import utils as pytd_utils
+    try:
+      classes = pytd_utils.GetBasesInMRO(node)
+    except pytd_utils.MROError:
+      # TODO(rechen): We should report this, but VerifyContainers() isn't the
+      # right place to check for mro errors.
+      return
+    # GetBasesInMRO gave us the pytd.ClassType for each base. Map class types
+    # to generic types so that we can iterate through the latter in MRO.
+    cls_to_bases = self._GetGenericBasesLookupMap(node)
+    param_to_values = utils.AliasingDict()
+    ambiguous_aliases = set()
+    for base in sum((cls_to_bases[cls] for cls in classes), []):
+      for param, value in zip(base.base_type.cls.template, base.parameters):
+        try:
+          self._UpdateParamToValuesMapping(param_to_values, param, value)
+        except utils.AliasingDictConflictError:
+          ambiguous_aliases.add(param.type_param.full_name)
+    for param_name, values in param_to_values.items():
+      if any(param_to_values[alias] is values for alias in ambiguous_aliases):
+        # Any conflict detected for this type parameter might be a false
+        # positive, since a conflicting value assigned through an ambiguous
+        # alias could have been meant for a different type parameter.
+        continue
+      elif len(values) > 1:
+        raise ContainerError(
+            "Conflicting values for TypeVar %s: %s" % (
+                param_name, ", ".join(str(v) for v in values)))
+
 
 class ExpandCompatibleBuiltins(Visitor):
   """Ad-hoc inheritance.

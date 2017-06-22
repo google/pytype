@@ -640,6 +640,69 @@ class TestVisitors(parser_test_base.ParserTest):
     t3 = pytd.TupleType(base, (pytd.NamedType("str"), pytd.NamedType("float")))
     t3.Visit(visitors.VerifyContainers())
 
+  def testTypeVarValueConflict(self):
+    # Conflicting values for _T.
+    ast = self.ParseWithBuiltins("""
+      from typing import List
+      class A(List[int], List[str]): ...
+    """)
+    self.assertRaises(visitors.ContainerError,
+                      lambda: ast.Visit(visitors.VerifyContainers()))
+
+  def testTypeVarValueConflictHidden(self):
+    # Conflicting value for _T hidden in MRO.
+    ast = self.ParseWithBuiltins("""
+      from typing import List
+      class A(List[int]): ...
+      class B(A, List[str]): ...
+    """)
+    self.assertRaises(visitors.ContainerError,
+                      lambda: ast.Visit(visitors.VerifyContainers()))
+
+  def testTypeVarValueConflictRelatedContainers(self):
+    # List inherits from Sequence, so they share a type parameter.
+    ast = self.ParseWithBuiltins("""
+      from typing import List, Sequence
+      class A(List[int], Sequence[str]): ...
+    """)
+    self.assertRaises(visitors.ContainerError,
+                      lambda: ast.Visit(visitors.VerifyContainers()))
+
+  def testTypeVarValueNoConflict(self):
+    # Not an error if the containers are unrelated, even if they use the same
+    # type parameter name.
+    ast = self.ParseWithBuiltins("""
+      from typing import ContextManager, SupportsAbs
+      class Foo(SupportsAbs[float], ContextManager[Foo]): ...
+    """)
+    ast.Visit(visitors.VerifyContainers())
+
+  def testTypeVarValueNoConflictAmbiguousAlias(self):
+    # No conflict due to T1 being aliased to two different type parameters.
+    ast = self.ParseWithBuiltins("""
+      from typing import Generic, TypeVar
+      T1 = TypeVar("T1")
+      T2 = TypeVar("T2")
+      T3 = TypeVar("T3")
+      T4 = TypeVar("T4")
+      T5 = TypeVar("T5")
+      class A(Generic[T1]): ...
+      class B1(A[T2]): ...
+      class B2(A[T3]): ...
+      class C(B1[T4], B2[T5]): ...
+      class D(C[int, str], A[str]): ...
+    """)
+    ast.Visit(visitors.VerifyContainers())
+
+  def testVerifyContainerWithMROError(self):
+    # Make sure we don't crash.
+    ast = self.ParseWithBuiltins("""
+      from typing import List
+      class A(List[str]): ...
+      class B(List[str], A): ...
+    """)
+    ast.Visit(visitors.VerifyContainers())
+
   def testAliasPrinting(self):
     a = pytd.Alias("MyList", pytd.GenericType(
         pytd.NamedType("typing.List"), (pytd.AnythingType(),)))
