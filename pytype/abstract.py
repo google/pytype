@@ -783,14 +783,14 @@ class Instance(SimpleAbstractValue):
               # class Foo(List[int]), or a non-1:1 parameter mapping, e.g.,
               # class Foo(List[K or V]). Initialize the corresponding instance
               # parameter appropriately.
+              lazy_value = (param.instantiate, self.vm.root_cfg_node, self)
               if name not in self.type_parameters:
-                # TODO(rechen): We should be able to assert that either the
-                # param name is not in type_parameters or the new param is equal
-                # to the one that was previously added, but we first need to
-                # change the parser to not accept things like
-                #   class A(List[str], Sequence[int]): ...
-                self.type_parameters.add_lazy_item(
-                    name, param.instantiate, self.vm.root_cfg_node, self)
+                self.type_parameters.add_lazy_item(name, *lazy_value)
+              elif not self.type_parameters.lazy_eq(name, *lazy_value):
+                # Two unrelated containers happen to use the same type
+                # parameter name. pytype isn't yet smart enough to handle this
+                # case, so we'll just set the type parameter to Any.
+                bad_names.add(name)
       # We can't reliably track changes to type parameters involved in naming
       # conflicts, so we'll set all of them to unsolvable.
       node = self.vm.root_cfg_node

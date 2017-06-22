@@ -694,6 +694,30 @@ class LazyDict(DictTemplate):
     assert callable(func)
     self._lazy_map[name] = (func, args)
 
+  def lazy_eq(self, name, func, *args):
+    """Do an approximate equality check for a lazy item without evaluating it.
+
+    Returns True if the dictionary contains an already-evaluated value for the
+    given key (since it's possible that if we evaluated the arguments, we'd get
+    that value), or if the lazy map's entry for the key consists of the same
+    function and arguments.
+
+    Args:
+      name: The key.
+      func: The function that would be called to get the value.
+      *args: The arguments to func.
+
+    Returns:
+      True if the item is (probably) in the dictionary, False if it is
+      (probably) not.
+
+    Raises:
+      KeyError: If the given key is not in the dictionary.
+    """
+    if name in self:
+      return name not in self._lazy_map or (func, args) == self._lazy_map[name]
+    raise KeyError()
+
   def __getitem__(self, name):
     if not super(LazyDict, self).__contains__(name):
       func, args = self._lazy_map[name]

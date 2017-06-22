@@ -587,14 +587,27 @@ class UtilsTest(unittest.TestCase):
       x.append(x)
       return y
     d.add_lazy_item("f", f, "foo")
-    self.assertEquals(0, len(x))
     self.assertIn("f", d)
     self.assertEquals(1, len(d))
+    self.assertEquals(0, len(x))
     # Evaluate the item
     self.assertEquals("foo", d["f"])
     self.assertEquals(1, len(x))
     self.assertIn("f", d)
     self.assertEquals(1, len(d))
+
+  def testLazyDictEq(self):
+    d = utils.LazyDict()
+    f = lambda x: x
+    d.add_lazy_item("f", f, "foo")
+    self.assertTrue(d.lazy_eq("f", f, "foo"))
+    self.assertFalse(d.lazy_eq("f", f, "bar"))
+    with self.assertRaises(KeyError):
+      d.lazy_eq("g", f, "foo")
+    self.assertEquals("foo", d["f"])  # evaluation
+    # The point of lazy_eq is to do approximate equality checks when we can't
+    # evaluate the function, so there's no way to determine "foo" != f("bar").
+    self.assertTrue(d.lazy_eq("f", f, "bar"))
 
   def testDynamicVar(self):
     var = utils.DynamicVar()

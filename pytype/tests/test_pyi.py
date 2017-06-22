@@ -615,6 +615,42 @@ class PYITest(test_inference.InferenceTest):
       """)
       self.assertNoErrors("import foo", pythonpath=[d.path])
 
+  def testTypeVarConflict(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import List, Sequence
+        class A(List[int], Sequence[str]): ...
+      """)
+      ty, errors = self.InferAndCheck("""\
+        import foo
+        x = [] + foo.A()
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        from typing import Any
+        foo = ...  # type: Any
+        x = ...  # type: list
+      """)
+      self.assertErrorLogIs(errors, [(1, "pyi-error")])
+
+  def testSameTypeVarName(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import Generic, TypeVar
+        T = TypeVar("T")
+        class MySupportsAbs(Generic[T]): ...
+        class MyContextManager(Generic[T]):
+          def __enter__(self) -> T: ...
+        class Foo(MySupportsAbs[float], MyContextManager[Foo]): ...
+      """)
+      ty = self.Infer("""
+        import foo
+        v = foo.Foo().__enter__()
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        foo = ...  # type: module
+        v = ...  # type: ?
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()
