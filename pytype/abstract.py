@@ -2995,14 +2995,6 @@ class Module(Instance):
     return [(name, self._convert_member(name, ty))
             for name, ty in self._member_map.items()]
 
-  def get_fullhash(self):
-    """Hash the set of member names."""
-    m = hashlib.md5()
-    m.update(self.full_name)
-    for k in self._member_map:
-      m.update(k)
-    return m.digest()
-
 
 class BuildClass(AtomicAbstractValue):
   """Representation of the Python 3 __build_class__ object."""
