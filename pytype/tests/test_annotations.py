@@ -359,12 +359,13 @@ class AnnotationTest(test_inference.InferenceTest):
       def f(d: Set[str]):
         return
       f({"foo"})  # ok
-      f({})  # not allowed
+      f(set())  # ok
+      f({})  # not allowed, {} isn't a set
       f({3})  # not allowed
     """, deep=True)
     self.assertErrorLogIs(errors, [
-        (6, "wrong-arg-types"),
         (7, "wrong-arg-types"),
+        (8, "wrong-arg-types"),
     ])
 
   def testFrozenSet(self):
