@@ -373,6 +373,7 @@ class CallTracer(vm.VirtualMachine):
   def analyze(self, node, defs, maximum_depth):
     assert not self.frame
     self.maximum_depth = sys.maxint if maximum_depth is None else maximum_depth
+    node = node.ConnectNew(name="Analyze")
     self.analyze_toplevel(node, defs)
     return node
 
