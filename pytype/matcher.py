@@ -590,7 +590,9 @@ class AbstractMatcher(object):
     if object_in_values:
       ignored_superclasses = {}
     else:
-      ignored_superclasses = {"__builtin__.object", "typing.Generic"}
+      ignored_superclasses = {"__builtin__.object",
+                              "typing.Generic",
+                              "typing.Protocol"}
     if concrete_values and common_classes.issubset(ignored_superclasses):
       return None
     return var

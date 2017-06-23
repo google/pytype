@@ -531,7 +531,7 @@ class _Parser(object):
         if name != "*":
           t = pytd.NamedType("%s.%s" % (from_package, name))
           self._type_map[new_name] = t
-          if from_package != "typing":
+          if from_package != "typing" or self._ast_name == "protocols":
             self._aliases.append(pytd.Alias(new_name, t))
             self._module_path_map[name] = "%s.%s" % (from_package, name)
         else:

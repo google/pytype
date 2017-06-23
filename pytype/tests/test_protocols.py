@@ -193,5 +193,54 @@ class ProtocolTest(test_inference.InferenceTest):
       def f(x: protocols.SupportsContains, y:Any) -> bool
     """)
 
+  def test_supports_int(self):
+    self.options.tweak(protocols=True)
+    ty = self.Infer("""\
+          from __future__ import google_type_annotations
+          def f(x):
+            return x.__int__()
+          """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      from typing import SupportsInt
+      def f(x: SupportsInt) -> ?
+    """)
+
+  def test_supports_float(self):
+    self.options.tweak(protocols=True)
+    ty = self.Infer("""\
+          from __future__ import google_type_annotations
+          def f(x):
+              return x.__float__()
+          """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any, SupportsFloat
+      def f(x: SupportsFloat) -> ?
+    """)
+
+  def test_supports_complex(self):
+    self.options.tweak(protocols=True)
+    ty = self.Infer("""\
+          from __future__ import google_type_annotations
+          def f(x):
+            return x.__complex__()
+          """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any, SupportsComplex
+      def f(x: SupportsComplex) -> Any
+    """)
+
+  def test_sized(self):
+    self.options.tweak(protocols=True)
+    ty = self.Infer("""\
+          from __future__ import google_type_annotations
+          def f(x):
+            return x.__len__()
+          """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Sized
+      def f(x: Sized) -> ?
+    """)
+
+
 if __name__ == "__main__":
   test_inference.main()

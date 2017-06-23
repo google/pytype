@@ -30,15 +30,15 @@ class Generic(object): ...
 class Protocol(object): ...
 
 
-class SupportsInt(object):
+class SupportsInt(Protocol):
   def __int__(self) -> int: ...
 
 
-class SupportsFloat(object):
+class SupportsFloat(Protocol):
   def __float__(self) -> float: ...
 
 
-class SupportsComplex(object):
+class SupportsComplex(Protocol):
   def __complex__(self) -> complex: ...
 
 
@@ -62,7 +62,7 @@ class Iterable(Generic[_T]):
   def __iter__(self) -> Iterator[_T]
 
 
-class Sized(object):
+class Sized(Protocol):
   def __len__(self) -> int: ...
 
 

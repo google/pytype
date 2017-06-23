@@ -131,9 +131,21 @@ class TypeSolver(object):
       else:
         complete_classes.add(cls)
 
-    for protocol in complete_classes.union(self.protocols.classes):
+    protocol_classes_and_aliases = set(self.protocols.classes)
+    for alias in self.protocols.aliases:
+      if (not isinstance(alias.type, pytd.AnythingType)
+          and alias.name != "protocols.Protocol"):
+        protocol_classes_and_aliases.add(alias.type.cls)
+
+    for protocol in protocol_classes_and_aliases:
       for unknown in unknown_classes:
         self.match_unknown_against_protocol(factory, solver, unknown, protocol)
+
+    for complete in complete_classes.union(self.builtins.classes):
+      for partial in partial_classes:
+        if type_match.unpack_name_of_partial(partial.name) == complete.name:
+          self.match_partial_against_complete(
+              factory, solver, partial, complete)
 
     partial_functions = set()
     complete_functions = set()
