@@ -64,15 +64,15 @@ class defaultdict(Dict[K, V]):
   def __init__(self, default_factory: None, **kwargs: V2) -> None:
     self := defaultdict[str, V2]
   def __init__(self, default_factory: None, iter: Iterable[Tuple[K2, V2]]) -> None:
-    self := defaultdict[K or K2, V2]
+    self := defaultdict[K2, V2]
   def __init__(self, default_factory: None, map: Mapping[K2, V2]) -> None:
-    self := defaultdict[K or K2, V2]
+    self := defaultdict[K2, V2]
   def __init__(self, default_factory: Callable[[], DV], **kwargs: V2) -> None:
     self := defaultdict[str, DV or V2]
-  def __init__(self, default_factory: Callable[[], DV], iter: Iterable[Tuple[K2, V2]]) -> None:
-    self := defaultdict[K or K2, DV or V2]
   def __init__(self, default_factory: Callable[[], DV], map: Mapping[K2, V2]) -> None:
-    self := defaultdict[K or K2, DV or V2]
+    self := defaultdict[K2, DV or V2]
+  def __init__(self, default_factory: Callable[[], DV], iter: Iterable[Tuple[K2, V2]]) -> None:
+    self := defaultdict[K2, DV or V2]
   def __missing__(self, key: K) -> V
   def __getitem__(self, key: K2) -> Any:
     self := defaultdict[K or K2, Any]
