@@ -428,14 +428,14 @@ class Empty(AtomicAbstractValue):
 
   def get_special_attribute(self, node, name, valself):
     del name, valself
-    return self.vm.convert.unsolvable.to_variable(node)
+    return self.to_variable(node)
 
   def call(self, node, func, args):
     del func, args
-    return node, self.vm.convert.unsolvable.to_variable(node)
+    return node, self.to_variable(node)
 
   def get_class(self):
-    return self.vm.convert.unsolvable.to_variable(self.vm.root_cfg_node)
+    return self.to_variable(self.vm.root_cfg_node)
 
 
 class MixinMeta(type):

@@ -705,7 +705,7 @@ class ContainerTest(test_inference.InferenceTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Any, List
       empty = ...  # type: List[nothing]
-      y = ...  # type: list
+      y = ...  # type: List[nothing]
       x = ...  # type: Any
     """)
 
