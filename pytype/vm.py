@@ -290,9 +290,6 @@ class VirtualMachine(object):
                     " we don't have any non-erroneous code that goes here.",
                     block.id)
         continue
-      # We're starting a new block, so start a new CFG node. We don't want
-      # nodes to overlap the boundary of blocks.
-      state = state.forward_cfg_node()
       op = None
       for op in block:
         state = self.run_instruction(op, state)
@@ -303,6 +300,9 @@ class VirtualMachine(object):
         # return, raise or yield. Leave the current frame.
         return_nodes.append(state.node)
       elif op.carry_on_to_next():
+        # We're starting a new block, so start a new CFG node. We don't want
+        # nodes to overlap the boundary of blocks.
+        state = state.forward_cfg_node()
         frame.states[op.next] = state.merge_into(frame.states.get(op.next))
     self.pop_frame(frame)
     if not return_nodes:
