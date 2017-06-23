@@ -2,6 +2,7 @@
 
 import collections
 import csv
+import logging
 import os
 import re
 import StringIO
@@ -13,6 +14,9 @@ from pytype import utils
 from pytype.pytd import optimize
 from pytype.pytd import pytd
 from pytype.pytd import utils as pytd_utils
+
+# Usually we call the logger "log" but that name is used quite often here.
+_log = logging.getLogger(__name__)
 
 
 # "Error level" enum for distinguishing between warnings and errors:
@@ -270,6 +274,7 @@ class ErrorLogBase(object):
 
   def _add(self, error):
     if self._filter is None or self._filter(error):
+      _log.info("Added error to log: %s\n%s", error.name, error)
       self._errors.append(error)
 
   def warn(self, stack, message, *args):
