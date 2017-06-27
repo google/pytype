@@ -1,7 +1,4 @@
-from typing import Any, Protocol, SupportsInt, SupportsFloat, SupportsComplex, Sized
+from typing import Any, Protocol, SupportsInt, SupportsFloat, SupportsComplex, Sized, SupportsAbs, SupportsRound, Reversible, Iterable, Container, Callable, Sequence, MutableSequence, Mapping, MutableMapping, ContextManager
 
 class SupportsLower(Protocol):
   def lower(self) -> Any: ...
-
-class SupportsContains(Protocol):
-  def __contains__(self, item: Any) -> bool: ...

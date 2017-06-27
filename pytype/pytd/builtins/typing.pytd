@@ -17,7 +17,7 @@ _T2 = TypeVar('_T2')
 def _typevar_new(name: str, *constraints: type, bound: type=None, covariant: bool=False, contravariant: bool=False): ...
 
 
-class Callable(Generic[_ARGS, _RET]):
+class Callable(Generic[_ARGS, _RET], Protocol):
   func_name = ...  # type: str
   def __call__(self, ...) -> _RET
 
@@ -42,11 +42,11 @@ class SupportsComplex(Protocol):
   def __complex__(self) -> complex: ...
 
 
-class SupportsAbs(Generic[_T]):
+class SupportsAbs(Generic[_T], Protocol):
   def __abs__(self) -> _T: ...
 
 
-class SupportsRound(Generic[_T]):
+class SupportsRound(Generic[_T], Protocol):
   def __round__(self, ndigits: int = ...) -> _T: ...
 
 
@@ -54,11 +54,11 @@ class Reversible(Generic[_T]):
   def __reversed__(self) -> Iterator[_T]: ...
 
 
-class Iterator(Iterable[_T]):
+class Iterator(Iterable[_T], Protocol):
   def next(self) -> _T: ...
 
 
-class Iterable(Generic[_T]):
+class Iterable(Generic[_T], Protocol):
   def __iter__(self) -> Iterator[_T]
 
 
@@ -70,11 +70,11 @@ class Hashable(object):
   def __hash__(self) -> int: ...
 
 
-class Container(Generic[_T]):
+class Container(Generic[_T], Protocol):
   def __contains__(self, x) -> bool: ...
 
 
-class Sequence(Sized, Iterable[_T], Container[_T], Reversible[_T]):
+class Sequence(Sized, Iterable[_T], Container[_T], Reversible[_T], Protocol):
   def __getitem__(self, i: int) -> _T: ...
   def __getitem__(self, s: slice) -> Sequence[_T]: ...
   def __getslice__(self, ...) -> Sequence[_T]: ...
@@ -88,7 +88,7 @@ class Sequence(Sized, Iterable[_T], Container[_T], Reversible[_T]):
 class Tuple(Sequence[_T]): ...
 
 
-class MutableSequence(Sequence[_T]):
+class MutableSequence(Sequence[_T], Protocol):
   def __setitem__(self, i: int, v: _T2) -> None:
     self := MutableSequence[_T or _T2]
   def __setitem__(self, i: slice, v: Iterable[_T2]) -> None:
@@ -162,7 +162,7 @@ class Mapping(Sized, Iterable[_K], Container[_K], Generic[_K, _V]):
   def viewvalues(self) -> list[_V]: ...
 
 
-class MutableMapping(Mapping[_K, _V]):
+class MutableMapping(Mapping[_K, _V], Protocol):
   def copy(self) -> MutableMapping[_K, _V]: ...
   def __setitem__(self, k: _K2, v: _V2) -> None:
     self := MutableMapping[_K or _K2, _V or _V2]
@@ -266,7 +266,7 @@ class ByteString(Sequence[int]): ...
 
 # TODO(tsudol): Should be covariant, e.g. _T_co. traceback arg for __exit__
 # should be types.TracebackType.
-class ContextManager(Generic[_T]):
+class ContextManager(Generic[_T], Protocol):
   def __enter__(self) -> _T: ...
   def __exit__(self, exc_type: Optional[Type[BaseException]], exc_value: Optional[BaseException], traceback: Optional[Any]) -> Optional[bool]: ...
 

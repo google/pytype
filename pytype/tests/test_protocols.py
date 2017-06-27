@@ -170,36 +170,35 @@ class ProtocolTest(test_inference.InferenceTest):
   def test_supports_lower(self):
     self.options.tweak(protocols=True)
     ty = self.Infer("""\
-          from __future__ import google_type_annotations
-          def f(x):
-            return x.lower()
-         """, deep=True)
+      from __future__ import google_type_annotations
+      def f(x):
+        return x.lower()
+     """, deep=True)
     self.assertTypesMatchPytd(ty, """
       import protocols
       from typing import Any
       def f(x: protocols.SupportsLower) -> Any
     """)
 
-  def test_supports_contains(self):
+  def test_container(self):
     self.options.tweak(protocols=True)
     ty = self.Infer("""\
-          from __future__ import google_type_annotations
-          def f(x, y):
-            return y in x
-         """, deep=True)
+      from __future__ import google_type_annotations
+      def f(x, y):
+          return y in x
+     """, deep=True)
     self.assertTypesMatchPytd(ty, """
-      import protocols
-      from typing import Any
-      def f(x: protocols.SupportsContains, y:Any) -> bool
+      from typing import Any, Container
+      def f(x: Container, y:Any) -> bool
     """)
 
   def test_supports_int(self):
     self.options.tweak(protocols=True)
     ty = self.Infer("""\
-          from __future__ import google_type_annotations
-          def f(x):
-            return x.__int__()
-          """, deep=True)
+      from __future__ import google_type_annotations
+      def f(x):
+        return x.__int__()
+      """, deep=True)
     self.assertTypesMatchPytd(ty, """
       from typing import SupportsInt
       def f(x: SupportsInt) -> ?
@@ -208,10 +207,10 @@ class ProtocolTest(test_inference.InferenceTest):
   def test_supports_float(self):
     self.options.tweak(protocols=True)
     ty = self.Infer("""\
-          from __future__ import google_type_annotations
-          def f(x):
-              return x.__float__()
-          """, deep=True)
+      from __future__ import google_type_annotations
+      def f(x):
+          return x.__float__()
+      """, deep=True)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, SupportsFloat
       def f(x: SupportsFloat) -> ?
@@ -220,10 +219,10 @@ class ProtocolTest(test_inference.InferenceTest):
   def test_supports_complex(self):
     self.options.tweak(protocols=True)
     ty = self.Infer("""\
-          from __future__ import google_type_annotations
-          def f(x):
-            return x.__complex__()
-          """, deep=True)
+      from __future__ import google_type_annotations
+      def f(x):
+        return x.__complex__()
+      """, deep=True)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, SupportsComplex
       def f(x: SupportsComplex) -> Any
@@ -232,15 +231,122 @@ class ProtocolTest(test_inference.InferenceTest):
   def test_sized(self):
     self.options.tweak(protocols=True)
     ty = self.Infer("""\
-          from __future__ import google_type_annotations
-          def f(x):
-            return x.__len__()
-          """, deep=True)
+      from __future__ import google_type_annotations
+      def f(x):
+        return x.__len__()
+      """, deep=True)
     self.assertTypesMatchPytd(ty, """
       from typing import Sized
       def f(x: Sized) -> ?
     """)
 
+  def test_supports_abs(self):
+    self.options.tweak(protocols=True)
+    ty = self.Infer("""\
+      from __future__ import google_type_annotations
+      def f(x):
+        y = abs(x)
+        return y.__len__()
+      """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      from typing import SupportsAbs, Sized
+      def f(x: SupportsAbs[Sized]) -> ?
+    """)
+
+  @unittest.skip("doesn't match arguments correctly")
+  def test_supports_round(self):
+    self.options.tweak(protocols=True)
+    ty = self.Infer("""\
+      from __future__ import google_type_annotations
+      def f(x):
+        y = x.__round__()
+      """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      from typing import SupportsRound
+      def f(x: SupportsRound) -> ?
+    """)
+
+  def test_reversible(self):
+    self.options.tweak(protocols=True)
+    ty = self.Infer("""\
+      from __future__ import google_type_annotations
+      def f(x):
+        y = x.__reversed__()
+        return y
+      """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Reversible
+      def f(x: Reversible) -> iterator
+    """)
+
+  def test_iterable(self):
+    self.options.tweak(protocols=True)
+    ty = self.Infer("""\
+      from __future__ import google_type_annotations
+      def f(x):
+        return x.__iter__()
+      """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Iterable
+      def f(x: Iterable) -> iterator
+    """)
+
+  @unittest.skip("Iterator not implemented, breaks other functionality")
+  def test_iterator(self):
+    self.options.tweak(protocols=True)
+    ty = self.Infer("""\
+      from __future__ import google_type_annotations
+      def f(x):
+        return x.next()
+      """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Iterator
+      def f(x: Iterator) -> ?
+    """)
+
+  def test_callable(self):
+    self.options.tweak(protocols=True)
+    ty = self.Infer("""\
+      from __future__ import google_type_annotations
+      def f(x):
+        return x().lower()
+      """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      import protocols
+      from typing import Any, Callable
+      def f(x: Callable[Any, protocols.SupportsLower]) -> ?
+    """)
+
+  @unittest.skip("need to implement abstractmethod")
+  def test_sequence(self):
+    self.options.tweak(protocols=True)
+    ty = self.Infer("""\
+      from __future__ import google_type_annotations
+      def f(x):
+        x.index("foo")
+        x.count("meep")
+        return x.__getitem__(5) + x[1:5]
+      """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      import protocols
+      from typing import Any, Sequence
+      def f(x: Sequence) -> ?
+    """)
+
+  @unittest.skip("doesn't match arguments correctly on exit")
+  def test_context_manager(self):
+    self.options.tweak(protocols=True)
+    ty = self.Infer("""\
+      from __future__ import google_type_annotations
+      def f(x):
+        x.__enter__()
+        x.__exit__(None, None, None)
+      """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      import protocols
+      from typing import ContextManager
+      def f(x: ContextManager) -> ?
+    """)
 
 if __name__ == "__main__":
   test_inference.main()

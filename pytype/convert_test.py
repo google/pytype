@@ -199,7 +199,7 @@ class ConvertTest(unittest.TestCase):
     cls = self._vm.convert.constant_to_value(x, {}, self._vm.root_cfg_node)
     self.assertListEqual([v.name for v in cls.mro],
                          ["dict", "Dict", "MutableMapping", "Mapping", "Sized",
-                          "Protocol", "Iterable", "Container", "Generic",
+                          "Iterable", "Container", "Generic", "Protocol",
                           "object"])
 
   def test_widen_type(self):
