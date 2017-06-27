@@ -491,7 +491,7 @@ class TestOptimize(parser_test_base.ParserTest):
 
   def testBuiltinSuperClasses(self):
     src = textwrap.dedent("""
-        def f(x: list or object, y: int or float) -> int or bool
+        def f(x: list or object, y: complex or memoryview) -> int or bool
     """)
     expected = textwrap.dedent("""
         def f(x, y) -> int
@@ -503,6 +503,7 @@ class TestOptimize(parser_test_base.ParserTest):
     ast = self.ParseAndResolve(src)
     ast = ast.Visit(visitor)
     ast = ast.Visit(visitors.DropBuiltinPrefix())
+    ast = ast.Visit(visitors.CanonicalOrderingVisitor())
     self.AssertSourceEquals(ast, expected)
 
   def testUserSuperClassHierarchy(self):

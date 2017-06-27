@@ -635,7 +635,7 @@ class bool(int, SupportsInt, SupportsFloat):
     def bit_length(self) -> int
     def conjugate(self, ...) -> int
 
-class int(object):  # TODO(kramm): SupportsInt, SupportsFloat, SupportsAbs)
+class int(SupportsInt, SupportsFloat, SupportsAbs):
     denominator = ...  # type: int
     numerator = ... # type: int
     real = ... # type: int
