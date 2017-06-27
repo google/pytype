@@ -356,9 +356,13 @@ class ClassType(node.Node('name: str'), Type):
         cls='<unresolved>' if self.cls is None else '')
 
 
-class FunctionType(node.Node('name: str', 'function: Function'), Type):
+class FunctionType(node.Node('name: str'), Type):
   """The type of a function. E.g. the type of 'x' in 'x = lambda y: y'."""
-  __slots__ = ()
+
+  def __new__(cls, name, function):
+    self = super(FunctionType, cls).__new__(cls, name)
+    self.function = function
+    return self
 
 
 class AnythingType(node.Node(), Type):

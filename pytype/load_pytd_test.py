@@ -274,6 +274,19 @@ class PickledPyiLoaderTest(unittest.TestCase):
 
         bar.A = foo.A"""))
 
+  def testFunctionAlias(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        def f(): ...
+        g = f
+      """)
+      foo = _Module(module_name="foo", file_name="foo.pyi")
+      self._LoadAst(d, module=foo)
+      self._PickleModules(d, foo)
+      loaded_ast = self._LoadPickledModule(d, foo)
+      g = loaded_ast.Lookup("foo.g")
+      self.assertEquals(g.type.function, loaded_ast.Lookup("foo.f"))
+
 
 if __name__ == "__main__":
   unittest.main()
