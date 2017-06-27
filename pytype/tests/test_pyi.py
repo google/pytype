@@ -651,6 +651,61 @@ class PYITest(test_inference.InferenceTest):
         v = ...  # type: ?
       """)
 
+  def testStarImport(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        x = ...  # type: int
+        T = TypeVar("T")
+        class A(object): ...
+        def f(x: T) -> T: ...
+        B = A
+      """)
+      d.create_file("bar.pyi", """
+        from foo import *
+      """)
+      self.assertNoErrors("""
+        import bar
+        bar.x
+        bar.T
+        bar.A
+        bar.f
+        bar.B
+      """, pythonpath=[d.path])
+
+  def testStarImportValue(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        T = TypeVar("T")
+        def f(x: T) -> T
+        class Foo(object): pass
+      """)
+      d.create_file("bar.pyi", """
+        from foo import *
+      """)
+      ty = self.Infer("""
+        import bar
+        v1 = bar.Foo()
+        v2 = bar.f("")
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        bar = ...  # type: module
+        v1 = ...  # type: foo.Foo
+        v2 = ...  # type: str
+      """)
+
+  def testStarImportGetAttr(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        def __getattr__(name) -> ?
+      """)
+      d.create_file("bar.pyi", """
+        from foo import *
+      """)
+      self.assertNoErrors("""
+        import bar
+        bar.rumpelstiltskin
+      """, pythonpath=[d.path])
+
 
 if __name__ == "__main__":
   test_inference.main()

@@ -221,11 +221,11 @@ def WrapTypeDeclUnit(name, items):
       constants[item.name].add_type(item.type)
     elif isinstance(item, pytd.Alias):
       if item.name in aliases:
-        raise NameError("Duplicate top level alias or import: %r", item.name)
+        raise NameError("Duplicate top level alias or import: %r" % item.name)
       aliases[item.name] = item
     elif isinstance(item, pytd.TypeParameter):
       if item.name in typevars:
-        raise NameError("Duplicate top level type parameter: %r", item.name)
+        raise NameError("Duplicate top level type parameter: %r" % item.name)
       typevars[item.name] = item
     else:
       raise ValueError("Invalid top level pytd item: %r" % type(item))

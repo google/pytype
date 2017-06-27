@@ -177,7 +177,8 @@ class ParserTest(_ParserTestBase):
     self.check("from foo.bar import baz")
     self.check("from foo.bar import baz as abc")
     self.check("from typing import NamedTuple, TypeVar", "")
-    self.check("from foo.bar import *", "")
+    self.check("from foo.bar import *")
+    self.check_error("from foo import * as bar", 1, "")
     self.check("from foo import a, b",
                "from foo import a\nfrom foo import b")
     self.check("from foo import (a, b)",

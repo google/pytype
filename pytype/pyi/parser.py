@@ -528,14 +528,19 @@ class _Parser(object):
           name, new_name = item
         else:
           name = new_name = item
-        if name != "*":
-          t = pytd.NamedType("%s.%s" % (from_package, name))
-          self._type_map[new_name] = t
-          if from_package != "typing" or self._ast_name == "protocols":
-            self._aliases.append(pytd.Alias(new_name, t))
-            self._module_path_map[name] = "%s.%s" % (from_package, name)
-        else:
-          pass  # TODO(kramm): Handle '*' imports in pyi
+        t = pytd.NamedType("%s.%s" % (from_package, name))
+        if name == "*":
+          # A star import is stored as
+          # 'imported_mod.* = imported_mod.*'. The imported module needs to be
+          # in the alias name so that multiple star imports are handled
+          # properly. LookupExternalTypes() replaces the alias with the
+          # contents of the imported module.
+          assert new_name == name
+          new_name = t.name
+        self._type_map[new_name] = t
+        if from_package != "typing" or self._ast_name == "protocols":
+          self._aliases.append(pytd.Alias(new_name, t))
+          self._module_path_map[name] = "%s.%s" % (from_package, name)
     else:
       # No need to check _current_condition since there are no side effects.
       # import a, b as c, ...

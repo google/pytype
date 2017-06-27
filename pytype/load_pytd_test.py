@@ -1,7 +1,8 @@
 """Tests for load_pytd.py."""
 
+import collections
 import os
-import unittest
+import textwrap
 
 from pytype import config
 from pytype import load_pytd
@@ -185,14 +186,18 @@ class ImportPathsTest(unittest.TestCase):
       self.assertEquals("empty2", empty2.name)
 
 
+_Module = collections.namedtuple("_", ["module_name", "file_name"])
+
+
 class PickledPyiLoaderTest(unittest.TestCase):
 
   PYTHON_VERSION = (2, 7)
 
   def setUp(self):
     self.options = config.Options.create(python_version=self.PYTHON_VERSION)
+    self.loader = load_pytd.Loader(base_module=None, options=self.options)
 
-  def _CreateFiles(self, temp_dir, module_name):
+  def _CreateFiles(self, tempdir):
     src = """
         import module2
         from typing import List
@@ -209,42 +214,65 @@ class PickledPyiLoaderTest(unittest.TestCase):
         def ModuleFunction():
           pass
     """
-    pyi_filename = temp_dir.create_file("module1.pyi", src)
-    temp_dir.create_file("module2.pyi", """
+    tempdir.create_file("module1.pyi", src)
+    tempdir.create_file("module2.pyi", """
         class ObjectMod2(object):
           def __init__(self):
             pass
     """)
-    self.options.tweak(pythonpath=[temp_dir.path])
-    self.options.tweak(module_name=module_name)
-    loader = load_pytd.Loader(base_module=None, options=self.options)
-    ast = loader.load_file(self.options.module_name, pyi_filename)
 
-    pickled_ast_filename = os.path.join(temp_dir.path, "module1.pyi.pickled")
-    serialize_ast.StoreAst(ast, pickled_ast_filename)
+  def _GetPath(self, tempdir, filename):
+    return os.path.join(tempdir.path, filename)
 
-    serialize_ast.StoreAst(loader._modules["module2"].ast,
-                           os.path.join(temp_dir.path, "module2.pyi.pickled"))
+  def _LoadAst(self, tempdir, module):
+    self.options.tweak(pythonpath=[tempdir.path])
+    self.options.tweak(module_name=module.module_name)
+    return self.loader.load_file(
+        self.options.module_name, self._GetPath(tempdir, module.file_name))
 
-    return ast
+  def _PickleModules(self, tempdir, *modules):
+    for module in modules:
+      serialize_ast.StoreAst(
+          self.loader._modules[module.module_name].ast,
+          self._GetPath(tempdir, module.file_name + ".pickled"))
+
+  def _LoadPickledModule(self, tempdir, module):
+    pickle_loader = load_pytd.PickledPyiLoader(
+        base_module=None, options=self.options)
+    return pickle_loader.load_file(
+        module.module_name, self._GetPath(tempdir, module.file_name))
 
   def testLoadWithSameModuleName(self):
     with utils.Tempdir() as d:
-      module_name = "foo.bar.module1"
-      ast = self._CreateFiles(temp_dir=d, module_name=module_name)
-      pickled_ast_filename = os.path.join(d.path, "module1.pyi.pickled")
+      self._CreateFiles(tempdir=d)
+      module1 = _Module(module_name="foo.bar.module1", file_name="module1.pyi")
+      module2 = _Module(module_name="module2", file_name="module2.pyi")
+      ast = self._LoadAst(tempdir=d, module=module1)
+      self._PickleModules(d, module1, module2)
+      pickled_ast_filename = self._GetPath(d, module1.file_name + ".pickled")
       result = serialize_ast.StoreAst(ast, pickled_ast_filename)
       self.assertTrue(result)
 
-      pickle_loader = load_pytd.PickledPyiLoader(
-          base_module=None, options=self.options)
-      loaded_ast = pickle_loader.load_file(
-          module_name, os.path.join(d.path, "module1.pyi"))
-
+      loaded_ast = self._LoadPickledModule(d, module1)
       self.assertTrue(loaded_ast)
       self.assertTrue(loaded_ast is not ast)
       self.assertTrue(ast.ASTeq(loaded_ast))
       loaded_ast.Visit(visitors.VerifyLookup())
+
+  def testStarImport(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", "class A(object): ...")
+      d.create_file("bar.pyi", "from foo import *")
+      foo = _Module(module_name="foo", file_name="foo.pyi")
+      bar = _Module(module_name="bar", file_name="bar.pyi")
+      self._LoadAst(d, module=bar)
+      self._PickleModules(d, foo, bar)
+      loaded_ast = self._LoadPickledModule(d, bar)
+      loaded_ast.Visit(visitors.VerifyLookup())
+      self.assertMultiLineEqual(pytd.Print(loaded_ast), textwrap.dedent("""\
+        import foo
+
+        bar.A = foo.A"""))
 
 
 if __name__ == "__main__":
