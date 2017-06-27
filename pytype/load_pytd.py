@@ -135,7 +135,7 @@ class Loader(object):
       # happens before any others use it to resolve dependencies, so there are
       # no external pointers into the module at this point.
       module.ast.Visit(
-          visitors.FillInModuleClasses({"": module.ast,
+          visitors.FillInLocalPointers({"": module.ast,
                                         module_name: module.ast}))
       self._verify_ast(module.ast)
     except:
@@ -170,7 +170,7 @@ class Loader(object):
   def _finish_ast(self, ast):
     module_map = self._get_module_map()
     module_map[""] = ast  # The module itself (local lookup)
-    ast.Visit(visitors.FillInModuleClasses(module_map))
+    ast.Visit(visitors.FillInLocalPointers(module_map))
 
   def _verify_ast(self, ast):
     try:

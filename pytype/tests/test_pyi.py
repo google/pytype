@@ -706,6 +706,15 @@ class PYITest(test_inference.InferenceTest):
         bar.rumpelstiltskin
       """, pythonpath=[d.path])
 
+  def testAlias(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        def f(x: Foo): ...
+        g = f
+        class Foo: ...
+      """)
+      self.assertNoErrors("import foo", pythonpath=[d.path])
+
 
 if __name__ == "__main__":
   test_inference.main()

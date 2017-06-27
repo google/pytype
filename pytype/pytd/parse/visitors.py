@@ -625,8 +625,8 @@ class StripSelf(Visitor):
     return node.Replace(params=node.params[1:])
 
 
-class FillInModuleClasses(Visitor):
-  """Fill in ClassType pointers using symbol tables.
+class FillInLocalPointers(Visitor):
+  """Fill in ClassType and FunctionType pointers using symbol tables.
 
   This is an in-place visitor! It modifies the original tree. This is
   necessary because we introduce loops.
@@ -642,22 +642,12 @@ class FillInModuleClasses(Visitor):
         "Lookup" function).
       fallback: A symbol table to be tried if lookup otherwise fails.
     """
-    super(FillInModuleClasses, self).__init__()
+    super(FillInLocalPointers, self).__init__()
     if fallback is not None:
       lookup_map["*"] = fallback
     self._lookup_map = lookup_map
 
-  def EnterClassType(self, node):
-    """Fills in a class type.
-
-    Args:
-      node: A ClassType. This node will have a name, which we use for lookup.
-
-    Returns:
-      The same ClassType. We will have done our best to fill in its "cls"
-      attribute. Call VerifyLookup() on your tree if you want to be sure that
-      all of the cls pointers have been filled in.
-    """
+  def _Lookup(self, node):
     module, _, _ = node.name.rpartition(".")
     if module:
       modules_to_try = [("", module)]
@@ -670,16 +660,39 @@ class FillInModuleClasses(Visitor):
       mod_ast = self._lookup_map.get(module)
       if mod_ast:
         try:
-          cls = mod_ast.Lookup(prefix + node.name)
+          item = mod_ast.Lookup(prefix + node.name)
         except KeyError:
           pass
         else:
-          if isinstance(cls, pytd.Class):
-            node.cls = cls
-            return
-          else:
-            logging.warning("Couldn't resolve %s: Not a class: %s",
-                            prefix + node.name, type(cls))
+          yield prefix, item
+
+  def EnterClassType(self, node):
+    """Fills in a class type.
+
+    Args:
+      node: A ClassType. This node will have a name, which we use for lookup.
+
+    Returns:
+      The same ClassType. We will have done our best to fill in its "cls"
+      attribute. Call VerifyLookup() on your tree if you want to be sure that
+      all of the cls pointers have been filled in.
+    """
+    for prefix, cls in self._Lookup(node):
+      if isinstance(cls, pytd.Class):
+        node.cls = cls
+        return
+      else:
+        logging.warning("Couldn't resolve %s: Not a class: %s",
+                        prefix + node.name, type(cls))
+
+  def EnterFunctionType(self, node):
+    for prefix, func in self._Lookup(node):
+      if isinstance(func, pytd.Function):
+        node.function = func
+        return
+      else:
+        logging.warning("Couldn't resolve %s: Not a function: %s",
+                        prefix + node.name, type(func))
 
 
 def _ToType(item, allow_constants=True):
@@ -815,7 +828,7 @@ def LookupClasses(target, global_module=None):
     global_module = target
   elif isinstance(target, pytd.TypeDeclUnit):
     module_map[""] = target
-  target.Visit(FillInModuleClasses(module_map, fallback=global_module))
+  target.Visit(FillInLocalPointers(module_map, fallback=global_module))
   target.Visit(VerifyLookup())
   return target
 

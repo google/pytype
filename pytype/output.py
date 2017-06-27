@@ -212,7 +212,7 @@ class Converter(object):
           cls_types.append(self.value_instance_to_pytd_type(
               node, cls, v, seen=seen, view=view))
         ret = pytd_utils.JoinTypes(cls_types)
-        ret.Visit(visitors.FillInModuleClasses(
+        ret.Visit(visitors.FillInLocalPointers(
             {"__builtin__": v.vm.loader.builtins}))
         return ret
       else:

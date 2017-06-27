@@ -61,7 +61,7 @@ class TestVisitors(parser_test_base.ParserTest):
     self.AssertSourceEquals(new_tree, src)
     new_tree.Visit(visitors.VerifyLookup())
 
-  def testMaybeFillInModuleClasses(self):
+  def testMaybeFillInLocalPointers(self):
     src = textwrap.dedent("""
         class A(object):
             def a(self, a: A, b: B) -> A or B:
@@ -70,11 +70,18 @@ class TestVisitors(parser_test_base.ParserTest):
     """)
     tree = self.Parse(src)
     ty_a = pytd.ClassType("A")
-    ty_a.Visit(visitors.FillInModuleClasses({"": tree}))
+    ty_a.Visit(visitors.FillInLocalPointers({"": tree}))
     self.assertIsNotNone(ty_a.cls)
     ty_b = pytd.ClassType("B")
-    ty_b.Visit(visitors.FillInModuleClasses({"": tree}))
+    ty_b.Visit(visitors.FillInLocalPointers({"": tree}))
     self.assertIsNone(ty_b.cls)
+
+  def testFillInFunctionTypePointers(self):
+    src = textwrap.dedent("def f(): ...")
+    tree = self.Parse(src)
+    ty = pytd.FunctionType("f", None)
+    ty.Visit(visitors.FillInLocalPointers({"": tree}))
+    self.assertEquals(ty.function, tree.Lookup("f"))
 
   def testDefaceUnresolved(self):
     builtins = self.Parse(textwrap.dedent("""

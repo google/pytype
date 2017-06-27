@@ -251,5 +251,5 @@ def PrepareForExport(module_name, python_version, ast):
   ast = ast.Visit(visitors.LookupLocalTypes())
   ast = ast.Visit(visitors.AdjustTypeParameters())
   ast = ast.Visit(visitors.NamedTypeToClassType())
-  ast = ast.Visit(visitors.FillInModuleClasses({"": ast, module_name: ast}))
+  ast = ast.Visit(visitors.FillInLocalPointers({"": ast, module_name: ast}))
   return ast
