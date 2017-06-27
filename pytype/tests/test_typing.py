@@ -543,6 +543,13 @@ class TypingTest(test_inference.InferenceTest):
         return fn.func_name
     """)
 
+  def testItemsView(self):
+    self.assertNoErrors("""
+      from __future__ import google_type_annotations
+      from typing import ItemsView
+      def f(x: ItemsView[str, int]): ...
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

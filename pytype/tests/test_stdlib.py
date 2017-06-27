@@ -1,7 +1,5 @@
 """Tests of selected stdlib functions."""
 
-import unittest
-
 
 from pytype.tests import test_inference
 
@@ -228,11 +226,11 @@ class StdlibTests(test_inference.InferenceTest):
       random.sample(xrange(10), 5)
     """)
 
-  @unittest.skip("Lookup error for xml.etree.ElementTree")
   def testXml(self):
     self.assertNoErrors("""
       import xml.etree.cElementTree
       xml.etree.cElementTree.SubElement
+      xml.etree.cElementTree.iterparse
     """)
 
 
