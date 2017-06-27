@@ -1144,8 +1144,25 @@ class AnnotationContainer(AnnotationClass):
     template, inner, abstract_class = self._get_value_info(
         inner, ends_with_ellipsis)
     if len(inner) > len(template):
-      error = "Expected %d parameter(s), got %d" % (len(template), len(inner))
-      self.vm.errorlog.invalid_annotation(self.vm.frames, self, error)
+      if not template:
+        self.vm.errorlog.not_indexable(self.vm.frames, self.base_cls.name,
+                                       generic_warning=True)
+      else:
+        error = "Expected %d parameter(s), got %d" % (len(template), len(inner))
+        self.vm.errorlog.invalid_annotation(self.vm.frames, self, error)
+    else:
+      if len(inner) == 1:
+        val, = inner
+        # It's a common mistake to index tuple, not tuple().
+        # We only check the "int" case, since string literals are allowed for
+        # late annotations.
+        # TODO(kramm): Instead of blacklisting only int, this should use
+        # annotations_util.py to look up legal types.
+        if (isinstance(val, Instance) and
+            val.cls.data == self.vm.convert.int_type.data):
+          # Don't report this error again.
+          inner = (self.vm.convert.unsolvable,)
+          self.vm.errorlog.not_indexable(self.vm.frames, self.name)
     params = {name: inner[i] if i < len(inner) else self.vm.convert.unsolvable
               for i, name in enumerate(template)}
     return abstract_class(self.base_cls, params, self.vm)

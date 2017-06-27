@@ -1034,6 +1034,19 @@ class ErrorTest(test_inference.InferenceTest):
                            (16, "wrong-arg-types", r"Union\[int, `X`\]")
                           ])
 
+  def testBadAnnotation(self):
+    _, errors = self.InferAndCheck("""\
+      tuple[0]
+      dict[42]
+      class A(object): pass
+      A[3]
+    """)
+    self.assertErrorLogIs(errors, [
+        (1, "not-indexable", r"class tuple"),
+        (2, "not-indexable", r"class dict"),
+        (4, "not-indexable", r"class A"),
+    ])
+
 
 if __name__ == "__main__":
   test_inference.main()

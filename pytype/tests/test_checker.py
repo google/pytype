@@ -219,8 +219,8 @@ class CheckerTest(test_inference.InferenceTest):
         pass
     """
     errorlog = self.get_checking_errors(python)
-    self.assertErrorLogIs(errorlog, [(4, "invalid-annotation", r"0.*1"),
-                                     (6, "invalid-annotation", r"0.*1")])
+    self.assertErrorLogIs(errorlog, [(4, "not-indexable", r"Generic"),
+                                     (6, "not-indexable", r"Generic")])
 
 
 if __name__ == "__main__":

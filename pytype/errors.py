@@ -538,6 +538,14 @@ class ErrorLog(ErrorLogBase):
     message = "%r object is not callable" % (function.name)
     self.error(stack, message)
 
+  @_error_name("not-indexable")
+  def not_indexable(self, stack, name, generic_warning=False):
+    message = "class %s is not indexable" % name
+    if generic_warning:
+      self.error(stack, message, "(%r does not subclass Generic)" % name)
+    else:
+      self.error(stack, message)
+
   @_error_name("none-attr")  # None doesn't have attribute '__call__'
   def none_not_callable(self, stack):
     """Calling None."""
@@ -595,7 +603,7 @@ class ErrorLog(ErrorLogBase):
     self.error(stack, "unsupported operand type(s) for %s: %r and %r" % (
         operation, left, right))
 
-  def invalid_annotation(self, stack, annot, details, name=None):
+  def invalid_annotation(self, stack, annot, details=None, name=None):
     self._invalid_annotation(stack, self._print_as_expected_type(annot),
                              details, name)
 

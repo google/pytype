@@ -307,7 +307,7 @@ class TypingTest(test_inference.InferenceTest):
         (21, "invalid-annotation",
          r"instance of List\[int\].*Must be constant"),
         (24, "invalid-annotation", r"\[str\].*Must be constant"),
-        (25, "invalid-annotation", r"instance of int.*Not a type"),
+        (25, "invalid-annotation", r"instance of int"),
         (26, "invalid-annotation", r"Callable.*Expected 2.*got 3"),])
 
   def test_generics(self):
