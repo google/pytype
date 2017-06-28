@@ -64,7 +64,7 @@ PyObject* ExtendList(PyObject* dst, PyObject* src);
 %token END 0              "end of file"
 
 /* Tokens with PyObject values */
-%token <obj> NAME NUMBER BYTESTRING UNICODESTRING LEXERROR
+%token <obj> NAME NUMBER LEXERROR
 
 /* Reserved words. */
 %token CLASS DEF ELSE ELIF IF OR PASS IMPORT FROM AS RAISE PYTHONCODE
@@ -72,7 +72,7 @@ PyObject* ExtendList(PyObject* dst, PyObject* src);
 /* Punctuation. */
 %token ARROW COLONEQUALS ELLIPSIS EQ NE LE GE
 /* Other. */
-%token INDENT DEDENT TRIPLEQUOTED TYPECOMMENT
+%token INDENT DEDENT TRIPLEQUOTED TYPECOMMENT BYTESTRING UNICODESTRING
 
 /* Most nonterminals have an obj value. */
 %type <obj> start unit alldefs if_stmt if_and_elifs
