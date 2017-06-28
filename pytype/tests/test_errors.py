@@ -1047,6 +1047,22 @@ class ErrorTest(test_inference.InferenceTest):
         (4, "not-indexable", r"class A"),
     ])
 
+  def testRevealType(self):
+    _, errors = self.InferAndCheck("""\
+      reveal_type(42 or "foo")
+      class Foo(object):
+        pass
+      reveal_type(Foo)
+      reveal_type(Foo())
+      reveal_type([1,2,3])
+    """)
+    self.assertErrorLogIs(errors, [
+        (1, "reveal-type", r"^Union\[int, str\]$"),
+        (4, "reveal-type", r"^Type\[Foo\]$"),
+        (5, "reveal-type", r"^Foo$"),
+        (6, "reveal-type", r"^List\[int\]$"),
+    ])
+
 
 if __name__ == "__main__":
   test_inference.main()

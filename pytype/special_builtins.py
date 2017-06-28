@@ -319,3 +319,15 @@ class Object(abstract.PyTDClass):
         self.load_lazy_attribute("__init__extra_args")
         return self.members["__init__extra_args"]
     return super(Object, self).get_special_attribute(node, name, valself)
+
+
+class RevealType(abstract.AtomicAbstractValue):
+  """For debugging. reveal_type(x) prints the type of "x"."""
+
+  def __init__(self, vm):
+    super(RevealType, self).__init__("reveal_type", vm)
+
+  def call(self, node, _, args):
+    for a in args.posargs:
+      self.vm.errorlog.reveal_type(self.vm.frames, node, a)
+    return node, self.vm.convert.build_none(node)

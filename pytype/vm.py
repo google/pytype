@@ -205,6 +205,8 @@ class VirtualMachine(object):
         "object": abstract.merge_values(self.convert.object_type.data, self),
         # for more pretty branching tests.
         "__random__": self.convert.primitive_class_instances[bool],
+        # for debugging
+        "reveal_type": special_builtins.RevealType(self),
         # boolean values.
         "True": self.convert.true,
         "False": self.convert.false,

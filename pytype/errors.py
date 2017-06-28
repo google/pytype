@@ -693,3 +693,10 @@ class ErrorLog(ErrorLogBase):
     msg = ("collections.namedtuple argument %r is not a valid typename or "
            "field name.")
     self.warn(stack, msg % badname)
+
+  @_error_name("reveal-type")
+  def reveal_type(self, stack, node, var):
+    types = [self._print_as_actual_type(b.data)
+             for b in var.bindings
+             if node.HasCombination([b])]
+    self.error(stack, self._join_printed_types(types))
