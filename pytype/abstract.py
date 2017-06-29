@@ -579,6 +579,13 @@ class TypeParameterInstance(AtomicAbstractValue):
   def get_class(self):
     return self.param.to_variable(self.vm.root_cfg_node)
 
+  def call(self, node, func, args):
+    var = self.instance.type_parameters[self.name]
+    if var.bindings:
+      return self.vm.call_function(node, var, args)
+    else:
+      return node, self.vm.convert.empty.to_variable(self.vm.root_cfg_node)
+
   def __repr__(self):
     return "TypeParameterInstance(%r)" % self.name
 

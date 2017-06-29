@@ -631,6 +631,22 @@ class TypeVarTest(test_inference.InferenceTest):
     self.assertErrorLogIs(
         errors, [(5, "bad-return-type", r"Optional\[T\].*int")])
 
+  def testCallTypeParameterInstance(self):
+    ty = self.Infer("""
+      class Foo(object):
+        def __init__(self):
+          self.callbacks = {"": int}
+        def call(self):
+          for _, callback in sorted(self.callbacks.iteritems()):
+            return callback()
+    """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Dict, Optional, Type
+      class Foo(object):
+        callbacks = ...  # type: Dict[str, Type[int]]
+        def call(self) -> Optional[int]
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

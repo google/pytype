@@ -802,6 +802,47 @@ class AbstractTest(AbstractTestBase):
       mod.module = "other_mod"
     self.assertRaises(AssertionError, set_module)
 
+  def testCallTypeParameterInstance(self):
+    instance = abstract.Instance(self._vm.convert.list_type, self._vm)
+    instance.initialize_type_parameter(
+        self._node, abstract.T, self._vm.convert.int_type)
+    t = abstract.TypeParameter(abstract.T, self._vm)
+    t_instance = abstract.TypeParameterInstance(t, instance, self._vm)
+    node, ret = t_instance.call(
+        self._node, t_instance.to_variable(self._node).bindings[0],
+        abstract.FunctionArgs(posargs=()))
+    self.assertIs(node, self._node)
+    retval, = ret.data
+    self.assertListEqual(retval.cls.data, self._vm.convert.int_type.data)
+
+  def testCallEmptyTypeParameterInstance(self):
+    instance = abstract.Instance(self._vm.convert.list_type, self._vm)
+    instance.initialize_type_parameter(
+        self._node, abstract.T, self._vm.program.NewVariable())
+    t = abstract.TypeParameter(abstract.T, self._vm)
+    t_instance = abstract.TypeParameterInstance(t, instance, self._vm)
+    node, ret = t_instance.call(
+        self._node, t_instance.to_variable(self._node).bindings[0],
+        abstract.FunctionArgs(posargs=()))
+    self.assertIs(node, self._node)
+    retval, = ret.data
+    self.assertIs(retval, self._vm.convert.empty)
+
+  def testCallTypeParameterInstanceWithWrongArgs(self):
+    instance = abstract.Instance(self._vm.convert.list_type, self._vm)
+    instance.initialize_type_parameter(
+        self._node, abstract.T, self._vm.convert.int_type)
+    t = abstract.TypeParameter(abstract.T, self._vm)
+    t_instance = abstract.TypeParameterInstance(t, instance, self._vm)
+    posargs = (self._vm.convert.create_new_unsolvable(self._node),) * 3
+    node, ret = t_instance.call(
+        self._node, t_instance.to_variable(self._node).bindings[0],
+        abstract.FunctionArgs(posargs=posargs))
+    self.assertIs(node, self._node)
+    self.assertTrue(ret.bindings)
+    error, = self._vm.errorlog
+    self.assertEquals(error.name, "wrong-arg-count")
+
 
 if __name__ == "__main__":
   unittest.main()

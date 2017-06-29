@@ -167,8 +167,7 @@ class Converter(object):
     if isinstance(v, (abstract.Empty, abstract.Nothing)):
       return pytd.NothingType()
     elif isinstance(v, abstract.TypeParameterInstance):
-      if (v.name in v.instance.type_parameters and
-          v.instance.type_parameters[v.name].bindings):
+      if v.instance.type_parameters[v.name].bindings:
         # The type parameter was initialized.
         return pytd_utils.JoinTypes(
             self.value_to_pytd_type(node, p, seen, view)
