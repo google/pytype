@@ -1220,6 +1220,22 @@ class ClassesTest(test_inference.InferenceTest):
             return obj
       """, pythonpath=[d.path])
 
+  def testNameExists(self):
+    self.assertNoErrors("""
+      from __future__ import google_type_annotations
+      class Foo(object): pass
+      class Bar(object):
+        @staticmethod
+        def Create(x: Foo=None):
+          return Bar(x)
+        @staticmethod
+        def bar():
+          for name in __any_object__:
+            Bar.Create()
+            name
+        def __init__(self, x: Foo): pass
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()
