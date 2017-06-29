@@ -37,6 +37,25 @@ class TracebackTest(test_inference.InferenceTest):
                                    (2, "wrong-arg-types",
                                     r"Traceback:\n  line 4, in <module>")])
 
+  def test_comprehension(self):
+    _, errors = self.InferAndCheck("""\
+      def f():
+        return {x.upper() for x in range(10)}
+    """)
+    self.assertErrorLogIs(errors, [(2, "attribute-error", r"upper.*int$")])
+    error, = errors
+    self.assertEquals(error.methodname, "f")
+
+  def test_comprehension_in_traceback(self):
+    _, errors = self.InferAndCheck("""\
+      def f(x):
+        return x.upper()
+      def g():
+        return {f(x) for x in range(10)}
+    """)
+    self.assertErrorLogIs(errors, [(2, "attribute-error",
+                                    r"Traceback:\n  line 4, in g$")])
+
 
 if __name__ == "__main__":
   test_inference.main()

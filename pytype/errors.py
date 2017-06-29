@@ -68,16 +68,16 @@ def _maybe_truncate_traceback(traceback):
     return traceback
 
 
-def _make_traceback_str(stack):
-  """Turn a stack of frames into a traceback string.
+def _make_traceback_str(ops):
+  """Turn a stack of opcodes into a traceback string.
 
   Args:
-    stack: A list of state.Frame or state.SimpleFrame objects.
+    ops: A list of pyi.opcodes.Opcode objects.
 
   Returns:
     A traceback string representing the stack.
   """
-  ops = [frame.current_opcode for frame in stack[:-1] if frame.current_opcode]
+  ops = ops[:-1]
   if ops:
     ops = _maybe_truncate_traceback(ops)
     op_to_str = lambda op: "line %d, in %s" % (op.line, op.code.co_name)
@@ -85,6 +85,20 @@ def _make_traceback_str(stack):
     return TRACEBACK_MARKER + "\n  " + "\n  ".join(traceback)
   else:
     return None
+
+
+def _stack_to_opcodes(stack):
+  """Turn a stack of frames into a stack of opcodes, removing duplicates."""
+  ops = []
+  for frame in stack:
+    if frame.current_opcode and (
+        not ops or frame.current_opcode.line != ops[-1].line):
+      # We can have consecutive opcodes with the same line number due to, e.g.,
+      # a set comprehension. The first opcode we encounter is the one with the
+      # real method name, whereas the second's method name is something like
+      # <setcomp>, so we keep the first.
+      ops.append(frame.current_opcode)
+  return ops
 
 
 def _compare_traceback_strings(left, right):
@@ -160,13 +174,14 @@ class Error(object):
     Returns:
       An Error object.
     """
-    opcode = stack[-1].current_opcode if stack else None
+    opcodes = _stack_to_opcodes(stack) if stack else None
+    opcode = opcodes[-1] if opcodes else None
     if opcode is None:
       return cls(severity, message, details=details)
     else:
       return cls(severity, message, filename=opcode.code.co_filename,
                  lineno=opcode.line, methodname=opcode.code.co_name,
-                 details=details, traceback=_make_traceback_str(stack))
+                 details=details, traceback=_make_traceback_str(opcodes))
 
   @classmethod
   def for_test(cls, severity, message, name, **kwargs):
@@ -198,6 +213,10 @@ class Error(object):
   @property
   def traceback(self):
     return self._traceback
+
+  @property
+  def methodname(self):
+    return self._methodname
 
   def _position(self):
     """Return human-readable filename + line number."""
