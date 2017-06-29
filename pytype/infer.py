@@ -268,7 +268,7 @@ class CallTracer(vm.VirtualMachine):
 
   def init_class(self, node, cls):
     """Instantiate a class, and also call __init__."""
-    key = (node, cls)
+    key = (self.frame and self.frame.current_opcode, cls)
     if (key not in self._instance_cache or
         self._instance_cache[key] is _INITIALIZING):
       clsvar = cls.to_variable(node)
