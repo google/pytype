@@ -1675,6 +1675,15 @@ class VirtualMachine(object):
       try:
         return tuple(self.convert.value_to_constant(data, list))
       except abstract.ConversionError:
+        if data.cls and len(data.cls.bindings) == 1:
+          cls, = data.cls.data
+          for base in cls.mro:
+            if isinstance(base, abstract.TupleClass):
+              # Found a subclass of a heterogenous tuple (usually a
+              # typing.NamedTuple instance).
+              new_data = abstract.merge_values(
+                  base.instantiate(self.root_cfg_node).data, self)
+              return self._get_literal_sequence(new_data)
         return None
 
   def _restructure_tuple(self, state, tup, pre, post):

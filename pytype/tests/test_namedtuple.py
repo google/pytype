@@ -281,6 +281,24 @@ class NamedtupleTests(test_inference.InferenceTest):
         def __new__(cls: Type[_TX], _) -> _TX: ...""").format(name=name)
     self.assertTypesMatchPytd(ty, expected)
 
+  def test_unpacking(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import NamedTuple
+        X = NamedTuple("X", [('a', str), ('b', int)])
+      """)
+      ty = self.Infer("""
+        import foo
+        v = None  # type: foo.X
+        a, b = v
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        foo = ...  # type: module
+        v = ...  # type: foo.`namedtuple-X-0`
+        a = ...  # type: str
+        b = ...  # type: int
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()
