@@ -779,7 +779,7 @@ class _Parser(object):
     """
     # Handle previously defined NamedTuples with the same name
     prev_list = self._generated_classes[base_name]
-    class_name = "~%s_%d" % (base_name, len(prev_list))
+    class_name = "namedtuple-%s-%d" % (base_name, len(prev_list))
     class_parent = self._heterogeneous_tuple(pytd.NamedType("tuple"),
                                              tuple(t for _, t in fields))
     class_constants = tuple(pytd.Constant(n, t) for n, t in fields)

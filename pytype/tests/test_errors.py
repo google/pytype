@@ -1034,6 +1034,19 @@ class ErrorTest(test_inference.InferenceTest):
                            (16, "wrong-arg-types", r"Union\[int, `X`\]")
                           ])
 
+  def testCleanPyiNamedtupleNames(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import NamedTuple
+        X = NamedTuple("X", [])
+        def f(x: int): ...
+      """)
+      _, errors = self.InferAndCheck("""\
+        import foo
+        foo.f(foo.X())
+      """, pythonpath=[d.path])
+      self.assertErrorLogIs(errors, [(2, "wrong-arg-types", r"`X`")])
+
   def testBadAnnotation(self):
     _, errors = self.InferAndCheck("""\
       tuple[0]

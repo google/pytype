@@ -445,11 +445,11 @@ class NamedTupleTest(_ParserTestBase):
     self.check("x = ...  # type: NamedTuple(foo, [])", """\
       from typing import Any, Tuple, Type, TypeVar
 
-      x = ...  # type: `~foo_0`
+      x = ...  # type: `namedtuple-foo-0`
 
-      _T~foo_0 = TypeVar('_T~foo_0', bound=`~foo_0`)
+      _Tnamedtuple-foo-0 = TypeVar('_Tnamedtuple-foo-0', bound=`namedtuple-foo-0`)
 
-      class `~foo_0`(Tuple[nothing, ...]):
+      class `namedtuple-foo-0`(Tuple[nothing, ...]):
           _asdict = ...  # type: Any
           __dict__ = ...  # type: Any
           _fields = ...  # type: Any
@@ -458,7 +458,7 @@ class NamedTupleTest(_ParserTestBase):
           _make = ...  # type: Any
           _replace = ...  # type: Any
           __slots__ = ...  # type: Any
-          def __new__(cls: Type[_T~foo_0]) -> _T~foo_0: ...
+          def __new__(cls: Type[`_Tnamedtuple-foo-0`]) -> `_Tnamedtuple-foo-0`: ...
           def __init__(self, *args, **kwargs) -> None: ...
       """)
 
@@ -466,11 +466,11 @@ class NamedTupleTest(_ParserTestBase):
     expected = """\
       from typing import Any, Tuple, Type, TypeVar
 
-      x = ...  # type: `~foo_0`
+      x = ...  # type: `namedtuple-foo-0`
 
-      _T~foo_0 = TypeVar('_T~foo_0', bound=`~foo_0`)
+      _Tnamedtuple-foo-0 = TypeVar('_Tnamedtuple-foo-0', bound=`namedtuple-foo-0`)
 
-      class `~foo_0`(Tuple[int, str]):
+      class `namedtuple-foo-0`(Tuple[int, str]):
           a = ...  # type: int
           b = ...  # type: str
           _asdict = ...  # type: Any
@@ -481,7 +481,7 @@ class NamedTupleTest(_ParserTestBase):
           _make = ...  # type: Any
           _replace = ...  # type: Any
           __slots__ = ...  # type: Any
-          def __new__(cls: Type[_T~foo_0], a: int, b: str) -> _T~foo_0: ...
+          def __new__(cls: Type[`_Tnamedtuple-foo-0`], a: int, b: str) -> `_Tnamedtuple-foo-0`: ...
           def __init__(self, *args, **kwargs) -> None: ...
     """
     self.check("x = ...  # type: NamedTuple(foo, [(a, int), (b, str)])",
@@ -492,19 +492,20 @@ class NamedTupleTest(_ParserTestBase):
                expected)
 
   def test_dedup_basename(self):
+    # pylint: disable=line-too-long
     self.check("""\
       x = ...  # type: NamedTuple(foo, [(a, int,)])
       y = ...  # type: NamedTuple(foo, [(b, str,)])""",
                """\
       from typing import Any, Tuple, Type, TypeVar
 
-      x = ...  # type: `~foo_0`
-      y = ...  # type: `~foo_1`
+      x = ...  # type: `namedtuple-foo-0`
+      y = ...  # type: `namedtuple-foo-1`
 
-      _T~foo_0 = TypeVar('_T~foo_0', bound=`~foo_0`)
-      _T~foo_1 = TypeVar('_T~foo_1', bound=`~foo_1`)
+      _Tnamedtuple-foo-0 = TypeVar('_Tnamedtuple-foo-0', bound=`namedtuple-foo-0`)
+      _Tnamedtuple-foo-1 = TypeVar('_Tnamedtuple-foo-1', bound=`namedtuple-foo-1`)
 
-      class `~foo_0`(Tuple[int]):
+      class `namedtuple-foo-0`(Tuple[int]):
           a = ...  # type: int
           _asdict = ...  # type: Any
           __dict__ = ...  # type: Any
@@ -514,10 +515,10 @@ class NamedTupleTest(_ParserTestBase):
           _make = ...  # type: Any
           _replace = ...  # type: Any
           __slots__ = ...  # type: Any
-          def __new__(cls: Type[_T~foo_0], a: int) -> _T~foo_0: ...
+          def __new__(cls: Type[`_Tnamedtuple-foo-0`], a: int) -> `_Tnamedtuple-foo-0`: ...
           def __init__(self, *args, **kwargs) -> None: ...
 
-      class `~foo_1`(Tuple[str]):
+      class `namedtuple-foo-1`(Tuple[str]):
           b = ...  # type: str
           _asdict = ...  # type: Any
           __dict__ = ...  # type: Any
@@ -527,7 +528,7 @@ class NamedTupleTest(_ParserTestBase):
           _make = ...  # type: Any
           _replace = ...  # type: Any
           __slots__ = ...  # type: Any
-          def __new__(cls: Type[_T~foo_1], b: str) -> _T~foo_1: ...
+          def __new__(cls: Type[`_Tnamedtuple-foo-1`], b: str) -> `_Tnamedtuple-foo-1`: ...
           def __init__(self, *args, **kwargs) -> None: ...
         """)
 
@@ -535,11 +536,11 @@ class NamedTupleTest(_ParserTestBase):
     self.check("X = NamedTuple(X, [])", """\
       from typing import Any, Tuple, Type, TypeVar
 
-      X = `~X_0`
+      X = `namedtuple-X-0`
 
-      _T~X_0 = TypeVar('_T~X_0', bound=`~X_0`)
+      _Tnamedtuple-X-0 = TypeVar('_Tnamedtuple-X-0', bound=`namedtuple-X-0`)
 
-      class `~X_0`(Tuple[nothing, ...]):
+      class `namedtuple-X-0`(Tuple[nothing, ...]):
           _asdict = ...  # type: Any
           __dict__ = ...  # type: Any
           _fields = ...  # type: Any
@@ -548,7 +549,7 @@ class NamedTupleTest(_ParserTestBase):
           _make = ...  # type: Any
           _replace = ...  # type: Any
           __slots__ = ...  # type: Any
-          def __new__(cls: Type[_T~X_0]) -> _T~X_0: ...
+          def __new__(cls: Type[`_Tnamedtuple-X-0`]) -> `_Tnamedtuple-X-0`: ...
           def __init__(self, *args, **kwargs) -> None: ...
     """)
 
@@ -556,9 +557,9 @@ class NamedTupleTest(_ParserTestBase):
     self.check("class X(NamedTuple(X, [])): ...", """\
       from typing import Any, Tuple, Type, TypeVar
 
-      _T~X_0 = TypeVar('_T~X_0', bound=`~X_0`)
+      _Tnamedtuple-X-0 = TypeVar('_Tnamedtuple-X-0', bound=`namedtuple-X-0`)
 
-      class `~X_0`(Tuple[nothing, ...]):
+      class `namedtuple-X-0`(Tuple[nothing, ...]):
           _asdict = ...  # type: Any
           __dict__ = ...  # type: Any
           _fields = ...  # type: Any
@@ -567,10 +568,10 @@ class NamedTupleTest(_ParserTestBase):
           _make = ...  # type: Any
           _replace = ...  # type: Any
           __slots__ = ...  # type: Any
-          def __new__(cls: Type[_T~X_0]) -> _T~X_0: ...
+          def __new__(cls: Type[`_Tnamedtuple-X-0`]) -> `_Tnamedtuple-X-0`: ...
           def __init__(self, *args, **kwargs) -> None: ...
 
-      class X(`~X_0`):
+      class X(`namedtuple-X-0`):
           pass
     """)
 
