@@ -30,6 +30,7 @@ static const SelectorEntry<CallSelector> call_attributes[] = {
   {kSetErrorLocation, "set_error_location"},
   {kNewType, "new_type"},
   {kNewUnionType, "new_union_type"},
+  {kNewIntersectionType, "new_intersection_type"},
   {kAddImport, "add_import"},
   {kAddAliasOrConstant, "add_alias_or_constant"},
   {kNewAliasOrConstant, "new_alias_or_constant"},

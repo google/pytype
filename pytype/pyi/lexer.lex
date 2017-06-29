@@ -68,6 +68,7 @@ u\"\" { return UNICODESTRING; }
 "elif" { return ELIF; }
 "if" { return IF; }
 "or" { return OR; }
+"and" { return AND; }
 "pass" { return PASS; }
 "import" { return IMPORT; }
 "from" { return FROM; }

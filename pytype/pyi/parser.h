@@ -27,6 +27,7 @@ enum CallSelector {
   kSetErrorLocation = 0,  // First value must be 0.
   kNewType,
   kNewUnionType,
+  kNewIntersectionType,
   kAddImport,
   kAddAliasOrConstant,
   kNewAliasOrConstant,

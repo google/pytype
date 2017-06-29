@@ -67,7 +67,7 @@ PyObject* ExtendList(PyObject* dst, PyObject* src);
 %token <obj> NAME NUMBER LEXERROR
 
 /* Reserved words. */
-%token CLASS DEF ELSE ELIF IF OR PASS IMPORT FROM AS RAISE PYTHONCODE
+%token CLASS DEF ELSE ELIF IF OR AND PASS IMPORT FROM AS RAISE PYTHONCODE
 %token NOTHING NAMEDTUPLE TYPEVAR
 /* Punctuation. */
 %token ARROW COLONEQUALS ELLIPSIS EQ NE LE GE
@@ -109,6 +109,7 @@ PyObject* ExtendList(PyObject* dst, PyObject* src);
  */
 
 %left OR
+%left AND
 
 %start start
 
@@ -301,6 +302,7 @@ condition
   | dotted_name '[' getitem_key ']' condition_op version_tuple {
       $$ = Py_BuildValue("((NN)sN)", $1, $3, $5, $6);
     }
+  | condition AND condition { $$ = Py_BuildValue("(NsN)", $1, "and", $3); }
   | condition OR condition { $$ = Py_BuildValue("(NsN)", $1, "or", $3); }
   | '(' condition ')' { $$ = $2; }
   ;
@@ -555,6 +557,7 @@ type
       CHECK($$, @$);
     }
   | '(' type ')' { $$ = $2; }
+  | type AND type { $$ = ctx->Call(kNewIntersectionType, "([NN])", $1, $3); }
   | type OR type { $$ = ctx->Call(kNewUnionType, "([NN])", $1, $3); }
   | '?' { $$ = ctx->Value(kAnything); }
   | NOTHING { $$ = ctx->Value(kNothing); }

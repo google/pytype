@@ -389,6 +389,8 @@ class _Parser(object):
     left, op, right = condition
     if op == "or":
       return self._eval_condition(left) or self._eval_condition(right)
+    elif op == "and":
+      return self._eval_condition(left) and self._eval_condition(right)
     else:
       return self._eval_comparison(left, op, right)
 
@@ -573,7 +575,9 @@ class _Parser(object):
       return self._parameterized_type(base_type, parameters)
     else:
       if (isinstance(base_type, pytd.NamedType) and
-          base_type.name in ["typing.Union", "typing.Optional"]):
+          base_type.name in ["typing.Union",
+                             "typing.Intersection",
+                             "typing.Optional"]):
         raise ParseError("Missing options to %s" % base_type.name)
       return base_type
 
@@ -651,6 +655,11 @@ class _Parser(object):
     """Return a new UnionType composed of the specified types."""
     # UnionType flattens any contained UnionType's.
     return pytd.UnionType(tuple(types))
+
+  def new_intersection_type(self, types):
+    """Return a new IntersectionType composed of the specified types."""
+    # IntersectionType flattens any contained IntersectionType's.
+    return pytd.IntersectionType(tuple(types))
 
   def new_function(self, decorators, name, param_list, return_type, body):
     """Return a _NameAndSig object for the function.

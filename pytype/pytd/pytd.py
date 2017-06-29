@@ -385,8 +385,9 @@ class NothingType(node.Node(), Type):
     return True
 
 
-class UnionType(node.Node('type_list: tuple[{Type}]'), Type):
-  """A union type that contains all types in self.type_list."""
+class _SetOfTypes(node.Node('type_list: tuple[{Type}]'), Type):
+  """Super class for shared behavior of UnionType and IntersectionType."""
+
   __slots__ = ()
 
   # NOTE: type_list is kept as a tuple, to preserve the original order
@@ -395,14 +396,14 @@ class UnionType(node.Node('type_list: tuple[{Type}]'), Type):
   #       parentheses gives the same result.
 
   def __new__(cls, type_list):
-    assert type_list  # Disallow empty unions. Use NothingType for these.
+    assert type_list  # Disallow empty sets. Use NothingType for these.
     flattened = itertools.chain.from_iterable(
-        t.type_list if isinstance(t, UnionType) else [t] for t in type_list)
+        t.type_list if isinstance(t, cls) else [t] for t in type_list)
 
     # Remove duplicates, preserving order
     unique = tuple(collections.OrderedDict.fromkeys(flattened))
 
-    return super(UnionType, cls).__new__(cls, unique)
+    return super(_SetOfTypes, cls).__new__(cls, unique)
 
   def __hash__(self):
     # See __eq__ - order doesn't matter, so use frozenset
@@ -411,13 +412,21 @@ class UnionType(node.Node('type_list: tuple[{Type}]'), Type):
   def __eq__(self, other):
     if self is other:
       return True
-    if isinstance(other, UnionType):
+    if isinstance(other, type(self)):
       # equality doesn't care about the ordering of the type_list
       return frozenset(self.type_list) == frozenset(other.type_list)
     return NotImplemented
 
   def __ne__(self, other):
     return not self == other
+
+
+class UnionType(_SetOfTypes):
+  """A union type that contains all types in self.type_list."""
+
+
+class IntersectionType(_SetOfTypes):
+  """An intersection type."""
 
 
 class GenericType(node.Node('base_type: NamedType or ClassType',

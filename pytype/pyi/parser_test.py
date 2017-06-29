@@ -228,10 +228,14 @@ class ParserTest(_ParserTestBase):
                 from typing import Union
 
                 x = ...  # type: Union[int, str, float]""")
+    self.check("x = ...  # type: int and str and float", """\
+                x = ...  # type: int and str and float""")
 
-  def test_empty_union_or_optional(self):
+  def test_empty_union_or_intersection_or_optional(self):
     self.check_error("def f(x: typing.Union): ...", 1,
                      "Missing options to typing.Union")
+    self.check_error("def f(x: typing.Intersection): ...", 1,
+                     "Missing options to typing.Intersection")
     self.check_error("def f(x: typing.Optional): ...", 1,
                      "Missing options to typing.Optional")
 

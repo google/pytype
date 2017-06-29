@@ -572,9 +572,19 @@ class PrintVisitor(Visitor):
 
   def VisitUnionType(self, node):
     """Convert a union type ("x or y") to a string."""
+    type_list = self._FormSetTypeList(node)
+    return self._BuildUnion(type_list)
+
+  def VisitIntersectionType(self, node):
+    """Convert a intersection type ("x and y") to a string."""
+    type_list = self._FormSetTypeList(node)
+    return self._BuildIntersection(type_list)
+
+  def _FormSetTypeList(self, node):
+    """Form list of types within a set type."""
     type_list = collections.OrderedDict.fromkeys(node.type_list)
     if self.in_parameter:
-      # Parameter's union types are merged after as a follow up to the
+      # Parameter's set types are merged after as a follow up to the
       # ExpandCompatibleBuiltins visitor.
       # Import here due to circular import.
       from pytype.pytd import pep484  # pylint: disable=g-import-not-at-top
@@ -582,7 +592,7 @@ class PrintVisitor(Visitor):
         # name can replace compat.
         if compat in type_list and name in type_list:
           del type_list[compat]
-    return self._BuildUnion(type_list)
+    return type_list
 
   def _BuildUnion(self, type_list):
     """Builds a union of the types in type_list.
@@ -602,6 +612,22 @@ class PrintVisitor(Visitor):
               self._BuildUnion(t for t in type_list if t != "None") + "]")
     else:
       return self._FromTyping("Union") + "[" + ", ".join(type_list) + "]"
+
+  def _BuildIntersection(self, type_list):
+    """Builds a intersection of the types in type_list.
+
+    Args:
+      type_list: A list of strings representing types.
+
+    Returns:
+      A string representing the intersection of the types in type_list.
+      Simplifies Intersection[X] to X and Intersection[X, None] to Optional[X].
+    """
+    type_list = tuple(type_list)
+    if len(type_list) == 1:
+      return type_list[0]
+    else:
+      return " and ".join(type_list)
 
 
 class StripSelf(Visitor):
