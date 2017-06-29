@@ -283,5 +283,14 @@ class TestAttributes(test_inference.InferenceTest):
     """)
     self.assertErrorLogIs(errors, [(3, "none-attr")])
 
+  def testOverloadedBuiltin(self):
+    self.assertNoErrors("""
+      if __random__:
+        getattr = None
+      else:
+        getattr(__any_object__, __any_object__)
+    """)
+
+
 if __name__ == "__main__":
   test_inference.main()

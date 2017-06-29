@@ -937,6 +937,8 @@ class VirtualMachine(object):
       return state, self.convert.unsolvable.to_variable(state.node)
     store.load_lazy_attribute(name)
     bindings = store.members[name].Bindings(state.node)
+    if not bindings:
+      raise KeyError(name)
     return state, self.join_bindings(state.node, bindings)
 
   def load_local(self, state, name):

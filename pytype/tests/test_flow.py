@@ -337,6 +337,16 @@ class FlowTest(test_inference.InferenceTest):
       seq = ...  # type: List[Union[int, str]]
     """)
 
+  def test_call_undefined(self):
+    _, errors = self.InferAndCheck("""\
+      def f():
+        try:
+          func = None
+        except:
+          func()
+    """, deep=True)
+    self.assertErrorLogIs(errors, [(5, "name-error", r"func")])
+
 
 if __name__ == "__main__":
   test_inference.main()
