@@ -128,7 +128,6 @@ class CallTracer(vm.VirtualMachine):
     fvar = val.AssignToNewVariable(node)
     with val.data.record_calls():
       new_node, ret = self.call_function_in_frame(node, fvar, *args)
-    new_node.ConnectTo(node)
     return new_node, ret
 
   def call_function_in_frame(self, node, var, args, kwargs,
@@ -207,12 +206,13 @@ class CallTracer(vm.VirtualMachine):
     log.info("Unable to generate fake arguments for %s", funcv)
     return node, self.convert.create_new_unsolvable(node)
 
-  def analyze_method_var(self, node, name, var):
+  def analyze_method_var(self, node0, name, var):
     log.info("Analyzing %s", name)
-    for val in var.Bindings(node):
-      node2 = self.maybe_analyze_method(node, val)
-      node2.ConnectTo(node)
-    return node
+    node1 = node0.ConnectNew(name)
+    for val in var.Bindings(node0):
+      node2 = self.maybe_analyze_method(node1, val)
+      node2.ConnectTo(node0)
+    return node0
 
   def bind_method(self, node, name, methodvar, instance, clsvar):
     bound = self.program.NewVariable()
@@ -220,23 +220,25 @@ class CallTracer(vm.VirtualMachine):
       bound.AddBinding(m.property_get(instance, clsvar), [], node)
     return bound
 
-  def _instantiate_binding(self, node, cls):
+  def _instantiate_binding(self, node0, cls):
     """Instantiate a class binding."""
-    node, new = cls.data.get_own_new(node, cls)
+    node0, new = cls.data.get_own_new(node0, cls)
     if not new or (
         any(not isinstance(f, abstract.InterpreterFunction) for f in new.data)):
       # This assumes that any inherited __new__ method defined in a pyi file
       # returns an instance of the current class.
-      return cls.data.instantiate(node)
+      return cls.data.instantiate(node0)
     instance = self.program.NewVariable()
     for b in new.bindings:
       self._analyzed_functions.add(b.data)
-      node, args = self.create_method_arguments(node, b.data)
+      node0, args = self.create_method_arguments(node0, b.data)
       if args.posargs and (
           b.data.signature.param_names[0] not in b.data.signature.annotations):
         args = args._replace(
-            posargs=(cls.AssignToNewVariable(node),) + args.posargs[1:])
-      _, ret = self.call_function_with_args(node, b, args)
+            posargs=(cls.AssignToNewVariable(node0),) + args.posargs[1:])
+      node1 = node0.ConnectNew()
+      node2, ret = self.call_function_with_args(node1, b, args)
+      node2.ConnectTo(node0)
       instance.PasteVariable(ret)
     return instance
 
@@ -337,8 +339,7 @@ class CallTracer(vm.VirtualMachine):
       if name in self._CONSTRUCTORS:
         continue  # We already called this method during initialization.
       b = self.bind_method(node, name, methodvar, instance, clsvar)
-      node2 = self.analyze_method_var(node, name, b)
-      node2.ConnectTo(node)
+      node = self.analyze_method_var(node, name, b)
     return node
 
   def analyze_function(self, node, val):
@@ -349,7 +350,8 @@ class CallTracer(vm.VirtualMachine):
       # We analyze closures as part of the function they're defined in.
       log.info("Analyze functions: Skipping closure %s", val.data.name)
     else:
-      node2 = self.maybe_analyze_method(node, val)
+      new_node = node.ConnectNew(val.data.name)
+      node2 = self.maybe_analyze_method(new_node, val)
       node2.ConnectTo(node)
     return node
 
@@ -358,12 +360,10 @@ class CallTracer(vm.VirtualMachine):
       if name not in self._builtin_map:
         for value in var.bindings:
           if isinstance(value.data, abstract.InterpreterClass):
-            node2 = self.analyze_class(node, value)
-            node2.ConnectTo(node)
+            node = self.analyze_class(node, value)
           elif isinstance(value.data, (abstract.InterpreterFunction,
                                        abstract.BoundInterpreterFunction)):
-            node2 = self.analyze_function(node, value)
-            node2.ConnectTo(node)
+            node = self.analyze_function(node, value)
     # Now go through all top-level non-bound functions we haven't analyzed yet.
     # These are typically hidden under a decorator.
     for f in self._interpreter_functions:
