@@ -268,7 +268,7 @@ class CallTracer(vm.VirtualMachine):
 
   def init_class(self, node, cls):
     """Instantiate a class, and also call __init__."""
-    key = (node, cls)
+    key = (self.frame and self.frame.current_opcode, cls)
     if (key not in self._instance_cache or
         self._instance_cache[key] is _INITIALIZING):
       clsvar = cls.to_variable(node)
@@ -288,8 +288,9 @@ class CallTracer(vm.VirtualMachine):
       else:
         self._instance_cache[key] = _INITIALIZING
         node = self.call_init(node, instance)
-      self._instance_cache[key] = node, clsvar, instance
-    return self._instance_cache[key]
+      self._instance_cache[key] = clsvar, instance
+    clsvar, instance = self._instance_cache[key]
+    return node, clsvar, instance
 
   def call_init(self, node, instance):
     # Call __init__ on each binding.
