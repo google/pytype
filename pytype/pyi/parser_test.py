@@ -652,6 +652,7 @@ class FunctionTest(_ParserTestBase):
       @abstractmethod
       def foo() -> int: ...""",
                """\
+      @abstractmethod
       def foo() -> int: ...""")
 
     self.check("""\
@@ -1522,6 +1523,34 @@ class MergeSignaturesTest(_ParserTestBase):
           def __new__(self) -> A: ...
       """)
     self.assertEquals("staticmethod", ast.classes[0].methods[0].kind)
+
+  def test_abstractmethod(self):
+    ast = self.check("""\
+      class A(object):
+          @abstractmethod
+          def foo(x: int) -> str: ...
+      """)
+    self.assertEquals("method", ast.Lookup("A").Lookup("foo").kind)
+    self.assertEquals(True, ast.Lookup("A").Lookup("foo").is_abstract)
+
+  def test_abstractmethod_manysignatures(self):
+    ast = self.check("""\
+      class A(object):
+          @abstractmethod
+          def foo(x: int) -> str: ...
+          def foo(x: int, y: int) -> str: ...
+          def foo(x: int, y: int, z: int) -> str: ...
+      """, """\
+      class A(object):
+          @abstractmethod
+          def foo(x: int) -> str: ...
+          @abstractmethod
+          def foo(x: int, y: int) -> str: ...
+          @abstractmethod
+          def foo(x: int, y: int, z: int) -> str: ...
+      """)
+    self.assertEquals("method", ast.Lookup("A").Lookup("foo").kind)
+    self.assertEquals(True, ast.Lookup("A").Lookup("foo").is_abstract)
 
   def test_external(self):
     ast = self.check("""\

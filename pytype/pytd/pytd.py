@@ -170,15 +170,22 @@ STATICMETHOD, CLASSMETHOD, METHOD = 'staticmethod', 'classmethod', 'method'
 
 class Function(node.Node('name: str',
                          'signatures: tuple[Signature]',
-                         'kind: str')):
+                         'kind: str',
+                         'is_abstract: bool')):
   """A function or a method, defined by one or more PyTD signatures.
 
   Attributes:
     name: The name of this function.
     signatures: Tuple of possible parameter type combinations for this function.
     kind: The type of this function. One of: STATICMETHOD, CLASSMETHOD, METHOD
+    is_abstract: Whether the function has the decorator @abstractmethod
   """
   __slots__ = ()
+
+  def __new__(cls, name, signatures, kind, is_abstract=False):
+    self = super(Function, cls).__new__(cls, name, signatures,
+                                        kind, is_abstract)
+    return self
 
 
 class ExternalFunction(Function):

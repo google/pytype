@@ -17,7 +17,8 @@ _Params = collections.namedtuple("_", ["required",
                                        "has_bare_star"])
 
 _NameAndSig = collections.namedtuple("_", ["name", "signature",
-                                           "decorator", "external_code"])
+                                           "decorator", "external_code",
+                                           "is_abstract"])
 
 
 _COMPARES = {
@@ -708,6 +709,11 @@ class _Parser(object):
 
     # Remove ignored decorators, raise ParseError for invalid decorators.
     decorators = [d for d in decorators if _keep_decorator(d)]
+    # Extract out abstractmethod decorator, there should be at most one
+    # remaining decorator
+    is_abstract = "abstractmethod" in decorators
+    if is_abstract:
+      decorators.remove("abstractmethod")
     # TODO(acaceres): if not inside a class, any decorator should be an error
     if len(decorators) > 1:
       raise ParseError("Too many decorators for %s" % name)
@@ -715,7 +721,8 @@ class _Parser(object):
 
     return _NameAndSig(name=name, signature=signature,
                        decorator=decorator,
-                       external_code=False)
+                       external_code=False,
+                       is_abstract=is_abstract)
 
   def new_external_function(self, decorators, name):
     """Return a _NameAndSig for an external code function."""
@@ -729,7 +736,8 @@ class _Parser(object):
                                  exceptions=(),
                                  template=()),
         decorator=None,
-        external_code=True)
+        external_code=True,
+        is_abstract=False)
 
   def _namedtuple_new(self, name, fields):
     """Build a __new__ method for a namedtuple with the given fields.
@@ -951,10 +959,10 @@ def _is_property_decorator(decorator):
 
 def _keep_decorator(decorator):
   """Return True iff the decorator requires processing."""
-  if decorator in ["overload", "abstractmethod"]:
+  if decorator in ["overload"]:
     # These are legal but ignored.
     return False
-  elif (decorator in ["staticmethod", "classmethod"] or
+  elif (decorator in ["staticmethod", "classmethod", "abstractmethod"] or
         _is_property_decorator(decorator)):
     return True
   else:
@@ -1148,7 +1156,7 @@ def _parse_signature_as_property(full_signature):
   Raises:
     ParseError: If the signature cannot be parsed as a property.
   """
-  name, signature, decorator, _ = full_signature
+  name, signature, decorator, _, _ = full_signature
   # TODO(acaceres): validate full_signature.external_code?
   num_params = len(signature.params)
   if decorator in ("property", name + ".getter") and num_params == 1:
@@ -1178,10 +1186,11 @@ def _merge_method_signatures(signatures):
   """Group the signatures by name, turning each group into a function."""
   name_to_signatures = collections.OrderedDict()
   name_to_decorator = {}
+  name_to_is_abstract = collections.defaultdict(bool)
   # map from function name to a bool indicating whether the function has an
   # external definition
   name_to_external_code = {}
-  for name, signature, decorator, external_code in signatures:
+  for name, signature, decorator, external_code, is_abstract in signatures:
     if name not in name_to_signatures:
       name_to_signatures[name] = []
       name_to_decorator[name] = decorator
@@ -1196,9 +1205,11 @@ def _merge_method_signatures(signatures):
     else:
       name_to_external_code[name] = external_code
     name_to_signatures[name].append(signature)
+    name_to_is_abstract[name] |= is_abstract
   methods = []
   for name, signatures in name_to_signatures.items():
     decorator = name_to_decorator[name]
+    is_abstract = name_to_is_abstract[name]
     if name == "__new__" or decorator == "staticmethod":
       kind = pytd.STATICMETHOD
     elif decorator == "classmethod":
@@ -1206,9 +1217,9 @@ def _merge_method_signatures(signatures):
     else:
       kind = pytd.METHOD
     if name_to_external_code[name]:
-      methods.append(pytd.ExternalFunction(name, (), kind))
+      methods.append(pytd.ExternalFunction(name, (), kind, is_abstract))
     else:
-      methods.append(pytd.Function(name, tuple(signatures), kind))
+      methods.append(pytd.Function(name, tuple(signatures), kind, is_abstract))
   return methods
 
 
