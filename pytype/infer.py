@@ -167,7 +167,7 @@ class CallTracer(vm.VirtualMachine):
         node, _ = self.call_function_with_args(node, val, args)
     return node
 
-  def _call_with_fake_args(self, node, funcv):
+  def _call_with_fake_args(self, node0, funcv):
     """Attempt to call the given function with made-up arguments."""
     # TODO(tsudol): If expand this beyond __init__, need to handle
     # DictKeyMissing
@@ -179,7 +179,7 @@ class CallTracer(vm.VirtualMachine):
 
       if isinstance(func, (abstract.InterpreterFunction,
                            abstract.BoundInterpreterFunction)):
-        node, args = self.create_method_arguments(node, func)
+        node1, args = self.create_method_arguments(node0, func)
         if func.is_attribute_of_class:
           args = args.replace(posargs=args.posargs[1:])
         # Once the args are generated, try calling the function.
@@ -191,7 +191,7 @@ class CallTracer(vm.VirtualMachine):
         # fallback_to_unsolvable to False just in case.
         # This means any additional errors that may be raised will be passed to
         # the call_function that called this method in the first place.
-        node2, ret = self.call_function(node,
+        node2, ret = self.call_function(node1,
                                         funcb.AssignToNewVariable(),
                                         args,
                                         fallback_to_unsolvable=False)
@@ -199,10 +199,12 @@ class CallTracer(vm.VirtualMachine):
         rets.append(ret)
 
     if nodes:
-      ret = self.join_variables(node, rets)
+      ret = self.join_variables(node0, rets)
       node = self.join_cfg_nodes(nodes)
       if ret.bindings:
         return node, ret
+    else:
+      node = node0
     log.info("Unable to generate fake arguments for %s", funcv)
     return node, self.convert.create_new_unsolvable(node)
 
@@ -222,32 +224,35 @@ class CallTracer(vm.VirtualMachine):
 
   def _instantiate_binding(self, node0, cls):
     """Instantiate a class binding."""
-    node0, new = cls.data.get_own_new(node0, cls)
+    node1, new = cls.data.get_own_new(node0, cls)
     if not new or (
         any(not isinstance(f, abstract.InterpreterFunction) for f in new.data)):
       # This assumes that any inherited __new__ method defined in a pyi file
       # returns an instance of the current class.
-      return cls.data.instantiate(node0)
+      return node0, cls.data.instantiate(node0)
     instance = self.program.NewVariable()
+    nodes = []
     for b in new.bindings:
       self._analyzed_functions.add(b.data)
-      node0, args = self.create_method_arguments(node0, b.data)
+      node2, args = self.create_method_arguments(node1, b.data)
       if args.posargs and (
           b.data.signature.param_names[0] not in b.data.signature.annotations):
+        # fix "cls" parameter
         args = args._replace(
             posargs=(cls.AssignToNewVariable(node0),) + args.posargs[1:])
-      node1 = node0.ConnectNew()
-      node2, ret = self.call_function_with_args(node1, b, args)
-      node2.ConnectTo(node0)
+      node3 = node2.ConnectNew()
+      node4, ret = self.call_function_with_args(node3, b, args)
       instance.PasteVariable(ret)
-    return instance
+      nodes.append(node4)
+    return self.join_cfg_nodes(nodes), instance
 
   def instantiate(self, node, clsv):
     """Build an (dummy) instance from a class, for analyzing it."""
     n = self.program.NewVariable()
     for cls in clsv.Bindings(node):
-      n.PasteVariable(self._instantiate_binding(node, cls))
-    return n
+      node, var = self._instantiate_binding(node, cls)
+      n.PasteVariable(var)
+    return node, n
 
   def _mark_maybe_missing_members(self, values):
     """Set maybe_missing_members to True on these values and their type params.
@@ -274,7 +279,7 @@ class CallTracer(vm.VirtualMachine):
     if (key not in self._instance_cache or
         self._instance_cache[key] is _INITIALIZING):
       clsvar = cls.to_variable(node)
-      instance = self.instantiate(node, clsvar)
+      node, instance = self.instantiate(node, clsvar)
       if key in self._instance_cache:
         # We've encountered a recursive pattern such as
         # class A:
@@ -342,7 +347,7 @@ class CallTracer(vm.VirtualMachine):
       node = self.analyze_method_var(node, name, b)
     return node
 
-  def analyze_function(self, node, val):
+  def analyze_function(self, node0, val):
     if val.data.is_attribute_of_class:
       # We'll analyze this function as part of a class.
       log.info("Analyze functions: Skipping class method %s", val.data.name)
@@ -350,33 +355,37 @@ class CallTracer(vm.VirtualMachine):
       # We analyze closures as part of the function they're defined in.
       log.info("Analyze functions: Skipping closure %s", val.data.name)
     else:
-      new_node = node.ConnectNew(val.data.name)
-      node2 = self.maybe_analyze_method(new_node, val)
-      node2.ConnectTo(node)
-    return node
+      node1 = node0.ConnectNew(val.data.name)
+      node2 = self.maybe_analyze_method(node1, val)
+      node2.ConnectTo(node0)
+    return node0
 
   def analyze_toplevel(self, node, defs):
     for name, var in sorted(defs.items()):  # sort, for determinicity
       if name not in self._builtin_map:
         for value in var.bindings:
           if isinstance(value.data, abstract.InterpreterClass):
-            node = self.analyze_class(node, value)
+            new_node = self.analyze_class(node, value)
           elif isinstance(value.data, (abstract.InterpreterFunction,
                                        abstract.BoundInterpreterFunction)):
-            node = self.analyze_function(node, value)
+            new_node = self.analyze_function(node, value)
+          else:
+            continue
+          if new_node is not node:
+            new_node.ConnectTo(node)
     # Now go through all top-level non-bound functions we haven't analyzed yet.
     # These are typically hidden under a decorator.
     for f in self._interpreter_functions:
       for value in f.bindings:
         if value.data not in self._analyzed_functions:
-          self.analyze_function(node, value)
+          node = self.analyze_function(node, value)
+    return node
 
   def analyze(self, node, defs, maximum_depth):
     assert not self.frame
     self.maximum_depth = sys.maxint if maximum_depth is None else maximum_depth
     node = node.ConnectNew(name="Analyze")
-    self.analyze_toplevel(node, defs)
-    return node
+    return self.analyze_toplevel(node, defs)
 
   def trace_module_member(self, module, name, member):
     if module is None or isinstance(module, typing.TypingOverlay):
