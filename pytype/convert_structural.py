@@ -1,5 +1,6 @@
 """Solver for type equations."""
 
+import itertools
 import logging
 
 from pytype.pytd import booleq
@@ -116,15 +117,18 @@ class TypeSolver(object):
       AssertionError: If we detect an internal error.
     """
     hierarchy = type_match.get_all_subclasses([self.ast, self.builtins])
-    factory = type_match.TypeMatch(hierarchy)
-    solver = factory.solver
+    factory_protocols = type_match.TypeMatch(hierarchy)
+    factory_partial = type_match.TypeMatch(hierarchy)
+    solver_protocols = factory_protocols.solver
+    solver_partial = factory_partial.solver
 
     unknown_classes = set()
     partial_classes = set()
     complete_classes = set()
     for cls in self.ast.classes:
       if is_unknown(cls):
-        solver.register_variable(cls.name)
+        solver_protocols.register_variable(cls.name)
+        solver_partial.register_variable(cls.name)
         unknown_classes.add(cls)
       elif is_partial(cls):
         partial_classes.add(cls)
@@ -137,15 +141,18 @@ class TypeSolver(object):
           and alias.name != "protocols.Protocol"):
         protocol_classes_and_aliases.add(alias.type.cls)
 
+    # solve equations from protocols first
     for protocol in protocol_classes_and_aliases:
       for unknown in unknown_classes:
-        self.match_unknown_against_protocol(factory, solver, unknown, protocol)
+        self.match_unknown_against_protocol(
+            factory_protocols, solver_protocols, unknown, protocol)
 
+    # also solve partial equations
     for complete in complete_classes.union(self.builtins.classes):
       for partial in partial_classes:
         if type_match.unpack_name_of_partial(partial.name) == complete.name:
           self.match_partial_against_complete(
-              factory, solver, partial, complete)
+              factory_partial, solver_partial, partial, complete)
 
     partial_functions = set()
     complete_functions = set()
@@ -157,11 +164,31 @@ class TypeSolver(object):
     for partial in partial_functions:
       for complete in complete_functions.union(self.builtins.functions):
         if type_match.unpack_name_of_partial(partial.name) == complete.name:
-          self.match_call_record(factory, solver, partial, complete)
+          self.match_call_record(
+              factory_partial, solver_partial, partial, complete)
 
-    log.info("=========== Equations to solve =============\n%s", solver)
+    log.info("=========== Equations to solve =============\n%s",
+             solver_protocols)
     log.info("=========== Equations to solve (end) =======")
-    return solver.solve()
+    solved_protocols = solver_protocols.solve()
+    log.info("=========== Call trace equations to solve =============\n%s",
+             solver_partial)
+    log.info("=========== Call trace equations to solve (end) =======")
+    solved_partial = solver_partial.solve()
+    merged_solution = {}
+    for unknown in itertools.chain(solved_protocols, solved_partial):
+      if unknown in solved_protocols and unknown in solved_partial:
+        merged_solution[unknown] = solved_protocols[unknown].union(
+            solved_partial[unknown])
+        # remove Any from set if present
+        # if no restrictions are present, it will be labeled Any later
+        # otherwise, Any will override other restrictions that were found
+        merged_solution[unknown].discard("?")
+      elif unknown in solved_protocols:
+        merged_solution[unknown] = solved_protocols[unknown]
+      else:
+        merged_solution[unknown] = solved_partial[unknown]
+    return merged_solution
 
 
 def solve(ast, builtins_pytd, protocols_pytd):

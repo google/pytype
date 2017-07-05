@@ -130,7 +130,6 @@ class ProtocolTest(test_inference.InferenceTest):
       def trim(docstring: bytearray or str or unicode) -> List[bytearray or str or unicode, ...]
     """)
 
-  @unittest.skip("Moving to protocols.")
   def testMatchUnknownAgainstContainer(self):
     self.options.tweak(protocols=True)
     ty = self.Infer("""
@@ -347,6 +346,44 @@ class ProtocolTest(test_inference.InferenceTest):
       from typing import ContextManager
       def f(x: ContextManager) -> ?
     """)
+
+  def test_protocol_needs_parameter(self):
+    self.options.tweak(protocols=True)
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import Sized, SupportsAbs
+        def f(x: SupportsAbs[Sized]) -> None
+      """)
+      ty = self.Infer("""\
+        from __future__ import google_type_annotations
+        import foo
+        def g(y):
+          return foo.f(y)
+      """, pythonpath=[d.path], deep=True)
+      self.assertTypesMatchPytd(ty, """
+        from typing import Sized, SupportsAbs
+        foo = ...  # type: module
+        def g(y: SupportsAbs[Sized]) -> None
+      """)
+
+  def test_protocol_needs_parameter_builtin(self):
+    self.options.tweak(protocols=True)
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import SupportsAbs
+        def f(x: SupportsAbs[int]) -> None
+      """)
+      ty = self.Infer("""\
+        from __future__ import google_type_annotations
+        import foo
+        def g(y):
+          return foo.f(y)
+      """, pythonpath=[d.path], deep=True)
+      self.assertTypesMatchPytd(ty, """
+        from typing import SupportsAbs
+        foo = ...  # type: module
+        def g(y: SupportsAbs[int]) -> None
+      """)
 
 if __name__ == "__main__":
   test_inference.main()
