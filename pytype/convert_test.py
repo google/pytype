@@ -69,8 +69,7 @@ class ConvertTest(unittest.TestCase):
     """)
     val = self._vm.convert.constant_to_value(
         ast.Lookup("a.x").type, {}, self._vm.root_cfg_node)
-    self.assertIs(val.type_parameters[abstract.K],
-                  abstract.get_atomic_value(self._vm.convert.str_type))
+    self.assertIs(val.type_parameters[abstract.K], self._vm.convert.str_type)
     self.assertIs(val.type_parameters[abstract.V], self._vm.convert.unsolvable)
 
   def test_convert_long(self):
@@ -88,8 +87,8 @@ class ConvertTest(unittest.TestCase):
         abstract.AsInstance(x), {}, self._vm.root_cfg_node)
     self.assertIsInstance(cls, abstract.TupleClass)
     self.assertItemsEqual(cls.type_parameters.items(),
-                          [(0, self._vm.convert.str_type.data[0]),
-                           (1, self._vm.convert.int_type.data[0]),
+                          [(0, self._vm.convert.str_type),
+                           (1, self._vm.convert.int_type),
                            (abstract.T, abstract.Union([
                                cls.type_parameters[0],
                                cls.type_parameters[1],
@@ -123,11 +122,11 @@ class ConvertTest(unittest.TestCase):
     self.assertIsInstance(cls, abstract.Callable)
     self.assertItemsEqual(
         cls.type_parameters.items(),
-        [(0, self._vm.convert.int_type.data[0]),
-         (1, self._vm.convert.primitive_classes[bool].data[0]),
+        [(0, self._vm.convert.int_type),
+         (1, self._vm.convert.primitive_classes[bool]),
          (abstract.ARGS, abstract.Union(
              [cls.type_parameters[0], cls.type_parameters[1]], self._vm)),
-         (abstract.RET, self._vm.convert.str_type.data[0])])
+         (abstract.RET, self._vm.convert.str_type)])
     self.assertIsInstance(instance, abstract.Instance)
     self.assertEquals(abstract.get_atomic_value(instance.cls), cls)
     self.assertItemsEqual(
@@ -163,7 +162,7 @@ class ConvertTest(unittest.TestCase):
     self.assertIsInstance(cls, abstract.ParameterizedClass)
     self.assertItemsEqual(cls.type_parameters.items(),
                           [(abstract.ARGS, self._vm.convert.unsolvable),
-                           (abstract.RET, self._vm.convert.int_type.data[0])])
+                           (abstract.RET, self._vm.convert.int_type)])
     self.assertIsInstance(instance, abstract.Instance)
     self.assertEquals(abstract.get_atomic_value(instance.cls), cls.base_cls)
     self.assertItemsEqual(

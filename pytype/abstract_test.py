@@ -60,7 +60,9 @@ class InstanceTest(AbstractTestBase):
     self.assertIs(False, i.compatible_with(True))
     self.assertIs(True, i.compatible_with(False))
     # Once a type parameter is set, list is compatible with True and False.
-    i.merge_type_parameter(self._node, abstract.T, self._vm.convert.object_type)
+    i.merge_type_parameter(
+        self._node, abstract.T,
+        self._vm.convert.object_type.to_variable(self._vm.root_cfg_node))
     self.assertIs(True, i.compatible_with(True))
     self.assertIs(True, i.compatible_with(False))
 
@@ -71,7 +73,9 @@ class InstanceTest(AbstractTestBase):
     self.assertIs(False, i.compatible_with(True))
     self.assertIs(True, i.compatible_with(False))
     # Once a type parameter is set, list is compatible with True and False.
-    i.merge_type_parameter(self._node, abstract.T, self._vm.convert.object_type)
+    i.merge_type_parameter(
+        self._node, abstract.T,
+        self._vm.convert.object_type.to_variable(self._vm.root_cfg_node))
     self.assertIs(True, i.compatible_with(True))
     self.assertIs(True, i.compatible_with(False))
 
@@ -190,12 +194,9 @@ class IsInstanceTest(AbstractTestBase):
     self._int = self._vm.convert.primitive_class_instances[int]
     self._str = self._vm.convert.primitive_class_instances[str]
     # Values that represent primitive classes.
-    self._obj_class = abstract.get_atomic_value(
-        self._vm.convert.primitive_classes[object])
-    self._int_class = abstract.get_atomic_value(
-        self._vm.convert.primitive_classes[int])
-    self._str_class = abstract.get_atomic_value(
-        self._vm.convert.primitive_classes[str])
+    self._obj_class = self._vm.convert.primitive_classes[object]
+    self._int_class = self._vm.convert.primitive_classes[int]
+    self._str_class = self._vm.convert.primitive_classes[str]
 
   def assert_call(self, expected, left, right):
     """Check that call() returned the desired results.
@@ -280,15 +281,13 @@ class IsInstanceTest(AbstractTestBase):
     def check(expected, left, right):
       self.assertEquals(expected, self._is_instance._is_instance(left, right))
 
-    obj_class = self._vm.convert.primitive_classes[object].bindings[0].data
-
     # Unknown and Unsolvable are ambiguous.
-    check(None, abstract.Unknown(self._vm), obj_class)
-    check(None, abstract.Unsolvable(self._vm), obj_class)
+    check(None, abstract.Unknown(self._vm), self._obj_class)
+    check(None, abstract.Unsolvable(self._vm), self._obj_class)
 
     # If the object's class has multiple bindings, result is ambiguous.
     obj = abstract.SimpleAbstractValue("foo", self._vm)
-    check(None, obj, obj_class)
+    check(None, obj, self._obj_class)
     obj.set_class(self._node, self.new_var(
         self._str_class, self._int_class))
     check(None, obj, self._str_class)
@@ -297,7 +296,7 @@ class IsInstanceTest(AbstractTestBase):
     check(None, self._str, self._str)
 
     # Result is True/False depending on if the class is in the object's mro.
-    check(True, self._str, obj_class)
+    check(True, self._str, self._obj_class)
     check(True, self._str, self._str_class)
     check(False, self._str, self._int_class)
 
@@ -398,12 +397,10 @@ class PyTDTest(AbstractTestBase):
 
   def testToTypeWithView2(self):
     # to_type(<instance of <str or unsolvable>>, view={__class__: str})
-    cls = self._vm.program.NewVariable(
-        [self._vm.convert.unsolvable], [], self._vm.root_cfg_node)
-    cls_binding = cls.AddBinding(
-        self._vm.convert.str_type.data[0], [], self._vm.root_cfg_node)
-    instance = abstract.Instance(cls, self._vm)
-    view = {cls: cls_binding}
+    instance = abstract.Instance(self._vm.convert.unsolvable, self._vm)
+    cls_binding = instance.cls.AddBinding(
+        self._vm.convert.str_type, [], self._vm.root_cfg_node)
+    view = {instance.cls: cls_binding}
     pytd_type = instance.to_type(self._vm.root_cfg_node, seen=None, view=view)
     self.assertEquals("__builtin__.str", pytd_type.name)
 
@@ -428,7 +425,7 @@ class PyTDTest(AbstractTestBase):
     self.assertSequenceEqual((pytd.NothingType(),), pytd_type.parameters)
 
   def testTypingContainer(self):
-    cls = self._vm.convert.list_type.bindings[0].data
+    cls = self._vm.convert.list_type
     container = abstract.AnnotationContainer("List", self._vm, cls)
     expected = pytd.GenericType(pytd.NamedType("__builtin__.list"),
                                 (pytd.AnythingType(),))
@@ -520,12 +517,11 @@ class FunctionTest(AbstractTestBase):
 
   def test_signature_from_callable(self):
     # Callable[[int, str], Any]
-    params = {0: self._vm.convert.int_type.data[0],
-              1: self._vm.convert.str_type.data[0]}
+    params = {0: self._vm.convert.int_type, 1: self._vm.convert.str_type}
     params[abstract.ARGS] = abstract.Union((params[0], params[1]), self._vm)
     params[abstract.RET] = self._vm.convert.unsolvable
     callable_val = abstract.Callable(
-        self._vm.convert.function_type.data[0], params, self._vm)
+        self._vm.convert.function_type, params, self._vm)
     sig = function.Signature.from_callable(callable_val)
     self.assertEquals(sig.name, callable_val.name)
     self.assertSequenceEqual(sig.param_names, ("_0", "_1"))
@@ -542,7 +538,7 @@ class FunctionTest(AbstractTestBase):
     self_param = pytd.Parameter("self", pytd.AnythingType(), False, False, None)
     # Imitate the parser's conversion of '*args: Any' to '*args: Tuple[Any]'.
     tup = pytd.ClassType("__builtin__.tuple")
-    tup.cls = self._vm.convert.tuple_type.data[0].pytd_cls
+    tup.cls = self._vm.convert.tuple_type.pytd_cls
     any_tuple = pytd.GenericType(tup, (pytd.AnythingType(),))
     args_param = pytd.Parameter("args", any_tuple, False, True, None)
     sig = function.Signature.from_pytd(
@@ -551,8 +547,7 @@ class FunctionTest(AbstractTestBase):
     self.assertIs(sig.annotations["self"], self._vm.convert.unsolvable)
     args_type = sig.annotations["args"]
     self.assertIsInstance(args_type, abstract.ParameterizedClass)
-    self.assertIs(args_type.base_cls,
-                  abstract.get_atomic_value(self._vm.convert.tuple_type))
+    self.assertIs(args_type.base_cls, self._vm.convert.tuple_type)
     self.assertListEqual(args_type.type_parameters.items(),
                          [(abstract.T, self._vm.convert.unsolvable)])
     self.assertIs(sig.drop_first_parameter().annotations["args"], args_type)
@@ -741,14 +736,14 @@ class AbstractTest(AbstractTestBase):
   def testInstantiateTypeParameterType(self):
     params = {abstract.T: abstract.TypeParameter(abstract.T, self._vm)}
     cls = abstract.ParameterizedClass(
-        self._vm.convert.type_type.data[0], params, self._vm)
+        self._vm.convert.type_type, params, self._vm)
     self.assertListEqual(cls.instantiate(self._node).data,
                          [self._vm.convert.unsolvable])
 
   def testSuperType(self):
     supercls = special_builtins.Super(self._vm)
     self.assertListEqual(supercls.get_class().data,
-                         self._vm.convert.type_type.data)
+                         [self._vm.convert.type_type])
 
   def testMixinSuper(self):
     """Test the imitation 'super' method on MixinMeta."""
@@ -805,7 +800,8 @@ class AbstractTest(AbstractTestBase):
   def testCallTypeParameterInstance(self):
     instance = abstract.Instance(self._vm.convert.list_type, self._vm)
     instance.initialize_type_parameter(
-        self._node, abstract.T, self._vm.convert.int_type)
+        self._node, abstract.T,
+        self._vm.convert.int_type.to_variable(self._vm.root_cfg_node))
     t = abstract.TypeParameter(abstract.T, self._vm)
     t_instance = abstract.TypeParameterInstance(t, instance, self._vm)
     node, ret = t_instance.call(
@@ -813,7 +809,7 @@ class AbstractTest(AbstractTestBase):
         abstract.FunctionArgs(posargs=()))
     self.assertIs(node, self._node)
     retval, = ret.data
-    self.assertListEqual(retval.cls.data, self._vm.convert.int_type.data)
+    self.assertListEqual(retval.cls.data, [self._vm.convert.int_type])
 
   def testCallEmptyTypeParameterInstance(self):
     instance = abstract.Instance(self._vm.convert.list_type, self._vm)
@@ -831,7 +827,8 @@ class AbstractTest(AbstractTestBase):
   def testCallTypeParameterInstanceWithWrongArgs(self):
     instance = abstract.Instance(self._vm.convert.list_type, self._vm)
     instance.initialize_type_parameter(
-        self._node, abstract.T, self._vm.convert.int_type)
+        self._node, abstract.T,
+        self._vm.convert.int_type.to_variable(self._vm.root_cfg_node))
     t = abstract.TypeParameter(abstract.T, self._vm)
     t_instance = abstract.TypeParameterInstance(t, instance, self._vm)
     posargs = (self._vm.convert.create_new_unsolvable(self._node),) * 3

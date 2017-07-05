@@ -18,7 +18,7 @@ class MatcherTest(unittest.TestCase):
     options = config.Options.create()
     self.vm = vm.VirtualMachine(
         errors.ErrorLog(), options, load_pytd.Loader(None, options))
-    self.type_type = abstract.get_atomic_value(self.vm.convert.type_type)
+    self.type_type = self.vm.convert.type_type
 
   def _make_class(self, name):
     return abstract.InterpreterClass(name, [], {}, None, self.vm)
@@ -235,7 +235,7 @@ class MatcherTest(unittest.TestCase):
 
   def testAnnotationClass(self):
     left = abstract.AnnotationClass("Dict", self.vm)
-    right = self.vm.convert.object_type.data[0]
+    right = self.vm.convert.object_type
     self.assertMatch(left, right)
 
   def testEmptyTupleClass(self):
@@ -243,8 +243,7 @@ class MatcherTest(unittest.TestCase):
     params = {0: abstract.TypeParameter(abstract.K, self.vm),
               1: abstract.TypeParameter(abstract.V, self.vm)}
     params[abstract.T] = abstract.Union((params[0], params[1]), self.vm)
-    right = abstract.TupleClass(
-        self.vm.convert.tuple_type.data[0], params, self.vm)
+    right = abstract.TupleClass(self.vm.convert.tuple_type, params, self.vm)
     match = self.vm.matcher.match_var_against_type(
         var, right, {}, self.vm.root_cfg_node, {})
     self.assertSetEqual(set(match), {abstract.K, abstract.V})
@@ -254,8 +253,7 @@ class MatcherTest(unittest.TestCase):
     params = {0: abstract.TypeParameter(abstract.K, self.vm),
               1: abstract.TypeParameter(abstract.V, self.vm)}
     params[abstract.T] = abstract.Union((params[0], params[1]), self.vm)
-    right = abstract.TupleClass(
-        self.vm.convert.tuple_type.data[0], params, self.vm)
+    right = abstract.TupleClass(self.vm.convert.tuple_type, params, self.vm)
     for match in self._match_var(left, right):
       self.assertSetEqual(set(match), {abstract.K, abstract.V})
       self.assertEquals(match[abstract.K].data, [self.vm.convert.unsolvable])
@@ -263,7 +261,7 @@ class MatcherTest(unittest.TestCase):
 
   def testBoolAgainstFloat(self):
     left = self.vm.convert.true
-    right = self.vm.convert.primitive_classes[float].data[0]
+    right = self.vm.convert.primitive_classes[float]
     self.assertMatch(left, right)
 
   def testPyTDFunctionAgainstCallable(self):

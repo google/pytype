@@ -201,7 +201,7 @@ def build_namedtuple(name, vm):
 
 
 def build_optional(name, vm):
-  return Union(name, vm, (vm.convert.none_type.data[0],))
+  return Union(name, vm, (vm.convert.none_type,))
 
 
 def build_generic(name, vm):

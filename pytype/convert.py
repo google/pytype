@@ -33,19 +33,19 @@ class Converter(object):
 
   def __init__(self, vm):
     self.vm = vm
-    self.vm.convert = self  # to make constant_to_var calls below work
+    self.vm.convert = self  # to make constant_to_value calls below work
     self.pytd_convert = output.Converter()
 
     self._convert_cache = {}
 
-    # Initialize primitive_classes to empty to allow constant_to_var to run.
+    # Initialize primitive_classes to empty to allow constant_to_value to run.
     self.primitive_classes = ()
 
     # object_type is needed to initialize the primitive class values.
-    self.object_type = self.constant_to_var(object)
+    self.object_type = self.constant_to_value(object)
 
-    # Now fill primitive_classes with the real values using constant_to_var.
-    self.primitive_classes = {v: self.constant_to_var(v)
+    # Now fill primitive_classes with the real values using constant_to_value.
+    self.primitive_classes = {v: self.constant_to_value(v)
                               for v in [int, float, str, unicode, object,
                                         types.NoneType, complex, bool, slice,
                                         types.CodeType, types.EllipsisType,
@@ -62,7 +62,7 @@ class Converter(object):
         Ellipsis, self.primitive_classes[types.EllipsisType], self.vm)
 
     self.primitive_class_instances = {}
-    for name, clsvar in self.primitive_classes.items():
+    for name, cls in self.primitive_classes.items():
       if name == types.NoneType:
         # This is possible because all None instances are the same.
         # Without it pytype could not reason that "x is None" is always true, if
@@ -71,10 +71,9 @@ class Converter(object):
       elif name == types.EllipsisType:
         instance = self.ellipsis
       else:
-        instance = abstract.Instance(clsvar, self.vm)
+        instance = abstract.Instance(cls, self.vm)
       self.primitive_class_instances[name] = instance
-      clsval, = clsvar.bindings
-      self._convert_cache[(abstract.Instance, clsval.data.pytd_cls)] = instance
+      self._convert_cache[(abstract.Instance, cls.pytd_cls)] = instance
 
     self.none_type = self.primitive_classes[types.NoneType]
     self.oldstyleclass_type = self.primitive_classes[types.ClassType]
@@ -86,26 +85,24 @@ class Converter(object):
     self.unsolvable = abstract.Unsolvable(self.vm)
     self.empty = abstract.Empty(self.vm)
 
-    self.list_type = self.constant_to_var(list)
-    self.set_type = self.constant_to_var(set)
-    self.frozenset_type = self.constant_to_var(frozenset)
-    self.dict_type = self.constant_to_var(dict)
-    self.type_type = self.constant_to_var(type)
-    self.module_type = self.constant_to_var(types.ModuleType)
-    self.function_type = self.constant_to_var(types.FunctionType)
-    self.tuple_type = self.constant_to_var(tuple)
-    self.generator_type = self.constant_to_var(types.GeneratorType)
+    self.list_type = self.constant_to_value(list)
+    self.set_type = self.constant_to_value(set)
+    self.dict_type = self.constant_to_value(dict)
+    self.type_type = self.constant_to_value(type)
+    self.module_type = self.constant_to_value(types.ModuleType)
+    self.function_type = self.constant_to_value(types.FunctionType)
+    self.tuple_type = self.constant_to_value(tuple)
+    self.generator_type = self.constant_to_value(types.GeneratorType)
     # TODO(dbaum): There isn't a types.IteratorType.  This can probably be
     # based on typing.Iterator, but that will also require changes to
     # convert.py since that assumes all types can be looked up in
     # __builtin__.
-    self.iterator_type = self.constant_to_var(types.ObjectType)
+    self.iterator_type = self.constant_to_value(types.ObjectType)
     self.bool_values = {
         True: self.true,
         False: self.false,
         None: self.primitive_class_instances[bool],
     }
-    self.empty_type = self.empty.to_variable(self.vm.root_cfg_node)
 
   def value_to_constant(self, val, constant_type):
     if (isinstance(val, abstract.PythonConstant) and
@@ -238,15 +235,12 @@ class Converter(object):
   def create_new_varargs_value(self, arg_type):
     """Create a varargs argument given its element type."""
     params = {abstract.T: arg_type}
-    return abstract.ParameterizedClass(
-        abstract.get_atomic_value(self.tuple_type), params, self.vm)
+    return abstract.ParameterizedClass(self.tuple_type, params, self.vm)
 
   def create_new_kwargs_value(self, arg_type):
     """Create a kwargs argument given its element type."""
-    params = {abstract.K: abstract.get_atomic_value(self.str_type),
-              abstract.V: arg_type}
-    return abstract.ParameterizedClass(
-        abstract.get_atomic_value(self.dict_type), params, self.vm)
+    params = {abstract.K: self.str_type, abstract.V: arg_type}
+    return abstract.ParameterizedClass(self.dict_type, params, self.vm)
 
   def _copy_type_parameters(self, old_container, new_container_name):
     new_container = self.name_to_value(new_container_name)
@@ -268,7 +262,7 @@ class Converter(object):
   def optionalize(self, value):
     """Optionalize the value, if necessary."""
     assert isinstance(value, abstract.AtomicAbstractValue)
-    none_type = self.vm.convert.none_type.bindings[0].data
+    none_type = self.vm.convert.none_type
     if isinstance(value, abstract.Union) and none_type in value.options:
       return value
     return abstract.Union((value, none_type), self.vm)
@@ -367,7 +361,7 @@ class Converter(object):
     raise ValueError(
         "Cannot convert {} to an abstract value".format(pyval.__class__))
 
-  def constant_to_value(self, pyval, subst, node):
+  def constant_to_value(self, pyval, subst=None, node=None):
     """Like constant_to_var, but convert to an abstract.AtomicAbstractValue.
 
     This also memoizes the results.  We don't memoize on name, as builtin types
@@ -385,6 +379,7 @@ class Converter(object):
     Returns:
       The converted constant. (Instance of AtomicAbstractValue)
     """
+    node = node or self.vm.root_cfg_node
     key = ("constant", pyval, type(pyval))
     if key in self._convert_cache:
       if self._convert_cache[key] is None:
@@ -467,9 +462,9 @@ class Converter(object):
     elif isinstance(pyval, pytd.Class) and pyval.name == "__builtin__.super":
       return self.vm.special_builtins["super"]
     elif isinstance(pyval, pytd.Class) and pyval.name == "__builtin__.object":
-      return abstract.merge_values(self.object_type.data, self.vm)
+      return self.object_type
     elif isinstance(pyval, pytd.Class) and pyval.name == "types.ModuleType":
-      return abstract.merge_values(self.module_type.data, self.vm)
+      return self.module_type
     elif isinstance(pyval, pytd.Class):
       module, dot, base_name = pyval.name.rpartition(".")
       try:
@@ -532,7 +527,7 @@ class Converter(object):
             # An instance of "type" or of an anonymous property can be anything.
             instance = self._create_new_unknown_value("type")
           else:
-            mycls = self.constant_to_var(cls, subst, self.vm.root_cfg_node)
+            mycls = self.constant_to_value(cls, subst, self.vm.root_cfg_node)
             instance = abstract.Instance(mycls, self.vm)
             instance.make_template_unsolvable(cls.template,
                                               self.vm.root_cfg_node)
@@ -556,11 +551,12 @@ class Converter(object):
                           for p in cls.parameters)
           return abstract.Tuple(content, self.vm)
         elif isinstance(cls, pytd.CallableType):
-          clsvar = self.constant_to_var(cls, subst, self.vm.root_cfg_node)
-          return abstract.Instance(clsvar, self.vm)
+          clsval = self.constant_to_value(cls, subst, self.vm.root_cfg_node)
+          return abstract.Instance(clsval, self.vm)
         else:
-          clsvar = self.constant_to_var(base_cls, subst, self.vm.root_cfg_node)
-          instance = abstract.Instance(clsvar, self.vm)
+          clsval = self.constant_to_value(
+              base_cls, subst, self.vm.root_cfg_node)
+          instance = abstract.Instance(clsval, self.vm)
           assert len(cls.parameters) <= len(base_cls.template)
           for formal, actual in zip(base_cls.template, cls.parameters):
             p = self.constant_to_var(

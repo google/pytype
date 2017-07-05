@@ -166,7 +166,7 @@ class AtomicAbstractValue(object):
     return self.name
 
   def default_mro(self):
-    return [self, self.vm.convert.object_type.data[0]]
+    return [self, self.vm.convert.object_type]
 
   def compute_mro(self):
     """Compute the class precedence list (mro) according to C3."""
@@ -319,8 +319,7 @@ class AtomicAbstractValue(object):
 
   def instantiate(self, node, container=None):
     del container
-    cls = self.to_variable(self.vm.root_cfg_node)
-    return Instance(cls, self.vm).to_variable(node)
+    return Instance(self, self.vm).to_variable(node)
 
   def to_variable(self, node):
     """Build a variable out of this abstract value.
@@ -683,7 +682,7 @@ class SimpleAbstractValue(AtomicAbstractValue):
         node, self, "__call__", self_var.bindings[0])
     if var is not None and var.bindings:
       return self.vm.call_function(node, var, args)
-    elif self.cls and self.cls.data == self.vm.convert.none_type.data:
+    elif self.cls and self.cls.data == [self.vm.convert.none_type]:
       raise NoneNotCallable()
     else:
       raise NotCallable(self)
@@ -703,7 +702,7 @@ class SimpleAbstractValue(AtomicAbstractValue):
     if self.cls:
       return self.cls
     elif isinstance(self, (AnnotationClass, Class)):
-      return self.vm.convert.type_type
+      return self.vm.convert.type_type.to_variable(self.vm.root_cfg_node)
 
   def set_class(self, node, var):
     """Set the __class__ of an instance, for code that does "x.__class__ = y."""
@@ -752,58 +751,57 @@ class Instance(SimpleAbstractValue):
   _CONTAINER_NAMES = set([
       "__builtin__.list", "__builtin__.set", "__builtin__.frozenset"])
 
-  def __init__(self, clsvar, vm):
-    super(Instance, self).__init__(clsvar.data[0].name, vm)
-    self.cls = clsvar
-    for cls in clsvar.data:
-      if (isinstance(cls, (InterpreterClass, PyTDClass)) and
-          "has_dynamic_attributes" in cls):
-        self.maybe_missing_members = True
-      cls.register_instance(self)
-      bad_names = set()
-      for base in cls.mro:
-        if isinstance(base, ParameterizedClass):
-          if isinstance(base, TupleClass):
-            if isinstance(self, Tuple):
-              # Tuple.__init__ initializes T.
-              params = []
-            else:
-              params = [(T, base.type_parameters[T])]
-          elif isinstance(base, Callable):
-            params = [(ARGS, base.type_parameters[ARGS]),
-                      (RET, base.type_parameters[RET])]
+  def __init__(self, cls, vm):
+    super(Instance, self).__init__(cls.name, vm)
+    self.cls = cls.to_variable(vm.root_cfg_node)
+    if (isinstance(cls, (InterpreterClass, PyTDClass)) and
+        "has_dynamic_attributes" in cls):
+      self.maybe_missing_members = True
+    cls.register_instance(self)
+    bad_names = set()
+    for base in cls.mro:
+      if isinstance(base, ParameterizedClass):
+        if isinstance(base, TupleClass):
+          if isinstance(self, Tuple):
+            # Tuple.__init__ initializes T.
+            params = []
           else:
-            params = base.type_parameters.items()
-          for name, param in params:
-            if isinstance(param, TypeParameter):
-              if name == param.name:
-                continue
-              # We have type parameter renaming, e.g.,
-              #  class List(Generic[T]): pass
-              #  class Foo(List[U]): pass
-              try:
-                self.type_parameters.add_alias(name, param.name)
-              except utils.AliasingDictConflictError:
-                bad_names |= {name, param.name}
-            else:
-              # We have either a non-formal parameter, e.g.,
-              # class Foo(List[int]), or a non-1:1 parameter mapping, e.g.,
-              # class Foo(List[K or V]). Initialize the corresponding instance
-              # parameter appropriately.
-              lazy_value = (param.instantiate, self.vm.root_cfg_node, self)
-              if name not in self.type_parameters:
-                self.type_parameters.add_lazy_item(name, *lazy_value)
-              elif not self.type_parameters.lazy_eq(name, *lazy_value):
-                # Two unrelated containers happen to use the same type
-                # parameter name. pytype isn't yet smart enough to handle this
-                # case, so we'll just set the type parameter to Any.
-                bad_names.add(name)
-      # We can't reliably track changes to type parameters involved in naming
-      # conflicts, so we'll set all of them to unsolvable.
-      node = self.vm.root_cfg_node
-      for name in bad_names:
-        self.merge_type_parameter(
-            node, name, self.vm.convert.create_new_unsolvable(node))
+            params = [(T, base.type_parameters[T])]
+        elif isinstance(base, Callable):
+          params = [(ARGS, base.type_parameters[ARGS]),
+                    (RET, base.type_parameters[RET])]
+        else:
+          params = base.type_parameters.items()
+        for name, param in params:
+          if isinstance(param, TypeParameter):
+            if name == param.name:
+              continue
+            # We have type parameter renaming, e.g.,
+            #  class List(Generic[T]): pass
+            #  class Foo(List[U]): pass
+            try:
+              self.type_parameters.add_alias(name, param.name)
+            except utils.AliasingDictConflictError:
+              bad_names |= {name, param.name}
+          else:
+            # We have either a non-formal parameter, e.g.,
+            # class Foo(List[int]), or a non-1:1 parameter mapping, e.g.,
+            # class Foo(List[K or V]). Initialize the corresponding instance
+            # parameter appropriately.
+            lazy_value = (param.instantiate, self.vm.root_cfg_node, self)
+            if name not in self.type_parameters:
+              self.type_parameters.add_lazy_item(name, *lazy_value)
+            elif not self.type_parameters.lazy_eq(name, *lazy_value):
+              # Two unrelated containers happen to use the same type
+              # parameter name. pytype isn't yet smart enough to handle this
+              # case, so we'll just set the type parameter to Any.
+              bad_names.add(name)
+    # We can't reliably track changes to type parameters involved in naming
+    # conflicts, so we'll set all of them to unsolvable.
+    node = self.vm.root_cfg_node
+    for name in bad_names:
+      self.merge_type_parameter(
+          node, name, self.vm.convert.create_new_unsolvable(node))
 
   def make_template_unsolvable(self, template, node):
     for formal in template:
@@ -909,8 +907,8 @@ class Tuple(Instance, PythonConstant):
                                                    instance_param.data)
                     for name, instance_param in
                     tuple(enumerate(content)) + ((T, combined_content),)}
-    cls = TupleClass(vm.convert.tuple_type.bindings[0].data, class_params, vm)
-    super(Tuple, self).__init__(cls.to_variable(vm.root_cfg_node), vm)
+    cls = TupleClass(vm.convert.tuple_type, class_params, vm)
+    super(Tuple, self).__init__(cls, vm)
     self.initialize_type_parameter(vm.root_cfg_node, T, combined_content)
     PythonConstant.init_mixin(self, content)
     self.tuple_length = len(self.pyval)
@@ -1166,7 +1164,7 @@ class AnnotationContainer(AnnotationClass):
         # TODO(kramm): Instead of blacklisting only int, this should use
         # annotations_util.py to look up legal types.
         if (isinstance(val, Instance) and
-            val.cls.data == self.vm.convert.int_type.data):
+            val.cls.data == [self.vm.convert.int_type]):
           # Don't report this error again.
           inner = (self.vm.convert.unsolvable,)
           self.vm.errorlog.not_indexable(self.vm.frames, self.name)
@@ -1178,8 +1176,8 @@ class AnnotationContainer(AnnotationClass):
 class AbstractOrConcreteValue(Instance, PythonConstant):
   """Abstract value with a concrete fallback."""
 
-  def __init__(self, pyval, clsvar, vm):
-    super(AbstractOrConcreteValue, self).__init__(clsvar, vm)
+  def __init__(self, pyval, cls, vm):
+    super(AbstractOrConcreteValue, self).__init__(cls, vm)
     PythonConstant.init_mixin(self, pyval)
 
 
@@ -1406,7 +1404,7 @@ class Function(SimpleAbstractValue):
 
   def __init__(self, name, vm):
     super(Function, self).__init__(name, vm)
-    self.cls = self.vm.convert.function_type
+    self.cls = self.vm.convert.function_type.to_variable(vm.root_cfg_node)
     self.is_attribute_of_class = False
     self.is_abstract = False
     self.members["func_name"] = self.vm.convert.build_string(
@@ -1680,7 +1678,7 @@ class ClassMethod(AtomicAbstractValue):
         node, func, args.replace(posargs=(cls,) + args.posargs))
 
   def get_class(self):
-    return self.vm.convert.function_type
+    return self.vm.convert.function_type.to_variable(self.vm.root_cfg_node)
 
 
 class StaticMethod(AtomicAbstractValue):
@@ -1697,7 +1695,7 @@ class StaticMethod(AtomicAbstractValue):
     return self.method.call(*args, **kwargs)
 
   def get_class(self):
-    return self.vm.convert.function_type
+    return self.vm.convert.function_type.to_variable(self.vm.root_cfg_node)
 
 
 class PyTDFunction(Function):
@@ -1922,8 +1920,8 @@ class Class(object):
       f = new.bindings[0].data
       if isinstance(f, StaticMethod):
         f = f.method
-      obj, = self.vm.convert.object_type.data
-      if isinstance(f, AMBIGUOUS_OR_EMPTY) or obj.is_object_new(f):
+      if (isinstance(f, AMBIGUOUS_OR_EMPTY) or
+          self.vm.convert.object_type.is_object_new(f)):
         # Instead of calling object.__new__, our abstract classes directly
         # create instances of themselves.
         return node, None
@@ -2227,7 +2225,8 @@ class PyTDClass(SimpleAbstractValue, Class):
   def call(self, node, func, args):
     node, results = self._call_new_and_init(node, func, args)
     if results is None:
-      value = Instance(self.vm.convert.constant_to_var(self.pytd_cls), self.vm)
+      value = Instance(
+          self.vm.convert.constant_to_value(self.pytd_cls), self.vm)
       for type_param in self.template:
         if type_param.name not in value.type_parameters:
           value.type_parameters[type_param.name] = self.vm.program.NewVariable()
@@ -2310,9 +2309,7 @@ class InterpreterClass(SimpleAbstractValue, Class):
     key = self.vm.frame.current_opcode
     assert key
     if key not in self._instance_cache:
-      cls = self.vm.program.NewVariable()
-      cls.AddBinding(self, [], self.vm.root_cfg_node)
-      self._instance_cache[key] = Instance(cls, self.vm)
+      self._instance_cache[key] = Instance(self, self.vm)
     return self._instance_cache[key]
 
   def call(self, node, value, args):

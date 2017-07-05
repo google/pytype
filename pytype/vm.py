@@ -200,9 +200,9 @@ class VirtualMachine(object):
     # Map from builtin names to canonical objects.
     self.special_builtins = {
         # The super() function.
-        "super": abstract.merge_values(self.convert.super_type.data, self),
+        "super": self.convert.super_type,
         # The object type.
-        "object": abstract.merge_values(self.convert.object_type.data, self),
+        "object": self.convert.object_type,
         # for more pretty branching tests.
         "__random__": self.convert.primitive_class_instances[bool],
         # for debugging
@@ -541,7 +541,7 @@ class VirtualMachine(object):
     bases = [self._process_base_class(node, base) for base in bases]
     if not bases:
       # Old style class.
-      bases = [self.convert.oldstyleclass_type]
+      bases = [self.convert.oldstyleclass_type.to_variable(self.root_cfg_node)]
     for b in sum((b.data for b in bases), []):
       if isinstance(b, abstract.ParameterizedClass):
         self.errorlog.not_supported_yet(self.frames, "creating generic classes")
@@ -969,7 +969,7 @@ class VirtualMachine(object):
   def load_builtin(self, state, name):
     if name == "__undefined__":
       # For values that don't exist. (Unlike None, which is a valid object)
-      return state, self.convert.empty_type
+      return state, self.convert.empty.to_variable(self.root_cfg_node)
     special = self.load_special_builtin(name)
     if special:
       return state, special.to_variable(state.node)
@@ -1025,8 +1025,7 @@ class VirtualMachine(object):
 
   def _data_is_none(self, x):
     assert isinstance(x, abstract.AtomicAbstractValue)
-    return (getattr(x, "cls", False) and
-            x.cls.data == self.convert.none_type.data)
+    return getattr(x, "cls", False) and x.cls.data == [self.convert.none_type]
 
   def _is_none(self, node, binding):
     """Returns true if binding is None or unreachable."""
@@ -2303,8 +2302,7 @@ class VirtualMachine(object):
       if self.frame.f_code.co_flags & loadmarshal.CodeType.CO_GENERATOR:
         # A generator shouldn't return anything, so the expected return type
         # is None.
-        self._check_return(state.node, var,
-                           abstract.get_atomic_value(self.convert.none_type))
+        self._check_return(state.node, var, self.convert.none_type)
       else:
         self._check_return(state.node, var, self.frame.allowed_returns)
       _, _, retvar = self.init_class(state.node, self.frame.allowed_returns)

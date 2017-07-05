@@ -234,7 +234,7 @@ class Converter(object):
       raise NotImplementedError(v.__class__.__name__)
 
   def _signature_to_callable(self, sig, vm):
-    base_cls = vm.convert.function_type.data[0]
+    base_cls = vm.convert.function_type
     ret = sig.annotations.get("return", vm.convert.unsolvable)
     if self._detailed or (
         sig.mandatory_param_count() == sig.maximum_param_count()):
@@ -422,7 +422,7 @@ class Converter(object):
     bases = [pytd_utils.JoinTypes(b.get_instance_type(node)
                                   for b in basevar.data)
              for basevar in v.bases()
-             if basevar is not v.vm.convert.oldstyleclass_type]
+             if basevar.data != [v.vm.convert.oldstyleclass_type]]
     constants = [pytd.Constant(name, builder.build())
                  for name, builder in constants.items() if builder]
     metaclass = v.metaclass(node)

@@ -208,7 +208,7 @@ class AnnotationsUtil(object):
           stack, annotation, "Needs options", name)
       return None
     elif (isinstance(annotation, abstract.Instance) and
-          annotation.cls.data == self.vm.convert.str_type.data):
+          annotation.cls.data == [self.vm.convert.str_type]):
       # String annotations : Late evaluation
       if isinstance(annotation, abstract.PythonConstant):
         if f_globals is None:
@@ -225,10 +225,9 @@ class AnnotationsUtil(object):
       self.vm.errorlog.invalid_annotation(
           stack, annotation, "Must be constant", name)
       return None
-    elif (annotation.cls and
-          annotation.cls.data == self.vm.convert.none_type.data):
+    elif annotation.cls and annotation.cls.data == [self.vm.convert.none_type]:
       # PEP 484 allows to write "NoneType" as "None"
-      return self.vm.convert.none_type.data[0]
+      return self.vm.convert.none_type
     elif isinstance(annotation, abstract.ParameterizedClass):
       for param_name, param in annotation.type_parameters.items():
         processed = self._process_one_annotation(

@@ -576,8 +576,7 @@ class AbstractMatcher(object):
     for v in concrete_values:
       classes = []
       for cls in v.get_class().data:
-        if [cls] == cls.vm.convert.object_type.data:
-          object_in_values = True
+        object_in_values |= cls == cls.vm.convert.object_type
         classes.extend(cls.mro)
       classes = set(c.full_name for c in classes)
       for compat, name in _COMPATIBLE_BUILTINS:

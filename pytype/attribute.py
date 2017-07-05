@@ -95,13 +95,14 @@ class AbstractAttributeHandler(object):
         valcls = obj.super_cls.to_variable(node).bindings[0]
         skip = obj.super_cls
       else:
-        valcls = self.vm.convert.super_type.bindings[0]
+        valcls = self.vm.convert.super_type.to_variable(
+            self.vm.root_cfg_node).bindings[0]
         skip = None
       return self._class_getter(
           node, valcls.data, name, valself, valcls, skip=skip)
     elif isinstance(obj, special_builtins.Super):
       return self.get_attribute(
-          node, self.vm.convert.super_type.data[0], name, valself, valcls)
+          node, self.vm.convert.super_type, name, valself, valcls)
     elif isinstance(obj, abstract.BoundFunction):
       return self.get_attribute(
           node, obj.underlying, name, valself, valcls)
@@ -297,7 +298,7 @@ class AbstractAttributeHandler(object):
         self._computable(name)):
       attr_var = self._lookup_from_mro(
           node, cls, compute_function, valself, valcls,
-          skip=self.vm.convert.object_type.data[0])
+          skip=self.vm.convert.object_type)
       if attr_var and attr_var.bindings:
         vm = self.vm  # pytype: disable=attribute-error
         name_var = abstract.AbstractOrConcreteValue(

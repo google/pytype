@@ -14,7 +14,8 @@ class TypeNew(abstract.PyTDFunction):
       try:
         bases = list(abstract.get_atomic_python_constant(bases_var))
         if not bases:
-          bases = [self.vm.convert.object_type]
+          bases = [
+              self.vm.convert.object_type.to_variable(self.vm.root_cfg_node)]
         variable = self.vm.make_class(
             node, name_var, bases, class_dict_var, cls)
       except abstract.ConversionError:
@@ -195,7 +196,7 @@ class SuperInstance(abstract.AtomicAbstractValue):
 
   def __init__(self, cls, obj, vm):
     super(SuperInstance, self).__init__("super", vm)
-    self.cls = self.vm.convert.super_type
+    self.cls = self.vm.convert.super_type.to_variable(vm.root_cfg_node)
     self.super_cls = cls
     self.super_obj = obj
     self.get = abstract.NativeFunction("__get__", self.get, self.vm)
@@ -245,7 +246,7 @@ class Super(abstract.PyTDClass):
         if not isinstance(cls.data, (abstract.Class,
                                      abstract.AMBIGUOUS_OR_EMPTY)):
           bad = abstract.BadParam(
-              name="cls", expected=self.vm.convert.type_type.data[0])
+              name="cls", expected=self.vm.convert.type_type)
           raise abstract.WrongArgTypes(
               self._SIGNATURE, args, self.vm, bad_param=bad)
         for obj in super_objects:
