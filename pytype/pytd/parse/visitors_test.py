@@ -405,12 +405,17 @@ class TestVisitors(parser_test_base.ParserTest):
     src1 = "class A(object): ..."
     src2 = textwrap.dedent("""
       from foo import *
-      class A(object): ...
+      class A(object):
+        x = ...  # type: int
     """)
     ast1 = self.Parse(src1).Replace(name="foo").Visit(visitors.AddNamePrefix())
     ast2 = self.Parse(src2).Replace(name="bar").Visit(visitors.AddNamePrefix())
-    self.assertRaises(KeyError, ast2.Visit, visitors.LookupExternalTypes(
+    ast2 = ast2.Visit(visitors.LookupExternalTypes(
         {"foo": ast1, "bar": ast2}, full_names=True, self_name="bar"))
+    self.assertMultiLineEqual(pytd.Print(ast2), textwrap.dedent("""\
+      class bar.A(object):
+          x = ...  # type: int
+    """))
 
   def testLookupTwoStarAliasesWithDefaultPyi(self):
     src1 = "def __getattr__(name) -> ?"
@@ -445,6 +450,20 @@ class TestVisitors(parser_test_base.ParserTest):
 
       def bar.__getattr__(name) -> Any: ..."""))
 
+  def testLookupTwoStarAliasesWithDifferentGetAttrs(self):
+    src1 = "def __getattr__(name) -> int"
+    src2 = "def __getattr__(name) -> str"
+    src3 = textwrap.dedent("""
+      from foo import *
+      from bar import *
+    """)
+    ast1 = self.Parse(src1).Replace(name="foo").Visit(visitors.AddNamePrefix())
+    ast2 = self.Parse(src2).Replace(name="bar").Visit(visitors.AddNamePrefix())
+    ast3 = self.Parse(src3).Replace(name="baz").Visit(visitors.AddNamePrefix())
+    self.assertRaises(KeyError, ast3.Visit, visitors.LookupExternalTypes(
+        {"foo": ast1, "bar": ast2, "baz": ast3},
+        full_names="True", self_name="baz"))
+
   def testLookupStarAliasWithDifferentGetAttr(self):
     src1 = "def __getattr__(name) -> int"
     src2 = textwrap.dedent("""
@@ -453,8 +472,10 @@ class TestVisitors(parser_test_base.ParserTest):
     """)
     ast1 = self.Parse(src1).Replace(name="foo").Visit(visitors.AddNamePrefix())
     ast2 = self.Parse(src2).Replace(name="bar").Visit(visitors.AddNamePrefix())
-    self.assertRaises(KeyError, ast2.Visit, visitors.LookupExternalTypes(
+    ast2 = ast2.Visit(visitors.LookupExternalTypes(
         {"foo": ast1, "bar": ast2}, full_names=True, self_name="bar"))
+    self.assertMultiLineEqual(pytd.Print(ast2), textwrap.dedent("""\
+      def bar.__getattr__(name) -> str: ..."""))
 
   def testCollectDependencies(self):
     src = textwrap.dedent("""

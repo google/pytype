@@ -1011,10 +1011,10 @@ class LookupExternalTypes(Visitor):
     Returns:
       A tuple of:
       - a set of new aliases,
-      - a set of new functions.
+      - a set of new __getattr__ functions.
     """
     aliases = set()
-    functions = set()
+    getattrs = set()
     ast = self._module_map[module]
     for member in sum((ast.constants, ast.type_params, ast.classes,
                        ast.functions, ast.aliases), ()):
@@ -1026,29 +1026,28 @@ class LookupExternalTypes(Visitor):
       if isinstance(member, pytd.Function) and member_name == "__getattr__":
         # def __getattr__(name) -> Any needs to be imported directly rather
         # than aliased.
-        functions.add(member.Replace(name=new_name))
+        getattrs.add(member.Replace(name=new_name))
       else:
         aliases.add(pytd.Alias(new_name, _ToType(member)))
-    return aliases, functions
+    return aliases, getattrs
 
-  def _CheckForDuplicates(self, node, new_aliases):
+  def _DiscardExistingNames(self, node, potential_members):
+    new_members = []
+    for m in potential_members:
+      try:
+        node.Lookup(m.name)
+      except KeyError:
+        new_members.append(m)
+    return new_members
+
+  def _CheckForDuplicates(self, new_aliases):
     grouped_aliases = collections.defaultdict(list)
     for a in new_aliases:
       grouped_aliases[a.name].append(a)
-    for name, group in grouped_aliases.items():
-      duplicates = set()
+    for group in grouped_aliases.values():
       if len(group) > 1:
-        duplicates |= {a.type.name for a in group}
-      else:
-        alias, = group
-        try:
-          node.Lookup(name)
-        except KeyError:
-          pass
-        else:
-          duplicates |= {name, alias.type.name}
-      if duplicates:
-        raise KeyError("Duplicate top level items: %r" % ", ".join(duplicates))
+        duplicates = ", ".join(a.type.name for a in group)
+        raise KeyError("Duplicate top level items: %r" % duplicates)
 
   def VisitTypeDeclUnit(self, node):
     """Add star imports to the ast.
@@ -1067,20 +1066,24 @@ class LookupExternalTypes(Visitor):
     # Discard the 'importing_mod.imported_mod.* = imported_mod.*' aliases.
     star_import_names = {
         self._ModulePrefix() + module + ".*" for module in self._star_imports}
-    new_aliases = [a for a in node.aliases if a.name not in star_import_names]
-    new_functions = set(node.functions)
+    new_aliases = []
+    new_getattrs = set()
     for module in self._star_imports:
-      aliases, functions = self._ImportAll(module)
+      aliases, getattrs = self._ImportAll(module)
       new_aliases.extend(aliases)
-      new_functions |= functions
-    # Allow 'def __getattr__(name) -> Any' to be defined multiple times only if
-    # all of the definitions are the same.
-    getattr_name = self._ModulePrefix() + "__getattr__"
-    if sum(1 for f in new_functions if f.name == getattr_name) > 1:
+      new_getattrs.update(getattrs)
+    # Allow local definitions to shadow imported definitions.
+    new_aliases = self._DiscardExistingNames(node, new_aliases)
+    new_getattrs = self._DiscardExistingNames(node, new_getattrs)
+    # Don't allow imported definitions to conflict with one another.
+    self._CheckForDuplicates(new_aliases)
+    if len(new_getattrs) > 1:
       raise KeyError("Multiple __getattr__ definitions")
-    self._CheckForDuplicates(node, new_aliases)
     return node.Replace(
-        functions=tuple(new_functions), aliases=tuple(new_aliases))
+        functions=node.functions + tuple(new_getattrs),
+        aliases=(
+            tuple(a for a in node.aliases if a.name not in star_import_names) +
+            tuple(new_aliases)))
 
 
 class LookupLocalTypes(Visitor):
