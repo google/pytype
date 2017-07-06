@@ -106,6 +106,21 @@ class AbstractAttributeHandler(object):
     elif isinstance(obj, abstract.BoundFunction):
       return self.get_attribute(
           node, obj.underlying, name, valself, valcls)
+    elif isinstance(obj, abstract.TypeParameterInstance):
+      param_var = obj.instance.type_parameters[obj.name]
+      if not param_var.bindings:
+        param_var = obj.param.instantiate(self.vm.root_cfg_node)
+      results = []
+      nodes = []
+      for v in param_var.Data(node):
+        node2, ret = self.get_attribute(node, v, name, valself, valcls)
+        if ret is None:
+          return node, None
+        else:
+          results.append(ret)
+          nodes.append(node2)
+      node = self.vm.join_cfg_nodes(nodes)
+      return node, self.vm.join_variables(node, results)
     elif isinstance(obj, abstract.Nothing):
       return node, None
     else:

@@ -291,6 +291,41 @@ class TestAttributes(test_inference.InferenceTest):
         getattr(__any_object__, __any_object__)
     """)
 
+  def testTypeParameterInstance(self):
+    ty = self.Infer("""
+      class A(object):
+        values = 42
+      args = {A(): ""}
+      for x, y in sorted(args.iteritems()):
+        z = x.values
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Dict
+      class A(object):
+        values = ...  # type: int
+      args = ...  # type: Dict[A, str]
+      x = ...  # type: A
+      y = ...  # type: str
+      z = ...  # type: int
+    """)
+
+  def testEmptyTypeParameterInstance(self):
+    self.assertNoErrors("""
+      args = {}
+      for x, y in sorted(args.iteritems()):
+        x.values
+    """)
+
+  def testTypeParameterInstanceMultipleBindings(self):
+    _, errors = self.InferAndCheck("""\
+      class A(object):
+        values = 42
+      args = {A() if __random__ else True: ""}
+      for x, y in sorted(args.iteritems()):
+        x.values  # line 5
+    """)
+    self.assertErrorLogIs(errors, [(5, "attribute-error", r"'values' on bool")])
+
 
 if __name__ == "__main__":
   test_inference.main()
