@@ -179,6 +179,15 @@ class ConcreteTest(test_inference.InferenceTest):
     self.check_expr("x ^ y", ["x=1", "y=2"], self.int)
     self.check_expr("x ^ y", ["x={1}", "y={2}"], self.int_set)
 
+  def test_add_type_parameter_instance(self):
+    self.assertNoErrors("""
+      from typing import Union
+      v = None  # type: Union[str, unicode]
+      d = {v: 42}
+      for k, _ in sorted(d.iteritems()):
+        k + " as "
+    """)
+
 
 class OverloadTest(test_inference.InferenceTest):
   """Tests for overloading operators."""
