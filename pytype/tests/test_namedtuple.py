@@ -299,6 +299,17 @@ class NamedtupleTests(test_inference.InferenceTest):
         b = ...  # type: int
       """)
 
+  def test_attribute(self):
+    self.assertNoErrors("""
+      from __future__ import google_type_annotations
+      from typing import Dict
+      import collections
+      Key = collections.namedtuple('Key', 'foo bar')
+      def f(x: Dict[Key, None]):
+        for key, _ in sorted(x.iteritems()):
+          key.foo
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()
