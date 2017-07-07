@@ -550,6 +550,13 @@ class TypingTest(test_inference.InferenceTest):
       def f(x: ItemsView[str, int]): ...
     """)
 
+  def testNewType(self):
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      from typing import NewType
+    """)
+    self.assertErrorLogIs(errors, [(2, "not-supported-yet", r"typing.NewType")])
+
 
 if __name__ == "__main__":
   test_inference.main()

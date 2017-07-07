@@ -220,11 +220,17 @@ def build_cast(name, vm):
   return Cast(name, signatures, f.kind, vm)
 
 
+def build_newtype(name, vm):
+  vm.errorlog.not_supported_yet(vm.frames, "typing." + name)
+  return vm.convert.unsolvable
+
+
 typing_overload = {
     "Any": build_any,
     "Callable": Callable,
     "Generic": build_generic,
     "NamedTuple": build_namedtuple,
+    "NewType": build_newtype,
     "Optional": build_optional,
     "Tuple": Tuple,
     "TypeVar": TypeVar,
