@@ -715,6 +715,19 @@ class PYITest(test_inference.InferenceTest):
       """)
       self.assertNoErrors("import foo", pythonpath=[d.path])
 
+  def testCustomBinaryOperator(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        class Foo(object):
+          def __sub__(self, other) -> str: ...
+        class Bar(Foo):
+          def __rsub__(self, other) -> int: ...
+      """)
+      self.assertNoErrors("""
+        import foo
+        (foo.Foo() - foo.Bar()).real
+      """, pythonpath=[d.path])
+
 
 if __name__ == "__main__":
   test_inference.main()

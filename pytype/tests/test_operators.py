@@ -356,6 +356,58 @@ class ReverseTest(test_inference.InferenceTest):
         def g(t) -> Any
       """)
 
+  def test_custom_reverse_unused(self):
+    self.assertNoErrors("""
+      class Foo(object):
+        def __sub__(self, other):
+          return 42
+        def __rsub__(self, other):
+          return ""
+      (Foo() - Foo()).real
+    """)
+
+  def test_inherited_custom_reverse_unused(self):
+    self.assertNoErrors("""
+      class Foo(object):
+        def __sub__(self, other):
+          return 42
+        def __rsub__(self, other):
+          return ""
+      class Bar(Foo):
+        pass
+      (Foo() - Bar()).real
+    """)
+
+  def test_custom_reverse_only(self):
+    self.assertNoErrors("""
+      class Foo(object):
+        def __sub__(self, other):
+          return ""
+      class Bar(Foo):
+        def __rsub__(self, other):
+          return 42
+      (Foo() - Bar()).real
+    """)
+
+  def test_unknown_left(self):
+    self.assertNoErrors("""
+      class Foo(object):
+        def __rsub__(self, other):
+          return ""
+      (__any_object__ - Foo()).real
+    """)
+
+  def test_unknown_right(self):
+    # Reverse operators are rare enough that it makes sense to assume that the
+    # regular operator was called when the right side is ambiguous.
+    _, errors = self.InferAndCheck("""\
+      class Foo(object):
+        def __sub__(self, other):
+          return ""
+      (Foo() - __any_object__).real
+    """)
+    self.assertErrorLogIs(errors, [(4, "attribute-error", r"real.*str")])
+
 
 class InplaceTest(test_inference.InferenceTest):
   """Tests for in-place operators."""

@@ -329,33 +329,6 @@ class VirtualMachine(object):
       return "__r" + name[2:]
     return None
 
-  def _try_reverse_operator(self, obj, rname, unreversed_results):
-    """Whether we should attempt to call the given reverse operator.
-
-    Args:
-      obj: The object to (maybe) call the reverse operator on.
-      rname: The name of the reverse operator.
-      unreversed_results: Results from calling the unreversed operator.
-
-    Returns:
-      True if we should attempt the call.
-    """
-    if rname:
-      for v in obj.data:
-        # We do not want to look for a reverse operator on an Unsolvable or
-        # Empty value, since it'll simply hand back an Unsolvable. If obj is
-        # an Unknown and we already have results from the unreversed operator,
-        # trying the reverse one would only cause us to lose precision. See
-        # test_operators2.OperatorsWithAnyTests.testPow1 and
-        # test_match.MatchTest.testMatchUnknownAgainstContainer for cases for
-        # which omitting the Unknown check causes the inferred argument type
-        # to revert to "Any".
-        if (isinstance(v, (abstract.Unsolvable, abstract.Empty)) or
-            (isinstance(v, abstract.Unknown) and unreversed_results)):
-          return False
-      return True
-    return False
-
   def push_block(self, state, t, op, handler=None, level=None):
     if level is None:
       level = len(state.data_stack)
@@ -747,36 +720,99 @@ class VirtualMachine(object):
     log.info("Final node: <%d>%s", node.id, node.name)
     return node, f_globals.members
 
+  def _yield_subclass_superclass_pairs(self, subcls_var, supercls_var):
+    """Get (subcls, supercls) pairs of abstract.AtomicAbstractValue objects."""
+    if subcls_var and supercls_var:
+      for subcls in subcls_var.data:
+        for supercls in supercls_var.data:
+          if supercls in subcls.mro:
+            yield subcls, supercls
+
+  def _overrides(self, node, subcls_var, supercls_var, attr):
+    """Check whether subcls_var overrides or newly defines the given attribute.
+
+    Args:
+      node: The current node.
+      subcls_var: A variable of a potential subclass.
+      supercls_var: A variable of a potential superclass.
+      attr: An attribute name.
+
+    Returns:
+      True if subcls_var is a subclass of supercls_var and overrides or newly
+      defines the attribute. False otherwise.
+    """
+    for subcls, supercls in self._yield_subclass_superclass_pairs(
+        subcls_var, supercls_var):
+      for cls in subcls.mro:
+        if cls == supercls:
+          break
+        if cls.is_lazy:
+          cls.load_lazy_attribute(attr)
+        if attr in cls.members and cls.members[attr].Bindings(node):
+          return True
+    return False
+
+  def _call_binop_on_bindings(self, node, name, xval, yval):
+    """Call a binary operator on two cfg.Binding objects."""
+    rname = self.reverse_operator_name(name)
+    if rname and isinstance(xval.data, abstract.AMBIGUOUS_OR_EMPTY):
+      # If the reverse operator is possible and x is ambiguous, then we have no
+      # way of determining whether __{op} or __r{op}__ is called.  Technically,
+      # the result is also unknown if y is ambiguous, but it is almost always
+      # reasonable to assume that, e.g., "hello " + y is a string, even though
+      # y could define __radd__.
+      return node, self.program.NewVariable(
+          [self.convert.unsolvable], {xval, yval}, node)
+    options = [(xval, yval, name)]
+    if rname:
+      options.append((yval, xval, rname))
+      if self._overrides(node, yval.data.cls, xval.data.cls, rname):
+        # If y is a subclass of x and defines its own reverse operator, then we
+        # need to try y.__r{op}__ before x.__{op}__.
+        options.reverse()
+    error = None
+    for left_val, right_val, attr_name in options:
+      node, attr_var = self.attribute_handler.get_attribute_generic(
+          node, left_val.data, attr_name, left_val)
+      if attr_var and attr_var.bindings:
+        args = abstract.FunctionArgs(posargs=(right_val.AssignToNewVariable(),))
+        try:
+          return self.call_function(
+              node, attr_var, args, fallback_to_unsolvable=False)
+        except (abstract.DictKeyMissing, abstract.FailedFunctionCall) as e:
+          # It's possible that this call failed because the function returned
+          # NotImplemented.  See, e.g.,
+          # test_operators.ReverseTest.check_reverse(), in which 1 {op} Bar()
+          # ends up using Bar.__r{op}__. Thus, we need to save the error and
+          # try the other operator.
+          if e > error:
+            error = e
+    if error:
+      raise error  # pylint: disable=raising-bad-type
+    else:
+      return node, None
+
   def call_binary_operator(self, state, name, x, y, report_errors=False):
     """Map a binary operator to "magic methods" (__add__ etc.)."""
     results = []
     log.debug("Calling binary operator %s", name)
-    state, attr = self.load_attr_noerror(state, x, name)
+    x_bindings = x.Bindings(state.node)
+    y_bindings = y.Bindings(state.node)
+    nodes = []
     error = None
-    if attr is None:
-      log.info("Failed to find %s on %r", name, x)
-    else:
-      try:
-        state, ret = self.call_function_with_state(state, attr, (y,),
-                                                   fallback_to_unsolvable=False)
-      except (abstract.DictKeyMissing, abstract.FailedFunctionCall) as e:
-        error = e
-      else:
-        results.append(ret)
-    rname = self.reverse_operator_name(name)
-    if self._try_reverse_operator(y, rname, results):
-      state, attr = self.load_attr_noerror(state, y, rname)
-      if attr is None:
-        log.debug("No reverse operator %s on %r", rname, y)
-      else:
+    for xval in x_bindings:
+      for yval in y_bindings:
         try:
-          state, ret = self.call_function_with_state(
-              state, attr, (x,), fallback_to_unsolvable=False)
-        except abstract.FailedFunctionCall as e:
+          node, ret = self._call_binop_on_bindings(state.node, name, xval, yval)
+        except (abstract.DictKeyMissing, abstract.FailedFunctionCall) as e:
           if e > error:
             error = e
         else:
-          results.append(ret)
+          if ret:
+            nodes.append(node)
+            results.append(ret)
+    if nodes:
+      state = state.change_cfg_node(self.join_cfg_nodes(nodes))
     result = self.join_variables(state.node, results)
     log.debug("Result: %r %r", result, result.data)
     if not result.bindings and report_errors:
@@ -1025,7 +1061,7 @@ class VirtualMachine(object):
 
   def _data_is_none(self, x):
     assert isinstance(x, abstract.AtomicAbstractValue)
-    return getattr(x, "cls", False) and x.cls.data == [self.convert.none_type]
+    return x.cls and x.cls.data == [self.convert.none_type]
 
   def _is_none(self, node, binding):
     """Returns true if binding is None or unreachable."""
