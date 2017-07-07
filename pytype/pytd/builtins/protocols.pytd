@@ -1,4 +1,5 @@
 from typing import Any, Protocol, SupportsInt, SupportsFloat, SupportsComplex, Sized, SupportsAbs, SupportsRound, Reversible, Iterable, Container, Callable, Sequence, MutableSequence, Mapping, MutableMapping, ContextManager
 
 class SupportsLower(Protocol):
+  @abstractmethod
   def lower(self) -> Any: ...

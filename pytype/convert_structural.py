@@ -54,7 +54,8 @@ class TypeSolver(object):
     type_params = {p.type_param: matcher.type_parameter(unknown, complete, p)
                    for p in complete.template}
     subst = type_params.copy()
-    implication = matcher.match_Class_against_Class(complete, unknown, subst)
+    implication = matcher.match_Protocol_against_Unknown(
+        complete, unknown, subst)
     if implication is not booleq.FALSE and type_params:
       # If we're matching against a templated class (E.g. list[T]), record the
       # fact that we'll also have to solve the type parameters.

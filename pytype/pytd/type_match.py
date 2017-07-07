@@ -508,9 +508,19 @@ class TypeMatch(utils.TypeMatcher):
 
   def match_Class_against_Class(self, cls1, cls2, subst):  # pylint: disable=invalid-name
     """Match a pytd.Class against another pytd.Class."""
+    return self.match_Functions_against_Class(
+        cls1.methods, cls2, subst)
+
+  def match_Protocol_against_Unknown(self, protocol, unknown, subst):  # pylint: disable=invalid-name
+    """Match a typing.Protocol against an unknown class."""
+    filtered_methods = [f for f in protocol.methods if f.is_abstract]
+    return self.match_Functions_against_Class(
+        filtered_methods, unknown, subst)
+
+  def match_Functions_against_Class(self, methods, cls2, subst):
     implications = []
     cache = {}
-    for f1 in cls1.methods:
+    for f1 in methods:
       implication = self.match_Function_against_Class(f1, cls2, subst, cache)
       implications.append(implication)
       if implication is booleq.FALSE:

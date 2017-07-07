@@ -316,14 +316,14 @@ class ProtocolTest(test_inference.InferenceTest):
       def f(x: Callable[Any, protocols.SupportsLower]) -> ?
     """)
 
-  @unittest.skip("need to implement abstractmethod")
+  @unittest.skip("Matches Mapping[int, Any] but not Sequence")
   def test_sequence(self):
     self.options.tweak(protocols=True)
     ty = self.Infer("""\
       from __future__ import google_type_annotations
       def f(x):
-        x.index("foo")
-        x.count("meep")
+        x.index(6)
+        x.count(7)
         return x.__getitem__(5) + x[1:5]
       """, deep=True)
     self.assertTypesMatchPytd(ty, """
@@ -384,6 +384,19 @@ class ProtocolTest(test_inference.InferenceTest):
         foo = ...  # type: module
         def g(y: SupportsAbs[int]) -> None
       """)
+
+  @unittest.skip("Unexpectedly assumes returned result is sequence")
+  def test_mapping_abstractmethod(self):
+    self.options.tweak(protocols=True)
+    ty = self.Infer("""\
+      from __future__ import google_type_annotations
+      def f(x, y):
+        return x.__getitem__(y)
+      """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Mapping
+      def f(x: Mapping, y) -> ?
+    """)
 
 if __name__ == "__main__":
   test_inference.main()

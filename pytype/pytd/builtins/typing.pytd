@@ -19,6 +19,7 @@ def _typevar_new(name: str, *constraints: type, bound: type=None, covariant: boo
 
 class Callable(Generic[_ARGS, _RET], Protocol):
   func_name = ...  # type: str
+  @abstractmethod
   def __call__(self, ...) -> _RET
 
 
@@ -31,51 +32,64 @@ class Protocol(object): ...
 
 
 class SupportsInt(Protocol):
+  @abstractmethod
   def __int__(self) -> int: ...
 
 
 class SupportsFloat(Protocol):
+  @abstractmethod
   def __float__(self) -> float: ...
 
 
 class SupportsComplex(Protocol):
+  @abstractmethod
   def __complex__(self) -> complex: ...
 
 
 class SupportsAbs(Generic[_T], Protocol):
+  @abstractmethod
   def __abs__(self) -> _T: ...
 
 
 class SupportsRound(Generic[_T], Protocol):
+  @abstractmethod
   def __round__(self, ndigits: int = ...) -> _T: ...
 
 
 class Reversible(Generic[_T]):
+  @abstractmethod
   def __reversed__(self) -> Iterator[_T]: ...
 
 
 class Iterator(Iterable[_T], Protocol):
+  @abstractmethod
   def next(self) -> _T: ...
 
 
 class Iterable(Generic[_T], Protocol):
+  @abstractmethod
   def __iter__(self) -> Iterator[_T]
 
 
 class Sized(Protocol):
+  @abstractmethod
   def __len__(self) -> int: ...
 
 
 class Hashable(object):
+  @abstractmethod
   def __hash__(self) -> int: ...
 
 
 class Container(Generic[_T], Protocol):
+  @abstractmethod
   def __contains__(self, x) -> bool: ...
 
 
 class Sequence(Sized, Iterable[_T], Container[_T], Reversible[_T], Protocol):
+  @abstractmethod
   def __getitem__(self, i: int) -> _T: ...
+  @abstractmethod
   def __getitem__(self, s: slice) -> Sequence[_T]: ...
   def __getslice__(self, ...) -> Sequence[_T]: ...
   def index(self, x) -> int: ...
@@ -89,18 +103,22 @@ class Tuple(Sequence[_T]): ...
 
 
 class MutableSequence(Sequence[_T], Protocol):
+  @abstractmethod
   def __setitem__(self, i: int, v: _T2) -> None:
     self := MutableSequence[_T or _T2]
+  @abstractmethod
   def __setitem__(self, i: slice, v: Iterable[_T2]) -> None:
     self := MutableSequence[_T or _T2]
   def __setslice__(self, i, j, s: Iterable[_T2]) -> None:
     self := MutableSequence[_T or _T2]
+  @abstractmethod
   def __delitem__(self, i: Union[int, slice]) -> None: ...
   def __add__(self, x: Iterable[_T2]) -> MutableSequence[_T or _T2]: ...
   def append(self, v: _T2) -> None:
     self := MutableSequence[_T or _T2]
   def extend(self, iterable: Iterable[_T2]) -> None:
     self := MutableSequence[_T or _T2]
+  @abstractmethod
   def insert(self, i: int, v: _T2) -> None:
     self := MutableSequence[_T or _T2]
   def reverse(self) -> None: ...
@@ -143,9 +161,10 @@ class BinaryIO(IO[str]): ...
 class TextIO(IO[unicode]): ...
 
 
-class Mapping(Sized, Iterable[_K], Container[_K], Generic[_K, _V]):
+class Mapping(Sized, Iterable[_K], Container[_K], Generic[_K, _V], Protocol):
   def copy(self) -> Mapping[_K, _V]: ...
   def __contains__(self, o) -> bool: ...
+  @abstractmethod
   def __getitem__(self, key: _K) -> _V: ...
   def get(self, k) -> _V or NoneType
   def get(self, k, d: _V2) -> _V or _V2
@@ -164,8 +183,10 @@ class Mapping(Sized, Iterable[_K], Container[_K], Generic[_K, _V]):
 
 class MutableMapping(Mapping[_K, _V], Protocol):
   def copy(self) -> MutableMapping[_K, _V]: ...
+  @abstractmethod
   def __setitem__(self, k: _K2, v: _V2) -> None:
     self := MutableMapping[_K or _K2, _V or _V2]
+  @abstractmethod
   def __delitem__(self, k) -> None: ...
   def clear(self) -> None:
     self := MutableMapping[nothing, nothing]
@@ -267,7 +288,9 @@ class ByteString(Sequence[int]): ...
 # TODO(tsudol): Should be covariant, e.g. _T_co. traceback arg for __exit__
 # should be types.TracebackType.
 class ContextManager(Generic[_T], Protocol):
+  @abstractmethod
   def __enter__(self) -> _T: ...
+  @abstractmethod
   def __exit__(self, exc_type: Optional[Type[BaseException]], exc_value: Optional[BaseException], traceback: Optional[Any]) -> Optional[bool]: ...
 
 
