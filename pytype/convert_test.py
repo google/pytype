@@ -217,6 +217,15 @@ class ConvertTest(unittest.TestCase):
     self.assertEquals(pytd.Print(widened_dct.get_instance_type()),
                       "Mapping[str, int]")
 
+  def test_abstract_method_round_trip(self):
+    sig = pytd.Signature((), None, None, pytd.AnythingType(), (), ())
+    f_pytd = pytd.Function(
+        name="f", signatures=(sig,), kind=pytd.METHOD, is_abstract=True)
+    f = self._vm.convert.constant_to_value(f_pytd, {}, self._vm.root_cfg_node)
+    self.assertTrue(f.is_abstract)
+    f_out = f.to_pytd_def(self._vm.root_cfg_node, f.name)
+    self.assertTrue(f_out.is_abstract)
+
 
 if __name__ == "__main__":
   unittest.main()

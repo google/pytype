@@ -27,6 +27,7 @@ class AbstractMethodTests(test_inference.InferenceTest):
 
       class Example(object, metaclass=abc.ABCMeta):
         __metaclass__ = ...  # type: Type[abc.ABCMeta]
+        @abstractmethod
         def foo(self) -> int: ...
       """)
     self.assertErrorLogIs(errors, [])
