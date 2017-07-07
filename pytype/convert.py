@@ -490,6 +490,7 @@ class Converter(object):
       else:
         f_cls = abstract.PyTDFunction
       f = f_cls(pyval.name, signatures, pyval.kind, self.vm)
+      f.is_abstract = pyval.is_abstract
       return f
     elif isinstance(pyval, pytd.ClassType):
       assert pyval.cls
