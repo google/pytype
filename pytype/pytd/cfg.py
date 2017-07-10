@@ -361,13 +361,22 @@ class Binding(object):
   def PrettyPrint(self, indent_level=0):
     """Return a string representation of the (nested) binding contents."""
     indent = " " * indent_level
-    s = "%s%s %s\n" % (indent, self, self.data)
+    s = "%sbinding v%s=%r\n" % (indent, self.variable.id, self.data)
+    other = ""
+    for v in self.variable.bindings:
+      if v is not self:
+        other += "%r %s " % (v.data, [o.where for o in v.origins])
+    if other:
+      s += "%s(other assignments: %s)\n" % (indent, other)
     for origin in self.origins:
-      s += " %s %s\n" % (indent, origin)
-      for source_set in origin.source_sets:
-        s += "  %s %s\n" % (indent, source_set)
-        for source in source_set:
+      s += "%s  at %s\n" % (indent, origin.where)
+      for i, source_set in enumerate(origin.source_sets):
+        for j, source in enumerate(source_set):
           s += source.PrettyPrint(indent_level + 4)
+          if j < len(source_set)-1:
+            s += "%s    AND\n" % indent
+        if i < len(origin.source_sets)-1:
+          s += "%s  OR\n" % indent
     return s
 
   def __repr__(self):
