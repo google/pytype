@@ -1068,8 +1068,13 @@ class VirtualMachine(object):
     return (self._data_is_none(binding.data) or
             not node.HasCombination([binding]))
 
+  def _has_at_least_one_none(self, node, obj):
+    return any(self._data_is_none(b.data) and node.HasCombination([b])
+               for b in obj.bindings)
+
   def _is_only_none(self, node, obj):
-    return all(self._is_none(node, b) for b in obj.bindings)
+    return (all(self._is_none(node, b) for b in obj.bindings) and
+            self._has_at_least_one_none(node, obj))
 
   def _delete_item(self, state, obj, arg):
     state, f = self.load_attr(state, obj, "__delitem__")

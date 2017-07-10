@@ -188,6 +188,29 @@ class RecoveryTests(test_inference.InferenceTest):
           return self._bar
     """)
 
+  def testAttributeAccessInImpossiblePath(self):
+    _, errors = self.InferAndCheck("""\
+      x = 3.14 if __random__ else 42
+      if isinstance(x, int):
+        if isinstance(x, float):
+          x.upper  # not reported
+          3 in x
+    """)
+    self.assertErrorLogIs(errors, [
+        (5, "unsupported-operands"),
+    ])
+
+  def testBinaryOperatorOnImpossiblePath(self):
+    _, errors = self.InferAndCheck("""\
+      x = "" if __random__ else u""
+      if isinstance(x, unicode):
+        if isinstance(x, str):
+          x / x
+    """)
+    self.assertErrorLogIs(errors, [
+        (4, "unsupported-operands"),
+    ])
+
 
 if __name__ == "__main__":
   test_inference.main()
