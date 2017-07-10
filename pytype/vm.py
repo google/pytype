@@ -2256,7 +2256,7 @@ class VirtualMachine(object):
     """Yield a value from a generator."""
     state, ret = state.pop()
     self.frame.yield_variable.PasteVariable(ret, state.node)
-    if self.frame.allowed_returns is not None:
+    if self.frame.check_return:
       # Create a dummy generator instance for checking that
       # Generator[<yield_variable>] matches the annotated return type.
       generator = abstract.Generator(self.frame, self)
@@ -2339,13 +2339,14 @@ class VirtualMachine(object):
   def byte_RETURN_VALUE(self, state, op):
     """Get and check the return value."""
     state, var = state.pop()
-    if self.frame.allowed_returns is not None:
+    if self.frame.check_return:
       if self.frame.f_code.co_flags & loadmarshal.CodeType.CO_GENERATOR:
         # A generator shouldn't return anything, so the expected return type
         # is None.
         self._check_return(state.node, var, self.convert.none_type)
       else:
         self._check_return(state.node, var, self.frame.allowed_returns)
+    if self.frame.allowed_returns is not None:
       _, _, retvar = self.init_class(state.node, self.frame.allowed_returns)
     else:
       retvar = var

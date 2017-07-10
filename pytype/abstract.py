@@ -1985,6 +1985,14 @@ class Class(object):
       self.cls = metaclass
     self.abstract_methods = []
 
+  @property
+  def is_abstract(self):
+    if not self.cls or any(
+        cls.full_name != "abc.ABCMeta" for cls in self.cls.data):
+      # This class does not have metaclass ABCMeta.
+      return False
+    return bool(self.abstract_methods)
+
   def _get_inherited_metaclass(self):
     for base in self.mro[1:]:
       if isinstance(base, Class) and base.cls is not None:
@@ -2811,7 +2819,14 @@ class InterpreterFunction(Function):
                                self.f_globals, self.f_locals, self.closure,
                                new_locals=new_locals)
     if self.signature.has_return_annotation:
+      if self.is_attribute_of_class and "self" in callargs:
+        caller_is_abstract = all(
+            cls.is_abstract
+            for v in callargs["self"].data for cls in v.cls.data)
+      else:
+        caller_is_abstract = False
       frame.allowed_returns = annotations["return"]
+      frame.check_return = not caller_is_abstract or not self.is_abstract
     if self.vm.options.skip_repeat_calls:
       callkey = self._hash_all(
           (callargs, None),

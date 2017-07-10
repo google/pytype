@@ -217,9 +217,11 @@ class Frame(object):
     states: A mapping from opcodes to FrameState objects.
     cells: local variables bound in a closure, or used in a closure.
     block_stack: A stack of blocks used to manage exceptions, loops, and
-    "with"s.
+      "with"s.
     data_stack: The value stack that is used for instruction operands.
     allowed_returns: The return annotation of this function.
+    check_return: Whether the actual return type of a call should be checked
+      against allowed_returns.
     return_variable: The return value of this function, as a Variable.
     yield_variable: The yield value of this function, as a Variable.
   """
@@ -261,6 +263,7 @@ class Frame(object):
     self.cells = {}
 
     self.allowed_returns = None
+    self.check_return = False
     self.return_variable = self.vm.program.NewVariable()
     self.yield_variable = self.vm.program.NewVariable()
 

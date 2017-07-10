@@ -160,8 +160,6 @@ class CallTracer(vm.VirtualMachine):
       if (not self.analyze_annotated and method.signature.annotations and
           fname not in self._CONSTRUCTORS):
         log.info("%r has type annotations, not analyzing further.", fname)
-      elif method.is_abstract:
-        log.info("%r is abstract, not analyzing further.", fname)
       else:
         node, args = self.create_method_arguments(node, method)
         node, _ = self.call_function_with_args(node, val, args)
