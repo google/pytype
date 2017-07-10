@@ -17,6 +17,7 @@ log = logging.getLogger(__name__)
 TOP_LEVEL_IGNORE = {
     "__builtins__",
     "__doc__",
+    "__file__",
     "__future__",
     "__module__",
     "__name__",

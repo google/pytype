@@ -591,6 +591,7 @@ class VirtualMachine(object):
       f_globals = f_locals = self.convert_locals_or_globals({
           "__builtins__": self.loader.builtins,
           "__name__": "__main__",
+          "__file__": code.co_filename,
           "__doc__": None,
           "__package__": None,
       })

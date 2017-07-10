@@ -238,6 +238,14 @@ class BuiltinTests2(test_inference.InferenceTest):
       k = ...  # type: float
     """)
 
+  def testFilename(self):
+    self.assertNoErrors("""
+      from __future__ import google_type_annotations
+      def foo(s: str) -> str:
+        return s
+      foo(__file__)
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()
