@@ -535,7 +535,7 @@ class CallTracer(vm.VirtualMachine):
     return ()  # TODO(kramm): Compute these.
 
   def pytd_classes_for_namedtuple_instances(self):
-    return tuple(v.pytd_cls for v in self._generated_classes.values())
+    return tuple(v.generate_ast() for v in self._generated_classes.values())
 
   def compute_types(self, defs):
     ty = pytd_utils.Concat(

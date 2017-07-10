@@ -1655,6 +1655,53 @@ class PyTDSignature(object):
     return [p.name for p in self.pytd_sig.params
             if not p.kwonly]
 
+  def set_defaults(self, defaults):
+    """Set signature's default arguments. Requires rebuilding PyTD signature.
+
+    Args:
+      defaults: An iterable of function argument defaults.
+
+    Returns:
+      Self with an updated signature.
+    """
+    defaults = list(defaults)
+    params = []
+    for param in reversed(self.pytd_sig.params):
+      if defaults:
+        defaults.pop()  # Discard the default. Unless we want to update type?
+        params.append(pytd.Parameter(
+            name=param.name,
+            type=param.type,
+            kwonly=param.kwonly,
+            optional=True,
+            mutated_type=param.mutated_type
+        ))
+      else:
+        params.append(pytd.Parameter(
+            name=param.name,
+            type=param.type,
+            kwonly=param.kwonly,
+            optional=False,  # Reset any previously-set defaults
+            mutated_type=param.mutated_type
+        ))
+    new_sig = pytd.Signature(
+        params=tuple(reversed(params)),
+        starargs=self.pytd_sig.starargs,
+        starstarargs=self.pytd_sig.starstarargs,
+        return_type=self.pytd_sig.return_type,
+        exceptions=self.pytd_sig.exceptions,
+        template=self.pytd_sig.template
+    )
+    # Now update self
+    self.pytd_sig = new_sig
+    self.param_types = [
+        self.vm.convert.constant_to_value(
+            p.type, subst={}, node=self.vm.root_cfg_node)
+        for p in self.pytd_sig.params]
+    self.signature = function.Signature.from_pytd(self.vm, self.name,
+                                                  self.pytd_sig)
+    return self
+
   def __repr__(self):
     return pytd.Print(self.pytd_sig)
 
@@ -1873,6 +1920,48 @@ class PyTDFunction(Function):
         yield sig, arg_dict, subst
     if not matched:
       raise error  # pylint: disable=raising-bad-type
+
+  def set_function_defaults(self, defaults_var):
+    """Attempts to set default arguments for a function's signatures.
+
+    If defaults_var is not an unambiguous tuple (i.e. one that can be processed
+    by get_atomic_python_constant), every argument is made optional and a
+    warning is issued. This function is used to emulate __defaults__.
+
+    If this function is part of a class (or has a parent), that parent is
+    updated so the change is stored.
+
+    Args:
+      defaults_var: a Variable with a single binding to a tuple of default
+                    values.
+    """
+    try:
+      defaults = get_atomic_python_constant(defaults_var, tuple)
+    except ConversionError:
+      if len(defaults_var.bindings) > 1:
+        details = "Multiple possible values found for __defaults__."
+      else:
+        details = "__defaults__ must be set to a tuple."
+      self.vm.errorlog.bad_function_defaults(self.vm.frames, self.name, details)
+      # Set the defaults to the longest signature
+      defaults = max(s.param_types for s in self.signatures)
+      # But if we have a parent (i.e. we're part of a class), drop one because
+      # we don't want to make self or cls optional:
+      if len(defaults) > 1 and hasattr(self, "parent"):
+        defaults = defaults[1:]
+
+    self.signatures = [sig.set_defaults(defaults) for sig in self.signatures]
+    # Update our parent's AST too, if we have a parent.
+    # 'parent' is set by PyTDClass._convert_member
+    if hasattr(self, "parent"):
+      self.parent._member_map[self.name] = self.generate_ast()  # pylint: disable=protected-access
+
+  def generate_ast(self):
+    return pytd.Function(
+        name=self.name,
+        signatures=tuple(s.pytd_sig for s in self.signatures),
+        kind=self.kind,
+        is_abstract=self.is_abstract)
 
 
 class Class(object):
@@ -2273,6 +2362,16 @@ class PyTDClass(SimpleAbstractValue, Class):
                 instance, self.vm).to_variable(node)
             for itm in self.template}
         return self._convert_member(name, c, subst, node)
+
+  def generate_ast(self):
+    """Generate this class's AST, including updated members."""
+    return pytd.Class(
+        name=self.name,
+        metaclass=self.pytd_cls.metaclass,
+        parents=self.pytd_cls.parents,
+        methods=tuple(self._member_map[m.name] for m in self.pytd_cls.methods),
+        constants=self.pytd_cls.constants,
+        template=self.pytd_cls.template)
 
 
 class InterpreterClass(SimpleAbstractValue, Class):

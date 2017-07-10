@@ -457,6 +457,11 @@ class AbstractAttributeHandler(object):
     if name == "__class__":
       return obj.set_class(node, var)
 
+    if isinstance(obj, abstract.PyTDFunction) and name == "__defaults__":
+      log.info("Setting defaults for %s to %r", obj.name, var)
+      obj.set_function_defaults(var)
+      return node
+
     if isinstance(obj, abstract.Instance) and name not in obj.members:
       # The previous value needs to be loaded at the root node so that
       # (1) it is overwritten by the current value and (2) it is still

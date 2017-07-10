@@ -736,6 +736,52 @@ class TestFunctions(test_inference.InferenceTest):
       foo.y  # if __init__ fails, this line throws an error
       """)
 
+  def testSetDefaults(self):
+    self.assertNoErrors("""\
+      import collections
+      X = collections.namedtuple("X", "a b c d")
+      X.__new__.__defaults__ = (3, 4)
+      a = X(1, 2)
+      b = X(1, 2, 3)
+      c = X(1, 2, 3, 4)
+      """)
+
+  def testSetDefaultsNonNew(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """\
+        def b(x: int, y: int, z: int): ...
+        """)
+      ty, errors = self.InferAndCheck("""\
+        import a
+        a.b.__defaults__ = ('3',)
+        a.b(1, 2)
+        c = a.b
+        """, pythonpath=[d.path])
+      self.assertErrorLogIs(errors, [])
+      self.assertTypesMatchPytd(ty, """\
+        a = ...  # type: module
+        def c(x: int, y: int, z: int = ...): ...
+        """)
+
+  def testBadDefaults(self):
+    _, errors = self.InferAndCheck("""\
+      import collections
+      X = collections.namedtuple("X", "a b c")
+      X.__new__.__defaults__ = (1,) if __random__ else (2,)
+      X.__new__.__defaults__ = (1)
+      """)
+    self.assertErrorLogIs(
+        errors, [
+            (3, "bad-function-defaults"),
+            (4, "bad-function-defaults")]
+    )
+
+  def testSetBuiltinDefaults(self):
+    self.assertNoCrash("""
+      import os
+      os.chdir.__defaults__ = ("/",)
+      os.chdir()
+      """)
 
 if __name__ == "__main__":
   test_inference.main()
