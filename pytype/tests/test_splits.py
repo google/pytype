@@ -851,6 +851,17 @@ class SplitTest(test_inference.InferenceTest):
           x, y = z
     """)
 
+  def testHiddenConflict(self):
+    self.assertNoErrors("""
+      from __future__ import google_type_annotations
+      import typing
+      def f(obj: typing.Union[int, dict, list, float, str, complex]):
+        if isinstance(obj, int):
+          return
+        if isinstance(obj, dict):
+          obj.itervalues
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

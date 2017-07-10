@@ -945,6 +945,41 @@ class CFGTest(unittest.TestCase):
     x = p.NewVariable(["b"], [a], n2)
     self.assertIsNone(p.solver)
 
+  def testHiddenConflict3(self):
+    p = cfg.Program()
+    n1 = p.NewCFGNode("n1")
+    n2 = n1.ConnectNew("n2")
+    z = p.NewVariable()
+    z_a = z.AddBinding("a", source_set=[], where=n1)
+    z_b = z.AddBinding("b", source_set=[], where=n1)
+    goals = []
+    for _ in range(5):
+      var = p.NewVariable()
+      v = var.AddBinding(".")
+      v.AddOrigin(source_set=[z_a], where=n1)
+      v.AddOrigin(source_set=[z_b], where=n1)
+      goals.append(v)
+    x = p.NewVariable()
+    x_b = x.AddBinding("a", source_set=[z_b], where=n1)
+    self.assertTrue(n2.HasCombination(goals + [x_b]))
+
+  def testConflictWithCondition(self):
+    p = cfg.Program()
+    n1 = p.NewCFGNode("n1")
+    n2 = n1.ConnectNew("n2")
+    z = p.NewVariable()
+    z_a = z.AddBinding("a", source_set=[], where=n1)
+    z_b = z.AddBinding("b", source_set=[], where=n1)
+    n1.condition = z_b
+    goals = []
+    for _ in range(5):
+      var = p.NewVariable()
+      v = var.AddBinding(".")
+      v.AddOrigin(source_set=[z_a], where=n1)
+      v.AddOrigin(source_set=[z_b], where=n1)
+      goals.append(v)
+    self.assertTrue(n2.HasCombination(goals))
+
 
 if __name__ == "__main__":
   unittest.main()

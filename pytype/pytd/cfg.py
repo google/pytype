@@ -942,8 +942,7 @@ class Solver(object):
             removed = new_state.RemoveFinishedGoals()
             removed.add(goal)
             if _GoalsConflict(removed):
-              # Sometimes, we bulk-remove goals that are internally conflicting.
-              return False
-            if self._RecallOrFindSolution(new_state, seen_goals | new_goals):
+              pass  # We bulk-removed goals that are internally conflicting.
+            elif self._RecallOrFindSolution(new_state, seen_goals | new_goals):
               return True
     return False
