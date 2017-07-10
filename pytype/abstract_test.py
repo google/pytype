@@ -694,6 +694,44 @@ class FunctionTest(AbstractTestBase):
     self.assertFalse(sig.late_annotations)
 
 
+class AbstractMethodsTest(AbstractTestBase):
+
+  def testAbstractMethod(self):
+    func = abstract.Function("f", self._vm).to_variable(self._vm.root_cfg_node)
+    func.data[0].is_abstract = True
+    cls = abstract.InterpreterClass("X", [], {"f": func}, None, self._vm)
+    self.assertListEqual(cls.abstract_methods, ["f"])
+
+  def testInheritedAbstractMethod(self):
+    sized_pytd = self._vm.loader.typing.Lookup("typing.Sized")
+    sized = self._vm.convert.constant_to_value(
+        sized_pytd, {}, self._vm.root_cfg_node)
+    cls = abstract.InterpreterClass(
+        "X", [sized.to_variable(self._vm.root_cfg_node)], {}, None, self._vm)
+    self.assertListEqual(cls.abstract_methods, ["__len__"])
+
+  def testOverriddenAbstractMethod(self):
+    sized_pytd = self._vm.loader.typing.Lookup("typing.Sized")
+    sized = self._vm.convert.constant_to_value(
+        sized_pytd, {}, self._vm.root_cfg_node)
+    bases = [sized.to_variable(self._vm.root_cfg_node)]
+    members = {"__len__":
+               self._vm.convert.create_new_unsolvable(self._vm.root_cfg_node)}
+    cls = abstract.InterpreterClass("X", bases, members, None, self._vm)
+    self.assertFalse(cls.abstract_methods)
+
+  def testOverriddenAbstractMethodStillAbstract(self):
+    sized_pytd = self._vm.loader.typing.Lookup("typing.Sized")
+    sized = self._vm.convert.constant_to_value(
+        sized_pytd, {}, self._vm.root_cfg_node)
+    bases = [sized.to_variable(self._vm.root_cfg_node)]
+    func = abstract.Function("__len__", self._vm)
+    func.is_abstract = True
+    members = {"__len__": func.to_variable(self._vm.root_cfg_node)}
+    cls = abstract.InterpreterClass("X", bases, members, None, self._vm)
+    self.assertListEqual(cls.abstract_methods, ["__len__"])
+
+
 class AbstractTest(AbstractTestBase):
 
   def testInterpreterClassOfficialName(self):

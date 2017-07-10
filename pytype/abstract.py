@@ -1894,6 +1894,7 @@ class Class(object):
       # TODO(rechen): Check that the metaclass is a (non-strict) subclass of the
       # metaclasses of the base classes.
       self.cls = metaclass
+    self.abstract_methods = []
 
   def _get_inherited_metaclass(self):
     for base in self.mro[1:]:
@@ -1993,6 +1994,7 @@ class ParameterizedClass(AtomicAbstractValue, Class):
     self.official_name = self.base_cls.official_name
     self.template = self.base_cls.template
     Class.init_mixin(self, base_cls.cls)
+    self.abstract_methods.extend(self.base_cls.abstract_methods)
 
   def __repr__(self):
     return "ParameterizedClass(cls=%r params=%s)" % (self.base_cls,
@@ -2192,6 +2194,16 @@ class PyTDClass(SimpleAbstractValue, Class):
     self.official_name = self.name
     self.template = self.pytd_cls.template
     Class.init_mixin(self, metaclass)
+    self.abstract_methods.extend(
+        name for name, member in self._member_map.items()
+        if isinstance(member, pytd.Function) and member.is_abstract)
+    if len(self.mro) > 1 and isinstance(self.mro[1], Class):
+      for name in self.mro[1].abstract_methods:
+        try:
+          self.pytd_cls.Lookup(name)
+        except KeyError:
+          # The parent's abstract method is inherited.
+          self.abstract_methods.append(name)
 
   def bases(self):
     convert = self.vm.convert
@@ -2278,6 +2290,13 @@ class InterpreterClass(SimpleAbstractValue, Class):
     self._bases = bases
     self.mro = self.compute_mro()
     Class.init_mixin(self, cls)
+    self.abstract_methods.extend(
+        name for name, var in members.items()
+        if any(isinstance(v, Function) and v.is_abstract for v in var.data))
+    if len(self.mro) > 1 and isinstance(self.mro[1], Class):
+      for name in self.mro[1].abstract_methods:
+        if name not in members:
+          self.abstract_methods.append(name)
     self.members = utils.MonitorDict(members)
     self.instances = set()  # filled through register_instance
     self._instance_cache = {}
