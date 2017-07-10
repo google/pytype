@@ -63,6 +63,8 @@ def GetBuiltinsAndTyping():
     t = t.Visit(visitors.NamedTypeToClassType())
     b = b.Visit(visitors.AdjustTypeParameters())
     t = t.Visit(visitors.AdjustTypeParameters())
+    b = b.Visit(visitors.CanonicalOrderingVisitor())
+    t = t.Visit(visitors.CanonicalOrderingVisitor())
     b.Visit(visitors.FillInLocalPointers({"": b, "typing": t,
                                           "__builtin__": b}))
     t.Visit(visitors.FillInLocalPointers({"": t, "typing": t,

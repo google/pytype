@@ -262,12 +262,18 @@ class TestVisitors(parser_test_base.ParserTest):
 
   def testCanonicalOrderingVisitor(self):
     src1 = textwrap.dedent("""
+    from typing import TypeVar
     def f() -> ?:
       raise MemoryError()
       raise IOError()
     def f(x: list[a]) -> ?
     def f(x: list[b or c]) -> ?
     def f(x: list[tuple[d]]) -> ?
+    A = TypeVar("A")
+    C = TypeVar("C")
+    B = TypeVar("B")
+    D = TypeVar("D")
+    def f(d: A, c: B, b: C, a: D) -> ?
     """)
     src2 = textwrap.dedent("""
     def f() -> ?:
@@ -276,12 +282,19 @@ class TestVisitors(parser_test_base.ParserTest):
     def f(x: list[tuple[d]]) -> ?
     def f(x: list[a]) -> ?
     def f(x: list[b or c]) -> ?
+    A = TypeVar("A")
+    C = TypeVar("C")
+    B = TypeVar("B")
+    D = TypeVar("D")
+    def f(d: A, c: B, b: C, a: D) -> ?
     """)
     tree1 = self.Parse(src1)
     tree1 = tree1.Visit(visitors.CanonicalOrderingVisitor(sort_signatures=True))
     tree2 = self.Parse(src2)
     tree2 = tree2.Visit(visitors.CanonicalOrderingVisitor(sort_signatures=True))
     self.AssertSourceEquals(tree1, tree2)
+    self.assertEqual(tree1.Lookup("f").signatures[0].template,
+                     tree2.Lookup("f").signatures[0].template)
 
   def testInPlaceFillInExternalClasses(self):
     src1 = textwrap.dedent("""

@@ -1574,7 +1574,9 @@ class CanonicalOrderingVisitor(Visitor):
       return node
 
   def VisitSignature(self, node):
-    return node.Replace(exceptions=tuple(sorted(node.exceptions)))
+    return node.Replace(
+        template=tuple(sorted(node.template)),
+        exceptions=tuple(sorted(node.exceptions)))
 
   def VisitUnionType(self, node):
     return pytd.UnionType(tuple(sorted(node.type_list)))
