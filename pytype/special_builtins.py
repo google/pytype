@@ -56,6 +56,7 @@ class ObjectPredicate(abstract.AtomicAbstractValue):
         raise abstract.WrongKeywordArgs(
             self._SIGNATURE, args, self.vm, args.namedargs.keys())
       else:
+        node = node.ConnectNew(self.name)
         result = self.vm.program.NewVariable()
         for left in args.posargs[0].bindings:
           for right in args.posargs[1].bindings:

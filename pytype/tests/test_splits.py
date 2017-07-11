@@ -306,6 +306,35 @@ class SplitTest(test_inference.InferenceTest):
       def a2(x) -> Union[int, str]: ...
     """)
 
+  def testIsInstanceMultiple(self):
+    ty = self.Infer("""
+      from __future__ import google_type_annotations
+      from typing import Union
+      def UpperIfString(value: Union[unicode, str, int]):
+        if isinstance(value, (unicode, str)):
+          return value.upper()
+    """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Optional, Union
+      def UpperIfString(value: Union[int, unicode]) -> Optional[Union[str, unicode]]
+    """)
+
+  def testIsInstanceAliased(self):
+    # Like the previous test, but with isinstance aliased to myisinstance.
+    ty = self.Infer("""
+      from __future__ import google_type_annotations
+      from typing import Union
+      myisinstance = isinstance
+      def UpperIfString(value: Union[unicode, str, int]):
+        if myisinstance(value, (unicode, str)):
+          return value.upper()
+    """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Callable, Optional, Union
+      myisinstance = ...  # type: Callable
+      def UpperIfString(value: Union[int, unicode]) -> Optional[Union[str, unicode]]
+    """)
+
   def testHasAttrBuiltin(self):
     ty = self.Infer("""
       # Always returns a bool.
