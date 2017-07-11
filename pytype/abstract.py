@@ -1440,7 +1440,10 @@ class Function(SimpleAbstractValue):
         match = self._match_view(node, args, view)
       except FailedFunctionCall as e:
         if e > error:
-          error = e
+          # We could also pass "filter_strict=True" to get_views() above,
+          # but it's cheaper to delay verification until the error case.
+          if node.HasCombination(view.values()):
+            error = e
       else:
         matched.append(match)
     if not matched and error:
