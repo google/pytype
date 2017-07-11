@@ -213,14 +213,14 @@ class IsInstanceTest(AbstractTestBase):
     node, result = self._is_instance.call(
         self._node, None, abstract.FunctionArgs((left, right), self.new_dict(),
                                                 None, None))
-    self.assertEquals(self._node, node)
+    self.assertIn(node, self._node.outgoing)
     result_map = {}
     # Turning source sets into canonical string representations of the binding
     # names makes it much easier to debug failures.
     for b in result.bindings:
       terms = set()
       for o in b.origins:
-        self.assertEquals(self._node, o.where)
+        self.assertEquals(node, o.where)
         for sources in o.source_sets:
           terms.add(" ".join(sorted(
               "%s:%d" % (name_map[b.variable], b.variable.bindings.index(b))
