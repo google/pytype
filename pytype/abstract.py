@@ -1935,22 +1935,34 @@ class PyTDFunction(Function):
       defaults_var: a Variable with a single binding to a tuple of default
                     values.
     """
-    try:
-      defaults = get_atomic_python_constant(defaults_var, tuple)
-    except ConversionError:
-      if len(defaults_var.bindings) > 1:
-        details = "Multiple possible values found for __defaults__."
-      else:
-        details = "__defaults__ must be set to a tuple."
-      self.vm.errorlog.bad_function_defaults(self.vm.frames, self.name, details)
-      # Set the defaults to the longest signature
-      defaults = max(s.param_types for s in self.signatures)
-      # But if we have a parent (i.e. we're part of a class), drop one because
-      # we don't want to make self or cls optional:
-      if len(defaults) > 1 and hasattr(self, "parent"):
-        defaults = defaults[1:]
+    # Case 1: All given data are tuples constants. Use the longest one.
+    if all(isinstance(d, Tuple) for d in defaults_var.data):
+      defaults = max((d.pyval for d in defaults_var.data), key=len)
+    else:
+      # Case 2: Data are entirely Tuple Instances, Unknown or Unsolvable. Make
+      # all parameters except self/cls optional.
+      # Case 3: Data is anything else. Same as Case 2, but emit a warning.
+      if not (all(isinstance(d, (Instance, Unknown, Unsolvable))
+                  for d in defaults_var.data) and
+              all(d.get_full_name() == "__builtin__.tuple"
+                  for d in defaults_var.data if isinstance(d, Instance))):
+        self.vm.errorlog.bad_function_defaults(self.vm.frames, self.name)
+      # When processing signatures, we'll make a list of the correct size for
+      # each signature.
+      defaults = None
 
-    self.signatures = [sig.set_defaults(defaults) for sig in self.signatures]
+    new_sigs = []
+    for sig in self.signatures:
+      if defaults:
+        new_sigs.append(sig.set_defaults(defaults))
+      else:
+        d = sig.param_types
+        # If we have a parent, we have a "self" or "cls" parameter. Do NOT make
+        # that one optional!
+        if hasattr(self, "parent"):
+          d = d[1:]
+        new_sigs.append(sig.set_defaults(d))
+    self.signatures = new_sigs
     # Update our parent's AST too, if we have a parent.
     # 'parent' is set by PyTDClass._convert_member
     if hasattr(self, "parent"):

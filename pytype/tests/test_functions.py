@@ -751,13 +751,12 @@ class TestFunctions(test_inference.InferenceTest):
       d.create_file("a.pyi", """\
         def b(x: int, y: int, z: int): ...
         """)
-      ty, errors = self.InferAndCheck("""\
+      ty = self.Infer("""\
         import a
         a.b.__defaults__ = ('3',)
         a.b(1, 2)
         c = a.b
         """, pythonpath=[d.path])
-      self.assertErrorLogIs(errors, [])
       self.assertTypesMatchPytd(ty, """\
         a = ...  # type: module
         def c(x: int, y: int, z: int = ...): ...
@@ -767,14 +766,37 @@ class TestFunctions(test_inference.InferenceTest):
     _, errors = self.InferAndCheck("""\
       import collections
       X = collections.namedtuple("X", "a b c")
-      X.__new__.__defaults__ = (1,) if __random__ else (2,)
       X.__new__.__defaults__ = (1)
       """)
-    self.assertErrorLogIs(
-        errors, [
-            (3, "bad-function-defaults"),
-            (4, "bad-function-defaults")]
-    )
+    self.assertErrorLogIs(errors, [(3, "bad-function-defaults")])
+
+  def testMultipleValidDefaults(self):
+    self.assertNoErrors("""
+      import collections
+      X = collections.namedtuple("X", "a b c")
+      X.__new__.__defaults__ = (1,) if __random__ else (1,2)
+      X(0)  # should not cause an error
+      """)
+
+  def testSetDefaultsToExpression(self):
+    # Test that get_atomic_python_constant fails but get_atomic_value pulls out
+    # a tuple Instance.
+    self.assertNoErrors("""
+      import collections
+      X = collections.namedtuple("X", "a b c")
+      X.__new__.__defaults__ = (None,) * len(X._fields)
+      """)
+
+  def testSetDefaultsNonTupleInstance(self):
+    # Test that get_atomic_python_constant fails and get_atomic_value pulls out
+    # a non-tuple Instance.
+    _, errors = self.InferAndCheck("""\
+      import collections
+      X = collections.namedtuple("X", "a b c")
+      X.__new__.__defaults__ = (lambda x: x)(0)
+      """)
+    self.assertErrorLogIs(errors, [(3, "bad-function-defaults")])
+
 
   def testSetBuiltinDefaults(self):
     self.assertNoCrash("""

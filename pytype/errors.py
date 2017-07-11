@@ -714,9 +714,9 @@ class ErrorLog(ErrorLogBase):
     self.warn(stack, msg % badname)
 
   @_error_name("bad-function-defaults")
-  def bad_function_defaults(self, stack, func_name, details):
-    self.error(stack, "Bad __defaults__ value for function %s" % func_name,
-               details=details)
+  def bad_function_defaults(self, stack, func_name):
+    msg = "Attempt to set %s.__defaults__ to a non-tuple value."
+    self.warn(stack, msg % func_name)
 
   @_error_name("reveal-type")
   def reveal_type(self, stack, node, var):
