@@ -59,6 +59,14 @@ class Typeshed(object):
     """
     return self._typeshed_path
 
+  def _ignore(self, module, version):
+    """Return True if we ignore a file in typeshed."""
+    if module == "builtins" and version[0] == 2:
+      # The Python 2 version of "builtin" is a mypy artifact. This module
+      # doesn't actually exist, in Python 2.7.
+      return True
+    return False
+
   def get_module_file(self, toplevel, module, version):
     """Get the contents of a typeshed file, typically with a file name *.pyi.
 
@@ -74,6 +82,8 @@ class Typeshed(object):
     Raises:
       IOError: if file not found
     """
+    if self._ignore(module, version):
+      raise IOError("Couldn't find %s" % module)
     module_path = os.path.join(*module.split("."))
     versions = ["%d.%d" % (version[0], minor)
                 for minor in range(version[1], -1, -1)]

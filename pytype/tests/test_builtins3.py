@@ -246,6 +246,13 @@ class BuiltinTests2(test_inference.InferenceTest):
       foo(__file__)
       """)
 
+  def testBuiltins(self):
+    # This module doesn't exist, on Python 2. However, it exists in typeshed, so
+    # make sure that we don't break (report pyi-error) when we import it.
+    self.assertNoErrors("""
+      import builtins  # pytype: disable=import-error
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()
