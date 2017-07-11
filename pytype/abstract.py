@@ -2256,7 +2256,8 @@ class Callable(ParameterizedClass, HasSlots):
             self.vm, bad_param=bad_param)
     ret = self.vm.annotations_util.sub_one_annotation(
         node, self.type_parameters[RET], substs)
-    return node, ret.instantiate(node)
+    node, _, retvar = self.vm.init_class(node, ret)
+    return node, retvar
 
   def get_special_attribute(self, node, name, valself):
     if valself and name in self._slots:

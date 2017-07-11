@@ -326,6 +326,16 @@ class TestAttributes(test_inference.InferenceTest):
     """)
     self.assertErrorLogIs(errors, [(5, "attribute-error", r"'values' on bool")])
 
+  def testCallableReturn(self):
+    self.assertNoErrors("""
+      from typing import Callable
+      class Foo(object):
+        def __init__(self):
+          self.x = 42
+      v = None  # type: Callable[[], Foo]
+      w = v().x
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()
