@@ -159,6 +159,22 @@ class ReingestTest(test_inference.InferenceTest):
         foo.Foo("hello world")
       """, pythonpath=[d.path])
 
+  def testDynamicAttributes(self):
+    foo = self.Infer("""
+      HAS_DYNAMIC_ATTRIBUTES = True
+    """, deep=True)
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", pytd.Print(foo))
+      d.create_file("bar.pyi", """\
+        from foo import xyz
+      """)
+      self.assertNoErrors("""
+        import foo
+        import bar
+        foo.xyz
+        bar.xyz
+      """, pythonpath=[d.path])
+
 
 if __name__ == "__main__":
   test_inference.main()
