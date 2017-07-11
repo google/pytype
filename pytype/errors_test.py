@@ -2,6 +2,7 @@
 
 import collections
 import csv
+import os
 import textwrap
 
 from pytype import errors
@@ -241,6 +242,8 @@ class ErrorLogBaseTest(unittest.TestCase):
     unique_errors = errorlog.unique_sorted_errors()
     self.assertEquals(2, len(unique_errors))
     self.assertSetEqual(set(errorlog), set(unique_errors))
+
+
 
 
 if __name__ == "__main__":
