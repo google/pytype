@@ -2838,7 +2838,7 @@ class InterpreterFunction(Function):
       if self.is_attribute_of_class and "self" in callargs:
         caller_is_abstract = all(
             cls.is_abstract
-            for v in callargs["self"].data for cls in v.cls.data)
+            for v in callargs["self"].data if v.cls for cls in v.cls.data)
       else:
         caller_is_abstract = False
       frame.allowed_returns = annotations["return"]

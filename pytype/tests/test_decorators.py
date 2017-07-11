@@ -213,6 +213,18 @@ class DecoratorsTest(test_inference.InferenceTest):
           f = ...  # type: Callable
       """)
 
+  def testAnnotatedSuperCallUnderBadDecorator(self):
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      class Foo(object):
+        def Run(self) -> None: ...
+      class Bar(Foo):
+        @bad_decorator  # line 5
+        def Run(self):
+          return super(Bar, self).Run()
+    """)
+    self.assertErrorLogIs(errors, [(5, "name-error", r"bad_decorator")])
+
 
 if __name__ == "__main__":
   test_inference.main()
