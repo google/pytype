@@ -10,6 +10,7 @@ import os
 import subprocess
 
 
+from pytype import debug
 from pytype import imports_map_loader
 from pytype import utils
 
@@ -312,7 +313,7 @@ class Options(object):
       # "verbosity=-1" can be used to disable all logging, so configure
       # logging accordingly.
       basic_logging_level = logging.CRITICAL + 1
-    utils.set_logging_level(basic_logging_level)
+    debug.set_logging_level(basic_logging_level)
 
   def _store_pythonpath(self, pythonpath):
     # Note that the below gives [""] for "", and ["x", ""] for "x:"

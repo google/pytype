@@ -9,7 +9,7 @@ import logging
 
 
 from pytype import metrics
-import pytype.utils
+import pytype.debug
 
 
 log = logging.getLogger(__name__)
@@ -232,9 +232,9 @@ class CFGNode(object):
       A string.
     """
     if forward:
-      return pytype.utils.ascii_tree(self, lambda node: node.outgoing)
+      return pytype.debug.ascii_tree(self, lambda node: node.outgoing)
     else:
-      return pytype.utils.ascii_tree(self, lambda node: node.incoming)
+      return pytype.debug.ascii_tree(self, lambda node: node.incoming)
 
 
 class SourceSet(frozenset):
@@ -360,24 +360,7 @@ class Binding(object):
 
   def PrettyPrint(self, indent_level=0):
     """Return a string representation of the (nested) binding contents."""
-    indent = " " * indent_level
-    s = "%sbinding v%s=%r\n" % (indent, self.variable.id, self.data)
-    other = ""
-    for v in self.variable.bindings:
-      if v is not self:
-        other += "%r %s " % (v.data, [o.where for o in v.origins])
-    if other:
-      s += "%s(other assignments: %s)\n" % (indent, other)
-    for origin in self.origins:
-      s += "%s  at %s\n" % (indent, origin.where)
-      for i, source_set in enumerate(origin.source_sets):
-        for j, source in enumerate(source_set):
-          s += source.PrettyPrint(indent_level + 4)
-          if j < len(source_set)-1:
-            s += "%s    AND\n" % indent
-        if i < len(origin.source_sets)-1:
-          s += "%s  OR\n" % indent
-    return s
+    return pytype.debug.prettyprint_binding_nested(self, indent_level)
 
   def __repr__(self):
     data_id = getattr(self.data, "id", id(self.data))

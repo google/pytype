@@ -3,20 +3,19 @@
 import collections
 import logging
 import os
-import StringIO
 import subprocess
 import sys
 
 
 from pytype import abstract
 from pytype import convert_structural
+from pytype import debug
 from pytype import exceptions
 from pytype import function
 from pytype import metrics
 from pytype import output
 from pytype import state as frame_state
 from pytype import typing
-from pytype import utils
 from pytype import vm
 from pytype.pytd import optimize
 from pytype.pytd import pytd
@@ -562,139 +561,6 @@ class CallTracer(vm.VirtualMachine):
           self.frames, combined, formal.get_instance_type(node))
 
 
-def _pretty_variable(var):
-  """Return a pretty printed string for a Variable."""
-  lines = []
-  single_value = len(var.bindings) == 1
-  var_desc = "v%d" % var.id
-  if not single_value:
-    # Write a description of the variable (for single value variables this
-    # will be written along with the value later on).
-    lines.append(var_desc)
-    var_prefix = "  "
-  else:
-    var_prefix = var_desc + " = "
-
-  for value in var.bindings:
-    i = 0 if value.data is None else value.data.id
-    data = utils.maybe_truncate(value.data)
-    binding = "%s#%d %s" % (var_prefix, i, data)
-
-    if len(value.origins) == 1:
-      # Single origin.  Use the binding as a prefix when writing the orign.
-      prefix = binding + ", "
-    else:
-      # Multiple origins, write the binding on its own line, then indent all
-      # of the origins.
-      lines.append(binding)
-      prefix = "    "
-
-    for origin in value.origins:
-      src = utils.pretty_dnf([[str(v) for v in source_set]
-                              for source_set in origin.source_sets])
-      lines.append("%s%s @%d" %(prefix, src, origin.where.id))
-  return "\n".join(lines)
-
-
-def program_to_text(program):
-  """Generate a text (CFG nodes + assignments) version of a program.
-
-  For debugging only.
-
-  Args:
-    program: An instance of cfg.Program
-
-  Returns:
-    A string representing all of the data for this program.
-  """
-  s = StringIO.StringIO()
-  seen = set()
-  for node in utils.order_nodes(program.cfg_nodes):
-    seen.add(node)
-    s.write("%s\n" % node.Label())
-    s.write("  From: %s\n" % ", ".join(n.Label() for n in node.incoming))
-    s.write("  To: %s\n" % ", ".join(n.Label() for n in node.outgoing))
-    s.write("\n")
-    variables = set(value.variable for value in node.bindings)
-    for var in sorted(variables, key=lambda v: v.id):
-      # If a variable is bound in more than one node then it will be listed
-      # redundantly multiple times.  One alternative would be to only list the
-      # values that occur in the given node, and then also list the other nodes
-      # that assign the same variable.
-
-      # Write the variable, indenting by two spaces.
-      s.write("  %s\n" % _pretty_variable(var).replace("\n", "\n  "))
-    s.write("\n")
-
-  return s.getvalue()
-
-
-def program_to_dot(program, ignored, only_cfg=False):
-  """Convert a typegraph.Program into a dot file.
-
-  Args:
-    program: The program to convert.
-    ignored: A set of names that should be ignored. This affects most kinds of
-    nodes.
-    only_cfg: If set, only output the control flow graph.
-  Returns:
-    A str of the dot code.
-  """
-  def objname(n):
-    return n.__class__.__name__ + str(id(n))
-
-  print("cfg nodes=%d, vals=%d, variables=%d" % (
-      len(program.cfg_nodes),
-      sum(len(v.bindings) for v in program.variables),
-      len(program.variables)))
-
-  sb = StringIO.StringIO()
-  sb.write("digraph {\n")
-  for node in program.cfg_nodes:
-    if node in ignored:
-      continue
-    sb.write("%s[shape=polygon,sides=4,label=\"<%d>%s\"];\n"
-             % (objname(node), node.id, node.name))
-    for other in node.outgoing:
-      sb.write("%s -> %s [penwidth=2.0];\n" % (objname(node), objname(other)))
-
-  if only_cfg:
-    sb.write("}\n")
-    return sb.getvalue()
-
-  for variable in program.variables:
-    if variable.id in ignored:
-      continue
-    if all(origin.where == program.entrypoint
-           for value in variable.bindings
-           for origin in value.origins):
-      # Ignore "boring" values (a.k.a. constants)
-      continue
-    sb.write('%s[label="%d",shape=polygon,sides=4,distortion=.1];\n'
-             % (objname(variable), variable.id))
-    for val in variable.bindings:
-      sb.write("%s -> %s [arrowhead=none];\n" %
-               (objname(variable), objname(val)))
-      sb.write("%s[label=\"%s@0x%x\",fillcolor=%s];\n" %
-               (objname(val), repr(val.data)[:10], id(val.data),
-                "white" if val.origins else "red"))
-      for loc, srcsets in val.origins:
-        if loc == program.entrypoint:
-          continue
-        for srcs in srcsets:
-          sb.write("%s[label=\"\"];\n" % (objname(srcs)))
-          sb.write("%s -> %s [color=pink,arrowhead=none,weight=40];\n"
-                   % (objname(val), objname(srcs)))
-          if loc not in ignored:
-            sb.write("%s -> %s [style=dotted,arrowhead=none,weight=5]\n"
-                     % (objname(loc), objname(srcs)))
-          for src in srcs:
-            sb.write("%s -> %s [color=lightblue,weight=2];\n"
-                     % (objname(src), objname(srcs)))
-  sb.write("}\n")
-  return sb.getvalue()
-
-
 def _filename_to_module_name(filename):
   """Helper function for get_module_name."""
   if os.path.dirname(filename).startswith(os.pardir):
@@ -832,7 +698,8 @@ def infer_types(src, errorlog, options, loader,
   if options.output_cfg or options.output_typegraph:
     if options.output_cfg and options.output_typegraph:
       raise AssertionError("Can output CFG or typegraph, but not both")
-    dot = program_to_dot(tracer.program, set([]), bool(options.output_cfg))
+    dot = debug.program_to_dot(
+        tracer.program, set([]), bool(options.output_cfg))
     proc = subprocess.Popen(["/usr/bin/dot", "-T", "svg", "-o",
                              options.output_cfg or options.output_typegraph],
                             stdin=subprocess.PIPE)
@@ -845,7 +712,7 @@ def infer_types(src, errorlog, options, loader,
 
 def _maybe_output_debug(options, program):
   if options.output_debug:
-    text = program_to_text(program)
+    text = debug.program_to_text(program)
     if options.output_debug == "-":
       log.info("=========== Program Dump =============\n%s", text)
     else:

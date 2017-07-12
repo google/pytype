@@ -3,7 +3,6 @@
 import itertools
 import logging
 import os
-import textwrap
 
 
 from pytype import utils
@@ -625,75 +624,6 @@ class UtilsTest(unittest.TestCase):
     def f():  # pylint: disable=unused-variable
       pass
     self.assertEquals(foo.lookup["f"], 3)
-
-  def testAsciiTree(self):
-    n1 = Node("n1")
-    n2 = Node("n2", n1)
-    n3 = Node("n3", n2)
-    n4 = Node("n4", n3)
-    n5 = Node("n5", n1)
-    n6 = Node("n6", n5)
-    n7 = Node("n7", n5)
-    del n4, n6  # make pylint happy
-    s = utils.ascii_tree(n1, lambda n: n.outgoing)
-    self.assertMultiLineEqual(textwrap.dedent("""\
-      Node(n1)
-      |
-      +-Node(n2)
-      | |
-      | +-Node(n3)
-      |   |
-      |   +-Node(n4)
-      |
-      +-Node(n5)
-        |
-        +-Node(n6)
-        |
-        +-Node(n7)
-    """), s)
-    s = utils.ascii_tree(n7, lambda n: n.incoming)
-    self.assertMultiLineEqual(textwrap.dedent("""\
-      Node(n7)
-      |
-      +-Node(n5)
-        |
-        +-Node(n1)
-    """), s)
-
-  def testAsciiGraph(self):
-    n1 = Node("n1")
-    n2 = Node("n2", n1)
-    n3 = Node("n3", n2)
-    n3.connect_to(n1)
-    s = utils.ascii_tree(n1, lambda n: n.outgoing)
-    self.assertMultiLineEqual(textwrap.dedent("""\
-      Node(n1)
-      |
-      +-Node(n2)
-        |
-        +-Node(n3)
-          |
-          +-[Node(n1)]
-    """), s)
-
-  def testAsciiGraphWithCustomText(self):
-    n1 = Node("n1")
-    n2 = Node("n2", n1)
-    n3 = Node("n3", n2)
-    n3.connect_to(n1)
-    s = utils.ascii_tree(n1, lambda n: n.outgoing, lambda n: n.name.upper())
-    self.assertMultiLineEqual(textwrap.dedent("""\
-      N1
-      |
-      +-N2
-        |
-        +-N3
-          |
-          +-[N1]
-    """), s)
-
-  def testTraceLogLevel(self):
-    log.trace("hello world")
 
 
 if __name__ == "__main__":

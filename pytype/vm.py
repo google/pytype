@@ -29,6 +29,7 @@ from pytype import blocks
 from pytype import collections_overlay
 from pytype import compare
 from pytype import convert
+from pytype import debug  # pylint: disable=unused-import
 from pytype import directors
 from pytype import exceptions
 from pytype import function
