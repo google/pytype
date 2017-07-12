@@ -877,6 +877,10 @@ class VirtualMachine(object):
   def trace_namedtuple(self, *args):
     return NotImplemented
 
+  def call_init(self, node, unused_instance):
+    # This dummy implementation is overwritten in infer.py.
+    return node
+
   def call_function_with_state(self, state, funcu, posargs, namedargs=None,
                                starargs=None, starstarargs=None,
                                fallback_to_unsolvable=True):

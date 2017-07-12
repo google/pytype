@@ -299,6 +299,8 @@ class Object(abstract.PyTDClass):
       definition in __builtin__.object, False otherwise.
     """
     assert method in ("__new__", "__init__")
+    if not isinstance(cls, abstract.Class):
+      return False
     self.load_lazy_attribute(method)
     obj_method = self.members[method]
     _, cls_method = self.vm.attribute_handler.get_class_attribute(
@@ -312,8 +314,7 @@ class Object(abstract.PyTDClass):
     # object.__init__, and vice versa.
     if valself:
       val = valself.data
-      if (name == "__new__" and isinstance(val, abstract.Class) and
-          self._has_own(node, val, "__init__")):
+      if name == "__new__" and self._has_own(node, val, "__init__"):
         self.load_lazy_attribute("__new__extra_args")
         return self.members["__new__extra_args"]
       elif (name == "__init__" and isinstance(val, abstract.Instance) and

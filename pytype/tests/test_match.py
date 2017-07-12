@@ -1,7 +1,5 @@
 """Tests for the analysis phase matcher (match_var_against_type)."""
 
-import unittest
-
 
 from pytype import utils
 from pytype.tests import test_inference
@@ -370,7 +368,6 @@ class MatchTest(test_inference.InferenceTest):
     """)
     self.assertErrorLogIs(errors, [(5, "invalid-typevar")])
 
-  @unittest.skip("Attribute error for 'x'")
   def testCallableReturn(self):
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", """
@@ -384,6 +381,24 @@ class MatchTest(test_inference.InferenceTest):
           def __init__(self):
             self.x = 42
         foo.foo(Foo).x
+      """, pythonpath=[d.path])
+
+  def testCallableUnionReturn(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import Callable, TypeVar
+        T1 = TypeVar("T1")
+        T2 = TypeVar("T2")
+        def foo(func: Callable[[], T1]) -> T1 or T2: ...
+      """)
+      self.assertNoErrors("""
+        import foo
+        class Foo(object):
+          def __init__(self):
+            self.x = 42
+        v = foo.foo(Foo)
+        if isinstance(v, Foo):
+          v.x
       """, pythonpath=[d.path])
 
 

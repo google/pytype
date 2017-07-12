@@ -1208,6 +1208,17 @@ class ReplaceTypeParameters(Visitor):
     return self.mapping[p]
 
 
+class CollectTypeParameters(Visitor):
+  """Visitor that accumulates type parameters in its "params" attribute."""
+
+  def __init__(self):
+    super(CollectTypeParameters, self).__init__()
+    self.params = set()
+
+  def EnterTypeParameter(self, p):
+    self.params.add(p)
+
+
 def ClassAsType(cls):
   """Converts a pytd.Class to an instance of pytd.TYPE."""
   params = tuple(item.type_param for item in cls.template)

@@ -527,3 +527,9 @@ def SavePickle(data, filename):
       cPickle.dump(data, fi, _PICKLE_PROTOCOL)
     finally:
       sys.setrecursionlimit(recursion_limit)
+
+
+def GetTypeParameters(node):
+  collector = visitors.CollectTypeParameters()
+  node.Visit(collector)
+  return collector.params

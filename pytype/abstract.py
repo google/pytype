@@ -1580,6 +1580,12 @@ class PyTDSignature(object):
     t = (return_type, subst)
     sources = [func] + arg_dict.values()
     if t not in ret_map:
+      for param in pytd_utils.GetTypeParameters(return_type):
+        if param.name in subst:
+          # This value, which was instantiated by the matcher, will end up in
+          # the return value. Since the matcher does not call __init__, we need
+          # to do that now.
+          node = self.vm.call_init(node, subst[param.name])
       try:
         ret_map[t] = self.vm.convert.constant_to_var(
             AsInstance(return_type), subst, node, source_sets=[sources])
