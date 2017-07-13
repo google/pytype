@@ -2175,6 +2175,10 @@ class TupleClass(ParameterizedClass, HasSlots):
     # We subtract one to account for "T".
     self.tuple_length = len(self.type_parameters) - 1
     self._instance = None
+    # ParametrizedClass removes the base PyTDClass(tuple) from the mro; add it
+    # back here so that isinstance(tuple) checks work.
+    self.mro = (self.mro[0],) + self.base_cls.mro
+
 
   def __repr__(self):
     return "TupleClass(%s)" % self.type_parameters

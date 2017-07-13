@@ -245,6 +245,19 @@ class TupleTest(test_inference.InferenceTest):
       def f(l: List[Tuple[int, AnyStr]]) -> Union[str, unicode]: ...
     """)
 
+  def testTupleIsInstance(self):
+    ty = self.Infer("""
+      x = ()
+      if isinstance(x, tuple):
+        y = 42
+    """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Tuple
+      x = ...  # type: Tuple[nothing, ...]
+      y = ...  # type: int
+    """)
+
+
 
 if __name__ == "__main__":
   test_inference.main()
