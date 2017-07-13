@@ -7,16 +7,6 @@ from pytype.tests import test_inference
 class FunctionCommentTest(test_inference.InferenceTest):
   """Tests for type comments."""
 
-  def testCommentOutTypeComment(self):
-    ty = self.Infer("""
-      def foo():
-        # # type: () -> not a legal type spec
-        return 1
-    """, deep=True)
-    self.assertTypesMatchPytd(ty, """
-      def foo() -> int
-    """)
-
   def testFunctionUnspecifiedArgs(self):
     ty = self.Infer("""
       def foo(x):
