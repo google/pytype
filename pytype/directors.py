@@ -7,7 +7,7 @@ import re
 import sys
 import tokenize
 
-_DIRECTIVE_RE = re.compile(r"^#\s*(pytype|type)\s*:\s([^#]*)")
+_DIRECTIVE_RE = re.compile(r"#\s*(pytype|type)\s*:\s([^#]*)")
 _CLOSING_BRACKETS_RE = re.compile(r"^(\s*[]})]\s*)+(#.*)?$")
 _WHITESPACE_RE = re.compile(r"^\s*(#.*)?$")
 _CLASS_OR_FUNC_RE = re.compile(r"^(def|class)\s")
@@ -176,7 +176,7 @@ class Director(object):
         closing_bracket_lines.clear()
         whitespace_lines.clear()
       if tok == tokenize.COMMENT:
-        m = _DIRECTIVE_RE.match(line[col:])
+        m = _DIRECTIVE_RE.search(line[col:])
         if m:
           code = line[:col].strip()
           tool, data = m.groups()
