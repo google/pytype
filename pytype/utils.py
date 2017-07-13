@@ -636,7 +636,10 @@ class DictTemplate(dict):
 
 
 class AliasingDictConflictError(Exception):
-  pass
+
+  def __init__(self, existing_name):
+    super(AliasingDictConflictError, self).__init__()
+    self.existing_name = existing_name
 
 
 class AliasingDict(DictTemplate):
@@ -657,7 +660,7 @@ class AliasingDict(DictTemplate):
     new_name = self._alias_map.get(name, name)
     existing_name = self._alias_map.get(alias, new_name)
     if new_name != existing_name:
-      raise AliasingDictConflictError()
+      raise AliasingDictConflictError(existing_name)
     self._alias_map[alias] = new_name
 
   def __contains__(self, name):

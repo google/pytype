@@ -781,8 +781,8 @@ class Instance(SimpleAbstractValue):
             #  class Foo(List[U]): pass
             try:
               self.type_parameters.add_alias(name, param.name)
-            except utils.AliasingDictConflictError:
-              bad_names |= {name, param.name}
+            except utils.AliasingDictConflictError as e:
+              bad_names |= {name, param.name, e.existing_name}
           else:
             # We have either a non-formal parameter, e.g.,
             # class Foo(List[int]), or a non-1:1 parameter mapping, e.g.,
@@ -800,8 +800,15 @@ class Instance(SimpleAbstractValue):
     # conflicts, so we'll set all of them to unsolvable.
     node = self.vm.root_cfg_node
     for name in bad_names:
-      self.merge_type_parameter(
+      super(Instance, self).merge_type_parameter(
           node, name, self.vm.convert.create_new_unsolvable(node))
+    self._bad_names = bad_names
+
+  def merge_type_parameter(self, node, name, value):
+    # Members of _bad_names are involved in naming conflicts, so we don't want
+    # to overwrite the unsolvable value that __init__ set them to.
+    if name not in self._bad_names:
+      super(Instance, self).merge_type_parameter(node, name, value)
 
   def make_template_unsolvable(self, template, node):
     for formal in template:
@@ -2178,7 +2185,6 @@ class TupleClass(ParameterizedClass, HasSlots):
     # ParametrizedClass removes the base PyTDClass(tuple) from the mro; add it
     # back here so that isinstance(tuple) checks work.
     self.mro = (self.mro[0],) + self.base_cls.mro
-
 
   def __repr__(self):
     return "TupleClass(%s)" % self.type_parameters

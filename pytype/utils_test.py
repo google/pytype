@@ -543,8 +543,12 @@ class UtilsTest(unittest.TestCase):
     d.add_alias("alias2", "name")
     self.assertRaises(AssertionError,
                       lambda: d.add_alias("name", "other_name"))
-    self.assertRaises(utils.AliasingDictConflictError,
-                      lambda: d.add_alias("alias1", "other_name"))
+    try:
+      d.add_alias("alias1", "other_name")
+    except utils.AliasingDictConflictError as e:
+      self.assertEquals(e.existing_name, "name")
+    else:
+      self.fail("AliasingDictConflictError not raised")
     d.add_alias("alias1", "name")
     d.add_alias("alias2", "alias1")
     d.add_alias("alias1", "alias2")

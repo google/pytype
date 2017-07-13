@@ -274,7 +274,9 @@ class GenericTest(test_inference.InferenceTest):
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
-        v = ...  # type: a.C[int, int or float]
+        # T1, T2, and T3 are all set to Any due to T1 being an alias for both
+        # T2 and T3.
+        v = ...  # type: a.C
       """)
 
   def testTypeParameterDeep(self):
@@ -488,7 +490,6 @@ class GenericTest(test_inference.InferenceTest):
         g = lambda y: y+1
       """, pythonpath=[d.path])
 
-  @unittest.skip("Broken due to InterpreterFunction caching bug.")
   def testTemplateConstruction(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """
@@ -515,8 +516,9 @@ class GenericTest(test_inference.InferenceTest):
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         a = ...  # type: module
-        def f() -> a.A[int, str]
-        def g() -> int
+        # T was made unsolvable by an AliasingDictConflictError.
+        def f() -> a.A[Any, str]
+        def g() -> Any
         def h() -> str
       """)
 
