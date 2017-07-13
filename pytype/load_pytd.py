@@ -395,13 +395,12 @@ class PickledPyiLoader(Loader):
     if existing:
       return existing
     loaded_ast = pytd_utils.LoadPickle(filename)
-
     # At this point ast.name and module_name could be different.
     # They are later synced in ProcessAst.
     dependencies = [d for d in loaded_ast.dependencies
                     if d != loaded_ast.ast.name]
 
-    serialize_ast.EnsureAstName(loaded_ast, module_name)
+    loaded_ast = serialize_ast.EnsureAstName(loaded_ast, module_name)
     self._modules[module_name] = Module(module_name, filename, loaded_ast.ast)
     self._load_ast_dependencies(dependencies, ast, module_name)
 

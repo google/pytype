@@ -80,8 +80,8 @@ class SerializeAstTest(unittest.TestCase):
       serialized_ast = pytd_utils.LoadPickle(pickled_ast_filename)
 
       # The sorted makes the testcase more deterministic.
-      serialized_ast.class_type_nodes = sorted(
-          serialized_ast.class_type_nodes)[1:]
+      serialized_ast = serialized_ast.Replace(class_type_nodes=sorted(
+          serialized_ast.class_type_nodes)[1:])
       loaded_ast = serialize_ast.ProcessAst(serialized_ast, module_map)
 
       with self.assertRaisesRegexp(
@@ -141,7 +141,7 @@ class SerializeAstTest(unittest.TestCase):
         serialized_ast = pickle.load(fi)
       self.assertTrue(serialized_ast.ast)
       self.assertEquals(serialized_ast.dependencies,
-                        {"__builtin__", "module2", "foo.bar.module1"})
+                        ["__builtin__", "foo.bar.module1", "module2"])
 
   def testLoadTopLevel(self):
     """Tests that a pickled file can be read."""
@@ -218,7 +218,8 @@ class SerializeAstTest(unittest.TestCase):
 
       new_module_name = "wurstbrot.module2"
       serializable_ast = pytd_utils.LoadPickle(pickled_ast_filename)
-      serialize_ast.EnsureAstName(serializable_ast, new_module_name)
+      serializable_ast = serialize_ast.EnsureAstName(
+          serializable_ast, new_module_name)
       loaded_ast = serialize_ast.ProcessAst(serializable_ast, module_map)
 
       self.assertTrue(loaded_ast)

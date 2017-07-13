@@ -152,6 +152,28 @@ class PytypeTest(unittest.TestCase):
     self.assertTrue(parser.parse_string(self.stdout).ASTeq(
         parser.parse_string(expected_pyi)), message)
 
+  def GeneratePickledSimpleFile(self, tmp_dir, pickle_name):
+    pickled_location = os.path.join(tmp_dir.path, pickle_name)
+    self.pytype_args["--pythonpath"] = tmp_dir.path
+    self.pytype_args["--output-pickled"] = pickled_location
+    self.pytype_args["--module-name"] = "simple"
+    self.pytype_args["--verify-pickle"] = self.INCLUDE
+    self.pytype_args["--output"] = os.path.join(tmp_dir.path, "unused_pyi")
+    self.pytype_args[self._DataPath("simple.py")] = self.INCLUDE
+    self._RunPytype(self.pytype_args)
+    self.assertOutputStateMatches(stdout=False, stderr=False, returncode=0)
+    self.assertTrue(os.path.exists(pickled_location))
+    return pickled_location
+
+  def testPickledFileStableness(self):
+    # Tests the the pickled format is stable under a constant PYTHONHASHSEED.
+    with utils.Tempdir() as d:
+      l_1 = self.GeneratePickledSimpleFile(d, "simple1.pickled")
+      l_2 = self.GeneratePickledSimpleFile(d, "simple2.pickled")
+      with open(l_1, "rb") as f_1:
+        with open(l_2, "rb") as f_2:
+          self.assertEquals(f_1.read(), f_2.read())
+
   def testGeneratePickledAst(self):
     with utils.Tempdir() as d:
       pickled_location = os.path.join(d.path, "simple.pickled")

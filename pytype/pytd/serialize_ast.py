@@ -4,6 +4,9 @@ Used to speed up module importing. This is done by loading the ast and
 serializing it to disk. Further users only need to read the serialized data from
 disk, which is faster to digest than a pyi file.
 """
+
+import collections
+
 from pytype.pytd import pytd
 from pytype.pytd import utils
 from pytype.pytd.parse import builtins as pytd_builtins
@@ -26,8 +29,11 @@ class FindClassTypesVisitor(visitors.Visitor):
   def EnterClassType(self, n):
     self.class_type_nodes.append(n)
 
+SerializableTupleClass = collections.namedtuple(
+    "_", ["ast", "dependencies", "class_type_nodes"])
 
-class SerializableAst(object):
+
+class SerializableAst(SerializableTupleClass):
   """The data pickled to disk to save an ast.
 
   Attributes:
@@ -44,11 +50,7 @@ class SerializableAst(object):
       will be visited and all found ClassType instances will have their .cls
       set.
   """
-
-  def __init__(self, ast, dependencies, class_type_nodes):
-    self.ast = ast
-    self.dependencies = dependencies
-    self.class_type_nodes = class_type_nodes
+  Replace = SerializableTupleClass._replace  # pylint: disable=no-member,invalid-name
 
 
 class RenameModuleVisitor(visitors.Visitor):
@@ -142,10 +144,10 @@ def StoreAst(ast, filename):
   ast.Visit(visitors.ClearClassPointers())
   indexer = FindClassTypesVisitor()
   ast.Visit(indexer)
-  serializable_ast = SerializableAst(
-      ast, dependencies, indexer.class_type_nodes)
-
-  utils.SavePickle(serializable_ast, filename)
+  utils.SavePickle(SerializableAst(
+      ast, list(sorted(dependencies)),
+      list(sorted(indexer.class_type_nodes))),
+                   filename)
   return True
 
 
@@ -153,12 +155,11 @@ def EnsureAstName(ast, module_name):
   """Rename the serializable_ast if the name is different from module_name.
 
   Args:
-    ast: An instance of SerializableAst. The attributes of this instance will be
-      changed depending on ast.name and module_name.
+    ast: An instance of SerializableAst.
     module_name: The name under which ast.ast should be loaded.
 
   Returns:
-    None, the attributes of ast are modified.
+    The updated SerializableAst.
   """
   # The most likely case is module_name==raw_ast.name .
   raw_ast = ast.ast
@@ -166,8 +167,10 @@ def EnsureAstName(ast, module_name):
   # module_name is the name from this run, raw_ast.name is the guessed name from
   # when the ast has been pickled.
   if module_name != raw_ast.name:
-    ast.class_type_nodes = None
-    ast.ast = raw_ast.Visit(RenameModuleVisitor(raw_ast.name, module_name))
+    ast = ast.Replace(class_type_nodes=None)
+    ast = ast.Replace(
+        ast=raw_ast.Visit(RenameModuleVisitor(raw_ast.name, module_name)))
+  return ast
 
 
 def ProcessAst(serializable_ast, module_map):
@@ -205,7 +208,7 @@ def ProcessAst(serializable_ast, module_map):
     for node in serializable_ast.class_type_nodes:
       try:
         if node is not class_lookup.VisitClassType(node):
-          serializable_ast.class_type_nodes = None
+          serializable_ast = serializable_ast.Replace(class_type_nodes=None)
           break
       except KeyError as e:
         raise UnrestorableDependencyError("Unresolved class: %r." % e.message)
@@ -252,4 +255,5 @@ def PrepareForExport(module_name, python_version, ast):
   ast = ast.Visit(visitors.AdjustTypeParameters())
   ast = ast.Visit(visitors.NamedTypeToClassType())
   ast = ast.Visit(visitors.FillInLocalPointers({"": ast, module_name: ast}))
+  ast = ast.Visit(visitors.CanonicalOrderingVisitor())
   return ast
