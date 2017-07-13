@@ -109,6 +109,65 @@ class HasAttr(ObjectPredicate):
     return node, ret is not None
 
 
+def _flatten(value, classes):
+  """Flatten the contents of value into classes.
+
+  If value is a Class, it is appended to classes.
+  If value is a PythonConstant of type tuple, then each element of the tuple
+  that has a single binding is also flattened.
+  Any other type of value, or tuple elements that have multiple bindings are
+  ignored.
+
+  Args:
+    value: An abstract value.
+    classes: A list to be modified.
+
+  Returns:
+    True iff a value was ignored during flattening.
+  """
+  # Used by IsInstance and IsSubclass
+  if isinstance(value, abstract.Class):
+    # A single class, no ambiguity.
+    classes.append(value)
+    return False
+  elif isinstance(value, abstract.Tuple):
+    # A tuple, need to process each element.
+    ambiguous = False
+    for var in value.pyval:
+      if (len(var.bindings) != 1 or
+          _flatten(var.bindings[0].data, classes)):
+        # There were either multiple bindings or ambiguity deeper in the
+        # recursion.
+        ambiguous = True
+    return ambiguous
+  else:
+    return True
+
+
+def _check_against_mro(target, class_spec):
+  """Check if any of the classes are in the target's MRO.
+
+  Args:
+    target: An AtomicAbstractValue whose MRO will be checked.
+    class_spec: A Class or PythonConstant tuple of classes (i.e. the second
+      argument to isinstance or issubclass).
+
+  Returns:
+    True if any class in classes is found in the target's MRO,
+    False if no match is found and None if it's ambiguous.
+  """
+  # Determine the flattened list of classes to check.
+  classes = []
+  ambiguous = _flatten(class_spec, classes)
+
+  for c in classes:
+    if c in target.mro:
+      return True  # A definite match.
+  # No matches, return result depends on whether _flatten() was
+  # ambiguous.
+  return None if ambiguous else False
+
+
 class IsInstance(ObjectPredicate):
   """The isinstance() function."""
 
@@ -146,50 +205,37 @@ class IsInstance(ObjectPredicate):
       obj_class = abstract.get_atomic_value(cls_var)
     except abstract.ConversionError:
       return None
+    return _check_against_mro(obj_class, class_spec)
 
-    # Determine the flattened list of classes to check.
-    classes = []
-    ambiguous = self._flatten(class_spec, classes)
 
-    for c in classes:
-      if c in obj_class.mro:
-        return True  # A definite match.
-    # No matches, return result depends on whether _flatten() was
-    # ambiguous.
-    return None if ambiguous else False
+class IsSubclass(ObjectPredicate):
+  """The issubclass() function."""
 
-  def _flatten(self, value, classes):
-    """Flatten the contents of value into classes.
+  _SIGNATURE = function.Signature(
+      "issubclass", ("cls", "type_or_types"), None, set(), None, {}, {}, {})
 
-    If value is a Class, it is appended to classes.
-    If value is a PythonConstant of type tuple, then each element of the tuple
-    that has a single binding is also flattened.
-    Any other type of value, or tuple elements that have multiple bindings are
-    ignored.
+  def __init__(self, vm):
+    super(IsSubclass, self).__init__("issubclass", vm)
+
+  def _call_predicate(self, node, left, right):
+    return node, self._is_subclass(left, right)
+
+  def _is_subclass(self, cls, class_spec):
+    """Check if the given class is a subclass of a class specification.
 
     Args:
-      value: An abstract value.
-      classes: A list to be modified.
+      cls: An AtomicAbstractValue, the first argument to an issubclass call.
+      class_spec: An AtomicAbstractValue, the second issubclass argument.
 
     Returns:
-      True iff a value was ignored during flattening.
+      True if the class is a subclass (or is a class) in the class_spec, False
+      if not, and None if it is ambiguous.
     """
-    if isinstance(value, abstract.Class):
-      # A single class, no ambiguity.
-      classes.append(value)
-      return False
-    elif isinstance(value, abstract.Tuple):
-      # A tuple, need to process each element.
-      ambiguous = False
-      for var in value.pyval:
-        if (len(var.bindings) != 1 or
-            self._flatten(var.bindings[0].data, classes)):
-          # There were either multiple bindings or ambiguity deeper in the
-          # recursion.
-          ambiguous = True
-      return ambiguous
-    else:
-      return True
+
+    if isinstance(cls, abstract.AMBIGUOUS_OR_EMPTY):
+      return None
+
+    return _check_against_mro(cls, class_spec)
 
 
 class SuperInstance(abstract.AtomicAbstractValue):

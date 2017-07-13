@@ -335,6 +335,41 @@ class SplitTest(test_inference.InferenceTest):
       def UpperIfString(value: Union[int, unicode]) -> Optional[Union[str, unicode]]
     """)
 
+  def testIsSubclass(self):
+    ty = self.Infer("""\
+      # Always return a bool
+      def sig(x): return issubclass(x, object)
+      # Classes for testing
+      class A(object): pass
+      class B(A): pass
+      class C(object): pass
+      # Check the if-splitting based on issubclass
+      def d1(): return "y" if issubclass(B, A) else 0
+      def d2(): return "y" if issubclass(B, object) else 0
+      def d3(): return "y" if issubclass(B, C) else 0
+      def d4(): return "y" if issubclass(B, (C, A)) else 0
+      # Ambiguous results
+      def a1(x): return "y" if issubclass(x, A) else 0
+    """, deep=True)
+    self.assertTypesMatchPytd(ty, """\
+      from typing import Union
+      def sig(x) -> bool: ...
+      def d1() -> str: ...
+      def d2() -> str: ...
+      def d3() -> int: ...
+      def d4() -> str: ...
+      def a1(x) -> Union[int, str]: ...
+
+      class A(object):
+        pass
+
+      class B(A):
+        pass
+
+      class C(object):
+        pass
+      """)
+
   def testHasAttrBuiltin(self):
     ty = self.Infer("""
       # Always returns a bool.

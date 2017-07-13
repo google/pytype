@@ -55,7 +55,7 @@ def hex(number: int) -> str
 def id(obj) -> int
 def intern(string: str or bytearray) -> str
 def isinstance(object, class_or_type_or_tuple: tuple[type, ...] or type) -> bool
-def issubclass(C, B: tuple[type, ...] or type) -> bool
+def issubclass(cls: type, class_or_type_or_tuple: tuple[type, ...] or type) -> bool
 def iter(collection: bytearray) -> bytearray_iterator
 def iter(collection: list[_T]) -> listiterator[_T]
 def iter(collection: tuple[_T, ...]) -> tupleiterator[_T]

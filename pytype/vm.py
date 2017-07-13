@@ -212,6 +212,7 @@ class VirtualMachine(object):
         "True": self.convert.true,
         "False": self.convert.false,
         "isinstance": special_builtins.IsInstance(self),
+        "issubclass": special_builtins.IsSubclass(self),
         "hasattr": special_builtins.HasAttr(self),
     }
 

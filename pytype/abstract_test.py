@@ -310,7 +310,7 @@ class IsInstanceTest(AbstractTestBase):
 
     def check(expected_ambiguous, expected_classes, value):
       classes = []
-      ambiguous = self._is_instance._flatten(value, classes)
+      ambiguous = special_builtins._flatten(value, classes)
       self.assertEquals(expected_ambiguous, ambiguous)
       self.assertEquals(expected_classes, classes)
 
