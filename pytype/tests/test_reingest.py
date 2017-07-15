@@ -175,6 +175,22 @@ class ReingestTest(test_inference.InferenceTest):
         bar.xyz
       """, pythonpath=[d.path])
 
+  def testDefaultArgumentType(self):
+    foo = self.Infer("""
+      from __future__ import google_type_annotations
+      from typing import Any, Callable, TypeVar
+      T = TypeVar("T")
+      def f(x):
+        return True
+      def g(x: Callable[[T], Any]) -> T: ...
+    """, deep=True)
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", pytd.Print(foo))
+      self.assertNoErrors("""
+        import foo
+        foo.g(foo.f).upper()
+      """, pythonpath=[d.path])
+
 
 if __name__ == "__main__":
   test_inference.main()
