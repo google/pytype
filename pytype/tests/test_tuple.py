@@ -257,6 +257,8 @@ class TupleTest(test_inference.InferenceTest):
       y = ...  # type: int
     """)
 
+  def testAddTwice(self):
+    self.assertNoErrors("() + () + ()")
 
 
 if __name__ == "__main__":

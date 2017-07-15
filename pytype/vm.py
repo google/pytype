@@ -723,13 +723,18 @@ class VirtualMachine(object):
     log.info("Final node: <%d>%s", node.id, node.name)
     return node, f_globals.members
 
+  def _base(self, cls):
+    if isinstance(cls, abstract.ParameterizedClass):
+      return cls.base_cls
+    return cls
+
   def _yield_subclass_superclass_pairs(self, subcls_var, supercls_var):
     """Get (subcls, supercls) pairs of abstract.AtomicAbstractValue objects."""
     if subcls_var and supercls_var:
       for subcls in subcls_var.data:
         for supercls in supercls_var.data:
           if supercls in subcls.mro:
-            yield subcls, supercls
+            yield self._base(subcls), self._base(supercls)
 
   def _overrides(self, node, subcls_var, supercls_var, attr):
     """Check whether subcls_var overrides or newly defines the given attribute.
