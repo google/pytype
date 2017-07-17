@@ -253,7 +253,7 @@ class FlowTest(test_inference.InferenceTest):
           self.name_list = [s.name for s in stack]
       def foo():
         stack = []
-        if __any_object__:
+        if __random__:
           stack.append(_Item(stack))
         else:
           stack.append(_Item(stack))
@@ -272,7 +272,7 @@ class FlowTest(test_inference.InferenceTest):
         def __init__(self):
           self._node = __any_object__
         def bar(self):
-          if __any_object__:
+          if __random__:
             raise Exception(
             'No node with type %s could be extracted.' % self._node)
       Foo().bar()
@@ -288,7 +288,7 @@ class FlowTest(test_inference.InferenceTest):
     ty = self.Infer("""
       def _foo():
         while True:
-          if __any_object__:
+          if __random__:
             break
         return 3j
     """, deep=True)
@@ -300,7 +300,7 @@ class FlowTest(test_inference.InferenceTest):
     ty = self.Infer("""
       def bar():
         while True:
-          if __any_object__:
+          if __random__:
             return 3j
           continue
           return 3  # dead code
@@ -317,7 +317,7 @@ class FlowTest(test_inference.InferenceTest):
         while True:
           y = None
           z = None
-          if __any_object__:
+          if __random__:
             y = u"foo"
             z = u"foo"
           if y:

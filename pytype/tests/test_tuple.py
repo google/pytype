@@ -87,7 +87,7 @@ class TupleTest(test_inference.InferenceTest):
     self.assertNoErrors("""
       from __future__ import google_type_annotations
       def f():
-        if __any_object__:
+        if __random__:
           return (False, 'foo')
         else:
           return (False, 'foo')
@@ -100,7 +100,7 @@ class TupleTest(test_inference.InferenceTest):
     self.assertNoErrors("""
       from __future__ import google_type_annotations
       def f():
-        if __any_object__:
+        if __random__:
           return (False, 'foo')
         else:
           return ['foo', 'bar']

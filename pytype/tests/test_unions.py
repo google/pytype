@@ -27,7 +27,7 @@ class UnionTest(test_inference.InferenceTest):
     ty = self.Infer("""
       def f():
         x = 42
-        if __any_object__:
+        if __random__:
           x.__class__ = float  # Should not appear in output
           x.__class__ = str
         return type(x)()

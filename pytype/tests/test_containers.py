@@ -258,7 +258,7 @@ class ContainerTest(test_inference.InferenceTest):
   def testAmbiguousDictUpdate(self):
     ty = self.Infer("""
       d = {}
-      d.update({"a": 1} if __any_object__ else {"b": 2j}, c=3.0)
+      d.update({"a": 1} if __random__ else {"b": 2j}, c=3.0)
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Dict
@@ -472,7 +472,7 @@ class ContainerTest(test_inference.InferenceTest):
 
   def testCascade(self):
     ty = self.Infer("""
-      if __any_object__:
+      if __random__:
         x = 3
       else:
         x = 3.14
@@ -665,7 +665,7 @@ class ContainerTest(test_inference.InferenceTest):
 
   def testDictOrAny(self):
     self.assertNoErrors("""
-      if __any_object__:
+      if __random__:
         results = __any_object__
       else:
         results = {}

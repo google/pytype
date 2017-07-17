@@ -136,7 +136,7 @@ class DecoratorsTest(test_inference.InferenceTest):
   def testPropertyType(self):
     ty = self.Infer("""
       class Foo(object):
-        if __any_object__:
+        if __random__:
           @property
           def name(self):
             return "Foo"

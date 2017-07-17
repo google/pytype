@@ -664,7 +664,7 @@ class SplitTest(test_inference.InferenceTest):
   def testDictMaybeContains(self):
     """Test that we can handle more complex cases involving dict membership."""
     ty = self.Infer("""\
-      if __any_object__:
+      if __random__:
         x = {"a": 1, "b": 2}
       else:
         x = {"b": 42j}
@@ -708,7 +708,7 @@ class SplitTest(test_inference.InferenceTest):
     ty = self.Infer("""
       def f(r):
         y = "foo"
-        if __any_object__:
+        if __random__:
           x = True
         else:
           x = False
@@ -750,7 +750,7 @@ class SplitTest(test_inference.InferenceTest):
 
   def testDictEq(self):
     ty = self.Infer("""
-      if __any_object__:
+      if __random__:
         x = {"a": 1}
         z = 42
       else:
@@ -773,7 +773,7 @@ class SplitTest(test_inference.InferenceTest):
 
   def testTupleEq(self):
     ty = self.Infer("""
-      if __any_object__:
+      if __random__:
         x = (1,)
         z = ""
       else:
@@ -796,7 +796,7 @@ class SplitTest(test_inference.InferenceTest):
 
   def testPrimitiveEq(self):
     ty = self.Infer("""
-      if __any_object__:
+      if __random__:
         x = "a"
         z = 42
       else:
@@ -818,7 +818,7 @@ class SplitTest(test_inference.InferenceTest):
 
   def testPrimitiveNotEq(self):
     self.assertNoErrors("""
-      x = "foo" if __any_object__ else 42
+      x = "foo" if __random__ else 42
       if x == "foo":
         x.upper()
     """)
@@ -828,7 +828,7 @@ class SplitTest(test_inference.InferenceTest):
     _, errorlog = self.InferAndCheck("""
       class int():
         pass
-      x = "foo" if __any_object__ else int()
+      x = "foo" if __random__ else int()
       if x == "foo":
         x.upper()
     """)
@@ -836,7 +836,7 @@ class SplitTest(test_inference.InferenceTest):
 
   def testTypeParameterInBranch(self):
     ty = self.Infer("""
-      if __any_object__:
+      if __random__:
         x = {"a": 1, "b": 42}
       else:
         x = {"b": 42j}
@@ -850,7 +850,7 @@ class SplitTest(test_inference.InferenceTest):
     # This tests the attribute retrieval code in vm.py:_get_iter
     self.assertNoErrors("""\
       foo = (0, 0)
-      if __any_object__:
+      if __random__:
         foo = None
       if foo:
         a, b = foo

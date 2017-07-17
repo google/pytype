@@ -265,7 +265,7 @@ class TypingTest(test_inference.InferenceTest):
       def f8(x: Callable[[int, str]]): ...
 
       def g1(x: Callable[int, bool]): ...  # bad: _ARGS not a list
-      lst = [int] if __any_object__ else [str]
+      lst = [int] if __random__ else [str]
       def g2(x: Callable[lst, bool]): ...  # bad: _ARGS ambiguous
       def g3(x: Callable[[], bool or str]): ...  # bad: _RET ambiguous
       def g4(x: Callable[[int or str], bool]): ...  # bad: _ARGS[0] ambiguous

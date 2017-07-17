@@ -123,7 +123,7 @@ class TypeVarTest(test_inference.InferenceTest):
       T = typevar("T")  # ok
       T = typevar(42)
       T = typevar(str())
-      T = typevar("T", int, str if __any_object__ else unicode)
+      T = typevar("T", int, str if __random__ else unicode)
       T = typevar("T", 0, float)
       T = typevar("T", str)
       # pytype: disable=not-supported-yet
@@ -433,7 +433,7 @@ class TypeVarTest(test_inference.InferenceTest):
       T = TypeVar("T", int, types.NoneType)
       def f(x: T) -> T:
         return __any_object__
-      if __any_object__:
+      if __random__:
         x = None
       else:
         x = 3
@@ -526,7 +526,7 @@ class TypeVarTest(test_inference.InferenceTest):
       T = TypeVar("T", int, float, bound=str)
       S = TypeVar("S", bound="")
       U = TypeVar("U", bound=str)  # ok
-      V = TypeVar("V", bound=int if __any_object__ else float)
+      V = TypeVar("V", bound=int if __random__ else float)
     """)
     self.assertErrorLogIs(errors, [
         (2, "invalid-typevar", r"mutually exclusive"),
@@ -564,7 +564,7 @@ class TypeVarTest(test_inference.InferenceTest):
       from typing import TypeVar
       T = TypeVar("T", covariant=True)
       S = TypeVar("S", covariant=42)
-      U = TypeVar("U", covariant=True if __any_object__ else False)
+      U = TypeVar("U", covariant=True if __random__ else False)
     """)
     self.assertErrorLogIs(errors, [
         (2, "not-supported-yet"),
@@ -576,7 +576,7 @@ class TypeVarTest(test_inference.InferenceTest):
       from typing import TypeVar
       T = TypeVar("T", contravariant=True)
       S = TypeVar("S", contravariant=42)
-      U = TypeVar("U", contravariant=True if __any_object__ else False)
+      U = TypeVar("U", contravariant=True if __random__ else False)
     """)
     self.assertErrorLogIs(errors, [
         (2, "not-supported-yet"),
@@ -626,7 +626,7 @@ class TypeVarTest(test_inference.InferenceTest):
       from typing import Optional, TypeVar
       T = TypeVar("T", bound=str)
       def f() -> Optional[T]:
-        return 42 if __any_object__ else None
+        return 42 if __random__ else None
     """, deep=True)
     self.assertErrorLogIs(
         errors, [(5, "bad-return-type", r"Optional\[T\].*int")])

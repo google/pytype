@@ -658,7 +658,7 @@ class ClassesTest(test_inference.InferenceTest):
       class A:
         x = 3
       def f():
-        return A() if __any_object__ else ""
+        return A() if __random__ else ""
       B = type(A())
       C = type(f())
       D = type(int)
@@ -797,7 +797,7 @@ class ClassesTest(test_inference.InferenceTest):
 
   def testMakeAmbiguousType(self):
     ty = self.Infer("""
-      if __any_object__:
+      if __random__:
         name = "A"
       else:
         name = "B"

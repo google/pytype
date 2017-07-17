@@ -670,7 +670,7 @@ class ErrorTest(test_inference.InferenceTest):
     # Tests that we can solve a complex file without timing out.
     # Useful for catching large performance regressions.
     ty = self.Infer("""\
-      if __any_object__:
+      if __random__:
         x = [1]
       else:
         x = [1j]
@@ -747,7 +747,7 @@ class ErrorTest(test_inference.InferenceTest):
       from __future__ import google_type_annotations
       def f(x: int):
         pass
-      if __any_object__:
+      if __random__:
         i = 0
       else:
         i = 1
@@ -825,7 +825,7 @@ class ErrorTest(test_inference.InferenceTest):
       from __future__ import google_type_annotations
       def f(x: str):
         pass
-      if __any_object__:
+      if __random__:
         x = dict
       else:
         x = [float]
@@ -885,7 +885,7 @@ class ErrorTest(test_inference.InferenceTest):
 
   def testNoAttrError(self):
     _, errors = self.InferAndCheck("""\
-      if __any_object__:
+      if __random__:
         y = 42
       else:
         y = "foo"
@@ -895,7 +895,7 @@ class ErrorTest(test_inference.InferenceTest):
 
   def testAttrError(self):
     _, errors = self.InferAndCheck("""\
-      if __any_object__:
+      if __random__:
         y = 42
       else:
         y = "foo"
@@ -929,7 +929,7 @@ class ErrorTest(test_inference.InferenceTest):
     _, errors = self.InferAndCheck("""\
       from __future__ import google_type_annotations
       def f() -> str:
-        y = "hello" if __any_object__ else u"hello"
+        y = "hello" if __random__ else u"hello"
         yield y
     """)
     self.assertErrorLogIs(errors, [(

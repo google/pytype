@@ -112,7 +112,7 @@ class GeneratorTest(test_inference.InferenceTest):
       from __future__ import google_type_annotations
       from typing import Generator
       def f() -> generator:
-        if __any_object__:
+        if __random__:
           return
         yield 5
     """)

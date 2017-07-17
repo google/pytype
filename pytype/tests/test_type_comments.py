@@ -302,10 +302,10 @@ class AssignmentCommentTest(test_inference.InferenceTest):
 
   def testConversionError(self):
     ty, errors = self.InferAndCheck("""\
-      X = None  # type: 1 if __any_object__ else 2
+      X = None  # type: 1 if __random__ else 2
     """, deep=True)
     self.assertErrorLogIs(errors, [(1, "invalid-type-comment",
-                                    r"1 if __any_object__ else 2.*constant")])
+                                    r"1 if __random__ else 2.*constant")])
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       X = ...  # type: Any
