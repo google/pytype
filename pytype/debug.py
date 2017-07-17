@@ -1,7 +1,9 @@
 """Debugging helper functions."""
 
 import logging
+import re
 import StringIO
+import traceback
 import utils
 
 
@@ -70,6 +72,8 @@ def prettyprint_binding_set(binding_set, indent_level=0, label=""):
 def prettyprint_binding_nested(binding, indent_level=0):
   """Pretty print a binding and its recursive contents."""
   indent = " " * indent_level
+  if indent_level > 32:
+    return indent + "-[ max recursion depth exceeded ]-\n"
   s = "%sbinding v%s=%r\n" % (indent, binding.variable.id, binding.data)
   other = ""
   for v in binding.variable.bindings:
@@ -220,6 +224,13 @@ def program_to_dot(program, ignored, only_cfg=False):
                      % (objname(src), objname(srcs)))
   sb.write("}\n")
   return sb.getvalue()
+
+
+def stack_trace(indent_level=0):
+  indent = " " * indent_level
+  trace = traceback.format_stack()
+  trace = [indent + re.sub(r"/usr/.*/pytype/", "", x) for x in trace]
+  return "\n  ".join(trace)
 
 
 def patch_logging():

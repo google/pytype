@@ -2,6 +2,7 @@
 
 import collections
 import csv
+import debug
 import logging
 import os
 import re
@@ -294,6 +295,7 @@ class ErrorLogBase(object):
   def _add(self, error):
     if self._filter is None or self._filter(error):
       _log.info("Added error to log: %s\n%s", error.name, error)
+      _log.debug(debug.stack_trace())
       self._errors.append(error)
 
   def warn(self, stack, message, *args):
