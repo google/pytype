@@ -666,7 +666,9 @@ class ErrorTest(test_inference.InferenceTest):
       """, pythonpath=[d.path], deep=True)
       self.assertErrorLogIs(errors, [(4, "attribute-error", r"x.*C")])
 
-  def testAbortOnComplex(self):
+  def testDontTimeoutOnComplex(self):
+    # Tests that we can solve a complex file without timing out.
+    # Useful for catching large performance regressions.
     ty = self.Infer("""\
       if __any_object__:
         x = [1]
