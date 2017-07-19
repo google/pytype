@@ -135,6 +135,30 @@ class AbstractMethodTests(test_inference.InferenceTest):
           return self.foo()
     """)
 
+  def test_namedtuple_return(self):
+    self.assertNoErrors("""
+      from __future__ import google_type_annotations
+      import abc
+      import collections
+      X = collections.namedtuple("X", "")
+      class Example(object):
+        __metaclass__ = abc.ABCMeta
+        @abc.abstractmethod
+        def foo(self) -> X:
+          return None
+    """)
+
+  def test_no_skip_calls(self):
+    self.assertNoErrors("""
+      from __future__ import google_type_annotations
+      import abc
+      class Example(object):
+        __metaclass__ = abc.ABCMeta
+        @abc.abstractmethod
+        def foo(self) -> int:
+          return None
+    """, skip_repeat_calls=False)
+
 
 if __name__ == "__main__":
   test_inference.main()

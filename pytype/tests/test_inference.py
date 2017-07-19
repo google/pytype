@@ -97,12 +97,13 @@ class InferenceTest(unittest.TestCase):
   # TODO(kramm): Rename this function.
   # pylint: disable=invalid-name
   def assertNoErrors(self, code, raises=None,
-                     pythonpath=(), report_errors=True):
+                     pythonpath=(), skip_repeat_calls=True, report_errors=True):
     """Run an inference smoke test for the given code."""
     if raises is not None:
       # TODO(kramm): support this
       log.warning("Ignoring 'raises' parameter to assertNoErrors")
-    self.options.tweak(pythonpath=pythonpath)
+    self.options.tweak(pythonpath=pythonpath,
+                       skip_repeat_calls=skip_repeat_calls)
     errorlog = errors.ErrorLog()
     loader = load_pytd.Loader(self.options.module_name, self.options)
     infer.check_types(
@@ -196,17 +197,17 @@ class InferenceTest(unittest.TestCase):
           self.PrintSignature(parameter_types, return_type), pytd.Print(func)))
 
   def assertTypeEquals(self, t1, t2):
-    self.assertEquals(t1, t2,
-                      "Type %r != %r" % (pytd.Print(t1),
-                                         pytd.Print(t2)))
+    self.assertEqual(t1, t2,
+                     "Type %r != %r" % (pytd.Print(t1),
+                                        pytd.Print(t2)))
 
   def assertOnlyHasReturnType(self, func, t):
     """Test that a given return type is the only one."""
     ret = pytd_utils.JoinTypes(sig.return_type
                                for sig in func.signatures)
-    self.assertEquals(t, ret,
-                      "Return type %r != %r" % (pytd.Print(t),
-                                                pytd.Print(ret)))
+    self.assertEqual(t, ret,
+                     "Return type %r != %r" % (pytd.Print(t),
+                                               pytd.Print(ret)))
 
   def assertHasReturnType(self, func, t):
     """Test that a given return type is present. Ignore extras."""
@@ -217,9 +218,9 @@ class InferenceTest(unittest.TestCase):
                     "Return type %r not found in %r" % (pytd.Print(t),
                                                         pytd.Print(ret)))
     else:
-      self.assertEquals(t, ret,
-                        "Return type %r != %r" % (pytd.Print(ret),
-                                                  pytd.Print(t)))
+      self.assertEqual(t, ret,
+                       "Return type %r != %r" % (pytd.Print(ret),
+                                                 pytd.Print(t)))
 
   def assertHasAllReturnTypes(self, func, types):
     """Test that all given return types are present. Ignore extras."""
@@ -230,10 +231,10 @@ class InferenceTest(unittest.TestCase):
     """Tests whether a given function is equivalent to the identity function."""
     self.assertGreaterEqual(len(func.signatures), 1)
     for sig in func.signatures:
-      self.assertEquals(len(sig.params), 1)
+      self.assertEqual(len(sig.params), 1)
       param1, = sig.params
-      self.assertEquals(param1.type, sig.return_type,
-                        "Not identity: %r" % pytd.Print(func))
+      self.assertEqual(param1.type, sig.return_type,
+                       "Not identity: %r" % pytd.Print(func))
 
   def _parse_expected_error(self, pattern):
     line = pattern[0]

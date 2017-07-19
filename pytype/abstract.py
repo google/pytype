@@ -2856,7 +2856,13 @@ class InterpreterFunction(Function):
             cls.is_abstract
             for v in callargs["self"].data if v.cls for cls in v.cls.data)
       else:
-        caller_is_abstract = False
+        # When the interpreter function used to create a class is analyzed, the
+        # class methods are recreated but not marked as attributes. Thus, the
+        # methods are analyzed as unbound interpreter functions, with an
+        # unknown created for "self". So if "self" is in the callargs of an
+        # unbound function, then we have to assume that the caller may be
+        # abstract, since we don't know its type.
+        caller_is_abstract = "self" in callargs
       frame.allowed_returns = annotations["return"]
       frame.check_return = not caller_is_abstract or not self.is_abstract
     if self.vm.options.skip_repeat_calls:
