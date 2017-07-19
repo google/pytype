@@ -37,6 +37,23 @@ class BuiltinTests2(test_inference.InferenceTest):
       x4 = ...  # type: List[int]
     """)
 
+  def testSliceAttributes(self):
+    ty = self.Infer("""
+      v = slice(1)
+      start = v.start
+      stop = v.stop
+      step = v.step
+      indices = v.indices(0)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Optional, Tuple
+      v = ...  # type: slice
+      start = ...  # type: Optional[int]
+      stop = ...  # type: Optional[int]
+      step = ...  # type: Optional[int]
+      indices = ...  # type: Tuple[int, int, int]
+    """)
+
   def testImportExternalFunction(self):
     ty = self.Infer("""
       from __builtin__ import next

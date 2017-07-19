@@ -810,6 +810,9 @@ class module(object):
     def __getattr__(self, name) -> ?  # modules can contain anything
 
 class slice(object):
+    start = ...  # type: Optional[int]
+    stop = ...  # type: Optional[int]
+    step = ...  # type: Optional[int]
     def __init__(self, stop, ...) -> NoneType
     def indices(self, len: int) -> tuple[int, int, int]
 
