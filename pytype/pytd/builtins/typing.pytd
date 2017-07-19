@@ -129,6 +129,21 @@ class MutableSequence(Sequence[_T], Protocol):
 class List(MutableSequence[_T]): ...
 
 
+# typing.Deque subclasses collections.deque and MutableSequence[_T], but there's
+# no actual way to represent that without introducing an import cycle.
+class Deque(MutableSequence[_T]):
+  maxlen = ...  # type: Optional[int]
+  def appendleft(self, v: _T2) -> None:
+    self := Deque[_T or _T2]
+  def clear(self) -> None:
+    self := Deque[nothing]
+  def copy(self) -> Deque[_T]: ...
+  def extendleft(self, iterable: Iterable[_T2]) -> None:
+    self := Deque[_T or _T2]
+  def popleft(self, index: int = ...) -> _T: ...
+  def rotate(self, steps: int = ...) -> None: ...
+
+
 class IO(Iterator[AnyStr]):
   name = ...  # type: str
   mode = ...  # type: str

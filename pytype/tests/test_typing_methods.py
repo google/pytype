@@ -179,6 +179,38 @@ class TypingMethodsTest(test_inference.InferenceTest):
         g = ...  # type: None
       """)
 
+  def test_deque(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import Deque
+        def deq() -> Deque[int]
+        """)
+      ty = self.Infer("""\
+        import foo
+        q = foo.deq()
+        q[0] = 3
+        del q[3]
+        a = q.append(3)
+        al = q.appendleft(2)
+        b = q.extend([1,2])
+        bl = q.extendleft([3,4])
+        c = q.pop()
+        cl = q.popleft()
+        d = q.rotate(3)
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """\
+        foo = ...  # type: module
+        from typing import Deque
+        q = ...  # type: Deque[int]
+        a = ...  # type: None
+        al = ...  # type: None
+        b = ...  # type: None
+        bl = ...  # type: None
+        c = ...  # type: int
+        cl = ...  # type: int
+        d = ...  # type: None
+      """)
+
   def test_mapping(self):
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", """

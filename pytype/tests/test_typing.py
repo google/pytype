@@ -330,6 +330,7 @@ class TypingTest(test_inference.InferenceTest):
         def f(x: typing.Tuple[int, str]): pass
         def f(x: typing.MutableSequence[int]): pass
         def f(x: typing.List[int]): pass
+        def f(x: typing.Deque[int]): pass
         def f(x: typing.IO[str]): pass
         def f(x: typing.Mapping[int, str]): pass
         def f(x: typing.MutableMapping[int, str]): pass
