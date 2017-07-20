@@ -52,7 +52,8 @@ class MatcherTest(unittest.TestCase):
     Returns:
       An AtomicAbstractValue.
     """
-    src = "from typing import Any, Callable, Tuple, Type\n"
+    src = "from typing import Any, Callable, Iterator, Tuple, Type\n"
+    src += "from protocols import Sequence, SupportsLower\n"
     src += "x = ...  # type: " + t
     filename = str(hash((t, as_instance)))
     x = self._parse_and_lookup(src, "x", filename).type
@@ -377,6 +378,43 @@ class MatcherTest(unittest.TestCase):
       self.assertItemsEqual([(name, var.data) for name, var in result.items()],
                             [("AnyStr", [left])])
 
+  def testProtocol(self):
+    left1 = self._convert_type("str", as_instance=True)
+    left2 = self._convert("""\
+      class A(object):
+        def lower(self) : ...
+    """, "A", as_instance=True)
+    left3 = self._convert_type("int", as_instance=True)
+    right = self._convert_type("SupportsLower")
+    self.assertMatch(left1, right)
+    self.assertMatch(left2, right)
+    self.assertNoMatch(left3, right)
+
+  def testProtocolIterator(self):
+    left1 = self._convert_type("iterator", as_instance=True)
+    left2 = self._convert("""\
+      class A(object):
+        def next(self): ...
+        def __iter__(self): ...
+    """, "A", as_instance=True)
+    left3 = self._convert_type("int", as_instance=True)
+    right = self._convert_type("Iterator")
+    self.assertMatch(left1, right)
+    self.assertMatch(left2, right)
+    self.assertNoMatch(left3, right)
+
+  def testProtocolSequence(self):
+    left1 = self._convert_type("list", as_instance=True)
+    left2 = self._convert("""\
+      class A(object):
+        def __getitem__(self, i) : ...
+        def __len__(self): ...
+    """, "A", as_instance=True)
+    left3 = self._convert_type("int", as_instance=True)
+    right = self._convert_type("Sequence")
+    self.assertMatch(left1, right)
+    self.assertMatch(left2, right)
+    self.assertNoMatch(left3, right)
 
 if __name__ == "__main__":
   unittest.main()

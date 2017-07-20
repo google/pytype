@@ -398,5 +398,82 @@ class ProtocolTest(test_inference.InferenceTest):
       def f(x: Mapping, y) -> ?
     """)
 
+  def test_check_protocol(self):
+    self.assertNoErrors("""
+      from __future__ import google_type_annotations
+      import protocols
+      from typing import Sized
+      def f(x: protocols.Sized):
+        return None
+      def g(x: Sized):
+        return None
+      class Foo:
+        def __len__(self):
+          return 5
+      f([])
+      foo = Foo()
+      f(foo)
+      g([])
+      g(foo)
+    """)
+
+  def test_check_iterator(self):
+    self.assertNoErrors("""
+      from __future__ import google_type_annotations
+      from typing import Iterator
+      def f(x: Iterator):
+        return None
+      class Foo:
+        def next(self):
+          return None
+        def __iter__(self):
+          return None
+      foo = Foo()
+      f(foo)
+    """)
+
+  def test_check_protocol_error(self):
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      import protocols
+
+      def f(x: protocols.SupportsAbs):
+        return x.__abs__()
+      f(["foo"])
+    """)
+    self.assertErrorLogIs(errors, [(6, "wrong-arg-types",
+                                    r"\(x: SupportsAbs\)",
+                                    r"\(x: List\[str\]\)")])
+
+  def test_check_protocol_match_unknown(self):
+    self.assertNoErrors("""\
+      from __future__ import google_type_annotations
+      from typing import Sized
+      def f(x: Sized):
+        pass
+      class Foo(object):
+        pass
+      def g(x):
+        foo = Foo()
+        foo.__class__ = x
+        f(foo)
+    """)
+
+  def test_check_protocol_against_garbage(self):
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      from typing import Sized
+      def f(x: Sized):
+        pass
+      class Foo(object):
+        pass
+      def g(x):
+        foo = Foo()
+        foo.__class__ = 42
+        f(foo)
+    """)
+    self.assertErrorLogIs(errors, [(10, "wrong-arg-types", r"\(x: Sized\)")])
+
+
 if __name__ == "__main__":
   test_inference.main()

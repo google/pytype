@@ -7,6 +7,7 @@ from pytype import function
 from pytype import special_builtins
 from pytype import utils
 from pytype.pytd import pep484
+from pytype.pytd import pytd
 
 
 log = logging.getLogger(__name__)
@@ -543,6 +544,11 @@ class AbstractMatcher(object):
     if isinstance(other_type, abstract.Class):
       base = self._match_from_mro(left, other_type)
       if base is None:
+        protocol = self._get_protocol(other_type)
+        if protocol:
+          matched_protocol = self._match_against_protocol(left, protocol)
+          if matched_protocol:
+            return subst
         return None
       else:
         return self._match_instance(
@@ -552,6 +558,46 @@ class AbstractMatcher(object):
     else:
       raise NotImplementedError(
           "Can't match instance %r against %r" % (left, other_type))
+
+  def _get_protocol(self, other_type):
+    """Protocol matching other_type if it is a subtype of typing.Protocol.
+
+    Args:
+      other_type: A formal type of type abstract.Class
+    Returns:
+      Protocol corresponding to other_type if it exists, None otherwise.
+    """
+    if isinstance(other_type, abstract.PyTDClass):
+      # typing.Iterator is automatically converted to __builtin__.iterator
+      # but we need typing.Iterator here since it is the protocol
+      # iterator is the only protocol that is automatically converted
+      if other_type.full_name == "__builtin__.iterator":
+        return other_type.vm.convert.name_to_value("typing.Iterator")
+      for parent in other_type.pytd_cls.parents:
+        if isinstance(
+            parent, pytd.ClassType) and parent.name == "typing.Protocol":
+          return other_type
+    return None
+
+  def _match_against_protocol(self, left, protocol):
+    """Checks whether a type is compatible with a protocol.
+
+    Args:
+      left: A type.
+      protocol: A formal type that is a protocol class.
+    Returns:
+      Whether the type is compatible with the provided protocol.
+    """
+    if isinstance(left, abstract.PyTDClass):
+      left_methods = [m.name for m in left.pytd_cls.methods]
+    elif isinstance(left, abstract.InterpreterClass):
+      left_methods = left.members
+    elif isinstance(left, abstract.AMBIGUOUS_OR_EMPTY):
+      return True
+    else:
+      return False
+    return all(
+        method in left_methods for method in protocol.abstract_methods)
 
   def _get_concrete_values(self, var):
     # TODO(rechen): For type parameter instances, we should extract the concrete
