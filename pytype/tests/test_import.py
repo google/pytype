@@ -886,6 +886,38 @@ class ImportTest(test_inference.InferenceTest):
           pass
       """, pythonpath=[d.path])
 
+  def testImportMapFilter(self):
+    with utils.Tempdir() as d:
+      imp_path = ".".join(d.path[1:].split("/"))
+      init_body = """\
+        from {0}.foo import bar
+        from {0}.foo import baz
+        Qux = bar.Quack
+        """.format(imp_path)
+      init_fn = d.create_file("foo/__init__.py", init_body)
+      initpyi_fn = d.create_file("foo/__init__.pyi~", """\
+        from typing import Any
+        bar = ...  # type: Any
+        baz = ...  # type: Any
+        Qux = ...  # type: Any
+        """)
+      bar_fn = d.create_file("foo/bar.py", "class Quack(object): pass")
+      barpyi_fn = d.create_file("foo/bar.pyi", "class Quack(object): pass")
+      imports_fn = d.create_file("imports_info", """\
+        {0} {1}
+        {2} {3}
+        """.format(init_fn[1:-3], initpyi_fn, bar_fn[1:-3], barpyi_fn))
+      imports_map = imports_map_loader.build_imports_map(imports_fn, init_fn)
+      ty = self.Infer("""\
+        from {0}.foo import bar
+        Adz = bar.Quack
+        """.format(imp_path), imports_map=imports_map, pythonpath=[""])
+      self.assertTypesMatchPytd(ty, """\
+        from typing import Any, Type
+        bar = ...  # type: module
+        Adz = ...  # type: Type[{0}.foo.bar.Quack]
+        """.format(imp_path))
+
 
 if __name__ == "__main__":
   test_inference.main()

@@ -91,6 +91,16 @@ def build_imports_map(options_info_path, output=None):
                short_path, paths[0], paths[1:])
   imports_map = {short_path: os.path.abspath(paths[0])
                  for short_path, paths in imports_multimap.items()}
+  # It's not helpful for a file that's being analyzed to import its own pyi,
+  # because we're trying to update that information!
+  # This _usually_ isn't a problem, but it can be if an __init__.py imports
+  # one of its submodules -- the submodule will be read as an Any from the pyi.
+  if output:
+    path, _ = os.path.splitext(output)
+    for k, v in imports_map.items():
+      if path in v:
+        del imports_map[k]
+        break
 
   _validate_map(imports_multimap, output)
 
