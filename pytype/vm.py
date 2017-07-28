@@ -518,7 +518,9 @@ class VirtualMachine(object):
       # Old style class.
       bases = [self.convert.oldstyleclass_type.to_variable(self.root_cfg_node)]
     for b in sum((b.data for b in bases), []):
-      if isinstance(b, abstract.ParameterizedClass):
+      if isinstance(b, abstract.ParameterizedClass) and any(
+          self.annotations_util.get_type_parameters(v)
+          for v in b.type_parameters.values()):
         self.errorlog.not_supported_yet(self.frames, "creating generic classes")
     if isinstance(class_dict, abstract.Unsolvable):
       # An unsolvable appears here if the vm hit maximum depth and gave up on

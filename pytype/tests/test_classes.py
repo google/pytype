@@ -1243,6 +1243,51 @@ class ClassesTest(test_inference.InferenceTest):
         def __init__(self, x: Foo): pass
     """)
 
+  def testInheritFromGenericClass(self):
+    ty = self.Infer("""
+      from __future__ import google_type_annotations
+      from typing import List
+      class Foo(List[str]): ...
+      v = Foo()[0]
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import List
+      class Foo(List[str]): ...
+      v = ...  # type: str
+    """)
+
+  def testMakeGenericClass(self):
+    ty, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      from typing import List, TypeVar, Union
+      T1 = TypeVar("T1")
+      T2 = TypeVar("T2")
+      class Foo(List[Union[T1, T2]]): ...
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import List, TypeVar, Union
+      T1 = TypeVar("T1")
+      T2 = TypeVar("T2")
+      class Foo(List[Union[T1, T2]]): ...
+    """)
+    self.assertErrorLogIs(errors, [(5, "not-supported-yet", r"generic")])
+
+  def testMakeGenericClassWithConcreteValue(self):
+    ty, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      from typing import Dict, TypeVar
+      V = TypeVar("V")
+      class Foo(Dict[str, V]): ...
+      v = Foo().keys()[0]
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Dict, TypeVar
+      V = TypeVar("V")
+      class Foo(Dict[str, V]): ...
+      v = ...  # type: str
+    """)
+    self.assertErrorLogIs(errors, [(4, "not-supported-yet", r"generic")])
+
 
 if __name__ == "__main__":
   test_inference.main()
