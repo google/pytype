@@ -945,6 +945,13 @@ class ClassesTest(test_inference.InferenceTest):
       """, pythonpath=[d.path])
       self.assertErrorLogIs(errors, [(2, "mro-error", r"Class C")])
 
+  def testCallParameterizedClass(self):
+    _, errors = self.InferAndCheck("""\
+      from typing import List
+      List[str]()
+      """)
+    self.assertErrorLogIs(errors, [(2, "not-callable")])
+
   def testErrorfulConstructors(self):
     ty, errors = self.InferAndCheck("""\
       class Foo(object):

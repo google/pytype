@@ -2162,6 +2162,11 @@ class ParameterizedClass(AtomicAbstractValue, Class):
   def get_class(self):
     return self.base_cls.get_class()
 
+  def call(self, node, func, args):
+    del func
+    del args
+    raise NotCallable(self)
+
 
 class TupleClass(ParameterizedClass, HasSlots):
   """The class of a heterogeneous tuple.
