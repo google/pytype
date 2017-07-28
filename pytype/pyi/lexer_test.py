@@ -266,6 +266,13 @@ class LexerTest(unittest.TestCase):
       text = f.read()
     self.check(None, text)
 
+  def test_TypeVar(self):
+    self.check(["TYPEVAR"], "TypeVar")
+    self.check(["TYPEVAR"], "typing.TypeVar")
+
+  def test_NamedTuple(self):
+    self.check(["NAMEDTUPLE"], "NamedTuple")
+    self.check(["NAMEDTUPLE"], "typing.NamedTuple")
 
 if __name__ == "__main__":
   unittest.main()

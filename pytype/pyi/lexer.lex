@@ -77,7 +77,9 @@ u\"\" { return UNICODESTRING; }
 "PYTHONCODE" { return PYTHONCODE; }
 "nothing" { return NOTHING; }
 "NamedTuple" { return NAMEDTUPLE; }
+"typing.NamedTuple" { return NAMEDTUPLE; }
 "TypeVar" { return TYPEVAR; }
+"typing.TypeVar" { return TYPEVAR; }
 
  /* NAME */
 [_[:alpha:]][-_[:alnum:]]* {
