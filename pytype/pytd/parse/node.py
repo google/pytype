@@ -207,12 +207,7 @@ def Node(*child_names):
       Returns:
         Transformed version of this node.
       """
-      # This function is overwritten below, so that we have the same im_func
-      # even though we generate classes here.
-      pass  # COV_NF_LINE
-
-    Visit = _Visit  # pylint: disable=invalid-name
-    VisitNode = _VisitNode  # pylint: disable=invalid-name
+      return _Visit(self, visitor, *args, **kwargs)
 
   return NamedTupleNode
 
@@ -239,7 +234,7 @@ def _Visit(node, visitor, *args, **kwargs):
 
   start = time.clock()
   try:
-    return node.VisitNode(visitor, *args, **kwargs)
+    return _VisitNode(node, visitor, *args, **kwargs)
   finally:
     if not recursive:
       _visiting.remove(name)
@@ -305,10 +300,6 @@ def _VisitNode(node, visitor, *args, **kwargs):
     return node
 
   # At this point, assume node is a Node, which is a namedtuple.
-  if node.VisitNode.im_func != _VisitNode:
-    # Node with an overloaded VisitNode() function. It'll do its own processing.
-    return node.VisitNode(visitor, *args, **kwargs)
-
   node_class_name = node_class.__name__
   if node_class_name not in visitor.visit_class_names:
     return node

@@ -194,16 +194,6 @@ class TestNode(unittest.TestCase):
     new_v_expected = "V((Data(1, 2, -1), Data(4, 5, -1)))"
     self.assertEquals(repr(new_v), new_v_expected)
 
-  def testCustomVisit(self):
-    """Test nodes that have their own Visit() function."""
-    n = Y(NodeWithVisit(Y(1, 2), Y(1, 2)), None)
-    n_expected = "Y(NodeWithVisit(Y(1, 2), Y(1, 2)), None)"
-    self.assertEquals(repr(n), n_expected)
-    visit = MultiNodeVisitor()
-    new_n = n.Visit(visit)
-    new_n_expected = "X(NodeWithVisit(X(1, 2), Y(1, 2)), None)"
-    self.assertEquals(repr(new_n), new_n_expected)
-
   def testOrdering(self):
     nodes = [Node1(1, 1), Node1(1, 2),
              Node2(1, 1), Node2(2, 1),
