@@ -260,9 +260,7 @@ class IsInstanceTest(AbstractTestBase):
     self.assertEquals(self._node, node)
     self.assertIsInstance(abstract.get_atomic_value(result),
                           abstract.Unsolvable)
-    self.assertRegexpMatches(
-        str(self._vm.errorlog),
-        r"isinstance.*expects 2.*got 0.*\[wrong-arg-count\]")
+    self.assertRegexpMatches(str(self._vm.errorlog), "missing-parameter")
 
   def test_call_wrong_keywords(self):
     self._vm.push_frame(frame_state.SimpleFrame())

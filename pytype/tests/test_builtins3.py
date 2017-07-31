@@ -270,6 +270,22 @@ class BuiltinTests2(test_inference.InferenceTest):
       import builtins  # pytype: disable=import-error
     """)
 
+  def testSpecialBuiltinTypes(self):
+    _, errors = self.InferAndCheck("""\
+      isinstance(1, int)
+      isinstance(1, "no")
+      issubclass(int, object)
+      issubclass(0, 0)
+      issubclass(int, 0)
+      hasattr(str, "upper")
+      hasattr(int, int)
+      """)
+    self.assertErrorLogIs(errors, [
+        (2, "wrong-arg-types"),
+        (4, "wrong-arg-types"),
+        (5, "wrong-arg-types"),
+        (7, "wrong-arg-types"),
+    ])
 
 if __name__ == "__main__":
   test_inference.main()

@@ -293,7 +293,9 @@ class SplitTest(test_inference.InferenceTest):
       def d4(): return "y" if isinstance("s", (float, str)) else 0
       # Cases where isinstance() is ambiguous.
       def a1(x): return "y" if isinstance(x, str) else 0
-      def a2(x): return "y" if isinstance("a", 123) else 0
+      def a2(x):
+        cls = int if __random__ else str
+        return "y" if isinstance("a", cls) else 0
     """, deep=True)
     self.assertTypesMatchPytd(ty, """
       from typing import Union

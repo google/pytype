@@ -30,13 +30,8 @@ class ObjectPredicate(abstract.AtomicAbstractValue):
 
   Subclasses need to override the following:
 
-  _SIGNATURE: A minimal function.Signature, used for constructing exceptions.
   _call_predicate(self, node, left, right): The implementation of the predicate.
   """
-
-  # Minimal signature, only used for constructing exceptions. Base classes
-  # should set this.
-  _SIGNATURE = None
 
   def __init__(self, name, vm):
     super(ObjectPredicate, self).__init__(name, vm)
@@ -50,19 +45,15 @@ class ObjectPredicate(abstract.AtomicAbstractValue):
 
   def call(self, node, _, args):
     try:
-      if len(args.posargs) != 2:
-        raise abstract.WrongArgCount(self._SIGNATURE, args, self.vm)
-      elif args.namedargs.keys():
-        raise abstract.WrongKeywordArgs(
-            self._SIGNATURE, args, self.vm, args.namedargs.keys())
-      else:
-        node = node.ConnectNew(self.name)
-        result = self.vm.program.NewVariable()
-        for left in args.posargs[0].bindings:
-          for right in args.posargs[1].bindings:
-            node, pyval = self._call_predicate(node, left.data, right.data)
-            result.AddBinding(self._vm_values[pyval],
-                              source_set=(left, right), where=node)
+      func = self.vm.convert.name_to_value("__builtin__.%s" % self.name)
+      func._match_args(node, args)  # pylint: disable=protected-access
+      node = node.ConnectNew(self.name)
+      result = self.vm.program.NewVariable()
+      for left in args.posargs[0].bindings:
+        for right in args.posargs[1].bindings:
+          node, pyval = self._call_predicate(node, left.data, right.data)
+          result.AddBinding(self._vm_values[pyval],
+                            source_set=(left, right), where=node)
     except abstract.InvalidParameters as ex:
       self.vm.errorlog.invalid_function_call(self.vm.frames, ex)
       result = self.vm.convert.create_new_unsolvable(node)
@@ -71,10 +62,6 @@ class ObjectPredicate(abstract.AtomicAbstractValue):
 
 class HasAttr(ObjectPredicate):
   """The hasattr() function."""
-
-  # Minimal signature, only used for constructing exceptions.
-  _SIGNATURE = function.Signature(
-      "hasattr", ("obj", "attr"), None, set(), None, {}, {}, {})
 
   def __init__(self, vm):
     super(HasAttr, self).__init__("hasattr", vm)
@@ -101,9 +88,6 @@ class HasAttr(ObjectPredicate):
     # If attr is not a literal constant, don't try to resolve it.
     if (not isinstance(attr, abstract.PythonConstant) or
         not isinstance(attr.pyval, str)):
-      # TODO(rechen): We should type-check the arguments
-      # (using __builtin__.pytd's definition of hasattr, perhaps), so that
-      # non-string things don't even get to this point.
       return node, None
     node, ret = self.vm.attribute_handler.get_attribute(node, obj, attr.pyval)
     return node, ret is not None
@@ -171,10 +155,6 @@ def _check_against_mro(target, class_spec):
 class IsInstance(ObjectPredicate):
   """The isinstance() function."""
 
-  # Minimal signature, only used for constructing exceptions.
-  _SIGNATURE = function.Signature(
-      "isinstance", ("obj", "type_or_types"), None, set(), None, {}, {}, {})
-
   def __init__(self, vm):
     super(IsInstance, self).__init__("isinstance", vm)
 
@@ -210,9 +190,6 @@ class IsInstance(ObjectPredicate):
 
 class IsSubclass(ObjectPredicate):
   """The issubclass() function."""
-
-  _SIGNATURE = function.Signature(
-      "issubclass", ("cls", "type_or_types"), None, set(), None, {}, {}, {})
 
   def __init__(self, vm):
     super(IsSubclass, self).__init__("issubclass", vm)
