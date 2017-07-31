@@ -2,13 +2,13 @@
 
 import collections
 import csv
-import debug
 import logging
 import os
 import re
 import StringIO
 import sys
 
+import debug
 
 from pytype import abstract
 from pytype import utils
@@ -494,7 +494,7 @@ class ErrorLog(ErrorLogBase):
         details="Do you need a type comment?")
 
   @_error_name("unbound-type-param")
-  def type_param_error(self, stack, obj, attr_name, type_param_name):
+  def unbound_type_param(self, stack, obj, attr_name, type_param_name):
     self.error(
         stack, "Can't access attribute %r on %s" % (attr_name, obj.name),
         "No binding for type parameter %s" % type_param_name)

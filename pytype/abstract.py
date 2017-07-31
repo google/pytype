@@ -2349,7 +2349,7 @@ class PyTDClass(SimpleAbstractValue, Class):
     try:
       super(PyTDClass, self).load_lazy_attribute(name)
     except self.vm.convert.TypeParameterError as e:
-      self.vm.errorlog.type_param_error(
+      self.vm.errorlog.unbound_type_param(
           self.vm.frames, self, name, e.type_param_name)
       self.members[name] = self.vm.convert.unsolvable.to_variable(
           self.vm.root_cfg_node)
