@@ -2402,9 +2402,8 @@ class PyTDClass(SimpleAbstractValue, Class):
         # Constant c cannot be converted without type parameter substitutions,
         # so it must be an instance attribute.
         subst = {
-            itm.name: TypeParameterInstance(
-                self.vm.convert.constant_to_value(itm.type_param, {}, node),
-                instance, self.vm).to_variable(node)
+            itm.name: self.vm.convert.constant_to_value(
+                itm.type_param, {}, node).instantiate(node, container=instance)
             for itm in self.template}
         return self._convert_member(name, c, subst, node)
 
