@@ -211,7 +211,6 @@ class Signature(node.Node('params: tuple[Parameter]',
   and signature.
 
   Attributes:
-    name: The name of this function.
     params: The list of parameters for this function definition.
     starargs: Name of the "*" parameter. The "args" in "*args".
     starstarargs: Name of the "*" parameter. The "kw" in "**kw".
