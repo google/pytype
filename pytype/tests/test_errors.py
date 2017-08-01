@@ -1078,6 +1078,18 @@ class ErrorTest(test_inference.InferenceTest):
         (6, "reveal-type", r"^List\[int\]$"),
     ])
 
+  def testArgumentOrder(self):
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      def g(f: str, a, b, c, d, e,):
+        pass
+      g(a=1, b=2, c=3, d=4, e=5, f=6)
+      """)
+    self.assertErrorLogIs(
+        errors,
+        [(4, "wrong-arg-types",
+          r"Expected.*f: str, \.\.\..*Actual.*f: int, \.\.\.")]
+    )
 
 if __name__ == "__main__":
   test_inference.main()

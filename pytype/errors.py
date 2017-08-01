@@ -416,28 +416,45 @@ class ErrorLog(ErrorLogBase):
     else:
       return "nothing"
 
-  def _iter_sig(self, sig, bad_param):
+  def _iter_sig(self, sig):
     """Iterate through a function.Signature object. Focus on a bad parameter."""
-    def annotate(name):
+    for name in sig.param_names:
+      yield "", name
+    if sig.varargs_name is not None:
+      yield "*", sig.varargs_name
+    elif sig.kwonly_params:
+      yield ("*", "")
+    for name in sorted(sig.kwonly_params):
+      yield "", name
+    if sig.kwargs_name is not None:
+      yield "**", sig.kwargs_name
+
+  def _iter_expected(self, sig, bad_param):
+    """Yield the prefix, name and type information for expected parameters."""
+    for prefix, name in self._iter_sig(sig):
       suffix = " = ..." if name in sig.defaults else ""
       if bad_param and name == bad_param.name:
         type_str = self._print_as_expected_type(bad_param.expected)
-        return ": " + type_str + suffix
+        suffix = ": " + type_str + suffix
       else:
-        return suffix
-    for name in sig.param_names:
-      yield "", name, annotate(name)
-    if sig.varargs_name is not None:
-      yield "*", sig.varargs_name, annotate(sig.varargs_name)
-    elif sig.kwonly_params:
-      yield ("*", "", "")
-    for name in sorted(sig.kwonly_params):
-      yield "", name, annotate(name)
-    if sig.kwargs_name is not None:
-      yield "**", sig.kwargs_name, annotate(sig.kwargs_name)
+        suffix = suffix
+      yield prefix, name, suffix
 
-  def _iter_actual(self, passed_args, bad_param):
-    for name, arg in passed_args:
+  def _iter_actual(self, sig, passed_args, bad_param):
+    """Yield the prefix, name and type information for actual parameters."""
+    # We want to display the passed_args in the order they're defined in the
+    # signature, unless there are starargs or starstarargs.
+    # Map param names to their position in the list, then sort the list of
+    # passed args so it's in the same order as the params.
+    keys = {param: n for n, (_, param) in enumerate(self._iter_sig(sig))}
+    def key_f(arg):
+      arg_name = arg[0]
+      # starargs are given anonymous names, which won't be found in the sig.
+      # Instead, use the same name as the varags param itself, if present.
+      if arg_name not in keys and pytd_utils.ANON_PARAM.match(arg_name):
+        return keys.get(sig.varargs_name, len(keys)+1)
+      return keys.get(arg_name, len(keys)+1)
+    for name, arg in sorted(passed_args, key=key_f):
       if bad_param and name == bad_param.name:
         suffix = ": " + self._print_as_actual_type(arg)
       else:
@@ -514,9 +531,9 @@ class ErrorLog(ErrorLogBase):
   def _invalid_parameters(self, stack, message, bad_call):
     """Log an invalid parameters error."""
     sig, passed_args, bad_param = bad_call
-    expected = self._print_args(self._iter_sig(sig, bad_param), bad_param)
+    expected = self._print_args(self._iter_expected(sig, bad_param), bad_param)
     actual = self._print_args(
-        self._iter_actual(passed_args, bad_param), bad_param)
+        self._iter_actual(sig, passed_args, bad_param), bad_param)
     details = [
         "Expected: (", expected, ")\n",
         "Actually passed: (", actual,
