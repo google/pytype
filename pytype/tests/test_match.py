@@ -401,6 +401,21 @@ class MatchTest(test_inference.InferenceTest):
           v.x
       """, pythonpath=[d.path])
 
+  def testTypeVarWithBound(self):
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      from typing import Callable, TypeVar
+      T1 = TypeVar("T1", bound=int)
+      T2 = TypeVar("T2")
+      def f(x: T1) -> T1:
+        return __any_object__
+      def g(x: Callable[[T2], T2]) -> None:
+        pass
+      g(f)  # line 9
+    """)
+    self.assertErrorLogIs(errors, [(9, "wrong-arg-types",
+                                    r"Expected.*T2.*Actual.*T1")])
+
 
 if __name__ == "__main__":
   test_inference.main()

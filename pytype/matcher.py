@@ -117,9 +117,14 @@ class AbstractMatcher(object):
         isinstance(left.instance, (abstract.Callable, function.Signature))):
       if isinstance(other_type, abstract.TypeParameter):
         # We require type parameters to match exactly.
-        if sorted(left.param.constraints) == sorted(other_type.constraints):
+        if left.param.equivalent_to(other_type):
           return subst
         else:
+          # Keep the type parameter name in the expected type.
+          dummy_instance = abstract.Instance(other_type, other_type.vm)
+          dummy_var = dummy_instance.to_variable(other_type.vm.root_cfg_node)
+          self._set_error_subst(
+              self._merge_substs(subst, [{other_type.name: dummy_var}]))
           return None
       elif isinstance(left.instance, abstract.Callable):
         # We're doing argument-matching against a callable. We flipped the
