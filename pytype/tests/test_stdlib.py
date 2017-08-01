@@ -233,6 +233,12 @@ class StdlibTests(test_inference.InferenceTest):
       xml.etree.cElementTree.iterparse
     """)
 
+  def testCsv(self):
+    self.assertNoErrors("""
+      import _csv
+      import csv
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()
