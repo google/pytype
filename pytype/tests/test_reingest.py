@@ -160,19 +160,27 @@ class ReingestTest(test_inference.InferenceTest):
       """, pythonpath=[d.path])
 
   def testDynamicAttributes(self):
-    foo = self.Infer("""
+    foo1 = self.Infer("""
       HAS_DYNAMIC_ATTRIBUTES = True
     """, deep=True)
+    foo2 = self.Infer("""
+      has_dynamic_attributes = True
+    """, deep=True)
     with utils.Tempdir() as d:
-      d.create_file("foo.pyi", pytd.Print(foo))
+      d.create_file("foo1.pyi", pytd.Print(foo1))
+      d.create_file("foo2.pyi", pytd.Print(foo2))
       d.create_file("bar.pyi", """\
-        from foo import xyz
+        from foo1 import xyz
+        from foo2 import zyx
       """)
       self.assertNoErrors("""
-        import foo
+        import foo1
+        import foo2
         import bar
-        foo.xyz
+        foo1.abc
+        foo2.abc
         bar.xyz
+        bar.zyx
       """, pythonpath=[d.path])
 
   def testDefaultArgumentType(self):

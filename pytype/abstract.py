@@ -771,7 +771,8 @@ class Instance(SimpleAbstractValue):
     super(Instance, self).__init__(cls.name, vm)
     self.cls = cls.to_variable(vm.root_cfg_node)
     if (isinstance(cls, (InterpreterClass, PyTDClass)) and
-        "has_dynamic_attributes" in cls):
+        ("has_dynamic_attributes" in cls or
+         "HAS_DYNAMIC_ATTRIBUTES" in cls)):
       self.maybe_missing_members = True
     cls.register_instance(self)
     bad_names = set()

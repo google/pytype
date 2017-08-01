@@ -229,6 +229,17 @@ class TestAttributes(test_inference.InferenceTest):
       Foo().baz
     """)
 
+  def testHasDynamicAttributesUpperCase(self):
+    self.assertNoErrors("""\
+      class Foo(object):
+        HAS_DYNAMIC_ATTRIBUTES = True
+      class Bar(Foo):
+        pass
+      Foo().baz
+      # has_dynamic_attributes doesn't work for subclasses
+      Bar().baz  # pytype: disable=attribute-error
+    """)
+
   def testHasDynamicAttributesSubClass(self):
     # has_dynamic_attributes doesn't apply to subclasses
     _, errors = self.InferAndCheck("""\
