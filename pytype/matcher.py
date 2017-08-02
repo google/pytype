@@ -324,6 +324,8 @@ class AbstractMatcher(object):
       # Flip actual and expected, since argument types are contravariant.
       subst = self._instantiate_and_match(
           expected_arg, actual_arg, subst, node, view, container=other_type)
+      if subst is None:
+        return None
     return subst
 
   def _merge_substs(self, subst, new_substs):
@@ -551,9 +553,8 @@ class AbstractMatcher(object):
       if base is None:
         protocol = self._get_protocol(other_type)
         if protocol:
-          matched_protocol = self._match_against_protocol(left, protocol)
-          if matched_protocol:
-            return subst
+          return self._match_against_protocol(left, other_type, protocol,
+                                              subst, node, view)
         return None
       else:
         return self._match_instance(
@@ -572,6 +573,8 @@ class AbstractMatcher(object):
     Returns:
       Protocol corresponding to other_type if it exists, None otherwise.
     """
+    if isinstance(other_type, abstract.ParameterizedClass):
+      other_type = other_type.base_cls
     if isinstance(other_type, abstract.PyTDClass):
       # typing.Iterator is automatically converted to __builtin__.iterator
       # but we need typing.Iterator here since it is the protocol
@@ -584,25 +587,84 @@ class AbstractMatcher(object):
           return other_type
     return None
 
-  def _match_against_protocol(self, left, protocol):
+  def _match_against_protocol(self, left, other_type, protocol, subst, node,
+                              view):
     """Checks whether a type is compatible with a protocol.
 
     Args:
       left: A type.
+      other_type: A formal type. E.g. abstract.Class or abstract.Union.
       protocol: A formal type that is a protocol class.
+      subst: The current type parameter assignment.
+      node: The current CFG node.
+      view: The current mapping of Variable to Value.
     Returns:
-      Whether the type is compatible with the provided protocol.
+      A new type parameter assignment if the matching succeeded, None otherwise.
     """
     if isinstance(left, abstract.PyTDClass):
-      left_methods = [m.name for m in left.pytd_cls.methods]
+      left_methods = left.pytd_cls.methods
     elif isinstance(left, abstract.InterpreterClass):
-      left_methods = left.members
+      left_methods = [data
+                      for member in left.members.values()
+                      for data in member.data
+                      if isinstance(data, abstract.Function)]
     elif isinstance(left, abstract.AMBIGUOUS_OR_EMPTY):
-      return True
+      return subst
     else:
-      return False
-    return all(
-        method in left_methods for method in protocol.abstract_methods)
+      return None
+    left_method_names = [m.name for m in left_methods]
+    method_names_matched = all(
+        method in left_method_names for method in protocol.abstract_methods)
+    if method_names_matched and isinstance(other_type,
+                                           abstract.ParameterizedClass):
+      return self._match_parameterized_protocol(left_methods, other_type,
+                                                subst, node, view)
+    elif method_names_matched:
+      return subst
+    else:
+      return None
+
+  def _match_parameterized_protocol(self, left_methods, other_type, subst,
+                                    node, view):
+    """Checks whether left_methods is compatible with a parameterized protocol.
+
+    Args:
+      left_methods: The list of methods some type left has.
+      other_type: A formal type of type abstract.ParameterizedClass.
+      subst: The current type parameter assignment.
+      node: The current CFG node.
+      view: The current mapping of Variable to Value.
+    Returns:
+      A new type parameter assignment if the matching succeeded, None otherwise.
+    """
+    params = other_type.type_parameters
+    new_substs = []
+    left_methods_by_name = {method.name: method
+                            for method in left_methods}
+    for name in other_type.abstract_methods:
+      abstract_method = other_type.get_method(name)
+      if name in left_methods_by_name:
+        matching_left_method = left_methods_by_name[name]
+      else:
+        return None
+      converter = other_type.vm.convert.pytd_convert
+      for signature in abstract_method.signatures:
+        callable_signature = converter.signature_to_callable(
+            signature.signature, other_type.vm)
+        annotation_subst = {param: value.instantiate(node)
+                            for (param, value) in params.items()}
+        annotated_callable = other_type.vm.annotations_util.sub_one_annotation(
+            node, callable_signature, [annotation_subst])
+        if isinstance(matching_left_method, pytd.Function):
+          matching_left_method = other_type.vm.convert.constant_to_value(
+              matching_left_method)
+        match_result = self._match_type_against_type(
+            matching_left_method, annotated_callable, subst, node, view)
+        if match_result is None:
+          return None
+        else:
+          new_substs.append(match_result)
+      return self._merge_substs(subst, new_substs)
 
   def _get_concrete_values(self, var):
     # TODO(rechen): For type parameter instances, we should extract the concrete

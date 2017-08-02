@@ -185,11 +185,11 @@ class Converter(object):
                         abstract.BoundInterpreterFunction)):
       sig, = abstract.get_signatures(v)
       return self.value_instance_to_pytd_type(
-          node, self._signature_to_callable(sig, v.vm), None, seen, view)
+          node, self.signature_to_callable(sig, v.vm), None, seen, view)
     elif isinstance(v, (abstract.PyTDFunction, abstract.BoundPyTDFunction)):
       signatures = abstract.get_signatures(v)
       if len(signatures) == 1:
-        val = self._signature_to_callable(signatures[0], v.vm)
+        val = self.signature_to_callable(signatures[0], v.vm)
         if not v.vm.annotations_util.get_type_parameters(val):
           # This is a workaround to make sure we don't put unexpected type
           # parameters in call traces.
@@ -234,7 +234,7 @@ class Converter(object):
     else:
       raise NotImplementedError(v.__class__.__name__)
 
-  def _signature_to_callable(self, sig, vm):
+  def signature_to_callable(self, sig, vm):
     base_cls = vm.convert.function_type
     ret = sig.annotations.get("return", vm.convert.unsolvable)
     if self._detailed or (

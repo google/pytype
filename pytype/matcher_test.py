@@ -1,5 +1,6 @@
 """Tests for matcher.py."""
 
+import unittest
 
 from pytype import abstract
 from pytype import config
@@ -415,6 +416,18 @@ class MatcherTest(unittest.TestCase):
     self.assertMatch(left1, right)
     self.assertMatch(left2, right)
     self.assertNoMatch(left3, right)
+
+  @unittest.skip("Needs to be fixed, tries to match protocol against A")
+  def testParameterizedProtocol(self):
+    left1 = self._convert("""\
+      from typing import Iterator
+      class A(object):
+        def __iter__(self) -> Iterator[int] : ...
+    """, "A", as_instance=True)
+    left2 = self._convert_type("int", as_instance=True)
+    right = self._convert_type("Iterable[int]")
+    self.assertMatch(left1, right)
+    self.assertNoMatch(left2, right)
 
 if __name__ == "__main__":
   unittest.main()

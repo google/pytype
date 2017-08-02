@@ -2179,6 +2179,10 @@ class ParameterizedClass(AtomicAbstractValue, Class):
   def get_class(self):
     return self.base_cls.get_class()
 
+  def get_method(self, method_name):
+    method = self.base_cls.pytd_cls.Lookup(method_name)
+    return self.vm.convert.constant_to_value(method)
+
   def call(self, node, func, args):
     del func
     del args

@@ -474,6 +474,81 @@ class ProtocolTest(test_inference.InferenceTest):
     """)
     self.assertErrorLogIs(errors, [(10, "wrong-arg-types", r"\(x: Sized\)")])
 
+  def test_check_parameterized_protocol(self):
+    self.assertNoErrors("""\
+      from __future__ import google_type_annotations
+      from typing import Iterator, Iterable
+
+      class Foo(object):
+        def __iter__(self) -> Iterator[int]:
+          return iter([])
+
+      def f(x: Iterable[int]):
+        pass
+
+      foo = Foo()
+      f(foo)
+      f(iter([3]))
+    """)
+
+  def test_check_parameterized_protocol_error(self):
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      from typing import Iterator, Iterable
+
+      class Foo(object):
+        def __iter__(self) -> Iterator[str]:
+          return iter([])
+
+      def f(x: Iterable[int]):
+        pass
+
+      foo = Foo()
+      f(foo)
+    """)
+    self.assertErrorLogIs(errors, [(12, "wrong-arg-types",
+                                    r"\(x: Iterable\[int\]\)",
+                                    r"\(x: Foo\)")])
+
+  def test_check_parameterized_protocol_multi_signature(self):
+    self.assertNoErrors("""\
+      from __future__ import google_type_annotations
+      from typing import Sequence, Union
+
+      class Foo(object):
+        def __len__(self):
+          return 0
+        def __getitem__(self, x: Union[int, slice]) -> Union[int, Sequence[int]]:
+          return 0
+
+      def f(x: Sequence[int]):
+        pass
+
+      foo = Foo()
+      f(foo)
+    """)
+
+  def test_check_parameterized_protocol_error_multi_signature(self):
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      from typing import Sequence, Union
+
+      class Foo(object):
+        def __len__(self):
+          return 0
+        def __getitem__(self, x: int) -> int:
+          return 0
+
+      def f(x: Sequence[int]):
+        pass
+
+      foo = Foo()
+      f(foo)
+    """)
+    self.assertErrorLogIs(errors, [(14, "wrong-arg-types",
+                                    r"\(x: Sequence\[int\]\)",
+                                    r"\(x: Foo\)")])
+
 
 if __name__ == "__main__":
   test_inference.main()
