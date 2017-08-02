@@ -437,7 +437,7 @@ class IntersectionType(_SetOfTypes):
 
 class GenericType(node.Node('base_type: NamedType or ClassType',
                             'parameters: tuple[{Type}]'), Type):
-  """Generic type. Takes a base type and type paramters.
+  """Generic type. Takes a base type and type parameters.
 
   This is used for homogeneous tuples, lists, dictionaries, user classes, etc.
 

@@ -61,7 +61,7 @@ class _ParserTestBase(unittest.TestCase):
       self.fail("ParseError expected")
     except parser.ParseError as e:
       self.assertRegexpMatches(e.message, re.escape(message))
-      self.assertEquals(expected_line, e.line)
+      self.assertEqual(expected_line, e.line)
 
 
 class ParseErrorTest(unittest.TestCase):
@@ -189,7 +189,7 @@ class ParserTest(_ParserTestBase):
   def test_from_import(self):
     ast = self.check("from foo import c\nclass Bar(c.X): ...", IGNORE)
     parent, = ast.Lookup("Bar").parents
-    self.assertEquals(parent, pytd.NamedType("foo.c.X"))
+    self.assertEqual(parent, pytd.NamedType("foo.c.X"))
 
   def test_duplicate_names(self):
     self.check_error("""\
@@ -315,22 +315,22 @@ class ParserTest(_ParserTestBase):
   def test_pep484_translations(self):
     ast = self.check("""\
       x = ...  # type: None""")
-    self.assertEquals(pytd.NamedType("NoneType"), ast.constants[0].type)
+    self.assertEqual(pytd.NamedType("NoneType"), ast.constants[0].type)
 
   def test_module_name(self):
     ast = self.check("x = ...  # type: int",
                      "foo.x = ...  # type: int",
                      name="foo")
-    self.assertEquals("foo", ast.name)
+    self.assertEqual("foo", ast.name)
 
   def test_no_module_name(self):
     # If the name is not specified, it is a digest of the source.
     src = ""
     ast = self.check(src)
-    self.assertEquals(hashlib.md5(src).hexdigest(), ast.name)
+    self.assertEqual(hashlib.md5(src).hexdigest(), ast.name)
     src = "x = ...  # type: int"
     ast = self.check(src)
-    self.assertEquals(hashlib.md5(src).hexdigest(), ast.name)
+    self.assertEqual(hashlib.md5(src).hexdigest(), ast.name)
 
   def test_pep84_aliasing(self):
     # This should not be done for the typing module itself.
@@ -650,6 +650,13 @@ class FunctionTest(_ParserTestBase):
 
     self.check("""\
       @abstractmethod
+      def foo() -> int: ...""",
+               """\
+      @abstractmethod
+      def foo() -> int: ...""")
+
+    self.check("""\
+      @abc.abstractmethod
       def foo() -> int: ...""",
                """\
       @abstractmethod
@@ -1479,9 +1486,9 @@ class MergeSignaturesTest(_ParserTestBase):
     ast = self.check("""\
       def foo(x: int) -> str: ...
       def foo(x: str) -> str: ...""")
-    self.assertEquals(1, len(ast.functions))
+    self.assertEqual(1, len(ast.functions))
     foo = ast.functions[0]
-    self.assertEquals(2, len(foo.signatures))
+    self.assertEqual(2, len(foo.signatures))
 
   def test_method_and_property_error(self):
     self.check_error("""
@@ -1507,7 +1514,7 @@ class MergeSignaturesTest(_ParserTestBase):
           @classmethod
           def foo(x: int) -> str: ...
       """)
-    self.assertEquals("classmethod", ast.classes[0].methods[0].kind)
+    self.assertEqual("classmethod", ast.classes[0].methods[0].kind)
 
   def test_staticmethod(self):
     ast = self.check("""\
@@ -1515,14 +1522,14 @@ class MergeSignaturesTest(_ParserTestBase):
           @staticmethod
           def foo(x: int) -> str: ...
       """)
-    self.assertEquals("staticmethod", ast.classes[0].methods[0].kind)
+    self.assertEqual("staticmethod", ast.classes[0].methods[0].kind)
 
   def test_new(self):
     ast = self.check("""\
       class A(object):
           def __new__(self) -> A: ...
       """)
-    self.assertEquals("staticmethod", ast.classes[0].methods[0].kind)
+    self.assertEqual("staticmethod", ast.classes[0].methods[0].kind)
 
   def test_abstractmethod(self):
     ast = self.check("""\
@@ -1530,8 +1537,8 @@ class MergeSignaturesTest(_ParserTestBase):
           @abstractmethod
           def foo(x: int) -> str: ...
       """)
-    self.assertEquals("method", ast.Lookup("A").Lookup("foo").kind)
-    self.assertEquals(True, ast.Lookup("A").Lookup("foo").is_abstract)
+    self.assertEqual("method", ast.Lookup("A").Lookup("foo").kind)
+    self.assertEqual(True, ast.Lookup("A").Lookup("foo").is_abstract)
 
   def test_abstractmethod_manysignatures(self):
     ast = self.check("""\
@@ -1549,16 +1556,16 @@ class MergeSignaturesTest(_ParserTestBase):
           @abstractmethod
           def foo(x: int, y: int, z: int) -> str: ...
       """)
-    self.assertEquals("method", ast.Lookup("A").Lookup("foo").kind)
-    self.assertEquals(True, ast.Lookup("A").Lookup("foo").is_abstract)
+    self.assertEqual("method", ast.Lookup("A").Lookup("foo").kind)
+    self.assertEqual(True, ast.Lookup("A").Lookup("foo").is_abstract)
 
   def test_external(self):
     ast = self.check("""\
       def foo PYTHONCODE""")
     foo = ast.functions[0]
-    self.assertEquals("foo", foo.name)
+    self.assertEqual("foo", foo.name)
     self.assertEmpty(foo.signatures)
-    self.assertEquals("method", foo.kind)
+    self.assertEqual("method", foo.kind)
 
 
 class EntireFileTest(_ParserTestBase):

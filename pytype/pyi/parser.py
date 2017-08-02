@@ -199,7 +199,7 @@ class _Parser(object):
   information around for every call between the low level parser and the
   peer.  As a compromise, when errors are detected (either by the low level
   parser or by the peer raising an exception), set_error_location() is called
-  with current location information, then the the call to parse_ext.parse()
+  with current location information, then the call to parse_ext.parse()
   raises an exception (either a ParseError or whatever else was raised by
   the peer in the first place).  The high level parser can thus save location
   information from set_error_location(), catch the exception raised by
@@ -667,7 +667,7 @@ class _Parser(object):
 
     Args:
       decorators: List of decorator names.
-      name: Name of funciton.
+      name: Name of function.
       param_list: List of parameters, where a paremeter is either a tuple
         (name, type, default) or the ELLIPSIS special object.  See
         _validate_params for a more detailed description of allowed parameters.
@@ -708,12 +708,13 @@ class _Parser(object):
         raise ParseError("No parameter named %s" % mutator.name)
 
     # Remove ignored decorators, raise ParseError for invalid decorators.
-    decorators = [d for d in decorators if _keep_decorator(d)]
+    decorators = {d for d in decorators if _keep_decorator(d)}
     # Extract out abstractmethod decorator, there should be at most one
     # remaining decorator
-    is_abstract = "abstractmethod" in decorators
+    is_abstract = (
+        "abstractmethod" in decorators or "abc.abstractmethod" in decorators)
     if is_abstract:
-      decorators.remove("abstractmethod")
+      decorators -= {"abstractmethod", "abc.abstractmethod"}
     # TODO(acaceres): if not inside a class, any decorator should be an error
     if len(decorators) > 1:
       raise ParseError("Too many decorators for %s" % name)
@@ -1020,9 +1021,9 @@ def _validate_params(param_list):
         raise ParseError("ellipsis (...) must be last parameter")
       if has_bare_star:
         raise ParseError("ellipsis (...) not compatible with bare *")
-      # TODO(dbaum): Shouldn't we pass the existing paramter names to
+      # TODO(dbaum): Shouldn't we pass the existing parameter names to
       # InventStarArgParams()?  The legacy parser doesn't, so leaving the
-      # code idenentical to legacy for now.
+      # code identical to legacy for now.
       stararg, starstararg = visitors.InventStarArgParams([])
       continue
 
