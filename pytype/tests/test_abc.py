@@ -1,5 +1,6 @@
 """Tests for @abc.abstractmethod in abc_overlay.py."""
 
+from pytype import utils
 from pytype.tests import test_inference
 
 
@@ -158,6 +159,33 @@ class AbstractMethodTests(test_inference.InferenceTest):
         def foo(self) -> int:
           return None
     """, skip_repeat_calls=False)
+
+  def test_instantiate_abstract_class(self):
+    _, errors = self.InferAndCheck("""\
+      import abc
+      class Example(object):
+        __metaclass__ = abc.ABCMeta
+        @abc.abstractmethod
+        def foo(self):
+          pass
+      Example()  # line 7
+    """)
+    self.assertErrorLogIs(errors, [(7, "not-instantiable", r"Example.*foo")])
+
+  def test_instantiate_pyi_abstract_class(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        import abc
+        class Example(metaclass=abc.ABCMeta):
+          @abc.abstractmethod
+          def foo(self) -> None: ...
+      """)
+      _, errors = self.InferAndCheck("""\
+        import foo
+        foo.Example()
+      """, pythonpath=[d.path])
+      self.assertErrorLogIs(errors, [(2, "not-instantiable",
+                                      r"foo\.Example.*foo")])
 
 
 if __name__ == "__main__":

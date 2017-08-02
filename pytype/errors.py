@@ -584,6 +584,13 @@ class ErrorLog(ErrorLogBase):
     else:
       self.error(stack, message)
 
+  @_error_name("not-instantiable")
+  def not_instantiable(self, stack, cls):
+    """Instantiating an abstract class."""
+    message = "Can't instantiate %s with abstract methods %s" % (
+        cls.full_name, ", ".join(sorted(cls.abstract_methods)))
+    self.error(stack, message)
+
   @_error_name("none-attr")  # None doesn't have attribute '__call__'
   def none_not_callable(self, stack):
     """Calling None."""

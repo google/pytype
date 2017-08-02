@@ -2386,6 +2386,8 @@ class PyTDClass(SimpleAbstractValue, Class):
       raise AssertionError("Invalid class member %s", pytd.Print(pyval))
 
   def call(self, node, func, args):
+    if self.is_abstract:
+      self.vm.errorlog.not_instantiable(self.vm.frames, self)
     node, results = self._call_new_and_init(node, func, args)
     if results is None:
       value = Instance(
@@ -2492,6 +2494,8 @@ class InterpreterClass(SimpleAbstractValue, Class):
     return self._instance_cache[key]
 
   def call(self, node, value, args):
+    if self.is_abstract:
+      self.vm.errorlog.not_instantiable(self.vm.frames, self)
     node, variable = self._call_new_and_init(node, value, args)
     if variable is None:
       value = self._new_instance()
