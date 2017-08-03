@@ -199,6 +199,27 @@ class ReingestTest(test_inference.InferenceTest):
         foo.g(foo.f).upper()
       """, pythonpath=[d.path])
 
+  def testInstantiatePyiClass(self):
+    foo = self.Infer("""
+      import abc
+      class Foo(object):
+        __metaclass__ = abc.ABCMeta
+        @abc.abstractmethod
+        def foo(self):
+          pass
+      class Bar(Foo):
+        def foo(self):
+          pass
+    """, deep=True)
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", pytd.Print(foo))
+      _, errors = self.InferAndCheck("""\
+        import foo
+        foo.Foo()
+        foo.Bar()
+      """, pythonpath=[d.path])
+      self.assertErrorLogIs(errors, [(2, "not-instantiable", r"foo\.Foo.*foo")])
+
 
 if __name__ == "__main__":
   test_inference.main()

@@ -765,7 +765,8 @@ class RemoveInheritedMethods(visitors.Visitor):
         if (sig.params and
             sig.params[0].name == "self" and
             isinstance(sig.params[0].type, pytd.ClassType)):
-          stripped_signatures[method.name] = sig.Replace(params=sig.params[1:])
+          stripped_signatures[method.name] = (
+              sig.Replace(params=sig.params[1:]), method.is_abstract)
     return stripped_signatures
 
   def _FindNameAndSig(self, classes, name, sig):
@@ -780,7 +781,7 @@ class RemoveInheritedMethods(visitors.Visitor):
       return self._FindNameAndSig(classes, name, sig)
     return False
 
-  def _MaybeRemoveSignature(self, name, sig):
+  def _MaybeRemoveSignature(self, name, sig, is_abstract):
     """Visit a Signature and return None if we can remove it."""
     if (not sig.params or
         sig.params[0].name != "self" or
@@ -791,8 +792,9 @@ class RemoveInheritedMethods(visitors.Visitor):
       # TODO(kramm): Remove once pytype stops generating ClassType(name, None).
       return sig
     try:
-      if self._FindNameAndSig(utils.GetBasesInMRO(cls), name,
-                              sig.Replace(params=sig.params[1:])):
+      if self._FindNameAndSig(
+          utils.GetBasesInMRO(cls), name,
+          (sig.Replace(params=sig.params[1:]), is_abstract)):
         return None  # remove (see VisitFunction)
     except utils.MROError:
       return sig
@@ -800,7 +802,7 @@ class RemoveInheritedMethods(visitors.Visitor):
 
   def _MaybeDeleteFunction(self, f):
     """Visit a Function and return None if we can remove it."""
-    signatures = tuple(self._MaybeRemoveSignature(f.name, sig)
+    signatures = tuple(self._MaybeRemoveSignature(f.name, sig, f.is_abstract)
                        for sig in f.signatures)
     if any(signatures):
       if signatures.count(None):
