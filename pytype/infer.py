@@ -156,9 +156,10 @@ class CallTracer(vm.VirtualMachine):
     self._analyzed_functions.add(method)
     if isinstance(method, (abstract.InterpreterFunction,
                            abstract.BoundInterpreterFunction)):
-      if (not self.analyze_annotated and method.signature.annotations and
+      if (not self.analyze_annotated and
+          method.signature.has_return_annotation and
           fname not in self._CONSTRUCTORS):
-        log.info("%r has type annotations, not analyzing further.", fname)
+        log.info("%r has return annotation, not analyzing further.", fname)
       else:
         node, args = self.create_method_arguments(node, method)
         node, _ = self.call_function_with_args(node, val, args)

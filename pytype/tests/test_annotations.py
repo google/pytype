@@ -1054,6 +1054,16 @@ class AnnotationTest(test_inference.InferenceTest):
       def f4(x: Optional[Union[str, int]] = ...) -> None: ...
     """)
 
+  def testInferReturn(self):
+    ty = self.Infer("""
+      from __future__ import google_type_annotations
+      def f(x: int):
+        return x
+    """, deep=True, analyze_annotated=False)
+    self.assertTypesMatchPytd(ty, """
+      def f(x: int) -> int: ...
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()
