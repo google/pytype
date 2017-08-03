@@ -545,6 +545,11 @@ class VirtualMachine(object):
       else:
         var = self.program.NewVariable()
         var.AddBinding(val, class_dict_var.bindings, node)
+        if not val.is_abstract:
+          for member in sum((var.data for var in val.members.values()), []):
+            if isinstance(member, abstract.Function) and member.is_abstract:
+              self.errorlog.ignored_abstractmethod(
+                  self.frames, val.name, member.name)
     return var
 
   def _make_function(self, name, node, code, globs, defaults, kw_defaults,

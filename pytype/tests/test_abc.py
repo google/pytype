@@ -187,6 +187,17 @@ class AbstractMethodTests(test_inference.InferenceTest):
       self.assertErrorLogIs(errors, [(2, "not-instantiable",
                                       r"foo\.Example.*foo")])
 
+  def test_stray_abstractmethod(self):
+    _, errors = self.InferAndCheck("""\
+      import abc
+      class Example(object):
+        @abc.abstractmethod
+        def foo(self):
+          pass
+    """)
+    self.assertErrorLogIs(errors, [(2, "ignored-abstractmethod",
+                                    r"foo.*Example")])
+
 
 if __name__ == "__main__":
   test_inference.main()

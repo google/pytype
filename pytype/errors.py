@@ -591,6 +591,12 @@ class ErrorLog(ErrorLogBase):
         cls.full_name, ", ".join(sorted(cls.abstract_methods)))
     self.error(stack, message)
 
+  @_error_name("ignored-abstractmethod")
+  def ignored_abstractmethod(self, stack, cls_name, method_name):
+    message = "Stray abc.abstractmethod decorator on method %s" % method_name
+    self.error(stack, message,
+               details="(%s does not have metaclass abc.ABCMeta)" % cls_name)
+
   @_error_name("none-attr")  # None doesn't have attribute '__call__'
   def none_not_callable(self, stack):
     """Calling None."""
