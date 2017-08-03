@@ -26,8 +26,26 @@ class AnnotationsUtil(object):
     """Used to break out of annotation evaluation if we discover a string."""
     pass
 
+  # A dummy container object for use in instantiating type parameters.
+  _DUMMY_CONTAINER = object()
+
   def __init__(self, vm):
     self.vm = vm
+
+  def instantiate_for_sub(self, node, typ):
+    """Instantiate this type for use only in sub_(one_)annotation(s).
+
+    Instantiate a type using a dummy container so that it can be put in a
+    substitution dictionary for use in sub_annotations or sub_one_annotation.
+    The container is needed to preserve type parameters.
+
+    Args:
+      node: A cfg node.
+      typ: A type.
+    Returns:
+      A variable of an instance of the type.
+    """
+    return typ.instantiate(node, container=self._DUMMY_CONTAINER)
 
   def sub_annotations(self, node, annotations, substs, instantiate_unbound):
     """Apply type parameter substitutions to a dictionary of annotations."""

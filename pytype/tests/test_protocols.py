@@ -549,6 +549,20 @@ class ProtocolTest(test_inference.InferenceTest):
                                     r"\(x: Sequence\[int\]\)",
                                     r"\(x: Foo\)")])
 
+  def test_use_iterable(self):
+    ty = self.Infer("""
+      class A(object):
+        def __iter__(self):
+          return iter(__any_object__)
+      v = list(A())
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      class A(object):
+        def __iter__(self) -> Any: ...
+      v = ...  # type: list
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

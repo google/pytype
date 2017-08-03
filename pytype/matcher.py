@@ -121,10 +121,10 @@ class AbstractMatcher(object):
           return subst
         else:
           # Keep the type parameter name in the expected type.
-          dummy_instance = abstract.Instance(other_type, other_type.vm)
-          dummy_var = dummy_instance.to_variable(other_type.vm.root_cfg_node)
+          dummy_instance = other_type.vm.annotations_util.instantiate_for_sub(
+              other_type.vm.root_cfg_node, other_type)
           self._set_error_subst(
-              self._merge_substs(subst, [{other_type.name: dummy_var}]))
+              self._merge_substs(subst, [{other_type.name: dummy_instance}]))
           return None
       elif isinstance(left.instance, abstract.Callable):
         # We're doing argument-matching against a callable. We flipped the
@@ -164,7 +164,9 @@ class AbstractMatcher(object):
         new_subst = self._match_value_against_type(
             value, other_type.bound, subst, node, view)
         if new_subst is None:
-          new_subst = {other_type.name: other_type.bound.instantiate(node)}
+          new_subst = {other_type.name:
+                       other_type.vm.annotations_util.instantiate_for_sub(
+                           node, other_type.bound)}
           self._set_error_subst(self._merge_substs(subst, [new_subst]))
           return None
       if other_type.name in subst:
@@ -651,8 +653,9 @@ class AbstractMatcher(object):
       for signature in abstract_method.signatures:
         callable_signature = converter.signature_to_callable(
             signature.signature, other_type.vm)
-        annotation_subst = {param: value.instantiate(node)
-                            for (param, value) in params.items()}
+        annotation_subst = {
+            param: value.vm.annotations_util.instantiate_for_sub(node, value)
+            for (param, value) in params.items()}
         annotated_callable = other_type.vm.annotations_util.sub_one_annotation(
             node, callable_signature, [annotation_subst])
         if isinstance(matching_left_method, pytd.Function):
