@@ -1463,11 +1463,13 @@ class Function(SimpleAbstractValue):
       try:
         match = self._match_view(node, args, view)
       except FailedFunctionCall as e:
-        if e > error:
-          # We could also pass "filter_strict=True" to get_views() above,
-          # but it's cheaper to delay verification until the error case.
-          if node.HasCombination(view.values()):
-            error = e
+        # We could also pass "filter_strict=True" to get_views() above,
+        # but it's cheaper to delay verification until the error case.
+        if e > error and node.HasCombination(view.values()):
+          # Add the name of the caller if possible.
+          if hasattr(self, "parent"):
+            e.name = "%s.%s" % (self.parent.name, e.name)
+          error = e
       else:
         matched.append(match)
     if not matched and error:

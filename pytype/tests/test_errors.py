@@ -92,6 +92,38 @@ class ErrorTest(test_inference.InferenceTest):
     """)
     self.assertErrorLogIs(errors, [(1, "wrong-arg-types", r"int.*complex")])
 
+  def testInterpreterFunctionNameInMsg(self):
+    _, errors = self.InferAndCheck("""\
+      class A(list): pass
+      A.append(3)
+    """)
+    self.assertErrorLogIs(
+        errors,
+        [(2, "missing-parameter", r"function list.append")]
+    )
+
+  def testPyTDFunctionNameInMsg(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", "class A(list): pass")
+      _, errors = self.InferAndCheck("""\
+        import foo
+        foo.A.append(3)
+      """, pythonpath=[d.path])
+      self.assertErrorLogIs(
+          errors,
+          [(2, "missing-parameter", r"function list.append")]
+      )
+
+  def testBuiltinFunctionNameInMsg(self):
+    _, errors = self.InferAndCheck("""\
+      x = list
+      x += (1,2)
+      """)
+    self.assertErrorLogIs(
+        errors,
+        [(2, "missing-parameter", r"function list.__iadd__")]
+    )
+
   def testPrettyPrintWrongArgs(self):
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", """
