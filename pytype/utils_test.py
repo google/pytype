@@ -59,11 +59,11 @@ class UtilsTest(unittest.TestCase):
     self.current_location = self.prog.NewCFGNode()
 
   def testReplaceExtension(self):
-    self.assertEquals("foo.bar", utils.replace_extension("foo.txt", "bar"))
-    self.assertEquals("foo.bar", utils.replace_extension("foo.txt", ".bar"))
-    self.assertEquals("a.b.c.bar", utils.replace_extension("a.b.c.txt", ".bar"))
-    self.assertEquals("a.b/c.bar", utils.replace_extension("a.b/c.d", ".bar"))
-    self.assertEquals("xyz.bar", utils.replace_extension("xyz", "bar"))
+    self.assertEqual("foo.bar", utils.replace_extension("foo.txt", "bar"))
+    self.assertEqual("foo.bar", utils.replace_extension("foo.txt", ".bar"))
+    self.assertEqual("a.b.c.bar", utils.replace_extension("a.b.c.txt", ".bar"))
+    self.assertEqual("a.b/c.bar", utils.replace_extension("a.b/c.d", ".bar"))
+    self.assertEqual("xyz.bar", utils.replace_extension("xyz", "bar"))
 
   def testComplexityLimit(self):
     limit = utils.ComplexityLimit(5)
@@ -195,7 +195,7 @@ class UtilsTest(unittest.TestCase):
 
   def testPrettyDNF(self):
     dnf = [["a", "b"], "c", ["d", "e", "f"]]
-    self.assertEquals(utils.pretty_dnf(dnf), "(a & b) | c | (d & e & f)")
+    self.assertEqual(utils.pretty_dnf(dnf), "(a & b) | c | (d & e & f)")
 
   def testComputePredecessors(self):
     # n7      n6
@@ -326,13 +326,13 @@ class UtilsTest(unittest.TestCase):
     n3 = Node("3", n2)
     n4 = Node("4", n2, n3)
     for permutation in itertools.permutations([n1, n2, n3, n4]):
-      self.assertEquals(list(utils.topological_sort(permutation)),
-                        [n1, n2, n3, n4])
+      self.assertEqual(list(utils.topological_sort(permutation)),
+                       [n1, n2, n3, n4])
 
   def testTopologicalSort2(self):
     n1 = Node("1")
     n2 = Node("2", n1)
-    self.assertEquals(list(utils.topological_sort([n1, n2, 3, 4]))[-1], n2)
+    self.assertEqual(list(utils.topological_sort([n1, n2, 3, 4]))[-1], n2)
 
   def testTopologicalSortCycle(self):
     n1 = Node("1")
@@ -353,7 +353,7 @@ class UtilsTest(unittest.TestCase):
     self.assertRaises(ValueError, list, generator)
 
   def testTopologicalSortGetattr(self):
-    self.assertEquals(list(utils.topological_sort([1])), [1])
+    self.assertEqual(list(utils.topological_sort([1])), [1])
 
   def testTempdir(self):
     with utils.Tempdir() as d:
@@ -362,10 +362,10 @@ class UtilsTest(unittest.TestCase):
       filename3 = d.create_file("baz.txt", "data3")
       filename4 = d.create_file("d1/d2/qqsv.txt", "  data4.1\n  data4.2")
       filename5 = d.create_directory("directory")
-      self.assertEquals(filename1, d["foo.txt"])
-      self.assertEquals(filename2, d["bar.txt"])
-      self.assertEquals(filename3, d["baz.txt"])
-      self.assertEquals(filename4, d["d1/d2/qqsv.txt"])
+      self.assertEqual(filename1, d["foo.txt"])
+      self.assertEqual(filename2, d["bar.txt"])
+      self.assertEqual(filename3, d["baz.txt"])
+      self.assertEqual(filename4, d["d1/d2/qqsv.txt"])
       self.assertTrue(os.path.isdir(d.path))
       self.assertTrue(os.path.isfile(filename1))
       self.assertTrue(os.path.isfile(filename2))
@@ -381,7 +381,7 @@ class UtilsTest(unittest.TestCase):
                                  (filename4, "data4.1\ndata4.2"),  # dedented
                                 ]:
         with open(filename, "rb") as fi:
-          self.assertEquals(fi.read(), contents)
+          self.assertEqual(fi.read(), contents)
     self.assertFalse(os.path.isdir(d.path))
     self.assertFalse(os.path.isfile(filename1))
     self.assertFalse(os.path.isfile(filename2))
@@ -397,7 +397,7 @@ class UtilsTest(unittest.TestCase):
       with utils.cd(d.path):
         self.assertTrue(os.path.isdir("foo"))
       d2 = os.getcwd()
-      self.assertEquals(d1, d2)
+      self.assertEqual(d1, d2)
 
   def testListStripPrefix(self):
     self.assertEqual([1, 2, 3], utils.list_strip_prefix([1, 2, 3], []))
@@ -475,7 +475,7 @@ class UtilsTest(unittest.TestCase):
   def testMemoize4(self):
     z1 = self._f4(1, 2)
     z2 = self._f4(1, 3)
-    self.assertNotEquals(z1, z2)
+    self.assertNotEqual(z1, z2)
     z1 = self._f4(1, 2)
     z2 = self._f4(1, 2)
     self.assertIs(z1, z2)
@@ -511,7 +511,7 @@ class UtilsTest(unittest.TestCase):
     self.assertGreater(d.changestamp, changestamp)
     changestamp = d.changestamp
     var.AddBinding("data")  # No change because this is duplicate data
-    self.assertEquals(d.changestamp, changestamp)
+    self.assertEqual(d.changestamp, changestamp)
     changestamp = d.changestamp
 
   def testAliasingDict(self):
@@ -527,15 +527,15 @@ class UtilsTest(unittest.TestCase):
     d["alias"] = var1
     self.assertIn("name", d)
     self.assertIn("alias", d)
-    self.assertEquals(var1, d["name"])
-    self.assertEquals(d["name"], d["alias"])
-    self.assertEquals(d["alias"], d.get("alias"))
-    self.assertEquals(d["name"], d.get("name"))
-    self.assertEquals(None, d.get("other_name"))
+    self.assertEqual(var1, d["name"])
+    self.assertEqual(d["name"], d["alias"])
+    self.assertEqual(d["alias"], d.get("alias"))
+    self.assertEqual(d["name"], d.get("name"))
+    self.assertEqual(None, d.get("other_name"))
     var2 = self.prog.NewVariable()
     d["name"] = var2
-    self.assertEquals(var2, d["name"])
-    self.assertEquals(d["name"], d["alias"])
+    self.assertEqual(var2, d["name"])
+    self.assertEqual(d["name"], d["alias"])
 
   def testAliasingDictRealiasing(self):
     d = utils.AliasingDict()
@@ -546,7 +546,7 @@ class UtilsTest(unittest.TestCase):
     try:
       d.add_alias("alias1", "other_name")
     except utils.AliasingDictConflictError as e:
-      self.assertEquals(e.existing_name, "name")
+      self.assertEqual(e.existing_name, "name")
     else:
       self.fail("AliasingDictConflictError not raised")
     d.add_alias("alias1", "name")
@@ -555,10 +555,10 @@ class UtilsTest(unittest.TestCase):
     # Check that the name, alias1, and alias2 still all refer to the same key
     var = self.prog.NewVariable()
     d["alias1"] = var
-    self.assertEquals(1, len(d))
-    self.assertEquals(var, d["name"])
-    self.assertEquals(var, d["alias1"])
-    self.assertEquals(var, d["alias2"])
+    self.assertEqual(1, len(d))
+    self.assertEqual(var, d["name"])
+    self.assertEqual(var, d["alias1"])
+    self.assertEqual(var, d["alias2"])
 
   def testNonemptyAliasingDictRealiasing(self):
     d = utils.AliasingDict()
@@ -573,9 +573,27 @@ class UtilsTest(unittest.TestCase):
     d.add_alias("alias1", "name")
     d.add_alias("alias2", "alias1")
     d["name"] = self.prog.NewVariable()
-    self.assertEquals(1, len(d))
-    self.assertEquals(d["name"], d["alias1"])
-    self.assertEquals(d["alias1"], d["alias2"])
+    self.assertEqual(1, len(d))
+    self.assertEqual(d["name"], d["alias1"])
+    self.assertEqual(d["alias1"], d["alias2"])
+
+  def testAliasingDictValueMove(self):
+    d = utils.AliasingDict()
+    v = self.prog.NewVariable()
+    d["alias"] = v
+    d.add_alias("alias", "name")
+    self.assertEqual(d["name"], v)
+    self.assertEqual(d["alias"], d["name"])
+
+  def testAliasingDictTransitiveValueMove(self):
+    d = utils.AliasingDict()
+    d.add_alias("alias2", "name")
+    v = self.prog.NewVariable()
+    d["alias1"] = v
+    d.add_alias("alias1", "alias2")
+    self.assertEqual(d["name"], v)
+    self.assertEqual(d["alias2"], d["name"])
+    self.assertEqual(d["alias1"], d["alias2"])
 
   def testLazyDict(self):
     d = utils.LazyDict()
@@ -591,13 +609,13 @@ class UtilsTest(unittest.TestCase):
       return y
     d.add_lazy_item("f", f, "foo")
     self.assertIn("f", d)
-    self.assertEquals(1, len(d))
-    self.assertEquals(0, len(x))
+    self.assertEqual(1, len(d))
+    self.assertEqual(0, len(x))
     # Evaluate the item
-    self.assertEquals("foo", d["f"])
-    self.assertEquals(1, len(x))
+    self.assertEqual("foo", d["f"])
+    self.assertEqual(1, len(x))
     self.assertIn("f", d)
-    self.assertEquals(1, len(d))
+    self.assertEqual(1, len(d))
 
   def testLazyDictEq(self):
     d = utils.LazyDict()
@@ -607,7 +625,7 @@ class UtilsTest(unittest.TestCase):
     self.assertFalse(d.lazy_eq("f", f, "bar"))
     with self.assertRaises(KeyError):
       d.lazy_eq("g", f, "foo")
-    self.assertEquals("foo", d["f"])  # evaluation
+    self.assertEqual("foo", d["f"])  # evaluation
     # The point of lazy_eq is to do approximate equality checks when we can't
     # evaluate the function, so there's no way to determine "foo" != f("bar").
     self.assertTrue(d.lazy_eq("f", f, "bar"))
@@ -616,10 +634,10 @@ class UtilsTest(unittest.TestCase):
     var = utils.DynamicVar()
     self.assertIsNone(var.get())
     with var.bind(123):
-      self.assertEquals(123, var.get())
+      self.assertEqual(123, var.get())
       with var.bind(456):
-        self.assertEquals(456, var.get())
-      self.assertEquals(123, var.get())
+        self.assertEqual(456, var.get())
+      self.assertEqual(123, var.get())
     self.assertIsNone(var.get())
 
   def testAnnotatingDecorator(self):
@@ -627,7 +645,7 @@ class UtilsTest(unittest.TestCase):
     @foo(3)
     def f():  # pylint: disable=unused-variable
       pass
-    self.assertEquals(foo.lookup["f"], 3)
+    self.assertEqual(foo.lookup["f"], 3)
 
 
 if __name__ == "__main__":

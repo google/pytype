@@ -1466,7 +1466,7 @@ class CreateTypeParametersForSignatures(Visitor):
 class RaiseIfContainsUnknown(Visitor):
   """Find any 'unknown' Class or ClassType (not: pytd.AnythingType!) in a class.
 
-  It throws HasUnknown on the first occurence.
+  It throws HasUnknown on the first occurrence.
   """
 
   class HasUnknown(Exception):
@@ -2058,6 +2058,10 @@ class VerifyContainers(Visitor):
         raise ContainerError(
             "Conflicting values for TypeVar %s: %s" % (
                 param_name, ", ".join(str(v) for v in values)))
+      elif any(t.type_param.full_name == param_name for t in node.template):
+        value, = values
+        raise ContainerError(
+            "Conflicting value %s for TypeVar %s" % (value, param_name))
 
 
 class ExpandCompatibleBuiltins(Visitor):

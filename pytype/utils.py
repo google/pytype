@@ -655,12 +655,18 @@ class AliasingDict(DictTemplate):
     super(AliasingDict, self).__init__(*args, **kwargs)
 
   def add_alias(self, alias, name):
-    assert alias in self._alias_map or alias not in self
+    """Alias 'alias' to 'name'."""
     assert alias not in self._alias_map.values()
     new_name = self._alias_map.get(name, name)
     existing_name = self._alias_map.get(alias, new_name)
     if new_name != existing_name:
       raise AliasingDictConflictError(existing_name)
+    if super(AliasingDict, self).__contains__(alias):
+      # This alias had a value, so move the value to the name that the alias
+      # now points at.
+      assert new_name not in self
+      self[new_name] = self[alias]
+      del self[alias]
     self._alias_map[alias] = new_name
 
   def __contains__(self, name):
