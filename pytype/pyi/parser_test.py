@@ -999,6 +999,15 @@ class IfTest(_ParserTestBase):
       d = ...  # type: int
       e = ...  # type: int""")
 
+  def test_if_and(self):
+    self.check("""\
+      if sys.version_info >= (2, 0) and sys.version_info < (3, 0):
+        a = ...  # type: int
+      if sys.version_info >= (2, 0) and sys.version_info >= (3, 0):
+        b = ...  # type: int
+    """, """\
+      a = ...  # type: int""")
+
   # The remaining tests verify that actions with side effects only take effect
   # within a true block.
 

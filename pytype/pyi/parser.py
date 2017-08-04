@@ -377,9 +377,9 @@ class _Parser(object):
     """Evaluate a condition and return a bool.
 
     Args:
-      condition: A condition tuple of (left, op, right). If op is "or", then
-      left and right are conditions. Otherwise, left is a name, op is one of
-      the comparison strings in _COMPARES, and right is the expected value.
+      condition: A condition tuple of (left, op, right). If op is "or" or "and",
+      then left and right are conditions. Otherwise, left is a name, op is one
+      of the comparison strings in _COMPARES, and right is the expected value.
 
     Returns:
       The boolean result of evaluating the condition.
