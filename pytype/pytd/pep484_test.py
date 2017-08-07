@@ -16,32 +16,32 @@ class TestPEP484(parser_test_base.ParserTest):
   def test_convert_optional(self):
     t = pytd.GenericType(pytd.NamedType("typing.Optional"),
                          (pytd.NamedType("str"),))
-    self.assertEquals(self.convert(t), "Optional[str]")
+    self.assertEqual(self.convert(t), "Optional[str]")
 
   def test_convert_union(self):
     t = pytd.GenericType(pytd.NamedType("typing.Union"),
                          (pytd.NamedType("str"), pytd.NamedType("float")))
-    self.assertEquals(self.convert(t), "Union[str, float]")
+    self.assertEqual(self.convert(t), "Union[str, float]")
 
   def test_convert_list(self):
     t = pytd.NamedType("typing.List")
-    self.assertEquals(self.convert(t), "list")
+    self.assertEqual(self.convert(t), "list")
 
   def test_convert_tuple(self):
     t = pytd.NamedType("typing.Tuple")
-    self.assertEquals(self.convert(t), "tuple")
+    self.assertEqual(self.convert(t), "tuple")
 
   def test_convert_any(self):
     t = pytd.NamedType("typing.Any")
-    self.assertEquals(self.convert(t), "Any")
+    self.assertEqual(self.convert(t), "Any")
 
   def test_convert_anystr(self):
     t = pytd.NamedType("typing.AnyStr")
-    self.assertEquals(self.convert(t, python_version=(2, 7)),
-                      "AnyStr")
+    self.assertEqual(self.convert(t, python_version=(2, 7)),
+                     "AnyStr")
     t = pytd.NamedType("typing.AnyStr")
-    self.assertEquals(self.convert(t, python_version=(3, 4)),
-                      "AnyStr")
+    self.assertEqual(self.convert(t, python_version=(3, 4)),
+                     "AnyStr")
 
 
 if __name__ == "__main__":

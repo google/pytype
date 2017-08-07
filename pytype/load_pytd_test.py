@@ -60,8 +60,8 @@ class ImportPathsTest(unittest.TestCase):
       self.options.tweak(pythonpath=[d.path])
       loader = load_pytd.Loader("base", self.options)
       mod = loader.import_name("foo")
-      self.assertEquals("__builtin__.int", mod.Lookup("foo.x").type.cls.name)
-      self.assertEquals("__builtin__.int", mod.Lookup("foo.x").type.name)
+      self.assertEqual("__builtin__.int", mod.Lookup("foo.x").type.cls.name)
+      self.assertEqual("__builtin__.int", mod.Lookup("foo.x").type.name)
 
   def testNoInit(self):
     with utils.Tempdir() as d:
@@ -91,7 +91,7 @@ class ImportPathsTest(unittest.TestCase):
       loader = load_pytd.Loader("base", self.options)
       module1 = loader.import_name("module1")
       f, = module1.Lookup("module1.get_bar").signatures
-      self.assertEquals("module2.Bar", f.return_type.cls.name)
+      self.assertEqual("module2.Bar", f.return_type.cls.name)
 
   def testCircularDependency(self):
     with utils.Tempdir() as d:
@@ -111,8 +111,8 @@ class ImportPathsTest(unittest.TestCase):
       bar = loader.import_name("bar")
       f1, = foo.Lookup("foo.get_bar").signatures
       f2, = bar.Lookup("bar.get_foo").signatures
-      self.assertEquals("bar.Bar", f1.return_type.cls.name)
-      self.assertEquals("foo.Foo", f2.return_type.cls.name)
+      self.assertEqual("bar.Bar", f1.return_type.cls.name)
+      self.assertEqual("foo.Foo", f2.return_type.cls.name)
 
   def testRelative(self):
     with utils.Tempdir() as d:
@@ -148,7 +148,7 @@ class ImportPathsTest(unittest.TestCase):
       loader = load_pytd.Loader("base", self.options)
       module2 = loader.import_name("module2")
       f, = module2.Lookup("module2.f").signatures
-      self.assertEquals("List[int]", pytd.Print(f.return_type))
+      self.assertEqual("List[int]", pytd.Print(f.return_type))
 
   def testImportMapCongruence(self):
     with utils.Tempdir() as d:
@@ -167,7 +167,7 @@ class ImportPathsTest(unittest.TestCase):
       self.options.imports_map = imports_map
       loader = load_pytd.Loader("base", self.options)
       normal = loader.import_name("foo")
-      self.assertEquals("foo", normal.name)
+      self.assertEqual("foo", normal.name)
       loader.import_name("bar")  # check that we can resolve against another.foo
       another = loader.import_name("another.foo")
       # We do *not* treat foo.X and another.foo.X the same, because Python
@@ -182,8 +182,8 @@ class ImportPathsTest(unittest.TestCase):
       empty1 = loader.import_name("empty1")
       empty2 = loader.import_name("empty2")
       self.assertIsNot(empty1, empty2)
-      self.assertEquals("empty1", empty1.name)
-      self.assertEquals("empty2", empty2.name)
+      self.assertEqual("empty1", empty1.name)
+      self.assertEqual("empty2", empty2.name)
 
 
 _Module = collections.namedtuple("_", ["module_name", "file_name"])
@@ -285,7 +285,7 @@ class PickledPyiLoaderTest(unittest.TestCase):
       self._PickleModules(d, foo)
       loaded_ast = self._LoadPickledModule(d, foo)
       g = loaded_ast.Lookup("foo.g")
-      self.assertEquals(g.type.function, loaded_ast.Lookup("foo.f"))
+      self.assertEqual(g.type.function, loaded_ast.Lookup("foo.f"))
 
 
 if __name__ == "__main__":

@@ -114,8 +114,8 @@ class PytypeTest(unittest.TestCase):
       errors = list(csv.reader(f, delimiter=","))
     num, expected_num = len(errors), len(expected_errors)
     try:
-      self.assertEquals(num, expected_num,
-                        "Expected %d errors, got %d" % (expected_num, num))
+      self.assertEqual(num, expected_num,
+                       "Expected %d errors, got %d" % (expected_num, num))
       for error, expected_error in zip(errors, expected_errors):
         self.assertEqual(expected_error, error[2],
                          "Expected %r, got %r" % (expected_error, error[2]))
@@ -166,13 +166,13 @@ class PytypeTest(unittest.TestCase):
     return pickled_location
 
   def testPickledFileStableness(self):
-    # Tests the the pickled format is stable under a constant PYTHONHASHSEED.
+    # Tests that the pickled format is stable under a constant PYTHONHASHSEED.
     with utils.Tempdir() as d:
       l_1 = self.GeneratePickledSimpleFile(d, "simple1.pickled")
       l_2 = self.GeneratePickledSimpleFile(d, "simple2.pickled")
       with open(l_1, "rb") as f_1:
         with open(l_2, "rb") as f_2:
-          self.assertEquals(f_1.read(), f_2.read())
+          self.assertEqual(f_1.read(), f_2.read())
 
   def testGeneratePickledAst(self):
     with utils.Tempdir() as d:

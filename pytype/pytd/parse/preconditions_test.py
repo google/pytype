@@ -34,14 +34,14 @@ class PreconditionsTest(unittest.TestCase):
 
   def testClassNamePrecondition(self):
     c = preconditions._ClassNamePrecondition("str")
-    self.assertEquals({"str"}, c.allowed_types())
+    self.assertEqual({"str"}, c.allowed_types())
     c.check("abc")
     self.assertError("actual=int.*expected=str", c, 1)
 
   def testTuplePrecondition(self):
     c = preconditions._TuplePrecondition(
         preconditions._ClassNamePrecondition("int"))
-    self.assertEquals({"int"}, c.allowed_types())
+    self.assertEqual({"int"}, c.allowed_types())
     c.check(())
     c.check((1,))
     c.check((1, 2))
@@ -51,7 +51,7 @@ class PreconditionsTest(unittest.TestCase):
     c = preconditions._OrPrecondition([
         preconditions._ClassNamePrecondition("int"),
         preconditions._ClassNamePrecondition("str")])
-    self.assertEquals({"int", "str"}, c.allowed_types())
+    self.assertEqual({"int", "str"}, c.allowed_types())
     c.check(1)
     c.check("abc")
     self.assertError(
@@ -60,7 +60,7 @@ class PreconditionsTest(unittest.TestCase):
 
   def testIsInstancePrecondition(self):
     c = preconditions._IsInstancePrecondition(BaseClass)
-    self.assertEquals({BaseClass}, c.allowed_types())
+    self.assertEqual({BaseClass}, c.allowed_types())
     c.check(BaseClass())
     c.check(SubClass())
     self.assertError("actual=str.*expected_superclass=BaseClass", c, "foo")
@@ -74,7 +74,7 @@ class CallCheckerTest(unittest.TestCase):
         ("s", preconditions._ClassNamePrecondition("str"))])
 
   def testAllowedTypes(self):
-    self.assertEquals({"int", "str"}, self.checker.allowed_types())
+    self.assertEqual({"int", "str"}, self.checker.allowed_types())
 
   def assertError(self, regex, *args, **kwargs):
     self.assertRaisesRegexp(
@@ -97,7 +97,7 @@ class ParserTest(unittest.TestCase):
 
   def assertClassName(self, class_name, condition):
     self.assertIsInstance(condition, preconditions._ClassNamePrecondition)
-    self.assertEquals(class_name, condition._class_name)
+    self.assertEqual(class_name, condition._class_name)
 
   def assertOr(self, names, condition):
     def get_name(c):
@@ -105,7 +105,7 @@ class ParserTest(unittest.TestCase):
       return c._class_name
 
     self.assertIsInstance(condition, preconditions._OrPrecondition)
-    self.assertEquals(names, [get_name(c) for c in condition._choices])
+    self.assertEqual(names, [get_name(c) for c in condition._choices])
 
   def testName(self):
     self.assertClassName("Foo", preconditions.parse("Foo"))
@@ -119,7 +119,7 @@ class ParserTest(unittest.TestCase):
       preconditions.register(BaseClass)
       condition = preconditions.parse("{BaseClass}")
       self.assertIsInstance(condition, preconditions._IsInstancePrecondition)
-      self.assertEquals(BaseClass, condition._cls)
+      self.assertEqual(BaseClass, condition._cls)
       # Can't re-register a class.
       self.assertRaises(AssertionError, preconditions.register, BaseClass)
     finally:
@@ -156,9 +156,9 @@ class ParserTest(unittest.TestCase):
     self.assertRaises(ValueError, preconditions.parse, "?")
 
   def testParseArg(self):
-    self.assertEquals(("x", None), preconditions.parse_arg("x"))
+    self.assertEqual(("x", None), preconditions.parse_arg("x"))
     name, cond = preconditions.parse_arg("foo: str")
-    self.assertEquals("foo", name)
+    self.assertEqual("foo", name)
     self.assertClassName("str", cond)
 
 

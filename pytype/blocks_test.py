@@ -19,7 +19,7 @@ class OrderingTest(test_inference.InferenceTest):
     ], name="trivial")
     ordered_code = blocks.order_code(co)
     b0, = ordered_code.order
-    self.assertEquals(2, len(b0.code))
+    self.assertEqual(2, len(b0.code))
     self.assertItemsEqual([], b0.incoming)
     self.assertItemsEqual([], b0.outgoing)
 
@@ -37,7 +37,7 @@ class OrderingTest(test_inference.InferenceTest):
         0x53,  # 18 RETURN_VALUE
     ], name="yield")
     ordered_code = blocks.order_code(co)
-    self.assertEquals(ordered_code.co_name, "yield")
+    self.assertEqual(ordered_code.co_name, "yield")
     b0, b1 = ordered_code.order
     self.assertItemsEqual(b0.outgoing, [b1])
     self.assertItemsEqual(b1.incoming, [b0])
@@ -69,7 +69,7 @@ class OrderingTest(test_inference.InferenceTest):
         0x53,  # 34 RETURN_VALUE
     ], name="triangle")
     ordered_code = blocks.order_code(co)
-    self.assertEquals(ordered_code.co_name, "triangle")
+    self.assertEqual(ordered_code.co_name, "triangle")
     b0, b1, b2 = ordered_code.order
     self.assertItemsEqual(b0.incoming, [])
     self.assertItemsEqual(b0.outgoing, [b1, b2])
@@ -110,7 +110,7 @@ class OrderingTest(test_inference.InferenceTest):
         0x53,  # 44 RETURN_VALUE
     ], name="diamond")
     ordered_code = blocks.order_code(co)
-    self.assertEquals(ordered_code.co_name, "diamond")
+    self.assertEqual(ordered_code.co_name, "diamond")
     b0, b1, b2, b3 = ordered_code.order
     self.assertItemsEqual(b0.incoming, [])
     self.assertItemsEqual(b0.outgoing, [b1, b2])
@@ -133,9 +133,9 @@ class OrderingTest(test_inference.InferenceTest):
         0x53,  # 12 RETURN_VALUE, dead.
     ], name="raise")
     ordered_code = blocks.order_code(co)
-    self.assertEquals(ordered_code.co_name, "raise")
+    self.assertEqual(ordered_code.co_name, "raise")
     b0, = ordered_code.order
-    self.assertEquals(2, len(b0.code))
+    self.assertEqual(2, len(b0.code))
     self.assertItemsEqual(b0.incoming, [])
     self.assertItemsEqual(b0.outgoing, [])
 
@@ -153,8 +153,8 @@ class OrderingTest(test_inference.InferenceTest):
     ], name="call")
     ordered_code = blocks.order_code(co)
     b0, b1 = ordered_code.order
-    self.assertEquals(2, len(b0.code))
-    self.assertEquals(3, len(b1.code))
+    self.assertEqual(2, len(b0.code))
+    self.assertEqual(3, len(b1.code))
     self.assertItemsEqual(b0.outgoing, [b1])
 
   def test_finally(self):
@@ -177,10 +177,10 @@ class OrderingTest(test_inference.InferenceTest):
     ], name="finally")
     ordered_code = blocks.order_code(co)
     b0, b1, b2, b3 = ordered_code.order
-    self.assertEquals(2, len(b0.code))
-    self.assertEquals(1, len(b1.code))
-    self.assertEquals(1, len(b2.code))
-    self.assertEquals(2, len(b3.code))
+    self.assertEqual(2, len(b0.code))
+    self.assertEqual(1, len(b1.code))
+    self.assertEqual(1, len(b2.code))
+    self.assertEqual(2, len(b3.code))
     self.assertItemsEqual(b0.outgoing, [b1, b2])
 
   def test_except(self):
@@ -208,10 +208,10 @@ class OrderingTest(test_inference.InferenceTest):
     ], name="except")
     ordered_code = blocks.order_code(co)
     b0, b1, b2, b3 = ordered_code.order
-    self.assertEquals(2, len(b0.code))
-    self.assertEquals(1, len(b1.code))
-    self.assertEquals(4, len(b2.code))
-    self.assertEquals(2, len(b3.code))
+    self.assertEqual(2, len(b0.code))
+    self.assertEqual(1, len(b1.code))
+    self.assertEqual(4, len(b2.code))
+    self.assertEqual(2, len(b3.code))
     self.assertItemsEqual([b1, b2], b0.outgoing)
     self.assertItemsEqual([b3], b1.outgoing)
     self.assertItemsEqual([b3], b2.outgoing)
@@ -228,7 +228,7 @@ class OrderingTest(test_inference.InferenceTest):
     ], name="return")
     ordered_code = blocks.order_code(co)
     b0, = ordered_code.order
-    self.assertEquals(2, len(b0.code))
+    self.assertEqual(2, len(b0.code))
 
   def test_with(self):
     # Disassembled from:
@@ -252,11 +252,11 @@ class OrderingTest(test_inference.InferenceTest):
     ], name="with")
     ordered_code = blocks.order_code(co)
     b0, b1, b2, b3, b4 = ordered_code.order
-    self.assertEquals(4, len(b0.code))
-    self.assertEquals(1, len(b1.code))
-    self.assertEquals(1, len(b2.code))
-    self.assertEquals(1, len(b3.code))
-    self.assertEquals(2, len(b4.code))
+    self.assertEqual(4, len(b0.code))
+    self.assertEqual(1, len(b1.code))
+    self.assertEqual(1, len(b2.code))
+    self.assertEqual(1, len(b3.code))
+    self.assertEqual(2, len(b4.code))
 
 
 class BlockStackTest(test_inference.InferenceTest):
@@ -278,8 +278,8 @@ class BlockStackTest(test_inference.InferenceTest):
     ], name="finally")
     bytecode = opcodes.dis(co.co_code, python_version=self.PYTHON_VERSION)
     blocks.add_pop_block_targets(bytecode)
-    self.assertEquals(bytecode[3], bytecode[0].target)
-    self.assertEquals(bytecode[3], bytecode[1].block_target)
+    self.assertEqual(bytecode[3], bytecode[0].target)
+    self.assertEqual(bytecode[3], bytecode[1].block_target)
 
   def test_except(self):
     # Disassembled from:
@@ -301,8 +301,8 @@ class BlockStackTest(test_inference.InferenceTest):
     ], name="except")
     bytecode = opcodes.dis(co.co_code, python_version=self.PYTHON_VERSION)
     blocks.add_pop_block_targets(bytecode)
-    self.assertEquals(bytecode[3], bytecode[0].target)
-    self.assertEquals(bytecode[3], bytecode[1].block_target)
+    self.assertEqual(bytecode[3], bytecode[0].target)
+    self.assertEqual(bytecode[3], bytecode[1].block_target)
 
   def test_with(self):
     # Disassembled from:
@@ -321,8 +321,8 @@ class BlockStackTest(test_inference.InferenceTest):
     ], name="with")
     bytecode = opcodes.dis(co.co_code, python_version=self.PYTHON_VERSION)
     blocks.add_pop_block_targets(bytecode)
-    self.assertEquals(bytecode[5], bytecode[1].target)
-    self.assertEquals(bytecode[5], bytecode[3].block_target)
+    self.assertEqual(bytecode[5], bytecode[1].target)
+    self.assertEqual(bytecode[5], bytecode[3].block_target)
 
   def test_loop(self):
     # Disassembled from:
@@ -339,10 +339,10 @@ class BlockStackTest(test_inference.InferenceTest):
     ])
     bytecode = opcodes.dis(co.co_code, python_version=self.PYTHON_VERSION)
     blocks.add_pop_block_targets(bytecode)
-    self.assertEquals(bytecode[5], bytecode[0].target)
-    self.assertEquals(bytecode[4], bytecode[2].target)
-    self.assertEquals(bytecode[1], bytecode[3].target)
-    self.assertEquals(bytecode[5], bytecode[4].block_target)
+    self.assertEqual(bytecode[5], bytecode[0].target)
+    self.assertEqual(bytecode[4], bytecode[2].target)
+    self.assertEqual(bytecode[1], bytecode[3].target)
+    self.assertEqual(bytecode[5], bytecode[4].block_target)
 
   def test_break(self):
     # Disassembled from:
@@ -364,10 +364,10 @@ class BlockStackTest(test_inference.InferenceTest):
     ])
     bytecode = opcodes.dis(co.co_code, python_version=self.PYTHON_VERSION)
     blocks.add_pop_block_targets(bytecode)
-    self.assertEquals(bytecode[9], bytecode[0].target)
-    self.assertEquals(bytecode[9], bytecode[5].block_target)
-    self.assertEquals(bytecode[1], bytecode[6].target)
-    self.assertEquals(bytecode[1], bytecode[7].target)
+    self.assertEqual(bytecode[9], bytecode[0].target)
+    self.assertEqual(bytecode[9], bytecode[5].block_target)
+    self.assertEqual(bytecode[1], bytecode[6].target)
+    self.assertEqual(bytecode[1], bytecode[7].target)
 
   def test_continue(self):
     # Disassembled from:
@@ -396,13 +396,13 @@ class BlockStackTest(test_inference.InferenceTest):
     ])
     bytecode = opcodes.dis(co.co_code, python_version=self.PYTHON_VERSION)
     blocks.add_pop_block_targets(bytecode)
-    self.assertEquals(bytecode[14], bytecode[0].target)
-    self.assertEquals(bytecode[13], bytecode[2].target)
-    self.assertEquals(bytecode[7], bytecode[3].target)
-    self.assertEquals(bytecode[1], bytecode[4].target)
-    self.assertEquals(bytecode[1], bytecode[6].target)
-    self.assertEquals(bytecode[1], bytecode[10].target)
-    self.assertEquals(bytecode[1], bytecode[12].target)
+    self.assertEqual(bytecode[14], bytecode[0].target)
+    self.assertEqual(bytecode[13], bytecode[2].target)
+    self.assertEqual(bytecode[7], bytecode[3].target)
+    self.assertEqual(bytecode[1], bytecode[4].target)
+    self.assertEqual(bytecode[1], bytecode[6].target)
+    self.assertEqual(bytecode[1], bytecode[10].target)
+    self.assertEqual(bytecode[1], bytecode[12].target)
 
 if __name__ == "__main__":
   unittest.main()

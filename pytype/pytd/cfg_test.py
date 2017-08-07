@@ -14,13 +14,13 @@ class CFGTest(unittest.TestCase):
     n2 = n1.ConnectNew("n2")
     n3 = n1.ConnectNew("n3")
     n4 = n3.ConnectNew("n4")
-    self.assertEquals("<0>foo", n1.Label())
-    self.assertEquals(len(n1.outgoing), 2)
-    self.assertEquals(len(n2.outgoing), 0)
-    self.assertEquals(len(n3.outgoing), 1)
-    self.assertEquals(len(n2.incoming), 1)
-    self.assertEquals(len(n3.incoming), 1)
-    self.assertEquals(len(n4.incoming), 1)
+    self.assertEqual("<0>foo", n1.Label())
+    self.assertEqual(len(n1.outgoing), 2)
+    self.assertEqual(len(n2.outgoing), 0)
+    self.assertEqual(len(n3.outgoing), 1)
+    self.assertEqual(len(n2.incoming), 1)
+    self.assertEqual(len(n3.incoming), 1)
+    self.assertEqual(len(n4.incoming), 1)
     self.assertIn(n2, n1.outgoing)
     self.assertIn(n3, n1.outgoing)
     self.assertIn(n1, n2.incoming)
@@ -34,11 +34,11 @@ class CFGTest(unittest.TestCase):
     v1 = u.AddBinding(None, source_set=[], where=node)
     v2 = u.AddBinding(u"data", source_set=[], where=node)
     v3 = u.AddBinding({1: 2}, source_set=[], where=node)
-    self.assertEquals(v1.data, None)
-    self.assertEquals(v2.data, u"data")
-    self.assertEquals(v3.data, {1: 2})
-    self.assertEquals("<binding of variable 0 to data %d>" % id(v3.data),
-                      str(v3))
+    self.assertEqual(v1.data, None)
+    self.assertEqual(v2.data, u"data")
+    self.assertEqual(v3.data, {1: 2})
+    self.assertEqual("<binding of variable 0 to data %d>" % id(v3.data),
+                     str(v3))
 
   def testGetAttro(self):
     p = cfg.Program()
@@ -46,13 +46,13 @@ class CFGTest(unittest.TestCase):
     u = p.NewVariable()
     data = [1, 2, 3]
     a = u.AddBinding(data, source_set=[], where=node)
-    self.assertEquals(a.variable.bindings, [a])
+    self.assertEqual(a.variable.bindings, [a])
     origin, = a.origins  # we expect exactly one origin
-    self.assertEquals(origin.where, node)
-    self.assertEquals(len(origin.source_sets), 1)
+    self.assertEqual(origin.where, node)
+    self.assertEqual(len(origin.source_sets), 1)
     source_set, = origin.source_sets
-    self.assertEquals(list(source_set), [])
-    self.assertEquals(a.data, data)
+    self.assertEqual(list(source_set), [])
+    self.assertEqual(a.data, data)
 
   def testGetOrigins(self):
     p = cfg.Program()
@@ -64,7 +64,7 @@ class CFGTest(unittest.TestCase):
     expected_source_sets = [[], [a], [a, b]]
     for binding, expected_source_set in zip([a, b, c], expected_source_sets):
       origin, = binding.origins
-      self.assertEquals(origin.where, node)
+      self.assertEqual(origin.where, node)
       source_set, = origin.source_sets
       self.assertItemsEqual(list(source_set), expected_source_set)
 
@@ -75,7 +75,7 @@ class CFGTest(unittest.TestCase):
     d = p.NewVariable()
     d.AddBinding("v1", source_set=[], where=node1)
     d.AddBinding("v2", source_set=[], where=node2)
-    self.assertEquals(len(d.bindings), 2)
+    self.assertEqual(len(d.bindings), 2)
 
   def testAsciiTree(self):
     p = cfg.Program()
@@ -107,7 +107,7 @@ class CFGTest(unittest.TestCase):
     v2 = v.AddBinding(2, source_set=[u1], where=n1)
     v3a = v.AddBinding(3, source_set=[], where=n1)
     v3b = v.AddBinding(3, source_set=[u1], where=n2)
-    self.assertEquals(v3a, v3b)
+    self.assertEqual(v3a, v3b)
     v3 = v3a
     self.assertTrue(v1.HasSource(v1))
     self.assertTrue(v2.HasSource(v2))
@@ -185,10 +185,10 @@ class CFGTest(unittest.TestCase):
     self.assertFalse(a.IsVisible(n2) or b.IsVisible(n2))
     self.assertTrue(a.IsVisible(n3))
     self.assertTrue(b.IsVisible(n4))
-    self.assertEquals(ab.Filter(n1), [])
-    self.assertEquals(ab.Filter(n2), [])
-    self.assertEquals(ab.FilteredData(n3), ["A"])
-    self.assertEquals(ab.FilteredData(n4), ["B"])
+    self.assertEqual(ab.Filter(n1), [])
+    self.assertEqual(ab.Filter(n2), [])
+    self.assertEqual(ab.FilteredData(n3), ["A"])
+    self.assertEqual(ab.FilteredData(n4), ["B"])
     self.assertSameElements(["A", "B"], ab.FilteredData(n5))
     self.assertSameElements(["A", "B"], ab.FilteredData(n6))
 
@@ -239,13 +239,13 @@ class CFGTest(unittest.TestCase):
     self.assertTrue(f.FindAnyPathToNode(n4, n1, [n3]))
     self.assertFalse(f.FindAnyPathToNode(n4, n1, [n4]))
     self.assertFalse(f.FindAnyPathToNode(n4, n1, [n2, n3]))
-    self.assertEquals([n1], list(f.FindShortestPathToNode(n1, n1, [])))
-    self.assertEquals([n1], list(f.FindShortestPathToNode(n1, n1, [n1])))
+    self.assertEqual([n1], list(f.FindShortestPathToNode(n1, n1, [])))
+    self.assertEqual([n1], list(f.FindShortestPathToNode(n1, n1, [n1])))
     self.assertIsNotNone(f.FindShortestPathToNode(n4, n1, [n1]))
-    self.assertEquals([n4, n3, n1],
-                      list(f.FindShortestPathToNode(n4, n1, [n2])))
-    self.assertEquals([n4, n2, n1],
-                      list(f.FindShortestPathToNode(n4, n1, [n3])))
+    self.assertEqual([n4, n3, n1],
+                     list(f.FindShortestPathToNode(n4, n1, [n2])))
+    self.assertEqual([n4, n2, n1],
+                     list(f.FindShortestPathToNode(n4, n1, [n3])))
     self.assertIsNone(f.FindShortestPathToNode(n4, n1, [n4]))
     self.assertIsNone(f.FindShortestPathToNode(n4, n1, [n2, n3]))
     weights = {n5: 0, n4: 1, n2: 2, n1: 3}
@@ -282,12 +282,12 @@ class CFGTest(unittest.TestCase):
     n6.ConnectTo(n8)
     n7.ConnectTo(n8)
     f = p.CreateSolver()._path_finder
-    self.assertEquals((True, [n5, n4]), f.FindNodeBackwards(n8, n1, ()))
+    self.assertEqual((True, [n5, n4]), f.FindNodeBackwards(n8, n1, ()))
     self.assertFalse(f.FindNodeBackwards(n8, n1, (n4,))[0])
-    self.assertEquals((True, [n5]), f.FindNodeBackwards(n8, n5, ()))
-    self.assertEquals((True, [n5, n4]), f.FindNodeBackwards(n5, n4, ()))
-    self.assertEquals((True, [n5, n4, n2]), f.FindNodeBackwards(n5, n2, ()))
-    self.assertEquals((True, [n5, n4]), f.FindNodeBackwards(n5, n3, ()))
+    self.assertEqual((True, [n5]), f.FindNodeBackwards(n8, n5, ()))
+    self.assertEqual((True, [n5, n4]), f.FindNodeBackwards(n5, n4, ()))
+    self.assertEqual((True, [n5, n4, n2]), f.FindNodeBackwards(n5, n2, ()))
+    self.assertEqual((True, [n5, n4]), f.FindNodeBackwards(n5, n3, ()))
 
   def testConditionOnStartNode2(self):
     # Test that a condition on the initial node is tests.
@@ -633,8 +633,8 @@ class CFGTest(unittest.TestCase):
     p = cfg.Program()
     n1 = p.NewCFGNode("node1")
     n2 = n1.ConnectNew("node2")
-    self.assertEquals(n1.name, "node1")
-    self.assertEquals(n2.name, "node2")
+    self.assertEqual(n1.name, "node1")
+    self.assertEqual(n2.name, "node2")
     u = p.NewVariable()
     a1 = u.AddBinding(1, source_set=[], where=n1)
     a2 = u.AddBinding(2, source_set=[], where=n1)
@@ -708,8 +708,8 @@ class CFGTest(unittest.TestCase):
     x = p.NewVariable()
     a = x.AddBinding("a", source_set=[], where=n2)
     p.entrypoint = n1
-    self.assertEquals(x.Filter(n1), [])
-    self.assertEquals(x.Filter(n2), [a])
+    self.assertEqual(x.Filter(n1), [])
+    self.assertEqual(x.Filter(n2), [a])
 
   def testHiddenConflict1(self):
     p = cfg.Program()
@@ -754,16 +754,16 @@ class CFGTest(unittest.TestCase):
     x = p.NewVariable()
     a = x.AddBinding("a")
     p.entrypoint = n1
-    self.assertEquals(x.Filter(n1), [])
-    self.assertEquals(x.Filter(n2), [])
+    self.assertEqual(x.Filter(n1), [])
+    self.assertEqual(x.Filter(n2), [])
     a.AddOrigin(n2, [])
     p.entrypoint = n1
-    self.assertEquals(x.Filter(n1), [])
-    self.assertEquals(x.Filter(n2), [a])
+    self.assertEqual(x.Filter(n1), [])
+    self.assertEqual(x.Filter(n2), [a])
     a.AddOrigin(n1, [a])
     p.entrypoint = n1
-    self.assertEquals(x.Filter(n1), [a])
-    self.assertEquals(x.Filter(n2), [a])
+    self.assertEqual(x.Filter(n1), [a])
+    self.assertEqual(x.Filter(n2), [a])
 
   def testAssignToNew(self):
     p = cfg.Program()
@@ -776,8 +776,8 @@ class CFGTest(unittest.TestCase):
     ay, = y.bindings
     z = y.AssignToNewVariable(n3)
     az, = z.bindings
-    self.assertEquals([v.data for v in y.bindings], ["a"])
-    self.assertEquals([v.data for v in z.bindings], ["a"])
+    self.assertEqual([v.data for v in y.bindings], ["a"])
+    self.assertEqual([v.data for v in z.bindings], ["a"])
     p.entrypoint = n1
     self.assertTrue(n1.HasCombination([ax]))
     self.assertTrue(n2.HasCombination([ax, ay]))
@@ -795,7 +795,7 @@ class CFGTest(unittest.TestCase):
     ox, = x.bindings[0].origins
     oy, = y.bindings[0].origins
     oz, = z.bindings[0].origins
-    self.assertEquals(ox, oy, oz)
+    self.assertEqual(ox, oy, oz)
 
   def testPasteVariable(self):
     p = cfg.Program()
@@ -807,8 +807,8 @@ class CFGTest(unittest.TestCase):
     y = p.NewVariable()
     y.PasteVariable(x, n2)
     ay, by = y.bindings
-    self.assertEquals([v.data for v in x.bindings], ["a", "b"])
-    self.assertEquals([v.data for v in y.bindings], ["a", "b"])
+    self.assertEqual([v.data for v in x.bindings], ["a", "b"])
+    self.assertEqual([v.data for v in y.bindings], ["a", "b"])
     p.entrypoint = n1
     self.assertTrue(n1.HasCombination([ax]))
     self.assertTrue(n1.HasCombination([bx]))
@@ -826,8 +826,8 @@ class CFGTest(unittest.TestCase):
     y = p.NewVariable()
     y.PasteVariable(x, n1)
     ay, _ = y.bindings
-    self.assertEquals([v.data for v in x.bindings], ["a", "b"])
-    self.assertEquals([v.data for v in y.bindings], ["a", "b"])
+    self.assertEqual([v.data for v in x.bindings], ["a", "b"])
+    self.assertEqual([v.data for v in y.bindings], ["a", "b"])
     o, = ay.origins
     self.assertItemsEqual([cfg.SourceSet([])], o.source_sets)
     o, = ay.origins
@@ -869,7 +869,7 @@ class CFGTest(unittest.TestCase):
     ax = x.AddBinding("a", source_set=[], where=n1)
     y = p.NewVariable()
     y.PasteBinding(ax)
-    self.assertEquals(x.data, y.data)
+    self.assertEqual(x.data, y.data)
 
   def testId(self):
     p = cfg.Program()

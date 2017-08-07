@@ -114,7 +114,7 @@ class DirectorTest(unittest.TestCase):
     error = errors.Error.for_test(
         errors.SEVERITY_ERROR, "message", error_name, filename=filename,
         lineno=lineno)
-    self.assertEquals(
+    self.assertEqual(
         expected,
         self._director.should_report_error(error))
 
@@ -269,8 +269,8 @@ class DirectorTest(unittest.TestCase):
       self._create(text)
       self.assertLessEqual(1, len(self._errorlog))
       error = list(self._errorlog)[0]
-      self.assertEquals(_TEST_FILENAME, error._filename)
-      self.assertEquals(1, error.lineno)
+      self.assertEqual(_TEST_FILENAME, error._filename)
+      self.assertEqual(1, error.lineno)
       self.assertRegexpMatches(str(error), message_regex)
 
     check_warning("Unknown pytype directive.*disalbe.*",
@@ -300,7 +300,7 @@ class DirectorTest(unittest.TestCase):
     z = None  # type: int  # and extra comments after, too
     # type: (int, float) -> str
     """)
-    self.assertEquals({
+    self.assertEqual({
         2: ("x = None", "int"),
         3: ("y = None", "str"),
         4: ("z = None", "int"),
@@ -315,7 +315,7 @@ class DirectorTest(unittest.TestCase):
     x = None  # type: float
     y = "# type: int"  # type: str
     """)
-    self.assertEquals({
+    self.assertEqual({
         3: ("x = None", "float"),
         4: ('y = "# type: int"', "str"),
     }, self._director.type_comments)
@@ -329,7 +329,7 @@ class DirectorTest(unittest.TestCase):
       )
     ]  # type: dict
     """)
-    self.assertEquals({
+    self.assertEqual({
         3: ("]", "dict"),
     }, self._director.type_comments)
 

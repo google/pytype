@@ -27,13 +27,13 @@ class UtilsTest(unittest.TestCase):
     update = self.builtins.Lookup("__builtin__.dict").Lookup("update")
     t = update.signatures[0].params[0].type
     self.assertIsInstance(t, pytd.GenericType)
-    self.assertEquals(t.base_type, pytd.ClassType("__builtin__.dict"))
+    self.assertEqual(t.base_type, pytd.ClassType("__builtin__.dict"))
 
   def testHasObjectSuperClass(self):
     cls = self.builtins.Lookup("__builtin__.memoryview")
-    self.assertEquals(cls.parents, (pytd.ClassType("__builtin__.object"),))
+    self.assertEqual(cls.parents, (pytd.ClassType("__builtin__.object"),))
     cls = self.builtins.Lookup("__builtin__.object")
-    self.assertEquals(cls.parents, ())
+    self.assertEqual(cls.parents, ())
 
   def testParsePyTD(self):
     """Test ParsePyTD()."""
@@ -63,8 +63,8 @@ class UtilsTest(unittest.TestCase):
       builtins.LoadPrecompiled(precompiled)
     self.assertIsNotNone(builtins._cached_builtins_pytd)
     b2, t2 = builtins.GetBuiltinsAndTyping()
-    self.assertEquals(pytd.Print(b1), pytd.Print(b2))
-    self.assertEquals(pytd.Print(t1), pytd.Print(t2))
+    self.assertEqual(pytd.Print(b1), pytd.Print(b2))
+    self.assertEqual(pytd.Print(t1), pytd.Print(t2))
 
 
 if __name__ == "__main__":

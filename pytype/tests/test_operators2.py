@@ -102,8 +102,8 @@ class CallErrorTests(test_inference.InferenceTest):
         return sys
       t_testSys()
       """, deep=False)
-    self.assertEquals(ty.Lookup("t_testSys").signatures[0].exceptions,
-                      self.nameerror)
+    self.assertEqual(ty.Lookup("t_testSys").signatures[0].exceptions,
+                     self.nameerror)
 
 if __name__ == "__main__":
   test_inference.main()

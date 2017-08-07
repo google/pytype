@@ -27,25 +27,25 @@ class MroTest(parser_test_base.ParserTest):
   """Test pytype.pytd.mro."""
 
   def testDedup(self):
-    self.assertEquals([], mro.Dedup([]))
-    self.assertEquals([1], mro.Dedup([1]))
-    self.assertEquals([1, 2], mro.Dedup([1, 2]))
-    self.assertEquals([1, 2], mro.Dedup([1, 2, 1]))
-    self.assertEquals([1, 2], mro.Dedup([1, 1, 2, 2]))
-    self.assertEquals([3, 2, 1], mro.Dedup([3, 2, 1, 3]))
+    self.assertEqual([], mro.Dedup([]))
+    self.assertEqual([1], mro.Dedup([1]))
+    self.assertEqual([1, 2], mro.Dedup([1, 2]))
+    self.assertEqual([1, 2], mro.Dedup([1, 2, 1]))
+    self.assertEqual([1, 2], mro.Dedup([1, 1, 2, 2]))
+    self.assertEqual([3, 2, 1], mro.Dedup([3, 2, 1, 3]))
 
   def testMROMerge(self):
-    self.assertEquals([], mro.MROMerge([[], []]))
-    self.assertEquals([1], mro.MROMerge([[], [1]]))
-    self.assertEquals([1], mro.MROMerge([[1], []]))
-    self.assertEquals([1, 2], mro.MROMerge([[1], [2]]))
-    self.assertEquals([1, 2], mro.MROMerge([[1, 2], [2]]))
-    self.assertEquals([1, 2, 3, 4], mro.MROMerge([[1, 2, 3], [2, 4]]))
-    self.assertEquals([1, 2, 3], mro.MROMerge([[1, 2], [1, 2, 3]]))
-    self.assertEquals([1, 2], mro.MROMerge([[1, 1], [2, 2]]))
-    self.assertEquals([1, 2, 3, 4, 5, 6],
-                      mro.MROMerge([[1, 3, 5], [2, 3, 4], [4, 5, 6]]))
-    self.assertEquals([1, 2, 3], mro.MROMerge([[1, 2, 1], [2, 3, 2]]))
+    self.assertEqual([], mro.MROMerge([[], []]))
+    self.assertEqual([1], mro.MROMerge([[], [1]]))
+    self.assertEqual([1], mro.MROMerge([[1], []]))
+    self.assertEqual([1, 2], mro.MROMerge([[1], [2]]))
+    self.assertEqual([1, 2], mro.MROMerge([[1, 2], [2]]))
+    self.assertEqual([1, 2, 3, 4], mro.MROMerge([[1, 2, 3], [2, 4]]))
+    self.assertEqual([1, 2, 3], mro.MROMerge([[1, 2], [1, 2, 3]]))
+    self.assertEqual([1, 2], mro.MROMerge([[1, 1], [2, 2]]))
+    self.assertEqual([1, 2, 3, 4, 5, 6],
+                     mro.MROMerge([[1, 3, 5], [2, 3, 4], [4, 5, 6]]))
+    self.assertEqual([1, 2, 3], mro.MROMerge([[1, 2, 1], [2, 3, 2]]))
 
   def testGetBasesInMRO(self):
     ast = parser.parse_string(textwrap.dedent("""

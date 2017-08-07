@@ -64,7 +64,7 @@ class SerializeAstTest(unittest.TestCase):
     indexer = serialize_ast.FindClassTypesVisitor()
     ast.Visit(indexer)
 
-    self.assertEquals(len(indexer.class_type_nodes), 9)
+    self.assertEqual(len(indexer.class_type_nodes), 9)
 
   def testNodeIndexVisitorUsage(self):
     """Confirms that the node index is used.
@@ -96,7 +96,7 @@ class SerializeAstTest(unittest.TestCase):
     new_ast = ast.Visit(serialize_ast.RenameModuleVisitor(module_name,
                                                           "other.name"))
 
-    self.assertEquals("other.name", new_ast.name)
+    self.assertEqual("other.name", new_ast.name)
     self.assertTrue(new_ast.Lookup("other.name.SomeClass"))
     self.assertTrue(new_ast.Lookup("other.name.constant"))
     self.assertTrue(new_ast.Lookup("other.name.ModuleFunction"))
@@ -124,10 +124,10 @@ class SerializeAstTest(unittest.TestCase):
     self.assertTrue(some_class)
     init_function = some_class.Lookup("__init__")
     self.assertTrue(init_function)
-    self.assertEquals(len(init_function.signatures), 1)
+    self.assertEqual(len(init_function.signatures), 1)
     signature, = init_function.signatures
     _, param2 = signature.params
-    self.assertEquals(param2.type.scope, "other.name.SomeClass")
+    self.assertEqual(param2.type.scope, "other.name.SomeClass")
 
   def testPickle(self):
     with utils.Tempdir() as d:
@@ -140,8 +140,8 @@ class SerializeAstTest(unittest.TestCase):
       with open(pickled_ast_filename, "rb") as fi:
         serialized_ast = pickle.load(fi)
       self.assertTrue(serialized_ast.ast)
-      self.assertEquals(serialized_ast.dependencies,
-                        ["__builtin__", "foo.bar.module1", "module2"])
+      self.assertEqual(serialized_ast.dependencies,
+                       ["__builtin__", "foo.bar.module1", "module2"])
 
   def testLoadTopLevel(self):
     """Tests that a pickled file can be read."""
@@ -157,7 +157,7 @@ class SerializeAstTest(unittest.TestCase):
 
       self.assertTrue(loaded_ast)
       self.assertTrue(loaded_ast is not original_ast)
-      self.assertEquals(loaded_ast.name, module_name)
+      self.assertEqual(loaded_ast.name, module_name)
       self.assertTrue(original_ast.ASTeq(loaded_ast))
       loaded_ast.Visit(visitors.VerifyLookup())
 
@@ -180,7 +180,7 @@ class SerializeAstTest(unittest.TestCase):
 
       self.assertTrue(loaded_ast)
       self.assertTrue(loaded_ast is not original_ast)
-      self.assertEquals(loaded_ast.name, "foo.bar.module1")
+      self.assertEqual(loaded_ast.name, "foo.bar.module1")
       self.assertTrue(original_ast.ASTeq(loaded_ast))
       loaded_ast.Visit(visitors.VerifyLookup())
 
@@ -224,7 +224,7 @@ class SerializeAstTest(unittest.TestCase):
 
       self.assertTrue(loaded_ast)
       self.assertTrue(loaded_ast is not original_ast)
-      self.assertEquals(loaded_ast.name, new_module_name)
+      self.assertEqual(loaded_ast.name, new_module_name)
       loaded_ast.Visit(visitors.VerifyLookup())
       self.assertFalse(original_ast.ASTeq(loaded_ast))
       ast_new_module, _ = self._GetAst(temp_dir=d, module_name=new_module_name)
@@ -244,7 +244,7 @@ class SerializeAstTest(unittest.TestCase):
       # Check that module1 wasn't created before storing.
       self.assertTrue(expected_name not in module_map)
       # Check that the saved ast had its name changed.
-      self.assertEquals(serializable_ast.ast.name, expected_name)
+      self.assertEqual(serializable_ast.ast.name, expected_name)
 
 
 if __name__ == "__main__":

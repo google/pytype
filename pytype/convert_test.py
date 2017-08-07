@@ -128,7 +128,7 @@ class ConvertTest(unittest.TestCase):
              [cls.type_parameters[0], cls.type_parameters[1]], self._vm)),
          (abstract.RET, self._vm.convert.str_type)])
     self.assertIsInstance(instance, abstract.Instance)
-    self.assertEquals(abstract.get_atomic_value(instance.cls), cls)
+    self.assertEqual(abstract.get_atomic_value(instance.cls), cls)
     self.assertItemsEqual(
         [(name, set(var.data))
          for name, var in instance.type_parameters.items()],
@@ -146,7 +146,7 @@ class ConvertTest(unittest.TestCase):
     instance = self._vm.convert.constant_to_value(
         abstract.AsInstance(x), {}, self._vm.root_cfg_node)
     self.assertIsInstance(cls.type_parameters[abstract.ARGS], abstract.Nothing)
-    self.assertEquals(
+    self.assertEqual(
         abstract.get_atomic_value(instance.type_parameters[abstract.ARGS]),
         self._vm.convert.empty)
 
@@ -164,7 +164,7 @@ class ConvertTest(unittest.TestCase):
                           [(abstract.ARGS, self._vm.convert.unsolvable),
                            (abstract.RET, self._vm.convert.int_type)])
     self.assertIsInstance(instance, abstract.Instance)
-    self.assertEquals(abstract.get_atomic_value(instance.cls), cls.base_cls)
+    self.assertEqual(abstract.get_atomic_value(instance.cls), cls.base_cls)
     self.assertItemsEqual(
         [(name, var.data) for name, var in instance.type_parameters.items()],
         [(abstract.ARGS, [self._vm.convert.unsolvable]),
@@ -178,7 +178,7 @@ class ConvertTest(unittest.TestCase):
         ast.Lookup("a.f"), {}, self._vm.root_cfg_node)
     sig, = f.signatures
     annot = sig.signature.annotations["args"]
-    self.assertEquals(pytd.Print(annot.get_instance_type()), "Tuple[int, ...]")
+    self.assertEqual(pytd.Print(annot.get_instance_type()), "Tuple[int, ...]")
 
   def test_function_with_starstarargs(self):
     ast = self._load_ast("a", """
@@ -188,7 +188,7 @@ class ConvertTest(unittest.TestCase):
         ast.Lookup("a.f"), {}, self._vm.root_cfg_node)
     sig, = f.signatures
     annot = sig.signature.annotations["kwargs"]
-    self.assertEquals(pytd.Print(annot.get_instance_type()), "Dict[str, int]")
+    self.assertEqual(pytd.Print(annot.get_instance_type()), "Dict[str, int]")
 
   def test_mro(self):
     ast = self._load_ast("a", """
@@ -209,13 +209,13 @@ class ConvertTest(unittest.TestCase):
     x = ast.Lookup("a.x").type
     tup = self._vm.convert.constant_to_value(x, {}, self._vm.root_cfg_node)
     widened_tup = self._vm.convert.widen_type(tup)
-    self.assertEquals(pytd.Print(widened_tup.get_instance_type()),
-                      "Iterable[int]")
+    self.assertEqual(pytd.Print(widened_tup.get_instance_type()),
+                     "Iterable[int]")
     y = ast.Lookup("a.y").type
     dct = self._vm.convert.constant_to_value(y, {}, self._vm.root_cfg_node)
     widened_dct = self._vm.convert.widen_type(dct)
-    self.assertEquals(pytd.Print(widened_dct.get_instance_type()),
-                      "Mapping[str, int]")
+    self.assertEqual(pytd.Print(widened_dct.get_instance_type()),
+                     "Mapping[str, int]")
 
   def test_abstract_method_round_trip(self):
     sig = pytd.Signature((), None, None, pytd.AnythingType(), (), ())

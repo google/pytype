@@ -32,7 +32,7 @@ class InferTest(unittest.TestCase):
     for filename, pythonpath, expected in test_cases:
       options = config.Options.create(pythonpath=pythonpath)
       module = infer.get_module_name(filename, options)
-      self.assertEquals(module, expected)
+      self.assertEqual(module, expected)
 
 
 if __name__ == "__main__":

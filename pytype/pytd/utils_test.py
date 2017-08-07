@@ -91,9 +91,9 @@ class TestUtils(parser_test_base.ParserTest):
     ast1 = self.Parse("""T = TypeVar("T")""", name="__builtin__")
     ast2 = self.Parse("""T = TypeVar("T")""")
     combined = utils.Concat(ast1, ast2)
-    self.assertEquals(combined.Lookup("__builtin__.T"),
-                      pytd.TypeParameter("T", scope="__builtin__"))
-    self.assertEquals(combined.Lookup("T"), pytd.TypeParameter("T", scope=None))
+    self.assertEqual(combined.Lookup("__builtin__.T"),
+                     pytd.TypeParameter("T", scope="__builtin__"))
+    self.assertEqual(combined.Lookup("T"), pytd.TypeParameter("T", scope=None))
 
   def testJoinTypes(self):
     """Test that JoinTypes() does recursive flattening."""
@@ -103,22 +103,22 @@ class TestUtils(parser_test_base.ParserTest):
     # ((n4) or n5) or n6
     nested2 = pytd.UnionType((pytd.UnionType((pytd.UnionType((n4,)), n5)), n6))
     joined = utils.JoinTypes([nested1, nested2])
-    self.assertEquals(joined.type_list,
-                      (n1, n2, n3, n4, n5, n6))
+    self.assertEqual(joined.type_list,
+                     (n1, n2, n3, n4, n5, n6))
 
   def testJoinSingleType(self):
     """Test that JoinTypes() returns single types as-is."""
     a = pytd.NamedType("a")
-    self.assertEquals(utils.JoinTypes([a]), a)
-    self.assertEquals(utils.JoinTypes([a, a]), a)
+    self.assertEqual(utils.JoinTypes([a]), a)
+    self.assertEqual(utils.JoinTypes([a, a]), a)
 
   def testJoinNothingType(self):
     """Test that JoinTypes() removes or collapses 'nothing'."""
     a = pytd.NamedType("a")
     nothing = pytd.NothingType()
-    self.assertEquals(utils.JoinTypes([a, nothing]), a)
-    self.assertEquals(utils.JoinTypes([nothing]), nothing)
-    self.assertEquals(utils.JoinTypes([nothing, nothing]), nothing)
+    self.assertEqual(utils.JoinTypes([a, nothing]), a)
+    self.assertEqual(utils.JoinTypes([nothing]), nothing)
+    self.assertEqual(utils.JoinTypes([nothing, nothing]), nothing)
 
   def testJoinEmptyTypesToNothing(self):
     """Test that JoinTypes() simplifies empty unions to 'nothing'."""
@@ -172,17 +172,17 @@ class TestUtils(parser_test_base.ParserTest):
 
   def testNamedTypeWithModule(self):
     """Test NamedTypeWithModule()."""
-    self.assertEquals(utils.NamedTypeWithModule("name"), pytd.NamedType("name"))
-    self.assertEquals(utils.NamedTypeWithModule("name", None),
-                      pytd.NamedType("name"))
-    self.assertEquals(utils.NamedTypeWithModule("name", "package"),
-                      pytd.NamedType("package.name"))
+    self.assertEqual(utils.NamedTypeWithModule("name"), pytd.NamedType("name"))
+    self.assertEqual(utils.NamedTypeWithModule("name", None),
+                     pytd.NamedType("name"))
+    self.assertEqual(utils.NamedTypeWithModule("name", "package"),
+                     pytd.NamedType("package.name"))
 
   def testOrderedSet(self):
     ordered_set = utils.OrderedSet(n/2 for n in range(10))
     ordered_set.add(-42)
     ordered_set.add(3)
-    self.assertEquals(tuple(ordered_set), (0, 1, 2, 3, 4, -42))
+    self.assertEqual(tuple(ordered_set), (0, 1, 2, 3, 4, -42))
 
   def testWrapTypeDeclUnit(self):
     """Test WrapTypeDeclUnit."""
@@ -223,14 +223,14 @@ class TestUtils(parser_test_base.ParserTest):
     a = A()
     a.m = {}
     a.m = {"foo": 1, "bar": 2}
-    self.assertEquals(a.get("x", "baz"), "baz")
+    self.assertEqual(a.get("x", "baz"), "baz")
     self.assertFalse("x" in a)
-    self.assertEquals(a.get("foo"), 1)
-    self.assertEquals(a["foo"], 1)
+    self.assertEqual(a.get("foo"), 1)
+    self.assertEqual(a["foo"], 1)
     self.assertTrue(a.has_key("foo"))
     self.assertTrue("foo" in a)
     self.assertTrue("bar" in a)
-    self.assertEquals(a.copy(), a.m)
+    self.assertEqual(a.copy(), a.m)
     self.assertItemsEqual(iter(a), ["foo", "bar"])
     self.assertItemsEqual(a.keys(), ["foo", "bar"])
     self.assertItemsEqual(a.viewkeys(), ["foo", "bar"])
@@ -256,16 +256,16 @@ class TestUtils(parser_test_base.ParserTest):
     self.assertFalse(a.has_key("foo"))
     self.assertTrue(a.has_key("bar"))
     value = a.pop("bar")
-    self.assertEquals(3, value)
+    self.assertEqual(3, value)
     self.assertFalse(a.has_key("bar"))
     a["new"] = 7
     item = a.popitem()
-    self.assertEquals(item, ("new", 7))
+    self.assertEqual(item, ("new", 7))
     a["1"] = 1
     a.setdefault("1", 11)
     a.setdefault("2", 22)
-    self.assertEquals(a["1"], 1)
-    self.assertEquals(a["2"], 22)
+    self.assertEqual(a["1"], 1)
+    self.assertEqual(a["2"], 22)
     a.update({"3": 33})
     self.assertItemsEqual(a.items(), (("1", 1), ("2", 22), ("3", 33)))
     a.clear()
@@ -276,7 +276,7 @@ class TestUtils(parser_test_base.ParserTest):
       pass
     a = A()
     a.m = {x: x for x in range(42)}
-    self.assertEquals(42, len(a))
+    self.assertEqual(42, len(a))
 
   def testBuiltinAlias(self):
     src = "Number = int"

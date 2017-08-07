@@ -44,7 +44,7 @@ class TracebackTest(test_inference.InferenceTest):
     """)
     self.assertErrorLogIs(errors, [(2, "attribute-error", r"upper.*int$")])
     error, = errors
-    self.assertEquals(error.methodname, "f")
+    self.assertEqual(error.methodname, "f")
 
   def test_comprehension_in_traceback(self):
     _, errors = self.InferAndCheck("""\

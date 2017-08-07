@@ -220,13 +220,13 @@ class IsInstanceTest(AbstractTestBase):
     for b in result.bindings:
       terms = set()
       for o in b.origins:
-        self.assertEquals(node, o.where)
+        self.assertEqual(node, o.where)
         for sources in o.source_sets:
           terms.add(" ".join(sorted(
               "%s:%d" % (name_map[b.variable], b.variable.bindings.index(b))
               for b in sources)))
       result_map[b.data] = terms
-    self.assertEquals(expected, result_map)
+    self.assertEqual(expected, result_map)
 
   def test_call_single_bindings(self):
     right = self.new_var(self._str_class)
@@ -257,7 +257,7 @@ class IsInstanceTest(AbstractTestBase):
     node, result = self._is_instance.call(
         self._node, None, abstract.FunctionArgs((), self.new_dict(),
                                                 None, None))
-    self.assertEquals(self._node, node)
+    self.assertEqual(self._node, node)
     self.assertIsInstance(abstract.get_atomic_value(result),
                           abstract.Unsolvable)
     self.assertRegexpMatches(str(self._vm.errorlog), "missing-parameter")
@@ -268,7 +268,7 @@ class IsInstanceTest(AbstractTestBase):
     node, result = self._is_instance.call(
         self._node, None, abstract.FunctionArgs((x, x), self.new_dict(foo=x),
                                                 None, None))
-    self.assertEquals(self._node, node)
+    self.assertEqual(self._node, node)
     self.assertIsInstance(abstract.get_atomic_value(result),
                           abstract.Unsolvable)
     self.assertRegexpMatches(
@@ -277,7 +277,7 @@ class IsInstanceTest(AbstractTestBase):
 
   def test_is_instance(self):
     def check(expected, left, right):
-      self.assertEquals(expected, self._is_instance._is_instance(left, right))
+      self.assertEqual(expected, self._is_instance._is_instance(left, right))
 
     # Unknown and Unsolvable are ambiguous.
     check(None, abstract.Unknown(self._vm), self._obj_class)
@@ -309,8 +309,8 @@ class IsInstanceTest(AbstractTestBase):
     def check(expected_ambiguous, expected_classes, value):
       classes = []
       ambiguous = special_builtins._flatten(value, classes)
-      self.assertEquals(expected_ambiguous, ambiguous)
-      self.assertEquals(expected_classes, classes)
+      self.assertEqual(expected_ambiguous, ambiguous)
+      self.assertEqual(expected_classes, classes)
 
     unknown = abstract.Unknown(self._vm)
 
@@ -351,7 +351,7 @@ class PyTDTest(AbstractTestBase):
     meta.official_name = "M"
     cls.cls = meta.to_variable(self._vm.root_cfg_node)
     pytd_cls = cls.to_pytd_def(self._vm.root_cfg_node, "X")
-    self.assertEquals(pytd_cls.metaclass, pytd.NamedType("M"))
+    self.assertEqual(pytd_cls.metaclass, pytd.NamedType("M"))
 
   def testInheritedMetaclass(self):
     parent = abstract.InterpreterClass("X", [], {}, None, self._vm)
@@ -373,7 +373,7 @@ class PyTDTest(AbstractTestBase):
     cls.cls = abstract.Union(
         [meta1, meta2], self._vm).to_variable(self._vm.root_cfg_node)
     pytd_cls = cls.to_pytd_def(self._vm.root_cfg_node, "X")
-    self.assertEquals(pytd_cls.metaclass, pytd.UnionType(
+    self.assertEqual(pytd_cls.metaclass, pytd.UnionType(
         (pytd.NamedType("M1"), pytd.NamedType("M2"))))
 
   def testToTypeWithView1(self):
@@ -389,7 +389,7 @@ class PyTDTest(AbstractTestBase):
             instance.type_parameters[abstract.T]: param_binding,
             param_binding.data.cls: param_binding.data.cls.bindings[0]}
     pytd_type = instance.to_type(self._vm.root_cfg_node, seen=None, view=view)
-    self.assertEquals("__builtin__.list", pytd_type.base_type.name)
+    self.assertEqual("__builtin__.list", pytd_type.base_type.name)
     self.assertSetEqual({"__builtin__.int"},
                         {t.name for t in pytd_type.parameters})
 
@@ -400,7 +400,7 @@ class PyTDTest(AbstractTestBase):
         self._vm.convert.str_type, [], self._vm.root_cfg_node)
     view = {instance.cls: cls_binding}
     pytd_type = instance.to_type(self._vm.root_cfg_node, seen=None, view=view)
-    self.assertEquals("__builtin__.str", pytd_type.name)
+    self.assertEqual("__builtin__.str", pytd_type.name)
 
   def testToTypeWithView3(self):
     # to_type(<tuple (int or str,)>, view={0: str})
@@ -412,14 +412,14 @@ class PyTDTest(AbstractTestBase):
     view = {param_var: str_binding, instance.cls: instance.cls.bindings[0],
             str_binding.data.cls: str_binding.data.cls.bindings[0]}
     pytd_type = instance.to_type(self._vm.root_cfg_node, seen=None, view=view)
-    self.assertEquals(pytd_type.parameters[0],
-                      pytd.NamedType("__builtin__.str"))
+    self.assertEqual(pytd_type.parameters[0],
+                     pytd.NamedType("__builtin__.str"))
 
   def testToTypeWithViewAndEmptyParam(self):
     instance = abstract.List([], self._vm)
     view = {instance.cls: instance.cls.bindings[0]}
     pytd_type = instance.to_type(self._vm.root_cfg_node, seen=None, view=view)
-    self.assertEquals("__builtin__.list", pytd_type.base_type.name)
+    self.assertEqual("__builtin__.list", pytd_type.base_type.name)
     self.assertSequenceEqual((pytd.NothingType(),), pytd_type.parameters)
 
   def testTypingContainer(self):
@@ -428,7 +428,7 @@ class PyTDTest(AbstractTestBase):
     expected = pytd.GenericType(pytd.NamedType("__builtin__.list"),
                                 (pytd.AnythingType(),))
     actual = container.get_instance_type(self._vm.root_cfg_node)
-    self.assertEquals(expected, actual)
+    self.assertEqual(expected, actual)
 
 
 # TODO(rechen): Test InterpreterFunction.
@@ -503,9 +503,9 @@ class FunctionTest(AbstractTestBase):
     sig = function.Signature.from_pytd(
         self._vm, "f", pytd.Signature(
             (self_param,), args_param, None, pytd.AnythingType(), (), ()))
-    self.assertEquals(sig.name, "f")
+    self.assertEqual(sig.name, "f")
     self.assertSequenceEqual(sig.param_names, ("self",))
-    self.assertEquals(sig.varargs_name, "args")
+    self.assertEqual(sig.varargs_name, "args")
     self.assertEmpty(sig.kwonly_params)
     self.assertIs(sig.kwargs_name, None)
     self.assertSetEqual(set(sig.annotations), {"self", "args", "return"})
@@ -521,7 +521,7 @@ class FunctionTest(AbstractTestBase):
     callable_val = abstract.Callable(
         self._vm.convert.function_type, params, self._vm)
     sig = function.Signature.from_callable(callable_val)
-    self.assertEquals(sig.name, callable_val.name)
+    self.assertEqual(sig.name, callable_val.name)
     self.assertSequenceEqual(sig.param_names, ("_0", "_1"))
     self.assertIs(sig.varargs_name, None)
     self.assertEmpty(sig.kwonly_params)
@@ -586,8 +586,8 @@ class FunctionTest(AbstractTestBase):
         annotations={},
         late_annotations={},
     )
-    self.assertEquals(sig.mandatory_param_count(), 1)
-    self.assertEquals(sig.maximum_param_count(), 1)
+    self.assertEqual(sig.mandatory_param_count(), 1)
+    self.assertEqual(sig.maximum_param_count(), 1)
 
   def test_signature_posarg_and_kwarg_param_count(self):
     # def f(x, y=None): ...
@@ -601,8 +601,8 @@ class FunctionTest(AbstractTestBase):
         annotations={},
         late_annotations={},
     )
-    self.assertEquals(sig.mandatory_param_count(), 1)
-    self.assertEquals(sig.maximum_param_count(), 2)
+    self.assertEqual(sig.mandatory_param_count(), 1)
+    self.assertEqual(sig.maximum_param_count(), 2)
 
   def test_signature_varargs_param_count(self):
     # def f(*args): ...
@@ -616,7 +616,7 @@ class FunctionTest(AbstractTestBase):
         annotations={},
         late_annotations={},
     )
-    self.assertEquals(sig.mandatory_param_count(), 0)
+    self.assertEqual(sig.mandatory_param_count(), 0)
     self.assertIsNone(sig.maximum_param_count())
 
   def test_signature_kwargs_param_count(self):
@@ -631,7 +631,7 @@ class FunctionTest(AbstractTestBase):
         annotations={},
         late_annotations={},
     )
-    self.assertEquals(sig.mandatory_param_count(), 0)
+    self.assertEqual(sig.mandatory_param_count(), 0)
     self.assertIsNone(sig.maximum_param_count())
 
   def test_signature_kwonly_param_count(self):
@@ -646,8 +646,8 @@ class FunctionTest(AbstractTestBase):
         annotations={},
         late_annotations={},
     )
-    self.assertEquals(sig.mandatory_param_count(), 0)
-    self.assertEquals(sig.maximum_param_count(), 1)
+    self.assertEqual(sig.mandatory_param_count(), 0)
+    self.assertEqual(sig.maximum_param_count(), 1)
 
   def test_signature_has_param(self):
     # def f(x, *args, y, **kwargs): ...
@@ -683,11 +683,11 @@ class FunctionTest(AbstractTestBase):
     arg_dict = {
         "x": int_binding, "_1": int_binding, "y": int_binding, "z": int_binding}
     sig = sig.insert_varargs_and_kwargs(arg_dict)
-    self.assertEquals(sig.name, "f")
+    self.assertEqual(sig.name, "f")
     self.assertSequenceEqual(sig.param_names, ("x", "_1", "z"))
-    self.assertEquals(sig.varargs_name, "args")
+    self.assertEqual(sig.varargs_name, "args")
     self.assertSetEqual(sig.kwonly_params, {"y"})
-    self.assertEquals(sig.kwargs_name, "kwargs")
+    self.assertEqual(sig.kwargs_name, "kwargs")
     self.assertFalse(sig.annotations)
     self.assertFalse(sig.late_annotations)
 
@@ -735,15 +735,15 @@ class AbstractTest(AbstractTestBase):
   def testInterpreterClassOfficialName(self):
     cls = abstract.InterpreterClass("X", [], {}, None, self._vm)
     cls.update_official_name("Z")
-    self.assertEquals(cls.official_name, "Z")
+    self.assertEqual(cls.official_name, "Z")
     cls.update_official_name("A")  # takes effect because A < Z
-    self.assertEquals(cls.official_name, "A")
+    self.assertEqual(cls.official_name, "A")
     cls.update_official_name("Z")  # no effect
-    self.assertEquals(cls.official_name, "A")
+    self.assertEqual(cls.official_name, "A")
     cls.update_official_name("X")  # takes effect because X == cls.name
-    self.assertEquals(cls.official_name, "X")
+    self.assertEqual(cls.official_name, "X")
     cls.update_official_name("A")  # no effect
-    self.assertEquals(cls.official_name, "X")
+    self.assertEqual(cls.official_name, "X")
 
   def testTypeParameterOfficialName(self):
     param = abstract.TypeParameter("T", self._vm)
@@ -757,17 +757,17 @@ class AbstractTest(AbstractTestBase):
     param1 = abstract.TypeParameter("S", self._vm)
     param2 = abstract.TypeParameter("T", self._vm)
     cls = abstract.InterpreterClass("S", [], {}, None, self._vm)
-    self.assertEquals(param1, param1)
-    self.assertNotEquals(param1, param2)
-    self.assertNotEquals(param1, cls)
+    self.assertEqual(param1, param1)
+    self.assertNotEqual(param1, param2)
+    self.assertNotEqual(param1, cls)
 
   def testUnionEquality(self):
     union1 = abstract.Union((self._vm.convert.unsolvable,), self._vm)
     union2 = abstract.Union((self._vm.convert.none,), self._vm)
     cls = abstract.InterpreterClass("Union", [], {}, None, self._vm)
-    self.assertEquals(union1, union1)
-    self.assertNotEquals(union1, union2)
-    self.assertNotEquals(union1, cls)
+    self.assertEqual(union1, union1)
+    self.assertNotEqual(union1, union2)
+    self.assertNotEqual(union1, cls)
 
   def testInstantiateTypeParameterType(self):
     params = {abstract.T: abstract.TypeParameter(abstract.T, self._vm)}
@@ -800,8 +800,8 @@ class AbstractTest(AbstractTestBase):
     b = B()
     v_mixin = b.f(0)
     v_a = b.f(1)
-    self.assertEquals(v_mixin, "hello")
-    self.assertEquals(v_a, 1)
+    self.assertEqual(v_mixin, "hello")
+    self.assertEqual(v_a, 1)
 
   def testInstantiateInterpreterClass(self):
     cls = abstract.InterpreterClass("X", [], {}, None, self._vm)
@@ -825,10 +825,10 @@ class AbstractTest(AbstractTestBase):
     mod = abstract.Module(self._vm, ast.name, {}, ast)
     mod.module = ast.name
     self.assertIsNone(mod.module)
-    self.assertEquals(ast.name, mod.full_name)
+    self.assertEqual(ast.name, mod.full_name)
     mod.module = None
     self.assertIsNone(mod.module)
-    self.assertEquals(ast.name, mod.full_name)
+    self.assertEqual(ast.name, mod.full_name)
     def set_module():
       mod.module = "other_mod"
     self.assertRaises(AssertionError, set_module)
@@ -874,7 +874,7 @@ class AbstractTest(AbstractTestBase):
     self.assertIs(node, self._node)
     self.assertTrue(ret.bindings)
     error, = self._vm.errorlog
-    self.assertEquals(error.name, "wrong-arg-count")
+    self.assertEqual(error.name, "wrong-arg-count")
 
 
 if __name__ == "__main__":

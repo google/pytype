@@ -48,7 +48,7 @@ class TestPytd(unittest.TestCase):
       self.assertGreater(n2, n1)
       self.assertGreaterEqual(n2, n1)
     for p in itertools.permutations(nodes):
-      self.assertEquals(list(sorted(p)), nodes)
+      self.assertEqual(list(sorted(p)), nodes)
 
   def testASTeq(self):
     # This creates two ASts that are equivalent but whose sources are slightly
@@ -89,9 +89,9 @@ class TestPytd(unittest.TestCase):
     self.assertFalse(tree2 != tree2)
     self.assertTrue(tree1 != tree2)
     self.assertTrue(tree2 != tree1)
-    self.assertEquals(tree1, tree1)
-    self.assertEquals(tree2, tree2)
-    self.assertNotEquals(tree1, tree2)
+    self.assertEqual(tree1, tree1)
+    self.assertEqual(tree2, tree2)
+    self.assertNotEqual(tree1, tree2)
     self.assertTrue(tree1.ASTeq(tree2))
     self.assertTrue(tree1.ASTeq(tree1))
     self.assertTrue(tree2.ASTeq(tree1))

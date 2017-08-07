@@ -71,7 +71,7 @@ class MatcherTest(unittest.TestCase):
 
   def assertMatch(self, left, right):
     for match in self._match_var(left, right):
-      self.assertEquals(match, {})
+      self.assertEqual(match, {})
 
   def assertNoMatch(self, left, right):
     for match in self._match_var(left, right):
@@ -88,7 +88,7 @@ class MatcherTest(unittest.TestCase):
     for result in self._match_var(left, other_type):
       instance_binding, = result[abstract.T].bindings
       cls_binding, = instance_binding.data.cls.bindings
-      self.assertEquals(cls_binding.data, left)
+      self.assertEqual(cls_binding.data, left)
 
   def testUnion(self):
     left_option1 = self._make_class("o1")
@@ -110,14 +110,14 @@ class MatcherTest(unittest.TestCase):
     right = self._make_class("bar")
     result = self.vm.matcher.match_var_against_type(
         var, right, {}, self.vm.root_cfg_node, {})
-    self.assertEquals(result, {})
+    self.assertEqual(result, {})
 
   def testEmptyAgainstNothing(self):
     var = self.vm.program.NewVariable()
     right = abstract.Nothing(self.vm)
     result = self.vm.matcher.match_var_against_type(
         var, right, {}, self.vm.root_cfg_node, {})
-    self.assertEquals(result, {})
+    self.assertEqual(result, {})
 
   def testEmptyAgainstTypeParameter(self):
     var = self.vm.program.NewVariable()
@@ -132,7 +132,7 @@ class MatcherTest(unittest.TestCase):
     right = abstract.Empty(self.vm)
     result = self.vm.matcher.match_var_against_type(
         var, right, {}, self.vm.root_cfg_node, {})
-    self.assertEquals(result, {})
+    self.assertEqual(result, {})
 
   def testClassAgainstTypeUnion(self):
     left = self._make_class("foo")
@@ -258,8 +258,8 @@ class MatcherTest(unittest.TestCase):
     right = abstract.TupleClass(self.vm.convert.tuple_type, params, self.vm)
     for match in self._match_var(left, right):
       self.assertSetEqual(set(match), {abstract.K, abstract.V})
-      self.assertEquals(match[abstract.K].data, [self.vm.convert.unsolvable])
-      self.assertEquals(match[abstract.V].data, [self.vm.convert.unsolvable])
+      self.assertEqual(match[abstract.K].data, [self.vm.convert.unsolvable])
+      self.assertEqual(match[abstract.V].data, [self.vm.convert.unsolvable])
 
   def testBoolAgainstFloat(self):
     left = self.vm.convert.true

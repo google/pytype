@@ -780,7 +780,7 @@ class MethodsTest(test_inference.InferenceTest):
         return 3j
       f()
     """, deep=False)
-    self.assertEquals(ty.Lookup("f").type, pytd.AnythingType())
+    self.assertEqual(ty.Lookup("f").type, pytd.AnythingType())
 
   def testFuncName(self):
     ty = self.Infer("""

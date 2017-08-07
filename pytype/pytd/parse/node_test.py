@@ -157,42 +157,42 @@ class TestNode(unittest.TestCase):
     y = Y((V(1),), Data(42, 43, 44))
     xy = XY(x, y)
     xy_expected = "XY(X(1, (1, 2)), Y((V(1),), Data(42, 43, 44)))"
-    self.assertEquals(repr(xy), xy_expected)
+    self.assertEqual(repr(xy), xy_expected)
     v = DataVisitor()
     new_xy = xy.Visit(v)
-    self.assertEquals(repr(new_xy),
-                      "XY(X(1, (1, 2)), Y((V(1),), Data(42, 43, -1)))")
-    self.assertEquals(repr(xy), xy_expected)  # check that xy is unchanged
+    self.assertEqual(repr(new_xy),
+                     "XY(X(1, (1, 2)), Y((V(1),), Data(42, 43, -1)))")
+    self.assertEqual(repr(xy), xy_expected)  # check that xy is unchanged
 
   def testVisitor2(self):
     """Test node.Node.Visit() for visitors that modify inner nodes."""
     xy = XY(V(1), Data(1, 2, 3))
     xy_expected = "XY(V(1), Data(1, 2, 3))"
-    self.assertEquals(repr(xy), xy_expected)
+    self.assertEqual(repr(xy), xy_expected)
     v = MultiNodeVisitor()
     new_xy = xy.Visit(v, 42)
-    self.assertEquals(repr(new_xy), "XY(X(V(42), V(42)), XY(42, 42))")
-    self.assertEquals(repr(xy), xy_expected)  # check that xy is unchanged
+    self.assertEqual(repr(new_xy), "XY(X(V(42), V(42)), XY(42, 42))")
+    self.assertEqual(repr(xy), xy_expected)  # check that xy is unchanged
 
   def testRecursion(self):
     """Test node.Node.Visit() for visitors that preserve attributes."""
     y = Y(Y(1, 2), Y(3, Y(4, 5)))
     y_expected = "Y(Y(1, 2), Y(3, Y(4, 5)))"
-    self.assertEquals(repr(y), y_expected)
+    self.assertEqual(repr(y), y_expected)
     v = MultiNodeVisitor()
     new_y = y.Visit(v)
-    self.assertEquals(repr(new_y), y_expected.replace("Y", "X"))
-    self.assertEquals(repr(y), y_expected)  # check that original is unchanged
+    self.assertEqual(repr(new_y), y_expected.replace("Y", "X"))
+    self.assertEqual(repr(y), y_expected)  # check that original is unchanged
 
   def testTuple(self):
     """Test node.Node.Visit() for nodes that contain tuples."""
     v = V((Data(1, 2, 3), Data(4, 5, 6)))
     v_expected = "V((Data(1, 2, 3), Data(4, 5, 6)))"
-    self.assertEquals(repr(v), v_expected)
+    self.assertEqual(repr(v), v_expected)
     visit = DataVisitor()
     new_v = v.Visit(visit)
     new_v_expected = "V((Data(1, 2, -1), Data(4, 5, -1)))"
-    self.assertEquals(repr(new_v), new_v_expected)
+    self.assertEqual(repr(new_v), new_v_expected)
 
   def testOrdering(self):
     nodes = [Node1(1, 1), Node1(1, 2),
@@ -205,7 +205,7 @@ class TestNode(unittest.TestCase):
       self.assertGreater(n2, n1)
       self.assertGreaterEqual(n2, n1)
     for p in itertools.permutations(nodes):
-      self.assertEquals(list(sorted(p)), nodes)
+      self.assertEqual(list(sorted(p)), nodes)
 
   def testPrecondition(self):
     class MyNode(node.Node("s: str")):

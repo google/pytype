@@ -109,42 +109,42 @@ class TestBoolEq(unittest.TestCase):
     # x == 0 || x == 1  with x in {0}
     equation = Or([Eq("x", "0"), Eq("x", "1")])
     values = {"x": {"0"}}
-    self.assertEquals(Eq("x", "0"), equation.simplify(values))
+    self.assertEqual(Eq("x", "0"), equation.simplify(values))
 
     # x == 0 || x == 1  with x in {0}
     equation = Or([Eq("x", "0"), Eq("x", "1")])
     values = {"x": {"0", "1"}}
-    self.assertEquals(equation, equation.simplify(values))
+    self.assertEqual(equation, equation.simplify(values))
 
     # x == 0 with x in {1}
     equation = Eq("x", "0")
     values = {"x": {"1"}}
-    self.assertEquals(FALSE, equation.simplify(values))
+    self.assertEqual(FALSE, equation.simplify(values))
 
     # x == 0 with x in {0}
     equation = Eq("x", "0")
     values = {"x": {"0"}}
-    self.assertEquals(equation, equation.simplify(values))
+    self.assertEqual(equation, equation.simplify(values))
 
     # x == 0 && y == 0 with x in {1}, y in {1}
     equation = Or([Eq("x", "0"), Eq("y", "1")])
     values = {"x": {"1"}, "y": {"1"}}
-    self.assertEquals(Eq("y", "1"), equation.simplify(values))
+    self.assertEqual(Eq("y", "1"), equation.simplify(values))
 
     # x == 0 && y == 0 with x in {0}, y in {1}
     equation = Or([Eq("x", "0"), Eq("y", "1")])
     values = {"x": {"0"}, "y": {"1"}}
-    self.assertEquals(equation, equation.simplify(values))
+    self.assertEqual(equation, equation.simplify(values))
 
     # x == 0 && x == 0 with x in {0}
     equation = And([Eq("x", "0"), Eq("x", "0")])
     values = {"x": {"0"}}
-    self.assertEquals(Eq("x", "0"), equation.simplify(values))
+    self.assertEqual(Eq("x", "0"), equation.simplify(values))
 
     # x == y with x in {0, 1} and y in {1, 2}
     equation = Eq("x", "y")
     values = {"x": {"0", "1"}, "y": {"1", "2"}}
-    self.assertEquals(equation, equation.simplify(values))
+    self.assertEqual(equation, equation.simplify(values))
 
   def _MakeSolver(self, variables=("x", "y")):
     solver = booleq.Solver()

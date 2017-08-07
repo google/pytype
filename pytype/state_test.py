@@ -48,9 +48,9 @@ class ConditionTestBase(unittest.TestCase):
     return var.AddBinding(value)
 
   def check_binding(self, expected, binding, **varnames):
-    self.assertEquals(1, len(binding.origins))
-    self.assertEquals(self._node, binding.origins[0].where)
-    self.assertEquals(expected, source_summary(binding, **varnames))
+    self.assertEqual(1, len(binding.origins))
+    self.assertEqual(self._node, binding.origins[0].where)
+    self.assertEqual(expected, source_summary(binding, **varnames))
 
 
 class ConditionTest(ConditionTestBase):

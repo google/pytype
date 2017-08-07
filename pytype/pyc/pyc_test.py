@@ -10,15 +10,15 @@ class TestCompileError(unittest.TestCase):
 
   def test_error_matches_re(self):
     e = pyc.CompileError("some error (foo.py, line 123)")
-    self.assertEquals("foo.py", e.filename)
-    self.assertEquals(123, e.lineno)
-    self.assertEquals("some error", e.error)
+    self.assertEqual("foo.py", e.filename)
+    self.assertEqual(123, e.lineno)
+    self.assertEqual("some error", e.error)
 
   def test_error_does_not_match_re(self):
     e = pyc.CompileError("some error in foo.py at line 123")
-    self.assertEquals(None, e.filename)
-    self.assertEquals(1, e.lineno)
-    self.assertEquals("some error in foo.py at line 123", e.error)
+    self.assertEqual(None, e.filename)
+    self.assertEqual(1, e.lineno)
+    self.assertEqual("some error in foo.py at line 123", e.error)
 
 
 class TestPyc(unittest.TestCase):
@@ -35,16 +35,16 @@ class TestPyc(unittest.TestCase):
   def test_compile(self):
     code = self._compile("foobar = 3")
     self.assertIn("foobar", code.co_names)
-    self.assertEquals(self.python_version, code.python_version)
+    self.assertEqual(self.python_version, code.python_version)
 
   def test_erroneous_file(self):
     try:
       self._compile("\nfoo ==== bar--")
       self.fail("Did not raise CompileError")
     except pyc.CompileError as e:
-      self.assertEquals("test_input.py", e.filename)
-      self.assertEquals(2, e.lineno)
-      self.assertEquals("invalid syntax", e.error)
+      self.assertEqual("test_input.py", e.filename)
+      self.assertEqual(2, e.lineno)
+      self.assertEqual("invalid syntax", e.error)
 
   def test_lineno(self):
     code = self._compile("a = 1\n"      # line 1
@@ -53,31 +53,31 @@ class TestPyc(unittest.TestCase):
                         )
     self.assertIn("a", code.co_names)
     op_and_line = [(op.name, op.line) for op in opcodes.dis_code(code)]
-    self.assertEquals([("LOAD_CONST", 1),
-                       ("STORE_NAME", 1),
-                       ("LOAD_NAME", 3),
-                       ("LOAD_CONST", 3),
-                       ("BINARY_ADD", 3),
-                       ("STORE_NAME", 3),
-                       ("LOAD_CONST", 3),
-                       ("RETURN_VALUE", 3)], op_and_line)
+    self.assertEqual([("LOAD_CONST", 1),
+                      ("STORE_NAME", 1),
+                      ("LOAD_NAME", 3),
+                      ("LOAD_CONST", 3),
+                      ("BINARY_ADD", 3),
+                      ("STORE_NAME", 3),
+                      ("LOAD_CONST", 3),
+                      ("RETURN_VALUE", 3)], op_and_line)
 
   def test_mode(self):
     code = self._compile("foo", mode="eval")
     self.assertIn("foo", code.co_names)
     ops = [op.name for op in opcodes.dis_code(code)]
-    self.assertEquals(["LOAD_NAME",
-                       "RETURN_VALUE"], ops)
+    self.assertEqual(["LOAD_NAME",
+                      "RETURN_VALUE"], ops)
 
   def test_singlelineno(self):
     code = self._compile("a = 1\n"      # line 1
                         )
     self.assertIn("a", code.co_names)
     op_and_line = [(op.name, op.line) for op in opcodes.dis_code(code)]
-    self.assertEquals([("LOAD_CONST", 1),
-                       ("STORE_NAME", 1),
-                       ("LOAD_CONST", 1),
-                       ("RETURN_VALUE", 1)], op_and_line)
+    self.assertEqual([("LOAD_CONST", 1),
+                      ("STORE_NAME", 1),
+                      ("LOAD_CONST", 1),
+                      ("RETURN_VALUE", 1)], op_and_line)
 
   def test_singlelinenowithspace(self):
     code = self._compile("\n"
@@ -86,10 +86,10 @@ class TestPyc(unittest.TestCase):
                         )
     self.assertIn("a", code.co_names)
     op_and_line = [(op.name, op.line) for op in opcodes.dis_code(code)]
-    self.assertEquals([("LOAD_CONST", 3),
-                       ("STORE_NAME", 3),
-                       ("LOAD_CONST", 3),
-                       ("RETURN_VALUE", 3)], op_and_line)
+    self.assertEqual([("LOAD_CONST", 3),
+                      ("STORE_NAME", 3),
+                      ("LOAD_CONST", 3),
+                      ("RETURN_VALUE", 3)], op_and_line)
 
 
 if __name__ == "__main__":
