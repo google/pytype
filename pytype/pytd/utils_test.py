@@ -20,9 +20,7 @@ import unittest
 from pytype.pyi import parser
 from pytype.pytd import pytd
 from pytype.pytd import utils
-from pytype.pytd.parse import builtins
 from pytype.pytd.parse import parser_test_base
-from pytype.pytd.parse import visitors
 
 
 class TestUtils(parser_test_base.ParserTest):
@@ -279,42 +277,6 @@ class TestUtils(parser_test_base.ParserTest):
     a = A()
     a.m = {x: x for x in range(42)}
     self.assertEquals(42, len(a))
-
-  def testDedup(self):
-    self.assertEquals([], utils.Dedup([]))
-    self.assertEquals([1], utils.Dedup([1]))
-    self.assertEquals([1, 2], utils.Dedup([1, 2]))
-    self.assertEquals([1, 2], utils.Dedup([1, 2, 1]))
-    self.assertEquals([1, 2], utils.Dedup([1, 1, 2, 2]))
-    self.assertEquals([3, 2, 1], utils.Dedup([3, 2, 1, 3]))
-
-  def testMROMerge(self):
-    self.assertEquals([], utils.MROMerge([[], []]))
-    self.assertEquals([1], utils.MROMerge([[], [1]]))
-    self.assertEquals([1], utils.MROMerge([[1], []]))
-    self.assertEquals([1, 2], utils.MROMerge([[1], [2]]))
-    self.assertEquals([1, 2], utils.MROMerge([[1, 2], [2]]))
-    self.assertEquals([1, 2, 3, 4], utils.MROMerge([[1, 2, 3], [2, 4]]))
-    self.assertEquals([1, 2, 3], utils.MROMerge([[1, 2], [1, 2, 3]]))
-    self.assertEquals([1, 2], utils.MROMerge([[1, 1], [2, 2]]))
-    self.assertEquals([1, 2, 3, 4, 5, 6],
-                      utils.MROMerge([[1, 3, 5], [2, 3, 4], [4, 5, 6]]))
-    self.assertEquals([1, 2, 3], utils.MROMerge([[1, 2, 1], [2, 3, 2]]))
-
-  def testGetBasesInMRO(self):
-    ast = parser.parse_string(textwrap.dedent("""
-      from typing import Generic, TypeVar
-      T = TypeVar("T")
-      class Foo(Generic[T]): pass
-      class Bar(Foo[int]): pass
-    """))
-    b, t = builtins.GetBuiltinsAndTyping()
-    ast = ast.Visit(visitors.LookupExternalTypes(
-        {"__builtin__": b, "typing": t}, full_names=True))
-    ast = ast.Visit(visitors.NamedTypeToClassType())
-    mro = utils.GetBasesInMRO(ast.Lookup("Bar"), lookup_ast=ast)
-    self.assertListEqual(["Foo", "typing.Generic", "__builtin__.object"],
-                         [t.name for t in mro])
 
   def testBuiltinAlias(self):
     src = "Number = int"

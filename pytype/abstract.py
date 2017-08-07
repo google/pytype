@@ -22,6 +22,7 @@ from pytype import function
 from pytype import utils
 from pytype.pyc import loadmarshal
 from pytype.pytd import cfg as typegraph
+from pytype.pytd import mro
 from pytype.pytd import pytd
 from pytype.pytd import utils as pytd_utils
 
@@ -171,9 +172,8 @@ class AtomicAbstractValue(object):
   def compute_mro(self):
     """Compute the class precedence list (mro) according to C3."""
     bases = utils.concat_lists(b.data for b in self.bases())
-    return tuple(pytd_utils.MROMerge([[self]] +
-                                     [list(base.mro) for base in bases] +
-                                     [list(bases)]))
+    return tuple(mro.MROMerge(
+        [[self]] + [list(base.mro) for base in bases] + [list(bases)]))
 
   def get_fullhash(self):
     """Hash this value and all of its children."""

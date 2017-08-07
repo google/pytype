@@ -23,6 +23,7 @@ import re
 
 
 from pytype import utils
+from pytype.pytd import mro
 from pytype.pytd import pytd
 from pytype.pytd.parse import parser_constants  # pylint: disable=g-importing-member
 
@@ -1763,49 +1764,6 @@ class ExpandSignatures(Visitor):
     return f.Replace(signatures=tuple(signatures))
 
 
-def MergeSequences(seqs):
-  """Merge a sequence of sequences into a single sequence.
-
-  This code is copied from https://www.python.org/download/releases/2.3/mro/
-  with print statements removed and modified to take a sequence of sequences.
-  We use it to merge both MROs and class templates.
-
-  Args:
-    seqs: A sequence of sequences.
-
-  Returns:
-    A single sequence in which every element of the input sequences appears
-    exactly once and local precedence order is preserved.
-
-  Raises:
-    ValueError: If the merge is impossible.
-  """
-  res = []
-  while True:
-    if not any(seqs):  # any empty subsequence left?
-      return res
-    for seq in seqs:  # find merge candidates among seq heads
-      if not seq:
-        continue
-      cand = seq[0]
-      if getattr(cand, "SINGLETON", False):
-        # Special class. Cycles are allowed. Emit and remove duplicates.
-        seqs = [[s for s in seq if s != cand]
-                for seq in seqs]
-        break
-      if any(s for s in seqs if cand in s[1:] and s is not seq):
-        cand = None  # reject candidate
-      else:
-        # Remove and emit. The candidate can be head of more than one list.
-        for seq in seqs:
-          if seq and seq[0] == cand:
-            del seq[0]
-        break
-    if cand is None:
-      raise ValueError
-    res.append(cand)
-
-
 class AdjustTypeParameters(Visitor):
   """Visitor for adjusting type parameters.
 
@@ -1856,7 +1814,7 @@ class AdjustTypeParameters(Visitor):
         templates.append(sum((self._GetTemplateItems(param)
                               for param in parent.parameters), []))
     try:
-      template = MergeSequences(templates)
+      template = mro.MergeSequences(templates)
     except ValueError:
       raise ContainerError(
           "Illegal type parameter order in class %s" % node.name)
@@ -2029,11 +1987,9 @@ class VerifyContainers(Visitor):
     """Check for conflicting type parameter values in the class's bases."""
     # Get the bases in MRO, since we need to know the order in which type
     # parameters are aliased or assigned values.
-    # pylint: disable=g-import-not-at-top
-    from pytype.pytd import utils as pytd_utils
     try:
-      classes = pytd_utils.GetBasesInMRO(node)
-    except pytd_utils.MROError:
+      classes = mro.GetBasesInMRO(node)
+    except mro.MROError:
       # TODO(rechen): We should report this, but VerifyContainers() isn't the
       # right place to check for mro errors.
       return

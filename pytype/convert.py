@@ -11,6 +11,7 @@ from pytype import special_builtins
 from pytype import utils
 from pytype.pyc import loadmarshal
 from pytype.pytd import cfg
+from pytype.pytd import mro
 from pytype.pytd import pytd
 from pytype.pytd import utils as pytd_utils
 
@@ -469,7 +470,7 @@ class Converter(object):
       module, dot, base_name = pyval.name.rpartition(".")
       try:
         cls = abstract.PyTDClass(base_name, pyval, self.vm)
-      except pytd_utils.MROError as e:
+      except mro.MROError as e:
         self.vm.errorlog.mro_error(self.vm.frames, base_name, e.mro_seqs)
         cls = self.unsolvable
       else:

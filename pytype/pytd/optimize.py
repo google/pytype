@@ -28,6 +28,7 @@ import logging
 
 from pytype.pytd import abc_hierarchy
 from pytype.pytd import booleq
+from pytype.pytd import mro
 from pytype.pytd import pytd
 from pytype.pytd import type_match
 from pytype.pytd import utils
@@ -793,10 +794,10 @@ class RemoveInheritedMethods(visitors.Visitor):
       return sig
     try:
       if self._FindNameAndSig(
-          utils.GetBasesInMRO(cls), name,
+          mro.GetBasesInMRO(cls), name,
           (sig.Replace(params=sig.params[1:]), is_abstract)):
         return None  # remove (see VisitFunction)
-    except utils.MROError:
+    except mro.MROError:
       return sig
     return sig
 

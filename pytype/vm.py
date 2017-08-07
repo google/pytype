@@ -45,8 +45,8 @@ from pytype.pyc import opcodes
 from pytype.pyc import pyc
 from pytype.pyi import parser
 from pytype.pytd import cfg as typegraph
+from pytype.pytd import mro
 from pytype.pytd import slots
-from pytype.pytd import utils as pytd_utils
 from pytype.pytd.parse import builtins
 from pytype.pytd.parse import visitors
 
@@ -539,7 +539,7 @@ class VirtualMachine(object):
             class_dict.pyval,
             cls_var,
             self)
-      except pytd_utils.MROError as e:
+      except mro.MROError as e:
         self.errorlog.mro_error(self.frames, name, e.mro_seqs)
         var = self.convert.create_new_unsolvable(node)
       else:
