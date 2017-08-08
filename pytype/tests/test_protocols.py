@@ -563,6 +563,148 @@ class ProtocolTest(test_inference.InferenceTest):
       v = ...  # type: list
     """)
 
+  def test_supports_upper(self):
+    self.options.tweak(protocols=True)
+    ty = self.Infer("""\
+      from __future__ import google_type_annotations
+      def f(x):
+        return x.upper()
+     """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      import protocols
+      from typing import Any
+      def f(x: protocols.SupportsUpper) -> Any
+    """)
+
+  def test_supports_startswith(self):
+    self.options.tweak(protocols=True)
+    ty = self.Infer("""\
+      from __future__ import google_type_annotations
+      def f(x):
+        return x.startswith("foo")
+     """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      import protocols
+      from typing import Any
+      def f(x: protocols.SupportsStartswith) -> Any
+    """)
+
+  def test_supports_endswith(self):
+    self.options.tweak(protocols=True)
+    ty = self.Infer("""\
+      from __future__ import google_type_annotations
+      def f(x):
+        return x.endswith("foo")
+     """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      import protocols
+      from typing import Any
+      def f(x: protocols.SupportsEndswith) -> Any
+    """)
+
+  def test_supports_lstrip(self):
+    self.options.tweak(protocols=True)
+    ty = self.Infer("""\
+      from __future__ import google_type_annotations
+      def f(x):
+        return x.lstrip()
+     """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      import protocols
+      from typing import Any
+      def f(x: protocols.SupportsLstrip) -> Any
+    """)
+
+  def test_supports_replace(self):
+    self.options.tweak(protocols=True)
+    ty = self.Infer("""\
+      from __future__ import google_type_annotations
+      def f(x):
+        return x.replace("foo", "bar")
+     """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      import protocols
+      from typing import Any
+      def f(x: protocols.SupportsReplace) -> Any
+    """)
+
+  def test_supports_encode(self):
+    self.options.tweak(protocols=True)
+    ty = self.Infer("""\
+      from __future__ import google_type_annotations
+      def f(x):
+        return x.encode()
+     """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      import protocols
+      from typing import Any
+      def f(x: protocols.SupportsEncode) -> Any
+    """)
+
+  def test_supports_decode(self):
+    self.options.tweak(protocols=True)
+    ty = self.Infer("""\
+      from __future__ import google_type_annotations
+      def f(x):
+        return x.decode()
+     """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      import protocols
+      from typing import Any
+      def f(x: protocols.SupportsDecode) -> Any
+    """)
+
+  def test_supports_splitlines(self):
+    self.options.tweak(protocols=True)
+    ty = self.Infer("""\
+      from __future__ import google_type_annotations
+      def f(x):
+        return x.splitlines()
+     """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      import protocols
+      from typing import Any
+      def f(x: protocols.SupportsSplitlines) -> Any
+    """)
+
+  def test_supports_split(self):
+    self.options.tweak(protocols=True)
+    ty = self.Infer("""\
+      from __future__ import google_type_annotations
+      def f(x):
+        return x.split()
+     """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      import protocols
+      from typing import Any
+      def f(x: protocols.SupportsSplit) -> Any
+    """)
+
+  def test_supports_strip(self):
+    self.options.tweak(protocols=True)
+    ty = self.Infer("""\
+      from __future__ import google_type_annotations
+      def f(x):
+        return x.strip()
+     """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      import protocols
+      from typing import Any
+      def f(x: protocols.SupportsStrip) -> Any
+    """)
+
+  def test_supports_find(self):
+    self.options.tweak(protocols=True)
+    ty = self.Infer("""\
+      from __future__ import google_type_annotations
+      def f(x):
+        return x.find("foo")
+     """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      import protocols
+      from typing import Any
+      def f(x: protocols.SupportsFind) -> Any
+    """)
 
 if __name__ == "__main__":
   test_inference.main()
