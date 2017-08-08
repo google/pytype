@@ -974,7 +974,9 @@ class Dict(Instance, HasSlots, PythonConstant, WrapsDict("pyval")):
                 for name, value in self.pyval.items()})
 
   def __repr__(self):
-    if self.could_contain_anything:
+    if not hasattr(self, "could_contain_anything"):
+      return "Dict (not fully initialized)"
+    elif self.could_contain_anything:
       return Instance.__repr__(self)
     else:
       return PythonConstant.__repr__(self)
