@@ -124,6 +124,15 @@ class ErrorTest(test_inference.InferenceTest):
         [(2, "missing-parameter", r"function list.__iadd__")]
     )
 
+  def BoundMethodNameInMsg(self):
+    _, errors = self.InferAndCheck("""\
+      "".join(1)
+      """)
+    self.assertErrorLogIs(
+        errors,
+        [(1, "missing-parameter", r"Function str.join")]
+    )
+
   def testPrettyPrintWrongArgs(self):
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", """

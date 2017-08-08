@@ -3029,6 +3029,10 @@ class BoundFunction(AtomicAbstractValue):
           node, func, args.replace(posargs=(self._callself,) + args.posargs))
     except InvalidParameters as e:
       if self._callself and self._callself.bindings:
+        if "." in e.name:
+          # _match_args will try to prepend the parent's name to the error name.
+          # Overwrite it with _callself instead, which may be more exact.
+          _, _, e.name = e.name.partition(".")
         e.name = "%s.%s" % (self._callself.data[0].name, e.name)
       raise
     finally:
