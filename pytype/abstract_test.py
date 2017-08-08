@@ -503,6 +503,7 @@ class FunctionTest(AbstractTestBase):
     sig = function.Signature.from_pytd(
         self._vm, "f", pytd.Signature(
             (self_param,), args_param, None, pytd.AnythingType(), (), ()))
+    self.assertEqual(repr(sig), "def f(self: Any, *args: Any) -> Any")
     self.assertEqual(sig.name, "f")
     self.assertSequenceEqual(sig.param_names, ("self",))
     self.assertEqual(sig.varargs_name, "args")
@@ -521,7 +522,8 @@ class FunctionTest(AbstractTestBase):
     callable_val = abstract.Callable(
         self._vm.convert.function_type, params, self._vm)
     sig = function.Signature.from_callable(callable_val)
-    self.assertEqual(sig.name, callable_val.name)
+    self.assertEqual(repr(sig), "def <callable>(_0: int, _1: str) -> Any")
+    self.assertEqual(sig.name, "<callable>")
     self.assertSequenceEqual(sig.param_names, ("_0", "_1"))
     self.assertIs(sig.varargs_name, None)
     self.assertEmpty(sig.kwonly_params)
@@ -542,6 +544,8 @@ class FunctionTest(AbstractTestBase):
     sig = function.Signature.from_pytd(
         self._vm, "f", pytd.Signature(
             (self_param,), args_param, None, pytd.AnythingType(), (), ()))
+    self.assertEqual(repr(sig),
+                     "def f(self: Any, *args: Tuple[Any, ...]) -> Any")
     self.assertIs(sig.annotations["self"], self._vm.convert.unsolvable)
     args_type = sig.annotations["args"]
     self.assertIsInstance(args_type, abstract.ParameterizedClass)
@@ -565,6 +569,7 @@ class FunctionTest(AbstractTestBase):
             "return": annotations_util.LateAnnotation("Y", "return", None)
         }
     )
+    self.assertEqual(repr(sig), "def f(v: 'X') -> 'Y'")
     self.assertFalse(sig.has_param_annotations)
     self.assertFalse(sig.has_return_annotation)
     sig.set_annotation("v", self._vm.convert.unsolvable)
@@ -586,6 +591,7 @@ class FunctionTest(AbstractTestBase):
         annotations={},
         late_annotations={},
     )
+    self.assertEqual(repr(sig), "def f(x) -> Any")
     self.assertEqual(sig.mandatory_param_count(), 1)
     self.assertEqual(sig.maximum_param_count(), 1)
 
@@ -597,10 +603,11 @@ class FunctionTest(AbstractTestBase):
         varargs_name=None,
         kwonly_params=(),
         kwargs_name=None,
-        defaults={"y": self._vm.convert.unsolvable.to_variable(self._node)},
+        defaults={"y": self._vm.convert.none_type.to_variable(self._node)},
         annotations={},
         late_annotations={},
     )
+    self.assertEqual(repr(sig), "def f(x, y = None) -> Any")
     self.assertEqual(sig.mandatory_param_count(), 1)
     self.assertEqual(sig.maximum_param_count(), 2)
 
@@ -616,6 +623,7 @@ class FunctionTest(AbstractTestBase):
         annotations={},
         late_annotations={},
     )
+    self.assertEqual(repr(sig), "def f(*args) -> Any")
     self.assertEqual(sig.mandatory_param_count(), 0)
     self.assertIsNone(sig.maximum_param_count())
 
@@ -631,6 +639,7 @@ class FunctionTest(AbstractTestBase):
         annotations={},
         late_annotations={},
     )
+    self.assertEqual(repr(sig), "def f(**kwargs) -> Any")
     self.assertEqual(sig.mandatory_param_count(), 0)
     self.assertIsNone(sig.maximum_param_count())
 
@@ -642,10 +651,11 @@ class FunctionTest(AbstractTestBase):
         varargs_name=None,
         kwonly_params=("y",),
         kwargs_name=None,
-        defaults={"y": self._vm.convert.unsolvable.to_variable(self._node)},
+        defaults={"y": self._vm.convert.none_type.to_variable(self._node)},
         annotations={},
         late_annotations={},
     )
+    self.assertEqual(repr(sig), "def f(*, y = None) -> Any")
     self.assertEqual(sig.mandatory_param_count(), 0)
     self.assertEqual(sig.maximum_param_count(), 1)
 
@@ -661,6 +671,7 @@ class FunctionTest(AbstractTestBase):
         annotations={},
         late_annotations={},
     )
+    self.assertEqual(repr(sig), "def f(x, *args, y, **kwargs) -> Any")
     for param in ("x", "args", "y", "kwargs"):
       self.assertTrue(sig.has_param(param))
     self.assertFalse(sig.has_param("rumpelstiltskin"))

@@ -15,6 +15,10 @@ def argname(i):
   return "_" + str(i)
 
 
+def _print(t):
+  return pytd_utils.Print(t.get_instance_type())
+
+
 # TODO(kramm): This class is deprecated and should be folded into
 # abstract.InterpreterFunction and/or pytd.Signature.
 class Signature(object):
@@ -122,7 +126,7 @@ class Signature(object):
     annotations = {argname(i): val.type_parameters[i]
                    for i in range(val.num_args)}
     return cls(
-        name=val.name,
+        name="<callable>",
         param_names=tuple(sorted(annotations)),
         varargs_name=None,
         kwonly_params=set(),
@@ -187,3 +191,43 @@ class Signature(object):
     if self.kwargs_name is not None and args.starstarargs is not None:
       yield (self.kwargs_name, args.starstarargs,
              self.annotations.get(self.kwargs_name))
+
+  def _yield_arguments(self):
+    names = list(self.param_names)
+    if self.varargs_name:
+      names.append("*" + self.varargs_name)
+    elif self.kwonly_params:
+      names.append("*")
+    names.extend(sorted(self.kwonly_params))
+    if self.kwargs_name:
+      names.append("**" + self.kwargs_name)
+    for name in names:
+      base_name = name.lstrip("*")
+      annot = self._print_annot(base_name)
+      default = self._print_default(base_name)
+      yield name + (": " + annot if annot else "") + (
+          " = " + default if default else "")
+
+  def _print_annot(self, name):
+    if name in self.annotations:
+      return _print(self.annotations[name])
+    elif name in self.late_annotations:
+      return repr(self.late_annotations[name].expr)
+    else:
+      return None
+
+  def _print_default(self, name):
+    if name in self.defaults:
+      values = self.defaults[name].data
+      if len(values) > 1:
+        return "Union[%s]" % ", ".join(_print(v) for v in values)
+      else:
+        return _print(values[0])
+    else:
+      return None
+
+  def __repr__(self):
+    args = ", ".join(self._yield_arguments())
+    ret = self._print_annot("return")
+    return "def {name}({args}) -> {ret}".format(
+        name=self.name, args=args, ret=ret if ret else "Any")
