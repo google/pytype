@@ -324,6 +324,11 @@ class AbstractAttributeHandler(object):
 
   def _lookup_from_mro(self, node, obj, name, valself, valcls, skip=None):
     """Find an identifier in the MRO of the class."""
+    if isinstance(obj, (abstract.Unknown, abstract.Unsolvable)):
+      # We don't know the object's MRO, so it's possible that one of its
+      # bases has the attribute.
+      return self.vm.convert.unsolvable.to_variable(node)
+
     ret = self.vm.program.NewVariable()
     add_origins = []
     variableself = variablecls = None

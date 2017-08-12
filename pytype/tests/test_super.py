@@ -170,6 +170,19 @@ class SuperTest(test_inference.InferenceTest):
         (3, "wrong-arg-types", r"Type\[super\].*Type\[Foo\]"),
         (6, "wrong-arg-count", r"2.*0")])
 
+  def testSuperUnderDecorator(self):
+    self.assertNoErrors("""\
+      def decorate(cls):
+        return __any_object__
+      class Parent(object):
+        def Hello(self):
+          pass
+      @decorate
+      class Child(Parent):
+        def Hello(self):
+          return super(Child, self).Hello()
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()
