@@ -225,6 +225,17 @@ class DecoratorsTest(test_inference.InferenceTest):
     """)
     self.assertErrorLogIs(errors, [(5, "name-error", r"bad_decorator")])
 
+  def testAttributeErrorUnderClassDecorator(self):
+    _, errors = self.InferAndCheck("""\
+      def decorate(cls):
+        return __any_object__
+      @decorate
+      class Foo(object):
+        def Hello(self):
+          return self.Goodbye()  # line 6
+    """)
+    self.assertErrorLogIs(errors, [(6, "attribute-error", r"Goodbye")])
+
 
 if __name__ == "__main__":
   test_inference.main()

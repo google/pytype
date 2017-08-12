@@ -60,7 +60,9 @@ class CallTracer(vm.VirtualMachine):
     # __init__ on classes not initialized via init_class.
     self._initialized_instances = set()
     self._interpreter_functions = []
+    self._interpreter_classes = []
     self._analyzed_functions = set()
+    self._analyzed_classes = set()
     self._generated_classes = {}
     self.exitpoint = None
 
@@ -328,6 +330,7 @@ class CallTracer(vm.VirtualMachine):
     return node
 
   def analyze_class(self, node, val):
+    self._analyzed_classes.add(val.data)
     node, clsvar, instance = self.init_class(node, val.data)
     good_instances = [b for b in instance.bindings
                       if b.data.cls and val.data in b.data.cls.data]
@@ -371,12 +374,17 @@ class CallTracer(vm.VirtualMachine):
             continue
           if new_node is not node:
             new_node.ConnectTo(node)
-    # Now go through all top-level non-bound functions we haven't analyzed yet.
+    # Now go through all functions and classes we haven't analyzed yet.
     # These are typically hidden under a decorator.
     for f in self._interpreter_functions:
       for value in f.bindings:
         if value.data not in self._analyzed_functions:
           node = self.analyze_function(node, value)
+    for c in self._interpreter_classes:
+      for value in c.bindings:
+        if (isinstance(value.data, abstract.InterpreterClass) and
+            value.data not in self._analyzed_classes):
+          node = self.analyze_class(node, value)
     return node
 
   def analyze(self, node, defs, maximum_depth):
@@ -422,6 +430,10 @@ class CallTracer(vm.VirtualMachine):
   def trace_functiondef(self, f):
     if not self.reading_builtins:
       self._interpreter_functions.append(f)
+
+  def trace_classdef(self, c):
+    if not self.reading_builtins:
+      self._interpreter_classes.append(c)
 
   def trace_namedtuple(self, nt):
     # All namedtuple instances with the same name are equal, so it's fine to

@@ -887,6 +887,9 @@ class VirtualMachine(object):
   def trace_functiondef(self, *args):
     return NotImplemented
 
+  def trace_classdef(self, *args):
+    return NotImplemented
+
   def trace_namedtuple(self, *args):
     return NotImplemented
 
@@ -2329,7 +2332,9 @@ class VirtualMachine(object):
   def byte_BUILD_CLASS(self, state, op):
     state, (name, _bases, members) = state.popn(3)
     bases = list(abstract.get_atomic_python_constant(_bases))
-    return state.push(self.make_class(state.node, name, bases, members, None))
+    cls = self.make_class(state.node, name, bases, members, None)
+    self.trace_classdef(cls)
+    return state.push(cls)
 
   def byte_LOAD_BUILD_CLASS(self, state, op):
     # New in py3
