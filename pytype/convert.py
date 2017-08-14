@@ -562,7 +562,7 @@ class Converter(object):
           assert len(cls.parameters) <= len(base_cls.template)
           for formal, actual in zip(base_cls.template, cls.parameters):
             p = self.constant_to_var(
-                abstract.AsInstance(actual), subst, self.vm.root_cfg_node)
+                abstract.AsInstance(actual), subst, get_node())
             instance.initialize_type_parameter(get_node(), formal.name, p)
           return instance
       else:

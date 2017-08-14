@@ -719,7 +719,7 @@ class _PathFinder(object):
       blocked: A set of nodes we're not allowed to traverse.
 
     Returns:
-      An iterable over nodes, representing the the shortest path (as
+      An iterable over nodes, representing the shortest path (as
       [start, ..., finish]), or None if no path exists.
     """
     queue = collections.deque([start])

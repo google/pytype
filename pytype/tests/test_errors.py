@@ -1132,5 +1132,17 @@ class ErrorTest(test_inference.InferenceTest):
           r"Expected.*f: str, \.\.\..*Actual.*f: int, \.\.\.")]
     )
 
+  def testConversionOfGeneric(self):
+    _, errors = self.InferAndCheck("""
+      from __future__ import google_type_annotations
+      import os
+      def f() -> None:
+        return os.walk("/tmp")
+    """)
+    self.assertErrorLogIs(errors, [
+        (5, "bad-return-type")
+    ])
+
+
 if __name__ == "__main__":
   test_inference.main()
