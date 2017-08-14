@@ -346,7 +346,6 @@ class CFGTest(unittest.TestCase):
     # This is impossible since we have a condition on the way, enforcing x=b.
     self.assertFalse(n5.HasCombination([x_a]))
 
-  @unittest.skip("Fails due to _IsSolvedBefore only being an approximation.")
   def testConflictingConditionsOnPath(self):
     # This test case is rather academic - there's no obvious way to construct
     # a Python program that actually creates the CFG below.
@@ -523,7 +522,7 @@ class CFGTest(unittest.TestCase):
     b = x.AddBinding("b")
     a.AddOrigin(n1, [b])
     b.AddOrigin(n2, [a])
-    self.assertTrue(n2.HasCombination([b]))
+    self.assertFalse(n2.HasCombination([b]))
 
   def testOneStepSimultaneous(self):
     # Like testSimultaneous, but woven through an additional node
@@ -677,15 +676,7 @@ class CFGTest(unittest.TestCase):
     p.entrypoint = n1
     self.assertTrue(n2.HasCombination([a]))
 
-  @unittest.skip("Broken. Needs fixing.")
   def testConflict(self):
-    # This tests that we can't "bypass" a blocked CFG node, by landing on it
-    # while solving an unrelated goal.
-    # TODO(kramm): This is currently broken, since our solver considers both
-    # the start and finish node to never be "blocked", hence allowing itself
-    # to step through a conflicting binding. Fixing this will allow us to get
-    # rid of a few extraneous CFG nodes, like the one after (at the end of)
-    # STORE_ATTR and STORE_FAST.
     p = cfg.Program()
     n1 = p.NewCFGNode("n1")
     n2 = n1.ConnectNew("n2")

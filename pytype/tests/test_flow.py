@@ -347,6 +347,24 @@ class FlowTest(test_inference.InferenceTest):
     """, deep=True)
     self.assertErrorLogIs(errors, [(5, "name-error", r"func")])
 
+  def test_cfg_cycle_singlestep(self):
+    self.assertNoErrors("""\
+      from __future__ import google_type_annotations
+      import typing
+      class Foo(object):
+        x = ...  # type: typing.Optional[int]
+        def __init__(self):
+          self.x = None
+        def X(self) -> int:
+          return self.x or 4
+        def B(self) -> None:
+          self.x = 5
+          if __random__:
+            self.x = 6
+        def C(self) -> None:
+          self.x = self.x
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()
