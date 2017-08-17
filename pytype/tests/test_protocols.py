@@ -442,8 +442,7 @@ class ProtocolTest(test_inference.InferenceTest):
       f(["foo"])
     """)
     self.assertErrorLogIs(errors, [(6, "wrong-arg-types",
-                                    r"\(x: SupportsAbs\)",
-                                    r"\(x: List\[str\]\)")])
+                                    r"\(x: SupportsAbs\).*\(x: List\[str\]\)")])
 
   def test_check_protocol_match_unknown(self):
     self.assertNoErrors("""\
@@ -507,8 +506,7 @@ class ProtocolTest(test_inference.InferenceTest):
       f(foo)
     """)
     self.assertErrorLogIs(errors, [(12, "wrong-arg-types",
-                                    r"\(x: Iterable\[int\]\)",
-                                    r"\(x: Foo\)")])
+                                    r"\(x: Iterable\[int\]\).*\(x: Foo\)")])
 
   def test_check_parameterized_protocol_multi_signature(self):
     self.assertNoErrors("""\
@@ -546,8 +544,7 @@ class ProtocolTest(test_inference.InferenceTest):
       f(foo)
     """)
     self.assertErrorLogIs(errors, [(14, "wrong-arg-types",
-                                    r"\(x: Sequence\[int\]\)",
-                                    r"\(x: Foo\)")])
+                                    r"\(x: Sequence\[int\]\).*\(x: Foo\)")])
 
   def test_use_iterable(self):
     ty = self.Infer("""

@@ -237,6 +237,8 @@ class InferenceTest(unittest.TestCase):
                        "Not identity: %r" % pytd.Print(func))
 
   def _parse_expected_error(self, pattern):
+    assert 2 <= len(pattern) <= 3, (
+        "Bad expected error format. Use: (<line>, <name>[, <regexp>])")
     line = pattern[0]
     name = pattern[1]
     regexp = pattern[2] if len(pattern) > 2 else ""
@@ -299,7 +301,7 @@ class InferenceTest(unittest.TestCase):
       report_errors: Whether to fail if the type inferencer reports any errors
         in the program.
       quick: Try to run faster, by avoiding costly computations.
-      **kwargs: Keyword paramters to pass through to the type inferencer.
+      **kwargs: Keyword parameters to pass through to the type inferencer.
 
     Raises:
       AssertionError: If report_errors is True and we found errors.
