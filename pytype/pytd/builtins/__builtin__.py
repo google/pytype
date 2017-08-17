@@ -21,34 +21,6 @@ def next(iterator, default=__undefined__):
     return default
 
 
-class property(object):
-  """Property method decorator."""
-
-  def __init__(self, fget=None, fset=None, fdel=None, doc=None):
-    self.fget = fget
-    self.fset = fset
-    self.fdel = fdel
-    self.__doc__ = doc
-
-  def __get__(self, obj, objtype):
-    return self.fget(obj)
-
-  def __set__(self, obj, value):
-    return self.fset(obj, value)
-
-  def __delete__(self, obj):
-    return self.fdel(obj)
-
-  def getter(self, fget):
-    return property(fget, self.fset, self.fdel, self.__doc__)
-
-  def setter(self, fset):
-    return property(self.fget, fset, self.fdel, self.__doc__)
-
-  def deleter(self, fdel):
-    return property(self.fget, self.fset, fdel, self.__doc__)
-
-
 class staticmethod(object):
   """Staticmethod method decorator."""
 
