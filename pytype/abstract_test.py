@@ -887,6 +887,18 @@ class AbstractTest(AbstractTestBase):
     error, = self._vm.errorlog
     self.assertEqual(error.name, "wrong-arg-count")
 
+  def testInstantiateTupleClassForSub(self):
+    type_param = abstract.TypeParameter(abstract.K, self._vm)
+    cls = abstract.TupleClass(self._vm.convert.tuple_type,
+                              {0: type_param, abstract.T: type_param}, self._vm)
+    # Instantiate the tuple class.
+    subst_value = self._vm.annotations_util.instantiate_for_sub(
+        self._vm.root_cfg_node, cls)
+    # Recover the class from the instance.
+    subbed_cls = self._vm.annotations_util.sub_one_annotation(
+        self._vm.root_cfg_node, type_param, [{abstract.K: subst_value}])
+    self.assertEqual(cls, subbed_cls)
+
 
 if __name__ == "__main__":
   unittest.main()

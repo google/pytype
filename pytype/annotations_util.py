@@ -27,7 +27,7 @@ class AnnotationsUtil(object):
     pass
 
   # A dummy container object for use in instantiating type parameters.
-  _DUMMY_CONTAINER = object()
+  DUMMY_CONTAINER = object()
 
   def __init__(self, vm):
     self.vm = vm
@@ -45,7 +45,7 @@ class AnnotationsUtil(object):
     Returns:
       A variable of an instance of the type.
     """
-    return typ.instantiate(node, container=self._DUMMY_CONTAINER)
+    return typ.instantiate(node, container=self.DUMMY_CONTAINER)
 
   def sub_annotations(self, node, annotations, substs, instantiate_unbound):
     """Apply type parameter substitutions to a dictionary of annotations."""

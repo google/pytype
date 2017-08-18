@@ -703,5 +703,16 @@ class ProtocolTest(test_inference.InferenceTest):
       def f(x: protocols.SupportsFind) -> Any
     """)
 
+  def test_construct_dict_with_protocol(self):
+    self.assertNoErrors("""
+      from __future__ import google_type_annotations
+      class Foo(object):
+        def __iter__(self):
+          pass
+      def f(x: Foo):
+        return dict(x)
+    """)
+
+
 if __name__ == "__main__":
   test_inference.main()

@@ -2232,7 +2232,8 @@ class TupleClass(ParameterizedClass, HasSlots):
     content = []
     for i in range(self.tuple_length):
       p = self.type_parameters[i]
-      if container and isinstance(p, TypeParameter) and (
+      if container is self.vm.annotations_util.DUMMY_CONTAINER or (
+          container and isinstance(p, TypeParameter) and
           p.name in container.type_parameters):
         content.append(p.instantiate(self.vm.root_cfg_node, container))
       else:
