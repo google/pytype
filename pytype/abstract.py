@@ -1446,6 +1446,10 @@ class Function(SimpleAbstractValue):
     # this function. See test_duplicate_getproperty() in tests/test_flow.py.
     return self.bound_class(callself, callcls, self)
 
+  def argcount(self):
+    """Returns the minimum number of arguments needed for a call."""
+    raise NotImplementedError(self.__class__.__name__)
+
   def _match_args(self, node, args):
     """Check whether the given arguments can match the function signature."""
     if not all(a.bindings for a in args.posargs):
@@ -1810,6 +1814,9 @@ class PyTDFunction(Function):
       return ClassMethod(self.name, self, callself, callcls, self.vm)
     else:
       return Function.property_get(self, callself, callcls)
+
+  def argcount(self):
+    return min(sig.signature.mandatory_param_count() for sig in self.signatures)
 
   def _log_args(self, arg_values_list, level=0, logged=None):
     if log.isEnabledFor(logging.DEBUG):
@@ -3024,9 +3031,12 @@ class BoundFunction(AtomicAbstractValue):
   def call(self, node, func, args):
     if self.name == "__init__":
       self.vm.callself_stack.append(self._callself)
+    # The "self" parameter is automatically added to the list of arguments, but
+    # only if the function actually takes any arguments.
+    if self.argcount() >= 0:
+      args = args.replace(posargs=(self._callself,) + args.posargs)
     try:
-      return self.underlying.call(
-          node, func, args.replace(posargs=(self._callself,) + args.posargs))
+      return self.underlying.call(node, func, args)
     except InvalidParameters as e:
       if self._callself and self._callself.bindings:
         if "." in e.name:
