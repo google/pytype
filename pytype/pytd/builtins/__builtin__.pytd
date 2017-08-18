@@ -78,7 +78,7 @@ def min(arg1: _T, arg2: _T2, *, key: Callable = ...) -> _T or _T2
 def min(arg1: _T, arg2: _T2, arg3: _T3, *, key: Callable = ...) -> _T or _T2 or _T3
 def min(arg1: _T, arg2: _T2, arg3: _T3, arg4: _T4, *, key = Callable) -> _T or _T2 or _T3 or _T4
 def min(arg1: _T, arg2: _T, arg3: _T, arg4: _T, arg5: _T, *args: _T, key: Callable = ...) -> _T
-def next PYTHONCODE
+def next(iterator: Iterator[_T], default: _T2 = ...) -> _T or _T2
 def oct(number: int) -> str
 def open(name: str or buffer or unicode, ...) -> file
 def ord(c: str or unicode) -> int

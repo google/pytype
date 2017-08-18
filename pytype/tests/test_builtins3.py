@@ -54,13 +54,17 @@ class BuiltinTests2(test_inference.InferenceTest):
       indices = ...  # type: Tuple[int, int, int]
     """)
 
-  def testImportExternalFunction(self):
+  def testNextFunction(self):
     ty = self.Infer("""
-      from __builtin__ import next
-      v = next(iter([1, 2, 3]))
+      a = next(iter([1, 2, 3]))
+      b = next(iter([1, 2, 3]), default = 4)
+      c = next(iter([1, 2, 3]), "hello")
     """)
     self.assertTypesMatchPytd(ty, """
-      v = ...  # type: int
+      from typing import Union
+      a = ...  # type: int
+      b = ...  # type: int
+      c = ...  # type: Union[int, str]
     """)
 
   def testAddStrAndBytearray(self):

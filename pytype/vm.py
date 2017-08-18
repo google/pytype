@@ -215,6 +215,7 @@ class VirtualMachine(object):
         "issubclass": special_builtins.IsSubclass(self),
         "hasattr": special_builtins.HasAttr(self),
         "abs": special_builtins.Abs(self),
+        "next": special_builtins.Next(self),
         "property": self.convert.property_type,
     }
 

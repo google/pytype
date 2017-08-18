@@ -434,21 +434,58 @@ class Property(abstract.PyTDClass):
     return node, result
 
 
-class Abs(abstract.PyTDFunction):
+class BuiltinFunction(abstract.PyTDFunction):
+  """Implementation of functions in __builtin__.pytd."""
+
+  def __init__(self, name, vm):
+    f = vm.lookup_builtin(name)
+    signatures = [abstract.PyTDSignature(f.name, sig, vm)
+                  for sig in f.signatures]
+    super(BuiltinFunction, self).__init__(f.name, signatures, f.kind, vm)
+
+  def get_underlying_method(self, node, receiver, method_name):
+    """Get the bound method that a built-in function delegates to."""
+    fn = self.vm.program.NewVariable(source_set=receiver.bindings, where=node)
+    for b in receiver.bindings:
+      node, result = self.vm.attribute_handler.get_attribute(
+          node, b.data, method_name, valself=b)
+      fn.PasteVariable(result)
+    return node, fn
+
+
+class Abs(BuiltinFunction):
   """Implements abs."""
 
   def __init__(self, vm):
-    f = vm.lookup_builtin("__builtin__.abs")
-    signatures = [abstract.PyTDSignature(f.name, sig, vm)
-                  for sig in f.signatures]
-    super(Abs, self).__init__(f.name, signatures, f.kind, vm)
+    super(Abs, self).__init__("__builtin__.abs", vm)
 
   def call(self, node, _, args):
     self._match_args(node, args)
     arg = args.posargs[0]
-    abs_fn = self.vm.program.NewVariable(source_set=arg.bindings, where=node)
-    for b in arg.bindings:
-      node, result = self.vm.attribute_handler.get_attribute(
-          node, b.data, "__abs__", valself=b)
-      abs_fn.PasteVariable(result)
-    return self.vm.call_function(node, abs_fn, abstract.FunctionArgs(()))
+    node, fn = self.get_underlying_method(node, arg, "__abs__")
+    return self.vm.call_function(node, fn, abstract.FunctionArgs(()))
+
+
+class Next(BuiltinFunction):
+  """Implements next."""
+
+  def __init__(self, vm):
+    super(Next, self).__init__("__builtin__.next", vm)
+
+  def _get_args(self, args):
+    arg = args.posargs[0]
+    if len(args.posargs) > 1:
+      default = args.posargs[1]
+    elif "default" in args.namedargs:
+      default = args.namedargs["default"]
+    else:
+      default = self.vm.program.NewVariable()
+    return arg, default
+
+  def call(self, node, _, args):
+    self._match_args(node, args)
+    arg, default = self._get_args(args)
+    node, fn = self.get_underlying_method(node, arg, "next")
+    node, ret = self.vm.call_function(node, fn, abstract.FunctionArgs(()))
+    ret.PasteVariable(default)
+    return node, ret
