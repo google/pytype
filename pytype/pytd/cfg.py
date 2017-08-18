@@ -182,7 +182,7 @@ class CFGNode(object):
       if node in seen:
         continue
       seen.add(node)
-      goals -= goals & node.bindings
+      goals -= node.bindings
       stack.extend(node.incoming)
     return not goals
 
