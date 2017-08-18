@@ -1295,14 +1295,6 @@ class ClassesTest(test_inference.InferenceTest):
           pass
       """)
 
-  def testInitWithStaticmethod(self):
-    self.assertNoErrors("""
-      class Foo(object):
-        def __init__():
-          pass
-        __init__ = staticmethod(__init__)
-      """)
-
 
 if __name__ == "__main__":
   test_inference.main()
