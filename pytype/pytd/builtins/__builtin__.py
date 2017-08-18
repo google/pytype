@@ -10,10 +10,6 @@ Each PYTHONCODE item in __builtin__.pytd will have a single python `def` here.
 # pylint: disable=undefined-variable
 
 
-def abs(number):
-  return number.__abs__()
-
-
 def next(iterator, default=__undefined__):
   if __random__:
     return iterator.next()

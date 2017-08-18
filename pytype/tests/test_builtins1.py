@@ -270,6 +270,27 @@ class BuiltinTests(test_inference.InferenceTest):
       def t_testAbs(x) -> ?
     """)
 
+  def testAbsUnion(self):
+    ty = self.Infer("""
+      class Foo:
+        def __abs__(self):
+          return "hello"
+      class Bar:
+        def __abs__(self):
+          return 42
+      x = Foo() if __random__ else Bar()
+      y = abs(x)
+    """, deep=False)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any, Union
+      x = ...  # type: Union[Bar, Foo]
+      y = ...  # type: Union[str, int]
+      class Bar:
+          def __abs__(self) -> int: ...
+      class Foo:
+          def __abs__(self) -> str: ...
+    """)
+
   def testCmp(self):
     ty = self.Infer("""
       def t_testCmp(x, y):

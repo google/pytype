@@ -15,7 +15,7 @@ _V2 = TypeVar('_V2')
 _NUMBER = TypeVar('_NUMBER', bound=complex)
 
 def __import__(name: str or unicode or bytearray, ...) -> module
-def abs PYTHONCODE
+def abs(x) -> ?
 def all(iterable) -> bool
 def any(iterable) -> bool
 def apply(object: Callable, ...) -> NoneType

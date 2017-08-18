@@ -432,3 +432,23 @@ class Property(abstract.PyTDClass):
         [PropertyInstance(self.vm, **property_args)],
         source_set=source_set, where=node)
     return node, result
+
+
+class Abs(abstract.PyTDFunction):
+  """Implements abs."""
+
+  def __init__(self, vm):
+    f = vm.lookup_builtin("__builtin__.abs")
+    signatures = [abstract.PyTDSignature(f.name, sig, vm)
+                  for sig in f.signatures]
+    super(Abs, self).__init__(f.name, signatures, f.kind, vm)
+
+  def call(self, node, _, args):
+    self._match_args(node, args)
+    arg = args.posargs[0]
+    abs_fn = self.vm.program.NewVariable(source_set=arg.bindings, where=node)
+    for b in arg.bindings:
+      node, result = self.vm.attribute_handler.get_attribute(
+          node, b.data, "__abs__", valself=b)
+      abs_fn.PasteVariable(result)
+    return self.vm.call_function(node, abs_fn, abstract.FunctionArgs(()))
