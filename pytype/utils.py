@@ -52,12 +52,12 @@ def _variable_product_items(variableitems, complexity_limit):
   See variable_product_dict below.
 
   Args:
-    variableitems: A dict mapping object to typegraph.Variable.
+    variableitems: A dict mapping object to cfg.Variable.
     complexity_limit: A counter that tracks how many combinations we've yielded
       and aborts if we go over the limit.
 
   Yields:
-    A sequence of [(key, typegraph.Value), ...] lists.
+    A sequence of [(key, cfg.Binding), ...] lists.
   """
   if variableitems:
     headkey, headvar = variableitems[0]

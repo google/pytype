@@ -1,8 +1,8 @@
-"""Explanation mechanism for typegraphs."""
+"""Explanation mechanism for cfgs."""
 
 import sys
 
-from pytype.pytd import cfg as typegraph
+from pytype.pytd import cfg
 
 
 def LeaveOneOut(seq, pos):
@@ -14,9 +14,9 @@ class Explainer(object):
   """Generate textual explanations for variable assignments.
 
   Attributes:
-      program: The typegraph program we're analyzing.
+      program: The cfg.Program we're analyzing.
       cfg_node: Location in the program where this combination is analyzed.
-      combination: A list of typegraph.Value instances.
+      combination: A list of cfg.Binding instances.
       entrypoint: The program's entry point, or None.
       out: Output stream for printing
   """
@@ -97,6 +97,7 @@ class Explainer(object):
     for new_cfg_node, source_sets in value.origins:
       if not self.CanReach(cfg_node, new_cfg_node, blocked):
         if self.CanReach(cfg_node, new_cfg_node, set()):
+          n = None  # make pylint happy
           for n in self.FindPathBackwards(cfg_node, new_cfg_node):
             if n in blocked:
               break
@@ -201,7 +202,7 @@ class Explainer(object):
     """Helper function for debugging."""
     if isinstance(thing, list):
       return "\n".join(self.Str(v) for v in thing) + "\n"
-    elif isinstance(thing, typegraph.Value):
+    elif isinstance(thing, cfg.Binding):
       return "v%d = %s" % (thing.variable.id, repr(thing.data))
 
   def GetPath(self, combination, cfg_node):
@@ -232,7 +233,7 @@ class Explainer(object):
 def Explain(combination, cfg_node, entrypoint=None, out=None):
   """Print an explanation of why a combination is possible or not possible.
 
-     This reproduces (and uses) the logic of the typegraph C extension module,
+     This reproduces (and uses) the logic of the cfg C extension module,
      but prints out additional information about why and where.
 
   Arguments:
@@ -242,7 +243,7 @@ def Explain(combination, cfg_node, entrypoint=None, out=None):
     out: Stream for printing.
 
   Returns:
-    A boolean with the same value as typegraph.CFGNode.HasCombination(...)
+    A boolean with the same value as cfg.CFGNode.HasCombination(...)
   """
   program = cfg_node.program
   return Explainer(program, entrypoint, out).Explain(combination, cfg_node)

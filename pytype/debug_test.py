@@ -5,7 +5,7 @@ import textwrap
 
 
 from pytype import debug
-from pytype.pytd import cfg as typegraph
+from pytype.pytd import cfg
 
 import unittest
 
@@ -34,7 +34,7 @@ class Node(object):
 class DebugTest(unittest.TestCase):
 
   def setUp(self):
-    self.prog = typegraph.Program()
+    self.prog = cfg.Program()
     self.current_location = self.prog.NewCFGNode()
 
   def testAsciiTree(self):

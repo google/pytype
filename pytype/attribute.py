@@ -6,7 +6,7 @@ from pytype import abstract
 from pytype import annotations_util
 from pytype import overlay
 from pytype import special_builtins
-from pytype.pytd import cfg as typegraph
+from pytype.pytd import cfg
 
 log = logging.getLogger(__name__)
 
@@ -32,15 +32,15 @@ class AbstractAttributeHandler(object):
       node: The current CFG node.
       obj: The object.
       name: The name of the attribute to retrieve.
-      valself: A typegraph.Binding, This is the self reference to use when
+      valself: A cfg.Binding, This is the self reference to use when
         getting the attribute.
-      valcls: A typegraph.Binding. This is the cls reference to use when getting
+      valcls: A cfg.Binding. This is the cls reference to use when getting
         the attribute. If valself is given then valcls will be ignored. Note
         that most implementations of this method ignore this value as only class
         objects need it (PyTDClass and InterpreterClass)
 
     Returns:
-      A tuple (CFGNode, typegraph.Variable). If this attribute doesn't exist,
+      A tuple (CFGNode, cfg.Variable). If this attribute doesn't exist,
       the Variable will be None.
     """
     if name in obj.late_annotations:
@@ -188,7 +188,7 @@ class AbstractAttributeHandler(object):
     if isinstance(value, annotations_util.LateAnnotation):
       obj.late_annotations[name] = value
       return node
-    assert isinstance(value, typegraph.Variable)
+    assert isinstance(value, cfg.Variable)
     if self.vm.frame is not None and obj is self.vm.frame.f_globals:
       for v in value.data:
         v.update_official_name(name)
@@ -336,11 +336,11 @@ class AbstractAttributeHandler(object):
     add_origins = []
     variableself = variablecls = None
     if valself:
-      assert isinstance(valself, typegraph.Binding)
+      assert isinstance(valself, cfg.Binding)
       variableself = valself.AssignToNewVariable(node)
       add_origins.append(valself)
     if valcls:
-      assert isinstance(valcls, typegraph.Binding)
+      assert isinstance(valcls, cfg.Binding)
       variablecls = valcls.AssignToNewVariable(node)
       add_origins.append(valcls)
 
@@ -457,7 +457,7 @@ class AbstractAttributeHandler(object):
 
   def _set_member(self, node, obj, name, var):
     """Set a member on an object."""
-    assert isinstance(var, typegraph.Variable)
+    assert isinstance(var, cfg.Variable)
 
     if obj.is_lazy:
       obj.load_lazy_attribute(name)

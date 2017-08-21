@@ -99,10 +99,10 @@ class AbstractMatcher(object):
     """One-way unify value into pytd type given a substitution.
 
     Args:
-      value: A typegraph.Binding.
+      value: A cfg.Binding.
       other_type: An AtomicAbstractValue instance.
       subst: The current substitution. This dictionary is not modified.
-      node: Current location (typegraph CFG node)
+      node: Current location (CFG node)
       view: A mapping of Variable to Value.
     Returns:
       A new (or unmodified original) substitution dict if the matching succeded,

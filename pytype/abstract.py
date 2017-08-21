@@ -1,8 +1,4 @@
-"""The abstract values used by typegraphvm.
-
-An abstract value in effect represents a type. Groups of types are
-combined using typegraph and that is what we compute over.
-"""
+"""The abstract values used by vm.py."""
 
 # Because of false positives:
 # pylint: disable=unpacking-non-sequence
@@ -21,7 +17,7 @@ from pytype import exceptions
 from pytype import function
 from pytype import utils
 from pytype.pyc import loadmarshal
-from pytype.pytd import cfg as typegraph
+from pytype.pytd import cfg
 from pytype.pytd import mro
 from pytype.pytd import pytd
 from pytype.pytd import utils as pytd_utils
@@ -64,11 +60,11 @@ def get_atomic_value(variable, constant_type=None):
 def get_atomic_python_constant(variable, constant_type=None):
   """Get the concrete atomic Python value stored in this variable.
 
-  This is used for things that are stored in typegraph.Variable, but we
+  This is used for things that are stored in cfg.Variable, but we
   need the actual data in order to proceed. E.g. function / class defintions.
 
   Args:
-    variable: A typegraph.Variable. It can only have one possible value.
+    variable: A cfg.Variable. It can only have one possible value.
     constant_type: Optionally, the required type of the constant.
   Returns:
     A Python constant. (Typically, a string, a tuple, or a code object.)
@@ -240,10 +236,10 @@ class AtomicAbstractValue(object):
 
     Args:
       node: The CFGNode calling this function
-      func: The typegraph.Binding containing this function.
+      func: The cfg.Binding containing this function.
       args: Arguments for the call.
     Returns:
-      A tuple (cfg.Node, typegraph.Variable). The CFGNode corresponds
+      A tuple (cfg.Node, cfg.Variable). The CFGNode corresponds
       to the function's "return" statement(s).
     Raises:
       FailedFunctionCall
@@ -327,7 +323,7 @@ class AtomicAbstractValue(object):
     Args:
       node: The current CFG node.
     Returns:
-      A typegraph.Variable.
+      A cfg.Variable.
     Raises:
       ValueError: If origins is an empty sequence. This is to prevent you from
         creating variables that have no origin and hence can never be used.
@@ -478,7 +474,7 @@ class MixinMeta(type):
 class PythonConstant(object):
   """A mix-in for storing actual Python constants, not just their types.
 
-  This is used for things that are stored in typegraph.Variable, but where we
+  This is used for things that are stored in cfg.Variable, but where we
   may need the actual data in order to proceed later. E.g. function / class
   definitions, tuples. Also, potentially: Small integers, strings (E.g. "w",
   "r" etc.).
@@ -636,9 +632,9 @@ class SimpleAbstractValue(AtomicAbstractValue):
     return (self.type_parameters, self.members)
 
   def get_type_parameter(self, node, name):
-    """Get the typegraph.Variable representing the type parameter of self.
+    """Get the cfg.Variable representing the type parameter of self.
 
-    This will be a typegraph.Variable made up of values that have been used in
+    This will be a cfg.Variable made up of values that have been used in
     place of this type parameter.
 
     Args:
@@ -689,7 +685,7 @@ class SimpleAbstractValue(AtomicAbstractValue):
     """Load the named attribute into self.members."""
     if name not in self.members and name in self._member_map:
       variable = self._convert_member(name, self._member_map[name])
-      assert isinstance(variable, typegraph.Variable)
+      assert isinstance(variable, cfg.Variable)
       self.members[name] = variable
 
   def call(self, node, _, args):
@@ -1015,8 +1011,8 @@ class Dict(Instance, HasSlots, PythonConstant, WrapsDict("pyval")):
     return node
 
   def setitem(self, node, name_var, value_var):
-    assert isinstance(name_var, typegraph.Variable)
-    assert isinstance(value_var, typegraph.Variable)
+    assert isinstance(name_var, cfg.Variable)
+    assert isinstance(value_var, cfg.Variable)
     for val in name_var.bindings:
       try:
         name = self.vm.convert.value_to_constant(val.data, str)
@@ -1277,9 +1273,9 @@ class FunctionArgs(collections.namedtuple("_", ["posargs", "namedargs",
     """Create arguments for a function under analysis.
 
     Args:
-      posargs: The positional arguments. A tuple of typegraph.Variable.
+      posargs: The positional arguments. A tuple of cfg.Variable.
       namedargs: The keyword arguments. A dictionary, mapping strings to
-        typegraph.Variable.
+        cfg.Variable.
       starargs: The *args parameter, or None.
       starstarargs: The **kwargs parameter, or None.
     Returns:
@@ -2612,7 +2608,7 @@ class InterpreterFunction(Function):
   Attributes:
     name: Function name. Might just be something like "<lambda>".
     code: A code object.
-    closure: Tuple of cells (typegraph.Variable) containing the free variables
+    closure: Tuple of cells (cfg.Variable) containing the free variables
       this closure binds to.
     vm: TypegraphVirtualMachine instance.
   """
@@ -2750,7 +2746,7 @@ class InterpreterFunction(Function):
       args: The arguments.
 
     Returns:
-      A dictionary, mapping strings (parameter names) to typegraph.Variable.
+      A dictionary, mapping strings (parameter names) to cfg.Variable.
 
     Raises:
       FailedFunctionCall: If the caller supplied incorrect arguments.
@@ -3327,8 +3323,8 @@ class Unknown(AtomicAbstractValue):
 
   Attributes:
     members: Attributes that were written or read so far. Mapping of str to
-      typegraph.Variable.
-    owner: typegraph.Binding that contains this instance as data.
+      cfg.Variable.
+    owner: cfg.Binding that contains this instance as data.
   """
 
   _current_id = 0
@@ -3361,7 +3357,7 @@ class Unknown(AtomicAbstractValue):
 
   @staticmethod
   def _to_pytd(node, v):
-    if isinstance(v, typegraph.Variable):
+    if isinstance(v, cfg.Variable):
       return pytd_utils.JoinTypes(Unknown._to_pytd(node, t) for t in v.data)
     elif isinstance(v, Unknown):
       # Do this directly, and use NamedType, in case there's a circular

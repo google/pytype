@@ -6,7 +6,7 @@ import os
 
 
 from pytype import utils
-from pytype.pytd import cfg as typegraph
+from pytype.pytd import cfg
 from pytype.tests import test_inference
 
 import unittest
@@ -55,7 +55,7 @@ class Node(object):
 class UtilsTest(unittest.TestCase):
 
   def setUp(self):
-    self.prog = typegraph.Program()
+    self.prog = cfg.Program()
     self.current_location = self.prog.NewCFGNode()
 
   def testReplaceExtension(self):

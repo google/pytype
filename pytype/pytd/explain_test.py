@@ -1,6 +1,6 @@
-"""Test for the typegraph explanation mechanism."""
+"""Test for the cfg explanation mechanism."""
 
-from pytype.pytd import cfg as typegraph
+from pytype.pytd import cfg
 from pytype.pytd import explain
 import unittest
 
@@ -16,7 +16,7 @@ class ExplainTest(unittest.TestCase):
     # [n2] x = a; y = a
     # [n3] x = b; y = b
     # [n4] z = x & y
-    self.p = typegraph.Program()
+    self.p = cfg.Program()
     self.n1 = self.p.NewCFGNode("n1")
     self.n2 = self.n1.ConnectNew("n2")
     self.n3 = self.n1.ConnectNew("n3")
@@ -53,7 +53,7 @@ class ExplainTest(unittest.TestCase):
     self.assertFalse(explain.Explain([self.zab], self.n4))
 
   def testUnordered(self):
-    p = typegraph.Program()
+    p = cfg.Program()
     n0 = p.NewCFGNode("n0")
     n1 = n0.ConnectNew("n1")
     x = p.NewVariable()

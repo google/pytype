@@ -161,7 +161,7 @@ def program_to_text(program):
 
 
 def program_to_dot(program, ignored, only_cfg=False):
-  """Convert a typegraph.Program into a dot file.
+  """Convert a cfg.Program into a dot file.
 
   Args:
     program: The program to convert.

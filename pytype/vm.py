@@ -1,7 +1,7 @@
-"""A abstract virtual machine for python bytecode that generates typegraphs.
+"""A abstract virtual machine for python bytecode.
 
-A VM for python byte code that uses pytype/pytd/cfg ("typegraph") to generate a
-trace of the program execution.
+A VM for python byte code that uses pytype/pytd/cfg to generate a trace of the
+program execution.
 """
 
 # We have names like "byte_NOP":
@@ -44,7 +44,7 @@ from pytype.pyc import loadmarshal
 from pytype.pyc import opcodes
 from pytype.pyc import pyc
 from pytype.pyi import parser
-from pytype.pytd import cfg as typegraph
+from pytype.pytd import cfg
 from pytype.pytd import mro
 from pytype.pytd import slots
 from pytype.pytd.parse import builtins
@@ -153,10 +153,10 @@ class _FindIgnoredTypeComments(object):
 
 
 class VirtualMachine(object):
-  """A bytecode VM that generates a typegraph as it executes.
+  """A bytecode VM that generates a cfg as it executes.
 
   Attributes:
-    program: The typegraph.Program used to build the typegraph.
+    program: The cfg.Program used to build the CFG.
     root_cfg_node: The root CFG node that contains the definitions of builtins.
     primitive_classes: A mapping from primitive python types to their abstract
       types.
@@ -184,7 +184,7 @@ class VirtualMachine(object):
     self.frames = []  # The call stack of frames.
     self.functions_with_late_annotations = []
     self.frame = None  # The current frame.
-    self.program = typegraph.Program()
+    self.program = cfg.Program()
     self.root_cfg_node = self.program.NewCFGNode("root")
     self.program.entrypoint = self.root_cfg_node
     self.annotations_util = annotations_util.AnnotationsUtil(self)
@@ -903,8 +903,8 @@ class VirtualMachine(object):
   def call_function_with_state(self, state, funcu, posargs, namedargs=None,
                                starargs=None, starstarargs=None,
                                fallback_to_unsolvable=True):
-    assert starargs is None or isinstance(starargs, typegraph.Variable)
-    assert starstarargs is None or isinstance(starstarargs, typegraph.Variable)
+    assert starargs is None or isinstance(starargs, cfg.Variable)
+    assert starstarargs is None or isinstance(starstarargs, cfg.Variable)
     node, ret = self.call_function(state.node, funcu, abstract.FunctionArgs(
         posargs=posargs, namedargs=namedargs, starargs=starargs,
         starstarargs=starstarargs), fallback_to_unsolvable)
@@ -1012,7 +1012,7 @@ class VirtualMachine(object):
       name: Name of the local
 
     Returns:
-      The value (typegraph.Variable)
+      The value (cfg.Variable)
     """
     return self.load_from(state, self.frame.f_locals, name)
 
@@ -1062,7 +1062,7 @@ class VirtualMachine(object):
 
   def _retrieve_attr(self, node, obj, attr):
     """Load an attribute from an object."""
-    assert isinstance(obj, typegraph.Variable), obj
+    assert isinstance(obj, cfg.Variable), obj
     # Resolve the value independently for each value of obj
     result = self.program.NewVariable()
     log.debug("getting attr %s from %r", attr, obj)
@@ -1127,7 +1127,7 @@ class VirtualMachine(object):
 
   def store_attr(self, state, obj, attr, value):
     """Set an attribute on an object."""
-    assert isinstance(obj, typegraph.Variable)
+    assert isinstance(obj, cfg.Variable)
     assert isinstance(attr, str)
     if not obj.bindings:
       log.info("Ignoring setattr on %r", obj)
@@ -1537,13 +1537,13 @@ class VirtualMachine(object):
 
   def byte_LOAD_DEREF(self, state, op):
     """Retrieves a value out of a cell."""
-    # Since we're working on typegraph.Variable, we don't need to dereference.
+    # Since we're working on cfg.Variable, we don't need to dereference.
     return state.push(self.frame.cells[op.arg])
 
   def byte_STORE_DEREF(self, state, op):
     """Stores a value in a closure cell."""
     state, value = state.pop()
-    assert isinstance(value, typegraph.Variable)
+    assert isinstance(value, cfg.Variable)
     self.frame.cells[op.arg].PasteVariable(value, state.node)
     return state
 

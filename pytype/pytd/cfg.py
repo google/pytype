@@ -105,7 +105,7 @@ class Program(object):
       node: The current CFG node.
       variables: List of variables.
     Returns:
-      A typegraph.Variable.
+      A cfg.Variable.
     """
     if not variables:
       return self.NewVariable()  # return empty var

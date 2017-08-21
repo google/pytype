@@ -411,7 +411,7 @@ class CallTracer(vm.VirtualMachine):
 
     Args:
       node: The CFG node right after this function call.
-      func: A typegraph Value of a function that was called.
+      func: A cfg.Binding of a function that was called.
       sigs: The signatures that the function might have been called with.
       posargs: The positional arguments, an iterable over cfg.Value.
       namedargs: The keyword arguments, a dict mapping str to cfg.Value.
