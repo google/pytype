@@ -50,7 +50,7 @@ class Converter(object):
                               for v in [int, float, str, unicode, object,
                                         types.NoneType, complex, bool, slice,
                                         types.CodeType, types.EllipsisType,
-                                        types.ClassType, super, property]}
+                                        types.ClassType, super]}
     self.primitive_class_names = [
         x.__module__ + "." + x.__name__ for x in self.primitive_classes]
     self.none = abstract.AbstractOrConcreteValue(
@@ -79,7 +79,6 @@ class Converter(object):
     self.none_type = self.primitive_classes[types.NoneType]
     self.oldstyleclass_type = self.primitive_classes[types.ClassType]
     self.super_type = self.primitive_classes[super]
-    self.property_type = self.primitive_classes[property]
     self.str_type = self.primitive_classes[str]
     self.int_type = self.primitive_classes[int]
 
@@ -443,8 +442,6 @@ class Converter(object):
           pyval, self.primitive_classes[types.CodeType], self.vm)
     elif pyval is super:
       return special_builtins.Super(self.vm)
-    elif pyval is property:
-      return special_builtins.Property(self.vm)
     elif pyval is object:
       return special_builtins.Object(self.vm)
     elif pyval.__class__ is type:
