@@ -73,9 +73,6 @@ class AbstractAttributeHandler(object):
     elif isinstance(obj, abstract.Module):
       return self.get_module_attribute(
           node, obj, name, valself, valcls)
-    elif isinstance(obj, special_builtins.PropertyInstance):
-      return self.get_instance_attribute(
-          node, obj, name, valself, valcls)
     elif isinstance(obj, abstract.SimpleAbstractValue):
       return self.get_instance_attribute(
           node, obj, name, valself, valcls)

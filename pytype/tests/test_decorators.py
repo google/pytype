@@ -133,65 +133,6 @@ class DecoratorsTest(test_inference.InferenceTest):
       x = ...  # type: int
     """)
 
-  def testPropertyConstructor(self):
-    ty = self.Infer("""
-      class Foo(object):
-        def __init__(self, x):
-          self.x = x
-        def _get(self):
-          return self.x
-        def _set(self, x):
-          self.x = x
-        def _del(self):
-          del self.x
-        x = property(fget=_get, fset=_set, fdel=_del)
-      foo = Foo("foo")
-      foo.x = 3
-      x = foo.x
-      del foo.x
-    """, deep=True)
-    self.assertTypesMatchPytd(ty, """
-      from typing import Any
-      class Foo(object):
-        x = ...  # type: Any
-        def __init__(self, x) -> None
-        def _del(self) -> None: ...
-        def _get(self) -> Any: ...
-        def _set(self, x) -> None: ...
-      foo = ...  # type: Foo
-      x = ...  # type: int
-    """)
-
-  def testPropertyConstructorPosargs(self):
-    # Same as the above test but with posargs for fget, fset, fdel
-    ty = self.Infer("""
-      class Foo(object):
-        def __init__(self, x):
-          self.x = x
-        def _get(self):
-          return self.x
-        def _set(self, x):
-          self.x = x
-        def _del(self):
-          del self.x
-        x = property(_get, _set, _del)
-      foo = Foo("foo")
-      foo.x = 3
-      x = foo.x
-      del foo.x
-    """, deep=True)
-    self.assertTypesMatchPytd(ty, """
-      from typing import Any
-      class Foo(object):
-        x = ...  # type: Any
-        def __init__(self, x) -> None
-        def _del(self) -> None: ...
-        def _get(self) -> Any: ...
-        def _set(self, x) -> None: ...
-      foo = ...  # type: Foo
-      x = ...  # type: int
-    """)
-
   def testPropertyType(self):
     ty = self.Infer("""
       class Foo(object):

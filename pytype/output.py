@@ -357,9 +357,9 @@ class Converter(object):
 
   def _property_to_types(self, node, v):
     """Convert a property to a list of PyTD types."""
-    if not v.fget:
+    if "fget" not in v.members:
       return [pytd.AnythingType()]
-    getter_options = v.fget.FilteredData(v.vm.exitpoint)
+    getter_options = v.members["fget"].FilteredData(v.vm.exitpoint)
     if not all(isinstance(o, abstract.Function) for o in getter_options):
       return [pytd.AnythingType()]
     types = []
@@ -390,7 +390,7 @@ class Converter(object):
       if name in CLASS_LEVEL_IGNORE:
         continue
       for value in member.FilteredData(v.vm.exitpoint):
-        if isinstance(value, special_builtins.PropertyInstance):
+        if self._is_instance(value, "__builtin__.property"):
           # For simplicity, output properties as constants, since our parser
           # turns them into constants anyway.
           for typ in self._property_to_types(node, value):
