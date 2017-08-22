@@ -358,6 +358,7 @@ class RevealType(abstract.AtomicAbstractValue):
       self.vm.errorlog.reveal_type(self.vm.frames, node, a)
     return node, self.vm.convert.build_none(node)
 
+
 class BuiltinFunction(abstract.PyTDFunction):
   """Implementation of functions in __builtin__.pytd."""
 
@@ -369,12 +370,16 @@ class BuiltinFunction(abstract.PyTDFunction):
 
   def get_underlying_method(self, node, receiver, method_name):
     """Get the bound method that a built-in function delegates to."""
-    fn = self.vm.program.NewVariable(source_set=receiver.bindings, where=node)
+    results = []
     for b in receiver.bindings:
       node, result = self.vm.attribute_handler.get_attribute(
           node, b.data, method_name, valself=b)
-      fn.PasteVariable(result)
-    return node, fn
+      if result is not None:
+        results.append(result)
+    if results:
+      return node, self.vm.join_variables(node, results)
+    else:
+      return node, None
 
 
 class Abs(BuiltinFunction):
@@ -387,7 +392,10 @@ class Abs(BuiltinFunction):
     self._match_args(node, args)
     arg = args.posargs[0]
     node, fn = self.get_underlying_method(node, arg, "__abs__")
-    return self.vm.call_function(node, fn, abstract.FunctionArgs(()))
+    if fn is not None:
+      return self.vm.call_function(node, fn, abstract.FunctionArgs(()))
+    else:
+      return node, self.vm.convert.create_new_unsolvable(node)
 
 
 class Next(BuiltinFunction):
@@ -410,6 +418,10 @@ class Next(BuiltinFunction):
     self._match_args(node, args)
     arg, default = self._get_args(args)
     node, fn = self.get_underlying_method(node, arg, "next")
-    node, ret = self.vm.call_function(node, fn, abstract.FunctionArgs(()))
-    ret.PasteVariable(default)
-    return node, ret
+    if fn is not None:
+      node, ret = self.vm.call_function(node, fn, abstract.FunctionArgs(()))
+      ret.PasteVariable(default)
+      return node, ret
+    else:
+      # TODO(kramm): This needs a test case.
+      return node, self.vm.convert.create_new_unsolvable(node)
