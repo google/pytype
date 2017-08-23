@@ -12,6 +12,17 @@ class SpecialBuiltinsTest(test_inference.InferenceTest):
       next(None)
     """)
 
+  def testNext2(self):
+    self.assertNoCrash("""
+      class Foo(object):
+        def a(self):
+          self._foo = None
+        def b(self):
+          self._foo = __any_object__
+        def c(self):
+          next(self._foo)
+    """)
+
   def testAbs(self):
     self.assertNoCrash("""
       abs(None)
