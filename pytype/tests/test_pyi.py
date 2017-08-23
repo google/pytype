@@ -728,6 +728,47 @@ class PYITest(test_inference.InferenceTest):
         (foo.Foo() - foo.Bar()).real
       """, pythonpath=[d.path])
 
+  def testParameterizedAny(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import Any
+        x = ...  # type: Any
+        y = ...  # type: x[Any]
+      """)
+      self.assertNoErrors("""
+        import foo
+      """, pythonpath=[d.path])
+
+  def testParameterizedExternalAny(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import Any
+        x = ...  # type: Any
+      """)
+      d.create_file("bar.pyi", """
+        import foo
+        from typing import Any
+        x = ...  # type: foo.x[Any]
+      """)
+      self.assertNoErrors("""
+        import bar
+      """, pythonpath=[d.path])
+
+  def testParameterizedAlias(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import Any
+        x = ...  # type: Any
+      """)
+      d.create_file("bar.pyi", """
+        import foo
+        from typing import Any
+        x = foo.x[Any]
+      """)
+      self.assertNoErrors("""
+        import bar
+      """, pythonpath=[d.path])
+
 
 if __name__ == "__main__":
   test_inference.main()

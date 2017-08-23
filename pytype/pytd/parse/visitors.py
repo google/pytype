@@ -749,10 +749,22 @@ def _ToType(item, allow_constants=True):
     raise
 
 
-class DefaceUnresolved(Visitor):
-  """Replace all types not in a symbol table with AnythingType."""
+class RemoveTypeParametersFromGenericAny(Visitor):
+  """Adjusts GenericType nodes to handle base type changes."""
 
   unchecked_node_names = ("GenericType",)
+
+  def VisitGenericType(self, node):
+    if isinstance(node.base_type, (pytd.AnythingType, pytd.Constant)):
+      # TODO(rechen): Raise an exception if the base type is a constant whose
+      # type isn't Any.
+      return node.base_type
+    else:
+      return node
+
+
+class DefaceUnresolved(RemoveTypeParametersFromGenericAny):
+  """Replace all types not in a symbol table with AnythingType."""
 
   def __init__(self, lookup_list, do_not_log_prefix=None):
     """Create this visitor.
@@ -789,12 +801,6 @@ class DefaceUnresolved(Visitor):
 
   def VisitTupleType(self, node):
     return self.VisitGenericType(node)
-
-  def VisitGenericType(self, node):
-    if isinstance(node.base_type, pytd.AnythingType):
-      return node.base_type
-    else:
-      return node
 
   def VisitClassType(self, node):
     return self.VisitNamedType(node)
@@ -913,7 +919,7 @@ class LookupBuiltins(Visitor):
       return t
 
 
-class LookupExternalTypes(Visitor):
+class LookupExternalTypes(RemoveTypeParametersFromGenericAny):
   """Look up NamedType pointers using a symbol table."""
 
   def __init__(self, module_map, full_names=False, self_name=None):
@@ -1087,7 +1093,7 @@ class LookupExternalTypes(Visitor):
             tuple(new_aliases)))
 
 
-class LookupLocalTypes(Visitor):
+class LookupLocalTypes(RemoveTypeParametersFromGenericAny):
   """Look up local identifiers. Must be called on a TypeDeclUnit."""
 
   def EnterTypeDeclUnit(self, unit):
@@ -2089,10 +2095,8 @@ class ClearClassPointers(Visitor):
     node.cls = None
 
 
-class ReplaceWithAnyReferenceVisitor(Visitor):
+class ReplaceWithAnyReferenceVisitor(RemoveTypeParametersFromGenericAny):
   """Replace all references to modules in a list with AnythingType."""
-
-  unchecked_node_names = ("GenericType",)
 
   def __init__(self, module_list):
     super(ReplaceWithAnyReferenceVisitor, self).__init__()
@@ -2100,11 +2104,6 @@ class ReplaceWithAnyReferenceVisitor(Visitor):
 
   def VisitNamedType(self, n):
     if any(n.name.startswith(module) for module in self._any_modules):
-      return pytd.AnythingType()
-    return n
-
-  def VisitGenericType(self, n):
-    if isinstance(n.base_type, pytd.AnythingType):
       return pytd.AnythingType()
     return n
 
