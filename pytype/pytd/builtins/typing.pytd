@@ -99,6 +99,9 @@ class Sequence(Sized, Iterable[_T], Container[_T], Reversible[_T], Protocol):
   def __reversed__(self) -> Iterator[_T]: ...
 
 
+class Collection(Sized, Iterable[_T], Container[_T]): ...
+
+
 class Tuple(Sequence[_T]): ...
 
 
@@ -327,13 +330,10 @@ def get_type_hints(obj, ...) -> Optional[Dict[str, Any]]
 
 # The following only exist in Python 3's typing.py, not in
 # https://github.com/python/typeshed/blob/master/stdlib/2/typing.pyi
-# TODO(kramm): Can we backport "Collection"?
 # Awaitable,
 # AsyncIterator,
 # AsyncIterable,
 # Coroutine,
-# Collection,
-# ContextManager,
 # AsyncGenerator,
 
 TYPE_CHECKING = ...  # type: bool
