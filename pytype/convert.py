@@ -521,22 +521,14 @@ class Converter(object):
       cls = pyval.cls
       if isinstance(cls, pytd.ClassType):
         cls = cls.cls
-      if isinstance(cls, pytd.Class):
-        # This key is also used in __init__
-        key = (abstract.Instance, cls)
-        if key not in self._convert_cache:
-          if cls.name in ["__builtin__.type", "__builtin__.property"]:
-            # An instance of "type" or of an anonymous property can be anything.
-            instance = self._create_new_unknown_value("type")
-          else:
-            mycls = self.constant_to_value(cls, subst, self.vm.root_cfg_node)
-            instance = abstract.Instance(mycls, self.vm)
-            instance.make_template_unsolvable(cls.template,
-                                              self.vm.root_cfg_node)
-          log.info("New pytd instance for %s: %r", cls.name, instance)
-          self._convert_cache[key] = instance
-        return self._convert_cache[key]
-      elif isinstance(cls, pytd.GenericType):
+      if isinstance(cls, pytd.GenericType) or (isinstance(cls, pytd.Class) and
+                                               cls.template):
+        # If we're converting a generic Class, need to create a new instance of
+        # it. See test_classes.testGenericReinstantiated.
+        if isinstance(cls, pytd.Class):
+          params = tuple(pytd.AnythingType() for t in cls.template)
+          cls = pytd.GenericType(base_type=pytd.ClassType(cls.name, cls),
+                                 parameters=params)
         assert isinstance(cls.base_type, pytd.ClassType)
         base_cls = cls.base_type.cls
         if base_cls.name == "__builtin__.type":
@@ -565,6 +557,21 @@ class Converter(object):
                 abstract.AsInstance(actual), subst, get_node())
             instance.initialize_type_parameter(get_node(), formal.name, p)
           return instance
+      elif isinstance(cls, pytd.Class):
+        # This key is also used in __init__
+        key = (abstract.Instance, cls)
+        if key not in self._convert_cache:
+          if cls.name in ["__builtin__.type", "__builtin__.property"]:
+            # An instance of "type" or of an anonymous property can be anything.
+            instance = self._create_new_unknown_value("type")
+          else:
+            mycls = self.constant_to_value(cls, subst, self.vm.root_cfg_node)
+            instance = abstract.Instance(mycls, self.vm)
+            instance.make_template_unsolvable(cls.template,
+                                              self.vm.root_cfg_node)
+          log.info("New pytd instance for %s: %r", cls.name, instance)
+          self._convert_cache[key] = instance
+        return self._convert_cache[key]
       else:
         return self.constant_to_value(cls, subst, self.vm.root_cfg_node)
     elif isinstance(pyval, pytd.GenericType):

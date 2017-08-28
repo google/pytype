@@ -1295,6 +1295,24 @@ class ClassesTest(test_inference.InferenceTest):
           pass
       """)
 
+  def testGenericReinstantiated(self):
+    """Makes sure the result of foo.f() isn't used by both a() and b()."""
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """\
+        def f() -> list: ...
+        """)
+      self.assertNoErrors("""\
+        from __future__ import google_type_annotations
+        import foo
+        from typing import List
+        def a() -> List[str]:
+          x = foo.f()
+          x.append("hello")
+          return x
+        def b() -> List[int]:
+          return [x for x in foo.f()]
+        """, pythonpath=[d.path])
+
 
 if __name__ == "__main__":
   test_inference.main()
