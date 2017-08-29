@@ -518,7 +518,7 @@ class AbstractMatcher(object):
       else:
         base_cls = base
       if isinstance(base_cls, abstract.Class):
-        if other_type is base_cls or (
+        if other_type.full_name == base_cls.full_name or (
             isinstance(other_type, abstract.ParameterizedClass) and
             other_type.base_cls is base_cls) or (
                 (base_cls.full_name,

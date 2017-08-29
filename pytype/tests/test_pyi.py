@@ -276,22 +276,6 @@ class PYITest(test_inference.InferenceTest):
         def h(x) -> Any
       """)
 
-  def testAnonymousProperty(self):
-    with utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
-        class Foo:
-          x = ...  # type: property
-      """)
-      ty = self.Infer("""\
-        import foo
-        x = foo.Foo().x
-        x.bar()
-      """, deep=True, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
-        foo = ...  # type: module
-        x = ...  # type: ?
-      """)
-
   def testOldStyleClassObjectMatch(self):
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", """

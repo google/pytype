@@ -359,6 +359,81 @@ class RevealType(abstract.AtomicAbstractValue):
     return node, self.vm.convert.build_none(node)
 
 
+class PropertyInstance(abstract.SimpleAbstractValue, abstract.HasSlots):
+  """Property instance (constructed by Property.call())."""
+
+  def __init__(self, vm, fget=None, fset=None, fdel=None, doc=None):
+    super(PropertyInstance, self).__init__("property", vm)
+    abstract.HasSlots.init_mixin(self)
+    self.fget = fget
+    self.fset = fset
+    self.fdel = fdel
+    self.doc = doc
+    self.set_slot("__get__", self.fget_slot)
+    self.set_slot("__set__", self.fset_slot)
+    self.set_slot("__delete__", self.fdelete_slot)
+    self.set_slot("getter", self.getter_slot)
+    self.set_slot("setter", self.setter_slot)
+    self.set_slot("deleter", self.deleter_slot)
+
+  def fget_slot(self, node, obj, objtype):
+    return self.vm.call_function(
+        node, self.fget, abstract.FunctionArgs((obj,)))
+
+  def fset_slot(self, node, obj, value):
+    return self.vm.call_function(
+        node, self.fset, abstract.FunctionArgs((obj, value)))
+
+  def fdelete_slot(self, node, obj):
+    return self.vm.call_function(
+        node, self.fdel, abstract.FunctionArgs((obj,)))
+
+  def getter_slot(self, node, fget):
+    prop = PropertyInstance(self.vm, fget, self.fset, self.fdel, self.doc)
+    result = self.vm.program.NewVariable([prop], fget.bindings, node)
+    return node, result
+
+  def setter_slot(self, node, fset):
+    prop = PropertyInstance(self.vm, self.fget, fset, self.fdel, self.doc)
+    result = self.vm.program.NewVariable([prop], fset.bindings, node)
+    return node, result
+
+  def deleter_slot(self, node, fdel):
+    prop = PropertyInstance(self.vm, self.fget, self.fset, fdel, self.doc)
+    result = self.vm.program.NewVariable([prop], fdel.bindings, node)
+    return node, result
+
+
+class Property(abstract.PyTDClass):
+  """Property method decorator."""
+
+  _KEYS = ["fget", "fset", "fdel", "doc"]
+  # Minimal signature, only used for constructing exceptions.
+  _SIGNATURE = function.Signature(
+      "property", tuple(_KEYS), None, set(), None, {}, {}, {})
+
+  def __init__(self, vm):
+    super(Property, self).__init__(
+        "property", vm.lookup_builtin("__builtin__.property"), vm)
+    self.module = "__builtin__"
+
+  def _get_args(self, args):
+    ret = dict(zip(self._KEYS, args.posargs))
+    for k, v in args.namedargs.iteritems():
+      if k not in self._KEYS:
+        raise abstract.WrongKeywordArgs(self._SIGNATURE, args, self.vm, [k])
+      ret[k] = v
+    return ret
+
+  def call(self, node, funcv, args):
+    property_args = self._get_args(args)
+    source_set = [x for arg in property_args.values() for x in arg.bindings]
+    result = self.vm.program.NewVariable(
+        [PropertyInstance(self.vm, **property_args)],
+        source_set=source_set, where=node)
+    return node, result
+
+
 class BuiltinFunction(abstract.PyTDFunction):
   """Implementation of functions in __builtin__.pytd."""
 
