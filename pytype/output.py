@@ -440,6 +440,7 @@ class Converter(object):
                       parents=tuple(bases),
                       methods=tuple(methods.values()),
                       constants=tuple(constants),
+                      slots=None,
                       template=())
 
   def _typeparam_to_def(self, node, v, name):

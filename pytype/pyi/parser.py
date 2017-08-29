@@ -803,6 +803,7 @@ class _Parser(object):
                           parents=(class_parent,),
                           methods=tuple(methods),
                           constants=class_constants,
+                          slots=None,
                           template=())
 
     self._generated_classes[base_name].append(nt_class)
@@ -885,6 +886,7 @@ class _Parser(object):
                      parents=tuple(parents),
                      methods=tuple(methods),
                      constants=tuple(constants + properties),
+                     slots=None,
                      template=())
     self._classes.append(cls)
 

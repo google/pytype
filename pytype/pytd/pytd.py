@@ -125,6 +125,7 @@ class Class(node.Node('name: str',
                       'parents: tuple[Class or {Type}]',
                       'methods: tuple[Function or ExternalFunction]',
                       'constants: tuple[Constant]',
+                      'slots: None or tuple[str]',
                       'template: tuple[TemplateItem]')):
   """Represents a class declaration.
 
@@ -136,6 +137,7 @@ class Class(node.Node('name: str',
     methods: Tuple of methods, classmethods, staticmethods
       (instances of pytd.Function).
     constants: Tuple of constant class attributes (instances of pytd.Constant).
+    slots: A.k.a. __slots__, declaring which instance attributes are writable.
     template: Tuple of pytd.TemplateItem instances.
   """
   # TODO(kramm): Rename "parents" to "bases". "Parents" is confusing since we're

@@ -537,6 +537,7 @@ class CallTracer(vm.VirtualMachine):
           parents=(pytd.NamedType("__builtin__.object"),),  # not used in solver
           methods=tuple(self._call_traces_to_function(call_records)),
           constants=(),
+          slots=None,
           template=(),
       ))
     return classes

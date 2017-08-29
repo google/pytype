@@ -2446,6 +2446,7 @@ class PyTDClass(SimpleAbstractValue, Class):
         parents=self.pytd_cls.parents,
         methods=tuple(self._member_map[m.name] for m in self.pytd_cls.methods),
         constants=self.pytd_cls.constants,
+        slots=None,
         template=self.pytd_cls.template)
 
 
@@ -3433,6 +3434,7 @@ class Unknown(AtomicAbstractValue):
         methods=methods,
         constants=tuple(pytd.Constant(name, Unknown._to_pytd(node, c))
                         for name, c in self.members.items()),
+        slots=None,
         template=())
 
   def get_class(self):

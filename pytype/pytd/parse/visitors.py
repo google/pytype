@@ -1580,6 +1580,7 @@ class CanonicalOrderingVisitor(Visitor):
                       parents=node.parents,
                       methods=tuple(sorted(node.methods)),
                       constants=tuple(sorted(node.constants)),
+                      slots=node.slots,
                       template=node.template)
 
   def VisitFunction(self, node):
