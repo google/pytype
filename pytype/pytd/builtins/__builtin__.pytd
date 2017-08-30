@@ -177,7 +177,7 @@ class ellipsis(object):
 class basestring(object):
     pass
 
-class property(object):  # Also defined in __builtin__.py
+class property(object):
     def __init__(self, fget=..., fset=..., fdel=..., doc=...) -> NoneType
     def __get__(self, ...) -> ?
     def __set__(self, ...) -> ?
@@ -186,7 +186,7 @@ class property(object):  # Also defined in __builtin__.py
 # TODO(kramm): This is wrong. These classes shouldn't inherit from
 # Callable. We should instead generate the right information in pyi (I.e.,
 # decorate classes instead of creating constants of type {class,static}method)
-class staticmethod(typing.Callable):  # Also defined in __builtin__.py
+class staticmethod(typing.Callable):
     def __init__(self, func) -> NoneType
     def __get__(self, ...) -> ?
 

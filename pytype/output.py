@@ -370,10 +370,16 @@ class Converter(object):
             node_after, val, return_value, len(combinations)))
     return types
 
-  def _special_method_to_def(self, node, v, name, kind):
-    """Convert a staticmethod or classmethod to a PyTD definition."""
+  def _class_method_to_def(self, node, v, name, kind):
+    """Convert a classmethod to a PyTD definition."""
     # This line may raise abstract.ConversionError
     func = abstract.get_atomic_value(v.members["__func__"], abstract.Function)
+    return self.value_to_pytd_def(node, func, name).Replace(kind=kind)
+
+  def _static_method_to_def(self, node, v, name, kind):
+    """Convert a staticmethod to a PyTD definition."""
+    # This line may raise abstract.ConversionError
+    func = abstract.get_atomic_value(v.func, abstract.Function)
     return self.value_to_pytd_def(node, func, name).Replace(kind=kind)
 
   def _is_instance(self, value, cls_name):
@@ -395,15 +401,15 @@ class Converter(object):
           # turns them into constants anyway.
           for typ in self._property_to_types(node, value):
             constants[name].add_type(typ)
-        elif self._is_instance(value, "__builtin__.staticmethod"):
+        elif isinstance(value, special_builtins.StaticMethodInstance):
           try:
-            methods[name] = self._special_method_to_def(
+            methods[name] = self._static_method_to_def(
                 node, value, name, pytd.STATICMETHOD)
           except abstract.ConversionError:
             constants[name].add_type(pytd.AnythingType())
         elif self._is_instance(value, "__builtin__.classmethod"):
           try:
-            methods[name] = self._special_method_to_def(
+            methods[name] = self._class_method_to_def(
                 node, value, name, pytd.CLASSMETHOD)
           except abstract.ConversionError:
             constants[name].add_type(pytd.AnythingType())

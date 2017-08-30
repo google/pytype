@@ -10,17 +10,6 @@ Each PYTHONCODE item in __builtin__.pytd will have a single python `def` here.
 # pylint: disable=undefined-variable
 
 
-class staticmethod(object):
-  """Staticmethod method decorator."""
-
-  def __init__(self, func):
-    # Name the inner method __func__, like in Python/Objects/funcobject.c
-    self.__func__ = func
-
-  def __get__(self, obj, objtype):
-    return self.__func__
-
-
 class classmethod(object):
   """Classmethod method decorator."""
 

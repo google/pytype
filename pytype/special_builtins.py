@@ -500,3 +500,34 @@ class Next(BuiltinFunction):
     else:
       # TODO(kramm): This needs a test case.
       return node, self.vm.convert.create_new_unsolvable(node)
+
+
+class StaticMethodInstance(abstract.SimpleAbstractValue, abstract.HasSlots):
+  """StaticMethod instance (constructed by StaticMethod.call())."""
+
+  def __init__(self, vm, func):
+    super(StaticMethodInstance, self).__init__("staticmethod", vm)
+    abstract.HasSlots.init_mixin(self)
+    self.func = func
+    self.set_slot("__get__", self.func_slot)
+
+  def func_slot(self, node, obj, objtype):
+    return node, self.func
+
+
+class StaticMethod(abstract.PyTDClass):
+  """Static method decorator."""
+  # Minimal signature, only used for constructing exceptions.
+  _SIGNATURE = function.Signature(
+      "staticmethod", ("func",), None, set(), None, {}, {}, {})
+
+  def __init__(self, vm):
+    super(StaticMethod, self).__init__(
+        "staticmethod", vm.lookup_builtin("__builtin__.staticmethod"), vm)
+    self.module = "__builtin__"
+
+  def call(self, node, funcv, args):
+    if len(args.posargs) != 1:
+      raise abstract.WrongArgCount(self._SIGNATURE, args, self.vm)
+    arg = args.posargs[0]
+    return node, StaticMethodInstance(self.vm, arg).to_variable(node)
