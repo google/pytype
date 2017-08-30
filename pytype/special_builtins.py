@@ -427,11 +427,7 @@ class Property(abstract.PyTDClass):
 
   def call(self, node, funcv, args):
     property_args = self._get_args(args)
-    source_set = [x for arg in property_args.values() for x in arg.bindings]
-    result = self.vm.program.NewVariable(
-        [PropertyInstance(self.vm, **property_args)],
-        source_set=source_set, where=node)
-    return node, result
+    return node, PropertyInstance(self.vm, **property_args).to_variable(node)
 
 
 class BuiltinFunction(abstract.PyTDFunction):
