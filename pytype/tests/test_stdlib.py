@@ -204,6 +204,17 @@ class StdlibTests(test_inference.InferenceTest):
       d = ...  # type: collections.defaultdict[int, Union[int, str]]
       """)
 
+  def testCounter(self):
+    self.assertNoErrors("""
+      import collections
+      x = collections.Counter()
+      y = collections.Counter()
+      (x + y).elements
+      (x - y).elements
+      (x & y).elements
+      (x | y).elements
+    """)
+
   def testStringTypes(self):
     ty = self.Infer("""
       import types

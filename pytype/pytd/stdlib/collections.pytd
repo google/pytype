@@ -82,17 +82,17 @@ class defaultdict(Dict[K, V]):
 class Counter(dict[?, int]):
     __doc__ = ...  # type: str
     fromkeys = ...  # type: classmethod
-    def __add__(self, other: dict[object, object]) -> Counter or NotImplementedType
-    def __and__(self, other: bytearray or xrange or dict[?, object] or list[object] or tuple) -> Counter or NotImplementedType
+    def __add__(self, other: Counter) -> Counter
+    def __and__(self, other: Counter) -> Counter
     def __delitem__(self, elem) -> NoneType
     def __init__(self, ...) -> NoneType
     def __missing__(self, key) -> int
-    def __or__(self, other: dict[object, object]) -> Counter or NotImplementedType
+    def __or__(self, other: Counter) -> Counter
     def __reduce__(self) -> tuple
     def __repr__(self) -> str
-    def __sub__(self, other: dict[object, object]) -> Counter or NotImplementedType
+    def __sub__(self, other: Counter) -> Counter
     def copy(self) -> ?
     def elements(self) -> ?
     def most_common(self, ...) -> ?
-    def subtract(self, ...) -> NoneType
-    def update(self, ...) -> NoneType
+    def subtract(self, other: Iterable) -> NoneType
+    def update(self, other: Iterable) -> NoneType
