@@ -387,8 +387,13 @@ class PrintVisitor(Visitor):
     if node.metaclass is not None:
       parents += ("metaclass=" + node.metaclass,)
     parents_str = "(" + ", ".join(parents) + ")" if parents else ""
-    header = "class " + self._SafeName(node.name) + parents_str + ":"
-    if node.methods or node.constants:
+    header = ["class " + self._SafeName(node.name) + parents_str + ":"]
+    if node.slots is not None:
+      slots_str = ", ".join("\"%s\"" % s for s in node.slots)
+      slots = [self.INDENT + "__slots__ = [" + slots_str + "]"]
+    else:
+      slots = []
+    if node.methods or node.constants or slots:
       # We have multiple methods, and every method has multiple signatures
       # (i.e., the method string will have multiple lines). Combine this into
       # an array that contains all the lines, then indent the result.
@@ -398,7 +403,7 @@ class PrintVisitor(Visitor):
     else:
       constants = []
       methods = [self.INDENT + "pass"]
-    return "\n".join([header] + constants + methods) + "\n"
+    return "\n".join(header + slots + constants + methods) + "\n"
 
   def VisitFunction(self, node):
     """Visit function, producing multi-line string (one for each signature)."""
@@ -1575,13 +1580,14 @@ class CanonicalOrderingVisitor(Visitor):
                              aliases=tuple(sorted(node.aliases)))
 
   def VisitClass(self, node):
-    return pytd.Class(name=node.name,
-                      metaclass=node.metaclass,
-                      parents=node.parents,
-                      methods=tuple(sorted(node.methods)),
-                      constants=tuple(sorted(node.constants)),
-                      slots=node.slots,
-                      template=node.template)
+    return pytd.Class(
+        name=node.name,
+        metaclass=node.metaclass,
+        parents=node.parents,
+        methods=tuple(sorted(node.methods)),
+        constants=tuple(sorted(node.constants)),
+        slots=tuple(sorted(node.slots)) if node.slots is not None else None,
+        template=node.template)
 
   def VisitFunction(self, node):
     # Typically, signatures should *not* be sorted because their order

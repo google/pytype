@@ -170,6 +170,28 @@ class ParserTest(_ParserTestBase):
           z = ...  # type: int
     """)
 
+  def test_slots(self):
+    self.check("""\
+      class A:
+          __slots__ = ["foo", "bar", "baz"]
+    """)
+    self.check("""\
+      class A:
+          __slots__ = []
+    """)
+    self.check_error("""\
+      __slots__ = ["foo", "bar"]
+    """, 1, "__slots__ only allowed on the class level")
+    self.check_error("""\
+      class A:
+          __slots__ = ["foo", "bar"]
+          __slots__ = ["foo", "bar", "baz"]
+    """, 1, "Duplicate __slots__ declaration")
+    self.check_error("""\
+      class A:
+          __slots__ = ["foo", ?]
+    """, 1, "Entries in __slots__ can only be strings")
+
   def test_import(self):
     self.check("import foo.bar.baz", "")
     self.check_error("\n\nimport a as b", 3,

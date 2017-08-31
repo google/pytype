@@ -21,6 +21,9 @@ _NameAndSig = collections.namedtuple("_", ["name", "signature",
                                            "is_abstract"])
 
 
+_SlotDecl = collections.namedtuple("_", ["slots"])
+
+
 _COMPARES = {
     "==": lambda x, y: x == y,
     "!=": lambda x, y: x != y,
@@ -304,7 +307,7 @@ class _Parser(object):
       ast = self._build_type_decl_unit(defs)
     except ParseError as e:
       if self._error_location:
-        line = self._error_location[0]
+        line = e.line or self._error_location[0]
         try:
           text = src.splitlines()[line-1]
         except IndexError:
@@ -331,7 +334,8 @@ class _Parser(object):
   def _build_type_decl_unit(self, defs):
     """Return a pytd.TypeDeclUnit for the given defs (plus parser state)."""
     # defs contains both constant and function definitions.
-    constants, functions, aliases = _split_definitions(defs)
+    constants, functions, aliases, slots = _split_definitions(defs)
+    assert not slots  # slots aren't allowed on the module level
     assert not aliases  # We handle top-level aliases in add_alias_or_constant.
     constants.extend(self._constants)
 
@@ -487,7 +491,9 @@ class _Parser(object):
 
   def new_alias_or_constant(self, name_and_value):
     name, value = name_and_value
-    if value in [pytd.NamedType("True"), pytd.NamedType("False")]:
+    if name == "__slots__":
+      return _SlotDecl(value)
+    elif value in [pytd.NamedType("True"), pytd.NamedType("False")]:
       return pytd.Constant(name, pytd.NamedType("bool"))
     else:
       return pytd.Alias(name, value)
@@ -497,6 +503,9 @@ class _Parser(object):
 
     Args:
       name_and_value: The name and value of the alias or constant.
+
+    Raises:
+      ParseError: For an invalid __slots__ declaration.
     """
     if not self._current_condition.active:
       return
@@ -504,10 +513,16 @@ class _Parser(object):
     alias_or_constant = self.new_alias_or_constant(name_and_value)
     if isinstance(alias_or_constant, pytd.Constant):
       self._constants.append(alias_or_constant)
-    else:
+    elif isinstance(alias_or_constant, _SlotDecl):
+      # At this point, bison might not have full location information yet, so
+      # supply an explicit line number.
+      raise ParseError("__slots__ only allowed on the class level", line=1)
+    elif isinstance(alias_or_constant, pytd.Alias):
       name, value = name_and_value
       self._type_map[name] = value
       self._aliases.append(alias_or_constant)
+    else:
+      assert False, "Unknown type of assignment"
 
   def add_import(self, from_package, import_list):
     """Add an import.
@@ -845,7 +860,7 @@ class _Parser(object):
           raise ParseError("Only 'metaclass' allowed as classdef kwarg")
         metaclass = value
 
-    constants, methods, aliases = _split_definitions(defs)
+    constants, methods, aliases, slots = _split_definitions(defs)
 
     all_names = (list(set(f.name for f in methods)) +
                  [c.name for c in constants] +
@@ -886,7 +901,7 @@ class _Parser(object):
                      parents=tuple(parents),
                      methods=tuple(methods),
                      constants=tuple(constants + properties),
-                     slots=None,
+                     slots=slots,
                      template=())
     self._classes.append(cls)
 
@@ -1111,6 +1126,7 @@ def _split_definitions(defs):
   constants = []
   functions = []
   aliases = []
+  slots = None
   for d in defs:
     if isinstance(d, pytd.Constant):
       constants.append(d)
@@ -1118,9 +1134,18 @@ def _split_definitions(defs):
       functions.append(d)
     elif isinstance(d, pytd.Alias):
       aliases.append(d)
+    elif isinstance(d, _SlotDecl):
+      if slots is not None:
+        raise ParseError("Duplicate __slots__ declaration")
+      # Empty tuples are stored as (pytd.NothingType(),).
+      if not all(isinstance(p, (pytd.NamedType, pytd.NothingType))
+                 for p in d.slots.parameters):
+        raise ParseError("Entries in __slots__ can only be strings")
+      slots = tuple(p.name for p in d.slots.parameters
+                    if isinstance(p, pytd.NamedType))
     else:
       raise TypeError("Unexpected definition type %s", type(d))
-  return constants, functions, aliases
+  return constants, functions, aliases, slots
 
 
 def _is_int_tuple(value):
