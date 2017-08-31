@@ -197,12 +197,42 @@ def ProcessAst(serializable_ast, module_map):
     UnrestorableDependencyError: If no concrete module exists in module_map for
       one of the references from the pickled ast.
   """
-  raw_ast = serializable_ast.ast
+  # Module external and internal references need to be filled in different
+  # steps. As a part of a local ClassType referencing an external cls, might be
+  # changed structurally, if the external class definition used here is
+  # different from the one used during serialization. Changing an attribute
+  # (other than .cls) will trigger an recreation of the ClassType in which case
+  # we need the reference to the new instance, which can only be known after all
+  # external references are resolved.
+  serializable_ast = _LookupClassReferences(
+      serializable_ast, module_map, serializable_ast.ast.name)
+  _FillLocalReferences(serializable_ast, {
+      "": serializable_ast.ast,
+      serializable_ast.ast.name: serializable_ast.ast})
+  return serializable_ast.ast
 
-  module_map[raw_ast.name] = raw_ast
-  # Notice that this is also resolving local ClassType references.
+
+def _LookupClassReferences(serializable_ast, module_map, self_name):
+  """Fills .cls references in serializable_ast.ast with ones from module_map.
+
+  Already filled references are not changed. References to the module self._name
+  are not filled. Setting self_name=None will fill all references.
+
+  Args:
+    serializable_ast: A SerializableAst instance.
+    module_map: Used to resolve ClassType.cls links to already loaded modules.
+      The loaded module will be added to the dict.
+    self_name: A string representation of a module which should not be resolved,
+      for example: "foo.bar.module1" or None to resolve all modules.
+
+  Returns:
+    A SerializableAst with an updated .ast. .class_type_nodes is set to None
+    if any of the Nodes needed to be regenerated.
+  """
+
   class_lookup = visitors.LookupExternalTypes(module_map, full_names=True,
-                                              self_name=None)
+                                              self_name=self_name)
+  raw_ast = serializable_ast.ast
 
   if serializable_ast.class_type_nodes:
     for node in serializable_ast.class_type_nodes:
@@ -217,7 +247,19 @@ def ProcessAst(serializable_ast, module_map):
       raw_ast = raw_ast.Visit(class_lookup)
     except KeyError as e:
       raise UnrestorableDependencyError("Unresolved class: %r." % e.message)
-  return raw_ast
+  serializable_ast = serializable_ast.Replace(ast=raw_ast)
+  return serializable_ast
+
+
+def _FillLocalReferences(serializable_ast, module_map):
+  local_filler = visitors.FillInLocalPointers(module_map)
+  if serializable_ast.class_type_nodes:
+    for node in serializable_ast.class_type_nodes:
+      local_filler.EnterClassType(node)
+      if node.cls is None:
+        raise AssertionError("This should not happen: %s" % str(node))
+  else:
+    serializable_ast.ast.Visit(local_filler)
 
 
 def PrepareForExport(module_name, python_version, ast):

@@ -18,8 +18,10 @@ class SerializeAstTest(unittest.TestCase):
   def setUp(self):
     self.options = config.Options.create(python_version=self.PYTHON_VERSION)
 
-  def _StoreAst(self, temp_dir, module_name, pickled_ast_filename):
-    ast, loader = self._GetAst(temp_dir=temp_dir, module_name=module_name)
+  def _StoreAst(
+      self, temp_dir, module_name, pickled_ast_filename, ast=None, loader=None):
+    if not (ast and loader):
+      ast, loader = self._GetAst(temp_dir=temp_dir, module_name=module_name)
     serialize_ast.StoreAst(ast, pickled_ast_filename)
     module_map = {name: module.ast
                   for name, module in loader._modules.items()}
@@ -142,6 +144,71 @@ class SerializeAstTest(unittest.TestCase):
       self.assertTrue(serialized_ast.ast)
       self.assertEqual(serialized_ast.dependencies,
                        ["__builtin__", "foo.bar.module1", "module2"])
+
+  def testUnrestorableChild(self):
+    # Assume .cls in a ClassType X in module1 was referencing something for
+    # which, Visitors.LookupExternalTypes returned AnythingType.
+    # Now if something in module1 is referencing X external types need to be
+    # resolved before local types, so that we can resolve local types to the
+    # correct ClassType, as the ClassType instance changes, if .cls can not be
+    # filled and instead AnythingType is used.
+
+    class RenameVisitor(visitors.Visitor):
+
+      def __init__(self, *args, **kwargs):
+        super(RenameVisitor, self).__init__(*args, **kwargs)
+        self._init = False
+
+      def EnterFunction(self, func):
+        if func.name == "__init__":
+          self._init = True
+          return None
+        return False
+
+      def LeaveFunction(self, func):
+        self._init = False
+
+      def VisitClassType(self, cls_type):
+        if self._init:
+          cls_type = cls_type.Replace(name="other_module.unknown_Reference")
+          # Needs to be copied manually as it is not part of the NamedTuple.
+          cls_type.cls = None
+        return cls_type
+
+    with utils.Tempdir() as d:
+      src = ("""
+        import other_module
+        x = other_module.UnusedReferenceNeededToKeepTheImport
+
+        class SomeClass(object):
+          def __init__(will_be_replaced_with_visitor) -> None:
+            pass
+
+        def func(a:SomeClass) -> None:
+          pass
+      """)
+      d.create_file("other_module.pyi", """
+          from typing import Any
+          def __getattr__(self, name) -> Any: ..."""
+                   )
+      ast, loader = self._GetAst(
+          temp_dir=d, module_name="module1", src=src)
+
+      ast = ast.Visit(RenameVisitor())
+
+      pickled_ast_filename = os.path.join(d.path, "module1.pyi.pickled")
+      module_map = self._StoreAst(
+          d, "module1", pickled_ast_filename, ast=ast, loader=loader)
+      del module_map["module1"]
+
+      serialized_ast = pytd_utils.LoadPickle(pickled_ast_filename)
+      loaded_ast = serialize_ast.ProcessAst(
+          serialized_ast, module_map)
+      # Look up the "SomeClass" in "def func(a: SomeClass), then run
+      # VerifyLookup on it. We can't run VerifyLookup on the root node, since
+      # visitors don't descend into the "cls" attribute of ClassType.
+      cls = loaded_ast.functions[0].signatures[0].params[0].type.cls
+      cls.Visit(visitors.VerifyLookup())
 
   def testLoadTopLevel(self):
     """Tests that a pickled file can be read."""
