@@ -218,6 +218,7 @@ class VirtualMachine(object):
         "next": special_builtins.Next(self),
         "property": special_builtins.Property(self),
         "staticmethod": special_builtins.StaticMethod(self),
+        "classmethod": special_builtins.ClassMethod(self),
     }
 
     # Memoize which overlays are loaded.

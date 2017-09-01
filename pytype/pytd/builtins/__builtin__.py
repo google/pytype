@@ -10,15 +10,7 @@ Each PYTHONCODE item in __builtin__.pytd will have a single python `def` here.
 # pylint: disable=undefined-variable
 
 
-class classmethod(object):
-  """Classmethod method decorator."""
-
-  def __init__(self, func):
-    # Name the inner method __func__, like in Python/Objects/funcobject.c
-    self.__func__ = func
-
-  def __get__(self, obj, objtype):
-    func = self.__func__
-    def method(*args, **kwargs):
-      return func(objtype, *args, **kwargs)
-    return method
+# Getting rid of __builtin__.py altogether breaks some unexpected things.
+# Leaving a placeholder in here to investigate and fix in a later version.
+class placeholder(object):
+  pass

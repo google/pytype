@@ -190,7 +190,7 @@ class staticmethod(typing.Callable):
     def __init__(self, func) -> NoneType
     def __get__(self, ...) -> ?
 
-class classmethod(typing.Callable):  # Also defined in __builtin__.py
+class classmethod(typing.Callable):
     def __init__(self, func) -> NoneType
     def __get__(self, ...) -> ?
 
@@ -1104,3 +1104,5 @@ class ZeroDivisionError(ArithmeticError):
     def __init__(self, ...) -> NoneType
     def __getslice__(self, i: int, j: int) -> tuple
     def __unicode__(self, ...) -> unicode
+
+class placeholder(object): ...

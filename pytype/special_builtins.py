@@ -527,3 +527,41 @@ class StaticMethod(abstract.PyTDClass):
       raise abstract.WrongArgCount(self._SIGNATURE, args, self.vm)
     arg = args.posargs[0]
     return node, StaticMethodInstance(self.vm, arg).to_variable(node)
+
+
+class ClassMethodCallable(abstract.BoundFunction):
+  """Tag a ClassMethod bound function so we can dispatch on it."""
+  pass
+
+
+class ClassMethodInstance(abstract.SimpleAbstractValue, abstract.HasSlots):
+  """ClassMethod instance (constructed by ClassMethod.call())."""
+
+  def __init__(self, vm, func):
+    super(ClassMethodInstance, self).__init__("classmethod", vm)
+    abstract.HasSlots.init_mixin(self)
+    self.func = func
+    self.set_slot("__get__", self.func_slot)
+
+  def func_slot(self, node, obj, objtype):
+    results = [ClassMethodCallable(objtype, None, b.data)
+               for b in self.func.bindings]
+    return node, self.vm.program.NewVariable(results, [], node)
+
+
+class ClassMethod(abstract.PyTDClass):
+  """Static method decorator."""
+  # Minimal signature, only used for constructing exceptions.
+  _SIGNATURE = function.Signature(
+      "classmethod", ("func",), None, set(), None, {}, {}, {})
+
+  def __init__(self, vm):
+    super(ClassMethod, self).__init__(
+        "classmethod", vm.lookup_builtin("__builtin__.classmethod"), vm)
+    self.module = "__builtin__"
+
+  def call(self, node, funcv, args):
+    if len(args.posargs) != 1:
+      raise abstract.WrongArgCount(self._SIGNATURE, args, self.vm)
+    arg = args.posargs[0]
+    return node, ClassMethodInstance(self.vm, arg).to_variable(node)

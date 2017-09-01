@@ -195,8 +195,10 @@ class Converter(object):
           # parameters in call traces.
           return self.value_instance_to_pytd_type(node, val, None, seen, view)
       return pytd.NamedType("typing.Callable")
-    elif isinstance(v, (special_builtins.IsInstance, abstract.ClassMethod,
-                        abstract.StaticMethod)):
+    elif isinstance(v, (special_builtins.IsInstance,
+                        abstract.ClassMethod,
+                        abstract.StaticMethod,
+                        special_builtins.ClassMethodCallable)):
       return pytd.NamedType("typing.Callable")
     elif isinstance(v, abstract.Class):
       param = self.value_instance_to_pytd_type(node, v, None, seen, view)
@@ -373,7 +375,7 @@ class Converter(object):
   def _class_method_to_def(self, node, v, name, kind):
     """Convert a classmethod to a PyTD definition."""
     # This line may raise abstract.ConversionError
-    func = abstract.get_atomic_value(v.members["__func__"], abstract.Function)
+    func = abstract.get_atomic_value(v.func, abstract.Function)
     return self.value_to_pytd_def(node, func, name).Replace(kind=kind)
 
   def _static_method_to_def(self, node, v, name, kind):
@@ -407,7 +409,7 @@ class Converter(object):
                 node, value, name, pytd.STATICMETHOD)
           except abstract.ConversionError:
             constants[name].add_type(pytd.AnythingType())
-        elif self._is_instance(value, "__builtin__.classmethod"):
+        elif isinstance(value, special_builtins.ClassMethodInstance):
           try:
             methods[name] = self._class_method_to_def(
                 node, value, name, pytd.CLASSMETHOD)
