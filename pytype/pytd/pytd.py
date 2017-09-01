@@ -43,7 +43,7 @@ class TypeDeclUnit(node.Node('name: str or None',
                              'constants: tuple[Constant]',
                              'type_params: tuple[TypeParameter]',
                              'classes: tuple[Class]',
-                             'functions: tuple[Function or ExternalFunction]',
+                             'functions: tuple[Function]',
                              'aliases: tuple[Alias]')):
   """Module node. Holds module contents (constants / classes / functions).
 
@@ -123,7 +123,7 @@ class Alias(node.Node('name: str', 'type: {Type} or Constant')):
 class Class(node.Node('name: str',
                       'metaclass: None or {Type}',
                       'parents: tuple[Class or {Type}]',
-                      'methods: tuple[Function or ExternalFunction]',
+                      'methods: tuple[Function]',
                       'constants: tuple[Constant]',
                       'slots: None or tuple[str]',
                       'template: tuple[TemplateItem]')):
@@ -188,16 +188,6 @@ class Function(node.Node('name: str',
     self = super(Function, cls).__new__(cls, name, signatures,
                                         kind, is_abstract)
     return self
-
-
-class ExternalFunction(Function):
-  """A function or a method, defined by PYTHONCODE (see pyi/parser.py).
-
-  Attributes:
-    name: The name of this function.
-    signatures: Empty tuple of signatures.
-  """
-  __slots__ = ()
 
 
 class Signature(node.Node('params: tuple[Parameter]',

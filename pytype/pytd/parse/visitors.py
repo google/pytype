@@ -419,10 +419,6 @@ class PrintVisitor(Visitor):
                            for sig in node.signatures)
     return signatures
 
-  def VisitExternalFunction(self, node):
-    """Visit function defined with PYTHONCODE."""
-    return "def " + self._SafeName(node.name) + " PYTHONCODE"
-
   def _FormatContainerContents(self, node):
     """Print out the last type parameter of a container. Used for *args/**kw."""
     assert isinstance(node, pytd.Parameter)
@@ -1541,9 +1537,6 @@ class VerifyVisitor(Visitor):
   def EnterFunction(self, node):
     assert node.signatures, node
 
-  def EnterExternalFunction(self, node):
-    assert node.signatures == (), node  # pylint: disable=g-explicit-bool-comparison
-
   def EnterSignature(self, node):
     assert isinstance(node.has_optional, bool), node
 
@@ -1683,9 +1676,6 @@ class AddNamePrefix(Visitor):
       return node.Replace(name=self.prefix + node.name)
 
   def VisitFunction(self, node):
-    return self._VisitNamedNode(node)
-
-  def VisitExternalFunction(self, node):
     return self._VisitNamedNode(node)
 
   def VisitConstant(self, node):

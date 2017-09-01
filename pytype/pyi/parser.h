@@ -33,7 +33,6 @@ enum CallSelector {
   kNewAliasOrConstant,
   kNewConstant,
   kNewFunction,
-  kNewExternalFunction,
   kNewNamedTuple,
   kRegisterClassName,
   kAddClass,

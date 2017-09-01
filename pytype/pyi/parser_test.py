@@ -766,9 +766,6 @@ class FunctionTest(_ParserTestBase):
                "def foo() -> Any: ...",
                prologue="from typing import Any")
 
-  def test_external_function(self):
-    self.check("def foo PYTHONCODE")
-
 
 class ClassTest(_ParserTestBase):
 
@@ -1311,28 +1308,6 @@ class ConditionTest(_ParserTestBase):
                           "Unsupported condition: 'foo.bar'")
 
 
-class VerifyPythonCodeTest(_ParserTestBase):
-
-  def test_pythoncode(self):
-    self.check("""\
-      def foo PYTHONCODE""")
-
-  def test_pytd(self):
-    self.check("""\
-      def foo(int) -> None: ...
-      def foo(str) -> None: ...""")
-
-  def test_duplicate(self):
-    self.check_error("""\
-      def foo PYTHONCODE
-      def foo PYTHONCODE""", None, "Multiple PYTHONCODEs for foo")
-
-  def test_mixed(self):
-    self.check_error("""\
-      def foo() -> None: ...
-      def foo PYTHONCODE""", None, "Mixed pytd and PYTHONCODEs for foo")
-
-
 class PropertyDecoratorTest(_ParserTestBase):
   """Tests that cover _parse_signature_as_property()."""
 
@@ -1589,14 +1564,6 @@ class MergeSignaturesTest(_ParserTestBase):
       """)
     self.assertEqual("method", ast.Lookup("A").Lookup("foo").kind)
     self.assertEqual(True, ast.Lookup("A").Lookup("foo").is_abstract)
-
-  def test_external(self):
-    ast = self.check("""\
-      def foo PYTHONCODE""")
-    foo = ast.functions[0]
-    self.assertEqual("foo", foo.name)
-    self.assertEmpty(foo.signatures)
-    self.assertEqual("method", foo.kind)
 
 
 class EntireFileTest(_ParserTestBase):

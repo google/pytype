@@ -117,7 +117,6 @@ class RenameModuleVisitor(visitors.Visitor):
   VisitAlias = _ReplaceModuleName  # pylint: disable=invalid-name
   VisitClass = _ReplaceModuleName  # pylint: disable=invalid-name
   VisitFunction = _ReplaceModuleName  # pylint: disable=invalid-name
-  VisitExternalFunction = _ReplaceModuleName  # pylint: disable=invalid-name
   VisitStrictType = _ReplaceModuleName  # pylint: disable=invalid-name
   VisitNamedType = _ReplaceModuleName  # pylint: disable=invalid-name
 

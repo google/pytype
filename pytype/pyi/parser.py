@@ -17,8 +17,7 @@ _Params = collections.namedtuple("_", ["required",
                                        "has_bare_star"])
 
 _NameAndSig = collections.namedtuple("_", ["name", "signature",
-                                           "decorator", "external_code",
-                                           "is_abstract"])
+                                           "decorator", "is_abstract"])
 
 
 _SlotDecl = collections.namedtuple("_", ["slots"])
@@ -183,7 +182,6 @@ class _Parser(object):
     new_type()
     new_union_type()
     new_function()
-    new_external_function()
     new_named_tuple()
     regiser_class_name()
     add_class()
@@ -737,23 +735,7 @@ class _Parser(object):
 
     return _NameAndSig(name=name, signature=signature,
                        decorator=decorator,
-                       external_code=False,
                        is_abstract=is_abstract)
-
-  def new_external_function(self, decorators, name):
-    """Return a _NameAndSig for an external code function."""
-    del decorators
-    return _NameAndSig(
-        name=name,
-        # signature is for completeness - it's ignored
-        signature=pytd.Signature(params=(),
-                                 starargs=None, starstarargs=None,
-                                 return_type=pytd.NothingType(),
-                                 exceptions=(),
-                                 template=()),
-        decorator=None,
-        external_code=True,
-        is_abstract=False)
 
   def _namedtuple_new(self, name, fields):
     """Build a __new__ method for a namedtuple with the given fields.
@@ -1184,8 +1166,7 @@ def _parse_signature_as_property(full_signature):
   Raises:
     ParseError: If the signature cannot be parsed as a property.
   """
-  name, signature, decorator, _, _ = full_signature
-  # TODO(acaceres): validate full_signature.external_code?
+  name, signature, decorator, _ = full_signature
   num_params = len(signature.params)
   if decorator in ("property", name + ".getter") and num_params == 1:
     return signature.return_type
@@ -1215,23 +1196,13 @@ def _merge_method_signatures(signatures):
   name_to_signatures = collections.OrderedDict()
   name_to_decorator = {}
   name_to_is_abstract = collections.defaultdict(bool)
-  # map from function name to a bool indicating whether the function has an
-  # external definition
-  name_to_external_code = {}
-  for name, signature, decorator, external_code, is_abstract in signatures:
+  for name, signature, decorator, is_abstract in signatures:
     if name not in name_to_signatures:
       name_to_signatures[name] = []
       name_to_decorator[name] = decorator
     if name_to_decorator[name] != decorator:
       raise ParseError(
           "Overloaded signatures for %s disagree on decorators" % name)
-    if name in name_to_external_code:
-      if external_code and name_to_external_code[name]:
-        raise ParseError("Multiple PYTHONCODEs for %s" % name)
-      elif external_code != name_to_external_code[name]:
-        raise ParseError("Mixed pytd and PYTHONCODEs for %s" % name)
-    else:
-      name_to_external_code[name] = external_code
     name_to_signatures[name].append(signature)
     name_to_is_abstract[name] |= is_abstract
   methods = []
@@ -1244,10 +1215,7 @@ def _merge_method_signatures(signatures):
       kind = pytd.CLASSMETHOD
     else:
       kind = pytd.METHOD
-    if name_to_external_code[name]:
-      methods.append(pytd.ExternalFunction(name, (), kind, is_abstract))
-    else:
-      methods.append(pytd.Function(name, tuple(signatures), kind, is_abstract))
+    methods.append(pytd.Function(name, tuple(signatures), kind, is_abstract))
   return methods
 
 

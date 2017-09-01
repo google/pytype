@@ -67,7 +67,7 @@ PyObject* ExtendList(PyObject* dst, PyObject* src);
 %token <obj> NAME NUMBER LEXERROR
 
 /* Reserved words. */
-%token CLASS DEF ELSE ELIF IF OR AND PASS IMPORT FROM AS RAISE PYTHONCODE
+%token CLASS DEF ELSE ELIF IF OR AND PASS IMPORT FROM AS RAISE
 %token NOTHING NAMEDTUPLE TYPEVAR
 /* Punctuation. */
 %token ARROW COLONEQUALS ELLIPSIS EQ NE LE GE
@@ -434,14 +434,6 @@ funcdef
       // TODO(dbaum): Consider making this smarter and only ignoring decorators
       // when they are empty.  Making decorators non-nullable and having two
       // productions for funcdef would be a reasonable solution.
-      @$.first_line = @2.first_line;
-      @$.first_column = @2.first_column;
-      CHECK($$, @$);
-    }
-  | decorators DEF NAME PYTHONCODE {
-      // TODO(dbaum): Is PYTHONCODE necessary?
-      $$ = ctx->Call(kNewExternalFunction, "(NN)", $1, $3);
-      // See comment above about why @2 is used as the start.
       @$.first_line = @2.first_line;
       @$.first_column = @2.first_column;
       CHECK($$, @$);

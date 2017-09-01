@@ -17,7 +17,6 @@ RESERVED = [
     'as',
     'raise',
     # Keywords that are valid identifiers in Python (PyTD keywords):
-    'PYTHONCODE',  # upper-case: stands out + unlikely name
     'nothing',
     # Names from typing.py
     'NamedTuple',

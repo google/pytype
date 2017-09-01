@@ -36,7 +36,6 @@ static const SelectorEntry<CallSelector> call_attributes[] = {
   {kNewAliasOrConstant, "new_alias_or_constant"},
   {kNewConstant, "new_constant"},
   {kNewFunction, "new_function"},
-  {kNewExternalFunction, "new_external_function"},
   {kNewNamedTuple, "new_named_tuple"},
   {kRegisterClassName, "register_class_name"},
   {kAddClass, "add_class"},
@@ -276,7 +275,6 @@ static void add_tokens_dict(PyObject* module) {
   ADD_TOKEN(tokens, FROM);
   ADD_TOKEN(tokens, AS);
   ADD_TOKEN(tokens, RAISE);
-  ADD_TOKEN(tokens, PYTHONCODE);
   ADD_TOKEN(tokens, NOTHING);
   ADD_TOKEN(tokens, NAMEDTUPLE);
   ADD_TOKEN(tokens, TYPEVAR);

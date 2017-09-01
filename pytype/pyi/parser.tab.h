@@ -65,23 +65,22 @@
      FROM = 270,
      AS = 271,
      RAISE = 272,
-     PYTHONCODE = 273,
-     NOTHING = 274,
-     NAMEDTUPLE = 275,
-     TYPEVAR = 276,
-     ARROW = 277,
-     COLONEQUALS = 278,
-     ELLIPSIS = 279,
-     EQ = 280,
-     NE = 281,
-     LE = 282,
-     GE = 283,
-     INDENT = 284,
-     DEDENT = 285,
-     TRIPLEQUOTED = 286,
-     TYPECOMMENT = 287,
-     BYTESTRING = 288,
-     UNICODESTRING = 289
+     NOTHING = 273,
+     NAMEDTUPLE = 274,
+     TYPEVAR = 275,
+     ARROW = 276,
+     COLONEQUALS = 277,
+     ELLIPSIS = 278,
+     EQ = 279,
+     NE = 280,
+     LE = 281,
+     GE = 282,
+     INDENT = 283,
+     DEDENT = 284,
+     TRIPLEQUOTED = 285,
+     TYPECOMMENT = 286,
+     BYTESTRING = 287,
+     UNICODESTRING = 288
    };
 #endif
 
@@ -100,7 +99,7 @@ typedef union YYSTYPE
 
 
 /* Line 1685 of yacc.c  */
-#line 104 "pyi/parser.tab.h"
+#line 103 "pyi/parser.tab.h"
 } YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */

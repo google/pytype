@@ -74,7 +74,6 @@ u\"\" { return UNICODESTRING; }
 "from" { return FROM; }
 "as" { return AS; }
 "raise" { return RAISE; }
-"PYTHONCODE" { return PYTHONCODE; }
 "nothing" { return NOTHING; }
 "NamedTuple" { return NAMEDTUPLE; }
 "typing.NamedTuple" { return NAMEDTUPLE; }
