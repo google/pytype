@@ -1104,5 +1104,3 @@ class ZeroDivisionError(ArithmeticError):
     def __init__(self, ...) -> NoneType
     def __getslice__(self, i: int, j: int) -> tuple
     def __unicode__(self, ...) -> unicode
-
-class placeholder(object): ...

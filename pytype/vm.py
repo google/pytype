@@ -661,14 +661,11 @@ class VirtualMachine(object):
     return node, frame.f_globals, frame.f_locals, return_var
 
   def preload_builtins(self, node):
-    """Parse __builtin__.py and return the definitions as a globals dict."""
-    if self.options.pybuiltins_filename:
-      with open(self.options.pybuiltins_filename, "rb") as fi:
-        src = fi.read()
-    else:
-      src = builtins.GetBuiltinsCode(self.python_version)
-    builtins_code = self.compile_src(
-        src, filename=self.options.pybuiltins_filename or "__builtin__.py")
+    """Set up __builtins__ in the globals dict."""
+    # TODO(mdemello): We should be able to just set up builtins directly,
+    # without running a dummy code block.
+    src = "class placeholder(): pass"
+    builtins_code = self.compile_src(src, "__builtin__.py")
     old = self.reading_builtins
     self.reading_builtins = True
     try:
