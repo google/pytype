@@ -91,12 +91,11 @@ class AbstractAttributeHandler(object):
         return node, None
     elif isinstance(obj, special_builtins.SuperInstance):
       if obj.super_obj:
-        valself = obj.super_obj.to_variable(node).bindings[0]
-        valcls = obj.super_cls.to_variable(node).bindings[0]
+        valself = obj.super_obj.to_binding(node)
+        valcls = obj.super_cls.to_binding(node)
         skip = obj.super_cls
       else:
-        valcls = self.vm.convert.super_type.to_variable(
-            self.vm.root_cfg_node).bindings[0]
+        valcls = self.vm.convert.super_type.to_binding(self.vm.root_cfg_node)
         skip = None
       return self._class_getter(
           node, valcls.data, name, valself, valcls, skip=skip)
@@ -151,7 +150,7 @@ class AbstractAttributeHandler(object):
       # method on the type class, but for 3.mro(), we want to report that the
       # method does not exist.)
       meta = cls.get_class()
-      variableself = cls.to_variable(node).bindings[0]
+      variableself = cls.to_binding(node)
     return self._get_value_or_class_attribute(
         node, cls, name, variableself, meta, getter)
 

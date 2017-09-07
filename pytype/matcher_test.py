@@ -299,7 +299,7 @@ class MatcherTest(unittest.TestCase):
       class A(object):
         def f(self, x: int) -> bool: ...
     """, "A", as_instance=True)
-    binding = instance.to_variable(self.vm.root_cfg_node).bindings[0]
+    binding = instance.to_binding(self.vm.root_cfg_node)
     _, var = self.vm.attribute_handler.get_attribute(
         self.vm.root_cfg_node, instance, "f", binding)
     bound = var.data[0]

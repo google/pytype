@@ -331,6 +331,10 @@ class AtomicAbstractValue(object):
     v.AddBinding(self, source_set=[], where=node)
     return v
 
+  def to_binding(self, node):
+    binding, = self.to_variable(node).bindings
+    return binding
+
   def has_varargs(self):
     """Return True if this is a function and has a *args parameter."""
     return False
@@ -688,9 +692,8 @@ class SimpleAbstractValue(AtomicAbstractValue):
       self.members[name] = variable
 
   def call(self, node, _, args):
-    self_var = self.to_variable(node)
     node, var = self.vm.attribute_handler.get_attribute(
-        node, self, "__call__", self_var.bindings[0])
+        node, self, "__call__", self.to_binding(node))
     if var is not None and var.bindings:
       return self.vm.call_function(node, var, args)
     elif self.cls and self.cls.data == [self.vm.convert.none_type]:
@@ -870,7 +873,7 @@ class HasSlots(object):
     assert name not in self._slots, "slot %s already occupied" % name
     _, attr = self.vm.attribute_handler.get_attribute(
         self.vm.root_cfg_node, self, name,
-        self.to_variable(self.vm.root_cfg_node).bindings[0])
+        self.to_binding(self.vm.root_cfg_node))
     self._super[name] = attr
     f = self.make_native_function(name, method)
     self._slots[name] = f.to_variable(self.vm.root_cfg_node)
@@ -1577,8 +1580,7 @@ class PyTDSignature(object):
         # Assume the missing parameter is filled in by *args or **kwargs.
         # Unfortunately, we can't easily use *args or **kwargs to fill in
         # something more precise, since we need a Value, not a Variable.
-        var = self.vm.convert.create_new_unsolvable(node)
-        arg_dict[p.name] = var.bindings[0]
+        arg_dict[p.name] = self.vm.convert.unsolvable.to_binding(node)
 
   def match_args(self, node, args, view):
     """Match arguments against this signature. Used by PyTDFunction."""
@@ -2110,7 +2112,7 @@ class Class(object):
       if self.cls:
         # This class has a custom metaclass; check if it defines __getitem__.
         _, attr = self.vm.attribute_handler.get_instance_attribute(
-            node, self, name, self.to_variable(node).bindings[0])
+            node, self, name, self.to_binding(node))
         if attr:
           return attr
       # Treat this class as a parameterized container in an annotation. We do
@@ -2983,8 +2985,9 @@ class InterpreterFunction(Function):
       try:
         combinations = utils.variable_product_dict(callargs)
       except utils.TooComplexError:
-        combination = {name: self.vm.convert.unsolvable.to_variable(
-            node_after_call).bindings[0] for name in callargs}
+        combination = {
+            name: self.vm.convert.unsolvable.to_binding(node_after_call)
+            for name in callargs}
         combinations = [combination]
         ret = self.vm.convert.unsolvable.to_variable(node_after_call)
       for combination in combinations:
@@ -3001,10 +3004,10 @@ class InterpreterFunction(Function):
     if not all_combinations:
       # Fallback: Generate a PyTD signature only from the definition of the
       # method, not the way it's being used.
-      param = (
-          self.vm.convert.primitive_class_instances[object].to_variable(node))
-      params = collections.defaultdict(lambda: param.bindings[0])
-      ret = self.vm.convert.create_new_unsolvable(node).bindings[0]
+      param_binding = (
+          self.vm.convert.primitive_class_instances[object].to_binding(node))
+      params = collections.defaultdict(lambda: param_binding)
+      ret = self.vm.convert.unsolvable.to_binding(node)
       all_combinations.append((node, params, ret))
     return all_combinations
 

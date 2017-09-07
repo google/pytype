@@ -447,7 +447,7 @@ class FunctionTest(AbstractTestBase):
     return abstract.PyTDFunction("f", (sig,), pytd.METHOD, self._vm)
 
   def _call_pytd_function(self, f, args):
-    b = f.to_variable(self._vm.root_cfg_node).bindings[0]
+    b = f.to_binding(self._vm.root_cfg_node)
     return f.call(
         self._vm.root_cfg_node, b, abstract.FunctionArgs(posargs=args))
 
@@ -690,7 +690,7 @@ class FunctionTest(AbstractTestBase):
     )
     # f(1, 2, y=3, z=4)
     int_inst = self._vm.convert.primitive_class_instances[int]
-    int_binding = int_inst.to_variable(self._node).bindings[0]
+    int_binding = int_inst.to_binding(self._node)
     arg_dict = {
         "x": int_binding, "_1": int_binding, "y": int_binding, "z": int_binding}
     sig = sig.insert_varargs_and_kwargs(arg_dict)
@@ -851,9 +851,8 @@ class AbstractTest(AbstractTestBase):
         self._vm.convert.int_type.to_variable(self._vm.root_cfg_node))
     t = abstract.TypeParameter(abstract.T, self._vm)
     t_instance = abstract.TypeParameterInstance(t, instance, self._vm)
-    node, ret = t_instance.call(
-        self._node, t_instance.to_variable(self._node).bindings[0],
-        abstract.FunctionArgs(posargs=()))
+    node, ret = t_instance.call(self._node, t_instance.to_binding(self._node),
+                                abstract.FunctionArgs(posargs=()))
     self.assertIs(node, self._node)
     retval, = ret.data
     self.assertListEqual(retval.cls.data, [self._vm.convert.int_type])
@@ -864,9 +863,8 @@ class AbstractTest(AbstractTestBase):
         self._node, abstract.T, self._vm.program.NewVariable())
     t = abstract.TypeParameter(abstract.T, self._vm)
     t_instance = abstract.TypeParameterInstance(t, instance, self._vm)
-    node, ret = t_instance.call(
-        self._node, t_instance.to_variable(self._node).bindings[0],
-        abstract.FunctionArgs(posargs=()))
+    node, ret = t_instance.call(self._node, t_instance.to_binding(self._node),
+                                abstract.FunctionArgs(posargs=()))
     self.assertIs(node, self._node)
     retval, = ret.data
     self.assertIs(retval, self._vm.convert.empty)
@@ -879,9 +877,8 @@ class AbstractTest(AbstractTestBase):
     t = abstract.TypeParameter(abstract.T, self._vm)
     t_instance = abstract.TypeParameterInstance(t, instance, self._vm)
     posargs = (self._vm.convert.create_new_unsolvable(self._node),) * 3
-    node, ret = t_instance.call(
-        self._node, t_instance.to_variable(self._node).bindings[0],
-        abstract.FunctionArgs(posargs=posargs))
+    node, ret = t_instance.call(self._node, t_instance.to_binding(self._node),
+                                abstract.FunctionArgs(posargs=posargs))
     self.assertIs(node, self._node)
     self.assertTrue(ret.bindings)
     error, = self._vm.errorlog
