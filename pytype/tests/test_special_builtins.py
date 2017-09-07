@@ -28,6 +28,17 @@ class SpecialBuiltinsTest(test_inference.InferenceTest):
       abs(None)
     """)
 
+  def testPropertyMatching(self):
+    self.assertNoErrors("""
+      class A():
+        def setter(self, other):
+          pass
+        def getter(self):
+          return 42
+        def create_property(self, cls, property_name):
+          setattr(cls, property_name, property(self.getter, self.setter))
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

@@ -362,19 +362,23 @@ class RevealType(abstract.AtomicAbstractValue):
 class PropertyInstance(abstract.SimpleAbstractValue, abstract.HasSlots):
   """Property instance (constructed by Property.call())."""
 
-  def __init__(self, vm, fget=None, fset=None, fdel=None, doc=None):
+  def __init__(self, vm, cls, fget=None, fset=None, fdel=None, doc=None):
     super(PropertyInstance, self).__init__("property", vm)
     abstract.HasSlots.init_mixin(self)
     self.fget = fget
     self.fset = fset
     self.fdel = fdel
     self.doc = doc
+    self.cls = cls
     self.set_slot("__get__", self.fget_slot)
     self.set_slot("__set__", self.fset_slot)
     self.set_slot("__delete__", self.fdelete_slot)
     self.set_slot("getter", self.getter_slot)
     self.set_slot("setter", self.setter_slot)
     self.set_slot("deleter", self.deleter_slot)
+
+  def get_class(self):
+    return self.cls
 
   def fget_slot(self, node, obj, objtype):
     return self.vm.call_function(
@@ -389,17 +393,20 @@ class PropertyInstance(abstract.SimpleAbstractValue, abstract.HasSlots):
         node, self.fdel, abstract.FunctionArgs((obj,)))
 
   def getter_slot(self, node, fget):
-    prop = PropertyInstance(self.vm, fget, self.fset, self.fdel, self.doc)
+    prop = PropertyInstance(
+        self.vm, self.cls, fget, self.fset, self.fdel, self.doc)
     result = self.vm.program.NewVariable([prop], fget.bindings, node)
     return node, result
 
   def setter_slot(self, node, fset):
-    prop = PropertyInstance(self.vm, self.fget, fset, self.fdel, self.doc)
+    prop = PropertyInstance(
+        self.vm, self.cls, self.fget, fset, self.fdel, self.doc)
     result = self.vm.program.NewVariable([prop], fset.bindings, node)
     return node, result
 
   def deleter_slot(self, node, fdel):
-    prop = PropertyInstance(self.vm, self.fget, self.fset, fdel, self.doc)
+    prop = PropertyInstance(
+        self.vm, self.cls, self.fget, self.fset, fdel, self.doc)
     result = self.vm.program.NewVariable([prop], fdel.bindings, node)
     return node, result
 
@@ -427,7 +434,9 @@ class Property(abstract.PyTDClass):
 
   def call(self, node, funcv, args):
     property_args = self._get_args(args)
-    return node, PropertyInstance(self.vm, **property_args).to_variable(node)
+    cls = self.to_variable(node)
+    return node, PropertyInstance(
+        self.vm, cls, **property_args).to_variable(node)
 
 
 class BuiltinFunction(abstract.PyTDFunction):
@@ -501,11 +510,15 @@ class Next(BuiltinFunction):
 class StaticMethodInstance(abstract.SimpleAbstractValue, abstract.HasSlots):
   """StaticMethod instance (constructed by StaticMethod.call())."""
 
-  def __init__(self, vm, func):
+  def __init__(self, vm, cls, func):
     super(StaticMethodInstance, self).__init__("staticmethod", vm)
     abstract.HasSlots.init_mixin(self)
     self.func = func
+    self.cls = cls
     self.set_slot("__get__", self.func_slot)
+
+  def get_class(self):
+    return self.cls
 
   def func_slot(self, node, obj, objtype):
     return node, self.func
@@ -526,7 +539,8 @@ class StaticMethod(abstract.PyTDClass):
     if len(args.posargs) != 1:
       raise abstract.WrongArgCount(self._SIGNATURE, args, self.vm)
     arg = args.posargs[0]
-    return node, StaticMethodInstance(self.vm, arg).to_variable(node)
+    cls = self.to_variable(node)
+    return node, StaticMethodInstance(self.vm, cls, arg).to_variable(node)
 
 
 class ClassMethodCallable(abstract.BoundFunction):
@@ -537,11 +551,15 @@ class ClassMethodCallable(abstract.BoundFunction):
 class ClassMethodInstance(abstract.SimpleAbstractValue, abstract.HasSlots):
   """ClassMethod instance (constructed by ClassMethod.call())."""
 
-  def __init__(self, vm, func):
+  def __init__(self, vm, cls, func):
     super(ClassMethodInstance, self).__init__("classmethod", vm)
     abstract.HasSlots.init_mixin(self)
+    self.cls = cls
     self.func = func
     self.set_slot("__get__", self.func_slot)
+
+  def get_class(self):
+    return self.cls
 
   def func_slot(self, node, obj, objtype):
     results = [ClassMethodCallable(objtype, None, b.data)
@@ -564,4 +582,5 @@ class ClassMethod(abstract.PyTDClass):
     if len(args.posargs) != 1:
       raise abstract.WrongArgCount(self._SIGNATURE, args, self.vm)
     arg = args.posargs[0]
-    return node, ClassMethodInstance(self.vm, arg).to_variable(node)
+    cls = self.to_variable(node)
+    return node, ClassMethodInstance(self.vm, cls, arg).to_variable(node)

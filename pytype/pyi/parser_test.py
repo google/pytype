@@ -173,6 +173,13 @@ class ParserTest(_ParserTestBase):
   def test_slots(self):
     self.check("""\
       class A:
+          __slots__ = ...  # type: tuple
+    """, """\
+      class A:
+          pass
+    """)
+    self.check("""\
+      class A:
           __slots__ = ["foo", "bar", "baz"]
     """)
     self.check("""\

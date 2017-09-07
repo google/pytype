@@ -750,6 +750,10 @@ class ErrorLog(ErrorLogBase):
     msg = "Attempt to set %s.__defaults__ to a non-tuple value."
     self.warn(stack, msg % func_name)
 
+  @_error_name("bad-slots")
+  def bad_slots(self, stack, msg):
+    self.error(stack, msg)
+
   @_error_name("reveal-type")
   def reveal_type(self, stack, node, var):
     types = [self._print_as_actual_type(b.data)

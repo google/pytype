@@ -1111,7 +1111,10 @@ def _split_definitions(defs):
   slots = None
   for d in defs:
     if isinstance(d, pytd.Constant):
-      constants.append(d)
+      if d.name == "__slots__":
+        pass  # ignore definitions of __slots__ as a type
+      else:
+        constants.append(d)
     elif isinstance(d, _NameAndSig):
       functions.append(d)
     elif isinstance(d, pytd.Alias):

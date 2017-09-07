@@ -29,6 +29,7 @@ CLASS_LEVEL_IGNORE = {
     "__module__",
     "__name__",
     "__qualname__",
+    "__slots__",
 }
 
 
@@ -448,7 +449,7 @@ class Converter(object):
                       parents=tuple(bases),
                       methods=tuple(methods.values()),
                       constants=tuple(constants),
-                      slots=None,
+                      slots=v.slots,
                       template=())
 
   def _typeparam_to_def(self, node, v, name):

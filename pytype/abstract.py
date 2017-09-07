@@ -69,9 +69,8 @@ def get_atomic_python_constant(variable, constant_type=None):
   Returns:
     A Python constant. (Typically, a string, a tuple, or a code object.)
   Raises:
-    ValueError: If the value in this Variable is purely abstract, i.e. doesn't
-      store a Python value, or if it has more than one possible value.
-    IndexError: If there is more than one possibility for this value.
+    ConversionError: If the value in this Variable is purely abstract, i.e.
+      doesn't store a Python value, or if it has more than one possible value.
   """
   atomic = get_atomic_value(variable)
   return atomic.vm.convert.value_to_constant(atomic, constant_type)
@@ -2356,6 +2355,7 @@ class PyTDClass(SimpleAbstractValue, Class):
     self.mro = self.compute_mro()
     self.official_name = self.name
     self.template = self.pytd_cls.template
+    self.slots = pytd_cls.slots
     Class.init_mixin(self, metaclass)
     self.abstract_methods.extend(
         name for name, member in self._member_map.items()
@@ -2475,7 +2475,34 @@ class InterpreterClass(SimpleAbstractValue, Class):
     self.members = utils.MonitorDict(members)
     self.instances = set()  # filled through register_instance
     self._instance_cache = {}
+    self.slots = self._convert_slots(members.get("__slots__"))
     log.info("Created class: %r", self)
+
+  def _convert_slots(self, slots_var):
+    """Convert __slots__ from a Variable to a tuple."""
+    if slots_var is None:
+      return None
+    if len(slots_var.bindings) != 1:
+      # Ambiguous slots
+      return None  # Treat "unknown __slots__" and "no __slots__" the same.
+    val = slots_var.data[0]
+    if isinstance(val, PythonConstant):
+      if isinstance(val.pyval, (list, tuple)):
+        entries = val.pyval
+      else:
+        return None  # Happens e.g. __slots__ = {"foo", "bar"}. Not an error.
+    else:
+      return None  # Happens e.g. for __slots__ = dir(Foo)
+    try:
+      strings = [get_atomic_python_constant(v) for v in entries]
+    except ConversionError:
+      return None  # Happens e.g. for __slots__ = ["x" if b else "y"]
+    for s in strings:
+      if not isinstance(s, (str, unicode)):
+        self.vm.errorlog.bad_slots(self.vm.frames,
+                                   "Invalid __slot__ entry: %r" % str(s))
+        return None
+    return tuple(s.encode("utf8", "ignore") for s in strings)
 
   def register_instance(self, instance):
     self.instances.add(instance)
