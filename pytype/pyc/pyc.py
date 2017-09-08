@@ -32,6 +32,12 @@ class CompileError(Exception):
       self.lineno = 1
 
 
+# TODO(mdemello): This is probably not the best place for this.
+class UsageError(Exception):
+  """Raise this for top-level usage errors."""
+  pass
+
+
 def compile_src_string_to_pyc_string(src, filename, python_version, python_exe,
                                      mode="exec"):
   """Compile Python source code to pyc data.
@@ -152,11 +158,18 @@ def compile_src(src, python_version, python_exe, filename=None, mode="exec"):
 
   Returns:
     An instance of loadmarshal.CodeType.
+
+  Raises:
+    UsageError: If python_exe and python_version are mismatched.
   """
   pyc_data = compile_src_string_to_pyc_string(
       src, filename, python_version, python_exe, mode)
   code = parse_pyc_string(pyc_data)
-  assert code.python_version == python_version
+  if code.python_version != python_version:
+    raise UsageError(
+        "python_exe version %s does not match python version %s" %
+        (utils.format_version(code.python_version),
+         utils.format_version(python_version)))
   visit(code, AdjustFilename(filename))
   return code
 

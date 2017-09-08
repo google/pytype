@@ -25,6 +25,11 @@ import types
 DEEP_VARIABLE_LIMIT = 1024
 
 
+def format_version(ver):
+  """Format a version tuple into a dotted version string."""
+  return ".".join([str(x) for x in ver])
+
+
 def replace_extension(filename, new_extension):
   name, _ = os.path.splitext(filename)
   if new_extension.startswith("."):

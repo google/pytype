@@ -286,6 +286,17 @@ class PytypeTest(unittest.TestCase):
         return "foo"
     """), ["bad-return-type"])
 
+  def testUsageError(self):
+    self._SetUpChecking(self._MakeFile("""\
+      def f():
+        pass
+    """))
+    # Set up a python version mismatch
+    self.pytype_args["--python_version"] = "3.4"
+    self.pytype_args["--output-errors-csv"] = self.errors_csv
+    self._RunPytype(self.pytype_args)
+    self.assertOutputStateMatches(stdout=False, stderr=True, returncode=True)
+
   def testInfer(self):
     self._InferTypesAndCheckErrors("simple.py", [])
     self.assertInferredPyiEquals(filename="simple.pyi")
