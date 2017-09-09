@@ -173,12 +173,12 @@ class FrameState(object):
                         self.why)
     return self
 
-  def set_exception(self, exc_type, value, tb):
+  def set_exception(self):
     return FrameState(self.data_stack,
                       self.block_stack,
                       self.node.ConnectNew(self.vm.frame.current_opcode.line),
                       self.vm,
-                      (exc_type, value, tb),
+                      True,
                       self.why)
 
 

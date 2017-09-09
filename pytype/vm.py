@@ -265,7 +265,7 @@ class VirtualMachine(object):
       state = state.set_why("recursion")
     except exceptions.ByteCodeException:
       e = sys.exc_info()[1]
-      state = state.set_exception(e.exception_type, e.create_instance(), None)
+      state = state.set_exception()
       log.info("Exception in program: %s: %r",
                e.exception_type.__name__, e.message)
       state = state.set_why("exception")
@@ -435,39 +435,6 @@ class VirtualMachine(object):
       state, f = self.load_attr(state, obj, "__getitem__")
       state, ret = self.call_function_with_state(state, f, (slice_obj,))
     return state.push(ret)
-
-  def do_raise(self, state, exc, cause):
-    """Raise an exception. Used by byte_RAISE_VARARGS."""
-    if exc is None:     # reraise
-      exc_type, val, _ = state.last_exception
-      if exc_type is None:
-        return state.set_why("exception")
-      else:
-        return state.set_why("reraise")
-    elif isinstance(exc, type):
-      # As in `raise ValueError`
-      exc_type = exc
-      val = exc()       # Make an instance.
-    elif isinstance(exc, BaseException):
-      # As in `raise ValueError('foo')`
-      exc_type = type(exc)
-      val = exc
-    else:
-      return state
-
-    # If you reach this point, you're guaranteed that
-    # val is a valid exception instance and exc_type is its class.
-    # Now do a similar thing for the cause, if present.
-    if cause:
-      if isinstance(cause, type):
-        cause = cause()
-      elif not isinstance(cause, BaseException):
-        return state
-
-      val.__cause__ = cause
-
-    state.set_exception(exc_type, val, val.__traceback__)
-    return state
 
   # Importing
 
@@ -2015,28 +1982,15 @@ class VirtualMachine(object):
     # NOTE: the dis docs are completely wrong about the order of the
     # operands on the stack!
     argc = op.arg
-    exctype = val = tb = None
     if argc == 0:
       if state.exception is None:
         raise exceptions.ByteCodeTypeError(
             "exceptions must be old-style classes "
             "or derived from BaseException, not NoneType")
-      exctype, val, tb = state.exception
-    elif argc == 1:
-      state, exctype = state.pop()
-    elif argc == 2:
-      state, val = state.pop()
-      state, exctype = state.pop()
-    elif argc == 3:
-      state, tb = state.pop()
-      state, val = state.pop()
-      state, exctype = state.pop()
-    # There are a number of forms of "raise", normalize them somewhat.
-    if isinstance(exctype, BaseException):
-      val = exctype
-      exctype = type(val)
-    state = state.set_exception(exctype, val, tb)
-    if tb:
+    else:
+      state, _ = state.popn(argc)
+    state = state.set_exception()
+    if argc == 3:
       return state.set_why("reraise")
     else:
       return state.set_why("exception")
@@ -2045,12 +1999,12 @@ class VirtualMachine(object):
     """Raise an exception (Python 3 version)."""
     argc = op.arg
     cause = exc = None
-    if argc == 2:
-      state, cause = state.pop()
-      state, exc = state.pop()
-    elif argc == 1:
-      state, exc = state.pop()
-    return self.do_raise(state, exc, cause)
+    state, _ = state.popn(argc)
+    if argc == 0 and state.exception:
+      return state.set_why("reraise")
+    else:
+      state = state.set_exception()
+      return state.set_why("exception")
 
   def byte_RAISE_VARARGS(self, state, op):
     if self.python_version[0] == 2:

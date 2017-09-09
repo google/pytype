@@ -1,6 +1,6 @@
 """Python 3.6 tests for Byterun."""
 
-import os,sys
+import os
 
 from pytype.tests import test_inference
 
@@ -206,6 +206,12 @@ class TestPython36(test_inference.InferenceTest):
     # See files under test_data/async*.py
     pass
 
+  def test_reraise(self):
+    # Test that we don't crash when trying to reraise a nonexistent exception.
+    # (Causes a runtime error when actually run in python 3.6)
+    self.assertNoCrash("""
+      raise
+    """)
 
 
 if __name__ == "__main__":
