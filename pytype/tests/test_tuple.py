@@ -225,11 +225,11 @@ class TupleTest(test_inference.InferenceTest):
     """)
 
   def testBadTupleClassGetItem(self):
-    _, errors = self.InferAndCheck("""
+    _, errors = self.InferAndCheck("""\
       v = type((3, ""))
       w = v[0]
     """)
-    del errors
+    self.assertErrorLogIs(errors, [(2, "not-indexable", r"tuple")])
 
   def testTupleInContainer(self):
     ty = self.Infer("""
