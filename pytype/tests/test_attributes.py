@@ -347,6 +347,32 @@ class TestAttributes(test_inference.InferenceTest):
       w = v().x
     """)
 
+  def testPropertyOnUnion(self):
+    ty = self.Infer("""
+      class A():
+        def __init__(self):
+          self.foo = 1
+      class B():
+        def __init__(self):
+          self.bar = 2
+        @property
+        def foo(self):
+          return self.bar
+      x = A() if __random__ else B()
+      a = x.foo
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Union
+      a = ...  # type: int
+      x = ...  # type: Union[A, B]
+      class A:
+          foo = ...  # type: int
+          def __init__(self) -> None: ...
+      class B:
+          bar = ...  # type: int
+          foo = ...  # type: int
+          def __init__(self) -> None: ...
+    """)
 
 if __name__ == "__main__":
   test_inference.main()

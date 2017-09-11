@@ -272,7 +272,7 @@ class AbstractAttributeHandler(object):
         if getter is not None:
           posargs = []
           if valself:
-            posargs.append(valself.variable)
+            posargs.append(valself.AssignToNewVariable())
           if valcls:
             if not valself:
               posargs.append(self.vm.convert.none.to_variable(node))
