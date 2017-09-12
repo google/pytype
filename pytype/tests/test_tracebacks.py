@@ -16,10 +16,10 @@ class TracebackTest(test_inference.InferenceTest):
 
   def test_same_traceback(self):
     _, errors = self.InferAndCheck("""\
-      def f(x):
+      def f(x, _):
         x + 42
       def g(x):
-        f("hello")
+        f("hello", x)
       g("world")
     """, deep=True)
     self.assertErrorLogIs(errors, [(2, "wrong-arg-types",

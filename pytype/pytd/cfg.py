@@ -371,19 +371,17 @@ class Variable(object):
   """A collection of possible bindings for a variable, along with their origins.
 
   A variable stores the bindings it can have as well as the CFG nodes at which
-  the bindings occur. Callback functions can be registered with it, to be
-  executed when a binding is added. The bindings are stored in a list for
-  determinicity; new bindings should be added via AddBinding or
-  (FilterAnd)PasteVariable rather than appended to bindings directly to ensure
-  that bindings and _data_id_to_bindings are updated together. We do this rather
-  than making _data_id_to_binding a collections.OrderedDict because a CFG can
-  easily have tens of thousands of variables, and it takes about 40x as long to
-  create an OrderedDict instance as to create a list and a dict, while adding a
-  binding to the OrderedDict takes 2-3x as long as adding it to both the list
-  and the dict.
+  the bindings occur. The bindings are stored in a list for determinicity; new
+  bindings should be added via AddBinding or (FilterAnd)PasteVariable rather
+  than appended to bindings directly to ensure that bindings and
+  _data_id_to_bindings are updated together. We do this rather than making
+  _data_id_to_binding a collections.OrderedDict because a CFG can easily have
+  tens of thousands of variables, and it takes about 40x as long to create an
+  OrderedDict instance as to create a list and a dict, while adding a binding to
+  the OrderedDict takes 2-3x as long as adding it to both the list and the dict.
   """
   __slots__ = ("program", "id", "bindings", "_data_id_to_binding",
-               "_cfgnode_to_bindings", "_callbacks")
+               "_cfgnode_to_bindings")
 
   def __init__(self, program, variable_id):
     """Initialize a new Variable. Called through Program.NewVariable."""
@@ -392,7 +390,6 @@ class Variable(object):
     self.bindings = []
     self._data_id_to_binding = {}
     self._cfgnode_to_bindings = {}
-    self._callbacks = []
 
   def __repr__(self):
     return "<Variable v%d: %d choices>" % (
@@ -471,8 +468,6 @@ class Variable(object):
       binding = Binding(self.program, self, data)
       self.bindings.append(binding)
       self._data_id_to_binding[id(data)] = binding
-      for callback in self._callbacks:
-        callback()
       _variable_size_metric.add(len(self.bindings))
     return binding
 
@@ -539,12 +534,6 @@ class Variable(object):
       self._cfgnode_to_bindings[node] = {binding}
     else:
       self._cfgnode_to_bindings[node].add(binding)
-
-  def RegisterChangeListener(self, callback):
-    self._callbacks.append(callback)
-
-  def UnregisterChangeListener(self, callback):
-    self._callbacks.remove(callback)
 
   @property
   def data(self):

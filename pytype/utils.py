@@ -552,10 +552,7 @@ class MonitorDict(dict):
   """
 
   def __init__(self, *args, **kwargs):
-    self.changestamp = 0
     super(MonitorDict, self).__init__(*args, **kwargs)
-    for var in self.values():
-      var.RegisterChangeListener(self._changed)
 
   def __delitem__(self, name):
     raise NotImplementedError
@@ -563,11 +560,10 @@ class MonitorDict(dict):
   def __setitem__(self, name, var):
     assert not dict.__contains__(self, name)
     super(MonitorDict, self).__setitem__(name, var)
-    var.RegisterChangeListener(self._changed)
-    self._changed()
 
-  def _changed(self):
-    self.changestamp += 1
+  @property
+  def changestamp(self):
+    return len(self) + sum((len(var.bindings) for var in self.values()))
 
   @property
   def data(self):

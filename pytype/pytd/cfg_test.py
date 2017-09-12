@@ -895,26 +895,6 @@ class CFGTest(unittest.TestCase):
     self.assertSameElements([3], x.Data(n3))
     self.assertSameElements([1, 3], x.Data(n4))
 
-  def testVariableCallback(self):
-    counters = [0, 0]
-    def callback1():
-      counters[0] += 1
-    def callback2():
-      counters[1] += 1
-    p = cfg.Program()
-    x = p.NewVariable()
-    x.RegisterChangeListener(callback1)
-    x.AddBinding("a")
-    self.assertListEqual(counters, [1, 0])
-    x.RegisterChangeListener(callback2)
-    x.AddBinding("b")
-    self.assertListEqual(counters, [2, 1])
-    x.AddBinding("a")  # Duplicate binding; callbacks should not be triggered
-    self.assertListEqual(counters, [2, 1])
-    x.UnregisterChangeListener(callback1)
-    x.AddBinding("c")
-    self.assertListEqual(counters, [2, 2])
-
   def testInvalidateSolver(self):
     p = cfg.Program()
     x = p.NewVariable()
