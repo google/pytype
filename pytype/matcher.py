@@ -529,6 +529,8 @@ class AbstractMatcher(object):
         # possible that this ambiguous base is of type other_type, our class
         # would then be a match for *everything*. Hence, assume this base is not
         # a match, to keep the list of possible types from exploding.
+        # TODO(kramm): Revisit this, now that type_match.py primarily deals with
+        # protocols.
         continue
       else:
         raise AssertionError("Bad base class %r", base_cls)
@@ -603,20 +605,20 @@ class AbstractMatcher(object):
     Returns:
       A new type parameter assignment if the matching succeeded, None otherwise.
     """
-    if isinstance(left, abstract.PyTDClass):
-      left_methods = left.pytd_cls.methods
-    elif isinstance(left, abstract.InterpreterClass):
-      left_methods = [data
-                      for member in left.members.values()
-                      for data in member.data
-                      if isinstance(data, abstract.Function)]
-    elif isinstance(left, abstract.AMBIGUOUS_OR_EMPTY):
+    if isinstance(left, abstract.AMBIGUOUS_OR_EMPTY):
       return subst
-    else:
-      return None
-    left_method_names = [m.name for m in left_methods]
+    left_methods = {}
+    for cls in left.mro:
+      if isinstance(cls, abstract.PyTDClass):
+        left_methods.update({m.name: m for m in cls.pytd_cls.methods})
+      elif isinstance(cls, abstract.InterpreterClass):
+        left_methods.update({name: member
+                             for name, member in cls.members.items()
+                             if any(isinstance(data, abstract.Function)
+                                    for data in member.data)})
+
     method_names_matched = all(
-        method in left_method_names for method in protocol.abstract_methods)
+        method in left_methods for method in protocol.abstract_methods)
     if method_names_matched and isinstance(other_type,
                                            abstract.ParameterizedClass):
       return self._match_parameterized_protocol(left_methods, other_type,
@@ -631,7 +633,8 @@ class AbstractMatcher(object):
     """Checks whether left_methods is compatible with a parameterized protocol.
 
     Args:
-      left_methods: The list of methods some type left has.
+      left_methods: A dictionary name -> method. method can either be a
+        Variable or a pytd.Function.
       other_type: A formal type of type abstract.ParameterizedClass.
       subst: The current type parameter assignment.
       node: The current CFG node.
@@ -641,12 +644,10 @@ class AbstractMatcher(object):
     """
     params = other_type.type_parameters
     new_substs = []
-    left_methods_by_name = {method.name: method
-                            for method in left_methods}
     for name in other_type.abstract_methods:
       abstract_method = other_type.get_method(name)
-      if name in left_methods_by_name:
-        matching_left_method = left_methods_by_name[name]
+      if name in left_methods:
+        matching_left_method = left_methods[name]
       else:
         return None
       converter = other_type.vm.convert.pytd_convert
@@ -659,14 +660,15 @@ class AbstractMatcher(object):
         annotated_callable = other_type.vm.annotations_util.sub_one_annotation(
             node, callable_signature, [annotation_subst])
         if isinstance(matching_left_method, pytd.Function):
-          matching_left_method = other_type.vm.convert.constant_to_value(
+          matching_left_method = other_type.vm.convert.constant_to_var(
               matching_left_method)
-        match_result = self._match_type_against_type(
-            matching_left_method, annotated_callable, subst, node, view)
-        if match_result is None:
-          return None
-        else:
-          new_substs.append(match_result)
+        for m in matching_left_method.data:
+          match_result = self._match_type_against_type(
+              m, annotated_callable, subst, node, view)
+          if match_result is None:
+            return None
+          else:
+            new_substs.append(match_result)
       return self._merge_substs(subst, new_substs)
 
   def _get_concrete_values(self, var):

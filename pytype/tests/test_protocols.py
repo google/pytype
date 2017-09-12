@@ -2,6 +2,7 @@
 
 Based on PEP 544 https://www.python.org/dev/peps/pep-0544/.
 """
+import unittest
 
 
 from pytype.tests import test_inference
@@ -180,6 +181,50 @@ class ProtocolTest(test_inference.InferenceTest):
           pass
       def f(x: Foo):
         return dict(x)
+    """)
+
+  def test_method_on_superclass(self):
+    self.assertNoErrors("""
+      from __future__ import google_type_annotations
+      class Foo(object):
+        def __iter__(self):
+          pass
+      class Bar(Foo):
+        pass
+      def f(x: Bar):
+        return iter(x)
+    """)
+
+  def test_method_on_parameterized_superclass(self):
+    self.assertNoErrors("""
+      from __future__ import google_type_annotations
+      from typing import List
+      class Bar(List[int]):
+        pass
+      def f(x: Bar):
+        return iter(x)
+    """)
+
+  @unittest.skip("We currently consider this an error. See _match_from_mro.")
+  def test_any_superclass(self):
+    self.assertNoErrors("""
+      from __future__ import google_type_annotations
+      class Bar(__any_object__):
+        pass
+      def f(x: Bar):
+        return iter(x)
+    """)
+
+  def test_multiple_options(self):
+    self.assertNoErrors("""
+      from __future__ import google_type_annotations
+      class Bar(object):
+        if __random__:
+          def __iter__(self): return 1
+        else:
+          def __iter__(self): return 2
+      def f(x: Bar):
+        return iter(x)
     """)
 
 

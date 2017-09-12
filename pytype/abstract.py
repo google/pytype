@@ -2167,6 +2167,10 @@ class ParameterizedClass(AtomicAbstractValue, Class):
     return hash((self.base_cls, tuple(dict.items(self.type_parameters))))
 
   @property
+  def members(self):
+    return self.base_cls.members
+
+  @property
   def formal(self):
     # We can't compute self.formal in __init__ because doing so would force
     # evaluation of our type parameters during initialization, possibly
