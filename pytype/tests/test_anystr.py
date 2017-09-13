@@ -1,6 +1,7 @@
 """Tests for inline annotations."""
 
 
+from pytype import utils
 from pytype.tests import test_inference
 
 
@@ -35,6 +36,25 @@ class AnyStrTest(test_inference.InferenceTest):
       def foo(x: List[AnyStr], y: List[AnyStr]): ...
       foo(__any_object__, [__any_object__])
     """)
+
+  def testTypeParameters(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        from typing import AnyStr
+        def f(x: AnyStr) -> AnyStr
+      """)
+      ty = self.Infer("""
+        import a
+        if a.f(""):
+          x = 3
+        if a.f("hello"):
+          y = 3
+      """, pythonpath=[d.path], deep=True)
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        x = ...  # type: int
+        y = ...  # type: int
+      """)
 
 
 if __name__ == "__main__":

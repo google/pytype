@@ -174,7 +174,16 @@ class AbstractMatcher(object):
         new_var = subst[other_type.name].AssignToNewVariable(node)
         new_var.AddBinding(left, [], node)
       else:
-        new_var = value.AssignToNewVariable(node)
+        # NOTE: We need both conditions below because we want to retain the
+        # pyval for strings used as hash keys to support f(**x) (see
+        # test_solver:testIdentityFunction) but not for AnyStr (see
+        # test_anystr:testTypeParameters)
+        if isinstance(left, abstract.PythonConstant) and other_type.constraints:
+          new_var = other_type.vm.convert.get_maybe_abstract_instance(
+              left).to_variable(node)
+        else:
+          new_var = value.AssignToNewVariable(node)
+
       type_key = left.get_type_key()
       # Every value with this type key produces the same result when matched
       # against other_type, so they can all be added to this substitution rather

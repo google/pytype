@@ -647,6 +647,29 @@ class TypeVarTest(test_inference.InferenceTest):
         def call(self) -> Optional[int]
     """)
 
+  def testDontPropagatePyval(self):
+    # in functions like f(x: T) -> T, if T has constraints we should not copy
+    # the value of constant types between instances of the typevar.
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        from typing import TypeVar
+        AnyInt = TypeVar('AnyInt', int)
+        def f(x: AnyInt) -> AnyInt
+      """)
+      ty = self.Infer("""
+        import a
+        if a.f(0):
+          x = 3
+        if a.f(1):
+          y = 3
+      """, pythonpath=[d.path], deep=True)
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        x = ...  # type: int
+        y = ...  # type: int
+      """)
+
+
 
 if __name__ == "__main__":
   test_inference.main()

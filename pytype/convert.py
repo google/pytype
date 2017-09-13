@@ -186,7 +186,7 @@ class Converter(object):
     """Create a VM tuple from the given sequence."""
     return self.tuple_to_value(content).to_variable(node)
 
-  def _get_maybe_abstract_instance(self, data):
+  def get_maybe_abstract_instance(self, data):
     """Get an instance of the same type as the given data, abstract if possible.
 
     Get an abstract instance of primitive data stored as an
@@ -330,7 +330,7 @@ class Converter(object):
           else:
             for v in subst[t.name].bindings:
               for source_set in source_sets:
-                var.AddBinding(self._get_maybe_abstract_instance(v.data)
+                var.AddBinding(self.get_maybe_abstract_instance(v.data)
                                if discard_concrete_values else v.data,
                                source_set + [v], node)
         elif isinstance(t, pytd.NothingType):
