@@ -25,12 +25,11 @@ class TypeNew(abstract.PyTDFunction):
     return super(TypeNew, self).call(node, func, args)
 
 
-class ObjectPredicate(abstract.AtomicAbstractValue):
-  """The base class for builtin predicates of the form f(obj, value).
+class ObjectPredicate(abstract.Function):
+  """The base class for builtin predicates of the form f(obj, ...) -> bool.
 
-  Subclasses need to override the following:
-
-  _call_predicate(self, node, left, right): The implementation of the predicate.
+  Subclasses should implement run() for a specific signature.
+  (See UnaryPredicate and BinaryPredicate for examples.)
   """
 
   def __init__(self, name, vm):
@@ -49,25 +48,52 @@ class ObjectPredicate(abstract.AtomicAbstractValue):
       func._match_args(node, args)  # pylint: disable=protected-access
       node = node.ConnectNew(self.name)
       result = self.vm.program.NewVariable()
-      for left in args.posargs[0].bindings:
-        for right in args.posargs[1].bindings:
-          node, pyval = self._call_predicate(node, left.data, right.data)
-          result.AddBinding(self._vm_values[pyval],
-                            source_set=(left, right), where=node)
+      self.run(node, args, result)
     except abstract.InvalidParameters as ex:
       self.vm.errorlog.invalid_function_call(self.vm.frames, ex)
       result = self.vm.convert.create_new_unsolvable(node)
     return node, result
 
 
-class HasAttr(ObjectPredicate):
+class UnaryPredicate(ObjectPredicate):
+  """The base class for builtin predicates of the form f(obj, value).
+
+  Subclasses need to override the following:
+
+  _call_predicate(self, node, obj): The implementation of the predicate.
+  """
+
+  def run(self, node, args, result):
+    for obj in args.posargs[0].bindings:
+      node, pyval = self._call_predicate(node, obj)
+      result.AddBinding(self._vm_values[pyval],
+                        source_set=(obj,), where=node)
+
+
+class BinaryPredicate(ObjectPredicate):
+  """The base class for builtin predicates of the form f(obj, value).
+
+  Subclasses need to override the following:
+
+  _call_predicate(self, node, left, right): The implementation of the predicate.
+  """
+
+  def run(self, node, args, result):
+    for left in args.posargs[0].bindings:
+      for right in args.posargs[1].bindings:
+        node, pyval = self._call_predicate(node, left, right)
+        result.AddBinding(self._vm_values[pyval],
+                          source_set=(left, right), where=node)
+
+
+class HasAttr(BinaryPredicate):
   """The hasattr() function."""
 
   def __init__(self, vm):
     super(HasAttr, self).__init__("hasattr", vm)
 
   def _call_predicate(self, node, left, right):
-    return self._has_attr(node, left, right)
+    return self._has_attr(node, left.data, right.data)
 
   def _has_attr(self, node, obj, attr):
     """Check if the object has attribute attr.
@@ -152,14 +178,14 @@ def _check_against_mro(target, class_spec):
   return None if ambiguous else False
 
 
-class IsInstance(ObjectPredicate):
+class IsInstance(BinaryPredicate):
   """The isinstance() function."""
 
   def __init__(self, vm):
     super(IsInstance, self).__init__("isinstance", vm)
 
   def _call_predicate(self, node, left, right):
-    return node, self._is_instance(left, right)
+    return node, self._is_instance(left.data, right.data)
 
   def _is_instance(self, obj, class_spec):
     """Check if the object matches a class specification.
@@ -188,14 +214,14 @@ class IsInstance(ObjectPredicate):
     return _check_against_mro(obj_class, class_spec)
 
 
-class IsSubclass(ObjectPredicate):
+class IsSubclass(BinaryPredicate):
   """The issubclass() function."""
 
   def __init__(self, vm):
     super(IsSubclass, self).__init__("issubclass", vm)
 
   def _call_predicate(self, node, left, right):
-    return node, self._is_subclass(left, right)
+    return node, self._is_subclass(left.data, right.data)
 
   def _is_subclass(self, cls, class_spec):
     """Check if the given class is a subclass of a class specification.
@@ -213,6 +239,41 @@ class IsSubclass(ObjectPredicate):
       return None
 
     return _check_against_mro(cls, class_spec)
+
+
+class IsCallable(UnaryPredicate):
+  """The callable() function."""
+
+  def __init__(self, vm):
+    super(IsCallable, self).__init__("callable", vm)
+
+  def _call_predicate(self, node, obj):
+    return self._is_callable(node, obj)
+
+  def _is_callable(self, node, obj):
+    """Check if the object is callable.
+
+    Args:
+      node: The given node.
+      obj: An AtomicAbstractValue, the arg of a callable() call.
+
+    Returns:
+      (node, result) where result = True if the object is callable,
+      False if it is not, and None if it is ambiguous.
+    """
+    # NOTE: This duplicates logic in the matcher; if this function gets any
+    # longer consider calling matcher._match_value_against_type(obj,
+    # convert.callable) instead.
+    val = obj.data
+    if isinstance(val, abstract.AMBIGUOUS_OR_EMPTY):
+      return node, None
+    # Classes are always callable.
+    if isinstance(val, abstract.Class):
+      return node, True
+    # Otherwise, see if the object has a __call__ method.
+    node, ret = self.vm.attribute_handler.get_attribute(
+        node, val, "__call__", valself=obj)
+    return node, ret is not None
 
 
 class SuperInstance(abstract.AtomicAbstractValue):
@@ -359,6 +420,74 @@ class RevealType(abstract.AtomicAbstractValue):
     return node, self.vm.convert.build_none(node)
 
 
+class BuiltinFunction(abstract.PyTDFunction):
+  """Implementation of functions in __builtin__.pytd."""
+
+  def __init__(self, name, vm):
+    f = vm.lookup_builtin(name)
+    signatures = [abstract.PyTDSignature(f.name, sig, vm)
+                  for sig in f.signatures]
+    super(BuiltinFunction, self).__init__(f.name, signatures, f.kind, vm)
+
+  def get_underlying_method(self, node, receiver, method_name):
+    """Get the bound method that a built-in function delegates to."""
+    results = []
+    for b in receiver.bindings:
+      node, result = self.vm.attribute_handler.get_attribute(
+          node, b.data, method_name, valself=b)
+      if result is not None:
+        results.append(result)
+    if results:
+      return node, self.vm.join_variables(node, results)
+    else:
+      return node, None
+
+
+class Abs(BuiltinFunction):
+  """Implements abs."""
+
+  def __init__(self, vm):
+    super(Abs, self).__init__("__builtin__.abs", vm)
+
+  def call(self, node, _, args):
+    self._match_args(node, args)
+    arg = args.posargs[0]
+    node, fn = self.get_underlying_method(node, arg, "__abs__")
+    if fn is not None:
+      return self.vm.call_function(node, fn, abstract.FunctionArgs(()))
+    else:
+      return node, self.vm.convert.create_new_unsolvable(node)
+
+
+class Next(BuiltinFunction):
+  """Implements next."""
+
+  def __init__(self, vm):
+    super(Next, self).__init__("__builtin__.next", vm)
+
+  def _get_args(self, args):
+    arg = args.posargs[0]
+    if len(args.posargs) > 1:
+      default = args.posargs[1]
+    elif "default" in args.namedargs:
+      default = args.namedargs["default"]
+    else:
+      default = self.vm.program.NewVariable()
+    return arg, default
+
+  def call(self, node, _, args):
+    self._match_args(node, args)
+    arg, default = self._get_args(args)
+    node, fn = self.get_underlying_method(node, arg, "next")
+    if fn is not None:
+      node, ret = self.vm.call_function(node, fn, abstract.FunctionArgs(()))
+      ret.PasteVariable(default)
+      return node, ret
+    else:
+      # TODO(kramm): This needs a test case.
+      return node, self.vm.convert.create_new_unsolvable(node)
+
+
 class PropertyInstance(abstract.SimpleAbstractValue, abstract.HasSlots):
   """Property instance (constructed by Property.call())."""
 
@@ -437,74 +566,6 @@ class Property(abstract.PyTDClass):
     cls = self.to_variable(node)
     return node, PropertyInstance(
         self.vm, cls, **property_args).to_variable(node)
-
-
-class BuiltinFunction(abstract.PyTDFunction):
-  """Implementation of functions in __builtin__.pytd."""
-
-  def __init__(self, name, vm):
-    f = vm.lookup_builtin(name)
-    signatures = [abstract.PyTDSignature(f.name, sig, vm)
-                  for sig in f.signatures]
-    super(BuiltinFunction, self).__init__(f.name, signatures, f.kind, vm)
-
-  def get_underlying_method(self, node, receiver, method_name):
-    """Get the bound method that a built-in function delegates to."""
-    results = []
-    for b in receiver.bindings:
-      node, result = self.vm.attribute_handler.get_attribute(
-          node, b.data, method_name, valself=b)
-      if result is not None:
-        results.append(result)
-    if results:
-      return node, self.vm.join_variables(node, results)
-    else:
-      return node, None
-
-
-class Abs(BuiltinFunction):
-  """Implements abs."""
-
-  def __init__(self, vm):
-    super(Abs, self).__init__("__builtin__.abs", vm)
-
-  def call(self, node, _, args):
-    self._match_args(node, args)
-    arg = args.posargs[0]
-    node, fn = self.get_underlying_method(node, arg, "__abs__")
-    if fn is not None:
-      return self.vm.call_function(node, fn, abstract.FunctionArgs(()))
-    else:
-      return node, self.vm.convert.create_new_unsolvable(node)
-
-
-class Next(BuiltinFunction):
-  """Implements next."""
-
-  def __init__(self, vm):
-    super(Next, self).__init__("__builtin__.next", vm)
-
-  def _get_args(self, args):
-    arg = args.posargs[0]
-    if len(args.posargs) > 1:
-      default = args.posargs[1]
-    elif "default" in args.namedargs:
-      default = args.namedargs["default"]
-    else:
-      default = self.vm.program.NewVariable()
-    return arg, default
-
-  def call(self, node, _, args):
-    self._match_args(node, args)
-    arg, default = self._get_args(args)
-    node, fn = self.get_underlying_method(node, arg, "next")
-    if fn is not None:
-      node, ret = self.vm.call_function(node, fn, abstract.FunctionArgs(()))
-      ret.PasteVariable(default)
-      return node, ret
-    else:
-      # TODO(kramm): This needs a test case.
-      return node, self.vm.convert.create_new_unsolvable(node)
 
 
 class StaticMethodInstance(abstract.SimpleAbstractValue, abstract.HasSlots):
