@@ -332,8 +332,8 @@ class SplitTest(test_inference.InferenceTest):
           return value.upper()
     """, deep=True)
     self.assertTypesMatchPytd(ty, """
-      from typing import Callable, Optional, Union
-      myisinstance = ...  # type: Callable
+      from typing import Callable, Optional, Tuple, Union
+      def myisinstance(object, class_or_type_or_tuple: Union[Tuple[type, ...], type]) -> bool: ...
       def UpperIfString(value: Union[int, unicode]) -> Optional[Union[str, unicode]]
     """)
 

@@ -121,6 +121,14 @@ class SpecialBuiltinsTest(test_inference.InferenceTest):
           pass
     """)
 
+  def testCallableMatching(self):
+    self.assertNoErrors("""
+      from __future__ import google_type_annotations
+      from typing import Any, Callable
+      def f(x: Callable[[Any], bool]):
+        pass
+      f(callable)
+    """)
 
 
 if __name__ == "__main__":

@@ -589,10 +589,10 @@ class TestFunctions(test_inference.InferenceTest):
         return isinstance
     """, deep=True)
     self.assertTypesMatchPytd(ty, """
-      from typing import Callable
+      from typing import Any, Callable, Tuple, Union
       def f(isinstance = ...) -> None
       def g() -> None
-      def h() -> Callable
+      def h() -> Callable[[Any, Union[Tuple[type, ...], type]], bool]
     """)
 
   def test_wrong_keyword(self):

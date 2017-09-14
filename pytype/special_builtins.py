@@ -25,7 +25,75 @@ class TypeNew(abstract.PyTDFunction):
     return super(TypeNew, self).call(node, func, args)
 
 
-class ObjectPredicate(abstract.Function):
+class BuiltinFunction(abstract.PyTDFunction):
+  """Implementation of functions in __builtin__.pytd."""
+
+  def __init__(self, name, vm):
+    f = vm.lookup_builtin(name)
+    signatures = [abstract.PyTDSignature(f.name, sig, vm)
+                  for sig in f.signatures]
+    super(BuiltinFunction, self).__init__(f.name, signatures, f.kind, vm)
+
+  def get_underlying_method(self, node, receiver, method_name):
+    """Get the bound method that a built-in function delegates to."""
+    results = []
+    for b in receiver.bindings:
+      node, result = self.vm.attribute_handler.get_attribute(
+          node, b.data, method_name, valself=b)
+      if result is not None:
+        results.append(result)
+    if results:
+      return node, self.vm.join_variables(node, results)
+    else:
+      return node, None
+
+
+class Abs(BuiltinFunction):
+  """Implements abs."""
+
+  def __init__(self, vm):
+    super(Abs, self).__init__("__builtin__.abs", vm)
+
+  def call(self, node, _, args):
+    self._match_args(node, args)
+    arg = args.posargs[0]
+    node, fn = self.get_underlying_method(node, arg, "__abs__")
+    if fn is not None:
+      return self.vm.call_function(node, fn, abstract.FunctionArgs(()))
+    else:
+      return node, self.vm.convert.create_new_unsolvable(node)
+
+
+class Next(BuiltinFunction):
+  """Implements next."""
+
+  def __init__(self, vm):
+    super(Next, self).__init__("__builtin__.next", vm)
+
+  def _get_args(self, args):
+    arg = args.posargs[0]
+    if len(args.posargs) > 1:
+      default = args.posargs[1]
+    elif "default" in args.namedargs:
+      default = args.namedargs["default"]
+    else:
+      default = self.vm.program.NewVariable()
+    return arg, default
+
+  def call(self, node, _, args):
+    self._match_args(node, args)
+    arg, default = self._get_args(args)
+    node, fn = self.get_underlying_method(node, arg, "next")
+    if fn is not None:
+      node, ret = self.vm.call_function(node, fn, abstract.FunctionArgs(()))
+      ret.PasteVariable(default)
+      return node, ret
+    else:
+      # TODO(kramm): This needs a test case.
+      return node, self.vm.convert.create_new_unsolvable(node)
+
+
+class ObjectPredicate(BuiltinFunction):
   """The base class for builtin predicates of the form f(obj, ...) -> bool.
 
   Subclasses should implement run() for a specific signature.
@@ -33,7 +101,7 @@ class ObjectPredicate(abstract.Function):
   """
 
   def __init__(self, name, vm):
-    super(ObjectPredicate, self).__init__(name, vm)
+    super(ObjectPredicate, self).__init__("__builtin__." + name, vm)
     # Map of True/False/None (where None signals an ambiguous bool) to
     # vm values.
     self._vm_values = {
@@ -44,8 +112,7 @@ class ObjectPredicate(abstract.Function):
 
   def call(self, node, _, args):
     try:
-      func = self.vm.convert.name_to_value("__builtin__.%s" % self.name)
-      func._match_args(node, args)  # pylint: disable=protected-access
+      self._match_args(node, args)
       node = node.ConnectNew(self.name)
       result = self.vm.program.NewVariable()
       self.run(node, args, result)
@@ -56,7 +123,7 @@ class ObjectPredicate(abstract.Function):
 
 
 class UnaryPredicate(ObjectPredicate):
-  """The base class for builtin predicates of the form f(obj, value).
+  """The base class for builtin predicates of the form f(obj).
 
   Subclasses need to override the following:
 
@@ -418,74 +485,6 @@ class RevealType(abstract.AtomicAbstractValue):
     for a in args.posargs:
       self.vm.errorlog.reveal_type(self.vm.frames, node, a)
     return node, self.vm.convert.build_none(node)
-
-
-class BuiltinFunction(abstract.PyTDFunction):
-  """Implementation of functions in __builtin__.pytd."""
-
-  def __init__(self, name, vm):
-    f = vm.lookup_builtin(name)
-    signatures = [abstract.PyTDSignature(f.name, sig, vm)
-                  for sig in f.signatures]
-    super(BuiltinFunction, self).__init__(f.name, signatures, f.kind, vm)
-
-  def get_underlying_method(self, node, receiver, method_name):
-    """Get the bound method that a built-in function delegates to."""
-    results = []
-    for b in receiver.bindings:
-      node, result = self.vm.attribute_handler.get_attribute(
-          node, b.data, method_name, valself=b)
-      if result is not None:
-        results.append(result)
-    if results:
-      return node, self.vm.join_variables(node, results)
-    else:
-      return node, None
-
-
-class Abs(BuiltinFunction):
-  """Implements abs."""
-
-  def __init__(self, vm):
-    super(Abs, self).__init__("__builtin__.abs", vm)
-
-  def call(self, node, _, args):
-    self._match_args(node, args)
-    arg = args.posargs[0]
-    node, fn = self.get_underlying_method(node, arg, "__abs__")
-    if fn is not None:
-      return self.vm.call_function(node, fn, abstract.FunctionArgs(()))
-    else:
-      return node, self.vm.convert.create_new_unsolvable(node)
-
-
-class Next(BuiltinFunction):
-  """Implements next."""
-
-  def __init__(self, vm):
-    super(Next, self).__init__("__builtin__.next", vm)
-
-  def _get_args(self, args):
-    arg = args.posargs[0]
-    if len(args.posargs) > 1:
-      default = args.posargs[1]
-    elif "default" in args.namedargs:
-      default = args.namedargs["default"]
-    else:
-      default = self.vm.program.NewVariable()
-    return arg, default
-
-  def call(self, node, _, args):
-    self._match_args(node, args)
-    arg, default = self._get_args(args)
-    node, fn = self.get_underlying_method(node, arg, "next")
-    if fn is not None:
-      node, ret = self.vm.call_function(node, fn, abstract.FunctionArgs(()))
-      ret.PasteVariable(default)
-      return node, ret
-    else:
-      # TODO(kramm): This needs a test case.
-      return node, self.vm.convert.create_new_unsolvable(node)
 
 
 class PropertyInstance(abstract.SimpleAbstractValue, abstract.HasSlots):
