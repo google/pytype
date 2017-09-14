@@ -170,6 +170,28 @@ class ParserTest(_ParserTestBase):
           z = ...  # type: int
     """)
 
+  def test_method_aliases(self):
+    self.check("""\
+      class A:
+          def x(self) -> int
+          y = x
+          z = y
+          @classmethod
+          def a(cls) -> str
+          b = a
+          c = b""", """\
+      class A:
+          def x(self) -> int: ...
+          @classmethod
+          def a(cls) -> str: ...
+          def y(self) -> int: ...
+          def z(self) -> int: ...
+          @classmethod
+          def b(cls) -> str: ...
+          @classmethod
+          def c(cls) -> str: ...
+    """)
+
   def test_slots(self):
     self.check("""\
       class A:

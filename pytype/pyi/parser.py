@@ -19,7 +19,6 @@ _Params = collections.namedtuple("_", ["required",
 _NameAndSig = collections.namedtuple("_", ["name", "signature",
                                            "decorator", "is_abstract"])
 
-
 _SlotDecl = collections.namedtuple("_", ["slots"])
 
 
@@ -860,17 +859,20 @@ class _Parser(object):
       return
 
     if aliases:
-      vals_dict = {val.name: val for val in constants + aliases}
+      vals_dict = {val.name: val for val in constants + aliases + methods}
       for val in aliases:
         name = val.name
         while isinstance(val, pytd.Alias):
           if (not isinstance(val.type, pytd.NamedType) or
               val.type.name not in vals_dict):
             raise ParseError(
-                "Illegal value for alias %r. "
-                "Value must be an attribute on the same class." % val.name)
+                "Illegal value for alias %r. Value must be an attribute "
+                "or method on the same class." % val.name)
           val = vals_dict[val.type.name]
-        constants.append(pytd.Constant(name, val.type))
+        if isinstance(val, _NameAndSig):
+          methods.append(val._replace(name=name))
+        else:
+          constants.append(pytd.Constant(name, val.type))
 
     # TODO(dbaum): Is NothingType even legal here?  The grammar accepts it but
     # perhaps it should be a ParseError.
