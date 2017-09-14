@@ -124,6 +124,14 @@ class TupleTest(test_inference.InferenceTest):
         (2, "bad-unpacking", "2 values.*1 variable"),
         (3, "bad-unpacking", "2 values.*3 variables")])
 
+  def testUnpackAmbiguousTuple(self):
+    self.assertNoErrors("""
+      from __future__ import google_type_annotations
+      def f() -> tuple:
+        return __any_object__
+      a, b = f()
+    """)
+
   def testIteration(self):
     ty = self.Infer("""\
       class Foo(object):

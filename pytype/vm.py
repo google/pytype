@@ -1709,8 +1709,9 @@ class VirtualMachine(object):
         if data.cls and len(data.cls.bindings) == 1:
           cls, = data.cls.data
           for base in cls.mro:
-            if isinstance(base, abstract.TupleClass):
-              # Found a subclass of a heterogenous tuple (usually a
+            if isinstance(base, abstract.TupleClass) and not base.formal:
+              # We've found a TupleClass with concrete parameters, which means
+              # we're a subclass of a heterogenous tuple (usually a
               # typing.NamedTuple instance).
               new_data = abstract.merge_values(
                   base.instantiate(self.root_cfg_node).data, self)
