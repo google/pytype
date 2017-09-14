@@ -52,15 +52,12 @@ class TupleTest(test_inference.InferenceTest):
   def testUnpackTuple(self):
     ty = self.Infer("""\
       v1, v2 = ("", 42)
-      v3, v4 = ("",)
       _, w = ("", 42)
       x, (y, z) = ("", (3.14, True))
     """, deep=True)
     self.assertTypesMatchPytd(ty, """
       v1 = ...  # type: str
       v2 = ...  # type: int
-      v3 = ...  # type: str
-      v4 = ...  # type: str
       _ = ...  # type: str
       w = ...  # type: int
       x = ...  # type: str
@@ -108,6 +105,24 @@ class TupleTest(test_inference.InferenceTest):
         a, b = f()
         return b
     """)
+
+  def testBadUnpacking(self):
+    ty, errors = self.InferAndCheck("""\
+      tup = (1, "")
+      a, = tup
+      b, c, d = tup
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Tuple
+      tup = ...  # type: Tuple[int, str]
+      a = ...  # type: int or str
+      b = ...  # type: int or str
+      c = ...  # type: int or str
+      d = ...  # type: int or str
+    """)
+    self.assertErrorLogIs(errors, [
+        (2, "bad-unpacking", "2 values.*1 variable"),
+        (3, "bad-unpacking", "2 values.*3 variables")])
 
   def testIteration(self):
     ty = self.Infer("""\

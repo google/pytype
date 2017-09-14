@@ -152,6 +152,13 @@ class TestPython3(test_inference.InferenceTest):
       vars = ...  # type: List[int]
     """)
 
+  def testBadUnpacking(self):
+    _, errors = self.InferAndCheck("""\
+      a, *b, c = (1,)
+    """)
+    self.assertErrorLogIs(
+        errors, [(1, "bad-unpacking", "1 value.*3 variables")])
+
 
 if __name__ == "__main__":
   test_inference.main()

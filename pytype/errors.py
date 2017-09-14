@@ -754,6 +754,14 @@ class ErrorLog(ErrorLogBase):
   def bad_slots(self, stack, msg):
     self.error(stack, msg)
 
+  @_error_name("bad-unpacking")
+  def bad_unpacking(self, stack, num_vals, num_vars):
+    prettify = lambda v, label: "%d %s%s" % (v, label, "" if v == 1 else "s")
+    vals_str = prettify(num_vals, "value")
+    vars_str = prettify(num_vars, "variable")
+    msg = "Cannot unpack %s into %s" % (vals_str, vars_str)
+    self.error(stack, msg)
+
   @_error_name("reveal-type")
   def reveal_type(self, stack, node, var):
     types = [self._print_as_actual_type(b.data)

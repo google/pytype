@@ -47,7 +47,6 @@ from pytype.pyi import parser
 from pytype.pytd import cfg
 from pytype.pytd import mro
 from pytype.pytd import slots
-from pytype.pytd.parse import builtins
 from pytype.pytd.parse import visitors
 
 log = logging.getLogger(__name__)
@@ -1754,13 +1753,14 @@ class VirtualMachine(object):
     for b in seq.bindings:
       tup = self._get_literal_sequence(b.data)
       if tup:
-        # TODO(rechen): pytype error if the length is wrong?
         if has_slurp and len(tup) >= count:
           options.append(self._restructure_tuple(state, tup, n_before, n_after))
           continue
         elif len(tup) == count:
           options.append(tup)
           continue
+        else:
+          self.errorlog.bad_unpacking(self.frames, len(tup), count)
       nontuple_seq.AddBinding(b.data, {b}, state.node)
     if nontuple_seq.bindings:
       state, itr = self._get_iter(state, nontuple_seq)
@@ -1999,7 +1999,6 @@ class VirtualMachine(object):
   def byte_RAISE_VARARGS_PY3(self, state, op):
     """Raise an exception (Python 3 version)."""
     argc = op.arg
-    cause = exc = None
     state, _ = state.popn(argc)
     if argc == 0 and state.exception:
       return state.set_why("reraise")
