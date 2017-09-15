@@ -291,5 +291,22 @@ class BuiltinTests2(test_inference.InferenceTest):
         (7, "wrong-arg-types"),
     ])
 
+  def testUnpackList(self):
+    ty = self.Infer("""
+      x = [1, ""]
+      a, b = x
+      x.append(2)
+      c, d, e = x
+    """)
+    self.assertTypesMatchPytd(ty, """
+      x = ...  # type: list[int or str]
+      a = ...  # type: int
+      b = ...  # type: str
+      c = ...  # type: int or str
+      d = ...  # type: int or str
+      e = ...  # type: int or str
+    """)
+
+
 if __name__ == "__main__":
   test_inference.main()

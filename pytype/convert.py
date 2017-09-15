@@ -107,7 +107,8 @@ class Converter(object):
 
   def value_to_constant(self, val, constant_type):
     if (isinstance(val, abstract.PythonConstant) and
-        isinstance(val.pyval, constant_type or object)):
+        isinstance(val.pyval, constant_type or object) and
+        not getattr(val, "could_contain_anything", False)):
       return val.pyval
     name = "constant" if constant_type is None else constant_type.__name__
     raise abstract.ConversionError("%s is not a(n) %s" % (val, name))
