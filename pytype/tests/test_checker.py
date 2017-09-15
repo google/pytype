@@ -21,8 +21,7 @@ class CheckerTest(test_inference.InferenceTest):
                       loader=loader,
                       py_filename="<inline>",
                       errorlog=errorlog,
-                      options=options,
-                      cache_unknowns=True)
+                      options=options)
     return errorlog
 
   def check(self, python):

@@ -50,8 +50,7 @@ def check_pyi(input_filename, errorlog, options):
       errorlog=errorlog,
       options=options,
       run_builtins=options.run_builtins,
-      deep=not options.main_only,
-      cache_unknowns=options.cache_unknowns)
+      deep=not options.main_only)
 
 
 def _create_loader(input_filename, options):
@@ -89,8 +88,7 @@ def generate_pyi(input_filename, errorlog, options, loader):
       filename=input_filename,
       run_builtins=options.run_builtins,
       deep=not options.main_only,
-      maximum_depth=1 if options.quick else 3,
-      cache_unknowns=options.cache_unknowns)
+      maximum_depth=1 if options.quick else 3)
   mod.Visit(visitors.VerifyVisitor())
   mod = optimize.Optimize(mod,
                           builtins,

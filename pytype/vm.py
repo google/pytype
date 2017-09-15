@@ -168,7 +168,6 @@ class VirtualMachine(object):
                module_name=None,
                generate_unknowns=False,
                analyze_annotated=False,
-               cache_unknowns=False,
                check_writable=False,
                store_all_calls=False):
     """Construct a TypegraphVirtualMachine."""
@@ -178,7 +177,6 @@ class VirtualMachine(object):
     self.python_version = options.python_version
     self.generate_unknowns = generate_unknowns
     self.analyze_annotated = analyze_annotated
-    self.cache_unknowns = cache_unknowns
     self.store_all_calls = store_all_calls
     self.check_writable = check_writable
     self.loader = loader

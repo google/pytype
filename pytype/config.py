@@ -125,10 +125,6 @@ class Options(object):
         dest="metrics", default=None,
         help="Write a metrics report to the specified file.")
     o.add_option(
-        "-N", "--no-cache-unknowns", action="store_false",
-        dest="cache_unknowns", default=True,
-        help="Do slower and more precise processing of unknown types.")
-    o.add_option(
         "--no-native-builtins", action="store_false",
         dest="run_builtins", default=True,
         help=("Run the program without the native Python builtins preloaded."))

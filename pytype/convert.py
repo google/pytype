@@ -208,7 +208,7 @@ class Converter(object):
     return data
 
   def _create_new_unknown_value(self, action):
-    if not self.vm.cache_unknowns or not action or not self.vm.frame:
+    if not action or not self.vm.frame:
       return abstract.Unknown(self.vm)
     # We allow only one Unknown at each point in the program, regardless of
     # what the call stack is.
