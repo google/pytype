@@ -15,7 +15,8 @@ class AttributeTest(unittest.TestCase):
   def setUp(self):
     options = config.Options.create()
     self._vm = vm.VirtualMachine(
-        errors.ErrorLog(), options, load_pytd.Loader(None, options))
+        errors.ErrorLog(), options, load_pytd.Loader(None, options),
+        check_writable=True)
 
   def test_type_parameter_instance(self):
     t = abstract.TypeParameter(abstract.T, self._vm)
@@ -48,6 +49,18 @@ class AttributeTest(unittest.TestCase):
     self.assertIs(node, self._vm.root_cfg_node)
     attr, = var.data
     self.assertIs(attr, self._vm.convert.primitive_class_instances[int])
+
+  def test_type_parameter_instance_set_attribute(self):
+    t = abstract.TypeParameter(abstract.T, self._vm)
+    t_instance = abstract.TypeParameterInstance(
+        t, self._vm.convert.primitive_class_instances[str], self._vm)
+    node = self._vm.attribute_handler.set_attribute(
+        self._vm.root_cfg_node, t_instance, "rumpelstiltskin",
+        self._vm.convert.unsolvable.to_variable(self._vm.root_cfg_node))
+    self.assertIs(node, self._vm.root_cfg_node)
+    self.assertEqual(
+        str(self._vm.errorlog).strip(),
+        "Can't assign attribute 'rumpelstiltskin' on str [not-writable]")
 
 
 if __name__ == "__main__":

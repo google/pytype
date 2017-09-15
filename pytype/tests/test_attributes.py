@@ -337,6 +337,23 @@ class TestAttributes(test_inference.InferenceTest):
     """)
     self.assertErrorLogIs(errors, [(5, "attribute-error", r"'values' on bool")])
 
+  def testTypeParameterInstanceSetAttr(self):
+    ty = self.Infer("""
+      class Foo(object):
+        pass
+      class Bar(object):
+        def bar(self):
+          d = {42: Foo()}
+          for _, foo in sorted(d.iteritems()):
+            foo.x = 42
+    """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      class Foo(object):
+        x = ...  # type: int
+      class Bar(object):
+        def bar(self) -> None: ...
+    """)
+
   def testCallableReturn(self):
     self.assertNoErrors("""
       from typing import Callable
