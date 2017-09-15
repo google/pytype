@@ -873,234 +873,171 @@ class code(object):
     pass
 
 class ArithmeticError(StandardError):
-    def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple
-    def __unicode__(self, ...) -> unicode
+    pass
 
 class AssertionError(StandardError):
-    def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple
-    def __unicode__(self, ...) -> unicode
+    pass
 
 class AttributeError(StandardError):
-    def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple
-    def __unicode__(self, ...) -> unicode
+    pass
 
 class BaseException(object):
     message = ...  # type: str
     def __init__(self, ...) -> NoneType
+    def __getitem__(self, i: int) -> ?
     def __getslice__(self, i: int, j: int) -> tuple
     def __unicode__(self, ...) -> unicode
 
 class BufferError(StandardError):
-    def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple
-    def __unicode__(self, ...) -> unicode
+    pass
 
 class BytesWarning(Warning):
-    def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple
-    def __unicode__(self, ...) -> unicode
+    pass
 
 class DeprecationWarning(Warning):
-    def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple
-    def __unicode__(self, ...) -> unicode
+    pass
 
 class EOFError(StandardError):
-    def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple
-    def __unicode__(self, ...) -> unicode
+    pass
 
 class EnvironmentError(StandardError):
-    def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple
-    def __unicode__(self, ...) -> unicode
+    errno = ...  # type: int
+    filename = ...  # type: str
+    strerror = ...  # type: str
 
 class Exception(BaseException):
-    def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple
-    def __unicode__(self, ...) -> unicode
+    pass
 
 class FloatingPointError(ArithmeticError):
-    def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple
-    def __unicode__(self, ...) -> unicode
+    pass
 
 class FutureWarning(Warning):
-    def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple
-    def __unicode__(self, ...) -> unicode
+    pass
 
 class GeneratorExit(BaseException):
-    def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple
-    def __unicode__(self, ...) -> unicode
+    pass
 
 class IOError(EnvironmentError):
-    def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple
-    def __unicode__(self, ...) -> unicode
+    pass
 
 class ImportError(StandardError):
-    def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple
-    def __unicode__(self, ...) -> unicode
+    pass
 
 class ImportWarning(Warning):
-    def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple
-    def __unicode__(self, ...) -> unicode
+    pass
 
 class IndentationError(SyntaxError):
-    def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple
-    def __unicode__(self, ...) -> unicode
+    pass
 
 class IndexError(LookupError):
-    def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple
-    def __unicode__(self, ...) -> unicode
+    pass
 
 class KeyError(LookupError):
-    def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple
-    def __unicode__(self, ...) -> unicode
+    pass
 
 class KeyboardInterrupt(BaseException):
-    def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple
-    def __unicode__(self, ...) -> unicode
+    pass
 
 class LookupError(StandardError):
-    def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple
-    def __unicode__(self, ...) -> unicode
+    pass
 
 class MemoryError(StandardError):
-    def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple
-    def __unicode__(self, ...) -> unicode
+    pass
 
 class NameError(StandardError):
-    def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple
-    def __unicode__(self, ...) -> unicode
+    pass
 
 class NotImplementedError(RuntimeError):
-    def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple
-    def __unicode__(self, ...) -> unicode
+    pass
 
 class OSError(EnvironmentError):
-    def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple
-    def __unicode__(self, ...) -> unicode
+    pass
 
 class OverflowError(ArithmeticError):
-    def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple
-    def __unicode__(self, ...) -> unicode
+    pass
 
 class PendingDeprecationWarning(Warning):
-    def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple
-    def __unicode__(self, ...) -> unicode
+    pass
 
 class ReferenceError(StandardError):
-    def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple
-    def __unicode__(self, ...) -> unicode
+    pass
 
 class RuntimeError(StandardError):
-    def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple
-    def __unicode__(self, ...) -> unicode
+    pass
 
 class RuntimeWarning(Warning):
-    def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple
-    def __unicode__(self, ...) -> unicode
+    pass
 
 class StandardError(Exception):
-    def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple
-    def __unicode__(self, ...) -> unicode
+    pass
 
 class StopIteration(Exception):
-    def __init__(self, p0) -> NoneType
-    def __init__(self) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple
-    def __unicode__(self, ...) -> unicode
+    pass
 
 class SyntaxError(StandardError):
-    def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple
-    def __unicode__(self, ...) -> unicode
+    filename = ...  # type: str
+    lineno = ...  # type: int
+    msg = ...  # type: str
+    offset = ...  # type: int
+    print_file_and_line = ...  # type: Optional[str]
+    text = ...  # type: str
 
 class SyntaxWarning(Warning):
-    def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple
-    def __unicode__(self, ...) -> unicode
+    pass
 
 class SystemError(StandardError):
-    def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple
-    def __unicode__(self, ...) -> unicode
+    pass
 
 class SystemExit(BaseException):
-    def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple
-    def __unicode__(self, ...) -> unicode
+    code = ...  # type: int
 
 class TabError(IndentationError):
-    def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple
-    def __unicode__(self, ...) -> unicode
+    pass
 
 class TypeError(StandardError):
-    def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple
-    def __unicode__(self, ...) -> unicode
+    pass
 
 class UnboundLocalError(NameError):
-    def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple
-    def __unicode__(self, ...) -> unicode
+    pass
 
 class UnicodeError(ValueError):
-    def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple
-    def __unicode__(self, ...) -> unicode
+    pass
 
-class UnicodeDecodeError(UnicodeError): ...
+class UnicodeDecodeError(UnicodeError):
+    encoding = ...  # type: str
+    object = ...  # type: str
+    start = ...  # type: int
+    end = ...  # type: int
+    reason = ...  # type: str
+    def __init__(self, encoding: str, object: str, start: int, end: int, reason: str) -> None: ...
 
-class UnicodeEncodeError(UnicodeError): ...
+class UnicodeEncodeError(UnicodeError):
+    encoding = ...  # type: str
+    object = ...  # type: unicode
+    start = ...  # type: int
+    end = ...  # type: int
+    reason = ...  # type: str
+    def __init__(self, encoding: str, object: unicode, start: int, end: int, reason: str) -> None: ...
 
-class UnicodeTranslateError(UnicodeError): ...
+class UnicodeTranslateError(UnicodeError):
+    encoding = ...  # type: str
+    object = ...  # type: unicode
+    start = ...  # type: int
+    end = ...  # type: int
+    reason = ...  # type: str
+    def __init__(self, object: unicode, start: int, end: int, reason: str) -> None: ...
 
 class UnicodeWarning(Warning):
-    def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple
-    def __unicode__(self, ...) -> unicode
+    pass
 
 class UserWarning(Warning):
-    def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple
-    def __unicode__(self, ...) -> unicode
+    pass
 
 class ValueError(StandardError):
-    def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple
-    def __unicode__(self, ...) -> unicode
+    pass
 
 class Warning(Exception):
-    def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple
-    def __unicode__(self, ...) -> unicode
+    pass
 
 class ZeroDivisionError(ArithmeticError):
-    def __init__(self, ...) -> NoneType
-    def __getslice__(self, i: int, j: int) -> tuple
-    def __unicode__(self, ...) -> unicode
+    pass
