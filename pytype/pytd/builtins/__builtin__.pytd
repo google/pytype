@@ -892,6 +892,7 @@ class `callable-iterator`(Iterator[_T]):
 # Usually the class argument to super() already inherits from object. So to
 # avoid confusion, super() inherits from nothing.
 class super(nothing):
+    __slots__ = []
     def __init__(self, ...) -> NoneType
     def __get__(self, obj, ...) -> super
     def __set__(self, obj, value) -> super
@@ -923,7 +924,6 @@ class AttributeError(StandardError):
     pass
 
 class BaseException(object):
-    __slots__ = []
     message = ...  # type: str
     def __init__(self, ...) -> NoneType
     def __getitem__(self, i: int) -> ?

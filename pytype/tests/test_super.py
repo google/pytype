@@ -183,6 +183,44 @@ class SuperTest(test_inference.InferenceTest):
           return super(Child, self).Hello()
     """)
 
+  def testSuperSetAttr(self):
+    _, errors = self.InferAndCheck("""\
+      class Foo(object):
+        def __init__(self):
+          super(Foo, self).foo = 42
+    """)
+    self.assertErrorLogIs(errors, [(3, "not-writable", r"super")])
+
+  def testSuperSubclassSetAttr(self):
+    _, errors = self.InferAndCheck("""\
+      class Foo(object): pass
+      class Bar(Foo):
+        def __init__(self):
+          super(Bar, self).foo = 42
+    """)
+    self.assertErrorLogIs(errors, [(4, "not-writable", r"super")])
+
+  def testSuperNothingSetAttr(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        class Foo(nothing): ...
+      """)
+      _, errors = self.InferAndCheck("""\
+        import foo
+        class Bar(foo.Foo):
+          def __init__(self):
+            super(foo.Foo, self).foo = 42
+      """, pythonpath=[d.path])
+      self.assertErrorLogIs(errors, [(4, "not-writable", r"super")])
+
+  def testSuperAnySetAttr(self):
+    _, errors = self.InferAndCheck("""\
+      class Foo(__any_object__):
+        def __init__(self):
+          super(Foo, self).foo = 42
+    """)
+    self.assertErrorLogIs(errors, [(3, "not-writable", r"super")])
+
 
 if __name__ == "__main__":
   test_inference.main()
