@@ -32,11 +32,12 @@ def namedtuple_ast(name, fields, python_version=None):
   field_defs = "\n  ".join(
       "%s = ...  # type: ?" % field for field in fields)
   field_names = "".join(", " + field for field in fields)
+  field_names_as_strings = ", ".join(repr(field) for field in fields)
   nt = textwrap.dedent("""
     {typevar} = TypeVar("{typevar}", bound={name})
     class {name}(tuple):
       __dict__ = ...  # type: collections.OrderedDict[str, ?]
-      __slots__ = ...  # type: typing.Tuple[nothing, ...]
+      __slots__ = [{field_names_as_strings}]
       _fields = ...  # type: typing.Tuple[{repeat_str}]
       {field_defs}
       def __getnewargs__(self) -> typing.Tuple[{repeat_any}]: ...
@@ -56,7 +57,8 @@ def namedtuple_ast(name, fields, python_version=None):
               repeat_str=_repeat_type("str", num_fields),
               field_defs=field_defs,
               repeat_any=_repeat_type("?", num_fields),
-              field_names=field_names)
+              field_names=field_names,
+              field_names_as_strings=field_names_as_strings)
   return parser.parse_string(nt, python_version=python_version)
 
 

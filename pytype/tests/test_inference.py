@@ -97,7 +97,8 @@ class InferenceTest(unittest.TestCase):
   # TODO(kramm): Rename this function.
   # pylint: disable=invalid-name
   def assertNoErrors(self, code, raises=None,
-                     pythonpath=(), skip_repeat_calls=True, report_errors=True):
+                     pythonpath=(), skip_repeat_calls=True, report_errors=True,
+                     **kwargs):
     """Run an inference smoke test for the given code."""
     if raises is not None:
       # TODO(kramm): support this
@@ -108,7 +109,7 @@ class InferenceTest(unittest.TestCase):
     loader = load_pytd.Loader(self.options.module_name, self.options)
     infer.check_types(
         textwrap.dedent(code), None, loader=loader, errorlog=errorlog,
-        options=self.options, cache_unknowns=True)
+        check_writable=True, options=self.options, **kwargs)
     if report_errors and len(errorlog):
       errorlog.print_to_stderr()
       self.fail("Inferencer found %d errors" % len(errorlog))
@@ -123,7 +124,7 @@ class InferenceTest(unittest.TestCase):
     loader = load_pytd.Loader(self.options.module_name, self.options)
     unit, builtins_pytd = infer.infer_types(
         code, errorlog, self.options, loader=loader, deep=deep,
-        analyze_annotated=True, cache_unknowns=True, **kwargs)
+        check_writable=True, analyze_annotated=True, **kwargs)
     unit.Visit(visitors.VerifyVisitor())
     unit = optimize.Optimize(unit, builtins_pytd, lossy=False, use_abcs=False,
                              max_union=7, remove_mutable=False)
@@ -137,7 +138,7 @@ class InferenceTest(unittest.TestCase):
       loader = load_pytd.Loader(
           infer.get_module_name(filename, self.options), self.options)
       unit, _ = infer.infer_types(code, errorlog, self.options, loader=loader,
-                                  filename=filename, cache_unknowns=True)
+                                  filename=filename)
       unit.Visit(visitors.VerifyVisitor())
       return pytd_utils.CanonicalOrdering(unit)
 
@@ -279,7 +280,7 @@ class InferenceTest(unittest.TestCase):
             report_errors=True, analyze_annotated=True, **kwargs):
     types, builtins_pytd = self._InferAndVerify(
         textwrap.dedent(srccode), pythonpath=pythonpath, deep=deep,
-        cache_unknowns=True, analyze_annotated=analyze_annotated,
+        analyze_annotated=analyze_annotated, check_writable=True,
         report_errors=report_errors, **kwargs)
     types = optimize.Optimize(types, builtins_pytd, lossy=False, use_abcs=False,
                               max_union=7, remove_mutable=False)

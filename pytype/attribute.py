@@ -163,6 +163,26 @@ class AbstractAttributeHandler(object):
     return self._get_value_or_class_attribute(
         node, obj, name, valself, obj.cls, getter)
 
+  def _check_writable(self, obj, name):
+    """Verify that a given attribute is writable. Log an error if not."""
+    if obj.cls is None:
+      # "Any" etc.
+      return True
+    for cls in obj.cls.data:
+      for baseclass in cls.mro:
+        if baseclass.full_name == "__builtin__.object":
+          # It's not possible to set an attribute on object itself.
+          # (object has __setattr__, but that honors __slots__.)
+          continue
+        if (isinstance(baseclass, abstract.SimpleAbstractValue) and
+            ("__setattr__" in baseclass.members or name in baseclass.members)):
+          return True  # This is a programmatic attribute.
+        if baseclass.slots is None or name in baseclass.slots:
+          return True  # Found a slot declaration; this is an instance attribute
+    if self.vm.check_writable:
+      self.vm.errorlog.not_writable(self.vm.frames, obj, name)
+    return False
+
   def set_attribute(self, node, obj, name, value):
     """Set an attribute on an object.
 
@@ -181,6 +201,10 @@ class AbstractAttributeHandler(object):
       AttributeError: If the attribute cannot be set.
       NotImplementedError: If attribute setting is not implemented for obj.
     """
+    if not self._check_writable(obj, name):
+      # We ignore the write of an attribute that's not in __slots__, since it
+      # wouldn't happen in the Python interpreter, either.
+      return node
     if isinstance(value, annotations_util.LateAnnotation):
       obj.late_annotations[name] = value
       return node

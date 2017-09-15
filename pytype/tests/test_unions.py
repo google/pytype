@@ -24,17 +24,22 @@ class UnionTest(test_inference.InferenceTest):
     """)
 
   def testCall(self):
-    ty = self.Infer("""
+    ty, errors = self.InferAndCheck("""\
       def f():
         x = 42
         if __random__:
-          x.__class__ = float  # Should not appear in output
+          # Should not appear in output
+          x.__class__ = float
           x.__class__ = str
         return type(x)()
     """, deep=True)
     self.assertTypesMatchPytd(ty, """
-      def f() -> int or str
+      def f() -> int
     """)
+    self.assertErrorLogIs(errors, [
+        (5, "not-writable", "int"),
+        (6, "not-writable", "int"),
+    ])
 
 
 if __name__ == "__main__":

@@ -168,7 +168,8 @@ class VirtualMachine(object):
                module_name=None,
                generate_unknowns=False,
                analyze_annotated=False,
-               cache_unknowns=True,
+               cache_unknowns=False,
+               check_writable=False,
                store_all_calls=False):
     """Construct a TypegraphVirtualMachine."""
     self.maximum_depth = sys.maxint
@@ -179,6 +180,7 @@ class VirtualMachine(object):
     self.analyze_annotated = analyze_annotated
     self.cache_unknowns = cache_unknowns
     self.store_all_calls = store_all_calls
+    self.check_writable = check_writable
     self.loader = loader
     self.frames = []  # The call stack of frames.
     self.functions_with_late_annotations = []

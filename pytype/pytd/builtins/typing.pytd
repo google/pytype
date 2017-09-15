@@ -23,70 +23,84 @@ class Callable(Generic[_ARGS, _RET], Protocol):
   def __call__(self, ...) -> _RET
 
 
-class Generic(object): ...
+class Generic(object):
+  __slots__ = []
 
 
 # This class is the implementation of PEP 544
 # (https://www.python.org/dev/peps/pep-0544/)
-class Protocol(object): ...
+class Protocol(object):
+  __slots__ = []
 
 
 class SupportsInt(Protocol):
+  __slots__ = []
   @abstractmethod
   def __int__(self) -> int: ...
 
 
 class SupportsFloat(Protocol):
+  __slots__ = []
   @abstractmethod
   def __float__(self) -> float: ...
 
 
 class SupportsComplex(Protocol):
+  __slots__ = []
   @abstractmethod
   def __complex__(self) -> complex: ...
 
 
 class SupportsAbs(Generic[_T], Protocol):
+  __slots__ = []
   @abstractmethod
   def __abs__(self) -> _T: ...
 
 
 class SupportsRound(Generic[_T], Protocol):
+  __slots__ = []
   @abstractmethod
   def __round__(self, ndigits: int = ...) -> _T: ...
 
 
 class Reversible(Generic[_T]):
+  __slots__ = []
   @abstractmethod
   def __reversed__(self) -> Iterator[_T]: ...
 
 
 class Iterator(Iterable[_T], Protocol):
+  __slots__ = []
   @abstractmethod
   def next(self) -> _T: ...
 
 
 class Iterable(Generic[_T], Protocol):
+  __slots__ = []
   @abstractmethod
   def __iter__(self) -> Iterator[_T]
 
 
 class Sized(Protocol):
+  __slots__ = []
   @abstractmethod
   def __len__(self) -> int: ...
 
 
 class Hashable(object):
+  __slots__ = []
   @abstractmethod
   def __hash__(self) -> int: ...
 
 
 class Container(Generic[_T], Protocol):
+  __slots__ = []
   @abstractmethod
   def __contains__(self, x) -> bool: ...
 
 
 class Sequence(Sized, Iterable[_T], Container[_T], Reversible[_T], Protocol):
+  __slots__ = []
   @abstractmethod
   def __getitem__(self, i: int) -> _T: ...
   @abstractmethod
@@ -99,13 +113,16 @@ class Sequence(Sized, Iterable[_T], Container[_T], Reversible[_T], Protocol):
   def __reversed__(self) -> Iterator[_T]: ...
 
 
-class Collection(Sized, Iterable[_T], Container[_T]): ...
+class Collection(Sized, Iterable[_T], Container[_T]):
+  __slots__ = []
 
 
-class Tuple(Sequence[_T]): ...
+class Tuple(Sequence[_T]):
+  __slots__ = []
 
 
 class MutableSequence(Sequence[_T], Protocol):
+  __slots__ = []
   @abstractmethod
   def __setitem__(self, i: int, v: _T2) -> None:
     self := MutableSequence[_T or _T2]
@@ -129,7 +146,8 @@ class MutableSequence(Sequence[_T], Protocol):
   def remove(self, value: _T) -> None: ...
 
 
-class List(MutableSequence[_T]): ...
+class List(MutableSequence[_T]):
+  __slots__ = []
 
 
 # typing.Deque subclasses collections.deque and MutableSequence[_T], but there's
@@ -180,6 +198,7 @@ class TextIO(IO[unicode]): ...
 
 
 class Mapping(Sized, Iterable[_K], Container[_K], Generic[_K, _V], Protocol):
+  __slots__ = []
   def copy(self) -> Mapping[_K, _V]: ...
   def __contains__(self, o) -> bool: ...
   @abstractmethod
@@ -200,6 +219,7 @@ class Mapping(Sized, Iterable[_K], Container[_K], Generic[_K, _V], Protocol):
 
 
 class MutableMapping(Mapping[_K, _V], Protocol):
+  __slots__ = []
   def copy(self) -> MutableMapping[_K, _V]: ...
   @abstractmethod
   def __setitem__(self, k: _K2, v: _V2) -> None:
@@ -221,10 +241,12 @@ class MutableMapping(Mapping[_K, _V], Protocol):
 class DefaultDict(MutableMapping[_K, _V]): ...
 
 
-class Dict(MutableMapping[_K, _V]): ...
+class Dict(MutableMapping[_K, _V]):
+  __slots__ = []
 
 
 class AbstractSet(Iterable[_T], Container[_T]):
+  __slots__ = []
   def __contains__(self, x) -> bool: ...
   def __and__(self, s: AbstractSet[?]) -> AbstractSet[_T]: ...
   def __or__(self, s: AbstractSet[_T2]) -> AbstractSet[_T or _T2]: ...
@@ -233,10 +255,12 @@ class AbstractSet(Iterable[_T], Container[_T]):
   def isdisjoint(self, s: Iterable) -> bool: ...
 
 
-class FrozenSet(AbstractSet[_T]): ...
+class FrozenSet(AbstractSet[_T]):
+  __slots__ = []
 
 
 class MutableSet(AbstractSet[_T]):
+  __slots__ = []
   def add(self, x: _T2) -> None:
     self := MutableSet[_T or _T2]
   def discard(self, x) -> None: ...
@@ -249,11 +273,13 @@ class MutableSet(AbstractSet[_T]):
   def __xor__(self, s: AbstractSet[_T2]) -> MutableSet[_T or _T2]: ...
 
 
-class Set(MutableSet[_T]): ...
+class Set(MutableSet[_T]):
+  __slots__ = []
 
 
 # _T is the yield type, _T2 the send type, _V the return type.
 class Generator(Iterator[_T], Generic[_T, _T2, _V]):
+  __slots__ = []
   def next(self) -> _T: ...
   def send(self, value: _T2) -> _T: ...
   def throw(self, typ: BaseException, val = ..., tb = ...) -> None: ...
@@ -312,10 +338,14 @@ class ContextManager(Generic[_T], Protocol):
   def __exit__(self, exc_type: Optional[Type[BaseException]], exc_value: Optional[BaseException], traceback: Optional[Any]) -> Optional[bool]: ...
 
 
-class MappingView(Sized, Iterable[_T]): ...
-class KeysView(MappingView[_T], AbstractSet[_T]): ...
-class ValuesView(MappingView[_T]): ...
-class ItemsView(MappingView[Tuple[_K, _V]], AbstractSet[Tuple[_K, _V]]): ...
+class MappingView(Sized, Iterable[_T]):
+  __slots__ = []
+class KeysView(MappingView[_T], AbstractSet[_T]):
+  __slots__ = []
+class ValuesView(MappingView[_T]):
+  __slots__ = []
+class ItemsView(MappingView[Tuple[_K, _V]], AbstractSet[Tuple[_K, _V]]):
+  __slots__ = []
 
 def NewType(name, tp) -> type
 

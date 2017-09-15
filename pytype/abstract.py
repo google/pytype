@@ -153,6 +153,7 @@ class AtomicAbstractValue(object):
     self.official_name = None
     self.template = ()
     self.late_annotations = {}
+    self.slots = None  # writable attributes (or None if everything is writable)
 
   @property
   def full_name(self):
@@ -2143,6 +2144,7 @@ class ParameterizedClass(AtomicAbstractValue, Class):
     self.mro = (self,) + self.base_cls.mro[1:]
     self.official_name = self.base_cls.official_name
     self.template = self.base_cls.template
+    self.slots = self.base_cls.slots
     Class.init_mixin(self, base_cls.cls)
     self.abstract_methods.extend(self.base_cls.abstract_methods)
 
@@ -2220,9 +2222,10 @@ class TupleClass(ParameterizedClass, HasSlots):
     # We subtract one to account for "T".
     self.tuple_length = len(self.type_parameters) - 1
     self._instance = None
-    # ParametrizedClass removes the base PyTDClass(tuple) from the mro; add it
+    # ParameterizedClass removes the base PyTDClass(tuple) from the mro; add it
     # back here so that isinstance(tuple) checks work.
     self.mro = (self.mro[0],) + self.base_cls.mro
+    self.slots = ()  # tuples don't have any writable attributes
 
   def __repr__(self):
     return "TupleClass(%s)" % self.type_parameters
@@ -2452,7 +2455,7 @@ class PyTDClass(SimpleAbstractValue, Class):
         parents=self.pytd_cls.parents,
         methods=tuple(self._member_map[m.name] for m in self.pytd_cls.methods),
         constants=self.pytd_cls.constants,
-        slots=None,
+        slots=self.pytd_cls.slots,
         template=self.pytd_cls.template)
 
 

@@ -247,7 +247,7 @@ class _Parser(object):
 
   # Attributes that all namedtuple instances have.
   _NAMEDTUPLE_MEMBERS = ("_asdict", "__dict__", "_fields", "__getnewargs__",
-                         "__getstate__", "_make", "_replace", "__slots__")
+                         "__getstate__", "_make", "_replace")
 
   def __init__(self, version, platform):
     """Initialize the parser.
@@ -799,7 +799,7 @@ class _Parser(object):
                           parents=(class_parent,),
                           methods=tuple(methods),
                           constants=class_constants,
-                          slots=None,
+                          slots=tuple(n for n, _ in fields),
                           template=())
 
     self._generated_classes[base_name].append(nt_class)

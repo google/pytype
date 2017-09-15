@@ -125,6 +125,7 @@ Ellipsis = ...  # type: ellipsis
 __debug__ = ...  # type: bool
 
 class object():
+    __slots__ = []  # if used as base class
     __bases__ = ...  # type: Tuple[?, ...]
     __dict__ = ...  # type: Dict[str, ?]
     __doc__ = ...  # type: str
@@ -157,6 +158,7 @@ class object():
 
 # old style class. classobj is in fact a subclass of object in Python.
 class classobj(object):
+    __slots__ = []
     __bases__ = ...  # type: Tuple[?, ...]
     __dict__ = ...  # type: Dict[str, ?]
     __doc__ = ...  # type: str
@@ -165,17 +167,20 @@ class classobj(object):
     def __repr__(self) -> str
     def __cmp__(self, y) -> bool
 
+# Not actually a builtin
 class NotImplementedType(object):
     pass
 
 class NoneType(object):
+    # Note that we don't do __slots__ = [] here. (I.e., we ignore STORE_ATTR
+    # errors on NoneType). This is symmetric with LOAD_ATTR.
     pass
 
 class ellipsis(object):
-    pass
+    __slots__ = []
 
 class basestring(object):
-    pass
+    __slots__ = []
 
 class property(object):
     def __init__(self, fget=..., fset=..., fdel=..., doc=...) -> NoneType
@@ -187,15 +192,18 @@ class property(object):
 # Callable. We should instead generate the right information in pyi (I.e.,
 # decorate classes instead of creating constants of type {class,static}method)
 class staticmethod(typing.Callable):
+    __slots__ = []
     def __init__(self, func) -> NoneType
     def __get__(self, ...) -> ?
 
 class classmethod(typing.Callable):
+    __slots__ = []
     def __init__(self, func) -> NoneType
     def __get__(self, ...) -> ?
 
 _T_str = TypeVar('_T_str', bound=str)
 class str(basestring, Sequence[str]):
+    __slots__ = []
     def __init__(self, object) -> NoneType
     def __init__(self) -> NoneType
     # TODO(rechen): Look into using AnyStr for __add__ once our solving of
@@ -259,6 +267,7 @@ class str(basestring, Sequence[str]):
 bytes = str
 
 class unicode(basestring, Sequence[unicode]):
+    __slots__ = []
     def __init__(self, string, ...) -> NoneType
     def __init__(self) -> NoneType
     def __add__(self, y: str or unicode or bytearray) -> unicode
@@ -310,6 +319,7 @@ class unicode(basestring, Sequence[unicode]):
     def zfill(self, width: int) -> unicode
 
 class bytearray(Sequence[int]):
+    __slots__ = []
     def __init__(self, iterable_of_ints) -> NoneType
     def __init__(self) -> NoneType
     def __init__(self, source: unicode, encoding: str or unicode, errors: str or unicode = ...) -> NoneType
@@ -366,22 +376,27 @@ class bytearray(Sequence[int]):
     def zfill(self, width: int) -> bytearray
 
 class bytearray_iterator(Iterator[int]):
+    __slots__ = []
     def __iter__(self) -> bytearray_iterator
     def next(self) -> int
 
 class `dictionary-keyiterator`(Iterator[_T]):
+    __slots__ = []
     def __iter__(self) -> `dictionary-keyiterator`[_T]
     def next(self) -> _T
 
 class `dictionary-valueiterator`(Iterator[_T]):
+    __slots__ = []
     def __iter__(self) -> `dictionary-valueiterator`[_T]
     def next(self) -> _T
 
 class `dictionary-itemiterator`(Iterator[tuple[_K, _V]]):
+    __slots__ = []
     def __iter__(self) -> `dictionary-itemiterator`[_K, _V]
     def next(self) -> tuple[_K, _V]
 
 class dict_keys(Iterator[_T]):
+    __slots__ = []
     def __contains__(self, y) -> bool
     def __iter__(self) -> `dictionary-keyiterator`[_T]
     def __len__(self) -> int
@@ -391,10 +406,12 @@ class dict_keys(Iterator[_T]):
     def __xor__(self, y: Iterable[_T2]) -> set[_T or _T2]
 
 class dict_values(Iterator[_T]):
+    __slots__ = []
     def __iter__(self) -> `dictionary-valueiterator`[_T]
     def __len__(self) -> int
 
 class dict_items(Generic[_K, _V], object):
+    __slots__ = []
     def __and__(self, y: set or dict_items) -> set[tuple[_K, _V]]
     def __or__(self, y: set or dict_items[_K2, _V2]) -> set[tuple[_K or _K2, _V or _V2]]
     def __xor__(self, y: set or dict_items[_K2, _V2]) -> set[tuple[_K or _K2, _V or _V2]]
@@ -404,6 +421,7 @@ class dict_items(Generic[_K, _V], object):
     def __len__(self) -> int
 
 class dict(Dict[_K, _V]):
+    __slots__ = []
     def __init__(self) -> NoneType:
         self := dict[nothing, nothing]
     def __init__(self, list: list[nothing]) -> NoneType:
@@ -451,20 +469,24 @@ class dict(Dict[_K, _V]):
     def viewvalues(self) -> dict_values[_V]
 
 class listiterator(Iterator[_T]):
+    __slots__ = []
     def __iter__(self) -> listiterator[_T]
     def next(self) -> _T
 
 class enumerate(Iterator[_T]):
+    __slots__ = []
     def __init__(self, iterable: Iterable[_T2], start: int = ...) -> NoneType:
       self := enumerate[_T2]
     def __iter__(self) -> enumerate[_T]  # enumerate.__iter__() returns itself
     def next(self) -> tuple[int, _T]
 
 class listreverseiterator(Iterator[_T]):
+    __slots__ = []
     def __iter__(self) -> listreverseiterator[_T]
     def next(self) -> _T
 
 class list(List[_T]):
+    __slots__ = []
     def __init__(self) -> NoneType:
         self := list[nothing]
     def __init__(self, iterable: Iterable[_T2]) -> NoneType:
@@ -504,12 +526,14 @@ class list(List[_T]):
 
 # "reversed" is a type, see PyReversed_Type in Objects/enumobject.c
 class reversed(Iterator[_T]):
+    __slots__ = []
     def __init__(self, sequence: Reversible[_T2]) -> NoneType:
       self := reversed[_T2]
     def __iter__(self) -> reversed
     def next(self) -> _T
 
 class tuple(Tuple[_T]):
+    __slots__ = []
     def __init__(self) -> NoneType:
       self := tuple[nothing, ...]
     def __init__(self, p0: Iterable[_T2]) -> NoneType:
@@ -526,10 +550,12 @@ class tuple(Tuple[_T]):
     def index(self, value, ...) -> int
 
 class tupleiterator(Iterator[_T]):
+    __slots__ = []
     def __iter__(self) -> tupleiterator[_T]
     def next(self) -> _T
 
 class set(Set[_T]):
+    __slots__ = []
     def __init__(self) -> NoneType:
         self := set[nothing]
     def __init__(self, iterable: Iterable[_T2]) -> NoneType:
@@ -570,6 +596,7 @@ class set(Set[_T]):
     def symmetric_difference(Iterable) -> set[?]
 
 class frozenset(FrozenSet[_T]):
+    __slots__ = []
     def __init__(self) -> NoneType:
         self := frozenset[nothing]
     def __init__(self, x: Iterable[_T2]) -> NoneType:
@@ -593,10 +620,12 @@ class frozenset(FrozenSet[_T]):
     def difference(...) -> frozenset[?]
 
 class setiterator(Iterator[_T]):
+    __slots__ = []
     def __iter__(self) -> setiterator[_T]
     def next(self) -> _T
 
 class bool(int, SupportsInt, SupportsFloat):
+    __slots__ = []
     def __init__(self, x) -> NoneType
     def __init__(self) -> NoneType
     def __abs__(self) -> int
@@ -636,6 +665,7 @@ class bool(int, SupportsInt, SupportsFloat):
     def conjugate(self, ...) -> int
 
 class int(SupportsInt, SupportsFloat, SupportsAbs):
+    __slots__ = []
     denominator = ...  # type: int
     numerator = ... # type: int
     real = ... # type: int
@@ -701,6 +731,7 @@ class int(SupportsInt, SupportsFloat, SupportsAbs):
 long = int
 
 class float(SupportsInt, SupportsFloat, SupportsAbs):
+    __slots__ = []
     real = ... # type: float
     imag = ... # type: float
     def __init__(self, x: int or float or str or unicode or SupportsFloat) -> NoneType
@@ -743,6 +774,7 @@ class float(SupportsInt, SupportsFloat, SupportsAbs):
     def is_integer(self) -> bool
 
 class complex(SupportsAbs):
+    __slots__ = []
     real = ... # type: float
     imag = ... # type: float
     def __init__(self, real: int or float or complex or str or unicode or typing.SupportsComplex, ...) -> NoneType
@@ -764,6 +796,7 @@ class complex(SupportsAbs):
     def conjugate(self) -> complex
 
 class buffer(Sized, Iterable[int]):
+    __slots__ = []
     def __init__(self, object: str or unicode or bytearray or buffer, ...) -> NoneType
     def __add__(self, y: str or unicode or bytearray or buffer) -> str
     def __getitem__(self, index: int) -> str
@@ -772,6 +805,7 @@ class buffer(Sized, Iterable[int]):
     def __mul__(self, n: int) -> str
 
 class file(BinaryIO):
+    __slots__ = []
     def __init__(self, name: str, ...) -> NoneType
     def __iter__(self) -> file
     def __enter__(self) -> file
@@ -792,12 +826,14 @@ class file(BinaryIO):
     def xreadlines(self) -> file
 
 class generator(Generator[_T, _T2, _V]):
+    __slots__ = []
     def __iter__(self) -> generator[_T, _T2, _V]
     def send(self, value: _T2) -> _T
     def close(self) -> NoneType
     def next(self) -> _T
 
 class instancemethod(object):
+    __slots__ = []
     def __init__(self, function: Callable or instancemethod, instance, cls) -> NoneType
     def __get__(self, obj, ...) -> instancemethod
 
@@ -810,6 +846,7 @@ class module(object):
     def __getattr__(self, name) -> ?  # modules can contain anything
 
 class slice(object):
+    __slots__ = []  # slices are readonly
     start = ...  # type: Optional[int]
     stop = ...  # type: Optional[int]
     step = ...  # type: Optional[int]
@@ -817,6 +854,7 @@ class slice(object):
     def indices(self, len: int) -> tuple[int, int, int]
 
 class memoryview(object):
+    __slots__ = []
     def __init__(self, object: str or bytearray or memoryview) -> NoneType
     def __getitem__(self, index: int) -> str
     def __len__(self) -> int
@@ -842,10 +880,12 @@ class type(Callable, Type[_T]):
     def mro(self) -> List[type]: ...
 
 class iterator(Iterator[_T]):
+    __slots__ = []
     def __iter__(self) -> iterator[_T]
     def next(self) -> _T
 
 class `callable-iterator`(Iterator[_T]):
+    __slots__ = []
     def __iter__(self) -> `callable-iterator`[_T]
     def next(self) -> _T
 
@@ -858,6 +898,7 @@ class super(nothing):
     def __new__(cls: Type[super], ...) -> super
 
 class xrange(Sequence[int]):
+    __slots__ = []
     def __init__(self, stop: int, ...) -> NoneType
     def __getitem__(self, index: int) -> int
     def __iter__(self) -> Iterator[int]
@@ -882,6 +923,7 @@ class AttributeError(StandardError):
     pass
 
 class BaseException(object):
+    __slots__ = []
     message = ...  # type: str
     def __init__(self, ...) -> NoneType
     def __getitem__(self, i: int) -> ?

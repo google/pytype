@@ -106,6 +106,134 @@ class SlotsTest(test_inference.InferenceTest):
         pass
     """)
 
+  def testAssignAttribute(self):
+    _, errors = self.InferAndCheck("""
+      class Foo(object):
+        __slots__ = ("x", "y")
+      foo = Foo()
+      foo.x = 1  # ok
+      foo.y = 2  # ok
+      foo.z = 3  # error
+    """)
+    self.assertErrorLogIs(
+        errors,
+        [(7, "not-writable", r"z")]
+    )
+
+  def testObject(self):
+    _, errors = self.InferAndCheck("""\
+      object().foo = 42
+    """)
+    self.assertErrorLogIs(errors, [
+        (1, "not-writable", r"object")
+    ])
+
+  def testAnyBaseClass(self):
+    self.assertNoErrors("""
+      class Foo(__any_object__):
+        __slots__ = ()
+      Foo().foo = 42
+    """)
+
+  def testParameterizedBaseClass(self):
+    _, errors = self.InferAndCheck("""\
+      from typing import List
+      class Foo(List[int]):
+        __slots__ = ()
+      Foo().foo = 42
+    """)
+    self.assertErrorLogIs(errors, [
+        (4, "not-writable", r"foo")
+    ])
+
+  def testEmptySlots(self):
+    _, errors = self.InferAndCheck("""\
+      class Foo(object):
+        __slots__ = ()
+      Foo().foo = 42
+    """)
+    self.assertErrorLogIs(
+        errors,
+        [(3, "not-writable", r"foo")]
+    )
+
+  def testNamedTuple(self):
+    _, errors = self.InferAndCheck("""\
+      import collections
+      Foo = collections.namedtuple("_", ["a", "b", "c"])
+      foo = Foo(None, None, None)
+      foo.a = 1
+      foo.b = 2
+      foo.c = 3
+      foo.d = 4  # error
+    """)
+    self.assertErrorLogIs(errors, [
+        (7, "not-writable", r"d")
+    ])
+
+  def testBuiltinAttr(self):
+    _, errors = self.InferAndCheck("""\
+      "foo".bar = 1
+      u"foo".bar = 2
+      ().bar = 3
+      [].bar = 4
+      {}.bar = 5
+      set().bar = 6
+      frozenset().bar = 7
+      frozenset().bar = 8
+      Ellipsis.bar = 9
+      bytearray().bar = 10
+      enumerate([]).bar = 11
+      True.bar = 12
+      (42).bar = 13
+      (3.14).bar = 14
+      (3j).bar = 15
+      buffer("foo").bar = 16
+      slice(1,10).bar = 17
+      memoryview("foo").bar = 18
+      xrange(10).bar = 19
+    """)
+    self.assertErrorLogIs(
+        errors,
+        [(line, "not-writable") for line in range(1, 20)]
+    )
+
+  def testGeneratorAttr(self):
+    _, errors = self.InferAndCheck("""\
+      def f(): yield 42
+      f().foo = 42
+    """)
+    self.assertErrorLogIs(
+        errors,
+        [(2, "not-writable", r"foo")]
+    )
+
+  def testSetAttr(self):
+    self.assertNoErrors("""\
+      class Foo(object):
+        __slots__ = ()
+        def __setattr__(self, name, value):
+          pass
+      class Bar(Foo):
+        __slots__ = ()
+      Foo().baz = 1
+      Bar().baz = 2
+    """)
+
+  def testDescriptors(self):
+    self.assertNoErrors("""\
+      class Descriptor(object):
+        def __set__(self, obj, cls):
+          pass
+      class Foo(object):
+        __slots__ = ()
+        baz = Descriptor()
+      class Bar(Foo):
+        __slots__ = ()
+      Foo().baz = 1
+      Bar().baz = 2
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

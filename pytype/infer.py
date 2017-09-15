@@ -619,16 +619,13 @@ def get_module_name(filename, options):
 
 def check_types(py_src, py_filename, errorlog, options, loader,
                 run_builtins=True,
-                deep=True,
-                cache_unknowns=False,
-                init_maximum_depth=INIT_MAXIMUM_DEPTH):
+                deep=True, init_maximum_depth=INIT_MAXIMUM_DEPTH, **kwargs):
   """Verify a PyTD against the Python code."""
   tracer = CallTracer(errorlog=errorlog, options=options,
                       module_name=get_module_name(py_filename, options),
-                      cache_unknowns=cache_unknowns,
                       analyze_annotated=True,
                       generate_unknowns=False,
-                      loader=loader)
+                      loader=loader, **kwargs)
   loc, defs = tracer.run_program(
       py_src, py_filename, init_maximum_depth, run_builtins)
   snapshotter = metrics.get_metric("memory", metrics.Snapshot)
@@ -641,10 +638,8 @@ def check_types(py_src, py_filename, errorlog, options, loader,
 
 def infer_types(src, errorlog, options, loader,
                 filename=None, run_builtins=True,
-                deep=True,
-                cache_unknowns=False, show_library_calls=False,
-                analyze_annotated=False,
-                init_maximum_depth=INIT_MAXIMUM_DEPTH, maximum_depth=None):
+                deep=True, init_maximum_depth=INIT_MAXIMUM_DEPTH,
+                show_library_calls=False, maximum_depth=None, **kwargs):
   """Given Python source return its types.
 
   Args:
@@ -657,11 +652,10 @@ def infer_types(src, errorlog, options, loader,
       the program.
     deep: If True, analyze all functions, even the ones not called by the main
       execution flow.
-    cache_unknowns: If True, do a faster approximation of unknown types.
-    show_library_calls: If True, call traces are kept in the output.
-    analyze_annotated: If True, analyze methods with type annotations, too.
     init_maximum_depth: Depth of analysis during module loading.
+    show_library_calls: If True, call traces are kept in the output.
     maximum_depth: Depth of the analysis. Default: unlimited.
+    **kwargs: Additional parameters to pass to vm.VirtualMachine
   Returns:
     A TypeDeclUnit
   Raises:
@@ -669,10 +663,9 @@ def infer_types(src, errorlog, options, loader,
   """
   tracer = CallTracer(errorlog=errorlog, options=options,
                       module_name=get_module_name(filename, options),
-                      cache_unknowns=cache_unknowns,
-                      analyze_annotated=analyze_annotated,
                       generate_unknowns=options.protocols,
-                      store_all_calls=not deep, loader=loader)
+                      store_all_calls=not deep, loader=loader,
+                      **kwargs)
   loc, defs = tracer.run_program(
       src, filename, init_maximum_depth, run_builtins)
   log.info("===Done running definitions and module-level code===")

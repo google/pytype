@@ -490,6 +490,12 @@ class ErrorLog(ErrorLogBase):
     obj_repr = self._print_as_actual_type(obj_values)
     self.error(stack, "No attribute %r on %s" % (attr_name, obj_repr))
 
+  @_error_name("not-writable")
+  def not_writable(self, stack, obj, attr_name):
+    obj_values = abstract.merge_values([obj], obj.vm)
+    obj_repr = self._print_as_actual_type(obj_values)
+    self.error(stack, "Can't assign attribute %r on %s" % (attr_name, obj_repr))
+
   @_error_name("module-attr")
   def module_attr(self, stack, obj, attr_name):
     module_names = {m.name for m in obj.data if isinstance(m, abstract.Module)}
