@@ -576,6 +576,9 @@ class VirtualMachine(object):
           "__doc__": None,
           "__package__": None,
       })
+      # __name__ is retrieved by class bodies. So make sure that it's preloaded,
+      # otherwise we won't properly cache the first class initialization.
+      f_globals.load_lazy_attribute("__name__")
 
     # Implement NEWLOCALS flag. See Objects/frameobject.c in CPython.
     # (Also allow to override this with a parameter, Python 3 doesn't always set
@@ -627,28 +630,7 @@ class VirtualMachine(object):
     node, return_var = self.run_frame(frame, node)
     return node, frame.f_globals, frame.f_locals, return_var
 
-  def preload_builtins(self, node):
-    """Set up __builtins__ in the globals dict."""
-    # TODO(mdemello): We should be able to just set up builtins directly,
-    # without running a dummy code block.
-    src = "class placeholder(): pass"
-    builtins_code = self.compile_src(src, "__builtin__.py")
-    old = self.reading_builtins
-    self.reading_builtins = True
-    try:
-      node, f_globals, f_locals, _ = self.run_bytecode(node, builtins_code)
-    finally:
-      self.reading_builtins = old
-    assert not self.frames
-    # TODO(kramm): pytype doesn't support namespacing of the currently parsed
-    # module, so add the module name manually.
-    for name, definition in f_globals.members.items():
-      for d in definition.data:
-        d.module = "__builtin__"
-      self.trace_module_member(None, name, definition)
-    return node, f_globals, f_locals
-
-  def run_program(self, src, filename, maximum_depth, run_builtins):
+  def run_program(self, src, filename, maximum_depth):
     """Run the code and return the CFG nodes.
 
     This function loads in the builtins and puts them ahead of `code`,
@@ -658,7 +640,6 @@ class VirtualMachine(object):
       src: The program source code.
       filename: The filename the source is from.
       maximum_depth: Maximum depth to follow call chains.
-      run_builtins: Whether to preload the native Python builtins.
     Returns:
       A tuple (CFGNode, set) containing the last CFGNode of the program as
         well as all the top-level names defined by it.
@@ -673,10 +654,6 @@ class VirtualMachine(object):
 
     self.maximum_depth = sys.maxint if maximum_depth is None else maximum_depth
     node = self.root_cfg_node.ConnectNew("builtins")
-    if run_builtins:
-      node, f_globals, f_locals = self.preload_builtins(node)
-    else:
-      node, f_globals, f_locals = node, None, None
 
     code = self.compile_src(src, filename=filename)
     visitor = _FindIgnoredTypeComments(self.director.type_comments)
@@ -686,7 +663,7 @@ class VirtualMachine(object):
           self.filename, line, self.director.type_comments[line][1])
 
     node = node.ConnectNew("init")
-    node, f_globals, _, _ = self.run_bytecode(node, code, f_globals, f_locals)
+    node, f_globals, _, _ = self.run_bytecode(node, code)
     logging.info("Done running bytecode, postprocessing globals")
     for func in self.functions_with_late_annotations:
       self.annotations_util.eval_late_annotations(node, func, f_globals)

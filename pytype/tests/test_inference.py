@@ -98,7 +98,7 @@ class InferenceTest(unittest.TestCase):
   # pylint: disable=invalid-name
   def assertNoErrors(self, code, raises=None,
                      pythonpath=(), skip_repeat_calls=True, report_errors=True,
-                     **kwargs):
+                     filename=None, **kwargs):
     """Run an inference smoke test for the given code."""
     if raises is not None:
       # TODO(kramm): support this
@@ -108,7 +108,7 @@ class InferenceTest(unittest.TestCase):
     errorlog = errors.ErrorLog()
     loader = load_pytd.Loader(self.options.module_name, self.options)
     infer.check_types(
-        textwrap.dedent(code), None, loader=loader, errorlog=errorlog,
+        textwrap.dedent(code), filename, loader=loader, errorlog=errorlog,
         check_writable=True, options=self.options, **kwargs)
     if report_errors and len(errorlog):
       errorlog.print_to_stderr()

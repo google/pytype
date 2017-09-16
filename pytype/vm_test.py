@@ -142,8 +142,7 @@ class BytecodeTest(test_inference.InferenceTest):
                                        filename="<>")
     self.assertEqual(code_nested_loop.co_code,
                      self.code_nested_loop)
-    self.trace_vm.run_program(self.src_nested_loop, "", maximum_depth=10,
-                              run_builtins=False)
+    self.trace_vm.run_program(self.src_nested_loop, "", maximum_depth=10)
     # We expect all instructions, except 26, in the above to execute.
     self.assertItemsEqual(self.trace_vm.instructions_executed,
                           set(range(32)) - {26})
@@ -176,8 +175,7 @@ class BytecodeTest(test_inference.InferenceTest):
     self.assertEqual(code_deadcode.co_code,
                      self.code_deadcode)
     try:
-      self.trace_vm.run_program(self.src_deadcode, "",
-                                maximum_depth=10, run_builtins=False)
+      self.trace_vm.run_program(self.src_deadcode, "", maximum_depth=10)
     except vm.VirtualMachineError:
       pass  # The code we test throws an exception. Ignore it.
     self.assertItemsEqual(self.trace_vm.instructions_executed, [0, 1, 5, 6])

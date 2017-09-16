@@ -265,7 +265,7 @@ class BuiltinTests2(test_inference.InferenceTest):
       def foo(s: str) -> str:
         return s
       foo(__file__)
-      """)
+      """, filename="foobar.py")
 
   def testBuiltins(self):
     # This module doesn't exist, on Python 2. However, it exists in typeshed, so

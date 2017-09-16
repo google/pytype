@@ -7,7 +7,6 @@ options into an Options class.
 import logging
 import optparse
 import os
-import subprocess
 
 
 from pytype import debug
@@ -124,10 +123,6 @@ class Options(object):
         "--metrics", type="string", action="store",
         dest="metrics", default=None,
         help="Write a metrics report to the specified file.")
-    o.add_option(
-        "--no-native-builtins", action="store_false",
-        dest="run_builtins", default=True,
-        help=("Run the program without the native Python builtins preloaded."))
     o.add_option(
         "--no-report-errors", action="store_false",
         dest="report_errors", default=True,
@@ -344,14 +339,12 @@ class Options(object):
   def _store_python_exe(self, python_exe):
     """Postprocess --python_exe."""
     if python_exe is None:
-      python_exe = "python%d.%d" % self.python_version
-      try:
-        with open(os.devnull, "w") as null:
-          subprocess.check_call(python_exe + " -V",
-                                shell=True, stderr=null, stdout=null)
-      except subprocess.CalledProcessError:
-        raise optparse.OptParseError("Need valid %s executable in $PATH" %
-                                     python_exe)
+      python_exe = utils.get_python_exe(self.python_version)
+      err = "Need a valid python%d.%d executable in $PATH" % self.python_version
+    else:
+      err = "Bad flag --python_exe: could not run %s" % python_exe
+    if not utils.is_valid_python_exe(python_exe):
+      raise optparse.OptParseError(err)
     self.python_exe = python_exe
 
   @uses(["pythonpath", "output", "verbosity"])

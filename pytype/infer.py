@@ -618,7 +618,6 @@ def get_module_name(filename, options):
 
 
 def check_types(py_src, py_filename, errorlog, options, loader,
-                run_builtins=True,
                 deep=True, init_maximum_depth=INIT_MAXIMUM_DEPTH, **kwargs):
   """Verify a PyTD against the Python code."""
   tracer = CallTracer(errorlog=errorlog, options=options,
@@ -626,8 +625,7 @@ def check_types(py_src, py_filename, errorlog, options, loader,
                       analyze_annotated=True,
                       generate_unknowns=False,
                       loader=loader, **kwargs)
-  loc, defs = tracer.run_program(
-      py_src, py_filename, init_maximum_depth, run_builtins)
+  loc, defs = tracer.run_program(py_src, py_filename, init_maximum_depth)
   snapshotter = metrics.get_metric("memory", metrics.Snapshot)
   snapshotter.take_snapshot("infer:check_types:tracer")
   if deep:
@@ -637,7 +635,7 @@ def check_types(py_src, py_filename, errorlog, options, loader,
 
 
 def infer_types(src, errorlog, options, loader,
-                filename=None, run_builtins=True,
+                filename=None,
                 deep=True, init_maximum_depth=INIT_MAXIMUM_DEPTH,
                 show_library_calls=False, maximum_depth=None, **kwargs):
   """Given Python source return its types.
@@ -648,8 +646,6 @@ def infer_types(src, errorlog, options, loader,
     options: config.Options object
     loader: A load_pytd.Loader instance to load PYI information.
     filename: Filename of the program we're parsing.
-    run_builtins: Whether to preload the native Python builtins when running
-      the program.
     deep: If True, analyze all functions, even the ones not called by the main
       execution flow.
     init_maximum_depth: Depth of analysis during module loading.
@@ -666,8 +662,7 @@ def infer_types(src, errorlog, options, loader,
                       generate_unknowns=options.protocols,
                       store_all_calls=not deep, loader=loader,
                       **kwargs)
-  loc, defs = tracer.run_program(
-      src, filename, init_maximum_depth, run_builtins)
+  loc, defs = tracer.run_program(src, filename, init_maximum_depth)
   log.info("===Done running definitions and module-level code===")
   snapshotter = metrics.get_metric("memory", metrics.Snapshot)
   snapshotter.take_snapshot("infer:infer_types:tracer")

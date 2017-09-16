@@ -49,7 +49,6 @@ def check_pyi(input_filename, errorlog, options):
       py_filename=input_filename,
       errorlog=errorlog,
       options=options,
-      run_builtins=options.run_builtins,
       deep=not options.main_only)
 
 
@@ -86,7 +85,6 @@ def generate_pyi(input_filename, errorlog, options, loader):
       options=options,
       loader=loader,
       filename=input_filename,
-      run_builtins=options.run_builtins,
       deep=not options.main_only,
       maximum_depth=1 if options.quick else 3)
   mod.Visit(visitors.VerifyVisitor())
