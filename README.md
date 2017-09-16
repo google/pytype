@@ -1,17 +1,18 @@
 ## Pytype - https://github.com/google/pytype/
 
-Pytype is a static type inferencer for Python code.
+Pytype is a static analyzer for Python code.
 
 ## License
 Apache 2.0
 
-## Motivation
-### Why type inferencing?
+## Abstract
 
-With [PEP 484](https://www.python.org/dev/peps/pep-0484/), there's now an
-official standard for adding type declarations to Python code. This project
-aims to help you annotate your source files and to provide automatic static
-type-checking for your code.
+pytype can statically analyze your Python code, and point out bugs and errors
+it finds. It works on any kind of code, and doesn't need any special directives
+to be useful.
+
+However, it can additionally verify (and leverage)
+[type annotations](https://www.python.org/dev/peps/pep-0484/).
 
 ## How to get started
 
