@@ -428,12 +428,10 @@ class CallTracer(vm.VirtualMachine):
       self._calls.add(record)
 
   def trace_functiondef(self, f):
-    if not self.reading_builtins:
-      self._interpreter_functions.append(f)
+    self._interpreter_functions.append(f)
 
   def trace_classdef(self, c):
-    if not self.reading_builtins:
-      self._interpreter_classes.append(c)
+    self._interpreter_classes.append(c)
 
   def trace_namedtuple(self, nt):
     # All namedtuple instances with the same name are equal, so it's fine to

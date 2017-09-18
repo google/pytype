@@ -195,7 +195,6 @@ class VirtualMachine(object):
     self.callself_stack = []
     self.filename = None
     self.director = None
-    self.reading_builtins = False
 
     # Map from builtin names to canonical objects.
     self.special_builtins = {
