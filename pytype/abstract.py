@@ -2487,6 +2487,24 @@ class InterpreterClass(SimpleAbstractValue, Class):
     self.slots = self._convert_slots(members.get("__slots__"))
     log.info("Created class: %r", self)
 
+  def _mangle(self, name):
+    """Do name-mangling on an attribute name.
+
+    See https://goo.gl/X85fHt.  Python automatically converts a name like
+    "__foo" to "_ClassName__foo" in the bytecode. (But "forgets" to do so in
+    other places, e.g. in the strings of __slots__.)
+
+    Arguments:
+      name: The name of an attribute of the current class. E.g. "__foo".
+
+    Returns:
+      The mangled name. E.g. "_MyClass__foo".
+    """
+    if name.startswith("__") and not name.endswith("__"):
+      return "_" + self.name + name
+    else:
+      return name
+
   def _convert_slots(self, slots_var):
     """Convert __slots__ from a Variable to a tuple."""
     if slots_var is None:
@@ -2511,7 +2529,7 @@ class InterpreterClass(SimpleAbstractValue, Class):
         self.vm.errorlog.bad_slots(self.vm.frames,
                                    "Invalid __slot__ entry: %r" % str(s))
         return None
-    return tuple(s.encode("utf8", "ignore") for s in strings)
+    return tuple(self._mangle(s.encode("utf8", "ignore")) for s in strings)
 
   def register_instance(self, instance):
     self.instances.add(instance)

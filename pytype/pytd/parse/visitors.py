@@ -1777,13 +1777,12 @@ class AdjustTypeParameters(Visitor):
 
   def __init__(self):
     super(AdjustTypeParameters, self).__init__()
-    self.bound_typeparams = set()
-    self.template_typeparams = None
+    self.class_typeparams = set()
+    self.function_typeparams = None
     self.class_template = None
     self.class_name = None
     self.function_name = None
     self.constant_name = None
-    self.bound_by_class = ()
     self.all_typeparams = set()
 
   def _GetTemplateItems(self, param):
@@ -1827,20 +1826,18 @@ class AdjustTypeParameters(Visitor):
 
     for t in template:
       assert isinstance(t.type_param, pytd.TypeParameter)
-      if t.name in self.bound_typeparams:
+      if t.name in self.class_typeparams:
         raise ContainerError(
             "Duplicate type parameter %s in class %s" % (t.name, node.name))
-      self.bound_typeparams.add(t.name)
+      self.class_typeparams.add(t.name)
 
     self.class_name = node.name
-    self.bound_by_class = {n.type_param.name for n in template}
 
   def LeaveClass(self, node):
     del node
     for t in self.class_template:
-      self.bound_typeparams.remove(t.name)
+      self.class_typeparams.remove(t.name)
     self.class_name = None
-    self.bound_by_class = ()
     self.class_template = None
 
   def VisitClass(self, node):
@@ -1855,14 +1852,14 @@ class AdjustTypeParameters(Visitor):
     return node.Visit(AdjustSelf()).Visit(NamedTypeToClassType())
 
   def EnterSignature(self, unused_node):
-    assert self.template_typeparams is None
-    self.template_typeparams = set()
+    assert self.function_typeparams is None
+    self.function_typeparams = set()
 
   def LeaveSignature(self, unused_node):
-    self.template_typeparams = None
+    self.function_typeparams = None
 
   def VisitSignature(self, node):
-    return node.Replace(template=tuple(self.template_typeparams))
+    return node.Replace(template=tuple(self.function_typeparams))
 
   def EnterFunction(self, node):
     self.function_name = node.name
@@ -1880,14 +1877,14 @@ class AdjustTypeParameters(Visitor):
     return ".".join(n for n in [self.class_name, name] if n)
 
   def _GetScope(self, name):
-    if name in self.bound_by_class:
+    if name in self.class_typeparams:
       return self.class_name
     return self._GetFullName(self.function_name)
 
   def VisitTypeParameter(self, node):
     """Add scopes to type parameters, track unbound params."""
     if self.constant_name and (not self.class_name or
-                               node.name not in self.bound_by_class):
+                               node.name not in self.class_typeparams):
       raise ContainerError("Unbound type parameter %s in %s" % (
           node.name, self._GetFullName(self.constant_name)))
     scope = self._GetScope(node.name)
@@ -1898,9 +1895,9 @@ class AdjustTypeParameters(Visitor):
       # AddNamePrefix gave it the right scope, so leave it alone.
       pass
 
-    if (self.template_typeparams is not None and
-        node.name not in self.bound_typeparams):
-      self.template_typeparams.add(pytd.TemplateItem(node))
+    if (self.function_typeparams is not None and
+        node.name not in self.class_typeparams):
+      self.function_typeparams.add(pytd.TemplateItem(node))
     self.all_typeparams.add(node)
 
     return node

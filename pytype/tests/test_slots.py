@@ -234,6 +234,23 @@ class SlotsTest(test_inference.InferenceTest):
       Bar().baz = 2
     """)
 
+  def testNameMangling(self):
+    _, errors = self.InferAndCheck("""\
+      class Bar(object):
+        __slots__ = ["__baz"]
+        def __init__(self):
+          self.__baz = 42
+      class Foo(Bar):
+        __slots__ = ["__foo"]
+        def __init__(self):
+          self.__foo = 42
+          self.__baz = 42  # __baz is class-private
+    """)
+    self.assertErrorLogIs(
+        errors,
+        [(9, "not-writable", "__baz")]
+    )
+
 
 if __name__ == "__main__":
   test_inference.main()
