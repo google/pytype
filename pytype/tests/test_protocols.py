@@ -5,6 +5,7 @@ Based on PEP 544 https://www.python.org/dev/peps/pep-0544/.
 import unittest
 
 
+from pytype import utils
 from pytype.tests import test_inference
 
 
@@ -226,6 +227,46 @@ class ProtocolTest(test_inference.InferenceTest):
       def f(x: Bar):
         return iter(x)
     """)
+
+  def test_iterable(self):
+    ty = self.Infer("""
+      from __future__ import google_type_annotations
+      from typing import Iterable, Iterator, TypeVar
+      T = TypeVar("T")
+      class Bar(object):
+        def __getitem__(self, i: T) -> T:
+          if i > 10:
+            raise IndexError()
+          return i
+      T2 = TypeVar("T2")
+      def f(s: Iterable[T2]) -> Iterator[T2]:
+        return iter(s)
+      next(f(Bar()))
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Iterable, Iterator, TypeVar
+      T = TypeVar("T")
+      class Bar(object):
+        def __getitem__(self, i: T) -> T: ...
+      T2 = TypeVar("T2")
+      def f(s: Iterable[T2]) -> Iterator[T2]
+    """)
+
+  def test_pyi_iterable(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        T = TypeVar("T")
+        class Foo(object):
+          def __getitem__(self, i: T) -> T: ...
+      """)
+      self.assertNoErrors("""
+        from __future__ import google_type_annotations
+        from typing import Iterable, TypeVar
+        import foo
+        T = TypeVar("T")
+        def f(s: Iterable[T]) -> T: ...
+        f(foo.Foo())
+      """, pythonpath=[d.path])
 
 
 if __name__ == "__main__":

@@ -8,6 +8,7 @@ from pytype import special_builtins
 from pytype import utils
 from pytype.pytd import pep484
 from pytype.pytd import pytd
+from pytype.pytd import utils as pytd_utils
 
 
 log = logging.getLogger(__name__)
@@ -600,6 +601,13 @@ class AbstractMatcher(object):
           return other_type
     return None
 
+  def _fill_in_implicit_protocol_methods(self, methods):
+    if "__getitem__" in methods and "__iter__" not in methods:
+      # If a class has a __getitem__ method, it also (implicitly) has a
+      # __iter__: Python will emulate __iter__ by calling __getitem__ with
+      # increasing integers until it throws IndexError.
+      methods["__iter__"] = pytd_utils.DummyMethod("__iter__", "self")
+
   def _match_against_protocol(self, left, other_type, protocol, subst, node,
                               view):
     """Checks whether a type is compatible with a protocol.
@@ -625,6 +633,7 @@ class AbstractMatcher(object):
                              for name, member in cls.members.items()
                              if any(isinstance(data, abstract.Function)
                                     for data in member.data)})
+    self._fill_in_implicit_protocol_methods(left_methods)
 
     method_names_matched = all(
         method in left_methods for method in protocol.abstract_methods)
