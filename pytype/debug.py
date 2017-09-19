@@ -226,9 +226,11 @@ def program_to_dot(program, ignored, only_cfg=False):
   return sb.getvalue()
 
 
-def stack_trace(indent_level=0):
+def stack_trace(indent_level=0, limit=100):
   indent = " " * indent_level
-  trace = traceback.format_stack()
+  stack = [frame for frame in traceback.extract_stack()
+           if "/errors.py" not in frame[0] and "/debug.py" not in frame[0]]
+  trace = traceback.format_list(stack[-limit:])
   trace = [indent + re.sub(r"/usr/.*/pytype/", "", x) for x in trace]
   return "\n  ".join(trace)
 
