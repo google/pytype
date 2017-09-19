@@ -179,8 +179,7 @@ class AbstractAttributeHandler(object):
           return True  # This is a programmatic attribute.
         if baseclass.slots is None or name in baseclass.slots:
           return True  # Found a slot declaration; this is an instance attribute
-    if self.vm.check_writable:
-      self.vm.errorlog.not_writable(self.vm.frames, obj, name)
+    self.vm.errorlog.not_writable(self.vm.frames, obj, name)
     return False
 
   def set_attribute(self, node, obj, name, value):

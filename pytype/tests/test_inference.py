@@ -111,7 +111,7 @@ class InferenceTest(unittest.TestCase):
     try:
       infer.check_types(
           textwrap.dedent(code), filename, loader=loader, errorlog=errorlog,
-          check_writable=True, options=self.options, **kwargs)
+          options=self.options, **kwargs)
     except directors.SkipFile:
       pass
     if report_errors and len(errorlog):
@@ -128,7 +128,7 @@ class InferenceTest(unittest.TestCase):
     loader = load_pytd.Loader(self.options.module_name, self.options)
     unit, builtins_pytd = infer.infer_types(
         code, errorlog, self.options, loader=loader, deep=deep,
-        check_writable=True, analyze_annotated=True, **kwargs)
+        analyze_annotated=True, **kwargs)
     unit.Visit(visitors.VerifyVisitor())
     unit = optimize.Optimize(unit, builtins_pytd, lossy=False, use_abcs=False,
                              max_union=7, remove_mutable=False)
@@ -284,7 +284,7 @@ class InferenceTest(unittest.TestCase):
             report_errors=True, analyze_annotated=True, **kwargs):
     types, builtins_pytd = self._InferAndVerify(
         textwrap.dedent(srccode), pythonpath=pythonpath, deep=deep,
-        analyze_annotated=analyze_annotated, check_writable=True,
+        analyze_annotated=analyze_annotated,
         report_errors=report_errors, **kwargs)
     types = optimize.Optimize(types, builtins_pytd, lossy=False, use_abcs=False,
                               max_union=7, remove_mutable=False)

@@ -15,8 +15,7 @@ class AttributeTest(unittest.TestCase):
   def setUp(self):
     options = config.Options.create()
     self._vm = vm.VirtualMachine(
-        errors.ErrorLog(), options, load_pytd.Loader(None, options),
-        check_writable=True)
+        errors.ErrorLog(), options, load_pytd.Loader(None, options))
 
   def test_type_parameter_instance(self):
     t = abstract.TypeParameter(abstract.T, self._vm)
