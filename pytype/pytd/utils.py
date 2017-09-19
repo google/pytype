@@ -451,3 +451,25 @@ def GetTypeParameters(node):
   collector = visitors.CollectTypeParameters()
   node.Visit(collector)
   return collector.params
+
+
+def DummyMethod(name, *params):
+  """Create a simple method using only "Any"s as types.
+
+  Arguments:
+    name: The name of the method
+    *params: The parameter names.
+  Returns:
+    A pytd.Function.
+  """
+  sig = pytd.Signature(tuple(pytd.Parameter(param, type=pytd.AnythingType(),
+                                            kwonly=False, optional=False,
+                                            mutated_type=None)
+                             for param in params),
+                       starargs=None, starstarargs=None,
+                       return_type=pytd.AnythingType(),
+                       exceptions=(), template=())
+  return pytd.Function(name=name,
+                       signatures=(sig,),
+                       kind=pytd.METHOD,
+                       is_abstract=False)

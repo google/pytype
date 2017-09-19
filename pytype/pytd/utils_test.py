@@ -318,6 +318,14 @@ class TestUtils(parser_test_base.ParserTest):
     self.assertMultiLineEqual(utils.Print(ast).strip("\n"),
                               expected.strip("\n"))
 
+  def testDummyMethod(self):
+    self.assertEquals("def foo() -> Any: ...",
+                      pytd.Print(utils.DummyMethod("foo")))
+    self.assertEquals("def foo(x) -> Any: ...",
+                      pytd.Print(utils.DummyMethod("foo", "x")))
+    self.assertEquals("def foo(x, y) -> Any: ...",
+                      pytd.Print(utils.DummyMethod("foo", "x", "y")))
+
 
 class TestDataFiles(parser_test_base.ParserTest):
   """Test utils.GetPredefinedFile()."""
