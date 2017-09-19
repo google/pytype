@@ -10,6 +10,7 @@ import textwrap
 
 from pytype import config
 from pytype import debug
+from pytype import directors
 from pytype import errors
 from pytype import infer
 from pytype import load_pytd
@@ -107,9 +108,12 @@ class InferenceTest(unittest.TestCase):
                        skip_repeat_calls=skip_repeat_calls)
     errorlog = errors.ErrorLog()
     loader = load_pytd.Loader(self.options.module_name, self.options)
-    infer.check_types(
-        textwrap.dedent(code), filename, loader=loader, errorlog=errorlog,
-        check_writable=True, options=self.options, **kwargs)
+    try:
+      infer.check_types(
+          textwrap.dedent(code), filename, loader=loader, errorlog=errorlog,
+          check_writable=True, options=self.options, **kwargs)
+    except directors.SkipFile:
+      pass
     if report_errors and len(errorlog):
       errorlog.print_to_stderr()
       self.fail("Inferencer found %d errors" % len(errorlog))

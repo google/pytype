@@ -18,6 +18,10 @@ class _DirectiveError(Exception):
   pass
 
 
+class SkipFile(Exception):
+  """Exception thrown if we encounter "pytype: skip-file" in the source code."""
+
+
 class _LineSet(object):
   """A set of line numbers.
 
@@ -219,6 +223,8 @@ class Director(object):
       raise _DirectiveError("Invalid directive syntax.")
     for option in data.split():
       # Parse the command.
+      if option == "skip-file":
+        raise SkipFile()
       try:
         command, values = option.split("=", 1)
         values = values.split(",")

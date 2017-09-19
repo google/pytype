@@ -15,6 +15,7 @@ import tokenize
 import traceback
 
 from pytype import config
+from pytype import directors
 from pytype import errors
 from pytype import infer
 from pytype import load_pytd
@@ -151,6 +152,8 @@ def process_one_file(input_filename,
   except tokenize.TokenError as e:
     msg, (lineno, unused_column) = e.args  # pylint: disable=unpacking-non-sequence
     errorlog.python_compiler_error(input_filename, lineno, msg)
+  except directors.SkipFile:
+    result += "# skip-file found, file not analyzed"
   except Exception as e:  # pylint: disable=broad-except
     if options.nofail:
       log.warn("***Caught exception: %s", str(e), exc_info=True)

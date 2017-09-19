@@ -297,6 +297,16 @@ class PytypeTest(unittest.TestCase):
     self._RunPytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=True, returncode=True)
 
+  def testSkipFile(self):
+    filename = self._MakeFile("""\
+        # pytype: skip-file
+    """)
+    self.pytype_args[self._DataPath(filename)] = self.INCLUDE
+    self.pytype_args["--output"] = "-"
+    self._RunPytype(self.pytype_args)
+    self.assertOutputStateMatches(stdout=True, stderr=False, returncode=False)
+    self.assertInferredPyiEquals(expected_pyi=self.DEFAULT_PYI)
+
   def testInfer(self):
     self._InferTypesAndCheckErrors("simple.py", [])
     self.assertInferredPyiEquals(filename="simple.pyi")

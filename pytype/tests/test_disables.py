@@ -60,6 +60,12 @@ class DisableTest(test_inference.InferenceTest):
     # late-directive is a warning
     self.assertFalse(errors.has_error())
 
+  def testSkipFile(self):
+    self.assertNoErrors("""\
+      # pytype: skip-file
+      name_error
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()
