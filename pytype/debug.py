@@ -85,7 +85,7 @@ def prettyprint_binding_nested(binding, indent_level=0):
     s += "%s  at %s\n" % (indent, origin.where)
     for i, source_set in enumerate(origin.source_sets):
       for j, source in enumerate(source_set):
-        s += source.PrettyPrint(indent_level + 4)
+        s += prettyprint_binding_nested(source, indent_level + 4)
         if j < len(source_set)-1:
           s += "%s    AND\n" % indent
       if i < len(origin.source_sets)-1:

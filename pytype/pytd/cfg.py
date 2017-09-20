@@ -9,7 +9,6 @@ import logging
 
 
 from pytype import metrics
-import pytype.debug
 
 
 log = logging.getLogger(__name__)
@@ -93,39 +92,6 @@ class Program(object):
         binding = variable.AddBinding(data)
         binding.AddOrigin(where, source_set)
     return variable
-
-  def MergeVariables(self, node, variables):
-    """Create a combined Variable for a list of variables.
-
-    The purpose of this function is to create a final result variable for
-    functions that return a list of "temporary" variables. (E.g. function
-    calls).
-
-    Args:
-      node: The current CFG node.
-      variables: List of variables.
-    Returns:
-      A cfg.Variable.
-    """
-    if not variables:
-      return self.NewVariable()  # return empty var
-    elif len(variables) == 1:
-      v, = variables
-      return v
-    elif all(v is variables[0] for v in variables):
-      return variables[0]
-    else:
-      v = self.NewVariable()
-      for r in variables:
-        v.PasteVariable(r, node)
-      return v
-
-  def MergeBindings(self, node, bindings):
-    """Create a combined Variable for a list of bindings."""
-    v = self.NewVariable()
-    for b in bindings:
-      v.PasteBinding(b, node)
-    return v
 
 
 class CFGNode(object):
@@ -218,23 +184,6 @@ class CFGNode(object):
                                                self.condition.variable.id)
     else:
       return "<cfgnode %d %s>" % (self.id, self.name)
-
-  def AsciiTree(self, forward=False):
-    """Draws an ascii tree, starting at this node.
-
-    Args:
-      forward: If True, draw the tree starting at this node. If False, draw
-        the "reverse" tree that starts at the current node when following all
-        edges in the reverse direction.
-        The default is False, because during CFG construction, the current node
-        typically doesn't have any outgoing nodes.
-    Returns:
-      A string.
-    """
-    if forward:
-      return pytype.debug.ascii_tree(self, lambda node: node.outgoing)
-    else:
-      return pytype.debug.ascii_tree(self, lambda node: node.incoming)
 
 
 class SourceSet(frozenset):
@@ -357,10 +306,6 @@ class Binding(object):
           if source.HasSource(binding):
             return True
     return False
-
-  def PrettyPrint(self, indent_level=0):
-    """Return a string representation of the (nested) binding contents."""
-    return pytype.debug.prettyprint_binding_nested(self, indent_level)
 
   def __repr__(self):
     data_id = getattr(self.data, "id", id(self.data))

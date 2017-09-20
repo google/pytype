@@ -45,6 +45,7 @@ from pytype.pyc import opcodes
 from pytype.pyc import pyc
 from pytype.pyi import parser
 from pytype.pytd import cfg
+from pytype.pytd import cfg_utils
 from pytype.pytd import mro
 from pytype.pytd import slots
 from pytype.pytd.parse import visitors
@@ -436,10 +437,10 @@ class VirtualMachine(object):
   # Importing
 
   def join_variables(self, node, variables):
-    return self.program.MergeVariables(node, variables)
+    return cfg_utils.MergeVariables(self.program, node, variables)
 
   def join_bindings(self, node, bindings):
-    return self.program.MergeBindings(node, bindings)
+    return cfg_utils.MergeBindings(self.program, node, bindings)
 
   def _process_base_class(self, node, base):
     """Process a base class for InterpreterClass creation."""
