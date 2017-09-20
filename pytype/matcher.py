@@ -601,12 +601,38 @@ class AbstractMatcher(object):
           return other_type
     return None
 
+  def is_protocol(self, other_type):
+    return bool(self._get_protocol(other_type))
+
   def _fill_in_implicit_protocol_methods(self, methods):
     if "__getitem__" in methods and "__iter__" not in methods:
       # If a class has a __getitem__ method, it also (implicitly) has a
       # __iter__: Python will emulate __iter__ by calling __getitem__ with
       # increasing integers until it throws IndexError.
       methods["__iter__"] = pytd_utils.DummyMethod("__iter__", "self")
+
+  def _get_methods_dict(self, left):
+    """Get the methods implemented (or implicit) on a type."""
+    left_methods = {}
+    for cls in left.mro:
+      if isinstance(cls, abstract.PyTDClass):
+        left_methods.update({m.name: m for m in cls.pytd_cls.methods})
+      elif isinstance(cls, abstract.InterpreterClass):
+        left_methods.update({name: member
+                             for name, member in cls.members.items()
+                             if any(isinstance(data, abstract.Function)
+                                    for data in member.data)})
+    self._fill_in_implicit_protocol_methods(left_methods)
+    return left_methods
+
+  def unimplemented_protocol_methods(self, left, other_type):
+    protocol = self._get_protocol(other_type)
+    assert protocol
+    methods = self._get_methods_dict(left)
+    unimplemented = [
+        method for method in protocol.abstract_methods
+        if method not in methods]
+    return unimplemented
 
   def _match_against_protocol(self, left, other_type, protocol, subst, node,
                               view):
@@ -624,17 +650,7 @@ class AbstractMatcher(object):
     """
     if isinstance(left, abstract.AMBIGUOUS_OR_EMPTY):
       return subst
-    left_methods = {}
-    for cls in left.mro:
-      if isinstance(cls, abstract.PyTDClass):
-        left_methods.update({m.name: m for m in cls.pytd_cls.methods})
-      elif isinstance(cls, abstract.InterpreterClass):
-        left_methods.update({name: member
-                             for name, member in cls.members.items()
-                             if any(isinstance(data, abstract.Function)
-                                    for data in member.data)})
-    self._fill_in_implicit_protocol_methods(left_methods)
-
+    left_methods = self._get_methods_dict(left)
     method_names_matched = all(
         method in left_methods for method in protocol.abstract_methods)
     if method_names_matched and isinstance(other_type,

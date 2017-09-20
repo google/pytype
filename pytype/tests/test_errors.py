@@ -1143,6 +1143,16 @@ class ErrorTest(test_inference.InferenceTest):
         (5, "bad-return-type")
     ])
 
+  def testProtocolMismatch(self):
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      class Foo(object): pass
+      next(Foo())
+    """)
+    self.assertErrorLogIs(errors, [
+        (3, "wrong-arg-types", "__iter__, next")
+    ])
+
 
 if __name__ == "__main__":
   test_inference.main()

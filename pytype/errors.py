@@ -535,6 +535,29 @@ class ErrorLog(ErrorLogBase):
   def missing_typing_dependency(self):
     self.error(None, "Can't find module `typing`.")
 
+  def _explain_protocol_mismatch(self, protocol_param, passed_params):
+    """Return possibly extra protocol details about an argument mismatch."""
+    if not protocol_param:
+      return []
+    vm = protocol_param.expected.vm
+    if not vm.matcher.is_protocol(protocol_param.expected):
+      return []
+    p = None  # make pylint happy
+    for name, p in passed_params:
+      if name == protocol_param.name:
+        break
+    else:
+      return []
+    methods = vm.matcher.unimplemented_protocol_methods(
+        p, protocol_param.expected)
+    if not methods:
+      # Happens if all the protocol methods are implemented, but with the wrong
+      # types. We don't yet provide more detail about that.
+      return []
+    return [
+        "\nYou may need to implement the following methods on %s:\n" %
+        self._print_as_actual_type(p)] + [", ".join(sorted(methods))]
+
   def _invalid_parameters(self, stack, message, bad_call):
     """Log an invalid parameters error."""
     sig, passed_args, bad_param = bad_call
@@ -545,6 +568,7 @@ class ErrorLog(ErrorLogBase):
         "Expected: (", expected, ")\n",
         "Actually passed: (", actual,
         ")"]
+    details += self._explain_protocol_mismatch(bad_param, passed_args)
     self.error(stack, message, "".join(details))
 
   @_error_name("wrong-arg-count")
