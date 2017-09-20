@@ -423,7 +423,7 @@ class VirtualMachine(object):
   def get_slice(self, state, count):
     """Common implementation of all GETSLICE+<n> opcodes."""
     state, (start, end), obj = self.pop_slice_and_obj(state, count)
-    state, f = self.load_attr(state, obj, "__getslice__")
+    state, f = self.load_attr_noerror(state, obj, "__getslice__")
     if f and f.bindings:
       start = start or self.convert.build_int(state.node)
       end = end or self.convert.build_int(state.node)

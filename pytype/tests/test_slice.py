@@ -60,6 +60,19 @@ class SliceTest(test_inference.InferenceTest):
       g = ...  # type: slice
     """)
 
+  def testSliceGetItem(self):
+    ty = self.Infer("""
+      class Foo(object):
+        def __getitem__(self, s):
+          return s
+      Foo()[:]
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Tuple
+      class Foo(object):
+        def __getitem__(self, s: slice) -> slice: ...
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()
