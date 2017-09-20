@@ -951,6 +951,45 @@ class CFGTest(unittest.TestCase):
       goals.append(v)
     self.assertTrue(n2.HasCombination(goals))
 
+  def testAddBindingIterables(self):
+    # source_set in Pytype is at times a tuple, list or set. They're all
+    # converted to SourceSets (essentially frozensets) when added to an Origin.
+    # This is more of a behavioral test than a specification test.
+    p = cfg.Program()
+    n1 = p.NewCFGNode("n1")
+    x = p.NewVariable()
+    x.AddBinding("a", source_set=(), where=n1)
+    x.AddBinding("b", source_set=[], where=n1)
+    x.AddBinding("c", source_set=set(), where=n1)
+
+  def testCallsWithNone(self):
+    # Several parts of the Python API have None as a default value for
+    # parameters. These are mostly smoke tests.
+    p = cfg.Program()
+    n1 = p.NewCFGNode()
+    n2 = p.NewCFGNode(None)
+    self.assertEqual(n1.name, n2.name)
+    v1 = p.NewVariable()
+    v2 = p.NewVariable(None)
+    self.assertEqual(v1.bindings, [])
+    self.assertEqual(v1.bindings, v2.bindings)
+    v3 = p.NewVariable(None, None, None)
+    self.assertEqual(v1.bindings, v3.bindings)
+    n3 = n1.ConnectNew()
+    n4 = n1.ConnectNew(None)
+    self.assertEqual(n3.name, n4.name)
+    n5 = n1.ConnectNew(None, None)
+    self.assertEqual(n1.condition, n5.condition)
+    av = v1.AddBinding("a")
+    bv = v1.AddBinding("b", None, None)
+    v3 = av.AssignToNewVariable()
+    v1.PasteVariable(v2)
+    v1.PasteVariable(v2, None)
+    v1.PasteVariable(v2, None, None)
+    v2.PasteBinding(bv)
+    v2.PasteBinding(bv, None)
+    v2.PasteBinding(bv, None, None)
+
 
 if __name__ == "__main__":
   unittest.main()
