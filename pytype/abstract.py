@@ -1752,14 +1752,14 @@ class ClassMethod(AtomicAbstractValue):
     super(ClassMethod, self).__init__(name, vm)
     self.method = method
     self.callself = callself  # unused
-    self.callcls = callcls  # unused
+    self.callcls = callcls
     self.signatures = self.method.signatures
 
   def call(self, node, func, args):
-    # Since this only used in pyi, we don't need to verify the type of the "cls"
-    # arg a second time. So just pass an unsolveable. (All we care about is the
-    # return type, anyway.)
-    cls = self.vm.convert.create_new_unsolvable(node)
+    if self.callcls:
+      cls = self.callcls
+    else:
+      cls = self.vm.convert.create_new_unsolvable(node)
     return self.method.call(
         node, func, args.replace(posargs=(cls,) + args.posargs))
 
@@ -1779,6 +1779,34 @@ class StaticMethod(AtomicAbstractValue):
 
   def call(self, *args, **kwargs):
     return self.method.call(*args, **kwargs)
+
+  def get_class(self):
+    return self.vm.convert.function_type.to_variable(self.vm.root_cfg_node)
+
+
+class Property(AtomicAbstractValue):
+  """Implements @property methods in pyi.
+
+  If a getter's return type depends on the type of the class, it needs to be
+  resolved as a function, not as a constant.
+  """
+
+  def __init__(self, name, method, callself, callcls, vm):
+    super(Property, self).__init__(name, vm)
+    self.method = method
+    self.callself = callself
+    self.callcls = callcls  # unused
+    self.signatures = self.method.signatures
+
+  def call(self, node, func, args):
+    func = func or self.to_binding(node)
+    args = args or FunctionArgs(posargs=(self.callself,))
+    if self.callself:
+      cls = self.callself
+    else:
+      cls = self.vm.convert.create_new_unsolvable(node)
+    return self.method.call(
+        node, func, args.replace(posargs=(cls,)))
 
   def get_class(self):
     return self.vm.convert.function_type.to_variable(self.vm.root_cfg_node)
@@ -1810,6 +1838,8 @@ class PyTDFunction(Function):
       return StaticMethod(self.name, self, callself, callcls, self.vm)
     elif self.kind == pytd.CLASSMETHOD:
       return ClassMethod(self.name, self, callself, callcls, self.vm)
+    elif self.kind == pytd.PROPERTY:
+      return Property(self.name, self, callself, callcls, self.vm)
     else:
       return Function.property_get(self, callself, callcls)
 

@@ -413,6 +413,8 @@ class PrintVisitor(Visitor):
       decorators += "@staticmethod\n"
     elif node.kind == pytd.CLASSMETHOD:
       decorators += "@classmethod\n"
+    elif node.kind == pytd.PROPERTY:
+      decorators += "@property\n"
     if node.is_abstract:
       decorators += "@abstractmethod\n"
     signatures = "\n".join(decorators + "def " + function_name + sig

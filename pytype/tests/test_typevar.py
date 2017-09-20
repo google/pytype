@@ -1,5 +1,7 @@
 """Tests for TypeVar."""
 
+import unittest
+
 
 from pytype import utils
 from pytype.tests import test_inference
@@ -669,7 +671,126 @@ class TypeVarTest(test_inference.InferenceTest):
         y = ...  # type: int
       """)
 
+  def testPropertyTypeParam(self):
+    # We should allow property signatures of the form f(self: T) -> X[T]
+    # without complaining about the class not being parametrised over T
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+      from typing import TypeVar, List
+      T = TypeVar('T')
+      class A(object):
+          @property
+          def foo(self: T) -> List[T]: ...
+      class B(A): ...
+      """)
+      ty = self.Infer("""
+        import a
+        x = a.A().foo
+        y = a.B().foo
+      """, pythonpath=[d.path], deep=True)
+      self.assertTypesMatchPytd(ty, """
+        from typing import List
+        import a
+        a = ...  # type: module
+        x = ...  # type: List[a.A]
+        y = ...  # type: List[a.B]
+      """)
 
+  def testPropertyTypeParam2(self):
+    # Test for classes inheriting from Generic[X]
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+      from typing import TypeVar, List, Generic
+      T = TypeVar('T')
+      U = TypeVar('U')
+      class A(Generic[U]):
+          @property
+          def foo(self: T) -> List[T]: ...
+      class B(A, Generic[U]): ...
+      def make_A() -> A[int]: ...
+      def make_B() -> B[int]: ...
+      """)
+      ty = self.Infer("""
+        import a
+        x = a.make_A().foo
+        y = a.make_B().foo
+      """, pythonpath=[d.path], deep=True)
+      self.assertTypesMatchPytd(ty, """
+        from typing import List
+        import a
+        a = ...  # type: module
+        x = ...  # type: List[a.A[int]]
+        y = ...  # type: List[a.B[int]]
+      """)
+
+  def testPropertyTypeParam3(self):
+    # Don't mix up the class parameter and the property parameter
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+      from typing import TypeVar, List, Generic
+      T = TypeVar('T')
+      U = TypeVar('U')
+      class A(Generic[U]):
+          @property
+          def foo(self: T) -> List[U]: ...
+      """)
+      ty = self.Infer("""
+        import a
+        x = a.A().foo
+      """, pythonpath=[d.path], deep=True)
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        x = ...  # type: list
+      """)
+
+  @unittest.skip("Needs to recognise A[X] as parametrised over X in the parser")
+  def testPropertyTypeParamWithConstraints(self):
+    # Test setting self to a constrained type
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+      from typing import TypeVar, List, Generic
+      T = TypeVar('T')
+      U = TypeVar('U', int, str)
+      X = TypeVar('X', int)
+      class A(Generic[U]):
+          @property
+          def foo(self: A[X]) -> List[X]: ...
+      """)
+      ty = self.Infer("""
+        import a
+        x = a.A().foo
+      """, pythonpath=[d.path], deep=True)
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        x = ...  # type: List[int]
+      """)
+
+  def testClassMethodTypeParam(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+      from typing import TypeVar, List, Type
+      T = TypeVar('T')
+      class A(object):
+          @classmethod
+          def foo(self: Type[T]) -> List[T]: ...
+      class B(A): ...
+      """)
+      ty = self.Infer("""
+        import a
+        v = a.A.foo()
+        w = a.B.foo()
+        x = a.A().foo()
+        y = a.B().foo()
+      """, pythonpath=[d.path], deep=True)
+      self.assertTypesMatchPytd(ty, """
+        from typing import List
+        import a
+        a = ...  # type: module
+        v = ...  # type: List[a.A]
+        w = ...  # type: List[a.B]
+        x = ...  # type: List[a.A]
+        y = ...  # type: List[a.B]
+      """)
 
 if __name__ == "__main__":
   test_inference.main()

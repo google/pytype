@@ -149,6 +149,19 @@ class _InsertTypeParameters(visitors.Visitor):
       return node
 
 
+class _ContainsType(visitors.Visitor):
+  """Check if a pytd object contains a type of a given name."""
+
+  def __init__(self, class_name):
+    super(_ContainsType, self).__init__()
+    self._class_name = class_name
+    self.found = False
+
+  def EnterNamedType(self, node):
+    if node.name == self._class_name:
+      self.found = True
+
+
 class _Parser(object):
   """A class used to parse a single PYI file.
 
@@ -956,7 +969,7 @@ def join_types(types):
 
 def _is_property_decorator(decorator):
   # Property decorators are the only ones where dotted names are accepted.
-  return decorator == "property" or "." in decorator
+  return decorator and (decorator == "property" or "." in decorator)
 
 
 def _keep_decorator(decorator):
@@ -1145,11 +1158,34 @@ def _three_tuple(value):
   return (value + (0, 0))[:3]
 
 
+def _get_class_type_param(param):
+  # TODO(mdemello): we should support self: Type[T] for metaclasses too.
+  if isinstance(param.type, pytd.NamedType):
+    return param.type
+
+
+def _is_parametrised_getter(full_signature):
+  """Check for a property's return type depending on the self type."""
+  name, signature, decorator, _ = full_signature
+  if not (decorator in ("property", name + ".getter") and
+          len(signature.params) == 1):
+    return False
+  class_type = _get_class_type_param(signature.params[0])
+  if not class_type:
+    return False
+  if not isinstance(signature.return_type, pytd.GenericType):
+    return False
+  out = _ContainsType(class_type.name)
+  signature.return_type.Visit(out)
+  return out.found
+
+
 def _split_methods_and_properties(signatures):
   methods = []
   properties = []
   for signature in signatures:
-    if signature.decorator and _is_property_decorator(signature.decorator):
+    if (_is_property_decorator(signature.decorator) and
+        not _is_parametrised_getter(signature)):
       properties.append(signature)
     else:
       methods.append(signature)
@@ -1218,6 +1254,8 @@ def _merge_method_signatures(signatures):
       kind = pytd.STATICMETHOD
     elif decorator == "classmethod":
       kind = pytd.CLASSMETHOD
+    elif decorator == "property":
+      kind = pytd.PROPERTY
     else:
       kind = pytd.METHOD
     methods.append(pytd.Function(name, tuple(signatures), kind, is_abstract))

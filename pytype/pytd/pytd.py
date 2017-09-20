@@ -167,7 +167,8 @@ class Class(node.Node('name: str',
       return self._name2item[name]
 
 
-STATICMETHOD, CLASSMETHOD, METHOD = 'staticmethod', 'classmethod', 'method'
+STATICMETHOD, CLASSMETHOD, METHOD, PROPERTY = (
+    'staticmethod', 'classmethod', 'method', 'property')
 
 
 class Function(node.Node('name: str',

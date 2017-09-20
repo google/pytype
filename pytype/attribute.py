@@ -389,6 +389,10 @@ class AbstractAttributeHandler(object):
           if (not isinstance(value, abstract.PyTDFunction) or
               not isinstance(base, abstract.InterpreterClass)):
             value = value.property_get(variableself, variablecls)
+          if isinstance(value, abstract.Property):
+            node, value = value.call(node, None, None)
+            value, = value.data
+
         ret.AddBinding(value, [varval] + add_origins, node)
       break  # we found a class which has this attribute
     return ret
