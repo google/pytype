@@ -138,13 +138,15 @@ def program_to_text(program):
   Returns:
     A string representing all of the data for this program.
   """
+  def label(node):
+    return "<%d>%s" % (node.id, node.name)
   s = StringIO.StringIO()
   seen = set()
   for node in utils.order_nodes(program.cfg_nodes):
     seen.add(node)
-    s.write("%s\n" % node.Label())
-    s.write("  From: %s\n" % ", ".join(n.Label() for n in node.incoming))
-    s.write("  To: %s\n" % ", ".join(n.Label() for n in node.outgoing))
+    s.write("%s\n" % label(node))
+    s.write("  From: %s\n" % ", ".join(label(n) for n in node.incoming))
+    s.write("  To: %s\n" % ", ".join(label(n) for n in node.outgoing))
     s.write("\n")
     variables = set(value.variable for value in node.bindings)
     for var in sorted(variables, key=lambda v: v.id):

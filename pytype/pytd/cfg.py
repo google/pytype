@@ -174,10 +174,6 @@ class CFGNode(object):
   def RegisterBinding(self, binding):
     self.bindings.add(binding)
 
-  def Label(self):
-    """Return a string containing the node name and id."""
-    return "<%d>%s" % (self.id, self.name)
-
   def __repr__(self):
     if self.condition:
       return "<cfgnode %d %s condition:%s>" % (self.id, self.name,
