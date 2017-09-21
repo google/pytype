@@ -9,7 +9,9 @@ import logging
 
 
 from pytype import metrics
-
+# debug is imported to enable log.trace. Since it isn't used directly, it's
+# flagged as an unused import.
+import pytype.debug  # pylint: disable=unused-import
 
 log = logging.getLogger(__name__)
 
