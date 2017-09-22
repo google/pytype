@@ -21,6 +21,8 @@ _NameAndSig = collections.namedtuple("_", ["name", "signature",
 
 _SlotDecl = collections.namedtuple("_", ["slots"])
 
+_Property = collections.namedtuple("_", ["precedence", "arity"])
+
 
 _COMPARES = {
     "==": lambda x, y: x == y,
@@ -149,17 +151,60 @@ class _InsertTypeParameters(visitors.Visitor):
       return node
 
 
-class _ContainsType(visitors.Visitor):
-  """Check if a pytd object contains a type of a given name."""
+class _ContainsAnyType(visitors.Visitor):
+  """Check if a pytd object contains a type of any of the given names."""
 
-  def __init__(self, class_name):
-    super(_ContainsType, self).__init__()
-    self._class_name = class_name
+  def __init__(self, type_names):
+    super(_ContainsAnyType, self).__init__()
+    self._type_names = set(type_names)
     self.found = False
 
   def EnterNamedType(self, node):
-    if node.name == self._class_name:
+    if node.name in self._type_names:
       self.found = True
+
+
+def _contains_any_type(ast, type_names):
+  """Convenience wrapper for _ContainsAnyType."""
+  out = _ContainsAnyType(type_names)
+  ast.Visit(out)
+  return out.found
+
+
+class _PropertyToConstant(visitors.Visitor):
+  """Convert some properties to constant types."""
+
+  def EnterTypeDeclUnit(self, node):
+    self.type_param_names = [x.name for x in node.type_params]
+    self.const_properties = None
+
+  def LeaveTypeDeclUnit(self, node):
+    self.type_param_names = None
+
+  def EnterClass(self, node):
+    self.const_properties = []
+
+  def LeaveClass(self, node):
+    self.const_properties = None
+
+  def VisitClass(self, node):
+    constants = list(node.constants)
+    for fn in self.const_properties:
+      types = [x.return_type for x in fn.signatures]
+      constants.append(pytd.Constant(name=fn.name, type=join_types(types)))
+    methods = [x for x in node.methods if x not in self.const_properties]
+    return node.Replace(constants=tuple(constants), methods=tuple(methods))
+
+  def EnterFunction(self, node):
+    if (self.const_properties is not None and
+        node.kind == pytd.PROPERTY and
+        not self._is_parametrised(node)):
+      self.const_properties.append(node)
+
+  def _is_parametrised(self, method):
+    for sig in method.signatures:
+      if _contains_any_type(sig.return_type, self.type_param_names):
+        return True
 
 
 class _Parser(object):
@@ -327,6 +372,7 @@ class _Parser(object):
       else:
         raise e
 
+    ast = ast.Visit(_PropertyToConstant())
     ast = ast.Visit(_InsertTypeParameters())
     # TODO(kramm): This is in the wrong place- it should happen after resolving
     # local names, in load_pytd.
@@ -366,7 +412,8 @@ class _Parser(object):
       raise ParseError(
           "Duplicate top-level identifier(s): " + ", ".join(duplicates))
 
-    functions, properties = _merge_signatures(functions)
+    functions = _merge_method_signatures(functions)
+    properties = [x for x in functions if x.kind == pytd.PROPERTY]
     if properties:
       prop_names = ", ".join(p.name for p in properties)
       raise ParseError(
@@ -890,14 +937,14 @@ class _Parser(object):
     # TODO(dbaum): Is NothingType even legal here?  The grammar accepts it but
     # perhaps it should be a ParseError.
     parents = [p for p in parents if not isinstance(p, pytd.NothingType)]
-    methods, properties = _merge_signatures(methods)
+    methods = _merge_method_signatures(methods)
     # Ensure that old style classes inherit from classobj.
     if not parents and class_name not in ["classobj", "object"]:
       parents = (pytd.NamedType("classobj"),)
     cls = pytd.Class(name=class_name, metaclass=metaclass,
                      parents=tuple(parents),
                      methods=tuple(methods),
-                     constants=tuple(constants + properties),
+                     constants=tuple(constants),
                      slots=slots,
                      template=())
     self._classes.append(cls)
@@ -1158,78 +1205,71 @@ def _three_tuple(value):
   return (value + (0, 0))[:3]
 
 
-def _get_class_type_param(param):
-  # TODO(mdemello): we should support self: Type[T] for metaclasses too.
-  if isinstance(param.type, pytd.NamedType):
-    return param.type
+def _property_decorators(name):
+  """Generates the property decorators for a method name.
 
-
-def _is_parametrised_getter(full_signature):
-  """Check for a property's return type depending on the self type."""
-  name, signature, decorator, _ = full_signature
-  if not (decorator in ("property", name + ".getter") and
-          len(signature.params) == 1):
-    return False
-  class_type = _get_class_type_param(signature.params[0])
-  if not class_type:
-    return False
-  if not isinstance(signature.return_type, pytd.GenericType):
-    return False
-  out = _ContainsType(class_type.name)
-  signature.return_type.Visit(out)
-  return out.found
-
-
-def _split_methods_and_properties(signatures):
-  methods = []
-  properties = []
-  for signature in signatures:
-    if (_is_property_decorator(signature.decorator) and
-        not _is_parametrised_getter(signature)):
-      properties.append(signature)
-    else:
-      methods.append(signature)
-  return methods, properties
-
-
-def _parse_signature_as_property(full_signature):
-  """Parse a signature as a property getter, setter, or deleter.
-
-  Checks that the signature matches one of {@property, @foo.getter, @foo.setter,
-  @foo.deleter} and gets the property type if specified in the signature.
+  Used internally by other methods.
 
   Args:
-    full_signature: _NameAndSig
+    name: method name
 
   Returns:
-    property_type: The property type, or None.
-
-  Raises:
-    ParseError: If the signature cannot be parsed as a property.
+    A dictionary of decorators to precedence and required arity
   """
-  name, signature, decorator, _ = full_signature
-  num_params = len(signature.params)
-  if decorator in ("property", name + ".getter") and num_params == 1:
-    return signature.return_type
-  elif decorator == name + ".setter" and num_params == 2 or (
-      decorator == name + ".deleter" and num_params == 1):
-    # Setters and deleters contain no information about the property type.
-    return None
+  return {
+      "property": _Property(2, 1),
+      (name + ".getter"): _Property(2, 1),
+      (name + ".setter"): _Property(1, 2),
+      (name + ".deleter"): _Property(1, 1)
+  }
+
+
+def _is_property(name, decorator, signature):
+  """Parse a signature as a property getter, setter, or deleter.
+
+  Checks that the decorator name matches one of {@property, @foo.getter,
+  @foo.setter, @foo.deleter} and that the corresponding signature is valid.
+
+  NOTE: This function assumes that all other recognised decorators have already
+  been handled, and will therefore raise if decorator is not a property.
+
+  Args:
+    name: method name
+    decorator: decorator
+    signature: method signature
+  Returns:
+    True: If we have a valid property decorator
+    False: If decorator is None
+  Raises:
+    ParseError: If we have a non-property decorator.
+  """
+  if not decorator:
+    return False
+  sigs = _property_decorators(name)
+  if decorator in sigs and sigs[decorator].arity == len(signature.params):
+    return True
   raise ParseError("Unhandled decorator: %s" % decorator)
 
 
-def _merge_property_signatures(signatures):
-  name_to_property_types = collections.OrderedDict()
-  for signature in signatures:
-    if signature.name not in name_to_property_types:
-      name_to_property_types[signature.name] = []
-    property_type = _parse_signature_as_property(signature)
-    if property_type:
-      name_to_property_types[signature.name].append(property_type)
-  return [
-      pytd.Constant(
-          name=name, type=join_types(types) if types else pytd.AnythingType())
-      for name, types in name_to_property_types.items()]
+# Strategies for combining a new decorator with an existing one
+_MERGE, _REPLACE, _DISCARD = 1, 2, 3
+
+
+def _check_decorator_overload(name, old, new):
+  """Conditions for a decorator to overload an existing one."""
+  properties = _property_decorators(name)
+  if old == new:
+    return _MERGE
+  elif old in properties and new in properties:
+    p_old, p_new = properties[old].precedence, properties[new].precedence
+    if p_old > p_new:
+      return _DISCARD
+    elif p_old == p_new:
+      return _MERGE
+    else:
+      return _REPLACE
+  raise ParseError(
+      "Overloaded signatures for %s disagree on decorators" % name)
 
 
 def _merge_method_signatures(signatures):
@@ -1241,10 +1281,13 @@ def _merge_method_signatures(signatures):
     if name not in name_to_signatures:
       name_to_signatures[name] = []
       name_to_decorator[name] = decorator
-    if name_to_decorator[name] != decorator:
-      raise ParseError(
-          "Overloaded signatures for %s disagree on decorators" % name)
-    name_to_signatures[name].append(signature)
+    old_decorator = name_to_decorator[name]
+    check = _check_decorator_overload(name, old_decorator, decorator)
+    if check == _MERGE:
+      name_to_signatures[name].append(signature)
+    elif check == _REPLACE:
+      name_to_signatures[name] = [signature]
+      name_to_decorator[name] = decorator
     name_to_is_abstract[name] |= is_abstract
   methods = []
   for name, signatures in name_to_signatures.items():
@@ -1254,19 +1297,17 @@ def _merge_method_signatures(signatures):
       kind = pytd.STATICMETHOD
     elif decorator == "classmethod":
       kind = pytd.CLASSMETHOD
-    elif decorator == "property":
+    elif _is_property(name, decorator, signatures[0]):
       kind = pytd.PROPERTY
+      # If we have only setters and/or deleters, replace them with a single
+      # method foo(...) -> Any, so that we infer a constant `foo: Any` even if
+      # the original method signatures are all `foo(...) -> None`. (If we have a
+      # getter we use its return type, but in the absence of a getter we want to
+      # fall back on Any since we cannot say anything about what the setter sets
+      # the type of foo to.)
+      if decorator.endswith(".setter") or decorator.endswith(".deleter"):
+        signatures = [signatures[0].Replace(return_type=pytd.AnythingType())]
     else:
       kind = pytd.METHOD
     methods.append(pytd.Function(name, tuple(signatures), kind, is_abstract))
   return methods
-
-
-def _merge_signatures(signatures):
-  method_sigs, property_sigs = _split_methods_and_properties(signatures)
-  methods = _merge_method_signatures(method_sigs)
-  constants = _merge_property_signatures(property_sigs)
-  bad_names = {m.name for m in methods} & {c.name for c in constants}
-  if bad_names:
-    raise ParseError("Incompatible signatures for %s" % ", ".join(bad_names))
-  return methods, constants

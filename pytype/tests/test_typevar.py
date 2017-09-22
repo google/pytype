@@ -723,6 +723,9 @@ class TypeVarTest(test_inference.InferenceTest):
         y = ...  # type: List[a.B[int]]
       """)
 
+  @unittest.skip("""Type parameter bug
+                 b/66005735  # MOE:strip_line
+                 """)
   def testPropertyTypeParam3(self):
     # Don't mix up the class parameter and the property parameter
     with utils.Tempdir() as d:
@@ -733,17 +736,17 @@ class TypeVarTest(test_inference.InferenceTest):
       class A(Generic[U]):
           @property
           def foo(self: T) -> List[U]: ...
+      def make_A() -> A[int]: ...
       """)
       ty = self.Infer("""
         import a
-        x = a.A().foo
+        x = a.make_A().foo
       """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
-        x = ...  # type: list
+        x = ...  # type: List[int]
       """)
 
-  @unittest.skip("Needs to recognise A[X] as parametrised over X in the parser")
   def testPropertyTypeParamWithConstraints(self):
     # Test setting self to a constrained type
     with utils.Tempdir() as d:
@@ -755,12 +758,14 @@ class TypeVarTest(test_inference.InferenceTest):
       class A(Generic[U]):
           @property
           def foo(self: A[X]) -> List[X]: ...
+      def make_A() -> A[int]: ...
       """)
       ty = self.Infer("""
         import a
-        x = a.A().foo
+        x = a.make_A().foo
       """, pythonpath=[d.path], deep=True)
       self.assertTypesMatchPytd(ty, """
+        from typing import List
         a = ...  # type: module
         x = ...  # type: List[int]
       """)
@@ -791,6 +796,30 @@ class TypeVarTest(test_inference.InferenceTest):
         x = ...  # type: List[a.A]
         y = ...  # type: List[a.B]
       """)
+
+  def testMetaclassPropertyTypeParam(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+      from typing import TypeVar, Type, List
+      T = TypeVar('T')
+      class Meta():
+        @property
+        def foo(self: Type[T]) -> List[T]
+
+      class A(metaclass=Meta):
+        pass
+      """)
+      ty = self.Infer("""
+        import a
+        x = a.A.foo
+      """, pythonpath=[d.path], deep=True)
+      self.assertTypesMatchPytd(ty, """
+        from typing import List
+        import a
+        a = ...  # type: module
+        x = ...  # type: List[a.A]
+      """)
+
 
 if __name__ == "__main__":
   test_inference.main()

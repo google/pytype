@@ -1417,6 +1417,15 @@ class PropertyDecoratorTest(_ParserTestBase):
           def name(self): ...
       """, expected)
 
+    self.check("""
+      class A(object):
+          @name.setter
+          def name(self, value): ...
+
+          @name.deleter
+          def name(self): ...
+      """, expected)
+
   def test_property_decorator_bad_syntax(self):
     self.check_error("""
       class A(object):
@@ -1532,7 +1541,7 @@ class MergeSignaturesTest(_ParserTestBase):
           def name(self): ...
 
           def name(self): ...
-      """, 2, "Incompatible signatures for name")
+      """, 2, "Overloaded signatures for name disagree on decorators")
 
   def test_overloaded_signatures_disagree(self):
     self.check_error("""

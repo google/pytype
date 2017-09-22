@@ -71,8 +71,11 @@ class RenameModuleVisitor(visitors.Visitor):
     super(RenameModuleVisitor, self).__init__()
     if not old_module_name:
       raise ValueError("old_module_name must be a non empty string.")
-    self._old = old_module_name
-    self._new = new_module_name
+    assert not old_module_name.endswith(".")
+    assert not new_module_name.endswith(".")
+    self._module_name = new_module_name
+    self._old = old_module_name + "." if old_module_name else ""
+    self._new = new_module_name + "." if new_module_name else ""
 
   def _MaybeNewName(self, name):
     """Decides if a name should be replaced.
@@ -85,8 +88,9 @@ class RenameModuleVisitor(visitors.Visitor):
       old_module_part will be replaced by new_module_name and returned,
       otherwise node.name will be returned.
     """
-    if name.startswith(self._old):
-      return name.replace(self._old, self._new, 1)
+    before, match, after = name.partition(self._old)
+    if match and not before and "." not in after:
+      return self._new + after
     else:
       return name
 
@@ -105,7 +109,7 @@ class RenameModuleVisitor(visitors.Visitor):
       return node
 
   def VisitTypeDeclUnit(self, node):
-    return node.Replace(name=self._new)
+    return node.Replace(name=self._module_name)
 
   def VisitTypeParameter(self, node):
     new_scope = self._MaybeNewName(node.scope)

@@ -131,6 +131,24 @@ class SerializeAstTest(unittest.TestCase):
     _, param2 = signature.params
     self.assertEqual(param2.type.scope, "other.name.SomeClass")
 
+  def testRenameInitModule(self):
+    module_name = "foo.bar"
+    src = """
+      def f() -> foo.bar.baz.Foo: ...
+    """
+    with utils.Tempdir() as d:
+      d.create_file("foo/__init__.pyi", "")
+      d.create_file("foo/bar/__init__.pyi", "")
+      d.create_file("foo/bar/baz.pyi", """
+        class Foo(object): ...
+      """)
+      ast, _ = self._GetAst(temp_dir=d, module_name=module_name, src=src)
+    new_ast = ast.Visit(
+        serialize_ast.RenameModuleVisitor(module_name, "other.name"))
+    f = new_ast.Lookup("other.name.f")
+    ret = f.signatures[0].return_type
+    self.assertEqual(ret.name, "foo.bar.baz.Foo")
+
   def testPickle(self):
     with utils.Tempdir() as d:
       ast, _ = self._GetAst(temp_dir=d, module_name="foo.bar.module1")
