@@ -723,9 +723,7 @@ class TypeVarTest(test_inference.InferenceTest):
         y = ...  # type: List[a.B[int]]
       """)
 
-  @unittest.skip("""Type parameter bug
-                 b/66005735  # MOE:strip_line
-                 """)
+  @unittest.skip("Type parameter bug")
   def testPropertyTypeParam3(self):
     # Don't mix up the class parameter and the property parameter
     with utils.Tempdir() as d:

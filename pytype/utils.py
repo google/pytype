@@ -460,35 +460,6 @@ def load_pytype_file(filename):
     return fi.read()
 
 
-# MOE: begin_strip
-def path_to_python_exe(python_exe):
-  """Get the path to a python interpreter from pytype/google/.
-
-  Either returns pytype/google/python_exe if it exists, or extracts it from a
-  par file into /tmp/pytype and returns that.
-
-  Arguments:
-    python_exe: the exe filename, e.g. python2.7
-  Returns:
-    The path to the extracted file if it is found
-    The input exe filename if not (so it can be tried in $PATH)
-  """
-  path = os.path.join(os.path.dirname(__file__), "google", python_exe)
-  if os.path.exists(path):
-    return path
-  try:
-    data = load_pytype_file(path)
-  except IOError:
-    return python_exe
-
-  with tempfile.NamedTemporaryFile(delete=False, suffix="python") as fi:
-    fi.write(data)
-    fi.close()
-    exe_file = fi.name
-    os.chmod(exe_file, 0750)
-    atexit.register(lambda: os.unlink(exe_file))
-  return exe_file
-# MOE:end_strip
 
 
 def get_python_exe(python_version):
