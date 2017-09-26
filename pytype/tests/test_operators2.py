@@ -83,9 +83,6 @@ class OperatorsWithAnyTests(test_inference.InferenceTest):
       def t_testIsinstance1(x) -> bool
     """)
 
-
-class CallErrorTests(test_inference.InferenceTest):
-
   def testCallAny(self):
     ty = self.Infer("""
       t_testCallAny = __any_object__
@@ -104,6 +101,16 @@ class CallErrorTests(test_inference.InferenceTest):
       """, deep=False)
     self.assertEqual(ty.Lookup("t_testSys").signatures[0].exceptions,
                      self.nameerror)
+
+  def testSubscr(self):
+    self.assertNoErrors("""
+      x = "foo" if __random__ else None
+      d = {"foo": 42}
+      d[x]  # BINARY_SUBSCR
+      "foo" + x  # BINARY_ADD
+      "%s" % x  # BINARY_MODULO
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()
