@@ -721,7 +721,7 @@ class VirtualMachine(object):
       # reasonable to assume that, e.g., "hello " + y is a string, even though
       # y could define __radd__.
       return node, self.program.NewVariable(
-          [self.convert.unsolvable], {xval, yval}, node)
+          [self.convert.unsolvable], [xval, yval], node)
     options = [(xval, yval, name)]
     if rname:
       options.append((yval, xval, rname))

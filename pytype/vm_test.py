@@ -10,7 +10,6 @@ from pytype import errors
 from pytype import load_pytd
 from pytype import vm
 from pytype.pyc import pyc
-from pytype.pytd import cfg
 from pytype.tests import test_inference
 
 
@@ -48,7 +47,6 @@ class BytecodeTest(test_inference.InferenceTest):
     self.trace_vm = TraceVM(self.options, self.loader)
 
   def test_simple(self):
-    program = cfg.Program()
     # Disassembled from:
     # | return None
     code = self.make_code([
@@ -57,10 +55,9 @@ class BytecodeTest(test_inference.InferenceTest):
     ], name="simple")
     code = blocks.process_code(code)
     v = vm.VirtualMachine(self.errorlog, self.options, loader=self.loader)
-    v.run_bytecode(program.NewCFGNode(), code)
+    v.run_bytecode(v.program.NewCFGNode(), code)
 
   def test_diamond(self):
-    program = cfg.Program()
     # Disassembled from:
     # | if []:
     # |   y = 1
@@ -90,7 +87,7 @@ class BytecodeTest(test_inference.InferenceTest):
     ])
     code = blocks.process_code(code)
     v = vm.VirtualMachine(self.errorlog, self.options, loader=self.loader)
-    v.run_bytecode(program.NewCFGNode(), code)
+    v.run_bytecode(v.program.NewCFGNode(), code)
 
   src_nested_loop = textwrap.dedent("""
     y = [1,2,3]

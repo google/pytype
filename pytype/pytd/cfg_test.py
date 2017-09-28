@@ -506,7 +506,6 @@ class CFGTest(unittest.TestCase):
     p = cfg.Program()
     x = p.NewVariable()
     y = p.NewVariable()
-    p = cfg.Program()
     n1 = p.NewCFGNode("n1")
     x1 = x.AddBinding("1", source_set=[], where=n1)
     y1 = y.AddBinding("1", source_set=[x1], where=n1)

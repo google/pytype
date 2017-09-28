@@ -23,7 +23,7 @@ class AbstractTestBase(unittest.TestCase):
     options = config.Options.create()
     self._vm = vm.VirtualMachine(
         errors.ErrorLog(), options, load_pytd.Loader(None, options))
-    self._program = cfg.Program()
+    self._program = self._vm.program
     self._node = self._vm.root_cfg_node.ConnectNew("test_node")
 
   def new_var(self, *values):
