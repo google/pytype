@@ -721,6 +721,43 @@ class FunctionTest(_ParserTestBase):
       @classmethod
       def foo() -> int: ...""")
 
+    self.check("""\
+      @coroutine
+      def foo() -> int: ...""")
+
+    self.check("""\
+      @async.coroutine
+      def foo() -> int: ...""",
+               """\
+      @coroutine
+      def foo() -> int: ...""")
+
+    # There are two separate coroutine decorators, async.coroutine and
+    # coroutine.coroutine. We are collapsing them into a single decorator for
+    # now, though we should probably maintain the distinction at some point.
+    self.check("""\
+      @async.coroutine
+      def foo() -> int: ...
+      @coroutine.coroutine
+      def foo() -> int: ...
+      @coroutine
+      def foo() -> str: ...""",
+               """\
+      @coroutine
+      def foo() -> int: ...
+      @coroutine
+      def foo() -> int: ...
+      @coroutine
+      def foo() -> str: ...""")
+
+    self.check_error("""\
+      def foo() -> str: ...
+      @coroutine
+      def foo() -> int: ...""",
+                     None,
+                     "Overloaded signatures for foo disagree on "
+                     "coroutine decorators")
+
     self.check_error("""\
       @property
       def foo(self) -> int""",
@@ -1589,7 +1626,9 @@ class MergeSignaturesTest(_ParserTestBase):
       class A(object):
           @abstractmethod
           def foo(x: int) -> str: ...
+          @abstractmethod
           def foo(x: int, y: int) -> str: ...
+          @abstractmethod
           def foo(x: int, y: int, z: int) -> str: ...
       """, """\
       class A(object):
@@ -1602,6 +1641,15 @@ class MergeSignaturesTest(_ParserTestBase):
       """)
     self.assertEqual("method", ast.Lookup("A").Lookup("foo").kind)
     self.assertEqual(True, ast.Lookup("A").Lookup("foo").is_abstract)
+
+  def test_abstractmethod_conflict(self):
+    self.check_error("""\
+      class A(object):
+          @abstractmethod
+          def foo(x: int) -> str: ...
+          def foo(x: int, y: int) -> str: ...
+      """, 1, "Overloaded signatures for foo disagree on "
+                     "abstractmethod decorators")
 
 
 class EntireFileTest(_ParserTestBase):

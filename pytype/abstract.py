@@ -2046,7 +2046,7 @@ class PyTDFunction(Function):
         name=self.name,
         signatures=tuple(s.pytd_sig for s in self.signatures),
         kind=self.kind,
-        is_abstract=self.is_abstract)
+        flags=pytd.Function.abstract_flag(self.is_abstract))
 
 
 class Class(object):

@@ -472,4 +472,4 @@ def DummyMethod(name, *params):
   return pytd.Function(name=name,
                        signatures=(sig,),
                        kind=pytd.METHOD,
-                       is_abstract=False)
+                       flags=0)

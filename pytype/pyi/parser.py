@@ -17,7 +17,8 @@ _Params = collections.namedtuple("_", ["required",
                                        "has_bare_star"])
 
 _NameAndSig = collections.namedtuple("_", ["name", "signature",
-                                           "decorator", "is_abstract"])
+                                           "decorator", "is_abstract",
+                                           "is_coroutine"])
 
 _SlotDecl = collections.namedtuple("_", ["slots"])
 
@@ -104,6 +105,15 @@ class ParseError(Exception):
       lines.append("%*s^" % (pos, ""))
     lines.append("%s: %s" % (type(self).__name__, self.message))
     return "\n".join(lines)
+
+
+class OverloadedDecoratorError(ParseError):
+  """Inconsistent decorators on an overloaded function."""
+
+  def __init__(self, name, typ, *args, **kwargs):
+    msg = "Overloaded signatures for %s disagree on %sdecorators" % (
+        name, (typ + " " if typ else ""))
+    super(OverloadedDecoratorError, self).__init__(msg, *args, **kwargs)
 
 
 class _Mutator(visitors.Visitor):
@@ -781,12 +791,17 @@ class _Parser(object):
 
     # Remove ignored decorators, raise ParseError for invalid decorators.
     decorators = {d for d in decorators if _keep_decorator(d)}
-    # Extract out abstractmethod decorator, there should be at most one
-    # remaining decorator
-    is_abstract = (
-        "abstractmethod" in decorators or "abc.abstractmethod" in decorators)
-    if is_abstract:
-      decorators -= {"abstractmethod", "abc.abstractmethod"}
+    # Extract out abstractmethod and coroutine decorators, there should be at
+    # most one remaining decorator.
+    def _check_decorator(decorators, decorator_set):
+      exists = any([x in decorators for x in decorator_set])
+      if exists:
+        decorators -= decorator_set
+      return exists
+    is_abstract = _check_decorator(
+        decorators, {"abstractmethod", "abc.abstractmethod"})
+    is_coroutine = _check_decorator(
+        decorators, {"coroutine", "async.coroutine", "coroutine.coroutine"})
     # TODO(acaceres): if not inside a class, any decorator should be an error
     if len(decorators) > 1:
       raise ParseError("Too many decorators for %s" % name)
@@ -794,7 +809,8 @@ class _Parser(object):
 
     return _NameAndSig(name=name, signature=signature,
                        decorator=decorator,
-                       is_abstract=is_abstract)
+                       is_abstract=is_abstract,
+                       is_coroutine=is_coroutine)
 
   def _namedtuple_new(self, name, fields):
     """Build a __new__ method for a namedtuple with the given fields.
@@ -1024,7 +1040,8 @@ def _keep_decorator(decorator):
   if decorator in ["overload"]:
     # These are legal but ignored.
     return False
-  elif (decorator in ["staticmethod", "classmethod", "abstractmethod"] or
+  elif (decorator in ["staticmethod", "classmethod", "abstractmethod",
+                      "coroutine"] or
         _is_property_decorator(decorator)):
     return True
   else:
@@ -1268,16 +1285,23 @@ def _check_decorator_overload(name, old, new):
       return _MERGE
     else:
       return _REPLACE
-  raise ParseError(
-      "Overloaded signatures for %s disagree on decorators" % name)
+  raise OverloadedDecoratorError(name, "")
+
+
+def _add_flag_overload(mapping, name, val, flag):
+  if name not in mapping:
+    mapping[name] = val
+  elif mapping[name] != val:
+    raise OverloadedDecoratorError(name, flag)
 
 
 def _merge_method_signatures(signatures):
   """Group the signatures by name, turning each group into a function."""
   name_to_signatures = collections.OrderedDict()
   name_to_decorator = {}
-  name_to_is_abstract = collections.defaultdict(bool)
-  for name, signature, decorator, is_abstract in signatures:
+  name_to_is_abstract = {}
+  name_to_is_coroutine = {}
+  for name, signature, decorator, is_abstract, is_coroutine in signatures:
     if name not in name_to_signatures:
       name_to_signatures[name] = []
       name_to_decorator[name] = decorator
@@ -1288,11 +1312,13 @@ def _merge_method_signatures(signatures):
     elif check == _REPLACE:
       name_to_signatures[name] = [signature]
       name_to_decorator[name] = decorator
-    name_to_is_abstract[name] |= is_abstract
+    _add_flag_overload(name_to_is_abstract, name, is_abstract, "abstractmethod")
+    _add_flag_overload(name_to_is_coroutine, name, is_coroutine, "coroutine")
   methods = []
   for name, signatures in name_to_signatures.items():
     decorator = name_to_decorator[name]
     is_abstract = name_to_is_abstract[name]
+    is_coroutine = name_to_is_coroutine[name]
     if name == "__new__" or decorator == "staticmethod":
       kind = pytd.STATICMETHOD
     elif decorator == "classmethod":
@@ -1309,5 +1335,10 @@ def _merge_method_signatures(signatures):
         signatures = [signatures[0].Replace(return_type=pytd.AnythingType())]
     else:
       kind = pytd.METHOD
-    methods.append(pytd.Function(name, tuple(signatures), kind, is_abstract))
+    flags = 0
+    if is_abstract:
+      flags |= pytd.Function.IS_ABSTRACT
+    if is_coroutine:
+      flags |= pytd.Function.IS_COROUTINE
+    methods.append(pytd.Function(name, tuple(signatures), kind, flags))
   return methods

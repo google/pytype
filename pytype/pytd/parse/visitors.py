@@ -63,7 +63,7 @@ def _FindNodeClasses():
       yield _NodeClassInfo(value)
 
 
-_IGNORED_TYPENAMES = set(["str", "bool", "NoneType"])
+_IGNORED_TYPENAMES = set(["str", "bool", "int", "NoneType"])
 _ancestor_map = None  # Memoized ancestors map.
 
 
@@ -417,6 +417,8 @@ class PrintVisitor(Visitor):
       decorators += "@property\n"
     if node.is_abstract:
       decorators += "@abstractmethod\n"
+    if node.is_coroutine:
+      decorators += "@coroutine\n"
     signatures = "\n".join(decorators + "def " + function_name + sig
                            for sig in node.signatures)
     return signatures

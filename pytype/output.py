@@ -274,7 +274,7 @@ class Converter(object):
           name=name,
           signatures=tuple(sig.pytd_sig for sig in v.signatures),
           kind=v.kind,
-          is_abstract=v.is_abstract)
+          flags=pytd.Function.abstract_flag(v.is_abstract))
     elif isinstance(v, abstract.InterpreterFunction):
       return self._function_to_def(node, v, name)
     elif isinstance(v, abstract.ParameterizedClass):
@@ -353,10 +353,11 @@ class Converter(object):
           return_type=ret,
           exceptions=(),  # TODO(kramm): record exceptions
           template=()))
+
     return pytd.Function(name=function_name,
                          signatures=tuple(signatures),
                          kind=pytd.METHOD,
-                         is_abstract=v.is_abstract)
+                         flags=pytd.Function.abstract_flag(v.is_abstract))
 
   def _property_to_types(self, node, v):
     """Convert a property to a list of PyTD types."""

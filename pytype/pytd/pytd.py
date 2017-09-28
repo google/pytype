@@ -174,21 +174,50 @@ STATICMETHOD, CLASSMETHOD, METHOD, PROPERTY = (
 class Function(node.Node('name: str',
                          'signatures: tuple[Signature]',
                          'kind: str',
-                         'is_abstract: bool')):
+                         'flags: int')):
   """A function or a method, defined by one or more PyTD signatures.
 
   Attributes:
     name: The name of this function.
     signatures: Tuple of possible parameter type combinations for this function.
     kind: The type of this function. One of: STATICMETHOD, CLASSMETHOD, METHOD
-    is_abstract: Whether the function has the decorator @abstractmethod
+    flags: A bitfield of flags like is_abstract
   """
   __slots__ = ()
+  IS_ABSTRACT = 1
+  IS_COROUTINE = 2
 
-  def __new__(cls, name, signatures, kind, is_abstract=False):
-    self = super(Function, cls).__new__(cls, name, signatures,
-                                        kind, is_abstract)
+  def __new__(cls, name, signatures, kind, flags=0):
+    self = super(Function, cls).__new__(cls, name, signatures, kind, flags)
     return self
+
+  def _set_flag(self, flag, enable):
+    if enable:
+      self.flags |= flag
+    else:
+      self.flags |= ~flag
+
+  @property
+  def is_abstract(self):
+    return self.flags & self.IS_ABSTRACT
+
+  @is_abstract.setter
+  def is_abstract(self, value):
+    self._set_flag(self.IS_ABSTRACT, value)
+
+  @property
+  def is_coroutine(self):
+    return self.flags & self.IS_COROUTINE
+
+  @is_coroutine.setter
+  def is_coroutine(self, value):
+    self._set_flag(self.IS_COROUTINE, value)
+
+  @classmethod
+  def abstract_flag(cls, is_abstract):
+    # Temporary hack to support existing code that creates a Function
+    # TODO(mdemello): Implement a common flag bitmap for all function types
+    return cls.IS_ABSTRACT if is_abstract else 0
 
 
 class Signature(node.Node('params: tuple[Parameter]',
