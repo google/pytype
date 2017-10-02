@@ -120,7 +120,7 @@ class Loader(object):
     Returns:
       The ast (pytd.TypeDeclUnit) as represented in this loader.
     """
-    package_name = ".".join(module_name.split(".")[:-1])
+    package_name = ".".join(module_name.split(".")[:-1]) if module_name else ""
     ast = self._postprocess_pyi(ast, package_name)
     module = Module(module_name, filename, ast)
 
