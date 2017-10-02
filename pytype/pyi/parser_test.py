@@ -663,6 +663,9 @@ class FunctionTest(_ParserTestBase):
     # Other defaults are ignored if a declared type is present.
     self.check("def foo(x: str = 123) -> int: ...",
                "def foo(x: str = ...) -> int: ...")
+    # Allow but do not preserve a trailing comma in the param list.
+    self.check("def foo(x: int, y: str = ..., z: bool,) -> int: ...",
+               "def foo(x: int, y: str = ..., z: bool) -> int: ...")
 
   def test_star_params(self):
     self.check("def foo(*, x) -> str: ...")

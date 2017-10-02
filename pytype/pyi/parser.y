@@ -458,9 +458,8 @@ decorator
   : '@' dotted_name { $$ = $2; }
   ;
 
- /* TODO(dbaum): Consider allowing a trailing comma after param_list. */
 params
-  : param_list { $$ = $1; }
+  : param_list maybe_comma { $$ = $1; }
   | /* EMPTY */ { $$ = PyList_New(0); }
   ;
 
