@@ -266,6 +266,17 @@ class ParserTest(_ParserTestBase):
     # A function is allowed to appear multiple times.
     self.check("""\
       def foo(x: int) -> int: ...
+      def foo(x: str) -> str: ...""",
+               """\
+      @overload
+      def foo(x: int) -> int: ...
+      @overload
+      def foo(x: str) -> str: ...""")
+    # @overload decorators should be properly round-tripped.
+    self.check("""\
+      @overload
+      def foo(x: int) -> int: ...
+      @overload
       def foo(x: str) -> str: ...""")
 
   def test_type(self):
@@ -744,10 +755,13 @@ class FunctionTest(_ParserTestBase):
       def foo() -> str: ...""",
                """\
       @coroutine
+      @overload
       def foo() -> int: ...
       @coroutine
+      @overload
       def foo() -> int: ...
       @coroutine
+      @overload
       def foo() -> str: ...""")
 
     self.check_error("""\
@@ -980,7 +994,9 @@ class ClassTest(_ParserTestBase):
     # Multiple method defs are ok (needed for variant signatures).
     self.check("""\
       class Foo:
+          @overload
           def x(self) -> int: ...
+          @overload
           def x(self) -> str: ...
       """)
 
@@ -1566,6 +1582,11 @@ class MergeSignaturesTest(_ParserTestBase):
   def test_merged_method(self):
     ast = self.check("""\
       def foo(x: int) -> str: ...
+      def foo(x: str) -> str: ...""",
+                     """\
+      @overload
+      def foo(x: int) -> str: ...
+      @overload
       def foo(x: str) -> str: ...""")
     self.assertEqual(1, len(ast.functions))
     foo = ast.functions[0]
@@ -1633,10 +1654,13 @@ class MergeSignaturesTest(_ParserTestBase):
       """, """\
       class A(object):
           @abstractmethod
+          @overload
           def foo(x: int) -> str: ...
           @abstractmethod
+          @overload
           def foo(x: int, y: int) -> str: ...
           @abstractmethod
+          @overload
           def foo(x: int, y: int, z: int) -> str: ...
       """)
     self.assertEqual("method", ast.Lookup("A").Lookup("foo").kind)

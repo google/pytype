@@ -419,6 +419,8 @@ class PrintVisitor(Visitor):
       decorators += "@abstractmethod\n"
     if node.is_coroutine:
       decorators += "@coroutine\n"
+    if len(node.signatures) > 1:
+      decorators += "@overload\n"
     signatures = "\n".join(decorators + "def " + function_name + sig
                            for sig in node.signatures)
     return signatures
