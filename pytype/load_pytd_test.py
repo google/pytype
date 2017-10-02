@@ -185,6 +185,18 @@ class ImportPathsTest(unittest.TestCase):
       self.assertEqual("empty1", empty1.name)
       self.assertEqual("empty2", empty2.name)
 
+  def testPackageRelativeImport(self):
+    with utils.Tempdir() as d:
+      d.create_file("pkg/foo.pyi", "class X: ...")
+      d.create_file("pkg/bar.pyi", """
+          from .foo import X
+          y = ...  # type: X""")
+      self.options.tweak(pythonpath=[d.path])
+      loader = load_pytd.Loader("pkg.bar", self.options)
+      bar = loader.import_name("pkg.bar")
+      f = bar.Lookup("pkg.bar.y")
+      self.assertEqual("pkg.foo.X", f.type.name)
+
 
 _Module = collections.namedtuple("_", ["module_name", "file_name"])
 
@@ -286,6 +298,19 @@ class PickledPyiLoaderTest(unittest.TestCase):
       loaded_ast = self._LoadPickledModule(d, foo)
       g = loaded_ast.Lookup("foo.g")
       self.assertEqual(g.type.function, loaded_ast.Lookup("foo.f"))
+
+  def testPackageRelativeImport(self):
+    with utils.Tempdir() as d:
+      d.create_file("pkg/foo.pyi", "class X: ...")
+      d.create_file("pkg/bar.pyi", """
+          from .foo import X
+          y = ...  # type: X""")
+      foo = _Module(module_name="pkg.foo", file_name="pkg/foo.pyi")
+      bar = _Module(module_name="pkg.bar", file_name="pkg/bar.pyi")
+      self._LoadAst(d, module=bar)
+      self._PickleModules(d, foo, bar)
+      loaded_ast = self._LoadPickledModule(d, bar)
+      loaded_ast.Visit(visitors.VerifyLookup())
 
 
 if __name__ == "__main__":

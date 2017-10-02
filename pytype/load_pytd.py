@@ -75,8 +75,10 @@ class Loader(object):
     if self.options.imports_map is not None:
       assert self.options.pythonpath == [""]
 
-  def _postprocess_pyi(self, ast):
+  def _postprocess_pyi(self, ast, package_name):
     """Apply all the PYI transformations we need."""
+    if package_name is not None:
+      ast = ast.Visit(visitors.QualifyRelativeNames(package_name))
     ast = ast.Visit(visitors.LookupBuiltins(self.builtins, full_names=False))
     ast = ast.Visit(visitors.ExpandCompatibleBuiltins(self.builtins))
     ast = ast.Visit(visitors.LookupLocalTypes())
@@ -118,8 +120,10 @@ class Loader(object):
     Returns:
       The ast (pytd.TypeDeclUnit) as represented in this loader.
     """
-    ast = self._postprocess_pyi(ast)
+    package_name = ".".join(module_name.split(".")[:-1])
+    ast = self._postprocess_pyi(ast, package_name)
     module = Module(module_name, filename, ast)
+
     self._modules[module_name] = module
     try:
       dependencies = self._collect_ast_dependencies(ast)
@@ -181,7 +185,7 @@ class Loader(object):
 
   def resolve_ast(self, ast):
     """Resolve the dependencies of an AST, without adding it to our modules."""
-    ast = self._postprocess_pyi(ast)
+    ast = self._postprocess_pyi(ast, None)
     dependencies = self._collect_ast_dependencies(ast)
     if dependencies:
       self._load_ast_dependencies(dependencies, ast)

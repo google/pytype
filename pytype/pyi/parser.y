@@ -82,7 +82,7 @@ PyObject* ExtendList(PyObject* dst, PyObject* src);
 %type <obj> typevardef typevar_args typevar_kwargs typevar_kwarg
 %type <obj> classdef class_name parents parent_list parent maybe_class_funcs
 %type <obj> class_funcs funcdefs
-%type <obj> importdef import_items import_item from_list from_items from_item
+%type <obj> importdef import_items import_item from_list from_items from_item import_name
 %type <obj> funcdef decorators decorator params param_list param param_type
 %type <obj> param_default param_star_name return maybe_body
 %type <obj> body body_stmt
@@ -361,7 +361,7 @@ importdef
       $$ = ctx->Call(kAddImport, "(ON)", Py_None, $2);
       CHECK($$, @$);
     }
-  | FROM dotted_name IMPORT from_list {
+  | FROM import_name IMPORT from_list {
       $$ = ctx->Call(kAddImport, "(NN)", $2, $4);
       CHECK($$, @$);
     }
@@ -374,6 +374,15 @@ import_items
 import_item
   : dotted_name
   | dotted_name AS NAME { $$ = Py_BuildValue("(NN)", $1, $3); }
+  ;
+
+
+import_name
+  : dotted_name
+  | '.' import_name {
+      $$ = PyString_FromFormat(".%s", PyString_AsString($2));
+      Py_DECREF($2);
+    }
   ;
 
 from_list

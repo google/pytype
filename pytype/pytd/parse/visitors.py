@@ -1705,6 +1705,33 @@ class CollectDependencies(Visitor):
     self.EnterNamedType(t)
 
 
+class QualifyRelativeNames(Visitor):
+  """Resolve package-relative imports (e.g. from .foo import ...)."""
+
+  def __init__(self, package_name):
+    super(QualifyRelativeNames, self).__init__()
+    assert (package_name is not None and
+            not package_name.endswith("."))
+    self.package_name = package_name
+
+  def VisitNamedType(self, node):
+    if node.name.startswith("."):
+      path = self.package_name.split(".")
+      name = node.name.lstrip(".")
+      ndots = len(node.name) - len(name)
+      if ndots > len(path):
+        raise SymbolLookupError(
+            "Cannot resolve relative import %s" %
+            node.name.rsplit(".", 1)[0])
+      prefix = "".join([p + "." for p in path[:len(path) + 1 - ndots]])
+      return node.Replace(name=prefix + name)
+    else:
+      return node
+
+  def VisitClassType(self, t):
+    return self.VisitNamedType(t)
+
+
 def ExpandSignature(sig):
   """Expand a single signature.
 

@@ -466,6 +466,36 @@ class ImportTest(test_inference.InferenceTest):
         def f() -> int
     """)
 
+  def testDotDotPackageInPyi(self):
+    # Similar to testDotDotPackage, except for a pyi file.
+    with utils.Tempdir() as d:
+      d.create_file("up2/baz/foo.pyi", """
+        from ..bar import X
+      """)
+      d.create_file("up2/bar.pyi", "class X: ...")
+      d.create_file("top.py", """\
+                    from up2.baz.foo import X
+                    x = X()
+                    """)
+      ty = self.InferFromFile(filename=d["top.py"],
+                              pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        from typing import Type
+        import up2.bar
+        X = ...  # type: Type[up2.bar.X]
+        x = ...  # type: up2.bar.X
+      """)
+
+  def testTooManyDotsInPackageInPyi(self):
+    # Trying to go up more directories than the package path contains
+    with utils.Tempdir() as d:
+      d.create_file("up/foo.pyi", "from ..bar import X")
+      d.create_file("up/bar.pyi", "class X: ...")
+      _, err = self.InferAndCheck(
+          "from up.foo import X", pythonpath=[d.path])
+      self.assertErrorLogIs(
+          err, [(1, "pyi-error", "Cannot resolve relative import ..bar")])
+
   def testFileImport1(self):
     with utils.Tempdir() as d:
       d.create_file("path/to/some/module.pyi",
