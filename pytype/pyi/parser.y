@@ -464,7 +464,15 @@ params
   ;
 
 param_list
-  : param_list ',' param { $$ = AppendList($1, $3); }
+  // The maybe_type_ignore is a hack to support multiline function definitions
+  // with a type: ignore directive on the first line, e.g.
+  //    def foo(self,  # type: ignore
+  //            x: int, ...)
+  // The pattern is found in typeshed, and keeps the pyi files more readable and
+  // maintainable, so it's worth supporting, but it's messier to try to support
+  // just this exact case, so allowing a type: ignore after the comma of any
+  // param is a reasonable workaround.
+  : param_list ',' maybe_type_ignore param { $$ = AppendList($1, $4); }
   | param { $$ = StartList($1); }
   ;
 

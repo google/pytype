@@ -702,6 +702,10 @@ class FunctionTest(_ParserTestBase):
                "def foo() -> int: ...")
     self.check("def foo(x) -> int: # type: ignore\n  x:=List[int]",
                "def foo(x) -> int:\n    x := List[int]")
+    self.check("""\
+               def foo(x: int,  # type: ignore
+                       y: str) -> bool: ...""",
+               "def foo(x: int, y: str) -> bool: ...")
 
   def test_decorators(self):
     # sense for methods of classes.  But this at least gives us some coverage
