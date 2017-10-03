@@ -960,6 +960,14 @@ class ClassTest(_ParserTestBase):
       class Foo():
           """docstring"""
       ''', canonical)
+    # type: ignore with empty body
+    self.check("""\
+      class Foo: ...  # type: ignore
+      """, canonical)
+    self.check(""""\
+      class Foo: # type: ignore
+          pass
+      """, canonical)
 
   def test_attribute(self):
     self.check("""\

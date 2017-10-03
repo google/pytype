@@ -195,7 +195,7 @@ parent
   ;
 
 maybe_class_funcs
-  : pass_or_ellipsis { $$ = PyList_New(0); }
+  : pass_or_ellipsis maybe_type_ignore { $$ = PyList_New(0); }
   | INDENT class_funcs DEDENT { $$ = $2; }
   | INDENT TRIPLEQUOTED class_funcs DEDENT { $$ = $3; }
   ;
