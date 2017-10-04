@@ -699,7 +699,9 @@ class _Parser(object):
 
   def _parameterized_type(self, base_type, parameters):
     """Return a parameterized type."""
-    if len(parameters) == 2 and parameters[-1] is self.ELLIPSIS and (
+    if self._is_any(base_type):
+      return pytd.AnythingType()
+    elif len(parameters) == 2 and parameters[-1] is self.ELLIPSIS and (
         not self._is_callable_base_type(base_type)):
       element_type = parameters[0]
       if element_type is self.ELLIPSIS:

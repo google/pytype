@@ -1761,5 +1761,31 @@ class MemoryLeakTest(unittest.TestCase):
       """)
 
 
+class AnyTest(_ParserTestBase):
+
+  def test_generic_any(self):
+    self.check("""\
+      from typing import Any
+      x = ...  # type: Any[int]""",
+               """\
+      from typing import Any
+
+      x = ...  # type: Any""")
+
+  def test_generic_any_alias(self):
+    self.check("""\
+      from typing import Any
+      Foo = Any
+      Bar = Foo[int]
+      x = ...  # type: Bar[int, str]""",
+               """\
+      from typing import Any
+
+      Foo = Any
+      Bar = Any
+
+      x = ...  # type: Any""")
+
+
 if __name__ == "__main__":
   unittest.main()
