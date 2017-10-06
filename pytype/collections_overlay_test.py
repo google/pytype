@@ -10,8 +10,13 @@ import unittest
 class NamedTupleAstTest(unittest.TestCase):
   """Test collection_overlay's namedtuple AST generation."""
 
+  PYTHON_VERSION = (2, 7)
+
+  def _namedtuple_ast(self, name, fields):
+    return collections_overlay.namedtuple_ast(name, fields, self.PYTHON_VERSION)
+
   def test_basic(self):
-    ast = collections_overlay.namedtuple_ast("X", [])
+    ast = self._namedtuple_ast("X", [])
     typeparam, = ast.type_params
     self.assertEqual("X", typeparam.bound.name)
     nt = ast.Lookup("X")
@@ -23,7 +28,7 @@ class NamedTupleAstTest(unittest.TestCase):
     self.assertEqual("X", replace_sig.return_type.name)
 
   def test_no_fields(self):
-    nt = collections_overlay.namedtuple_ast("X", []).Lookup("X")
+    nt = self._namedtuple_ast("X", []).Lookup("X")
     self.assertEqual("Tuple[nothing, ...]",
                      pytd.Print(nt.Lookup("_fields").type))
     getnewargs_sig, = nt.Lookup("__getnewargs__").signatures
@@ -33,7 +38,7 @@ class NamedTupleAstTest(unittest.TestCase):
                      pytd.Print(nt.Lookup("__new__")))
 
   def test_fields(self):
-    nt = collections_overlay.namedtuple_ast("X", ["y", "z"]).Lookup("X")
+    nt = self._namedtuple_ast("X", ["y", "z"]).Lookup("X")
     self.assertEqual("Tuple[str, str]", pytd.Print(nt.Lookup("_fields").type))
     self.assertEqual(pytd.AnythingType(), nt.Lookup("y").type)
     self.assertEqual(pytd.AnythingType(), nt.Lookup("z").type)

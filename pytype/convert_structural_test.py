@@ -14,13 +14,16 @@ import unittest
 
 class MatchTest(unittest.TestCase):
 
+  PYTHON_VERSION = (2, 7)
+
   @classmethod
   def setUpClass(cls):
-    cls.builtins_pytd = builtins.GetBuiltinsPyTD()
+    cls.builtins_pytd = builtins.GetBuiltinsPyTD(cls.PYTHON_VERSION)
 
   def parse(self, src):
     ast = parser.parse_string(textwrap.dedent(src))
-    ast = ast.Visit(visitors.LookupBuiltins(builtins.GetBuiltinsAndTyping()[0]))
+    ast = ast.Visit(visitors.LookupBuiltins(
+        builtins.GetBuiltinsAndTyping(self.PYTHON_VERSION)[0]))
     return ast
 
   def parse_and_solve(self, src):

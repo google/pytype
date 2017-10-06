@@ -324,6 +324,7 @@ class _Parser(object):
       version: A version tuple.
       platform: A platform string.
     """
+    assert version
     self._used = False
     self._error_location = None
     self._version = _three_tuple(version or _DEFAULT_VERSION)

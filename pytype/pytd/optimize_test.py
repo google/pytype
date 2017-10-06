@@ -30,10 +30,12 @@ class TestOptimize(parser_test_base.ParserTest):
   def ParseAndResolve(self, src):
     ast = self.Parse(src)
     return ast.Visit(
-        visitors.LookupBuiltins(builtins.GetBuiltinsAndTyping()[0]))
+        visitors.LookupBuiltins(builtins.GetBuiltinsAndTyping(
+            self.PYTHON_VERSION)[0]))
 
   def Optimize(self, ast, **kwargs):
-    return optimize.Optimize(ast, builtins.GetBuiltinsPyTD(), **kwargs)
+    return optimize.Optimize(ast, builtins.GetBuiltinsPyTD(
+        self.PYTHON_VERSION), **kwargs)
 
   def OptimizedString(self, data):
     tree = self.Parse(data) if isinstance(data, basestring) else data
@@ -496,7 +498,7 @@ class TestOptimize(parser_test_base.ParserTest):
     expected = textwrap.dedent("""
         def f(x, y) -> int
     """)
-    b = builtins.GetBuiltinsPyTD()
+    b = builtins.GetBuiltinsPyTD(self.PYTHON_VERSION)
     hierarchy = b.Visit(visitors.ExtractSuperClassesByName())
     visitor = optimize.FindCommonSuperClasses(
         optimize.SuperClassHierarchy(hierarchy))
@@ -560,12 +562,13 @@ class TestOptimize(parser_test_base.ParserTest):
         y = ...  # type: int or float
         z = ...  # type: list[int] or int
     """)
-    hierarchy = builtins.GetBuiltinsPyTD().Visit(
+    hierarchy = builtins.GetBuiltinsPyTD(self.PYTHON_VERSION).Visit(
         visitors.ExtractSuperClassesByName())
     visitor = optimize.SimplifyUnionsWithSuperclasses(
         optimize.SuperClassHierarchy(hierarchy))
     ast = self.Parse(src)
-    ast = visitors.LookupClasses(ast, builtins.GetBuiltinsPyTD())
+    ast = visitors.LookupClasses(ast, builtins.GetBuiltinsPyTD(
+        self.PYTHON_VERSION))
     ast = ast.Visit(visitor)
     self.AssertSourceEquals(ast, expected)
 
@@ -577,12 +580,13 @@ class TestOptimize(parser_test_base.ParserTest):
     expected = textwrap.dedent("""
         x = ...  # type: AbstractSet[int]
     """)
-    hierarchy = builtins.GetBuiltinsPyTD().Visit(
+    hierarchy = builtins.GetBuiltinsPyTD(self.PYTHON_VERSION).Visit(
         visitors.ExtractSuperClassesByName())
     visitor = optimize.SimplifyUnionsWithSuperclasses(
         optimize.SuperClassHierarchy(hierarchy))
     ast = self.Parse(src)
-    ast = visitors.LookupClasses(ast, builtins.GetBuiltinsPyTD())
+    ast = visitors.LookupClasses(ast, builtins.GetBuiltinsPyTD(
+        self.PYTHON_VERSION))
     ast = ast.Visit(visitor)
     self.AssertSourceEquals(ast, expected)
 
@@ -729,7 +733,8 @@ class TestOptimize(parser_test_base.ParserTest):
             def h(self, z: float) -> ?
     """)
     ast = self.Parse(src)
-    ast = visitors.LookupClasses(ast, builtins.GetBuiltinsPyTD())
+    ast = visitors.LookupClasses(ast, builtins.GetBuiltinsPyTD(
+        self.PYTHON_VERSION))
     self.assertItemsEqual(("g", "h"), [m.name for m in ast.Lookup("B").methods])
     ast = ast.Visit(optimize.AddInheritedMethods())
     self.assertItemsEqual(("f", "g", "h"),
@@ -752,7 +757,8 @@ class TestOptimize(parser_test_base.ParserTest):
           def bar() -> float
     """)
     ast = self.Parse(src)
-    ast = visitors.LookupClasses(ast, builtins.GetBuiltinsPyTD())
+    ast = visitors.LookupClasses(ast, builtins.GetBuiltinsPyTD(
+        self.PYTHON_VERSION))
     ast = ast.Visit(optimize.RemoveInheritedMethods())
     self.AssertSourceEquals(ast, expected)
 
@@ -789,7 +795,8 @@ class TestOptimize(parser_test_base.ParserTest):
             def d(self) -> D
     """)
     ast = self.Parse(src)
-    ast = visitors.LookupClasses(ast, builtins.GetBuiltinsPyTD())
+    ast = visitors.LookupClasses(ast, builtins.GetBuiltinsPyTD(
+        self.PYTHON_VERSION))
     ast = ast.Visit(optimize.RemoveInheritedMethods())
     self.AssertSourceEquals(ast, expected)
 
@@ -815,7 +822,8 @@ class TestOptimize(parser_test_base.ParserTest):
             def f(self, x) -> ?
     """)
     ast = self.Parse(src)
-    ast = visitors.LookupClasses(ast, builtins.GetBuiltinsPyTD())
+    ast = visitors.LookupClasses(ast, builtins.GetBuiltinsPyTD(
+        self.PYTHON_VERSION))
     ast = ast.Visit(optimize.RemoveInheritedMethods())
     self.AssertSourceEquals(ast, expected)
 
@@ -831,7 +839,8 @@ class TestOptimize(parser_test_base.ParserTest):
             def f(self, x) -> ?
     """)
     ast = self.Parse(src)
-    ast = visitors.LookupClasses(ast, builtins.GetBuiltinsPyTD())
+    ast = visitors.LookupClasses(ast, builtins.GetBuiltinsPyTD(
+        self.PYTHON_VERSION))
     ast = ast.Visit(optimize.RemoveInheritedMethods())
     self.AssertSourceEquals(ast, src)
 
@@ -843,7 +852,8 @@ class TestOptimize(parser_test_base.ParserTest):
             def f(self) -> ?
     """)
     ast = self.Parse(src)
-    ast = visitors.LookupClasses(ast, builtins.GetBuiltinsPyTD())
+    ast = visitors.LookupClasses(ast, builtins.GetBuiltinsPyTD(
+        self.PYTHON_VERSION))
     ast = ast.Visit(optimize.RemoveInheritedMethods())
     self.AssertSourceEquals(ast, src)
 
@@ -856,7 +866,8 @@ class TestOptimize(parser_test_base.ParserTest):
         def foo(self): ...
     """)
     ast = self.Parse(src)
-    ast = visitors.LookupClasses(ast, builtins.GetBuiltinsPyTD())
+    ast = visitors.LookupClasses(ast, builtins.GetBuiltinsPyTD(
+        self.PYTHON_VERSION))
     ast = ast.Visit(optimize.RemoveInheritedMethods())
     self.AssertSourceEquals(ast, src)
 

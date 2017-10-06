@@ -588,7 +588,8 @@ class BuiltinTests(test_inference.InferenceTest):
         pass
     """, deep=True)
     name = collections_overlay.namedtuple_name("_Foo", ["x", "y", "z"])
-    ast = collections_overlay.namedtuple_ast(name, ["x", "y", "z"])
+    ast = collections_overlay.namedtuple_ast(name, ["x", "y", "z"],
+                                             self.PYTHON_VERSION)
     expected = pytd.Print(ast) + textwrap.dedent("""\
       collections = ...  # type: module
       class Foo({name}): ...""").format(name=name)
@@ -606,7 +607,8 @@ class BuiltinTests(test_inference.InferenceTest):
       z = t.z
     """, deep=True)
     name = collections_overlay.namedtuple_name("t", ["x", "y", "z"])
-    ast = collections_overlay.namedtuple_ast(name, ["x", "y", "z"])
+    ast = collections_overlay.namedtuple_ast(name, ["x", "y", "z"],
+                                             self.PYTHON_VERSION)
     expected = pytd.Print(ast) + textwrap.dedent("""\
       collections = ...  # type: module
       t = {name}

@@ -68,7 +68,8 @@ def main():
 
   if options.optimize:
     parsed = optimize.Optimize(parsed,
-                               builtins.GetBuiltinsPyTD(),
+                               builtins.GetBuiltinsPyTD(
+                                   options.python_version),
                                lossy=options.lossy,
                                use_abcs=options.use_abcs,
                                max_union=options.max_union,

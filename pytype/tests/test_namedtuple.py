@@ -12,6 +12,9 @@ from pytype.tests import test_inference
 class NamedtupleTests(test_inference.InferenceTest):
   """Tests for collections.namedtuple."""
 
+  def _namedtuple_ast(self, name, fields):
+    return collections_overlay.namedtuple_ast(name, fields, self.PYTHON_VERSION)
+
   def _namedtuple_def(self, suffix="", **kws):
     """Generate the expected pyi for a simple namedtuple definition.
 
@@ -30,7 +33,7 @@ class NamedtupleTests(test_inference.InferenceTest):
     suffix += textwrap.dedent("""
       collections = ...  # type: module
       {alias} = {name}""").format(alias=alias, name=name)
-    return pytd.Print(collections_overlay.namedtuple_ast(name, fields)) + suffix
+    return pytd.Print(self._namedtuple_ast(name, fields)) + suffix
 
   def test_basic_namedtuple(self):
     ty = self.Infer("""
@@ -255,8 +258,8 @@ class NamedtupleTests(test_inference.InferenceTest):
     """)
     name_x = collections_overlay.namedtuple_name("_", [])
     name_z = collections_overlay.namedtuple_name("_", ["a"])
-    ast_x = collections_overlay.namedtuple_ast(name_x, [])
-    ast_z = collections_overlay.namedtuple_ast(name_z, ["a"])
+    ast_x = self._namedtuple_ast(name_x, [])
+    ast_z = self._namedtuple_ast(name_z, ["a"])
     ast = pytd_utils.Concat(ast_x, ast_z)
     expected = pytd.Print(ast) + textwrap.dedent("""\
       collections = ...  # type: module
@@ -273,7 +276,7 @@ class NamedtupleTests(test_inference.InferenceTest):
           return super(X, cls).__new__(cls)
     """, deep=True)
     name = collections_overlay.namedtuple_name("X", [])
-    ast = collections_overlay.namedtuple_ast(name, [])
+    ast = self._namedtuple_ast(name, [])
     expected = pytd.Print(ast) + textwrap.dedent("""\
       collections = ...  # type: module
       _TX = TypeVar("_TX", bound=X)

@@ -28,7 +28,10 @@ import unittest
 class ParserTest(unittest.TestCase):
   """Test utility class. Knows how to parse PYTD and compare source code."""
 
+  PYTHON_VERSION = (2, 7)
+
   def Parse(self, src, name=None, version=None, platform=None):
+    version = version or self.PYTHON_VERSION
     # TODO(kramm): Using self.parser here breaks tests. Why?
     tree = parser.parse_string(
         textwrap.dedent(src), name=name, python_version=version,
@@ -41,8 +44,9 @@ class ParserTest(unittest.TestCase):
     return tree
 
   def ParseWithBuiltins(self, src):
-    ast = parser.parse_string(textwrap.dedent(src))
-    b, t = builtins.GetBuiltinsAndTyping()
+    ast = parser.parse_string(textwrap.dedent(src),
+                              python_version=self.PYTHON_VERSION)
+    b, t = builtins.GetBuiltinsAndTyping(self.PYTHON_VERSION)
     ast = ast.Visit(visitors.LookupExternalTypes(
         {"__builtin__": b, "typing": t}, full_names=True))
     ast = ast.Visit(visitors.NamedTypeToClassType())

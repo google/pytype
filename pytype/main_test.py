@@ -16,6 +16,7 @@ import unittest
 class PytypeTest(unittest.TestCase):
   """Integration test for pytype."""
 
+  PYTHON_VERSION = (2, 7)
 
   DEFAULT_PYI = builtins.DEFAULT_SRC
   INCLUDE = object()
@@ -86,6 +87,10 @@ class PytypeTest(unittest.TestCase):
     self.stdout, self.stderr = p.communicate()
     self.returncode = p.returncode
 
+  def _ParseString(self, string):
+    """A wrapper for parser.parse_string that inserts the python version."""
+    return parser.parse_string(string, python_version=self.PYTHON_VERSION)
+
   def assertOutputStateMatches(self, **has_output):
     """Check that the output state matches expectations.
 
@@ -149,8 +154,8 @@ class PytypeTest(unittest.TestCase):
         expected_pyi = f.read()
     message = ("\n==Expected pyi==\n" + expected_pyi +
                "\n==Actual pyi==\n" + self.stdout)
-    self.assertTrue(parser.parse_string(self.stdout).ASTeq(
-        parser.parse_string(expected_pyi)), message)
+    self.assertTrue(self._ParseString(self.stdout).ASTeq(
+        self._ParseString(expected_pyi)), message)
 
   def GeneratePickledSimpleFile(self, tmp_dir, pickle_name):
     pickled_location = os.path.join(tmp_dir.path, pickle_name)
@@ -347,8 +352,8 @@ class PytypeTest(unittest.TestCase):
       pyi = f.read()
     with open(self._DataPath("simple.pyi"), "r") as f:
       expected_pyi = f.read()
-    self.assertTrue(parser.parse_string(pyi).ASTeq(
-        parser.parse_string(expected_pyi)))
+    self.assertTrue(self._ParseString(pyi).ASTeq(
+        self._ParseString(expected_pyi)))
 
   def testPytree(self):
     """Test pytype on a real-world program."""
@@ -356,7 +361,7 @@ class PytypeTest(unittest.TestCase):
     self._InferTypesAndCheckErrors("pytree.py", [
         "import-error", "import-error", "attribute-error", "attribute-error",
         "name-error"])
-    ast = parser.parse_string(self.stdout)
+    ast = self._ParseString(self.stdout)
     self.assertListEqual(["convert", "generate_matches", "type_repr"],
                          [f.name for f in ast.functions])
     self.assertListEqual(

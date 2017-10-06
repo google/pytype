@@ -10,9 +10,11 @@ import unittest
 
 class UtilsTest(unittest.TestCase):
 
+  PYTHON_VERSION = (2, 7)
+
   @classmethod
   def setUpClass(cls):
-    cls.builtins = builtins.GetBuiltinsPyTD()
+    cls.builtins = builtins.GetBuiltinsPyTD(cls.PYTHON_VERSION)
 
   def testGetBuiltinsPyTD(self):
     self.assertIsNotNone(self.builtins)
@@ -52,17 +54,17 @@ class UtilsTest(unittest.TestCase):
 
   def testPrecompilation(self):
     # Get original (non-precompiled) values.
-    b1, t1 = builtins.GetBuiltinsAndTyping()
+    b1, t1 = builtins.GetBuiltinsAndTyping(self.PYTHON_VERSION)
     # Write precompiled data.
     with utils.Tempdir() as d:
       precompiled = os.path.join(d.path, "precompiled.pickle")
-      builtins.Precompile(precompiled)
+      builtins.Precompile(precompiled, self.PYTHON_VERSION)
       # Clear the cache
       builtins._cached_builtins_pytd = None
       # Load precompiled data.
       builtins.LoadPrecompiled(precompiled)
     self.assertIsNotNone(builtins._cached_builtins_pytd)
-    b2, t2 = builtins.GetBuiltinsAndTyping()
+    b2, t2 = builtins.GetBuiltinsAndTyping(self.PYTHON_VERSION)
     self.assertEqual(pytd.Print(b1), pytd.Print(b2))
     self.assertEqual(pytd.Print(t1), pytd.Print(t2))
 

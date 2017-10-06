@@ -293,7 +293,7 @@ def PrepareForExport(module_name, python_version, ast):
   src = utils.Print(ast)
   ast = pytd_builtins.ParsePyTD(src=src, module=module_name,
                                 python_version=python_version)
-  builtins, _ = pytd_builtins.GetBuiltinsAndTyping()
+  builtins, _ = pytd_builtins.GetBuiltinsAndTyping(python_version)
   ast = ast.Visit(visitors.LookupBuiltins(builtins, full_names=False))
   ast = ast.Visit(visitors.ExpandCompatibleBuiltins(builtins))
   ast = ast.Visit(visitors.LookupLocalTypes())

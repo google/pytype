@@ -11,6 +11,8 @@ from pytype.pytd.parse import visitors
 class TestPytd(unittest.TestCase):
   """Test the simple functionality in pytd.py."""
 
+  PYTHON_VERSION = (2, 7)
+
   def setUp(self):
     self.int = pytd.ClassType("int")
     self.none_type = pytd.ClassType("NoneType")
@@ -68,8 +70,8 @@ class TestPytd(unittest.TestCase):
             def bar(x: T) -> NoneType
         def foo(a: str or int) -> C
         """)
-    tree1 = parser.parse_string(src1)
-    tree2 = parser.parse_string(src2)
+    tree1 = parser.parse_string(src1, python_version=self.PYTHON_VERSION)
+    tree2 = parser.parse_string(src2, python_version=self.PYTHON_VERSION)
     tree1.Visit(visitors.VerifyVisitor())
     tree2.Visit(visitors.VerifyVisitor())
     self.assertTrue(tree1.constants)

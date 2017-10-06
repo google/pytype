@@ -26,6 +26,8 @@ from pytype.pytd.parse import visitors
 class MroTest(parser_test_base.ParserTest):
   """Test pytype.pytd.mro."""
 
+  PYTHON_VERSION = (2, 7)
+
   def testDedup(self):
     self.assertEqual([], mro.Dedup([]))
     self.assertEqual([1], mro.Dedup([1]))
@@ -53,8 +55,8 @@ class MroTest(parser_test_base.ParserTest):
       T = TypeVar("T")
       class Foo(Generic[T]): pass
       class Bar(Foo[int]): pass
-    """))
-    b, t = builtins.GetBuiltinsAndTyping()
+    """), python_version=self.PYTHON_VERSION)
+    b, t = builtins.GetBuiltinsAndTyping(self.PYTHON_VERSION)
     ast = ast.Visit(visitors.LookupExternalTypes(
         {"__builtin__": b, "typing": t}, full_names=True))
     ast = ast.Visit(visitors.NamedTypeToClassType())

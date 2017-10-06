@@ -364,23 +364,19 @@ def get_type_hints(obj, ...) -> Optional[Dict[str, Any]]
 # We alias them to Any here so pytype can parse pyi files containing them, and
 # not generate any false errors.
 #
-# TODO(mdemello): The version guards below are from
-# https://github.com/python/typeshed/blob/master/stdlib/3/typing.pyi - we
-# should add them in once we add a version number argument to
-# GetBuiltinsAndTyping().
-#
-# if sys.version_info >= (3, 0):
-#  Awaitable, AsyncIterator, AsyncIterable, Coroutine
-# if sys.version_info >= (3, 5):
-#   AsyncContextManager
-# if sys.version_info >= (3, 6):
-#   AsyncGenerator
-Awaitable = Any
-AsyncIterator = Any
-AsyncIterable = Any
-Coroutine = Any
-AsyncContextManager = Any
-AsyncGenerator = Any
+# The version guards below are from
+# https://github.com/python/typeshed/blob/master/stdlib/3/typing.pyi
+if sys.version_info >= (3, 0):
+  Awaitable = Any
+  AsyncIterator = Any
+  AsyncIterable = Any
+  Coroutine = Any
+
+if sys.version_info >= (3, 5):
+  AsyncContextManager = Any
+
+if sys.version_info >= (3, 6):
+  AsyncGenerator = Any
 
 
 TYPE_CHECKING = ...  # type: bool

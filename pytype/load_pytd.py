@@ -63,7 +63,8 @@ class Loader(object):
                options):
     self.base_module = base_module
     self.options = options
-    self.builtins, self.typing = builtins.GetBuiltinsAndTyping()
+    self.builtins, self.typing = builtins.GetBuiltinsAndTyping(
+        options.python_version)
     self._modules = {
         "__builtin__":
         Module("__builtin__", self.PREFIX + "__builtin__", self.builtins),

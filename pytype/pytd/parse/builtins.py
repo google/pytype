@@ -36,9 +36,10 @@ def _FindStdlibFile(name, extension=".pytd"):
 _cached_builtins_pytd = None  # ... => pytype.pytd.pytd.TypeDeclUnit
 
 
-def Precompile(filename):
+def Precompile(filename, python_version):
   """Write precompiled builtins to the specified file."""
-  data = GetBuiltinsAndTyping()
+  assert python_version
+  data = GetBuiltinsAndTyping(python_version)
   utils.SavePickle(data, filename)
 
 
@@ -49,13 +50,17 @@ def LoadPrecompiled(filename):
   _cached_builtins_pytd = utils.LoadPickle(filename)
 
 
-def GetBuiltinsAndTyping():
+def GetBuiltinsAndTyping(python_version):
   """Get __builtin__.pytd and typing.pytd."""
+  assert python_version
   global _cached_builtins_pytd
   if not _cached_builtins_pytd:
-    t = parser.parse_string(_FindBuiltinFile("typing"), name="typing")
+    t = parser.parse_string(_FindBuiltinFile("typing"),
+                            name="typing",
+                            python_version=python_version)
     b = parser.parse_string(_FindBuiltinFile("__builtin__"),
-                            name="__builtin__")
+                            name="__builtin__",
+                            python_version=python_version)
     b = b.Visit(visitors.LookupExternalTypes({"typing": t}, full_names=True,
                                              self_name="__builtin__"))
     t = t.Visit(visitors.LookupBuiltins(b))
@@ -77,17 +82,20 @@ def GetBuiltinsAndTyping():
   return _cached_builtins_pytd
 
 
-def GetBuiltinsPyTD():
+def GetBuiltinsPyTD(python_version):
   """Get the "default" AST used to lookup built in types.
 
   Get an AST for all Python builtins as well as the most commonly used standard
   libraries.
 
+  Args:
+    python_version: The python version tuple.
   Returns:
     A pytd.TypeDeclUnit instance. It'll directly contain the builtin classes
     and functions, and submodules for each of the standard library modules.
   """
-  return utils.Concat(*GetBuiltinsAndTyping())
+  assert python_version
+  return utils.Concat(*GetBuiltinsAndTyping(python_version))
 
 
 # TODO(kramm): Use python_version, once we have builtins for both Python 2 and
@@ -121,7 +129,7 @@ def ParsePyTD(src=None, filename=None, python_version=None, module=None,
   ast = parser.parse_string(src, filename=filename, name=module,
                             python_version=python_version)
   if lookup_classes:
-    ast = visitors.LookupClasses(ast, GetBuiltinsPyTD())
+    ast = visitors.LookupClasses(ast, GetBuiltinsPyTD(python_version))
   return ast
 
 

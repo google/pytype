@@ -665,7 +665,7 @@ class TestVisitors(parser_test_base.ParserTest):
     self.assertIsNone(t.cls)
 
   def testExpandCompatibleBuiltins(self):
-    b, _ = parser_builtins.GetBuiltinsAndTyping()
+    b, _ = parser_builtins.GetBuiltinsAndTyping(self.PYTHON_VERSION)
 
     src = textwrap.dedent("""
         from typing import Tuple, Union
@@ -916,7 +916,8 @@ class TestVisitors(parser_test_base.ParserTest):
 
   def testLookupTypingClass(self):
     node = visitors.LookupClasses(pytd.NamedType("typing.Sequence"),
-                                  parser_builtins.GetBuiltinsPyTD())
+                                  parser_builtins.GetBuiltinsPyTD(
+                                      self.PYTHON_VERSION))
     assert node.cls
 
   def testCreateTypeParametersFromUnknowns(self):

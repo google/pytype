@@ -21,6 +21,8 @@ def get_builtins_source():
 
 class _ParserTestBase(unittest.TestCase):
 
+  PYTHON_VERSION = (2, 7, 6)
+
   def check(self, src, expected=None, prologue=None, name=None,
             version=None, platform=None):
     """Check the parsing of src.
@@ -43,6 +45,7 @@ class _ParserTestBase(unittest.TestCase):
     Returns:
       The parsed pytd.TypeDeclUnit.
     """
+    version = version or self.PYTHON_VERSION
     src = textwrap.dedent(src)
     ast = parser.parse_string(src, name=name, python_version=version,
                               platform=platform)
@@ -57,7 +60,8 @@ class _ParserTestBase(unittest.TestCase):
   def check_error(self, src, expected_line, message):
     """Check that parsing the src raises the expected error."""
     try:
-      parser.parse_string(textwrap.dedent(src))
+      parser.parse_string(textwrap.dedent(src),
+                          python_version=self.PYTHON_VERSION)
       self.fail("ParseError expected")
     except parser.ParseError as e:
       self.assertRegexpMatches(e.message, re.escape(message))
@@ -364,7 +368,8 @@ class ParserTest(_ParserTestBase):
       class Foo:
         this is not valid"""
     try:
-      parser.parse_string(textwrap.dedent(src), filename="foo.py")
+      parser.parse_string(textwrap.dedent(src), filename="foo.py",
+                          python_version=self.PYTHON_VERSION)
       self.fail("ParseError expected")
     except parser.ParseError as e:
       self.assertMultiLineEqual(textwrap.dedent("""\
@@ -1699,10 +1704,12 @@ class EntireFileTest(_ParserTestBase):
 
 class MemoryLeakTest(unittest.TestCase):
 
+  PYTHON_VERSION = (2, 7)
+
   def check(self, src):
     def parse():
       try:
-        parser.parse_string(src)
+        parser.parse_string(src, python_version=self.PYTHON_VERSION)
       except parser.ParseError:
         # It is essential to clear the error, otherwise the system exc_info
         # will hold references to lots of stuff hanging off the exception.

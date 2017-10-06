@@ -280,7 +280,7 @@ class TestUtils(parser_test_base.ParserTest):
 
   def testBuiltinAlias(self):
     src = "Number = int"
-    ast = parser.parse_string(src)
+    ast = parser.parse_string(src, python_version=self.PYTHON_VERSION)
     self.assertMultiLineEqual(utils.Print(ast), src)
 
   def testTypingNameConflict1(self):
@@ -291,7 +291,7 @@ class TestUtils(parser_test_base.ParserTest):
 
       def List() -> None: ...
     """)
-    ast = parser.parse_string(src)
+    ast = parser.parse_string(src, python_version=self.PYTHON_VERSION)
     self.assertMultiLineEqual(utils.Print(ast).strip("\n"), src.strip("\n"))
 
   def testTypingNameConflict2(self):
@@ -304,7 +304,7 @@ class TestUtils(parser_test_base.ParserTest):
       class MyClass(object):
           List = ...  # type: Any
           x = ...  # type: typing.List[str]
-    """))
+    """), python_version=self.PYTHON_VERSION)
     expected = textwrap.dedent("""
       import typing
       from typing import Any, List

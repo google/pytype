@@ -330,10 +330,12 @@ class InferenceTest(unittest.TestCase):
 
   def assertTypesMatchPytd(self, ty, pytd_src, version=None):
     """Parses pytd_src and compares with ty."""
+    version = version or self.PYTHON_VERSION
     pytd_tree = parser.parse_string(
         textwrap.dedent(pytd_src), python_version=version)
     pytd_tree = pytd_tree.Visit(visitors.LookupBuiltins(
-        builtins.GetBuiltinsAndTyping()[0], full_names=False))
+        builtins.GetBuiltinsAndTyping(self.PYTHON_VERSION)[0],
+        full_names=False))
     pytd_tree = pytd_tree.Visit(visitors.LookupLocalTypes())
     pytd_tree = pytd_tree.Visit(
         visitors.ClassTypeToNamedType())
