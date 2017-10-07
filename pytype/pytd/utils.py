@@ -407,8 +407,9 @@ def WrapsDict(member_name, writable=False, implement_len=False):
   return namespace["WrapsDict"]
 
 
-def canonical_pyi(pyi):
-  ast = parser.parse_string(pyi)
+def canonical_pyi(pyi, python_version):
+  # TODO(mdemello): this has no test coverage
+  ast = parser.parse_string(pyi, python_version=python_version)
   ast = ast.Visit(visitors.ClassTypeToNamedType())
   ast = ast.Visit(visitors.CanonicalOrderingVisitor(sort_signatures=True))
   ast.Visit(visitors.VerifyVisitor())
