@@ -137,7 +137,6 @@ class AtomicAbstractValue(object):
   all ints.
   """
 
-  _value_id = 0  # for pretty-printing
   formal = False  # is this type non-instantiable?
 
   def __init__(self, name, vm):
@@ -146,8 +145,6 @@ class AtomicAbstractValue(object):
     self.vm = vm
     self.mro = []
     self.cls = None
-    AtomicAbstractValue._value_id += 1
-    self.id = AtomicAbstractValue._value_id
     self.name = name
     self.module = None
     self.official_name = None
@@ -505,7 +502,7 @@ class PythonConstant(object):
     return repr(self.pyval)
 
   def __repr__(self):
-    return "<v%d %s %s>" % (self.id, self.name, self.str_of_constant(str))
+    return "<%s %s>" % (self.name, self.str_of_constant(str))
 
   def compatible_with(self, logical_value):
     return bool(self.pyval) == logical_value
@@ -705,9 +702,9 @@ class SimpleAbstractValue(AtomicAbstractValue):
   def __repr__(self):
     if self.cls:
       cls = self.cls.data[0]
-      return "<v%d %s [%r]>" % (self.id, self.name, cls)
+      return "<%s [%r]>" % (self.name, cls)
     else:
-      return "<v%d %s>" % (self.id, self.name)
+      return "<%s>" % self.name
 
   def to_variable(self, node):
     return super(SimpleAbstractValue, self).to_variable(node)
