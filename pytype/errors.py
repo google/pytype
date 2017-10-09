@@ -555,7 +555,7 @@ class ErrorLog(ErrorLogBase):
       # types. We don't yet provide more detail about that.
       return []
     return [
-        "\nYou may need to implement the following methods on %s:\n" %
+        "\nThe following methods aren't implemented on %s:\n" %
         self._print_as_actual_type(p)] + [", ".join(sorted(methods))]
 
   def _invalid_parameters(self, stack, message, bad_call):
