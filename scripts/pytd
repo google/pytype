@@ -43,6 +43,10 @@ def parse_options(args):
       "--remove-mutable", action="store_true",
       dest="remove_mutable", default=False,
       help="Remove mutable parameters.")
+  o.add_option(
+      "-V", "--python_version", type="string", action="store",
+      dest="python_version", default="2.7",
+      help=("Python version to target (\"major.minor\", e.g. \"2.7\")"))
   options, filenames = o.parse_args(args)
   return options, filenames
 
@@ -50,6 +54,9 @@ def parse_options(args):
 def main():
   options, filenames = parse_options(sys.argv)
   unused_executable = filenames.pop(0)
+  # TODO(mdemello): Factor out the validation in config.py to reuse here.
+  python_version = tuple(map(int, options.python_version.split(".")))
+
   if len(filenames) == 1:
     filename_in, filename_out = filenames[0], None
   elif len(filenames) == 2:
@@ -61,15 +68,15 @@ def main():
   with open(filename_in) as fi:
     sourcecode = fi.read()
     try:
-      parsed = parser.parse_string(sourcecode, filename=filename_in)
+      parsed = parser.parse_string(sourcecode, filename=filename_in,
+                                   python_version=python_version)
     except parser.ParseError as e:
       sys.stderr.write(str(e))
       sys.exit(1)
 
   if options.optimize:
     parsed = optimize.Optimize(parsed,
-                               builtins.GetBuiltinsPyTD(
-                                   options.python_version),
+                               builtins.GetBuiltinsPyTD(python_version),
                                lossy=options.lossy,
                                use_abcs=options.use_abcs,
                                max_union=options.max_union,
