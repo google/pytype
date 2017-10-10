@@ -761,7 +761,7 @@ class FunctionTest(_ParserTestBase):
     self.check("""\
       @async.coroutine
       def foo() -> int: ...
-      @coroutine.coroutine
+      @coroutines.coroutine
       def foo() -> int: ...
       @coroutine
       def foo() -> str: ...""",

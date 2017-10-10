@@ -804,7 +804,7 @@ class _Parser(object):
     is_abstract = _check_decorator(
         decorators, {"abstractmethod", "abc.abstractmethod"})
     is_coroutine = _check_decorator(
-        decorators, {"coroutine", "async.coroutine", "coroutine.coroutine"})
+        decorators, {"coroutine", "async.coroutine", "coroutines.coroutine"})
     # TODO(acaceres): if not inside a class, any decorator should be an error
     if len(decorators) > 1:
       raise ParseError("Too many decorators for %s" % name)
