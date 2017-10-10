@@ -46,6 +46,20 @@ class ProtocolTest(test_inference.InferenceTest):
       f(foo)
     """)
 
+  def test_check_parameterized_iterator(self):
+    self.assertNoErrors("""
+      from __future__ import google_type_annotations
+      from typing import Iterator
+      def f(x: Iterator[int]):
+        return None
+      class Foo:
+        def next(self):
+          return 42
+        def __iter__(self):
+          return self
+      f(Foo())
+    """)
+
   def test_check_protocol_error(self):
     _, errors = self.InferAndCheck("""\
       from __future__ import google_type_annotations
@@ -57,6 +71,22 @@ class ProtocolTest(test_inference.InferenceTest):
     """)
     self.assertErrorLogIs(errors, [(6, "wrong-arg-types",
                                     r"\(x: SupportsAbs\).*\(x: List\[str\]\)")])
+
+  def test_check_iterator_error(self):
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      from typing import Iterator
+      def f(x: Iterator[int]):
+        return None
+      class Foo:
+        def next(self) -> str:
+          return ''
+        def __iter__(self):
+          return self
+      f(Foo())  # line 10
+    """)
+    self.assertErrorLogIs(
+        errors, [(10, "wrong-arg-types", r"Iterator\[int\].*Foo")])
 
   def test_check_protocol_match_unknown(self):
     self.assertNoErrors("""\

@@ -656,20 +656,21 @@ class AbstractMatcher(object):
     if method_names_matched and isinstance(other_type,
                                            abstract.ParameterizedClass):
       return self._match_parameterized_protocol(left_methods, other_type,
-                                                subst, node, view)
+                                                protocol, subst, node, view)
     elif method_names_matched:
       return subst
     else:
       return None
 
-  def _match_parameterized_protocol(self, left_methods, other_type, subst,
-                                    node, view):
+  def _match_parameterized_protocol(self, left_methods, other_type, protocol,
+                                    subst, node, view):
     """Checks whether left_methods is compatible with a parameterized protocol.
 
     Args:
       left_methods: A dictionary name -> method. method can either be a
         Variable or a pytd.Function.
       other_type: A formal type of type abstract.ParameterizedClass.
+      protocol: A formal type that is a protocol class.
       subst: The current type parameter assignment.
       node: The current CFG node.
       view: The current mapping of Variable to Value.
@@ -678,7 +679,7 @@ class AbstractMatcher(object):
     """
     params = other_type.type_parameters
     new_substs = []
-    for name in other_type.abstract_methods:
+    for name in protocol.abstract_methods:
       abstract_method = other_type.get_method(name)
       if name in left_methods:
         matching_left_method = left_methods[name]
