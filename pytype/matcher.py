@@ -617,12 +617,17 @@ class AbstractMatcher(object):
     return left_methods
 
   def unimplemented_protocol_methods(self, left, other_type):
+    """Get a list of the protocol methods not implemented by `left`."""
     assert self.is_protocol(other_type)
-    methods = self._get_methods_dict(left)
-    unimplemented = [
-        method for method in other_type.abstract_methods
-        if method not in methods]
-    return unimplemented
+    if left.cls:
+      for cls in left.cls.data:
+        methods = self._get_methods_dict(cls)
+        unimplemented = [
+            method for method in other_type.abstract_methods
+            if method not in methods]
+        if unimplemented:
+          return unimplemented
+    return []
 
   def _match_against_protocol(self, left, other_type, subst, node, view):
     """Checks whether a type is compatible with a protocol.

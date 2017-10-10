@@ -1145,13 +1145,31 @@ class ErrorTest(test_inference.InferenceTest):
 
   def testProtocolMismatch(self):
     _, errors = self.InferAndCheck("""\
-      from __future__ import google_type_annotations
       class Foo(object): pass
       next(Foo())
     """)
     self.assertErrorLogIs(errors, [
-        (3, "wrong-arg-types", "__iter__, next")
+        (2, "wrong-arg-types", "__iter__, next")
     ])
+
+  def testProtocolMismatchPartial(self):
+    _, errors = self.InferAndCheck("""\
+      class Foo(object):
+        def __iter__(self):
+          return self
+      next(Foo())
+    """)
+    self.assertErrorLogIs(errors, [(
+        4, "wrong-arg-types", r"\n\s*next\s*$")])  # `next` on its own line
+
+  def testNotProtocol(self):
+    _, errors = self.InferAndCheck("""\
+      a = []
+      a.append(1)
+      a = "".join(a)
+    """)
+    self.assertErrorLogIs(errors, [(
+        3, "wrong-arg-types", r"\(.*List\[int\]\)$")])  # no protocol details
 
 
 if __name__ == "__main__":
