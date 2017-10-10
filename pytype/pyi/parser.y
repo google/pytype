@@ -365,6 +365,12 @@ importdef
       $$ = ctx->Call(kAddImport, "(NN)", $2, $4);
       CHECK($$, @$);
     }
+  | FROM '.' IMPORT from_list {
+      // Special-case "from . import" and pass in a __PACKAGE__ token that
+      // the Python parser code will rewrite to the current package name.
+      $$ = ctx->Call(kAddImport, "(sN)", "__PACKAGE__", $4);
+      CHECK($$, @$);
+    }
   ;
 
 import_items

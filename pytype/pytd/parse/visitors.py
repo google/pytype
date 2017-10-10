@@ -1717,7 +1717,11 @@ class QualifyRelativeNames(Visitor):
     self.package_name = package_name
 
   def VisitNamedType(self, node):
-    if node.name.startswith("."):
+    if node.name.startswith("__PACKAGE__."):
+      # Generated from "from . import foo" - see parser.y
+      name = self.package_name + node.name[len("__PACKAGE__"):]
+      return node.Replace(name=name)
+    elif node.name.startswith("."):
       path = self.package_name.split(".")
       name = node.name.lstrip(".")
       ndots = len(node.name) - len(name)

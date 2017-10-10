@@ -496,6 +496,25 @@ class ImportTest(test_inference.InferenceTest):
       self.assertErrorLogIs(
           err, [(1, "pyi-error", "Cannot resolve relative import ..bar")])
 
+  def testFromDotInPyi(self):
+    # from . import module
+    with utils.Tempdir() as d:
+      d.create_file("foo/a.pyi", "class X: ...")
+      d.create_file("foo/b.pyi", """\
+        from . import a
+        Y = a.X""")
+      d.create_file("top.py", """\
+        import foo.b
+        x = foo.b.Y() """)
+      ty = self.InferFromFile(filename=d["top.py"],
+                              pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        from typing import Type
+        import foo.a
+        foo = ...  # type: module
+        x = ...  # type: foo.a.X
+      """)
+
   def testFileImport1(self):
     with utils.Tempdir() as d:
       d.create_file("path/to/some/module.pyi",
