@@ -30,7 +30,7 @@ COMPAT_ITEMS = [
 PEP484_CAPITALIZED = {
     # The PEP 484 definition of built-in types.
     # E.g. "typing.List" is used to represent the "list" type.
-    "List", "Dict", "Tuple", "Set", "FrozenSet", "Generator", "Iterator", "Type"
+    "List", "Dict", "Tuple", "Set", "FrozenSet", "Generator", "Type"
 }
 
 

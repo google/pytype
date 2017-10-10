@@ -271,8 +271,8 @@ class ProtocolInferenceTest(test_inference.InferenceTest):
         return y
       """, deep=True)
     self.assertTypesMatchPytd(ty, """
-      from typing import Reversible
-      def f(x: Reversible) -> iterator
+      from typing import Iterator, Reversible
+      def f(x: Reversible) -> Iterator
     """)
 
   def test_iterable(self):
@@ -283,8 +283,8 @@ class ProtocolInferenceTest(test_inference.InferenceTest):
         return x.__iter__()
       """, deep=True)
     self.assertTypesMatchPytd(ty, """
-      from typing import Iterable
-      def f(x: Iterable) -> iterator
+      from typing import Iterable, Iterator
+      def f(x: Iterable) -> Iterator
     """)
 
   @unittest.skip("Iterator not implemented, breaks other functionality")

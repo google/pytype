@@ -565,10 +565,9 @@ class AbstractMatcher(object):
     if isinstance(other_type, abstract.Class):
       base = self._match_from_mro(left, other_type)
       if base is None:
-        protocol = self._get_protocol(other_type)
-        if protocol:
-          return self._match_against_protocol(left, other_type, protocol,
-                                              subst, node, view)
+        if self.is_protocol(other_type):
+          return self._match_against_protocol(left, other_type, subst, node,
+                                              view)
         return None
       else:
         return self._match_instance(
@@ -579,30 +578,22 @@ class AbstractMatcher(object):
       raise NotImplementedError(
           "Can't match instance %r against %r" % (left, other_type))
 
-  def _get_protocol(self, other_type):
+  def is_protocol(self, other_type):
     """Protocol matching other_type if it is a subtype of typing.Protocol.
 
     Args:
       other_type: A formal type of type abstract.Class
     Returns:
-      Protocol corresponding to other_type if it exists, None otherwise.
+      Whether other_type is a protocol.
     """
     if isinstance(other_type, abstract.ParameterizedClass):
       other_type = other_type.base_cls
     if isinstance(other_type, abstract.PyTDClass):
-      # typing.Iterator is automatically converted to __builtin__.iterator
-      # but we need typing.Iterator here since it is the protocol
-      # iterator is the only protocol that is automatically converted
-      if other_type.full_name == "__builtin__.iterator":
-        return other_type.vm.convert.name_to_value("typing.Iterator")
       for parent in other_type.pytd_cls.parents:
         if isinstance(
             parent, pytd.ClassType) and parent.name == "typing.Protocol":
-          return other_type
-    return None
-
-  def is_protocol(self, other_type):
-    return bool(self._get_protocol(other_type))
+          return True
+    return False
 
   def _fill_in_implicit_protocol_methods(self, methods):
     if "__getitem__" in methods and "__iter__" not in methods:
@@ -626,22 +617,19 @@ class AbstractMatcher(object):
     return left_methods
 
   def unimplemented_protocol_methods(self, left, other_type):
-    protocol = self._get_protocol(other_type)
-    assert protocol
+    assert self.is_protocol(other_type)
     methods = self._get_methods_dict(left)
     unimplemented = [
-        method for method in protocol.abstract_methods
+        method for method in other_type.abstract_methods
         if method not in methods]
     return unimplemented
 
-  def _match_against_protocol(self, left, other_type, protocol, subst, node,
-                              view):
+  def _match_against_protocol(self, left, other_type, subst, node, view):
     """Checks whether a type is compatible with a protocol.
 
     Args:
       left: A type.
       other_type: A formal type. E.g. abstract.Class or abstract.Union.
-      protocol: A formal type that is a protocol class.
       subst: The current type parameter assignment.
       node: The current CFG node.
       view: The current mapping of Variable to Value.
@@ -652,25 +640,24 @@ class AbstractMatcher(object):
       return subst
     left_methods = self._get_methods_dict(left)
     method_names_matched = all(
-        method in left_methods for method in protocol.abstract_methods)
+        method in left_methods for method in other_type.abstract_methods)
     if method_names_matched and isinstance(other_type,
                                            abstract.ParameterizedClass):
-      return self._match_parameterized_protocol(left_methods, other_type,
-                                                protocol, subst, node, view)
+      return self._match_parameterized_protocol(left_methods, other_type, subst,
+                                                node, view)
     elif method_names_matched:
       return subst
     else:
       return None
 
-  def _match_parameterized_protocol(self, left_methods, other_type, protocol,
-                                    subst, node, view):
+  def _match_parameterized_protocol(self, left_methods, other_type, subst, node,
+                                    view):
     """Checks whether left_methods is compatible with a parameterized protocol.
 
     Args:
       left_methods: A dictionary name -> method. method can either be a
         Variable or a pytd.Function.
       other_type: A formal type of type abstract.ParameterizedClass.
-      protocol: A formal type that is a protocol class.
       subst: The current type parameter assignment.
       node: The current CFG node.
       view: The current mapping of Variable to Value.
@@ -679,7 +666,7 @@ class AbstractMatcher(object):
     """
     params = other_type.type_parameters
     new_substs = []
-    for name in protocol.abstract_methods:
+    for name in other_type.abstract_methods:
       abstract_method = other_type.get_method(name)
       if name in left_methods:
         matching_left_method = left_methods[name]

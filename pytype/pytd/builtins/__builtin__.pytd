@@ -354,7 +354,7 @@ class bytearray(Sequence[int]):
     def ljust(self, width: int, ...) -> bytearray
     def lower(self) -> bytearray
     def lstrip(self, ...) -> bytearray
-    def partition(self, sep: str or int or bytearray or iterator) -> tuple[bytearray, bytearray, bytearray]
+    def partition(self, sep: str or int or bytearray or Iterator) -> tuple[bytearray, bytearray, bytearray]
     def pop(self, ...) -> int
     def remove(self, int: str or int) -> NoneType
     def replace(self, old: str or bytearray, new: str or bytearray, ...) -> bytearray
@@ -362,7 +362,7 @@ class bytearray(Sequence[int]):
     def rfind(self, sub: str or bytearray, ...) -> int
     def rindex(self, sub: str or bytearray, ...) -> int
     def rjust(self, width: int, ...) -> bytearray
-    def rpartition(self, sep: str or int or bytearray or iterator) -> tuple[bytearray, bytearray, bytearray]
+    def rpartition(self, sep: str or int or bytearray or Iterator) -> tuple[bytearray, bytearray, bytearray]
     def rsplit(self, sep: str or bytearray, ...) -> list[bytearray]
     def rsplit(self) -> list[bytearray]
     def rstrip(self, ...) -> bytearray
@@ -878,11 +878,6 @@ class type(Callable, Type[_T]):
     def __instancecheck__(self, object) -> bool: ...
     def __subclasscheck__(self, cls) -> bool: ...
     def mro(self) -> List[type]: ...
-
-class iterator(Iterator[_T]):
-    __slots__ = []
-    def __iter__(self) -> iterator[_T]
-    def next(self) -> _T
 
 class `callable-iterator`(Iterator[_T]):
     __slots__ = []

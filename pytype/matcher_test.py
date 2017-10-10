@@ -392,7 +392,7 @@ class MatcherTest(unittest.TestCase):
     self.assertNoMatch(left3, right)
 
   def testProtocolIterator(self):
-    left1 = self._convert_type("iterator", as_instance=True)
+    left1 = self._convert_type("Iterator", as_instance=True)
     left2 = self._convert("""\
       class A(object):
         def next(self): ...
