@@ -228,6 +228,41 @@ def program_to_dot(program, ignored, only_cfg=False):
   return sb.getvalue()
 
 
+def root_cause(binding, node, seen=()):
+  """Tries to determine why a binding isn't possible at a node.
+
+  This tries to find the innermost source that's still impossible. It only works
+  if the failure isn't due to a combination of bindings. (Use pytd/explain.py
+  for the latter)
+
+  Args:
+    binding: A binding, or a list of bindings.
+    node: The node at which (one of the) binding(s) is impossible.
+    seen: Internal. Bindings already looked at.
+
+  Returns:
+    A tuple (binding, node), with "binding" the innermost binding that's
+    not possible, and "node" the CFG node at which it isn't.
+  """
+  if isinstance(binding, (list, tuple)):
+    bindings = list(binding)
+  else:
+    bindings = [binding]
+  del binding
+  key = frozenset(bindings)
+  if key in seen:
+    return next(iter(bindings), None), node
+  for b in bindings:
+    if not node.HasCombination([b]):
+      for o in b.origins:
+        for source_set in o.source_sets:
+          cause, n = root_cause(list(source_set), o.where)
+          if cause is not None:
+            return cause, n
+      return b, node
+  return None, None
+
+
 def stack_trace(indent_level=0, limit=100):
   indent = " " * indent_level
   stack = [frame for frame in traceback.extract_stack()

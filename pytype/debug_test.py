@@ -106,6 +106,17 @@ class DebugTest(unittest.TestCase):
   def testTraceLogLevel(self):
     log.trace("hello world")
 
+  def testRootCause(self):
+    n1 = self.prog.NewCFGNode()
+    n2 = self.prog.NewCFGNode()
+    self.assertEqual((None, None), debug.root_cause([], n1))
+    v = self.prog.NewVariable()
+    b1 = v.AddBinding("foo", (), n2)  # not connected to n1
+    self.assertEqual((b1, n1), debug.root_cause([b1], n1))
+    v = self.prog.NewVariable()
+    b2 = v.AddBinding("foo", (b1,), n1)
+    self.assertEqual((b1, n1), debug.root_cause([b2], n1))
+
 
 if __name__ == "__main__":
   unittest.main()
