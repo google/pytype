@@ -147,7 +147,6 @@ class ParserTest(_ParserTestBase):
     self.check_error("\nx = 12.3", 2,
                      "Only '0.0' allowed as float literal")
 
-
   def test_string_constant(self):
     self.check("x = b''", "x = ...  # type: bytes")
     self.check("x = u''", "x = ...  # type: unicode")
@@ -727,6 +726,18 @@ class FunctionTest(_ParserTestBase):
                """\
       def foo() -> int: ...""")
 
+    # Accept and disregard type: ignore comments on a decorator
+    self.check("""\
+      @overload
+      def foo() -> int: ...
+      @overload  # type: ignore  # unsupported signature
+      def foo(bool) -> int: ...""",
+               """\
+      @overload
+      def foo() -> int: ...
+      @overload
+      def foo(bool) -> int: ...""")
+
     self.check("""\
       @abstractmethod
       def foo() -> int: ...""",
@@ -761,7 +772,7 @@ class FunctionTest(_ParserTestBase):
       def foo() -> int: ...""")
 
     # There are two separate coroutine decorators, async.coroutine and
-    # coroutine.coroutine. We are collapsing them into a single decorator for
+    # coroutines.coroutine. We are collapsing them into a single decorator for
     # now, though we should probably maintain the distinction at some point.
     self.check("""\
       @async.coroutine

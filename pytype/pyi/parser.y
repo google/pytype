@@ -461,7 +461,7 @@ decorators
   ;
 
 decorator
-  : '@' dotted_name { $$ = $2; }
+  : '@' dotted_name maybe_type_ignore { $$ = $2; }
   ;
 
 params
