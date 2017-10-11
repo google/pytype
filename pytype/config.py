@@ -213,7 +213,8 @@ class Options(object):
         "-v", "--verbosity", type="int", action="store",
         dest="verbosity", default=1,
         help=("Set logging verbosity: "
-              "-1=quiet, 0=fatal, 1=error (default), 2=warn, 3=info, 4=debug"))
+              "-1=quiet, 0=fatal, 1=error (default), 2=warn, 3=info, 4=debug, "
+              "5=trace"))
     o.add_option(
         "--verify-pickle", action="store_true", default=False,
         dest="verify_pickle",
@@ -319,6 +320,7 @@ class Options(object):
     self.pythonpath = pythonpath.split(os.pathsep)
 
   def _store_python_version(self, python_version):
+    """Configure the python version."""
     self.python_version = tuple(map(int, python_version.split(".")))
     if len(self.python_version) != 2:
       raise optparse.OptionValueError(
