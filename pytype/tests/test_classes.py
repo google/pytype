@@ -1313,6 +1313,14 @@ class ClassesTest(test_inference.InferenceTest):
           return [x for x in foo.f()]
         """, pythonpath=[d.path])
 
+  def testInstantiateWithAbstractDict(self):
+    ty = self.Infer("""
+      X = type("", (), dict())
+    """)
+    self.assertTypesMatchPytd(ty, """
+      X = ...  # type: ?
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

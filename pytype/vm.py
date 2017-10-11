@@ -492,9 +492,12 @@ class VirtualMachine(object):
           self.annotations_util.get_type_parameters(v)
           for v in b.type_parameters.values()):
         self.errorlog.not_supported_yet(self.frames, "creating generic classes")
-    if isinstance(class_dict, abstract.Unsolvable):
+    if (isinstance(class_dict, abstract.Unsolvable) or
+        not isinstance(class_dict, abstract.PythonConstant)):
       # An unsolvable appears here if the vm hit maximum depth and gave up on
-      # analyzing the class we're now building.
+      # analyzing the class we're now building. Otherwise, if class_dict isn't
+      # a constant, then it's an abstract dictionary, and we don't have enough
+      # information to continue building the class.
       var = self.convert.create_new_unsolvable(node)
     else:
       if cls_var is None:
