@@ -553,6 +553,10 @@ class _Parser(object):
       if value != 0:
         raise ParseError("Only '0' allowed as int literal")
       t = pytd.NamedType("int")
+    elif isinstance(value, float):
+      if value != 0.0:
+        raise ParseError("Only '0.0' allowed as float literal")
+      t = pytd.NamedType("float")
     else:
       t = value
     return pytd.Constant(name, t)

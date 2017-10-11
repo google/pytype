@@ -140,8 +140,13 @@ class ParserTest(_ParserTestBase):
     self.check("x = ...", "x = ...  # type: Any", "from typing import Any")
     self.check("x = ...  # type: str")
     self.check("x = 0", "x = ...  # type: int")
+    self.check("x = 0.0", "x = ...  # type: float")
     self.check_error("\nx = 123", 2,
                      "Only '0' allowed as int literal")
+    self.check("x = 0.0", "x = ...  # type: float")
+    self.check_error("\nx = 12.3", 2,
+                     "Only '0.0' allowed as float literal")
+
 
   def test_string_constant(self):
     self.check("x = b''", "x = ...  # type: bytes")
