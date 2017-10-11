@@ -502,7 +502,7 @@ class PythonConstant(object):
     return repr(self.pyval)
 
   def __repr__(self):
-    return "<%s %s>" % (self.name, self.str_of_constant(str))
+    return "<%s %r>" % (self.name, self.str_of_constant(str))
 
   def compatible_with(self, logical_value):
     return bool(self.pyval) == logical_value

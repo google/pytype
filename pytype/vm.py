@@ -1645,12 +1645,15 @@ class VirtualMachine(object):
   def byte_BUILD_TUPLE(self, state, op):
     count = op.arg
     state, elts = state.popn(count)
-    return state.push(self.convert.build_tuple(state.node, elts))
+    state = state.push(self.convert.build_tuple(state.node, elts))
+    # TODO(kramm): Start a new CFG node here. E.g. "x=(); x+=(42,)".
+    return state
 
   def byte_BUILD_LIST(self, state, op):
     count = op.arg
     state, elts = state.popn(count)
-    return state.push(self.convert.build_list(state.node, elts))
+    state = state.push(self.convert.build_list(state.node, elts))
+    return state.forward_cfg_node()
 
   def byte_BUILD_SET(self, state, op):
     count = op.arg
