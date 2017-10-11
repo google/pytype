@@ -998,6 +998,23 @@ class MethodsTest(test_inference.InferenceTest):
       z = ...  # type: int
     """)
 
+  def testAnnotatedSelf(self):
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      class Foo(object):
+        def __init__(x: int):
+          pass
+    """)
+    # TODO(rechen): why is there no line number for this error? It's also
+    # unclear whether we want this error at all. A more-or-less legitimate use
+    # case for annotating self:
+    #   class Foo(object):
+    #     def _make_method(x: int):
+    #       return lambda _: x
+    #   return_1 = _make_method(1)
+    #   return_2 = _make_method(2)
+    self.assertErrorLogIs(errors, [(0, "wrong-arg-types", r"int.*Foo")])
+
 
 if __name__ == "__main__":
   test_inference.main()

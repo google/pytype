@@ -186,15 +186,22 @@ class CallTracer(vm.VirtualMachine):
         # call_function will check fallback_to_unsolvable if a DictKeyMissing or
         # FailedFunctionCall error is raised when the target function is called.
         # DictKeyMissing doesn't trigger call_with_fake_args, so that shouldn't
-        # be raised again, and generating fake arguments should avoid any
-        # FailedFunctionCall errors. To prevent an infinite recursion loop, set
-        # fallback_to_unsolvable to False just in case.
-        # This means any additional errors that may be raised will be passed to
-        # the call_function that called this method in the first place.
-        node2, ret = self.call_function(node1,
-                                        funcb.AssignToNewVariable(),
-                                        args,
-                                        fallback_to_unsolvable=False)
+        # be raised again, but FailedFunctionCall may be re-raised.  To prevent
+        # an infinite recursion loop, set fallback_to_unsolvable to False.
+        try:
+          node2, ret = self.call_function(node1,
+                                          funcb.AssignToNewVariable(),
+                                          args,
+                                          fallback_to_unsolvable=False)
+        except abstract.FailedFunctionCall:
+          # All errors related to this __init__ call have already been logged,
+          # so we can swallow any encountered here. It's possible to hit an
+          # error even when calling with fake args if, e.g., the function is
+          # annotated incorrectly:
+          #   class Foo(object):
+          #     def __init__(self: int):  # error: expected int, got Foo
+          #       pass
+          continue
         nodes.append(node2)
         rets.append(ret)
 
