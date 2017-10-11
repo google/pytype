@@ -34,6 +34,28 @@ class ListTest(test_inference.InferenceTest):
       b = ...  # type: List[Union[int, str]]
     """)
 
+  def test_inplace_mutates(self):
+    ty = self.Infer("""
+      a = []
+      b = a
+      a += [42]
+    """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      from typing import List, Union
+      a = ...  # type: List[int]
+      b = ...  # type: List[int]
+    """)
+
+  def test_add_string(self):
+    ty = self.Infer("""
+      a = []
+      a += "foo"
+    """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      from typing import List, Union
+      a = ...  # type: List[str]
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

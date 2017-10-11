@@ -283,6 +283,20 @@ class TupleTest(test_inference.InferenceTest):
   def testAddTwice(self):
     self.assertNoErrors("() + () + ()")
 
+  def testInplaceAdd(self):
+    ty = self.Infer("""
+      a = ()
+      a += (42,)
+      b = ()
+      b += (42,)
+      b += ("foo",)
+    """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Tuple, Union
+      a = ...  # type: Tuple[int, ...]
+      b = ...  # type: Tuple[Union[int, str], ...]
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()

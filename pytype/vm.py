@@ -795,6 +795,7 @@ class VirtualMachine(object):
     if attr is None:
       log.info("No inplace operator %s on %r", iname, x)
       name = iname.replace("i", "", 1)  # __iadd__ -> __add__ etc.
+      state = state.forward_cfg_node()
       state, ret = self.call_binary_operator(
           state, name, x, y, report_errors=True)
     else:
@@ -1645,9 +1646,7 @@ class VirtualMachine(object):
   def byte_BUILD_TUPLE(self, state, op):
     count = op.arg
     state, elts = state.popn(count)
-    state = state.push(self.convert.build_tuple(state.node, elts))
-    # TODO(kramm): Start a new CFG node here. E.g. "x=(); x+=(42,)".
-    return state
+    return state.push(self.convert.build_tuple(state.node, elts))
 
   def byte_BUILD_LIST(self, state, op):
     count = op.arg

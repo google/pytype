@@ -61,7 +61,7 @@ def get_atomic_python_constant(variable, constant_type=None):
   """Get the concrete atomic Python value stored in this variable.
 
   This is used for things that are stored in cfg.Variable, but we
-  need the actual data in order to proceed. E.g. function / class defintions.
+  need the actual data in order to proceed. E.g. function / class definitions.
 
   Args:
     variable: A cfg.Variable. It can only have one possible value.
