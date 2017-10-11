@@ -277,6 +277,13 @@ class Options(object):
     else:
       self.check = check
 
+  @uses(["output"])
+  def _store_output_pickled(self, filename):
+    if filename is not None and self.output is None:
+      raise optparse.OptionConflictError("Can't use without --output",
+                                         "output_pickled")
+    self.output_pickled = filename
+
   @uses(["input"])
   def _store_generate_builtins(self, generate_builtins):
     if generate_builtins:
