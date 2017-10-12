@@ -14,6 +14,7 @@ import optparse
 import sys
 
 
+from pytype import utils
 from pytype.pyi import parser
 from pytype.pytd import optimize
 from pytype.pytd import pytd
@@ -54,15 +55,19 @@ def parse_options(args):
 def main():
   options, filenames = parse_options(sys.argv)
   unused_executable = filenames.pop(0)
-  # TODO(mdemello): Factor out the validation in config.py to reuse here.
-  python_version = tuple(map(int, options.python_version.split(".")))
+  python_version = utils.parse_version(options.python_version)
+  try:
+    utils.validate_version(python_version)
+  except utils.UsageError as e:
+    sys.stderr.write("Usage error: %s\n" % e.message)
+    sys.exit(1)
 
   if len(filenames) == 1:
     filename_in, filename_out = filenames[0], None
   elif len(filenames) == 2:
     filename_in, filename_out = filenames
   else:
-    print >>sys.stderr, "Need one or two filenames"
+    sys.stderr.write("Need one or two filenames")
     sys.exit(1)
 
   with open(filename_in) as fi:

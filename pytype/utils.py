@@ -27,9 +27,46 @@ import types
 DEEP_VARIABLE_LIMIT = 1024
 
 
-def format_version(ver):
+class UsageError(Exception):
+  """Raise this for top-level usage errors."""
+  pass
+
+
+def format_version(python_version):
   """Format a version tuple into a dotted version string."""
-  return ".".join([str(x) for x in ver])
+  return ".".join([str(x) for x in python_version])
+
+
+def parse_version(version_string):
+  """Parse a version string like 2.7 into a tuple."""
+  return tuple(map(int, version_string.split(".")))
+
+
+def validate_version(python_version):
+  """Raise an exception if the python version is unsupported."""
+  if len(python_version) != 2:
+    # This is typically validated in the option parser, but check here too in
+    # case we get python_version via a different entry point.
+    raise UsageError("python_version must be <major>.<minor>: %r" %
+                     format_version(python_version))
+  if (3, 0) <= python_version <= (3, 3):
+    # These have odd __build_class__ parameters, store co_code.co_name fields
+    # as unicode, and don't yet have the extra qualname parameter to
+    # MAKE_FUNCTION. Jumping through these extra hoops is not worth it, given
+    # that typing.py isn't introduced until 3.5, anyway.
+    raise UsageError(
+        "Python versions 3.0 - 3.3 are not supported. Use 3.4 and higher.")
+  if python_version > (3, 6):
+    # We have an explicit per-minor-version mapping in opcodes.py
+    raise UsageError("Python versions > 3.6 are not yet supported.")
+
+
+def is_python_2(python_version):
+  return python_version[0] == 2
+
+
+def is_python_3(python_version):
+  return python_version[0] == 3
 
 
 def replace_extension(filename, new_extension):

@@ -1988,7 +1988,7 @@ class VirtualMachine(object):
       return state.set_why("exception")
 
   def byte_RAISE_VARARGS(self, state, op):
-    if self.python_version[0] == 2:
+    if utils.is_python_2(self.python_version):
       return self.byte_RAISE_VARARGS_PY2(state, op)
     else:
       return self.byte_RAISE_VARARGS_PY3(state, op)
@@ -2006,7 +2006,7 @@ class VirtualMachine(object):
     state = state.push(exit_method)
     state, enter = self.load_attr(state, ctxmgr, "__enter__")
     state, ctxmgr_obj = self.call_function_with_state(state, enter, ())
-    if self.python_version[0] == 2:
+    if utils.is_python_2(self.python_version):
       state = self.push_block(state, "with", op, op.target, level)
     else:
       assert self.python_version[0] == 3
@@ -2034,7 +2034,7 @@ class VirtualMachine(object):
 
   def _get_extra_function_args(self, state, arg):
     """Get function annotations and defaults from the stack. (Python3.5-)."""
-    if self.python_version[0] == 2:
+    if utils.is_python_2(self.python_version):
       num_pos_defaults = arg & 0xffff
       num_kw_defaults = 0
     else:
@@ -2137,7 +2137,7 @@ class VirtualMachine(object):
 
   def byte_MAKE_FUNCTION(self, state, op):
     """Create a function and push it onto the stack."""
-    if self.python_version[0] == 2:
+    if utils.is_python_2(self.python_version):
       name = None
     else:
       assert self.python_version[0] == 3
@@ -2163,7 +2163,7 @@ class VirtualMachine(object):
 
   def byte_MAKE_CLOSURE(self, state, op):
     """Make a function that binds local variables."""
-    if self.python_version[0] == 2:
+    if utils.is_python_2(self.python_version):
       # The py3 docs don't mention this change.
       name = None
     else:

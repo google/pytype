@@ -2839,7 +2839,7 @@ class InterpreterFunction(Function):
                for u in args.posargs]
     kws = {k: u.AssignToNewVariable(node)
            for k, u in args.namedargs.items()}
-    if (self.vm.python_version[0] == 2 and
+    if (utils.is_python_2(self.vm.python_version) and
         self.code.co_name in ["<setcomp>", "<dictcomp>", "<genexpr>"]):
       # This code is from github.com/nedbat/byterun. Apparently, Py2 doesn't
       # know how to inspect set comprehensions, dict comprehensions, or

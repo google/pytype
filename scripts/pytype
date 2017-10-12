@@ -20,6 +20,7 @@ from pytype import errors
 from pytype import infer
 from pytype import load_pytd
 from pytype import metrics
+from pytype import utils
 from pytype.pyc import pyc
 from pytype.pyi import parser
 from pytype.pytd import optimize
@@ -39,7 +40,7 @@ def _read_source_file(input_filename):
     with open(input_filename, "r") as fi:
       return fi.read()
   except IOError:
-    raise pyc.UsageError("Could not load input file %s" % input_filename)
+    raise utils.UsageError("Could not load input file %s" % input_filename)
 
 
 def check_pyi(input_filename, errorlog, options):
@@ -142,7 +143,7 @@ def process_one_file(input_filename,
                                  errorlog=errorlog,
                                  options=options,
                                  loader=loader)
-  except pyc.UsageError as e:
+  except utils.UsageError as e:
     sys.stderr.write("Usage error: %s\n" % e.message)
     sys.exit(1)
   except pyc.CompileError as e:
@@ -229,7 +230,7 @@ class _ProfileContext(object):
 def main(argv):
   try:
     options = config.Options(argv)
-  except config.OptParseError as e:
+  except (config.OptParseError, utils.UsageError) as e:
     print >>sys.stderr, str(e)
     sys.exit(1)
 

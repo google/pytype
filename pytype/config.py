@@ -321,22 +321,12 @@ class Options(object):
 
   def _store_python_version(self, python_version):
     """Configure the python version."""
-    self.python_version = tuple(map(int, python_version.split(".")))
+    self.python_version = utils.parse_version(python_version)
     if len(self.python_version) != 2:
       raise optparse.OptionValueError(
           "--python_version must be <major>.<minor>: %r" % python_version)
-    if (3, 0) <= self.python_version <= (3, 3):
-      # These have odd __build_class__ parameters, store co_code.co_name fields
-      # as unicode, and don't yet have the extra qualname parameter to
-      # MAKE_FUNCTION. Jumping through these extra hoops is not worth it, given
-      # that typing.py isn't introduced until 3.5, anyway.
-      raise optparse.OptParseError(
-          "Python versions 3.0 - 3.3 are not supported. "
-          "Use 3.4 and higher.")
-    if self.python_version > (3, 6):
-      # We have an explicit per-minor-version mapping in opcodes.py
-      raise optparse.OptParseError(
-          "Python versions > 3.6 are not yet supported.")
+    # Check that we have a version supported by pytype.
+    utils.validate_version(self.python_version)
 
   def _store_disable(self, disable):
     if disable:
