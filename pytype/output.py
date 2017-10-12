@@ -122,7 +122,9 @@ class Converter(object):
       if not self._detailed and v.official_name is None:
         return pytd.AnythingType()
       if seen is None:
-        seen = set()
+        # We make the set immutable to ensure that the seen instances for
+        # different parameter values don't interfere with one another.
+        seen = frozenset()
       if instance in seen:
         # We have a circular dependency in our types (e.g., lst[0] == lst). Stop
         # descending into the type parameters.
@@ -130,7 +132,7 @@ class Converter(object):
       else:
         type_params = tuple(t.name for t in v.template)
       if instance is not None:
-        seen.add(instance)
+        seen |= {instance}
       type_arguments = self._value_to_parameter_types(
           node, v, instance, type_params, seen, view)
       base = pytd_utils.NamedTypeWithModule(v.official_name or v.name, v.module)

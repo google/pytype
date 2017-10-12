@@ -117,6 +117,18 @@ class ContainerTest(test_inference.InferenceTest):
         ty.Lookup("f"),
         ((), pytd.GenericType(self.list, (self.int,))))
 
+  def testListSetItem(self):
+    ty = self.Infer("""
+      layers = [((),)]
+      for x, in layers:
+        layers[0] = x,
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import List, Tuple
+      layers = ...  # type: List[Tuple[Tuple[nothing, ...]]]
+      x = ...  # type: Tuple[nothing, ...]
+    """)
+
   def testListConcat(self):
     ty = self.Infer("""
       def f():
