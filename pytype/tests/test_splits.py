@@ -315,10 +315,14 @@ class SplitTest(test_inference.InferenceTest):
       def UpperIfString(value: Union[unicode, str, int]):
         if isinstance(value, (unicode, str)):
           return value.upper()
+      def ReturnIfNumeric(value: Union[str, int]):
+        if isinstance(value, (int, (float, complex))):
+          return value
     """, deep=True)
     self.assertTypesMatchPytd(ty, """
       from typing import Optional, Union
       def UpperIfString(value: Union[int, unicode]) -> Optional[Union[str, unicode]]
+      def ReturnIfNumeric(value: Union[str, int]) -> Optional[int]
     """)
 
   def testIsInstanceAliased(self):
@@ -333,7 +337,7 @@ class SplitTest(test_inference.InferenceTest):
     """, deep=True)
     self.assertTypesMatchPytd(ty, """
       from typing import Callable, Optional, Tuple, Union
-      def myisinstance(object, class_or_type_or_tuple: Union[Tuple[type, ...], type]) -> bool: ...
+      def myisinstance(object, class_or_type_or_tuple: Union[Tuple[Union[Tuple[type, ...], type], ...], type]) -> bool: ...
       def UpperIfString(value: Union[int, unicode]) -> Optional[Union[str, unicode]]
     """)
 
@@ -350,6 +354,8 @@ class SplitTest(test_inference.InferenceTest):
       def d2(): return "y" if issubclass(B, object) else 0
       def d3(): return "y" if issubclass(B, C) else 0
       def d4(): return "y" if issubclass(B, (C, A)) else 0
+      def d5(): return "y" if issubclass(B, ((C, str), A, (int, object))) else 0
+      def d6(): return "y" if issubclass(B, ((C, str), int, (float, A))) else 0
       # Ambiguous results
       def a1(x): return "y" if issubclass(x, A) else 0
     """, deep=True)
@@ -360,6 +366,8 @@ class SplitTest(test_inference.InferenceTest):
       def d2() -> str: ...
       def d3() -> int: ...
       def d4() -> str: ...
+      def d5() -> str: ...
+      def d6() -> str: ...
       def a1(x) -> Union[int, str]: ...
 
       class A(object):

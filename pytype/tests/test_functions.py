@@ -592,7 +592,7 @@ class TestFunctions(test_inference.InferenceTest):
       from typing import Any, Callable, Tuple, Union
       def f(isinstance = ...) -> None
       def g() -> None
-      def h() -> Callable[[Any, Union[Tuple[type, ...], type]], bool]
+      def h() -> Callable[[Any, Union[Tuple[Union[Tuple[type, ...], type], ...], type]], bool]: ...
     """)
 
   def test_wrong_keyword(self):

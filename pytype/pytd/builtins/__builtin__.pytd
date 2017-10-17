@@ -14,6 +14,11 @@ _K2 = TypeVar('_K2')
 _V2 = TypeVar('_V2')
 _NUMBER = TypeVar('_NUMBER', bound=complex)
 
+# isinstance() and issubclass() can take a type or an arbitrarily nested
+# tuple of types. This adds support for a few levels; in theory we want
+# TypeTuple = type or tuple[TypeTuple]
+TypeTuple = type or tuple[type or tuple[type, ...], ...]
+
 def __import__(name: str or unicode or bytearray, ...) -> module
 def abs(x) -> ?
 def all(iterable) -> bool
@@ -54,8 +59,8 @@ def hash(obj) -> int
 def hex(number: int) -> str
 def id(obj) -> int
 def intern(string: str or bytearray) -> str
-def isinstance(object, class_or_type_or_tuple: tuple[type, ...] or type) -> bool
-def issubclass(cls: type, class_or_type_or_tuple: tuple[type, ...] or type) -> bool
+def isinstance(object, class_or_type_or_tuple: TypeTuple) -> bool
+def issubclass(cls: type, class_or_type_or_tuple: TypeTuple) -> bool
 def iter(collection: bytearray) -> bytearray_iterator
 def iter(collection: list[_T]) -> listiterator[_T]
 def iter(collection: tuple[_T, ...]) -> tupleiterator[_T]
