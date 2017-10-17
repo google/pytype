@@ -105,6 +105,15 @@ class Options(object):
         help=("Information for mapping import .pytd to files. "
               "This options is incompatible with --pythonpath."))
     o.add_option(
+        "--imports_info_separator", type="string", action="store",
+        dest="imports_map_separator", default=None,
+        help=(
+            "The separator between key and value in each line of the "
+            "imports_info file. A ValueError will be raised, if this string is "
+            "not exactly once in each line of the file. If this is not "
+            "specified shlex.split will be used to split key and value. shlex "
+            "has a large overhead."))
+    o.add_option(
         "-m", "--main", action="store_true",
         dest="main_only", default=False,
         help=("Only analyze the main method and everything called from it"))
@@ -346,7 +355,7 @@ class Options(object):
       raise optparse.OptParseError(err)
     self.python_exe = python_exe
 
-  @uses(["pythonpath", "output", "verbosity"])
+  @uses(["pythonpath", "output", "verbosity", "imports_map_separator"])
   def _store_imports_map(self, imports_map):
     """Postprocess --imports_info."""
     if imports_map:
@@ -355,7 +364,7 @@ class Options(object):
             "Not allowed with --pythonpath", "imports_info")
 
       self.imports_map = imports_map_loader.build_imports_map(
-          imports_map, self.output)
+          imports_map, self.output, self.imports_map_separator)
     else:
       self.imports_map = None
 
