@@ -3,7 +3,6 @@
 import collections
 import logging
 import os
-import shlex
 import textwrap
 
 log = logging.getLogger(__name__)
