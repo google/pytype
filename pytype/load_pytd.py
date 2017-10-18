@@ -22,13 +22,14 @@ class Module(object):
       unique.
     ast: The parsed PyTD. Internal references will be resolved, but
       NamedType nodes referencing other modules might still be unresolved.
+    dirty: The initial value of the dirty attribute.
   """
 
-  def __init__(self, module_name, filename, ast):
+  def __init__(self, module_name, filename, ast, dirty=True):
     self.module_name = module_name
     self.filename = filename
     self.ast = ast
-    self.dirty = True
+    self.dirty = dirty
 
 
 class BadDependencyError(Exception):
@@ -67,9 +68,11 @@ class Loader(object):
         options.python_version)
     self._modules = {
         "__builtin__":
-        Module("__builtin__", self.PREFIX + "__builtin__", self.builtins),
+        Module("__builtin__", self.PREFIX + "__builtin__", self.builtins,
+               dirty=False),
         "typing":
-        Module("typing", self.PREFIX + "typing", self.typing)
+        Module("typing", self.PREFIX + "typing", self.typing,
+               dirty=False)
     }
     self._concatenated = None
     # Paranoid verification that pytype.main properly checked the flags:
