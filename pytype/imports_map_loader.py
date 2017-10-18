@@ -9,18 +9,7 @@ import textwrap
 log = logging.getLogger(__name__)
 
 
-def _string_split(line, separator):
-  if separator is None:
-    return shlex.split(line)
-  parts = line.split(separator)
-  if len(parts) != 2:
-    raise ValueError(
-        "The line: '%s' should contain the separator string '%s' exactly once."
-        % (line, separator))
-  return parts
-
-
-def _read_imports_map(options_info_path, separator):
+def _read_imports_map(options_info_path):
   """Read the imports_map file, fold duplicate entries into a multimap."""
   if options_info_path is None:
     return None
@@ -29,7 +18,7 @@ def _read_imports_map(options_info_path, separator):
     for line in fi:
       line = line.strip()
       if line:
-        short_path, path = _string_split(line, separator)
+        short_path, path = line.split(" ", 1)
         short_path, _ = os.path.splitext(short_path)  # drop extension
         imports_multimap[short_path].add(path)
   # Sort the multimap. Move items with '#' in the base name, generated for
@@ -79,8 +68,7 @@ def _validate_map(imports_map, output):
         raise AssertionError("bad import map")
 
 
-def build_imports_map(
-    options_info_path, output=None, imports_map_separator=None):
+def build_imports_map(options_info_path, output=None):
   """Create a file mapping from a .imports_info file.
 
   Builds a dict of short_path to full name
@@ -90,11 +78,10 @@ def build_imports_map(
     options_info_path: The file with the info (may be None, for do-nothing)
     output: The output file from the command line. When validating
              imports_info, this output should *not* exist.
-    imports_map_separator: String used to split key and value.
   Returns:
     Dict of .py short_path to list of .pytd path or None if no options_info_path
   """
-  imports_multimap = _read_imports_map(options_info_path, imports_map_separator)
+  imports_multimap = _read_imports_map(options_info_path)
 
   # Output warnings for all multiple
   # mappings and keep the lexicographically first.
