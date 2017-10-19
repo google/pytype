@@ -231,6 +231,10 @@ class Options(object):
         dest="memory_snapshots",
         help=("Enable tracemalloc snapshot metrics. Currently requires "
               "a version of Python with tracemalloc patched in."))
+    o.add_option(
+        "--show-config", action="store_true",
+        dest="show_config",
+        help=("Display all config variables and exit."))
     return o
 
   def _postprocess_options(self, names):
@@ -268,6 +272,11 @@ class Options(object):
       else:
         setattr(self, node.name, value)
 
+  def __repr__(self):
+    return "\n".join(["%s: %r" % (k, v)
+                      for k, v in sorted(self.__dict__.iteritems())
+                      if not k.startswith("_")])
+
   @uses(["output"])
   def _store_check(self, check):
     if check is None:
@@ -285,13 +294,13 @@ class Options(object):
                                          "output_pickled")
     self.output_pickled = filename
 
-  @uses(["input"])
+  @uses(["input", "show_config"])
   def _store_generate_builtins(self, generate_builtins):
     if generate_builtins:
       if self.input:
         raise optparse.OptionConflictError("Not allowed with an input file",
                                            "generate-builtins")
-    elif not self.input:
+    elif not self.input and not self.show_config:
       raise optparse.OptParseError("Need a filename.")
     self.generate_builtins = generate_builtins
 

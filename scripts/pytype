@@ -234,6 +234,10 @@ def main(argv):
     print >>sys.stderr, str(e)
     sys.exit(1)
 
+  if options.show_config:
+    print options
+    sys.exit(1)
+
   with _ProfileContext(options.profile):
     with metrics.MetricsContext(options.metrics):
       with metrics.StopWatch("total_time"):
