@@ -43,6 +43,11 @@ def Precompile(filename, python_version):
   utils.SavePickle(data, filename)
 
 
+def IsCached():
+  """Returns None if the builtins are not cached."""
+  return _cached_builtins_pytd
+
+
 def LoadPrecompiled(filename):
   """Load precompiled builtins from the specified file."""
   global _cached_builtins_pytd
