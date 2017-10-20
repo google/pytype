@@ -50,6 +50,8 @@ def IsCached():
 
 def LoadPrecompiled(filename):
   """Load precompiled builtins from the specified file."""
+  # TODO(steenbuck): This should check that the python_version in the current
+  # process is the same as the one used to generate the cached file.
   global _cached_builtins_pytd
   assert _cached_builtins_pytd is None
   _cached_builtins_pytd = utils.LoadPickle(filename)
