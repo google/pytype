@@ -176,6 +176,9 @@ def program_to_dot(program, ignored, only_cfg=False):
   def objname(n):
     return n.__class__.__name__ + str(id(n))
 
+  def objrepr(n):
+    return repr(n.data)[:10].replace("\"", "\\\"").replace("{", r"\{")
+
   print("cfg nodes=%d, vals=%d, variables=%d" % (
       len(program.cfg_nodes),
       sum(len(v.bindings) for v in program.variables),
@@ -209,7 +212,7 @@ def program_to_dot(program, ignored, only_cfg=False):
       sb.write("%s -> %s [arrowhead=none];\n" %
                (objname(variable), objname(val)))
       sb.write("%s[label=\"%s@0x%x\",fillcolor=%s];\n" %
-               (objname(val), repr(val.data)[:10], id(val.data),
+               (objname(val), objrepr(val), id(val.data),
                 "white" if val.origins else "red"))
       for loc, srcsets in val.origins:
         if loc == program.entrypoint:

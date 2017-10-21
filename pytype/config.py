@@ -368,6 +368,13 @@ class Options(object):
     else:
       self.imports_map = None
 
+  @uses(["output_cfg"])
+  def _store_output_typegraph(self, output_typegraph):
+    if self.output_cfg and output_typegraph:
+      raise optparse.OptionConflictError(
+          "Can output CFG or typegraph, but not both", "output-typegraph")
+    self.output_typegraph = output_typegraph
+
   @uses(["report_errors"])
   def _store_output_errors_csv(self, output_errors_csv):
     if output_errors_csv and not self.report_errors:

@@ -196,6 +196,14 @@ class PytypeTest(unittest.TestCase):
     self._RunPytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=True, returncode=True)
 
+  def testCfgTypegraphConflict(self):
+    self._SetUpChecking("simple.py")
+    output_path = self._TmpPath("simple.svg")
+    self.pytype_args["--output-cfg"] = output_path
+    self.pytype_args["--output-typegraph"] = output_path
+    self._RunPytype(self.pytype_args)
+    self.assertOutputStateMatches(stdout=False, stderr=True, returncode=True)
+
   def testCheckInferConflict(self):
     self.pytype_args["--check"] = self.INCLUDE
     self.pytype_args["--output"] = "-"

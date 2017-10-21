@@ -703,22 +703,18 @@ def infer_types(src, errorlog, options, loader,
     ast = ast.Visit(visitors.RemoveUnknownClasses())
     # Remove "~list" etc.:
     ast = convert_structural.extract_local(ast)
-  if options.output_cfg or options.output_typegraph:
-    if options.output_cfg and options.output_typegraph:
-      raise AssertionError("Can output CFG or typegraph, but not both")
-    dot = debug.program_to_dot(
-        tracer.program, set([]), bool(options.output_cfg))
-    proc = subprocess.Popen(["/usr/bin/dot", "-T", "svg", "-o",
-                             options.output_cfg or options.output_typegraph],
-                            stdin=subprocess.PIPE)
-    proc.stdin.write(dot)
-    proc.stdin.close()
-
   _maybe_output_debug(options, tracer.program)
   return ast, builtins_pytd
 
 
 def _maybe_output_debug(options, program):
+  if options.output_cfg or options.output_typegraph:
+    dot = debug.program_to_dot(program, set([]), bool(options.output_cfg))
+    proc = subprocess.Popen(["/usr/bin/dot", "-T", "svg", "-o",
+                             options.output_cfg or options.output_typegraph],
+                            stdin=subprocess.PIPE)
+    proc.stdin.write(dot)
+    proc.stdin.close()
   if options.output_debug:
     text = debug.program_to_text(program)
     if options.output_debug == "-":
