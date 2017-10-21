@@ -37,7 +37,8 @@ class PytypeTest(unittest.TestCase):
 
   def tearDown(self):
     for f in self.tmp_files:
-      os.remove(f)
+      if os.path.exists(f):
+        os.remove(f)
 
   def _ResetPytypeArgs(self):
     self.pytype_args = {"--python_exe": self.PYTHON_EXE,
@@ -157,13 +158,13 @@ class PytypeTest(unittest.TestCase):
     self.assertTrue(self._ParseString(self.stdout).ASTeq(
         self._ParseString(expected_pyi)), message)
 
-  def GeneratePickledSimpleFile(self, tmp_dir, pickle_name):
-    pickled_location = os.path.join(tmp_dir.path, pickle_name)
-    self.pytype_args["--pythonpath"] = tmp_dir.path
+  def GeneratePickledSimpleFile(self, pickle_name):
+    pickled_location = os.path.join(self.tmp_dir, pickle_name)
+    self.pytype_args["--pythonpath"] = self.tmp_dir
     self.pytype_args["--output-pickled"] = pickled_location
     self.pytype_args["--module-name"] = "simple"
     self.pytype_args["--verify-pickle"] = self.INCLUDE
-    self.pytype_args["--output"] = os.path.join(tmp_dir.path, "unused_pyi")
+    self.pytype_args["--output"] = os.path.join(self.tmp_dir, "unused_pyi")
     self.pytype_args[self._DataPath("simple.py")] = self.INCLUDE
     self._RunPytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=False, returncode=0)
@@ -172,25 +173,23 @@ class PytypeTest(unittest.TestCase):
 
   def testPickledFileStableness(self):
     # Tests that the pickled format is stable under a constant PYTHONHASHSEED.
-    with utils.Tempdir() as d:
-      l_1 = self.GeneratePickledSimpleFile(d, "simple1.pickled")
-      l_2 = self.GeneratePickledSimpleFile(d, "simple2.pickled")
-      with open(l_1, "rb") as f_1:
-        with open(l_2, "rb") as f_2:
-          self.assertEqual(f_1.read(), f_2.read())
+    l_1 = self.GeneratePickledSimpleFile("simple1.pickled")
+    l_2 = self.GeneratePickledSimpleFile("simple2.pickled")
+    with open(l_1, "rb") as f_1:
+      with open(l_2, "rb") as f_2:
+        self.assertEqual(f_1.read(), f_2.read())
 
   def testGeneratePickledAst(self):
-    with utils.Tempdir() as d:
-      pickled_location = os.path.join(d.path, "simple.pickled")
-      self.pytype_args["--pythonpath"] = d.path
-      self.pytype_args["--output-pickled"] = pickled_location
-      self.pytype_args["--module-name"] = "simple"
-      self.pytype_args["--verify-pickle"] = self.INCLUDE
-      self.pytype_args["--output"] = os.path.join(d.path, "unused_pyi")
-      self.pytype_args[self._DataPath("simple.py")] = self.INCLUDE
-      self._RunPytype(self.pytype_args)
-      self.assertOutputStateMatches(stdout=False, stderr=False, returncode=0)
-      self.assertTrue(os.path.exists(pickled_location))
+    pickled_location = os.path.join(self.tmp_dir, "simple.pickled")
+    self.pytype_args["--pythonpath"] = self.tmp_dir
+    self.pytype_args["--output-pickled"] = pickled_location
+    self.pytype_args["--module-name"] = "simple"
+    self.pytype_args["--verify-pickle"] = self.INCLUDE
+    self.pytype_args["--output"] = os.path.join(self.tmp_dir, "unused_pyi")
+    self.pytype_args[self._DataPath("simple.py")] = self.INCLUDE
+    self._RunPytype(self.pytype_args)
+    self.assertOutputStateMatches(stdout=False, stderr=False, returncode=0)
+    self.assertTrue(os.path.exists(pickled_location))
 
   def testNonexistentOption(self):
     self.pytype_args["--rumpelstiltskin"] = self.INCLUDE
