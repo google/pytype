@@ -574,6 +574,30 @@ class TypingTest(test_inference.InferenceTest):
     """)
     self.assertErrorLogIs(errors, [(2, "not-supported-yet", r"typing.NewType")])
 
+  def testMappingIter(self):
+    self.assertNoErrors("""
+      from __future__ import google_type_annotations
+      from typing import Iterator, Mapping
+      def f(m: Mapping) -> Iterator:
+        return m.iteritems()
+      def g(m: Mapping) -> Iterator:
+        return m.iterkeys()
+      def h(m: Mapping) -> Iterator:
+        return m.itervalues()
+    """)
+
+  def testMappingView(self):
+    self.assertNoErrors("""
+      from __future__ import google_type_annotations
+      from typing import Mapping, MappingView
+      def f(m: Mapping) -> MappingView:
+        return m.viewitems()
+      def g(m: Mapping) -> MappingView:
+        return m.viewkeys()
+      def h(m: Mapping) -> MappingView:
+        return m.viewitems()
+    """)
+
 
 if __name__ == "__main__":
   test_inference.main()
