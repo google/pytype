@@ -387,10 +387,16 @@ class ClassType(node.Node('name: str'), Type):
 class FunctionType(node.Node('name: str'), Type):
   """The type of a function. E.g. the type of 'x' in 'x = lambda y: y'."""
 
-  def __new__(cls, name, function):
+  def __new__(cls, name, function=None):
     self = super(FunctionType, cls).__new__(cls, name)
     self.function = function
     return self
+
+  def __getstate__(self):
+    return (self.function,)
+
+  def __setstate__(self, state):
+    self.function = state[0]
 
 
 class AnythingType(node.Node(), Type):

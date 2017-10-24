@@ -1,6 +1,8 @@
 """Tests for pytd.py."""
 
+import cPickle
 import itertools
+import pickle
 import textwrap
 import unittest
 from pytype.pyi import parser
@@ -18,6 +20,16 @@ class TestPytd(unittest.TestCase):
     self.none_type = pytd.ClassType("NoneType")
     self.float = pytd.ClassType("float")
     self.list = pytd.ClassType("list")
+
+  def testFunctionPickle(self):
+    test_obj = "x1"
+    f = pytd.FunctionType("test_name", test_obj)
+    pickled_f = cPickle.dumps(f, pickle.HIGHEST_PROTOCOL)
+    unpickled_f = cPickle.loads(pickled_f)
+    # Objects can not be directly compared, as they use the NamedTuple equals.
+    # Which does not know about .function.
+    self.assertEqual(f.name, unpickled_f.name)
+    self.assertEqual(f.function, unpickled_f.function)
 
   def testUnionTypeEq(self):
     u1 = pytd.UnionType((self.int, self.float))
