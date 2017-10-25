@@ -7,6 +7,8 @@ import subprocess
 import sys
 import textwrap
 
+from pytype import config
+from pytype import main as main_module
 from pytype import utils
 from pytype.pyi import parser
 from pytype.pytd.parse import builtins
@@ -375,6 +377,25 @@ class PytypeTest(unittest.TestCase):
         ["Base", "BasePattern", "Leaf", "LeafPattern", "NegatedPattern", "Node",
          "NodePattern", "WildcardPattern"],
         [c.name for c in ast.classes])
+
+  def testRunPytype(self):
+    """Basic smoke test for _run_pytype."""
+    infile = self._TmpPath("input")
+    outfile = self._TmpPath("output")
+    with open(infile, "w") as f:
+      f.write("def f(x): pass")
+    argv = ["", "-o", outfile, infile]
+    options = config.Options(argv)
+    main_module._run_pytype(options)
+    self.assertTrue(os.path.isfile(outfile))
+
+  def testRunPytypeGenerateBuiltins(self):
+    """Basic smoke test for --generate-builtins."""
+    filename = self._TmpPath("builtins")
+    argv = ["--generate-builtins", filename]
+    options = config.Options(argv)
+    main_module._run_pytype(options)
+    self.assertTrue(os.path.isfile(filename))
 
 
 def main():

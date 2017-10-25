@@ -248,8 +248,6 @@ def main(argv):
 def _run_pytype(options):
   """Run pytype with the given configuration options."""
   if options.generate_builtins:
-    # TODO(mdemello): this did not break any tests when the version argument was
-    # left off.
     pytd_builtins.Precompile(options.generate_builtins,
                              options.python_version)
     return

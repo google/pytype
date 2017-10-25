@@ -326,6 +326,23 @@ class TestUtils(parser_test_base.ParserTest):
     self.assertEquals("def foo(x, y) -> Any: ...",
                       pytd.Print(utils.DummyMethod("foo", "x", "y")))
 
+  def testCanonicalVersion(self):
+    src = textwrap.dedent("""
+        from typing import Any
+        def foo(x: int = 0) -> Any: ...
+        def foo(x: str) -> Any: ...
+    """)
+    expected = textwrap.dedent("""\
+        from typing import Any
+
+        @overload
+        def foo(x: int = ...) -> Any: ...
+        @overload
+        def foo(x: str) -> Any: ...""")
+    self.assertMultiLineEqual(
+        utils.canonical_pyi(src, self.PYTHON_VERSION),
+        expected)
+
 
 class TestDataFiles(parser_test_base.ParserTest):
   """Test utils.GetPredefinedFile()."""
