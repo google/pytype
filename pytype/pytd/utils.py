@@ -438,14 +438,17 @@ def LoadPickle(filename):
     return cPickle.load(fi)
 
 
-def SavePickle(data, filename):
-  with open(filename, "wb") as fi:
-    recursion_limit = sys.getrecursionlimit()
-    sys.setrecursionlimit(_PICKLE_RECURSION_LIMIT_AST)
-    try:
-      cPickle.dump(data, fi, _PICKLE_PROTOCOL)
-    finally:
-      sys.setrecursionlimit(recursion_limit)
+def SavePickle(data, filename=None):
+  recursion_limit = sys.getrecursionlimit()
+  sys.setrecursionlimit(_PICKLE_RECURSION_LIMIT_AST)
+  try:
+    if filename is not None:
+      with open(filename, "wb") as fi:
+        cPickle.dump(data, fi, _PICKLE_PROTOCOL)
+    else:
+      return cPickle.dumps(data, _PICKLE_PROTOCOL)
+  finally:
+    sys.setrecursionlimit(recursion_limit)
 
 
 def GetTypeParameters(node):

@@ -125,15 +125,16 @@ class RenameModuleVisitor(visitors.Visitor):
   VisitNamedType = _ReplaceModuleName  # pylint: disable=invalid-name
 
 
-def StoreAst(ast, filename):
+def StoreAst(ast, filename=None):
   """Loads and stores an ast to disk.
 
   Args:
     ast: The pytd.TypeDeclUnit to save to disk.
-    filename: The filename for the pickled output
+    filename: The filename for the pickled output. If this is None, this
+      function instead returns the pickled string.
 
   Returns:
-    True iff the save operation was successful.
+    The pickled string, if no filename was given. (None otherwise.)
   """
   if ast.name.endswith(".__init__"):
     ast = ast.Visit(RenameModuleVisitor(
@@ -147,11 +148,9 @@ def StoreAst(ast, filename):
   ast.Visit(visitors.ClearClassPointers())
   indexer = FindClassTypesVisitor()
   ast.Visit(indexer)
-  utils.SavePickle(SerializableAst(
+  return utils.SavePickle(SerializableAst(
       ast, list(sorted(dependencies)),
-      list(sorted(indexer.class_type_nodes))),
-                   filename)
-  return True
+      list(sorted(indexer.class_type_nodes))), filename)
 
 
 def EnsureAstName(ast, module_name):

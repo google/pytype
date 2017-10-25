@@ -18,6 +18,7 @@ from pytype.pyc import loadmarshal
 from pytype.pyi import parser
 from pytype.pytd import optimize
 from pytype.pytd import pytd
+from pytype.pytd import serialize_ast
 from pytype.pytd import utils as pytd_utils
 from pytype.pytd.parse import builtins
 from pytype.pytd.parse import visitors
@@ -280,16 +281,26 @@ class InferenceTest(unittest.TestCase):
       raise AssertionError("Errors not found:\n" + "\n".join(
           "Line %d: %r [%s]" % (e[0], e[2], e[1]) for e in leftover_errors))
 
+  def _Pickle(self, ast, module_name):
+    assert module_name
+    ast = serialize_ast.PrepareForExport(
+        module_name, self.PYTHON_VERSION, ast)
+    return serialize_ast.StoreAst(ast)
+
   def Infer(self, srccode, pythonpath=(), deep=False,
-            report_errors=True, analyze_annotated=True, **kwargs):
+            report_errors=True, analyze_annotated=True, pickle=False,
+            module_name=None, **kwargs):
     types, builtins_pytd = self._InferAndVerify(
         textwrap.dedent(srccode), pythonpath=pythonpath, deep=deep,
-        analyze_annotated=analyze_annotated,
+        analyze_annotated=analyze_annotated, module_name=module_name,
         report_errors=report_errors, **kwargs)
     types = optimize.Optimize(types, builtins_pytd, lossy=False, use_abcs=False,
                               max_union=7, remove_mutable=False)
     types = pytd_utils.CanonicalOrdering(types)
-    return types
+    if pickle:
+      return self._Pickle(types, module_name)
+    else:
+      return types
 
   def _InferAndVerify(self, src, pythonpath=(), module_name=None,
                       imports_map=None, report_errors=False, quick=False,
@@ -318,7 +329,7 @@ class InferenceTest(unittest.TestCase):
                        imports_map=imports_map,
                        quick=quick)
     errorlog = errors.ErrorLog()
-    loader = load_pytd.Loader(self.options.module_name, self.options)
+    loader = load_pytd.PickledPyiLoader(self.options.module_name, self.options)
     unit, builtins_pytd = infer.infer_types(
         src, errorlog, self.options, loader=loader, **kwargs)
     unit.Visit(visitors.VerifyVisitor())

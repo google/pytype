@@ -156,7 +156,7 @@ class SerializeAstTest(unittest.TestCase):
 
       result = serialize_ast.StoreAst(ast, pickled_ast_filename)
 
-      self.assertTrue(result)
+      self.assertIsNone(result)
       with open(pickled_ast_filename, "rb") as fi:
         serialized_ast = pickle.load(fi)
       self.assertTrue(serialized_ast.ast)

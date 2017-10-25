@@ -263,7 +263,7 @@ class PickledPyiLoaderTest(unittest.TestCase):
       self._PickleModules(d, module1, module2)
       pickled_ast_filename = self._GetPath(d, module1.file_name + ".pickled")
       result = serialize_ast.StoreAst(ast, pickled_ast_filename)
-      self.assertTrue(result)
+      self.assertIsNone(result)
 
       loaded_ast = self._LoadPickledModule(d, module1)
       self.assertTrue(loaded_ast)
