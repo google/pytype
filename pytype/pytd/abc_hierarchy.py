@@ -16,28 +16,7 @@
 
 """Abstract base class hierarchy for both Python 2 and Python 3."""
 
-import collections
-
-
-# TODO(kramm): move this into utils.py
-def Invert(d):
-  """Invert a dictionary.
-
-  Converts a dictionary (mapping strings to lists of strings) to a dictionary
-  that maps into the other direction.
-
-  Arguments:
-    d: Dictionary to be inverted
-
-  Returns:
-    A dictionary n with the property that if "y in d[x]", then "x in n[y]".
-  """
-
-  inverted = collections.defaultdict(list)
-  for key, value_list in d.items():
-    for val in value_list:
-      inverted[val].append(key)
-  return inverted
+from pytype import utils
 
 
 # (We specify the below manually, instead of extracting it out of abc.py,
@@ -160,4 +139,4 @@ def GetSubClasses():
     E.g. "Sized" -> ["Set", "Mapping", "MappingView", "Sequence"].
   """
 
-  return Invert(GetSuperClasses())
+  return utils.invert_dict(GetSuperClasses())

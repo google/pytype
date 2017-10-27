@@ -2,7 +2,7 @@
 
 import collections
 
-from pytype.pytd import utils as pytd_utils
+from pytype.pytd import pytd_utils
 
 
 # Used as a key in Signature.late_annotations to indicate an annotation

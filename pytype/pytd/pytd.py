@@ -523,8 +523,8 @@ GENERIC_BASE_TYPE = (NamedType, ClassType)
 def Print(n):
   """Convert a PYTD node to a string."""
   # TODO(kramm): fix circular import
-  from pytype.pytd import utils  # pylint: disable=g-import-not-at-top
-  return utils.Print(n)
+  from pytype.pytd import pytd_utils  # pylint: disable=g-import-not-at-top
+  return pytd_utils.Print(n)
 
 
 def IsContainer(t):

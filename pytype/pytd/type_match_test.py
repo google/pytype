@@ -21,10 +21,11 @@ import textwrap
 from pytype.pyi import parser
 from pytype.pytd import booleq
 from pytype.pytd import pytd
+from pytype.pytd import pytd_utils
 from pytype.pytd import type_match
-from pytype.pytd import utils as pytd_utils
 from pytype.pytd.parse import parser_test_base
 from pytype.pytd.parse import visitors
+
 import unittest
 
 

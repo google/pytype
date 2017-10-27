@@ -4,8 +4,8 @@ import pickle
 from pytype import config
 from pytype import load_pytd
 from pytype import utils
+from pytype.pytd import pytd_utils
 from pytype.pytd import serialize_ast
-from pytype.pytd import utils as pytd_utils
 from pytype.pytd.parse import visitors
 
 import unittest

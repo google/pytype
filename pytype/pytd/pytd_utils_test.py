@@ -19,12 +19,12 @@ import textwrap
 import unittest
 from pytype.pyi import parser
 from pytype.pytd import pytd
-from pytype.pytd import utils
+from pytype.pytd import pytd_utils
 from pytype.pytd.parse import parser_test_base
 
 
 class TestUtils(parser_test_base.ParserTest):
-  """Test pytype.pytd.utils."""
+  """Test pytype.pytd.pytd_utils."""
 
   def testUnpackUnion(self):
     """Test for UnpackUnion."""
@@ -35,9 +35,9 @@ class TestUtils(parser_test_base.ParserTest):
     c1 = ast.Lookup("c1").type
     c2 = ast.Lookup("c2").type
     c3 = ast.Lookup("c3").type
-    self.assertItemsEqual(utils.UnpackUnion(c1), c1.type_list)
-    self.assertItemsEqual(utils.UnpackUnion(c2), [c2])
-    self.assertItemsEqual(utils.UnpackUnion(c3), [c3])
+    self.assertItemsEqual(pytd_utils.UnpackUnion(c1), c1.type_list)
+    self.assertItemsEqual(pytd_utils.UnpackUnion(c2), [c2])
+    self.assertItemsEqual(pytd_utils.UnpackUnion(c3), [c3])
 
   def testConcat(self):
     """Test for concatenating two pytd ASTs."""
@@ -70,7 +70,7 @@ class TestUtils(parser_test_base.ParserTest):
       class Class2(object):
           pass
     """)
-    combined = utils.Concat(ast1, ast2)
+    combined = pytd_utils.Concat(ast1, ast2)
     self.AssertSourceEquals(combined, expected)
 
   def testConcat3(self):
@@ -78,7 +78,7 @@ class TestUtils(parser_test_base.ParserTest):
     ast1 = self.Parse("""c1 = ...  # type: int""")
     ast2 = self.Parse("""c2 = ...  # type: float""")
     ast3 = self.Parse("""c3 = ...  # type: bool""")
-    combined = utils.Concat(ast1, ast2, ast3)
+    combined = pytd_utils.Concat(ast1, ast2, ast3)
     expected = textwrap.dedent("""
       c1 = ...  # type: int
       c2 = ...  # type: float
@@ -90,7 +90,7 @@ class TestUtils(parser_test_base.ParserTest):
     """Test for concatenating ASTs with type parameters."""
     ast1 = self.Parse("""T = TypeVar("T")""", name="__builtin__")
     ast2 = self.Parse("""T = TypeVar("T")""")
-    combined = utils.Concat(ast1, ast2)
+    combined = pytd_utils.Concat(ast1, ast2)
     self.assertEqual(combined.Lookup("__builtin__.T"),
                      pytd.TypeParameter("T", scope="__builtin__"))
     self.assertEqual(combined.Lookup("T"), pytd.TypeParameter("T", scope=None))
@@ -102,37 +102,37 @@ class TestUtils(parser_test_base.ParserTest):
     nested1 = pytd.UnionType((n1, pytd.UnionType((n2, pytd.UnionType((n3,))))))
     # ((n4) or n5) or n6
     nested2 = pytd.UnionType((pytd.UnionType((pytd.UnionType((n4,)), n5)), n6))
-    joined = utils.JoinTypes([nested1, nested2])
+    joined = pytd_utils.JoinTypes([nested1, nested2])
     self.assertEqual(joined.type_list,
                      (n1, n2, n3, n4, n5, n6))
 
   def testJoinSingleType(self):
     """Test that JoinTypes() returns single types as-is."""
     a = pytd.NamedType("a")
-    self.assertEqual(utils.JoinTypes([a]), a)
-    self.assertEqual(utils.JoinTypes([a, a]), a)
+    self.assertEqual(pytd_utils.JoinTypes([a]), a)
+    self.assertEqual(pytd_utils.JoinTypes([a, a]), a)
 
   def testJoinNothingType(self):
     """Test that JoinTypes() removes or collapses 'nothing'."""
     a = pytd.NamedType("a")
     nothing = pytd.NothingType()
-    self.assertEqual(utils.JoinTypes([a, nothing]), a)
-    self.assertEqual(utils.JoinTypes([nothing]), nothing)
-    self.assertEqual(utils.JoinTypes([nothing, nothing]), nothing)
+    self.assertEqual(pytd_utils.JoinTypes([a, nothing]), a)
+    self.assertEqual(pytd_utils.JoinTypes([nothing]), nothing)
+    self.assertEqual(pytd_utils.JoinTypes([nothing, nothing]), nothing)
 
   def testJoinEmptyTypesToNothing(self):
     """Test that JoinTypes() simplifies empty unions to 'nothing'."""
-    self.assertIsInstance(utils.JoinTypes([]), pytd.NothingType)
+    self.assertIsInstance(pytd_utils.JoinTypes([]), pytd.NothingType)
 
   def testJoinAnythingTypes(self):
     """Test that JoinTypes() simplifies unions containing '?'."""
     types = [pytd.AnythingType(), pytd.NamedType("a")]
-    self.assertIsInstance(utils.JoinTypes(types), pytd.AnythingType)
+    self.assertIsInstance(pytd_utils.JoinTypes(types), pytd.AnythingType)
 
   def testTypeMatcher(self):
     """Test for the TypeMatcher class."""
 
-    class MyTypeMatcher(utils.TypeMatcher):
+    class MyTypeMatcher(pytd_utils.TypeMatcher):
 
       def default_match(self, t1, t2, mykeyword):
         assert mykeyword == "foobar"
@@ -168,18 +168,19 @@ class TestUtils(parser_test_base.ParserTest):
       def bar(x: X or Y) -> ?
     """)
     # TODO(kramm): Do more extensive testing.
-    utils.Print(ast)
+    pytd_utils.Print(ast)
 
   def testNamedTypeWithModule(self):
     """Test NamedTypeWithModule()."""
-    self.assertEqual(utils.NamedTypeWithModule("name"), pytd.NamedType("name"))
-    self.assertEqual(utils.NamedTypeWithModule("name", None),
+    self.assertEqual(pytd_utils.NamedTypeWithModule("name"),
                      pytd.NamedType("name"))
-    self.assertEqual(utils.NamedTypeWithModule("name", "package"),
+    self.assertEqual(pytd_utils.NamedTypeWithModule("name", None),
+                     pytd.NamedType("name"))
+    self.assertEqual(pytd_utils.NamedTypeWithModule("name", "package"),
                      pytd.NamedType("package.name"))
 
   def testOrderedSet(self):
-    ordered_set = utils.OrderedSet(n/2 for n in range(10))
+    ordered_set = pytd_utils.OrderedSet(n/2 for n in range(10))
     ordered_set.add(-42)
     ordered_set.add(3)
     self.assertEqual(tuple(ordered_set), (0, 1, 2, 3, 4, -42))
@@ -200,7 +201,7 @@ class TestUtils(parser_test_base.ParserTest):
       class B(object):
         pass
     """)
-    w = utils.WrapTypeDeclUnit(
+    w = pytd_utils.WrapTypeDeclUnit(
         "combined",
         ast1.classes + ast1.functions + ast1.constants +
         ast2.classes + ast2.functions + ast2.constants)
@@ -218,7 +219,7 @@ class TestUtils(parser_test_base.ParserTest):
     self.AssertSourceEquals(w, expected)
 
   def testWrapsDict(self):
-    class A(utils.WrapsDict("m")):
+    class A(pytd_utils.WrapsDict("m")):
       pass
     a = A()
     a.m = {}
@@ -244,7 +245,7 @@ class TestUtils(parser_test_base.ParserTest):
     self.assertFalse(hasattr(a, "popitem"))
 
   def testWrapsWritableDict(self):
-    class A(utils.WrapsDict("m", writable=True)):
+    class A(pytd_utils.WrapsDict("m", writable=True)):
       pass
     a = A()
     a.m = {}
@@ -272,7 +273,7 @@ class TestUtils(parser_test_base.ParserTest):
     self.assertItemsEqual(a.items(), ())
 
   def testWrapsDictWithLength(self):
-    class A(utils.WrapsDict("m", implement_len=True)):
+    class A(pytd_utils.WrapsDict("m", implement_len=True)):
       pass
     a = A()
     a.m = {x: x for x in range(42)}
@@ -281,7 +282,7 @@ class TestUtils(parser_test_base.ParserTest):
   def testBuiltinAlias(self):
     src = "Number = int"
     ast = parser.parse_string(src, python_version=self.PYTHON_VERSION)
-    self.assertMultiLineEqual(utils.Print(ast), src)
+    self.assertMultiLineEqual(pytd_utils.Print(ast), src)
 
   def testTypingNameConflict1(self):
     src = textwrap.dedent("""
@@ -292,7 +293,8 @@ class TestUtils(parser_test_base.ParserTest):
       def List() -> None: ...
     """)
     ast = parser.parse_string(src, python_version=self.PYTHON_VERSION)
-    self.assertMultiLineEqual(utils.Print(ast).strip("\n"), src.strip("\n"))
+    self.assertMultiLineEqual(pytd_utils.Print(ast).strip("\n"),
+                              src.strip("\n"))
 
   def testTypingNameConflict2(self):
     ast = parser.parse_string(textwrap.dedent("""
@@ -315,16 +317,16 @@ class TestUtils(parser_test_base.ParserTest):
           List = ...  # type: Any
           x = ...  # type: typing.List[str]
     """)
-    self.assertMultiLineEqual(utils.Print(ast).strip("\n"),
+    self.assertMultiLineEqual(pytd_utils.Print(ast).strip("\n"),
                               expected.strip("\n"))
 
   def testDummyMethod(self):
     self.assertEquals("def foo() -> Any: ...",
-                      pytd.Print(utils.DummyMethod("foo")))
+                      pytd.Print(pytd_utils.DummyMethod("foo")))
     self.assertEquals("def foo(x) -> Any: ...",
-                      pytd.Print(utils.DummyMethod("foo", "x")))
+                      pytd.Print(pytd_utils.DummyMethod("foo", "x")))
     self.assertEquals("def foo(x, y) -> Any: ...",
-                      pytd.Print(utils.DummyMethod("foo", "x", "y")))
+                      pytd.Print(pytd_utils.DummyMethod("foo", "x", "y")))
 
   def testCanonicalVersion(self):
     src = textwrap.dedent("""
@@ -340,17 +342,17 @@ class TestUtils(parser_test_base.ParserTest):
         @overload
         def foo(x: str) -> Any: ...""")
     self.assertMultiLineEqual(
-        utils.canonical_pyi(src, self.PYTHON_VERSION),
+        pytd_utils.canonical_pyi(src, self.PYTHON_VERSION),
         expected)
 
 
 class TestDataFiles(parser_test_base.ParserTest):
-  """Test utils.GetPredefinedFile()."""
+  """Test pytd_utils.GetPredefinedFile()."""
 
   def testGetPredefinedFileReturnsString(self):
     # smoke test, only checks that it doesn't throw and the result is a string
     self.assertIsInstance(
-        utils.GetPredefinedFile("builtins", "__builtin__"),
+        pytd_utils.GetPredefinedFile("builtins", "__builtin__"),
         str)
 
   def testGetPredefinedFileThrows(self):
@@ -358,11 +360,11 @@ class TestDataFiles(parser_test_base.ParserTest):
     with self.assertRaisesRegexp(
         IOError,
         r"File not found|Resource not found|No such file or directory"):
-      utils.GetPredefinedFile("builtins", "-this-file-does-not-exist")
+      pytd_utils.GetPredefinedFile("builtins", "-this-file-does-not-exist")
 
   def testPytdBuiltin(self):
     """Verify 'import sys'."""
-    import_contents = utils.GetPredefinedFile("builtins", "__builtin__")
+    import_contents = pytd_utils.GetPredefinedFile("builtins", "__builtin__")
     with open(os.path.join(os.path.dirname(pytd.__file__),
                            "builtins", "__builtin__.pytd"), "rb") as fi:
       file_contents = fi.read()

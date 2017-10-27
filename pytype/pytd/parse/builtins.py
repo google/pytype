@@ -21,16 +21,16 @@ import os
 
 
 from pytype.pyi import parser
-from pytype.pytd import utils
+from pytype.pytd import pytd_utils
 from pytype.pytd.parse import visitors
 
 
 def _FindBuiltinFile(name, extension=".pytd"):
-  return utils.GetPredefinedFile("builtins", name, extension)
+  return pytd_utils.GetPredefinedFile("builtins", name, extension)
 
 
 def _FindStdlibFile(name, extension=".pytd"):
-  return utils.GetPredefinedFile("stdlib", name, extension)
+  return pytd_utils.GetPredefinedFile("stdlib", name, extension)
 
 
 _cached_builtins_pytd = None  # ... => pytype.pytd.pytd.TypeDeclUnit
@@ -40,7 +40,7 @@ def Precompile(filename, python_version):
   """Write precompiled builtins to the specified file."""
   assert python_version
   data = GetBuiltinsAndTyping(python_version)
-  utils.SavePickle(data, filename)
+  pytd_utils.SavePickle(data, filename)
 
 
 def IsCached():
@@ -54,7 +54,7 @@ def LoadPrecompiled(filename):
   # process is the same as the one used to generate the cached file.
   global _cached_builtins_pytd
   assert _cached_builtins_pytd is None
-  _cached_builtins_pytd = utils.LoadPickle(filename)
+  _cached_builtins_pytd = pytd_utils.LoadPickle(filename)
 
 
 def GetBuiltinsAndTyping(python_version):
@@ -102,7 +102,7 @@ def GetBuiltinsPyTD(python_version):
     and functions, and submodules for each of the standard library modules.
   """
   assert python_version
-  return utils.Concat(*GetBuiltinsAndTyping(python_version))
+  return pytd_utils.Concat(*GetBuiltinsAndTyping(python_version))
 
 
 # TODO(kramm): Use python_version, once we have builtins for both Python 2 and
@@ -152,7 +152,7 @@ def ParsePredefinedPyTD(pytd_subdir, module, python_version):
     The AST of the module; None if the module doesn't exist in pytd_subdir.
   """
   try:
-    src = utils.GetPredefinedFile(pytd_subdir, module)
+    src = pytd_utils.GetPredefinedFile(pytd_subdir, module)
   except IOError:
     return None
   return ParsePyTD(src, filename=os.path.join(pytd_subdir, module + ".pytd"),

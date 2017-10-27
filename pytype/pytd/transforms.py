@@ -7,9 +7,9 @@ import logging
 from pytype.pytd import booleq
 from pytype.pytd import optimize
 from pytype.pytd import pytd
+from pytype.pytd import pytd_utils
 from pytype.pytd import slots
 from pytype.pytd import type_match
-from pytype.pytd import utils
 from pytype.pytd.parse import visitors
 
 
@@ -150,7 +150,7 @@ class PreprocessReverseOperatorsVisitor(visitors.Visitor):
     self._reverse_operator_names = slots.ReverseOperatorNames()
 
   def EnterTypeDeclUnit(self, unit):
-    self.type_matcher = type_match.TypeMatch(utils.GetAllSubClasses(unit))
+    self.type_matcher = type_match.TypeMatch(pytd_utils.GetAllSubClasses(unit))
     self.methods_to_add = unit.Visit(ExtractOperators(self))
 
   def LeaveTypeDeclUnit(self, _):

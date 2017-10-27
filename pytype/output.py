@@ -9,7 +9,7 @@ from pytype import abstract
 from pytype import special_builtins
 from pytype import typing
 from pytype.pytd import pytd
-from pytype.pytd import utils as pytd_utils
+from pytype.pytd import pytd_utils
 from pytype.pytd.parse import visitors
 
 log = logging.getLogger(__name__)

@@ -8,7 +8,7 @@ disk, which is faster to digest than a pyi file.
 import collections
 
 from pytype.pytd import pytd
-from pytype.pytd import utils
+from pytype.pytd import pytd_utils
 from pytype.pytd.parse import builtins as pytd_builtins
 from pytype.pytd.parse import visitors
 
@@ -148,7 +148,7 @@ def StoreAst(ast, filename=None):
   ast.Visit(visitors.ClearClassPointers())
   indexer = FindClassTypesVisitor()
   ast.Visit(indexer)
-  return utils.SavePickle(SerializableAst(
+  return pytd_utils.SavePickle(SerializableAst(
       ast, list(sorted(dependencies)),
       list(sorted(indexer.class_type_nodes))), filename)
 
@@ -289,7 +289,7 @@ def PrepareForExport(module_name, python_version, ast):
   # applies transformations,
   # e.g. visitors.PrintVisitor._FormatContainerContents, which need to move to
   # their own visitors so they can be applied without printing.
-  src = utils.Print(ast)
+  src = pytd_utils.Print(ast)
   ast = pytd_builtins.ParsePyTD(src=src, module=module_name,
                                 python_version=python_version)
   builtins, _ = pytd_builtins.GetBuiltinsAndTyping(python_version)

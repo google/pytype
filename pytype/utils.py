@@ -606,6 +606,26 @@ class memoize(object):  # pylint: disable=invalid-name
     return call
 
 
+def invert_dict(d):
+  """Invert a dictionary.
+
+  Converts a dictionary (mapping strings to lists of strings) to a dictionary
+  that maps into the other direction.
+
+  Arguments:
+    d: Dictionary to be inverted
+
+  Returns:
+    A dictionary n with the property that if "y in d[x]", then "x in n[y]".
+  """
+
+  inverted = collections.defaultdict(list)
+  for key, value_list in d.items():
+    for val in value_list:
+      inverted[val].append(key)
+  return inverted
+
+
 class MonitorDict(dict):
   """A dictionary that monitors changes to its cfg.Variable values.
 

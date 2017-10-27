@@ -29,10 +29,10 @@ signatures against new inference results.
 import logging
 
 
-from pytype.pytd import abc_hierarchy
+from pytype import utils
 from pytype.pytd import booleq
 from pytype.pytd import pytd
-from pytype.pytd import utils
+from pytype.pytd import pytd_utils
 from pytype.pytd.parse import node
 from pytype.pytd.parse import visitors
 
@@ -97,7 +97,7 @@ def get_all_subclasses(asts):
                if is_complete(cls)}
   # typically this is a fairly short list, e.g.:
   #  [ClassType(basestring), ClassType(int), ClassType(object)]
-  return abc_hierarchy.Invert(hierarchy)
+  return utils.invert_dict(hierarchy)
 
 
 class StrictType(node.Node("name")):
@@ -111,7 +111,7 @@ class StrictType(node.Node("name")):
     return self.name
 
 
-class TypeMatch(utils.TypeMatcher):
+class TypeMatch(pytd_utils.TypeMatcher):
   """Class for matching types against other types."""
 
   def __init__(self, direct_subclasses=None, any_also_is_bottom=True):
@@ -130,7 +130,7 @@ class TypeMatch(utils.TypeMatcher):
     self._implications = {}
 
   def default_match(self, t1, t2, *unused_args, **unused_kwargs):
-    # Don't allow utils.TypeMatcher to do default matching.
+    # Don't allow pytd_utils.TypeMatcher to do default matching.
     raise AssertionError("Can't compare %s and %s",
                          type(t1).__name__,
                          type(t2).__name__)
@@ -443,7 +443,8 @@ class TypeMatch(utils.TypeMatcher):
       else:
         p1 = params1[i]
         if p1.name != p2.name and not (
-            utils.ANON_PARAM.match(p1.name) or utils.ANON_PARAM.match(p2.name)):
+            pytd_utils.ANON_PARAM.match(p1.name) or
+            pytd_utils.ANON_PARAM.match(p2.name)):
           return booleq.FALSE
         equalities.append(self.match_type_against_type(p1.type, p2.type, subst))
     equalities.append(

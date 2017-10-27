@@ -20,7 +20,7 @@ from pytype.pyc import loadmarshal
 from pytype.pytd import cfg
 from pytype.pytd import mro
 from pytype.pytd import pytd
-from pytype.pytd import utils as pytd_utils
+from pytype.pytd import pytd_utils
 
 log = logging.getLogger(__name__)
 chain = itertools.chain  # pylint: disable=invalid-name

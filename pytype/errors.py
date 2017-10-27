@@ -14,7 +14,7 @@ from pytype import abstract
 from pytype import utils
 from pytype.pytd import optimize
 from pytype.pytd import pytd
-from pytype.pytd import utils as pytd_utils
+from pytype.pytd import pytd_utils
 
 # Usually we call the logger "log" but that name is used quite often here.
 _log = logging.getLogger(__name__)

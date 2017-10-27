@@ -22,7 +22,7 @@ import collections
 import itertools
 
 
-from pytype.pytd import utils
+from pytype.pytd import pytd_utils
 
 chain = itertools.chain.from_iterable
 
@@ -571,8 +571,8 @@ class Solver(object):
           length_after = len(assignments[pivot])
           something_changed |= (length_before != length_after)
 
-    self.register_variable = utils.disabled_function
-    self.implies = utils.disabled_function
+    self.register_variable = pytd_utils.disabled_function
+    self.implies = pytd_utils.disabled_function
 
     self.assignments = assignments
     return assignments

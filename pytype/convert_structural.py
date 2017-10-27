@@ -6,9 +6,9 @@ import logging
 from pytype.pytd import booleq
 from pytype.pytd import optimize
 from pytype.pytd import pytd
+from pytype.pytd import pytd_utils
 from pytype.pytd import transforms
 from pytype.pytd import type_match
-from pytype.pytd import utils as pytd_utils
 from pytype.pytd.parse import visitors
 
 log = logging.getLogger(__name__)

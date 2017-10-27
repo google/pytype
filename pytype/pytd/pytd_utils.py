@@ -28,11 +28,10 @@ import os
 import re
 import sys
 
+from pytype import utils
 from pytype.pyi import parser
-from pytype.pytd import abc_hierarchy
 from pytype.pytd import pytd
 from pytype.pytd.parse import visitors
-import pytype.utils
 
 
 _PICKLE_PROTOCOL = cPickle.HIGHEST_PROTOCOL
@@ -171,7 +170,7 @@ def GetAllSubClasses(ast):
   hierarchy = ast.Visit(visitors.ExtractSuperClasses())
   hierarchy = {cls: [superclass for superclass in superclasses]
                for cls, superclasses in hierarchy.items()}
-  return abc_hierarchy.Invert(hierarchy)
+  return utils.invert_dict(hierarchy)
 
 
 def Print(ast):
@@ -429,7 +428,7 @@ def GetPredefinedFile(pytd_subdir, module, extension=".pytd"):
   """
   path = os.path.join("pytd", pytd_subdir,
                       os.path.join(*module.split(".")) + extension)
-  return pytype.utils.load_pytype_file(path)
+  return utils.load_pytype_file(path)
 
 
 def LoadPickle(filename):

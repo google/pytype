@@ -25,8 +25,8 @@ from pytype.pyc import pyc
 from pytype.pyi import parser
 from pytype.pytd import optimize
 from pytype.pytd import pytd
+from pytype.pytd import pytd_utils
 from pytype.pytd import serialize_ast
-from pytype.pytd import utils as pytd_utils
 from pytype.pytd.parse import builtins as pytd_builtins
 from pytype.pytd.parse import node
 from pytype.pytd.parse import visitors

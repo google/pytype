@@ -18,8 +18,8 @@ from pytype.pyc import loadmarshal
 from pytype.pyi import parser
 from pytype.pytd import optimize
 from pytype.pytd import pytd
+from pytype.pytd import pytd_utils
 from pytype.pytd import serialize_ast
-from pytype.pytd import utils as pytd_utils
 from pytype.pytd.parse import builtins
 from pytype.pytd.parse import visitors
 

@@ -8,7 +8,7 @@ from pytype import special_builtins
 from pytype import utils
 from pytype.pytd import pep484
 from pytype.pytd import pytd
-from pytype.pytd import utils as pytd_utils
+from pytype.pytd import pytd_utils
 
 
 log = logging.getLogger(__name__)

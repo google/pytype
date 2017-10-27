@@ -26,12 +26,13 @@
 import collections
 import logging
 
+from pytype import utils
 from pytype.pytd import abc_hierarchy
 from pytype.pytd import booleq
 from pytype.pytd import mro
 from pytype.pytd import pytd
+from pytype.pytd import pytd_utils
 from pytype.pytd import type_match
-from pytype.pytd import utils
 from pytype.pytd.parse import visitors
 
 log = logging.getLogger(__name__)
@@ -68,7 +69,8 @@ class RemoveDuplicates(visitors.Visitor):
 
   def VisitFunction(self, node):
     # We remove duplicates, but keep existing entries in the same order.
-    return node.Replace(signatures=tuple(utils.OrderedSet(node.signatures)))
+    return node.Replace(
+        signatures=tuple(pytd_utils.OrderedSet(node.signatures)))
 
 
 class RemoveRedundantSignatures(visitors.Visitor):
@@ -135,7 +137,7 @@ class SimplifyUnions(visitors.Visitor):
   """
 
   def VisitUnionType(self, union):
-    return utils.JoinTypes(union.type_list)
+    return pytd_utils.JoinTypes(union.type_list)
 
 
 class _ReturnsAndExceptions(object):
@@ -217,7 +219,7 @@ class CombineReturnsAndExceptions(visitors.Visitor):
 
     new_signatures = []
     for stripped_signature, ret_exc in groups.items():
-      ret = utils.JoinTypes(ret_exc.return_types)
+      ret = pytd_utils.JoinTypes(ret_exc.return_types)
       exc = tuple(ret_exc.exceptions)
 
       new_signatures.append(
@@ -291,7 +293,7 @@ class CombineContainers(visitors.Visitor):
     if not any(isinstance(t, pytd.GenericType) for t in union.type_list):
       # Optimization: If we're not going to change anything, return original.
       return union
-    union = utils.JoinTypes(union.type_list)  # flatten
+    union = pytd_utils.JoinTypes(union.type_list)  # flatten
     if not isinstance(union, pytd.UnionType):
       union = pytd.UnionType((union,))
     merge_tuples = self._should_merge(pytd.TupleType, union)
@@ -315,7 +317,7 @@ class CombineContainers(visitors.Visitor):
         if key in collect:
           has_redundant_base_types = True
           collect[key] = tuple(
-              utils.JoinTypes([p1, p2])
+              pytd_utils.JoinTypes([p1, p2])
               for p1, p2 in zip(collect[key], t.parameters))
         else:
           collect[key] = t.parameters
@@ -334,7 +336,7 @@ class CombineContainers(visitors.Visitor):
         done.add(key)
       else:
         add = t
-      result = utils.JoinTypes([result, add])
+      result = pytd_utils.JoinTypes([result, add])
     return result
 
 
@@ -414,7 +416,7 @@ class Factorize(visitors.Visitor):
           # One or more options for argument <i>:
           new_params = list(sig.params)
           new_params[i] = sig.params[i].Replace(
-              type=utils.JoinTypes(types))
+              type=pytd_utils.JoinTypes(types))
           sig = sig.Replace(params=tuple(new_params))
           new_sigs.append(sig)
         else:
@@ -491,7 +493,7 @@ class SuperClassHierarchy(object):
 
   def __init__(self, superclasses):
     self._superclasses = superclasses
-    self._subclasses = abc_hierarchy.Invert(self._superclasses)
+    self._subclasses = utils.invert_dict(self._superclasses)
 
   def GetSuperClasses(self):
     return self._superclasses
@@ -582,7 +584,7 @@ class SimplifyUnionsWithSuperclasses(visitors.Visitor):
     # in collections.Counter. It'll happen for types that are not
     # instances of GENERIC_BASE_TYPE, like container types.
     new_type_list = [t for t in union.type_list if c[str(t)] <= 1]
-    return utils.JoinTypes(new_type_list)
+    return pytd_utils.JoinTypes(new_type_list)
 
 
 class FindCommonSuperClasses(visitors.Visitor):
@@ -624,7 +626,7 @@ class FindCommonSuperClasses(visitors.Visitor):
         pytd.NamedType(cls) for cls in intersection
         if not self.hierarchy.HasSubClassInSet(cls, intersection))
 
-    return utils.JoinTypes(new_type_list)
+    return pytd_utils.JoinTypes(new_type_list)
 
 
 class CollapseLongUnions(visitors.Visitor):
@@ -954,7 +956,7 @@ class AbsorbMutableParameters(visitors.Visitor):
     if p.mutated_type is None:
       return p
     else:
-      return p.Replace(type=utils.JoinTypes([p.type, p.mutated_type]),
+      return p.Replace(type=pytd_utils.JoinTypes([p.type, p.mutated_type]),
                        mutated_type=None)
 
 
@@ -1090,7 +1092,8 @@ class MergeTypeParameters(TypeParameterScope):
                              for type_param in containing_union
                              if self.IsClassTypeParameter(type_param)]
     if class_type_parameters:
-      substitutions[item.type_param] = utils.JoinTypes(class_type_parameters)
+      substitutions[item.type_param] = pytd_utils.JoinTypes(
+          class_type_parameters)
       return []
     else:
       # It's a function type parameter that appears in a union with other

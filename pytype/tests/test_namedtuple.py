@@ -5,7 +5,7 @@ import textwrap
 from pytype import collections_overlay
 from pytype import utils
 from pytype.pytd import pytd
-from pytype.pytd import utils as pytd_utils
+from pytype.pytd import pytd_utils
 from pytype.tests import test_inference
 
 

@@ -500,6 +500,13 @@ class UtilsTest(unittest.TestCase):
     self.assertFalse(z1 is z2)
     self.assertTrue(z2 is z3)
 
+  def testInvertDict(self):
+    a = {"p": ["q", "r"], "x": ["q", "z"]}
+    b = utils.invert_dict(a)
+    self.assertEqual(sorted(b["q"]), ["p", "x"])
+    self.assertEqual(b["r"], ["p"])
+    self.assertEqual(b["z"], ["x"])
+
   def testMonitorDict(self):
     d = utils.MonitorDict()
     changestamp = d.changestamp
