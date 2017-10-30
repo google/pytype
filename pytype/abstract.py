@@ -554,7 +554,8 @@ class TypeParameter(AtomicAbstractValue):
                  self.contravariant))
 
   def __repr__(self):
-    return "TypeParameter(%r, constraints=%r)" % (self.name, self.constraints)
+    return "TypeParameter(%r, constraints=%r, bound=%r)" % (
+        self.name, self.constraints, self.bound)
 
   def instantiate(self, node, container=None):
     var = self.vm.program.NewVariable()
