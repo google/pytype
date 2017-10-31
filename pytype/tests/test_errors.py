@@ -1171,6 +1171,16 @@ class ErrorTest(test_inference.InferenceTest):
     self.assertErrorLogIs(errors, [(
         3, "wrong-arg-types", r"\(.*List\[int\]\)$")])  # no protocol details
 
+  def testInnerClass(self):
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      def f() -> int:
+        class Foo(object):
+          pass
+        return Foo()  # line 5
+    """)
+    self.assertErrorLogIs(errors, [(5, "bad-return-type", r"int.*Foo")])
+
 
 if __name__ == "__main__":
   test_inference.main()

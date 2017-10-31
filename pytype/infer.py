@@ -574,10 +574,11 @@ class CallTracer(vm.VirtualMachine):
   def _check_return(self, node, actual, formal):
     bad = self.matcher.bad_matches(actual, formal, node)
     if bad:
-      combined = pytd_utils.JoinTypes(
-          view[actual].data.to_type(node, view=view) for view in bad)
-      self.errorlog.bad_return_type(
-          self.frames, combined, formal.get_instance_type(node))
+      with self.convert.pytd_convert.produce_detailed_output():
+        combined = pytd_utils.JoinTypes(
+            view[actual].data.to_type(node, view=view) for view in bad)
+        self.errorlog.bad_return_type(
+            self.frames, combined, formal.get_instance_type(node))
 
 
 def _filename_to_module_name(filename):
