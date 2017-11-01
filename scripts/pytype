@@ -253,7 +253,9 @@ def _run_pytype(options):
     return
 
   if options.precompiled_builtins:
-    pytd_builtins.LoadPrecompiled(options.precompiled_builtins)
+    # TODO(mdemello): This is not covered by testing.
+    pytd_builtins.LoadPrecompiled(options.precompiled_builtins,
+                                  options.python_version)
 
   # TODO(dbaum): Consider changing flag default and/or polarity.  This will
   # need to be coordinated with a change to pytype.bzl.
