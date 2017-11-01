@@ -384,6 +384,13 @@ class ClassType(node.Node('name: str'), Type):
         cls='<unresolved>' if self.cls is None else '')
 
 
+class LateType(node.Node('name: str'), Type):
+  """A type we have yet to resolve."""
+
+  def __str__(self):
+    return self.name
+
+
 class FunctionType(node.Node('name: str'), Type):
   """The type of a function. E.g. the type of 'x' in 'x = lambda y: y'."""
 
@@ -463,7 +470,7 @@ class IntersectionType(_SetOfTypes):
   """An intersection type."""
 
 
-class GenericType(node.Node('base_type: NamedType or ClassType',
+class GenericType(node.Node('base_type: NamedType or ClassType or LateType',
                             'parameters: tuple[{Type}]'), Type):
   """Generic type. Takes a base type and type parameters.
 

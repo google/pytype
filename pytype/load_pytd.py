@@ -76,6 +76,7 @@ class Loader(object):
                dirty=False)
     }
     self._concatenated = None
+    self._import_name_cache = {}  # performance cache
     # Paranoid verification that pytype.main properly checked the flags:
     if self.options.imports_map is not None:
       assert self.options.pythonpath == [""]
@@ -183,7 +184,7 @@ class Loader(object):
 
   def _verify_ast(self, ast):
     try:
-      ast.Visit(visitors.VerifyLookup())
+      ast.Visit(visitors.VerifyLookup(ignore_late_types=True))
     except ValueError as e:
       raise BadDependencyError(e.message)
     ast.Visit(visitors.VerifyContainers())
@@ -244,8 +245,12 @@ class Loader(object):
     return ast
 
   def import_name(self, module_name):
+    # This method is used by convert.py for LateType, so memoize results early:
+    if module_name in self._import_name_cache:
+      return self._import_name_cache[module_name]
     ast = self._import_name(module_name)
     self._lookup_all_classes()
+    self._import_name_cache[module_name] = ast
     return ast
 
   def _load_builtin(self, subdir, module_name, typeshed_only=False):

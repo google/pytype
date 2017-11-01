@@ -551,6 +551,22 @@ class TestOptimize(parser_test_base.ParserTest):
     new_src = self.ApplyVisitorToString(src, visitor)
     self.AssertSourceEquals(new_src, expected)
 
+  def testFindCommonSuperClasses(self):
+    src = textwrap.dedent("""
+        x = ...  # type: int or other.Bar
+    """)
+    expected = textwrap.dedent("""
+        x = ...  # type: int or other.Bar
+    """)
+    ast = self.Parse(src)
+    ast = ast.Visit(visitors.ReplaceTypes(
+        {"other.Bar": pytd.LateType("other.Bar")}))
+    hierarchy = ast.Visit(visitors.ExtractSuperClassesByName())
+    ast = ast.Visit(optimize.FindCommonSuperClasses(
+        optimize.SuperClassHierarchy(hierarchy)))
+    ast = ast.Visit(visitors.LateTypeToClassType())
+    self.AssertSourceEquals(ast, expected)
+
   def testSimplifyUnionsWithSuperclasses(self):
     src = textwrap.dedent("""
         x = ...  # type: int or bool
@@ -739,6 +755,22 @@ class TestOptimize(parser_test_base.ParserTest):
     ast = ast.Visit(optimize.AddInheritedMethods())
     self.assertItemsEqual(("f", "g", "h"),
                           [m.name for m in ast.Lookup("B").methods])
+
+  def testRemoveInheritedMethodsWithLateType(self):
+    src = textwrap.dedent("""
+        class Foo(other.Bar):
+          def bar() -> float
+    """)
+    expected = textwrap.dedent("""
+        class Foo(other.Bar):
+          def bar() -> float
+    """)
+    ast = self.Parse(src)
+    ast = ast.Visit(visitors.ReplaceTypes(
+        {"other.Bar": pytd.LateType("other.Bar")}))
+    ast = ast.Visit(optimize.RemoveInheritedMethods())
+    ast = ast.Visit(visitors.LateTypeToClassType())
+    self.AssertSourceEquals(ast, expected)
 
   def testRemoveInheritedMethodsWithoutSelf(self):
     src = textwrap.dedent("""

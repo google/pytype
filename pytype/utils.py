@@ -459,6 +459,9 @@ class Tempdir(object):
         fi.write(textwrap.dedent(indented_data))
     return path
 
+  def delete_file(self, filename):
+    os.unlink(os.path.join(self.path, filename))
+
   def __exit__(self, error_type, value, tb):
     shutil.rmtree(path=self.path)
     return False  # reraise any exceptions

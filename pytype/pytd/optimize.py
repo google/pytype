@@ -626,6 +626,9 @@ class FindCommonSuperClasses(visitors.Visitor):
         pytd.NamedType(cls) for cls in intersection
         if not self.hierarchy.HasSubClassInSet(cls, intersection))
 
+    if not new_type_list:
+      return union  # if types don't intersect, leave them alone
+
     return pytd_utils.JoinTypes(new_type_list)
 
 
@@ -702,6 +705,9 @@ class AddInheritedMethods(visitors.Visitor):
   optimizations (like signature merging), and is also useful as preprocessor
   for type matching.
   """
+
+  def VisitLateType(self, _):
+    raise NotImplementedError("Can't use AddInheritedMethods with LateType.")
 
   def VisitClass(self, cls):
     """Add superclass methods and constants to this Class."""

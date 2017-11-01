@@ -300,4 +300,6 @@ def PrepareForExport(module_name, python_version, ast):
   ast = ast.Visit(visitors.NamedTypeToClassType())
   ast = ast.Visit(visitors.FillInLocalPointers({"": ast, module_name: ast}))
   ast = ast.Visit(visitors.CanonicalOrderingVisitor())
+  ast = ast.Visit(visitors.ClassTypeToLateType(
+      ignore=[module_name + ".", "__builtin__.", "typing."]))
   return ast

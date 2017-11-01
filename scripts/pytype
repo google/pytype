@@ -186,8 +186,11 @@ def process_one_file(input_filename,
           else:
             raise
         if options.verify_pickle:
-          reloaded_ast = loader.load_file(options.module_name, output_filename)
-          if not reloaded_ast.ASTeq(ast):
+          ast1 = ast.Visit(visitors.LateTypeToClassType())
+          ast1 = ast1.Visit(visitors.ClearClassPointers())
+          ast2 = loader.load_file(options.module_name, output_filename)
+          ast2 = ast2.Visit(visitors.ClearClassPointers())
+          if not ast1.ASTeq(ast2):
             raise AssertionError()
         serialize_ast.StoreAst(ast, options.output_pickled)
   if options.report_errors:

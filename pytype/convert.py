@@ -38,6 +38,7 @@ class Converter(object):
     self.pytd_convert = output.Converter()
 
     self._convert_cache = {}
+    self._resolved_late_types = {}  # performance cache
 
     # Initialize primitive_classes to empty to allow constant_to_value to run.
     self.primitive_classes = ()
@@ -411,6 +412,32 @@ class Converter(object):
         self._convert_cache[key] = value
       return value
 
+  def _load_late_type(self, late_type):
+    """Resolve a late type, possibly by loading a module."""
+    if late_type.name not in self._resolved_late_types:
+      module, dot, _ = late_type.name.rpartition(".")
+      assert dot
+      ast = self.vm.loader.import_name(module)
+      if ast is not None:
+        try:
+          # TODO(kramm): Should this use visitor.py:ToType?
+          cls = ast.Lookup(late_type.name)
+        except KeyError:
+          try:
+            ast.Lookup("__getattr__")
+          except KeyError:
+            log.warning("Couldn't resolve %s", late_type.name)
+          t = pytd.AnythingType()
+        else:
+          assert isinstance(cls, pytd.Class)
+          t = pytd.ClassType(late_type.name, cls)
+      else:
+        # A pickle file refers to a module that went away in the mean time.
+        log.error("During dependency resolution, couldn't import %r", module)
+        t = pytd.AnythingType()
+      self._resolved_late_types[late_type.name] = t
+    return self._resolved_late_types[late_type.name]
+
   def _constant_to_value(self, pyval, subst, get_node):
     """Create a AtomicAbstractValue that represents a python constant.
 
@@ -455,6 +482,9 @@ class Converter(object):
       except (KeyError, AttributeError):
         log.debug("Failed to find pytd", exc_info=True)
         raise
+    elif isinstance(pyval, pytd.LateType):
+      actual = self._load_late_type(pyval)
+      return self._constant_to_value(actual, subst, get_node)
     elif isinstance(pyval, pytd.TypeDeclUnit):
       data = (pyval.constants + pyval.type_params + pyval.classes +
               pyval.functions + pyval.aliases)
@@ -515,6 +545,11 @@ class Converter(object):
           pyval.name, self.vm, constraints=constraints, bound=bound)
     elif isinstance(pyval, abstract.AsInstance):
       cls = pyval.cls
+      if isinstance(cls, pytd.LateType):
+        actual = self._load_late_type(cls)
+        if not isinstance(actual, pytd.ClassType):
+          return self.unsolvable
+        cls = actual.cls
       if isinstance(cls, pytd.ClassType):
         cls = cls.cls
       if isinstance(cls, pytd.GenericType) or (isinstance(cls, pytd.Class) and
@@ -525,8 +560,15 @@ class Converter(object):
           params = tuple(pytd.AnythingType() for t in cls.template)
           cls = pytd.GenericType(base_type=pytd.ClassType(cls.name, cls),
                                  parameters=params)
-        assert isinstance(cls.base_type, pytd.ClassType)
-        base_cls = cls.base_type.cls
+        if isinstance(cls.base_type, pytd.LateType):
+          actual = self._load_late_type(cls.base_type)
+          if not isinstance(actual, pytd.ClassType):
+            return self.unsolvable
+          base_cls = actual.cls
+        else:
+          assert isinstance(cls.base_type, pytd.ClassType)
+          base_cls = cls.base_type.cls
+        assert isinstance(base_cls, pytd.Class), base_cls
         if base_cls.name == "__builtin__.type":
           c, = cls.parameters
           if isinstance(c, pytd.TypeParameter):
@@ -571,9 +613,17 @@ class Converter(object):
       else:
         return self.constant_to_value(cls, subst, self.vm.root_cfg_node)
     elif isinstance(pyval, pytd.GenericType):
-      assert isinstance(pyval.base_type, pytd.ClassType)
+      if isinstance(pyval.base_type, pytd.LateType):
+        actual = self._load_late_type(pyval.base_type)
+        if not isinstance(actual, pytd.ClassType):
+          return self.unsolvable
+        base = actual.cls
+      else:
+        assert isinstance(pyval.base_type, pytd.ClassType)
+        base = pyval.base_type.cls
+      assert isinstance(base, pytd.Class), base
       base_cls = self.constant_to_value(
-          pyval.base_type.cls, subst, self.vm.root_cfg_node)
+          base, subst, self.vm.root_cfg_node)
       if not isinstance(base_cls, abstract.Class):
         # base_cls can be, e.g., an unsolvable due to an mro error.
         return self.unsolvable
@@ -587,7 +637,7 @@ class Converter(object):
         parameters = pyval.args + (pytd_utils.JoinTypes(pyval.args), pyval.ret)
       else:
         abstract_class = abstract.ParameterizedClass
-        template = tuple(t.name for t in pyval.base_type.cls.template)
+        template = tuple(t.name for t in base.template)
         parameters = pyval.parameters
       assert (pyval.base_type.name == "typing.Generic" or
               len(parameters) <= len(template))

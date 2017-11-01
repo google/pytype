@@ -533,6 +533,9 @@ class PrintVisitor(Visitor):
     else:
       return self._SafeName(node_name)
 
+  def VisitLateType(self, node):
+    return self.VisitNamedType(node)
+
   def VisitClassType(self, node):
     return self.VisitNamedType(node)
 
@@ -877,6 +880,14 @@ def LookupClasses(target, global_module=None):
 
 class VerifyLookup(Visitor):
   """Utility class for testing visitors.LookupClasses."""
+
+  def __init__(self, ignore_late_types=False):
+    super(VerifyLookup, self).__init__()
+    self.ignore_late_types = ignore_late_types
+
+  def EnterLateType(self, node):
+    if not self.ignore_late_types:
+      raise ValueError("Unresolved LateType: %r" % node.name)
 
   def EnterNamedType(self, node):
     raise ValueError("Unreplaced NamedType: %r" % node.name)
@@ -1707,6 +1718,19 @@ class CollectDependencies(Visitor):
     self.EnterNamedType(t)
 
 
+class CollectLateDependencies(Visitor):
+  """Visitor for retrieving late dependencies. Only used in tests."""
+
+  def __init__(self):
+    super(CollectLateDependencies, self).__init__()
+    self.modules = set()
+
+  def EnterLateType(self, t):
+    module_name, dot, unused_name = t.name.rpartition(".")
+    assert dot
+    self.modules.add(module_name)
+
+
 class QualifyRelativeNames(Visitor):
   """Resolve package-relative imports (e.g. from .foo import ...)."""
 
@@ -1953,19 +1977,22 @@ class VerifyContainers(Visitor):
   """
 
   def EnterGenericType(self, node):
-    if not pytd.IsContainer(node.base_type.cls):
-      raise ContainerError("Class %s is not a container" % node.base_type.name)
-    elif node.base_type.name == "typing.Generic":
+    base_type = node.base_type
+    if isinstance(base_type, pytd.LateType):
+      return  # We can't verify this yet
+    if not pytd.IsContainer(base_type.cls):
+      raise ContainerError("Class %s is not a container" % base_type.name)
+    elif base_type.name == "typing.Generic":
       for t in node.parameters:
         if not isinstance(t, pytd.TypeParameter):
           raise ContainerError("Name %s must be defined as a TypeVar" % t.name)
     elif not isinstance(node, (pytd.CallableType, pytd.TupleType)):
-      max_param_count = len(node.base_type.cls.template)
+      max_param_count = len(base_type.cls.template)
       actual_param_count = len(node.parameters)
       if actual_param_count > max_param_count:
         raise ContainerError(
             "Too many parameters on %s: expected %s, got %s" % (
-                node.base_type.name, max_param_count, actual_param_count))
+                base_type.name, max_param_count, actual_param_count))
 
   def EnterCallableType(self, node):
     self.EnterGenericType(node)
@@ -2138,5 +2165,37 @@ class ReplaceWithAnyReferenceVisitor(RemoveTypeParametersFromGenericAny):
       return pytd.AnythingType()
     return n
 
+  def VisitLateType(self, n):
+    return self.VisitNamedType(n)
+
   def VisitClassType(self, n):
     return self.VisitNamedType(n)
+
+
+class ClassTypeToLateType(Visitor):
+  """Convert ClassType to LateType."""
+
+  def __init__(self, ignore):
+    """Initialize the visitor.
+
+    Args:
+      ignore: A list of prefixes to ignore. Typically, this list includes
+        things something like like "__builtin__.", since we don't want to
+        convert builtin types to late types. (And, more generally, types of
+        modules that are always loaded by pytype don't need to be late types)
+    """
+    super(ClassTypeToLateType, self).__init__()
+    self._ignore = ignore
+
+  def VisitClassType(self, n):
+    for prefix in self._ignore:
+      if n.name.startswith(prefix) and "." not in n.name[len(prefix):]:
+        return n
+    return pytd.LateType(n.name)
+
+
+class LateTypeToClassType(Visitor):
+  """Convert LateType to (unresolved) ClassType."""
+
+  def VisitLateType(self, t):
+    return pytd.ClassType(t.name, None)
