@@ -13,9 +13,10 @@ import unittest
 IGNORE = object()
 
 
-def get_builtins_source():
+def get_builtins_source(python_version):
+  filename = "builtins/%d/__builtin__.pytd" % python_version[0]
   pytd_dir = os.path.dirname(pytd.__file__)
-  with open(os.path.join(pytd_dir, "builtins/__builtin__.pytd")) as f:
+  with open(os.path.join(pytd_dir, filename)) as f:
     return f.read()
 
 
@@ -1715,7 +1716,7 @@ class MergeSignaturesTest(_ParserTestBase):
 class EntireFileTest(_ParserTestBase):
 
   def test_builtins(self):
-    self.check(get_builtins_source(), expected=IGNORE)
+    self.check(get_builtins_source(self.PYTHON_VERSION), expected=IGNORE)
 
 
 class MemoryLeakTest(unittest.TestCase):
@@ -1762,7 +1763,7 @@ class MemoryLeakTest(unittest.TestCase):
 
   def test_builtins(self):
     # This has a little of everything.
-    self.check(get_builtins_source())
+    self.check(get_builtins_source(self.PYTHON_VERSION))
 
   def test_error_in_class(self):
     self.check("""\

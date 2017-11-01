@@ -68,16 +68,6 @@ class Options(object):
                "file1.py[:file1.pyi] [file2.py:file2.pyi [...]]"),
         description="Infer/check types in a Python module")
     o.add_option(
-        "-B", "--builtins", type="string", action="store",
-        dest="pybuiltins_filename", default=None,
-        help=("Use user-supplied custom definition of __builtin__.py "
-              "(for debugging). This should be an absolute file name; "
-              "if it is not an absolute file name, it is resolved using "
-              "--pythonpath. "
-              "The default resolves to pytd/builtins/__builtin__.py. "
-              "Note that this does not affect the PyTD for builtins, which "
-              "is always in pytd/builtins/__builtin__.pytd."))
-    o.add_option(
         "-C", "--check", action="store_true",
         dest="check",
         help=("Don't do type inference. Only check for type errors."))

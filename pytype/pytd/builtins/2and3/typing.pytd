@@ -1,0 +1,381 @@
+# Special-cased by the parser: TypeVar, Any, NamedTuple, Optional, Union
+__all__ = ...  # type: List[str]
+AnyStr = TypeVar('AnyStr', str, unicode)
+_ARGS = TypeVar('_ARGS')
+_RET = TypeVar('_RET')
+# "_T", "_K", and "_V" are hardcoded in abstract.py
+_T = TypeVar('_T')
+_K = TypeVar('_K')
+_V = TypeVar('_V')
+_K2 = TypeVar('_K2')
+_V2 = TypeVar('_V2')
+_T2 = TypeVar('_T2')
+
+
+# This function does not exist in typing.py. It is here for documentation
+# purposes and to make it easier for pytype to type-check arguments to TypeVar.
+def _typevar_new(name: str, *constraints: type, bound: type=None, covariant: bool=False, contravariant: bool=False): ...
+
+
+class Callable(Generic[_ARGS, _RET], Protocol):
+  func_name = ...  # type: str
+  @abstractmethod
+  def __call__(self, ...) -> _RET
+
+
+class Generic(object):
+  __slots__ = []
+
+
+# This class is the implementation of PEP 544
+# (https://www.python.org/dev/peps/pep-0544/)
+class Protocol(object):
+  __slots__ = []
+
+
+class SupportsInt(Protocol):
+  __slots__ = []
+  @abstractmethod
+  def __int__(self) -> int: ...
+
+
+class SupportsFloat(Protocol):
+  __slots__ = []
+  @abstractmethod
+  def __float__(self) -> float: ...
+
+
+class SupportsComplex(Protocol):
+  __slots__ = []
+  @abstractmethod
+  def __complex__(self) -> complex: ...
+
+
+class SupportsAbs(Generic[_T], Protocol):
+  __slots__ = []
+  @abstractmethod
+  def __abs__(self) -> _T: ...
+
+
+class SupportsRound(Generic[_T], Protocol):
+  __slots__ = []
+  @abstractmethod
+  def __round__(self, ndigits: int = ...) -> _T: ...
+
+
+class Reversible(Generic[_T]):
+  __slots__ = []
+  @abstractmethod
+  def __reversed__(self) -> Iterator[_T]: ...
+
+
+class Iterator(Iterable[_T], Protocol):
+  __slots__ = []
+  @abstractmethod
+  def next(self) -> _T: ...
+
+
+class Iterable(Generic[_T], Protocol):
+  __slots__ = []
+  @abstractmethod
+  def __iter__(self) -> Iterator[_T]
+
+
+class Sized(Protocol):
+  __slots__ = []
+  @abstractmethod
+  def __len__(self) -> int: ...
+
+
+class Hashable(object):
+  __slots__ = []
+  @abstractmethod
+  def __hash__(self) -> int: ...
+
+
+class Container(Generic[_T], Protocol):
+  __slots__ = []
+  @abstractmethod
+  def __contains__(self, x) -> bool: ...
+
+
+class Sequence(Sized, Iterable[_T], Container[_T], Reversible[_T], Protocol):
+  __slots__ = []
+  @abstractmethod
+  def __getitem__(self, i: int) -> _T: ...
+  @abstractmethod
+  def __getitem__(self, s: slice) -> Sequence[_T]: ...
+  def __getslice__(self, ...) -> Sequence[_T]: ...
+  def index(self, x) -> int: ...
+  def count(self, x) -> int: ...
+  def __contains__(self, x) -> bool: ...
+  def __iter__(self) -> Iterator[_T]: ...
+  def __reversed__(self) -> Iterator[_T]: ...
+
+
+class Collection(Sized, Iterable[_T], Container[_T]):
+  __slots__ = []
+
+
+class Tuple(Sequence[_T]):
+  __slots__ = []
+
+
+class MutableSequence(Sequence[_T], Protocol):
+  __slots__ = []
+  @abstractmethod
+  def __setitem__(self, i: int, v: _T2) -> None:
+    self := MutableSequence[_T or _T2]
+  @abstractmethod
+  def __setitem__(self, i: slice, v: Iterable[_T2]) -> None:
+    self := MutableSequence[_T or _T2]
+  def __setslice__(self, i, j, s: Iterable[_T2]) -> None:
+    self := MutableSequence[_T or _T2]
+  @abstractmethod
+  def __delitem__(self, i: Union[int, slice]) -> None: ...
+  def __add__(self, x: Iterable[_T2]) -> MutableSequence[_T or _T2]: ...
+  def append(self, v: _T2) -> None:
+    self := MutableSequence[_T or _T2]
+  def extend(self, iterable: Iterable[_T2]) -> None:
+    self := MutableSequence[_T or _T2]
+  @abstractmethod
+  def insert(self, i: int, v: _T2) -> None:
+    self := MutableSequence[_T or _T2]
+  def reverse(self) -> None: ...
+  def pop(self, index: int = ...) -> _T: ...
+  def remove(self, value: _T) -> None: ...
+
+
+class List(MutableSequence[_T]):
+  __slots__ = []
+
+
+# typing.Deque subclasses collections.deque and MutableSequence[_T], but there's
+# no actual way to represent that without introducing an import cycle.
+class Deque(MutableSequence[_T]):
+  maxlen = ...  # type: Optional[int]
+  def appendleft(self, v: _T2) -> None:
+    self := Deque[_T or _T2]
+  def clear(self) -> None:
+    self := Deque[nothing]
+  def copy(self) -> Deque[_T]: ...
+  def extendleft(self, iterable: Iterable[_T2]) -> None:
+    self := Deque[_T or _T2]
+  def popleft(self, index: int = ...) -> _T: ...
+  def rotate(self, steps: int = ...) -> None: ...
+
+
+class IO(Iterator[AnyStr]):
+  name = ...  # type: str
+  mode = ...  # type: str
+  closed = ...  # type: bool
+  newlines = ...  # type: Union[None, str, Tuple[str,...]]
+  def __enter__(self) -> IO[AnyStr]: ...
+  def __exit__(self, t, value, traceback) -> bool: ...
+  def __iter__(self) -> Iterator[AnyStr]: ...
+  def next(self) -> AnyStr: ...
+  def close(self) -> None: ...
+  def fileno(self) -> int: ...
+  def flush(self) -> None: ...
+  def isatty(self) -> bool: ...
+  def read(self, n: int = ...) -> AnyStr: ...
+  def readable(self) -> bool: ...
+  def readline(self, limit: int = ...) -> AnyStr: ...
+  def readlines(self, hint: int = ...) -> list[AnyStr]: ...
+  def seek(self, offset: int, whence: int = ...) -> None: ...
+  def seekable(self) -> bool: ...
+  def tell(self) -> int: ...
+  def truncate(self, size: int = ...) -> Optional[int]: ...
+  def writable(self) -> bool: ...
+  def write(self, s: Union[bytes, unicode, bytearray]) -> None: ...
+  def writelines(self, lines: Iterable[AnyStr]) -> None: ...
+
+
+class BinaryIO(IO[str]): ...
+
+
+class TextIO(IO[unicode]): ...
+
+
+class Mapping(Sized, Iterable[_K], Container[_K], Generic[_K, _V], Protocol):
+  __slots__ = []
+  def copy(self) -> Mapping[_K, _V]: ...
+  def __contains__(self, o) -> bool: ...
+  @abstractmethod
+  def __getitem__(self, key: _K) -> _V: ...
+  def get(self, k) -> _V or NoneType
+  def get(self, k, d: _V2) -> _V or _V2
+  # TODO(kramm): The below should be "AbstractSet", not "list"
+  def items(self) -> list[Tuple[_K, _V]]: ...
+  def keys(self) -> list[_K]: ...
+  def values(self) -> list[_V]: ...
+  def iteritems(self) -> Iterator[Tuple[_K, _V]]: ...
+  def iterkeys(self) -> Iterator[_K]: ...
+  def itervalues(self) -> Iterator[_V]: ...
+  def viewitems(self) -> ItemsView[_K, _V]: ...
+  def viewkeys(self) -> KeysView[_K]: ...
+  def viewvalues(self) -> ValuesView[_V]: ...
+
+
+class MutableMapping(Mapping[_K, _V], Protocol):
+  __slots__ = []
+  def copy(self) -> MutableMapping[_K, _V]: ...
+  @abstractmethod
+  def __setitem__(self, k: _K2, v: _V2) -> None:
+    self := MutableMapping[_K or _K2, _V or _V2]
+  @abstractmethod
+  def __delitem__(self, k) -> None: ...
+  def clear(self) -> None:
+    self := MutableMapping[nothing, nothing]
+  def pop(self, k, default: _V2 = ...) -> _V or _V2: ...
+  def popitem(self) -> Tuple[_K, _V]: ...
+  def setdefault(self, k: _K2, default: _V2 = ...) -> _V or _V2:
+    self := MutableMapping[_K or _K2, _V or _V2]
+  def update(self, m: Mapping[_K2, _V2]) -> None:
+    self := MutableMapping[_K or _K2, _V or _V2]
+  def update(self, m: Iterable[Tuple[_T, ...]]) -> None:
+    self := MutableMapping[_K or _T, _V or _T]
+
+
+class DefaultDict(MutableMapping[_K, _V]): ...
+
+
+class Dict(MutableMapping[_K, _V]):
+  __slots__ = []
+
+
+class AbstractSet(Iterable[_T], Container[_T]):
+  __slots__ = []
+  def __contains__(self, x) -> bool: ...
+  def __and__(self, s: AbstractSet[?]) -> AbstractSet[_T]: ...
+  def __or__(self, s: AbstractSet[_T2]) -> AbstractSet[_T or _T2]: ...
+  def __sub__(self, s: AbstractSet[?]) -> AbstractSet[_T]: ...
+  def __xor__(self, s: AbstractSet[_T2]) -> AbstractSet[_T or _T2]: ...
+  def isdisjoint(self, s: Iterable) -> bool: ...
+
+
+class FrozenSet(AbstractSet[_T]):
+  __slots__ = []
+
+
+class MutableSet(AbstractSet[_T]):
+  __slots__ = []
+  def add(self, x: _T2) -> None:
+    self := MutableSet[_T or _T2]
+  def discard(self, x) -> None: ...
+  def clear(self) -> None:
+    self := MutableSet[nothing]
+  def pop(self) -> _T: ...
+  def remove(self, element: _T) -> None: ...
+  def __or__(self, s: AbstractSet[_T2]) -> MutableSet[_T or _T2]: ...
+  def __and__(self, s: AbstractSet[?]) -> MutableSet[_T]: ...
+  def __xor__(self, s: AbstractSet[_T2]) -> MutableSet[_T or _T2]: ...
+
+
+class Set(MutableSet[_T]):
+  __slots__ = []
+
+
+# _T is the yield type, _T2 the send type, _V the return type.
+class Generator(Iterator[_T], Generic[_T, _T2, _V]):
+  __slots__ = []
+  def next(self) -> _T: ...
+  def send(self, value: _T2) -> _T: ...
+  def throw(self, typ: BaseException, val = ..., tb = ...) -> None: ...
+  def close(self) -> None: ...
+
+
+class Type(Generic[_T]): ...
+
+
+class Pattern(Generic[AnyStr]):
+  flags = ...  # type: int
+  groups = ...  # type: int
+  groupindex = ...  # type: Dict[str, int]
+  pattern = ...  # type: AnyStr
+  def search(self, string: AnyStr, pos: int = ..., endpos: int = ...) -> Match[AnyStr]: ...
+  def match(self, string: AnyStr, pos: int = ..., endpos: int = ...) -> Match[AnyStr]: ...
+  def split(self, string: AnyStr, maxsplit: int = ...) -> List[AnyStr]
+  def findall(self, string: AnyStr, pos: int = ..., endpos: int = ...) -> List[?]: ...
+  def finditer(self, string: AnyStr, pos: int = ..., endpos: int = ...) -> Iterator[Match[AnyStr]]
+  def sub(self, repl: AnyStr or Callable, string: AnyStr, count: int = ...) -> AnyStr: ...
+  def subn(self, repl: AnyStr or Callable, string: AnyStr, count: int = ...) -> Tuple[AnyStr, int]
+
+
+class Match(Generic[AnyStr]):
+  pos = ...  # type: int
+  endpos = ...  # type: int
+  lastindex = ...  # type: int
+  lastgroup = ...  # type: str or None
+  re = ...  # type: Pattern[AnyStr]
+  string = ...  # type: AnyStr
+  def expand(self, template: AnyStr) -> AnyStr: ...
+  def group(self) -> AnyStr: ...
+  def group(self, group1: unicode or int) -> AnyStr: ...
+  def group(self, group1: unicode or int, group2: unicode or int, *groups) -> Tuple[AnyStr, ...]: ...
+  def groups(self, default: AnyStr = ...) -> Tuple[AnyStr, ...]: ...
+  def groupdict(self, default: AnyStr = ...) -> Dict[str, AnyStr]: ...
+  def start(self, group: int or unicode = ...) -> int: ...
+  def end(self, group: int or unicode = ...) -> int: ...
+  def span(self, group: int or unicode = ...) -> Tuple[int, int]: ...
+
+
+# Used to mark attributes as class-level, as opposed to instance-level.
+# TODO(kramm): Add support for this to pytype.
+class ClassVar(Generic[_T]): ...
+
+
+# TODO(kramm): register with str and bytearray
+class ByteString(Sequence[int]): ...
+
+# TODO(tsudol): Should be covariant, e.g. _T_co. traceback arg for __exit__
+# should be types.TracebackType.
+class ContextManager(Generic[_T], Protocol):
+  @abstractmethod
+  def __enter__(self) -> _T: ...
+  @abstractmethod
+  def __exit__(self, exc_type: Optional[Type[BaseException]], exc_value: Optional[BaseException], traceback: Optional[Any]) -> Optional[bool]: ...
+
+
+class MappingView(Sized, Iterable[_T]):
+  __slots__ = []
+class KeysView(MappingView[_T], AbstractSet[_T]):
+  __slots__ = []
+class ValuesView(MappingView[_T]):
+  __slots__ = []
+class ItemsView(MappingView[Tuple[_K, _V]], AbstractSet[Tuple[_K, _V]]):
+  __slots__ = []
+
+def NewType(name, tp) -> type
+
+Text = unicode
+
+def cast(typ: Type[_T], val) -> _T
+
+def overload(func: _T) -> _T
+def no_type_check(arg: _T) -> _T
+def no_type_check_decorator(decorator) -> Callable
+def get_type_hints(obj, ...) -> Optional[Dict[str, Any]]
+
+# The following only exist in Python 3's typing.py, not in
+# https://github.com/python/typeshed/blob/master/stdlib/2/typing.pyi
+#
+# We alias them to Any here so pytype can parse pyi files containing them, and
+# not generate any false errors.
+#
+# The version guards below are from
+# https://github.com/python/typeshed/blob/master/stdlib/3/typing.pyi
+if sys.version_info >= (3, 0):
+  Awaitable = Any
+  AsyncIterator = Any
+  AsyncIterable = Any
+  Coroutine = Any
+
+if sys.version_info >= (3, 5):
+  AsyncContextManager = Any
+
+if sys.version_info >= (3, 6):
+  AsyncGenerator = Any
+
+
+TYPE_CHECKING = ...  # type: bool

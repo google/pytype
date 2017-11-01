@@ -17,23 +17,30 @@
 
 """Utilities for parsing pytd files for builtins."""
 
+import collections
 import os
 
 
+from pytype import utils
 from pytype.pyi import parser
 from pytype.pytd import pytd_utils
 from pytype.pytd.parse import visitors
 
 
-def _FindBuiltinFile(name, extension=".pytd"):
-  return pytd_utils.GetPredefinedFile("builtins", name, extension)
+def _FindBuiltinFile(name, python_version, extension=".pytd"):
+  subdir = utils.get_builtins_path(python_version)
+  return pytd_utils.GetPredefinedFile(subdir, name, extension)
 
 
 def _FindStdlibFile(name, extension=".pytd"):
   return pytd_utils.GetPredefinedFile("stdlib", name, extension)
 
 
-_cached_builtins_pytd = None  # ... => pytype.pytd.pytd.TypeDeclUnit
+# Tests might run with different python versions in the same pytype invocation,
+# so preserve the python version that was used to generate the cache.
+# Cache: (version: tuple(int), cache: tuple(pytd.TypeDeclUnit))
+Cache = collections.namedtuple("Cache", ("version", "cache"))
+_cached_builtins_pytd = Cache(None, None)
 
 
 def Precompile(filename, python_version):
@@ -45,27 +52,29 @@ def Precompile(filename, python_version):
 
 def IsCached():
   """Returns None if the builtins are not cached."""
-  return _cached_builtins_pytd
+  return _cached_builtins_pytd.cache
 
 
-def LoadPrecompiled(filename):
+def LoadPrecompiled(filename, python_version):
   """Load precompiled builtins from the specified file."""
   # TODO(steenbuck): This should check that the python_version in the current
   # process is the same as the one used to generate the cached file.
   global _cached_builtins_pytd
-  assert _cached_builtins_pytd is None
-  _cached_builtins_pytd = pytd_utils.LoadPickle(filename)
+  assert _cached_builtins_pytd.cache is None
+  _cached_builtins_pytd = Cache(python_version, pytd_utils.LoadPickle(filename))
 
 
 def GetBuiltinsAndTyping(python_version):
   """Get __builtin__.pytd and typing.pytd."""
   assert python_version
   global _cached_builtins_pytd
-  if not _cached_builtins_pytd:
-    t = parser.parse_string(_FindBuiltinFile("typing"),
+  if _cached_builtins_pytd.cache:
+    assert _cached_builtins_pytd.version == python_version
+  else:
+    t = parser.parse_string(_FindBuiltinFile("typing", python_version),
                             name="typing",
                             python_version=python_version)
-    b = parser.parse_string(_FindBuiltinFile("__builtin__"),
+    b = parser.parse_string(_FindBuiltinFile("__builtin__", python_version),
                             name="__builtin__",
                             python_version=python_version)
     b = b.Visit(visitors.LookupExternalTypes({"typing": t}, full_names=True,
@@ -85,8 +94,8 @@ def GetBuiltinsAndTyping(python_version):
     t.Visit(visitors.VerifyLookup())
     b.Visit(visitors.VerifyContainers())
     t.Visit(visitors.VerifyContainers())
-    _cached_builtins_pytd = b, t
-  return _cached_builtins_pytd
+    _cached_builtins_pytd = Cache(python_version, (b, t))
+  return _cached_builtins_pytd.cache
 
 
 def GetBuiltinsPyTD(python_version):
@@ -103,13 +112,6 @@ def GetBuiltinsPyTD(python_version):
   """
   assert python_version
   return pytd_utils.Concat(*GetBuiltinsAndTyping(python_version))
-
-
-# TODO(kramm): Use python_version, once we have builtins for both Python 2 and
-# Python 3.
-def GetBuiltinsCode(unused_python_version):
-  """Similar to GetBuiltinsPyTD, but for code in the .py file."""
-  return _FindBuiltinFile("__builtin__", extension=".py")
 
 
 def ParsePyTD(src=None, filename=None, python_version=None, module=None,
@@ -155,7 +157,8 @@ def ParsePredefinedPyTD(pytd_subdir, module, python_version):
     src = pytd_utils.GetPredefinedFile(pytd_subdir, module)
   except IOError:
     return None
-  return ParsePyTD(src, filename=os.path.join(pytd_subdir, module + ".pytd"),
+  filename = os.path.join(pytd_subdir, module + ".pytd")
+  return ParsePyTD(src, filename=filename,
                    module=module,
                    python_version=python_version).Replace(name=module)
 

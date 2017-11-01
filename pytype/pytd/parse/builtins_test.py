@@ -40,7 +40,7 @@ class UtilsTest(unittest.TestCase):
   def testParsePyTD(self):
     """Test ParsePyTD()."""
     ast = builtins.ParsePyTD("a = ...  # type: int",
-                             "<inline>", python_version=(2, 7, 6),
+                             "<inline>", python_version=self.PYTHON_VERSION,
                              lookup_classes=True)
     a = ast.Lookup("a").type
     self.assertItemsEqual(a, pytd.ClassType("int"))
@@ -48,8 +48,9 @@ class UtilsTest(unittest.TestCase):
 
   def testParsePredefinedPyTD(self):
     """Test ParsePredefinedPyTD()."""
+    builtin_dir = "builtins/%d" % self.PYTHON_VERSION[0]
     ast = builtins.ParsePredefinedPyTD(
-        "builtins", "__builtin__", python_version=(2, 7, 6))
+        builtin_dir, "__builtin__", python_version=self.PYTHON_VERSION)
     self.assertIsNotNone(ast.Lookup("__builtin__.int"))
 
   def testPrecompilation(self):
@@ -60,10 +61,10 @@ class UtilsTest(unittest.TestCase):
       precompiled = os.path.join(d.path, "precompiled.pickle")
       builtins.Precompile(precompiled, self.PYTHON_VERSION)
       # Clear the cache
-      builtins._cached_builtins_pytd = None
+      builtins._cached_builtins_pytd = builtins.Cache(None, None)
       # Load precompiled data.
-      builtins.LoadPrecompiled(precompiled)
-    self.assertIsNotNone(builtins._cached_builtins_pytd)
+      builtins.LoadPrecompiled(precompiled, self.PYTHON_VERSION)
+    self.assertIsNotNone(builtins._cached_builtins_pytd.cache)
     b2, t2 = builtins.GetBuiltinsAndTyping(self.PYTHON_VERSION)
     self.assertEqual(pytd.Print(b1), pytd.Print(b2))
     self.assertEqual(pytd.Print(t1), pytd.Print(t2))

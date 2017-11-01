@@ -4,6 +4,7 @@ import logging
 import os
 
 
+from pytype import utils
 from pytype.pytd import pytd_utils
 from pytype.pytd import serialize_ast
 from pytype.pytd import typeshed
@@ -281,7 +282,8 @@ class Loader(object):
     # over modules in PYTHONPATH.
     # Note: while typeshed no longer has a builtins subdir, the pytd
     # tree still does, and order is important here.
-    mod = self._load_builtin("builtins", module_name)
+    subdir = utils.get_builtins_path(self.options.python_version)
+    mod = self._load_builtin(subdir, module_name)
     if mod:
       return mod
 

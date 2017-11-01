@@ -349,10 +349,12 @@ class TestUtils(parser_test_base.ParserTest):
 class TestDataFiles(parser_test_base.ParserTest):
   """Test pytd_utils.GetPredefinedFile()."""
 
+  BUILTINS = "builtins/2"
+
   def testGetPredefinedFileReturnsString(self):
     # smoke test, only checks that it doesn't throw and the result is a string
     self.assertIsInstance(
-        pytd_utils.GetPredefinedFile("builtins", "__builtin__"),
+        pytd_utils.GetPredefinedFile(self.BUILTINS, "__builtin__"),
         str)
 
   def testGetPredefinedFileThrows(self):
@@ -360,13 +362,23 @@ class TestDataFiles(parser_test_base.ParserTest):
     with self.assertRaisesRegexp(
         IOError,
         r"File not found|Resource not found|No such file or directory"):
-      pytd_utils.GetPredefinedFile("builtins", "-this-file-does-not-exist")
+      pytd_utils.GetPredefinedFile(self.BUILTINS, "-this-file-does-not-exist")
 
-  def testPytdBuiltin(self):
-    """Verify 'import sys'."""
-    import_contents = pytd_utils.GetPredefinedFile("builtins", "__builtin__")
+  def testPytdBuiltin2(self):
+    """Verify 'import sys' for python2."""
+    subdir = "builtins/2"
+    import_contents = pytd_utils.GetPredefinedFile(subdir, "__builtin__")
     with open(os.path.join(os.path.dirname(pytd.__file__),
-                           "builtins", "__builtin__.pytd"), "rb") as fi:
+                           subdir, "__builtin__.pytd"), "rb") as fi:
+      file_contents = fi.read()
+    self.assertMultiLineEqual(import_contents, file_contents)
+
+  def testPytdBuiltin3(self):
+    """Verify 'import sys' for python3."""
+    subdir = "builtins/3"
+    import_contents = pytd_utils.GetPredefinedFile(subdir, "__builtin__")
+    with open(os.path.join(os.path.dirname(pytd.__file__),
+                           subdir, "__builtin__.pytd"), "rb") as fi:
       file_contents = fi.read()
     self.assertMultiLineEqual(import_contents, file_contents)
 

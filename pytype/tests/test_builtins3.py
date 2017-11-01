@@ -1,4 +1,4 @@
-"""Tests of builtins (in pytd/builtins/__builtins__.pytd).
+"""Tests of builtins (in pytd/builtins/{version}/__builtins__.pytd).
 
 File 3/3. Split into parts to enable better test parallelism.
 """
