@@ -33,7 +33,7 @@ class PickleTest(test_inference.InferenceTest):
         return collections.OrderedDict({1: 1})
       def g() -> json.JSONDecoder:
         return json.JSONDecoder()
-    """, pickle=True, module_name="foo")
+    """, pickle=True, module_name="foo", deep=True)
     with utils.Tempdir() as d:
       u = d.create_file("u.pickled", pickled)
       ty = self.Infer("""
@@ -89,6 +89,27 @@ class PickleTest(test_inference.InferenceTest):
         bar = ...  # type: module
         r = ...  # type: asyncore.file_dispatcher
       """)
+
+  def testOptimizeOnLateTypes(self):
+    with utils.Tempdir() as d:
+      pickled_foo = self.Infer("""
+        class X(object): pass
+      """, pickle=True, module_name="foo")
+      self._verifyDeps(pickled_foo, ["__builtin__"], [])
+      foo = d.create_file("foo.pickled", pickled_foo)
+      pickled_bar = self.Infer("""
+        import foo
+        def f():
+          return foo.X()
+      """, pickle=True, pythonpath=[""],
+                               imports_map={"foo": foo}, module_name="bar",
+                               deep=True)
+      bar = d.create_file("bar.pickled", pickled_bar)
+      self._verifyDeps(pickled_bar, ["__builtin__"], ["foo"])
+      self.Infer("""
+        import bar
+        f = bar.f
+      """, pythonpath=[""], imports_map={"foo": foo, "bar": bar})
 
   def testFileChange(self):
     with utils.Tempdir() as d:

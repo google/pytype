@@ -851,13 +851,14 @@ class DropBuiltinPrefix(Visitor):
     return self.VisitClassType(node)
 
 
-def LookupClasses(target, global_module=None):
+def LookupClasses(target, global_module=None, ignore_late_types=False):
   """Converts a PyTD object from one using NamedType to ClassType.
 
   Args:
     target: The PyTD object to process. If this is a TypeDeclUnit it will also
       be used for lookups.
     global_module: Global symbols. Required if target is not a TypeDeclUnit.
+    ignore_late_types: If True, raise an error if we encounter a LateType.
 
   Returns:
     A new PyTD object that only uses ClassType. All ClassType instances will
@@ -874,7 +875,7 @@ def LookupClasses(target, global_module=None):
   elif isinstance(target, pytd.TypeDeclUnit):
     module_map[""] = target
   target.Visit(FillInLocalPointers(module_map, fallback=global_module))
-  target.Visit(VerifyLookup())
+  target.Visit(VerifyLookup(ignore_late_types))
   return target
 
 

@@ -1174,7 +1174,7 @@ def Optimize(node,
     node = node.Visit(visitors.AdjustSelf(force=True))
   node = node.Visit(SimplifyContainers())
   if builtins and can_do_lookup:
-    node = visitors.LookupClasses(node, builtins)
+    node = visitors.LookupClasses(node, builtins, ignore_late_types=True)
     node = node.Visit(RemoveInheritedMethods())
     node = node.Visit(RemoveRedundantSignatures(hierarchy))
   return node
