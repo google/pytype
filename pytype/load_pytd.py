@@ -253,19 +253,26 @@ class Loader(object):
     self._import_name_cache[module_name] = ast
     return ast
 
-  def _load_builtin(self, subdir, module_name, typeshed_only=False):
+  def _load_builtin(self, subdir, module_name, third_party_only=False):
     """Load a pytd/pyi that ships with pytype or typeshed."""
-    version = self.options.python_version
     # Try our own type definitions first.
-    if typeshed_only:
-      mod = None
-    else:
-      mod = builtins.ParsePredefinedPyTD(subdir, module_name, version)
-    if not mod and self.options.typeshed:
-      # Fall back to typeshed.
-      mod = typeshed.parse_type_definition(subdir, module_name, version)
+    if not third_party_only:
+      mod = builtins.ParsePredefinedPyTD(
+          subdir, module_name, self.options.python_version)
+      if mod:
+        return self.load_file(filename=self.PREFIX + module_name,
+                              module_name=module_name,
+                              ast=mod)
+    if self.options.typeshed:
+      return self._load_typeshed_builtin(subdir, module_name)
+    return None
+
+  def _load_typeshed_builtin(self, subdir, module_name):
+    """Load a pyi from typeshed."""
+    mod = typeshed.parse_type_definition(
+        subdir, module_name, self.options.python_version,
+        self.options.typeshed_location, use_pickled=False)
     if mod:
-      log.debug("Found %s entry for %r", subdir, module_name)
       return self.load_file(filename=self.PREFIX + module_name,
                             module_name=module_name,
                             ast=mod)
@@ -303,7 +310,8 @@ class Loader(object):
 
     # Third party modules from typeshed (typically site-packages) come last.
     if not self.options.imports_map:
-      mod = self._load_builtin("third_party", module_name, typeshed_only=True)
+      mod = self._load_builtin(
+          "third_party", module_name, third_party_only=True)
       if mod:
         return mod
 
@@ -399,8 +407,22 @@ class Loader(object):
 class PickledPyiLoader(Loader):
   """A Loader which always loads pickle instead of PYI, for speed."""
 
-  def __init__(self, *args, **kwargs):
+  def __init__(self, use_pickled_typeshed=True, *args, **kwargs):
     super(PickledPyiLoader, self).__init__(*args, **kwargs)
+    self._use_pickled_typeshed = use_pickled_typeshed
+
+  def _load_typeshed_builtin(self, subdir, module_name):
+    if not self._use_pickled_typeshed:
+      return super(PickledPyiLoader, self)._load_typeshed_builtin(
+          subdir, module_name)
+    try:
+      filename = typeshed.get_type_definition_filename(
+          subdir, module_name, self.options.python_version,
+          self.options.typeshed_location, use_pickled=True)
+    except IOError:
+      return None
+    else:
+      return self.load_file(module_name, filename)
 
   def load_file(self, module_name, filename, ast=None):
     """Load (or retrieve from cache) a module and resolve its dependencies."""
@@ -414,7 +436,6 @@ class PickledPyiLoader(Loader):
     # They are later synced in ProcessAst.
     dependencies = [d for d in loaded_ast.dependencies
                     if d != loaded_ast.ast.name]
-
     loaded_ast = serialize_ast.EnsureAstName(loaded_ast, module_name)
     self._modules[module_name] = Module(module_name, filename, loaded_ast.ast)
     self._load_ast_dependencies(dependencies, ast, module_name)

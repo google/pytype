@@ -88,6 +88,8 @@ class RenameModuleVisitor(visitors.Visitor):
       old_module_part will be replaced by new_module_name and returned,
       otherwise node.name will be returned.
     """
+    if not name:
+      return name
     before, match, after = name.partition(self._old)
     if match and not before and "." not in after:
       return self._new + after

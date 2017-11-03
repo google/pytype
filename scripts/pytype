@@ -58,7 +58,9 @@ def _create_loader(input_filename, options):
   module_name = infer.get_module_name(input_filename, options)
   if options.use_pickled_files:
     return load_pytd.PickledPyiLoader(
-        base_module=module_name, options=options)
+        base_module=module_name,
+        use_pickled_typeshed=options.use_pickled_typeshed,
+        options=options)
   else:
     return load_pytd.Loader(
         base_module=module_name, options=options)
@@ -230,6 +232,15 @@ class _ProfileContext(object):
       self._profile.dump_stats(self._output_path)
 
 
+def _convert_to_pickle(options):
+  """Converts a pyi file to a pickled ast."""
+  loader = _create_loader(options.input, options)
+  ast = loader.load_file(options.module_name, options.input)
+  ast = ast.Visit(visitors.CanonicalOrderingVisitor())
+  serialize_ast.StoreAst(ast, options.convert_to_pickle)
+  return 0
+
+
 def main(argv):
   try:
     options = config.Options(argv)
@@ -240,6 +251,9 @@ def main(argv):
   if options.show_config:
     print options
     sys.exit(1)
+
+  if options.convert_to_pickle:
+    return _convert_to_pickle(options)
 
   with _ProfileContext(options.profile):
     with metrics.MetricsContext(options.metrics):

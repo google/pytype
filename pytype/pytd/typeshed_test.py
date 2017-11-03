@@ -16,7 +16,7 @@ class TestTypeshedLoading(parser_test_base.ParserTest):
 
   def setUp(self):
     super(TestTypeshedLoading, self).setUp()
-    self.ts = typeshed.Typeshed()
+    self.ts = typeshed.Typeshed(typeshed_location="typeshed", use_pickled=False)
 
   def test_get_typeshed_file(self):
     filename, data = self.ts.get_module_file("stdlib", "errno", (2, 7))
@@ -29,7 +29,8 @@ class TestTypeshedLoading(parser_test_base.ParserTest):
     self.assertIn("LogRecord", data)
 
   def test_parse_type_definition(self):
-    ast = typeshed.parse_type_definition("stdlib", "_random", (2, 7))
+    ast = typeshed.parse_type_definition(
+        "stdlib", "_random", (2, 7), "typeshed", False)
     self.assertIn("_random.Random", [cls.name for cls in ast.classes])
 
 

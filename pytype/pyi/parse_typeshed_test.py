@@ -46,7 +46,9 @@ class TestTypeshedParsing(unittest.TestCase):
   """Test that we can parse a given pyi file."""
   # Files that we currently can't parse
   WANTED = re.compile(r"stdlib/(2\.7|2and3)/.*\.pyi$")
-  TYPESHED_DIR = typeshed.Typeshed().typeshed_path
+  TYPESHED_DIR = typeshed.Typeshed(
+      typeshed_location="typeshed",
+      use_pickled=False).typeshed_path
   SKIPPED_FILES = list(_read_blacklist(TYPESHED_DIR))
   SKIPPED = re.compile("(%s)$" % "|".join(SKIPPED_FILES))
 

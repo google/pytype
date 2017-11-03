@@ -283,8 +283,7 @@ class InferenceTest(unittest.TestCase):
 
   def _Pickle(self, ast, module_name):
     assert module_name
-    ast = serialize_ast.PrepareForExport(
-        module_name, self.PYTHON_VERSION, ast)
+    ast = serialize_ast.PrepareForExport(module_name, self.PYTHON_VERSION, ast)
     return serialize_ast.StoreAst(ast)
 
   def Infer(self, srccode, pythonpath=(), deep=False,
@@ -329,7 +328,8 @@ class InferenceTest(unittest.TestCase):
                        imports_map=imports_map,
                        quick=quick)
     errorlog = errors.ErrorLog()
-    loader = load_pytd.PickledPyiLoader(self.options.module_name, self.options)
+    loader = load_pytd.PickledPyiLoader(
+        False, self.options.module_name, self.options)
     unit, builtins_pytd = infer.infer_types(
         src, errorlog, self.options, loader=loader, **kwargs)
     unit.Visit(visitors.VerifyVisitor())
