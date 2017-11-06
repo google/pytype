@@ -107,9 +107,8 @@ def _pretty_variable(var):
     var_prefix = var_desc + " = "
 
   for value in var.bindings:
-    i = 0 if value.data is None else value.data.id
     data = utils.maybe_truncate(value.data)
-    binding = "%s#%d %s" % (var_prefix, i, data)
+    binding = "%s %s" % (var_prefix, data)
 
     if len(value.origins) == 1:
       # Single origin.  Use the binding as a prefix when writing the orign.
