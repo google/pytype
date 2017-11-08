@@ -5,7 +5,7 @@ import textwrap
 
 
 from pytype import debug
-from pytype.pytd import cfg
+from pytype.typegraph import cfg
 
 import unittest
 

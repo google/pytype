@@ -2,7 +2,7 @@
 
 import sys
 
-from pytype.pytd import cfg
+from pytype.typegraph import cfg
 
 
 def LeaveOneOut(seq, pos):

@@ -1,7 +1,7 @@
 """Test for the cfg explanation mechanism."""
 
-from pytype.pytd import cfg
 from pytype.pytd import explain
+from pytype.typegraph import cfg
 import unittest
 
 

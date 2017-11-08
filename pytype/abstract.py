@@ -17,10 +17,10 @@ from pytype import exceptions
 from pytype import function
 from pytype import utils
 from pytype.pyc import loadmarshal
-from pytype.pytd import cfg
 from pytype.pytd import mro
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
+from pytype.typegraph import cfg
 
 log = logging.getLogger(__name__)
 chain = itertools.chain  # pylint: disable=invalid-name

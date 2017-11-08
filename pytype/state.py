@@ -5,7 +5,7 @@ import logging
 
 from pytype import abstract
 from pytype import metrics
-from pytype.pytd import cfg
+from pytype.typegraph import cfg
 
 log = logging.getLogger(__name__)
 

@@ -6,7 +6,7 @@ from pytype import abstract
 from pytype import annotations_util
 from pytype import overlay
 from pytype import special_builtins
-from pytype.pytd import cfg
+from pytype.typegraph import cfg
 
 log = logging.getLogger(__name__)
 

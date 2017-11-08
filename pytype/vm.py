@@ -44,11 +44,11 @@ from pytype.pyc import loadmarshal
 from pytype.pyc import opcodes
 from pytype.pyc import pyc
 from pytype.pyi import parser
-from pytype.pytd import cfg
-from pytype.pytd import cfg_utils
 from pytype.pytd import mro
 from pytype.pytd import slots
 from pytype.pytd.parse import visitors
+from pytype.typegraph import cfg
+from pytype.typegraph import cfg_utils
 
 log = logging.getLogger(__name__)
 

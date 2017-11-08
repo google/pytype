@@ -6,8 +6,8 @@ import os
 
 
 from pytype import utils
-from pytype.pytd import cfg
 from pytype.tests import test_inference
+from pytype.typegraph import cfg
 
 import unittest
 

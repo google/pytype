@@ -11,8 +11,8 @@ from pytype import load_pytd
 from pytype import special_builtins
 from pytype import state as frame_state
 from pytype import vm
-from pytype.pytd import cfg
 from pytype.pytd import pytd
+from pytype.typegraph import cfg
 
 import unittest
 

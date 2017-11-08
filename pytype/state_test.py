@@ -1,7 +1,7 @@
 """Test state.py."""
 
 from pytype import state
-from pytype.pytd import cfg
+from pytype.typegraph import cfg
 
 import unittest
 
