@@ -323,10 +323,11 @@ class InferenceTest(unittest.TestCase):
     Returns:
       A pytd.TypeDeclUnit
     """
-    self.options.tweak(pythonpath=pythonpath,
-                       module_name=module_name,
-                       imports_map=imports_map,
-                       quick=quick)
+    self.options.tweak(
+        pythonpath=[""] if (not pythonpath and imports_map) else pythonpath,
+        module_name=module_name,
+        imports_map=imports_map,
+        quick=quick)
     errorlog = errors.ErrorLog()
     loader = load_pytd.PickledPyiLoader(
         False, self.options.module_name, self.options)

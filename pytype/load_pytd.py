@@ -79,7 +79,7 @@ class Loader(object):
     self._import_name_cache = {}  # performance cache
     # Paranoid verification that pytype.main properly checked the flags:
     if self.options.imports_map is not None:
-      assert self.options.pythonpath == [""]
+      assert self.options.pythonpath == [""], self.options.pythonpath
 
   def _postprocess_pyi(self, ast, package_name):
     """Apply all the PYI transformations we need."""
@@ -341,6 +341,7 @@ class Loader(object):
     for searchdir in self.options.pythonpath:
       path = os.path.join(searchdir, *module_name_split)
       # See if this is a directory with a "__init__.py" defined.
+      # (These also get automatically created in imports_map_loader.py)
       init_path = os.path.join(path, "__init__")
       init_ast = self._load_pyi(init_path, module_name)
       if init_ast is not None:

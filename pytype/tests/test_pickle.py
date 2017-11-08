@@ -109,7 +109,7 @@ class PickleTest(test_inference.InferenceTest):
       self.Infer("""
         import bar
         f = bar.f
-      """, pythonpath=[""], imports_map={"foo": foo, "bar": bar})
+      """, imports_map={"foo": foo, "bar": bar})
 
   def testFileChange(self):
     with utils.Tempdir() as d:
@@ -125,8 +125,7 @@ class PickleTest(test_inference.InferenceTest):
         import foo
         class A(foo.X): pass
         class B(foo.Y): pass
-      """, pickle=True, pythonpath=[""],
-                               imports_map={"foo": foo}, module_name="bar")
+      """, pickle=True, imports_map={"foo": foo}, module_name="bar")
       self._verifyDeps(pickled_bar, ["__builtin__"], ["foo"])
       bar = d.create_file("bar.pickled", pickled_bar)
       # Now, replace the old foo.pickled with a version that doesn't have Y
@@ -136,14 +135,14 @@ class PickleTest(test_inference.InferenceTest):
         import bar
         a = bar.A()
         b = bar.B()
-      """, pythonpath=[""], imports_map={"foo": foo, "bar": bar})
+      """, imports_map={"foo": foo, "bar": bar})
       # Also try deleting the file.
       d.delete_file("foo.pickled")
       self.Infer("""
         import bar
         a = bar.A()
         b = bar.B()
-      """, pythonpath=[""], imports_map={"foo": foo, "bar": bar})
+      """, imports_map={"foo": foo, "bar": bar})
 
   def testFileRename(self):
     with utils.Tempdir() as d:
@@ -160,7 +159,7 @@ class PickleTest(test_inference.InferenceTest):
       self.Infer("""
         import bar
         bar.Foo()
-      """, pickle=True, pythonpath=[""],
+      """, pickle=True,
                  imports_map={"bar": foo,  # rename to "bar"
                               "foo": other_foo},
                  module_name="baz")
