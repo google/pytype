@@ -14,10 +14,10 @@ import sys
 import tokenize
 import traceback
 
+from pytype import analyze
 from pytype import config
 from pytype import directors
 from pytype import errors
-from pytype import infer
 from pytype import load_pytd
 from pytype import metrics
 from pytype import utils
@@ -45,7 +45,7 @@ def _read_source_file(input_filename):
 
 def check_pyi(input_filename, errorlog, options):
   py_src = _read_source_file(input_filename)
-  infer.check_types(
+  analyze.check_types(
       py_src=py_src,
       loader=_create_loader(input_filename, options),
       py_filename=input_filename,
@@ -55,7 +55,7 @@ def check_pyi(input_filename, errorlog, options):
 
 
 def _create_loader(input_filename, options):
-  module_name = infer.get_module_name(input_filename, options)
+  module_name = analyze.get_module_name(input_filename, options)
   if options.use_pickled_files:
     return load_pytd.PickledPyiLoader(
         base_module=module_name,
@@ -83,7 +83,7 @@ def generate_pyi(input_filename, errorlog, options, loader):
     UsageError: If the input filepath is invalid.
   """
   src = _read_source_file(input_filename)
-  mod, builtins = infer.infer_types(
+  mod, builtins = analyze.infer_types(
       src=src,
       errorlog=errorlog,
       options=options,

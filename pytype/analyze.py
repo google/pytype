@@ -1,4 +1,4 @@
-"""Code for generating and storing inferred types."""
+"""Code for checking and inferring types."""
 
 import collections
 import logging
@@ -633,10 +633,10 @@ def check_types(py_src, py_filename, errorlog, options, loader,
                       loader=loader, **kwargs)
   loc, defs = tracer.run_program(py_src, py_filename, init_maximum_depth)
   snapshotter = metrics.get_metric("memory", metrics.Snapshot)
-  snapshotter.take_snapshot("infer:check_types:tracer")
+  snapshotter.take_snapshot("analyze:check_types:tracer")
   if deep:
     tracer.analyze(loc, defs, maximum_depth=(2 if options.quick else None))
-  snapshotter.take_snapshot("infer:check_types:post")
+  snapshotter.take_snapshot("analyze:check_types:post")
   _maybe_output_debug(options, tracer.program)
 
 
@@ -671,12 +671,12 @@ def infer_types(src, errorlog, options, loader,
   loc, defs = tracer.run_program(src, filename, init_maximum_depth)
   log.info("===Done running definitions and module-level code===")
   snapshotter = metrics.get_metric("memory", metrics.Snapshot)
-  snapshotter.take_snapshot("infer:infer_types:tracer")
+  snapshotter.take_snapshot("analyze:infer_types:tracer")
   if deep:
     tracer.exitpoint = tracer.analyze(loc, defs, maximum_depth)
   else:
     tracer.exitpoint = loc
-  snapshotter.take_snapshot("infer:infer_types:post")
+  snapshotter.take_snapshot("analyze:infer_types:post")
   ast = tracer.compute_types(defs)
   ast = tracer.loader.resolve_ast(ast)
   if tracer.has_unknown_wildcard_imports or ("HAS_DYNAMIC_ATTRIBUTES" in defs or

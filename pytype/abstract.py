@@ -416,7 +416,7 @@ class Empty(AtomicAbstractValue):
     def f():
       return x[0]  # Oops! The return type should be Any rather than nothing.
   The nothing -> anything conversion happens in
-  convert.Converter._function_to_def and infer.CallTracer.pytd_for_types.
+  convert.Converter._function_to_def and analyze.CallTracer.pytd_for_types.
   """
 
   def __init__(self, vm):
@@ -2785,7 +2785,7 @@ class InterpreterFunction(Function):
 
   @contextlib.contextmanager
   def record_calls(self):
-    """Turn on recording of function calls. Used by infer.py."""
+    """Turn on recording of function calls. Used by analyze.py."""
     old = self._store_call_records
     self._store_call_records = True
     yield

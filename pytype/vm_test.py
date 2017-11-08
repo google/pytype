@@ -21,7 +21,7 @@ class TraceVM(vm.VirtualMachine):
     # There are multiple possible orderings of the basic blocks of the code, so
     # we collect the instructions in an order-independent way:
     self.instructions_executed = set()
-    # Extra stuff that's defined in infer.CallTracer:
+    # Extra stuff that's defined in analyze.CallTracer:
     self._call_trace = set()
     self._functions = set()
     self._classes = set()

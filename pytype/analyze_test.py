@@ -1,14 +1,14 @@
-"""Tests for infer.py."""
+"""Tests for analyze.py."""
 
 
+from pytype import analyze
 from pytype import config
-from pytype import infer
 
 import unittest
 
 
-class InferTest(unittest.TestCase):
-  """Tests for infer.py."""
+class AnalyzeTest(unittest.TestCase):
+  """Tests for analyze.py."""
 
   def testFilepathToModule(self):
     # (filename, pythonpath, expected)
@@ -31,7 +31,7 @@ class InferTest(unittest.TestCase):
     ]
     for filename, pythonpath, expected in test_cases:
       options = config.Options.create(pythonpath=pythonpath)
-      module = infer.get_module_name(filename, options)
+      module = analyze.get_module_name(filename, options)
       self.assertEqual(module, expected)
 
 

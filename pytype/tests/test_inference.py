@@ -1,4 +1,4 @@
-"""Common methods for tests of infer.py."""
+"""Common methods for tests of analyze.py."""
 
 import collections
 import logging
@@ -8,11 +8,11 @@ import sys
 import textwrap
 
 
+from pytype import analyze
 from pytype import config
 from pytype import debug
 from pytype import directors
 from pytype import errors
-from pytype import infer
 from pytype import load_pytd
 from pytype.pyc import loadmarshal
 from pytype.pyi import parser
@@ -110,7 +110,7 @@ class InferenceTest(unittest.TestCase):
     errorlog = errors.ErrorLog()
     loader = load_pytd.Loader(self.options.module_name, self.options)
     try:
-      infer.check_types(
+      analyze.check_types(
           textwrap.dedent(code), filename, loader=loader, errorlog=errorlog,
           options=self.options, **kwargs)
     except directors.SkipFile:
@@ -127,7 +127,7 @@ class InferenceTest(unittest.TestCase):
     code = textwrap.dedent(code)
     errorlog = errors.ErrorLog()
     loader = load_pytd.Loader(self.options.module_name, self.options)
-    unit, builtins_pytd = infer.infer_types(
+    unit, builtins_pytd = analyze.infer_types(
         code, errorlog, self.options, loader=loader, deep=deep,
         analyze_annotated=True, **kwargs)
     unit.Visit(visitors.VerifyVisitor())
@@ -141,9 +141,9 @@ class InferenceTest(unittest.TestCase):
       code = fi.read()
       errorlog = errors.ErrorLog()
       loader = load_pytd.Loader(
-          infer.get_module_name(filename, self.options), self.options)
-      unit, _ = infer.infer_types(code, errorlog, self.options, loader=loader,
-                                  filename=filename)
+          analyze.get_module_name(filename, self.options), self.options)
+      unit, _ = analyze.infer_types(code, errorlog, self.options, loader=loader,
+                                    filename=filename)
       unit.Visit(visitors.VerifyVisitor())
       return pytd_utils.CanonicalOrdering(unit)
 
@@ -331,7 +331,7 @@ class InferenceTest(unittest.TestCase):
     errorlog = errors.ErrorLog()
     loader = load_pytd.PickledPyiLoader(
         False, self.options.module_name, self.options)
-    unit, builtins_pytd = infer.infer_types(
+    unit, builtins_pytd = analyze.infer_types(
         src, errorlog, self.options, loader=loader, **kwargs)
     unit.Visit(visitors.VerifyVisitor())
     unit = pytd_utils.CanonicalOrdering(unit)

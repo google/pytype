@@ -2,9 +2,9 @@
 
 import textwrap
 
+from pytype import analyze
 from pytype import config
 from pytype import errors
-from pytype import infer
 from pytype import load_pytd
 from pytype.tests import test_inference
 
@@ -17,11 +17,11 @@ class CheckerTest(test_inference.InferenceTest):
                                     python_exe=self.PYTHON_EXE)
     errorlog = errors.ErrorLog()
     loader = load_pytd.Loader(self.options.module_name, self.options)
-    infer.check_types(py_src=textwrap.dedent(python),
-                      loader=loader,
-                      py_filename="<inline>",
-                      errorlog=errorlog,
-                      options=options)
+    analyze.check_types(py_src=textwrap.dedent(python),
+                        loader=loader,
+                        py_filename="<inline>",
+                        errorlog=errorlog,
+                        options=options)
     return errorlog
 
   def check(self, python):

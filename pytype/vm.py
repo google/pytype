@@ -842,7 +842,7 @@ class VirtualMachine(object):
     return NotImplemented
 
   def call_init(self, node, unused_instance):
-    # This dummy implementation is overwritten in infer.py.
+    # This dummy implementation is overwritten in analyze.py.
     return node
 
   def call_function_with_state(self, state, funcu, posargs, namedargs=None,
@@ -2295,7 +2295,7 @@ class VirtualMachine(object):
       return state.set_why("reraise")
 
   def _check_return(self, node, actual, formal):
-    pass  # overridden in infer.py
+    pass  # overridden in analyze.py
 
   def byte_RETURN_VALUE(self, state, op):
     """Get and check the return value."""
