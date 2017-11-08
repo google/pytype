@@ -1,9 +1,9 @@
 """Tests for --quick."""
 
-from pytype.tests import test_inference
+from pytype.tests import test_base
 
 
-class QuickTest(test_inference.InferenceTest):
+class QuickTest(test_base.BaseTest):
   """Tests for --quick."""
 
   def testMaxDepth(self):
@@ -69,4 +69,4 @@ class QuickTest(test_inference.InferenceTest):
 
 
 if __name__ == "__main__":
-  test_inference.main()
+  test_base.main()

@@ -6,10 +6,10 @@ from pytype import collections_overlay
 from pytype import utils
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
-from pytype.tests import test_inference
+from pytype.tests import test_base
 
 
-class NamedtupleTests(test_inference.InferenceTest):
+class NamedtupleTests(test_base.BaseTest):
   """Tests for collections.namedtuple."""
 
   def _namedtuple_ast(self, name, fields):
@@ -315,4 +315,4 @@ class NamedtupleTests(test_inference.InferenceTest):
 
 
 if __name__ == "__main__":
-  test_inference.main()
+  test_base.main()

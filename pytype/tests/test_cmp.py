@@ -2,10 +2,10 @@
 
 import unittest
 
-from pytype.tests import test_inference
+from pytype.tests import test_base
 
 
-class InTest(test_inference.InferenceTest):
+class InTest(test_base.BaseTest):
   """Test for "x in y". Also test overloading of this operator."""
 
   def test_concrete(self):
@@ -59,7 +59,7 @@ class InTest(test_inference.InferenceTest):
                                    (3, "none-attr", r"__delitem__.*None")])
 
 
-class NotInTest(test_inference.InferenceTest):
+class NotInTest(test_base.BaseTest):
   """Test for "x not in y". Also test overloading of this operator."""
 
   def test_concrete(self):
@@ -107,7 +107,7 @@ class NotInTest(test_inference.InferenceTest):
                                    (3, "none-attr", r"__setitem__.*None")])
 
 
-class IsTest(test_inference.InferenceTest):
+class IsTest(test_base.BaseTest):
   """Test for "x is y". This operator can't be overloaded."""
 
   def test_concrete(self):
@@ -126,7 +126,7 @@ class IsTest(test_inference.InferenceTest):
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.bool)
 
 
-class IsNotTest(test_inference.InferenceTest):
+class IsNotTest(test_base.BaseTest):
   """Test for "x is not y". This operator can't be overloaded."""
 
   def test_concrete(self):
@@ -145,7 +145,7 @@ class IsNotTest(test_inference.InferenceTest):
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.bool)
 
 
-class LtTest(test_inference.InferenceTest):
+class LtTest(test_base.BaseTest):
   """Test for "x < y". Also test overloading."""
 
   def test_concrete(self):
@@ -191,7 +191,7 @@ class LtTest(test_inference.InferenceTest):
     self.assertOnlyHasReturnType(ty.Lookup("f3"), self.tuple)
 
 
-class LeTest(test_inference.InferenceTest):
+class LeTest(test_base.BaseTest):
   """Test for "x <= y". Also test overloading."""
 
   def test_concrete(self):
@@ -215,7 +215,7 @@ class LeTest(test_inference.InferenceTest):
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.complex)
 
 
-class GtTest(test_inference.InferenceTest):
+class GtTest(test_base.BaseTest):
   """Test for "x > y". Also test overloading."""
 
   def test_concrete(self):
@@ -239,7 +239,7 @@ class GtTest(test_inference.InferenceTest):
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.complex)
 
 
-class GeTest(test_inference.InferenceTest):
+class GeTest(test_base.BaseTest):
   """Test for "x >= y". Also test overloading."""
 
   def test_concrete(self):
@@ -263,7 +263,7 @@ class GeTest(test_inference.InferenceTest):
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.complex)
 
 
-class EqTest(test_inference.InferenceTest):
+class EqTest(test_base.BaseTest):
   """Test for "x == y". Also test overloading."""
 
   def test_concrete(self):
@@ -303,7 +303,7 @@ class EqTest(test_inference.InferenceTest):
     """)
 
 
-class NeTest(test_inference.InferenceTest):
+class NeTest(test_base.BaseTest):
   """Test for "x != y". Also test overloading."""
 
   def test_concrete(self):
@@ -327,7 +327,7 @@ class NeTest(test_inference.InferenceTest):
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.complex)
 
 
-class InstanceUnequalityTest(test_inference.InferenceTest):
+class InstanceUnequalityTest(test_base.BaseTest):
 
   def test_is(self):
     """SomeType is not be the same as AnotherType."""
@@ -349,4 +349,4 @@ class InstanceUnequalityTest(test_inference.InferenceTest):
 
 
 if __name__ == "__main__":
-  test_inference.main()
+  test_base.main()

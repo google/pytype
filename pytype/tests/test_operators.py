@@ -1,10 +1,10 @@
 """Test operators (basic tests)."""
 
 from pytype import utils
-from pytype.tests import test_inference
+from pytype.tests import test_base
 
 
-class ConcreteTest(test_inference.InferenceTest):
+class ConcreteTest(test_base.BaseTest):
   """Tests for operators on concrete values (no unknowns)."""
 
   def setUp(self):
@@ -189,7 +189,7 @@ class ConcreteTest(test_inference.InferenceTest):
     """)
 
 
-class OverloadTest(test_inference.InferenceTest):
+class OverloadTest(test_base.BaseTest):
   """Tests for overloading operators."""
 
   def check_binary(self, function_name, op):
@@ -269,7 +269,7 @@ class OverloadTest(test_inference.InferenceTest):
     self.check_unary("__nonzero__", "not", self.bool)
 
 
-class ReverseTest(test_inference.InferenceTest):
+class ReverseTest(test_base.BaseTest):
   """Tests for reverse operators."""
 
   def check_reverse(self, function_name, op):
@@ -409,7 +409,7 @@ class ReverseTest(test_inference.InferenceTest):
     self.assertErrorLogIs(errors, [(4, "attribute-error", r"real.*str")])
 
 
-class InplaceTest(test_inference.InferenceTest):
+class InplaceTest(test_base.BaseTest):
   """Tests for in-place operators."""
 
   def check_inplace(self, function_name, op):
@@ -471,4 +471,4 @@ class InplaceTest(test_inference.InferenceTest):
 
 
 if __name__ == "__main__":
-  test_inference.main()
+  test_base.main()

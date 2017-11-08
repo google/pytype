@@ -7,7 +7,7 @@ from pytype import load_pytd
 from pytype.pytd import typeshed
 from pytype.pytd.parse import builtins
 from pytype.pytd.parse import parser_test_base
-from pytype.tests import test_inference
+from pytype.tests import test_base
 import unittest
 
 
@@ -35,7 +35,7 @@ class TestTypeshedLoading(parser_test_base.ParserTest):
 
 
 
-class TestTypeshedParsing(test_inference.InferenceTest):
+class TestTypeshedParsing(test_base.BaseTest):
   """Tests a handful of typeshed modules.
 
   The list was generated using

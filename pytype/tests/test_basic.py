@@ -2,10 +2,10 @@
 
 import unittest
 
-from pytype.tests import test_inference
+from pytype.tests import test_base
 
 
-class TestIt(test_inference.InferenceTest):
+class TestIt(test_base.BaseTest):
 
   def test_constant(self):
     self.assertNoErrors("17")
@@ -524,7 +524,7 @@ class TestIt(test_inference.InferenceTest):
       """)
 
 
-class TestPrinting(test_inference.InferenceTest):
+class TestPrinting(test_base.BaseTest):
 
   def test_printing(self):
     self.assertNoErrors("print 'hello'")
@@ -549,7 +549,7 @@ class TestPrinting(test_inference.InferenceTest):
       """)
 
 
-class TestLoops(test_inference.InferenceTest):
+class TestLoops(test_base.BaseTest):
 
   def test_for(self):
     self.assertNoErrors("""\
@@ -602,7 +602,7 @@ class TestLoops(test_inference.InferenceTest):
       """)
 
 
-class TestComparisons(test_inference.InferenceTest):
+class TestComparisons(test_base.BaseTest):
 
   def test_in(self):
     self.assertNoErrors("""\
@@ -629,7 +629,7 @@ class TestComparisons(test_inference.InferenceTest):
       """)
 
 
-class TestSlices(test_inference.InferenceTest):
+class TestSlices(test_base.BaseTest):
 
   def test_slice_with_step(self):
     self.assertNoErrors("""\
@@ -643,4 +643,4 @@ class TestSlices(test_inference.InferenceTest):
 
 
 if __name__ == "__main__":
-  test_inference.main()
+  test_base.main()

@@ -1,9 +1,9 @@
 """Test operators (basic tests)."""
 
-from pytype.tests import test_inference
+from pytype.tests import test_base
 
 
-class InplaceTest(test_inference.InferenceTest):
+class InplaceTest(test_base.BaseTest):
   """Base class for inplace operator tests."""
 
   def _check_inplace(self, op, assignments, expected_return):
@@ -110,4 +110,4 @@ class InplaceTest(test_inference.InferenceTest):
 
 
 if __name__ == "__main__":
-  test_inference.main()
+  test_base.main()

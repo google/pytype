@@ -2,10 +2,10 @@
 
 
 from pytype import utils
-from pytype.tests import test_inference
+from pytype.tests import test_base
 
 
-class DecoratorsTest(test_inference.InferenceTest):
+class DecoratorsTest(test_base.BaseTest):
   """Test for function and class decorators."""
 
   def testStaticMethodSmoke(self):
@@ -297,4 +297,4 @@ class DecoratorsTest(test_inference.InferenceTest):
 
 
 if __name__ == "__main__":
-  test_inference.main()
+  test_base.main()

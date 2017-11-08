@@ -4,10 +4,10 @@ import textwrap
 
 
 from pytype import utils
-from pytype.tests import test_inference
+from pytype.tests import test_base
 
 
-class TypingMethodsTest(test_inference.InferenceTest):
+class TypingMethodsTest(test_base.BaseTest):
   """Tests for typing.py."""
 
   def _check_call(self, t, expr):
@@ -409,4 +409,4 @@ class TypingMethodsTest(test_inference.InferenceTest):
 
 
 if __name__ == "__main__":
-  test_inference.main()
+  test_base.main()

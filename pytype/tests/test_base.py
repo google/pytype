@@ -32,7 +32,7 @@ log = logging.getLogger(__name__)
 CAPTURE_STDOUT = ("-s" not in sys.argv)
 
 
-class InferenceTest(unittest.TestCase):
+class BaseTest(unittest.TestCase):
   """Base class for implementing tests that check PyTD output."""
 
   PYTHON_VERSION = (2, 7)  # can be overwritten by subclasses

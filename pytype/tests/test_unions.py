@@ -1,9 +1,9 @@
 """Tests for union types."""
 
-from pytype.tests import test_inference
+from pytype.tests import test_base
 
 
-class UnionTest(test_inference.InferenceTest):
+class UnionTest(test_base.BaseTest):
   """Tests for union types."""
 
   def testIfElse(self):
@@ -43,4 +43,4 @@ class UnionTest(test_inference.InferenceTest):
 
 
 if __name__ == "__main__":
-  test_inference.main()
+  test_base.main()

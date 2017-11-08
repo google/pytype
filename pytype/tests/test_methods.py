@@ -2,10 +2,10 @@ import unittest
 
 from pytype import utils
 from pytype.pytd import pytd
-from pytype.tests import test_inference
+from pytype.tests import test_base
 
 
-class MethodsTest(test_inference.InferenceTest):
+class MethodsTest(test_base.BaseTest):
 
   def testFlowAndReplacementSanity(self):
     ty = self.Infer("""
@@ -1017,4 +1017,4 @@ class MethodsTest(test_inference.InferenceTest):
 
 
 if __name__ == "__main__":
-  test_inference.main()
+  test_base.main()

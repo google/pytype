@@ -1,10 +1,10 @@
 """Tests for @abc.abstractmethod in abc_overlay.py."""
 
 from pytype import utils
-from pytype.tests import test_inference
+from pytype.tests import test_base
 
 
-class AbstractMethodTests(test_inference.InferenceTest):
+class AbstractMethodTests(test_base.BaseTest):
   """Tests for @abc.abstractmethod."""
 
   def test_basic_abstractmethod(self):
@@ -200,4 +200,4 @@ class AbstractMethodTests(test_inference.InferenceTest):
 
 
 if __name__ == "__main__":
-  test_inference.main()
+  test_base.main()

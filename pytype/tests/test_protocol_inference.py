@@ -3,10 +3,10 @@
 import unittest
 
 from pytype import utils
-from pytype.tests import test_inference
+from pytype.tests import test_base
 
 
-class ProtocolInferenceTest(test_inference.InferenceTest):
+class ProtocolInferenceTest(test_base.BaseTest):
   """Tests for protocol implementation."""
 
   def test_multiple_signatures_with_type_parameter(self):
@@ -540,4 +540,4 @@ class ProtocolInferenceTest(test_inference.InferenceTest):
 
 
 if __name__ == "__main__":
-  test_inference.main()
+  test_base.main()

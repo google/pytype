@@ -5,10 +5,10 @@ import unittest
 
 from pytype import utils
 from pytype.pytd import pytd
-from pytype.tests import test_inference
+from pytype.tests import test_base
 
 
-class ReingestTest(test_inference.InferenceTest):
+class ReingestTest(test_base.BaseTest):
   """Tests for reloading the pyi we generate."""
 
   def testContainer(self):
@@ -222,4 +222,4 @@ class ReingestTest(test_inference.InferenceTest):
 
 
 if __name__ == "__main__":
-  test_inference.main()
+  test_base.main()

@@ -1,9 +1,10 @@
 """Test the with statement for Byterun."""
 
-from pytype.tests import test_inference
+from pytype.tests import test_base
 
 
-class TestWithStatement(test_inference.InferenceTest):
+class TestWithStatement(test_base.BaseTest):
+  """Tests for the with statement."""
 
   def test_simple_context_manager(self):
     self.assertNoErrors("""\
@@ -319,4 +320,4 @@ class TestWithStatement(test_inference.InferenceTest):
 
 
 if __name__ == "__main__":
-  test_inference.main()
+  test_base.main()

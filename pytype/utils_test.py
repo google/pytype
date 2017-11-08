@@ -6,7 +6,7 @@ import os
 
 
 from pytype import utils
-from pytype.tests import test_inference
+from pytype.tests import test_base
 from pytype.typegraph import cfg
 
 import unittest
@@ -656,4 +656,4 @@ class UtilsTest(unittest.TestCase):
 
 
 if __name__ == "__main__":
-  test_inference.main()
+  test_base.main()

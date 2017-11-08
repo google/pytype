@@ -2,10 +2,10 @@
 
 import os
 
-from pytype.tests import test_inference
+from pytype.tests import test_base
 
 
-class TestPython36(test_inference.InferenceTest):
+class TestPython36(test_base.BaseTest):
   """Tests for Python 3.6 compatiblity."""
 
   PYTHON_VERSION = (3, 6)
@@ -215,4 +215,4 @@ class TestPython36(test_inference.InferenceTest):
 
 
 if __name__ == "__main__":
-  test_inference.main()
+  test_base.main()

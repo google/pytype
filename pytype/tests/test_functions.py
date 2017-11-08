@@ -3,10 +3,10 @@
 
 
 from pytype import utils
-from pytype.tests import test_inference
+from pytype.tests import test_base
 
 
-class TestClosures(test_inference.InferenceTest):
+class TestClosures(test_base.BaseTest):
   """Tests for closures."""
 
   def test_closures(self):
@@ -90,7 +90,7 @@ class TestClosures(test_inference.InferenceTest):
     self.assertTrue(ty.Lookup("f"))
 
 
-class TestGenerators(test_inference.InferenceTest):
+class TestGenerators(test_base.BaseTest):
   """Tests for generators."""
 
   def test_first(self):
@@ -173,7 +173,7 @@ class TestGenerators(test_inference.InferenceTest):
       """)
 
 
-class TestFunctions(test_inference.InferenceTest):
+class TestFunctions(test_base.BaseTest):
   """Tests for functions."""
 
   def test_functions(self):
@@ -806,4 +806,4 @@ class TestFunctions(test_inference.InferenceTest):
       """)
 
 if __name__ == "__main__":
-  test_inference.main()
+  test_base.main()

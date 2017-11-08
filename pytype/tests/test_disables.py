@@ -1,9 +1,9 @@
 """Tests for disabling errors."""
 
-from pytype.tests import test_inference
+from pytype.tests import test_base
 
 
-class DisableTest(test_inference.InferenceTest):
+class DisableTest(test_base.BaseTest):
   """Test error disabling."""
 
   def testInvalidDirective(self):
@@ -68,4 +68,4 @@ class DisableTest(test_inference.InferenceTest):
 
 
 if __name__ == "__main__":
-  test_inference.main()
+  test_base.main()

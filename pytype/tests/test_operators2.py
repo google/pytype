@@ -1,10 +1,10 @@
 """Test operators, using __any_object__."""
 
 import unittest
-from pytype.tests import test_inference
+from pytype.tests import test_base
 
 
-class OperatorsWithAnyTests(test_inference.InferenceTest):
+class OperatorsWithAnyTests(test_base.BaseTest):
 
   @unittest.skip("Needs __radd__ on all builtins")
   def testAdd1(self):
@@ -113,4 +113,4 @@ class OperatorsWithAnyTests(test_inference.InferenceTest):
 
 
 if __name__ == "__main__":
-  test_inference.main()
+  test_base.main()

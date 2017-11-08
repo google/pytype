@@ -7,10 +7,10 @@ import textwrap
 import unittest
 from pytype import collections_overlay
 from pytype.pytd import pytd
-from pytype.tests import test_inference
+from pytype.tests import test_base
 
 
-class BuiltinTests(test_inference.InferenceTest):
+class BuiltinTests(test_base.BaseTest):
   """Tests for builtin methods and classes."""
 
   def testRepr1(self):
@@ -666,4 +666,4 @@ class BuiltinTests(test_inference.InferenceTest):
 
 
 if __name__ == "__main__":
-  test_inference.main()
+  test_base.main()

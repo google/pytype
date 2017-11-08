@@ -6,10 +6,10 @@ import unittest
 
 
 from pytype import utils
-from pytype.tests import test_inference
+from pytype.tests import test_base
 
 
-class ProtocolTest(test_inference.InferenceTest):
+class ProtocolTest(test_base.BaseTest):
   """Tests for protocol implementation."""
 
   def test_check_protocol(self):
@@ -330,4 +330,4 @@ class ProtocolTest(test_inference.InferenceTest):
 
 
 if __name__ == "__main__":
-  test_inference.main()
+  test_base.main()

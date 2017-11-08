@@ -5,10 +5,10 @@ import cPickle
 
 from pytype import utils
 from pytype.pytd.parse import visitors
-from pytype.tests import test_inference
+from pytype.tests import test_base
 
 
-class PickleTest(test_inference.InferenceTest):
+class PickleTest(test_base.BaseTest):
   """Tests for loading and saving pickled files."""
 
   def _verifyDeps(self, module, immediate_deps, late_deps):
@@ -166,4 +166,4 @@ class PickleTest(test_inference.InferenceTest):
 
 
 if __name__ == "__main__":
-  test_inference.main()
+  test_base.main()

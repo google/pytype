@@ -1,10 +1,10 @@
 """Tests of special builtins (special_builtins.py."""
 
 
-from pytype.tests import test_inference
+from pytype.tests import test_base
 
 
-class SpecialBuiltinsTest(test_inference.InferenceTest):
+class SpecialBuiltinsTest(test_base.BaseTest):
   """Tests for special_builtins.py."""
 
   def testNext(self):
@@ -132,4 +132,4 @@ class SpecialBuiltinsTest(test_inference.InferenceTest):
 
 
 if __name__ == "__main__":
-  test_inference.main()
+  test_base.main()

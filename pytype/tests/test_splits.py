@@ -1,10 +1,10 @@
 """Tests for if-splitting."""
 
 from pytype import utils
-from pytype.tests import test_inference
+from pytype.tests import test_base
 
 
-class SplitTest(test_inference.InferenceTest):
+class SplitTest(test_base.BaseTest):
   """Tests for if-splitting."""
 
   def testRestrictNone(self):
@@ -938,4 +938,4 @@ class SplitTest(test_inference.InferenceTest):
 
 
 if __name__ == "__main__":
-  test_inference.main()
+  test_base.main()

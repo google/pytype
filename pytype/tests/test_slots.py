@@ -1,9 +1,9 @@
 """Tests for slots."""
 
-from pytype.tests import test_inference
+from pytype.tests import test_base
 
 
-class SlotsTest(test_inference.InferenceTest):
+class SlotsTest(test_base.BaseTest):
   """Tests for __slots__."""
 
   def testSlots(self):
@@ -253,4 +253,4 @@ class SlotsTest(test_inference.InferenceTest):
 
 
 if __name__ == "__main__":
-  test_inference.main()
+  test_base.main()

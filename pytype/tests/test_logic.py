@@ -1,9 +1,9 @@
 """Tests for logical constructs."""
 
-from pytype.tests import test_inference
+from pytype.tests import test_base
 
 
-class LogicTest(test_inference.InferenceTest):
+class LogicTest(test_base.BaseTest):
   """Tests for logical constructs.
 
   These are tests for pieces of code that need more sophisticated understanding
@@ -28,4 +28,4 @@ class LogicTest(test_inference.InferenceTest):
 
 
 if __name__ == "__main__":
-  test_inference.main()
+  test_base.main()

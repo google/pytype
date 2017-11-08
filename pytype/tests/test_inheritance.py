@@ -2,10 +2,10 @@
 import unittest
 
 from pytype.pytd import pytd
-from pytype.tests import test_inference
+from pytype.tests import test_base
 
 
-class InheritanceTest(test_inference.InferenceTest):
+class InheritanceTest(test_base.BaseTest):
   """Tests for class inheritance."""
 
   @unittest.skip("needs (re-)analyzing methods on subclasses")
@@ -133,4 +133,4 @@ class InheritanceTest(test_inference.InferenceTest):
     self.assertOnlyHasReturnType(ty.Lookup("i"), self.float)
 
 if __name__ == "__main__":
-  test_inference.main()
+  test_base.main()

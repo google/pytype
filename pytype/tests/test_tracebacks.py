@@ -1,9 +1,9 @@
 """Tests for displaying tracebacks in error messages."""
 
-from pytype.tests import test_inference
+from pytype.tests import test_base
 
 
-class TracebackTest(test_inference.InferenceTest):
+class TracebackTest(test_base.BaseTest):
   """Tests for tracebacks in error messages."""
 
   def test_no_traceback(self):
@@ -58,4 +58,4 @@ class TracebackTest(test_inference.InferenceTest):
 
 
 if __name__ == "__main__":
-  test_inference.main()
+  test_base.main()

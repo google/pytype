@@ -1,10 +1,10 @@
 """Tests for type comments."""
 
 
-from pytype.tests import test_inference
+from pytype.tests import test_base
 
 
-class FunctionCommentTest(test_inference.InferenceTest):
+class FunctionCommentTest(test_base.BaseTest):
   """Tests for type comments."""
 
   def testFunctionUnspecifiedArgs(self):
@@ -221,7 +221,7 @@ class FunctionCommentTest(test_inference.InferenceTest):
                                     r"int or str.*constant")])
 
 
-class FunctionCommentWithAnnotationsTest(test_inference.InferenceTest):
+class FunctionCommentWithAnnotationsTest(test_base.BaseTest):
   """Tests for type comments that require annotations."""
 
   def testFunctionTypeCommentPlusAnnotations(self):
@@ -234,7 +234,7 @@ class FunctionCommentWithAnnotationsTest(test_inference.InferenceTest):
     self.assertErrorLogIs(errors, [(3, "redundant-function-type-comment")])
 
 
-class AssignmentCommentTest(test_inference.InferenceTest):
+class AssignmentCommentTest(test_base.BaseTest):
   """Tests for type comments applied to assignments."""
 
   def testClassAttributeComment(self):
@@ -440,4 +440,4 @@ class AssignmentCommentTest(test_inference.InferenceTest):
 
 
 if __name__ == "__main__":
-  test_inference.main()
+  test_base.main()

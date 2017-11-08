@@ -1,10 +1,10 @@
 """Test cases that match the examples in our documentation."""
 
 from pytype import utils
-from pytype.tests import test_inference
+from pytype.tests import test_base
 
 
-class WorkflowTest(test_inference.InferenceTest):
+class WorkflowTest(test_base.BaseTest):
   """Tests for examples extracted from our documentation."""
 
   def testTutorial1(self):
@@ -109,4 +109,4 @@ class WorkflowTest(test_inference.InferenceTest):
 
 
 if __name__ == "__main__":
-  test_inference.main()
+  test_base.main()

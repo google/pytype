@@ -5,10 +5,10 @@ import unittest
 
 from pytype import imports_map_loader
 from pytype import utils
-from pytype.tests import test_inference
+from pytype.tests import test_base
 
 
-class ImportTest(test_inference.InferenceTest):
+class ImportTest(test_base.BaseTest):
   """Tests for import."""
 
   def testBasicImport(self):
@@ -969,4 +969,4 @@ class ImportTest(test_inference.InferenceTest):
 
 
 if __name__ == "__main__":
-  test_inference.main()
+  test_base.main()

@@ -5,10 +5,10 @@ File 2/3. Split into parts to enable better test parallelism.
 
 
 from pytype import utils
-from pytype.tests import test_inference
+from pytype.tests import test_base
 
 
-class BuiltinTests2(test_inference.InferenceTest):
+class BuiltinTests2(test_base.BaseTest):
   """Tests for builtin methods and classes."""
 
   def testDivModWithUnknown(self):
@@ -817,4 +817,4 @@ class BuiltinTests2(test_inference.InferenceTest):
 
 
 if __name__ == "__main__":
-  test_inference.main()
+  test_base.main()

@@ -3,10 +3,10 @@
 import unittest
 
 from pytype import utils
-from pytype.tests import test_inference
+from pytype.tests import test_base
 
 
-class ErrorTest(test_inference.InferenceTest):
+class ErrorTest(test_base.BaseTest):
   """Tests for errors."""
 
   def testDeduplicate(self):
@@ -1183,4 +1183,4 @@ class ErrorTest(test_inference.InferenceTest):
 
 
 if __name__ == "__main__":
-  test_inference.main()
+  test_base.main()

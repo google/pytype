@@ -4,10 +4,10 @@ import unittest
 
 from pytype import utils
 from pytype.pytd import pep484
-from pytype.tests import test_inference
+from pytype.tests import test_base
 
 
-class TypingTest(test_inference.InferenceTest):
+class TypingTest(test_base.BaseTest):
   """Tests for typing.py."""
 
   _TEMPLATE = """
@@ -600,4 +600,4 @@ class TypingTest(test_inference.InferenceTest):
 
 
 if __name__ == "__main__":
-  test_inference.main()
+  test_base.main()

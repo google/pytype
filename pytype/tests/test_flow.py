@@ -1,9 +1,9 @@
 """Tests for control flow (with statements, loops, exceptions, etc.)."""
 
-from pytype.tests import test_inference
+from pytype.tests import test_base
 
 
-class FlowTest(test_inference.InferenceTest):
+class FlowTest(test_base.BaseTest):
   """Tests for control flow.
 
   These tests primarily test instruction ordering and CFG traversal of the
@@ -367,4 +367,4 @@ class FlowTest(test_inference.InferenceTest):
 
 
 if __name__ == "__main__":
-  test_inference.main()
+  test_base.main()

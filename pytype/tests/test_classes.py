@@ -3,10 +3,10 @@
 import unittest
 
 from pytype import utils
-from pytype.tests import test_inference
+from pytype.tests import test_base
 
 
-class ClassesTest(test_inference.InferenceTest):
+class ClassesTest(test_base.BaseTest):
   """Tests for classes."""
 
   def testClassDecorator(self):
@@ -1323,4 +1323,4 @@ class ClassesTest(test_inference.InferenceTest):
 
 
 if __name__ == "__main__":
-  test_inference.main()
+  test_base.main()

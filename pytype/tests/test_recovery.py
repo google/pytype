@@ -3,10 +3,10 @@
 import unittest
 
 
-from pytype.tests import test_inference
+from pytype.tests import test_base
 
 
-class RecoveryTests(test_inference.InferenceTest):
+class RecoveryTests(test_base.BaseTest):
   """Tests for recovering after errors.
 
   The type inferencer can warn about bad code, but it should never blow up.
@@ -202,4 +202,4 @@ class RecoveryTests(test_inference.InferenceTest):
 
 
 if __name__ == "__main__":
-  test_inference.main()
+  test_base.main()

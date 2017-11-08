@@ -10,7 +10,7 @@ from pytype import errors
 from pytype import load_pytd
 from pytype import vm
 from pytype.pyc import pyc
-from pytype.tests import test_inference
+from pytype.tests import test_base
 
 
 class TraceVM(vm.VirtualMachine):
@@ -36,7 +36,7 @@ def ListToString(lst):
   return "".join(chr(c) for c in lst)
 
 
-class BytecodeTest(test_inference.InferenceTest):
+class BytecodeTest(test_base.BaseTest):
   """Tests for process_code in blocks.py and VM integration."""
 
   def setUp(self):
@@ -179,4 +179,4 @@ class BytecodeTest(test_inference.InferenceTest):
 
 
 if __name__ == "__main__":
-  test_inference.main()
+  test_base.main()

@@ -4,10 +4,10 @@ import unittest
 
 
 from pytype import utils
-from pytype.tests import test_inference
+from pytype.tests import test_base
 
 
-class SolverTests(test_inference.InferenceTest):
+class SolverTests(test_base.BaseTest):
   """Tests for type inference that also runs convert_structural.py."""
 
   def testAmbiguousAttr(self):
@@ -378,4 +378,4 @@ class SolverTests(test_inference.InferenceTest):
 
 
 if __name__ == "__main__":
-  test_inference.main()
+  test_base.main()

@@ -1,9 +1,9 @@
 """Tests for slices."""
 
-from pytype.tests import test_inference
+from pytype.tests import test_base
 
 
-class SliceTest(test_inference.InferenceTest):
+class SliceTest(test_base.BaseTest):
   """Tests for the SLICE_<n> opcodes, as well as for __getitem__(slice)."""
 
   def testGetSlice(self):
@@ -75,4 +75,4 @@ class SliceTest(test_inference.InferenceTest):
 
 
 if __name__ == "__main__":
-  test_inference.main()
+  test_base.main()

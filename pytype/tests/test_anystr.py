@@ -2,10 +2,10 @@
 
 
 from pytype import utils
-from pytype.tests import test_inference
+from pytype.tests import test_base
 
 
-class AnyStrTest(test_inference.InferenceTest):
+class AnyStrTest(test_base.BaseTest):
   """Tests for issues related to AnyStr."""
 
   def testCallable(self):
@@ -58,4 +58,4 @@ class AnyStrTest(test_inference.InferenceTest):
 
 
 if __name__ == "__main__":
-  test_inference.main()
+  test_base.main()

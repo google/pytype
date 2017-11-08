@@ -3,11 +3,11 @@
 
 from pytype import blocks
 from pytype.pyc import opcodes
-from pytype.tests import test_inference
+from pytype.tests import test_base
 import unittest
 
 
-class OrderingTest(test_inference.InferenceTest):
+class OrderingTest(test_base.BaseTest):
   """Tests for order_code in blocks.py."""
 
   def test_trivial(self):
@@ -259,7 +259,7 @@ class OrderingTest(test_inference.InferenceTest):
     self.assertEqual(2, len(b4.code))
 
 
-class BlockStackTest(test_inference.InferenceTest):
+class BlockStackTest(test_base.BaseTest):
   """Test the add_pop_block_targets function."""
 
   def test_finally(self):
