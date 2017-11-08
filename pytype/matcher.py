@@ -696,7 +696,7 @@ class AbstractMatcher(object):
             return None
           else:
             new_substs.append(match_result)
-      return self._merge_substs(subst, new_substs)
+    return self._merge_substs(subst, new_substs)
 
   def _get_concrete_values(self, var):
     # TODO(rechen): For type parameter instances, we should extract the concrete

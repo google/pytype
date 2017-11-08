@@ -298,6 +298,36 @@ class ProtocolTest(test_inference.InferenceTest):
         f(foo.Foo())
       """, pythonpath=[d.path])
 
+  def test_inherited_abstract_method(self):
+    self.assertNoErrors("""
+      from __future__ import google_type_annotations
+      from typing import Iterator
+      class Foo(object):
+        def __iter__(self) -> Iterator[int]:
+          return __any_object__
+        def next(self):
+          return __any_object__
+      def f(x: Iterator[int]):
+        pass
+      f(Foo())
+    """)
+
+  def test_inherited_abstract_method_error(self):
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      from typing import Iterator
+      class Foo(object):
+        def __iter__(self) -> Iterator[str]:
+          return __any_object__
+        def next(self):
+          return __any_object__
+      def f(x: Iterator[int]):
+        pass
+      f(Foo())  # line 10
+    """)
+    self.assertErrorLogIs(
+        errors, [(10, "wrong-arg-types", r"Iterator\[int\].*Foo")])
+
 
 if __name__ == "__main__":
   test_inference.main()

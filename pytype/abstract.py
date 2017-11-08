@@ -2223,7 +2223,18 @@ class ParameterizedClass(AtomicAbstractValue, Class):
     return self.base_cls.get_class()
 
   def get_method(self, method_name):
-    method = self.base_cls.pytd_cls.Lookup(method_name)
+    """Retrieve the method with the given name."""
+    method = None
+    for cls in self.base_cls.mro:
+      if isinstance(cls, ParameterizedClass):
+        cls = cls.base_cls
+      if isinstance(cls, PyTDClass):
+        try:
+          method = cls.pytd_cls.Lookup(method_name)
+        except KeyError:
+          continue  # Method not found, proceed to next class in MRO.
+        break  # Method found!
+    assert method
     return self.vm.convert.constant_to_value(method)
 
   def call(self, node, func, args):
