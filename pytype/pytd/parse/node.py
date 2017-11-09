@@ -67,12 +67,12 @@ from pytype import metrics
 from pytype.pytd.parse import preconditions
 
 
-_CHECK_PRECONDITIONS = True
+_CHECK_PRECONDITIONS = None
 
 
-def DisablePreconditions():
+def SetCheckPreconditions(enabled):
   global _CHECK_PRECONDITIONS
-  _CHECK_PRECONDITIONS = False
+  _CHECK_PRECONDITIONS = enabled
 
 
 def Node(*child_names):

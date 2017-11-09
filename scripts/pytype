@@ -252,10 +252,7 @@ def main(argv):
     print options
     sys.exit(1)
 
-  # TODO(dbaum): Consider changing flag default and/or polarity.  This will
-  # need to be coordinated with a change to pytype.bzl.
-  if not options.check_preconditions:
-    node.DisablePreconditions()
+  node.SetCheckPreconditions(options.check_preconditions)
 
   if options.convert_to_pickle:
     return _convert_to_pickle(options)

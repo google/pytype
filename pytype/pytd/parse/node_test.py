@@ -212,12 +212,12 @@ class TestNode(unittest.TestCase):
       pass
     MyNode("a")  # OK.
     try:
-      node.DisablePreconditions()
+      node.SetCheckPreconditions(False)
       MyNode(1)  # Preconditions are ignored.
     finally:
       # Restore preconditions (not part of the public API, but ensures the
       # test doesn't have a surprising side effect).
-      node._CHECK_PRECONDITIONS = True
+      node.SetCheckPreconditions(True)
 
 
 if __name__ == "__main__":
