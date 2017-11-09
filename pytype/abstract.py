@@ -2066,7 +2066,28 @@ class Class(object):
       # TODO(rechen): Check that the metaclass is a (non-strict) subclass of the
       # metaclasses of the base classes.
       self.cls = metaclass
-    self.abstract_methods = []
+    self._init_abstract_methods()
+
+  def get_own_abstract_methods(self):
+    """Get the abstract methods defined by this class."""
+    raise NotImplementedError(self.__class__.__name__)
+
+  def _init_abstract_methods(self):
+    """Compute this class's abstract methods."""
+    # For the algorithm to run, abstract_methods needs to be populated with the
+    # abstract methods defined by this class. We'll overwrite the attribute
+    # with the full set of abstract methods later.
+    self.abstract_methods = self.get_own_abstract_methods()
+    abstract_methods = set()
+    for cls in reversed(self.mro):
+      if not isinstance(cls, Class):
+        continue
+      # Remove methods implemented by this class.
+      abstract_methods = {m for m in abstract_methods
+                          if m not in cls or m in cls.abstract_methods}
+      # Add abstract methods defined by this class.
+      abstract_methods |= {m for m in cls.abstract_methods if m in cls}
+    self.abstract_methods = abstract_methods
 
   @property
   def is_abstract(self):
@@ -2175,7 +2196,6 @@ class ParameterizedClass(AtomicAbstractValue, Class):
     self.template = self.base_cls.template
     self.slots = self.base_cls.slots
     Class.init_mixin(self, base_cls.cls)
-    self.abstract_methods.extend(self.base_cls.abstract_methods)
 
   def __repr__(self):
     return "ParameterizedClass(cls=%r params=%s)" % (self.base_cls,
@@ -2196,6 +2216,12 @@ class ParameterizedClass(AtomicAbstractValue, Class):
     # causing recursion errors, since hash() is called by compute_mro() for
     # definitions such as 'class str(Sequence[str]): ...'.
     return hash((self.base_cls, tuple(dict.items(self.type_parameters))))
+
+  def __contains__(self, name):
+    return name in self.base_cls
+
+  def get_own_abstract_methods(self):
+    return self.base_cls.get_own_abstract_methods()
 
   @property
   def members(self):
@@ -2406,16 +2432,10 @@ class PyTDClass(SimpleAbstractValue, Class):
     self.template = self.pytd_cls.template
     self.slots = pytd_cls.slots
     Class.init_mixin(self, metaclass)
-    self.abstract_methods.extend(
-        name for name, member in self._member_map.items()
-        if isinstance(member, pytd.Function) and member.is_abstract)
-    if len(self.mro) > 1 and isinstance(self.mro[1], Class):
-      for name in self.mro[1].abstract_methods:
-        try:
-          self.pytd_cls.Lookup(name)
-        except KeyError:
-          # The parent's abstract method is inherited.
-          self.abstract_methods.append(name)
+
+  def get_own_abstract_methods(self):
+    return {name for name, member in self._member_map.items()
+            if isinstance(member, pytd.Function) and member.is_abstract}
 
   def bases(self):
     convert = self.vm.convert
@@ -2513,19 +2533,16 @@ class InterpreterClass(SimpleAbstractValue, Class):
     super(InterpreterClass, self).__init__(name, vm)
     self._bases = bases
     self.mro = self.compute_mro()
-    Class.init_mixin(self, cls)
-    self.abstract_methods.extend(
-        name for name, var in members.items()
-        if any(isinstance(v, Function) and v.is_abstract for v in var.data))
-    if len(self.mro) > 1 and isinstance(self.mro[1], Class):
-      for name in self.mro[1].abstract_methods:
-        if name not in members:
-          self.abstract_methods.append(name)
     self.members = utils.MonitorDict(members)
+    Class.init_mixin(self, cls)
     self.instances = set()  # filled through register_instance
     self._instance_cache = {}
     self.slots = self._convert_slots(members.get("__slots__"))
     log.info("Created class: %r", self)
+
+  def get_own_abstract_methods(self):
+    return {name for name, var in self.members.items()
+            if any(isinstance(v, Function) and v.is_abstract for v in var.data)}
 
   def _mangle(self, name):
     """Do name-mangling on an attribute name.

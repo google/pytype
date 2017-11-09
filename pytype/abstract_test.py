@@ -709,7 +709,7 @@ class AbstractMethodsTest(AbstractTestBase):
     func = abstract.Function("f", self._vm).to_variable(self._vm.root_cfg_node)
     func.data[0].is_abstract = True
     cls = abstract.InterpreterClass("X", [], {"f": func}, None, self._vm)
-    self.assertListEqual(cls.abstract_methods, ["f"])
+    self.assertItemsEqual(cls.abstract_methods, {"f"})
 
   def testInheritedAbstractMethod(self):
     sized_pytd = self._vm.loader.typing.Lookup("typing.Sized")
@@ -717,7 +717,7 @@ class AbstractMethodsTest(AbstractTestBase):
         sized_pytd, {}, self._vm.root_cfg_node)
     cls = abstract.InterpreterClass(
         "X", [sized.to_variable(self._vm.root_cfg_node)], {}, None, self._vm)
-    self.assertListEqual(cls.abstract_methods, ["__len__"])
+    self.assertItemsEqual(cls.abstract_methods, {"__len__"})
 
   def testOverriddenAbstractMethod(self):
     sized_pytd = self._vm.loader.typing.Lookup("typing.Sized")
@@ -738,7 +738,7 @@ class AbstractMethodsTest(AbstractTestBase):
     func.is_abstract = True
     members = {"__len__": func.to_variable(self._vm.root_cfg_node)}
     cls = abstract.InterpreterClass("X", bases, members, None, self._vm)
-    self.assertListEqual(cls.abstract_methods, ["__len__"])
+    self.assertItemsEqual(cls.abstract_methods, {"__len__"})
 
 
 class AbstractTest(AbstractTestBase):

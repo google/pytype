@@ -235,7 +235,7 @@ class ConvertTest(unittest.TestCase):
     """)
     cls = self._vm.convert.constant_to_value(
         ast.Lookup("a.A"), {}, self._vm.root_cfg_node)
-    self.assertListEqual(cls.abstract_methods, ["f"])
+    self.assertItemsEqual(cls.abstract_methods, {"f"})
 
   def test_class_inherited_abstract_method(self):
     ast = self._load_ast("a", """
@@ -246,7 +246,7 @@ class ConvertTest(unittest.TestCase):
     """)
     cls = self._vm.convert.constant_to_value(
         ast.Lookup("a.B"), {}, self._vm.root_cfg_node)
-    self.assertListEqual(cls.abstract_methods, ["f"])
+    self.assertItemsEqual(cls.abstract_methods, {"f"})
 
   def test_class_override_abstract_method(self):
     ast = self._load_ast("a", """
@@ -271,7 +271,7 @@ class ConvertTest(unittest.TestCase):
     """)
     cls = self._vm.convert.constant_to_value(
         ast.Lookup("a.B"), {}, self._vm.root_cfg_node)
-    self.assertListEqual(cls.abstract_methods, ["f"])
+    self.assertItemsEqual(cls.abstract_methods, {"f"})
 
   def test_parameterized_class_abstract_method(self):
     ast = self._load_ast("a", """
@@ -282,7 +282,7 @@ class ConvertTest(unittest.TestCase):
     cls = self._vm.convert.constant_to_value(
         ast.Lookup("a.A"), {}, self._vm.root_cfg_node)
     parameterized_cls = abstract.ParameterizedClass(cls, {}, self._vm)
-    self.assertListEqual(parameterized_cls.abstract_methods, ["f"])
+    self.assertItemsEqual(parameterized_cls.abstract_methods, {"f"})
 
 
 if __name__ == "__main__":

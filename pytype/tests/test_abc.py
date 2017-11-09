@@ -198,6 +198,73 @@ class AbstractMethodTests(test_base.BaseTest):
     self.assertErrorLogIs(errors, [(2, "ignored-abstractmethod",
                                     r"foo.*Example")])
 
+  def test_multiple_inheritance_implementation(self):
+    self.assertNoErrors("""
+      import abc
+      class Interface(object):
+        __metaclass__ = abc.ABCMeta
+        @abc.abstractmethod
+        def foo(self):
+          pass
+      class X(Interface):
+        pass
+      class Implementation(Interface):
+        def foo(self):
+          print 42
+      class Foo(X, Implementation):
+        pass
+      Foo().foo()
+    """)
+
+  def test_multiple_inheritance_implementation_pyi(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        import abc
+        class Interface(metaclass=abc.ABCMeta):
+          @abc.abstractmethod
+          def foo(self): ...
+        class X(Interface): ...
+        class Implementation(Interface):
+          def foo(self) -> int: ...
+        class Foo(X, Implementation): ...
+      """)
+      self.assertNoErrors("""
+        import foo
+        foo.Foo().foo()
+      """, pythonpath=[d.path])
+
+  def test_multiple_inheritance_error(self):
+    _, errors = self.InferAndCheck("""\
+      import abc
+      class X(object):
+        pass
+      class Interface(object):
+        __metaclass__ = abc.ABCMeta
+        @abc.abstractmethod
+        def foo(self):
+          pass
+      class Foo(X, Interface):
+        pass
+      Foo().foo()  # line 11
+    """)
+    self.assertErrorLogIs(errors, [(11, "not-instantiable", r"Foo.*foo")])
+
+  def test_multiple_inheritance_error_pyi(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        import abc
+        class X(object): ...
+        class Interface(metaclass=abc.ABCMeta):
+          @abc.abstractmethod
+          def foo(self): ...
+        class Foo(X, Interface): ...
+      """)
+      _, errors = self.InferAndCheck("""\
+        import foo
+        foo.Foo().foo()
+      """, pythonpath=[d.path])
+      self.assertErrorLogIs(errors, [(2, "not-instantiable", r"foo\.Foo.*foo")])
+
 
 if __name__ == "__main__":
   test_base.main()
