@@ -16,7 +16,7 @@ class TestAttributes(test_base.BaseTest):
           self.a = 3
         def method2(self):
           self.a = 3j
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       class A(object):
         a = ...  # type: complex or int
@@ -32,7 +32,7 @@ class TestAttributes(test_base.BaseTest):
         A().a = 3
       def f2():
         A().a = 3j
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       class A(object):
         a = ...  # type: complex or int
@@ -47,7 +47,7 @@ class TestAttributes(test_base.BaseTest):
           self._x = 3
         def foo(self):
           return self._x
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       class C(object):
         _x = ...  # type: int
@@ -61,7 +61,7 @@ class TestAttributes(test_base.BaseTest):
           self.x = 3
         def foo(self):
           return self.x
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       class C(object):
         x = ...  # type: int
@@ -82,7 +82,7 @@ class TestAttributes(test_base.BaseTest):
             self.a = A()
         def set_on_a(self):
           self.a.x = 3j
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       class A(object):
         b = ...  # type: B
@@ -124,7 +124,7 @@ class TestAttributes(test_base.BaseTest):
       class MyClass2(object):
         def __getattribute__(self, name):
           return object.__getattribute__(self, name)
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       class MyClass1(object): pass
       class MyClass2(object): pass
@@ -138,7 +138,7 @@ class TestAttributes(test_base.BaseTest):
       a = A()
       a.x = "hello world"
       x = a.x
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       class A(object):
         x = ...  # type: str
@@ -159,7 +159,7 @@ class TestAttributes(test_base.BaseTest):
         if x:
           v.__class__ = B
         return v.x
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       class A(object):
         x = ...  # type: str
@@ -174,7 +174,7 @@ class TestAttributes(test_base.BaseTest):
         y = None
         y.__class__ = x.__class__
         return set([x, y])
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       def f(x) -> set
     """)
@@ -182,7 +182,7 @@ class TestAttributes(test_base.BaseTest):
   def testGetMro(self):
     ty = self.Infer("""
       x = int.mro()
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       x = ...  # type: list
     """)
@@ -193,7 +193,7 @@ class TestAttributes(test_base.BaseTest):
         def __call__(self):
           return 42
       x = A()()
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       class A(object):
         def __call__(self) -> int
@@ -207,7 +207,7 @@ class TestAttributes(test_base.BaseTest):
         def __getattribute__(self, name):
           return int
       x = A().__call__()
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       class A(object):
         def __getattribute__(self, name) -> int
@@ -309,7 +309,7 @@ class TestAttributes(test_base.BaseTest):
       args = {A(): ""}
       for x, y in sorted(args.iteritems()):
         z = x.values
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Dict
       class A(object):
@@ -346,7 +346,7 @@ class TestAttributes(test_base.BaseTest):
           d = {42: Foo()}
           for _, foo in sorted(d.iteritems()):
             foo.x = 42
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
         x = ...  # type: int
@@ -377,7 +377,7 @@ class TestAttributes(test_base.BaseTest):
           return self.bar
       x = A() if __random__ else B()
       a = x.foo
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Union
       a = ...  # type: int

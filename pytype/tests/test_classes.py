@@ -17,7 +17,7 @@ class ClassesTest(test_base.BaseTest):
           pass
       def f():
         return MyClass()
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       MyClass = ...  # type: Any
@@ -57,7 +57,7 @@ class ClassesTest(test_base.BaseTest):
       class A(x):
         def __init__(self):
           x.__init__(self)
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
     x = ...  # type: ?
     class A(?):
@@ -69,7 +69,7 @@ class ClassesTest(test_base.BaseTest):
       class Foo(__any_object__):
         def __init__(self):
           setattr(self, "test", True)
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
     class Foo(?):
       def __init__(self) -> NoneType
@@ -82,7 +82,7 @@ class ClassesTest(test_base.BaseTest):
       class Bar(Foo, __any_object__):
         pass
       x = Bar(duration=0)
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       class Foo(object):
@@ -105,7 +105,7 @@ class ClassesTest(test_base.BaseTest):
         class Bar(Foo, a.A):
           pass
         x = Bar(duration=0)
-      """, pythonpath=[d.path], deep=True)
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         a = ...  # type: module
@@ -125,7 +125,7 @@ class ClassesTest(test_base.BaseTest):
           module.bar("", '%Y-%m-%d')
       def f():
         return Foo.bar()
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
     module = ...  # type: ?
     def f() -> NoneType
@@ -140,7 +140,7 @@ class ClassesTest(test_base.BaseTest):
         def f(self):
           self.x = [1]
           self.y = list(self.x)
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
     from typing import List
     class Foo(?):
@@ -156,7 +156,7 @@ class ClassesTest(test_base.BaseTest):
           x = 3
         l = Foo()
         return l.x
-    """, deep=True, show_library_calls=True)
+    """, show_library_calls=True)
     self.assertTypesMatchPytd(ty, """
       def f() -> int
     """)
@@ -169,7 +169,7 @@ class ClassesTest(test_base.BaseTest):
       class Foo(Base):
         def __init__(self, x):
           super(Foo, self).__init__(x, y='foo')
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
     class Base(object):
       def __init__(self, x, y) -> NoneType
@@ -200,7 +200,7 @@ class ClassesTest(test_base.BaseTest):
 
         def get_x(self):
           return self.x
-    """, deep=True, show_library_calls=True)
+    """, show_library_calls=True)
     self.assertTypesMatchPytd(ty, """
         class A(object):
           x = ...  # type: int
@@ -227,7 +227,7 @@ class ClassesTest(test_base.BaseTest):
           return super(D, self).y
         def get_z(self):
           return super(D, self).z
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       class A(object):
           x = ...  # type: int
@@ -247,7 +247,7 @@ class ClassesTest(test_base.BaseTest):
       class MyList(list):
         def foo(self):
           return getattr(self, '__str__')
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       class MyList(list):
         def foo(self) -> ?
@@ -260,7 +260,7 @@ class ClassesTest(test_base.BaseTest):
       OtherFoo = Foo().__class__
       Foo.x = 3
       OtherFoo.x = "bar"
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
         x = ...  # type: str
@@ -273,7 +273,7 @@ class ClassesTest(test_base.BaseTest):
         convert_method = int
         def convert(self, value):
           return self.convert_method(value)
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Type
       class Flag(object):
@@ -289,7 +289,7 @@ class ClassesTest(test_base.BaseTest):
 
       _inst = Random()
       seed = _inst.seed
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
     from typing import Any, Callable
     class Random(object):
@@ -306,7 +306,7 @@ class ClassesTest(test_base.BaseTest):
         pass
       class Bar(X, Foo, Y):
         pass
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       X = ...  # type: ?
       Y = ...  # type: ?
@@ -324,7 +324,7 @@ class ClassesTest(test_base.BaseTest):
         def test(self):
           return self.name
         name = property(fget=lambda self: self._name)
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       class Foo(object):
@@ -344,7 +344,7 @@ class ClassesTest(test_base.BaseTest):
         def test(self):
           return self.foo
         foo = Foo()
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
         _name = ...  # type: str
@@ -365,7 +365,7 @@ class ClassesTest(test_base.BaseTest):
         def test(self):
           return self.foo
         foo = Foo()
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       class Foo(object):
@@ -386,7 +386,7 @@ class ClassesTest(test_base.BaseTest):
           return self.foo
         _name = "name"
         foo = Foo()
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       class Foo(object):
@@ -404,7 +404,7 @@ class ClassesTest(test_base.BaseTest):
           return "attr"
       def f():
         return Foo().foo
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
         def __getattr__(self, name) -> str: ...
@@ -421,7 +421,7 @@ class ClassesTest(test_base.BaseTest):
         import foo
         def f():
           return foo.Foo().foo
-      """, pythonpath=[d.path], deep=True)
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         foo = ...  # type: module
         def f() -> str
@@ -433,7 +433,7 @@ class ClassesTest(test_base.BaseTest):
         def __getattribute__(self, name):
           return 42
       x = A().x
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       class A(object):
         def __getattribute__(self, name) -> int
@@ -449,7 +449,7 @@ class ClassesTest(test_base.BaseTest):
       ty = self.Infer("""
         import a
         x = a.A().x
-      """, pythonpath=[d.path], deep=True)
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
         x = ...  # type: int
@@ -466,7 +466,7 @@ class ClassesTest(test_base.BaseTest):
         class C(a.A):
           pass
         name = C.__name__
-      """, pythonpath=[d.path], deep=True)
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         a = ... # type: module
         class C(a.A):
@@ -493,7 +493,7 @@ class ClassesTest(test_base.BaseTest):
         name1 = A.x.name
         enum2 = B.x
         name2 = B.x.name
-      """, pythonpath=[d.path])
+      """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         enum = ...  # type: module
@@ -524,7 +524,7 @@ class ClassesTest(test_base.BaseTest):
         x1 = a.f(a.A).x
         x2 = a.g().x
         x3 = a.h().x
-      """, pythonpath=[d.path], deep=True)
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
         x1 = ...  # type: int
@@ -543,7 +543,7 @@ class ClassesTest(test_base.BaseTest):
       ty = self.Infer("""
         import a
         x = a.B.MyA()
-      """, pythonpath=[d.path], deep=True)
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
         x = ...  # type: a.A
@@ -554,7 +554,7 @@ class ClassesTest(test_base.BaseTest):
       class A: pass
       B = A
       x = B()
-    """)
+    """, deep=False)
     # We don't care whether the type of x is inferred as A or B, but we want it
     # to always be the same.
     self.assertTypesMatchPytd(ty, """
@@ -578,7 +578,7 @@ class ClassesTest(test_base.BaseTest):
         x1 = a.A(42)
         x2 = C()
         x3 = object.__new__(bool)
-      """, pythonpath=[d.path], deep=True)
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
         class C(object):
@@ -608,7 +608,7 @@ class ClassesTest(test_base.BaseTest):
       x3 = B(3.14)
       x4 = x3.x
       x5 = x3.y
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Type, TypeVar
       _TA = TypeVar("_TA", bound=A)
@@ -646,7 +646,7 @@ class ClassesTest(test_base.BaseTest):
         import a
         x1 = a.A(0)
         x2 = a.B()
-      """, pythonpath=[d.path], deep=True)
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
         x1 = ...  # type: a.A[int]
@@ -662,7 +662,7 @@ class ClassesTest(test_base.BaseTest):
       B = type(A())
       C = type(f())
       D = type(int)
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Type
       class A:
@@ -680,7 +680,7 @@ class ClassesTest(test_base.BaseTest):
       B = type(A())
       x = B.x
       mro = B.mro()
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       class A:
         x = ...  # type: int
@@ -701,7 +701,7 @@ class ClassesTest(test_base.BaseTest):
       x = X()
       a = X.a
       v = X.f()
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Type
       class A(type):
@@ -733,7 +733,7 @@ class ClassesTest(test_base.BaseTest):
       ty = self.Infer("""
         import a
         v = a.X.f()
-      """, pythonpath=[d.path], deep=True)
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
         v = ...  # type: float
@@ -752,7 +752,7 @@ class ClassesTest(test_base.BaseTest):
       ty = self.Infer("""
         import b
         x = b.B.x
-      """, pythonpath=[d.path], deep=True)
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         b = ...  # type: module
@@ -765,7 +765,7 @@ class ClassesTest(test_base.BaseTest):
         def __init__(self):
           self.__class__ = int
       x = "" % type(A())
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       class A(object):
         pass
@@ -777,7 +777,7 @@ class ClassesTest(test_base.BaseTest):
       X = type("X", (int, object), {"a": 1})
       x = X()
       a = X.a
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       class X(int, object):
         a = ...  # type: int
@@ -789,7 +789,7 @@ class ClassesTest(test_base.BaseTest):
     ty = self.Infer("""
       X = type("X", (), {})
       x = X()
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       class X(object): ...
       x = ...  # type: X
@@ -803,7 +803,7 @@ class ClassesTest(test_base.BaseTest):
         name = "B"
       X = type(name, (int, object), {"a": 1})
       x = X()
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       name = ...  # type: str
@@ -823,7 +823,7 @@ class ClassesTest(test_base.BaseTest):
         __metaclass__ = A
       x1 = B.x
       x2 = C.x
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Type
       class A(type):
@@ -844,7 +844,7 @@ class ClassesTest(test_base.BaseTest):
       class X(object):
         __metaclass__ = A
       v = X.f()
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Type
       class A(type):
@@ -861,7 +861,7 @@ class ClassesTest(test_base.BaseTest):
       X1 = type("X1", (), {"__metaclass__": A})
       class X2(object):
         __metaclass__ = type
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Type
       class A(type): ...
@@ -888,7 +888,7 @@ class ClassesTest(test_base.BaseTest):
             return 42
         X.register(tuple)
         v = X().f()
-      """, pythonpath=[d.path], deep=True)
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Type
         foo = ...  # type: module
@@ -905,7 +905,7 @@ class ClassesTest(test_base.BaseTest):
         return type(name, bases, members)
       class X(object):
         __metaclass__ = MyMeta
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       def MyMeta(names, bases, members) -> Any
@@ -921,7 +921,7 @@ class ClassesTest(test_base.BaseTest):
           return 42
       X = A("X", (object,), {})
       v = X[0]
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       class A(type):
         def __getitem__(self, i: int) -> int
@@ -983,7 +983,7 @@ class ClassesTest(test_base.BaseTest):
           self.instance_attr = ""
         def f(self):
           return self.instance_attr
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
         instance_attr = ...  # type: str
@@ -1003,7 +1003,7 @@ class ClassesTest(test_base.BaseTest):
           self.instance_attr = ""
         def f(self):
           return self.instance_attr
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
         instance_attr = ...  # type: str
@@ -1027,7 +1027,7 @@ class ClassesTest(test_base.BaseTest):
             return super(Foo, cls).__new__(cls)
         def foo(self):
           return self
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
         def __new__(cls) -> Foo or None
@@ -1102,7 +1102,7 @@ class ClassesTest(test_base.BaseTest):
       class Foo(object):
         def __new__(cls: Type[str]):
           return super(Foo, cls).__new__(cls)
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Type
       class Foo(object):
@@ -1204,7 +1204,7 @@ class ClassesTest(test_base.BaseTest):
             return super(Bar, cls).__new__(cls)
         return Bar
       Baz = f()
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Type, TypeVar
       def f() -> Type[Baz]
@@ -1249,7 +1249,7 @@ class ClassesTest(test_base.BaseTest):
       from typing import List
       class Foo(List[str]): ...
       v = Foo()[0]
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import List
       class Foo(List[str]): ...
@@ -1316,7 +1316,7 @@ class ClassesTest(test_base.BaseTest):
   def testInstantiateWithAbstractDict(self):
     ty = self.Infer("""
       X = type("", (), dict())
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       X = ...  # type: ?
     """)

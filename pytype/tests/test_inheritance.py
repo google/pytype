@@ -16,7 +16,7 @@ class InheritanceTest(test_base.BaseTest):
           return self.lineno
       class Leaf(Base):
         lineno = 0
-    """, deep=True, show_library_calls=True)
+    """, show_library_calls=True)
     self.assertTypesMatchPytd(ty, """
       class Base:
         pass
@@ -42,7 +42,7 @@ class InheritanceTest(test_base.BaseTest):
         return A.y
       def by():
         return A.y
-    """, deep=True, show_library_calls=True)
+    """, show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("ax"), self.int)
     self.assertOnlyHasReturnType(ty.Lookup("bx"), self.str)
     self.assertOnlyHasReturnType(ty.Lookup("ay"), self.int)
@@ -65,7 +65,7 @@ class InheritanceTest(test_base.BaseTest):
         return D.y
       def z():
         return D.z
-    """, deep=True, show_library_calls=True)
+    """, show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("x"), self.int)
     self.assertOnlyHasReturnType(ty.Lookup("y"), self.int)
     self.assertOnlyHasReturnType(ty.Lookup("z"), self.complex)
@@ -126,7 +126,7 @@ class InheritanceTest(test_base.BaseTest):
         return C().b()
       def i():
         return D().b()
-    """, deep=True, show_library_calls=True)
+    """, show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.int)
     self.assertOnlyHasReturnType(ty.Lookup("g"), self.float)
     self.assertOnlyHasReturnType(ty.Lookup("h"), self.str)

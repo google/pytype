@@ -316,7 +316,7 @@ class TestWithStatement(test_base.BaseTest):
       def f():
         with tempfile.NamedTemporaryFile(dir="bla", delete=False) as fi:
           pass
-      """, deep=True)
+      """)
 
 
 if __name__ == "__main__":

@@ -14,7 +14,7 @@ class MatchTest(test_base.BaseTest):
       def f():
         pass
       x = tokenize.generate_tokens(f)
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Generator, Tuple
       tokenize = ...  # type: module
@@ -27,7 +27,7 @@ class MatchTest(test_base.BaseTest):
       import tokenize
       import StringIO
       x = tokenize.generate_tokens(StringIO.StringIO("").readline)
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Generator, Tuple
       tokenize = ...  # type: module
@@ -45,7 +45,7 @@ class MatchTest(test_base.BaseTest):
         import foo
         def f():
           return foo.f(int)
-      """, pythonpath=[d.path], deep=True)
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         foo = ...  # type: module
         def f() -> str
@@ -57,7 +57,7 @@ class MatchTest(test_base.BaseTest):
       def f(x):
         # set.intersection is a static method:
         return s.intersection(x)
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Set
       s = ...  # type: Set[int]
@@ -74,7 +74,7 @@ class MatchTest(test_base.BaseTest):
       ty = self.Infer("""
         import a
         x = a.f(["a", "b", "c"])
-      """, pythonpath=[d.path], deep=True)
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
         x = ...  # type: str
@@ -84,7 +84,7 @@ class MatchTest(test_base.BaseTest):
     ty = self.Infer("""
       a = []
       b = ["%d" % i for i in a]
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, List
       a = ...  # type: List[nothing]
@@ -108,7 +108,7 @@ class MatchTest(test_base.BaseTest):
       ty = self.Infer("""
         import a
         x = a.f(a.B())
-      """, pythonpath=[d.path])
+      """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
         x = ...  # type: str
@@ -124,7 +124,7 @@ class MatchTest(test_base.BaseTest):
       ty = self.Infer("""
         import foo
         v = foo.f(__any_object__)
-      """, deep=True, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         foo = ...  # type: module
@@ -256,7 +256,7 @@ class MatchTest(test_base.BaseTest):
         def g4(x: int): pass
         w1 = foo.f2(g3)
         w2 = foo.f2(g4)
-      """, pythonpath=[d.path])
+      """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any, List
         foo = ...  # type: module
@@ -343,7 +343,7 @@ class MatchTest(test_base.BaseTest):
         @foo.decorate
         def f() -> Generator[Optional[str]]:
           yield "hello world"
-      """, pythonpath=[d.path])
+      """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import List, Optional
         foo = ...  # type: module

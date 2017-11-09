@@ -60,7 +60,7 @@ class BuiltinTests(test_base.BaseTest):
       def t_testIsinstance1(x):
         # TODO: if isinstance(x, int): return "abc" else: return None
         return isinstance(x, int)
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       def t_testIsinstance1(x: object) -> bool
     """)
@@ -70,7 +70,7 @@ class BuiltinTests(test_base.BaseTest):
     ty = self.Infer("""
       def t_testIsinstance2(x):
         assert isinstance(x, int)
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       # currently does (x: object)
       def t_testIsinstance2(x: int) -> NoneType
@@ -82,7 +82,7 @@ class BuiltinTests(test_base.BaseTest):
         # pow(int, int) returns int, or float if the exponent is negative.
         # Hence, it's a handy function for testing UnionType returns.
         return pow(1, -2)
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       def t_testPow1() -> float or int
     """)
@@ -92,7 +92,7 @@ class BuiltinTests(test_base.BaseTest):
       def t_testMax1():
         # max is a parameterized function
         return max(1, 2)
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       def t_testMax1() -> int
       """)
@@ -102,7 +102,7 @@ class BuiltinTests(test_base.BaseTest):
       def t_testMax2(x, y):
         # max is a parameterized function
         return max(x, y)
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       def t_testMax2(x: object, y: object) -> ?
       """)
@@ -116,7 +116,7 @@ class BuiltinTests(test_base.BaseTest):
       e = zip((), (1, 2, 3))
       f = zip((1j, 2j), (1, 2))
       assert zip([], [], [])
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import List, Tuple, Union
       a = ...  # type: List[Tuple[str, unicode]]
@@ -174,7 +174,7 @@ class BuiltinTests(test_base.BaseTest):
       def f():
         mydict = {"42": 42}
         return mydict.get("42")
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       def f() -> int or NoneType
     """)
@@ -184,7 +184,7 @@ class BuiltinTests(test_base.BaseTest):
       def f():
         mydict = {"42": 42}
         return mydict.get("42", False)
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       def f() -> int
     """)
@@ -193,7 +193,7 @@ class BuiltinTests(test_base.BaseTest):
     ty = self.Infer("""
     def t_testListInit0(x):
       return list(x)
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       def t_testListInit0(x) -> list
     """)
@@ -202,7 +202,7 @@ class BuiltinTests(test_base.BaseTest):
     ty = self.Infer("""
     def t_testListInit1(x, y):
       return x + [y]
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       def t_testListInit1(x, y) -> Any
@@ -295,7 +295,7 @@ class BuiltinTests(test_base.BaseTest):
     ty = self.Infer("""
       def t_testCmp(x, y):
         return cmp(x, y)
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
     def t_testCmp(x, y) -> int
     """)
@@ -339,7 +339,7 @@ class BuiltinTests(test_base.BaseTest):
         return x
       def g(args):
         f(*tuple(args))
-    """, deep=True, show_library_calls=True)
+    """, show_library_calls=True)
 
   def testTuple2(self):
     ty = self.Infer("""
@@ -349,7 +349,7 @@ class BuiltinTests(test_base.BaseTest):
         args = (4, )
         return f(3, *args)
       g()
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, TypeVar
       _T1 = TypeVar("_T1")
@@ -362,7 +362,7 @@ class BuiltinTests(test_base.BaseTest):
       def f(x):
         with open(x, "r") as fi:
           return fi.read()
-      """, deep=True)
+      """)
     self.assertTypesMatchPytd(ty, """
       def f(x) -> str
     """)
@@ -372,7 +372,7 @@ class BuiltinTests(test_base.BaseTest):
       import signal
       def f():
         signal.signal(signal.SIGALRM, 0)
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       signal = ...  # type: module
 
@@ -397,7 +397,7 @@ class BuiltinTests(test_base.BaseTest):
         def __init__(self, x):
           for attr in x.__dict__:
             setattr(self, attr, getattr(x, attr))
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
         def __init__(self, x) -> NoneType
@@ -407,7 +407,7 @@ class BuiltinTests(test_base.BaseTest):
     ty = self.Infer("""
       def f(input_string, sub):
         return ''.join(map(lambda ch: ch, input_string))
-    """, deep=True)
+    """)
     self.assertOnlyHasReturnType(
         ty.Lookup("f"), self.anything)
 
@@ -418,7 +418,7 @@ class BuiltinTests(test_base.BaseTest):
 
       def f():
         return map(lambda x: x, [Foo()])
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
         pass
@@ -432,7 +432,7 @@ class BuiltinTests(test_base.BaseTest):
       class Foo(object):
         def __init__(self):
           array.array('i')
-    """, deep=True)
+    """)
     ty.Lookup("Foo")  # smoke test
 
   def testArray(self):
@@ -441,7 +441,7 @@ class BuiltinTests(test_base.BaseTest):
       class Foo(object):
         def __init__(self):
           self.bar = array.array('i', [1, 2, 3])
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       array = ...  # type: module
       class Foo(object):
@@ -452,7 +452,7 @@ class BuiltinTests(test_base.BaseTest):
     ty = self.Infer("""
       class Foo(list):
         pass
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       class Foo(list):
         pass
@@ -463,7 +463,7 @@ class BuiltinTests(test_base.BaseTest):
       import os
       class Foo(object):
         bar = os.path.join('hello', 'world')
-    """, deep=True)
+    """)
     ty.Lookup("Foo")  # smoke test
 
   def testIsInstance(self):
@@ -474,7 +474,7 @@ class BuiltinTests(test_base.BaseTest):
 
       class Baz(Bar):
         pass
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
     class Bar(object):
       def foo(self) -> bool
@@ -488,7 +488,7 @@ class BuiltinTests(test_base.BaseTest):
       class Bar(object):
         pass
       a = hasattr(Bar, 'foo')
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
     class Bar(object):
       pass
@@ -503,7 +503,7 @@ class BuiltinTests(test_base.BaseTest):
           return time.mktime(time.struct_time((1, 2, 3, 4, 5, 6, 7, 8, 9)))
         else:
           return 3j
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       time = ...  # type: module
 
@@ -515,7 +515,7 @@ class BuiltinTests(test_base.BaseTest):
       def seed(self, a=None):
         a = long(0)
         divmod(a, 30268)
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       def seed(self, a=...) -> NoneType
     """)
@@ -526,7 +526,7 @@ class BuiltinTests(test_base.BaseTest):
         if a is None:
           a = int(16)
         return divmod(a, 30268)
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       def seed(self, a = ...) -> Any
@@ -538,7 +538,7 @@ class BuiltinTests(test_base.BaseTest):
         if a is None:
           a = long(16)
         return divmod(a, 30268)
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       def seed(self, a = ...) -> Any
@@ -551,7 +551,7 @@ class BuiltinTests(test_base.BaseTest):
         return open("/dev/null")
       def g():
         return os.open("/dev/null", os.O_RDONLY, 0777)
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       os = ...  # type: module
 
@@ -563,7 +563,7 @@ class BuiltinTests(test_base.BaseTest):
     ty = self.Infer("""
       def f(elements):
         return ",".join(t for t in elements)
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       def f(elements) -> str
     """)
@@ -573,7 +573,7 @@ class BuiltinTests(test_base.BaseTest):
       import sys
       def f():
         return 'py%d' % sys.version_info[0]
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       sys = ...  # type: module
       def f() -> str
@@ -586,7 +586,7 @@ class BuiltinTests(test_base.BaseTest):
       class Foo(
           collections.namedtuple('_Foo', 'x y z')):
         pass
-    """, deep=True)
+    """)
     name = collections_overlay.namedtuple_name("_Foo", ["x", "y", "z"])
     ast = collections_overlay.namedtuple_ast(name, ["x", "y", "z"],
                                              self.PYTHON_VERSION)
@@ -605,7 +605,7 @@ class BuiltinTests(test_base.BaseTest):
       x = t.x
       y = t.y
       z = t.z
-    """, deep=True)
+    """)
     name = collections_overlay.namedtuple_name("t", ["x", "y", "z"])
     ast = collections_overlay.namedtuple_ast(name, ["x", "y", "z"],
                                              self.PYTHON_VERSION)
@@ -621,7 +621,7 @@ class BuiltinTests(test_base.BaseTest):
     ty = self.Infer("""
       def f(n):
         return type(n) == type(0)
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       def f(n) -> Any
@@ -632,7 +632,7 @@ class BuiltinTests(test_base.BaseTest):
       import types
       def f(num):
         return type(num) == types.IntType
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       types = ...  # type: module
@@ -645,7 +645,7 @@ class BuiltinTests(test_base.BaseTest):
 
       def f(date):
         return date.ctime()
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       datetime = ...  # type: module
@@ -658,7 +658,7 @@ class BuiltinTests(test_base.BaseTest):
 
       def f(tz):
         tz.fromutc(datetime.datetime(1929, 10, 29))
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       datetime = ...  # type: module
       def f(tz) -> NoneType

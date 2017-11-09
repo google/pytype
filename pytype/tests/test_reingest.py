@@ -18,7 +18,7 @@ class ReingestTest(test_base.BaseTest):
           pass
       class A(Container):
         pass
-    """)
+    """, deep=False)
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd.Print(ty))
       self.Check("""
@@ -32,7 +32,7 @@ class ReingestTest(test_base.BaseTest):
       class Union(object):
         pass
       x = {"Union": Union}
-    """)
+    """, deep=False)
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd.Print(ty))
       self.Check("""
@@ -43,7 +43,7 @@ class ReingestTest(test_base.BaseTest):
     foo = self.Infer("""
       def decorate(f):
         return f
-    """, deep=True)
+    """)
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd.Print(foo))
       ty = self.Infer("""
@@ -53,7 +53,7 @@ class ReingestTest(test_base.BaseTest):
           return 3
         def g():
           return f()
-      """, deep=True, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         foo = ...  # type: module
         def f() -> int
@@ -65,7 +65,7 @@ class ReingestTest(test_base.BaseTest):
     foo = self.Infer("""
       def maybe_decorate(f):
         return f or (lambda *args: 42)
-    """, deep=True)
+    """)
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd.Print(foo))
       ty = self.Infer("""
@@ -75,7 +75,7 @@ class ReingestTest(test_base.BaseTest):
           return 3
         def g():
           return f()
-      """, deep=True, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         foo = ...  # type: module
         def f() -> int
@@ -88,7 +88,7 @@ class ReingestTest(test_base.BaseTest):
       from typing import TypeVar
       T = TypeVar("T", bound=float)
       def f(x: T) -> T: return x
-    """)
+    """, deep=False)
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd.Print(foo))
       _, errors = self.InferWithErrors("""\
@@ -101,7 +101,7 @@ class ReingestTest(test_base.BaseTest):
     foo = self.Infer("""
       import collections
       X = collections.namedtuple("X", ["a", "b"])
-    """)
+    """, deep=False)
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd.Print(foo))
       self.Check("""
@@ -115,7 +115,7 @@ class ReingestTest(test_base.BaseTest):
       class X(object):
         def __new__(cls, x):
           return super(X, cls).__new__(cls)
-    """, deep=True)
+    """)
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd.Print(foo))
       self.Check("""
@@ -135,7 +135,7 @@ class ReingestTest(test_base.BaseTest):
         def __new__(cls, a, b):
           print b
           return super(X, cls).__new__(cls, a)
-    """, deep=True)
+    """)
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd.Print(foo))
       _, errors = self.InferWithErrors("""\
@@ -151,7 +151,7 @@ class ReingestTest(test_base.BaseTest):
         def __new__(cls, _):
           return super(_Foo, cls).__new__(cls)
       Foo = _Foo
-    """, deep=True)
+    """)
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd.Print(foo))
       self.Check("""
@@ -162,10 +162,10 @@ class ReingestTest(test_base.BaseTest):
   def testDynamicAttributes(self):
     foo1 = self.Infer("""
       HAS_DYNAMIC_ATTRIBUTES = True
-    """, deep=True)
+    """)
     foo2 = self.Infer("""
       has_dynamic_attributes = True
-    """, deep=True)
+    """)
     with utils.Tempdir() as d:
       d.create_file("foo1.pyi", pytd.Print(foo1))
       d.create_file("foo2.pyi", pytd.Print(foo2))
@@ -191,7 +191,7 @@ class ReingestTest(test_base.BaseTest):
       def f(x):
         return True
       def g(x: Callable[[T], Any]) -> T: ...
-    """, deep=True)
+    """)
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd.Print(foo))
       self.Check("""
@@ -210,7 +210,7 @@ class ReingestTest(test_base.BaseTest):
       class Bar(Foo):
         def foo(self):
           pass
-    """, deep=True)
+    """)
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd.Print(foo))
       _, errors = self.InferWithErrors("""\

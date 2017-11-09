@@ -85,7 +85,7 @@ class TestClosures(test_base.BaseTest):
         f = (lambda: ctypes.foo(s))  # ctypes.foo doesn't exist
         return f()
       e()
-    """, deep=True, report_errors=False)
+    """, report_errors=False)
     self.assertHasReturnType(ty.Lookup("e"), self.anything)
     self.assertTrue(ty.Lookup("f"))
 
@@ -353,7 +353,7 @@ class TestFunctions(test_base.BaseTest):
     ty = self.Infer("""
       def f(elements):
         return "%s" % ",".join(t for t in elements)
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       def f(elements) -> str
     """)
@@ -362,7 +362,7 @@ class TestFunctions(test_base.BaseTest):
     unused_ty = self.Infer("""
       def foo((x, y), z):
         pass
-    """, deep=True)
+    """)
     # Smoke test only. pytd doesn't support automatic tuple unpacking in args.
 
   def test_matching_functions(self):
@@ -381,7 +381,7 @@ class TestFunctions(test_base.BaseTest):
           return map({}.keys, [])
         def method(self):
           pass
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import List
       def f() -> int
@@ -414,7 +414,7 @@ class TestFunctions(test_base.BaseTest):
         import foo
         def f(x, y):
           return foo.f(x, y)
-      """, pythonpath=[d.path], deep=True)
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         foo = ...  # type: module
@@ -434,7 +434,7 @@ class TestFunctions(test_base.BaseTest):
         import foo
         def f(y):
           return foo.f("", y)
-      """, pythonpath=[d.path], deep=True)
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import List
         foo = ...  # type: module
@@ -453,7 +453,7 @@ class TestFunctions(test_base.BaseTest):
         import foo
         def f(x):
           return foo.f(x, "")
-      """, pythonpath=[d.path], deep=True)
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         foo = ...  # type: module
@@ -479,7 +479,7 @@ class TestFunctions(test_base.BaseTest):
           ret = foo.f(x)
           x + ""
           return ret
-      """, pythonpath=[d.path], deep=True)
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any, List, MutableSequence
         foo = ...  # type: module
@@ -505,7 +505,7 @@ class TestFunctions(test_base.BaseTest):
       ty = self.Infer("""\
         import foo
         x = foo.compile().match("")
-      """, deep=True, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         import typing
 
@@ -522,7 +522,7 @@ class TestFunctions(test_base.BaseTest):
       ty = self.Infer("""
         import foo
         x = foo.f(0, True)
-      """, pythonpath=[d.path], deep=True)
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         foo = ...  # type: module
         x = ...  # type: int
@@ -538,7 +538,7 @@ class TestFunctions(test_base.BaseTest):
         import foo
         def f(x):
           return foo.f(x)
-      """, pythonpath=[d.path], deep=True)
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         foo = ...  # type: module
@@ -555,7 +555,7 @@ class TestFunctions(test_base.BaseTest):
         import foo
         def f(x):
           return foo.f(x)
-      """, pythonpath=[d.path], deep=True)
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         foo = ...  # type: module
@@ -572,7 +572,7 @@ class TestFunctions(test_base.BaseTest):
         import foo
         def f(x):
           return foo.f(y=x)
-      """, pythonpath=[d.path], deep=True)
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         foo = ...  # type: module
@@ -587,7 +587,7 @@ class TestFunctions(test_base.BaseTest):
         f()
       def h():
         return isinstance
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Callable, Tuple, Union
       def f(isinstance = ...) -> None
@@ -607,7 +607,7 @@ class TestFunctions(test_base.BaseTest):
     ty = self.Infer("""\
       v1, = (object.__new__,)
       v2 = type(object.__new__)
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Callable, Type
       v1 = ...  # type: Callable
@@ -626,7 +626,7 @@ class TestFunctions(test_base.BaseTest):
         v2 = type(foo.f)
         w1 = (f,)
         w2 = type(f)
-      """, pythonpath=[d.path], deep=True)
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any, Callable, Tuple, Type
         foo = ...  # type: module
@@ -647,7 +647,7 @@ class TestFunctions(test_base.BaseTest):
       ty = self.Infer("""
         import foo
         v1, v2 = foo.f(42j)
-      """, pythonpath=[d.path])
+      """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         foo = ...  # type: module
         v1 = ...  # type: str or complex
@@ -685,7 +685,7 @@ class TestFunctions(test_base.BaseTest):
         def g2() -> int:
           return 42
         return g1, g2
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Callable, Tuple
       def f() -> Tuple[Callable[[int, bool], str], Callable[[], int]]
@@ -700,7 +700,7 @@ class TestFunctions(test_base.BaseTest):
         def g2(*args) -> str:
           return "hello world"
         return g1, g2
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Callable, Tuple
       def f() -> Tuple[Callable[..., int], Callable[..., str]]
@@ -756,7 +756,7 @@ class TestFunctions(test_base.BaseTest):
         a.b.__defaults__ = ('3',)
         a.b(1, 2)
         c = a.b
-        """, pythonpath=[d.path])
+        """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """\
         a = ...  # type: module
         def c(x: int, y: int, z: int = ...): ...

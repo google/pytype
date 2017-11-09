@@ -13,7 +13,7 @@ class TestPython36(test_base.BaseTest):
   def test_variable_annotations(self):
     ty = self.Infer("""
       a : int = 42
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Dict, Type
 
@@ -47,7 +47,7 @@ class TestPython36(test_base.BaseTest):
         return g
 
       y = f(2)
-    """, deep=True)
+    """)
     # Does not infer a:int when deep=True.
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Callable
@@ -61,7 +61,7 @@ class TestPython36(test_base.BaseTest):
       def foo(a, b, c, d=0, e=0, f=0, g=0, *myargs,
               u, v, x, y=0, z=0, **mykwargs):
         return 3
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       def foo(a, b, c, d=..., e=..., f=..., g=..., *myargs,
               u, v, x, y=..., z=..., **mykwargs)
@@ -72,7 +72,7 @@ class TestPython36(test_base.BaseTest):
       def foo(a, b, c:int, d=0, e=0, f=0, g=0, *myargs,
               u:str, v, x:float=0, y=0, z=0, **mykwargs):
         return 3
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       def foo(a, b, c:int, d=..., e=..., f=..., g=..., *myargs,
               u:str, v, x:float=..., y=..., z=..., **mykwargs)
@@ -87,7 +87,7 @@ class TestPython36(test_base.BaseTest):
         x = Thing(1)
         x.y = 3
         return x
-    """, deep=True)
+    """)
 
     self.assertTypesMatchPytd(ty, """
     from typing import Any
@@ -108,7 +108,7 @@ class TestPython36(test_base.BaseTest):
         finally:  # exercise byte_POP_EXCEPT
           x = 3
         return x
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       def f() -> int
     """)
@@ -124,7 +124,7 @@ class TestPython36(test_base.BaseTest):
       p, *q, r = 4, 5, "6", None, 7, 8
       vars = None # type : List[int]
       s, *t, u = vars
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import List, Optional, Union
       a = ... # type: int
@@ -179,7 +179,7 @@ class TestPython36(test_base.BaseTest):
       g(*a, *b)  # BUILD_TUPLE_UNPACK_WITH_CALL
       h(*a, *b, **c, **d)
       j(**{'a': 1, 'b': 2})  # BUILD_CONST_KEY_MAP
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Dict, List, Set, Tuple
 

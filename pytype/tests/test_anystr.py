@@ -49,7 +49,7 @@ class AnyStrTest(test_base.BaseTest):
           x = 3
         if a.f("hello"):
           y = 3
-      """, pythonpath=[d.path], deep=True)
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
         x = ...  # type: int

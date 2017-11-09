@@ -19,7 +19,7 @@ class TypeVarTest(test_base.BaseTest):
         return __any_object__
       v = f(42)
       w = f("")
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       typing = ...  # type: module
@@ -40,7 +40,7 @@ class TypeVarTest(test_base.BaseTest):
         return __any_object__
       v = f(["hello world"])
       w = f([True])
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       S = TypeVar("S")
       T = TypeVar("T")
@@ -59,7 +59,7 @@ class TypeVarTest(test_base.BaseTest):
         return __any_object__
       v = f(True)
       w = f(3.14)
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       T = TypeVar("T")
       def f(x: T) -> typing.List[T]: ...
@@ -73,7 +73,7 @@ class TypeVarTest(test_base.BaseTest):
       from typing import AnyStr
       def f(x: AnyStr) -> AnyStr:
         return __any_object__
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import TypeVar
       AnyStr = TypeVar("AnyStr", str, unicode)
@@ -89,7 +89,7 @@ class TypeVarTest(test_base.BaseTest):
       """)
       ty = self.Infer("""
         from a import f
-      """, deep=True, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import TypesVar
         AnyStr = TypeVar("AnyStr", str, unicode)
@@ -100,7 +100,7 @@ class TypeVarTest(test_base.BaseTest):
     ty = self.Infer("""
       from typing import TypeVar
       T = TypeVar("T")
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import TypeVar
       T = TypeVar("T")
@@ -111,7 +111,7 @@ class TypeVarTest(test_base.BaseTest):
       d.create_file("a.pyi", """T = TypeVar("T")""")
       ty = self.Infer("""\
         from a import T
-      """, pythonpath=[d.path])
+      """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import TypeVar
         T = TypeVar("T")
@@ -178,7 +178,7 @@ class TypeVarTest(test_base.BaseTest):
         return __any_object__
       v = f({})
       w = f({"test": 42})
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Dict, Tuple, TypeVar
       K = TypeVar("K")
@@ -198,7 +198,7 @@ class TypeVarTest(test_base.BaseTest):
         return __any_object__
       v = f("", 42)
       w = f(3.14, False)
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import TypeVar, Union
       S = TypeVar("S")
@@ -240,7 +240,7 @@ class TypeVarTest(test_base.BaseTest):
       S = TypeVar("S", str, unicode, covariant=True)  # pytype: disable=not-supported-yet
       T = TypeVar("T", str, unicode)
       U = TypeVar("U", List[str], List[unicode])
-    """)
+    """, deep=False)
     # The "covariant" keyword is ignored for now.
     self.assertTypesMatchPytd(ty, """
       from typing import List, TypeVar
@@ -315,7 +315,7 @@ class TypeVarTest(test_base.BaseTest):
       def f(x: Type[T]) -> T:
         return __any_object__
       v = f(int)
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Type, TypeVar
       T = TypeVar("T")
@@ -346,7 +346,7 @@ class TypeVarTest(test_base.BaseTest):
         return {x: y}
       def return_second(x, y):
         return y
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Dict, List, Tuple, Union
       _T0 = TypeVar("_T0")
@@ -364,7 +364,7 @@ class TypeVarTest(test_base.BaseTest):
         return x or y
       def return_arg_or_42(x):
         return x or 42
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Union
       _T0 = TypeVar("_T0")
@@ -440,7 +440,7 @@ class TypeVarTest(test_base.BaseTest):
       else:
         x = 3
       v = id(x) if x else 42
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       import types
       from typing import Optional, TypeVar
@@ -603,7 +603,7 @@ class TypeVarTest(test_base.BaseTest):
       constraints = (int, str)
       kwargs = {"covariant": True}
       T = TypeVar("T", *constraints, **kwargs)  # pytype: disable=not-supported-yet
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Dict, Tuple, Type, TypeVar
       T = TypeVar("T", int, str)
@@ -641,7 +641,7 @@ class TypeVarTest(test_base.BaseTest):
         def call(self):
           for _, callback in sorted(self.callbacks.iteritems()):
             return callback()
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Dict, Optional, Type
       class Foo(object):
@@ -664,7 +664,7 @@ class TypeVarTest(test_base.BaseTest):
           x = 3
         if a.f(1):
           y = 3
-      """, pythonpath=[d.path], deep=True)
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
         x = ...  # type: int
@@ -687,7 +687,7 @@ class TypeVarTest(test_base.BaseTest):
         import a
         x = a.A().foo
         y = a.B().foo
-      """, pythonpath=[d.path], deep=True)
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import List
         import a
@@ -714,7 +714,7 @@ class TypeVarTest(test_base.BaseTest):
         import a
         x = a.make_A().foo
         y = a.make_B().foo
-      """, pythonpath=[d.path], deep=True)
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import List
         import a
@@ -739,7 +739,7 @@ class TypeVarTest(test_base.BaseTest):
       ty = self.Infer("""
         import a
         x = a.make_A().foo
-      """, pythonpath=[d.path], deep=True)
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
         x = ...  # type: List[int]
@@ -761,7 +761,7 @@ class TypeVarTest(test_base.BaseTest):
       ty = self.Infer("""
         import a
         x = a.make_A().foo
-      """, pythonpath=[d.path], deep=True)
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import List
         a = ...  # type: module
@@ -784,7 +784,7 @@ class TypeVarTest(test_base.BaseTest):
         w = a.B.foo()
         x = a.A().foo()
         y = a.B().foo()
-      """, pythonpath=[d.path], deep=True)
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import List
         import a
@@ -810,7 +810,7 @@ class TypeVarTest(test_base.BaseTest):
       ty = self.Infer("""
         import a
         x = a.A.foo
-      """, pythonpath=[d.path], deep=True)
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import List
         import a

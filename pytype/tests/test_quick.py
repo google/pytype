@@ -15,7 +15,7 @@ class QuickTest(test_base.BaseTest):
 
         def bar(self):
           return self.elements
-    """, deep=True, quick=True)
+    """, quick=True)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       class Foo(object):
@@ -29,7 +29,7 @@ class QuickTest(test_base.BaseTest):
     ty = self.Infer("""
       def f(x):
         return 42
-    """, deep=True, quick=True, show_library_calls=True)
+    """, quick=True, show_library_calls=True)
     self.assertTypesMatchPytd(ty, """
       class `~unknown0`(object):
         pass
@@ -41,7 +41,7 @@ class QuickTest(test_base.BaseTest):
       def f():
         class A(object): pass
         return {A: A()}
-    """, deep=True, quick=True, maximum_depth=1)
+    """, quick=True, maximum_depth=1)
     self.assertTypesMatchPytd(ty, """
       def f() -> dict
     """)
@@ -57,7 +57,7 @@ class QuickTest(test_base.BaseTest):
           return self.x
       def f():
         return A().f()
-    """, deep=True, quick=True, maximum_depth=2)
+    """, quick=True, maximum_depth=2)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       class A(object):

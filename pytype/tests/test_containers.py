@@ -122,7 +122,7 @@ class ContainerTest(test_base.BaseTest):
       layers = [((),)]
       for x, in layers:
         layers[0] = x,
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import List, Tuple
       layers = ...  # type: List[Tuple[Tuple[nothing, ...]]]
@@ -261,7 +261,7 @@ class ContainerTest(test_base.BaseTest):
     ty = self.Infer("""
       d = {}
       d.update({"a": 1}, b=2j)
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Dict
       d = ...  # type: Dict[str, int or complex]
@@ -271,7 +271,7 @@ class ContainerTest(test_base.BaseTest):
     ty = self.Infer("""
       d = {}
       d.update({"a": 1} if __random__ else {"b": 2j}, c=3.0)
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Dict
       d = ...  # type: Dict[str, int or float or complex]
@@ -399,7 +399,7 @@ class ContainerTest(test_base.BaseTest):
     ty = self.Infer("""
       import sys
       a = [str(ty) for ty in (float, int, bool)[:len(sys.argv)]]
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import List, Type
       sys = ...  # type: module
@@ -424,7 +424,7 @@ class ContainerTest(test_base.BaseTest):
     ty = self.Infer("""
       def f():
         return dict([])
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Dict
       def f() -> Dict[nothing, nothing]
@@ -434,7 +434,7 @@ class ContainerTest(test_base.BaseTest):
     ty = self.Infer("""
       def f():
         return dict([("foo", "foo")])
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Dict
       def f() -> Dict[str, str]
@@ -447,7 +447,7 @@ class ContainerTest(test_base.BaseTest):
           return isinstance(1, ())
         else:
           return 3j
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       def f(x) -> bool or complex
     """)
@@ -456,7 +456,7 @@ class ContainerTest(test_base.BaseTest):
     ty = self.Infer("""
       def f():
         return u"".join(map(unicode, ()))
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       def f() -> unicode
     """)
@@ -474,7 +474,7 @@ class ContainerTest(test_base.BaseTest):
           e = d[key]
         e.next = None
         return e
-    """, deep=True, report_errors=False)
+    """, report_errors=False)
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
         next = ...  # type: NoneType
@@ -489,7 +489,7 @@ class ContainerTest(test_base.BaseTest):
       else:
         x = 3.14
       y = divmod(x, x)
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Tuple
       x = ...  # type: float or int
@@ -503,7 +503,7 @@ class ContainerTest(test_base.BaseTest):
       if x:
         x = 1
       y = divmod(x, 3.14)
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       x = ...  # type: Any
@@ -520,7 +520,7 @@ class ContainerTest(test_base.BaseTest):
           pos = 0
         l[pos] += 1
         return l
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       # The element types aren't more precise since the solver doesn't know
       # which element of the list gets modified.
@@ -533,7 +533,7 @@ class ContainerTest(test_base.BaseTest):
         lst = []
         lst.append(lst)
         return lst
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import List
       def f() -> List[list]: ...
@@ -551,7 +551,7 @@ class ContainerTest(test_base.BaseTest):
         g = s.get('$end', None)
         s['$end'] = g
         return s1
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Dict, Union
       # TODO(kramm): This should be "Dict[str, none]". s1 above can never
@@ -563,7 +563,7 @@ class ContainerTest(test_base.BaseTest):
     self.Infer("""
       d = {}
       d[1] == d[1]
-    """)
+    """, deep=False)
 
   def testIterateEmptyList(self):
     ty = self.Infer("""
@@ -571,7 +571,7 @@ class ContainerTest(test_base.BaseTest):
       lst2 = [x for x in lst1]
       x.some_attribute = 42
       y = x.some_attribute
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, List
       lst1 = ...  # type: List[nothing]
@@ -590,7 +590,7 @@ class ContainerTest(test_base.BaseTest):
         lst2 = [x for x in a.lst1]
         x.some_attribute = 42
         y = x.some_attribute
-      """, pythonpath=[d.path], deep=True)
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         a = ...  # type: module
@@ -610,7 +610,7 @@ class ContainerTest(test_base.BaseTest):
         lst2 = [x for x in a.lst1]
         x.some_attribute = 42
         y = x.some_attribute
-      """, pythonpath=[d.path], deep=True)
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         a = ...  # type: module
@@ -628,7 +628,7 @@ class ContainerTest(test_base.BaseTest):
       ty = self.Infer("""
         import a
         lst2 = [x for x in a.lst1]
-      """, pythonpath=[d.path], deep=True)
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import List
         a = ...  # type: module
@@ -647,7 +647,7 @@ class ContainerTest(test_base.BaseTest):
         lst2 = [x for x in a.lst1]
         x.some_attribute = 42
         y = x.some_attribute
-      """, pythonpath=[d.path], deep=True)
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any, List
         a = ...  # type: module
@@ -703,7 +703,7 @@ class ContainerTest(test_base.BaseTest):
       ty = self.Infer("""
         import a
         lst2 = [x for x in a.lst1]
-      """, pythonpath=[d.path], deep=True)
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import List
         a = ...  # type: module
@@ -715,7 +715,7 @@ class ContainerTest(test_base.BaseTest):
     ty = self.Infer("""
       empty = []
       y = [x() for x in empty]
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, List
       empty = ...  # type: List[nothing]
@@ -732,7 +732,7 @@ class ContainerTest(test_base.BaseTest):
         else:
           return "foo"
       y = [f(x) for x in empty]
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, List
       empty = ...  # type: List[nothing]
@@ -745,7 +745,7 @@ class ContainerTest(test_base.BaseTest):
     ty = self.Infer("""
       empty = []
       y = [list(x) for x in empty]
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, List
       empty = ...  # type: List[nothing]
@@ -757,7 +757,7 @@ class ContainerTest(test_base.BaseTest):
     ty = self.Infer("""
       empty = []
       y = [isinstance(x, int) for x in empty]
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, List
       empty = ...  # type: List[nothing]
@@ -773,7 +773,7 @@ class ContainerTest(test_base.BaseTest):
           pass
         return {X: X()}
       y = [f(x) for x in empty]
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Dict, List
       empty = ...  # type: List[nothing]
@@ -794,7 +794,7 @@ class ContainerTest(test_base.BaseTest):
         else:
           oldest = cache["lru"].pop(0)
           return oldest
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Dict
       cache = ...  # type: Dict[str, Dict[nothing, nothing] or list]

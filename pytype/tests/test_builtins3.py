@@ -17,7 +17,7 @@ class BuiltinTests2(test_base.BaseTest):
   def testSuperAttribute(self):
     ty = self.Infer("""
       x = super.__name__
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       x = ...  # type: str
     """)
@@ -28,7 +28,7 @@ class BuiltinTests2(test_base.BaseTest):
       x2 = [1,2,3][None:2]
       x3 = [1,2,3][None:None]
       x4 = [1,2,3][1:3:None]
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import List
       x1 = ...  # type: List[int]
@@ -44,7 +44,7 @@ class BuiltinTests2(test_base.BaseTest):
       stop = v.stop
       step = v.step
       indices = v.indices(0)
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Optional, Tuple
       v = ...  # type: slice
@@ -59,7 +59,7 @@ class BuiltinTests2(test_base.BaseTest):
       a = next(iter([1, 2, 3]))
       b = next(iter([1, 2, 3]), default = 4)
       c = next(iter([1, 2, 3]), "hello")
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Union
       a = ...  # type: int
@@ -70,7 +70,7 @@ class BuiltinTests2(test_base.BaseTest):
   def testAddStrAndBytearray(self):
     ty = self.Infer("""
       v = "abc" + bytearray()
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       v = ...  # type: bytearray
     """)
@@ -92,7 +92,7 @@ class BuiltinTests2(test_base.BaseTest):
   def testClassOfType(self):
     ty = self.Infer("""
       v = int.__class__
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Type
       v = ...  # type: Type[type]
@@ -103,7 +103,7 @@ class BuiltinTests2(test_base.BaseTest):
       class MyException(Exception):
         def get_message(self):
           return self.message
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       class MyException(Exception):
         def get_message(self) -> str
@@ -112,7 +112,7 @@ class BuiltinTests2(test_base.BaseTest):
   def testIterItems(self):
     ty = self.Infer("""
       lst = list({"a": 1}.iteritems())
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import List, Tuple
       lst = ...  # type: List[Tuple[str, int]]
@@ -142,7 +142,7 @@ class BuiltinTests2(test_base.BaseTest):
         foo.f(super)
         foo.g(super)
         v = super
-      """, pythonpath=[d.path], deep=True)
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any, Type
         foo = ...  # type: module
@@ -161,7 +161,7 @@ class BuiltinTests2(test_base.BaseTest):
       x.clear()
       y = {"foo": 1}
       y.clear()
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Dict, Set
       x = ...  # type: Set[nothing]
@@ -172,7 +172,7 @@ class BuiltinTests2(test_base.BaseTest):
     ty = self.Infer("""
       if not cmp(4, 4):
         x = 42
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       x = ...  # type: int
     """)
@@ -181,7 +181,7 @@ class BuiltinTests2(test_base.BaseTest):
     ty = self.Infer("""
       if repr("hello world"):
         x = 42
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       x = ...  # type: int
     """)
@@ -244,7 +244,7 @@ class BuiltinTests2(test_base.BaseTest):
       i = (2j).conjugate()
       j = (2j).real
       k = (2j).imag
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       a = ...  # type: int
       b = ...  # type: int
@@ -297,7 +297,7 @@ class BuiltinTests2(test_base.BaseTest):
       a, b = x
       x.append(2)
       c, d, e = x
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       x = ...  # type: list[int or str]
       a = ...  # type: int

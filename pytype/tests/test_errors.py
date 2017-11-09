@@ -722,7 +722,7 @@ class ErrorTest(test_base.BaseTest):
       x = x + x
       x = x + x
       x = x + x
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       x = ...  # type: Any

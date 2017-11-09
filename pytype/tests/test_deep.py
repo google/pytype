@@ -10,7 +10,7 @@ class StructuralTest(test_base.BaseTest):
     ty = self.Infer("""
       def f(x):
         return 1
-    """, deep=True, show_library_calls=True)
+    """, show_library_calls=True)
     self.assertHasReturnType(ty.Lookup("f"), self.int)
 
   def testListUnknownIndex(self):
@@ -19,7 +19,7 @@ class StructuralTest(test_base.BaseTest):
       def f(x, i: int):
         l = list([1, x])
         return l[i]
-    """, deep=True, show_library_calls=True)
+    """, show_library_calls=True)
     self.assertHasReturnType(ty.Lookup("f"), self.int)
 
   def testListUnknownIndexBothTypes(self):
@@ -28,7 +28,7 @@ class StructuralTest(test_base.BaseTest):
       def f(i: int):
         l = list([1, "str"])
         return l[i]
-    """, deep=True, show_library_calls=True)
+    """, show_library_calls=True)
     self.assertHasAllReturnTypes(ty.Lookup("f"), [self.int, self.str])
 
   def testIter(self):
@@ -36,14 +36,14 @@ class StructuralTest(test_base.BaseTest):
       def f(x, y):
         for v in [x, y, 1]:
           return v
-    """, deep=True, show_library_calls=True)
+    """, show_library_calls=True)
     self.assertHasReturnType(ty.Lookup("f"), self.int)
 
   def testCallUnknown(self):
     ty = self.Infer("""
       def f(x):
         return x() or 1
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       def f(x) -> Any
@@ -53,7 +53,7 @@ class StructuralTest(test_base.BaseTest):
     ty = self.Infer("""
       def f(x):
         return repr(x)
-    """, deep=True, show_library_calls=True)
+    """, show_library_calls=True)
     self.assertHasReturnType(ty.Lookup("f"), self.str)
 
   def testAdd(self):
@@ -62,21 +62,21 @@ class StructuralTest(test_base.BaseTest):
       def f(x):
         x += 1
         return x
-    """, deep=True, show_library_calls=True)
+    """, show_library_calls=True)
     self.assertTrue(ty.Lookup("f"))
 
   def testAddInt(self):
     ty = self.Infer("""
       def f(x):
         return x + 1
-    """, deep=True)
+    """)
     self.assertHasReturnType(ty.Lookup("f"), self.anything)
 
   def testIdentity(self):
     ty = self.Infer("""
       def f(x):
         return x
-    """, deep=True, show_library_calls=True)
+    """, show_library_calls=True)
     self.assertIsIdentity(ty.Lookup("f"))
 
   def testClassAttribute(self):
@@ -87,7 +87,7 @@ class StructuralTest(test_base.BaseTest):
       def f(x):
         a = A(x)
         return a.x
-    """, deep=True, show_library_calls=True)
+    """, show_library_calls=True)
     self.assertIsIdentity(ty.Lookup("f"))
 
   def testFunctionPointer(self):
@@ -100,7 +100,7 @@ class StructuralTest(test_base.BaseTest):
       def f(x: int):
         l = [return_first, return_second]
         return l[x](x, x)
-    """, deep=True, show_library_calls=True)
+    """, show_library_calls=True)
     self.assertIsIdentity(ty.Lookup("f"))
 
   def testListOfLists(self):
@@ -108,7 +108,7 @@ class StructuralTest(test_base.BaseTest):
       def f(x):
         l = [[[x]], 0]
         return l[0][0][0]
-    """, deep=True, show_library_calls=True)
+    """, show_library_calls=True)
     self.assertIsIdentity(ty.Lookup("f"))
 
   def testDictionaryKeys(self):
@@ -116,7 +116,7 @@ class StructuralTest(test_base.BaseTest):
       def f(x):
         d = {x: 1}
         return d.keys()[0]
-    """, deep=True, show_library_calls=True)
+    """, show_library_calls=True)
     self.assertIsIdentity(ty.Lookup("f"))
 
   def testDictionaryValues(self):
@@ -124,7 +124,7 @@ class StructuralTest(test_base.BaseTest):
       def f(x):
         d = {1: x}
         return d.values()[0]
-    """, deep=True, show_library_calls=True)
+    """, show_library_calls=True)
     self.assertIsIdentity(ty.Lookup("f"))
 
   def testDictionaryLookup(self):
@@ -132,7 +132,7 @@ class StructuralTest(test_base.BaseTest):
       def f(x):
         d = {0: x}
         return d[0]
-    """, deep=True, show_library_calls=True)
+    """, show_library_calls=True)
     self.assertIsIdentity(ty.Lookup("f"))
 
   def testClosure(self):
@@ -140,7 +140,7 @@ class StructuralTest(test_base.BaseTest):
       def f(x):
         y = lambda: x
         return y()
-    """, deep=True, show_library_calls=True)
+    """, show_library_calls=True)
     self.assertIsIdentity(ty.Lookup("f"))
 
   def testUnknownBaseClass(self):
@@ -151,7 +151,7 @@ class StructuralTest(test_base.BaseTest):
         a = A()
         a.x = 3
         return a.x
-    """, deep=True, show_library_calls=True)
+    """, show_library_calls=True)
     self.assertHasReturnType(ty.Lookup("f"), self.int)
 
   def testConstructorReturn(self):
@@ -163,7 +163,7 @@ class StructuralTest(test_base.BaseTest):
 
       def f(self):
         return Foo(3)
-    """, deep=True, show_library_calls=True)
+    """, show_library_calls=True)
     constructor = ty.Lookup("Foo").Lookup("__init__")
     self.assertOnlyHasReturnType(constructor, self.none_type)
 
@@ -176,7 +176,7 @@ class StructuralTest(test_base.BaseTest):
         return inner
       class MyClass(object):
         attr = f()
-    """, deep=True, show_library_calls=True)
+    """, show_library_calls=True)
     cls = ty.Lookup("MyClass")
     method = cls.Lookup("attr")
     self.assertOnlyHasReturnType(method, self.int)
@@ -190,7 +190,7 @@ class StructuralTest(test_base.BaseTest):
         @staticmethod
         def static_method(value):
           return None
-    """, deep=True, show_library_calls=True)
+    """, show_library_calls=True)
     # Only do a smoke test. We don't have support for static methods in pytd.
     unused_cls = ty.Lookup("MyClass")
 
@@ -198,7 +198,7 @@ class StructuralTest(test_base.BaseTest):
     ty = self.Infer("""
       def f(x, y):
         return issubclass(x, y)
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       def f(x, y) -> bool
     """)
@@ -211,7 +211,7 @@ class StructuralTest(test_base.BaseTest):
       except NameError:
           class _unicode(object):
               pass
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       _unicode = ...  # type: type
     """)
@@ -222,7 +222,7 @@ class StructuralTest(test_base.BaseTest):
         a + b
 
       f(__any_object__, 1)
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       def f(a, b) -> None
     """)

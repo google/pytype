@@ -86,7 +86,7 @@ class TestIt(test_base.BaseTest):
         return s[::-1]
       def f6():
         return s[3:8:2]
-      """, deep=True, show_library_calls=True)
+      """, show_library_calls=True)
     self.assertTypesMatchPytd(ty, """
     s = ...  # type: str
     def f1() -> str

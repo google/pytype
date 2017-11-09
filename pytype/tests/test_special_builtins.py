@@ -49,7 +49,7 @@ class SpecialBuiltinsTest(test_base.BaseTest):
       f = lambda x: 10
       a = foo(f)
       b = foo(10)
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       a = ...  # type: int
@@ -95,7 +95,7 @@ class SpecialBuiltinsTest(test_base.BaseTest):
       if callable(1): x = 1
       if callable([]): y = 1
       if callable(B()): z = 1
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       obj = ...  # type: A
       a = ...  # type: int

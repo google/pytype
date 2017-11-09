@@ -16,7 +16,7 @@ class DecoratorsTest(test_base.BaseTest):
             pass
           # python-dateutil uses the old way of using @staticmethod:
           list = staticmethod(list)
-    """, deep=True, show_library_calls=True)
+    """, show_library_calls=True)
 
   def testStaticMethod(self):
     ty = self.Infer("""
@@ -25,7 +25,7 @@ class DecoratorsTest(test_base.BaseTest):
           def list():
             pass
           list = staticmethod(list)
-    """, deep=True, show_library_calls=True)
+    """, show_library_calls=True)
     self.assertTypesMatchPytd(ty, """
       class tzwinbase(object):
         @staticmethod
@@ -38,7 +38,7 @@ class DecoratorsTest(test_base.BaseTest):
         @staticmethod
         def bar():
           return "hello world"
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
         @staticmethod
@@ -50,7 +50,7 @@ class DecoratorsTest(test_base.BaseTest):
       class Foo(object):
         bar = 42
         bar = staticmethod(bar)
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       class Foo(object):
@@ -63,7 +63,7 @@ class DecoratorsTest(test_base.BaseTest):
         @classmethod
         def f(cls):
           return "hello world"
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
         @classmethod
@@ -75,7 +75,7 @@ class DecoratorsTest(test_base.BaseTest):
       class Foo(object):
         bar = 42
         bar = classmethod(bar)
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       class Foo(object):
@@ -122,7 +122,7 @@ class DecoratorsTest(test_base.BaseTest):
       foo.x = 3
       x = foo.x
       del foo.x
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       class Foo(object):
@@ -149,7 +149,7 @@ class DecoratorsTest(test_base.BaseTest):
       foo.x = 3
       x = foo.x
       del foo.x
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       class Foo(object):
@@ -179,7 +179,7 @@ class DecoratorsTest(test_base.BaseTest):
       foo.x = 3
       x = foo.x
       del foo.x
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       class Foo(object):
@@ -203,7 +203,7 @@ class DecoratorsTest(test_base.BaseTest):
           @property
           def name(self):
             return u"Bar"
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
         name = ...  # type: str or unicode
@@ -218,7 +218,7 @@ class DecoratorsTest(test_base.BaseTest):
         @name.getter
         def name(self):
           return u"Bar"
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
         name = ...  # type: unicode
@@ -230,7 +230,7 @@ class DecoratorsTest(test_base.BaseTest):
         def name(self, x):
           self._x = x
         name = property(fset=name)
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       class Foo(object):
@@ -242,7 +242,7 @@ class DecoratorsTest(test_base.BaseTest):
       class Foo(object):
         v = "hello"
         name = property(v)
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       class Foo(object):
@@ -264,7 +264,7 @@ class DecoratorsTest(test_base.BaseTest):
           def f(self, x=None):
             pass
         A().f(42)
-      """, pythonpath=[d.path])
+      """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any, Callable
         foo = ...  # type: module

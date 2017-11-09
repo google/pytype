@@ -40,7 +40,7 @@ class AnnotationTest(test_base.BaseTest):
         p1.read()
         p2.as_integer_ratio()
         return 1
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       def bar(p1: file, p2: float) -> int
     """)
@@ -60,7 +60,7 @@ class AnnotationTest(test_base.BaseTest):
       from __future__ import google_type_annotations
       def bar(p1: str, p2: complex) -> None:
          pass
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       def bar(p1: str, p2: complex) -> None
     """)
@@ -71,7 +71,7 @@ class AnnotationTest(test_base.BaseTest):
       import typing
       def foo(x: typing.Union[int, float], y: int):
         return x + y
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Union
       typing = ...  # type: module
@@ -125,7 +125,7 @@ class AnnotationTest(test_base.BaseTest):
           x = l2
           y = "foo"
         x.append(y)
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
         from typing import List
         def foo(l1: List[int], l2: List[str], b) -> None: ...
@@ -138,7 +138,7 @@ class AnnotationTest(test_base.BaseTest):
       class Foo:
         def f(self, x: List[int]):
           pass
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import List
       class Foo:
@@ -151,7 +151,7 @@ class AnnotationTest(test_base.BaseTest):
       def f(c: "int") -> "None":
         c += 1
         return
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       def f(c: int) -> None: ...
     """)
@@ -165,7 +165,7 @@ class AnnotationTest(test_base.BaseTest):
       # TODO(kramm): should use quotes
       def f(c: "calendar.Calendar") -> int:
         return c.getfirstweekday()
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       typing = ...  # type: module
       calendar = ...  # type: module
@@ -240,7 +240,7 @@ class AnnotationTest(test_base.BaseTest):
         def bar(self, x: float, default="") -> str:
           default.upper
           return default
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
         def bar(self, x: float, default=...) -> str: ...
@@ -302,7 +302,7 @@ class AnnotationTest(test_base.BaseTest):
       def f(x: Any):
         pass
       x = f(3)
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       def f(x) -> None: ...
       x = ...  # type: None
@@ -515,7 +515,7 @@ class AnnotationTest(test_base.BaseTest):
         A = a.factory()
         def f(x: A):
           return x.name
-      """, deep=True, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         a = ...  # type: module
@@ -581,7 +581,7 @@ class AnnotationTest(test_base.BaseTest):
       def baz(x: int) -> None:
         global _analyzed_baz
         _analyzed_baz = 3
-    """, deep=True, analyze_annotated=False)
+    """, analyze_annotated=False)
     self.assertTypesMatchPytd(ty, """
       _analyzed_baz = ... # type: None
       class Foo(object):
@@ -598,7 +598,7 @@ class AnnotationTest(test_base.BaseTest):
       class A(object):
         def __init__(self, x: str):
           self.x = x
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       class A(object):
         x = ...  # type: str
@@ -625,7 +625,7 @@ class AnnotationTest(test_base.BaseTest):
           return x.value1
         else:
           return x.value2
-    """, deep=True)
+    """)
 
   def testImpreciseAnnotation(self):
     ty, errors = self.InferWithErrors("""
@@ -655,7 +655,7 @@ class AnnotationTest(test_base.BaseTest):
       def g(x: str):
         return x
       x = g(f()[1])
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Tuple
       def f() -> Tuple[int, str]: ...
@@ -779,7 +779,7 @@ class AnnotationTest(test_base.BaseTest):
         return kwargs["x"]
       v1 = f()
       v2 = g()
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       class A(object): ...
       def f(*args: A) -> A: ...
@@ -813,7 +813,7 @@ class AnnotationTest(test_base.BaseTest):
         return [None]
       v1 = f().x
       v2 = g()[0]
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import List, Union
       class A:
@@ -862,7 +862,7 @@ class AnnotationTest(test_base.BaseTest):
         def New() -> "A":
           return A()
       x = A.New().x
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       class A(object):
         x = ...  # type: int
@@ -882,7 +882,7 @@ class AnnotationTest(test_base.BaseTest):
           return A()
       def f():
         return A.New().x
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       class A(object):
         x = ...  # type: int
@@ -919,7 +919,7 @@ class AnnotationTest(test_base.BaseTest):
         x[True] = 42
         return x
       v = f({"a": "b"})
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Dict
       def f(x: Dict[str, str]) -> Dict[str or bool, str or int]: ...
@@ -934,7 +934,7 @@ class AnnotationTest(test_base.BaseTest):
         pass
       class A(object):
         pass
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import List
       import typing
@@ -954,7 +954,7 @@ class AnnotationTest(test_base.BaseTest):
         pass
       class A(object):
         pass
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import List
       import typing
@@ -971,7 +971,7 @@ class AnnotationTest(test_base.BaseTest):
       from typing import List
       def f(x: "List[\\"int\\"]") -> int:
         pass
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import List
       def f(x: List[int]) -> int: ...
@@ -984,7 +984,7 @@ class AnnotationTest(test_base.BaseTest):
       def f(x: t) -> int: pass
       def g(x: "t") -> int: pass
       t = float
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Type
       t = ...  # type: Type[float]
@@ -1045,7 +1045,7 @@ class AnnotationTest(test_base.BaseTest):
       f2(None)
       f3(None)
       f4(None)
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Optional, Union
       def f1(x: Optional[str] = ...) -> None: ...
@@ -1059,7 +1059,7 @@ class AnnotationTest(test_base.BaseTest):
       from __future__ import google_type_annotations
       def f(x: int):
         return x
-    """, deep=True, analyze_annotated=False)
+    """, analyze_annotated=False)
     self.assertTypesMatchPytd(ty, """
       def f(x: int) -> int: ...
     """)

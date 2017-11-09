@@ -17,7 +17,7 @@ class SplitTest(test_base.BaseTest):
           return y
         else:
           return 123
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Union
       def foo(x) -> Union[int, str]: ...
@@ -32,7 +32,7 @@ class SplitTest(test_base.BaseTest):
           return 123
         else:
           return y
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Union
       def foo(x) -> Union[int, str]: ...
@@ -55,7 +55,7 @@ class SplitTest(test_base.BaseTest):
           return z
 
         return 123
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Union
       def foo(x) -> Union[float, int]: ...
@@ -71,7 +71,7 @@ class SplitTest(test_base.BaseTest):
             return y1  # The y1 condition is still active here.
 
         return "abc"
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       def foo(x1, x2) -> str: ...
     """)
@@ -86,7 +86,7 @@ class SplitTest(test_base.BaseTest):
           z = 123
         # But y can be None here.
         return y
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Union
       def foo(x) -> Union[None, str]: ...
@@ -132,7 +132,7 @@ class SplitTest(test_base.BaseTest):
           return 123
         else:
           return "hello"
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       def f1(x) -> str: ...
       def f2(x) -> int: ...
@@ -159,7 +159,7 @@ class SplitTest(test_base.BaseTest):
         if isinstance(obj, Foo):
           return obj.method()
         return None
-    """, deep=True)
+    """)
     # TODO(dbaum): This test could be more focused if assertTypesMatchPytd
     # accepted some sort of filter that would be applied to both pytd trees
     # before matching.
@@ -191,7 +191,7 @@ class SplitTest(test_base.BaseTest):
       def list_f(x): return [] and x
       def set_f(x): return set() and x
       def frozenset_f(x): return frozenset() and x
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Dict, List, Tuple
       def int_t(x) -> int: ...
@@ -221,7 +221,7 @@ class SplitTest(test_base.BaseTest):
         d = {}
         d[x] = x
         return 123 if d else "hello"
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Union
       def f1() -> str: ...
@@ -240,7 +240,7 @@ class SplitTest(test_base.BaseTest):
         d.update({"a": 1})
         return 123 if d else "hello"
 
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Union
       def f1() -> str: ...
@@ -258,7 +258,7 @@ class SplitTest(test_base.BaseTest):
         d = {}
         d.update(a=1)
         return 123 if d else "hello"
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       def f1() -> str: ...
       def f2() -> int: ...
@@ -275,7 +275,7 @@ class SplitTest(test_base.BaseTest):
         d = {}
         d.update({"a": 1}, {"b": 2}, c=3)
         return 123 if d else "hello"
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       def f1() -> str or int
       def f2() -> str or int
@@ -296,7 +296,7 @@ class SplitTest(test_base.BaseTest):
       def a2(x):
         cls = int if __random__ else str
         return "y" if isinstance("a", cls) else 0
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Union
       def sig(x) -> bool: ...
@@ -318,7 +318,7 @@ class SplitTest(test_base.BaseTest):
       def ReturnIfNumeric(value: Union[str, int]):
         if isinstance(value, (int, (float, complex))):
           return value
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Optional, Union
       def UpperIfString(value: Union[int, unicode]) -> Optional[Union[str, unicode]]
@@ -334,7 +334,7 @@ class SplitTest(test_base.BaseTest):
       def UpperIfString(value: Union[unicode, str, int]):
         if myisinstance(value, (unicode, str)):
           return value.upper()
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Callable, Optional, Tuple, Union
       def myisinstance(object, class_or_type_or_tuple: Union[Tuple[Union[Tuple[type, ...], type], ...], type]) -> bool: ...
@@ -358,7 +358,7 @@ class SplitTest(test_base.BaseTest):
       def d6(): return "y" if issubclass(B, ((C, str), int, (float, A))) else 0
       # Ambiguous results
       def a1(x): return "y" if issubclass(x, A) else 0
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """\
       from typing import Union
       def sig(x) -> bool: ...
@@ -392,7 +392,7 @@ class SplitTest(test_base.BaseTest):
       def d3(): return "y" if hasattr("s", "__repr__") else 0
       # Cases where hasattr() is ambiguous.
       def a1(x): return "y" if hasattr(x, "upper") else 0
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Union
       def sig(x) -> bool: ...
@@ -416,7 +416,7 @@ class SplitTest(test_base.BaseTest):
       def d3(x: Baz): return "y" if hasattr(x, "quux") else 0
       def d4(x: Baz): return "y" if hasattr(x, "bar") else 0
       def a1(x): return "y" if hasattr(x, "bar") else 0
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Union
       class Baz(Foo):
@@ -444,7 +444,7 @@ class SplitTest(test_base.BaseTest):
           return f2(y)
         else:
           return None
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Optional, TypeVar, Union
       _T0 = TypeVar("_T0")
@@ -459,7 +459,7 @@ class SplitTest(test_base.BaseTest):
         if x is not None:
           x.foo()
         return x
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       def foo(x) -> None: ...
     """)
@@ -488,7 +488,7 @@ class SplitTest(test_base.BaseTest):
         else:
           return "a"
 
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Union
       def not_t(x) -> int: ...
@@ -500,7 +500,7 @@ class SplitTest(test_base.BaseTest):
     ty = self.Infer("""
       def foo(x):
         return 1 if isinstance(dict, type) else "x"
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       def foo(x) -> int: ...
     """)
@@ -682,7 +682,7 @@ class SplitTest(test_base.BaseTest):
         v1 = x["b"]
       if "a" not in x:
         v2 = x["b"]
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Dict
       x = ...  # type: Dict[str, int or complex]
@@ -702,7 +702,7 @@ class SplitTest(test_base.BaseTest):
       x2 = 3 if "a" not in A() else 42j
       y1 = 3.14 if "b" in B() else 16j
       y2 = True if "b" not in B() else 4.2
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       class A(object):
         def __contains__(self, x) -> int
@@ -726,7 +726,7 @@ class SplitTest(test_base.BaseTest):
           return y
         else:
           return None
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Optional
       def f(r) -> Optional[str]
@@ -771,7 +771,7 @@ class SplitTest(test_base.BaseTest):
         v1 = z
       if x != y:
         v2 = z
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Dict
       x = ...  # type: Dict[str, int]
@@ -794,7 +794,7 @@ class SplitTest(test_base.BaseTest):
         v1 = z
       if x != y:
         v2 = z
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Tuple
       x = ...  # type: Tuple[int, ...]
@@ -817,7 +817,7 @@ class SplitTest(test_base.BaseTest):
         v1 = z
       if x != y:
         v2 = z
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       x = ...  # type: str
       y = ...  # type: str
@@ -850,7 +850,7 @@ class SplitTest(test_base.BaseTest):
         x = {"a": 1, "b": 42}
       else:
         x = {"b": 42j}
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Dict
       x = ...  # type: Dict[str, int or complex]

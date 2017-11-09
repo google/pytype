@@ -12,7 +12,7 @@ class FunctionCommentTest(test_base.BaseTest):
       def foo(x):
         # type: (...) -> int
         return x
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       def foo(x) -> int
     """)
@@ -23,7 +23,7 @@ class FunctionCommentTest(test_base.BaseTest):
       def foo(x):
         # type: (...) -> Dict[int, int]
         return x
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Dict
       def foo(x) -> Dict[int, int]
@@ -35,7 +35,7 @@ class FunctionCommentTest(test_base.BaseTest):
       def foo():
         # type: (  ) -> int
         return x
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       def foo() -> int
     """)
@@ -46,7 +46,7 @@ class FunctionCommentTest(test_base.BaseTest):
       def foo(x):
         # type: ( int ) -> int
         return x
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       def foo(x: int) -> int
     """)
@@ -56,7 +56,7 @@ class FunctionCommentTest(test_base.BaseTest):
       def foo(x, y, z):
         # type: (int, str, float) -> None
         return x
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       def foo(x: int, y: str, z: float) -> None
     """)
@@ -68,7 +68,7 @@ class FunctionCommentTest(test_base.BaseTest):
               z):
         # type: (int, str, float) -> None
         return x
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       def foo(x: int, y: str, z: float) -> None
     """)
@@ -78,7 +78,7 @@ class FunctionCommentTest(test_base.BaseTest):
       def foo(x, y, z):
         # type: (int, str, None) -> None
         return x
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       def foo(x: int, y: str, z: None) -> None
     """)
@@ -93,7 +93,7 @@ class FunctionCommentTest(test_base.BaseTest):
         def g(self, x):
           # type: (Foo, int) -> None
           pass
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
         def f(self, x: int) -> None: ...
@@ -112,7 +112,7 @@ class FunctionCommentTest(test_base.BaseTest):
         def g(cls, x):
           # type: (Foo, int) -> None
           pass
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
         @classmethod
@@ -127,7 +127,7 @@ class FunctionCommentTest(test_base.BaseTest):
         def __init__(self, *args):
           # type: (int) -> None
           self.value = args[0]
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
         value = ...  # type: int
@@ -140,7 +140,7 @@ class FunctionCommentTest(test_base.BaseTest):
         def __init__(self, **kwargs):
           # type: (int) -> None
           self.value = kwargs['x']
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
         value = ...  # type: int
@@ -241,7 +241,7 @@ class AssignmentCommentTest(test_base.BaseTest):
     ty = self.Infer("""
       class Foo(object):
         s = None  # type: str
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
         s = ...  # type: str
@@ -252,7 +252,7 @@ class AssignmentCommentTest(test_base.BaseTest):
       class Foo(object):
         def __init__(self):
           self.s = None  # type: str
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
         s = ...  # type: str
@@ -261,7 +261,7 @@ class AssignmentCommentTest(test_base.BaseTest):
   def testGlobalComment(self):
     ty = self.Infer("""
       X = None  # type: str
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       X = ...  # type: str
     """)
@@ -270,7 +270,7 @@ class AssignmentCommentTest(test_base.BaseTest):
     ty = self.Infer("""
       X = None  # type: str
       def f(): global X
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       X = ...  # type: str
       def f() -> None
@@ -283,7 +283,7 @@ class AssignmentCommentTest(test_base.BaseTest):
       def foo():
         x = X  # type: str
         return x
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       X = ...  # type: None
       def foo() -> str: ...
@@ -333,7 +333,7 @@ class AssignmentCommentTest(test_base.BaseTest):
           self.x = 42
       a = None  # type: A
       x = a.x
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       class A(object):
         x = ...  # type: int
@@ -344,7 +344,7 @@ class AssignmentCommentTest(test_base.BaseTest):
   def testNoneToNoneType(self):
     ty = self.Infer("""
       x = 0  # type: None
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       x = ...  # type: None
     """)
@@ -384,7 +384,7 @@ class AssignmentCommentTest(test_base.BaseTest):
       class A(object):
         def __init__(self):
           self.x = 42
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """\
       from typing import Any
       class A(object):
@@ -417,7 +417,7 @@ class AssignmentCommentTest(test_base.BaseTest):
       ]
 
       ]  # type: list[list[int]]
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       a = ...  # type: list[list[int]]
     """)

@@ -41,7 +41,7 @@ class NamedtupleTests(test_base.BaseTest):
 
       X = collections.namedtuple("X", ["y", "z"])
       a = X(y=1, z=2)
-      """)
+      """, deep=False)
     self.assertTypesMatchPytd(ty, self._namedtuple_def(
         X=("X", ["y", "z"]), suffix="a = ...  # type: X"))
 
@@ -51,7 +51,7 @@ class NamedtupleTests(test_base.BaseTest):
 
         F = collections.namedtuple("F", [])
         a = F()
-        """)
+        """, deep=False)
     self.assertTypesMatchPytd(
         ty, self._namedtuple_def(F=("F", []), suffix="a = ...  # type: F"))
 
@@ -61,7 +61,7 @@ class NamedtupleTests(test_base.BaseTest):
 
         S = collections.namedtuple("S", "a b c")
         b = S(1, 2, 3)
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, self._namedtuple_def(
         S=("S", ["a", "b", "c"]), suffix="b = ...  # type: S"))
 
@@ -102,7 +102,7 @@ class NamedtupleTests(test_base.BaseTest):
         import collections
 
         S = collections.namedtuple("S", "abc def ghi abc", rename=True)
-        """)
+        """, deep=False)
     self.assertTypesMatchPytd(
         ty, self._namedtuple_def(S=("S", ["abc", "_1", "ghi", "_3"])))
 
@@ -255,7 +255,7 @@ class NamedtupleTests(test_base.BaseTest):
       X = collections.namedtuple("_", [])
       Y = collections.namedtuple("_", [])
       Z = collections.namedtuple("_", "a")
-    """)
+    """, deep=False)
     name_x = collections_overlay.namedtuple_name("_", [])
     name_z = collections_overlay.namedtuple_name("_", ["a"])
     ast_x = self._namedtuple_ast(name_x, [])
@@ -274,7 +274,7 @@ class NamedtupleTests(test_base.BaseTest):
       class X(collections.namedtuple("X", [])):
         def __new__(cls, _):
           return super(X, cls).__new__(cls)
-    """, deep=True)
+    """)
     name = collections_overlay.namedtuple_name("X", [])
     ast = self._namedtuple_ast(name, [])
     expected = pytd.Print(ast) + textwrap.dedent("""\
@@ -294,7 +294,7 @@ class NamedtupleTests(test_base.BaseTest):
         import foo
         v = None  # type: foo.X
         a, b = v
-      """, pythonpath=[d.path])
+      """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         foo = ...  # type: module
         v = ...  # type: foo.`namedtuple-X-0`

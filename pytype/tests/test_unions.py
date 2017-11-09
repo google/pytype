@@ -13,7 +13,7 @@ class UnionTest(test_base.BaseTest):
 
       def f(b, x, y):
         return id(1 if b else 1.0)
-    """, deep=True)
+    """)
 
     self.assertTypesMatchPytd(ty, """
       from typing import Any, TypeVar

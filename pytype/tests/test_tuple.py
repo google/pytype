@@ -17,7 +17,7 @@ class TupleTest(test_base.BaseTest):
       v2 = t[1]
       v3 = t[2]
       v4 = t[-1]
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Tuple
       t = ...   # type: Tuple[str, int]
@@ -37,7 +37,7 @@ class TupleTest(test_base.BaseTest):
       v4 = t[0:1]
       v5 = t[0:2:2]
       v6 = t[:][0]
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Tuple
       t = ...  # type: Tuple[str, int]
@@ -54,7 +54,7 @@ class TupleTest(test_base.BaseTest):
       v1, v2 = ("", 42)
       _, w = ("", 42)
       x, (y, z) = ("", (3.14, True))
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       v1 = ...  # type: str
       v2 = ...  # type: int
@@ -72,7 +72,7 @@ class TupleTest(test_base.BaseTest):
       def f(x: Tuple[str, int]):
         return x
       v1, v2 = f(__any_object__)
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Tuple
       def f(x: Tuple[str, int]) -> Tuple[str, int]: ...
@@ -139,7 +139,7 @@ class TupleTest(test_base.BaseTest):
         def __getitem__(self, pos):
           return Foo.mytuple.__getitem__(pos)
       r = [x for x in Foo()]
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import List, Tuple
       class Foo(object):
@@ -240,7 +240,7 @@ class TupleTest(test_base.BaseTest):
       w = v.setdefault("", ([], []))
       w[1].append(42)
       u = w[2]
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       v = ...  # type: dict[str, tuple[list[nothing], list[int]]]
       w = ...  # type: tuple[list[nothing], list[int]]
@@ -261,7 +261,7 @@ class TupleTest(test_base.BaseTest):
       def f(l: List[Tuple[int, AnyStr]]):
         line, foo = l[0]
         return foo
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import List, Tuple, TypeVar, Union
       AnyStr = TypeVar('AnyStr', str, unicode)
@@ -273,7 +273,7 @@ class TupleTest(test_base.BaseTest):
       x = ()
       if isinstance(x, tuple):
         y = 42
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Tuple
       x = ...  # type: Tuple[nothing, ...]
@@ -290,7 +290,7 @@ class TupleTest(test_base.BaseTest):
       b = ()
       b += (42,)
       b += ("foo",)
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Tuple, Union
       a = ...  # type: Tuple[int, ...]

@@ -14,7 +14,7 @@ class ImportTest(test_base.BaseTest):
   def testBasicImport(self):
     ty = self.Infer("""\
       import sys
-      """, deep=True)
+      """)
     self.assertTypesMatchPytd(ty, """
        sys = ...  # type: module
     """)
@@ -22,7 +22,7 @@ class ImportTest(test_base.BaseTest):
   def testBasicImport2(self):
     ty = self.Infer("""\
       import bad_import  # doesn't exist
-      """, deep=True, report_errors=False)
+      """, report_errors=False)
     self.assertTypesMatchPytd(ty, """
       bad_import = ...  # type: ?
     """)
@@ -41,7 +41,7 @@ class ImportTest(test_base.BaseTest):
       from path.to import my_module
       def foo():
         return my_module.foo()
-      """, deep=True, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         my_module = ...  # type: module
         def foo() -> str
@@ -67,7 +67,7 @@ class ImportTest(test_base.BaseTest):
       """)
       ty = self.Infer("""\
       from my_module import *
-      """, deep=True, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Type
         A = ...  # type: Type[my_module.A]
@@ -83,7 +83,7 @@ class ImportTest(test_base.BaseTest):
       """)
       ty = self.Infer("""
         from a import *
-      """, deep=True, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         def __getattr__(name) -> Any
@@ -113,7 +113,7 @@ class ImportTest(test_base.BaseTest):
       import path.to.my_module
       def foo():
         return path.to.my_module.qqsv()
-      """, deep=True, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         path = ...  # type: module
         def foo() -> str
@@ -154,7 +154,7 @@ class ImportTest(test_base.BaseTest):
 
         def f():
           return sys
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       sys = ...  # type: module
       def f() -> module
@@ -168,7 +168,7 @@ class ImportTest(test_base.BaseTest):
           return {sys: sys}.keys()[0]
         else:
           return sys
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       sys = ...  # type: module
       def f() -> module
@@ -179,7 +179,7 @@ class ImportTest(test_base.BaseTest):
       import sys
       def f():
         return sys.path
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import List
       sys = ...  # type: module
@@ -191,7 +191,7 @@ class ImportTest(test_base.BaseTest):
       from sys import path
       def f():
         return path
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import List
       path = ...  # type: List[str, ...]
@@ -208,7 +208,7 @@ class ImportTest(test_base.BaseTest):
         return sys.maxint
       def h():
         return sys.getrecursionlimit()
-    """, deep=True, report_errors=False)
+    """, report_errors=False)
     self.assertTypesMatchPytd(ty, """
       from typing import IO
       bad_import = ...  # type: ?
@@ -223,7 +223,7 @@ class ImportTest(test_base.BaseTest):
       import StringIO
       def f():
         return StringIO.StringIO().isatty()
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       StringIO = ...  # type: module
       def f() -> bool
@@ -526,7 +526,7 @@ class ImportTest(test_base.BaseTest):
         import path.to.some.module
         def my_foo(x):
           return path.to.some.module.foo(x)
-      """, deep=True, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         path = ...  # type: module
         def my_foo(x) -> str
@@ -543,7 +543,7 @@ class ImportTest(test_base.BaseTest):
         from path.to.some import module
         def my_foo(x):
           return module.foo(x)
-      """, deep=True, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         module = ...  # type: __builtin__.module
         def my_foo(x) -> str
@@ -555,7 +555,7 @@ class ImportTest(test_base.BaseTest):
       import StringIO
       def my_foo(x):
         return x.read()
-    """, deep=True)
+    """)
     # TODO(kramm): Instead of typing.IO[object] we should have typing.IO[AnyStr]
     # (or typing.IO[str or unicode]). The return type should be str or unicode.
     # Also, the optimizer should be smart enough to collapse the Union into just
@@ -573,7 +573,7 @@ class ImportTest(test_base.BaseTest):
 
       def f():
         return builtins.int()
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       builtins = ...  # type: module
 
@@ -585,7 +585,7 @@ class ImportTest(test_base.BaseTest):
       import os
       class Foo(object):
         killpg = os.killpg
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       os = ...  # type: module
       class Foo(object):
@@ -612,7 +612,7 @@ class ImportTest(test_base.BaseTest):
           pass
         def h(x):
           return x.f1(FooSub())
-      """, deep=True, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         foo = ...  # type: module
@@ -639,7 +639,7 @@ class ImportTest(test_base.BaseTest):
           return module.Foo().x
         def h():
           return module.Foo.x
-      """, deep=True, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         module = ...  # type: __builtin__.module
         def f() -> int
@@ -670,7 +670,7 @@ class ImportTest(test_base.BaseTest):
         xx = x.X()
         yy = x.y
         zz = x.z
-      """, deep=True, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         x = ...  # type: module
         xx = ...  # type: x.X
@@ -685,7 +685,7 @@ class ImportTest(test_base.BaseTest):
       n = os.__name__
       d = os.__doc__
       p = os.__package__
-      """, deep=True)
+      """)
     self.assertTypesMatchPytd(ty, """
        from typing import Optional
        os = ...  # type: module
@@ -803,7 +803,7 @@ class ImportTest(test_base.BaseTest):
       ty = self.Infer("""\
         import a
         x = a.x
-      """, pythonpath=[d.path], module_name="b.main")
+      """, deep=False, pythonpath=[d.path], module_name="b.main")
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
         x = ...  # type: complex
@@ -819,7 +819,7 @@ class ImportTest(test_base.BaseTest):
       ty = self.Infer("""\
         import foo
         x = foo.f("")
-      """, pythonpath=[d.path])
+      """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         foo = ...  # type: module
@@ -893,7 +893,7 @@ class ImportTest(test_base.BaseTest):
       b = sys.stderr
       c = foobar.rumplestiltskin
       d = path.curdir
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       sys = ...  # type: Any
@@ -960,7 +960,8 @@ class ImportTest(test_base.BaseTest):
       ty = self.Infer("""\
         from {0}.foo import bar
         Adz = bar.Quack
-        """.format(imp_path), imports_map=imports_map, pythonpath=[""])
+        """.format(imp_path),
+                      deep=False, imports_map=imports_map, pythonpath=[""])
       self.assertTypesMatchPytd(ty, """\
         from typing import Any, Type
         bar = ...  # type: module

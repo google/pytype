@@ -14,7 +14,7 @@ class SlotsTest(test_base.BaseTest):
           self.foo = 1
           self.bar = 2
           self.baz = 4
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
         __slots__ = ["foo", "bar", "baz"]
@@ -52,7 +52,7 @@ class SlotsTest(test_base.BaseTest):
     ty = self.Infer("""
       class Foo(object):
         __slots__ = ["foo", "bar"]
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
         __slots__ = ["foo", "bar"]
@@ -87,7 +87,7 @@ class SlotsTest(test_base.BaseTest):
       class Foo(object):
         def __init__(self):
           self.__slots__ = ["foo"]
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
         pass
@@ -100,7 +100,7 @@ class SlotsTest(test_base.BaseTest):
       # of tests, seems to be https://www.gnu.org/software/gss/manual/gss.html.
       # Note this doesn't actually do anything! Python ignores the next line.
       Foo.__slots__ = ["foo"]
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
         pass

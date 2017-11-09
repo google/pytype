@@ -16,7 +16,7 @@ class BuiltinTests2(test_base.BaseTest):
       def f(x, y):
         divmod(x, __any_object__)
         return divmod(3, y)
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       def f(x, y) -> Any
@@ -27,7 +27,7 @@ class BuiltinTests2(test_base.BaseTest):
       import collections
       r = collections.defaultdict()
       r[3] = 3
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       collections = ...  # type: module
       r = ...  # type: collections.defaultdict[int, int]
@@ -37,7 +37,7 @@ class BuiltinTests2(test_base.BaseTest):
     ty = self.Infer("""
       x = {}
       x.update(a=3, b=4)
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Dict
       x = ...  # type: Dict[str, int]
@@ -46,7 +46,7 @@ class BuiltinTests2(test_base.BaseTest):
   def testImportLib(self):
     ty = self.Infer("""
       import importlib
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       importlib = ...  # type: module
     """)
@@ -59,7 +59,7 @@ class BuiltinTests2(test_base.BaseTest):
         return set.intersection(*y)
       def h(y):
         return set.difference(*y)
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       def f(y) -> set: ...
       def g(y) -> set: ...
@@ -69,7 +69,7 @@ class BuiltinTests2(test_base.BaseTest):
   def testSetInit(self):
     ty = self.Infer("""
       data = set(x for x in [""])
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Set
       data = ...  # type: Set[str]
@@ -101,7 +101,7 @@ class BuiltinTests2(test_base.BaseTest):
           return self.__module__
         def get_bases(self):
           return self.__bases__
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Dict, Type
       class Foo:
@@ -132,7 +132,7 @@ class BuiltinTests2(test_base.BaseTest):
           return self.__hash__()
         def get_mro(self):
           return self.__mro__
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Dict, Type
       class Foo(object):
@@ -154,7 +154,7 @@ class BuiltinTests2(test_base.BaseTest):
       x4 = dict({(3, "")})
       x5 = dict({})
       x6 = dict({3: ""})
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Dict
       x1 = ...  # type: dict
@@ -180,7 +180,7 @@ class BuiltinTests2(test_base.BaseTest):
         value = d.itervalues().next()
         foo.need_iterator(d.iteritems())
         item = d.iteritems().next()
-      """, pythonpath=[d.path])
+      """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Dict, Tuple
         foo = ...  # type: module
@@ -193,7 +193,7 @@ class BuiltinTests2(test_base.BaseTest):
   def testMax(self):
     ty = self.Infer("""
       x = dict(u=3, v=4, w=5)
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       x = ...  # type: dict
     """)
@@ -208,7 +208,7 @@ class BuiltinTests2(test_base.BaseTest):
         foo.x.bar()
         x = foo.__name__
         y = foo.x.baz
-      """, pythonpath=[d.path])
+      """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         foo = ...  # type: module
@@ -226,7 +226,7 @@ class BuiltinTests2(test_base.BaseTest):
         from foo import A
         y = A.x()
         z = A().x()
-      """, pythonpath=[d.path])
+      """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any, Type
         A = ...  # type: Type[foo.A]
@@ -244,7 +244,7 @@ class BuiltinTests2(test_base.BaseTest):
         from foo import A
         y = A.x()
         z = A().x()
-      """, pythonpath=[d.path])
+      """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any, Type
         A = ...  # type: Type[foo.A]
@@ -260,7 +260,7 @@ class BuiltinTests2(test_base.BaseTest):
       y1 = max(x for x in range(3))
       y2 = max([3.1, 4.1], key=lambda n: n)
       y3 = max((1, 2, 3), key=int)
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       x1 = ...  # type: int
       x2 = ...  # type: float
@@ -327,7 +327,7 @@ class BuiltinTests2(test_base.BaseTest):
       lst1 = []
       lst2 = [x for x in lst1]
       lst3 = map(str, lst2)
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, List
       lst1 = ...  # type: List[nothing]
@@ -345,7 +345,7 @@ class BuiltinTests2(test_base.BaseTest):
       d5 = dict.fromkeys(u"x")
       d6 = dict.fromkeys(iter("123"))
       d7 = dict.fromkeys({True: False})
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Dict
       d1 = ...  # type: Dict[int, None]
@@ -361,7 +361,7 @@ class BuiltinTests2(test_base.BaseTest):
     ty = self.Infer("""
       class BaseException(Exception): pass
       class CryptoException(BaseException, ValueError): pass
-    """)
+    """, deep=False)
     p1, p2 = ty.Lookup("CryptoException").parents
     self.assertEqual(p1.name, "BaseException")
     self.assertEqual(p2.name, "__builtin__.ValueError")
@@ -377,7 +377,7 @@ class BuiltinTests2(test_base.BaseTest):
       x3 = sum([1.0, 3j])
       x4 = sum([1.0, 3j], 0)
       x5 = sum([[1], ["2"]], [])
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import List
       x1 = ...  # type: int
@@ -431,7 +431,7 @@ class BuiltinTests2(test_base.BaseTest):
       x5 = filter(None, bytearray(""))
       x6 = filter(None, (True, False))
       x7 = filter(None, {True, False})
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import List, Tuple
       def f(x: int) -> None
@@ -472,7 +472,7 @@ class BuiltinTests2(test_base.BaseTest):
       x1 = b.join([])
       x2 = b.join(["x"])
       x3 = b.join([b])
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       b = ...  # type: bytearray
       x1 = ...  # type: bytearray
@@ -499,7 +499,7 @@ class BuiltinTests2(test_base.BaseTest):
       b = m.viewkeys() - {1, 2, 3}
       c = m.viewkeys() | {1, 2, 3}
       d = m.viewkeys() ^ {1, 2, 3}
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Dict, Set
       m = ...  # type: Dict[str, None]
@@ -512,7 +512,7 @@ class BuiltinTests2(test_base.BaseTest):
   def testDictPopItem(self):
     ty = self.Infer("""
       v = {"a": 1}.popitem()
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Tuple
       v = ...  # type: Tuple[str, int]
@@ -531,7 +531,7 @@ class BuiltinTests2(test_base.BaseTest):
   def testLongConstant(self):
     ty = self.Infer("""
       MAX_VALUE = 2**64
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       MAX_VALUE = ...  # type: int
     """)
@@ -547,7 +547,7 @@ class BuiltinTests2(test_base.BaseTest):
       x7 = iter({42})
       x8 = iter({"a": 1})
       x9 = iter(int, 42)
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Generator, Iterator
       x1 = ...  # type: Iterator[str]
@@ -579,7 +579,7 @@ class BuiltinTests2(test_base.BaseTest):
       l12 = list(iter(bytearray(42)))
       l13 = list(iter(xrange(42)))
       l14 = list(x for x in [42])
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import List
       l1 = ...  # type: List[nothing]
@@ -614,7 +614,7 @@ class BuiltinTests2(test_base.BaseTest):
       t12 = tuple(iter(bytearray(42)))
       t13 = tuple(iter(xrange(42)))
       t14 = tuple(x for x in [42])
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Tuple
       t1 = ...  # type: Tuple[nothing, ...]
@@ -651,7 +651,7 @@ class BuiltinTests2(test_base.BaseTest):
       x3.extend({""})
       x4 = [42]
       x4.extend(frozenset({""}))
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import List
       x1 = ...  # type: List[int or str]
@@ -667,7 +667,7 @@ class BuiltinTests2(test_base.BaseTest):
       x3 = sorted(bytearray("hello"))
       x4 = sorted([])
       x5 = sorted([42], reversed=True)
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import List
       x1 = ...  # type: List[str]
@@ -682,7 +682,7 @@ class BuiltinTests2(test_base.BaseTest):
       x1 = enumerate([42])
       x2 = enumerate((42,))
       x3 = enumerate(x for x in range(5))
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       x1 = ...  # type: enumerate[int]
       x2 = ...  # type: enumerate[int]
@@ -694,7 +694,7 @@ class BuiltinTests2(test_base.BaseTest):
       x1 = frozenset([42])
       x2 = frozenset({42})
       x3 = frozenset("hello")
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       x1 = ...  # type: frozenset[int]
       x2 = ...  # type: frozenset[int]
@@ -717,7 +717,7 @@ class BuiltinTests2(test_base.BaseTest):
       x['bar'] = 3
       y = x.setdefault('foo', 3.14)
       z = x['foo']
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Dict
       x = ...  # type: Dict[str, float or int]
@@ -731,7 +731,7 @@ class BuiltinTests2(test_base.BaseTest):
       x['bar'] = 3
       y = x.setdefault('foo')
       z = x['foo']
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Dict, Optional
       x = ...  # type: Dict[str, Optional[int]]
@@ -746,7 +746,7 @@ class BuiltinTests2(test_base.BaseTest):
 
       x2 = {}
       y2 = x2.setdefault(*["foo", 42])
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Dict
 
@@ -775,7 +775,7 @@ class BuiltinTests2(test_base.BaseTest):
   def testRedefineNext(self):
     ty = self.Infer("""
       next = 42
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       next = ...  # type: int
     """)

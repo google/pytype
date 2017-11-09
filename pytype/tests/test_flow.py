@@ -238,7 +238,7 @@ class FlowTest(test_base.BaseTest):
         while True:
           pass
         return 42
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       def f() -> Any
@@ -257,7 +257,7 @@ class FlowTest(test_base.BaseTest):
           stack.append(_Item(stack))
         else:
           stack.append(_Item(stack))
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       class _Item(object):
         name = ...  # type: str
@@ -276,7 +276,7 @@ class FlowTest(test_base.BaseTest):
             raise Exception(
             'No node with type %s could be extracted.' % self._node)
       Foo().bar()
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       class Foo(object):
@@ -291,7 +291,7 @@ class FlowTest(test_base.BaseTest):
           if __random__:
             break
         return 3j
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       def _foo() -> complex
     """)
@@ -304,7 +304,7 @@ class FlowTest(test_base.BaseTest):
             return 3j
           continue
           return 3  # dead code
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       def bar() -> complex
     """)
@@ -330,7 +330,7 @@ class FlowTest(test_base.BaseTest):
       import os
       for seq in [os.getgroups()]:  # os.getgroups() returns a List[int]
         seq.append("foo")
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import List, Union
       os = ...  # type: module

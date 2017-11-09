@@ -88,7 +88,7 @@ class TypingMethodsTest(test_base.BaseTest):
         x.write("foo")
         x.writelines(["foo", "bar"])
         x.close()
-      """, pythonpath=[d.path])
+      """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import IO, List
         fi = ...  # type: IO[str]
@@ -131,7 +131,7 @@ class TypingMethodsTest(test_base.BaseTest):
           d = "foo" in seq
           e = iter(seq)
           f = reversed(seq)
-      """, pythonpath=[d.path])
+      """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Iterator, List, Sequence, Tuple, Union
         foo = ...  # type: module
@@ -164,7 +164,7 @@ class TypingMethodsTest(test_base.BaseTest):
           g = seq.remove("foo")
           seq[0:5] = [1,2,3]
           b = seq.extend([1,2,3])
-      """, pythonpath=[d.path])
+      """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Iterator, List, Sequence, Union
         foo = ...  # type: module
@@ -197,7 +197,7 @@ class TypingMethodsTest(test_base.BaseTest):
         c = q.pop()
         cl = q.popleft()
         d = q.rotate(3)
-      """, pythonpath=[d.path])
+      """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """\
         foo = ...  # type: module
         from typing import Deque
@@ -236,7 +236,7 @@ class TypingMethodsTest(test_base.BaseTest):
         k = [x for x in m.viewitems()]
         l = [x for x in m.viewkeys()]
         n = [x for x in m.viewvalues()]
-      """, pythonpath=[d.path])
+      """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import List, Tuple, Union
         import foo
@@ -278,7 +278,7 @@ class TypingMethodsTest(test_base.BaseTest):
         c = m.setdefault("baz", 3j)
         m.update({4j: 2.1})
         m.update([(1, 2), (3, 4)])
-      """, pythonpath=[d.path])
+      """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Tuple, Union
         import foo
@@ -309,7 +309,7 @@ class TypingMethodsTest(test_base.BaseTest):
         d = x - x
         e = x ^ x
         f = x.isdisjoint([1,2,3])
-      """, pythonpath=[d.path])
+      """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import AbstractSet
         foo = ...  # type: module
@@ -345,7 +345,7 @@ class TypingMethodsTest(test_base.BaseTest):
         c = x | {1,2,3}
         d = x ^ {1,2,3}
         e = 3 in x
-      """, pythonpath=[d.path])
+      """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import MutableSet, Union
         foo = ...  # type: module
@@ -393,7 +393,7 @@ class TypingMethodsTest(test_base.BaseTest):
         c = m1.group(1)
         d = m1.start()
         e = m1.end()
-      """, pythonpath=[d.path])
+      """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import List, Match, Pattern
         foo = ...  # type: module

@@ -10,7 +10,7 @@ class GeneratorTest(test_base.BaseTest):
     ty = self.Infer("""
       def f():
         return next(i for i in [1,2,3])
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       def f() -> int
     """)
@@ -18,7 +18,7 @@ class GeneratorTest(test_base.BaseTest):
   def testList(self):
     ty = self.Infer("""
       y = list(x for x in [1, 2, 3])
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import List
       y = ...  # type: List[int, ...]
@@ -28,7 +28,7 @@ class GeneratorTest(test_base.BaseTest):
     ty = self.Infer("""
       y = list(x for x in [1, 2, 3])
       z = list(x for x in [1, 2, 3])
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import List
       y = ...  # type: List[int, ...]
@@ -39,7 +39,7 @@ class GeneratorTest(test_base.BaseTest):
     ty = self.Infer("""
       def f():
         return next((i for i in [1,2,3]), None)
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       def f() -> int or NoneType
     """)
@@ -52,7 +52,7 @@ class GeneratorTest(test_base.BaseTest):
             return x
         def __iter__(self):
           return generator()
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Generator
       class Foo(object):
@@ -64,7 +64,7 @@ class GeneratorTest(test_base.BaseTest):
     ty = self.Infer("""
       def foo(self):
         yield 3
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Generator
       def foo(self) -> Generator[int, Any, Any]
@@ -79,7 +79,7 @@ class GeneratorTest(test_base.BaseTest):
       def foo(self):
         for x in Foo():
           return x
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Union
       class Foo(object):
@@ -96,7 +96,7 @@ class GeneratorTest(test_base.BaseTest):
           else:
             raise StopIteration
       x, y, z = Foo()
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, TypeVar
       _T0 = TypeVar("_T0")

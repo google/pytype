@@ -43,7 +43,7 @@ class TestPython3(test_base.BaseTest):
     ty = self.Infer("""
       def f(x, *myargs, y):
         return __any_object__
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       def f(x, *myargs, y) -> ?
     """)
@@ -53,7 +53,7 @@ class TestPython3(test_base.BaseTest):
       def foo(a, b, c, d=0, e=0, f=0, g=0, *myargs,
               u, v, x, y=0, z=0, **mykwargs):
         return 3
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       def foo(a, b, c, d=..., e=..., f=..., g=..., *myargs,
               u, v, x, y=..., z=..., **mykwargs)
@@ -64,7 +64,7 @@ class TestPython3(test_base.BaseTest):
       def foo(a, b, c:int, d=0, e=0, f=0, g=0, *myargs,
               u:str, v, x:float=0, y=0, z=0, **mykwargs):
         return 3
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       def foo(a, b, c:int, d=..., e=..., f=..., g=..., *myargs,
               u:str, v, x:float=..., y=..., z=..., **mykwargs)
@@ -79,7 +79,7 @@ class TestPython3(test_base.BaseTest):
         x = Thing(1)
         x.y = 3
         return x
-    """, deep=True)
+    """)
 
     self.assertTypesMatchPytd(ty, """
     from typing import Any
@@ -94,7 +94,7 @@ class TestPython3(test_base.BaseTest):
     ty = self.Infer("""
       # x, y are passed to type() or the metaclass. We currently ignore them.
       class Thing(x=True, y="foo"): pass
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
     class Thing: ...
     """)
@@ -109,7 +109,7 @@ class TestPython3(test_base.BaseTest):
         finally:  # exercise byte_POP_EXCEPT
           x = 3
         return x
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       def f() -> int
     """)
@@ -125,7 +125,7 @@ class TestPython3(test_base.BaseTest):
       p, *q, r = 4, 5, "6", None, 7, 8
       vars = None # type : List[int]
       s, *t, u = vars
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import List, Optional, Union
       a = ... # type: int

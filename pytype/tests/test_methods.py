@@ -503,7 +503,7 @@ class MethodsTest(test_base.BaseTest):
         return args
       def h(x, y, *args):
         return args
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
     def f(*args) -> tuple
     def g(x, *args) -> tuple
@@ -515,7 +515,7 @@ class MethodsTest(test_base.BaseTest):
       class Foo(object):
         def __init__(self, *args, **kwargs):
           super(Foo, self).__init__(*args, **kwargs)
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
     class Foo(object):
       def __init__(self, *args, **kwargs) -> NoneType
@@ -558,7 +558,7 @@ class MethodsTest(test_base.BaseTest):
       class Foo(object):
         def __init__(self, **kwargs):
           self.kwargs = kwargs
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
     class Foo(object):
       def __init__(self, **kwargs) -> NoneType
@@ -573,7 +573,7 @@ class MethodsTest(test_base.BaseTest):
         return kwargs
       def h(x, y, **kwargs):
         return kwargs
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
     def f(**kwargs) -> dict[str, ?]
     def g(x, **kwargs) -> dict[str, ?]
@@ -590,7 +590,7 @@ class MethodsTest(test_base.BaseTest):
         import myjson
         def f(*args):
           return myjson.loads(*args)
-      """, deep=True, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
       myjson = ...  # type: module
       def f(*args) -> ?
@@ -606,7 +606,7 @@ class MethodsTest(test_base.BaseTest):
         import myjson
         def f(**args):
           return myjson.loads(**args)
-      """, deep=True, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
       myjson = ...  # type: module
       def f(**args) -> ?
@@ -622,7 +622,7 @@ class MethodsTest(test_base.BaseTest):
         import myjson
         def f():
           return myjson.loads(s="{}")
-      """, deep=True, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
       myjson = ...  # type: module
 
@@ -801,7 +801,7 @@ class MethodsTest(test_base.BaseTest):
         lookup = {}
         lookup[''] = Foo
         lookup.get('')()
-    """, deep=True, show_library_calls=True)
+    """, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (), self.float)
 
   def testCopyMethod(self):
@@ -810,7 +810,7 @@ class MethodsTest(test_base.BaseTest):
         def mymethod(self, x, y):
           return 3
       myfunction = Foo.mymethod
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
         def mymethod(self, x, y) -> int
@@ -824,7 +824,7 @@ class MethodsTest(test_base.BaseTest):
       def myfunction(self, x, y):
         return 3
       Foo.mymethod = myfunction
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
         def mymethod(self, x, y) -> int
@@ -848,7 +848,7 @@ class MethodsTest(test_base.BaseTest):
       b = Foo.method.x
       c = foo.method.x
       d = os.chmod.x
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
     os = ...  # type: module
     def f() -> NoneType
@@ -864,7 +864,7 @@ class MethodsTest(test_base.BaseTest):
   def testJson(self):
     ty = self.Infer("""
       import json
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
     json = ...  # type: module
     """)
@@ -872,7 +872,7 @@ class MethodsTest(test_base.BaseTest):
   def testNew(self):
     ty = self.Infer("""
       x = str.__new__(str)
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       x = ...  # type: str
     """)
@@ -884,7 +884,7 @@ class MethodsTest(test_base.BaseTest):
       class Foo(str):
         def __new__(cls, string):
           return str.__new__(cls, string)
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Type, TypeVar
       _TFoo = TypeVar("_TFoo", bound=Foo)
@@ -896,7 +896,7 @@ class MethodsTest(test_base.BaseTest):
     ty = self.Infer("""
       class Foo(str): pass
       foo = Foo()
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       class Foo(str): ...
       foo = ...  # type: Foo
@@ -909,7 +909,7 @@ class MethodsTest(test_base.BaseTest):
           self = super(Foo, cls).__new__(cls)
           self.name = name
           return self
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Type, TypeVar
       _TFoo = TypeVar("_TFoo", bound=Foo)
@@ -928,7 +928,7 @@ class MethodsTest(test_base.BaseTest):
       class Bar(Foo):
         def __new__(cls):
           return super(Bar, cls).__new__(cls, "")
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Type, TypeVar
       _TFoo = TypeVar("_TFoo", bound=Foo)
@@ -950,7 +950,7 @@ class MethodsTest(test_base.BaseTest):
           return self
         def __init__(self):
           self.nickname = 400
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Type, TypeVar
       _TFoo = TypeVar("_TFoo", bound=Foo)
@@ -983,7 +983,7 @@ class MethodsTest(test_base.BaseTest):
         B(w, x, y, z)
         C(w, x, y, z)
         D(w, x, y, z)
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import List, Tuple
       class A(object):

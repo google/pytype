@@ -99,7 +99,7 @@ class SuperTest(test_base.BaseTest):
       class A(object):
         pass
       x = super(type, A)
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       class A(object):
         pass
@@ -120,7 +120,7 @@ class SuperTest(test_base.BaseTest):
         class Child(OtherParent, Parent):
           def f(self):
             return super(Parent, self).f()
-      """, pythonpath=[d.path], deep=True)
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         foo = ...  # type: module

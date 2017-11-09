@@ -13,7 +13,7 @@ class ListTest(test_base.BaseTest):
       b = []
       b = b + [42]
       b = b + ["foo"]
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import List, Union
       a = ...  # type: List[int]
@@ -27,7 +27,7 @@ class ListTest(test_base.BaseTest):
       b = []
       b += [42]
       b += ["foo"]
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import List, Union
       a = ...  # type: List[int]
@@ -39,7 +39,7 @@ class ListTest(test_base.BaseTest):
       a = []
       b = a
       a += [42]
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import List, Union
       a = ...  # type: List[int]
@@ -50,7 +50,7 @@ class ListTest(test_base.BaseTest):
     ty = self.Infer("""
       a = []
       a += "foo"
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import List, Union
       a = ...  # type: List[str]

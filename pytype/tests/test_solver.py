@@ -18,7 +18,7 @@ class SolverTests(test_base.BaseTest):
               self.children = []
               for ch in self.children:
                   pass
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
     from typing import List, Tuple
     class Node(object):
@@ -33,7 +33,7 @@ class SolverTests(test_base.BaseTest):
         z = y()
         eval(y)
         return z
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       def f() -> ?
     """)
@@ -43,7 +43,7 @@ class SolverTests(test_base.BaseTest):
       def f(A):
         A.has_key("foo")
         return [a - 42.0 for a in A.viewvalues()]
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
         from typing import List
         def f(A) -> list
@@ -53,7 +53,7 @@ class SolverTests(test_base.BaseTest):
     ty = self.Infer("""
       def f(x):
         return x.keys()
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       def f(x) -> Any
@@ -64,7 +64,7 @@ class SolverTests(test_base.BaseTest):
     ty = self.Infer("""
       def f(x):
         x[""] = dict()
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       def f(x: Dict[str, dict]) -> None
     """)
@@ -80,7 +80,7 @@ class SolverTests(test_base.BaseTest):
       class Barbaz(object):
         def barbaz(self):
           __any_object__.foobar(StringIO.StringIO())
-    """, deep=True)
+    """)
     # TODO(rechen): Both StringIO[str] and IO are subclasses of IO[str],
     # which therefore should be optimized away.
     self.assertTypesMatchPytd(ty, """
@@ -100,7 +100,7 @@ class SolverTests(test_base.BaseTest):
 
       class Bar(Foo):
         pass
-    """, deep=True, report_errors=False)
+    """, report_errors=False)
     self.assertTypesMatchPytd(ty, """
       Foo = ...  # type: ?
 
@@ -115,7 +115,7 @@ class SolverTests(test_base.BaseTest):
         d[1] = "foo"
         for name in d:
           len(name)
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       def f() -> NoneType
     """)
@@ -127,7 +127,7 @@ class SolverTests(test_base.BaseTest):
           self.types = types
         def bar(self, val):
           return issubclass(val, self.types)
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
     from typing import Tuple
     class Foo(object):
@@ -144,7 +144,7 @@ class SolverTests(test_base.BaseTest):
           self.types = types
         def bar(self, val):
           return isinstance(val, self.types)
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
     class Foo(object):
       def __init__(self, *types) -> NoneType
@@ -159,7 +159,7 @@ class SolverTests(test_base.BaseTest):
           class Foo(object):
             pass
           return Foo()
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
     class Foo(object):
       def f(self) -> ?
@@ -169,7 +169,7 @@ class SolverTests(test_base.BaseTest):
     ty = self.Infer("""
       def f():
         return isinstance(1, ())
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       def f() -> bool
     """)
@@ -183,7 +183,7 @@ class SolverTests(test_base.BaseTest):
       d = {}
       d[l[0]] = 3
       f(**d)
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Dict, List, TypeVar
       _T0 = TypeVar("_T0")
@@ -197,7 +197,7 @@ class SolverTests(test_base.BaseTest):
     ty = self.Infer("""
       def f(x):
         return int(x, 16)
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       def f(x) -> int
     """)
@@ -206,7 +206,7 @@ class SolverTests(test_base.BaseTest):
     ty = self.Infer("""
       def f(x):
         return "abc".find(x)
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       def f(x) -> int
     """)
@@ -216,7 +216,7 @@ class SolverTests(test_base.BaseTest):
       import itertools
       def every(f, array):
         return all(itertools.imap(f, array))
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       itertools = ...  # type: module
 
@@ -236,7 +236,7 @@ class SolverTests(test_base.BaseTest):
         f()
         foo[0].append(42)
         f()
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import List
       foo = ...  # type: List[list[int, ...], ...]
@@ -259,7 +259,7 @@ class SolverTests(test_base.BaseTest):
         f()
         foo[0][0].append(42)
         f()
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import List
       foo = ...  # type: List[List[List[int, ...], ...], ...]
@@ -286,7 +286,7 @@ class SolverTests(test_base.BaseTest):
         f()
         container.foo[0].append(42)
         f()
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import List
       class Container(object):
@@ -309,7 +309,7 @@ class SolverTests(test_base.BaseTest):
         import bad_mod
         def f(date):
           return date.bad_method()
-      """, deep=True, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         bad_mod = ...  # type: module
@@ -321,7 +321,7 @@ class SolverTests(test_base.BaseTest):
       import collections
       def bar(l):
           l.append(collections.defaultdict(int, [(0, 0)]))
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       import typing
       collections = ...  # type: module
@@ -335,7 +335,7 @@ class SolverTests(test_base.BaseTest):
         pass
       def f(x):
         pass
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       class LookupError(KeyError): ...
       def f(x) -> NoneType
@@ -353,7 +353,7 @@ class SolverTests(test_base.BaseTest):
           x = foo.f()
           x.append("str")
           return x
-      """, deep=True, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import List
         foo = ...  # type: module
@@ -370,7 +370,7 @@ class SolverTests(test_base.BaseTest):
       ty = self.Infer("""\
         import foo
         x = foo.f(1, y=2j)
-      """, pythonpath=[d.path])
+      """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         foo = ...  # type: module
         x = ...  # type: complex

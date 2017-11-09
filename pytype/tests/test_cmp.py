@@ -27,7 +27,7 @@ class InTest(test_base.BaseTest):
     ty = self.Infer("""
       def f(x, y):
         return x in y
-    """, deep=True, show_library_calls=True)
+    """, show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.bool)
 
   def test_overloaded(self):
@@ -40,7 +40,7 @@ class InTest(test_base.BaseTest):
       def g():
         # The result of __contains__ is coerced to a bool.
         return 3 in Foo()
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
         def __contains__(self, x) -> complex
@@ -88,7 +88,7 @@ class NotInTest(test_base.BaseTest):
       def g():
         # The result of __contains__ is coerced to a bool.
         return 3 not in Foo()
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
         def __contains__(self, x) -> complex
@@ -122,7 +122,7 @@ class IsTest(test_base.BaseTest):
     ty = self.Infer("""
       def f(x, y):
         return x is y
-    """, deep=True, show_library_calls=True)
+    """, show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.bool)
 
 
@@ -141,7 +141,7 @@ class IsNotTest(test_base.BaseTest):
     ty = self.Infer("""
       def f(x, y):
         return x is y
-    """, deep=True, show_library_calls=True)
+    """, show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.bool)
 
 
@@ -165,7 +165,7 @@ class LtTest(test_base.BaseTest):
           return 3j
       def f():
         return Foo() < 3
-    """, deep=True, show_library_calls=True)
+    """, show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.complex)
 
   @unittest.skip("Needs full emulation of Objects/object.c:try_rich_compare""")
@@ -185,7 +185,7 @@ class LtTest(test_base.BaseTest):
         return Foo() < Foo()
       def f3():
         return Foo() < Bar()
-    """, deep=True, show_library_calls=True)
+    """, show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("f1"), self.complex)
     self.assertOnlyHasReturnType(ty.Lookup("f2"), self.complex)
     self.assertOnlyHasReturnType(ty.Lookup("f3"), self.tuple)
@@ -211,7 +211,7 @@ class LeTest(test_base.BaseTest):
           return 3j
       def f():
         return Foo() <= 3
-    """, deep=True, show_library_calls=True)
+    """, show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.complex)
 
 
@@ -235,7 +235,7 @@ class GtTest(test_base.BaseTest):
           return 3j
       def f():
         return Foo() > 3
-    """, deep=True, show_library_calls=True)
+    """, show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.complex)
 
 
@@ -259,7 +259,7 @@ class GeTest(test_base.BaseTest):
           return 3j
       def f():
         return Foo() >= 3
-    """, deep=True, show_library_calls=True)
+    """, show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.complex)
 
 
@@ -283,7 +283,7 @@ class EqTest(test_base.BaseTest):
           return 3j
       def f():
         return Foo() == 3
-    """, deep=True, show_library_calls=True)
+    """, show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.complex)
 
   def test_class(self):
@@ -293,7 +293,7 @@ class EqTest(test_base.BaseTest):
       f(1, 2)
       f(1, "a")
       f(object(), "x")
-    """)
+    """, deep=False)
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.bool)
 
   def test_primitive_against_unknown(self):
@@ -323,7 +323,7 @@ class NeTest(test_base.BaseTest):
           return 3j
       def f():
         return Foo() != 3
-    """, deep=True, show_library_calls=True)
+    """, show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.complex)
 
 

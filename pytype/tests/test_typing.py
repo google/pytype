@@ -58,7 +58,7 @@ class TypingTest(test_base.BaseTest):
         x = foo.f()[0]
         y = foo.f()[1]
         z = foo.f()[2]  # out of bounds, fall back to the combined element type
-      """, pythonpath=[d.path])
+      """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         foo = ...  # type: module
         w = ...  # type: unicode
@@ -72,7 +72,7 @@ class TypingTest(test_base.BaseTest):
       from __future__ import google_type_annotations
       import typing
       x = typing.__all__
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import List
       typing = ...  # type: module
@@ -85,7 +85,7 @@ class TypingTest(test_base.BaseTest):
       import typing
       def f():
         return typing.cast(typing.List[int], [])
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, List
       typing = ...  # type: module
@@ -213,7 +213,7 @@ class TypingTest(test_base.BaseTest):
       from __future__ import google_type_annotations
       from typing import List
       MyType = List[str]
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import List
       MyType = List[str]
@@ -391,7 +391,7 @@ class TypingTest(test_base.BaseTest):
         pass
       def g() -> Any:
         pass
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       import __future__
       typing = ...  # type: module
@@ -406,7 +406,7 @@ class TypingTest(test_base.BaseTest):
         "from __future__ import google_type_annotations",
         "from typing import *  # pytype: disable=not-supported-yet",
     ] + pep484.PEP484_NAMES
-    ty = self.Infer("\n".join(python))
+    ty = self.Infer("\n".join(python), deep=False)
     self.assertTypesMatchPytd(ty, "")
 
   def testRecursiveTuple(self):
@@ -426,7 +426,7 @@ class TypingTest(test_base.BaseTest):
       from typing import Iterable
       class Foo(Iterable):
         pass
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Iterable
       class Foo(Iterable): ...
@@ -461,7 +461,7 @@ class TypingTest(test_base.BaseTest):
       v4 = match1.start(u"foo")
       v5 = match1.end(u"foo")
       v6 = match1.span(u"foo")
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Match, Tuple
       re = ...  # type: module
@@ -522,7 +522,7 @@ class TypingTest(test_base.BaseTest):
       from typing import Callable
       f = ...  # type: Callable[..., int]
       v = f()
-    """)
+    """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Callable
       f = ...  # type: Callable[..., int]

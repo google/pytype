@@ -14,7 +14,7 @@ class OptionsTest(test_base.BaseTest):
         return f3(x)
       def f3(x):
         return 1
-    """, deep=True, maximum_depth=None)
+    """, maximum_depth=None)
     self.assertTypesMatchPytd(ty, """
       def f1(x) -> int
       def f2(x) -> int
@@ -29,7 +29,7 @@ class OptionsTest(test_base.BaseTest):
         return f3(x)
       def f3(x):
         return 1
-    """, deep=True, maximum_depth=0)
+    """, maximum_depth=0)
     self.assertTypesMatchPytd(ty, """
       def f1(x) -> ?
       def f2(x) -> ?
@@ -44,7 +44,7 @@ class OptionsTest(test_base.BaseTest):
         return f3(x)
       def f3(x):
         return 1
-    """, deep=True, maximum_depth=1)
+    """, maximum_depth=1)
     self.assertTypesMatchPytd(ty, """
       def f1(x) -> ?
       def f2(x) -> ?
@@ -59,7 +59,7 @@ class OptionsTest(test_base.BaseTest):
         return f3(x)
       def f3(x):
         return 1
-    """, deep=True, maximum_depth=2)
+    """, maximum_depth=2)
     self.assertTypesMatchPytd(ty, """
       def f1(x) -> ?
       def f2(x) -> int

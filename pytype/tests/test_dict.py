@@ -14,7 +14,7 @@ class DictTest(test_base.BaseTest):
       def foo(x: Union[int, None]):
         if x is not None:
           return MAP[x]
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Dict, Union
       MAP = ...  # type: Dict[int, str]

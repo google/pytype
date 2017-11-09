@@ -22,7 +22,7 @@ class ProtocolInferenceTest(test_base.BaseTest):
         import foo
         def f(x, y):
           return foo.f(x, y)
-      """, pythonpath=[d.path], deep=True)
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         foo = ...  # type: module
         def f(x, y: int or str) -> list
@@ -42,7 +42,7 @@ class ProtocolInferenceTest(test_base.BaseTest):
         import foo
         def f(y):
           return foo.f("", y)
-      """, pythonpath=[d.path], deep=True)
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import List
         foo = ...  # type: module
@@ -60,7 +60,7 @@ class ProtocolInferenceTest(test_base.BaseTest):
         import foo
         def f(x):
           return foo.f(x)
-      """, pythonpath=[d.path], deep=True)
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         foo = ...  # type: module
         def f(x: int or str) -> float or bool
@@ -77,7 +77,7 @@ class ProtocolInferenceTest(test_base.BaseTest):
         import foo
         def f(x):
           return foo.f(x)
-      """, pythonpath=[d.path], deep=True)
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         foo = ...  # type: module
         def f(x: str) -> int or float
@@ -94,7 +94,7 @@ class ProtocolInferenceTest(test_base.BaseTest):
         import foo
         def f(x):
           return foo.f(y=x)
-      """, pythonpath=[d.path], deep=True)
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         foo = ...  # type: module
         def f(x: int or str) -> bool or float
@@ -107,7 +107,7 @@ class ProtocolInferenceTest(test_base.BaseTest):
         # pow(int, int) returns int, or float if the exponent is negative.
         # Hence, it's a handy function for testing UnionType returns.
         return pow(x, y)
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       def t_testPow2(x: complex or float or int, y: complex or float or int) -> complex or float or int
     """)
@@ -121,7 +121,7 @@ class ProtocolInferenceTest(test_base.BaseTest):
         for line in lines[1:]:
           len(line)
         return lines
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import List
       def trim(docstring: bytearray or str or unicode) -> List[bytearray or str or unicode, ...]
@@ -133,7 +133,7 @@ class ProtocolInferenceTest(test_base.BaseTest):
       a = {1}
       def f(x):
         return a & x
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Iterable, Set
       a = ...  # type: Set[int]
@@ -169,7 +169,7 @@ class ProtocolInferenceTest(test_base.BaseTest):
       from __future__ import google_type_annotations
       def f(x):
         return x.lower()
-     """, deep=True)
+     """)
     self.assertTypesMatchPytd(ty, """
       import protocols
       from typing import Any
@@ -182,7 +182,7 @@ class ProtocolInferenceTest(test_base.BaseTest):
       from __future__ import google_type_annotations
       def f(x, y):
           return y in x
-     """, deep=True)
+     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Container
       def f(x: Container, y:Any) -> bool
@@ -194,7 +194,7 @@ class ProtocolInferenceTest(test_base.BaseTest):
       from __future__ import google_type_annotations
       def f(x):
         return x.__int__()
-      """, deep=True)
+      """)
     self.assertTypesMatchPytd(ty, """
       from typing import SupportsInt
       def f(x: SupportsInt) -> ?
@@ -206,7 +206,7 @@ class ProtocolInferenceTest(test_base.BaseTest):
       from __future__ import google_type_annotations
       def f(x):
           return x.__float__()
-      """, deep=True)
+      """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, SupportsFloat
       def f(x: SupportsFloat) -> ?
@@ -218,7 +218,7 @@ class ProtocolInferenceTest(test_base.BaseTest):
       from __future__ import google_type_annotations
       def f(x):
         return x.__complex__()
-      """, deep=True)
+      """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, SupportsComplex
       def f(x: SupportsComplex) -> Any
@@ -230,7 +230,7 @@ class ProtocolInferenceTest(test_base.BaseTest):
       from __future__ import google_type_annotations
       def f(x):
         return x.__len__()
-      """, deep=True)
+      """)
     self.assertTypesMatchPytd(ty, """
       from typing import Sized
       def f(x: Sized) -> ?
@@ -243,7 +243,7 @@ class ProtocolInferenceTest(test_base.BaseTest):
       def f(x):
         y = abs(x)
         return y.__len__()
-      """, deep=True)
+      """)
     self.assertTypesMatchPytd(ty, """
       from typing import SupportsAbs, Sized
       def f(x: SupportsAbs[Sized]) -> ?
@@ -256,7 +256,7 @@ class ProtocolInferenceTest(test_base.BaseTest):
       from __future__ import google_type_annotations
       def f(x):
         y = x.__round__()
-      """, deep=True)
+      """)
     self.assertTypesMatchPytd(ty, """
       from typing import SupportsRound
       def f(x: SupportsRound) -> ?
@@ -269,7 +269,7 @@ class ProtocolInferenceTest(test_base.BaseTest):
       def f(x):
         y = x.__reversed__()
         return y
-      """, deep=True)
+      """)
     self.assertTypesMatchPytd(ty, """
       from typing import Iterator, Reversible
       def f(x: Reversible) -> Iterator
@@ -281,7 +281,7 @@ class ProtocolInferenceTest(test_base.BaseTest):
       from __future__ import google_type_annotations
       def f(x):
         return x.__iter__()
-      """, deep=True)
+      """)
     self.assertTypesMatchPytd(ty, """
       from typing import Iterable, Iterator
       def f(x: Iterable) -> Iterator
@@ -294,7 +294,7 @@ class ProtocolInferenceTest(test_base.BaseTest):
       from __future__ import google_type_annotations
       def f(x):
         return x.next()
-      """, deep=True)
+      """)
     self.assertTypesMatchPytd(ty, """
       from typing import Iterator
       def f(x: Iterator) -> ?
@@ -306,7 +306,7 @@ class ProtocolInferenceTest(test_base.BaseTest):
       from __future__ import google_type_annotations
       def f(x):
         return x().lower()
-      """, deep=True)
+      """)
     self.assertTypesMatchPytd(ty, """
       import protocols
       from typing import Any, Callable
@@ -322,7 +322,7 @@ class ProtocolInferenceTest(test_base.BaseTest):
         x.index(6)
         x.count(7)
         return x.__getitem__(5) + x[1:5]
-      """, deep=True)
+      """)
     self.assertTypesMatchPytd(ty, """
       import protocols
       from typing import Any, Sequence
@@ -337,7 +337,7 @@ class ProtocolInferenceTest(test_base.BaseTest):
       def f(x):
         x.__enter__()
         x.__exit__(None, None, None)
-      """, deep=True)
+      """)
     self.assertTypesMatchPytd(ty, """
       import protocols
       from typing import ContextManager
@@ -356,7 +356,7 @@ class ProtocolInferenceTest(test_base.BaseTest):
         import foo
         def g(y):
           return foo.f(y)
-      """, pythonpath=[d.path], deep=True)
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Sized, SupportsAbs
         foo = ...  # type: module
@@ -375,7 +375,7 @@ class ProtocolInferenceTest(test_base.BaseTest):
         import foo
         def g(y):
           return foo.f(y)
-      """, pythonpath=[d.path], deep=True)
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import SupportsAbs
         foo = ...  # type: module
@@ -389,7 +389,7 @@ class ProtocolInferenceTest(test_base.BaseTest):
       from __future__ import google_type_annotations
       def f(x, y):
         return x.__getitem__(y)
-      """, deep=True)
+      """)
     self.assertTypesMatchPytd(ty, """
       from typing import Mapping
       def f(x: Mapping, y) -> ?
@@ -401,7 +401,7 @@ class ProtocolInferenceTest(test_base.BaseTest):
       from __future__ import google_type_annotations
       def f(x):
         return x.upper()
-     """, deep=True)
+     """)
     self.assertTypesMatchPytd(ty, """
       import protocols
       from typing import Any
@@ -414,7 +414,7 @@ class ProtocolInferenceTest(test_base.BaseTest):
       from __future__ import google_type_annotations
       def f(x):
         return x.startswith("foo")
-     """, deep=True)
+     """)
     self.assertTypesMatchPytd(ty, """
       import protocols
       from typing import Any
@@ -427,7 +427,7 @@ class ProtocolInferenceTest(test_base.BaseTest):
       from __future__ import google_type_annotations
       def f(x):
         return x.endswith("foo")
-     """, deep=True)
+     """)
     self.assertTypesMatchPytd(ty, """
       import protocols
       from typing import Any
@@ -440,7 +440,7 @@ class ProtocolInferenceTest(test_base.BaseTest):
       from __future__ import google_type_annotations
       def f(x):
         return x.lstrip()
-     """, deep=True)
+     """)
     self.assertTypesMatchPytd(ty, """
       import protocols
       from typing import Any
@@ -453,7 +453,7 @@ class ProtocolInferenceTest(test_base.BaseTest):
       from __future__ import google_type_annotations
       def f(x):
         return x.replace("foo", "bar")
-     """, deep=True)
+     """)
     self.assertTypesMatchPytd(ty, """
       import protocols
       from typing import Any
@@ -466,7 +466,7 @@ class ProtocolInferenceTest(test_base.BaseTest):
       from __future__ import google_type_annotations
       def f(x):
         return x.encode()
-     """, deep=True)
+     """)
     self.assertTypesMatchPytd(ty, """
       import protocols
       from typing import Any
@@ -479,7 +479,7 @@ class ProtocolInferenceTest(test_base.BaseTest):
       from __future__ import google_type_annotations
       def f(x):
         return x.decode()
-     """, deep=True)
+     """)
     self.assertTypesMatchPytd(ty, """
       import protocols
       from typing import Any
@@ -492,7 +492,7 @@ class ProtocolInferenceTest(test_base.BaseTest):
       from __future__ import google_type_annotations
       def f(x):
         return x.splitlines()
-     """, deep=True)
+     """)
     self.assertTypesMatchPytd(ty, """
       import protocols
       from typing import Any
@@ -505,7 +505,7 @@ class ProtocolInferenceTest(test_base.BaseTest):
       from __future__ import google_type_annotations
       def f(x):
         return x.split()
-     """, deep=True)
+     """)
     self.assertTypesMatchPytd(ty, """
       import protocols
       from typing import Any
@@ -518,7 +518,7 @@ class ProtocolInferenceTest(test_base.BaseTest):
       from __future__ import google_type_annotations
       def f(x):
         return x.strip()
-     """, deep=True)
+     """)
     self.assertTypesMatchPytd(ty, """
       import protocols
       from typing import Any
@@ -531,7 +531,7 @@ class ProtocolInferenceTest(test_base.BaseTest):
       from __future__ import google_type_annotations
       def f(x):
         return x.find("foo")
-     """, deep=True)
+     """)
     self.assertTypesMatchPytd(ty, """
       import protocols
       from typing import Any

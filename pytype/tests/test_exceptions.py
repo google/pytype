@@ -193,7 +193,7 @@ class TestExceptions(test_base.BaseTest):
 
       def bar(x):
         return Foo(x)
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       class Foo(Exception):
         pass
@@ -215,7 +215,7 @@ class TestExceptions(test_base.BaseTest):
           warnings.warn(
             "set_prefix() is deprecated; use the prefix property",
             DeprecationWarning, stacklevel=2)
-      """, pythonpath=[d.path], deep=True)
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         warnings = ...  # type: module
         def warn() -> None
@@ -229,7 +229,7 @@ class TestExceptions(test_base.BaseTest):
           return 42
         except Exception:
           return 42
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       def foo() -> int
     """)
@@ -241,7 +241,7 @@ class TestExceptions(test_base.BaseTest):
           return 42
         except Exception:
           return 1+3j
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       def foo() -> int
     """)
@@ -254,7 +254,7 @@ class TestExceptions(test_base.BaseTest):
           return 42
         except:
           return 1+3j
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Union
 

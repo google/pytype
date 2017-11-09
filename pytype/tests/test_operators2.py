@@ -12,7 +12,7 @@ class OperatorsWithAnyTests(test_base.BaseTest):
     ty = self.Infer("""
       def t_testAdd1(x):
         return x + 2.0
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       def t_testAdd1(x: int or float or complex or bool) -> float or complex
     """)
@@ -23,7 +23,7 @@ class OperatorsWithAnyTests(test_base.BaseTest):
     ty = self.Infer("""
       def t_testAdd2(x):
         return 2.0 + x
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       def t_testAdd2(x: int or float or complex or bool) -> float or complex
     """)
@@ -33,7 +33,7 @@ class OperatorsWithAnyTests(test_base.BaseTest):
     ty = self.Infer("""
       def t_testAdd3(x):
         return x + "abc"
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       def t_testAdd3(x) -> Any
@@ -44,7 +44,7 @@ class OperatorsWithAnyTests(test_base.BaseTest):
     ty = self.Infer("""
       def t_testAdd4(x):
         return "abc" + x
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       def t_testAdd4(x) -> Any
@@ -57,7 +57,7 @@ class OperatorsWithAnyTests(test_base.BaseTest):
       def t_testAdd5(x):
         x += "42"
         return x
-    """, deep=True)
+    """)
     # Currently missing str and unicode
     self.assertTypesMatchPytd(ty, """
       def t_testAdd5(x: str or unicode or bytearray or list[?]) -> str or unicode or bytearray or list[?]
@@ -67,7 +67,7 @@ class OperatorsWithAnyTests(test_base.BaseTest):
     ty = self.Infer("""
       def t_testPow1(x, y):
         return x ** y
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       def t_testPow1(x, y) -> Any
@@ -78,7 +78,7 @@ class OperatorsWithAnyTests(test_base.BaseTest):
       def t_testIsinstance1(x):
         # TODO: if isinstance(x, int): return "abc" else: return None
         return isinstance(x, int)
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       def t_testIsinstance1(x) -> bool
     """)

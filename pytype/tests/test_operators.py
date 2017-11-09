@@ -346,7 +346,7 @@ class ReverseTest(test_base.BaseTest):
           return t | (1, 2)
         def g(t):
           return (1, 2) | t
-      """, pythonpath=[d.path], deep=True)
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         test = ...  # type: module

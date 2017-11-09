@@ -18,7 +18,7 @@ class RecoveryTests(test_base.BaseTest):
       def f():
         t = 0.0
         return t - ("bla" - t)
-    """, deep=True, report_errors=False)
+    """, report_errors=False)
     self.assertTypesMatchPytd(ty, """
       def f() -> ?
     """)
@@ -27,7 +27,7 @@ class RecoveryTests(test_base.BaseTest):
     ty = self.Infer("""
       def f():
         return "%s" % chr("foo")
-    """, deep=True, report_errors=False)
+    """, report_errors=False)
     self.assertTypesMatchPytd(ty, """
       def f() -> str
     """)
@@ -39,7 +39,7 @@ class RecoveryTests(test_base.BaseTest):
         return time.unknown_function(3)
       def g():
         return '%s' % f()
-    """, deep=True, report_errors=False)
+    """, report_errors=False)
     self.assertTypesMatchPytd(ty, """
       time = ...  # type: module
       def f() -> ?
@@ -50,7 +50,7 @@ class RecoveryTests(test_base.BaseTest):
     ty = self.Infer("""
       class Foo(3):
         pass
-    """, deep=True, report_errors=False)
+    """, report_errors=False)
     self.assertTypesMatchPytd(ty, """
       class Foo(?):
         pass
@@ -62,7 +62,7 @@ class RecoveryTests(test_base.BaseTest):
       class A(x):
         pass
       pow(A(), 2)
-    """, deep=True, report_errors=False)
+    """, report_errors=False)
     self.assertTypesMatchPytd(ty, """
       x = ...  # type: ?
       class A(?):
@@ -85,7 +85,7 @@ class RecoveryTests(test_base.BaseTest):
       object.bar(int)
       class C:
         pass
-    """, deep=True, report_errors=False)
+    """, report_errors=False)
     self.assertTypesMatchPytd(ty, """
       class A:
         pass
@@ -103,7 +103,7 @@ class RecoveryTests(test_base.BaseTest):
         pass
       f("foo")
       x = 3
-    """, deep=True, report_errors=False)
+    """, report_errors=False)
     self.assertTypesMatchPytd(ty, """
       def f() -> None: ...
       x = ...  # type: int
@@ -116,7 +116,7 @@ class RecoveryTests(test_base.BaseTest):
           self.foo = 3
         def foo(self):
           pass
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       class A(object):

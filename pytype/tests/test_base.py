@@ -294,7 +294,7 @@ class BaseTest(unittest.TestCase):
     ast = serialize_ast.PrepareForExport(module_name, self.PYTHON_VERSION, ast)
     return serialize_ast.StoreAst(ast)
 
-  def Infer(self, srccode, pythonpath=(), deep=False,
+  def Infer(self, srccode, pythonpath=(), deep=True,
             report_errors=True, analyze_annotated=True, pickle=False,
             module_name=None, **kwargs):
     types, builtins_pytd = self._InferAndVerify(
