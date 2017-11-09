@@ -259,22 +259,24 @@ class TestIt(test_base.BaseTest):
       """)
 
   def test_deleting_names(self):
-    self.Check("""\
+    # TODO(rechen): We should report a name error for the last g access.
+    self.assertNoCrash(self.Check, """\
       g = 17
       assert g == 17
       del g
       g
-      """, raises=NameError)
+    """)
 
   def test_deleting_local_names(self):
-    self.Check("""\
+    # TODO(rechen): We should report a name error for the last l access.
+    self.assertNoCrash(self.Check, """\
       def f():
         l = 23
         assert l == 23
         del l
         l
       f()
-      """, raises=NameError)
+    """)
 
   def test_import(self):
     self.Check("""\
@@ -374,16 +376,16 @@ class TestIt(test_base.BaseTest):
       print(t.x)
       """)
 
-  @unittest.skip("Raises AttributeError, like it should. Fix Check.")
   def test_attribute_access_error(self):
-    self.Check("""\
+    errors = self.CheckWithErrors("""\
       class Thing(object):
         z = 17
         def __init__(self):
           self.x = 23
       t = Thing()
       print(t.xyzzy)
-      """, raises=AttributeError)
+      """)
+    self.assertErrorLogIs(errors, [(6, "attribute-error", r"xyzzy.*Thing")])
 
   def test_staticmethods(self):
     self.Check("""\

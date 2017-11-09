@@ -98,12 +98,9 @@ class BaseTest(unittest.TestCase):
   # For historical reasons (byterun), this method name is snakecase:
   # TODO(kramm): Rename this function.
   # pylint: disable=invalid-name
-  def Check(self, code, raises=None, pythonpath=(), skip_repeat_calls=True,
+  def Check(self, code, pythonpath=(), skip_repeat_calls=True,
             report_errors=True, filename=None, **kwargs):
     """Run an inference smoke test for the given code."""
-    if raises is not None:
-      # TODO(kramm): support this
-      log.warning("Ignoring 'raises' parameter to Check")
     self.options.tweak(pythonpath=pythonpath,
                        skip_repeat_calls=skip_repeat_calls)
     errorlog = errors.ErrorLog()
@@ -116,7 +113,7 @@ class BaseTest(unittest.TestCase):
       pass
     if report_errors and len(errorlog):
       errorlog.print_to_stderr()
-      self.fail("Inferencer found %d errors" % len(errorlog))
+      self.fail("Checker found %d errors" % len(errorlog))
 
   def assertNoCrash(self, method, code, **kwargs):
     method(code, report_errors=False, **kwargs)

@@ -37,13 +37,13 @@ class TestExceptions(test_base.BaseTest):
       """)
 
   def test_raise_exception(self):
-    self.Check("raise Exception('oops')", raises=Exception)
+    self.Check("raise Exception('oops')")
 
   def test_raise_exception_class(self):
-    self.Check("raise ValueError", raises=ValueError)
+    self.Check("raise ValueError")
 
   def test_raise_exception_2args(self):
-    self.Check("raise ValueError, 'bad'", raises=ValueError)
+    self.Check("raise ValueError, 'bad'")
 
   def test_raise_exception_3args(self):
     self.Check("""\
@@ -53,7 +53,7 @@ class TestExceptions(test_base.BaseTest):
       except:
         _, _, tb = exc_info()
       raise ValueError, "message", tb
-      """, raises=ValueError)
+      """)
 
   def test_raise_and_catch_exception(self):
     self.Check("""\
@@ -67,10 +67,7 @@ class TestExceptions(test_base.BaseTest):
   @unittest.skip("Python 3 specific")
   def test_raise_exception_from(self):
     assert self.PYTHON_VERSION[0] == 3
-    self.Check(
-        "raise ValueError from NameError",
-        raises=ValueError
-    )
+    self.Check("raise ValueError from NameError")
 
   def test_raise_and_catch_exception_in_function(self):
     self.Check("""\
@@ -85,7 +82,8 @@ class TestExceptions(test_base.BaseTest):
       """)
 
   def test_global_name_error(self):
-    self.assertNoCrash(self.Check, "fooey", raises=NameError)
+    errors = self.CheckWithErrors("fooey")
+    self.assertErrorLogIs(errors, [(1, "name-error", r"fooey")])
     # TODO(kramm): Don't warn about NameErrors that are being caught.
     self.assertNoCrash(self.Check, """\
       try:
@@ -93,14 +91,15 @@ class TestExceptions(test_base.BaseTest):
         print("Yes fooey?")
       except NameError:
         print("No fooey")
-      """)
+    """)
 
   def test_local_name_error(self):
-    self.assertNoCrash(self.Check, """\
+    errors = self.CheckWithErrors("""\
       def fn():
         fooey
       fn()
-      """, raises=NameError)
+    """)
+    self.assertErrorLogIs(errors, [(2, "name-error", r"fooey")])
 
   def test_catch_local_name_error(self):
     self.assertNoCrash(self.Check, """\
@@ -114,7 +113,7 @@ class TestExceptions(test_base.BaseTest):
       """)
 
   def test_reraise(self):
-    self.assertNoCrash(self.Check, """\
+    errors = self.CheckWithErrors("""\
       def fn():
         try:
           fooey
@@ -123,7 +122,8 @@ class TestExceptions(test_base.BaseTest):
           print("No fooey")
           raise
       fn()
-      """, raises=NameError)
+    """)
+    self.assertErrorLogIs(errors, [(3, "name-error", r"fooey")])
 
   def test_reraise_explicit_exception(self):
     self.Check("""\
@@ -134,7 +134,7 @@ class TestExceptions(test_base.BaseTest):
           print("Caught %s" % e)
           raise
       fn()
-      """, raises=ValueError)
+    """)
 
   def test_finally_while_throwing(self):
     self.Check("""\
@@ -146,7 +146,7 @@ class TestExceptions(test_base.BaseTest):
           print("Finally")
       fn()
       print("Done")
-      """, raises=ValueError)
+    """)
 
   def test_coverage_issue_92(self):
     self.Check("""\
