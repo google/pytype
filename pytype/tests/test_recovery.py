@@ -70,7 +70,7 @@ class RecoveryTests(test_base.BaseTest):
     """)
 
   def testObjectAttr(self):
-    self.assertNoCrash("""
+    self.assertNoCrash(self.Check, """
       object.bla(int)
     """)
 

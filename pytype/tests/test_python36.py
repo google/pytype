@@ -209,7 +209,7 @@ class TestPython36(test_base.BaseTest):
   def test_reraise(self):
     # Test that we don't crash when trying to reraise a nonexistent exception.
     # (Causes a runtime error when actually run in python 3.6)
-    self.assertNoCrash("""
+    self.assertNoCrash(self.Check, """
       raise
     """)
 

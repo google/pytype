@@ -8,12 +8,12 @@ class SpecialBuiltinsTest(test_base.BaseTest):
   """Tests for special_builtins.py."""
 
   def testNext(self):
-    self.assertNoCrash("""
+    self.assertNoCrash(self.Check, """
       next(None)
     """)
 
   def testNext2(self):
-    self.assertNoCrash("""
+    self.assertNoCrash(self.Check, """
       class Foo(object):
         def a(self):
           self._foo = None
@@ -24,7 +24,7 @@ class SpecialBuiltinsTest(test_base.BaseTest):
     """)
 
   def testAbs(self):
-    self.assertNoCrash("""
+    self.assertNoCrash(self.Check, """
       abs(None)
     """)
 

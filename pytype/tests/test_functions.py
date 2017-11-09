@@ -118,13 +118,13 @@ class TestGenerators(test_base.BaseTest):
       """)
 
   def test_unsolvable(self):
-    self.assertNoCrash("""\
+    self.assertNoCrash(self.Check, """\
       assert list(three) == [3,2,1]
       """)
 
   def test_yield_multiple_values(self):
     # TODO(kramm): The generator doesn't have __iter__?
-    self.assertNoCrash("""\
+    self.assertNoCrash(self.Check, """\
       def triples():
         yield 1, 2, 3
         yield 4, 5, 6
@@ -152,7 +152,7 @@ class TestGenerators(test_base.BaseTest):
 
   def test_generator_from_generator(self):
     # TODO(kramm): The generator doesn't have __iter__?
-    self.assertNoCrash("""\
+    self.assertNoCrash(self.Check, """\
       class Thing(object):
         RESOURCES = ('abc', 'def')
         def get_abc(self):
@@ -799,7 +799,7 @@ class TestFunctions(test_base.BaseTest):
 
 
   def testSetBuiltinDefaults(self):
-    self.assertNoCrash("""
+    self.assertNoCrash(self.Check, """
       import os
       os.chdir.__defaults__ = ("/",)
       os.chdir()

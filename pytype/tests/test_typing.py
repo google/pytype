@@ -134,7 +134,7 @@ class TypingTest(test_base.BaseTest):
                            (7, "invalid-typevar")])
 
   def test_cast_args(self):
-    self.assertNoCrash("""\
+    self.assertNoCrash(self.Check, """\
       import typing
       typing.cast(typing.AnyStr)
       typing.cast("str")

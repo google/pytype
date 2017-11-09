@@ -137,7 +137,7 @@ class NamedtupleTests(test_base.BaseTest):
         collections.namedtuple(typename="_", field_names="a")
         collections.namedtuple("_", "", True, False)
         """)
-    self.assertNoCrash("""
+    self.assertNoCrash(self.Check, """
       collections.namedtuple(u"foo", [])
       collections.namedtuple(u"foo", [], replace=True if __random__ else False)
       collections.namedtuple(1.0, [])

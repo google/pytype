@@ -297,7 +297,7 @@ class EqTest(test_base.BaseTest):
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.bool)
 
   def test_primitive_against_unknown(self):
-    self.assertNoCrash("""
+    self.assertNoCrash(self.Check, """
       v = None  # type: int
       v == __any_object__
     """)

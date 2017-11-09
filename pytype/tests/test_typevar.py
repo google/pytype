@@ -612,7 +612,7 @@ class TypeVarTest(test_base.BaseTest):
     """)
 
   def testBadReturn(self):
-    self.assertNoCrash("""\
+    self.assertNoCrash(self.Check, """\
       from __future__ import google_type_annotations
       from typing import AnyStr, Dict
 

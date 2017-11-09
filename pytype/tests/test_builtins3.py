@@ -229,7 +229,7 @@ class BuiltinTests2(test_base.BaseTest):
     """)
 
   def testHasAttrNone(self):
-    self.assertNoCrash("hasattr(int, None)")
+    self.assertNoCrash(self.Check, "hasattr(int, None)")
 
   def testNumberAttrs(self):
     ty = self.Infer("""\

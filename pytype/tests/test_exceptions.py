@@ -12,7 +12,7 @@ class TestExceptions(test_base.BaseTest):
   def test_catching_exceptions(self):
     # TODO(kramm): Don't warn about NameErrors that are being caught.
     # Catch the exception precisely
-    self.assertNoCrash("""\
+    self.assertNoCrash(self.Check, """\
       try:
         x[1]
         print("Shouldn't be here...")
@@ -20,7 +20,7 @@ class TestExceptions(test_base.BaseTest):
         print("caught it!")
       """)
     # Catch the exception by a parent class
-    self.assertNoCrash("""\
+    self.assertNoCrash(self.Check, """\
       try:
         x[1]
         print("Shouldn't be here...")
@@ -28,7 +28,7 @@ class TestExceptions(test_base.BaseTest):
         print("caught it!")
       """)
     # Catch all exceptions
-    self.assertNoCrash("""\
+    self.assertNoCrash(self.Check, """\
       try:
         x[1]
         print("Shouldn't be here...")
@@ -85,9 +85,9 @@ class TestExceptions(test_base.BaseTest):
       """)
 
   def test_global_name_error(self):
-    self.assertNoCrash("fooey", raises=NameError)
+    self.assertNoCrash(self.Check, "fooey", raises=NameError)
     # TODO(kramm): Don't warn about NameErrors that are being caught.
-    self.assertNoCrash("""\
+    self.assertNoCrash(self.Check, """\
       try:
         fooey
         print("Yes fooey?")
@@ -96,14 +96,14 @@ class TestExceptions(test_base.BaseTest):
       """)
 
   def test_local_name_error(self):
-    self.assertNoCrash("""\
+    self.assertNoCrash(self.Check, """\
       def fn():
         fooey
       fn()
       """, raises=NameError)
 
   def test_catch_local_name_error(self):
-    self.assertNoCrash("""\
+    self.assertNoCrash(self.Check, """\
       def fn():
         try:
           fooey
@@ -114,7 +114,7 @@ class TestExceptions(test_base.BaseTest):
       """)
 
   def test_reraise(self):
-    self.assertNoCrash("""\
+    self.assertNoCrash(self.Check, """\
       def fn():
         try:
           fooey

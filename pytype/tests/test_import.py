@@ -28,7 +28,7 @@ class ImportTest(test_base.BaseTest):
     """)
 
   def testFromImportSmoke(self):
-    self.assertNoCrash("""\
+    self.assertNoCrash(self.Check, """\
       from sys import exit
       from path.to.module import bar, baz
       """)
@@ -53,7 +53,7 @@ class ImportTest(test_base.BaseTest):
       """)
 
   def testStarImportUnknownSmoke(self):
-    self.assertNoCrash("""\
+    self.assertNoCrash(self.Check, """\
       from unknown_module import *
       """)
 
@@ -137,7 +137,7 @@ class ImportTest(test_base.BaseTest):
       """)
 
   def testImportAll(self):
-    self.assertNoCrash("""\
+    self.assertNoCrash(self.Check, """\
       from module import *
       from path.to.module import *
       """)
@@ -856,7 +856,7 @@ class ImportTest(test_base.BaseTest):
       d.create_file("foo.pyi", """
         def f(x: FooBar) -> FooBar
       """)
-      self.assertNoCrash("""\
+      self.assertNoCrash(self.Check, """\
         import foo
       """, pythonpath=[d.path])
 
@@ -879,7 +879,7 @@ class ImportTest(test_base.BaseTest):
     with utils.Tempdir() as d:
       d.create_file("foo/__init__.pyi", "")
       d.create_file("foo/bar.pyi", "nonsense")
-      self.assertNoCrash("""
+      self.assertNoCrash(self.Check, """
         import foo
         x = foo.bar
       """, pythonpath=[d.path])

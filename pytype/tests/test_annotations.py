@@ -288,7 +288,7 @@ class AnnotationTest(test_base.BaseTest):
     """)
 
   def testUnsolvable(self):
-    self.assertNoCrash("""\
+    self.assertNoCrash(self.Check, """\
       from __future__ import google_type_annotations
       import unknown_module
       def f(x: unknown_module.Iterable):
@@ -383,7 +383,7 @@ class AnnotationTest(test_base.BaseTest):
     ])
 
   def testGenericAndTypeVar(self):
-    self.assertNoCrash("""\
+    self.assertNoCrash(self.Check, """\
       from __future__ import google_type_annotations
       import typing
       _T = typing.TypeVar("_T")

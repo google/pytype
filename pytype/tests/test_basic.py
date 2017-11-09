@@ -19,7 +19,7 @@ class TestIt(test_base.BaseTest):
       """)
 
   def test_inplace_operators(self):
-    self.assertNoCrash("""\
+    self.assertNoCrash(self.Check, """\
       x, y = 2, 3
       x **= y
       assert x == 8 and y == 3
@@ -48,7 +48,7 @@ class TestIt(test_base.BaseTest):
       """)
 
   def test_inplace_division(self):
-    self.assertNoCrash("""\
+    self.assertNoCrash(self.Check, """\
       x, y = 24, 3
       x /= y
       assert x == 8 and y == 3
@@ -219,7 +219,7 @@ class TestIt(test_base.BaseTest):
 
   def test_strange_sequence_ops(self):
     # from stdlib: test/test_augassign.py
-    self.assertNoCrash("""\
+    self.assertNoCrash(self.Check, """\
       x = [1,2]
       x += [3,4]
       x *= 2
@@ -251,7 +251,7 @@ class TestIt(test_base.BaseTest):
       """)
 
   def test_attribute_inplace_ops(self):
-    self.assertNoCrash("""\
+    self.assertNoCrash(self.Check, """\
       l = lambda: 1   # Just to have an object...
       l.foo = 17
       l.foo -= 3
@@ -427,14 +427,14 @@ class TestIt(test_base.BaseTest):
       """)
 
   def test_exec_statement_python2(self):
-    self.assertNoCrash("""\
+    self.assertNoCrash(self.Check, """\
       g = {}
       exec "a = 11" in g, g
       assert g['a'] == 11
       """)
 
   def test_exec_statement_python3(self):
-    self.assertNoCrash("""\
+    self.assertNoCrash(self.Check, """\
       g = {}
       exec("a = 11", g, g)
       assert g['a'] == 11

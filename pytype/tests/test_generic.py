@@ -481,7 +481,7 @@ class GenericTest(test_base.BaseTest):
         T = TypeVar("T")
         class Foo(List[T]): pass
       """)
-      self.assertNoCrash("""
+      self.assertNoCrash(self.Check, """
         import a
         def f():
           x = a.Foo()

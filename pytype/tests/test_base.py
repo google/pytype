@@ -118,8 +118,8 @@ class BaseTest(unittest.TestCase):
       errorlog.print_to_stderr()
       self.fail("Inferencer found %d errors" % len(errorlog))
 
-  def assertNoCrash(self, code, **kwargs):
-    self.Check(code, report_errors=False, **kwargs)
+  def assertNoCrash(self, method, code, **kwargs):
+    method(code, report_errors=False, **kwargs)
 
   def _SetUpErrorHandling(self, code, pythonpath):
     self.options.tweak(pythonpath=pythonpath)
