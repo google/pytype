@@ -44,11 +44,11 @@ def _read_source_file(input_filename):
 
 
 def check_pyi(input_filename, errorlog, options):
-  py_src = _read_source_file(input_filename)
+  src = _read_source_file(input_filename)
   analyze.check_types(
-      py_src=py_src,
+      src=src,
       loader=_create_loader(input_filename, options),
-      py_filename=input_filename,
+      filename=input_filename,
       errorlog=errorlog,
       options=options,
       deep=not options.main_only)

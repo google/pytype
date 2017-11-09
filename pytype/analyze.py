@@ -623,15 +623,15 @@ def get_module_name(filename, options):
     return _filename_to_module_name(filename)
 
 
-def check_types(py_src, py_filename, errorlog, options, loader,
+def check_types(src, filename, errorlog, options, loader,
                 deep=True, init_maximum_depth=INIT_MAXIMUM_DEPTH, **kwargs):
   """Verify a PyTD against the Python code."""
   tracer = CallTracer(errorlog=errorlog, options=options,
-                      module_name=get_module_name(py_filename, options),
+                      module_name=get_module_name(filename, options),
                       analyze_annotated=True,
                       generate_unknowns=False,
                       loader=loader, **kwargs)
-  loc, defs = tracer.run_program(py_src, py_filename, init_maximum_depth)
+  loc, defs = tracer.run_program(src, filename, init_maximum_depth)
   snapshotter = metrics.get_metric("memory", metrics.Snapshot)
   snapshotter.take_snapshot("analyze:check_types:tracer")
   if deep:

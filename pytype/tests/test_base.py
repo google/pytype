@@ -121,18 +121,27 @@ class BaseTest(unittest.TestCase):
   def assertNoCrash(self, code, **kwargs):
     self.Check(code, report_errors=False, **kwargs)
 
-  def InferWithErrors(self, code, deep=True, pythonpath=(), **kwargs):
+  def _SetUpErrorHandling(self, code, pythonpath):
     self.options.tweak(pythonpath=pythonpath)
     code = textwrap.dedent(code)
     errorlog = errors.ErrorLog()
     loader = load_pytd.Loader(self.options.module_name, self.options)
+    return {"src": code, "errorlog": errorlog, "options": self.options,
+            "loader": loader}
+
+  def InferWithErrors(self, code, deep=True, pythonpath=(), **kwargs):
+    kwargs.update(self._SetUpErrorHandling(code, pythonpath))
     unit, builtins_pytd = analyze.infer_types(
-        code, errorlog, self.options, loader=loader, deep=deep,
-        analyze_annotated=True, **kwargs)
+        deep=deep, analyze_annotated=True, **kwargs)
     unit.Visit(visitors.VerifyVisitor())
     unit = optimize.Optimize(unit, builtins_pytd, lossy=False, use_abcs=False,
                              max_union=7, remove_mutable=False)
-    return pytd_utils.CanonicalOrdering(unit), errorlog
+    return pytd_utils.CanonicalOrdering(unit), kwargs["errorlog"]
+
+  def CheckWithErrors(self, code, deep=True, pythonpath=(), **kwargs):
+    kwargs.update(self._SetUpErrorHandling(code, pythonpath))
+    analyze.check_types(filename="<inline>", deep=deep, **kwargs)
+    return kwargs["errorlog"]
 
   def InferFromFile(self, filename, pythonpath):
     self.options.tweak(pythonpath=pythonpath)
