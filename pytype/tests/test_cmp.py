@@ -331,7 +331,7 @@ class InstanceUnequalityTest(test_base.BaseTest):
 
   def test_is(self):
     """SomeType is not be the same as AnotherType."""
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import google_type_annotations
       from typing import Optional
       def f(x: Optional[str]) -> NoneType:
@@ -342,7 +342,7 @@ class InstanceUnequalityTest(test_base.BaseTest):
       """)
 
   def testIteratorContains(self):
-    self.assertNoErrors("""
+    self.Check("""
       1 in iter((1, 2))
       1 not in iter((1, 2))
     """)

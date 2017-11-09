@@ -84,7 +84,7 @@ class BuiltinTests2(test_base.BaseTest):
     self.assertErrorLogIs(errors, [(1, "name-error")])
 
   def testExplicitTypeVarImport(self):
-    self.assertNoErrors("""
+    self.Check("""
       from __builtin__ import _T
       _T
     """)
@@ -208,7 +208,7 @@ class BuiltinTests2(test_base.BaseTest):
           2
           3
           """)
-      self.assertNoErrors("""\
+      self.Check("""\
           with open("newlines.txt", "rU") as f:
             for line in f:
               print line
@@ -216,14 +216,14 @@ class BuiltinTests2(test_base.BaseTest):
           """)
 
   def testInitWithUnicode(self):
-    self.assertNoErrors("""
+    self.Check("""
         int(u"123.0")
         float(u"123.0")
         complex(u"123.0")
     """)
 
   def testIOWrite(self):
-    self.assertNoErrors("""
+    self.Check("""
         import sys
         sys.stdout.write(bytearray([1,2,3]))
     """)
@@ -260,7 +260,7 @@ class BuiltinTests2(test_base.BaseTest):
     """)
 
   def testFilename(self):
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import google_type_annotations
       def foo(s: str) -> str:
         return s
@@ -270,7 +270,7 @@ class BuiltinTests2(test_base.BaseTest):
   def testBuiltins(self):
     # This module doesn't exist, on Python 2. However, it exists in typeshed, so
     # make sure that we don't break (report pyi-error) when we import it.
-    self.assertNoErrors("""
+    self.Check("""
       import builtins  # pytype: disable=import-error
     """)
 

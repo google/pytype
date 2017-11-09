@@ -12,7 +12,7 @@ class AnnotationTest(test_base.BaseTest):
 
   def testNoneUnpackingIs(self):
     """Tests that is works with None."""
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import google_type_annotations
       from typing import Optional
       def f(x: Optional[str]) -> str:
@@ -23,7 +23,7 @@ class AnnotationTest(test_base.BaseTest):
 
   def testNoneUnpackingIsNot(self):
     """Tests that is not works with None."""
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import google_type_annotations
       from typing import Optional
       def f(x: Optional[str]) -> str:
@@ -89,7 +89,7 @@ class AnnotationTest(test_base.BaseTest):
     self.assertErrorLogIs(errors, [(5, "wrong-arg-types", r"x: int.*x: float")])
 
   def testAmbiguousArg(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       from __future__ import google_type_annotations
       def f(x: int):
         return x
@@ -247,7 +247,7 @@ class AnnotationTest(test_base.BaseTest):
     """)
 
   def testCompatBool(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       from __future__ import google_type_annotations
       def bar(x: bool) -> bool:
         return None
@@ -255,7 +255,7 @@ class AnnotationTest(test_base.BaseTest):
     """)
 
   def testCompatFloat(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       from __future__ import google_type_annotations
       def bar(x: float) -> float:
         return 1
@@ -264,7 +264,7 @@ class AnnotationTest(test_base.BaseTest):
 
   def testCompatUnicodeStr(self):
     # Use str to be identical in py2 and py3
-    self.assertNoErrors("""\
+    self.Check("""\
       from __future__ import google_type_annotations
       def bar(x: unicode) -> unicode:
         return str("foo")
@@ -272,7 +272,7 @@ class AnnotationTest(test_base.BaseTest):
     """)
 
   def testCompatUnicodeBytes(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       from __future__ import google_type_annotations
       def bar(x: unicode) -> unicode:
         return b"foo"
@@ -280,7 +280,7 @@ class AnnotationTest(test_base.BaseTest):
     """)
 
   def testCompatUnicodeUnicode(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       from __future__ import google_type_annotations
       def bar(x: unicode) -> unicode:
         return u"foo"
@@ -392,7 +392,7 @@ class AnnotationTest(test_base.BaseTest):
     """)
 
   def testJumpIntoClassThroughAnnotation(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       from __future__ import google_type_annotations
       class Foo(object):
         def __init__(self) -> None:
@@ -405,7 +405,7 @@ class AnnotationTest(test_base.BaseTest):
     """)
 
   def testForwardDeclarations(self):
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import google_type_annotations
 
       def f(a: "B"):
@@ -414,7 +414,7 @@ class AnnotationTest(test_base.BaseTest):
       class B(object):
         pass
     """)
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import google_type_annotations
 
       def f(a) -> "B":
@@ -437,7 +437,7 @@ class AnnotationTest(test_base.BaseTest):
     self.assertErrorLogIs(errorlog, [(3, "name-error", r"Bar")])
 
   def testInvalidForwardDecl(self):
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import google_type_annotations
 
       def f(a) -> "Foo":
@@ -664,7 +664,7 @@ class AnnotationTest(test_base.BaseTest):
     """)
 
   def testOptionalArg(self):
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import google_type_annotations
       def f(x: str, y: bool=False):
         pass
@@ -672,7 +672,7 @@ class AnnotationTest(test_base.BaseTest):
     """)
 
   def testEmpty(self):
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import google_type_annotations
       from typing import Any, List
       def f(x: List[Any]):
@@ -681,7 +681,7 @@ class AnnotationTest(test_base.BaseTest):
     """)
 
   def testInnerString(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       from __future__ import google_type_annotations
       from typing import List, Union
       def f(x: List["int"]):
@@ -789,7 +789,7 @@ class AnnotationTest(test_base.BaseTest):
     """)
 
   def testUseVarargsAndKwargsInForwardReferences(self):
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import google_type_annotations
       class Foo(object):
         def f(self, *args: "Foo", **kwargs: "Foo"):
@@ -892,7 +892,7 @@ class AnnotationTest(test_base.BaseTest):
     """)
 
   def testDeeplyNestedAnnotation(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       from __future__ import google_type_annotations
       from typing import Any, Dict, List, Optional
       def G(x: Optional[List[Dict[str, Any]]]):
@@ -903,7 +903,7 @@ class AnnotationTest(test_base.BaseTest):
     """)
 
   def testNestedLateAnnotation(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       from __future__ import google_type_annotations
       from typing import List
       Type = "int"

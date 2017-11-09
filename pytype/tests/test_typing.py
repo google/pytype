@@ -20,7 +20,7 @@ class TypingTest(test_base.BaseTest):
   """
 
   def _test_match(self, arg, annotation, disables=""):
-    self.assertNoErrors(self._TEMPLATE % locals())
+    self.Check(self._TEMPLATE % locals())
 
   def _test_no_match(self, arg, annotation, disables=""):
     _, errors = self.InferAndCheck(self._TEMPLATE % locals())
@@ -93,7 +93,7 @@ class TypingTest(test_base.BaseTest):
     """)
 
   def test_cast2(self):
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import google_type_annotations
       import typing
       foo = typing.cast(typing.Dict, {})
@@ -147,7 +147,7 @@ class TypingTest(test_base.BaseTest):
       """)
 
   def test_generator(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       from __future__ import google_type_annotations
       from typing import Generator
       def f() -> Generator[int]:
@@ -225,7 +225,7 @@ class TypingTest(test_base.BaseTest):
         from typing import List
         MyType = List[str]
       """)
-      self.assertNoErrors("""
+      self.Check("""
         from __future__ import google_type_annotations
         import foo
         def f(x: foo.MyType):
@@ -239,7 +239,7 @@ class TypingTest(test_base.BaseTest):
         from typing import Callable
         def f() -> Callable
       """)
-      self.assertNoErrors("""\
+      self.Check("""\
         from __future__ import google_type_annotations
         from typing import Callable
         import foo
@@ -333,7 +333,7 @@ class TypingTest(test_base.BaseTest):
         V = TypeVar("V")
         class CustomDict(Dict[K, V]): ...
       """)
-      self.assertNoErrors("""\
+      self.Check("""\
         from __future__ import google_type_annotations
         import typing
         import foo
@@ -366,14 +366,14 @@ class TypingTest(test_base.BaseTest):
       """, pythonpath=[d.path])
 
   def test_protocol(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       from __future__ import google_type_annotations
       from typing import Protocol
       class Foo(Protocol): pass
     """)
 
   def test_generator_iterator_match(self):
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import google_type_annotations
       from typing import Iterator
       def f(x: Iterator[int]):
@@ -415,7 +415,7 @@ class TypingTest(test_base.BaseTest):
         from typing import Tuple
         class Foo(Tuple[Foo]): ...
       """)
-      self.assertNoErrors("""\
+      self.Check("""\
         import foo
         foo.Foo()
       """, pythonpath=[d.path])
@@ -433,7 +433,7 @@ class TypingTest(test_base.BaseTest):
     """)
 
   def testTypeChecking(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       import typing
       if typing.TYPE_CHECKING:
           pass
@@ -442,7 +442,7 @@ class TypingTest(test_base.BaseTest):
     """)
 
   def testNotTypeChecking(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       import typing
       if not typing.TYPE_CHECKING:
           name_error
@@ -545,7 +545,7 @@ class TypingTest(test_base.BaseTest):
                                    (7, "wrong-keyword-args", r"hello")])
 
   def testCallableAttribute(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       from __future__ import google_type_annotations
       from typing import Any, Callable
       def foo(fn: Callable[[Any], Any]):
@@ -553,7 +553,7 @@ class TypingTest(test_base.BaseTest):
     """)
 
   def testCallableFuncName(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       from __future__ import google_type_annotations
       from typing import Any, Callable
       def foo(fn: Callable[[Any], Any]) -> str:
@@ -561,7 +561,7 @@ class TypingTest(test_base.BaseTest):
     """)
 
   def testItemsView(self):
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import google_type_annotations
       from typing import ItemsView
       def f(x: ItemsView[str, int]): ...
@@ -575,7 +575,7 @@ class TypingTest(test_base.BaseTest):
     self.assertErrorLogIs(errors, [(2, "not-supported-yet", r"typing.NewType")])
 
   def testMappingIter(self):
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import google_type_annotations
       from typing import Iterator, Mapping
       def f(m: Mapping) -> Iterator:
@@ -587,7 +587,7 @@ class TypingTest(test_base.BaseTest):
     """)
 
   def testMappingView(self):
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import google_type_annotations
       from typing import Mapping, MappingView
       def f(m: Mapping) -> MappingView:

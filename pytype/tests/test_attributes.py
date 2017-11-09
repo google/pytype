@@ -95,7 +95,7 @@ class TestAttributes(test_base.BaseTest):
     """)
 
   def testAttrWithBadGetAttr(self):
-    self.assertNoErrors("""
+    self.Check("""
       class AttrA(object):
         def __getattr__(self, name2):
           pass
@@ -215,7 +215,7 @@ class TestAttributes(test_base.BaseTest):
     """)
 
   def testAttrOnOptional(self):
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import google_type_annotations
       from typing import Optional
       def f(x: Optional[str]):
@@ -223,14 +223,14 @@ class TestAttributes(test_base.BaseTest):
     """)
 
   def testHasDynamicAttributes(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       class Foo(object):
         has_dynamic_attributes = True
       Foo().baz
     """)
 
   def testHasDynamicAttributesUpperCase(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       class Foo(object):
         HAS_DYNAMIC_ATTRIBUTES = True
       class Bar(Foo):
@@ -257,13 +257,13 @@ class TestAttributes(test_base.BaseTest):
         class Foo(object):
           has_dynamic_attributes = True
       """)
-      self.assertNoErrors("""\
+      self.Check("""\
         import mod
         mod.Foo().baz
       """, pythonpath=[d.path])
 
   def testAttrOnStaticMethod(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       import collections
 
       X = collections.namedtuple("X", "a b")
@@ -271,7 +271,7 @@ class TestAttributes(test_base.BaseTest):
       """)
 
   def testModuleTypeAttribute(self):
-    self.assertNoErrors("""
+    self.Check("""
       import types
       v = None  # type: types.ModuleType
       v.some_attribute
@@ -295,7 +295,7 @@ class TestAttributes(test_base.BaseTest):
     self.assertErrorLogIs(errors, [(3, "none-attr")])
 
   def testOverloadedBuiltin(self):
-    self.assertNoErrors("""
+    self.Check("""
       if __random__:
         getattr = None
       else:
@@ -321,7 +321,7 @@ class TestAttributes(test_base.BaseTest):
     """)
 
   def testEmptyTypeParameterInstance(self):
-    self.assertNoErrors("""
+    self.Check("""
       args = {}
       for x, y in sorted(args.iteritems()):
         x.values
@@ -355,7 +355,7 @@ class TestAttributes(test_base.BaseTest):
     """)
 
   def testCallableReturn(self):
-    self.assertNoErrors("""
+    self.Check("""
       from typing import Callable
       class Foo(object):
         def __init__(self):

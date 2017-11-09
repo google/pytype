@@ -21,7 +21,7 @@ class ReingestTest(test_base.BaseTest):
     """)
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd.Print(ty))
-      self.assertNoErrors("""
+      self.Check("""
         # u.py
         from foo import A
         A().Add()
@@ -35,7 +35,7 @@ class ReingestTest(test_base.BaseTest):
     """)
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd.Print(ty))
-      self.assertNoErrors("""
+      self.Check("""
         from foo import Union
       """, pythonpath=[d.path])
 
@@ -104,7 +104,7 @@ class ReingestTest(test_base.BaseTest):
     """)
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd.Print(foo))
-      self.assertNoErrors("""
+      self.Check("""
         import foo
         foo.X(0, 0)
         foo.X(a=0, b=0)
@@ -118,7 +118,7 @@ class ReingestTest(test_base.BaseTest):
     """, deep=True)
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd.Print(foo))
-      self.assertNoErrors("""
+      self.Check("""
         import foo
         class Y(foo.X):
           def __new__(cls, x):
@@ -154,7 +154,7 @@ class ReingestTest(test_base.BaseTest):
     """, deep=True)
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd.Print(foo))
-      self.assertNoErrors("""
+      self.Check("""
         import foo
         foo.Foo("hello world")
       """, pythonpath=[d.path])
@@ -173,7 +173,7 @@ class ReingestTest(test_base.BaseTest):
         from foo1 import xyz
         from foo2 import zyx
       """)
-      self.assertNoErrors("""
+      self.Check("""
         import foo1
         import foo2
         import bar
@@ -194,7 +194,7 @@ class ReingestTest(test_base.BaseTest):
     """, deep=True)
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd.Print(foo))
-      self.assertNoErrors("""
+      self.Check("""
         import foo
         foo.g(foo.f).upper()
       """, pythonpath=[d.path])

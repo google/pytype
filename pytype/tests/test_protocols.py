@@ -13,7 +13,7 @@ class ProtocolTest(test_base.BaseTest):
   """Tests for protocol implementation."""
 
   def test_check_protocol(self):
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import google_type_annotations
       import protocols
       from typing import Sized
@@ -32,7 +32,7 @@ class ProtocolTest(test_base.BaseTest):
     """)
 
   def test_check_iterator(self):
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import google_type_annotations
       from typing import Iterator
       def f(x: Iterator):
@@ -47,7 +47,7 @@ class ProtocolTest(test_base.BaseTest):
     """)
 
   def test_check_parameterized_iterator(self):
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import google_type_annotations
       from typing import Iterator
       def f(x: Iterator[int]):
@@ -89,7 +89,7 @@ class ProtocolTest(test_base.BaseTest):
         errors, [(10, "wrong-arg-types", r"Iterator\[int\].*Foo")])
 
   def test_check_protocol_match_unknown(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       from __future__ import google_type_annotations
       from typing import Sized
       def f(x: Sized):
@@ -118,7 +118,7 @@ class ProtocolTest(test_base.BaseTest):
     self.assertErrorLogIs(errors, [(10, "wrong-arg-types", r"\(x: Sized\)")])
 
   def test_check_parameterized_protocol(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       from __future__ import google_type_annotations
       from typing import Iterator, Iterable
 
@@ -153,7 +153,7 @@ class ProtocolTest(test_base.BaseTest):
                                     r"\(x: Iterable\[int\]\).*\(x: Foo\)")])
 
   def test_check_parameterized_protocol_multi_signature(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       from __future__ import google_type_annotations
       from typing import Sequence, Union
 
@@ -205,7 +205,7 @@ class ProtocolTest(test_base.BaseTest):
     """)
 
   def test_construct_dict_with_protocol(self):
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import google_type_annotations
       class Foo(object):
         def __iter__(self):
@@ -215,7 +215,7 @@ class ProtocolTest(test_base.BaseTest):
     """)
 
   def test_method_on_superclass(self):
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import google_type_annotations
       class Foo(object):
         def __iter__(self):
@@ -227,7 +227,7 @@ class ProtocolTest(test_base.BaseTest):
     """)
 
   def test_method_on_parameterized_superclass(self):
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import google_type_annotations
       from typing import List
       class Bar(List[int]):
@@ -238,7 +238,7 @@ class ProtocolTest(test_base.BaseTest):
 
   @unittest.skip("We currently consider this an error. See _match_from_mro.")
   def test_any_superclass(self):
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import google_type_annotations
       class Bar(__any_object__):
         pass
@@ -247,7 +247,7 @@ class ProtocolTest(test_base.BaseTest):
     """)
 
   def test_multiple_options(self):
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import google_type_annotations
       class Bar(object):
         if __random__:
@@ -289,7 +289,7 @@ class ProtocolTest(test_base.BaseTest):
         class Foo(object):
           def __getitem__(self, i: T) -> T: ...
       """)
-      self.assertNoErrors("""
+      self.Check("""
         from __future__ import google_type_annotations
         from typing import Iterable, TypeVar
         import foo
@@ -299,7 +299,7 @@ class ProtocolTest(test_base.BaseTest):
       """, pythonpath=[d.path])
 
   def test_inherited_abstract_method(self):
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import google_type_annotations
       from typing import Iterator
       class Foo(object):

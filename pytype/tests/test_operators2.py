@@ -103,7 +103,7 @@ class OperatorsWithAnyTests(test_base.BaseTest):
                      self.nameerror)
 
   def testSubscr(self):
-    self.assertNoErrors("""
+    self.Check("""
       x = "foo" if __random__ else None
       d = {"foo": 42}
       d[x]  # BINARY_SUBSCR

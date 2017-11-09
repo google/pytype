@@ -37,13 +37,13 @@ class SlotsTest(test_base.BaseTest):
     self.assertErrorLogIs(errors, [])
 
   def testAmbiguousSlotEntry(self):
-    self.assertNoErrors("""
+    self.Check("""
       class Foo(object):
         __slots__ = ("foo" if __random__ else "bar",)
     """)
 
   def testTupleSlot(self):
-    self.assertNoErrors("""
+    self.Check("""
       class Foo(object):
         __slots__ = ("foo", "bar")
     """)
@@ -69,14 +69,14 @@ class SlotsTest(test_base.BaseTest):
     )
 
   def testSetSlot(self):
-    self.assertNoErrors("""
+    self.Check("""
       class Foo(object):
         __slots__ = {"foo", "bar"}  # Note: Python actually allows this.
       Foo().bar = 3
     """)
 
   def testSlotWithUnicode(self):
-    self.assertNoErrors("""
+    self.Check("""
       class Foo(object):
         __slots__ = (u"fo\xf6", u"b\xe4r", "baz")
       Foo().baz = 3
@@ -129,7 +129,7 @@ class SlotsTest(test_base.BaseTest):
     ])
 
   def testAnyBaseClass(self):
-    self.assertNoErrors("""
+    self.Check("""
       class Foo(__any_object__):
         __slots__ = ()
       Foo().foo = 42
@@ -209,7 +209,7 @@ class SlotsTest(test_base.BaseTest):
     )
 
   def testSetAttr(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       class Foo(object):
         __slots__ = ()
         def __setattr__(self, name, value):
@@ -221,7 +221,7 @@ class SlotsTest(test_base.BaseTest):
     """)
 
   def testDescriptors(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       class Descriptor(object):
         def __set__(self, obj, cls):
           pass

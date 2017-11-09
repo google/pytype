@@ -108,7 +108,7 @@ class GeneratorTest(test_base.BaseTest):
     """)
 
   def testReturnBeforeYield(self):
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import google_type_annotations
       from typing import Generator
       def f() -> generator:

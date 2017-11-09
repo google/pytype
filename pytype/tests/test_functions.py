@@ -10,7 +10,7 @@ class TestClosures(test_base.BaseTest):
   """Tests for closures."""
 
   def test_closures(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       def make_adder(x):
         def add(y):
           return x+y
@@ -21,7 +21,7 @@ class TestClosures(test_base.BaseTest):
       """)
 
   def test_closures_store_deref(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       def make_adder(x):
         z = x+1
         def add(y):
@@ -33,7 +33,7 @@ class TestClosures(test_base.BaseTest):
       """)
 
   def test_closures_in_loop(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       def make_fns(x):
         fns = []
         for i in range(x):
@@ -46,7 +46,7 @@ class TestClosures(test_base.BaseTest):
       """)
 
   def test_closures_with_defaults(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       def make_adder(x, y=13, z=43):
         def add(q, r=11):
           return x+y+z+q+r
@@ -57,7 +57,7 @@ class TestClosures(test_base.BaseTest):
       """)
 
   def test_deep_closures(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       def f1(a):
         b = 2*a
         def f2(c):
@@ -94,7 +94,7 @@ class TestGenerators(test_base.BaseTest):
   """Tests for generators."""
 
   def test_first(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       def two():
         yield 1
         yield 2
@@ -103,7 +103,7 @@ class TestGenerators(test_base.BaseTest):
       """)
 
   def test_partial_generator(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       from _functools import partial
 
       def f(a,b):
@@ -134,14 +134,14 @@ class TestGenerators(test_base.BaseTest):
       """)
 
   def test_generator_reuse(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       g = (x*x for x in range(5))
       print(list(g))
       print(list(g))
       """)
 
   def test_generator_from_generator2(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       g = (x*x for x in range(3))
       print(list(g))
 
@@ -177,7 +177,7 @@ class TestFunctions(test_base.BaseTest):
   """Tests for functions."""
 
   def test_functions(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       def fn(a, b=17, c="Hello", d=[]):
         d.append(99)
         print(a, b, c, d)
@@ -189,7 +189,7 @@ class TestFunctions(test_base.BaseTest):
       """)
 
   def test_function_locals(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       def f():
         x = "Spite"
         print(x)
@@ -204,7 +204,7 @@ class TestFunctions(test_base.BaseTest):
       """)
 
   def test_recursion(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       def fact(n):
         if n <= 1:
           return 1
@@ -216,7 +216,7 @@ class TestFunctions(test_base.BaseTest):
       """)
 
   def test_calling_functions_with_args_kwargs(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       def fn(a, b=17, c="Hello", d=[]):
         d.append(99)
         print(a, b, c, d)
@@ -226,7 +226,7 @@ class TestFunctions(test_base.BaseTest):
       """)
 
   def test_calling_functions_with_generator_args(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       class A(object):
         def next(self):
           raise StopIteration()
@@ -238,23 +238,23 @@ class TestFunctions(test_base.BaseTest):
     """)
 
   def test_defining_functions_with_args_kwargs(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       def fn(*args):
         print("args is %r" % (args,))
       fn(1, 2)
       """)
-    self.assertNoErrors("""\
+    self.Check("""\
       def fn(**kwargs):
         print("kwargs is %r" % (kwargs,))
       fn(red=True, blue=False)
       """)
-    self.assertNoErrors("""\
+    self.Check("""\
       def fn(*args, **kwargs):
         print("args is %r" % (args,))
         print("kwargs is %r" % (kwargs,))
       fn(1, 2, red=True, blue=False)
       """)
-    self.assertNoErrors("""\
+    self.Check("""\
       def fn(x, y, *args, **kwargs):
         print("x is %r, y is %r" % (x, y))
         print("args is %r" % (args,))
@@ -263,24 +263,24 @@ class TestFunctions(test_base.BaseTest):
       """)
 
   def test_defining_functions_with_empty_args_kwargs(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       def fn(*args):
         print("args is %r" % (args,))
       fn()
       """)
-    self.assertNoErrors("""\
+    self.Check("""\
       def fn(**kwargs):
         print("kwargs is %r" % (kwargs,))
       fn()
       """)
-    self.assertNoErrors("""\
+    self.Check("""\
       def fn(*args, **kwargs):
         print("args is %r, kwargs is %r" % (args, kwargs))
       fn()
       """)
 
   def test_partial(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       from _functools import partial
 
       def f(a,b):
@@ -292,7 +292,7 @@ class TestFunctions(test_base.BaseTest):
       """)
 
   def test_partial_with_kwargs(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       from _functools import partial
 
       def f(a,b,c=0,d=0):
@@ -311,7 +311,7 @@ class TestFunctions(test_base.BaseTest):
         _AnyCallable = Callable[..., Any]
         def wraps(wrapped: _AnyCallable, assigned: Sequence[str] = ..., updated: Sequence[str] = ...) -> Callable[[_AnyCallable], _AnyCallable]: ...
       """)
-      self.assertNoErrors("""\
+      self.Check("""\
         from myfunctools import wraps
         def my_decorator(f):
           dec = wraps(f)
@@ -659,7 +659,7 @@ class TestFunctions(test_base.BaseTest):
       d.create_file("foo.pyi", """
         def bar(): ...
       """)
-      self.assertNoErrors("""
+      self.Check("""
         import foo
         class A(object):
           bar = foo.bar
@@ -707,25 +707,25 @@ class TestFunctions(test_base.BaseTest):
     """)
 
   def testNestedLambda(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       def f(c):
         return lambda c: f(c)
     """)
 
   def testNestedLambda2(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       def f(d):
         return lambda c: f(c)
     """)
 
   def testNestedLambda3(self):
-    self.assertNoErrors("""
+    self.Check("""
       def f(t):
         lambda u=[t,1]: f(u)
       """)
 
   def testFakeArguments(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       from __future__ import google_type_annotations
 
       class Foo(object):
@@ -737,7 +737,7 @@ class TestFunctions(test_base.BaseTest):
       """)
 
   def testSetDefaults(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       import collections
       X = collections.namedtuple("X", "a b c d")
       X.__new__.__defaults__ = (3, 4)
@@ -771,7 +771,7 @@ class TestFunctions(test_base.BaseTest):
     self.assertErrorLogIs(errors, [(3, "bad-function-defaults")])
 
   def testMultipleValidDefaults(self):
-    self.assertNoErrors("""
+    self.Check("""
       import collections
       X = collections.namedtuple("X", "a b c")
       X.__new__.__defaults__ = (1,) if __random__ else (1,2)
@@ -781,7 +781,7 @@ class TestFunctions(test_base.BaseTest):
   def testSetDefaultsToExpression(self):
     # Test that get_atomic_python_constant fails but get_atomic_value pulls out
     # a tuple Instance.
-    self.assertNoErrors("""
+    self.Check("""
       import collections
       X = collections.namedtuple("X", "a b c")
       X.__new__.__defaults__ = (None,) * len(X._fields)

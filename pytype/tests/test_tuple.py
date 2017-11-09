@@ -81,7 +81,7 @@ class TupleTest(test_base.BaseTest):
     """)
 
   def testUnpackTupleOrTuple(self):
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import google_type_annotations
       def f():
         if __random__:
@@ -94,7 +94,7 @@ class TupleTest(test_base.BaseTest):
     """)
 
   def testUnpackTupleOrList(self):
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import google_type_annotations
       def f():
         if __random__:
@@ -125,7 +125,7 @@ class TupleTest(test_base.BaseTest):
         (3, "bad-unpacking", "2 values.*3 variables")])
 
   def testUnpackAmbiguousTuple(self):
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import google_type_annotations
       def f() -> tuple:
         return __any_object__
@@ -186,7 +186,7 @@ class TupleTest(test_base.BaseTest):
         from typing import Tuple
         class A(Tuple[int, str]): ...
       """)
-      self.assertNoErrors("""
+      self.Check("""
         from __future__ import google_type_annotations
         from typing import Tuple, Type
         import foo
@@ -226,7 +226,7 @@ class TupleTest(test_base.BaseTest):
           (10, "wrong-arg-types", r"%s.*foo\.A" % expected)])
 
   def testTupleCombinationExplosion(self):
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import google_type_annotations
       from typing import Any, Dict, List, Tuple, Union
       AnyStr = Union[str, unicode]
@@ -281,7 +281,7 @@ class TupleTest(test_base.BaseTest):
     """)
 
   def testAddTwice(self):
-    self.assertNoErrors("() + () + ()")
+    self.Check("() + () + ()")
 
   def testInplaceAdd(self):
     ty = self.Infer("""

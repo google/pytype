@@ -217,12 +217,12 @@ class FlowTest(test_base.BaseTest):
     self.assertHasSignature(ty.Lookup("f"), (), self.str)
 
   def test_dead_if(self):
-    self.assertNoErrors("""
+    self.Check("""
       x = None
       if x is not None:
         x.foo()
     """)
-    self.assertNoErrors("""
+    self.Check("""
       x = 1
       if x is not 1:
         x.foo()
@@ -310,7 +310,7 @@ class FlowTest(test_base.BaseTest):
     """)
 
   def test_loop_and_if(self):
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import google_type_annotations
       import typing
       def foo() -> unicode:
@@ -348,7 +348,7 @@ class FlowTest(test_base.BaseTest):
     self.assertErrorLogIs(errors, [(5, "name-error", r"func")])
 
   def test_cfg_cycle_singlestep(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       from __future__ import google_type_annotations
       import typing
       class Foo(object):

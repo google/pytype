@@ -10,7 +10,7 @@ class AnyStrTest(test_base.BaseTest):
 
   def testCallable(self):
     """Tests Callable + AnyStr."""
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import google_type_annotations
       from typing import AnyStr, Callable
 
@@ -21,7 +21,7 @@ class AnyStrTest(test_base.BaseTest):
       """)
 
   def testUnknownAgainstMultipleAnyStr(self):
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import google_type_annotations
       from typing import Any, Dict, Tuple, AnyStr
 
@@ -30,7 +30,7 @@ class AnyStrTest(test_base.BaseTest):
     """)
 
   def testMultipleUnknownAgainstMultipleAnyStr(self):
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import google_type_annotations
       from typing import AnyStr, List
       def foo(x: List[AnyStr], y: List[AnyStr]): ...

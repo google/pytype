@@ -52,7 +52,7 @@ class AbstractMethodTests(test_base.BaseTest):
     self.assertErrorLogIs(errors, [(9, "bad-return-type")])
 
   def test_super_abstractmethod_in_abstract_class(self):
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import google_type_annotations
       import abc
 
@@ -70,7 +70,7 @@ class AbstractMethodTests(test_base.BaseTest):
     """)
 
   def test_abstract_subclass(self):
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import google_type_annotations
       import abc
 
@@ -84,7 +84,7 @@ class AbstractMethodTests(test_base.BaseTest):
     """)
 
   def test_inherited_abstract_method(self):
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import google_type_annotations
       import abc
 
@@ -124,7 +124,7 @@ class AbstractMethodTests(test_base.BaseTest):
     self.assertErrorLogIs(errors, [(6, "name-error", r"name_error")])
 
   def test_call_abstract_method(self):
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import google_type_annotations
       import abc
       class Example(object):
@@ -137,7 +137,7 @@ class AbstractMethodTests(test_base.BaseTest):
     """)
 
   def test_namedtuple_return(self):
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import google_type_annotations
       import abc
       import collections
@@ -150,7 +150,7 @@ class AbstractMethodTests(test_base.BaseTest):
     """)
 
   def test_no_skip_calls(self):
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import google_type_annotations
       import abc
       class Example(object):
@@ -199,7 +199,7 @@ class AbstractMethodTests(test_base.BaseTest):
                                     r"foo.*Example")])
 
   def test_multiple_inheritance_implementation(self):
-    self.assertNoErrors("""
+    self.Check("""
       import abc
       class Interface(object):
         __metaclass__ = abc.ABCMeta
@@ -228,7 +228,7 @@ class AbstractMethodTests(test_base.BaseTest):
           def foo(self) -> int: ...
         class Foo(X, Implementation): ...
       """)
-      self.assertNoErrors("""
+      self.Check("""
         import foo
         foo.Foo().foo()
       """, pythonpath=[d.path])

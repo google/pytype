@@ -105,7 +105,7 @@ class StdlibTests(test_base.BaseTest):
     """)
 
   def testPathConf(self):
-    self.assertNoErrors("""
+    self.Check("""
       import os
       max_len = os.pathconf('directory', 'name')
       filename = 'foobar.baz'
@@ -113,7 +113,7 @@ class StdlibTests(test_base.BaseTest):
     """)
 
   def testEnviron(self):
-    self.assertNoErrors("""
+    self.Check("""
       import os
       os.getenv('foobar', 3j)
       os.environ['hello'] = 'bar'
@@ -124,7 +124,7 @@ class StdlibTests(test_base.BaseTest):
     """)
 
   def testStdlib(self):
-    self.assertNoErrors("""
+    self.Check("""
       import re
       s = "the quick brown fox jumps over the lazy dog"
       word = re.compile(r"\\w*")
@@ -132,7 +132,7 @@ class StdlibTests(test_base.BaseTest):
     """)
 
   def testNamedtuple(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       import collections
       collections.namedtuple(u"_", "")
       collections.namedtuple("_", u"")
@@ -205,7 +205,7 @@ class StdlibTests(test_base.BaseTest):
       """)
 
   def testCounter(self):
-    self.assertNoErrors("""
+    self.Check("""
       import collections
       x = collections.Counter()
       y = collections.Counter()
@@ -232,20 +232,20 @@ class StdlibTests(test_base.BaseTest):
     """)
 
   def testXRange(self):
-    self.assertNoErrors("""
+    self.Check("""
       import random
       random.sample(xrange(10), 5)
     """)
 
   def testXml(self):
-    self.assertNoErrors("""
+    self.Check("""
       import xml.etree.cElementTree
       xml.etree.cElementTree.SubElement
       xml.etree.cElementTree.iterparse
     """)
 
   def testCsv(self):
-    self.assertNoErrors("""
+    self.Check("""
       import _csv
       import csv
     """)

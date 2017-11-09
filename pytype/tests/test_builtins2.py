@@ -388,7 +388,7 @@ class BuiltinTests2(test_base.BaseTest):
     """)
 
   def testSumReturn(self):
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import google_type_annotations
       from typing import List
       def f(x: List[float]) -> float:
@@ -523,7 +523,7 @@ class BuiltinTests2(test_base.BaseTest):
       d.create_file("foo.pyi", """
         def f(x: long): ...
       """)
-      self.assertNoErrors("""
+      self.Check("""
         import foo
         foo.f(42)
       """, pythonpath=[d.path])
@@ -634,7 +634,7 @@ class BuiltinTests2(test_base.BaseTest):
     """)
 
   def testEmptyTuple(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       isinstance(42, ())
       issubclass(int, ())
       type("X", (), {"foo": 42})
@@ -702,12 +702,12 @@ class BuiltinTests2(test_base.BaseTest):
     """)
 
   def testFuncTools(self):
-    self.assertNoErrors("""
+    self.Check("""
       import functools
     """)
 
   def testABC(self):
-    self.assertNoErrors("""
+    self.Check("""
       import abc
     """)
 
@@ -781,20 +781,20 @@ class BuiltinTests2(test_base.BaseTest):
     """)
 
   def testOsEnvironCopy(self):
-    self.assertNoErrors("""
+    self.Check("""
       import os
       os.environ.copy()["foo"] = "bar"
     """)
 
   def testPrintFunction(self):
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import print_function
       import sys
       print(file=sys.stderr)
     """)
 
   def testBytearrayInit(self):
-    self.assertNoErrors("""
+    self.Check("""
       bytearray(42)
       bytearray([42])
       bytearray(u"hello", "utf-8")
@@ -802,12 +802,12 @@ class BuiltinTests2(test_base.BaseTest):
     """)
 
   def testCompile(self):
-    self.assertNoErrors("""
+    self.Check("""
       code = compile("1 + 2", "foo.py", "single")
     """)
 
   def testIntInit(self):
-    self.assertNoErrors("""
+    self.Check("""
       int(42)
       int(42.0)
       int("42")

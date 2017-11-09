@@ -351,7 +351,7 @@ class MatchTest(test_base.BaseTest):
       """)
 
   def testAnyStr(self):
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import google_type_annotations
       from typing import AnyStr, Dict, Tuple
       class Foo(object):
@@ -375,7 +375,7 @@ class MatchTest(test_base.BaseTest):
         T = TypeVar("T")
         def foo(func: Callable[[], T]) -> T: ...
       """)
-      self.assertNoErrors("""
+      self.Check("""
         import foo
         class Foo(object):
           def __init__(self):
@@ -391,7 +391,7 @@ class MatchTest(test_base.BaseTest):
         T2 = TypeVar("T2")
         def foo(func: Callable[[], T1]) -> T1 or T2: ...
       """)
-      self.assertNoErrors("""
+      self.Check("""
         import foo
         class Foo(object):
           def __init__(self):

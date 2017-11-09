@@ -678,7 +678,7 @@ class ContainerTest(test_base.BaseTest):
     ])
 
   def testDictOrAny(self):
-    self.assertNoErrors("""
+    self.Check("""
       if __random__:
         results = __any_object__
       else:

@@ -24,14 +24,8 @@ class CheckerTest(test_base.BaseTest):
                         options=options)
     return errorlog
 
-  def check(self, python):
-    errorlog = self.get_checking_errors(python)
-    if errorlog.has_error():
-      errorlog.print_to_stderr()
-      self.fail("Inferencer found %d errors" % len(errorlog))
-
   def testSet(self):
-    python = """
+    self.Check("""
       from __future__ import google_type_annotations
       from typing import List, Set
       def f(data: List[str]):
@@ -39,8 +33,7 @@ class CheckerTest(test_base.BaseTest):
         g(data)
       def g(data: Set[str]):
         pass
-    """
-    self.check(python)
+    """)
 
   def testRecursiveForwardReference(self):
     python = """\
@@ -67,7 +60,7 @@ class CheckerTest(test_base.BaseTest):
                                       r"List\[int\].*List\[object\]")])
 
   def testUseVarargsAndKwargs(self):
-    python = """\
+    self.Check("""\
       from __future__ import google_type_annotations
       class A(object):
         pass
@@ -76,11 +69,10 @@ class CheckerTest(test_base.BaseTest):
           pass
         for kwarg in kwargs:
           pass
-    """
-    self.check(python)
+    """)
 
   def testNestedNoneType(self):
-    python = """\
+    self.Check("""\
       from __future__ import google_type_annotations
       from typing import List, Union
       def f1() -> Union[None]:
@@ -91,11 +83,10 @@ class CheckerTest(test_base.BaseTest):
         pass
       def g2(x: List[None]):
         pass
-    """
-    self.check(python)
+    """)
 
   def testInnerClassInit(self):
-    python = """\
+    self.Check("""\
       from __future__ import google_type_annotations
       from typing import List
       class A:
@@ -107,11 +98,10 @@ class CheckerTest(test_base.BaseTest):
         return [A()]
       def h():
         return g()[0].x
-    """
-    self.check(python)
+    """)
 
   def testRecursion(self):
-    python = """\
+    self.Check("""\
       from __future__ import google_type_annotations
       class A:
         def __init__(self, x: "B"):
@@ -120,8 +110,7 @@ class CheckerTest(test_base.BaseTest):
         def __init__(self):
           self.x = 42
           self.y = A(self)
-    """
-    self.check(python)
+    """)
 
   def testBadDictValue(self):
     python = """\

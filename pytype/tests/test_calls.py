@@ -13,7 +13,7 @@ class CallsTest(test_base.BaseTest):
       d.create_file("mod.pyi", """
         def foo(x: int, y: int = ..., z: int = ...) -> int
       """)
-      self.assertNoErrors("""\
+      self.Check("""\
         import mod
         mod.foo(1)
         mod.foo(1, 2)

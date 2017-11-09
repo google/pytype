@@ -9,49 +9,49 @@ class SuperTest(test_base.BaseTest):
   """Tests for super()."""
 
   def testSetAttr(self):
-    self.assertNoErrors("""
+    self.Check("""
       class Foo(object):
         def foo(self, name, value):
           super(Foo, self).__setattr__(name, value)
     """)
 
   def testStr(self):
-    self.assertNoErrors("""
+    self.Check("""
       class Foo(object):
         def foo(self, name, value):
           super(Foo, self).__str__()
     """)
 
   def testGet(self):
-    self.assertNoErrors("""
+    self.Check("""
       class Foo(object):
         def foo(self, name, value):
           super(Foo, self).__get__(name)
     """)
 
   def testSet(self):
-    self.assertNoErrors("""
+    self.Check("""
       class Foo(object):
         def foo(self, name, value):
           super(Foo, self).__set__(name, value)
     """)
 
   def testInit(self):
-    self.assertNoErrors("""
+    self.Check("""
       class Foo(object):
         def foo(self, name, value):
           super(Foo, self).__init__()
     """)
 
   def testGetAttr(self):
-    self.assertNoErrors("""
+    self.Check("""
       class Foo(object):
         def hello(self, name):
           getattr(super(Foo, self), name)
     """)
 
   def testGetAttrMultipleInheritance(self):
-    self.assertNoErrors("""
+    self.Check("""
       class X(object):
         pass
 
@@ -64,7 +64,7 @@ class SuperTest(test_base.BaseTest):
     """)
 
   def testGetAttrInheritance(self):
-    self.assertNoErrors("""
+    self.Check("""
       class Y(object):
         bla = 123
 
@@ -74,7 +74,7 @@ class SuperTest(test_base.BaseTest):
     """)
 
   def testIsInstance(self):
-    self.assertNoErrors("""
+    self.Check("""
       class Y(object):
         pass
 
@@ -130,7 +130,7 @@ class SuperTest(test_base.BaseTest):
       """)
 
   def testSuperWithAny(self):
-    self.assertNoErrors("""
+    self.Check("""
       super(__any_object__, __any_object__)
     """)
 
@@ -171,7 +171,7 @@ class SuperTest(test_base.BaseTest):
         (6, "wrong-arg-count", r"2.*0")])
 
   def testSuperUnderDecorator(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       def decorate(cls):
         return __any_object__
       class Parent(object):

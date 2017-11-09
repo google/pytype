@@ -48,7 +48,7 @@ class ImportTest(test_base.BaseTest):
       """)
 
   def testStarImportSmoke(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       from sys import *
       """)
 
@@ -143,7 +143,7 @@ class ImportTest(test_base.BaseTest):
       """)
 
   def testAssignMember(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       import sys
       sys.path = []
       """)
@@ -929,7 +929,7 @@ class ImportTest(test_base.BaseTest):
       d.create_file("foo/c.pyi", """
         class X(object): ...
       """)
-      self.assertNoErrors("""\
+      self.Check("""\
         from foo import b
         class Foo(b.bar):
           pass

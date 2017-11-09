@@ -29,7 +29,7 @@ class SpecialBuiltinsTest(test_base.BaseTest):
     """)
 
   def testPropertyMatching(self):
-    self.assertNoErrors("""
+    self.Check("""
       class A():
         def setter(self, other):
           pass
@@ -122,7 +122,7 @@ class SpecialBuiltinsTest(test_base.BaseTest):
     """)
 
   def testCallableMatching(self):
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import google_type_annotations
       from typing import Any, Callable
       def f(x: Callable[[Any], bool]):

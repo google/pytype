@@ -61,7 +61,7 @@ class DisableTest(test_base.BaseTest):
     self.assertFalse(errors.has_error())
 
   def testSkipFile(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       # pytype: skip-file
       name_error
     """)

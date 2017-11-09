@@ -8,10 +8,10 @@ from pytype.tests import test_base
 class TestIt(test_base.BaseTest):
 
   def test_constant(self):
-    self.assertNoErrors("17")
+    self.Check("17")
 
   def test_for_loop(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       out = ""
       for i in range(5):
         out = out + str(i)
@@ -61,7 +61,7 @@ class TestIt(test_base.BaseTest):
   @unittest.skip("Python 3 specific")
   def test_inplace_division_py3(self):
     assert self.PYTHON_VERSION[0] == 3
-    self.assertNoErrors("""\
+    self.Check("""\
       x, y = 24, 3
       x /= y
       assert x == 8.0 and y == 3
@@ -98,83 +98,83 @@ class TestIt(test_base.BaseTest):
     """)
 
   def test_slice_assignment(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       l = list(range(10))
       l[3:8] = ["x"]
       print(l)
       """)
-    self.assertNoErrors("""\
+    self.Check("""\
       l = list(range(10))
       l[:8] = ["x"]
       print(l)
       """)
-    self.assertNoErrors("""\
+    self.Check("""\
       l = list(range(10))
       l[3:] = ["x"]
       print(l)
       """)
-    self.assertNoErrors("""\
+    self.Check("""\
       l = list(range(10))
       l[:] = ["x"]
       print(l)
       """)
 
   def test_slice_deletion(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       l = list(range(10))
       del l[3:8]
       print(l)
       """)
-    self.assertNoErrors("""\
+    self.Check("""\
       l = list(range(10))
       del l[:8]
       print(l)
       """)
-    self.assertNoErrors("""\
+    self.Check("""\
       l = list(range(10))
       del l[3:]
       print(l)
       """)
-    self.assertNoErrors("""\
+    self.Check("""\
       l = list(range(10))
       del l[:]
       print(l)
       """)
-    self.assertNoErrors("""\
+    self.Check("""\
       l = list(range(10))
       del l[::2]
       print(l)
       """)
 
   def test_building_stuff(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       print((1+1, 2+2, 3+3))
       """)
-    self.assertNoErrors("""\
+    self.Check("""\
       print([1+1, 2+2, 3+3])
       """)
-    self.assertNoErrors("""\
+    self.Check("""\
       print({1:1+1, 2:2+2, 3:3+3})
       """)
 
   def test_subscripting(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       l = list(range(10))
       print("%s %s %s" % (l[0], l[3], l[9]))
       """)
-    self.assertNoErrors("""\
+    self.Check("""\
       l = list(range(10))
       l[5] = 17
       print(l)
       """)
-    self.assertNoErrors("""\
+    self.Check("""\
       l = list(range(10))
       del l[5]
       print(l)
       """)
 
   def test_generator_expression(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       x = "-".join(str(z) for z in range(5))
       assert x == "0-1-2-3-4"
       """)
@@ -183,7 +183,7 @@ class TestIt(test_base.BaseTest):
     # From test_regr.py
     # This failed a different way than the previous join when genexps were
     # broken:
-    self.assertNoErrors("""\
+    self.Check("""\
       from textwrap import fill
       x = set(['test_str'])
       width = 70
@@ -195,25 +195,25 @@ class TestIt(test_base.BaseTest):
       """)
 
   def test_list_comprehension(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       x = [z*z for z in range(5)]
       assert x == [0, 1, 4, 9, 16]
       """)
 
   def test_dict_comprehension(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       x = {z:z*z for z in range(5)}
       assert x == {0:0, 1:1, 2:4, 3:9, 4:16}
       """)
 
   def test_set_comprehension(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       x = {z*z for z in range(5)}
       assert x == {0, 1, 4, 9, 16}
       """)
 
   def test_list_slice(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       [1, 2, 3][1:2]
       """)
 
@@ -236,13 +236,13 @@ class TestIt(test_base.BaseTest):
       """)
 
   def test_unary_operators(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       x = 8
       print(-x, ~x, not x)
       """)
 
   def test_attributes(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       l = lambda: 1   # Just to have an object...
       l.foo = 17
       print(hasattr(l, "foo"), l.foo)
@@ -259,7 +259,7 @@ class TestIt(test_base.BaseTest):
       """)
 
   def test_deleting_names(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       g = 17
       assert g == 17
       del g
@@ -267,7 +267,7 @@ class TestIt(test_base.BaseTest):
       """, raises=NameError)
 
   def test_deleting_local_names(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       def f():
         l = 23
         assert l == 23
@@ -277,7 +277,7 @@ class TestIt(test_base.BaseTest):
       """, raises=NameError)
 
   def test_import(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       from __future__ import print_function
       import math
       print(math.pi, math.e)
@@ -288,7 +288,7 @@ class TestIt(test_base.BaseTest):
       """)
 
   def test_classes(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       class Thing(object):
         def __init__(self, x):
           self.x = x
@@ -301,7 +301,7 @@ class TestIt(test_base.BaseTest):
       """)
 
   def test_class_mros(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       class A(object): pass
       class B(A): pass
       class C(A): pass
@@ -312,7 +312,7 @@ class TestIt(test_base.BaseTest):
       """)
 
   def test_class_mro_method_calls(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       class A(object):
         def f(self): return 'A'
       class B(A): pass
@@ -335,7 +335,7 @@ class TestIt(test_base.BaseTest):
     self.assertErrorLogIs(errors, [(7, "missing-parameter", r"self")])
 
   def test_calling_subclass_methods(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       class Thing(object):
         def foo(self):
           return 17
@@ -363,7 +363,7 @@ class TestIt(test_base.BaseTest):
     self.assertErrorLogIs(errors, [(10, "attribute-error", r"foo.*SubThing")])
 
   def test_attribute_access(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       class Thing(object):
         z = 17
         def __init__(self):
@@ -374,9 +374,9 @@ class TestIt(test_base.BaseTest):
       print(t.x)
       """)
 
-  @unittest.skip("Raises AttributeError, like it should. Fix assertNoErrors.")
+  @unittest.skip("Raises AttributeError, like it should. Fix Check.")
   def test_attribute_access_error(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       class Thing(object):
         z = 17
         def __init__(self):
@@ -386,7 +386,7 @@ class TestIt(test_base.BaseTest):
       """, raises=AttributeError)
 
   def test_staticmethods(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       class Thing(object):
         @staticmethod
         def smeth(x):
@@ -400,7 +400,7 @@ class TestIt(test_base.BaseTest):
       """)
 
   def test_unbound_methods(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       class Thing(object):
         def meth(self, x):
           print(x)
@@ -409,7 +409,7 @@ class TestIt(test_base.BaseTest):
       """)
 
   def test_callback(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       def lcase(s):
         return s.lower()
       l = ["xyz", "ABC"]
@@ -419,7 +419,7 @@ class TestIt(test_base.BaseTest):
       """)
 
   def test_unpacking(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       a, b, c = (1, 2, 3)
       assert a == 1
       assert b == 2
@@ -441,7 +441,7 @@ class TestIt(test_base.BaseTest):
       """)
 
   def test_jump_if_true_or_pop(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       def f(a, b):
         return a or b
       assert f(17, 0) == 17
@@ -450,7 +450,7 @@ class TestIt(test_base.BaseTest):
       """)
 
   def test_jump_if_false_or_pop(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       def f(a, b):
         return not(a and b)
       assert f(17, 0) is True
@@ -460,7 +460,7 @@ class TestIt(test_base.BaseTest):
       """)
 
   def test_pop_jump_if_true(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       def f(a):
         if not a:
           return 'foo'
@@ -471,7 +471,7 @@ class TestIt(test_base.BaseTest):
       """)
 
   def test_decorator(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       def verbose(func):
         def _wrapper(*args, **kwargs):
           return func(*args, **kwargs)
@@ -489,7 +489,7 @@ class TestIt(test_base.BaseTest):
     # across classes.  This test would fail because A.__init__ would be
     # over-written with B.__init__, and A(1, 2, 3) would complain about
     # too many arguments.
-    self.assertNoErrors("""\
+    self.Check("""\
       class A(object):
         def __init__(self, a, b, c):
           self.sum = a + b + c
@@ -505,7 +505,7 @@ class TestIt(test_base.BaseTest):
       """)
 
   def test_global(self):
-    self.assertNoErrors("""
+    self.Check("""
       foobar = False
       def baz():
         global foobar
@@ -516,7 +516,7 @@ class TestIt(test_base.BaseTest):
 
   def test_delete_global(self):
     # TODO(kramm): Also test that a is inaccessible after f() has run.
-    self.assertNoErrors("""\
+    self.Check("""\
       a = 3
       def f():
         global a
@@ -527,15 +527,15 @@ class TestIt(test_base.BaseTest):
 class TestPrinting(test_base.BaseTest):
 
   def test_printing(self):
-    self.assertNoErrors("print 'hello'")
-    self.assertNoErrors("a = 3; print a+4")
-    self.assertNoErrors("""
+    self.Check("print 'hello'")
+    self.Check("a = 3; print a+4")
+    self.Check("""
       print 'hi', 17, u'bye', 23,
       print "", "\t", "the end"
       """)
 
   def test_printing_in_a_function(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       def fn():
         print "hello"
       fn()
@@ -543,7 +543,7 @@ class TestPrinting(test_base.BaseTest):
       """)
 
   def test_printing_to_a_file(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       import sys
       print >>sys.stdout, 'hello', 'there'
       """)
@@ -552,14 +552,14 @@ class TestPrinting(test_base.BaseTest):
 class TestLoops(test_base.BaseTest):
 
   def test_for(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       for i in range(10):
         print(i)
       print("done")
       """)
 
   def test_break(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       for i in range(10):
         print(i)
         if i == 7:
@@ -569,7 +569,7 @@ class TestLoops(test_base.BaseTest):
 
   def test_continue(self):
     # fun fact: this doesn't use CONTINUE_LOOP
-    self.assertNoErrors("""\
+    self.Check("""\
       for i in range(10):
         if i % 3 == 0:
           continue
@@ -578,7 +578,7 @@ class TestLoops(test_base.BaseTest):
       """)
 
   def test_continue_in_try_except(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       for i in range(10):
         try:
           if i % 3 == 0:
@@ -590,7 +590,7 @@ class TestLoops(test_base.BaseTest):
       """)
 
   def test_continue_in_try_finally(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       for i in range(10):
         try:
           if i % 3 == 0:
@@ -605,7 +605,7 @@ class TestLoops(test_base.BaseTest):
 class TestComparisons(test_base.BaseTest):
 
   def test_in(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       assert "x" in "xyz"
       assert "x" not in "abc"
       assert "x" in ("x", "y", "z")
@@ -613,7 +613,7 @@ class TestComparisons(test_base.BaseTest):
       """)
 
   def test_less(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       assert 1 < 3
       assert 1 <= 2 and 1 <= 1
       assert "a" < "b"
@@ -621,7 +621,7 @@ class TestComparisons(test_base.BaseTest):
       """)
 
   def test_greater(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       assert 3 > 1
       assert 3 >= 1 and 3 >= 3
       assert "z" > "a"
@@ -632,12 +632,12 @@ class TestComparisons(test_base.BaseTest):
 class TestSlices(test_base.BaseTest):
 
   def test_slice_with_step(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       [0][1:-2:2]
       """)
 
   def test_slice_on_unknown(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       __any_object__[1:-2:2]
       """)
 

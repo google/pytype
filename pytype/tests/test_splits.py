@@ -506,7 +506,7 @@ class SplitTest(test_base.BaseTest):
     """)
 
   def testDoubleAssign(self):
-    self.assertNoErrors("""
+    self.Check("""
       x = 1
       x = None
       if x is not None:
@@ -514,7 +514,7 @@ class SplitTest(test_base.BaseTest):
     """)
 
   def testUnion(self):
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import google_type_annotations
       from typing import Union
       def f(data: str):
@@ -525,7 +525,7 @@ class SplitTest(test_base.BaseTest):
     """)
 
   def testUnion2(self):
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import google_type_annotations
       from typing import Union
       class MyString(object):
@@ -541,7 +541,7 @@ class SplitTest(test_base.BaseTest):
     """)
 
   def testInfiniteLoop(self):
-    self.assertNoErrors("""
+    self.Check("""
       class A(object):
         def __init__(self):
           self.members = []
@@ -564,7 +564,7 @@ class SplitTest(test_base.BaseTest):
     """)
 
   def testLoadAttr(self):
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import google_type_annotations
 
       class A(object):
@@ -583,7 +583,7 @@ class SplitTest(test_base.BaseTest):
 
   def testGuardingIs(self):
     """Assert that conditions are remembered for is."""
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import google_type_annotations
       from typing import Optional
       def f(x: Optional[str]) -> str:
@@ -594,7 +594,7 @@ class SplitTest(test_base.BaseTest):
 
   def testConditionsAreOrdered(self):
     """Assert that multiple conditions on a path work."""
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import google_type_annotations
       from typing import Optional
       def f(x: Optional[NoneType]) -> int:
@@ -607,7 +607,7 @@ class SplitTest(test_base.BaseTest):
 
   def testGuardingIsNot(self):
     """Assert that conditions are remembered for is not."""
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import google_type_annotations
       from typing import Optional
       def f(x: Optional[str]) -> NoneType:
@@ -618,7 +618,7 @@ class SplitTest(test_base.BaseTest):
 
   def testGuardingIsNotElse(self):
     """Assert that conditions are remembered for else if."""
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import google_type_annotations
       from typing import Optional
       def f(x: Optional[str]) -> int:
@@ -631,7 +631,7 @@ class SplitTest(test_base.BaseTest):
 
   def testDictContains(self):
     """Assert that we can determine whether a dict contains a key."""
-    self.assertNoErrors("""
+    self.Check("""
       d1 = {"x": 42}
       if "x" in d1:
         print d1["x"]
@@ -651,7 +651,7 @@ class SplitTest(test_base.BaseTest):
 
   def testDictDoesNotContain(self):
     """Assert that we can determine whether a dict does not contain a key."""
-    self.assertNoErrors("""
+    self.Check("""
       d1 = {"x": 42}
       if "x" not in d1:
         print d1["nonsense"]  # Dead code
@@ -733,14 +733,14 @@ class SplitTest(test_base.BaseTest):
     """)
 
   def testSimpleOr(self):
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import google_type_annotations
       def f(self, x:str=None) -> str:
         return x or "foo"
     """)
 
   def testOr(self):
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import google_type_annotations
       from typing import Optional
       def f(foo: Optional[int]=None) -> int:
@@ -827,7 +827,7 @@ class SplitTest(test_base.BaseTest):
     """)
 
   def testPrimitiveNotEq(self):
-    self.assertNoErrors("""
+    self.Check("""
       x = "foo" if __random__ else 42
       if x == "foo":
         x.upper()
@@ -858,7 +858,7 @@ class SplitTest(test_base.BaseTest):
 
   def testNoneOrTuple(self):
     # This tests the attribute retrieval code in vm.py:_get_iter
-    self.assertNoErrors("""\
+    self.Check("""\
       foo = (0, 0)
       if __random__:
         foo = None
@@ -867,7 +867,7 @@ class SplitTest(test_base.BaseTest):
     """)
 
   def testCmpIsPyTDClass(self):
-    self.assertNoErrors("""
+    self.Check("""
       x = bool
       if x is str:
         name_error
@@ -876,7 +876,7 @@ class SplitTest(test_base.BaseTest):
     """)
 
   def testCmpIsTupleType(self):
-    self.assertNoErrors("""
+    self.Check("""
       x = (1,)
       y = (1, 2)
       z = None  # type: type[tuple]
@@ -887,7 +887,7 @@ class SplitTest(test_base.BaseTest):
     """)
 
   def testCmpIsFunctionType(self):
-    self.assertNoErrors("""
+    self.Check("""
       def f(): pass
       def g(x): return x
       if type(f) is not type(g):
@@ -895,7 +895,7 @@ class SplitTest(test_base.BaseTest):
     """)
 
   def testCmpIsInterpreterClass(self):
-    self.assertNoErrors("""
+    self.Check("""
       class X(object): pass
       class Y(object): pass
       if X is Y:
@@ -909,7 +909,7 @@ class SplitTest(test_base.BaseTest):
       d.create_file("foo.pyi", """
         class X(object): ...
       """)
-      self.assertNoErrors("""
+      self.Check("""
         import foo
         class X(object): pass
         if foo.X is X:
@@ -917,7 +917,7 @@ class SplitTest(test_base.BaseTest):
       """, pythonpath=[d.path])
 
   def testGetIter(self):
-    self.assertNoErrors("""
+    self.Check("""
       def f():
         z = (1,2) if __random__ else None
         if not z:
@@ -926,7 +926,7 @@ class SplitTest(test_base.BaseTest):
     """)
 
   def testHiddenConflict(self):
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import google_type_annotations
       import typing
       def f(obj: typing.Union[int, dict, list, float, str, complex]):

@@ -37,16 +37,16 @@ class TestExceptions(test_base.BaseTest):
       """)
 
   def test_raise_exception(self):
-    self.assertNoErrors("raise Exception('oops')", raises=Exception)
+    self.Check("raise Exception('oops')", raises=Exception)
 
   def test_raise_exception_class(self):
-    self.assertNoErrors("raise ValueError", raises=ValueError)
+    self.Check("raise ValueError", raises=ValueError)
 
   def test_raise_exception_2args(self):
-    self.assertNoErrors("raise ValueError, 'bad'", raises=ValueError)
+    self.Check("raise ValueError, 'bad'", raises=ValueError)
 
   def test_raise_exception_3args(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       from sys import exc_info
       try:
         raise Exception
@@ -56,7 +56,7 @@ class TestExceptions(test_base.BaseTest):
       """, raises=ValueError)
 
   def test_raise_and_catch_exception(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       try:
         raise ValueError("oops")
       except ValueError as e:
@@ -67,13 +67,13 @@ class TestExceptions(test_base.BaseTest):
   @unittest.skip("Python 3 specific")
   def test_raise_exception_from(self):
     assert self.PYTHON_VERSION[0] == 3
-    self.assertNoErrors(
+    self.Check(
         "raise ValueError from NameError",
         raises=ValueError
     )
 
   def test_raise_and_catch_exception_in_function(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       def fn():
         raise ValueError("oops")
 
@@ -126,7 +126,7 @@ class TestExceptions(test_base.BaseTest):
       """, raises=NameError)
 
   def test_reraise_explicit_exception(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       def fn():
         try:
           raise ValueError("ouch")
@@ -137,7 +137,7 @@ class TestExceptions(test_base.BaseTest):
       """, raises=ValueError)
 
   def test_finally_while_throwing(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       def fn():
         try:
           print("About to..")
@@ -149,7 +149,7 @@ class TestExceptions(test_base.BaseTest):
       """, raises=ValueError)
 
   def test_coverage_issue_92(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       l = []
       for i in range(3):
         try:
@@ -163,7 +163,7 @@ class TestExceptions(test_base.BaseTest):
       """)
 
   def test_continue_in_except(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       for i in range(3):
         try:
           pass
@@ -174,7 +174,7 @@ class TestExceptions(test_base.BaseTest):
       """)
 
   def test_loop_finally_except(self):
-    self.assertNoErrors("""
+    self.Check("""
       def f():
         for s in (1, 2):
           try:

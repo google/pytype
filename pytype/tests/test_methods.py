@@ -232,7 +232,7 @@ class MethodsTest(test_base.BaseTest):
     self.assertHasSignature(ty.Lookup("test"), (), self.int)
 
   def testInheritedProperty(self):
-    self.assertNoErrors("""
+    self.Check("""
       class A(object):
         @property
         def bar(self):
@@ -696,7 +696,7 @@ class MethodsTest(test_base.BaseTest):
     """)
 
   def testInheritedClassMethod(self):
-    self.assertNoErrors("""
+    self.Check("""
       class A(object):
         @classmethod
         def myclassmethod(cls):

@@ -180,7 +180,7 @@ class ConcreteTest(test_base.BaseTest):
     self.check_expr("x ^ y", ["x={1}", "y={2}"], self.int_set)
 
   def test_add_type_parameter_instance(self):
-    self.assertNoErrors("""
+    self.Check("""
       from typing import Union
       v = None  # type: Union[str, unicode]
       d = {v: 42}
@@ -357,7 +357,7 @@ class ReverseTest(test_base.BaseTest):
       """)
 
   def test_custom_reverse_unused(self):
-    self.assertNoErrors("""
+    self.Check("""
       class Foo(object):
         def __sub__(self, other):
           return 42
@@ -367,7 +367,7 @@ class ReverseTest(test_base.BaseTest):
     """)
 
   def test_inherited_custom_reverse_unused(self):
-    self.assertNoErrors("""
+    self.Check("""
       class Foo(object):
         def __sub__(self, other):
           return 42
@@ -379,7 +379,7 @@ class ReverseTest(test_base.BaseTest):
     """)
 
   def test_custom_reverse_only(self):
-    self.assertNoErrors("""
+    self.Check("""
       class Foo(object):
         def __sub__(self, other):
           return ""
@@ -390,7 +390,7 @@ class ReverseTest(test_base.BaseTest):
     """)
 
   def test_unknown_left(self):
-    self.assertNoErrors("""
+    self.Check("""
       class Foo(object):
         def __rsub__(self, other):
           return ""

@@ -716,7 +716,7 @@ class ClassesTest(test_base.BaseTest):
     """)
 
   def testUnionBaseClass(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       import typing
       class A(tuple): pass
       class B(tuple): pass
@@ -1012,7 +1012,7 @@ class ClassesTest(test_base.BaseTest):
     """)
 
   def testNewExtraArg(self):
-    self.assertNoErrors("""
+    self.Check("""
       class Foo(object):
         def __new__(cls, _):
           return super(Foo, cls).__new__(cls)
@@ -1035,7 +1035,7 @@ class ClassesTest(test_base.BaseTest):
     """)
 
   def testSuperNewExtraArg(self):
-    self.assertNoErrors("""
+    self.Check("""
       class Foo(object):
         def __init__(self, x):
           pass
@@ -1045,7 +1045,7 @@ class ClassesTest(test_base.BaseTest):
     """)
 
   def testSuperInitExtraArg(self):
-    self.assertNoErrors("""
+    self.Check("""
       class Foo(object):
         def __init__(self, x):
           # The extra arg is okay because __new__ is defined.
@@ -1060,7 +1060,7 @@ class ClassesTest(test_base.BaseTest):
         class Foo(object):
           def __new__(cls, a, b) -> Foo
       """)
-      self.assertNoErrors("""
+      self.Check("""
         import foo
         class Bar(foo.Foo):
           def __init__(self, a, b):
@@ -1138,7 +1138,7 @@ class ClassesTest(test_base.BaseTest):
     self.assertErrorLogIs(errors, [(9, "wrong-keyword-args", r"x.*__init__")])
 
   def testRecursiveConstructor(self):
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import google_type_annotations
       from typing import List
       MyType = List['Foo']
@@ -1152,7 +1152,7 @@ class ClassesTest(test_base.BaseTest):
     """)
 
   def testRecursiveConstructorAttribute(self):
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import google_type_annotations
       from typing import List
       MyType = List['Foo']
@@ -1180,7 +1180,7 @@ class ClassesTest(test_base.BaseTest):
     self.assertErrorLogIs(errors, [(10, "attribute-error", r"y.*Foo")])
 
   def testRecursiveConstructorSubclass(self):
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import google_type_annotations
       from typing import List
       MyType = List['Foo']
@@ -1218,7 +1218,7 @@ class ClassesTest(test_base.BaseTest):
       d.create_file("foo.pyi", """
         class Bar: ...
       """)
-      self.assertNoErrors("""
+      self.Check("""
         import foo
         class ConstStr(unicode):
           foo.Bar # testing that this does not affect inference.
@@ -1228,7 +1228,7 @@ class ClassesTest(test_base.BaseTest):
       """, pythonpath=[d.path])
 
   def testNameExists(self):
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import google_type_annotations
       class Foo(object): pass
       class Bar(object):
@@ -1289,7 +1289,7 @@ class ClassesTest(test_base.BaseTest):
     self.assertErrorLogIs(errors, [(4, "not-supported-yet", r"generic")])
 
   def testInitWithNoParams(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       class Foo(object):
         def __init__():
           pass
@@ -1301,7 +1301,7 @@ class ClassesTest(test_base.BaseTest):
       d.create_file("foo.pyi", """\
         def f() -> list: ...
         """)
-      self.assertNoErrors("""\
+      self.Check("""\
         from __future__ import google_type_annotations
         import foo
         from typing import List

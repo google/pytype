@@ -94,7 +94,7 @@ class DecoratorsTest(test_base.BaseTest):
     self.assertErrorLogIs(errors, [(6, "wrong-keyword-args", r"should_fail")])
 
   def testFgetIsOptional(self):
-    self.assertNoErrors("""
+    self.Check("""
       class Foo(object):
         def __init__(self):
           self._bar = 1

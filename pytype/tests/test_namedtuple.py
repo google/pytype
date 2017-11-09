@@ -66,15 +66,15 @@ class NamedtupleTests(test_base.BaseTest):
         S=("S", ["a", "b", "c"]), suffix="b = ...  # type: S"))
 
   def test_str_args2(self):
-    self.assertNoErrors("""
+    self.Check("""
         import collections
         collections.namedtuple("_", "a,b,c")
         """)
-    self.assertNoErrors("""
+    self.Check("""
         import collections
         collections.namedtuple("_", "a, b, c")
         """)
-    self.assertNoErrors("""
+    self.Check("""
         import collections
         collections.namedtuple("_", "a ,b")
         """)
@@ -131,7 +131,7 @@ class NamedtupleTests(test_base.BaseTest):
         ty, self._namedtuple_def(F=("S", ["a", "b", "c"])))
 
   def test_calls(self):
-    self.assertNoErrors("""
+    self.Check("""
         import collections
         collections.namedtuple("_", "")
         collections.namedtuple(typename="_", field_names="a")
@@ -161,7 +161,7 @@ class NamedtupleTests(test_base.BaseTest):
                            (5, "duplicate-keyword-argument")])
 
   def test_constructors(self):
-    self.assertNoErrors("""
+    self.Check("""
         import collections
         X = collections.namedtuple("X", "a b c")
         g = X(1, 2, 3)
@@ -180,7 +180,7 @@ class NamedtupleTests(test_base.BaseTest):
         X=("X", ["a", "b", "c"]), suffix="a = ...  # type: X"))
 
   def test_namedtuple_match(self):
-    self.assertNoErrors("""\
+    self.Check("""\
         from __future__ import google_type_annotations
         import collections
         from typing import Any, Dict
@@ -225,7 +225,7 @@ class NamedtupleTests(test_base.BaseTest):
       d.create_file("foo.pyi", """
         class X(NamedTuple("X", [("y", int)])): ...
       """)
-      self.assertNoErrors("""
+      self.Check("""
         import foo
         class Y(foo.X):
           def __new__(cls):
@@ -234,7 +234,7 @@ class NamedtupleTests(test_base.BaseTest):
       """, pythonpath=[d.path])
 
   def test_varargs(self):
-    self.assertNoErrors("""
+    self.Check("""
       import collections
       X = collections.namedtuple("X", [])
       args = None  # type: list
@@ -242,7 +242,7 @@ class NamedtupleTests(test_base.BaseTest):
     """)
 
   def test_kwargs(self):
-    self.assertNoErrors("""
+    self.Check("""
       import collections
       X = collections.namedtuple("X", [])
       kwargs = None  # type: dict
@@ -303,7 +303,7 @@ class NamedtupleTests(test_base.BaseTest):
       """)
 
   def test_attribute(self):
-    self.assertNoErrors("""
+    self.Check("""
       from __future__ import google_type_annotations
       from typing import Dict
       import collections

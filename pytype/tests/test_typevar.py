@@ -514,7 +514,7 @@ class TypeVarTest(test_base.BaseTest):
     self.assertErrorLogIs(errors, [(3, "not-supported-yet")])
 
   def testOverwriteBaseClassWithTypeVar(self):
-    self.assertNoErrors("""
+    self.Check("""
       from typing import List, TypeVar
       T = TypeVar("T")
       l = List[T]

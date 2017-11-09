@@ -18,7 +18,7 @@ class WorkflowTest(test_base.BaseTest):
     ])
 
   def testTutorial2(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       from __future__ import google_type_annotations
       from typing import Any, Dict, List
       def keys(d: Dict[str, Any]) -> List[str]:
@@ -28,7 +28,7 @@ class WorkflowTest(test_base.BaseTest):
       """)
 
   def testTutorial3(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       from __future__ import google_type_annotations
       from typing import Optional
 
@@ -61,7 +61,7 @@ class WorkflowTest(test_base.BaseTest):
     ])
 
   def testTutorial5(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       import socket
       class Server:
         def __init__(self, port):
@@ -82,7 +82,7 @@ class WorkflowTest(test_base.BaseTest):
         class Server:
           def start(self): ...
       """)
-      self.assertNoErrors("""\
+      self.Check("""\
         from __future__ import google_type_annotations
         import ftp
 
@@ -96,7 +96,7 @@ class WorkflowTest(test_base.BaseTest):
         class Server:
           def start(self): ...
       """)
-      self.assertNoErrors("""\
+      self.Check("""\
         from __future__ import google_type_annotations
         import typing
 

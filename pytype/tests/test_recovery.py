@@ -155,7 +155,7 @@ class RecoveryTests(test_base.BaseTest):
     ])
 
   def testAssertInConstructor(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       from __future__ import google_type_annotations
       class Foo(object):
         def __init__(self):
@@ -167,7 +167,7 @@ class RecoveryTests(test_base.BaseTest):
 
   @unittest.skip("Constructor loops forever.")
   def testConstructorInfiniteLoop(self):
-    self.assertNoErrors("""\
+    self.Check("""\
       from __future__ import google_type_annotations
       class Foo(object):
         def __init__(self):

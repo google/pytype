@@ -15,7 +15,7 @@ class PYITest(test_base.BaseTest):
         import types
         def f(x: types.ModuleType = ...) -> None
       """)
-      self.assertNoErrors("""
+      self.Check("""
         import os
         import mod
 
@@ -597,7 +597,7 @@ class PYITest(test_base.BaseTest):
       d.create_file("foo.pyi", """
         def f(raises): ...
       """)
-      self.assertNoErrors("import foo", pythonpath=[d.path])
+      self.Check("import foo", pythonpath=[d.path])
 
   def testTypeVarConflict(self):
     with utils.Tempdir() as d:
@@ -647,7 +647,7 @@ class PYITest(test_base.BaseTest):
       d.create_file("bar.pyi", """
         from foo import *
       """)
-      self.assertNoErrors("""
+      self.Check("""
         import bar
         bar.x
         bar.T
@@ -685,7 +685,7 @@ class PYITest(test_base.BaseTest):
       d.create_file("bar.pyi", """
         from foo import *
       """)
-      self.assertNoErrors("""
+      self.Check("""
         import bar
         bar.rumpelstiltskin
       """, pythonpath=[d.path])
@@ -697,7 +697,7 @@ class PYITest(test_base.BaseTest):
         g = f
         class Foo: ...
       """)
-      self.assertNoErrors("import foo", pythonpath=[d.path])
+      self.Check("import foo", pythonpath=[d.path])
 
   def testCustomBinaryOperator(self):
     with utils.Tempdir() as d:
@@ -707,7 +707,7 @@ class PYITest(test_base.BaseTest):
         class Bar(Foo):
           def __rsub__(self, other) -> int: ...
       """)
-      self.assertNoErrors("""
+      self.Check("""
         import foo
         (foo.Foo() - foo.Bar()).real
       """, pythonpath=[d.path])
@@ -719,7 +719,7 @@ class PYITest(test_base.BaseTest):
         x = ...  # type: Any
         y = ...  # type: x[Any]
       """)
-      self.assertNoErrors("""
+      self.Check("""
         import foo
       """, pythonpath=[d.path])
 
@@ -734,7 +734,7 @@ class PYITest(test_base.BaseTest):
         from typing import Any
         x = ...  # type: foo.x[Any]
       """)
-      self.assertNoErrors("""
+      self.Check("""
         import bar
       """, pythonpath=[d.path])
 
@@ -749,7 +749,7 @@ class PYITest(test_base.BaseTest):
         from typing import Any
         x = foo.x[Any]
       """)
-      self.assertNoErrors("""
+      self.Check("""
         import bar
       """, pythonpath=[d.path])
 

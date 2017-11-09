@@ -17,7 +17,7 @@ class TypingMethodsTest(test_base.BaseTest):
         def f() -> %(type)s
       """ % {"type": t})
       indented_expr = textwrap.dedent(expr).replace("\n", "\n" + " "*8)
-      self.assertNoErrors("""\
+      self.Check("""\
         import foo
         x = foo.f()
         %(expr)s
