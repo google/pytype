@@ -410,8 +410,8 @@ class CallTracer(vm.VirtualMachine):
     if trace:
       self._builtin_map[name] = member.data
 
-  def trace_unknown(self, name, unknown):
-    self._unknowns[name] = unknown
+  def trace_unknown(self, name, unknown_binding):
+    self._unknowns[name] = unknown_binding
 
   def trace_call(self, node, func, sigs, posargs, namedargs, result):
     """Add an entry into the call trace.
@@ -447,9 +447,9 @@ class CallTracer(vm.VirtualMachine):
 
   def pytd_classes_for_unknowns(self):
     classes = []
-    for name, var in self._unknowns.items():
-      for value in var.FilteredData(self.exitpoint):
-        classes.append(value.to_structural_def(self.exitpoint, name))
+    for name, val in self._unknowns.items():
+      if val in val.variable.Filter(self.exitpoint):
+        classes.append(val.data.to_structural_def(self.exitpoint, name))
     return classes
 
   def pytd_for_types(self, defs):

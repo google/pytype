@@ -228,7 +228,7 @@ class Converter(object):
     val = v.AddBinding(
         unknown, source_set=[source] if source else [], where=node)
     unknown.owner = val
-    self.vm.trace_unknown(unknown.class_name, v)
+    self.vm.trace_unknown(unknown.class_name, val)
     return v
 
   def create_new_unsolvable(self, node):

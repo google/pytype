@@ -3516,7 +3516,7 @@ class Unknown(AtomicAbstractValue):
     v = self.vm.program.NewVariable()
     val = v.AddBinding(self, source_set=[], where=node)
     self.owner = val
-    self.vm.trace_unknown(self.class_name, v)
+    self.vm.trace_unknown(self.class_name, val)
     return v
 
   def to_structural_def(self, node, class_name):

@@ -200,6 +200,27 @@ class RecoveryTests(test_base.BaseTest):
         (4, "unsupported-operands"),
     ])
 
+  def testComplexInit(self):
+    """Test that we recover when __init__ triggers a utils.TooComplexError."""
+    _, errors = self.InferAndCheck("""\
+      from __future__ import google_type_annotations
+      from typing import AnyStr
+      class X(object):
+        def __init__(self,
+                     literal: int = None,
+                     target_index: int = None,
+                     register_range_first: int = None,
+                     register_range_last: int = None,
+                     method_ref: AnyStr = None,
+                     field_ref: AnyStr = None,
+                     string_ref: AnyStr = None,
+                     type_ref: AnyStr = None) -> None:
+          pass
+        def foo(self, x: other_module.X) -> None:  # line 14
+          pass
+    """, deep=True)
+    self.assertErrorLogIs(errors, [(14, "name-error", r"other_module")])
+
 
 if __name__ == "__main__":
   test_base.main()
