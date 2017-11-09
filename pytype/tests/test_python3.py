@@ -153,7 +153,7 @@ class TestPython3(test_base.BaseTest):
     """)
 
   def testBadUnpacking(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       a, *b, c = (1,)
     """)
     self.assertErrorLogIs(

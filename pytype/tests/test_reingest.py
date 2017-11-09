@@ -91,7 +91,7 @@ class ReingestTest(test_base.BaseTest):
     """)
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd.Print(foo))
-      _, errors = self.InferAndCheck("""\
+      _, errors = self.InferWithErrors("""\
         import foo
         foo.f("")
       """, pythonpath=[d.path])
@@ -138,7 +138,7 @@ class ReingestTest(test_base.BaseTest):
     """, deep=True)
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd.Print(foo))
-      _, errors = self.InferAndCheck("""\
+      _, errors = self.InferWithErrors("""\
         import foo
         foo.X("hello", "world")
         foo.X(42)  # missing parameters
@@ -213,7 +213,7 @@ class ReingestTest(test_base.BaseTest):
     """, deep=True)
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd.Print(foo))
-      _, errors = self.InferAndCheck("""\
+      _, errors = self.InferWithErrors("""\
         import foo
         foo.Foo()
         foo.Bar()

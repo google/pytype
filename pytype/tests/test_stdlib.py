@@ -140,7 +140,7 @@ class StdlibTests(test_base.BaseTest):
     """)
 
   def testDefaultdict(self):
-    ty, errors = self.InferAndCheck("""\
+    ty, errors = self.InferWithErrors("""\
       import collections
       a = collections.defaultdict(int, one = 1, two = 2)
       b = collections.defaultdict(int, {'one': 1, 'two': 2})
@@ -161,7 +161,7 @@ class StdlibTests(test_base.BaseTest):
       """)
 
   def testDefaultdictNoFactory(self):
-    ty, errors = self.InferAndCheck("""\
+    ty, errors = self.InferWithErrors("""\
       import collections
       a = collections.defaultdict()
       b = collections.defaultdict(None)
@@ -187,7 +187,7 @@ class StdlibTests(test_base.BaseTest):
       """)
 
   def testDefaultdictDiffDefaults(self):
-    ty, errors = self.InferAndCheck("""\
+    ty, errors = self.InferWithErrors("""\
       import collections
       a = collections.defaultdict(int, one = '1')
       b = collections.defaultdict(str, one = 1)

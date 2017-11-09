@@ -7,7 +7,7 @@ class TracebackTest(test_base.BaseTest):
   """Tests for tracebacks in error messages."""
 
   def test_no_traceback(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       def f(x):
         "hello" + 42
       f("world")
@@ -15,7 +15,7 @@ class TracebackTest(test_base.BaseTest):
     self.assertErrorLogIs(errors, [(2, "wrong-arg-types", r"str.*int\)$")])
 
   def test_same_traceback(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       def f(x, _):
         x + 42
       def g(x):
@@ -26,7 +26,7 @@ class TracebackTest(test_base.BaseTest):
                                     r"Traceback:\n  line 4, in g")])
 
   def test_different_tracebacks(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       def f(x):
         x + 42
       f("hello")
@@ -38,7 +38,7 @@ class TracebackTest(test_base.BaseTest):
                                     r"Traceback:\n  line 4, in <module>")])
 
   def test_comprehension(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       def f():
         return {x.upper() for x in range(10)}
     """)
@@ -47,7 +47,7 @@ class TracebackTest(test_base.BaseTest):
     self.assertEqual(error.methodname, "f")
 
   def test_comprehension_in_traceback(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       def f(x):
         return x.upper()
       def g():

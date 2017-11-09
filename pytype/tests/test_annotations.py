@@ -79,7 +79,7 @@ class AnnotationTest(test_base.BaseTest):
     """)
 
   def testCallError(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       s = {1}
       def foo(x: int):
@@ -104,7 +104,7 @@ class AnnotationTest(test_base.BaseTest):
     """)
 
   def testInnerError(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       def foo(x: int):
         return x.upper()
@@ -173,7 +173,7 @@ class AnnotationTest(test_base.BaseTest):
     """)
 
   def testAmbiguousAnnotation(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       def foo(x: int or float):
         return x
@@ -187,7 +187,7 @@ class AnnotationTest(test_base.BaseTest):
         (4, "invalid-annotation", r"int or float.*x.*constant")})
 
   def testBadStringAnnotation(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       def foo(x: str()):
         return x
@@ -196,7 +196,7 @@ class AnnotationTest(test_base.BaseTest):
         (2, "invalid-annotation", r"x.*constant")})
 
   def testBadReturn(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       def foo(x: str, y: str) -> int:
         return "foo"
@@ -205,7 +205,7 @@ class AnnotationTest(test_base.BaseTest):
         (3, "bad-return-type")})
 
   def testMultipleReturns(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       def foo(x: str, y: str) -> int:
         if x:
@@ -219,7 +219,7 @@ class AnnotationTest(test_base.BaseTest):
     })
 
   def testAmbiguousReturn(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       def foo(x: str) -> int:
         if x:
@@ -309,7 +309,7 @@ class AnnotationTest(test_base.BaseTest):
     """)
 
   def testDict(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       from typing import Dict, List
       def keys(d: Dict[str, int]):
@@ -323,7 +323,7 @@ class AnnotationTest(test_base.BaseTest):
     ])
 
   def testSequence(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       from typing import Sequence
       def f(s: Sequence):
@@ -339,7 +339,7 @@ class AnnotationTest(test_base.BaseTest):
     ])
 
   def testOptional(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       from typing import Optional
       def f(s: Optional[int]):
@@ -353,7 +353,7 @@ class AnnotationTest(test_base.BaseTest):
     ])
 
   def testSet(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       from typing import Set
       def f(d: Set[str]):
@@ -369,7 +369,7 @@ class AnnotationTest(test_base.BaseTest):
     ])
 
   def testFrozenSet(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       from typing import FrozenSet
       def f(d: FrozenSet[str]):
@@ -425,7 +425,7 @@ class AnnotationTest(test_base.BaseTest):
     """)
 
   def testWithoutForwardDecl(self):
-    _, errorlog = self.InferAndCheck("""\
+    _, errorlog = self.InferWithErrors("""\
       from __future__ import google_type_annotations
 
       def f(a) -> Bar:
@@ -446,7 +446,7 @@ class AnnotationTest(test_base.BaseTest):
       class Foo(object):
         pass
     """)
-    _, errorlog = self.InferAndCheck("""\
+    _, errorlog = self.InferWithErrors("""\
       from __future__ import google_type_annotations
 
       def f(a: "Foo"):
@@ -459,7 +459,7 @@ class AnnotationTest(test_base.BaseTest):
         errorlog, [(3, "invalid-annotation", r"Foo")])
 
   def testForwardDeclBadReturn(self):
-    _, errorlog = self.InferAndCheck("""\
+    _, errorlog = self.InferWithErrors("""\
         from __future__ import google_type_annotations
 
         def f() -> "Foo":
@@ -473,7 +473,7 @@ class AnnotationTest(test_base.BaseTest):
         errorlog, [(4, "bad-return-type", r"return type.*int")])
 
   def testConfusingForwardDecl(self):
-    _, errorlog = self.InferAndCheck("""\
+    _, errorlog = self.InferWithErrors("""\
         from __future__ import google_type_annotations
 
         class Foo(object):
@@ -495,7 +495,7 @@ class AnnotationTest(test_base.BaseTest):
         errorlog, [(15, "attribute-error", r"\'bar\'.*Foo")])
 
   def testReturnTypeError(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       class FooBar(object): pass
       def f() -> FooBar:
@@ -524,7 +524,7 @@ class AnnotationTest(test_base.BaseTest):
       """)
 
   def testBadCallNoKwarg(self):
-    ty, errors = self.InferAndCheck("""\
+    ty, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
 
       def foo():
@@ -547,7 +547,7 @@ class AnnotationTest(test_base.BaseTest):
     self.assertErrorLogIs(errors, [(9, "wrong-arg-types", error)])
 
   def testBadCallWithKwarg(self):
-    ty, errors = self.InferAndCheck("""\
+    ty, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
 
       def foo():
@@ -628,7 +628,7 @@ class AnnotationTest(test_base.BaseTest):
     """, deep=True)
 
   def testImpreciseAnnotation(self):
-    ty, errors = self.InferAndCheck("""
+    ty, errors = self.InferWithErrors("""
       from __future__ import google_type_annotations
       from typing import Union
       class A: pass
@@ -691,7 +691,7 @@ class AnnotationTest(test_base.BaseTest):
     """)
 
   def testAmbiguousInnerAnnotation(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       from typing import List, Union
       def f(x: List[int or str]):
@@ -706,7 +706,7 @@ class AnnotationTest(test_base.BaseTest):
         (5, "invalid-annotation", r"int or str.*constant")])
 
   def testVarargs(self):
-    ty, errors = self.InferAndCheck("""\
+    ty, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       def f(x, *args: int):
         return args
@@ -723,7 +723,7 @@ class AnnotationTest(test_base.BaseTest):
     self.assertErrorLogIs(errors, [(7, "wrong-arg-types", error)])
 
   def testKwargs(self):
-    ty, errors = self.InferAndCheck("""\
+    ty, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       from typing import Dict
       def f(x, **kwargs: int):
@@ -753,7 +753,7 @@ class AnnotationTest(test_base.BaseTest):
 
   @unittest.skip("Types not checked due to abstract.FunctionArgs.simplify")
   def testSimplifiedVarargsAndKwargs(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       def f(x, *args: int):
         pass
@@ -825,7 +825,7 @@ class AnnotationTest(test_base.BaseTest):
     """)
 
   def testMatchLateAnnotation(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       class A(object):
         def f(self, x: "A"):
@@ -836,7 +836,7 @@ class AnnotationTest(test_base.BaseTest):
     self.assertErrorLogIs(errors, [(6, "wrong-arg-types", r"A.*int")])
 
   def testRecursiveForwardReference(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       class A(object):
         def __init__(self, x: "A"):
@@ -993,7 +993,7 @@ class AnnotationTest(test_base.BaseTest):
     """)
 
   def testEllipsis(self):
-    ty, errors = self.InferAndCheck("""\
+    ty, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       from typing import Dict, Tuple
       def f(x: ...): pass
@@ -1018,7 +1018,7 @@ class AnnotationTest(test_base.BaseTest):
           def __init__(self, x: T2):
             self := Foo[T2]
       """)
-      _, errors = self.InferAndCheck("""\
+      _, errors = self.InferWithErrors("""\
         from __future__ import google_type_annotations
         import foo
         def f(x: foo.Foo[int]):

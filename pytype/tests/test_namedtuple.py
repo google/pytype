@@ -80,7 +80,7 @@ class NamedtupleTests(test_base.BaseTest):
         """)
 
   def test_bad_fieldnames(self):
-    _, errorlog = self.InferAndCheck("""\
+    _, errorlog = self.InferWithErrors("""\
         import collections
         collections.namedtuple("_", ["abc", "def", "ghi"])
         collections.namedtuple("_", "_")
@@ -107,7 +107,7 @@ class NamedtupleTests(test_base.BaseTest):
         ty, self._namedtuple_def(S=("S", ["abc", "_1", "ghi", "_3"])))
 
   def test_bad_initialize(self):
-    _, errlog = self.InferAndCheck("""\
+    _, errlog = self.InferWithErrors("""\
         from collections import namedtuple
 
         X = namedtuple("X", "y z")
@@ -147,7 +147,7 @@ class NamedtupleTests(test_base.BaseTest):
       """)
 
   def test_bad_call(self):
-    _, errorlog = self.InferAndCheck("""\
+    _, errorlog = self.InferWithErrors("""\
         import collections
         collections.namedtuple()
         collections.namedtuple("_")
@@ -196,7 +196,7 @@ class NamedtupleTests(test_base.BaseTest):
       d.create_file("foo.pyi", """
         class X(NamedTuple('X', [('y', str), ('z', int)])): ...
       """)
-      _, errors = self.InferAndCheck("""\
+      _, errors = self.InferWithErrors("""\
         import foo
         foo.X()  # wrong arg count
         foo.X(0, "")  # wrong types
@@ -213,7 +213,7 @@ class NamedtupleTests(test_base.BaseTest):
       d.create_file("foo.pyi", """
         class X(NamedTuple("X", [])): ...
       """)
-      _, errors = self.InferAndCheck("""\
+      _, errors = self.InferWithErrors("""\
         import foo
         foo.X()._replace()
         foo.X().nonsense

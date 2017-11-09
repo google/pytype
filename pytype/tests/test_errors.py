@@ -10,7 +10,7 @@ class ErrorTest(test_base.BaseTest):
   """Tests for errors."""
 
   def testDeduplicate(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       def f(x):
         y = 42
         y.foobar
@@ -20,14 +20,14 @@ class ErrorTest(test_base.BaseTest):
     self.assertErrorLogIs(errors, [(3, "attribute-error", r"foobar.*int")])
 
   def testUnknownGlobal(self):
-    _, errors = self.InferAndCheck("""
+    _, errors = self.InferWithErrors("""
       def f():
         return foobar()
     """)
     self.assertErrorLogIs(errors, [(3, "name-error", r"foobar")])
 
   def testInvalidAttribute(self):
-    ty, errors = self.InferAndCheck("""\
+    ty, errors = self.InferWithErrors("""\
       class A(object):
         pass
       def f():
@@ -43,25 +43,25 @@ class ErrorTest(test_base.BaseTest):
     self.assertErrorLogIs(errors, [(4, "attribute-error", r"parrot.*int")])
 
   def testImportError(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       import rumplestiltskin
     """)
     self.assertErrorLogIs(errors, [(1, "import-error", r"rumplestiltskin")])
 
   def testImportFromError(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from sys import foobar
     """)
     self.assertErrorLogIs(errors, [(1, "import-error", r"sys\.foobar")])
 
   def testNameError(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       foobar
     """)
     self.assertErrorLogIs(errors, [(1, "name-error", r"foobar")])
 
   def testUnsupportedOperands(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       def f():
         x = "foo"
         y = "bar"
@@ -71,7 +71,7 @@ class ErrorTest(test_base.BaseTest):
                                     r"__xor__.*str.*str")])
 
   def testUnsupportedOperands2(self):
-    _, errors = self.InferAndCheck("""
+    _, errors = self.InferWithErrors("""
       def f():
         x = "foo"
         y = 3
@@ -81,19 +81,19 @@ class ErrorTest(test_base.BaseTest):
                                     r"Expected.*y: str.*Actual.*y: int")])
 
   def testWrongArgCount(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       hex(1, 2, 3, 4)
     """)
     self.assertErrorLogIs(errors, [(1, "wrong-arg-count", r"expects 1.*got 4")])
 
   def testWrongArgTypes(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       hex(3j)
     """)
     self.assertErrorLogIs(errors, [(1, "wrong-arg-types", r"int.*complex")])
 
   def testInterpreterFunctionNameInMsg(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       class A(list): pass
       A.append(3)
     """)
@@ -105,7 +105,7 @@ class ErrorTest(test_base.BaseTest):
   def testPyTDFunctionNameInMsg(self):
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", "class A(list): pass")
-      _, errors = self.InferAndCheck("""\
+      _, errors = self.InferWithErrors("""\
         import foo
         foo.A.append(3)
       """, pythonpath=[d.path])
@@ -115,7 +115,7 @@ class ErrorTest(test_base.BaseTest):
       )
 
   def testBuiltinFunctionNameInMsg(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       x = list
       x += (1,2)
       """)
@@ -125,7 +125,7 @@ class ErrorTest(test_base.BaseTest):
     )
 
   def BoundMethodNameInMsg(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       "".join(1)
       """)
     self.assertErrorLogIs(
@@ -138,7 +138,7 @@ class ErrorTest(test_base.BaseTest):
       d.create_file("foo.pyi", """
         def f(a: int, b: int, c: int, d: int, e: int): ...
       """)
-      _, errors = self.InferAndCheck("""\
+      _, errors = self.InferWithErrors("""\
         import foo
         foo.f(1, 2, 3, "four", 5)
       """, pythonpath=[d.path])
@@ -147,7 +147,7 @@ class ErrorTest(test_base.BaseTest):
                                 "a, b, c, d: str, [.][.][.]"))])
 
   def testInvalidBaseClass(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       class Foo(3):
         pass
     """)
@@ -159,7 +159,7 @@ class ErrorTest(test_base.BaseTest):
         class Codec(object):
             def __init__(self) -> None: ...
       """)
-      _, errors = self.InferAndCheck("""
+      _, errors = self.InferWithErrors("""
         import mod
         def f():
           for row in mod.Codec():
@@ -169,7 +169,7 @@ class ErrorTest(test_base.BaseTest):
       self.assertErrorLogIs(errors, [(4, "attribute-error", error)])
 
   def testInvalidIteratorFromClass(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       class A(object):
         pass
       def f():
@@ -186,7 +186,7 @@ class ErrorTest(test_base.BaseTest):
         class Foo(Generic[T]): ...
         class Bar(Foo[int]): ...
       """)
-      _, errors = self.InferAndCheck("""\
+      _, errors = self.InferWithErrors("""\
         import mod
         chr(mod.Bar())
       """, pythonpath=[d.path])
@@ -198,7 +198,7 @@ class ErrorTest(test_base.BaseTest):
       d.create_file("mycgi.pyi", """
         def escape(x: str or unicode) -> str or unicode
       """)
-      _, errors = self.InferAndCheck("""\
+      _, errors = self.InferWithErrors("""\
         import mycgi
         def foo(s):
           return mycgi.escape(s, quote=1)
@@ -211,7 +211,7 @@ class ErrorTest(test_base.BaseTest):
       d.create_file("foo.pyi", """
         def bar(xray, yankee, zulu) -> str
       """)
-      _, errors = self.InferAndCheck("""\
+      _, errors = self.InferWithErrors("""\
         import foo
         foo.bar(1, 2)
       """, pythonpath=[d.path])
@@ -219,7 +219,7 @@ class ErrorTest(test_base.BaseTest):
                                       r"zulu.*foo\.bar")])
 
   def testBadInheritance(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       class X:
           pass
       class Bar(X):
@@ -234,7 +234,7 @@ class ErrorTest(test_base.BaseTest):
       d.create_file("other.pyi", """
         def foo(x: int, y: str) -> str: ...
       """)
-      _, errors = self.InferAndCheck("""\
+      _, errors = self.InferWithErrors("""\
         import other
         other.foo(1.2, [])
       """, pythonpath=[d.path])
@@ -242,13 +242,13 @@ class ErrorTest(test_base.BaseTest):
           (2, "wrong-arg-types", r"\(x: int")])
 
   def testCallUncallable(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       0()
     """)
     self.assertErrorLogIs(errors, [(1, "not-callable", r"int")])
 
   def testSuperError(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       class A(object):
         def __init__(self):
           super(A, self, "foo").__init__()
@@ -258,7 +258,7 @@ class ErrorTest(test_base.BaseTest):
   def testAttributeError(self):
     with utils.Tempdir() as d:
       d.create_file("modfoo.pyi", "")
-      _, errors = self.InferAndCheck("""\
+      _, errors = self.InferWithErrors("""\
         class Foo(object):
           def __getattr__(self, name):
             return "attr"
@@ -283,7 +283,7 @@ class ErrorTest(test_base.BaseTest):
            "No attribute 'baz' on module 'modfoo'")])
 
   def testAttributeErrorGetAttribute(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       class Foo(object):
         def __getattribute__(self, name):
           return "attr"
@@ -295,7 +295,7 @@ class ErrorTest(test_base.BaseTest):
     self.assertErrorLogIs(errors, [(7, "attribute-error", r"x")])
 
   def testNoneAttribute(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       None.foo
     """)
     self.assertErrorLogIs(errors, [
@@ -306,7 +306,7 @@ class ErrorTest(test_base.BaseTest):
       d.create_file("foo.pyi", """
         def f(x: list[int]) -> int: ...
       """)
-      _, errors = self.InferAndCheck("""\
+      _, errors = self.InferWithErrors("""\
         import foo
         foo.f([""])
       """, deep=True, pythonpath=[d.path])
@@ -314,7 +314,7 @@ class ErrorTest(test_base.BaseTest):
                                       r"List\[int\].*List\[str\]")])
 
   def testTooManyArgs(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       def f():
         pass
       f(3)
@@ -322,7 +322,7 @@ class ErrorTest(test_base.BaseTest):
     self.assertErrorLogIs(errors, [(3, "wrong-arg-count", r"0.*1")])
 
   def testTooFewArgs(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       def f(x):
         pass
       f()
@@ -330,7 +330,7 @@ class ErrorTest(test_base.BaseTest):
     self.assertErrorLogIs(errors, [(3, "missing-parameter", r"x.*f")])
 
   def testDuplicateKeyword(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       def f(x, y):
         pass
       f(3, x=3)
@@ -343,7 +343,7 @@ class ErrorTest(test_base.BaseTest):
         def f() -> int: ...
         class f: ...
       """)
-      _, errors = self.InferAndCheck("""\
+      _, errors = self.InferWithErrors("""\
         import a
       """, pythonpath=[d.path])
       self.assertErrorLogIs(errors, [(1, "pyi-error")])
@@ -354,7 +354,7 @@ class ErrorTest(test_base.BaseTest):
         from b import X
         class Y(X): ...
       """)
-      _, errors = self.InferAndCheck("""\
+      _, errors = self.InferWithErrors("""\
         import a
       """, pythonpath=[d.path])
       self.assertErrorLogIs(errors, [(1, "pyi-error")])
@@ -366,7 +366,7 @@ class ErrorTest(test_base.BaseTest):
         class f: ...
       """)
       d.create_file("foo/__init__.pyi", "")
-      _, errors = self.InferAndCheck("""\
+      _, errors = self.InferWithErrors("""\
         from foo import a
       """, pythonpath=[d.path])
       self.assertErrorLogIs(errors, [(1, "pyi-error", r"foo\.a")])
@@ -378,7 +378,7 @@ class ErrorTest(test_base.BaseTest):
           class Y(X): ...
       """)
       d.create_file("foo/__init__.pyi", "")
-      _, errors = self.InferAndCheck("""\
+      _, errors = self.InferWithErrors("""\
         from foo import a
       """, pythonpath=[d.path])
       self.assertErrorLogIs(errors, [(1, "pyi-error", r"foo\.a")])
@@ -389,7 +389,7 @@ class ErrorTest(test_base.BaseTest):
         from typing import SupportsInt
         class A(SupportsInt[int]): pass
       """)
-      _, errors = self.InferAndCheck("""\
+      _, errors = self.InferWithErrors("""\
         import a
       """, deep=True, pythonpath=[d.path])
       self.assertErrorLogIs(errors, [(1, "pyi-error",
@@ -403,7 +403,7 @@ class ErrorTest(test_base.BaseTest):
         V = TypeVar("V")
         class A(Generic[K, V], Generic[V, K]): pass
       """)
-      _, errors = self.InferAndCheck("""\
+      _, errors = self.InferWithErrors("""\
         import a
       """, deep=True, pythonpath=[d.path])
       self.assertErrorLogIs(errors, [(1, "pyi-error", r"Illegal.*order.*a\.A")])
@@ -415,7 +415,7 @@ class ErrorTest(test_base.BaseTest):
         T = TypeVar("T")
         class A(Generic[T, T]): pass
       """)
-      _, errors = self.InferAndCheck("""\
+      _, errors = self.InferWithErrors("""\
         import a
       """, deep=True, pythonpath=[d.path])
       self.assertErrorLogIs(errors, [(1, "pyi-error", r"T")])
@@ -427,7 +427,7 @@ class ErrorTest(test_base.BaseTest):
         T = TypeVar("T")
         x = ...  # type: T
       """)
-      _, errors = self.InferAndCheck("""\
+      _, errors = self.InferWithErrors("""\
         import a
       """, deep=True, pythonpath=[d.path])
       self.assertErrorLogIs(errors, [(1, "pyi-error", r"a.*T.*a\.x")])
@@ -440,7 +440,7 @@ class ErrorTest(test_base.BaseTest):
         class A(Generic[T]):
           x = ...  # type: T
       """)
-      _, errors = self.InferAndCheck("""\
+      _, errors = self.InferWithErrors("""\
         import a
         def f():
           return a.A.x
@@ -455,7 +455,7 @@ class ErrorTest(test_base.BaseTest):
         class A(object):
           x = ...  # type: T
       """)
-      _, errors = self.InferAndCheck("""\
+      _, errors = self.InferWithErrors("""\
         import a
       """, deep=True, pythonpath=[d.path])
       self.assertErrorLogIs(errors, [(1, "pyi-error", r"a.*T.*a\.A\.x")])
@@ -465,7 +465,7 @@ class ErrorTest(test_base.BaseTest):
       d.create_file("a.pyi", """
         def f(x: int or str) -> None
       """)
-      _, errors = self.InferAndCheck("""\
+      _, errors = self.InferWithErrors("""\
         import a
         x = a.f(4.2)
       """, deep=True, pythonpath=[d.path])
@@ -473,27 +473,27 @@ class ErrorTest(test_base.BaseTest):
       self.assertErrorLogIs(errors, [(2, "wrong-arg-types", pattern)])
 
   def testPrintTypeArg(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       hex(int)
     """, deep=True)
     self.assertErrorLogIs(
         errors, [(1, "wrong-arg-types", r"Actually passed.*Type\[int\]")])
 
   def testNotSupported(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from typing import Generic
     """)
     self.assertErrorLogIs(errors, [(1, "not-supported-yet")])
 
   def testDeleteFromSet(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       s = {1}
       del s[1]
     """, deep=True)
     self.assertErrorLogIs(errors, [(2, "attribute-error", r"__delitem__")])
 
   def testBadReference(self):
-    ty, errors = self.InferAndCheck("""\
+    ty, errors = self.InferWithErrors("""\
       def main():
         x = foo
         for foo in []:
@@ -509,7 +509,7 @@ class ErrorTest(test_base.BaseTest):
 
   @unittest.skip("Some types shouldn't allow attribute setting.")
   def testSetIntAttribute(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       x = 42
       x.y = 42
     """, deep=True)
@@ -521,7 +521,7 @@ class ErrorTest(test_base.BaseTest):
         class A(object):
           def __init__(self, x: int) -> None
       """)
-      _, errors = self.InferAndCheck("""\
+      _, errors = self.InferWithErrors("""\
         import a
         x = a.A("")
         x = a.A("", 42)
@@ -541,7 +541,7 @@ class ErrorTest(test_base.BaseTest):
       d.create_file("foo.pyi", """
         def f(x, *args, y) -> None
       """)
-      _, errors = self.InferAndCheck("""\
+      _, errors = self.InferWithErrors("""\
         import foo
         foo.f(1, y=2)
         foo.f(1, 2, y=3)
@@ -553,7 +553,7 @@ class ErrorTest(test_base.BaseTest):
       ])
 
   def testInvalidParametersDetails(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       float(list())
       float(1, list(), foobar=str)
       float(1, foobar=list())
@@ -573,7 +573,7 @@ class ErrorTest(test_base.BaseTest):
     ])
 
   def testBadSuperClass(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       class A(object):
         def f(self):
           return "foo"
@@ -587,7 +587,7 @@ class ErrorTest(test_base.BaseTest):
 
   @unittest.skip("Need to type-check second argument to super")
   def testBadSuperInstance(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       class A(object):
         pass
       class B(A):
@@ -603,7 +603,7 @@ class ErrorTest(test_base.BaseTest):
         import typing
         x = ...  # type: typing.Rumpelstiltskin
       """)
-      _, errors = self.InferAndCheck("""\
+      _, errors = self.InferWithErrors("""\
         import a
         x = a.x
       """, pythonpath=[d.path], deep=True)
@@ -615,7 +615,7 @@ class ErrorTest(test_base.BaseTest):
         from typing import Rumpelstiltskin
         x = ...  # type: Rumpelstiltskin
       """)
-      _, errors = self.InferAndCheck("""\
+      _, errors = self.InferWithErrors("""\
         import a
         x = a.x
       """, pythonpath=[d.path], deep=True)
@@ -630,7 +630,7 @@ class ErrorTest(test_base.BaseTest):
         class C(object): ...
         def f(x: Type[A]) -> bool
       """)
-      ty, errors = self.InferAndCheck("""\
+      ty, errors = self.InferWithErrors("""\
         import a
         x = a.f(a.A)
         y = a.f(a.B)
@@ -655,7 +655,7 @@ class ErrorTest(test_base.BaseTest):
         class B(A[str]): ...
         def f(x: Type[A[int]]): ...
       """)
-      _, errors = self.InferAndCheck("""\
+      _, errors = self.InferWithErrors("""\
         import a
         x = a.f(a.B)
       """, pythonpath=[d.path], deep=True)
@@ -671,7 +671,7 @@ class ErrorTest(test_base.BaseTest):
         class D(B, A): ...
         class E(C, D): ...
       """)
-      _, errors = self.InferAndCheck("""\
+      _, errors = self.InferWithErrors("""\
         import a
         x = a.E()
       """, pythonpath=[d.path])
@@ -682,7 +682,7 @@ class ErrorTest(test_base.BaseTest):
       d.create_file("a.pyi", """
         class A(BaseException, ValueError): ...
       """)
-      _, errors = self.InferAndCheck("""\
+      _, errors = self.InferWithErrors("""\
         import a
         class B(a.A): pass
         raise a.A()
@@ -699,7 +699,7 @@ class ErrorTest(test_base.BaseTest):
         from a import A
         class B(metaclass=A): ...
       """)
-      _, errors = self.InferAndCheck("""\
+      _, errors = self.InferWithErrors("""\
         import b
         class C(b.B):
           def __init__(self):
@@ -734,7 +734,7 @@ class ErrorTest(test_base.BaseTest):
         def f(x: str, y: int) -> bool
         def f(x: str) -> bool
       """)
-      _, errors = self.InferAndCheck("""\
+      _, errors = self.InferWithErrors("""\
         import a
         x = a.f(0, "")
       """, pythonpath=[d.path])
@@ -747,7 +747,7 @@ class ErrorTest(test_base.BaseTest):
         T = TypeVar("T")
         def copy(x: T) -> T
       """)
-      _, errors = self.InferAndCheck("""\
+      _, errors = self.InferWithErrors("""\
         import a
         class A(object):
           def __getattribute__(self, name):
@@ -757,34 +757,34 @@ class ErrorTest(test_base.BaseTest):
       self.assertErrorLogIs(errors, [(5, "not-callable", r"A")])
 
   def testBadTypeName(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       X = type(3, (int, object), {"a": 1})
     """)
     self.assertErrorLogIs(errors, [(1, "wrong-arg-types", r"Actual.*int")])
 
   def testBadTypeBases(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       X = type("X", (42,), {"a": 1})
     """)
     self.assertErrorLogIs(errors, [(1, "wrong-arg-types",
                                     r"Actual.*Tuple\[int\]")])
 
   def testHalfBadTypeBases(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       X = type("X", (42, object), {"a": 1})
     """)
     self.assertErrorLogIs(errors, [(1, "wrong-arg-types",
                                     r"Actual.*Tuple\[int, Type\[object\]\]")])
 
   def testBadTypeMembers(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       X = type("X", (int, object), {0: 1})
     """)
     self.assertErrorLogIs(errors, [(1, "wrong-arg-types",
                                     r"Actual.*Dict\[int, int\]")])
 
   def testUnion(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       def f(x: int):
         pass
@@ -804,7 +804,7 @@ class ErrorTest(test_base.BaseTest):
         class A(B): ...
         class B(A): ...
       """)
-      ty, errors = self.InferAndCheck("""\
+      ty, errors = self.InferWithErrors("""\
         import a
         v = a.A()
         x = v.x  # No error because there is an Unsolvable in the MRO of a.A
@@ -818,7 +818,7 @@ class ErrorTest(test_base.BaseTest):
       self.assertErrorLogIs(errors, [(2, "recursion-error", r"a\.A")])
 
   def testInvalidAnnotations(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       from typing import Dict, List, Union
       def f1(x: Dict):  # okay
@@ -841,7 +841,7 @@ class ErrorTest(test_base.BaseTest):
       d.create_file("f2.pyi", """\
         def f(x: Optional): ...
       """)
-      _, errors = self.InferAndCheck("""\
+      _, errors = self.InferWithErrors("""\
         import f1
         import f2
       """, pythonpath=[d.path])
@@ -849,7 +849,7 @@ class ErrorTest(test_base.BaseTest):
                                      (2, "pyi-error", r"f2.*Optional")])
 
   def testPrintUnsolvable(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       from typing import List
       def f(x: List[nonsense], y: str, z: float):
@@ -862,7 +862,7 @@ class ErrorTest(test_base.BaseTest):
         (5, "wrong-arg-types", r"Expected:.*x: list.*Actual.*x: set")])
 
   def testPrintUnionOfContainers(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       def f(x: str):
         pass
@@ -876,7 +876,7 @@ class ErrorTest(test_base.BaseTest):
     self.assertErrorLogIs(errors, [(8, "wrong-arg-types", error)])
 
   def testBadDictAttribute(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       x = {"a": 1}
       y = x.a
     """)
@@ -889,13 +889,13 @@ class ErrorTest(test_base.BaseTest):
         from typing import Dict
         x = ...  # type: Dict[str, int, float]
       """)
-      _, errors = self.InferAndCheck("""\
+      _, errors = self.InferWithErrors("""\
         import a
       """, pythonpath=[d.path])
       self.assertErrorLogIs(errors, [(1, "pyi-error", r"2.*3")])
 
   def testWrongBrackets(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       from typing import List
       def f(x: List(str)):
@@ -904,7 +904,7 @@ class ErrorTest(test_base.BaseTest):
     self.assertErrorLogIs(errors, [(3, "not-callable", r"List")])
 
   def testInterpreterClassPrinting(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       class Foo(object): pass
       def f(x: str): pass
@@ -913,19 +913,19 @@ class ErrorTest(test_base.BaseTest):
     self.assertErrorLogIs(errors, [(4, "wrong-arg-types", r"str.*Foo")])
 
   def testCallNone(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       None()
     """)
     self.assertErrorLogIs(errors, [(1, "none-attr")])
 
   def testInNone(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       3 in None
     """)
     self.assertErrorLogIs(errors, [(1, "none-attr")])
 
   def testNoAttrError(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       if __random__:
         y = 42
       else:
@@ -935,7 +935,7 @@ class ErrorTest(test_base.BaseTest):
     self.assertErrorLogIs(errors, [(5, "attribute-error")])
 
   def testAttrError(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       if __random__:
         y = 42
       else:
@@ -945,7 +945,7 @@ class ErrorTest(test_base.BaseTest):
     self.assertErrorLogIs(errors, [(5, "attribute-error", "upper.*int")])
 
   def testPrintDictAndTuple(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       tup = None  # type: tuple[int, ...]
       dct = None  # type: dict[str, int]
@@ -967,7 +967,7 @@ class ErrorTest(test_base.BaseTest):
     ])
 
   def testMoveUnionInward(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       def f() -> str:
         y = "hello" if __random__ else u"hello"
@@ -977,7 +977,7 @@ class ErrorTest(test_base.BaseTest):
         4, "bad-return-type", r"Generator\[Union\[str, unicode\], Any, Any\]")])
 
   def testPrintCallableInstance(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from typing import Callable
       v = None  # type: Callable[[int], str]
       hex(v)
@@ -986,7 +986,7 @@ class ErrorTest(test_base.BaseTest):
                                     r"Actual.*Callable\[\[int\], str\]")])
 
   def testSameNameAndLine(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       def f(x):
         return x + 42
       f("hello")
@@ -1001,7 +1001,7 @@ class ErrorTest(test_base.BaseTest):
         def f(*args, y, x, z: int): ...
         def g(x): ...
       """)
-      _, errors = self.InferAndCheck("""\
+      _, errors = self.InferWithErrors("""\
         import foo
         foo.f(x=1, y=2, z="3")
         foo.g(42, v4="the", v3="quick", v2="brown", v1="fox")
@@ -1011,7 +1011,7 @@ class ErrorTest(test_base.BaseTest):
           (3, "wrong-keyword-args", r"v1, v2, v3, v4")])
 
   def testBadBaseClass(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       class Foo(None): pass
       class Bar(None if __random__ else 42): pass
     """)
@@ -1020,7 +1020,7 @@ class ErrorTest(test_base.BaseTest):
         (2, "base-class-error", r"Union\[<instance of int>, None\]")])
 
   def testCallableInUnsupportedOperands(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       def f(x, y=None): pass
       f in f
     """)
@@ -1029,7 +1029,7 @@ class ErrorTest(test_base.BaseTest):
                                     r"Callable\[\[Any, Any\], Any\]")])
 
   def testInnerClassError(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       def f(x: str): pass
       def g():
@@ -1039,7 +1039,7 @@ class ErrorTest(test_base.BaseTest):
     self.assertErrorLogIs(errors, [(5, "wrong-arg-types", r"x: str.*x: Foo")])
 
   def testInnerClassError2(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       def f():
         class Foo(object): pass
@@ -1051,7 +1051,7 @@ class ErrorTest(test_base.BaseTest):
   def testCleanNamedtupleNames(self):
     # Make sure the namedtuple renaming in _pytd_print correctly extracts type
     # names and doesn't erase other types accidentally.
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       import collections
       X = collections.namedtuple("X", "a b c d")
@@ -1084,14 +1084,14 @@ class ErrorTest(test_base.BaseTest):
         X = NamedTuple("X", [])
         def f(x: int): ...
       """)
-      _, errors = self.InferAndCheck("""\
+      _, errors = self.InferWithErrors("""\
         import foo
         foo.f(foo.X())
       """, pythonpath=[d.path])
       self.assertErrorLogIs(errors, [(2, "wrong-arg-types", r"`X`")])
 
   def testBadAnnotation(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       tuple[0]
       dict[42]
       class A(object): pass
@@ -1104,7 +1104,7 @@ class ErrorTest(test_base.BaseTest):
     ])
 
   def testRevealType(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       reveal_type(42 or "foo")
       class Foo(object):
         pass
@@ -1120,7 +1120,7 @@ class ErrorTest(test_base.BaseTest):
     ])
 
   def testArgumentOrder(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       def g(f: str, a, b, c, d, e,):
         pass
@@ -1133,7 +1133,7 @@ class ErrorTest(test_base.BaseTest):
     )
 
   def testConversionOfGeneric(self):
-    _, errors = self.InferAndCheck("""
+    _, errors = self.InferWithErrors("""
       from __future__ import google_type_annotations
       import os
       def f() -> None:
@@ -1144,7 +1144,7 @@ class ErrorTest(test_base.BaseTest):
     ])
 
   def testProtocolMismatch(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       class Foo(object): pass
       next(Foo())
     """)
@@ -1153,7 +1153,7 @@ class ErrorTest(test_base.BaseTest):
     ])
 
   def testProtocolMismatchPartial(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       class Foo(object):
         def __iter__(self):
           return self
@@ -1163,7 +1163,7 @@ class ErrorTest(test_base.BaseTest):
         4, "wrong-arg-types", r"\n\s*next\s*$")])  # `next` on its own line
 
   def testNotProtocol(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       a = []
       a.append(1)
       a = "".join(a)
@@ -1172,7 +1172,7 @@ class ErrorTest(test_base.BaseTest):
         3, "wrong-arg-types", r"\(.*List\[int\]\)$")])  # no protocol details
 
   def testInnerClass(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       def f() -> int:
         class Foo(object):

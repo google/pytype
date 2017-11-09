@@ -7,7 +7,7 @@ class DisableTest(test_base.BaseTest):
   """Test error disabling."""
 
   def testInvalidDirective(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       x = 1  # pytype: this is not a valid pytype directive.
     """)
     self.assertErrorLogIs(errors, [(1, "invalid-directive")])
@@ -16,7 +16,7 @@ class DisableTest(test_base.BaseTest):
     self.assertFalse(errors.has_error())
 
   def testInvalidDisableErrorName(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       x = 1  # pytype: disable=not-an-error.
     """)
     self.assertErrorLogIs(errors, [(1, "invalid-directive",
@@ -26,7 +26,7 @@ class DisableTest(test_base.BaseTest):
     self.assertFalse(errors.has_error())
 
   def testDisableError(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       x = a
       x = b  # pytype: disable=name-error
       x = c
@@ -35,7 +35,7 @@ class DisableTest(test_base.BaseTest):
 
   def testOpenEndedDirective(self):
     """Test that disables in the middle of the file can't be left open-ended."""
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       '''This is a docstring.
       def f(x):
         pass

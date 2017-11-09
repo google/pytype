@@ -25,7 +25,7 @@ class CallsTest(test_base.BaseTest):
       d.create_file("mod.pyi", """
         def foo(x, y) -> int
       """)
-      _, errors = self.InferAndCheck("""\
+      _, errors = self.InferWithErrors("""\
         import mod
         mod.foo(1)
       """, pythonpath=[d.path])
@@ -36,7 +36,7 @@ class CallsTest(test_base.BaseTest):
       d.create_file("mod.pyi", """
         def foo(x, y) -> int
       """)
-      _, errors = self.InferAndCheck("""\
+      _, errors = self.InferWithErrors("""\
         import mod
         mod.foo(1, 2, 3)
       """, pythonpath=[d.path])
@@ -47,7 +47,7 @@ class CallsTest(test_base.BaseTest):
       d.create_file("mod.pyi", """
         def foo(x, y, *, z) -> int
       """)
-      _, errors = self.InferAndCheck("""\
+      _, errors = self.InferWithErrors("""\
         import mod
         mod.foo(1, 2)
       """, pythonpath=[d.path])
@@ -58,7 +58,7 @@ class CallsTest(test_base.BaseTest):
       d.create_file("mod.pyi", """
         def foo(x, y) -> int
       """)
-      _, errors = self.InferAndCheck("""\
+      _, errors = self.InferWithErrors("""\
         import mod
         mod.foo(1, 2, z=3)
       """, pythonpath=[d.path])

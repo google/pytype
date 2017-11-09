@@ -118,7 +118,7 @@ class GeneratorTest(test_base.BaseTest):
     """)
 
   def testNoReturn(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       from typing import Generator
       def f() -> Generator[str]:

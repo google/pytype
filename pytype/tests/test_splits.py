@@ -835,7 +835,7 @@ class SplitTest(test_base.BaseTest):
 
   def testBuiltinFullNameCheck(self):
     # Don't get confused by a class named int
-    _, errorlog = self.InferAndCheck("""
+    _, errorlog = self.InferWithErrors("""
       class int():
         pass
       x = "foo" if __random__ else int()

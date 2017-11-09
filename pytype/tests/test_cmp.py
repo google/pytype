@@ -9,7 +9,7 @@ class InTest(test_base.BaseTest):
   """Test for "x in y". Also test overloading of this operator."""
 
   def test_concrete(self):
-    ty, errors = self.InferAndCheck("""\
+    ty, errors = self.InferWithErrors("""\
       def f(x, y):
         return x in y
       f(1, [1])
@@ -49,7 +49,7 @@ class InTest(test_base.BaseTest):
     """)
 
   def test_none(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       x = None
       if "" in x:
         del x[""]
@@ -63,7 +63,7 @@ class NotInTest(test_base.BaseTest):
   """Test for "x not in y". Also test overloading of this operator."""
 
   def test_concrete(self):
-    ty, errors = self.InferAndCheck("""\
+    ty, errors = self.InferWithErrors("""\
       def f(x, y):
         return x not in y
       f(1, [1])
@@ -97,7 +97,7 @@ class NotInTest(test_base.BaseTest):
     """)
 
   def test_none(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       x = None
       if "" not in x:
         x[""] = 42

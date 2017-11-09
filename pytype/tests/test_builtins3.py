@@ -76,7 +76,7 @@ class BuiltinTests2(test_base.BaseTest):
     """)
 
   def testImplicitTypeVarImport(self):
-    ty, errors = self.InferAndCheck("v = " + abstract.T)
+    ty, errors = self.InferWithErrors("v = " + abstract.T)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       v = ...  # type: Any
@@ -187,7 +187,7 @@ class BuiltinTests2(test_base.BaseTest):
     """)
 
   def testIntInit(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       int()
       int(0)
       int("0")
@@ -275,7 +275,7 @@ class BuiltinTests2(test_base.BaseTest):
     """)
 
   def testSpecialBuiltinTypes(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       isinstance(1, int)
       isinstance(1, "no")
       issubclass(int, object)

@@ -24,7 +24,7 @@ class UnionTest(test_base.BaseTest):
     """)
 
   def testCall(self):
-    ty, errors = self.InferAndCheck("""\
+    ty, errors = self.InferWithErrors("""\
       def f():
         x = 42
         if __random__:

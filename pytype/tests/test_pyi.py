@@ -351,7 +351,7 @@ class PYITest(test_base.BaseTest):
         from typing import Any
         def __getattr__(name) -> Any
       """)
-      ty, errors = self.InferAndCheck("""
+      ty, errors = self.InferWithErrors("""
         from foo import *
         from bar import *  # Nonsense import generates a top-level __getattr__
       """, pythonpath=[d.path])
@@ -445,7 +445,7 @@ class PYITest(test_base.BaseTest):
         T = TypeVar("T")
         def get_varargs(x: int, *args: T, z: int, **kws: int) -> T: ...
       """)
-      ty, errors = self.InferAndCheck("""\
+      ty, errors = self.InferWithErrors("""\
         from typing import Union
         import a
         l1 = None  # type: list[str]
@@ -480,7 +480,7 @@ class PYITest(test_base.BaseTest):
         T = TypeVar("T")
         def get_kwargs(x: int, *args: int, z: int, **kws: T) -> T: ...
       """)
-      ty, errors = self.InferAndCheck("""\
+      ty, errors = self.InferWithErrors("""\
         from typing import Mapping, Union
         import a
         d1 = None  # type: dict[int, int]
@@ -516,7 +516,7 @@ class PYITest(test_base.BaseTest):
         V = TypeVar("V")
         def foo(a: K, *b, c: V, **d) -> Dict[K, V]: ...
       """)
-      ty, errors = self.InferAndCheck("""\
+      ty, errors = self.InferWithErrors("""\
         import foo
         a = foo.foo(*tuple(), **dict())
         b = foo.foo(*(1,), **{"c": 3j})
@@ -605,7 +605,7 @@ class PYITest(test_base.BaseTest):
         from typing import List, Sequence
         class A(List[int], Sequence[str]): ...
       """)
-      ty, errors = self.InferAndCheck("""\
+      ty, errors = self.InferWithErrors("""\
         import foo
         x = [] + foo.A()
       """, pythonpath=[d.path])

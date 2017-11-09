@@ -124,7 +124,7 @@ class RecoveryTests(test_base.BaseTest):
     """)
 
   def testFunctionWithUnknownDecorator(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       from nowhere import decorator
       @decorator
@@ -141,7 +141,7 @@ class RecoveryTests(test_base.BaseTest):
     ])
 
   def testMethodWithUnknownDecorator(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       from nowhere import decorator
       class Foo(object):
@@ -178,7 +178,7 @@ class RecoveryTests(test_base.BaseTest):
     """)
 
   def testAttributeAccessInImpossiblePath(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       x = 3.14 if __random__ else 42
       if isinstance(x, int):
         if isinstance(x, float):
@@ -190,7 +190,7 @@ class RecoveryTests(test_base.BaseTest):
     ])
 
   def testBinaryOperatorOnImpossiblePath(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       x = "" if __random__ else u""
       if isinstance(x, unicode):
         if isinstance(x, str):
@@ -202,7 +202,7 @@ class RecoveryTests(test_base.BaseTest):
 
   def testComplexInit(self):
     """Test that we recover when __init__ triggers a utils.TooComplexError."""
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       from typing import AnyStr
       class X(object):

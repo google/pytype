@@ -8,7 +8,7 @@ class AbstractMethodTests(test_base.BaseTest):
   """Tests for @abc.abstractmethod."""
 
   def test_basic_abstractmethod(self):
-    ty, errors = self.InferAndCheck("""\
+    ty, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       import abc
 
@@ -34,7 +34,7 @@ class AbstractMethodTests(test_base.BaseTest):
     self.assertErrorLogIs(errors, [])
 
   def test_super_abstractmethod(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       import abc
 
@@ -100,7 +100,7 @@ class AbstractMethodTests(test_base.BaseTest):
     """)
 
   def test_regular_method_in_abstract_class(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       import abc
       class Example(object):
@@ -113,7 +113,7 @@ class AbstractMethodTests(test_base.BaseTest):
     self.assertErrorLogIs(errors, [(6, "bad-return-type", r"int.*None")])
 
   def test_name_error(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       import abc
       class Example(object):
         __metaclass__ = abc.ABCMeta
@@ -161,7 +161,7 @@ class AbstractMethodTests(test_base.BaseTest):
     """, skip_repeat_calls=False)
 
   def test_instantiate_abstract_class(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       import abc
       class Example(object):
         __metaclass__ = abc.ABCMeta
@@ -180,7 +180,7 @@ class AbstractMethodTests(test_base.BaseTest):
           @abc.abstractmethod
           def foo(self) -> None: ...
       """)
-      _, errors = self.InferAndCheck("""\
+      _, errors = self.InferWithErrors("""\
         import foo
         foo.Example()
       """, pythonpath=[d.path])
@@ -188,7 +188,7 @@ class AbstractMethodTests(test_base.BaseTest):
                                       r"foo\.Example.*foo")])
 
   def test_stray_abstractmethod(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       import abc
       class Example(object):
         @abc.abstractmethod
@@ -234,7 +234,7 @@ class AbstractMethodTests(test_base.BaseTest):
       """, pythonpath=[d.path])
 
   def test_multiple_inheritance_error(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       import abc
       class X(object):
         pass
@@ -259,7 +259,7 @@ class AbstractMethodTests(test_base.BaseTest):
           def foo(self): ...
         class Foo(X, Interface): ...
       """)
-      _, errors = self.InferAndCheck("""\
+      _, errors = self.InferWithErrors("""\
         import foo
         foo.Foo().foo()
       """, pythonpath=[d.path])

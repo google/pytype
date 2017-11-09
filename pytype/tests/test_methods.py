@@ -999,7 +999,7 @@ class MethodsTest(test_base.BaseTest):
     """)
 
   def testAnnotatedSelf(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       class Foo(object):
         def __init__(x: int):

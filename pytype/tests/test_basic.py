@@ -323,7 +323,7 @@ class TestIt(test_base.BaseTest):
       """)
 
   def test_calling_methods_wrong(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       class Thing(object):
         def __init__(self, x):
           self.x = x
@@ -348,7 +348,7 @@ class TestIt(test_base.BaseTest):
       """)
 
   def test_other_class_methods(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       class Thing(object):
         def foo(self):
           return 17

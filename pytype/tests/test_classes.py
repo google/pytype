@@ -178,7 +178,7 @@ class ClassesTest(test_base.BaseTest):
     """)
 
   def testSuperError(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       class Base(object):
         def __init__(self, x, y, z):
           pass
@@ -939,21 +939,21 @@ class ClassesTest(test_base.BaseTest):
         class C(A[T], B[T]): ...
         def f() -> C[int]: ...
       """)
-      _, errors = self.InferAndCheck("""\
+      _, errors = self.InferWithErrors("""\
         import foo
         foo.f()
       """, pythonpath=[d.path])
       self.assertErrorLogIs(errors, [(2, "mro-error", r"Class C")])
 
   def testCallParameterizedClass(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from typing import List
       List[str]()
       """)
     self.assertErrorLogIs(errors, [(2, "not-callable")])
 
   def testErrorfulConstructors(self):
-    ty, errors = self.InferAndCheck("""\
+    ty, errors = self.InferWithErrors("""\
       class Foo(object):
         attr = 42
         def __new__(cls):
@@ -1069,7 +1069,7 @@ class ClassesTest(test_base.BaseTest):
       """, pythonpath=[d.path])
 
   def testSuperNewWrongArgCount(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       class Foo(object):
         def __new__(cls, x):
           return super(Foo, cls).__new__(cls, x)
@@ -1077,7 +1077,7 @@ class ClassesTest(test_base.BaseTest):
     self.assertErrorLogIs(errors, [(3, "wrong-arg-count", "1.*2")])
 
   def testSuperInitWrongArgCount(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       class Foo(object):
         def __init__(self, x):
           super(Foo, self).__init__(x)
@@ -1085,7 +1085,7 @@ class ClassesTest(test_base.BaseTest):
     self.assertErrorLogIs(errors, [(3, "wrong-arg-count", "1.*2")])
 
   def testSuperNewMissingParameter(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       class Foo(object):
         def __new__(cls, x):
           # Even when __init__ is defined, too few args is an error.
@@ -1110,7 +1110,7 @@ class ClassesTest(test_base.BaseTest):
     """)
 
   def testNewKwarg(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       class Foo(object):
         def __new__(cls):
           # ok because __init__ is defined.
@@ -1124,7 +1124,7 @@ class ClassesTest(test_base.BaseTest):
     self.assertErrorLogIs(errors, [(9, "wrong-keyword-args", r"x.*__new__")])
 
   def testInitKwarg(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       class Foo(object):
         def __init__(self):
           # ok because __new__ is defined.
@@ -1165,7 +1165,7 @@ class ClassesTest(test_base.BaseTest):
     """)
 
   def testRecursiveConstructorBadAttribute(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       from typing import List
       MyType = List['Foo']
@@ -1257,7 +1257,7 @@ class ClassesTest(test_base.BaseTest):
     """)
 
   def testMakeGenericClass(self):
-    ty, errors = self.InferAndCheck("""\
+    ty, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       from typing import List, TypeVar, Union
       T1 = TypeVar("T1")
@@ -1273,7 +1273,7 @@ class ClassesTest(test_base.BaseTest):
     self.assertErrorLogIs(errors, [(5, "not-supported-yet", r"generic")])
 
   def testMakeGenericClassWithConcreteValue(self):
-    ty, errors = self.InferAndCheck("""\
+    ty, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       from typing import Dict, TypeVar
       V = TypeVar("V")

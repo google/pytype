@@ -400,7 +400,7 @@ class ReverseTest(test_base.BaseTest):
   def test_unknown_right(self):
     # Reverse operators are rare enough that it makes sense to assume that the
     # regular operator was called when the right side is ambiguous.
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       class Foo(object):
         def __sub__(self, other):
           return ""
@@ -461,7 +461,7 @@ class InplaceTest(test_base.BaseTest):
     self.check_inplace("isub", "-=")
 
   def test_list_add(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       class A(object): pass
       v = []
       v += A()

@@ -107,7 +107,7 @@ class TupleTest(test_base.BaseTest):
     """)
 
   def testBadUnpacking(self):
-    ty, errors = self.InferAndCheck("""\
+    ty, errors = self.InferWithErrors("""\
       tup = (1, "")
       a, = tup
       b, c, d = tup
@@ -150,7 +150,7 @@ class TupleTest(test_base.BaseTest):
     """)
 
   def testTuplePrinting(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       from typing import Tuple
       def f(x: Tuple[str, ...]):
@@ -205,7 +205,7 @@ class TupleTest(test_base.BaseTest):
         from typing import Tuple
         class A(Tuple[str, int]): ...
       """)
-      _, errors = self.InferAndCheck("""\
+      _, errors = self.InferWithErrors("""\
         from __future__ import google_type_annotations
         from typing import Tuple, Type
         import foo
@@ -248,7 +248,7 @@ class TupleTest(test_base.BaseTest):
     """)
 
   def testBadTupleClassGetItem(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       v = type((3, ""))
       w = v[0]
     """)

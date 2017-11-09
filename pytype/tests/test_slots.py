@@ -24,7 +24,7 @@ class SlotsTest(test_base.BaseTest):
     """)
 
   def testAmbiguousSlot(self):
-    ty, errors, = self.InferAndCheck("""
+    ty, errors, = self.InferWithErrors("""
       class Foo(object):
         __slots__ = () if __random__ else ("foo")
         def __init__(self):
@@ -59,7 +59,7 @@ class SlotsTest(test_base.BaseTest):
     """)
 
   def testSlotWithNonStrings(self):
-    _, errors = self.InferAndCheck("""
+    _, errors = self.InferWithErrors("""
       class Foo(object):
         __slots__ = (1, 2, 3)
     """)
@@ -107,7 +107,7 @@ class SlotsTest(test_base.BaseTest):
     """)
 
   def testAssignAttribute(self):
-    _, errors = self.InferAndCheck("""
+    _, errors = self.InferWithErrors("""
       class Foo(object):
         __slots__ = ("x", "y")
       foo = Foo()
@@ -121,7 +121,7 @@ class SlotsTest(test_base.BaseTest):
     )
 
   def testObject(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       object().foo = 42
     """)
     self.assertErrorLogIs(errors, [
@@ -136,7 +136,7 @@ class SlotsTest(test_base.BaseTest):
     """)
 
   def testParameterizedBaseClass(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from typing import List
       class Foo(List[int]):
         __slots__ = ()
@@ -147,7 +147,7 @@ class SlotsTest(test_base.BaseTest):
     ])
 
   def testEmptySlots(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       class Foo(object):
         __slots__ = ()
       Foo().foo = 42
@@ -158,7 +158,7 @@ class SlotsTest(test_base.BaseTest):
     )
 
   def testNamedTuple(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       import collections
       Foo = collections.namedtuple("_", ["a", "b", "c"])
       foo = Foo(None, None, None)
@@ -172,7 +172,7 @@ class SlotsTest(test_base.BaseTest):
     ])
 
   def testBuiltinAttr(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       "foo".bar = 1
       u"foo".bar = 2
       ().bar = 3
@@ -199,7 +199,7 @@ class SlotsTest(test_base.BaseTest):
     )
 
   def testGeneratorAttr(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       def f(): yield 42
       f().foo = 42
     """)
@@ -235,7 +235,7 @@ class SlotsTest(test_base.BaseTest):
     """)
 
   def testNameMangling(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       class Bar(object):
         __slots__ = ["__baz"]
         def __init__(self):

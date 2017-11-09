@@ -118,7 +118,7 @@ class TypeVarTest(test_base.BaseTest):
       """)
 
   def testInvalidTypeVar(self):
-    ty, errors = self.InferAndCheck("""\
+    ty, errors = self.InferWithErrors("""\
       from typing import TypeVar
       typevar = TypeVar
       T = typevar()
@@ -155,7 +155,7 @@ class TypeVarTest(test_base.BaseTest):
         T = TypeVar("T")
         X = TypeVar("X")
       """)
-      _, errors = self.InferAndCheck("""\
+      _, errors = self.InferWithErrors("""\
         from __future__ import google_type_annotations
         # This is illegal: A TypeVar("T") needs to be stored under the name "T".
         from a import T as T2
@@ -209,7 +209,7 @@ class TypeVarTest(test_base.BaseTest):
     """)
 
   def testBadSubstitution(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       from typing import List, TypeVar
       S = TypeVar("S")
@@ -250,7 +250,7 @@ class TypeVarTest(test_base.BaseTest):
     """)
 
   def testUseConstraints(self):
-    ty, errors = self.InferAndCheck("""\
+    ty, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       from typing import TypeVar
       T = TypeVar("T", int, float)
@@ -279,7 +279,7 @@ class TypeVarTest(test_base.BaseTest):
         def f(x: T) -> T: ...
         def g(x: AnyStr) -> AnyStr: ...
       """)
-      _, errors = self.InferAndCheck("""\
+      _, errors = self.InferWithErrors("""\
         import foo
         foo.f("")
         foo.g(0)
@@ -289,7 +289,7 @@ class TypeVarTest(test_base.BaseTest):
           (3, "wrong-arg-types", r"Union\[str, unicode\].*int")])
 
   def testUseAnyStrConstraints(self):
-    ty, errors = self.InferAndCheck("""\
+    ty, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       from typing import AnyStr, TypeVar
       def f(x: AnyStr, y: AnyStr) -> AnyStr:
@@ -324,7 +324,7 @@ class TypeVarTest(test_base.BaseTest):
     """)
 
   def testPrintNestedTypeParameter(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       from typing import List, TypeVar
       T = TypeVar("T", int, float)
@@ -374,7 +374,7 @@ class TypeVarTest(test_base.BaseTest):
     """)
 
   def testConstraintMismatch(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       from typing import AnyStr
       def f(x: AnyStr, y: AnyStr): ...
@@ -386,7 +386,7 @@ class TypeVarTest(test_base.BaseTest):
                                     r"Expected.*y: str.*Actual.*y: unicode")])
 
   def testConstraintSubtyping(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       from typing import TypeVar
       T = TypeVar("T", int, float)
@@ -398,7 +398,7 @@ class TypeVarTest(test_base.BaseTest):
                                     r"Expected.*y: bool.*Actual.*y: int")])
 
   def testFilterValue(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       from typing import TypeVar
       T = TypeVar("T", int, float)
@@ -412,7 +412,7 @@ class TypeVarTest(test_base.BaseTest):
                                     r"Expected.*y: float.*Actual.*y: int")])
 
   def testFilterClass(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       from typing import TypeVar
       class A(object): pass
@@ -452,7 +452,7 @@ class TypeVarTest(test_base.BaseTest):
     """)
 
   def testEnforceNonConstrainedTypeVar(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       from typing import TypeVar
       T = TypeVar("T")
@@ -470,7 +470,7 @@ class TypeVarTest(test_base.BaseTest):
                                     r"Expected.*y: float.*Actual.*y: str")])
 
   def testTypeVarInTypeComment(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from typing import List, TypeVar
       T = TypeVar("T")
       x = None  # type: T
@@ -480,7 +480,7 @@ class TypeVarTest(test_base.BaseTest):
                                    (4, "not-supported-yet")])
 
   def testUselessTypeVar(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       from typing import Tuple, TypeVar
       T = TypeVar("T")
@@ -501,7 +501,7 @@ class TypeVarTest(test_base.BaseTest):
                                    (10, "invalid-annotation")])
 
   def testBaseClassWithTypeVar(self):
-    ty, errors = self.InferAndCheck("""\
+    ty, errors = self.InferWithErrors("""\
       from typing import List, TypeVar
       T = TypeVar("T")
       class A(List[T]): pass
@@ -523,7 +523,7 @@ class TypeVarTest(test_base.BaseTest):
     """)
 
   def testBound(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from typing import TypeVar
       T = TypeVar("T", int, float, bound=str)
       S = TypeVar("S", bound="")
@@ -536,7 +536,7 @@ class TypeVarTest(test_base.BaseTest):
         (5, "invalid-typevar", r"unambiguous")])
 
   def testUseBound(self):
-    ty, errors = self.InferAndCheck("""\
+    ty, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       from typing import TypeVar
       T = TypeVar("T", bound=float)
@@ -562,7 +562,7 @@ class TypeVarTest(test_base.BaseTest):
         errors, [(10, "wrong-arg-types", r"x: float.*x: str")])
 
   def testCovariant(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from typing import TypeVar
       T = TypeVar("T", covariant=True)
       S = TypeVar("S", covariant=42)
@@ -574,7 +574,7 @@ class TypeVarTest(test_base.BaseTest):
         (4, "invalid-typevar", r"constant")])
 
   def testContravariant(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from typing import TypeVar
       T = TypeVar("T", contravariant=True)
       S = TypeVar("S", contravariant=42)
@@ -586,7 +586,7 @@ class TypeVarTest(test_base.BaseTest):
         (4, "invalid-typevar", r"constant")])
 
   def testExtraArguments(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from typing import TypeVar
       T = TypeVar("T", extra_arg=42)
       S = TypeVar("S", *__any_object__)
@@ -623,7 +623,7 @@ class TypeVarTest(test_base.BaseTest):
     """)
 
   def testOptionalTypeVar(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       from typing import Optional, TypeVar
       T = TypeVar("T", bound=str)

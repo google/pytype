@@ -136,7 +136,7 @@ class MatchTest(test_base.BaseTest):
       d.create_file("foo.pyi", """
         def bar() -> bool
       """)
-      _, errors = self.InferAndCheck("""\
+      _, errors = self.InferWithErrors("""\
         from __future__ import google_type_annotations
         from typing import Callable
         import foo
@@ -158,7 +158,7 @@ class MatchTest(test_base.BaseTest):
         def f2(x: int) -> bool: ...
         def f3(x: int) -> str: ...
       """)
-      _, errors = self.InferAndCheck("""\
+      _, errors = self.InferWithErrors("""\
         from __future__ import google_type_annotations
         from typing import Callable, TypeVar
         import foo
@@ -188,7 +188,7 @@ class MatchTest(test_base.BaseTest):
            r"Actual.*Callable\[\[int\], str\]")])
 
   def testInterpreterFunctionAgainstCallable(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       from typing import Callable
       def f(x: Callable[[bool], int]): ...
@@ -204,7 +204,7 @@ class MatchTest(test_base.BaseTest):
                                     r"Actual.*Callable\[\[str\], int\]")])
 
   def testBoundInterpreterFunctionAgainstCallable(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       from typing import Callable
 
@@ -272,7 +272,7 @@ class MatchTest(test_base.BaseTest):
       """)
 
   def testVariableLengthFunctionAgainstCallable(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       from typing import Any, Callable
       def f(x: Callable[[int], Any]): pass
@@ -286,7 +286,7 @@ class MatchTest(test_base.BaseTest):
                                     r"Actual.*Callable\[\[str\], Any\]")])
 
   def testCallableInstanceAgainstCallableWithTypeParameters(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       from typing import Callable, TypeVar
       T = TypeVar("T")
@@ -299,7 +299,7 @@ class MatchTest(test_base.BaseTest):
                                     r"Actual.*Callable\[\[int\], str\]")])
 
   def testFunctionWithTypeParameterArgAgainstCallable(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       from typing import Any, AnyStr, Callable, TypeVar
       T = TypeVar("T")
@@ -316,7 +316,7 @@ class MatchTest(test_base.BaseTest):
     self.assertErrorLogIs(errors, [(11, "wrong-arg-types")])
 
   def testFunctionWithTypeParameterReturnAgainstCallable(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       from typing import Callable, AnyStr, TypeVar
       T = TypeVar("T")
@@ -359,7 +359,7 @@ class MatchTest(test_base.BaseTest):
     """)
 
   def testFormalType(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       from typing import AnyStr
       def f(x: str):
@@ -402,7 +402,7 @@ class MatchTest(test_base.BaseTest):
       """, pythonpath=[d.path])
 
   def testTypeVarWithBound(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       from typing import Callable, TypeVar
       T1 = TypeVar("T1", bound=int)

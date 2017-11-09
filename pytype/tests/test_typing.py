@@ -23,7 +23,7 @@ class TypingTest(test_base.BaseTest):
     self.Check(self._TEMPLATE % locals())
 
   def _test_no_match(self, arg, annotation, disables=""):
-    _, errors = self.InferAndCheck(self._TEMPLATE % locals())
+    _, errors = self.InferWithErrors(self._TEMPLATE % locals())
     self.assertNotEqual(0, len(errors))
 
   def test_list_match(self):
@@ -100,7 +100,7 @@ class TypingTest(test_base.BaseTest):
     """)
 
   def test_process_annotation_for_cast(self):
-    ty, errors = self.InferAndCheck("""\
+    ty, errors = self.InferWithErrors("""\
       import typing
       v1 = typing.cast(None, __any_object__)
       v2 = typing.cast(typing.Union, __any_object__)
@@ -119,7 +119,7 @@ class TypingTest(test_base.BaseTest):
                                    (4, "invalid-annotation")])
 
   def test_no_typevars_for_cast(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
         from __future__ import google_type_annotations
         from typing import cast, AnyStr, Type, TypeVar, _T
         def f(x):
@@ -156,7 +156,7 @@ class TypingTest(test_base.BaseTest):
     """)
 
   def test_type(self):
-    ty, errors = self.InferAndCheck("""\
+    ty, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       from typing import Type
       class Foo:
@@ -190,7 +190,7 @@ class TypingTest(test_base.BaseTest):
     """)
 
   def test_type_union(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       from typing import Type, Union
       class Foo:
@@ -250,7 +250,7 @@ class TypingTest(test_base.BaseTest):
       """, pythonpath=[d.path])
 
   def test_callable_parameters(self):
-    ty, errors = self.InferAndCheck("""\
+    ty, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       from typing import Any, Callable
 
@@ -313,7 +313,7 @@ class TypingTest(test_base.BaseTest):
 
   @unittest.skip("Typegraph solver breaks these two.")
   def test_broken_callable_parameters(self):
-    ty, errors = self.InferAndCheck("""\
+    ty, errors = self.InferWithErrors("""\
       def g3(x: Callable[[], bool or str]): ...  # bad: _RET ambiguous
       def g4(x: Callable[[int or str], bool]): ...  # bad: _ARGS[0] ambiguous
     """)
@@ -476,7 +476,7 @@ class TypingTest(test_base.BaseTest):
     """)
 
   def testCallableCall(self):
-    ty, errors = self.InferAndCheck("""\
+    ty, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       from typing import Callable
       f = ...  # type: Callable[[int], str]
@@ -498,7 +498,7 @@ class TypingTest(test_base.BaseTest):
                                    (7, "wrong-arg-count", "1.*2")])
 
   def testCallableCallWithTypeParameters(self):
-    ty, errors = self.InferAndCheck("""\
+    ty, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       from typing import Callable, TypeVar
       T = TypeVar("T")
@@ -530,7 +530,7 @@ class TypingTest(test_base.BaseTest):
     """)
 
   def testCallableCallWithVarargsAndKwargs(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       from typing import Callable
       f = ...  # type: Callable[[], int]
@@ -568,7 +568,7 @@ class TypingTest(test_base.BaseTest):
     """)
 
   def testNewType(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       from typing import NewType
     """)

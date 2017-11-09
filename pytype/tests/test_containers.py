@@ -657,7 +657,7 @@ class ContainerTest(test_base.BaseTest):
       """)
 
   def testDict(self):
-    ty, errors = self.InferAndCheck("""
+    ty, errors = self.InferWithErrors("""
       mymap = {'a': 3.14, 'b':1}
       a = mymap['a']
       b1 = mymap['b']
@@ -688,7 +688,7 @@ class ContainerTest(test_base.BaseTest):
     """)
 
   def testDictGetItem(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       v = {}
       v.__getitem__("a")
     """)

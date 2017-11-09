@@ -83,7 +83,7 @@ class DecoratorsTest(test_base.BaseTest):
     """)
 
   def testBadKeyword(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       class Foo(object):
         def __init__(self):
           self._bar = 1
@@ -273,7 +273,7 @@ class DecoratorsTest(test_base.BaseTest):
       """)
 
   def testAnnotatedSuperCallUnderBadDecorator(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       class Foo(object):
         def Run(self) -> None: ...
@@ -285,7 +285,7 @@ class DecoratorsTest(test_base.BaseTest):
     self.assertErrorLogIs(errors, [(5, "name-error", r"bad_decorator")])
 
   def testAttributeErrorUnderClassDecorator(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       def decorate(cls):
         return __any_object__
       @decorate

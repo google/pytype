@@ -90,7 +90,7 @@ class ImportTest(test_base.BaseTest):
       """)
 
   def testBadStarImport(self):
-    ty, errors = self.InferAndCheck("""
+    ty, errors = self.InferWithErrors("""
       from nonsense import *
       from other_nonsense import *
       x = foo.bar()
@@ -491,7 +491,7 @@ class ImportTest(test_base.BaseTest):
     with utils.Tempdir() as d:
       d.create_file("up/foo.pyi", "from ..bar import X")
       d.create_file("up/bar.pyi", "class X: ...")
-      _, err = self.InferAndCheck(
+      _, err = self.InferWithErrors(
           "from up.foo import X", pythonpath=[d.path])
       self.assertErrorLogIs(
           err, [(1, "pyi-error", "Cannot resolve relative import ..bar")])
@@ -790,7 +790,7 @@ class ImportTest(test_base.BaseTest):
         class B(a.A):
           pass
       """)
-      _, errors = self.InferAndCheck("""\
+      _, errors = self.InferWithErrors("""\
         import b
         x = b.B()
       """, pythonpath=[d.path])
@@ -834,7 +834,7 @@ class ImportTest(test_base.BaseTest):
         def f(x: object) -> object
         def f(x) -> object  # same as above (abbreviated form)
       """)
-      ty, errors = self.InferAndCheck("""\
+      ty, errors = self.InferWithErrors("""\
         import foo
         x = foo.f(foo.object())
         y = foo.f(foo.object())
@@ -910,7 +910,7 @@ class ImportTest(test_base.BaseTest):
       d.create_file("a.pyi", """
         foo = ...  # type: int
       """)
-      _, errors = self.InferAndCheck("""\
+      _, errors = self.InferWithErrors("""\
         from a import foo, bar
         import a
         a.baz

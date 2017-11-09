@@ -61,7 +61,7 @@ class ProtocolTest(test_base.BaseTest):
     """)
 
   def test_check_protocol_error(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       import protocols
 
@@ -73,7 +73,7 @@ class ProtocolTest(test_base.BaseTest):
                                     r"\(x: SupportsAbs\).*\(x: List\[str\]\)")])
 
   def test_check_iterator_error(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       from typing import Iterator
       def f(x: Iterator[int]):
@@ -103,7 +103,7 @@ class ProtocolTest(test_base.BaseTest):
     """)
 
   def test_check_protocol_against_garbage(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       from typing import Sized
       def f(x: Sized):
@@ -135,7 +135,7 @@ class ProtocolTest(test_base.BaseTest):
     """)
 
   def test_check_parameterized_protocol_error(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       from typing import Iterator, Iterable
 
@@ -171,7 +171,7 @@ class ProtocolTest(test_base.BaseTest):
     """)
 
   def test_check_parameterized_protocol_error_multi_signature(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       from typing import Sequence, Union
 
@@ -313,7 +313,7 @@ class ProtocolTest(test_base.BaseTest):
     """)
 
   def test_inherited_abstract_method_error(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       from typing import Iterator
       class Foo(object):

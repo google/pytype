@@ -121,7 +121,7 @@ class BaseTest(unittest.TestCase):
   def assertNoCrash(self, code, **kwargs):
     self.Check(code, report_errors=False, **kwargs)
 
-  def InferAndCheck(self, code, deep=True, pythonpath=(), **kwargs):
+  def InferWithErrors(self, code, deep=True, pythonpath=(), **kwargs):
     self.options.tweak(pythonpath=pythonpath)
     code = textwrap.dedent(code)
     errorlog = errors.ErrorLog()

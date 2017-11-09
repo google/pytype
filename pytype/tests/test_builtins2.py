@@ -271,7 +271,7 @@ class BuiltinTests2(test_base.BaseTest):
     """)
 
   def testMaxDifferentTypes(self):
-    ty, errors = self.InferAndCheck("""
+    ty, errors = self.InferWithErrors("""
       a = max(1, None)
       b = max(1, None, 3j)
       c = max(1, None, 3j, "str")
@@ -297,7 +297,7 @@ class BuiltinTests2(test_base.BaseTest):
       """)
 
   def testMinDifferentTypes(self):
-    ty, errors = self.InferAndCheck("""
+    ty, errors = self.InferWithErrors("""
       a = min(1, None)
       b = min(1, None, 3j)
       c = min(1, None, 3j, "str")
@@ -396,7 +396,7 @@ class BuiltinTests2(test_base.BaseTest):
     """)
 
   def testReversed(self):
-    ty, errors = self.InferAndCheck("""\
+    ty, errors = self.InferWithErrors("""\
       x1 = reversed(xrange(42))
       x2 = reversed([42])
       x3 = reversed((4, 2))
@@ -481,7 +481,7 @@ class BuiltinTests2(test_base.BaseTest):
     """)
 
   def testReduce(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       reduce(lambda x, y: x+y, [1,2,3]).real
       reduce(lambda x, y: x+y, ["foo"]).upper()
       reduce(lambda x, y: 4, "foo").real
@@ -758,7 +758,7 @@ class BuiltinTests2(test_base.BaseTest):
     """)
 
   def testSetDefaultError(self):
-    ty, errors = self.InferAndCheck("""\
+    ty, errors = self.InferWithErrors("""\
       x = {}
       y = x.setdefault()
       z = x.setdefault(1, 2, 3, *[])

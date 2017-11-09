@@ -84,7 +84,7 @@ class SuperTest(test_base.BaseTest):
     """)
 
   def testCallSuper(self):
-    _, errorlog = self.InferAndCheck("""\
+    _, errorlog = self.InferWithErrors("""\
       class Y(object):
         pass
 
@@ -135,7 +135,7 @@ class SuperTest(test_base.BaseTest):
     """)
 
   def testSingleArgumentSuper(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       super(object)
       super(object())
     """)
@@ -143,7 +143,7 @@ class SuperTest(test_base.BaseTest):
         errors, [(2, "wrong-arg-types", r"cls: type.*cls: object")])
 
   def testMethodOnSingleArgumentSuper(self):
-    ty, errors = self.InferAndCheck("""\
+    ty, errors = self.InferWithErrors("""\
       sup = super(object)
       sup.foo
       sup.__new__(object)
@@ -158,7 +158,7 @@ class SuperTest(test_base.BaseTest):
         (3, "wrong-arg-types", r"Type\[super\].*Type\[object\]")])
 
   def testSuperMissingArg(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       class Foo(object):
         def __new__(cls):
           return super(cls).__new__(cls)
@@ -184,7 +184,7 @@ class SuperTest(test_base.BaseTest):
     """)
 
   def testSuperSetAttr(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       class Foo(object):
         def __init__(self):
           super(Foo, self).foo = 42
@@ -192,7 +192,7 @@ class SuperTest(test_base.BaseTest):
     self.assertErrorLogIs(errors, [(3, "not-writable", r"super")])
 
   def testSuperSubclassSetAttr(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       class Foo(object): pass
       class Bar(Foo):
         def __init__(self):
@@ -205,7 +205,7 @@ class SuperTest(test_base.BaseTest):
       d.create_file("foo.pyi", """
         class Foo(nothing): ...
       """)
-      _, errors = self.InferAndCheck("""\
+      _, errors = self.InferWithErrors("""\
         import foo
         class Bar(foo.Foo):
           def __init__(self):
@@ -214,7 +214,7 @@ class SuperTest(test_base.BaseTest):
       self.assertErrorLogIs(errors, [(4, "not-writable", r"super")])
 
   def testSuperAnySetAttr(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       class Foo(__any_object__):
         def __init__(self):
           super(Foo, self).foo = 42

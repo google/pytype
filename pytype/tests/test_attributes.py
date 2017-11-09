@@ -242,7 +242,7 @@ class TestAttributes(test_base.BaseTest):
 
   def testHasDynamicAttributesSubClass(self):
     # has_dynamic_attributes doesn't apply to subclasses
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       class Foo(object):
         has_dynamic_attributes = True
       class Bar(Foo):
@@ -278,7 +278,7 @@ class TestAttributes(test_base.BaseTest):
     """)
 
   def testAttrOnNone(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       def f(arg):
         x = "foo" if arg else None
         if not x:
@@ -287,7 +287,7 @@ class TestAttributes(test_base.BaseTest):
     self.assertErrorLogIs(errors, [(4, "none-attr")])
 
   def testIteratorOnNone(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       def f():
         pass
       a, b = f()
@@ -328,7 +328,7 @@ class TestAttributes(test_base.BaseTest):
     """)
 
   def testTypeParameterInstanceMultipleBindings(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       class A(object):
         values = 42
       args = {A() if __random__ else True: ""}

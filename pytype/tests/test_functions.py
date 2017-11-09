@@ -396,7 +396,7 @@ class TestFunctions(test_base.BaseTest):
   def test_named_arg_unsolvable_max_depth(self):
     # Main test here is for this not to throw a KeyError exception while
     # running type inference. The given options simulate those of --quick.
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       def f(x):
         return max(foo=repr(__any_object__))
     """, deep=True, maximum_depth=1)
@@ -596,7 +596,7 @@ class TestFunctions(test_base.BaseTest):
     """)
 
   def test_wrong_keyword(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       def f(x):
         pass
       f("", y=42)
@@ -668,7 +668,7 @@ class TestFunctions(test_base.BaseTest):
       """, pythonpath=[d.path])
 
   def testInterpreterFunctionInClass(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       class A(object):
         bar = lambda x: x
         def f(self):
@@ -763,7 +763,7 @@ class TestFunctions(test_base.BaseTest):
         """)
 
   def testBadDefaults(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       import collections
       X = collections.namedtuple("X", "a b c")
       X.__new__.__defaults__ = (1)
@@ -790,7 +790,7 @@ class TestFunctions(test_base.BaseTest):
   def testSetDefaultsNonTupleInstance(self):
     # Test that get_atomic_python_constant fails and get_atomic_value pulls out
     # a non-tuple Instance.
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       import collections
       X = collections.namedtuple("X", "a b c")
       X.__new__.__defaults__ = (lambda x: x)(0)

@@ -8,7 +8,7 @@ class WorkflowTest(test_base.BaseTest):
   """Tests for examples extracted from our documentation."""
 
   def testTutorial1(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       def f(x: int, y: int) -> int:
         return "foo"
@@ -42,7 +42,7 @@ class WorkflowTest(test_base.BaseTest):
     """)
 
   def testTutorial4(self):
-    _, errors = self.InferAndCheck("""\
+    _, errors = self.InferWithErrors("""\
       import socket
       class Server:
         def __init__(self, port):
