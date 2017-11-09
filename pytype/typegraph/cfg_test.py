@@ -718,25 +718,6 @@ class CFGTest(unittest.TestCase):
     y.PasteBinding(ax)
     self.assertEqual(x.data, y.data)
 
-  def testAddBindings(self):
-    p = cfg.Program()
-    n1 = p.NewCFGNode("n1")
-    n2 = n1.ConnectNew()
-    x = p.NewVariable()
-    ax = x.AddBinding("a", source_set=[], where=n1)
-    bx = x.AddBinding("b", source_set=[], where=n1)
-    y = p.NewVariable()
-    y.AddBindings(x, n2)
-    ay, by = y.bindings
-    self.assertEqual([v.data for v in x.bindings], ["a", "b"])
-    self.assertEqual([v.data for v in y.bindings], ["a", "b"])
-    self.assertTrue(n1.HasCombination([ax]))
-    self.assertTrue(n1.HasCombination([bx]))
-    self.assertFalse(n1.HasCombination([ay]))
-    self.assertFalse(n1.HasCombination([by]))
-    self.assertTrue(n2.HasCombination([ay]))
-    self.assertTrue(n2.HasCombination([by]))
-
   def testId(self):
     p = cfg.Program()
     n1 = p.NewCFGNode("n1")
