@@ -17,6 +17,7 @@ from pytype import exceptions
 from pytype import function
 from pytype import utils
 from pytype.pyc import loadmarshal
+from pytype.pyc import opcodes
 from pytype.pytd import mro
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
@@ -2799,6 +2800,10 @@ class InterpreterFunction(Function):
     self.signature = self._build_signature(annotations, late_annotations)
     self.last_frame = None  # for BuildClass
     self._store_call_records = False
+    if self.vm.python_version >= (3, 0):
+      self.is_class_builder = False  # Will be set by BuildClass.
+    else:
+      self.is_class_builder = self.code.has_opcode(opcodes.LOAD_LOCALS)
 
   @contextlib.contextmanager
   def record_calls(self):
@@ -3006,13 +3011,7 @@ class InterpreterFunction(Function):
             cls.is_abstract
             for v in self_var.data if v.cls for cls in v.cls.data)
       else:
-        # When the interpreter function used to create a class is analyzed, the
-        # class methods are recreated but not marked as attributes. Thus, the
-        # methods are analyzed as unbound interpreter functions, with an
-        # unknown created for "self". So if "self" is in the callargs of an
-        # unbound function, then we have to assume that the caller may be
-        # abstract, since we don't know its type.
-        caller_is_abstract = "self" in callargs
+        caller_is_abstract = False
       frame.allowed_returns = annotations["return"]
       frame.check_return = not caller_is_abstract or not self.is_abstract
     if self.vm.options.skip_repeat_calls:
@@ -3375,6 +3374,7 @@ class BuildClass(AtomicAbstractValue):
     func, = funcvar.data
     if not isinstance(func, InterpreterFunction):
       raise ConversionError("Invalid argument to __build_class__")
+    func.is_class_builder = True
     bases = args.posargs[2:]
     node, _ = func.call(node, funcvar.bindings[0],
                         args.replace(posargs=(), namedargs={}),

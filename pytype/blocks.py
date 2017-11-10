@@ -1,5 +1,7 @@
 """Functions for computing the execution order of bytecode."""
 
+import itertools
+
 from pytype import utils
 from pytype.pyc import opcodes
 from pytype.pyc import pyc
@@ -31,6 +33,10 @@ class OrderedCode(object):
     self.co_code = bytecode
     for insn in bytecode:
       insn.code = self
+
+  def has_opcode(self, op_type):
+    return any(isinstance(op, op_type)
+               for op in itertools.chain(*(block.code for block in self.order)))
 
 
 class Block(object):

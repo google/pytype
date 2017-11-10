@@ -152,12 +152,22 @@ class TestPython3(test_base.BaseTest):
       vars = ...  # type: List[int]
     """)
 
-  def testBadUnpacking(self):
+  def test_bad_unpacking(self):
     _, errors = self.InferWithErrors("""\
       a, *b, c = (1,)
     """)
     self.assertErrorLogIs(
         errors, [(1, "bad-unpacking", "1 value.*3 variables")])
+
+  def test_abstract_method_no_skip_calls(self):
+    self.Check("""
+      import abc
+      class Example(object):
+        __metaclass__ = abc.ABCMeta
+        @abc.abstractmethod
+        def foo(self) -> int:
+          return None
+    """, skip_repeat_calls=False)
 
 
 if __name__ == "__main__":

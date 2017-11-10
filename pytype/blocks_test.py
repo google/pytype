@@ -23,6 +23,18 @@ class OrderingTest(test_base.BaseTest):
     self.assertItemsEqual([], b0.incoming)
     self.assertItemsEqual([], b0.outgoing)
 
+  def test_has_opcode(self):
+    # Disassembled from:
+    # | return None
+    co = self.make_code([
+        0x64, 1, 0,  # 0 LOAD_CONST, arg=0 (None)
+        0x53,  # 3 RETURN_VALUE
+    ], name="trivial")
+    ordered_code = blocks.order_code(co)
+    self.assertTrue(ordered_code.has_opcode(opcodes.LOAD_CONST))
+    self.assertTrue(ordered_code.has_opcode(opcodes.RETURN_VALUE))
+    self.assertFalse(ordered_code.has_opcode(opcodes.POP_TOP))
+
   def test_yield(self):
     # Disassembled from:
     # | yield 1
