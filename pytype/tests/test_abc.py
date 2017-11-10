@@ -265,6 +265,17 @@ class AbstractMethodTests(test_base.BaseTest):
       """, pythonpath=[d.path])
       self.assertErrorLogIs(errors, [(2, "not-instantiable", r"foo\.Foo.*foo")])
 
+  def test_abstract_method_unusual_selfname(self):
+    self.Check("""
+      from __future__ import google_type_annotations
+      import abc
+      class Foo(object):
+        __metaclass__ = abc.ABCMeta
+        @abc.abstractmethod
+        def foo(this) -> int:
+          pass
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

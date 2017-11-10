@@ -3000,10 +3000,11 @@ class InterpreterFunction(Function):
                                self.f_globals, self.f_locals, self.closure,
                                new_locals=new_locals)
     if self.signature.has_return_annotation:
-      if self.is_attribute_of_class and "self" in callargs:
-        caller_is_abstract = all(
+      if self.is_attribute_of_class and self.signature.param_names:
+        self_var = callargs.get(self.signature.param_names[0])
+        caller_is_abstract = self_var and all(
             cls.is_abstract
-            for v in callargs["self"].data if v.cls for cls in v.cls.data)
+            for v in self_var.data if v.cls for cls in v.cls.data)
       else:
         # When the interpreter function used to create a class is analyzed, the
         # class methods are recreated but not marked as attributes. Thus, the
