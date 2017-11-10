@@ -702,6 +702,56 @@ class FunctionTest(AbstractTestBase):
     self.assertFalse(sig.annotations)
     self.assertFalse(sig.late_annotations)
 
+  def test_signature_del_param_annotation(self):
+    # def f(x) -> int: ...
+    sig = function.Signature(
+        name="f",
+        param_names=("x",),
+        varargs_name=None,
+        kwonly_params=(),
+        kwargs_name=None,
+        defaults={},
+        annotations={"x": self._vm.convert.unsolvable,
+                     "return": self._vm.convert.unsolvable},
+        late_annotations={}
+    )
+    sig.del_annotation("x")
+    self.assertItemsEqual(sig.annotations, {"return"})
+    self.assertFalse(sig.has_param_annotations)
+    self.assertTrue(sig.has_return_annotation)
+
+  def test_signature_del_return_annotation(self):
+    # def f(x) -> int: ...
+    sig = function.Signature(
+        name="f",
+        param_names=("x",),
+        varargs_name=None,
+        kwonly_params=(),
+        kwargs_name=None,
+        defaults={},
+        annotations={"x": self._vm.convert.unsolvable,
+                     "return": self._vm.convert.unsolvable},
+        late_annotations={}
+    )
+    sig.del_annotation("return")
+    self.assertItemsEqual(sig.annotations, {"x"})
+    self.assertTrue(sig.has_param_annotations)
+    self.assertFalse(sig.has_return_annotation)
+
+  def test_signature_del_nonexistent_annotation(self):
+    # def f(): ...
+    sig = function.Signature(
+        name="f",
+        param_names=(),
+        varargs_name=None,
+        kwonly_params=(),
+        kwargs_name=None,
+        defaults={},
+        annotations={},
+        late_annotations={}
+    )
+    self.assertRaises(KeyError, sig.del_annotation, "rumpelstiltskin")
+
 
 class AbstractMethodsTest(AbstractTestBase):
 

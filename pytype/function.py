@@ -47,11 +47,17 @@ class Signature(object):
     self.defaults = defaults
     self.annotations = annotations
     self.late_annotations = late_annotations
-    self.has_return_annotation = "return" in annotations
-    self.has_param_annotations = bool(annotations.viewkeys() - {"return"})
     if postprocess_annotations:
       for name, annot in self.annotations.iteritems():
         self.annotations[name] = self._postprocess_annotation(name, annot)
+
+  @property
+  def has_return_annotation(self):
+    return "return" in self.annotations
+
+  @property
+  def has_param_annotations(self):
+    return bool(self.annotations.viewkeys() - {"return"})
 
   def _postprocess_annotation(self, name, annotation):
     if (name in self.defaults and
@@ -66,10 +72,9 @@ class Signature(object):
 
   def set_annotation(self, name, annotation):
     self.annotations[name] = self._postprocess_annotation(name, annotation)
-    if name == "return":
-      self.has_return_annotation = True
-    else:
-      self.has_param_annotations = True
+
+  def del_annotation(self, name):
+    del self.annotations[name]  # Raises KeyError if annotation does not exist.
 
   def check_type_parameter_count(self, stack):
     c = collections.Counter()

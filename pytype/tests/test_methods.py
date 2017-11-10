@@ -999,21 +999,56 @@ class MethodsTest(test_base.BaseTest):
     """)
 
   def testAnnotatedSelf(self):
-    _, errors = self.InferWithErrors("""\
+    errors = self.CheckWithErrors("""\
       from __future__ import google_type_annotations
       class Foo(object):
         def __init__(x: int):
           pass
     """)
-    # TODO(rechen): why is there no line number for this error? It's also
-    # unclear whether we want this error at all. A more-or-less legitimate use
-    # case for annotating self:
-    #   class Foo(object):
-    #     def _make_method(x: int):
-    #       return lambda _: x
-    #   return_1 = _make_method(1)
-    #   return_2 = _make_method(2)
-    self.assertErrorLogIs(errors, [(0, "wrong-arg-types", r"int.*Foo")])
+    self.assertErrorLogIs(errors, [(4, "invalid-annotation", r"int.*x")])
+
+  def testLateAnnotatedSelf(self):
+    errors = self.CheckWithErrors("""\
+      from __future__ import google_type_annotations
+      class Foo(object):
+        def __init__(x: "X"):
+          pass
+      class X(object):
+        pass
+    """)
+    self.assertErrorLogIs(errors, [(4, "invalid-annotation", r"X.*x")])
+
+  def testAttributeWithAnnotatedSelf(self):
+    errors = self.CheckWithErrors("""\
+      from __future__ import google_type_annotations
+      class Foo(object):
+        def __init__(self: int):
+          self.x = 3
+        def foo(self):
+          return self.x
+    """)
+    self.assertErrorLogIs(errors, [(4, "invalid-annotation", r"int.*self")])
+
+  def testFunctionInit(self):
+    ty = self.Infer("""
+      from __future__ import google_type_annotations
+      def __init__(self: int):
+        return self
+    """)
+    self.assertTypesMatchPytd(ty, """
+      def __init__(self: int) -> int
+    """)
+
+  def testAttributeWithAnnotatedSelfAndFunctionInit(self):
+    errors = self.CheckWithErrors("""\
+      from __future__ import google_type_annotations
+      class Foo(object):
+        def __init__(self: int):
+          self.x = 3
+      def __init__(self: int):
+        pass
+    """)
+    self.assertErrorLogIs(errors, [(4, "invalid-annotation", r"int.*self")])
 
 
 if __name__ == "__main__":

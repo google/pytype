@@ -1841,7 +1841,7 @@ class PyTDFunction(Function):
     elif self.kind == pytd.PROPERTY:
       return Property(self.name, self, callself, callcls, self.vm)
     else:
-      return Function.property_get(self, callself, callcls)
+      return super(PyTDFunction, self).property_get(callself, callcls)
 
   def argcount(self):
     return min(sig.signature.mandatory_param_count() for sig in self.signatures)
@@ -3119,6 +3119,17 @@ class InterpreterFunction(Function):
 
   def has_kwargs(self):
     return bool(self.code.co_flags & loadmarshal.CodeType.CO_VARKEYWORDS)
+
+  def property_get(self, callself, callcls):
+    if self.name == "__init__" and self.signature.param_names:
+      self_name = self.signature.param_names[0]
+      if self_name in self.signature.annotations:
+        self.vm.errorlog.invalid_annotation(
+            self.vm.simple_stack(self.get_first_opcode()),
+            self.signature.annotations[self_name],
+            details="Cannot annotate self argument of __init__", name=self_name)
+        self.signature.del_annotation(self_name)
+    return super(InterpreterFunction, self).property_get(callself, callcls)
 
 
 class BoundFunction(AtomicAbstractValue):
