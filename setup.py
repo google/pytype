@@ -43,6 +43,7 @@ setup(
               'pytype/pyi',
               'pytype/pytd',
               'pytype/pytd/parse',
+              'pytype/typegraph',
              ],
     scripts=['scripts/pytype', 'scripts/pytd'],
     package_data={'pytype': ['pytd/builtins/*/*.py*',
