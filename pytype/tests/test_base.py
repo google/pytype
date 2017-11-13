@@ -291,6 +291,14 @@ class BaseTest(unittest.TestCase):
     ast = serialize_ast.PrepareForExport(module_name, self.PYTHON_VERSION, ast)
     return serialize_ast.StoreAst(ast)
 
+  def PicklePyi(self, src, module_name):
+    src = textwrap.dedent(src)
+    ast = parser.parse_string(src, python_version=self.PYTHON_VERSION)
+    ast = ast.Visit(visitors.LookupBuiltins(
+        builtins.GetBuiltinsAndTyping(self.PYTHON_VERSION)[0],
+        full_names=False))
+    return self._Pickle(ast, module_name)
+
   def Infer(self, srccode, pythonpath=(), deep=True,
             report_errors=True, analyze_annotated=True, pickle=False,
             module_name=None, **kwargs):

@@ -97,6 +97,26 @@ class TestTypeMatch(parser_test_base.ParserTest):
     eq = m.match_type_against_type(pytd.AnythingType(), pytd.NothingType(), {})
     self.assertEqual(eq, booleq.TRUE)
 
+  def testAnythingLate(self):
+    m = type_match.TypeMatch({})
+    eq = m.match_type_against_type(pytd.AnythingType(), pytd.LateType("X"), {})
+    self.assertEqual(eq, booleq.TRUE)
+
+  def testLateAnything(self):
+    m = type_match.TypeMatch({})
+    eq = m.match_type_against_type(pytd.LateType("X"), pytd.AnythingType(), {})
+    self.assertEqual(eq, booleq.TRUE)
+
+  def testLateNamed(self):
+    m = type_match.TypeMatch({})
+    eq = m.match_type_against_type(pytd.NamedType("X"), pytd.LateType("X"), {})
+    self.assertEqual(eq, booleq.FALSE)
+
+  def testNamedLate(self):
+    m = type_match.TypeMatch({})
+    eq = m.match_type_against_type(pytd.LateType("X"), pytd.NamedType("X"), {})
+    self.assertEqual(eq, booleq.FALSE)
+
   def testNamed(self):
     m = type_match.TypeMatch({})
     eq = m.match_type_against_type(pytd.NamedType("A"), pytd.NamedType("A"), {})

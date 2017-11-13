@@ -164,6 +164,25 @@ class PickleTest(test_base.BaseTest):
                               "foo": other_foo},
                  module_name="baz")
 
+  def testOptimize(self):
+    with utils.Tempdir() as d:
+      pickled_foo = self.PicklePyi("""
+        import UserDict
+        class Foo(object): ...
+        @overload
+        def f(self, x: Foo, y: UserDict.UserDict): ...
+        @overload
+        def f(self, x: UserDict.UserDict, y: Foo): ...
+      """, module_name="foo")
+      self._verifyDeps(pickled_foo, ["__builtin__", "foo"], ["UserDict"])
+      foo = d.create_file("foo.pickled", pickled_foo)
+      self.assertNoCrash(self.Infer, """
+        from __future__ import google_type_annotations
+        import foo
+        class Bar(object):
+          f = foo.f
+      """, imports_map={"foo": foo}, module_name="bar")
+
 
 if __name__ == "__main__":
   test_base.main()
