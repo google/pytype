@@ -365,6 +365,20 @@ class FlowTest(test_base.BaseTest):
           self.x = self.x
     """)
 
+  def test_nested_break(self):
+    self.assertNoCrash(self.Infer, """
+      while True:
+        try:
+          pass
+        except:
+          break
+        while True:
+          try:
+            pass
+          except:
+            break
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

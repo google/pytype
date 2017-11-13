@@ -141,7 +141,7 @@ def add_pop_block_targets(bytecode):
     if not op.no_next():
       assert op.next, "Bad instruction at end of bytecode."
       todo.append((op.next, block_stack))
-    if op.does_jump() and op.target:
+    if op.target:
       todo.append((op.target, block_stack))
 
 

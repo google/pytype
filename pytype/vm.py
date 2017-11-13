@@ -1906,6 +1906,7 @@ class VirtualMachine(object):
     return state
 
   def byte_SETUP_LOOP(self, state, op):
+    # We ignore the implicit jump in SETUP_LOOP; the interpreter never takes it.
     return self.push_block(state, "loop", op, op.target)
 
   def byte_GET_ITER(self, state, op):
@@ -1916,6 +1917,7 @@ class VirtualMachine(object):
     return state.push(itr)
 
   def store_jump(self, target, state):
+    assert target
     self.frame.states[target] = state.merge_into(self.frame.states.get(target))
 
   def byte_FOR_ITER(self, state, op):
