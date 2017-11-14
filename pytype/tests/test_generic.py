@@ -899,7 +899,43 @@ class GenericTest(test_base.BaseTest):
         v = ...  # type: list[int or str]
       """)
 
-  def test_mutate_call(self):
+  def testConstrainedTypeParameter(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import Generic, TypeVar
+        T = TypeVar("T", int, float)
+        class A(Generic[T]):
+          v = ...  # type: T
+        def make_A() -> A: ...
+      """)
+      ty = self.Infer("""
+        import foo
+        v = foo.make_A().v
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        foo = ...  # type: module
+        v = ...  # type: int or float
+      """)
+
+  def testBoundedTypeParameter(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import Generic, TypeVar
+        T = TypeVar("T", bound=float)
+        class A(Generic[T]):
+          v = ...  # type: T
+        def make_A() -> A: ...
+      """)
+      ty = self.Infer("""
+        import foo
+        v = foo.make_A().v
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        foo = ...  # type: module
+        v = ...  # type: float
+      """)
+
+  def testMutateCall(self):
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Generic, TypeVar

@@ -557,7 +557,7 @@ class Converter(object):
         # If we're converting a generic Class, need to create a new instance of
         # it. See test_classes.testGenericReinstantiated.
         if isinstance(cls, pytd.Class):
-          params = tuple(pytd.AnythingType() for t in cls.template)
+          params = tuple(t.type_param.upper_value for t in cls.template)
           cls = pytd.GenericType(base_type=pytd.ClassType(cls.name, cls),
                                  parameters=params)
         if isinstance(cls.base_type, pytd.LateType):

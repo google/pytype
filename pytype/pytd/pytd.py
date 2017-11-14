@@ -294,6 +294,15 @@ class TypeParameter(node.Node('name: str',
     # allowed as a module name.
     return ('' if self.scope is None else self.scope + '.') + self.name
 
+  @property
+  def upper_value(self):
+    if self.constraints:
+      return UnionType(self.constraints)
+    elif self.bound:
+      return self.bound
+    else:
+      return AnythingType()
+
 
 class TemplateItem(node.Node('type_param: TypeParameter')):
   """Represents template name for generic types.

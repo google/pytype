@@ -96,12 +96,12 @@ class StdlibTests(test_base.BaseTest):
       f(tempfile.SpooledTemporaryFile(1048576, "wb", suffix=".foo"))
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any
+      from typing import Any, Union
       import typing
       os = ...  # type: module
       tempfile = ...  # type: module
       typing = ...  # type: module
-      def f(fi: typing.IO) -> Any: ...
+      def f(fi: typing.IO) -> Union[str, unicode]: ...
     """)
 
   def testPathConf(self):
