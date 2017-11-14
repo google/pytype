@@ -372,10 +372,15 @@ class Converter(object):
       return [pytd.AnythingType()]
     types = []
     for val in getter_options:
-      combinations = val.get_call_combinations(node)
-      for node_after, _, return_value in combinations:
-        types.append(self._function_call_to_return_type(
-            node_after, val, return_value, len(combinations)))
+      if isinstance(val, abstract.InterpreterFunction):
+        combinations = val.get_call_combinations(node)
+        for node_after, _, return_value in combinations:
+          types.append(self._function_call_to_return_type(
+              node_after, val, return_value, len(combinations)))
+      elif isinstance(val, abstract.PyTDFunction):
+        types.extend(sig.pytd_sig.return_type for sig in val.signatures)
+      else:
+        types.append(pytd.AnythingType())
     return types
 
   def _class_method_to_def(self, node, v, name, kind):

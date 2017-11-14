@@ -1,6 +1,7 @@
 """Tests of special builtins (special_builtins.py."""
 
 
+from pytype import utils
 from pytype.tests import test_base
 
 
@@ -37,6 +38,34 @@ class SpecialBuiltinsTest(test_base.BaseTest):
           return 42
         def create_property(self, cls, property_name):
           setattr(cls, property_name, property(self.getter, self.setter))
+    """)
+
+  def testPropertyFromPyi(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        class Foo(object):
+          def get_foo(self) -> int: ...
+      """)
+      ty = self.Infer("""
+        import foo
+        class Bar(foo.Foo):
+          foo = property(fget=foo.Foo.get_foo)
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        foo = ...  # type: module
+        class Bar(foo.Foo):
+          foo = ...  # type: int
+      """)
+
+  def testPropertyFromNativeFunction(self):
+    ty = self.Infer("""
+      class Foo(dict):
+        foo = property(fget=dict.__getitem__)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      class Foo(dict):
+        foo = ...  # type: Any
     """)
 
   def testCallableIfSplitting(self):
