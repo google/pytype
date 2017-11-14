@@ -634,9 +634,6 @@ class VirtualMachine(object):
   def run_program(self, src, filename, maximum_depth):
     """Run the code and return the CFG nodes.
 
-    This function loads in the builtins and puts them ahead of `code`,
-    so all the builtins are available when processing `code`.
-
     Args:
       src: The program source code.
       filename: The filename the source is from.
@@ -654,7 +651,6 @@ class VirtualMachine(object):
     self.filename = filename
 
     self.maximum_depth = sys.maxint if maximum_depth is None else maximum_depth
-    node = self.root_cfg_node.ConnectNew("builtins")
 
     code = self.compile_src(src, filename=filename)
     visitor = _FindIgnoredTypeComments(self.director.type_comments)
@@ -663,7 +659,7 @@ class VirtualMachine(object):
       self.errorlog.ignored_type_comment(
           self.filename, line, self.director.type_comments[line][1])
 
-    node = node.ConnectNew("init")
+    node = self.root_cfg_node.ConnectNew("init")
     node, f_globals, _, _ = self.run_bytecode(node, code)
     logging.info("Done running bytecode, postprocessing globals")
     for func in self.functions_with_late_annotations:
