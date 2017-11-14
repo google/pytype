@@ -11,7 +11,7 @@ from pytype import utils
 from pytype.tests import test_base
 
 
-class BuiltinTests2(test_base.BaseTest):
+class BuiltinTests3(test_base.BaseTest):
   """Tests for builtin methods and classes."""
 
   def testSuperAttribute(self):

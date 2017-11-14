@@ -670,7 +670,7 @@ class bool(int, SupportsInt, SupportsFloat):
     def bit_length(self) -> int
     def conjugate(self, ...) -> int
 
-class int(SupportsInt, SupportsFloat, SupportsAbs):
+class int(SupportsInt, SupportsFloat, SupportsAbs[int]):
     __slots__ = []
     denominator = ...  # type: int
     numerator = ... # type: int
@@ -715,7 +715,6 @@ class int(SupportsInt, SupportsFloat, SupportsAbs):
     def __sub__(self, y: complex) -> complex
     def __truediv__(self, y: int or float) -> float
     def __truediv__(self, y: complex) -> complex
-    def __abs__(self) -> int
     def __coerce__(self, y: int) -> Tuple[int, int]
     def __float__(self) -> float
     def __hex__(self) -> str
