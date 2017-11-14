@@ -328,6 +328,46 @@ class ProtocolTest(test_base.BaseTest):
     self.assertErrorLogIs(
         errors, [(10, "wrong-arg-types", r"Iterator\[int\].*Foo")])
 
+  def test_reversible(self):
+    self.Check("""
+      from __future__ import google_type_annotations
+      from typing import Reversible
+      class Foo(object):
+        def __reversed__(self):
+          pass
+      def f(x: Reversible):
+        pass
+      f(Foo())
+    """)
+
+  def test_collection(self):
+    self.Check("""
+      from __future__ import google_type_annotations
+      from typing import Collection
+      class Foo(object):
+        def __contains__(self, x):
+          pass
+        def __iter__(self):
+          pass
+        def __len__(self):
+          pass
+      def f(x: Collection):
+        pass
+      f(Foo())
+    """)
+
+  def test_hashable(self):
+    self.Check("""
+      from __future__ import google_type_annotations
+      from typing import Hashable
+      class Foo(object):
+        def __hash__(self):
+          pass
+      def f(x: Hashable):
+        pass
+      f(Foo())
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

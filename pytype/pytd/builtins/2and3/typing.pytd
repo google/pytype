@@ -63,7 +63,7 @@ class SupportsRound(Generic[_T], Protocol):
   def __round__(self, ndigits: int = ...) -> _T: ...
 
 
-class Reversible(Generic[_T]):
+class Reversible(Generic[_T], Protocol):
   __slots__ = []
   @abstractmethod
   def __reversed__(self) -> Iterator[_T]: ...
@@ -87,7 +87,7 @@ class Sized(Protocol):
   def __len__(self) -> int: ...
 
 
-class Hashable(object):
+class Hashable(Protocol):
   __slots__ = []
   @abstractmethod
   def __hash__(self) -> int: ...
@@ -113,7 +113,7 @@ class Sequence(Sized, Iterable[_T], Container[_T], Reversible[_T], Protocol):
   def __reversed__(self) -> Iterator[_T]: ...
 
 
-class Collection(Sized, Iterable[_T], Container[_T]):
+class Collection(Sized, Iterable[_T], Container[_T], Protocol):
   __slots__ = []
 
 
@@ -365,6 +365,9 @@ def get_type_hints(obj, ...) -> Optional[Dict[str, Any]]
 #
 # The version guards below are from
 # https://github.com/python/typeshed/blob/master/stdlib/3/typing.pyi
+#
+# TODO(rechen): Turn Awaitable, AsyncIterable, AsyncIterator, and
+# AsyncContextManager into protocols when these become full-blown classes.
 if sys.version_info >= (3, 0):
   Awaitable = Any
   AsyncIterator = Any

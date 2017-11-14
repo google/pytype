@@ -1,4 +1,6 @@
-from typing import Any, Protocol, SupportsInt, SupportsFloat, SupportsComplex, Sized, SupportsAbs, SupportsRound, Reversible, Iterable, Container, Callable, Sequence, MutableSequence, Mapping, MutableMapping, ContextManager
+# TODO(rechen): Collection and Hashable should be in this list, but importing
+# either of them breaks protocol inference.
+from typing import Any, Callable, Container, ContextManager, Iterable, Mapping, MutableMapping, MutableSequence, Protocol, Reversible, Sequence, Sized, SupportsAbs, SupportsComplex, SupportsFloat, SupportsInt, SupportsRound
 
 class SupportsLower(Protocol):
   @abstractmethod
