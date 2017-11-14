@@ -232,7 +232,9 @@ class Converter(object):
                                   for o in v.options))
     elif isinstance(v, special_builtins.SuperInstance):
       return pytd.NamedType("__builtin__.super")
-    elif isinstance(v, abstract.Unsolvable):
+    elif isinstance(v, (abstract.Unsolvable, abstract.TypeParameter)):
+      # Arguably, the type of a type parameter is NamedType("typing.TypeVar"),
+      # but pytype doesn't know how to handle that, so let's just go with Any.
       return pytd.AnythingType()
     elif isinstance(v, abstract.Unknown):
       return pytd.NamedType(v.class_name)

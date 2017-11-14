@@ -818,6 +818,19 @@ class TypeVarTest(test_base.BaseTest):
         x = ...  # type: List[a.A]
       """)
 
+  def testTopLevelUnion(self):
+    ty = self.Infer("""
+      from typing import TypeVar
+      if __random__:
+        T = TypeVar("T")
+      else:
+        T = 42
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      T = ...  # type: Any
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()
