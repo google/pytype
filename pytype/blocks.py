@@ -131,7 +131,12 @@ def add_pop_block_targets(bytecode):
       for b in reversed(block_stack):
         if isinstance(b, opcodes.SETUP_LOOP):
           op.block_target = b.target
+          assert b.target != op
           break
+    elif isinstance(op, opcodes.SETUP_EXCEPT):
+      # Exceptions pop the block, so store the previous block stack.
+      todo.append((op.target, block_stack))
+      block_stack += (op,)
     elif op.pushes_block():
       assert op.target, "%s without target" % op.name
       # We push the entire opcode onto the block stack, for better debugging.
@@ -141,7 +146,7 @@ def add_pop_block_targets(bytecode):
     if not op.no_next():
       assert op.next, "Bad instruction at end of bytecode."
       todo.append((op.next, block_stack))
-    if op.target:
+    if op.does_jump() and op.target:
       todo.append((op.target, block_stack))
 
 
