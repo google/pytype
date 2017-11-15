@@ -899,6 +899,74 @@ class GenericTest(test_base.BaseTest):
         v = ...  # type: list[int or str]
       """)
 
+  def testTypeParameterSubclass(self):
+    """Test subclassing A[T] with T undefined and a type that depends on T."""
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        from typing import Generic, List
+        T = TypeVar("T")
+        class A(Generic[T]):
+          data = ...  # type: List[T]
+      """)
+      ty = self.Infer("""
+        import a
+        class B(a.A):
+          def foo(self):
+            return self.data
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        class B(a.A):
+          data = ...  # type: list
+          def foo(self) -> list
+      """)
+
+  def testConstrainedTypeParameterSubclass(self):
+    """Test subclassing A[T] with T undefined and a type that depends on T."""
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        from typing import Generic, List
+        T = TypeVar("T", int, str)
+        class A(Generic[T]):
+          data = ...  # type: List[T]
+      """)
+      ty = self.Infer("""
+        import a
+        class B(a.A):
+          def foo(self):
+            return self.data
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        from typing import List, Union
+        a = ...  # type: module
+        class B(a.A):
+          data = ...  # type: List[Union[int, str]]
+          def foo(self) -> List[Union[int, str]]
+      """)
+
+  def testBoundedTypeParameterSubclass(self):
+    """Test subclassing A[T] with T undefined and a type that depends on T."""
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        from typing import Generic, List
+        T = TypeVar("T", bound=complex)
+        class A(List[T], Generic[T]):
+          data = ...  # type: List[T]
+      """)
+      ty = self.Infer("""
+        import a
+        class B(a.A):
+          def foo(self):
+            return self.data
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        from typing import List
+        a = ...  # type: module
+        class B(a.A):
+          data = ...  # type: List[complex]
+          def foo(self) -> List[complex]
+      """)
+
   def testConstrainedTypeParameter(self):
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", """

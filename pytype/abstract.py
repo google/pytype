@@ -774,6 +774,7 @@ class Instance(SimpleAbstractValue):
       self.maybe_missing_members = True
     cls.register_instance(self)
     bad_names = set()
+    unbound_params = set()
     for base in cls.mro:
       if isinstance(base, ParameterizedClass):
         if isinstance(base, TupleClass):
@@ -811,6 +812,10 @@ class Instance(SimpleAbstractValue):
               # parameter name. pytype isn't yet smart enough to handle this
               # case, so we'll just set the type parameter to Any.
               bad_names.add(name)
+      elif base.template:
+        for item in base.template:
+          unbound_params.add((item.type_param.name, item.type_param))
+
     # We can't reliably track changes to type parameters involved in naming
     # conflicts, so we'll set all of them to unsolvable.
     node = self.vm.root_cfg_node
@@ -818,6 +823,12 @@ class Instance(SimpleAbstractValue):
       super(Instance, self).merge_type_parameter(
           node, name, self.vm.convert.create_new_unsolvable(node))
     self._bad_names = bad_names
+
+    if isinstance(cls, InterpreterClass):
+      for name, param in unbound_params:
+        if name not in self.type_parameters:
+          var = self.vm.convert.constant_to_var(AsInstance(param.upper_value))
+          self.initialize_type_parameter(vm.root_cfg_node, name, var)
 
   def merge_type_parameter(self, node, name, value):
     # Members of _bad_names are involved in naming conflicts, so we don't want
