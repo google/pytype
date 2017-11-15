@@ -71,11 +71,17 @@ class Converter(object):
       assert template == (abstract.ARGS, abstract.RET), template
       template = range(v.num_args) + [template[1]]
     if self._is_tuple(v, instance):
-      assert len(template) == 1 and template[0] == abstract.T, template
       if isinstance(v, abstract.TupleClass):
-        template = range(v.tuple_length)
+        new_template = range(v.tuple_length)
       else:
-        template = range(instance.tuple_length)
+        new_template = range(instance.tuple_length)
+      if template:
+        assert len(template) == 1 and template[0] == abstract.T, template
+      else:
+        # We have a recursive type. By erasing the instance and value
+        # information, we'll return Any for all of the tuple elements.
+        v = instance = None
+      template = new_template
     if instance is None and isinstance(v, abstract.ParameterizedClass):
       return [self.value_instance_to_pytd_type(
           node, v.type_parameters[t], None, seen, view) for t in template]

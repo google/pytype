@@ -297,6 +297,15 @@ class TupleTest(test_base.BaseTest):
       b = ...  # type: Tuple[Union[int, str], ...]
     """)
 
+  def testTupleOfTuple(self):
+    self.assertNoCrash(self.Infer, """
+      def f(x=()):
+        x = (x,)
+        enumerate(x)
+        lambda: x
+        return x
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()
