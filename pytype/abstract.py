@@ -3016,7 +3016,7 @@ class InterpreterFunction(Function):
                                self.f_globals, self.f_locals, self.closure,
                                new_locals=new_locals)
     if self.signature.has_return_annotation:
-      if self.is_attribute_of_class and self.signature.param_names:
+      if self.signature.param_names:
         self_var = callargs.get(self.signature.param_names[0])
         caller_is_abstract = self_var and all(
             cls.is_abstract
@@ -3024,7 +3024,7 @@ class InterpreterFunction(Function):
       else:
         caller_is_abstract = False
       frame.allowed_returns = annotations["return"]
-      frame.check_return = not caller_is_abstract or not self.is_abstract
+      frame.check_return = not (caller_is_abstract and self.is_abstract)
     if self.vm.options.skip_repeat_calls:
       callkey = self._hash_all(
           (callargs, None),
