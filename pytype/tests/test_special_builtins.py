@@ -68,6 +68,53 @@ class SpecialBuiltinsTest(test_base.BaseTest):
         foo = ...  # type: Any
     """)
 
+  def testPropertyWithTypeParameter(self):
+    ty = self.Infer("""
+      from __future__ import google_type_annotations
+      from typing import AnyStr
+      class Foo(object):
+        @property
+        def foo(self) -> AnyStr:
+          return __any_object__
+    """)
+    self.assertTypesMatchPytd(ty, """
+      class Foo(object):
+        foo = ...  # type: str or unicode
+    """)
+
+  def testPropertyWithContainedTypeParameter(self):
+    ty = self.Infer("""
+      from __future__ import google_type_annotations
+      from typing import AnyStr, List
+      class Foo(object):
+        @property
+        def foo(self) -> List[AnyStr]:
+          return __any_object__
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import List
+      class Foo(object):
+        foo = ...  # type: List[str or unicode]
+    """)
+
+  def testPropertyFromPyiWithTypeParameter(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import AnyStr
+        class Foo(object):
+          def get_foo(self) -> AnyStr: ...
+      """)
+      ty = self.Infer("""
+        import foo
+        class Bar(foo.Foo):
+          foo = property(fget=foo.Foo.get_foo)
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        foo = ...  # type: module
+        class Bar(foo.Foo):
+          foo = ...  # type: str or unicode
+      """)
+
   def testCallableIfSplitting(self):
     ty = self.Infer("""
       def foo(x):

@@ -387,7 +387,14 @@ class Converter(object):
         types.extend(sig.pytd_sig.return_type for sig in val.signatures)
       else:
         types.append(pytd.AnythingType())
-    return types
+    safe_types = []  # types without type parameters
+    for t in types:
+      collector = visitors.CollectTypeParameters()
+      t.Visit(collector)
+      t = t.Visit(visitors.ReplaceTypeParameters(
+          {p: p.upper_value for p in collector.params}))
+      safe_types.append(t)
+    return safe_types
 
   def _class_method_to_def(self, node, v, name, kind):
     """Convert a classmethod to a PyTD definition."""
