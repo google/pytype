@@ -128,10 +128,12 @@ def add_pop_block_targets(bytecode):
           break
     elif isinstance(op, opcodes.BREAK_LOOP):
       # Breaks jump to after the loop
-      for b in reversed(block_stack):
+      for i in reversed(range(len(block_stack))):
+        b = block_stack[i]
         if isinstance(b, opcodes.SETUP_LOOP):
           op.block_target = b.target
           assert b.target != op
+          todo.append((op.block_target, block_stack[0:i]))
           break
     elif isinstance(op, opcodes.SETUP_EXCEPT):
       # Exceptions pop the block, so store the previous block stack.

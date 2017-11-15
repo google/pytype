@@ -387,6 +387,18 @@ class FlowTest(test_base.BaseTest):
         break
     """)
 
+  def test_loop_after_break(self):
+    self.assertNoCrash(self.Infer, """
+      for _ in ():
+        break
+      else:
+        raise
+      for _ in ():
+        break
+      else:
+        raise
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()
