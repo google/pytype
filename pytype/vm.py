@@ -1050,6 +1050,24 @@ class VirtualMachine(object):
   def load_attr(self, state, obj, attr):
     """Try loading an attribute, and report errors."""
     node, result, errors = self._retrieve_attr(state.node, obj, attr)
+    if self.options.strict_none:
+      self._new_attribute_error_detection(state, obj, attr, errors)
+    else:
+      self._old_attribute_error_detection(state, obj, attr, errors)
+    if result is None:
+      result = self.convert.create_new_unsolvable(node)
+    return state.change_cfg_node(node), result
+
+  def _new_attribute_error_detection(self, state, _, attr, errors):
+    for error in errors:
+      combination = [error]
+      if self._data_is_none(error.data):
+        combination.extend(self._analyze_node.bindings)
+      if state.node.HasCombination(combination):
+        self.errorlog.attribute_or_module_error(
+            self.frames, error.AssignToNewVariable(self.root_cfg_node), attr)
+
+  def _old_attribute_error_detection(self, state, obj, attr, errors):
     if errors and obj.bindings and self._is_only_none(state.node, obj):
       self.errorlog.none_attr(self.frames, attr)
     else:
@@ -1057,9 +1075,6 @@ class VirtualMachine(object):
         if not self._is_none(state.node, error):
           self.errorlog.attribute_or_module_error(
               self.frames, error.AssignToNewVariable(self.root_cfg_node), attr)
-    if result is None:
-      result = self.convert.create_new_unsolvable(node)
-    return state.change_cfg_node(node), result
 
   def load_attr_noerror(self, state, obj, attr):
     """Try loading an attribute, ignore errors."""

@@ -31,6 +31,28 @@ CallRecord = collections.namedtuple(
                    "keyword_arguments", "return_value"])
 
 
+# Used to filter out false positives when checking for errors on None.
+class AnalyzeNode(collections.namedtuple(
+    "AnalyzeNode", ["pre_node", "node", "bindings"])):
+  """The program's Analyze node."""
+
+  @classmethod
+  def create(cls, node0, tracer):
+    node1 = node0.ConnectNew(name="PreAnalyze")
+    var = tracer.program.NewVariable([tracer.convert.true], [], node1)
+    node2 = node1.ConnectNew(name="Analyze")
+    fake_node = tracer.program.NewCFGNode(name="FakeAnalyze")
+    fake_node.ConnectTo(node2)
+    b = var.AddBinding(tracer.convert.false, [], fake_node)
+    return cls(pre_node=node1, node=node2, bindings=(b,))
+
+  def connect(self, node_from, node_to):
+    if node_to is self.node:
+      node_from.ConnectTo(self.pre_node)
+    else:
+      node_from.ConnectTo(node_to)
+
+
 # How deep to follow call chains, during module loading:
 INIT_MAXIMUM_DEPTH = 4
 
@@ -65,6 +87,7 @@ class CallTracer(vm.VirtualMachine):
     self._analyzed_classes = set()
     self._generated_classes = {}
     self.exitpoint = None
+    self._analyze_node = AnalyzeNode(pre_node=None, node=None, bindings=())
 
   def create_argument(self, node, signature, name):
     t = signature.annotations.get(name)
@@ -213,7 +236,7 @@ class CallTracer(vm.VirtualMachine):
     node1 = node0.ConnectNew(name)
     for val in var.Bindings(node0):
       node2 = self.maybe_analyze_method(node1, val)
-      node2.ConnectTo(node0)
+      self._analyze_node.connect(node2, node0)
     return node0
 
   def bind_method(self, node, name, methodvar, instance, clsvar):
@@ -358,7 +381,7 @@ class CallTracer(vm.VirtualMachine):
     else:
       node1 = node0.ConnectNew(val.data.name)
       node2 = self.maybe_analyze_method(node1, val)
-      node2.ConnectTo(node0)
+      self._analyze_node.connect(node2, node0)
     return node0
 
   def analyze_toplevel(self, node, defs):
@@ -391,8 +414,8 @@ class CallTracer(vm.VirtualMachine):
   def analyze(self, node, defs, maximum_depth):
     assert not self.frame
     self.maximum_depth = sys.maxint if maximum_depth is None else maximum_depth
-    node = node.ConnectNew(name="Analyze")
-    return self.analyze_toplevel(node, defs)
+    self._analyze_node = AnalyzeNode.create(node, self)
+    return self.analyze_toplevel(self._analyze_node.node, defs)
 
   def trace_module_member(self, module, name, member):
     if module is None or isinstance(module, typing.TypingOverlay):

@@ -6,6 +6,99 @@ from pytype import utils
 from pytype.tests import test_base
 
 
+class TestStrictNone(test_base.BaseTest):
+  """Tests for strict attribute checking on None."""
+
+  def setUp(self):
+    super(TestStrictNone, self).setUp()
+    self.options.tweak(strict_none=True)
+
+  def testModuleConstant(self):
+    self.Check("""
+      x = None
+      def f():
+        return x.upper()
+    """)
+
+  def testClassConstant(self):
+    self.Check("""
+      class Foo(object):
+        x = None
+        def f(self):
+          return self.x.upper()
+    """)
+
+  def testExplicitNone(self):
+    errors = self.CheckWithErrors("""\
+      from __future__ import google_type_annotations
+      from typing import Optional
+      def f(x: Optional[str]):
+        return x.upper()
+    """)
+    self.assertErrorLogIs(errors, [(4, "attribute-error", r"upper.*None")])
+
+  def testMultiplePaths(self):
+    errors = self.CheckWithErrors("""\
+      x = None
+      def f():
+        z = None if __random__ else x
+        y = z
+        return y.upper()
+    """)
+    self.assertErrorLogIs(errors, [(5, "attribute-error", r"upper.*None")])
+
+  def testLateInitialization(self):
+    ty = self.Infer("""
+      class Foo(object):
+        def __init__(self):
+          self.x = None
+        def f(self):
+          return self.x.upper()
+        def set_x(self):
+          self.x = ""
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any, Optional
+      class Foo(object):
+        x = ...  # type: Optional[str]
+        def f(self) -> Any: ...
+        def set_x(self) -> None: ...
+    """)
+
+  def testPyiConstant(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        x = ...  # type: None
+      """)
+      self.Check("""
+        import foo
+        def f():
+          return foo.x.upper()
+      """, pythonpath=[d.path])
+
+  def testPyiAttribute(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        class Foo(object):
+          x = ...  # type: None
+      """)
+      self.Check("""
+        import foo
+        def f():
+          return foo.Foo.x.upper()
+      """, pythonpath=[d.path])
+
+  @unittest.skip("Need to improve our filtering strategy.")
+  def testReturnValue(self):
+    errors = self.CheckWithErrors("""\
+      def f():
+        pass
+      def g():
+        return f().upper()
+    """)
+    self.assertErrorLogIs(errors, [(4, "attribute-error", r"upper.*None")])
+
+
 class TestAttributes(test_base.BaseTest):
   """Tests for attributes."""
 
