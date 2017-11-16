@@ -2200,3 +2200,15 @@ class LateTypeToClassType(Visitor):
 
   def VisitLateType(self, t):
     return pytd.ClassType(t.name, None)
+
+
+class DropMutableParameters(Visitor):
+  """Drops all mutable parameters.
+
+  Drops all mutable parameters. This visitor differs from
+  transforms.RemoveMutableParameters in that the latter absorbs mutable
+  parameters into the signature, while this one blindly drops them.
+  """
+
+  def VisitParameter(self, p):
+    return p.Replace(mutated_type=None)

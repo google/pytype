@@ -220,6 +220,44 @@ class ReingestTest(test_base.BaseTest):
       """, pythonpath=[d.path])
       self.assertErrorLogIs(errors, [(2, "not-instantiable", r"foo\.Foo.*foo")])
 
+  def testInheritedMutation(self):
+    foo = self.Infer("""
+      class MyList(list):
+        write = list.append
+    """)
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", pytd.Print(foo))
+      ty = self.Infer("""
+        import foo
+        lst = foo.MyList()
+        lst.write(42)
+      """, pythonpath=[d.path])
+      # MyList is not parameterized because it inherits from List[Any].
+      self.assertTypesMatchPytd(ty, """
+        foo = ...  # type: module
+        lst = ...  # type: foo.MyList
+      """)
+
+  @unittest.skip("Need to give MyList.write the right self mutation.")
+  def testInheritedMutationInGenericClass(self):
+    foo = self.Infer("""
+      from typing import List, TypeVar
+      T = TypeVar("T")
+      class MyList(List[T]):
+        write = list.append
+    """)
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", pytd.Print(foo))
+      ty = self.Infer("""
+        import foo
+        lst = foo.MyList()
+        lst.write(42)
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        foo = ...  # type: module
+        lst = ...  # type: foo.MyList[int]
+      """)
+
 
 if __name__ == "__main__":
   test_base.main()

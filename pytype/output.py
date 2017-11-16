@@ -440,7 +440,13 @@ class Converter(object):
           except abstract.ConversionError:
             constants[name].add_type(pytd.AnythingType())
         elif isinstance(value, abstract.Function):
-          methods[name] = self.value_to_pytd_def(node, value, name)
+          # TODO(rechen): Removing mutations altogether won't work for generic
+          # classes. To support those, we'll need to change the mutated type's
+          # base to the current class, rename aliased type parameters, and
+          # replace any parameter not in the class or function template with
+          # its upper value.
+          methods[name] = self.value_to_pytd_def(node, value, name).Visit(
+              visitors.DropMutableParameters())
         else:
           constants[name].add_type(value.to_type(node))
 
