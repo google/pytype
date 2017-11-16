@@ -112,7 +112,8 @@ def add_pop_block_targets(bytecode):
     op, block_stack = todo.pop()
     if op in seen:
       continue
-    seen.add(op)
+    else:
+      seen.add(op)
 
     # Compute the block stack
     if isinstance(op, opcodes.POP_BLOCK):
@@ -143,13 +144,12 @@ def add_pop_block_targets(bytecode):
       assert op.target, "%s without target" % op.name
       # We push the entire opcode onto the block stack, for better debugging.
       block_stack += (op,)
+    elif op.does_jump() and op.target:
+      todo.append((op.target, block_stack))
 
-    # Propagate the state to all opcodes reachable from here.
     if not op.no_next():
       assert op.next, "Bad instruction at end of bytecode."
       todo.append((op.next, block_stack))
-    if op.does_jump() and op.target:
-      todo.append((op.target, block_stack))
 
 
 def _split_bytecode(bytecode):
