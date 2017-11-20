@@ -296,8 +296,7 @@ def compute_predecessors(nodes):
   # needed. Since the maximum number of times a given edge is processed is |V|,
   # the worst-case runtime is |V|*|E|. However, these graphs are typically
   # trees, so the usual runtime is much closer to |E|. Compared to using
-  # Floyd-Warshall (|V|^3), this brings down the execution time on
-  # pyglib/flags/flags_strict_test.py and pyglib/flags/flags_test.py
+  # Floyd-Warshall (|V|^3), this brings down the execution time on some files
   # from about 30s to less than 7s.
   for start in nodes:
     if start in discovered:
