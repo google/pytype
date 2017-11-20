@@ -28,12 +28,8 @@ from pytype.pytd.parse import visitors
 
 
 def _FindBuiltinFile(name, python_version, extension=".pytd"):
-  subdir = utils.get_builtins_path(python_version)
+  subdir = utils.get_versioned_path("builtins", python_version)
   return pytd_utils.GetPredefinedFile(subdir, name, extension)
-
-
-def _FindStdlibFile(name, extension=".pytd"):
-  return pytd_utils.GetPredefinedFile("stdlib", name, extension)
 
 
 # Tests might run with different python versions in the same pytype invocation,

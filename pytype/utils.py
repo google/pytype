@@ -69,11 +69,11 @@ def is_python_3(python_version):
   return python_version[0] == 3
 
 
-def get_builtins_path(python_version):
+def get_versioned_path(subdir, python_version):
   if is_python_2(python_version):
-    return "builtins/2"
+    return os.path.join(subdir, "2")
   else:
-    return "builtins/3"
+    return os.path.join(subdir, "3")
 
 
 def replace_extension(filename, new_extension):

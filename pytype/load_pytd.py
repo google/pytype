@@ -266,8 +266,10 @@ class Loader(object):
     """Load a pytd/pyi that ships with pytype or typeshed."""
     # Try our own type definitions first.
     if not third_party_only:
+      builtin_dir = utils.get_versioned_path(
+          subdir, self.options.python_version)
       mod = builtins.ParsePredefinedPyTD(
-          subdir, module_name, self.options.python_version)
+          builtin_dir, module_name, self.options.python_version)
       if mod:
         return self.load_file(filename=self.PREFIX + module_name,
                               module_name=module_name,
@@ -303,8 +305,7 @@ class Loader(object):
     # over modules in PYTHONPATH.
     # Note: while typeshed no longer has a builtins subdir, the pytd
     # tree still does, and order is important here.
-    subdir = utils.get_builtins_path(self.options.python_version)
-    mod = self._load_builtin(subdir, module_name)
+    mod = self._load_builtin("builtins", module_name)
     if mod:
       return mod
 

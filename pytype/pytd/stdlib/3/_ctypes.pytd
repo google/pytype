@@ -1,0 +1,21 @@
+# TODO(pludemann): needs more contents here
+# This module does not exist in typeshed.
+
+class PyCArrayType(object):
+  pass
+
+class PyCFuncPtrType(object):
+  pass
+
+class PyCPointerType(object):
+  pass
+
+class PyCSimpleType(object):
+  pass
+
+class PyCStructType(object):
+  pass
+
+class UnionType(object):
+  pass
+

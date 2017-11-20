@@ -1,0 +1,98 @@
+# We maintain our own collections.pytd, rather than using collections.pyi from
+# typeshed, because this file makes use of mutable type parameters.
+from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Tuple
+
+K = TypeVar("K")
+V = TypeVar("V")
+K2 = TypeVar("K2")
+V2 = TypeVar("V2")
+DV = TypeVar("DV")
+
+__all__ = ...  # type: list[?]
+_abcoll = ...  # type: ?
+_chain = ...  # type: type
+_class_template = ...  # type: str
+_eq = ...  # type: ?
+_field_template = ...  # type: str
+_get_ident = ...  # type: ?
+_heapq = ...  # type: ?
+_imap = ...  # type: type
+_iskeyword = ...  # type: ?
+_itemgetter = ...  # type: Callable
+_repeat = ...  # type: type
+_repr_template = ...  # type: str
+_starmap = ...  # type: type
+_sys = ...  # type: module
+deque = ...  # type: ?
+dumps = ...  # type: Callable
+loads = ...  # type: Callable
+
+Container = ... # type: ?
+Hashable = ... # type: ?
+Iterable = ... # type: ?
+Iterator = ... # type: ?
+Sized = ... # type: ?
+Callable = ... # type: ?
+Sequence = ... # type: ?
+MutableSequence = ... # type: ?
+Set = ... # type: ?
+MutableSet = ... # type: ?
+Mapping = ... # type: ?
+MutableMapping = ... # type: ?
+MappingView = ... # type: ?
+ItemsView = ... # type: ?
+KeysView = ... # type: ?
+ValuesView = ... # type: ?
+
+def namedtuple(typename: str or unicode,
+  field_names: str or unicode or Iterable[str or unicode] or Iterable[nothing],
+  verbose: bool = ..., rename: bool = ...) -> type
+
+class OrderedDict(Dict[K, V]):
+  def popitem(self, last: bool = ...) -> Tuple[K, V]
+
+class defaultdict(Dict[K, V]):
+  default_factory = ...  # type: Optional[Callable[[], V]]
+  def __init__(self):
+    self := defaultdict[nothing, nothing]
+  def __init__(self, default_factory: None):
+    self := defaultdict[nothing, nothing]
+  def __init__(self, default_factory: Callable[[], DV]) -> None:
+    self := defaultdict[nothing, DV]
+  def __init__(self, **kwargs: V2):
+    self := defaultdict[str, V2]
+  def __init__(self, default_factory: None, **kwargs: V2) -> None:
+    self := defaultdict[str, V2]
+  def __init__(self, default_factory: None, iter: Iterable[Tuple[K2, V2]]) -> None:
+    self := defaultdict[K2, V2]
+  def __init__(self, default_factory: None, map: Mapping[K2, V2]) -> None:
+    self := defaultdict[K2, V2]
+  def __init__(self, default_factory: Callable[[], DV], **kwargs: V2) -> None:
+    self := defaultdict[str, DV or V2]
+  def __init__(self, default_factory: Callable[[], DV], map: Mapping[K2, V2]) -> None:
+    self := defaultdict[K2, DV or V2]
+  def __init__(self, default_factory: Callable[[], DV], iter: Iterable[Tuple[K2, V2]]) -> None:
+    self := defaultdict[K2, DV or V2]
+  def __missing__(self, key: K) -> V
+  def __getitem__(self, key: K2) -> Any:
+    self := defaultdict[K or K2, Any]
+
+# Strictly speaking, this should be dict[?, ?]. (E.g. it's legal to do
+# collections.Counter()[x] = 'foobar'.) But the counts are typically integers.
+class Counter(dict[?, int]):
+    __doc__ = ...  # type: str
+    fromkeys = ...  # type: classmethod
+    def __add__(self, other: Counter) -> Counter
+    def __and__(self, other: Counter) -> Counter
+    def __delitem__(self, elem) -> NoneType
+    def __init__(self, ...) -> NoneType
+    def __missing__(self, key) -> int
+    def __or__(self, other: Counter) -> Counter
+    def __reduce__(self) -> tuple
+    def __repr__(self) -> str
+    def __sub__(self, other: Counter) -> Counter
+    def copy(self) -> ?
+    def elements(self) -> ?
+    def most_common(self, ...) -> ?
+    def subtract(self, other: Iterable) -> NoneType
+    def update(self, other: Iterable) -> NoneType
