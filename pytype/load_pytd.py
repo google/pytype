@@ -105,7 +105,7 @@ class Loader(object):
 
   def load_file(self, module_name, filename, ast=None, is_dir=False):
     """Load (or retrieve from cache) a module and resolve its dependencies."""
-    if os.path.basename(filename) == "__init__.pyi":
+    if filename is not None and os.path.basename(filename) == "__init__.pyi":
       is_dir = True
     if module_name:
       parts = module_name.split(".")
