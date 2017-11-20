@@ -2,6 +2,9 @@
 # either of them breaks protocol inference.
 from typing import Any, Callable, Container, ContextManager, Iterable, Mapping, MutableMapping, MutableSequence, Protocol, Reversible, Sequence, Sized, SupportsAbs, SupportsComplex, SupportsFloat, SupportsInt, SupportsRound
 
+if sys.version_info >= (3, 0):
+  from typing import SupportsBytes
+
 class SupportsLower(Protocol):
   @abstractmethod
   def lower(self) -> Any: ...

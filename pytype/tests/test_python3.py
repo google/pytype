@@ -2,6 +2,7 @@
 
 import os
 
+
 from pytype.tests import test_base
 
 
@@ -168,6 +169,31 @@ class TestPython3(test_base.BaseTest):
         def foo(self) -> int:
           return None
     """, skip_repeat_calls=False)
+
+  def test_check_supports_bytes_protocol(self):
+    self.Check("""
+      import protocols
+      from typing import SupportsBytes
+      def f(x: protocols.SupportsBytes):
+        return None
+      def g(x: SupportsBytes):
+        return None
+      class Foo:
+        def __bytes__(self):
+          return b"foo"
+      foo = Foo()
+      f(foo)
+      g(foo)
+    """)
+
+
+class TypingMethodsTest(test_base.TypingTest):
+  """Tests for typing.py specific to python3."""
+
+  PYTHON_VERSION = (3, 4)
+
+  def test_supportsbytes(self):
+    self._check_call("SupportsBytes", "bytes(x)")
 
 
 if __name__ == "__main__":

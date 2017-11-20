@@ -1,27 +1,12 @@
 """Tests for the methods in typing.pyi."""
 
-import textwrap
-
 
 from pytype import utils
 from pytype.tests import test_base
 
 
-class TypingMethodsTest(test_base.BaseTest):
+class TypingMethodsTest(test_base.TypingTest):
   """Tests for typing.py."""
-
-  def _check_call(self, t, expr):
-    with utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
-        from typing import %(type)s
-        def f() -> %(type)s
-      """ % {"type": t})
-      indented_expr = textwrap.dedent(expr).replace("\n", "\n" + " "*8)
-      self.Check("""\
-        import foo
-        x = foo.f()
-        %(expr)s
-      """ % {"expr": indented_expr}, pythonpath=[d.path])
 
   def test_text(self):
     self._check_call("Text", "x.upper()")

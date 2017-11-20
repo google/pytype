@@ -63,6 +63,14 @@ class SupportsRound(Generic[_T], Protocol):
   def __round__(self, ndigits: int = ...) -> _T: ...
 
 
+# The SupportsBytes protocol was introduced in python3 typeshed.
+if sys.version_info >= (3, 0):
+  class SupportsBytes(Protocol):
+    __slots__ = []
+    @abstractmethod
+    def __bytes__(self) -> bytes: ...
+
+
 class Reversible(Generic[_T], Protocol):
   __slots__ = []
   @abstractmethod

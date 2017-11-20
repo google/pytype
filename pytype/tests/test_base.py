@@ -14,6 +14,7 @@ from pytype import debug
 from pytype import directors
 from pytype import errors
 from pytype import load_pytd
+from pytype import utils
 from pytype.pyc import loadmarshal
 from pytype.pyi import parser
 from pytype.pytd import optimize
@@ -399,6 +400,23 @@ def _PrintErrorDebug(descr, value):
   log.error("=============== %s ===========", descr)
   _LogLines(log.error, value)
   log.error("=========== end %s ===========", descr)
+
+
+class TypingTest(BaseTest):
+  """Add a convenience method to test typing.py."""
+
+  def _check_call(self, t, expr):  # pylint: disable=invalid-name
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import %(type)s
+        def f() -> %(type)s
+      """ % {"type": t})
+      indented_expr = textwrap.dedent(expr).replace("\n", "\n" + " "*8)
+      self.Check("""\
+        import foo
+        x = foo.f()
+        %(expr)s
+      """ % {"expr": indented_expr}, pythonpath=[d.path])
 
 
 def _LogLines(log_cmd, lines):
