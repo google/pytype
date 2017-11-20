@@ -105,8 +105,10 @@ class Typeshed(object):
       if path_rel in self._missing:
         return (os.path.join(self._typeshed_path, "nonexistent",
                              path_rel + ".pyi"),
-                builtins.DEFAULT_SRC)
+                builtins.DEFAULT_SRC,
+                False)
 
+      # TODO(mdemello): handle this in the calling code.
       for path in [os.path.join(path_rel, "__init__.pyi"), path_rel + ".pyi"]:
         try:
           if self._use_pickled:
@@ -114,7 +116,7 @@ class Typeshed(object):
                 utils.replace_extension(path, ".pickled"))
           else:
             name, src = self._load_file(path)
-          return name, src
+          return name, src, (os.path.basename(path) == "__init__.pyi")
         except IOError:
           pass
 
@@ -173,9 +175,11 @@ def parse_type_definition(
   """
   typeshed = _get_typeshed(typeshed_location, use_pickled)
   try:
-    filename, src = typeshed.get_module_file(pyi_subdir, module, python_version)
+    filename, src, is_dir = typeshed.get_module_file(
+        pyi_subdir, module, python_version)
   except IOError:
-    return None
+    return None, None
 
-  return builtins.ParsePyTD(src, filename=filename, module=module,
-                            python_version=python_version).Replace(name=module)
+  ast = builtins.ParsePyTD(src, filename=filename, module=module,
+                           python_version=python_version).Replace(name=module)
+  return ast, is_dir

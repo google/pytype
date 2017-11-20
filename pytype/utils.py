@@ -84,6 +84,28 @@ def replace_extension(filename, new_extension):
     return name + "." + new_extension
 
 
+def get_absolute_name(prefix, relative_name):
+  """Joins a dotted-name prefix and a relative name.
+
+  Args:
+    prefix: A dotted name, e.g. foo.bar.baz
+    relative_name: A dotted name with possibly some leading dots, e.g. ..x.y
+
+  Returns:
+    The relative name appended to the prefix, after going up one level for each
+      leading dot.
+      e.g. foo.bar.baz + ..hello.world -> foo.bar.hello.world
+    None if the relative name has too many leading dots.
+  """
+  path = prefix.split(".") if prefix else []
+  name = relative_name.lstrip(".")
+  ndots = len(relative_name) - len(name)
+  if ndots > len(path):
+    return None
+  prefix = "".join([p + "." for p in path[:len(path) + 1 - ndots]])
+  return prefix + name
+
+
 def variable_product(variables):
   """Take the Cartesian product of a number of Variables.
 

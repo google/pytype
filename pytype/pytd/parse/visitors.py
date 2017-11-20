@@ -1066,14 +1066,33 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny):
         new_members.append(m)
     return new_members
 
-  def _CheckForDuplicates(self, new_aliases):
-    grouped_aliases = collections.defaultdict(list)
+  def _HandleDuplicates(self, new_aliases):
+    """Handle duplicate module-level aliases.
+
+    Aliases pointing to qualified names could be the result of importing the
+    same entity through multiple import paths, which should not count as an
+    error; instead we just deduplicate them.
+
+    Args:
+      new_aliases: The list of new aliases to deduplicate
+
+    Returns:
+      A deduplicated list of aliases.
+
+    Raises:
+      KeyError if there is a name clash.
+    """
+    grouped_aliases = collections.defaultdict(set)
     for a in new_aliases:
-      grouped_aliases[a.name].append(a)
+      grouped_aliases[a.name].add(a)
+    out = []
     for group in grouped_aliases.values():
       if len(group) > 1:
         duplicates = ", ".join(a.type.name for a in group)
         raise KeyError("Duplicate top level items: %r" % duplicates)
+      else:
+        out.extend(group)
+    return out
 
   def VisitTypeDeclUnit(self, node):
     """Add star imports to the ast.
@@ -1090,8 +1109,13 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny):
     if not self._star_imports:
       return node
     # Discard the 'importing_mod.imported_mod.* = imported_mod.*' aliases.
-    star_import_names = {
-        self._ModulePrefix() + module + ".*" for module in self._star_imports}
+    star_import_names = set()
+    p = self._ModulePrefix()
+    for x in self._star_imports:
+      if x.startswith(p):
+        star_import_names.add(x + ".*")
+      else:
+        star_import_names.add(p + x + ".*")
     new_aliases = []
     new_getattrs = set()
     for module in self._star_imports:
@@ -1102,7 +1126,7 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny):
     new_aliases = self._DiscardExistingNames(node, new_aliases)
     new_getattrs = self._DiscardExistingNames(node, new_getattrs)
     # Don't allow imported definitions to conflict with one another.
-    self._CheckForDuplicates(new_aliases)
+    new_aliases = self._HandleDuplicates(new_aliases)
     if len(new_getattrs) > 1:
       raise KeyError("Multiple __getattr__ definitions")
     return node.Replace(
@@ -1690,8 +1714,9 @@ class AddNamePrefix(Visitor):
       # class attribute
       return node
     else:
-      # global constant
-      return node.Replace(name=self.prefix + node.name)
+      # global constant. Handle leading . for relative module names.
+      return node.Replace(name=utils.get_absolute_name(
+          self.prefix[:-1], node.name))
 
   def VisitFunction(self, node):
     return self._VisitNamedNode(node)
@@ -1747,15 +1772,12 @@ class QualifyRelativeNames(Visitor):
       name = self.package_name + node.name[len("__PACKAGE__"):]
       return node.Replace(name=name)
     elif node.name.startswith("."):
-      path = self.package_name.split(".")
-      name = node.name.lstrip(".")
-      ndots = len(node.name) - len(name)
-      if ndots > len(path):
+      name = utils.get_absolute_name(self.package_name, node.name)
+      if name is None:
         raise SymbolLookupError(
             "Cannot resolve relative import %s" %
             node.name.rsplit(".", 1)[0])
-      prefix = "".join([p + "." for p in path[:len(path) + 1 - ndots]])
-      return node.Replace(name=prefix + name)
+      return node.Replace(name=name)
     else:
       return node
 

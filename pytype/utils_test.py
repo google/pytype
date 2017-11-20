@@ -424,6 +424,17 @@ class UtilsTest(unittest.TestCase):
     self.assertTrue(utils.list_startswith([], []))
     self.assertFalse(utils.list_startswith([], [1]))
 
+  def testGetAbsoluteName(self):
+    test_cases = [
+        ("x.y", "a.b", "x.y.a.b"),
+        ("", "a.b", "a.b"),
+        ("x.y", ".a.b", "x.y.a.b"),
+        ("x.y", "..a.b", "x.a.b"),
+        ("x.y", "...a.b", None),
+    ]
+    for prefix, name, expected in test_cases:
+      self.assertEqual(utils.get_absolute_name(prefix, name), expected)
+
   @utils.memoize
   def _f1(self, x, y):
     return x + y

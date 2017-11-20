@@ -103,8 +103,17 @@ class Loader(object):
       return existing.ast
     return None
 
-  def load_file(self, module_name, filename, ast=None):
+  def load_file(self, module_name, filename, ast=None, is_dir=False):
     """Load (or retrieve from cache) a module and resolve its dependencies."""
+    if os.path.basename(filename) == "__init__.pyi":
+      is_dir = True
+    if module_name:
+      parts = module_name.split(".")
+      if not is_dir:
+        parts = parts[:-1]
+      package_name = ".".join(parts)
+    else:
+      package_name = ""
     self._concatenated = None  # invalidate
     existing = self._get_existing_ast(module_name, filename)
     if existing:
@@ -113,20 +122,20 @@ class Loader(object):
       ast = builtins.ParsePyTD(filename=filename,
                                module=module_name,
                                python_version=self.options.python_version)
-    return self._process_module(module_name, filename, ast)
+    return self._process_module(module_name, filename, package_name, ast)
 
-  def _process_module(self, module_name, filename, ast):
+  def _process_module(self, module_name, filename, package_name, ast):
     """Create a module from a loaded ast and save it to the loader cache.
 
     Args:
       module_name: The fully qualified name of the module being imported.
       filename: The file the ast was generated from.
+      package_name: The package the file is in.
       ast: The pytd.TypeDeclUnit representing the module.
 
     Returns:
       The ast (pytd.TypeDeclUnit) as represented in this loader.
     """
-    package_name = ".".join(module_name.split(".")[:-1]) if module_name else ""
     ast = self._postprocess_pyi(ast, package_name)
     module = Module(module_name, filename, ast)
 
@@ -269,13 +278,13 @@ class Loader(object):
 
   def _load_typeshed_builtin(self, subdir, module_name):
     """Load a pyi from typeshed."""
-    mod = typeshed.parse_type_definition(
+    mod, is_dir = typeshed.parse_type_definition(
         subdir, module_name, self.options.python_version,
         self.options.typeshed_location, use_pickled=False)
     if mod:
       return self.load_file(filename=self.PREFIX + module_name,
                             module_name=module_name,
-                            ast=mod)
+                            ast=mod, is_dir=is_dir)
     return None
 
   def _import_name(self, module_name):
@@ -417,7 +426,7 @@ class PickledPyiLoader(Loader):
       return super(PickledPyiLoader, self)._load_typeshed_builtin(
           subdir, module_name)
     try:
-      filename = typeshed.get_type_definition_filename(
+      filename, _ = typeshed.get_type_definition_filename(
           subdir, module_name, self.options.python_version,
           self.options.typeshed_location, use_pickled=True)
     except IOError:
@@ -425,7 +434,7 @@ class PickledPyiLoader(Loader):
     else:
       return self.load_file(module_name, filename)
 
-  def load_file(self, module_name, filename, ast=None):
+  def load_file(self, module_name, filename, ast=None, is_dir=None):
     """Load (or retrieve from cache) a module and resolve its dependencies."""
     if not os.path.splitext(filename)[1].startswith(".pickled"):
       return super(PickledPyiLoader, self).load_file(module_name, filename, ast)

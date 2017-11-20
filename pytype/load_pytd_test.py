@@ -197,6 +197,38 @@ class ImportPathsTest(unittest.TestCase):
       f = bar.Lookup("pkg.bar.y")
       self.assertEqual("pkg.foo.X", f.type.name)
 
+  def testDirectoryImport(self):
+    with utils.Tempdir() as d:
+      d.create_file("pkg/sub/__init__.pyi", """
+          from .foo import *
+          from .bar import *""")
+      d.create_file("pkg/sub/foo.pyi", """
+          class X: pass""")
+      d.create_file("pkg/sub/bar.pyi", """
+          from .foo import X
+          y = ...  # type: X""")
+      self.options.tweak(pythonpath=[d.path])
+      loader = load_pytd.Loader("pkg", self.options)
+      ast = loader.import_name("pkg.sub")
+      self.assertTrue(ast.Lookup("pkg.sub.X"))
+
+  def testDiamondImport(self):
+    """Should not fail on importing a module via two paths."""
+    with utils.Tempdir() as d:
+      d.create_file("pkg/sub/__init__.pyi", """
+          from .foo import *
+          from .bar import *""")
+      d.create_file("pkg/sub/foo.pyi", """
+          from .baz import X""")
+      d.create_file("pkg/sub/bar.pyi", """
+          from .baz import X""")
+      d.create_file("pkg/sub/baz.pyi", """
+          class X: ...""")
+      self.options.tweak(pythonpath=[d.path])
+      loader = load_pytd.Loader("pkg", self.options)
+      ast = loader.import_name("pkg.sub")
+      self.assertTrue(ast.Lookup("pkg.sub.X"))
+
 
 _Module = collections.namedtuple("_", ["module_name", "file_name"])
 
