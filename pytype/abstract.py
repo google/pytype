@@ -3038,9 +3038,7 @@ class InterpreterFunction(Function):
     if callkey in self._call_cache:
       _, old_ret, old_remaining_depth = self._call_cache[callkey]
       # Optimization: This function has already been called, with the same
-      # environment and arguments, so recycle the old return value and don't
-      # record this call. We pretend that this return value originated at the
-      # current node to make sure we don't miss any possible types.
+      # environment and arguments, so recycle the old return value.
       # We would want to skip this optimization and reanalyze the call
       # if the all the possible types of the return value was unsolvable
       # and we can transverse the function deeper.
@@ -3051,7 +3049,8 @@ class InterpreterFunction(Function):
                  "record remaining_depth = %d",
                  self.name, self.vm.remaining_depth(), old_remaining_depth)
       else:
-        ret = self.vm.program.NewVariable(old_ret.data, [], node)
+        ret = self.vm.program.NewVariable()
+        ret.PasteVariable(old_ret, node)
         if self._store_call_records:
           # Even if the call is cached, we might not have been recording it.
           self._call_records.append((callargs, ret, node))
