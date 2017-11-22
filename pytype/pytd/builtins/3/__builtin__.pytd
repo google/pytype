@@ -1,3 +1,16 @@
+# Forking __builtin__.pytd for python3.
+#
+# The first part of this file is a copy of 2/__builtin__.pytd
+#
+# The second part is new definitions copied from
+# typeshed/stdlib/3/builtins.pyi and modified slightly
+# for compatibility with pytype
+#
+# This file should eventually track typeshed a lot more closely, to
+# minimise the diffs we have to maintain here.
+
+
+# Imports list updated from python3 typeshed
 from typing import (
     AbstractSet, AnyStr, BinaryIO, Callable, Dict, FrozenSet, Generator,
     Generic, Iterable, Iterator, List, Mapping, Optional, Reversible, Sequence,
@@ -85,7 +98,6 @@ def min(arg1: _T, arg2: _T2, arg3: _T3, arg4: _T4, *, key = Callable) -> _T or _
 def min(arg1: _T, arg2: _T, arg3: _T, arg4: _T, arg5: _T, *args: _T, key: Callable = ...) -> _T
 def next(iterator: Iterator[_T], default: _T2 = ...) -> _T or _T2
 def oct(number: int) -> str
-def open(name: str or buffer or unicode, ...) -> file
 def ord(c: str or unicode) -> int
 def pow(x: int, y: int, ...) -> float or int
 def pow(x: int or float or complex, y: complex, ...) -> complex
@@ -1083,3 +1095,20 @@ class Warning(Exception):
 
 class ZeroDivisionError(ArithmeticError):
     pass
+
+# -------------------------------------------------------------------
+# Everything below this is new in python3
+
+class BlockingIOError(OSError):
+    characters_written = ...  # type: int
+
+if sys.version_info >= (3, 6):
+    # This class is to be exported as PathLike from os,
+    # but we define it here as _PathLike to avoid import cycle issues.
+    # See https://github.com/python/typeshed/pull/991#issuecomment-288160993
+    class _PathLike(Generic[AnyStr]):
+        def __fspath__(self) -> AnyStr: ...
+
+    def open(file: Union[str, bytes, int, _PathLike], mode: str = ..., buffering: int = ..., encoding: Optional[str] = ..., errors: Optional[str] = ..., newline: Optional[str] = ..., closefd: bool = ...) -> file: ...
+else:
+    def open(file: Union[str, bytes, int], mode: str = ..., buffering: int = ..., encoding: Optional[str] = ..., errors: Optional[str] = ..., newline: Optional[str] = ..., closefd: bool = ...) -> file: ...
