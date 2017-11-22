@@ -1020,6 +1020,17 @@ class TestVisitors(parser_test_base.ParserTest):
           def __new__(cls) -> A: ...
     """))
 
+  def testRenameBuiltinsPrefix(self):
+    """builtins.foo should get rewritten to __builtin__.foo and then to foo."""
+    src = textwrap.dedent("""
+      import builtins
+      class MyError(builtins.KeyError): ...
+    """)
+    self.assertMultiLineEqual(pytd.Print(self.Parse(src)), textwrap.dedent("""\
+      class MyError(KeyError):
+          pass
+    """))
+
 
 class TestAncestorMap(unittest.TestCase):
 

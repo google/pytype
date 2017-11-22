@@ -396,6 +396,10 @@ class _Parser(object):
       # If there's no unique name, hash the sourcecode.
       ast = ast.Replace(name=hashlib.md5(src).hexdigest())
 
+    # Typeshed files that explicitly import and refer to "builtins" need to have
+    # that rewritten to __builtin__
+    ast = ast.Visit(visitors.RenameBuiltinsPrefix())
+
     return ast
 
   def _build_type_decl_unit(self, defs):

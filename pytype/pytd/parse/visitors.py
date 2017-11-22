@@ -851,6 +851,20 @@ class DropBuiltinPrefix(Visitor):
     return self.VisitClassType(node)
 
 
+class RenameBuiltinsPrefix(Visitor):
+  """Rename 'builtins' to '__builtin__' at import time."""
+
+  def VisitClassType(self, node):
+    if node.name.startswith("builtins."):
+      name = "__builtin__." + node.name[len("builtins."):]
+    else:
+      name = node.name
+    return pytd.NamedType(name)
+
+  def VisitNamedType(self, node):
+    return self.VisitClassType(node)
+
+
 def LookupClasses(target, global_module=None, ignore_late_types=False):
   """Converts a PyTD object from one using NamedType to ClassType.
 
