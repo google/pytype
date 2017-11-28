@@ -1906,13 +1906,28 @@ class AdjustTypeParameters(Visitor):
     new_type_params = node.type_params + tuple(type_params_to_add)
     return node.Replace(type_params=new_type_params)
 
+  def _CheckDuplicateNames(self, params, class_name):
+    seen = set()
+    for x in params:
+      if x.name in seen:
+        raise ContainerError(
+            "Duplicate type parameter %s in typing.Generic parent of class %s" %
+            (x.name, class_name))
+      seen.add(x.name)
+
   def EnterClass(self, node):
     """Establish the template for the class."""
     templates = []
     for parent in node.parents:
       if isinstance(parent, pytd.GenericType):
-        templates.append(sum((self._GetTemplateItems(param)
-                              for param in parent.parameters), []))
+        params = sum((self._GetTemplateItems(param)
+                      for param in parent.parameters), [])
+        templates.append(params)
+        # TODO(mdemello): Do we need "Generic" in here or is it guaranteed to be
+        # replaced by typing.Generic by the time this visitor is called?
+        if parent.base_type.name in ["typing.Generic", "Generic"]:
+          self._CheckDuplicateNames(params, node.name)
+
     try:
       template = mro.MergeSequences(templates)
     except ValueError:
@@ -1924,9 +1939,6 @@ class AdjustTypeParameters(Visitor):
 
     for t in template:
       assert isinstance(t.type_param, pytd.TypeParameter)
-      if t.name in self.class_typeparams:
-        raise ContainerError(
-            "Duplicate type parameter %s in class %s" % (t.name, node.name))
       self.class_typeparams.add(t.name)
 
     self.class_name = node.name
@@ -1934,7 +1946,8 @@ class AdjustTypeParameters(Visitor):
   def LeaveClass(self, node):
     del node
     for t in self.class_template:
-      self.class_typeparams.remove(t.name)
+      if t.name in self.class_typeparams:
+        self.class_typeparams.remove(t.name)
     self.class_name = None
     self.class_template = None
 

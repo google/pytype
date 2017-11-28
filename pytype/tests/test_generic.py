@@ -368,6 +368,25 @@ class GenericTest(test_base.BaseTest):
         def f() -> a.C[int]
       """)
 
+  def testTypeParameterDuplicated(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        from typing import Generic, Dict
+        T = TypeVar("T")
+        class A(Dict[T, T], Generic[T]): pass
+      """)
+      ty = self.Infer("""
+        import a
+        def f():
+          x = a.A()
+          x[1] = 2
+          return x
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: module
+        def f() -> a.A[int, int]
+      """)
+
   def testUnion(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """

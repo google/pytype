@@ -625,6 +625,17 @@ class TestVisitors(parser_test_base.ParserTest):
     self.assertEqual((), qux.template)
 
   def testAdjustTypeParametersWithDuplicates(self):
+    ast = self.ParseWithBuiltins("""
+      T = TypeVar("T")
+      class A(Dict[T, T], Generic[T]): pass
+    """)
+    a = ast.Lookup("A")
+    self.assertEqual(
+        (pytd.TemplateItem(pytd.TypeParameter("T", (), None, "A")),
+         pytd.TemplateItem(pytd.TypeParameter("T", (), None, "A"))),
+        a.template)
+
+  def testAdjustTypeParametersWithDuplicatesInGeneric(self):
     src = textwrap.dedent("""
       T = TypeVar("T")
       class A(Generic[T, T]): pass
