@@ -1126,10 +1126,10 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny):
     star_import_names = set()
     p = self._ModulePrefix()
     for x in self._star_imports:
+      # Allow for the case of foo/__init__ importing foo.bar
       if x.startswith(p):
         star_import_names.add(x + ".*")
-      else:
-        star_import_names.add(p + x + ".*")
+      star_import_names.add(p + x + ".*")
     new_aliases = []
     new_getattrs = set()
     for module in self._star_imports:

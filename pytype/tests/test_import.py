@@ -796,6 +796,26 @@ class ImportTest(test_base.BaseTest):
       """, pythonpath=[d.path])
     self.assertErrorLogIs(errors, [(1, "pyi-error", r"a\.pyi")])
 
+  def testSubdirAndModuleWithSameNameAsPackage(self):
+    with utils.Tempdir() as d:
+      d.create_file("pkg/__init__.pyi", """
+          from pkg.pkg.pkg import *
+          from pkg.bar import *""")
+      d.create_file("pkg/pkg/pkg.pyi", """
+          class X: pass""")
+      d.create_file("pkg/bar.pyi", """
+          class Y: pass""")
+      ty = self.Infer("""
+        import pkg
+        a = pkg.X()
+        b = pkg.Y()
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        a = ...  # type: pkg.pkg.pkg.X
+        b = ...  # type: pkg.bar.Y
+        pkg = ...  # type: module
+      """)
+
   def testRelativePriority(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", "x = ...  # type: int")
