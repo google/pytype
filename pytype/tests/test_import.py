@@ -89,6 +89,26 @@ class ImportTest(test_base.BaseTest):
         def __getattr__(name) -> Any
       """)
 
+  def testStarImportInPyi(self):
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        class X: ...
+      """)
+      d.create_file("b.pyi", """
+        from a import *
+        class Y(X): ...
+      """)
+      ty = self.Infer("""\
+      from b import *
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        import a
+        import b
+        from typing import Type
+        X = ...  # type: Type[a.X]
+        Y = ...  # type: Type[b.Y]
+      """)
+
   def testBadStarImport(self):
     ty, errors = self.InferWithErrors("""
       from nonsense import *

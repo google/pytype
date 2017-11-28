@@ -87,6 +87,10 @@ class Loader(object):
       ast = ast.Visit(visitors.QualifyRelativeNames(package_name))
     ast = ast.Visit(visitors.LookupBuiltins(self.builtins, full_names=False))
     ast = ast.Visit(visitors.ExpandCompatibleBuiltins(self.builtins))
+    dependencies = self._collect_ast_dependencies(ast)
+    if dependencies:
+      self._load_ast_dependencies(dependencies, ast)
+      ast = self._resolve_external_types(ast)
     ast = ast.Visit(visitors.LookupLocalTypes())
     return ast
 
@@ -136,16 +140,10 @@ class Loader(object):
     Returns:
       The ast (pytd.TypeDeclUnit) as represented in this loader.
     """
-    ast = self._postprocess_pyi(ast, package_name)
     module = Module(module_name, filename, ast)
-
     self._modules[module_name] = module
     try:
-      dependencies = self._collect_ast_dependencies(ast)
-      if dependencies:
-        self._load_ast_dependencies(dependencies, ast)
-        module.ast = self._resolve_external_types(ast)
-
+      module.ast = self._postprocess_pyi(module.ast, package_name)
       # Now that any imported TypeVar instances have been resolved, adjust type
       # parameters in classes and functions.
       module.ast = module.ast.Visit(visitors.AdjustTypeParameters())
@@ -201,10 +199,6 @@ class Loader(object):
   def resolve_ast(self, ast):
     """Resolve the dependencies of an AST, without adding it to our modules."""
     ast = self._postprocess_pyi(ast, None)
-    dependencies = self._collect_ast_dependencies(ast)
-    if dependencies:
-      self._load_ast_dependencies(dependencies, ast)
-      ast = self._resolve_external_types(ast)
     self._lookup_all_classes()
     self._finish_ast(ast)
     self._verify_ast(ast)
