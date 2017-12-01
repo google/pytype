@@ -379,7 +379,9 @@ class PytypeTest(unittest.TestCase):
         [c.name for c in ast.classes])
 
   def testRunPytype(self):
-    """Basic smoke test for _run_pytype."""
+    """Basic unit test (smoke test) for _run_pytype."""
+    # TODO(kramm): This is a unit test, whereas all other tests in this file
+    # are integration tests. Move this somewhere else?
     infile = self._TmpPath("input")
     outfile = self._TmpPath("output")
     with open(infile, "w") as f:
@@ -389,13 +391,25 @@ class PytypeTest(unittest.TestCase):
     main_module._run_pytype(options)
     self.assertTrue(os.path.isfile(outfile))
 
-  def testRunPytypeGenerateBuiltins(self):
-    """Basic smoke test for --generate-builtins."""
-    filename = self._TmpPath("builtins")
-    argv = ["--generate-builtins", filename]
-    options = config.Options(argv)
-    main_module._run_pytype(options)
+  def testGenerateBuiltins(self):
+    """Test for --generate-builtins."""
+    filename = self._TmpPath("builtins.pickle")
+    # Generate builtins pickle
+    self.pytype_args["--generate-builtins"] = filename
+    self._RunPytype(self.pytype_args)
+    self.assertOutputStateMatches(stdout=False, stderr=False, returncode=False)
     self.assertTrue(os.path.isfile(filename))
+    # Use builtins pickle
+    self._ResetPytypeArgs()
+    self._SetUpChecking(self._MakeFile("""\
+      import __future__
+      import sys
+      import collections
+      import typing
+    """))
+    self.pytype_args["--precompiled-builtins"] = filename
+    self._RunPytype(self.pytype_args)
+    self.assertOutputStateMatches(stdout=False, stderr=False, returncode=False)
 
 
 def main():
