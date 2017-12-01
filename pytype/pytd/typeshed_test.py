@@ -19,20 +19,18 @@ class TestTypeshedLoading(parser_test_base.ParserTest):
     self.ts = typeshed.Typeshed(typeshed_location="typeshed", use_pickled=False)
 
   def test_get_typeshed_file(self):
-    filename, data, is_dir = self.ts.get_module_file("stdlib", "errno", (2, 7))
+    filename, data = self.ts.get_module_file("stdlib", "errno", (2, 7))
     self.assertEqual("errno.pyi", os.path.basename(filename))
     self.assertIn("errorcode", data)
-    self.assertFalse(is_dir)
 
   def test_get_typeshed_dir(self):
-    filename, data, is_dir = self.ts.get_module_file(
+    filename, data = self.ts.get_module_file(
         "stdlib", "logging", (2, 7))
     self.assertEqual("__init__.pyi", os.path.basename(filename))
     self.assertIn("LogRecord", data)
-    self.assertTrue(is_dir)
 
   def test_parse_type_definition(self):
-    ast, _ = typeshed.parse_type_definition(
+    ast = typeshed.parse_type_definition(
         "stdlib", "_random", (2, 7), "typeshed", False)
     self.assertIn("_random.Random", [cls.name for cls in ast.classes])
 

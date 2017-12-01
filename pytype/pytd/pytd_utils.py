@@ -68,8 +68,10 @@ def Concat(*args, **kwargs):
   """Concatenate two or more pytd ASTs."""
   assert all(isinstance(arg, pytd.TypeDeclUnit) for arg in args)
   name = kwargs.get("name")
+  is_package = bool(kwargs.get("is_package"))
   return pytd.TypeDeclUnit(
       name=name or " + ".join(arg.name for arg in args),
+      is_package=is_package,
       constants=sum((arg.constants for arg in args), ()),
       type_params=sum((arg.type_params for arg in args), ()),
       classes=sum((arg.classes for arg in args), ()),
@@ -179,16 +181,18 @@ def Print(ast):
 
 def EmptyModule(name="<empty>"):
   return pytd.TypeDeclUnit(
-      name, type_params=(), constants=(), classes=(), functions=(), aliases=())
+      name, is_package=False, type_params=(), constants=(), classes=(),
+      functions=(), aliases=())
 
 
-def WrapTypeDeclUnit(name, items):
+def WrapTypeDeclUnit(name, items, is_package=False):
   """Given a list (classes, functions, etc.), wrap a pytd around them.
 
   Args:
     name: The name attribute of the resulting TypeDeclUnit.
     items: A list of items. Can contain pytd.Class, pytd.Function and
       pytd.Constant.
+    is_package: Whether the module is a package (e.g. foo/__init__.pyi)
   Returns:
     A pytd.TypeDeclUnit.
   Raises:
@@ -236,6 +240,7 @@ def WrapTypeDeclUnit(name, items):
 
   return pytd.TypeDeclUnit(
       name=name,
+      is_package=is_package,
       constants=tuple(
           pytd.Constant(name, t.build())
           for name, t in sorted(constants.items())),

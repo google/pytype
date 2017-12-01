@@ -435,6 +435,7 @@ class _Parser(object):
           "Module-level functions with property decorators: " + prop_names)
 
     return pytd.TypeDeclUnit(name=None,
+                             is_package=False,
                              constants=tuple(constants),
                              type_params=tuple(self._type_params),
                              functions=tuple(functions),

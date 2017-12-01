@@ -135,6 +135,7 @@ def ParsePyTD(src=None, filename=None, python_version=None, module=None,
                             python_version=python_version)
   if lookup_classes:
     ast = visitors.LookupClasses(ast, GetBuiltinsPyTD(python_version))
+  ast = ast.Replace(is_package=utils.is_pyi_directory_init(filename))
   return ast
 
 

@@ -1094,7 +1094,7 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny):
       A deduplicated list of aliases.
 
     Raises:
-      KeyError if there is a name clash.
+      KeyError: If there is a name clash.
     """
     grouped_aliases = collections.defaultdict(set)
     for a in new_aliases:
@@ -1622,6 +1622,7 @@ class CanonicalOrderingVisitor(Visitor):
 
   def VisitTypeDeclUnit(self, node):
     return pytd.TypeDeclUnit(name=node.name,
+                             is_package=node.is_package,
                              constants=tuple(sorted(node.constants)),
                              type_params=tuple(sorted(node.type_params)),
                              functions=tuple(sorted(node.functions)),
@@ -1751,8 +1752,13 @@ class CollectDependencies(Visitor):
 
   def EnterNamedType(self, t):
     module_name, dot, unused_name = t.name.rpartition(".")
-    if dot:
+    # If we have a relative import that did not get qualified (usually due to an
+    # empty package_name), don't insert module_name='' into the dependencies; we
+    # get a better error message if we filter it out here and fail later on.
+    if dot and module_name:
       self.modules.add(module_name)
+    elif dot:
+      logging.warning("Empty package name: %s", t.name)
 
   def EnterClassType(self, t):
     self.EnterNamedType(t)

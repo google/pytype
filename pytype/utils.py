@@ -657,6 +657,23 @@ def invert_dict(d):
   return inverted
 
 
+def is_pyi_directory_init(filename):
+  """Checks if a pyi file is path/to/dir/__init__.pyi."""
+  if filename is None:
+    return False
+  return os.path.splitext(os.path.basename(filename))[0] == "__init__"
+
+
+def get_pyi_package_name(module_name, is_package=False):
+  """Figure out a package name for a module."""
+  if module_name is None:
+    return ""
+  parts = module_name.split(".")
+  if not is_package:
+    parts = parts[:-1]
+  return ".".join(parts)
+
+
 class MonitorDict(dict):
   """A dictionary that monitors changes to its cfg.Variable values.
 

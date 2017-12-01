@@ -18,6 +18,7 @@ import textwrap
 
 
 from pytype.pytd import pytd
+from pytype.pytd import pytd_utils
 from pytype.pytd.parse import builtins as parser_builtins
 from pytype.pytd.parse import parser_test_base
 from pytype.pytd.parse import visitors
@@ -536,9 +537,7 @@ class TestVisitors(parser_test_base.ParserTest):
   def testPrintImportsNamedType(self):
     # Can't get tree by parsing so build explicitly
     node = pytd.Constant("x", pytd.NamedType("typing.List"))
-    tree = pytd.TypeDeclUnit(constants=(node,), type_params=(),
-                             functions=(), classes=(), aliases=(), name=None)
-
+    tree = pytd_utils.EmptyModule(name=None).Replace(constants=(node,))
     expected_src = textwrap.dedent("""
       from typing import List
 
@@ -897,6 +896,7 @@ class TestVisitors(parser_test_base.ParserTest):
         pytd.NamedType("typing.List"), (pytd.AnythingType(),)))
     ty = pytd.TypeDeclUnit(
         name="test",
+        is_package=False,
         constants=(),
         type_params=(),
         classes=(),

@@ -81,9 +81,10 @@ class Loader(object):
     if self.options.imports_map is not None:
       assert self.options.pythonpath == [""], self.options.pythonpath
 
-  def _postprocess_pyi(self, ast, package_name):
+  def _postprocess_pyi(self, ast):
     """Apply all the PYI transformations we need."""
-    if package_name is not None:
+    package_name = utils.get_pyi_package_name(ast.name, ast.is_package)
+    if package_name:
       ast = ast.Visit(visitors.QualifyRelativeNames(package_name))
     ast = ast.Visit(visitors.LookupBuiltins(self.builtins, full_names=False))
     ast = ast.Visit(visitors.ExpandCompatibleBuiltins(self.builtins))
@@ -107,18 +108,10 @@ class Loader(object):
       return existing.ast
     return None
 
-  def load_file(self, module_name, filename, ast=None, is_dir=False):
+  def load_file(self, module_name, filename, ast=None):
     """Load (or retrieve from cache) a module and resolve its dependencies."""
-    if filename is not None and os.path.basename(filename) == "__init__.pyi":
-      is_dir = True
-    if module_name:
-      parts = module_name.split(".")
-      if not is_dir:
-        parts = parts[:-1]
-      package_name = ".".join(parts)
-    else:
-      package_name = ""
     self._concatenated = None  # invalidate
+    # Check for an existing ast first
     existing = self._get_existing_ast(module_name, filename)
     if existing:
       return existing
@@ -126,15 +119,14 @@ class Loader(object):
       ast = builtins.ParsePyTD(filename=filename,
                                module=module_name,
                                python_version=self.options.python_version)
-    return self._process_module(module_name, filename, package_name, ast)
+    return self._process_module(module_name, filename, ast)
 
-  def _process_module(self, module_name, filename, package_name, ast):
+  def _process_module(self, module_name, filename, ast):
     """Create a module from a loaded ast and save it to the loader cache.
 
     Args:
       module_name: The fully qualified name of the module being imported.
       filename: The file the ast was generated from.
-      package_name: The package the file is in.
       ast: The pytd.TypeDeclUnit representing the module.
 
     Returns:
@@ -143,7 +135,7 @@ class Loader(object):
     module = Module(module_name, filename, ast)
     self._modules[module_name] = module
     try:
-      module.ast = self._postprocess_pyi(module.ast, package_name)
+      module.ast = self._postprocess_pyi(module.ast)
       # Now that any imported TypeVar instances have been resolved, adjust type
       # parameters in classes and functions.
       module.ast = module.ast.Visit(visitors.AdjustTypeParameters())
@@ -198,7 +190,7 @@ class Loader(object):
 
   def resolve_ast(self, ast):
     """Resolve the dependencies of an AST, without adding it to our modules."""
-    ast = self._postprocess_pyi(ast, None)
+    ast = self._postprocess_pyi(ast)
     self._lookup_all_classes()
     self._finish_ast(ast)
     self._verify_ast(ast)
@@ -274,13 +266,13 @@ class Loader(object):
 
   def _load_typeshed_builtin(self, subdir, module_name):
     """Load a pyi from typeshed."""
-    mod, is_dir = typeshed.parse_type_definition(
+    mod = typeshed.parse_type_definition(
         subdir, module_name, self.options.python_version,
         self.options.typeshed_location, use_pickled=False)
     if mod:
       return self.load_file(filename=self.PREFIX + module_name,
                             module_name=module_name,
-                            ast=mod, is_dir=is_dir)
+                            ast=mod)
     return None
 
   def _import_name(self, module_name):
@@ -429,7 +421,7 @@ class PickledPyiLoader(Loader):
     else:
       return self.load_file(module_name, filename)
 
-  def load_file(self, module_name, filename, ast=None, is_dir=None):
+  def load_file(self, module_name, filename, ast=None):
     """Load (or retrieve from cache) a module and resolve its dependencies."""
     if not os.path.splitext(filename)[1].startswith(".pickled"):
       return super(PickledPyiLoader, self).load_file(module_name, filename, ast)

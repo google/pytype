@@ -882,7 +882,7 @@ class AbstractTest(AbstractTestBase):
   def testSetModuleOnModule(self):
     # A module's 'module' attribute should always remain None, and no one
     # should attempt to set it to something besides the module's name or None.
-    ast = pytd.TypeDeclUnit("some_mod", (), (), (), (), ())
+    ast = pytd.TypeDeclUnit("some_mod", False, (), (), (), (), ())
     mod = abstract.Module(self._vm, ast.name, {}, ast)
     mod.module = ast.name
     self.assertIsNone(mod.module)

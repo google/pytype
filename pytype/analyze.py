@@ -551,7 +551,8 @@ class CallTracer(vm.VirtualMachine):
     ty = pytd_utils.Concat(
         self.pytd_for_types(defs),
         pytd.TypeDeclUnit(
-            "unknowns",
+            name="unknowns",
+            is_package=False,
             constants=tuple(),
             type_params=tuple(),
             classes=tuple(self.pytd_classes_for_unknowns()) +
