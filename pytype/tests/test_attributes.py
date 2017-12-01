@@ -88,7 +88,6 @@ class TestStrictNone(test_base.BaseTest):
           return foo.Foo.x.upper()
       """, pythonpath=[d.path])
 
-  @unittest.skip("Need to improve our filtering strategy.")
   def testReturnValue(self):
     errors = self.CheckWithErrors("""\
       def f():
@@ -149,7 +148,16 @@ class TestStrictNone(test_base.BaseTest):
         return x if v else y
       def g():
         return f().upper()
-    """, skip_repeat_calls=False)
+    """)
+
+  def testReturnConstant(self):
+    self.Check("""\
+      x = None
+      def f():
+        return x
+      def g():
+        return f().upper()
+    """)
 
 
 class TestAttributes(test_base.BaseTest):

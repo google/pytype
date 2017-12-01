@@ -68,6 +68,231 @@ class CFGUtilTest(unittest.TestCase):
     v3 = u.AddBinding(3, source_set=[v2], where=node)
     cfg_utils.PrintBinding(v3)  # smoke test
 
+  def _create_nodes(self, node_id, node, num_nodes):
+    """Create a chain of nodes. Used by _create_program_nodes.
+
+    Args:
+      node_id: The starting node id.
+      node: The starting node.
+      num_nodes: The number of nodes to create.
+
+    Returns:
+      A tuple of the next available node id, the last node created, and a list
+      of all the nodes created.
+    """
+    nodes = []
+    for _ in range(num_nodes):
+      node = node.ConnectNew("n%d" % node_id)
+      node_id += 1
+      nodes.append(node)
+    return node_id, node, nodes
+
+  # Unpacking all_nodes confuses pylint because the list looks empty.
+  # pylint: disable=unbalanced-tuple-unpacking
+  def _create_program_nodes(self, p, num_module_nodes, *num_function_nodes):
+    """Create nodes for a dummy program.
+
+    Args:
+      p: A cfg.Program.
+      num_module_nodes: The number of nodes to create between the root node and
+        the analyze node.
+      *num_function_nodes: For every function in the program, the number of
+        nodes in that function.
+
+    Returns:
+      A list of all the created nodes, except root and analyze.
+    """
+    node = p.NewCFGNode("root")
+    all_nodes = []
+    node_id = 1
+    node_id, node, nodes = self._create_nodes(node_id, node, num_module_nodes)
+    all_nodes.extend(nodes)
+    analyze = node.ConnectNew("analyze")
+    for num_nodes in num_function_nodes:
+      node_id, node, nodes = self._create_nodes(node_id, analyze, num_nodes)
+      all_nodes.extend(nodes)
+      node.ConnectTo(analyze)
+    return all_nodes
+
+  def testCopyVarDiscardOrigin(self):
+    # def f():
+    #   x = None  # node 1
+    #   return x  # node 2
+    # def g():
+    #   return f()  # node 3
+    # old binding:
+    #   "ret"->None @ node 2
+    #     "x"->None @ node 1
+    # new binding:
+    #   "ret"->None @ node 3
+    p = cfg.Program()
+    node1, node2, node3 = self._create_program_nodes(p, 0, 2, 1)
+    source = p.NewVariable().AddBinding("x", source_set=[], where=node1)
+    old_var = p.NewVariable(["ret"], source_set=[source], where=node2)
+    new_var = cfg_utils.CopyVarApprox(
+        p, slice(node1.id, node2.id), node3, old_var)
+    b, = new_var.bindings
+    self.assertEqual(b.data, "ret")
+    o, = b.origins
+    self.assertIs(o.where, node3)
+    self.assertEqual(o.source_sets, [set()])
+
+  def testCopyVarDiscardMultipleOrigin(self):
+    # x = None  # node 1
+    # def f():
+    #   y = None  # node 2
+    #   return x if __random__ else y  # node 3
+    # def g():
+    #   return f()  # node 4
+    # old binding:
+    #   "ret"->None @ node3
+    #     "x"->None @ node1
+    #     "y"->None @ node2
+    # new binding:
+    #   "ret"->None @ node4
+    p = cfg.Program()
+    node1, node2, node3, node4 = self._create_program_nodes(p, 1, 2, 1)
+    source_x = p.NewVariable().AddBinding("x", source_set=[], where=node1)
+    source_y = p.NewVariable().AddBinding("y", source_set=[], where=node2)
+    old_binding = p.NewVariable().AddBinding(
+        "ret", source_set=[source_x], where=node3)
+    old_binding.AddOrigin(where=node3, source_set=[source_y])
+    new_var = cfg_utils.CopyVarApprox(
+        p, slice(node2.id, node3.id), node4, old_binding.variable)
+    b, = new_var.bindings
+    self.assertEqual(b.data, "ret")
+    o, = b.origins
+    self.assertIs(o.where, node4)
+    self.assertEqual(o.source_sets, [set()])
+
+  def testCopyVarKeepOrigin(self):
+    # x = None  # node 1
+    # def f():
+    #   return x  # node 2
+    # def g():
+    #   return f()  # node 3
+    # old binding:
+    #   "ret"->None @ node 2
+    #     "x"->None @ node 1
+    # new binding:
+    #   "ret"->None @ node 3
+    #     "x"->None @ node 1
+    p = cfg.Program()
+    node1, node2, node3 = self._create_program_nodes(p, 1, 1, 1)
+    source = p.NewVariable().AddBinding("x", source_set=[], where=node1)
+    old_var = p.NewVariable(["ret"], source_set=[source], where=node2)
+    new_var = cfg_utils.CopyVarApprox(
+        p, slice(node2.id, node2.id), node3, old_var)
+    b, = new_var.bindings
+    self.assertEqual(b.data, "ret")
+    o, = b.origins
+    self.assertIs(o.where, node3)
+    (b2,), = o.source_sets
+    o2, = b2.origins
+    self.assertIs(o2.where, node1)
+    self.assertEqual(o2.source_sets, [set()])
+
+  def testCopyVarKeepMultipleOrigin(self):
+    # x = None  # node 1
+    # y = None  # node 2
+    # def f():
+    #   return x if __random__ else y  # node 3
+    # def g():
+    #   return f()  # node 4
+    # old binding:
+    #   "ret"->None @ node 3
+    #     "x"->None @ node 1
+    #     "y"->None @ node 2
+    # new binding:
+    #   "ret"->None @ node 4
+    #     "x"->None @ node 1
+    #     "y"->None @ node 2
+    p = cfg.Program()
+    node1, node2, node3, node4 = self._create_program_nodes(p, 2, 1, 1)
+    source_x = p.NewVariable().AddBinding("x", source_set=[], where=node1)
+    source_y = p.NewVariable().AddBinding("y", source_set=[], where=node2)
+    old_binding = p.NewVariable().AddBinding(
+        "ret", source_set=[source_x], where=node3)
+    old_binding.AddOrigin(where=node3, source_set=[source_y])
+    new_var = cfg_utils.CopyVarApprox(
+        p, slice(node3.id, node3.id), node4, old_binding.variable)
+    b, = new_var.bindings
+    o, = b.origins
+    self.assertIs(o.where, node4)
+    (b2,), = o.source_sets
+    self.assertItemsEqual([o.where for o in b2.origins], [node1, node2])
+    self.assertItemsEqual([o.source_sets for o in b2.origins],
+                          [[set()], [set()]])
+
+  def testCopyVarKeepOtherFuncOrigin(self):
+    # x = None  # node 1
+    # def f():
+    #   global x
+    #   x = None  # node 2
+    # def g():
+    #   return x  # node 3
+    # def h():
+    #   return g()  # node 4
+    # old binding:
+    #   "ret"->None @ node 3
+    #     "x"->None @ node 1
+    #     "x"->None @ node 2
+    # new binding:
+    #   "ret"->None @ node 4
+    #     "x"->None @ node 1
+    #     "x"->None @ node 2
+    p = cfg.Program()
+    node1, node2, node3, node4 = self._create_program_nodes(p, 1, 1, 1, 1)
+    source_mod = p.NewVariable().AddBinding("x", source_set=[], where=node1)
+    source_f = p.NewVariable().AddBinding("x", source_set=[], where=node2)
+    old_binding = p.NewVariable().AddBinding(
+        "ret", source_set=[source_mod], where=node3)
+    old_binding.AddOrigin(where=node3, source_set=[source_f])
+    new_var = cfg_utils.CopyVarApprox(
+        p, slice(node3.id, node3.id), node4, old_binding.variable)
+    b, = new_var.bindings
+    o, = b.origins
+    self.assertIs(o.where, node4)
+    (b2,), = o.source_sets
+    self.assertItemsEqual([o.where for o in b2.origins], [node1, node2])
+    self.assertItemsEqual([o.source_sets for o in b2.origins],
+                          [[set()], [set()]])
+
+  def testCopyVarKeepOtherFuncOriginReordered(self):
+    # x = None  # node 1
+    # def f():
+    #   return x  # node 2
+    # def g():
+    #   global x
+    #   x = None  # node 3
+    # def h():
+    #   return f()  # node 4
+    # old binding:
+    #   "ret"->None @ node 2
+    #     "x"->None @ node 1
+    #     "x"->None @ node 3
+    # new binding:
+    #   "ret"->None @ node 4
+    #     "x"->None @ node 1
+    #     "x"->None @ node 3
+    p = cfg.Program()
+    node1, node2, node3, node4 = self._create_program_nodes(p, 1, 1, 1, 1)
+    source_mod = p.NewVariable().AddBinding("x", source_set=[], where=node1)
+    source_g = p.NewVariable().AddBinding("x", source_set=[], where=node3)
+    old_binding = p.NewVariable().AddBinding(
+        "ret", source_set=[source_mod], where=node2)
+    old_binding.AddOrigin(where=node2, source_set=[source_g])
+    new_var = cfg_utils.CopyVarApprox(
+        p, slice(node2.id, node2.id), node4, old_binding.variable)
+    b, = new_var.bindings
+    o, = b.origins
+    self.assertIs(o.where, node4)
+    (b2,), = o.source_sets
+    self.assertItemsEqual([o.where for o in b2.origins], [node1, node3])
+    self.assertItemsEqual([o.source_sets for o in b2.origins],
+                          [[set()], [set()]])
+  # pylint: enable=unbalanced-tuple-unpacking
+
 
 if __name__ == "__main__":
   unittest.main()
