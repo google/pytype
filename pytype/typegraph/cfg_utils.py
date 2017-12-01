@@ -69,3 +69,28 @@ def CFGAsciiTree(root, forward=False):
 def PrintBinding(binding, indent_level=0):
   """Return a string representation of the (nested) binding contents."""
   return pytype.debug.prettyprint_binding_nested(binding, indent_level)
+
+
+def WalkBinding(binding, keep_binding=lambda _: True):
+  """Helper function to walk a binding's origins.
+
+  Args:
+    binding: A cfg.Binding.
+    keep_binding: Optionally, a function, cfg.Binding -> bool, specifying
+      whether to keep each binding found.
+
+  Yields:
+    A cfg.Origin. The caller must send the origin back into the generator. To
+    stop exploring the origin, send None back.
+  """
+  bindings = [binding]
+  seen = set()
+  while bindings:
+    b = bindings.pop(0)
+    if b in seen or not keep_binding(b):
+      continue
+    seen.add(b)
+    for o in b.origins:
+      o = yield o
+      if o:
+        bindings.extend(set.union(*o.source_sets))

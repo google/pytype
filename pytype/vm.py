@@ -1060,12 +1060,62 @@ class VirtualMachine(object):
 
   def _new_attribute_error_detection(self, state, _, attr, errors):
     for error in errors:
-      combination = [error]
-      if self._data_is_none(error.data):
-        combination.extend(self._analyze_node.bindings)
-      if state.node.HasCombination(combination):
+      if (self.has_strict_none_origins(state.node, error) and
+          state.node.HasCombination([error])):
         self.errorlog.attribute_or_module_error(
             self.frames, error.AssignToNewVariable(self.root_cfg_node), attr)
+
+  def has_strict_none_origins(self, node, binding):
+    """Whether the binding has any possible origins, with None filtering.
+
+    Determines whether the binding has any possibly visible origins at the
+    given node once we've filtered out false positives on None. The caller
+    still must call node.HasCombination() to find out whether these origins are
+    actually reachable.
+
+    Args:
+      node: The current node.
+      binding: A cfg.Binding.
+
+    Returns:
+      True if there are possibly visible origins, else False.
+    """
+    origin_nodes = self._get_none_origin_nodes(binding)
+    # Checking for reachability works because the current part of the graph
+    # hasn't been connected back to the analyze node yet. Since
+    # _get_none_origin_nodes() doesn't preserve information about the
+    # relationship among origins, we'll pretend we have a disjunction over
+    # source sets.
+    return not origin_nodes or any(
+        self.program.is_reachable(src=self.frame.node, dst=origin_node)
+        for origin_node in origin_nodes)
+
+  def _get_none_origin_nodes(self, binding):
+    """Get the nodes at which any None binding in this binding originates.
+
+    If the given binding is to None, traces the None back through the origins
+    to find the nodes at which it is first bound to a variable. Otherwise
+    returns an empty set.
+
+    Args:
+      binding: a cfg.Binding.
+
+    Returns:
+      A set of cfg nodes.
+    """
+    nodes = set()
+    walker = cfg_utils.WalkBinding(
+        binding, keep_binding=lambda b: self._data_is_none(b.data))
+    origin = None
+    while True:
+      try:
+        origin = walker.send(origin)
+      except StopIteration:
+        break
+      for source_set in origin.source_sets:
+        if not source_set:
+          nodes.add(origin.where)
+    return nodes
 
   def _old_attribute_error_detection(self, state, obj, attr, errors):
     if errors and obj.bindings and self._is_only_none(state.node, obj):

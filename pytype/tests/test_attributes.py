@@ -98,6 +98,59 @@ class TestStrictNone(test_base.BaseTest):
     """)
     self.assertErrorLogIs(errors, [(4, "attribute-error", r"upper.*None")])
 
+  def testMethodReturnValue(self):
+    errors = self.CheckWithErrors("""\
+      class Foo(object):
+        def f(self):
+          pass
+      def g():
+        return Foo().f().upper()
+    """)
+    self.assertErrorLogIs(errors, [(5, "attribute-error", r"upper.*None")])
+
+  def testPyiReturnValue(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", "def f() -> None: ...")
+      errors = self.CheckWithErrors("""\
+        import foo
+        def g():
+          return foo.f().upper()
+      """, pythonpath=[d.path])
+      self.assertErrorLogIs(errors, [(3, "attribute-error", r"upper.*None")])
+
+  def testPassThroughNone(self):
+    errors = self.CheckWithErrors("""\
+      def f(x):
+        return x
+      def g():
+        return f(None).upper()
+    """)
+    self.assertErrorLogIs(errors, [(4, "attribute-error", r"upper.*None")])
+
+  def testShadowedLocalOrigin(self):
+    self.Check("""
+      x = None
+      def f():
+        y = None
+        y = "hello"
+        return x if __random__ else y
+      def g():
+        return f().upper()
+    """)
+
+  @unittest.skip("has_strict_none_origins can't tell if an origin is blocked.")
+  def testBlockedLocalOrigin(self):
+    self.Check("""
+      x = None
+      def f():
+        v = __random__
+        if v:
+          y = None
+        return x if v else y
+      def g():
+        return f().upper()
+    """, skip_repeat_calls=False)
+
 
 class TestAttributes(test_base.BaseTest):
   """Tests for attributes."""

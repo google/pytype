@@ -190,11 +190,12 @@ class SimpleFrame(object):
   error logging.
   """
 
-  def __init__(self, opcode=None):
+  def __init__(self, opcode=None, node=None):
     self.f_code = None  # for recursion detection
     self.f_builtins = None
     self.f_globals = None
     self.current_opcode = opcode  # for memoization of unknowns
+    self.node = node
 
 
 class Frame(object):
@@ -214,6 +215,7 @@ class Frame(object):
     f_back: The frame above self on the stack.
     f_lineno: The first line number of the code object.
     vm: The VirtualMachine instance we belong to.
+    node: The node at which the frame is created.
     states: A mapping from opcodes to FrameState objects.
     cells: local variables bound in a closure, or used in a closure.
     block_stack: A stack of blocks used to manage exceptions, loops, and
@@ -246,6 +248,7 @@ class Frame(object):
     assert isinstance(f_globals, abstract.LazyConcreteDict)
     assert isinstance(f_locals, abstract.LazyConcreteDict)
     self.vm = vm
+    self.node = node
     self.current_opcode = None
     self.f_code = f_code
     self.states = {}
@@ -335,7 +338,7 @@ def _restrict_condition(node, bindings, logical_value):
     logical_value: Either True or False.
 
   Returns:
-    A Condition or None.  Each binding is checked for compatability with
+    A Condition or None.  Each binding is checked for compatibility with
     logical_value.  If either no bindings match, or all bindings match, then
     None is returned.  Otherwise a new Condition is built from the specified,
     compatible, bindings.
