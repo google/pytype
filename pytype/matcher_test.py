@@ -15,10 +15,12 @@ import unittest
 class MatcherTest(unittest.TestCase):
   """Test matcher.AbstractMatcher."""
 
+  PYTHON_VERSION = (2, 7)
+
   def setUp(self):
     options = config.Options.create()
     self.vm = vm.VirtualMachine(
-        errors.ErrorLog(), options, load_pytd.Loader(None, options))
+        errors.ErrorLog(), options, load_pytd.Loader(None, self.PYTHON_VERSION))
     self.type_type = self.vm.convert.type_type
 
   def _make_class(self, name):
@@ -29,7 +31,7 @@ class MatcherTest(unittest.TestCase):
       filename = str(hash(src))
     with utils.Tempdir() as d:
       d.create_file(filename + ".pyi", src)
-      self.vm.options.tweak(pythonpath=[d.path])
+      self.vm.loader.pythonpath = [d.path]   # monkeypatch
       ast = self.vm.loader.import_name(filename)
       return ast.Lookup(filename + "." + objname)
 

@@ -14,15 +14,17 @@ import unittest
 
 class ConvertTest(unittest.TestCase):
 
+  PYTHON_VERSION = (2, 7)
+
   def setUp(self):
     options = config.Options.create()
     self._vm = vm.VirtualMachine(
-        errors.ErrorLog(), options, load_pytd.Loader(None, options))
+        errors.ErrorLog(), options, load_pytd.Loader(None, self.PYTHON_VERSION))
 
   def _load_ast(self, name, src):
     with utils.Tempdir() as d:
       d.create_file(name + ".pyi", src)
-      self._vm.options.tweak(pythonpath=[d.path])
+      self._vm.loader.pythonpath = [d.path]  # monkeypatch
       return self._vm.loader.import_name(name)
 
   def _convert_class(self, name, ast):

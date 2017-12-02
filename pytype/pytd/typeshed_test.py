@@ -45,7 +45,7 @@ class TestTypeshedParsing(test_base.BaseTest):
 
   def setUp(self):
     super(TestTypeshedParsing, self).setUp()
-    self.loader = load_pytd.Loader("base", self.options)
+    self.loader = load_pytd.Loader("base", self.PYTHON_VERSION)
 
   def test_quopri(self):
     self.assertTrue(self.loader.import_name("quopri"))

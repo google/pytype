@@ -1,7 +1,6 @@
 import os
 import pickle
 
-from pytype import config
 from pytype import load_pytd
 from pytype import utils
 from pytype.pytd import pytd_utils
@@ -14,9 +13,6 @@ import unittest
 class SerializeAstTest(unittest.TestCase):
 
   PYTHON_VERSION = (2, 7)
-
-  def setUp(self):
-    self.options = config.Options.create(python_version=self.PYTHON_VERSION)
 
   def _StoreAst(
       self, temp_dir, module_name, pickled_ast_filename, ast=None, loader=None):
@@ -52,11 +48,10 @@ class SerializeAstTest(unittest.TestCase):
             pass
     """)
 
-    self.options.tweak(pythonpath=[temp_dir.path])
-    self.options.tweak(module_name=module_name)
-    self.options.tweak(input=pyi_filename)
-    loader = load_pytd.Loader(base_module=None, options=self.options)
-    ast = loader.load_file(self.options.module_name, self.options.input)
+    loader = load_pytd.Loader(base_module=None,
+                              python_version=self.PYTHON_VERSION,
+                              pythonpath=[temp_dir.path])
+    ast = loader.load_file(module_name, pyi_filename)
     return ast, loader
 
   def testFindClassTypesVisitor(self):

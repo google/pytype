@@ -102,10 +102,10 @@ class BaseTest(unittest.TestCase):
   def Check(self, code, pythonpath=(), skip_repeat_calls=True,
             report_errors=True, filename=None, **kwargs):
     """Run an inference smoke test for the given code."""
-    self.options.tweak(pythonpath=pythonpath,
-                       skip_repeat_calls=skip_repeat_calls)
+    self.options.tweak(skip_repeat_calls=skip_repeat_calls)
     errorlog = errors.ErrorLog()
-    loader = load_pytd.Loader(self.options.module_name, self.options)
+    loader = load_pytd.Loader(self.options.module_name, self.PYTHON_VERSION,
+                              pythonpath=pythonpath)
     try:
       analyze.check_types(
           textwrap.dedent(code), filename, loader=loader, errorlog=errorlog,
@@ -120,10 +120,10 @@ class BaseTest(unittest.TestCase):
     method(code, report_errors=False, **kwargs)
 
   def _SetUpErrorHandling(self, code, pythonpath):
-    self.options.tweak(pythonpath=pythonpath)
     code = textwrap.dedent(code)
     errorlog = errors.ErrorLog()
-    loader = load_pytd.Loader(self.options.module_name, self.options)
+    loader = load_pytd.Loader(self.options.module_name, self.PYTHON_VERSION,
+                              pythonpath=pythonpath)
     return {"src": code, "errorlog": errorlog, "options": self.options,
             "loader": loader}
 
@@ -142,12 +142,12 @@ class BaseTest(unittest.TestCase):
     return kwargs["errorlog"]
 
   def InferFromFile(self, filename, pythonpath):
-    self.options.tweak(pythonpath=pythonpath)
     with open(filename, "rb") as fi:
       code = fi.read()
       errorlog = errors.ErrorLog()
       loader = load_pytd.Loader(
-          analyze.get_module_name(filename, self.options), self.options)
+          analyze.get_module_name(filename, pythonpath), self.PYTHON_VERSION,
+          pythonpath=pythonpath)
       unit, _ = analyze.infer_types(code, errorlog, self.options, loader=loader,
                                     filename=filename)
       unit.Visit(visitors.VerifyVisitor())
@@ -337,14 +337,14 @@ class BaseTest(unittest.TestCase):
     Returns:
       A pytd.TypeDeclUnit
     """
-    self.options.tweak(
-        pythonpath=[""] if (not pythonpath and imports_map) else pythonpath,
-        module_name=module_name,
-        imports_map=imports_map,
-        quick=quick)
+    self.options.tweak(module_name=module_name, quick=quick)
     errorlog = errors.ErrorLog()
     loader = load_pytd.PickledPyiLoader(
-        False, self.options.module_name, self.options)
+        use_pickled_typeshed=False,
+        base_module=module_name,
+        python_version=self.PYTHON_VERSION,
+        pythonpath=[""] if (not pythonpath and imports_map) else pythonpath,
+        imports_map=imports_map)
     unit, builtins_pytd = analyze.infer_types(
         src, errorlog, self.options, loader=loader, **kwargs)
     unit.Visit(visitors.VerifyVisitor())

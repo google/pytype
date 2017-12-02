@@ -55,15 +55,25 @@ def check_pyi(input_filename, errorlog, options):
 
 
 def _create_loader(input_filename, options):
-  module_name = analyze.get_module_name(input_filename, options)
+  module_name = (options.module_name or
+                 analyze.get_module_name(input_filename, options.pythonpath))
   if options.use_pickled_files:
     return load_pytd.PickledPyiLoader(
         base_module=module_name,
-        use_pickled_typeshed=options.use_pickled_typeshed,
-        options=options)
+        python_version=options.python_version,
+        pythonpath=options.pythonpath,
+        imports_map=options.imports_map,
+        use_typeshed=options.typeshed,
+        typeshed_location=options.typeshed_location,
+        use_pickled_typeshed=options.use_pickled_typeshed)
   else:
     return load_pytd.Loader(
-        base_module=module_name, options=options)
+        base_module=module_name,
+        python_version=options.python_version,
+        pythonpath=options.pythonpath,
+        imports_map=options.imports_map,
+        use_typeshed=options.typeshed,
+        typeshed_location=options.typeshed_location)
 
 
 def generate_pyi(input_filename, errorlog, options, loader):

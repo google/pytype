@@ -584,7 +584,7 @@ def _filename_to_module_name(filename):
   return filename.replace(os.sep, ".")
 
 
-def get_module_name(filename, options):
+def get_module_name(filename, pythonpath):
   """Return, or try to reverse-engineer, the name of the module we're analyzing.
 
   If a module was passed using --module-name, that name will be returned.
@@ -596,18 +596,16 @@ def get_module_name(filename, options):
 
   Args:
     filename: The filename of a Python file. E.g. "src/foo/bar/my_module.py".
-    options: An instance of config.Options.
+    pythonpath: The path Python uses to search for modules.
 
   Returns:
     A module name, e.g. "foo.bar.my_module", or None if we can't determine the
     module name.
   """
-  if options.module_name is not None:
-    return options.module_name
-  elif filename:
+  if filename:
     filename, _ = os.path.splitext(os.path.normpath(filename))
     # We want '' in our lookup path, but we don't want it for prefix tests.
-    for path in filter(bool, options.pythonpath):
+    for path in filter(bool, pythonpath):
       path = os.path.normpath(path)
       if not path.endswith(os.sep):
         path += os.sep
@@ -622,7 +620,9 @@ def check_types(src, filename, errorlog, options, loader,
                 deep=True, init_maximum_depth=INIT_MAXIMUM_DEPTH, **kwargs):
   """Verify a PyTD against the Python code."""
   tracer = CallTracer(errorlog=errorlog, options=options,
-                      module_name=get_module_name(filename, options),
+                      module_name=(
+                          options.module_name or
+                          get_module_name(filename, options.pythonpath)),
                       analyze_annotated=True,
                       generate_unknowns=False,
                       loader=loader, **kwargs)
@@ -659,7 +659,9 @@ def infer_types(src, errorlog, options, loader,
     AssertionError: In case of a bad parameter combination.
   """
   tracer = CallTracer(errorlog=errorlog, options=options,
-                      module_name=get_module_name(filename, options),
+                      module_name=(
+                          options.module_name or
+                          get_module_name(filename, options.pythonpath)),
                       generate_unknowns=options.protocols,
                       store_all_calls=not deep, loader=loader,
                       **kwargs)

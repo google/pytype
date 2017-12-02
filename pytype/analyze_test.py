@@ -2,7 +2,6 @@
 
 
 from pytype import analyze
-from pytype import config
 
 import unittest
 
@@ -30,8 +29,7 @@ class AnalyzeTest(unittest.TestCase):
         ("../../foo.py", [".."], None)
     ]
     for filename, pythonpath, expected in test_cases:
-      options = config.Options.create(pythonpath=pythonpath)
-      module = analyze.get_module_name(filename, options)
+      module = analyze.get_module_name(filename, pythonpath)
       self.assertEqual(module, expected)
 
 

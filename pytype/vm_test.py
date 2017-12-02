@@ -43,7 +43,7 @@ class BytecodeTest(test_base.BaseTest):
     self.options = config.Options.create(python_version=self.PYTHON_VERSION,
                                          python_exe=self.PYTHON_EXE)
     self.errorlog = errors.ErrorLog()
-    self.loader = load_pytd.Loader(None, self.options)
+    self.loader = load_pytd.Loader(None, self.PYTHON_VERSION)
     self.trace_vm = TraceVM(self.options, self.loader)
 
   def test_simple(self):

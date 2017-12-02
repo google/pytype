@@ -27,8 +27,9 @@ class Python3Test(unittest.TestCase):
       d.create_file("a.pyi", """\
           from typing import AsyncGenerator
           class A(AsyncGenerator[str]): ...""")
-      self.options.tweak(pythonpath=[d.path])
-      loader = load_pytd.Loader("base", self.options)
+      loader = load_pytd.Loader("base",
+                                python_version=self.PYTHON_VERSION,
+                                pythonpath=[d.path])
       a = loader.import_name("a")
       cls = a.Lookup("a.A")
       # New python3 builtins are currently aliases for Any.

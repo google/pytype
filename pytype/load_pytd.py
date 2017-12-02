@@ -62,11 +62,18 @@ class Loader(object):
 
   def __init__(self,
                base_module,
-               options):
+               python_version,
+               pythonpath=(),
+               imports_map=None,
+               use_typeshed=True,
+               typeshed_location="typeshed"):
     self.base_module = base_module
-    self.options = options
-    self.builtins, self.typing = builtins.GetBuiltinsAndTyping(
-        options.python_version)
+    self.python_version = python_version
+    self.pythonpath = pythonpath
+    self.imports_map = imports_map
+    self.use_typeshed = use_typeshed
+    self.typeshed_location = typeshed_location
+    self.builtins, self.typing = builtins.GetBuiltinsAndTyping(python_version)
     self._modules = {
         "__builtin__":
         Module("__builtin__", self.PREFIX + "__builtin__", self.builtins,
@@ -78,8 +85,8 @@ class Loader(object):
     self._concatenated = None
     self._import_name_cache = {}  # performance cache
     # Paranoid verification that pytype.main properly checked the flags:
-    if self.options.imports_map is not None:
-      assert self.options.pythonpath == [""], self.options.pythonpath
+    if imports_map is not None:
+      assert pythonpath == [""], pythonpath
 
   def _postprocess_pyi(self, ast):
     """Apply all the PYI transformations we need."""
@@ -118,7 +125,7 @@ class Loader(object):
     if not ast:
       ast = builtins.ParsePyTD(filename=filename,
                                module=module_name,
-                               python_version=self.options.python_version)
+                               python_version=self.python_version)
     return self._process_module(module_name, filename, ast)
 
   def _process_module(self, module_name, filename, ast):
@@ -253,22 +260,22 @@ class Loader(object):
     # Try our own type definitions first.
     if not third_party_only:
       builtin_dir = utils.get_versioned_path(
-          subdir, self.options.python_version)
+          subdir, self.python_version)
       mod = builtins.ParsePredefinedPyTD(
-          builtin_dir, module_name, self.options.python_version)
+          builtin_dir, module_name, self.python_version)
       if mod:
         return self.load_file(filename=self.PREFIX + module_name,
                               module_name=module_name,
                               ast=mod)
-    if self.options.typeshed:
+    if self.use_typeshed:
       return self._load_typeshed_builtin(subdir, module_name)
     return None
 
   def _load_typeshed_builtin(self, subdir, module_name):
     """Load a pyi from typeshed."""
     mod = typeshed.parse_type_definition(
-        subdir, module_name, self.options.python_version,
-        self.options.typeshed_location, use_pickled=False)
+        subdir, module_name, self.python_version,
+        self.typeshed_location, use_pickled=False)
     if mod:
       return self.load_file(filename=self.PREFIX + module_name,
                             module_name=module_name,
@@ -305,25 +312,25 @@ class Loader(object):
       return mod
 
     # Third party modules from typeshed (typically site-packages) come last.
-    if not self.options.imports_map:
+    if not self.imports_map:
       mod = self._load_builtin(
           "third_party", module_name, third_party_only=True)
       if mod:
         return mod
 
     log.warning("Couldn't import module %s %r in (path=%r) imports_map: %s",
-                module_name, module_name, self.options.pythonpath,
-                "%d items" % len(self.options.imports_map) if
-                self.options.imports_map else "none")
-    if log.isEnabledFor(logging.DEBUG) and self.options.imports_map:
-      for module, path in self.options.imports_map.items():
+                module_name, module_name, self.pythonpath,
+                "%d items" % len(self.imports_map) if
+                self.imports_map else "none")
+    if log.isEnabledFor(logging.DEBUG) and self.imports_map:
+      for module, path in self.imports_map.items():
         log.debug("%s -> %s", module, path)
     return None
 
   def _import_file(self, module_name, module_name_split):
     """Helper for import_relative: try to load an AST, using pythonpath.
 
-    Loops over self.options.pythonpath, taking care of the semantics for
+    Loops over self.pythonpath, taking care of the semantics for
     __init__, and pretending there's an empty __init__ if the path (derived from
     module_name_split) is a directory.
 
@@ -334,7 +341,7 @@ class Loader(object):
       The parsed file (AST) if found, otherwise None.
 
     """
-    for searchdir in self.options.pythonpath:
+    for searchdir in self.pythonpath:
       path = os.path.join(searchdir, *module_name_split)
       # See if this is a directory with a "__init__.py" defined.
       # (These also get automatically created in imports_map_loader.py)
@@ -343,7 +350,7 @@ class Loader(object):
       if init_ast is not None:
         log.debug("Found module %r with path %r", module_name, init_path)
         return init_ast
-      elif self.options.imports_map is None and os.path.isdir(path):
+      elif self.imports_map is None and os.path.isdir(path):
         # We allow directories to not have an __init__ file.
         # The module's empty, but you can still load submodules.
         log.debug("Created empty module %r with path %r",
@@ -367,9 +374,9 @@ class Loader(object):
       The parsed pyi, instance of pytd.TypeDeclUnit, or None if we didn't
       find the module.
     """
-    if self.options.imports_map is not None:
-      if path in self.options.imports_map:
-        full_path = self.options.imports_map[path]
+    if self.imports_map is not None:
+      if path in self.imports_map:
+        full_path = self.imports_map[path]
       else:
         return None
     else:
@@ -395,10 +402,10 @@ class Loader(object):
   def can_see(self, module):
     """Reports whether the Loader can find the module."""
     # Assume that if there is no imports_map that any module can be found.
-    if not self.options.imports_map:
+    if not self.imports_map:
       return True
-    return (module in self.options.imports_map or
-            "%s/__init__" % module in self.options.imports_map)
+    return (module in self.imports_map or
+            "%s/__init__" % module in self.imports_map)
 
 
 class PickledPyiLoader(Loader):
@@ -414,8 +421,8 @@ class PickledPyiLoader(Loader):
           subdir, module_name)
     try:
       filename, _ = typeshed.get_type_definition_filename(
-          subdir, module_name, self.options.python_version,
-          self.options.typeshed_location, use_pickled=True)
+          subdir, module_name, self.python_version,
+          self.typeshed_location, use_pickled=True)
     except IOError:
       return None
     else:
