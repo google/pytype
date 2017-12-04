@@ -22,5 +22,5 @@ use Github pull requests for this purpose.
 
 ### The small print
 Contributions made by corporations are covered by a different agreement than
-the one mentioned above; they're covered by the the Software Grant and
+the one mentioned above; they're covered by the Software Grant and
 Corporate Contributor License Agreement.
