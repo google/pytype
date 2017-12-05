@@ -194,6 +194,7 @@ class VirtualMachine(object):
     self.callself_stack = []
     self.filename = None
     self.director = None
+    self._analyzing = False  # Are we in self.analyze()?
 
     # Map from builtin names to canonical objects.
     self.special_builtins = {
@@ -1080,6 +1081,8 @@ class VirtualMachine(object):
     Returns:
       True if there are possibly visible origins, else False.
     """
+    if not self._analyzing:
+      return True
     origin_nodes = self._get_none_origin_nodes(binding)
     # Checking for reachability works because the current part of the graph
     # hasn't been connected back to the analyze node yet. Since

@@ -28,6 +28,14 @@ class TestStrictNone(test_base.BaseTest):
           return self.x.upper()
     """)
 
+  def testClassConstantError(self):
+    errors = self.CheckWithErrors("""\
+      x = None
+      class Foo(object):
+        x = x.upper()
+    """)
+    self.assertErrorLogIs(errors, [(3, "attribute-error", r"upper.*None")])
+
   def testExplicitNone(self):
     errors = self.CheckWithErrors("""\
       from __future__ import google_type_annotations
@@ -158,6 +166,13 @@ class TestStrictNone(test_base.BaseTest):
       def g():
         return f().upper()
     """)
+
+  def testUnpackedNone(self):
+    errors = self.CheckWithErrors("""\
+      _, a = 42, None
+      b = a.upper()
+    """)
+    self.assertErrorLogIs(errors, [(2, "attribute-error", r"upper.*None")])
 
 
 class TestAttributes(test_base.BaseTest):
