@@ -174,6 +174,17 @@ class TestStrictNone(test_base.BaseTest):
     """)
     self.assertErrorLogIs(errors, [(2, "attribute-error", r"upper.*None")])
 
+  def testFunctionDefault(self):
+    errors = self.CheckWithErrors("""\
+      class Foo(object):
+        def __init__(self, v=None):
+          v.upper()
+      def f():
+        Foo()
+    """)
+    self.assertErrorLogIs(
+        errors, [(3, "attribute-error", r"upper.*None.*Traceback.*5")])
+
 
 class TestAttributes(test_base.BaseTest):
   """Tests for attributes."""

@@ -2896,8 +2896,10 @@ class InterpreterFunction(Function):
       return {".0": posargs[0]}
     param_names = self.get_positional_names()
     num_defaults = len(self.defaults)
-    callargs = dict(zip(param_names[-num_defaults:], self.defaults))
-    callargs.update(self.kw_defaults)
+    callargs = {name: self.vm.program.NewVariable(default.Data(node), [], node)
+                for name, default in zip(
+                    param_names[-num_defaults:], self.defaults) +
+                self.kw_defaults.items()}
     positional = dict(zip(param_names, posargs))
     for key in positional:
       if key in kws:
