@@ -36,6 +36,7 @@ from pytype import function
 from pytype import load_pytd
 from pytype import matcher
 from pytype import metrics
+from pytype import six_overlay
 from pytype import special_builtins
 from pytype import state as frame_state
 from pytype import typing
@@ -72,6 +73,7 @@ _opcode_counter = metrics.MapCounter("vm_opcode")
 overlays = {
     "abc": abc_overlay.ABCOverlay,
     "collections": collections_overlay.CollectionsOverlay,
+    "six": six_overlay.SixOverlay,
     "typing": typing.TypingOverlay,
 }
 
@@ -181,6 +183,7 @@ class VirtualMachine(object):
     self.loader = loader
     self.frames = []  # The call stack of frames.
     self.functions_with_late_annotations = []
+    self.classes_with_abstract_methods = []
     self.frame = None  # The current frame.
     self.program = cfg.Program()
     self.root_cfg_node = self.program.NewCFGNode("root")
@@ -522,8 +525,11 @@ class VirtualMachine(object):
         if not val.is_abstract:
           for member in sum((var.data for var in val.members.values()), []):
             if isinstance(member, abstract.Function) and member.is_abstract:
-              self.errorlog.ignored_abstractmethod(
-                  self.frames, val.name, member.name)
+              # This is not necessarily an error, because a class decorator
+              # could have made the class inherit from ABCMeta, so we record it
+              # to recheck at postprocessing time.
+              self.classes_with_abstract_methods.append(
+                  (val, self.simple_stack(), member.name))
     return var
 
   def _make_function(self, name, node, code, globs, defaults, kw_defaults,
@@ -663,6 +669,10 @@ class VirtualMachine(object):
     node = self.root_cfg_node.ConnectNew("init")
     node, f_globals, _, _ = self.run_bytecode(node, code)
     logging.info("Done running bytecode, postprocessing globals")
+    # Check for abstract methods on non-abstract classes.
+    for val, frames, method_name in self.classes_with_abstract_methods:
+      if not val.is_abstract:
+        self.errorlog.ignored_abstractmethod(frames, val.name, method_name)
     for func in self.functions_with_late_annotations:
       self.annotations_util.eval_late_annotations(node, func, f_globals)
     for name, annot in f_globals.late_annotations.items():
