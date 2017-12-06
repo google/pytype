@@ -185,6 +185,83 @@ class TestStrictNone(test_base.BaseTest):
     self.assertErrorLogIs(
         errors, [(3, "attribute-error", r"upper.*None.*Traceback.*5")])
 
+  def testKeepNoneReturn(self):
+    ty = self.Infer("""
+      def f():
+        pass
+    """)
+    self.assertTypesMatchPytd(ty, """
+      def f() -> None: ...
+    """)
+
+  def testKeepNoneYield(self):
+    ty = self.Infer("""
+      def f():
+        yield None
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any, Generator
+      def f() -> Generator[None, Any, Any]
+    """)
+
+  def testKeepContainedNoneReturn(self):
+    ty = self.Infer("""
+      def f():
+        return [None]
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import List
+      def f() -> List[None]
+    """)
+
+  def testDiscardNoneReturn(self):
+    ty = self.Infer("""
+      x = None
+      def f():
+        return x
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      x = ...  # type: None
+      def f() -> Any
+    """)
+
+  def testDiscardNoneYield(self):
+    ty = self.Infer("""
+      x = None
+      def f():
+        yield x
+    """)
+    self.assertTypesMatchPytd(ty, """
+      x = ...  # type: None
+      def f() -> generator
+    """)
+
+  def testDiscardContainedNoneReturn(self):
+    ty = self.Infer("""
+      x = None
+      def f():
+        return [x]
+    """)
+    self.assertTypesMatchPytd(ty, """
+      x = ...  # type: None
+      def f() -> list
+    """)
+
+  def testDiscardAttributeNoneReturn(self):
+    ty = self.Infer("""
+      class Foo:
+        x = None
+      def f():
+        return Foo.x
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      class Foo:
+        x = ...  # type: None
+      def f() -> Any
+    """)
+
 
 class TestAttributes(test_base.BaseTest):
   """Tests for attributes."""

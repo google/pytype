@@ -942,7 +942,9 @@ class VirtualMachine(object):
     bindings = store.members[name].Bindings(state.node)
     if not bindings:
       raise KeyError(name)
-    return state, self.join_bindings(state.node, bindings)
+    ret = self.program.NewVariable()
+    self._filter_none_and_paste_bindings(state.node, bindings, ret)
+    return state, ret
 
   def load_local(self, state, name):
     """Called when a local is loaded onto the stack.
@@ -1019,7 +1021,7 @@ class VirtualMachine(object):
         continue
       log.debug("got choice for attr %s from %r of %r (0x%x): %r", attr, obj,
                 val.data, id(val.data), attr_var)
-      result.PasteVariable(attr_var, node2)
+      self._filter_none_and_paste_bindings(node2, attr_var.bindings, result)
       nodes.append(node2)
     if nodes:
       return self.join_cfg_nodes(nodes), result, values_without_attribute
@@ -1061,12 +1063,19 @@ class VirtualMachine(object):
 
   def _new_attribute_error_detection(self, state, _, attr, errors):
     for error in errors:
-      if (self.has_strict_none_origins(error) and
-          state.node.HasCombination([error])):
+      if state.node.HasCombination([error]):
         self.errorlog.attribute_or_module_error(
             self.frames, error.AssignToNewVariable(self.root_cfg_node), attr)
 
-  def has_strict_none_origins(self, binding):
+  def _filter_none_and_paste_bindings(self, node, bindings, var):
+    """Paste the bindings into var, filtering out false positives on None."""
+    for b in bindings:
+      if not self.options.strict_none or self._has_strict_none_origins(b):
+        var.PasteBinding(b, node)
+      else:
+        var.AddBinding(self.convert.unsolvable, [], node)
+
+  def _has_strict_none_origins(self, binding):
     """Whether the binding has any possible origins, with None filtering.
 
     Determines whether the binding has any possibly visible origins at the

@@ -259,5 +259,69 @@ class ReingestTest(test_base.BaseTest):
       """)
 
 
+class StrictNoneTest(test_base.BaseTest):
+
+  def setUp(self):
+    super(StrictNoneTest, self).setUp()
+    self.options.tweak(strict_none=True)
+
+  def testPyiReturnConstant(self):
+    foo = self.Infer("""
+      x = None
+      def f():
+        return x
+    """)
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", pytd.Print(foo))
+      self.Check("""
+        import foo
+        def g():
+          return foo.f().upper()
+      """, pythonpath=[d.path])
+
+  def testPyiYieldConstant(self):
+    foo = self.Infer("""
+      x = None
+      def f():
+        yield x
+    """)
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", pytd.Print(foo))
+      self.Check("""
+        import foo
+        def g():
+          return [v.upper() for v in foo.f()]
+      """, pythonpath=[d.path])
+
+  def testPyiReturnContainedConstant(self):
+    foo = self.Infer("""
+      x = None
+      def f():
+        return [x]
+    """)
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", pytd.Print(foo))
+      self.Check("""
+        import foo
+        def g():
+          return [v.upper() for v in foo.f()]
+      """, pythonpath=[d.path])
+
+  def testPyiReturnAttribute(self):
+    foo = self.Infer("""
+      class Foo:
+        x = None
+      def f():
+        return Foo.x
+    """)
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", pytd.Print(foo))
+      self.Check("""
+        import foo
+        def g():
+          return foo.f().upper()
+      """, pythonpath=[d.path])
+
+
 if __name__ == "__main__":
   test_base.main()
