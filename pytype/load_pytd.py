@@ -259,10 +259,13 @@ class Loader(object):
     """Load a pytd/pyi that ships with pytype or typeshed."""
     # Try our own type definitions first.
     if not third_party_only:
-      builtin_dir = utils.get_versioned_path(
-          subdir, self.python_version)
+      builtin_dir = utils.get_versioned_path(subdir, self.python_version)
       mod = builtins.ParsePredefinedPyTD(
           builtin_dir, module_name, self.python_version)
+      if not mod:
+        mod = builtins.ParsePredefinedPyTD(
+            builtin_dir, module_name, self.python_version,
+            as_package=True)
       if mod:
         return self.load_file(filename=self.PREFIX + module_name,
                               module_name=module_name,

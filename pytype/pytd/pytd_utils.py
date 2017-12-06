@@ -419,21 +419,26 @@ def canonical_pyi(pyi, python_version):
   return pytd.Print(ast)
 
 
-def GetPredefinedFile(pytd_subdir, module, extension=".pytd"):
+def GetPredefinedFile(pytd_subdir, module, extension=".pytd",
+                      as_package=False):
   """Get the contents of a predefined PyTD, typically with a file name *.pytd.
 
   Arguments:
     pytd_subdir: the directory, typically "builtins" or "stdlib"
     module: module name (e.g., "sys" or "__builtins__")
     extension: either ".pytd" or ".py"
+    as_package: try the module as a directory with an __init__ file
   Returns:
     The contents of the file
   Raises:
     IOError: if file not found
   """
-  path = os.path.join("pytd", pytd_subdir,
-                      os.path.join(*module.split(".")) + extension)
-  return utils.load_pytype_file(path)
+  parts = module.split(".")
+  if as_package:
+    parts.append("__init__")
+  mod_path = os.path.join(*parts) + extension
+  path = os.path.join("pytd", pytd_subdir, mod_path)
+  return path, utils.load_pytype_file(path)
 
 
 def LoadPickle(filename):

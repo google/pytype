@@ -351,11 +351,12 @@ class TestDataFiles(parser_test_base.ParserTest):
 
   BUILTINS = "builtins/2"
 
-  def testGetPredefinedFileReturnsString(self):
-    # smoke test, only checks that it doesn't throw and the result is a string
-    self.assertIsInstance(
-        pytd_utils.GetPredefinedFile(self.BUILTINS, "__builtin__"),
-        str)
+  def testGetPredefinedFileBasic(self):
+    # smoke test, only checks that it doesn't throw, the filepath is correct,
+    # and the result is a string
+    path, src = pytd_utils.GetPredefinedFile(self.BUILTINS, "__builtin__")
+    self.assertEqual(path, "pytd/builtins/2/__builtin__.pytd")
+    self.assertIsInstance(src, str)
 
   def testGetPredefinedFileThrows(self):
     # smoke test, only checks that it does throw
@@ -367,7 +368,7 @@ class TestDataFiles(parser_test_base.ParserTest):
   def testPytdBuiltin2(self):
     """Verify 'import sys' for python2."""
     subdir = "builtins/2"
-    import_contents = pytd_utils.GetPredefinedFile(subdir, "__builtin__")
+    _, import_contents = pytd_utils.GetPredefinedFile(subdir, "__builtin__")
     with open(os.path.join(os.path.dirname(pytd.__file__),
                            subdir, "__builtin__.pytd"), "rb") as fi:
       file_contents = fi.read()
@@ -376,12 +377,17 @@ class TestDataFiles(parser_test_base.ParserTest):
   def testPytdBuiltin3(self):
     """Verify 'import sys' for python3."""
     subdir = "builtins/3"
-    import_contents = pytd_utils.GetPredefinedFile(subdir, "__builtin__")
+    _, import_contents = pytd_utils.GetPredefinedFile(subdir, "__builtin__")
     with open(os.path.join(os.path.dirname(pytd.__file__),
                            subdir, "__builtin__.pytd"), "rb") as fi:
       file_contents = fi.read()
     self.assertMultiLineEqual(import_contents, file_contents)
 
+  def testPytdBuiltinIsPackage(self):
+    """Verify 'import importlib' for python3."""
+    subdir = "stdlib/3"
+    path, _ = pytd_utils.GetPredefinedFile(subdir, "importlib", as_package=True)
+    self.assertEqual(path, "pytd/stdlib/3/importlib/__init__.pytd")
 
 if __name__ == "__main__":
   unittest.main()

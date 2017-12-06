@@ -213,6 +213,16 @@ class TestPython36(test_base.BaseTest):
       raise
     """)
 
+  def test_import_importlib(self):
+    # Test that we import importlib/__init__.pytd (the version in typeshed does
+    # not load).
+    ty = self.Infer("""
+      import importlib
+    """, deep=False)
+    self.assertTypesMatchPytd(ty, """
+      importlib = ...  # type: module
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

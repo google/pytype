@@ -18,7 +18,6 @@
 """Utilities for parsing pytd files for builtins."""
 
 import collections
-import os
 
 
 from pytype import utils
@@ -29,7 +28,8 @@ from pytype.pytd.parse import visitors
 
 def _FindBuiltinFile(name, python_version, extension=".pytd"):
   subdir = utils.get_versioned_path("builtins", python_version)
-  return pytd_utils.GetPredefinedFile(subdir, name, extension)
+  _, src = pytd_utils.GetPredefinedFile(subdir, name, extension)
+  return src
 
 
 # Tests might run with different python versions in the same pytype invocation,
@@ -139,24 +139,25 @@ def ParsePyTD(src=None, filename=None, python_version=None, module=None,
   return ast
 
 
-def ParsePredefinedPyTD(pytd_subdir, module, python_version):
+def ParsePredefinedPyTD(pytd_subdir, module, python_version,
+                        as_package=False):
   """Load and parse a *.pytd from "pytd/{pytd_subdir}/{module}.pytd".
 
   Args:
     pytd_subdir: the directory where the module should be found
     module: the module name (without any file extension)
     python_version: sys.version_info[:2]
+    as_package: load the module as a directory with a __init__ file
 
   Returns:
     The AST of the module; None if the module doesn't exist in pytd_subdir.
   """
   try:
-    src = pytd_utils.GetPredefinedFile(pytd_subdir, module)
+    path, src = pytd_utils.GetPredefinedFile(pytd_subdir, module,
+                                             as_package=as_package)
   except IOError:
     return None
-  filename = os.path.join(pytd_subdir, module + ".pytd")
-  return ParsePyTD(src, filename=filename,
-                   module=module,
+  return ParsePyTD(src, filename=path, module=module,
                    python_version=python_version).Replace(name=module)
 
 
