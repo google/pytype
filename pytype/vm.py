@@ -775,7 +775,7 @@ class VirtualMachine(object):
     result = self.join_variables(state.node, results)
     log.debug("Result: %r %r", result, result.data)
     if not result.bindings and report_errors:
-      if self._is_only_none(state.node, x):
+      if not self.options.strict_none and self._is_only_none(state.node, x):
         self.errorlog.none_attr(self.frames, name)
       elif error is None:
         self.errorlog.unsupported_operands(self.frames, name, x, y)
@@ -1032,16 +1032,22 @@ class VirtualMachine(object):
     assert isinstance(x, abstract.AtomicAbstractValue)
     return x.cls and x.cls.data == [self.convert.none_type]
 
+  def _var_is_none(self, v):
+    assert isinstance(v, cfg.Variable)
+    return v.bindings and all(self._data_is_none(b.data) for b in v.bindings)
+
   def _is_none(self, node, binding):
-    """Returns true if binding is None or unreachable."""
+    """Returns true if binding is None or unreachable. Deprecated."""
     return (self._data_is_none(binding.data) or
             not node.HasCombination([binding]))
 
   def _has_at_least_one_none(self, node, obj):
+    # Deprecated.
     return any(self._data_is_none(b.data) and node.HasCombination([b])
                for b in obj.bindings)
 
   def _is_only_none(self, node, obj):
+    # Deprecated.
     return (all(self._is_none(node, b) for b in obj.bindings) and
             self._has_at_least_one_none(node, obj))
 
@@ -1268,7 +1274,7 @@ class VirtualMachine(object):
         if report_errors:
           for m in missing:
             if state.node.HasCombination([m]):
-              if self._data_is_none(m.data):
+              if not self.options.strict_none and self._data_is_none(m.data):
                 self.errorlog.none_attr(self.frames, "__iter__")
               else:
                 self.errorlog.attribute_error(self.frames, seq, "__iter__")
@@ -1616,7 +1622,7 @@ class VirtualMachine(object):
       if not itr:
         # y does not have any of __contains__, __iter__, and __getitem__.
         # (The last two are checked by _get_iter.)
-        if self._is_only_none(state.node, y):
+        if not self.options.strict_none and self._is_only_none(state.node, y):
           self.errorlog.none_attr(self.frames, "__contains__")
         else:
           self.errorlog.unsupported_operands(self.frames, "__contains__", y, x)
@@ -2292,7 +2298,7 @@ class VirtualMachine(object):
     # The IMPORT_NAME for an "import a.b.c" will push the module "a".
     # However, for "from a.b.c import Foo" it'll push the module "a.b.c". Those
     # two cases are distinguished by whether fromlist is None or not.
-    if self._is_only_none(state.node, fromlist):
+    if self._var_is_none(fromlist):
       name = full_name.split(".", 1)[0]  # "a.b.c" -> "a"
     else:
       name = full_name
@@ -2341,7 +2347,7 @@ class VirtualMachine(object):
 
   def byte_END_FINALLY(self, state, op):
     state, exc = state.pop()
-    if self._is_only_none(state.node, exc):
+    if self._var_is_none(exc):
       return state
     else:
       log.info("Popping exception %r", exc)

@@ -262,6 +262,53 @@ class TestStrictNone(test_base.BaseTest):
       def f() -> Any
     """)
 
+  def testGetItem(self):
+    errors = self.CheckWithErrors("""\
+      def f():
+        x = None
+        return x[0]
+    """)
+    self.assertErrorLogIs(
+        errors, [(3, "unsupported-operands", r"__getitem__.*None.*int")])
+
+  def testIgnoreGetItem(self):
+    self.Check("""
+      x = None
+      def f():
+        return x[0]
+    """)
+
+  def testIter(self):
+    errors = self.CheckWithErrors("""\
+      def f():
+        x = None
+        return [y for y in x]
+    """)
+    self.assertErrorLogIs(errors, [(3, "attribute-error", r"__iter__.*None")])
+
+  def testIgnoreIter(self):
+    self.Check("""
+      x = None
+      def f():
+        return [y for y in x]
+    """)
+
+  def testContains(self):
+    errors = self.CheckWithErrors("""\
+      def f():
+        x = None
+        return 42 in x
+    """)
+    self.assertErrorLogIs(
+        errors, [(3, "unsupported-operands", r"__contains__.*None.*int")])
+
+  def testIgnoreContains(self):
+    self.Check("""
+      x = None
+      def f():
+        return 42 in x
+    """)
+
 
 class TestAttributes(test_base.BaseTest):
   """Tests for attributes."""
