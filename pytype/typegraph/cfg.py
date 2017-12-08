@@ -95,6 +95,10 @@ class Program(object):
         binding.AddOrigin(where, source_set)
     return variable
 
+  def is_reachable(self, src, dst):  # pylint: disable=invalid-name
+    """Whether a path exists (going forward) from node src to node dst."""
+    return _PathFinder().FindAnyPathToNode(dst, src, frozenset())
+
 
 class CFGNode(object):
   """A node in the CFG.

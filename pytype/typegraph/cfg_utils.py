@@ -1,5 +1,7 @@
 """Utilities for working with the CFG."""
 
+import itertools
+
 import pytype.debug
 
 
@@ -93,7 +95,7 @@ def WalkBinding(binding, keep_binding=lambda _: True):
     for o in b.origins:
       o = yield o
       if o:
-        bindings.extend(set.union(*o.source_sets))
+        bindings.extend(itertools.chain(*o.source_sets))
 
 
 def CopyVarApprox(program, old_node_range, new_node, old_var):
