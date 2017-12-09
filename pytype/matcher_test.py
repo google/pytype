@@ -126,7 +126,7 @@ class MatcherTest(unittest.TestCase):
     right = abstract.TypeParameter("T", self.vm)
     result = self.vm.matcher.match_var_against_type(
         var, right, {}, self.vm.root_cfg_node, {})
-    self.assertItemsEqual(result, ["T"])
+    self.assertCountEqual(result.keys(), ["T"])
     self.assertFalse(result["T"].bindings)
 
   def testEmptyAgainstUnsolvable(self):

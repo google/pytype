@@ -530,7 +530,7 @@ class FunctionTest(AbstractTestBase):
     self.assertIs(sig.varargs_name, None)
     self.assertEmpty(sig.kwonly_params)
     self.assertIs(sig.kwargs_name, None)
-    self.assertItemsEqual(sig.annotations, sig.param_names)
+    self.assertCountEqual(sig.annotations.keys(), sig.param_names)
     self.assertEmpty(sig.late_annotations)
     self.assertFalse(sig.has_return_annotation)
     self.assertTrue(sig.has_param_annotations)
@@ -718,7 +718,7 @@ class FunctionTest(AbstractTestBase):
         late_annotations={}
     )
     sig.del_annotation("x")
-    self.assertItemsEqual(sig.annotations, {"return"})
+    self.assertCountEqual(sig.annotations.keys(), {"return"})
     self.assertFalse(sig.has_param_annotations)
     self.assertTrue(sig.has_return_annotation)
 
@@ -736,7 +736,7 @@ class FunctionTest(AbstractTestBase):
         late_annotations={}
     )
     sig.del_annotation("return")
-    self.assertItemsEqual(sig.annotations, {"x"})
+    self.assertCountEqual(sig.annotations.keys(), {"x"})
     self.assertTrue(sig.has_param_annotations)
     self.assertFalse(sig.has_return_annotation)
 
