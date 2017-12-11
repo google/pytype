@@ -75,6 +75,41 @@ class AbstractMatcher(object):
         bad.append(view)
     return bad
 
+  def match_from_mro(self, left, other_type, allow_compat_builtins=True):
+    """Checks a type's MRO for a match for a formal type.
+
+    Args:
+      left: The type.
+      other_type: The formal type.
+      allow_compat_builtins: Whether to allow compatible builtins to match -
+        e.g., int against float.
+
+    Returns:
+      The match, if any, None otherwise.
+    """
+    for base in left.mro:
+      if isinstance(base, abstract.ParameterizedClass):
+        base_cls = base.base_cls
+      else:
+        base_cls = base
+      if isinstance(base_cls, abstract.Class):
+        if other_type.full_name == base_cls.full_name or (
+            isinstance(other_type, abstract.ParameterizedClass) and
+            other_type.base_cls is base_cls) or (allow_compat_builtins and (
+                (base_cls.full_name,
+                 other_type.full_name) in _COMPATIBLE_BUILTINS)):
+          return base
+      elif isinstance(base_cls, abstract.AMBIGUOUS_OR_EMPTY):
+        # See match_Function_against_Class in type_match.py. Even though it's
+        # possible that this ambiguous base is of type other_type, our class
+        # would then be a match for *everything*. Hence, assume this base is not
+        # a match, to keep the list of possible types from exploding.
+        # TODO(kramm): Revisit this, now that type_match.py primarily deals with
+        # protocols.
+        continue
+      else:
+        raise AssertionError("Bad base class %r", base_cls)
+
   def match_var_against_type(self, var, other_type, subst, node, view):
     if var.bindings:
       return self._match_value_against_type(
@@ -512,39 +547,6 @@ class AbstractMatcher(object):
         return None
     return subst
 
-  def _match_from_mro(self, left, other_type):
-    """Checks a type's MRO for a match for a formal type.
-
-    Args:
-      left: The type.
-      other_type: The formal type.
-
-    Returns:
-      The match, if any, None otherwise.
-    """
-    for base in left.mro:
-      if isinstance(base, abstract.ParameterizedClass):
-        base_cls = base.base_cls
-      else:
-        base_cls = base
-      if isinstance(base_cls, abstract.Class):
-        if other_type.full_name == base_cls.full_name or (
-            isinstance(other_type, abstract.ParameterizedClass) and
-            other_type.base_cls is base_cls) or (
-                (base_cls.full_name,
-                 other_type.full_name) in _COMPATIBLE_BUILTINS):
-          return base
-      elif isinstance(base_cls, abstract.AMBIGUOUS_OR_EMPTY):
-        # See match_Function_against_Class in type_match.py. Even though it's
-        # possible that this ambiguous base is of type other_type, our class
-        # would then be a match for *everything*. Hence, assume this base is not
-        # a match, to keep the list of possible types from exploding.
-        # TODO(kramm): Revisit this, now that type_match.py primarily deals with
-        # protocols.
-        continue
-      else:
-        raise AssertionError("Bad base class %r", base_cls)
-
   def _match_class_and_instance_against_type(
       self, left, instance, other_type, subst, node, view):
     """Checks whether an instance of a type is compatible with a (formal) type.
@@ -563,7 +565,7 @@ class AbstractMatcher(object):
       return subst
 
     if isinstance(other_type, abstract.Class):
-      base = self._match_from_mro(left, other_type)
+      base = self.match_from_mro(left, other_type)
       if base is None:
         if self.is_protocol(other_type):
           return self._match_against_protocol(left, other_type, subst, node,

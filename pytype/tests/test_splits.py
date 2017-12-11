@@ -948,6 +948,15 @@ class SplitTest(test_base.BaseTest):
         print x.upper()
     """)
 
+  def testIsInstanceList(self):
+    self.Check("""
+      from __future__ import google_type_annotations
+      from typing import List
+      def f(x: List[float]):
+        if not isinstance(x, list):
+          return float(x)
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

@@ -221,10 +221,11 @@ def _flatten(value, classes):
     return True
 
 
-def _check_against_mro(target, class_spec):
+def _check_against_mro(vm, target, class_spec):
   """Check if any of the classes are in the target's MRO.
 
   Args:
+    vm: The virtual machine.
     target: An AtomicAbstractValue whose MRO will be checked.
     class_spec: A Class or PythonConstant tuple of classes (i.e. the second
       argument to isinstance or issubclass).
@@ -238,7 +239,7 @@ def _check_against_mro(target, class_spec):
   ambiguous = _flatten(class_spec, classes)
 
   for c in classes:
-    if c in target.mro:
+    if vm.matcher.match_from_mro(target, c, allow_compat_builtins=False):
       return True  # A definite match.
   # No matches, return result depends on whether _flatten() was
   # ambiguous.
@@ -278,7 +279,7 @@ class IsInstance(BinaryPredicate):
       obj_class = abstract.get_atomic_value(cls_var)
     except abstract.ConversionError:
       return None
-    return _check_against_mro(obj_class, class_spec)
+    return _check_against_mro(self.vm, obj_class, class_spec)
 
 
 class IsSubclass(BinaryPredicate):
@@ -305,7 +306,7 @@ class IsSubclass(BinaryPredicate):
     if isinstance(cls, abstract.AMBIGUOUS_OR_EMPTY):
       return None
 
-    return _check_against_mro(cls, class_spec)
+    return _check_against_mro(self.vm, cls, class_spec)
 
 
 class IsCallable(UnaryPredicate):
