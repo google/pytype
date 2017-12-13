@@ -337,6 +337,20 @@ class PickledPyiLoaderTest(unittest.TestCase):
       loaded_ast = self._LoadPickledModule(d, bar)
       loaded_ast.Visit(visitors.VerifyLookup())
 
+  def testModuleAliases(self):
+    with utils.Tempdir() as d:
+      d.create_file("pkg/foo.pyi", "class X: ...")
+      d.create_file("pkg/bar.pyi", """
+          import pkg.foo as baz
+          y = ...  # type: baz.X""")
+      foo = _Module(module_name="pkg.foo", file_name="pkg/foo.pyi")
+      bar = _Module(module_name="pkg.bar", file_name="pkg/bar.pyi")
+      loader, _ = self._LoadAst(d, module=bar)
+      self._PickleModules(loader, d, foo, bar)
+      loaded_ast = self._LoadPickledModule(d, bar)
+      loaded_ast.Visit(visitors.VerifyLookup())
+      f = loaded_ast.Lookup("pkg.bar.y")
+      self.assertEqual("pkg.foo.X", f.type.name)
 
 if __name__ == "__main__":
   unittest.main()

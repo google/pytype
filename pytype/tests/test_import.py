@@ -1008,6 +1008,44 @@ class ImportTest(test_base.BaseTest):
         Adz = ...  # type: Type[{0}.foo.bar.Quack]
         """.format(imp_path))
 
+  def testModuleReexportsAndAliases(self):
+    with utils.Tempdir() as d:
+      d.create_file("pkg/a.pyi", """
+        from pkg import b as c
+        from pkg.b import e as f
+        import pkg.d as x
+        import pkg.g  # puts pkg.g in scope on 'import pkg.a'
+      """)
+      d.create_file("pkg/b.pyi", """
+        class X: ...
+        class e: ...
+      """)
+      d.create_file("pkg/d.pyi", """
+        class Y: ...
+      """)
+      d.create_file("pkg/g.pyi", """
+        class Z: ...
+      """)
+      ty = self.Infer("""\
+        import pkg.a
+        s = pkg.a.c.X()
+        t = pkg.a.f()
+        u = pkg.a.x
+        v = u.Y()
+        w = pkg.g.Z()
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """\
+        import pkg.b
+        import pkg.d
+        import pkg.g
+        pkg = ...  # type: module
+        s = ...  # type: pkg.b.X
+        t = ...  # type: pkg.b.e
+        u = ...  # type: module
+        v = ...  # type: pkg.d.Y
+        w = ...  # type: pkg.g.Z
+      """)
+
 
 if __name__ == "__main__":
   test_base.main()

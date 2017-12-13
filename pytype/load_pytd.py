@@ -103,8 +103,9 @@ class Loader(object):
     return ast
 
   def _create_empty(self, module_name, filename):
-    return self.load_file(module_name, filename,
-                          pytd_utils.EmptyModule(module_name))
+    ast = self.load_file(module_name, filename,
+                         pytd_utils.EmptyModule(module_name))
+    return ast.Replace(is_package=utils.is_pyi_directory_init(filename))
 
   def _get_existing_ast(self, module_name, filename):
     existing = self._modules.get(module_name)
@@ -166,14 +167,24 @@ class Loader(object):
     return deps.modules
 
   def _load_ast_dependencies(self, dependencies, ast, ast_name=None):
-    """Fill in all ClassType.cls pointers."""
+    """Fill in all ClassType.cls pointers and load reexported modules."""
     if dependencies:
-      for name in dependencies:
+      for item in dependencies:
+        if isinstance(item, tuple):
+          from_package, name = item
+          if from_package:
+            name = from_package + "." + name
+        else:
+          from_package = None
+          name = item
         if name not in self._modules:
           other_ast = self._import_name(name)
           if other_ast is None:
-            error = "Can't find pyi for %r" % name
-            raise BadDependencyError(error, ast_name or ast.name)
+            if from_package is None:
+              # Don't error if we have got this via 'from a import b', since b
+              # could be a class with a lowercase name.
+              error = "Can't find pyi for %r" % name
+              raise BadDependencyError(error, ast_name or ast.name)
 
   def _resolve_external_types(self, ast):
     try:
@@ -321,6 +332,8 @@ class Loader(object):
       if mod:
         return mod
 
+    # TODO(mdemello): Now that we treat things like "from typing import Any" as
+    # possible module reexports, this warning is cluttering up our logs.
     log.warning("Couldn't import module %s %r in (path=%r) imports_map: %s",
                 module_name, module_name, self.pythonpath,
                 "%d items" % len(self.imports_map) if

@@ -45,7 +45,8 @@ class TypeDeclUnit(node.Node('name: str or None',
                              'type_params: tuple[TypeParameter]',
                              'classes: tuple[Class]',
                              'functions: tuple[Function]',
-                             'aliases: tuple[Alias]')):
+                             'aliases: tuple[Alias]',
+                             'modules: tuple[Module]')):
   """Module node. Holds module contents (constants / classes / functions).
 
   Attributes:
@@ -57,7 +58,14 @@ class TypeDeclUnit(node.Node('name: str or None',
     functions: Iterable of functions defined in this type decl unit.
     classes: Iterable of classes defined in this type decl unit.
     aliases: Iterable of aliases (or imports) for types in other modules.
+    modules: Iterable of imported modules.
   """
+
+  def __new__(cls, name, is_package, constants, type_params, classes, functions,
+              aliases, modules=()):
+    return super(TypeDeclUnit, cls).__new__(
+        cls, name, is_package, constants, type_params, classes, functions,
+        aliases, modules)
 
   def Lookup(self, name):
     """Convenience function: Look up a given name in the global namespace.
@@ -88,6 +96,14 @@ class TypeDeclUnit(node.Node('name: str or None',
                   x.name, type(self._name2item[x.name]), type(x)))
         self._name2item[x.name] = x
       return self._name2item[name]
+
+  @property
+  def package_name(self):
+    if self.is_package:
+      return self.name
+    else:
+      parts = self.name.split('.')
+      return '.'.join(parts[:-1])
 
   # The hash/eq/ne values are used for caching and speed things up quite a bit.
 
@@ -121,6 +137,18 @@ class Alias(node.Node('name: str', 'type: {Type} or Constant')):
   will create a local alias "z" for "x.y".
   """
   __slots__ = ()
+
+
+class Module(node.Node('name: str', 'alias: str or None',
+                       'from_package: str or None')):
+  """A module imported into the current module, possibly with an alias."""
+  __slots__ = ()
+
+  @property
+  def full_name(self):
+    if self.from_package:
+      return self.from_package + '.' + self.name
+    return self.name
 
 
 class Class(node.Node('name: str',

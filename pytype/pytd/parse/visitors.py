@@ -593,6 +593,9 @@ class PrintVisitor(Visitor):
     type_list = self._FormSetTypeList(node)
     return self._BuildIntersection(type_list)
 
+  def VisitModule(self, unused_node):
+    return "module"
+
   def _FormSetTypeList(self, node):
     """Form list of types within a set type."""
     type_list = collections.OrderedDict.fromkeys(node.type_list)
@@ -1749,19 +1752,27 @@ class CollectDependencies(Visitor):
   def __init__(self):
     super(CollectDependencies, self).__init__()
     self.modules = set()
+    self.aliases = set()
 
   def EnterNamedType(self, t):
     module_name, dot, unused_name = t.name.rpartition(".")
     # If we have a relative import that did not get qualified (usually due to an
     # empty package_name), don't insert module_name='' into the dependencies; we
     # get a better error message if we filter it out here and fail later on.
-    if dot and module_name:
+    if dot and module_name and module_name not in self.aliases:
       self.modules.add(module_name)
     elif dot:
       logging.warning("Empty package name: %s", t.name)
 
   def EnterClassType(self, t):
     self.EnterNamedType(t)
+
+  def EnterTypeDeclUnit(self, t):
+    self.modules = set([(x.from_package, x.name) for x in t.modules])
+    # aliases with a from package are resolved later, and needn't be filtered
+    # out here.
+    self.aliases = {
+        x.alias for x in t.modules if x.alias and not x.from_package}
 
 
 class CollectLateDependencies(Visitor):
@@ -1786,11 +1797,13 @@ class QualifyRelativeNames(Visitor):
             not package_name.endswith("."))
     self.package_name = package_name
 
+  def _InsertPackageName(self, name):
+    return self.package_name + name[len("__PACKAGE__"):]
+
   def VisitNamedType(self, node):
     if node.name.startswith("__PACKAGE__."):
       # Generated from "from . import foo" - see parser.y
-      name = self.package_name + node.name[len("__PACKAGE__"):]
-      return node.Replace(name=name)
+      return node.Replace(name=self._InsertPackageName(node.name))
     elif node.name.startswith("."):
       name = utils.get_absolute_name(self.package_name, node.name)
       if name is None:
@@ -1803,6 +1816,11 @@ class QualifyRelativeNames(Visitor):
 
   def VisitClassType(self, t):
     return self.VisitNamedType(t)
+
+  def VisitModule(self, t):
+    if t.from_package and t.from_package.startswith("__PACKAGE__"):
+      return t.Replace(from_package=self._InsertPackageName(t.from_package))
+    return t
 
 
 def ExpandSignature(sig):

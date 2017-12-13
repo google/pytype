@@ -156,7 +156,9 @@ class SerializeAstTest(unittest.TestCase):
         serialized_ast = pickle.load(fi)
       self.assertTrue(serialized_ast.ast)
       self.assertEqual(serialized_ast.dependencies,
-                       ["__builtin__", "foo.bar.module1", "module2"])
+                       ["__builtin__", "foo.bar.module1", "module2",
+                        (None, "module2"), ("typing", "List")])
+
 
   def testUnrestorableChild(self):
     # Assume .cls in a ClassType X in module1 was referencing something for

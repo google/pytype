@@ -339,6 +339,7 @@ class _Parser(object):
     self._constants = []
     self._aliases = []
     self._classes = []
+    self._modules = []
     self._type_params = []
     self._module_path_map = {}
     self._generated_classes = collections.defaultdict(list)
@@ -434,12 +435,23 @@ class _Parser(object):
       raise ParseError(
           "Module-level functions with property decorators: " + prop_names)
 
+    module_aliases = {}
+    for item in self._modules:
+      if item.alias and item.alias in module_aliases:
+        existing = module_aliases[item.alias]
+        if existing != item:
+          raise ParseError(
+              "Duplicate import aliases: %s as %s, %s as %s" % (
+                  existing.name, existing.alias, item.name, item.alias))
+      module_aliases[item.alias] = item
+
     return pytd.TypeDeclUnit(name=None,
                              is_package=False,
                              constants=tuple(constants),
                              type_params=tuple(self._type_params),
                              functions=tuple(functions),
                              classes=tuple(classes),
+                             modules=tuple(self._modules),
                              aliases=tuple(self._aliases))
 
   def set_error_location(self, location):
@@ -601,6 +613,17 @@ class _Parser(object):
     else:
       assert False, "Unknown type of assignment"
 
+  def _add_module(self, import_item, from_package):
+    if isinstance(import_item, tuple):
+      assert len(import_item) == 2
+      name, alias = import_item
+      self._modules.append(pytd.Module(name, alias, from_package))
+      # aliases with from_package are added to module_path_map in add_import.
+      if not from_package:
+        self._module_path_map[alias] = name
+    else:
+      self._modules.append(pytd.Module(import_item, None, from_package))
+
   def add_import(self, from_package, import_list):
     """Add an import.
 
@@ -632,6 +655,8 @@ class _Parser(object):
           # contents of the imported module.
           assert new_name == name
           new_name = t.name
+        else:
+          self._add_module((name, new_name), from_package)
         self._type_map[new_name] = t
         if from_package != "typing" or self._ast_name == "protocols":
           self._aliases.append(pytd.Alias(new_name, t))
@@ -640,10 +665,7 @@ class _Parser(object):
       # No need to check _current_condition since there are no side effects.
       # import a, b as c, ...
       for item in import_list:
-        # simple import, no impact on pyi, but check for unsupported rename.
-        if isinstance(item, tuple):
-          raise ParseError(
-              "Renaming of modules not supported. Use 'from' syntax.")
+        self._add_module(item, None)
 
   def new_type(self, name, parameters=None):
     """Return the AST for a type.
