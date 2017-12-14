@@ -864,7 +864,7 @@ class Solver(object):
             # new CFG node.
             removed = new_state.RemoveFinishedGoals()
             removed.add(goal)
-            if _GoalsConflict(removed):
+            if _GoalsConflict(removed | new_state.goals):
               pass  # We bulk-removed goals that are internally conflicting.
             elif self._RecallOrFindSolution(new_state, seen_goals | new_goals):
               return True

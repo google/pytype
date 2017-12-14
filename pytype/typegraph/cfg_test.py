@@ -859,6 +859,33 @@ class CFGTest(unittest.TestCase):
     p.default_data = 1
     self.assertEqual(p.default_data, 1)
 
+  def testConditionConflict(self):
+    # v1 = x or y or z  # node_in
+    # condition = v1 is x  # node_in
+    # if condition:  # node_if
+    #   assert v1 is x
+    #   assert v1 is not y and v1 is not z
+    # else:  # node_else
+    #   assert v1 is not x
+    #   assert v1 is y or v1 is z
+    p = cfg.Program()
+    node_in = p.NewCFGNode("node_in")
+    v1 = p.NewVariable()
+    bx = v1.AddBinding("x", [], node_in)
+    by = v1.AddBinding("y", [], node_in)
+    bz = v1.AddBinding("z", [], node_in)
+    condition_true = p.NewVariable().AddBinding(True, [bx], node_in)
+    condition_false = condition_true.variable.AddBinding(False, [by], node_in)
+    condition_false.AddOrigin(node_in, [bz])
+    b_if = p.NewVariable().AddBinding("if", [condition_true], node_in)
+    b_else = p.NewVariable().AddBinding("else", [condition_false], node_in)
+    node_if = node_in.ConnectNew("node_if", b_if)
+    node_else = node_in.ConnectNew("node_else", b_else)
+    self.assertTrue(b_if.IsVisible(node_if))
+    self.assertFalse(b_else.IsVisible(node_if))
+    self.assertFalse(b_if.IsVisible(node_else))
+    self.assertTrue(b_else.IsVisible(node_else))
+
 
 if __name__ == "__main__":
   unittest.main()
