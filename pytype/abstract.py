@@ -3396,6 +3396,11 @@ class BuildClass(AtomicAbstractValue):
 
   def call(self, node, _, args):
     funcvar, name = args.posargs[0:2]
+    kwargs = args.namedargs.pyval
+    # TODO(mdemello): Check if there are any changes between python2 and
+    # python3 in the final metaclass computation.
+    # TODO(mdemello): Any remaining kwargs need to be passed to the metaclass.
+    metaclass = kwargs.get("metaclass", None)
     if len(funcvar.bindings) != 1:
       raise ConversionError("Invalid ambiguous argument to __build_class__")
     func, = funcvar.data
@@ -3408,7 +3413,7 @@ class BuildClass(AtomicAbstractValue):
                         new_locals=True)
     func.f_locals = func.last_frame.f_locals
     return node, self.vm.make_class(
-        node, name, list(bases), func.f_locals.to_variable(node), None)
+        node, name, list(bases), func.f_locals.to_variable(node), metaclass)
 
 
 class Unsolvable(AtomicAbstractValue):

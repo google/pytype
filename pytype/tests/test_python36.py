@@ -223,6 +223,19 @@ class TestPython36(test_base.BaseTest):
       importlib = ...  # type: module
     """)
 
+  def test_iter(self):
+    ty = self.Infer("""
+      a = next(iter([1, 2, 3]))
+      b = next(iter([1, 2, 3]), default = 4)
+      c = next(iter([1, 2, 3]), "hello")
+    """, deep=False)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Union
+      a = ...  # type: int
+      b = ...  # type: int
+      c = ...  # type: Union[int, str]
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

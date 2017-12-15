@@ -913,14 +913,31 @@ class VirtualMachine(object):
 
   def call_function_from_stack(self, state, num, starargs, starstarargs):
     """Pop arguments for a function and call it."""
-    num_kw, num_pos = divmod(num, 256)
 
-    # TODO(kramm): Can we omit creating this Dict if num_kw=0?
     namedargs = abstract.Dict(self)
-    for _ in range(num_kw):
-      state, (key, val) = state.popn(2)
-      namedargs.setitem_slot(state.node, key, val)
-    state, posargs = state.popn(num_pos)
+
+    # The way arguments are put on the stack changed in python 3.6:
+    #   https://github.com/python/cpython/blob/3.5/Python/ceval.c#L4712
+    #   https://github.com/python/cpython/blob/3.6/Python/ceval.c#L4806
+    if self.python_version < (3, 6):
+      num_kw, num_pos = divmod(num, 256)
+
+      # TODO(kramm): Can we omit creating this Dict if num_kw=0?
+      for _ in range(num_kw):
+        state, (key, val) = state.popn(2)
+        namedargs.setitem_slot(state.node, key, val)
+      state, posargs = state.popn(num_pos)
+    else:
+      state, args = state.popn(num)
+      if starstarargs:
+        kwnames = abstract.get_atomic_python_constant(starstarargs, tuple)
+        n = len(args) - len(kwnames)
+        for key, arg in zip(kwnames, args[n:]):
+          namedargs.setitem_slot(state.node, key, arg)
+        posargs = args[0:n]
+        starstarargs = None
+      else:
+        posargs = args
 
     state, func = state.pop()
     state, ret = self.call_function_with_state(

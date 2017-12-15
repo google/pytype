@@ -186,6 +186,15 @@ class TestPython3(test_base.BaseTest):
       g(foo)
     """)
 
+  def test_metaclass_kwarg(self):
+    self.Check("""
+      import abc
+      class Example(metaclass=abc.ABCMeta):
+        @abc.abstractmethod
+        def foo(self) -> int:
+          return None
+    """)
+
 
 class TypingMethodsTest(test_base.TypingTest):
   """Tests for typing.py specific to python3."""
