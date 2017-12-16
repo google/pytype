@@ -1566,8 +1566,15 @@ class VerifyVisitor(Visitor):
     node.Validate()
 
   def _AssertNoDuplicates(self, node, attrs):
+    """Checks that we don't have duplicate top-level names."""
+
     attr_to_set = {attr: {entry.name for entry in getattr(node, attr)}
                    for attr in attrs}
+    # TODO(mdemello): Hack because some Modules in a TypeDeclUnit can duplicate
+    # NamedTypes, so we need to filter those out.
+    if "modules" in attrs:
+      attr_to_set["modules"] = {
+          entry.name for entry in node.modules if not entry.from_package}
     # Do a quick sanity check first, and a deeper check if that fails.
     total1 = len(set.union(*attr_to_set.values()))  # all distinct names
     total2 = sum(map(len, attr_to_set.values()), 0)  # all names
@@ -1580,7 +1587,7 @@ class VerifyVisitor(Visitor):
 
   def EnterTypeDeclUnit(self, node):
     self._AssertNoDuplicates(node, ["constants", "type_params", "classes",
-                                    "functions", "aliases"])
+                                    "functions", "aliases", "modules"])
     self._all_templates = set()
 
   def LeaveTypeDeclUnit(self, node):
@@ -1768,7 +1775,7 @@ class CollectDependencies(Visitor):
     self.EnterNamedType(t)
 
   def EnterTypeDeclUnit(self, t):
-    self.modules = set([(x.from_package, x.name) for x in t.modules])
+    self.modules = set([(x.from_package, x.module_name) for x in t.modules])
     # aliases with a from package are resolved later, and needn't be filtered
     # out here.
     self.aliases = {

@@ -89,11 +89,11 @@ class TypeDeclUnit(node.Node('name: str or None',
       self._name2item = {}
       for x in self.type_params:
         self._name2item[x.full_name] = x
-      for x in self.constants + self.functions + self.classes + self.aliases:
-        if x.name in self._name2item:
-          raise AttributeError(
-              'Duplicate name %s found: %s and %s' % (
-                  x.name, type(self._name2item[x.name]), type(x)))
+      # We store imported names as modules too in case they don't resolve as
+      # anything else, but that should have lower priority, so put modules
+      # first and let them be overwritten if we find the same name later.
+      for x in (self.modules + self.constants + self.functions + self.classes +
+                self.aliases):
         self._name2item[x.name] = x
       return self._name2item[name]
 
@@ -139,15 +139,37 @@ class Alias(node.Node('name: str', 'type: {Type} or Constant')):
   __slots__ = ()
 
 
-class Module(node.Node('name: str', 'alias: str or None',
+class Module(node.Node('name: str', 'module_name: str',
                        'from_package: str or None')):
-  """A module imported into the current module, possibly with an alias."""
+  """A module imported into the current module, possibly with an alias.
+
+  The fields record the parts of the import statement:
+    import x.y -> {name: x.y, module_name: x.y, from_package: None}
+    import x.y as z -> {name: z, module_name: x.y, from_package: None}
+    from v.w import x -> {name: x, module_name: x, from_package: v.w}
+    from v.w import x as z -> {name: z, module_name: x, from_package: v.w}
+
+  For relative imports, the current TypeDeclUnit is referred to as __PACKAGE__
+  (see the QualifyRelativeNames visitor).
+
+  Attributes:
+    name: The module name, or the alias if imported via "x as y".
+    module_name: The name of the module (could contain dots).
+    from_package: The name of the package the module is imported from.
+  """
+
   __slots__ = ()
 
   @property
   def full_name(self):
     if self.from_package:
-      return self.from_package + '.' + self.name
+      return self.from_package + '.' + self.module_name
+    return self.module_name
+
+  @property
+  def alias(self):
+    if self.name == self.module_name:
+      return None
     return self.name
 
 

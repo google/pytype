@@ -442,7 +442,8 @@ class _Parser(object):
         if existing != item:
           raise ParseError(
               "Duplicate import aliases: %s as %s, %s as %s" % (
-                  existing.name, existing.alias, item.name, item.alias))
+                  existing.module_name, existing.alias,
+                  item.module_name, item.alias))
       module_aliases[item.alias] = item
 
     return pytd.TypeDeclUnit(name=None,
@@ -617,12 +618,15 @@ class _Parser(object):
     if isinstance(import_item, tuple):
       assert len(import_item) == 2
       name, alias = import_item
-      self._modules.append(pytd.Module(name, alias, from_package))
+      self._modules.append(pytd.Module(name=alias, module_name=name,
+                                       from_package=from_package))
       # aliases with from_package are added to module_path_map in add_import.
       if not from_package:
         self._module_path_map[alias] = name
     else:
-      self._modules.append(pytd.Module(import_item, None, from_package))
+      self._modules.append(
+          pytd.Module(name=import_item, module_name=import_item,
+                      from_package=from_package))
 
   def add_import(self, from_package, import_list):
     """Add an import.
