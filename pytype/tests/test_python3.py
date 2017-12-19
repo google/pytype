@@ -195,6 +195,14 @@ class TestPython3(test_base.BaseTest):
           return None
     """)
 
+  def test_bytearray_slice(self):
+    self.Check("""
+      def f(x: bytearray) -> bytearray:
+        return x[1:]
+      def g(x: bytearray) -> bytearray:
+        return x[1:5:2]
+    """)
+
 
 class TypingMethodsTest(test_base.TypingTest):
   """Tests for typing.py specific to python3."""

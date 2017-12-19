@@ -333,6 +333,8 @@ class bytearray(Sequence[int]):
     def __contains__(self, y: str or int or bytearray) -> bool
     def __delitem__(self, y: int) -> NoneType
     def __getitem__(self, index: int) -> int
+    def __getitem__(self, index: slice) -> bytearray
+    def __getslice__(self, ...) -> bytearray
     def __iter__(self) -> bytearray_iterator
     def __len__(self) -> int
     def __mul__(self, n: int) -> bytearray

@@ -307,6 +307,15 @@ class BuiltinTests3(test_base.BaseTest):
       e = ...  # type: int or str
     """)
 
+  def testBytearraySlice(self):
+    self.Check("""
+      from __future__ import google_type_annotations
+      def f(x: bytearray) -> bytearray:
+        return x[1:]
+      def g(x: bytearray) -> bytearray:
+        return x[1:5:2]
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()
