@@ -100,7 +100,7 @@ class CallTracer(vm.VirtualMachine):
       A tuple of a node and an abstract.FunctionArgs object.
     """
     args = []
-    for i in range(method.argcount()):
+    for i in range(method.argcount(node)):
       node, arg = self.create_argument(node, method.signature,
                                        method.signature.param_names[i])
       args.append(arg)

@@ -295,6 +295,57 @@ class DecoratorsTest(test_base.BaseTest):
     """)
     self.assertErrorLogIs(errors, [(6, "attribute-error", r"Goodbye")])
 
+  def testUnknownDecorator(self):
+    self.Check("""
+      class Foo(object):
+        @classmethod
+        @__any_object__
+        def bar(cls):
+          pass
+      Foo.bar()
+    """)
+
+  def testInstanceAsDecorator(self):
+    self.Check("""
+      class Decorate(object):
+        def __call__(self, func):
+          return func
+      class Foo(object):
+        @classmethod
+        @Decorate()
+        def bar(cls):
+          pass
+      Foo.bar()
+    """)
+
+  def testInstanceAsDecoratorError(self):
+    errors = self.CheckWithErrors("""\
+      class Decorate(object):
+        def __call__(self, func):
+          return func
+      class Foo(object):
+        @classmethod
+        @Decorate  # forgot to instantiate Decorate
+        def bar(cls):
+          pass
+      Foo.bar()
+    """)
+    self.assertErrorLogIs(errors, [(6, "wrong-arg-count", r"Decorate.*1.*2")])
+
+  def testUncallableInstanceAsDecorator(self):
+    errors = self.CheckWithErrors("""\
+      class Decorate(object):
+        pass  # forgot to define __call__
+      class Foo(object):
+        @classmethod
+        @Decorate  # forgot to instantiate Decorate
+        def bar(cls):
+          pass
+      Foo.bar()
+    """)
+    self.assertErrorLogIs(errors, [(5, "wrong-arg-count", r"Decorate.*1.*2"),
+                                   (8, "not-callable", r"Decorate")])
+
 
 if __name__ == "__main__":
   test_base.main()

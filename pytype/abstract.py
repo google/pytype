@@ -249,6 +249,10 @@ class AtomicAbstractValue(object):
     """
     raise NotImplementedError(self.__class__.__name__)
 
+  def argcount(self, node):
+    """Returns the minimum number of arguments needed for a call."""
+    raise NotImplementedError(self.__class__.__name__)
+
   def is_closure(self):
     """Return whether this is a closure. Overridden by subclasses.
 
@@ -701,6 +705,16 @@ class SimpleAbstractValue(AtomicAbstractValue):
       raise NoneNotCallable()
     else:
       raise NotCallable(self)
+
+  def argcount(self, node):
+    node, var = self.vm.attribute_handler.get_attribute(
+        node, self, "__call__", self.to_binding(node))
+    if var and var.bindings:
+      return min(v.argcount(node) for v in var.data)
+    else:
+      # It doesn't matter what we return here, since any attempt to call this
+      # value will lead to a not-callable error anyways.
+      return 0
 
   def __repr__(self):
     if self.cls:
@@ -1457,10 +1471,6 @@ class Function(SimpleAbstractValue):
     # this function. See test_duplicate_getproperty() in tests/test_flow.py.
     return self.bound_class(callself, callcls, self)
 
-  def argcount(self):
-    """Returns the minimum number of arguments needed for a call."""
-    raise NotImplementedError(self.__class__.__name__)
-
   def _match_args(self, node, args):
     """Check whether the given arguments can match the function signature."""
     if not all(a.bindings for a in args.posargs):
@@ -1855,7 +1865,7 @@ class PyTDFunction(Function):
     else:
       return super(PyTDFunction, self).property_get(callself, callcls)
 
-  def argcount(self):
+  def argcount(self, _):
     return min(sig.signature.mandatory_param_count() for sig in self.signatures)
 
   def _log_args(self, arg_values_list, level=0, logged=None):
@@ -2671,7 +2681,7 @@ class NativeFunction(Function):
     self.func = func
     self.bound_class = lambda callself, callcls, underlying: self
 
-  def argcount(self):
+  def argcount(self, _):
     return self.func.func_code.co_argcount
 
   def call(self, node, _, args):
@@ -2861,7 +2871,7 @@ class InterpreterFunction(Function):
   def is_closure(self):
     return self.closure is not None
 
-  def argcount(self):
+  def argcount(self, _):
     return self.code.co_argcount
 
   def _map_args(self, node, args):
@@ -3158,8 +3168,8 @@ class BoundFunction(AtomicAbstractValue):
     self.underlying = underlying
     self.is_attribute_of_class = False
 
-  def argcount(self):
-    return self.underlying.argcount() - 1  # account for self
+  def argcount(self, node):
+    return self.underlying.argcount(node) - 1  # account for self
 
   @property
   def signature(self):
@@ -3170,7 +3180,7 @@ class BoundFunction(AtomicAbstractValue):
       self.vm.callself_stack.append(self._callself)
     # The "self" parameter is automatically added to the list of arguments, but
     # only if the function actually takes any arguments.
-    if self.argcount() >= 0:
+    if self.argcount(node) >= 0:
       args = args.replace(posargs=(self._callself,) + args.posargs)
     try:
       return self.underlying.call(node, func, args)
@@ -3448,6 +3458,9 @@ class Unsolvable(AtomicAbstractValue):
     # return ourself.
     return node, self.to_variable(node)
 
+  def argcount(self, _):
+    return 0
+
   def to_variable(self, node):
     return self.vm.program.NewVariable([self], source_set=[], where=node)
 
@@ -3544,6 +3557,9 @@ class Unknown(AtomicAbstractValue):
         node, source=self.owner, action="call:" + self.name)
     self._calls.append((args.posargs, args.namedargs, ret))
     return node, ret
+
+  def argcount(self, _):
+    return 0
 
   def to_variable(self, node):
     v = self.vm.program.NewVariable()
