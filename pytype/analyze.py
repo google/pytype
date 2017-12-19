@@ -677,8 +677,8 @@ def infer_types(src, errorlog, options, loader,
   snapshotter.take_snapshot("analyze:infer_types:post")
   ast = tracer.compute_types(defs)
   ast = tracer.loader.resolve_ast(ast)
-  if tracer.has_unknown_wildcard_imports or ("HAS_DYNAMIC_ATTRIBUTES" in defs or
-                                             "has_dynamic_attributes" in defs):
+  if tracer.has_unknown_wildcard_imports or any(
+      a in defs for a in abstract.DYNAMIC_ATTRIBUTE_MARKERS):
     try:
       ast.Lookup("__getattr__")
     except KeyError:

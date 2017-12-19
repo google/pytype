@@ -528,9 +528,18 @@ class TestAttributes(test_base.BaseTest):
 
   def testHasDynamicAttributes(self):
     self.Check("""\
-      class Foo(object):
+      class Foo1(object):
         has_dynamic_attributes = True
-      Foo().baz
+      class Foo2(object):
+        _has_dynamic_attributes = True
+      class Foo3(object):
+        HAS_DYNAMIC_ATTRIBUTES = True
+      class Foo4(object):
+        _HAS_DYNAMIC_ATTRIBUTES = True
+      Foo1().baz
+      Foo2().baz
+      Foo3().baz
+      Foo4().baz
     """)
 
   def testHasDynamicAttributesUpperCase(self):

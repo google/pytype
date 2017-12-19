@@ -37,6 +37,14 @@ ARGS = "_ARGS"
 RET = "_RET"
 
 
+DYNAMIC_ATTRIBUTE_MARKERS = [
+    "HAS_DYNAMIC_ATTRIBUTES",
+    "_HAS_DYNAMIC_ATTRIBUTES",
+    "has_dynamic_attributes",
+    "_has_dynamic_attributes",
+]
+
+
 class ConversionError(ValueError):
   pass
 
@@ -784,8 +792,7 @@ class Instance(SimpleAbstractValue):
     super(Instance, self).__init__(cls.name, vm)
     self.cls = cls.to_variable(vm.root_cfg_node)
     if (isinstance(cls, (InterpreterClass, PyTDClass)) and
-        ("has_dynamic_attributes" in cls or
-         "HAS_DYNAMIC_ATTRIBUTES" in cls)):
+        any(a in cls for a in DYNAMIC_ATTRIBUTE_MARKERS)):
       self.maybe_missing_members = True
     cls.register_instance(self)
     bad_names = set()
