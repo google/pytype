@@ -1046,6 +1046,33 @@ class ImportTest(test_base.BaseTest):
         w = ...  # type: pkg.g.Z
       """)
 
+  def testMutualImports(self):
+    with utils.Tempdir() as d:
+      d.create_file("pkg/a.pyi", """
+        from typing import TypeVar, Generic, List
+        from .b import Foo
+        T = TypeVar('T')
+        class Bar(Foo, List[T], Generic[T]): ...
+        class Baz(List[T], Generic[T]): ...
+      """)
+      d.create_file("pkg/b.pyi", """
+        from typing import TypeVar, Generic
+        from .a import Baz
+        T = TypeVar('T')
+        class Foo(): ...
+        class Quux(Baz[T], Generic[T]): ...
+      """)
+      ty = self.Infer("""from pkg.a import *""", pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """\
+        import pkg.a
+        import pkg.b
+        from typing import Type, TypeVar
+        Bar = ...  # type: Type[pkg.a.Bar]
+        Baz = ...  # type: Type[pkg.a.Baz]
+        Foo = ...  # type: Type[pkg.b.Foo]
+        T = TypeVar('T')
+      """)
+
 
 if __name__ == "__main__":
   test_base.main()
