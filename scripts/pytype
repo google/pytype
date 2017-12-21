@@ -43,11 +43,11 @@ def _read_source_file(input_filename):
     raise utils.UsageError("Could not load input file %s" % input_filename)
 
 
-def check_pyi(input_filename, errorlog, options):
+def check_pyi(input_filename, errorlog, options, loader):
   src = _read_source_file(input_filename)
   analyze.check_types(
       src=src,
-      loader=_create_loader(input_filename, options),
+      loader=loader,
       filename=input_filename,
       errorlog=errorlog,
       options=options,
@@ -144,13 +144,14 @@ def process_one_file(input_filename,
   errorlog = errors.ErrorLog()
   result = pytd_builtins.DEFAULT_SRC
   ast = pytd_builtins.GetDefaultAst(options.python_version)
+  loader = _create_loader(input_filename, options)
   try:
     if options.check:
       check_pyi(input_filename=input_filename,
                 errorlog=errorlog,
-                options=options)
+                options=options,
+                loader=loader)
     else:
-      loader = _create_loader(input_filename, options)
       result, ast = generate_pyi(input_filename=input_filename,
                                  errorlog=errorlog,
                                  options=options,
@@ -188,12 +189,12 @@ def process_one_file(input_filename,
       if options.output_pickled:
         try:
           ast = serialize_ast.PrepareForExport(
-              options.module_name, options.python_version, ast)
+              options.module_name, options.python_version, ast, loader)
         except parser.ParseError as e:
           if options.nofail:
             ast = serialize_ast.PrepareForExport(
                 options.module_name, options.python_version,
-                pytd_builtins.GetDefaultAst(options.python_version))
+                pytd_builtins.GetDefaultAst(options.python_version), loader)
             log.warn("***Caught exception: %s", str(e), exc_info=True)
           else:
             raise

@@ -60,7 +60,7 @@ def LoadPrecompiled(filename, python_version):
   _cached_builtins_pytd = Cache(python_version, pytd_utils.LoadPickle(filename))
 
 
-def GetBuiltinsAndTyping(python_version):
+def GetBuiltinsAndTyping(python_version):  # Deprecated. Use load_pytd instead.
   """Get __builtin__.pytd and typing.pytd."""
   assert python_version
   global _cached_builtins_pytd
@@ -94,7 +94,7 @@ def GetBuiltinsAndTyping(python_version):
   return _cached_builtins_pytd.cache
 
 
-def GetBuiltinsPyTD(python_version):
+def GetBuiltinsPyTD(python_version):  # Deprecated. Use Loader.concat_all.
   """Get the "default" AST used to lookup built in types.
 
   Get an AST for all Python builtins as well as the most commonly used standard

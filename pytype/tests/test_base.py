@@ -21,7 +21,6 @@ from pytype.pytd import optimize
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import serialize_ast
-from pytype.pytd.parse import builtins
 from pytype.pytd.parse import visitors
 
 import unittest
@@ -40,6 +39,17 @@ class BaseTest(unittest.TestCase):
 
   # Can be overwritten by subclasses
   PYTHON_EXE = None
+
+  @classmethod
+  def setUpClass(cls):
+    # This is the default loader. It might get shadowed.
+    cls.loader = load_pytd.Loader(None, cls.PYTHON_VERSION)
+
+  def tearDown(self):
+    # Some tests create their own loader, and store it under self.loader. Clean
+    # up after those tests.
+    if "loader" in self.__dict__:
+      del self.loader  # delete the loader from the instance, keep the class one
 
   def setUp(self):
     self.options = config.Options.create(python_version=self.PYTHON_VERSION,
@@ -104,12 +114,13 @@ class BaseTest(unittest.TestCase):
     """Run an inference smoke test for the given code."""
     self.options.tweak(skip_repeat_calls=skip_repeat_calls)
     errorlog = errors.ErrorLog()
-    loader = load_pytd.Loader(self.options.module_name, self.PYTHON_VERSION,
-                              pythonpath=pythonpath)
+    if pythonpath:
+      self.loader = load_pytd.Loader(
+          self.options.module_name, self.PYTHON_VERSION, pythonpath=pythonpath)
     try:
       analyze.check_types(
-          textwrap.dedent(code), filename, loader=loader, errorlog=errorlog,
-          options=self.options, **kwargs)
+          textwrap.dedent(code), filename, loader=self.loader,
+          errorlog=errorlog, options=self.options, **kwargs)
     except directors.SkipFile:
       pass
     if report_errors and len(errorlog):
@@ -122,10 +133,11 @@ class BaseTest(unittest.TestCase):
   def _SetUpErrorHandling(self, code, pythonpath):
     code = textwrap.dedent(code)
     errorlog = errors.ErrorLog()
-    loader = load_pytd.Loader(self.options.module_name, self.PYTHON_VERSION,
-                              pythonpath=pythonpath)
+    if pythonpath:
+      self.loader = load_pytd.Loader(
+          self.options.module_name, self.PYTHON_VERSION, pythonpath=pythonpath)
     return {"src": code, "errorlog": errorlog, "options": self.options,
-            "loader": loader}
+            "loader": self.loader}
 
   def InferWithErrors(self, code, deep=True, pythonpath=(), **kwargs):
     kwargs.update(self._SetUpErrorHandling(code, pythonpath))
@@ -145,11 +157,11 @@ class BaseTest(unittest.TestCase):
     with open(filename, "rb") as fi:
       code = fi.read()
       errorlog = errors.ErrorLog()
-      loader = load_pytd.Loader(
+      self.loader = load_pytd.Loader(
           analyze.get_module_name(filename, pythonpath), self.PYTHON_VERSION,
           pythonpath=pythonpath)
-      unit, _ = analyze.infer_types(code, errorlog, self.options, loader=loader,
-                                    filename=filename)
+      unit, _ = analyze.infer_types(code, errorlog, self.options,
+                                    loader=self.loader, filename=filename)
       unit.Visit(visitors.VerifyVisitor())
       return pytd_utils.CanonicalOrdering(unit)
 
@@ -289,15 +301,15 @@ class BaseTest(unittest.TestCase):
 
   def _Pickle(self, ast, module_name):
     assert module_name
-    ast = serialize_ast.PrepareForExport(module_name, self.PYTHON_VERSION, ast)
+    ast = serialize_ast.PrepareForExport(
+        module_name, self.PYTHON_VERSION, ast, self.loader)
     return serialize_ast.StoreAst(ast)
 
   def PicklePyi(self, src, module_name):
     src = textwrap.dedent(src)
     ast = parser.parse_string(src, python_version=self.PYTHON_VERSION)
     ast = ast.Visit(visitors.LookupBuiltins(
-        builtins.GetBuiltinsAndTyping(self.PYTHON_VERSION)[0],
-        full_names=False))
+        self.loader.builtins, full_names=False))
     return self._Pickle(ast, module_name)
 
   def Infer(self, srccode, pythonpath=(), deep=True,
@@ -339,14 +351,14 @@ class BaseTest(unittest.TestCase):
     """
     self.options.tweak(module_name=module_name, quick=quick)
     errorlog = errors.ErrorLog()
-    loader = load_pytd.PickledPyiLoader(
+    self.loader = load_pytd.PickledPyiLoader(
         use_pickled_typeshed=False,
         base_module=module_name,
         python_version=self.PYTHON_VERSION,
         pythonpath=[""] if (not pythonpath and imports_map) else pythonpath,
         imports_map=imports_map)
     unit, builtins_pytd = analyze.infer_types(
-        src, errorlog, self.options, loader=loader, **kwargs)
+        src, errorlog, self.options, loader=self.loader, **kwargs)
     unit.Visit(visitors.VerifyVisitor())
     unit = pytd_utils.CanonicalOrdering(unit)
     if report_errors and len(errorlog):
@@ -360,8 +372,7 @@ class BaseTest(unittest.TestCase):
     pytd_tree = parser.parse_string(
         textwrap.dedent(pytd_src), python_version=version)
     pytd_tree = pytd_tree.Visit(visitors.LookupBuiltins(
-        builtins.GetBuiltinsAndTyping(self.PYTHON_VERSION)[0],
-        full_names=False))
+        self.loader.builtins, full_names=False))
     pytd_tree = pytd_tree.Visit(visitors.LookupLocalTypes())
     pytd_tree = pytd_tree.Visit(
         visitors.ClassTypeToNamedType())

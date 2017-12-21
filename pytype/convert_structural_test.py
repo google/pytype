@@ -4,9 +4,9 @@ import textwrap
 import unittest
 
 from pytype import convert_structural
+from pytype import load_pytd
 from pytype.pyi import parser
 from pytype.pytd import pytd
-from pytype.pytd.parse import builtins
 from pytype.pytd.parse import visitors
 from pytype.tests import test_base
 import unittest
@@ -18,12 +18,12 @@ class MatchTest(unittest.TestCase):
 
   @classmethod
   def setUpClass(cls):
-    cls.builtins_pytd = builtins.GetBuiltinsPyTD(cls.PYTHON_VERSION)
+    cls.loader = load_pytd.Loader("", cls.PYTHON_VERSION)
+    cls.builtins_pytd = cls.loader.builtins
 
   def parse(self, src):
     ast = parser.parse_string(textwrap.dedent(src))
-    ast = ast.Visit(visitors.LookupBuiltins(
-        builtins.GetBuiltinsAndTyping(self.PYTHON_VERSION)[0]))
+    ast = ast.Visit(visitors.LookupBuiltins(self.builtins_pytd))
     return ast
 
   def parse_and_solve(self, src):

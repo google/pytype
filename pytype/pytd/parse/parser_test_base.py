@@ -18,9 +18,9 @@
 import os
 import sys
 import textwrap
+from pytype import load_pytd
 from pytype.pyi import parser
 from pytype.pytd import pytd
-from pytype.pytd.parse import builtins
 from pytype.pytd.parse import visitors
 import unittest
 
@@ -29,6 +29,10 @@ class ParserTest(unittest.TestCase):
   """Test utility class. Knows how to parse PYTD and compare source code."""
 
   PYTHON_VERSION = (2, 7)
+
+  @classmethod
+  def setUpClass(cls):
+    cls.loader = load_pytd.Loader(None, cls.PYTHON_VERSION)
 
   def Parse(self, src, name=None, version=None, platform=None):
     version = version or self.PYTHON_VERSION
@@ -46,12 +50,13 @@ class ParserTest(unittest.TestCase):
   def ParseWithBuiltins(self, src):
     ast = parser.parse_string(textwrap.dedent(src),
                               python_version=self.PYTHON_VERSION)
-    b, t = builtins.GetBuiltinsAndTyping(self.PYTHON_VERSION)
     ast = ast.Visit(visitors.LookupExternalTypes(
-        {"__builtin__": b, "typing": t}, full_names=True))
+        {"__builtin__": self.loader.builtins,
+         "typing": self.loader.typing}, full_names=True))
     ast = ast.Visit(visitors.NamedTypeToClassType())
     ast = ast.Visit(visitors.AdjustTypeParameters())
-    ast.Visit(visitors.FillInLocalPointers({"": ast, "__builtin__": b}))
+    ast.Visit(visitors.FillInLocalPointers({
+        "": ast, "__builtin__": self.loader.builtins}))
     ast.Visit(visitors.VerifyVisitor())
     return ast
 

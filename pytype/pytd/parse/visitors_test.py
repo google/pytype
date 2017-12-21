@@ -19,7 +19,6 @@ import textwrap
 
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
-from pytype.pytd.parse import builtins as parser_builtins
 from pytype.pytd.parse import parser_test_base
 from pytype.pytd.parse import visitors
 import unittest
@@ -675,8 +674,6 @@ class TestVisitors(parser_test_base.ParserTest):
     self.assertIsNone(t.cls)
 
   def testExpandCompatibleBuiltins(self):
-    b, _ = parser_builtins.GetBuiltinsAndTyping(self.PYTHON_VERSION)
-
     src = textwrap.dedent("""
         from typing import Tuple, Union
         def f1(a: float) -> None: ...
@@ -706,11 +703,11 @@ class TestVisitors(parser_test_base.ParserTest):
         def f8(a: Tuple[Union[unicode, bytes, str], int]) -> None: ...
     """)
 
-    src_tree, expected_tree = (self.Parse(s)
-                               .Visit(visitors.LookupBuiltins(b))
-                               for s in (src, expected))
-
-    new_tree = src_tree.Visit(visitors.ExpandCompatibleBuiltins(b))
+    src_tree, expected_tree = (
+        self.Parse(s).Visit(visitors.LookupBuiltins(self.loader.builtins))
+        for s in (src, expected))
+    new_tree = src_tree.Visit(visitors.ExpandCompatibleBuiltins(
+        self.loader.builtins))
     self.AssertSourceEquals(new_tree, expected_tree)
 
   def testAddNamePrefix(self):
@@ -927,8 +924,7 @@ class TestVisitors(parser_test_base.ParserTest):
 
   def testLookupTypingClass(self):
     node = visitors.LookupClasses(pytd.NamedType("typing.Sequence"),
-                                  parser_builtins.GetBuiltinsPyTD(
-                                      self.PYTHON_VERSION))
+                                  self.loader.concat_all())
     assert node.cls
 
   def testCreateTypeParametersFromUnknowns(self):

@@ -16,9 +16,9 @@
 
 import textwrap
 import unittest
+from pytype import load_pytd
 from pytype.pyi import parser
 from pytype.pytd import mro
-from pytype.pytd.parse import builtins
 from pytype.pytd.parse import parser_test_base
 from pytype.pytd.parse import visitors
 
@@ -56,10 +56,9 @@ class MroTest(parser_test_base.ParserTest):
       class Foo(Generic[T]): pass
       class Bar(Foo[int]): pass
     """), python_version=self.PYTHON_VERSION)
-    b, t = builtins.GetBuiltinsAndTyping(self.PYTHON_VERSION)
-    ast = ast.Visit(visitors.LookupExternalTypes(
-        {"__builtin__": b, "typing": t}, full_names=True))
-    ast = ast.Visit(visitors.NamedTypeToClassType())
+    ast = ast.Visit(visitors.AdjustTypeParameters())
+    loader = load_pytd.Loader(None, self.PYTHON_VERSION)
+    ast = loader.resolve_ast(ast)
     bases = mro.GetBasesInMRO(ast.Lookup("Bar"), lookup_ast=ast)
     self.assertListEqual(["Foo", "typing.Generic", "__builtin__.object"],
                          [t.name for t in bases])
