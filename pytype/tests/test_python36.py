@@ -200,11 +200,41 @@ class TestPython36(test_base.BaseTest):
     """)
 
   def test_async(self):
-    # TODO(mdemello): Add this test once we fix the typeshed issue:
-    #   Couldn't import pyi for 'asyncio'
-    #
-    # See files under test_data/async*.py
-    pass
+    """Test various asyncio features."""
+    ty = self.Infer("""
+      import asyncio
+      def log(x: str):
+        return x
+      class AsyncContextManager:
+        async def __aenter__(self):
+          await log("entering context")
+        async def __aexit__(self, exc_type, exc, tb):
+          await log("exiting context")
+      async def my_coroutine(seconds_to_sleep=0.4):
+          await asyncio.sleep(seconds_to_sleep)
+      async def test_with(x):
+        try:
+          async with x as y:
+            pass
+        finally:
+          pass
+      event_loop = asyncio.get_event_loop()
+      try:
+        event_loop.run_until_complete(my_coroutine())
+      finally:
+        event_loop.close()
+    """)
+    self.assertTypesMatchPytd(ty, """
+      import asyncio.events
+      asyncio = ...  # type: module
+      event_loop = ...  # type: asyncio.events.AbstractEventLoop
+      class AsyncContextManager:
+          def __aenter__(self) -> None: ...
+          def __aexit__(self, exc_type, exc, tb) -> None: ...
+      def log(x: str) -> str: ...
+      def my_coroutine(seconds_to_sleep = ...) -> None: ...
+      def test_with(x) -> None: ...
+    """)
 
   def test_reraise(self):
     # Test that we don't crash when trying to reraise a nonexistent exception.
