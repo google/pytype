@@ -292,7 +292,7 @@ class ParserTest(_ParserTestBase):
       import a as x
       from b import y as x""",
                      None,
-                     "Duplicate import aliases: a as x, y as x")
+                     "Duplicate definition of x")
     # the same import twice should not count as a duplicate
     self.check("""\
       import a as x

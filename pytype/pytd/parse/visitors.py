@@ -594,7 +594,8 @@ class PrintVisitor(Visitor):
     return self._BuildIntersection(type_list)
 
   def VisitModule(self, unused_node):
-    return "module"
+    """Not used in the final output."""
+    return None
 
   def _FormSetTypeList(self, node):
     """Form list of types within a set type."""
@@ -1808,14 +1809,12 @@ class QualifyRelativeNames(Visitor):
             not package_name.endswith("."))
     self.package_name = package_name
 
-  def _InsertPackageName(self, name):
-    return self.package_name + name[len("__PACKAGE__"):]
-
   def VisitNamedType(self, node):
-    if node.name.startswith("__PACKAGE__."):
-      # Generated from "from . import foo" - see parser.y
-      return node.Replace(name=self._InsertPackageName(node.name))
-    elif node.name.startswith("."):
+    # Generated from "from . import foo" - see parser.y
+    prefix, package, name = node.name.partition("__PACKAGE__.")
+    if not prefix and package:
+      return node.Replace(name=self.package_name + "." + name)
+    if node.name.startswith("."):
       name = utils.get_absolute_name(self.package_name, node.name)
       if name is None:
         raise SymbolLookupError(
@@ -1829,8 +1828,10 @@ class QualifyRelativeNames(Visitor):
     return self.VisitNamedType(t)
 
   def VisitModule(self, t):
-    if t.from_package and t.from_package.startswith("__PACKAGE__"):
-      return t.Replace(from_package=self._InsertPackageName(t.from_package))
+    if t.from_package:
+      prefix, package, name = t.from_package.partition("__PACKAGE__.")
+      if not prefix and package:
+        return t.Replace(from_package=self.package_name + "." + name)
     return t
 
 

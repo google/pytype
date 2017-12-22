@@ -440,10 +440,7 @@ class _Parser(object):
       if item.alias and item.alias in module_aliases:
         existing = module_aliases[item.alias]
         if existing != item:
-          raise ParseError(
-              "Duplicate import aliases: %s as %s, %s as %s" % (
-                  existing.module_name, existing.alias,
-                  item.module_name, item.alias))
+          raise ParseError("Duplicate definition of %s" % item.alias)
       module_aliases[item.alias] = item
 
     return pytd.TypeDeclUnit(name=None,
@@ -614,19 +611,13 @@ class _Parser(object):
     else:
       assert False, "Unknown type of assignment"
 
-  def _add_module(self, import_item, from_package):
-    if isinstance(import_item, tuple):
-      assert len(import_item) == 2
-      name, alias = import_item
-      self._modules.append(pytd.Module(name=alias, module_name=name,
-                                       from_package=from_package))
-      # aliases with from_package are added to module_path_map in add_import.
-      if not from_package:
-        self._module_path_map[alias] = name
-    else:
-      self._modules.append(
-          pytd.Module(name=import_item, module_name=import_item,
-                      from_package=from_package))
+  def _add_module(self, name, alias, from_package):
+    self._modules.append(pytd.Module(name=alias, module_name=name,
+                                     from_package=from_package))
+    # aliases with from_package are added to module_path_map in add_import.
+    if not from_package and name != alias:
+      self._module_path_map[alias] = name
+
 
   def add_import(self, from_package, import_list):
     """Add an import.
@@ -660,7 +651,7 @@ class _Parser(object):
           assert new_name == name
           new_name = t.name
         else:
-          self._add_module((name, new_name), from_package)
+          self._add_module(name, new_name, from_package)
         self._type_map[new_name] = t
         if from_package != "typing" or self._ast_name == "protocols":
           self._aliases.append(pytd.Alias(new_name, t))
@@ -669,7 +660,11 @@ class _Parser(object):
       # No need to check _current_condition since there are no side effects.
       # import a, b as c, ...
       for item in import_list:
-        self._add_module(item, None)
+        if isinstance(item, tuple):
+          name, new_name = item
+        else:
+          name = new_name = item
+        self._add_module(name, new_name, None)
 
   def new_type(self, name, parameters=None):
     """Return the AST for a type.

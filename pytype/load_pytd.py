@@ -178,7 +178,7 @@ class Loader(object):
     for name in (soft_dependencies or ()):
       if name not in self._modules:
         # We ignore any errors here; what we're trying to import might not exist
-        self._import_name(name)
+        self._import_name(name, log_failure=False)
 
   def _resolve_external_types(self, ast):
     try:
@@ -296,7 +296,7 @@ class Loader(object):
                             ast=mod)
     return None
 
-  def _import_name(self, module_name):
+  def _import_name(self, module_name, log_failure=True):
     """Load a name like 'sys' or 'foo.bar.baz'.
 
     Args:
@@ -332,15 +332,15 @@ class Loader(object):
       if mod:
         return mod
 
-    # TODO(mdemello): Now that we treat things like "from typing import Any" as
-    # possible module reexports, this warning is cluttering up our logs.
-    log.warning("Couldn't import module %s %r in (path=%r) imports_map: %s",
-                module_name, module_name, self.pythonpath,
-                "%d items" % len(self.imports_map) if
-                self.imports_map else "none")
-    if log.isEnabledFor(logging.DEBUG) and self.imports_map:
-      for module, path in self.imports_map.items():
-        log.debug("%s -> %s", module, path)
+    if log_failure:
+      log.warning("Couldn't import module %s %r in (path=%r) imports_map: %s",
+                  module_name, module_name, self.pythonpath,
+                  "%d items" % len(self.imports_map) if
+                  self.imports_map else "none")
+      if log.isEnabledFor(logging.DEBUG) and self.imports_map:
+        for module, path in self.imports_map.items():
+          log.debug("%s -> %s", module, path)
+
     return None
 
   def _import_file(self, module_name, module_name_split):
