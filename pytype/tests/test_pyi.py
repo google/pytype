@@ -753,6 +753,17 @@ class PYITest(test_base.BaseTest):
         import bar
       """, pythonpath=[d.path])
 
+  def testAliasDependency(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        import collections as foobar
+        b = foobar.OrderedDict
+      """)
+      self.Check("""
+        import foo
+        foo.b
+      """, pythonpath=[d.path])
+
 
 if __name__ == "__main__":
   test_base.main()

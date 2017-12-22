@@ -1754,32 +1754,36 @@ class AddNamePrefix(Visitor):
 
 
 class CollectDependencies(Visitor):
-  """Visitor for retrieving module names from external types."""
+  """Visitor for retrieving module names from external types.
+
+  Needs to be called on a TypeDeclUnit.
+  """
 
   def __init__(self):
     super(CollectDependencies, self).__init__()
-    self.modules = set()
-    self.aliases = set()
+
+  def EnterTypeDeclUnit(self, t):
+    self.modules = set(x.module_name
+                       for x in t.modules
+                       if not x.from_package)
+    self.maybe_modules = set(x.from_package + "." + x.module_name
+                             for x in t.modules
+                             if x.from_package)
 
   def EnterNamedType(self, t):
     module_name, dot, unused_name = t.name.rpartition(".")
-    # If we have a relative import that did not get qualified (usually due to an
-    # empty package_name), don't insert module_name='' into the dependencies; we
-    # get a better error message if we filter it out here and fail later on.
-    if dot and module_name and module_name not in self.aliases:
-      self.modules.add(module_name)
-    elif dot:
-      logging.warning("Empty package name: %s", t.name)
+    if dot:
+      if module_name:
+        self.modules.add(module_name)
+      else:
+        # If we have a relative import that did not get qualified (usually due
+        # to an empty package_name), don't insert module_name='' into the
+        # dependencies; we get a better error message if we filter it out here
+        # and fail later on.
+        logging.warning("Empty package name: %s", t.name)
 
   def EnterClassType(self, t):
     self.EnterNamedType(t)
-
-  def EnterTypeDeclUnit(self, t):
-    self.modules = set([(x.from_package, x.module_name) for x in t.modules])
-    # aliases with a from package are resolved later, and needn't be filtered
-    # out here.
-    self.aliases = {
-        x.alias for x in t.modules if x.alias and not x.from_package}
 
 
 class CollectLateDependencies(Visitor):

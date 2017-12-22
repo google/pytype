@@ -95,9 +95,9 @@ class Loader(object):
       ast = ast.Visit(visitors.QualifyRelativeNames(package_name))
     ast = ast.Visit(visitors.LookupBuiltins(self.builtins, full_names=False))
     ast = ast.Visit(visitors.ExpandCompatibleBuiltins(self.builtins))
-    dependencies = self._collect_ast_dependencies(ast)
-    if dependencies:
-      self._load_ast_dependencies(dependencies, ast)
+    dependencies, soft_dependencies = self._collect_ast_dependencies(ast)
+    if dependencies or soft_dependencies:
+      self._load_ast_dependencies(dependencies, soft_dependencies, ast)
       ast = self._resolve_external_types(ast)
     ast = ast.Visit(visitors.LookupLocalTypes())
     return ast
@@ -164,27 +164,21 @@ class Loader(object):
     """Goes over an ast and returns all references module names."""
     deps = visitors.CollectDependencies()
     ast.Visit(deps)
-    return deps.modules
+    return deps.modules, deps.maybe_modules
 
-  def _load_ast_dependencies(self, dependencies, ast, ast_name=None):
+  def _load_ast_dependencies(self, dependencies, soft_dependencies,
+                             ast, ast_name=None):
     """Fill in all ClassType.cls pointers and load reexported modules."""
-    if dependencies:
-      for item in dependencies:
-        if isinstance(item, tuple):
-          from_package, name = item
-          if from_package:
-            name = from_package + "." + name
-        else:
-          from_package = None
-          name = item
-        if name not in self._modules:
-          other_ast = self._import_name(name)
-          if other_ast is None:
-            if from_package is None:
-              # Don't error if we have got this via 'from a import b', since b
-              # could be a class with a lowercase name.
-              error = "Can't find pyi for %r" % name
-              raise BadDependencyError(error, ast_name or ast.name)
+    for name in (dependencies or ()):
+      if name not in self._modules:
+        other_ast = self._import_name(name)
+        if other_ast is None:
+          error = "Can't find pyi for %r" % name
+          raise BadDependencyError(error, ast_name or ast.name)
+    for name in (soft_dependencies or ()):
+      if name not in self._modules:
+        # We ignore any errors here; what we're trying to import might not exist
+        self._import_name(name)
 
   def _resolve_external_types(self, ast):
     try:
@@ -462,10 +456,12 @@ class PickledPyiLoader(Loader):
     # They are later synced in ProcessAst.
     dependencies = [d for d in loaded_ast.dependencies
                     if d != loaded_ast.ast.name]
+    soft_dependencies = [d for d in loaded_ast.soft_dependencies
+                         if d != loaded_ast.ast.name]
     loaded_ast = serialize_ast.EnsureAstName(loaded_ast, module_name)
     self._modules[module_name] = Module(module_name, filename, loaded_ast.ast)
-    self._load_ast_dependencies(dependencies, ast, module_name)
-
+    self._load_ast_dependencies(dependencies, soft_dependencies,
+                                ast, module_name)
     try:
       ast = serialize_ast.ProcessAst(loaded_ast, self._get_module_map())
     except serialize_ast.UnrestorableDependencyError as e:
