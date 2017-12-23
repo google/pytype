@@ -33,7 +33,6 @@ from pytype import debug  # pylint: disable=unused-import
 from pytype import directors
 from pytype import exceptions
 from pytype import function
-from pytype import this repository_overlay
 from pytype import load_pytd
 from pytype import matcher
 from pytype import metrics
