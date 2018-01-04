@@ -526,6 +526,10 @@ class Converter(object):
       return self.nothing
     elif isinstance(pyval, pytd.AnythingType):
       return self.unsolvable
+    elif (isinstance(pyval, pytd.Constant) and
+          isinstance(pyval.type, pytd.AnythingType)):
+      # We allow "X = ... # type: Any" to declare X as a type.
+      return self.unsolvable
     elif isinstance(pyval, pytd.FunctionType):
       return self.constant_to_value(
           pyval.function, subst, self.vm.root_cfg_node)

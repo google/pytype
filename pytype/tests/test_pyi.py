@@ -764,6 +764,20 @@ class PYITest(test_base.BaseTest):
         foo.b
       """, pythonpath=[d.path])
 
+  def testAnythingConstant(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        Foo = ...  # type: ?
+      """)
+      d.create_file("bar.pyi", """
+        import foo
+        def f(x: foo.Foo) -> None: ...
+      """)
+      self.Check("""
+        import bar
+        bar.f(42)
+      """, pythonpath=[d.path])
+
 
 if __name__ == "__main__":
   test_base.main()
