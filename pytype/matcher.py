@@ -108,7 +108,12 @@ class AbstractMatcher(object):
         # protocols.
         continue
       else:
-        raise AssertionError("Bad base class %r", base_cls)
+        # Ignore other types of base classes (Callable etc.). These typically
+        # make it into our system through Union types, since during class
+        # construction, only one of the entries in a Union needs to be a valid
+        # base class.
+        log.warning("Invalid base class %r", base_cls)
+        continue
 
   def match_var_against_type(self, var, other_type, subst, node, view):
     if var.bindings:

@@ -416,6 +416,26 @@ class MatchTest(test_base.BaseTest):
     self.assertErrorLogIs(errors, [(9, "wrong-arg-types",
                                     r"Expected.*T2.*Actual.*T1")])
 
+  def testCallableBaseClass(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import Callable, Union, Type
+        def f() -> Union[Callable[[], ...], Type[Exception]]
+        def g() -> Union[Type[Exception], Callable[[], ...]]
+      """)
+      self.Check("""
+        from __future__ import google_type_annotations
+        from typing import Union
+        import foo
+        class Foo(foo.f()):
+          pass
+        class Bar(foo.g()):
+          pass
+        def f(x: Foo, y: Bar) -> Union[Bar, Foo]:
+          return x or y
+        f(Foo(), Bar())
+      """, pythonpath=[d.path])
+
 
 if __name__ == "__main__":
   test_base.main()
