@@ -27,6 +27,7 @@ class SerializeAstTest(unittest.TestCase):
   def _GetAst(self, temp_dir, module_name, src=None):
     src = src or ("""
         import module2
+        from module2 import f
         from typing import List
 
         constant = True
@@ -43,6 +44,8 @@ class SerializeAstTest(unittest.TestCase):
     """)
     pyi_filename = temp_dir.create_file("module1.pyi", src)
     temp_dir.create_file("module2.pyi", """
+        import UserDict
+        def f() -> UserDict.UserDict: ...
         class ObjectMod2(object):
           def __init__(self):
             pass
@@ -58,7 +61,7 @@ class SerializeAstTest(unittest.TestCase):
     module_name = "foo.bar"
     with utils.Tempdir() as d:
       ast, _ = self._GetAst(temp_dir=d, module_name=module_name)
-    indexer = serialize_ast.FindClassTypesVisitor()
+    indexer = serialize_ast.FindClassAndFunctionTypesVisitor()
     ast.Visit(indexer)
 
     self.assertEqual(len(indexer.class_type_nodes), 9)
@@ -158,7 +161,7 @@ class SerializeAstTest(unittest.TestCase):
       self.assertEqual(serialized_ast.dependencies,
                        ["__builtin__", "foo.bar.module1", "module2"])
       self.assertEqual(serialized_ast.soft_dependencies,
-                       ["typing.List"])
+                       ["module2.f", "typing.List"])
 
   def testUnrestorableChild(self):
     # Assume .cls in a ClassType X in module1 was referencing something for
@@ -327,6 +330,16 @@ class SerializeAstTest(unittest.TestCase):
       self.assertTrue(expected_name not in module_map)
       # Check that the saved ast had its name changed.
       self.assertEqual(serializable_ast.ast.name, expected_name)
+
+  def testFunctionType(self):
+    with utils.Tempdir() as d:
+      foo = d.create_file("foo.pickle")
+      module_map = self._StoreAst(d, "foo", foo, ast=self._GetAst(d, "foo"))
+      p = pytd_utils.LoadPickle(foo)
+      self.assertTrue(p.function_type_nodes)
+      ast = serialize_ast.ProcessAst(p, module_map)
+      f = [a for a in ast.aliases if a.name == "foo.f"][0]
+      self.assertIsNotNone(f.type.function.signatures[0].return_type.cls)
 
 
 if __name__ == "__main__":

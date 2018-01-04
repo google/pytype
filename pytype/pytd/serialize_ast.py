@@ -20,17 +20,23 @@ class UnrestorableDependencyError(Exception):
     super(UnrestorableDependencyError, self).__init__(error_msg)
 
 
-class FindClassTypesVisitor(visitors.Visitor):
+class FindClassAndFunctionTypesVisitor(visitors.Visitor):
 
   def __init__(self):
-    super(FindClassTypesVisitor, self).__init__()
+    super(FindClassAndFunctionTypesVisitor, self).__init__()
     self.class_type_nodes = []
+    self.function_type_nodes = []
 
   def EnterClassType(self, n):
     self.class_type_nodes.append(n)
 
+  def EnterFunctionType(self, n):
+    self.function_type_nodes.append(n)
+
+
 SerializableTupleClass = collections.namedtuple(
-    "_", ["ast", "dependencies", "soft_dependencies", "class_type_nodes"])
+    "_", ["ast", "dependencies", "soft_dependencies",
+          "class_type_nodes", "function_type_nodes"])
 
 
 class SerializableAst(SerializableTupleClass):
@@ -155,11 +161,12 @@ def StoreAst(ast, filename=None):
 
   # Clean external references
   ast.Visit(visitors.ClearClassPointers())
-  indexer = FindClassTypesVisitor()
+  indexer = FindClassAndFunctionTypesVisitor()
   ast.Visit(indexer)
   return pytd_utils.SavePickle(SerializableAst(
       ast, list(sorted(dependencies)), list(sorted(soft_dependencies)),
-      list(sorted(indexer.class_type_nodes))), filename)
+      list(sorted(indexer.class_type_nodes)),
+      list(sorted(indexer.function_type_nodes))), filename)
 
 
 def EnsureAstName(ast, module_name):
@@ -178,7 +185,7 @@ def EnsureAstName(ast, module_name):
   # module_name is the name from this run, raw_ast.name is the guessed name from
   # when the ast has been pickled.
   if module_name != raw_ast.name:
-    ast = ast.Replace(class_type_nodes=None)
+    ast = ast.Replace(class_type_nodes=None, function_type_nodes=None)
     ast = ast.Replace(
         ast=raw_ast.Visit(RenameModuleVisitor(raw_ast.name, module_name)))
   return ast
@@ -217,7 +224,7 @@ def ProcessAst(serializable_ast, module_map):
   # external references are resolved.
   serializable_ast = _LookupClassReferences(
       serializable_ast, module_map, serializable_ast.ast.name)
-  _FillLocalReferences(serializable_ast, {
+  serializable_ast = _FillLocalReferences(serializable_ast, {
       "": serializable_ast.ast,
       serializable_ast.ast.name: serializable_ast.ast})
   return serializable_ast.ast
@@ -245,15 +252,24 @@ def _LookupClassReferences(serializable_ast, module_map, self_name):
                                               self_name=self_name)
   raw_ast = serializable_ast.ast
 
-  if serializable_ast.class_type_nodes:
-    for node in serializable_ast.class_type_nodes:
-      try:
-        if node is not class_lookup.VisitClassType(node):
-          serializable_ast = serializable_ast.Replace(class_type_nodes=None)
-          break
-      except KeyError as e:
-        raise UnrestorableDependencyError("Unresolved class: %r." % e.message)
-  if serializable_ast.class_type_nodes is None:
+  for node in (serializable_ast.class_type_nodes or ()):
+    try:
+      if node is not class_lookup.VisitClassType(node):
+        serializable_ast = serializable_ast.Replace(class_type_nodes=None)
+        break
+    except KeyError as e:
+      raise UnrestorableDependencyError("Unresolved class: %r." % e.message)
+  for node in (serializable_ast.function_type_nodes or ()):
+    try:
+      # Use VisitNamedType, even though this is a FunctionType. We want to
+      # do a name lookup, to make sure this is still a function.
+      if not isinstance(class_lookup.VisitNamedType(node), pytd.FunctionType):
+        serializable_ast = serializable_ast.Replace(function_type_nodes=None)
+        break
+    except KeyError as e:
+      raise UnrestorableDependencyError("Unresolved class: %r." % e.message)
+  if (serializable_ast.class_type_nodes is None or
+      serializable_ast.function_type_nodes is None):
     try:
       raw_ast = raw_ast.Visit(class_lookup)
     except KeyError as e:
@@ -264,13 +280,21 @@ def _LookupClassReferences(serializable_ast, module_map, self_name):
 
 def _FillLocalReferences(serializable_ast, module_map):
   local_filler = visitors.FillInLocalPointers(module_map)
-  if serializable_ast.class_type_nodes:
+  if (serializable_ast.class_type_nodes is None or
+      serializable_ast.function_type_nodes is None):
+    serializable_ast.ast.Visit(local_filler)
+    return serializable_ast.Replace(
+        class_type_nodes=None, function_type_nodes=None)
+  else:
     for node in serializable_ast.class_type_nodes:
       local_filler.EnterClassType(node)
       if node.cls is None:
         raise AssertionError("This should not happen: %s" % str(node))
-  else:
-    serializable_ast.ast.Visit(local_filler)
+    for node in serializable_ast.function_type_nodes:
+      local_filler.EnterFunctionType(node)
+      if node.function is None:
+        raise AssertionError("This should not happen: %s" % str(node))
+    return serializable_ast
 
 
 def PrepareForExport(module_name, python_version, ast, loader):

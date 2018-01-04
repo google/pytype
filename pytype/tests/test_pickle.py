@@ -3,6 +3,7 @@
 import cPickle
 
 
+from pytype import load_pytd
 from pytype import utils
 from pytype.pytd.parse import visitors
 from pytype.tests import test_base
@@ -182,6 +183,29 @@ class PickleTest(test_base.BaseTest):
         class Bar(object):
           f = foo.f
       """, imports_map={"foo": foo}, module_name="bar")
+
+  def testFunctionType(self):
+    self.loader = load_pytd.PickledPyiLoader(
+        base_module="bar",
+        use_pickled_typeshed=False,
+        python_version=self.PYTHON_VERSION,
+        pythonpath=[""])
+    with utils.Tempdir() as d:
+      pickled_foo = self.PicklePyi("""
+        import UserDict
+        def f(x: UserDict.UserDict) -> None: ...
+      """, module_name="foo")
+      foo = d.create_file("foo.pickled", pickled_foo)
+      self.loader.imports_map = {"foo": foo}
+      pickled_bar = self.PicklePyi("""
+        from foo import f  # Alias(name="f", type=FunctionType("foo.f", f))
+      """, module_name="bar")
+      bar = d.create_file("bar.pickled", pickled_bar)
+      self.assertNoCrash(self.Infer, """
+        from __future__ import google_type_annotations
+        import bar
+        bar.f(42)
+      """, imports_map={"foo": foo, "bar": bar}, module_name="baz")
 
 
 if __name__ == "__main__":

@@ -13,6 +13,7 @@ from pytype.pyc import loadmarshal
 from pytype.pytd import mro
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
+from pytype.pytd.parse import visitors
 from pytype.typegraph import cfg
 
 
@@ -429,8 +430,7 @@ class Converter(object):
             log.warning("Couldn't resolve %s", late_type.name)
           t = pytd.AnythingType()
         else:
-          assert isinstance(cls, pytd.Class)
-          t = pytd.ClassType(late_type.name, cls)
+          t = visitors.ToType(cls, allow_constants=False)
       else:
         # A pickle file refers to a module that went away in the mean time.
         log.error("During dependency resolution, couldn't import %r", module)

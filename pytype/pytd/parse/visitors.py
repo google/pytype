@@ -738,7 +738,7 @@ class FillInLocalPointers(Visitor):
                         prefix + node.name, type(func))
 
 
-def _ToType(item, allow_constants=True):
+def ToType(item, allow_constants=True):
   """Convert a pytd AST item into a type."""
   if isinstance(item, pytd.TYPE):
     return item
@@ -951,7 +951,7 @@ class LookupBuiltins(Visitor):
       except KeyError:
         return t
       else:
-        return _ToType(item)
+        return ToType(item)
     else:
       return t
 
@@ -1033,7 +1033,7 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny):
       item = self._ResolveUsingGetattr(module_name, module)
       if item is None:
         raise KeyError("No %s in module %s" % (name, module_name))
-    return _ToType(item, allow_constants=not self._in_constant)
+    return ToType(item, allow_constants=not self._in_constant)
 
   def VisitClassType(self, t):
     new_type = self.VisitNamedType(t)
@@ -1072,7 +1072,7 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny):
         # than aliased.
         getattrs.add(member.Replace(name=new_name))
       else:
-        aliases.add(pytd.Alias(new_name, _ToType(member)))
+        aliases.add(pytd.Alias(new_name, ToType(member)))
     return aliases, getattrs
 
   def _DiscardExistingNames(self, node, potential_members):
@@ -1175,9 +1175,9 @@ class LookupLocalTypes(RemoveTypeParametersFromGenericAny):
         except KeyError:
           raise SymbolLookupError("Couldn't find %s in %s" % (
               node.name, self.unit.name))
-      return _ToType(item, allow_constants=False)
+      return ToType(item, allow_constants=False)
     elif module_name == self.unit.name:
-      return _ToType(self.unit.Lookup(node.name), allow_constants=False)
+      return ToType(self.unit.Lookup(node.name), allow_constants=False)
     else:
       return node
 

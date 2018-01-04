@@ -467,6 +467,11 @@ class FunctionType(node.Node('name: str'), Type):
   def __setstate__(self, state):
     self.function = state[0]
 
+  def __repr__(self):
+    return '{type}{cls}({name})'.format(
+        type=type(self).__name__, name=self.name,
+        cls='<unresolved>' if self.function is None else '')
+
 
 class AnythingType(node.Node(), Type):
   """A type we know nothing about yet ('?' in pytd)."""
