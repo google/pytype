@@ -23,6 +23,7 @@ locally or within a larger repository.
 
 import collections
 import cPickle
+import gzip
 import itertools
 import os
 import re
@@ -441,16 +442,24 @@ def GetPredefinedFile(pytd_subdir, module, extension=".pytd",
   return path, utils.load_pytype_file(path)
 
 
-def LoadPickle(filename):
-  with open(filename, "rb") as fi:
-    return cPickle.load(fi)
+def LoadPickle(filename, compress=False):
+  if compress:
+    with gzip.GzipFile(filename, "rb") as fi:
+      return cPickle.load(fi)
+  else:
+    with open(filename, "rb") as fi:
+      return cPickle.load(fi)
 
 
-def SavePickle(data, filename=None):
+def SavePickle(data, filename=None, compress=False):
   recursion_limit = sys.getrecursionlimit()
   sys.setrecursionlimit(_PICKLE_RECURSION_LIMIT_AST)
+  assert not compress or filename, "gzip only supported with a filename"
   try:
-    if filename is not None:
+    if compress:
+      with gzip.GzipFile(filename, "wb") as fi:
+        cPickle.dump(data, fi, _PICKLE_PROTOCOL)
+    elif filename is not None:
       with open(filename, "wb") as fi:
         cPickle.dump(data, fi, _PICKLE_PROTOCOL)
     else:

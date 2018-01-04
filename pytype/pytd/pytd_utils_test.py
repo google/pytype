@@ -17,6 +17,7 @@
 import os
 import textwrap
 import unittest
+from pytype import utils
 from pytype.pyi import parser
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
@@ -344,6 +345,22 @@ class TestUtils(parser_test_base.ParserTest):
     self.assertMultiLineEqual(
         pytd_utils.canonical_pyi(src, self.PYTHON_VERSION),
         expected)
+
+  def testLoadPickleFromFile(self):
+    d1 = {1, 2j, "3"}
+    with utils.Tempdir() as d:
+      filename = d.create_file("foo.pickle")
+      pytd_utils.SavePickle(d1, filename)
+      d2 = pytd_utils.LoadPickle(filename)
+    self.assertEqual(d1, d2)
+
+  def testLoadPickleFromCompressedFile(self):
+    d1 = {1, 2j, "3"}
+    with utils.Tempdir() as d:
+      filename = d.create_file("foo.pickle.gz")
+      pytd_utils.SavePickle(d1, filename, compress=True)
+      d2 = pytd_utils.LoadPickle(filename, compress=True)
+    self.assertEqual(d1, d2)
 
 
 class TestDataFiles(parser_test_base.ParserTest):
