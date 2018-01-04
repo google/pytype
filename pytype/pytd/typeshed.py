@@ -121,6 +121,35 @@ class Typeshed(object):
 
     raise IOError("Couldn't find %s" % module)
 
+  def get_all_stdlib_module_names(self, python_version):
+    """Get the names of all modules in typeshed and pytype/pytd/builtins."""
+    if self._env_home:
+      raise NotImplementedError("Not implemented: Can't scan external typeshed")
+    if self._raw_typeshed_location != "typeshed":
+      raise NotImplementedError("Can't scan typeshed not in ./typeshed")
+    major = python_version[0]
+    subdirs = [os.path.join("pytd/builtins/%d" % major),
+               os.path.join("pytd/stdlib/%d" % major),
+               "typeshed/stdlib/%d" % major,
+               "typeshed/stdlib/2and3",
+               "typeshed/third_party/2and3",
+              ]
+    if major == 3:
+      for i in range(0, python_version[1] + 1):
+        # iterate over 3.0, 3.1, 3.2, ...
+        subdirs.append("typeshed/stdlib/3.%d" % i)
+    module_names = set()
+    for subdir in subdirs:
+      try:
+        contents = list(utils.list_pytype_files(subdir))
+      except utils.NoSuchDirectory:
+        pass
+      else:
+        for filename in contents:
+          module_names.add(utils.path_to_module_name(filename))
+    assert "ctypes" in module_names  # sanity check
+    return module_names
+
 
 _typeshed = None
 

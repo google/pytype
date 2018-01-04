@@ -35,6 +35,22 @@ class TestTypeshedLoading(parser_test_base.ParserTest):
     self.assertIn("_random.Random", [cls.name for cls in ast.classes])
 
 
+  def test_get_all_stdlib_module_names_2(self):
+    t = typeshed.Typeshed("typeshed", False)
+    modules = t.get_all_stdlib_module_names([2, 7])
+    self.assertIn("collections", modules)
+    self.assertIn("csv", modules)
+    self.assertIn("ctypes", modules)
+    self.assertIn("email.MIMEBase", modules)
+    self.assertIn("xml.etree.ElementTree", modules)
+
+  def test_get_all_stdlib_module_names_3(self):
+    t = typeshed.Typeshed("typeshed", False)
+    modules = t.get_all_stdlib_module_names([3, 5])
+    self.assertIn("asyncio", modules)
+    self.assertIn("collections", modules)
+    self.assertIn("configparser", modules)
+
 
 class TestTypeshedParsing(test_base.BaseTest):
   """Tests a handful of typeshed modules.

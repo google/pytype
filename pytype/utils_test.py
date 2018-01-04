@@ -665,6 +665,16 @@ class UtilsTest(unittest.TestCase):
       pass
     self.assertEqual(foo.lookup["f"], 3)
 
+  def testListPytypeFiles(self):
+    l = list(utils.list_pytype_files("pytd/stdlib/2"))
+    self.assertIn("ctypes.pytd", l)
+    self.assertIn("collections.pytd", l)
+
+  def testPathToModuleName(self):
+    self.assertEqual("x.y.z", utils.path_to_module_name("x/y/z.pyi"))
+    self.assertEqual("x.y.z", utils.path_to_module_name("x/y/z.pytd"))
+    self.assertEqual("x.y.z", utils.path_to_module_name("x/y/z/__init__.pyi"))
+
 
 if __name__ == "__main__":
   test_base.main()
