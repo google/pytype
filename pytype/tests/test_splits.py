@@ -957,6 +957,33 @@ class SplitTest(test_base.BaseTest):
           return float(x)
     """)
 
+  def testShadowNone(self):
+    self.options.tweak(strict_none=True)
+    self.Check("""
+      from __future__ import google_type_annotations
+      from typing import Optional, Union
+      def f(x: Optional[Union[str, unicode]]):
+        if x is None:
+          x = ''
+        return x.upper()
+    """)
+
+  def testLongSignature(self):
+    self.options.tweak(strict_none=True)
+    self.Check("""
+      from __future__ import google_type_annotations
+
+      class Foo(object):
+
+        def __init__(self, x1: str = None, x2: str = None, x3: str = None,
+                     x4: str = None, x5: str = None, x6: str = None,
+                     x7: str = None, x8: str = None, x9: str = None,
+                     credentials: str = None):
+          if not credentials:
+            credentials = ""
+          self.credentials = credentials.upper()
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

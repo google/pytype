@@ -1941,18 +1941,18 @@ class VirtualMachine(object):
     if jump is not frame_state.UNSATISFIABLE:
       if jump:
         assert jump.binding
-        else_node = state.forward_cfg_node(jump.binding).forward_cfg_node()
+        else_state = state.forward_cfg_node(jump.binding).forward_cfg_node()
       else:
-        else_node = state.forward_cfg_node()
-      self.store_jump(op.target, else_node)
+        else_state = state.forward_cfg_node()
+      self.store_jump(op.target, else_state)
     else:
-      else_node = None
+      else_state = None
     # Don't jump.
     if or_pop:
       state = state.pop_and_discard()
     if normal is frame_state.UNSATISFIABLE:
       return state.set_why("unsatisfiable")
-    elif not else_node and not normal:
+    elif not else_state and not normal:
       return state  # We didn't actually branch.
     else:
       return state.forward_cfg_node(normal.binding if normal else None)
