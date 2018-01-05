@@ -1,7 +1,5 @@
 """Tests for if-splitting."""
 
-import unittest
-
 from pytype import utils
 from pytype.tests import test_base
 
@@ -938,7 +936,6 @@ class SplitTest(test_base.BaseTest):
           obj.itervalues
     """)
 
-  @unittest.skip("Needs better filtering for function arg combinations.")
   def testListComprehension(self):
     self.options.tweak(strict_none=True)
     self.Check("""
