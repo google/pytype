@@ -27,6 +27,7 @@ deque = ...  # type: ?
 dumps = ...  # type: Callable
 loads = ...  # type: Callable
 
+# TODO(kramm): These should be imported from typing, not declared as Any
 Container = ... # type: ?
 Hashable = ... # type: ?
 Iterable = ... # type: ?
@@ -43,6 +44,16 @@ MappingView = ... # type: ?
 ItemsView = ... # type: ?
 KeysView = ... # type: ?
 ValuesView = ... # type: ?
+if sys.version_info[0] >= 3:
+  AsyncIterable = ... # type: ?
+  AsyncIterator = ... # type: ?
+  AsyncGenerator = ... # type: ?
+  Awaitable = ... # type: ?
+  ByteString = ... # type: ?
+  Coroutine = ... # type ?
+  Collection = ... # type ?
+  Generator = ... # type: ?
+  Reversible = ... # type ?
 
 def namedtuple(typename: str or unicode,
   field_names: str or unicode or Iterable[str or unicode] or Iterable[nothing],
@@ -96,3 +107,10 @@ class Counter(dict[?, int]):
     def most_common(self, ...) -> ?
     def subtract(self, other: Iterable) -> NoneType
     def update(self, other: Iterable) -> NoneType
+
+if sys.version_info[0] >= 3:
+    # TODO(kramm): Implement these
+    ChainMap = ...  # type: ?
+    UserDict = ...  # type: ?
+    UserList = ...  # type: ?
+    UserString = ...  # type: ?
