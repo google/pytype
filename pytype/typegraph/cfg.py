@@ -533,74 +533,46 @@ class State(object):
     self.pos = pos
     self.goals = set(goals)  # Make a copy. We modify these.
 
-  def Done(self):
-    """Is this State solved? This checks whether the list of goals is empty."""
-    return not self.goals
-
-  def NodesWithAssignments(self):
-    """Find all CFG nodes corresponding to goal variable assignments.
-
-    Mark all nodes that assign any of the goal variables (even to bindings not
-    specified in goals).  This is used to "block" all cfg nodes that are
-    conflicting assignments for the set of bindings in state.
-
-    Returns:
-      A set of instances of CFGNode. At every CFGNode in this set, at least
-      one variable in the list of goals is assigned to something.
-    """
-    return set.union(*(goal.variable.nodes for goal in self.goals))
-
-  def Replace(self, goal, replace_with):
-    """Replace a goal with new goals (the origins of the expanded goal)."""
-    assert goal in self.goals, "goal to expand not in state"
-    self.goals.remove(goal)
-    self.goals.update(replace_with)
-
-  def _AddSources(self, goal, new_goals):
-    """If the goal is trivially fulfilled, add its sources as new goals.
-
-    Args:
-      goal: The goal.
-      new_goals: The set of new goals, to which goal's sources are added iff
-        this method returns True.
-
-    Returns:
-      True if the goal is trivially fulfilled and False otherwise.
-    """
-    origin = goal.FindOrigin(self.pos)
-    # For source sets > 2, we don't know which sources to use, so we have
-    # to let the solver iterate over them later.
-    if origin and len(origin.source_sets) <= 1:
-      source_set, = origin.source_sets  # we always have at least one.
-      new_goals.update(source_set)
-      return True
-    return False
-
   def RemoveFinishedGoals(self):
-    """Remove all goals that are trivially fulfilled at the current CFG node."""
-    new_goals = set()
-    goals_to_remove = set()
-    for goal in self.goals:
-      if self._AddSources(goal, new_goals):
-        goals_to_remove.add(goal)
+    """Remove all goals that can be fulfilled at the current CFG node.
+
+    Generates all possible sets of new goals obtained by replacing a goal that
+    originates at the current node with one of its source sets, iteratively,
+    until there are no more such goals. Generating these possibilities here
+    allows every _FindSolution() call to completely process its input state,
+    avoiding bugs related to transmitting state information across calls.
+
+    Yields:
+      (removed_goals, new_goals) tuples.
+    """
+    goals_to_remove = self.pos.bindings & self.goals
+    seen_goals = set()
+    removed_goals = set()
+    new_goals = self.goals - goals_to_remove
+    stack = [(goals_to_remove, seen_goals, removed_goals, new_goals)]
     # We might remove multiple layers of nested goals, so loop until we don't
-    # find anything to replace anymore. Storing new goals in a separate set is
-    # faster than adding and removing them from self.goals.
-    seen_goals = self.goals.copy()
-    while new_goals:
-      goal = new_goals.pop()
-      if goal in seen_goals:
-        # Only process a given goal once, to prevent infinite loops for cyclic
-        # data structures.
-        continue
-      seen_goals.add(goal)
-      if self._AddSources(goal, new_goals):
-        goals_to_remove.add(goal)
+    # find anything to replace anymore.
+    while stack:
+      goals_to_remove, seen_goals, removed_goals, new_goals = stack.pop(0)
+      if goals_to_remove:
+        goal = goals_to_remove.pop()
+        if goal in seen_goals:
+          # Only process a given goal once, to prevent infinite loops for
+          # cyclic data structures.
+          stack.append((goals_to_remove, seen_goals, removed_goals, new_goals))
+          continue
+        seen_goals.add(goal)
+        origin = goal.FindOrigin(self.pos)
+        if origin is None:
+          new_goals.add(goal)
+          stack.append((goals_to_remove, seen_goals, removed_goals, new_goals))
+        else:
+          removed_goals.add(goal)
+          for source_set in origin.source_sets:
+            stack.append((goals_to_remove | source_set, set(seen_goals),
+                          set(removed_goals), set(new_goals)))
       else:
-        self.goals.add(goal)
-    for goal in goals_to_remove:
-      self.goals.discard(goal)
-    return goals_to_remove
+        yield removed_goals, new_goals
 
   def __hash__(self):
     """Compute hash for this State. We use States as keys when memoizing."""
@@ -803,9 +775,9 @@ class Solver(object):
       back all the way to the entry point of the program).
     """
     state = State(start_node, start_attrs)
-    return self._RecallOrFindSolution(state, frozenset(start_attrs))
+    return self._RecallOrFindSolution(state)
 
-  def _RecallOrFindSolution(self, state, seen_goals):
+  def _RecallOrFindSolution(self, state):
     """Memoized version of FindSolution()."""
     if state in self._solved_states:
       Solver._cache_metric.inc("hit")
@@ -818,54 +790,37 @@ class Solver(object):
     self._solved_states[state] = True
 
     Solver._cache_metric.inc("miss")
-    result = self._solved_states[state] = self._FindSolution(state, seen_goals)
+    result = self._solved_states[state] = self._FindSolution(state)
     return result
 
-  def _FindSolution(self, state, seen_goals):
+  def _FindSolution(self, state):
     """Find a sequence of assignments that would solve the given state."""
-    if state.Done():
-      return True
-    if _GoalsConflict(state.goals):
-      return False
+    if state.pos.condition:
+      state.goals.add(state.pos.condition)
     Solver._goals_per_find_metric.add(len(state.goals))
-    # Note that this set might contain the current CFG node:
-    blocked = frozenset(state.NodesWithAssignments())
-    # Find the goal cfg node that was assigned last.  Due to the fact that we
-    # treat CFGs as DAGs, there's typically one unique cfg node with this
-    # property.
-    for goal in state.goals:
-      # "goal" is the assignment we're trying to find.
-      for origin in goal.origins:
-        path_exist, path = self._path_finder.FindNodeBackwards(
-            state.pos, origin.where, blocked)
-        if path_exist:
-          # This loop over multiple different combinations of origins is why
-          # we need memoization of states.
-          for source_set in origin.source_sets:
-            new_goals = set(state.goals)
+    for removed_goals, new_goals in state.RemoveFinishedGoals():
+      assert not state.pos.bindings & new_goals
+      if _GoalsConflict(removed_goals):
+        continue  # We bulk-removed goals that are internally conflicting.
+      if not new_goals:
+        return True
+      blocked = frozenset().union(*(goal.variable.nodes for goal in new_goals))
+      new_positions = set()
+      for goal in new_goals:
+        # "goal" is the assignment we're trying to find.
+        for origin in goal.origins:
+          path_exist, path = self._path_finder.FindNodeBackwards(
+              state.pos, origin.where, blocked)
+          if path_exist:
             where = origin.where
-            # If we found conditions on the way, see whether we need to add
-            # any of them to our goals.
+            # Check if we found conditions on the way.
             for node in path:
-              if node.condition not in seen_goals:
-                # It can happen that node == state.pos, typically if the node
-                # we're calling HasCombination on has a condition. If so, we'll
-                # treat it like any other condition and add it to our goals.
-                new_goals.add(node.condition)
+              if node is not state.pos:
                 where = node
                 break
-            new_state = State(where, new_goals)
-            if origin.where is new_state.pos:
-              # The goal can only be replaced if origin.where was actually
-              # reached.
-              new_state.Replace(goal, source_set)
-
-            # Also remove all goals that are trivially fulfilled at the
-            # new CFG node.
-            removed = new_state.RemoveFinishedGoals()
-            removed.add(goal)
-            if _GoalsConflict(removed | new_state.goals):
-              pass  # We bulk-removed goals that are internally conflicting.
-            elif self._RecallOrFindSolution(new_state, seen_goals | new_goals):
-              return True
+            new_positions.add(where)
+      for new_pos in new_positions:
+        new_state = State(new_pos, new_goals)
+        if self._RecallOrFindSolution(new_state):
+          return True
     return False

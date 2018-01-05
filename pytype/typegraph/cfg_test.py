@@ -1,6 +1,5 @@
 """Test for the cfg Python extension module."""
 
-import unittest
 from pytype.typegraph import cfg
 import unittest
 
@@ -309,8 +308,8 @@ class CFGTest(unittest.TestCase):
     n5 = n4.ConnectNew("n5")
     n3.ConnectTo(n5)
     x = p.NewVariable()
-    x1 = x.AddBinding("x", source_set=[], where=n3)
-    n2.condition = x1
+    x1 = x.AddBinding("x", source_set=[], where=n2)
+    n3.condition = x1
     n4.condition = x1
     self.assertTrue(n5.HasCombination([y1]))
 
@@ -325,7 +324,6 @@ class CFGTest(unittest.TestCase):
     self.assertFalse(n2.HasCombination([b]))
     self.assertTrue(n1.HasCombination([b]))
 
-  @unittest.skip("Broken. Needs fixing.")
   def testConditionLoop(self):
     p = cfg.Program()
     n1 = p.NewCFGNode("n1")
@@ -885,6 +883,30 @@ class CFGTest(unittest.TestCase):
     self.assertFalse(b_else.IsVisible(node_if))
     self.assertFalse(b_if.IsVisible(node_else))
     self.assertTrue(b_else.IsVisible(node_else))
+
+  def testBlockCondition(self):
+    # v1 = x or y or z  # node_in
+    # if v1 is x:  # node_if
+    #   v1 = w  # node_block
+    # else: ...  # node_else
+    # assert v1 is not x  # node_out
+    p = cfg.Program()
+    node_in = p.NewCFGNode("node_in")
+    v1 = p.NewVariable()
+    bx = v1.AddBinding("x", [], node_in)
+    by = v1.AddBinding("y", [], node_in)
+    bz = v1.AddBinding("z", [], node_in)
+    b_if = p.NewVariable().AddBinding("if", [bx], node_in)
+    b_else = b_if.variable.AddBinding("else", [by], node_in)
+    b_else.AddOrigin(node_in, [bz])
+    node_if = node_in.ConnectNew("node_if", b_if)
+    node_else = node_in.ConnectNew("node_else", b_else)
+    node_block = node_if.ConnectNew("node_block")
+    v1.AddBinding("w", [], node_block)
+    node_out = node_block.ConnectNew("node_out")
+    node_else.ConnectTo(node_out)
+    b_out = p.NewVariable().AddBinding("x", [bx], node_out)
+    self.assertFalse(b_out.IsVisible(node_out))
 
 
 if __name__ == "__main__":
