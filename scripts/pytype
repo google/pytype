@@ -269,8 +269,15 @@ def _generate_builtins_pickle(output_filename, options):
   loader = _create_loader(options.input, options)
   t = typeshed.Typeshed(options.typeshed_location, use_pickled=False)
   module_names = t.get_all_stdlib_module_names(options.python_version)
+  blacklist = set(t.blacklisted_modules(options.python_version))
+  if options.python_version[0] == 3:
+    # Temporarily add missing entries to blacklist manually, while
+    # https://github.com/python/typeshed/pull/1814 is still pending:
+    # TODO(kramm): Remove this again.
+    blacklist.update(["plistlib", "re", "signal"])
   for m in sorted(module_names):
-    loader.import_name(m)
+    if m not in blacklist:
+      loader.import_name(m)
   loader.save_to_pickle(output_filename)
 
 

@@ -34,22 +34,13 @@ def _test_parse(pyi_file):
                       python_version=python_version)
 
 
-def _read_blacklist(typeshed_dir):
-  with open(os.path.join(typeshed_dir, "tests/pytype_blacklist.txt")) as fi:
-    for line in fi:
-      line = line[:line.find("#")].strip()
-      if line:
-        yield line
-
-
 class TestTypeshedParsing(unittest.TestCase):
   """Test that we can parse a given pyi file."""
   # Files that we currently can't parse
   WANTED = re.compile(r"stdlib/(2\.7|2and3)/.*\.pyi$")
-  TYPESHED_DIR = typeshed.Typeshed(
-      typeshed_location="typeshed",
-      use_pickled=False).typeshed_path
-  SKIPPED_FILES = list(_read_blacklist(TYPESHED_DIR))
+  t = typeshed.Typeshed(typeshed_location="typeshed", use_pickled=False)
+  TYPESHED_DIR = t.typeshed_path
+  SKIPPED_FILES = list(t.read_blacklist())
   SKIPPED = re.compile("(%s)$" % "|".join(SKIPPED_FILES))
 
   # Generate test methods

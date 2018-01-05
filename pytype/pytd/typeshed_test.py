@@ -51,6 +51,19 @@ class TestTypeshedLoading(parser_test_base.ParserTest):
     self.assertIn("collections", modules)
     self.assertIn("configparser", modules)
 
+  def test_read_blacklist(self):
+    t = typeshed.Typeshed("typeshed", False)
+    for filename in t.read_blacklist():
+      self.assertTrue(filename.startswith("stdlib") or
+                      filename.startswith("third_party"))
+
+  def test_blacklisted_modules(self):
+    t = typeshed.Typeshed("typeshed", False)
+    for module_name in t.blacklisted_modules([2, 7]):
+      self.assertNotIn("/", module_name)
+    for module_name in t.blacklisted_modules([3, 6]):
+      self.assertNotIn("/", module_name)
+
 
 class TestTypeshedParsing(test_base.BaseTest):
   """Tests a handful of typeshed modules.

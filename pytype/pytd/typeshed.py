@@ -150,6 +150,29 @@ class Typeshed(object):
     assert "ctypes" in module_names  # sanity check
     return module_names
 
+  def read_blacklist(self):
+    """Read the typeshed blacklist."""
+    if self._env_home or self._raw_typeshed_location != "typeshed":
+      raise NotImplementedError("Can't read blacklist outside ./typeshed")
+    data = utils.load_pytype_file("typeshed/tests/pytype_blacklist.txt")
+    for line in data.splitlines():
+      line = line[:line.find("#")].strip()
+      if line:
+        yield line
+
+  def blacklisted_modules(self, python_version):
+    """Return the blacklist, as a list of module names. E.g. ["x", "y.z"]."""
+    for full_filename in self.read_blacklist():
+      filename = os.path.splitext(full_filename)[0]
+      path = filename.split("/")  # E.g. ["stdlib", "2", "html", "parser.pyi"]
+      # It's possible that something is blacklisted with a more
+      # specific version (e.g. stdlib/3.4/...). That usually just means
+      # that this module didn't exist in earlier Python versions. So
+      # we can still just use python_version[0].
+      if (path[1].startswith(str(python_version[0])) or
+          path[1] == "2and3"):
+        yield utils.path_to_module_name("/".join(path[2:]))
+
 
 _typeshed = None
 
