@@ -203,6 +203,11 @@ class TestPython3(test_base.BaseTest):
         return x[1:5:2]
     """)
 
+  def test_builtins(self):
+    self.Check("""
+      import builtins
+    """)
+
 
 class TypingMethodsTest(test_base.TypingTest):
   """Tests for typing.py specific to python3."""

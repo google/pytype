@@ -337,6 +337,28 @@ class PickledPyiLoaderTest(unittest.TestCase):
       loaded_ast = self._LoadPickledModule(d, bar)
       loaded_ast.Visit(visitors.VerifyLookup())
 
+  def testPickledBuiltins(self):
+    with utils.Tempdir() as d:
+      filename = d.create_file("builtins.pickle")
+      foo_path = d.create_file("foo.pickle", """
+        import datetime
+        tz = ...  # type: datetime.tzinfo
+      """)
+      # save builtins
+      load_pytd.Loader("base", self.PYTHON_VERSION).save_to_pickle(filename)
+      # load builtins
+      loader = load_pytd.PickledPyiLoader.load_from_pickle(
+          filename, "base",
+          python_version=self.PYTHON_VERSION,
+          imports_map={"foo": foo_path},
+          pythonpath=[""])
+      # test import
+      self.assertTrue(loader.import_name("sys"))
+      self.assertTrue(loader.import_name("__future__"))
+      self.assertTrue(loader.import_name("datetime"))
+      self.assertTrue(loader.import_name("foo"))
+      self.assertTrue(loader.import_name("ctypes"))
+
   def testModuleAliases(self):
     with utils.Tempdir() as d:
       d.create_file("pkg/foo.pyi", "class X: ...")

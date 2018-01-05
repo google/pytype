@@ -1,5 +1,6 @@
 """Load and link .pyi files."""
 
+import cPickle
 import logging
 import os
 
@@ -23,14 +24,21 @@ class Module(object):
       unique.
     ast: The parsed PyTD. Internal references will be resolved, but
       NamedType nodes referencing other modules might still be unresolved.
+    pickle: The AST as a pickled string. As long as this field is not None, the
+      ast will be None.
     dirty: The initial value of the dirty attribute.
   """
 
-  def __init__(self, module_name, filename, ast, dirty=True):
+  def __init__(self, module_name, filename, ast,
+               pickle=None, dirty=True):
     self.module_name = module_name
     self.filename = filename
     self.ast = ast
+    self.pickle = pickle
     self.dirty = dirty
+
+  def needs_unpickling(self):
+    return bool(self.pickle)
 
 
 class BadDependencyError(Exception):
@@ -52,7 +60,6 @@ class Loader(object):
   Attributes:
     base_module: The full name of the module we're based in (i.e., the module
       that's importing other modules using this loader).
-    options: config.Options object
     _modules: A map, filename to Module, for caching modules already loaded.
     _concatenated: A concatenated pytd of all the modules. Refreshed when
                    necessary.
@@ -66,27 +73,49 @@ class Loader(object):
                pythonpath=(),
                imports_map=None,
                use_typeshed=True,
-               typeshed_location="typeshed"):
+               typeshed_location="typeshed",
+               modules=None):
+    self._modules = modules or self._base_modules(python_version)
+    if self._modules["__builtin__"].needs_unpickling():
+      self._unpickle_module(self._modules["__builtin__"])
+    if self._modules["typing"].needs_unpickling():
+      self._unpickle_module(self._modules["typing"])
+    self.builtins = self._modules["__builtin__"].ast
+    self.typing = self._modules["typing"].ast
     self.base_module = base_module
     self.python_version = python_version
     self.pythonpath = pythonpath
     self.imports_map = imports_map
     self.use_typeshed = use_typeshed
     self.typeshed_location = typeshed_location
-    self.builtins, self.typing = builtins.GetBuiltinsAndTyping(python_version)
-    self._modules = {
-        "__builtin__":
-        Module("__builtin__", self.PREFIX + "__builtin__", self.builtins,
-               dirty=False),
-        "typing":
-        Module("typing", self.PREFIX + "typing", self.typing,
-               dirty=False)
-    }
     self._concatenated = None
     self._import_name_cache = {}  # performance cache
     # Paranoid verification that pytype.main properly checked the flags:
     if imports_map is not None:
       assert pythonpath == [""], pythonpath
+
+  def save_to_pickle(self, filename):
+    """Save to a pickle. See PickledPyiLoader.load_from_pickle for reverse."""
+    # We assume that the Loader is in a consistent state here. In particular, we
+    # assume that for every module in _modules, all the transitive dependencies
+    # have been loaded.
+    items = tuple((name, serialize_ast.StoreAst(module.ast))
+                  for name, module in sorted(self._modules.items()))
+    # Now pickle the pickles. We keep the "inner" modules as pickles as a
+    # performance optimization - unpickling is slow.
+    pytd_utils.SavePickle(items, filename, compress=True)
+
+  def _unpickle_module(self, module):
+    raise NotImplementedError()  # overwritten in PickledPyiLoader
+
+  def _base_modules(self, python_version):
+    bltins, typing = builtins.GetBuiltinsAndTyping(python_version)
+    return {
+        "__builtin__":
+        Module("__builtin__", self.PREFIX + "__builtin__", bltins, dirty=False),
+        "typing":
+        Module("typing", self.PREFIX + "typing", typing, dirty=False)
+    }
 
   def _postprocess_pyi(self, ast):
     """Apply all the PYI transformations we need."""
@@ -107,12 +136,11 @@ class Loader(object):
                          pytd_utils.EmptyModule(module_name))
     return ast.Replace(is_package=utils.is_pyi_directory_init(filename))
 
-  def _get_existing_ast(self, module_name, filename):
+  def _get_existing_ast(self, module_name):
     existing = self._modules.get(module_name)
     if existing:
-      if existing.filename != filename:
-        raise AssertionError("%s exists as both %s and %s" %
-                             (module_name, filename, existing.filename))
+      if existing.needs_unpickling():
+        self._unpickle_module(existing)
       return existing.ast
     return None
 
@@ -120,7 +148,7 @@ class Loader(object):
     """Load (or retrieve from cache) a module and resolve its dependencies."""
     self._concatenated = None  # invalidate
     # Check for an existing ast first
-    existing = self._get_existing_ast(module_name, filename)
+    existing = self._get_existing_ast(module_name)
     if existing:
       return existing
     if not ast:
@@ -170,13 +198,13 @@ class Loader(object):
                              ast, ast_name=None):
     """Fill in all ClassType.cls pointers and load reexported modules."""
     for name in (dependencies or ()):
-      if name not in self._modules:
+      if name not in self._modules or not self._modules[name].ast:
         other_ast = self._import_name(name)
         if other_ast is None:
           error = "Can't find pyi for %r" % name
           raise BadDependencyError(error, ast_name or ast.name)
     for name in (soft_dependencies or ()):
-      if name not in self._modules:
+      if name not in self._modules or not self._modules[name].ast:
         # We ignore any errors here; what we're trying to import might not exist
         self._import_name(name, log_failure=False)
 
@@ -306,6 +334,10 @@ class Loader(object):
       The parsed file, instance of pytd.TypeDeclUnit, or None if we
       the module wasn't found.
     """
+    existing = self._get_existing_ast(module_name)
+    if existing:
+      return existing
+
     assert os.sep not in module_name, (os.sep, module_name)
     log.debug("Trying to import %r", module_name)
     # Builtin modules (but not standard library modules!) take precedence
@@ -408,12 +440,14 @@ class Loader(object):
   def concat_all(self):
     if not self._concatenated:
       self._concatenated = pytd_utils.Concat(
-          *(module.ast for module in self._modules.values()),
+          *(module.ast for module in self._modules.values()
+            if module.ast),
           name="<all>")
     return self._concatenated
 
   def _get_module_map(self):
-    return {name: module.ast for name, module in self._modules.items()}
+    return {name: module.ast for name, module in self._modules.items()
+            if module.ast}
 
   def can_see(self, module):
     """Reports whether the Loader can find the module."""
@@ -429,7 +463,7 @@ class PickledPyiLoader(Loader):
 
   def __init__(self, use_pickled_typeshed=True, *args, **kwargs):
     super(PickledPyiLoader, self).__init__(*args, **kwargs)
-    self._use_pickled_typeshed = use_pickled_typeshed
+    self._use_pickled_typeshed = use_pickled_typeshed  # TODO(kramm): remove
 
   def _load_typeshed_builtin(self, subdir, module_name):
     if not self._use_pickled_typeshed:
@@ -444,12 +478,51 @@ class PickledPyiLoader(Loader):
     else:
       return self.load_file(module_name, filename)
 
+  @classmethod
+  def load_from_pickle(cls, filename, base_module, **kwargs):
+    items = pytd_utils.LoadPickle(filename, compress=True)
+    modules = {
+        name: Module(name, filename=None, ast=None, pickle=pickle, dirty=False)
+        for name, pickle in items
+    }
+    kwargs["use_pickled_typeshed"] = False
+    return cls(base_module=base_module, modules=modules, **kwargs)
+
+  def _unpickle_module(self, module):
+    if not module.pickle:
+      return
+    todo = [module]
+    seen = set()
+    newly_loaded_asts = []
+    while todo:
+      m = todo.pop()
+      if m in seen:
+        continue
+      else:
+        seen.add(m)
+      if not m.pickle:
+        continue
+      loaded_ast = cPickle.loads(m.pickle)
+      deps = [d for d in loaded_ast.dependencies if d != loaded_ast.ast.name]
+      loaded_ast = serialize_ast.EnsureAstName(loaded_ast, m.module_name)
+      assert m.module_name in self._modules
+      todo.extend(self._modules[dependency] for dependency in deps)
+      newly_loaded_asts.append(loaded_ast)
+      m.ast = loaded_ast.ast
+      m.pickle = None
+    module_map = self._get_module_map()
+    for loaded_ast in newly_loaded_asts:
+      unused_new_serialize_ast = serialize_ast.FillLocalReferences(
+          loaded_ast, module_map)
+    assert module.ast
+
   def load_file(self, module_name, filename, ast=None):
     """Load (or retrieve from cache) a module and resolve its dependencies."""
     if not os.path.splitext(filename)[1].startswith(".pickled"):
       return super(PickledPyiLoader, self).load_file(module_name, filename, ast)
-    existing = self._get_existing_ast(module_name, filename)
+    existing = self._get_existing_ast(module_name)
     if existing:
+      # TODO(kramm): When does this happen?
       return existing
     loaded_ast = pytd_utils.LoadPickle(filename)
     # At this point ast.name and module_name could be different.
@@ -458,7 +531,7 @@ class PickledPyiLoader(Loader):
                     if d != loaded_ast.ast.name]
     soft_dependencies = [d for d in loaded_ast.soft_dependencies
                          if d != loaded_ast.ast.name]
-    loaded_ast = serialize_ast.EnsureAstName(loaded_ast, module_name)
+    loaded_ast = serialize_ast.EnsureAstName(loaded_ast, module_name, fix=True)
     self._modules[module_name] = Module(module_name, filename, loaded_ast.ast)
     self._load_ast_dependencies(dependencies, soft_dependencies,
                                 ast, module_name)
@@ -468,5 +541,7 @@ class PickledPyiLoader(Loader):
       del self._modules[module_name]
       raise BadDependencyError(e.message, module_name)
     self._modules[module_name].ast = ast
+    self._modules[module_name].pickle = None
     self._modules[module_name].dirty = False
     return ast
+

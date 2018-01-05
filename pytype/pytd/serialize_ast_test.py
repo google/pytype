@@ -304,7 +304,7 @@ class SerializeAstTest(unittest.TestCase):
       new_module_name = "wurstbrot.module2"
       serializable_ast = pytd_utils.LoadPickle(pickled_ast_filename)
       serializable_ast = serialize_ast.EnsureAstName(
-          serializable_ast, new_module_name)
+          serializable_ast, new_module_name, fix=True)
       loaded_ast = serialize_ast.ProcessAst(serializable_ast, module_map)
 
       self.assertTrue(loaded_ast)
@@ -338,8 +338,9 @@ class SerializeAstTest(unittest.TestCase):
       p = pytd_utils.LoadPickle(foo)
       self.assertTrue(p.function_type_nodes)
       ast = serialize_ast.ProcessAst(p, module_map)
-      f = [a for a in ast.aliases if a.name == "foo.f"][0]
-      self.assertIsNotNone(f.type.function.signatures[0].return_type.cls)
+      f, = [a for a in ast.aliases if a.name == "foo.f"]
+      signature, = f.type.function.signatures
+      self.assertIsNotNone(signature.return_type.cls)
 
 
 if __name__ == "__main__":

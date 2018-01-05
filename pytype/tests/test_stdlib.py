@@ -250,6 +250,11 @@ class StdlibTests(test_base.BaseTest):
       import csv
     """)
 
+  def testFuture(self):
+    self.Check("""\
+      import __future__
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

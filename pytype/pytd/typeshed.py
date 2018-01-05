@@ -20,7 +20,7 @@ class Typeshed(object):
     if home and not os.path.isdir(home):
       raise IOError("No typeshed directory %s" % home)
 
-    self._use_pickled = use_pickled
+    self._use_pickled = use_pickled  # deprecated
     self._raw_typeshed_location = typeshed_location
     if home:
       self._typeshed_path = home

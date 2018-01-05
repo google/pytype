@@ -391,7 +391,7 @@ class PytypeTest(unittest.TestCase):
     main_module._run_pytype(options)
     self.assertTrue(os.path.isfile(outfile))
 
-  def testGenerateBuiltins(self):
+  def testGenerateAndUseBuiltins(self):
     """Test for --generate-builtins."""
     filename = self._TmpPath("builtins.pickle")
     # Generate builtins pickle
@@ -399,15 +399,53 @@ class PytypeTest(unittest.TestCase):
     self._RunPytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=False, returncode=False)
     self.assertTrue(os.path.isfile(filename))
-    # Use builtins pickle
-    self._ResetPytypeArgs()
-    self._SetUpChecking(self._MakeFile("""\
+    src = self._MakeFile("""\
       import __future__
       import sys
       import collections
       import typing
-    """))
+    """)
+    # Use builtins pickle
+    self._ResetPytypeArgs()
+    self._SetUpChecking(src)
     self.pytype_args["--precompiled-builtins"] = filename
+    self._RunPytype(self.pytype_args)
+    self.assertOutputStateMatches(stdout=False, stderr=False, returncode=False)
+
+  def testUseBuiltinsAndImportMap(self):
+    """Test for --generate-builtins."""
+    filename = self._TmpPath("builtins.pickle")
+    # Generate builtins pickle
+    self.pytype_args["--generate-builtins"] = filename
+    self._RunPytype(self.pytype_args)
+    self.assertOutputStateMatches(stdout=False, stderr=False, returncode=False)
+    self.assertTrue(os.path.isfile(filename))
+    # input files
+    src = self._MakeFile("""\
+      import __future__
+      import sys
+      import collections
+      import typing
+      import foo
+      import csv
+      import ctypes
+      import xml.etree.ElementTree as ElementTree
+      from email import MIMEBase  # Test google/missing.txt, MOE:strip_line
+      x = foo.x
+      y = csv.writer
+    """)
+    pyi = self._MakeFile("""\
+      import datetime
+      x = ...  # type: datetime.tzinfo
+    """)
+    # Use builtins pickle with an imports map
+    self._ResetPytypeArgs()
+    self._SetUpChecking(src)
+    self.pytype_args["--precompiled-builtins"] = filename
+    self.pytype_args["--imports_info"] = self._MakeFile("""\
+      typing /dev/null
+      foo %s
+    """ % pyi)
     self._RunPytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=False, returncode=False)
 

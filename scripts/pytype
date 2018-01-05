@@ -27,6 +27,7 @@ from pytype.pytd import optimize
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import serialize_ast
+from pytype.pytd import typeshed
 from pytype.pytd.parse import builtins as pytd_builtins
 from pytype.pytd.parse import node
 from pytype.pytd.parse import visitors
@@ -57,7 +58,18 @@ def check_pyi(input_filename, errorlog, options, loader):
 def _create_loader(input_filename, options):
   module_name = (options.module_name or
                  analyze.get_module_name(input_filename, options.pythonpath))
-  if options.use_pickled_files:
+  if options.precompiled_builtins:
+    l = load_pytd.PickledPyiLoader.load_from_pickle(
+        options.precompiled_builtins,
+        base_module=module_name,
+        python_version=options.python_version,
+        pythonpath=options.pythonpath,
+        imports_map=options.imports_map,
+        use_typeshed=options.typeshed,
+        typeshed_location=options.typeshed_location,
+        use_pickled_typeshed=options.use_pickled_typeshed)
+    return l
+  elif options.use_pickled_files:
     return load_pytd.PickledPyiLoader(
         base_module=module_name,
         python_version=options.python_version,
@@ -252,6 +264,16 @@ def _convert_to_pickle(options):
   return 0
 
 
+def _generate_builtins_pickle(output_filename, options):
+  """Create a pickled file with the standard library (typeshed + builtins)."""
+  loader = _create_loader(options.input, options)
+  t = typeshed.Typeshed(options.typeshed_location, use_pickled=False)
+  module_names = t.get_all_stdlib_module_names(options.python_version)
+  for m in sorted(module_names):
+    loader.import_name(m)
+  loader.save_to_pickle(output_filename)
+
+
 def main(argv):
   try:
     options = config.Options(argv)
@@ -278,14 +300,8 @@ def main(argv):
 def _run_pytype(options):
   """Run pytype with the given configuration options."""
   if options.generate_builtins:
-    pytd_builtins.Precompile(options.generate_builtins,
-                             options.python_version)
+    _generate_builtins_pickle(options.generate_builtins, options)
     return
-
-  if options.precompiled_builtins:
-    # TODO(mdemello): This is not covered by testing.
-    pytd_builtins.LoadPrecompiled(options.precompiled_builtins,
-                                  options.python_version)
 
   log.info("Process %s => %s", options.input, options.output)
   exit_status = process_one_file(options.input,

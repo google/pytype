@@ -169,12 +169,13 @@ def StoreAst(ast, filename=None):
       list(sorted(indexer.function_type_nodes))), filename)
 
 
-def EnsureAstName(ast, module_name):
-  """Rename the serializable_ast if the name is different from module_name.
+def EnsureAstName(ast, module_name, fix=False):
+  """Verify that serializable_ast has the name module_name, or repair it.
 
   Args:
     ast: An instance of SerializableAst.
     module_name: The name under which ast.ast should be loaded.
+    fix: If this function should repair the wrong name.
 
   Returns:
     The updated SerializableAst.
@@ -184,10 +185,12 @@ def EnsureAstName(ast, module_name):
 
   # module_name is the name from this run, raw_ast.name is the guessed name from
   # when the ast has been pickled.
-  if module_name != raw_ast.name:
+  if fix and module_name != raw_ast.name:
     ast = ast.Replace(class_type_nodes=None, function_type_nodes=None)
     ast = ast.Replace(
         ast=raw_ast.Visit(RenameModuleVisitor(raw_ast.name, module_name)))
+  else:
+    assert module_name == raw_ast.name
   return ast
 
 
@@ -224,7 +227,7 @@ def ProcessAst(serializable_ast, module_map):
   # external references are resolved.
   serializable_ast = _LookupClassReferences(
       serializable_ast, module_map, serializable_ast.ast.name)
-  serializable_ast = _FillLocalReferences(serializable_ast, {
+  serializable_ast = FillLocalReferences(serializable_ast, {
       "": serializable_ast.ast,
       serializable_ast.ast.name: serializable_ast.ast})
   return serializable_ast.ast
@@ -278,7 +281,7 @@ def _LookupClassReferences(serializable_ast, module_map, self_name):
   return serializable_ast
 
 
-def _FillLocalReferences(serializable_ast, module_map):
+def FillLocalReferences(serializable_ast, module_map):
   local_filler = visitors.FillInLocalPointers(module_map)
   if (serializable_ast.class_type_nodes is None or
       serializable_ast.function_type_nodes is None):
