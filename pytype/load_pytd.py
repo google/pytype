@@ -6,6 +6,7 @@ import os
 
 
 from pytype import utils
+from pytype.pyi import parser
 from pytype.pytd import pytd_utils
 from pytype.pytd import serialize_ast
 from pytype.pytd import typeshed
@@ -115,6 +116,18 @@ class Loader(object):
         Module("typing", self.PREFIX + "typing", typing, dirty=False)
     }
 
+  def _parse_predefined(self, pytd_subdir, module, as_package=False):
+    """Parse a pyi/pytd file in the pytype source tree."""
+    try:
+      filename, src = pytd_utils.GetPredefinedFile(pytd_subdir, module,
+                                                   as_package=as_package)
+    except IOError:
+      return None
+    ast = parser.parse_string(src, filename=filename, name=module,
+                              python_version=self.python_version)
+    assert ast.name == module
+    return ast
+
   def _postprocess_pyi(self, ast):
     """Apply all the PYI transformations we need."""
     package_name = utils.get_pyi_package_name(ast.name, ast.is_package)
@@ -150,9 +163,8 @@ class Loader(object):
     if existing:
       return existing
     if not ast:
-      ast = builtins.ParsePyTD(filename=filename,
-                               module=module_name,
-                               python_version=self.python_version)
+      ast = parser.parse_file(filename=filename, name=module_name,
+                              python_version=self.python_version)
     return self._process_module(module_name, filename, ast)
 
   def _process_module(self, module_name, filename, ast):
@@ -297,12 +309,9 @@ class Loader(object):
     # Try our own type definitions first.
     if not third_party_only:
       builtin_dir = utils.get_versioned_path(subdir, self.python_version)
-      mod = builtins.ParsePredefinedPyTD(
-          builtin_dir, module_name, self.python_version)
+      mod = self._parse_predefined(builtin_dir, module_name)
       if not mod:
-        mod = builtins.ParsePredefinedPyTD(
-            builtin_dir, module_name, self.python_version,
-            as_package=True)
+        mod = self._parse_predefined(builtin_dir, module_name, as_package=True)
       if mod:
         return self.load_file(filename=self.PREFIX + module_name,
                               module_name=module_name,

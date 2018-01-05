@@ -4,6 +4,7 @@ import collections
 import hashlib
 
 
+from pytype import utils
 from pytype.pyi import parser_ext
 from pytype.pytd import pep484
 from pytype.pytd import pytd
@@ -402,7 +403,7 @@ class _Parser(object):
     # that rewritten to __builtin__
     ast = ast.Visit(visitors.RenameBuiltinsPrefix())
 
-    return ast
+    return ast.Replace(is_package=utils.is_pyi_directory_init(filename))
 
   def _build_type_decl_unit(self, defs):
     """Return a pytd.TypeDeclUnit for the given defs (plus parser state)."""
@@ -1023,6 +1024,14 @@ class _Parser(object):
 
 def parse_string(src, name=None, filename=None, python_version=None,
                  platform=None):
+  return _Parser(version=python_version, platform=platform).parse(
+      src, name, filename)
+
+
+def parse_file(filename=None, name=None, python_version=None,
+               platform=None):
+  with open(filename, "rb") as fi:
+    src = fi.read()
   return _Parser(version=python_version, platform=platform).parse(
       src, name, filename)
 

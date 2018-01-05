@@ -4,6 +4,7 @@ import os
 
 
 from pytype import utils
+from pytype.pyi import parser
 from pytype.pytd.parse import builtins
 
 
@@ -184,6 +185,7 @@ def parse_type_definition(pyi_subdir, module, python_version):
   Returns:
     The AST of the module; None if the module doesn't have a definition.
   """
+  assert python_version
   typeshed = _get_typeshed()
   try:
     filename, src = typeshed.get_module_file(
@@ -191,6 +193,6 @@ def parse_type_definition(pyi_subdir, module, python_version):
   except IOError:
     return None
 
-  ast = builtins.ParsePyTD(src, filename=filename, module=module,
-                           python_version=python_version).Replace(name=module)
-  return ast
+  ast = parser.parse_string(src, filename=filename, name=module,
+                            python_version=python_version)
+  return ast.Replace(is_package=utils.is_pyi_directory_init(filename))

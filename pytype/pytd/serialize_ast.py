@@ -7,9 +7,9 @@ disk, which is faster to digest than a pyi file.
 
 import collections
 
+from pytype.pyi import parser
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
-from pytype.pytd.parse import builtins as pytd_builtins
 from pytype.pytd.parse import visitors
 
 
@@ -327,8 +327,8 @@ def PrepareForExport(module_name, python_version, ast, loader):
   # e.g. visitors.PrintVisitor._FormatContainerContents, which need to move to
   # their own visitors so they can be applied without printing.
   src = pytd_utils.Print(ast)
-  ast = pytd_builtins.ParsePyTD(src=src, module=module_name,
-                                python_version=python_version)
+  ast = parser.parse_string(src=src, name=module_name,
+                            python_version=python_version)
   ast = ast.Visit(visitors.LookupBuiltins(loader.builtins, full_names=False))
   ast = ast.Visit(visitors.ExpandCompatibleBuiltins(loader.builtins))
   ast = ast.Visit(visitors.LookupLocalTypes())

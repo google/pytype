@@ -37,22 +37,6 @@ class UtilsTest(unittest.TestCase):
     cls = self.builtins.Lookup("__builtin__.object")
     self.assertEqual(cls.parents, ())
 
-  def testParsePyTD(self):
-    """Test ParsePyTD()."""
-    ast = builtins.ParsePyTD("a = ...  # type: int",
-                             "<inline>", python_version=self.PYTHON_VERSION,
-                             lookup_classes=True)
-    a = ast.Lookup("a").type
-    self.assertItemsEqual(a, pytd.ClassType("int"))
-    self.assertIsNotNone(a.cls)  # verify that the lookup succeeded
-
-  def testParsePredefinedPyTD(self):
-    """Test ParsePredefinedPyTD()."""
-    builtin_dir = "builtins/%d" % self.PYTHON_VERSION[0]
-    ast = builtins.ParsePredefinedPyTD(
-        builtin_dir, "__builtin__", python_version=self.PYTHON_VERSION)
-    self.assertIsNotNone(ast.Lookup("__builtin__.int"))
-
   def testPrecompilation(self):
     # Get original (non-precompiled) values.
     b1, t1 = builtins.GetBuiltinsAndTyping(self.PYTHON_VERSION)

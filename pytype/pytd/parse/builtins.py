@@ -110,64 +110,12 @@ def GetBuiltinsPyTD(python_version):  # Deprecated. Use Loader.concat_all.
   return pytd_utils.Concat(*GetBuiltinsAndTyping(python_version))
 
 
-def ParsePyTD(src=None, filename=None, python_version=None, module=None,
-              lookup_classes=False):
-  """Parse pytd sourcecode and do name lookup for builtins.
-
-  This loads a pytd and also makes sure that all names are resolved (i.e.,
-  that all primitive types in the AST are ClassType, and not NameType).
-
-  Args:
-    src: PyTD source code.
-    filename: The filename the source code is from.
-    python_version: The Python version to parse the pytd for.
-    module: The name of the module we're parsing.
-    lookup_classes: If we should also lookup the class of every ClassType.
-
-  Returns:
-    A pytd.TypeDeclUnit.
-  """
-  assert python_version
-  if src is None:
-    with open(filename, "rb") as fi:
-      src = fi.read()
-  ast = parser.parse_string(src, filename=filename, name=module,
-                            python_version=python_version)
-  if lookup_classes:
-    ast = visitors.LookupClasses(ast, GetBuiltinsPyTD(python_version))
-  ast = ast.Replace(is_package=utils.is_pyi_directory_init(filename))
-  return ast
-
-
-def ParsePredefinedPyTD(pytd_subdir, module, python_version,
-                        as_package=False):
-  """Load and parse a *.pytd from "pytd/{pytd_subdir}/{module}.pytd".
-
-  Args:
-    pytd_subdir: the directory where the module should be found
-    module: the module name (without any file extension)
-    python_version: sys.version_info[:2]
-    as_package: load the module as a directory with a __init__ file
-
-  Returns:
-    The AST of the module; None if the module doesn't exist in pytd_subdir.
-  """
-  try:
-    path, src = pytd_utils.GetPredefinedFile(pytd_subdir, module,
-                                             as_package=as_package)
-  except IOError:
-    return None
-  return ParsePyTD(src, filename=path, module=module,
-                   python_version=python_version).Replace(name=module)
-
-
 # pyi for a catch-all module
 DEFAULT_SRC = """
 from typing import Any
-def __getattr__(name) -> Any: ...
+def __getattr__(name: Any) -> Any: ...
 """
 
 
 def GetDefaultAst(python_version):
-  return ParsePyTD(src=DEFAULT_SRC,
-                   python_version=python_version, lookup_classes=True)
+  return parser.parse_string(src=DEFAULT_SRC, python_version=python_version)
