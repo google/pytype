@@ -352,7 +352,6 @@ class BaseTest(unittest.TestCase):
     self.options.tweak(module_name=module_name, quick=quick)
     errorlog = errors.ErrorLog()
     self.loader = load_pytd.PickledPyiLoader(
-        use_pickled_typeshed=False,
         base_module=module_name,
         python_version=self.PYTHON_VERSION,
         pythonpath=[""] if (not pythonpath and imports_map) else pythonpath,

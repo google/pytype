@@ -16,7 +16,7 @@ class TestTypeshedLoading(parser_test_base.ParserTest):
 
   def setUp(self):
     super(TestTypeshedLoading, self).setUp()
-    self.ts = typeshed.Typeshed(typeshed_location="typeshed", use_pickled=False)
+    self.ts = typeshed.Typeshed()
 
   def test_get_typeshed_file(self):
     filename, data = self.ts.get_module_file("stdlib", "errno", (2, 7))
@@ -30,13 +30,12 @@ class TestTypeshedLoading(parser_test_base.ParserTest):
     self.assertIn("LogRecord", data)
 
   def test_parse_type_definition(self):
-    ast = typeshed.parse_type_definition(
-        "stdlib", "_random", (2, 7), "typeshed", False)
+    ast = typeshed.parse_type_definition("stdlib", "_random", (2, 7))
     self.assertIn("_random.Random", [cls.name for cls in ast.classes])
 
 
   def test_get_all_stdlib_module_names_2(self):
-    t = typeshed.Typeshed("typeshed", False)
+    t = typeshed.Typeshed()
     modules = t.get_all_stdlib_module_names([2, 7])
     self.assertIn("collections", modules)
     self.assertIn("csv", modules)
@@ -45,20 +44,20 @@ class TestTypeshedLoading(parser_test_base.ParserTest):
     self.assertIn("xml.etree.ElementTree", modules)
 
   def test_get_all_stdlib_module_names_3(self):
-    t = typeshed.Typeshed("typeshed", False)
+    t = typeshed.Typeshed()
     modules = t.get_all_stdlib_module_names([3, 5])
     self.assertIn("asyncio", modules)
     self.assertIn("collections", modules)
     self.assertIn("configparser", modules)
 
   def test_read_blacklist(self):
-    t = typeshed.Typeshed("typeshed", False)
+    t = typeshed.Typeshed()
     for filename in t.read_blacklist():
       self.assertTrue(filename.startswith("stdlib") or
                       filename.startswith("third_party"))
 
   def test_blacklisted_modules(self):
-    t = typeshed.Typeshed("typeshed", False)
+    t = typeshed.Typeshed()
     for module_name in t.blacklisted_modules([2, 7]):
       self.assertNotIn("/", module_name)
     for module_name in t.blacklisted_modules([3, 6]):

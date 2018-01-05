@@ -15,28 +15,16 @@ class Typeshed(object):
   pytype (i.e., /{some_path}/pytype/typeshed).
   """
 
-  def __init__(self, typeshed_location, use_pickled):
-    home = os.getenv("TYPESHED_HOME")
-    if home and not os.path.isdir(home):
-      raise IOError("No typeshed directory %s" % home)
-
-    self._use_pickled = use_pickled  # deprecated
-    self._raw_typeshed_location = typeshed_location
+  def __init__(self):
+    self._env_home = home = os.getenv("TYPESHED_HOME")
     if home:
+      if not os.path.isdir(home):
+        raise IOError("No typeshed directory %s" % home)
       self._typeshed_path = home
     else:
-      if os.path.isabs(typeshed_location):
-        self._typeshed_path = typeshed_location
-      else:
-        # Not guaranteed to really exist (.egg, etc)
-        pytype_base = os.path.split(os.path.dirname(__file__))[0]
-        self._typeshed_path = os.path.join(pytype_base, typeshed_location)
-    self._env_home = home
+      pytype_base = os.path.split(os.path.dirname(__file__))[0]
+      self._typeshed_path = os.path.join(pytype_base, "typeshed")
     self._missing = frozenset(self._load_missing())
-
-  @property
-  def use_pickled(self):
-    return self._use_pickled
 
   def _load_file(self, path):
     if self._env_home:
@@ -110,11 +98,7 @@ class Typeshed(object):
       # TODO(mdemello): handle this in the calling code.
       for path in [os.path.join(path_rel, "__init__.pyi"), path_rel + ".pyi"]:
         try:
-          if self._use_pickled:
-            name, src = self._load_file(
-                utils.replace_extension(path, ".pickled"))
-          else:
-            name, src = self._load_file(path)
+          name, src = self._load_file(path)
           return name, src
         except IOError:
           pass
@@ -125,8 +109,6 @@ class Typeshed(object):
     """Get the names of all modules in typeshed and pytype/pytd/builtins."""
     if self._env_home:
       raise NotImplementedError("Not implemented: Can't scan external typeshed")
-    if self._raw_typeshed_location != "typeshed":
-      raise NotImplementedError("Can't scan typeshed not in ./typeshed")
     major = python_version[0]
     subdirs = [os.path.join("pytd/builtins/%d" % major),
                os.path.join("pytd/stdlib/%d" % major),
@@ -152,7 +134,7 @@ class Typeshed(object):
 
   def read_blacklist(self):
     """Read the typeshed blacklist."""
-    if self._env_home or self._raw_typeshed_location != "typeshed":
+    if self._env_home:
       raise NotImplementedError("Can't read blacklist outside ./typeshed")
     data = utils.load_pytype_file("typeshed/tests/pytype_blacklist.txt")
     for line in data.splitlines():
@@ -177,54 +159,32 @@ class Typeshed(object):
 _typeshed = None
 
 
-def _get_typeshed(typeshed_location, use_pickled):
+def _get_typeshed():
   """Get the global Typeshed instance."""
   global _typeshed
   if _typeshed is None:
     try:
-      _typeshed = Typeshed(typeshed_location, use_pickled)
+      _typeshed = Typeshed()
     except IOError as e:
       # This happens if typeshed is not available. Which is a setup error
       # and should be propagated to the user. The IOError is catched further up
       # in the stack.
       raise AssertionError("Couldn't create Typeshed: %s" % str(e))
-  assert _typeshed.use_pickled == use_pickled
   return _typeshed
 
 
-def get_type_definition_filename(
-    pyi_subdir, module, python_version, typeshed_location, use_pickled):
-  """Load and return the contents of a typeshed module.
-
-  Args:
-    pyi_subdir: the directory where the module should be found.
-    module: the module name (without any file extension)
-    python_version: sys.version_info[:2]
-    typeshed_location: Location of the typeshed interface definitions.
-    use_pickled: A boolean, iff True typeshed will try to load pickled files.
-
-  Returns:
-    The filename containing the definition.
-  """
-  typeshed = _get_typeshed(typeshed_location, use_pickled)
-  return typeshed.get_module_file(pyi_subdir, module, python_version)[0]
-
-
-def parse_type_definition(
-    pyi_subdir, module, python_version, typeshed_location, use_pickled):
+def parse_type_definition(pyi_subdir, module, python_version):
   """Load and parse a *.pyi from typeshed.
 
   Args:
     pyi_subdir: the directory where the module should be found.
     module: the module name (without any file extension)
     python_version: sys.version_info[:2]
-    typeshed_location: Location of the typeshed interface definitions.
-    use_pickled: A boolean, iff True typeshed will try to load pickled files.
 
   Returns:
     The AST of the module; None if the module doesn't have a definition.
   """
-  typeshed = _get_typeshed(typeshed_location, use_pickled)
+  typeshed = _get_typeshed()
   try:
     filename, src = typeshed.get_module_file(
         pyi_subdir, module, python_version)

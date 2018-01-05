@@ -187,7 +187,6 @@ class PickleTest(test_base.BaseTest):
   def testFunctionType(self):
     self.loader = load_pytd.PickledPyiLoader(
         base_module="bar",
-        use_pickled_typeshed=False,
         python_version=self.PYTHON_VERSION,
         pythonpath=[""])
     with utils.Tempdir() as d:

@@ -73,7 +73,6 @@ class Loader(object):
                pythonpath=(),
                imports_map=None,
                use_typeshed=True,
-               typeshed_location="typeshed",
                modules=None):
     self._modules = modules or self._base_modules(python_version)
     if self._modules["__builtin__"].needs_unpickling():
@@ -87,7 +86,6 @@ class Loader(object):
     self.pythonpath = pythonpath
     self.imports_map = imports_map
     self.use_typeshed = use_typeshed
-    self.typeshed_location = typeshed_location
     self._concatenated = None
     self._import_name_cache = {}  # performance cache
     # Paranoid verification that pytype.main properly checked the flags:
@@ -316,12 +314,10 @@ class Loader(object):
   def _load_typeshed_builtin(self, subdir, module_name):
     """Load a pyi from typeshed."""
     mod = typeshed.parse_type_definition(
-        subdir, module_name, self.python_version,
-        self.typeshed_location, use_pickled=False)
+        subdir, module_name, self.python_version)
     if mod:
       return self.load_file(filename=self.PREFIX + module_name,
-                            module_name=module_name,
-                            ast=mod)
+                            module_name=module_name, ast=mod)
     return None
 
   def _import_name(self, module_name, log_failure=True):
@@ -461,22 +457,8 @@ class Loader(object):
 class PickledPyiLoader(Loader):
   """A Loader which always loads pickle instead of PYI, for speed."""
 
-  def __init__(self, use_pickled_typeshed=True, *args, **kwargs):
+  def __init__(self, *args, **kwargs):
     super(PickledPyiLoader, self).__init__(*args, **kwargs)
-    self._use_pickled_typeshed = use_pickled_typeshed  # TODO(kramm): remove
-
-  def _load_typeshed_builtin(self, subdir, module_name):
-    if not self._use_pickled_typeshed:
-      return super(PickledPyiLoader, self)._load_typeshed_builtin(
-          subdir, module_name)
-    try:
-      filename, _ = typeshed.get_type_definition_filename(
-          subdir, module_name, self.python_version,
-          self.typeshed_location, use_pickled=True)
-    except IOError:
-      return None
-    else:
-      return self.load_file(module_name, filename)
 
   @classmethod
   def load_from_pickle(cls, filename, base_module, **kwargs):
@@ -485,7 +467,6 @@ class PickledPyiLoader(Loader):
         name: Module(name, filename=None, ast=None, pickle=pickle, dirty=False)
         for name, pickle in items
     }
-    kwargs["use_pickled_typeshed"] = False
     return cls(base_module=base_module, modules=modules, **kwargs)
 
   def _unpickle_module(self, module):

@@ -76,10 +76,6 @@ class Options(object):
         dest="check_preconditions", default=False,
         help=("Enable checking of preconditions."))
     o.add_option(
-        "--convert-to-pickle", action="store",
-        dest="convert_to_pickle",
-        help=("Convert file to pickle."))
-    o.add_option(
         "-d", "--disable", action="store",
         dest="disable", default=None,
         help=("Comma separated list of error names to ignore."))
@@ -131,11 +127,6 @@ class Options(object):
         help=("Do not use typeshed to look up types in the Python stdlib. "
               "For testing."))
     o.add_option(
-        "--typeshed-location", action="store",
-        dest="typeshed_location", default="typeshed",
-        help=("Path to typeshed. If this path is not absolute it will be "
-              "interpreted relative to pytype_base."))
-    o.add_option(
         "--nofail", action="store_true",
         dest="nofail", default=False,
         help=("Don't allow pytype to fail."))
@@ -174,10 +165,6 @@ class Options(object):
               "source(s) to byte code. Can be \"HOST\" to use the same Python "
               "that is running pytype. If not specified, --python_version is "
               "used to create the name of an interpreter."))
-    o.add_option(
-        "--use-pickled-typeshed", action="store_true", default=False,
-        dest="use_pickled_typeshed",
-        help=("Assume that the files in typeshed-location are pickled."))
     o.add_option(
         "--use-pickled-files", action="store_true", default=False,
         dest="use_pickled_files",

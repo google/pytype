@@ -275,7 +275,7 @@ class PickledPyiLoaderTest(unittest.TestCase):
   def _LoadPickledModule(self, tempdir, module):
     pickle_loader = load_pytd.PickledPyiLoader(
         base_module=None, python_version=self.PYTHON_VERSION,
-        pythonpath=[tempdir.path], use_pickled_typeshed=False)
+        pythonpath=[tempdir.path])
     return pickle_loader.load_file(
         module.module_name, self._GetPath(tempdir, module.file_name))
 
