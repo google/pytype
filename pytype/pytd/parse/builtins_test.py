@@ -1,7 +1,5 @@
 
 
-import os
-from pytype import utils
 from pytype.pytd import pytd
 from pytype.pytd.parse import builtins
 from pytype.pytd.parse import visitors
@@ -36,22 +34,6 @@ class UtilsTest(unittest.TestCase):
     self.assertEqual(cls.parents, (pytd.ClassType("__builtin__.object"),))
     cls = self.builtins.Lookup("__builtin__.object")
     self.assertEqual(cls.parents, ())
-
-  def testPrecompilation(self):
-    # Get original (non-precompiled) values.
-    b1, t1 = builtins.GetBuiltinsAndTyping(self.PYTHON_VERSION)
-    # Write precompiled data.
-    with utils.Tempdir() as d:
-      precompiled = os.path.join(d.path, "precompiled.pickle")
-      builtins.Precompile(precompiled, self.PYTHON_VERSION)
-      # Clear the cache
-      builtins._cached_builtins_pytd = builtins.Cache(None, None)
-      # Load precompiled data.
-      builtins.LoadPrecompiled(precompiled, self.PYTHON_VERSION)
-    self.assertIsNotNone(builtins._cached_builtins_pytd.cache)
-    b2, t2 = builtins.GetBuiltinsAndTyping(self.PYTHON_VERSION)
-    self.assertEqual(pytd.Print(b1), pytd.Print(b2))
-    self.assertEqual(pytd.Print(t1), pytd.Print(t2))
 
 
 if __name__ == "__main__":

@@ -39,27 +39,6 @@ Cache = collections.namedtuple("Cache", ("version", "cache"))
 _cached_builtins_pytd = Cache(None, None)
 
 
-def Precompile(filename, python_version):
-  """Write precompiled builtins to the specified file."""
-  assert python_version
-  data = GetBuiltinsAndTyping(python_version)
-  pytd_utils.SavePickle(data, filename)
-
-
-def IsCached():
-  """Returns None if the builtins are not cached."""
-  return _cached_builtins_pytd.cache
-
-
-def LoadPrecompiled(filename, python_version):
-  """Load precompiled builtins from the specified file."""
-  # TODO(steenbuck): This should check that the python_version in the current
-  # process is the same as the one used to generate the cached file.
-  global _cached_builtins_pytd
-  assert _cached_builtins_pytd.cache is None
-  _cached_builtins_pytd = Cache(python_version, pytd_utils.LoadPickle(filename))
-
-
 def GetBuiltinsAndTyping(python_version):  # Deprecated. Use load_pytd instead.
   """Get __builtin__.pytd and typing.pytd."""
   assert python_version
