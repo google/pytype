@@ -260,8 +260,8 @@ def _check_intersection(items1, items2, name1, name2):
     max_items = 5  # an arbitrary value
     if len(items) > max_items:
       raise NameError("Top level identifiers %s, ... are both %s and %s" %
-                      (", ".join(map(repr, sorted(items[:max_items]))), name1,
-                       name2))
+                      ", ".join(map(repr, sorted(items)[:max_items])),
+                      name1, name2)
     raise NameError("Top level identifiers %s are both %s and %s" %
                     (", ".join(map(repr, sorted(items))), name1, name2))
 
@@ -409,7 +409,7 @@ def WrapsDict(member_name, writable=False, implement_len=False):
 
   namespace = {}
   exec src in namespace  # pylint: disable=exec-used
-  return namespace["WrapsDict"]
+  return namespace["WrapsDict"]  # pytype: disable=key-error
 
 
 def canonical_pyi(pyi, python_version):
