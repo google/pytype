@@ -232,7 +232,8 @@ class ParserTest(_ParserTestBase):
 
   def test_import(self):
     self.check("import foo.bar.baz", "")
-    self.check("import a as b", "")
+    self.check_error("\n\nimport a as b", 3,
+                     "Renaming of modules not supported")
     self.check("from foo.bar import baz")
     self.check("from foo.bar import baz as abc")
     self.check("from typing import NamedTuple, TypeVar", "")
@@ -286,23 +287,6 @@ class ParserTest(_ParserTestBase):
       def foo(x: int) -> int: ...
       @overload
       def foo(x: str) -> str: ...""")
-
-  def test_duplicate_module_alias(self):
-    self.check_error("""\
-      import a as x
-      from b import y as x""",
-                     None,
-                     "Duplicate definition of x")
-    # the same import twice should not count as a duplicate
-    self.check("""\
-      import a as x
-      import a as x
-    """, IGNORE)
-    # alias=None should not count as a duplicate
-    self.check("""\
-      import a
-      import b
-    """, IGNORE)
 
   def test_type(self):
     self.check("x = ...  # type: str")

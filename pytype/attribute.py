@@ -129,18 +129,6 @@ class AbstractAttributeHandler(object):
     """Get an attribute from a module."""
     assert isinstance(module, abstract.Module)
 
-    # First check for module aliases.
-    aliased_module = None
-    for x in module.ast.modules:
-      if name == x.alias:
-        aliased_module = x
-        break
-    if aliased_module:
-      new_name = aliased_module.full_name
-      var = self.vm.import_module(new_name, new_name, -1)
-      if var:
-        return node, var.to_variable(node)
-
     # Local variables in __init__.py take precedence over submodules.
     node, var = self.get_instance_attribute(
         node, module, name, valself, valcls)

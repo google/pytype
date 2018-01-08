@@ -593,10 +593,6 @@ class PrintVisitor(Visitor):
     type_list = self._FormSetTypeList(node)
     return self._BuildIntersection(type_list)
 
-  def VisitModule(self, unused_node):
-    """Not used in the final output."""
-    return None
-
   def _FormSetTypeList(self, node):
     """Form list of types within a set type."""
     type_list = collections.OrderedDict.fromkeys(node.type_list)
@@ -1571,11 +1567,6 @@ class VerifyVisitor(Visitor):
 
     attr_to_set = {attr: {entry.name for entry in getattr(node, attr)}
                    for attr in attrs}
-    # TODO(mdemello): Hack because some Modules in a TypeDeclUnit can duplicate
-    # NamedTypes, so we need to filter those out.
-    if "modules" in attrs:
-      attr_to_set["modules"] = {
-          entry.name for entry in node.modules if not entry.from_package}
     # Do a quick sanity check first, and a deeper check if that fails.
     total1 = len(set.union(*attr_to_set.values()))  # all distinct names
     total2 = sum(map(len, attr_to_set.values()), 0)  # all names
@@ -1588,7 +1579,7 @@ class VerifyVisitor(Visitor):
 
   def EnterTypeDeclUnit(self, node):
     self._AssertNoDuplicates(node, ["constants", "type_params", "classes",
-                                    "functions", "aliases", "modules"])
+                                    "functions", "aliases"])
     self._all_templates = set()
 
   def LeaveTypeDeclUnit(self, node):
@@ -1762,14 +1753,7 @@ class CollectDependencies(Visitor):
 
   def __init__(self):
     super(CollectDependencies, self).__init__()
-
-  def EnterTypeDeclUnit(self, t):
-    self.modules = set(x.module_name
-                       for x in t.modules
-                       if not x.from_package)
-    self.maybe_modules = set(x.from_package + "." + x.module_name
-                             for x in t.modules
-                             if x.from_package)
+    self.modules = set()
 
   def EnterNamedType(self, t):
     module_name, dot, unused_name = t.name.rpartition(".")
@@ -1826,13 +1810,6 @@ class QualifyRelativeNames(Visitor):
 
   def VisitClassType(self, t):
     return self.VisitNamedType(t)
-
-  def VisitModule(self, t):
-    if t.from_package:
-      prefix, package, name = t.from_package.partition("__PACKAGE__.")
-      if not prefix and package:
-        return t.Replace(from_package=self.package_name + "." + name)
-    return t
 
 
 def ExpandSignature(sig):

@@ -160,8 +160,6 @@ class SerializeAstTest(unittest.TestCase):
       self.assertTrue(serialized_ast.ast)
       self.assertEqual(serialized_ast.dependencies,
                        ["__builtin__", "foo.bar.module1", "module2"])
-      self.assertEqual(serialized_ast.soft_dependencies,
-                       ["module2.f", "typing.List"])
 
   def testUnrestorableChild(self):
     # Assume .cls in a ClassType X in module1 was referencing something for

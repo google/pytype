@@ -35,7 +35,7 @@ class FindClassAndFunctionTypesVisitor(visitors.Visitor):
 
 
 SerializableTupleClass = collections.namedtuple(
-    "_", ["ast", "dependencies", "soft_dependencies",
+    "_", ["ast", "dependencies",
           "class_type_nodes", "function_type_nodes"])
 
 
@@ -50,10 +50,6 @@ class SerializableAst(SerializableTupleClass):
       Therefore it might be different from the set found by
       visitors.CollectDependencies in
       load_pytd._load_and_resolve_ast_dependencies.
-    soft_dependencies: A list of modules this AST *might* depend on. These
-      are either real modules we need to load, or things that looked like
-      modules, at import time. E.g. an import like "from x import y" might
-      make us think that "x.y is a module, while it really is a class.
     class_type_nodes: A list of all the ClassType instances in ast or None. If
       this list is provided only the ClassType instances in the list will be
       visited and have their .cls set. If this attribute is None the whole AST
@@ -155,16 +151,13 @@ def StoreAst(ast, filename=None):
   deps = visitors.CollectDependencies()
   ast.Visit(deps)
   dependencies = deps.modules
-  # TODO(kramm): Since we only store ASTs that are completely resolved, we
-  # shouldn't need soft dependencies here.
-  soft_dependencies = deps.maybe_modules
 
   # Clean external references
   ast.Visit(visitors.ClearClassPointers())
   indexer = FindClassAndFunctionTypesVisitor()
   ast.Visit(indexer)
   return pytd_utils.SavePickle(SerializableAst(
-      ast, list(sorted(dependencies)), list(sorted(soft_dependencies)),
+      ast, list(sorted(dependencies)),
       list(sorted(indexer.class_type_nodes)),
       list(sorted(indexer.function_type_nodes))), filename)
 

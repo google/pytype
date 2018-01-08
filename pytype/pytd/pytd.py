@@ -45,8 +45,7 @@ class TypeDeclUnit(node.Node('name: str or None',
                              'type_params: tuple[TypeParameter]',
                              'classes: tuple[Class]',
                              'functions: tuple[Function]',
-                             'aliases: tuple[Alias]',
-                             'modules: tuple[Module]')):
+                             'aliases: tuple[Alias]')):
   """Module node. Holds module contents (constants / classes / functions).
 
   Attributes:
@@ -58,14 +57,7 @@ class TypeDeclUnit(node.Node('name: str or None',
     functions: Iterable of functions defined in this type decl unit.
     classes: Iterable of classes defined in this type decl unit.
     aliases: Iterable of aliases (or imports) for types in other modules.
-    modules: Iterable of imported modules.
   """
-
-  def __new__(cls, name, is_package, constants, type_params, classes, functions,
-              aliases, modules=()):
-    return super(TypeDeclUnit, cls).__new__(
-        cls, name, is_package, constants, type_params, classes, functions,
-        aliases, modules)
 
   def Lookup(self, name):
     """Convenience function: Look up a given name in the global namespace.
@@ -92,18 +84,9 @@ class TypeDeclUnit(node.Node('name: str or None',
       # We store imported names as modules too in case they don't resolve as
       # anything else, but that should have lower priority, so put modules
       # first and let them be overwritten if we find the same name later.
-      for x in (self.modules + self.constants + self.functions + self.classes +
-                self.aliases):
+      for x in self.constants + self.functions + self.classes + self.aliases:
         self._name2item[x.name] = x
       return self._name2item[name]
-
-  @property
-  def package_name(self):
-    if self.is_package:
-      return self.name
-    else:
-      parts = self.name.split('.')
-      return '.'.join(parts[:-1])
 
   # The hash/eq/ne values are used for caching and speed things up quite a bit.
 
@@ -137,40 +120,6 @@ class Alias(node.Node('name: str', 'type: {Type} or Constant')):
   will create a local alias "z" for "x.y".
   """
   __slots__ = ()
-
-
-class Module(node.Node('name: str', 'module_name: str',
-                       'from_package: str or None')):
-  """A module imported into the current module, possibly with an alias.
-
-  The fields record the parts of the import statement:
-    import x.y -> {name: x.y, module_name: x.y, from_package: None}
-    import x.y as z -> {name: z, module_name: x.y, from_package: None}
-    from v.w import x -> {name: x, module_name: x, from_package: v.w}
-    from v.w import x as z -> {name: z, module_name: x, from_package: v.w}
-
-  For relative imports, the current TypeDeclUnit is referred to as __PACKAGE__
-  (see the QualifyRelativeNames visitor).
-
-  Attributes:
-    name: The module name, or the alias if imported via "x as y".
-    module_name: The name of the module (could contain dots).
-    from_package: The name of the package the module is imported from.
-  """
-
-  __slots__ = ()
-
-  @property
-  def full_name(self):
-    if self.from_package:
-      return self.from_package + '.' + self.module_name
-    return self.module_name
-
-  @property
-  def alias(self):
-    if self.name == self.module_name:
-      return None
-    return self.name
 
 
 class Class(node.Node('name: str',
