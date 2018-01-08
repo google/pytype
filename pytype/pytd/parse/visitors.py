@@ -1755,8 +1755,8 @@ class CollectDependencies(Visitor):
     super(CollectDependencies, self).__init__()
     self.modules = set()
 
-  def EnterNamedType(self, t):
-    module_name, dot, unused_name = t.name.rpartition(".")
+  def _ProcessName(self, name):
+    module_name, dot, unused_name = name.rpartition(".")
     if dot:
       if module_name:
         self.modules.add(module_name)
@@ -1765,10 +1765,16 @@ class CollectDependencies(Visitor):
         # to an empty package_name), don't insert module_name='' into the
         # dependencies; we get a better error message if we filter it out here
         # and fail later on.
-        logging.warning("Empty package name: %s", t.name)
+        logging.warning("Empty package name: %s", name)
 
-  def EnterClassType(self, t):
-    self.EnterNamedType(t)
+  def EnterClassType(self, node):
+    self._ProcessName(node.name)
+
+  def EnterNamedType(self, node):
+    self._ProcessName(node.name)
+
+  def EnterFunctionType(self, node):
+    self._ProcessName(node.name)
 
 
 class CollectLateDependencies(Visitor):

@@ -500,6 +500,15 @@ class TestVisitors(parser_test_base.ParserTest):
     self.Parse(src).Visit(deps)
     self.assertSetEqual({"baz", "bar", "foo.bar"}, deps.modules)
 
+  def testCollectDependenciesOnFunctionType(self):
+    other = self.Parse("""
+      def f(): ...
+    """)
+    ast = pytd.FunctionType("foo.bar", other.Lookup("f"))
+    deps = visitors.CollectDependencies()
+    ast.Visit(deps)
+    self.assertSetEqual({"foo"}, deps.modules)
+
   def testExpand(self):
     src = textwrap.dedent("""
         def foo(a: int or float, z: complex or str, u: bool) -> file

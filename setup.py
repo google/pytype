@@ -19,7 +19,7 @@ def scan_package_data(path, pattern):
 
 
 typeshed = scan_package_data('typeshed', '*.pyi')
-assert 'typeshed/stdlib/2/*.pyi' in typeshed
+assert os.path.join('typeshed', 'stdlib', '2', '*.pyi') in typeshed
 
 parser_ext = Extension(
     'pytype.pyi.parser_ext',
