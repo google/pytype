@@ -164,21 +164,20 @@ class Converter(object):
   def build_list(self, node, content):
     """Create a VM list from the given sequence."""
     # TODO(rechen): set T to empty if there is nothing in content
-    content = list(content)  # content might be a generator
+    content = [var.AssignToNewVariable(node) for var in content]
     return abstract.List(content, self.vm).to_variable(node)
 
   def build_list_of_type(self, node, var):
     """Create a VM list with element type derived from the given variable."""
     ret = abstract.Instance(self.list_type, self.vm)
-    ret.initialize_type_parameter(node, abstract.T, var)
+    ret.initialize_type_parameter(abstract.T, var)
     return ret.to_variable(node)
 
   def build_set(self, node, content):
     """Create a VM set from the given sequence."""
     content = list(content)  # content might be a generator
     value = abstract.Instance(self.set_type, self.vm)
-    value.initialize_type_parameter(node, abstract.T,
-                                    self.build_content(content))
+    value.initialize_type_parameter(abstract.T, self.build_content(content))
     return value.to_variable(node)
 
   def build_map(self, node):
@@ -597,7 +596,7 @@ class Converter(object):
           for formal, actual in zip(base_cls.template, cls.parameters):
             p = self.constant_to_var(
                 abstract.AsInstance(actual), subst, get_node())
-            instance.initialize_type_parameter(get_node(), formal.name, p)
+            instance.initialize_type_parameter(formal.name, p)
           return instance
       elif isinstance(cls, pytd.Class):
         # This key is also used in __init__

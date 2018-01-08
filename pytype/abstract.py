@@ -685,15 +685,11 @@ class SimpleAbstractValue(AtomicAbstractValue):
     else:
       self.type_parameters[name] = value
 
-  def initialize_type_parameter(self, node, name, value, keep_origins=True):
+  def initialize_type_parameter(self, name, value):
     assert isinstance(name, str)
     assert name not in self.type_parameters
     log.info("Initializing type param %s: %r", name, value.data)
-    if keep_origins:
-      self.type_parameters[name] = value
-    else:
-      self.type_parameters[name] = self.vm.program.NewVariable(
-          value.data, [], node)
+    self.type_parameters[name] = value
 
   def init_type_parameters(self, *names):
     """Initialize the named type parameters to nothing (empty)."""
@@ -853,8 +849,7 @@ class Instance(SimpleAbstractValue):
       for name, param in unbound_params:
         if name not in self.type_parameters:
           var = self.vm.convert.constant_to_var(AsInstance(param.upper_value))
-          self.initialize_type_parameter(
-              vm.root_cfg_node, name, var, keep_origins=False)
+          self.initialize_type_parameter(name, var)
 
   def merge_type_parameter(self, node, name, value):
     # Members of _bad_names are involved in naming conflicts, so we don't want
@@ -865,7 +860,7 @@ class Instance(SimpleAbstractValue):
   def make_template_unsolvable(self, template, node):
     for formal in template:
       self.initialize_type_parameter(
-          node, formal.name, self.vm.convert.unsolvable.to_variable(node))
+          formal.name, self.vm.convert.unsolvable.to_variable(node))
 
   def compatible_with(self, logical_value):  # pylint: disable=unused-argument
     # Containers with unset parameters and NoneType instances cannot match True.
@@ -936,8 +931,7 @@ class List(Instance, PythonConstant):
     super(List, self).__init__(vm.convert.list_type, vm)
     PythonConstant.init_mixin(self, content)
     combined_content = vm.convert.build_content(content)
-    self.initialize_type_parameter(
-        vm.root_cfg_node, T, combined_content, keep_origins=False)
+    self.initialize_type_parameter(T, combined_content)
     self.could_contain_anything = False
 
   def str_of_constant(self, printer):
@@ -970,8 +964,7 @@ class Tuple(Instance, PythonConstant):
                     tuple(enumerate(content)) + ((T, combined_content),)}
     cls = TupleClass(vm.convert.tuple_type, class_params, vm)
     super(Tuple, self).__init__(cls, vm)
-    self.initialize_type_parameter(
-        vm.root_cfg_node, T, combined_content, keep_origins=False)
+    self.initialize_type_parameter(T, combined_content)
     PythonConstant.init_mixin(self, content)
     self.tuple_length = len(self.pyval)
 

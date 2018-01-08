@@ -981,6 +981,28 @@ class SplitTest(test_base.BaseTest):
           self.credentials = credentials.upper()
     """)
 
+  def testCreateList(self):
+    self.options.tweak(strict_none=True)
+    self.Check("""
+      from __future__ import google_type_annotations
+      from typing import List, Optional
+      def _CreateList(opt: Optional[str]) -> List[str]:
+        if opt is not None:
+          return [opt]
+        return ["foo"]
+    """)
+
+  def testCreateTuple(self):
+    self.options.tweak(strict_none=True)
+    self.Check("""
+      from __future__ import google_type_annotations
+      from typing import Optional, Tuple
+      def _CreateTuple(opt: Optional[str]) -> Tuple[str]:
+        if opt is not None:
+          return (opt,)
+        return ("foo",)
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

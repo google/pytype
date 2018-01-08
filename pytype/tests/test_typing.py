@@ -307,7 +307,7 @@ class TypingTest(test_base.BaseTest):
         # (19, "invalid-annotation", r"int or str.*Must be constant"),
         (21, "invalid-annotation",
          r"instance of List\[int\].*Must be constant"),
-        (24, "invalid-annotation", r"\[str\].*Must be constant"),
+        (24, "invalid-annotation", r"\[str or int\].*Must be constant"),
         (25, "invalid-annotation", r"instance of int"),
         (26, "invalid-annotation", r"Callable.*Expected 2.*got 3"),])
 
