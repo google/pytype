@@ -545,18 +545,31 @@ def list_pytype_files(suffix):
     NoSuchDirectory: if the directory doesn't exist.
   """
   basedir = os.path.join(os.path.dirname(__file__), suffix)
-  assert not globals().get("__loader__", None)
-  if not os.path.isdir(basedir):
-    raise NoSuchDirectory(basedir)
-  directories = [""]
-  while directories:
-    d = directories.pop()
-    for basename in os.listdir(os.path.join(basedir, d)):
-      filename = os.path.join(d, basename)
-      if os.path.isdir(os.path.join(basedir, filename)):
-        directories.append(filename)
-      elif os.path.exists(os.path.join(basedir, filename)):
-        yield filename
+  assert not suffix.endswith("/")
+  loader = globals().get("__loader__", None)
+  if loader:
+    # List directory using __loader__
+    for filename in loader.get_zipfile().namelist():
+      directory = "pytype/" + suffix + "/"
+      try:
+        i = filename.rindex(directory)
+      except ValueError:
+        pass
+      else:
+        yield filename[i + len(directory):]
+  else:
+    # List directory using the file system
+    if not os.path.isdir(basedir):
+      raise NoSuchDirectory(basedir)
+    directories = [""]
+    while directories:
+      d = directories.pop()
+      for basename in os.listdir(os.path.join(basedir, d)):
+        filename = os.path.join(d, basename)
+        if os.path.isdir(os.path.join(basedir, filename)):
+          directories.append(filename)
+        elif os.path.exists(os.path.join(basedir, filename)):
+          yield filename
 
 
 def path_to_module_name(filename):
