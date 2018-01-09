@@ -299,6 +299,7 @@ class DirectorTest(unittest.TestCase):
     y = None  # allow extra comments # type: str
     z = None  # type: int  # and extra comments after, too
     # type: (int, float) -> str
+    # comment with embedded # type: should-be-discarded
     """)
     self.assertEqual({
         2: ("x = None", "int"),

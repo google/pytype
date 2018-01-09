@@ -185,9 +185,10 @@ class Director(object):
           code = line[:col].strip()
           tool, data = m.groups()
           open_ended = not code
+          is_nested = m.start(0) > 0
           data = data.strip()
           if tool == "type":
-            self._process_type(lineno, code, data)
+            self._process_type(lineno, code, data, is_nested)
           elif tool == "pytype":
             try:
               self._process_pytype(lineno, data, open_ended)
@@ -207,8 +208,11 @@ class Director(object):
         if lineno is not None:
           self._errorlog.late_directive(self._filename, lineno, name)
 
-  def _process_type(self, lineno, code, data):
+  def _process_type(self, lineno, code, data, is_nested):
     """Process a type: comment."""
+    # Discard type comments embedded in larger whole-line comments.
+    if not code and is_nested:
+      return
     if data == "ignore":
       if not code:
         self._ignore.start_range(lineno, True)

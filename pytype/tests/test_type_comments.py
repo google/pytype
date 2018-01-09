@@ -438,6 +438,18 @@ class AssignmentCommentTest(test_base.BaseTest):
     self.assertErrorLogIs(
         errors, [(2, "invalid-type-comment", r"invalid syntax$")])
 
+  def testDiscardedTypeComment(self):
+    """Discard the first whole-line comment, keep the second."""
+    ty = self.Infer("""\
+        # Yo dawg # type: ignore
+        def hello_world():
+          # type: () -> str
+          return 'hello world'
+    """, deep=True)
+    self.assertTypesMatchPytd(ty, """
+      def hello_world() -> str: ...
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()
