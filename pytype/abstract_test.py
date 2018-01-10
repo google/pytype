@@ -12,6 +12,7 @@ from pytype import special_builtins
 from pytype import state as frame_state
 from pytype import vm
 from pytype.pytd import pytd
+from pytype.pytd import pytd_utils
 from pytype.typegraph import cfg
 
 import unittest
@@ -884,7 +885,7 @@ class AbstractTest(AbstractTestBase):
   def testSetModuleOnModule(self):
     # A module's 'module' attribute should always remain None, and no one
     # should attempt to set it to something besides the module's name or None.
-    ast = pytd.TypeDeclUnit("some_mod", False, (), (), (), (), ())
+    ast = pytd_utils.CreateModule("some_mod")
     mod = abstract.Module(self._vm, ast.name, {}, ast)
     mod.module = ast.name
     self.assertIsNone(mod.module)

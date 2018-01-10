@@ -145,7 +145,7 @@ class Loader(object):
 
   def _create_empty(self, module_name, filename):
     ast = self.load_file(module_name, filename,
-                         pytd_utils.EmptyModule(module_name))
+                         pytd_utils.CreateModule(module_name))
     return ast.Replace(is_package=utils.is_pyi_directory_init(filename))
 
   def _get_existing_ast(self, module_name):

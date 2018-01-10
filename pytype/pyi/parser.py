@@ -442,7 +442,8 @@ class _Parser(object):
                              type_params=tuple(self._type_params),
                              functions=tuple(functions),
                              classes=tuple(classes),
-                             aliases=tuple(self._aliases))
+                             aliases=tuple(self._aliases),
+                             modules=())
 
   def set_error_location(self, location):
     """Record the location of the current error.

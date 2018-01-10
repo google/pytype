@@ -77,7 +77,8 @@ def Concat(*args, **kwargs):
       type_params=sum((arg.type_params for arg in args), ()),
       classes=sum((arg.classes for arg in args), ()),
       functions=sum((arg.functions for arg in args), ()),
-      aliases=sum((arg.aliases for arg in args), ()))
+      aliases=sum((arg.aliases for arg in args), ()),
+      modules=sum((arg.modules for arg in args), ()))
 
 
 JoinTypes = parser.join_types  # pylint: disable=invalid-name
@@ -180,10 +181,11 @@ def Print(ast):
   return ast.Visit(visitors.PrintVisitor())
 
 
-def EmptyModule(name="<empty>"):
-  return pytd.TypeDeclUnit(
+def CreateModule(name="<empty>", **kwargs):
+  module = pytd.TypeDeclUnit(
       name, is_package=False, type_params=(), constants=(), classes=(),
-      functions=(), aliases=())
+      functions=(), aliases=(), modules=())
+  return module.Replace(**kwargs)
 
 
 def WrapTypeDeclUnit(name, items, is_package=False):
@@ -248,7 +250,8 @@ def WrapTypeDeclUnit(name, items, is_package=False):
       type_params=tuple(typevars.values()),
       classes=tuple(classes.values()),
       functions=tuple(functions.values()),
-      aliases=tuple(aliases.values()))
+      aliases=tuple(aliases.values()),
+      modules=())
 
 
 def _check_intersection(items1, items2, name1, name2):

@@ -548,18 +548,15 @@ class CallTracer(vm.VirtualMachine):
     return tuple(v.generate_ast() for v in self._generated_classes.values())
 
   def compute_types(self, defs):
+    classes = (tuple(self.pytd_classes_for_unknowns()) +
+               tuple(self.pytd_classes_for_call_traces()) +
+               self.pytd_classes_for_namedtuple_instances())
+    functions = tuple(self.pytd_functions_for_call_traces())
+    aliases = tuple(self.pytd_aliases())
     ty = pytd_utils.Concat(
         self.pytd_for_types(defs),
-        pytd.TypeDeclUnit(
-            name="unknowns",
-            is_package=False,
-            constants=tuple(),
-            type_params=tuple(),
-            classes=tuple(self.pytd_classes_for_unknowns()) +
-            tuple(self.pytd_classes_for_call_traces()) +
-            self.pytd_classes_for_namedtuple_instances(),
-            functions=tuple(self.pytd_functions_for_call_traces()),
-            aliases=tuple(self.pytd_aliases())))
+        pytd_utils.CreateModule("unknowns", classes=classes,
+                                functions=functions, aliases=aliases))
     ty = ty.Visit(optimize.CombineReturnsAndExceptions())
     ty = ty.Visit(optimize.PullInMethodClasses())
     ty = ty.Visit(visitors.DefaceUnresolved(

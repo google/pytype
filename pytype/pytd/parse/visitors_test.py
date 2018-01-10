@@ -545,7 +545,7 @@ class TestVisitors(parser_test_base.ParserTest):
   def testPrintImportsNamedType(self):
     # Can't get tree by parsing so build explicitly
     node = pytd.Constant("x", pytd.NamedType("typing.List"))
-    tree = pytd_utils.EmptyModule(name=None).Replace(constants=(node,))
+    tree = pytd_utils.CreateModule(name=None, constants=(node,))
     expected_src = textwrap.dedent("""
       from typing import List
 
@@ -900,14 +900,7 @@ class TestVisitors(parser_test_base.ParserTest):
   def testAliasPrinting(self):
     a = pytd.Alias("MyList", pytd.GenericType(
         pytd.NamedType("typing.List"), (pytd.AnythingType(),)))
-    ty = pytd.TypeDeclUnit(
-        name="test",
-        is_package=False,
-        constants=(),
-        type_params=(),
-        classes=(),
-        functions=(),
-        aliases=(a,))
+    ty = pytd_utils.CreateModule("test", aliases=(a,))
     expected = textwrap.dedent("""
       from typing import Any, List
 

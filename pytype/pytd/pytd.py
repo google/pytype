@@ -45,7 +45,8 @@ class TypeDeclUnit(node.Node('name: str or None',
                              'type_params: tuple[TypeParameter]',
                              'classes: tuple[Class]',
                              'functions: tuple[Function]',
-                             'aliases: tuple[Alias]')):
+                             'aliases: tuple[Alias]',
+                             'modules: tuple[Module]')):
   """Module node. Holds module contents (constants / classes / functions).
 
   Attributes:
@@ -57,6 +58,7 @@ class TypeDeclUnit(node.Node('name: str or None',
     functions: Iterable of functions defined in this type decl unit.
     classes: Iterable of classes defined in this type decl unit.
     aliases: Iterable of aliases (or imports) for types in other modules.
+    modules: Iterable of imported modules.
   """
 
   def Lookup(self, name):
@@ -81,10 +83,8 @@ class TypeDeclUnit(node.Node('name: str or None',
       self._name2item = {}
       for x in self.type_params:
         self._name2item[x.full_name] = x
-      # We store imported names as modules too in case they don't resolve as
-      # anything else, but that should have lower priority, so put modules
-      # first and let them be overwritten if we find the same name later.
-      for x in self.constants + self.functions + self.classes + self.aliases:
+      for x in (self.constants + self.functions + self.classes + self.aliases +
+                self.modules):
         self._name2item[x.name] = x
       return self._name2item[name]
 
@@ -120,6 +120,15 @@ class Alias(node.Node('name: str', 'type: {Type} or Constant')):
   will create a local alias "z" for "x.y".
   """
   __slots__ = ()
+
+
+class Module(node.Node('name: str', 'module_name: str')):
+  """A module imported into the current module, possibly with an alias."""
+  __slots__ = ()
+
+  @property
+  def is_aliased(self):
+    return self.name != self.module_name
 
 
 class Class(node.Node('name: str',

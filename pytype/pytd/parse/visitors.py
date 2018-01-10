@@ -1629,7 +1629,8 @@ class CanonicalOrderingVisitor(Visitor):
                              type_params=tuple(sorted(node.type_params)),
                              functions=tuple(sorted(node.functions)),
                              classes=tuple(sorted(node.classes)),
-                             aliases=tuple(sorted(node.aliases)))
+                             aliases=tuple(sorted(node.aliases)),
+                             modules=tuple(sorted(node.modules)))
 
   def VisitClass(self, node):
     return pytd.Class(
