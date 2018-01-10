@@ -34,6 +34,15 @@ PEP484_CAPITALIZED = {
 }
 
 
+def CompatItems(python_version):
+  """Return a version specific list of compat items, see COMPAT_ITEMS."""
+  if python_version[0] >= 3:
+    return [(x, y) for x, y in COMPAT_ITEMS
+            if "unicode" not in [x, y]]
+  else:
+    return COMPAT_ITEMS
+
+
 def PEP484_MaybeCapitalize(name):  # pylint: disable=invalid-name
   for capitalized in PEP484_CAPITALIZED:
     if capitalized.lower() == name:

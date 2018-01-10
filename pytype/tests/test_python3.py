@@ -208,6 +208,20 @@ class TestPython3(test_base.BaseTest):
       import builtins
     """)
 
+  def test_unicode(self):
+    errors = self.CheckWithErrors("""\
+      unicode("foo")
+    """)
+    self.assertErrorLogIs(errors, [(1, "name-error")])
+
+  def test_bytes_iteration(self):
+    errors = self.CheckWithErrors("""\
+      def f():
+        for x in bytes():
+          return bytes() + x
+    """)
+    self.assertErrorLogIs(errors, [(3, "wrong-arg-types")])
+
 
 class TypingMethodsTest(test_base.TypingTest):
   """Tests for typing.py specific to python3."""

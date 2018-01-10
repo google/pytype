@@ -2169,13 +2169,13 @@ class ExpandCompatibleBuiltins(Visitor):
   See https://www.python.org/dev/peps/pep-0484/#the-numeric-tower
   """
 
-  def __init__(self, builtins):
+  def __init__(self, builtins, python_version):
     super(ExpandCompatibleBuiltins, self).__init__()
     self.in_parameter = False
-    self.replacements = self._BuildReplacementMap(builtins)
+    self.replacements = self._BuildReplacementMap(builtins, python_version)
 
   @staticmethod
-  def _BuildReplacementMap(builtins):
+  def _BuildReplacementMap(builtins, python_version):
     """Dict[str, UnionType[ClassType, ...]] map."""
     prefix = builtins.name + "."
     rmap = collections.defaultdict(list)
@@ -2185,8 +2185,9 @@ class ExpandCompatibleBuiltins(Visitor):
     # compat_list :: [(compat, name)], where name is the more generalized
     # type and compat is the less generalized one. (eg: name = float, compat =
     # int)
+    compat_items = pep484.CompatItems(python_version)
     compat_list = itertools.chain(
-        set((v, v) for _, v in pep484.COMPAT_ITEMS), pep484.COMPAT_ITEMS)
+        set((v, v) for _, v in compat_items), compat_items)
 
     for compat, name in compat_list:
       prefix = builtins.name + "."

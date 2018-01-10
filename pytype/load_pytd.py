@@ -134,7 +134,8 @@ class Loader(object):
     if package_name:
       ast = ast.Visit(visitors.QualifyRelativeNames(package_name))
     ast = ast.Visit(visitors.LookupBuiltins(self.builtins, full_names=False))
-    ast = ast.Visit(visitors.ExpandCompatibleBuiltins(self.builtins))
+    ast = ast.Visit(visitors.ExpandCompatibleBuiltins(self.builtins,
+                                                      self.python_version))
     dependencies = self._collect_ast_dependencies(ast)
     if dependencies:
       self._load_ast_dependencies(dependencies, ast)

@@ -47,12 +47,18 @@ class Converter(object):
     # object_type is needed to initialize the primitive class values.
     self.object_type = self.constant_to_value(object)
 
+    if self.vm.python_version[0] < 3:
+      version_specific = [unicode]
+    else:
+      version_specific = [bytes]
+
     # Now fill primitive_classes with the real values using constant_to_value.
     self.primitive_classes = {v: self.constant_to_value(v)
-                              for v in [int, float, str, unicode, object,
-                                        types.NoneType, complex, bool, slice,
-                                        types.CodeType, types.EllipsisType,
-                                        types.ClassType, super]}
+                              for v in [
+                                  int, float, str, object,
+                                  types.NoneType, complex, bool, slice,
+                                  types.CodeType, types.EllipsisType,
+                                  types.ClassType, super] + version_specific}
     self.primitive_class_names = [
         x.__module__ + "." + x.__name__ for x in self.primitive_classes]
     self.none = abstract.AbstractOrConcreteValue(

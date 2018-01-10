@@ -716,7 +716,7 @@ class TestVisitors(parser_test_base.ParserTest):
         self.Parse(s).Visit(visitors.LookupBuiltins(self.loader.builtins))
         for s in (src, expected))
     new_tree = src_tree.Visit(visitors.ExpandCompatibleBuiltins(
-        self.loader.builtins))
+        self.loader.builtins, (2, 7)))
     self.AssertSourceEquals(new_tree, expected_tree)
 
   def testAddNamePrefix(self):

@@ -323,7 +323,8 @@ def PrepareForExport(module_name, python_version, ast, loader):
   ast = parser.parse_string(src=src, name=module_name,
                             python_version=python_version)
   ast = ast.Visit(visitors.LookupBuiltins(loader.builtins, full_names=False))
-  ast = ast.Visit(visitors.ExpandCompatibleBuiltins(loader.builtins))
+  ast = ast.Visit(visitors.ExpandCompatibleBuiltins(loader.builtins,
+                                                    python_version))
   ast = ast.Visit(visitors.LookupLocalTypes())
   ast = ast.Visit(visitors.AdjustTypeParameters())
   ast = ast.Visit(visitors.NamedTypeToClassType())
