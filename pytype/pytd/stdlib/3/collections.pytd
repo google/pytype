@@ -1,6 +1,6 @@
 # We maintain our own collections.pytd, rather than using collections.pyi from
 # typeshed, because this file makes use of mutable type parameters.
-from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Text, Tuple
 
 K = TypeVar("K")
 V = TypeVar("V")
@@ -55,8 +55,8 @@ if sys.version_info[0] >= 3:
   Generator = ... # type: ?
   Reversible = ... # type ?
 
-def namedtuple(typename: str or unicode,
-  field_names: str or unicode or Iterable[str or unicode] or Iterable[nothing],
+def namedtuple(typename: Text,
+  field_names: Text or Iterable[Text] or Iterable[nothing],
   verbose: bool = ..., rename: bool = ...) -> type
 
 class OrderedDict(Dict[K, V]):
