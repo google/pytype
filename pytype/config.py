@@ -90,6 +90,10 @@ class Options(object):
               "file. The value of this parameter is the destination filename "
               "for the pickled data."))
     o.add_option(
+        "--parse-pyi", action="store_true",
+        dest="parse_pyi", default=False,
+        help="Try parsing a PYI file.")
+    o.add_option(
         "--imports_info", type="string", action="store",
         dest="imports_map", default=None,
         help=("Information for mapping import .pytd to files. "

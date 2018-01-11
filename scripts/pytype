@@ -287,10 +287,19 @@ def main(argv):
           return _run_pytype(options)
 
 
+def _parse_pyi(options):
+  """Tries parsing a PYI file."""
+  loader = _create_loader(options.input, options)
+  ast = loader.load_file(options.module_name, options.input)
+
+
 def _run_pytype(options):
   """Run pytype with the given configuration options."""
   if options.generate_builtins:
     _generate_builtins_pickle(options.generate_builtins, options)
+    return
+  if options.parse_pyi:
+    _parse_pyi(options)
     return
 
   log.info("Process %s => %s", options.input, options.output)
