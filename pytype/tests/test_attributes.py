@@ -322,6 +322,18 @@ class TestStrictNone(test_base.BaseTest):
         print foo.foo.upper()
     """)
 
+  def testIsInstance(self):
+    self.Check("""
+      class Foo(object):
+        def f(self):
+          instance = None if __random__ else {}
+          if instance is not None:
+            self.g(instance)
+        def g(self, instance):
+          if isinstance(instance, str):
+            instance.upper()  # line 10
+    """)
+
 
 class TestAttributes(test_base.BaseTest):
   """Tests for attributes."""

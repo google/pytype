@@ -1096,7 +1096,7 @@ class VirtualMachine(object):
       if not self.options.strict_none or self._has_strict_none_origins(b):
         var.PasteBinding(b, node)
       else:
-        var.AddBinding(self.convert.unsolvable, [], node)
+        var.AddBinding(self.convert.unsolvable, [b], node)
 
   def _has_strict_none_origins(self, binding):
     """Whether the binding has any possible origins, with None filtering.
