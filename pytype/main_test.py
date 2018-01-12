@@ -437,7 +437,7 @@ class PytypeTest(unittest.TestCase):
       import ctypes
       import xml.etree.ElementTree as ElementTree
       import md5
-      from email import MIMEBase  # Test google/missing.txt, MOE:strip_line
+      from email import MIMEBase
       x = foo.x
       y = csv.writer
       z = md5.new
