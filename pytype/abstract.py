@@ -3612,4 +3612,5 @@ class Unknown(AtomicAbstractValue):
     return self.to_variable(node)
 
 
-AMBIGUOUS_OR_EMPTY = (Unknown, Unsolvable, Empty)
+AMBIGUOUS = (Unknown, Unsolvable)
+AMBIGUOUS_OR_EMPTY = AMBIGUOUS + (Empty,)

@@ -92,7 +92,7 @@ class Options(object):
     o.add_option(
         "--parse-pyi", action="store_true",
         dest="parse_pyi", default=False,
-        help="Try parsing a PYI file.")
+        help="Try parsing a PYI file. For testing of typeshed.")
     o.add_option(
         "--imports_info", type="string", action="store",
         dest="imports_map", default=None,

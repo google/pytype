@@ -99,13 +99,13 @@ class AbstractMatcher(object):
                 (base_cls.full_name,
                  other_type.full_name) in _COMPATIBLE_BUILTINS)):
           return base
-      elif isinstance(base_cls, abstract.AMBIGUOUS_OR_EMPTY):
-        # See match_Function_against_Class in type_match.py. Even though it's
-        # possible that this ambiguous base is of type other_type, our class
-        # would then be a match for *everything*. Hence, assume this base is not
-        # a match, to keep the list of possible types from exploding.
-        # TODO(kramm): Revisit this, now that type_match.py primarily deals with
-        # protocols.
+      elif isinstance(base_cls, abstract.AMBIGUOUS):
+        # Note that this is a different logic than in pytd/type_match.py, which
+        # assumes that ambiguous base classes never match, to keep the list of
+        # types from exploding. Here, however, we want an instance of, say,
+        # "class Foo(Any)" to match against everything.
+        return base_cls
+      elif isinstance(base_cls, abstract.Empty):
         continue
       else:
         # Ignore other types of base classes (Callable etc.). These typically

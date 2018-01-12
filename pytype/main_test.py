@@ -364,6 +364,12 @@ class PytypeTest(unittest.TestCase):
     self.assertTrue(self._ParseString(pyi).ASTeq(
         self._ParseString(expected_pyi)))
 
+  def testParsePyi(self):
+    self.pytype_args[self._DataPath("complex.pyi")] = self.INCLUDE
+    self.pytype_args["--parse-pyi"] = self.INCLUDE
+    self._RunPytype(self.pytype_args)
+    self.assertOutputStateMatches(stdout=False, stderr=False, returncode=False)
+
   def testPytree(self):
     """Test pytype on a real-world program."""
     self.pytype_args["--quick"] = self.INCLUDE

@@ -436,6 +436,19 @@ class MatchTest(test_base.BaseTest):
         f(Foo(), Bar())
       """, pythonpath=[d.path])
 
+  def testAnyBaseClass(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import Any
+        class Foo(Any): pass
+        class Bar(object): pass
+        def f(x: Bar) -> None
+      """)
+      self.Check("""
+        import foo
+        foo.f(foo.Foo())
+      """, pythonpath=[d.path])
+
 
 if __name__ == "__main__":
   test_base.main()

@@ -290,7 +290,7 @@ def main(argv):
 def _parse_pyi(options):
   """Tries parsing a PYI file."""
   loader = _create_loader(options.input, options)
-  ast = loader.load_file(options.module_name, options.input)
+  loader.load_file(options.module_name, options.input)
 
 
 def _run_pytype(options):
