@@ -449,6 +449,14 @@ class MatchTest(test_base.BaseTest):
         foo.f(foo.Foo())
       """, pythonpath=[d.path])
 
+  def testMaybeParameterized(self):
+    self.Check("""
+      import collections
+      class Foo(collections.MutableMapping):
+        pass
+      dict.__delitem__(Foo(), __any_object__)  # pytype: disable=wrong-arg-types
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

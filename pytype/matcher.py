@@ -452,6 +452,9 @@ class AbstractMatcher(object):
     if isinstance(other_type, abstract.ParameterizedClass):
       if isinstance(left, abstract.ParameterizedClass):
         assert left.base_cls is other_type.base_cls
+      elif isinstance(left, abstract.AMBIGUOUS_OR_EMPTY):
+        # TODO(kramm): Allow to match Any against parameterized classes.
+        return None
       else:
         # Parameterized classes can rename type parameters, which is why we need
         # the instance type for lookup. But if the instance type is not
