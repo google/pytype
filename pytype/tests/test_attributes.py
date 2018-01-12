@@ -309,6 +309,19 @@ class TestStrictNone(test_base.BaseTest):
         return 42 in x
     """)
 
+  def testProperty(self):
+    self.Check("""
+      class Foo(object):
+        def __init__(self):
+          self._dofoo = __random__
+        @property
+        def foo(self):
+          return "hello" if self._dofoo else None
+      foo = Foo()
+      if foo.foo:
+        print foo.foo.upper()
+    """)
+
 
 class TestAttributes(test_base.BaseTest):
   """Tests for attributes."""

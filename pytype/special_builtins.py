@@ -505,13 +505,23 @@ class PropertyInstance(abstract.SimpleAbstractValue, abstract.HasSlots):
     self.set_slot("getter", self.getter_slot)
     self.set_slot("setter", self.setter_slot)
     self.set_slot("deleter", self.deleter_slot)
+    self._previous_value = ((None, None, None), None)  # Used by fget_slot
 
   def get_class(self):
     return self.cls
 
   def fget_slot(self, node, obj, objtype):
-    return self.vm.call_function(
+    new_node, new_ret = self.vm.call_function(
         node, self.fget, abstract.FunctionArgs((obj,)))
+    prev_key, prev_ret = self._previous_value
+    new_key = (frozenset(obj.data), self.vm.frame, frozenset(new_ret.data))
+    if new_key == prev_key:
+      # The same caller has accessed the same property again. If it hasn't
+      # changed, return the old value, so that things like if-splitting work.
+      new_ret = prev_ret.AssignToNewVariable(node)
+    else:
+      self._previous_value = (new_key, new_ret)
+    return new_node, new_ret
 
   def fset_slot(self, node, obj, value):
     return self.vm.call_function(

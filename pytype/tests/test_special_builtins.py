@@ -206,6 +206,44 @@ class SpecialBuiltinsTest(test_base.BaseTest):
       f(callable)
     """)
 
+  def testPropertyChange(self):
+    ty = self.Infer("""
+      class Foo(object):
+        def __init__(self):
+          self.foo = 42
+        @property
+        def bar(self):
+          return self.foo
+      def f():
+        foo = Foo()
+        x = foo.bar
+        foo.foo = "hello world"
+        y = foo.bar
+        return (x, y)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any, Tuple, Union
+      class Foo(object):
+        foo = ...  # type: Union[int, str]
+        bar = ...  # type: Any
+      def f() -> Tuple[int, str]
+    """)
+
+  def testDifferentPropertyInstances(self):
+    errors = self.CheckWithErrors("""\
+      class Foo(object):
+        def __init__(self):
+          self._foo = 42 if __random__ else "hello world"
+        @property
+        def foo(self):
+          return self._foo
+      foo1 = Foo()
+      foo2 = Foo()
+      if isinstance(foo1.foo, str):
+        print foo2.foo.upper()  # line 10
+    """)
+    self.assertErrorLogIs(errors, [(10, "attribute-error", r"upper.*int")])
+
 
 if __name__ == "__main__":
   test_base.main()
