@@ -1003,6 +1003,17 @@ class SplitTest(test_base.BaseTest):
         return ("foo",)
     """)
 
+  def testListElement(self):
+    ty = self.Infer("""
+      def f():
+        x = None if __random__ else 42
+        return [x] if x else [42]
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import List
+      def f() -> List[int]
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

@@ -126,6 +126,18 @@ class GeneratorTest(test_base.BaseTest):
     """)
     self.assertErrorLogIs(errors, [(4, "bad-return-type", r"str.*int")])
 
+  def testNoneCheck(self):
+    ty = self.Infer("""
+      def f():
+        x = None if __random__ else 42
+        if x:
+          yield x
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any, Generator
+      def f() -> Generator[int, Any, Any]
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

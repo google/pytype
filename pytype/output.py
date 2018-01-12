@@ -58,8 +58,10 @@ class Converter(object):
   def _get_values(self, node, var, view):
     if var.bindings and view is not None:
       return [view[var].data]
+    elif node:
+      return var.FilteredData(node)
     else:
-      return var.Data(node)
+      return var.data
 
   def _is_tuple(self, v, instance):
     return (isinstance(v, abstract.TupleClass) or
