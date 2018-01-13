@@ -1003,6 +1003,21 @@ class SplitTest(test_base.BaseTest):
         return ("foo",)
     """)
 
+  def testPrimitive(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        class Value(int):
+            pass
+        value1 = ...  # type: int
+        value2 = ...  # type: Value
+      """)
+      errors = self.CheckWithErrors("""\
+        import foo
+        if foo.value1 == foo.value2:
+          name_error
+      """, pythonpath=[d.path])
+      self.assertErrorLogIs(errors, [(3, "name-error")])
+
   def testListElement(self):
     ty = self.Infer("""
       def f():

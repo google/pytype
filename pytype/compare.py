@@ -58,7 +58,7 @@ def cmp_eq(vm, left, right):
   """Compare two variables."""
   if _is_primitive(vm, left) and isinstance(left, abstract.PythonConstant):
     return _compare_primitive_value(vm, left, right)
-  elif _is_primitive(vm, left):
+  elif _is_primitive(vm, left) and _is_primitive(vm, right):
     return _compare_primitive(left, right)
   elif isinstance(left, abstract.Tuple):
     return _compare_tuple(left, right)
