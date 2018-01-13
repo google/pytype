@@ -1169,11 +1169,6 @@ class VirtualMachine(object):
                 "anything in the abstract interpreter")
     return state
 
-  def push_last_exception(self, state):
-    log.info("Pushing exception %r", state.exception)
-    exctype, value, tb = state.exception
-    return state.push(tb, value, exctype)
-
   def del_subscr(self, state, obj, subscr):
     return self._delete_item(state, obj, subscr)
 
