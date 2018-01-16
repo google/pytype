@@ -5,7 +5,6 @@ from pytype import abstract
 from pytype import annotations_util
 from pytype import config
 from pytype import errors
-from pytype import exceptions
 from pytype import function
 from pytype import load_pytd
 from pytype import special_builtins
@@ -455,7 +454,7 @@ class FunctionTest(AbstractTestBase):
         self._vm.root_cfg_node, b, abstract.FunctionArgs(posargs=args))
 
   def test_call_with_empty_arg(self):
-    self.assertRaises(exceptions.ByteCodeTypeError, self._call_pytd_function,
+    self.assertRaises(AssertionError, self._call_pytd_function,
                       self._make_pytd_function(params=()),
                       (self._vm.program.NewVariable(),))
 

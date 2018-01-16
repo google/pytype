@@ -13,7 +13,6 @@ import itertools
 import logging
 
 
-from pytype import exceptions
 from pytype import function
 from pytype import utils
 from pytype.pyc import loadmarshal
@@ -1478,9 +1477,7 @@ class Function(SimpleAbstractValue):
 
   def _match_args(self, node, args):
     """Check whether the given arguments can match the function signature."""
-    if not all(a.bindings for a in args.posargs):
-      raise exceptions.ByteCodeTypeError(
-          "Can't call function with <nothing> parameter")
+    assert all(a.bindings for a in args.posargs)
     error = None
     matched = []
     arg_variables = args.get_variables()

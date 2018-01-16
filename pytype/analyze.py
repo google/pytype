@@ -10,7 +10,6 @@ import sys
 from pytype import abstract
 from pytype import convert_structural
 from pytype import debug
-from pytype import exceptions
 from pytype import function
 from pytype import metrics
 from pytype import output
@@ -139,7 +138,7 @@ class CallTracer(vm.VirtualMachine):
     try:
       state, ret = self.call_function_with_state(
           state, var, args, kwargs, starargs, starstarargs)
-    except (vm.RecursionException, exceptions.ByteCodeException):
+    except vm.RecursionException:
       # A legitimate exception, which will be handled in run_instruction. (See,
       # e.g., CheckerTest.testRecursion.) Note that we don't want to pop the
       # frame in the case of a crash (any exception besides the ones we catch

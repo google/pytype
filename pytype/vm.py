@@ -31,7 +31,6 @@ from pytype import compare
 from pytype import convert
 from pytype import debug  # pylint: disable=unused-import
 from pytype import directors
-from pytype import exceptions
 from pytype import function
 from pytype import load_pytd
 from pytype import matcher
@@ -258,16 +257,10 @@ class VirtualMachine(object):
       if bytecode_fn is None:
         raise VirtualMachineError("Unknown opcode: %s" % op.name)
       state = bytecode_fn(state, op)
-    except RecursionException as e:
+    except RecursionException:
       # This is not an error - it just means that the block we're analyzing
       # goes into a recursion, and we're already two levels deep.
       state = state.set_why("recursion")
-    except exceptions.ByteCodeException:
-      e = sys.exc_info()[1]
-      state = state.set_exception()
-      log.info("Exception in program: %s: %r",
-               e.exception_type.__name__, e.message)
-      state = state.set_why("exception")
     if state.why == "reraise":
       state = state.set_why("exception")
     self.frame.current_opcode = None
@@ -2039,15 +2032,10 @@ class VirtualMachine(object):
     # NOTE: the dis docs are completely wrong about the order of the
     # operands on the stack!
     argc = op.arg
-    if argc == 0:
-      if state.exception is None:
-        raise exceptions.ByteCodeTypeError(
-            "exceptions must be old-style classes "
-            "or derived from BaseException, not NoneType")
-    else:
-      state, _ = state.popn(argc)
+    # TODO(rechen): Type-check the arguments to raise.
+    state, _ = state.popn(argc)
     state = state.set_exception()
-    if argc == 3:
+    if argc in (0, 3):
       return state.set_why("reraise")
     else:
       return state.set_why("exception")
