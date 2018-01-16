@@ -22,7 +22,6 @@ from pytype.pytd import mro
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.typegraph import cfg
-from pytype.typegraph import cfg_utils
 
 log = logging.getLogger(__name__)
 chain = itertools.chain  # pylint: disable=invalid-name
@@ -3055,8 +3054,7 @@ class InterpreterFunction(Function):
       # that no call has the same key as a previous one.
       callkey = len(self._call_cache)
     if callkey in self._call_cache:
-      old_node_before, old_node_after, old_ret, old_remaining_depth = (
-          self._call_cache[callkey])
+      old_ret, old_remaining_depth = self._call_cache[callkey]
       # Optimization: This function has already been called, with the same
       # environment and arguments, so recycle the old return value.
       # We would want to skip this optimization and reanalyze the call
@@ -3069,9 +3067,7 @@ class InterpreterFunction(Function):
                  "record remaining_depth = %d",
                  self.name, self.vm.remaining_depth(), old_remaining_depth)
       else:
-        ret = cfg_utils.CopyVarApprox(
-            self.vm.program,
-            slice(old_node_before.id, old_node_after.id), node, old_ret)
+        ret = old_ret.AssignToNewVariable(node)
         if self._store_call_records:
           # Even if the call is cached, we might not have been recording it.
           self._call_records.append((callargs, ret, node))
@@ -3084,8 +3080,7 @@ class InterpreterFunction(Function):
       node_after_call, ret = node2, generator.to_variable(node2)
     else:
       node_after_call, ret = self.vm.run_frame(frame, node)
-    self._call_cache[callkey] = (
-        node, node_after_call, ret, self.vm.remaining_depth())
+    self._call_cache[callkey] = ret, self.vm.remaining_depth()
     if self._store_call_records or self.vm.store_all_calls:
       self._call_records.append((callargs, ret, node_after_call))
     self.last_frame = frame

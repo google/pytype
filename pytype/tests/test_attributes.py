@@ -334,6 +334,17 @@ class TestStrictNone(test_base.BaseTest):
             instance.upper()  # line 10
     """)
 
+  def testImpossibleReturnType(self):
+    self.Check("""
+      from typing import Dict
+      def f():
+        d = None  # type: Dict[str, str]
+        instance = d.get("hello")
+        return instance if instance else "world"
+      def g():
+        return f().upper()
+    """)
+
 
 class TestAttributes(test_base.BaseTest):
   """Tests for attributes."""
