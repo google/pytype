@@ -22,7 +22,7 @@ class FlowTest(test_base.BaseTest):
       x = ...  # type: int or float
     """)
 
-  def testException(self):
+  def test_exception(self):
     ty = self.Infer("""
       def f():
         try:
@@ -34,7 +34,7 @@ class FlowTest(test_base.BaseTest):
                     report_errors=False)
     self.assertHasSignature(ty.Lookup("f"), (), self.int)
 
-  def testTwoExceptHandlers(self):
+  def test_two_except_handlers(self):
     ty = self.Infer("""
       def f():
         try:
@@ -48,7 +48,7 @@ class FlowTest(test_base.BaseTest):
                     report_errors=False)
     self.assertHasSignature(ty.Lookup("f"), (), self.intorfloat)
 
-  def testNestedExceptions(self):
+  def test_nested_exceptions(self):
     ty = self.Infer("""
       def f():
         try:
@@ -63,7 +63,7 @@ class FlowTest(test_base.BaseTest):
                     report_errors=False)
     self.assertHasSignature(ty.Lookup("f"), (), self.int)
 
-  def testRaise(self):
+  def test_raise(self):
     ty = self.Infer("""
       def f():
         try:
@@ -77,7 +77,7 @@ class FlowTest(test_base.BaseTest):
     """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (), self.int)
 
-  def testFinally(self):
+  def test_finally(self):
     ty = self.Infer("""
       def f():
         try:
@@ -89,7 +89,7 @@ class FlowTest(test_base.BaseTest):
                     report_errors=False)
     self.assertHasSignature(ty.Lookup("f"), (), self.int)
 
-  def testFinallySuffix(self):
+  def test_finally_suffix(self):
     ty = self.Infer("""
       def f():
         try:
@@ -102,7 +102,7 @@ class FlowTest(test_base.BaseTest):
                     report_errors=False)
     self.assertHasSignature(ty.Lookup("f"), (), self.int)
 
-  def testTryAndLoop(self):
+  def test_try_and_loop(self):
     ty = self.Infer("""
       def f():
         for s in (1, 2):
@@ -117,7 +117,7 @@ class FlowTest(test_base.BaseTest):
     """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (), self.int)
 
-  def testSimpleWith(self):
+  def test_simple_with(self):
     ty = self.Infer("""
       def f(x):
         y = 1
@@ -128,7 +128,7 @@ class FlowTest(test_base.BaseTest):
     """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (self.int,), self.int)
 
-  def testNestedWith(self):
+  def test_nested_with(self):
     ty = self.Infer("""
       def f(x):
         y = 1
@@ -141,7 +141,7 @@ class FlowTest(test_base.BaseTest):
     """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (self.int,), self.int)
 
-  def testNullFLow(self):
+  def test_null_fLow(self):
     ty = self.Infer("""
       def f(x):
         if x is None:
@@ -153,7 +153,7 @@ class FlowTest(test_base.BaseTest):
       def f(x) -> int
     """)
 
-  def testContinueInWith(self):
+  def test_continue_in_with(self):
     ty = self.Infer("""
       def f():
         l = []
@@ -169,7 +169,7 @@ class FlowTest(test_base.BaseTest):
     """, deep=False)
     self.assertHasSignature(ty.Lookup("f"), (), self.int_list)
 
-  def testBreakInWith(self):
+  def test_break_in_with(self):
     ty = self.Infer("""
       def f():
         l = []
@@ -187,7 +187,7 @@ class FlowTest(test_base.BaseTest):
     """, deep=False)
     self.assertHasSignature(ty.Lookup("f"), (), self.str)
 
-  def testRaiseInWith(self):
+  def test_raise_in_with(self):
     ty = self.Infer("""
       def f():
         l = []
@@ -207,7 +207,7 @@ class FlowTest(test_base.BaseTest):
     """, deep=False)
     self.assertHasSignature(ty.Lookup("f"), (), self.str)
 
-  def testReturnInWith(self):
+  def test_return_in_with(self):
     ty = self.Infer("""
       def f():
         with __any_object__:
