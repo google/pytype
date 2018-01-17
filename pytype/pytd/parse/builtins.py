@@ -23,7 +23,7 @@ import collections
 from pytype import utils
 from pytype.pyi import parser
 from pytype.pytd import pytd_utils
-from pytype.pytd.parse import visitors
+from pytype.pytd import visitors
 
 
 def _FindBuiltinFile(name, python_version, extension=".pytd"):

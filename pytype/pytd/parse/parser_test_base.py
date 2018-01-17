@@ -21,7 +21,7 @@ import textwrap
 from pytype import load_pytd
 from pytype.pyi import parser
 from pytype.pytd import pytd
-from pytype.pytd.parse import visitors
+from pytype.pytd import visitors
 import unittest
 
 

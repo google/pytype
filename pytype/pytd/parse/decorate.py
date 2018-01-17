@@ -41,7 +41,7 @@ Usage:
 """
 
 
-from pytype.pytd.parse import visitors
+from pytype.pytd import visitors
 
 
 class Decorator(object):

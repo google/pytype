@@ -8,7 +8,7 @@ from pytype import utils
 from pytype.pyi import parser_ext
 from pytype.pytd import pep484
 from pytype.pytd import pytd
-from pytype.pytd.parse import visitors
+from pytype.pytd import visitors
 
 _DEFAULT_VERSION = (2, 7, 6)
 _DEFAULT_PLATFORM = "linux"

@@ -32,7 +32,7 @@ import sys
 from pytype import utils
 from pytype.pyi import parser
 from pytype.pytd import pytd
-from pytype.pytd.parse import visitors
+from pytype.pytd import visitors
 
 
 _PICKLE_PROTOCOL = cPickle.HIGHEST_PROTOCOL

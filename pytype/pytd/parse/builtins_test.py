@@ -1,8 +1,8 @@
 
 
 from pytype.pytd import pytd
+from pytype.pytd import visitors
 from pytype.pytd.parse import builtins
-from pytype.pytd.parse import visitors
 import unittest
 
 

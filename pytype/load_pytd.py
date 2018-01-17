@@ -10,8 +10,8 @@ from pytype.pyi import parser
 from pytype.pytd import pytd_utils
 from pytype.pytd import serialize_ast
 from pytype.pytd import typeshed
+from pytype.pytd import visitors
 from pytype.pytd.parse import builtins
-from pytype.pytd.parse import visitors
 
 log = logging.getLogger(__name__)
 
@@ -526,4 +526,3 @@ class PickledPyiLoader(Loader):
     self._modules[module_name].pickle = None
     self._modules[module_name].dirty = False
     return ast
-

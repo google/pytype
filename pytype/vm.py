@@ -45,7 +45,7 @@ from pytype.pyc import pyc
 from pytype.pyi import parser
 from pytype.pytd import mro
 from pytype.pytd import slots
-from pytype.pytd.parse import visitors
+from pytype.pytd import visitors
 from pytype.typegraph import cfg
 from pytype.typegraph import cfg_utils
 

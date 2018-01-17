@@ -8,7 +8,7 @@ from pytype import load_pytd
 from pytype import utils
 from pytype.pytd import pytd
 from pytype.pytd import serialize_ast
-from pytype.pytd.parse import visitors
+from pytype.pytd import visitors
 
 import unittest
 

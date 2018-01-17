@@ -19,8 +19,8 @@ from pytype import vm
 from pytype.pytd import optimize
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
+from pytype.pytd import visitors
 from pytype.pytd.parse import builtins
-from pytype.pytd.parse import visitors
 
 log = logging.getLogger(__name__)
 

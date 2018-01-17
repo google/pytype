@@ -10,7 +10,7 @@ import collections
 from pytype.pyi import parser
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
-from pytype.pytd.parse import visitors
+from pytype.pytd import visitors
 
 
 class UnrestorableDependencyError(Exception):

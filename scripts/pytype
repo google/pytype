@@ -28,9 +28,9 @@ from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import serialize_ast
 from pytype.pytd import typeshed
+from pytype.pytd import visitors
 from pytype.pytd.parse import builtins as pytd_builtins
 from pytype.pytd.parse import node
-from pytype.pytd.parse import visitors
 
 
 log = logging.getLogger(__name__)

@@ -7,7 +7,7 @@ from pytype import convert_structural
 from pytype import load_pytd
 from pytype.pyi import parser
 from pytype.pytd import pytd
-from pytype.pytd.parse import visitors
+from pytype.pytd import visitors
 from pytype.tests import test_base
 import unittest
 

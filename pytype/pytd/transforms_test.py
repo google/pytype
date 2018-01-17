@@ -4,9 +4,9 @@ import textwrap
 
 
 from pytype.pytd import transforms
+from pytype.pytd import visitors
 from pytype.pytd.parse import builtins
 from pytype.pytd.parse import parser_test_base
-from pytype.pytd.parse import visitors
 import unittest
 
 

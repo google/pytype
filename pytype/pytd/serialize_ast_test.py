@@ -5,7 +5,7 @@ from pytype import load_pytd
 from pytype import utils
 from pytype.pytd import pytd_utils
 from pytype.pytd import serialize_ast
-from pytype.pytd.parse import visitors
+from pytype.pytd import visitors
 
 import unittest
 
@@ -239,7 +239,7 @@ class SerializeAstTest(unittest.TestCase):
           module_map)
 
       self.assertTrue(loaded_ast)
-      self.assertTrue(loaded_ast is not original_ast)
+      self.assertIsNot(loaded_ast, original_ast)
       self.assertEqual(loaded_ast.name, module_name)
       self.assertTrue(original_ast.ASTeq(loaded_ast))
       loaded_ast.Visit(visitors.VerifyLookup())
@@ -262,7 +262,7 @@ class SerializeAstTest(unittest.TestCase):
           module_map)
 
       self.assertTrue(loaded_ast)
-      self.assertTrue(loaded_ast is not original_ast)
+      self.assertIsNot(loaded_ast, original_ast)
       self.assertEqual(loaded_ast.name, "foo.bar.module1")
       self.assertTrue(original_ast.ASTeq(loaded_ast))
       loaded_ast.Visit(visitors.VerifyLookup())
@@ -306,7 +306,7 @@ class SerializeAstTest(unittest.TestCase):
       loaded_ast = serialize_ast.ProcessAst(serializable_ast, module_map)
 
       self.assertTrue(loaded_ast)
-      self.assertTrue(loaded_ast is not original_ast)
+      self.assertIsNot(loaded_ast, original_ast)
       self.assertEqual(loaded_ast.name, new_module_name)
       loaded_ast.Visit(visitors.VerifyLookup())
       self.assertFalse(original_ast.ASTeq(loaded_ast))
@@ -323,9 +323,9 @@ class SerializeAstTest(unittest.TestCase):
 
       expected_name = "module1"
       # Check that the module had the expected name before.
-      self.assertTrue(original_module_name in module_map)
+      self.assertIn(original_module_name, module_map)
       # Check that module1 wasn't created before storing.
-      self.assertTrue(expected_name not in module_map)
+      self.assertNotIn(expected_name, module_map)
       # Check that the saved ast had its name changed.
       self.assertEqual(serializable_ast.ast.name, expected_name)
 

@@ -21,7 +21,7 @@ from pytype.pytd import optimize
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import serialize_ast
-from pytype.pytd.parse import visitors
+from pytype.pytd import visitors
 
 import unittest
 

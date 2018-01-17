@@ -2,7 +2,7 @@
 
 
 from pytype.pytd import pytd
-from pytype.pytd.parse import visitors
+from pytype.pytd import visitors
 
 
 PEP484_NAMES = ["AbstractSet", "AnyStr", "BinaryIO", "ByteString", "Callable",

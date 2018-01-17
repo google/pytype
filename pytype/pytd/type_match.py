@@ -33,8 +33,8 @@ from pytype import utils
 from pytype.pytd import booleq
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
+from pytype.pytd import visitors
 from pytype.pytd.parse import node
-from pytype.pytd.parse import visitors
 
 log = logging.getLogger(__name__)
 
@@ -276,7 +276,7 @@ class TypeMatch(pytd_utils.TypeMatcher):
   def maybe_lookup_type_param(self, t, subst):
     while isinstance(t, pytd.TypeParameter):
       # We can only have type parameters in a class, and if so, we should have
-      # added them to the type paramter substitution map (subst) beforehand:
+      # added them to the type parameter substitution map (subst) beforehand:
       assert t in subst
       if subst[t] is None:
         # Function type parameter. Can be anything.
@@ -406,7 +406,7 @@ class TypeMatch(pytd_utils.TypeMatcher):
       sig1: The caller
       sig2: The callee
       subst: Current type parameters.
-      skip_self: If True, doesn't compare the first paramter, which is
+      skip_self: If True, doesn't compare the first parameter, which is
         considered (and verified) to be "self".
     Returns:
       An instance of booleq.BooleanTerm, i.e. a boolean formula.

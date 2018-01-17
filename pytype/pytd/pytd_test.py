@@ -7,7 +7,7 @@ import textwrap
 import unittest
 from pytype.pyi import parser
 from pytype.pytd import pytd
-from pytype.pytd.parse import visitors
+from pytype.pytd import visitors
 
 
 class TestPytd(unittest.TestCase):
@@ -95,6 +95,7 @@ class TestPytd(unittest.TestCase):
     self.assertIsInstance(tree1, pytd.TypeDeclUnit)
     self.assertIsInstance(tree2, pytd.TypeDeclUnit)
     # For the ==, != tests, TypeDeclUnit uses identity
+    # pylint: disable=g-generic-assert
     self.assertTrue(tree1 == tree1)
     self.assertTrue(tree2 == tree2)
     self.assertFalse(tree1 == tree2)
@@ -103,6 +104,7 @@ class TestPytd(unittest.TestCase):
     self.assertFalse(tree2 != tree2)
     self.assertTrue(tree1 != tree2)
     self.assertTrue(tree2 != tree1)
+    # pylint: enable=g-generic-assert
     self.assertEqual(tree1, tree1)
     self.assertEqual(tree2, tree2)
     self.assertNotEqual(tree1, tree2)

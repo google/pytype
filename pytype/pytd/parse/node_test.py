@@ -14,8 +14,8 @@
 
 
 import itertools
+from pytype.pytd import visitors
 from pytype.pytd.parse import node
-from pytype.pytd.parse import visitors
 import unittest
 
 
@@ -97,6 +97,8 @@ class MultiNodeVisitor(visitors.Visitor):
     return X(*y)
 
 
+# We want to test == and != so:
+# pylint: disable=g-generic-assert
 class TestNode(unittest.TestCase):
   """Test the node.Node class generator."""
 
@@ -218,6 +220,7 @@ class TestNode(unittest.TestCase):
       # Restore preconditions (not part of the public API, but ensures the
       # test doesn't have a surprising side effect).
       node.SetCheckPreconditions(True)
+# pylint: enable=g-generic-assert
 
 
 if __name__ == "__main__":

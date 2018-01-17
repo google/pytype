@@ -19,8 +19,8 @@ import unittest
 from pytype import load_pytd
 from pytype.pytd import optimize
 from pytype.pytd import pytd
+from pytype.pytd import visitors
 from pytype.pytd.parse import parser_test_base
-from pytype.pytd.parse import visitors
 import unittest
 
 

@@ -5,7 +5,7 @@ import cPickle
 
 from pytype import load_pytd
 from pytype import utils
-from pytype.pytd.parse import visitors
+from pytype.pytd import visitors
 from pytype.tests import test_base
 
 

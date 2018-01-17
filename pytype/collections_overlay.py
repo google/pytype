@@ -9,7 +9,7 @@ from pytype import abstract
 from pytype import overlay
 from pytype.pyi import parser
 from pytype.pytd import pytd
-from pytype.pytd.parse import visitors
+from pytype.pytd import visitors
 
 
 def _repeat_type(type_str, n):
