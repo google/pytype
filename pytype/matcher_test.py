@@ -80,7 +80,7 @@ class MatcherTest(unittest.TestCase):
       self.assertIsNone(match)
 
   def testBasic(self):
-    self.assertMatch(abstract.Empty(self.vm), abstract.Nothing(self.vm))
+    self.assertMatch(abstract.Empty(self.vm), abstract.Empty(self.vm))
 
   def testType(self):
     left = self._make_class("dummy")
@@ -114,9 +114,9 @@ class MatcherTest(unittest.TestCase):
         var, right, {}, self.vm.root_cfg_node, {})
     self.assertEqual(result, {})
 
-  def testEmptyAgainstNothing(self):
+  def testEmptyVarAgainstEmpty(self):
     var = self.vm.program.NewVariable()
-    right = abstract.Nothing(self.vm)
+    right = abstract.Empty(self.vm)
     result = self.vm.matcher.match_var_against_type(
         var, right, {}, self.vm.root_cfg_node, {})
     self.assertEqual(result, {})

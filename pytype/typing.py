@@ -85,7 +85,7 @@ class Callable(TypingContainer):
   def _get_value_info(self, inner, ends_with_ellipsis):
     if isinstance(inner[0], list):
       template = range(len(inner[0])) + [t.name for t in self.base_cls.template]
-      combined_args = abstract.merge_values(inner[0], self.vm, formal=True)
+      combined_args = abstract.merge_values(inner[0], self.vm)
       inner = tuple(inner[0]) + (combined_args,) + inner[1:]
       return template, inner, abstract.Callable
     else:

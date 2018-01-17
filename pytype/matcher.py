@@ -250,7 +250,7 @@ class AbstractMatcher(object):
       # TODO(kramm): Do we want to record what we matched them against?
       assert not isinstance(other_type, abstract.ParameterizedClass)
       return subst
-    elif isinstance(other_type, abstract.Nothing):
+    elif isinstance(other_type, abstract.Empty):
       return self._match_type_against_type(left, other_type, subst, node, view)
     else:
       log.error("Invalid type: %s", type(other_type))
@@ -269,7 +269,7 @@ class AbstractMatcher(object):
       A new type parameter assignment if the matching succeeded, None otherwise.
     """
     if (isinstance(left, abstract.Empty) and
-        isinstance(other_type, abstract.Nothing)):
+        isinstance(other_type, abstract.Empty)):
       return subst
     elif isinstance(left, abstract.AMBIGUOUS_OR_EMPTY):
       params = other_type.vm.annotations_util.get_type_parameters(other_type)
@@ -328,9 +328,6 @@ class AbstractMatcher(object):
     elif isinstance(left, abstract.StaticMethod):
       if other_type.full_name in [
           "__builtin__.staticmethod", "__builtin__.object"]:
-        return subst
-    elif isinstance(left, abstract.Nothing):
-      if isinstance(other_type, abstract.Nothing):
         return subst
     elif isinstance(left, abstract.Union):
       for o in left.options:
@@ -582,7 +579,7 @@ class AbstractMatcher(object):
       else:
         return self._match_instance(
             base, instance, other_type, subst, node, view)
-    elif isinstance(other_type, abstract.Nothing):
+    elif isinstance(other_type, abstract.Empty):
       return None
     else:
       raise NotImplementedError(

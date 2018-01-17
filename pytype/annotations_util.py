@@ -266,8 +266,7 @@ class AnnotationsUtil(object):
       return annotation
     elif isinstance(annotation, (abstract.Class,
                                  abstract.AMBIGUOUS_OR_EMPTY,
-                                 abstract.TypeParameter,
-                                 abstract.Nothing)):
+                                 abstract.TypeParameter)):
       return annotation
     else:
       self.vm.errorlog.invalid_annotation(stack, annotation, "Not a type", name)

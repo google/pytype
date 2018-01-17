@@ -84,10 +84,10 @@ def get_atomic_python_constant(variable, constant_type=None):
   return atomic.vm.convert.value_to_constant(atomic, constant_type)
 
 
-def merge_values(values, vm, formal=False):
+def merge_values(values, vm):
   """Merge a collection of values into a single one."""
   if not values:
-    return vm.convert.nothing if formal else vm.convert.empty
+    return vm.convert.empty
   elif len(values) == 1:
     return next(iter(values))
   else:
@@ -444,6 +444,9 @@ class Empty(AtomicAbstractValue):
 
   def get_class(self):
     return self.to_variable(self.vm.root_cfg_node)
+
+  def instantiate(self, node, container=None):
+    return self.to_variable(node)
 
 
 class MixinMeta(type):
@@ -2379,7 +2382,7 @@ class Callable(ParameterizedClass, HasSlots):
     Callable[[int, bool], str]
   type_parameters is
     {0: int, 1: bool, ARGS: int or bool, RET: str}
-  When there are no args (Callable[[], ...]), ARGS contains abstract.Nothing.
+  When there are no args (Callable[[], ...]), ARGS contains abstract.Empty.
   """
 
   def __init__(self, base_cls, type_parameters, vm):
@@ -3294,26 +3297,6 @@ class Iterator(Instance, HasSlots):
 
   def next_slot(self, node):
     return node, self._return_var
-
-
-# TODO(rechen): Merge this class with Empty.
-class Nothing(AtomicAbstractValue):
-  """The VM representation of Nothing values.
-
-  These are fake values that never exist at runtime, but they appear if you, for
-  example, extract a value from an empty list.
-  """
-
-  formal = True
-
-  def __init__(self, vm):
-    super(Nothing, self).__init__("nothing", vm)
-
-  def call(self, node, func, args):
-    raise AssertionError("Can't call empty object ('nothing')")
-
-  def instantiate(self, node, container=None):
-    return self.vm.convert.empty.to_variable(node)
 
 
 class Module(Instance):

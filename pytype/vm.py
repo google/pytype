@@ -1157,7 +1157,7 @@ class VirtualMachine(object):
 
   def del_attr(self, state, obj, attr):
     """Delete an attribute."""
-    # TODO(kramm): Store abstract.Nothing
+    # TODO(kramm): Store abstract.Empty
     log.warning("Attribute removal does not actually do "
                 "anything in the abstract interpreter")
     return state

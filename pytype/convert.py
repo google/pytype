@@ -90,7 +90,6 @@ class Converter(object):
     self.str_type = self.primitive_classes[str]
     self.int_type = self.primitive_classes[int]
 
-    self.nothing = abstract.Nothing(self.vm)
     self.unsolvable = abstract.Unsolvable(self.vm)
     self.empty = abstract.Empty(self.vm)
 
@@ -528,7 +527,7 @@ class Converter(object):
       assert pyval.cls
       return self.constant_to_value(pyval.cls, subst, self.vm.root_cfg_node)
     elif isinstance(pyval, pytd.NothingType):
-      return self.nothing
+      return self.empty
     elif isinstance(pyval, pytd.AnythingType):
       return self.unsolvable
     elif (isinstance(pyval, pytd.Constant) and

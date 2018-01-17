@@ -147,7 +147,7 @@ class ConvertTest(unittest.TestCase):
     cls = self._vm.convert.constant_to_value(x, {}, self._vm.root_cfg_node)
     instance = self._vm.convert.constant_to_value(
         abstract.AsInstance(x), {}, self._vm.root_cfg_node)
-    self.assertIsInstance(cls.type_parameters[abstract.ARGS], abstract.Nothing)
+    self.assertIsInstance(cls.type_parameters[abstract.ARGS], abstract.Empty)
     self.assertEqual(
         abstract.get_atomic_value(instance.type_parameters[abstract.ARGS]),
         self._vm.convert.empty)

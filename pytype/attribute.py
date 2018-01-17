@@ -120,7 +120,7 @@ class AbstractAttributeHandler(object):
           nodes.append(node2)
       node = self.vm.join_cfg_nodes(nodes)
       return node, self.vm.join_variables(node, results)
-    elif isinstance(obj, abstract.Nothing):
+    elif isinstance(obj, abstract.Empty):
       return node, None
     else:
       return node, None
@@ -228,8 +228,6 @@ class AbstractAttributeHandler(object):
       return self._set_member(node, obj, name, value)
     elif isinstance(obj, abstract.BoundFunction):
       return self.set_attribute(node, obj.underlying, name, value)
-    elif isinstance(obj, abstract.Nothing):
-      raise AttributeError("Object %r has no attribute %s" % (obj, name))
     elif isinstance(obj, abstract.Unsolvable):
       return node
     elif isinstance(obj, abstract.Unknown):

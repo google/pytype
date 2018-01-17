@@ -176,7 +176,7 @@ class Converter(object):
     Returns:
       A PyTD type.
     """
-    if isinstance(v, (abstract.Empty, abstract.Nothing)):
+    if isinstance(v, abstract.Empty):
       return pytd.NothingType()
     elif isinstance(v, abstract.TypeParameterInstance):
       if v.instance.type_parameters[v.name].bindings:
@@ -259,7 +259,7 @@ class Converter(object):
       # generation but undesirable for, say, error message printing.
       args = [sig.annotations.get(name, vm.convert.unsolvable)
               for name in sig.param_names]
-      params = {abstract.ARGS: abstract.merge_values(args, vm, formal=True),
+      params = {abstract.ARGS: abstract.merge_values(args, vm),
                 abstract.RET: ret}
       params.update(enumerate(args))
       return abstract.Callable(base_cls, params, vm)
