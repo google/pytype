@@ -54,6 +54,10 @@ class AsInstance(object):
     self.cls = cls
 
 
+class AsReturnValue(AsInstance):
+  """Specially mark return values, to handle NoReturn properly."""
+
+
 def get_atomic_value(variable, constant_type=None):
   if len(variable.bindings) == 1:
     v, = variable.bindings
@@ -1645,7 +1649,7 @@ class PyTDSignature(object):
           node = self.vm.call_init(node, subst[param.name])
       try:
         ret_map[t] = self.vm.convert.constant_to_var(
-            AsInstance(return_type), subst, node, source_sets=[sources])
+            AsReturnValue(return_type), subst, node, source_sets=[sources])
       except self.vm.convert.TypeParameterError:
         # The return type contains a type parameter without a substitution.
         subst = subst.copy()
@@ -1653,7 +1657,7 @@ class PyTDSignature(object):
           if t.name not in subst:
             subst[t.name] = self.vm.convert.empty.to_variable(node)
         ret_map[t] = self.vm.convert.constant_to_var(
-            AsInstance(return_type), subst, node, source_sets=[sources])
+            AsReturnValue(return_type), subst, node, source_sets=[sources])
       else:
         if (not ret_map[t].bindings and
             isinstance(return_type, pytd.TypeParameter)):
@@ -1964,7 +1968,8 @@ class PyTDFunction(Function):
       try:
         # Even though we don't know which signature got picked, if the return
         # type is unique and does not contain any type parameter, we can use it.
-        result = self.vm.convert.constant_to_var(AsInstance(ret_type), {}, node)
+        result = self.vm.convert.constant_to_var(
+            AsReturnValue(ret_type), {}, node)
       except self.vm.convert.TypeParameterError:
         # The return type contains a type parameter
         result = None

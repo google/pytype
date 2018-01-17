@@ -366,6 +366,10 @@ class ValuesView(MappingView[_T]):
 class ItemsView(MappingView[Tuple[_K, _V]], AbstractSet[Tuple[_K, _V]]):
   __slots__ = []
 
+
+NoReturn = nothing
+
+
 def NewType(name, tp) -> type
 
 def cast(typ: Type[_T], val) -> _T

@@ -5,6 +5,7 @@ import logging
 from pytype import abstract
 from pytype import function
 from pytype import special_builtins
+from pytype import typing
 from pytype import utils
 from pytype.pytd import pep484
 from pytype.pytd import pytd
@@ -250,6 +251,10 @@ class AbstractMatcher(object):
       # TODO(kramm): Do we want to record what we matched them against?
       assert not isinstance(other_type, abstract.ParameterizedClass)
       return subst
+    elif (isinstance(other_type, typing.NoReturn) or
+          isinstance(left, typing.NoReturn)):
+      # NoReturn is a singleton that matches only itself.
+      return subst if left == other_type else None
     elif isinstance(other_type, abstract.Empty):
       return self._match_type_against_type(left, other_type, subst, node, view)
     else:

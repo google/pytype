@@ -431,5 +431,12 @@ class MatcherTest(unittest.TestCase):
     self.assertMatch(left1, right)
     self.assertNoMatch(left2, right)
 
+  def testNoReturn(self):
+    self.assertMatch(self.vm.convert.no_return, self.vm.convert.no_return)
+
+  def testEmptyAgainstNoReturn(self):
+    self.assertNoMatch(self.vm.convert.empty, self.vm.convert.no_return)
+
+
 if __name__ == "__main__":
   unittest.main()

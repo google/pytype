@@ -345,6 +345,17 @@ class TestStrictNone(test_base.BaseTest):
         return f().upper()
     """)
 
+  def testNoReturn(self):
+    self.Check("""
+      def f():
+        text_value = "hello" if __random__ else None
+        if not text_value:
+          missing_value()
+        return text_value.strip()
+      def missing_value():
+        raise ValueError()
+    """)
+
 
 class TestAttributes(test_base.BaseTest):
   """Tests for attributes."""

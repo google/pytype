@@ -261,7 +261,7 @@ class VirtualMachine(object):
       # This is not an error - it just means that the block we're analyzing
       # goes into a recursion, and we're already two levels deep.
       state = state.set_why("recursion")
-    if state.why == "reraise":
+    if state.why in ("reraise", "NoReturn"):
       state = state.set_why("exception")
     self.frame.current_opcode = None
     return state
@@ -283,6 +283,7 @@ class VirtualMachine(object):
     self.push_frame(frame)
     frame.states[frame.f_code.co_code[0]] = frame_state.FrameState.init(node,
                                                                         self)
+    can_return = False
     return_nodes = []
     for block in frame.f_code.order:
       state = frame.states.get(block[0])
@@ -298,7 +299,8 @@ class VirtualMachine(object):
           # we can't process this block any further
           break
       if state.why:
-        # return, raise or yield. Leave the current frame.
+        # return, raise, or yield. Leave the current frame.
+        can_return |= state.why in ("recursion", "return", "yield")
         return_nodes.append(state.node)
       elif op.carry_on_to_next():
         # We're starting a new block, so start a new CFG node. We don't want
@@ -312,6 +314,9 @@ class VirtualMachine(object):
       frame.return_variable.AddBinding(self.convert.unsolvable, [], node)
     else:
       node = self.join_cfg_nodes(return_nodes)
+      if not can_return:
+        assert not frame.return_variable.bindings
+        frame.return_variable.AddBinding(self.convert.no_return, [], node)
     return node, frame.return_variable
 
   reversable_operators = set([
@@ -842,14 +847,17 @@ class VirtualMachine(object):
     assert starstarargs is None or isinstance(starstarargs, cfg.Variable)
     node, ret = self.call_function(state.node, funcu, abstract.FunctionArgs(
         posargs=posargs, namedargs=namedargs, starargs=starargs,
-        starstarargs=starstarargs), fallback_to_unsolvable)
+        starstarargs=starstarargs), fallback_to_unsolvable, allow_noreturn=True)
+    if ret.data == [self.convert.no_return]:
+      state = state.set_why("NoReturn")
     return state.change_cfg_node(node), ret
 
   def _call_with_fake_args(self, node, funcu):
     """Attempt to call the given function with made-up arguments."""
     return node, self.convert.create_new_unsolvable(node)
 
-  def call_function(self, node, funcu, args, fallback_to_unsolvable=True):
+  def call_function(self, node, funcu, args, fallback_to_unsolvable=True,
+                    allow_noreturn=False):
     """Call a function.
 
     Args:
@@ -857,6 +865,7 @@ class VirtualMachine(object):
       funcu: A variable of the possible functions to call.
       args: The arguments to pass. See abstract.FunctionArgs.
       fallback_to_unsolvable: If the function call fails, create an unknown.
+      allow_noreturn: Whether typing.NoReturn is allowed in the return type.
     Returns:
       A tuple (CFGNode, Variable). The Variable is the return value.
     Raises:
@@ -883,6 +892,17 @@ class VirtualMachine(object):
       node = self.join_cfg_nodes(nodes)
       if not result.bindings:
         result.AddBinding(self.convert.unsolvable, [], node)
+      elif ((not allow_noreturn or len(result.bindings) > 1) and
+            self.convert.no_return in result.data):
+        # TODO(rechen): Once we enforce that NoReturn is allowed to appear only
+        # as the sole return type of a function, when allow_noreturn is True
+        # we should be able to assert that either no_return is not among
+        # result.data or len(result.bindings) == 1.
+        new_result = self.program.NewVariable()
+        for b in result.bindings:
+          if b.data != self.convert.no_return:
+            new_result.PasteBinding(b)
+        result = new_result
       return node, result
     else:
       if fallback_to_unsolvable:

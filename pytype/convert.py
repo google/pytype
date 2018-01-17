@@ -8,6 +8,7 @@ from pytype import abstract
 from pytype import blocks
 from pytype import output
 from pytype import special_builtins
+from pytype import typing
 from pytype import utils
 from pytype.pyc import loadmarshal
 from pytype.pytd import mro
@@ -92,6 +93,7 @@ class Converter(object):
 
     self.unsolvable = abstract.Unsolvable(self.vm)
     self.empty = abstract.Empty(self.vm)
+    self.no_return = typing.NoReturn(self.vm)
 
     self.list_type = self.constant_to_value(list)
     self.set_type = self.constant_to_value(set)
@@ -329,6 +331,9 @@ class Converter(object):
       cls = pyval.cls
       if isinstance(cls, pytd.AnythingType):
         return self.create_new_unsolvable(node)
+      elif (isinstance(pyval, abstract.AsReturnValue) and
+            isinstance(cls, pytd.NothingType)):
+        return self.no_return.to_variable(node)
       var = self.vm.program.NewVariable()
       for t in pytd_utils.UnpackUnion(cls):
         if isinstance(t, pytd.TypeParameter):

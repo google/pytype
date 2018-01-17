@@ -160,6 +160,8 @@ class Converter(object):
       # We generate the full definition because, if this type parameter is
       # imported, we will need the definition in order to declare it later.
       return self._typeparam_to_def(node, v, v.name)
+    elif isinstance(v, typing.NoReturn):
+      return pytd.NothingType()
     else:
       log.info("Using ? for instance of %s", v.name)
       return pytd.AnythingType()
@@ -176,7 +178,7 @@ class Converter(object):
     Returns:
       A PyTD type.
     """
-    if isinstance(v, abstract.Empty):
+    if isinstance(v, (abstract.Empty, typing.NoReturn)):
       return pytd.NothingType()
     elif isinstance(v, abstract.TypeParameterInstance):
       if v.instance.type_parameters[v.name].bindings:
@@ -312,13 +314,16 @@ class Converter(object):
       raise NotImplementedError(v.__class__.__name__)
 
   def _function_call_to_return_type(self, node, v, seen_return, num_returns):
+    """Get a function call's pytd return type."""
     if v.signature.has_return_annotation:
       ret = v.signature.annotations["return"].get_instance_type(node)
     else:
       ret = seen_return.data.to_type(node)
-    if isinstance(ret, pytd.NothingType) and num_returns == 1:
-      assert isinstance(seen_return.data, abstract.Empty)
-      ret = pytd.AnythingType()
+      if isinstance(ret, pytd.NothingType) and num_returns == 1:
+        if isinstance(seen_return.data, abstract.Empty):
+          ret = pytd.AnythingType()
+        else:
+          assert isinstance(seen_return.data, typing.NoReturn)
     return ret
 
   def _function_to_def(self, node, v, function_name):

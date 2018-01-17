@@ -29,7 +29,7 @@ class FrameState(object):
 
   @classmethod
   def init(cls, node, vm):
-    return FrameState((), (), node, vm, None, None)
+    return FrameState((), (), node, vm, False, None)
 
   def __setattribute__(self):
     raise AttributeError("States are immutable.")

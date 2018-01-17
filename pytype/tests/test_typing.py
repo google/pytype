@@ -598,6 +598,35 @@ class TypingTest(test_base.BaseTest):
         return m.viewitems()
     """)
 
+  def testNoReturn(self):
+    self.Check("""
+      from __future__ import google_type_annotations
+      from typing import NoReturn
+      def f() -> NoReturn:
+        raise ValueError()
+    """)
+
+  def testAlwaysReturn(self):
+    errors = self.CheckWithErrors("""\
+      from __future__ import google_type_annotations
+      from typing import NoReturn
+      def f() -> NoReturn:
+        return 42
+    """)
+    self.assertErrorLogIs(errors, [(4, "bad-return-type", "nothing.*int")])
+
+  def testMaybeReturn(self):
+    errors = self.CheckWithErrors("""\
+      from __future__ import google_type_annotations
+      from typing import NoReturn
+      def f() -> NoReturn:
+        if __random__:
+          return 42
+        else:
+          raise ValueError()
+    """)
+    self.assertErrorLogIs(errors, [(5, "bad-return-type", "nothing.*int")])
+
 
 if __name__ == "__main__":
   test_base.main()

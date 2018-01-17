@@ -322,6 +322,22 @@ class StrictNoneTest(test_base.BaseTest):
           return foo.f().upper()
       """, pythonpath=[d.path])
 
+  def testNoReturn(self):
+    foo = self.Infer("""
+      def fail():
+        raise ValueError()
+    """)
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", pytd.Print(foo))
+      self.Check("""
+        import foo
+        def g():
+          x = "hello" if __random__ else None
+          if x is None:
+            foo.fail()
+          return x.upper()
+      """, pythonpath=[d.path])
+
 
 if __name__ == "__main__":
   test_base.main()

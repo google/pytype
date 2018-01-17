@@ -440,7 +440,12 @@ class PrintVisitor(Visitor):
 
   def VisitSignature(self, node):
     """Visit a signature, producing a string."""
-    ret = " -> " + node.return_type
+    if node.return_type == "nothing":
+      return_type = "NoReturn"  # a prettier alias for nothing
+      self._FromTyping(return_type)
+    else:
+      return_type = node.return_type
+    ret = " -> " + return_type
 
     # Put parameters in the right order:
     # (arg1, arg2, *args, kwonly1, kwonly2, **kwargs)

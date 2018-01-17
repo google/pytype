@@ -245,6 +245,18 @@ class FlowTest(test_base.BaseTest):
       def g() -> Any
     """)
 
+  def test_change_boolean(self):
+    ty = self.Infer("""
+      def f():
+        b = True
+        while b:
+          b = False
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      def f() -> Any
+    """)
+
   def test_independent_calls(self):
     ty = self.Infer("""
       class _Item(object):
@@ -397,6 +409,23 @@ class FlowTest(test_base.BaseTest):
         break
       else:
         raise
+    """)
+
+  def test_recursion(self):
+    ty = self.Infer("""
+      b = True
+      def f():
+        if b:
+          g()
+      def g():
+        global b
+        b = False
+        f()
+    """)
+    self.assertTypesMatchPytd(ty, """
+      b = ...  # type: bool
+      def f() -> None
+      def g() -> None
     """)
 
 

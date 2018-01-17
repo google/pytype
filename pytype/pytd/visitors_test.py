@@ -1029,6 +1029,15 @@ class TestVisitors(parser_test_base.ParserTest):
           def __new__(cls) -> A: ...
     """))
 
+  def testPrintNoReturn(self):
+    src = textwrap.dedent("""
+      def f() -> nothing
+    """)
+    self.assertMultiLineEqual(pytd.Print(self.Parse(src)), textwrap.dedent("""\
+      from typing import NoReturn
+
+      def f() -> NoReturn: ..."""))
+
   def testRenameBuiltinsPrefix(self):
     """builtins.foo should get rewritten to __builtin__.foo and then to foo."""
     src = textwrap.dedent("""

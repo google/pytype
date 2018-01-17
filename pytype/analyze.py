@@ -466,8 +466,10 @@ class CallTracer(vm.VirtualMachine):
           except NotImplementedError:
             d = option.to_type(self.exitpoint)  # Type only
             if isinstance(d, pytd.NothingType):
-              assert isinstance(option, abstract.Empty)
-              d = pytd.AnythingType()
+              if isinstance(option, abstract.Empty):
+                d = pytd.AnythingType()
+              else:
+                assert isinstance(option, typing.NoReturn)
           if isinstance(d, pytd.TYPE) and not isinstance(d, pytd.TypeParameter):
             data.append(pytd.Constant(name, d))
           else:

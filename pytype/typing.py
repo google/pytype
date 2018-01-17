@@ -189,6 +189,15 @@ class Cast(abstract.PyTDFunction):
     return super(Cast, self).call(node, func, args)
 
 
+class NoReturn(abstract.AtomicAbstractValue):
+
+  def __init__(self, vm):
+    super(NoReturn, self).__init__("NoReturn", vm)
+
+  def get_class(self):
+    return self.to_variable(self.vm.root_cfg_node)
+
+
 def build_any(name, vm):
   del name
   return abstract.Unsolvable(vm)
@@ -225,12 +234,18 @@ def build_newtype(name, vm):
   return vm.convert.unsolvable
 
 
+def build_noreturn(name, vm):
+  del name
+  return vm.convert.no_return
+
+
 typing_overload = {
     "Any": build_any,
     "Callable": Callable,
     "Generic": build_generic,
     "NamedTuple": build_namedtuple,
     "NewType": build_newtype,
+    "NoReturn": build_noreturn,
     "Optional": build_optional,
     "Tuple": Tuple,
     "TypeVar": TypeVar,

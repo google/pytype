@@ -261,6 +261,122 @@ class TestExceptions(test_base.BaseTest):
       def foo() -> Union[complex, int]
     """)
 
+  def test_no_return(self):
+    ty = self.Infer("""
+      def f():
+        raise ValueError()
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import NoReturn
+      def f() -> NoReturn
+    """)
+
+  def test_reraise_no_return(self):
+    ty = self.Infer("""
+      import sys
+      def f():
+        try:
+          raise ValueError()
+        except:
+          exc_info = sys.exc_info()
+          raise exc_info[0], exc_info[1], exc_info[2]
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import NoReturn
+      sys = ...  # type: module
+      def f() -> NoReturn
+    """)
+
+  def test_no_return_chain(self):
+    ty = self.Infer("""
+      def f():
+        raise ValueError()
+      def g():
+        f()
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import NoReturn
+      def f() -> NoReturn
+      def g() -> NoReturn
+    """)
+
+  def test_return_or_raise(self):
+    ty = self.Infer("""
+      def f():
+        if __random__:
+          return 42
+        else:
+          raise ValueError()
+    """)
+    self.assertTypesMatchPytd(ty, """
+      def f() -> int
+    """)
+
+  def test_return_or_call(self):
+    ty = self.Infer("""
+      from __future__ import google_type_annotations
+      from typing import NoReturn
+      def f() -> NoReturn:
+        raise ValueError()
+      def g():
+        if __random__:
+          return f()
+        else:
+          return 42
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import NoReturn
+      def f() -> NoReturn: ...
+      def g() -> int
+    """)
+
+  def test_combine_noreturn(self):
+    ty = self.Infer("""
+      from __future__ import google_type_annotations
+      from typing import NoReturn
+      def f1() -> NoReturn:
+        raise ValueError()
+      def f2() -> int:
+        return 42
+      g1 = f1 if __random__ else f2
+      def g2():
+        return f1 if __random__ else f2
+      v1 = g1()
+      v2 = g2()()
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Callable, NoReturn
+      def f1() -> NoReturn: ...
+      def f2() -> int: ...
+      def g1() -> int: ...
+      def g2() -> Callable[[], int]: ...
+      v1 = ...  # type: int
+      v2 = ...  # type: int
+    """)
+
+  def test_combine_noreturn_different_argcount(self):
+    ty = self.Infer("""
+      from __future__ import google_type_annotations
+      from typing import NoReturn
+      def f1(x) -> NoReturn:
+        raise x
+      def f2() -> int:
+        return 42
+      g1 = f1 if __random__ else f2
+      def g2():
+        return f1 if __random__ else f2
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Callable, NoReturn
+      def f1(x) -> NoReturn: ...
+      def f2() -> int: ...
+      @overload
+      def g1(x) -> NoReturn: ...
+      @overload
+      def g1() -> int: ...
+      def g2() -> Callable[..., int]: ...
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()
