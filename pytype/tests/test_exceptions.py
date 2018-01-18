@@ -377,6 +377,21 @@ class TestExceptions(test_base.BaseTest):
       def g2() -> Callable[..., int]: ...
     """)
 
+  def test_noreturn_callable(self):
+    ty = self.Infer("""
+      from __future__ import google_type_annotations
+      from typing import NoReturn
+      def f() -> NoReturn:
+        raise ValueError()
+      def g():
+        return f
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any, Callable, NoReturn
+      def f() -> NoReturn
+      def g() -> Callable[[], nothing]
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

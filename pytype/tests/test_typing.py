@@ -613,7 +613,7 @@ class TypingTest(test_base.BaseTest):
       def f() -> NoReturn:
         return 42
     """)
-    self.assertErrorLogIs(errors, [(4, "bad-return-type", "nothing.*int")])
+    self.assertErrorLogIs(errors, [(4, "bad-return-type", "NoReturn.*int")])
 
   def testMaybeReturn(self):
     errors = self.CheckWithErrors("""\
@@ -625,7 +625,7 @@ class TypingTest(test_base.BaseTest):
         else:
           raise ValueError()
     """)
-    self.assertErrorLogIs(errors, [(5, "bad-return-type", "nothing.*int")])
+    self.assertErrorLogIs(errors, [(5, "bad-return-type", "NoReturn.*int")])
 
 
 if __name__ == "__main__":

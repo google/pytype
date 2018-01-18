@@ -669,8 +669,11 @@ class ErrorLog(ErrorLogBase):
 
   @_error_name("bad-return-type")
   def bad_return_type(self, stack, actual_pytd, expected_pytd):
+    expected = self._pytd_print(expected_pytd)
+    if expected == "nothing":
+      expected = "NoReturn"  # typing.NoReturn, a prettier alias for nothing
     details = "".join([
-        "Expected: ", self._pytd_print(expected_pytd), "\n",
+        "Expected: ", expected, "\n",
         "Actually returned: ", self._pytd_print(actual_pytd),
     ])
     self.error(stack, "bad option in return type", details)
