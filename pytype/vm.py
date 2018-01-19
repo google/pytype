@@ -283,6 +283,7 @@ class VirtualMachine(object):
     self.push_frame(frame)
     frame.states[frame.f_code.co_code[0]] = frame_state.FrameState.init(node,
                                                                         self)
+    can_return = False
     return_nodes = []
     for block in frame.f_code.order:
       state = frame.states.get(block[0])
@@ -299,6 +300,7 @@ class VirtualMachine(object):
           break
       if state.why:
         # return, raise, or yield. Leave the current frame.
+        can_return |= state.why in ("recursion", "return", "yield")
         return_nodes.append(state.node)
       elif op.carry_on_to_next():
         # We're starting a new block, so start a new CFG node. We don't want
@@ -312,6 +314,12 @@ class VirtualMachine(object):
       frame.return_variable.AddBinding(self.convert.unsolvable, [], node)
     else:
       node = self.join_cfg_nodes(return_nodes)
+      if not can_return:
+        assert not frame.return_variable.bindings
+        # For simplicity, we report any error on the first line of the function.
+        stack = self.frames + self.simple_stack(frame.f_code.co_code[0])
+        self._set_frame_return(
+            node, frame, self.convert.no_return.to_variable(node), stack)
     return node, frame.return_variable
 
   reversable_operators = set([
@@ -837,13 +845,14 @@ class VirtualMachine(object):
 
   def call_function_with_state(self, state, funcu, posargs, namedargs=None,
                                starargs=None, starstarargs=None,
-                               fallback_to_unsolvable=True,
-                               allow_noreturn=False):
+                               fallback_to_unsolvable=True):
     assert starargs is None or isinstance(starargs, cfg.Variable)
     assert starstarargs is None or isinstance(starstarargs, cfg.Variable)
     node, ret = self.call_function(state.node, funcu, abstract.FunctionArgs(
         posargs=posargs, namedargs=namedargs, starargs=starargs,
-        starstarargs=starstarargs), fallback_to_unsolvable, allow_noreturn)
+        starstarargs=starstarargs), fallback_to_unsolvable, allow_noreturn=True)
+    if ret.data == [self.convert.no_return]:
+      state = state.set_why("NoReturn")
     return state.change_cfg_node(node), ret
 
   def _call_with_fake_args(self, node, funcu):
@@ -888,9 +897,10 @@ class VirtualMachine(object):
         result.AddBinding(self.convert.unsolvable, [], node)
       elif ((not allow_noreturn or len(result.bindings) > 1) and
             self.convert.no_return in result.data):
-        # Since we add NoReturn to the return value as soon as an exception is
-        # raised, we need to filter it out again if a real return value was
-        # also found.
+        # TODO(rechen): Once we enforce that NoReturn is allowed to appear only
+        # as the sole return type of a function, when allow_noreturn is True
+        # we should be able to assert that either no_return is not among
+        # result.data or len(result.bindings) == 1.
         new_result = self.program.NewVariable()
         for b in result.bindings:
           if b.data != self.convert.no_return:
@@ -946,12 +956,7 @@ class VirtualMachine(object):
 
     state, func = state.pop()
     state, ret = self.call_function_with_state(
-        state, func, posargs, namedargs, starargs, starstarargs,
-        allow_noreturn=True)
-    if ret.data == [self.convert.no_return]:
-      self._set_frame_return(
-          state.node, self.convert.no_return.to_variable(state.node))
-      state = state.set_why("NoReturn")
+        state, func, posargs, namedargs, starargs, starstarargs)
     return state.push(ret)
 
   def get_globals_dict(self):
@@ -2069,12 +2074,9 @@ class VirtualMachine(object):
 
   def byte_RAISE_VARARGS(self, state, op):
     if utils.is_python_2(self.python_version):
-      state = self.byte_RAISE_VARARGS_PY2(state, op)
+      return self.byte_RAISE_VARARGS_PY2(state, op)
     else:
-      state = self.byte_RAISE_VARARGS_PY3(state, op)
-    self._set_frame_return(
-        state.node, self.convert.no_return.to_variable(state.node))
-    return state
+      return self.byte_RAISE_VARARGS_PY3(state, op)
 
   def byte_POP_EXCEPT(self, state, op):  # Python 3 only
     # We don't push the special except-handler block, so we don't need to
@@ -2304,7 +2306,7 @@ class VirtualMachine(object):
       generator = abstract.Generator(self.frame, self)
       generator.type_parameters[abstract.T] = self.frame.yield_variable
       self._check_return(state.node, generator.to_variable(state.node),
-                         self.frame.allowed_returns)
+                         self.frame.allowed_returns, self.frames)
     return state.set_why("yield")
 
   def byte_IMPORT_NAME(self, state, op):
@@ -2377,28 +2379,37 @@ class VirtualMachine(object):
       # no handler matched, hence Python re-raises the exception.
       return state.set_why("reraise")
 
-  def _check_return(self, node, actual, formal):
+  def _check_return(self, node, actual, formal, frames):
     pass  # overridden in analyze.py
 
-  def _set_frame_return(self, node, var):
-    """Check and set the frame's return variable."""
-    if self.frame.check_return:
-      if self.frame.f_code.co_flags & loadmarshal.CodeType.CO_GENERATOR:
+  def _set_frame_return(self, node, frame, var, stack):
+    """Check and set the frame's return variable.
+
+    Args:
+      node: The current node.
+      frame: The frame.
+      var: The raw return variable.
+      stack: The current stack. Passed into the function so that it's possible
+        to save the stack at a point in time and later go back and set the
+        return variable.
+    """
+    if frame.check_return:
+      if frame.f_code.co_flags & loadmarshal.CodeType.CO_GENERATOR:
         # A generator shouldn't return anything, so the expected return type
         # is None.
-        self._check_return(node, var, self.convert.none_type)
+        self._check_return(node, var, self.convert.none_type, stack)
       else:
-        self._check_return(node, var, self.frame.allowed_returns)
-    if self.frame.allowed_returns is not None:
-      _, _, retvar = self.init_class(node, self.frame.allowed_returns)
+        self._check_return(node, var, frame.allowed_returns, stack)
+    if frame.allowed_returns is not None:
+      _, _, retvar = self.init_class(node, frame.allowed_returns)
     else:
       retvar = var
-    self.frame.return_variable.PasteVariable(retvar, node)
+    frame.return_variable.PasteVariable(retvar, node)
 
   def byte_RETURN_VALUE(self, state, op):
     """Get and check the return value."""
     state, var = state.pop()
-    self._set_frame_return(state.node, var)
+    self._set_frame_return(state.node, self.frame, var, self.frames)
     return state.set_why("return")
 
   def byte_IMPORT_STAR(self, state, op):

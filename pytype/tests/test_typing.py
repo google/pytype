@@ -615,7 +615,7 @@ class TypingTest(test_base.BaseTest):
     """)
     self.assertErrorLogIs(errors, [(4, "bad-return-type", "NoReturn.*int")])
 
-  def testMaybeReturn(self):
+  def testMaybeReturnError(self):
     errors = self.CheckWithErrors("""\
       from __future__ import google_type_annotations
       from typing import NoReturn
@@ -626,6 +626,16 @@ class TypingTest(test_base.BaseTest):
           raise ValueError()
     """)
     self.assertErrorLogIs(errors, [(5, "bad-return-type", "NoReturn.*int")])
+
+  def testMaybeReturn(self):
+    self.Check("""
+      from __future__ import google_type_annotations
+      def f() -> int:
+        if __random__:
+          return 42
+        else:
+          raise ValueError()
+    """)
 
   def testNoReturnAgainstStr(self):
     ty, errors = self.InferWithErrors("""\
@@ -650,6 +660,17 @@ class TypingTest(test_base.BaseTest):
         return f()  # line 5
     """)
     self.assertErrorLogIs(errors, [(5, "bad-return-type", r"str.*NoReturn")])
+
+  def testMultipleNoReturn(self):
+    errors = self.CheckWithErrors("""\
+      from __future__ import google_type_annotations
+      def f() -> str:
+        if __random__:  # line 3
+          raise KeyError()
+        else:
+          raise ValueError()
+    """)
+    self.assertErrorLogIs(errors, [(3, "bad-return-type", r"str.*NoReturn")])
 
 
 if __name__ == "__main__":
