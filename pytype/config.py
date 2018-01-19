@@ -114,6 +114,10 @@ class Options(object):
         help=("Description of the module we're analyzing. "
               "Displayed for import errors."))
     o.add_option(
+        "--timeout", action="store",
+        dest="timeout", default=None,
+        help=("In seconds. Abort after the given time has elapsed."))
+    o.add_option(
         "--metrics", type="string", action="store",
         dest="metrics", default=None,
         help="Write a metrics report to the specified file.")

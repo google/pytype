@@ -10,6 +10,7 @@ Usage:
 import cProfile
 import logging
 import os
+import signal
 import sys
 import tokenize
 import traceback
@@ -295,6 +296,8 @@ def _parse_pyi(options):
 
 def _run_pytype(options):
   """Run pytype with the given configuration options."""
+  if options.timeout is not None:
+    signal.alarm(int(options.timeout))
   if options.generate_builtins:
     _generate_builtins_pickle(options.generate_builtins, options)
     return
