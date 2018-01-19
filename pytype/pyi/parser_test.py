@@ -232,8 +232,7 @@ class ParserTest(_ParserTestBase):
 
   def test_import(self):
     self.check("import foo.bar.baz", "")
-    self.check_error("\n\nimport a as b", 3,
-                     "Renaming of modules not supported")
+    self.check("import a as b")
     self.check("from foo.bar import baz")
     self.check("from foo.bar import baz as abc")
     self.check("from typing import NamedTuple, TypeVar", "")

@@ -3319,10 +3319,11 @@ class Module(Instance):
     """Called to convert the items in _member_map to cfg.Variable."""
     var = self.vm.convert.constant_to_var(ty)
     for value in var.data:
-      # Only do this if this class isn't already part of a module.
+      # Only do this if this is a class which isn't already part of a module, or
+      # is a module itself.
       # (This happens if e.g. foo.py does "from bar import x" and we then
       #  do "from foo import x".)
-      if not value.module:
+      if not value.module and not isinstance(value, Module):
         value.module = self.name
     self.vm.trace_module_member(self, name, var)
     return var
@@ -3333,7 +3334,7 @@ class Module(Instance):
 
   @module.setter
   def module(self, m):
-    assert m is None or m == self.ast.name
+    assert (m is None or m == self.ast.name), (m, self.ast.name)
 
   def has_getattr(self):
     """Does this module have a module-level __getattr__?

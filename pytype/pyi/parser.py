@@ -442,8 +442,7 @@ class _Parser(object):
                              type_params=tuple(self._type_params),
                              functions=tuple(functions),
                              classes=tuple(classes),
-                             aliases=tuple(self._aliases),
-                             modules=())
+                             aliases=tuple(self._aliases))
 
   def set_error_location(self, location):
     """Record the location of the current error.
@@ -613,13 +612,10 @@ class _Parser(object):
       import_list: A list of imported items, which are either strings or pairs
           of strings.  Pairs are used when items are renamed during import
           using "as".
-
-    Raises:
-      ParseError: If an import statement uses a rename.
     """
+    if not self._current_condition.active:
+      return
     if from_package:
-      if not self._current_condition.active:
-        return
       # from a.b.c import d, ...
       for item in import_list:
         if isinstance(item, tuple):
@@ -640,12 +636,15 @@ class _Parser(object):
           self._aliases.append(pytd.Alias(new_name, t))
           self._module_path_map[name] = "%s.%s" % (from_package, name)
     else:
-      # No need to check _current_condition since there are no side effects.
       # import a, b as c, ...
       for item in import_list:
         if isinstance(item, tuple):
-          raise ParseError(
-              "Renaming of modules not supported. Use 'from' syntax.")
+          name, new_name = item
+          t = pytd.Module(name=new_name, module_name=name)
+          self._aliases.append(pytd.Alias(new_name, t))
+        else:
+          # We don't care about imports that are not aliased.
+          pass
 
   def new_type(self, name, parameters=None):
     """Return the AST for a type.

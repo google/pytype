@@ -447,6 +447,12 @@ class Converter(object):
       self._resolved_late_types[late_type.name] = t
     return self._resolved_late_types[late_type.name]
 
+  def _create_module(self, ast):
+    data = (ast.constants + ast.type_params + ast.classes +
+            ast.functions + ast.aliases)
+    members = {val.name.rsplit(".")[-1]: val for val in data}
+    return abstract.Module(self.vm, ast.name, members, ast)
+
   def _constant_to_value(self, pyval, subst, get_node):
     """Create a AtomicAbstractValue that represents a python constant.
 
@@ -495,11 +501,10 @@ class Converter(object):
       actual = self._load_late_type(pyval)
       return self._constant_to_value(actual, subst, get_node)
     elif isinstance(pyval, pytd.TypeDeclUnit):
-      data = (pyval.constants + pyval.type_params + pyval.classes +
-              pyval.functions + pyval.aliases)
-      members = {val.name.rsplit(".")[-1]: val
-                 for val in data}
-      return abstract.Module(self.vm, pyval.name, members, pyval)
+      return self._create_module(pyval)
+    elif isinstance(pyval, pytd.Module):
+      mod = self.vm.loader.import_name(pyval.module_name)
+      return self._create_module(mod)
     elif isinstance(pyval, pytd.Class) and pyval.name == "__builtin__.super":
       return self.vm.special_builtins["super"]
     elif isinstance(pyval, pytd.Class) and pyval.name == "__builtin__.object":

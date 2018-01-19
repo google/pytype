@@ -1035,6 +1035,42 @@ class ImportTest(test_base.BaseTest):
         T = TypeVar('T')
       """)
 
+  def testModuleReexportsAndAliases(self):
+    with utils.Tempdir() as d:
+      d.create_file("pkg/a.pyi", """
+        from pkg import b as c
+        from pkg.b import e as f
+        import pkg.d as x
+        import pkg.g  # should not cause unused import errors
+      """)
+      d.create_file("pkg/b.pyi", """
+        class X: ...
+        class e: ...
+      """)
+      d.create_file("pkg/d.pyi", """
+        class Y: ...
+      """)
+      d.create_file("pkg/g.pyi", """
+        class Z: ...
+      """)
+      ty = self.Infer("""\
+        import pkg.a
+        s = pkg.a.c.X()
+        t = pkg.a.f()
+        u = pkg.a.x
+        v = u.Y()
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """\
+        import pkg.b
+        import pkg.d
+        import pkg.g
+        pkg = ...  # type: module
+        s = ...  # type: pkg.b.X
+        t = ...  # type: pkg.b.e
+        u = ...  # type: module
+        v = ...  # type: pkg.d.Y
+      """)
+
 
 if __name__ == "__main__":
   test_base.main()

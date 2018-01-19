@@ -361,6 +361,8 @@ class PrintVisitor(Visitor):
           suffix += " as " + self.old_node.name
         self.imports = self.old_imports  # undo unnecessary imports change
         return "from " + module + " import " + name + suffix
+    elif isinstance(self.old_node.type, pytd.Module):
+      return node.type
     return self._SafeName(node.name) + " = " + node.type
 
   def EnterClass(self, node):
@@ -564,6 +566,12 @@ class PrintVisitor(Visitor):
   def VisitTypeParameter(self, node):
     return self._SafeName(node.name)
 
+  def VisitModule(self, node):
+    if node.is_aliased:
+      return "import %s as %s" % (node.module_name, node.name)
+    else:
+      return "import %s" % node.module_name
+
   def MaybeCapitalize(self, name):
     """Capitalize a generic type, if necessary."""
     # Import here due to circular import.
@@ -742,6 +750,8 @@ class FillInLocalPointers(Visitor):
 def ToType(item, allow_constants=True):
   """Convert a pytd AST item into a type."""
   if isinstance(item, pytd.TYPE):
+    return item
+  elif isinstance(item, pytd.Module):
     return item
   elif isinstance(item, pytd.Class):
     return pytd.ClassType(item.name, item)
@@ -974,7 +984,7 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny):
     self._module_map = module_map
     self.full_names = full_names
     self.name = self_name
-    self._in_constant = False
+    self._in_constant = None
     self._star_imports = set()
 
   def _ResolveUsingGetattr(self, module_name, module):
@@ -990,13 +1000,20 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny):
     assert len(g.signatures) == 1
     return g.signatures[0].return_type
 
-  def EnterConstant(self, _):
+  def EnterConstant(self, t):
     assert not self._in_constant
-    self._in_constant = True
+    self._in_constant = t.name
 
   def LeaveConstant(self, _):
     assert self._in_constant
-    self._in_constant = False
+    self._in_constant = None
+
+  def _LookupModuleName(self, name):
+    if name in self._module_map:
+      # If we have loaded this, return the ast
+      return self._module_map[name]
+    else:
+      raise KeyError("Unknown module %s" % name)
 
   def VisitNamedType(self, t):
     """Try to look up a NamedType.
@@ -1009,19 +1026,14 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny):
       KeyError: If we can't find a module, or an identifier in a module, or
         if an identifier in a module isn't a class.
     """
-    # Drop module aliases without trying to resolve them.
     if t.name in self._module_map:
-      logging.warning("Mapping module %s to Any", t.name)
-      return pytd.AnythingType()
+      return ToType(pytd.Module(name=t.name, module_name=t.name))
     module_name, dot, name = t.name.rpartition(".")
     if not dot or module_name == self.name:
       # Nothing to do here. This visitor will only look up nodes in other
       # modules.
       return t
-    try:
-      module = self._module_map[module_name]
-    except KeyError:
-      raise KeyError("Unknown module %s" % module_name)
+    module = self._LookupModuleName(module_name)
     try:
       if name == "*":
         self._star_imports.add(module_name)
@@ -1634,8 +1646,7 @@ class CanonicalOrderingVisitor(Visitor):
                              type_params=tuple(sorted(node.type_params)),
                              functions=tuple(sorted(node.functions)),
                              classes=tuple(sorted(node.classes)),
-                             aliases=tuple(sorted(node.aliases)),
-                             modules=tuple(sorted(node.modules)))
+                             aliases=tuple(sorted(node.aliases)))
 
   def VisitClass(self, node):
     return pytd.Class(
@@ -1748,6 +1759,9 @@ class AddNamePrefix(Visitor):
     return self._VisitNamedNode(node)
 
   def VisitAlias(self, node):
+    return self._VisitNamedNode(node)
+
+  def VisitModule(self, node):
     return self._VisitNamedNode(node)
 
 

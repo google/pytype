@@ -45,8 +45,7 @@ class TypeDeclUnit(node.Node('name: str or None',
                              'type_params: tuple[TypeParameter]',
                              'classes: tuple[Class]',
                              'functions: tuple[Function]',
-                             'aliases: tuple[Alias]',
-                             'modules: tuple[Module]')):
+                             'aliases: tuple[Alias]')):
   """Module node. Holds module contents (constants / classes / functions).
 
   Attributes:
@@ -58,7 +57,6 @@ class TypeDeclUnit(node.Node('name: str or None',
     functions: Iterable of functions defined in this type decl unit.
     classes: Iterable of classes defined in this type decl unit.
     aliases: Iterable of aliases (or imports) for types in other modules.
-    modules: Iterable of imported modules.
   """
 
   def Lookup(self, name):
@@ -83,8 +81,7 @@ class TypeDeclUnit(node.Node('name: str or None',
       self._name2item = {}
       for x in self.type_params:
         self._name2item[x.full_name] = x
-      for x in (self.constants + self.functions + self.classes + self.aliases +
-                self.modules):
+      for x in self.constants + self.functions + self.classes + self.aliases:
         self._name2item[x.name] = x
       return self._name2item[name]
 
