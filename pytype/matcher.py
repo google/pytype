@@ -180,6 +180,10 @@ class AbstractMatcher(object):
         # left to its upper bound.
         return self._instantiate_and_match(
             left.param, other_type, subst, node, view)
+    elif (isinstance(other_type, typing.NoReturn) or
+          isinstance(left, typing.NoReturn)):
+      # NoReturn is a singleton that matches only itself.
+      return subst if left == other_type else None
     elif isinstance(other_type, abstract.Class):
       # Accumulate substitutions in "subst", or break in case of error:
       return self._match_type_against_type(left, other_type, subst, node, view)
@@ -251,10 +255,6 @@ class AbstractMatcher(object):
       # TODO(kramm): Do we want to record what we matched them against?
       assert not isinstance(other_type, abstract.ParameterizedClass)
       return subst
-    elif (isinstance(other_type, typing.NoReturn) or
-          isinstance(left, typing.NoReturn)):
-      # NoReturn is a singleton that matches only itself.
-      return subst if left == other_type else None
     elif isinstance(other_type, abstract.Empty):
       return self._match_type_against_type(left, other_type, subst, node, view)
     else:

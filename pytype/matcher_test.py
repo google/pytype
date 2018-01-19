@@ -437,6 +437,10 @@ class MatcherTest(unittest.TestCase):
   def testEmptyAgainstNoReturn(self):
     self.assertNoMatch(self.vm.convert.empty, self.vm.convert.no_return)
 
+  def testNoReturnAgainstClass(self):
+    right = self._convert_type("int")
+    self.assertNoMatch(self.vm.convert.no_return, right)
+
 
 if __name__ == "__main__":
   unittest.main()

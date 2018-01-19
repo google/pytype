@@ -408,6 +408,11 @@ class ErrorLog(ErrorLogBase):
     with t.vm.convert.pytd_convert.produce_detailed_output():
       return self._pytd_print(t.to_type())
 
+  def _print_as_return_type(self, t):
+    ret = self._pytd_print(t)
+    # typing.NoReturn is a prettier alias for nothing.
+    return "NoReturn" if ret == "nothing" else ret
+
   def _join_printed_types(self, types):
     types = sorted(types)
     if len(types) == 1:
@@ -669,12 +674,9 @@ class ErrorLog(ErrorLogBase):
 
   @_error_name("bad-return-type")
   def bad_return_type(self, stack, actual_pytd, expected_pytd):
-    expected = self._pytd_print(expected_pytd)
-    if expected == "nothing":
-      expected = "NoReturn"  # typing.NoReturn, a prettier alias for nothing
     details = "".join([
-        "Expected: ", expected, "\n",
-        "Actually returned: ", self._pytd_print(actual_pytd),
+        "Expected: ", self._print_as_return_type(expected_pytd), "\n",
+        "Actually returned: ", self._print_as_return_type(actual_pytd),
     ])
     self.error(stack, "bad option in return type", details)
 

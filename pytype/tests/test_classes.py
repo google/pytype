@@ -1331,20 +1331,6 @@ class ClassesTest(test_base.BaseTest):
     """)
     self.assertErrorLogIs(errors, [(5, "name-error")])
 
-  def testAnnotatedNotInstantiable(self):
-    ty = self.Infer("""
-      from __future__ import google_type_annotations
-      class Foo(object):
-        def __new__(cls) -> "Foo":
-          assert cls is not Foo, "not instantiable"
-    """)
-    self.assertTypesMatchPytd(ty, """
-      from typing import Type, TypeVar
-      _TFoo = TypeVar("_TFoo", bound=Foo)
-      class Foo(object):
-        def __new__(cls: Type[_TFoo]) -> _TFoo: ...
-    """)
-
 
 if __name__ == "__main__":
   test_base.main()

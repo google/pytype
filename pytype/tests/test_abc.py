@@ -288,6 +288,17 @@ class AbstractMethodTests(test_base.BaseTest):
           pass
     """)
 
+  def test_abstractmethod_noreturn(self):
+    self.Check("""
+      from __future__ import google_type_annotations
+      import abc
+      class Foo(object):
+        __metaclass__ = abc.ABCMeta
+        @abc.abstractmethod
+        def foo(self) -> int:
+          raise NotImplementedError()
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()
