@@ -1108,7 +1108,7 @@ class VirtualMachine(object):
   def _filter_none_and_paste_bindings(self, node, bindings, var):
     """Paste the bindings into var, filtering out false positives on None."""
     for b in bindings:
-      if not self.options.strict_none or self._has_strict_none_origins(b):
+      if self._has_strict_none_origins(b):
         var.PasteBinding(b, node)
       else:
         var.AddBinding(self.convert.unsolvable, [b], node)
