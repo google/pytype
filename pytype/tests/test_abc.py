@@ -8,7 +8,7 @@ class AbstractMethodTests(test_base.BaseTest):
   """Tests for @abc.abstractmethod."""
 
   def test_basic_abstractmethod(self):
-    ty, errors = self.InferWithErrors("""\
+    ty = self.Infer("""\
       from __future__ import google_type_annotations
       import abc
 
@@ -31,7 +31,6 @@ class AbstractMethodTests(test_base.BaseTest):
         @abstractmethod
         def foo(self) -> int: ...
       """)
-    self.assertErrorLogIs(errors, [])
 
   def test_super_abstractmethod(self):
     _, errors = self.InferWithErrors("""\

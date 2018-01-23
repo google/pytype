@@ -271,7 +271,7 @@ class BuiltinTests2(test_base.BaseTest):
     """)
 
   def testMaxDifferentTypes(self):
-    ty, errors = self.InferWithErrors("""
+    ty = self.Infer("""
       a = max(1, None)
       b = max(1, None, 3j)
       c = max(1, None, 3j, "str")
@@ -282,7 +282,6 @@ class BuiltinTests2(test_base.BaseTest):
       h = max(1, 2, 3, 4, 5, 6, 7, key=int)
       i = max([1,2,3,4])
       """)
-    self.assertErrorLogIs(errors, [])
     self.assertTypesMatchPytd(ty, """
       from typing import Optional, Union
       a = ...  # type: Optional[int]
@@ -297,7 +296,7 @@ class BuiltinTests2(test_base.BaseTest):
       """)
 
   def testMinDifferentTypes(self):
-    ty, errors = self.InferWithErrors("""
+    ty = self.Infer("""
       a = min(1, None)
       b = min(1, None, 3j)
       c = min(1, None, 3j, "str")
@@ -308,7 +307,6 @@ class BuiltinTests2(test_base.BaseTest):
       h = min(1, 2, 3, 4, 5, 6, 7, key=int)
       i = min([1,2,3,4])
       """)
-    self.assertErrorLogIs(errors, [])
     self.assertTypesMatchPytd(ty, """
       from typing import Optional, Union
       a = ...  # type: Optional[int]

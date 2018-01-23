@@ -24,7 +24,7 @@ class SlotsTest(test_base.BaseTest):
     """)
 
   def testAmbiguousSlot(self):
-    ty, errors, = self.InferWithErrors("""
+    ty = self.Infer("""
       class Foo(object):
         __slots__ = () if __random__ else ("foo")
         def __init__(self):
@@ -34,7 +34,6 @@ class SlotsTest(test_base.BaseTest):
       class Foo(object):
         foo = ...  # type: int
     """)
-    self.assertErrorLogIs(errors, [])
 
   def testAmbiguousSlotEntry(self):
     self.Check("""

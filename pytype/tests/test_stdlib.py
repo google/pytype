@@ -140,7 +140,7 @@ class StdlibTests(test_base.BaseTest):
     """)
 
   def testDefaultdict(self):
-    ty, errors = self.InferWithErrors("""\
+    ty = self.Infer("""\
       import collections
       a = collections.defaultdict(int, one = 1, two = 2)
       b = collections.defaultdict(int, {'one': 1, 'two': 2})
@@ -149,7 +149,6 @@ class StdlibTests(test_base.BaseTest):
       e = collections.defaultdict(int)
       f = collections.defaultdict(default_factory = int)
       """)
-    self.assertErrorLogIs(errors, [])
     self.assertTypesMatchPytd(ty, """\
       collections = ...  # type: module
       a = ...  # type: collections.defaultdict[str, int]
@@ -161,7 +160,7 @@ class StdlibTests(test_base.BaseTest):
       """)
 
   def testDefaultdictNoFactory(self):
-    ty, errors = self.InferWithErrors("""\
+    ty = self.Infer("""\
       import collections
       a = collections.defaultdict()
       b = collections.defaultdict(None)
@@ -172,7 +171,6 @@ class StdlibTests(test_base.BaseTest):
       g = collections.defaultdict(one = 1, two = 2)
       h = collections.defaultdict(default_factory = None)
       """)
-    self.assertErrorLogIs(errors, [])
     self.assertTypesMatchPytd(ty, """\
       from typing import Any
       collections = ...  # type: module
@@ -187,14 +185,13 @@ class StdlibTests(test_base.BaseTest):
       """)
 
   def testDefaultdictDiffDefaults(self):
-    ty, errors = self.InferWithErrors("""\
+    ty = self.Infer("""\
       import collections
       a = collections.defaultdict(int, one = '1')
       b = collections.defaultdict(str, one = 1)
       c = collections.defaultdict(None, one = 1)
       d = collections.defaultdict(int, {1: 'one'})
       """)
-    self.assertErrorLogIs(errors, [])
     self.assertTypesMatchPytd(ty, """\
       from typing import Union
       collections = ...  # type: module
