@@ -3,6 +3,7 @@
 import os
 
 
+from pytype import utils
 from pytype.tests import test_base
 
 
@@ -221,6 +222,16 @@ class TestPython3(test_base.BaseTest):
           return bytes() + x
     """)
     self.assertErrorLogIs(errors, [(3, "wrong-arg-types")])
+
+  def test_exec_builtin(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        x = exec
+      """)
+      self.Check("""\
+        import foo
+        foo.x("a = 2")
+      """, pythonpath=[d.path])
 
 
 class TypingMethodsTest(test_base.TypingTest):

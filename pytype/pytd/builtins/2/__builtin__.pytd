@@ -46,6 +46,7 @@ def divmod(x: int, y: int) -> tuple[int, int]
 def divmod(x: int or float, y: int or float) -> tuple[float, float]
 def divmod(x: int or float or complex, y: int or float or complex) -> tuple[complex, complex]
 def eval(src, ...) -> ?  # Can't say *anything* about the result -- different from "-> object"
+def exec(src, ...) -> NoneType
 def execfile(filename: str, ...) -> NoneType
 def filter(function: Optional[Callable[[AnyStr], ?]], iterable: AnyStr) -> AnyStr
 def filter(function: Optional[Callable[[_T], ?]], iterable: Tuple[_T, ...]) -> Tuple[_T, ...]

@@ -813,6 +813,16 @@ class BuiltinTests2(test_base.BaseTest):
       int()
     """)
 
+  def testExec(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        x = exec
+      """)
+      self.Check("""\
+        import foo
+        foo.x("a = 2")
+      """, pythonpath=[d.path])
+
 
 if __name__ == "__main__":
   test_base.main()
