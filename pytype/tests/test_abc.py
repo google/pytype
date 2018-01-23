@@ -298,6 +298,40 @@ class AbstractMethodTests(test_base.BaseTest):
           raise NotImplementedError()
     """)
 
+  def test_unannotated_noreturn(self):
+    ty = self.Infer("""
+      import abc
+      class Foo(object):
+        __metaclass__ = abc.ABCMeta
+        @abc.abstractmethod
+        def foo(self):
+          raise NotImplementedError()
+        def bar(self):
+          return self.foo()
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any, Type
+      abc = ...  # type: module
+      class Foo(object, metaclass=abc.ABCMeta):
+        __metaclass__ = ...  # type: Type[abc.ABCMeta]
+        @abc.abstractmethod
+        def foo(self) -> Any: ...
+        def bar(self) -> Any: ...
+    """)
+
+  def test_none_attribute(self):
+    self.options.tweak(strict_none=True)
+    self.Check("""
+      import abc
+      class Foo(object):
+        __metaclass__ = abc.ABCMeta
+        @abc.abstractmethod
+        def foo(self):
+          pass
+        def bar(self):
+          return self.foo().upper()
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

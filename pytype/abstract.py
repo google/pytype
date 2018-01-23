@@ -3038,16 +3038,18 @@ class InterpreterFunction(Function):
     frame = self.vm.make_frame(node, self.code, callargs,
                                self.f_globals, self.f_locals, self.closure,
                                new_locals=new_locals)
-    if self.signature.has_return_annotation:
-      if self.signature.param_names:
-        self_var = callargs.get(self.signature.param_names[0])
-        caller_is_abstract = self_var and all(
-            cls.is_abstract
-            for v in self_var.data if v.cls for cls in v.cls.data)
-      else:
-        caller_is_abstract = False
-      frame.allowed_returns = annotations["return"]
-      frame.check_return = not (caller_is_abstract and self.is_abstract)
+    if self.signature.param_names:
+      self_var = callargs.get(self.signature.param_names[0])
+      caller_is_abstract = self_var and all(
+          cls.is_abstract
+          for v in self_var.data if v.cls for cls in v.cls.data)
+    else:
+      caller_is_abstract = False
+    check_return = not (caller_is_abstract and self.is_abstract)
+    if self.signature.has_return_annotation or not check_return:
+      frame.allowed_returns = annotations.get(
+          "return", self.vm.convert.unsolvable)
+      frame.check_return = check_return
     if self.vm.options.skip_repeat_calls:
       callkey = self._hash_all(
           (callargs, None),
