@@ -1029,6 +1029,13 @@ class SplitTest(test_base.BaseTest):
       def f() -> List[int]
     """)
 
+  def testKeepConstant(self):
+    self.Check("""
+      use_option = False
+      if use_option:
+        name_error
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

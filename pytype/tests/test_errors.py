@@ -1181,6 +1181,15 @@ class ErrorTest(test_base.BaseTest):
     """)
     self.assertErrorLogIs(errors, [(5, "bad-return-type", r"int.*Foo")])
 
+  def testHiddenError(self):
+    errors = self.CheckWithErrors("""\
+      use_option = False
+      def f():
+        if use_option:
+          name_error
+    """)
+    self.assertErrorLogIs(errors, [(4, "name-error")])
+
 
 if __name__ == "__main__":
   test_base.main()

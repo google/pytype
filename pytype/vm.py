@@ -963,7 +963,7 @@ class VirtualMachine(object):
     """Get a real python dict of the globals."""
     return self.frame.f_globals
 
-  def load_from(self, state, store, name):
+  def load_from(self, state, store, name, discard_concrete_values=False):
     """Load an item out of locals, globals, or builtins."""
     assert isinstance(store, abstract.SimpleAbstractValue)
     assert store.is_lazy
@@ -975,7 +975,9 @@ class VirtualMachine(object):
     if not bindings:
       raise KeyError(name)
     ret = self.program.NewVariable()
-    self._filter_none_and_paste_bindings(state.node, bindings, ret)
+    self._filter_none_and_paste_bindings(
+        state.node, bindings, ret,
+        discard_concrete_values=discard_concrete_values)
     return state, ret
 
   def load_local(self, state, name):
@@ -993,7 +995,8 @@ class VirtualMachine(object):
     return self.load_from(state, self.frame.f_locals, name)
 
   def load_global(self, state, name):
-    return self.load_from(state, self.frame.f_globals, name)
+    return self.load_from(
+        state, self.frame.f_globals, name, discard_concrete_values=True)
 
   def load_special_builtin(self, name):
     if name == "__any_object__":
@@ -1108,11 +1111,19 @@ class VirtualMachine(object):
         self.errorlog.attribute_or_module_error(
             self.frames, error.AssignToNewVariable(self.root_cfg_node), attr)
 
-  def _filter_none_and_paste_bindings(self, node, bindings, var):
+  def _filter_none_and_paste_bindings(self, node, bindings, var,
+                                      discard_concrete_values=False):
     """Paste the bindings into var, filtering out false positives on None."""
     for b in bindings:
       if self._has_strict_none_origins(b):
-        var.PasteBinding(b, node)
+        if (discard_concrete_values and
+            isinstance(b.data, abstract.PythonConstant) and
+            not isinstance(b.data.pyval, str)):
+          # We need to keep constant strings as they may be forward references.
+          var.AddBinding(
+              self.convert.get_maybe_abstract_instance(b.data), [b], node)
+        else:
+          var.PasteBinding(b, node)
       else:
         var.AddBinding(self.convert.unsolvable, [b], node)
 
