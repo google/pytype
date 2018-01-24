@@ -554,8 +554,8 @@ class VirtualMachine(object):
       val.signature.check_type_parameter_count(self.frames)
     return var
 
-  def make_frame(self, node, code, callargs=None,
-                 f_globals=None, f_locals=None, closure=None, new_locals=None):
+  def make_frame(self, node, code, callargs=None, f_globals=None, f_locals=None,
+                 closure=None, new_locals=None, func=None):
     """Create a new frame object, using the given args, globals and locals."""
     if any(code is f.f_code for f in self.frames):
       log.info("Detected recursion in %s", code.co_name or code.co_filename)
@@ -590,7 +590,7 @@ class VirtualMachine(object):
       f_locals = self.convert_locals_or_globals({}, "locals")
 
     return frame_state.Frame(node, self, code, f_globals, f_locals,
-                             self.frame, callargs or {}, closure)
+                             self.frame, callargs or {}, closure, func)
 
   def simple_stack(self, opcode=None):
     """Get a stack of simple frames.
@@ -1101,7 +1101,10 @@ class VirtualMachine(object):
 
   def _new_attribute_error_detection(self, state, _, attr, errors):
     for error in errors:
-      if state.node.HasCombination([error]):
+      combination = [error]
+      if self.frame.func:
+        combination.append(self.frame.func)
+      if state.node.HasCombination(combination):
         self.errorlog.attribute_or_module_error(
             self.frames, error.AssignToNewVariable(self.root_cfg_node), attr)
 

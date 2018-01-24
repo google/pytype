@@ -3014,7 +3014,7 @@ class InterpreterFunction(Function):
       raise WrongArgTypes(self.signature, args, self.vm, bad_param=bad_arg)
     return subst
 
-  def call(self, node, _, args, new_locals=None):
+  def call(self, node, func, args, new_locals=None):
     args = args.simplify(node)
     if self.vm.is_at_maximum_depth() and self.name != "__init__":
       log.info("Maximum depth reached. Not analyzing %r", self.name)
@@ -3037,7 +3037,7 @@ class InterpreterFunction(Function):
     # Might throw vm.RecursionException:
     frame = self.vm.make_frame(node, self.code, callargs,
                                self.f_globals, self.f_locals, self.closure,
-                               new_locals=new_locals)
+                               new_locals=new_locals, func=func)
     if self.signature.param_names:
       self_var = callargs.get(self.signature.param_names[0])
       caller_is_abstract = self_var and all(

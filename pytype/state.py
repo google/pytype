@@ -229,7 +229,7 @@ class Frame(object):
   """
 
   def __init__(self, node, vm, f_code, f_globals, f_locals, f_back, callargs,
-               closure=None):
+               closure, func):
     """Initialize a special frame as needed by TypegraphVirtualMachine.
 
     Args:
@@ -242,6 +242,7 @@ class Frame(object):
       f_back: The frame above this one on the stack.
       callargs: Additional function arguments to store in f_locals.
       closure: A tuple containing the new co_freevars.
+      func: An Optional[cfg.Binding] to the function this frame corresponds to.
     Raises:
       NameError: If we can't resolve any references into the outer frame.
     """
@@ -291,6 +292,7 @@ class Frame(object):
           self.cells[i].PasteVariable(value, node)
         else:
           self.vm.attribute_handler.set_attribute(node, f_locals, name, value)
+    self.func = func
 
   def __repr__(self):     # pragma: no cover
     return "<Frame at 0x%08x: %r @ %d>" % (

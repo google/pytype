@@ -356,6 +356,33 @@ class TestStrictNone(test_base.BaseTest):
         raise ValueError()
     """)
 
+  def testClosure(self):
+    self.Check("""
+      from __future__ import google_type_annotations
+      from typing import Optional
+      d = ...  # type: Optional[dict]
+      if d:
+        formatter = lambda x: d.get(x, '')
+      else:
+        formatter = lambda x: ''
+      print formatter('key')
+    """)
+
+  def testOverwriteGlobal(self):
+    errors = self.CheckWithErrors("""\
+      from __future__ import google_type_annotations
+      from typing import Optional
+      d = ...  # type: Optional[dict]
+      if d:
+        formatter = lambda x: d.get(x, '')  # line 5
+      else:
+        formatter = lambda x: ''
+      d = None
+      print formatter('key')  # line 9
+    """)
+    self.assertErrorLogIs(
+        errors, [(5, "attribute-error", "get.*None.*Traceback.*line 9")])
+
 
 class TestAttributes(test_base.BaseTest):
   """Tests for attributes."""
