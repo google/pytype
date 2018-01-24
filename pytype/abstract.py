@@ -3041,7 +3041,7 @@ class InterpreterFunction(Function):
     if self.signature.param_names:
       self_var = callargs.get(self.signature.param_names[0])
       caller_is_abstract = self_var and all(
-          cls.is_abstract
+          isinstance(cls, Class) and cls.is_abstract
           for v in self_var.data if v.cls for cls in v.cls.data)
     else:
       caller_is_abstract = False

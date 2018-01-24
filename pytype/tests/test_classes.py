@@ -1331,6 +1331,17 @@ class ClassesTest(test_base.BaseTest):
     """)
     self.assertErrorLogIs(errors, [(5, "name-error")])
 
+  def testUnknownMetaclass(self):
+    self.Check("""
+      class Foo(object):
+        __metaclass__ = __any_object__
+        def foo(self):
+          self.bar()
+        @classmethod
+        def bar(cls):
+          pass
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()
