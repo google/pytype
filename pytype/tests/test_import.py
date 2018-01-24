@@ -535,6 +535,14 @@ class ImportTest(test_base.BaseTest):
         x = ...  # type: foo.a.X
       """)
 
+  def testUnusedFromDotInPyi(self):
+    # A `from . import module` that does not subsequently use the module should
+    # not raise an unreplaced NamedType error.
+    with utils.Tempdir() as d:
+      d.create_file("foo/a.pyi", "class X: ...")
+      d.create_file("foo/b.pyi", "from . import a")
+      self.Check("import foo.b", pythonpath=[d.path])
+
   def testFileImport1(self):
     with utils.Tempdir() as d:
       d.create_file("path/to/some/module.pyi",
