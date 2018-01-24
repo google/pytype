@@ -3,8 +3,10 @@
 import csv
 import hashlib
 import os
+import shutil
 import subprocess
 import sys
+import tempfile
 import textwrap
 
 from pytype import config
@@ -26,21 +28,14 @@ class PytypeTest(unittest.TestCase):
   @classmethod
   def setUpClass(cls):
     cls.pytype_dir = os.path.dirname(os.path.dirname(parser.__file__))
-    cls.tmp_dir = unittest.GetDefaultTestTmpdir()
-    cls.errors_csv = os.path.join(cls.tmp_dir, "errors.csv")
 
   def setUp(self):
     self._ResetPytypeArgs()
-    # Remove the errors file between runs so that assertHasErrors reliably
-    # fails if pytype hasn't been executed with --output-errors-csv.
-    if os.path.exists(self.errors_csv):
-      os.remove(self.errors_csv)
-    self.tmp_files = set()
+    self.tmp_dir = tempfile.mkdtemp()
+    self.errors_csv = os.path.join(self.tmp_dir, "errors.csv")
 
   def tearDown(self):
-    for f in self.tmp_files:
-      if os.path.exists(f):
-        os.remove(f)
+    shutil.rmtree(self.tmp_dir)
 
   def _ResetPytypeArgs(self):
     self.pytype_args = {"--python_exe": self.PYTHON_EXE,
@@ -52,16 +47,13 @@ class PytypeTest(unittest.TestCase):
     return os.path.join(self.pytype_dir, "test_data/", filename)
 
   def _TmpPath(self, filename):
-    path = os.path.join(self.tmp_dir, filename)
-    self.tmp_files.add(path)
-    return path
+    return os.path.join(self.tmp_dir, filename)
 
   def _MakeFile(self, contents):
     contents = textwrap.dedent(contents)
     path = self._TmpPath(hashlib.md5(contents).hexdigest() + ".py")
     with open(path, "w") as f:
       print >>f, contents
-    self.tmp_files.add(path)
     return path
 
   def _RunPytype(self, pytype_args_dict):
