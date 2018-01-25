@@ -49,7 +49,7 @@ def namedtuple_ast(name, fields, python_version=None):
       def _make(cls,
                 iterable: typing.Iterable,
                 new = ...,
-                len: typing.Callable[[typing.Iterable], int] = ...
+                len: typing.Callable[[typing.Sized], int] = ...
       ) -> {name}: ...
       def _replace(self, **kwds) -> {name}: ...
   """).format(typevar=typevar,
@@ -109,7 +109,7 @@ class NamedTupleBuilder(abstract.PyTDFunction):
     # The mapping includes only the types needed to define a namedtuple.
     builtin_classes = (
         "dict", "int", "NoneType", "object", "str", "tuple", "type")
-    typing_classes = ("Callable", "Iterable")
+    typing_classes = ("Callable", "Iterable", "Sized")
     d = {c: self._get_builtin_classtype(c) for c in builtin_classes}
     for c in typing_classes:
       d["typing." + c] = self._get_typing_classtype(c)

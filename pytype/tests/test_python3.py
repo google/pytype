@@ -233,6 +233,10 @@ class TestPython3(test_base.BaseTest):
         foo.x("a = 2")
       """, pythonpath=[d.path])
 
+  def testNoneLength(self):
+    errors = self.CheckWithErrors("len(None)")
+    self.assertErrorLogIs(errors, [(1, "wrong-arg-types", r"Sized.*None")])
+
 
 class TypingMethodsTest(test_base.TypingTest):
   """Tests for typing.py specific to python3."""

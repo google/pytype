@@ -316,6 +316,10 @@ class BuiltinTests3(test_base.BaseTest):
         return x[1:5:2]
     """)
 
+  def testNoneLength(self):
+    errors = self.CheckWithErrors("len(None)")
+    self.assertErrorLogIs(errors, [(1, "wrong-arg-types", r"Sized.*None")])
+
 
 if __name__ == "__main__":
   test_base.main()

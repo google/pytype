@@ -70,7 +70,7 @@ def iter(collection: dict[_T, _T2]) -> `dictionary-keyiterator`[_T]
 def iter(collection: Generator[_T]) -> Generator[_T]
 def iter(collection: Iterable[_T]) -> Iterator[_T]
 def iter(func: typing.Callable[[], Union[_T, _T2]], sentinel: _T) -> `callable-iterator`[_T2]
-def len(obj) -> int
+def len(obj: Sized) -> int
 def locals() -> dict[str, object]
 def map(function, sequence: list[nothing], ...) -> list[nothing]
 def map(function, sequence, ...) -> list

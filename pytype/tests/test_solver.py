@@ -112,7 +112,7 @@ class SolverTests(test_base.BaseTest):
     ty = self.Infer("""
       def f():
         d = {}
-        d[1] = "foo"
+        d["foo"] = "bar"
         for name in d:
           len(name)
     """)
