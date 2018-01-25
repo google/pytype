@@ -316,10 +316,12 @@ class VirtualMachine(object):
       node = self.join_cfg_nodes(return_nodes)
       if not can_return:
         assert not frame.return_variable.bindings
-        # For simplicity, we report any error on the first line of the function.
-        stack = self.frames + self.simple_stack(frame.f_code.co_code[0])
+        # We purposely don't check NoReturn against this function's
+        # annotated return type. Raising an error in an unimplemented function
+        # and documenting the intended return type in an annotation is a
+        # common pattern.
         self._set_frame_return(
-            node, frame, self.convert.no_return.to_variable(node), stack)
+            node, frame, self.convert.no_return.to_variable(node))
     return node, frame.return_variable
 
   reversable_operators = set([
@@ -2320,7 +2322,7 @@ class VirtualMachine(object):
       generator = abstract.Generator(self.frame, self)
       generator.type_parameters[abstract.T] = self.frame.yield_variable
       self._check_return(state.node, generator.to_variable(state.node),
-                         self.frame.allowed_returns, self.frames)
+                         self.frame.allowed_returns)
     return state.set_why("yield")
 
   def byte_IMPORT_NAME(self, state, op):
@@ -2393,27 +2395,10 @@ class VirtualMachine(object):
       # no handler matched, hence Python re-raises the exception.
       return state.set_why("reraise")
 
-  def _check_return(self, node, actual, formal, frames):
+  def _check_return(self, node, actual, formal):
     pass  # overridden in analyze.py
 
-  def _set_frame_return(self, node, frame, var, stack):
-    """Check and set the frame's return variable.
-
-    Args:
-      node: The current node.
-      frame: The frame.
-      var: The raw return variable.
-      stack: The current stack. Passed into the function so that it's possible
-        to save the stack at a point in time and later go back and set the
-        return variable.
-    """
-    if frame.check_return:
-      if frame.f_code.co_flags & loadmarshal.CodeType.CO_GENERATOR:
-        # A generator shouldn't return anything, so the expected return type
-        # is None.
-        self._check_return(node, var, self.convert.none_type, stack)
-      else:
-        self._check_return(node, var, frame.allowed_returns, stack)
+  def _set_frame_return(self, node, frame, var):
     if frame.allowed_returns is not None:
       _, _, retvar = self.init_class(node, frame.allowed_returns)
     else:
@@ -2423,7 +2408,14 @@ class VirtualMachine(object):
   def byte_RETURN_VALUE(self, state, op):
     """Get and check the return value."""
     state, var = state.pop()
-    self._set_frame_return(state.node, self.frame, var, self.frames)
+    if self.frame.check_return:
+      if self.frame.f_code.co_flags & loadmarshal.CodeType.CO_GENERATOR:
+        # A generator shouldn't return anything, so the expected return type
+        # is None.
+        self._check_return(state.node, var, self.convert.none_type)
+      else:
+        self._check_return(state.node, var, self.frame.allowed_returns)
+    self._set_frame_return(state.node, self.frame, var)
     return state.set_why("return")
 
   def byte_IMPORT_STAR(self, state, op):
