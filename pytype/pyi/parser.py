@@ -243,6 +243,7 @@ class _Parser(object):
     ANYTHING
     BYTESTRING
     UNICODESTRING
+    TUPLE
 
   Methods used in AST construction:
     new_constant()
@@ -314,6 +315,7 @@ class _Parser(object):
   ANYTHING = pytd.AnythingType()
   BYTESTRING = pytd.NamedType("bytes")
   UNICODESTRING = pytd.NamedType("unicode")
+  TUPLE = pytd.NamedType("tuple")
 
   # Attributes that all namedtuple instances have.
   _NAMEDTUPLE_MEMBERS = ("_asdict", "__dict__", "_fields", "__getnewargs__",

@@ -23,6 +23,7 @@ static const SelectorEntry<ValueSelector> value_attributes[] = {
   {kAnything, "ANYTHING"},
   {kByteString, "BYTESTRING"},
   {kUnicodeString, "UNICODESTRING"},
+  {kTuple, "TUPLE"},
 };
 
 // Mapping from CallSelector to method name.

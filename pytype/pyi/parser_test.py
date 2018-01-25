@@ -509,6 +509,15 @@ class HomogeneousTypeTest(_ParserTestBase):
                "x = ...  # type: Tuple[int, str]",
                prologue="from typing import Tuple")
 
+  def test_type_tuple(self):
+    self.check("x = (str, bytes)",
+               "x = ...  # type: tuple")
+    self.check("x = (str, bytes,)",
+               "x = ...  # type: tuple")
+    self.check("x = (str,)",
+               "x = ...  # type: tuple")
+    self.check("x = str,",
+               "x = ...  # type: tuple")
 
 class NamedTupleTest(_ParserTestBase):
 

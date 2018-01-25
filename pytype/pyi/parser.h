@@ -17,6 +17,7 @@ enum ValueSelector {
   kAnything,
   kByteString,
   kUnicodeString,
+  kTuple,
 
   // This must be last, it isn't an actual selector.
   kValueSelectorCount
