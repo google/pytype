@@ -264,7 +264,7 @@ class Dict(MutableMapping[_K, _V]):
   __slots__ = []
 
 
-class AbstractSet(Iterable[_T], Container[_T]):
+class AbstractSet(Sized, Iterable[_T], Container[_T]):
   __slots__ = []
   def __contains__(self, x) -> bool: ...
   def __and__(self, s: AbstractSet[?]) -> AbstractSet[_T]: ...

@@ -220,7 +220,6 @@ class str(basestring, Sequence[str]):
     def __contains__(self, y: basestring) -> bool
     def __getitem__(self, index: int or slice) -> str
     def __getslice__(self, i: Optional[int], j: Optional[int]) -> str
-    def __len__(self) -> int
     def __mod__(self, y) -> str
     def __mul__(self, n: int) -> str
     def capitalize(self) -> str
@@ -280,7 +279,6 @@ class unicode(basestring, Sequence[unicode]):
     def __contains__(self, y: str or unicode or bytearray) -> bool
     def __getitem__(self, index: int or slice) -> unicode
     def __getslice__(self, i: Optional[int], j: Optional[int]) -> unicode
-    def __len__(self) -> int
     def __mod__(self, y) -> unicode
     def __mul__(self, n: int) -> unicode
     def capitalize(self) -> unicode
@@ -337,7 +335,6 @@ class bytearray(Sequence[int]):
     def __getitem__(self, index: slice) -> bytearray
     def __getslice__(self, ...) -> bytearray
     def __iter__(self) -> bytearray_iterator
-    def __len__(self) -> int
     def __mul__(self, n: int) -> bytearray
     def append(self, int: str or int) -> NoneType
     def capitalize(self) -> bytearray
@@ -442,7 +439,6 @@ class dict(Dict[_K, _V]):
         self := dict[?, ?]
     def __delitem__(self, y: _K) -> NoneType
     def __iter__(self) -> `dictionary-keyiterator`[_K]
-    def __len__(self) -> int
     def __setitem__(self, i: _K2, y: _V2) -> NoneType:
       self := dict[_K or _K2, _V or _V2]
     def clear(self) -> NoneType:
@@ -509,7 +505,6 @@ class list(List[_T]):
     def __iadd__(self, y: Iterable[_T2]) -> list[_T or _T2]:
       self := list[_T or _T2]
     def __iter__(self) -> listiterator[_T]
-    def __len__(self) -> int
     def __mul__(self, n: int) -> list[_T]
     def __reversed__(self) -> listreverseiterator[_T]
     def __setitem__(self, i: int, y: _T2) -> NoneType:
@@ -553,7 +548,6 @@ class tuple(Tuple[_T]):
     def __getitem__(self, index: slice) -> tuple[_T, ...]
     def __getslice__(self, i: Optional[int], j: Optional[int]) -> tuple[_T, ...]
     def __iter__(self) -> tupleiterator[_T]
-    def __len__(self) -> int
     def __mul__(self, n: int) -> tuple[_T, ...]
     def count(self, value: _T) -> int
     def index(self, value, ...) -> int
@@ -572,7 +566,6 @@ class set(Set[_T]):
     def __and__(self, y: Iterable) -> set[_T]
     def __contains__(self, y) -> bool
     def __iter__(self) -> setiterator[_T]
-    def __len__(self) -> int
     def __or__(self, y: Iterable[_T2]) -> set[_T or _T2]
     def __sub__(self, y: Iterable) -> set[_T]
     def __xor__(self, y: Iterable[_T2]) -> set[_T or _T2]
@@ -613,7 +606,6 @@ class frozenset(FrozenSet[_T]):
     def __and__(self, y: AbstractSet) -> frozenset[_T]
     def __contains__(self, y) -> bool
     def __iter__(self) -> setiterator[_T]
-    def __len__(self) -> int
     def __or__(self, y: AbstractSet[_T2]) -> frozenset[_T or _T2]
     def __sub__(self, y: AbstractSet[_T2]) -> frozenset[_T]
     def __xor__(self, y: AbstractSet[_T2]) -> frozenset[_T or _T2]
@@ -809,7 +801,6 @@ class buffer(Sized, Iterable[int]):
     def __add__(self, y: str or unicode or bytearray or buffer) -> str
     def __getitem__(self, index: int) -> str
     def __getslice__(self, i: Optional[int], j: Optional[int]) -> str
-    def __len__(self) -> int
     def __mul__(self, n: int) -> str
 
 class file(BinaryIO):
@@ -906,7 +897,6 @@ class xrange(Sequence[int]):
     def __init__(self, stop: int, ...) -> NoneType
     def __getitem__(self, index: int) -> int
     def __iter__(self) -> Iterator[int]
-    def __len__(self) -> int
     def __reversed__(self, ...) -> Iterator[int]
 
 # From Python/objects/capsule.c. Used e.g. by datetime.datetime_CAPI

@@ -320,6 +320,40 @@ class BuiltinTests3(test_base.BaseTest):
     errors = self.CheckWithErrors("len(None)")
     self.assertErrorLogIs(errors, [(1, "wrong-arg-types", r"Sized.*None")])
 
+  def testSetLength(self):
+    self.Check("""
+      from __future__ import google_type_annotations
+      from typing import Set
+      x = ...  # type: Set[int]
+      len(x)
+      len(set())
+    """)
+
+  def testSequenceLength(self):
+    self.Check("""
+      from __future__ import google_type_annotations
+      from typing import Sequence
+      x = ...  # type: Sequence
+      len(x)
+      len("")
+      len(u"")
+      len(bytearray())
+      len([])
+      len(())
+      len(frozenset())
+      len(buffer(""))
+      len(xrange(0))
+    """)
+
+  def testMappingLength(self):
+    self.Check("""
+      from __future__ import google_type_annotations
+      from typing import Mapping
+      x = ...  # type: Mapping
+      len(x)
+      len({})
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()
