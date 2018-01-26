@@ -298,6 +298,23 @@ class AbstractMethodTests(test_base.BaseTest):
           raise NotImplementedError()
     """)
 
+  def test_abc_metaclass_from_decorator(self):
+    with utils.Tempdir() as d:
+      d.create_file("six.pyi", """
+        from typing import TypeVar, Callable
+        T = TypeVar('T')
+        def add_metaclass(metaclass: type) -> Callable[[T], T]: ...
+      """)
+      self.Check("""
+        import abc
+        import six
+        @six.add_metaclass(abc.ABCMeta)
+        class Foo(object):
+          @abc.abstractmethod
+          def foo(self):
+            pass
+      """, pythonpath=[d.path])
+
   def test_unannotated_noreturn(self):
     ty = self.Infer("""
       import abc

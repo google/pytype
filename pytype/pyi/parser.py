@@ -624,12 +624,13 @@ class _Parser(object):
           name, new_name = item
         else:
           name = new_name = item
+        qualified_name = "%s.%s" % (from_package, name)
         if from_package == "__PACKAGE__" and isinstance(item, str):
           # This will always be a simple module import (from . cannot import a
           # NamedType, and without 'as' the name will not be reexported).
-          t = pytd.Module(name=new_name, module_name=name)
+          t = pytd.Module(name=new_name, module_name=qualified_name)
         else:
-          t = pytd.NamedType("%s.%s" % (from_package, name))
+          t = pytd.NamedType(qualified_name)
         if name == "*":
           # A star import is stored as
           # 'imported_mod.* = imported_mod.*'. The imported module needs to be

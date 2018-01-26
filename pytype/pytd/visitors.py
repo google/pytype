@@ -1819,23 +1819,32 @@ class QualifyRelativeNames(Visitor):
             not package_name.endswith("."))
     self.package_name = package_name
 
-  def VisitNamedType(self, node):
+  def _QualifyName(self, orig_name):
     # Generated from "from . import foo" - see parser.y
-    prefix, package, name = node.name.partition("__PACKAGE__.")
+    prefix, package, name = orig_name.partition("__PACKAGE__.")
     if not prefix and package:
-      return node.Replace(name=self.package_name + "." + name)
-    if node.name.startswith("."):
-      name = utils.get_absolute_name(self.package_name, node.name)
+      return self.package_name + "." + name
+    if orig_name.startswith("."):
+      name = utils.get_absolute_name(self.package_name, orig_name)
       if name is None:
         raise SymbolLookupError(
             "Cannot resolve relative import %s" %
-            node.name.rsplit(".", 1)[0])
-      return node.Replace(name=name)
+            orig_name.rsplit(".", 1)[0])
+      return name
     else:
-      return node
+      return orig_name
+
+  def VisitNamedType(self, node):
+    name = self._QualifyName(node.name)
+    return node.Replace(name=name)
 
   def VisitClassType(self, t):
     return self.VisitNamedType(t)
+
+  def VisitModule(self, module):
+    name = self._QualifyName(module.name)
+    module_name = self._QualifyName(module.module_name)
+    return module.Replace(name=name, module_name=module_name)
 
 
 def ExpandSignature(sig):
