@@ -42,6 +42,7 @@ class TestTypeshedLoading(parser_test_base.ParserTest):
     self.assertIn("ctypes", modules)
     self.assertIn("email.MIMEBase", modules)
     self.assertIn("xml.etree.ElementTree", modules)
+    self.assertIn("six.moves", modules)
 
   def test_get_all_stdlib_module_names_3(self):
     t = typeshed.Typeshed()

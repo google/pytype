@@ -115,6 +115,7 @@ class Typeshed(object):
                os.path.join("pytd/stdlib/%d" % major),
                "typeshed/stdlib/%d" % major,
                "typeshed/stdlib/2and3",
+               "typeshed/third_party/%d" % major,
                "typeshed/third_party/2and3",
               ]
     if major == 3:
