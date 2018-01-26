@@ -124,6 +124,14 @@ class ErrorTest(test_base.BaseTest):
         [(2, "missing-parameter", r"function list.__iadd__")]
     )
 
+  def testRewriteBuiltinFunctionName(self):
+    """Should rewrite `function __builtin__.len` to `built-in function len`."""
+    _, errors = self.InferWithErrors("x = len(None)")
+    self.assertErrorLogIs(
+        errors,
+        [(1, "wrong-arg-types", r"Built-in function len")]
+    )
+
   def BoundMethodNameInMsg(self):
     _, errors = self.InferWithErrors("""\
       "".join(1)

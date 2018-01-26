@@ -133,6 +133,18 @@ def _compare_traceback_strings(left, right):
     return None
 
 
+def _function_name(name, capitalize=False):
+  builtin_prefix = "__builtin__."
+  if name.startswith(builtin_prefix):
+    ret = "built-in function %s" % name[len(builtin_prefix):]
+  else:
+    ret = "function %s" % name
+  if capitalize:
+    return ret[0].upper() + ret[1:]
+  else:
+    return ret
+
+
 class CheckPoint(object):
   """Represents a position in an error log."""
 
@@ -578,32 +590,36 @@ class ErrorLog(ErrorLogBase):
 
   @_error_name("wrong-arg-count")
   def wrong_arg_count(self, stack, name, bad_call):
-    message = "Function %s expects %d arg(s), got %d" % (
-        name, bad_call.sig.mandatory_param_count(), len(bad_call.passed_args))
+    message = "%s expects %d arg(s), got %d" % (
+        _function_name(name, capitalize=True),
+        bad_call.sig.mandatory_param_count(),
+        len(bad_call.passed_args))
     self._invalid_parameters(stack, message, bad_call)
 
   @_error_name("wrong-arg-types")
   def wrong_arg_types(self, stack, name, bad_call):
     """A function was called with the wrong parameter types."""
-    message = "Function %s was called with the wrong arguments" % name
+    message = ("%s was called with the wrong arguments" %
+               _function_name(name, capitalize=True))
     self._invalid_parameters(stack, message, bad_call)
 
   @_error_name("wrong-keyword-args")
   def wrong_keyword_args(self, stack, name, bad_call, extra_keywords):
     """A function was called with extra keywords."""
     if len(extra_keywords) == 1:
-      message = "Invalid keyword argument %s to function %s" % (
-          extra_keywords[0], name)
+      message = "Invalid keyword argument %s to %s" % (
+          extra_keywords[0], _function_name(name))
     else:
-      message = "Invalid keyword arguments %s to function %s" % (
-          "(" + ", ".join(sorted(extra_keywords)) + ")", name)
+      message = "Invalid keyword arguments %s to %s" % (
+          "(" + ", ".join(sorted(extra_keywords)) + ")",
+          _function_name(name))
     self._invalid_parameters(stack, message, bad_call)
 
   @_error_name("missing-parameter")
   def missing_parameter(self, stack, name, bad_call, missing_parameter):
     """A function call is missing parameters."""
-    message = "Missing parameter %r in call to function %s" % (
-        missing_parameter, name)
+    message = "Missing parameter %r in call to %s" % (
+        missing_parameter, _function_name(name))
     self._invalid_parameters(stack, message, bad_call)
 
   @_error_name("not-callable")
@@ -641,8 +657,8 @@ class ErrorLog(ErrorLogBase):
 
   @_error_name("duplicate-keyword-argument")
   def duplicate_keyword(self, stack, name, bad_call, duplicate):
-    message = ("function %s got multiple values for keyword argument %r" %
-               (name, duplicate))
+    message = ("%s got multiple values for keyword argument %r" %
+               (_function_name(name), duplicate))
     self._invalid_parameters(stack, message, bad_call)
 
   def invalid_function_call(self, stack, error):
