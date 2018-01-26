@@ -22,8 +22,8 @@ class AddMetaclassInstance(abstract.AtomicAbstractValue):
   """AddMetaclass instance (constructed by AddMetaclass.call())."""
 
   # Minimal signature, only used for constructing exceptions.
-  _SIGNATURE = function.Signature(
-      "six.add_metaclass", ("cls",), None, set(), None, {}, {}, {})
+  _SIGNATURE = function.Signature.from_param_names(
+      "six.add_metaclass", ("cls",))
 
   def __init__(self, meta, vm):
     super(AddMetaclassInstance, self).__init__("AddMetaclassInstance", vm)

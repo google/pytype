@@ -382,8 +382,7 @@ class Super(abstract.PyTDClass):
   """The super() function. Calling it will create a SuperInstance."""
 
   # Minimal signature, only used for constructing exceptions.
-  _SIGNATURE = function.Signature(
-      "super", ("cls", "self"), None, set(), None, {}, {}, {})
+  _SIGNATURE = function.Signature.from_param_names("super", ("cls", "self"))
 
   def __init__(self, vm):
     super(Super, self).__init__(
@@ -544,8 +543,7 @@ class Property(abstract.PyTDClass):
 
   _KEYS = ["fget", "fset", "fdel", "doc"]
   # Minimal signature, only used for constructing exceptions.
-  _SIGNATURE = function.Signature(
-      "property", tuple(_KEYS), None, set(), None, {}, {}, {})
+  _SIGNATURE = function.Signature.from_param_names("property", tuple(_KEYS))
 
   def __init__(self, vm):
     super(Property, self).__init__(
@@ -587,8 +585,7 @@ class StaticMethodInstance(abstract.SimpleAbstractValue, abstract.HasSlots):
 class StaticMethod(abstract.PyTDClass):
   """Static method decorator."""
   # Minimal signature, only used for constructing exceptions.
-  _SIGNATURE = function.Signature(
-      "staticmethod", ("func",), None, set(), None, {}, {}, {})
+  _SIGNATURE = function.Signature.from_param_names("staticmethod", ("func",))
 
   def __init__(self, vm):
     super(StaticMethod, self).__init__(
@@ -630,8 +627,7 @@ class ClassMethodInstance(abstract.SimpleAbstractValue, abstract.HasSlots):
 class ClassMethod(abstract.PyTDClass):
   """Static method decorator."""
   # Minimal signature, only used for constructing exceptions.
-  _SIGNATURE = function.Signature(
-      "classmethod", ("func",), None, set(), None, {}, {}, {})
+  _SIGNATURE = function.Signature.from_param_names("classmethod", ("func",))
 
   def __init__(self, vm):
     super(ClassMethod, self).__init__(

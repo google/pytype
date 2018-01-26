@@ -141,6 +141,20 @@ class Signature(object):
         late_annotations={}
     )
 
+  @classmethod
+  def from_param_names(cls, name, param_names):
+    """Construct a minimal signature from a name and a list of param names."""
+    return cls(
+        name=name,
+        param_names=tuple(param_names),
+        varargs_name=None,
+        kwonly_params=set(),
+        kwargs_name=None,
+        defaults={},
+        annotations={},
+        late_annotations={}
+    )
+
   def has_param(self, name):
     return name in self.param_names or name in self.kwonly_params or (
         name == self.varargs_name or name == self.kwargs_name)
