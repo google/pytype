@@ -1,4 +1,5 @@
 %option prefix="pytype"
+%option outfile="lexer.lex.cc"
 %option 8bit
 %option noyywrap
 %option reentrant
@@ -82,16 +83,31 @@ u\"\" { return UNICODESTRING; }
 
  /* NAME */
 [_[:alpha:]][-_[:alnum:]]* {
+#if PY_MAJOR_VERSION >= 3
+  yylval->obj=PyUnicode_FromString(yytext);
+#else
   yylval->obj=PyString_FromString(yytext);
+#endif
   return NAME;
 }
 `[_~[:alpha:]][-_~[:alnum:]]*` {
+#if PY_MAJOR_VERSION >= 3
+  yylval->obj=PyUnicode_FromStringAndSize(yytext+1, yyleng-2);
+#else
   yylval->obj=PyString_FromStringAndSize(yytext+1, yyleng-2);
+#endif
   return NAME;
 }
 
  /* NUMBER */
-[-+]?[0-9]+  { yylval->obj=PyInt_FromString(yytext, NULL, 10); return NUMBER; }
+[-+]?[0-9]+  {
+#if PY_MAJOR_VERSION >= 3
+  yylval->obj=PyLong_FromString(yytext, NULL, 10);
+#else
+  yylval->obj=PyInt_FromString(yytext, NULL, 10);
+#endif
+  return NUMBER;
+}
 [-+]?[0-9]*\.[0-9]+  {
   yylval->obj=PyFloat_FromDouble(atof(yytext));
   return NUMBER;
@@ -164,7 +180,11 @@ u\"\" { return UNICODESTRING; }
   } else if (yyleng < yyextra->CurrentIndentation()) {
     // Dedent.
     if (!yyextra->PopIndentationTo(yyleng)) {
+#if PY_MAJOR_VERSION >= 3
+      yylval->obj=PyUnicode_FromString("Invalid indentation");
+#else
       yylval->obj=PyString_FromString("Invalid indentation");
+#endif
       yyextra->error_message_ = yylval->obj;
       return LEXERROR;
     }
@@ -218,7 +238,11 @@ u\"\" { return UNICODESTRING; }
 
  /* Anything we don't understand is an error. */
 <*>.|\n {
+#if PY_MAJOR_VERSION >= 3
+  yylval->obj=PyUnicode_FromFormat("Illegal character '%c'", yytext[0]);
+#else
   yylval->obj=PyString_FromFormat("Illegal character '%c'", yytext[0]);
+#endif
   yyextra->error_message_ = yylval->obj;
   return LEXERROR;
 }

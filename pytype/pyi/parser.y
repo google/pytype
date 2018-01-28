@@ -1,9 +1,10 @@
-%defines  // Creates a .h file.
+%defines "parser.tab.h"  // Creates a .h file.
 
 // Prefix is not needed since we are including the whole parser within a
 // namespace.  But use it anyway because using a prefix is a recommended
 // practice.
-%name-prefix = "pytype"
+%name-prefix "pytype"
+%output "parser.tab.cc"
 %locations
 
 // Use a reentrant parser, wire it up to a reentrant lexer.
@@ -11,12 +12,14 @@
 %lex-param {void* scanner}
 %parse-param {void* scanner}
 // Plumb our Context object through the parser.
-%parse-param {pytype::Context* ctx}
+%parse-param {Context* ctx}
 
 %error-verbose
 
 %code requires {
 #include <Python.h>
+
+class Context;
 }
 
 /* We cannot use %code here because we are intentionally leaving the
@@ -33,7 +36,11 @@ namespace pytype {
 // for a few #defines) is in the pytype namespace.
 
 namespace {
+#if PY_MAJOR_VERSION >= 3
+PyObject* DOT_STRING = PyUnicode_FromString(".");
+#else
 PyObject* DOT_STRING = PyString_FromString(".");
+#endif
 
 int pytypeerror(YYLTYPE* llocp, void* scanner, pytype::Context* ctx,
     const char *p);
@@ -386,7 +393,11 @@ import_item
 import_name
   : dotted_name
   | '.' import_name {
+#if PY_MAJOR_VERSION >= 3
+      $$ = PyUnicode_FromFormat(".%s", PyBytes_AsString($2));
+#else
       $$ = PyString_FromFormat(".%s", PyString_AsString($2));
+#endif
       Py_DECREF($2);
     }
   ;
@@ -404,9 +415,27 @@ from_items
 
 from_item
   : NAME
-  | NAMEDTUPLE { $$ = PyString_FromString("NamedTuple"); }
-  | TYPEVAR { $$ = PyString_FromString("TypeVar"); }
-  | '*' { $$ = PyString_FromString("*"); }
+  | NAMEDTUPLE {
+#if PY_MAJOR_VERSION >= 3
+  $$ = PyUnicode_FromString("NamedTuple");
+#else
+  $$ = PyString_FromString("NamedTuple");
+#endif
+  }
+  | TYPEVAR {
+#if PY_MAJOR_VERSION >= 3
+  $$ = PyUnicode_FromString("TypeVar");
+#else
+  $$ = PyString_FromString("TypeVar");
+#endif
+  }
+  | '*' {
+#if PY_MAJOR_VERSION >= 3
+  $$ = PyUnicode_FromString("*");
+#else
+  $$ = PyString_FromString("*");
+#endif
+  }
   | NAME AS NAME { $$ = Py_BuildValue("(NN)", $1, $3); }
   ;
 
@@ -486,7 +515,7 @@ param
   : NAME param_type param_default { $$ = Py_BuildValue("(NNN)", $1, $2, $3); }
   | '*' { $$ = Py_BuildValue("(sOO)", "*", Py_None, Py_None); }
   | param_star_name param_type { $$ = Py_BuildValue("(NNO)", $1, $2, Py_None); }
-  | ELLIPSIS { $$ = ctx->Value(kEllipsis) }
+  | ELLIPSIS { $$ = ctx->Value(kEllipsis); }
   ;
 
 param_type
@@ -502,8 +531,20 @@ param_default
   ;
 
 param_star_name
-  : '*' NAME { $$ = PyString_FromFormat("*%s", PyString_AsString($2)); }
-  | '*' '*' NAME { $$ = PyString_FromFormat("**%s", PyString_AsString($3)); }
+  : '*' NAME {
+#if PY_MAJOR_VERSION >= 3
+  $$ = PyUnicode_FromFormat("*%s", PyBytes_AsString($2));
+#else
+  $$ = PyString_FromFormat("*%s", PyString_AsString($2));
+#endif
+  }
+  | '*' '*' NAME {
+#if PY_MAJOR_VERSION >= 3
+  $$ = PyUnicode_FromFormat("**%s", PyBytes_AsString($3));
+#else
+  $$ = PyString_FromFormat("**%s", PyString_AsString($3));
+#endif
+  }
   ;
 
 return
@@ -610,8 +651,14 @@ type_list
 dotted_name
   : NAME { $$ = $1; }
   | dotted_name '.' NAME {
+#if PY_MAJOR_VERSION >= 3
+      $1 = PyUnicode_Concat($1, DOT_STRING);
+      $1 = PyUnicode_Concat($1, $3);
+      Py_DECREF($3);
+#else
       PyString_Concat(&$1, DOT_STRING);
       PyString_ConcatAndDel(&$1, $3);
+#endif
       $$ = $1;
     }
   ;
