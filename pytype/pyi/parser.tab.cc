@@ -79,7 +79,11 @@ namespace pytype {
 // for a few #defines) is in the pytype namespace.
 
 namespace {
+#if PY_MAJOR_VERSION >= 3
+PyObject* DOT_STRING = PyUnicode_FromString(".");
+#else
 PyObject* DOT_STRING = PyString_FromString(".");
+#endif
 
 int pytypeerror(YYLTYPE* llocp, void* scanner, pytype::Context* ctx,
     const char *p);
@@ -100,7 +104,7 @@ PyObject* ExtendList(PyObject* dst, PyObject* src);
   }} while(0)
 
 
-#line 104 "parser.tab.cc" /* yacc.c:339  */
+#line 108 "parser.tab.cc" /* yacc.c:339  */
 
 # ifndef YY_NULLPTR
 #  if defined __cplusplus && 201103L <= __cplusplus
@@ -136,7 +140,7 @@ extern int pytypedebug;
 
 class Context;
 
-#line 140 "parser.tab.cc" /* yacc.c:355  */
+#line 144 "parser.tab.cc" /* yacc.c:355  */
 
 /* Token type.  */
 #ifndef YYTOKENTYPE
@@ -183,12 +187,12 @@ class Context;
 
 union YYSTYPE
 {
-#line 61 "parser.y" /* yacc.c:355  */
+#line 65 "parser.y" /* yacc.c:355  */
 
   PyObject* obj;
   const char* str;
 
-#line 192 "parser.tab.cc" /* yacc.c:355  */
+#line 196 "parser.tab.cc" /* yacc.c:355  */
 };
 
 typedef union YYSTYPE YYSTYPE;
@@ -218,7 +222,7 @@ int pytypeparse (void* scanner, Context* ctx);
 
 /* Copy the second part of user declarations.  */
 
-#line 222 "parser.tab.cc" /* yacc.c:358  */
+#line 226 "parser.tab.cc" /* yacc.c:358  */
 
 #ifdef short
 # undef short
@@ -520,23 +524,23 @@ static const yytype_uint8 yytranslate[] =
   /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
 static const yytype_uint16 yyrline[] =
 {
-       0,   134,   134,   135,   139,   143,   144,   145,   146,   152,
-     153,   154,   159,   163,   164,   167,   174,   185,   186,   187,
-     191,   192,   196,   197,   201,   202,   203,   207,   208,   212,
-     213,   218,   219,   224,   229,   232,   237,   241,   260,   263,
-     268,   272,   284,   288,   292,   296,   299,   302,   305,   308,
-     309,   310,   315,   316,   317,   323,   324,   325,   326,   327,
-     328,   332,   336,   340,   344,   348,   352,   356,   363,   367,
-     371,   380,   381,   384,   385,   390,   391,   398,   399,   400,
-     404,   405,   409,   410,   411,   412,   413,   417,   421,   428,
-     429,   430,   431,   435,   436,   440,   444,   462,   463,   467,
-     471,   472,   484,   485,   489,   490,   491,   492,   496,   497,
-     501,   502,   503,   504,   508,   509,   513,   514,   518,   522,
-     523,   524,   528,   529,   530,   531,   532,   533,   534,   538,
-     539,   543,   544,   545,   549,   550,   554,   555,   559,   563,
-     567,   572,   576,   577,   578,   579,   580,   584,   585,   589,
-     590,   594,   598,   599,   603,   604,   608,   609,   614,   615,
-     623,   624,   629,   637,   638,   642,   643
+       0,   138,   138,   139,   143,   147,   148,   149,   150,   156,
+     157,   158,   163,   167,   168,   171,   178,   189,   190,   191,
+     195,   196,   200,   201,   205,   206,   207,   211,   212,   216,
+     217,   222,   223,   228,   233,   236,   241,   245,   264,   267,
+     272,   276,   288,   292,   296,   300,   303,   306,   309,   312,
+     313,   314,   319,   320,   321,   327,   328,   329,   330,   331,
+     332,   336,   340,   344,   348,   352,   356,   360,   367,   371,
+     375,   384,   385,   388,   389,   394,   395,   406,   407,   408,
+     412,   413,   417,   418,   425,   432,   439,   443,   447,   454,
+     455,   456,   457,   461,   462,   466,   470,   488,   489,   493,
+     497,   498,   510,   511,   515,   516,   517,   518,   522,   523,
+     527,   528,   529,   530,   534,   541,   551,   552,   556,   560,
+     561,   562,   566,   567,   568,   569,   570,   571,   572,   576,
+     577,   581,   582,   583,   587,   588,   592,   593,   597,   601,
+     605,   610,   614,   615,   616,   617,   618,   622,   623,   627,
+     628,   632,   636,   637,   641,   642,   646,   647,   652,   653,
+     667,   668,   673,   681,   682,   686,   687
 };
 #endif
 
@@ -1360,369 +1364,369 @@ yydestruct (const char *yymsg, int yytype, YYSTYPE *yyvaluep, YYLTYPE *yylocatio
   switch (yytype)
     {
           case 3: /* NAME  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1366 "parser.tab.cc" /* yacc.c:1257  */
+#line 1370 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 4: /* NUMBER  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1372 "parser.tab.cc" /* yacc.c:1257  */
+#line 1376 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 5: /* LEXERROR  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1378 "parser.tab.cc" /* yacc.c:1257  */
+#line 1382 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 48: /* start  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1384 "parser.tab.cc" /* yacc.c:1257  */
+#line 1388 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 49: /* unit  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1390 "parser.tab.cc" /* yacc.c:1257  */
+#line 1394 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 50: /* alldefs  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1396 "parser.tab.cc" /* yacc.c:1257  */
+#line 1400 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 52: /* classdef  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1402 "parser.tab.cc" /* yacc.c:1257  */
+#line 1406 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 53: /* class_name  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1408 "parser.tab.cc" /* yacc.c:1257  */
+#line 1412 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 54: /* parents  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1414 "parser.tab.cc" /* yacc.c:1257  */
+#line 1418 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 55: /* parent_list  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1420 "parser.tab.cc" /* yacc.c:1257  */
+#line 1424 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 56: /* parent  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1426 "parser.tab.cc" /* yacc.c:1257  */
+#line 1430 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 57: /* maybe_class_funcs  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1432 "parser.tab.cc" /* yacc.c:1257  */
+#line 1436 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 58: /* class_funcs  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1438 "parser.tab.cc" /* yacc.c:1257  */
+#line 1442 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 59: /* funcdefs  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1444 "parser.tab.cc" /* yacc.c:1257  */
+#line 1448 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 60: /* if_stmt  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1450 "parser.tab.cc" /* yacc.c:1257  */
+#line 1454 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 61: /* if_and_elifs  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1456 "parser.tab.cc" /* yacc.c:1257  */
+#line 1460 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 62: /* class_if_stmt  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1462 "parser.tab.cc" /* yacc.c:1257  */
+#line 1466 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 63: /* class_if_and_elifs  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1468 "parser.tab.cc" /* yacc.c:1257  */
+#line 1472 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 64: /* if_cond  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1474 "parser.tab.cc" /* yacc.c:1257  */
+#line 1478 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 65: /* elif_cond  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1480 "parser.tab.cc" /* yacc.c:1257  */
+#line 1484 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 66: /* else_cond  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1486 "parser.tab.cc" /* yacc.c:1257  */
+#line 1490 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 67: /* condition  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1492 "parser.tab.cc" /* yacc.c:1257  */
+#line 1496 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 68: /* version_tuple  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1498 "parser.tab.cc" /* yacc.c:1257  */
+#line 1502 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 69: /* condition_op  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).str)); }
-#line 1504 "parser.tab.cc" /* yacc.c:1257  */
+#line 1508 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 70: /* constantdef  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1510 "parser.tab.cc" /* yacc.c:1257  */
+#line 1514 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 71: /* importdef  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1516 "parser.tab.cc" /* yacc.c:1257  */
+#line 1520 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 72: /* import_items  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1522 "parser.tab.cc" /* yacc.c:1257  */
+#line 1526 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 73: /* import_item  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1528 "parser.tab.cc" /* yacc.c:1257  */
+#line 1532 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 74: /* import_name  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1534 "parser.tab.cc" /* yacc.c:1257  */
+#line 1538 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 75: /* from_list  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1540 "parser.tab.cc" /* yacc.c:1257  */
+#line 1544 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 76: /* from_items  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1546 "parser.tab.cc" /* yacc.c:1257  */
+#line 1550 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 77: /* from_item  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1552 "parser.tab.cc" /* yacc.c:1257  */
+#line 1556 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 78: /* alias_or_constant  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1558 "parser.tab.cc" /* yacc.c:1257  */
+#line 1562 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 79: /* typevardef  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1564 "parser.tab.cc" /* yacc.c:1257  */
+#line 1568 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 80: /* typevar_args  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1570 "parser.tab.cc" /* yacc.c:1257  */
+#line 1574 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 81: /* typevar_kwargs  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1576 "parser.tab.cc" /* yacc.c:1257  */
+#line 1580 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 82: /* typevar_kwarg  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1582 "parser.tab.cc" /* yacc.c:1257  */
+#line 1586 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 83: /* funcdef  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1588 "parser.tab.cc" /* yacc.c:1257  */
+#line 1592 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 84: /* decorators  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1594 "parser.tab.cc" /* yacc.c:1257  */
+#line 1598 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 85: /* decorator  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1600 "parser.tab.cc" /* yacc.c:1257  */
+#line 1604 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 86: /* params  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1606 "parser.tab.cc" /* yacc.c:1257  */
+#line 1610 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 87: /* param_list  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1612 "parser.tab.cc" /* yacc.c:1257  */
+#line 1616 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 88: /* param  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1618 "parser.tab.cc" /* yacc.c:1257  */
+#line 1622 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 89: /* param_type  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1624 "parser.tab.cc" /* yacc.c:1257  */
+#line 1628 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 90: /* param_default  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1630 "parser.tab.cc" /* yacc.c:1257  */
+#line 1634 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 91: /* param_star_name  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1636 "parser.tab.cc" /* yacc.c:1257  */
+#line 1640 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 92: /* return  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1642 "parser.tab.cc" /* yacc.c:1257  */
+#line 1646 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 94: /* maybe_body  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1648 "parser.tab.cc" /* yacc.c:1257  */
+#line 1652 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 96: /* body  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1654 "parser.tab.cc" /* yacc.c:1257  */
+#line 1658 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 97: /* body_stmt  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1660 "parser.tab.cc" /* yacc.c:1257  */
+#line 1664 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 98: /* type_parameters  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1666 "parser.tab.cc" /* yacc.c:1257  */
+#line 1670 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 99: /* type_parameter  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1672 "parser.tab.cc" /* yacc.c:1257  */
+#line 1676 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 100: /* type  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1678 "parser.tab.cc" /* yacc.c:1257  */
+#line 1682 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 101: /* named_tuple_fields  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1684 "parser.tab.cc" /* yacc.c:1257  */
+#line 1688 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 102: /* named_tuple_field_list  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1690 "parser.tab.cc" /* yacc.c:1257  */
+#line 1694 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 103: /* named_tuple_field  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1696 "parser.tab.cc" /* yacc.c:1257  */
+#line 1700 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 105: /* maybe_type_list  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1702 "parser.tab.cc" /* yacc.c:1257  */
+#line 1706 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 106: /* type_list  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1708 "parser.tab.cc" /* yacc.c:1257  */
+#line 1712 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 107: /* dotted_name  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1714 "parser.tab.cc" /* yacc.c:1257  */
+#line 1718 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 108: /* getitem_key  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1720 "parser.tab.cc" /* yacc.c:1257  */
+#line 1724 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
     case 109: /* maybe_number  */
-#line 100 "parser.y" /* yacc.c:1257  */
+#line 104 "parser.y" /* yacc.c:1257  */
       { Py_CLEAR(((*yyvaluep).obj)); }
-#line 1726 "parser.tab.cc" /* yacc.c:1257  */
+#line 1730 "parser.tab.cc" /* yacc.c:1257  */
         break;
 
 
@@ -2014,85 +2018,85 @@ yyreduce:
   switch (yyn)
     {
         case 2:
-#line 134 "parser.y" /* yacc.c:1646  */
+#line 138 "parser.y" /* yacc.c:1646  */
     { ctx->SetAndDelResult((yyvsp[-1].obj)); (yyval.obj) = NULL; }
-#line 2020 "parser.tab.cc" /* yacc.c:1646  */
+#line 2024 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 3:
-#line 135 "parser.y" /* yacc.c:1646  */
+#line 139 "parser.y" /* yacc.c:1646  */
     { ctx->SetAndDelResult((yyvsp[-1].obj)); (yyval.obj) = NULL; }
-#line 2026 "parser.tab.cc" /* yacc.c:1646  */
+#line 2030 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 5:
-#line 143 "parser.y" /* yacc.c:1646  */
+#line 147 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = AppendList((yyvsp[-1].obj), (yyvsp[0].obj)); }
-#line 2032 "parser.tab.cc" /* yacc.c:1646  */
+#line 2036 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 6:
-#line 144 "parser.y" /* yacc.c:1646  */
+#line 148 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = AppendList((yyvsp[-1].obj), (yyvsp[0].obj)); }
-#line 2038 "parser.tab.cc" /* yacc.c:1646  */
+#line 2042 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 7:
-#line 145 "parser.y" /* yacc.c:1646  */
+#line 149 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = (yyvsp[-1].obj); Py_DECREF((yyvsp[0].obj)); }
-#line 2044 "parser.tab.cc" /* yacc.c:1646  */
+#line 2048 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 8:
-#line 146 "parser.y" /* yacc.c:1646  */
+#line 150 "parser.y" /* yacc.c:1646  */
     {
       (yyval.obj) = (yyvsp[-1].obj);
       PyObject* tmp = ctx->Call(kAddAliasOrConstant, "(N)", (yyvsp[0].obj));
       CHECK(tmp, (yyloc));
       Py_DECREF(tmp);
     }
-#line 2055 "parser.tab.cc" /* yacc.c:1646  */
+#line 2059 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 9:
-#line 152 "parser.y" /* yacc.c:1646  */
+#line 156 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = (yyvsp[-1].obj); Py_DECREF((yyvsp[0].obj)); }
-#line 2061 "parser.tab.cc" /* yacc.c:1646  */
+#line 2065 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 10:
-#line 153 "parser.y" /* yacc.c:1646  */
+#line 157 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = (yyvsp[-1].obj); Py_DECREF((yyvsp[0].obj)); }
-#line 2067 "parser.tab.cc" /* yacc.c:1646  */
+#line 2071 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 11:
-#line 154 "parser.y" /* yacc.c:1646  */
+#line 158 "parser.y" /* yacc.c:1646  */
     {
       PyObject* tmp = ctx->Call(kIfEnd, "(N)", (yyvsp[0].obj));
       CHECK(tmp, (yylsp[0]));
       (yyval.obj) = ExtendList((yyvsp[-1].obj), tmp);
     }
-#line 2077 "parser.tab.cc" /* yacc.c:1646  */
+#line 2081 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 12:
-#line 159 "parser.y" /* yacc.c:1646  */
+#line 163 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = PyList_New(0); }
-#line 2083 "parser.tab.cc" /* yacc.c:1646  */
+#line 2087 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 15:
-#line 167 "parser.y" /* yacc.c:1646  */
+#line 171 "parser.y" /* yacc.c:1646  */
     {
       (yyval.obj) = ctx->Call(kAddClass, "(NNN)", (yyvsp[-4].obj), (yyvsp[-3].obj), (yyvsp[0].obj));
       CHECK((yyval.obj), (yyloc));
     }
-#line 2092 "parser.tab.cc" /* yacc.c:1646  */
+#line 2096 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 16:
-#line 174 "parser.y" /* yacc.c:1646  */
+#line 178 "parser.y" /* yacc.c:1646  */
     {
       // Do not borrow the $1 reference since it is also returned later
       // in $$.  Use O instead of N in the format string.
@@ -2101,511 +2105,533 @@ yyreduce:
       Py_DECREF(tmp);
       (yyval.obj) = (yyvsp[0].obj);
     }
-#line 2105 "parser.tab.cc" /* yacc.c:1646  */
+#line 2109 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 17:
-#line 185 "parser.y" /* yacc.c:1646  */
+#line 189 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = (yyvsp[-1].obj); }
-#line 2111 "parser.tab.cc" /* yacc.c:1646  */
+#line 2115 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 18:
-#line 186 "parser.y" /* yacc.c:1646  */
+#line 190 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = PyList_New(0); }
-#line 2117 "parser.tab.cc" /* yacc.c:1646  */
+#line 2121 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 19:
-#line 187 "parser.y" /* yacc.c:1646  */
+#line 191 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = PyList_New(0); }
-#line 2123 "parser.tab.cc" /* yacc.c:1646  */
+#line 2127 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 20:
-#line 191 "parser.y" /* yacc.c:1646  */
+#line 195 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = AppendList((yyvsp[-2].obj), (yyvsp[0].obj)); }
-#line 2129 "parser.tab.cc" /* yacc.c:1646  */
+#line 2133 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 21:
-#line 192 "parser.y" /* yacc.c:1646  */
+#line 196 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = StartList((yyvsp[0].obj)); }
-#line 2135 "parser.tab.cc" /* yacc.c:1646  */
+#line 2139 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 22:
-#line 196 "parser.y" /* yacc.c:1646  */
+#line 200 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = (yyvsp[0].obj); }
-#line 2141 "parser.tab.cc" /* yacc.c:1646  */
+#line 2145 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 23:
-#line 197 "parser.y" /* yacc.c:1646  */
+#line 201 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = Py_BuildValue("(NN)", (yyvsp[-2].obj), (yyvsp[0].obj)); }
-#line 2147 "parser.tab.cc" /* yacc.c:1646  */
+#line 2151 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 24:
-#line 201 "parser.y" /* yacc.c:1646  */
+#line 205 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = PyList_New(0); }
-#line 2153 "parser.tab.cc" /* yacc.c:1646  */
+#line 2157 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 25:
-#line 202 "parser.y" /* yacc.c:1646  */
+#line 206 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = (yyvsp[-1].obj); }
-#line 2159 "parser.tab.cc" /* yacc.c:1646  */
+#line 2163 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 26:
-#line 203 "parser.y" /* yacc.c:1646  */
+#line 207 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = (yyvsp[-1].obj); }
-#line 2165 "parser.tab.cc" /* yacc.c:1646  */
+#line 2169 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 27:
-#line 207 "parser.y" /* yacc.c:1646  */
+#line 211 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = PyList_New(0); }
-#line 2171 "parser.tab.cc" /* yacc.c:1646  */
+#line 2175 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 29:
-#line 212 "parser.y" /* yacc.c:1646  */
+#line 216 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = AppendList((yyvsp[-1].obj), (yyvsp[0].obj)); }
-#line 2177 "parser.tab.cc" /* yacc.c:1646  */
+#line 2181 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 30:
-#line 213 "parser.y" /* yacc.c:1646  */
+#line 217 "parser.y" /* yacc.c:1646  */
     {
       PyObject* tmp = ctx->Call(kNewAliasOrConstant, "(N)", (yyvsp[0].obj));
       CHECK(tmp, (yyloc));
       (yyval.obj) = AppendList((yyvsp[-1].obj), tmp);
     }
-#line 2187 "parser.tab.cc" /* yacc.c:1646  */
+#line 2191 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 31:
-#line 218 "parser.y" /* yacc.c:1646  */
+#line 222 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = AppendList((yyvsp[-1].obj), (yyvsp[0].obj)); }
-#line 2193 "parser.tab.cc" /* yacc.c:1646  */
+#line 2197 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 32:
-#line 219 "parser.y" /* yacc.c:1646  */
+#line 223 "parser.y" /* yacc.c:1646  */
     {
       PyObject* tmp = ctx->Call(kIfEnd, "(N)", (yyvsp[0].obj));
       CHECK(tmp, (yylsp[0]));
       (yyval.obj) = ExtendList((yyvsp[-1].obj), tmp);
     }
-#line 2203 "parser.tab.cc" /* yacc.c:1646  */
+#line 2207 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 33:
-#line 224 "parser.y" /* yacc.c:1646  */
+#line 228 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = PyList_New(0); }
-#line 2209 "parser.tab.cc" /* yacc.c:1646  */
+#line 2213 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 34:
-#line 229 "parser.y" /* yacc.c:1646  */
+#line 233 "parser.y" /* yacc.c:1646  */
     {
       (yyval.obj) = AppendList((yyvsp[-5].obj), Py_BuildValue("(NN)", (yyvsp[-4].obj), (yyvsp[-1].obj)));
     }
-#line 2217 "parser.tab.cc" /* yacc.c:1646  */
+#line 2221 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 36:
-#line 237 "parser.y" /* yacc.c:1646  */
+#line 241 "parser.y" /* yacc.c:1646  */
     {
       (yyval.obj) = Py_BuildValue("[(NN)]", (yyvsp[-4].obj), (yyvsp[-1].obj));
     }
-#line 2225 "parser.tab.cc" /* yacc.c:1646  */
+#line 2229 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 37:
-#line 241 "parser.y" /* yacc.c:1646  */
+#line 245 "parser.y" /* yacc.c:1646  */
     {
       (yyval.obj) = AppendList((yyvsp[-5].obj), Py_BuildValue("(NN)", (yyvsp[-4].obj), (yyvsp[-1].obj)));
     }
-#line 2233 "parser.tab.cc" /* yacc.c:1646  */
+#line 2237 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 38:
-#line 260 "parser.y" /* yacc.c:1646  */
+#line 264 "parser.y" /* yacc.c:1646  */
     {
       (yyval.obj) = AppendList((yyvsp[-5].obj), Py_BuildValue("(NN)", (yyvsp[-4].obj), (yyvsp[-1].obj)));
     }
-#line 2241 "parser.tab.cc" /* yacc.c:1646  */
+#line 2245 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 40:
-#line 268 "parser.y" /* yacc.c:1646  */
+#line 272 "parser.y" /* yacc.c:1646  */
     {
       (yyval.obj) = Py_BuildValue("[(NN)]", (yyvsp[-4].obj), (yyvsp[-1].obj));
     }
-#line 2249 "parser.tab.cc" /* yacc.c:1646  */
+#line 2253 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 41:
-#line 272 "parser.y" /* yacc.c:1646  */
+#line 276 "parser.y" /* yacc.c:1646  */
     {
       (yyval.obj) = AppendList((yyvsp[-5].obj), Py_BuildValue("(NN)", (yyvsp[-4].obj), (yyvsp[-1].obj)));
     }
-#line 2257 "parser.tab.cc" /* yacc.c:1646  */
+#line 2261 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 42:
-#line 284 "parser.y" /* yacc.c:1646  */
+#line 288 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = ctx->Call(kIfBegin, "(N)", (yyvsp[0].obj)); CHECK((yyval.obj), (yyloc)); }
-#line 2263 "parser.tab.cc" /* yacc.c:1646  */
+#line 2267 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 43:
-#line 288 "parser.y" /* yacc.c:1646  */
+#line 292 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = ctx->Call(kIfElif, "(N)", (yyvsp[0].obj)); CHECK((yyval.obj), (yyloc)); }
-#line 2269 "parser.tab.cc" /* yacc.c:1646  */
+#line 2273 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 44:
-#line 292 "parser.y" /* yacc.c:1646  */
+#line 296 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = ctx->Call(kIfElse, "()"); CHECK((yyval.obj), (yyloc)); }
-#line 2275 "parser.tab.cc" /* yacc.c:1646  */
+#line 2279 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 45:
-#line 296 "parser.y" /* yacc.c:1646  */
+#line 300 "parser.y" /* yacc.c:1646  */
     {
       (yyval.obj) = Py_BuildValue("((NO)sN)", (yyvsp[-2].obj), Py_None, (yyvsp[-1].str), (yyvsp[0].obj));
     }
-#line 2283 "parser.tab.cc" /* yacc.c:1646  */
+#line 2287 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 46:
-#line 299 "parser.y" /* yacc.c:1646  */
+#line 303 "parser.y" /* yacc.c:1646  */
     {
       (yyval.obj) = Py_BuildValue("((NO)sN)", (yyvsp[-2].obj), Py_None, (yyvsp[-1].str), (yyvsp[0].obj));
     }
-#line 2291 "parser.tab.cc" /* yacc.c:1646  */
+#line 2295 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 47:
-#line 302 "parser.y" /* yacc.c:1646  */
+#line 306 "parser.y" /* yacc.c:1646  */
     {
       (yyval.obj) = Py_BuildValue("((NN)sN)", (yyvsp[-5].obj), (yyvsp[-3].obj), (yyvsp[-1].str), (yyvsp[0].obj));
     }
-#line 2299 "parser.tab.cc" /* yacc.c:1646  */
+#line 2303 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 48:
-#line 305 "parser.y" /* yacc.c:1646  */
+#line 309 "parser.y" /* yacc.c:1646  */
     {
       (yyval.obj) = Py_BuildValue("((NN)sN)", (yyvsp[-5].obj), (yyvsp[-3].obj), (yyvsp[-1].str), (yyvsp[0].obj));
     }
-#line 2307 "parser.tab.cc" /* yacc.c:1646  */
+#line 2311 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 49:
-#line 308 "parser.y" /* yacc.c:1646  */
+#line 312 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = Py_BuildValue("(NsN)", (yyvsp[-2].obj), "and", (yyvsp[0].obj)); }
-#line 2313 "parser.tab.cc" /* yacc.c:1646  */
+#line 2317 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 50:
-#line 309 "parser.y" /* yacc.c:1646  */
+#line 313 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = Py_BuildValue("(NsN)", (yyvsp[-2].obj), "or", (yyvsp[0].obj)); }
-#line 2319 "parser.tab.cc" /* yacc.c:1646  */
+#line 2323 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 51:
-#line 310 "parser.y" /* yacc.c:1646  */
+#line 314 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = (yyvsp[-1].obj); }
-#line 2325 "parser.tab.cc" /* yacc.c:1646  */
+#line 2329 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 52:
-#line 315 "parser.y" /* yacc.c:1646  */
+#line 319 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = Py_BuildValue("(N)", (yyvsp[-2].obj)); }
-#line 2331 "parser.tab.cc" /* yacc.c:1646  */
+#line 2335 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 53:
-#line 316 "parser.y" /* yacc.c:1646  */
+#line 320 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = Py_BuildValue("(NN)", (yyvsp[-3].obj), (yyvsp[-1].obj)); }
-#line 2337 "parser.tab.cc" /* yacc.c:1646  */
+#line 2341 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 54:
-#line 317 "parser.y" /* yacc.c:1646  */
+#line 321 "parser.y" /* yacc.c:1646  */
     {
       (yyval.obj) = Py_BuildValue("(NNN)", (yyvsp[-5].obj), (yyvsp[-3].obj), (yyvsp[-1].obj));
     }
-#line 2345 "parser.tab.cc" /* yacc.c:1646  */
+#line 2349 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 55:
-#line 323 "parser.y" /* yacc.c:1646  */
+#line 327 "parser.y" /* yacc.c:1646  */
     { (yyval.str) = "<"; }
-#line 2351 "parser.tab.cc" /* yacc.c:1646  */
+#line 2355 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 56:
-#line 324 "parser.y" /* yacc.c:1646  */
+#line 328 "parser.y" /* yacc.c:1646  */
     { (yyval.str) = ">"; }
-#line 2357 "parser.tab.cc" /* yacc.c:1646  */
+#line 2361 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 57:
-#line 325 "parser.y" /* yacc.c:1646  */
+#line 329 "parser.y" /* yacc.c:1646  */
     { (yyval.str) = "<="; }
-#line 2363 "parser.tab.cc" /* yacc.c:1646  */
+#line 2367 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 58:
-#line 326 "parser.y" /* yacc.c:1646  */
+#line 330 "parser.y" /* yacc.c:1646  */
     { (yyval.str) = ">="; }
-#line 2369 "parser.tab.cc" /* yacc.c:1646  */
+#line 2373 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 59:
-#line 327 "parser.y" /* yacc.c:1646  */
+#line 331 "parser.y" /* yacc.c:1646  */
     { (yyval.str) = "=="; }
-#line 2375 "parser.tab.cc" /* yacc.c:1646  */
+#line 2379 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 60:
-#line 328 "parser.y" /* yacc.c:1646  */
+#line 332 "parser.y" /* yacc.c:1646  */
     { (yyval.str) = "!="; }
-#line 2381 "parser.tab.cc" /* yacc.c:1646  */
+#line 2385 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 61:
-#line 332 "parser.y" /* yacc.c:1646  */
+#line 336 "parser.y" /* yacc.c:1646  */
     {
       (yyval.obj) = ctx->Call(kNewConstant, "(NN)", (yyvsp[-2].obj), (yyvsp[0].obj));
       CHECK((yyval.obj), (yyloc));
     }
-#line 2390 "parser.tab.cc" /* yacc.c:1646  */
+#line 2394 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 62:
-#line 336 "parser.y" /* yacc.c:1646  */
+#line 340 "parser.y" /* yacc.c:1646  */
     {
       (yyval.obj) = ctx->Call(kNewConstant, "(NN)", (yyvsp[-2].obj), ctx->Value(kByteString));
       CHECK((yyval.obj), (yyloc));
     }
-#line 2399 "parser.tab.cc" /* yacc.c:1646  */
+#line 2403 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 63:
-#line 340 "parser.y" /* yacc.c:1646  */
+#line 344 "parser.y" /* yacc.c:1646  */
     {
       (yyval.obj) = ctx->Call(kNewConstant, "(NN)", (yyvsp[-2].obj), ctx->Value(kUnicodeString));
       CHECK((yyval.obj), (yyloc));
     }
-#line 2408 "parser.tab.cc" /* yacc.c:1646  */
+#line 2412 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 64:
-#line 344 "parser.y" /* yacc.c:1646  */
+#line 348 "parser.y" /* yacc.c:1646  */
     {
       (yyval.obj) = ctx->Call(kNewConstant, "(NN)", (yyvsp[-2].obj), ctx->Value(kAnything));
       CHECK((yyval.obj), (yyloc));
     }
-#line 2417 "parser.tab.cc" /* yacc.c:1646  */
+#line 2421 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 65:
-#line 348 "parser.y" /* yacc.c:1646  */
+#line 352 "parser.y" /* yacc.c:1646  */
     {
       (yyval.obj) = ctx->Call(kNewConstant, "(NN)", (yyvsp[-4].obj), (yyvsp[0].obj));
       CHECK((yyval.obj), (yyloc));
     }
-#line 2426 "parser.tab.cc" /* yacc.c:1646  */
+#line 2430 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 66:
-#line 352 "parser.y" /* yacc.c:1646  */
+#line 356 "parser.y" /* yacc.c:1646  */
     {
       (yyval.obj) = ctx->Call(kNewConstant, "(NN)", (yyvsp[-2].obj), (yyvsp[0].obj));
       CHECK((yyval.obj), (yyloc));
     }
-#line 2435 "parser.tab.cc" /* yacc.c:1646  */
+#line 2439 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 67:
-#line 356 "parser.y" /* yacc.c:1646  */
+#line 360 "parser.y" /* yacc.c:1646  */
     {
       (yyval.obj) = ctx->Call(kNewConstant, "(NN)", (yyvsp[-4].obj), (yyvsp[-2].obj));
       CHECK((yyval.obj), (yyloc));
     }
-#line 2444 "parser.tab.cc" /* yacc.c:1646  */
+#line 2448 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 68:
-#line 363 "parser.y" /* yacc.c:1646  */
+#line 367 "parser.y" /* yacc.c:1646  */
     {
       (yyval.obj) = ctx->Call(kAddImport, "(ON)", Py_None, (yyvsp[0].obj));
       CHECK((yyval.obj), (yyloc));
     }
-#line 2453 "parser.tab.cc" /* yacc.c:1646  */
+#line 2457 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 69:
-#line 367 "parser.y" /* yacc.c:1646  */
+#line 371 "parser.y" /* yacc.c:1646  */
     {
       (yyval.obj) = ctx->Call(kAddImport, "(NN)", (yyvsp[-2].obj), (yyvsp[0].obj));
       CHECK((yyval.obj), (yyloc));
     }
-#line 2462 "parser.tab.cc" /* yacc.c:1646  */
+#line 2466 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 70:
-#line 371 "parser.y" /* yacc.c:1646  */
+#line 375 "parser.y" /* yacc.c:1646  */
     {
       // Special-case "from . import" and pass in a __PACKAGE__ token that
       // the Python parser code will rewrite to the current package name.
       (yyval.obj) = ctx->Call(kAddImport, "(sN)", "__PACKAGE__", (yyvsp[0].obj));
       CHECK((yyval.obj), (yyloc));
     }
-#line 2473 "parser.tab.cc" /* yacc.c:1646  */
+#line 2477 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 71:
-#line 380 "parser.y" /* yacc.c:1646  */
+#line 384 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = AppendList((yyvsp[-2].obj), (yyvsp[0].obj)); }
-#line 2479 "parser.tab.cc" /* yacc.c:1646  */
+#line 2483 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 72:
-#line 381 "parser.y" /* yacc.c:1646  */
+#line 385 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = StartList((yyvsp[0].obj)); }
-#line 2485 "parser.tab.cc" /* yacc.c:1646  */
+#line 2489 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 74:
-#line 385 "parser.y" /* yacc.c:1646  */
+#line 389 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = Py_BuildValue("(NN)", (yyvsp[-2].obj), (yyvsp[0].obj)); }
-#line 2491 "parser.tab.cc" /* yacc.c:1646  */
+#line 2495 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 76:
-#line 391 "parser.y" /* yacc.c:1646  */
+#line 395 "parser.y" /* yacc.c:1646  */
     {
+#if PY_MAJOR_VERSION >= 3
+      (yyval.obj) = PyUnicode_FromFormat(".%s", PyBytes_AsString((yyvsp[0].obj)));
+#else
       (yyval.obj) = PyString_FromFormat(".%s", PyString_AsString((yyvsp[0].obj)));
+#endif
       Py_DECREF((yyvsp[0].obj));
     }
-#line 2500 "parser.tab.cc" /* yacc.c:1646  */
+#line 2508 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 78:
-#line 399 "parser.y" /* yacc.c:1646  */
+#line 407 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = (yyvsp[-1].obj); }
-#line 2506 "parser.tab.cc" /* yacc.c:1646  */
+#line 2514 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 79:
-#line 400 "parser.y" /* yacc.c:1646  */
+#line 408 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = (yyvsp[-2].obj); }
-#line 2512 "parser.tab.cc" /* yacc.c:1646  */
+#line 2520 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 80:
-#line 404 "parser.y" /* yacc.c:1646  */
+#line 412 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = AppendList((yyvsp[-2].obj), (yyvsp[0].obj)); }
-#line 2518 "parser.tab.cc" /* yacc.c:1646  */
+#line 2526 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 81:
-#line 405 "parser.y" /* yacc.c:1646  */
+#line 413 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = StartList((yyvsp[0].obj)); }
-#line 2524 "parser.tab.cc" /* yacc.c:1646  */
+#line 2532 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 83:
-#line 410 "parser.y" /* yacc.c:1646  */
-    { (yyval.obj) = PyString_FromString("NamedTuple"); }
-#line 2530 "parser.tab.cc" /* yacc.c:1646  */
+#line 418 "parser.y" /* yacc.c:1646  */
+    {
+#if PY_MAJOR_VERSION >= 3
+  (yyval.obj) = PyUnicode_FromString("NamedTuple");
+#else
+  (yyval.obj) = PyString_FromString("NamedTuple");
+#endif
+  }
+#line 2544 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 84:
-#line 411 "parser.y" /* yacc.c:1646  */
-    { (yyval.obj) = PyString_FromString("TypeVar"); }
-#line 2536 "parser.tab.cc" /* yacc.c:1646  */
+#line 425 "parser.y" /* yacc.c:1646  */
+    {
+#if PY_MAJOR_VERSION >= 3
+  (yyval.obj) = PyUnicode_FromString("TypeVar");
+#else
+  (yyval.obj) = PyString_FromString("TypeVar");
+#endif
+  }
+#line 2556 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 85:
-#line 412 "parser.y" /* yacc.c:1646  */
-    { (yyval.obj) = PyString_FromString("*"); }
-#line 2542 "parser.tab.cc" /* yacc.c:1646  */
+#line 432 "parser.y" /* yacc.c:1646  */
+    {
+#if PY_MAJOR_VERSION >= 3
+  (yyval.obj) = PyUnicode_FromString("*");
+#else
+  (yyval.obj) = PyString_FromString("*");
+#endif
+  }
+#line 2568 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 86:
-#line 413 "parser.y" /* yacc.c:1646  */
+#line 439 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = Py_BuildValue("(NN)", (yyvsp[-2].obj), (yyvsp[0].obj)); }
-#line 2548 "parser.tab.cc" /* yacc.c:1646  */
+#line 2574 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 87:
-#line 417 "parser.y" /* yacc.c:1646  */
+#line 443 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = Py_BuildValue("(NN)", (yyvsp[-2].obj), (yyvsp[0].obj)); }
-#line 2554 "parser.tab.cc" /* yacc.c:1646  */
+#line 2580 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 88:
-#line 421 "parser.y" /* yacc.c:1646  */
+#line 447 "parser.y" /* yacc.c:1646  */
     {
       (yyval.obj) = ctx->Call(kAddTypeVar, "(NNN)", (yyvsp[-6].obj), (yyvsp[-2].obj), (yyvsp[-1].obj));
       CHECK((yyval.obj), (yyloc));
     }
-#line 2563 "parser.tab.cc" /* yacc.c:1646  */
+#line 2589 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 89:
-#line 428 "parser.y" /* yacc.c:1646  */
+#line 454 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = Py_BuildValue("(OO)", Py_None, Py_None); }
-#line 2569 "parser.tab.cc" /* yacc.c:1646  */
+#line 2595 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 90:
-#line 429 "parser.y" /* yacc.c:1646  */
+#line 455 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = Py_BuildValue("(NO)", (yyvsp[0].obj), Py_None); }
-#line 2575 "parser.tab.cc" /* yacc.c:1646  */
+#line 2601 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 91:
-#line 430 "parser.y" /* yacc.c:1646  */
+#line 456 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = Py_BuildValue("(ON)", Py_None, (yyvsp[0].obj)); }
-#line 2581 "parser.tab.cc" /* yacc.c:1646  */
+#line 2607 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 92:
-#line 431 "parser.y" /* yacc.c:1646  */
+#line 457 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = Py_BuildValue("(NN)", (yyvsp[-2].obj), (yyvsp[0].obj)); }
-#line 2587 "parser.tab.cc" /* yacc.c:1646  */
+#line 2613 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 93:
-#line 435 "parser.y" /* yacc.c:1646  */
+#line 461 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = AppendList((yyvsp[-2].obj), (yyvsp[0].obj)); }
-#line 2593 "parser.tab.cc" /* yacc.c:1646  */
+#line 2619 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 94:
-#line 436 "parser.y" /* yacc.c:1646  */
+#line 462 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = StartList((yyvsp[0].obj)); }
-#line 2599 "parser.tab.cc" /* yacc.c:1646  */
+#line 2625 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 95:
-#line 440 "parser.y" /* yacc.c:1646  */
+#line 466 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = Py_BuildValue("(NN)", (yyvsp[-2].obj), (yyvsp[0].obj)); }
-#line 2605 "parser.tab.cc" /* yacc.c:1646  */
+#line 2631 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 96:
-#line 444 "parser.y" /* yacc.c:1646  */
+#line 470 "parser.y" /* yacc.c:1646  */
     {
       (yyval.obj) = ctx->Call(kNewFunction, "(NNNNN)", (yyvsp[-7].obj), (yyvsp[-5].obj), (yyvsp[-3].obj), (yyvsp[-1].obj), (yyvsp[0].obj));
       // Decorators is nullable and messes up the location tracking by
@@ -2621,390 +2647,408 @@ yyreduce:
       (yyloc).first_column = (yylsp[-6]).first_column;
       CHECK((yyval.obj), (yyloc));
     }
-#line 2625 "parser.tab.cc" /* yacc.c:1646  */
+#line 2651 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 97:
-#line 462 "parser.y" /* yacc.c:1646  */
+#line 488 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = AppendList((yyvsp[-1].obj), (yyvsp[0].obj)); }
-#line 2631 "parser.tab.cc" /* yacc.c:1646  */
+#line 2657 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 98:
-#line 463 "parser.y" /* yacc.c:1646  */
+#line 489 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = PyList_New(0); }
-#line 2637 "parser.tab.cc" /* yacc.c:1646  */
+#line 2663 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 99:
-#line 467 "parser.y" /* yacc.c:1646  */
+#line 493 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = (yyvsp[-1].obj); }
-#line 2643 "parser.tab.cc" /* yacc.c:1646  */
+#line 2669 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 100:
-#line 471 "parser.y" /* yacc.c:1646  */
+#line 497 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = (yyvsp[-1].obj); }
-#line 2649 "parser.tab.cc" /* yacc.c:1646  */
+#line 2675 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 101:
-#line 472 "parser.y" /* yacc.c:1646  */
+#line 498 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = PyList_New(0); }
-#line 2655 "parser.tab.cc" /* yacc.c:1646  */
+#line 2681 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 102:
-#line 484 "parser.y" /* yacc.c:1646  */
+#line 510 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = AppendList((yyvsp[-3].obj), (yyvsp[0].obj)); }
-#line 2661 "parser.tab.cc" /* yacc.c:1646  */
+#line 2687 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 103:
-#line 485 "parser.y" /* yacc.c:1646  */
+#line 511 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = StartList((yyvsp[0].obj)); }
-#line 2667 "parser.tab.cc" /* yacc.c:1646  */
+#line 2693 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 104:
-#line 489 "parser.y" /* yacc.c:1646  */
+#line 515 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = Py_BuildValue("(NNN)", (yyvsp[-2].obj), (yyvsp[-1].obj), (yyvsp[0].obj)); }
-#line 2673 "parser.tab.cc" /* yacc.c:1646  */
+#line 2699 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 105:
-#line 490 "parser.y" /* yacc.c:1646  */
+#line 516 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = Py_BuildValue("(sOO)", "*", Py_None, Py_None); }
-#line 2679 "parser.tab.cc" /* yacc.c:1646  */
+#line 2705 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 106:
-#line 491 "parser.y" /* yacc.c:1646  */
+#line 517 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = Py_BuildValue("(NNO)", (yyvsp[-1].obj), (yyvsp[0].obj), Py_None); }
-#line 2685 "parser.tab.cc" /* yacc.c:1646  */
+#line 2711 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 107:
-#line 492 "parser.y" /* yacc.c:1646  */
+#line 518 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = ctx->Value(kEllipsis); }
-#line 2691 "parser.tab.cc" /* yacc.c:1646  */
+#line 2717 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 108:
-#line 496 "parser.y" /* yacc.c:1646  */
+#line 522 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = (yyvsp[0].obj); }
-#line 2697 "parser.tab.cc" /* yacc.c:1646  */
+#line 2723 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 109:
-#line 497 "parser.y" /* yacc.c:1646  */
+#line 523 "parser.y" /* yacc.c:1646  */
     { Py_INCREF(Py_None); (yyval.obj) = Py_None; }
-#line 2703 "parser.tab.cc" /* yacc.c:1646  */
+#line 2729 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 110:
-#line 501 "parser.y" /* yacc.c:1646  */
+#line 527 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = (yyvsp[0].obj); }
-#line 2709 "parser.tab.cc" /* yacc.c:1646  */
+#line 2735 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 111:
-#line 502 "parser.y" /* yacc.c:1646  */
+#line 528 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = (yyvsp[0].obj); }
-#line 2715 "parser.tab.cc" /* yacc.c:1646  */
+#line 2741 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 112:
-#line 503 "parser.y" /* yacc.c:1646  */
+#line 529 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = ctx->Value(kEllipsis); }
-#line 2721 "parser.tab.cc" /* yacc.c:1646  */
+#line 2747 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 113:
-#line 504 "parser.y" /* yacc.c:1646  */
+#line 530 "parser.y" /* yacc.c:1646  */
     { Py_INCREF(Py_None); (yyval.obj) = Py_None; }
-#line 2727 "parser.tab.cc" /* yacc.c:1646  */
+#line 2753 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 114:
-#line 508 "parser.y" /* yacc.c:1646  */
-    { (yyval.obj) = PyString_FromFormat("*%s", PyString_AsString((yyvsp[0].obj))); }
-#line 2733 "parser.tab.cc" /* yacc.c:1646  */
+#line 534 "parser.y" /* yacc.c:1646  */
+    {
+#if PY_MAJOR_VERSION >= 3
+  (yyval.obj) = PyUnicode_FromFormat("*%s", PyBytes_AsString((yyvsp[0].obj)));
+#else
+  (yyval.obj) = PyString_FromFormat("*%s", PyString_AsString((yyvsp[0].obj)));
+#endif
+  }
+#line 2765 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 115:
-#line 509 "parser.y" /* yacc.c:1646  */
-    { (yyval.obj) = PyString_FromFormat("**%s", PyString_AsString((yyvsp[0].obj))); }
-#line 2739 "parser.tab.cc" /* yacc.c:1646  */
+#line 541 "parser.y" /* yacc.c:1646  */
+    {
+#if PY_MAJOR_VERSION >= 3
+  (yyval.obj) = PyUnicode_FromFormat("**%s", PyBytes_AsString((yyvsp[0].obj)));
+#else
+  (yyval.obj) = PyString_FromFormat("**%s", PyString_AsString((yyvsp[0].obj)));
+#endif
+  }
+#line 2777 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 116:
-#line 513 "parser.y" /* yacc.c:1646  */
+#line 551 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = (yyvsp[0].obj); }
-#line 2745 "parser.tab.cc" /* yacc.c:1646  */
+#line 2783 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 117:
-#line 514 "parser.y" /* yacc.c:1646  */
+#line 552 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = ctx->Value(kAnything); }
-#line 2751 "parser.tab.cc" /* yacc.c:1646  */
+#line 2789 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 118:
-#line 518 "parser.y" /* yacc.c:1646  */
+#line 556 "parser.y" /* yacc.c:1646  */
     { Py_DecRef((yyvsp[0].obj)); }
-#line 2757 "parser.tab.cc" /* yacc.c:1646  */
+#line 2795 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 119:
-#line 522 "parser.y" /* yacc.c:1646  */
+#line 560 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = (yyvsp[-1].obj); }
-#line 2763 "parser.tab.cc" /* yacc.c:1646  */
+#line 2801 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 120:
-#line 523 "parser.y" /* yacc.c:1646  */
+#line 561 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = (yyvsp[-1].obj); }
-#line 2769 "parser.tab.cc" /* yacc.c:1646  */
+#line 2807 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 121:
-#line 524 "parser.y" /* yacc.c:1646  */
+#line 562 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = PyList_New(0); }
-#line 2775 "parser.tab.cc" /* yacc.c:1646  */
+#line 2813 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 129:
-#line 538 "parser.y" /* yacc.c:1646  */
+#line 576 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = AppendList((yyvsp[-1].obj), (yyvsp[0].obj)); }
-#line 2781 "parser.tab.cc" /* yacc.c:1646  */
+#line 2819 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 130:
-#line 539 "parser.y" /* yacc.c:1646  */
+#line 577 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = StartList((yyvsp[0].obj)); }
-#line 2787 "parser.tab.cc" /* yacc.c:1646  */
+#line 2825 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 131:
-#line 543 "parser.y" /* yacc.c:1646  */
+#line 581 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = Py_BuildValue("(NN)", (yyvsp[-2].obj), (yyvsp[0].obj)); }
-#line 2793 "parser.tab.cc" /* yacc.c:1646  */
+#line 2831 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 132:
-#line 544 "parser.y" /* yacc.c:1646  */
+#line 582 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = (yyvsp[0].obj); }
-#line 2799 "parser.tab.cc" /* yacc.c:1646  */
+#line 2837 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 133:
-#line 545 "parser.y" /* yacc.c:1646  */
+#line 583 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = (yyvsp[-2].obj); }
-#line 2805 "parser.tab.cc" /* yacc.c:1646  */
+#line 2843 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 134:
-#line 549 "parser.y" /* yacc.c:1646  */
+#line 587 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = AppendList((yyvsp[-2].obj), (yyvsp[0].obj)); }
-#line 2811 "parser.tab.cc" /* yacc.c:1646  */
+#line 2849 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 135:
-#line 550 "parser.y" /* yacc.c:1646  */
+#line 588 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = StartList((yyvsp[0].obj)); }
-#line 2817 "parser.tab.cc" /* yacc.c:1646  */
+#line 2855 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 136:
-#line 554 "parser.y" /* yacc.c:1646  */
+#line 592 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = (yyvsp[0].obj); }
-#line 2823 "parser.tab.cc" /* yacc.c:1646  */
+#line 2861 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 137:
-#line 555 "parser.y" /* yacc.c:1646  */
+#line 593 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = ctx->Value(kEllipsis); }
-#line 2829 "parser.tab.cc" /* yacc.c:1646  */
+#line 2867 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 138:
-#line 559 "parser.y" /* yacc.c:1646  */
+#line 597 "parser.y" /* yacc.c:1646  */
     {
       (yyval.obj) = ctx->Call(kNewType, "(N)", (yyvsp[0].obj));
       CHECK((yyval.obj), (yyloc));
     }
-#line 2838 "parser.tab.cc" /* yacc.c:1646  */
+#line 2876 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 139:
-#line 563 "parser.y" /* yacc.c:1646  */
+#line 601 "parser.y" /* yacc.c:1646  */
     {
       (yyval.obj) = ctx->Call(kNewType, "(NN)", (yyvsp[-3].obj), (yyvsp[-1].obj));
       CHECK((yyval.obj), (yyloc));
     }
-#line 2847 "parser.tab.cc" /* yacc.c:1646  */
+#line 2885 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 140:
-#line 567 "parser.y" /* yacc.c:1646  */
+#line 605 "parser.y" /* yacc.c:1646  */
     {
       // This rule is needed for Callable[[...], ...]
       (yyval.obj) = ctx->Call(kNewType, "(sN)", "tuple", (yyvsp[-1].obj));
       CHECK((yyval.obj), (yyloc));
     }
-#line 2857 "parser.tab.cc" /* yacc.c:1646  */
+#line 2895 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 141:
-#line 572 "parser.y" /* yacc.c:1646  */
+#line 610 "parser.y" /* yacc.c:1646  */
     {
       (yyval.obj) = ctx->Call(kNewNamedTuple, "(NN)", (yyvsp[-3].obj), (yyvsp[-1].obj));
       CHECK((yyval.obj), (yyloc));
     }
-#line 2866 "parser.tab.cc" /* yacc.c:1646  */
+#line 2904 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 142:
-#line 576 "parser.y" /* yacc.c:1646  */
+#line 614 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = (yyvsp[-1].obj); }
-#line 2872 "parser.tab.cc" /* yacc.c:1646  */
+#line 2910 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 143:
-#line 577 "parser.y" /* yacc.c:1646  */
+#line 615 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = ctx->Call(kNewIntersectionType, "([NN])", (yyvsp[-2].obj), (yyvsp[0].obj)); }
-#line 2878 "parser.tab.cc" /* yacc.c:1646  */
+#line 2916 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 144:
-#line 578 "parser.y" /* yacc.c:1646  */
+#line 616 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = ctx->Call(kNewUnionType, "([NN])", (yyvsp[-2].obj), (yyvsp[0].obj)); }
-#line 2884 "parser.tab.cc" /* yacc.c:1646  */
+#line 2922 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 145:
-#line 579 "parser.y" /* yacc.c:1646  */
+#line 617 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = ctx->Value(kAnything); }
-#line 2890 "parser.tab.cc" /* yacc.c:1646  */
+#line 2928 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 146:
-#line 580 "parser.y" /* yacc.c:1646  */
+#line 618 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = ctx->Value(kNothing); }
-#line 2896 "parser.tab.cc" /* yacc.c:1646  */
+#line 2934 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 147:
-#line 584 "parser.y" /* yacc.c:1646  */
+#line 622 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = (yyvsp[-2].obj); }
-#line 2902 "parser.tab.cc" /* yacc.c:1646  */
+#line 2940 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 148:
-#line 585 "parser.y" /* yacc.c:1646  */
+#line 623 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = PyList_New(0); }
-#line 2908 "parser.tab.cc" /* yacc.c:1646  */
+#line 2946 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 149:
-#line 589 "parser.y" /* yacc.c:1646  */
+#line 627 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = AppendList((yyvsp[-2].obj), (yyvsp[0].obj)); }
-#line 2914 "parser.tab.cc" /* yacc.c:1646  */
+#line 2952 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 150:
-#line 590 "parser.y" /* yacc.c:1646  */
+#line 628 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = StartList((yyvsp[0].obj)); }
-#line 2920 "parser.tab.cc" /* yacc.c:1646  */
+#line 2958 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 151:
-#line 594 "parser.y" /* yacc.c:1646  */
+#line 632 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = Py_BuildValue("(NN)", (yyvsp[-4].obj), (yyvsp[-2].obj)); }
-#line 2926 "parser.tab.cc" /* yacc.c:1646  */
+#line 2964 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 154:
-#line 603 "parser.y" /* yacc.c:1646  */
+#line 641 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = (yyvsp[0].obj); }
-#line 2932 "parser.tab.cc" /* yacc.c:1646  */
+#line 2970 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 155:
-#line 604 "parser.y" /* yacc.c:1646  */
+#line 642 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = PyList_New(0); }
-#line 2938 "parser.tab.cc" /* yacc.c:1646  */
+#line 2976 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 156:
-#line 608 "parser.y" /* yacc.c:1646  */
+#line 646 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = AppendList((yyvsp[-2].obj), (yyvsp[0].obj)); }
-#line 2944 "parser.tab.cc" /* yacc.c:1646  */
+#line 2982 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 157:
-#line 609 "parser.y" /* yacc.c:1646  */
+#line 647 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = StartList((yyvsp[0].obj)); }
-#line 2950 "parser.tab.cc" /* yacc.c:1646  */
+#line 2988 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 158:
-#line 614 "parser.y" /* yacc.c:1646  */
+#line 652 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = (yyvsp[0].obj); }
-#line 2956 "parser.tab.cc" /* yacc.c:1646  */
+#line 2994 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 159:
-#line 615 "parser.y" /* yacc.c:1646  */
+#line 653 "parser.y" /* yacc.c:1646  */
     {
+#if PY_MAJOR_VERSION >= 3
+      (yyvsp[-2].obj) = PyUnicode_Concat((yyvsp[-2].obj), DOT_STRING);
+      (yyvsp[-2].obj) = PyUnicode_Concat((yyvsp[-2].obj), (yyvsp[0].obj));
+      Py_DECREF((yyvsp[0].obj));
+#else
       PyString_Concat(&(yyvsp[-2].obj), DOT_STRING);
       PyString_ConcatAndDel(&(yyvsp[-2].obj), (yyvsp[0].obj));
+#endif
       (yyval.obj) = (yyvsp[-2].obj);
     }
-#line 2966 "parser.tab.cc" /* yacc.c:1646  */
+#line 3010 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 160:
-#line 623 "parser.y" /* yacc.c:1646  */
+#line 667 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = (yyvsp[0].obj); }
-#line 2972 "parser.tab.cc" /* yacc.c:1646  */
+#line 3016 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 161:
-#line 624 "parser.y" /* yacc.c:1646  */
+#line 668 "parser.y" /* yacc.c:1646  */
     {
       PyObject* slice = PySlice_New((yyvsp[-2].obj), (yyvsp[0].obj), NULL);
       CHECK(slice, (yyloc));
       (yyval.obj) = slice;
     }
-#line 2982 "parser.tab.cc" /* yacc.c:1646  */
+#line 3026 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 162:
-#line 629 "parser.y" /* yacc.c:1646  */
+#line 673 "parser.y" /* yacc.c:1646  */
     {
       PyObject* slice = PySlice_New((yyvsp[-4].obj), (yyvsp[-2].obj), (yyvsp[0].obj));
       CHECK(slice, (yyloc));
       (yyval.obj) = slice;
     }
-#line 2992 "parser.tab.cc" /* yacc.c:1646  */
+#line 3036 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 163:
-#line 637 "parser.y" /* yacc.c:1646  */
+#line 681 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = (yyvsp[0].obj); }
-#line 2998 "parser.tab.cc" /* yacc.c:1646  */
+#line 3042 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
   case 164:
-#line 638 "parser.y" /* yacc.c:1646  */
+#line 682 "parser.y" /* yacc.c:1646  */
     { (yyval.obj) = NULL; }
-#line 3004 "parser.tab.cc" /* yacc.c:1646  */
+#line 3048 "parser.tab.cc" /* yacc.c:1646  */
     break;
 
 
-#line 3008 "parser.tab.cc" /* yacc.c:1646  */
+#line 3052 "parser.tab.cc" /* yacc.c:1646  */
       default: break;
     }
   /* User semantic actions sometimes alter yychar, and that requires
@@ -3239,7 +3283,7 @@ yyreturn:
 #endif
   return yyresult;
 }
-#line 646 "parser.y" /* yacc.c:1906  */
+#line 690 "parser.y" /* yacc.c:1906  */
 
 
 namespace {
