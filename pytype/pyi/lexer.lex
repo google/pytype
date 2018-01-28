@@ -1,4 +1,5 @@
 %option prefix="pytype"
+%option outfile="lexer.lex.cc"
 %option 8bit
 %option noyywrap
 %option reentrant
