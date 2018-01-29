@@ -2863,9 +2863,9 @@ class InterpreterFunction(Function):
     defaults.update(self.kw_defaults)
     return function.Signature(
         self.name,
-        list(self.code.co_varnames[:self.nonstararg_count]),
+        tuple(self.code.co_varnames[:self.nonstararg_count]),
         vararg_name,
-        kwonly,
+        tuple(kwonly),
         kwarg_name,
         defaults,
         annotations,
