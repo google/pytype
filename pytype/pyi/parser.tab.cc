@@ -3130,7 +3130,7 @@ yyreduce:
 
 /* Line 1464 of yacc.c  */
 #line 493 "parser.y"
-    { (yyval.obj) = ctx->Value(kEllipsis) ;}
+    { (yyval.obj) = ctx->Value(kEllipsis); ;}
     break;
 
   case 109:

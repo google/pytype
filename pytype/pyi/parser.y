@@ -3,7 +3,7 @@
 // Prefix is not needed since we are including the whole parser within a
 // namespace.  But use it anyway because using a prefix is a recommended
 // practice.
-%name-prefix = "pytype"
+%name-prefix "pytype"
 %locations
 
 // Use a reentrant parser, wire it up to a reentrant lexer.
@@ -490,7 +490,7 @@ param
   : NAME param_type param_default { $$ = Py_BuildValue("(NNN)", $1, $2, $3); }
   | '*' { $$ = Py_BuildValue("(sOO)", "*", Py_None, Py_None); }
   | param_star_name param_type { $$ = Py_BuildValue("(NNO)", $1, $2, Py_None); }
-  | ELLIPSIS { $$ = ctx->Value(kEllipsis) }
+  | ELLIPSIS { $$ = ctx->Value(kEllipsis); }
   ;
 
 param_type
