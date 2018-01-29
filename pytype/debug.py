@@ -234,8 +234,7 @@ def root_cause(binding, node, seen=()):
   """Tries to determine why a binding isn't possible at a node.
 
   This tries to find the innermost source that's still impossible. It only works
-  if the failure isn't due to a combination of bindings. (Use pytd/explain.py
-  for the latter)
+  if the failure isn't due to a combination of bindings.
 
   Args:
     binding: A binding, or a list of bindings.
