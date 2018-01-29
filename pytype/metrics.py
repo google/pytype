@@ -22,13 +22,8 @@ import math
 import re
 import time
 
+import tracemalloc
 import yaml
-
-# TODO(tsudol): Not needed once tracemalloc is added to main branch.
-try:
-  import tracemalloc  # pylint: disable=g-import-not-at-top
-except ImportError:
-  tracemalloc = None
 
 # TODO(dbaum): Investigate mechanisms to ensure that counter variable names
 # match metric names.
@@ -297,12 +292,11 @@ class Snapshot(Metric):
     # The number of memory block statistics to save.
     self.count = count
     self.running = False
-    # Three conditions must be met for memory snapshots to be taken:
-    # 1. tracemalloc was imported successfully (tracemalloc)
-    # 2. Metrics have been enabled (global _enabled)
-    # 3. Explicitly enabled by the arg to the constructor (which should be the
+    # Two conditions must be met for memory snapshots to be taken:
+    # 1. Metrics have been enabled (global _enabled)
+    # 2. Explicitly enabled by the arg to the constructor (which should be the
     # options.memory_snapshot flag set by the --memory-snapshots option)
-    self.enabled = tracemalloc and _enabled and enabled
+    self.enabled = _enabled and enabled
 
   def _start_tracemalloc(self):
     tracemalloc.start(self.nframes)
