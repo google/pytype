@@ -88,7 +88,7 @@ PyObject* ExtendList(PyObject* dst, PyObject* src);
 %type <obj> body body_stmt
 %type <obj> type type_parameters type_parameter
 %type <obj> named_tuple_fields named_tuple_field_list named_tuple_field
-%type <obj> maybe_type_list type_list type_tuple_literal
+%type <obj> maybe_type_list type_list type_tuple_elements type_tuple_literal
 %type <obj> dotted_name
 %type <obj> getitem_key
 %type <obj> maybe_number
@@ -610,17 +610,35 @@ type_list
   | type { $$ = StartList($1); }
   ;
 
+/* Handle the case of a "regular" tuple of at least two elements, separated by
+ * commas. Optional trailing commas, and the one-element case with a required
+ * trailing comma, are handled in type_tuple_literal */
+type_tuple_elements
+  : type_tuple_elements ',' type { $$ = AppendList($1, $3); }
+  | type ',' type { $$ = Py_BuildValue("(NN)", $1, $3); }
+  ;
+
 /* Allow types to be specified in the following forms:
  *   string_types = (str, bytes)
+ *   string_types = (str,)
  *   string_types = str,
  */
 type_tuple_literal
-  : '(' type_list maybe_comma ')' {
+  : '(' type_tuple_elements maybe_comma ')' {
       Py_DECREF($2);
       $$ = ctx->Value(kTuple);
     }
+
+  | '(' type ',' ')' {
+      Py_DECREF($2);
+      $$ = ctx->Value(kTuple);
+    }
+  ;
     /* typeshed does this in a few places */
-  | type ',' { $$ = ctx->Value(kTuple); }
+  | type ',' {
+      Py_DECREF($1);
+      $$ = ctx->Value(kTuple);
+    }
   ;
 
 dotted_name
