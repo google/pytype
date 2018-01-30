@@ -185,6 +185,89 @@ class DictTest(AbstractTestBase):
     self.assertIs(True, self._d.compatible_with(True))
     self.assertIs(False, self._d.compatible_with(False))
 
+  def test_pop(self):
+    self._d.set_str_item(self._node, "a", self._var)
+    node, ret = self._d.pop_slot(
+        self._node, self._vm.convert.build_string(self._node, "a"))
+    self.assertIs(False, self._d.compatible_with(True))
+    self.assertIs(True, self._d.compatible_with(False))
+    self.assertIs(node, self._node)
+    self.assertIs(ret, self._var)
+
+  def test_pop_with_default(self):
+    self._d.set_str_item(self._node, "a", self._var)
+    node, ret = self._d.pop_slot(
+        self._node, self._vm.convert.build_string(self._node, "a"),
+        self._vm.convert.none.to_variable(self._node))  # default is ignored
+    self.assertIs(False, self._d.compatible_with(True))
+    self.assertIs(True, self._d.compatible_with(False))
+    self.assertIs(node, self._node)
+    self.assertIs(ret, self._var)
+
+  def test_bad_pop(self):
+    self._d.set_str_item(self._node, "a", self._var)
+    self.assertRaises(abstract.DictKeyMissing, self._d.pop_slot, self._node,
+                      self._vm.convert.build_string(self._node, "b"))
+    self.assertIs(True, self._d.compatible_with(True))
+    self.assertIs(False, self._d.compatible_with(False))
+
+  def test_bad_pop_with_default(self):
+    val = self._vm.convert.primitive_class_instances[int]
+    self._d.set_str_item(self._node, "a", val.to_variable(self._node))
+    node, ret = self._d.pop_slot(
+        self._node, self._vm.convert.build_string(self._node, "b"),
+        self._vm.convert.none.to_variable(self._node))
+    self.assertIs(True, self._d.compatible_with(True))
+    self.assertIs(False, self._d.compatible_with(False))
+    self.assertIs(node, self._node)
+    self.assertListEqual(ret.data, [self._vm.convert.none])
+
+  def test_ambiguous_pop(self):
+    val = self._vm.convert.primitive_class_instances[int]
+    self._d.set_str_item(self._node, "a", val.to_variable(self._node))
+    ambiguous_key = self._vm.convert.primitive_class_instances[str]
+    node, ret = self._d.pop_slot(
+        self._node, ambiguous_key.to_variable(self._node))
+    self.assertIs(True, self._d.compatible_with(True))
+    self.assertIs(True, self._d.compatible_with(False))
+    self.assertIs(node, self._node)
+    self.assertListEqual(ret.data, [val])
+
+  def test_ambiguous_pop_with_default(self):
+    val = self._vm.convert.primitive_class_instances[int]
+    self._d.set_str_item(self._node, "a", val.to_variable(self._node))
+    ambiguous_key = self._vm.convert.primitive_class_instances[str]
+    default_var = self._vm.convert.none.to_variable(self._node)
+    node, ret = self._d.pop_slot(
+        self._node, ambiguous_key.to_variable(self._node), default_var)
+    self.assertIs(True, self._d.compatible_with(True))
+    self.assertIs(True, self._d.compatible_with(False))
+    self.assertIs(node, self._node)
+    self.assertSetEqual(set(ret.data), {val, self._vm.convert.none})
+
+  def test_ambiguous_dict_after_pop(self):
+    ambiguous_key = self._vm.convert.primitive_class_instances[str]
+    val = self._vm.convert.primitive_class_instances[int]
+    node, _ = self._d.setitem_slot(
+        self._node, ambiguous_key.to_variable(self._node),
+        val.to_variable(self._node))
+    _, ret = self._d.pop_slot(node, self._vm.convert.build_string(node, "a"))
+    self.assertIs(True, self._d.compatible_with(True))
+    self.assertIs(True, self._d.compatible_with(False))
+    self.assertListEqual(ret.data, [val])
+
+  def test_ambiguous_dict_after_pop_with_default(self):
+    ambiguous_key = self._vm.convert.primitive_class_instances[str]
+    val = self._vm.convert.primitive_class_instances[int]
+    node, _ = self._d.setitem_slot(
+        self._node, ambiguous_key.to_variable(self._node),
+        val.to_variable(self._node))
+    _, ret = self._d.pop_slot(node, self._vm.convert.build_string(node, "a"),
+                              self._vm.convert.none.to_variable(node))
+    self.assertIs(True, self._d.compatible_with(True))
+    self.assertIs(True, self._d.compatible_with(False))
+    self.assertSetEqual(set(ret.data), {val, self._vm.convert.none})
+
 
 class IsInstanceTest(AbstractTestBase):
 

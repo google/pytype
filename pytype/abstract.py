@@ -999,6 +999,7 @@ class Dict(Instance, HasSlots, PythonConstant, WrapsDict("pyval")):
     self.set_slot("__contains__", self.contains_slot)
     self.set_slot("__getitem__", self.getitem_slot)
     self.set_slot("__setitem__", self.setitem_slot)
+    self.set_slot("pop", self.pop_slot)
     self.set_slot("setdefault", self.setdefault_slot)
     self.set_slot("update", self.update_slot)
     self.init_type_parameters(K, V)
@@ -1093,6 +1094,24 @@ class Dict(Instance, HasSlots, PythonConstant, WrapsDict("pyval")):
       else:
         value = str_key in self.pyval
     return node, self.vm.convert.build_bool(node, value)
+
+  def pop_slot(self, node, key_var, default_var=None):
+    try:
+      str_key = get_atomic_python_constant(key_var, str)
+    except ConversionError:
+      self.could_contain_anything = True
+    if self.could_contain_anything:
+      if default_var:
+        return self.call_pytd(node, "pop", key_var, default_var)
+      else:
+        return self.call_pytd(node, "pop", key_var)
+    if default_var:
+      return node, self.pyval.pop(str_key, default_var)
+    else:
+      try:
+        return node, self.pyval.pop(str_key)
+      except KeyError:
+        raise DictKeyMissing(str_key)
 
   def update_slot(self, node, *args, **kwargs):
     posargs_handled = False

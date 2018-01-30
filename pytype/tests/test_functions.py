@@ -847,6 +847,21 @@ class TestFunctions(test_base.BaseTest):
                           [(6, "missing-parameter"),
                            (9, "missing-parameter")])
 
+  def testSplitOnKwargs(self):
+    ty = self.Infer("""
+      def make_foo(**kwargs):
+        varargs = kwargs.pop("varargs", None)
+        if kwargs:
+          raise TypeError()
+        return varargs
+      Foo = make_foo(varargs=True)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any, Optional
+      def make_foo(**kwargs) -> Any: ...
+      Foo = ...  # type: bool
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()
