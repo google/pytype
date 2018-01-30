@@ -1518,6 +1518,33 @@ class Function(SimpleAbstractValue):
   def __repr__(self):
     return self.name + "(...)"
 
+  def _extract_defaults(self, defaults_var):
+    """Extracts defaults from a Variable, used by set_function_defaults.
+
+    Args:
+      defaults_var: Variable containing potential default values.
+
+    Returns:
+      A tuple of default values, if one could be extracted, or None otherwise.
+    """
+    # Case 1: All given data are tuple constants. Use the longest one.
+    if all(isinstance(d, Tuple) for d in defaults_var.data):
+      return max((d.pyval for d in defaults_var.data), key=len)
+    else:
+      # Case 2: Data are entirely Tuple Instances, Unknown or Unsolvable. Make
+      # all parameters except self/cls optional.
+      # Case 3: Data is anything else. Same as Case 2, but emit a warning.
+      if not (all(isinstance(d, (Instance, Unknown, Unsolvable))
+                  for d in defaults_var.data) and
+              all(d.get_full_name() == "__builtin__.tuple"
+                  for d in defaults_var.data if isinstance(d, Instance))):
+        self.vm.errorlog.bad_function_defaults(self.vm.frames, self.name)
+      # The ambiguous case is handled by the subclass.
+      return None
+
+  def set_function_defaults(self, defaults_var):
+    raise NotImplementedError(self.__class__.__name__)
+
 
 class Mutation(collections.namedtuple("_", ["instance", "name", "value"])):
   pass
@@ -2039,22 +2066,7 @@ class PyTDFunction(Function):
       defaults_var: a Variable with a single binding to a tuple of default
                     values.
     """
-    # Case 1: All given data are tuples constants. Use the longest one.
-    if all(isinstance(d, Tuple) for d in defaults_var.data):
-      defaults = max((d.pyval for d in defaults_var.data), key=len)
-    else:
-      # Case 2: Data are entirely Tuple Instances, Unknown or Unsolvable. Make
-      # all parameters except self/cls optional.
-      # Case 3: Data is anything else. Same as Case 2, but emit a warning.
-      if not (all(isinstance(d, (Instance, Unknown, Unsolvable))
-                  for d in defaults_var.data) and
-              all(d.get_full_name() == "__builtin__.tuple"
-                  for d in defaults_var.data if isinstance(d, Instance))):
-        self.vm.errorlog.bad_function_defaults(self.vm.frames, self.name)
-      # When processing signatures, we'll make a list of the correct size for
-      # each signature.
-      defaults = None
-
+    defaults = self._extract_defaults(defaults_var)
     new_sigs = []
     for sig in self.signatures:
       if defaults:
@@ -2747,7 +2759,127 @@ class NativeFunction(Function):
     return list(code.co_varnames[:code.co_argcount])
 
 
-class InterpreterFunction(Function):
+class SignedFunction(Function):
+  """An abstract base class for functions represented by function.Signature.
+
+  Subclasses should define call(self, node, f, args) and set self.bound_class.
+  """
+
+  def __init__(self, signature, vm):
+    super(SignedFunction, self).__init__(signature.name, vm)
+    self.signature = signature
+
+  def argcount(self, _):
+    return len(self.signature.param_names)
+
+  def get_nondefault_params(self):
+    return ((n, n in self.signature.kwonly_params)
+            for n in self.signature.param_names
+            if n not in self.signature.defaults)
+
+  def _map_args(self, node, args):
+    """Map call args to function args.
+
+    This emulates how Python would map arguments of function calls. It takes
+    care of keyword parameters, default parameters, and *args and **kwargs.
+
+    Args:
+      node: The current CFG node.
+      args: The arguments.
+
+    Returns:
+      A dictionary, mapping strings (parameter names) to cfg.Variable.
+
+    Raises:
+      FailedFunctionCall: If the caller supplied incorrect arguments.
+    """
+    # Originate a new variable for each argument and call.
+    posargs = [u.AssignToNewVariable(node)
+               for u in args.posargs]
+    kws = {k: u.AssignToNewVariable(node)
+           for k, u in args.namedargs.items()}
+    sig = self.signature
+    callargs = {name: self.vm.program.NewVariable(default.Data(node), [], node)
+                for name, default in sig.defaults.items()}
+    positional = dict(zip(sig.param_names, posargs))
+    for key in positional:
+      if key in kws:
+        raise DuplicateKeyword(sig, args, self.vm, key)
+    extra_kws = set(kws).difference(sig.param_names + sig.kwonly_params)
+    if extra_kws and not sig.kwargs_name:
+      raise WrongKeywordArgs(sig, args, self.vm, extra_kws)
+    callargs.update(positional)
+    callargs.update(kws)
+    for key, kwonly in self.get_nondefault_params():
+      if key not in callargs:
+        if args.starstarargs or (args.starargs and not kwonly):
+          # We assume that because we have *args or **kwargs, we can use these
+          # to fill in any parameters we might be missing.
+          callargs[key] = self.vm.convert.create_new_unsolvable(node)
+        else:
+          raise MissingParameter(sig, args, self.vm, key)
+    for key in sig.kwonly_params:
+      if key not in callargs:
+        raise MissingParameter(sig, args, self.vm, key)
+    if sig.varargs_name:
+      varargs_name = sig.varargs_name
+      extraneous = posargs[self.argcount(node):]
+      if args.starargs:
+        if extraneous:
+          log.warning("Not adding extra params to *%s", varargs_name)
+        callargs[varargs_name] = args.starargs.AssignToNewVariable(node)
+      else:
+        callargs[varargs_name] = self.vm.convert.build_tuple(node, extraneous)
+    elif len(posargs) > self.argcount(node):
+      raise WrongArgCount(sig, args, self.vm)
+    if sig.kwargs_name:
+      kwargs_name = sig.kwargs_name
+      # Build a **kwargs dictionary out of the extraneous parameters
+      if args.starstarargs:
+        # TODO(kramm): modify type parameters to account for namedargs
+        callargs[kwargs_name] = args.starstarargs.AssignToNewVariable(node)
+      else:
+        k = Dict(self.vm)
+        k.update(node, args.namedargs, omit=sig.param_names)
+        callargs[kwargs_name] = k.to_variable(node)
+    return callargs
+
+  def _match_view(self, node, args, view):
+    arg_dict = {}
+    formal_args = []
+    for name, arg, formal in self.signature.iter_args(args):
+      arg_dict[name] = view[arg]
+      if formal is not None:
+        if name in (self.signature.varargs_name, self.signature.kwargs_name):
+          # The annotation is Tuple or Dict, but the passed arg only has to be
+          # Iterable or Mapping.
+          formal = self.vm.convert.widen_type(formal)
+        formal_args.append((name, formal))
+    subst, bad_arg = self.vm.matcher.compute_subst(
+        node, formal_args, arg_dict, view)
+    if subst is None:
+      raise WrongArgTypes(self.signature, args, self.vm, bad_param=bad_arg)
+    return subst
+
+  def set_function_defaults(self, defaults_var):
+    """Attempts to set default arguments of a function.
+
+    If defaults_var is not an unambiguous tuple (i.e. one that can be processed
+    by get_atomic_python_constant), every argument is made optional and a
+    warning is issued. This function is used to emulate __defaults__.
+
+    Args:
+      defaults_var: a Variable with a single binding to a tuple of default
+                    values.
+    """
+    defaults = self._extract_defaults(defaults_var)
+    if defaults is None:
+      defaults = [self.vm.convert.unsolvable]*len(self.signature.param_names)
+    defaults = dict(zip(self.signature.param_names[-len(defaults):], defaults))
+    self.signature.defaults = defaults
+
+
+class InterpreterFunction(SignedFunction):
   """An abstract value representing a user-defined function.
 
   Attributes:
@@ -2814,7 +2946,6 @@ class InterpreterFunction(Function):
 
   def __init__(self, name, code, f_locals, f_globals, defaults, kw_defaults,
                closure, annotations, late_annotations, vm):
-    super(InterpreterFunction, self).__init__(name, vm)
     log.debug("Creating InterpreterFunction %r for %r", name, code.co_name)
     self.bound_class = BoundInterpreterFunction
     self.doc = code.co_consts[0] if code.co_consts else None
@@ -2829,7 +2960,8 @@ class InterpreterFunction(Function):
     self.nonstararg_count = self.code.co_argcount
     if self.code.co_kwonlyargcount >= 0:  # This is usually -1 or 0 (fast call)
       self.nonstararg_count += self.code.co_kwonlyargcount
-    self.signature = self._build_signature(annotations, late_annotations)
+    signature = self._build_signature(name, annotations, late_annotations)
+    super(InterpreterFunction, self).__init__(signature, vm)
     self.last_frame = None  # for BuildClass
     self._store_call_records = False
     if self.vm.python_version >= (3, 0):
@@ -2845,7 +2977,7 @@ class InterpreterFunction(Function):
     yield
     self._store_call_records = old
 
-  def _build_signature(self, annotations, late_annotations):
+  def _build_signature(self, name, annotations, late_annotations):
     """Build a function.Signature object representing this function."""
     vararg_name = None
     kwarg_name = None
@@ -2862,7 +2994,7 @@ class InterpreterFunction(Function):
         self.get_positional_names()[-len(self.defaults):], self.defaults))
     defaults.update(self.kw_defaults)
     return function.Signature(
-        self.name,
+        name,
         tuple(self.code.co_varnames[:self.nonstararg_count]),
         vararg_name,
         tuple(kwonly),
@@ -2883,85 +3015,6 @@ class InterpreterFunction(Function):
 
   def argcount(self, _):
     return self.code.co_argcount
-
-  def _map_args(self, node, args):
-    """Map call args to function args.
-
-    This emulates how Python would map arguments of function calls. It takes
-    care of keyword parameters, default parameters, and *args and **kwargs.
-
-    Args:
-      node: The current CFG node.
-      args: The arguments.
-
-    Returns:
-      A dictionary, mapping strings (parameter names) to cfg.Variable.
-
-    Raises:
-      FailedFunctionCall: If the caller supplied incorrect arguments.
-    """
-    # Originate a new variable for each argument and call.
-    posargs = [u.AssignToNewVariable(node)
-               for u in args.posargs]
-    kws = {k: u.AssignToNewVariable(node)
-           for k, u in args.namedargs.items()}
-    if (utils.is_python_2(self.vm.python_version) and
-        self.code.co_name in ["<setcomp>", "<dictcomp>", "<genexpr>"]):
-      # This code is from github.com/nedbat/byterun. Apparently, Py2 doesn't
-      # know how to inspect set comprehensions, dict comprehensions, or
-      # generator expressions properly. See http://bugs.python.org/issue19611.
-      # Byterun says: "They are always functions of one argument, so just do the
-      # right thing."
-      assert len(posargs) == 1, "Surprising comprehension!"
-      return {".0": posargs[0]}
-    param_names = self.get_positional_names()
-    num_defaults = len(self.defaults)
-    callargs = {name: self.vm.program.NewVariable(default.Data(node), [], node)
-                for name, default in zip(
-                    param_names[-num_defaults:], self.defaults) +
-                self.kw_defaults.items()}
-    positional = dict(zip(param_names, posargs))
-    for key in positional:
-      if key in kws:
-        raise DuplicateKeyword(self.signature, args, self.vm, key)
-    extra_kws = set(kws).difference(param_names + self.get_kwonly_names())
-    if extra_kws and not self.has_kwargs():
-      raise WrongKeywordArgs(self.signature, args, self.vm, extra_kws)
-    callargs.update(positional)
-    callargs.update(kws)
-    for key, kwonly in self.get_nondefault_params():
-      if key not in callargs:
-        if args.starstarargs or (args.starargs and not kwonly):
-          # We assume that because we have *args or **kwargs, we can use these
-          # to fill in any parameters we might be missing.
-          callargs[key] = self.vm.convert.create_new_unsolvable(node)
-        else:
-          raise MissingParameter(self.signature, args, self.vm, key)
-    arg_pos = self.nonstararg_count
-    if self.has_varargs():
-      vararg_name = self.code.co_varnames[arg_pos]
-      extraneous = posargs[self.code.co_argcount:]
-      if args.starargs:
-        if extraneous:
-          log.warning("Not adding extra params to *%s", vararg_name)
-        callargs[vararg_name] = args.starargs.AssignToNewVariable(node)
-      else:
-        callargs[vararg_name] = self.vm.convert.build_tuple(node, extraneous)
-      arg_pos += 1
-    elif len(posargs) > self.code.co_argcount:
-      raise WrongArgCount(self.signature, args, self.vm)
-    if self.has_kwargs():
-      kwvararg_name = self.code.co_varnames[arg_pos]
-      # Build a **kwargs dictionary out of the extraneous parameters
-      if args.starstarargs:
-        # TODO(kramm): modify type parameters to account for namedargs
-        callargs[kwvararg_name] = args.starstarargs.AssignToNewVariable(node)
-      else:
-        k = Dict(self.vm)
-        k.update(node, args.namedargs, omit=param_names)
-        callargs[kwvararg_name] = k.to_variable(node)
-      arg_pos += 1
-    return callargs
 
   @staticmethod
   def _hash(vardict, names):
@@ -2996,23 +3049,6 @@ class InterpreterFunction(Function):
     if not self.signature.has_param_annotations:
       return
     return super(InterpreterFunction, self)._match_args(node, args)
-
-  def _match_view(self, node, args, view):
-    arg_dict = {}
-    formal_args = []
-    for name, arg, formal in self.signature.iter_args(args):
-      arg_dict[name] = view[arg]
-      if formal is not None:
-        if name in (self.signature.varargs_name, self.signature.kwargs_name):
-          # The annotation is Tuple or Dict, but the passed arg only has to be
-          # Iterable or Mapping.
-          formal = self.vm.convert.widen_type(formal)
-        formal_args.append((name, formal))
-    subst, bad_arg = self.vm.matcher.compute_subst(
-        node, formal_args, arg_dict, view)
-    if subst is None:
-      raise WrongArgTypes(self.signature, args, self.vm, bad_param=bad_arg)
-    return subst
 
   def call(self, node, func, args, new_locals=None):
     args = args.simplify(node)
@@ -3164,6 +3200,63 @@ class InterpreterFunction(Function):
             details="Cannot annotate self argument of __init__", name=self_name)
         self.signature.del_annotation(self_name)
     return super(InterpreterFunction, self).property_get(callself, callcls)
+
+
+class SimpleFunction(SignedFunction):
+  """An abstract value representing a function with a particular signature.
+
+  Unlike InterpreterFunction, a SimpleFunction has a set signature and does not
+  record calls or try to infer types.
+  """
+
+  def __init__(self, name, param_names, varargs_name, kwonly_params,
+               kwargs_name, defaults, annotations, late_annotations, vm):
+    """Create a SimpleFunction.
+
+    Args:
+      name: Name of the function as a string
+      param_names: Tuple of parameter names as strings.
+      varargs_name: The "args" in "*args". String or None.
+      kwonly_params: Tuple of keyword-only parameters as strings. These do NOT
+        appear in param_names.
+      kwargs_name: The "kwargs" in "**kwargs". String or None.
+      defaults: Dictionary of string names to values of default arguments.
+      annotations: Dictionary of string names to annotations (strings or types).
+      late_annotations: Dictionary of string names to string types, used for
+        forward references or as-yet-unknown types.
+      vm: The virtual machine for this function.
+    """
+    annotations = dict(annotations)
+    late_annotations = dict(late_annotations)
+    # Every parameter must have an annotation. Defaults to unsolvable.
+    for n in itertools.chain(param_names, [varargs_name, kwargs_name],
+                             kwonly_params):
+      if n and n not in annotations and n not in late_annotations:
+        annotations[n] = vm.convert.unsolvable
+    if not isinstance(defaults, dict):
+      defaults = dict(zip(param_names[-len(defaults):], defaults))
+    signature = function.Signature(name, param_names, varargs_name,
+                                   kwonly_params, kwargs_name, defaults,
+                                   annotations, late_annotations)
+    super(SimpleFunction, self).__init__(signature, vm)
+    self.bound_class = BoundFunction
+
+  def call(self, node, _, args):
+    # We only simplify args for _map_args, because that simplifies checking.
+    # This allows _match_args to typecheck varargs and kwargs.
+    # We discard the results from _map_args, because SimpleFunction only cares
+    # that the arguments are acceptable.
+    self._map_args(node, args.simplify(node))
+    substs = self._match_args(node, args)
+    # Substitute type parameters in the signature's annotations.
+    annotations = self.vm.annotations_util.sub_annotations(
+        node, self.signature.annotations, substs, instantiate_unbound=False)
+    if self.signature.has_return_annotation:
+      ret_type = annotations["return"]
+      ret = ret_type.instantiate(node)
+    else:
+      ret = self.vm.convert.none.to_variable(node)
+    return node, ret
 
 
 class BoundFunction(AtomicAbstractValue):

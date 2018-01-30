@@ -291,6 +291,8 @@ class Converter(object):
           flags=pytd.Function.abstract_flag(v.is_abstract))
     elif isinstance(v, abstract.InterpreterFunction):
       return self._function_to_def(node, v, name)
+    elif isinstance(v, abstract.SimpleFunction):
+      return self._simple_func_to_def(node, v, name)
     elif isinstance(v, abstract.ParameterizedClass):
       return pytd.Alias(name, v.get_instance_type(node))
     elif isinstance(v, abstract.PyTDClass) and v.module:
@@ -375,6 +377,48 @@ class Converter(object):
                          signatures=tuple(signatures),
                          kind=pytd.METHOD,
                          flags=pytd.Function.abstract_flag(v.is_abstract))
+
+  def _simple_func_to_def(self, node, v, name):
+    """Convert a SimpleFunction to a PyTD definition."""
+    sig = v.signature
+    params = [pytd.Parameter(p,
+                             sig.annotations[p].get_instance_type(node),
+                             False,
+                             p in sig.defaults,
+                             None)
+              for p in sig.param_names]
+    kwonly = [pytd.Parameter(p,
+                             sig.annotations[p].get_instance_type(node),
+                             True,
+                             p in sig.defaults,
+                             None)
+              for p in sig.kwonly_params]
+    if sig.varargs_name:
+      star = pytd.Parameter(
+          sig.varargs_name,
+          sig.annotations[sig.varargs_name].get_instance_type(node),
+          False, False, None)
+    else:
+      star = None
+    if sig.kwargs_name:
+      starstar = pytd.Parameter(
+          sig.kwargs_name,
+          sig.annotations[sig.kwargs_name].get_instance_type(node),
+          False, False, None)
+    else:
+      starstar = None
+    if sig.has_return_annotation:
+      ret_type = sig.annotations["return"].get_instance_type(node)
+    else:
+      ret_type = pytd.NamedType("__builtin__.NoneType")
+    pytd_sig = pytd.Signature(
+        params=tuple(params+kwonly),
+        starargs=star,
+        starstarargs=starstar,
+        return_type=ret_type,
+        exceptions=(),
+        template=())
+    return pytd.Function(name, (pytd_sig,), pytd.METHOD)
 
   def _property_to_types(self, node, v):
     """Convert a property to a list of PyTD types."""

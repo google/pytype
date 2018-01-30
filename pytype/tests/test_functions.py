@@ -805,5 +805,48 @@ class TestFunctions(test_base.BaseTest):
       os.chdir()
       """)
 
+  def testInterpreterFunctionDefaults(self):
+    self.Check("""
+      def test(a, b, c = 4):
+        return a + b + c
+      x = test(1, 2)
+      test.__defaults__ = (3, 4)
+      y = test(1, 2)
+      y = test(1)
+      test.__defaults__ = (2, 3, 4)
+      z = test()
+      z = test(1)
+      z = test(1, 2)
+      z = test(1, 2, 3)
+      """)
+    _, errors = self.InferWithErrors("""\
+      def test(a, b, c):
+        return a + b + c
+      x = test(1, 2)  # should fail
+      test.__defaults__ = (3,)
+      x = test(1, 2)
+      x = test(1)  # should fail
+      """)
+    self.assertErrorLogIs(errors,
+                          [(3, "missing-parameter"),
+                           (6, "missing-parameter")])
+
+  def testInterpreterFunctionDefaultsOnClass(self):
+    _, errors = self.InferWithErrors("""\
+      class Foo(object):
+        def __init__(self, a, b, c):
+          self.a = a
+          self.b = b
+          self.c = c
+      a = Foo()  # should fail
+      Foo.__init__.__defaults__ = (1, 2)
+      b = Foo(0)
+      c = Foo()  # should fail
+      """)
+    self.assertErrorLogIs(errors,
+                          [(6, "missing-parameter"),
+                           (9, "missing-parameter")])
+
+
 if __name__ == "__main__":
   test_base.main()
