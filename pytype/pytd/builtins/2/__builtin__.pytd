@@ -220,6 +220,7 @@ class str(basestring, Sequence[str]):
     def __contains__(self, y: basestring) -> bool
     def __getitem__(self, index: int or slice) -> str
     def __getslice__(self, i: Optional[int], j: Optional[int]) -> str
+    def __len__(self) -> int
     def __mod__(self, y) -> str
     def __mul__(self, n: int) -> str
     def capitalize(self) -> str
@@ -279,6 +280,7 @@ class unicode(basestring, Sequence[unicode]):
     def __contains__(self, y: str or unicode or bytearray) -> bool
     def __getitem__(self, index: int or slice) -> unicode
     def __getslice__(self, i: Optional[int], j: Optional[int]) -> unicode
+    def __len__(self) -> int
     def __mod__(self, y) -> unicode
     def __mul__(self, n: int) -> unicode
     def capitalize(self) -> unicode
@@ -335,6 +337,7 @@ class bytearray(Sequence[int]):
     def __getitem__(self, index: slice) -> bytearray
     def __getslice__(self, ...) -> bytearray
     def __iter__(self) -> bytearray_iterator
+    def __len__(self) -> int
     def __mul__(self, n: int) -> bytearray
     def append(self, int: str or int) -> NoneType
     def capitalize(self) -> bytearray
@@ -795,12 +798,13 @@ class complex(SupportsAbs):
     def __truediv__(self, y: int or float or complex) -> complex
     def conjugate(self) -> complex
 
-class buffer(Sized, Iterable[int]):
+class buffer(Sized):
     __slots__ = []
     def __init__(self, object: str or unicode or bytearray or buffer, ...) -> NoneType
     def __add__(self, y: str or unicode or bytearray or buffer) -> str
     def __getitem__(self, index: int) -> str
     def __getslice__(self, i: Optional[int], j: Optional[int]) -> str
+    def __len__(self) -> int
     def __mul__(self, n: int) -> str
 
 class file(BinaryIO):
@@ -897,6 +901,7 @@ class xrange(Sequence[int]):
     def __init__(self, stop: int, ...) -> NoneType
     def __getitem__(self, index: int) -> int
     def __iter__(self) -> Iterator[int]
+    def __len__(self) -> int
     def __reversed__(self, ...) -> Iterator[int]
 
 # From Python/objects/capsule.c. Used e.g. by datetime.datetime_CAPI

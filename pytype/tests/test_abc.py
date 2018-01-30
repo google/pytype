@@ -264,6 +264,43 @@ class AbstractMethodTests(test_base.BaseTest):
       """, pythonpath=[d.path])
       self.assertErrorLogIs(errors, [(2, "not-instantiable", r"foo\.Foo.*foo")])
 
+  def test_multiple_inheritance_builtins(self):
+    self.Check("""
+      import abc
+      class Foo(object):
+        __metaclass__ = abc.ABCMeta
+      class Bar1(Foo, tuple):
+        pass
+      class Bar2(Foo, str):
+        pass
+      class Bar3(Foo, unicode):
+        pass
+      class Bar4(Foo, bytearray):
+        pass
+      class Bar5(Foo, dict):
+        pass
+      class Bar6(Foo, list):
+        pass
+      class Bar7(Foo, set):
+        pass
+      class Bar8(Foo, frozenset):
+        pass
+      class Bar9(Foo, buffer):
+        pass
+      class BarA(Foo, xrange):
+        pass
+      Bar1()
+      Bar2()
+      Bar3()
+      Bar4()
+      Bar5()
+      Bar6()
+      Bar7()
+      Bar8()
+      Bar9("")
+      BarA(0)
+    """)
+
   def test_abstract_method_unusual_selfname(self):
     self.Check("""
       from __future__ import google_type_annotations

@@ -136,6 +136,7 @@ class Collection(Sized, Iterable[_T], Container[_T], Protocol):
 
 class Tuple(Sequence[_T]):
   __slots__ = []
+  def __len__(self) -> int: ...
 
 
 class MutableSequence(Sequence[_T], Protocol):
@@ -165,6 +166,7 @@ class MutableSequence(Sequence[_T], Protocol):
 
 class List(MutableSequence[_T]):
   __slots__ = []
+  def __len__(self) -> int: ...
 
 
 # typing.Deque subclasses collections.deque and MutableSequence[_T], but there's
@@ -262,6 +264,8 @@ class DefaultDict(MutableMapping[_K, _V]): ...
 
 class Dict(MutableMapping[_K, _V]):
   __slots__ = []
+  def __getitem__(self, key: _K) -> _V: ...
+  def __len__(self) -> int: ...
 
 
 class AbstractSet(Sized, Iterable[_T], Container[_T]):
@@ -276,6 +280,7 @@ class AbstractSet(Sized, Iterable[_T], Container[_T]):
 
 class FrozenSet(AbstractSet[_T]):
   __slots__ = []
+  def __len__(self) -> int: ...
 
 
 class MutableSet(AbstractSet[_T]):
@@ -294,6 +299,7 @@ class MutableSet(AbstractSet[_T]):
 
 class Set(MutableSet[_T]):
   __slots__ = []
+  def __len__(self) -> int: ...
 
 
 # _T is the yield type, _T2 the send type, _V the return type.
