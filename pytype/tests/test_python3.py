@@ -250,14 +250,41 @@ class TestPython3(test_base.BaseTest):
       ba[1:4:2] = bytes("at", encoding="utf-8")
     """)
 
-  def test_multiple_inheritance_bytearray(self):
+  def test_multiple_inheritance_builtins(self):
     self.Check("""
       import abc
       class Foo(object, metaclass=abc.ABCMeta):
         pass
-      class Bar(Foo, bytearray):
+      class Bar1(Foo, tuple):
         pass
-      Bar()
+      class Bar2(Foo, bytes):
+        pass
+      class Bar3(Foo, str):
+        pass
+      class Bar4(Foo, bytearray):
+        pass
+      class Bar5(Foo, dict):
+        pass
+      class Bar6(Foo, list):
+        pass
+      class Bar7(Foo, set):
+        pass
+      class Bar8(Foo, frozenset):
+        pass
+      class Bar9(Foo, memoryview):
+        pass
+      class BarA(Foo, xrange):
+        pass
+      Bar1()
+      Bar2()
+      Bar3()
+      Bar4()
+      Bar5()
+      Bar6()
+      Bar7()
+      Bar8()
+      Bar9(bytes("", encoding="utf-8"))
+      BarA(0)
     """)
 
 
