@@ -1,7 +1,8 @@
 from typing import (
     AbstractSet, AnyStr, BinaryIO, Callable, Dict, FrozenSet, Generator,
-    Generic, Iterable, Iterator, List, Mapping, Optional, Reversible, Sequence,
-    Set, Sized, SupportsAbs, SupportsFloat, SupportsInt, Tuple, Type, Union)
+    Generic, Iterable, Iterator, List, Mapping, MutableSequence, Optional,
+    Reversible, Sequence, Set, Sized, SupportsAbs, SupportsFloat, SupportsInt,
+    Tuple, Type, Union)
 
 # "_T", "_K", and "_V" are hardcoded in abstract.py
 _T = TypeVar('_T')
@@ -324,7 +325,7 @@ class unicode(basestring, Sequence[unicode]):
     def upper(self) -> unicode
     def zfill(self, width: int) -> unicode
 
-class bytearray(Sequence[int]):
+class bytearray(MutableSequence[int]):
     __slots__ = []
     def __init__(self, iterable_of_ints) -> NoneType
     def __init__(self) -> NoneType
@@ -339,6 +340,9 @@ class bytearray(Sequence[int]):
     def __iter__(self) -> bytearray_iterator
     def __len__(self) -> int
     def __mul__(self, n: int) -> bytearray
+    def __setitem__(self, index: int, y: str or int) -> None
+    def __setitem__(self, index: slice, y: str or Iterable[int] or buffer or bytearray) -> None
+    def __setslice__(self, i: int, j: int, y: str or Iterable[int] or buffer or bytearray) -> None
     def append(self, int: str or int) -> NoneType
     def capitalize(self) -> bytearray
     def center(self, width: int, ...) -> bytearray

@@ -233,9 +233,32 @@ class TestPython3(test_base.BaseTest):
         foo.x("a = 2")
       """, pythonpath=[d.path])
 
-  def testNoneLength(self):
+  def test_none_length(self):
     errors = self.CheckWithErrors("len(None)")
     self.assertErrorLogIs(errors, [(1, "wrong-arg-types", r"Sized.*None")])
+
+  def test_bytearray(self):
+    self.Check("""
+      ba = bytearray(bytes("hello", encoding="utf-8"))
+      ba[0] = 106
+      ba[:1] = [106]
+      ba[:1] = bytes("j", encoding="utf-8")
+      ba[:1] = bytearray(bytes("j", encoding="utf-8"))
+      ba[:1] = memoryview(bytes("j", encoding="utf-8"))
+      ba[4:] = bytes("yfish", encoding="utf-8")
+      ba[0:5] = bytes("", encoding="utf-8")
+      ba[1:4:2] = bytes("at", encoding="utf-8")
+    """)
+
+  def test_multiple_inheritance_bytearray(self):
+    self.Check("""
+      import abc
+      class Foo(object, metaclass=abc.ABCMeta):
+        pass
+      class Bar(Foo, bytearray):
+        pass
+      Bar()
+    """)
 
 
 class TypingMethodsTest(test_base.TypingTest):

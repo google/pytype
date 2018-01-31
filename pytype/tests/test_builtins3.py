@@ -316,6 +316,20 @@ class BuiltinTests3(test_base.BaseTest):
         return x[1:5:2]
     """)
 
+  def testBytearraySetItem(self):
+    self.Check("""
+      ba = bytearray("hello")
+      ba[0] = 106
+      ba[0] = "j"
+      ba[4:] = [121, 102, 105, 115, 104]
+      ba[4:] = "yfish"
+      ba[4:] = buffer("yfish")
+      ba[4:] = bytearray("yfish")
+      ba[:5] = ""
+      ba[1:2] = "la"
+      ba[2:3:2] = "u"
+    """)
+
   def testNoneLength(self):
     errors = self.CheckWithErrors("len(None)")
     self.assertErrorLogIs(errors, [(1, "wrong-arg-types", r"Sized.*None")])

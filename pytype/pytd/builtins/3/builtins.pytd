@@ -348,6 +348,8 @@ class bytearray(MutableSequence[int], ByteString):
     def __iter__(self) -> bytearray_iterator
     def __len__(self) -> int
     def __mul__(self, n: int) -> bytearray
+    def __setitem__(self, index: int, y: int) -> None
+    def __setitem__(self, index: slice, y: Iterable[int or bytes or bytearray or memoryview]) -> None
     def append(self, int: int) -> NoneType
     def capitalize(self) -> bytearray
     def center(self, width: int, ...) -> bytearray
@@ -862,8 +864,8 @@ class slice(object):
 
 class memoryview(object):
     __slots__ = []
-    def __init__(self, object: str or bytearray or memoryview) -> NoneType
-    def __getitem__(self, index: int) -> str
+    def __init__(self, object: bytes or bytearray or memoryview) -> NoneType
+    def __getitem__(self, index: int) -> int
     def __len__(self) -> int
     def tobytes(self, ...) -> str
     def tolist(self, ...) -> list[int]

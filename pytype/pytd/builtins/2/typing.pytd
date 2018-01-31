@@ -1,9 +1,9 @@
 # Special-cased by the parser: TypeVar, Any, NamedTuple, Optional, Union
 __all__ = ...  # type: List[str]
 if sys.version_info >= (3, 0):
-    AnyStr = TypeVar('AnyStr', str, bytes)
+  AnyStr = TypeVar('AnyStr', str, bytes)
 else:
-    AnyStr = TypeVar('AnyStr', str, unicode)
+  AnyStr = TypeVar('AnyStr', str, unicode)
 _ARGS = TypeVar('_ARGS')
 _RET = TypeVar('_RET')
 # "_T", "_K", and "_V" are hardcoded in abstract.py
@@ -21,9 +21,9 @@ def _typevar_new(name: str, *constraints: type, bound: type=None, covariant: boo
 
 
 if sys.version_info >= (3, 0):
-    Text = str
+  Text = str
 else:
-    Text = unicode
+  Text = unicode
 
 
 class Callable(Generic[_ARGS, _RET], Protocol):
@@ -147,8 +147,9 @@ class MutableSequence(Sequence[_T], Protocol):
   @abstractmethod
   def __setitem__(self, i: slice, v: Iterable[_T2]) -> None:
     self := MutableSequence[_T or _T2]
-  def __setslice__(self, i, j, s: Iterable[_T2]) -> None:
-    self := MutableSequence[_T or _T2]
+  if sys.version_info < (3, 0):
+    def __setslice__(self, i: int, j: int, s: Iterable[_T2]) -> None:
+      self := MutableSequence[_T or _T2]
   @abstractmethod
   def __delitem__(self, i: Union[int, slice]) -> None: ...
   def __add__(self, x: Iterable[_T2]) -> MutableSequence[_T or _T2]: ...
@@ -214,9 +215,9 @@ class BinaryIO(IO[str]): ...
 
 
 if sys.version_info >= (3, 0):
-    class TextIO(IO[str]): ...
+  class TextIO(IO[str]): ...
 else:
-    class TextIO(IO[unicode]): ...
+  class TextIO(IO[unicode]): ...
 
 
 class Mapping(Sized, Iterable[_K], Container[_K], Generic[_K, _V], Protocol):
