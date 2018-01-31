@@ -117,12 +117,12 @@ def generate_pyi(input_filename, errorlog, options, loader):
                           use_abcs=False,
                           max_union=7,
                           remove_mutable=False)
-  log.info("=========== pyi optimized =============")
   mod = pytd_utils.CanonicalOrdering(mod, sort_signatures=True)
-  log.info("\n%s", pytd.Print(mod))
+  result = pytd.Print(mod)
+  log.info("=========== pyi optimized =============")
+  log.info("\n%s", result)
   log.info("========================================")
 
-  result = pytd.Print(mod)
   if not result.endswith("\n"):
     result += "\n"
   result_prefix = ""

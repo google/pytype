@@ -434,6 +434,11 @@ class PrintVisitor(Visitor):
       container_name = node.type.base_type.name.rpartition(".")[2]
       assert container_name in ("tuple", "dict")
       self._typing_import_counts[container_name.capitalize()] -= 1
+      # If the type is "Any", e.g. `**kwargs: Any`, decrement Any to avoid an
+      # extraneous import of typing.Any. Any was visited before this function
+      # transformed **kwargs, so it was incremented at least once already.
+      if isinstance(node.type.parameters[-1], pytd.AnythingType):
+        self._typing_import_counts["Any"] -= 1
       return node.Replace(type=node.type.parameters[-1], optional=False).Visit(
           PrintVisitor())
     else:

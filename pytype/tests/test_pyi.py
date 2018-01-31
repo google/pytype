@@ -767,6 +767,19 @@ class PYITest(test_base.BaseTest):
         bar.f(42)
       """, pythonpath=[d.path])
 
+  def testUnneccessaryAnyImport(self):
+    ty = self.Infer("""\
+        from __future__ import google_type_annotations
+        import typing
+        def foo(**kwargs: typing.Any) -> int: return 1
+        def bar(*args: typing.Any) -> int: return 2
+        """)
+    self.assertTypesMatchPytd(ty, """\
+        typing = ...  # type: module
+        def foo(**kwargs) -> int: ...
+        def bar(*args) -> int: ...
+        """)
+
 
 if __name__ == "__main__":
   test_base.main()
