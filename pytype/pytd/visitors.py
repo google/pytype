@@ -1690,6 +1690,18 @@ class RemoveFunctionsAndClasses(Visitor):
                                       if c.name not in self.names))
 
 
+class StripExternalNamePrefix(Visitor):
+  """Strips off the prefix the parser uses to mark external types.
+
+  The prefix needs to be present for AddNamePrefix, and stripped off afterwards.
+  """
+
+  def VisitNamedType(self, node):
+    new_name = utils.strip_prefix(node.name,
+                                  parser_constants.EXTERNAL_NAME_PREFIX)
+    return node.Replace(name=new_name)
+
+
 class AddNamePrefix(Visitor):
   """Visitor for making names fully qualified.
 
@@ -1701,17 +1713,19 @@ class AddNamePrefix(Visitor):
     class baz.Foo:
       pass
     def bar(x: baz.Foo) -> baz.Foo
-  .
   """
 
   def __init__(self):
     super(AddNamePrefix, self).__init__()
     self.cls = None
+    self.classes = None
     self.prefix = None
+    self.name = None
 
   def EnterTypeDeclUnit(self, node):
-    self.prefix = node.name + "."
     self.classes = {cls.name for cls in node.classes}
+    self.name = node.name
+    self.prefix = node.name + "."
 
   def EnterClass(self, cls):
     self.cls = cls
@@ -1726,7 +1740,13 @@ class AddNamePrefix(Visitor):
     return self.VisitNamedType(node)
 
   def VisitNamedType(self, node):
-    if node.name in self.classes:
+    if node.name.startswith(parser_constants.EXTERNAL_NAME_PREFIX):
+      # This is an external type; do not prefix it. StripExternalNamePrefix will
+      # remove it later.
+      return node
+    elif node.name.split(".")[0] in self.classes:
+      # We need to check just the first part, in case we have a class constant
+      # like Foo.BAR, or some similarly nested name.
       return node.Replace(name=self.prefix + node.name)
     else:
       return node
@@ -1741,7 +1761,7 @@ class AddNamePrefix(Visitor):
     # Module-level type parameters will keep this scope, but others will get a
     # more specific one in AdjustTypeParameters. The last character in the
     # prefix is the dot appended by EnterTypeDeclUnit, so omit that.
-    return node.Replace(scope=self.prefix[:-1])
+    return node.Replace(scope=self.name)
 
   def _VisitNamedNode(self, node):
     if self.cls:
@@ -1749,8 +1769,7 @@ class AddNamePrefix(Visitor):
       return node
     else:
       # global constant. Handle leading . for relative module names.
-      return node.Replace(name=utils.get_absolute_name(
-          self.prefix[:-1], node.name))
+      return node.Replace(name=utils.get_absolute_name(self.name, node.name))
 
   def VisitFunction(self, node):
     return self._VisitNamedNode(node)

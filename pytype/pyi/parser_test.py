@@ -409,6 +409,17 @@ class ParserTest(_ParserTestBase):
                "typing.x = ...  # type: Hashable",
                name="typing")
 
+  def test_module_class_clash(self):
+    ast = parser.parse_string(textwrap.dedent("""\
+      from bar import X
+      class bar:
+        X = ... # type: ?
+      y = bar.X.Baz
+      z = X.Baz
+    """), name="foo", python_version=self.PYTHON_VERSION)
+    self.assertEqual("foo.bar.X.Baz", ast.Lookup("foo.y").type.name)
+    self.assertEqual("bar.X.Baz", ast.Lookup("foo.z").type.name)
+
 
 class HomogeneousTypeTest(_ParserTestBase):
 
@@ -518,6 +529,7 @@ class HomogeneousTypeTest(_ParserTestBase):
                "x = ...  # type: tuple")
     self.check("x = str,",
                "x = ...  # type: tuple")
+
 
 class NamedTupleTest(_ParserTestBase):
 

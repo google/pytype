@@ -9,6 +9,7 @@ from pytype.pyi import parser_ext
 from pytype.pytd import pep484
 from pytype.pytd import pytd
 from pytype.pytd import visitors
+from pytype.pytd.parse import parser_constants  # pylint: disable=g-importing-member
 
 _DEFAULT_VERSION = (2, 7, 6)
 _DEFAULT_PLATFORM = "linux"
@@ -399,6 +400,7 @@ class _Parser(object):
     else:
       # If there's no unique name, hash the sourcecode.
       ast = ast.Replace(name=hashlib.md5(src).hexdigest())
+    ast = ast.Visit(visitors.StripExternalNamePrefix())
 
     # Typeshed files that explicitly import and refer to "builtins" need to have
     # that rewritten to __builtin__
@@ -630,6 +632,13 @@ class _Parser(object):
           # NamedType, and without 'as' the name will not be reexported).
           t = pytd.Module(name=new_name, module_name=qualified_name)
         else:
+          # We should ideally not need this check, but we have typing
+          # special-cased in some places.
+          if not qualified_name.startswith("typing.") and name != "*":
+            # Mark this as an externally imported type, so that AddNamePrefix
+            # does not prefix it with the current package name.
+            qualified_name = (parser_constants.EXTERNAL_NAME_PREFIX +
+                              qualified_name)
           t = pytd.NamedType(qualified_name)
         if name == "*":
           # A star import is stored as
@@ -642,7 +651,7 @@ class _Parser(object):
         self._type_map[new_name] = t
         if from_package != "typing" or self._ast_name == "protocols":
           self._aliases.append(pytd.Alias(new_name, t))
-          self._module_path_map[name] = "%s.%s" % (from_package, name)
+          self._module_path_map[name] = qualified_name
     else:
       # import a, b as c, ...
       for item in import_list:

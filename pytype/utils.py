@@ -84,6 +84,13 @@ def replace_extension(filename, new_extension):
     return name + "." + new_extension
 
 
+def strip_prefix(string, prefix):
+  """Strip off prefix if it exists."""
+  if string.startswith(prefix):
+    return string[len(prefix):]
+  return string
+
+
 def get_absolute_name(prefix, relative_name):
   """Joins a dotted-name prefix and a relative name.
 

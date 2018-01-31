@@ -53,3 +53,7 @@ RESERVED_PYTHON = [
 # A less-pedantic RE is r'[-~]'.
 # See visitors._EscapedName and parser.PyLexer.t_NAME
 BACKTICK_NAME = re.compile(r'[-]|^~')
+
+# Marks external NamedTypes so that they do not get prefixed by the current
+# module name.
+EXTERNAL_NAME_PREFIX = '$external$'
