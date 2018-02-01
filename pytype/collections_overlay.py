@@ -90,10 +90,12 @@ class CollectionsOverlay(overlay.Overlay):
 class NamedTupleBuilder(abstract.PyTDFunction):
   """Factory for creating collections.namedtuple typing information."""
 
-  def __init__(self, name, vm):
+  def __init__(self, name, vm, pyval=None):
     # Loading the ast should be memoized after the import in CollectionsOverlay
     self.collections_ast = vm.loader.import_name("collections")
-    pyval = self.collections_ast.Lookup("collections.namedtuple")
+    # Subclasses of NamedTupleBuilder need a different pyval.
+    if not pyval:
+      pyval = self.collections_ast.Lookup("collections.namedtuple")
     f = vm.convert.constant_to_value(pyval, {}, vm.root_cfg_node)
     super(NamedTupleBuilder, self).__init__(name, f.signatures, pytd.METHOD, vm)
 

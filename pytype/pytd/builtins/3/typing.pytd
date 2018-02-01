@@ -377,6 +377,9 @@ class ItemsView(MappingView[Tuple[_K, _V]], AbstractSet[Tuple[_K, _V]]):
 NoReturn = nothing
 
 
+def _NamedTuple(typename: str, fields: List[Tuple[str, Union[str, type]]]) -> ?: ...
+
+
 def NewType(name, tp) -> type
 
 def cast(typ: Type[_T], val) -> _T

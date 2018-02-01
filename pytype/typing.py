@@ -5,9 +5,12 @@
 
 
 from pytype import abstract
+from pytype import collections_overlay
+from pytype import function
 from pytype import overlay
 from pytype.pytd import pep484
 from pytype.pytd import pytd
+from pytype.pytd import visitors
 
 
 class TypingOverlay(overlay.Overlay):
@@ -203,10 +206,258 @@ def build_any(name, vm):
   return abstract.Unsolvable(vm)
 
 
-# TODO(kramm): Do a full implementation of this.
-def build_namedtuple(name, vm):
-  vm.errorlog.not_supported_yet(vm.frames, "typing." + name)
-  return abstract.Unsolvable(vm)
+class NamedTupleBuilder(collections_overlay.NamedTupleBuilder):
+  """Factory for creating typing.NamedTuple classes."""
+
+  def __init__(self, name, vm):
+    self.typing_ast = vm.loader.import_name("typing")
+    # Because NamedTuple is a special case for the pyi parser, typing.pytd has
+    # "_NamedTuple" instead. Replace the name of the returned function so that
+    # error messages will correctly display "typing.NamedTuple".
+    pyval = self.typing_ast.Lookup("typing._NamedTuple")
+    pyval = pyval.Replace(name="typing.NamedTuple")
+    super(NamedTupleBuilder, self).__init__(name, vm, pyval)
+
+  def _getargs(self, node, args):
+    self._match_args(node, args)
+    # Normally we would use typing.NamedTuple.__new__ to match args to
+    # parameters, but we can't import typing.
+    # TODO(tsudol): Replace with typing.NamedTuple.__new__.
+    f = function.Signature.from_param_names("typing.NamedTuple",
+                                            ["typename", "fields"])
+    callargs = {arg_name: arg_var for arg_name, arg_var, _ in f.iter_args(args)}
+    # typing.NamedTuple doesn't support rename or verbose
+    name_var = callargs["typename"]
+    fields_var = callargs["fields"]
+    fields = abstract.get_atomic_python_constant(fields_var)
+    # The fields is a list of tuples, so we need to deeply unwrap them.
+    fields = [abstract.get_atomic_python_constant(t) for t in fields]
+    # We need the actual string for the field names and the AtomicAbstractValue
+    # for the field types.
+    names = []
+    types = []
+    for (name, typ) in fields:
+      names.append(abstract.get_atomic_python_constant(name))
+      types.append(abstract.get_atomic_value(typ))
+    return name_var, names, types
+
+  def is_forward_ref(self, t):
+    return (isinstance(t, abstract.AbstractOrConcreteValue) and
+            isinstance(t.pyval, basestring))
+
+  def _build_namedtuple(self, name, field_names, field_types, node):
+    # Build an InterpreterClass representing the namedtuple.
+    if field_types:
+      field_types_union = abstract.Union(field_types, self.vm)
+    else:
+      field_types_union = self.vm.convert.none_type
+    members = {n: t.instantiate(node) for n, t in zip(field_names, field_types)}
+    # collections.namedtuple has: __dict__, __slots__ and _fields.
+    # typing.NamedTuple adds: _field_types, __annotations__ and _field_defaults.
+    # __slots__ and _fields are tuples containing the names of the fields.
+    slots = tuple(self.vm.convert.build_string(node, f) for f in field_names)
+    members["__slots__"] = abstract.Tuple(slots, self.vm).to_variable(node)
+    members["_fields"] = abstract.Tuple(slots, self.vm).to_variable(node)
+    # __dict__ and _field_defaults are both collections.OrderedDicts that map
+    # field names (strings) to objects of the field types.
+    ordered_dict_cls = self.vm.convert.name_to_value("collections.OrderedDict",
+                                                     ast=self.collections_ast)
+    # Normally, we would use abstract.K and abstract.V, but collections.pyi
+    # doesn't conform to that standard.
+    field_dict_cls = abstract.ParameterizedClass(
+        ordered_dict_cls,
+        {"K": self.vm.convert.str_type, "V": field_types_union},
+        self.vm)
+    members["__dict__"] = field_dict_cls.instantiate(node)
+    members["_field_defaults"] = field_dict_cls.instantiate(node)
+    # _field_types and __annotations__ are both collections.OrderedDicts
+    # that map field names (strings) to the types of the fields.
+    # The `type` must be parameterized with `object` in order to produce
+    # `collections.OrderedDict[str, type]`.
+    # Otherwise, it will produce `collections.OrderedDict[str, Any]`.
+    type_type = abstract.ParameterizedClass(
+        self.vm.convert.type_type,
+        {abstract.T: self.vm.convert.object_type},
+        self.vm)
+    field_types_cls = abstract.ParameterizedClass(
+        ordered_dict_cls,
+        {"K": self.vm.convert.str_type, "V": type_type},
+        self.vm)
+    members["_field_types"] = field_types_cls.instantiate(node)
+    members["__annotations__"] = field_types_cls.instantiate(node)
+    # __new__
+    new_annots = {}
+    new_lates = {}
+    for (n, t) in zip(field_names, field_types):
+      if self.is_forward_ref(t):
+        new_lates[n] = t
+      else:
+        new_annots[n] = t
+    # We set the bound on this TypeParameter later. This gives __new__ the
+    # signature: def __new__(cls: Type[_Tname], ...) -> _Tname, i.e. the same
+    # signature that visitor.CreateTypeParametersForSignatures would create.
+    # This allows subclasses of the NamedTuple to get the correct type from
+    # their constructors.
+    cls_type_param = abstract.TypeParameter(
+        visitors.CreateTypeParametersForSignatures.PREFIX + name,
+        self.vm, bound=None)
+    new_annots["cls"] = abstract.ParameterizedClass(
+        self.vm.convert.type_type, {abstract.T: cls_type_param}, self.vm)
+    new_annots["return"] = cls_type_param
+    members["__new__"] = abstract.SimpleFunction(
+        name="__new__",
+        param_names=("cls",) + tuple(field_names),
+        varargs_name=None,
+        kwonly_params=(),
+        kwargs_name=None,
+        defaults={},
+        annotations=new_annots,
+        late_annotations=new_lates,
+        vm=self.vm).to_variable(node)
+    # __init__
+    members["__init__"] = abstract.SimpleFunction(
+        name="__init__",
+        param_names=("self",),
+        varargs_name="args",
+        kwonly_params=(),
+        kwargs_name="kwargs",
+        defaults={},
+        annotations={},
+        late_annotations={},
+        vm=self.vm).to_variable(node)
+    # _make
+    # _make is a classmethod, so it needs to be wrapped by
+    # specialibuiltins.ClassMethodInstance.
+    # Like __new__, it uses the _Tname TypeVar.
+    sized_cls = self.vm.convert.name_to_value("typing.Sized")
+    iterable_type = abstract.ParameterizedClass(
+        self.vm.convert.name_to_value("typing.Iterable"),
+        {abstract.T: field_types_union}, self.vm)
+    make = abstract.SimpleFunction(
+        name="_make",
+        param_names=("cls", "iterable", "new", "len"),
+        varargs_name=None,
+        kwonly_params=(),
+        kwargs_name=None,
+        defaults={
+            "new": self.vm.convert.unsolvable.to_variable(node),
+            "len": self.vm.convert.unsolvable.to_variable(node)
+        },
+        annotations={
+            "cls": abstract.ParameterizedClass(
+                self.vm.convert.type_type,
+                {abstract.T: cls_type_param}, self.vm),
+            "iterable": iterable_type,
+            "new": self.vm.convert.unsolvable,
+            "len": abstract.Callable(
+                self.vm.convert.name_to_value("typing.Callable"),
+                {0: sized_cls,
+                 abstract.ARGS: sized_cls,
+                 abstract.RET: self.vm.convert.int_type},
+                self.vm),
+            "return": cls_type_param
+        },
+        late_annotations={},
+        vm=self.vm).to_variable(node)
+    make_args = abstract.FunctionArgs(posargs=(make,))
+    _, members["_make"] = self.vm.special_builtins["classmethod"].call(
+        node, None, make_args)
+    # _replace
+    # Like __new__, it uses the _Tname TypeVar. We have to annotate the `self`
+    # param to make sure the TypeVar is substituted correctly.
+    members["_replace"] = abstract.SimpleFunction(
+        name="_replace",
+        param_names=("self",),
+        varargs_name=None,
+        kwonly_params=(),
+        kwargs_name="kwds",
+        defaults={},
+        annotations={
+            "self": cls_type_param,
+            "kwds": field_types_union,
+            "return": cls_type_param
+        },
+        late_annotations={},
+        vm=self.vm).to_variable(node)
+    # __getnewargs__
+    getnewargs_tuple_params = dict(
+        tuple(enumerate(field_types)) + ((abstract.T, field_types_union),))
+    getnewargs_tuple = abstract.TupleClass(self.vm.convert.tuple_type,
+                                           getnewargs_tuple_params, self.vm)
+    members["__getnewargs__"] = abstract.SimpleFunction(
+        name="__getnewargs__",
+        param_names=("self",),
+        varargs_name=None,
+        kwonly_params=(),
+        kwargs_name=None,
+        defaults={},
+        annotations={"return": getnewargs_tuple},
+        late_annotations={},
+        vm=self.vm).to_variable(node)
+    # __getstate__
+    members["__getstate__"] = abstract.SimpleFunction(
+        name="__getstate__",
+        param_names=("self",),
+        varargs_name=None,
+        kwonly_params=(),
+        kwargs_name=None,
+        defaults={},
+        annotations={},
+        late_annotations={},
+        vm=self.vm).to_variable(node)
+    # _asdict
+    members["_asdict"] = abstract.SimpleFunction(
+        name="_asdict",
+        param_names=("self",),
+        varargs_name=None,
+        kwonly_params=(),
+        kwargs_name=None,
+        defaults={},
+        annotations={"return": field_dict_cls},
+        late_annotations={},
+        vm=self.vm).to_variable(node)
+    # Finally, make the class.
+    abs_membs = abstract.Dict(self.vm)
+    abs_membs.update(node, members)
+    cls_var = self.vm.make_class(
+        node=node,
+        name_var=self.vm.convert.build_string(node, name),
+        bases=[self.vm.convert.tuple_type.to_variable(node)],
+        class_dict_var=abs_membs.to_variable(node),
+        cls_var=None)
+    # Now that the class has been made, we can complete the TypeParameter used
+    # by __new__, _make and _replace.
+    cls_type_param.bound = cls_var.data[0]
+    return cls_var
+
+  def call(self, node, _, args):
+    try:
+      name_var, field_names, field_types = self._getargs(node, args)
+    except abstract.ConversionError:
+      return node, self.vm.convert.unsolvable.to_variable(node)
+
+    try:
+      name = abstract.get_atomic_python_constant(name_var)
+    except abstract.ConversionError:
+      return node, self.vm.convert.unsolvable.to_variable(node)
+
+    try:
+      field_names = self._validate_and_rename_args(name, field_names, False)
+    except ValueError as e:
+      self.vm.errorlog.invalid_namedtuple_arg(self.vm.frames, e.message)
+      return node, self.vm.convert.unsolvable.to_variable(node)
+
+    # We currently don't support forward references. Report if we find any, then
+    # continue by using Unsolvable instead.
+    if any(self.is_forward_ref(t) for t in field_types):
+      self.vm.errorlog.not_supported_yet(
+          self.vm.frames, "Forward references in typing.NamedTuple")
+      field_types = [self.vm.convert.unsolvable if self.is_forward_ref(x) else x
+                     for x in field_types]
+
+    cls_var = self._build_namedtuple(name, field_names, field_types, node)
+    self.vm.trace_classdef(cls_var)
+    return node, cls_var
 
 
 def build_optional(name, vm):
@@ -243,7 +494,7 @@ typing_overload = {
     "Any": build_any,
     "Callable": Callable,
     "Generic": build_generic,
-    "NamedTuple": build_namedtuple,
+    "NamedTuple": NamedTupleBuilder,
     "NewType": build_newtype,
     "NoReturn": build_noreturn,
     "Optional": build_optional,

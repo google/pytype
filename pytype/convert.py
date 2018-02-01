@@ -122,8 +122,11 @@ class Converter(object):
     name = "constant" if constant_type is None else constant_type.__name__
     raise abstract.ConversionError("%s is not a(n) %s" % (val, name))
 
-  def name_to_value(self, name, subst=None):
-    pytd_cls = self.vm.lookup_builtin(name)
+  def name_to_value(self, name, subst=None, ast=None):
+    if ast is None:
+      pytd_cls = self.vm.lookup_builtin(name)
+    else:
+      pytd_cls = ast.Lookup(name)
     subst = subst or {}
     return self.constant_to_value(pytd_cls, subst, self.vm.root_cfg_node)
 

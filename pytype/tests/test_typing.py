@@ -38,14 +38,6 @@ class TypingTest(test_base.BaseTest):
     self._test_match("(1, 2, 3.1)", "typing.Sequence[typing.Union[int, float]]")
     self._test_no_match("[1.1, 2.1, 3.1]", "typing.Sequence[int]")
 
-  def test_namedtuple_match(self):
-    self._test_match("collections.namedtuple('foo', [])()",
-                     "typing.NamedTuple",
-                     "# pytype: disable=not-supported-yet")
-    self._test_match("collections.namedtuple('foo', ('x', 'y'))(1, 2)",
-                     "typing.NamedTuple('foo', [('x', int), ('y', int)])",
-                     "# pytype: disable=not-supported-yet")
-
   def test_namedtuple_item(self):
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", """
