@@ -458,7 +458,7 @@ def SavePickle(data, filename=None, compress=False):
   assert not compress or filename, "gzip only supported with a filename"
   try:
     if compress:
-      with gzip.GzipFile(filename, "wb") as fi:
+      with gzip.GzipFile(filename, "wb", mtime=1.0) as fi:
         cPickle.dump(data, fi, _PICKLE_PROTOCOL)
     elif filename is not None:
       with open(filename, "wb") as fi:
