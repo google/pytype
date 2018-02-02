@@ -17,7 +17,7 @@ class ErrorTest(test_base.BaseTest):
       f(3)
       f(4)
     """)
-    self.assertErrorLogIs(errors, [(3, "attribute-error", r"foobar.*int")])
+    self.assertErrorLogIs(errors, [(3, "attribute-error", r"'foobar' on int$")])
 
   def testUnknownGlobal(self):
     _, errors = self.InferWithErrors("""
@@ -186,6 +186,15 @@ class ErrorTest(test_base.BaseTest):
     """)
     self.assertErrorLogIs(errors, [(4, "attribute-error", r"__iter__.*A")])
 
+  def testIterOnModule(self):
+    errors = self.CheckWithErrors("""\
+      import sys
+      for _ in sys:
+        pass
+    """)
+    self.assertErrorLogIs(
+        errors, [(2, "module-attr", r"__iter__.*module 'sys'")])
+
   def testInheritFromGeneric(self):
     with utils.Tempdir() as d:
       d.create_file("mod.pyi", """
@@ -285,8 +294,10 @@ class ErrorTest(test_base.BaseTest):
       """, pythonpath=[d.path])
       self.assertErrorLogIs(errors, [
           (5, "attribute-error", r"No attribute 'foo' on Type\[Foo\]"),
-          (11, "attribute-error", r"No attribute 'bar' on None"),
-          (11, "attribute-error", r"No attribute 'bar' on int"),
+          (11, "attribute-error",
+           r"No attribute 'bar' on None\nIn Optional\[int\]"),
+          (11, "attribute-error",
+           r"No attribute 'bar' on int\nIn Optional\[int\]"),
           (15, "module-attr", "No attribute 'baz' on module 'modfoo'")])
 
   def testAttributeErrorGetAttribute(self):

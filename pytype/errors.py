@@ -502,11 +502,15 @@ class ErrorLog(ErrorLogBase):
     self.error(stack, "Couldn't import pyi for %r" % name, str(error))
 
   @_error_name("attribute-error")
-  def attribute_error(self, stack, obj, attr_name):
-    assert obj.bindings
-    obj_values = abstract.merge_values(obj.data, obj.data[0].vm)
-    obj_repr = self._print_as_actual_type(obj_values)
-    self.error(stack, "No attribute %r on %s" % (attr_name, obj_repr))
+  def _attribute_error(self, stack, binding, attr_name):
+    obj_repr = self._print_as_actual_type(binding.data)
+    if len(binding.variable.bindings) > 1:
+      details = "In %s" % self._print_as_actual_type(abstract.merge_values(
+          binding.variable.data, binding.data.vm))
+    else:
+      details = None
+    self.error(
+        stack, "No attribute %r on %s" % (attr_name, obj_repr), details=details)
 
   @_error_name("not-writable")
   def not_writable(self, stack, obj, attr_name):
@@ -515,17 +519,15 @@ class ErrorLog(ErrorLogBase):
     self.error(stack, "Can't assign attribute %r on %s" % (attr_name, obj_repr))
 
   @_error_name("module-attr")
-  def module_attr(self, stack, obj, attr_name):
-    module_names = {m.name for m in obj.data if isinstance(m, abstract.Module)}
-    assert module_names
-    self.error(stack, "No attribute %r on module %r" % (
-        attr_name, min(module_names)))
+  def _module_attr(self, stack, binding, attr_name):
+    module_name = binding.data.name
+    self.error(stack, "No attribute %r on module %r" % (attr_name, module_name))
 
-  def attribute_or_module_error(self, stack, obj, attr_name):
-    if any(isinstance(x, abstract.Module) for x in obj.data):
-      return self.module_attr(stack, obj, attr_name)
+  def attribute_error(self, stack, binding, attr_name):
+    if isinstance(binding.data, abstract.Module):
+      self._module_attr(stack, binding, attr_name)
     else:
-      return self.attribute_error(stack, obj, attr_name)
+      self._attribute_error(stack, binding, attr_name)
 
   @_error_name("unbound-type-param")
   def unbound_type_param(self, stack, obj, attr_name, type_param_name):

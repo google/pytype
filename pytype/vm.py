@@ -1096,8 +1096,7 @@ class VirtualMachine(object):
       if self.frame.func:
         combination.append(self.frame.func)
       if state.node.HasCombination(combination):
-        self.errorlog.attribute_or_module_error(
-            self.frames, error.AssignToNewVariable(self.root_cfg_node), attr)
+        self.errorlog.attribute_error(self.frames, error, attr)
 
   def _filter_none_and_paste_bindings(self, node, bindings, var,
                                       discard_concrete_values=False):
@@ -1294,7 +1293,7 @@ class VirtualMachine(object):
         if report_errors:
           for m in missing:
             if state.node.HasCombination([m]):
-              self.errorlog.attribute_error(self.frames, seq, "__iter__")
+              self.errorlog.attribute_error(self.frames, m, "__iter__")
           itr = self.convert.create_new_unsolvable(state.node)
         else:
           itr = None
