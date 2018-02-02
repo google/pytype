@@ -167,6 +167,7 @@ class MutableSequence(Sequence[_T], Protocol):
 
 class List(MutableSequence[_T]):
   __slots__ = []
+  __hash__ = ...  # type: None
   def __len__(self) -> int: ...
 
 

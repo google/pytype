@@ -368,6 +368,30 @@ class ProtocolTest(test_base.BaseTest):
       f(Foo())
     """)
 
+  def test_list_hash(self):
+    errors = self.CheckWithErrors("""\
+      from __future__ import google_type_annotations
+      from typing import Hashable
+      def f(x: Hashable):
+        pass
+      f([])  # line 5
+    """)
+    self.assertErrorLogIs(
+        errors, [(5, "wrong-arg-types", r"Hashable.*List.*__hash__")])
+
+  def test_hash_constant(self):
+    errors = self.CheckWithErrors("""\
+      from __future__ import google_type_annotations
+      from typing import Hashable
+      class Foo(object):
+        __hash__ = None
+      def f(x: Hashable):
+        pass
+      f(Foo())  # line 7
+    """)
+    self.assertErrorLogIs(
+        errors, [(7, "wrong-arg-types", r"Hashable.*Foo.*__hash__")])
+
 
 if __name__ == "__main__":
   test_base.main()

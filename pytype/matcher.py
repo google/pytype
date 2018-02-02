@@ -617,14 +617,22 @@ class AbstractMatcher(object):
   def _get_methods_dict(self, left):
     """Get the methods implemented (or implicit) on a type."""
     left_methods = {}
-    for cls in left.mro:
+    for cls in reversed(left.mro):
+      if isinstance(cls, abstract.ParameterizedClass):
+        cls = cls.base_cls
+      # We add newly discovered methods to the methods dict and remove from the
+      # dict the names of non-method members, since that means the method was
+      # overwritten with something else.
       if isinstance(cls, abstract.PyTDClass):
         left_methods.update({m.name: m for m in cls.pytd_cls.methods})
+        for c in cls.pytd_cls.constants:
+          left_methods.pop(c.name, None)
       elif isinstance(cls, abstract.InterpreterClass):
-        left_methods.update({name: member
-                             for name, member in cls.members.items()
-                             if any(isinstance(data, abstract.Function)
-                                    for data in member.data)})
+        for name, member in cls.members.items():
+          if any(isinstance(data, abstract.Function) for data in member.data):
+            left_methods[name] = member
+          else:
+            left_methods.pop(name, None)
     self._fill_in_implicit_protocol_methods(left_methods)
     return left_methods
 
