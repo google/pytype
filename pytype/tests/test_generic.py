@@ -808,27 +808,6 @@ class GenericTest(test_base.BaseTest):
         def f() -> int
       """)
 
-  @unittest.skip("Why do we get a.A1[object] instead of a.A1[str]?")
-  def testUnknown(self):
-    with utils.Tempdir() as d:
-      d.create_file("a.pyi", """
-        from typing import Any, Generic, TypeVar
-        T = TypeVar("T")
-        class A1(Generic[T]):
-          def f(self, x: T) -> T
-        class A2(A1[Any]): pass
-      """)
-      ty = self.Infer("""
-        import a
-        def f(x):
-          return x.f("")
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
-        from typing import Any
-        a = ...  # type: module
-        def f(x: a.A1[str] or a.A2) -> Any
-      """)
-
   def testInheritedTypeParameter(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """

@@ -287,6 +287,20 @@ class TestPython3(test_base.BaseTest):
       BarA(0)
     """)
 
+  def test_raise_exception_from(self):
+    self.Check("raise ValueError from NameError")
+
+  def test_inplace_division(self):
+    self.Check("""\
+      x, y = 24, 3
+      x /= y
+      assert x == 8.0 and y == 3
+      assert isinstance(x, float)
+      x /= y
+      assert x == (8.0/3.0) and y == 3
+      assert isinstance(x, float)
+    """)
+
 
 class TypingMethodsTest(test_base.TypingTest):
   """Tests for typing.py specific to python3."""

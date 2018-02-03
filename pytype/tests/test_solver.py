@@ -1,7 +1,5 @@
 """Test cases that need solve_unknowns."""
 
-import unittest
-
 
 from pytype import utils
 from pytype.tests import test_base
@@ -59,16 +57,6 @@ class SolverTests(test_base.BaseTest):
       def f(x) -> Any
     """)
 
-  @unittest.skip("Infers x as Any because dict params are nothing")
-  def testNothingTypeParameters(self):
-    ty = self.Infer("""
-      def f(x):
-        x[""] = dict()
-    """)
-    self.assertTypesMatchPytd(ty, """
-      def f(x: Dict[str, dict]) -> None
-    """)
-
   def testNameConflict(self):
     ty = self.Infer("""
       import StringIO
@@ -120,7 +108,7 @@ class SolverTests(test_base.BaseTest):
       def f() -> NoneType
     """)
 
-  def testOptionalParams(self):
+  def testOptionalParamsIsSubclass(self):
     ty = self.Infer("""
       class Foo(object):
         def __init__(self, *types):
@@ -129,15 +117,13 @@ class SolverTests(test_base.BaseTest):
           return issubclass(val, self.types)
     """)
     self.assertTypesMatchPytd(ty, """
-    from typing import Tuple
     class Foo(object):
       def __init__(self, *types) -> NoneType
       types = ...  # type: tuple
       def bar(self, val) -> bool
     """)
 
-  @unittest.skip("isinstance() doesn't record a type signature")
-  def testOptionalParams_obsolete(self):
+  def testOptionalParamsIsInstance(self):
     ty = self.Infer("""
       class Foo(object):
         def __init__(self, *types):
@@ -148,7 +134,7 @@ class SolverTests(test_base.BaseTest):
     self.assertTypesMatchPytd(ty, """
     class Foo(object):
       def __init__(self, *types) -> NoneType
-      types = ...  # type: Tuple[type, ...]
+      types = ...  # type: tuple
       def bar(self, val) -> bool
     """)
 

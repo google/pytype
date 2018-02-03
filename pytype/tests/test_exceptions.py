@@ -1,13 +1,12 @@
 """Test exceptions for Byterun."""
 
-import unittest
-
 
 from pytype import utils
 from pytype.tests import test_base
 
 
 class TestExceptions(test_base.BaseTest):
+  """Exception tests."""
 
   def test_catching_exceptions(self):
     # TODO(kramm): Don't warn about NameErrors that are being caught.
@@ -63,11 +62,6 @@ class TestExceptions(test_base.BaseTest):
         print("Caught: %s" % e)
       print("All done")
       """)
-
-  @unittest.skip("Python 3 specific")
-  def test_raise_exception_from(self):
-    assert self.PYTHON_VERSION[0] == 3
-    self.Check("raise ValueError from NameError")
 
   def test_raise_and_catch_exception_in_function(self):
     self.Check("""\

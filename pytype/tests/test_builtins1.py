@@ -4,7 +4,6 @@ File 1/3. Split into parts to enable better test parallelism.
 """
 
 import textwrap
-import unittest
 from pytype import collections_overlay
 from pytype.pytd import pytd
 from pytype.tests import test_base
@@ -55,25 +54,31 @@ class BuiltinTests(test_base.BaseTest):
       def t_testEval(x: int) -> ?
     """)
 
-  def testIsinstance1(self):
+  def testIsInstance1(self):
     ty = self.Infer("""
       def t_testIsinstance1(x):
         # TODO: if isinstance(x, int): return "abc" else: return None
         return isinstance(x, int)
     """)
     self.assertTypesMatchPytd(ty, """
-      def t_testIsinstance1(x: object) -> bool
+      def t_testIsinstance1(x) -> bool
     """)
 
-  @unittest.skip("Broken - needs more sophisticated booleans")
-  def testIsinstance2(self):
+  def testIsInstance2(self):
     ty = self.Infer("""
-      def t_testIsinstance2(x):
-        assert isinstance(x, int)
+      class Bar(object):
+        def foo(self):
+          return isinstance(self, Baz)
+
+      class Baz(Bar):
+        pass
     """)
     self.assertTypesMatchPytd(ty, """
-      # currently does (x: object)
-      def t_testIsinstance2(x: int) -> NoneType
+    class Bar(object):
+      def foo(self) -> bool
+
+    class Baz(Bar):
+      pass
     """)
 
   def testPow1(self):
@@ -465,23 +470,6 @@ class BuiltinTests(test_base.BaseTest):
         bar = os.path.join('hello', 'world')
     """)
     ty.Lookup("Foo")  # smoke test
-
-  def testIsInstance(self):
-    ty = self.Infer("""
-      class Bar(object):
-        def foo(self):
-          return isinstance(self, Baz)
-
-      class Baz(Bar):
-        pass
-    """)
-    self.assertTypesMatchPytd(ty, """
-    class Bar(object):
-      def foo(self) -> bool
-
-    class Baz(Bar):
-      pass
-    """)
 
   def testHasAttr(self):
     ty = self.Infer("""

@@ -165,7 +165,7 @@ class RecoveryTests(test_base.BaseTest):
           return self._bar
     """)
 
-  @unittest.skip("Constructor loops forever.")
+  @unittest.skip("Line 7, in __str__: No attribute '_bar' on Foo'")
   def testConstructorInfiniteLoop(self):
     self.Check("""\
       from __future__ import google_type_annotations

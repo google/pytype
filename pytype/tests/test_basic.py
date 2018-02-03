@@ -1,11 +1,10 @@
 """Basic tests for Byterun."""
 
-import unittest
-
 from pytype.tests import test_base
 
 
 class TestIt(test_base.BaseTest):
+  """Basic tests."""
 
   def test_constant(self):
     self.Check("17")
@@ -56,19 +55,6 @@ class TestIt(test_base.BaseTest):
       x /= y
       assert x == 2 and y == 3
       assert isinstance(x, int)
-      """)
-
-  @unittest.skip("Python 3 specific")
-  def test_inplace_division_py3(self):
-    assert self.PYTHON_VERSION[0] == 3
-    self.Check("""\
-      x, y = 24, 3
-      x /= y
-      assert x == 8.0 and y == 3
-      assert isinstance(x, float)
-      x /= y
-      assert x == (8.0/3.0) and y == 3
-      assert isinstance(x, float)
       """)
 
   def test_slice(self):
@@ -527,6 +513,7 @@ class TestIt(test_base.BaseTest):
 
 
 class TestPrinting(test_base.BaseTest):
+  """Printing tests."""
 
   def test_printing(self):
     self.Check("print 'hello'")
@@ -552,6 +539,7 @@ class TestPrinting(test_base.BaseTest):
 
 
 class TestLoops(test_base.BaseTest):
+  """Loop tests."""
 
   def test_for(self):
     self.Check("""\
@@ -605,6 +593,7 @@ class TestLoops(test_base.BaseTest):
 
 
 class TestComparisons(test_base.BaseTest):
+  """Comparison tests."""
 
   def test_in(self):
     self.Check("""\

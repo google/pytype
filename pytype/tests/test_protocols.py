@@ -2,7 +2,6 @@
 
 Based on PEP 544 https://www.python.org/dev/peps/pep-0544/.
 """
-import unittest
 
 
 from pytype import utils
@@ -236,7 +235,6 @@ class ProtocolTest(test_base.BaseTest):
         return iter(x)
     """)
 
-  @unittest.skip("We currently consider this an error. See _match_from_mro.")
   def test_any_superclass(self):
     self.Check("""
       from __future__ import google_type_annotations

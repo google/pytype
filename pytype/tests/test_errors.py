@@ -524,13 +524,12 @@ class ErrorTest(test_base.BaseTest):
       def main() -> Any
     """)
 
-  @unittest.skip("Some types shouldn't allow attribute setting.")
   def testSetIntAttribute(self):
     _, errors = self.InferWithErrors("""\
       x = 42
       x.y = 42
     """, deep=True)
-    self.assertErrorLogIs(errors, [(2, "attribute-error", r"y")])
+    self.assertErrorLogIs(errors, [(2, "not-writable", r"y.*int")])
 
   def testInvalidParametersOnMethod(self):
     with utils.Tempdir() as d:

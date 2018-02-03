@@ -1,6 +1,5 @@
 """Tests for typing.py."""
 
-import unittest
 
 from pytype import utils
 from pytype.pytd import pep484
@@ -260,8 +259,8 @@ class TypingTest(test_base.BaseTest):
       def g1(x: Callable[int, bool]): ...  # bad: _ARGS not a list
       lst = [int] if __random__ else [str]
       def g2(x: Callable[lst, bool]): ...  # bad: _ARGS ambiguous
-      # def g3(x: Callable[[], bool or str]): ...  # bad: _RET ambiguous
-      # def g4(x: Callable[[int or str], bool]): ...  # bad: _ARGS[0] ambiguous
+      def g3(x: Callable[[], bool or str]): ...  # bad: _RET ambiguous
+      def g4(x: Callable[[int or str], bool]): ...  # bad: _ARGS[0] ambiguous
       lst = None  # type: list[int]
       def g5(x: Callable[lst, bool]): ...  # bad: _ARGS not a constant
       lst = [str]
@@ -285,8 +284,8 @@ class TypingTest(test_base.BaseTest):
        def f8(x: Callable[[int, str], Any]) -> None: ...
        def g1(x: Callable[Any, bool]) -> None: ...
        def g2(x: Callable[Any, bool]) -> None: ...
-       # def g3(x: Callable[[], Any]) -> None: ...
-       # def g4(x: Callable[[Any], bool]) -> None: ...
+       def g3(x: Callable[[], Any]) -> None: ...
+       def g4(x: Callable[[Any], bool]) -> None: ...
        def g5(x: Callable[Any, bool]) -> None: ...
        def g6(x: Callable[Any, bool]) -> None: ...
        def g7(x) -> None: ...
@@ -295,27 +294,13 @@ class TypingTest(test_base.BaseTest):
     self.assertErrorLogIs(errors, [
         (15, "invalid-annotation", r"'int'.*must be a list of argument types"),
         (17, "invalid-annotation", r"\[int\] or \[str\].*Must be constant"),
-        # (18, "invalid-annotation", r"bool or str.*Must be constant"),
-        # (19, "invalid-annotation", r"int or str.*Must be constant"),
+        (18, "invalid-annotation", r"bool or str.*Must be constant"),
+        (19, "invalid-annotation", r"int or str.*Must be constant"),
         (21, "invalid-annotation",
          r"instance of List\[int\].*Must be constant"),
         (24, "invalid-annotation", r"\[str or int\].*Must be constant"),
         (25, "invalid-annotation", r"instance of int"),
         (26, "invalid-annotation", r"Callable.*Expected 2.*got 3"),])
-
-  @unittest.skip("Typegraph solver breaks these two.")
-  def test_broken_callable_parameters(self):
-    ty, errors = self.InferWithErrors("""\
-      def g3(x: Callable[[], bool or str]): ...  # bad: _RET ambiguous
-      def g4(x: Callable[[int or str], bool]): ...  # bad: _ARGS[0] ambiguous
-    """)
-    self.assertTypesMatchPytd(ty, """\
-       def g3(x: Callable[[], Any]) -> None: ...
-       def g4(x: Callable[[Any], bool]) -> None: ...
-    """)
-    self.assertErrorLogIs(errors, [
-        (18, "invalid-annotation", r"bool or str.*Must be constant"),
-        (19, "invalid-annotation", r"int or str.*Must be constant"),])
 
   def test_generics(self):
     with utils.Tempdir() as d:
