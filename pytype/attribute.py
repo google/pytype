@@ -337,7 +337,7 @@ class AbstractAttributeHandler(object):
   def _get_attribute_computed(self, node, cls, name, valself, valcls,
                               compute_function):
     """Call compute_function (if defined) to compute an attribute."""
-    assert isinstance(cls, (abstract.Class, abstract.AMBIGUOUS_OR_EMPTY))
+    assert isinstance(cls, (abstract.Class, abstract.AMBIGUOUS_OR_EMPTY)), cls
     if (valself and not isinstance(valself.data, abstract.Module) and
         self._computable(name)):
       attr_var = self._lookup_from_mro(

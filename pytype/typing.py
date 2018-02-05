@@ -241,10 +241,6 @@ class NamedTupleBuilder(collections_overlay.NamedTupleBuilder):
       types.append(abstract.get_atomic_value(typ))
     return name_var, names, types
 
-  def is_forward_ref(self, t):
-    return (isinstance(t, abstract.AbstractOrConcreteValue) and
-            isinstance(t.pyval, basestring))
-
   def _build_namedtuple(self, name, field_names, field_types, node):
     # Build an InterpreterClass representing the namedtuple.
     if field_types:
@@ -289,10 +285,9 @@ class NamedTupleBuilder(collections_overlay.NamedTupleBuilder):
     new_annots = {}
     new_lates = {}
     for (n, t) in zip(field_names, field_types):
-      if self.is_forward_ref(t):
-        new_lates[n] = t
-      else:
-        new_annots[n] = t
+      # We don't support late annotations yet, but once we do, they'll show up
+      # as LateAnnotation objects to be stored in new_lates.
+      new_annots[n] = t
     # We set the bound on this TypeParameter later. This gives __new__ the
     # signature: def __new__(cls: Type[_Tname], ...) -> _Tname, i.e. the same
     # signature that visitor.CreateTypeParametersForSignatures would create.
@@ -447,13 +442,15 @@ class NamedTupleBuilder(collections_overlay.NamedTupleBuilder):
       self.vm.errorlog.invalid_namedtuple_arg(self.vm.frames, e.message)
       return node, self.vm.convert.unsolvable.to_variable(node)
 
-    # We currently don't support forward references. Report if we find any, then
-    # continue by using Unsolvable instead.
-    if any(self.is_forward_ref(t) for t in field_types):
+    annots, late_annots = self.vm.annotations_util.convert_annotations_list(
+        zip(field_names, field_types))
+    if late_annots:
+      # We currently don't support forward references. Report if we find any,
+      # then continue by using Unsolvable instead.
       self.vm.errorlog.not_supported_yet(
           self.vm.frames, "Forward references in typing.NamedTuple")
-      field_types = [self.vm.convert.unsolvable if self.is_forward_ref(x) else x
-                     for x in field_types]
+    field_types = [annots.get(field_name, self.vm.convert.unsolvable)
+                   for field_name in field_names]
 
     cls_var = self._build_namedtuple(name, field_names, field_types, node)
     self.vm.trace_classdef(cls_var)

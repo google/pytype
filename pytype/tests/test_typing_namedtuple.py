@@ -1,6 +1,7 @@
 """Tests for the typing.NamedTuple overlay."""
 
 
+from pytype.pytd import pytd
 from pytype.tests import test_base
 
 
@@ -185,6 +186,41 @@ class NamedTupleTest(test_base.BaseTest):
         import typing
         X = typing.NamedTuple("X", [])
         """)
+
+  def test_callable_attribute(self):
+    ty = self.Infer("""
+      from __future__ import google_type_annotations
+      from typing import Callable, NamedTuple
+      X = NamedTuple("X", [("f", Callable)])
+      def foo(x: X):
+        return x.f
+    """)
+    self.assertMultiLineEqual(pytd.Print(ty.Lookup("foo")),
+                              "def foo(x: X) -> Callable: ...")
+
+  def test_union_attribute(self):
+    ty = self.Infer("""
+      from __future__ import google_type_annotations
+      from typing import NamedTuple, Union
+      X = NamedTuple("X", [("x", Union[str, unicode])])
+      def foo(x: X):
+        return x.x
+    """)
+    self.assertMultiLineEqual(pytd.Print(ty.Lookup("foo")),
+                              "def foo(x: X) -> Union[str, unicode]: ...")
+
+  def test_bare_union_attribute(self):
+    ty, errors = self.InferWithErrors("""\
+      from __future__ import google_type_annotations
+      from typing import NamedTuple, Union
+      X = NamedTuple("X", [("x", Union)])
+      def foo(x: X):
+        return x.x
+    """)
+    self.assertMultiLineEqual(pytd.Print(ty.Lookup("foo")),
+                              "def foo(x: X) -> Any: ...")
+    self.assertErrorLogIs(errors, [(3, "invalid-annotation", r"Union.*x")])
+
 
 if __name__ == "__main__":
   test_base.main()

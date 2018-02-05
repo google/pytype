@@ -99,26 +99,35 @@ class AnnotationsUtil(object):
       # {"i": int, "return": str} is stored as (int, str, ("i", "return"))
       names = abstract.get_atomic_python_constant(raw_annotations[-1])
       type_list = raw_annotations[:-1]
-      annotations = {}
-      late_annotations = {}
+      annotations_list = []
       for name, t in zip(names, type_list):
         name = abstract.get_atomic_python_constant(name)
         visible = t.Data(node)
         if len(visible) > 1:
           self.vm.errorlog.ambiguous_annotation(self.vm.frames, visible, name)
+          t = None
         else:
-          try:
-            annot = self._process_one_annotation(
-                visible[0], name, self.vm.frames)
-          except self.LateAnnotationError:
-            late_annotations[name] = LateAnnotation(
-                visible[0], name, self.vm.simple_stack())
-          else:
-            if annot is not None:
-              annotations[name] = annot
-      return annotations, late_annotations
+          t = visible[0]
+        annotations_list.append((name, t))
+      return self.convert_annotations_list(annotations_list)
     else:
       return {}, {}
+
+  def convert_annotations_list(self, annotations_list):
+    """Convert a (name, raw_annot) list to annotations and late annotations."""
+    annotations = {}
+    late_annotations = {}
+    for name, t in annotations_list:
+      if t is None:
+        continue
+      try:
+        annot = self._process_one_annotation(t, name, self.vm.frames)
+      except self.LateAnnotationError:
+        late_annotations[name] = LateAnnotation(t, name, self.vm.simple_stack())
+      else:
+        if annot is not None:
+          annotations[name] = annot
+    return annotations, late_annotations
 
   def eval_late_annotations(self, node, func, f_globals):
     """Resolves an instance of LateAnnotation's expression."""
