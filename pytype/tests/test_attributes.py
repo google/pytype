@@ -618,23 +618,18 @@ class TestAttributes(test_base.BaseTest):
     self.Check("""\
       class Foo(object):
         HAS_DYNAMIC_ATTRIBUTES = True
-      class Bar(Foo):
-        pass
       Foo().baz
-      # has_dynamic_attributes doesn't work for subclasses
-      Bar().baz  # pytype: disable=attribute-error
     """)
 
   def testHasDynamicAttributesSubClass(self):
-    # has_dynamic_attributes doesn't apply to subclasses
-    _, errors = self.InferWithErrors("""\
+    self.Check("""\
       class Foo(object):
         has_dynamic_attributes = True
       class Bar(Foo):
         pass
+      Foo().baz
       Bar().baz
     """)
-    self.assertErrorLogIs(errors, [(5, "attribute-error", "baz")])
 
   def testHasDynamicAttributesPYI(self):
     with utils.Tempdir() as d:

@@ -788,8 +788,7 @@ class Instance(SimpleAbstractValue):
   def __init__(self, cls, vm):
     super(Instance, self).__init__(cls.name, vm)
     self.cls = cls.to_variable(vm.root_cfg_node)
-    if (isinstance(cls, (InterpreterClass, PyTDClass)) and
-        any(a in cls for a in DYNAMIC_ATTRIBUTE_MARKERS)):
+    if isinstance(cls, (InterpreterClass, PyTDClass)) and cls.is_dynamic:
       self.maybe_missing_members = True
     cls.register_instance(self)
     bad_names = set()
@@ -2218,6 +2217,15 @@ class Class(object):
       return container.get_special_attribute(node, name, valself)
     return Class.super(self.get_special_attribute)(node, name, valself)
 
+  def has_dynamic_attributes(self):
+    return any(a in self for a in DYNAMIC_ATTRIBUTE_MARKERS)
+
+  def compute_is_dynamic(self):
+    # This needs to be called after self.mro is set.
+    return any(c.has_dynamic_attributes()
+               for c in self.mro
+               if isinstance(c, Class))
+
 
 class ParameterizedClass(AtomicAbstractValue, Class):
   """A class that contains additional parameters. E.g. a container.
@@ -2476,6 +2484,7 @@ class PyTDClass(SimpleAbstractValue, Class):
     self.official_name = self.name
     self.template = self.pytd_cls.template
     self.slots = pytd_cls.slots
+    self.is_dynamic = self.compute_is_dynamic()
     Class.init_mixin(self, metaclass)
 
   def get_own_abstract_methods(self):
@@ -2583,6 +2592,7 @@ class InterpreterClass(SimpleAbstractValue, Class):
     self.instances = set()  # filled through register_instance
     self._instance_cache = {}
     self.slots = self._convert_slots(members.get("__slots__"))
+    self.is_dynamic = self.compute_is_dynamic()
     log.info("Created class: %r", self)
 
   def get_own_abstract_methods(self):
