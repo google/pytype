@@ -190,6 +190,9 @@ class Converter(object):
         return pytd_utils.JoinTypes(
             self.value_instance_to_pytd_type(node, p, None, seen, view)
             for p in v.param.constraints)
+      elif v.param.bound:
+        return self.value_instance_to_pytd_type(
+            node, v.param.bound, None, seen, view)
       else:
         return pytd.AnythingType()
     elif isinstance(v, typing.TypeVar):

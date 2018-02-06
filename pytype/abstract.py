@@ -851,8 +851,7 @@ class Instance(SimpleAbstractValue):
     if isinstance(cls, InterpreterClass):
       for name, param in unbound_params:
         if name not in self.type_parameters:
-          var = self.vm.convert.constant_to_var(AsInstance(param.upper_value))
-          self.initialize_type_parameter(name, var)
+          self.initialize_type_parameter(name, self.vm.program.NewVariable())
 
   def merge_type_parameter(self, node, name, value):
     # Members of _bad_names are involved in naming conflicts, so we don't want
