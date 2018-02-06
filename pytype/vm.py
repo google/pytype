@@ -110,6 +110,7 @@ class _FindIgnoredTypeComments(object):
       if isinstance(op, (opcodes.STORE_NAME,
                          opcodes.STORE_FAST,
                          opcodes.STORE_ATTR,
+                         opcodes.STORE_DEREF,
                          opcodes.STORE_GLOBAL)):
         self._ignored_type_lines.discard(op.line)
       elif isinstance(op, opcodes.MAKE_FUNCTION):
@@ -1566,6 +1567,8 @@ class VirtualMachine(object):
     """Stores a value in a closure cell."""
     state, value = state.pop()
     assert isinstance(value, cfg.Variable)
+    name = self.frame.f_code.co_cellvars[op.arg]
+    value = self.annotations_util.apply_type_comment(state, op, name, value)
     self.frame.cells[op.arg].PasteVariable(value, state.node)
     return state
 

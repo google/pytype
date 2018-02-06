@@ -289,6 +289,19 @@ class AssignmentCommentTest(test_base.BaseTest):
       def foo() -> str: ...
     """)
 
+  def testCellvarComment(self):
+    """Type comment on an assignment generating the STORE_DEREF opcode."""
+    ty = self.Infer("""
+      from typing import Mapping
+      def f():
+        map = dict()  # type: Mapping
+        return (map, {x: map.get(y) for x, y in __any_object__})
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Mapping, Tuple
+      def f() -> Tuple[Mapping, dict]: ...
+    """)
+
   def testBadComment(self):
     ty, errors = self.InferWithErrors("""\
       X = None  # type: abc def
