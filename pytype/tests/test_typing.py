@@ -263,16 +263,13 @@ class TypingTest(test_base.BaseTest):
       def g4(x: Callable[[int or str], bool]): ...  # bad: _ARGS[0] ambiguous
       lst = None  # type: list[int]
       def g5(x: Callable[lst, bool]): ...  # bad: _ARGS not a constant
-      lst = [str]
-      lst[0] = int
-      def g6(x: Callable[lst, bool]): ...  # bad: _ARGS not a constant
-      def g7(x: Callable[[42], bool]): ...  # bad: _ARGS[0] not a type
-      def g8(x: Callable[[], bool, int]): ...  # bad: Too many params
+      def g6(x: Callable[[42], bool]): ...  # bad: _ARGS[0] not a type
+      def g7(x: Callable[[], bool, int]): ...  # bad: Too many params
     """)
     self.assertTypesMatchPytd(ty, """
        from typing import Any, Callable, List, Type
 
-       lst = ...  # type: List[Type[str or int]]
+       lst = ...  # type: List[int]
 
        def f1(x: Callable[[int, str], bool]) -> None: ...
        def f2(x: Callable[Any, bool]) -> None: ...
@@ -287,9 +284,8 @@ class TypingTest(test_base.BaseTest):
        def g3(x: Callable[[], Any]) -> None: ...
        def g4(x: Callable[[Any], bool]) -> None: ...
        def g5(x: Callable[Any, bool]) -> None: ...
-       def g6(x: Callable[Any, bool]) -> None: ...
-       def g7(x) -> None: ...
-       def g8(x: Callable[[], bool]) -> None: ...
+       def g6(x) -> None: ...
+       def g7(x: Callable[[], bool]) -> None: ...
     """)
     self.assertErrorLogIs(errors, [
         (15, "invalid-annotation", r"'int'.*must be a list of argument types"),
@@ -298,9 +294,36 @@ class TypingTest(test_base.BaseTest):
         (19, "invalid-annotation", r"int or str.*Must be constant"),
         (21, "invalid-annotation",
          r"instance of List\[int\].*Must be constant"),
-        (24, "invalid-annotation", r"\[str or int\].*Must be constant"),
-        (25, "invalid-annotation", r"instance of int"),
-        (26, "invalid-annotation", r"Callable.*Expected 2.*got 3"),])
+        (22, "invalid-annotation", r"instance of int"),
+        (23, "invalid-annotation", r"Callable.*Expected 2.*got 3"),])
+
+  def test_callable_bad_args(self):
+    ty, errors = self.InferWithErrors("""\
+      from __future__ import google_type_annotations
+      from typing import Callable
+      lst1 = [str]
+      lst1[0] = int
+      def g1(x: Callable[lst1, bool]): ...  # line 5
+      lst2 = [str]
+      while __random__:
+        lst2.append(int)
+      def g2(x: Callable[lst2, bool]): ...  # line 9
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Callable, List, Type, Union
+      lst1 = ...  # type: List[Type[Union[int, str]]]
+      lst2 = ...  # type: List[Type[Union[int, str]]]
+      def g1(x: Callable[..., bool]) -> None: ...
+      def g2(x: Callable[..., bool]) -> None: ...
+    """)
+    # For the first error, it would be more precise to say [str or int], since
+    # the mutation is simple enough that we could keep track of the change to
+    # the constant, but we don't do that yet.
+    self.assertErrorLogIs(errors, [
+        (5, "invalid-annotation",
+         r"instance of List\[Type\[Union\[int, str\]\]\].*Must be constant"),
+        (9, "invalid-annotation",
+         r"instance of List\[Type\[Union\[int, str\]\]\].*Must be constant"),])
 
   def test_generics(self):
     with utils.Tempdir() as d:
