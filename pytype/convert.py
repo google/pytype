@@ -180,14 +180,14 @@ class Converter(object):
   def build_list_of_type(self, node, var):
     """Create a VM list with element type derived from the given variable."""
     ret = abstract.Instance(self.list_type, self.vm)
-    ret.initialize_type_parameter(abstract.T, var)
+    ret.merge_type_parameter(node, abstract.T, var)
     return ret.to_variable(node)
 
   def build_set(self, node, content):
     """Create a VM set from the given sequence."""
     content = list(content)  # content might be a generator
     value = abstract.Instance(self.set_type, self.vm)
-    value.initialize_type_parameter(abstract.T, self.build_content(content))
+    value.merge_type_parameter(node, abstract.T, self.build_content(content))
     return value.to_variable(node)
 
   def build_map(self, node):
@@ -610,11 +610,18 @@ class Converter(object):
           clsval = self.constant_to_value(
               base_cls, subst, self.vm.root_cfg_node)
           instance = abstract.Instance(clsval, self.vm)
-          assert len(cls.parameters) <= len(base_cls.template)
-          for formal, actual in zip(base_cls.template, cls.parameters):
-            p = self.constant_to_var(
-                abstract.AsInstance(actual), subst, get_node())
-            instance.initialize_type_parameter(formal.name, p)
+          num_params = len(cls.parameters)
+          assert num_params <= len(base_cls.template)
+          for i, formal in enumerate(base_cls.template):
+            if i < num_params:
+              node = get_node()
+              p = self.constant_to_var(
+                  abstract.AsInstance(cls.parameters[i]), subst, node)
+            else:
+              # An omitted type parameter implies `Any`.
+              node = self.vm.root_cfg_node
+              p = self.unsolvable.to_variable(node)
+            instance.merge_type_parameter(node, formal.name, p)
           return instance
       elif isinstance(cls, pytd.Class):
         assert not cls.template

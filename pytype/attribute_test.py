@@ -42,8 +42,6 @@ class AttributeTest(unittest.TestCase):
     t = abstract.TypeParameter(
         abstract.T, self._vm, bound=self._vm.convert.int_type)
     instance = abstract.Instance(self._vm.convert.list_type, self._vm)
-    instance.initialize_type_parameter(
-        abstract.T, self._vm.program.NewVariable())
     t_instance = abstract.TypeParameterInstance(t, instance, self._vm)
     node, var = self._vm.attribute_handler.get_attribute(
         self._vm.root_cfg_node, t_instance, "real")

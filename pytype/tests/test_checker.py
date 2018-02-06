@@ -126,7 +126,7 @@ class CheckerTest(test_base.BaseTest):
     """)
     self.assertErrorLogIs(errorlog, [(5, "bad-return-type",
                                       r"Generator\[str, Any, Any\].*"
-                                      r"Generator\[int, Any, Any\]")])
+                                      r"Generator\[int, nothing, nothing\]")])
 
   def testMultipleParameterBindings(self):
     errorlog = self.CheckWithErrors("""\

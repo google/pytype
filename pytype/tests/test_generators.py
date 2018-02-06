@@ -67,7 +67,7 @@ class GeneratorTest(test_base.BaseTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Generator
-      def foo(self) -> Generator[int, Any, Any]
+      def foo(self) -> Generator[int, nothing, nothing]
     """)
 
   def testIterationOfGetItem(self):
@@ -135,7 +135,7 @@ class GeneratorTest(test_base.BaseTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Generator
-      def f() -> Generator[int, Any, Any]
+      def f() -> Generator[int, nothing, nothing]
     """)
 
 

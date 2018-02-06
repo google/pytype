@@ -1334,8 +1334,8 @@ class AbstractTest(AbstractTestBase):
 
   def testCallTypeParameterInstance(self):
     instance = abstract.Instance(self._vm.convert.list_type, self._vm)
-    instance.initialize_type_parameter(
-        abstract.T,
+    instance.merge_type_parameter(
+        self._vm.root_cfg_node, abstract.T,
         self._vm.convert.int_type.to_variable(self._vm.root_cfg_node))
     t = abstract.TypeParameter(abstract.T, self._vm)
     t_instance = abstract.TypeParameterInstance(t, instance, self._vm)
@@ -1347,8 +1347,6 @@ class AbstractTest(AbstractTestBase):
 
   def testCallEmptyTypeParameterInstance(self):
     instance = abstract.Instance(self._vm.convert.list_type, self._vm)
-    instance.initialize_type_parameter(
-        abstract.T, self._vm.program.NewVariable())
     t = abstract.TypeParameter(abstract.T, self._vm)
     t_instance = abstract.TypeParameterInstance(t, instance, self._vm)
     node, ret = t_instance.call(self._node, t_instance.to_binding(self._node),
@@ -1359,8 +1357,8 @@ class AbstractTest(AbstractTestBase):
 
   def testCallTypeParameterInstanceWithWrongArgs(self):
     instance = abstract.Instance(self._vm.convert.list_type, self._vm)
-    instance.initialize_type_parameter(
-        abstract.T,
+    instance.merge_type_parameter(
+        self._vm.root_cfg_node, abstract.T,
         self._vm.convert.int_type.to_variable(self._vm.root_cfg_node))
     t = abstract.TypeParameter(abstract.T, self._vm)
     t_instance = abstract.TypeParameterInstance(t, instance, self._vm)

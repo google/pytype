@@ -196,8 +196,8 @@ class TestStrictNone(test_base.BaseTest):
         yield None
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any, Generator
-      def f() -> Generator[None, Any, Any]
+      from typing import Generator
+      def f() -> Generator[None, nothing, nothing]
     """)
 
   def testKeepContainedNoneReturn(self):
@@ -229,8 +229,9 @@ class TestStrictNone(test_base.BaseTest):
         yield x
     """)
     self.assertTypesMatchPytd(ty, """
+      from typing import Any, Generator
       x = ...  # type: None
-      def f() -> generator
+      def f() -> Generator[Any, nothing, nothing]
     """)
 
   def testDiscardContainedNoneReturn(self):

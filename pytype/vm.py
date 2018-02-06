@@ -2293,7 +2293,8 @@ class VirtualMachine(object):
       # Create a dummy generator instance for checking that
       # Generator[<yield_variable>] matches the annotated return type.
       generator = abstract.Generator(self.frame, self)
-      generator.type_parameters[abstract.T] = self.frame.yield_variable
+      generator.merge_type_parameter(
+          state.node, abstract.T, self.frame.yield_variable)
       self._check_return(state.node, generator.to_variable(state.node),
                          self.frame.allowed_returns)
     return state.set_why("yield")

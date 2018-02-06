@@ -306,6 +306,20 @@ class TupleTest(test_base.BaseTest):
         return x
     """)
 
+  def testMismatchedPyiTuple(self):
+    with utils.Tempdir() as d:
+      d.create_file("bar.pyi", """
+        class Bar(tuple): ...
+      """)
+      errors = self.CheckWithErrors("""\
+        from __future__ import google_type_annotations
+        from typing import Tuple
+        import bar
+        def foo() -> Tuple[bar.Bar, bar.Bar]:
+          return bar.Bar(None, None)  # line 5
+      """, pythonpath=[d.path])
+      self.assertErrorLogIs(errors, [(5, "wrong-arg-count", "1.*3")])
+
 
 if __name__ == "__main__":
   test_base.main()

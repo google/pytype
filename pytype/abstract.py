@@ -848,10 +848,9 @@ class Instance(SimpleAbstractValue):
           node, name, self.vm.convert.create_new_unsolvable(node))
     self._bad_names = bad_names
 
-    if isinstance(cls, InterpreterClass):
-      for name, param in unbound_params:
-        if name not in self.type_parameters:
-          self.initialize_type_parameter(name, self.vm.program.NewVariable())
+    for name, param in unbound_params:
+      if name not in self.type_parameters:
+        self.initialize_type_parameter(name, self.vm.program.NewVariable())
 
   def merge_type_parameter(self, node, name, value):
     # Members of _bad_names are involved in naming conflicts, so we don't want
@@ -928,7 +927,7 @@ class List(Instance, PythonConstant):
     super(List, self).__init__(vm.convert.list_type, vm)
     PythonConstant.init_mixin(self, content)
     combined_content = vm.convert.build_content(content)
-    self.initialize_type_parameter(T, combined_content)
+    self.merge_type_parameter(None, T, combined_content)
     self.could_contain_anything = False
 
   def str_of_constant(self, printer):
@@ -961,7 +960,7 @@ class Tuple(Instance, PythonConstant):
                     tuple(enumerate(content)) + ((T, combined_content),)}
     cls = TupleClass(vm.convert.tuple_type, class_params, vm)
     super(Tuple, self).__init__(cls, vm)
-    self.initialize_type_parameter(T, combined_content)
+    self.merge_type_parameter(None, T, combined_content)
     PythonConstant.init_mixin(self, content)
     self.tuple_length = len(self.pyval)
 
@@ -3379,8 +3378,7 @@ class Generator(Instance):
   def run_until_yield(self, node):
     if self.runs == 0:  # Optimization: We only run the coroutine once.
       node, _ = self.vm.resume_frame(node, self.generator_frame)
-      contained_type = self.generator_frame.yield_variable
-      self.type_parameters[T] = contained_type
+      self.merge_type_parameter(node, T, self.generator_frame.yield_variable)
       self.runs += 1
     return node, self.type_parameters[T]
 
