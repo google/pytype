@@ -70,7 +70,6 @@ class InstanceTest(AbstractTestBase):
 
   def test_compatible_with_set(self):
     i = abstract.Instance(self._vm.convert.set_type, self._vm)
-    i.init_type_parameters(abstract.T)
     # Empty list is not compatible with True.
     self.assertIs(False, i.compatible_with(True))
     self.assertIs(True, i.compatible_with(False))

@@ -690,16 +690,11 @@ class SimpleAbstractValue(AtomicAbstractValue):
     else:
       self.type_parameters[name] = value
 
-  def initialize_type_parameter(self, name, value):
+  def _initialize_type_parameter(self, name, value):
     assert isinstance(name, str)
     assert name not in self.type_parameters
     log.info("Initializing type param %s: %r", name, value.data)
     self.type_parameters[name] = value
-
-  def init_type_parameters(self, *names):
-    """Initialize the named type parameters to nothing (empty)."""
-    self.type_parameters = utils.LazyAliasingMonitorDict(
-        (name, self.vm.program.NewVariable()) for name in names)
 
   def load_lazy_attribute(self, name):
     """Load the named attribute into self.members."""
@@ -850,7 +845,7 @@ class Instance(SimpleAbstractValue):
 
     for name, param in unbound_params:
       if name not in self.type_parameters:
-        self.initialize_type_parameter(name, self.vm.program.NewVariable())
+        self._initialize_type_parameter(name, self.vm.program.NewVariable())
 
   def merge_type_parameter(self, node, name, value):
     # Members of _bad_names are involved in naming conflicts, so we don't want
@@ -993,7 +988,6 @@ class Dict(Instance, HasSlots, PythonConstant, WrapsDict("pyval")):
     self.set_slot("pop", self.pop_slot)
     self.set_slot("setdefault", self.setdefault_slot)
     self.set_slot("update", self.update_slot)
-    self.init_type_parameters(K, V)
     self.could_contain_anything = False
     PythonConstant.init_mixin(self, {})
 
@@ -3395,7 +3389,6 @@ class Iterator(Instance, HasSlots):
     super(Iterator, self).__init__(vm.convert.iterator_type, vm)
     HasSlots.init_mixin(self)
     self.set_slot("next", self.next_slot)
-    self.init_type_parameters(T)
     # TODO(dbaum): Should we set type_parameters[self.TYPE_PARAM] to something
     # based on return_var?
     self._return_var = return_var
