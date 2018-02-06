@@ -9,23 +9,29 @@ import os
 
 
 def scan_package_data(path, pattern, check):
+    # We start off in the setup.py directory, but package_data is relative to
+    # the pytype/ directory.
+    package_dir = 'pytype'
     path = os.path.join(*path)
+    full_path = os.path.join(package_dir, path)
     result = []
-    for subdir, _, _ in os.walk(path):
+    for subdir, _, _ in os.walk(full_path):
         full_pattern = os.path.join(subdir, pattern)
         if glob.glob(full_pattern):
-          # Once we know that it matches files, we store the pattern itself.
-          result.append(full_pattern)
+          # Once we know that it matches files, we store the pattern itself,
+          # stripping off the prepended pytype/
+          result.append(os.path.relpath(full_pattern, package_dir))
     assert os.path.join(path, *check) in result
     return result
 
 
 def get_builtin_files():
-    builtins = scan_package_data(['pytype', 'pytd', 'builtins'], '*.py*',
+    builtins = scan_package_data(['pytd', 'builtins'], '*.py*',
                                  check=['3', '*.py*'])
-    stdlib = scan_package_data(['pytype', 'pytd', 'stdlib'], '*.pytd',
+    stdlib = scan_package_data(['pytd', 'stdlib'], '*.pytd',
                                check=['3', 'asyncio', '*.pytd'])
-    typeshed = scan_package_data(['typeshed'], '*.pyi',
+    # typeshed/ is at the same level as pytype/
+    typeshed = scan_package_data(['..', 'typeshed'], '*.pyi',
                                  check=['stdlib', '2', '*.pyi'])
     return builtins + stdlib + typeshed
 
