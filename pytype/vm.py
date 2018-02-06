@@ -466,6 +466,34 @@ class VirtualMachine(object):
       self.errorlog.base_class_error(self.frames, base)
     return base
 
+  def _filter_out_metaclasses(self, bases):
+    """Process the temporary classes created by six.with_metaclass.
+
+    six.with_metaclass constructs an anonymous class holding a metaclass and a
+    list of base classes; if we find instances in `bases`, store the first
+    metaclass we find and remove all metaclasses from `bases`.
+
+    Args:
+      bases: The list of base classes for the class being constructed.
+
+    Returns:
+      A tuple of (metaclass, base classes)
+    """
+    non_meta = []
+    meta = None
+    for base in bases:
+      with_metaclass = False
+      for b in base.data:
+        if isinstance(b, six_overlay.WithMetaclassInstance):
+          with_metaclass = True
+          if not meta:
+            # Only the first metaclass gets applied.
+            meta = b.get_class()
+          non_meta.extend(b.bases)
+      if not with_metaclass:
+        non_meta.append(base)
+    return meta, non_meta
+
   def make_class(self, node, name_var, bases, class_dict_var, cls_var):
     """Create a class with the name, bases and methods given.
 
@@ -487,6 +515,10 @@ class VirtualMachine(object):
     except abstract.ConversionError:
       log.error("Error initializing class %r", name)
       return self.convert.create_new_unknown(node)
+    # Handle six.with_metaclass.
+    metaclass, bases = self._filter_out_metaclasses(bases)
+    if metaclass:
+      cls_var = metaclass
     # Flatten Unions in the bases
     bases = [self._process_base_class(node, base) for base in bases]
     if not bases:

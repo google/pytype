@@ -13,7 +13,10 @@ class SixOverlay(overlay.Overlay):
   """A custom overlay for the 'six' module."""
 
   def __init__(self, vm):
-    member_map = {"add_metaclass": AddMetaclass}
+    member_map = {
+        "add_metaclass": AddMetaclass,
+        "with_metaclass": WithMetaclass
+    }
     ast = vm.loader.import_name("six")
     super(SixOverlay, self).__init__(vm, "six", member_map, ast)
 
@@ -55,3 +58,33 @@ class AddMetaclass(abstract.PyTDFunction):
     self._match_args(node, args)
     meta = args.posargs[0]
     return node, AddMetaclassInstance(meta, self.vm).to_variable(node)
+
+
+class WithMetaclassInstance(abstract.AtomicAbstractValue):
+  """Anonymous class created by six.with_metaclass."""
+
+  def __init__(self, vm, cls, bases):
+    super(WithMetaclassInstance, self).__init__("WithMetaclassInstance", vm)
+    self.cls = cls
+    self.bases = bases
+
+  def get_class(self):
+    return self.cls
+
+
+class WithMetaclass(abstract.PyTDFunction):
+  """Implements six.with_metaclass."""
+
+  def __init__(self, name, vm):
+    ast = vm.loader.import_name("six")
+    method = ast.Lookup("six.with_metaclass")
+    sigs = [abstract.PyTDSignature(name, sig, vm) for sig in method.signatures]
+    super(WithMetaclass, self).__init__(name, sigs, method.kind, vm)
+
+  def call(self, node, unused_func, args):
+    """Creates an anonymous class to act as a metaclass."""
+    self._match_args(node, args)
+    meta = args.posargs[0]
+    bases = args.posargs[1:]
+    result = WithMetaclassInstance(self.vm, meta, bases).to_variable(node)
+    return node, result
