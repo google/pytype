@@ -8,18 +8,27 @@ import glob
 import os
 
 
-def scan_package_data(path, pattern):
+def scan_package_data(path, pattern, check):
+    path = os.path.join(*path)
     result = []
     for subdir, _, _ in os.walk(path):
         full_pattern = os.path.join(subdir, pattern)
         if glob.glob(full_pattern):
           # Once we know that it matches files, we store the pattern itself.
           result.append(full_pattern)
+    assert os.path.join(path, *check) in result
     return result
 
 
-typeshed = scan_package_data('typeshed', '*.pyi')
-assert os.path.join('typeshed', 'stdlib', '2', '*.pyi') in typeshed
+def get_builtin_files():
+    builtins = scan_package_data(['pytype', 'pytd', 'builtins'], '*.py*',
+                                 check=['3', '*.py*'])
+    stdlib = scan_package_data(['pytype', 'pytd', 'stdlib'], '*.pytd',
+                               check=['3', 'asyncio', '*.pytd'])
+    typeshed = scan_package_data(['typeshed'], '*.pyi',
+                                 check=['stdlib', '2', '*.pyi'])
+    return builtins + stdlib + typeshed
+
 
 parser_ext = Extension(
     'pytype.pyi.parser_ext',
@@ -46,10 +55,7 @@ setup(
               'pytype/typegraph',
              ],
     scripts=['scripts/pytype', 'scripts/pytd'],
-    package_data={'pytype': ['pytd/builtins/*/*.py*',
-                             'pytd/stdlib/*.pytd',
-                             'pytd/stdlib/*/*.pytd',
-                            ] + typeshed},
+    package_data={'pytype': get_builtin_files()},
     requires=['pyyaml (>=3.11)'],
     install_requires=['pyyaml>=3.11'],
     classifiers=['Programming Language :: Python :: 2.7'],
