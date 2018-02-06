@@ -617,6 +617,7 @@ class Converter(object):
             instance.initialize_type_parameter(formal.name, p)
           return instance
       elif isinstance(cls, pytd.Class):
+        assert not cls.template
         # This key is also used in __init__
         key = (abstract.Instance, cls)
         if key not in self._convert_cache:
@@ -626,8 +627,6 @@ class Converter(object):
           else:
             mycls = self.constant_to_value(cls, subst, self.vm.root_cfg_node)
             instance = abstract.Instance(mycls, self.vm)
-            instance.make_template_unsolvable(cls.template,
-                                              self.vm.root_cfg_node)
           log.info("New pytd instance for %s: %r", cls.name, instance)
           self._convert_cache[key] = instance
         return self._convert_cache[key]

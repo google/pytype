@@ -860,11 +860,6 @@ class Instance(SimpleAbstractValue):
     if name not in self._bad_names:
       super(Instance, self).merge_type_parameter(node, name, value)
 
-  def make_template_unsolvable(self, template, node):
-    for formal in template:
-      self.initialize_type_parameter(
-          formal.name, self.vm.convert.unsolvable.to_variable(node))
-
   def compatible_with(self, logical_value):  # pylint: disable=unused-argument
     # Containers with unset parameters and NoneType instances cannot match True.
     name = self.get_full_name()
