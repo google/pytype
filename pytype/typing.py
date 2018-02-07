@@ -203,7 +203,7 @@ class NoReturn(abstract.AtomicAbstractValue):
 
 def build_any(name, vm):
   del name
-  return abstract.Unsolvable(vm)
+  return vm.convert.unsolvable
 
 
 class NamedTupleBuilder(collections_overlay.NamedTupleBuilder):

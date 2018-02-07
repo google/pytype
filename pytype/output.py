@@ -100,8 +100,19 @@ class Converter(object):
               node or v.vm.root_cfg_node).data
         else:
           param_values = [v.vm.convert.unsolvable]
-        type_arguments.append(pytd_utils.JoinTypes(
-            self.value_to_pytd_type(node, p, seen, view) for p in param_values))
+        if (param_values == [v.vm.convert.unsolvable] and
+            isinstance(v, abstract.ParameterizedClass) and
+            not v.vm.annotations_util.get_type_parameters(
+                v.type_parameters[t])):
+          # When the instance's parameter value is unsolvable, we can get a
+          # more precise type from the class. Note that we need to be careful
+          # not to introduce unbound type parameters.
+          arg = self.value_instance_to_pytd_type(
+              node, v.type_parameters[t], None, seen, view)
+        else:
+          arg = pytd_utils.JoinTypes(self.value_to_pytd_type(
+              node, p, seen, view) for p in param_values)
+        type_arguments.append(arg)
       return type_arguments
     else:
       return [pytd.AnythingType() for _ in template]

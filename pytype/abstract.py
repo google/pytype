@@ -3516,6 +3516,9 @@ class BuildClass(AtomicAbstractValue):
         node, name, list(bases), func.f_locals.to_variable(node), metaclass)
 
 
+# TODO(rechen): Don't allow this class to be instantiated multiple times. It's
+# useful to be able to do comparisons like `var.data == [convert.unsolvable]`,
+# and those require Unsolvable to be a singleton.
 class Unsolvable(AtomicAbstractValue):
   """Representation of value we know nothing about.
 

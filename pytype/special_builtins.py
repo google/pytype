@@ -375,7 +375,7 @@ class SuperInstance(abstract.AtomicAbstractValue):
 
   def call(self, node, _, args):
     self.vm.errorlog.not_callable(self.vm.frames, self)
-    return node, abstract.Unsolvable(self.vm).to_variable(node)
+    return node, self.vm.convert.unsolvable.to_variable(node)
 
 
 class Super(abstract.PyTDClass):

@@ -368,6 +368,18 @@ class BuiltinTests3(test_base.BaseTest):
       len({})
     """)
 
+  def testPrintBareType(self):
+    ty = self.Infer("""
+      from typing import Any, Dict, Type
+      d1 = {}  # type: Dict[str, type]
+      d2 = {}  # type: Dict[str, Type[Any]]
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Dict
+      d1 = ...  # type: Dict[str, type]
+      d2 = ...  # type: Dict[str, type]
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()
