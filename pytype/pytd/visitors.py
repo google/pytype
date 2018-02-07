@@ -986,7 +986,8 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny):
     super(LookupExternalTypes, self).__init__()
     self._module_map = module_map
     self.name = self_name
-    self._in_constant = None
+    self._in_constant = False
+    self._alias_name = None
     self._star_imports = set()
 
   def _ResolveUsingGetattr(self, module_name, module):
@@ -999,13 +1000,21 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny):
     assert len(g.signatures) == 1
     return g.signatures[0].return_type
 
-  def EnterConstant(self, t):
+  def EnterConstant(self, _):
     assert not self._in_constant
-    self._in_constant = t.name
+    self._in_constant = True
 
   def LeaveConstant(self, _):
     assert self._in_constant
-    self._in_constant = None
+    self._in_constant = False
+
+  def EnterAlias(self, t):
+    assert not self._alias_name
+    self._alias_name = t.name
+
+  def LeaveAlias(self, _):
+    assert self._alias_name
+    self._alias_name = None
 
   def _LookupModuleName(self, name):
     if name in self._module_map:
@@ -1026,7 +1035,12 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny):
         if an identifier in a module isn't a class.
     """
     if t.name in self._module_map:
-      return ToType(pytd.Module(name=t.name, module_name=t.name))
+      if self._alias_name and "." in self._alias_name:
+        # Module aliases appear only in asts that use fully-qualified names.
+        return ToType(pytd.Module(name=t.name, module_name=t.name))
+      else:
+        # We have a class with the same name as a module.
+        return t
     module_name, dot, name = t.name.rpartition(".")
     if not dot or module_name == self.name:
       # Nothing to do here. This visitor will only look up nodes in other

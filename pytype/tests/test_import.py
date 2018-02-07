@@ -1079,6 +1079,38 @@ class ImportTest(test_base.BaseTest):
         v = ...  # type: pkg.d.Y
       """)
 
+  def testModuleClassConflict(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo/bar.pyi", "def __getattr__(name) -> ?")
+      ty = self.Infer("""
+        from foo import bar
+        class foo(object):
+          def __new__(cls):
+            return object.__new__(cls)
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        from typing import Type, TypeVar
+        bar = ...  # type: module
+        _Tfoo = TypeVar("_Tfoo", bound=foo)
+        class foo(object):
+          def __new__(cls: Type[_Tfoo]) -> _Tfoo
+      """)
+
+  def testClassAlias(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo/bar.pyi", "def __getattr__(name) -> ?")
+      ty = self.Infer("""
+        from foo import bar
+        class foo(object):
+          pass
+        baz = foo
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        bar = ...  # type: module
+        class foo(object): ...
+        baz = foo
+      """)
+
 
 if __name__ == "__main__":
   test_base.main()
