@@ -51,8 +51,7 @@ class ParserTest(unittest.TestCase):
     ast = parser.parse_string(textwrap.dedent(src),
                               python_version=self.PYTHON_VERSION)
     ast = ast.Visit(visitors.LookupExternalTypes(
-        {"__builtin__": self.loader.builtins,
-         "typing": self.loader.typing}, full_names=True))
+        {"__builtin__": self.loader.builtins, "typing": self.loader.typing}))
     ast = ast.Visit(visitors.NamedTypeToClassType())
     ast = ast.Visit(visitors.AdjustTypeParameters())
     ast.Visit(visitors.FillInLocalPointers({

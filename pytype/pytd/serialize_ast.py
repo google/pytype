@@ -244,8 +244,7 @@ def _LookupClassReferences(serializable_ast, module_map, self_name):
     if any of the Nodes needed to be regenerated.
   """
 
-  class_lookup = visitors.LookupExternalTypes(module_map, full_names=True,
-                                              self_name=self_name)
+  class_lookup = visitors.LookupExternalTypes(module_map, self_name=self_name)
   raw_ast = serializable_ast.ast
 
   for node in (serializable_ast.class_type_nodes or ()):

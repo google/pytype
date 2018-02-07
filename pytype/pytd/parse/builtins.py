@@ -52,7 +52,7 @@ def GetBuiltinsAndTyping(python_version):  # Deprecated. Use load_pytd instead.
     b = parser.parse_string(_FindBuiltinFile("__builtin__", python_version),
                             name="__builtin__",
                             python_version=python_version)
-    b = b.Visit(visitors.LookupExternalTypes({"typing": t}, full_names=True,
+    b = b.Visit(visitors.LookupExternalTypes({"typing": t},
                                              self_name="__builtin__"))
     t = t.Visit(visitors.LookupBuiltins(b))
     b = b.Visit(visitors.NamedTypeToClassType())

@@ -296,27 +296,7 @@ class TestVisitors(parser_test_base.ParserTest):
     self.assertEqual(tree1.Lookup("f").signatures[0].template,
                      tree2.Lookup("f").signatures[0].template)
 
-  def testInPlaceFillInExternalClasses(self):
-    src1 = textwrap.dedent("""
-      def f1() -> bar.Bar
-      class Foo(object):
-        pass
-    """)
-    src2 = textwrap.dedent("""
-      def f2() -> foo.Foo
-      class Bar(object):
-        pass
-    """)
-    ast1 = self.Parse(src1)
-    ast2 = self.Parse(src2)
-    ast1 = ast1.Visit(visitors.LookupExternalTypes(dict(foo=ast1, bar=ast2)))
-    ast2 = ast2.Visit(visitors.LookupExternalTypes(dict(foo=ast1, bar=ast2)))
-    f1, = ast1.Lookup("f1").signatures
-    f2, = ast2.Lookup("f2").signatures
-    self.assertIs(ast2.Lookup("Bar"), f1.return_type.cls)
-    self.assertIs(ast1.Lookup("Foo"), f2.return_type.cls)
-
-  def testInPlaceLookupExternalClassesByFullName(self):
+  def testInPlaceLookupExternalClasses(self):
     src1 = textwrap.dedent("""
       def f1() -> bar.Bar
       class Foo(object):
@@ -329,10 +309,8 @@ class TestVisitors(parser_test_base.ParserTest):
     """)
     ast1 = self.Parse(src1, name="foo")
     ast2 = self.Parse(src2, name="bar")
-    ast1 = ast1.Visit(visitors.LookupExternalTypes(dict(foo=ast1, bar=ast2),
-                                                   full_names=True))
-    ast2 = ast2.Visit(visitors.LookupExternalTypes(dict(foo=ast1, bar=ast2),
-                                                   full_names=True))
+    ast1 = ast1.Visit(visitors.LookupExternalTypes(dict(foo=ast1, bar=ast2)))
+    ast2 = ast2.Visit(visitors.LookupExternalTypes(dict(foo=ast1, bar=ast2)))
     f1, = ast1.Lookup("foo.f1").signatures
     f2, = ast2.Lookup("bar.f2").signatures
     self.assertIs(ast2.Lookup("bar.Bar"), f1.return_type.cls)
@@ -346,10 +324,10 @@ class TestVisitors(parser_test_base.ParserTest):
       class Bar(object):
         bar = ...  # type: foo.Foo
     """)
-    ast1 = self.Parse(src1)
-    ast2 = self.Parse(src2)
+    ast1 = self.Parse(src1, name="foo")
+    ast2 = self.Parse(src2, name="bar")
     ast2 = ast2.Visit(visitors.LookupExternalTypes({"foo": ast1, "bar": ast2}))
-    self.assertEqual(ast2.Lookup("Bar").constants[0],
+    self.assertEqual(ast2.Lookup("bar.Bar").constants[0],
                      pytd.Constant(name="bar", type=pytd.AnythingType()))
 
   def testLookupStarAlias(self):
@@ -364,7 +342,7 @@ class TestVisitors(parser_test_base.ParserTest):
     ast1 = self.Parse(src1).Replace(name="foo").Visit(visitors.AddNamePrefix())
     ast2 = self.Parse(src2).Replace(name="bar").Visit(visitors.AddNamePrefix())
     ast2 = ast2.Visit(visitors.LookupExternalTypes(
-        {"foo": ast1, "bar": ast2}, full_names=True, self_name="bar"))
+        {"foo": ast1, "bar": ast2}, self_name="bar"))
     self.assertEqual("bar", ast2.name)
     self.assertSetEqual({a.name for a in ast2.aliases},
                         {"bar.x", "bar.T", "bar.A", "bar.f", "bar.B"})
@@ -378,7 +356,7 @@ class TestVisitors(parser_test_base.ParserTest):
     ast2 = self.Parse(src2)
     name = ast2.name
     ast2 = ast2.Visit(visitors.LookupExternalTypes(
-        {"foo": ast1}, full_names=True, self_name=None))
+        {"foo": ast1}, self_name=None))
     self.assertEqual(name, ast2.name)
     self.assertMultiLineEqual(pytd.Print(ast2), textwrap.dedent("""\
       import foo
@@ -396,8 +374,7 @@ class TestVisitors(parser_test_base.ParserTest):
     ast2 = self.Parse(src2).Replace(name="bar").Visit(visitors.AddNamePrefix())
     ast3 = self.Parse(src3).Replace(name="baz").Visit(visitors.AddNamePrefix())
     ast3 = ast3.Visit(visitors.LookupExternalTypes(
-        {"foo": ast1, "bar": ast2, "baz": ast3},
-        full_names=True, self_name="baz"))
+        {"foo": ast1, "bar": ast2, "baz": ast3}, self_name="baz"))
     self.assertSetEqual({a.name for a in ast3.aliases}, {"baz.A", "baz.B"})
 
   def testLookupTwoStarAliasesWithSameClass(self):
@@ -411,8 +388,7 @@ class TestVisitors(parser_test_base.ParserTest):
     ast2 = self.Parse(src2).Replace(name="bar").Visit(visitors.AddNamePrefix())
     ast3 = self.Parse(src3).Replace(name="baz").Visit(visitors.AddNamePrefix())
     self.assertRaises(KeyError, ast3.Visit, visitors.LookupExternalTypes(
-        {"foo": ast1, "bar": ast2, "baz": ast3},
-        full_names=True, self_name="baz"))
+        {"foo": ast1, "bar": ast2, "baz": ast3}, self_name="baz"))
 
   def testLookupStarAliasWithDuplicateClass(self):
     src1 = "class A(object): ..."
@@ -424,7 +400,7 @@ class TestVisitors(parser_test_base.ParserTest):
     ast1 = self.Parse(src1).Replace(name="foo").Visit(visitors.AddNamePrefix())
     ast2 = self.Parse(src2).Replace(name="bar").Visit(visitors.AddNamePrefix())
     ast2 = ast2.Visit(visitors.LookupExternalTypes(
-        {"foo": ast1, "bar": ast2}, full_names=True, self_name="bar"))
+        {"foo": ast1, "bar": ast2}, self_name="bar"))
     self.assertMultiLineEqual(pytd.Print(ast2), textwrap.dedent("""\
       class bar.A(object):
           x = ...  # type: int
@@ -441,8 +417,7 @@ class TestVisitors(parser_test_base.ParserTest):
     ast2 = self.Parse(src2).Replace(name="bar").Visit(visitors.AddNamePrefix())
     ast3 = self.Parse(src3).Replace(name="baz").Visit(visitors.AddNamePrefix())
     ast3 = ast3.Visit(visitors.LookupExternalTypes(
-        {"foo": ast1, "bar": ast2, "baz": ast3},
-        full_names=True, self_name="baz"))
+        {"foo": ast1, "bar": ast2, "baz": ast3}, self_name="baz"))
     self.assertMultiLineEqual(pytd.Print(ast3), textwrap.dedent("""\
       from typing import Any
 
@@ -457,7 +432,7 @@ class TestVisitors(parser_test_base.ParserTest):
     ast1 = self.Parse(src1).Replace(name="foo").Visit(visitors.AddNamePrefix())
     ast2 = self.Parse(src2).Replace(name="bar").Visit(visitors.AddNamePrefix())
     ast2 = ast2.Visit(visitors.LookupExternalTypes(
-        {"foo": ast1, "bar": ast2}, full_names=True, self_name="bar"))
+        {"foo": ast1, "bar": ast2}, self_name="bar"))
     self.assertMultiLineEqual(pytd.Print(ast2), textwrap.dedent("""\
       from typing import Any
 
@@ -474,8 +449,7 @@ class TestVisitors(parser_test_base.ParserTest):
     ast2 = self.Parse(src2).Replace(name="bar").Visit(visitors.AddNamePrefix())
     ast3 = self.Parse(src3).Replace(name="baz").Visit(visitors.AddNamePrefix())
     self.assertRaises(KeyError, ast3.Visit, visitors.LookupExternalTypes(
-        {"foo": ast1, "bar": ast2, "baz": ast3},
-        full_names="True", self_name="baz"))
+        {"foo": ast1, "bar": ast2, "baz": ast3}, self_name="baz"))
 
   def testLookupStarAliasWithDifferentGetAttr(self):
     src1 = "def __getattr__(name) -> int"
@@ -486,7 +460,7 @@ class TestVisitors(parser_test_base.ParserTest):
     ast1 = self.Parse(src1).Replace(name="foo").Visit(visitors.AddNamePrefix())
     ast2 = self.Parse(src2).Replace(name="bar").Visit(visitors.AddNamePrefix())
     ast2 = ast2.Visit(visitors.LookupExternalTypes(
-        {"foo": ast1, "bar": ast2}, full_names=True, self_name="bar"))
+        {"foo": ast1, "bar": ast2}, self_name="bar"))
     self.assertMultiLineEqual(pytd.Print(ast2), textwrap.dedent("""\
       def bar.__getattr__(name) -> str: ..."""))
 

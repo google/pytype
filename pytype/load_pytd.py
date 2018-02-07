@@ -217,7 +217,7 @@ class Loader(object):
   def _resolve_external_types(self, ast):
     try:
       ast = ast.Visit(visitors.LookupExternalTypes(
-          self._get_module_map(), full_names=True, self_name=ast.name))
+          self._get_module_map(), self_name=ast.name))
     except KeyError as e:
       raise BadDependencyError(e.message, ast.name)
     return ast

@@ -975,19 +975,16 @@ class LookupBuiltins(Visitor):
 class LookupExternalTypes(RemoveTypeParametersFromGenericAny):
   """Look up NamedType pointers using a symbol table."""
 
-  def __init__(self, module_map, full_names=False, self_name=None):
+  def __init__(self, module_map, self_name=None):
     """Create this visitor.
 
     Args:
       module_map: A dictionary mapping module names to symbol tables.
-      full_names: If True, then the modules in the module_map use fully
-        qualified names ("collections.OrderedDict" instead of "OrderedDict")
       self_name: The name of the current module. If provided, then the visitor
         will ignore nodes with this module name.
     """
     super(LookupExternalTypes, self).__init__()
     self._module_map = module_map
-    self.full_names = full_names
     self.name = self_name
     self._in_constant = None
     self._star_imports = set()
@@ -995,10 +992,7 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny):
   def _ResolveUsingGetattr(self, module_name, module):
     """Try to resolve an identifier using the top level __getattr__ function."""
     try:
-      if self.full_names:
-        g = module.Lookup(module_name + ".__getattr__")
-      else:
-        g = module.Lookup("__getattr__")
+      g = module.Lookup(module_name + ".__getattr__")
     except KeyError:
       return None
     # TODO(kramm): Make parser.py actually enforce this:
@@ -1043,10 +1037,8 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny):
       if name == "*":
         self._star_imports.add(module_name)
         item = t  # VisitTypeDeclUnit will remove this unneeded item.
-      elif self.full_names:
-        item = module.Lookup(module_name + "." + name)
       else:
-        item = module.Lookup(name)
+        item = module.Lookup(module_name + "." + name)
     except KeyError:
       item = self._ResolveUsingGetattr(module_name, module)
       if item is None:
@@ -1080,10 +1072,7 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny):
     ast = self._module_map[module]
     for member in sum((ast.constants, ast.type_params, ast.classes,
                        ast.functions, ast.aliases), ()):
-      if self.full_names:
-        _, _, member_name = member.name.rpartition(".")
-      else:
-        member_name = member.name
+      _, _, member_name = member.name.rpartition(".")
       new_name = self._ModulePrefix() + member_name
       if isinstance(member, pytd.Function) and member_name == "__getattr__":
         # def __getattr__(name) -> Any needs to be imported directly rather
