@@ -1141,6 +1141,7 @@ def _bytecode_reader(data, mapping):
   """
   pos = 0
   extended_arg = 0
+  start = 0
   size = len(data)
   while pos < size:
     opcode = ord(data[pos])
@@ -1160,9 +1161,10 @@ def _bytecode_reader(data, mapping):
       assert not extended_arg, "EXTENDED_ARG in front of opcode without arg"
       extended_arg = 0
       bytes_read = 1
-    # Don't yield EXTENDED_ARG; it just sets state for the next opcode.
+    # Don't yield EXTENDED_ARG; it is part of the next opcode.
     if cls is not EXTENDED_ARG:
-      yield (pos, pos + bytes_read, cls, oparg)
+      yield (start, pos + bytes_read, cls, oparg)
+      start = pos + bytes_read
     pos += bytes_read
 
 
@@ -1178,6 +1180,7 @@ def _wordcode_reader(data, mapping):
     (start position, end position, opcode class, oparg)
   """
   extended_arg = 0
+  start = 0
   for pos in xrange(0, len(data), 2):
     opcode = ord(data[pos])
     cls = mapping[opcode]
@@ -1190,9 +1193,10 @@ def _wordcode_reader(data, mapping):
     else:
       oparg = None
       extended_arg = 0
-    # Don't yield EXTENDED_ARG; it just sets state for the next opcode.
+    # Don't yield EXTENDED_ARG; it is part of the next opcode.
     if cls is not EXTENDED_ARG:
-      yield (pos, pos + 2, cls, oparg)
+      yield (start, pos + 2, cls, oparg)
+      start = pos + 2
 
 
 def _dis(data, mapping, reader,

@@ -922,15 +922,17 @@ class Python34Test(_TestBase):
     self.assertEqual(ops[5].name, 'RETURN_VALUE')
 
   def test_extended_arg(self):
+    # LOAD_CONST should be stored in the jump table with an address of 0, due to
+    # the extended arg; if we don't do this we would throw an exception.
     ops = self.dis([
         0x90, 1, 0,  # 0 EXTENDED_ARG, arg=1,
         0x64, 2, 0,  # 3 LOAD_CONST, arg=2
-        0x53,  # 6 RETURN_VALUE
+        0x71, 0, 0  # 6 JUMP_ABSOLUTE, arg=0
     ])
     self.assertEqual(len(ops), 2)
     self.assertEqual(ops[0].name, 'LOAD_CONST')
     self.assertEqual(ops[0].arg, 0x10002)
-    self.assertEqual(ops[1].name, 'RETURN_VALUE')
+    self.assertEqual(ops[1].name, 'JUMP_ABSOLUTE')
 
 
 class Python35Test(_TestBase):
@@ -995,6 +997,19 @@ class Python36Test(_TestBase):
   def test_build_tuple_unpack_with_call(self):
     self.assertName([158, 0], 'BUILD_TUPLE_UNPACK_WITH_CALL')
 
+  def test_extended_arg(self):
+    """Same as the previous extended arg test, but using the wordcode format."""
+    # LOAD_CONST should be stored in the jump table with an address of 0, due to
+    # the extended arg; if we don't do this we would throw an exception.
+    ops = self.dis([
+        0x90, 1,  # 0 EXTENDED_ARG, arg=1,
+        0x64, 2,  # 3 LOAD_CONST, arg=2
+        0x71, 0,  # 6 JUMP_ABSOLUTE, arg=0
+    ])
+    self.assertEqual(len(ops), 2)
+    self.assertEqual(ops[0].name, 'LOAD_CONST')
+    self.assertEqual(ops[0].arg, 0x102)
+    self.assertEqual(ops[1].name, 'JUMP_ABSOLUTE')
 
 if __name__ == '__main__':
   unittest.main()
