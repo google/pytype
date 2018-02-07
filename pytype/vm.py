@@ -2324,9 +2324,14 @@ class VirtualMachine(object):
     if self.frame.check_return:
       # Create a dummy generator instance for checking that
       # Generator[<yield_variable>] matches the annotated return type.
+      # TODO(rechen): In Python 3, generators can have non-None send and
+      # return types.
       generator = abstract.Generator(self.frame, self)
       generator.merge_type_parameter(
           state.node, abstract.T, self.frame.yield_variable)
+      none_var = self.convert.none.to_variable(state.node)
+      generator.merge_type_parameter(state.node, generator.SEND, none_var)
+      generator.merge_type_parameter(state.node, generator.RET, none_var)
       self._check_return(state.node, generator.to_variable(state.node),
                          self.frame.allowed_returns)
     return state.set_why("yield")

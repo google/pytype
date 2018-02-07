@@ -3363,6 +3363,9 @@ class Generator(Instance):
   (I.e., the return type of coroutines).
   """
 
+  SEND = "_T2"
+  RET = "_V"
+
   def __init__(self, generator_frame, vm):
     super(Generator, self).__init__(vm.convert.generator_type, vm)
     self.generator_frame = generator_frame
@@ -3386,9 +3389,15 @@ class Generator(Instance):
     return node, self.to_variable(node)
 
   def run_until_yield(self, node):
+    """Run the generator."""
     if self.runs == 0:  # Optimization: We only run the coroutine once.
       node, _ = self.vm.resume_frame(node, self.generator_frame)
+      # TODO(rechen): In Python 3, generators can have non-None send and
+      # return types.
       self.merge_type_parameter(node, T, self.generator_frame.yield_variable)
+      none_var = self.vm.convert.none.to_variable(node)
+      self.merge_type_parameter(node, self.SEND, none_var)
+      self.merge_type_parameter(node, self.RET, none_var)
       self.runs += 1
     return node, self.type_parameters[T]
 

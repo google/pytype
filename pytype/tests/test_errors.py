@@ -991,7 +991,7 @@ class ErrorTest(test_base.BaseTest):
     """)
     self.assertErrorLogIs(errors, [(
         4, "bad-return-type",
-        r"Generator\[Union\[str, unicode\], nothing, nothing\]")])
+        r"Generator\[Union\[str, unicode\], None, None\]")])
 
   def testPrintCallableInstance(self):
     _, errors = self.InferWithErrors("""\
