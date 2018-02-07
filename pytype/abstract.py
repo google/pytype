@@ -176,7 +176,13 @@ class AtomicAbstractValue(object):
 
   def compute_mro(self):
     """Compute the class precedence list (mro) according to C3."""
-    bases = utils.concat_lists(b.data for b in self.bases())
+    # The base classes are Variables. If they have multiple options, we would
+    # technically get different MROs, for each combination of options, and thus
+    # would have to return a *list of MROs*. But since ambiguous base classes
+    # are rare enough, we instead just pick one arbitrary option per base class.
+    bases = [min(b.data, key=lambda cls: cls.full_name)
+             for b in self.bases()
+             if b.data]
     return tuple(mro.MROMerge(
         [[self]] + [list(base.mro) for base in bases] + [list(bases)]))
 

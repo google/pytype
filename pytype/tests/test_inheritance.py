@@ -132,5 +132,16 @@ class InheritanceTest(test_base.BaseTest):
     self.assertOnlyHasReturnType(ty.Lookup("h"), self.str)
     self.assertOnlyHasReturnType(ty.Lookup("i"), self.float)
 
+  def testAmbiguousBaseClass(self):
+    self.Check("""
+      class A(object):
+        pass
+      class B(A):
+        pass
+      class Foo(A or B):
+        pass
+    """)
+
+
 if __name__ == "__main__":
   test_base.main()
