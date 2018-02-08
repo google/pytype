@@ -137,6 +137,38 @@ def get_signatures(func):
     raise NotImplementedError(func.__class__.__name__)
 
 
+def has_type_parameters(node, val, seen=None):
+  """Checks if the given object has any TypeParameters in its type_parameters.
+
+  Args:
+    node: The current CFG node.
+    val: The object to check for TypeParameters. Will likely be a
+      SimpleAbstractValue or a cfg.Variable with SimpleAbstractValues bindings.
+    seen: Optional. A set of already-visited objects, to avoid infinite loops.
+
+  Returns:
+    True if there are any TypeParameters in the object's type_parameters dict,
+    or False otherwise.
+  """
+  if seen is None:
+    seen = set()
+  if val in seen:
+    return False
+  seen.add(val)
+  if isinstance(val, cfg.Variable):
+    return any((has_type_parameters(node, d, seen)
+                for d in val.Data(node)))
+  elif isinstance(val, TypeParameter):
+    return True
+  elif isinstance(val, (ParameterizedClass, Union)):
+    return val.formal
+  elif isinstance(val, SimpleAbstractValue):
+    return any((has_type_parameters(node, tp, seen)
+                for tp in val.type_parameters.values()))
+  else:
+    return False
+
+
 class AtomicAbstractValue(object):
   """A single abstract value such as a type or function signature.
 
@@ -1497,7 +1529,7 @@ class Function(SimpleAbstractValue):
       log.debug("args in view: %r", [(a.bindings and view[a].data)
                                      for a in args.posargs])
       for arg in arg_variables:
-        if view[arg].data.formal:
+        if has_type_parameters(node, view[arg].data):
           self.vm.errorlog.invalid_typevar(
               self.vm.frames, "cannot pass a TypeVar to a function")
           view[arg] = arg.AddBinding(self.vm.convert.unsolvable, [], node)

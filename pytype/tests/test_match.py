@@ -361,12 +361,19 @@ class MatchTest(test_base.BaseTest):
   def testFormalType(self):
     _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
-      from typing import AnyStr
+      from typing import AnyStr, List, NamedTuple
       def f(x: str):
         pass
       f(AnyStr)
+      def g(x: List[str]):
+        pass
+      g([AnyStr])
+      H = NamedTuple("H", [('a', AnyStr)])
     """)
-    self.assertErrorLogIs(errors, [(5, "invalid-typevar")])
+    self.assertErrorLogIs(errors, [
+        (5, "invalid-typevar"),
+        (8, "invalid-typevar"),
+        (9, "invalid-typevar")])
 
   def testCallableReturn(self):
     with utils.Tempdir() as d:
