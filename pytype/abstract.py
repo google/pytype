@@ -3116,8 +3116,9 @@ class InterpreterFunction(SignedFunction):
     if annotations:
       for name in callargs:
         if name in annotations:
+          extra_key = (self.get_first_opcode(), name)
           node, _, callargs[name] = self.vm.init_class(
-              node, annotations[name])
+              node, annotations[name], extra_key=extra_key)
     # Might throw vm.RecursionException:
     frame = self.vm.make_frame(node, self.code, callargs,
                                self.f_globals, self.f_locals, self.closure,

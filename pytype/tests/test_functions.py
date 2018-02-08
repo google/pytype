@@ -862,6 +862,37 @@ class TestFunctions(test_base.BaseTest):
       Foo = ...  # type: bool
     """)
 
+  def test_argument_name_conflict(self):
+    ty = self.Infer("""
+      from __future__ import google_type_annotations
+      from typing import Dict
+      def f(x: Dict[str, int]):
+        x[""] = ""
+        return x
+      def g(x: Dict[str, int]):
+        return x
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Dict, Union
+      def f(x: Dict[str, int]) -> Dict[str, Union[str, int]]: ...
+      def g(x: Dict[str, int]) -> Dict[str, int]
+    """)
+
+  def test_argument_type_conflict(self):
+    ty = self.Infer("""
+      from __future__ import google_type_annotations
+      from typing import Dict
+      def f(x: Dict[str, int], y: Dict[str, int]):
+        x[""] = ""
+        return x, y
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Dict, Tuple, Union
+      def f(
+        x: Dict[str, int], y: Dict[str, int]
+      ) -> Tuple[Dict[str, Union[str, int]], Dict[str, int]]: ...
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

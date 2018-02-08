@@ -65,14 +65,6 @@ class CallTracer(vm.VirtualMachine):
     self._generated_classes = {}
     self.exitpoint = None
 
-  def create_argument(self, node, signature, name):
-    t = signature.annotations.get(name)
-    if t:
-      node, _, instance = self.init_class(node, t)
-      return node, instance
-    else:
-      return node, self.convert.create_new_unknown(node, force=True)
-
   def create_varargs(self, node):
     value = abstract.Instance(self.convert.tuple_type, self)
     value.merge_type_parameter(
@@ -90,6 +82,10 @@ class CallTracer(vm.VirtualMachine):
   def create_method_arguments(self, node, method):
     """Create arguments for the given method.
 
+    Creates Unknown objects as arguments for the given method. Note that we
+    don't need to take parameter annotations into account as
+    InterpreterFunction.call() will take care of that.
+
     Args:
       node: The current node.
       method: An abstract.InterpreterFunction.
@@ -97,15 +93,10 @@ class CallTracer(vm.VirtualMachine):
     Returns:
       A tuple of a node and an abstract.FunctionArgs object.
     """
-    args = []
-    for i in range(method.argcount(node)):
-      node, arg = self.create_argument(node, method.signature,
-                                       method.signature.param_names[i])
-      args.append(arg)
-    kws = {}
-    for key in method.signature.kwonly_params:
-      node, arg = self.create_argument(node, method.signature, key)
-      kws[key] = arg
+    args = [self.convert.create_new_unknown(node, force=True)
+            for _ in range(method.argcount(node))]
+    kws = {key: self.convert.create_new_unknown(node, force=True)
+           for key in method.signature.kwonly_params}
     starargs = self.create_varargs(node) if method.has_varargs() else None
     starstarargs = self.create_kwargs(node) if method.has_kwargs() else None
     return node, abstract.FunctionArgs(posargs=tuple(args),
@@ -271,9 +262,21 @@ class CallTracer(vm.VirtualMachine):
           for child in v.type_parameters.values():
             values.extend(child.data)
 
-  def init_class(self, node, cls):
-    """Instantiate a class, and also call __init__."""
-    key = (self.frame and self.frame.current_opcode, cls)
+  def init_class(self, node, cls, extra_key=None):
+    """Instantiate a class, and also call __init__.
+
+    Args:
+      node: The current node.
+      cls: The class to instantiate.
+      extra_key: Optionally, extra information about the location at which the
+        instantion occurs. By default, this method keys on the current opcode
+        and the class, which sometimes isn't enough to disambiguate callers
+        that shouldn't get back the same cached instance.
+
+    Returns:
+      A tuple of node, class variable, instance variable.
+    """
+    key = (self.frame and self.frame.current_opcode, extra_key, cls)
     if (key not in self._instance_cache or
         self._instance_cache[key] is _INITIALIZING):
       clsvar = cls.to_variable(node)
