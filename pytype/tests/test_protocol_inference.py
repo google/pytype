@@ -100,7 +100,7 @@ class ProtocolInferenceTest(test_base.BaseTest):
         def f(x: int or str) -> bool or float
       """)
 
-  def testPow2(self):
+  def test_pow2(self):
     self.options.tweak(protocols=True)
     ty = self.Infer("""
       def t_testPow2(x, y):
@@ -113,7 +113,7 @@ class ProtocolInferenceTest(test_base.BaseTest):
     """)
 
   @unittest.skip("Moving to protocols.")
-  def testSlices(self):
+  def test_slices(self):
     self.options.tweak(protocols=True)
     ty = self.Infer("""
       def trim(docstring):
@@ -127,7 +127,7 @@ class ProtocolInferenceTest(test_base.BaseTest):
       def trim(docstring: bytearray or str or unicode) -> List[bytearray or str or unicode, ...]
     """)
 
-  def testMatchUnknownAgainstContainer(self):
+  def test_match_unknown_against_container(self):
     self.options.tweak(protocols=True)
     ty = self.Infer("""
       a = {1}
@@ -141,7 +141,7 @@ class ProtocolInferenceTest(test_base.BaseTest):
       def f(x: Iterable) -> Set[int]: ...
     """)
 
-  def testWorkflow1(self):
+  def test_workflow1(self):
     self.options.tweak(protocols=True)
     ty = self.Infer("""
       class ConfigParser(object):

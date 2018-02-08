@@ -429,7 +429,7 @@ class IsInstanceTest(AbstractTestBase):
 class PyTDTest(AbstractTestBase):
   """Tests for abstract -> pytd type conversions."""
 
-  def testMetaclass(self):
+  def test_metaclass(self):
     cls = abstract.InterpreterClass("X", [], {}, None, self._vm)
     meta = abstract.InterpreterClass("M", [], {}, None, self._vm)
     meta.official_name = "M"
@@ -437,7 +437,7 @@ class PyTDTest(AbstractTestBase):
     pytd_cls = cls.to_pytd_def(self._vm.root_cfg_node, "X")
     self.assertEqual(pytd_cls.metaclass, pytd.NamedType("M"))
 
-  def testInheritedMetaclass(self):
+  def test_inherited_metaclass(self):
     parent = abstract.InterpreterClass("X", [], {}, None, self._vm)
     meta = abstract.InterpreterClass("M", [], {}, None, self._vm)
     meta.official_name = "M"
@@ -448,7 +448,7 @@ class PyTDTest(AbstractTestBase):
     pytd_cls = child.to_pytd_def(self._vm.root_cfg_node, "Y")
     self.assertIs(pytd_cls.metaclass, None)
 
-  def testMetaclassUnion(self):
+  def test_metaclass_union(self):
     cls = abstract.InterpreterClass("X", [], {}, None, self._vm)
     meta1 = abstract.InterpreterClass("M1", [], {}, None, self._vm)
     meta2 = abstract.InterpreterClass("M2", [], {}, None, self._vm)
@@ -460,7 +460,7 @@ class PyTDTest(AbstractTestBase):
     self.assertEqual(pytd_cls.metaclass, pytd.UnionType(
         (pytd.NamedType("M1"), pytd.NamedType("M2"))))
 
-  def testToTypeWithView1(self):
+  def test_to_type_with_view1(self):
     # to_type(<instance of List[int or unsolvable]>, view={T: int})
     instance = abstract.List([], self._vm)
     instance.merge_type_parameter(
@@ -477,7 +477,7 @@ class PyTDTest(AbstractTestBase):
     self.assertSetEqual({"__builtin__.int"},
                         {t.name for t in pytd_type.parameters})
 
-  def testToTypeWithView2(self):
+  def test_to_type_with_view2(self):
     # to_type(<instance of <str or unsolvable>>, view={__class__: str})
     instance = abstract.Instance(self._vm.convert.unsolvable, self._vm)
     cls_binding = instance.cls.AddBinding(
@@ -486,7 +486,7 @@ class PyTDTest(AbstractTestBase):
     pytd_type = instance.to_type(self._vm.root_cfg_node, seen=None, view=view)
     self.assertEqual("__builtin__.str", pytd_type.name)
 
-  def testToTypeWithView3(self):
+  def test_to_type_with_view3(self):
     # to_type(<tuple (int or str,)>, view={0: str})
     param1 = self._vm.convert.primitive_class_instances[int]
     param2 = self._vm.convert.primitive_class_instances[str]
@@ -499,14 +499,14 @@ class PyTDTest(AbstractTestBase):
     self.assertEqual(pytd_type.parameters[0],
                      pytd.NamedType("__builtin__.str"))
 
-  def testToTypeWithViewAndEmptyParam(self):
+  def test_to_type_with_view_and_empty_param(self):
     instance = abstract.List([], self._vm)
     view = {instance.cls: instance.cls.bindings[0]}
     pytd_type = instance.to_type(self._vm.root_cfg_node, seen=None, view=view)
     self.assertEqual("__builtin__.list", pytd_type.base_type.name)
     self.assertSequenceEqual((pytd.NothingType(),), pytd_type.parameters)
 
-  def testTypingContainer(self):
+  def test_typing_container(self):
     cls = self._vm.convert.list_type
     container = abstract.AnnotationContainer("List", self._vm, cls)
     expected = pytd.GenericType(pytd.NamedType("__builtin__.list"),
@@ -839,13 +839,13 @@ class FunctionTest(AbstractTestBase):
 
 class AbstractMethodsTest(AbstractTestBase):
 
-  def testAbstractMethod(self):
+  def test_abstract_method(self):
     func = abstract.Function("f", self._vm).to_variable(self._vm.root_cfg_node)
     func.data[0].is_abstract = True
     cls = abstract.InterpreterClass("X", [], {"f": func}, None, self._vm)
     self.assertItemsEqual(cls.abstract_methods, {"f"})
 
-  def testInheritedAbstractMethod(self):
+  def test_inherited_abstract_method(self):
     sized_pytd = self._vm.loader.typing.Lookup("typing.Sized")
     sized = self._vm.convert.constant_to_value(
         sized_pytd, {}, self._vm.root_cfg_node)
@@ -853,7 +853,7 @@ class AbstractMethodsTest(AbstractTestBase):
         "X", [sized.to_variable(self._vm.root_cfg_node)], {}, None, self._vm)
     self.assertItemsEqual(cls.abstract_methods, {"__len__"})
 
-  def testOverriddenAbstractMethod(self):
+  def test_overridden_abstract_method(self):
     sized_pytd = self._vm.loader.typing.Lookup("typing.Sized")
     sized = self._vm.convert.constant_to_value(
         sized_pytd, {}, self._vm.root_cfg_node)
@@ -863,7 +863,7 @@ class AbstractMethodsTest(AbstractTestBase):
     cls = abstract.InterpreterClass("X", bases, members, None, self._vm)
     self.assertFalse(cls.abstract_methods)
 
-  def testOverriddenAbstractMethodStillAbstract(self):
+  def test_overridden_abstract_method_still_abstract(self):
     sized_pytd = self._vm.loader.typing.Lookup("typing.Sized")
     sized = self._vm.convert.constant_to_value(
         sized_pytd, {}, self._vm.root_cfg_node)
@@ -1230,7 +1230,7 @@ class SimpleFunctionTest(AbstractTestBase):
 
 class AbstractTest(AbstractTestBase):
 
-  def testInterpreterClassOfficialName(self):
+  def test_interpreter_class_official_name(self):
     cls = abstract.InterpreterClass("X", [], {}, None, self._vm)
     cls.update_official_name("Z")
     self.assertEqual(cls.official_name, "Z")
@@ -1243,7 +1243,7 @@ class AbstractTest(AbstractTestBase):
     cls.update_official_name("A")  # no effect
     self.assertEqual(cls.official_name, "X")
 
-  def testTypeParameterOfficialName(self):
+  def test_type_parameter_official_name(self):
     param = abstract.TypeParameter("T", self._vm)
     self._vm.frame = frame_state.SimpleFrame()  # for error logging
     param.update_official_name("T")
@@ -1251,7 +1251,7 @@ class AbstractTest(AbstractTestBase):
     param.update_official_name("Q")
     self.assertTrue(self._vm.errorlog.has_error())
 
-  def testTypeParameterEquality(self):
+  def test_type_parameter_equality(self):
     param1 = abstract.TypeParameter("S", self._vm)
     param2 = abstract.TypeParameter("T", self._vm)
     cls = abstract.InterpreterClass("S", [], {}, None, self._vm)
@@ -1259,7 +1259,7 @@ class AbstractTest(AbstractTestBase):
     self.assertNotEqual(param1, param2)
     self.assertNotEqual(param1, cls)
 
-  def testUnionEquality(self):
+  def test_union_equality(self):
     union1 = abstract.Union((self._vm.convert.unsolvable,), self._vm)
     union2 = abstract.Union((self._vm.convert.none,), self._vm)
     cls = abstract.InterpreterClass("Union", [], {}, None, self._vm)
@@ -1267,19 +1267,19 @@ class AbstractTest(AbstractTestBase):
     self.assertNotEqual(union1, union2)
     self.assertNotEqual(union1, cls)
 
-  def testInstantiateTypeParameterType(self):
+  def test_instantiate_type_parameter_type(self):
     params = {abstract.T: abstract.TypeParameter(abstract.T, self._vm)}
     cls = abstract.ParameterizedClass(
         self._vm.convert.type_type, params, self._vm)
     self.assertListEqual(cls.instantiate(self._node).data,
                          [self._vm.convert.unsolvable])
 
-  def testSuperType(self):
+  def test_super_type(self):
     supercls = special_builtins.Super(self._vm)
     self.assertListEqual(supercls.get_class().data,
                          [self._vm.convert.type_type])
 
-  def testMixinSuper(self):
+  def test_mixin_super(self):
     """Test the imitation 'super' method on MixinMeta."""
     # pylint: disable=g-wrong-blank-lines
     class A(object):
@@ -1301,7 +1301,7 @@ class AbstractTest(AbstractTestBase):
     self.assertEqual(v_mixin, "hello")
     self.assertEqual(v_a, 1)
 
-  def testInstantiateInterpreterClass(self):
+  def test_instantiate_interpreter_class(self):
     cls = abstract.InterpreterClass("X", [], {}, None, self._vm)
     # When there is no current frame, create a new instance every time.
     v1 = abstract.get_atomic_value(cls.instantiate(self._node))
@@ -1316,7 +1316,7 @@ class AbstractTest(AbstractTestBase):
     self.assertIsNot(v2, v3)
     self.assertIs(v3, v4)
 
-  def testSetModuleOnModule(self):
+  def test_set_module_on_module(self):
     # A module's 'module' attribute should always remain None, and no one
     # should attempt to set it to something besides the module's name or None.
     ast = pytd_utils.CreateModule("some_mod")
@@ -1331,7 +1331,7 @@ class AbstractTest(AbstractTestBase):
       mod.module = "other_mod"
     self.assertRaises(AssertionError, set_module)
 
-  def testCallTypeParameterInstance(self):
+  def test_call_type_parameter_instance(self):
     instance = abstract.Instance(self._vm.convert.list_type, self._vm)
     instance.merge_type_parameter(
         self._vm.root_cfg_node, abstract.T,
@@ -1344,7 +1344,7 @@ class AbstractTest(AbstractTestBase):
     retval, = ret.data
     self.assertListEqual(retval.cls.data, [self._vm.convert.int_type])
 
-  def testCallEmptyTypeParameterInstance(self):
+  def test_call_empty_type_parameter_instance(self):
     instance = abstract.Instance(self._vm.convert.list_type, self._vm)
     t = abstract.TypeParameter(abstract.T, self._vm)
     t_instance = abstract.TypeParameterInstance(t, instance, self._vm)
@@ -1354,7 +1354,7 @@ class AbstractTest(AbstractTestBase):
     retval, = ret.data
     self.assertIs(retval, self._vm.convert.empty)
 
-  def testCallTypeParameterInstanceWithWrongArgs(self):
+  def test_call_type_parameter_instance_with_wrong_args(self):
     instance = abstract.Instance(self._vm.convert.list_type, self._vm)
     instance.merge_type_parameter(
         self._vm.root_cfg_node, abstract.T,
@@ -1369,7 +1369,7 @@ class AbstractTest(AbstractTestBase):
     error, = self._vm.errorlog
     self.assertEqual(error.name, "wrong-arg-count")
 
-  def testInstantiateTupleClassForSub(self):
+  def test_instantiate_tuple_class_for_sub(self):
     type_param = abstract.TypeParameter(abstract.K, self._vm)
     cls = abstract.TupleClass(self._vm.convert.tuple_type,
                               {0: type_param, abstract.T: type_param}, self._vm)

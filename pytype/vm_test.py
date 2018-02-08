@@ -132,7 +132,7 @@ class BytecodeTest(test_base.BaseTest):
       dis.opmap["RETURN_VALUE"],              # [31], 81
   ])
 
-  def testEachInstructionOnceLoops(self):
+  def test_each_instruction_once_loops(self):
     code_nested_loop = pyc.compile_src(src=self.src_nested_loop,
                                        python_version=self.PYTHON_VERSION,
                                        python_exe=self.PYTHON_EXE,
@@ -164,7 +164,7 @@ class BytecodeTest(test_base.BaseTest):
       dis.opmap["RETURN_VALUE"],              # [10] 30 (unreachable)
   ])
 
-  def testEachInstructionOnceDeadCode(self):
+  def test_each_instruction_once_dead_code(self):
     code_deadcode = pyc.compile_src(src=self.src_deadcode,
                                     python_version=self.PYTHON_VERSION,
                                     python_exe=self.PYTHON_EXE,

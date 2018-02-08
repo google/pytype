@@ -341,7 +341,7 @@ class InstanceUnequalityTest(test_base.BaseTest):
           return None
       """)
 
-  def testIteratorContains(self):
+  def test_iterator_contains(self):
     self.Check("""
       1 in iter((1, 2))
       1 not in iter((1, 2))

@@ -637,7 +637,7 @@ class TestFunctions(test_base.BaseTest):
         w2 = ...  # type: Type[Callable]
       """)
 
-  def testTypeParameterVisibility(self):
+  def test_type_parameter_visibility(self):
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Tuple, TypeVar, Union
@@ -654,7 +654,7 @@ class TestFunctions(test_base.BaseTest):
         v2 = ...  # type: int
       """)
 
-  def testPyTDFunctionInClass(self):
+  def test_pytd_function_in_class(self):
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def bar(): ...
@@ -667,7 +667,7 @@ class TestFunctions(test_base.BaseTest):
            self.bar()
       """, pythonpath=[d.path])
 
-  def testInterpreterFunctionInClass(self):
+  def test_interpreter_function_in_class(self):
     _, errors = self.InferWithErrors("""\
       class A(object):
         bar = lambda x: x
@@ -676,7 +676,7 @@ class TestFunctions(test_base.BaseTest):
     """)
     self.assertErrorLogIs(errors, [(4, "wrong-arg-count", "1.*2")])
 
-  def testFunctionToCallable(self):
+  def test_function_to_callable(self):
     ty = self.Infer("""\
       from __future__ import google_type_annotations
       def f():
@@ -691,7 +691,7 @@ class TestFunctions(test_base.BaseTest):
       def f() -> Tuple[Callable[[int, bool], str], Callable[[], int]]
     """)
 
-  def testFunctionToCallableReturnOnly(self):
+  def test_function_to_callable_return_only(self):
     ty = self.Infer("""\
       from __future__ import google_type_annotations
       def f():
@@ -706,25 +706,25 @@ class TestFunctions(test_base.BaseTest):
       def f() -> Tuple[Callable[..., int], Callable[..., str]]
     """)
 
-  def testNestedLambda(self):
+  def test_nested_lambda(self):
     self.Check("""\
       def f(c):
         return lambda c: f(c)
     """)
 
-  def testNestedLambda2(self):
+  def test_nested_lambda2(self):
     self.Check("""\
       def f(d):
         return lambda c: f(c)
     """)
 
-  def testNestedLambda3(self):
+  def test_nested_lambda3(self):
     self.Check("""
       def f(t):
         lambda u=[t,1]: f(u)
       """)
 
-  def testFakeArguments(self):
+  def test_fake_arguments(self):
     self.Check("""\
       from __future__ import google_type_annotations
 
@@ -736,7 +736,7 @@ class TestFunctions(test_base.BaseTest):
       foo.y  # if __init__ fails, this line throws an error
       """)
 
-  def testSetDefaults(self):
+  def test_set_defaults(self):
     self.Check("""\
       import collections
       X = collections.namedtuple("X", "a b c d")
@@ -746,7 +746,7 @@ class TestFunctions(test_base.BaseTest):
       c = X(1, 2, 3, 4)
       """)
 
-  def testSetDefaultsNonNew(self):
+  def test_set_defaults_non_new(self):
     with utils.Tempdir() as d:
       d.create_file("a.pyi", """\
         def b(x: int, y: int, z: int): ...
@@ -762,7 +762,7 @@ class TestFunctions(test_base.BaseTest):
         def c(x: int, y: int, z: int = ...): ...
         """)
 
-  def testBadDefaults(self):
+  def test_bad_defaults(self):
     _, errors = self.InferWithErrors("""\
       import collections
       X = collections.namedtuple("X", "a b c")
@@ -770,7 +770,7 @@ class TestFunctions(test_base.BaseTest):
       """)
     self.assertErrorLogIs(errors, [(3, "bad-function-defaults")])
 
-  def testMultipleValidDefaults(self):
+  def test_multiple_valid_defaults(self):
     self.Check("""
       import collections
       X = collections.namedtuple("X", "a b c")
@@ -778,7 +778,7 @@ class TestFunctions(test_base.BaseTest):
       X(0)  # should not cause an error
       """)
 
-  def testSetDefaultsToExpression(self):
+  def test_set_defaults_to_expression(self):
     # Test that get_atomic_python_constant fails but get_atomic_value pulls out
     # a tuple Instance.
     self.Check("""
@@ -787,7 +787,7 @@ class TestFunctions(test_base.BaseTest):
       X.__new__.__defaults__ = (None,) * len(X._fields)
       """)
 
-  def testSetDefaultsNonTupleInstance(self):
+  def test_set_defaults_non_tuple_instance(self):
     # Test that get_atomic_python_constant fails and get_atomic_value pulls out
     # a non-tuple Instance.
     _, errors = self.InferWithErrors("""\
@@ -798,14 +798,14 @@ class TestFunctions(test_base.BaseTest):
     self.assertErrorLogIs(errors, [(3, "bad-function-defaults")])
 
 
-  def testSetBuiltinDefaults(self):
+  def test_set_builtin_defaults(self):
     self.assertNoCrash(self.Check, """
       import os
       os.chdir.__defaults__ = ("/",)
       os.chdir()
       """)
 
-  def testInterpreterFunctionDefaults(self):
+  def test_interpreter_function_defaults(self):
     self.Check("""
       def test(a, b, c = 4):
         return a + b + c
@@ -831,7 +831,7 @@ class TestFunctions(test_base.BaseTest):
                           [(3, "missing-parameter"),
                            (6, "missing-parameter")])
 
-  def testInterpreterFunctionDefaultsOnClass(self):
+  def test_interpreter_function_defaults_on_class(self):
     _, errors = self.InferWithErrors("""\
       class Foo(object):
         def __init__(self, a, b, c):
@@ -847,7 +847,7 @@ class TestFunctions(test_base.BaseTest):
                           [(6, "missing-parameter"),
                            (9, "missing-parameter")])
 
-  def testSplitOnKwargs(self):
+  def test_split_on_kwargs(self):
     ty = self.Infer("""
       def make_foo(**kwargs):
         varargs = kwargs.pop("varargs", None)

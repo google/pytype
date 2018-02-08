@@ -381,7 +381,7 @@ class TypingTest(test_base.BaseTest):
       f(x for x in [42])
     """)
 
-  def testNameConflict(self):
+  def test_name_conflict(self):
     ty = self.Infer("""
       from __future__ import google_type_annotations
       import typing
@@ -401,7 +401,7 @@ class TypingTest(test_base.BaseTest):
           pass
     """)
 
-  def testImportAll(self):
+  def test_import_all(self):
     python = [
         "from __future__ import google_type_annotations",
         "from typing import *  # pytype: disable=not-supported-yet",
@@ -409,7 +409,7 @@ class TypingTest(test_base.BaseTest):
     ty = self.Infer("\n".join(python), deep=False)
     self.assertTypesMatchPytd(ty, "")
 
-  def testRecursiveTuple(self):
+  def test_recursive_tuple(self):
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Tuple
@@ -420,7 +420,7 @@ class TypingTest(test_base.BaseTest):
         foo.Foo()
       """, pythonpath=[d.path])
 
-  def testBaseClass(self):
+  def test_base_class(self):
     ty = self.Infer("""\
       from __future__ import google_type_annotations
       from typing import Iterable
@@ -432,7 +432,7 @@ class TypingTest(test_base.BaseTest):
       class Foo(Iterable): ...
     """)
 
-  def testTypeChecking(self):
+  def test_type_checking(self):
     self.Check("""\
       import typing
       if typing.TYPE_CHECKING:
@@ -441,7 +441,7 @@ class TypingTest(test_base.BaseTest):
           name_error
     """)
 
-  def testNotTypeChecking(self):
+  def test_not_type_checking(self):
     self.Check("""\
       import typing
       if not typing.TYPE_CHECKING:
@@ -450,7 +450,7 @@ class TypingTest(test_base.BaseTest):
           pass
     """)
 
-  def testMatch(self):
+  def test_match(self):
     ty = self.Infer("""
       import re
       match1 = re.search("(?P<foo>.*)", "bar")
@@ -475,7 +475,7 @@ class TypingTest(test_base.BaseTest):
       v6 = ...  # type: Tuple[int, int]
     """)
 
-  def testCallableCall(self):
+  def test_callable_call(self):
     ty, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       from typing import Callable
@@ -497,7 +497,7 @@ class TypingTest(test_base.BaseTest):
                                    (6, "wrong-arg-types", "int.*float"),
                                    (7, "wrong-arg-count", "1.*2")])
 
-  def testCallableCallWithTypeParameters(self):
+  def test_callable_call_with_type_parameters(self):
     ty, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       from typing import Callable, TypeVar
@@ -516,7 +516,7 @@ class TypingTest(test_base.BaseTest):
     """)
     self.assertErrorLogIs(errors, [(5, "wrong-arg-types", r"int.*str")])
 
-  def testCallableCallWithReturnOnly(self):
+  def test_callable_call_with_return_only(self):
     ty = self.Infer("""
       from __future__ import google_type_annotations
       from typing import Callable
@@ -529,7 +529,7 @@ class TypingTest(test_base.BaseTest):
       v = ...  # type: int
     """)
 
-  def testCallableCallWithVarargsAndKwargs(self):
+  def test_callable_call_with_varargs_and_kwargs(self):
     _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       from typing import Callable
@@ -544,7 +544,7 @@ class TypingTest(test_base.BaseTest):
                                    (6, "wrong-keyword-args", r"x, y"),
                                    (7, "wrong-keyword-args", r"hello")])
 
-  def testCallableAttribute(self):
+  def test_callable_attribute(self):
     self.Check("""\
       from __future__ import google_type_annotations
       from typing import Any, Callable
@@ -552,7 +552,7 @@ class TypingTest(test_base.BaseTest):
         fn.foo # pytype: disable=attribute-error
     """)
 
-  def testCallableFuncName(self):
+  def test_callable_func_name(self):
     self.Check("""\
       from __future__ import google_type_annotations
       from typing import Any, Callable
@@ -560,21 +560,21 @@ class TypingTest(test_base.BaseTest):
         return fn.func_name
     """)
 
-  def testItemsView(self):
+  def test_items_view(self):
     self.Check("""
       from __future__ import google_type_annotations
       from typing import ItemsView
       def f(x: ItemsView[str, int]): ...
     """)
 
-  def testNewType(self):
+  def test_new_type(self):
     _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
       from typing import NewType
     """)
     self.assertErrorLogIs(errors, [(2, "not-supported-yet", r"typing.NewType")])
 
-  def testMappingIter(self):
+  def test_mapping_iter(self):
     self.Check("""
       from __future__ import google_type_annotations
       from typing import Iterator, Mapping
@@ -586,7 +586,7 @@ class TypingTest(test_base.BaseTest):
         return m.itervalues()
     """)
 
-  def testMappingView(self):
+  def test_mapping_view(self):
     self.Check("""
       from __future__ import google_type_annotations
       from typing import Mapping, MappingView
@@ -598,7 +598,7 @@ class TypingTest(test_base.BaseTest):
         return m.viewitems()
     """)
 
-  def testNoReturn(self):
+  def test_no_return(self):
     self.Check("""
       from __future__ import google_type_annotations
       from typing import NoReturn
@@ -606,7 +606,7 @@ class TypingTest(test_base.BaseTest):
         raise ValueError()
     """)
 
-  def testAlwaysReturn(self):
+  def test_always_return(self):
     errors = self.CheckWithErrors("""\
       from __future__ import google_type_annotations
       from typing import NoReturn
@@ -615,7 +615,7 @@ class TypingTest(test_base.BaseTest):
     """)
     self.assertErrorLogIs(errors, [(4, "bad-return-type", "NoReturn.*int")])
 
-  def testMaybeReturnError(self):
+  def test_maybe_return_error(self):
     errors = self.CheckWithErrors("""\
       from __future__ import google_type_annotations
       from typing import NoReturn
@@ -627,7 +627,7 @@ class TypingTest(test_base.BaseTest):
     """)
     self.assertErrorLogIs(errors, [(5, "bad-return-type", "NoReturn.*int")])
 
-  def testMaybeReturn(self):
+  def test_maybe_return(self):
     self.Check("""
       from __future__ import google_type_annotations
       def f() -> int:
@@ -637,7 +637,7 @@ class TypingTest(test_base.BaseTest):
           raise ValueError()
     """)
 
-  def testNoReturnAgainstStr(self):
+  def test_no_return_against_str(self):
     ty = self.Infer("""
       from __future__ import google_type_annotations
       def f() -> str:
@@ -650,7 +650,7 @@ class TypingTest(test_base.BaseTest):
       def g() -> str: ...
     """)
 
-  def testCalledNoReturnAgainstStr(self):
+  def test_called_no_return_against_str(self):
     self.Check("""
       from __future__ import google_type_annotations
       def f():
