@@ -82,7 +82,7 @@ class Options(object):
     o.add_option(
         "--generate-builtins", action="store",
         dest="generate_builtins", default=None,
-        help="Precompile builtins pytd and write to the given file.")
+        help="Precompile builtins pyi and write to the given file.")
     o.add_option(
         "--output-pickled", action="store",
         dest="output_pickled",
@@ -96,7 +96,7 @@ class Options(object):
     o.add_option(
         "--imports_info", type="string", action="store",
         dest="imports_map", default=None,
-        help=("Information for mapping import .pytd to files. "
+        help=("Information for mapping import .pyi to files. "
               "This options is incompatible with --pythonpath."))
     o.add_option(
         "-m", "--main", action="store_true",
@@ -165,7 +165,7 @@ class Options(object):
     o.add_option(
         "--precompiled-builtins", action="store",
         dest="precompiled_builtins", default=None,
-        help="Use the supplied file as precompiled builtins pytd.")
+        help="Use the supplied file as precompiled builtins pyi.")
     o.add_option(
         "--python_exe", type="string", action="store",
         dest="python_exe", default=None,
@@ -190,7 +190,7 @@ class Options(object):
               "being analyzed. That is, if an input .py file has an "
               "'import path.to.foo', and pytype has already been run "
               "with 'pytype path.to.foo.py -o "
-              "$OUTDIR/path/to/foo.pytd', "  # TODO(kramm): Change to .pyi
+              "$OUTDIR/path/to/foo.pyi', "
               "then pytype should be invoked with $OUTDIR in "
               "--pythonpath. This option is incompatible with "
               "--imports_info.") % os.pathsep)
