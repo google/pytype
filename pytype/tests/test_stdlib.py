@@ -259,14 +259,16 @@ class StdlibTests(test_base.BaseTest):
       ids = collections.defaultdict(itertools.count(17).next)
     """)
 
-  def _testCollectionsObject(self, obj, good_arg, bad_arg, error):
+  def _testCollectionsObject(self, obj, good_arg, bad_arg, error,
+                             python_version=(2, 7)):
     errors = self.CheckWithErrors("""\
       from __future__ import google_type_annotations
       import collections
       def f(x: collections.{obj}): ...
       f({good_arg})
       f({bad_arg})  # line 5
-    """.format(obj=obj, good_arg=good_arg, bad_arg=bad_arg))
+    """.format(obj=obj, good_arg=good_arg, bad_arg=bad_arg),
+                                  python_version=python_version)
     self.assertErrorLogIs(errors, [(5, "wrong-arg-types", error)])
 
   def testCollectionsContainer(self):
@@ -323,6 +325,23 @@ class StdlibTests(test_base.BaseTest):
     self._testCollectionsObject(
         "ValuesView", "{}.viewvalues()", "42", r"ValuesView.*int")
 
+  def testCollectionsBytestring(self):
+    self._testCollectionsObject(
+        "ByteString", "bytes('hello', encoding='utf-8')", "42",
+        r"ByteString.*int", python_version=(3, 6))
+
+  def testCollectionsCollection(self):
+    self._testCollectionsObject("Collection", "[]", "42", r"Collection.*int",
+                                python_version=(3, 6))
+
+  def testCollectionsGenerator(self):
+    self._testCollectionsObject("Generator", "i for i in range(42)", "42",
+                                r"generator.*int", python_version=(3, 6))
+
+  def test_collections_reversible(self):
+    self._testCollectionsObject("Reversible", "[]", "42", r"Reversible.*int",
+                                python_version=(3, 6))
+
   def testCollectionsDeque(self):
     # This method is different from the preceding ones because we model
     # collections.deque as a subclass, rather than an alias, of typing.Deque.
@@ -336,6 +355,16 @@ class StdlibTests(test_base.BaseTest):
       f2(collections.deque())  # line 7
     """)
     self.assertErrorLogIs(errors, [(7, "wrong-arg-types", r"int.*deque")])
+
+  def testCollectionsSmokeTest(self):
+    self.Check("""
+      import collections
+      collections.AsyncIterable
+      collections.AsyncIterator
+      collections.AsyncGenerator
+      collections.Awaitable
+      collections.Coroutine
+    """, python_version=(3, 6))
 
 
 if __name__ == "__main__":
