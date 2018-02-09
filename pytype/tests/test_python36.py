@@ -234,13 +234,6 @@ class TestPython36(test_base.BaseTest):
       def test_with(x) -> None: ...
     """)
 
-  def test_reraise(self):
-    # Test that we don't crash when trying to reraise a nonexistent exception.
-    # (Causes a runtime error when actually run in python 3.6)
-    self.assertNoCrash(self.Check, """
-      raise
-    """)
-
   def test_import_importlib(self):
     # Test that we import importlib/__init__.pytd (the version in typeshed does
     # not load).

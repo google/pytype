@@ -43,10 +43,11 @@ class BaseTest(unittest.TestCase):
     cls.loader = load_pytd.Loader(None, cls.PYTHON_VERSION)
 
   def tearDown(self):
-    # Some tests create their own loader, and store it under self.loader. Clean
-    # up after those tests.
-    if "loader" in self.__dict__:
-      del self.loader  # delete the loader from the instance, keep the class one
+    # Some tests customize the loader or python version. Clean up after them.
+    for name in ("loader", "PYTHON_VERSION", "PYTHON_EXE"):
+      if name in self.__dict__:
+        # Delete the name from the instance, keep the class one.
+        delattr(self, name)
 
   def setUp(self):
     self.options = config.Options.create(python_version=self.PYTHON_VERSION,
@@ -104,17 +105,28 @@ class BaseTest(unittest.TestCase):
                                                  (self.nothing, self.nothing))
 
   def _CreateLoader(self):
-    if self.options.module_name or self.options.pythonpath:
+    if self.options.python_version:
+      custom_version = True
+      self.options.tweak(
+          python_exe=utils.get_python_exe(self.options.python_version))
+      # pylint: disable=invalid-name
+      self.PYTHON_VERSION = self.options.python_version
+      self.PYTHON_EXE = self.options.python_exe
+      # pylint: enable=invalid-name
+    else:
+      custom_version = False
+      self.options.tweak(python_version=self.PYTHON_VERSION)
+    if self.options.module_name or self.options.pythonpath or custom_version:
       self.loader = load_pytd.create_loader(self.options)
 
   # For historical reasons (byterun), this method name is snakecase:
   # TODO(kramm): Rename this function.
   # pylint: disable=invalid-name
   def Check(self, code, pythonpath=(), skip_repeat_calls=True,
-            report_errors=True, filename=None, **kwargs):
+            report_errors=True, filename=None, python_version=None, **kwargs):
     """Run an inference smoke test for the given code."""
     self.options.tweak(skip_repeat_calls=skip_repeat_calls,
-                       pythonpath=pythonpath)
+                       pythonpath=pythonpath, python_version=python_version)
     errorlog = errors.ErrorLog()
     self._CreateLoader()
     try:
@@ -130,16 +142,17 @@ class BaseTest(unittest.TestCase):
   def assertNoCrash(self, method, code, **kwargs):
     method(code, report_errors=False, **kwargs)
 
-  def _SetUpErrorHandling(self, code, pythonpath):
+  def _SetUpErrorHandling(self, code, pythonpath, python_version):
     code = textwrap.dedent(code)
     errorlog = errors.ErrorLog()
-    self.options.tweak(pythonpath=pythonpath)
+    self.options.tweak(pythonpath=pythonpath, python_version=python_version)
     self._CreateLoader()
     return {"src": code, "errorlog": errorlog, "options": self.options,
             "loader": self.loader}
 
-  def InferWithErrors(self, code, deep=True, pythonpath=(), **kwargs):
-    kwargs.update(self._SetUpErrorHandling(code, pythonpath))
+  def InferWithErrors(self, code, deep=True, pythonpath=(), python_version=None,
+                      **kwargs):
+    kwargs.update(self._SetUpErrorHandling(code, pythonpath, python_version))
     unit, builtins_pytd = analyze.infer_types(
         deep=deep, analyze_annotated=True, **kwargs)
     unit.Visit(visitors.VerifyVisitor())
@@ -147,18 +160,19 @@ class BaseTest(unittest.TestCase):
                              max_union=7, remove_mutable=False)
     return pytd_utils.CanonicalOrdering(unit), kwargs["errorlog"]
 
-  def CheckWithErrors(self, code, deep=True, pythonpath=(), **kwargs):
-    kwargs.update(self._SetUpErrorHandling(code, pythonpath))
+  def CheckWithErrors(self, code, deep=True, pythonpath=(), python_version=None,
+                      **kwargs):
+    kwargs.update(self._SetUpErrorHandling(code, pythonpath, python_version))
     analyze.check_types(filename="<inline>", deep=deep, **kwargs)
     return kwargs["errorlog"]
 
-  def InferFromFile(self, filename, pythonpath):
+  def InferFromFile(self, filename, pythonpath, python_version=None):
     with open(filename, "rb") as fi:
       code = fi.read()
       errorlog = errors.ErrorLog()
       self.options.tweak(
           module_name=load_pytd.get_module_name(filename, pythonpath),
-          pythonpath=pythonpath)
+          pythonpath=pythonpath, python_version=python_version)
       self._CreateLoader()
       unit, _ = analyze.infer_types(code, errorlog, self.options,
                                     loader=self.loader, filename=filename)
@@ -314,11 +328,11 @@ class BaseTest(unittest.TestCase):
 
   def Infer(self, srccode, pythonpath=(), deep=True,
             report_errors=True, analyze_annotated=True, pickle=False,
-            module_name=None, **kwargs):
+            module_name=None, python_version=None, **kwargs):
     types, builtins_pytd = self._InferAndVerify(
         textwrap.dedent(srccode), pythonpath=pythonpath, deep=deep,
         analyze_annotated=analyze_annotated, module_name=module_name,
-        report_errors=report_errors, **kwargs)
+        report_errors=report_errors, python_version=python_version, **kwargs)
     types = optimize.Optimize(types, builtins_pytd, lossy=False, use_abcs=False,
                               max_union=7, remove_mutable=False)
     types = pytd_utils.CanonicalOrdering(types)
@@ -328,7 +342,7 @@ class BaseTest(unittest.TestCase):
       return types
 
   def _InferAndVerify(self, src, pythonpath, module_name, report_errors,
-                      imports_map=None, quick=False, **kwargs):
+                      python_version, imports_map=None, quick=False, **kwargs):
     """Infer types for the source code treating it as a module.
 
     Used by Infer().
@@ -339,6 +353,7 @@ class BaseTest(unittest.TestCase):
       module_name: Name of the module we're analyzing. E.g. "foo.bar.mymodule".
       report_errors: Whether to fail if the type inferencer reports any errors
         in the program.
+      python_version: The python version.
       imports_map: --imports_info data
       quick: Try to run faster, by avoiding costly computations.
       **kwargs: Keyword parameters to pass through to the type inferencer.
@@ -351,7 +366,7 @@ class BaseTest(unittest.TestCase):
     self.options.tweak(
         module_name=module_name, quick=quick, use_pickled_files=True,
         pythonpath=[""] if (not pythonpath and imports_map) else pythonpath,
-        imports_map=imports_map)
+        imports_map=imports_map, python_version=python_version)
     errorlog = errors.ErrorLog()
     self._CreateLoader()
     unit, builtins_pytd = analyze.infer_types(

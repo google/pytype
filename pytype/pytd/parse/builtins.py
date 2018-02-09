@@ -17,8 +17,6 @@
 
 """Utilities for parsing pytd files for builtins."""
 
-import collections
-
 
 from pytype import utils
 from pytype.pyi import parser
@@ -32,20 +30,18 @@ def _FindBuiltinFile(name, python_version, extension=".pytd"):
   return src
 
 
-# Tests might run with different python versions in the same pytype invocation,
-# so preserve the python version that was used to generate the cache.
-# Cache: (version: tuple(int), cache: tuple(pytd.TypeDeclUnit))
-Cache = collections.namedtuple("Cache", ("version", "cache"))
-_cached_builtins_pytd = Cache(None, None)
+# Tests might run with different python versions in the same pytype invocation.
+# TODO(rechen): It would be nice to get rid of this file, or at least
+# GetBuiltinsAndTyping, but the cache currently prevents slowdowns in tests
+# that create loaders willy-nilly. Maybe load_pytd.py can warn if there are
+# more than n loaders in play, at any given time.
+_cached_builtins_pytd = {}
 
 
 def GetBuiltinsAndTyping(python_version):  # Deprecated. Use load_pytd instead.
   """Get __builtin__.pytd and typing.pytd."""
   assert python_version
-  global _cached_builtins_pytd
-  if _cached_builtins_pytd.cache:
-    assert _cached_builtins_pytd.version == python_version
-  else:
+  if python_version not in _cached_builtins_pytd:
     t = parser.parse_string(_FindBuiltinFile("typing", python_version),
                             name="typing",
                             python_version=python_version)
@@ -69,8 +65,8 @@ def GetBuiltinsAndTyping(python_version):  # Deprecated. Use load_pytd instead.
     t.Visit(visitors.VerifyLookup())
     b.Visit(visitors.VerifyContainers())
     t.Visit(visitors.VerifyContainers())
-    _cached_builtins_pytd = Cache(python_version, (b, t))
-  return _cached_builtins_pytd.cache
+    _cached_builtins_pytd[python_version] = (b, t)
+  return _cached_builtins_pytd[python_version]
 
 
 def GetBuiltinsPyTD(python_version):  # Deprecated. Use Loader.concat_all.

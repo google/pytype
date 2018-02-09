@@ -130,6 +130,13 @@ class TestExceptions(test_base.BaseTest):
       fn()
     """)
 
+  def test_reraise_py3(self):
+    # Test that we don't crash when trying to reraise a nonexistent exception.
+    # (Causes a runtime error when actually run in python 3.6)
+    self.assertNoCrash(self.Check, """
+      raise
+    """, python_version=(3, 6))
+
   def test_finally_while_throwing(self):
     self.Check("""\
       def fn():
