@@ -229,6 +229,12 @@ class PytypeTest(unittest.TestCase):
     self._RunPytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=True, returncode=True)
 
+  def testGenerateBuiltinsPythonpathConflict(self):
+    self.pytype_args["--generate-builtins"] = "builtins.py"
+    self.pytype_args["--pythonpath"] = "foo:bar"
+    self._RunPytype(self.pytype_args)
+    self.assertOutputStateMatches(stdout=False, stderr=True, returncode=True)
+
   def testMissingInput(self):
     self._RunPytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=True, returncode=True)

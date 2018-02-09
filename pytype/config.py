@@ -194,7 +194,7 @@ class Options(object):
               "$OUTDIR/path/to/foo.pytd', "  # TODO(kramm): Change to .pyi
               "then pytype should be invoked with $OUTDIR in "
               "--pythonpath. This option is incompatible with "
-              "--imports_info.") % os.pathsep)
+              "--imports_info and --generate_builtins.") % os.pathsep)
     o.add_option(
         "--protocols", action="store_true",
         dest="protocols", default=False,
@@ -293,12 +293,17 @@ class Options(object):
                                          "output_pickled")
     self.output_pickled = filename
 
-  @uses(["input", "show_config"])
+  @uses(["input", "show_config", "pythonpath"])
   def _store_generate_builtins(self, generate_builtins):
     if generate_builtins:
       if self.input:
         raise optparse.OptionConflictError("Not allowed with an input file",
                                            "generate-builtins")
+      if self.pythonpath != [""]:
+        raise optparse.OptionConflictError(
+            "Not allowed with --pythonpath", "generate-builtins")
+      # Set the default pythonpath to [] rather than [""]
+      self.pythonpath = []
     elif not self.input and not self.show_config:
       raise optparse.OptParseError("Need a filename.")
     self.generate_builtins = generate_builtins

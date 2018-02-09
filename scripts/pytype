@@ -230,10 +230,8 @@ def _generate_builtins_pickle(output_filename, options):
   module_names = t.get_all_stdlib_module_names(options.python_version)
   blacklist = set(t.blacklisted_modules(options.python_version))
   if options.python_version[0] == 3:
-    # Temporarily add missing entries to blacklist manually, while
-    # https://github.com/python/typeshed/pull/1814 is still pending:
-    # TODO(kramm): Remove this again.
-    blacklist.update(["plistlib", "re", "signal"])
+    # TODO(mdemello): plistlib should be in the typeshed blacklist and isn't.
+    blacklist.update(["plistlib"])
   for m in sorted(module_names):
     if m not in blacklist:
       loader.import_name(m)
