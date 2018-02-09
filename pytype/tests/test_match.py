@@ -464,6 +464,22 @@ class MatchTest(test_base.BaseTest):
       dict.__delitem__(Foo(), __any_object__)  # pytype: disable=wrong-arg-types
     """)
 
+  def testCallableAgainstGeneric(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import TypeVar, Callable, Generic, Iterable, Iterator
+        A = TypeVar("A")
+        N = TypeVar("N")
+        class Foo(Generic[A]):
+          def __init__(self, c: Callable[[], N]):
+            self := Foo[N]
+        x = ...  # type: Iterator[int]
+      """)
+      self.Check("""
+        import foo
+        foo.Foo(foo.x.next)
+      """, pythonpath=[d.path])
+
 
 if __name__ == "__main__":
   test_base.main()

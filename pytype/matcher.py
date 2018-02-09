@@ -160,6 +160,9 @@ class AbstractMatcher(object):
       if isinstance(other_type, abstract.TypeParameter):
         # We require type parameters to match exactly.
         if left.param.equivalent_to(other_type):
+          subst = subst.copy()
+          # TODO(kramm): Can we put in something more precise?
+          subst[other_type.name] = node.program.NewVariable([], [], node)
           return subst
         else:
           # Keep the type parameter name in the expected type.

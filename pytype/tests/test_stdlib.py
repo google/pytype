@@ -252,6 +252,13 @@ class StdlibTests(test_base.BaseTest):
       import __future__
     """)
 
+  def testDefaultDict(self):
+    self.Check("""\
+      import collections
+      import itertools
+      ids = collections.defaultdict(itertools.count(17).next)
+    """)
+
   def _testCollectionsObject(self, obj, good_arg, bad_arg, error):
     errors = self.CheckWithErrors("""\
       from __future__ import google_type_annotations
