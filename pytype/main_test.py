@@ -20,6 +20,7 @@ import unittest
 class PytypeTest(unittest.TestCase):
   """Integration test for pytype."""
 
+  PYTHON_EXE = utils.get_python_exe((2, 7))
   PYTHON_VERSION = (2, 7)
 
   DEFAULT_PYI = builtins.DEFAULT_SRC

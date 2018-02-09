@@ -2,7 +2,6 @@
 
 import collections
 import logging
-import os
 import subprocess
 import sys
 
@@ -577,53 +576,11 @@ class CallTracer(vm.VirtualMachine):
             self.frames, combined, formal.get_instance_type(node))
 
 
-def _filename_to_module_name(filename):
-  """Helper function for get_module_name."""
-  if os.path.dirname(filename).startswith(os.pardir):
-    # Don't try to infer a module name for filenames starting with ../
-    return None
-  return filename.replace(os.sep, ".")
-
-
-def get_module_name(filename, pythonpath):
-  """Return, or try to reverse-engineer, the name of the module we're analyzing.
-
-  If a module was passed using --module-name, that name will be returned.
-  Otherwise, this method tries to deduce the module name from the PYTHONPATH
-  and the filename. This will not always be possible. (It depends on the
-  filename starting with an entry in the pythonpath.)
-
-  The module name is used for relative imports.
-
-  Args:
-    filename: The filename of a Python file. E.g. "src/foo/bar/my_module.py".
-    pythonpath: The path Python uses to search for modules.
-
-  Returns:
-    A module name, e.g. "foo.bar.my_module", or None if we can't determine the
-    module name.
-  """
-  if filename:
-    filename, _ = os.path.splitext(os.path.normpath(filename))
-    # We want '' in our lookup path, but we don't want it for prefix tests.
-    for path in filter(bool, pythonpath):
-      path = os.path.normpath(path)
-      if not path.endswith(os.sep):
-        path += os.sep
-      if filename.startswith(path):
-        rel_filename = filename[len(path):]
-        return _filename_to_module_name(rel_filename)
-    # Explicit pythonpath has failed, treat filename as relative to .
-    return _filename_to_module_name(filename)
-
-
 def check_types(src, filename, errorlog, options, loader,
                 deep=True, init_maximum_depth=INIT_MAXIMUM_DEPTH, **kwargs):
   """Verify a PyTD against the Python code."""
   tracer = CallTracer(errorlog=errorlog, options=options,
-                      module_name=(
-                          options.module_name or
-                          get_module_name(filename, options.pythonpath)),
+                      module_name=options.module_name,
                       analyze_annotated=True,
                       generate_unknowns=False,
                       loader=loader, **kwargs)
@@ -637,8 +594,7 @@ def check_types(src, filename, errorlog, options, loader,
 
 
 def infer_types(src, errorlog, options, loader,
-                filename=None,
-                deep=True, init_maximum_depth=INIT_MAXIMUM_DEPTH,
+                filename=None, deep=True, init_maximum_depth=INIT_MAXIMUM_DEPTH,
                 show_library_calls=False, maximum_depth=None, **kwargs):
   """Given Python source return its types.
 
@@ -660,9 +616,7 @@ def infer_types(src, errorlog, options, loader,
     AssertionError: In case of a bad parameter combination.
   """
   tracer = CallTracer(errorlog=errorlog, options=options,
-                      module_name=(
-                          options.module_name or
-                          get_module_name(filename, options.pythonpath)),
+                      module_name=options.module_name,
                       generate_unknowns=options.protocols,
                       store_all_calls=not deep, loader=loader,
                       **kwargs)

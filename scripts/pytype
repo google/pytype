@@ -56,34 +56,6 @@ def check_pyi(input_filename, errorlog, options, loader):
       deep=not options.main_only)
 
 
-def _create_loader(input_filename, options):
-  module_name = (options.module_name or
-                 analyze.get_module_name(input_filename, options.pythonpath))
-  if options.precompiled_builtins:
-    l = load_pytd.PickledPyiLoader.load_from_pickle(
-        options.precompiled_builtins,
-        base_module=module_name,
-        python_version=options.python_version,
-        pythonpath=options.pythonpath,
-        imports_map=options.imports_map,
-        use_typeshed=options.typeshed)
-    return l
-  elif options.use_pickled_files:
-    return load_pytd.PickledPyiLoader(
-        base_module=module_name,
-        python_version=options.python_version,
-        pythonpath=options.pythonpath,
-        imports_map=options.imports_map,
-        use_typeshed=options.typeshed)
-  else:
-    return load_pytd.Loader(
-        base_module=module_name,
-        python_version=options.python_version,
-        pythonpath=options.pythonpath,
-        imports_map=options.imports_map,
-        use_typeshed=options.typeshed)
-
-
 def generate_pyi(input_filename, errorlog, options, loader):
   """Run the inferencer on one file, producing output.
 
@@ -152,7 +124,7 @@ def process_one_file(input_filename,
   errorlog = errors.ErrorLog()
   result = pytd_builtins.DEFAULT_SRC
   ast = pytd_builtins.GetDefaultAst(options.python_version)
-  loader = _create_loader(input_filename, options)
+  loader = load_pytd.create_loader(options)
   try:
     if options.check:
       check_pyi(input_filename=input_filename,
@@ -253,7 +225,7 @@ class _ProfileContext(object):
 
 def _generate_builtins_pickle(output_filename, options):
   """Create a pickled file with the standard library (typeshed + builtins)."""
-  loader = _create_loader(options.input, options)
+  loader = load_pytd.create_loader(options)
   t = typeshed.Typeshed()
   module_names = t.get_all_stdlib_module_names(options.python_version)
   blacklist = set(t.blacklisted_modules(options.python_version))
@@ -290,7 +262,7 @@ def main(argv):
 
 def _parse_pyi(options):
   """Tries parsing a PYI file."""
-  loader = _create_loader(options.input, options)
+  loader = load_pytd.create_loader(options)
   loader.load_file(options.module_name, options.input)
 
 

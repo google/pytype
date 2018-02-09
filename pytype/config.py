@@ -11,6 +11,7 @@ import os
 
 from pytype import debug
 from pytype import imports_map_loader
+from pytype import load_pytd
 from pytype import utils
 
 
@@ -379,6 +380,12 @@ class Options(object):
       raise optparse.OptionConflictError("Not allowed with --no-report-errors",
                                          "output-errors-csv")
     self.output_errors_csv = output_errors_csv
+
+  @uses(["input", "pythonpath"])
+  def _store_module_name(self, module_name):
+    if module_name is None:
+      module_name = load_pytd.get_module_name(self.input, self.pythonpath)
+    self.module_name = module_name
 
 
 def _parse_arguments(arguments):

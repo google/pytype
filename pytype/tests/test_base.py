@@ -2,7 +2,6 @@
 
 import collections
 import logging
-import os
 import re
 import sys
 import textwrap
@@ -37,11 +36,9 @@ class BaseTest(unittest.TestCase):
 
   PYTHON_VERSION = (2, 7)  # can be overwritten by subclasses
 
-  # Can be overwritten by subclasses
-  PYTHON_EXE = None
-
   @classmethod
   def setUpClass(cls):
+    cls.PYTHON_EXE = utils.get_python_exe(cls.PYTHON_VERSION)
     # This is the default loader. It might get shadowed.
     cls.loader = load_pytd.Loader(None, cls.PYTHON_VERSION)
 
@@ -106,17 +103,20 @@ class BaseTest(unittest.TestCase):
     self.nothing_nothing_dict = pytd.GenericType(self.dict,
                                                  (self.nothing, self.nothing))
 
+  def _CreateLoader(self):
+    if self.options.module_name or self.options.pythonpath:
+      self.loader = load_pytd.create_loader(self.options)
+
   # For historical reasons (byterun), this method name is snakecase:
   # TODO(kramm): Rename this function.
   # pylint: disable=invalid-name
   def Check(self, code, pythonpath=(), skip_repeat_calls=True,
             report_errors=True, filename=None, **kwargs):
     """Run an inference smoke test for the given code."""
-    self.options.tweak(skip_repeat_calls=skip_repeat_calls)
+    self.options.tweak(skip_repeat_calls=skip_repeat_calls,
+                       pythonpath=pythonpath)
     errorlog = errors.ErrorLog()
-    if pythonpath:
-      self.loader = load_pytd.Loader(
-          self.options.module_name, self.PYTHON_VERSION, pythonpath=pythonpath)
+    self._CreateLoader()
     try:
       analyze.check_types(
           textwrap.dedent(code), filename, loader=self.loader,
@@ -133,9 +133,8 @@ class BaseTest(unittest.TestCase):
   def _SetUpErrorHandling(self, code, pythonpath):
     code = textwrap.dedent(code)
     errorlog = errors.ErrorLog()
-    if pythonpath:
-      self.loader = load_pytd.Loader(
-          self.options.module_name, self.PYTHON_VERSION, pythonpath=pythonpath)
+    self.options.tweak(pythonpath=pythonpath)
+    self._CreateLoader()
     return {"src": code, "errorlog": errorlog, "options": self.options,
             "loader": self.loader}
 
@@ -157,9 +156,10 @@ class BaseTest(unittest.TestCase):
     with open(filename, "rb") as fi:
       code = fi.read()
       errorlog = errors.ErrorLog()
-      self.loader = load_pytd.Loader(
-          analyze.get_module_name(filename, pythonpath), self.PYTHON_VERSION,
+      self.options.tweak(
+          module_name=load_pytd.get_module_name(filename, pythonpath),
           pythonpath=pythonpath)
+      self._CreateLoader()
       unit, _ = analyze.infer_types(code, errorlog, self.options,
                                     loader=self.loader, filename=filename)
       unit.Visit(visitors.VerifyVisitor())
@@ -327,9 +327,8 @@ class BaseTest(unittest.TestCase):
     else:
       return types
 
-  def _InferAndVerify(self, src, pythonpath=(), module_name=None,
-                      imports_map=None, report_errors=False, quick=False,
-                      **kwargs):
+  def _InferAndVerify(self, src, pythonpath, module_name, report_errors,
+                      imports_map=None, quick=False, **kwargs):
     """Infer types for the source code treating it as a module.
 
     Used by Infer().
@@ -338,9 +337,9 @@ class BaseTest(unittest.TestCase):
       src: The source code of a module. Treat it as "__main__".
       pythonpath: --pythonpath as list/tuple of string
       module_name: Name of the module we're analyzing. E.g. "foo.bar.mymodule".
-      imports_map: --imports_info data
       report_errors: Whether to fail if the type inferencer reports any errors
         in the program.
+      imports_map: --imports_info data
       quick: Try to run faster, by avoiding costly computations.
       **kwargs: Keyword parameters to pass through to the type inferencer.
 
@@ -349,13 +348,12 @@ class BaseTest(unittest.TestCase):
     Returns:
       A pytd.TypeDeclUnit
     """
-    self.options.tweak(module_name=module_name, quick=quick)
-    errorlog = errors.ErrorLog()
-    self.loader = load_pytd.PickledPyiLoader(
-        base_module=module_name,
-        python_version=self.PYTHON_VERSION,
+    self.options.tweak(
+        module_name=module_name, quick=quick, use_pickled_files=True,
         pythonpath=[""] if (not pythonpath and imports_map) else pythonpath,
         imports_map=imports_map)
+    errorlog = errors.ErrorLog()
+    self._CreateLoader()
     unit, builtins_pytd = analyze.infer_types(
         src, errorlog, self.options, loader=self.loader, **kwargs)
     unit.Visit(visitors.VerifyVisitor())
@@ -365,11 +363,10 @@ class BaseTest(unittest.TestCase):
       self.fail("Inferencer found %d errors" % len(errorlog))
     return unit, builtins_pytd
 
-  def assertTypesMatchPytd(self, ty, pytd_src, version=None):
+  def assertTypesMatchPytd(self, ty, pytd_src):
     """Parses pytd_src and compares with ty."""
-    version = version or self.PYTHON_VERSION
     pytd_tree = parser.parse_string(
-        textwrap.dedent(pytd_src), python_version=version)
+        textwrap.dedent(pytd_src), python_version=self.PYTHON_VERSION)
     pytd_tree = pytd_tree.Visit(visitors.LookupBuiltins(
         self.loader.builtins, full_names=False))
     pytd_tree = pytd_tree.Visit(visitors.LookupLocalTypes())

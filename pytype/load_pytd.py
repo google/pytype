@@ -16,6 +16,61 @@ from pytype.pytd.parse import builtins
 log = logging.getLogger(__name__)
 
 
+def create_loader(options):
+  """Create a pytd loader."""
+  kwargs = {"base_module": options.module_name,
+            "python_version": options.python_version,
+            "pythonpath": options.pythonpath,
+            "imports_map": options.imports_map,
+            "use_typeshed": options.typeshed}
+  if options.precompiled_builtins:
+    return PickledPyiLoader.load_from_pickle(
+        options.precompiled_builtins, **kwargs)
+  elif options.use_pickled_files:
+    return PickledPyiLoader(**kwargs)
+  else:
+    return Loader(**kwargs)
+
+
+def _filename_to_module_name(filename):
+  """Helper function for get_module_name."""
+  if os.path.dirname(filename).startswith(os.pardir):
+    # Don't try to infer a module name for filenames starting with ../
+    return None
+  return filename.replace(os.sep, ".")
+
+
+def get_module_name(filename, pythonpath):
+  """Try to reverse-engineer the name of the module we're analyzing.
+
+  This method tries to deduce the module name from the PYTHONPATH and the
+  filename. This will not always be possible. (It depends on the filename
+  starting with an entry in the pythonpath.)
+
+  The module name is used for relative imports.
+
+  Args:
+    filename: The filename of a Python file. E.g. "src/foo/bar/my_module.py".
+    pythonpath: The path Python uses to search for modules.
+
+  Returns:
+    A module name, e.g. "foo.bar.my_module", or None if we can't determine the
+    module name.
+  """
+  if filename:
+    filename, _ = os.path.splitext(os.path.normpath(filename))
+    # We want '' in our lookup path, but we don't want it for prefix tests.
+    for path in filter(bool, pythonpath):
+      path = os.path.normpath(path)
+      if not path.endswith(os.sep):
+        path += os.sep
+      if filename.startswith(path):
+        rel_filename = filename[len(path):]
+        return _filename_to_module_name(rel_filename)
+    # Explicit pythonpath has failed, treat filename as relative to .
+    return _filename_to_module_name(filename)
+
+
 class Module(object):
   """Represents a parsed module.
 

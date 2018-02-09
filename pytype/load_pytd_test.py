@@ -18,6 +18,29 @@ class ImportPathsTest(unittest.TestCase):
 
   PYTHON_VERSION = (2, 7)
 
+  def testFilepathToModule(self):
+    # (filename, pythonpath, expected)
+    test_cases = [
+        ("foo/bar/baz.py", [""], "foo.bar.baz"),
+        ("foo/bar/baz.py", ["foo"], "bar.baz"),
+        ("foo/bar/baz.py", ["fo"], "foo.bar.baz"),
+        ("foo/bar/baz.py", ["foo/"], "bar.baz"),
+        ("foo/bar/baz.py", ["foo", "bar"], "bar.baz"),
+        ("foo/bar/baz.py", ["foo/bar", "foo"], "baz"),
+        ("foo/bar/baz.py", ["foo", "foo/bar"], "bar.baz"),
+        ("./foo/bar.py", [""], "foo.bar"),
+        ("./foo.py", [""], "foo"),
+        ("../foo.py", [""], None),
+        ("../foo.py", ["."], None),
+        ("foo/bar/../baz.py", [""], "foo.baz"),
+        ("../foo.py", [".."], "foo"),
+        ("../../foo.py", ["../.."], "foo"),
+        ("../../foo.py", [".."], None)
+    ]
+    for filename, pythonpath, expected in test_cases:
+      module = load_pytd.get_module_name(filename, pythonpath)
+      self.assertEqual(module, expected)
+
   def testBuiltinSys(self):
     loader = load_pytd.Loader("base", self.PYTHON_VERSION)
     ast = loader.import_name("sys")

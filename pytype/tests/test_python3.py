@@ -1,7 +1,5 @@
 """Python 3 tests for Byterun."""
 
-import os
-
 
 from pytype import utils
 from pytype.tests import test_base
