@@ -3,10 +3,10 @@
 
 
 from typing import (
-    AbstractSet, AnyStr, BinaryIO, ByteString, Callable, Dict, FrozenSet, Generator,
-    Generic, Iterable, Iterator, List, Mapping, MutableSequence, Optional,
-    Reversible, Sequence, Set, Sized, SupportsAbs, SupportsBytes, SupportsFloat,
-    SupportsInt, Tuple, Type, Union)
+    AbstractSet, AnyStr, BinaryIO, ByteString, Callable, Dict, FrozenSet,
+    Generator, Generic, ItemsView, Iterable, Iterator, KeysView, List, Mapping,
+    MutableSequence, Optional, Reversible, Sequence, Set, Sized, SupportsAbs,
+    SupportsBytes, SupportsFloat, SupportsInt, Tuple, Type, Union, ValuesView)
 
 # "_T", "_K", and "_V" are hardcoded in abstract.py
 _T = TypeVar('_T')
@@ -414,7 +414,7 @@ class `dictionary-itemiterator`(Iterator[tuple[_K, _V]]):
     def __iter__(self) -> `dictionary-itemiterator`[_K, _V]
     def next(self) -> tuple[_K, _V]
 
-class dict_keys(Iterator[_T]):
+class dict_keys(KeysView[_T]):
     __slots__ = []
     def __contains__(self, y) -> bool
     def __iter__(self) -> `dictionary-keyiterator`[_T]
@@ -424,12 +424,12 @@ class dict_keys(Iterator[_T]):
     def __or__(self, y: Iterable[_T2]) -> set[_T or _T2]
     def __xor__(self, y: Iterable[_T2]) -> set[_T or _T2]
 
-class dict_values(Iterator[_T]):
+class dict_values(ValuesView[_T]):
     __slots__ = []
     def __iter__(self) -> `dictionary-valueiterator`[_T]
     def __len__(self) -> int
 
-class dict_items(Generic[_K, _V], object):
+class dict_items(ItemsView[_K, _V], object):
     __slots__ = []
     def __and__(self, y: set or dict_items) -> set[tuple[_K, _V]]
     def __or__(self, y: set or dict_items[_K2, _V2]) -> set[tuple[_K or _K2, _V or _V2]]
@@ -463,9 +463,8 @@ class dict(Dict[_K, _V]):
     @staticmethod
     def fromkeys(keys: Iterable[_K], value: _V) -> Dict[_K, _V]
     def has_key(self, k) -> bool
-    def iteritems(self) -> `dictionary-itemiterator`[_K,_V]
-    def iterkeys(self) -> `dictionary-keyiterator`[_K]
-    def itervalues(self) -> `dictionary-valueiterator`[_V]
+    def items(self) -> dict_items[_K, _V]
+    def keys(self) -> dict_keys[_K]
     def pop(self, k) -> _V
     def pop(self, k, d: _V2) -> _V or _V2
     def setdefault(self, k: _K2) -> _V or NoneType:
@@ -482,9 +481,7 @@ class dict(Dict[_K, _V]):
     def update(self, E, ...) -> NoneType:
         self := dict[?, ?]
     def update(self) -> NoneType
-    def viewitems(self) -> dict_items[_K,_V]
-    def viewkeys(self) -> dict_keys[_K]
-    def viewvalues(self) -> dict_values[_V]
+    def values(self) -> dict_values[_V]
 
 class listiterator(Iterator[_T]):
     __slots__ = []

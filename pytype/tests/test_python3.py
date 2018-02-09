@@ -301,6 +301,31 @@ class TestPython3(test_base.BaseTest):
       assert isinstance(x, float)
     """)
 
+  def test_removed_dict_methods(self):
+    errors = self.CheckWithErrors("""\
+      {}.iteritems
+      {}.iterkeys
+      {}.itervalues
+      {}.viewitems
+      {}.viewkeys
+      {}.viewvalues
+    """)
+    self.assertErrorLogIs(
+        errors, [(1, "attribute-error"), (2, "attribute-error"),
+                 (3, "attribute-error"), (4, "attribute-error"),
+                 (5, "attribute-error"), (6, "attribute-error")])
+
+  def test_dict_views(self):
+    self.Check("""
+      from typing import KeysView, ItemsView, ValuesView
+      def f(x: KeysView): ...
+      def g(x: ItemsView): ...
+      def h(x: ValuesView): ...
+      f({}.keys())
+      g({}.items())
+      h({}.values())
+    """)
+
 
 class TypingMethodsTest(test_base.TypingTest):
   """Tests for typing.py specific to python3."""

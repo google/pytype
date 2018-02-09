@@ -301,58 +301,24 @@ class StdlibTests(test_base.BaseTest):
         "MutableMapping", "{}", "42", r"MutableMapping.*int")
 
   def testCollectionsMappingView(self):
-    # TODO(rechen): Use _testCollectionsObject once dict.viewitems() is fixed.
-    errors = self.CheckWithErrors("""\
-      from __future__ import google_type_annotations
-      from typing import Mapping
-      import collections
-      def f(x: collections.MappingView): ...
-      d = None  # type: Mapping
-      f(d.viewitems())
-      f(42)  # line 7
-    """)
-    self.assertErrorLogIs(errors, [(7, "wrong-arg-types", r"MappingView.*int")])
+    self._testCollectionsObject(
+        "MappingView", "{}.viewitems()", "42", r"MappingView.*int")
 
   def testCollectionsItemsView(self):
-    # TODO(rechen): Use _testCollectionsObject once dict.viewitems() is fixed.
-    errors = self.CheckWithErrors("""\
-      from __future__ import google_type_annotations
-      from typing import Mapping
-      import collections
-      def f(x: collections.ItemsView): ...
-      d = None  # type: Mapping
-      f(d.viewitems())
-      f(42)  # line 7
-    """)
-    self.assertErrorLogIs(errors, [(7, "wrong-arg-types", r"ItemsView.*int")])
+    self._testCollectionsObject(
+        "ItemsView", "{}.viewitems()", "42", r"ItemsView.*int")
 
   def testCollectionsKeysView(self):
-    # TODO(rechen): Use _testCollectionsObject once dict.viewkeys() is fixed.
-    errors = self.CheckWithErrors("""\
-      from __future__ import google_type_annotations
-      from typing import Mapping
-      import collections
-      def f(x: collections.KeysView): ...
-      d = None  # type: Mapping
-      f(d.viewkeys())
-      f(42)  # line 7
-    """)
-    self.assertErrorLogIs(errors, [(7, "wrong-arg-types", r"KeysView.*int")])
+    self._testCollectionsObject(
+        "KeysView", "{}.viewkeys()", "42", r"KeysView.*int")
 
   def testCollectionsValuesView(self):
-    # TODO(rechen): Use _testCollectionsObject once dict.viewvalues() is fixed.
-    errors = self.CheckWithErrors("""\
-      from __future__ import google_type_annotations
-      from typing import Mapping
-      import collections
-      def f(x: collections.ValuesView): ...
-      d = None  # type: Mapping
-      f(d.viewvalues())
-      f(42)  # line 7
-    """)
-    self.assertErrorLogIs(errors, [(7, "wrong-arg-types", r"ValuesView.*int")])
+    self._testCollectionsObject(
+        "ValuesView", "{}.viewvalues()", "42", r"ValuesView.*int")
 
   def testCollectionsDeque(self):
+    # This method is different from the preceding ones because we model
+    # collections.deque as a subclass, rather than an alias, of typing.Deque.
     errors = self.CheckWithErrors("""\
       from __future__ import google_type_annotations
       from typing import Deque
