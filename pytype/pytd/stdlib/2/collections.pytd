@@ -23,37 +23,37 @@ _repeat = ...  # type: type
 _repr_template = ...  # type: str
 _starmap = ...  # type: type
 _sys = ...  # type: module
-deque = ...  # type: ?
 dumps = ...  # type: Callable
 loads = ...  # type: Callable
 
-# TODO(kramm): These should be imported from typing, not declared as Any
-Container = ... # type: ?
-Hashable = ... # type: ?
-Iterable = ... # type: ?
-Iterator = ... # type: ?
-Sized = ... # type: ?
-Callable = ... # type: ?
-Sequence = ... # type: ?
-MutableSequence = ... # type: ?
-Set = ... # type: ?
-MutableSet = ... # type: ?
-Mapping = ... # type: ?
-MutableMapping = ... # type: ?
-MappingView = ... # type: ?
-ItemsView = ... # type: ?
-KeysView = ... # type: ?
-ValuesView = ... # type: ?
+class deque(typing.Deque): ...
+
+Container = typing.Container
+Hashable = typing.Hashable
+Iterable = typing.Iterable
+Iterator = typing.Iterator
+Sized = typing.Sized
+Callable = typing.Callable
+Sequence = typing.Sequence
+MutableSequence = typing.MutableSequence
+Set = typing.Set
+MutableSet = typing.MutableSet
+Mapping = typing.Mapping
+MutableMapping = typing.MutableMapping
+MappingView = typing.MappingView
+ItemsView = typing.ItemsView
+KeysView = typing.KeysView
+ValuesView = typing.ValuesView
 if sys.version_info[0] >= 3:
-  AsyncIterable = ... # type: ?
-  AsyncIterator = ... # type: ?
-  AsyncGenerator = ... # type: ?
-  Awaitable = ... # type: ?
-  ByteString = ... # type: ?
-  Coroutine = ... # type ?
-  Collection = ... # type ?
-  Generator = ... # type: ?
-  Reversible = ... # type ?
+  AsyncIterable = typing.AsyncIterable
+  AsyncIterator = typing.AsyncIterator
+  AsyncGenerator = typing.AsyncGenerator
+  Awaitable = typing.Awaitable
+  ByteString = typing.ByteString
+  Coroutine = typing.Coroutine
+  Collection = typing.Collection
+  Generator = typing.Generator
+  Reversible = typing.Reversible
 
 def namedtuple(typename: Text,
   field_names: Text or Iterable[Text] or Iterable[nothing],

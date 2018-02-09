@@ -266,6 +266,52 @@ class TestPython36(test_base.BaseTest):
       c = ...  # type: Union[int, str]
     """)
 
+  def test_collections_smoke_test(self):
+    self.Check("""
+      import collections
+      collections.AsyncIterable
+      collections.AsyncIterator
+      collections.AsyncGenerator
+      collections.Awaitable
+      collections.Coroutine
+    """)
+
+  def test_collections_bytestring(self):
+    errors = self.CheckWithErrors("""\
+      import collections
+      def f(x: collections.ByteString): ...
+      f(bytes("hello", encoding="utf-8"))
+      f(42)  # line 5
+    """)
+    self.assertErrorLogIs(errors, [(4, "wrong-arg-types", r"ByteString.*int")])
+
+  def test_collections_collection(self):
+    errors = self.CheckWithErrors("""\
+      import collections
+      def f(x: collections.Collection): ...
+      f([])
+      f(42)  # line 5
+    """)
+    self.assertErrorLogIs(errors, [(4, "wrong-arg-types", r"Collection.*int")])
+
+  def test_collections_generator(self):
+    errors = self.CheckWithErrors("""\
+      import collections
+      def f(x: collections.Generator): ...
+      f(i for i in range(42))
+      f(42)  # line 5
+    """)
+    self.assertErrorLogIs(errors, [(4, "wrong-arg-types", r"generator.*int")])
+
+  def test_collections_reversible(self):
+    errors = self.CheckWithErrors("""\
+      import collections
+      def f(x: collections.Reversible): ...
+      f([])
+      f(42)  # line 5
+    """)
+    self.assertErrorLogIs(errors, [(4, "wrong-arg-types", r"Reversible.*int")])
+
 
 if __name__ == "__main__":
   test_base.main()

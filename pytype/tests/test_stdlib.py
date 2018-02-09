@@ -252,6 +252,118 @@ class StdlibTests(test_base.BaseTest):
       import __future__
     """)
 
+  def _testCollectionsObject(self, obj, good_arg, bad_arg, error):
+    errors = self.CheckWithErrors("""\
+      from __future__ import google_type_annotations
+      import collections
+      def f(x: collections.{obj}): ...
+      f({good_arg})
+      f({bad_arg})  # line 5
+    """.format(obj=obj, good_arg=good_arg, bad_arg=bad_arg))
+    self.assertErrorLogIs(errors, [(5, "wrong-arg-types", error)])
+
+  def testCollectionsContainer(self):
+    self._testCollectionsObject("Container", "[]", "42", r"Container.*int")
+
+  def testCollectionsHashable(self):
+    self._testCollectionsObject("Hashable", "42", "[]", r"Hashable.*List")
+
+  def testCollectionsIterable(self):
+    self._testCollectionsObject("Iterable", "[]", "42", r"Iterable.*int")
+
+  def testCollectionsIterator(self):
+    self._testCollectionsObject("Iterator", "iter([])", "42", r"Iterator.*int")
+
+  def testCollectionsSized(self):
+    self._testCollectionsObject("Sized", "[]", "42", r"Sized.*int")
+
+  def testCollectionsCallable(self):
+    self._testCollectionsObject("Callable", "list", "42", r"Callable.*int")
+
+  def testCollectionsSequence(self):
+    self._testCollectionsObject("Sequence", "[]", "42", r"Sequence.*int")
+
+  def testCollectionsMutableSequence(self):
+    self._testCollectionsObject(
+        "MutableSequence", "[]", "42", r"MutableSequence.*int")
+
+  def testCollectionsSet(self):
+    self._testCollectionsObject("Set", "set()", "42", r"set.*int")
+
+  def testCollectionsMutableSet(self):
+    self._testCollectionsObject("MutableSet", "set()", "42", r"MutableSet.*int")
+
+  def testCollectionsMapping(self):
+    self._testCollectionsObject("Mapping", "{}", "42", r"Mapping.*int")
+
+  def testCollectionsMutableMapping(self):
+    self._testCollectionsObject(
+        "MutableMapping", "{}", "42", r"MutableMapping.*int")
+
+  def testCollectionsMappingView(self):
+    # TODO(rechen): Use _testCollectionsObject once dict.viewitems() is fixed.
+    errors = self.CheckWithErrors("""\
+      from __future__ import google_type_annotations
+      from typing import Mapping
+      import collections
+      def f(x: collections.MappingView): ...
+      d = None  # type: Mapping
+      f(d.viewitems())
+      f(42)  # line 7
+    """)
+    self.assertErrorLogIs(errors, [(7, "wrong-arg-types", r"MappingView.*int")])
+
+  def testCollectionsItemsView(self):
+    # TODO(rechen): Use _testCollectionsObject once dict.viewitems() is fixed.
+    errors = self.CheckWithErrors("""\
+      from __future__ import google_type_annotations
+      from typing import Mapping
+      import collections
+      def f(x: collections.ItemsView): ...
+      d = None  # type: Mapping
+      f(d.viewitems())
+      f(42)  # line 7
+    """)
+    self.assertErrorLogIs(errors, [(7, "wrong-arg-types", r"ItemsView.*int")])
+
+  def testCollectionsKeysView(self):
+    # TODO(rechen): Use _testCollectionsObject once dict.viewkeys() is fixed.
+    errors = self.CheckWithErrors("""\
+      from __future__ import google_type_annotations
+      from typing import Mapping
+      import collections
+      def f(x: collections.KeysView): ...
+      d = None  # type: Mapping
+      f(d.viewkeys())
+      f(42)  # line 7
+    """)
+    self.assertErrorLogIs(errors, [(7, "wrong-arg-types", r"KeysView.*int")])
+
+  def testCollectionsValuesView(self):
+    # TODO(rechen): Use _testCollectionsObject once dict.viewvalues() is fixed.
+    errors = self.CheckWithErrors("""\
+      from __future__ import google_type_annotations
+      from typing import Mapping
+      import collections
+      def f(x: collections.ValuesView): ...
+      d = None  # type: Mapping
+      f(d.viewvalues())
+      f(42)  # line 7
+    """)
+    self.assertErrorLogIs(errors, [(7, "wrong-arg-types", r"ValuesView.*int")])
+
+  def testCollectionsDeque(self):
+    errors = self.CheckWithErrors("""\
+      from __future__ import google_type_annotations
+      from typing import Deque
+      import collections
+      def f1(x: Deque): ...
+      def f2(x: int): ...
+      f1(collections.deque())
+      f2(collections.deque())  # line 7
+    """)
+    self.assertErrorLogIs(errors, [(7, "wrong-arg-types", r"int.*deque")])
+
 
 if __name__ == "__main__":
   test_base.main()
