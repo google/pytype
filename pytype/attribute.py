@@ -306,7 +306,7 @@ class AbstractAttributeHandler(object):
           if valcls:
             if not valself:
               posargs.append(self.vm.convert.none.to_variable(node))
-            posargs.append(valcls.variable)
+            posargs.append(valcls.AssignToNewVariable())
           node2, get_result = self.vm.call_function(
               node2, getter, abstract.FunctionArgs(tuple(posargs)))
           for getter in get_result.bindings:

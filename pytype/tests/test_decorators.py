@@ -346,6 +346,24 @@ class DecoratorsTest(test_base.BaseTest):
     self.assertErrorLogIs(errors, [(5, "wrong-arg-count", r"Decorate.*1.*2"),
                                    (8, "not-callable", r"Decorate")])
 
+  def testAmbiguousClassMethod(self):
+    self.Check("""\
+      from __future__ import google_type_annotations
+      class Foo():
+        def __init__(self):
+          pass
+        @classmethod
+        def create(cls):
+          return cls()
+      class Bar():
+        def __init__(self, x):
+          pass
+        @classmethod
+        def create(cls):
+          return cls(0)
+      (Foo if __random__ else Bar).create()
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()
