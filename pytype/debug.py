@@ -1,5 +1,6 @@
 """Debugging helper functions."""
 
+import collections
 import logging
 import re
 import StringIO
@@ -91,6 +92,52 @@ def prettyprint_binding_nested(binding, indent_level=0):
       if i < len(origin.source_sets)-1:
         s += "%s  OR\n" % indent
   return s
+
+
+def prettyprint_cfg_node(node, decorate_after_node=0, full=False):
+  """A reasonably compact representation of all the bindings at a node.
+
+  Args:
+    node: The node to prettyprint.
+    decorate_after_node: Don't print bindings unless node_id > this.
+    full: Print the full string representation of a binding's data
+
+  Returns:
+    A prettyprinted node.
+  """
+  if node.id <= decorate_after_node:
+    return repr(node) + " [%d bindings]" % len(node.bindings)
+  if full:
+    name = lambda(x): getattr(x, "name", str(x))
+  else:
+    name = str
+  bindings = collections.defaultdict(list)
+  for b in node.bindings:
+    bindings[b.variable.id].append(name(b.data))
+  b = ", ".join(["%d:%s" % (k, "|".join(v))
+                 for k, v in sorted(bindings.items())])
+  return repr(node) + " [" + b + "]"
+
+
+def prettyprint_cfg_tree(root, decorate_after_node=0, full=False,
+                         forward=False):
+  """Pretty print a cfg tree with the bindings at each node.
+
+  Args:
+    root: The root node.
+    decorate_after_node: Don't print bindings unless node_id > this.
+    full: Print the full string representation of a binding's data
+    forward: Traverse the tree forwards if true.
+
+  Returns:
+    A prettyprinted tree.
+  """
+  if forward:
+    children = lambda node: node.outgoing
+  else:
+    children = lambda node: node.incoming
+  desc = lambda node: prettyprint_cfg_node(node, decorate_after_node, full)
+  return ascii_tree(root, get_children=children, get_description=desc)
 
 
 def _pretty_variable(var):

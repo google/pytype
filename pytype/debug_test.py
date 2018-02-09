@@ -117,6 +117,17 @@ class DebugTest(unittest.TestCase):
     b2 = v.AddBinding("foo", (b1,), n1)
     self.assertEqual((b1, n1), debug.root_cause([b2], n1))
 
+  def testTreePrettyPrinter(self):
+    n1 = self.prog.NewCFGNode("root")
+    n2 = self.prog.NewCFGNode("init")
+    n2.ConnectTo(n1)
+    v = self.prog.NewVariable()
+    b1 = v.AddBinding("foo", (), n2)
+    v = self.prog.NewVariable()
+    _ = v.AddBinding("bar", (b1,), n1)
+    s = debug.prettyprint_cfg_tree(n1)
+    assert isinstance(s, str)
+
 
 if __name__ == "__main__":
   unittest.main()
