@@ -209,6 +209,7 @@ class classmethod(typing.Callable):
 _T_str = TypeVar('_T_str', bound=str)
 class str(Sequence[str]):
     __slots__ = []
+    def __new__(cls: Type[_T_str], object = ..., encoding: str = ..., errors: str = ...) -> _T_str
     def __init__(self, object) -> NoneType
     def __init__(self, bytes: bytes, encoding: str = ..., errors: str = ...) -> NoneType
     def __init__(self) -> NoneType
@@ -268,7 +269,6 @@ class str(Sequence[str]):
     def zfill(self, width: int) -> str
     @staticmethod
     def maketrans(...) -> dict
-    def __new__(cls: Type[_T_str], y = ...) -> _T_str
 
 class bytes(ByteString):
     def __init__(self, ints: Iterable[int]) -> NoneType

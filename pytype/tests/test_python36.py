@@ -257,6 +257,11 @@ class TestPython36(test_base.BaseTest):
       c = ...  # type: Union[int, str]
     """)
 
+  def test_create_str(self):
+    self.Check("""
+      str(bytes("foo", "utf-8"), "utf-8")
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()
