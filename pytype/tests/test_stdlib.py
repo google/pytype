@@ -325,10 +325,9 @@ class StdlibTests(test_base.BaseTest):
     self._testCollectionsObject(
         "ValuesView", "{}.viewvalues()", "42", r"ValuesView.*int")
 
-  def testCollectionsBytestring(self):
-    self._testCollectionsObject(
-        "ByteString", "bytes('hello', encoding='utf-8')", "42",
-        r"ByteString.*int", python_version=(3, 6))
+  def testCollectionsByteString(self):
+    self._testCollectionsObject("ByteString", "b'hello'", "42",
+                                r"ByteString.*int", python_version=(3, 6))
 
   def testCollectionsCollection(self):
     self._testCollectionsObject("Collection", "[]", "42", r"Collection.*int",
@@ -338,7 +337,7 @@ class StdlibTests(test_base.BaseTest):
     self._testCollectionsObject("Generator", "i for i in range(42)", "42",
                                 r"generator.*int", python_version=(3, 6))
 
-  def test_collections_reversible(self):
+  def testCollectionsReversible(self):
     self._testCollectionsObject("Reversible", "[]", "42", r"Reversible.*int",
                                 python_version=(3, 6))
 

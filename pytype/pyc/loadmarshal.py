@@ -72,6 +72,12 @@ class _NULL(object):
   pass
 
 
+# bytes and str are the same class in Python 2, and different classes in
+# Python 3, so we need a way to mark Python 3 bytestrings.
+class BytesPy3(str):
+  pass
+
+
 class CodeType(object):
   """Version-agnostic types.CodeType."""
 
@@ -267,7 +273,12 @@ class _LoadMarshal(object):
 
   def load_string(self):
     n = self._read_long()
-    return self._read(n)
+    s = self._read(n)
+    if self.python_version[0] >= 3:
+      # load_string() loads a bytestring, and in Python 3, str and bytes are
+      # different classes.
+      s = BytesPy3(s)
+    return s
 
   def load_interned(self):
     n = self._read_long()
@@ -282,8 +293,12 @@ class _LoadMarshal(object):
   def load_unicode(self):
     n = self._read_long()
     s = self._read(n)
-    ret = s.decode('utf8')
-    return ret
+    if self.python_version[0] < 3:
+      # For Python 2, we decode to a unicode string. (In Python 3, unicode is
+      # the native 'str' type, so we represent the Python 3 string as a utf8
+      # encoded str, in host Python 2.)
+      s = s.decode('utf8')
+    return s
 
   def load_ascii(self):
     n = self._read_long()

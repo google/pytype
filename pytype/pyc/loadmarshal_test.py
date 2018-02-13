@@ -8,8 +8,18 @@ import unittest
 class TestLoadMarshal(unittest.TestCase):
   """Tests for loadmarshal.loads."""
 
-  def load(self, s, python_version=(2, 7)):
-    return loadmarshal.loads(s, python_version)
+  def assertStrictEqual(self, s1, s2):
+    self.assertEqual(s1, s2)
+    self.assertEqual(type(s1), type(s2))
+
+  def load(self, s, python_version=None):
+    if python_version is None:
+      ret1 = loadmarshal.loads(s, (2, 7))
+      ret2 = loadmarshal.loads(s, (3, 6))
+      self.assertStrictEqual(ret1, ret2)
+      return ret1
+    else:
+      return loadmarshal.loads(s, python_version)
 
   def test_load_none(self):
     self.assertEqual(self.load('N'), None)
@@ -58,10 +68,12 @@ class TestLoadMarshal(unittest.TestCase):
     self.assertEqual(self.load('l\xfe\xff\xff\xff\1\0\2\0'), -65537)
 
   def test_load_string(self):
-    self.assertEqual(self.load(b's\4\0\0\0test'), 'test')
+    self.assertStrictEqual(self.load(b's\4\0\0\0test', (2, 7)), 'test')
+    self.assertStrictEqual(self.load(b's\4\0\0\0test', (3, 6)),
+                           loadmarshal.BytesPy3('test'))
 
   def test_load_interned(self):
-    self.assertEqual(self.load(b't\4\0\0\0test'), 'test')
+    self.assertStrictEqual(self.load(b't\4\0\0\0test'), 'test')
 
   def test_load_stringref(self):
     st = ('(\4\0\0\0'  # tuple of 4
@@ -115,10 +127,10 @@ class TestLoadMarshal(unittest.TestCase):
     self.assertEqual(code.co_lnotab, None)
 
   def test_load_unicode(self):
-    self.assertEqual(self.load(b'u\4\0\0\0test'), u'test')
-
-  def test_load_unknown(self):
-    self.assertEqual(self.load(b't\4\0\0\0test'), u'test')
+    self.assertStrictEqual(self.load(b'u\4\0\0\0test', (2, 7)), u'test')
+    self.assertStrictEqual(self.load(b'u\4\0\0\0test', (3, 6)), 'test')
+    # This character is \u00e4 (umlaut a).
+    self.assertStrictEqual(self.load(b'u\2\0\0\0\xc3\xa4', (3, 6)), '\xc3\xa4')
 
   def test_load_set(self):
     self.assertEqual(self.load(b'<\3\0\0\0FTN'), {True, False, None})
@@ -137,19 +149,19 @@ class TestLoadMarshal(unittest.TestCase):
                      (0x03020100, 0x7060504, 0x03020100, 0x7060504))
 
   def test_load_ascii(self):
-    self.assertEqual(self.load(b'a\4\0\0\0test'), 'test')
+    self.assertStrictEqual(self.load(b'a\4\0\0\0test'), 'test')
 
   def test_load_ascii_interned(self):
-    self.assertEqual(self.load(b'A\4\0\0\0test'), 'test')
+    self.assertStrictEqual(self.load(b'A\4\0\0\0test'), 'test')
 
   def test_load_small_tuple(self):
     self.assertEqual(self.load(b')\2TF'), (True, False))
 
   def test_load_short_ascii(self):
-    self.assertEqual(self.load(b'z\4test'), 'test')
+    self.assertStrictEqual(self.load(b'z\4test'), 'test')
 
   def test_load_short_ascii_interned(self):
-    self.assertEqual(self.load(b'Z\4test'), 'test')
+    self.assertStrictEqual(self.load(b'Z\4test'), 'test')
 
   def test_truncated(self):
     self.assertRaises(EOFError, lambda: self.load('f\x020'))

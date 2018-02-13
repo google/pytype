@@ -51,7 +51,7 @@ class Converter(object):
     if self.vm.python_version[0] < 3:
       version_specific = [unicode]
     else:
-      version_specific = [bytes]
+      version_specific = [loadmarshal.BytesPy3]
 
     # Now fill primitive_classes with the real values using constant_to_value.
     self.primitive_classes = {v: self.constant_to_value(v)
@@ -472,7 +472,9 @@ class Converter(object):
       NotImplementedError: If we don't know how to convert a value.
       TypeParameterError: If we can't find a substitution for a type parameter.
     """
-    if isinstance(pyval, str):
+    if pyval.__class__ is str:
+      # We use a subclass of str, loadmarshal.BytesPy3, to mark Python 3
+      # bytestrings, which are converted to abstract bytes instances.
       return abstract.AbstractOrConcreteValue(pyval, self.str_type, self.vm)
     elif isinstance(pyval, int) and -1 <= pyval <= MAX_IMPORT_DEPTH:
       # For small integers, preserve the actual value (for things like the
@@ -493,6 +495,8 @@ class Converter(object):
     elif pyval.__class__ is type:
       if pyval is types.FunctionType:
         classname = "typing.Callable"
+      elif pyval is loadmarshal.BytesPy3:
+        classname = "__builtin__.bytes"
       else:
         classname = "__builtin__." + pyval.__name__
       try:

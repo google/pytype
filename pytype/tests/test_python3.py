@@ -237,15 +237,15 @@ class TestPython3(test_base.BaseTest):
 
   def test_bytearray(self):
     self.Check("""
-      ba = bytearray(bytes("hello", encoding="utf-8"))
+      ba = bytearray(b"hello")
       ba[0] = 106
       ba[:1] = [106]
-      ba[:1] = bytes("j", encoding="utf-8")
-      ba[:1] = bytearray(bytes("j", encoding="utf-8"))
-      ba[:1] = memoryview(bytes("j", encoding="utf-8"))
-      ba[4:] = bytes("yfish", encoding="utf-8")
-      ba[0:5] = bytes("", encoding="utf-8")
-      ba[1:4:2] = bytes("at", encoding="utf-8")
+      ba[:1] = b"j"
+      ba[:1] = bytearray(b"j")
+      ba[:1] = memoryview(b"j")
+      ba[4:] = b"yfish"
+      ba[0:5] = b""
+      ba[1:4:2] = b"at"
     """)
 
   def test_multiple_inheritance_builtins(self):
@@ -281,7 +281,7 @@ class TestPython3(test_base.BaseTest):
       Bar6()
       Bar7()
       Bar8()
-      Bar9(bytes("", encoding="utf-8"))
+      Bar9(b"")
       BarA(0)
     """)
 

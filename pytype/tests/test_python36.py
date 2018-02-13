@@ -259,8 +259,16 @@ class TestPython36(test_base.BaseTest):
 
   def test_create_str(self):
     self.Check("""
-      str(bytes("foo", "utf-8"), "utf-8")
+      str(b"foo", "utf-8")
     """)
+
+  def test_bytes_constant(self):
+    ty = self.Infer("v = b'foo'")
+    self.assertTypesMatchPytd(ty, "v = ...  # type: bytes")
+
+  def test_unicode_constant(self):
+    ty = self.Infer("v = 'foo\u00e4'")  # pylint: disable=anomalous-unicode-escape-in-string
+    self.assertTypesMatchPytd(ty, "v = ...  # type: str")
 
 
 if __name__ == "__main__":
