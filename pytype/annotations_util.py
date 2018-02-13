@@ -129,12 +129,13 @@ class AnnotationsUtil(object):
           annotations[name] = annot
     return annotations, late_annotations
 
-  def eval_late_annotations(self, node, func, f_globals):
+  def eval_late_annotations(self, node, func, f_globals, f_locals):
     """Resolves an instance of LateAnnotation's expression."""
     for name, annot in func.signature.late_annotations.iteritems():
       if name == function.MULTI_ARG_ANNOTATION:
         try:
-          self._eval_multi_arg_annotation(node, func, f_globals, annot)
+          self._eval_multi_arg_annotation(node, func, f_globals, f_locals,
+                                          annot)
         except EvaluationError as e:
           self.vm.errorlog.invalid_function_type_comment(
               annot.stack, annot.expr, details=e.message)
@@ -143,7 +144,7 @@ class AnnotationsUtil(object):
               annot.stack, annot.expr, details="Must be constant.")
       else:
         resolved = self._process_one_annotation(
-            annot.expr, annot.name, annot.stack, node, f_globals)
+            annot.expr, annot.name, annot.stack, node, f_globals, f_locals)
         if resolved is not None:
           func.signature.set_annotation(name, resolved)
     func.signature.check_type_parameter_count(
@@ -157,7 +158,8 @@ class AnnotationsUtil(object):
     code, comment = self.vm.director.type_comments.get(op.line, (None, None))
     if code:
       try:
-        var = self._eval_expr(state.node, self.vm.frame.f_globals, comment)
+        var = self._eval_expr(state.node, self.vm.frame.f_globals,
+                              self.vm.frame.f_locals, comment)
       except EvaluationError as e:
         self.vm.errorlog.invalid_type_comment(
             self.vm.frames, comment, details=e.message)
@@ -179,9 +181,10 @@ class AnnotationsUtil(object):
             value = LateAnnotation(typ, name, self.vm.simple_stack())
     return value
 
-  def init_annotation(self, annot, name, stack, node, f_globals=None):
+  def init_annotation(self, annot, name, stack, node, f_globals=None,
+                      f_locals=None):
     processed = self._process_one_annotation(
-        annot, name, stack, node, f_globals)
+        annot, name, stack, node, f_globals, f_locals)
     if processed is None:
       value = self.vm.convert.unsolvable.to_variable(node)
     else:
@@ -197,9 +200,9 @@ class AnnotationsUtil(object):
       new_var.AddBinding(annot, {b}, node)
     return new_var
 
-  def _eval_multi_arg_annotation(self, node, func, f_globals, annot):
+  def _eval_multi_arg_annotation(self, node, func, f_globals, f_locals, annot):
     """Evaluate annotation for multiple arguments (from a type comment)."""
-    args = self._eval_expr_as_tuple(node, f_globals, annot.expr)
+    args = self._eval_expr_as_tuple(node, f_globals, f_locals, annot.expr)
     code = func.code
     expected = abstract.InterpreterFunction.get_arg_count(code)
     names = code.co_varnames
@@ -225,7 +228,7 @@ class AnnotationsUtil(object):
         func.signature.set_annotation(name, resolved)
 
   def _process_one_annotation(self, annotation, name, stack,
-                              node=None, f_globals=None):
+                              node=None, f_globals=None, f_locals=None):
     """Change annotation / record errors where required."""
     if isinstance(annotation, abstract.AnnotationContainer):
       annotation = annotation.base_cls
@@ -242,13 +245,13 @@ class AnnotationsUtil(object):
           raise self.LateAnnotationError()
         else:
           try:
-            v = self._eval_expr(node, f_globals, annotation.pyval)
+            v = self._eval_expr(node, f_globals, f_locals, annotation.pyval)
           except EvaluationError as e:
             self.vm.errorlog.invalid_annotation(stack, annotation, e.message)
             return None
           if len(v.data) == 1:
             return self._process_one_annotation(
-                v.data[0], name, stack, node, f_globals)
+                v.data[0], name, stack, node, f_globals, f_locals)
       self.vm.errorlog.invalid_annotation(
           stack, annotation, "Must be constant", name)
       return None
@@ -258,7 +261,7 @@ class AnnotationsUtil(object):
     elif isinstance(annotation, abstract.ParameterizedClass):
       for param_name, param in annotation.type_parameters.items():
         processed = self._process_one_annotation(
-            param, name, stack, node, f_globals)
+            param, name, stack, node, f_globals, f_locals)
         if processed is None:
           return None
         annotation.type_parameters[param_name] = processed
@@ -267,7 +270,7 @@ class AnnotationsUtil(object):
       options = []
       for option in annotation.options:
         processed = self._process_one_annotation(
-            option, name, stack, node, f_globals)
+            option, name, stack, node, f_globals, f_locals)
         if processed is None:
           return None
         options.append(processed)
@@ -282,7 +285,7 @@ class AnnotationsUtil(object):
       self.vm.errorlog.invalid_annotation(stack, annotation, "Not a type", name)
       return None
 
-  def _eval_expr(self, node, f_globals, expr):
+  def _eval_expr(self, node, f_globals, f_locals, expr):
     """Evaluate and expression with the given node and globals."""
     # We don't chain node and f_globals as we want to remain in the context
     # where we've just finished evaluating the module. This would prevent
@@ -310,8 +313,9 @@ class AnnotationsUtil(object):
       # We only want the error, not the full message, which includes a
       # temporary filename and line number.
       raise EvaluationError(e.error)
-    new_locals = self.vm.convert_locals_or_globals({}, "locals")
-    _, _, _, ret = self.vm.run_bytecode(node, code, f_globals, new_locals)
+    if not f_locals:
+      f_locals = self.vm.convert_locals_or_globals({}, "locals")
+    _, _, _, ret = self.vm.run_bytecode(node, code, f_globals, f_locals)
     if len(self.vm.errorlog) > prior_errors:
       # Annotations are constants, so tracebacks aren't needed.
       new_messages = [self.vm.errorlog[i].drop_traceback().message
@@ -320,11 +324,12 @@ class AnnotationsUtil(object):
       raise EvaluationError("\n".join(new_messages))
     return ret
 
-  def _eval_expr_as_tuple(self, node, f_globals, expr):
+  def _eval_expr_as_tuple(self, node, f_globals, f_locals, expr):
     if not expr:
       return ()
 
-    result = abstract.get_atomic_value(self._eval_expr(node, f_globals, expr))
+    result = abstract.get_atomic_value(
+        self._eval_expr(node, f_globals, f_locals, expr))
     # If the result is a tuple, expand it.
     if (isinstance(result, abstract.PythonConstant) and
         isinstance(result.pyval, tuple)):

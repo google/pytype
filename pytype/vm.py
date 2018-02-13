@@ -697,7 +697,7 @@ class VirtualMachine(object):
           self.filename, line, self.director.type_comments[line][1])
 
     node = self.root_cfg_node.ConnectNew("init")
-    node, f_globals, _, _ = self.run_bytecode(node, code)
+    node, f_globals, f_locals, _ = self.run_bytecode(node, code)
     logging.info("Done running bytecode, postprocessing globals")
     # Check for abstract methods on non-abstract classes.
     for val, frames in self.concrete_classes:
@@ -706,10 +706,11 @@ class VirtualMachine(object):
           if isinstance(member, abstract.Function) and member.is_abstract:
             self.errorlog.ignored_abstractmethod(frames, val.name, member.name)
     for func in self.functions_with_late_annotations:
-      self.annotations_util.eval_late_annotations(node, func, f_globals)
+      self.annotations_util.eval_late_annotations(node, func, f_globals,
+                                                  f_locals)
     for name, annot in f_globals.late_annotations.items():
       attr = self.annotations_util.init_annotation(
-          annot.expr, annot.name, annot.stack, node, f_globals)
+          annot.expr, annot.name, annot.stack, node, f_globals, f_locals)
       self.attribute_handler.set_attribute(node, f_globals, name, attr)
       del f_globals.late_annotations[name]
     assert not self.frames, "Frames left over!"

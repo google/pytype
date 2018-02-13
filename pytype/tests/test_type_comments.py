@@ -463,6 +463,34 @@ class AssignmentCommentTest(test_base.BaseTest):
       def hello_world() -> str: ...
     """)
 
+  def test_nested_comment_alias(self):
+    ty = self.Infer("""\
+      class A(object): pass
+      class B(object):
+        C = A
+        x = None  # type: C
+      """)
+    self.assertTypesMatchPytd(ty, """\
+      from typing import Type
+      class A(object): pass
+      class B(object):
+        C = ...  # type: Type[A]
+        x = ...  # type: A
+      """)
+
+  def test_nested_classes_comments(self):
+    ty = self.Infer("""\
+      class A(object):
+        class B(object): pass
+        x = None  # type: B
+      """)
+    self.assertTypesMatchPytd(ty, """\
+      from typing import Any
+      class A(object):
+        B = ...  # type: type
+        x = ...  # type: Any
+      """)
+
 
 if __name__ == "__main__":
   test_base.main()
