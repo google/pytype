@@ -245,16 +245,10 @@ class TypingTest(test_base.BaseTest):
       from __future__ import google_type_annotations
       from typing import Any, Callable
 
-      # The below are all valid. We treat "..." and Any as synonymous, and if
-      # _RET is omitted, its value defaults to Any.
+      # The below are all valid.
       def f1(x: Callable[[int, str], bool]): ...
       def f2(x: Callable[..., bool]): ...
-      def f3(x: Callable[[int, ...], bool]): ...
-      def f4(x: Callable[[..., bool], bool]): ...
-      def f5(x: Callable[Any, bool]): ...
-      def f6(x: Callable[[int, str], ...]): ...
-      def f7(x: Callable[[], bool]): ...
-      def f8(x: Callable[[int, str]]): ...
+      def f3(x: Callable[[], bool]): ...
 
       def g1(x: Callable[int, bool]): ...  # bad: _ARGS not a list
       lst = [int] if __random__ else [str]
@@ -273,12 +267,7 @@ class TypingTest(test_base.BaseTest):
 
        def f1(x: Callable[[int, str], bool]) -> None: ...
        def f2(x: Callable[Any, bool]) -> None: ...
-       def f3(x: Callable[[int, Any], bool]) -> None: ...
-       def f4(x: Callable[[Any, bool], bool]) -> None: ...
-       def f5(x: Callable[Any, bool]) -> None: ...
-       def f6(x: Callable[[int, str], Any]) -> None: ...
-       def f7(x: Callable[[], bool]) -> None: ...
-       def f8(x: Callable[[int, str], Any]) -> None: ...
+       def f3(x: Callable[[], bool]) -> None: ...
        def g1(x: Callable[Any, bool]) -> None: ...
        def g2(x: Callable[Any, bool]) -> None: ...
        def g3(x: Callable[[], Any]) -> None: ...
@@ -288,14 +277,14 @@ class TypingTest(test_base.BaseTest):
        def g7(x: Callable[[], bool]) -> None: ...
     """)
     self.assertErrorLogIs(errors, [
-        (15, "invalid-annotation", r"'int'.*must be a list of argument types"),
-        (17, "invalid-annotation", r"\[int\] or \[str\].*Must be constant"),
-        (18, "invalid-annotation", r"bool or str.*Must be constant"),
-        (19, "invalid-annotation", r"int or str.*Must be constant"),
-        (21, "invalid-annotation",
+        (9, "invalid-annotation", r"'int'.*must be a list of argument types"),
+        (11, "invalid-annotation", r"\[int\] or \[str\].*Must be constant"),
+        (12, "invalid-annotation", r"bool or str.*Must be constant"),
+        (13, "invalid-annotation", r"int or str.*Must be constant"),
+        (15, "invalid-annotation",
          r"instance of List\[int\].*Must be constant"),
-        (22, "invalid-annotation", r"instance of int"),
-        (23, "invalid-annotation", r"Callable.*Expected 2.*got 3"),])
+        (16, "invalid-annotation", r"instance of int"),
+        (17, "invalid-annotation", r"Callable.*Expected 2.*got 3"),])
 
   def test_callable_bad_args(self):
     ty, errors = self.InferWithErrors("""\
@@ -658,6 +647,57 @@ class TypingTest(test_base.BaseTest):
       def g() -> str:
         return f()
     """)
+
+  def test_union_ellipsis(self):
+    errors = self.CheckWithErrors("""\
+      from __future__ import google_type_annotations
+      from typing import Union
+      MyUnion = Union[int, ...]
+    """)
+    self.assertErrorLogIs(
+        errors, [(3, "invalid-annotation", r"Ellipsis.*index 1.*Union")])
+
+  def test_list_ellipsis(self):
+    errors = self.CheckWithErrors("""\
+      from __future__ import google_type_annotations
+      from typing import List
+      MyList = List[int, ...]
+    """)
+    self.assertErrorLogIs(
+        errors, [(3, "invalid-annotation", r"Ellipsis.*index 1.*List")])
+
+  def test_multiple_ellipses(self):
+    errors = self.CheckWithErrors("""\
+      from __future__ import google_type_annotations
+      from typing import Union
+      MyUnion = Union[..., int, ..., str, ...]
+    """)
+    self.assertErrorLogIs(errors, [
+        (3, "invalid-annotation", r"Ellipsis.*indices 0, 2, 4.*Union")])
+
+  def test_bad_tuple_ellipsis(self):
+    errors = self.CheckWithErrors("""\
+      from __future__ import google_type_annotations
+      from typing import Tuple
+      MyTuple1 = Tuple[..., ...]
+      MyTuple2 = Tuple[...]
+    """)
+    self.assertErrorLogIs(
+        errors, [(3, "invalid-annotation", r"Ellipsis.*index 0.*Tuple"),
+                 (4, "invalid-annotation", r"Ellipsis.*index 0.*Tuple")])
+
+  def test_bad_callable_ellipsis(self):
+    errors = self.CheckWithErrors("""\
+      from __future__ import google_type_annotations
+      from typing import Callable
+      MyCallable1 = Callable[..., ...]
+      MyCallable2 = Callable[[int], ...]
+      MyCallable3 = Callable[[...], int]
+    """)
+    self.assertErrorLogIs(
+        errors, [(3, "invalid-annotation", r"Ellipsis.*index 1.*Callable"),
+                 (4, "invalid-annotation", r"Ellipsis.*index 1.*Callable"),
+                 (5, "invalid-annotation", r"Ellipsis.*index 0.*list")])
 
 
 if __name__ == "__main__":

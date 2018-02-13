@@ -698,6 +698,14 @@ class ErrorLog(ErrorLogBase):
     self._invalid_annotation(stack, self._print_as_expected_type(annot),
                              details, name)
 
+  def invalid_ellipses(self, stack, indices, container_name):
+    if indices:
+      details = "Not allowed at %s %s in %s" % (
+          "index" if len(indices) == 1 else "indices",
+          ", ".join(str(i) for i in sorted(indices)),
+          container_name)
+      self._invalid_annotation(stack, "Ellipsis", details, None)
+
   def ambiguous_annotation(self, stack, options, name=None):
     desc = " or ".join(sorted(self._print_as_expected_type(o) for o in options))
     self._invalid_annotation(stack, desc, "Must be constant", name)

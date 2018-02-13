@@ -36,7 +36,8 @@ class Union(abstract.AnnotationClass):
     super(Union, self).__init__(name, vm)
     self.options = options
 
-  def _build_value(self, node, inner, _):
+  def _build_value(self, node, inner, ellipses):
+    self.vm.errorlog.invalid_ellipses(self.vm.frames, ellipses, self.name)
     return abstract.Union(self.options + inner, self.vm)
 
 
@@ -53,13 +54,16 @@ class TypingContainer(abstract.AnnotationContainer):
 
 class Tuple(TypingContainer):
 
-  def _get_value_info(self, inner, ends_with_ellipsis):
-    if not ends_with_ellipsis:
+  def _get_value_info(self, inner, ellipses):
+    if ellipses:
+      # An ellipsis may appear at the end of the parameter list as long as it is
+      # not the only parameter.
+      return super(Tuple, self)._get_value_info(
+          inner, ellipses, allowed_ellipses={len(inner) - 1} - {0})
+    else:
       template = range(len(inner)) + [abstract.T]
       inner += (abstract.merge_values(inner, self.vm),)
       return template, inner, abstract.TupleClass
-    else:
-      return super(Tuple, self)._get_value_info(inner, ends_with_ellipsis)
 
 
 class Callable(TypingContainer):
@@ -67,10 +71,12 @@ class Callable(TypingContainer):
 
   def getitem_slot(self, node, slice_var):
     content = self._maybe_extract_tuple(node, slice_var)
-    inner, ends_with_ellipsis = self._build_inner(content)
+    inner, ellipses = self._build_inner(content)
     args = inner[0]
     if isinstance(args, abstract.List) and not args.could_contain_anything:
-      inner[0], _ = self._build_inner(args.pyval)
+      inner[0], inner_ellipses = self._build_inner(args.pyval)
+      self.vm.errorlog.invalid_ellipses(
+          self.vm.frames, inner_ellipses, args.name)
     else:
       if args.cls and any(v.full_name == "__builtin__.list"
                           for v in args.cls.data):
@@ -82,17 +88,20 @@ class Callable(TypingContainer):
             self.vm.frames, args,
             "First argument to Callable must be a list of argument types.")
       inner[0] = self.vm.convert.unsolvable
-    value = self._build_value(node, tuple(inner), ends_with_ellipsis)
+    value = self._build_value(node, tuple(inner), ellipses)
     return node, value.to_variable(node)
 
-  def _get_value_info(self, inner, ends_with_ellipsis):
+  def _get_value_info(self, inner, ellipses):
     if isinstance(inner[0], list):
       template = range(len(inner[0])) + [t.name for t in self.base_cls.template]
       combined_args = abstract.merge_values(inner[0], self.vm)
       inner = tuple(inner[0]) + (combined_args,) + inner[1:]
+      self.vm.errorlog.invalid_ellipses(self.vm.frames, ellipses, self.name)
       return template, inner, abstract.Callable
     else:
-      return super(Callable, self)._get_value_info(inner, ends_with_ellipsis)
+      # An ellipsis may take the place of the ARGS list.
+      return super(Callable, self)._get_value_info(
+          inner, ellipses, allowed_ellipses={0})
 
 
 class TypeVarError(Exception):

@@ -1007,7 +1007,9 @@ class AnnotationTest(test_base.BaseTest):
       def g(x: Tuple[str, ...]) -> None: ...
       def h(x: Dict[Any, int]) -> None: ...
     """)
-    self.assertErrorLogIs(errors, [(3, "invalid-annotation", r"Ellipsis.*x")])
+    self.assertErrorLogIs(
+        errors, [(3, "invalid-annotation", r"Ellipsis.*x"),
+                 (5, "invalid-annotation", r"Ellipsis.*Dict")])
 
   def testCustomContainer(self):
     with utils.Tempdir() as d:

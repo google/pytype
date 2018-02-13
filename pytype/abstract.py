@@ -1204,14 +1204,22 @@ class AnnotationClass(SimpleAbstractValue, HasSlots):
   def getitem_slot(self, node, slice_var):
     """Custom __getitem__ implementation."""
     slice_content = self._maybe_extract_tuple(node, slice_var)
-    inner, ends_with_ellipsis = self._build_inner(slice_content)
-    value = self._build_value(node, tuple(inner), ends_with_ellipsis)
+    inner, ellipses = self._build_inner(slice_content)
+    value = self._build_value(node, tuple(inner), ellipses)
     return node, value.to_variable(node)
 
   def _build_inner(self, slice_content):
-    """Build the list of parameters."""
+    """Build the list of parameters.
+
+    Args:
+      slice_content: The iterable of variables to extract parameters from.
+
+    Returns:
+      A tuple of a list of parameters and a set of indices at which an ellipsis
+        was replaced with Any.
+    """
     inner = []
-    ends_with_ellipsis = False
+    ellipses = set()
     for var in slice_content:
       if len(var.bindings) > 1:
         self.vm.errorlog.ambiguous_annotation(self.vm.frames, var.data)
@@ -1219,18 +1227,15 @@ class AnnotationClass(SimpleAbstractValue, HasSlots):
       else:
         val = var.bindings[0].data
         if val is self.vm.convert.ellipsis:
-          # An ellipsis is usually a shorthand for "Any", so we turn it into an
-          # unsolvable. However, we also need to know if an ellipsis was at the
-          # end of the parameters list, since in that case it can instead
-          # indicate a homogeneous container.
-          if len(inner) == len(slice_content) - 1:
-            ends_with_ellipsis = True
+          # Ellipses are allowed only in special cases, so turn them into Any
+          # but record the indices so we can check if they're legal.
+          ellipses.add(len(inner))
           inner.append(self.vm.convert.unsolvable)
         else:
           inner.append(val)
-    return inner, ends_with_ellipsis
+    return inner, ellipses
 
-  def _build_value(self, node, inner, ends_with_ellipsis):
+  def _build_value(self, node, inner, ellipses):
     raise NotImplementedError(self.__class__.__name__)
 
   def __repr__(self):
@@ -1244,15 +1249,29 @@ class AnnotationContainer(AnnotationClass):
     super(AnnotationContainer, self).__init__(name, vm)
     self.base_cls = base_cls
 
-  def _get_value_info(self, inner, ends_with_ellipsis):
+  def _get_value_info(self, inner, ellipses, allowed_ellipses=frozenset()):
+    """Get information about the container's inner values.
+
+    Args:
+      inner: The list of parameters from _build_inner().
+      ellipses: The set of ellipsis indices from _build_inner().
+      allowed_ellipses: Optionally, a set of indices at which ellipses are
+        allowed. If omitted, ellipses are assumed to be never allowed.
+
+    Returns:
+      A tuple of the template, the parameters, and the container class.
+    """
     template = tuple(t.name for t in self.base_cls.template)
-    if ends_with_ellipsis:
+    self.vm.errorlog.invalid_ellipses(
+        self.vm.frames, ellipses - allowed_ellipses, self.name)
+    if len(inner) - 1 in ellipses:
+      # Even if an ellipsis is not allowed at this position, strip it off so
+      # that we report only one error for something like 'List[int, ...]'
       inner = inner[:-1]
     return template, inner, ParameterizedClass
 
-  def _build_value(self, node, inner, ends_with_ellipsis):
-    template, inner, abstract_class = self._get_value_info(
-        inner, ends_with_ellipsis)
+  def _build_value(self, node, inner, ellipses):
+    template, inner, abstract_class = self._get_value_info(inner, ellipses)
     if len(inner) > len(template):
       if not template:
         self.vm.errorlog.not_indexable(self.vm.frames, self.base_cls.name,

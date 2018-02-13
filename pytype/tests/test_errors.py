@@ -963,23 +963,24 @@ class ErrorTest(test_base.BaseTest):
   def testPrintDictAndTuple(self):
     _, errors = self.InferWithErrors("""\
       from __future__ import google_type_annotations
-      tup = None  # type: tuple[int, ...]
+      from typing import Tuple
+      tup = None  # type: Tuple[int, ...]
       dct = None  # type: dict[str, int]
-      def f1(x: (int, str)):
+      def f1(x: (int, str)):  # line 5
         pass
-      def f2(x: tup):
+      def f2(x: tup):  # line 7
         pass
-      def g1(x: {"a": 1}):
+      def g1(x: {"a": 1}):  # line 9
         pass
-      def g2(x: dct):
+      def g2(x: dct):  # line 11
         pass
     """)
     self.assertErrorLogIs(errors, [
-        (4, "invalid-annotation", r"(int, str).*Not a type"),
-        (6, "invalid-annotation",
+        (5, "invalid-annotation", r"(int, str).*Not a type"),
+        (7, "invalid-annotation",
          r"instance of Tuple\[int, \.\.\.\].*Not a type"),
-        (8, "invalid-annotation", r"{'a': '1'}.*Not a type"),
-        (10, "invalid-annotation", r"instance of Dict\[str, int\].*Not a type")
+        (9, "invalid-annotation", r"{'a': '1'}.*Not a type"),
+        (11, "invalid-annotation", r"instance of Dict\[str, int\].*Not a type")
     ])
 
   def testMoveUnionInward(self):
