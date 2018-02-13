@@ -181,6 +181,8 @@ class AtomicAbstractValue(object):
   all ints.
   """
 
+  CAN_BE_ABSTRACT = False  # True for functions and properties.
+
   formal = False  # is this type non-instantiable?
 
   def __init__(self, name, vm):
@@ -1501,6 +1503,8 @@ class Function(SimpleAbstractValue):
     vm: TypegraphVirtualMachine instance.
   """
 
+  CAN_BE_ABSTRACT = True
+
   def __init__(self, name, vm):
     super(Function, self).__init__(name, vm)
     self.cls = self.vm.convert.function_type.to_variable(vm.root_cfg_node)
@@ -2172,12 +2176,13 @@ class Class(object):
     self.abstract_methods = abstract_methods
 
   @property
+  def has_abstract_metaclass(self):
+    return self.cls and any(
+        cls.full_name == "abc.ABCMeta" for cls in self.cls.data)
+
+  @property
   def is_abstract(self):
-    if not self.cls or any(
-        cls.full_name != "abc.ABCMeta" for cls in self.cls.data):
-      # This class does not have metaclass ABCMeta.
-      return False
-    return bool(self.abstract_methods)
+    return self.has_abstract_metaclass and bool(self.abstract_methods)
 
   def _get_inherited_metaclass(self):
     for base in self.mro[1:]:
@@ -2635,7 +2640,7 @@ class InterpreterClass(SimpleAbstractValue, Class):
 
   def get_own_abstract_methods(self):
     return {name for name, var in self.members.items()
-            if any(isinstance(v, Function) and v.is_abstract for v in var.data)}
+            if any(v.CAN_BE_ABSTRACT and v.is_abstract for v in var.data)}
 
   def _mangle(self, name):
     """Do name-mangling on an attribute name.

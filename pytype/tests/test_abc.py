@@ -324,6 +324,20 @@ class AbstractMethodTests(test_base.BaseTest):
           pass
     """)
 
+  def test_abstractmethod_and_property_instantiate(self):
+    _, errors = self.InferWithErrors("""\
+      from __future__ import google_type_annotations
+      import abc
+      class Foo(object):
+        __metaclass__ = abc.ABCMeta
+        @property
+        @abc.abstractmethod
+        def foo(self) -> int:
+          pass
+      x = Foo()
+    """)
+    self.assertErrorLogIs(errors, [(9, "not-instantiable", r"Foo.*foo")])
+
   def test_abstractmethod_noreturn(self):
     self.Check("""
       from __future__ import google_type_annotations
@@ -384,6 +398,45 @@ class AbstractMethodTests(test_base.BaseTest):
         def bar(self):
           return self.foo().upper()
     """)
+
+class AbstractPropertyTests(test_base.BaseTest):
+  """Tests for @abc.abstractproperty."""
+
+  def test_abstractproperty(self):
+    self.Check("""\
+      from __future__ import google_type_annotations
+      import abc
+      class Example(object):
+        __metaclass__ = abc.ABCMeta
+        @abc.abstractproperty
+        def foo(self) -> int:
+          pass
+    """)
+
+  def test_abstractproperty_instantiate(self):
+    _, errors = self.InferWithErrors("""\
+      from __future__ import google_type_annotations
+      import abc
+      class Foo(object):
+        __metaclass__ = abc.ABCMeta
+        @abc.abstractproperty
+        def foo(self) -> int:
+          pass
+      x = Foo()
+    """)
+    self.assertErrorLogIs(errors, [(8, "not-instantiable", r"Foo.*foo")])
+
+  def test_misplaced_abstractproperty(self):
+    _, errors = self.InferWithErrors("""\
+      from __future__ import google_type_annotations
+      import abc
+      @abc.abstractproperty
+      class Example(object):
+        pass
+      Example()
+    """)
+    self.assertErrorLogIs(errors,
+                          [(6, "not-callable", r"'abstractproperty' object")])
 
 
 if __name__ == "__main__":

@@ -487,12 +487,40 @@ class RevealType(abstract.AtomicAbstractValue):
     return node, self.vm.convert.build_none(node)
 
 
+class PropertyTemplate(abstract.PyTDClass):
+  """Template for property decorators."""
+
+  _KEYS = ["fget", "fset", "fdel", "doc"]
+
+  def __init__(self, name, method, module, vm):
+    super(PropertyTemplate, self).__init__(name, method, vm)
+    self.module = module
+
+  def signature(self):
+    # Minimal signature, only used for constructing exceptions.
+    return function.Signature.from_param_names(self.name, tuple(self._KEYS))
+
+  def _get_args(self, args):
+    ret = dict(zip(self._KEYS, args.posargs))
+    for k, v in args.namedargs.iteritems():
+      if k not in self._KEYS:
+        raise abstract.WrongKeywordArgs(self.signature(), args, self.vm, [k])
+      ret[k] = v
+    return ret
+
+  def call(self, node, funcv, args):
+    raise NotImplementedError()
+
+
 class PropertyInstance(abstract.SimpleAbstractValue, abstract.HasSlots):
   """Property instance (constructed by Property.call())."""
 
-  def __init__(self, vm, cls, fget=None, fset=None, fdel=None, doc=None):
+  CAN_BE_ABSTRACT = True
+
+  def __init__(self, vm, name, cls, fget=None, fset=None, fdel=None, doc=None):
     super(PropertyInstance, self).__init__("property", vm)
     abstract.HasSlots.init_mixin(self)
+    self.name = name  # Reports the correct decorator in error messages.
     self.fget = fget
     self.fset = fset
     self.fdel = fdel
@@ -504,6 +532,12 @@ class PropertyInstance(abstract.SimpleAbstractValue, abstract.HasSlots):
     self.set_slot("getter", self.getter_slot)
     self.set_slot("setter", self.setter_slot)
     self.set_slot("deleter", self.deleter_slot)
+    self.is_abstract = any(self._is_fn_abstract(x) for x in [fget, fset, fdel])
+
+  def _is_fn_abstract(self, func_var):
+    if func_var is None:
+      return False
+    return any(getattr(d, "is_abstract", None) for d in func_var.data)
 
   def get_class(self):
     return self.cls
@@ -521,48 +555,35 @@ class PropertyInstance(abstract.SimpleAbstractValue, abstract.HasSlots):
 
   def getter_slot(self, node, fget):
     prop = PropertyInstance(
-        self.vm, self.cls, fget, self.fset, self.fdel, self.doc)
+        self.vm, self.name, self.cls, fget, self.fset, self.fdel, self.doc)
     result = self.vm.program.NewVariable([prop], fget.bindings, node)
     return node, result
 
   def setter_slot(self, node, fset):
     prop = PropertyInstance(
-        self.vm, self.cls, self.fget, fset, self.fdel, self.doc)
+        self.vm, self.name, self.cls, self.fget, fset, self.fdel, self.doc)
     result = self.vm.program.NewVariable([prop], fset.bindings, node)
     return node, result
 
   def deleter_slot(self, node, fdel):
     prop = PropertyInstance(
-        self.vm, self.cls, self.fget, self.fset, fdel, self.doc)
+        self.vm, self.name, self.cls, self.fget, self.fset, fdel, self.doc)
     result = self.vm.program.NewVariable([prop], fdel.bindings, node)
     return node, result
 
 
-class Property(abstract.PyTDClass):
+class Property(PropertyTemplate):
   """Property method decorator."""
 
-  _KEYS = ["fget", "fset", "fdel", "doc"]
-  # Minimal signature, only used for constructing exceptions.
-  _SIGNATURE = function.Signature.from_param_names("property", tuple(_KEYS))
-
   def __init__(self, vm):
-    super(Property, self).__init__(
-        "property", vm.lookup_builtin("__builtin__.property"), vm)
-    self.module = "__builtin__"
-
-  def _get_args(self, args):
-    ret = dict(zip(self._KEYS, args.posargs))
-    for k, v in args.namedargs.iteritems():
-      if k not in self._KEYS:
-        raise abstract.WrongKeywordArgs(self._SIGNATURE, args, self.vm, [k])
-      ret[k] = v
-    return ret
+    method = vm.lookup_builtin("__builtin__.property")
+    super(Property, self).__init__("property", method, "__builtin__", vm)
 
   def call(self, node, funcv, args):
     property_args = self._get_args(args)
     cls = self.to_variable(node)
     return node, PropertyInstance(
-        self.vm, cls, **property_args).to_variable(node)
+        self.vm, "property", cls, **property_args).to_variable(node)
 
 
 class StaticMethodInstance(abstract.SimpleAbstractValue, abstract.HasSlots):
