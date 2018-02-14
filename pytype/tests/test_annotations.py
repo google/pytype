@@ -802,7 +802,7 @@ class AnnotationTest(test_base.BaseTest):
     """)
 
   def testNestedNoneType(self):
-    ty, errors = self.InferWithErrors("""\
+    ty = self.Infer("""
       from __future__ import google_type_annotations
       from typing import List, Union
       class A:
@@ -811,7 +811,7 @@ class AnnotationTest(test_base.BaseTest):
         pass
       def g() -> List[None]:
         return [None]
-      v1 = f().x  # line 9
+      v1 = f().x
       v2 = g()[0]
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
@@ -823,7 +823,6 @@ class AnnotationTest(test_base.BaseTest):
       v1 = ...  # type: int
       v2 = ...  # type: None
     """)
-    self.assertErrorLogIs(errors, [(9, "attribute-error", r"x.*None")])
 
   def testMatchLateAnnotation(self):
     _, errors = self.InferWithErrors("""\

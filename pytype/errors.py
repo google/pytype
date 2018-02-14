@@ -530,6 +530,13 @@ class ErrorLog(ErrorLogBase):
     else:
       self._attribute_error(stack, binding, attr_name)
 
+  @_error_name("none-attr")
+  def none_attr(self, stack, attr_name):
+    self.error(
+        stack,
+        "Access of attribute %r on a type that might be None" % attr_name,
+        details="Do you need a type comment?")
+
   @_error_name("unbound-type-param")
   def unbound_type_param(self, stack, obj, attr_name, type_param_name):
     self.error(
@@ -645,6 +652,12 @@ class ErrorLog(ErrorLogBase):
     self.error(stack, message,
                details="(%s does not have metaclass abc.ABCMeta)" % cls_name)
 
+  @_error_name("none-attr")  # None doesn't have attribute '__call__'
+  def none_not_callable(self, stack):
+    """Calling None."""
+    self.error(stack, "Calling a type that might be None",
+               details="Do you need a type comment?")
+
   @_error_name("duplicate-keyword-argument")
   def duplicate_keyword(self, stack, name, bad_call, duplicate):
     message = ("%s got multiple values for keyword argument %r" %
@@ -662,6 +675,8 @@ class ErrorLog(ErrorLogBase):
     elif isinstance(error, abstract.MissingParameter):
       self.missing_parameter(
           stack, error.name, error.bad_call, error.missing_parameter)
+    elif isinstance(error, abstract.NoneNotCallable):
+      self.none_not_callable(stack)
     elif isinstance(error, abstract.NotCallable):
       self.not_callable(stack, error.obj)
     elif isinstance(error, abstract.DuplicateKeyword):

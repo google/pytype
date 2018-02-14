@@ -937,6 +937,7 @@ class SplitTest(test_base.BaseTest):
     """)
 
   def testListComprehension(self):
+    self.options.tweak(strict_none=True)
     self.Check("""
       widgets = [None, 'hello']
       wotsits = [x for x in widgets if x]
@@ -954,6 +955,7 @@ class SplitTest(test_base.BaseTest):
     """)
 
   def testShadowNone(self):
+    self.options.tweak(strict_none=True)
     self.Check("""
       from __future__ import google_type_annotations
       from typing import Optional, Union
@@ -964,6 +966,7 @@ class SplitTest(test_base.BaseTest):
     """)
 
   def testLongSignature(self):
+    self.options.tweak(strict_none=True)
     self.Check("""
       from __future__ import google_type_annotations
 
@@ -979,6 +982,7 @@ class SplitTest(test_base.BaseTest):
     """)
 
   def testCreateList(self):
+    self.options.tweak(strict_none=True)
     self.Check("""
       from __future__ import google_type_annotations
       from typing import List, Optional
@@ -989,6 +993,7 @@ class SplitTest(test_base.BaseTest):
     """)
 
   def testCreateTuple(self):
+    self.options.tweak(strict_none=True)
     self.Check("""
       from __future__ import google_type_annotations
       from typing import Optional, Tuple

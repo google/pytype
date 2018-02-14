@@ -748,6 +748,8 @@ class SimpleAbstractValue(AtomicAbstractValue):
         node, self, "__call__", self.to_binding(node))
     if var is not None and var.bindings:
       return self.vm.call_function(node, var, args)
+    elif self.cls and self.cls.data == [self.vm.convert.none_type]:
+      raise NoneNotCallable()
     else:
       raise NotCallable(self)
 
@@ -1446,6 +1448,10 @@ class NotCallable(FailedFunctionCall):
   def __init__(self, obj):
     super(NotCallable, self).__init__()
     self.obj = obj
+
+
+class NoneNotCallable(FailedFunctionCall):
+  """When trying to call None."""
 
 
 class DictKeyMissing(Exception):

@@ -9,6 +9,10 @@ from pytype.tests import test_base
 class TestStrictNone(test_base.BaseTest):
   """Tests for strict attribute checking on None."""
 
+  def setUp(self):
+    super(TestStrictNone, self).setUp()
+    self.options.tweak(strict_none=True)
+
   def testModuleConstant(self):
     self.Check("""
       x = None
@@ -590,13 +594,12 @@ class TestAttributes(test_base.BaseTest):
     """)
 
   def testAttrOnOptional(self):
-    errors = self.CheckWithErrors("""\
+    self.Check("""
       from __future__ import google_type_annotations
       from typing import Optional
       def f(x: Optional[str]):
         return x.upper()
     """)
-    self.assertErrorLogIs(errors, [(4, "attribute-error", r"upper.*None")])
 
   def testHasDynamicAttributes(self):
     self.Check("""\
@@ -664,7 +667,7 @@ class TestAttributes(test_base.BaseTest):
         if not x:
           x.upper()
     """)
-    self.assertErrorLogIs(errors, [(4, "attribute-error")])
+    self.assertErrorLogIs(errors, [(4, "none-attr")])
 
   def testIteratorOnNone(self):
     _, errors = self.InferWithErrors("""\
@@ -672,7 +675,7 @@ class TestAttributes(test_base.BaseTest):
         pass
       a, b = f()
     """)
-    self.assertErrorLogIs(errors, [(3, "attribute-error")])
+    self.assertErrorLogIs(errors, [(3, "none-attr")])
 
   def testOverloadedBuiltin(self):
     self.Check("""

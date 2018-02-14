@@ -4,7 +4,6 @@ import collections
 import csv
 import os
 import textwrap
-import unittest
 
 from pytype import errors
 from pytype import state as frame_state
