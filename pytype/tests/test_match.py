@@ -299,7 +299,7 @@ class MatchTest(test_base.BaseTest):
                                     r"Actual.*Callable\[\[int\], str\]")])
 
   def testFunctionWithTypeParameterArgAgainstCallable(self):
-    _, errors = self.InferWithErrors("""\
+    self.Check("""\
       from __future__ import google_type_annotations
       from typing import Any, AnyStr, Callable, TypeVar
       T = TypeVar("T")
@@ -310,10 +310,9 @@ class MatchTest(test_base.BaseTest):
       def g3(x: MyAnyStr) -> MyAnyStr: return x
 
       f(g1)  # ok: same parameter
-      f(g2)
+      f(g2)  # ok: callable parameters are contravariant, g2 is more general
       f(g3)  # ok: constraints match
     """)
-    self.assertErrorLogIs(errors, [(11, "wrong-arg-types")])
 
   def testFunctionWithTypeParameterReturnAgainstCallable(self):
     _, errors = self.InferWithErrors("""\
@@ -479,6 +478,54 @@ class MatchTest(test_base.BaseTest):
         import foo
         foo.Foo(foo.x.next)
       """, pythonpath=[d.path])
+
+  def testTypeVarAgainstTypeVar(self):
+    _, errors = self.InferWithErrors("""\
+      from __future__ import google_type_annotations
+      from typing import Any, Callable, TypeVar
+      T1 = TypeVar("T1")
+      T2 = TypeVar("T2", bound=str)
+      T3 = TypeVar("T3", bound=basestring)
+      T4 = TypeVar("T4", bound=int)
+      T5 = TypeVar("T5", str, unicode)
+      T6 = TypeVar("T6", int, float)
+      T7 = TypeVar("T7", int, float, complex)
+      def f1(x: T1, y: T1) -> None: pass
+      def f2(x: T2, y: T2) -> None: pass
+      def f3(x: T3, y: T3) -> None: pass
+      def f4(x: T4, y: T4) -> None: pass
+      def f5(x: T5, y: T5) -> None: pass
+      def f6(x: T6, y: T6) -> None: pass
+      def f7(x: T7, y: T7) -> None: pass
+      def g1(x: Callable[[T1, T1], None]) -> None: pass
+      def g2(x: Callable[[T2, T2], None]) -> None: pass
+      def g3(x: Callable[[T3, T3], None]) -> None: pass
+      def g4(x: Callable[[T4, T4], None]) -> None: pass
+      def g5(x: Callable[[T5, T5], None]) -> None: pass
+      def g6(x: Callable[[T6, T6], None]) -> None: pass
+      def g7(x: Callable[[T7, T7], None]) -> None: pass
+      # below, gN(fM) causes N to be matched against M
+      g1(f1)  # ok: same TypeVar
+      g2(f1)  # ok: T2 has a bound, T1 doesn't
+      g5(f1)  # ok: T5 has constraints, T1 doesn't
+      g2(f2)  # ok: same TypeVar
+      g4(f2)  # error, line 29
+      g5(f2)  # error, line 30
+      g6(f2)  # error, line 31
+      g5(f3)  # ok: T5 has contraints within the bound of T3
+      g5(f4)  # error, line 33
+      g6(f5)  # error, line 34
+      g6(f7)  # ok: T6 constraints are a subset of T7
+      g7(f6)  # error, line 36
+    """)
+    self.assertErrorLogIs(errors, [
+        (29, "wrong-arg-types", "T4.*T2"),
+        (30, "wrong-arg-types", "T5.*T2"),
+        (31, "wrong-arg-types", "T6.*T2"),
+        (33, "wrong-arg-types", "T5.*T4"),
+        (34, "wrong-arg-types", "T6.*T5"),
+        (36, "wrong-arg-types", "T7.*T6"),
+    ])
 
 
 if __name__ == "__main__":

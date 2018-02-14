@@ -137,6 +137,34 @@ class AbstractMatcher(object):
       # If this type is empty, we can match it against anything.
       return subst
 
+  def _match_type_param_against_type_param(self, t1, t2, subst, node, view):
+    """Match a TypeVar against another TypeVar."""
+    if t2.constraints:
+      assert not t2.bound  # constraints and bounds are mutually exclusive
+      # We only check the constraints for t1, not the bound. We wouldn't know
+      # all the possible subtypes of a bound, so we can't verify against the
+      # constraints even if t1 is bounded.
+      if not t1.constraints:
+        return None  # t1 is unconstrained, t2 has constraints
+      if set(t1.constraints) - set(t2.constraints):
+        return None  # t1 is more permissive than t2
+    elif t2.bound:
+      if t1.bound:
+        new_subst = self._instantiate_and_match(t1.bound, t2.bound,
+                                                subst, node, view)
+        if new_subst is not None:
+          return new_subst
+      # Even if t1 doesn't have a bound, maybe it's constrained to subtypes of
+      # t2's bound.
+      if not t1.constraints:
+        return None
+      for t in t1.constraints:
+        new_subst = self._instantiate_and_match(t, t2.bound,
+                                                subst, node, view)
+        if new_subst is None:
+          return None  # a constraint option isn't allowed by the bound
+    return subst
+
   def _match_value_against_type(self, value, other_type, subst, node, view):
     """One-way unify value into pytd type given a substitution.
 
@@ -158,18 +186,23 @@ class AbstractMatcher(object):
     if isinstance(left, abstract.TypeParameterInstance) and (
         isinstance(left.instance, (abstract.Callable, function.Signature))):
       if isinstance(other_type, abstract.TypeParameter):
-        # We require type parameters to match exactly.
-        if left.param.equivalent_to(other_type):
-          subst = subst.copy()
+        new_subst = self._match_type_param_against_type_param(
+            left.param, other_type, subst, node, view)
+        if new_subst is not None:
+          subst = new_subst.copy()
           # TODO(kramm): Can we put in something more precise?
           subst[other_type.name] = node.program.NewVariable([], [], node)
           return subst
         else:
-          # Keep the type parameter name in the expected type.
-          dummy_instance = other_type.vm.annotations_util.instantiate_for_sub(
+          # Keep the type parameter names in the expected types.
+          left_dummy = other_type.vm.annotations_util.instantiate_for_sub(
+              other_type.vm.root_cfg_node, left.param)
+          right_dummy = other_type.vm.annotations_util.instantiate_for_sub(
               other_type.vm.root_cfg_node, other_type)
           self._set_error_subst(
-              self._merge_substs(subst, [{other_type.name: dummy_instance}]))
+              self._merge_substs(subst, [{
+                  left.param.name: left_dummy,
+                  other_type.name: right_dummy}]))
           return None
       elif isinstance(left.instance, abstract.Callable):
         # We're doing argument-matching against a callable. We flipped the

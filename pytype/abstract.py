@@ -589,22 +589,6 @@ class TypeParameter(AtomicAbstractValue):
               self.contravariant == other.contravariant)
     return NotImplemented
 
-  def equivalent_to(self, other):
-    """Check if the object is equivalent to self.
-
-    Args:
-      other: An object to be checked.
-    Returns:
-      True if other is a type parameter and the *sorted* constraints, as well
-      as the bound, covariant, and contravariant attributes are equal to
-      self's, False otherwise. Ignores name.
-    """
-    return (isinstance(other, type(self)) and
-            sorted(self.constraints) == sorted(other.constraints) and
-            self.bound == other.bound and
-            self.covariant == other.covariant and
-            self.contravariant == other.contravariant)
-
   def __ne__(self, other):
     return not self == other
 

@@ -365,6 +365,16 @@ class StdlibTests(test_base.BaseTest):
       collections.Coroutine
     """, python_version=(3, 6))
 
+  def testPartial(self):
+    self.Check("""\
+      from __future__ import google_type_annotations
+      import functools
+      from typing import TypeVar
+      T = TypeVar('T', float, str)
+      def identity(x: T) -> T: return x
+      functools.partial(identity)
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()
