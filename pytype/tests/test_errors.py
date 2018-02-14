@@ -294,10 +294,7 @@ class ErrorTest(test_base.BaseTest):
       """, pythonpath=[d.path])
       self.assertErrorLogIs(errors, [
           (5, "attribute-error", r"No attribute 'foo' on Type\[Foo\]"),
-          (11, "attribute-error",
-           r"No attribute 'bar' on None"),
-          (11, "attribute-error",
-           r"No attribute 'bar' on int"),
+          (11, "attribute-error", r"No attribute 'bar' on int"),
           (15, "module-attr",
            "No attribute 'baz' on module 'modfoo'")])
 

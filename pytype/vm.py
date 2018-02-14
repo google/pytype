@@ -1213,8 +1213,7 @@ class VirtualMachine(object):
     else:
       for error in errors:
         if not self._is_none(state.node, error):
-          self.errorlog.attribute_or_module_error(
-              self.frames, error.AssignToNewVariable(self.root_cfg_node), attr)
+          self.errorlog.attribute_error(self.frames, error, attr)
 
   def load_attr_noerror(self, state, obj, attr):
     """Try loading an attribute, ignore errors."""
