@@ -3219,8 +3219,7 @@ class InterpreterFunction(SignedFunction):
     if not all_combinations:
       # Fallback: Generate a PyTD signature only from the definition of the
       # method, not the way it's being used.
-      param_binding = (
-          self.vm.convert.primitive_class_instances[object].to_binding(node))
+      param_binding = self.vm.convert.unsolvable.to_binding(node)
       params = collections.defaultdict(lambda: param_binding)
       ret = self.vm.convert.unsolvable.to_binding(node)
       all_combinations.append((node, params, ret))
@@ -3725,7 +3724,7 @@ class Unknown(AtomicAbstractValue):
 
   def to_structural_def(self, node, class_name):
     """Convert this Unknown to a pytd.Class."""
-    self_param = (pytd.Parameter("self", pytd.NamedType("__builtin__.object"),
+    self_param = (pytd.Parameter("self", pytd.AnythingType(),
                                  False, False, None),)
     # TODO(kramm): Record these.
     starargs = None

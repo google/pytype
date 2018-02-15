@@ -1179,8 +1179,7 @@ def _normal_param(name, param_type, default, kwonly):
     elif param_type is None:
       param_type = default_type
   if param_type is None:
-    # TODO(kramm): We should use __builtin__.object. (And other places)
-    param_type = pytd.NamedType("object")
+    param_type = pytd.AnythingType()
 
   optional = default is not None
   return pytd.Parameter(name, param_type, kwonly, optional, None)
@@ -1216,8 +1215,7 @@ def _type_for_default(default):
   elif isinstance(default, int):
     return pytd.NamedType("int")
   else:
-    # ELLIPSIS or NAMEs other than None are treated as object.
-    return pytd.NamedType("object")
+    return pytd.AnythingType()
 
 
 def _split_definitions(defs):

@@ -880,13 +880,11 @@ class ImportTest(test_base.BaseTest):
         class object:
           def foo(self) -> None: ...
         def f(x: object) -> object
-        def f(x) -> object  # same as above (abbreviated form)
       """)
       ty, errors = self.InferWithErrors("""\
         import foo
         x = foo.f(foo.object())
         y = foo.f(foo.object())
-        foo.f(object())  # error
         foo.f(object())  # error
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
@@ -896,7 +894,6 @@ class ImportTest(test_base.BaseTest):
       """)
       self.assertErrorLogIs(errors, [
           (4, "wrong-arg-types"),
-          (5, "wrong-arg-types")
       ])
 
   def testNoFailOnBadSymbolLookup(self):

@@ -442,7 +442,7 @@ class PrintVisitor(Visitor):
       return node.Replace(type=node.type.parameters[-1], optional=False).Visit(
           PrintVisitor())
     else:
-      return node.Replace(type=pytd.NamedType("object"), optional=False).Visit(
+      return node.Replace(type=pytd.AnythingType(), optional=False).Visit(
           PrintVisitor())
 
   def VisitSignature(self, node):
@@ -505,10 +505,9 @@ class PrintVisitor(Visitor):
   def VisitParameter(self, node):
     """Convert a function parameter to a string."""
     suffix = " = ..." if node.optional else ""
-    if node.type == "object" or node.type == "Any":
-      # Abbreviated form. "object" or "Any" is the default.
-      if node.type == "Any":
-        self._typing_import_counts["Any"] -= 1
+    if node.type == "Any":
+      # Abbreviated form. "Any" is the default.
+      self._typing_import_counts["Any"] -= 1
       return node.name + suffix
     elif node.name == "self" and self.class_names and (
         node.type == self.class_names[-1]):
@@ -1335,9 +1334,6 @@ class AdjustSelf(Visitor):
     super(AdjustSelf, self).__init__()
     self.class_types = []  # allow nested classes
     self.force = force
-    self.replaced_self_types = (pytd.NamedType("object"),
-                                pytd.ClassType("object"),
-                                pytd.ClassType("__builtin__.object"))
 
   def EnterClass(self, cls):
     self.class_types.append(ClassAsType(cls))
@@ -1363,7 +1359,8 @@ class AdjustSelf(Visitor):
     if not self.class_types:
       # We're not within a class, so this is not a parameter of a method.
       return p
-    if p.name == "self" and (self.force or p.type in self.replaced_self_types):
+    if p.name == "self" and (
+        self.force or isinstance(p.type, pytd.AnythingType)):
       return p.Replace(type=self.class_types[-1])
     else:
       return p
@@ -1395,19 +1392,13 @@ class RemoveUnknownClasses(Visitor):
 
   def VisitClassType(self, t):
     if t.name.startswith("~unknown"):
-      if self.parameter:
-        return pytd.NamedType("__builtin__.object")
-      else:
-        return pytd.AnythingType()
+      return pytd.AnythingType()
     else:
       return t
 
   def VisitNamedType(self, t):
     if t.name.startswith("~unknown"):
-      if self.parameter:
-        return pytd.NamedType("__builtin__.object")
-      else:
-        return pytd.AnythingType()
+      return pytd.AnythingType()
     else:
       return t
 

@@ -499,7 +499,7 @@ class TestOptimize(parser_test_base.ParserTest):
         def f(x: list or object, y: complex or memoryview) -> int or bool
     """)
     expected = textwrap.dedent("""
-        def f(x, y) -> int
+        def f(x: object, y: object) -> int
     """)
     hierarchy = self.builtins.Visit(visitors.ExtractSuperClassesByName())
     hierarchy.update(self.typing.Visit(visitors.ExtractSuperClassesByName()))
@@ -543,7 +543,7 @@ class TestOptimize(parser_test_base.ParserTest):
 
     expected = textwrap.dedent("""
         def f(x: AB, y: A, z: B) -> EFG
-        def g(x) -> EFG
+        def g(x: object) -> EFG
         def h(x) -> ?
     """) + class_data
 
@@ -609,7 +609,7 @@ class TestOptimize(parser_test_base.ParserTest):
     src = textwrap.dedent("""
         def f(x: A or B or C or D) -> X
         def g(x: A or B or C or D or E) -> X
-        def h(x: A or object) -> X
+        def h(x: A or ?) -> X
     """)
     expected = textwrap.dedent("""
         def f(x: A or B or C or D) -> X
@@ -707,7 +707,7 @@ class TestOptimize(parser_test_base.ParserTest):
         class Method1(object):
             def __call__(self: A, x: int) -> ?
         class Method2(object):
-            def __call__(self: ?, x: int) -> ?
+            def __call__(self: object, x: int) -> ?
         class Method3(object):
             def __call__(x: bool, y: int) -> ?
         class Method4(object):

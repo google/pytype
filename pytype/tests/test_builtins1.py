@@ -109,7 +109,7 @@ class BuiltinTests(test_base.BaseTest):
         return max(x, y)
     """)
     self.assertTypesMatchPytd(ty, """
-      def t_testMax2(x: object, y: object) -> ?
+      def t_testMax2(x, y) -> ?
       """)
 
   def testZip(self):
