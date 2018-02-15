@@ -79,6 +79,15 @@ class DictTest(test_base.BaseTest):
       v2 = ...  # type: Optional[int]
     """)
 
+  def testObjectInDict(self):
+    errors = self.CheckWithErrors("""\
+      from __future__ import google_type_annotations
+      from typing import Any, Dict
+      def objectIsStr() -> Dict[str, Any]:
+        return {object(): ""}
+    """)
+    self.assertErrorLogIs(errors, [(4, "bad-return-type")])
+
 
 if __name__ == "__main__":
   test_base.main()

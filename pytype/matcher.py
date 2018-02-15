@@ -235,10 +235,6 @@ class AbstractMatcher(object):
           subst = new_subst
       return subst if matched else None
     elif isinstance(other_type, abstract.TypeParameter):
-      if (isinstance(left, abstract.Instance) and
-          left.get_full_name() == "__builtin__.object"):
-        return self._mutate_type_parameters(
-            [other_type], self.vm.convert.unsolvable, subst, node)
       for c in other_type.constraints:
         new_subst = self._match_value_against_type(value, c, subst, node, view)
         if new_subst is not None:
@@ -343,9 +339,7 @@ class AbstractMatcher(object):
           "__builtin__.module", "__builtin__.object", "types.ModuleType"]:
         return subst
     elif isinstance(left, (abstract.Function, abstract.BoundFunction)):
-      if other_type.full_name == "__builtin__.object":
-        return subst
-      elif other_type.full_name == "typing.Callable":
+      if other_type.full_name == "typing.Callable":
         if not isinstance(other_type, abstract.ParameterizedClass):
           # The callable has no parameters, so any function matches it.
           return subst
@@ -612,9 +606,6 @@ class AbstractMatcher(object):
     Returns:
       A new type parameter assignment if the matching succeeded, None otherwise.
     """
-    if other_type.full_name == "__builtin__.object":
-      return subst
-
     if isinstance(other_type, abstract.Class):
       base = self.match_from_mro(left, other_type)
       if base is None:
