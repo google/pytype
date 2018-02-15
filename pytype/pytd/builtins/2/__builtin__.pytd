@@ -523,8 +523,6 @@ class list(List[_T]):
       self := list[_T or _T2]
     def extend(self, i: Iterable[_T2]) -> NoneType:
       self := list[_T or _T2]
-    def extend(self, i: ?) -> NoneType:
-      self := list[?]
     def count(self, value: _T) -> int
     def index(self, value, ...) -> int
     def insert(self, index: int, object: _T2) -> NoneType:

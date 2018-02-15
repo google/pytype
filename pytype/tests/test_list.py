@@ -56,6 +56,19 @@ class ListTest(test_base.BaseTest):
       a = ...  # type: List[str]
     """)
 
+  def test_extend_with_empty(self):
+    ty = self.Infer("""
+      from typing import List
+      v = []  # type: List[str]
+      for x in []:
+        v.extend(x)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any, List
+      v = ...  # type: List[str]
+      x = ...  # type: Any
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

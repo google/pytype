@@ -441,6 +441,15 @@ class MatcherTest(unittest.TestCase):
     right = self._convert_type("int")
     self.assertNoMatch(self.vm.convert.no_return, right)
 
+  def testEmptyAgainstParameterizedIterable(self):
+    left = self.vm.convert.empty
+    right = abstract.ParameterizedClass(
+        self.vm.convert.list_type,
+        {abstract.T: abstract.TypeParameter(abstract.T, self.vm)}, self.vm)
+    for subst in self._match_var(left, right):
+      self.assertSetEqual(set(subst), {abstract.T})
+      self.assertListEqual(subst[abstract.T].data, [self.vm.convert.empty])
+
 
 if __name__ == "__main__":
   unittest.main()

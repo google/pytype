@@ -234,7 +234,8 @@ class AbstractMatcher(object):
     elif isinstance(other_type, abstract.TypeParameter):
       if (isinstance(left, abstract.Instance) and
           left.get_full_name() == "__builtin__.object"):
-        return self._make_type_parameters_unsolvable([other_type], subst, node)
+        return self._mutate_type_parameters(
+            [other_type], other_type.vm.convert.unsolvable, subst, node)
       for c in other_type.constraints:
         new_subst = self._match_value_against_type(value, c, subst, node, view)
         if new_subst is not None:
@@ -314,7 +315,11 @@ class AbstractMatcher(object):
       return subst
     elif isinstance(left, abstract.AMBIGUOUS_OR_EMPTY):
       params = other_type.vm.annotations_util.get_type_parameters(other_type)
-      return self._make_type_parameters_unsolvable(params, subst, node)
+      if isinstance(left, abstract.Empty):
+        value = other_type.vm.convert.empty
+      else:
+        value = other_type.vm.convert.unsolvable
+      return self._mutate_type_parameters(params, value, subst, node)
     elif isinstance(left, abstract.Class):
       if (other_type.full_name == "__builtin__.type" and
           isinstance(other_type, abstract.ParameterizedClass)):
@@ -383,11 +388,8 @@ class AbstractMatcher(object):
       raise NotImplementedError("Matching not implemented for %s against %s" %
                                 (type(left), type(other_type)))
 
-  def _make_type_parameters_unsolvable(self, params, subst, node):
-    # We can't use p.instantiate() here because that would introduce
-    # conflicting values if p has constraints.
-    new_subst = {p.name: p.vm.convert.unsolvable.to_variable(node)
-                 for p in params}
+  def _mutate_type_parameters(self, params, value, subst, node):
+    new_subst = {p.name: value.to_variable(node) for p in params}
     return self._merge_substs(subst, [new_subst])
 
   def _match_signature_against_callable(

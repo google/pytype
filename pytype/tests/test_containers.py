@@ -749,7 +749,7 @@ class ContainerTest(test_base.BaseTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Any, List
       empty = ...  # type: List[nothing]
-      y = ...  # type: List[list]
+      y = ...  # type: List[List[nothing]]
       x = ...  # type: Any
     """)
 
