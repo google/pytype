@@ -353,19 +353,31 @@ class SuperInstance(abstract.AtomicAbstractValue):
     self.super_cls = cls
     self.super_obj = obj
     self.get = abstract.NativeFunction("__get__", self.get, self.vm)
-    self.set = abstract.NativeFunction("__set__", self.set, self.vm)
 
   def get(self, node, *unused_args, **unused_kwargs):
     return node, self.to_variable(node)
 
-  def set(self, node, *unused_args, **unused_kwargs):
-    return node, self.to_variable(node)
+  def _get_descriptor_from_superclass(self, node, cls):
+    obj = cls.instantiate(node)
+    ret = []
+    for b in obj.bindings:
+      _, attr = self.vm.attribute_handler.get_attribute(
+          node, b.data, "__get__", valself=b)
+      if attr:
+        ret.append(attr)
+    if ret:
+      return self.vm.join_variables(node, ret)
+    return None
 
   def get_special_attribute(self, node, name, valself):
     if name == "__get__":
+      for cls in self.super_cls.mro[1:]:
+        attr = self._get_descriptor_from_superclass(node, cls)
+        if attr:
+          return attr
+      # If we have not successfully called __get__ on an instance of the
+      # superclass, fall back to returning self.
       return self.get.to_variable(node)
-    elif name == "__set__":
-      return self.set.to_variable(node)
     else:
       return super(SuperInstance, self).get_special_attribute(
           node, name, valself)

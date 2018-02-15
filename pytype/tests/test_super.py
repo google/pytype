@@ -29,11 +29,71 @@ class SuperTest(test_base.BaseTest):
           super(Foo, self).__get__(name)
     """)
 
-  def testSet(self):
+  def testInheritedGet(self):
     self.Check("""
+      class Foo(object):
+        def __get__(self, obj, objtype):
+          return 42
+      class Bar(Foo):
+        def __get__(self, obj, objtype):
+          return super(Bar, self).__get__(obj, objtype)
+      class Baz(object):
+        x = Bar()
+      Baz().x + 1
+    """)
+
+  def testInheritedGetGrandparent(self):
+    self.Check("""
+      class Foo(object):
+        def __get__(self, obj, objtype):
+          return 42
+      class Mid(Foo):
+        pass
+      class Bar(Mid):
+        def __get__(self, obj, objtype):
+          return super(Bar, self).__get__(obj, objtype)
+      class Baz(object):
+        x = Bar()
+      Baz().x + 1
+    """)
+
+  def testInheritedGetMultiple(self):
+    self.Check("""
+      class Foo(object):
+        def __get__(self, obj, objtype):
+          return 42
+      class Quux(object):
+        pass
+      class Bar(Quux, Foo):
+        def __get__(self, obj, objtype):
+          return super(Bar, self).__get__(obj, objtype)
+      class Baz(object):
+        x = Bar()
+      Baz().x + 1
+    """)
+
+  def testSet(self):
+    _, errors = self.InferWithErrors("""\
       class Foo(object):
         def foo(self, name, value):
           super(Foo, self).__set__(name, value)
+    """)
+    self.assertErrorLogIs(errors, [(3, "attribute-error", r"__set__.*super")])
+
+  def testInheritedSet(self):
+    self.Check("""
+      class Foo(object):
+        def __init__(self):
+          self.foo = 1
+        def __set__(self, name, value):
+          self.foo = value
+      class Bar(Foo):
+        def __set__(self, name, value):
+          super(Bar, self).__set__(name, value)
+      class Baz():
+        x = Bar()
+      y = Baz()
+      y.x = 42
     """)
 
   def testInit(self):
