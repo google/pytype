@@ -192,7 +192,7 @@ class VirtualMachine(object):
     self.attribute_handler = attribute.AbstractAttributeHandler(self)
     self.convert = convert.Converter(self)
     self.program.default_data = self.convert.unsolvable
-    self.matcher = matcher.AbstractMatcher()
+    self.matcher = matcher.AbstractMatcher(self)
     self.has_unknown_wildcard_imports = False
     self.callself_stack = []
     self.filename = None

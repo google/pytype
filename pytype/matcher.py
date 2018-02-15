@@ -24,6 +24,9 @@ _COMPATIBLE_BUILTINS = [
 class AbstractMatcher(object):
   """Matcher for abstract values."""
 
+  def __init__(self, vm):
+    self.vm = vm
+
   def _set_error_subst(self, subst):
     """Set the substitution used by compute_subst in the event of an error."""
     self._error_subst = subst
@@ -54,7 +57,7 @@ class AbstractMatcher(object):
       actual = arg_dict[name]
       subst = self._match_value_against_type(actual, formal, subst, node, view)
       if subst is None:
-        formal = formal.vm.annotations_util.sub_one_annotation(
+        formal = self.vm.annotations_util.sub_one_annotation(
             node, formal, [self._error_subst or {}])
         return None, abstract.BadParam(name=name, expected=formal)
     return utils.HashableDict(subst), None
@@ -195,10 +198,10 @@ class AbstractMatcher(object):
           return subst
         else:
           # Keep the type parameter names in the expected types.
-          left_dummy = other_type.vm.annotations_util.instantiate_for_sub(
-              other_type.vm.root_cfg_node, left.param)
-          right_dummy = other_type.vm.annotations_util.instantiate_for_sub(
-              other_type.vm.root_cfg_node, other_type)
+          left_dummy = self.vm.annotations_util.instantiate_for_sub(
+              self.vm.root_cfg_node, left.param)
+          right_dummy = self.vm.annotations_util.instantiate_for_sub(
+              self.vm.root_cfg_node, other_type)
           self._set_error_subst(
               self._merge_substs(subst, [{
                   left.param.name: left_dummy,
@@ -235,7 +238,7 @@ class AbstractMatcher(object):
       if (isinstance(left, abstract.Instance) and
           left.get_full_name() == "__builtin__.object"):
         return self._mutate_type_parameters(
-            [other_type], other_type.vm.convert.unsolvable, subst, node)
+            [other_type], self.vm.convert.unsolvable, subst, node)
       for c in other_type.constraints:
         new_subst = self._match_value_against_type(value, c, subst, node, view)
         if new_subst is not None:
@@ -248,7 +251,7 @@ class AbstractMatcher(object):
             value, other_type.bound, subst, node, view)
         if new_subst is None:
           new_subst = {other_type.name:
-                       other_type.vm.annotations_util.instantiate_for_sub(
+                       self.vm.annotations_util.instantiate_for_sub(
                            node, other_type.bound)}
           self._set_error_subst(self._merge_substs(subst, [new_subst]))
           return None
@@ -262,7 +265,7 @@ class AbstractMatcher(object):
         # test_solver:testIdentityFunction) but not for AnyStr (see
         # test_anystr:testTypeParameters)
         if isinstance(left, abstract.PythonConstant) and other_type.constraints:
-          new_var = other_type.vm.convert.get_maybe_abstract_instance(
+          new_var = self.vm.convert.get_maybe_abstract_instance(
               left).to_variable(node)
         else:
           new_var = value.AssignToNewVariable(node)
@@ -314,11 +317,11 @@ class AbstractMatcher(object):
         isinstance(other_type, abstract.Empty)):
       return subst
     elif isinstance(left, abstract.AMBIGUOUS_OR_EMPTY):
-      params = other_type.vm.annotations_util.get_type_parameters(other_type)
+      params = self.vm.annotations_util.get_type_parameters(other_type)
       if isinstance(left, abstract.Empty):
-        value = other_type.vm.convert.empty
+        value = self.vm.convert.empty
       else:
-        value = other_type.vm.convert.unsolvable
+        value = self.vm.convert.unsolvable
       return self._mutate_type_parameters(params, value, subst, node)
     elif isinstance(left, abstract.Class):
       if (other_type.full_name == "__builtin__.type" and
@@ -395,7 +398,7 @@ class AbstractMatcher(object):
   def _match_signature_against_callable(
       self, sig, other_type, subst, node, view):
     """Match a function.Signature against a parameterized callable."""
-    ret_type = sig.annotations.get("return", other_type.vm.convert.unsolvable)
+    ret_type = sig.annotations.get("return", self.vm.convert.unsolvable)
     subst = self._instantiate_and_match(
         ret_type, other_type.type_parameters[abstract.RET], subst, node, view,
         container=sig)
@@ -412,7 +415,7 @@ class AbstractMatcher(object):
     for name, expected_arg in zip(sig.param_names,
                                   (other_type.type_parameters[i]
                                    for i in range(other_type.num_args))):
-      actual_arg = sig.annotations.get(name, other_type.vm.convert.unsolvable)
+      actual_arg = sig.annotations.get(name, self.vm.convert.unsolvable)
       # Flip actual and expected, since argument types are contravariant.
       subst = self._instantiate_and_match(
           expected_arg, actual_arg, subst, node, view, container=other_type)
@@ -735,17 +738,17 @@ class AbstractMatcher(object):
         matching_left_method = left_methods[name]
       else:
         return None
-      converter = other_type.vm.convert.pytd_convert
+      converter = self.vm.convert.pytd_convert
       for signature in abstract_method.signatures:
         callable_signature = converter.signature_to_callable(
-            signature.signature, other_type.vm)
+            signature.signature, self.vm)
         annotation_subst = {
-            param: value.vm.annotations_util.instantiate_for_sub(node, value)
+            param: self.vm.annotations_util.instantiate_for_sub(node, value)
             for (param, value) in params.items()}
-        annotated_callable = other_type.vm.annotations_util.sub_one_annotation(
+        annotated_callable = self.vm.annotations_util.sub_one_annotation(
             node, callable_signature, [annotation_subst])
         if isinstance(matching_left_method, pytd.Function):
-          matching_left_method = other_type.vm.convert.constant_to_var(
+          matching_left_method = self.vm.convert.constant_to_var(
               matching_left_method)
         for m in matching_left_method.data:
           match_result = self._match_type_against_type(
@@ -785,7 +788,7 @@ class AbstractMatcher(object):
     for v in concrete_values:
       classes = []
       for cls in v.get_class().data:
-        object_in_values |= cls == cls.vm.convert.object_type
+        object_in_values |= cls == self.vm.convert.object_type
         classes.extend(cls.mro)
       classes = set(c.full_name for c in classes)
       for compat, name in _COMPATIBLE_BUILTINS:
