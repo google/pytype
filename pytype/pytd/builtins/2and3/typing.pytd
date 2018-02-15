@@ -175,6 +175,8 @@ class List(MutableSequence[_T]):
 # no actual way to represent that without introducing an import cycle.
 class Deque(MutableSequence[_T]):
   maxlen = ...  # type: Optional[int]
+  def __init__(self, iterable: Iterable[_T] = ..., maxlen: Optional[int] = ...) -> None:
+    self := Deque[_T]
   def appendleft(self, v: _T2) -> None:
     self := Deque[_T or _T2]
   def clear(self) -> None:

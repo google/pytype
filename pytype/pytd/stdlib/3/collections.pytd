@@ -1,12 +1,13 @@
 # We maintain our own collections.pytd, rather than using collections.pyi from
 # typeshed, because this file makes use of mutable type parameters.
-from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Text, Tuple
+from typing import Any, Callable, Dict, List, Mapping, Optional, Text, Tuple
 
 K = TypeVar("K")
 V = TypeVar("V")
 K2 = TypeVar("K2")
 V2 = TypeVar("V2")
 DV = TypeVar("DV")
+T = TypeVar("T")
 
 __all__ = ...  # type: list[?]
 _abcoll = ...  # type: ?
@@ -26,7 +27,7 @@ _sys = ...  # type: module
 dumps = ...  # type: Callable
 loads = ...  # type: Callable
 
-class deque(typing.Deque): ...
+class deque(typing.Deque[T]): ...
 
 Container = typing.Container
 Hashable = typing.Hashable

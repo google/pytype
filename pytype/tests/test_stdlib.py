@@ -355,6 +355,17 @@ class StdlibTests(test_base.BaseTest):
     """)
     self.assertErrorLogIs(errors, [(7, "wrong-arg-types", r"int.*deque")])
 
+  def testCollectionsDequeInit(self):
+    ty = self.Infer("""\
+      from __future__ import google_type_annotations
+      import collections
+      x = collections.deque([1, 2, 3], maxlen=10)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      collections = ...  # type: module
+      x = ...  # type: collections.deque[int]
+    """)
+
   def testCollectionsSmokeTest(self):
     self.Check("""
       import collections
