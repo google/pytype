@@ -1333,14 +1333,24 @@ class VirtualMachine(object):
 
     return result
 
-  def _get_iter(self, state, seq, report_errors=True):
+  def _get_iter(self, state, seq_var, report_errors=True):
     """Get an iterator from a sequence."""
-    state, func = self.load_attr_noerror(state, seq, "__iter__")
-    if func:
-      # Call __iter__()
-      state, itr = self.call_function_with_state(state, func, ())
-    else:
-      node, func, missing = self._retrieve_attr(state.node, seq, "__getitem__")
+    itr = self.program.NewVariable()
+    remaining_seq_var = self.program.NewVariable()
+    for seq_val in seq_var.bindings:
+      seq = seq_val.data
+      state, func = self.load_attr_noerror(state, seq.get_class(), "__iter__")
+      if func:
+        state, one_itr = self.call_function_with_state(state, func, (seq_var,))
+        itr.PasteVariable(one_itr)
+      else:
+        remaining_seq_var.PasteBinding(seq_val)
+    if remaining_seq_var.bindings:
+      # TODO(rechen): We should fetch the attribute on the sequence's class, as
+      # we do above, but because __getitem__ is used for annotations, pytype
+      # sometimes thinks the class attribute is AnnotationClass.getitem_slot.
+      node, func, missing = self._retrieve_attr(
+          state.node, remaining_seq_var, "__getitem__")
       state = state.change_cfg_node(node)
       if func:
         # TODO(dbaum): Consider delaying the call to __getitem__ until
@@ -1352,7 +1362,7 @@ class VirtualMachine(object):
         state, item = self.call_function_with_state(
             state, func, (self.convert.build_int(state.node),))
         # Create a new iterator from the returned value.
-        itr = abstract.Iterator(self, item).to_variable(state.node)
+        itr.AddBinding(abstract.Iterator(self, item), [], state.node)
       else:
         # Cannot iterate this object.
         if report_errors:

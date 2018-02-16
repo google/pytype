@@ -774,5 +774,33 @@ class TestAttributes(test_base.BaseTest):
           def __init__(self) -> None: ...
     """)
 
+  def testMetaclassIter(self):
+    self.Check("""
+      class Meta(type):
+        def __iter__(cls):
+          return iter([])
+      class Foo(object):
+        __metaclass__ = Meta
+        def __iter__(self):
+          return iter([])
+      for _ in Foo:
+        pass
+    """)
+
+  @unittest.skip("Needs better handling of __getitem__ in vm._get_iter().")
+  def testMetaclassGetItem(self):
+    self.Check("""
+      class Meta(type):
+        def __getitem__(cls, x):
+          return 0
+      class Foo(object):
+        __metaclass__ = Meta
+        def __getitem__(self, x):
+          return 0
+      for _ in Foo:
+        pass
+    """)
+
+
 if __name__ == "__main__":
   test_base.main()
