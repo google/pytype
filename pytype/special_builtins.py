@@ -344,6 +344,23 @@ class IsCallable(UnaryPredicate):
     return node, ret is not None
 
 
+class BuiltinClass(abstract.PyTDClass):
+  """Implementation of classes in __builtin__.pytd.
+
+  The module name is passed in to allow classes in other modules to subclass a
+  module in __builtin__ and inherit the custom behaviour.
+  """
+
+  def __init__(self, vm, name, module="__builtin__"):
+    if module == "__builtin__":
+      pytd_cls = vm.lookup_builtin("__builtin__.%s" % name)
+    else:
+      ast = vm.loader.import_name(module)
+      pytd_cls = ast.Lookup("%s.%s" % (module, name))
+    super(BuiltinClass, self).__init__(name, pytd_cls, vm)
+    self.module = module
+
+
 class SuperInstance(abstract.AtomicAbstractValue):
   """The result of a super() call, i.e., a lookup proxy."""
 
@@ -390,16 +407,14 @@ class SuperInstance(abstract.AtomicAbstractValue):
     return node, self.vm.convert.unsolvable.to_variable(node)
 
 
-class Super(abstract.PyTDClass):
+class Super(BuiltinClass):
   """The super() function. Calling it will create a SuperInstance."""
 
   # Minimal signature, only used for constructing exceptions.
   _SIGNATURE = function.Signature.from_param_names("super", ("cls", "self"))
 
   def __init__(self, vm):
-    super(Super, self).__init__(
-        "super", vm.lookup_builtin("__builtin__.super"), vm)
-    self.module = "__builtin__"
+    super(Super, self).__init__(vm, "super")
 
   def call(self, node, _, args):
     result = self.vm.program.NewVariable()
@@ -425,13 +440,11 @@ class Super(abstract.PyTDClass):
     return node, result
 
 
-class Object(abstract.PyTDClass):
+class Object(BuiltinClass):
   """Implementation of __builtin__.object."""
 
   def __init__(self, vm):
-    super(Object, self).__init__(
-        "object", vm.lookup_builtin("__builtin__.object"), vm)
-    self.module = "__builtin__"
+    super(Object, self).__init__(vm, "object")
 
   def is_object_new(self, func):
     """Whether the given function is object.__new__.
@@ -499,14 +512,13 @@ class RevealType(abstract.AtomicAbstractValue):
     return node, self.vm.convert.build_none(node)
 
 
-class PropertyTemplate(abstract.PyTDClass):
+class PropertyTemplate(BuiltinClass):
   """Template for property decorators."""
 
   _KEYS = ["fget", "fset", "fdel", "doc"]
 
-  def __init__(self, name, method, module, vm):
-    super(PropertyTemplate, self).__init__(name, method, vm)
-    self.module = module
+  def __init__(self, vm, name, module="__builtin__"):
+    super(PropertyTemplate, self).__init__(vm, name, module)
 
   def signature(self):
     # Minimal signature, only used for constructing exceptions.
@@ -588,8 +600,7 @@ class Property(PropertyTemplate):
   """Property method decorator."""
 
   def __init__(self, vm):
-    method = vm.lookup_builtin("__builtin__.property")
-    super(Property, self).__init__("property", method, "__builtin__", vm)
+    super(Property, self).__init__(vm, "property")
 
   def call(self, node, funcv, args):
     property_args = self._get_args(args)
@@ -615,15 +626,14 @@ class StaticMethodInstance(abstract.SimpleAbstractValue, abstract.HasSlots):
     return node, self.func
 
 
-class StaticMethod(abstract.PyTDClass):
+class StaticMethod(BuiltinClass):
   """Static method decorator."""
+
   # Minimal signature, only used for constructing exceptions.
   _SIGNATURE = function.Signature.from_param_names("staticmethod", ("func",))
 
   def __init__(self, vm):
-    super(StaticMethod, self).__init__(
-        "staticmethod", vm.lookup_builtin("__builtin__.staticmethod"), vm)
-    self.module = "__builtin__"
+    super(StaticMethod, self).__init__(vm, "staticmethod")
 
   def call(self, node, funcv, args):
     if len(args.posargs) != 1:
@@ -657,15 +667,13 @@ class ClassMethodInstance(abstract.SimpleAbstractValue, abstract.HasSlots):
     return node, self.vm.program.NewVariable(results, [], node)
 
 
-class ClassMethod(abstract.PyTDClass):
+class ClassMethod(BuiltinClass):
   """Static method decorator."""
   # Minimal signature, only used for constructing exceptions.
   _SIGNATURE = function.Signature.from_param_names("classmethod", ("func",))
 
   def __init__(self, vm):
-    super(ClassMethod, self).__init__(
-        "classmethod", vm.lookup_builtin("__builtin__.classmethod"), vm)
-    self.module = "__builtin__"
+    super(ClassMethod, self).__init__(vm, "classmethod")
 
   def call(self, node, funcv, args):
     if len(args.posargs) != 1:

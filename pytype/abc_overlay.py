@@ -47,9 +47,7 @@ class AbstractProperty(special_builtins.PropertyTemplate):
   """Implements the @abc.abstractproperty decorator."""
 
   def __init__(self, name, vm):
-    ast = vm.loader.import_name("abc")
-    method = ast.Lookup("abc.abstractproperty")
-    super(AbstractProperty, self).__init__(name, method, "abc", vm)
+    super(AbstractProperty, self).__init__(vm, name, "abc")
 
   def call(self, node, funcv, args):
     property_args = self._get_args(args)
