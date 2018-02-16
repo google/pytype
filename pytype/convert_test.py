@@ -286,6 +286,27 @@ class ConvertTest(unittest.TestCase):
     parameterized_cls = abstract.ParameterizedClass(cls, {}, self._vm)
     self.assertItemsEqual(parameterized_cls.abstract_methods, {"f"})
 
+  def test_classvar(self):
+    ast = self._load_ast("a", """
+      from typing import ClassVar
+      class X:
+        v: ClassVar[int]
+    """)
+    pyval = ast.Lookup("a.X").Lookup("v").type
+    v = self._vm.convert.constant_to_value(pyval, {}, self._vm.root_cfg_node)
+    self.assertEqual(v, self._vm.convert.int_type)
+
+  def test_classvar_instance(self):
+    ast = self._load_ast("a", """
+      from typing import ClassVar
+      class X:
+        v: ClassVar[int]
+    """)
+    pyval = ast.Lookup("a.X").Lookup("v").type
+    v = self._vm.convert.constant_to_value(
+        abstract.AsInstance(pyval), {}, self._vm.root_cfg_node)
+    self.assertEqual(v, self._vm.convert.primitive_class_instances[int])
+
 
 if __name__ == "__main__":
   unittest.main()

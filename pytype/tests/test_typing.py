@@ -699,6 +699,35 @@ class TypingTest(test_base.BaseTest):
                  (4, "invalid-annotation", r"Ellipsis.*index 1.*Callable"),
                  (5, "invalid-annotation", r"Ellipsis.*index 0.*list")])
 
+  def test_classvar(self):
+    errors = self.CheckWithErrors("from typing import ClassVar")
+    self.assertErrorLogIs(
+        errors, [(1, "not-supported-yet", r"typing.ClassVar")])
+
+  def test_pyi_classvar(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import ClassVar
+        class X:
+          v: ClassVar[int]
+      """)
+      self.Check("""
+        import foo
+        foo.X.v + 42
+      """, pythonpath=[d.path])
+
+  def test_pyi_classvar_argcount(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import ClassVar
+        class X:
+          v: ClassVar[int, int]
+      """)
+      errors = self.CheckWithErrors("""\
+        import foo
+      """, pythonpath=[d.path])
+    self.assertErrorLogIs(errors, [(1, "pyi-error", r"ClassVar.*1.*2")])
+
 
 if __name__ == "__main__":
   test_base.main()

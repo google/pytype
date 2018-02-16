@@ -577,8 +577,13 @@ class Converter(object):
         cls = actual.cls
       if isinstance(cls, pytd.ClassType):
         cls = cls.cls
-      if isinstance(cls, pytd.GenericType) or (isinstance(cls, pytd.Class) and
-                                               cls.template):
+      if (isinstance(cls, pytd.GenericType) and
+          cls.base_type.name == "typing.ClassVar"):
+        param, = cls.parameters
+        return self.constant_to_value(
+            abstract.AsInstance(param), subst, self.vm.root_cfg_node)
+      elif isinstance(cls, pytd.GenericType) or (isinstance(cls, pytd.Class) and
+                                                 cls.template):
         # If we're converting a generic Class, need to create a new instance of
         # it. See test_classes.testGenericReinstantiated.
         if isinstance(cls, pytd.Class):
@@ -643,6 +648,10 @@ class Converter(object):
         return self._convert_cache[key]
       else:
         return self.constant_to_value(cls, subst, self.vm.root_cfg_node)
+    elif (isinstance(pyval, pytd.GenericType) and
+          pyval.base_type.name == "typing.ClassVar"):
+      param, = pyval.parameters
+      return self.constant_to_value(param, subst, self.vm.root_cfg_node)
     elif isinstance(pyval, pytd.GenericType):
       if isinstance(pyval.base_type, pytd.LateType):
         actual = self._load_late_type(pyval.base_type)

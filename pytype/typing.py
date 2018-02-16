@@ -466,13 +466,13 @@ class NamedTupleBuilder(collections_overlay.NamedTupleBuilder):
     return node, cls_var
 
 
-def build_optional(name, vm):
-  return Union(name, vm, (vm.convert.none_type,))
-
-
-def build_generic(name, vm):
+def not_supported_yet(name, vm):
   vm.errorlog.not_supported_yet(vm.frames, "typing." + name)
   return vm.convert.unsolvable
+
+
+def build_optional(name, vm):
+  return Union(name, vm, (vm.convert.none_type,))
 
 
 def build_typechecking(name, vm):
@@ -486,11 +486,6 @@ def build_cast(name, vm):
   return Cast(name, signatures, f.kind, vm)
 
 
-def build_newtype(name, vm):
-  vm.errorlog.not_supported_yet(vm.frames, "typing." + name)
-  return vm.convert.unsolvable
-
-
 def build_noreturn(name, vm):
   del name
   return vm.convert.no_return
@@ -499,9 +494,10 @@ def build_noreturn(name, vm):
 typing_overload = {
     "Any": build_any,
     "Callable": Callable,
-    "Generic": build_generic,
+    "ClassVar": not_supported_yet,
+    "Generic": not_supported_yet,
     "NamedTuple": NamedTupleBuilder,
-    "NewType": build_newtype,
+    "NewType": not_supported_yet,
     "NoReturn": build_noreturn,
     "Optional": build_optional,
     "Tuple": Tuple,
